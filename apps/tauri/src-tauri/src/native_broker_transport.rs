@@ -822,6 +822,8 @@ mod tests {
     const CALL: &[u8] =
         br#"{"kind":"call","worker_id":0,"extension_id":0,"method":"probe","args":{"x":1}}"#;
     const TERMINATE: &[u8] = br#"{"kind":"terminate","worker_id":0}"#;
+    const CAPABILITY: &[u8] = br#"{"kind":"capability","operation":"platform.kind.read","args":{}}"#;
+    const CAPABILITY_REPLY: &[u8] = br#"{"kind":"capability","result":"linux"}"#;
     const LOAD_REPLY: &[u8] = br#"{"kind":"load","worker_id":0,"extension_ids":[0]}"#;
     const CALL_REPLY: &[u8] = br#"{"kind":"call","result":{"ok":true}}"#;
     const TERMINATE_REPLY: &[u8] = br#"{"kind":"terminate","terminated":true}"#;
@@ -1074,6 +1076,54 @@ mod tests {
             "the payload did not survive as data: {}",
             d.javascript
         );
+    }
+
+    /// The `capability` kind inherits the reply/request binding at line ~631, which compares
+    /// `typed_reply.kind()` against `pending.expected` for every variant. Structurally it cannot
+    /// have been missed. It is pinned anyway, because a generic mechanism is exactly the thing a
+    /// later change special-cases, and because THIS kind's `result` flows back to the editor: if
+    /// a `call` reply could satisfy a capability request, the editor would receive a worker's
+    /// output where a semantic result belongs.
+    #[test]
+    fn a_capability_request_is_not_satisfied_by_another_kind_of_reply() {
+        let mut c = BrokerTransportCore::new(limits()).unwrap();
+        let s = session(&mut c, 70);
+        let d = c
+            .request(MAIN_LABEL, s.as_str(), 0, CAPABILITY, 0, rng(71))
+            .unwrap();
+        assert!(d.javascript.contains(r#""kind":"capability""#));
+
+        // A worker-shaped reply must not answer it, and must not consume the pending request.
+        assert_eq!(
+            c.reply(BROKER_LABEL, s.as_str(), d.correlation.as_str(), 0, CALL_REPLY, 1)
+                .unwrap_err()
+                .code,
+            RelayErrorCode::InvalidRequest
+        );
+        // Still pending, so the correct reply is still accepted afterwards.
+        assert!(c
+            .reply(BROKER_LABEL, s.as_str(), d.correlation.as_str(), 0, CAPABILITY_REPLY, 1)
+            .is_ok());
+    }
+
+    #[test]
+    fn a_capability_reply_cannot_answer_a_worker_request() {
+        // The other direction: a capability RESULT must not be handed back where a worker call
+        // was expected, or a semantic read could stand in for an extension's output.
+        let mut c = BrokerTransportCore::new(limits()).unwrap();
+        let s = session(&mut c, 72);
+        let d = c
+            .request(MAIN_LABEL, s.as_str(), 0, CALL, 0, rng(73))
+            .unwrap();
+        assert_eq!(
+            c.reply(BROKER_LABEL, s.as_str(), d.correlation.as_str(), 0, CAPABILITY_REPLY, 1)
+                .unwrap_err()
+                .code,
+            RelayErrorCode::InvalidRequest
+        );
+        assert!(c
+            .reply(BROKER_LABEL, s.as_str(), d.correlation.as_str(), 0, CALL_REPLY, 1)
+            .is_ok());
     }
 
     #[test]
