@@ -35,7 +35,20 @@ const ROOT = path.resolve(import.meta.dirname, '..');
  * making it pass, which for most of these means bringing it up to the current
  * UI rather than tweaking a selector.
  */
-const KNOWN_UNWIRED = {};
+const KNOWN_UNWIRED = {
+    // Inventoried 2026-09-03 by widening this file past `verify-*`. Both render a VERDICT and
+    // neither is run by any workflow, which is the decay this file exists to prevent — it was
+    // invisible here only because of how they are named.
+    'smoke-debugger.mjs':
+        'Runs nowhere. Needs a runnable sdcc and a sibling stc-compiler checkout, and exits 2 by ' +
+        'name when either is missing, so it fails closed rather than lying. Whether it ships (wire ' +
+        'it into a workflow that installs sdcc) or is deleted is a decision for the lane owner, ' +
+        'not a thing to leave undecided and unnoticed.',
+    'oracle-simavr.mjs':
+        'Runs nowhere and no test references it. An oracle nothing consults is not an oracle. Same ' +
+        'decision as above; it also binds `simavr` by bare name, so its verdict depends on whatever ' +
+        'that resolves to.'
+};
 
 const workflowTexts = readdirSync(path.join(ROOT, '.github/workflows'))
     .filter(f => f.endsWith('.yml'))
@@ -88,10 +101,31 @@ const runInvokesGate = (run, gate) => new RegExp(
     'm'
 ).test(run);
 const workflowRuns = workflowTexts.flatMap(workflowRunScalars);
-const gateIsWired = gate => workflowRuns.some(run => runInvokesGate(run, gate));
+// A gate is exercised either by a workflow `run:` OR by a test file, because CI runs the whole
+// Node suite. Widening the inventory past `verify-*` surfaced `oracle-trace` and
+// `oracle-differential`, which ARE exercised — through tests — and calling them "unwired" would
+// have been false. The distinction that matters is exercised-by-something versus run-by-nothing:
+// `smoke-debugger` and `oracle-simavr` are referenced by no test and no workflow at all.
+//
+// Comment-stripped, so a gate NAMED in a comment does not look covered. That is the same trap as
+// a `doesNotMatch` reading its own documentation, one direction over.
+// Excluding THIS file, because KNOWN_UNWIRED names its entries as string literals — so reading
+// every test would make each documented-orphan look exercised by the very list that documents it
+// as an orphan. Caught by the paired assertion below firing in the opposite direction, which is
+// the argument for having both.
+const testSources = readdirSync(path.join(ROOT, 'test'))
+    .filter(f => f.endsWith('.test.mjs') && f !== 'gate-coverage.test.mjs')
+    .map(f => readFileSync(path.join(ROOT, 'test', f), 'utf8')
+        .replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, ''));
+const gateIsWired = gate => workflowRuns.some(run => runInvokesGate(run, gate)) ||
+    testSources.some(source => source.includes(gate));
 
+// Every script that renders a VERDICT, not only those named `verify-`. This file's own opening
+// line is "a browser gate that CI never runs decays into decoration" — which was true of
+// `smoke-*` and `oracle-*` too, and they were escaping the inventory purely by naming. The same
+// convention the gate-shape sweep keys on, for the same reason.
 const gates = readdirSync(path.join(ROOT, 'scripts'))
-    .filter(f => f.startsWith('verify-') && f.endsWith('.mjs'));
+    .filter(f => /^(?:verify|smoke|oracle)-/.test(f) && f.endsWith('.mjs'));
 
 test('a wrapper runs a gate; a mention of one does not', () => {
     // The whitelist that lets `xvfb-run -a dbus-run-session -- node …` count must not also let a
