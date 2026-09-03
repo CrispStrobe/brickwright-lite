@@ -302,6 +302,64 @@ try {
         await fail(`no allowed platform.kind.read row in the audit: ${recorded.slice(0, 300)}`);
     }
 
+    // ── CP3-D1: JavaScript and Rust return the SAME platform result ───────────────────────
+    // The clause this lane could not close until the boundary worked. It cannot be tested in the
+    // browser gate: there is no Tauri there, `__TAURI_INTERNALS__` is a stub, and a same-result
+    // assertion against a stub proves only that the stub agrees with itself — the
+    // doubles-with-no-producer species already in this repository's catalogue.
+    //
+    // The EDITOR realm drives it, through the transport, exactly as the VM's handler does: name
+    // the operation, name no resource, hold no lease. `slice.value` above is the same operation
+    // reached the other way — directly from the broker realm — so the two must agree.
+    await call('POST', `/session/${session}/window`, {handle: editors[0].handle});
+    const viaJs = await evaluate(`
+        const done = arguments[arguments.length - 1];
+        (async () => {
+            try {
+                const invoke = globalThis.__TAURI_INTERNALS__.invoke;
+                const brokerSession = await invoke('native_broker_open');
+                const raw = await invoke('native_broker_request', {
+                    session: brokerSession, requestId: 0,
+                    payload: JSON.stringify({kind: 'capability', operation: 'platform.kind.read', args: {}})
+                });
+                done({ok: true, raw});
+            } catch (error) { done({ok: false, error: String((error && error.message) || error)}); }
+        })();`);
+    if (!viaJs || !viaJs.ok) {
+        await fail(`the JavaScript path could not reach platform.kind.read: ${viaJs && viaJs.error}`);
+    }
+    let jsReply;
+    try {
+        jsReply = JSON.parse(viaJs.raw);
+    } catch (error) {
+        await fail(`the JavaScript path got a non-JSON reply: ${String(viaJs.raw).slice(0, 200)}`);
+    }
+    if (jsReply.kind !== 'capability' || typeof jsReply.result !== 'string') {
+        await fail(`the JavaScript path got ${JSON.stringify(jsReply).slice(0, 200)}, not a capability result`);
+    }
+    if (jsReply.result !== slice.value) {
+        await fail(`JavaScript and Rust disagree: JS said ${JSON.stringify(jsReply.result)}, ` +
+            `the native executor said ${JSON.stringify(slice.value)}`);
+    }
+    // And the editor still holds nothing it could reuse: the same call again must open its own
+    // round trip, never replay. A second request at the SAME id is a replay and must be refused.
+    const replayed = await evaluate(`
+        const done = arguments[arguments.length - 1];
+        (async () => {
+            try {
+                const invoke = globalThis.__TAURI_INTERNALS__.invoke;
+                const brokerSession = await invoke('native_broker_open');
+                await invoke('native_broker_request', {session: brokerSession, requestId: 0,
+                    payload: JSON.stringify({kind: 'capability', operation: 'platform.kind.read', args: {}})});
+                const again = await invoke('native_broker_request', {session: brokerSession, requestId: 0,
+                    payload: JSON.stringify({kind: 'capability', operation: 'platform.kind.read', args: {}})});
+                done({ok: true, again});
+            } catch (error) { done({ok: false, error: String((error && error.message) || error)}); }
+        })();`);
+    if (replayed && replayed.ok) {
+        await fail(`a replayed request id was answered: ${JSON.stringify(replayed.again).slice(0, 200)}`);
+    }
+
     // ── CP3-D2: the TTL is enforced against the REAL clock ────────────────────────────────
     // `expiry_boundary_and_revocation_are_enforced` proves the rule with an INJECTED `now`, which
     // says nothing about whether the running host advances time the way the policy expects.
@@ -389,7 +447,9 @@ try {
         'editor refused native_broker_reply and native_broker_lease at the real Tauri boundary; ' +
         'a lease aged past its 60s TTL was refused against the REAL clock; ' +
         'a refused navigation revoked the outstanding lease and the revocation is visible in the audit; ' +
-        'no realm reported an initialisation error');
+        'no realm reported an initialisation error; ' +
+        'and the JavaScript path returned the same platform result as the native executor, ' +
+        'naming only the operation, with a replayed request id refused');
     await shutdown();
     process.exit(0);
 } catch (error) {

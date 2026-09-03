@@ -114,6 +114,7 @@ enum ReplyKind {
     Load,
     Call,
     Terminate,
+    Capability,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
@@ -151,6 +152,14 @@ enum EditorRequest {
     Terminate {
         worker_id: u64,
     },
+    /// A semantic capability request. The editor names an OPERATION from the closed vocabulary
+    /// and nothing else — no resource, and no lease. The broker realm chooses the resource and
+    /// mints the lease, so the editor cannot widen what it asked for, and never holds authority
+    /// it could reuse.
+    Capability {
+        operation: String,
+        args: Value,
+    },
 }
 
 impl EditorRequest {
@@ -159,6 +168,7 @@ impl EditorRequest {
             Self::Load { .. } => ReplyKind::Load,
             Self::Call { .. } => ReplyKind::Call,
             Self::Terminate { .. } => ReplyKind::Terminate,
+            Self::Capability { .. } => ReplyKind::Capability,
         }
     }
 }
@@ -176,6 +186,9 @@ enum BrokerReply {
     Terminate {
         terminated: bool,
     },
+    Capability {
+        result: Value,
+    },
     Failure {
         request_kind: ReplyKind,
         code: BrokerFailureCode,
@@ -188,6 +201,7 @@ impl BrokerReply {
             Self::Load { .. } => ReplyKind::Load,
             Self::Call { .. } => ReplyKind::Call,
             Self::Terminate { .. } => ReplyKind::Terminate,
+            Self::Capability { .. } => ReplyKind::Capability,
             Self::Failure { request_kind, .. } => *request_kind,
         }
     }
@@ -541,6 +555,7 @@ impl BrokerTransportCore {
             ReplyKind::Load => "load",
             ReplyKind::Call => "call",
             ReplyKind::Terminate => "terminate",
+            ReplyKind::Capability => "capability",
         };
         // The broker bootstrap adds protocol:1 and maps these fixed outer fields to the exact
         // camelCase NativeBrokerProtocol envelope. `payload` contains request fields only.

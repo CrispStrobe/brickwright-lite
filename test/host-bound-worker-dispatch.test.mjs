@@ -53,6 +53,14 @@ const compileBroker = () => {
             return Module.prototype.require.call(brokerModule,
                 path.join(root, 'overlay/scratch-vm/src/extension-support/capability-broker.js'));
         }
+        // Redirected for the same reason as the line above: this module is OURS and lives in the
+        // overlay, so real resolution against the vendored tree cannot find it. The shim
+        // enumerates what it redirects on purpose — a new VM-internal dependency has to be
+        // declared here, which is a review rather than a silent resolution.
+        if (request === '../extension-support/native-platform-capability') {
+            return Module.prototype.require.call(brokerModule,
+                path.join(root, 'overlay/scratch-vm/src/extension-support/native-platform-capability.js'));
+        }
         return Module.prototype.require.call(brokerModule, request);
     };
     brokerModule._compile(centralSource, filename);

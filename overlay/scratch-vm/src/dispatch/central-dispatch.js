@@ -2,6 +2,8 @@ const SharedDispatch = require('./shared-dispatch');
 
 const log = require('../util/log');
 const {CapabilityBroker} = require('../extension-support/capability-broker');
+const {createNativePlatformCapability, OPERATION: NATIVE_PLATFORM_OPERATION} =
+    require('../extension-support/native-platform-capability');
 const CAPABILITY_REFUSAL_CODES = new Set([
     'invalid-session', 'invalid-envelope', 'replayed-request', 'unknown-operation',
     'undeclared-operation', 'invalid-arguments', 'unavailable-operation',
@@ -32,7 +34,18 @@ class CentralDispatch extends SharedDispatch {
         this.callbackWorkers = [];
         // This deterministic handler is reachable only by the two exact, content-pinned browser-proof
         // identities. Ordinary gallery records never carry `proof`, and there is no runtime setter.
-        this.capabilityBroker = new CapabilityBroker({'project.metadata.read': proofMetadataHandler});
+        // `platform.kind.read` is wired only where a native boundary exists. Outside the desktop
+        // app the factory returns null, the operation stays UNWIRED, and the broker refuses it as
+        // `unavailable-operation` — a browser build fails closed without any branch here claiming
+        // to answer for a boundary it does not have.
+        const handlers = {'project.metadata.read': proofMetadataHandler};
+        const internals = typeof globalThis !== 'undefined' && globalThis.__TAURI_INTERNALS__;
+        const nativePlatform = createNativePlatformCapability({
+            invoke: internals && typeof internals.invoke === 'function' ?
+                internals.invoke.bind(internals) : null
+        });
+        if (nativePlatform) handlers[NATIVE_PLATFORM_OPERATION] = nativePlatform;
+        this.capabilityBroker = new CapabilityBroker(handlers);
         // A read-only window onto the broker's diagnostics for the capability diagnostics panel,
         // which is deliberately import-free (it has to work when the thing being diagnosed is the
         // GUI). This exposes a READ of already-redacted data — the entry type has no field for a

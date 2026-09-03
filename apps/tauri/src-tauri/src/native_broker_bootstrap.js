@@ -11,6 +11,15 @@ const exact = (value, keys) => {
         Object.hasOwn(descriptors[key], 'value')) && actual.slice().sort().join('\0') === keys.slice().sort().join('\0');
 };
 const hexId = value => typeof value === 'string' && /^[0-9a-f]{64}$/.test(value);
+/**
+ * The semantic vocabulary, and the resource each operation is allowed to touch.
+ *
+ * The EDITOR names an operation and nothing else. It cannot name a resource, so it cannot widen
+ * a request past what the operation means, and it cannot name a lease, so it never holds
+ * authority it could reuse or replay. An operation that is not a key here is refused before any
+ * native call is made — unknown names fail closed, the way the vocabulary does everywhere else.
+ */
+const CAPABILITY_RESOURCE = Object.freeze({__proto__: null, 'platform.kind.read': 'platform/default'});
 
 const createNativeBrokerReceiver = ({NativeBrokerProtocol, BrokerProtocolError, invoke, createProtocol}) => {
     if (typeof NativeBrokerProtocol !== 'function' || typeof BrokerProtocolError !== 'function' ||
@@ -52,7 +61,7 @@ const createNativeBrokerReceiver = ({NativeBrokerProtocol, BrokerProtocolError, 
     const receive = async delivery => {
         if (closed || !exact(delivery, ['session', 'correlation', 'kind', 'requestId', 'payload']) ||
             !hexId(delivery.session) || !hexId(delivery.correlation) ||
-            !['load', 'call', 'terminate'].includes(delivery.kind) ||
+            !['load', 'call', 'terminate', 'capability'].includes(delivery.kind) ||
             !Number.isSafeInteger(delivery.requestId) || delivery.requestId < 0 ||
             typeof delivery.payload !== 'string' || delivery.payload.length > 65536) return;
         let fields;
@@ -69,8 +78,28 @@ const createNativeBrokerReceiver = ({NativeBrokerProtocol, BrokerProtocolError, 
             method: fields.method, args: fields.args};
         else if (delivery.kind === 'terminate' && exact(fields, ['worker_id'])) envelope =
             {protocol: 1, requestId: delivery.requestId, workerId: fields.worker_id};
+        else if (delivery.kind === 'capability' && exact(fields, ['operation', 'args'])) envelope =
+            {protocol: 1, requestId: delivery.requestId, operation: fields.operation, args: fields.args};
         else return safeReply(delivery, {kind: 'failure', request_kind: delivery.kind, code: 'invalid-envelope'});
         Object.freeze(envelope);
+        if (delivery.kind === 'capability') {
+            // Answered without creating session state: this needs no worker host, and giving a
+            // semantic read the lifetime of an extension session would be authority nobody asked
+            // for. The lease is minted, spent at sequence 0 and abandoned inside this one call.
+            const resource = typeof envelope.operation === 'string' ?
+                CAPABILITY_RESOURCE[envelope.operation] : undefined;
+            if (typeof resource !== 'string') return safeReply(delivery,
+                {kind: 'failure', request_kind: 'capability', code: 'invalid-envelope'});
+            let response;
+            try {
+                const lease = await invoke('native_broker_lease');
+                response = {kind: 'capability', result: await invoke('native_broker_invoke',
+                    {lease, sequence: 0, operation: envelope.operation, resource, args: envelope.args})};
+            } catch {
+                response = {kind: 'failure', request_kind: 'capability', code: 'operation-failed'};
+            }
+            return safeReply(delivery, response);
+        }
         let state = sessions.get(delivery.session);
         if (!state && retired.has(delivery.session)) return safeReply(delivery,
             {kind: 'failure', request_kind: delivery.kind, code: 'stale-reply'});
