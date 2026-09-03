@@ -737,6 +737,16 @@ timing one, and they fall into two clearly different groups:
   where the last event lands at 1932 ms against 1240 ms. Different in kind and much larger; a
   tolerance argument cannot explain it.
 
+One more cheap measurement sharpens both, and it is worth doing before anyone reaches for the
+tolerance knob. Printing every disagreement as `ref -> actual` shows the first group is a
+**constant** `+6 ms`, not a drift: the same `+6` at ref 250, 600, 603, 606 and 1000, with a single
+`+7` at 700 that is consistent with rounding. An error that does not grow with elapsed time is not
+a rate error — it is a fixed offset, which is what a startup or prologue cost present in one model
+and absent from the other looks like. And the second group's sign is the opposite of the first's:
+`actual` lands at 1240 against a `ref` of 1932, so the compiled trace ends **early**, whereas the
+6 ms group has `actual` running **late**. Two signatures pointing in two directions are unlikely
+to have one cause.
+
 **This is recorded as a measurement and not as a diagnosis.** I have not established whether the
 emitter or the oracle model is the one that is wrong, and widening `tolMs` from 5 to 8 would make
 the first group disappear without anyone finding out which — the exact move this repository's gate
