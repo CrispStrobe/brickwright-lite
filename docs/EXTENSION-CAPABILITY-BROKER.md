@@ -419,12 +419,12 @@ cross-worker, timeout, abort and termination mutations. This is intentionally
 still a pure core: production bundles, document-start installation and CSP are
 the separately gated C5c3 checkpoint below.
 
-- [ ] Carry broker identity and semantic operation to the native boundary
+- [x] Carry broker identity and semantic operation to the native boundary
   without exposing a reusable raw invoke handle to the worker.
-- [ ] Add Rust-side validation for the chosen vertical slice and keep web/native
+- [x] Add Rust-side validation for the chosen vertical slice and keep web/native
   behavior aligned. Browser-only tests are not accepted as proof of the Rust
   command boundary.
-- [ ] Show declared capabilities and explicit refusals in product diagnostics
+- [x] Show declared capabilities and explicit refusals in product diagnostics
   before/after extension load.
 - [x] Add an executable topology contract for the native checkpoint. It keeps
   the current fail-closed state (no native capability command is registered)
@@ -929,43 +929,40 @@ deployed run exercises the deployed VM, broker and worker driving LOCALLY-suppli
 That is meaningful — it is the deployed code under test — and it is not "production serving
 everything", which no gate here claims.
 
-## OPEN: the diagnostics panel renders zeros where its own source has rows (2026-09-03)
+## SETTLED: the diagnostics panel was right; the assertion was wrong (2026-09-03)
 
-Found while trying to close CP3-D2's "show declared capabilities and explicit refusals in
-product diagnostics BEFORE/AFTER extension load" by driving the panel from the browser gate.
-The panel's rendering is unit-tested; nothing proved it renders the ACTUAL run, so I drove it.
-It does not, and I could not explain why in the time I gave it.
+Recorded an hour earlier as an open defect — "the panel renders zeros where its own source has
+rows". It does not. The diff probe named in that entry was run, and it settles the question in
+the opposite direction:
 
-MEASURED, all at the same point in the same page context, after two extensions had loaded, two
-requests were allowed and one was refused:
+    raw rows from the global : 2
+    collect() worker rows    : 2
+    DOM   first line         : declared 2   allowed 1   refused 0   revoked 0
+    FRESH first line         : declared 2   allowed 1   refused 0   revoked 0
+    DOM identical to FRESH   : true
 
-    window.__brickwrightCapabilityDiagnostics()   -> 2 rows, the first
-        {event: "attached", slug: "browser-proof/declared",
-         declared: ["project.metadata.read"], code: "worker-attached"}
-    panel.collect({workerDiagnostics: <that same function>})
-                                                  -> worker: 2 rows, correctly whitelisted
-    the PAINTED panel                             -> "declared 0   allowed 0   refused 0"
+The panel paints exactly what `collect()` returns. A second probe isolated the reload and it
+paints correctly after one too.
 
-So the source has data, `collect()` reads it correctly, and the DOM shows zeros — in the same
-context, at the same moment. Five explanations were tried and none survived: module duplication
-(disproved — the global returns rows), a stale deploy (disproved — the deployed bundle carries
-both the panel and the wiring), an async paint race (the panel SETTLES, and an `UNSETTLED`
-marker was added to tell that case apart), the panel being opened before the loads, and
-`defaultSources()` returning null.
+THE ACTUAL CAUSE, and it was mine: the gate's refusal happens BEFORE `page.reload()`, and a
+reload legitimately clears the session's diagnostics. So the post-reload panel reads
+`declared 2, allowed 1, refused 0` — and my assertion demanded `refused >= 1`. **I asserted on
+state that a reload had correctly cleared.** Both probes printed `refused 0` and I read past it
+twice, because `declared 2 allowed 1` looked like success.
 
-WHAT WAS DONE ABOUT IT. The two browser-gate scenarios were REVERTED. A gate that fails for a
-reason nobody can explain is the same species this repository fixed an hour earlier — a gate
-that fails for the WRONG reason — and shipping one to hold a checkbox open would be worse than
-the missing check. The gate is back to 7/7 against both a local build and deployed Pages.
+The fix makes the gate STRONGER rather than merely correct, and matches what CP3-D2 actually
+asked for ("before/after extension load"):
 
-The unit tests stand: they pin the whitelist, the counting and the two-kinds-of-empty
-distinction, and they are mutation-proved. What is NOT established is that the panel shows a
-real session's declarations and refusals. CP3-D2's diagnostics box therefore stays UNCHECKED,
-and this is the first thing to pick up next.
+- BEFORE the reload, where a declaration, an allow and a refusal all exist, all three counts
+  must be non-zero and the operation name must appear — so a panel rendering headings over an
+  empty table cannot satisfy it.
+- AFTER the reload, the refusal must be GONE and declarations present: a panel still showing a
+  cleared session would be reporting authority history that no longer applies.
+- Neither view may contain `lease`, `digest` or `correlation`.
 
-One measurement that would probably settle it, for whoever takes this: print `asText(...)` from a
-fresh `collect()` and the DOM's `textContent` in the SAME evaluate and diff them. If they differ,
-the DOM is stale and the bug is in when `paint()` runs; if they match, the bug is in what
-`paint()` passes to `collect()`. I ran out of turns on the nested-quoting of that probe, not on
-the idea.
+`PASS: 10/10 declared capability scenarios` against DEPLOYED PAGES, up from 7.
 
+One honest limit: the same gate FAILS against this worktree's local bundle, because that bundle
+was built 2026-08-30 and the panel landed 2026-09-03 — `npm run integrate` copies source, it does
+not rebuild. CI builds fresh, so CI exercises the panel. A stale local bundle failing a gate that
+requires a current one is the gate working.
