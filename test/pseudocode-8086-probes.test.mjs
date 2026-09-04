@@ -203,3 +203,86 @@ test('KNOWN DEFECT: a variable named x or y loses to the motion block', async ()
     assert.ok(parsedOpcodes('DEVICE i8086\nGLOBAL xs\nWHEN flag clicked:\n  set xs to 5\n')
         .includes('data_setvariableto'));
 });
+
+// ---------------------------------------------------------------------------
+// A SECOND ROUND, asking what the warnings are WORTH.
+//
+// The first round found that the parser's diagnoses never reached the learner.
+// Once they did, nothing checked they were any good — so this round feeds the
+// parser a learner's plausible typos and asks which produce a warning that
+// names the line and the fix, and which produce SILENCE.
+//
+// Twelve were tried. Ten already warned well. Two did not, and both are the
+// same shape as the defect that started this: a program that builds, runs, and
+// does something other than what it looks like, with nothing said.
+// ---------------------------------------------------------------------------
+
+const warnsOf = (source) => { const c = new SB3Creator(); c.parse(source); return c.warnings; };
+const HDR = 'DEVICE i8086\nGLOBAL n\nWHEN flag clicked:\n  set n to 0\n';
+
+test('an UNDER-INDENTED body is reported — it used to be silent', async () => {
+    // The commonest beginner error there is. The body is at the same indent as
+    // the IF, so it is not the body: the parser builds an EMPTY control_if and
+    // an UNCONDITIONAL say. The learner sees 111 print when their condition is
+    // false and concludes they cannot read their own program.
+    const bad = HDR + '  IF n = 1 THEN:\n  say 111\n';
+    const good = HDR + '  IF n = 1 THEN:\n    say 111\n';
+
+    assert.deepEqual(warnsOf(good), [], 'the correct form stays clean');
+    const w = warnsOf(bad);
+    assert.ok(w.length > 0, 'the under-indented form must not be silent');
+    assert.ok(w.some((x) => /Empty body/.test(x) && /indent/.test(x)),
+        `the warning must name the fix, got: ${JSON.stringify(w)}`);
+    assert.ok(w.every((x) => /^Line \d+:/.test(x)), 'with a line number');
+
+    // AND THE BEHAVIOUR IT WARNS ABOUT IS REAL: n is 0, the condition is
+    // false, and 111 prints anyway because it was never inside the IF.
+    const ran = await run(bad);
+    assert.deepEqual(ran.screen, ['111'],
+        'the say is unconditional — which is exactly what the warning now says');
+});
+
+test('a deliberately empty block is reported too, and that is intended', () => {
+    // The parser cannot tell "I meant it to be empty" from "my indentation is
+    // wrong", a body-less control block is dead code either way, and this is a
+    // WARNING rather than a refusal. Pinned so the choice is visible: if it is
+    // ever made smarter, this is the test that says what it used to do.
+    assert.ok(warnsOf(HDR + '  IF n = 1 THEN:\n').some((w) => /Empty body/.test(w)));
+    assert.ok(warnsOf(HDR + '  REPEAT 3:\n').some((w) => /Empty body/.test(w)));
+});
+
+test('the plausible typos that already warned well — regression cover', () => {
+    // Ten of twelve probed cases were already diagnosed properly. Reporting
+    // that is part of the point: a designed probe that finds nothing is
+    // evidence, where no probe is not. Pinned so they stay diagnosed.
+    const cases = [
+        ['  REPEAT 3\n    say 111\n', /Unknown command/],
+        ['  ELSE:\n    say 111\n', /ELSE block without matching IF/],
+        ['  say\n', /Unknown command/],
+        ['  set n to\n', /Unknown command/],
+        ['  wiggle 5\n', /Unknown command/],
+        ['  REPEAT UNTIL n = 3\n    change n by 1\n', /Unknown command/],
+    ];
+    for (const [body, re] of cases) {
+        const w = warnsOf(HDR + body);
+        assert.ok(w.some((x) => re.test(x)), `${JSON.stringify(body)} -> ${JSON.stringify(w)}`);
+    }
+});
+
+test('KNOWN DEFECT: `IF n = THEN:` builds a nonsense condition in silence', () => {
+    // The second silent case, NOT fixed and pinned as it stands.
+    //
+    // The IF regex matches with a condition of `n =`, and parseCondition falls
+    // back to the bare-value path: OPERAND1 becomes the literal STRING "n ="
+    // and OPERAND2 the literal "true". So the branch compares two pieces of
+    // text and is permanently false. No warning.
+    //
+    // Not fixed here because the fallback is legitimate — a bare value IS a
+    // valid condition in this language — so the fix is a judgement about when
+    // an operand is missing rather than merely unusual, and that belongs with
+    // the syntax rather than with the person passing through. When somebody
+    // makes it, this goes RED and should assert the warning instead.
+    const w = warnsOf(HDR + '  IF n = THEN:\n    say 111\n');
+    assert.deepEqual(w, [],
+        'if this now warns, the defect is fixed — assert the warning instead of the silence');
+});
