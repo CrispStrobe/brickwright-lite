@@ -458,10 +458,26 @@ mis-estimated:
   and B ship and a lesson needs it.
 
 **The comparative gap list — bw-board `ROADMAP.md` §E6.8** (surveyed 2026-09-04
-against `mfld-fr/emu86`, `jeffpar/pcjs` and `dbalsom/XTCE-Blue`; **two of its
-nine items were already stale when written and are corrected in place there** —
-the CI vector grader exists, and the bootable MS-DOS image exists and boots
-down two independent paths). Six live items, ordered there. The two that touch this repo rather than the engine:
+against six projects: `mfld-fr/emu86`, `jeffpar/pcjs`, `dbalsom/XTCE-Blue`,
+`morphx666/x8086NetEmu`, `moesay/Elegant86` and `MicroCoreLabs/Projects`;
+**two of its first nine items were already stale when written and are
+corrected in place there** — the CI vector grader exists, and the bootable
+MS-DOS image exists and boots down two independent paths). Ordered there.
+
+**E6.8.1 landed 2026-09-04**: an `80186` variant of the core AND the
+disassembler, graded 132,532/132,532 and 172,430/172,430 against
+SingleStepTests/v20 (MIT), with the 8086 unchanged at 646,000/646,000 on both
+grinders and a `vectors186:` CI job. A breadboard **80188** is now a machine-
+config key rather than a fork.
+
+**Two rulings from that survey that constrain THIS repo's bundle**, both
+verified 2026-09-04: `aaronsgiles/ymfm` is **BSD-3-Clause**, so Adlib/OPL2 is
+the one sound-card path that could ever ship here — it may be vendored with
+its notice; and `morphx666/x8086NetEmu`, though MIT, states its own audio came
+from **fake86 (GPL-2.0)**, so that code must not be read. The audio blocker is
+not the licence, though: our contract is `audioTone() → {hz, on}` across the
+whole retro tier, and an OPL produces samples, so §E6.8.11 scopes it as an
+engine-wide second audio contract rather than as a sound card. The two that touch this repo rather than the engine:
 `i8086-asm.js` already builds a `symbols` Map and `i8086-disasm.js` already
 accepts a `labels` Map, and **nothing joins them** — so a learner who wrote
 `delay_loop:` reads `jmp 002Bh` (§E6.8.2, the cheapest item on the list); and

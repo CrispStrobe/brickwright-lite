@@ -102,6 +102,12 @@ single-step tracer got silence. Recorded here because §2's list of what is
 The permissively-licensed field was surveyed first. Nothing in it drops into
 this architecture:
 
+- **x8086NetEmu** (MIT wrapper, VB.NET) is the closest thing to a peer — an
+  80186-capable emulator ground against the same TomHarte suite. But its
+  harness SKIPS the undocumented opcodes (`0F`, `60`-`6F`, `C0`/`C1`/`C8`/`C9`,
+  `F6.7`/`F7.7`) and ignores the shift and mul/div flags, and its own README
+  sources its audio from GPL-2.0 fake86 — so it is neither adoptable nor, on
+  the axis this tier cares about, ahead.
 - **MartyPC** (MIT, Rust) is the most accurate 8088/V20 emulation in existence
   and its author built the hardware validator that generated the tests used
   here — but it is a whole IBM 5150/5160 with an egui front end, not a
@@ -122,7 +128,10 @@ this architecture:
 second pass on 2026-09-04 asked the other one: what do the finished projects
 DO that we cannot.** Three were read end to end (`mfld-fr/emu86`, **MIT**;
 `jeffpar/pcjs`, MIT; `dbalsom/XTCE-Blue`, MIT wrapper over Intel microcode).
-The gaps, ordered and costed, are in bw-board `ROADMAP.md` **§E6.8** — nine as
+Six projects were read in the end — the three above plus `morphx666/x8086NetEmu`
+(MIT wrapper over GPL-derived audio), `moesay/Elegant86` (GPL-3.0, ~8
+instructions) and `MicroCoreLabs/Projects` (**no licence at all**). The gaps,
+ordered and costed, are in bw-board `ROADMAP.md` **§E6.8** — nine as
 drafted, of which **two were stale within a day** (the CI vector grader and the
 bootable DOS image both already existed), corrected in place there rather than
 edited out, and six re-verified against `feat/i8086-tier`. The
