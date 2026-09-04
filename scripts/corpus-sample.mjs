@@ -61,11 +61,19 @@ export function wrappedSample (pairs, count, offset) {
  * how many pairs this dropped.
  *
  * Deliberately syntactic, over the program source, because that is the same
- * evidence the emitter uses. `PART` and `CHIP` bind pins as surely as `PIN`
- * does — `PART leds = 74HC595 data P1.0 clock P1.1` is a pin binding — and
- * missing them would drop real device programs from the comparison, which is
- * the expensive direction of this mistake.
+ * evidence the emitter uses. The keyword set is taken from the emitter's own
+ * predicate rather than guessed: `generateC` takes the device path when the
+ * project has `pins || ports || parts || ledcube`, so PORT and LEDCUBE bind
+ * hardware exactly as PIN does, and `PART leds = 74HC595 data P1.0 clock P1.1`
+ * is a pin binding written another way.
+ *
+ * The first version of this listed only PIN, PART and CHIP. No program in
+ * today's corpus is PORT-only or LEDCUBE-only, so it was right by luck — and
+ * would have silently dropped the first one that appeared, which is the
+ * expensive direction of this mistake and the one this comment already warned
+ * about. Missing a device program removes it from the differential entirely;
+ * including a host program only costs a compile that fails loudly.
  */
 export function bindsHardware (programSource) {
-    return /^[ \t]*(PIN|PART|CHIP)\b/m.test(String(programSource || ''));
+    return /^[ \t]*(PIN|PORT|PART|LEDCUBE|CHIP)\b/m.test(String(programSource || ''));
 }

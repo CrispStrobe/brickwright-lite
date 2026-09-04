@@ -77,7 +77,7 @@ test('an impossible request is refused loudly rather than silently empty', () =>
 
 // ── which programs may be paired with a chip at all ──────────────────────
 
-test('a program that binds hardware is a device program — PIN, PART or CHIP', () => {
+test('a program that binds hardware is a device program — PIN, PORT, PART, LEDCUBE, CHIP', () => {
     assert.equal(bindsHardware('DEVICE ARDUINO-UNO\nPIN led = D13 OUTPUT\n'), true);
     // The one that caught me out. `08-led-chaser-595` binds three pins through a
     // PART and no PIN line at all; a PIN-only test called it a host program and
@@ -86,6 +86,14 @@ test('a program that binds hardware is a device program — PIN, PART or CHIP', 
     assert.equal(bindsHardware('DEVICE STC12C5A60S2\nPART leds = 74HC595 data P1.0 clock P1.1 latch P1.2\n'),
         true, 'PART binds pins as surely as PIN does');
     assert.equal(bindsHardware('CHIP something\n'), true);
+    // PORT and LEDCUBE were MISSING from the first version of this rule. The
+    // emitter takes the device path on `pins || ports || parts || ledcube`, so
+    // both bind hardware; no program in today's corpus is PORT-only, so the
+    // omission was right by luck and would have dropped the first one silently.
+    assert.equal(bindsHardware('DEVICE STC12C5A60S2\nPORT segments = P0 OUTPUT\n'), true,
+        'a PORT-only program is a device program — 77-keypad-keyshow declares one');
+    assert.equal(bindsHardware('DEVICE STC12C5A60S2\nLEDCUBE 4\n'), true,
+        'a LEDCUBE-only program is a device program');
     assert.equal(bindsHardware('  PIN led = D13 OUTPUT'), true, 'indented declarations still bind');
 });
 

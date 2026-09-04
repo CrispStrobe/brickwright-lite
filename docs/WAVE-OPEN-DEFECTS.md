@@ -711,13 +711,22 @@ lists. That was too quick. Pairing a host program with a microcontroller is a mi
 makes, not a defect it detects: host C fails to compile for AVR and bare-metal ARM every time, for
 every one of those programs, and reporting that as emitter-vs-oracle disagreement is measuring its
 own input. The differential now asks the same question the emitter asks — does this program bind a
-`PIN`, `PART` or `CHIP`? — and only pairs device programs with devices. 224 candidate pairs become
+`PIN`, `PORT`, `PART`, `LEDCUBE` or `CHIP`? — and only pairs device programs with devices. 224 candidate pairs become
 **176 real ones**, and the 24 host-only programs are named on stdout, never dropped silently.
 
 `bindsHardware()` is pinned by `test/corpus-sample.test.mjs`, including the case that caught my own
 first count: `08-led-chaser-595` binds three pins through `PART leds = 74HC595 data P1.0 …` and no
 `PIN` line, so a PIN-only test would have dropped a real device program — the expensive direction
-of this mistake. Mutation-proved both ways: PIN-only fails, and an unanchored match that lets the
+of this mistake.
+
+**Corrected again 2026-09-04, and by reading the producer rather than the corpus.** The first
+version of that keyword set was `PIN|PART|CHIP`, arrived at by looking at which declarations the
+gallery happens to use. The emitter's own predicate is `pins || ports || parts || ledcube`, so
+`PORT` and `LEDCUBE` bind hardware too and were missing. No program in today's corpus is PORT-only
+or LEDCUBE-only — `77-keypad-keyshow` declares a `PORT` and also five `PIN`s — so the rule was
+right by luck and the pair count is unchanged at 176. It would have silently dropped the first
+PORT-only program that appeared. Deriving a rule from a sample of its inputs, when the authority
+that defines it is one grep away, is the same shortcut as reading a comment instead of the binary. Mutation-proved both ways: PIN-only fails, and an unanchored match that lets the
 word in a comment promote a host program fails.
 
 The `devices` computation is still wrong and still sb3-creator's: a list that claims eleven chips

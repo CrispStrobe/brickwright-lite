@@ -243,7 +243,7 @@ async function corpusMode(count, offset) {
   // corpus it did not walk.
   if (hostOnly.size) {
     console.log(`corpus: skipped ${hostOnly.size} host-only programs that CLAIM a device ` +
-      `target but bind no PIN/PART/CHIP (D-CORPUS1, owner sb3-creator): ` +
+      `target but bind no PIN/PORT/PART/LEDCUBE/CHIP (D-CORPUS1, owner sb3-creator): ` +
       `${[...hostOnly].slice(0, 5).join(', ')}${hostOnly.size > 5 ? ', …' : ''}`);
   }
   // Wrapped, and never empty — see scripts/corpus-sample.mjs for why that is
@@ -308,7 +308,7 @@ async function explainMode(exId, devName) {
 
   const src = readFileSync(join(root, e.files.program), 'utf8');
   if (!bindsHardware(src)) {
-    console.log(`${exId} binds no PIN/PART/CHIP — it is a HOST program and is not paired with a chip (D-CORPUS1).`);
+    console.log(`${exId} binds no PIN/PORT/PART/LEDCUBE/CHIP — it is a HOST program and is not paired with a chip (D-CORPUS1).`);
     return;
   }
   const r = SB3Creator.retargetPseudocode(src, retargetId);
