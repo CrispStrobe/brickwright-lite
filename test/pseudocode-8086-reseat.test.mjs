@@ -132,7 +132,19 @@ const EXPECTED = {
     // ever waiting for the button.
     stc_button: ['RUNS', '"wait until <cond>" lowers to a poll on the input pin',
         null, /BW_W\d/],
-    stc_two_scripts: ['REFUSED', 'two WHEN scripts; this back end runs one'],
+    // FLIPPED 2026-09-04, and this is the row that closes the table: every
+    // shipped STC example now reseats onto the 8086 and RUNS. The refusal it
+    // carried ("this back end runs one") is dead -- there is a PREEMPTIVE
+    // scheduler now, so a script that never waits still loses the CPU and
+    // cannot starve the others.
+    //
+    // It auto-adds an 8259 at 20h and wires the 8254 to IRQ0, which is the
+    // per-program opt-in agreed for the PIC rather than a preset change: a
+    // program that does not schedule still gets a bench with no interrupt
+    // controller, and the tripwire in bw-board's i8086-isr-pwm test keeps
+    // that honest.
+    stc_two_scripts: ['RUNS', 'a preemptive scheduler, with the 8259 and IRQ0 it needs',
+        /adds a PREEMPTIVE scheduler/, /BW_CALOK/],
     // FLIPPED 2026-09-04, and the old reason was wrong TWICE: it quoted a
     // syntax that does not exist (`write <expr> to <pin>` -- the parser's
     // spelling is `set <pin> to <value>`) and it diagnosed the wrong thing.
