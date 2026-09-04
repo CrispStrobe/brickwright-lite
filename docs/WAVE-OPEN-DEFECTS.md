@@ -1052,6 +1052,17 @@ lite and wants the browser gates that `vendor-forward` runs. A narrow `sync-bw-b
 would clear the STALE line and smuggle that in unverified, which is the trade the guard on that
 script already refuses for a different reason.
 
+**And the STALE line should stay red until then — it is telling the truth.** The obvious way to
+clear it is to revert lite's vendored copy to match the pin. Tried, measured, rejected: doing that
+fails lite's OWN gate, `test/emu8051-readmem-length.test.mjs`, 3 of 3, with
+`readMem('code', 0, 257) diverged at byte 256`. So the choice is a working emulator with a red
+vendor line, or a 64 KB code read that returns 256 bytes of program and 65280 of heap with a green
+one. The first is obviously right, and the red is not a false alarm — it says "this file is ahead
+of its pin", which is exactly true and exactly what someone should see until the vendor lands.
+
+A gate that goes red for a true reason is not a gate to silence. Recorded because the tempting
+move — make the board green again — would have reinstated the defect this document opens with.
+
 The rule, learned the expensive way: **before fixing a file under `lib/bw-board/`,
 `lib/bw-circuit-ui/` or any `sb3-creator-*.js`, check whether it is vendored.** `scripts/sync-*.mjs`
 name every file they own. Fixing it here is not a shortcut to fixing it there; it is a fix that
