@@ -215,3 +215,93 @@ test('controller placement remains physically possible across the shipped corpus
     }
     assert.deepEqual(failures, []);
 });
+
+test('potentiometer controls do not cover neighbouring parts in any shipped bench', async () => {
+    const {resolveSeatedParts} = await import(path.join(cui, 'interaction/seat-geometry.js'));
+    const {partBounds} = await import(path.join(cui, 'interaction/hittest.js'));
+    const failures = [];
+
+    for (const rel of circuitFiles()) {
+        const data = JSON.parse(readFileSync(path.join(examples, rel), 'utf8'));
+        const parts = resolveSeatedParts(data.parts || []);
+        for (const pot of parts.filter(part => part.kind === 'potentiometer')) {
+            let bounds = partBounds(pot);
+            const a = pot._seatTerminals?.a;
+            const b = pot._seatTerminals?.b;
+            if (pot.seat && a && b) {
+                const scale = Math.min(Math.abs(b.x - a.x) / 40, 1.4);
+                bounds = {
+                    minX: pot.x - 30 * scale,
+                    maxX: pot.x + 30 * scale,
+                    minY: a.y - 60 * scale,
+                    maxY: a.y
+                };
+            }
+            for (const neighbour of parts) {
+                if (neighbour === pot || structuralKinds.has(neighbour.kind)) continue;
+                const other = partBounds(neighbour);
+                const overlapX = Math.min(bounds.maxX, other.maxX) - Math.max(bounds.minX, other.minX);
+                const overlapY = Math.min(bounds.maxY, other.maxY) - Math.max(bounds.minY, other.minY);
+                if (overlapX > 1 && overlapY > 1) {
+                    failures.push(`${rel}: ${pot.id} covers ${neighbour.id} by ${overlapX.toFixed(1)}x${overlapY.toFixed(1)}`);
+                }
+            }
+        }
+    }
+    assert.deepEqual(failures, []);
+});
+
+test('every selectable example × MCU combination resolves to an overlap-free bench', async () => {
+    const normalize = value => String(value || '').trim().toLowerCase().replace(/_/g, '-');
+    const {resolveSeatedParts} = await import(path.join(cui, 'interaction/seat-geometry.js'));
+    const {partBounds} = await import(path.join(cui, 'interaction/hittest.js'));
+    const index = JSON.parse(readFileSync(path.join(examples, 'index.json'), 'utf8'));
+    const audited = new Set(circuitFiles());
+    const checkedRetargets = new Set();
+    const failures = [];
+    let authored = 0;
+    let retargeted = 0;
+
+    for (const example of index) {
+        if (!example.files?.program || !example.files?.circuit) continue;
+        const source = readFileSync(path.join(examples, example.files.program), 'utf8');
+        const authoredDevice = normalize((source.match(/^DEVICE\s+([\w-]+)/im) || [])[1]);
+        const benches = new Map(Object.entries(example.benches || {}).map(([device, bench]) => [normalize(device), bench]));
+        for (const target of example.devices || []) {
+            const device = normalize(target);
+            const isAuthored = device === authoredDevice;
+            const bench = isAuthored ? example.files.circuit : benches.get(device);
+            if (!bench) {
+                failures.push(`${example.id}@${device}: selectable target has no matching bench`);
+                continue;
+            }
+            if (!audited.has(bench)) {
+                failures.push(`${example.id}@${device}: ${bench} is outside the collision-audited corpus`);
+                continue;
+            }
+            if (!isAuthored && !checkedRetargets.has(bench)) {
+                checkedRetargets.add(bench);
+                const data = JSON.parse(readFileSync(path.join(examples, bench), 'utf8'));
+                const parts = resolveSeatedParts(data.parts || []).filter(part => part.kind !== 'breadboard');
+                for (let i = 0; i < parts.length; i++) for (let j = i + 1; j < parts.length; j++) {
+                    const a = partBounds(parts[i]);
+                    const b = partBounds(parts[j]);
+                    const overlapX = Math.min(a.maxX, b.maxX) - Math.max(a.minX, b.minX);
+                    const overlapY = Math.min(a.maxY, b.maxY) - Math.max(a.minY, b.minY);
+                    if (overlapX > 1 && overlapY > 1) {
+                        failures.push(`${bench}: ${parts[i].id} covers ${parts[j].id} by ${overlapX.toFixed(1)}x${overlapY.toFixed(1)}`);
+                    }
+                }
+            }
+            if (isAuthored) authored++;
+            else retargeted++;
+        }
+    }
+
+    assert.deepEqual(failures, []);
+    assert.deepEqual({authored, retargeted, total: authored + retargeted}, {
+        authored: 115,
+        retargeted: 903,
+        total: 1018
+    });
+});
