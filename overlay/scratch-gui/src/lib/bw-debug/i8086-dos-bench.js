@@ -98,9 +98,17 @@ export async function createI8086DosBench (opts) {
     // by name and port for every chip it adds, so it is a fact to check
     // rather than a coincidence to infer when the ports do not match a board.
     const base = variant ? {...DOSBOX8086_XT, variant} : DOSBOX8086_XT;
-    const machine = new I8086Machine((chips && chips.length)
-        ? {...base, chips: [...base.chips, ...chips]}
-        : base);
+    // MERGE BY NAME, NOT BY APPENDING. A scheduled program asks for a `pit1`
+    // wired to IRQ0, and the preset already has a `pit1` without one -- two
+    // chips of the same name at the same port is not a board, it is a bug.
+    // A requested chip REPLACES the preset's entry of that name.
+    let cfg = base;
+    if (chips && chips.length) {
+        const merged = base.chips.filter(
+            (c) => !chips.some((x) => x.name === c.name));
+        cfg = {...base, chips: [...merged, ...chips]};
+    }
+    const machine = new I8086Machine(cfg);
     const dos = createDos8086(machine, {
         onChar: onChar || null,
         keys: keys || [],

@@ -491,20 +491,26 @@ test('one script waits, another frees it — through a variable', async () => {
     assert.deepEqual(r.screen, ['freed']);
 });
 
-test('a FOREVER with no wait is warned about, and only when it can starve someone', async () => {
-    const src = (body) => ['DEVICE i8086', 'PIN sw = P2.0 INPUT',
-        'WHEN flag clicked:', '  FOREVER:', ...body,
-        'WHEN sw pressed:', '  print "hit"'].join('\n');
-    const build = async (body) => {
-        const c = new SB3();
-        c.parse(src(body));
-        return buildPseudocode8086({project: c.project, source: src(body)});
-    };
-    const bad = await build(['    print "x"']);
-    assert.match(bad.warnings.join(' '), /never hands control back/);
-    const good = await build(['    print "x"', '    wait 0.01 secs']);
-    assert.ok(!/never hands control back/.test(good.warnings.join(' ')),
-        'a loop that yields is not warned about');
+test('a FOREVER that never waits no longer starves anything', async () => {
+    // THE WHOLE POINT OF PREEMPTION, and the thing the cooperative scheduler
+    // could only warn about. Script one is a tight loop that never yields.
+    // Under cooperative scheduling it took the CPU and never gave it back;
+    // the timer now takes it away whether the script cooperates or not.
+    const src = ['DEVICE i8086', 'GLOBAL n',
+        'WHEN flag clicked:', '  FOREVER:', '    change n by 1',
+        'WHEN flag clicked:', '  REPEAT 3:', '    print "alive"', '    wait 0.01 secs',
+        '  stop all'].join('\n');
+    const c = new SB3();
+    c.parse(src);
+    const built = await buildPseudocode8086({project: c.project, source: src});
+    assert.ok(!/never hands control back/.test(built.warnings.join(' ')),
+        'and the old warning is gone, because it is no longer true');
+    const b = await createI8086DosBench(
+        {bytes: built.bytes, format: built.format, chips: built.chips});
+    let n = 0;
+    while (n < 6_000_000 && !b.terminated) { b.step(); n++; }
+    assert.deepEqual(b.screenText().filter(Boolean), ['alive', 'alive', 'alive']);
+    assert.ok(b.terminated, 'and the other script could still end the program');
 });
 
 test('`wait until` on variables is NOT warned when another script could change them', async () => {

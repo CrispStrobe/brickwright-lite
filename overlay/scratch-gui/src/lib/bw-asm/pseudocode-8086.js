@@ -281,7 +281,11 @@ const PIT_BASE = 0x40;
 // Per-script stack. Deep enough for the nesting this back end can produce
 // (expressions push at most a few words, and there are no recursive calls),
 // small enough that eight scripts cost 2K.
-const SCHED_STACK = 256;
+// Per-script stack. PREEMPTION CAN HAPPEN ANYWHERE, so each stack must also
+// hold an interrupt frame (3 words) plus the nine saved registers on top of
+// whatever the script itself is using -- 24 bytes of overhead per suspension,
+// which the cooperative version did not have to carry.
+const SCHED_STACK = 512;
 // Eight scripts is 2K of stack. Past that a .COM has more scheduler than
 // program in its one segment.
 const MAX_SCRIPTS = 8;
@@ -573,37 +577,6 @@ class Emitter {
      * variable in a single-script program with no interrupt handlers cannot
      * change inside a loop whose body is empty.
      */
-    /**
-     * Does this stack of blocks contain a point where control is handed over?
-     *
-     * Only `wait` and `wait until` yield. A FOREVER without one runs until
-     * the machine is switched off, and under the scheduler that means every
-     * other script -- including a pin hat that might be the only thing able
-     * to end it -- never runs again. Cooperative scheduling makes that the
-     * program's problem rather than the runtime's, so it is worth saying so
-     * at build time instead of leaving a learner with a frozen bench.
-     */
-    containsYield (id) {
-        const YIELDS = new Set(['control_wait', 'control_wait_until']);
-        const seen = new Set();
-        const walk = (start) => {
-            let cur = start;
-            while (cur && !seen.has(cur)) {
-                seen.add(cur);
-                const b = this.blocks[cur];
-                if (!b) return false;
-                if (YIELDS.has(b.opcode)) return true;
-                for (const k of ['SUBSTACK', 'SUBSTACK2']) {
-                    const sub = b.inputs && b.inputs[k];
-                    if (Array.isArray(sub) && typeof sub[1] === 'string' && walk(sub[1])) return true;
-                }
-                cur = b.next;
-            }
-            return false;
-        };
-        return walk(id);
-    }
-
     readsTheWorld (input) {
         const OUTSIDE = new Set(['stc12_read', 'stc12_readport', 'stc12_keypad']);
         const seen = new Set();
@@ -1355,6 +1328,19 @@ class Emitter {
     }
 
     emitSay (input, opcode, textMode) {
+        // A LINE IS A SHARED RESOURCE, so under the scheduler printing one is
+        // a critical section. `print` is a string followed by a CRLF, and a
+        // preemption between them lets another script's text land on the same
+        // line: two scripts printing "a" and "b" produced "ba" on one line and
+        // then singles. That is honest hardware behaviour -- it is exactly
+        // what two tasks sharing a device without a lock do -- but a learner
+        // reading it would blame the program rather than the concurrency.
+        //
+        // PUSHF/CLI rather than CLI/STI: it restores whatever the flags were
+        // instead of asserting that interrupts must have been on, which is
+        // the difference between a lock and an assumption.
+        const atomic = this.tasks > 1;
+        if (atomic) { this.op('PUSHF'); this.op('CLI'); }
         const inner = Array.isArray(input) ? input[1] : null;
         const isLiteralText = Array.isArray(inner) && (inner[0] === 10 || textMode);
         if (isLiteralText) {
@@ -1370,6 +1356,7 @@ class Emitter {
         }
         this.uses.crlf = true;
         this.op('CALL BW_CRLF');
+        if (atomic) this.op('POPF');
     }
 
     // ---- waiting ------------------------------------------------------
@@ -1485,17 +1472,17 @@ class Emitter {
             return;
         }
         case 'control_forever': {
-            if (this.tasks > 1) {
-                const body = b.inputs && b.inputs.SUBSTACK;
-                const inner = Array.isArray(body) ? body[1] : null;
-                if (typeof inner !== 'string' || !this.containsYield(inner)) {
-                    this.warn('a FOREVER with no `wait` inside it never hands control '
-                        + 'back, and this program has more than one script — so every '
-                        + 'other script, including any `WHEN <pin> pressed`, stops '
-                        + 'running the moment this loop starts. Put a `wait` in the '
-                        + 'loop, even a short one.');
-                }
-            }
+            // NO STARVATION WARNING HERE ANY MORE, and removing it is the
+            // point of the preemptive scheduler. It used to say a FOREVER
+            // without a `wait` "never hands control back" — true of the
+            // cooperative version and FALSE now, because the timer takes the
+            // CPU away whether the script cooperates or not. Measured: a
+            // FOREVER that only increments a variable no longer stops the
+            // script beside it from printing or from ending the program.
+            //
+            // Leaving the warning in would have been the same defect this
+            // file keeps finding elsewhere — a claim that was true when it
+            // was written and was never re-checked against what the code does.
             const top = this.label('L');
             this.note('forever');
             this.code.push(`${top}:`);
@@ -1997,169 +1984,63 @@ class Emitter {
      */
     schedRuntime () {
         const n = this.tasks;
+        const R = ['AX', 'BX', 'CX', 'DX', 'SI', 'DI', 'BP', 'DS', 'ES'];
+        const push = R.map(r => `    PUSH ${r}`);
+        const pop = [...R].reverse().map(r => `    POP ${r}`);
         return ['',
-            '; ---- the cooperative scheduler ------------------------------',
-            '; One stack per script. A yield saves SP and loads the next due',
-            '; script\'s, so a wait nested inside loops resumes exactly where it',
-            '; left off. Time is 8254 counter 0, polled -- there is no PIC on',
-            '; this bench, so an interrupt-driven tick could not exist here.',
-            '',
-            '; Arrange one task\'s stack so the dispatcher\'s RET enters it.',
-            '; AX = stack top, BX = entry point, SI = task index.',
-            '; NOTE: no PUSH SP anywhere. On an 8086 that pushes SP AFTER the',
-            '; decrement -- a real difference from every later x86 -- so the',
-            '; frame is written directly rather than built by pushing.',
-            'BW_TINIT:',
-            '    SUB AX, 2',
-            '    MOV DI, AX',
-            '    MOV [DI], BX',
-            '    MOV DI, SI',
-            '    SHL DI, 1',
-            '    MOV [BW_TSP + DI], AX',
-            '    SHL DI, 1',
-            '    MOV WORD PTR [BW_TWAKE + DI], 0',
-            '    MOV WORD PTR [BW_TWAKE + DI + 2], 0',
-            '    MOV BYTE PTR [BW_TDONE + SI], 0',
-            '    RET',
-            '',
-            '; Counter 0, mode 2, divisor 0 (65536): a free-running divider.',
-            'BW_CLKINIT:',
-            '    MOV AL, 34H',
-            `    MOV DX, ${PIT_BASE + 3}`,
-            '    OUT DX, AL',
-            '    XOR AL, AL',
-            `    MOV DX, ${PIT_BASE}`,
-            '    OUT DX, AL',
-            '    OUT DX, AL',
-            '    CALL BW_RAW',
-            '    MOV [BW_LAST], AX',
-            '    MOV WORD PTR [BW_NOW], 0',
-            '    MOV WORD PTR [BW_NOW + 2], 0',
-            '    ; fall through into the calibration',
-            '',
-            '; HOW FAST IS THIS COUNTER? MEASURE IT, DO NOT ASSUME IT.',
-            '; On a real PC counter 0 is clocked at 1193182 Hz. Here it is fed',
-            '; the CPU\'s own cycle count, so it runs at clockHz -- 5 MHz on the',
-            '; XT preset. Assuming the PC rate made every wait in a scheduled',
-            '; program 4.19x too short: `wait 0.1 secs` measured 24.3 ms against',
-            '; the 100.1 ms the single-script path gives. The program still ran',
-            '; and still looked plausible, which is why this is measured.',
+            '; ---- the preemptive scheduler --------------------------------',
+            '; One stack per script, switched by a TIMER INTERRUPT rather than',
+            '; only at a `wait`. A script that never waits still loses the CPU,',
+            '; so a FOREVER with no wait can no longer starve the others -- which',
+            '; the cooperative version could only warn about.',
             ';',
-            '; AND IT IS NOT CALIBRATED AGAINST INT 15h. That was the first',
-            '; attempt and it is wrong for a subtle reason: INT 15h/86h SKIPS',
-            '; simulated time without executing cycles, while the counter only',
-            '; advances on cycles actually run. Calibrating a 1 ms wait against',
-            '; it measured 140 ticks where 5000 were due.',
+            '; VECTOR 70h, NOT 8. The PIC is programmed with vector base 70h and',
+            '; INT 8 / INT 1Ch are deliberately LEFT POINTING AT THE TRAP PAGE.',
+            '; The DOS layer synthesises an 18.2 Hz BIOS tick whenever either of',
+            '; those is hooked away, so taking INT 8 would deliver TWO unrelated',
+            '; clocks -- the real IRQ0 and a synthetic one -- and quantum',
+            '; accounting would drift with nothing to show why. Leaving them',
+            '; alone also means INT 1Ah keeps working for the program.',
             ';',
-            '; INT 21h/2Ch is the right reference: it is a clock you READ, so',
-            '; the spin that waits for it advances the counter the same way the',
-            '; dispatcher will. Two centisecond edges, and the elapsed count is',
-            '; taken from BW_NOW rather than a raw difference, so a counter wrap',
-            '; inside the interval is already handled.',
-            'BW_CALIB:',
-            '    CALL BW_CSEDGE',
-            '    MOV AX, [BW_NOW]',
-            '    MOV [BW_CSA], AX',
-            '    CALL BW_CSEDGE',
-            '    MOV AX, [BW_NOW]',
-            '    SUB AX, [BW_CSA]        ; ticks in one centisecond',
-            '    XOR DX, DX',
-            '    MOV BX, 10',
-            '    DIV BX                  ; -> ticks per millisecond',
-            '    OR AX, AX',
-            '    JNZ BW_CALOK',
-            '    MOV AX, 1               ; never zero: a zero rate would make',
-            '                            ; every wait instant rather than wrong',
-            'BW_CALOK:',
-            '    MOV [BW_TPMS], AX',
-            '    RET',
+            '; ONE FRAME SHAPE. A voluntary yield is `INT 0F0h`, so it pushes',
+            '; exactly what a hardware interrupt pushes. A task suspended by the',
+            '; timer and a task suspended by a `wait` are indistinguishable when',
+            '; resumed, which is what lets one dispatcher serve both. A CALL-based',
+            '; yield beside an IRET-based preemption cannot share a dispatcher.',
             '',
-            '; Spin until the DOS centisecond field changes, keeping BW_NOW',
-            '; current as we go. The saved field is in memory because BW_TICK',
-            '; uses BX.',
-            'BW_CSEDGE:',
-            '    MOV AH, 2CH',
-            '    INT 21H',
-            '    MOV [BW_CSV], DL',
-            'BW_CSE1:',
-            '    CALL BW_TICK',
-            '    MOV AH, 2CH',
-            '    INT 21H',
-            '    CMP DL, [BW_CSV]',
-            '    JE BW_CSE1',
-            '    RET',
+            '; The timer. EOI BEFORE the switch, deliberately: if we switched',
+            '; first, this interrupt would never be acknowledged -- the task we',
+            '; left is resumed by whoever preempts IT -- and the PIC would hold',
+            '; IRQ0 in service forever, so exactly one tick would ever arrive.',
+            'BW_ISR:',
+            ...push,
+            '    ADD WORD PTR [BW_TICKS], 1',
+            '    ADC WORD PTR [BW_TICKS + 2], 0',
+            '    MOV AL, 20H',
+            '    OUT 20H, AL',
+            '    CALL BW_PICK',
+            ...pop,
+            '    IRET',
             '',
-            '; Latch counter 0 and read it. The latch is what makes this safe:',
-            '; without it the two byte reads could straddle a decrement and',
-            '; produce a count that was never in the counter.',
-            'BW_RAW:',
-            '    XOR AL, AL',
-            `    MOV DX, ${PIT_BASE + 3}`,
-            '    OUT DX, AL',
-            `    MOV DX, ${PIT_BASE}`,
-            '    IN AL, DX',
-            '    MOV BL, AL',
-            '    IN AL, DX',
-            '    MOV AH, AL',
-            '    MOV AL, BL',
-            '    RET',
+            '; The voluntary yield, INT 0F0h. No EOI: nothing is in service.',
+            'BW_ISRV:',
+            ...push,
+            '    CALL BW_PICK',
+            ...pop,
+            '    IRET',
             '',
-            '; BW_NOW += (last - raw). A DOWN counter, so last-raw is elapsed.',
-            '; 32 bits because the counter wraps every 54.9 ms -- a 16-bit clock',
-            '; could not express a delay longer than 27 ms unambiguously.',
-            '; PRESERVES AX AND DX: it did not, once, and it silently destroyed',
-            '; the very delay the caller was about to use.',
-            'BW_TICK:',
-            '    PUSH AX',
-            '    PUSH DX',
-            '    CALL BW_RAW',
-            '    MOV BX, [BW_LAST]',
-            '    MOV [BW_LAST], AX',
-            '    SUB BX, AX',
-            '    ADD [BW_NOW], BX',
-            '    ADC WORD PTR [BW_NOW + 2], 0',
-            '    POP DX',
-            '    POP AX',
-            '    RET',
-            '',
-            '; Sleep DX:AX ticks, then hand over.',
-            'BW_SLEEP:',
-            '    CALL BW_TICK',
-            '    ADD AX, [BW_NOW]',
-            '    ADC DX, [BW_NOW + 2]',
-            '    MOV BX, [BW_CUR]',
-            '    SHL BX, 1',
-            '    SHL BX, 1',
-            '    MOV [BW_TWAKE + BX], AX',
-            '    MOV [BW_TWAKE + BX + 2], DX',
-            '    CALL BW_YIELD',
-            '    RET',
-            '',
-            '; Hand over for about a millisecond. A pin hat samples at 1 kHz,',
-            '; which is far finer than a finger and cheap enough that the other',
-            '; scripts barely notice.',
-            'BW_POLL1MS:',
-            '    MOV AX, 1',
-            '    XOR DX, DX',
-            '    MOV BX, [BW_TPMS]',
-            '    XOR CX, CX',
-            '    CALL BW_MUL32',
-            '    CALL BW_SLEEP',
-            '    RET',
-            '',
-            '; This script is finished. The others carry on.',
-            'BW_TEND:',
-            '    MOV BX, [BW_CUR]',
-            '    MOV BYTE PTR [BW_TDONE + BX], 1',
-            '    CALL BW_YIELD',
-            '    RET',
-            '',
-            'BW_YIELD:',
+            '; Save SP, choose the next runnable script, load its SP. Called, so',
+            '; its return address is on the stack -- and every suspended task has',
+            '; one too, in the same place, which is why RET lands correctly in',
+            '; whichever ISR that task was suspended from.',
+            ';',
+            '; IF NOBODY ELSE IS DUE IT RETURNS TO THE CURRENT TASK. It must not',
+            '; wait here: interrupts are off inside an ISR, so a wait loop in this',
+            '; routine could never be ended by the tick it is waiting for.',
+            'BW_PICK:',
             '    MOV BX, [BW_CUR]',
             '    SHL BX, 1',
             '    MOV [BW_TSP + BX], SP',
-            'BW_SCAN:',
-            '    CALL BW_TICK',
             `    MOV CX, ${n}`,
             '    MOV BX, [BW_CUR]',
             'BW_NEXT:',
@@ -2170,24 +2051,70 @@ class Emitter {
             'BW_NOWRAP:',
             '    CMP BYTE PTR [BW_TDONE + BX], 0',
             '    JNE BW_SKIP',
-            '    ; Due when (now - wake) >= 0 as a SIGNED 32-bit difference,',
-            '    ; which stays right across the accumulator wrapping.',
+            '    ; due when (ticks - wake) >= 0 as a SIGNED 32-bit difference,',
+            '    ; which stays correct across the tick count wrapping.',
             '    MOV DI, BX',
             '    SHL DI, 1',
             '    SHL DI, 1',
-            '    MOV AX, [BW_NOW]',
-            '    MOV DX, [BW_NOW + 2]',
+            '    MOV AX, [BW_TICKS]',
+            '    MOV DX, [BW_TICKS + 2]',
             '    SUB AX, [BW_TWAKE + DI]',
             '    SBB DX, [BW_TWAKE + DI + 2]',
             '    OR DX, DX',
             '    JS BW_SKIP',
             '    MOV [BW_CUR], BX',
+            'BW_RESUME:',
+            '    MOV BX, [BW_CUR]',
             '    SHL BX, 1',
             '    MOV SP, [BW_TSP + BX]',
             '    RET',
             'BW_SKIP:',
             '    LOOP BW_NEXT',
-            '    ; Nobody runnable. Every script finished means the program has.',
+            '    JMP BW_RESUME           ; nobody else due: carry on where we were',
+            '',
+            '; Give up the rest of this quantum.',
+            'BW_YIELD:',
+            '    INT 0F0H',
+            '    RET',
+            '',
+            '; Sleep DX:AX TICKS. Loops rather than yielding once, because the',
+            '; dispatcher hands control back to a task that is not yet due when',
+            '; nothing else can run.',
+            'BW_SLEEP:',
+            '    MOV BX, [BW_CUR]',
+            '    SHL BX, 1',
+            '    SHL BX, 1',
+            '    ADD AX, [BW_TICKS]',
+            '    ADC DX, [BW_TICKS + 2]',
+            '    MOV [BW_TWAKE + BX], AX',
+            '    MOV [BW_TWAKE + BX + 2], DX',
+            'BW_SLP1:',
+            '    INT 0F0H',
+            '    MOV BX, [BW_CUR]',
+            '    SHL BX, 1',
+            '    SHL BX, 1',
+            '    MOV AX, [BW_TICKS]',
+            '    MOV DX, [BW_TICKS + 2]',
+            '    SUB AX, [BW_TWAKE + BX]',
+            '    SBB DX, [BW_TWAKE + BX + 2]',
+            '    OR DX, DX',
+            '    JS BW_SLP1',
+            '    RET',
+            '',
+            '; Hand over for about a millisecond -- a pin hat samples at 1 kHz,',
+            '; far finer than a finger and cheap enough that nothing notices.',
+            'BW_POLL1MS:',
+            '    MOV AX, [BW_TPMS]',
+            '    XOR DX, DX',
+            '    CALL BW_SLEEP',
+            '    RET',
+            '',
+            '; This script is finished. The others carry on; when none are left',
+            '; the program is over.',
+            'BW_TEND:',
+            '    MOV BX, [BW_CUR]',
+            '    MOV BYTE PTR [BW_TDONE + BX], 1',
+            'BW_TEND1:',
             `    MOV CX, ${n}`,
             '    XOR BX, BX',
             '    XOR AL, AL',
@@ -2196,13 +2123,137 @@ class Emitter {
             '    INC BX',
             '    LOOP BW_ALLD',
             `    CMP AL, ${n}`,
-            // INVERTED, and not for style. `JE BW_EXIT` put the target 251
-            // bytes away and a conditional branch reaches 127; the short
-            // branch goes to BW_SCAN just above, and the far one is a plain
-            // JMP with no range limit. The alternative was `longJumps`, which
-            // would make every scheduled program assemble nowhere else.
-            '    JNE BW_SCAN',
-            '    JMP BW_EXIT'];
+            '    JNE BW_TEND2',
+            '    JMP BW_EXIT',
+            'BW_TEND2:',
+            '    INT 0F0H',
+            '    JMP BW_TEND1',
+            '',
+            '; ---- startup -------------------------------------------------',
+            '; Arrange one task\'s stack so the dispatcher can resume it as if it',
+            '; had been interrupted: a full IRET frame, then the register set the',
+            '; ISR epilogue pops, then the return address BW_PICK will RET to.',
+            '; AX = stack top, BX = entry point, SI = task index.',
+            '; NO PUSH SP anywhere -- on an 8086 that pushes SP AFTER the',
+            '; decrement, a real difference from every later x86.',
+            'BW_TINIT:',
+            '    MOV DI, AX',
+            '    SUB DI, 2',
+            '    MOV WORD PTR [DI], 0202H    ; FLAGS with IF set: the task runs enabled',
+            '    SUB DI, 2',
+            '    MOV [DI], CS                ; CS',
+            '    SUB DI, 2',
+            '    MOV [DI], BX                ; IP -- the script entry',
+            '    ; The nine saved registers, in the order the ISR epilogue pops',
+            '    ; them: AX BX CX DX SI DI BP are zero, but DS AND ES MUST NOT BE.',
+            '    ; A .COM has DS = ES = its PSP, and a task resumed with DS = 0',
+            '    ; reads every string and variable out of segment zero -- which',
+            '    ; prints control characters instead of text and looks like a',
+            '    ; broken emulator rather than a wrong register.',
+            '    MOV CX, 7',
+            'BW_TI1:',
+            '    SUB DI, 2',
+            '    MOV WORD PTR [DI], 0',
+            '    LOOP BW_TI1',
+            '    SUB DI, 2',
+            '    MOV [DI], DS                ; DS',
+            '    SUB DI, 2',
+            '    MOV [DI], DS                ; ES',
+            '    SUB DI, 2',
+            '    MOV WORD PTR [DI], OFFSET BW_TIRET   ; where BW_PICK returns to',
+            '    MOV BX, SI',
+            '    SHL BX, 1',
+            '    MOV [BW_TSP + BX], DI',
+            '    SHL BX, 1',
+            '    MOV WORD PTR [BW_TWAKE + BX], 0',
+            '    MOV WORD PTR [BW_TWAKE + BX + 2], 0',
+            '    MOV BYTE PTR [BW_TDONE + SI], 0',
+            '    RET',
+            '',
+            '; A fresh task resumes here: pop the zeroed registers and IRET into',
+            '; its entry point with interrupts on.',
+            'BW_TIRET:',
+            ...pop,
+            '    IRET',
+            '',
+            'BW_SCHINIT:',
+            '    ; counter 0, mode 2, divisor 1193 -- about 1 kHz on a PC crystal',
+            '    ; and about 4 kHz if the counter is fed the CPU clock. Either is',
+            '    ; a fine quantum, and the rate is MEASURED below rather than',
+            '    ; assumed, so which one it is does not matter.',
+            '    MOV AL, 34H',
+            `    MOV DX, ${PIT_BASE + 3}`,
+            '    OUT DX, AL',
+            '    MOV AL, 0A9H',
+            `    MOV DX, ${PIT_BASE}`,
+            '    OUT DX, AL',
+            '    MOV AL, 04H',
+            '    OUT DX, AL',
+            '    ; the PIC: single, edge, ICW4, vector base 70h, IRQ0 unmasked',
+            '    MOV AL, 13H',
+            '    OUT 20H, AL',
+            '    MOV AL, 70H',
+            '    OUT 21H, AL',
+            '    MOV AL, 01H',
+            '    OUT 21H, AL',
+            '    MOV AL, 0FEH',
+            '    OUT 21H, AL',
+            '    ; vectors 70h (timer) and F0h (voluntary yield)',
+            '    PUSH DS',
+            '    MOV AX, 2570H',
+            '    MOV DX, OFFSET BW_ISR',
+            '    INT 21H',
+            '    MOV AX, 25F0H',
+            '    MOV DX, OFFSET BW_ISRV',
+            '    INT 21H',
+            '    POP DS',
+            '    MOV WORD PTR [BW_TICKS], 0',
+            '    MOV WORD PTR [BW_TICKS + 2], 0',
+            '    STI',
+            '    ; fall through into the calibration',
+            '',
+            '; HOW FAST IS THE TICK? MEASURE IT. The counter may be clocked at a',
+            '; PC\'s 1193182 Hz or at the CPU clock, and a scheduler that assumed',
+            '; one got every wait 4.19x wrong while every ordering test passed.',
+            '; INT 21h/2Ch is the reference because it is computed from simulated',
+            '; time and is independent of the counter entirely.',
+            'BW_CALIB:',
+            '    CALL BW_CSEDGE',
+            '    MOV AX, [BW_TICKS]',
+            '    MOV [BW_CSA], AX',
+            '    CALL BW_CSEDGE',
+            '    MOV AX, [BW_TICKS]',
+            '    SUB AX, [BW_CSA]        ; ticks in one centisecond',
+            '    XOR DX, DX',
+            '    MOV BX, 10',
+            '    DIV BX                  ; -> ticks per millisecond',
+            '    ; ZERO TICKS MEANS THE TIMER IS NOT RUNNING, and carrying on',
+            '    ; would be the worst possible failure: every `wait` would spin',
+            '    ; forever with nothing on screen and no message -- which is',
+            '    ; exactly what happened when a bench was handed this program',
+            '    ; WITHOUT the PIC and timer the build asked for. Say so and',
+            '    ; exit, rather than hang and look like a broken emulator.',
+            '    OR AX, AX',
+            '    JNZ BW_CALOK',
+            '    MOV DX, OFFSET BW_NOTICK',
+            '    MOV AH, 9',
+            '    INT 21H',
+            '    MOV AX, 4C01H',
+            '    INT 21H',
+            'BW_CALOK:',
+            '    MOV [BW_TPMS], AX',
+            '    RET',
+            '',
+            'BW_CSEDGE:',
+            '    MOV AH, 2CH',
+            '    INT 21H',
+            '    MOV [BW_CSV], DL',
+            'BW_CSE1:',
+            '    MOV AH, 2CH',
+            '    INT 21H',
+            '    CMP DL, [BW_CSV]',
+            '    JE BW_CSE1',
+            '    RET'];
     }
 
     /** The scheduler's tables and per-script stacks. */
@@ -2210,14 +2261,24 @@ class Emitter {
         const n = this.tasks;
         return ['',
             'BW_CUR   DW 0            ; the running script',
-            'BW_LAST  DW 0            ; last raw counter reading',
             'BW_TPMS  DW 1            ; timer ticks per millisecond, MEASURED',
             'BW_CSA   DW 0            ; calibration scratch',
             'BW_CSV   DB 0            ; last centisecond seen',
-            'BW_NOW   DW 0, 0         ; 32-bit accumulated ticks',
+            "BW_NOTICK DB 'scheduler: the timer never ticked. This program needs an 8259 "
+                + "PIC at 20h and the 8254 wired to IRQ0 -- the build asks for both, and "
+                + "this machine was started without them.', 0DH, 0AH, '$'",
+            'BW_TICKS DW 0, 0         ; 32-bit tick count -- THE clock',
             `BW_TSP   DW ${n} DUP (0)        ; saved SP per script`,
             `BW_TWAKE DW ${n * 2} DUP (0)        ; 32-bit wake time per script`,
-            `BW_TDONE DB ${n} DUP (0)        ; finished flags`,
+            `BW_TDONE DB ${n} DUP (1)        ; finished flags -- START AT 1`,
+            '                         ; The timer is running during calibration,',
+            '                         ; BEFORE any task stack exists. A task',
+            '                         ; whose saved SP is still zero must never',
+            '                         ; be chosen, so every slot begins DORMANT',
+            '                         ; and BW_TINIT wakes it once its stack is',
+            '                         ; real. Starting at 0 let the dispatcher',
+            '                         ; load SP=0 and the program walked over',
+            '                         ; its own PSP.',
             `BW_STK   DB ${n * SCHED_STACK} DUP (0)      ; ${SCHED_STACK} bytes of stack each`];
     }
 
@@ -2382,13 +2443,14 @@ export function emitI8086Asm (project, opts = {}) {
         // and `stop this script`, which is the whole benefit of a coroutine
         // over a state-machine rewrite.
         em.uses.sched = true;
-        em.warn(`this project has ${em.tasks} scripts, so the build `
-            + 'adds a cooperative scheduler: each script gets its own stack and a `wait` '
-            + 'hands over to whichever script is next due. Time comes from 8254 counter 0, '
-            + 'polled rather than waited on -- this bench has no interrupt controller, so '
-            + 'a `wait` that blocked would stop every other script too. The counter\'s '
-            + 'rate is MEASURED at startup rather than assumed, which costs about 20 ms '
-            + 'before the first script runs.');
+        em.warn(`this project has ${em.tasks} scripts, so the build adds a PREEMPTIVE `
+            + 'scheduler and the hardware it needs: an 8259 interrupt controller at 20h '
+            + 'and the 8254 timer wired to IRQ0. Each script gets its own stack, and a '
+            + 'timer interrupt switches between them -- so a script that never waits '
+            + 'still loses the CPU and cannot starve the others. The timer runs at vector '
+            + '70h, leaving INT 8 and INT 1Ch alone so the BIOS tick keeps working. The '
+            + 'tick rate is MEASURED at startup rather than assumed, which costs about '
+            + '20 ms before the first script runs.');
         flags.forEach(([, f], i) => {
             em.code.push('', `BW_TASK${i}:`);
             em.stack(f.next);
@@ -2523,7 +2585,17 @@ export function emitI8086Asm (project, opts = {}) {
     // the first. It goes AFTER the variable initialisers, because a script may
     // read a variable before the scheduler ever runs.
     if (em.uses.sched) {
-        inits.push('', '    ; ---- start the scheduler ----', '    CALL BW_CLKINIT');
+        inits.push('', '    ; ---- start the scheduler ----',
+            '    CALL BW_SCHINIT',
+            '    ; INTERRUPTS OFF WHILE THE STACKS ARE BUILT. Calibration needs',
+            '    ; the timer, so it runs with interrupts ON -- safe, because every',
+            '    ; task is still marked dormant and the dispatcher can only',
+            '    ; resume the slot it just saved. The moment BW_TINIT wakes task',
+            '    ; 0, though, a tick would save the STARTUP code\'s SP over the',
+            '    ; frame BW_TINIT just built for it, and task 0 would resume into',
+            '    ; the startup path instead of its own script -- which printed',
+            '    ; exactly one line per script and then lost them.',
+            '    CLI');
         for (let i = 0; i < em.tasks; i++) {
             inits.push(
                 `    MOV AX, OFFSET BW_STK + ${(i + 1) * SCHED_STACK}`,
@@ -2534,7 +2606,10 @@ export function emitI8086Asm (project, opts = {}) {
         inits.push(
             '    MOV WORD PTR [BW_CUR], 0',
             '    MOV SP, [BW_TSP]',
-            '    RET                     ; into the first script');
+            '    RET                     ; into BW_TIRET, whose IRET restores a',
+            '                            ; FLAGS with IF set -- so interrupts come',
+            '                            ; back on as the first script starts, and',
+            '                            ; not one instruction before.');
     }
 
     const tail = [
@@ -2550,9 +2625,17 @@ export function emitI8086Asm (project, opts = {}) {
     // and the 8255 already works this way. But appearing INVISIBLY is the
     // same failure class as a silently chosen default, so every added chip
     // is named in a warning as well as returned here.
-    const chips = em.uses.adc
-        ? [{ kind: 'adc0809', name: 'adc1', at: ADC_BASE }]
-        : [];
+    const chips = [];
+    if (em.uses.adc) chips.push({ kind: 'adc0809', name: 'adc1', at: ADC_BASE });
+    if (em.uses.sched) {
+        // A PREEMPTIVE SCHEDULER NEEDS AN INTERRUPT, so a scheduled program
+        // asks for a PIC and a timer wired to IRQ0. Same rule as the ADC: the
+        // declaration causes the hardware to appear and the build says so.
+        // Programs that do not schedule see an unchanged board -- which is why
+        // this is requested here rather than added to the preset.
+        chips.push({ kind: 'pic', name: 'pic1', at: 0x20 });
+        chips.push({ kind: 'pit', name: 'pit1', at: PIT_BASE, irq: 0 });
+    }
 
     const asm = [
         ...head,

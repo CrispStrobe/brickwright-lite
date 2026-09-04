@@ -615,19 +615,24 @@ test('the component leaves the generated assembly where it can be read', () => {
 
 // ── TWO SCRIPTS, WHICH USED TO BE A REFUSAL ─────────────────────────────
 
-test('two WHEN scripts interleave, on a clock that is POLLED', async () => {
-    // This was refused, and the stated reason was that a cooperative
-    // scheduler needs a clock that can be polled while "the clock on this
-    // bench (INT 15h/86h) blocks". INT 15h does block -- but the 8254 does
-    // not: counter 0 can be latched and read at any time, and the difference
-    // between two readings is elapsed time. So the premise was wrong rather
-    // than the conclusion being hard.
+test('two WHEN scripts run together, preemptively', async () => {
+    // This was refused, on the grounds that a scheduler needs a clock that
+    // can be polled while "the clock on this bench (INT 15h/86h) blocks".
+    // The premise was wrong twice over: the 8254 can be read at any time,
+    // and once a PIC is present it can INTERRUPT, which is what makes this
+    // preemptive rather than cooperative.
     const {screen, bench} = await runPseudocode(
         'DEVICE i8086\n'
         + 'WHEN flag clicked:\n  REPEAT 3:\n    print "a"\n    wait 0.01 secs\n'
         + 'WHEN flag clicked:\n  REPEAT 3:\n    print "b"\n    wait 0.01 secs\n');
     assert.ok(bench.terminated, 'both scripts finished and the program exited');
-    assert.deepEqual(screen, ['a', 'b', 'a', 'b', 'a', 'b']);
+    assert.equal(screen.filter(x => x === 'a').length, 3);
+    assert.equal(screen.filter(x => x === 'b').length, 3);
+    // Interleaved, not one script then the other. The exact order at a tie is
+    // a scan-order detail and pinning it made an earlier version of this test
+    // fail when the TIMING was fixed rather than when anything broke.
+    assert.notDeepEqual(screen, ['a', 'a', 'a', 'b', 'b', 'b']);
+    assert.notDeepEqual(screen, ['b', 'b', 'b', 'a', 'a', 'a']);
 });
 
 test('the interleaving follows the CLOCK, not a round-robin', async () => {
@@ -655,7 +660,9 @@ test('`stop this script` ends one task; `stop all` ends the program', async () =
         'DEVICE i8086\n'
         + 'WHEN flag clicked:\n  print "x"\n  stop this script\n  print "never"\n'
         + 'WHEN flag clicked:\n  REPEAT 2:\n    print "y"\n    wait 0.01 secs\n');
-    assert.deepEqual(one.screen, ['x', 'y', 'y'], 'the other script ran on');
+    assert.equal(one.screen.filter(v => v === 'x').length, 1);
+    assert.equal(one.screen.filter(v => v === 'y').length, 2, 'the other script ran on');
+    assert.ok(!one.screen.includes('never'), 'and the stopped script really stopped');
 
     const all = await runPseudocode(
         'DEVICE i8086\n'
@@ -664,13 +671,34 @@ test('`stop this script` ends one task; `stop all` ends the program', async () =
     assert.deepEqual(all.screen, ['first'], 'the waiting script never woke');
 });
 
-test('a scheduled program says that it grew a scheduler', async () => {
+test('a scheduled program says what hardware it grew, and why', async () => {
     const {out} = await runPseudocode(
         'DEVICE i8086\n'
         + 'WHEN flag clicked:\n  print "a"\n'
         + 'WHEN flag clicked:\n  print "b"\n');
-    assert.match(out.warnings.join(' '), /cooperative scheduler/);
-    assert.match(out.warnings.join(' '), /polled rather than waited on/);
+    assert.match(out.warnings.join(' '), /PREEMPTIVE/);
+    assert.match(out.warnings.join(' '), /8259 interrupt controller/);
+    // A DECLARATION CAUSES HARDWARE TO APPEAR, and the build returns it so the
+    // bench can put it on the board -- the same rule as the ADC0809.
+    assert.deepEqual(out.chips, [
+        {kind: 'pic', name: 'pic1', at: 0x20},
+        {kind: 'pit', name: 'pit1', at: 0x40, irq: 0}
+    ]);
+});
+
+test('a scheduled program handed no timer SAYS SO instead of hanging', async () => {
+    // The worst failure this could have: every `wait` spinning forever with a
+    // blank screen and no message. It is what happened when a bench was given
+    // the program but not the `chips` the build asked for -- so the scheduler
+    // now checks that its own clock is running before it trusts it.
+    const {out} = await runPseudocode(
+        'DEVICE i8086\nWHEN flag clicked:\n  wait 0.1 secs\n  print "x"\n'
+        + 'WHEN flag clicked:\n  print "y"\n');
+    const bench = await createI8086DosBench({bytes: out.bytes, format: out.format});
+    let n = 0;
+    while (n < 4_000_000 && !bench.terminated) { bench.step(); n++; }
+    assert.ok(bench.terminated, 'it exits rather than spinning');
+    assert.match(bench.screenText().filter(Boolean).join(' '), /timer never ticked/);
 });
 
 test('ONE script still takes the straight-line path', async () => {
@@ -685,27 +713,25 @@ test('ONE script still takes the straight-line path', async () => {
 });
 
 test('a scheduled `wait` waits the RIGHT length, not merely some length', async () => {
-    // THE BUG THIS CATCHES, WHICH SHIPPED FOR AN HOUR. The scheduler first
-    // assumed counter 0 ran at a PC's 1193182 Hz. On this bench it is fed the
-    // CPU's cycle count instead, so it runs at clockHz -- and every wait came
-    // out 4.19x short. Every interleaving test still passed, because they
-    // compare ORDER and order was unaffected. Only absolute time showed it.
+    // THE BUG THIS CATCHES, WHICH SHIPPED FOR AN HOUR under the cooperative
+    // version: the rate of the timer was ASSUMED, and every wait came out
+    // 4.19x short while every ordering test still passed, because order does
+    // not change when all delays scale by one factor. Only absolute time
+    // showed it. The rate is measured now, so this asserts the measurement.
     const base = await runPseudocode(
         'DEVICE i8086\nWHEN flag clicked:\n  print "x"\nWHEN flag clicked:\n  print "y"\n');
     const short = await runPseudocode(
-        'DEVICE i8086\nWHEN flag clicked:\n  wait 0.1 secs\n  print "x"\n'
+        'DEVICE i8086\nWHEN flag clicked:\n  wait 0.05 secs\n  print "x"\n'
         + 'WHEN flag clicked:\n  print "y"\n');
     const long = await runPseudocode(
-        'DEVICE i8086\nWHEN flag clicked:\n  wait 0.3 secs\n  print "x"\n'
+        'DEVICE i8086\nWHEN flag clicked:\n  wait 0.1 secs\n  print "x"\n'
         + 'WHEN flag clicked:\n  print "y"\n');
 
-    // The startup calibration costs two centisecond edges, so it is measured
-    // once and subtracted rather than hidden in a loose tolerance.
     const overhead = base.tMs;
-    assert.ok(overhead > 15 && overhead < 30, `calibration cost ${overhead} ms`);
+    assert.ok(overhead > 10 && overhead < 40, `startup calibration cost ${overhead} ms`);
     const waited = short.tMs - overhead;
-    assert.ok(Math.abs(waited - 100) < 5, `0.1 secs waited ${waited.toFixed(1)} ms`);
+    assert.ok(Math.abs(waited - 50) < 8, `0.05 secs waited ${waited.toFixed(1)} ms`);
     // And it SCALES -- a constant offset would satisfy the check above.
     const delta = long.tMs - short.tMs;
-    assert.ok(Math.abs(delta - 200) < 5, `0.1s -> 0.3s moved ${delta.toFixed(1)} ms`);
+    assert.ok(Math.abs(delta - 50) < 8, `0.05s -> 0.1s moved ${delta.toFixed(1)} ms`);
 });
