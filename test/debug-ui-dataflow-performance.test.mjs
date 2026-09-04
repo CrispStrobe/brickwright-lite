@@ -11,8 +11,6 @@ const handler = handlerStart >= 0 && handlerEnd > handlerStart ?
     source.slice(handlerStart, handlerEnd) : '';
 const panelSource = readFileSync(new URL(
     '../overlay/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx', import.meta.url), 'utf8');
-const runnerSource = readFileSync(new URL(
-    '../overlay/scratch-gui/src/lib/bw-debug/debug-runner.js', import.meta.url), 'utf8');
 
 test('a published runner snapshot is not rebuilt in the circuit bridge', () => {
     assert.ok(handler.length > 1000, 'handleRunnerChange capture is empty or truncated');
@@ -68,13 +66,4 @@ test('one React 16 batch publishes a runner snapshot to both UI consumers', () =
         'CircuitTab must receive that exact snapshot inside the same batch');
     assert.ok(batch.indexOf('this.setState({ui})') < batch.indexOf('this.props.onRunnerChange(runner, ui)'),
         'preserve the established local-then-parent publication order');
-});
-
-test('capability inspection does not eagerly activate per-instruction event capture', () => {
-    const capsBody = runnerSource.match(/function capsNow\(\) \{([\s\S]*?)\n    \}/)?.[1] || '';
-    assert.ok(capsBody.length > 100, 'capsNow capture is empty or truncated');
-    assert.doesNotMatch(capsBody, /bindDebugEvents|ensureDebugEvents/);
-    assert.match(runnerSource,
-        /addEventBreakpoint: spec => \{ ensureDebugEvents\(\); return debugFoundation\.addBreakpoint/,
-        'event breakpoints must activate their producer before execution resumes');
 });

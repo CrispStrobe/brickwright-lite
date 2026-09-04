@@ -76,7 +76,7 @@ try {
         await mark('runner-running');
         await mark('circuit-open-request');
         await page.getByRole('tab', {name: /Circuit/}).click({force: true});
-        await page.locator('[data-debug-panel]').waitFor({state: 'visible', timeout: 30000});
+        await page.locator('[data-debug-panel]').waitFor({state: 'visible', timeout: 30000}); // gate-shapes-allow: synchronization before the measured two-frame paint boundary below; this persistent panel must not disappear
         // The click promise ends after the event handler, not after React's
         // commit and paint. Two frames put the sample window on the far side
         // of the first visible Circuit render instead of quietly charging
