@@ -1710,8 +1710,15 @@ class PseudocodeImporter extends React.Component {
             return;
         }
         window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {
+            // `chips` CARRIES THE HARDWARE THE PROGRAM'S DECLARATIONS ASKED
+            // FOR -- an ADC0809 for an ANALOG pin, a PIC and an IRQ0-wired
+            // timer for a second script. Without it the bench builds the
+            // default board and a scheduled program finds no clock: every
+            // `wait` spins forever. The runtime says so rather than hanging,
+            // but a learner should never see that message from the GUI.
             detail: {rom: out.bytes, listing: null, target: out.target,
-                slotId: out.slotId, profile: out.profile, format: out.format}
+                slotId: out.slotId, profile: out.profile, format: out.format,
+                chips: out.chips}
         }));
         const warn = out.warnings.length ? this.L.asmWarnings(out.warnings) : '';
         this.setState(st => ({
