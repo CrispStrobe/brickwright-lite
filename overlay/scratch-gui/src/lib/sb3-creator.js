@@ -15191,6 +15191,19 @@ SB3Creator.STC_PARTS = {
     // generateC() emits sdcc -mz80 compatible C: __sfr __at port declarations,
     // shadow byte + OUT for pin writes, IN & mask for pin reads.
     z80: { core: 'z80', header: null, portModes: false, aux1T: false, adc: false },
+    // core: 'i8086' -- the composable 8086/80186 machine. UNREGISTERED UNTIL
+    // 2026-09-04, which meant every 8086 pseudocode program produced
+    // `Unknown DEVICE "i8086"` on line 1. Nobody saw it, because the parser's
+    // warnings were being dropped before they reached the build (fixed in the
+    // same change) -- two defects that hid each other, and fixing only the
+    // surfacing would have put a spurious warning on every 8086 program.
+    //
+    // The 8086 route consults nothing in this table: `i8086` appears nowhere
+    // else in this file, and the pseudocode lowering lives entirely in
+    // bw-asm/pseudocode-8086.js. This entry exists so the device is KNOWN, and
+    // `core: 'i8086'` falls through every `.core === ...` test here, all of
+    // which name arduino, rp2040 or w65c02.
+    i8086: { core: 'i8086', header: null, portModes: false, aux1T: false, adc: false },
     // ATtiny88: 28-pin DIP, avr25 family. Pins are PB0-7/PC0-7/PD0-7/PA0-3
     // (port/bit, not Arduino Dn numbering). Timer0 has NO CTC mode — the ms
     // tick uses Timer1 CTC instead. ADC on PC0-PC5 (channels 0-5).

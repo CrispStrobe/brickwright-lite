@@ -39,8 +39,14 @@ const forbiddenFetch = () => { throw new Error('the hosted route was reached'); 
 async function run (source) {
     const creator = new SB3Creator();
     creator.parse(source);
+    // parseWarnings MIRRORS THE PRODUCTION CALLER (pseudocode-importer.jsx).
+    // It did not, and that is why the trigger below could not fire: the
+    // harness reproduced the old call shape, in which the parser's warnings
+    // were dropped between parse and build, so `out.warnings` was empty here
+    // for the same reason it was empty in the app.
     const out = await buildPseudocode8086(
-        {project: creator.project, source}, {hostedFetch: forbiddenFetch});
+        {project: creator.project, source, parseWarnings: creator.warnings},
+        {hostedFetch: forbiddenFetch});
     const bench = await createI8086DosBench({bytes: out.bytes, format: out.format});
     bench.target.run();
     let slices = 0;
@@ -125,16 +131,28 @@ for (const [name, [source, want]] of Object.entries(CASES)) {
 
 // ---- two defects these probes found, both in the PARSER --------------------
 
-test('KNOWN DEFECT: `IF cond:` without THEN silently deletes the whole branch', async () => {
-    // THE WORST SHAPE A DEFECT CAN HAVE, and a learner is the one who pays.
-    // Omitting THEN is a plausible typo — every other block here ends in a
-    // bare colon. The parser does not produce a control_if, does not produce
-    // the condition, and DROPS THE BODY. The program then builds clean, runs,
-    // emits no warning, and prints plausible output with a branch missing.
+test('`IF cond:` without THEN drops the branch — but no longer in silence', async () => {
+    // WAS "silently deletes the whole branch", and the silence is fixed. The
+    // deletion is not, and the two halves deserve separating because only one
+    // of them was ever the dangerous part.
     //
-    // This is the parser (sb3-creator), not the 8086 lowering: the opcode
-    // never reaches the back end, so the back end cannot refuse it. Recorded
-    // here because this is the file that found it.
+    // Omitting THEN is a plausible typo: every other block here ends in a bare
+    // colon. The parser still produces no control_if, no condition and no
+    // body — that is a LANGUAGE decision, not a bug, and whether `IF cond:`
+    // should be accepted belongs to whoever owns the syntax.
+    //
+    // What WAS a bug is that the learner was never told. The parser diagnoses
+    // this precisely and always did; its warnings were being dropped between
+    // `creator.parse()` and `buildPseudocode8086()`, because the caller passed
+    // `creator.project` and not `creator.warnings`. Three sources of warnings
+    // existed, the build enumerated two, and the comment there said "both are
+    // shown; neither is silent" — which was true of the two it knew about.
+    //
+    // A second defect hid inside the first: `i8086` was not a registered
+    // device, so every 8086 program also warned `Unknown DEVICE "i8086"` on
+    // line 1. Surfacing warnings without registering the device would have put
+    // a spurious warning on every correct program, which is how a fix becomes
+    // noise. Both are fixed together.
     const withThen = 'DEVICE i8086\nGLOBAL n\nWHEN flag clicked:\n  set n to 1\n'
         + '  IF n = 1 THEN:\n    say 111\n  say 222\n';
     const without = withThen.replace('IF n = 1 THEN:', 'IF n = 1:');
@@ -143,16 +161,27 @@ test('KNOWN DEFECT: `IF cond:` without THEN silently deletes the whole branch', 
     const good = await run(withThen);
     assert.deepEqual(good.screen, ['111', '222']);
 
-    // PINNED AS IT STANDS. When the parser learns to refuse this, the first
-    // assertion goes RED and this test should become: the build REFUSES, or
-    // warns by name. Either is an improvement; silence is not.
+    // A CORRECT PROGRAM WARNS ABOUT NOTHING. This is the assertion that stops
+    // the fix from becoming noise: if `i8086` ever falls out of the device
+    // table again, every program starts shouting and this goes red first.
+    assert.deepEqual(good.out.warnings, [], 'the correct form is clean');
+
+    // STILL PINNED: the branch is dropped. If the parser ever learns to accept
+    // a bare colon, this goes red and the test should assert the branch RUNS.
     assert.ok(!parsedOpcodes(without).includes('control_if'),
-        'if this now parses, the defect is fixed — assert the corrected behaviour instead');
+        'if this now parses, the language decision was made — assert 111 prints instead');
     const bad = await run(without);
-    assert.deepEqual(bad.screen, ['222'],
-        'the branch is silently gone: 111 never printed');
-    assert.deepEqual(bad.out.warnings, [],
-        'and nothing warned — which is what makes it dangerous rather than merely wrong');
+    assert.deepEqual(bad.screen, ['222'], 'the branch is still gone: 111 never printed');
+
+    // NO LONGER SILENT, and this is the half that was worth fixing. The
+    // learner is told the line, the problem, and the correction.
+    assert.ok(bad.out.warnings.length > 0, 'the build now reports what the parser found');
+    assert.ok(bad.out.warnings.some((w) => /Malformed IF/.test(w) && /THEN/.test(w)),
+        `a warning must name the fix, got: ${JSON.stringify(bad.out.warnings)}`);
+    assert.ok(bad.out.warnings.some((w) => /unexpected indentation/i.test(w)),
+        'and the orphaned body is reported too, so the dropped lines are visible');
+    assert.ok(bad.out.warnings.every((w) => /^Line \d+:/.test(w)),
+        'every warning carries a line number — a diagnostic without one is a riddle');
 });
 
 test('KNOWN DEFECT: a variable named x or y loses to the motion block', async () => {

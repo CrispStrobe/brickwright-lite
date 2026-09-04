@@ -471,9 +471,26 @@ test('the ▶ button exists, and it calls THIS module rather than its own copy',
     assert.match(importer, /lib\/bw-asm\/pseudocode-8086\.js/,
         'the component does not import the back end this gate tests — a second ' +
         'copy of the lowering is exactly how the two would drift apart');
-    assert.match(importer, /buildPseudocode8086\(\{project: creator\.project, source: src\}\)/,
-        'the component does not call buildPseudocode8086 with BOTH the project and ' +
-        'the source; without the source a PIN program is silently emptied');
+    // WHITESPACE-TOLERANT, AND IT WAS NOT. This matched the call site's exact
+    // spelling and line breaks, so wrapping the argument list across two lines
+    // failed it while the behaviour was identical — this repo's own catalogued
+    // species #1, a source-text match that tracks spelling rather than
+    // behaviour. It is asserted as "these arguments are present in this call"
+    // instead.
+    const call = importer.match(/buildPseudocode8086\(\s*\{[\s\S]{0,300}?\}/);
+    assert.ok(call, 'the component never calls buildPseudocode8086');
+    assert.match(call[0], /project:\s*creator\.project/,
+        'the call does not pass the project');
+    assert.match(call[0], /source:\s*src/,
+        'the call does not pass the source; without it a PIN program is silently emptied');
+    // THE THIRD ARGUMENT, added 2026-09-04 for the same class of harm. The
+    // parser's warnings are not recoverable from the project — a block the
+    // parser refused is simply not in it — so without this, `IF n = 1:`
+    // (no THEN) builds clean and prints plausible output with the branch gone
+    // and NOTHING said. See the probe suite's IF/THEN test.
+    assert.match(call[0], /parseWarnings:\s*creator\.warnings/,
+        'the call does not pass the PARSER warnings; without them a program the '
+        + 'parser diagnosed builds in silence and the learner is never told');
 });
 
 test('the button is offered for the 8086 family and decided in one place', () => {
