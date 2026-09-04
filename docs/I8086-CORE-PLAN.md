@@ -124,6 +124,24 @@ this architecture:
 - Everything else worth having is GPL: 86Box, Faux86, Fake86, XTulator, pce,
   DOSBox, PCem, Unicorn.
 
+**AND THAT SENTENCE IS ABOUT ADOPTION, NOT ABOUT ORACLES — a distinction this
+document did not draw and which cost us a whole field of ground truth.** GPL
+rules out *reading* a codebase to write our own, because the result is a
+derivative work. It does not rule out RUNNING one as a black-box differential
+oracle: feed both implementations the same program, compare the outputs, never
+read the source and never ship it. No derivative work is created by comparing
+two programs' behaviour.
+
+`scripts/oracle-v86.mjs` states the rule correctly in its own header — *"v86 is
+used ORACLE-ONLY — never shipped, never copied from; its licence would not
+matter for testing even if it were GPL"* — and this document did not, so the
+GPL list above read as a wall when it is a wall only in one direction.
+
+So **86Box, Faux86, XTulator, DOSBox, PCem and pce are all available as
+differential oracles**, under the same arbitration rule oracle-v86.mjs already
+sets out: agreement is evidence, disagreement is a question, and the datasheet
+arbitrates — never the other emulator.
+
 **That survey asked one question — is anything adoptable as a CORE — and a
 second pass on 2026-09-04 asked the other one: what do the finished projects
 DO that we cannot.** Three were read end to end (`mfld-fr/emu86`, **MIT**;
@@ -486,3 +504,57 @@ I disassembled the *running machine* and read a byte the program had
 overwritten as a byte the assembler had emitted. The image on disk was
 correct; the program was scribbling on its own code through a segment alias.
 Both look identical through a debugger and only one is an assembler bug.
+
+---
+
+## State at the end of 2026-09-04
+
+**The tier is consolidated on three remotes**: bw-parts `main`, bw-board
+`master`, bw-circuit-ui `master`. Four sessions worked it; the merges were
+textually clean and the semantic problems were all found by checks rather than
+by reading.
+
+### The core and the engine
+
+Instruction set exact against SingleStepTests (8086 and V20/80186 variants).
+The **cycle model** reached 95.6% on all 323 opcodes — with the caveat stated
+in the same breath, because a score without its split is not a claim:
+leave-one-out **by vector** is 95.6%, leave-one-out **by opcode** is 34.2%. Per-
+opcode calibration is genuinely required; what collapsed was the cost, not the
+requirement. Division is recorded as **searched-and-refused** — ten candidate
+features, none beating ~60%, because the microcode loops on the quotient as it
+is computed and there is no closed form. Named so nobody repeats the search.
+
+`_advanceChips` was **89.2% of `machine.step()`**, nearly all of it a
+per-instruction `Object.keys()` allocation; fixed in all three machines for a
+4.5× / 3.4× / 1.12× win. The spread is the interesting part: the gain scales
+with chip count and inversely with per-chip cost, so the 6502's modest 1.12× is
+evidence the model is right rather than a disappointment.
+
+The **8254 had no crystal of its own** and was being clocked at the CPU rate, so
+the "18.2 Hz BIOS tick" ticked at 76.3 Hz. Found from the outside — a scheduler
+whose waits came out 4.19× short — and fixed with the `advanceMs` pattern the
+OPL and the AY already used.
+
+### What a learner can do
+
+Write pseudocode, choose `i8086`, and press play. The language reaches pins,
+whole ports, a keypad, an ADC, the speaker, PWM, an eight-digit display, and
+**every event hat** — multiple scripts, pin edges, broadcasts and keystrokes —
+on a preemptive scheduler that adds its own interrupt controller and says so.
+Four examples ship and are offered in the picker. See ROADMAP §3.8.
+
+What they cannot do is **draw** the board. The parts exist upstream; lite's
+vendored copies are behind. That is the last piece.
+
+### The lesson that cost the most
+
+`bw-board` master went red on a test that read fixtures from a **git worktree on
+one machine**. It passed here, it passed for the reviewer, and it could never
+have passed in CI — the review that was meant to catch it was itself the
+instance. See `GATES-THAT-CANNOT-FAIL.md`, section 2026-09-04, and the
+mechanical answer: `scripts/audit-clean-checkout.mjs`, which **reproduces**
+(`git archive HEAD` into a temp dir) rather than **detects**.
+
+The first attempt at that tool was a detector, and it reported zero findings
+against the file it was written to catch.

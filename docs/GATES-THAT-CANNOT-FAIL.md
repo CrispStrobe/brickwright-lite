@@ -493,3 +493,108 @@ fails immediately.
 A surviving mutation is a claim about the *test data* at least as often as it is a claim
 about the code. One mutation per clause, and when one survives, fix the fixture before
 concluding the clause is spare.
+
+---
+
+# 2026-09-04: species 10 came back, and it reached master
+
+The list above was written on 2026-09-02. Species 10 — *"a gate bound to an AMBIENT dependency
+rather than the one under test … a checkout outside the repository"* — was already in it, with
+"**yes**" in the Mechanical column, meaning we knew a sweep could find it.
+
+Two days later four sessions shipped a fresh instance of species 10 to `bw-board` master, and
+the review that was supposed to catch it **was itself the instance**.
+
+## What happened
+
+`test/reseat-gate.test.mjs` resolved its fixtures from `../../wt/i8086-ui-cui/gallery` — a git
+worktree on the development box, on an unmerged branch. The three JSON files it reads were
+tracked in no repository. The suite passed on that machine and could never have passed in CI.
+
+I reviewed that tree before it went to master. I ran the suite myself, uncapped, with a real
+exit code and no pipe, *specifically* because I did not want to accept someone else's number.
+It returned **3773 tests / 3727 pass / 0 fail**. It returned that *here*. The number was
+contingent on a path only this box has, and I handed it over as the basis for the push.
+
+**The verification and the defect were the same act.** That is what makes this worth a section
+rather than a row.
+
+### The diagnostic, which is cheap and general
+
+The GREEN case and the RED mutation case **failed together**.
+
+A behaviour change moves one of them. A missing fixture moves both. Any gate with a deliberate
+red-proof gets this for free, and it distinguishes "the thing under test changed" from "the
+thing under test never ran" without any further investigation.
+
+## The sibling species: a check reports on what it FOUND, never on what EXISTS
+
+The nine above are gates that pass while asserting nothing. This is the neighbouring family:
+tools that answer truthfully about a *subset* they silently chose, in a sentence the reader
+hears as being about the whole.
+
+Eight instances, one day, five sessions, every one found by accident:
+
+| Mechanism | Said | Meant |
+| --- | --- | --- |
+| `sparse-checkout` omitted a directory | `1..47 / # fail 0` | six tests could not load; a test that cannot load does not fail |
+| `\| tail` on a test run | exit 0 | `tail`'s status, not the suite's — a failing suite reported green three times |
+| A 26-entry hand-written sync manifest | "vendored engine up to date" | 26 of 120 files compared; the whole 8086 tier outside the list |
+| `--filter=blob:none` clone | no `LICENSE` on disk | MIT, one `sparse-checkout set` away — absence in a sparse clone is evidence of nothing |
+| `df` read on `/` | "85% full, careful" | the repos are on another volume with 33 GB free |
+| `tail` on a self-describing list | two people reported "4" and "5" | the header said 14; each had a different truncated tail, and the *disagreement* was the artifact |
+| A fixed destructure list | every test at both ends green | a new field silently dropped through four hops; the ADC and the scheduler's PIC never reached the board |
+| A cross-repo fixture path | 3773 / 0 fail | true on one machine on Earth |
+
+The unifying repair is not "trust the check less". It is **make the check say what it looked
+at**:
+
+> `26 vendored files up to date -- but only 26 of 120 vendored files are in this manifest;`
+> `94 were NOT checked (run with --dir <checkout> to cover every file)`
+
+A skip that cannot be mistaken for a pass is worth more than a pass.
+
+## The meta-instance, which is the reason to be humble about all of this
+
+The fix for species 10 was to be a detector: wrap `fs`, record every path the process resolves,
+fail on anything outside the repository root. It was written by someone who had spent the day
+hunting checks that cannot fail.
+
+**It reported `0 findings` against the very file it was written to catch.**
+
+`reseat-gate.test.mjs` does `import { statSync } from 'node:fs'`. An ESM named import binds the
+function directly, so patching the module object afterwards intercepts nothing. A detector that
+could not fail, built while hunting gates that could not fail — and it was caught only because
+its author red-proofed it against the known case instead of shipping it green.
+
+### So the answer is REPRODUCE, not DETECT
+
+`scripts/audit-clean-checkout.mjs` (bw-board `380ce99`) does not look for suspicious paths. It
+runs `git archive HEAD` into a temporary directory and runs the tests there.
+
+Anything the tracked tree does not contain is simply absent — whether it was reached by a
+literal path, a computed one, a symlink, a loop that stats candidates, or a mechanism nobody
+has invented yet. A detector needs a list of ways to escape and is only as current as whoever
+last edited it. A reproducer needs no list.
+
+**Detectors encode what we thought of. Reproducers encode the question.**
+
+### And no allow-marker
+
+The first design had a declared-exemption marker for tests that genuinely need a corpus beside
+the repository. That was wrong, and the reason belongs here: such a test must **skip loudly**,
+and a loud skip already passes the reproducer. A marker would let it pass *vacuously* instead —
+converting the one honest outcome into the failure mode this whole document is about.
+
+## Applying it to a NEW test, not just an old one
+
+The habit generalises past auditing other people's work. A machine-contract test was added the
+same day for a cache-invalidation bug — attach a device *after* the first advance and confirm it
+still ticks. It passed on the first run.
+
+A passing test is not a guard. The invalidation line was deleted from all three machines and the
+suite re-run: **23 pass / 3 fail**, red in all three, green again on restore. Only then was it
+believed.
+
+That is the whole discipline in one paragraph, and it is cheap: **the only checks any of us
+caught today were the ones we deliberately tried to break.**
