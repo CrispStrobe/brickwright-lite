@@ -1594,10 +1594,23 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             // ROM 64K high, and the machine then executes open bus from the
             // first instruction while reporting that it started fine.
             setStatus('attaching', 'loading the XT BIOS…');
-            const res = await fetch(new URL('static/roms/bios8086.bin', document.baseURI).href);
-            if (!res.ok) throw new Error(`Failed to load bios8086.bin: HTTP ${res.status}`);
+            // THIS FILENAME WAS WRONG AND NOTHING NOTICED. It read
+            // `bios8086.bin`, which has never existed in static/roms, so the
+            // no-media path 404ed on every run since it was written. Nothing
+            // caught it because nothing REACHED it: the tests build a machine
+            // directly and the Machine Loader always supplies media, so this
+            // fallback is a path only a user takes. test/rom-paths-exist.test.mjs
+            // now checks every static/roms string against the filesystem,
+            // because what was wrong here was a STRING, and no unit test of
+            // this branch would have found it -- the branch is correct.
+            const res = await fetch(new URL('static/roms/i8086-bios.bin', document.baseURI).href);
+            if (!res.ok) throw new Error(`Failed to load i8086-bios.bin: HTTP ${res.status}`);
             targetOpts.rom = new Uint8Array(await res.arrayBuffer());
-            targetOpts.romAt = 0xF0000;
+            // 64K, so it maps at F0000h and the reset vector at FFFF0h falls in
+            // its last sixteen bytes. `0x100000 - length` is the rule the
+            // Machine Loader uses; it gives the same answer here and the right
+            // one for the 32K demo ROMs beside it.
+            targetOpts.romAt = 0x100000 - targetOpts.rom.length;
             if (machineConfig) targetOpts.config = benchConfigI8086();
             // No serial console on this ROM, and saying so is the point: its
             // INT 14h is a stub and the BIOS equipment word reports no COM
