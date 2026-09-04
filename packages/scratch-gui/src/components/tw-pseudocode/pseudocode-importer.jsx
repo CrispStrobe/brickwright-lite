@@ -240,7 +240,8 @@ const L10N = {
             Statements: 'Statements', Declare: 'Declare (pseudocode tab)', Pins: 'Pins',
             Notes: 'Notes', Profiles: 'Profiles', LineNumbers: 'Line numbers', IO: 'I/O',
             Overview: 'Overview', Verbs: 'Verbs',
-            Registers: 'Registers', Workflow: 'Workflow', Addressing: 'Addressing'
+            Registers: 'Registers', Workflow: 'Workflow', Addressing: 'Addressing',
+            I8086: '8086 (MASM, assembled here)'
         }
     },
     de: {
@@ -380,7 +381,8 @@ const L10N = {
             Statements: 'Anweisungen', Declare: 'Deklarieren (Pseudocode-Tab)', Pins: 'Pins',
             Notes: 'Hinweise', Profiles: 'Profile', LineNumbers: 'Zeilennummern', IO: 'Ein/Ausgabe',
             Overview: 'Übersicht', Verbs: 'Verben',
-            Registers: 'Register', Workflow: 'Arbeitsablauf', Addressing: 'Adressierung'
+            Registers: 'Register', Workflow: 'Arbeitsablauf', Addressing: 'Adressierung',
+            I8086: '8086 (MASM, hier assembliert)'
         }
     }
 };
@@ -618,13 +620,25 @@ const SUPPORTED = {
     asm: [
         ['Workflow', ['Source mode: write, assemble, run',
             'Listing mode: view compiled disassembly',
-            'Per-device: 8051 (sdas8051), 6502 (ca65), AVR (avr-as)']],
+            'Hosted: 8051 (sdas8051), 6502 (ca65), Z80 (sdasz80), AVR (avr-as)',
+            'In this browser: 8086/8088 (MASM subset) — no network']],
         ['Registers', ['A, B, DPTR, SP, PSW (8051)',
             'R0–R7 (register bank), SFRs',
             'Carry (C), Overflow (OV), Parity (P)']],
         ['Addressing', ['MOV A, #imm / MOV A, addr',
             'MOV @R0, A (indirect)', 'MOVC A, @A+DPTR (code memory)',
-            'SJMP / LJMP / AJMP, LCALL / ACALL']]
+            'SJMP / LJMP / AJMP, LCALL / ACALL']],
+        // The 8086 is a different assembler, a different syntax and a
+        // different machine underneath; folding it into the 8051 rows above
+        // would have made a reference that is wrong for both.
+        ['I8086', ['.MODEL SMALL / .STACK / .DATA / .CODE',
+            'PROC … ENDP, MACRO … ENDM, END <entry>',
+            'MOV AX, @DATA / MOV DS, AX  (an .EXE needs it)',
+            'INT 21h: AH=02h char, 09h string ($-ended), 4Ch exit',
+            'INT 10h: AH=0Eh teletype, 09h char+attribute, 02h cursor',
+            'Output is the CGA text page — no serial console here',
+            'No 80186+: SHL AX,4 is expanded and warns; no 8087',
+            'No keyboard yet: a program that waits for one will sit there']]
     ],
     micropython: [
         ['Overview', ['MicroPython for micro:bit v2',

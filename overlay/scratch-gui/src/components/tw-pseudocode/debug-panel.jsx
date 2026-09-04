@@ -5,6 +5,7 @@ import {connect} from 'react-redux';
 import DebugDrawer from './debug-drawer.jsx';
 import DebugInspector from './debug-inspector.jsx';
 import DebugFrames from './debug-frames.jsx';
+import {mergeTargetKinds} from '../../lib/bw-debug/target-kinds.js';
 
 // VDP screen — lazy-loaded, only renders when the runner has video output.
 const VdpScreen = React.lazy(() =>
@@ -266,7 +267,13 @@ class DebugPanel extends React.Component {
         import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/index.js')
             .then(async m => {
                 if (!m.getTargetKinds) return;
-                const kinds = m.getTargetKinds();
+                // ...plus the kinds the app can SELECT and bw-board does not
+                // yet LIST. A <select> whose value matches no option shows
+                // the first one instead, so an 8086 run would have read
+                // "Simulated (STC12 / 8051)". See lib/bw-debug/target-kinds.js
+                // — the merge is idempotent, so the upstream fix costs
+                // nothing here.
+                const kinds = mergeTargetKinds(m.getTargetKinds());
                 // The heavy tier is offered only if its engine is actually
                 // here. It is a 20 MB artifact fetched at deploy time and
                 // loaded on demand, so unlike every other kind it can be

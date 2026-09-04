@@ -1322,11 +1322,20 @@ class CircuitTab extends React.Component {
                         const rres = await fetch(`examples/${romPath}`);
                         if (!rres.ok) throw new Error(`HTTP ${rres.status}`);
                         const bytes = new Uint8Array(await rres.arrayBuffer());
+                        // An 8086/8088 must not fall through to the 6502
+                        // bench: its ROM would be run as 6502 opcodes and
+                        // the panel would show a plausible, wrong machine.
+                        // The 8088 shares the 8086's kind for the same
+                        // reason the extractor and the core do — same
+                        // instruction set, different bus width.
+                        const kind = cpu.kind === 'z80' ? 'z80'
+                            : /^(i8086|8086|i8088|8088)$/.test(cpu.kind) ? 'i8086'
+                                : 'eater6502';
                         window.dispatchEvent(new CustomEvent('bw-machine-media-load', {
                             detail: {
                                 slotId: 'rom',
                                 bytes,
-                                kind: cpu.kind === 'z80' ? 'z80' : 'eater6502',
+                                kind,
                                 profile: null,
                                 name: romPath.split('/').pop(),
                             },

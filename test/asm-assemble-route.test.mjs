@@ -208,3 +208,44 @@ test('an assembled 8086 image is delivered as a DOS executable, not as a ROM', (
     assert.match(runner, /createI8086DosBench/,
         'debug-runner still refuses DOS executables, so nothing the ASM tab builds can run');
 });
+
+test('the engine picker can express every kind the panel can select', async () => {
+    // A <select> whose value matches no option renders the FIRST option.
+    // debug-panel selects 'i8086' from two maps; bw-board's getTargetKinds()
+    // does not list it (the factory grew the target and the menu did not),
+    // so without the merge the panel would run an 8086 image while its own
+    // picker read "Simulated (STC12 / 8051)".
+    //
+    // This is not a regex check on the merge. It reads the panel's ACTUAL
+    // selection tables, calls bw-board's ACTUAL list, and runs the SAME
+    // merge function the panel calls.
+    const {getTargetKinds} = await import(
+        '../overlay/scratch-gui/src/lib/bw-board/debug-target-factory.js');
+    const {mergeTargetKinds} = await import(
+        '../overlay/scratch-gui/src/lib/bw-debug/target-kinds.js');
+    const src = readFileSync(
+        join(REPO, 'overlay/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx'), 'utf8');
+
+    const selectable = new Set();
+    for (const name of ['DEVICE_TO_KIND', 'CORE_TO_KIND']) {
+        const at = src.indexOf(`const ${name} = {`);
+        assert.notEqual(at, -1, `${name} is gone — this gate no longer reads what the panel selects`);
+        const body = src.slice(at, src.indexOf('};', at));
+        for (const m of body.matchAll(/:\s*'([a-z0-9_-]+)'/gi)) selectable.add(m[1]);
+    }
+    assert.ok(selectable.has('i8086'),
+        'the panel cannot select the 8086 at all, so nothing reaches the 8086 engine');
+    assert.ok(selectable.size >= 8, `only ${selectable.size} kinds parsed — the tables moved`);
+
+    const offered = new Set(mergeTargetKinds(getTargetKinds()).map(k => k.kind));
+    for (const kind of selectable) {
+        assert.ok(offered.has(kind),
+            `the panel can select '${kind}' and the picker has no option for it, so the ` +
+            'picker would show a different engine than the one that is running');
+    }
+    // And the merge must not be doing it twice, now or after bw-board grows
+    // its own entry.
+    const twice = mergeTargetKinds(mergeTargetKinds(getTargetKinds()));
+    assert.equal(twice.filter(k => k.kind === 'i8086').length, 1,
+        'mergeTargetKinds is not idempotent, so the upstream fix would duplicate the entry');
+});
