@@ -1096,6 +1096,41 @@ The rule, learned the expensive way: **before fixing a file under `lib/bw-board/
 name every file they own. Fixing it here is not a shortcut to fixing it there; it is a fix that
 will be deleted by the next person doing their job correctly.
 
+## D-METHOD1 — conceding a correct number to a confident correction (2026-09-04)
+
+Not a defect in the product. A defect in how two sessions checked each other, recorded because it
+produced three wrong figures in one afternoon and would otherwise live only in a chat transcript —
+which is the failure D-FIRSTLOAD1 was filed to avoid.
+
+**What happened.** code-28 wrote that `builtinExtensions` has 38 entries, 26 of them gallery
+extensions. Both were right. bw-ci "corrected" it to 37 and 27; both were wrong — 37 counts entries
+whose path merely STARTS with `../extensions/`, and 27 sweeps up a
+`require('../extensions/crispstrobe/adapter')` that sits outside the object.
+
+**The part worth recording is what code-28 did next**, in their own words: rather than test whether
+the incoming number survived the same check, they re-ran their own grep, got 26 again, and
+*invented a mechanism for why they must be wrong* — "my regex missed a line-wrapped entry" — and
+reported it as a finding. Verified afterwards by parsing the object: there are ZERO line-wrapped
+entries. The explanation was manufactured to fit a conclusion that a confident peer had supplied.
+
+**Why it matters more than the miscounts.** A bad count is an instrument problem and this ledger is
+full of them. Abandoning correct data because the contradiction arrived confidently is a different
+thing: it converts one person's error into an agreed fact, and it does so most easily between people
+who are actively trying to check each other. It happened in the same exchange where both sessions
+were congratulating themselves for not accepting each other's numbers.
+
+**The cheap check that was skipped.** Not "where did I go wrong" — which assumes the answer — but
+"does THEIR number survive the test mine just survived". Re-running your own measurement cannot
+distinguish the two cases; only applying the same test to the other figure can.
+
+**Applied form.** When a correction arrives for a number you measured: re-derive BOTH figures by a
+method that does not share the first one's failure mode. Here that meant parsing the object rather
+than grepping the file, and it settled 38/26/0-line-wrapped in one pass. If you find yourself
+constructing a story for why you were wrong, that is the signal to test the other number instead.
+
+Credited to code-28, who caught it in themselves and said so unprompted after the tally had already
+been agreed in their favour.
+
 ## D-FIRSTLOAD1 — 3.41 MB of first paint is 26 extension bodies that only LOOK lazy (2026-09-04)
 
 Found by bw-ci while fixing the labwired probe, characterised by them, deliberately not landed,
