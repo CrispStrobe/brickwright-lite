@@ -1621,6 +1621,22 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             // wireMachineBench would otherwise offer a `loadRom` that writes
             // into a machine whose program is already resident.
             wireMachineBench({target: bench.target, adapter: {}}, createDebugSession);
+            // TYPING INTO A DOS PROGRAM. wireMachineBench installs a
+            // sendSerial that calls adapter.sendSerial, and this bench has no
+            // adapter — so without this override the console accepts what a
+            // user types and drops it, which is worse than refusing: the text
+            // appears in the box and the program never sees it.
+            //
+            // The DOS key queue IS this machine's keyboard. It has no PIC and
+            // therefore no IRQ1, so the hardware scancode path cannot exist
+            // here; a program blocked in INT 21h/AH=01h wakes on the next
+            // service call. Both shapes are honoured for the same reason the
+            // serial path honours both: SerialConsole sends one keycode at a
+            // time and a typed line arrives as a string.
+            runner.sendSerial = (data) => {
+                bench.sendKeys(typeof data === 'number'
+                    ? String.fromCharCode(data & 0xff) : String(data));
+            };
             if (exited === null) {
                 setStatus('ready',
                     `${bootMedia.name || 'program'} loaded as a .${format} on the DOS bench ` +
