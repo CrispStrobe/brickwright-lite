@@ -617,6 +617,20 @@ jobs:
       - name: Browser gate — four-surface project save, reopen and vanilla replacement
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-project-bundle-integrity.mjs
+      # The costume half of the same question. The gate above proves the four
+      # Brickwright surfaces round-trip; nothing proved the ARTWORK did, and the
+      # paint editor is the one payload a learner edits in a separate editor
+      # with its own asset pipeline (paper.js for vector, a canvas re-encode for
+      # bitmap). Compares content hashed from asset.data, not declared ids.
+      - name: Browser gate — costume artwork survives save and reload, vector and bitmap
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-costume-roundtrip.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.playwright.outcome == 'success'
+        with:
+          name: costume-roundtrip-proof
+          path: artifacts/costume-roundtrip/*
+          if-no-files-found: warn
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always() && steps.playwright.outcome == 'success'
         with:
