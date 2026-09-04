@@ -56,6 +56,17 @@ async function run (lines) {
     return {out, ports};
 }
 
+/** The bench itself, run and left alive, so a test can poke the chip the way
+ *  a wrong program used to. */
+async function bench (lines) {
+    const out = await build(lines);
+    const b = await createI8086DosBench({bytes: out.bytes, format: out.format});
+    b.target.run();
+    let slices = 0;
+    while (!b.terminated && slices++ < 400) b.target.runFor(5e6);
+    return b;
+}
+
 const P = (decls, body) => ['DEVICE i8086', ...decls, 'WHEN flag clicked:', ...body];
 
 // ---- the control word, across every declaration shape ---------------------
@@ -93,45 +104,54 @@ test('a program with no pins writes no mode word at all', async () => {
 
 // ---- direction versus use: the gap ----------------------------------------
 
-test('KNOWN GAP: writing a pin declared INPUT builds silently', async () => {
-    // Nothing compares a pin's declared DIRECTION against how it is USED. The
-    // program builds clean and warns about nothing.
+test('writing a pin declared INPUT is REFUSED — the gap this pinned is closed', async () => {
+    // THIS PINNED A GAP AND THE GAP IS SHUT. It asserted that `turn on` an
+    // INPUT pin warned about nothing, with a note saying to assert the message
+    // once it did. It does now, so this asserts the message.
+    //
+    // The reason it had to be the COMPILER is the measurement this file made:
+    //   OUTPUT + turn on:  latch=0x01  dir=0xff  pins=0x01   the LED lights
+    //   INPUT  + turn on:  latch=0x01  dir=0x00  pins=0xff   nothing lights
+    // Every layer correct, nothing to report, only the declaration knows.
     for (const body of [['  turn on sw'], ['  turn off sw'], ['  toggle sw']]) {
-        const out = await build(P(['PIN sw = P2.0 INPUT'], body));
-        assert.deepEqual(out.warnings, [],
-            `"${body[0].trim()}" on an INPUT pin currently warns about nothing — if this now `
-            + 'warns, the gap is closed and this test should assert the message instead');
+        await assert.rejects(() => build(P(['PIN sw = P2.0 INPUT'], body)),
+            /declared INPUT and this writes to it/,
+            `"${body[0].trim()}" on an INPUT pin must be refused by name`);
     }
 });
 
-test('and the MACHINE is right, which is exactly why the learner sees nothing', async () => {
-    // THE WHOLE STACK IS CORRECT HERE and that is the finding. The write lands
-    // in the latch, the chip is not driving the port, and the pins carry the
-    // input instead — which is what an 8255 does. So the LED does not light,
-    // nothing is wrong at any layer the machine can see, and there is nothing
-    // for it to report. Only the compiler knows the declaration said INPUT.
-    const driven = await run(P(['PIN led = P2.0 OUTPUT'], ['  turn on led']));
-    assert.equal(driven.ports.b.dir, 0xff, 'an OUTPUT port drives every bit');
-    assert.equal(driven.ports.b.pins & 0x01, 0x01, 'and the pin carries the 1 — the LED lights');
+test('the MACHINE is right, which is why only the compiler could have caught it', async () => {
+    // THE FINDING THIS FILE EXISTS FOR, and it has to be driven at the MACHINE
+    // now: the compiler refuses to write an INPUT pin, so the wrong program
+    // can no longer be built. The 8255 behaviour it demonstrated is unchanged
+    // and is the reason the refusal belongs where it does.
+    //
+    // Port B configured as an INPUT, then the latch written anyway -- exactly
+    // what the old compiler output did:
+    const r = await run(P(['PIN led = P2.0 OUTPUT'], ['  turn on led']));
+    assert.equal(r.ports.b.dir, 0xff, 'an OUTPUT port drives every bit');
+    assert.equal(r.ports.b.pins & 0x01, 0x01, 'and the pin carries the 1 -- the LED lights');
 
-    const undriven = await run(P(['PIN sw = P2.0 INPUT'], ['  turn on sw']));
-    assert.equal(undriven.ports.b.value & 0x01, 0x01, 'the write DID reach the latch');
-    assert.equal(undriven.ports.b.dir, 0x00, 'but the chip is not driving the port');
-    assert.equal(undriven.ports.b.pins & 0x01, 0x01,
-        'so the pin reads the input, not the latch — the LED never lights');
+    // The same write onto a port the chip is NOT driving. 82h is mode 0 with
+    // port B an input; the OUT then lands in a latch nobody reads.
+    const b = await bench(P(['PIN led = P2.0 OUTPUT'], ['  turn on led']));
+    b.machine._out(0x63, 0x82);          // port B: input
+    b.machine._out(0x61, 0x01);          // write the latch anyway
+    const port = b.target.outputs().find((o) => o.port === 'b');
+    assert.equal(port.value & 0x01, 0x01, 'the write DID reach the latch');
+    assert.equal(port.dir, 0x00, 'but the chip is not driving the port');
+    assert.equal(port.pins & 0x01, 0x01,
+        'so the pin reads the input, not the latch -- nothing the machine can call wrong');
 });
 
-test('KNOWN GAP: reading a pin declared OUTPUT builds silently', async () => {
-    // An 8255 output port reads back its LATCH, which is defensible hardware
-    // behaviour and is not what a learner means by "read". `read led` answers
-    // "what did I last write", not "what is the wire doing".
-    const out = await build(P(['PIN led = P2.0 OUTPUT'],
-        ['  IF (read led) = 1 THEN:', '    say 1']));
-    assert.deepEqual(out.warnings, [],
-        'if this now warns, the gap is closed — assert the message instead');
+test('reading a pin declared OUTPUT is REFUSED — the mirror gap, also closed', async () => {
+    // Not a fault at the chip: an 8255 output port reads back the LATCH, so it
+    // answers with whatever the program last wrote. It answers something the
+    // learner did not ask, which is worse than refusing.
+    await assert.rejects(
+        () => build(P(['PIN led = P1.0 OUTPUT'], ['  IF (read led) = 1 THEN:', '    turn off led'])),
+        /declared OUTPUT and this reads it/);
 });
-
-// ---- the one the author bet on, and it is not a defect --------------------
 
 test('the keyboard and the 8255 do not collide on THIS bench, and the reason is the PIC',
     async () => {

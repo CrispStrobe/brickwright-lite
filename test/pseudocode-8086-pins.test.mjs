@@ -208,3 +208,59 @@ test('port C is two half-ports, so four switches and four LEDs can share it', as
     assert.match(built.asm, /MOV AL, 129\b/,
         'C lower in (0x01), C upper OUT — 0x81, not 0x89');
 });
+
+// ---------------------------------------------------------------------------
+// Direction: the one mistake the MACHINE cannot report
+// ---------------------------------------------------------------------------
+
+test('writing an INPUT pin is refused, because nothing lower could ever tell you', async () => {
+    // Measured before this check existed:
+    //   OUTPUT + turn on:  latch=0x01  dir=0xff  pins=0x01   the LED lights
+    //   INPUT  + turn on:  latch=0x01  dir=0x00  pins=0xff   nothing lights
+    //
+    // The write reaches the latch, the chip is not driving the port, the pins
+    // carry the input. EVERY LAYER IS CORRECT -- that is an 8255 doing exactly
+    // what an 8255 does -- so there is no error for the machine to report and
+    // no warning it could honestly raise. Only the compiler still knows the
+    // declaration said INPUT.
+    await assert.rejects(() => run([
+        'DEVICE i8086',
+        'PIN sw = P1.0 INPUT',
+        'WHEN flag clicked:',
+        '  turn on sw',
+    ]), /declared INPUT and this writes to it[\s\S]*nothing lights/);
+});
+
+test('toggling an INPUT pin is refused too — the same write by another name', async () => {
+    await assert.rejects(() => run([
+        'DEVICE i8086',
+        'PIN sw = P2.1 INPUT',
+        'WHEN flag clicked:',
+        '  toggle sw',
+    ]), /declared INPUT and this writes to it/);
+});
+
+test('reading an OUTPUT pin is refused, and the message says what it WOULD have answered', async () => {
+    // The mirror, and it is not a fault: an 8255 output port reads back the
+    // LATCH, so it answers with whatever this program last wrote. It answers
+    // something the learner did not ask, which is worse than refusing.
+    await assert.rejects(() => run([
+        'DEVICE i8086',
+        'PIN led = P1.0 OUTPUT',
+        'WHEN flag clicked:',
+        '  IF (read led) = 1 THEN:',
+        '    turn off led',
+    ]), /declared OUTPUT and this reads it[\s\S]*reads back the LATCH/);
+});
+
+test('and the correct directions still work, so the check is not just refusing', async () => {
+    const r = await run([
+        'DEVICE i8086',
+        'PIN sw = P3.0 INPUT',
+        'PIN led = P1.0 OUTPUT',
+        'WHEN flag clicked:',
+        '  IF (read sw) = 1 THEN:',
+        '    turn on led',
+    ]);
+    assert.deepEqual(r.built.warnings, []);
+});

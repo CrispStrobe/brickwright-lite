@@ -651,6 +651,47 @@ class Emitter {
     }
 
     /**
+     * WRITING AN INPUT PIN, OR READING AN OUTPUT ONE — refused here because
+     * NOTHING ELSE CAN SEE IT.
+     *
+     * The review lane measured what happens without this check, and the
+     * measurement is the argument:
+     *
+     *     OUTPUT + turn on:  latch=0x01  dir=0xff  pins=0x01   the LED lights
+     *     INPUT  + turn on:  latch=0x01  dir=0x00  pins=0xff   nothing lights
+     *
+     * The write reaches the latch, the chip is not driving the port, and the
+     * pins carry the input. **Every layer is behaving correctly** -- that is
+     * an 8255 doing exactly what an 8255 does -- so there is nothing for the
+     * machine to report and no warning it could honestly raise. The learner
+     * sees a program that runs and a lamp that never lights.
+     *
+     * ONLY THE COMPILER KNOWS THE DECLARATION SAID INPUT. That is the whole
+     * reason this belongs here and nowhere lower: by the time the write
+     * reaches the chip, the intent is gone.
+     *
+     * Reading an OUTPUT pin is the mirror and is refused for the mirror
+     * reason: an 8255 output port reads back the LATCH, so the value is
+     * whatever the program last wrote. It is not a fault, it answers, and it
+     * answers something the learner did not ask.
+     */
+    checkDirection (pin, want, opcode) {
+        if (pin.direction === want) return;
+        const what = want === 'output'
+            ? `"${pin.name}" is declared INPUT and this writes to it`
+            : `"${pin.name}" is declared OUTPUT and this reads it`;
+        const why = want === 'output'
+            ? 'An 8255 accepts the write and does not drive the pin, so the program runs '
+                + 'and nothing lights -- there is no error for the machine to report, because '
+                + 'nothing went wrong at the chip. Change the PIN line to OUTPUT, or write a '
+                + 'different pin.'
+            : 'An 8255 output port reads back the LATCH -- whatever this program last wrote '
+                + 'to it -- not the outside world. It answers, and it answers something you '
+                + 'did not ask. Change the PIN line to INPUT, or read a different pin.';
+        refuse(`${what}. ${why}`, `pin direction ${want}`, opcode);
+    }
+
+    /**
      * Drive one pin. The 8255 has NO read-modify-write on an output port --
      * reading one back gives the latch, which is fine, but a program that
      * shares a port between two pins must not clobber the neighbour. So the
@@ -659,6 +700,7 @@ class Emitter {
      */
     emitPin (name, level, opcode) {
         const p = this.pinAddr(name, opcode);
+        this.checkDirection(p, 'output', opcode);
         this.uses.ppi = true;
         const shadow = `BW_PORT${p.PORT}`;
         const mask = 1 << p.bit;
@@ -675,6 +717,7 @@ class Emitter {
     /** Toggle: the same shadow, XOR'd. */
     emitPinToggle (name, opcode) {
         const p = this.pinAddr(name, opcode);
+        this.checkDirection(p, 'output', opcode);
         this.uses.ppi = true;
         this.op(`MOV AL, [BW_PORT${p.PORT}]`);
         this.op(`XOR AL, ${1 << p.bit}`);
@@ -705,6 +748,7 @@ class Emitter {
      */
     emitPinRead (name, opcode) {
         const p = this.pinAddr(name, opcode);
+        this.checkDirection(p, 'input', opcode);
         this.uses.ppi = true;
         this.op(`MOV DX, ${p.dataPort}`);
         this.op('IN AL, DX');
