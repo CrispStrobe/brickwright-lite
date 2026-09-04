@@ -301,7 +301,25 @@ const PROGRAMS = {
         `WHEN flag clicked:\n  IF (1 = 1) and (2 = 2) THEN:\n    say "and"\n  IF (1 = 2) or (2 = 2) THEN:\n    say "or"\n  IF NOT (2 > 3) THEN:\n    say "not"\n`,
         ['and', 'or', 'not']],
     control_stop: [
-        `WHEN flag clicked:\n  say "a"\n  stop this script\n  say "b"\n`, ['a']]
+        `WHEN flag clicked:\n  say "a"\n  stop this script\n  say "b"\n`, ['a']],
+    // ── pins and the keypad ──────────────────────────────────────────────
+    // These lower to 8255 port writes and reads. They are listed in SUPPORTED,
+    // so by the rule below they need programs that actually run them.
+    'stc12_setpin / stc12_toggle': [
+        `DEVICE i8086\nPIN led = P1.0 OUTPUT\nWHEN flag clicked:\n  turn on led\n  toggle led\n  say "pin"\n`,
+        ['pin']],
+    stc12_read: [
+        // An 8255 input port with nothing driving it reads high, which is what
+        // a real one does -- the pins are pulled up and the chip is not driving.
+        `DEVICE i8086\nPIN sw = P2.0 INPUT\nWHEN flag clicked:\n  say (read sw)\n`,
+        ['1']],
+    stc12_keypad: [
+        // NOTHING PRESSED IS -1, NOT 0, and that is the STC extension's
+        // contract verbatim rather than a choice made here: a keypad that
+        // answered 0 would be indistinguishable from a pressed key 0.
+        `DEVICE i8086\nPART pad = KEYPAD4X4 ROWS P3.0 P3.1 P3.2 P3.3 COLS P2.0 P2.1 P2.2 P2.3\n`
+            + `WHEN flag clicked:\n  say (read pad)\n`,
+        ['-1']],
 };
 
 for (const [what, [source, expect]] of Object.entries(PROGRAMS)) {
