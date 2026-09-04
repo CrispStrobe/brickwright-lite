@@ -419,24 +419,40 @@ jobs:
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         run: node scripts/verify-labwired-lazy-bundle.mjs
 
+      # The debugger smoke compares lite's own emitter against an INDEPENDENT
+      # disassembler, which lives in another repo. Fetching it is what turns
+      # this step from a permanent skip into a verdict — see below.
+      - name: Fetch stc-compiler (the debugger smoke's disassembly oracle)
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: CrispStrobe/stc-compiler
+          path: .stc-compiler
+
       - name: Smoke-test the debugger
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        env:
+          STC_COMPILER: ${{ github.workspace }}/.stc-compiler
         run: |
           if ! grep -q '"smoke:debugger"' package.json; then
             echo "::error::package.json has no smoke:debugger script — the debugger is untested"
             exit 1
           fi
-          # smoke:debugger needs SDCC + stc-compiler locally. In CI, report
-          # absence rather than silently skipping — but do not fail the build
-          # for a tool the runner cannot provide.
-          npm run smoke:debugger || {
-            EXIT=$?
-            if [ $EXIT -eq 2 ]; then
-              echo "::warning::smoke:debugger skipped (exit 2 = missing local tool, e.g. SDCC). Runs locally."
-            else
-              exit $EXIT
-            fi
-          }
+          # Exit 2 means "a prerequisite is missing", and it USED to be
+          # downgraded to a warning here. Because the runner had no compiler,
+          # that downgrade ran on every build for months: the step was green,
+          # the debugger was never exercised, and three real defects sat behind
+          # it (D-SMOKE1, then D-EMU-BP2 and D-EMU-BP3 once it could run).
+          #
+          # CI now supplies everything the script needs. The 8051 toolchain is
+          # in-tree WASM and runs under Node, native sdcc is NOT required
+          # (measured: the script exits 0 with sdcc absent from PATH), and the
+          # disassembly oracle is checked out above. So exit 2 no longer means
+          # "a tool this runner cannot provide" — it means the workflow is
+          # broken, and it fails.
+          # No `||` branch on purpose: this step no longer swallows anything,
+          # and the script's own stderr names any missing prerequisite.
+          npm run smoke:debugger
 
       # Browser acceptance BEFORE the artifact leaves this job. The
       # 930000d incident shipped a wall-to-wall visual regression on
@@ -601,6 +617,20 @@ jobs:
       - name: Browser gate — four-surface project save, reopen and vanilla replacement
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-project-bundle-integrity.mjs
+      # The costume half of the same question. The gate above proves the four
+      # Brickwright surfaces round-trip; nothing proved the ARTWORK did, and the
+      # paint editor is the one payload a learner edits in a separate editor
+      # with its own asset pipeline (paper.js for vector, a canvas re-encode for
+      # bitmap). Compares content hashed from asset.data, not declared ids.
+      - name: Browser gate — costume artwork survives save and reload, vector and bitmap
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-costume-roundtrip.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.playwright.outcome == 'success'
+        with:
+          name: costume-roundtrip-proof
+          path: artifacts/costume-roundtrip/*
+          if-no-files-found: warn
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always() && steps.playwright.outcome == 'success'
         with:
@@ -674,6 +704,19 @@ jobs:
       # says ready. It skips (exit 0) when the engine artifact is absent or the
       # remote compiler is unreachable, since neither is a regression in this
       # repo — but the engine IS fetched above, so in CI it runs for real.
+      # Traffic, not bundle location — the two are different claims and only one
+      # was gated. verify-labwired-lazy-bundle asserts the loader stays out of
+      # the entry bundle (true throughout); this asserts the app does not FETCH
+      # the 20 MB engine before anyone asks. It did, on every first load.
+      - name: Browser gate — the heavy engine is not downloaded on first load
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-first-load-weight.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.playwright.outcome == 'success'
+        with:
+          name: first-load-weight
+          path: artifacts/first-load-weight/*
+          if-no-files-found: warn
       - name: Browser gate — the labwired heavy tier actually executes
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: node scripts/verify-labwired-engine.mjs
@@ -860,7 +903,18 @@ jobs:
             wait-report.json
           if-no-files-found: warn
 
+      # `!cancelled()` because the built app is the primary DIAGNOSTIC, and the
+      # runs you most want to inspect are the ones that failed. Without it this
+      # step carries an implicit success() and is skipped after any red gate, so
+      # a failing run uploads proof artifacts for the gates that passed and NOT
+      # the app they were driving. Measured on PR #105: two gates failed, no
+      # github-pages artifact, and the only way to reproduce locally was to fix
+      # the tree and run CI again — a full queue cycle to learn what one download
+      # would have shown. Deploying is unaffected: the `deploy` job needs `build`
+      # to have succeeded, so an artifact from a red run can be downloaded and
+      # never published.
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        if: ${{ !cancelled() && steps.build_editor.outcome == 'success' }}
         with: { path: packages/scratch-gui/build }
 
   # THE MISMATCHED-TREE HAZARD, and why parallel builds are safe here when a

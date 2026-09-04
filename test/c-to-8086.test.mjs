@@ -143,3 +143,44 @@ test('the startup calls main and hands its value to DOS — both halves asserted
         'exactly one `bits 16` — the compiler emits one and the startup emits one, '
         + 'and two is a duplicate directive rather than a harmless repeat');
 });
+
+test('main(argc, argv) gets 0 and NULL, not whatever was on the stack', {timeout: 60000}, async () => {
+    // THE STARTUP CALLED main WITH NOTHING PUSHED. `int main(void)` never
+    // looks, so every test above passed and the defect stayed invisible --
+    // but SmallerC is cdecl, so a program declaring `main(int argc, char
+    // **argv)` reads argc from [bp+4] and argv from [bp+6], which was
+    // whatever the stack happened to hold below a .COM's SP.
+    //
+    // A hosted C program is entitled to argc == 0 or 1 and an argv it can
+    // test against NULL. Garbage there does not crash: it produces a program
+    // that loops over arguments that do not exist, which on this bench looks
+    // like a learner's own bug.
+    const r = await runC('int main(int argc, char **argv) { return argc; }\n');
+    assert.ok(r.terminated, `the program did not reach its own exit in ${r.steps} steps`);
+    assert.equal(r.exitCode, 0, 'argc must be 0, not a stack leftover');
+
+    // argv must be NULL, and it is checked THROUGH C rather than by reading
+    // the stack, because what matters is what the program sees.
+    const nul = await runC('int main(int argc, char **argv) { return argv == 0 ? 42 : 7; }\n');
+    assert.equal(nul.exitCode, 42, 'argv must be a null pointer the program can test');
+
+    // And main(void) still works — the added pushes must not disturb it.
+    const plain = await runC('int main(void) { return 9; }\n');
+    assert.equal(plain.exitCode, 9, 'main(void) is unaffected by the argument frame');
+
+    // THE BEHAVIOURAL CHECKS ABOVE CAN PASS BY LUCK, and they did. Removing
+    // the argv push and re-running left all three green: with one push the
+    // frame shifts, argc reads the remaining zero and argv reads an address
+    // that WRAPS to the bottom of the segment, which happened to hold zero.
+    // Measured, as a mutation, after writing them.
+    //
+    // So the frame is also asserted structurally, on our own startup string,
+    // which is the part a regression actually deletes. Two pushes before the
+    // call and a matching cleanup after it -- deterministic, and it does not
+    // depend on what the stack happens to contain.
+    const startup = plain.built.asm.slice(0, plain.built.asm.indexOf('call _main'));
+    assert.equal((startup.match(/^\s*push\s+ax\s*$/gim) || []).length, 2,
+        'TWO words must be pushed before main: argv then argc, right-to-left');
+    assert.match(plain.built.asm, /call\s+_main[\s\S]*?add\s+sp,\s*4/i,
+        'and the caller must clean its own 4 bytes — cdecl');
+});

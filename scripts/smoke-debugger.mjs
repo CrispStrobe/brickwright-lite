@@ -40,12 +40,24 @@ const STCC = process.env.STC_COMPILER || path.resolve(repo, '../../stc-compiler'
 for (const [what, where] of [['the integrated tree (npm run integrate)', LITE],
     ['a webpack build (static/emu8051.wasm)', path.join(BUILD, 'static/emu8051.wasm')],
     ['the in-tree SDCC WASM toolchain', path.join(SDCC_DIST, 'sdcc.js')],
-    ['stc-compiler (set STC_COMPILER)', path.join(STCC, 'stc_symtab.py')]]) {
+    ['stc-compiler (set STC_COMPILER)', path.join(STCC, 'stc_disasm.py')]]) {
     if (!existsSync(where)) { console.error(`smoke-debugger: missing ${what}: ${where}`); process.exit(2); }
 }
-// gate-shapes-allow: this IS the fail-closed check — no runnable sdcc means exit 2, not a pass.
-try { execFileSync('sdcc', ['--version'], { stdio: 'pipe' }); }
-catch { console.error('smoke-debugger: no runnable sdcc on PATH'); process.exit(2); }
+// A runnable native `sdcc` is deliberately NOT checked here.
+//
+// Measured 2026-09-03: with sdcc removed from PATH entirely this script still
+// exits 0. Every supported 8051 target is compiled by the IN-TREE WASM
+// toolchain, which now runs under Node, and the native fallback below is never
+// reached for them — instrumenting it showed it is not called once in a full
+// run.
+//
+// Checking it here cost the entire gate. The check exits 2, the CI step
+// downgraded exit 2 to a warning, and so for months the debugger smoke was
+// green-by-absence over a compiler it never needed: three real defects sat
+// behind it (D-SMOKE1, D-EMU-BP2, D-EMU-BP3). A prerequisite that exits before
+// the assertions shadows them indefinitely, and one for a tool that is not used
+// shadows them for no reason at all. The fallback checks for itself, at the
+// point of use, where the answer actually matters.
 const work = mkdtempSync(path.join(tmpdir(), 'bw-runner-'));
 
 // ---- the app root this run resolves assets against ------------------------
@@ -119,6 +131,16 @@ globalThis.fetch = async (url, init) => {
             arrayBuffer: async () =>
                 bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
         };
+    }
+    // Reached only for a target the in-tree WASM toolchain does not claim. THIS
+    // is where native sdcc becomes a real requirement, so this is where it is
+    // checked — exit 2, because a missing tool is a skip and not a verdict.
+    // gate-shapes-allow: fail-closed at the point of use, not a startup shadow.
+    try { execFileSync('sdcc', ['--version'], { stdio: 'pipe' }); }
+    catch {
+        console.error('smoke-debugger: the native sdcc fallback was reached and ' +
+            'no runnable sdcc is on PATH');
+        process.exit(2);
     }
     const req = JSON.parse(init.body);
     const src = path.join(work, 'main.c');

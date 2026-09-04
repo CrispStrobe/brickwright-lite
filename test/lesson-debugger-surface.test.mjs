@@ -18,6 +18,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync, existsSync} from 'node:fs';
 import path from 'node:path';
+import {scopeAfter} from './helpers/js-scope.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const read = rel => readFileSync(path.join(ROOT, rel), 'utf8');
@@ -187,7 +188,42 @@ test('the debugger compiles supported 8051 targets locally and names hosted fami
     for (const chip of ['stc12c5a60s2', 'stc12c5a16s2', 'stc15f2k60s2', 'stc15w408as', 'stc89c52rc']) {
         assert.ok(shipped.includes(`'${chip}'`), `${chip} is absent from LOCAL_8051_TARGETS`);
     }
-    assert.match(runner, /if \(LOCAL_8051_TARGETS\.has\(compileTarget\)\) await installWasmCompilerRouting/);
+    // RULE 5 NOTICE — this assertion was rewritten 2026-09-03, deliberately, and
+    // is stronger than what it replaces.
+    //
+    // It pinned one literal line:
+    //     if (LOCAL_8051_TARGETS.has(compileTarget)) await installWasmCompilerRouting(...)
+    // which became a two-branch block when D-SMOKE1(3)'s escape hatch landed —
+    // a stuck user could not previously get past a half-cached toolchain for
+    // these five parts at all. The CLAIM is unchanged and is now checked more
+    // precisely than a single-line regex could: inside the supported-target
+    // branch, the in-page compiler is still what a supported target gets, and
+    // the only thing that may skip it is the user asking. Read by brace-matched
+    // scope, so it cannot pass by matching text in a neighbouring branch.
+    const localRoute = scopeAfter(runner, 'if (LOCAL_8051_TARGETS.has(compileTarget)) {');
+    assert.match(localRoute, /await installWasmCompilerRouting\(setStatus\)/,
+        'a supported 8051 target must still reach the in-page compiler');
+    assert.equal((localRoute.match(/installWasmCompilerRouting/g) || []).length, 1,
+        'exactly one install site, so this decision is made in exactly one place');
+    assert.match(localRoute, /if \(localCompilerOptedOut\(\)\)/,
+        'the ONLY permitted way past the in-page compiler is an explicit request ' +
+        'from the user — anything else is the silent fallback intercept.js refuses');
+    // The branch must not be INVERTED. Both assertions above still pass if the
+    // install moves inside the opt-out branch — i.e. if the in-page compiler
+    // becomes the thing you have to ask for — which is exactly the regression
+    // the `bw-use-wasm-compiler` line below was written to prevent. So the
+    // opt-out branch is read on its own and must NOT install anything.
+    const optedOut = scopeAfter(localRoute, 'if (localCompilerOptedOut()) {');
+    assert.doesNotMatch(optedOut, /installWasmCompilerRouting/,
+        'opting OUT of the in-page compiler must not install it: the branch has ' +
+        'been inverted and the local compiler is now behind a flag again');
+    assert.match(optedOut, /off by request/,
+        'and opting out has to SAY so — the objection is to a silent fallback');
+
+    // And the default has not moved: `localCompilerOptedOut` returns false for an
+    // absent, empty, unrelated or unreadable preference, which is what most of
+    // test/local-compiler-opt-out.test.mjs asserts — including a mutation that
+    // unwires the call site entirely.
     assert.doesNotMatch(runner, /bw-use-wasm-compiler/,
         'the repaired local compiler must not regress behind an undiscoverable flag');
     assert.ok(existsSync(path.join(ROOT, 'overlay/scratch-gui/src/lib/sdcc-wasm/intercept.js')),

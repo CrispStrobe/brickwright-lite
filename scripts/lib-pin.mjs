@@ -68,6 +68,37 @@ export async function fetchRetry (url, {headers = {}, attempts = 4, log = consol
 }
 
 /**
+ * Every blob path in a repo at a sha — the whole tree, one request.
+ *
+ * WHY THIS EXISTS. The sync used a HAND-WRITTEN file list in remote mode: 26
+ * entries against 120 files actually vendored. The 94 it omitted included the
+ * entire 8086 tier, they were never fetched and never compared, and the check
+ * still printed "vendored engine up to date". A manifest maintained by hand
+ * drifts silently and reports success while it does.
+ *
+ * TRUNCATION IS AN ERROR, NOT A RESULT. GitHub caps a recursive tree response
+ * and sets `truncated: true` when it does. A partial list here would recreate
+ * the exact defect this replaces -- fewer files than exist, no complaint -- so
+ * it throws instead of returning what fitted.
+ *
+ * @param {string} repo `owner/name`
+ * @param {string} sha  a full commit sha (a branch name would reintroduce the
+ *   mutable-ref hazard resolveRef exists to close)
+ * @returns {Promise<string[]>} every blob path, repo-relative
+ */
+export async function listTree (repo, sha) {
+    const res = await fetchRetry(
+        `https://api.github.com/repos/${repo}/git/trees/${sha}?recursive=1`,
+        {headers: ghHeaders()});
+    const json = await res.json();
+    if (json.truncated) {
+        throw new Error(`tree listing for ${repo}@${sha} was TRUNCATED by the API — `
+            + 'a partial list would silently vendor fewer files than exist');
+    }
+    return json.tree.filter((e) => e.type === 'blob').map((e) => e.path);
+}
+
+/**
  * `CrispStrobe/bw-board`, `master` → a 40-hex sha.
  *
  * A ref that is ALREADY a full sha is returned untouched and unfetched: it is

@@ -494,6 +494,38 @@ A surviving mutation is a claim about the *test data* at least as often as it is
 about the code. One mutation per clause, and when one survives, fix the fixture before
 concluding the clause is spare.
 
+## Seventeenth species: THE PREREQUISITE THAT WAS NEVER REAL (2026-09-03)
+
+Species 16 is a gate that checks something real and never runs. This is its cause, and it is
+worse than it looks: a gate skipped in CI for a dependency **it does not actually have**.
+
+`scripts/smoke-debugger.mjs` opened with `execFileSync('sdcc', ['--version'])` and exited 2 if
+it was absent. CI has no sdcc, the step downgraded exit 2 to a warning, and the file was
+green-by-absence for months — with three real defects behind it. The check was reasonable when
+written and simply stopped being true: the in-tree WASM toolchain took over every supported
+8051 target, and the native fallback the check protects is now unreachable for them.
+
+Nobody noticed, because a startup prerequisite is exactly the thing you stop reading. It sits
+above the assertions, it has a plausible name, and its failure mode is a *warning* that says
+"skipped, runs locally" — which is reassuring and, in this case, false. The gate was not
+blocked on a missing tool. It was blocked on a **claim** about a missing tool that had gone
+stale, and the claim was never tested because it was a prerequisite rather than an assertion.
+
+**What settled it, and the move worth copying.** Not reading — instrumenting. A single
+`console.log` at the top of the native fallback showed it is not reached once in a full run.
+Then the confirming experiment: build a `PATH` containing node, python3 and coreutils but no
+sdcc, and run the script. It exits 0. That is the whole diagnosis, and it took two runs.
+
+So: **before accepting "this gate cannot run in CI", instrument the dependency and prove it is
+used.** The question is never "is the tool present" — it is "does this code path execute". They
+look identical from the top of the file, and only one of them can be measured.
+
+The structural repair is to move the check to the **point of use**. The native fallback now
+tests for sdcc inside itself, where a missing compiler is a real answer to a real question,
+instead of at startup where it silenced everything downstream. A prerequisite that exits before
+the assertions shadows all of them; one for a tool the file does not use shadows them for
+nothing at all.
+
 ---
 
 # 2026-09-04: species 10 came back, and it reached master

@@ -135,14 +135,56 @@ describe('the icons reach the build', () => {
     // The property that matters is not "the robot is in the repo" — it was, for
     // seven weeks, while every build shipped Tauri's logo. It is that something
     // installs it after the generator has overwritten it.
-    for (const [platform, count] of [['ios', 2], ['android', 1]]) {
-        test(`mobile.yml installs the ${platform} icons after \`tauri ${platform} init\``, () => {
-            const calls = workflow.split(`node scripts/patch-mobile-icons.mjs ${platform}`).length - 1;
-            assert.equal(calls, count,
-                `expected ${count} call(s) for ${platform}, found ${calls} — every job that ` +
-                'runs `init` regenerates the default icon and must put ours back');
+    // Asserted PER JOB, not as a global count. This read `[['ios', 2], ['android', 1]]`
+    // and broke the moment a third iOS job was added in 615ad03c0 — the count was
+    // stale, nothing was wrong with the workflow, and main went red for a day.
+    //
+    // Counting calls never expressed the property anyway: three patch calls all
+    // sitting in one job would have satisfied it while two other jobs shipped
+    // Tauri's logo. The comment above already said what matters — "something
+    // installs it AFTER the generator has overwritten it" — so that is what this
+    // now checks, job by job, and it cannot go stale when a job is added.
+    const jobsOf = text => {
+        const lines = text.split('\n');
+        const heads = lines
+            .map((line, i) => [i, /^  ([a-z][a-z0-9-]*):$/.exec(line)])
+            .filter(([, m]) => m)
+            .map(([i, m]) => [i, m[1]]);
+        return heads.map(([start, name], k) => [
+            name,
+            lines.slice(start, k + 1 < heads.length ? heads[k + 1][0] : lines.length).join('\n')
+        ]);
+    };
+
+    for (const platform of ['ios', 'android']) {
+        test(`every job that runs \`tauri ${platform} init\` puts our icon back`, () => {
+            const offenders = jobsOf(workflow)
+                .filter(([, body]) => body.includes(`tauri ${platform} init`))
+                .filter(([, body]) => !body.includes(`node scripts/patch-mobile-icons.mjs ${platform}`))
+                .map(([name]) => name);
+            assert.deepEqual(offenders, [],
+                `these jobs run \`tauri ${platform} init\` and never reinstall the icon, so they ` +
+                `ship Tauri's default logo: ${offenders.join(', ')}`);
         });
     }
+
+    test(`the ${'icon'} patch is not merely present somewhere in the file`, () => {
+        // The old shape would have passed with every patch call in one job. Prove
+        // the new one distinguishes that: a synthetic workflow with two init jobs
+        // and both patches in the first must be rejected.
+        const synthetic = [
+            'jobs:', '  a:', '    steps:', '      - run: tauri ios init',
+            '      - run: node scripts/patch-mobile-icons.mjs ios',
+            '      - run: node scripts/patch-mobile-icons.mjs ios',
+            '  b:', '    steps:', '      - run: tauri ios init'
+        ].join('\n');
+        const offenders = jobsOf(synthetic)
+            .filter(([, body]) => body.includes('tauri ios init'))
+            .filter(([, body]) => !body.includes('node scripts/patch-mobile-icons.mjs ios'))
+            .map(([name]) => name);
+        assert.deepEqual(offenders, ['b'],
+            'the per-job check does not notice a job that inits without patching');
+    });
 
     test('mobile.yml checks the icon survived into the built app', () => {
         assert.match(workflow, /no AppIcon\*\.png in the IPA/,

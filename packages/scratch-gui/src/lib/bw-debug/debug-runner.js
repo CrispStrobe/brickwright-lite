@@ -113,6 +113,45 @@ export function compileCachePut (key, out) {
     } catch { /* private browsing: no cache, no harm */ }
 }
 
+/**
+ * Has the user explicitly asked NOT to use the in-page 8051 compiler?
+ *
+ * The escape hatch D-SMOKE1(3) named and did not build. `LOCAL_TARGETS` in
+ * `sdcc-wasm/compiler.js` is a frozen allowlist of five STC parts with no flag,
+ * so for exactly those five a broken or half-cached toolchain could not be
+ * bypassed AT ALL: the local compile fails, and `intercept.js`'s header
+ * forbids falling back on its own — rightly, because a local failure quietly
+ * becoming a network round trip is the thing an offline learner must never
+ * get. That left a stuck user with nothing to try.
+ *
+ * This does not reverse that decision, because it is not silent: the fallback
+ * only happens when the user ASKS for it, and the status line says so. Of the
+ * two shapes the defect record allows — a loud automatic fallback, or an
+ * explicit opt-out — this is the second, chosen because it leaves the default
+ * behaviour and the header's promise exactly as they were.
+ *
+ *   ?localCompiler=off          on the URL, for a user who is stuck right now
+ *   localStorage.bwLocalCompiler = 'off'   to make it persist
+ *
+ * Takes the window rather than reaching for it, so the rule is testable
+ * without a browser — the D-EMU-BP2 lesson about predicates that can only be
+ * reached through a live session.
+ */
+export function localCompilerOptedOut (win = typeof window === 'undefined' ? undefined : window) {
+    if (!win) return false;
+    try {
+        const search = (win.location && win.location.search) || '';
+        const asked = new URLSearchParams(search).get('localCompiler');
+        if (asked !== null) return /^(off|0|false|no)$/i.test(asked);
+        return Boolean(win.localStorage) &&
+            win.localStorage.getItem('bwLocalCompiler') === 'off';
+    } catch {
+        // No location, no storage, private browsing: keep the default, which is
+        // the in-page compiler. An unreadable preference is not a request.
+        return false;
+    }
+}
+
 let wasmCompilerInstalled = false;
 async function installWasmCompilerRouting (setStatus) {
     if (wasmCompilerInstalled) return;
@@ -624,7 +663,16 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             // Loading failure is fatal only for a target promised as local. Other
             // families deliberately retain the hosted fetch below and never need
             // the WASM chunk.
-            if (LOCAL_8051_TARGETS.has(compileTarget)) await installWasmCompilerRouting(setStatus);
+            if (LOCAL_8051_TARGETS.has(compileTarget)) {
+                if (localCompilerOptedOut()) {
+                    // Said out loud, because the header's objection is to a
+                    // SILENT fallback, not to this one.
+                    setStatus('building',
+                        'in-page 8051 compiler off by request — using the compiler service');
+                } else {
+                    await installWasmCompilerRouting(setStatus);
+                }
+            }
             // The compile is a pure function of (code, target, format), and the
             // edit-run-edit loop mostly re-runs UNCHANGED programs — while a
             // serverless cold start costs seconds per Run. Successful responses
@@ -1631,6 +1679,11 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             let exited = null;
             const bench = await createI8086DosBench({
                 bytes: img.bytes, format,
+                // Hardware the program asked for. `createI8086DosBench`
+                // merges these onto the preset BY NAME, so a scheduled
+                // program's IRQ0-wired timer replaces the preset's plain one
+                // rather than sitting beside it at the same port.
+                chips: bootMedia.chips || undefined,
                 // INT 21h's character output, line-buffered into the same
                 // console the serial machines use. The CGA text page is the
                 // primary surface (video() reads it), but a program whose

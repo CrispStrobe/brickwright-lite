@@ -70,3 +70,14 @@ test('Instruments are collapsed until debugging or simulation needs them', () =>
     assert.match(designer, /useState\(!!debuggerOn \|\| !!benchOpen\)/);
     assert.match(designer, /if \(debuggerOn \|\| benchOpen\) setRightOpen\(true\)/);
 });
+
+test('simulated potentiometers own their pointer gesture and stay within their footprint', () => {
+    assert.match(canvas, /data-pot-control=\{id\}/);
+    assert.match(canvas, /onPointerDown=\{simulate \? \(e\) => e\.stopPropagation\(\) : undefined\}/);
+    assert.match(canvas, /onPointerMove=\{simulate \? \(e\) => e\.stopPropagation\(\) : undefined\}/);
+    assert.match(canvas, /onPointerUp=\{simulate \? \(e\) => e\.stopPropagation\(\) : undefined\}/);
+    assert.match(canvas, /style=\{\{ display: 'block', transform: 'scale\(0\.79375\)', transformOrigin: 'top left' \}\}/);
+    assert.match(canvas, /potScale = Math\.min\(seatSpan \/ 40, 1\.4\)/);
+    assert.match(canvas, /potTop = cy - 60 \* potScale/);
+    assert.match(canvas, /controlValues\?\.get\(id\) \?\? part\.params\?\.position \?\? 0\.5/);
+});

@@ -424,11 +424,21 @@ compilation failed", which reads like a compiler fault. The stub now serves the 
 assets from the build directory that `document.baseURI` already points at, and names a missing
 asset instead of dereferencing undefined. **The error message now identifies the real cause.**
 
-**2. OPEN — the sdcc-wasm toolchain cannot run under Node.** It is emscripten output built for
-a browser and fails in sequence: `require is not defined`, then `__dirname is not defined`, then
-— with both shimmed — sdcc itself dies with `memory access out of bounds`. Making this work needs
-a Node-targeted build of the toolchain, not a shim; I stopped after the third because the fourth
-is not an environment gap, it is the module misbehaving. Owner: whoever owns sdcc-wasm.
+**2. RESOLVED 2026-09-03 — the sdcc-wasm toolchain runs under Node.** Recorded as needing "a
+Node-targeted build of the toolchain, not a shim", on the strength of a third failure
+(`memory access out of bounds`) read as the module misbehaving. It was not: the first two
+failures (`require is not defined`, `__dirname is not defined`) were the module being loaded as
+an ES import when it is CommonJS, and the third followed from a STALE toolchain in `build/` —
+the pre-2026-08-31 64 KiB-stack build whose stack overflow corrupts SDCC's own static data.
+`compiler.js` now loads the Emscripten glue through a Node branch that evaluates it as CommonJS
+with a real `require`/`__filename`/`__dirname`, and the smoke resolves the toolchain from the
+tree rather than from `build/`.
+
+Measured directly, outside the smoke harness — a staged app root, a `file:`-capable `fetch`, and
+`compile(src, {target: 'stc12c5a60s2'})` — returns `success=true bytes=528` and real Intel HEX.
+The lesson is the one the D29 header already carries: the third failure was a consequence of the
+first two being worked around in the wrong place, and "the module is misbehaving" was a
+conclusion drawn one step before the environment was actually correct.
 
 **3. CORRECTED 2026-09-03 — filed as a product bug, it is mostly a deliberate trade-off.**
 bw-ci challenged this and was right on every point. Recorded in full because the original
@@ -467,17 +477,54 @@ two shapes that satisfy the header rather than reversing it are:
       "never *silently*"; or
   (ii) an explicit opt-out, so a stuck user can force the hosted compiler.
 
-Neither is made here. Owner: whoever owns sdcc-wasm.
+**CLOSED 2026-09-03 with shape (ii).** `localCompilerOptedOut()` in `debug-runner.js` reads
+`?localCompiler=off` from the URL, or `localStorage.bwLocalCompiler = 'off'` to persist it, and
+the compile path skips installing the in-page intercept when it is set — so the request reaches
+the compiler service by the ordinary route. The status line says
+`in-page 8051 compiler off by request — using the compiler service`, because the header's
+objection is to a *silent* fallback and this one is asked for out loud.
+
+Shape (ii) rather than (i) deliberately: it leaves the default behaviour and the header's promise
+exactly as they were, and adds only a door. An automatic fallback, however loud, changes what
+happens to every learner whose local build fails — which is the decision `intercept.js` made on
+purpose and which is not mine to reverse.
+
+The default is what most of `test/local-compiler-opt-out.test.mjs` is about: an absent, empty,
+unrelated or unreadable preference must all mean "use the in-page compiler", since anything else
+quietly puts a failed local build on the network. `?localCompiler=on` overrides a stored `off`,
+and an empty `?localCompiler=` is present-but-unset rather than a request. Mutation-proved four
+ways, including one that unwires the call site — a predicate nothing consults would have been no
+feature at all, which is species 16 applied to this repair.
+
+Owner: still whoever owns sdcc-wasm; this is the smaller of the two shapes that record allows,
+and it is reversible in one condition if they want (i) instead.
 
 The lesson for me: I read a function's error path without reading its file's header, and the
 header governed it. That is the mirror of the mistake in the other direction — treating a comment
 as evidence about code it does not govern. Here the comment governs the code directly beneath it,
 and skipping nine lines turned a trade-off into a bug report.
 
-**Not re-enabled in CI.** The sdcc install and stc-compiler checkout were reverted so main stays
-green; re-enabling requires (2). The lesson worth keeping is structural: a prerequisite check
-that exits before the assertions can shadow them indefinitely, and a step that downgrades that
-exit to a warning makes the shadow permanent.
+**RE-ENABLED IN CI 2026-09-03, and it needed neither of the things this paragraph assumed.**
+The note said re-enabling required (2) plus an sdcc install. (2) is resolved above — and the sdcc
+install was never needed at all.
+
+Instrumenting the smoke's own fetch stub showed the native-sdcc fallback is **not called once**
+in a full run: every supported 8051 target is compiled by the in-tree WASM toolchain. Confirmed
+by removing sdcc from `PATH` entirely, whereupon the script still exits 0. So the startup check
+`execFileSync('sdcc', ['--version'])` — which exits 2, which CI downgraded to a warning — was
+shadowing every assertion in the file over a tool the file does not use. It is now checked at the
+point of use, inside the fallback, where the answer matters.
+
+What CI actually needed was the stc-compiler checkout, for the independent disassembly oracle.
+That is one `actions/checkout` step. With it, the smoke step no longer swallows anything: the
+`|| { … -eq 2 … }` branch is gone, and `KNOWN_SWALLOWED` in `test/gate-coverage.test.mjs` is now
+**empty** — its only entry was this step, whose own excuse called itself "a promise to come back,
+not a resolution". Mutation-proved: re-introducing the swallow fails
+`a step that swallows a gate failure has to say why`.
+
+The structural lesson stands and is now sharper: a prerequisite check that exits before the
+assertions shadows them indefinitely, a step that downgrades that exit to a warning makes the
+shadow permanent — and nobody had checked whether the prerequisite was even real. It was not.
 
 
 ## D-EMU-BP — the three "emulator breakpoint" defects, resolved (2026-09-03)
@@ -597,3 +644,558 @@ unreachable produces exactly D-EMU-BP1: an armed breakpoint, a successful-lookin
 halt, reported as an emulator fault. This is the same species as the gates-that-cannot-fail
 family, inverted: not a gate that cannot fail, but one that fails for a reason unrelated to what
 it claims to test.
+
+## D-CORPUS1 — the corpus differential had never run, and the first run failed (2026-09-03)
+
+`test/corpus-differential.test.mjs` compares the emitter against the trace oracle over a rotating
+sample of the gallery. It is env-gated on `CORPUS_DIFFERENTIAL=1`, and **nothing has ever set
+it.** Measured rather than assumed: the unit-test step of the last green CI build reports exactly
+one skip over 1804 tests, and it is this one. Its own header says "Enable in CI with:", and its
+sample offset is derived from day-of-year so that "successive CI runs cover different parts of the
+gallery" — a rotation that has never had a second run.
+
+That is species 16 in its politest form. Unlike the debugger smoke, this skip is *honest*: it uses
+node:test's `{skip: reason}` and prints `# SKIP CORPUS_DIFFERENTIAL not set`. Visible and
+permanent is still zero coverage.
+
+### Two defects in the harness itself, both fixed
+
+**The sample could be empty, and an empty sample passed.** `pairs.slice(offset, offset + count)`
+does not wrap, so an offset at or past the end returns `[]`, the comparison loop runs zero times,
+the failure flag stays false and the process exits 0 — a run that reports success having compared
+nothing. That is precisely the defect this differential exists to catch in the emitter, and it was
+the harness's own behaviour. It could not be gated where it lived, inside a network-bound CLI that
+ends in `process.exit`, so the rule moved to `scripts/corpus-sample.mjs` and is pinned by
+`test/corpus-sample.test.mjs` — the same lesson as D-EMU-BP2.
+
+**The rotation could not reach the end of the corpus.** The caller wrapped at a hardcoded 200
+("to stay in range") while the gallery yields **224** eligible pairs, so pairs 200–223 were
+unreachable. Only the corpus walk knows that bound, so the wrap belongs there and the caller now
+passes the raw rotation. Mutation-proved three ways: the original slice fails five of six
+assertions, a sign-preserving single modulo fails the negative-offset case, and accepting
+`count < 1` fails the refusal case.
+
+### What the first real run found — owner: sb3-creator
+
+With the gate enabled, today's offset failed **6 of 6 pairs**, in two distinct ways:
+
+    arduino-08-string-append -> nano: main.c:35:24: warning: left shift count >= width of type
+                                      static char bw_arena[1 << 16];
+    arduino-08-string-append -> pico: main.c:7:10: fatal error: stdio.h: No such file or directory
+
+Both come from `cHostRuntime.js` — the **host** C runtime, being compiled for a microcontroller.
+`int` is 16 bits on AVR, so `1 << 16` overflows; bare-metal ARM has no `stdio.h`.
+
+The emitter is behaving as documented. `sb3-creator.js:8243` states the rule in its own words:
+*"Which target a project gets is decided by the project — declared pins mean the chip, everything
+else means the host."* `arduino-08-string-append` declares `DEVICE ARDUINO-UNO`, binds no pins and
+only prints strings, so it is a host program by that rule and gets host C.
+
+**The mismatch is in the computed `devices` list**, which claims device targets the emitter's own
+rule makes unbuildable. That example lists eleven, including `arduino-nano` and `pico`. Across the
+gallery, **24 of the 113 examples claiming nano/pico bind no hardware at all** (no `PIN`, `PART`
+or `CHIP`): fourteen `arduino-04/08-*` string and character programs, eight micro:bit `mb0*`, and
+`spike01-obstacle-avoid`. `mb01-display` declares `DEVICE MICROBIT` and lists eleven other chips,
+which is what shows the list is computed rather than curated.
+
+Stated with its limits: **six pairs were compiled and all six failed; the other 24 examples match
+the structural pattern and were not individually compiled.** The count of 24 is also a correction
+of my own first pass, which said 25 by looking only for `PIN` — `08-led-chaser-595` binds its pins
+through `PART leds = 74HC595 data P1.0 …`, and counting it would have inflated the claim in a
+filing that exists to complain about inflated claims.
+
+### The pairing was a category error, and that half IS fixed here
+
+The first draft of this entry said the gate could not be enabled until sb3-creator corrected the
+lists. That was too quick. Pairing a host program with a microcontroller is a mistake the HARNESS
+makes, not a defect it detects: host C fails to compile for AVR and bare-metal ARM every time, for
+every one of those programs, and reporting that as emitter-vs-oracle disagreement is measuring its
+own input. The differential now asks the same question the emitter asks — does this program bind a
+`PIN`, `PORT`, `PART`, `LEDCUBE` or `CHIP`? — and only pairs device programs with devices. 224 candidate pairs become
+**176 real ones**, and the 24 host-only programs are named on stdout, never dropped silently.
+
+`bindsHardware()` is pinned by `test/corpus-sample.test.mjs`, including the case that caught my own
+first count: `08-led-chaser-595` binds three pins through `PART leds = 74HC595 data P1.0 …` and no
+`PIN` line, so a PIN-only test would have dropped a real device program — the expensive direction
+of this mistake.
+
+**Corrected again 2026-09-04, and by reading the producer rather than the corpus.** The first
+version of that keyword set was `PIN|PART|CHIP`, arrived at by looking at which declarations the
+gallery happens to use. The emitter's own predicate is `pins || ports || parts || ledcube`, so
+`PORT` and `LEDCUBE` bind hardware too and were missing. No program in today's corpus is PORT-only
+or LEDCUBE-only — `77-keypad-keyshow` declares a `PORT` and also five `PIN`s — so the rule was
+right by luck and the pair count is unchanged at 176. It would have silently dropped the first
+PORT-only program that appeared. Deriving a rule from a sample of its inputs, when the authority
+that defines it is one grep away, is the same shortcut as reading a comment instead of the binary. Mutation-proved both ways: PIN-only fails, and an unanchored match that lets the
+word in a comment promote a host program fails.
+
+### WITHDRAWN 2026-09-04 — the `devices` computation is not over-claiming
+
+I wrote above that "a list that claims eleven chips for a program binding nothing is over-claiming
+whatever the harness does about it", and filed it against sb3-creator. **That was wrong**, and I
+found out by going to fix it: the change was written, the index regenerated, 450 tests run green —
+and then two facts stopped it.
+
+**The app already refuses these pairings honestly.** `debug-runner.js`'s `build()` opens with a
+check for `stc.pins`, and a pin-less project gets *"This project declares no pins, so there is no
+hardware to debug. Add DEVICE / PIN declarations in the Code tab first."* Nobody is shown a broken
+build; picking a chip for a print-only program shows its bench and gives a clear refusal on ▶.
+
+**And 140 benches are shipped for exactly those pairings.** Each of the fourteen Arduino string
+examples carries `circuit.arduino-nano.json`, `circuit.pico.json`, `circuit.stc12c5a60s2.json` and
+so on. Someone generated them on purpose. My repair would have stranded all 140 and cut those
+examples from eleven device options to one.
+
+So `devices` means what its script's header says — *"pool membership means the PROGRAM retargets;
+benchability is the app's bar"* — and both halves hold for these examples: the program retargets,
+and a bench exists. The category error was **entirely lite's**, in a differential that compiled
+pairings the app never compiles, and it is fixed on this side by `bindsHardware`.
+
+That is the third time this entry has had to be corrected, and the shape is the same each time: I
+inferred a producer defect from a consumer's failure. The consumer was wrong all three times.
+Going to fix it in the producer's repo is what found that out, which argues for doing that earlier
+rather than filing across a boundary from one side's evidence.
+
+**What WAS real in the producer, found only because I went there** (all three fixed, sb3-creator
+`d473731`, `03b2ff6`, `5f093cc`): `update-example-devices.mjs` — "the single command that widening
+the device family requires" — could not run at all, because `DEVPART` carried `stm32f030` and
+`POWER_EQUIV` did not, so it died with `Cannot read properties of undefined (reading 'ground')` on
+the first authored circuit. It also wrote two-space JSON over a one-space file, so its own output
+was a 15,678-line reformat that buried any real change. And no workflow ever invoked it, which is
+why a script broken on main stayed broken: nothing ran it. It now runs in CI in 27 s, round-trips
+byte-identically, and a new gate asserts every `DEVPART` kind has a `POWER_EQUIV` row.
+
+### What the gate finds — DIAGNOSED 2026-09-04, and my first two readings were both wrong
+
+40 pairs from offset 0, in 44 seconds: **31 AGREE, 9 DIFF, 0 ERROR.** Every disagreement is a
+timing one, and **all nine have a single cause, which is not an emitter defect.**
+
+**The referee models program execution as instantaneous; a real device spends time.**
+`interpretTrace` walks the project's blocks and charges nothing for the walk, so a bit-banging
+inner loop completes at `t=0`. The compiled program on avr8js or rp2040js pays for every
+instruction. The divergence is therefore a function of how much work a program's inner loop does
+per unit of simulated time, which is why it lands on exactly the PWM, shift-register, dimmer and
+motor programs and on nothing else.
+
+The evidence is one dump of both traces, event by event, rather than the comparator's summary:
+
+    20-shift-register-binary -> pico
+      ref    224 events   clock@0=1 clock@0=0 clock@0=1 clock@0=0 …   (the whole shift, at t=0)
+      actual 204 events   clock@0=1 clock@0=0 clock@1=1 clock@1=0 …   (the same shift, over ms)
+
+Same 2500 ms horizon, 20 fewer toggles completed. And the device-speed prediction holds where it
+can be checked against itself: `24-pwm-fade` drifts **+1 % linearly** on the nano (+1 ms at ref
+100, +2 at 200, +6 at 600, **+24 at 2400**) and matches the referee **exactly** on the pico, which
+does the same work about ten times faster and stays inside the 5 ms tolerance.
+
+### Two corrections to my own entries above, of the same shape
+
+**I reported the skew as "a constant +6 ms, not a drift". It is a drift — 1 %.** The error was in
+where I read: `compareTraces` reports only the first three disagreements *past* its tolerance, so
+every value I saw was from the tail of an accumulating error, after it crossed 5 ms. The +6 at ref
+600 and the +6 at ref 1000 looked like the same fixed offset; the +1 at ref 100 and +2 at ref 200
+were below tolerance and never printed. **I read a filtered view as if it were the data**, which is
+the same mistake as reading two fields of a probe and ignoring the third.
+
+**I then reported "two signatures pointing in opposite directions … unlikely to share a cause".**
+There is one cause. The 692 ms item was not a second signature: with fewer iterations completed
+inside the horizon, the per-pin sequences end at different points, and comparing the Nth entry of
+each is comparing different moments in the program. It is the same instantaneous-referee gap seen
+from the end of the trace instead of the middle.
+
+Both corrections were available from one command — printing `ref` and `actual` side by side — and
+I filed twice before running it. The lesson is the one this document keeps re-learning in new
+costumes: **a comparator's diff list is not the measurement, it is the comparator's opinion about
+the measurement.** Ask the two sides directly.
+
+### What this means for the gate, and a dead option that was built for exactly this
+
+The nine DIFFs are not emitter bugs, so there is nothing here for sb3-creator to repair. What is
+missing is a budget for a modelling gap that is known and documented — and `compareTraces` already
+has the knobs, added with measured comments citing the 6502 (`~9 ms/s under cc65 -O`, `main ~8 ms
+after reset`):
+
+    const driftPerSec = opts.driftPerSecMs ?? 0;
+    const startup     = opts.startupMs ?? 0;
+
+**No caller anywhere in the repository passes either.** Both corpus call sites pass only `tolMs`
+and `serialMsPerByte`, and `test/oracle-trace.test.mjs` passes nothing at all. They are dead
+parameters: a capability built for this exact situation, never wired, and therefore never able to
+help the one gate that needed it.
+
+Wiring them is the obvious repair. **Measured 2026-09-04, it is the wrong one**, and the numbers
+say so before anyone has to argue about the value:
+
+    device  program                     drift
+    nano    01-blink                     0.00 ms/s
+    nano    02-dimmer                    9.95 ms/s
+    nano    10-motor-speed               9.95 ms/s
+    nano    24-pwm-fade                  9.94 ms/s
+    nano    20-shift-register-binary    21.50 ms/s
+    pico    05-counter / 02-dimmer /
+            10-motor-speed / 24-pwm-fade 0.00 ms/s
+    pico    20-shift-register-binary     7.64 ms/s
+
+`driftPerSecMs` is a PER-DEVICE rate, and drift here is not a property of the device. On the nano
+it ranges from 0 to 21.50 ms/s **across programs on the same chip**, because it is a per-iteration
+cost and the programs do different amounts of work per pass — three of them cluster at ~9.95 ms/s
+(the same loop shape), the shift-register is twice that, and blink is exactly zero because its
+loop does nothing but wait.
+
+So a per-device budget would have to be at least 21.5 ms/s to cover the nano's worst program, and
+would then permit a 21.5 ms/s regression in every other program on that chip — including blink,
+which today agrees to the millisecond. That is a budget that licenses far more than it excuses,
+and switching the gate on behind it would be worse than leaving the gate off: it would report
+green over a corpus where a real emitter regression of 2 % had become invisible.
+
+What the repair actually needs is a budget that scales with the thing that causes the divergence —
+the work the program's inner loop does per pass — or a referee that charges for its own walk.
+Both are design decisions in someone else's component, and neither is a number to be tuned until
+the build passes. The measurement above is written down so that whoever makes that decision starts
+from it rather than from the option's own comment, which proposes the per-device rate this table
+rules out.
+
+### The gate can now run on semantics — and its first output is a triage (2026-09-04)
+
+The diagnosis above said the nine disagreements were one benign cause, which left the gate still
+unable to run: `compareTraces` returned `diffs` as English, so a consumer could fail on everything
+or nothing. It **decides** the kind of every disagreement and was discarding it.
+
+`compareTraces` now also returns `findings` — one per diff, same order, `{kind, text}` with kind in
+`{level, time, count, value}` — and `diffs` is unchanged, so every existing caller keeps working
+(sb3-creator `6f82969`, vendored here, pin `af09a0d` → `6f82969`). The corpus differential fails on
+`kind !== 'time'` and REPORTS timing skew with its numbers. It also fails closed: an older vendored
+oracle with no `findings` is treated as all-semantic, so the gate cannot quietly stop failing
+because the vendor lagged.
+
+Over the same 40 pairs, **31 AGREE, 5 SKEW, 4 DIFF** — five of the original nine reclassified as
+the benign referee-vs-device gap, four surviving as real disagreements. Those four are two shapes,
+and neither is the emitter:
+
+**`08-led-chaser-595` on both nano and pico — lite's recorder, and now FIXED.** The actual trace
+had **zero** events against the referee's 50 on `leds.latch` and `leds.data`. This example's
+`stc.pins` is EMPTY — all its hardware is `PART leds = 74HC595 data P1.0 clock P1.1 latch P1.2`,
+which becomes `stc.parts[]` with a `{where}` per terminal — and `runUnderEmulator` built its `decl`
+map only from `stc.pins`, so `setPin` returned early for every part terminal. The recorder now
+walks parts too and names them `<part>.<terminal>` as the referee does: **0 events became 501.**
+
+Fixing it exposed a second gap of the same family, and a sharper one. The referee reported
+`device count: referee 25 vs actual 0` — device-model events (a 74HC595 `shift_out` value, a servo
+angle, a motor speed) that this recorder never produces at all, because producing them would mean
+reimplementing the device models. `compareTraces` reads `actual.devices ?? []`, so **"not recorded"
+and "recorded, none occurred" arrive as the same empty array**, and a dimension nobody measured was
+being reported as a disagreement. The trace now carries `devicesRecorded: false` and the
+differential drops that dimension with a printed note rather than comparing it — stated, because an
+unmeasured dimension reported as agreement is the same lie as reporting it as failure.
+
+That is the general shape, and bw-ci put it better than I did while auditing a different gate the
+same day: **an assertion of absence cannot distinguish "nothing happened" from "nothing was
+watching"**. Their D2 gate asserts zero hosted-compiler requests, where a broken interception
+produces the same zero as a correct one — so it now drives a known-positive request through the
+same path first and requires it to be caught. Same disease, two gates, found independently.
+
+**`02-dimmer` and `10-motor-speed` on pico — DIAGNOSED AND FIXED 2026-09-04 (sb3-creator
+`85fcf9f`). A real emitter defect, the first this differential has found.** Scratch's
+`repeat (n)` with n <= 0 runs the body zero times and `interpretTrace` implements that. The
+emitted C did not:
+
+    static unsigned int bw_i1;
+    bw_i1 = (n);                 /* n = -5  ->  4294967291 */
+    if (bw_i1) { … bw_i1--; }    /* true for every non-zero n */
+
+An UNSIGNED counter assigned a possibly-negative expression, guarded on truthiness and
+decremented AWAY from zero. `02-dimmer` computes `duty = (read pot * 100) / 1023`, a hardcoded
+10-bit divisor, so pico's 12-bit ADC yields duty ~340 and `REPEAT 100 - duty` becomes
+`REPEAT 4294967056`. The device wedged while the referee carried on — exactly the "ten events the
+actual lacks" recorded below.
+
+Two tokens: a signed `long` counter and a `> 0` guard. NOT a clamp at the assignment, which would
+double-evaluate `v('TIMES')` — that can be a side-effecting ADC read. Re-measured through this
+harness with the fixed emitter: **`02-dimmer -> pico` and `10-motor-speed -> pico` both AGREE**,
+and `02-dimmer -> nano` stays SKEW, which is the benign timing gap and correct.
+
+Fixing it broke seven round-trip tests, which is the part worth keeping. `cToPseudocode`
+recognised the loop by its exact `if (bw_iN)` shape, and `ctarget.test.mjs` pinned
+`static unsigned int` incidentally while asserting that the counter outlives the yield. The reader
+now accepts both guard forms — that round-trip is asserted as a FIXED POINT, so refusing to read
+our own older output would break it in the direction that looks like a parser bug rather than a
+version skew — and the gate pins signedness deliberately.
+
+### The last two: `08-led-chaser-595` — a modelling difference in the LATCH IDLE LEVEL
+
+Diagnosed 2026-09-04, and neither side is wrong. The emitted `shift_out` helper does latch-low,
+eight clocked bits, latch-high — so it ENDS with the latch high and lowers it again at the start
+of the next update. The referee pulses it high and low within the same instant:
+
+    ref     latch: 0=1  0=0    100=1  100=0     (a pulse inside one millisecond)
+    actual  latch: 0=1  100=0  100=1  200=0     (idles HIGH between updates)
+
+A 74HC595 transfers to its output register on the RISING edge of RCLK, and both sequences give
+exactly one rising edge per update, so both are electrically correct and the LEDs do the same
+thing. What differs is the level the pin rests at between updates — not a property either side was
+trying to assert. Left as-is deliberately: making them agree means changing the oracle's 595 model
+or the emitted helper, which is a design call in someone else's component for a difference that
+cannot change what the hardware does.
+
+**CORRECTED 2026-09-04 — "zero unexplained" was true of a SAMPLE, not the corpus.**
+
+I wrote that the triage was complete and nothing was unexplained. That claim came from the same
+40-pair window I had been running all day (offset 0, count 40). Running the **whole** 176 pairs
+says something different:
+
+    AGREE 94   SKEW 5   DIFF 15   SKIP 62   ERROR 0
+
+**Fifteen semantic disagreements, not four**, and the eleven I had never seen are a class the
+first forty pairs contain none of: SERIAL. Reporting a sample's triage as the corpus's is the
+same error this document keeps recording in other people's work — I read a filtered view as if it
+were the data, having just written that sentence about a comparator's diff list.
+
+Also worth stating plainly: **62 of 176 pairs SKIP**, mostly on `ref.pwm.length` (duty recording
+is not built). The gate covers 114 pairs, not 176, and any statement about "the corpus" means
+those 114.
+
+The fifteen, by class, measured and only partly diagnosed:
+
+- **Pin events, 4 — diagnosed.** `02-dimmer` and `10-motor-speed` on pico are the `repeat` defect
+  fixed above (sb3-creator `85fcf9f`, not yet vendored here, so they still show). The two
+  `08-led-chaser-595` entries are the latch idle level.
+- **Serial count off by one at the horizon, 4 — probably benign, not confirmed.**
+  `arduino-01-read-analog-voltage` and `arduino-sk-p03-love-o-meter` on nano read 25 vs 24;
+  `arduino-sk-p11-crystal-ball` reads 1 vs 0 on both devices. `compareTraces` already forgives a
+  one-line difference at the horizon edge for serial, so these are landing just outside that
+  allowance — consistent with the referee-is-instantaneous gap, and NOT yet demonstrated to be it.
+- **Serial values transposed between two ADC readings, 4 — not diagnosed.**
+  `arduino-05-if-statement`, `arduino-04-serial-call-response`, `arduino-04-serial-passthrough`
+  and `arduino-sk-p14-serial-pot`, all on nano, disagree by swapping `"31"` and `"870"` at one
+  index. Those are the low and high pot readings the sweep stimulus sets, so the two sides
+  disagree about which reading is current when the line is printed — a phase difference, plausibly
+  the same gap again. Plausibly is not measured.
+**RE-RUN after adding `SKIP emitter`: AGREE 94, SKEW 5, DIFF 11, SKIP 66, ERROR 0.** The skip
+caught four pairs, not the two expected — `arduino-08-string-addition` on both devices AND
+`arduino-sk-p11-crystal-ball` on both, confirming the latter's "serial count 1 vs 0" was the same
+unlowered-operation cause rather than a horizon edge.
+
+**The remaining eleven, and the serial class now has an evidenced diagnosis.** Four are pin-event
+(two the `repeat` defect, fixed upstream and not yet vendored here; two the latch idle level).
+The other seven are serial, and three independent facts point the same way:
+
+- every one of the seven is **nano-only**;
+- the same examples **AGREE on pico — all seven of them**, checked pair by pair rather than
+  sampled: `arduino-01-read-analog-voltage`, `arduino-04-serial-call-response`,
+  `arduino-04-serial-passthrough`, `arduino-05-if-statement`, `arduino-07-row-column-scanning`,
+  `arduino-sk-p03-love-o-meter`, `arduino-sk-p14-serial-pot`. Seven DIFF on nano, seven AGREE on
+  pico, no exceptions in either direction;
+- nano is the device with a BLOCKING UART — `serialMsPerByte: 1.05` at 9600 baud — while pico's
+  16-deep FIFO is `0`.
+
+So the device spends real time printing and therefore samples the ADC at a different point in the
+stimulus sweep than a referee that prints instantly. That is why the disagreements are `"31"`
+against `"870"` — the sweep's low and high pot readings transposed — and why they appear at LATER
+serial indices (17, 34, 70), where cumulative byte time is largest. `compareTraces` already carries
+a `serialMsPerByte` allowance for the TIMING consequence of exactly this; nothing models the VALUE
+consequence, and nothing could without the referee charging for its own output.
+
+A fourth fact, and it is arithmetic rather than correlation. `arduino-07-row-column-scanning`
+was the one that did not obviously fit — it disagrees `"5"` against `"0"`, not `"870"` against
+`"31"`. But it computes `(read pot * 7) / 1023`, so the sweep's own endpoints map straight
+through: the low reading 31 gives `(31*7)/1023 = 0` and the high reading 870 gives
+`(870*7)/1023 = 5`, in integer arithmetic. **`"5"` versus `"0"` IS the same transposition**, seen
+through the program's own scaling. It also transposes in BOTH directions — serial 23 reads
+`"5"` vs `"0"` and serial 43 reads `"0"` vs `"5"` — which is what a phase shift does and what a
+wrong value does not, and it produces 48 serial lines against the referee's 50, consistent with
+spending byte time.
+
+**Evidenced, not proven.** Proving it means instrumenting the moment each side samples the ADC and
+showing the device's falls the other side of a stimulus step. The three facts above are consistent
+with no other explanation I can construct, which is not the same as measuring it.
+
+- **The superseded reading of the `"0"` class, kept because it was wrong in an instructive way.**
+  `arduino-08-string-addition` prints `"Sensor value: 31"` on the referee and bare `"0"` on the
+  device, on BOTH nano and pico; `arduino-07-row-column-scanning` prints `"5"` against `"0"`. A
+  device printing `0` where a concatenated string is expected has the shape of an operation that
+  lowers to a literal zero on the device — the same shape D26 recorded for list operations
+  (`0 /* item */`). If that is what it is, it is a real capability gap and the referee is right to
+  disagree. **Not established. Recorded as the next thing to measure.**
+
+The superseded record of the two pico pairs, kept because the wrong readings are the point: both
+read
+`referee has 10 events the actual lacks (first: {tMs: 2020, …})`. The head agrees to the
+millisecond for nineteen events, then the referee holds the output on until 1932 where the device
+releases at 1240, and continues with ten more. The divergence begins after t≈900, which is when
+`sweepStimulus` moves the analog input — so it is about how each side responds to a new ADC
+reading, not about drift (both measure 0 ms/s here). That is the whole of what has been
+established; the cause is not.
+
+That is four consumer-side findings and zero producer-side ones, again. The gate is worth having
+precisely because it now points at four specific pairs instead of drowning them in nine benign
+timing failures — but it still cannot be switched on in CI until the recorder gap is closed and
+the pico pair is understood.
+
+## D-EMU-BP3, second half — the fix was in the wrong repository (2026-09-04)
+
+The readMem repair landed in lite's VENDORED copy of `emu8051-debug.js`. That file is synced from
+bw-board, and lite's own `vendor-freshness` gate said so: `STALE emu8051-debug.js`. The consequence
+was worse than a red gate — **the next `sync:bw-board` would have silently reverted it and restored
+the 256-byte short read**, because bw-board carried no such change at its pin or on master. A fix
+applied in the consumer of a vendored file is a fix with an expiry date, and nothing about it looks
+temporary while you are writing it.
+
+Ported and pushed as bw-board `a577476` (CI green), verified there against a FAKE wasm rather than
+the real binary: the vendored emulator lives here, not there, and the property under test is not
+"the emulator works" but "this adapter respects the C side's buffer limit". The fake encodes that
+limit exactly — it fills at most 256 bytes per call and leaves the rest of the scratch region
+POISONED, because a fake that zero-filled would let the broken version pass. Zeroes are what the
+bug produced. Mutation-proved.
+
+**The danger is closed even though the gate is still red.** bw-board master carries the fix, so a
+future vendor can only keep it. What remains is the pin: lite pins `5f79057`, which predates it, so
+`--check` reports STALE until someone runs `vendor-forward`. That is deliberately not done here —
+it clones every upstream fresh, then runs integrate, a build and three browser gates before
+committing. The build wants a quiet box (`--max-old-space-size=2560`, and the OOM killer here
+takes the largest RSS process, which is another session's conversation).
+
+**CORRECTED 2026-09-04 — it does NOT have to advance all three together.** I wrote that twice, as
+the reason for deferring, without reading the script's options. It takes `--at <repo>=<40-hex>`,
+repeatable, and `--no-commit`. So the narrow advance is one command:
+
+    node scripts/vendor-forward.mjs \
+      --at bw-board=a57747648291d4a3cf24bfdf97369eeb92e9d9e7 \
+      --at sb3-creator=85fcf9ffc7087e65bfed2b631ed381df3da187ff \
+      --at bw-circuit-ui=9b3abdb07401700c669471c4aca18c54bc9cdc16
+
+bw-board moves 4 commits over 3 vendored files (`board.js`, `emu8051-debug.js`, `index.js` — the
+readMem fix plus two pin-aliasing commits, which is what the three browser gates are for);
+sb3-creator moves 1 commit over `cToPseudocode.js` and `sb3Creator.js`, landing the `repeat` fix
+and resolving 2 of the 11 remaining disagreements. **Do not let it take bw-board's master**, which
+has since absorbed the i8086 consolidation merges — **and which is RED as of `c3e9fcf`.**
+`test/reseat-gate.test.mjs` there resolves its fixtures through
+`join(here, '..', '..', 'wt', 'i8086-ui-cui', 'gallery')`: a path inside a git WORKTREE on one
+developer box, on the unmerged branch `feat/i8086-ui`, with the two fixtures tracked nowhere in
+bw-board. CI can never have them, and the tell is that the GREEN case and the RED mutation case
+fail together — a missing fixture, not changed behaviour. `a577476` is the last green commit on
+that branch, which is a second and independent reason to pin there.
+
+bw-board's own `ci.yml` predicted the species: it checks `emu8051-stc` out INSIDE the workspace
+because "Actions refuses a path outside the workspace", and records that fifteen cross-repo tests
+once skipped silently for weeks. This is that hazard one step further out. **"Works on the box with
+both checkouts" has a worse cousin: works on the box with both WORKTREES** — and a worktree is not
+something CI can be pointed at, so the fixture has to be committed or the gate has to say it is
+absent.
+
+**lego-47's framing is more general than mine and worth keeping instead.** They reviewed and
+blessed that push after running the suite themselves — uncapped, real exit code, no pipe,
+deliberately not accepting someone else's number — and got 3773 tests, 0 fail. It passed because
+*that box* had the worktree. So the species is not "a worktree instead of a repo", it is **a check
+reporting on the environment it ran in rather than the one it will run in**: the same family as a
+sparse checkout hiding tests, a pipe hiding an exit code, a manifest listing 26 of 94 files, and
+node 20 standing in for CI's node 22. Running the suite is not verification if the suite can read
+the box.
+
+The diagnostic tell is worth reusing: **when a GREEN case and its RED mutation case fail together,
+the fixture is missing** — a real regression moves only one of them.
+
+Asserting a tool's constraint without reading its flags is the same shape as every other error in
+this document: a plausible reading of something adjacent to the evidence.
+
+Measured, so the deferral is a fact rather than a preference: bumping bw-board from `5f79057` to
+`a577476` spans four commits and changes three VENDORED files — `src/board.js`, `src/index.js` and
+`src/emu8051-debug.js`. Only the last is mine. The other two carry pin-aliasing work ("one physical
+pin answers to both its names", "export the alias surface"), which is real behaviour arriving in
+lite and wants the browser gates that `vendor-forward` runs. A narrow `sync-bw-board.mjs --dir`
+would clear the STALE line and smuggle that in unverified, which is the trade the guard on that
+script already refuses for a different reason.
+
+**And the STALE line should stay red until then — it is telling the truth.** The obvious way to
+clear it is to revert lite's vendored copy to match the pin. Tried, measured, rejected: doing that
+fails lite's OWN gate, `test/emu8051-readmem-length.test.mjs`, 3 of 3, with
+`readMem('code', 0, 257) diverged at byte 256`. So the choice is a working emulator with a red
+vendor line, or a 64 KB code read that returns 256 bytes of program and 65280 of heap with a green
+one. The first is obviously right, and the red is not a false alarm — it says "this file is ahead
+of its pin", which is exactly true and exactly what someone should see until the vendor lands.
+
+A gate that goes red for a true reason is not a gate to silence. Recorded because the tempting
+move — make the board green again — would have reinstated the defect this document opens with.
+
+The rule, learned the expensive way: **before fixing a file under `lib/bw-board/`,
+`lib/bw-circuit-ui/` or any `sb3-creator-*.js`, check whether it is vendored.** `scripts/sync-*.mjs`
+name every file they own. Fixing it here is not a shortcut to fixing it there; it is a fix that
+will be deleted by the next person doing their job correctly.
+
+## D-METHOD1 — conceding a correct number to a confident correction (2026-09-04)
+
+Not a defect in the product. A defect in how two sessions checked each other, recorded because it
+produced three wrong figures in one afternoon and would otherwise live only in a chat transcript —
+which is the failure D-FIRSTLOAD1 was filed to avoid.
+
+**What happened.** code-28 wrote that `builtinExtensions` has 38 entries, 26 of them gallery
+extensions. Both were right. bw-ci "corrected" it to 37 and 27; both were wrong — 37 counts entries
+whose path merely STARTS with `../extensions/`, and 27 sweeps up a
+`require('../extensions/crispstrobe/adapter')` that sits outside the object.
+
+**The part worth recording is what code-28 did next**, in their own words: rather than test whether
+the incoming number survived the same check, they re-ran their own grep, got 26 again, and
+*invented a mechanism for why they must be wrong* — "my regex missed a line-wrapped entry" — and
+reported it as a finding. Verified afterwards by parsing the object: there are ZERO line-wrapped
+entries. The explanation was manufactured to fit a conclusion that a confident peer had supplied.
+
+**Why it matters more than the miscounts.** A bad count is an instrument problem and this ledger is
+full of them. Abandoning correct data because the contradiction arrived confidently is a different
+thing: it converts one person's error into an agreed fact, and it does so most easily between people
+who are actively trying to check each other. It happened in the same exchange where both sessions
+were congratulating themselves for not accepting each other's numbers.
+
+**The cheap check that was skipped.** Not "where did I go wrong" — which assumes the answer — but
+"does THEIR number survive the test mine just survived". Re-running your own measurement cannot
+distinguish the two cases; only applying the same test to the other figure can.
+
+**Applied form.** When a correction arrives for a number you measured: re-derive BOTH figures by a
+method that does not share the first one's failure mode. Here that meant parsing the object rather
+than grepping the file, and it settled 38/26/0-line-wrapped in one pass. If you find yourself
+constructing a story for why you were wrong, that is the signal to test the other number instead.
+
+Credited to code-28, who caught it in themselves and said so unprompted after the tally had already
+been agreed in their favour.
+
+## D-FIRSTLOAD1 — 3.41 MB of first paint is 26 extension bodies that only LOOK lazy (2026-09-04)
+
+Found by bw-ci while fixing the labwired probe, characterised by them, deliberately not landed,
+and recorded HERE because it existed only in a chat message. A finding that lives in one session's
+transcript is a finding the next auditor cannot see — the same reason a stash on a detached HEAD
+reads as nothing.
+
+`extension-support/extension-manager.js` registers its builtins as
+`planetemaths: () => require('../extensions/crispstrobe/planetemaths')` — **38** such entries, parsed
+out of the `builtinExtensions` object rather than grepped:
+
+    26  ../extensions/crispstrobe/   the gallery bodies — this is the 3.41 MB
+    11  ../extensions/               stock scratch3_* (pen, music, microbit, ev3, boost, …)
+     1  ../blocks/                   coreExample
+    --
+    38  entries in builtinExtensions
+
+Plus one `require('../extensions/crispstrobe/adapter')` that is NOT a map entry and must not be
+counted as one.
+
+**38 and 26 were right first time.** I "corrected" them to 37 and 27 and both were wrong: 37 is
+the count of entries whose path merely STARTS with `../extensions/`, which is a different question,
+and 27 came from a grep that swept up the adapter require sitting outside the object. Two bad
+numbers produced in the act of correcting a good one, by exactly the mechanism this ledger keeps
+recording — a pattern that looks like it names the thing and names slightly less, or slightly more,
+than the thing. The arrow LOOKS like deferral and is not: webpack resolves `require` at
+build time regardless, so all 26 bodies land in the first-paint chunk. Verified here: the pattern
+is at `extension-manager.js:18` onward.
+
+**Converting them to `import()` works and immediately breaks the VM game suite.** lite's
+`deserializeProject` patch pre-loads extensions fire-and-forget and then asks `isExtensionLoaded()`
+in the same breath; both halves assume the `require` completed synchronously, which a dynamic
+import does not. Making it correct means wrapping the remainder of `deserializeProject` in a
+promise through string surgery into vendored VM internals — unverifiable on this box, with
+"projects silently lose their extension blocks" as the failure mode. bw-ci reverted clean, 69/69
+green, and left it.
+
+**This is species 19 again** — a gate that asserts where code LIVES says nothing about what it
+FETCHES — one level down. `verify-labwired-lazy-bundle.mjs` correctly asserts the heavy engine's
+loader is not in the entry bundle; nothing asserted that the 26 extension bodies are not, and they
+are. The measurement that finds it is a live network read, not a static scan.
+
+Scoped as a day's work with a PR of its own, not an end-of-session edit. Owner: unassigned.

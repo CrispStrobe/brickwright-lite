@@ -81,18 +81,69 @@ export async function loadLabwired () {
     }
 }
 
+/** Cached availability answer, independent of whether the engine was loaded. */
+let present = null;
+
 /**
  * Cheap availability probe for UI that must decide whether to OFFER the engine.
  * Resolves false rather than throwing when the artifact was never fetched.
+ *
+ * IT USED TO CALL loadLabwired(), AND THE WORD "cheap" WAS THE ONLY CHEAP THING
+ * ABOUT IT. debug-panel.jsx probes at mount to decide whether the heavy tier
+ * belongs in the target picker, so every first load of the app downloaded AND
+ * instantiated the engine to answer a yes/no question — measured against the
+ * deployed site on 2026-09-04: 8.5 MB over 26 requests, of which 3.40 MB was
+ * labwired_wasm_bg.wasm and 3.41 MB its glue chunk. First render took 7.6 to
+ * 9.7 seconds from a datacentre with a warm DNS cache and an empty HTTP cache.
+ * Roughly 80% of the bytes a first-time visitor waited for were an optional
+ * engine most of them never open.
+ *
+ * `verify-labwired-lazy-bundle.mjs` could not see this and is not at fault: it
+ * asserts WHERE the code sits in the bundle, which was and still is correct.
+ * The engine was never in the entry bundle — it was fetched from it at startup.
+ * Location and traffic are different claims.
+ *
+ * A HEAD asks the only question the picker needs: is the artifact deployed. It
+ * transfers no body. Some hosts answer HEAD poorly, so a one-byte ranged GET is
+ * the fallback before concluding absence.
+ *
+ * WHAT THIS TRADES, stated rather than quietly reversed. The old probe proved
+ * the engine INSTANTIATES; this proves it is DEPLOYED. So a corrupt artifact
+ * would now be offered and fail when selected — the "entry that fails when
+ * clicked" the module header rightly calls worse than no entry. That guarantee
+ * cost every visitor 6.8 MB on every load, and loadLabwired() still reports the
+ *real failure honestly at selection time, where the person is already waiting for
+ * an engine. If the guarantee is wanted back, the way to buy it is a build-time
+ * checksum in the artifact manifest, not a download on first paint.
  */
 export async function isLabwiredAvailable () {
-    return (await loadLabwired()) !== null;
+    if (cached) return true;                     // already instantiated: certainly here
+    if (present !== null) return present;
+    const base = (typeof document !== 'undefined' && document.baseURI)
+        || (typeof location !== 'undefined' && location.href)
+        || null;
+    if (!base || typeof fetch !== 'function') {
+        present = false;
+        return present;
+    }
+    const url = new URL('static/labwired/labwired_wasm_bg.wasm', base).href;
+    try {
+        let res = await fetch(url, {method: 'HEAD'});
+        // A host that dislikes HEAD must not be read as "engine absent".
+        if (!res.ok) res = await fetch(url, {headers: {Range: 'bytes=0-0'}});
+        present = res.ok || res.status === 206;
+    } catch (e) {
+        loadLabwired.lastError = e && e.message ? e.message : String(e);
+        present = false;
+    }
+    return present;
 }
 
 /** Test seam: forget the cache so a suite can exercise both branches. */
 export function _resetLabwiredCache () {
     cached = null;
     attempted = false;
+    present = null;
     delete loadLabwired.lastError;
 }
 

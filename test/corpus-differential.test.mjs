@@ -26,7 +26,12 @@ test('corpus differential: rotating sample agrees', {skip: !enabled && 'CORPUS_D
     const SAMPLE_SIZE = 6;
     // Rotate offset by day-of-year so successive runs cover the gallery.
     const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
-    const offset = (dayOfYear * SAMPLE_SIZE) % 200; // wrap at 200 to stay in range
+    // No modulus here on purpose. This used to wrap at a hardcoded 200 "to stay
+    // in range" while the gallery yields 224 eligible pairs, so the last 24 were
+    // unreachable by the rotation — and a caller cannot know that bound, because
+    // only the script counts the pairs. It now wraps against the real count, so
+    // the honest thing to pass is the raw rotation.
+    const offset = dayOfYear * SAMPLE_SIZE;
 
     const out = execFileSync(process.execPath, [SCRIPT, 'corpus', String(SAMPLE_SIZE), String(offset)], {
         cwd: join(here, '..'),

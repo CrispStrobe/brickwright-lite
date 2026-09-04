@@ -40,6 +40,16 @@
     "defaultMessage": "micro:bit Simulator"
   },
   {
+    "id": "gui.stageHeader.arduboyConsole",
+    "description": "Button to show the Arduboy console in the right pane",
+    "defaultMessage": "Arduboy Console"
+  },
+  {
+    "id": "gui.stageHeader.arcadeConsole",
+    "description": "Button to show the MakeCode Arcade or PyBadge console",
+    "defaultMessage": "Game Console"
+  },
+  {
     "id": "gui.stageHeader.controllerPanel",
     "description": "Button to show the controller panel with interactive widgets",
     "defaultMessage": "Controller"
