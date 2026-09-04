@@ -530,6 +530,79 @@ it is right.
 
 Each task is independently shippable and none blocks the next.
 
+### 3.8 The 8086 as a FIRST-CLASS target in the GUI — scoped 2026-09-04 (owner-requested)
+
+The tier runs. What is not yet true is that a learner can reach it the way they
+reach an Arduino: write pseudocode, press play, and watch a board they drew.
+Three steps, in dependency order, each with what already exists under it.
+
+**WHAT IS ALREADY DONE, so nobody rebuilds it.** The local assemble route
+(`lib/bw-asm/assemble-route.js`) sends 8086 source to the vendored
+`i8086-asm.js` and everything else to the hosted service — the ASM tab's ▶
+already assembles 8086 locally and runs it on a DOS bench. Six example
+programs ship with attribution. Six ROMs are served from `static/roms`. The
+debug target, extractor, video for all five cards and the keyboard are wired.
+
+#### 3.8.1 The ASM tab, finished — SMALL
+
+The route exists; the gaps are affordances. **No keyboard on the ASM bench**
+(`createI8086DosBench` accepts a `keys` queue and the tab passes none, so a
+program that waits for a keystroke sits there — which is why no shipped example
+asks for one). **No graphics example**, now unblocked: the BIOS draws modes
+4/5/6 and 13h and all five cards render. **No 8086 part in the circuit
+palette**, which is why the device sits in the Code tab's picker labelled
+"assembly only" rather than arriving from a drawn board.
+
+#### 3.8.2 Pseudocode → ASM → 8086 — MEDIUM, and the design decision is the work
+
+Today: pseudocode → `generateC` → a HOSTED compiler → binary. That chain has no
+8086 back end and cannot grow one — there is no ia16 C compiler in the service,
+and adding one is a toolchain problem, not ours.
+
+**So the 8086 does not go through C at all.** The path is pseudocode → 8086
+assembly → our own assembler → the machine, entirely local. That is not a
+workaround: it is strictly better where it applies, because the assembler is
+differentially tested against MASM 1.10 and NASM 2.16 and needs no network.
+
+What makes it tractable is that `generateC` already does the hard part — it
+lowers each WHEN block to a state machine over a millisecond tick. A
+`generate8086Asm` emits the same state machine in our MASM subset. The
+sub-steps:
+
+1. **The tick.** C's `while(1)` over a ms counter becomes the 8254's 18.2 Hz
+   tick, or a tighter counter if a lesson needs one. This decides what "wait 1
+   second" means and must be settled before any codegen.
+2. **Variables.** Pseudocode variables are 32-bit in the C path; the 8086 is
+   16-bit. Either narrow with a stated limit, or emit 32-bit arithmetic as
+   pairs. **Narrowing silently is the one thing that must not happen** — a
+   counter that wraps at 65535 where the Scratch version reaches 100000 is a
+   program that runs and is wrong.
+3. **The block set that lowers.** Not all of it will. The honest deliverable is
+   a list of blocks that DO lower and a refusal by name for the rest, in the
+   shape `i8086-asm.js` already uses for unsupported directives.
+4. **Pin I/O.** `set pin 13 high` is an 8255 port write on this tier, not an AVR
+   register. That is a per-board mapping, so it needs the extracted machine's
+   chip list — which the extractor already produces.
+
+#### 3.8.3 Circuit examples that RESEAT onto an 8086 — MEDIUM, and it is the point
+
+The owner's framing: an example currently drawn around a Nano, a Pico, a 6502
+or an STC should be reseatable onto an 8086 in place. That is the thing that
+makes the tier a teaching object rather than a demo.
+
+**It is a harder ask than it sounds and the reason is worth stating: the CPU is
+not the only thing that changes.** A Nano example uses AVR pins directly; an
+8086 has no GPIO at all and needs an 8255 beside it. So "reseat" means
+substituting a SUBSYSTEM — CPU plus its port chip plus the address decoding —
+not swapping one part. The parts exist (8255, 8259, 8254, and the boards),
+which is why this is scoped rather than speculative.
+
+Sub-steps: a part-level equivalence table (AVR pin ↔ 8255 port bit); a reseat
+that rewrites the netlist rather than the schematic image; and a gate that the
+reseated example still extracts to a machine that runs. **The gate is the
+deliverable** — a reseat that produces a board which extracts but does not run
+is the failure this tier keeps finding in other forms.
+
 ## 4. Standing debt
 
 ### 4.1 The dead-module ratchet — TRIAGED 2026-08-30, and the instrument was wrong
