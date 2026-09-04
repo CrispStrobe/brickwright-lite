@@ -28,7 +28,7 @@ async function run (lines) {
     while (n < 500_000 && !b.terminated) { b.step(); n++; }
     const ports = {};
     for (const p of b.target.outputs()) ports[p.port] = p;
-    return { built, ports, terminated: b.terminated };
+    return { built, ports, bench: b, terminated: b.terminated };
 }
 
 test('an 8051 pin program runs unchanged except for its DEVICE line', async () => {
@@ -332,4 +332,66 @@ test('an ANALOG pin off P1 is refused, because the channels ARE P1.0-P1.7', asyn
         /ANALOG is only available on P1\.0-P1\.7/,
         'refused by name, with the range, rather than reading the wrong channel');
     assert.deepEqual(c.project.stc.pins, [], 'and the bad declaration is not carried forward');
+});
+
+// ── A LEVEL, AND A TONE ──────────────────────────────────────────────────
+
+test('`set <pin> to <expr>` writes a LEVEL, not a voltage', async () => {
+    // This was nearly lowered to a DAC. The parser calls it a computed LEVEL
+    // and every other back end emits `if (VALUE) high else low`, so
+    // `set led to 128` means "drive it high" -- not "put 128/255 of Vref on
+    // it". A converter here would have run, looked plausible, and meant
+    // something else, which is the failure this tier exists to refuse.
+    for (const [expr, bit] of [['128', 1], ['0', 0], ['(2 - 2)', 0], ['(3 * 7)', 1]]) {
+        const r = await run(['DEVICE i8086', 'PIN led = P1.0 OUTPUT',
+            'WHEN flag clicked:', `  set led to ${expr}`]);
+        assert.equal(r.ports.a.value & 1, bit, `set led to ${expr}`);
+    }
+});
+
+test('a tone comes from the speaker, and the LED beside it survives', async () => {
+    // THE COLLISION THIS GUARDS. An 8255 port is written whole, and P2 is
+    // port B -- so a tone and a lit lamp are two bits of ONE latch. A raw
+    // `OUT 61h` beside a pin write leaves the shadow claiming a lamp is lit
+    // while the port holds it dark: nothing stops, nothing errors, and there
+    // is no diagnostic a learner could act on. Measured by the review lane;
+    // the fix is that the tone goes through BW_PORTB like every pin write.
+    const r = await run(['DEVICE i8086', 'PIN spk = P2.1 TONE', 'PIN led = P2.3 OUTPUT',
+        'WHEN flag clicked:', '  set spk to 440 hz', '  turn on led', '  wait 1 secs']);
+    assert.equal(r.ports.b.value, 0b1011,
+        'bits 0 and 1 gate the speaker, bit 3 is the LED, and all three are in one latch');
+});
+
+test('the tone PLAYED is reported, not the tone asked for', async () => {
+    // 4000 Hz, deliberately: its divisor is 298 and one count moves the
+    // result 13 Hz, so an off-by-one cannot hide. At 440 Hz it could --
+    // 2712, 2713 and 2714 all round back to 440, which is how the review
+    // lane's first pitch test passed while being wrong.
+    const r = await run(['DEVICE i8086', 'PIN spk = P2.1 TONE',
+        'WHEN flag clicked:', '  set spk to 4000 hz', '  wait 1 secs']);
+    const tone = r.bench.target.audio()[0];
+    assert.equal(tone.hz, 4004, 'an 8254 divides 1193182 by a whole number; 4000 is not one');
+    assert.ok(tone.on, 'and it is actually sounding');
+    assert.match(r.built.warnings.join(' '), /asks for 4000 Hz and the speaker plays 4004 Hz/,
+        'and the build says so rather than echoing back what was typed');
+});
+
+test('0 Hz is silence, not a divide by zero', async () => {
+    const r = await run(['DEVICE i8086', 'PIN spk = P2.1 TONE',
+        'WHEN flag clicked:', '  set spk to 440 hz', '  set spk to 0 hz', '  wait 1 secs']);
+    assert.equal(r.bench.target.audio()[0].on, false);
+    assert.equal(r.ports.b.value & 3, 0, 'both gate bits are down');
+});
+
+test('a TONE pin that is not the speaker is refused by name', async () => {
+    // On an 8051 a tone comes out of whatever pin you name. Here it cannot:
+    // the speaker is fixed hardware. Silently playing it somewhere else would
+    // be a program whose sound comes from a pin it did not name.
+    const src = ['DEVICE i8086', 'PIN spk = P1.3 TONE',
+        'WHEN flag clicked:', '  set spk to 440 hz'].join('\n');
+    const c = new SB3();
+    c.parse(src);
+    await assert.rejects(
+        () => buildPseudocode8086({project: c.project, source: src}),
+        /the speaker is not on a pin you can choose/);
 });
