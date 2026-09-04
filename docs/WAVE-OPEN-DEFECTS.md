@@ -729,8 +729,41 @@ PORT-only program that appeared. Deriving a rule from a sample of its inputs, wh
 that defines it is one grep away, is the same shortcut as reading a comment instead of the binary. Mutation-proved both ways: PIN-only fails, and an unanchored match that lets the
 word in a comment promote a host program fails.
 
-The `devices` computation is still wrong and still sb3-creator's: a list that claims eleven chips
-for a program binding nothing is over-claiming whatever the harness does about it.
+### WITHDRAWN 2026-09-04 — the `devices` computation is not over-claiming
+
+I wrote above that "a list that claims eleven chips for a program binding nothing is over-claiming
+whatever the harness does about it", and filed it against sb3-creator. **That was wrong**, and I
+found out by going to fix it: the change was written, the index regenerated, 450 tests run green —
+and then two facts stopped it.
+
+**The app already refuses these pairings honestly.** `debug-runner.js`'s `build()` opens with a
+check for `stc.pins`, and a pin-less project gets *"This project declares no pins, so there is no
+hardware to debug. Add DEVICE / PIN declarations in the Code tab first."* Nobody is shown a broken
+build; picking a chip for a print-only program shows its bench and gives a clear refusal on ▶.
+
+**And 140 benches are shipped for exactly those pairings.** Each of the fourteen Arduino string
+examples carries `circuit.arduino-nano.json`, `circuit.pico.json`, `circuit.stc12c5a60s2.json` and
+so on. Someone generated them on purpose. My repair would have stranded all 140 and cut those
+examples from eleven device options to one.
+
+So `devices` means what its script's header says — *"pool membership means the PROGRAM retargets;
+benchability is the app's bar"* — and both halves hold for these examples: the program retargets,
+and a bench exists. The category error was **entirely lite's**, in a differential that compiled
+pairings the app never compiles, and it is fixed on this side by `bindsHardware`.
+
+That is the third time this entry has had to be corrected, and the shape is the same each time: I
+inferred a producer defect from a consumer's failure. The consumer was wrong all three times.
+Going to fix it in the producer's repo is what found that out, which argues for doing that earlier
+rather than filing across a boundary from one side's evidence.
+
+**What WAS real in the producer, found only because I went there** (all three fixed, sb3-creator
+`d473731`, `03b2ff6`, `5f093cc`): `update-example-devices.mjs` — "the single command that widening
+the device family requires" — could not run at all, because `DEVPART` carried `stm32f030` and
+`POWER_EQUIV` did not, so it died with `Cannot read properties of undefined (reading 'ground')` on
+the first authored circuit. It also wrote two-space JSON over a one-space file, so its own output
+was a 15,678-line reformat that buried any real change. And no workflow ever invoked it, which is
+why a script broken on main stayed broken: nothing ran it. It now runs in CI in 27 s, round-trips
+byte-identically, and a new gate asserts every `DEVPART` kind has a `POWER_EQUIV` row.
 
 ### What the gate finds — DIAGNOSED 2026-09-04, and my first two readings were both wrong
 
