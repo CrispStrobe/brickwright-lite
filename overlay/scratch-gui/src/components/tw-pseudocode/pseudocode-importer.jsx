@@ -397,7 +397,8 @@ const GROUPS = [
         ['thunder_volley', '⚡ Skycourt Surge — polished'],
         ['cascade_pair', '🌈 Chromafall Reactor — polished'],
         ['mooncoil_odyssey', '🌙 Cratercoil — polished'],
-        ['cinder_thrust', '🚀 Magma Lift — polished']
+        ['cinder_thrust', '🚀 Magma Lift — polished'],
+        ['triple_bingo', '🎲 Triple Bingo — 3 players, one screen']
     ]},
     {label: 'Demos', items: [
         ['game', '🎯 Complete Game'], ['art', '🎨 Digital Art'], ['physics', '⚡ Physics Demo'],

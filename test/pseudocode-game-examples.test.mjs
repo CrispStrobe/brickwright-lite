@@ -44,7 +44,8 @@ const EXPECTED = [
     'thunder_volley',
     'cascade_pair',
     'mooncoil_odyssey',
-    'cinder_thrust'
+    'cinder_thrust',
+    'triple_bingo'
 ];
 
 SB3Creator.registerVectorArt(vectorArt);
@@ -70,7 +71,7 @@ test('only quality-approved new games are wired into the visible examples galler
         'ember_dojo', 'lockstep_lagoon', 'rink_riot', 'rim_reactor', 'comet_cup', 'trench_signal',
         'whisker_switch', 'spiral_circuit', 'lilyway_rescue', 'rotor_rogue', 'prism_spire', 'shard_sheriff',
         'halo_foundry', 'corridor_kestrel', 'thunder_volley', 'cascade_pair',
-        'mooncoil_odyssey', 'cinder_thrust'
+        'mooncoil_odyssey', 'cinder_thrust', 'triple_bingo'
     ]);
     for (const name of approved) {
         assert.match(importer, new RegExp(`\\['${name}',`), `${name}: polished game is missing from the Games menu`);
