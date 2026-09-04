@@ -10,6 +10,7 @@ import initBleDiagnostics from '../lib/ble-diagnostics.js';
 import initCapabilityDiagnostics from '../lib/capability-diagnostics.js';
 import initScratchLinkTransport from '../lib/scratchlink-transport.js';
 import installNativeWebBluetooth from '../lib/native-web-bluetooth.js';
+import installVirtualWebBluetooth from '../lib/virtual-hub/web-bluetooth-shim.js';
 import installScratchLinkBridge from '../lib/native-scratch-link-bridge.js';
 import initTauriBridge from '../lib/tauri-bridge.js';
 import initUrlExtensions from '../lib/url-extensions.js';
@@ -54,6 +55,10 @@ export default appTarget => {
     // extension whose default connection type is "ble" fails silently. No-op in
     // a browser that has the real thing, and in one that has neither.
     installNativeWebBluetooth();
+
+    // Add in-memory peripherals without replacing the real/native radio path.
+    // With no registered emulator this forwards requestDevice unchanged.
+    installVirtualWebBluetooth();
 
     // The Scratch Link route's fallback transport. Installed BEFORE the VM or
     // any extension can dial, and additive by construction: it touches only
