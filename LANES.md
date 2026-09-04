@@ -146,6 +146,27 @@ Nothing about the edits was wrong; only half of each landed. CI rebuilds
 split is visible only in the tracked trees, which is exactly what that gate
 exists to see.
 
+**2c. Your edits to VENDORED files have an expiry date, and `vendor-forward`
+will NOT clear them.** `vendor-freshness` reports three STALE entries. One is
+deliberate and belongs to another session. The other two are yours, and they are
+stale for a different reason than a pin being behind: **you edited lite's copies
+of files that a sync script owns and rewrites.**
+
+    overlay/scratch-gui/src/lib/bw-circuit-ui/components/BoardCanvas.jsx
+    the 76-multimeter and arduino-* circuit files
+
+Verified: `BoardCanvas.jsx` sits under the vendored `bw-circuit-ui` tree and
+`scripts/sync-bw-circuit-ui.mjs` writes to that exact destination, so the next
+sync overwrites your change without a word. The edits look permanent while you
+are writing them; `vendor-freshness` is the only thing that says otherwise.
+
+Running `vendor-forward` would look like the answer and is not — it advances
+PINS, and these files diverge from upstream at any pin. The fix is upstream
+first: land the change in `bw-circuit-ui`, then vendor it back. Another session
+hit this exact trap today with `emu8051-debug.js`, fixed it upstream at bw-board
+`a577476`, and left its red line standing deliberately rather than reverting a
+working fix to satisfy a gate.
+
 **3. Attribution here is broken, and the fix is a habit, not a tool.** Every
 session commits as `CrispStrobe <cze+github@mailbox.org>`, so the author line
 identifies nobody. The `Claude-Session` trailer is the only mark — and it is not
