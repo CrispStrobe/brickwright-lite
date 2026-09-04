@@ -92,19 +92,19 @@ const projectData = translateFunction => {
                 // and half a pixel is not worth being the exception.
                 costumes: [
                     {
-                        assetId: 'bcf454acf82e4504149f7ffe07081dbc',
+                        assetId: '404462a29fe1d73ede8ea6b9ded5fabc',
                         name: translator(messages.costume, {index: 1}),
                         bitmapResolution: 1,
-                        md5ext: 'bcf454acf82e4504149f7ffe07081dbc.svg',
+                        md5ext: '404462a29fe1d73ede8ea6b9ded5fabc.svg',
                         dataFormat: 'svg',
                         rotationCenterX: 110,
                         rotationCenterY: 131
                     },
                     {
-                        assetId: '0fb9be3e8397c983338cb71dc84d0b25',
+                        assetId: '404462a29fe1d73ede8ea6b9ded5fabc',
                         name: translator(messages.costume, {index: 2}),
                         bitmapResolution: 1,
-                        md5ext: '0fb9be3e8397c983338cb71dc84d0b25.svg',
+                        md5ext: '404462a29fe1d73ede8ea6b9ded5fabc.svg',
                         dataFormat: 'svg',
                         rotationCenterX: 110,
                         rotationCenterY: 131

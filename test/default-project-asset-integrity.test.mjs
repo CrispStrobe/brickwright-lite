@@ -38,19 +38,20 @@ import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const DIR = path.join(ROOT, 'overlay/scratch-gui/src/lib/default-project');
+// The overlay holds only the files lite OWNS; the backdrop and the two sounds
+// come from the vendored tree and are integrated alongside them. What ships is
+// the union, so that is what has to be checked.
+const VENDORED = path.join(ROOT, 'packages/scratch-gui/src/lib/default-project');
 
-/** name -> why it does not hash to itself. Entries may only be REMOVED. */
-const KNOWN_MISMATCHED = {
-    'bcf454acf82e4504149f7ffe07081dbc.svg':
-        'costume1 of the default sprite. Holds the Brickwright robot from 0d58e52be, ' +
-        'which hashes to 404462a29fe1d73ede8ea6b9ded5fabc.',
-    '0fb9be3e8397c983338cb71dc84d0b25.svg':
-        'costume2 of the default sprite. Byte-identical to costume1 above, so the ' +
-        'sprite ships two costumes that render the same image.'
-};
+/** name -> why it does not hash to itself. Entries may only be REMOVED.
+ *  EMPTY since the repair: every shipped asset is now named by its own md5. */
+const KNOWN_MISMATCHED = {};
 
-const assets = readdirSync(DIR).filter(f => /\.(svg|wav|png)$/i.test(f));
-const md5 = file => createHash('md5').update(readFileSync(path.join(DIR, file))).digest('hex');
+const own = readdirSync(DIR).filter(f => /\.(svg|wav|png)$/i.test(f));
+const vendored = readdirSync(VENDORED).filter(f => /\.(svg|wav|png)$/i.test(f));
+const assets = [...new Set([...own, ...vendored])];
+const where = file => (own.includes(file) ? DIR : VENDORED);
+const md5 = file => createHash('md5').update(readFileSync(path.join(where(file), file))).digest('hex');
 const mismatched = assets.filter(f => md5(f) !== f.replace(/\.[^.]+$/, ''));
 
 test('the default project ships assets that are shipped at all', () => {
@@ -73,12 +74,15 @@ test('the known-mismatched list only shrinks', () => {
         `KNOWN_MISMATCHED: ${fixed.join(', ')}`);
 });
 
-test('the recorded cause still holds: both default costumes are the same image', () => {
-    // If someone gives costume2 its own artwork, this fails and the comment above
-    // stops being true — which is the point. The claim is dated, not eternal.
-    const names = Object.keys(KNOWN_MISMATCHED);
-    if (names.length !== 2) return;   // already partly repaired; nothing to assert
-    assert.equal(md5(names[0]), md5(names[1]),
-        'the two default costumes now differ — update this file\'s header, which ' +
-        'records them as byte-identical since 0d58e52be');
+test('every id project-data.js names is an asset that actually ships', () => {
+    // The other half of the same defect: a correct filename is worthless if the
+    // manifest still points at the old one. This is what would have caught the
+    // original break at the source, and it is why the repair had to touch
+    // project-data.js and default-project/index.js together.
+    const data = readFileSync(path.join(DIR, 'project-data.js'), 'utf8');
+    const named = [...data.matchAll(/md5ext: '([0-9a-f]{32})\.(\w+)'/g)].map(m => `${m[1]}.${m[2]}`);
+    assert.ok(named.length > 0, 'project-data.js names no assets — has its shape changed?');
+    const missing = [...new Set(named)].filter(n => !assets.includes(n));
+    assert.deepEqual(missing, [],
+        `project-data.js names assets that are not in ${DIR}: ${missing.join(', ')}`);
 });
