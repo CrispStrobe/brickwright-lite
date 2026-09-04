@@ -125,6 +125,27 @@ runs come back `cancelled` and individual commits get no verdict. Batching
 several changes into one push costs nothing; the root `.md` files in
 `paths-ignore` (LANES.md included) are free and never start a build.
 
+**2b. Your overlay edits keep landing without their `packages/` mirror, and it
+has now cost main three reds.** Both trees are tracked here, so changing one
+without the other splits the pair at HEAD and `overlay/packages dual-tracked
+pairs are identical at HEAD` fails — which blocks `deploy`, because deploy needs
+build. Occurrences: `53e6c1a31` (circuit.json, pseudocode-importer.jsx,
+BoardCanvas.jsx — refreshed for you at `33cc494da`) and `66b6c704b`
+(stage-header.jsx — refreshed at `46b77d6d4`). `vendor-freshness` also reports
+BoardCanvas.jsx and the 76-multimeter / arduino-* circuit files STALE from the
+same commit, which clears the same way.
+
+The whole fix is one command before you commit:
+
+```bash
+node scripts/integrate.mjs && git add -f packages/<the files it rewrote>
+```
+
+Nothing about the edits was wrong; only half of each landed. CI rebuilds
+`packages/` from `overlay/` on every run, so the app was never affected — the
+split is visible only in the tracked trees, which is exactly what that gate
+exists to see.
+
 **3. Attribution here is broken, and the fix is a habit, not a tool.** Every
 session commits as `CrispStrobe <cze+github@mailbox.org>`, so the author line
 identifies nobody. The `Claude-Session` trailer is the only mark — and it is not
