@@ -10,6 +10,14 @@ on:
           certificate and provisioning profile for the team.
         type: boolean
         default: false
+      device_ipa:
+        description: >-
+          Build a SIDELOADABLE iOS IPA for the registered test iPad
+          (ad-hoc / "release-testing" export). Unlike the App Store IPA
+          from sign_ios, this one embeds a profile that names the device,
+          so `xcrun devicectl device install app` accepts it.
+        type: boolean
+        default: false
   push:
     tags: ['v*']
 
@@ -381,6 +389,120 @@ jobs:
         continue-on-error: true
         with:
           name: brickwright-ios-ipa
+          path: apps/tauri/src-tauri/gen/apple/build/**/*.ipa
+          if-no-files-found: error
+          retention-days: 7
+
+  # Sideloadable, device-installable IPA. Opt-in via workflow_dispatch.
+  #
+  # WHY THIS EXISTS, given ios-signed already produces a signed IPA: that one is
+  # an App Store package. Its profile carries get-task-allow=false and NO
+  # ProvisionedDevices, so iOS refuses it outright —
+  #   xcrun devicectl device install app  ->  the app cannot be installed
+  # and the only route onto hardware is TestFlight. The `ios` job is worse for
+  # this purpose: it targets aarch64-sim, which a physical iPad cannot run at
+  # all. So neither existing job could answer "put this build on the iPad", and
+  # BLE against real LEGO hardware stayed unverifiable from CI.
+  #
+  # This job exports "release-testing" (Xcode 15's name for ad-hoc) against a
+  # profile that names the test iPad by UDID. Deliberately reuses the SAME
+  # Apple Distribution cert as ios-signed (MACOS_CERT_P12) rather than adding a
+  # development certificate: ad-hoc is a distribution method, so no second
+  # private key has to be exported into CI secrets. The only new secret is the
+  # profile itself.
+  #
+  # To add another device: register it, regenerate the IOS_APP_ADHOC profile
+  # with the extra device, and refresh IOS_PROFILE_ADHOC_BASE64. A device that
+  # is not in the profile cannot install the IPA, however it is signed.
+  ios-device:
+    needs: build-web
+    if: ${{ inputs.device_ipa }}
+    runs-on: macos-latest
+    env:
+      IOS_CERTIFICATE: ${{ secrets.MACOS_CERT_P12 }}
+      IOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERT_P12_PASSWORD }}
+      IOS_MOBILE_PROVISION: ${{ secrets.IOS_PROFILE_ADHOC_BASE64 }}
+      APPLE_DEVELOPMENT_TEAM: N9XSJ4M3GT
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: web-build
+          path: packages/scratch-gui/build
+
+      - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable branch head, 2026-08-24
+        with:
+          toolchain: stable
+          targets: aarch64-apple-ios
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: apps/tauri/src-tauri
+
+      - name: Install app dependencies
+        working-directory: apps/tauri
+        run: npm ci
+
+      - name: Build sideloadable IPA
+        working-directory: apps/tauri
+        run: |
+          set -euo pipefail
+          for v in IOS_CERTIFICATE IOS_CERTIFICATE_PASSWORD IOS_MOBILE_PROVISION; do
+            [ -n "${!v:-}" ] || { echo "::error::$v is not set — cannot sign."; exit 1; }
+          done
+
+          npx tauri ios init --ci
+          node scripts/patch-ios-privacy.mjs
+          node scripts/patch-mobile-icons.mjs ios
+
+          PROFDIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROFDIR"
+          echo "$IOS_MOBILE_PROVISION" | base64 --decode > "$RUNNER_TEMP/app.mobileprovision"
+          security cms -D -i "$RUNNER_TEMP/app.mobileprovision" > "$RUNNER_TEMP/app.plist"
+          UUID=$(plutil -extract UUID raw -o - "$RUNNER_TEMP/app.plist")
+          NAME=$(plutil -extract Name raw -o - "$RUNNER_TEMP/app.plist")
+          cp "$RUNNER_TEMP/app.mobileprovision" "$PROFDIR/$UUID.mobileprovision"
+          echo "installed provisioning profile '$NAME' ($UUID)"
+
+          # Fail here rather than after a 20-minute build: an App Store profile
+          # in this secret would produce an IPA no device can install, and the
+          # symptom would only appear at install time on someone's desk.
+          plutil -extract ProvisionedDevices xml1 -o - "$RUNNER_TEMP/app.plist" >/dev/null 2>&1 \
+            || { echo "::error::IOS_PROFILE_ADHOC_BASE64 has no ProvisionedDevices — that is an App Store profile, not an ad-hoc one."; exit 1; }
+
+          node scripts/patch-ios-signing.mjs "$APPLE_DEVELOPMENT_TEAM" "$NAME"
+
+          npx tauri ios build --target aarch64 --export-method release-testing
+
+      - name: Verify the IPA can actually be installed on a device
+        working-directory: apps/tauri
+        run: |
+          set -euo pipefail
+          IPA=$(find src-tauri/gen/apple/build -name '*.ipa' | head -1)
+          [ -n "$IPA" ] || { echo "::error::no .ipa produced"; exit 1; }
+          WORK=$(mktemp -d); unzip -q "$IPA" -d "$WORK"
+          APP=$(find "$WORK/Payload" -maxdepth 1 -name '*.app' | head -1)
+          security cms -D -i "$APP/embedded.mobileprovision" > "$WORK/embedded.plist"
+
+          # The whole point of this job: without ProvisionedDevices the IPA is
+          # an App Store package and devicectl will reject it.
+          plutil -extract ProvisionedDevices xml1 -o - "$WORK/embedded.plist" \
+            || { echo "::error::the built IPA names no devices — it cannot be sideloaded"; exit 1; }
+          echo "devices named in the embedded profile:"
+          plutil -extract ProvisionedDevices xml1 -o - "$WORK/embedded.plist" | grep '<string>'
+
+          [ -f "$APP/PrivacyInfo.xcprivacy" ] \
+            || { echo "::error::PrivacyInfo.xcprivacy missing from the IPA"; exit 1; }
+          ls "$APP"/AppIcon*.png >/dev/null 2>&1 \
+            || { echo "::error::no AppIcon*.png in the IPA"; exit 1; }
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          echo "ad-hoc signed, device-provisioned, privacy manifest and icon present"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: brickwright-ios-device-ipa
           path: apps/tauri/src-tauri/gen/apple/build/**/*.ipa
           if-no-files-found: error
           retention-days: 7

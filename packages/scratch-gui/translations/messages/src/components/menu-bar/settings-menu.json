@@ -19,6 +19,11 @@
     "defaultMessage": "Reload BrickWright"
   },
   {
+    "id": "gui.menuBar.scratchLinkTransport",
+    "description": "Settings action that chooses which carrier the Scratch Link protocol uses",
+    "defaultMessage": "How Scratch Link connects…"
+  },
+  {
     "id": "gui.menuBar.connectionDiagnostics",
     "description": "Settings action that opens the on-screen Bluetooth/connection log",
     "defaultMessage": "Connection diagnostics…"

@@ -463,7 +463,8 @@ const GROUPS = [
         ['thunder_volley', '⚡ Skycourt Surge — polished'],
         ['cascade_pair', '🌈 Chromafall Reactor — polished'],
         ['mooncoil_odyssey', '🌙 Cratercoil — polished'],
-        ['cinder_thrust', '🚀 Magma Lift — polished']
+        ['cinder_thrust', '🚀 Magma Lift — polished'],
+        ['triple_bingo', '🎲 Triple Bingo — 3 players, one screen']
     ]},
     {label: 'Demos', items: [
         ['game', '🎯 Complete Game'], ['art', '🎨 Digital Art'], ['physics', '⚡ Physics Demo'],
@@ -1784,6 +1785,19 @@ class PseudocodeImporter extends React.Component {
             const SB3Creator = (await this.lib()).default;
             const result = SB3Creator.retargetPseudocode(src, deviceId);
             if (result.ok) {
+                // Retargeting the text is only half of the operation. The
+                // circuit tab must have the matching generated/reseated bench
+                // before we commit the new DEVICE, or it would keep showing
+                // the previous MCU with freshly retargeted firmware.
+                const ex = this._lastCatalogExample;
+                const sourceDevice = (src.match(/^DEVICE\s+([\w-]+)/im) || [])[1] || '';
+                const resolvedBench = ex
+                    ? resolveExampleBench(ex, deviceId, sourceDevice)
+                    : null;
+                if (resolvedBench && resolvedBench.error) {
+                    this.setState({status: `Cannot retarget to ${info.label}: ${resolvedBench.error}`});
+                    return;
+                }
                 this.setState({
                     buffers: {...this.state.buffers, pseudocode: result.pseudocode},
                     status: result.warnings.length
@@ -1795,8 +1809,9 @@ class PseudocodeImporter extends React.Component {
                     // retargeting only the text left the VM and the Circuit
                     // tab on the old device.
                     Promise.resolve(this.compile()).catch(() => {});
-                    const ex = this._lastCatalogExample;
-                    const bench = ex && ex.benches && ex.benches[deviceId];
+                    const bench = resolvedBench && resolvedBench.retargeted
+                        ? resolvedBench.path
+                        : null;
                     if (bench && typeof window !== 'undefined') {
                         const detail = {benchPath: bench, exampleId: ex.id, device: deviceId};
                         window.__bwExampleBench = detail;

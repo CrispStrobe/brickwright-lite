@@ -294,7 +294,19 @@ const StageHeaderComponent = function (props) {
                     every mode. */}
                 <Box
                     className={styles.stageMenuWrapper}
-                    style={{position: 'fixed', top: 8, right: 8, left: 'auto', width: 'auto', display: 'flex', gap: 8, alignItems: 'center', zIndex: 5100, background: 'rgba(226,232,240,0.94)', borderRadius: 10, padding: '3px 8px', boxShadow: '0 1px 6px rgba(0,0,0,0.28)'}}
+                    style={{position: 'fixed',
+                        // Clear the menu bar ($menu-bar-height, 3rem = 48px) instead of
+                        // sitting inside its band. Measured on the built app at an iPad
+                        // viewport in WebKit: at top:8 this row occupied y 13..47 while the
+                        // menu bar occupied y 0..48 — a total overlap. It still won the
+                        // stacking (z 5100 over the menu bar's 491, and elementFromPoint at
+                        // its centre returned this button), so raising z-index again would
+                        // have changed nothing: the defect is geometry, not paint order.
+                        // On the device the iOS status bar can cover the top of that same
+                        // band as well, and no z-index reaches OS chrome.
+                        top: 'calc(env(safe-area-inset-top, 0px) + 56px)',
+                        right: 'calc(env(safe-area-inset-right, 0px) + 8px)',
+                        left: 'auto', width: 'auto', display: 'flex', gap: 8, alignItems: 'center', zIndex: 5100, background: 'rgba(226,232,240,0.94)', borderRadius: 10, padding: '3px 8px', boxShadow: '0 1px 6px rgba(0,0,0,0.28)'}}
                 >
                     <Controls vm={vm} />
                     {stageButton}

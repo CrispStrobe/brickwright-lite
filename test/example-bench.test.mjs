@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {resolve} from 'node:path';
 import {
     normalizeDeviceId,
     resolveExampleBench
@@ -32,4 +34,13 @@ test('retarget refuses instead of pairing a new program with the authored circui
     assert.equal(resolved.path, null);
     assert.equal(resolved.retargeted, true);
     assert.match(resolved.error, /matching circuit bench is not available/);
+});
+
+test('device switching refuses before committing firmware when its reseated bench is unavailable', () => {
+    const importer = readFileSync(resolve('overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx'), 'utf8');
+    const setDevice = importer.slice(importer.indexOf('async setDevice (deviceId)'), importer.indexOf('async setDevice (deviceId)') + 6500);
+    assert.match(setDevice, /resolveExampleBench\(ex, deviceId, sourceDevice\)/);
+    assert.match(setDevice, /if \(resolvedBench && resolvedBench\.error\)/);
+    assert.ok(setDevice.indexOf('if (resolvedBench && resolvedBench.error)') <
+        setDevice.indexOf('buffers: {...this.state.buffers, pseudocode: result.pseudocode}'));
 });

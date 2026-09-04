@@ -305,11 +305,14 @@ test('a browser gate cannot be skipped by an unrelated gate failing before it', 
  * ARGUED, here, where the next person reads it.
  */
 const KNOWN_SWALLOWED = {
-    'Smoke-test the debugger':
-        'Swallows exit 2 only (missing local tool) and re-raises anything else. Deliberate until ' +
-        'the sdcc-wasm toolchain can run under Node — see docs/WAVE-OPEN-DEFECTS.md D-SMOKE1. ' +
-        'NOTE what this costs: while it exits 2 the assertions do not run at all, so this entry ' +
-        'is a promise to come back, not a resolution.'
+    // EMPTY, and that is the point. The single entry here was
+    // 'Smoke-test the debugger', excused as "deliberate until the sdcc-wasm
+    // toolchain can run under Node" and explicitly labelled a promise to come
+    // back rather than a resolution. It was kept 2026-09-03: the toolchain runs
+    // under Node, native sdcc turned out never to have been required (measured
+    // — the script exits 0 with sdcc absent from PATH), CI now checks out the
+    // disassembly oracle, and the step swallows nothing. Three real defects had
+    // been sitting behind that swallow the whole time.
 };
 
 /**

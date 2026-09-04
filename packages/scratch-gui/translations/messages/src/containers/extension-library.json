@@ -17,16 +17,21 @@
   {
     "id": "gui.extensionLibrary.customDescription",
     "description": "Description of the custom-extension-from-URL tile",
-    "defaultMessage": "Load any TurboWarp- or Xcratch-style extension directly from a URL."
+    "defaultMessage": "Load a sandbox-compatible TurboWarp or Scratch extension from a URL."
   },
   {
     "id": "gui.extensionLibrary.untrusted",
-    "description": "Confirmation before running a custom extension from an untrusted URL",
-    "defaultMessage": "Load and run code from:\n\n{url}\n\nOnly continue if you trust the source — the extension runs with full access to this page."
+    "description": "Confirmation before running a custom extension in the worker sandbox",
+    "defaultMessage": "Load code from:\n\n{url}\n\nIt will run in an isolated worker without access to the editor or native device bridge. HTTP(S) requests remain available; direct WebSockets and nested workers are blocked. Extensions which require unsandboxed mode will be refused."
   },
   {
     "id": "gui.extensionLibrary.loadFailed",
     "description": "Alert shown when a custom extension URL fails to load",
     "defaultMessage": "Could not load the extension from {url}\n\n{error}"
+  },
+  {
+    "id": "gui.extensionLibrary.unpinned",
+    "description": "Confirmation for a gallery extension published since this build was pinned",
+    "defaultMessage": "This gallery extension is newer than this app, so its code has not been pinned or reviewed here yet:\n\n{url}\n\nIt will run in an isolated worker without editor or native-device access. HTTP(S) requests remain available; direct WebSockets and nested workers are blocked. Load it?"
   }
 ]

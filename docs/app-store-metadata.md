@@ -199,6 +199,69 @@ Bitte Abstürze, falsche Simulationen oder Messwerte, unzugängliche Bedieneleme
 Übersetzungsfehler, verlorenen Fortschritt, Layoutprobleme sowie Hub- und
 macOS-Version melden.
 
+## What to Test — 0.1.14 en-US
+
+Mostly an electronics-bench and compiler build. Four areas matter most:
+
+- **The 8051 C compiler now runs entirely in the browser.** No hosted compile
+  step: SDCC, the assembler and the linker are all local, and floating-point
+  programs link too. Please compile an 8051 example, then compile one that
+  fails on purpose — when it refuses it should now say why, rather than
+  stopping silently. If a program compiled in 0.1.13 and refuses now, that is
+  exactly the report we need.
+- **Circuit import and export were rebuilt around one surface.** The separate
+  import and export menus are gone; there is now a single transfer path that
+  reports what it did, and SPICE netlists can be imported alongside Wokwi
+  projects. Please import a circuit you use, export it, and re-import the
+  result — anything the report does not mention, or silently drops, is a bug.
+- **The scope, the sweep and the schematic panels grew.** The AC sweep is
+  analytical and now states which measurement it is showing. Please run a
+  sweep and a scope capture on the same bench and check the readings agree
+  with what the circuit should do.
+- **Potentiometers no longer cover their neighbours.** On some imported
+  benches a seated knob scaled itself over nearby parts and swallowed drags
+  meant for the canvas. Please drag a potentiometer while simulating, and
+  check nothing underneath it moves.
+
+Also in this build: the debugger gained a frames view and a drawer, a way out
+when the in-page compiler gets stuck, lesson search matches the topics it
+displays, saved costume artwork survives a reload in both paint modes, and
+several File-menu entries that did nothing now work.
+
+## What to Test — 0.1.14 de-DE
+
+Überwiegend ein Build für die Elektronik-Werkbank und den Compiler. Vier
+Bereiche sind am wichtigsten:
+
+- **Der 8051-C-Compiler läuft jetzt vollständig im Browser.** Kein
+  Kompilieren auf einem Server mehr: SDCC, Assembler und Linker sind lokal,
+  und auch Fließkomma-Programme werden gelinkt. Bitte ein 8051-Beispiel
+  kompilieren und danach eines, das absichtlich fehlschlägt — die Ablehnung
+  sollte jetzt begründet werden und nicht mehr stillschweigend passieren.
+  Wenn etwas in 0.1.13 kompilierte und jetzt abgelehnt wird, ist genau das
+  die Meldung, die wir brauchen.
+- **Import und Export von Schaltungen wurden auf eine Oberfläche
+  zusammengeführt.** Die getrennten Import- und Export-Menüs entfallen; es
+  gibt einen Übertragungsweg, der berichtet, was er getan hat, und
+  SPICE-Netzlisten lassen sich zusätzlich zu Wokwi-Projekten importieren.
+  Bitte eine eigene Schaltung importieren, exportieren und erneut
+  importieren — alles, was der Bericht nicht erwähnt oder stillschweigend
+  verwirft, ist ein Fehler.
+- **Oszilloskop-, Sweep- und Schaltplan-Ansicht wurden erweitert.** Der
+  AC-Sweep rechnet analytisch und benennt jetzt die dargestellte Messgröße.
+  Bitte Sweep und Oszilloskop-Aufnahme an derselben Schaltung ausführen und
+  prüfen, ob die Werte zum erwarteten Verhalten passen.
+- **Potentiometer überdecken ihre Nachbarn nicht mehr.** Auf manchen
+  importierten Werkbänken skalierte sich ein gestecktes Poti über benachbarte
+  Bauteile und verschluckte Ziehbewegungen. Bitte ein Poti während der
+  Simulation bewegen und prüfen, dass sich darunter nichts verschiebt.
+
+Außerdem in diesem Build: eine Frames-Ansicht und eine Schublade für den
+Debugger, ein Ausweg, wenn der Compiler in der Seite hängt, die Lernpfadsuche
+findet die angezeigten Themen, gespeicherte Kostüm-Grafiken überstehen das
+Neuladen in beiden Malmodi, und mehrere Einträge im Datei-Menü, die nichts
+taten, funktionieren jetzt.
+
 ## What to Test — 0.1.13 en-US
 
 A much larger build than 0.1.12 — it collects two weeks of work. Four areas

@@ -134,7 +134,25 @@ const main = async () => {
     // Keep localhost available for the production bundle and its WASM assets,
     // but make the hosted compiler physically unreachable. Abort before the
     // request leaves Chromium and retain its URL as failure evidence.
-    await page.route('**/*', route => {
+    //
+    // Matched by ORIGIN rather than `**/*`, and this NARROWING CANNOT WEAKEN D2.
+    // isHostedCompilerRequest already requires a foreign origin itself (POST +
+    // origin !== app origin + path /compile), so every request this filter now
+    // skips is one the predicate would have answered false for anyway. The set
+    // of URLs that can reach `hostedCompilerRequests` is identical either way;
+    // only the ones that could never have been recorded stop being routed.
+    //
+    // Why it matters: this build pulls roughly 35 MB over localhost — a 14.7 MB
+    // vendor chunk, four SDCC wasm stages and a 3.3 MB runtime pack — and
+    // handing every one of those responses back through the driver is what took
+    // the renderer down. A dead renderer then loses the run's whole report,
+    // which is the failure the crash handler below exists to name.
+    const appOrigin = new URL(url).origin;
+    await page.route(u => {
+        // Unparseable means not foreign-by-evidence: leave it alone, exactly as
+        // isHostedCompilerRequest's own catch does.
+        try { return new URL(u).origin !== appOrigin; } catch { return false; }
+    }, route => {
         if (isHostedCompilerRequest(route.request(), url)) {
             hostedCompilerRequests.push(route.request().url());
             return route.abort('blockedbyclient');
@@ -223,6 +241,28 @@ const main = async () => {
     });
 
     await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 90000});
+
+    // SELF-PROOF, before anything is claimed from a zero.
+    //
+    // D2 asserts that `hostedCompilerRequests` is EMPTY. An empty list has two
+    // causes that look identical from outside: the app made no hosted request
+    // (the claim), or the interception never fired (a vacuous pass). A route
+    // matched on a predicate is especially exposed — a filter that matches
+    // nothing is silent, and silence is what both look like. So drive one
+    // request that MUST be caught, and fail loudly here if it is not.
+    //
+    // `.invalid` is reserved by RFC 2606 and resolves nowhere, so if the
+    // interception is broken this leaks no traffic; it just fails to be seen.
+    const SELF_PROOF = 'https://bw-route-selfproof.invalid/compile';
+    await page.evaluate(u => fetch(u, {method: 'POST', body: '{}'}).catch(() => {}), SELF_PROOF);
+    const interceptionLive = hostedCompilerRequests.includes(SELF_PROOF);
+    record('D2 precondition: the hosted-compiler interception is live',
+        interceptionLive,
+        interceptionLive ? 'a synthetic foreign POST /compile was caught and aborted'
+            : 'THE ROUTE SAW NOTHING — D2\'s zero below would mean nothing');
+    // The real claim starts from zero; the proof request is not part of it.
+    hostedCompilerRequests.length = 0;
+
     await page.waitForSelector('[role="tab"]', {timeout: 60000});
 
     // ── get a C-target debug session running ────────────────────────────
