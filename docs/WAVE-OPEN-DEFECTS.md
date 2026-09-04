@@ -937,9 +937,46 @@ trying to assert. Left as-is deliberately: making them agree means changing the 
 or the emitted helper, which is a design call in someone else's component for a difference that
 cannot change what the hardware does.
 
-**With this the triage is complete.** Of the nine original disagreements: five were the benign
-referee-is-instantaneous timing gap, two were lite's own recorder, two were the emitter defect
-above, and two are this modelling difference. **Zero unexplained.**
+**CORRECTED 2026-09-04 — "zero unexplained" was true of a SAMPLE, not the corpus.**
+
+I wrote that the triage was complete and nothing was unexplained. That claim came from the same
+40-pair window I had been running all day (offset 0, count 40). Running the **whole** 176 pairs
+says something different:
+
+    AGREE 94   SKEW 5   DIFF 15   SKIP 62   ERROR 0
+
+**Fifteen semantic disagreements, not four**, and the eleven I had never seen are a class the
+first forty pairs contain none of: SERIAL. Reporting a sample's triage as the corpus's is the
+same error this document keeps recording in other people's work — I read a filtered view as if it
+were the data, having just written that sentence about a comparator's diff list.
+
+Also worth stating plainly: **62 of 176 pairs SKIP**, mostly on `ref.pwm.length` (duty recording
+is not built). The gate covers 114 pairs, not 176, and any statement about "the corpus" means
+those 114.
+
+The fifteen, by class, measured and only partly diagnosed:
+
+- **Pin events, 4 — diagnosed.** `02-dimmer` and `10-motor-speed` on pico are the `repeat` defect
+  fixed above (sb3-creator `85fcf9f`, not yet vendored here, so they still show). The two
+  `08-led-chaser-595` entries are the latch idle level.
+- **Serial count off by one at the horizon, 4 — probably benign, not confirmed.**
+  `arduino-01-read-analog-voltage` and `arduino-sk-p03-love-o-meter` on nano read 25 vs 24;
+  `arduino-sk-p11-crystal-ball` reads 1 vs 0 on both devices. `compareTraces` already forgives a
+  one-line difference at the horizon edge for serial, so these are landing just outside that
+  allowance — consistent with the referee-is-instantaneous gap, and NOT yet demonstrated to be it.
+- **Serial values transposed between two ADC readings, 4 — not diagnosed.**
+  `arduino-05-if-statement`, `arduino-04-serial-call-response`, `arduino-04-serial-passthrough`
+  and `arduino-sk-p14-serial-pot`, all on nano, disagree by swapping `"31"` and `"870"` at one
+  index. Those are the low and high pot readings the sweep stimulus sets, so the two sides
+  disagree about which reading is current when the line is printed — a phase difference, plausibly
+  the same gap again. Plausibly is not measured.
+- **A value that is not a number the other side has, 3 — the most interesting, undiagnosed.**
+  `arduino-08-string-addition` prints `"Sensor value: 31"` on the referee and bare `"0"` on the
+  device, on BOTH nano and pico; `arduino-07-row-column-scanning` prints `"5"` against `"0"`. A
+  device printing `0` where a concatenated string is expected has the shape of an operation that
+  lowers to a literal zero on the device — the same shape D26 recorded for list operations
+  (`0 /* item */`). If that is what it is, it is a real capability gap and the referee is right to
+  disagree. **Not established. Recorded as the next thing to measure.**
 
 The superseded record of the two pico pairs, kept because the wrong readings are the point: both
 read
