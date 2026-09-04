@@ -14,6 +14,7 @@ import installVirtualWebBluetooth from '../lib/virtual-hub/web-bluetooth-shim.js
 import {registerVirtualSpikePrime} from '../lib/virtual-hub/spike-prime-peripheral.js';
 import installVirtualSpikeClassicScratchLink from '../lib/virtual-hub/spike-classic-scratch-link.js';
 import VirtualSpikeHubState from '../lib/virtual-hub/spike-hub-state.js';
+import initVirtualSpikePanel from '../lib/virtual-hub/spike-panel.js';
 import installScratchLinkBridge from '../lib/native-scratch-link-bridge.js';
 import initTauriBridge from '../lib/tauri-bridge.js';
 import initUrlExtensions from '../lib/url-extensions.js';
@@ -71,6 +72,7 @@ export default appTarget => {
         snapshot: () => virtualSpikeState.snapshot(),
         get blePeripheral () { return virtualSpikeBle.peripheral; }
     };
+    initVirtualSpikePanel(virtualSpikeState);
     installVirtualWebBluetooth();
 
     // Optional Classic-firmware simulation. It is inert unless the virtual
