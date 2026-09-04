@@ -127,12 +127,16 @@
  * a hard stop with a message that names the block and lists what does work.
  *
  * NOT DONE, and named rather than left to be discovered:
- *   - WHEN <key> pressed. It needs the keyboard's own edge, and the DOS key
- *     queue reports presses rather than transitions.
- *     (More than one WHEN flag script, WHEN <pin> pressed/released, and
- *     WHEN I receive all WORK as of 2026-09-04 — see `schedRuntime`,
- *     `emitPinHat` and `emitMessageHat`. Broadcast needed no queue: the
- *     receiver is already a task watching one byte.)
+ *   - Sprites, DEFINE (custom blocks), lists, strings in variables, `join`.
+ *
+ * EVERY EVENT HAT NOW LOWERS, as of 2026-09-04: more than one WHEN flag
+ * script, WHEN <pin> pressed/released, WHEN I receive, and WHEN <key>
+ * pressed — see `schedRuntime`, `emitPinHat`, `emitMessageHat` and
+ * `emitKeyHat`. Two of the three refusal REASONS turned out to be wrong
+ * rather than merely expensive: broadcast needed no queue (the receiver is
+ * already a task watching one byte), and the key hat needed no edge (a pin
+ * has a level so a hat must manufacture one, but DOS hands over a QUEUE of
+ * keystrokes and each arrival is already an event).
  *   - Sprites. A DOS program has no stage; a project with a SPRITE section
  *     is refused rather than silently flattened.
  *   - Custom blocks (DEFINE), lists, strings-in-variables, `join`, and every
@@ -211,7 +215,8 @@ export const SUPPORTED = Object.freeze({
     control_wait_until: 'wait until <cond>',
     stc12_whenpin: 'WHEN <pin> pressed/released:',
     event_whenbroadcastreceived: 'WHEN I receive "<message>":',
-    event_broadcast: 'broadcast "<message>"'
+    event_broadcast: 'broadcast "<message>"',
+    event_whenkeypressed: 'WHEN <key> key pressed:'
 });
 
 /** What a refused block is called, when the opcode alone would not say. */
@@ -225,7 +230,6 @@ const BLOCK_NAMES = {
     operator_mathop: 'sqrt/sin/cos/... of ...',
     data_addtolist: 'add ... to <list>',
     control_create_clone_of: 'create clone of ...',
-    event_whenkeypressed: 'WHEN <key> key pressed:',
     procedures_definition: 'DEFINE ...',
     procedures_call: 'a custom block call',
     stc12_setpwm: 'set <pin> to <n> percent'
@@ -360,7 +364,7 @@ class Emitter {
         this.uses = {
             puts: false, crlf: false, printn: false,
             mul: false, div: false, mod: false, sdiv: false, ppi: false,
-            keypad: false, adc: false, sched: false
+            keypad: false, adc: false, sched: false, keypump: false
         };
         this.pins = [];             // declared PINs, from the parser
         this.ports = [];            // declared PORTs -- eight bits at once
@@ -1291,6 +1295,85 @@ class Emitter {
         this.op('CALL BW_SLEEP');
     }
 
+    /**
+     * `WHEN <key> pressed:` — A KEYSTROKE IS ALREADY AN EVENT.
+     *
+     * I refused this once on the grounds that it "needs the keyboard's own
+     * edge", and that was wrong. A pin has a level, so a hat on it must
+     * manufacture an edge. DOS hands over a QUEUE OF KEYSTROKES: each arrival
+     * is an event, which is strictly more than an edge and needs no
+     * transition detection at all.
+     *
+     * READING A KEY CONSUMES IT, and that is the real design problem. Two
+     * hats each polling INT 21h would race: whichever ran first would take
+     * the keystroke and the other would never see it — and a program with
+     * `WHEN a` and `WHEN b` would drop half its input for no visible reason.
+     *
+     * So ONE pump task reads the keyboard and publishes; the hats watch what
+     * it published. The pump is a task the program did not write, which is
+     * why the build says it added one.
+     */
+    keyChar (name, opcode) {
+        const key = String(name || '').toLowerCase();
+        if (key === 'any') return null;                  // matches anything
+        const NAMED = {space: 0x20, enter: 0x0d};
+        if (Object.prototype.hasOwnProperty.call(NAMED, key)) return NAMED[key];
+        if (key.length === 1) {
+            const c = key.charCodeAt(0);
+            if (c >= 0x20 && c < 0x7f) return c;
+        }
+        refuse(`"WHEN ${name} key pressed" names a key this bench cannot report. DOS `
+            + 'hands over printable characters, space and enter; the arrows, function '
+            + 'keys and the like arrive as a NUL followed by a scan code, which is a '
+            + 'second read this back end does not do. Use a printable key, space or '
+            + 'enter — or `any`.', 'key not reportable', opcode);
+        return 0;
+    }
+
+    /** The pump: read the keyboard once and publish what it said. */
+    keyPumpRoutine () {
+        return ['',
+            '; ---- the keyboard pump ---------------------------------------',
+            '; ONE reader, because reading CONSUMES. Two hats polling INT 21h',
+            '; would race for each keystroke and a program with two key hats',
+            '; would drop half its input with nothing to show why.',
+            '; AH=0Bh asks whether a key is waiting and does NOT block; AH=07h',
+            '; then takes it without echoing, so the program decides what the',
+            '; screen shows rather than DOS deciding for it.',
+            'BW_KEYPUMP:',
+            '    MOV AH, 0BH',
+            '    INT 21H',
+            '    OR AL, AL',
+            '    JZ BW_KP1',
+            '    MOV AH, 7',
+            '    INT 21H',
+            '    MOV [BW_KEY], AL',
+            '    MOV BYTE PTR [BW_KFRESH], 1',
+            'BW_KP1:',
+            '    CALL BW_POLL1MS',
+            '    JMP BW_KEYPUMP'];
+    }
+
+    /** One key hat: watch what the pump published. */
+    emitKeyHat (block, name) {
+        const want = this.keyChar(name, block.opcode);
+        const top = this.label('KEY'), wait = this.label('KEY');
+        this.code.push(`${top}:`);
+        this.op('CMP BYTE PTR [BW_KFRESH], 0');
+        this.op(`JE ${wait}`);
+        if (want !== null) {
+            this.op('MOV AL, [BW_KEY]');
+            this.op(`CMP AL, ${want}`);
+            this.op(`JNE ${wait}          ; another hat's key, or nobody's`);
+        }
+        this.op('MOV BYTE PTR [BW_KFRESH], 0');
+        this.stack(block.next);
+        this.op(`JMP ${top}`);
+        this.code.push(`${wait}:`);
+        this.op('CALL BW_POLL1MS');
+        this.op(`JMP ${top}`);
+    }
+
     /** The flag byte for a broadcast name, created on first mention. */
     messageSym (name) {
         const key = String(name);
@@ -1716,6 +1799,7 @@ class Emitter {
         if (need.sched) need.mul = true;
         for (const { label, kp } of this.keypads.values()) r.push(...this.keypadRoutine(label, kp));
         if (need.sched) r.push(...this.schedRuntime());
+        if (need.keypump) r.push(...this.keyPumpRoutine());
         if (need.printn) { need.crlf = true; }
         if (need.div || need.mod) need.sdiv = true;
 
@@ -2383,6 +2467,10 @@ class Emitter {
                 'BW_PORTB DB 0    ; shadow of port B',
                 'BW_PORTC DB 0    ; shadow of port C');
         }
+        if (this.uses.keypump) {
+            d.push('BW_KEY    DB 0          ; the last key the pump read',
+                'BW_KFRESH DB 0          ; and whether anyone has taken it yet');
+        }
         for (const [name, sym] of this.messages) {
             d.push(`${sym} DB 0            ; the broadcast "${name}"`);
         }
@@ -2465,10 +2553,12 @@ export function emitI8086Asm (project, opts = {}) {
     const flags = hats.filter(([, b]) => b.opcode === 'event_whenflagclicked');
     const pinHats = hats.filter(([, b]) => b.opcode === 'stc12_whenpin');
     const msgHats = hats.filter(([, b]) => b.opcode === 'event_whenbroadcastreceived');
+    const keyHats = hats.filter(([, b]) => b.opcode === 'event_whenkeypressed');
     for (const [, b] of hats) {
         if (b.opcode === 'event_whenflagclicked') continue;
         if (b.opcode === 'stc12_whenpin') continue;
         if (b.opcode === 'event_whenbroadcastreceived') continue;
+        if (b.opcode === 'event_whenkeypressed') continue;
         if (b.opcode === 'procedures_definition') {
             refuse('DEFINE (a custom block) is not supported on the 8086 — a call ' +
                 'needs a frame this back end does not build', 'custom block');
@@ -2481,13 +2571,17 @@ export function emitI8086Asm (project, opts = {}) {
     }
     // A pin hat is a script too, so a project made only of them has something
     // to run -- it just never finishes, which is what an event program does.
-    if (flags.length === 0 && pinHats.length === 0 && msgHats.length === 0) {
+    if (flags.length === 0 && pinHats.length === 0 && msgHats.length === 0
+        && keyHats.length === 0) {
         refuse('this project has no "WHEN flag clicked:" script and no event, so ' +
             'there is nothing to run', 'no script');
     }
-    if (flags.length + pinHats.length + msgHats.length > MAX_SCRIPTS) {
-        refuse(`this project has ${flags.length + pinHats.length + msgHats.length} `
-            + `scripts and the `
+    const pump = keyHats.length ? 1 : 0;
+    if (flags.length + pinHats.length + msgHats.length + keyHats.length + pump
+        > MAX_SCRIPTS) {
+        refuse(`this project has ${flags.length + pinHats.length + msgHats.length
+            + keyHats.length} scripts${pump ? ' (plus the keyboard pump the build adds)' : ''} `
+            + `and the `
             + `scheduler here carries ${MAX_SCRIPTS}. Each one needs its own stack, and `
             + 'beyond that the stacks crowd out the program in a .COM\'s single segment. '
             + 'Join some of the scripts.', 'too many scripts');
@@ -2496,7 +2590,7 @@ export function emitI8086Asm (project, opts = {}) {
     // An EMPTY script is refused too, and for the same reason the hardware
     // check above exists: a program that runs, terminates and prints nothing
     // is indistinguishable from a broken emulator.
-    for (const [, f] of [...flags, ...pinHats, ...msgHats]) {
+    for (const [, f] of [...flags, ...pinHats, ...msgHats, ...keyHats]) {
         if (!f.next) {
             refuse('a "WHEN flag clicked:" script is empty, so this program would run, ' +
                 'finish, and leave the screen blank — which looks exactly like a bench ' +
@@ -2510,7 +2604,14 @@ export function emitI8086Asm (project, opts = {}) {
     em.parts = declared;
     em.ports = (project && project.stc && project.stc.ports) || [];
     em.blocks = blocks;
-    em.tasks = flags.length + pinHats.length + msgHats.length;
+    em.tasks = flags.length + pinHats.length + msgHats.length + keyHats.length + pump;
+    if (keyHats.length) {
+        em.uses.keypump = true;
+        em.warn('this program has a `WHEN <key> pressed` script, so the build adds a '
+            + 'keyboard PUMP as an extra script. Reading a key CONSUMES it, so two hats '
+            + 'polling DOS directly would race and a program with two key scripts would '
+            + 'drop half its input. One reader publishes; the hats watch what it read.');
+    }
     // REGISTER EVERY RECEIVER BEFORE ANY BODY IS EMITTED. A `broadcast` is
     // refused when nothing receives it, and the flag's symbol has to exist
     // before the first script that sends one is lowered -- otherwise whether
@@ -2544,6 +2645,14 @@ export function emitI8086Asm (project, opts = {}) {
             em.code.push('', `BW_TASK${flags.length + pinHats.length + i}:`);
             em.emitMessageHat(h, h.fields.BROADCAST_OPTION[0]);
         });
+        const keyBase = flags.length + pinHats.length + msgHats.length;
+        keyHats.forEach(([, h], i) => {
+            em.code.push('', `BW_TASK${keyBase + i}:`);
+            em.emitKeyHat(h, h.fields.KEY_OPTION ? h.fields.KEY_OPTION[0] : 'any');
+        });
+        if (pump) {
+            em.code.push('', `BW_TASK${keyBase + keyHats.length}:`, '    JMP BW_KEYPUMP');
+        }
     } else if (msgHats.length === 1 && flags.length === 0 && pinHats.length === 0) {
         em.tasks = 1;
         em.uses.sched = true;

@@ -326,6 +326,13 @@ const PROGRAMS = {
         // An 8255 input port with nothing driving it reads all ones.
         `DEVICE i8086\nPORT sw = P2 INPUT\nWHEN flag clicked:\n  say (read sw)\n`,
         ['255']],
+    event_whenkeypressed: [
+        // The hat never fires -- nothing is typed -- while the flag script
+        // prints and stops everything. That is what lets a key-hat program
+        // terminate without being driven.
+        `DEVICE i8086\nWHEN flag clicked:\n  print "ok"\n  stop all\n`
+            + `WHEN space key pressed:\n  print "never"\n`,
+        ['ok']],
     'event_broadcast / event_whenbroadcastreceived': [
         `DEVICE i8086\nWHEN flag clicked:\n  broadcast "go"\n  wait 0.05 secs\n  stop all\n`
             + `WHEN I receive "go":\n  print "got"\n`,
@@ -381,7 +388,6 @@ test('every entry in SUPPORTED has a program above that exercises it', () => {
 // ── The refusals, by name ────────────────────────────────────────────────
 
 const REFUSALS = {
-    'unsupported hat event_whenkeypressed': `WHEN space key pressed:\n  say "a"\n`,
     'no script': `GLOBAL n\n`,
     'empty script': `WHEN flag clicked:\n`,
     'unsupported block motion_movesteps': `WHEN flag clicked:\n  move 10 steps\n`,
@@ -784,4 +790,62 @@ test('which script comes first in the file does not decide whether it compiles',
         + 'WHEN flag clicked:\n  broadcast "m"\n  wait 0.05 secs\n  stop all\n');
     assert.deepEqual(sender_first.screen, ['ok']);
     assert.deepEqual(receiver_first.screen, ['ok']);
+});
+
+// ── KEY HATS, AND THE RACE THEY WOULD HAVE LOST ─────────────────────────
+
+/** Type `keys` into the bench, early enough that the program is still alive. */
+async function runTyping (source, keys, cap = 6_000_000) {
+    const creator = new SB3Creator();
+    creator.parse(source);
+    const out = await buildPseudocode8086({project: creator.project, source},
+        {hostedFetch: forbiddenFetch});
+    const bench = await createI8086DosBench(
+        {bytes: out.bytes, format: out.format, chips: out.chips});
+    let n = 0, sent = 0;
+    while (n < cap && !bench.terminated) {
+        if (sent < keys.length && n > 40_000 && n % 80_000 === 0) bench.sendKeys(keys[sent++]);
+        bench.step();
+        n++;
+    }
+    return {out, screen: bench.screenText().filter(Boolean), sent, terminated: bench.terminated};
+}
+
+test('`WHEN <key> pressed` fires once per keystroke', async () => {
+    // I refused this once for needing "the keyboard's own edge". That was
+    // wrong: a pin has a LEVEL, so a hat on it must manufacture an edge, but
+    // DOS hands over a QUEUE OF KEYSTROKES and each arrival is already an
+    // event. There was nothing to detect.
+    const r = await runTyping(
+        'DEVICE i8086\nWHEN a key pressed:\n  print "got A"\n'
+        + 'WHEN flag clicked:\n  wait 0.9 secs\n  stop all\n', ['a', 'a']);
+    assert.equal(r.sent, 2, 'the test actually typed twice');
+    assert.deepEqual(r.screen, ['got A', 'got A']);
+});
+
+test('TWO key hats each get their own key — the race the pump exists for', async () => {
+    // READING A KEY CONSUMES IT. Two hats polling INT 21h directly would race
+    // for every keystroke, and a program with `WHEN a` and `WHEN b` would drop
+    // half its input with nothing to show why. One pump reads and publishes;
+    // the hats watch what it read.
+    const r = await runTyping(
+        'DEVICE i8086\nWHEN a key pressed:\n  print "A"\n'
+        + 'WHEN b key pressed:\n  print "B"\n'
+        + 'WHEN flag clicked:\n  wait 1.2 secs\n  stop all\n', ['a', 'b', 'a']);
+    assert.equal(r.sent, 3, 'the test actually typed three times');
+    assert.deepEqual(r.screen, ['A', 'B', 'A'], 'neither hat swallowed the other\'s key');
+    assert.match(r.out.warnings.join(' '), /keyboard PUMP/,
+        'and the build says it added a script the program did not write');
+});
+
+test('a key DOS cannot report is refused by name', async () => {
+    // Arrows and function keys arrive as a NUL followed by a scan code, which
+    // is a second read this back end does not do. Refusing beats reporting a
+    // key that never arrives.
+    const src = 'DEVICE i8086\nWHEN up arrow key pressed:\n  print "up"\n';
+    const c = new SB3Creator();
+    c.parse(src);
+    await assert.rejects(
+        () => buildPseudocode8086({project: c.project, source: src}, {hostedFetch: forbiddenFetch}),
+        /names a key this bench cannot report/);
 });
