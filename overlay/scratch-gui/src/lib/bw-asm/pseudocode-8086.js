@@ -187,7 +187,9 @@ export const SUPPORTED = Object.freeze({
     stc12_setpin: 'set <pin> high/low',
     stc12_toggle: 'toggle <pin>',
     stc12_read: 'read <pin>',
-    stc12_keypad: 'read <keypad>'
+    stc12_keypad: 'read <keypad>',
+    stc12_setport: 'set <port> to <value>',
+    stc12_readport: 'read <port>'
 });
 
 /** What a refused block is called, when the opcode alone would not say. */
@@ -316,6 +318,7 @@ class Emitter {
             keypad: false, adc: false
         };
         this.pins = [];             // declared PINs, from the parser
+        this.ports = [];            // declared PORTs -- eight bits at once
         this.parts = [];            // declared PARTs (keypad4x4 only, so far)
         this.keypads = new Map();   // name -> label, one scan routine each
     }
@@ -492,6 +495,10 @@ class Emitter {
         case 'stc12_read':
             this.note('pin');
             this.emitPinRead(b.fields.PIN[0], b.opcode);
+            return;
+        case 'stc12_readport':
+            this.note('port');
+            this.emitPortRead(b.fields.PORT[0], b.opcode);
             return;
         case 'stc12_keypad':
             this.note('keypad');
@@ -970,6 +977,64 @@ class Emitter {
         this.op('XOR DX, DX');
     }
 
+    /**
+     * A DECLARED PORT — `PORT leds = P2 OUTPUT`, eight bits at once.
+     *
+     * This is EASIER on an 8255 than a single pin, not harder: a port write
+     * is one OUT with no shadow arithmetic, because there is no neighbour to
+     * preserve. It was refused here until now, and the refusal said "this
+     * bench has none" -- which was true when written and false since the
+     * 8255 landed. A stale refusal is worse than an honest one: it tells a
+     * learner their program cannot work on hardware that is sitting there.
+     */
+    portAddr (name, opcode) {
+        const port = (this.ports || []).find((p) => p.name === name);
+        if (!port) {
+            refuse(`"${name}" is used as a port but no PORT line declares it`,
+                'undeclared port', opcode);
+        }
+        const PORT = { 1: 'A', 2: 'B', 3: 'C' }[port.port];
+        if (!PORT) {
+            refuse(`PORT ${name} is P${port.port}, and an 8255 has three ports: P1, P2 and `
+                + 'P3 map to A, B and C. P0 on an 8051 is the multiplexed address/data bus '
+                + 'and has no 8255 equivalent.', 'port out of range', opcode);
+        }
+        return { ...port, PORT, dataPort: PPI_BASE + { A: 0, B: 1, C: 2 }[PORT] };
+    }
+
+    /** Write eight bits at once. The shadow is updated so pins on the same
+     *  port stay consistent with what the chip is actually driving. */
+    emitPortWrite (name, input, opcode) {
+        const p = this.portAddr(name, opcode);
+        if (p.direction !== 'output') {
+            refuse(`PORT ${name} is declared ${String(p.direction).toUpperCase()} and this `
+                + 'writes to it. An 8255 accepts the write and does not drive the pins, so '
+                + 'the program runs and nothing happens.', 'write to an input port', opcode);
+        }
+        this.uses.ppi = true;
+        this.evalNum(input, `set ${name}`);     // value in the 32-bit pair
+        if (p.activeLow) this.op('NOT AL');
+        this.op(`MOV [BW_PORT${p.PORT}], AL`);
+        this.op(`MOV DX, ${p.dataPort}`);
+        this.op('OUT DX, AL');
+    }
+
+    /** Read eight bits at once, as an unsigned 0-255. */
+    emitPortRead (name, opcode) {
+        const p = this.portAddr(name, opcode);
+        if (p.direction !== 'input') {
+            refuse(`PORT ${name} is declared ${String(p.direction).toUpperCase()} and this `
+                + 'reads it. An 8255 output port reads back the LATCH -- whatever this '
+                + 'program last wrote -- not the outside world.', 'read of an output port', opcode);
+        }
+        this.uses.ppi = true;
+        this.op(`MOV DX, ${p.dataPort}`);
+        this.op('IN AL, DX');
+        if (p.activeLow) this.op('NOT AL');
+        this.op('XOR AH, AH');
+        this.op('XOR DX, DX');
+    }
+
     emitSay (input, opcode, textMode) {
         const inner = Array.isArray(input) ? input[1] : null;
         const isLiteralText = Array.isArray(inner) && (inner[0] === 10 || textMode);
@@ -1172,6 +1237,10 @@ class Emitter {
         case 'stc12_toggle':
             this.note('pin');
             this.emitPinToggle(b.fields.PIN[0], b.opcode);
+            return;
+        case 'stc12_setport':
+            this.note('port');
+            this.emitPortWrite(b.fields.PORT[0], b.inputs.VALUE, b.opcode);
             return;
         case 'stc12_print':
             this.note('print');
@@ -1661,6 +1730,7 @@ export function emitI8086Asm (project, opts = {}) {
     // The parser's PIN declarations, which is where port/bit/activeLow live.
     em.pins = (project && project.stc && project.stc.pins) || [];
     em.parts = declared;
+    em.ports = (project && project.stc && project.stc.ports) || [];
     em.blocks = blocks;
     em.stack(flags[0][1].next);
 
@@ -1731,6 +1801,12 @@ export function emitI8086Asm (project, opts = {}) {
         for (const pin of em.pins) {
             if (pin.direction !== 'input') continue;
             asInput(pin.port, pin.bit);
+        }
+        // A WHOLE PORT declared INPUT sets both nibbles, port C included.
+        for (const port of em.ports) {
+            if (port.direction !== 'input') continue;
+            asInput(port.port, 0);
+            asInput(port.port, 4);
         }
         // A KEYPAD'S COLUMNS ARE INPUTS AND ITS ROWS ARE OUTPUTS, and both
         // have to be in this word for the same reason the pins are: it is

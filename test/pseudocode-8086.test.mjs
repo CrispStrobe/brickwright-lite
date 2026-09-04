@@ -316,6 +316,16 @@ const PROGRAMS = {
         // a real one does -- the pins are pulled up and the chip is not driving.
         `DEVICE i8086\nPIN sw = P2.0 INPUT\nWHEN flag clicked:\n  say (read sw)\n`,
         ['1']],
+    // ── whole ports ──────────────────────────────────────────────────────
+    // Eight bits at once, which is EASIER on an 8255 than one pin: no shadow
+    // arithmetic, because there is no neighbour to preserve.
+    stc12_setport: [
+        `DEVICE i8086\nPORT leds = P2 OUTPUT\nWHEN flag clicked:\n  set leds to 129\n  say "port"\n`,
+        ['port']],
+    stc12_readport: [
+        // An 8255 input port with nothing driving it reads all ones.
+        `DEVICE i8086\nPORT sw = P2 INPUT\nWHEN flag clicked:\n  say (read sw)\n`,
+        ['255']],
     stc12_keypad: [
         // NOTHING PRESSED IS -1, NOT 0, and that is the STC extension's
         // contract verbatim rather than a choice made here: a keypad that
