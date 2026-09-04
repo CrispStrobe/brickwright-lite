@@ -8,7 +8,7 @@
  * @param {?string} previous last phase announced by the current runner
  * @param {?string} phase phase in the newest runner snapshot
  * @param {boolean} sourceChanged whether this snapshot belongs to a new runner
- * @returns {{next: ?string, dispatch: boolean}}
+ * @returns {{next: ?string, dispatch: boolean}} next memory and notification decision
  */
 const advanceDebugPhase = (previous, phase, sourceChanged = false) => ({
     next: phase || null,

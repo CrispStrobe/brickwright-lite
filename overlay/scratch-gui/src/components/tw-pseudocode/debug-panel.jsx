@@ -1,4 +1,5 @@
 import React from 'react';
+import ReactDOM from 'react-dom';
 import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
 
@@ -494,11 +495,19 @@ class DebugPanel extends React.Component {
             machineConfig: this.state.machineConfig,
             bootMedia: this._bootMedia,
             onChange: (ui) => {
-                this.setState({ui});
-                // The board only exists after attach, and the tab has to be told:
-                // until it is, the designer is showing a board of its own that
-                // nothing drives. See circuit-tab.jsx.
-                if (this.props.onRunnerChange) this.props.onRunnerChange(runner, ui);
+                // Runner notifications arrive from rAF/target callbacks, outside
+                // React 16's event batching. The local panel and its CircuitTab
+                // parent both consume the same snapshot; without an explicit
+                // batch their two setState calls cause two complete legacy-root
+                // render/commit passes. Batching changes only when React flushes
+                // these synchronous consumers, not which snapshot either sees.
+                ReactDOM.unstable_batchedUpdates(() => {
+                    this.setState({ui});
+                    // The board only exists after attach, and the tab has to be told:
+                    // until it is, the designer is showing a board of its own that
+                    // nothing drives. See circuit-tab.jsx.
+                    if (this.props.onRunnerChange) this.props.onRunnerChange(runner, ui);
+                });
             }
         });
         if (this._userFirmware && typeof runner.setFirmware === 'function') {

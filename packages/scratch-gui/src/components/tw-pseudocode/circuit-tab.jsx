@@ -4,6 +4,7 @@ import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
 import {normalizeDeviceId, resolveExampleBench} from '../../lib/example-bench.js';
 import {advanceDebugPhase} from '../../lib/bw-debug/debug-phase-transition.js';
+import {shouldRefreshDesignerDebugState} from '../../lib/bw-debug/debug-ui-refresh.js';
 import {setProjectTitle} from '../../reducers/project-title';
 import {getIsAnyCreatingNewState} from '../../reducers/project-state';
 
@@ -1513,24 +1514,30 @@ class CircuitTab extends React.Component {
         const msMoved = (typeof bwMs === 'number' && typeof prev.bwMs === 'number')
             ? Math.abs(bwMs - prev.bwMs) >= 250
             : bwMs !== prev.bwMs;
-        // Serial progress must always reach the screen: the first stamp
-        // guard ignored it and the debugger's console froze mid-banner
-        // (the browser gate caught it — BBC BASIC's prompt never showed).
-        // Complete lines are stamped; a PARTIAL line (a prompt with no
-        // newline) is invisible to the snapshot, so a 4 Hz floor keeps
-        // repainting while a session is live without turning progress-only
-        // refreshes into a stream of long React tasks.
-        // serialOutput belongs to the runner snapshot, not its session state.
-        // Reading the nested path made every serial change rely on the 4 Hz
-        // fallback instead of its content stamp.
+        // Keep the established top-dock serial content stamp. The full
+        // DebugPanel owns the console, but this also preserves the compact
+        // designer status publication contract when that dock is selected.
         const so = ui && ui.serialOutput;
         const serialStamp = so ? `${so.length}:${(so[so.length - 1] || '').length}` : '';
         const now = Date.now();
         const floorDue = (now - (this._debugStateAt || 0)) >= DEBUG_LIVE_REFRESH_MS;
-        if (board !== this.state.board || halted !== prev.halted ||
-            haltReason !== prev.haltReason || tasksStamp !== (prev._tasksStamp ?? null) ||
-            serialStamp !== (prev._serialStamp ?? '') ||
-            msMoved || caps !== prev.capabilities || floorDue) {
+        // The DebugPanel owns serial and its full live UI. CircuitDesigner
+        // consumes only board/halt state plus DebugStatus when docked top/solo.
+        // With the default right dock, pushing an otherwise unused 4 Hz state
+        // object made React reconcile the entire designer (~8.5 ms per publish
+        // in the production receipt). Preserve immediate structural changes;
+        // do not wake a hidden consumer for progress it cannot display.
+        if (shouldRefreshDesignerDebugState({
+            dock: this.state.debugDock,
+            boardChanged: board !== this.state.board,
+            haltedChanged: halted !== prev.halted,
+            haltReasonChanged: haltReason !== prev.haltReason,
+            tasksChanged: tasksStamp !== (prev._tasksStamp ?? null),
+            serialChanged: serialStamp !== (prev._serialStamp ?? ''),
+            msMoved,
+            capabilitiesChanged: caps !== prev.capabilities,
+            floorDue
+        })) {
             this._debugStateAt = now;
             this.setState({
                 board,

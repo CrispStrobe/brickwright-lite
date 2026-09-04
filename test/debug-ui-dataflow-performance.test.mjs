@@ -9,6 +9,8 @@ const handlerStart = source.indexOf('    handleRunnerChange (runner, ui) {');
 const handlerEnd = source.indexOf('\n    /** Resolve a Scratch block id', handlerStart);
 const handler = handlerStart >= 0 && handlerEnd > handlerStart ?
     source.slice(handlerStart, handlerEnd) : '';
+const panelSource = readFileSync(new URL(
+    '../overlay/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx', import.meta.url), 'utf8');
 
 test('a published runner snapshot is not rebuilt in the circuit bridge', () => {
     assert.ok(handler.length > 1000, 'handleRunnerChange capture is empty or truncated');
@@ -50,4 +52,18 @@ test('phase notification state resets across runner teardown and restart', () =>
     transition = advanceDebugPhase('running', 'running', true);
     assert.deepEqual(transition, {next: 'running', dispatch: true},
         'runner replacement must be observable even if no phase-less snapshot was delivered');
+});
+
+test('one React 16 batch publishes a runner snapshot to both UI consumers', () => {
+    assert.match(panelSource, /import ReactDOM from 'react-dom';/,
+        'the installed React 16.14 renderer owns the supported batching boundary');
+    const callback = /onChange: \(ui\) => \{([\s\S]*?)\n\s{12}\}\n\s{8}\}\);/.exec(panelSource)?.[1] || '';
+    assert.ok(callback.length > 300, 'runner onChange callback capture is empty or truncated');
+    const batch = /ReactDOM\.unstable_batchedUpdates\(\(\) => \{([\s\S]*?)\n\s{16}\}\);/.exec(callback)?.[1] || '';
+    assert.match(batch, /this\.setState\(\{ui\}\)/,
+        'DebugPanel must update from the delivered snapshot inside the batch');
+    assert.match(batch, /this\.props\.onRunnerChange\(runner, ui\)/,
+        'CircuitTab must receive that exact snapshot inside the same batch');
+    assert.ok(batch.indexOf('this.setState({ui})') < batch.indexOf('this.props.onRunnerChange(runner, ui)'),
+        'preserve the established local-then-parent publication order');
 });

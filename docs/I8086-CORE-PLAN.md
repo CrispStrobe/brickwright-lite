@@ -139,6 +139,12 @@ into emulator execution, board advancement and debug/UI publication, including
 snapshot build counts and build time. That closes the old instrument's blind
 spot: it stopped its stopwatch immediately before `emitLive()`, so it could
 count long tasks without attributing the work most likely to create them.
+A CI receipt with that blind spot closed attributed about **88%** of pump time
+to publication (about 8.5 ms per 4 Hz publish), while snapshot construction
+totalled only 0.1–0.2 ms. The default right/off docks therefore no longer copy
+progress-only state into `CircuitTab`, where it had no visible consumer but
+reconciled the whole `CircuitDesigner`; board changes, halts and halt reasons
+remain immediate, and top/solo docks retain their visible periodic status.
 
 The tempting next changes are deliberately deferred. These are activation
 rules, so “later” has a measurable meaning:
