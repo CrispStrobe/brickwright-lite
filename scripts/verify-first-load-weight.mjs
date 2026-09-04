@@ -78,8 +78,12 @@ try {
     await page.waitForFunction(() => document.querySelectorAll('[role="tab"]').length > 0,
         null, {timeout: 60000});
     const firstPaint = Date.now() - started;
-    // Settle: anything the app kicks off at mount is still "first load".
-    await page.waitForTimeout(5000);
+    // Settle: anything the app kicks off at mount is still "first load". The
+    // condition is "the network went quiet", which is what networkidle means, so
+    // wait for that rather than sleeping a guess. It usually returns in well
+    // under a second; the timeout is a bound, not a duration, and a page that
+    // never goes idle still yields a measurement rather than failing here.
+    await page.waitForLoadState('networkidle', {timeout: 20000}).catch(() => {});
 
     // A HEAD or a 206 is the probe; a GET with a body is the download.
     const heavy = seen.filter(r => /labwired_wasm_bg\.wasm|labwired_wasm\.js/.test(r.url))

@@ -85,17 +85,37 @@ const costumes = page => page.evaluate(() => {
 
 const openCostumesTab = async page => {
     await page.locator('[role="tab"]', {hasText: /Costume|Kost/}).first().click();
-    await page.waitForTimeout(3000);
+    // The paint editor loads as a lazy chunk, so the condition is "the canvas is
+    // on screen", not "three seconds have passed".
+    await page.locator('canvas:visible').last().waitFor({state: 'visible', timeout: 30000});
 };
 
+const contentHash = page => page.evaluate(() => {
+    const c = (window.__vm.editingTarget?.getCostumes?.() || [])[0];
+    const d = c && c.asset && c.asset.data;
+    if (!d) return null;
+    let h = 0x811c9dc5;
+    for (let i = 0; i < d.length; i++) { h ^= d[i]; h = (h * 0x01000193) >>> 0; }
+    return h.toString(16);
+});
+
 const drawRect = async (page, box, from, to) => {
+    const before = await contentHash(page);
     await page.locator('[aria-label="Rectangle"], [title="Rectangle"]').first().click();
-    await page.waitForTimeout(400);
     await page.mouse.move(box.x + box.width * from, box.y + box.height * from);
     await page.mouse.down();
     await page.mouse.move(box.x + box.width * to, box.y + box.height * to, {steps: 12});
     await page.mouse.up();
-    await page.waitForTimeout(2500);
+    // The costume asset is rewritten when the stroke commits. Wait for THAT,
+    // not for a guess at how long paper.js takes.
+    await page.waitForFunction(prev => {
+        const c = (window.__vm.editingTarget?.getCostumes?.() || [])[0];
+        const d = c && c.asset && c.asset.data;
+        if (!d) return false;
+        let h = 0x811c9dc5;
+        for (let i = 0; i < d.length; i++) { h ^= d[i]; h = (h * 0x01000193) >>> 0; }
+        return h.toString(16) !== prev;
+    }, before, {timeout: 30000});
 };
 
 try {
@@ -120,7 +140,10 @@ try {
     const convertible = await convert.count() > 0;
     if (convertible) {
         await convert.click();
-        await page.waitForTimeout(2500);
+        await page.waitForFunction(() => {
+            const c = (window.__vm.editingTarget?.getCostumes?.() || [])[0];
+            return c && c.dataFormat === 'png';
+        }, null, {timeout: 30000});
         await drawRect(page, box, 0.45, 0.70);
     }
     const authored = await costumes(page);
@@ -144,7 +167,12 @@ try {
     await page.getByText('File', {exact: true}).click();
     await page.getByText('Load from your computer', {exact: true}).click();
     await page.locator('body > input[type="file"][accept=".sb,.sb2,.sb3"]').setInputFiles(saved);
-    await page.waitForTimeout(6000);
+    // The load is done when the costumes are back and carry their asset bytes —
+    // which is precisely what the checks below read.
+    await page.waitForFunction(n => {
+        const cs = window.__vm.editingTarget?.getCostumes?.() || [];
+        return cs.length === n && cs.every(c => c.asset && c.asset.data && c.asset.data.length);
+    }, authored.length, {timeout: 60000});
     await openCostumesTab(page);
     const reloaded = await costumes(page);
     await page.screenshot({path: path.join(SHOTS, '02-reloaded.png'), fullPage: true});
