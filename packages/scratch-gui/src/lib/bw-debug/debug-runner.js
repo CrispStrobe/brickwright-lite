@@ -1960,6 +1960,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             outcome = session.pump();
         }
         if (skipRequested) { skipRequested = false; session.resume(); schedule(); return; }
+        const perfRunEnd = perfProbe ? performance.now() : 0;
         // Boundary A's clock. The emulator pushes PIN CHANGES to the board by
         // itself (emu_set_board_callbacks), but nothing pushes TIME: the debug
         // run path never calls on_advance, and the board integrates time to get
@@ -1971,20 +1972,35 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // pumping, so board time stops with program time, and resume continues
         // from where it stopped rather than catching up on wall-clock.
         if (board && outcome !== 'idle') board.advanceTo(target.timeNs());
-        if (perfProbe && perfProbe.samples.length < (perfProbe.limit || 4000)) {
-            const perfSimEnd = target.timeNs();
-            perfProbe.samples.push({
-                at: perfWallStart,
-                wallMs: performance.now() - perfWallStart,
-                simNs: Number(perfSimEnd - perfSimStart),
-                outcome
-            });
-        }
+        const perfBoardEnd = perfProbe ? performance.now() : 0;
         // Keep going while there is anything to do. A halted session stops
         // asking for frames entirely, which is what makes a paused program cost
         // nothing rather than spin.
         if (outcome === 'ran') schedule();
+        const perfSnapshotBefore = perfProbe ? snapshotEmitter.stats() : null;
         emitLive();
+        if (perfProbe && perfProbe.samples.length < (perfProbe.limit || 4000)) {
+            // Measure THROUGH snapshot publication. The old receipt stopped
+            // before emitLive(), exactly where the allocations and React
+            // handoff under investigation begin, so its pump time could not
+            // explain its own long-task count.
+            const perfWallEnd = performance.now();
+            const perfSnapshotAfter = snapshotEmitter.stats();
+            const perfSimEnd = target.timeNs();
+            perfProbe.samples.push({
+                at: perfWallStart,
+                wallMs: perfWallEnd - perfWallStart,
+                simNs: Number(perfSimEnd - perfSimStart),
+                outcome,
+                phases: {
+                    runMs: perfRunEnd - perfWallStart,
+                    boardMs: perfBoardEnd - perfRunEnd,
+                    publishMs: perfWallEnd - perfBoardEnd
+                },
+                snapshotBuilt: perfSnapshotAfter.emitted > perfSnapshotBefore.emitted,
+                snapshotBuildMs: perfSnapshotAfter.snapshotBuildMs - perfSnapshotBefore.snapshotBuildMs
+            });
+        }
     }
 
     function schedule() {

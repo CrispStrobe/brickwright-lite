@@ -6,6 +6,7 @@
 import {mkdir, writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {chromium} from 'playwright';
+import {summarizeI8086Pump} from './lib/i8086-performance.mjs';
 
 const url = process.env.PROOF_URL || process.env.BW_URL || 'http://localhost:8617/';
 const outDir = resolve(process.env.I8086_PERF_ARTIFACTS || 'artifacts/i8086-performance');
@@ -76,6 +77,7 @@ try {
             elapsedMs,
             realTimeRatio: ratio,
             pumpMs: {p50: percentile(pump, 0.50), p95: percentile(pump, 0.95), max: pump.at(-1)},
+            pumpBreakdown: summarizeI8086Pump(samples),
             longTasks: runtimeLongTasks,
             startupLongTaskCount: raw.longTasks.filter(task => task.at + task.ms < sampleStart).length,
             heapBytes: raw.heapBytes,
@@ -85,6 +87,10 @@ try {
         console.log(`${profile.name}: ${ratio.toFixed(2)}x XT, pump p50 `
             + `${result.pumpMs.p50.toFixed(2)} ms, p95 ${result.pumpMs.p95.toFixed(2)} ms, `
             + `${runtimeLongTasks.length} runtime long task(s)`);
+        console.log(`  pump CPU: run ${result.pumpBreakdown.phases.runMs.percentOfPump.toFixed(1)}%, `
+            + `board ${result.pumpBreakdown.phases.boardMs.percentOfPump.toFixed(1)}%, `
+            + `publish ${result.pumpBreakdown.phases.publishMs.percentOfPump.toFixed(1)}%; `
+            + `${result.pumpBreakdown.snapshots.built}/${samples.length} snapshots built`);
         if (samples.length < 150 || ratio < 0.25) {
             throw new Error(`${profile.name} 8086 benchmark did not sustain 0.25x real time`);
         }

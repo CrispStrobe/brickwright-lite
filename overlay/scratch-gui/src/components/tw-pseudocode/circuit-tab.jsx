@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
 import {normalizeDeviceId, resolveExampleBench} from '../../lib/example-bench.js';
+import {advanceDebugPhase} from '../../lib/bw-debug/debug-phase-transition.js';
 import {setProjectTitle} from '../../reducers/project-title';
 import {getIsAnyCreatingNewState} from '../../reducers/project-state';
 
@@ -1446,7 +1447,16 @@ class CircuitTab extends React.Component {
         // null, and passing the last debugState through kept the designer's
         // status panel glowing green RUNNING forever. No session — no panel.
         const phase = ui && ui.phase;
-        if (typeof window !== 'undefined' && phase) {
+        // A runner update already carries a complete snapshot. Live progress
+        // arrives periodically, but an unchanged phase is not another phase
+        // transition: dispatching it again wakes every guided-lesson observer
+        // for no new fact. Distinct phases still dispatch on the same update
+        // that announced them, including pause/error/idle.
+        const runnerChanged = Boolean(this._lastDebugRunner && runner !== this._lastDebugRunner);
+        const phaseTransition = advanceDebugPhase(this._lastDebugPhase, phase, runnerChanged);
+        this._lastDebugPhase = phaseTransition.next;
+        this._lastDebugRunner = phase ? runner : null;
+        if (typeof window !== 'undefined' && phaseTransition.dispatch) {
             window.dispatchEvent(new CustomEvent('bw-debug-phase', {detail: {phase}}));
         }
         if (phase === 'idle' || phase === 'error') {
@@ -1469,7 +1479,12 @@ class CircuitTab extends React.Component {
         // that did not exist. Enriched with the block id, which only the runner
         // can supply — it holds the (task, state) -> block map.
         const kinds = ui && ui.yieldKinds;
-        const tasks = (why && why.tasks ? why.tasks : (runner.state().session || {}).tasks) || null;
+        // Do not call runner.state() here. `ui` IS the snapshot produced for
+        // this update, and its session already carries the live task list.
+        // Calling state() again rebuilt breakpoint arrays, maps, conditions,
+        // serial lines and scheduler position a second time for every publish.
+        const tasks = (why && why.tasks ? why.tasks :
+            (ui && ui.session ? ui.session.tasks : null)) || null;
         const enriched = tasks && tasks.map(t => {
             const blockId = ui && ui.blockOfTask ? ui.blockOfTask[`${t.task}/${t.state}`] : undefined;
             // A raw Scratch block id ("FWr0@1h…") on screen is worse than
@@ -1505,7 +1520,10 @@ class CircuitTab extends React.Component {
         // newline) is invisible to the snapshot, so a 4 Hz floor keeps
         // repainting while a session is live without turning progress-only
         // refreshes into a stream of long React tasks.
-        const so = ui && ui.session && ui.session.serialOutput;
+        // serialOutput belongs to the runner snapshot, not its session state.
+        // Reading the nested path made every serial change rely on the 4 Hz
+        // fallback instead of its content stamp.
+        const so = ui && ui.serialOutput;
         const serialStamp = so ? `${so.length}:${(so[so.length - 1] || '').length}` : '';
         const now = Date.now();
         const floorDue = (now - (this._debugStateAt || 0)) >= DEBUG_LIVE_REFRESH_MS;

@@ -134,6 +134,11 @@ Runtime long tasks fell from **90 to 17** on desktop and **91 to 21** on mobile.
 The current final receipt also records pump p95 at 0.40 ms for both profiles.
 These numbers are a before/after receipt on one runner, not a promise that every
 phone is 10x; the durable gate remains the deliberately low 0.25x floor above.
+The next receipt measures through snapshot publication and splits every pump
+into emulator execution, board advancement and debug/UI publication, including
+snapshot build counts and build time. That closes the old instrument's blind
+spot: it stopped its stopwatch immediately before `emitLive()`, so it could
+count long tasks without attributing the work most likely to create them.
 
 The tempting next changes are deliberately deferred. These are activation
 rules, so “later” has a measurable meaning:
@@ -145,6 +150,7 @@ rules, so “later” has a measurable meaning:
 | Multi-instruction peripheral batching | **Deferred.** Reconsider only if a profile attributes at least 20% of pump CPU to peripheral advancement after the cached schedule, and every timer/IRQ/device deadline supplies a provable safe batch boundary. Never batch across an observable deadline. |
 | Word memory fast path | **Deferred.** Reconsider if 16-bit reads/writes account for at least 10% of sampled CPU time. Any fast path must exclude offset `FFFFh`, watched/traced addresses and mapped-device pages, preserving segment wrap and bus visibility. |
 | Dirty-region rendering | **Deferred; whole-frame reuse already removes unchanged renders.** Reconsider if changed-frame rasterization exceeds 20% of a profile or makes pump p95 exceed 8 ms. Dirty accounting must cover bulk loads, state restore, all video apertures and display ports. |
+| DOS synthetic-timer listener cache | **Deferred.** The service currently checks whether INT 8/1Ch was hooked on each eligible step. Cache it only if a boot CPU profile attributes at least 10% to `_timerTickDue`; invalidation must cover every IVT write, image/state load and reset, and preserve the immediate first tick when a late hook appears. |
 | JIT/dynamic translation | **Deferred last.** Reconsider only after the candidates above if the minimum-device gate remains below 1.0x for three runs. Entry requires differential vector/corpus gates plus invalidation for self-modifying code, breakpoints, traces and 20-bit aliasing; a benchmark win alone is insufficient. |
 
 **The trap flag gap found by the outside pass is closed.** TF is now sampled at

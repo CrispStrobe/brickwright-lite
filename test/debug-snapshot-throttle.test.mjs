@@ -59,7 +59,7 @@ test('the runner uses throttling only for its animation-frame tail', () => {
     const source = fs.readFileSync(new URL(
         '../overlay/scratch-gui/src/lib/bw-debug/debug-runner.js', import.meta.url), 'utf8');
     const pump = /function pumpFrame\(\) \{([\s\S]*?)\n    \}\n\n    function schedule/.exec(source)?.[1] || '';
-    assert.match(pump, /emitLive\(\);\s*$/,
+    assert.match(pump, /emitLive\(\);/,
         'the per-frame tail must use the pre-snapshot throttle');
     assert.doesNotMatch(pump, /\n\s*emit\(\);\s*$/,
         'a full immediate snapshot at the frame tail defeats the throttle');
