@@ -2785,8 +2785,15 @@ class SB3Creator {
             const part = SB3Creator.STC_PARTS[cfg.device];
             // No explicit core key = 8051 (the P<p>.<b> pin form), same
             // convention as the 74HC595 branches above.
-            if (!part || (part.core && part.core !== '8051')) {
-                this.warn(lineIndex, `KEYPAD4X4 is not available on ${cfg.device}: the scan relies on quasi-bidirectional rows (8051 family). Devices that have it: the STC parts.`);
+            // A DECLARED CAPABILITY, NOT A CORE NAME. The scan needs to drive
+            // four rows and read four columns, which an 8051 does with
+            // quasi-bidirectional pins and an 8086 does through an 8255 (rows
+            // and columns on different ports, or the two nibbles of port C,
+            // whose directions are independent). Both can scan a matrix, so
+            // the gate asks whether the device can rather than whether it is
+            // an 8051 -- otherwise every future core has to be named here.
+            if (!part || !(part.keypad || !part.core || part.core === '8051')) {
+                this.warn(lineIndex, `KEYPAD4X4 is not available on ${cfg.device}: the scan has to drive four rows while reading four columns, and this device has no way to do both. Devices that have it: the STC parts, and i8086 (through its 8255).`);
                 return true;
             }
             if (this.stcPin(name) || this.stcPort(name) || this.stcPart(name)) {
@@ -15191,6 +15198,21 @@ SB3Creator.STC_PARTS = {
     // generateC() emits sdcc -mz80 compatible C: __sfr __at port declarations,
     // shadow byte + OUT for pin writes, IN & mask for pin reads.
     z80: { core: 'z80', header: null, portModes: false, aux1T: false, adc: false },
+    // The 8086 tier. `core: 'i8086'` rather than an 8051 core, so nothing tries
+    // to emit 8051 C for it -- its own back end (bw-asm/pseudocode-8086.js)
+    // lowers straight to 8086 assembly.
+    //
+    // IT KEEPS THE 8051's P1/P2/P3 PIN NAMES ON PURPOSE. The 8086 boards here
+    // carry an 8255, which has exactly three ports, so P1/P2/P3 map onto A/B/C
+    // and a pin declaration means the same wire on either chip. That is what
+    // lets an 8051 program reseat onto an 8086 with only its DEVICE line
+    // changed -- if this used a private pin syntax, every reseat would be a
+    // rewrite.
+    // keypad: an 8255 can scan a matrix -- rows driven from one port, columns
+    // read on another (or the two nibbles of port C, which have independent
+    // directions). adc: false, and it is a fact about the chip rather than
+    // this board: an 8255 is a digital parallel port with no analog path.
+    i8086: { core: 'i8086', header: null, portModes: false, aux1T: false, adc: false, keypad: true },
     // ATtiny88: 28-pin DIP, avr25 family. Pins are PB0-7/PC0-7/PD0-7/PA0-3
     // (port/bit, not Arduino Dn numbering). Timer0 has NO CTC mode — the ms
     // tick uses Timer1 CTC instead. ADC on PC0-PC5 (channels 0-5).

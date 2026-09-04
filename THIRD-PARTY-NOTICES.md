@@ -89,6 +89,32 @@ BUNDLED in the mobile app, because the mobile build runs `vercel-build.sh`.
   release `labwired-wasm-41119903-r2` with both artefacts' sha256 pinned in the
   sync script and gated by `test/fetch-pinning.test.mjs`.
 
+### 8086 example programs (Amey Thakur / Mega Satish) -- MIT
+
+The six 8086 starter programs the ASM tab offers are FILES FROM ANOTHER
+REPOSITORY, carried verbatim -- header, attribution and technical notes -- and
+compiled into the JavaScript bundle, so they ship inside the web build and
+inside the mobile binary. They are not written here and are not ours.
+
+Each program keeps its own `AUTHOR` / `REPOSITORY` / `LICENSE` comment header,
+so the notice reaches the editor along with the code and travels with anything
+a learner copies out. `overlay/scratch-gui/src/lib/bw-asm/examples-i8086.js`
+holds them; `test/i8086-asm-examples.test.mjs` refuses a build in which any of
+those headers has been trimmed away, and compares the shipped text against the
+upstream file when a checkout is available.
+
+- Copyright (c) 2021 Amey Thakur and Mega Satish. MIT.
+  Full text: `overlay/scratch-gui/static/licenses/amey-thakur-8086.MIT.txt`,
+  shipped with the app and reachable from the About dialog offline.
+- https://github.com/Amey-Thakur/8086-ASSEMBLY-LANGUAGE-PROGRAMS
+- Shipped: `Introduction/hello_world_string.asm`,
+  `Control Flow/loop_instruction_cx_register_control.asm`,
+  `Input Output/display_hex.asm`, `Expression/fibonacci.asm`,
+  `Stack Operations/reverse_string_stack.asm`,
+  `BIOS Services/bios_character_with_attribute.asm`.
+- Only two normalisations were applied: CRLF to LF, and trailing whitespace.
+  Nothing was retitled, trimmed or rewritten.
+
 ## Our own code living in this repo
 
 Some files were copied in from the CrispStrobe/brickwright mainline repo
@@ -782,6 +808,57 @@ the runtime registries), relicensed to **MPL-2.0** as of commit `f72f1e7`.
 Each of the 11 files named in the licence file remains licensed under MPL-2.0.
 MPL-2.0 §3.3 ("Larger Work") permits distributing them alongside BSD-3-Clause
 files. Modifications to any of those files must be made available under MPL-2.0.
+
+## SmallerC — BSD-2-Clause (and ucpp, a BSD variant)
+
+**Location in this repo:** `overlay/scratch-gui/src/lib/smallerc-wasm/dist/`
+
+This directory contains SmallerC compiled to WebAssembly (Emscripten). It
+turns C into NASM `bits 16` assembly text for the 8086 in the browser, with no
+network and no installed toolchain. It is a separate program invoked at the
+user's request — it is NOT linked into the BSD-3 editor code.
+
+**Two works with two copyrights ship here, and both notices are discharged:**
+
+- **SmallerC** — `smlrc.wasm` (the compiler) and `dist/headers.js` (six
+  freestanding headers, copied verbatim from `v0100/include/`)
+  - **Licence:** BSD-2-Clause
+  - **Copyright:** © 2012–2021 Alexey Frunze
+  - **Source:** https://github.com/alexfru/SmallerC
+- **ucpp** — `smlrpp.wasm` (the preprocessor). ucpp merely *lives inside*
+  SmallerC's source tree at `v0100/ucpp/`; it is its own work.
+  - **Licence:** a three-condition BSD variant, recorded here as
+    `BSD-3-Clause-ucpp`. Upstream numbers its conditions 1, 2 and 4, and its
+    no-endorsement clause is worded differently from BSD-3-Clause, so the
+    plain SPDX id would misstate it.
+  - **Copyright:** © 1999–2002 Thomas Pornin
+
+**Both full licence texts ship with the app**, in one file, reachable from the
+About dialog with no network:
+`overlay/scratch-gui/static/licenses/smallerc.BSD-2-Clause.txt`
+
+- **Upstream commit:** `1865d79ce7a5ad3f8a9515a571437cee084b8b1d`
+- **Build toolchain:** Emscripten 6.0.6 (no patches to SmallerC or ucpp source)
+- **Components:** `smlrc.js`/`.wasm`, `smlrpp.js`/`.wasm`, `headers.js`
+- **Build script:** `overlay/scratch-gui/src/lib/smallerc-wasm/build.sh`,
+  provenance and measurements in the neighbouring `BUILD-INFO.md`
+
+### Not shipped, deliberately
+
+SmallerC's linker (`smlrl`), its driver (`smlrcc`), its standard library and
+the hosted headers (`stdio.h`, `stdlib.h`, `string.h`, `math.h`) are NOT built
+and NOT distributed. This path compiles to assembly text and stops; `smlrcc`
+drives its stages with fork/exec, which WebAssembly has no equivalent of, so
+the JavaScript in `compiler.js` is the driver.
+
+### Licence boundary
+
+Everything under `overlay/scratch-gui/src/lib/smallerc-wasm/dist/` is upstream
+material under the two licences above. Both are permissive and impose no
+copyleft, so — unlike SDCC — their presence raises no linking question; the
+condition they do impose is attribution in binary form, which the shipped
+licence file and the About dialog discharge. Everything else in this
+repository is BSD-3-Clause (see LICENSE at the repo root).
 
 ## SDCC (Small Device C Compiler) — GPL-2-or-later
 

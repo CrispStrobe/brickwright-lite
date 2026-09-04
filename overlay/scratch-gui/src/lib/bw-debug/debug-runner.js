@@ -207,6 +207,7 @@ export function selectDebugTargetKind(device, requested = 'emulator') {
     if (normalized === 'stm32f030') return 'stm32f0';
     if (['eater6502', '6502', 'w65c02'].includes(normalized)) return 'eater6502';
     if (['z80', 'zx48', 'zx128'].includes(normalized)) return 'z80';
+    if (['i8086', '8086', 'i8088', '8088'].includes(normalized)) return 'i8086';
     return requested;
 }
 
@@ -338,7 +339,7 @@ function netlistFromCircuitFile(data) {
  * @param {object} [opts.machineConfig] wired-extractor {regions, chips} from
  *   Build Machine (bw-machine-extracted) — threads into createDebugTarget
  *   so the bench boots the machine the user wired, not a hardcoded preset.
- * @param {object} [opts.bootMedia] {slot, bytes, profile, name} from the
+ * @param {object} [opts.bootMedia] {slot, bytes, profile, name, romAt} from the
  *   Machine Loader / ASM tab — the image the machine boots WITH, so the
  *   reset vector is read from real bytes. profile 'py65mon'/'eater'/'cpm'
  *   names the machine shape a preset image was built for; absent, the
@@ -805,6 +806,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
         if (selectedTargetKind === 'eater6502') {
             return attachEater6502();
+        }
+
+        if (selectedTargetKind === 'i8086') {
+            return attachI8086();
         }
 
         if (selectedTargetKind === 'stm32f0') {
@@ -1345,6 +1350,11 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
      *  with no default). 1 MHz / 4 MHz are the canonical bench clocks. */
     const benchConfig6502 = () => ({ clockHz: 1_000_000, chips: [], ...machineConfig });
     const benchConfigZ80 = () => ({ clockHz: 4_000_000, ...machineConfig });
+    // 4.772727 MHz is not a round number by accident: the IBM XT divided a
+    // 14.31818 MHz colour-burst crystal by three, and the BIOS's 18.2 Hz tick
+    // is that clock through the 8254's 65536 divisor. A tidy 5 MHz here would
+    // leave every timing loop in a period-correct ROM running 4.8% fast.
+    const benchConfigI8086 = () => ({ clockHz: 4_772_727, chips: [], ...machineConfig });
 
     /** Boot media as {bytes, origin}: Intel HEX text (file picker accepts
      *  .hex/.ihx and hands over raw file bytes) is parsed; binaries pass
@@ -1421,6 +1431,55 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             runner.video = () => target.video();
         } else {
             delete runner.video;
+        }
+
+        // Keyboard face, on the same terms as the video one and for the same
+        // reason: exposed only when the TARGET says the machine can take a
+        // key. `capabilities().keys` reports ['scancode'] when there is a PPI
+        // to latch it and a PIC to raise IRQ1 on, and [] otherwise — so a
+        // board with no keyboard hardware never gets a keyboard widget, and a
+        // user never types into something that cannot hear them. That is the
+        // failure this guards: a key swallowed silently looks exactly like a
+        // program ignoring input.
+        const caps = target && typeof target.capabilities === 'function' ? target.capabilities() : null;
+        if (target && typeof target.keyIn === 'function'
+            && caps && Array.isArray(caps.keys) && caps.keys.includes('scancode')) {
+            runner.keyIn = (scancode) => target.keyIn(scancode);
+        } else {
+            delete runner.keyIn;
+        }
+
+        // THE WORLD, not just the keyboard. `capabilities().inputs` lists the
+        // switch and sensor points a machine actually has -- the 8255's ports,
+        // where a breadboard hangs its switches -- and is EMPTY when there is
+        // no such hardware. Exposed on the same terms as video and keyIn, so a
+        // switch control appears exactly when something can read it.
+        //
+        // A control that does nothing is indistinguishable from a program
+        // ignoring the user, which is why this is gated rather than always
+        // present. `inputs` is also the list a code block needs: "set switch 3
+        // on" has to know which switches exist before it can refuse a
+        // fourth one by name.
+        if (target && typeof target.setInput === 'function'
+            && caps && Array.isArray(caps.inputs) && caps.inputs.length) {
+            runner.inputs = caps.inputs;
+            runner.setInput = (chip, port, bit, level) => target.setInput(chip, port, bit, level);
+        } else {
+            delete runner.inputs;
+            delete runner.setInput;
+        }
+
+        // WHAT THE PORTS ARE DOING, asked per frame rather than captured.
+        // `capabilities().outputs` is the shape and does not change;
+        // `target.outputs()` is the state and changes every instruction, so
+        // this is exposed as a FUNCTION. Half the corpus's device programs --
+        // traffic lights, a stepper, a bargraph -- produce no screen output at
+        // all, and were invisible while working perfectly.
+        if (target && typeof target.outputs === 'function'
+            && caps && Array.isArray(caps.outputs) && caps.outputs.length) {
+            runner.outputs = () => target.outputs();
+        } else {
+            delete runner.outputs;
         }
 
         // Media applied to a LIVE machine (loader while running). A boot
@@ -1561,6 +1620,176 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         }
         readyMsg += ` — ${db.why}`;
         const result = await createDebugTarget('z80', targetOpts);
+        wireMachineBench(result, createDebugSession);
+        setStatus('ready', readyMsg);
+        return session;
+    }
+
+    // ── 8086 machine bench ──────────────────────────────────────────────
+    // TWO DIFFERENT MACHINES WEAR THIS KIND, and conflating them is the
+    // failure this branch is shaped to prevent:
+    //
+    //   HARDWARE — a drawn board, or the BIOS ROM. Real 8259/8254/8255/CGA,
+    //              interrupts through the real vector table, and the BIOS
+    //              OWNS vectors 08h/09h/10h/13h/16h/19h because it installs
+    //              them itself at power-on.
+    //   DOS      — no hardware at all. INT 21h is answered by a service
+    //              layer reached through a trap page mapped over F000.
+    //
+    // The trap page is the whole difference and it is not a detail: mapped
+    // into the first kind it lands ON TOP OF the BIOS ROM and fights the code
+    // trying to boot. `createDebugTarget('i8086')` builds a plain machine from
+    // {config, rom, romAt} and adds no trap page, so this path stays hardware
+    // by construction rather than by remembering to pass a flag.
+    //
+    // A DOS program is therefore REFUSED BY NAME below rather than started as
+    // a ROM. A .COM loaded at F0000 executes nothing, and a machine that
+    // executes nothing is indistinguishable on screen from one that failed to
+    // start — the exact shape of failure this codebase keeps paying for.
+    async function attachI8086() {
+        const { createDebugTarget, createDebugSession } =
+            await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
+
+        const targetOpts = {};
+        let readyMsg;
+        const isDosProgram = bootMedia &&
+            (bootMedia.slot === 'com' || bootMedia.slot === 'exe' || bootMedia.profile === 'dos');
+
+        // THE DOS BENCH IS THE OTHER MACHINE, and it is now wired. This
+        // branch used to be a refusal that named exactly what was missing —
+        // "a .COM or .EXE needs the DOS service layer instead, which is a
+        // different machine (no chips, INT 21h answered behind a trap page)
+        // and is not wired to this tab yet". It is a different machine still:
+        // `createI8086DosBench` builds its own, so the trap page can never
+        // land on top of a BIOS that is trying to boot, and the hardware
+        // branch below is untouched. What arrives here is what the ASM tab's
+        // local 8086 assembler emits, and what a preset could hand over.
+        if (isDosProgram) {
+            setStatus('attaching', `loading ${bootMedia.name || 'the program'} into the DOS bench…`);
+            const {createI8086DosBench} = await import(
+                /* webpackChunkName: "bw-debug-i8086" */ './i8086-dos-bench.js');
+            const img = await resolveMediaImage(bootMedia);
+            // The slot is authoritative when the loader named one; the MZ
+            // signature decides otherwise. Guessing 'com' for an .EXE would
+            // execute its header, which disassembles as garbage and looks
+            // like a broken CPU rather than a misread file.
+            const format = bootMedia.slot === 'exe' ? 'exe'
+                : bootMedia.slot === 'com' ? 'com'
+                    : (img.bytes[0] === 0x4d && img.bytes[1] === 0x5a) ? 'exe' : 'com';
+            let exited = null;
+            const bench = await createI8086DosBench({
+                bytes: img.bytes, format,
+                // Hardware the program asked for. `createI8086DosBench`
+                // merges these onto the preset BY NAME, so a scheduled
+                // program's IRQ0-wired timer replaces the preset's plain one
+                // rather than sitting beside it at the same port.
+                chips: bootMedia.chips || undefined,
+                // INT 21h's character output, line-buffered into the same
+                // console the serial machines use. The CGA text page is the
+                // primary surface (video() reads it), but a program whose
+                // output has scrolled off is still readable here.
+                onChar: (ch) => {
+                    if (ch === '\r') return;
+                    if (ch === '\n' || serialLines.length === 0) serialLines.push('');
+                    if (ch !== '\n') serialLines[serialLines.length - 1] += ch;
+                    if (serialLines.length > 500) serialLines.splice(0, serialLines.length - 500);
+                },
+                // A DOS program ENDS, unlike every other bench here, and
+                // saying so is the difference between "finished" and "hung".
+                onExit: (code) => {
+                    exited = code;
+                    setStatus('ready', `program exited with code ${code}`);
+                }
+            });
+            // No adapter: a DOS program has no pins, no serial UART and no
+            // board to drive, so there is nothing for one to bridge. Passing
+            // an empty one rather than the bench object is deliberate —
+            // wireMachineBench would otherwise offer a `loadRom` that writes
+            // into a machine whose program is already resident.
+            wireMachineBench({target: bench.target, adapter: {}}, createDebugSession);
+            // TYPING INTO A DOS PROGRAM. wireMachineBench installs a
+            // sendSerial that calls adapter.sendSerial, and this bench has no
+            // adapter — so without this override the console accepts what a
+            // user types and drops it, which is worse than refusing: the text
+            // appears in the box and the program never sees it.
+            //
+            // The DOS key queue IS this machine's keyboard. It has no PIC and
+            // therefore no IRQ1, so the hardware scancode path cannot exist
+            // here; a program blocked in INT 21h/AH=01h wakes on the next
+            // service call. Both shapes are honoured for the same reason the
+            // serial path honours both: SerialConsole sends one keycode at a
+            // time and a typed line arrives as a string.
+            runner.sendSerial = (data) => {
+                bench.sendKeys(typeof data === 'number'
+                    ? String.fromCharCode(data & 0xff) : String(data));
+            };
+            if (exited === null) {
+                setStatus('ready',
+                    `${bootMedia.name || 'program'} loaded as a .${format} on the DOS bench ` +
+                    '— output is the CGA screen and the console');
+            }
+            return session;
+        }
+
+        if (bootMedia) {
+            setStatus('attaching', `booting ${bootMedia.name || 'ROM'}…`);
+            const img = await resolveMediaImage(bootMedia);
+            targetOpts.rom = img.bytes;
+            // Three sources for the load address, most specific first. Intel
+            // HEX states its own origin; the Machine Loader computes one from
+            // the image length so the reset vector at FFFF0h falls inside it;
+            // otherwise the machine's own ROM region decides. An 8086 image
+            // that is not exactly 64K and gets none of the first two starts
+            // executing open bus, which on screen is indistinguishable from a
+            // machine that never started.
+            if (img.origin != null) targetOpts.romAt = img.origin;
+            else if (typeof bootMedia.romAt === 'number') targetOpts.romAt = bootMedia.romAt;
+            if (machineConfig) targetOpts.config = benchConfigI8086();
+            readyMsg = `${bootMedia.name || 'ROM'} on ${machineConfig ? 'the extracted machine' : 'the default 8086 map'}`;
+        } else if (machineConfig) {
+            setStatus('attaching', 'booting extracted 8086 machine…');
+            targetOpts.config = benchConfigI8086();
+            readyMsg = 'extracted machine booted with an empty ROM — load a program (presets, file, or ASM tab)';
+        } else {
+            // The shipped BIOS is a 64K image whose RESET VECTOR is its last
+            // sixteen bytes. `romAt` is the LOAD address, so it is 0xF0000 and
+            // the 8086 begins at F000:FFF0 inside it. Passing 0xFFFF0 here —
+            // the address of the vector rather than of the image — puts the
+            // ROM 64K high, and the machine then executes open bus from the
+            // first instruction while reporting that it started fine.
+            setStatus('attaching', 'loading the XT BIOS…');
+            // THIS FILENAME WAS WRONG AND NOTHING NOTICED. It read
+            // `bios8086.bin`, which has never existed in static/roms, so the
+            // no-media path 404ed on every run since it was written. Nothing
+            // caught it because nothing REACHED it: the tests build a machine
+            // directly and the Machine Loader always supplies media, so this
+            // fallback is a path only a user takes. test/rom-paths-exist.test.mjs
+            // now checks every static/roms string against the filesystem,
+            // because what was wrong here was a STRING, and no unit test of
+            // this branch would have found it -- the branch is correct.
+            const res = await fetch(new URL('static/roms/i8086-bios.bin', document.baseURI).href);
+            if (!res.ok) throw new Error(`Failed to load i8086-bios.bin: HTTP ${res.status}`);
+            targetOpts.rom = new Uint8Array(await res.arrayBuffer());
+            // 64K, so it maps at F0000h and the reset vector at FFFF0h falls in
+            // its last sixteen bytes. `0x100000 - length` is the rule the
+            // Machine Loader uses; it gives the same answer here and the right
+            // one for the 32K demo ROMs beside it.
+            targetOpts.romAt = 0x100000 - targetOpts.rom.length;
+            if (machineConfig) targetOpts.config = benchConfigI8086();
+            // No serial console on this ROM, and saying so is the point: its
+            // INT 14h is a stub and the BIOS equipment word reports no COM
+            // port, because the XT config has no 8250. Output is the CGA text
+            // page at B800:0000, which reaches the screen through video().
+            readyMsg = 'XT BIOS — output is the CGA screen, not the serial console';
+        }
+
+        const db = designerBoard();
+        if (db.board) {
+            targetOpts.board = db.board;
+            board = db.board;
+        }
+        readyMsg += ` — ${db.why}`;
+        const result = await createDebugTarget('i8086', targetOpts);
         wireMachineBench(result, createDebugSession);
         setStatus('ready', readyMsg);
         return session;

@@ -83,6 +83,9 @@ export async function createDebugTarget(kind, opts) {
   if (kind === 'eater6502') {
     return createEater6502Target(opts);
   }
+  if (kind === 'i8086') {
+    return createI8086Target(opts);
+  }
   if (kind === 'rp2040js') {
     return createRp2040jsTarget(opts);
   }
@@ -96,7 +99,7 @@ export async function createDebugTarget(kind, opts) {
     return createSerialTarget(opts);
   }
   throw new Error(
-    `Unknown debug target kind: '${kind}'. Use 'emulator', 'avr8js', 'atmega2560', 'attiny85', 'attiny88', 'eater6502', 'z80', 'rp2040js', 'stm32f0', 'labwired', or 'serial'.`
+    `Unknown debug target kind: '${kind}'. Use 'emulator', 'avr8js', 'atmega2560', 'attiny85', 'attiny88', 'eater6502', 'i8086', 'z80', 'rp2040js', 'stm32f0', 'labwired', or 'serial'.`
   );
 }
 
@@ -282,6 +285,35 @@ async function createZ80Target(opts) {
     const mod = await import('./z80-debug.js');
     if (mod.createZ80DebugTarget) {
       target = mod.createZ80DebugTarget({ machine: adapter.machine });
+    }
+  } catch { /* adapter-only mode */ }
+  return { target, adapter };
+}
+
+/**
+ * The 8086 breadboard. Like the z80 and 6502 targets, a board is optional:
+ * a machine whose only observable surface is the serial console has no pins
+ * to publish, so a time-sync stub suffices. The 8255's pins are the reason
+ * to pass a real one.
+ */
+async function createI8086Target(opts) {
+  const { board, rom, config } = opts;
+  const { createI8086Adapter } = await import('./i8086-adapter.js');
+  const adapter = createI8086Adapter({ config, rom, romAt: opts.romAt });
+  // setPin() is NOT optional in this stub, and its absence was a real trap.
+  // The adapter's onPinChange hook calls board.setPin() on the first 8255
+  // output edge, and POST triggers one the moment it writes the PPI control
+  // word -- so `createDebugTarget('i8086', {rom})` with no board threw
+  // `board.setPin is not a function` before the machine executed anything.
+  // A caller who just wants a machine has no reason to know that a null board
+  // needs two methods rather than one.
+  adapter.attachBoard(board ?? { advanceTo() {}, setPin() {} });
+
+  let target = null;
+  try {
+    const mod = await import('./i8086-debug.js');
+    if (mod.createI8086DebugTarget) {
+      target = mod.createI8086DebugTarget({ machine: adapter.machine });
     }
   } catch { /* adapter-only mode */ }
   return { target, adapter };
@@ -480,6 +512,15 @@ export function getTargetKinds() {
       kind: 'z80',
       label: 'Simulated (Z80)',
       description: 'Composable Z80 machine — Searle bench, CP/M, ZX Spectrum configs.',
+    },
+    {
+      // MISSING SINCE THE KIND SHIPPED, and the failure was not "no entry" --
+      // a <select> whose value matches no option renders the FIRST option, so
+      // the picker read "Simulated (STC12 / 8051)" while running 8086 code.
+      // A host cannot tell that from a user who chose 8051.
+      kind: 'i8086',
+      label: 'Simulated (8086 / 8088)',
+      description: 'Composable 8086 machine — breadboard, XT board with CGA and floppy, or DOS programs.',
     },
     {
       kind: 'attiny88',

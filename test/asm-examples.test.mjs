@@ -12,6 +12,17 @@
  * uses. That needs the network, so it skips when there is none rather
  * than reporting a pass it did not earn — and the structural checks below
  * it always run.
+ *
+ * ONE TAB, TWO ASSEMBLERS, so this file covers ONE OF THEM. The 8086's
+ * examples are assembled in the browser (`lib/bw-asm/assemble-route.js`
+ * argues for why), and posting them here is exactly the mistake the routing
+ * exists to prevent — the hosted service answers "unknown assemble target
+ * 'i8086'", which is the correct answer to a question nobody should ask it.
+ * The split below is taken from `asmRouteFor`, the same function the ▶
+ * button uses, rather than from a list repeated here: a second copy of the
+ * routing rule is a second thing that can disagree with the button.
+ * `test/i8086-asm-examples.test.mjs` covers the local half, and covers it
+ * harder — it assembles AND RUNS every one, with no network to excuse it.
  */
 
 import {test} from 'node:test';
@@ -21,8 +32,12 @@ import {join} from 'node:path';
 
 import {REPO} from './helpers/bw-integrated.mjs';
 import {
-    asmExamplesFor, ALL_ASM_EXAMPLES
+    asmExamplesFor, ALL_ASM_EXAMPLES, LOCAL_ASM_EXAMPLES
 } from '../overlay/scratch-gui/src/lib/bw-asm/examples.js';
+import {asmRouteFor} from '../overlay/scratch-gui/src/lib/bw-asm/assemble-route.js';
+
+/** The examples this file is responsible for: the hosted half. */
+const HOSTED_EXAMPLES = ALL_ASM_EXAMPLES.filter(e => asmRouteFor(e.target) === 'hosted');
 
 const ASSEMBLER = 'https://stc-compiler.vercel.app/assemble';
 
@@ -45,7 +60,7 @@ const NET = online ? false : 'the hosted assembler is not reachable';
 test('every device that can assemble has starter programs', () => {
     // The families /assemble supports. A device offering the ▶ button and
     // no examples is the wall this work exists to remove.
-    for (const device of ['stc12c5a60s2', 'stc89c52rc', 'eater6502', 'z80']) {
+    for (const device of ['stc12c5a60s2', 'stc89c52rc', 'eater6502', 'z80', 'i8086', '8088']) {
         assert.ok(asmExamplesFor(device).length > 0, `${device} has no examples`);
     }
     // And a device with no assemble path must not be offered any.
@@ -65,13 +80,26 @@ test('each example is complete enough to be a program', () => {
 });
 
 test('the ids are unique within a device family', () => {
-    for (const device of ['stc12c5a60s2', 'eater6502', 'z80']) {
+    for (const device of ['stc12c5a60s2', 'eater6502', 'z80', 'i8086']) {
         const ids = asmExamplesFor(device).map(e => e.id);
         assert.equal(new Set(ids).size, ids.length, `${device} has a duplicate id`);
     }
 });
 
-for (const ex of ALL_ASM_EXAMPLES) {
+test('the two halves partition the examples, and neither is empty', () => {
+    // A local set that quietly became empty would make this file's split
+    // vacuous and i8086-asm-examples.test.mjs pass by having nothing to do.
+    assert.ok(LOCAL_ASM_EXAMPLES.length > 0, 'no examples take the local route');
+    assert.ok(HOSTED_EXAMPLES.length > 0, 'no examples take the hosted route');
+    assert.equal(HOSTED_EXAMPLES.length + LOCAL_ASM_EXAMPLES.length, ALL_ASM_EXAMPLES.length,
+        'an example belongs to exactly one route, and one of them was counted twice or not at all');
+    for (const ex of LOCAL_ASM_EXAMPLES) {
+        assert.equal(asmRouteFor(ex.target), 'local',
+            `${ex.id} is listed as local but the ▶ button would post it to the hosted assembler`);
+    }
+});
+
+for (const ex of HOSTED_EXAMPLES) {
     test(`${ex.target}/${ex.id} assembles`, {skip: NET}, async () => {
         const res = await fetch(ASSEMBLER, {
             method: 'POST',

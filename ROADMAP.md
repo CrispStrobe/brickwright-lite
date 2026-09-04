@@ -422,6 +422,78 @@ Lite-side items (ours, this repo):
    the strengthened gates (corpus execution, KCL residual, rail-short,
    net-coalesce warnings).
 
+### 3.7 The 8086 tier — CORE + DISASSEMBLER LANDED 2026-09-03, the rest scoped
+
+Full plan, survey and licence rulings in `docs/I8086-CORE-PLAN.md`; the engine
+items are `bw-board/ROADMAP.md` §E6. Summary here so the roadmap is not missing
+a whole CPU tier that lives only in another file.
+
+Landed in bw-board (`f9ecac4`, `8a6a11f`, branch `feat/i8086-core`, not pushed):
+`i8086.js` and `i8086-disasm.js`, ground against SingleStepTests/8086 (MIT) at
+**646,000/646,000 vectors for the core and 646,000/646,000 for the
+disassembler's TEXT as well as its length** — the suite ships a disassembly
+string per vector, a higher standard than the Z80 and 65C02 disassemblers are
+held to. **Measured 4.0 M instructions/sec**, ~12x a 5 MHz 8086. **8088 comes
+free**: the ISA is identical and the differences are exactly what an
+instruction-stepped core does not model.
+
+Nothing is vendored here yet, and that is deliberate — with no adapter or debug
+target importing it, `no-dead-overlay-modules` would fail it and be right to. It
+rides in with the machine layer.
+
+Scoped as THREE machines, because planning them as one is how this gets
+mis-estimated:
+
+- **Tier A — the 8086 on a breadboard** (next). 8255 PPI, machine, adapter,
+  debug target, then 8259/8254 and the bus extractor. This is where an LED
+  blinks from a port, where the MCU examples adapt, and what every breadboard
+  reference the owner cited actually is (slador.uk: 8088 + 8284 + 8254 + 8255
+  + 8259 + 74244 + 74138 + LCD).
+- **Tier B — the DOS-program tier**, with no hardware in it. Measured across
+  the 525-program corpus: 3,109 `int 21h` calls of which 2,862 are AH=02h/09h/
+  4Ch, plus 79 `int 10h` and 26 `int 16h`. The service layer is small. **The
+  gate is the ASSEMBLER** — 502 of 525 files use `.MODEL`/`PROC`/`MACRO`, which
+  `bw-asm` does not speak. Do not promise the corpus before scoping that.
+- **Tier C — PC/XT compatible**, for real PC software. Months. Start it when A
+  and B ship and a lesson needs it.
+
+**The comparative gap list — bw-board `ROADMAP.md` §E6.8** (surveyed 2026-09-04
+against six projects: `mfld-fr/emu86`, `jeffpar/pcjs`, `dbalsom/XTCE-Blue`,
+`morphx666/x8086NetEmu`, `moesay/Elegant86` and `MicroCoreLabs/Projects`;
+**two of its first nine items were already stale when written and are
+corrected in place there** — the CI vector grader exists, and the bootable
+MS-DOS image exists and boots down two independent paths). Ordered there.
+
+**E6.8.1 landed 2026-09-04**: an `80186` variant of the core AND the
+disassembler, graded 132,532/132,532 and 172,430/172,430 against
+SingleStepTests/v20 (MIT), with the 8086 unchanged at 646,000/646,000 on both
+grinders and a `vectors186:` CI job. A breadboard **80188** is now a machine-
+config key rather than a fork.
+
+**Two rulings from that survey that constrain THIS repo's bundle**, both
+verified 2026-09-04: `aaronsgiles/ymfm` is **BSD-3-Clause**, so Adlib/OPL2 is
+the one sound-card path that could ever ship here — it may be vendored with
+its notice; and `morphx666/x8086NetEmu`, though MIT, states its own audio came
+from **fake86 (GPL-2.0)**, so that code must not be read. The audio blocker is
+not the licence, though: our contract is `audioTone() → {hz, on}` across the
+whole retro tier, and an OPL produces samples, so §E6.8.11 scopes it as an
+engine-wide second audio contract rather than as a sound card. The two that touch this repo rather than the engine:
+`i8086-asm.js` already builds a `symbols` Map and `i8086-disasm.js` already
+accepts a `labels` Map, and **nothing joins them** — so a learner who wrote
+`delay_loop:` reads `jmp 002Bh` (§E6.8.2, the cheapest item on the list); and
+`I8086Machine.saveState()` exists but the UI does not offer it (§E6.8.7).
+Owner-requested and landing last: **cycle-level execution as a machine config**
+(§E6.8.4) — the 8086 is the one CPU here whose cycle-step button is dark, and
+the accuracy/speed trade becomes a user choice expressed through the existing
+`capabilities().steps` vocabulary rather than a new one.
+
+Licence findings that constrain all three: GLaBIOS and `skiselev/8088_bios` are
+GPL-3 (refused), `GREENSHELLRAGE/8086-breadboard-computer` has no LICENSE file
+at all (architecture may inspire, code may not be copied), `emu8086.inc` has no
+usable licence (re-implement). `microsoft/MS-DOS` 1.25/2.0/4.0 is MIT and the
+Amey-Thakur `.asm` corpus is MIT per file header. **Every ROM in this tier is
+ours.**
+
 ---
 
 ## 3b. What an extension can reach — **TASKS 1, 2 + URL SANDBOX SHIPPED** (2026-08-28)
@@ -457,6 +529,211 @@ worry in this session that review might object was overstated. Do this because
 it is right.
 
 Each task is independently shippable and none blocks the next.
+
+### 3.8 The 8086 as a FIRST-CLASS target in the GUI — scoped 2026-09-04 (owner-requested)
+
+The tier runs. What is not yet true is that a learner can reach it the way they
+reach an Arduino: write pseudocode, press play, and watch a board they drew.
+Three steps, in dependency order, each with what already exists under it.
+
+**WHAT IS ALREADY DONE, so nobody rebuilds it.** The local assemble route
+(`lib/bw-asm/assemble-route.js`) sends 8086 source to the vendored
+`i8086-asm.js` and everything else to the hosted service — the ASM tab's ▶
+already assembles 8086 locally and runs it on a DOS bench. Six example
+programs ship with attribution. Six ROMs are served from `static/roms`. The
+debug target, extractor, video for all five cards and the keyboard are wired.
+
+#### 3.8.1 The ASM tab — KEYBOARD AND GRAPHICS LANDED 2026-09-04
+
+**Two of the three gaps are closed, and one of them was never what it said.**
+
+**The keyboard was already wired and the entry was stale.** `debug-runner.js`
+overrides `runner.sendSerial` to call `bench.sendKeys`, and the bench sets
+`blockOnKey: true`, so a program in INT 21h/AH=01h genuinely blocks and wakes
+on the next service call. Measured: a program that waits sits at 200,000 steps
+with no key, then completes and echoes on `sendKeys('K')`. What was actually
+missing was an EXAMPLE that asks for one — now `keys`, which reads until ESC
+and prints each character's hex code.
+
+**The graphics example is in: `mode13`.** 49 bytes, 320x200x256 at A000:0000,
+an XOR texture, INT 16h to wait, mode 3 restored before exit. Verified as 245
+distinct colours sampled across the frame rather than "the mode was set" — a
+uniform fill would pass the second check and show nothing.
+
+**AND THE REASON THERE WAS NO GRAPHICS EXAMPLE WAS NOT THAT NOBODY WROTE ONE.**
+`examples.js` imported the NAMED export `I8086_EXAMPLES` — upstream's six,
+under Amey Thakur's attribution — and never the default, which adds ours. So
+`pins` (written earlier) shipped in the file and was offered nowhere: not in
+the ASM tab, not in `ALL_ASM_EXAMPLES`, not in the local-assembly gate. Fixed;
+the gate now pins our ids by name, because `length >= 5` passed on upstream's
+six alone and said nothing about ours.
+
+**STILL OPEN: no 8086 part in the circuit palette**, which is why the device
+sits in the Code tab's picker labelled "assembly only" rather than arriving
+from a drawn board. The coverage lane found the deeper half of this on
+2026-09-04 — there is no `i8255` schematic part either (no DIP in
+`retro-dips.js`, no registry entry, no sidecar), so an 8086/8255 GPIO board has
+never been drawable. They own that; the pinout and the active-HIGH RESET trap
+are in the thread.
+
+#### 3.8.2 Pseudocode → ASM → 8086 — LANDED 2026-09-04
+
+**All four sub-steps below are done, and one of them was settled the opposite
+way from how it was scoped.** What ships: `lib/bw-asm/pseudocode-8086.js`,
+entry `buildPseudocode8086({project, source})` → `{bytes, format, chips, asm,
+warnings}`, entirely offline through our own assembler.
+
+**The tick (sub-step 1) is not one answer but two, and the second was scoped
+as impossible.** A single script waits with INT 15h/86h, which blocks — fine
+when there is nothing else to run. More than one script gets a PREEMPTIVE
+scheduler: one stack per script, switched by a timer interrupt on vector 70h,
+with the PIC and an IRQ0-wired 8254 requested per-program through `chips`.
+DECISION 1 in that file had concluded two scripts were impossible because the
+8254 "cannot interrupt" here; it can, once the program asks for the PIC, and a
+cooperative version was possible even before that because the counter can be
+READ. The rate is MEASURED at startup, never assumed — assuming it made every
+wait 4.19× short while every ordering test stayed green.
+
+**Variables (sub-step 2) are 32-bit pairs, so nothing narrows silently.**
+
+**The block set (sub-step 3) is `SUPPORTED`, and a refusal names the block and
+prints the list.** Lowering today: the control flow, the operators, `say`/
+`print`, pins (`turn on`, `toggle`, `read`, `set <pin> to <expr>`), whole
+PORTs, `wait until`, `set <pin> to <n> hz` (real 8254 + speaker), KEYPAD4X4 as
+an 8255 matrix scan, `PIN … ANALOG` through an auto-added ADC0809, multiple
+WHEN scripts, `WHEN <pin> pressed/released`, and broadcast. Refused by name:
+`setpwm` (a DAC would be a substitution, not PWM), `WHEN <key> pressed` (the
+DOS queue reports presses, not edges), sprites, DEFINE, lists.
+
+**Pin I/O (sub-step 4) is the P1/P2/P3 → 8255 A/B/C mapping**, which is what
+makes a reseat a DEVICE-line change rather than a rewrite.
+
+**A DECLARATION CAUSES HARDWARE TO APPEAR, and the build says so.** An ANALOG
+pin adds an ADC0809 at 300h; a second script adds a PIC and rewires the timer.
+Both are returned in `chips` and named in a warning, because a silently added
+chip is the same failure class as a silently chosen default.
+
+#### 3.8.2-old Pseudocode → ASM → 8086 — the original scoping, kept for the record
+
+Today: pseudocode → `generateC` → a HOSTED compiler → binary. That chain has no
+8086 back end and cannot grow one — there is no ia16 C compiler in the service,
+and adding one is a toolchain problem, not ours.
+
+**So the 8086 does not go through C at all.** The path is pseudocode → 8086
+assembly → our own assembler → the machine, entirely local. That is not a
+workaround: it is strictly better where it applies, because the assembler is
+differentially tested against MASM 1.10 and NASM 2.16 and needs no network.
+
+What makes it tractable is that `generateC` already does the hard part — it
+lowers each WHEN block to a state machine over a millisecond tick. A
+`generate8086Asm` emits the same state machine in our MASM subset. The
+sub-steps:
+
+1. **The tick.** C's `while(1)` over a ms counter becomes the 8254's 18.2 Hz
+   tick, or a tighter counter if a lesson needs one. This decides what "wait 1
+   second" means and must be settled before any codegen.
+2. **Variables.** Pseudocode variables are 32-bit in the C path; the 8086 is
+   16-bit. Either narrow with a stated limit, or emit 32-bit arithmetic as
+   pairs. **Narrowing silently is the one thing that must not happen** — a
+   counter that wraps at 65535 where the Scratch version reaches 100000 is a
+   program that runs and is wrong.
+3. **The block set that lowers.** Not all of it will. The honest deliverable is
+   a list of blocks that DO lower and a refusal by name for the rest, in the
+   shape `i8086-asm.js` already uses for unsupported directives.
+4. **Pin I/O.** `set pin 13 high` is an 8255 port write on this tier, not an AVR
+   register. That is a per-board mapping, so it needs the extracted machine's
+   chip list — which the extractor already produces.
+
+#### 3.8.2b Pseudocode → C → 8086 — the route most learners will actually take
+
+3.8.2 above routes pseudocode to assembly. **That is the wrong default for a
+child**, and the owner is right about it: almost nobody learns assembly first,
+and every other device in this app reaches the machine through C. An 8086 that
+can only be programmed in assembly is a museum piece next to the Arduino.
+
+So both routes ship, and they serve different people. THREE DOORS, and two are
+open:
+
+**1. The hosted compiler already does this — it is a service change, not engine
+work.** `stc-compiler.vercel.app` compiles C for 8051, AVR and STM32 today. Add
+`ia16-elf-gcc` server-side and real 8086 C works immediately. The licence
+question that stops people does not arise: **a GPL COMPILER running on a server
+does not affect the binaries it emits** — that is how every compiler service on
+earth works, and it is the same relationship gcc has with every proprietary
+program ever built with it. The client side of this is small: `asmRouteFor`
+already picks hosted-vs-local, and a C build for an 8086 target is one more
+hosted request with `target: 'ia16'`.
+
+**2. Compile our OWN C, which is a far smaller job than compiling C.**
+`generateC` emits a subset WE author: no pointers, no malloc, no structs,
+`int` variables, and a state machine over a millisecond tick. A compiler for
+that subset is a term rewriter, not a C front end, and it shares the whole back
+half with 3.8.2 — both end in our MASM-subset assembler. This is the offline
+path, and offline is not a nicety: it is what works on a school network.
+
+**3. SmallerC — VERIFIED 2026-09-04, and it is now the RECOMMENDED door.**
+
+Cloned, licence read, compiler built, output disassembled. Every claim below is
+measured rather than reported:
+
+- **BSD-2-Clause**, `license.txt`, two conditions and no advertising clause.
+  Vendorable with attribution.
+- **It emits 16-bit DOS code**: `-dost` (tiny/.COM), `-doss`, `-dosh`,
+  `-seg16`, `-flat16`.
+- **It emits NASM syntax** — `bits 16` at the top of the file — and we shipped
+  a NASM front end this same day. The two halves were built independently and
+  meet exactly.
+- **The output is 8086/186-clean.** A `for` loop calling a function compiled
+  to: `add call cmp inc jge jmp leave mov push ret sub`. Every one is an 8086
+  instruction except `leave`, which is an 80186 — and the 186 variant landed
+  this same day too. **Zero 32-bit registers** in the output, so the doc's
+  "80386+" refers to the 32-bit models, not to this path.
+
+**The ONLY thing standing between it and running is linker directives.** Our
+assembler refuses `GLOBAL` by name — correctly, since it assembles straight to
+a flat loadable image and there is nothing to export to. So the work is a
+flat-image lowering of `SECTION .text/.bss` + `GLOBAL`/`EXTERN`, which is a
+small, bounded piece rather than a compiler.
+
+Where SmallerC RUNS is a separate question with two answers, and neither is
+blocking: server-side beside the existing hosted compiler (trivial, it is plain
+C), or compiled to WASM for the offline path (it is self-hosting C, so this is
+ordinary Emscripten work). **Ship it server-side first and WASM it later** —
+the same order as door 1, and it gets real C onto the 8086 sooner.
+
+**RECOMMENDED ORDER, REVISED once door 3 was verified: 3, then 2 if offline
+matters more than breadth.** SmallerC is permissive, emits the exact dialect we
+just taught the assembler, and produces code our core already runs. Door 1
+(ia16-gcc, hosted) remains the fallback if SmallerC's C subset turns out too
+small for a lesson — it is a real C compiler with real limits, and nobody has
+yet compiled anything larger than a loop through it here.
+
+**THE CONSTRAINT BOTH ROUTES SHARE, and it is the one that must not be fudged:
+pseudocode variables are 32-bit and the 8086 is 16-bit.** Narrowing silently
+gives a counter that wraps at 65535 where the Scratch version reaches 100000 —
+a program that runs, produces wrong numbers, and blames the learner. Either
+emit 32-bit arithmetic as register pairs, or refuse the narrowing by name in
+the shape `i8086-asm.js` already uses for unsupported directives. `ia16-gcc`
+gets this right for free, which is a genuine argument for door 1 beyond speed.
+
+#### 3.8.3 Circuit examples that RESEAT onto an 8086 — MEDIUM, and it is the point
+
+The owner's framing: an example currently drawn around a Nano, a Pico, a 6502
+or an STC should be reseatable onto an 8086 in place. That is the thing that
+makes the tier a teaching object rather than a demo.
+
+**It is a harder ask than it sounds and the reason is worth stating: the CPU is
+not the only thing that changes.** A Nano example uses AVR pins directly; an
+8086 has no GPIO at all and needs an 8255 beside it. So "reseat" means
+substituting a SUBSYSTEM — CPU plus its port chip plus the address decoding —
+not swapping one part. The parts exist (8255, 8259, 8254, and the boards),
+which is why this is scoped rather than speculative.
+
+Sub-steps: a part-level equivalence table (AVR pin ↔ 8255 port bit); a reseat
+that rewrites the netlist rather than the schematic image; and a gate that the
+reseated example still extracts to a machine that runs. **The gate is the
+deliverable** — a reseat that produces a board which extracts but does not run
+is the failure this tier keeps finding in other forms.
 
 ## 4. Standing debt
 
@@ -551,6 +828,8 @@ hardware features the planning docs could not see.
 | `m74c922.js` | **LANDED 2026-08-30:** physical 4×4 keypad encoder IC | `tier2-parts.js` now registers the model; Lite acceptance covers all 16 codes, release, rollover, true-Z `/OE`, broken matrix wires and scheduler chunking | unblocked and removed from `KNOWN_DEAD`; the existing sidecar/art and designer palette make it placeable |
 | `blinkenrocket-modem.js` | audio-modem firmware upload to a Blinkenrocket | a UI affordance for "upload over the headphone jack", and the browser audio-output path to drive it | no owner. The firmware regression canary (`blinkenrocket-firmware`) exists on the box; the app-side feature does not |
 | `zx-tzx.js` | loading ZX Spectrum tape images | a Z80 machine target that accepts tape input — `z80-debug.js` and `z80-extract.js` both came OFF this list already, so the machine half is live; the tape half is not | a file-in affordance and a decision about where tape images come from (bundled corpus vs user upload) |
+| `i8086-asm.js` | **LANDED 2026-09-04:** writing 8086 assembly in the ASM tab and running it | `lib/bw-asm/assemble-route.js` routes an 8086/8088 device to this module IN THE BROWSER and everything else to the hosted service; `lib/bw-debug/i8086-dos-bench.js` boots the resulting .COM/.EXE on the DOS service layer, which `debug-runner.js` used to refuse by name. Six MIT programs from the Amey-Thakur corpus ship as ASM-tab examples, attribution included, and the gate assembles AND RUNS every one | unblocked and removed from `KNOWN_DEAD`. **The decision this row asked for was taken, not dodged:** two assemble routes in one tab, argued for in that module's header — the alternative was never one route, it was no 8086 ASM tab, because neither ca65 nor sdasz80 has an 8086 back end. The cost (two error surfaces) is bounded by three asserted rules: one function decides the route, neither route can leak into the other, and every result says which one ran |
+| `i8086-emu8086.js` | nothing in lite, by design | its consumer is bw-board's corpus harness, which lite does not ship. It adapts the emu8086 dialect (flat `ORG 100h` files with no segment) so the 525-file teaching corpus can be run against the core | nothing. It is here because the sync copies bw-board's full `src/` tree, and the honest entry for that is "not ours to wire", not a pending feature |
 
 None of these has an owner, and saying so is the point: the rule was "no entry may remain *later*,
 no owner, no date", and the honest resolution for five of six is **no owner, and here is exactly
@@ -588,6 +867,28 @@ a grep for the name alone would have reported a defect that does not exist.
 The history below is kept because the METHOD is worth more than the verdict, and because
 §5.1a's "gate it inside one repo so it cannot skip" is the pattern to reach for the next time
 a check needs two checkouts.
+
+### 4.6 smallerc-wasm dist: same computed-URL blindness, plus a caller that is not wired yet
+
+`smlrc.js` and `smlrpp.js` under `lib/smallerc-wasm/dist/` are Emscripten output, loaded by
+`lib/smallerc-wasm/compiler.js` as `import(/* webpackIgnore: true */ resolve('<name>'))`. That
+half is exactly §4.2's situation and is closed for the same reason: the specifier is a function
+call, so no import scan can ever follow it.
+
+The half that is NOT §4.2: **nothing in the app imports `compiler.js` yet, and that is
+deliberate.** SmallerC emits NASM (`bits 16`, `section .text`, `resb`, `alignb`), and the
+assembler that would consume it — `lib/bw-board/i8086-asm.js` — is MASM-dialect and rejects that
+output on line 1 (`"BITS" is not an instruction, directive or macro this assembler knows`,
+measured 2026-09-04). Wiring a compile button to a pipeline whose next stage cannot parse the
+output would be a worse outcome than leaving it unwired: it would look finished.
+
+`test/smallerc-wasm.test.mjs` executes both modules and gates the compiler on its own terms —
+C in, 16-bit NASM out — so the artifact is exercised rather than merely present.
+
+**What it would take to remove the exclusion:** a NASM front end in `i8086-asm.js` (§3.8.2b,
+door 3), after which `compiler.js` gets a real caller and only the two glue files stay listed.
+**Blocked on:** `i8086-asm.js` lives in the **vendored** `bw-board/` tree, which
+`npm run sync:bwboard` overwrites wholesale — the front end has to land upstream, not here.
 
 ### 5.1 The stc12 extension lite ships is missing 8 opcodes the emitter emits — FIXED
 

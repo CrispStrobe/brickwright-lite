@@ -64,6 +64,45 @@ const VENDORED = [
         text: 'overlay/scratch-gui/static/licenses/labwired-core.MIT.txt',
     },
     {
+        // Not a library: six source FILES from someone else's repository,
+        // compiled into the bundle as strings. A lockfile cannot see them and
+        // neither can a dependency audit, which is exactly the category this
+        // list exists for.
+        name: '8086 example programs',
+        licence: 'MIT',
+        holder: 'Amey Thakur and Mega Satish',
+        evidence: 'overlay/scratch-gui/src/lib/bw-asm/examples-i8086.js',
+        inBinary: true,
+        text: 'overlay/scratch-gui/static/licenses/amey-thakur-8086.MIT.txt',
+    },
+    {
+        // The core compiler, shipped as WASM. BSD-2 clause 2 attaches to
+        // BINARY redistribution specifically, which is exactly what a .wasm
+        // in the bundle is.
+        name: 'SmallerC',
+        licence: 'BSD-2-Clause',
+        holder: 'Alexey Frunze',
+        evidence: 'overlay/scratch-gui/src/lib/smallerc-wasm/dist/smlrc.wasm',
+        inBinary: true,
+        text: 'overlay/scratch-gui/static/licenses/smallerc.BSD-2-Clause.txt',
+    },
+    {
+        // SEPARATE WORK, SEPARATE COPYRIGHT. smlrpp is ucpp, which merely
+        // lives inside SmallerC's source tree; attributing Frunze alone would
+        // leave Pornin's notice undischarged. Its licence is NOT BSD-2 and it
+        // is not quite BSD-3-Clause either -- upstream numbers its three
+        // conditions 1, 2 and 4, and the no-endorsement wording is its own, so
+        // the SPDX id is deliberately not 'BSD-3-Clause': that would send this
+        // entry down the /Neither the name/ branch below and demand wording
+        // upstream never used. Both notices live in the one file.
+        name: 'ucpp',
+        licence: 'BSD-3-Clause-ucpp',
+        holder: 'Thomas Pornin',
+        evidence: 'overlay/scratch-gui/src/lib/smallerc-wasm/dist/smlrpp.wasm',
+        inBinary: true,
+        text: 'overlay/scratch-gui/static/licenses/smallerc.BSD-2-Clause.txt',
+    },
+    {
         name: 'rp2040js',
         licence: 'MIT',
         holder: 'Uri Shaked',

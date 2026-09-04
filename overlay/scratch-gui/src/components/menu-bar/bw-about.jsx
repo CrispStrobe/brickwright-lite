@@ -22,6 +22,8 @@ const BUNDLED_LICENCES = [
     ['Scratch Link (BSD-3-Clause)', 'static/licenses/scratch-link.BSD-3-Clause.txt'],
     ['Scrub (BSD-3-Clause)', 'static/licenses/scrub.BSD-3-Clause.txt'],
     ['labwired-core (MIT)', 'static/licenses/labwired-core.MIT.txt'],
+    ['8086 example programs (MIT)', 'static/licenses/amey-thakur-8086.MIT.txt'],
+    ['SmallerC + ucpp (BSD-2-Clause / BSD)', 'static/licenses/smallerc.BSD-2-Clause.txt'],
 ];
 const COMPILER_ABOUT_URL = 'https://stc-compiler.vercel.app/#about';
 const COMPILER_HEALTH_URL = 'https://stc-compiler.vercel.app/health';
@@ -69,7 +71,9 @@ const L10N = {
             'follows Scrub, Copyright (c) 2021 Shinichiro Oba, BSD-3-Clause. labwired-core, ' +
             'Copyright (c) 2026 Andrii Shylenko, MIT — the full-fidelity simulator. ' +
             'avr8js and rp2040js (MIT, Wokwi) are the AVR and Cortex-M0 cores; emu8051 (MIT) ' +
-            'the 8051.',
+            'the 8051. The ASM tab\'s 8086 example programs are carried verbatim from the ' +
+            '8086 Assembly Language Programs collection, Copyright (c) 2021 Amey Thakur and ' +
+            'Mega Satish, MIT.',
         thanksTexts: 'Licence texts (offline):',
         notices: 'Full third-party notices',
         affil: 'Affiliation',
@@ -111,7 +115,9 @@ const L10N = {
             'PerfectWebSockets-Shim folgt Scrub, Copyright (c) 2021 Shinichiro Oba, ' +
             'BSD-3-Clause. labwired-core, Copyright (c) 2026 Andrii Shylenko, MIT — der ' +
             'Simulator mit voller Genauigkeit. avr8js und rp2040js (MIT, Wokwi) sind die AVR- ' +
-            'und Cortex-M0-Kerne; emu8051 (MIT) der 8051.',
+            'und Cortex-M0-Kerne; emu8051 (MIT) der 8051. Die 8086-Beispielprogramme im ' +
+            'ASM-Tab stammen unveraendert aus der Sammlung 8086 Assembly Language Programs, ' +
+            'Copyright (c) 2021 Amey Thakur und Mega Satish, MIT.',
         thanksTexts: 'Lizenztexte (offline):',
         licenseNote: 'Quelloffen unter BSD-3-Clause, Apache-2.0, MIT und MPL-2.0. Brickwright nutzt ' +
             'den letzten BSD-Scratch-Stack sowie eigene Editoren und Engines; es ist kein TurboWarp-Fork.',

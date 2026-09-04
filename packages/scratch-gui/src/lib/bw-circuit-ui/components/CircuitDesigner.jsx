@@ -545,8 +545,19 @@ export function CircuitDesigner({ project, stc, board: externalBoard, debugState
     const BEEPER_ID = '__spectrum_beeper';
     let raf;
     const poll = () => {
-      const tone = debugState.audio();
-      updateBuzzerAudio(BEEPER_ID, tone);
+      // audio() is per-voice and ALWAYS AN ARRAY (bw-board E6.8.11a): a
+      // one-voice beeper returns one element, a three-voice AY returns three,
+      // and a machine with no sound chip returns none. updateBuzzerAudio
+      // keeps its single-tone signature because it IS a one-oscillator-per-
+      // part helper -- the buzzer parts on the breadboard use it the same
+      // way -- so the loop is here rather than inside it.
+      const voices = debugState.audio() || [];
+      const list = Array.isArray(voices) ? voices : [voices];
+      // Only the first voice reaches the beeper today. Stated rather than
+      // hidden: a three-voice AY through one oscillator would be wrong in a
+      // way nobody could see, and the honest fix is the sample contract
+      // (readAudio) rather than three more oscillators.
+      updateBuzzerAudio(BEEPER_ID, list[0] || null);
       raf = requestAnimationFrame(poll);
     };
     raf = requestAnimationFrame(poll);

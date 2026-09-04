@@ -75,6 +75,13 @@ const ALLOWED = new Map([
         reason: 'Emscripten output, as above (assembler). compiler.js:45.'}],
     ['lib/sdcc-wasm/dist/sdld.js', {roadmap: '4.2',
         reason: 'Emscripten output, as above (linker). compiler.js:46.'}],
+    ['lib/smallerc-wasm/dist/smlrc.js', {roadmap: '4.6',
+        reason: 'Emscripten output (the C compiler). Loaded by smallerc-wasm/compiler.js as ' +
+            '`import(/* webpackIgnore: true */ resolve(\'smlrc.js\'))` — a computed specifier. ' +
+            'Executed by test/smallerc-wasm.test.mjs. Verified 2026-09-04.'}],
+    ['lib/smallerc-wasm/dist/smlrpp.js', {roadmap: '4.6',
+        reason: 'Emscripten output (the ucpp preprocessor), loaded the same way and executed by ' +
+            'the same test. Verified 2026-09-04.'}],
     ['lib/bw-circuit-ui/main.jsx', {roadmap: '4.3',
         reason: 'bw-circuit-ui\'s own standalone demo entry point. Vendored wholesale by ' +
             'sync-bw-circuit-ui.mjs, which copies the upstream src tree rather than ' +
@@ -132,6 +139,23 @@ const KNOWN_DEAD = new Map([
     // vdu-decoder.js removed from KNOWN_DEAD: now imported by vdu-terminal.jsx (BBC BASIC VDU canvas).
     // z80-debug.js removed from KNOWN_DEAD: now imported by debug-target-factory (Z80 interactive target).
     // z80-extract.js removed from KNOWN_DEAD: now imported by drc.js (bus extractor DRC rule).
+    // i8237.js and upd765.js were listed here for ONE sync and are gone again, and
+    // the reason is worth keeping: they were not dead in lite, they were dead
+    // EVERYWHERE. I8086Machine's chip factory had no 'dma' and no 'fdc' kind, so no
+    // config in any repo could instantiate either. Both chips' own suites were
+    // green. This gate found it by asking a question nobody upstream was asking,
+    // which is the fourth time a finding here came from an unrelated direction.
+    // i8086-asm.js removed from KNOWN_DEAD 2026-09-04: lib/bw-asm/assemble-route.js
+    // imports it, and the ▶ button routes 8086 devices to it. The entry said the
+    // blocker was "a tab design change, not a wiring change" — so the change was
+    // designed and argued for in that module's header rather than smuggled in
+    // here, and one tab now has two assemble routes on purpose.
+    ['lib/bw-board/i8086-emu8086.js', {roadmap: '4.4',
+        reason: 'Vendored; the emu8086 dialect adapter. Its consumer is bw-board\'s '
+            + 'corpus harness (scripts/run-i8086-corpus.mjs), which lite does not '
+            + 'ship — it exists to run the 525-file teaching corpus against the '
+            + 'core, not to serve the app. Arrives with the sync, which copies the '
+            + 'full src/ tree.'}],
 ]);
 
 const SPEC = /from\s+['"]([^'"]+)['"]|import\(\s*(?:\/\*[^*]*\*\/\s*)?['"]([^'"]+)['"]|require\(\s*['"]([^'"]+)['"]/g;

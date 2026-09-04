@@ -128,6 +128,14 @@ const baseConfig = new ScratchWebpackConfigBuilder(
                 from: 'src/lib/sdcc-wasm/dist',
                 to: 'static/sdcc-wasm',
                 noErrorOnMissing: true
+            },
+            {
+                // SmallerC as WASM — C to 16-bit NASM for the 8086, offline.
+                // Only smlrc and smlrpp are here; headers.js is imported
+                // normally and so is bundled rather than copied.
+                from: 'src/lib/smallerc-wasm/dist',
+                to: 'static/smallerc-wasm',
+                noErrorOnMissing: true
             }
         ]
     }));

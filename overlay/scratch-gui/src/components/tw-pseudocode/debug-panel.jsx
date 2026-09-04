@@ -5,8 +5,17 @@ import {connect} from 'react-redux';
 import DebugDrawer from './debug-drawer.jsx';
 import DebugInspector from './debug-inspector.jsx';
 import DebugFrames from './debug-frames.jsx';
+import {mergeTargetKinds} from '../../lib/bw-debug/target-kinds.js';
 
 // VDP screen — lazy-loaded, only renders when the runner has video output.
+const PortLeds = React.lazy(() =>
+    import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/components/PortLeds.jsx')
+        .then(m => ({default: m.PortLeds}))
+);
+const SwitchPanel = React.lazy(() =>
+    import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/components/SwitchPanel.jsx')
+        .then(m => ({default: m.SwitchPanel}))
+);
 const VdpScreen = React.lazy(() =>
     import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/components/VdpScreen.jsx')
         .then(m => ({default: m.VdpScreen}))
@@ -122,7 +131,7 @@ class DebugPanel extends React.Component {
         this._onMediaLoad = this._onMediaLoad.bind(this);
         this._onAsmRomReady = this._onAsmRomReady.bind(this);
         /** Boot image handed over by the Machine Loader / ASM tab —
-         *  {slot, bytes, profile, name}. Kept off state: the bytes are
+         *  {slot, bytes, profile, name, romAt}. Kept off state: the bytes are
          *  runner input, not render input. */
         this._bootMedia = null;
         /** STABLE identity, bound once: the panel re-renders on every
@@ -131,6 +140,30 @@ class DebugPanel extends React.Component {
          *  cancelled and rescheduled its own rAF every frame, so the
          *  paint callback never once ran and the screen stayed black
          *  while the machine rendered perfect frames behind it. */
+        /** STABLE identity, bound once -- same reason as _videoFn below. An
+         *  inline arrow here would give VdpScreen a new sendScancodeFn every
+         *  render, and its key handlers are useCallback'd on that prop, so
+         *  every render would rebuild them. Returns undefined when the runner
+         *  has no keyIn, which is how VdpScreen decides not to offer a
+         *  keyboard at all. */
+        /** STABLE identity, bound once -- SwitchPanel's toggle handler is
+         *  useCallback'd on it, so an inline arrow would rebuild every
+         *  switch's handler on every runner emit (rAF cadence). */
+        /** STABLE identity, bound once -- PortLeds calls it on every render
+         *  and an inline arrow would defeat any memoisation above it. */
+        this._outputsFn = () => {
+            const r = this.state.runner;
+            return r && typeof r.outputs === 'function' ? r.outputs() : null;
+        };
+        this._setInputFn = (chip, port, bit, level) => {
+            const r = this.state.runner;
+            return r && typeof r.setInput === 'function'
+                ? r.setInput(chip, port, bit, level) : false;
+        };
+        this._scancodeFn = (sc) => {
+            const r = this.state.runner;
+            if (r && typeof r.keyIn === 'function') r.keyIn(sc);
+        };
         this._videoFn = () => {
             const r = this.state.runner;
             return r && typeof r.video === 'function' ? r.video() : null;
@@ -165,31 +198,66 @@ class DebugPanel extends React.Component {
      *  must boot TOGETHER so the CPU reads its reset vector from the
      *  real bytes, not from a zero-filled ROM it booted with earlier. */
     async _onMediaLoad (e) {
-        const {slotId, bytes, kind, profile, name} = e.detail || {};
+        const {slotId, bytes, kind, profile, name, romAt, chips} = e.detail || {};
         if (!bytes) return;
         this._teardownRunner();
         this._bootMedia = {
             slot: slotId,
             bytes: bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes),
             profile: profile || null,
-            name: name || null
+            name: name || null,
+            // HARDWARE THE PROGRAM ASKED FOR, and it has to be listed here
+            // explicitly: this destructure is a fixed field list, so a new
+            // field on the event is silently dropped unless it is named in
+            // both places. An ANALOG pin's converter and a scheduled
+            // program's interrupt controller both arrive this way.
+            chips: chips || null,
+            // WHERE the image is mapped, when the sender knows and we cannot
+            // infer it. A raw .bin carries no origin, so without this the
+            // runner falls back to the machine's default ROM base — and for
+            // an 8086 that is wrong for every image that is not exactly 64K.
+            // The loader computes `0x100000 - length` so the reset vector at
+            // FFFF0h lands INSIDE the image: a 32K monitor maps at F8000h, a
+            // 64K BIOS at F0000h. Dropped silently before this, and the
+            // symptom is a machine that starts executing open bus and looks
+            // identical to one that failed to start.
+            romAt: typeof romAt === 'number' ? romAt : null
         };
         const nextKind = kind === 'z80' ? 'z80'
             : kind === 'eater6502' || kind === '6502' ? 'eater6502'
-                : this.state.kind;
+                // All four spellings. The 8088 is an 8086 with an eight-bit
+                // bus -- same ISA, same registers, same core here -- so
+                // refusing it by name would refuse a machine we can run.
+                : kind === 'i8086' || kind === '8086' || kind === 'i8088' || kind === '8088' ? 'i8086'
+                    : this.state.kind;
         await new Promise(resolve => this.setState(
             {kind: nextKind, runner: null, ui: {phase: 'idle', message: ''}}, resolve));
         const runner = await this.runner();
         await runner.start();
     }
 
-    /** ASM tab assembled a binary — same delivery path as the loader. */
+    /**
+     * ASM tab assembled a binary — same delivery path as the loader.
+     *
+     * `slotId` and `profile` are carried rather than hardcoded to 'rom'
+     * because a .COM/.EXE from the local 8086 assembler is NOT a ROM: the
+     * runner has to know to build the DOS bench for it, and a .COM loaded as
+     * a ROM at F0000 executes nothing while looking exactly like a machine
+     * that failed to start. The default stays 'rom' so a hosted 6502/Z80
+     * build behaves as it always did.
+     */
     _onAsmRomReady (e) {
-        const {rom, target} = e.detail || {};
+        const {rom, target, slotId, profile, chips} = e.detail || {};
         if (!rom) return;
         this._onMediaLoad({detail: {
-            slotId: 'rom', bytes: rom,
-            kind: target === 'z80' ? 'z80' : 'eater6502',
+            slotId: slotId || 'rom', bytes: rom,
+            profile: profile || null,
+            // The chips the program's own declarations require. Carried with
+            // the image because they are a property of the PROGRAM, not of
+            // the board the user happened to draw.
+            chips: chips || null,
+            kind: target === 'z80' ? 'z80'
+                : target === 'i8086' ? 'i8086' : 'eater6502',
             name: 'assembled image'
         }});
     }
@@ -254,7 +322,13 @@ class DebugPanel extends React.Component {
         import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/index.js')
             .then(async m => {
                 if (!m.getTargetKinds) return;
-                const kinds = m.getTargetKinds();
+                // ...plus the kinds the app can SELECT and bw-board does not
+                // yet LIST. A <select> whose value matches no option shows
+                // the first one instead, so an 8086 run would have read
+                // "Simulated (STC12 / 8051)". See lib/bw-debug/target-kinds.js
+                // — the merge is idempotent, so the upstream fix costs
+                // nothing here.
+                const kinds = mergeTargetKinds(m.getTargetKinds());
                 // The heavy tier is offered only if its engine is actually
                 // here. It is a 20 MB artifact fetched at deploy time and
                 // loaded on demand, so unlike every other kind it can be
@@ -310,9 +384,16 @@ class DebugPanel extends React.Component {
             attiny88: 'attiny88', attiny85: 'attiny85',
             'arduino-mega': 'atmega2560', atmega2560: 'atmega2560',
             pico: 'rp2040js', stm32f030: 'stm32f0', eater6502: 'eater6502',
-            z80: 'z80', zx48: 'z80', zx128: 'z80',
+            z80: 'z80', zx48: 'z80', zx128: 'z80', i8086: 'i8086',
         };
-        const CORE_TO_KIND = { '8051': 'emulator', arduino: 'avr8js', rp2040: 'rp2040js', arm: 'stm32f0', micropython: 'rp2040js', w65c02: 'eater6502', z80: 'z80' };
+        // i8086 was MISSING from this map while the 8086 debug target,
+        // extractor and machine were all present: choosing the 8086 (or
+        // seating one on the board, which publishes bwDeviceCore = 'i8086')
+        // left the panel on whatever engine it already had — the 8051
+        // emulator by default — and the 8086 image would have been run as
+        // 8051 opcodes. Plausible and wrong, which is the same shape as the
+        // ATtiny88 note above.
+        const CORE_TO_KIND = { '8051': 'emulator', arduino: 'avr8js', rp2040: 'rp2040js', arm: 'stm32f0', micropython: 'rp2040js', w65c02: 'eater6502', z80: 'z80', i8086: 'i8086' };
         // The user's remembered pick for THIS device wins over the map:
         // choosing an engine in the picker persists per device (see
         // onChange below), so "I always debug my Uno on the 2560 engine"
@@ -718,11 +799,36 @@ class DebugPanel extends React.Component {
                     <React.Suspense fallback={null}>
                         <VdpScreen
                             videoFn={this._videoFn}
+                            {...(this.state.runner && typeof this.state.runner.keyIn === 'function'
+                                ? {sendScancodeFn: this._scancodeFn} : {})}
                             lang={this.props.locale}
                             data-testid="bw-vdp-screen"
                         />
                     </React.Suspense>
                 ) : null}
+
+                {/* LEDS. Mounted only when the machine has ports to show --
+                    eight lamps that never light read as a broken program
+                    rather than an absent chip. */}
+                {this.state.runner && typeof this.state.runner.outputs === 'function' ? (
+                    <React.Suspense fallback={null}>
+                        <PortLeds outputsFn={this._outputsFn} />
+                    </React.Suspense>
+                ) : null}
+
+                {/* SWITCHES AND SENSORS. Mounted only when the machine
+                    declares inputs -- a panel of toggles that drive nothing
+                    is indistinguishable from a program ignoring the user, so
+                    the absence of hardware is the absence of the control. */}
+                {this.state.runner && Array.isArray(this.state.runner.inputs)
+                    && this.state.runner.inputs.length ? (
+                        <React.Suspense fallback={null}>
+                            <SwitchPanel
+                                inputs={this.state.runner.inputs}
+                                setInputFn={this._setInputFn}
+                            />
+                        </React.Suspense>
+                    ) : null}
 
                 {/* What is happening, in the user's own nouns. This comes FIRST
                     and the machine's view comes underneath — the order every

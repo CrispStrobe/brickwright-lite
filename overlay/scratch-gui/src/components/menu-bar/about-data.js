@@ -116,6 +116,12 @@ const ABOUT_GROUPS = [
                 url: 'https://sdcc.sourceforge.net/',
                 license: 'GPL-2.0+ (service-side)',
                 role: 'Small Device C Compiler for 8051; runs server-side or as opt-in WASM download'
+            },
+            {
+                name: 'SmallerC',
+                url: 'https://github.com/alexfru/SmallerC',
+                license: 'BSD-2-Clause (with ucpp, © Thomas Pornin)',
+                role: 'C to 16-bit NASM assembly for the 8086; bundled as WASM and runs offline'
             }
         ]
     },
