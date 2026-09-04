@@ -245,6 +245,12 @@ export function boolishTruthTest (b) {
 }
 
 /** Signed 32-bit range. A literal outside it is refused, never wrapped. */
+/** The 8255 on this tier, at the XT's addresses: A=60h, B=61h, C=62h,
+ *  control=63h. The same chip the keyboard's scancode arrives on, which is
+ *  why one board can serve a pin program and a keyboard program at once. */
+const PPI_BASE = 0x60;
+const PPI_CTRL = 0x63;
+
 const I32_MIN = -2147483648;
 const I32_MAX = 2147483647;
 
@@ -296,8 +302,9 @@ class Emitter {
         this.counters = [];         // REPEAT counter symbols
         this.uses = {
             puts: false, crlf: false, printn: false,
-            mul: false, div: false, mod: false, sdiv: false
+            mul: false, div: false, mod: false, sdiv: false, ppi: false
         };
+        this.pins = [];             // declared PINs, from the parser
     }
 
     warn (message) {
@@ -603,6 +610,75 @@ class Emitter {
      * Note this is a block the C DEVICE path REFUSES ("no C equivalent for
      * `say counter`"), and rightly: an 8051 has no screen. This one does.
      */
+
+    /**
+     * A DECLARED PIN, AS AN 8255 PORT AND BIT — and this is what lets an 8051
+     * pin program RESEAT onto an 8086 unchanged.
+     *
+     * The parser gives `{name, port, bit, direction, activeLow}` from
+     * `PIN led = P1.0 OUTPUT`. P1/P2/P3 are 8051 port names, and the 8255 has
+     * exactly three ports, so P1 -> A, P2 -> B, P3 -> C is a mapping and not a
+     * translation: the same declaration means the same wire on either chip.
+     *
+     * WHY THIS IS THE WHOLE FEATURE. A learner's blink program written for a
+     * Nano or an STC does not have to be rewritten to run on an 8086 -- the
+     * CPU changes and the pin declaration does not. That is what "reseating an
+     * example" has to mean if it is to be worth anything.
+     *
+     * P0 IS REFUSED BY NAME rather than mapped. An 8051's P0 is the
+     * multiplexed address/data bus and needs external pull-ups; there is no
+     * fourth 8255 port and inventing one would put a pin somewhere a board
+     * cannot have it.
+     */
+    pinAddr (name, opcode) {
+        const pin = (this.pins || []).find((p) => p.name === name);
+        if (!pin) {
+            refuse(`"${name}" is used as a pin but no PIN line declares it`,
+                'undeclared pin', opcode);
+        }
+        const PORT = { 1: 'A', 2: 'B', 3: 'C' }[pin.port];
+        if (!PORT) {
+            refuse(`PIN ${name} is on P${pin.port}, and an 8255 has three ports: `
+                + 'P1, P2 and P3 map to A, B and C. P0 on an 8051 is the multiplexed '
+                + 'address/data bus and has no 8255 equivalent.',
+                'pin port out of range', opcode);
+        }
+        return { ...pin, PORT, dataPort: PPI_BASE + { A: 0, B: 1, C: 2 }[PORT] };
+    }
+
+    /**
+     * Drive one pin. The 8255 has NO read-modify-write on an output port --
+     * reading one back gives the latch, which is fine, but a program that
+     * shares a port between two pins must not clobber the neighbour. So the
+     * latch is SHADOWED in memory and written whole, which is what an 8051
+     * program does with its own port SFR and what a real 8255 driver does too.
+     */
+    emitPin (name, level, opcode) {
+        const p = this.pinAddr(name, opcode);
+        this.uses.ppi = true;
+        const shadow = `BW_PORT${p.PORT}`;
+        const mask = 1 << p.bit;
+        // activeLow inverts at the PIN declaration, not at every use -- a
+        // learner who wrote `ACTIVE LOW` said it once and means it always.
+        const on = p.activeLow ? !level : level;
+        this.op(`MOV AL, [${shadow}]`);
+        this.op(on ? `OR AL, ${mask}` : `AND AL, ${(~mask) & 0xff}`);
+        this.op(`MOV [${shadow}], AL`);
+        this.op(`MOV DX, ${p.dataPort}`);
+        this.op('OUT DX, AL');
+    }
+
+    /** Toggle: the same shadow, XOR'd. */
+    emitPinToggle (name, opcode) {
+        const p = this.pinAddr(name, opcode);
+        this.uses.ppi = true;
+        this.op(`MOV AL, [BW_PORT${p.PORT}]`);
+        this.op(`XOR AL, ${1 << p.bit}`);
+        this.op(`MOV [BW_PORT${p.PORT}], AL`);
+        this.op(`MOV DX, ${p.dataPort}`);
+        this.op('OUT DX, AL');
+    }
+
     emitSay (input, opcode, textMode) {
         const inner = Array.isArray(input) ? input[1] : null;
         const isLiteralText = Array.isArray(inner) && (inner[0] === 10 || textMode);
@@ -796,6 +872,15 @@ class Emitter {
             this.note('say for secs');
             this.emitSay(b.inputs.MESSAGE, b.opcode, false);
             this.emitWait(b.inputs.SECS, b.opcode);
+            return;
+        case 'stc12_setpin':
+            this.note('pin');
+            this.emitPin(b.fields.PIN[0],
+                (b.fields.STATE && b.fields.STATE[0]) === 'on', b.opcode);
+            return;
+        case 'stc12_toggle':
+            this.note('pin');
+            this.emitPinToggle(b.fields.PIN[0], b.opcode);
             return;
         case 'stc12_print':
             this.note('print');
@@ -1074,6 +1159,16 @@ class Emitter {
         for (const [text, sym] of this.strings) {
             d.push(`${sym} DB ${dbBytes(text)}`);
         }
+        if (this.uses.ppi) {
+            // ONE SHADOW BYTE PER PORT, because an 8255 output port cannot be
+            // read-modify-written safely: reading it back gives the LATCH,
+            // which is right, but two pins sharing a port must not clobber
+            // each other and the chip offers no bit-set for ports A and B.
+            // An 8051 program keeps its port SFR the same way.
+            d.push('BW_PORTA DB 0    ; shadow of 8255 port A',
+                'BW_PORTB DB 0    ; shadow of port B',
+                'BW_PORTC DB 0    ; shadow of port C');
+        }
         if (this.uses.sdiv) {
             d.push('BW_Q DW 0', 'BW_Q2 DW 0', 'BW_D DW 0', 'BW_D2 DW 0',
                 'BW_R DW 0', 'BW_R2 DW 0');
@@ -1105,14 +1200,20 @@ export function emitI8086Asm (project, opts = {}) {
     const hardware = source.match(/^[ \t]*(PIN|PART|PORT|LEDCUBE)\b[^\n]*/im);
     const stcPins = project && project.stc &&
         ((project.stc.pins || []).length || (project.stc.parts || []).length);
-    if (hardware || stcPins) {
-        refuse(`this program declares hardware (${hardware ? hardware[0].trim() : 'PIN'}), ` +
-            'and the 8086 DOS bench has none. It is a screen and a keyboard: no board ' +
-            'is attached, so there are no pins to write. Pin I/O on this tier would be ' +
-            'an 8255 port write and it is not wired here. Worse, the pseudocode parser ' +
-            'DROPS a hardware statement on an unrecognised DEVICE, so the block would ' +
-            'not merely fail — it would vanish and the program would print nothing. ' +
-            'Remove the PIN lines, or choose a device with pins.', 'hardware declared');
+    // PINS ARE SUPPORTED NOW; PARTS ARE NOT, and the difference is real rather
+    // than a matter of effort. A PIN is one wire, and this bench has an 8255
+    // to hang it on -- P1/P2/P3 map onto ports A/B/C, so an 8051 pin program
+    // reseats onto an 8086 unchanged, which is what makes the mapping worth
+    // having. A PART is an LCD, a keypad, an LED cube: a component with a
+    // protocol, and modelling one is not a port write.
+    const parts = source.match(/^[ \t]*(PART|LEDCUBE)\b[^\n]*/im);
+    const stcParts = project && project.stc && (project.stc.parts || []).length;
+    if (parts || stcParts) {
+        refuse(`this program declares a component (${parts ? parts[0].trim() : 'PART'}), ` +
+            'and this bench has an 8255 but no parts on it. A PIN is one wire and works; ' +
+            'a PART is a device with a protocol -- an LCD, a keypad, a cube -- and driving ' +
+            'one is not a port write. Use PIN lines, or choose a device with that part.',
+            'part declared');
     }
     const targets = (project && project.targets) || [];
     const stage = targets.find(t => t.isStage);
@@ -1167,6 +1268,8 @@ export function emitI8086Asm (project, opts = {}) {
     }
 
     const em = new Emitter();
+    // The parser's PIN declarations, which is where port/bit/activeLow live.
+    em.pins = (project && project.stc && project.stc.pins) || [];
     em.blocks = blocks;
     em.stack(flags[0][1].next);
 
@@ -1204,6 +1307,27 @@ export function emitI8086Asm (project, opts = {}) {
         '',
         'BW_MAIN:'
     ];
+    // CONFIGURE THE 8255 BEFORE ANY PIN WRITE, and only if there is one.
+    //
+    // 80h is mode 0 with every port an OUTPUT. It is written once, at entry,
+    // because a mode word CLEARS all three output latches -- writing it again
+    // mid-program would darken every LED the program had lit, for the instant
+    // until the next write. That is real 8255 behaviour and it is exactly the
+    // bug a "reconfigure before each write" version would have.
+    //
+    // The shadow bytes start at 0 and the ports start at 0, so they agree
+    // before the first instruction rather than after the first write.
+    if (em.uses.ppi) {
+        head.push(
+            '',
+            '    ; 8255: mode 0, ports A, B and C all outputs. Written ONCE --',
+            '    ; a mode word clears the output latches, so repeating it would',
+            '    ; blink every pin off.',
+            `    MOV DX, ${PPI_CTRL}`,
+            '    MOV AL, 80h',
+            '    OUT DX, AL'
+        );
+    }
     const tail = [
         '',
         'BW_EXIT:',

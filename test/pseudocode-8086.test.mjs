@@ -336,7 +336,11 @@ const REFUSALS = {
     'custom block': `DEFINE go:\n  say "x"\nWHEN flag clicked:\n  say "y"\n`,
     'sprite script': `SPRITE Cat:\nWHEN flag clicked:\n  say "a"\n`,
     'unsupported block data_addtolist': `LIST xs\nWHEN flag clicked:\n  add 5 to xs\n`,
-    'hardware declared': `DEVICE i8086\nPIN led = P1.0 OUTPUT\nWHEN flag clicked:\n  turn led on\n`
+    // PINS ARE SUPPORTED NOW -- P1/P2/P3 map onto the 8255's ports A/B/C, so
+    // an 8051 pin program reseats onto an 8086 unchanged. A PART still is
+    // not, and the distinction is real: a PIN is one wire and this bench has
+    // a chip to hang it on; a PART is a component with a protocol.
+    'part declared': `DEVICE i8086\nPART lcd = LCD1602 ON P1\nWHEN flag clicked:\n  say "hi"\n`
 };
 
 for (const [what, source] of Object.entries(REFUSALS)) {
@@ -357,24 +361,26 @@ test('a program whose only block is unsupported is REFUSED, never silently empti
     // This is the failure the whole file exists for. `turn led on` is DROPPED
     // by SB3Creator.parse when the DEVICE is one it does not know, so a naive
     // back end sees an empty script, assembles it, runs it, terminates
-    // cleanly and prints nothing — which on a screen is indistinguishable
-    // from a bench that failed to start. Proven here by checking the
-    // precondition (the parse really does lose the block) and then that the
-    // refusal happens anyway.
-    const source = `DEVICE i8086\nPIN led = P1.0 OUTPUT\nWHEN flag clicked:\n  turn led on\n`;
-    const creator = new SB3Creator();
-    creator.parse(source);
-    const stage = creator.project.targets.find(t => t.isStage);
-    const hat = Object.values(stage.blocks).find(b => b.opcode === 'event_whenflagclicked');
-    assert.equal(hat.next, null,
-        'the parser no longer drops the hardware block, so this refusal can be ' +
-        'made against the blocks instead of the text — simplify it');
-
+    // cleanly and prints nothing -- which on a screen is indistinguishable
+    // from a bench that failed to start.
+    //
+    // THIS TEST ASSERTED A REFUSAL FOR `PIN` AND NOW ASSERTS THE OPPOSITE.
+    // Pins are lowered: P1/P2/P3 map onto the 8255's ports A/B/C, so the
+    // declaration means the same wire on either chip and an 8051 program
+    // reseats unchanged. What is still refused is a PART -- a component with a
+    // protocol rather than a wire -- and that is what this now pins.
+    //
+    // Note `turn led on` is NOT the parser's syntax (it is `turn on led`), so
+    // the original source here parsed to a hat with no body. That is why the
+    // refusal had to be made against the TEXT: there was no block to refuse.
+    // The PART refusal is made against the text for the same reason and the
+    // same caveat applies.
+    const source = `DEVICE i8086\nPART lcd = LCD1602 ON P1\nWHEN flag clicked:\n  say "hi"\n`;
     const e = await refusalFor(source);
-    assert.ok(e, 'a program that would have printed nothing was accepted');
-    assert.equal(e.what, 'hardware declared');
-    assert.match(e.message, /print nothing/,
-        'the refusal does not say what would otherwise have happened');
+    assert.ok(e, 'a program declaring an unmodelled component was accepted');
+    assert.equal(e.what, 'part declared');
+    assert.match(e.message, /A PIN is one wire and works/,
+        'the refusal must say why a PIN is different, or it reads as "no hardware"');
 });
 
 test('a refusal names the block and lists what does work', async () => {
