@@ -715,9 +715,15 @@ Same gate shape, same blind spot, same instrument required to see it.
 
 ## Twentieth species: A CHECK REPORTING ON THE ENVIRONMENT IT RAN IN (2026-09-04)
 
-lego-47's framing, and it unifies much of this file.
+**Attribution, stated precisely because the pieces came from different people.** The MEASUREMENT
+is lego-47's: they ran the suite and got the number below. The species FRAMING — that this is the
+sibling-checkout hazard one step further out, "works on the box with both checkouts" having a
+worse cousin in "works on the box with both WORKTREES" — is credited to code-28 in the operational
+note in `LANES.md`, and a worktree is not even something CI could be pointed at. This paragraph
+says so rather than picking one name, because a shared ledger that guesses at provenance is worth
+less than one that says which part it is sure of.
 
-They ran bw-board's full suite before approving a push to master — uncapped, real exit code, no
+lego-47 ran bw-board's full suite before approving a push to master — uncapped, real exit code, no
 pipe, deliberately careful because they did not want to accept someone else's number. It returned
 3773 tests, 3727 pass, **0 fail**. It returned that *on that box*, because that box happened to
 have a git WORKTREE the test resolved a fixture through:
