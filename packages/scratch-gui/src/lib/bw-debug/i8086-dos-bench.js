@@ -60,7 +60,7 @@
  *                    screenText: () => string[], report: () => object}>}
  */
 export async function createI8086DosBench (opts) {
-    const {bytes, format, keys, onChar, onExit} = opts;
+    const {bytes, format, keys, onChar, onExit, variant} = opts;
     if (!bytes || !bytes.length) throw new Error('the DOS bench was handed an empty image');
 
     const [{I8086Machine}, dosMod, dbgMod] = await Promise.all([
@@ -76,7 +76,23 @@ export async function createI8086DosBench (opts) {
     // 61h expecting a real PC; on the bare config those writes land nowhere
     // and the beep is silently absent. There is deliberately no PIC, so
     // enabling interrupts cannot start delivering INT 8.
-    const machine = new I8086Machine(DOSBOX8086_XT);
+    // WHICH CHIP, and it defaults to the 8086 rather than the superset.
+    //
+    // A C program NEEDS the 186: SmallerC puts LEAVE in every function
+    // epilogue and reaches for PUSH imm and the three-operand IMUL from
+    // ordinary C. On an 8086 those are undefined opcodes -- the program runs,
+    // does something else, and returns a wrong answer rather than failing.
+    // That is exactly how this was found: a C program that computes 140
+    // terminated cleanly and exited 0.
+    //
+    // It is NOT the default, because the 186 is not a pure superset in one
+    // place that matters: it MASKS shift counts to five bits. `shl ax, cl`
+    // with CL=33 shifts 33 times on an 8086 and once on a 186. Corpus
+    // programs are 8086 programs, and silently running them on a different
+    // chip is the kind of change that alters a result without altering a
+    // test.
+    const machine = new I8086Machine(
+        variant ? {...DOSBOX8086_XT, variant} : DOSBOX8086_XT);
     const dos = createDos8086(machine, {
         onChar: onChar || null,
         keys: keys || [],
