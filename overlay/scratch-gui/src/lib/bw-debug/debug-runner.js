@@ -1558,13 +1558,59 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const isDosProgram = bootMedia &&
             (bootMedia.slot === 'com' || bootMedia.slot === 'exe' || bootMedia.profile === 'dos');
 
+        // THE DOS BENCH IS THE OTHER MACHINE, and it is now wired. This
+        // branch used to be a refusal that named exactly what was missing —
+        // "a .COM or .EXE needs the DOS service layer instead, which is a
+        // different machine (no chips, INT 21h answered behind a trap page)
+        // and is not wired to this tab yet". It is a different machine still:
+        // `createI8086DosBench` builds its own, so the trap page can never
+        // land on top of a BIOS that is trying to boot, and the hardware
+        // branch below is untouched. What arrives here is what the ASM tab's
+        // local 8086 assembler emits, and what a preset could hand over.
         if (isDosProgram) {
-            throw new Error(
-                `${bootMedia.name || 'That program'} is a DOS executable, and this bench boots ` +
-                'HARDWARE — a drawn board or a BIOS ROM, with real chips and a real vector ' +
-                'table. A .COM or .EXE needs the DOS service layer instead, which is a ' +
-                'different machine (no chips, INT 21h answered behind a trap page) and is not ' +
-                'wired to this tab yet. Load a ROM image, or draw a board and run it empty.');
+            setStatus('attaching', `loading ${bootMedia.name || 'the program'} into the DOS bench…`);
+            const {createI8086DosBench} = await import(
+                /* webpackChunkName: "bw-debug-i8086" */ './i8086-dos-bench.js');
+            const img = await resolveMediaImage(bootMedia);
+            // The slot is authoritative when the loader named one; the MZ
+            // signature decides otherwise. Guessing 'com' for an .EXE would
+            // execute its header, which disassembles as garbage and looks
+            // like a broken CPU rather than a misread file.
+            const format = bootMedia.slot === 'exe' ? 'exe'
+                : bootMedia.slot === 'com' ? 'com'
+                    : (img.bytes[0] === 0x4d && img.bytes[1] === 0x5a) ? 'exe' : 'com';
+            let exited = null;
+            const bench = await createI8086DosBench({
+                bytes: img.bytes, format,
+                // INT 21h's character output, line-buffered into the same
+                // console the serial machines use. The CGA text page is the
+                // primary surface (video() reads it), but a program whose
+                // output has scrolled off is still readable here.
+                onChar: (ch) => {
+                    if (ch === '\r') return;
+                    if (ch === '\n' || serialLines.length === 0) serialLines.push('');
+                    if (ch !== '\n') serialLines[serialLines.length - 1] += ch;
+                    if (serialLines.length > 500) serialLines.splice(0, serialLines.length - 500);
+                },
+                // A DOS program ENDS, unlike every other bench here, and
+                // saying so is the difference between "finished" and "hung".
+                onExit: (code) => {
+                    exited = code;
+                    setStatus('ready', `program exited with code ${code}`);
+                }
+            });
+            // No adapter: a DOS program has no pins, no serial UART and no
+            // board to drive, so there is nothing for one to bridge. Passing
+            // an empty one rather than the bench object is deliberate —
+            // wireMachineBench would otherwise offer a `loadRom` that writes
+            // into a machine whose program is already resident.
+            wireMachineBench({target: bench.target, adapter: {}}, createDebugSession);
+            if (exited === null) {
+                setStatus('ready',
+                    `${bootMedia.name || 'program'} loaded as a .${format} on the DOS bench ` +
+                    '— output is the CGA screen and the console');
+            }
+            return session;
         }
 
         if (bootMedia) {

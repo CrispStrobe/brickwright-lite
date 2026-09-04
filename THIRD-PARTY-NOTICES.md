@@ -89,6 +89,32 @@ BUNDLED in the mobile app, because the mobile build runs `vercel-build.sh`.
   release `labwired-wasm-41119903-r2` with both artefacts' sha256 pinned in the
   sync script and gated by `test/fetch-pinning.test.mjs`.
 
+### 8086 example programs (Amey Thakur / Mega Satish) -- MIT
+
+The six 8086 starter programs the ASM tab offers are FILES FROM ANOTHER
+REPOSITORY, carried verbatim -- header, attribution and technical notes -- and
+compiled into the JavaScript bundle, so they ship inside the web build and
+inside the mobile binary. They are not written here and are not ours.
+
+Each program keeps its own `AUTHOR` / `REPOSITORY` / `LICENSE` comment header,
+so the notice reaches the editor along with the code and travels with anything
+a learner copies out. `overlay/scratch-gui/src/lib/bw-asm/examples-i8086.js`
+holds them; `test/i8086-asm-examples.test.mjs` refuses a build in which any of
+those headers has been trimmed away, and compares the shipped text against the
+upstream file when a checkout is available.
+
+- Copyright (c) 2021 Amey Thakur and Mega Satish. MIT.
+  Full text: `overlay/scratch-gui/static/licenses/amey-thakur-8086.MIT.txt`,
+  shipped with the app and reachable from the About dialog offline.
+- https://github.com/Amey-Thakur/8086-ASSEMBLY-LANGUAGE-PROGRAMS
+- Shipped: `Introduction/hello_world_string.asm`,
+  `Control Flow/loop_instruction_cx_register_control.asm`,
+  `Input Output/display_hex.asm`, `Expression/fibonacci.asm`,
+  `Stack Operations/reverse_string_stack.asm`,
+  `BIOS Services/bios_character_with_attribute.asm`.
+- Only two normalisations were applied: CRLF to LF, and trailing whitespace.
+  Nothing was retitled, trimmed or rewritten.
+
 ## Our own code living in this repo
 
 Some files were copied in from the CrispStrobe/brickwright mainline repo

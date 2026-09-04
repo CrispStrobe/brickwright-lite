@@ -12,6 +12,7 @@ import {IMPORT_ACCEPT, isImportableArtefact} from '../../lib/bw-makecode/accept.
 // synchronous — and the module is a few KB of strings, not a chunk worth
 // splitting.
 import {asmExamplesFor} from '../../lib/bw-asm/examples.js';
+import {requestAssembly, asmRouteFor, asmTargetForDevice} from '../../lib/bw-asm/assemble-route.js';
 
 // Keep locally-authored games outside the upstream-synchronized examples file.
 const examples = {...upstreamExamples, ...gameExamples};
@@ -55,6 +56,22 @@ const DEVICE_GROUPS = [
     ]},
     { label: 'Z80', core: 'z80', devices: [
         { id: 'z80', label: 'Z80 bench', compile: false, emulator: null },
+    ]},
+    // `compile: false` is load-bearing here, as it is for the Arduboy above.
+    // There is no blocks→8086 path and there is not going to be one soon:
+    // sb3-creator has no 8086 device profile, no pin model and no code
+    // generator for it, so choosing this device offers ASSEMBLY, not
+    // compilation. Listing it as compilable would promise a road that ends
+    // in "unknown device: i8086" three clicks later.
+    //
+    // It is in the picker at all because it is the ONLY way to reach the
+    // 8086: the circuit palette has no 8086 part yet (the extractor and the
+    // debug target are here, the DIP drawing is not), so "seat one on the
+    // board" — how the 6502 and Z80 benches are usually chosen — cannot be
+    // done today. When the part lands, circuit-tab.jsx already publishes
+    // bwDeviceCore = 'i8086' and this entry keeps working unchanged.
+    { label: '8086', core: 'i8086', devices: [
+        { id: 'i8086', label: 'Intel 8086 (DOS bench — assembly only)', compile: false, emulator: null },
     ]},
     { label: 'MicroPython', core: 'micropython', devices: [
         { id: 'microbit', label: 'micro:bit', compile: false, emulator: null },
@@ -174,7 +191,7 @@ const L10N = {
         foreverLoop: 'This project has a forever (game) loop, so it runs in the blocks — press the green flag to play it. For a text run, try an algorithmic example (quiz, operators, 2048, …).',
         cNote: 'C for the STC12 / 8051. Paste your own firmware and press ⇦ To blocks, or compile it to a .hex with stc-compiler.vercel.app.',
         basicNote: 'Runs BBC BASIC (R.T. Russell, zlib) or 6502 BASIC (derived from MIT-licensed source). Toggle profile and line numbers above. Multi-WHEN programs cannot be shown (BASIC is single-threaded).',
-        asmNote: 'Write assembly or view the compiled listing. Source mode: write per-device assembly (8051/6502/Z80/AVR, assembled by the hosted toolchain) and assemble+run — the 6502/Z80 benches boot the image directly. Listing mode: generated read-only evidence, linked locally for bundled 8051 targets and explicitly hosted for unsupported targets. No ASM-to-blocks path — that asymmetry is deliberate.',
+        asmNote: 'Write assembly or view the compiled listing. Source mode: write per-device assembly and assemble+run — the 6502/Z80/8086 benches boot the image directly. TWO ASSEMBLERS, and which one runs is always in the status line: 8086 assembly is built IN THIS BROWSER (no network, MASM syntax), while 8051/6502/Z80/AVR go to the hosted toolchain. Listing mode: generated read-only evidence, linked locally for bundled 8051 targets and explicitly hosted for unsupported targets. No ASM-to-blocks path — that asymmetry is deliberate.',
         stCOneWay: 'That language cannot be compiled back to blocks.',
         // BASIC / ASM mode bar
         profile: 'Profile:', lineNumbers: 'Line numbers', alwaysOn6502: '(always on for 6502)',
@@ -183,6 +200,22 @@ const L10N = {
         asmExampleReplace: 'Replace what is in the assembly editor?',
         asmExampleLoaded: n => `Loaded "${n}". Press Assemble & Run to build it.`,
         assembleAndRun: '🔩 Assemble & Run',
+        // WHICH ROUTE RAN is part of the answer, not a detail. One tab has
+        // two assemblers (see lib/bw-asm/assemble-route.js) and a user who
+        // cannot tell which one refused their program cannot act on the
+        // refusal — a ca65 diagnostic and an 8086 AsmError read nothing
+        // alike, and only one of the two needs the network.
+        asmRouteLocal: 'in this browser', asmRouteHosted: 'by the hosted assembler',
+        asmAssembling: r => `Assembling ${r}…`,
+        asmBuiltBench: (n, r, m) => `Assembled ${n} bytes ${r} — booting the ${m} bench…`,
+        asmBuiltOnly: (n, r, t) => `Assembled OK (${n} bytes, ${r}). Auto-run from ASM is wired for the 6502/Z80/8086 benches; for ${t} use the compile path.`,
+        asmSourceError: (r, m) => `Assembly errors (${r}): ${m}`,
+        asmTransportError: (r, m) => `Assembler unreachable (${r}): ${m}`,
+        asmWarnings: w => ` — ${w.length} warning(s): ${w.join('; ')}`,
+        // The licence is the condition these examples ship under, so it is
+        // rendered next to the picker and not buried in a notices file.
+        asmCredit: a => `${a.author} · ${a.licence}`,
+        asmCreditTitle: a => `Example programs by ${a.author}, ${a.licence}-licensed. Source: ${a.repo}`,
         basicInfoTitle: 'BASIC info', asmInfoTitle: 'ASM info',
         // micro:bit bar
         micropythonReadonly: 'Read-only — generated from your blocks for the micro:bit.',
@@ -305,7 +338,7 @@ const L10N = {
         foreverLoop: 'Dieses Projekt hat eine Endlosschleife (Spiel), es läuft daher in den Blöcken — klicke die grüne Flagge zum Spielen. Für einen Text-Lauf nimm ein algorithmisches Beispiel (Quiz, Operatoren, 2048, …).',
         cNote: 'C für den STC12 / 8051. Eigene Firmware einfügen und „⇦ Zu Blöcken” drücken, oder auf stc-compiler.vercel.app zu .hex kompilieren.',
         basicNote: 'BBC BASIC (R.T. Russell, zlib) oder 6502 BASIC (abgeleitet von MIT-lizenzierter Quelle). Profil und Zeilennummern oben umschalten. Multi-WHEN-Programme werden nicht dargestellt (BASIC ist einzel-threaded).',
-        asmNote: 'Assembler schreiben oder kompiliertes Listing ansehen. Source-Modus: gerätespezifischen Assembler (8051/6502/Z80/AVR, assembliert vom gehosteten Toolchain-Dienst) schreiben und assemblieren+ausführen — die 6502/Z80-Werkbänke booten das Image direkt. Listing-Modus: erzeugter, schreibgeschützter Beleg, für gebündelte 8051-Ziele lokal gelinkt und für nicht unterstützte Ziele ausdrücklich gehostet. Kein ASM-zu-Blöcke-Pfad — diese Asymmetrie ist beabsichtigt.',
+        asmNote: 'Assembler schreiben oder kompiliertes Listing ansehen. Source-Modus: gerätespezifischen Assembler schreiben und assemblieren+ausführen — die 6502-/Z80-/8086-Werkbänke booten das Image direkt. ZWEI ASSEMBLER, und welcher lief, steht immer in der Statuszeile: 8086-Assembler wird IN DIESEM BROWSER gebaut (ohne Netz, MASM-Syntax), 8051/6502/Z80/AVR gehen an den gehosteten Dienst. Listing-Modus: erzeugter, schreibgeschützter Beleg, für gebündelte 8051-Ziele lokal gelinkt und für nicht unterstützte Ziele ausdrücklich gehostet. Kein ASM-zu-Blöcke-Pfad — diese Asymmetrie ist beabsichtigt.',
         stCOneWay: 'Diese Sprache lässt sich nicht zu Blöcken zurückführen.',
         // BASIC / ASM mode bar
         profile: 'Profil:', lineNumbers: 'Zeilennummern', alwaysOn6502: '(immer an bei 6502)',
@@ -314,6 +347,15 @@ const L10N = {
         asmExampleReplace: 'Inhalt des Assembler-Editors ersetzen?',
         asmExampleLoaded: n => `„${n}" geladen. Mit Assemblieren & Ausführen bauen.`,
         assembleAndRun: '🔩 Assemblieren & Ausführen',
+        asmRouteLocal: 'in diesem Browser', asmRouteHosted: 'vom gehosteten Assembler',
+        asmAssembling: r => `Assembliere ${r}…`,
+        asmBuiltBench: (n, r, m) => `${n} Bytes assembliert ${r} — starte die ${m}-Werkbank…`,
+        asmBuiltOnly: (n, r, t) => `Assembliert (${n} Bytes, ${r}). Auto-Start aus ASM ist für die 6502-/Z80-/8086-Werkbänke verdrahtet; für ${t} den Compile-Pfad nutzen.`,
+        asmSourceError: (r, m) => `Assembler-Fehler (${r}): ${m}`,
+        asmTransportError: (r, m) => `Assembler nicht erreichbar (${r}): ${m}`,
+        asmWarnings: w => ` — ${w.length} Warnung(en): ${w.join('; ')}`,
+        asmCredit: a => `${a.author} · ${a.licence}`,
+        asmCreditTitle: a => `Beispielprogramme von ${a.author}, Lizenz ${a.licence}. Quelle: ${a.repo}`,
         basicInfoTitle: 'BASIC-Info', asmInfoTitle: 'ASM-Info',
         // micro:bit bar
         micropythonReadonly: 'Nur-Lesen — aus deinen Blöcken für den micro:bit generiert.',
@@ -1059,10 +1101,48 @@ class PseudocodeImporter extends React.Component {
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
+    /**
+     * WHICH DEVICE THE ASM TAB IS WRITING FOR.
+     *
+     * This used to read `currentStc().device` alone, and that is only ever
+     * populated by a COMPILE — so a device the user had just chosen from the
+     * picker did not reach this tab until they had also compiled something,
+     * and for the 8086 (no blocks path, so nothing to compile) it would never
+     * have arrived at all. The DEVICE line in the pseudocode buffer is what
+     * `setDevice` writes immediately, so it is asked first; `stc.device` is
+     * the fallback for a project that arrived without one (an imported .sb3,
+     * a machine-class example), and the runtime's published id/core after
+     * that, which is how a CPU seated on the circuit board reaches here.
+     *
+     * One resolution, used by BOTH the example list and the ▶ button: two
+     * different answers in one tab is how a program gets assembled for a
+     * device the examples were not written for.
+     */
+    _asmDevice () {
+        const stc = this.currentStc();
+        const rt = this.props.vm && this.props.vm.runtime;
+        return this.currentDevice() ||
+            (stc && stc.device) ||
+            (rt && (rt.bwDeviceId || rt.bwDeviceCore)) || '';
+    }
+
     /** Starter programs for the selected device, or none. */
     _asmExamples () {
-        const stc = this.currentStc();
-        return asmExamplesFor((stc && stc.device) || '');
+        return asmExamplesFor(this._asmDevice());
+    }
+
+    /**
+     * The attribution the shipped examples travel under, or null when the
+     * current device's examples were written here.
+     *
+     * Rendered beside the picker rather than kept in a notices file: MIT asks
+     * for the notice to accompany the code, and a learner who never opens
+     * THIRD-PARTY-NOTICES.md has still been shown who wrote the program they
+     * are reading.
+     */
+    _asmCredit () {
+        const ex = this._asmExamples().find(e => e.attribution);
+        return ex ? ex.attribution : null;
     }
 
     /**
@@ -1471,54 +1551,70 @@ class PseudocodeImporter extends React.Component {
         }
     }
 
-    /** Assemble and run: POST authored ASM to the hosted assembler
-     *  (stc-compiler /assemble — sdas8051, ca65+ld65, sdasz80, avr-gcc),
-     *  then dispatch the raw image so the debug panel can boot it on the
-     *  machine bench. Auto-run is wired for the 6502/Z80 benches; other
-     *  targets assemble (errors surface here) but have no load path yet
-     *  — the status says which of the two happened. */
+    /**
+     * Assemble and run.
+     *
+     * ONE TAB, TWO ASSEMBLERS, AND THE CHOICE IS NOT MADE HERE. The 8086 is
+     * assembled IN THE BROWSER by the vendored MASM-subset assembler;
+     * everything else is posted to the hosted service (stc-compiler
+     * /assemble — sdas8051, ca65+ld65, sdasz80, avr-gcc). That is a real
+     * inconsistency and `lib/bw-asm/assemble-route.js` is where it is argued
+     * for; the short version is that neither ca65 nor sdasz80 knows the 8086,
+     * so the alternative was not one route, it was no 8086 ASM tab.
+     *
+     * What this method owes the user is that the choice is never silent.
+     * `requestAssembly` returns the route it took and the status line says
+     * so — "assembled 384 bytes in this browser" is a different sentence from
+     * "assembled by the hosted assembler", and a refusal names which of the
+     * two assemblers refused, because their diagnostics read nothing alike.
+     *
+     * The image then travels the SAME path a hosted build's does:
+     * `bw-asm-rom-ready` → circuit-tab stashes it → debug-panel boots it.
+     * The detail grew `slotId`/`profile` because a .COM is not a ROM — see
+     * `lib/bw-debug/i8086-dos-bench.js`. Auto-run is wired for the 6502, Z80
+     * and 8086 benches; other targets assemble (errors surface here) and say
+     * so rather than pretending to have run.
+     */
     async assembleAndRun () {
         const source = this.state.buffers.asm;
         if (!source || !source.trim()) {
             this.setState({status: this.L.asmWriteFirst});
             return;
         }
-        const stc = this.currentStc();
-        const device = (stc && stc.device || '').toLowerCase();
-        // /assemble takes device ids directly (stc*, atmega*, attiny*);
-        // the two machine benches normalize to their toolchain names.
-        const target = /6502|eater/.test(device) ? 'eater6502'
-            : /^(z80|zx48|zx128)$/.test(device) ? 'z80'
-            : device || 'stc12c5a60s2';
-        const isBench = target === 'eater6502' || target === 'z80';
-        this.setState({busy: true, status: 'Assembling…'});
+        const device = this._asmDevice();
+        const target = asmTargetForDevice(device);
+        const route = asmRouteFor(device);
+        const routeName = route === 'local' ? this.L.asmRouteLocal : this.L.asmRouteHosted;
+        const BENCHES = {eater6502: '6502', z80: 'Z80', i8086: '8086'};
+        this.setState({busy: true, status: this.L.asmAssembling(routeName)});
+        let out;
         try {
-            const res = await fetch('https://stc-compiler.vercel.app/assemble', {
-                method: 'POST',
-                headers: {'content-type': 'application/json'},
-                body: JSON.stringify({asm: source, target}),
-            });
-            if (!res.ok) throw new Error(`Assembler HTTP ${res.status}`);
-            const result = await res.json();
-            if (!result.success) {
-                const msgs = (result.errors || []).map(e => (e.line ? `L${e.line}: ` : '') + e.message);
-                this.setState({busy: false,
-                    status: `Assembly errors: ${msgs.join('; ') || result.error || 'assembly failed'}`});
-                return;
-            }
-            if (!result.base64) throw new Error('Assembler returned no image');
-            const rom = Uint8Array.from(atob(result.base64), c => c.charCodeAt(0));
-            if (isBench) {
-                window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {
-                    detail: {rom, listing: result.listing, target}
-                }));
-                this.setState({busy: false, status: `Assembled ${rom.length} bytes — booting the ${target === 'z80' ? 'Z80' : '6502'} bench…`});
-            } else {
-                this.setState({busy: false,
-                    status: `Assembled OK (${rom.length} bytes). Auto-run from ASM is wired for the 6502/Z80 benches; for ${target} use the compile path.`});
-            }
+            out = await requestAssembly({source, device});
         } catch (e) {
-            this.setState({busy: false, status: `Assemble error: ${e.message}`});
+            // 'source' is the user's program and the message names the line;
+            // 'transport' is the network or a missing module and is not
+            // something they can fix by editing. Conflating the two sent
+            // people hunting for a syntax error in a working program.
+            this.setState({busy: false, status: e.reason === 'source'
+                ? this.L.asmSourceError(routeName, e.message)
+                : this.L.asmTransportError(routeName, e.message)});
+            return;
+        }
+        // Every give the local assembler made (an expanded 80186 shift, a
+        // synthesised segment override) is recorded rather than silent, so a
+        // program that assembled DIFFERENTLY from what was written says so.
+        const warn = out.warnings.length ? this.L.asmWarnings(out.warnings) : '';
+        const bench = BENCHES[out.target];
+        if (bench) {
+            window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {
+                detail: {rom: out.bytes, listing: out.listing, target: out.target,
+                    slotId: out.slotId, profile: out.profile, format: out.format}
+            }));
+            this.setState({busy: false,
+                status: this.L.asmBuiltBench(out.bytes.length, routeName, bench) + warn});
+        } else {
+            this.setState({busy: false,
+                status: this.L.asmBuiltOnly(out.bytes.length, routeName, target) + warn});
         }
     }
 
@@ -3064,6 +3160,22 @@ class PseudocodeImporter extends React.Component {
                                     ))}
                                 </select>
                             </label>
+                        )}
+                        {/* The licence is the CONDITION these ship under, so it
+                            is visible where they are chosen rather than only in
+                            THIRD-PARTY-NOTICES.md. The programs also carry their
+                            own AUTHOR/REPOSITORY/LICENSE header into the editor,
+                            so a learner who copies the text out takes the notice
+                            with them. */}
+                        {this.state.asmMode === 'source' && this._asmCredit() && (
+                            <a
+                                data-testid="bw-asm-example-credit"
+                                href={this._asmCredit().repo}
+                                target="_blank" rel="noopener noreferrer"
+                                title={this.L.asmCreditTitle(this._asmCredit())}
+                                style={{fontSize: 11, color: '#64748b', textDecoration: 'underline'}}>
+                                {this.L.asmCredit(this._asmCredit())}
+                            </a>
                         )}
                         {this.state.asmMode === 'source' && (
                             <button type="button"

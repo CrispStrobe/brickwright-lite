@@ -61,10 +61,17 @@ export const AMEY_THAKUR = Object.freeze({
 
 /**
  * @typedef {{id: string, label: string, labelDe: string, source: string,
- *            file: string, expect: string}} I8086Example
+ *            file: string, expect: string, warns: string[]}} I8086Example
  *   `file` is the path inside the upstream repository — provenance a reader
  *   can check. `expect` is a line the program must actually print, which is
  *   what makes "it runs" a testable claim rather than a hope.
+ *
+ *   `warns` is the list of assembler warnings the program is KNOWN to
+ *   produce, and it is a declaration rather than a suppression: the gate
+ *   compares it exactly, so a new warning appearing is a failure and a
+ *   declared one disappearing is too. An example that assembled differently
+ *   from what was written, without anyone having decided that was fine, is
+ *   the thing this field exists to prevent.
  */
 
 /** @type {I8086Example[]} */
@@ -242,6 +249,15 @@ END MAIN
         labelDe: 'Ein Wort hexadezimal ausgeben',
         file: 'Input Output/display_hex.asm',
         expect: 'Hex Output: 0xBEEF',
+        // `ROL BX, 4` is an 80186 instruction. On an 8086 its opcode C1
+        // decodes as `RET imm16`, so emitting it would not be a slightly
+        // wrong program — it would be one that returns instead of rotating.
+        // The assembler expands it into four single rotations, which is
+        // identical for CF/ZF/SF/PF and differs only in OF, which the 8086
+        // leaves undefined for counts above one. Fifty-two files in this
+        // corpus write it. Declared here, shown in the tab's status line,
+        // and never silent.
+        warns: ['ROL by 4 expanded into 4 single shifts: the immediate-count form is an 80186 instruction'],
         source: `; =============================================================================
 ; TITLE: Display Hexadecimal Representation
 ; DESCRIPTION: Converts a 16-bit integer into its Hexadecimal (Base 16) ASCII
@@ -647,6 +663,6 @@ END START
 ; = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 `
     },
-].map(e => ({...e, attribution: AMEY_THAKUR}));
+].map(e => ({warns: [], ...e, attribution: AMEY_THAKUR}));
 
 export default I8086_EXAMPLES;

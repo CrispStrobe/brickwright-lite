@@ -176,20 +176,32 @@ class DebugPanel extends React.Component {
         };
         const nextKind = kind === 'z80' ? 'z80'
             : kind === 'eater6502' || kind === '6502' ? 'eater6502'
-                : this.state.kind;
+                : kind === 'i8086' || kind === '8086' ? 'i8086'
+                    : this.state.kind;
         await new Promise(resolve => this.setState(
             {kind: nextKind, runner: null, ui: {phase: 'idle', message: ''}}, resolve));
         const runner = await this.runner();
         await runner.start();
     }
 
-    /** ASM tab assembled a binary — same delivery path as the loader. */
+    /**
+     * ASM tab assembled a binary — same delivery path as the loader.
+     *
+     * `slotId` and `profile` are carried rather than hardcoded to 'rom'
+     * because a .COM/.EXE from the local 8086 assembler is NOT a ROM: the
+     * runner has to know to build the DOS bench for it, and a .COM loaded as
+     * a ROM at F0000 executes nothing while looking exactly like a machine
+     * that failed to start. The default stays 'rom' so a hosted 6502/Z80
+     * build behaves as it always did.
+     */
     _onAsmRomReady (e) {
-        const {rom, target} = e.detail || {};
+        const {rom, target, slotId, profile} = e.detail || {};
         if (!rom) return;
         this._onMediaLoad({detail: {
-            slotId: 'rom', bytes: rom,
-            kind: target === 'z80' ? 'z80' : 'eater6502',
+            slotId: slotId || 'rom', bytes: rom,
+            profile: profile || null,
+            kind: target === 'z80' ? 'z80'
+                : target === 'i8086' ? 'i8086' : 'eater6502',
             name: 'assembled image'
         }});
     }
@@ -310,9 +322,16 @@ class DebugPanel extends React.Component {
             attiny88: 'attiny88', attiny85: 'attiny85',
             'arduino-mega': 'atmega2560', atmega2560: 'atmega2560',
             pico: 'rp2040js', stm32f030: 'stm32f0', eater6502: 'eater6502',
-            z80: 'z80', zx48: 'z80', zx128: 'z80',
+            z80: 'z80', zx48: 'z80', zx128: 'z80', i8086: 'i8086',
         };
-        const CORE_TO_KIND = { '8051': 'emulator', arduino: 'avr8js', rp2040: 'rp2040js', arm: 'stm32f0', micropython: 'rp2040js', w65c02: 'eater6502', z80: 'z80' };
+        // i8086 was MISSING from this map while the 8086 debug target,
+        // extractor and machine were all present: choosing the 8086 (or
+        // seating one on the board, which publishes bwDeviceCore = 'i8086')
+        // left the panel on whatever engine it already had — the 8051
+        // emulator by default — and the 8086 image would have been run as
+        // 8051 opcodes. Plausible and wrong, which is the same shape as the
+        // ATtiny88 note above.
+        const CORE_TO_KIND = { '8051': 'emulator', arduino: 'avr8js', rp2040: 'rp2040js', arm: 'stm32f0', micropython: 'rp2040js', w65c02: 'eater6502', z80: 'z80', i8086: 'i8086' };
         // The user's remembered pick for THIS device wins over the map:
         // choosing an engine in the picker persists per device (see
         // onChange below), so "I always debug my Uno on the 2560 engine"
