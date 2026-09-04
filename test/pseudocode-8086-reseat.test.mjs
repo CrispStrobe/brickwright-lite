@@ -72,10 +72,21 @@ async function tryReseat (source) {
  * work, and the only way to show this one fails is to hand it a case that
  * should fail it.
  */
-function checkRow (name, got, want, why) {
+function checkRow (name, got, want, why, announces) {
     assert.equal(got.verdict, want,
         `${name}: expected ${want} (${why}), got ${got.verdict}`
         + (got.reason ? ` — ${got.reason.slice(0, 120)}` : ''));
+
+    // HARDWARE THAT APPEARS MUST SAY SO. A reseat that silently grows a chip
+    // is the same class of surprise as one that silently drops a block: the
+    // learner's board is not what they drew, and nothing told them. Where a
+    // row records an auto-add, the build must name the part in a warning --
+    // appearing is fine, appearing invisibly is not.
+    if (announces) {
+        const said = (got.warnings || []).join(' | ');
+        assert.match(said, announces,
+            `${name}: the build added hardware without announcing it — warnings were: ${said || '(none)'}`);
+    }
 
     if (got.verdict === 'REFUSED') {
         // BY NAME is half the claim. A refusal that does not say what cannot
@@ -95,7 +106,13 @@ function checkRow (name, got, want, why) {
  */
 const EXPECTED = {
     stc_blink: ['RUNS', 'digital output and wait — the whole point of the mapping'],
-    stc_potentiometer: ['REFUSED', 'declares an ANALOG pin, and an 8255 has no analog path'],
+    // FLIPPED 2026-09-04, and the flip is the event this table exists to make
+    // visible: it went red on its own, was read, and was then changed with a
+    // reason. `ANALOG` now resolves to an ADC0809 the build ADDS at 300h,
+    // channel n from P1.n, polled on EOC. The third element is the auto-add
+    // clause -- see checkRow.
+    stc_potentiometer: ['RUNS', 'ANALOG resolves to an ADC0809 the build adds at 300h',
+        /adds an ADC0809 at 300h/],
     stc_button: ['REFUSED', '"wait until <cond>" is not lowered'],
     stc_two_scripts: ['REFUSED', 'two WHEN scripts; this back end runs one'],
     stc_pwm_fade: ['REFUSED', '"write <expr> to <pin>" needs hardware this bench has not got'],
@@ -107,8 +124,8 @@ test('every shipped STC example either runs on the 8086 or refuses by name', asy
         'a shipped STC example was added or removed — give it a row and a reason');
 
     for (const name of shipped) {
-        const [want, why] = EXPECTED[name];
-        checkRow(name, await tryReseat(examples[name]), want, why);
+        const [want, why, announces] = EXPECTED[name];
+        checkRow(name, await tryReseat(examples[name]), want, why, announces);
     }
 });
 
@@ -118,7 +135,6 @@ test('the gate goes RED on a deliberately broken reseat', async () => {
     // `assert` works: every case calls checkRow, which is the same function
     // the gate above calls.
     const blink = await tryReseat(examples.stc_blink);
-    const pot = await tryReseat(examples.stc_potentiometer);
 
     // 1. A program that RUNS cannot satisfy a row expecting a refusal. This is
     //    the exact regression the potentiometer was: it USED to run.
@@ -127,8 +143,24 @@ test('the gate goes RED on a deliberately broken reseat', async () => {
         'a run must not be accepted where a refusal is pinned');
 
     // 2. And the reverse: a refusal cannot satisfy a row expecting a run.
-    assert.throws(() => checkRow('stc_potentiometer', pot, 'RUNS', 'pretend'),
-        /expected RUNS .* got REFUSED/);
+    //
+    //    THIS CASE USED TO BORROW stc_potentiometer as its known refusal, and
+    //    that coupling broke it: when the analog lowering landed the example
+    //    started running, the gate correctly went red -- and so did its own
+    //    red-proof, for an unrelated reason. A proof that draws its fixture
+    //    from the table it is proving fails whenever the table legitimately
+    //    changes, which is precisely when the proof is most needed. Cases 3
+    //    and 4 were already synthetic; this one now is too.
+    assert.throws(() => checkRow('fake', {verdict: 'REFUSED',
+        reason: '8086 pseudocode: this back end cannot lower a block that needs '
+            + 'hardware the declared machine does not have.'}, 'RUNS', 'pretend'),
+    /expected RUNS .* got REFUSED/);
+
+    // 2b. A run that adds hardware WITHOUT announcing it fails the auto-add
+    //     clause, even though its verdict is right.
+    assert.throws(() => checkRow('fake', {verdict: 'RUNS', warnings: ['nothing relevant']},
+        'RUNS', 'pretend', /adds an ADC0809 at 300h/),
+    /added hardware without announcing it/);
 
     // 3. A refusal too terse to name its cause fails the BY-NAME half, even
     //    though its verdict is right. This is what stops the gate degrading
