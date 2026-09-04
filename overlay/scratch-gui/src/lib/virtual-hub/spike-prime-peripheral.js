@@ -91,6 +91,7 @@ export class VirtualSpikePrimePeripheral {
                 {uuid: SPIKE_TX, properties: {notify: true}}
             ]
         }];
+        if (hubState.data.firmwareTarget === 'legacy-v2') this.services = [];
         this.hubState = hubState;
         this.state = hubState.data;
         this.hubState.subscribe(() => this.emitDeviceNotification());

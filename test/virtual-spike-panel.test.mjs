@@ -16,4 +16,7 @@ test('dashboard inputs update the shared neutral state', () => {
     assert.equal(state.data.motors[0].speed, 75);
     assert.equal(state.data.classicPorts[1][1][0], 240);
     assert.equal(state.data.sensors[2].pressed, true);
+    state.setFirmwareTarget('legacy-v2');
+    assert.equal(state.data.firmwareTarget, 'legacy-v2');
+    assert.equal(globalThis.__brickwrightUseVirtualSpike, true);
 });

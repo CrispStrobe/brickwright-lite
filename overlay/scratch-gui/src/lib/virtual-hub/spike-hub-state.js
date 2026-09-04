@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 const makeData = () => ({
     connected: false, notificationIntervalMs: null, battery: 100,
+    firmwareTarget: 'official-v3',
+    display: Array(25).fill(0),
     motors: Array.from({length: 6}, () => ({speed: 0, position: 0})),
     sensors: Array.from({length: 6}, () => null),
     classicPorts: Array.from({length: 6}, () => [0, []]),
@@ -18,6 +20,13 @@ export default class VirtualSpikeHubState {
     subscribe (listener) { this.listeners.add(listener); return () => this.listeners.delete(listener); }
     changed () { for (const listener of this.listeners) listener(this.data); }
     setBattery (value) { this.data.battery = Math.max(0, Math.min(100, Math.round(Number(value) || 0))); this.changed(); }
+    setFirmwareTarget (target) {
+        if (!['legacy-v2', 'official-v3', 'brickwright'].includes(target)) throw new TypeError('unknown SPIKE firmware target');
+        this.stopAll();
+        this.data.firmwareTarget = target;
+        globalThis.__brickwrightUseVirtualSpike = target !== 'official-v3';
+        this.changed();
+    }
     setImu (value) { Object.assign(this.data.imu, value); this.changed(); }
     setPort (port, kind, value = {}) {
         const index = indexOf(port);
@@ -41,6 +50,7 @@ export default class VirtualSpikeHubState {
         this.data.classicPorts[index] = [48, [speed, this.data.motors[index].position, 0, speed]];
         this.changed();
     }
+    setDisplay (pixels) { this.data.display = Array.from(pixels).slice(0, 25); while (this.data.display.length < 25) this.data.display.push(0); this.changed(); }
     stopAll () { this.data.motors.forEach((motor, index) => {
         motor.speed = 0;
         if ([48, 49].includes(this.data.classicPorts[index][0])) this.data.classicPorts[index][1][0] = 0;
