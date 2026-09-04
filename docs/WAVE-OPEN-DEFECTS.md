@@ -978,6 +978,14 @@ it clones every upstream fresh, advances bw-board, bw-circuit-ui and sb3-creator
 runs integrate, a build and three browser gates before committing. The build does not fit on this
 box, and lite's CI queue was nine deep.
 
+Measured, so the deferral is a fact rather than a preference: bumping bw-board from `5f79057` to
+`a577476` spans four commits and changes three VENDORED files — `src/board.js`, `src/index.js` and
+`src/emu8051-debug.js`. Only the last is mine. The other two carry pin-aliasing work ("one physical
+pin answers to both its names", "export the alias surface"), which is real behaviour arriving in
+lite and wants the browser gates that `vendor-forward` runs. A narrow `sync-bw-board.mjs --dir`
+would clear the STALE line and smuggle that in unverified, which is the trade the guard on that
+script already refuses for a different reason.
+
 The rule, learned the expensive way: **before fixing a file under `lib/bw-board/`,
 `lib/bw-circuit-ui/` or any `sb3-creator-*.js`, check whether it is vendored.** `scripts/sync-*.mjs`
 name every file they own. Fixing it here is not a shortcut to fixing it there; it is a fix that
