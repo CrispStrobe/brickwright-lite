@@ -62,7 +62,7 @@ async function tryReseat (source) {
     b.target.run();
     let slices = 0;
     while (!b.terminated && slices++ < 300) b.target.runFor(5e6);
-    return {verdict: 'RUNS',
+    return {verdict: 'RUNS', asm: built.asm || '',
         warnings: (built.warnings || []).map((w) => (typeof w === 'string' ? w : w.message))};
 }
 
@@ -72,7 +72,7 @@ async function tryReseat (source) {
  * work, and the only way to show this one fails is to hand it a case that
  * should fail it.
  */
-function checkRow (name, got, want, why, announces) {
+function checkRow (name, got, want, why, announces, emits) {
     assert.equal(got.verdict, want,
         `${name}: expected ${want} (${why}), got ${got.verdict}`
         + (got.reason ? ` — ${got.reason.slice(0, 120)}` : ''));
@@ -97,6 +97,17 @@ function checkRow (name, got, want, why, announces) {
         assert.ok(got.reason.length > 60,
             `${name}: "${got.reason}" is too short to name what cannot come across`);
     }
+
+    // A RUNS VERDICT IS NOT PROOF THE BLOCK CAME ACROSS. A back end that
+    // dropped a block silently would still produce a program that runs -- that
+    // is the potentiometer's own history, and it is the failure this whole
+    // file exists to catch. Where a row can name something the emitted code
+    // must contain, it does, and the verdict stops being the only evidence.
+    if (emits) {
+        assert.match(got.asm || '', emits,
+            `${name}: it runs, but the emitted code does not contain ${emits} -- `
+            + 'a dropped block runs too');
+    }
 }
 
 /**
@@ -113,9 +124,24 @@ const EXPECTED = {
     // clause -- see checkRow.
     stc_potentiometer: ['RUNS', 'ANALOG resolves to an ADC0809 the build adds at 300h',
         /adds an ADC0809 at 300h/],
-    stc_button: ['REFUSED', '"wait until <cond>" is not lowered'],
+    // FLIPPED 2026-09-04. `wait until <cond>` is lowered now. The fourth
+    // element is the EMITS clause: a RUNS verdict alone cannot tell a real
+    // lowering from a silently dropped block, and this example is exactly the
+    // shape where a drop would be invisible -- a `wait until` that vanished
+    // would leave a program that still runs and still blinks, just without
+    // ever waiting for the button.
+    stc_button: ['RUNS', '"wait until <cond>" lowers to a poll on the input pin',
+        null, /BW_W\d/],
     stc_two_scripts: ['REFUSED', 'two WHEN scripts; this back end runs one'],
-    stc_pwm_fade: ['REFUSED', '"write <expr> to <pin>" needs hardware this bench has not got'],
+    // FLIPPED 2026-09-04, and the old reason was wrong TWICE: it quoted a
+    // syntax that does not exist (`write <expr> to <pin>` -- the parser's
+    // spelling is `set <pin> to <value>`) and it diagnosed the wrong thing.
+    // This example does NOT use stc12_setpwm. It is HAND-ROLLED PWM: `set led
+    // to 0` / `set led to 1` are digital LEVELS, which is what writepin means
+    // on every back end, so there is no hardware to need. `stc12_setpwm` --
+    // the `<n> percent` form -- still refuses, and no shipped example uses it.
+    stc_pwm_fade: ['RUNS', 'hand-rolled PWM from digital levels, not stc12_setpwm',
+        null, /OUT DX, AL|OUT 6\dh, AL/i],
 };
 
 test('every shipped STC example either runs on the 8086 or refuses by name', async () => {
@@ -124,8 +150,8 @@ test('every shipped STC example either runs on the 8086 or refuses by name', asy
         'a shipped STC example was added or removed — give it a row and a reason');
 
     for (const name of shipped) {
-        const [want, why, announces] = EXPECTED[name];
-        checkRow(name, await tryReseat(examples[name]), want, why, announces);
+        const [want, why, announces, emits] = EXPECTED[name];
+        checkRow(name, await tryReseat(examples[name]), want, why, announces, emits);
     }
 });
 
@@ -155,6 +181,12 @@ test('the gate goes RED on a deliberately broken reseat', async () => {
         reason: '8086 pseudocode: this back end cannot lower a block that needs '
             + 'hardware the declared machine does not have.'}, 'RUNS', 'pretend'),
     /expected RUNS .* got REFUSED/);
+
+    // 2c. A run whose emitted code lacks what the row names fails the EMITS
+    //     clause -- the case that separates a lowering from a silent drop.
+    assert.throws(() => checkRow('fake', {verdict: 'RUNS', asm: 'MOV AX, 1\nRET'},
+        'RUNS', 'pretend', null, /BW_W\d/),
+    /the emitted code does not contain/);
 
     // 2b. A run that adds hardware WITHOUT announcing it fails the auto-add
     //     clause, even though its verdict is right.
