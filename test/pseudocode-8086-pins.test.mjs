@@ -22,7 +22,8 @@ async function run (lines) {
     const c = new SB3();
     c.parse(src);
     const built = await buildPseudocode8086({ project: c.project, source: src });
-    const b = await createI8086DosBench({ bytes: built.bytes, format: built.format });
+    const b = await createI8086DosBench(
+        { bytes: built.bytes, format: built.format, chips: built.chips });
     let n = 0;
     while (n < 500_000 && !b.terminated) { b.step(); n++; }
     const ports = {};
@@ -155,7 +156,8 @@ test('a program READS a switch and lights an LED, and the switch decides', async
     const built = await buildPseudocode8086({ project: c.project, source: src });
 
     for (const [held, want] of [[false, 0], [true, 1]]) {
-        const b = await createI8086DosBench({ bytes: built.bytes, format: built.format });
+        const b = await createI8086DosBench(
+        { bytes: built.bytes, format: built.format, chips: built.chips });
         // CLOSED PULLS THE LINE LOW, which is how a breadboard button is wired
         // and what the switch panel sends. ACTIVE LOW on the declaration is
         // what turns that back into "pressed" for the learner.
@@ -263,4 +265,71 @@ test('and the correct directions still work, so the check is not just refusing',
         '    turn on led',
     ]);
     assert.deepEqual(r.built.warnings, []);
+});
+
+// ── ANALOG: a voltage, through a converter the build adds ────────────────
+
+test('an ANALOG pin reads a voltage, and the build says which chip it added', async () => {
+    // THE POINT OF THE 0809 RATHER THAN THE 0804. On an STC12, ADC channel n
+    // IS physically P1.n. The 0809's eight-channel mux keeps `P1.n -> channel
+    // n` a MAPPING, exactly as P1/P2/P3 -> A/B/C already is, so an analog
+    // program reseats by changing its DEVICE line and nothing else. A
+    // single-channel 0804 would have made it a lookup.
+    const src = ['DEVICE i8086', 'PIN pot = P1.3 ANALOG',
+        'WHEN flag clicked:', '  say (read pot)'].join('\n');
+    const c = new SB3();
+    c.parse(src);
+    assert.deepEqual(c.warnings || [], [], 'the declaration parses clean');
+    const built = await buildPseudocode8086({project: c.project, source: src});
+
+    // A DECLARATION CAUSES A CHIP TO APPEAR -- the 8255 already works that
+    // way, and a learner who had to list chips before reading a voltage would
+    // have been failed by the tool. But appearing INVISIBLY is the same
+    // failure class as a silently chosen default, so it is also said out loud.
+    assert.deepEqual(built.chips, [{kind: 'adc0809', name: 'adc1', at: 0x300}]);
+    assert.match(built.warnings.join(' '), /ADC0809 at 300h/);
+    assert.match(built.warnings.join(' '), /channel 3 for P1\.3/);
+
+    const b = await createI8086DosBench(
+        {bytes: built.bytes, format: built.format, chips: built.chips});
+    b.machine.chips.adc1.setChannel(3, 3.75);      // 3.75 V of 5 V
+    let n = 0;
+    while (n < 500_000 && !b.terminated) { b.step(); n++; }
+    assert.ok(b.terminated, 'the poll loop finished -- EOC really is asserted');
+    // EIGHT bits where an STC12 gives ten. The scaling makes the two devices
+    // agree about what "about three quarters" means; the warning says the low
+    // two bits are resolution this converter never had.
+    assert.deepEqual(b.screenText().filter(Boolean), ['768']);
+});
+
+test('the emitted sequence POLLS, because reading early returns the previous conversion', async () => {
+    // A conversion takes 64 ADC clocks and START does not clear the output
+    // latch, so start-then-read hands back the LAST result -- a program that
+    // would look correct from its second call onward and be wrong on its
+    // first. That is the silent-wrong class, and the reseat gate could not
+    // catch it because the program still runs. So the poll is load-bearing
+    // and this asserts it is actually emitted.
+    const src = ['DEVICE i8086', 'PIN pot = P1.0 ANALOG',
+        'WHEN flag clicked:', '  say (read pot)'].join('\n');
+    const c = new SB3();
+    c.parse(src);
+    const built = await buildPseudocode8086({project: c.project, source: src});
+    assert.match(built.asm, /TEST AL, 1/, 'EOC is tested');
+    assert.match(built.asm, /JZ BW_ADC\d+/, 'and looped on until it is set');
+});
+
+test('an ANALOG pin off P1 is refused, because the channels ARE P1.0-P1.7', async () => {
+    // THE PARSER OWNS THIS ONE, and says it better than the back end could:
+    // it names the pin and the range. The emitter carries the same check as
+    // defence in depth -- it is unreachable through the parser today, and
+    // that is the right way round rather than a redundancy to delete, because
+    // the back end must not depend on an upstream layer to stay correct.
+    const src = ['DEVICE i8086', 'PIN pot = P2.3 ANALOG',
+        'WHEN flag clicked:', '  say (read pot)'].join('\n');
+    const c = new SB3();
+    c.parse(src);
+    assert.match((c.warnings || []).join(' '),
+        /ANALOG is only available on P1\.0-P1\.7/,
+        'refused by name, with the range, rather than reading the wrong channel');
+    assert.deepEqual(c.project.stc.pins, [], 'and the bad declaration is not carried forward');
 });

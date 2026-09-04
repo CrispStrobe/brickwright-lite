@@ -42,6 +42,7 @@ import { MC6850 } from './mc6850.js';
 import { I8254 } from './i8254.js';
 import { I8259 } from './i8259.js';
 import { I8251 } from './i8251.js';
+import { ADC0809 } from './adc0809.js';
 import { CGACard } from './cga-card.js';
 import { PCSpeaker } from './pc-speaker.js';
 import { HerculesCard } from './hercules-card.js';
@@ -93,6 +94,11 @@ function regOf(w, addr) {
 const REGS = {
     ppi: 4, uart16550: 8, acia6850: 2,
     pit: 4,          // counters 0/1/2 and the control word
+    // THE CHANNEL IS AN ADDRESS, NOT A DATA BYTE. A0-A2 drive the 0809's mux
+    // select lines, so eight ports select eight channels; the ninth reads
+    // End-Of-Conversion, which is the only way to know a result is ready on a
+    // bench with no PIC to deliver an interrupt.
+    adc0809: 9,
     pic: 2,          // A0 selects command/status vs data/mask
     usart8251: 2,    // C/D selects data vs control/status
     cga: 16,         // the 3D0h-3DFh block (mode 3D8h, colour 3D9h, status 3DAh)
@@ -491,6 +497,8 @@ export class I8086Machine {
                 chip = new I8259({
                     onInterrupt: (active) => { if (this.hooks.onIntr) this.hooks.onIntr(c.name, active); },
                 });
+            } else if (c.kind === 'adc0809') {
+                chip = new ADC0809(config.clockHz, {vref: c.vref, adcClockHz: c.adcClockHz});
             } else if (c.kind === 'usart8251') {
                 chip = new I8251({
                     onTx: (byte) => { if (this.hooks.onSerial) this.hooks.onSerial(byte, this.tMs); },

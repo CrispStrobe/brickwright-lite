@@ -179,7 +179,17 @@ export const SUPPORTED = Object.freeze({
     operator_equals: '<a> = <b>',
     operator_and: '<cond> and <cond>',
     operator_or: '<cond> or <cond>',
-    operator_not: 'not <cond>'
+    operator_not: 'not <cond>',
+    // The pin blocks WERE lowered and were still listed as refusable below,
+    // so every refusal printed a "this back end lowers:" sentence that did
+    // not mention pins -- the one thing a reseated program is most likely to
+    // be using. Found while adding the keypad.
+    stc12_setpin: 'set <pin> high/low',
+    stc12_toggle: 'toggle <pin>',
+    stc12_read: 'read <pin>',
+    stc12_keypad: 'read <keypad>',
+    stc12_setport: 'set <port> to <value>',
+    stc12_readport: 'read <port>'
 });
 
 /** What a refused block is called, when the opcode alone would not say. */
@@ -198,10 +208,7 @@ const BLOCK_NAMES = {
     event_whenbroadcastreceived: 'WHEN I receive ...:',
     procedures_definition: 'DEFINE ...',
     procedures_call: 'a custom block call',
-    stc12_setpin: 'set <pin> high/low',
-    stc12_writepin: 'write <expr> to <pin>',
-    stc12_toggle: 'toggle <pin>',
-    stc12_read: 'read <pin>'
+    stc12_writepin: 'write <expr> to <pin>'
 };
 
 /** The list a refusal prints, so "unsupported" is never the whole message. */
@@ -248,6 +255,11 @@ export function boolishTruthTest (b) {
 /** The 8255 on this tier, at the XT's addresses: A=60h, B=61h, C=62h,
  *  control=63h. The same chip the keyboard's scancode arrives on, which is
  *  why one board can serve a pin program and a keyboard program at once. */
+// The ADC0809 lives in 300h-31Fh, the block IBM documented for cards a user
+// adds -- a learner's add-on board belongs where add-on boards went.
+const ADC_BASE = 0x300;
+const ADC_EOC = 0x308;
+
 const PPI_BASE = 0x60;
 const PPI_CTRL = 0x63;
 
@@ -302,9 +314,13 @@ class Emitter {
         this.counters = [];         // REPEAT counter symbols
         this.uses = {
             puts: false, crlf: false, printn: false,
-            mul: false, div: false, mod: false, sdiv: false, ppi: false
+            mul: false, div: false, mod: false, sdiv: false, ppi: false,
+            keypad: false, adc: false
         };
         this.pins = [];             // declared PINs, from the parser
+        this.ports = [];            // declared PORTs -- eight bits at once
+        this.parts = [];            // declared PARTs (keypad4x4 only, so far)
+        this.keypads = new Map();   // name -> label, one scan routine each
     }
 
     warn (message) {
@@ -479,6 +495,14 @@ class Emitter {
         case 'stc12_read':
             this.note('pin');
             this.emitPinRead(b.fields.PIN[0], b.opcode);
+            return;
+        case 'stc12_readport':
+            this.note('port');
+            this.emitPortRead(b.fields.PORT[0], b.opcode);
+            return;
+        case 'stc12_keypad':
+            this.note('keypad');
+            this.emitKeypadRead(b.fields.PART[0], b.opcode);
             return;
         default:
             refuse(`"${nameOf(b.opcode)}" is not supported on the 8086 — ` +
@@ -677,9 +701,30 @@ class Emitter {
      */
     checkDirection (pin, want, opcode) {
         if (pin.direction === want) return;
+        // ANALOG IS REFUSED ON THE CHIP, NOT ON THE DIRECTION. The review lane
+        // caught the old message claiming an ANALOG pin was "declared OUTPUT":
+        // `want` has two values and the vocabulary has more, so inferring the
+        // declaration from the thing being attempted states something untrue
+        // about the learner's own program. The remedy it offered happened to
+        // be right; the reason it gave was not.
+        //
+        // And the honest reason is a fact about the chip rather than about
+        // this bench: an 8255 is a digital part with no analog path, so it
+        // cannot drift the day a preset gains an ADC -- a board that grows an
+        // ADC0809 grows a chip this pin can resolve to, and the refusal lifts
+        // exactly there.
+        if (pin.direction === 'analog') {
+            // Reaching here means a WRITE to an analog pin. Reading one is
+            // handled before this, by emitPinRead -> emitAnalogRead.
+            refuse(`"${pin.name}" is declared ANALOG and this writes to it. An analog `
+                + 'declaration means "measure the voltage here", and a converter reads -- '
+                + 'it has no way to drive the pin back. Declare the pin OUTPUT to drive it.',
+                'write to an analog pin', opcode);
+        }
+        const declared = String(pin.direction || 'undeclared').toUpperCase();
         const what = want === 'output'
-            ? `"${pin.name}" is declared INPUT and this writes to it`
-            : `"${pin.name}" is declared OUTPUT and this reads it`;
+            ? `"${pin.name}" is declared ${declared} and this writes to it`
+            : `"${pin.name}" is declared ${declared} and this reads it`;
         const why = want === 'output'
             ? 'An 8255 accepts the write and does not drive the pin, so the program runs '
                 + 'and nothing lights -- there is no error for the machine to report, because '
@@ -748,6 +793,7 @@ class Emitter {
      */
     emitPinRead (name, opcode) {
         const p = this.pinAddr(name, opcode);
+        if (p.direction === 'analog') { this.emitAnalogRead(p, opcode); return; }
         this.checkDirection(p, 'input', opcode);
         this.uses.ppi = true;
         this.op(`MOV DX, ${p.dataPort}`);
@@ -769,6 +815,224 @@ class Emitter {
         this.op('MOV AX, 1');
         this.code.push(`${one}:`);
         this.op('MOV DX, 0');
+    }
+
+    /**
+     * A KEYPAD, AS 8255 PORTS AND BITS — a matrix keypad is not a device with
+     * a protocol, it is EIGHT WIRES, which is why it belongs on this bench
+     * when an LCD does not.
+     *
+     * The parser gives `{name, type, rows:[{port,bit}], cols:[{port,bit}]}`
+     * from `PART pad = KEYPAD4X4 ROWS P3.0 ... COLS P2.0 ...`. Rows and
+     * columns map through the same P1/P2/P3 -> A/B/C correspondence a PIN
+     * uses, so a keypad program reseats for the same reason a blink does.
+     *
+     * TWO THINGS ARE REFUSED BY NAME, and both are hardware facts:
+     *
+     * ROWS AND COLUMNS ON ONE PORT, unless that port is C. An 8255 sets
+     * direction PER PORT -- ports A and B are eight bits in or eight bits
+     * out, and there is no middle. Rows must drive and columns must be read,
+     * so one port cannot carry both. Port C is the exception because its two
+     * nibbles have independent directions, which is exactly what makes it the
+     * handshake port; rows in one nibble and columns in the other works.
+     *
+     * On an 8051 all four ports are quasi-bidirectional and rows+columns on
+     * one port is the ordinary wiring, so this is a real difference between
+     * the chips rather than a limitation of this back end -- and it is the
+     * kind of thing that must be said out loud rather than silently
+     * half-working.
+     *
+     * THE GENERIC PIN FORM. `ROWS P0 P1 ...` with micro:bit or Pico pin names
+     * carries no port/bit, and there is no 8255 pin those names could mean.
+     */
+    keypadPart (name, opcode) {
+        const part = (this.parts || []).find((p) => p.name === name);
+        if (!part) {
+            refuse(`"${name}" is used as a keypad but no PART line declares it`,
+                'undeclared part', opcode);
+        }
+        const at = (w, what) => {
+            if (!w || w.port === undefined || w.bit === undefined) {
+                refuse(`PART ${name} names its ${what} with board pin names rather than `
+                    + '8051 port pins. This bench maps P1/P2/P3 onto the 8255 ports A/B/C, '
+                    + 'so a keypad has to be declared as P<port>.<bit> -- for example '
+                    + 'ROWS P3.0 P3.1 P3.2 P3.3 COLS P2.0 P2.1 P2.2 P2.3.',
+                    'keypad pins not 8051 form', opcode);
+            }
+            const PORT = { 1: 'A', 2: 'B', 3: 'C' }[w.port];
+            if (!PORT) {
+                refuse(`PART ${name} puts a ${what} on P${w.port}, and an 8255 has three `
+                    + 'ports: P1, P2 and P3 map to A, B and C. P0 on an 8051 is the '
+                    + 'multiplexed address/data bus and has no 8255 equivalent.',
+                    'keypad port out of range', opcode);
+            }
+            return { PORT, bit: w.bit, dataPort: PPI_BASE + { A: 0, B: 1, C: 2 }[PORT] };
+        };
+        const rows = (part.rows || []).map((w) => at(w, 'rows'));
+        const cols = (part.cols || []).map((w) => at(w, 'columns'));
+        if (rows.length !== 4 || cols.length !== 4) {
+            refuse(`PART ${name} declares ${rows.length} rows and ${cols.length} columns; `
+                + 'a KEYPAD4X4 has four of each.', 'keypad not 4x4', opcode);
+        }
+        const onePort = (set, what) => {
+            const ports = [...new Set(set.map((w) => w.PORT))];
+            if (ports.length !== 1) {
+                refuse(`PART ${name} spreads its ${what} across 8255 ports `
+                    + `${ports.join(' and ')}. The scan drives all four ${what} from one `
+                    + 'port write, so they must share a port.', 'keypad split across ports', opcode);
+            }
+            return ports[0];
+        };
+        const rowPort = onePort(rows, 'rows');
+        const colPort = onePort(cols, 'columns');
+        const nibble = (set) => [...new Set(set.map((w) => (w.bit >= 4 ? 'high' : 'low')))];
+        if (rowPort === colPort) {
+            const rn = nibble(rows), cn = nibble(cols);
+            if (rowPort !== 'C' || rn.length !== 1 || cn.length !== 1 || rn[0] === cn[0]) {
+                refuse(`PART ${name} puts its rows and columns both on port ${rowPort}. `
+                    + 'An 8255 sets direction a whole port at a time, and the scan has to '
+                    + 'DRIVE the rows while READING the columns -- one port cannot do both. '
+                    + 'Put them on different ports, or on the two halves of P3 (port C), '
+                    + 'whose nibbles have independent directions. On an 8051 every port is '
+                    + 'quasi-bidirectional and one port carries both, so this is a real '
+                    + 'difference between the two chips.',
+                    'keypad rows and columns share a port', opcode);
+            }
+        }
+        return { name: part.name, rows, cols, rowPort, colPort };
+    }
+
+    /**
+     * SCAN THE KEYPAD — result 0..15, or -1 for nothing pressed.
+     *
+     * That contract is not invented here: it is the STC extension's, written
+     * down as "the scanned key 0..15, or -1 for none — same contract as the C
+     * scanner", and matching it is the whole point. A program that reads a
+     * keypad means the same thing on either chip or it has not reseated.
+     *
+     * A MATRIX KEYPAD IS ACTIVE LOW BY CONSTRUCTION and there is no ACTIVE
+     * LOW to declare. Each row is driven low in turn while the other three
+     * are held high; a pressed key shorts its row to its column, so that
+     * column reads LOW, and only while its own row is the one being driven.
+     * Nothing about that is a convention someone chose -- it is what the
+     * wires do -- which is why it is not spelled on the PART line.
+     */
+    emitKeypadRead (name, opcode) {
+        const kp = this.keypadPart(name, opcode);
+        this.uses.ppi = true;
+        this.uses.keypad = true;
+        if (!this.keypads.has(kp.name)) {
+            this.keypads.set(kp.name, { label: `BW_KEYPAD_${this.keypads.size}`, kp });
+        }
+        this.op(`CALL ${this.keypads.get(kp.name).label}`);
+    }
+
+    /**
+     * READ A VOLTAGE — `PIN pot = P1.3 ANALOG`, through an ADC0809 at 300h.
+     *
+     * THE CHANNEL IS THE BIT, NOT THE PORT. On an STC12 the ADC channel n IS
+     * physically P1.n, and the 0809's eight-channel mux keeps that a MAPPING
+     * rather than a translation -- which is the same relationship P1/P2/P3 ->
+     * A/B/C already is, and the reason this chip and not the single-channel
+     * ADC0804. P1 is what makes the pin analog; the bit picks the channel.
+     *
+     * THE POLL IS NOT CEREMONY. A conversion takes 64 ADC clocks -- about 500
+     * CPU cycles here -- and START does NOT clear the output latch, so a
+     * program that reads without polling gets the PREVIOUS conversion. It
+     * would appear to work from the second call onward and be wrong on the
+     * first, which is the silent-wrong class this tier exists to refuse. So
+     * the emitted sequence always polls EOC.
+     *
+     * EIGHT BITS, SCALED TO TEN. The 0809 answers 0..255 where an STC12's
+     * ADC answers 0..1023, and a program that compares against 512 has to
+     * mean the same thing on both. `SHL 2` scales it, and the warning says so
+     * rather than letting the two devices disagree quietly -- the low two
+     * bits are resolution this converter never had, not precision invented.
+     */
+    emitAnalogRead (p, opcode) {
+        if (p.port !== 1) {
+            refuse(`PIN ${p.name} is declared ANALOG on P${p.port}. The converter's eight `
+                + 'channels correspond to P1.0-P1.7, the way an STC12\'s ADC channels are '
+                + 'physically P1.0-P1.7, so an analog pin has to be on P1.',
+                'analog pin not on P1', opcode);
+        }
+        this.uses.adc = true;
+        this.warn(`"${p.name}" is analog, so the build adds an ADC0809 at ${ADC_BASE.toString(16).toUpperCase()}h `
+            + `and reads channel ${p.bit} for P1.${p.bit}. It converts to EIGHT bits (0-255) `
+            + 'where an STC12 gives ten (0-1023), so the reading is scaled up by four -- the '
+            + 'low two bits are resolution this converter does not have.');
+        this.op(`MOV DX, ${ADC_BASE + p.bit}      ; the ADDRESS selects the mux channel`);
+        this.op('OUT DX, AL         ; any write is ALE + START');
+        const poll = this.label('ADC');
+        this.code.push(`${poll}:`);
+        this.op(`MOV DX, ${ADC_EOC}`);
+        this.op('IN AL, DX');
+        this.op('TEST AL, 1         ; bit 0 is EOC');
+        this.op(`JZ ${poll}          ; no PIC on this bench, so polling is the only way`);
+        this.op(`MOV DX, ${ADC_BASE}`);
+        this.op('IN AL, DX          ; OE -- the converted byte');
+        this.op('XOR AH, AH');
+        this.op('SHL AX, 1');
+        this.op('SHL AX, 1          ; 0-255 -> 0-1023, to agree with an STC12');
+        this.op('XOR DX, DX');
+    }
+
+    /**
+     * A DECLARED PORT — `PORT leds = P2 OUTPUT`, eight bits at once.
+     *
+     * This is EASIER on an 8255 than a single pin, not harder: a port write
+     * is one OUT with no shadow arithmetic, because there is no neighbour to
+     * preserve. It was refused here until now, and the refusal said "this
+     * bench has none" -- which was true when written and false since the
+     * 8255 landed. A stale refusal is worse than an honest one: it tells a
+     * learner their program cannot work on hardware that is sitting there.
+     */
+    portAddr (name, opcode) {
+        const port = (this.ports || []).find((p) => p.name === name);
+        if (!port) {
+            refuse(`"${name}" is used as a port but no PORT line declares it`,
+                'undeclared port', opcode);
+        }
+        const PORT = { 1: 'A', 2: 'B', 3: 'C' }[port.port];
+        if (!PORT) {
+            refuse(`PORT ${name} is P${port.port}, and an 8255 has three ports: P1, P2 and `
+                + 'P3 map to A, B and C. P0 on an 8051 is the multiplexed address/data bus '
+                + 'and has no 8255 equivalent.', 'port out of range', opcode);
+        }
+        return { ...port, PORT, dataPort: PPI_BASE + { A: 0, B: 1, C: 2 }[PORT] };
+    }
+
+    /** Write eight bits at once. The shadow is updated so pins on the same
+     *  port stay consistent with what the chip is actually driving. */
+    emitPortWrite (name, input, opcode) {
+        const p = this.portAddr(name, opcode);
+        if (p.direction !== 'output') {
+            refuse(`PORT ${name} is declared ${String(p.direction).toUpperCase()} and this `
+                + 'writes to it. An 8255 accepts the write and does not drive the pins, so '
+                + 'the program runs and nothing happens.', 'write to an input port', opcode);
+        }
+        this.uses.ppi = true;
+        this.evalNum(input, `set ${name}`);     // value in the 32-bit pair
+        if (p.activeLow) this.op('NOT AL');
+        this.op(`MOV [BW_PORT${p.PORT}], AL`);
+        this.op(`MOV DX, ${p.dataPort}`);
+        this.op('OUT DX, AL');
+    }
+
+    /** Read eight bits at once, as an unsigned 0-255. */
+    emitPortRead (name, opcode) {
+        const p = this.portAddr(name, opcode);
+        if (p.direction !== 'input') {
+            refuse(`PORT ${name} is declared ${String(p.direction).toUpperCase()} and this `
+                + 'reads it. An 8255 output port reads back the LATCH -- whatever this '
+                + 'program last wrote -- not the outside world.', 'read of an output port', opcode);
+        }
+        this.uses.ppi = true;
+        this.op(`MOV DX, ${p.dataPort}`);
+        this.op('IN AL, DX');
+        if (p.activeLow) this.op('NOT AL');
+        this.op('XOR AH, AH');
+        this.op('XOR DX, DX');
     }
 
     emitSay (input, opcode, textMode) {
@@ -974,6 +1238,10 @@ class Emitter {
             this.note('pin');
             this.emitPinToggle(b.fields.PIN[0], b.opcode);
             return;
+        case 'stc12_setport':
+            this.note('port');
+            this.emitPortWrite(b.fields.PORT[0], b.inputs.VALUE, b.opcode);
+            return;
         case 'stc12_print':
             this.note('print');
             this.emitSay(b.inputs.VALUE, b.opcode,
@@ -997,6 +1265,7 @@ class Emitter {
     runtime () {
         const r = [];
         const need = this.uses;
+        for (const { label, kp } of this.keypads.values()) r.push(...this.keypadRoutine(label, kp));
         if (need.printn) { need.crlf = true; }
         if (need.div || need.mod) need.sdiv = true;
 
@@ -1242,6 +1511,92 @@ class Emitter {
         return r;
     }
 
+    /**
+     * The scan itself, as generated assembly. One routine per declared
+     * keypad, because the row and column bits are wherever the board put
+     * them and a shared routine would have to be table-driven for no gain.
+     *
+     * The row port is written through its SHADOW, like every other output on
+     * this bench: a keypad's rows may share a port with LEDs, and clobbering
+     * a neighbour is exactly the bug the shadow exists to stop.
+     */
+    keypadRoutine (label, kp) {
+        const rowMaskAll = kp.rows.reduce((m, w) => m | (1 << w.bit), 0);
+        const shadow = `BW_PORT${kp.rowPort}`;
+        const rowData = kp.rows[0].dataPort, colData = kp.cols[0].dataPort;
+        const portNum = (P) => ({ A: 1, B: 2, C: 3 }[P]);
+        // A LOOP, NOT SIXTEEN UNROLLED TESTS. The unrolled form read better
+        // and did not assemble: sixteen tests put the shared exit 157 bytes
+        // from the first JZ, and an 8086 conditional branch reaches 127. The
+        // alternative was `longJumps`, which would have made a keypad program
+        // the one thing on this bench that assembles nowhere else.
+        return ['',
+            `; ---- ${kp.name}: scan a 4x4 matrix keypad -------------------`,
+            '; Returns the key 0..15 in AX (32-bit pair AX:DX), or -1 for none,',
+            "; which is the STC extension's contract verbatim -- so a program",
+            '; that reads a keypad means the same thing on either chip.',
+            ';',
+            '; Each row is driven LOW in turn while the other three are held',
+            '; HIGH. A pressed key shorts its row to its column, so that column',
+            '; reads LOW, and only while its own row is the one being driven.',
+            '; That is what the wires do, which is why a matrix keypad has no',
+            '; ACTIVE LOW to declare -- it could not be anything else.',
+            `; Rows: port ${kp.rowPort} (P${portNum(kp.rowPort)}).  Columns: port ${kp.colPort} (P${portNum(kp.colPort)}).`,
+            `${label}:`,
+            '    PUSH BX',
+            '    PUSH SI',
+            '    PUSH DI',
+            '    XOR BL, BL           ; BL counts row*4 + column as we test',
+            '    XOR SI, SI           ; SI = row',
+            `${label}_ROW:`,
+            `    MOV AL, [${shadow}]  ; through the shadow: rows may share a port with LEDs`,
+            `    OR AL, ${rowMaskAll}          ; all four rows high`,
+            `    MOV BH, [${label}_RMASK + SI]`,
+            '    AND AL, BH           ; ...then this one low',
+            `    MOV [${shadow}], AL`,
+            `    MOV DX, ${rowData}`,
+            '    OUT DX, AL',
+            `    MOV DX, ${colData}`,
+            '    IN AL, DX            ; the columns, as the pins actually are',
+            '    XOR DI, DI           ; DI = column',
+            `${label}_COL:`,
+            `    MOV BH, [${label}_CMASK + DI]`,
+            '    TEST AL, BH',
+            `    JZ ${label}_HIT      ; low = this key shorts row to column`,
+            '    INC BL',
+            '    INC DI',
+            '    CMP DI, 4',
+            `    JB ${label}_COL`,
+            '    INC SI',
+            '    CMP SI, 4',
+            `    JB ${label}_ROW`,
+            '    MOV AX, 0FFFFh       ; -1: nothing pressed',
+            '    MOV DX, 0FFFFh',
+            `    JMP ${label}_DONE`,
+            `${label}_HIT:`,
+            '    MOV AL, BL',
+            '    XOR AH, AH',
+            '    XOR DX, DX',
+            `${label}_DONE:`,
+            '    POP DI',
+            '    POP SI',
+            '    POP BX',
+            '    RET'];
+    }
+
+    /** The row and column bit masks, as data — see keypadRoutine. */
+    keypadTables () {
+        const d = [];
+        for (const { label, kp } of this.keypads.values()) {
+            d.push(`${label}_RMASK DB ` + kp.rows
+                .map((w) => `${(~(1 << w.bit)) & 0xff}`).join(', ')
+                + '   ; each row low in turn');
+            d.push(`${label}_CMASK DB ` + kp.cols
+                .map((w) => `${1 << w.bit}`).join(', ') + '   ; column bits');
+        }
+        return d;
+    }
+
     dataSection () {
         const d = ['', '; ---- data ----------------------------------------------------'];
         for (const {sym, name} of this.vars.values()) {
@@ -1261,6 +1616,7 @@ class Emitter {
                 'BW_PORTB DB 0    ; shadow of port B',
                 'BW_PORTC DB 0    ; shadow of port C');
         }
+        d.push(...this.keypadTables());
         if (this.uses.sdiv) {
             d.push('BW_Q DW 0', 'BW_Q2 DW 0', 'BW_D DW 0', 'BW_D2 DW 0',
                 'BW_R DW 0', 'BW_R2 DW 0');
@@ -1298,13 +1654,24 @@ export function emitI8086Asm (project, opts = {}) {
     // reseats onto an 8086 unchanged, which is what makes the mapping worth
     // having. A PART is an LCD, a keypad, an LED cube: a component with a
     // protocol, and modelling one is not a port write.
-    const parts = source.match(/^[ \t]*(PART|LEDCUBE)\b[^\n]*/im);
-    const stcParts = project && project.stc && (project.stc.parts || []).length;
+    // A KEYPAD IS THE EXCEPTION AND THE REASON IS THE SAME ONE THAT REFUSES
+    // THE REST: a KEYPAD4X4 is eight wires and a scan loop, so it is a PIN
+    // program wearing a part's name. An LCD or a cube is a device with a
+    // protocol, and driving one is not a port write.
+    const declared = (project && project.stc && project.stc.parts) || [];
+    const unsupportedParts = declared.filter((p) => p.type !== 'keypad4x4');
+    const sourceParts = source.match(/^[ \t]*(LEDCUBE)\b[^\n]*/im)
+        || (declared.length ? null : source.match(/^[ \t]*(PART)\b[^\n]*/im));
+    const parts = sourceParts;
+    const stcParts = unsupportedParts.length;
     if (parts || stcParts) {
-        refuse(`this program declares a component (${parts ? parts[0].trim() : 'PART'}), ` +
+        refuse(`this program declares a component (${parts ? parts[0].trim()
+            : `${unsupportedParts[0].name} = ${unsupportedParts[0].type.toUpperCase()}`}), ` +
             'and this bench has an 8255 but no parts on it. A PIN is one wire and works; ' +
-            'a PART is a device with a protocol -- an LCD, a keypad, a cube -- and driving ' +
-            'one is not a port write. Use PIN lines, or choose a device with that part.',
+            'a PART is a device with a protocol -- an LCD, a shift register, a cube -- and ' +
+            'driving one is not a port write. A KEYPAD4X4 is the exception and does work ' +
+            'here, because a matrix keypad is eight wires and a scan loop rather than a ' +
+            'protocol. Use PIN lines, or choose a device with that part.',
             'part declared');
     }
     const targets = (project && project.targets) || [];
@@ -1362,6 +1729,8 @@ export function emitI8086Asm (project, opts = {}) {
     const em = new Emitter();
     // The parser's PIN declarations, which is where port/bit/activeLow live.
     em.pins = (project && project.stc && project.stc.pins) || [];
+    em.parts = declared;
+    em.ports = (project && project.stc && project.stc.ports) || [];
     em.blocks = blocks;
     em.stack(flags[0][1].next);
 
@@ -1424,11 +1793,43 @@ export function emitI8086Asm (project, opts = {}) {
         // and here it means a program can read four switches on PC0-PC3 while
         // driving four LEDs on PC4-PC7.
         let ctrl = 0x80;
+        const asInput = (port, bit) => {
+            if (port === 1) ctrl |= 0x10;
+            else if (port === 2) ctrl |= 0x02;
+            else if (port === 3) ctrl |= (bit >= 4 ? 0x08 : 0x01);
+        };
         for (const pin of em.pins) {
             if (pin.direction !== 'input') continue;
-            if (pin.port === 1) ctrl |= 0x10;
-            else if (pin.port === 2) ctrl |= 0x02;
-            else if (pin.port === 3) ctrl |= (pin.bit >= 4 ? 0x08 : 0x01);
+            asInput(pin.port, pin.bit);
+        }
+        // A WHOLE PORT declared INPUT sets both nibbles, port C included.
+        for (const port of em.ports) {
+            if (port.direction !== 'input') continue;
+            asInput(port.port, 0);
+            asInput(port.port, 4);
+        }
+        // A KEYPAD'S COLUMNS ARE INPUTS AND ITS ROWS ARE OUTPUTS, and both
+        // have to be in this word for the same reason the pins are: it is
+        // written once, because a mode word clears the latches.
+        for (const { kp } of em.keypads.values()) {
+            for (const c of kp.cols) asInput({ A: 1, B: 2, C: 3 }[c.PORT], c.bit);
+        }
+        // AND THE ROWS MUST NOT HAVE BEEN TURNED INTO INPUTS BY SOMETHING
+        // ELSE. If a declared INPUT pin shares a port with the rows, the word
+        // above makes that whole port an input, the rows stop driving, and
+        // every scan reads "nothing pressed" forever -- a program that runs
+        // and means something different, which is the failure mode worth
+        // spending a check on.
+        for (const { kp } of em.keypads.values()) {
+            const rowBit = { A: 0x10, B: 0x02, C: kp.rows[0].bit >= 4 ? 0x08 : 0x01 }[kp.rowPort];
+            if (ctrl & rowBit) {
+                refuse(`the keypad "${kp.name}" drives its rows on port ${kp.rowPort}, but `
+                    + `something else declared on port ${kp.rowPort} is an INPUT. An 8255 sets `
+                    + 'direction a whole port at a time (a nibble at a time on port C), so the '
+                    + 'rows would stop driving and every scan would read "nothing pressed". '
+                    + 'Move the keypad rows or the input pin to another port.',
+                    'keypad rows forced to input');
+            }
         }
         head.push(
             '',
@@ -1447,6 +1848,16 @@ export function emitI8086Asm (project, opts = {}) {
         '    INT 21h'
     ];
 
+    // THE CHIPS THIS PROGRAM NEEDS, so the bench can put them on the board.
+    // A declaration causes a chip to appear -- a learner who had to write a
+    // chip list before blinking an LED would have been failed by the tool,
+    // and the 8255 already works this way. But appearing INVISIBLY is the
+    // same failure class as a silently chosen default, so every added chip
+    // is named in a warning as well as returned here.
+    const chips = em.uses.adc
+        ? [{ kind: 'adc0809', name: 'adc1', at: ADC_BASE }]
+        : [];
+
     const asm = [
         ...head,
         ...inits,
@@ -1461,6 +1872,7 @@ export function emitI8086Asm (project, opts = {}) {
 
     return {
         asm,
+        chips,
         warnings: em.warnings,
         variables: [...em.vars.values()].map(v => v.name)
     };
@@ -1482,7 +1894,7 @@ export function emitI8086Asm (project, opts = {}) {
  *   warnings: string[], route: string, target: string, org: number|null}>}
  */
 export async function buildPseudocode8086 ({project, source}, seams = {}) {
-    const {asm, warnings, variables} = emitI8086Asm(project, {source});
+    const {asm, chips, warnings, variables} = emitI8086Asm(project, {source});
     const out = await requestAssembly({source: asm, device: 'i8086'}, seams);
     return {
         bytes: out.bytes,
@@ -1496,6 +1908,9 @@ export async function buildPseudocode8086 ({project, source}, seams = {}) {
         slotId: out.slotId,
         profile: out.profile,
         asm,
+        // The chips this program's declarations require. The bench puts them
+        // on the board; the warnings say so out loud.
+        chips,
         variables,
         // The emitter's give-and-take first, then the assembler's. Both are
         // shown; neither is silent.
