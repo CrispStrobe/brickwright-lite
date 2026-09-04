@@ -2962,8 +2962,14 @@ class SB3Creator {
             const name = m[1];
             const cfg = this.stcConfig();
             const part = SB3Creator.STC_PARTS[cfg.device];
-            if (!part || (part.core && part.core !== '8051')) {
-                this.warn(lineIndex, `SEVENSEG8 is not available on ${cfg.device}: the digit scan lives in the 8051 Timer-0 ISR (8051 family). Devices that have it: the STC parts.`);
+            // A DECLARED CAPABILITY, NOT A CORE NAME -- the same change the
+            // keypad gate got, and for the same reason. A multiplexed display
+            // needs somewhere to run a digit scan: an 8051 uses its Timer-0
+            // ISR, an 8086 uses the preemptive scheduler's timer. Both can
+            // scan, so the gate asks whether the device CAN rather than
+            // whether it happens to be an 8051.
+            if (!part || !(part.sevenseg || !part.core || part.core === '8051')) {
+                this.warn(lineIndex, `SEVENSEG8 is not available on ${cfg.device}: a multiplexed display needs a timer to scan the digits one at a time, and this device has none. Devices that have it: the STC parts, and i8086.`);
                 return true;
             }
             if (this.stcPin(name) || this.stcPort(name) || this.stcPart(name)) {
@@ -15212,7 +15218,8 @@ SB3Creator.STC_PARTS = {
     // read on another (or the two nibbles of port C, which have independent
     // directions). adc: false, and it is a fact about the chip rather than
     // this board: an 8255 is a digital parallel port with no analog path.
-    i8086: { core: 'i8086', header: null, portModes: false, aux1T: false, adc: false, keypad: true },
+    i8086: { core: 'i8086', header: null, portModes: false, aux1T: false, adc: false,
+        keypad: true, sevenseg: true },
     // ATtiny88: 28-pin DIP, avr25 family. Pins are PB0-7/PC0-7/PD0-7/PA0-3
     // (port/bit, not Arduino Dn numbering). Timer0 has NO CTC mode — the ms
     // tick uses Timer1 CTC instead. ADC on PC0-PC5 (channels 0-5).

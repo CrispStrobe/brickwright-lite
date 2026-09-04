@@ -530,10 +530,60 @@ it is right.
 
 Each task is independently shippable and none blocks the next.
 
-### 3.8 The 8086 as a FIRST-CLASS target in the GUI — scoped 2026-09-04 (owner-requested)
+### 3.8 The 8086 as a FIRST-CLASS target in the GUI — LARGELY LANDED 2026-09-04
 
-The tier runs. What is not yet true is that a learner can reach it the way they
-reach an Arduino: write pseudocode, press play, and watch a board they drew.
+**Status at the end of 2026-09-04.** A learner can now write pseudocode, pick
+`i8086`, press play and watch it run. What they cannot yet do is DRAW the board
+— that is the one remaining piece and it is a vendoring job, not a design one.
+
+**What lowers today**, all offline through our own assembler
+(`lib/bw-asm/pseudocode-8086.js`, entry `buildPseudocode8086`):
+
+| | |
+| --- | --- |
+| control flow, operators, variables | 32-bit pairs — nothing narrows silently |
+| `say` / `print` | the CGA text page |
+| pins | `turn on/off`, `toggle`, `read`, `set <pin> to <expr>` (a LEVEL, not a voltage) |
+| whole PORTs | `PORT p = P2 OUTPUT` + `set p to <n>`, `read p` |
+| `wait until` | with a warning when nothing can change the condition |
+| KEYPAD4X4 | an 8255 matrix scan, 0..15 or -1 |
+| `PIN … ANALOG` | an ADC0809 the build adds at 300h |
+| `set <pin> to <n> hz` | 8254 counter 2 and the real speaker |
+| `set <pin> to <n> percent` | genuine pulses from a scheduled task, ~20 levels |
+| SEVENSEG8 | eight digits, scanned by the scheduler |
+| **more than one WHEN script** | a PREEMPTIVE scheduler; the build adds a PIC + IRQ0 timer |
+| `WHEN <pin> pressed/released` | an edge, one task each |
+| `WHEN I receive` | one byte per message, no queue needed |
+| `WHEN <key> pressed` | one pump task reads the keyboard; hats watch what it read |
+
+**Refused by name, with reasons that are about the hardware:** sprites, DEFINE,
+lists, strings in variables, `join`. A DAC has no pseudocode caller *by
+decision* — `ANALOG` is input-only on an 8051, so making it bidirectional here
+would reseat onto an STC and lose half its meaning. It is reachable from the
+ASM tab, which is a legitimate home rather than a consolation.
+
+**A DECLARATION CAUSES HARDWARE TO APPEAR, AND THE BUILD SAYS SO.** An ANALOG
+pin adds a converter; a second script adds an interrupt controller and rewires
+the timer. Both are returned in `chips` and named in a warning. A silently
+added chip is the same failure class as a silently chosen default.
+
+**Three refusal reasons turned out to be wrong rather than expensive**, and all
+three were written before the scheduler existed and never revisited when it
+arrived: broadcast "needs a queue" (it needs none — the receiver is already a
+task watching one byte); the key hat "needs the keyboard's own edge" (a pin has
+a level so a hat must manufacture an edge, but DOS hands over a QUEUE of
+keystrokes and each arrival is already an event); and the display's scan
+"lives in the Timer-0 ISR" (it lives in a task now). Worth re-reading every
+refusal whenever a capability lands.
+
+**STILL OPEN, and it is the one thing between here and the owner's goal:** the
+8086 cannot be SEATED on a drawn board in lite. Every piece exists upstream —
+bw-board master registers `i8086`/`i8088`/`i8255`/`i8254`/`i8253` DIPs, and
+bw-circuit-ui master carries the parts and the reseat substitution — but lite's
+vendored copies are behind, and the sync tool's hand-written manifest covers 26
+of 120 vendored files with the whole 8086 tier outside it. Assigned; needs
+`sync-bw-board.mjs --dir` plus the parts-data sidecars.
+
 Three steps, in dependency order, each with what already exists under it.
 
 **WHAT IS ALREADY DONE, so nobody rebuilds it.** The local assemble route

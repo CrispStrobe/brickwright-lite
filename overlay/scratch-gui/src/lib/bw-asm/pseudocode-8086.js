@@ -216,7 +216,10 @@ export const SUPPORTED = Object.freeze({
     stc12_whenpin: 'WHEN <pin> pressed/released:',
     event_whenbroadcastreceived: 'WHEN I receive "<message>":',
     event_broadcast: 'broadcast "<message>"',
-    event_whenkeypressed: 'WHEN <key> key pressed:'
+    event_whenkeypressed: 'WHEN <key> key pressed:',
+    stc12_setpwm: 'set <pin> to <n> percent',
+    stc12_seg_shownum: 'show number <n> on <display>',
+    stc12_seg_clear: 'clear <display>'
 });
 
 /** What a refused block is called, when the opcode alone would not say. */
@@ -231,8 +234,7 @@ const BLOCK_NAMES = {
     data_addtolist: 'add ... to <list>',
     control_create_clone_of: 'create clone of ...',
     procedures_definition: 'DEFINE ...',
-    procedures_call: 'a custom block call',
-    stc12_setpwm: 'set <pin> to <n> percent'
+    procedures_call: 'a custom block call'
 };
 
 /** The list a refusal prints, so "unsupported" is never the whole message. */
@@ -364,7 +366,7 @@ class Emitter {
         this.uses = {
             puts: false, crlf: false, printn: false,
             mul: false, div: false, mod: false, sdiv: false, ppi: false,
-            keypad: false, adc: false, sched: false, keypump: false
+            keypad: false, adc: false, sched: false, keypump: false, seg: false
         };
         this.pins = [];             // declared PINs, from the parser
         this.ports = [];            // declared PORTs -- eight bits at once
@@ -374,6 +376,8 @@ class Emitter {
         // every existing program pay for a scheduler it does not use.
         this.tasks = 1;
         this.messages = new Map();  // broadcast name -> its flag symbol
+        this.pwm = new Map();       // PWM pin name -> its duty byte + task
+        this.segs = new Map();      // 7-seg display name -> its buffer + task
         this.parts = [];            // declared PARTs (keypad4x4 only, so far)
         this.keypads = new Map();   // name -> label, one scan routine each
     }
@@ -1374,6 +1378,302 @@ class Emitter {
         this.op(`JMP ${top}`);
     }
 
+    /**
+     * `set <pin> to <n> percent` — GENUINE PWM, from a task that yields.
+     *
+     * I refused this and said a DAC substitution would be dishonest, which
+     * was right: a steady voltage gives the same brightness by a different
+     * mechanism, so a scope, a motor or an RC filter would disagree with the
+     * lamp. What was NOT right was assuming the honest version needed an
+     * interrupt handler. A scheduled task pulses the pin for real.
+     *
+     * THE RESOLUTION IS DERIVED FROM THE MEASURED TICK, not chosen. The
+     * review lane measured this bench: at 100 levels four adjacent duties
+     * collapse to one value, at 20 they are cleanly distinguishable and
+     * monotonic. The reason is not noise -- the period is steady to six
+     * MICROSECONDS over 655 periods -- it is that every period is a whole
+     * number of scheduler ticks, so the tick IS the resolution. Since the
+     * tick is measured at startup, the number of usable levels is computed
+     * rather than hardcoded, and it follows the clock if the clock changes.
+     *
+     * A known, stated systematic remains: fixed per-phase overhead lands on
+     * both waits, so the duty is compressed toward 50% with a gain near
+     * 0.91 (5% reads 9%, 95% reads 91%). It is monotonic, so a fade is still
+     * a fade; it loses a little travel at the ends.
+     */
+    pwmSlot (name, opcode) {
+        const p = this.pinAddr(name, opcode);
+        if (p.direction !== 'pwm') {
+            refuse(`"${name}" is declared ${String(p.direction).toUpperCase()} and this `
+                + 'sets a percentage. Declare it PWM.', 'percent on a non-pwm pin', opcode);
+        }
+        if (!this.pwm.has(name)) {
+            this.pwm.set(name, { sym: `BW_DUTY${this.pwm.size}`, pin: p, index: this.pwm.size });
+        }
+        return this.pwm.get(name);
+    }
+
+    emitSetPwm (name, input, opcode) {
+        const slot = this.pwmSlot(name, opcode);
+        this.uses.ppi = true;
+        this.evalNum(input, `set ${name}`);
+        // Clamp rather than wrap: 130% is a mistake, and a duty that wrapped
+        // to 30% would look like a working program doing the wrong thing.
+        const hi = this.label('PWM'), done = this.label('PWM');
+        this.op('OR DX, DX');
+        this.op(`JS ${hi}            ; negative -> 0`);
+        this.op('CMP DX, 0');
+        this.op(`JNE ${hi}`);
+        this.op('CMP AX, 100');
+        this.op(`JBE ${done}`);
+        this.code.push(`${hi}:`);
+        this.op('MOV AX, 100');
+        this.op('OR DX, DX');
+        this.op(`JNS ${done}`);
+        this.op('XOR AX, AX');
+        this.code.push(`${done}:`);
+        this.op(`MOV [${slot.sym}], AL`);
+    }
+
+    /** One task per PWM pin: pulse it forever at the duty the program set. */
+    pwmRoutine (slot) {
+        const p = slot.pin;
+        const mask = 1 << p.bit, shadow = `BW_PORT${p.PORT}`;
+        const L = (t) => `BW_PW${slot.index}_${t}`;
+        const drive = (on) => [
+            `    MOV AL, [${shadow}]`,
+            `    ${on ? 'OR' : 'AND'} AL, ${on ? mask : ((~mask) & 0xff)}`,
+            `    MOV [${shadow}], AL`,
+            `    MOV DX, ${p.dataPort}`,
+            '    OUT DX, AL'];
+        // ticks = TPMS * percent / 10, which is percent% of a ~10 ms period.
+        const ticks = (expr) => [
+            ...expr,
+            '    XOR AH, AH',
+            '    MOV BX, [BW_TPMS]',
+            '    MUL BX',
+            '    MOV BX, 10',
+            '    DIV BX',
+            '    XOR DX, DX',
+            '    CALL BW_SLEEP'];
+        return ['',
+            `; ---- PWM on ${p.name} (P${p.port}.${p.bit}) ---------------------`,
+            '; A ~10 ms period, so about 100 Hz -- above flicker fusion. The ON',
+            '; and OFF phases are whole numbers of scheduler ticks, and that',
+            '; quantisation is the resolution: about 21 ticks fit a period here,',
+            '; so roughly 20 levels are distinguishable. Measured, not assumed.',
+            `${L('TOP')}:`,
+            `    MOV AL, [${slot.sym}]`,
+            '    OR AL, AL',
+            `    JZ ${L('OFF')}          ; 0% never turns on`,
+            '    CMP AL, 100',
+            `    JAE ${L('ON')}          ; 100% never turns off`,
+            ...drive(true),
+            ...ticks([`    MOV AL, [${slot.sym}]`]),
+            ...drive(false),
+            ...ticks([`    MOV AL, 100`, `    SUB AL, [${slot.sym}]`]),
+            `    JMP ${L('TOP')}`,
+            `${L('OFF')}:`,
+            ...drive(false),
+            '    CALL BW_POLL1MS',
+            `    JMP ${L('TOP')}`,
+            `${L('ON')}:`,
+            ...drive(true),
+            '    CALL BW_POLL1MS',
+            `    JMP ${L('TOP')}`];
+    }
+
+    /**
+     * `PART d = SEVENSEG8 SEGMENTS P1 SELECT P2.0 P2.1 P2.2` — EIGHT DIGITS
+     * ON ONE PORT, which only works because they are never all lit at once.
+     *
+     * A multiplexed display shows ONE digit at a time and relies on the eye
+     * to blend them. That is why it was refused here: the 8051 runs the scan
+     * in its Timer-0 ISR and this back end had nowhere to put one. The
+     * preemptive scheduler is that somewhere — the scan is a task, and at
+     * roughly 1 kHz each of eight digits is refreshed 125 times a second,
+     * which is well above flicker.
+     *
+     * SEGMENTS is a whole port (through a '245 on a real board); SELECT is
+     * three pins into a 74HC138, whose eight outputs are the digit commons.
+     * Three pins for eight digits is the entire reason the decoder is there.
+     */
+    segPart (name, opcode) {
+        const part = (this.parts || []).find((p) => p.name === name);
+        if (!part || part.type !== 'sevenseg8') {
+            refuse(`"${name}" is used as a display but no PART line declares one`,
+                'undeclared display', opcode);
+        }
+        if (!this.segs.has(name)) {
+            const PORT = { 1: 'A', 2: 'B', 3: 'C' }[part.segPort];
+            if (!PORT) {
+                refuse(`PART ${name} puts its segments on P${part.segPort}, and an 8255 `
+                    + 'has three ports: P1, P2 and P3 map to A, B and C.',
+                    'display port out of range', opcode);
+            }
+            const sel = part.selPins.map((w) => {
+                const SP = { 1: 'A', 2: 'B', 3: 'C' }[w.port];
+                if (!SP) {
+                    refuse(`PART ${name} puts a select pin on P${w.port}, and an 8255 has `
+                        + 'three ports.', 'display select out of range', opcode);
+                }
+                return { PORT: SP, bit: w.bit, dataPort: PPI_BASE + { A: 0, B: 1, C: 2 }[SP] };
+            });
+            this.segs.set(name, {
+                index: this.segs.size,
+                buf: `BW_SEGB${this.segs.size}`,
+                cur: `BW_SEGC${this.segs.size}`,
+                PORT, dataPort: PPI_BASE + { A: 0, B: 1, C: 2 }[PORT],
+                sel, anode: !!part.commonAnode, name,
+            });
+        }
+        return this.segs.get(name);
+    }
+
+    /** `show number <n> on <d>` — fill the frame buffer with decimal digits. */
+    emitSegShow (name, input, opcode) {
+        const d = this.segPart(name, opcode);
+        this.uses.ppi = true;
+        this.uses.seg = true;
+        this.evalNum(input, `show number on ${name}`);
+        this.op(`MOV DI, OFFSET ${d.buf}`);
+        this.op('CALL BW_SEGNUM');
+    }
+
+    /** `clear <d>` — blank every digit. */
+    emitSegClear (name, opcode) {
+        const d = this.segPart(name, opcode);
+        this.uses.ppi = true;
+        this.uses.seg = true;
+        this.op(`MOV DI, OFFSET ${d.buf}`);
+        this.op('CALL BW_SEGCLR');
+    }
+
+    /** The shared helpers: one font, one number->digits, one blank. */
+    segRuntime () {
+        return ['',
+            '; ---- seven-segment helpers -----------------------------------',
+            '; Fill the 8-byte buffer at DI with the decimal digits of DX:AX,',
+            '; right-aligned, leading zeros blanked.',
+            '; THE FILL IS A CRITICAL SECTION. The scan task reads this buffer',
+            '; on its own schedule, and the digits are written before the',
+            '; leading zeros are blanked -- so a preemption in between shows a',
+            '; digit that is about to be blanked. Measured: 1207 displayed as',
+            '; " 0  1207", a stray zero four places left of the number, which',
+            '; reads as a display fault rather than a race.',
+            'BW_SEGNUM:',
+            '    PUSHF',
+            '    CLI',
+            '    PUSH SI',
+            '    PUSH DI',
+            '    PUSH BX',
+            '    PUSH CX',
+            '    ADD DI, 7',
+            '    MOV CX, 8',
+            'BW_SN1:',
+            '    PUSH CX',
+            '    ; DX:AX / 10 -> DX:AX, remainder in BX. The classic two-step:',
+            '    ; a single DIV would overflow whenever the quotient exceeds',
+            '    ; 16 bits, which is most of the range we care about.',
+            '    MOV BX, 10',
+            '    MOV CX, AX',
+            '    MOV AX, DX',
+            '    XOR DX, DX',
+            '    DIV BX',
+            '    MOV SI, AX',
+            '    MOV AX, CX',
+            '    DIV BX',
+            '    MOV BX, DX',
+            '    MOV DX, SI',
+            '    PUSH AX',
+            '    MOV AL, [BW_SEGFONT + BX]',
+            '    MOV [DI], AL',
+            '    POP AX',
+            '    DEC DI',
+            '    POP CX',
+            '    LOOP BW_SN1',
+            '    ; Blank leading zeros, but never the last digit -- a display',
+            '    ; showing nothing at all for the value 0 looks broken.',
+            '    INC DI',
+            '    MOV CX, 7',
+            'BW_SN2:',
+            '    CMP BYTE PTR [DI], 3FH',
+            '    JNE BW_SN3',
+            '    MOV BYTE PTR [DI], 0',
+            '    INC DI',
+            '    LOOP BW_SN2',
+            'BW_SN3:',
+            '    POP CX',
+            '    POP BX',
+            '    POP DI',
+            '    POP SI',
+            '    POPF',
+            '    RET',
+            '',
+            'BW_SEGCLR:',
+            '    PUSHF',
+            '    CLI',
+            '    PUSH CX',
+            '    MOV CX, 8',
+            'BW_SC1:',
+            '    MOV BYTE PTR [DI], 0',
+            '    INC DI',
+            '    LOOP BW_SC1',
+            '    POP CX',
+            '    POPF',
+            '    RET',
+            '',
+            '; 0-9 and A-F, common cathode: bit 0 = a (top), 1 = b, 2 = c,',
+            '; 3 = d (bottom), 4 = e, 5 = f, 6 = g (middle), 7 = decimal point.',
+            'BW_SEGFONT DB 3FH, 06H, 5BH, 4FH, 66H, 6DH, 7DH, 07H',
+            '           DB 7FH, 6FH, 77H, 7CH, 39H, 5EH, 79H, 71H'];
+    }
+
+    /** One scan task per display. */
+    segRoutine (d) {
+        const L = (t) => `BW_SG${d.index}_${t}`;
+        const out = ['',
+            `; ---- ${d.name}: scan eight digits ---------------------------`,
+            '; ONE DIGIT AT A TIME, and the eye does the rest. Eight digits at',
+            '; about 1 kHz is 125 Hz each, well above flicker. Blank the',
+            '; segments BEFORE moving the select lines: changing which digit is',
+            '; enabled while the old pattern is still driven lights the wrong',
+            '; segments on the new digit, which shows as faint ghosting.',
+            `${L('TOP')}:`,
+            `    MOV AL, 0${d.anode ? 'FFH' : '0H'}`,
+            `    MOV [BW_PORT${d.PORT}], AL`,
+            `    MOV DX, ${d.dataPort}`,
+            '    OUT DX, AL'];
+        d.sel.forEach((s, i) => {
+            const mask = 1 << s.bit;
+            out.push(
+                `    MOV AL, [BW_PORT${s.PORT}]`,
+                `    TEST BYTE PTR [${d.cur}], ${1 << i}`,
+                `    JZ ${L(`C${i}`)}`,
+                `    OR AL, ${mask}`,
+                `    JMP ${L(`D${i}`)}`,
+                `${L(`C${i}`)}:`,
+                `    AND AL, ${(~mask) & 0xff}`,
+                `${L(`D${i}`)}:`,
+                `    MOV [BW_PORT${s.PORT}], AL`,
+                `    MOV DX, ${s.dataPort}`,
+                '    OUT DX, AL');
+        });
+        out.push(
+            `    MOV BL, [${d.cur}]`,
+            '    XOR BH, BH',
+            `    MOV AL, [${d.buf} + BX]`,
+            ...(d.anode ? ['    NOT AL'] : []),
+            `    MOV [BW_PORT${d.PORT}], AL`,
+            `    MOV DX, ${d.dataPort}`,
+            '    OUT DX, AL',
+            `    INC BYTE PTR [${d.cur}]`,
+            `    AND BYTE PTR [${d.cur}], 7`,
+            '    CALL BW_POLL1MS',
+            `    JMP ${L('TOP')}`);
+        return out;
+    }
+
     /** The flag byte for a broadcast name, created on first mention. */
     messageSym (name) {
         const key = String(name);
@@ -1761,6 +2061,18 @@ class Emitter {
             this.note('tone');
             this.emitTone(b.fields.PIN[0], b.inputs.VALUE, b.opcode);
             return;
+        case 'stc12_seg_shownum':
+            this.note('display');
+            this.emitSegShow(b.fields.PART[0], b.inputs.NUM, b.opcode);
+            return;
+        case 'stc12_seg_clear':
+            this.note('display');
+            this.emitSegClear(b.fields.PART[0], b.opcode);
+            return;
+        case 'stc12_setpwm':
+            this.note('pwm');
+            this.emitSetPwm(b.fields.PIN[0], b.inputs.VALUE, b.opcode);
+            return;
         case 'event_broadcast':
             this.note('broadcast');
             this.emitBroadcast(b);
@@ -1800,6 +2112,9 @@ class Emitter {
         for (const { label, kp } of this.keypads.values()) r.push(...this.keypadRoutine(label, kp));
         if (need.sched) r.push(...this.schedRuntime());
         if (need.keypump) r.push(...this.keyPumpRoutine());
+        for (const slot of this.pwm.values()) r.push(...this.pwmRoutine(slot));
+        if (need.seg) r.push(...this.segRuntime());
+        for (const d of this.segs.values()) r.push(...this.segRoutine(d));
         if (need.printn) { need.crlf = true; }
         if (need.div || need.mod) need.sdiv = true;
 
@@ -2467,6 +2782,13 @@ class Emitter {
                 'BW_PORTB DB 0    ; shadow of port B',
                 'BW_PORTC DB 0    ; shadow of port C');
         }
+        for (const disp of this.segs.values()) {
+            d.push(`${disp.buf} DB 8 DUP (0)   ; frame buffer for "${disp.name}"`,
+                `${disp.cur} DB 0          ; which digit the scan is on`);
+        }
+        for (const slot of this.pwm.values()) {
+            d.push(`${slot.sym} DB 0          ; duty for "${slot.pin.name}", 0-100 percent`);
+        }
         if (this.uses.keypump) {
             d.push('BW_KEY    DB 0          ; the last key the pump read',
                 'BW_KFRESH DB 0          ; and whether anyone has taken it yet');
@@ -2518,7 +2840,8 @@ export function emitI8086Asm (project, opts = {}) {
     // program wearing a part's name. An LCD or a cube is a device with a
     // protocol, and driving one is not a port write.
     const declared = (project && project.stc && project.stc.parts) || [];
-    const unsupportedParts = declared.filter((p) => p.type !== 'keypad4x4');
+    const unsupportedParts = declared.filter(
+        (p) => p.type !== 'keypad4x4' && p.type !== 'sevenseg8');
     const sourceParts = source.match(/^[ \t]*(LEDCUBE)\b[^\n]*/im)
         || (declared.length ? null : source.match(/^[ \t]*(PART)\b[^\n]*/im));
     const parts = sourceParts;
@@ -2577,7 +2900,20 @@ export function emitI8086Asm (project, opts = {}) {
             'there is nothing to run', 'no script');
     }
     const pump = keyHats.length ? 1 : 0;
-    if (flags.length + pinHats.length + msgHats.length + keyHats.length + pump
+    // EVERY PWM PIN GETS A TASK, declared or not set. They have to be counted
+    // BEFORE emission, because the scheduler's task table is sized up front
+    // and a pin is otherwise only discovered when a `set ... percent` is
+    // lowered -- so a program that declares one and never sets it would get a
+    // table one entry short, or one entry too many if the set came later.
+    // A declared-but-unset pin sits at 0%, which is off.
+    const pwmPins = ((project && project.stc && project.stc.pins) || [])
+        .filter(p => p.direction === 'pwm');
+    // Each display gets a scan task, counted here for the same reason: the
+    // table is sized before any body is lowered.
+    const segParts = declared.filter(p => p.type === 'sevenseg8');
+    const pwmCount = ((project && project.stc && project.stc.pins) || [])
+        .filter(p => p.direction === 'pwm').length;
+    if (flags.length + pinHats.length + msgHats.length + keyHats.length + pump + pwmCount
         > MAX_SCRIPTS) {
         refuse(`this project has ${flags.length + pinHats.length + msgHats.length
             + keyHats.length} scripts${pump ? ' (plus the keyboard pump the build adds)' : ''} `
@@ -2604,7 +2940,32 @@ export function emitI8086Asm (project, opts = {}) {
     em.parts = declared;
     em.ports = (project && project.stc && project.stc.ports) || [];
     em.blocks = blocks;
-    em.tasks = flags.length + pinHats.length + msgHats.length + keyHats.length + pump;
+    em.tasks = flags.length + pinHats.length + msgHats.length + keyHats.length
+        + pump + pwmPins.length + segParts.length;
+    for (const p of pwmPins) em.pwmSlot(p.name, 'stc12_setpwm');
+    for (const d of segParts) em.segPart(d.name, 'stc12_seg_shownum');
+    if (segParts.length) {
+        em.uses.sched = true;
+        em.uses.seg = true;
+        em.warn(`this program declares ${segParts.length} eight-digit display`
+            + `${segParts.length > 1 ? 's' : ''}, so the build adds a script for each to `
+            + 'scan it. A multiplexed display lights ONE digit at a time and relies on '
+            + 'the eye to blend them -- at about 1 kHz each of the eight is refreshed '
+            + '125 times a second, well above flicker. On an 8051 that scan lives in the '
+            + 'Timer-0 ISR; here it is a scheduled script.');
+    }
+    if (pwmPins.length) {
+        em.warn(`this program declares ${pwmPins.length} PWM pin`
+            + `${pwmPins.length > 1 ? 's' : ''}, so the build adds a script for each: an `
+            + '8255 has no PWM hardware, so the pulse is generated by pulsing the pin. '
+            + 'The period is about 10 ms (100 Hz, above flicker), and each phase is a '
+            + 'whole number of scheduler ticks -- which is the resolution. About 20 '
+            + 'levels are distinguishable here; asking for 100 gives four settings that '
+            + 'come out the same. Fixed overhead lands on both phases, so the duty is '
+            + 'pulled toward 50%: 5% measures about 9%, 95% about 91%. A fade stays a '
+            + 'fade and loses a little travel at the ends.');
+    }
+    if (pwmPins.length) em.uses.sched = true;
     if (keyHats.length) {
         em.uses.keypump = true;
         em.warn('this program has a `WHEN <key> pressed` script, so the build adds a '
@@ -2652,6 +3013,19 @@ export function emitI8086Asm (project, opts = {}) {
         });
         if (pump) {
             em.code.push('', `BW_TASK${keyBase + keyHats.length}:`, '    JMP BW_KEYPUMP');
+        }
+        // ONE TASK PER PWM PIN. The duty byte is set by the program; the task
+        // pulses the pin forever at whatever it currently says, so `set led to
+        // 40 percent` returns immediately and the fade keeps running -- which
+        // is what it does on an STC, where the PCA does it in hardware.
+        let pwmBase = keyBase + keyHats.length + pump;
+        for (const slot of em.pwm.values()) {
+            em.code.push('', `BW_TASK${pwmBase}:`, `    JMP BW_PW${slot.index}_TOP`);
+            pwmBase++;
+        }
+        for (const d of em.segs.values()) {
+            em.code.push('', `BW_TASK${pwmBase}:`, `    JMP BW_SG${d.index}_TOP`);
+            pwmBase++;
         }
     } else if (msgHats.length === 1 && flags.length === 0 && pinHats.length === 0) {
         em.tasks = 1;
