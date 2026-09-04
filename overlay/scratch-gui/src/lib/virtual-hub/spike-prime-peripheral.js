@@ -118,9 +118,14 @@ export class VirtualSpikePrimePeripheral {
             if (byte === 1) this._frame = [byte];
             else this._frame.push(byte);
             if (byte === END) {
-                const payload = unpackSpikeFrame(Uint8Array.from(this._frame));
-                this._frame = [];
-                this._handleMessage(payload);
+                try {
+                    const payload = unpackSpikeFrame(Uint8Array.from(this._frame));
+                    this._frame = [];
+                    this._handleMessage(payload);
+                } catch (error) {
+                    this._frame = [];
+                    throw error;
+                }
             }
             if (this._frame.length > 4096) {
                 this._frame = [];
