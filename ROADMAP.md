@@ -576,7 +576,44 @@ from a drawn board. The coverage lane found the deeper half of this on
 never been drawable. They own that; the pinout and the active-HIGH RESET trap
 are in the thread.
 
-#### 3.8.2 Pseudocode → ASM → 8086 — MEDIUM, and the design decision is the work
+#### 3.8.2 Pseudocode → ASM → 8086 — LANDED 2026-09-04
+
+**All four sub-steps below are done, and one of them was settled the opposite
+way from how it was scoped.** What ships: `lib/bw-asm/pseudocode-8086.js`,
+entry `buildPseudocode8086({project, source})` → `{bytes, format, chips, asm,
+warnings}`, entirely offline through our own assembler.
+
+**The tick (sub-step 1) is not one answer but two, and the second was scoped
+as impossible.** A single script waits with INT 15h/86h, which blocks — fine
+when there is nothing else to run. More than one script gets a PREEMPTIVE
+scheduler: one stack per script, switched by a timer interrupt on vector 70h,
+with the PIC and an IRQ0-wired 8254 requested per-program through `chips`.
+DECISION 1 in that file had concluded two scripts were impossible because the
+8254 "cannot interrupt" here; it can, once the program asks for the PIC, and a
+cooperative version was possible even before that because the counter can be
+READ. The rate is MEASURED at startup, never assumed — assuming it made every
+wait 4.19× short while every ordering test stayed green.
+
+**Variables (sub-step 2) are 32-bit pairs, so nothing narrows silently.**
+
+**The block set (sub-step 3) is `SUPPORTED`, and a refusal names the block and
+prints the list.** Lowering today: the control flow, the operators, `say`/
+`print`, pins (`turn on`, `toggle`, `read`, `set <pin> to <expr>`), whole
+PORTs, `wait until`, `set <pin> to <n> hz` (real 8254 + speaker), KEYPAD4X4 as
+an 8255 matrix scan, `PIN … ANALOG` through an auto-added ADC0809, multiple
+WHEN scripts, `WHEN <pin> pressed/released`, and broadcast. Refused by name:
+`setpwm` (a DAC would be a substitution, not PWM), `WHEN <key> pressed` (the
+DOS queue reports presses, not edges), sprites, DEFINE, lists.
+
+**Pin I/O (sub-step 4) is the P1/P2/P3 → 8255 A/B/C mapping**, which is what
+makes a reseat a DEVICE-line change rather than a rewrite.
+
+**A DECLARATION CAUSES HARDWARE TO APPEAR, and the build says so.** An ANALOG
+pin adds an ADC0809 at 300h; a second script adds a PIC and rewires the timer.
+Both are returned in `chips` and named in a warning, because a silently added
+chip is the same failure class as a silently chosen default.
+
+#### 3.8.2-old Pseudocode → ASM → 8086 — the original scoping, kept for the record
 
 Today: pseudocode → `generateC` → a HOSTED compiler → binary. That chain has no
 8086 back end and cannot grow one — there is no ia16 C compiler in the service,
