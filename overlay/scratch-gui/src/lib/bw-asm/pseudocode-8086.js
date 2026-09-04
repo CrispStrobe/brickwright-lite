@@ -21,8 +21,21 @@
  *
  * ── DECISION 1: WHAT IS THE TICK? ────────────────────────────────────────
  *
- * One MICROSECOND, and `wait` is INT 15h AH=86h. Not the 18.2 Hz BIOS tick,
- * and emphatically not the 8254.
+ * One MICROSECOND, and `wait` is INT 15h AH=86h — FOR A SINGLE SCRIPT. Not
+ * the 18.2 Hz BIOS tick, and emphatically not the 8254.
+ *
+ * **AMENDED 2026-09-04.** The reasoning below is still right about the 8254's
+ * RATE and still right that INT 15h is the best single-script answer. It was
+ * wrong about one thing, and the error was load-bearing: it concluded that
+ * because the 8254 cannot INTERRUPT here, a cooperative scheduler was
+ * impossible, and two WHEN scripts were refused on that basis. A scheduler
+ * does not need an interrupt — it needs a clock it can READ, and counter 0
+ * can be latched and read at any time. Two scripts now work (see
+ * `schedRuntime`), on a polled counter, with no PIC.
+ *
+ * The rate caveat below is exactly why that scheduler MEASURES the counter
+ * instead of assuming 1193182 Hz: assuming it made every wait 4.19x too
+ * short, which is the same 4.19x this section predicted.
  *
  * The 8254 is the obvious answer and it is the wrong one HERE, for a reason
  * that is measurable rather than aesthetic. `DOSBOX8086_XT` (i8086-dos.js)
@@ -114,9 +127,12 @@
  * a hard stop with a message that names the block and lists what does work.
  *
  * NOT DONE, and named rather than left to be discovered:
- *   - More than one WHEN script, and every event hat other than the green
- *     flag. Both need the cooperative scheduler, which needs a polled clock
- *     (see DECISION 1). Refused.
+ *   - Every event hat other than the green flag (WHEN <pin> pressed, WHEN I
+ *     receive). These need the hat to be POLLED against something, which the
+ *     scheduler could now do — but a pin hat also needs an edge, and an edge
+ *     needs somewhere to sample it that is not inside one script's turn.
+ *     Refused, and no longer for want of a scheduler.
+ *     (More than one WHEN flag script WORKS as of 2026-09-04.)
  *   - Sprites. A DOS program has no stage; a project with a SPRITE section
  *     is refused rather than silently flattened.
  *   - Custom blocks (DEFINE), lists, strings-in-variables, `join`, and every
@@ -263,6 +279,13 @@ export function boolishTruthTest (b) {
 // can make is this divided by a whole number.
 const PIT_HZ = 1193182;
 const PIT_BASE = 0x40;
+// Per-script stack. Deep enough for the nesting this back end can produce
+// (expressions push at most a few words, and there are no recursive calls),
+// small enough that eight scripts cost 2K.
+const SCHED_STACK = 256;
+// Eight scripts is 2K of stack. Past that a .COM has more scheduler than
+// program in its one segment.
+const MAX_SCRIPTS = 8;
 
 /** The literal behind an input, or null if it is computed. Used only to say
  *  which frequency will actually be played -- never to change what is emitted. */
@@ -331,10 +354,15 @@ class Emitter {
         this.uses = {
             puts: false, crlf: false, printn: false,
             mul: false, div: false, mod: false, sdiv: false, ppi: false,
-            keypad: false, adc: false
+            keypad: false, adc: false, sched: false
         };
         this.pins = [];             // declared PINs, from the parser
         this.ports = [];            // declared PORTs -- eight bits at once
+        // More than one WHEN script means the cooperative scheduler, and that
+        // changes what `wait` and `stop this script` compile to. One script
+        // keeps the straight-line path: simpler code, and no reason to make
+        // every existing program pay for a scheduler it does not use.
+        this.tasks = 1;
         this.parts = [];            // declared PARTs (keypad4x4 only, so far)
         this.keypads = new Map();   // name -> label, one scan routine each
     }
@@ -1203,6 +1231,59 @@ class Emitter {
         this.code.push(`${done}:`);
     }
 
+    /**
+     * `wait` INSIDE A SCHEDULED PROGRAM — a yield, not a blocking call.
+     *
+     * The single-script path waits with INT 15h/86h, which BLOCKS: nothing
+     * else can run, which is fine when there is nothing else. With two
+     * scripts it would stop the other one dead, so the wait becomes "wake me
+     * at time T" followed by a switch to whoever is due.
+     *
+     * TIME IS MEASURED IN PIT TICKS, NOT MICROSECONDS, because the clock has
+     * to be POLLED rather than waited on. 8254 counter 0 free-runs at
+     * 1193182 Hz; the scheduler samples it and accumulates the difference, so
+     * elapsed time is exact and no interrupt is needed. That matters: this
+     * bench has no PIC, so an interrupt-driven tick could not exist here --
+     * which is what "the clock blocks" used to mean and why two scripts were
+     * refused.
+     */
+    emitSleep (input, opcode) {
+        this.uses.sched = true;
+        this.uses.mul = true;
+        const inner = Array.isArray(input) ? input[1] : null;
+        if (Array.isArray(inner) && inner[0] !== 12 && inner[0] !== 13) {
+            const secs = Number(inner[1]);
+            if (!Number.isFinite(secs) || secs < 0) {
+                refuse(`"wait ${inner[1]} secs" is not a length of time`,
+                    'bad wait duration', opcode);
+            }
+            const ms = Math.round(secs * 1000);
+            if (ms > 0x7fffff) {
+                refuse(`"wait ${secs} secs" is longer than a scheduled program can time. `
+                    + 'The scheduler compares wake times as SIGNED 32-bit counts of timer '
+                    + 'ticks so they stay correct when the counter wraps, and the tick is '
+                    + 'faster than a millisecond.', 'wait too long', opcode);
+            }
+            this.op(`MOV AX, ${hex16(ms & 0xffff)}`);
+            this.op(`MOV DX, ${hex16(Math.floor(ms / 65536))}`);
+            this.op('MOV BX, [BW_TPMS]   ; ticks per ms, MEASURED at startup');
+            this.op('XOR CX, CX');
+            this.op('CALL BW_MUL32');
+        } else {
+            this.warn('a "wait" whose length is computed is rounded to whole seconds '
+                + 'before it is converted to timer ticks. A typed-in length such as '
+                + '"wait 0.5 secs" is exact.');
+            this.evalNum(input, opcode);
+            this.op('MOV BX, 1000');
+            this.op('XOR CX, CX');
+            this.op('CALL BW_MUL32       ; seconds -> milliseconds');
+            this.op('MOV BX, [BW_TPMS]');
+            this.op('XOR CX, CX');
+            this.op('CALL BW_MUL32       ; -> ticks, at the MEASURED rate');
+        }
+        this.op('CALL BW_SLEEP');
+    }
+
     emitSay (input, opcode, textMode) {
         const inner = Array.isArray(input) ? input[1] : null;
         const isLiteralText = Array.isArray(inner) && (inner[0] === 10 || textMode);
@@ -1233,6 +1314,7 @@ class Emitter {
      * seconds and the learner is told so rather than left to find it.
      */
     emitWait (input, opcode) {
+        if (this.tasks > 1) { this.emitSleep(input, opcode); return; }
         const inner = Array.isArray(input) ? input[1] : null;
         if (Array.isArray(inner) && inner[0] !== 12 && inner[0] !== 13) {
             const secs = Number(inner[1]);
@@ -1411,7 +1493,14 @@ class Emitter {
                 return;
             }
             this.note(`stop ${option}`);
-            this.op('JMP BW_EXIT');
+            // `stop this script` ends THIS task and lets the others run on;
+            // `stop all` ends the program. With one script they coincide,
+            // which is why this distinction never had to exist before.
+            if (this.tasks > 1 && option === 'this script') {
+                this.op('JMP BW_TEND');
+            } else {
+                this.op('JMP BW_EXIT');
+            }
             return;
         }
         case 'looks_say':
@@ -1468,6 +1557,7 @@ class Emitter {
         const r = [];
         const need = this.uses;
         for (const { label, kp } of this.keypads.values()) r.push(...this.keypadRoutine(label, kp));
+        if (need.sched) r.push(...this.schedRuntime());
         if (need.printn) { need.crlf = true; }
         if (need.div || need.mod) need.sdiv = true;
 
@@ -1786,6 +1876,237 @@ class Emitter {
             '    RET'];
     }
 
+    /**
+     * THE COOPERATIVE SCHEDULER — one stack per script, and a switch is a
+     * swap of SP.
+     *
+     * The alternative was to rewrite each script as a state machine over a
+     * tick, which is what the C back end does. A coroutine is better here:
+     * arbitrary control flow survives a wait for free, so a `wait` nested
+     * three loops deep needs no special handling, whereas a state-machine
+     * transform has to lift every one of those loops into explicit state.
+     *
+     * NO INTERRUPTS ARE INVOLVED, and that is not a shortcut -- this bench
+     * has no PIC, so an interrupt-driven scheduler could not exist on it. The
+     * clock is 8254 counter 0, free-running and POLLED: the dispatcher samples
+     * it and accumulates the difference into a 32-bit tick count. That is what
+     * makes the whole thing possible and is exactly the thing the old refusal
+     * said was missing.
+     */
+    schedRuntime () {
+        const n = this.tasks;
+        return ['',
+            '; ---- the cooperative scheduler ------------------------------',
+            '; One stack per script. A yield saves SP and loads the next due',
+            '; script\'s, so a wait nested inside loops resumes exactly where it',
+            '; left off. Time is 8254 counter 0, polled -- there is no PIC on',
+            '; this bench, so an interrupt-driven tick could not exist here.',
+            '',
+            '; Arrange one task\'s stack so the dispatcher\'s RET enters it.',
+            '; AX = stack top, BX = entry point, SI = task index.',
+            '; NOTE: no PUSH SP anywhere. On an 8086 that pushes SP AFTER the',
+            '; decrement -- a real difference from every later x86 -- so the',
+            '; frame is written directly rather than built by pushing.',
+            'BW_TINIT:',
+            '    SUB AX, 2',
+            '    MOV DI, AX',
+            '    MOV [DI], BX',
+            '    MOV DI, SI',
+            '    SHL DI, 1',
+            '    MOV [BW_TSP + DI], AX',
+            '    SHL DI, 1',
+            '    MOV WORD PTR [BW_TWAKE + DI], 0',
+            '    MOV WORD PTR [BW_TWAKE + DI + 2], 0',
+            '    MOV BYTE PTR [BW_TDONE + SI], 0',
+            '    RET',
+            '',
+            '; Counter 0, mode 2, divisor 0 (65536): a free-running divider.',
+            'BW_CLKINIT:',
+            '    MOV AL, 34H',
+            `    MOV DX, ${PIT_BASE + 3}`,
+            '    OUT DX, AL',
+            '    XOR AL, AL',
+            `    MOV DX, ${PIT_BASE}`,
+            '    OUT DX, AL',
+            '    OUT DX, AL',
+            '    CALL BW_RAW',
+            '    MOV [BW_LAST], AX',
+            '    MOV WORD PTR [BW_NOW], 0',
+            '    MOV WORD PTR [BW_NOW + 2], 0',
+            '    ; fall through into the calibration',
+            '',
+            '; HOW FAST IS THIS COUNTER? MEASURE IT, DO NOT ASSUME IT.',
+            '; On a real PC counter 0 is clocked at 1193182 Hz. Here it is fed',
+            '; the CPU\'s own cycle count, so it runs at clockHz -- 5 MHz on the',
+            '; XT preset. Assuming the PC rate made every wait in a scheduled',
+            '; program 4.19x too short: `wait 0.1 secs` measured 24.3 ms against',
+            '; the 100.1 ms the single-script path gives. The program still ran',
+            '; and still looked plausible, which is why this is measured.',
+            ';',
+            '; AND IT IS NOT CALIBRATED AGAINST INT 15h. That was the first',
+            '; attempt and it is wrong for a subtle reason: INT 15h/86h SKIPS',
+            '; simulated time without executing cycles, while the counter only',
+            '; advances on cycles actually run. Calibrating a 1 ms wait against',
+            '; it measured 140 ticks where 5000 were due.',
+            ';',
+            '; INT 21h/2Ch is the right reference: it is a clock you READ, so',
+            '; the spin that waits for it advances the counter the same way the',
+            '; dispatcher will. Two centisecond edges, and the elapsed count is',
+            '; taken from BW_NOW rather than a raw difference, so a counter wrap',
+            '; inside the interval is already handled.',
+            'BW_CALIB:',
+            '    CALL BW_CSEDGE',
+            '    MOV AX, [BW_NOW]',
+            '    MOV [BW_CSA], AX',
+            '    CALL BW_CSEDGE',
+            '    MOV AX, [BW_NOW]',
+            '    SUB AX, [BW_CSA]        ; ticks in one centisecond',
+            '    XOR DX, DX',
+            '    MOV BX, 10',
+            '    DIV BX                  ; -> ticks per millisecond',
+            '    OR AX, AX',
+            '    JNZ BW_CALOK',
+            '    MOV AX, 1               ; never zero: a zero rate would make',
+            '                            ; every wait instant rather than wrong',
+            'BW_CALOK:',
+            '    MOV [BW_TPMS], AX',
+            '    RET',
+            '',
+            '; Spin until the DOS centisecond field changes, keeping BW_NOW',
+            '; current as we go. The saved field is in memory because BW_TICK',
+            '; uses BX.',
+            'BW_CSEDGE:',
+            '    MOV AH, 2CH',
+            '    INT 21H',
+            '    MOV [BW_CSV], DL',
+            'BW_CSE1:',
+            '    CALL BW_TICK',
+            '    MOV AH, 2CH',
+            '    INT 21H',
+            '    CMP DL, [BW_CSV]',
+            '    JE BW_CSE1',
+            '    RET',
+            '',
+            '; Latch counter 0 and read it. The latch is what makes this safe:',
+            '; without it the two byte reads could straddle a decrement and',
+            '; produce a count that was never in the counter.',
+            'BW_RAW:',
+            '    XOR AL, AL',
+            `    MOV DX, ${PIT_BASE + 3}`,
+            '    OUT DX, AL',
+            `    MOV DX, ${PIT_BASE}`,
+            '    IN AL, DX',
+            '    MOV BL, AL',
+            '    IN AL, DX',
+            '    MOV AH, AL',
+            '    MOV AL, BL',
+            '    RET',
+            '',
+            '; BW_NOW += (last - raw). A DOWN counter, so last-raw is elapsed.',
+            '; 32 bits because the counter wraps every 54.9 ms -- a 16-bit clock',
+            '; could not express a delay longer than 27 ms unambiguously.',
+            '; PRESERVES AX AND DX: it did not, once, and it silently destroyed',
+            '; the very delay the caller was about to use.',
+            'BW_TICK:',
+            '    PUSH AX',
+            '    PUSH DX',
+            '    CALL BW_RAW',
+            '    MOV BX, [BW_LAST]',
+            '    MOV [BW_LAST], AX',
+            '    SUB BX, AX',
+            '    ADD [BW_NOW], BX',
+            '    ADC WORD PTR [BW_NOW + 2], 0',
+            '    POP DX',
+            '    POP AX',
+            '    RET',
+            '',
+            '; Sleep DX:AX ticks, then hand over.',
+            'BW_SLEEP:',
+            '    CALL BW_TICK',
+            '    ADD AX, [BW_NOW]',
+            '    ADC DX, [BW_NOW + 2]',
+            '    MOV BX, [BW_CUR]',
+            '    SHL BX, 1',
+            '    SHL BX, 1',
+            '    MOV [BW_TWAKE + BX], AX',
+            '    MOV [BW_TWAKE + BX + 2], DX',
+            '    CALL BW_YIELD',
+            '    RET',
+            '',
+            '; This script is finished. The others carry on.',
+            'BW_TEND:',
+            '    MOV BX, [BW_CUR]',
+            '    MOV BYTE PTR [BW_TDONE + BX], 1',
+            '    CALL BW_YIELD',
+            '    RET',
+            '',
+            'BW_YIELD:',
+            '    MOV BX, [BW_CUR]',
+            '    SHL BX, 1',
+            '    MOV [BW_TSP + BX], SP',
+            'BW_SCAN:',
+            '    CALL BW_TICK',
+            `    MOV CX, ${n}`,
+            '    MOV BX, [BW_CUR]',
+            'BW_NEXT:',
+            '    INC BX',
+            `    CMP BX, ${n}`,
+            '    JB BW_NOWRAP',
+            '    XOR BX, BX',
+            'BW_NOWRAP:',
+            '    CMP BYTE PTR [BW_TDONE + BX], 0',
+            '    JNE BW_SKIP',
+            '    ; Due when (now - wake) >= 0 as a SIGNED 32-bit difference,',
+            '    ; which stays right across the accumulator wrapping.',
+            '    MOV DI, BX',
+            '    SHL DI, 1',
+            '    SHL DI, 1',
+            '    MOV AX, [BW_NOW]',
+            '    MOV DX, [BW_NOW + 2]',
+            '    SUB AX, [BW_TWAKE + DI]',
+            '    SBB DX, [BW_TWAKE + DI + 2]',
+            '    OR DX, DX',
+            '    JS BW_SKIP',
+            '    MOV [BW_CUR], BX',
+            '    SHL BX, 1',
+            '    MOV SP, [BW_TSP + BX]',
+            '    RET',
+            'BW_SKIP:',
+            '    LOOP BW_NEXT',
+            '    ; Nobody runnable. Every script finished means the program has.',
+            `    MOV CX, ${n}`,
+            '    XOR BX, BX',
+            '    XOR AL, AL',
+            'BW_ALLD:',
+            '    ADD AL, [BW_TDONE + BX]',
+            '    INC BX',
+            '    LOOP BW_ALLD',
+            `    CMP AL, ${n}`,
+            // INVERTED, and not for style. `JE BW_EXIT` put the target 251
+            // bytes away and a conditional branch reaches 127; the short
+            // branch goes to BW_SCAN just above, and the far one is a plain
+            // JMP with no range limit. The alternative was `longJumps`, which
+            // would make every scheduled program assemble nowhere else.
+            '    JNE BW_SCAN',
+            '    JMP BW_EXIT'];
+    }
+
+    /** The scheduler's tables and per-script stacks. */
+    schedData () {
+        const n = this.tasks;
+        return ['',
+            'BW_CUR   DW 0            ; the running script',
+            'BW_LAST  DW 0            ; last raw counter reading',
+            'BW_TPMS  DW 1            ; timer ticks per millisecond, MEASURED',
+            'BW_CSA   DW 0            ; calibration scratch',
+            'BW_CSV   DB 0            ; last centisecond seen',
+            'BW_NOW   DW 0, 0         ; 32-bit accumulated ticks',
+            `BW_TSP   DW ${n} DUP (0)        ; saved SP per script`,
+            `BW_TWAKE DW ${n * 2} DUP (0)        ; 32-bit wake time per script`,
+            `BW_TDONE DB ${n} DUP (0)        ; finished flags`,
+            `BW_STK   DB ${n * SCHED_STACK} DUP (0)      ; ${SCHED_STACK} bytes of stack each`];
+    }
+
     /** The row and column bit masks, as data — see keypadRoutine. */
     keypadTables () {
         const d = [];
@@ -1819,6 +2140,7 @@ class Emitter {
                 'BW_PORTC DB 0    ; shadow of port C');
         }
         d.push(...this.keypadTables());
+        if (this.uses.sched) d.push(...this.schedData());
         if (this.uses.sdiv) {
             d.push('BW_Q DW 0', 'BW_Q2 DW 0', 'BW_D DW 0', 'BW_D2 DW 0',
                 'BW_R DW 0', 'BW_R2 DW 0');
@@ -1910,22 +2232,22 @@ export function emitI8086Asm (project, opts = {}) {
         refuse('this project has no "WHEN flag clicked:" script, so there is nothing ' +
             'to run', 'no script');
     }
-    if (flags.length > 1) {
-        refuse(`this project has ${flags.length} "WHEN flag clicked:" scripts and this ` +
-            'back end runs one. Two scripts need the cooperative scheduler generateC ' +
-            'emits, which needs a clock that can be POLLED; the exact clock on this ' +
-            'bench (INT 15h/86h) blocks instead — see DECISION 1 in ' +
-            'lib/bw-asm/pseudocode-8086.js. Join the two scripts into one.',
-        'multiple scripts');
+    if (flags.length > MAX_SCRIPTS) {
+        refuse(`this project has ${flags.length} "WHEN flag clicked:" scripts and the `
+            + `scheduler here carries ${MAX_SCRIPTS}. Each one needs its own stack, and `
+            + 'beyond that the stacks crowd out the program in a .COM\'s single segment. '
+            + 'Join some of the scripts.', 'too many scripts');
     }
 
     // An EMPTY script is refused too, and for the same reason the hardware
     // check above exists: a program that runs, terminates and prints nothing
     // is indistinguishable from a broken emulator.
-    if (!flags[0][1].next) {
-        refuse('the "WHEN flag clicked:" script is empty, so this program would run, ' +
-            'finish, and leave the screen blank — which looks exactly like a bench ' +
-            'that failed to start', 'empty script');
+    for (const [, f] of flags) {
+        if (!f.next) {
+            refuse('a "WHEN flag clicked:" script is empty, so this program would run, ' +
+                'finish, and leave the screen blank — which looks exactly like a bench ' +
+                'that failed to start', 'empty script');
+        }
     }
 
     const em = new Emitter();
@@ -1934,7 +2256,29 @@ export function emitI8086Asm (project, opts = {}) {
     em.parts = declared;
     em.ports = (project && project.stc && project.stc.ports) || [];
     em.blocks = blocks;
-    em.stack(flags[0][1].next);
+    em.tasks = flags.length;
+    if (em.tasks > 1) {
+        // EACH SCRIPT IS A COROUTINE WITH ITS OWN STACK. They are emitted one
+        // after another, each ending in BW_TEND, and the scheduler decides
+        // which runs. Nothing about the block emitters changes -- only `wait`
+        // and `stop this script`, which is the whole benefit of a coroutine
+        // over a state-machine rewrite.
+        em.uses.sched = true;
+        em.warn(`this project has ${em.tasks} "WHEN flag clicked:" scripts, so the build `
+            + 'adds a cooperative scheduler: each script gets its own stack and a `wait` '
+            + 'hands over to whichever script is next due. Time comes from 8254 counter 0, '
+            + 'polled rather than waited on -- this bench has no interrupt controller, so '
+            + 'a `wait` that blocked would stop every other script too. The counter\'s '
+            + 'rate is MEASURED at startup rather than assumed, which costs about 20 ms '
+            + 'before the first script runs.');
+        flags.forEach(([, f], i) => {
+            em.code.push('', `BW_TASK${i}:`);
+            em.stack(f.next);
+            em.op('JMP BW_TEND');
+        });
+    } else {
+        em.stack(flags[0][1].next);
+    }
 
     // Variables carry their declared initial value, as `cInit` does in the C
     // back end: a non-numeric initial value becomes 0 rather than a refusal,
@@ -2043,6 +2387,24 @@ export function emitI8086Asm (project, opts = {}) {
             '    OUT DX, AL'
         );
     }
+    // The scheduler's startup: build one stack per script, then dispatch into
+    // the first. It goes AFTER the variable initialisers, because a script may
+    // read a variable before the scheduler ever runs.
+    if (em.uses.sched) {
+        inits.push('', '    ; ---- start the scheduler ----', '    CALL BW_CLKINIT');
+        for (let i = 0; i < em.tasks; i++) {
+            inits.push(
+                `    MOV AX, OFFSET BW_STK + ${(i + 1) * SCHED_STACK}`,
+                `    MOV BX, OFFSET BW_TASK${i}`,
+                `    MOV SI, ${i}`,
+                '    CALL BW_TINIT');
+        }
+        inits.push(
+            '    MOV WORD PTR [BW_CUR], 0',
+            '    MOV SP, [BW_TSP]',
+            '    RET                     ; into the first script');
+    }
+
     const tail = [
         '',
         'BW_EXIT:',

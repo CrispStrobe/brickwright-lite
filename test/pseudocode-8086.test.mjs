@@ -368,7 +368,6 @@ test('every entry in SUPPORTED has a program above that exercises it', () => {
 // ── The refusals, by name ────────────────────────────────────────────────
 
 const REFUSALS = {
-    'multiple scripts': `WHEN flag clicked:\n  say "a"\nWHEN flag clicked:\n  say "b"\n`,
     'unsupported hat event_whenkeypressed': `WHEN space key pressed:\n  say "a"\n`,
     'no script': `GLOBAL n\n`,
     'empty script': `WHEN flag clicked:\n`,
@@ -603,4 +602,101 @@ test('the assembly names the learner\'s own variables, not BW_V0', () => {
 test('the component leaves the generated assembly where it can be read', () => {
     assert.match(importer, /buffers: \{\.\.\.st\.buffers, asm: out\.asm\}/,
         'the assembly the blocks became is thrown away, so a learner cannot see it');
+});
+
+// ── TWO SCRIPTS, WHICH USED TO BE A REFUSAL ─────────────────────────────
+
+test('two WHEN scripts interleave, on a clock that is POLLED', async () => {
+    // This was refused, and the stated reason was that a cooperative
+    // scheduler needs a clock that can be polled while "the clock on this
+    // bench (INT 15h/86h) blocks". INT 15h does block -- but the 8254 does
+    // not: counter 0 can be latched and read at any time, and the difference
+    // between two readings is elapsed time. So the premise was wrong rather
+    // than the conclusion being hard.
+    const {screen, bench} = await runPseudocode(
+        'DEVICE i8086\n'
+        + 'WHEN flag clicked:\n  REPEAT 3:\n    print "a"\n    wait 0.01 secs\n'
+        + 'WHEN flag clicked:\n  REPEAT 3:\n    print "b"\n    wait 0.01 secs\n');
+    assert.ok(bench.terminated, 'both scripts finished and the program exited');
+    assert.deepEqual(screen, ['a', 'b', 'a', 'b', 'a', 'b']);
+});
+
+test('the interleaving follows the CLOCK, not a round-robin', async () => {
+    // The test that can tell a real scheduler from a turn-taking one. A
+    // round-robin would give "f S f S f S f S"; honouring the requested
+    // delays gives the fast script twice as many turns. If this ever reads
+    // as strict alternation, the wake times have stopped being consulted.
+    const {screen} = await runPseudocode(
+        'DEVICE i8086\n'
+        + 'WHEN flag clicked:\n  REPEAT 4:\n    print "f"\n    wait 0.01 secs\n'
+        + 'WHEN flag clicked:\n  REPEAT 2:\n    print "S"\n    wait 0.02 secs\n');
+    // The COUNTS are the property; the exact order at a tie (both scripts due
+    // in the same instant) is a scan-order detail and pinning it made this
+    // test fail when the timing was FIXED rather than when it broke.
+    assert.equal(screen.filter(x => x === 'f').length, 4);
+    assert.equal(screen.equals ? 0 : screen.filter(x => x === 'S').length, 2);
+    assert.ok(!screen.every((x, i) => x === (i % 2 ? 'S' : 'f')),
+        'strict f/S alternation would mean the wake times are not being consulted');
+});
+
+test('`stop this script` ends one task; `stop all` ends the program', async () => {
+    // With one script these coincide, which is why the distinction never had
+    // to exist before.
+    const one = await runPseudocode(
+        'DEVICE i8086\n'
+        + 'WHEN flag clicked:\n  print "x"\n  stop this script\n  print "never"\n'
+        + 'WHEN flag clicked:\n  REPEAT 2:\n    print "y"\n    wait 0.01 secs\n');
+    assert.deepEqual(one.screen, ['x', 'y', 'y'], 'the other script ran on');
+
+    const all = await runPseudocode(
+        'DEVICE i8086\n'
+        + 'WHEN flag clicked:\n  wait 0.05 secs\n  print "late"\n'
+        + 'WHEN flag clicked:\n  print "first"\n  stop all\n');
+    assert.deepEqual(all.screen, ['first'], 'the waiting script never woke');
+});
+
+test('a scheduled program says that it grew a scheduler', async () => {
+    const {out} = await runPseudocode(
+        'DEVICE i8086\n'
+        + 'WHEN flag clicked:\n  print "a"\n'
+        + 'WHEN flag clicked:\n  print "b"\n');
+    assert.match(out.warnings.join(' '), /cooperative scheduler/);
+    assert.match(out.warnings.join(' '), /polled rather than waited on/);
+});
+
+test('ONE script still takes the straight-line path', async () => {
+    // No scheduler, no per-script stacks, no polled clock -- there is nothing
+    // to schedule, and every existing program should keep paying nothing for
+    // the feature it does not use.
+    const {out} = await runPseudocode(
+        'DEVICE i8086\nWHEN flag clicked:\n  print "solo"\n  wait 0.01 secs\n  print "done"\n');
+    assert.ok(!/BW_YIELD/.test(out.asm), 'no dispatcher is emitted');
+    assert.match(out.asm, /INT 15H/i, 'and `wait` is still the blocking BIOS call');
+    assert.ok(out.bytes.length < 200, `still small (${out.bytes.length} bytes)`);
+});
+
+test('a scheduled `wait` waits the RIGHT length, not merely some length', async () => {
+    // THE BUG THIS CATCHES, WHICH SHIPPED FOR AN HOUR. The scheduler first
+    // assumed counter 0 ran at a PC's 1193182 Hz. On this bench it is fed the
+    // CPU's cycle count instead, so it runs at clockHz -- and every wait came
+    // out 4.19x short. Every interleaving test still passed, because they
+    // compare ORDER and order was unaffected. Only absolute time showed it.
+    const base = await runPseudocode(
+        'DEVICE i8086\nWHEN flag clicked:\n  print "x"\nWHEN flag clicked:\n  print "y"\n');
+    const short = await runPseudocode(
+        'DEVICE i8086\nWHEN flag clicked:\n  wait 0.1 secs\n  print "x"\n'
+        + 'WHEN flag clicked:\n  print "y"\n');
+    const long = await runPseudocode(
+        'DEVICE i8086\nWHEN flag clicked:\n  wait 0.3 secs\n  print "x"\n'
+        + 'WHEN flag clicked:\n  print "y"\n');
+
+    // The startup calibration costs two centisecond edges, so it is measured
+    // once and subtracted rather than hidden in a loose tolerance.
+    const overhead = base.tMs;
+    assert.ok(overhead > 15 && overhead < 30, `calibration cost ${overhead} ms`);
+    const waited = short.tMs - overhead;
+    assert.ok(Math.abs(waited - 100) < 5, `0.1 secs waited ${waited.toFixed(1)} ms`);
+    // And it SCALES -- a constant offset would satisfy the check above.
+    const delta = long.tMs - short.tMs;
+    assert.ok(Math.abs(delta - 200) < 5, `0.1s -> 0.3s moved ${delta.toFixed(1)} ms`);
 });
