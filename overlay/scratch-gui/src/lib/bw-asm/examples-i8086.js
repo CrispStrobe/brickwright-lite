@@ -665,4 +665,110 @@ END START
     },
 ].map(e => ({warns: [], ...e, attribution: AMEY_THAKUR}));
 
-export default I8086_EXAMPLES;
+/**
+ * OUR OWN, and kept OUT of the map above because that map stamps Amey
+ * Thakur's attribution onto everything it touches. Attributing our work to him
+ * would be as wrong as leaving his off ours -- the blanket `.map` is a
+ * convenience for a corpus that happens to be uniform, and the moment it is
+ * not, riding on it is a licence error waiting to be copied.
+ */
+const OURS = [
+    {
+        id: 'pins',
+        label: 'Blink an LED, read a switch (8255)',
+        labelDe: 'LED blinken, Schalter lesen (8255)',
+        expect: 'Watch the LED panel.',
+        source: `; =============================================================================
+; TITLE: An LED and a Switch on the 8255
+; DESCRIPTION: The parallel port every 8086 breadboard hangs its lamps and
+;              buttons off. Nothing here writes to the screen: the output IS
+;              the pins, which is what the LED panel below shows.
+; =============================================================================
+
+PPI_A    EQU 60H          ; port A -- eight LEDs
+PPI_C    EQU 62H          ; port C -- switches on the low half
+PPI_CTRL EQU 63H          ; the control register. WRITE ONLY.
+
+    ORG 100H
+
+START:
+    ; -------------------------------------------------------------------------
+    ; ONE MODE WORD, AT THE START, AND ONLY ONE.
+    ;
+    ; 81h is mode 0 with port A an output, port B an output, port C's UPPER
+    ; half an output and its LOWER half an INPUT. Port C is two half-ports with
+    ; independent directions -- that is what makes it the handshake port on a
+    ; real machine, and here it is why four switches and four lamps can share
+    ; it.
+    ;
+    ; A MODE WORD CLEARS ALL THREE OUTPUT LATCHES. Write it again in the middle
+    ; of the program and every lamp goes dark for the instant until the next
+    ; write. That is real 8255 behaviour and it is why this is done once.
+    ; -------------------------------------------------------------------------
+    MOV DX, PPI_CTRL
+    MOV AL, 81H
+    OUT DX, AL
+
+    XOR BL, BL                  ; BL shadows port A -- see the note below
+
+MAIN:
+    ; -------------------------------------------------------------------------
+    ; READ THE SWITCHES. An 8255 input port returns what the OUTSIDE WORLD is
+    ; holding the line at, not what anything wrote -- so this is the toggle a
+    ; person just flipped.
+    ;
+    ; An undriven input floats HIGH, so a switch at rest reads 1 and CLOSING it
+    ; pulls the line to 0. Every breadboard button is wired that way, which is
+    ; why the test below is for ZERO.
+    ; -------------------------------------------------------------------------
+    MOV DX, PPI_C
+    IN  AL, DX
+    TEST AL, 1                  ; switch on PC0
+    JNZ  OPEN
+
+CLOSED:
+    OR  BL, 0FH                 ; pressed: light the low four lamps
+    JMP DRIVE
+
+OPEN:
+    AND BL, 0F0H                ; released: darken them, leave the rest
+
+DRIVE:
+    ; -------------------------------------------------------------------------
+    ; WHY BL SHADOWS THE PORT. An 8255 output port CAN be read back, but what
+    ; comes back is the latch -- so a read-modify-write works and tells you
+    ; nothing about the world. Ports A and B also have no bit-set command, so
+    ; the whole byte is written at once. Keeping the intended value in a
+    ; register and writing it whole is what an 8051 program does with its port
+    ; SFR, and what a real 8255 driver does too.
+    ; -------------------------------------------------------------------------
+    XOR BL, 80H                 ; blink the top lamp every pass
+    MOV AL, BL
+    MOV DX, PPI_A
+    OUT DX, AL
+
+    ; A pause, so the blink is visible rather than a blur. INT 15h/86h counts
+    ; CX:DX microseconds of MACHINE time -- the 8254 on this bench is clocked
+    ; from the CPU rather than the PC's 1.193182 MHz, so counting its ticks
+    ; would be 4.19x wrong.
+    MOV CX, 3
+    MOV DX, 0D090H              ; 3*65536 + 53392 = 250,000 us
+    MOV AH, 86H
+    INT 15H
+
+    JMP MAIN
+
+; =============================================================================
+; TECHNICAL NOTES
+; =============================================================================
+; 1. THIS PROGRAM NEVER EXITS, and that is correct. A panel of lamps and
+;    switches is a thing you watch, not a thing that finishes. The bench
+;    reports it as running rather than hung.
+; 2. THE SAME CHIP CARRIES THE KEYBOARD on a PC -- port A at 60h is where the
+;    scancode lands. On a board with a keyboard, put lamps on port B or C.
+; = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+`
+    },
+];
+
+export default [...I8086_EXAMPLES, ...OURS];
