@@ -20,6 +20,24 @@ import path from 'node:path';
 
 const GUARD = path.resolve('scripts/lib-source-guard.mjs');
 
+/**
+ * AMBIENT-BINDING triage (gate-shapes): `git` is resolved from PATH here, three
+ * times, and that is deliberate rather than an oversight.
+ *
+ * The subject under test IS git's ancestry answer -- whether `merge-base
+ * --is-ancestor` says a source branch contains the default branch. A stub
+ * would assert this file's opinion of git rather than git's behaviour, which
+ * is precisely the failure the rule elsewhere calls "the test supplied the
+ * precondition production does not".
+ *
+ * It FAILS CLOSED, which is what the rule actually protects. `execFileSync`
+ * throws ENOENT when the binary is absent, `rig()` does not catch, so a box
+ * without git turns every test in this file red rather than green. Verified
+ * rather than assumed: a call to a nonexistent binary throws ENOENT.
+ *
+ * What this does NOT pin is git's VERSION, and `--is-ancestor` has been stable
+ * since 1.8. Recorded as the known limit rather than left implied.
+ */
 /** An origin with one commit on `main`, plus a clone to mutate. */
 function rig() {
     const root = mkdtempSync(path.join(tmpdir(), 'vguard-'));

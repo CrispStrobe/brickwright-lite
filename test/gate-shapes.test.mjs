@@ -28,7 +28,13 @@ const BASELINE = {
     // triaged at their sites and every one FAILS CLOSED on absence. What that does NOT settle is
     // version identity — a different sdcc or simavr is still a different verdict — and nothing
     // here pins one. See docs/GATES-THAT-CANNOT-FAIL.md.
-    'AMBIENT-BINDING': 0,
+    // 0 -> 3 on 2026-09-04. All three are `git` from PATH in
+    // test/vendor-source-guard.test.mjs, triaged in a comment at that site: the
+    // subject under test IS git's ancestry answer, a stub would assert the
+    // test's opinion of git instead of git's behaviour, and absence FAILS
+    // CLOSED (execFileSync throws ENOENT, rig() does not catch, every test in
+    // the file goes red). Verified, not assumed. Unpinned: git's version.
+    'AMBIENT-BINDING': 3,
     // 12 -> 0 on 2026-09-02. The rule now ignores an appearance that is immediately followed by
     // a click/fill/count/evaluate — synchronisation before the real assertion, and the correct
     // way to write a browser gate. The five that survived that narrowing were each triaged at
