@@ -199,7 +199,20 @@ export async function compileC8086 (cSource, seams = {}) {
 
     const assemble = assembleLocal || (async (src) => {
         const mod = await import(/* webpackChunkName: "i8086-asm" */ '../bw-board/i8086-asm.js');
-        return (mod.assemble || mod.default)(src, {variant: '80186'});
+        // `setcc: true` IS FOR COMPILER OUTPUT ONLY, and the assembler's
+        // default is off for a reason worth repeating here. SmallerC lowers a
+        // comparison used as a VALUE -- `return a >= 1;`, `int b = (a > 1);`,
+        // any ternary -- to SETcc, which is an 80386 instruction, so those
+        // programs did not build at all while `if (a >= 1)` did. SmallerC has
+        // no 8086 mode to ask for; its codegen emits SETcc unconditionally.
+        //
+        // The assembler synthesises it from MOV/Jcc/MOV and warns per site.
+        // A learner hand-writing `setge al` in the ASM tab is still refused BY
+        // NAME, because that instruction really is absent from the chip and a
+        // silent substitution would hand them a program that works here and
+        // fails on the lab machine. Nobody carries COMPILER output to a lab
+        // machine, and the learner wrote `a >= 1`, not `setge`.
+        return (mod.assemble || mod.default)(src, {variant: '80186', setcc: true});
     });
     const image = await assemble(asm);
     return {

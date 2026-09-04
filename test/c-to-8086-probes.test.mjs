@@ -18,12 +18,13 @@
  *
  * WHAT THEY FOUND, in order of how much it costs a learner:
  *
- *   1. A COMPARISON USED AS A VALUE DOES NOT BUILD. `return a >= 1;`,
- *      `int b = (a > 1);` and any ternary emit SETcc, an 80386 instruction,
- *      and the route assembles as 80186. The same construct in a CONTROL
- *      position — `if (a >= 1)`, `while (a >= 1)` — compiles to a conditional
- *      JUMP and works. This is the LEAVE/80186 finding one CPU generation
- *      further on, and it is not yet closed.
+ *   1. A COMPARISON USED AS A VALUE DID NOT BUILD — FIXED, and this file is
+ *      where it was found. `return a >= 1;`, `int b = (a > 1);` and any
+ *      ternary emit SETcc, an 80386 instruction, while the same construct in
+ *      a CONTROL position compiles to a conditional JUMP and always worked.
+ *      The assembler now synthesises SETcc from MOV/Jcc/MOV behind an option
+ *      the C route turns on; hand-written `setge al` is still refused by
+ *      name. The pin here fired and was rewritten to assert the answer.
  *   2. `argc` IS DETERMINISTICALLY ZERO. Nothing sets it up, so a learner's
  *      `if (argc > 1)` is silently false. `argv` is non-null, so a null guard
  *      passes and a dereference reads whatever is there.
@@ -85,21 +86,53 @@ async function runC (source, timeout = 3_000_000) {
 
 // ---- 1. the one that stops a learner's program building -------------------
 
-test('KNOWN DEFECT: a comparison used as a VALUE emits an 80386 instruction',
-    {timeout: 120000}, async () => {
-        // SmallerC lowers a comparison-as-value to SETcc, which is 80386. The
-        // route assembles as 80186 (because the compiler also needs LEAVE), so
-        // these do not build at all. Every one is ordinary first-week C.
-        for (const [what, src] of [
-            ['ternary', 'int main(void){int a=5; return a >= 1 ? 100 : 200;}'],
-            ['assigned comparison', 'int main(void){int a=5; int b = (a >= 1); return b;}'],
-            ['returned comparison', 'int main(void){int a=5; return a >= 1;}'],
-            ['logical && as a value', 'int main(void){int a=5; return (a>1) && (a<9);}'],
+test('a comparison used as a VALUE builds and gives the C answer', {timeout: 120000},
+    async () => {
+        // THIS TEST WAS A KNOWN-DEFECT PIN AND THE PIN FIRED. It used to
+        // assert that these were REFUSED: SmallerC lowers a comparison used as
+        // a value to SETcc, an 80386 instruction, so `return a >= 1;` did not
+        // build while `if (a >= 1)` did. The message said what to do when it
+        // started building, and this is that rewrite.
+        //
+        // The assembler now synthesises SETcc from MOV/Jcc/MOV behind an
+        // option the C route turns on (bw-board `fa2e588`). Hand-written
+        // `setge al` in the ASM tab is still refused by name, because that
+        // instruction really is absent from the chip.
+        for (const [what, src, want] of [
+            ['returned comparison, true', 'int main(void){int a=5; return a >= 1;}', 1],
+            ['returned comparison, false', 'int main(void){int a=0; return a >= 1;}', 0],
+            ['ternary, then arm', 'int main(void){int a=5; return a >= 1 ? 100 : 200;}', 100],
+            ['ternary, else arm', 'int main(void){int a=0; return a >= 1 ? 100 : 200;}', 200],
+            ['assigned comparison', 'int main(void){int a=5; int b = (a > 1); return b;}', 1],
+            ['logical && true', 'int main(void){int a=5; return (a>1) && (a<9);}', 1],
+            ['logical && false', 'int main(void){int a=5; return (a>1) && (a<3);}', 0],
         ]) {
-            await assert.rejects(() => runC(src), /SET(GE|G|E|LE|L|NE)\b.*80386/,
-                `${what} should still fail on SETcc — if it now builds, the defect is fixed `
-                + 'and this test should assert the exit code instead');
+            const r = await runC(src);
+            assert.equal(r.exitCode, want, `${what} should exit ${want}`);
         }
+    });
+
+test('and each synthesis warns, so a human sees what was substituted',
+    {timeout: 120000}, async () => {
+        // The warning is what keeps this from being a silent substitution. The
+        // C route may swallow it; a human in the ASM tab should not have to
+        // guess that three instructions replaced one.
+        const {compileC8086} = await import(new URL('bw-asm/assemble-route.js', L).href);
+        const built = await compileC8086('int main(void){int a=5; return a >= 1;}',
+            {compileC: nodeCompileC});
+        const setccWarnings = built.warnings
+            .map((w) => (typeof w === 'string' ? w : w.message || ''))
+            .filter((m) => /80386 instruction; synthesised/.test(m));
+        assert.equal(setccWarnings.length, 1, 'one warning for the one SETcc in this program');
+        assert.match(setccWarnings[0],
+            /no longer assemble under an assembler targeting a real 8086/,
+            'the warning must say what was traded away, not merely that something happened');
+
+        // Two comparisons, two warnings — per site, not per program.
+        const two = await compileC8086('int main(void){int a=5; return (a>1) && (a<9);}',
+            {compileC: nodeCompileC});
+        assert.equal(two.warnings.map((w) => (typeof w === 'string' ? w : w.message || ''))
+            .filter((m) => /80386 instruction; synthesised/.test(m)).length, 2);
     });
 
 test('the SAME comparison in a control position builds and runs', {timeout: 120000}, async () => {
