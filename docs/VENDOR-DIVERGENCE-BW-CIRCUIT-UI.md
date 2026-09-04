@@ -1,7 +1,7 @@
 # Why `sync-bw-circuit-ui.mjs` refuses, and what `--overwrite-local` would cost
 
 > **Resolved 2026-09-04.** The Lite-ahead potentiometer rendering and IBM PC
-> set-1 keyboard path were reconciled upstream in `bw-circuit-ui@ed44d3c`;
+> set-1 keyboard path were reconciled upstream in `bw-circuit-ui@dc720e8`;
 > newer upstream `CircuitDesigner`, machine extraction, footprint, reseat, and
 > circuit-model work was then vendored back without discarding either side.
 > This document remains as the incident record explaining why the guard must
