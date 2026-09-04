@@ -46,6 +46,7 @@ import { CGACard } from './cga-card.js';
 import { PCSpeaker } from './pc-speaker.js';
 import { HerculesCard } from './hercules-card.js';
 import { VGACard } from './vga-card.js';
+import { EGACard } from './ega-card.js';
 import { I8237 } from './i8237.js';
 import { UPD765 } from './upd765.js';
 
@@ -64,6 +65,12 @@ function regOf(w, addr) {
 /**
  * @typedef {object} MachineConfig
  * @property {number} clockHz CPU clock
+ * @property {'8086'|'80186'} [variant] which chip the core is. Default
+ *   '8086'. '80186' adds the fifteen opcodes the 186 put in the holes the
+ *   8086 left as decode aliases and masks shift counts to five bits, which
+ *   is the one difference a program can SEE on an instruction both parts
+ *   have. A breadboard 80188 is the reason this exists: same ISA, eight-bit
+ *   bus, and nothing else in this file changes.
  * @property {Array<{kind: 'ram'|'rom', start: number, end: number}>} regions
  *   inclusive PHYSICAL address ranges in the 1 MB space
  * @property {Array<{kind: 'ppi'|'uart16550'|'acia6850'|'pit'|'pic'|'usart8251',
@@ -88,6 +95,7 @@ const REGS = {
     cga: 16,         // the 3D0h-3DFh block (mode 3D8h, colour 3D9h, status 3DAh)
     hercules: 16,    // the 3B0h-3BFh block (mode 3B8h, status 3BAh, config 3BFh)
     vga: 32,         // the 3C0h-3DFh block (attr/seq/gc/crtc/dac/misc + status)
+    ega: 32,         // the 3C0h-3DFh register block (framebuffer at A0000 is a second, mem window)
     dma: 16,         // the 8237's 00h-0Fh: four channels, then the command block
     // THE PAGE LATCH IS NOT PART OF THE 8237. The chip counts sixteen bits of
     // address and the XT needs twenty, so IBM bolted a separate 74LS670 latch
@@ -192,15 +200,193 @@ export const SDCARD8086 = Object.freeze({
 export const PCXT8086 = Object.freeze({
     clockHz: 4_772_727,
     regions: [
-        { kind: 'ram', start: 0x00000, end: 0x9ffff },   // 640K
-        { kind: 'rom', start: 0xf8000, end: 0xfffff },   // 32K BIOS, holds the reset vector
+        { kind: 'ram', start: 0x00000, end: 0x9ffff },   // 640K conventional
+        { kind: 'ram', start: 0xb8000, end: 0xbffff },   // the CGA text page (B800:0000) — the renderer reads it
+        { kind: 'rom', start: 0xf0000, end: 0xfffff },   // 64K BIOS, holds the reset vector at FFFF0h
     ],
     chips: [
         { kind: 'pic', name: 'pic1', at: 0x20 },                       // XT: 8259 at 20-21h
-        { kind: 'pit', name: 'pit1', at: 0x40, irq: 0 },               // XT: 8254 at 40-43h, OUT0 -> IRQ0
-        { kind: 'ppi', name: 'ppi1', at: 0x60 },                       // XT: 8255 at 60-63h
+        { kind: 'pit', name: 'pit1', at: 0x40, irq: 0 },               // XT: 8254 at 40-43h, OUT0 -> IRQ0 (18.2 Hz tick)
+        { kind: 'ppi', name: 'ppi1', at: 0x60 },                       // XT: 8255 at 60-63h (keyboard scancode + config)
         { kind: 'pcspeaker', name: 'spk', ppi: 'ppi1', pit: 'pit1' },  // 61h bits 0/1 gate counter 2
-        { kind: 'cga', name: 'cga1', at: 0x3d0 },                      // CGA at 3D0-3DFh
+        { kind: 'dma', name: 'dma1', at: 0x00 },                       // XT: 8237 at 00-0Fh
+        { kind: 'dmapage', name: 'dmapg', at: 0x80, dma: 'dma1' },     // the 74LS670 page latch at 80-8Fh
+        // uPD765 at 3F0-3F7h, IRQ6, DMA ch 2. The `dma: 'dma1'` field IS the
+        // wire, not a label: without it the machine builds both chips and
+        // connects neither, the FDC falls back to non-DMA execution, raises
+        // RQM and waits forever for a host byte that never comes. The failure
+        // is a silent hang with no error — anyone hand-writing this config
+        // must not omit it.
+        { kind: 'fdc', name: 'fdc1', at: 0x3f0, irq: 6, dma: 'dma1' },
+        { kind: 'cga', name: 'cga1', at: 0x3d0 },                      // CGA at 3D0-3DFh (text page at B800:0000)
+    ],
+});
+
+/**
+ * The UART-shell example — the 8086's counterpart to the Z80 and 6502 serial
+ * monitors. An 8086, 64K of RAM, a 32K ROM holding the reset vector, and a
+ * single 16550 UART at port 10h. Load rom/serial-monitor.bin (built by
+ * scripts/build-serial-monitor.mjs) and it boots itself into a shell that
+ * prints a banner and echoes what you type, driving the same SerialConsole
+ * the other MCUs use — no BIOS, no disk, nothing to configure.
+ */
+export const SERIALSHELL8086 = Object.freeze({
+    clockHz: 5_000_000,
+    regions: [
+        { kind: 'ram', start: 0x00000, end: 0x0ffff },   // 64K
+        { kind: 'rom', start: 0xf8000, end: 0xfffff },   // 32K, holds the reset vector
+    ],
+    chips: [
+        { kind: 'uart16550', name: 'uart1', at: 0x10 },  // the terminal
+    ],
+});
+
+/**
+ * The display-shell example — the screen counterpart to SERIALSHELL8086. An
+ * 8086, 64K of RAM, the CGA text page mapped at B800:0000, a CGA card at
+ * 3D0-3DFh, and a 32K ROM holding the reset vector. Load rom/cga-demo.bin
+ * (built by scripts/build-cga-demo.mjs) and it boots itself: it selects CGA
+ * text mode and writes a message straight into the text page, which the
+ * VdpScreen widget renders — a board that "boots into a screen" with no BIOS,
+ * no disk, nothing to configure.
+ */
+export const CGADEMO8086 = Object.freeze({
+    clockHz: 4_772_727,
+    regions: [
+        { kind: 'ram', start: 0x00000, end: 0x0ffff },   // 64K conventional
+        { kind: 'ram', start: 0xb8000, end: 0xbffff },   // the CGA text page (B800:0000) — the renderer reads it
+        { kind: 'rom', start: 0xf8000, end: 0xfffff },   // 32K, holds the reset vector
+    ],
+    chips: [
+        { kind: 'cga', name: 'cga1', at: 0x3d0 },        // CGA at 3D0-3DFh (text page at B800:0000)
+    ],
+});
+
+/**
+ * The interrupt example — the third self-booting board, and the one that proves
+ * the tier's interrupt path from a program's point of view. An 8086, 64K RAM,
+ * the CGA text page, an 8259 PIC at 20h, an 8254 PIT at 40h wired OUT0->IR0,
+ * and a 32K ROM. Load rom/timer-demo.bin (scripts/build-timer-demo.mjs) and it
+ * hooks INT 8, programs the PIT to tick, and paints a live counter into the
+ * text page every timer interrupt: 8254 OUT0 -> 8259 IR0 -> CPU INT 8 -> ISR ->
+ * B800 -> EOI, the whole chain, driven only by the running program. The screen
+ * shows a climbing hex counter with no BIOS and no DOS.
+ */
+export const TIMERDEMO8086 = Object.freeze({
+    clockHz: 4_772_727,
+    regions: [
+        { kind: 'ram', start: 0x00000, end: 0x0ffff },   // 64K conventional (IVT, stack, the counter)
+        { kind: 'ram', start: 0xb8000, end: 0xbffff },   // the CGA text page (B800:0000)
+        { kind: 'rom', start: 0xf8000, end: 0xfffff },   // 32K, holds the reset vector
+    ],
+    chips: [
+        { kind: 'pic', name: 'pic1', at: 0x20 },         // 8259 at 20-21h (IR0 -> INT 8)
+        { kind: 'pit', name: 'pit1', at: 0x40, irq: 0 }, // 8254 at 40-43h, OUT0 -> IR0
+        { kind: 'cga', name: 'cga1', at: 0x3d0 },        // CGA at 3D0-3DFh (text page at B800:0000)
+    ],
+});
+
+/**
+ * The Hercules display board — the mono-graphics member of the display-demo
+ * set (ROADMAP E7.1). An 8086, 64K RAM, the HGC mono page mapped at B000:0000,
+ * a Hercules card at 3B0-3BFh, and a 32K ROM. Load rom/hercules-demo.bin
+ * (scripts/build-hercules-demo.mjs) and it sets HGC graphics mode and fills the
+ * 720x348 mono framebuffer with vertical bars.
+ *
+ * NOTE (2026-09-04): the firmware and the card STATE are verified, but the
+ * DOS/host renderer does NOT yet decode HGC — its videoFrame() refuses mode 6h
+ * by name ("Hercules graphics is 720x348 mono at B0000h, which this renderer
+ * does not draw"). So this board is not yet wired into the Machine-Loader: it
+ * would show a refusal string, not a picture. It ships as verified state now,
+ * ready for when the renderer's four-bank (y mod 4, 8KB banks) decode lands.
+ */
+export const HERCDEMO8086 = Object.freeze({
+    clockHz: 4_772_727,
+    regions: [
+        { kind: 'ram', start: 0x00000, end: 0x0ffff },   // 64K conventional
+        { kind: 'ram', start: 0xb0000, end: 0xb7fff },   // the HGC mono page (B000:0000) — 32K, four 8K banks
+        { kind: 'rom', start: 0xf8000, end: 0xfffff },   // 32K, holds the reset vector
+    ],
+    chips: [
+        { kind: 'hercules', name: 'hgc1', at: 0x3b0 },   // Hercules at 3B0-3BFh (mono page at B000:0000)
+    ],
+});
+
+/**
+ * The VGA display board — the 256-colour member of the display-demo set
+ * (ROADMAP E7.1), and the one the DOS/host renderer already draws today (it
+ * decodes mode 13h / vga8). An 8086, 64K RAM, the mode-13h framebuffer mapped
+ * at A000:0000 (320x200 linear, one byte a pixel), a VGA card at 3C0-3DFh, and
+ * a 32K ROM. Load rom/vga-demo.bin (scripts/build-vga-demo.mjs) and it programs
+ * mode 13h, sets a DAC palette, and writes a picture into A0000 — which
+ * VdpScreen renders in colour, no BIOS.
+ *
+ * This is the first display board besides CGA whose renderer decode ships:
+ * mode 13h is a LINEAR framebuffer with no bank interleave, so it is the
+ * simplest of the graphics modes to fill and the most colourful payoff.
+ */
+export const VGADEMO8086 = Object.freeze({
+    clockHz: 4_772_727,
+    regions: [
+        { kind: 'ram', start: 0x00000, end: 0x0ffff },   // 64K conventional
+        { kind: 'ram', start: 0xa0000, end: 0xaffff },   // the mode-13h framebuffer (A000:0000), 64K
+        { kind: 'rom', start: 0xf8000, end: 0xfffff },   // 32K, holds the reset vector
+    ],
+    chips: [
+        { kind: 'vga', name: 'vga1', at: 0x3c0 },        // VGA register block at 3C0-3DFh
+    ],
+});
+
+/**
+ * The keyboard board — the INPUT counterpart to the display set, proving the
+ * XT keyboard hardware path end to end. An 8086, 64K RAM, the CGA text page, an
+ * 8259 PIC at 20h, an 8255 PPI at 60h (the keyboard port), a CGA card, and a
+ * 32K ROM. Call machine.keyIn(scancode) and it latches the byte at port A and
+ * raises IRQ1; rom/keyboard-demo.bin (scripts/build-keyboard-demo.mjs) hooks
+ * INT 09h, reads 0x60, acknowledges via the port-B strobe, translates set-1
+ * scancodes to ASCII, echoes to the text page, and issues its own EOI.
+ *
+ * This is the first thing in the tier to drive the 8259's IRQ1 path for real —
+ * setIRQ, priority, acknowledge, EOI — rather than calling cpu.interrupt(9)
+ * directly. The demo must EOI itself (bare-metal, no BIOS) or exactly one key
+ * ever arrives, the same failure the timer demo's EOI guards against.
+ */
+export const KBDDEMO8086 = Object.freeze({
+    clockHz: 4_772_727,
+    regions: [
+        { kind: 'ram', start: 0x00000, end: 0x0ffff },   // 64K conventional (IVT, stack, cursor)
+        { kind: 'ram', start: 0xb8000, end: 0xbffff },   // the CGA text page (B800:0000)
+        { kind: 'rom', start: 0xf8000, end: 0xfffff },   // 32K, holds the reset vector
+    ],
+    chips: [
+        { kind: 'pic', name: 'pic1', at: 0x20 },         // 8259 at 20-21h (IR1 -> INT 9)
+        { kind: 'ppi', name: 'ppi1', at: 0x60 },         // 8255 at 60-63h (keyboard: scancode at 60h, ack at 61h)
+        { kind: 'cga', name: 'cga1', at: 0x3d0 },        // CGA at 3D0-3DFh (echo shows at B800:0000)
+    ],
+});
+
+/**
+ * The EGA display board — the 16-colour PLANAR member of the display-demo set
+ * (ROADMAP E7.1), and the hardest. An 8086, 64K RAM, an EGA card at 3C0-3DFh,
+ * and a 32K ROM. There is deliberately NO RAM region at A0000: the EGA card
+ * mediates that window (a write is routed by the sequencer map mask into one or
+ * more of the four bit planes, not stored linearly). Load rom/ega-demo.bin
+ * (scripts/build-ega-demo.mjs) and it selects a planar graphics mode, sets the
+ * 16-entry attribute palette, and fills the four planes with distinct patterns.
+ *
+ * NOTE (2026-09-04): firmware + card STATE (registers + planes) are verified,
+ * but the DOS/host renderer's planar decode is the other lane's half and is not
+ * written yet, so this board is NOT wired into the Machine-Loader — same
+ * discipline as Hercules before its decode landed. Ships as verified state.
+ */
+export const EGADEMO8086 = Object.freeze({
+    clockHz: 4_772_727,
+    regions: [
+        { kind: 'ram', start: 0x00000, end: 0x0ffff },   // 64K conventional (NO RAM at A0000 — the EGA card owns it)
+        { kind: 'rom', start: 0xf8000, end: 0xfffff },   // 32K, holds the reset vector
+    ],
+    chips: [
+        { kind: 'ega', name: 'ega1', at: 0x3c0 },        // EGA register block at 3C0-3DFh; framebuffer at A0000
     ],
 });
 
@@ -298,6 +484,8 @@ export class I8086Machine {
                 chip = new VGACard(config.clockHz, {
                     onVSync: () => { if (this.hooks.onVSync) this.hooks.onVSync(); },
                 });
+            } else if (c.kind === 'ega') {
+                chip = new EGACard(config.clockHz);
             } else {
                 chip = new MC6850({
                     onTx: (byte) => { if (this.hooks.onSerial) this.hooks.onSerial(byte, this.tMs); },
@@ -321,6 +509,12 @@ export class I8086Machine {
         // The master PIC — the one step() polls to deliver INTR. A breadboard
         // has at most one; if there are several, the first declared wins.
         this._pic = Object.values(this.chips).find((c) => c instanceof I8259) || null;
+
+        // The XT keyboard sits on the first 8255: its scancode is read at port A
+        // and its acknowledge is the port-B bit-7 strobe. keyIn() latches a byte
+        // and raises IRQ1; the strobe (bit 7 rising, seen in _out) clears it.
+        this._kbdPpi = Object.values(this.chips).find((c) => c instanceof I8255) || null;
+        this._kbdStrobe = false;
 
         // Wire each interrupting peripheral's output to its PIC line. The PIT
         // routes through _pitOutput (it has three outputs, only one of which
@@ -362,6 +556,58 @@ export class I8086Machine {
             });
         }
 
+        // The EGA framebuffer: a SECOND, memory-bus window onto the already-built
+        // EGA card at A0000-AFFFF, reached through memRead/memWrite (the planar
+        // path) rather than read/write (the registers). Registered as an mmio
+        // window but NOT added to this.chips -- the planes live inside the card
+        // and are already in its getState(). This is why EGA memory is not a plain
+        // RAM region: a write there is routed by the sequencer map mask into the
+        // selected planes, not stored linearly.
+        for (const c of config.chips) {
+            if (c.kind !== 'ega') continue;
+            const ega = this.chips[c.name];
+            this._mmio.push({
+                name: c.name + '.fb', regs: 0x10000, stride: 1,
+                chip: { read: (o) => ega.memRead(o), write: (o, v) => ega.memWrite(o, v) },
+                start: 0xa0000, end: 0xaffff,
+            });
+        }
+
+        // The floppy transfer path. The FDC drives one byte per DMA request
+        // (its onDmaRequest hook); the byte crosses through _read/_write — the
+        // SAME memory decode the CPU uses, so a DMA write into a ROM window is
+        // discarded exactly as a CPU write is, and a bad page register cannot
+        // silently overwrite the BIOS. The 8237's terminal count is chained
+        // back to the FDC's TC pin WITHOUT dropping the existing onDmaComplete
+        // forward a UI observes — the wire that, unmade, hangs a BIOS read.
+        for (const c of config.chips || []) {
+            if (c.kind !== 'fdc' || !c.dma) continue;
+            const fdc = this.chips[c.name];
+            const dma = this.chips[c.dma];
+            if (!fdc || !dma) continue;
+            const dmaChannel = c.dmaChannel ?? 2;
+            let fromMem = 0xff;
+            fdc.hooks.onDmaRequest = (dir, byte) => {
+                // The FDC's request IS the DRQ pulse — assert it around the
+                // single-byte transfer, or transfer()'s pendingChannel() sees
+                // no requesting channel and moves nothing while reporting
+                // success (a silently corrupt read).
+                dma.dreq(dmaChannel, true);
+                const moved = dma.transfer(
+                    (a) => (a === null ? byte : this._read(a)),
+                    (a, b) => { if (a === null) fromMem = b & 0xff; else this._write(a, b); },
+                    1);
+                dma.dreq(dmaChannel, false);
+                if (moved === 0) return false;   // masked or finished: terminal count
+                return dir === 'read' ? fromMem : true;
+            };
+            const prevTC = dma.hooks.onTerminalCount;
+            dma.hooks.onTerminalCount = (ch) => {
+                if (ch === dmaChannel) fdc.terminalCount();
+                if (prevTC) prevTC(ch);
+            };
+        }
+
         // Build the PC speaker(s) now that the 8255 and 8254 they observe
         // exist. Each reads its counter's divisor on demand and listens to a
         // named 8255 port (61h = port B on a PC) through _portChange.
@@ -380,6 +626,7 @@ export class I8086Machine {
             this._speakers.push({ spk, ppi: c.ppi, port: c.port ?? 'b' });
         }
 
+        this.variant = config.variant || '8086';
         this.cpu = new I8086({
             read: (a) => this._read(a),
             write: (a, v) => this._write(a, v),
@@ -389,7 +636,15 @@ export class I8086Machine {
             // starve the timer -- and so the 8086's mid-REP segment-override
             // erratum has something to happen to.
             intPending: () => !!(this._pic && this._pic.intActive),
-        });
+        }, { variant: this.variant });
+        // Interrupt-trap bridge (E6.8.3): a SOFTWARE INT n (INT/INT3/INTO and the
+        // internal exceptions) executes inside the core, so the core emits it via
+        // cpu.onInterrupt; forward it to the machine's single onInterrupt hook so
+        // the debugger sees one stream — 'int' from here, 'irq'/'nmi' from
+        // _serviceInterrupts. The core must emit from the opcode/exception sites,
+        // NOT from its shared _interrupt(n) funnel, which the hardware path also
+        // uses and which would then double-fire against 'irq'/'nmi'.
+        this.cpu.onInterrupt = (ev) => { if (this.hooks.onInterrupt) this.hooks.onInterrupt(ev); };
     }
 
     /** The tone the speaker is producing, if any. {hz, on} or null. */
@@ -429,16 +684,40 @@ export class I8086Machine {
 
     // ---- the port bus ---------------------------------------------------
     _in(port) {
+        let val = 0xff;
         for (const w of this._io) {
-            if (port >= w.start && port <= w.end) return w.chip.read(regOf(w, port));
+            if (port >= w.start && port <= w.end) { val = w.chip.read(regOf(w, port)); break; }
         }
-        return 0xff;
+        // Port-access trap (E6.8.3): the value handed back is the one the program
+        // sees, so the hook fires AFTER the read and reports what was read. This
+        // does not reopen the refusal to DUMP the port space (i8086-debug.js:22):
+        // that refuses a debugger-initiated read; this observes the PROGRAM's read
+        // and never performs one of its own.
+        if (this.hooks.onPortAccess) this.hooks.onPortAccess({ dir: 'in', port, value: val & 0xff });
+        return val;
     }
 
     _out(port, val) {
         for (const w of this._io) {
-            if (port >= w.start && port <= w.end) { w.chip.write(regOf(w, port), val); return; }
+            if (port >= w.start && port <= w.end) {
+                const reg = regOf(w, port);
+                w.chip.write(reg, val);
+                // XT keyboard acknowledge: a write to the keyboard 8255's port B
+                // (reg 1) with bit 7 HIGH strobes the latch clear and drops IRQ1.
+                // The clear happens on the RISING edge — a program that sets bit 7
+                // and leaves it there has still acknowledged — so edge, not level.
+                if (w.chip === this._kbdPpi && reg === 1 && this._pic) {
+                    const hi = (val & 0x80) !== 0;
+                    if (hi && !this._kbdStrobe) this._pic.setIRQ(1, 0);
+                    this._kbdStrobe = hi;
+                }
+                break;
+            }
         }
+        // Port-access trap (E6.8.3): fires on EVERY OUT, decoded or not — a debug
+        // watch on "anything touches port 61h" wants the access the program made,
+        // not only the ones that hit a chip. Zero cost when no watch is set.
+        if (this.hooks.onPortAccess) this.hooks.onPortAccess({ dir: 'out', port, value: val & 0xff });
     }
 
     // ---- pins -----------------------------------------------------------
@@ -558,6 +837,11 @@ export class I8086Machine {
     _serviceInterrupts() {
         if (this._nmiPending) {
             this._nmiPending = false;
+            // Interrupt trap (E6.8.3): source distinguishes the delivered lines
+            // the machine drives — 'nmi' here, 'irq' below — from a software INT n
+            // (source 'int'), which executes inside the core and is emitted there.
+            // "break on IRQ0" and "break on INT 21h" are different questions.
+            if (this.hooks.onInterrupt) this.hooks.onInterrupt({ vector: 2, source: 'nmi' });
             this.cpu.interrupt(2);        // NMI is vector 2, unconditional
             return true;
         }
@@ -568,6 +852,7 @@ export class I8086Machine {
         // halves.
         if (!this.cpu.canTakeInterrupt()) return false;
         const vector = this._pic.acknowledge();
+        if (this.hooks.onInterrupt) this.hooks.onInterrupt({ vector, source: 'irq' });
         this.cpu.interrupt(vector);   // pushes flags/cs/ip, clears halted
         return true;
     }
@@ -609,6 +894,28 @@ export class I8086Machine {
         return false;
     }
 
+    /**
+     * Press a key: the XT keyboard hardware path, the counterpart to serialIn.
+     * The scancode appears at the keyboard 8255's port A (read at 0x60) and the
+     * keyboard raises IRQ1 on the PIC — exactly what a bare-metal INT 09h reader
+     * or a BIOS both sit on. The interrupt clears when the program strobes the
+     * ack (port B bit 7), handled in _out. Host widgets map key events to set-1
+     * scancodes and call this; it is machine-agnostic, needing only a PPI + PIC.
+     */
+    /**
+     * Can this machine take a key at all? A board with no 8255 has nowhere to
+     * latch a scancode and one with no 8259 has no wire to raise IRQ1 on.
+     * Asked BEFORE a host offers a keyboard, so the offer matches the board.
+     */
+    canTakeKeys() { return !!(this._kbdPpi && this._pic); }
+
+    keyIn(scancode) {
+        if (!this._kbdPpi || !this._pic) return false;
+        this._kbdPpi.setInputPort('a', scancode & 0xff);   // scancode latched at port A (0x60)
+        this._pic.setIRQ(1, 1);                             // the keyboard's IRQ1
+        return true;
+    }
+
     /** CPU state keys to snapshot (same pattern as M6502Machine.CPU_STATE). */
     static CPU_STATE = ['ax', 'bx', 'cx', 'dx', 'sp', 'bp', 'si', 'di',
         'ip', 'cs', 'ds', 'es', 'ss', 'flags', 'halted'];
@@ -621,10 +928,36 @@ export class I8086Machine {
             if (typeof c.getState === 'function') chips[name] = c.getState();
             else if (typeof c.saveState === 'function') chips[name] = c.saveState();
         }
-        return { v: 1, cpu, cycles: this.cycles, mem: this.mem.slice(), chips };
+        // THE VARIANT IS PART OF THE SNAPSHOT even though it is not CPU state,
+        // because restoring without it fails SILENTLY and in the worst way:
+        // the same bytes execute as different instructions. 60h is PUSHA on
+        // one machine and JO on the other, and nothing about the restored
+        // registers or memory would look wrong. See loadState().
+        return { v: 1, variant: this.variant, cpu, cycles: this.cycles,
+            mem: this.mem.slice(), chips };
     }
 
     loadState(s) {
+        if (s.v !== 1) throw new Error(`unknown machine state version ${s.v}`);
+        // A MISMATCHED RESTORE IS REFUSED BY NAME, following z80-machine.js:370
+        // (a snapshot with a tape position and no tape inserted). A snapshot
+        // is restored onto an identically-BUILT machine; the variant is a
+        // construction choice, not state, so a difference here means the
+        // caller built the wrong machine rather than that the state is stale.
+        // Silently loading it would produce a machine that runs the restored
+        // program correctly right up to the first 186 opcode and then quietly
+        // takes a conditional jump instead.
+        //
+        // A snapshot written before the variant existed carries no `variant`
+        // key at all, and those were all 8086s -- so an absent key reads as
+        // '8086' rather than as "any", which keeps the old snapshots loadable
+        // and still refuses to put one on a 186.
+        const want = s.variant ?? '8086';
+        if (want !== this.variant) {
+            throw new Error(`snapshot is from a ${want} machine and this is a ${this.variant}: `
+                + 'the same bytes decode differently on the two, so this would run '
+                + 'silently wrong rather than fail');
+        }
         for (const k of I8086Machine.CPU_STATE) if (k in s.cpu) this.cpu[k] = s.cpu[k];
         this.cycles = s.cycles;
         this.mem.set(s.mem);
