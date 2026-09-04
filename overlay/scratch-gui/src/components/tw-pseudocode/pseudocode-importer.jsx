@@ -57,12 +57,16 @@ const DEVICE_GROUPS = [
     { label: 'Z80', core: 'z80', devices: [
         { id: 'z80', label: 'Z80 bench', compile: false, emulator: null },
     ]},
-    // `compile: false` is load-bearing here, as it is for the Arduboy above.
-    // There is no blocks→8086 path and there is not going to be one soon:
-    // sb3-creator has no 8086 device profile, no pin model and no code
-    // generator for it, so choosing this device offers ASSEMBLY, not
-    // compilation. Listing it as compilable would promise a road that ends
-    // in "unknown device: i8086" three clicks later.
+    // `compile: false` STILL MEANS WHAT IT SAYS, and it is not a leftover.
+    // It is read as "the hosted C compiler can build this", and it cannot:
+    // sb3-creator has no 8086 device profile and stc-compiler has no 8086
+    // back end, so `generateC` + POST is a road that ends in "unknown
+    // device: i8086" three clicks later. What changed is that there is now a
+    // SECOND road — `lib/bw-asm/pseudocode-8086.js` lowers the blocks to
+    // 8086 assembly in the browser and `requestAssembly` assembles them
+    // here, with no network and no toolchain — and `runPseudocodeOn8086`
+    // is the ▶ button for it. The two flags are about different roads, so
+    // the device is offered as compilable-by-neither and runnable anyway.
     //
     // It is in the picker at all because it is the ONLY way to reach the
     // 8086: the circuit palette has no 8086 part yet (the extractor and the
@@ -71,7 +75,7 @@ const DEVICE_GROUPS = [
     // done today. When the part lands, circuit-tab.jsx already publishes
     // bwDeviceCore = 'i8086' and this entry keeps working unchanged.
     { label: '8086', core: 'i8086', devices: [
-        { id: 'i8086', label: 'Intel 8086 (DOS bench — assembly only)', compile: false, emulator: null },
+        { id: 'i8086', label: 'Intel 8086 (DOS bench)', compile: false, emulator: null },
     ]},
     { label: 'MicroPython', core: 'micropython', devices: [
         { id: 'microbit', label: 'micro:bit', compile: false, emulator: null },
@@ -230,6 +234,17 @@ const L10N = {
         devicePlaceholder: 'Device…', deviceTitle: 'Target device — sets pin names, compile target and emulator',
         maximizeTitle: 'Maximize editor', restoreTitle: 'Restore panels',
         asmWriteFirst: 'Write assembly source first.',
+        // Pseudocode → 8086, the offline path. The status line says where the
+        // program was built as well as that it was, because "built" and
+        // "built here, without the network" are different sentences and this
+        // button's whole claim is the second one.
+        run8086: '▶ Run on 8086',
+        run8086Title: 'Turn these blocks into 8086 assembly in this browser and run it on the DOS bench — no network, no toolchain.',
+        run8086Building: 'Lowering the blocks to 8086 assembly…',
+        run8086Built: (n, b) => `Built ${n} bytes from ${b} block(s) in this browser — booting the 8086 DOS bench…`,
+        run8086Refused: m => `The 8086 back end refused this program: ${m}`,
+        run8086Failed: m => `Could not build for the 8086: ${m}`,
+        run8086Empty: 'Write some pseudocode first.',
         // reference section headers
         h: {
             Structure: 'Structure', EventsHats: 'Events (hats)', Control: 'Control',
@@ -371,6 +386,13 @@ const L10N = {
         devicePlaceholder: 'Gerät…', deviceTitle: 'Zielgerät — bestimmt Pinbenennung, Compile-Ziel und Emulator',
         maximizeTitle: 'Editor maximieren', restoreTitle: 'Panels wiederherstellen',
         asmWriteFirst: 'Schreibe zuerst Assembler-Quellcode.',
+        run8086: '▶ Auf 8086 ausführen',
+        run8086Title: 'Diese Blöcke in diesem Browser in 8086-Assembler übersetzen und auf der DOS-Werkbank ausführen — ohne Netz, ohne Toolchain.',
+        run8086Building: 'Übersetze die Blöcke in 8086-Assembler…',
+        run8086Built: (n, b) => `${n} Bytes aus ${b} Block/Blöcken in diesem Browser erzeugt — starte die 8086-DOS-Werkbank…`,
+        run8086Refused: m => `Das 8086-Backend hat dieses Programm abgelehnt: ${m}`,
+        run8086Failed: m => `Build für den 8086 fehlgeschlagen: ${m}`,
+        run8086Empty: 'Schreibe zuerst Pseudocode.',
         // reference section headers
         h: {
             Structure: 'Struktur', EventsHats: 'Events (Hats)', Control: 'Steuerung',
@@ -775,6 +797,7 @@ class PseudocodeImporter extends React.Component {
         this.deployToPico = this.deployToPico.bind(this);
         this.flashToBoard = this.flashToBoard.bind(this);
         this.flashStm32ViaSwd = this.flashStm32ViaSwd.bind(this);
+        this.runPseudocodeOn8086 = this.runPseudocodeOn8086.bind(this);
         this.openCodeFile = this.openCodeFile.bind(this);
         this.saveCodeFile = this.saveCodeFile.bind(this);
         this._autosaveTimer = null;
@@ -1630,6 +1653,71 @@ class PseudocodeImporter extends React.Component {
             this.setState({busy: false,
                 status: this.L.asmBuiltOnly(out.bytes.length, routeName, target) + warn});
         }
+    }
+
+    /**
+     * ▶ Run on 8086 — the OFFLINE path from blocks to a running machine.
+     *
+     * Every other device on this tab reaches silicon as C through the hosted
+     * compiler: `generateC(project)` and a POST to stc-compiler. There is no
+     * 8086 back end behind that URL and there is not going to be one, so
+     * this button takes the other road: `lib/bw-asm/pseudocode-8086.js`
+     * lowers the blocks to 8086 assembly, `requestAssembly` assembles them
+     * in this browser (the same local route `assembleAndRun` uses, argued
+     * for in `lib/bw-asm/assemble-route.js`), and the image travels the
+     * SAME `bw-asm-rom-ready` → circuit-tab → debug-panel path a hand-written
+     * assembly program does. No network is touched at any point, which is
+     * the whole claim.
+     *
+     * THE SOURCE IS PASSED AS WELL AS THE PROJECT, and that is not
+     * belt-and-braces. `SB3Creator.parse()` silently DROPS a hardware
+     * statement on a DEVICE it does not recognise, so a program with PIN
+     * declarations arrives here as an empty script. The back end refuses it
+     * by reading the text — see `emitI8086Asm`.
+     *
+     * A REFUSAL IS DIFFERENT FROM A FAILURE, and the status line says which.
+     * `Pseudocode8086Error` means this program uses something the back end
+     * does not lower, and the message names the block and lists what does
+     * work; anything else is the assembler or a broken module.
+     *
+     * The generated assembly is left in the ASM tab. A learner who wants to
+     * know what their blocks became can go and read it, which is most of the
+     * point of having a machine this small.
+     */
+    async runPseudocodeOn8086 () {
+        const src = this.state.buffers.pseudocode || '';
+        if (!src.trim()) {
+            this.setState({status: this.L.run8086Empty});
+            return;
+        }
+        this.setState({busy: true, status: this.L.run8086Building, output: null});
+        let out;
+        let blocks = 0;
+        try {
+            const SB3Creator = (await this.lib()).default;
+            const creator = new SB3Creator();
+            creator.parse(src);
+            const stage = (creator.project.targets || []).find(t => t.isStage);
+            blocks = stage ? Object.keys(stage.blocks || {}).length : 0;
+            const mod = await import(
+                /* webpackChunkName: "bw-pc8086" */ '../../lib/bw-asm/pseudocode-8086.js');
+            out = await mod.buildPseudocode8086({project: creator.project, source: src});
+        } catch (e) {
+            this.setState({busy: false, status: e && e.name === 'Pseudocode8086Error'
+                ? this.L.run8086Refused(e.message)
+                : this.L.run8086Failed(e && e.message ? e.message : String(e))});
+            return;
+        }
+        window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {
+            detail: {rom: out.bytes, listing: null, target: out.target,
+                slotId: out.slotId, profile: out.profile, format: out.format}
+        }));
+        const warn = out.warnings.length ? this.L.asmWarnings(out.warnings) : '';
+        this.setState(st => ({
+            busy: false,
+            buffers: {...st.buffers, asm: out.asm},
+            status: this.L.run8086Built(out.bytes.length, blocks) + warn
+        }));
     }
 
     // Keil C51 gives itself away: keywords SDCC spells differently, and its register headers.
@@ -3423,6 +3511,22 @@ class PseudocodeImporter extends React.Component {
                             {this.L.flashBoard}
                         </button>
                     ) : null}
+                    {/* The 8086's ▶. It sits with the other per-device buttons
+                        rather than with the Python/JS "Run" above, because it
+                        does what THEY do — build for the selected device and
+                        start it — and not what that one does (evaluate the
+                        editor's text in a worker). `asmTargetForDevice` is the
+                        one function that decides what an 8086 is, so the
+                        button and the assembler cannot disagree about it. */}
+                    {this.state.lang === 'pseudocode'
+                     && asmTargetForDevice(this.currentDevice()) === 'i8086' ? (
+                            <button onClick={this.runPseudocodeOn8086} disabled={this.state.busy}
+                                data-testid="bw-run-8086"
+                                title={this.L.run8086Title}
+                                style={{...btn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
+                                {this.L.run8086}
+                            </button>
+                        ) : null}
                     {this.currentDevice() === 'stm32f030' && this.state.lang === 'pseudocode' ? (
                         <button onClick={this.flashStm32ViaSwd} disabled={this.state.busy}
                             data-testid="bw-flash-swd"
