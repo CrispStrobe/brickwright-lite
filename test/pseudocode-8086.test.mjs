@@ -326,6 +326,15 @@ const PROGRAMS = {
         // An 8255 input port with nothing driving it reads all ones.
         `DEVICE i8086\nPORT sw = P2 INPUT\nWHEN flag clicked:\n  say (read sw)\n`,
         ['255']],
+    stc12_whenpin: [
+        // The hat ARMS but never fires: an undriven 8255 input reads high, so
+        // a pin that is not ACTIVE LOW never reaches "pressed", and the hat
+        // sits waiting for the release that comes first. Meanwhile the flag
+        // script prints and stops everything -- which is also what makes this
+        // the one pin-hat program that can terminate without being driven.
+        `DEVICE i8086\nPIN sw = P2.0 INPUT\nWHEN flag clicked:\n  print "ok"\n  stop all\n`
+            + `WHEN sw pressed:\n  print "never"\n`,
+        ['ok']],
     control_wait_until: [
         // An 8255 input port with nothing driving it reads high, so this one
         // is already true when it is reached and the program runs on.

@@ -127,12 +127,10 @@
  * a hard stop with a message that names the block and lists what does work.
  *
  * NOT DONE, and named rather than left to be discovered:
- *   - Every event hat other than the green flag (WHEN <pin> pressed, WHEN I
- *     receive). These need the hat to be POLLED against something, which the
- *     scheduler could now do — but a pin hat also needs an edge, and an edge
- *     needs somewhere to sample it that is not inside one script's turn.
- *     Refused, and no longer for want of a scheduler.
- *     (More than one WHEN flag script WORKS as of 2026-09-04.)
+ *   - WHEN I receive / WHEN <key> pressed. Broadcast needs a queue, and the
+ *     key hat needs the keyboard's own edge, neither of which exists here.
+ *     (More than one WHEN flag script, and WHEN <pin> pressed/released, WORK
+ *     as of 2026-09-04 — see `schedRuntime` and `emitPinHat`.)
  *   - Sprites. A DOS program has no stage; a project with a SPRITE section
  *     is refused rather than silently flattened.
  *   - Custom blocks (DEFINE), lists, strings-in-variables, `join`, and every
@@ -208,7 +206,8 @@ export const SUPPORTED = Object.freeze({
     stc12_readport: 'read <port>',
     stc12_writepin: 'set <pin> to <value>',
     stc12_settone: 'set <pin> to <n> hz',
-    control_wait_until: 'wait until <cond>'
+    control_wait_until: 'wait until <cond>',
+    stc12_whenpin: 'WHEN <pin> pressed/released:'
 });
 
 /** What a refused block is called, when the opcode alone would not say. */
@@ -574,6 +573,37 @@ class Emitter {
      * variable in a single-script program with no interrupt handlers cannot
      * change inside a loop whose body is empty.
      */
+    /**
+     * Does this stack of blocks contain a point where control is handed over?
+     *
+     * Only `wait` and `wait until` yield. A FOREVER without one runs until
+     * the machine is switched off, and under the scheduler that means every
+     * other script -- including a pin hat that might be the only thing able
+     * to end it -- never runs again. Cooperative scheduling makes that the
+     * program's problem rather than the runtime's, so it is worth saying so
+     * at build time instead of leaving a learner with a frozen bench.
+     */
+    containsYield (id) {
+        const YIELDS = new Set(['control_wait', 'control_wait_until']);
+        const seen = new Set();
+        const walk = (start) => {
+            let cur = start;
+            while (cur && !seen.has(cur)) {
+                seen.add(cur);
+                const b = this.blocks[cur];
+                if (!b) return false;
+                if (YIELDS.has(b.opcode)) return true;
+                for (const k of ['SUBSTACK', 'SUBSTACK2']) {
+                    const sub = b.inputs && b.inputs[k];
+                    if (Array.isArray(sub) && typeof sub[1] === 'string' && walk(sub[1])) return true;
+                }
+                cur = b.next;
+            }
+            return false;
+        };
+        return walk(id);
+    }
+
     readsTheWorld (input) {
         const OUTSIDE = new Set(['stc12_read', 'stc12_readport', 'stc12_keypad']);
         const seen = new Set();
@@ -1284,6 +1314,46 @@ class Emitter {
         this.op('CALL BW_SLEEP');
     }
 
+    /**
+     * `WHEN <pin> pressed:` — AN EDGE, WHICH IS WHY IT NEEDS ITS OWN TASK.
+     *
+     * The hat fires on the TRANSITION into the named state, not while the pin
+     * sits there. A hat that fired on the level would run its body thousands
+     * of times while a finger rested on a button, which is not what anyone
+     * means by "when pressed".
+     *
+     * So the task arms first — it waits for the pin to be in the OPPOSITE
+     * state — and only then watches for the state itself. Between samples it
+     * hands over, so a `WHEN flag clicked` script beside it keeps running.
+     * That is the whole reason this could not exist before the scheduler: an
+     * edge needs somewhere to sample from that is not inside another script's
+     * turn, and now there is one.
+     *
+     * ACTIVE LOW is already handled by the pin read, so "pressed" means what
+     * the learner's wiring says it means rather than what the voltage does.
+     */
+    emitPinHat (block, name, edge) {
+        const arm = this.label('HAT'), watch = this.label('HAT');
+        // `pressed` is a 1 out of emitPinRead (ACTIVE LOW inverts there).
+        const wantOne = edge !== 'released';
+        this.code.push(`${arm}:`);
+        this.emitPinRead(name, block.opcode);
+        this.op('OR AX, AX');
+        this.op(`${wantOne ? 'JZ' : 'JNZ'} ${watch}      ; armed: the pin is in the other state`);
+        this.op('CALL BW_POLL1MS');
+        this.op(`JMP ${arm}`);
+        this.code.push(`${watch}:`);
+        this.emitPinRead(name, block.opcode);
+        this.op('OR AX, AX');
+        const fire = this.label('HAT');
+        this.op(`${wantOne ? 'JNZ' : 'JZ'} ${fire}       ; the edge`);
+        this.op('CALL BW_POLL1MS');
+        this.op(`JMP ${watch}`);
+        this.code.push(`${fire}:`);
+        this.stack(block.next);
+        this.op(`JMP ${arm}                ; re-arm: one run per press`);
+    }
+
     emitSay (input, opcode, textMode) {
         const inner = Array.isArray(input) ? input[1] : null;
         const isLiteralText = Array.isArray(inner) && (inner[0] === 10 || textMode);
@@ -1415,6 +1485,17 @@ class Emitter {
             return;
         }
         case 'control_forever': {
+            if (this.tasks > 1) {
+                const body = b.inputs && b.inputs.SUBSTACK;
+                const inner = Array.isArray(body) ? body[1] : null;
+                if (typeof inner !== 'string' || !this.containsYield(inner)) {
+                    this.warn('a FOREVER with no `wait` inside it never hands control '
+                        + 'back, and this program has more than one script — so every '
+                        + 'other script, including any `WHEN <pin> pressed`, stops '
+                        + 'running the moment this loop starts. Put a `wait` in the '
+                        + 'loop, even a short one.');
+                }
+            }
             const top = this.label('L');
             this.note('forever');
             this.code.push(`${top}:`);
@@ -1441,7 +1522,11 @@ class Emitter {
             // program as running rather than hung.
             const top = this.label('W');
             this.note('wait until');
-            if (!this.readsTheWorld(b.inputs.CONDITION)) {
+            // WITH MORE THAN ONE SCRIPT THIS WARNING WOULD BE WRONG: another
+            // script can change a variable while this one waits, so a wait on
+            // variables alone is perfectly reasonable there. The claim only
+            // holds when there is exactly one script and nothing else running.
+            if (this.tasks === 1 && !this.readsTheWorld(b.inputs.CONDITION)) {
                 // NOTHING IN THIS LOOP CAN CHANGE THE ANSWER. One script, no
                 // interrupt handlers, and a condition that reads no pin, port
                 // or keypad -- so if it is false on entry it is false forever.
@@ -1457,7 +1542,19 @@ class Emitter {
             this.code.push(`${top}:`);
             this.evalCondInput(b.inputs.CONDITION, b.opcode);
             this.op('OR AX, DX');
-            this.op(`JZ ${top}`);
+            if (this.tasks > 1) {
+                // A SPIN THAT DOES NOT HAND OVER WOULD STARVE EVERY OTHER
+                // SCRIPT, including the pin hat that might be the only thing
+                // able to make this condition true. Cooperative scheduling
+                // means the cooperation has to be emitted.
+                const done = this.label('W');
+                this.op(`JNZ ${done}`);
+                this.op('CALL BW_POLL1MS');
+                this.op(`JMP ${top}`);
+                this.code.push(`${done}:`);
+            } else {
+                this.op(`JZ ${top}`);
+            }
             return;
         }
         case 'control_if': {
@@ -1556,6 +1653,11 @@ class Emitter {
     runtime () {
         const r = [];
         const need = this.uses;
+        // The scheduler's own poll routine multiplies milliseconds by the
+        // measured tick rate, so BW_MUL32 is part of it -- not something only
+        // a `wait` drags in. A program of nothing but pin hats never calls
+        // emitSleep and was assembling with an undefined symbol.
+        if (need.sched) need.mul = true;
         for (const { label, kp } of this.keypads.values()) r.push(...this.keypadRoutine(label, kp));
         if (need.sched) r.push(...this.schedRuntime());
         if (need.printn) { need.crlf = true; }
@@ -2033,6 +2135,18 @@ class Emitter {
             '    CALL BW_YIELD',
             '    RET',
             '',
+            '; Hand over for about a millisecond. A pin hat samples at 1 kHz,',
+            '; which is far finer than a finger and cheap enough that the other',
+            '; scripts barely notice.',
+            'BW_POLL1MS:',
+            '    MOV AX, 1',
+            '    XOR DX, DX',
+            '    MOV BX, [BW_TPMS]',
+            '    XOR CX, CX',
+            '    CALL BW_MUL32',
+            '    CALL BW_SLEEP',
+            '    RET',
+            '',
             '; This script is finished. The others carry on.',
             'BW_TEND:',
             '    MOV BX, [BW_CUR]',
@@ -2216,8 +2330,10 @@ export function emitI8086Asm (project, opts = {}) {
     const blocks = stage.blocks || {};
     const hats = Object.entries(blocks).filter(([, b]) => b && b.topLevel);
     const flags = hats.filter(([, b]) => b.opcode === 'event_whenflagclicked');
+    const pinHats = hats.filter(([, b]) => b.opcode === 'stc12_whenpin');
     for (const [, b] of hats) {
         if (b.opcode === 'event_whenflagclicked') continue;
+        if (b.opcode === 'stc12_whenpin') continue;
         if (b.opcode === 'procedures_definition') {
             refuse('DEFINE (a custom block) is not supported on the 8086 — a call ' +
                 'needs a frame this back end does not build', 'custom block');
@@ -2228,12 +2344,14 @@ export function emitI8086Asm (project, opts = {}) {
             'lib/bw-asm/pseudocode-8086.js. Use WHEN flag clicked.',
         `unsupported hat ${b.opcode}`, b.opcode);
     }
-    if (flags.length === 0) {
-        refuse('this project has no "WHEN flag clicked:" script, so there is nothing ' +
-            'to run', 'no script');
+    // A pin hat is a script too, so a project made only of them has something
+    // to run -- it just never finishes, which is what an event program does.
+    if (flags.length === 0 && pinHats.length === 0) {
+        refuse('this project has no "WHEN flag clicked:" script and no pin event, so ' +
+            'there is nothing to run', 'no script');
     }
-    if (flags.length > MAX_SCRIPTS) {
-        refuse(`this project has ${flags.length} "WHEN flag clicked:" scripts and the `
+    if (flags.length + pinHats.length > MAX_SCRIPTS) {
+        refuse(`this project has ${flags.length + pinHats.length} scripts and the `
             + `scheduler here carries ${MAX_SCRIPTS}. Each one needs its own stack, and `
             + 'beyond that the stacks crowd out the program in a .COM\'s single segment. '
             + 'Join some of the scripts.', 'too many scripts');
@@ -2242,7 +2360,7 @@ export function emitI8086Asm (project, opts = {}) {
     // An EMPTY script is refused too, and for the same reason the hardware
     // check above exists: a program that runs, terminates and prints nothing
     // is indistinguishable from a broken emulator.
-    for (const [, f] of flags) {
+    for (const [, f] of [...flags, ...pinHats]) {
         if (!f.next) {
             refuse('a "WHEN flag clicked:" script is empty, so this program would run, ' +
                 'finish, and leave the screen blank — which looks exactly like a bench ' +
@@ -2256,7 +2374,7 @@ export function emitI8086Asm (project, opts = {}) {
     em.parts = declared;
     em.ports = (project && project.stc && project.stc.ports) || [];
     em.blocks = blocks;
-    em.tasks = flags.length;
+    em.tasks = flags.length + pinHats.length;
     if (em.tasks > 1) {
         // EACH SCRIPT IS A COROUTINE WITH ITS OWN STACK. They are emitted one
         // after another, each ending in BW_TEND, and the scheduler decides
@@ -2264,7 +2382,7 @@ export function emitI8086Asm (project, opts = {}) {
         // and `stop this script`, which is the whole benefit of a coroutine
         // over a state-machine rewrite.
         em.uses.sched = true;
-        em.warn(`this project has ${em.tasks} "WHEN flag clicked:" scripts, so the build `
+        em.warn(`this project has ${em.tasks} scripts, so the build `
             + 'adds a cooperative scheduler: each script gets its own stack and a `wait` '
             + 'hands over to whichever script is next due. Time comes from 8254 counter 0, '
             + 'polled rather than waited on -- this bench has no interrupt controller, so '
@@ -2276,6 +2394,20 @@ export function emitI8086Asm (project, opts = {}) {
             em.stack(f.next);
             em.op('JMP BW_TEND');
         });
+        pinHats.forEach(([, h], i) => {
+            em.code.push('', `BW_TASK${flags.length + i}:`);
+            em.emitPinHat(h, h.fields.PIN[0], h.fields.EDGE ? h.fields.EDGE[0] : 'pressed');
+        });
+    } else if (pinHats.length === 1 && flags.length === 0) {
+        // A LONE PIN HAT STILL NEEDS THE SCHEDULER, because its poll hands
+        // over -- there is nothing else to hand over TO, but the polling
+        // routine lives in the scheduler runtime and the clock it waits on is
+        // the scheduler's. Cheaper to reuse it than to grow a second timer.
+        em.tasks = 1;
+        em.uses.sched = true;
+        em.code.push('', 'BW_TASK0:');
+        em.emitPinHat(pinHats[0][1], pinHats[0][1].fields.PIN[0],
+            pinHats[0][1].fields.EDGE ? pinHats[0][1].fields.EDGE[0] : 'pressed');
     } else {
         em.stack(flags[0][1].next);
     }
