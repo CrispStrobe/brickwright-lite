@@ -493,7 +493,6 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             capsFor = target;
             capsOf = target.capabilities();
             debugFoundation.attachCapabilities(capsOf);
-            bindDebugEvents();
         }
         return capsOf;
     }
@@ -505,6 +504,13 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             unsubscribeDebugEvents = null;
         }
         unsubscribeDebugEvents = subscribeDebugTargetEvents(target, eventStream);
+    }
+
+    // Per-instruction capture is intentionally opt-in. Merely opening a bench
+    // or reading capabilities must leave the CPU's zero-listener fast path in
+    // place; a timeline consumer or event breakpoint activates production.
+    function ensureDebugEvents() {
+        if (!unsubscribeDebugEvents) bindDebugEvents();
     }
 
     function setStatus(phase, message = '') {
@@ -2456,9 +2462,13 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         trace: () => trace.rows(),
         traceDropped: () => trace.dropped(),
         /** Canonical compatibility events, bulk-drained by future timeline consumers. */
-        drainDebugEvents: (max) => eventStream.drain(max),
-        debugEventStats: () => ({queued: eventStream.size(), dropped: eventStream.dropped()}),
-        addEventBreakpoint: spec => debugFoundation.addBreakpoint(spec),
+        enableDebugEvents() { ensureDebugEvents(); return true; },
+        drainDebugEvents: (max) => { ensureDebugEvents(); return eventStream.drain(max); },
+        debugEventStats: () => {
+            ensureDebugEvents();
+            return {queued: eventStream.size(), dropped: eventStream.dropped()};
+        },
+        addEventBreakpoint: spec => { ensureDebugEvents(); return debugFoundation.addBreakpoint(spec); },
         evaluateEventBreakpoints: (event, context) => debugFoundation.evaluateBreakpoints(event, context),
         debugRecorder: () => debugFoundation.recorder,
         clearTrace() { trace.clear(); emit(); },
