@@ -63,6 +63,17 @@ if (!check) {
             for (const f of diverged) console.error(`  local ${f}`);
             console.error('\nUpstream these patches to bw-circuit-ui first, then re-sync.');
             console.error('To knowingly DISCARD them instead: --overwrite-local');
+            // THE FLAG IS THE HAZARD, not the divergence. A refusal that names
+            // files and not stakes invites the one-word way past it, so point
+            // at what is actually at risk. Measured 2026-09-04: VdpScreen.jsx
+            // carries the 8086 keyboard path (browser key -> IBM PC set-1
+            // scancode, through the 8255's port A with IRQ1) that upstream has
+            // never had, so discarding is not recoverable from upstream.
+            console.error('\nBEFORE you reach for that flag: docs/VENDOR-DIVERGENCE-BW-CIRCUIT-UI.md');
+            console.error('names what each file diverges by. VdpScreen.jsx holds the 8086 keyboard');
+            console.error('path, which upstream has never had — --overwrite-local deletes it.');
+            console.error('CircuitDesigner.jsx diverges BOTH ways (19 lines ahead, 46 behind), so');
+            console.error('neither side can be taken wholesale.');
             process.exit(3);
         }
         if (diverged.length) console.error(`--overwrite-local: discarding local edits in ${diverged.length} file(s)`);
