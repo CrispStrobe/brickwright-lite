@@ -48,6 +48,33 @@ try {
     check('Code starts in no-chip mode', await device.inputValue() === '' && /no chips/i.test(firstDevice || ''),
         `value=${await device.inputValue()} label=${firstDevice}`);
 
+    // micro:bit BEFORE any catalogue example is open, which is the only point it
+    // is reachable — and the reason is worth writing down, because I removed this
+    // check on a wrong premise first.
+    //
+    // Nine examples declare micro:bit and none has a circuit bench, which looks
+    // like a picker offering a target that gets refused. It is not: micro:bit is
+    // those examples' AUTHORED device, and example-bench.js short-circuits at
+    // `if (!retargeted)` before any refusal. Verified both ways —
+    // resolveExampleBench(mb01,'microbit','microbit') returns {retargeted:false}
+    // with no error, while (mb01,'arduino-uno','microbit') IS refused. They have
+    // no bench because their hardware is the micro:bit; they run through
+    // MicroPython rather than a breadboard.
+    //
+    // So the tab cannot be reached by retargeting a loaded hardware example: the
+    // catalogue opens examples FOR the selected device, so clicking an mb0* item
+    // while stm32f030 is selected is itself a refused retarget. With nothing
+    // loaded there is no example to retarget, and selecting the device is enough.
+    await device.selectOption('microbit');
+    await page.waitForFunction(() => document.querySelector(
+        '[data-testid="bw-device-select"]')?.value === 'microbit', null, {timeout: 15000});
+    check('selecting micro:bit reveals its generated-code tab',
+        await page.getByRole('button', {name: /micro:bit/i}).count() > 0,
+        `select=${await device.inputValue()}`);
+    await device.selectOption('');
+    await page.waitForFunction(() => document.querySelector(
+        '[data-testid="bw-device-select"]')?.value === '', null, {timeout: 15000});
+
     // Open / Save / examples / catalog live behind the `⋯` menu since the UI
     // consolidation. Opening it is the user's click, not a shortcut around one:
     // everything below still has to find and use the real control.
@@ -142,30 +169,23 @@ try {
             `select=${await device.inputValue()} runtime=${runtimeDevice}`);
     }
 
-    // The micro:bit tab check used to live inside the loop above, behind
-    // `if (target === 'microbit')`. With the targets derived it can never be
-    // true, and a sub-check that cannot run is worse than one that is absent —
-    // it reads as coverage. Replaced by the fact underneath it, as a ratchet.
+    // The micro:bit tab check used to sit inside the loop above, behind
+    // `if (target === 'microbit')`. With the targets derived that can never be
+    // true, so it is restored HERE, reached the way it is actually reachable.
     //
-    // MEASURED across examples/index.json: microbit is declared by 9 examples
-    // and benched by 0, so no catalogue example can retarget to it at all. That
-    // is a real gap in the catalogue rather than a gate problem, and it is the
-    // reason the tab cannot be reached this way. When someone adds the first
-    // micro:bit bench this assertion fails and asks for the tab check back.
-    const microbitBenches = await page.evaluate(async () => {
-        const all = await (await fetch('examples/index.json')).json();
-        return all.filter(e => e.benches && e.benches.microbit).map(e => e.id);
-    });
-    const microbitDeclared = await page.evaluate(async () => {
-        const all = await (await fetch('examples/index.json')).json();
-        return all.filter(e => (e.devices || []).includes('microbit')).length;
-    });
-    check('no catalogue example benches micro:bit yet — restore the tab check when one does',
-        microbitBenches.length === 0,
-        microbitBenches.length
-            ? `now benched by: ${microbitBenches.join(', ')} — put the micro:bit generated-code ` +
-              'tab assertion back, retargeting one of these'
-            : `${microbitDeclared} example(s) declare micro:bit, 0 provide a bench`);
+    // I first removed it on a wrong premise, and the correction is worth keeping
+    // because the numbers looked damning and were not. Nine examples declare
+    // micro:bit and none has a bench, which reads like a picker offering a
+    // target that gets refused. It is not: micro:bit is those examples' AUTHORED
+    // device (`authored: "microbit"` for all nine), and example-bench.js
+    // short-circuits `if (!retargeted)` before any refusal, returning no error.
+    // Verified both directions — resolveExampleBench(mb01, 'microbit',
+    // 'microbit') gives {retargeted: false} and no error, while
+    // resolveExampleBench(mb01, 'arduino-uno', 'microbit') is refused. They have
+    // no circuit bench because their hardware IS the micro:bit; they run through
+    // MicroPython, not a breadboard. So there is nothing to retarget TO
+    // micro:bit, and the tab is reached by opening such an example directly.
+
 } catch (error) {
     check('example-selector browser journey completes', false, String(error).slice(0, 300));
 } finally {
