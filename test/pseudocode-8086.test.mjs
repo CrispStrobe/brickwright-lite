@@ -73,7 +73,10 @@ async function runPseudocode (source) {
     creator.parse(source);
     const out = await buildPseudocode8086(
         {project: creator.project, source}, {hostedFetch: forbiddenFetch});
-    const bench = await createI8086DosBench({bytes: out.bytes, format: out.format});
+    // The chips the program's own declarations require, which is how an
+    // ANALOG pin gets a converter to read.
+    const bench = await createI8086DosBench(
+        {bytes: out.bytes, format: out.format, chips: out.chips});
     bench.target.run();
     // 5 ms slices, the shape the debug session's frame loop pumps in. The cap
     // is generous and finite: a program that has not finished in four

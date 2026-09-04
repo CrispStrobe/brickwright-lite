@@ -60,7 +60,7 @@
  *                    screenText: () => string[], report: () => object}>}
  */
 export async function createI8086DosBench (opts) {
-    const {bytes, format, keys, onChar, onExit, variant} = opts;
+    const {bytes, format, keys, onChar, onExit, variant, chips} = opts;
     if (!bytes || !bytes.length) throw new Error('the DOS bench was handed an empty image');
 
     const [{I8086Machine}, dosMod, dbgMod] = await Promise.all([
@@ -91,8 +91,16 @@ export async function createI8086DosBench (opts) {
     // programs are 8086 programs, and silently running them on a different
     // chip is the kind of change that alters a result without altering a
     // test.
-    const machine = new I8086Machine(
-        variant ? {...DOSBOX8086_XT, variant} : DOSBOX8086_XT);
+    // CHIPS A PROGRAM'S DECLARATIONS ADD. `PIN pot = P1.3 ANALOG` needs a
+    // converter, and requiring the learner to list one before reading a
+    // voltage would be the tool failing them -- the 8255 already appears the
+    // same way. What must NOT happen is appearing invisibly: the build warns
+    // by name and port for every chip it adds, so it is a fact to check
+    // rather than a coincidence to infer when the ports do not match a board.
+    const base = variant ? {...DOSBOX8086_XT, variant} : DOSBOX8086_XT;
+    const machine = new I8086Machine((chips && chips.length)
+        ? {...base, chips: [...base.chips, ...chips]}
+        : base);
     const dos = createDos8086(machine, {
         onChar: onChar || null,
         keys: keys || [],

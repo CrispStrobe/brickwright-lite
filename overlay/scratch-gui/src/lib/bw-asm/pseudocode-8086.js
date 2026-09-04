@@ -253,6 +253,11 @@ export function boolishTruthTest (b) {
 /** The 8255 on this tier, at the XT's addresses: A=60h, B=61h, C=62h,
  *  control=63h. The same chip the keyboard's scancode arrives on, which is
  *  why one board can serve a pin program and a keyboard program at once. */
+// The ADC0809 lives in 300h-31Fh, the block IBM documented for cards a user
+// adds -- a learner's add-on board belongs where add-on boards went.
+const ADC_BASE = 0x300;
+const ADC_EOC = 0x308;
+
 const PPI_BASE = 0x60;
 const PPI_CTRL = 0x63;
 
@@ -308,7 +313,7 @@ class Emitter {
         this.uses = {
             puts: false, crlf: false, printn: false,
             mul: false, div: false, mod: false, sdiv: false, ppi: false,
-            keypad: false
+            keypad: false, adc: false
         };
         this.pins = [];             // declared PINs, from the parser
         this.parts = [];            // declared PARTs (keypad4x4 only, so far)
@@ -702,13 +707,12 @@ class Emitter {
         // ADC0809 grows a chip this pin can resolve to, and the refusal lifts
         // exactly there.
         if (pin.direction === 'analog') {
-            refuse(`"${pin.name}" is declared ANALOG, and this bench reads it through an `
-                + '8255, which has no analog path -- it is a digital parallel port, so the '
-                + 'best it could do is answer 0 or 1 where the program expects 0 to 1023. '
-                + 'Reading a voltage needs a converter this board does not have. Declare the '
-                + 'pin INPUT and read it as a digital 0 or 1, or run this program on a '
-                + 'device with an ADC.',
-                'analog pin on a digital port', opcode);
+            // Reaching here means a WRITE to an analog pin. Reading one is
+            // handled before this, by emitPinRead -> emitAnalogRead.
+            refuse(`"${pin.name}" is declared ANALOG and this writes to it. An analog `
+                + 'declaration means "measure the voltage here", and a converter reads -- '
+                + 'it has no way to drive the pin back. Declare the pin OUTPUT to drive it.',
+                'write to an analog pin', opcode);
         }
         const declared = String(pin.direction || 'undeclared').toUpperCase();
         const what = want === 'output'
@@ -782,6 +786,7 @@ class Emitter {
      */
     emitPinRead (name, opcode) {
         const p = this.pinAddr(name, opcode);
+        if (p.direction === 'analog') { this.emitAnalogRead(p, opcode); return; }
         this.checkDirection(p, 'input', opcode);
         this.uses.ppi = true;
         this.op(`MOV DX, ${p.dataPort}`);
@@ -913,6 +918,56 @@ class Emitter {
             this.keypads.set(kp.name, { label: `BW_KEYPAD_${this.keypads.size}`, kp });
         }
         this.op(`CALL ${this.keypads.get(kp.name).label}`);
+    }
+
+    /**
+     * READ A VOLTAGE — `PIN pot = P1.3 ANALOG`, through an ADC0809 at 300h.
+     *
+     * THE CHANNEL IS THE BIT, NOT THE PORT. On an STC12 the ADC channel n IS
+     * physically P1.n, and the 0809's eight-channel mux keeps that a MAPPING
+     * rather than a translation -- which is the same relationship P1/P2/P3 ->
+     * A/B/C already is, and the reason this chip and not the single-channel
+     * ADC0804. P1 is what makes the pin analog; the bit picks the channel.
+     *
+     * THE POLL IS NOT CEREMONY. A conversion takes 64 ADC clocks -- about 500
+     * CPU cycles here -- and START does NOT clear the output latch, so a
+     * program that reads without polling gets the PREVIOUS conversion. It
+     * would appear to work from the second call onward and be wrong on the
+     * first, which is the silent-wrong class this tier exists to refuse. So
+     * the emitted sequence always polls EOC.
+     *
+     * EIGHT BITS, SCALED TO TEN. The 0809 answers 0..255 where an STC12's
+     * ADC answers 0..1023, and a program that compares against 512 has to
+     * mean the same thing on both. `SHL 2` scales it, and the warning says so
+     * rather than letting the two devices disagree quietly -- the low two
+     * bits are resolution this converter never had, not precision invented.
+     */
+    emitAnalogRead (p, opcode) {
+        if (p.port !== 1) {
+            refuse(`PIN ${p.name} is declared ANALOG on P${p.port}. The converter's eight `
+                + 'channels correspond to P1.0-P1.7, the way an STC12\'s ADC channels are '
+                + 'physically P1.0-P1.7, so an analog pin has to be on P1.',
+                'analog pin not on P1', opcode);
+        }
+        this.uses.adc = true;
+        this.warn(`"${p.name}" is analog, so the build adds an ADC0809 at ${ADC_BASE.toString(16).toUpperCase()}h `
+            + `and reads channel ${p.bit} for P1.${p.bit}. It converts to EIGHT bits (0-255) `
+            + 'where an STC12 gives ten (0-1023), so the reading is scaled up by four -- the '
+            + 'low two bits are resolution this converter does not have.');
+        this.op(`MOV DX, ${ADC_BASE + p.bit}      ; the ADDRESS selects the mux channel`);
+        this.op('OUT DX, AL         ; any write is ALE + START');
+        const poll = this.label('ADC');
+        this.code.push(`${poll}:`);
+        this.op(`MOV DX, ${ADC_EOC}`);
+        this.op('IN AL, DX');
+        this.op('TEST AL, 1         ; bit 0 is EOC');
+        this.op(`JZ ${poll}          ; no PIC on this bench, so polling is the only way`);
+        this.op(`MOV DX, ${ADC_BASE}`);
+        this.op('IN AL, DX          ; OE -- the converted byte');
+        this.op('XOR AH, AH');
+        this.op('SHL AX, 1');
+        this.op('SHL AX, 1          ; 0-255 -> 0-1023, to agree with an STC12');
+        this.op('XOR DX, DX');
     }
 
     emitSay (input, opcode, textMode) {
@@ -1717,6 +1772,16 @@ export function emitI8086Asm (project, opts = {}) {
         '    INT 21h'
     ];
 
+    // THE CHIPS THIS PROGRAM NEEDS, so the bench can put them on the board.
+    // A declaration causes a chip to appear -- a learner who had to write a
+    // chip list before blinking an LED would have been failed by the tool,
+    // and the 8255 already works this way. But appearing INVISIBLY is the
+    // same failure class as a silently chosen default, so every added chip
+    // is named in a warning as well as returned here.
+    const chips = em.uses.adc
+        ? [{ kind: 'adc0809', name: 'adc1', at: ADC_BASE }]
+        : [];
+
     const asm = [
         ...head,
         ...inits,
@@ -1731,6 +1796,7 @@ export function emitI8086Asm (project, opts = {}) {
 
     return {
         asm,
+        chips,
         warnings: em.warnings,
         variables: [...em.vars.values()].map(v => v.name)
     };
@@ -1752,7 +1818,7 @@ export function emitI8086Asm (project, opts = {}) {
  *   warnings: string[], route: string, target: string, org: number|null}>}
  */
 export async function buildPseudocode8086 ({project, source}, seams = {}) {
-    const {asm, warnings, variables} = emitI8086Asm(project, {source});
+    const {asm, chips, warnings, variables} = emitI8086Asm(project, {source});
     const out = await requestAssembly({source: asm, device: 'i8086'}, seams);
     return {
         bytes: out.bytes,
@@ -1766,6 +1832,9 @@ export async function buildPseudocode8086 ({project, source}, seams = {}) {
         slotId: out.slotId,
         profile: out.profile,
         asm,
+        // The chips this program's declarations require. The bench puts them
+        // on the board; the warnings say so out loud.
+        chips,
         variables,
         // The emitter's give-and-take first, then the assembler's. Both are
         // shown; neither is silent.
