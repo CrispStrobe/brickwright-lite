@@ -1421,6 +1421,19 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             delete runner.setInput;
         }
 
+        // WHAT THE PORTS ARE DOING, asked per frame rather than captured.
+        // `capabilities().outputs` is the shape and does not change;
+        // `target.outputs()` is the state and changes every instruction, so
+        // this is exposed as a FUNCTION. Half the corpus's device programs --
+        // traffic lights, a stepper, a bargraph -- produce no screen output at
+        // all, and were invisible while working perfectly.
+        if (target && typeof target.outputs === 'function'
+            && caps && Array.isArray(caps.outputs) && caps.outputs.length) {
+            runner.outputs = () => target.outputs();
+        } else {
+            delete runner.outputs;
+        }
+
         // Media applied to a LIVE machine (loader while running). A boot
         // image should arrive via bootMedia instead — recreating the
         // runner is what makes the reset vector come from the real bytes.

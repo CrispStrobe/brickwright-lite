@@ -8,6 +8,10 @@ import DebugFrames from './debug-frames.jsx';
 import {mergeTargetKinds} from '../../lib/bw-debug/target-kinds.js';
 
 // VDP screen — lazy-loaded, only renders when the runner has video output.
+const PortLeds = React.lazy(() =>
+    import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/components/PortLeds.jsx')
+        .then(m => ({default: m.PortLeds}))
+);
 const SwitchPanel = React.lazy(() =>
     import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/components/SwitchPanel.jsx')
         .then(m => ({default: m.SwitchPanel}))
@@ -145,6 +149,12 @@ class DebugPanel extends React.Component {
         /** STABLE identity, bound once -- SwitchPanel's toggle handler is
          *  useCallback'd on it, so an inline arrow would rebuild every
          *  switch's handler on every runner emit (rAF cadence). */
+        /** STABLE identity, bound once -- PortLeds calls it on every render
+         *  and an inline arrow would defeat any memoisation above it. */
+        this._outputsFn = () => {
+            const r = this.state.runner;
+            return r && typeof r.outputs === 'function' ? r.outputs() : null;
+        };
         this._setInputFn = (chip, port, bit, level) => {
             const r = this.state.runner;
             return r && typeof r.setInput === 'function'
@@ -784,6 +794,15 @@ class DebugPanel extends React.Component {
                             lang={this.props.locale}
                             data-testid="bw-vdp-screen"
                         />
+                    </React.Suspense>
+                ) : null}
+
+                {/* LEDS. Mounted only when the machine has ports to show --
+                    eight lamps that never light read as a broken program
+                    rather than an absent chip. */}
+                {this.state.runner && typeof this.state.runner.outputs === 'function' ? (
+                    <React.Suspense fallback={null}>
+                        <PortLeds outputsFn={this._outputsFn} />
                     </React.Suspense>
                 ) : null}
 
