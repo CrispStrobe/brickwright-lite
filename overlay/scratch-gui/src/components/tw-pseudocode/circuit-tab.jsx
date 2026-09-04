@@ -86,6 +86,12 @@ const SOLO_L10N = {
     de: {noCode: 'Der Debugger braucht ein Programm und einen Chip. Deklariere Pins im Code-Tab, z. B. PIN led1 IS P1.0 OUTPUT ACTIVE LOW — oder wechsle oben zurück zur Schaltungsansicht.'}
 };
 
+// Progress-only debugger refresh. Pauses, errors and phase transitions arrive
+// through separate content changes immediately; live counters/partial serial
+// text are human-facing and do not justify rebuilding this React subtree at
+// animation speed (or at the old 10 Hz floor).
+const DEBUG_LIVE_REFRESH_MS = 250;
+
 class CircuitTab extends React.Component {
     constructor (props) {
         super(props);
@@ -375,6 +381,7 @@ class CircuitTab extends React.Component {
             this.setState({machineBooted: true});
         };
         window.addEventListener('bw-asm-rom-ready', this._asmStashHandler);
+        if (window.__bwPendingMedia) this.setState({machineBooted: true});
         // Code-tab catalog loads name the bench for the chosen device; the
         // board must show THAT wiring and seating, not the authored default
         // and never the runner's inferred fallback.
@@ -425,6 +432,17 @@ class CircuitTab extends React.Component {
     }
 
     componentDidUpdate (prevProps, prevState) {
+        // The event that opens this lazily rendered bench can precede the
+        // DebugPanel listener in the same React commit. Replay the retained
+        // image after that commit; the transition guard prevents a loop when
+        // this component's own stash listener observes the replay.
+        if (prevState && !prevState.machineBooted && this.state.machineBooted &&
+            window.__bwPendingMedia) {
+            const pending = window.__bwPendingMedia;
+            requestAnimationFrame(() => window.dispatchEvent(new CustomEvent(
+                pending.type === 'asm' ? 'bw-asm-rom-ready' : 'bw-machine-media-load',
+                {detail: pending.detail})));
+        }
         // The designer has just appeared and a File-menu action was waiting for it.
         // Re-dispatch on the SAME channel rather than calling a handler directly:
         // the receiver is vendored (bw-circuit-ui CircuitDesigner) and lite does not
@@ -449,6 +467,16 @@ class CircuitTab extends React.Component {
         if (this.props.isVisible && !prevProps.isVisible) {
             this.load();
             this.loadExamples();
+            // Re-entering Circuit is the final synchronization point: its
+            // persistent debugger is now committed and visible. Re-deliver
+            // the retained image so a handoff made while Code owned the tab
+            // cannot be stranded in an older hidden panel instance.
+            const pending = window.__bwPendingMedia;
+            if (pending) {
+                requestAnimationFrame(() => window.dispatchEvent(new CustomEvent(
+                    pending.type === 'asm' ? 'bw-asm-rom-ready' : 'bw-machine-media-load',
+                    {detail: pending.detail})));
+            }
         }
         this._syncStageAttr();
         this._ensureStageHost();
@@ -1474,13 +1502,13 @@ class CircuitTab extends React.Component {
         // guard ignored it and the debugger's console froze mid-banner
         // (the browser gate caught it — BBC BASIC's prompt never showed).
         // Complete lines are stamped; a PARTIAL line (a prompt with no
-        // newline) is invisible to the snapshot, so a 10 Hz floor keeps
-        // repainting while a session is live — still one sixth of the
-        // per-frame setState this guard exists to stop.
+        // newline) is invisible to the snapshot, so a 4 Hz floor keeps
+        // repainting while a session is live without turning progress-only
+        // refreshes into a stream of long React tasks.
         const so = ui && ui.session && ui.session.serialOutput;
         const serialStamp = so ? `${so.length}:${(so[so.length - 1] || '').length}` : '';
         const now = Date.now();
-        const floorDue = (now - (this._debugStateAt || 0)) >= 100;
+        const floorDue = (now - (this._debugStateAt || 0)) >= DEBUG_LIVE_REFRESH_MS;
         if (board !== this.state.board || halted !== prev.halted ||
             haltReason !== prev.haltReason || tasksStamp !== (prev._tasksStamp ?? null) ||
             serialStamp !== (prev._serialStamp ?? '') ||

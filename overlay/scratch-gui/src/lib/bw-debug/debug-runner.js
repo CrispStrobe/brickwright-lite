@@ -55,6 +55,66 @@ import {
 const SKIP_BUDGET = 20000;
 
 /**
+ * Live debugger data is human-facing, not a video signal. Four snapshots per
+ * second keep counters, serial output and board state visibly live while
+ * avoiding a full snapshot allocation on every animation frame.
+ */
+export const DEBUG_LIVE_SNAPSHOT_MS = 250;
+
+/**
+ * Put the rate limit BEFORE snapshot construction.
+ *
+ * The circuit tab already declines most 60 Hz React updates, but doing that
+ * after `snapshot()` still pays for session state, breakpoint lists,
+ * Object.fromEntries and copied arrays. `live()` checks the clock first and
+ * never calls `snapshot` for a suppressed frame. `immediate()` is deliberately
+ * unthrottled for pauses, breakpoint hits, errors and user commands.
+ *
+ * Exported as a small dependency-free seam for the regression test and the
+ * benchmark; normal callers use the instance inside createDebugRunner.
+ */
+export function createDebugSnapshotEmitter({
+    snapshot,
+    onChange,
+    now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now()),
+    measureNow = () => (typeof performance !== 'undefined' ? performance.now() : Date.now()),
+    minIntervalMs = DEBUG_LIVE_SNAPSHOT_MS
+}) {
+    let lastAt = -Infinity;
+    const counters = {attempted: 0, emitted: 0, suppressed: 0, snapshotBuildMs: 0};
+
+    function publish(at) {
+        const started = measureNow();
+        const value = snapshot();
+        counters.snapshotBuildMs += Math.max(0, measureNow() - started);
+        counters.emitted++;
+        lastAt = at;
+        onChange(value);
+        return value;
+    }
+
+    return {
+        /** State transition, error, halt, or explicit user action. */
+        immediate() {
+            counters.attempted++;
+            return publish(now());
+        },
+        /** Progress-only animation-frame refresh. */
+        live() {
+            counters.attempted++;
+            const at = now();
+            if (at >= lastAt && at - lastAt < minIntervalMs) {
+                counters.suppressed++;
+                return undefined;
+            }
+            return publish(at);
+        },
+        /** Benchmark/diagnostic hook; a copy so observers cannot corrupt it. */
+        stats: () => ({...counters, minIntervalMs})
+    };
+}
+
+/**
  * Install target-aware compilation routing before the debugger builds.
  *
  * It lives here rather than in the circuit tab because the intercept patches
@@ -446,6 +506,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
      */
     function snapshot() {
         const sess = session ? session.state() : null;
+        const breakpointList = listBreakpoints();
         let phase = status.phase;
         if (sess && phase !== 'error') {
             phase = sess.intent === 'paused' ? 'paused'
@@ -459,9 +520,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             capabilities: target
                 ? (capsFor === target ? capsOf : (capsFor = target, capsOf = target.capabilities()))
                 : null,
-            breakpoints: listBreakpoints(),
+            breakpoints: breakpointList,
             /** Marked blocks the current build has no yield point for. */
-            unreachableBreakpoints: listBreakpoints().filter((id) => yieldOf.size && !yieldOf.has(id)),
+            unreachableBreakpoints: breakpointList.filter((id) => yieldOf.size && !yieldOf.has(id)),
             /**
              * The cooperative scheduler's millisecond tick, straight from RAM.
              *
@@ -519,8 +580,16 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         } catch { return 'en'; }
     }
 
+    const snapshotEmitter = createDebugSnapshotEmitter({snapshot, onChange});
+
+    /** Immediate by default: every existing call is a semantic event. */
     function emit() {
-        onChange(snapshot());
+        snapshotEmitter.immediate();
+    }
+
+    /** Animation-frame progress only; safe to coalesce before snapshot work. */
+    function emitLive() {
+        snapshotEmitter.live();
     }
 
     // ─── glow ────────────────────────────────────────────────────────────
@@ -1390,6 +1459,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         }
 
         session = createDebugSession(target, {
+            // Bound the 8086's work inside one browser callback. The session
+            // carries unspent PROGRAM time forward, so this protects input and
+            // paint latency without changing timer/wait semantics.
+            ...(targetKind === 'i8086' ? {wallBudgetMs: 8, maxQuantumNs: 1_000_000} : {}),
             onHalt: (snapshot) => {
                 setStatus('paused', `PC=$${snapshot.pc.toString(16).padStart(4, '0')}`);
             },
@@ -1860,6 +1933,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     function pumpFrame() {
         rafId = null;
         if (!session) return;
+        // Opt-in production-bundle telemetry for the browser/mobile benchmark.
+        // The global is absent in normal use, so this is one property read and
+        // no allocation on the regular pump path.
+        const perfProbe = typeof window !== 'undefined' ? window.__BW_I8086_PERF__ : null;
+        const perfWallStart = perfProbe ? performance.now() : 0;
+        const perfSimStart = perfProbe ? target.timeNs() : 0n;
         let outcome = session.pump();
 
         // Absorb skipped hits in this frame rather than one per frame. Bounded,
@@ -1883,11 +1962,20 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // pumping, so board time stops with program time, and resume continues
         // from where it stopped rather than catching up on wall-clock.
         if (board && outcome !== 'idle') board.advanceTo(target.timeNs());
+        if (perfProbe && perfProbe.samples.length < (perfProbe.limit || 4000)) {
+            const perfSimEnd = target.timeNs();
+            perfProbe.samples.push({
+                at: perfWallStart,
+                wallMs: performance.now() - perfWallStart,
+                simNs: Number(perfSimEnd - perfSimStart),
+                outcome
+            });
+        }
         // Keep going while there is anything to do. A halted session stops
         // asking for frames entirely, which is what makes a paused program cost
         // nothing rather than spin.
         if (outcome === 'ran') schedule();
-        emit();
+        emitLive();
     }
 
     function schedule() {
@@ -1954,6 +2042,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
         state: snapshot,
 
+        /** Counts snapshot attempts/builds without enabling global telemetry. */
+        snapshotPerformance: snapshotEmitter.stats,
+
         /** Build, attach, and run. The ⚑ of the debug world. */
         async start() {
             try {
@@ -1967,7 +2058,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                     const device = String(projectStc(null)?.device || '').toLowerCase();
                     const selectedKind = selectDebugTargetKind(device, targetKind);
                     // Z80/6502 interactive interpreters: no compile step
-                    const built = (selectedKind === 'z80' || selectedKind === 'eater6502') ? null
+                    const built = (selectedKind === 'z80' || selectedKind === 'eater6502' ||
+                        (selectedKind === 'i8086' && bootMedia)) ? null
                         : userFirmware ? builtFromUserFirmware(selectedKind)
                             : await build();
                     await attach(built);

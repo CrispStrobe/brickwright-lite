@@ -249,7 +249,7 @@ class DebugPanel extends React.Component {
     _onAsmRomReady (e) {
         const {rom, target, slotId, profile, chips} = e.detail || {};
         if (!rom) return;
-        this._onMediaLoad({detail: {
+        return this._onMediaLoad({detail: {
             slotId: slotId || 'rom', bytes: rom,
             profile: profile || null,
             // The chips the program's own declarations require. Carried with
@@ -307,16 +307,25 @@ class DebugPanel extends React.Component {
         // bench the ASM workflow cannot use. Replaying the last program is
         // the bench's continuity — same stance as the config replay above.
         const pending = window.__bwPendingMedia;
+        let pendingReplay = null;
         if (pending) {
-            if (pending.type === 'asm') this._onAsmRomReady({detail: pending.detail});
-            else this._onMediaLoad({detail: pending.detail});
+            pendingReplay = pending.type === 'asm'
+                ? this._onAsmRomReady({detail: pending.detail})
+                : this._onMediaLoad({detail: pending.detail});
         }
         // AFTER the replays: an example's auto-run token fired onStart()
         // here, BEFORE the config/media replays ran — so the token built a
         // second runner with neither, and on a machine bench that runner
         // booted the extracted machine with an EMPTY ROM, won state.runner,
         // and put a black VDP on screen while the real program ran unseen.
-        this.syncProjectTokens({}, true);
+        // _onMediaLoad awaits setState before constructing its runner. Do not
+        // let token auto-run race through that await and install a generic
+        // no-pin runner first.
+        if (pendingReplay) {
+            Promise.resolve(pendingReplay).then(() => this.syncProjectTokens({}, true));
+        } else {
+            this.syncProjectTokens({}, true);
+        }
         // The menu comes from bw-board, not from a list duplicated here: it owns
         // which targets exist and what each one is called.
         import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/index.js')

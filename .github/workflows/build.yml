@@ -82,6 +82,8 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with: { node-version: 22 }
+      - name: Require green upstream evidence for the pinned 8086 engine
+        run: npm run verify:bwboard-ci
       - name: Vendor the pinned permissive Scratch sources
         run: npm run vendor
       - name: Integrate the Code tab (sb3-creator)
@@ -592,6 +594,30 @@ jobs:
         with:
           name: basic-run-proof
           path: artifacts/basic-run/*
+          if-no-files-found: error
+
+      # The Node suite proves the same core can run these programs, but it
+      # cannot prove the production bundle exposes the 8086 picker, loads the
+      # local assembler chunk, paints CGA, accepts a key, or refreshes the 8255
+      # faces. One browser and two unchanged examples cover that whole seam.
+      - name: Browser gate — 8086 local assembly, CGA, keyboard and 8255
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-i8086-browser.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.playwright.outcome == 'success'
+        with:
+          name: i8086-production-browser-proof
+          path: artifacts/i8086-browser/*
+          if-no-files-found: error
+
+      - name: Browser benchmark — 8086 desktop and mobile
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/bench-i8086-browser.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.playwright.outcome == 'success'
+        with:
+          name: i8086-browser-performance
+          path: artifacts/i8086-performance/report.json
           if-no-files-found: error
 
       - name: Browser gate — declared extension capability broker

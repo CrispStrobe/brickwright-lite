@@ -3,23 +3,24 @@
 Started 2026-09-03. The retro tier gains a third CPU beside the W65C02 and the
 Z80, built the same way and verified to the same standard.
 
-**Status: the tier runs, and an independent implementation agrees with it on
-470 of the 525 textbook programs. Nothing is vendored into Lite yet — see §6.**
+**Status: shipped in Lite. An independent implementation agrees with it on
+480 of the 525 textbook programs. The current, mechanically checked product
+surface is in `docs/generated/I8086-CAPABILITY-REPORT.md`.**
 
 ## What is built
 
 | Piece | Where | State |
 |---|---|---|
-| `I8086` core | `bw-board/src/i8086.js` | **646,000/646,000 vectors** |
+| `I8086` core | `overlay/scratch-gui/src/lib/bw-board/i8086.js` | **646,000/646,000 vectors** |
 | Disassembler | `i8086-disasm.js` | **646,000/646,000 on TEXT and length** |
 | 8255 PPI · 8259 · 8254 · 8251 | `i8255.js`, `i8259.js`, `i8254.js`, `i8251.js` | INTR + NMI delivered |
 | Machine · adapter · debug target | `i8086-machine.js` + 2 | factory kind `i8086` |
 | Bus extractor | `i8086-extract.js` | a miswired select gives a NAMED refusal |
 | DIP parts | `bw-parts` `41706a7` | 7 packages, **pushed** |
 | DOS/BIOS services | `i8086-dos.js` | INT 21h/10h/13h/16h/19h/1Ah/03h/15h/20h |
-| Assembler | `i8086-asm.js` | **510/525 accepted** |
+| Assembler | `i8086-asm.js` | **525/525 accepted** |
 | emu8086 devices | `i8086-emu8086.js` | clean re-implementation, evidence-cited |
-| CGA · Hercules · VGA cards | `cga-card.js`, `hercules-card.js`, `vga-card.js` | ports only, no pixels |
+| CGA · EGA · Hercules · VGA cards | card modules + `i8086-cga.js` | selected framebuffer modes and port models |
 | PC speaker | `pc-speaker.js` | `audio() → {hz, on}`, the Z80 tier's shape |
 | Framebuffer renderer | `i8086-cga.js` | modes 00–06h and 13h, a pure function |
 | Corpus harness | `scripts/run-i8086-corpus.mjs` | the instrument below |
@@ -28,12 +29,12 @@ Z80, built the same way and verified to the same standard.
 
 ```
 Amey textbook corpus, 525 programs, against ITS OWN recorded outputs:
-  470  MATCH     byte-identical to an independent implementation
+  480  MATCH     byte-identical to an independent implementation
     4  NOINPUT   asked for more keystrokes than the recording supplied
-   16  ORACLE    their recorded output is a memory image, not a result
-   12  DIFFER    every one read and explained
+   17  ORACLE    their recorded output is a memory image, not a result
+   16  DIFFER    every one read and explained
     8  LOOPING   infinite control loops, by design
-   15  THREW     assembly refused; MASM refuses 14 of them too
+    0  THREW     every source assembled and reached the execution harness
 
 yousefkotp emu8086 coursework, 10 projects:  8 LOOPING, 2 THREW (repo defects)
 ```
@@ -47,7 +48,8 @@ not skipped — a skip reads the same as a pass in a summary line.
 dispatches on mnemonic strings and never fetches an opcode byte, so it shares
 no code with ours. Two unrelated implementations rarely make the same mistake.
 It is *not* hardware-grounded, so a disagreement is a lead to chase from both
-ends — and 16 of them turned out to be its own `$`-terminated print running
+ends — and 17 cases are classified as oracle limitations, including its own
+`$`-terminated print running
 away, one dumping the interrupt vector table verbatim, which means its `SEG`
 returns 0.
 
@@ -67,7 +69,7 @@ the tally counted all three as successes.
 ## What an outside pass found
 
 A reviewer who did not build the tier re-ran the oracles rather than reading
-the claims. All four headline numbers reproduce: core 646,000/646,000,
+the claims. At that checkpoint all four headline numbers reproduced: core 646,000/646,000,
 disassembler 646,000/646,000 on text and length with the three documented
 exclusions, 237 tests green, and 5.17 M instr/sec against a quoted 4.0 — the
 figure above is conservative.
@@ -75,27 +77,81 @@ figure above is conservative.
 The engine-side findings and the expanded licence tables are in `bw-board`
 `ROADMAP.md` §E6. Three of them change what this document promises.
 
-**The numbers in this file do not run in CI.** The sampled grind skips when
-the vector suite is absent, which on a runner it always is, so
-`646,000/646,000` is a number from one box on one day; the 525-program corpus
-is not in the tree either. Being fixed: the suite ships a compact binary form,
-`v1_binary/*.MOO.gz`, 94 MB for all 646,000 vectors against 174 MB of JSON, so
-a pinned sparse checkout — the idiom `ci.yml` already uses for emu8051-stc —
-makes the claim stop decaying. **Until that lands, read every number in this
-file as measured, not as maintained.**
+**The headline numbers are maintained by the pinned `bw-board` upstream
+grinders, not recomputed by Lite.** Lite byte-verifies that pin and generates
+`docs/generated/I8086-CAPABILITY-REPORT.md` from its declarations, shipped
+machine inventory and local integration tests. The report states which claims
+are upstream vector results and which are Lite-local evidence, so an old run
+cannot masquerade as a current green result.
 
-**§6 is now the near-term question, not the deferred one.** This document said
-Tier C should start "when a lesson actually needs it". Real Microsoft binaries
-from the MIT MS-DOS release now run — CHKDSK parsing its command line, COMP
-refusing to compare a file to itself, and DEBUG reaching its prompt, taking a
-command and quitting cleanly. That is the first third-party code this tier has
-executed that it did not assemble itself, and it moves a BIOS ROM at F000 from
-someday to soon — where it collides with the DOS layer's trap page.
+**§6 records the now-completed vendoring decision.** The upstream CI checks out
+Microsoft's MIT-licensed MS-DOS 2.0 binaries at an immutable commit and proves
+the files exist before the tests run. Its system ladder then builds a 360K
+FAT12 disk and follows real execution through the BIOS boot sector, IO.SYS,
+SYSINIT relocation, MSDOS.SYS initialization and COMMAND.COM to two `A>`
+prompts and a `DIR` read through the emulated block device. The period-utility
+lane separately runs unmodified DEBUG.COM, deposits two NOPs, traces one with
+the real `t` command, observes IP=0101 and quits; CHKDSK.COM passes its DOS 2.x
+version gate and reaches the expected no-root-directory refusal. These are
+third-party binaries this tier did not assemble itself, and the named stages
+make a failure diagnostic rather than merely saying “DOS did not boot.”
 
-**The trap flag is absent and was not declared absent.** `i8086.js` names four
-deliberate omissions; TF was not among them, so a program installing its own
-single-step tracer got silence. Recorded here because §2's list of what is
-*not* modelled is the thing readers of this document trust.
+**The pin is now evidence, not just provenance.** Lite release and networked
+product builds run `npm run verify:bwboard-ci` before vendoring. For the exact
+`bw-board` SHA in `vendor-pins.json`, it requires one successful upstream CI
+run whose `test`, `vectors`, `corpus`, and `vectors186` jobs — including their
+named inner proof steps — all completed successfully at that same SHA. The
+current pin, `8bf9fe5cbcd64ac62462ba02b48f79bca978772c`, was accepted from
+upstream run `33913237405`. Missing, partial, stale-SHA, rate-limited, or
+unreachable API evidence fails the release; Lite does not duplicate the large
+vector and program downloads locally.
+
+**The product seam has its own browser gate.** The production bundle must let
+a learner select 8086 ASM, assemble locally with the hosted compiler made
+physically unreachable, boot the DOS bench, paint real CGA pixels, exchange a
+keyboard byte, and drive/read the 8255 face. A second Playwright receipt records
+desktop and phone-sized pump distributions, long tasks and heap use. CI rejects
+fewer than 150 useful samples or less than 0.25x XT real time; the distributions
+remain artifacts so performance work is based on measurements, not anecdotes.
+
+### Performance pass — measured in the shipped browser route
+
+The first production-bundle receipt showed that raw instruction throughput was
+not the browser's problem. Work surrounding each instruction and each UI frame
+was. The source pass now consumes each opcode/prefix with one physical fetch,
+caches the attached-device advance schedule, avoids a breakpoint `Map` walk
+when no code breakpoint exists, and reuses a rendered video frame until video
+RAM or a display-control port changes. The runner caps each 8086 callback at
+8 ms in at most 1 ms of simulated-time work at once and carries the unpaid
+simulated-time debt forward, rather than changing clocks or dropping work.
+Progress snapshots are limited to 4 Hz *before* registers, arrays and maps are
+copied; pauses, errors, breakpoint hits, phase changes and user commands still
+emit immediately. The Circuit React subtree applies the same 250 ms floor.
+
+On the same `pins` example and production Playwright route, desktop improved
+from **3.12x to 10.39x XT real time** and mobile from **2.69x to 10.27x**.
+Runtime long tasks fell from **90 to 17** on desktop and **91 to 21** on mobile.
+The current final receipt also records pump p95 at 0.40 ms for both profiles.
+These numbers are a before/after receipt on one runner, not a promise that every
+phone is 10x; the durable gate remains the deliberately low 0.25x floor above.
+
+The tempting next changes are deliberately deferred. These are activation
+rules, so “later” has a measurable meaning:
+
+| Candidate | Decision and activation threshold |
+|---|---|
+| Cycle-accurate mode | **Deferred as an accuracy mode, not a speed fix.** Start only for a named lesson or period binary that needs bus-visible timing, with an 8088 bus-trace oracle and per-opcode prefetch/BIU schedules available. The existing instruction mode remains the default. |
+| Worker execution | **Deferred.** Reconsider if the production gate is below 1.0x on the minimum supported device, or pump p95 exceeds the existing 8 ms wall budget in three repeat runs after source fixes. A worker must preserve synchronous debug, pin, keyboard and breakpoint semantics. |
+| Multi-instruction peripheral batching | **Deferred.** Reconsider only if a profile attributes at least 20% of pump CPU to peripheral advancement after the cached schedule, and every timer/IRQ/device deadline supplies a provable safe batch boundary. Never batch across an observable deadline. |
+| Word memory fast path | **Deferred.** Reconsider if 16-bit reads/writes account for at least 10% of sampled CPU time. Any fast path must exclude offset `FFFFh`, watched/traced addresses and mapped-device pages, preserving segment wrap and bus visibility. |
+| Dirty-region rendering | **Deferred; whole-frame reuse already removes unchanged renders.** Reconsider if changed-frame rasterization exceeds 20% of a profile or makes pump p95 exceed 8 ms. Dirty accounting must cover bulk loads, state restore, all video apertures and display ports. |
+| JIT/dynamic translation | **Deferred last.** Reconsider only after the candidates above if the minimum-device gate remains below 1.0x for three runs. Entry requires differential vector/corpus gates plus invalidation for self-modifying code, breakpoints, traces and 20-bit aliasing; a benchmark win alone is insufficient. |
+
+**The trap flag gap found by the outside pass is closed.** TF is now sampled at
+instruction boundaries and covered by behavioural tests; the vector corpus
+cannot verify it because none of its initial states set TF. The distinction is
+kept in the core header because “modelled” and “vector-verified” are different
+claims.
 
 ## 1. Why a core of our own rather than an adoption
 
@@ -275,20 +331,20 @@ service layer with no hardware in it at all; Tier C is a PC/XT. Each is
 independently useful, and only Tier C is expensive. The engine-side items live
 in `bw-board/ROADMAP.md` §E6; this is the product view.
 
-**Measured before promising anything.** The core runs at **4.0 M
-instructions/sec** on a representative mix (register ALU, memory read/write,
-taken branch, call/ret) — 12× a 5 MHz 8086 and about 16× a 4.77 MHz IBM XT.
-Software of that era was written for 0.24 MIPS, so the CPU is not the
-bottleneck at any tier; video timing is. That figure is Node; re-measure in
-the browser bundle before quoting it there.
+**Measured before promising anything.** The original Node representative mix
+(register ALU, memory read/write, taken branch, call/ret) ran at 4.0 M
+instructions/sec and the outside repeat reached 5.17 M. The production browser
+has now been measured too; its end-to-end result and gate are recorded in the
+performance pass above rather than inferred from Node throughput.
 
 **8088 comes free.** The ISA is identical. The differences — bus width, a
 four-byte prefetch queue instead of six, cycle timings — are precisely the
 things an instruction-stepped core does not model, so `I8086` *is* an 8088
 except for cycle counts. `SingleStepTests/8088` (with bus data) and `/v20`
-are also MIT if the tier ever wants an NEC V20 or cycle-level work.
+are also MIT. The V20 suite now verifies the shared 80186 additions; the 8088
+bus data remains the required oracle for any future cycle-accurate mode.
 
-### Tier A — the 8086 on a breadboard  *(DONE bar the parts push)*
+### Tier A — the 8086 on a breadboard  *(DONE)*
 
 The direct analogue of the Eater 6502 and the Searle Z80, chip for chip. This
 is where an LED blinks from an 8255 port, where the MCU examples adapt, and
@@ -319,7 +375,7 @@ deliver interrupts itself.
 entries, so an 8086 hand-wired on the drawn breadboard becomes a machine — or
 a named refusal — exactly as the 6502 does. Plus our own monitor ROM.
 
-### Tier B — the DOS-program tier  *(DONE: 498 of 525 run)*
+### Tier B — the DOS-program tier  *(DONE: all 525 assemble and run in the harness)*
 
 The 8086 textbook corpus does not want a PC. Measured across the 525 programs
 of `Amey-Thakur/8086-ASSEMBLY-LANGUAGE-PROGRAMS`:
@@ -333,9 +389,10 @@ int 10h    79   int 16h 26   int 1Ah 10   int 15h 8   int 33h 6
 
 So the DOS/BIOS service layer is a few hundred lines and covers roughly 92% of
 the corpus with three functions, and no BIOS ROM or DOS is involved at all.
-**The gate is the assembler, not the emulator**: these are MASM sources, and
-`bw-asm` does not speak `.MODEL`, `PROC` or `MACRO` yet. Scope that honestly
-before promising the corpus — it is the larger half of this tier by far.
+The assembler was the gate: these are MASM sources and 502 use `.MODEL`,
+`PROC` or `MACRO`. That surface is now sufficient for all 525 to assemble;
+the exact output distribution at the top, not mere termination, is pinned by
+the upstream corpus job.
 
 ### Tier B′ — emu8086 compatibility  *(DONE: 8 of 10 run)*
 
@@ -347,7 +404,7 @@ library — the `.inc` carries no licence we can rely on. This is the tier that
 makes traffic-light, stepper and thermometer lessons possible, and it lands
 after Tier B.
 
-### Tier C — PC/XT compatible  *(the display and sound are done; storage is not)*
+### Tier C — PC/XT compatible  *(DONE at the documented accuracy boundary)*
 
 The **visible half landed early and cheaply**, because it turned out not to
 need the machine at all: `i8086-cga.js` renders modes 00-06h and 13h as a
@@ -371,11 +428,11 @@ Two refusals in there are deliberate and worth keeping: VGA planar modes
 lives at `B0000h` and the renderer reads `B8000h` — drawing it anyway would
 not make a worse picture, it would make a picture of something else.
 
-What remains is storage and the software stack: 8237 DMA, a µPD765 FDC with
-disk images, a BIOS ROM and a DOS. Note that `loadBoot()` plus `INT 13h` over
-a supplied image already runs a boot sector today, so the gap is narrower than
-it was: what is missing is a *bootable image* and the BIOS ROM to make the
-machine self-hosting, not the ability to start one.
+Storage and the software stack subsequently landed: 8237 DMA, a µPD765 FDC,
+disk images, the project BIOS and the staged MS-DOS 2.0 boot described above.
+“Done” here means the useful instruction-stepped PC/XT surface; it does not
+promote the explicit scanline, magnetic-media or bus-cycle limits in the
+generated capability report into cycle accuracy.
 
 ### Not in this lane at all
 
@@ -388,7 +445,7 @@ closer to the SAP-1 lane than to this one. Worth building someday; not here.
 | Source | Licence | Ruling |
 | --- | --- | --- |
 | SingleStepTests 8086 / 8088 / v20 | MIT | Oracle only, never shipped — the role `about-data.js` already records for the 65x02 and Z80 suites. |
-| `microsoft/MS-DOS` 1.25, 2.0, 4.0 | MIT | Usable. A genuine DOS exists for Tier C if it ever wants one. |
+| `microsoft/MS-DOS` 1.25, 2.0, 4.0 | MIT | Used by the upstream real-ROM and DOS acceptance suite. |
 | Amey-Thakur `.asm` corpus | MIT, per file header | Shippable as examples **with attribution**. Note that the same repo's *simulator* sources say `CC BY 4.0` in every header while its LICENSE says MIT — take the programs, not the simulator. |
 | GLaBIOS | GPL-3.0 | Refused. The best open BIOS is out of reach. |
 | `skiselev/8088_bios` | GPL-3.0 | Refused. |
@@ -400,13 +457,14 @@ The consequence is worth stating plainly: **every ROM in this tier is ours**,
 at every tier. That is a real cost, and it is also the only reason the tier
 can ship inside a BSD-3 bundle at all.
 
-## 6. Why the core is not vendored into Lite yet
+## 6. How the core is vendored into Lite
 
-`i8086.js` lives in `bw-board`, which is where `z80.js` and `w65c02.js` live and
-where `npm run sync:bwboard` pulls from. Vendoring it into the overlay before
-the adapter and debug target exist would land a module that nothing imports —
-which is exactly what `test/no-dead-overlay-modules.test.mjs` exists to catch,
-and it would be right to. The core rides in with M3.
+`i8086.js` lives in `bw-board`, beside `z80.js` and `w65c02.js`, and
+`npm run sync:bwboard` pins and copies it into Lite's overlay with the machine,
+adapter, debugger and peripheral modules that consume it. `vendor-pins.json`
+records the exact upstream commit. The generated capability report reads that
+pin and the shipped modules rather than repeating an uncheckable vendoring
+status here.
 
 ## 7. M2, and the standard the suite made possible
 
@@ -544,8 +602,10 @@ whole ports, a keypad, an ADC, the speaker, PWM, an eight-digit display, and
 on a preemptive scheduler that adds its own interrupt controller and says so.
 Four examples ship and are offered in the picker. See ROADMAP §3.8.
 
-What they cannot do is **draw** the board. The parts exist upstream; lite's
-vendored copies are behind. That is the last piece.
+They can also draw the board: Lite now carries the 8086/8088 and Intel support-
+chip part data and registers the matching DIP surfaces. The remaining limits
+are emulator-accuracy boundaries, collected mechanically in the generated
+capability report, rather than a missing editor surface.
 
 ### The lesson that cost the most
 

@@ -3,6 +3,9 @@
 # install scratch-gui, and webpack it. Output lands in packages/scratch-gui/build, which
 # vercel.json serves. Root-hosted on *.vercel.app, so no base-path rewriting needed.
 set -euo pipefail
+# Reuse bw-board's completed heavy CI at this exact pin; do not download and
+# rerun its vector and program corpora in every product/release build.
+npm run verify:bwboard-ci
 node scripts/vendor.mjs
 node scripts/integrate.mjs
 # The heavy simulation tier's engine (labwired-wasm, ~20 MB / 2 MB brotli).

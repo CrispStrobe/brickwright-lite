@@ -1658,10 +1658,18 @@ class PseudocodeImporter extends React.Component {
         const warn = out.warnings.length ? this.L.asmWarnings(out.warnings) : '';
         const bench = BENCHES[out.target];
         if (bench) {
-            window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {
-                detail: {rom: out.bytes, listing: out.listing, target: out.target,
-                    slotId: out.slotId, profile: out.profile, format: out.format}
+            const detail = {rom: out.bytes, listing: out.listing, target: out.target,
+                slotId: out.slotId, profile: out.profile, format: out.format};
+            // The default debugger dock is the optional right pane. A program
+            // handed to a hidden pane is technically running but unusable, so
+            // open the pane as part of the same user gesture (as the Arduboy
+            // and controller runners already do).
+            try { localStorage.setItem('bw-right-pane-hidden', '0'); } catch { /* private mode */ }
+            window.dispatchEvent(new CustomEvent('bw-settings-change', {
+                detail: {key: 'bw-right-pane-hidden', value: '0'}
             }));
+            window.__bwPendingMedia = {type: 'asm', detail};
+            window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {detail}));
             this.setState({busy: false,
                 status: this.L.asmBuiltBench(out.bytes.length, routeName, bench) + warn});
         } else {
@@ -1724,17 +1732,16 @@ class PseudocodeImporter extends React.Component {
                 : this.L.run8086Failed(e && e.message ? e.message : String(e))});
             return;
         }
-        window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {
-            // `chips` CARRIES THE HARDWARE THE PROGRAM'S DECLARATIONS ASKED
-            // FOR -- an ADC0809 for an ANALOG pin, a PIC and an IRQ0-wired
-            // timer for a second script. Without it the bench builds the
-            // default board and a scheduled program finds no clock: every
-            // `wait` spins forever. The runtime says so rather than hanging,
-            // but a learner should never see that message from the GUI.
-            detail: {rom: out.bytes, listing: null, target: out.target,
-                slotId: out.slotId, profile: out.profile, format: out.format,
-                chips: out.chips}
+        // `chips` carries hardware requested by the program's declarations.
+        const detail = {rom: out.bytes, listing: null, target: out.target,
+            slotId: out.slotId, profile: out.profile, format: out.format,
+            chips: out.chips};
+        try { localStorage.setItem('bw-right-pane-hidden', '0'); } catch { /* private mode */ }
+        window.dispatchEvent(new CustomEvent('bw-settings-change', {
+            detail: {key: 'bw-right-pane-hidden', value: '0'}
         }));
+        window.__bwPendingMedia = {type: 'asm', detail};
+        window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {detail}));
         const warn = out.warnings.length ? this.L.asmWarnings(out.warnings) : '';
         this.setState(st => ({
             busy: false,
@@ -3622,7 +3629,8 @@ class PseudocodeImporter extends React.Component {
                                 color: this.state.showAsmInfo ? '#fff' : '#475569', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontStyle: 'italic'}}
                             title={this.L.asmInfoTitle} data-testid="bw-asm-info-toggle">i</button>
                     ) : null}
-                    {this.state.status ? <span style={{fontSize: 13}}>{this.state.status}</span> : null}
+                    {this.state.status ? <span data-testid="bw-code-status"
+                        style={{fontSize: 13}}>{this.state.status}</span> : null}
                 </div>
                 {this.state.conversionReport ? (() => {
                     const report = this.state.conversionReport;
