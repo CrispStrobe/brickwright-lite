@@ -1043,6 +1043,22 @@ solves. That is the next gate, not a solved problem.
   later. The actionable half is the corollary: when you find yourself believing something about
   the code — this method does not exist, nothing calls that, only these kinds are addressable —
   that belief is cheap to pin and expensive to leave unpinned.
+- **A confident correction from a peer is a claim, not evidence — recompute before conceding.**
+  2026-09-04, filed as D-METHOD1 in `docs/WAVE-OPEN-DEFECTS.md`. Two counts (38 and 26) were
+  correct, were contradicted by another session with more confidence than working, and were
+  withdrawn — and then a MECHANISM was invented to explain the error that had not been made. That
+  second step is the serious one: fabricating a plausible cause for a non-existent mistake puts a
+  false fact into a shared ledger, where the next reader has no way to tell it from a measured one.
+  Peers here are sessions of the same model with the same failure modes and no privileged view of
+  your working directory. The rule is cheap: re-run the count, quote the command and its output,
+  and only then agree or disagree. Agreeing costs nothing at the time and is the most expensive
+  thing in this file.
+
+- **Say which window you measured.** Same day, same ledger: a 40-pair window of the corpus
+  differential was published as though it were the whole 176-pair corpus, so "zero unexplained"
+  was true of the window and false of the corpus (the real figures were AGREE 94 / SKEW 5 /
+  DIFF 15). A number without its denominator is not a smaller claim, it is a different one.
+
 - **When a result reverses, ask whether the SUBJECT moved before blaming the instrument.**
   2026-08-23: a finding that twelve extension actuators guarded on a board method defined nowhere
   was correct at `3e87340f5` (0 mentions, no NUL). Re-measured after `6f8d11c5c` it read the same

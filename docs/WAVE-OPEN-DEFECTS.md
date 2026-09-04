@@ -3,6 +3,24 @@
 Compiled 2026-08-24 from `docs/LESSON-REVIEW-WAVE-{1..7}.md` and `PLAN.md`'s
 verification-debt ledger, against lite `7ce24a619`.
 
+> **THIS FILE HAS A SECOND HALF, and it does not use the D-numbers.** Everything above
+> "## D-SMOKE1" is the 2026-08-24 wave-6 ledger, closed to new rows. Defects found afterwards are
+> appended below it under their own identifiers, because they are not lesson defects and ranking
+> them by lessons-affected would be meaningless. Index, current as of **2026-09-04**:
+>
+> | id | what | status |
+> | --- | --- | --- |
+> | D-SMOKE1 | the debugger smoke test could not run, and its skip hid three defects | **CLOSED** — runs on every push; `KNOWN_SWALLOWED` is empty |
+> | D-EMU-BP1 | `emu_dbg_set_bp_code` never halts | **DOES NOT EXIST** — the claim was false; verified before acting |
+> | D-EMU-BP2 | a pause point on a `repeat` loop top never fires | **REAL, FIXED** |
+> | D-EMU-BP3 | `readMem('code', 0, 0x10000)` silently short-reads at 256 bytes | **REAL, FIXED** — and then fixed AGAIN, upstream, because the first fix was in a vendored copy (bw-board `a577476`) |
+> | D-CORPUS1 | the corpus differential had never run, and the first run failed | **RUNS AND IS TRIAGED** — AGREE 94, SKEW 5, DIFF 11, SKIP 66, ERROR 0; all 11 DIFFs explained |
+> | D-METHOD1 | conceding a correct number to a confident correction, then inventing a mechanism for the error not made | **RECORDED** — a method defect, not a code one; the rule is in `ROADMAP.md`'s working rules |
+> | D-FIRSTLOAD1 | 3.41 MB of first paint is 26 extension bodies that only LOOK lazy | **OPEN** — characterised, deliberately not landed |
+>
+> Three of these produced new entries in `docs/GATES-THAT-CANNOT-FAIL.md` (species 16, 17, and
+> 18–20), which is the general form; this file is the incident record.
+
 The seven waves reviewed 79 lessons and found 38 defective. Almost every
 **repair** landed in lesson copy; almost every **cause** did not. This document
 is the other half: one table of every defect the reviews left open, with the

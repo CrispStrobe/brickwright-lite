@@ -343,14 +343,27 @@ Two shapes are worth carrying forward from the rest:
   Wave 6's whole finding — a good engine behind instruments that report pictures
   rather than numbers — and it is where the remaining 24 mostly live.
 
-#### The five still open, and what blocks each
+#### The four still open, and what blocks each
 
 Updated 2026-08-29: **thirteen rows closed in one campaign** — D18, D20, D21,
 D23, D24 and D31 (the instrument family, bw-board + bw-circuit-ui), D26, D27,
 D32 and D36 (sb3-creator), and D25, D28 and D29 (the debugger wave, across
 emu8051-stc, bw-board and lite). Their rows are struck through below with what
-actually happened, which in six cases is not what the row predicted. Five are
-open, and three of those five (D13, D22, D30) are labelled rather than broken.
+actually happened, which in six cases is not what the row predicted.
+
+**Updated 2026-08-31: two more closed, and the count in this heading changed
+with them.** D2 (the hosted compiler, in two halves needing opposite answers)
+and D38 (AVR `bw_now()` called and not defined) both closed that day, so the
+heading above read "five" for four days while four rows were open. It now reads
+four: **D12, D13, D22, D30** — and three of those four (D13, D22, D30) are
+labelled rather than broken.
+
+**Note on scope, added 2026-09-04.** This table is the WAVE 6 ledger and is
+closed to new rows; defects found after it was compiled live in
+`docs/WAVE-OPEN-DEFECTS.md`, which has since grown a second half with its own
+identifiers (D-SMOKE1, D-EMU-BP1/2/3, D-CORPUS1, D-FIRSTLOAD1, D-METHOD1). Do
+not read a short table here as a small number of open defects overall — read
+both.
 
 Two of the debugger three are worth reading as corrections rather than as
 closures. **D29's row was false and said so about itself** — it carried the
