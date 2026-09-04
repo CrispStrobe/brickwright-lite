@@ -890,7 +890,18 @@ jobs:
             wait-report.json
           if-no-files-found: warn
 
+      # `!cancelled()` because the built app is the primary DIAGNOSTIC, and the
+      # runs you most want to inspect are the ones that failed. Without it this
+      # step carries an implicit success() and is skipped after any red gate, so
+      # a failing run uploads proof artifacts for the gates that passed and NOT
+      # the app they were driving. Measured on PR #105: two gates failed, no
+      # github-pages artifact, and the only way to reproduce locally was to fix
+      # the tree and run CI again — a full queue cycle to learn what one download
+      # would have shown. Deploying is unaffected: the `deploy` job needs `build`
+      # to have succeeded, so an artifact from a red run can be downloaded and
+      # never published.
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        if: ${{ !cancelled() && steps.build_editor.outcome == 'success' }}
         with: { path: packages/scratch-gui/build }
 
   # THE MISMATCHED-TREE HAZARD, and why parallel builds are safe here when a
