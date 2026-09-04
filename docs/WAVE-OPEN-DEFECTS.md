@@ -995,6 +995,16 @@ serial indices (17, 34, 70), where cumulative byte time is largest. `compareTrac
 a `serialMsPerByte` allowance for the TIMING consequence of exactly this; nothing models the VALUE
 consequence, and nothing could without the referee charging for its own output.
 
+A fourth fact, and it is arithmetic rather than correlation. `arduino-07-row-column-scanning`
+was the one that did not obviously fit — it disagrees `"5"` against `"0"`, not `"870"` against
+`"31"`. But it computes `(read pot * 7) / 1023`, so the sweep's own endpoints map straight
+through: the low reading 31 gives `(31*7)/1023 = 0` and the high reading 870 gives
+`(870*7)/1023 = 5`, in integer arithmetic. **`"5"` versus `"0"` IS the same transposition**, seen
+through the program's own scaling. It also transposes in BOTH directions — serial 23 reads
+`"5"` vs `"0"` and serial 43 reads `"0"` vs `"5"` — which is what a phase shift does and what a
+wrong value does not, and it produces 48 serial lines against the referee's 50, consistent with
+spending byte time.
+
 **Evidenced, not proven.** Proving it means instrumenting the moment each side samples the ADC and
 showing the device's falls the other side of a stimulus step. The three facts above are consistent
 with no other explanation I can construct, which is not the same as measuring it.
