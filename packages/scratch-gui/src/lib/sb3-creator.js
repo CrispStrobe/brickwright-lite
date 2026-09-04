@@ -137,6 +137,12 @@ const gestureForMicroPython = label => {
 const MICROBIT_GESTURE_RE = new RegExp(
     `^(${MICROBIT_GESTURES.map(g => g.replace(' ', '\\s+')).join('|')})\\s+happening\\??$`, 'i');
 
+/** Opcodes whose whole purpose is to hold a body. See the empty-body warning. */
+const OPENS_A_BODY = new Set([
+    'control_if', 'control_if_else', 'control_repeat',
+    'control_repeat_until', 'control_forever',
+]);
+
 class SB3Creator {
     constructor() {
         this.reset();
@@ -5099,6 +5105,30 @@ class SB3Creator {
                             newBlockData.block[blockId].inputs.SUBSTACK = [2, childResult.firstBlockId];
                             childResult.blocks[childResult.firstBlockId].parent = blockId;
                             Object.assign(newBlockData.extraBlocks, childResult.blocks);
+                        } else if (OPENS_A_BODY.has(newBlockData.block[blockId].opcode)) {
+                            // AN EMPTY BODY IS REPORTED, and this used to be the
+                            // `if` with no `else`. A control block with no body
+                            // does nothing at all, and the commonest way to write
+                            // one by accident is to under-indent the body:
+                            //
+                            //   IF n = 1 THEN:
+                            //   say 111          <- same indent, so NOT the body
+                            //
+                            // That produces an empty IF and an UNCONDITIONAL say,
+                            // and it produced no warning of any kind. It is the
+                            // same species as the missing-THEN defect and a more
+                            // plausible typo, indentation being the commonest
+                            // beginner error there is.
+                            //
+                            // A deliberately empty block is reported too. That is
+                            // intended rather than a false positive: the parser
+                            // cannot tell "I meant it to be empty" from "my
+                            // indentation is wrong", a body-less control block is
+                            // dead code either way, and this is a WARNING and not
+                            // a refusal.
+                            this.warn(i, `Empty body: "${trimmed}" has no indented lines under it, `
+                                + 'so it does nothing. If the following lines were meant to be its '
+                                + 'body, indent them further than this line.');
                         }
                         
                         this._pendingComment = ownComment;   // …and hand it to the block it was written for
