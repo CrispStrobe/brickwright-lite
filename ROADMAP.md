@@ -457,6 +457,20 @@ mis-estimated:
 - **Tier C — PC/XT compatible**, for real PC software. Months. Start it when A
   and B ship and a lesson needs it.
 
+**The comparative gap list — bw-board `ROADMAP.md` §E6.8** (surveyed 2026-09-04
+against `mfld-fr/emu86`, `jeffpar/pcjs` and `dbalsom/XTCE-Blue`; **two of its
+nine items were already stale when written and are corrected in place there** —
+the CI vector grader exists, and the bootable MS-DOS image exists and boots
+down two independent paths). Six live items, ordered there. The two that touch this repo rather than the engine:
+`i8086-asm.js` already builds a `symbols` Map and `i8086-disasm.js` already
+accepts a `labels` Map, and **nothing joins them** — so a learner who wrote
+`delay_loop:` reads `jmp 002Bh` (§E6.8.2, the cheapest item on the list); and
+`I8086Machine.saveState()` exists but the UI does not offer it (§E6.8.7).
+Owner-requested and landing last: **cycle-level execution as a machine config**
+(§E6.8.4) — the 8086 is the one CPU here whose cycle-step button is dark, and
+the accuracy/speed trade becomes a user choice expressed through the existing
+`capabilities().steps` vocabulary rather than a new one.
+
 Licence findings that constrain all three: GLaBIOS and `skiselev/8088_bios` are
 GPL-3 (refused), `GREENSHELLRAGE/8086-breadboard-computer` has no LICENSE file
 at all (architecture may inspire, code may not be copied), `emu8086.inc` has no

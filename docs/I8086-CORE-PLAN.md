@@ -118,6 +118,19 @@ this architecture:
 - Everything else worth having is GPL: 86Box, Faux86, Fake86, XTulator, pce,
   DOSBox, PCem, Unicorn.
 
+**That survey asked one question — is anything adoptable as a CORE — and a
+second pass on 2026-09-04 asked the other one: what do the finished projects
+DO that we cannot.** Three were read end to end (`mfld-fr/emu86`, **MIT**;
+`jeffpar/pcjs`, MIT; `dbalsom/XTCE-Blue`, MIT wrapper over Intel microcode).
+The gaps, ordered and costed, are in bw-board `ROADMAP.md` **§E6.8** — nine as
+drafted, of which **two were stale within a day** (the CI vector grader and the
+bootable DOS image both already existed), corrected in place there rather than
+edited out, and six re-verified against `feat/i8086-tier`. The
+headline is that on core correctness we lead two of the three — neither emu86
+nor PCjs has a vector oracle at all — and the one that beats us, XTCE-Blue,
+beats us on the axis §2 declined: cycle-level execution, which the owner has
+since asked for as an eventual user-selectable machine mode.
+
 What *was* adoptable is the ground truth: **SingleStepTests/8086** (MIT), 324
 opcode files × 2,000 vectors, generated on an Intel P80C86A-2 with ArduinoX86.
 That is the same kind of oracle that produced `z80.js` and `w65c02.js`, so the
