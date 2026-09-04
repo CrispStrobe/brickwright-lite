@@ -611,14 +611,42 @@ that subset is a term rewriter, not a C front end, and it shares the whole back
 half with 3.8.2 — both end in our MASM-subset assembler. This is the offline
 path, and offline is not a nicety: it is what works on a school network.
 
-**3. A vendorable C compiler, IF one is permissively licensed.** SmallerC
-targets 8086 and DOS and is small enough to read. **Its licence is NOT yet
-verified** — a fetch failed and nobody has confirmed it — so it stays a
-candidate rather than a plan. Do not put it on a list until someone reads the
-file.
+**3. SmallerC — VERIFIED 2026-09-04, and it is now the RECOMMENDED door.**
 
-**RECOMMENDED ORDER: 1 then 2.** Door 1 gives real C soonest for the least
-work in this repo; door 2 removes the network. Door 3 only if verified.
+Cloned, licence read, compiler built, output disassembled. Every claim below is
+measured rather than reported:
+
+- **BSD-2-Clause**, `license.txt`, two conditions and no advertising clause.
+  Vendorable with attribution.
+- **It emits 16-bit DOS code**: `-dost` (tiny/.COM), `-doss`, `-dosh`,
+  `-seg16`, `-flat16`.
+- **It emits NASM syntax** — `bits 16` at the top of the file — and we shipped
+  a NASM front end this same day. The two halves were built independently and
+  meet exactly.
+- **The output is 8086/186-clean.** A `for` loop calling a function compiled
+  to: `add call cmp inc jge jmp leave mov push ret sub`. Every one is an 8086
+  instruction except `leave`, which is an 80186 — and the 186 variant landed
+  this same day too. **Zero 32-bit registers** in the output, so the doc's
+  "80386+" refers to the 32-bit models, not to this path.
+
+**The ONLY thing standing between it and running is linker directives.** Our
+assembler refuses `GLOBAL` by name — correctly, since it assembles straight to
+a flat loadable image and there is nothing to export to. So the work is a
+flat-image lowering of `SECTION .text/.bss` + `GLOBAL`/`EXTERN`, which is a
+small, bounded piece rather than a compiler.
+
+Where SmallerC RUNS is a separate question with two answers, and neither is
+blocking: server-side beside the existing hosted compiler (trivial, it is plain
+C), or compiled to WASM for the offline path (it is self-hosting C, so this is
+ordinary Emscripten work). **Ship it server-side first and WASM it later** —
+the same order as door 1, and it gets real C onto the 8086 sooner.
+
+**RECOMMENDED ORDER, REVISED once door 3 was verified: 3, then 2 if offline
+matters more than breadth.** SmallerC is permissive, emits the exact dialect we
+just taught the assembler, and produces code our core already runs. Door 1
+(ia16-gcc, hosted) remains the fallback if SmallerC's C subset turns out too
+small for a lesson — it is a real C compiler with real limits, and nobody has
+yet compiled anything larger than a loop through it here.
 
 **THE CONSTRAINT BOTH ROUTES SHARE, and it is the one that must not be fudged:
 pseudocode variables are 32-bit and the 8086 is 16-bit.** Narrowing silently
