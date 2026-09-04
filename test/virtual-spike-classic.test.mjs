@@ -42,7 +42,7 @@ test('translates bounded motor REPL and stops motors on close', async () => {
     socket.send(JSON.stringify({jsonrpc: '2.0', id: 1, method: 'send', params: {
         message, encoding: 'base64'
     }}));
-    assert.deepEqual(socket.state.ports[2], [48, [-50, 0, 0, -50]]);
+    assert.deepEqual(socket.state.classicPorts[2], [48, [-50, 0, 0, -50]]);
     socket.close();
-    assert.equal(socket.state.ports[2][1][0], 0);
+    assert.equal(socket.state.classicPorts[2][1][0], 0);
 });
