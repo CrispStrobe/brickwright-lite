@@ -8,6 +8,10 @@ import DebugFrames from './debug-frames.jsx';
 import {mergeTargetKinds} from '../../lib/bw-debug/target-kinds.js';
 
 // VDP screen — lazy-loaded, only renders when the runner has video output.
+const SwitchPanel = React.lazy(() =>
+    import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/components/SwitchPanel.jsx')
+        .then(m => ({default: m.SwitchPanel}))
+);
 const VdpScreen = React.lazy(() =>
     import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/components/VdpScreen.jsx')
         .then(m => ({default: m.VdpScreen}))
@@ -138,6 +142,14 @@ class DebugPanel extends React.Component {
          *  every render would rebuild them. Returns undefined when the runner
          *  has no keyIn, which is how VdpScreen decides not to offer a
          *  keyboard at all. */
+        /** STABLE identity, bound once -- SwitchPanel's toggle handler is
+         *  useCallback'd on it, so an inline arrow would rebuild every
+         *  switch's handler on every runner emit (rAF cadence). */
+        this._setInputFn = (chip, port, bit, level) => {
+            const r = this.state.runner;
+            return r && typeof r.setInput === 'function'
+                ? r.setInput(chip, port, bit, level) : false;
+        };
         this._scancodeFn = (sc) => {
             const r = this.state.runner;
             if (r && typeof r.keyIn === 'function') r.keyIn(sc);
@@ -774,6 +786,20 @@ class DebugPanel extends React.Component {
                         />
                     </React.Suspense>
                 ) : null}
+
+                {/* SWITCHES AND SENSORS. Mounted only when the machine
+                    declares inputs -- a panel of toggles that drive nothing
+                    is indistinguishable from a program ignoring the user, so
+                    the absence of hardware is the absence of the control. */}
+                {this.state.runner && Array.isArray(this.state.runner.inputs)
+                    && this.state.runner.inputs.length ? (
+                        <React.Suspense fallback={null}>
+                            <SwitchPanel
+                                inputs={this.state.runner.inputs}
+                                setInputFn={this._setInputFn}
+                            />
+                        </React.Suspense>
+                    ) : null}
 
                 {/* What is happening, in the user's own nouns. This comes FIRST
                     and the machine's view comes underneath — the order every

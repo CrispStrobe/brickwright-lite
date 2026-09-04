@@ -1401,6 +1401,26 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             delete runner.keyIn;
         }
 
+        // THE WORLD, not just the keyboard. `capabilities().inputs` lists the
+        // switch and sensor points a machine actually has -- the 8255's ports,
+        // where a breadboard hangs its switches -- and is EMPTY when there is
+        // no such hardware. Exposed on the same terms as video and keyIn, so a
+        // switch control appears exactly when something can read it.
+        //
+        // A control that does nothing is indistinguishable from a program
+        // ignoring the user, which is why this is gated rather than always
+        // present. `inputs` is also the list a code block needs: "set switch 3
+        // on" has to know which switches exist before it can refuse a
+        // fourth one by name.
+        if (target && typeof target.setInput === 'function'
+            && caps && Array.isArray(caps.inputs) && caps.inputs.length) {
+            runner.inputs = caps.inputs;
+            runner.setInput = (chip, port, bit, level) => target.setInput(chip, port, bit, level);
+        } else {
+            delete runner.inputs;
+            delete runner.setInput;
+        }
+
         // Media applied to a LIVE machine (loader while running). A boot
         // image should arrive via bootMedia instead — recreating the
         // runner is what makes the reset vector come from the real bytes.
