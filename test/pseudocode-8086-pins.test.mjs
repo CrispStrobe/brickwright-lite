@@ -605,3 +605,71 @@ test('a percentage on a pin that is not PWM is refused by name', async () => {
             /Declare it PWM/);
     }
 });
+
+// ── AN EIGHT-DIGIT DISPLAY, WHICH ONLY WORKS BECAUSE IT IS MULTIPLEXED ───
+
+/** The 0-9 patterns, so a test can read the display the way an eye does. */
+const SEG_FONT = {0x3F: '0', 0x06: '1', 0x5B: '2', 0x4F: '3', 0x66: '4',
+    0x6D: '5', 0x7D: '6', 0x07: '7', 0x7F: '8', 0x6F: '9'};
+
+/** Run, watching which digit is selected and what segments it drives. */
+async function readDisplay (body) {
+    const src = ['DEVICE i8086', 'PART disp = SEVENSEG8 SEGMENTS P1 SELECT P2.0 P2.1 P2.2',
+        'WHEN flag clicked:', ...body, '  wait 2 secs', '  stop all'].join('\n');
+    const c = new SB3();
+    c.parse(src);
+    assert.deepEqual(c.warnings || [], [], 'parses clean');
+    const built = await buildPseudocode8086({project: c.project, source: src});
+    const b = await createI8086DosBench(
+        {bytes: built.bytes, format: built.format, chips: built.chips});
+    const seen = new Map();
+    let n = 0;
+    while (n < 4_000_000 && !b.terminated) {
+        const o = b.target.outputs();
+        const a = o.find(x => x.port === 'a'), sel = o.find(x => x.port === 'b');
+        // Only non-zero segment patterns: a blank digit drives nothing, and
+        // the scan blanks the segments before it moves the select lines.
+        if (a && sel && a.value) seen.set(sel.value & 7, a.value);
+        b.step();
+        n++;
+    }
+    let out = '';
+    for (let d = 0; d < 8; d++) out += seen.has(d) ? (SEG_FONT[seen.get(d)] ?? '?') : ' ';
+    return {text: out, lit: seen.size, built};
+}
+
+test('an eight-digit display shows a number, right-aligned', async () => {
+    const r = await readDisplay(['  show number 1207 on disp']);
+    assert.equal(r.text, '    1207');
+    assert.equal(r.lit, 4, 'only the four digits that carry the number are driven');
+});
+
+test('zero still shows a zero — leading blanking never eats the last digit', async () => {
+    // A display that goes completely dark for the value 0 reads as broken.
+    const r = await readDisplay(['  show number 0 on disp']);
+    assert.equal(r.text, '       0');
+});
+
+test('`clear` blanks every digit', async () => {
+    const r = await readDisplay(['  show number 88 on disp', '  clear disp']);
+    assert.equal(r.lit, 0, 'nothing is driven at all');
+});
+
+test('filling the buffer is ATOMIC against the scan task', async () => {
+    // THE BUG THIS CAUGHT. The digits are written first and the leading zeros
+    // blanked second, so a preemption in between let the scan display a digit
+    // that was about to be blanked: 1207 read as " 0  1207" -- a stray zero
+    // four places left of the number, which looks like a hardware fault
+    // rather than a race. The fill is a critical section now, and this test
+    // is the measurement that would go wrong again if it stopped being one.
+    for (const [n, want] of [[1207, '    1207'], [90, '      90'], [12345678, '12345678']]) {
+        const r = await readDisplay([`  show number ${n} on disp`]);
+        assert.equal(r.text, want, `show number ${n}`);
+    }
+});
+
+test('the build says a display costs a script, and why', async () => {
+    const r = await readDisplay(['  show number 1 on disp']);
+    assert.match(r.built.warnings.join(' '), /adds a script for each to scan it/);
+    assert.match(r.built.warnings.join(' '), /ONE digit at a time/);
+});
