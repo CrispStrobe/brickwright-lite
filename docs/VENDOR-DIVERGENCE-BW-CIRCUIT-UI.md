@@ -1,5 +1,12 @@
 # Why `sync-bw-circuit-ui.mjs` refuses, and what `--overwrite-local` would cost
 
+> **Resolved 2026-09-04.** The Lite-ahead potentiometer rendering and IBM PC
+> set-1 keyboard path were reconciled upstream in `bw-circuit-ui@ed44d3c`;
+> newer upstream `CircuitDesigner`, machine extraction, footprint, reseat, and
+> circuit-model work was then vendored back without discarding either side.
+> This document remains as the incident record explaining why the guard must
+> refuse before an upstream-first reconciliation.
+
 **Measured 2026-09-04 against `bw-circuit-ui@2a02a8c`.**
 
 `npm run sync:bwcircuitui` exits 3 with:

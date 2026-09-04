@@ -41,25 +41,7 @@ const BROWSER_TO_SPECTRUM = {
   'Control': 'symbol shift',
 };
 
-
-/**
- * Browser key -> IBM PC set-1 SCANCODE, for machines whose keyboard is real
- * hardware rather than a matrix the emulator reads. The 8086 boards take these
- * through the 8255's port A with IRQ1, which is the path a bare-metal INT 09h
- * handler and our BIOS both sit on -- so this works with or without a BIOS,
- * the same way SerialConsole talks to a UART rather than to INT 14h.
- *
- * MAKE ON PRESS, BREAK ON RELEASE, and the break is the make with bit 7 set.
- * That is not decoration: a host that sends only makes leaves every modifier
- * stuck down forever, because the machine has no other way to learn a key came
- * up. The scancode layer deliberately does not synthesise this -- only the
- * host knows about key-up.
- *
- * Set 1 is positional: the code names the KEY'S PLACE on a US layout, not the
- * character. So this maps `e.code` (which is positional) and not `e.key`
- * (which is what the character would be after modifiers). Mapping e.key would
- * send the code for '1' when someone types '!'.
- */
+/** Browser key positions mapped to IBM PC set-1 make codes. */
 const BROWSER_TO_SCANCODE = {
   Escape: 0x01, Digit1: 0x02, Digit2: 0x03, Digit3: 0x04, Digit4: 0x05,
   Digit5: 0x06, Digit6: 0x07, Digit7: 0x08, Digit8: 0x09, Digit9: 0x0a,
@@ -76,9 +58,7 @@ const BROWSER_TO_SCANCODE = {
   F1: 0x3b, F2: 0x3c, F3: 0x3d, F4: 0x3e, F5: 0x3f,
   F6: 0x40, F7: 0x41, F8: 0x42, F9: 0x43, F10: 0x44,
   NumLock: 0x45, ScrollLock: 0x46,
-  // The arrows are E0-prefixed on a real 101-key board. An XT BIOS reads the
-  // 83-key keypad codes, so these are the keypad positions -- which is what
-  // period software expects and what our BIOS translates.
+  // XT software expects the keypad positions used by the 83-key keyboard.
   ArrowUp: 0x48, ArrowLeft: 0x4b, ArrowRight: 0x4d, ArrowDown: 0x50,
   Home: 0x47, PageUp: 0x49, End: 0x4f, PageDown: 0x51,
   Insert: 0x52, Delete: 0x53,
@@ -91,17 +71,12 @@ export function VdpScreen({ videoFn, setButtonsFn, setKeysFn, sendScancodeFn, lo
   const rafRef = useRef(0);
   const maskRef = useRef(0);
   const heldKeysRef = useRef(new Set());
-  const heldCodesRef = useRef(new Set());   // set-1 MAKE codes currently down
+  const heldCodesRef = useRef(new Set());
   const [focused, setFocused] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [nativeSize, setNativeSize] = useState({ w: 256, h: 192 });
 
-  // Input routing, most specific first: raw SCANCODES for machines with real
-  // keyboard hardware, then setKeys for a matrix the emulator reads, then the
-  // 4-direction pad. A machine that offers scancodes wants them -- routing its
-  // keys through a Spectrum matrix would mean translating a PC key into a
-  // Spectrum name and back into a PC scancode, losing every key that has no
-  // Spectrum equivalent on the way.
+  // Prefer raw hardware scancodes, then a matrix keyboard, then the direction pad.
   const useScancodes = typeof sendScancodeFn === 'function';
   const useUlaKeys = !useScancodes && typeof setKeysFn === 'function';
 
@@ -119,9 +94,6 @@ export function VdpScreen({ videoFn, setButtonsFn, setKeysFn, sendScancodeFn, lo
       const sc = BROWSER_TO_SCANCODE[e.code];
       if (sc === undefined) return;
       e.preventDefault();
-      // Auto-repeat is the keyboard's own behaviour and a real one does it, so
-      // a repeat is forwarded rather than filtered: a program holding a key to
-      // scroll expects a stream, not one code.
       heldCodesRef.current.add(sc);
       sendScancodeFn(sc);
       return;
@@ -147,7 +119,7 @@ export function VdpScreen({ videoFn, setButtonsFn, setKeysFn, sendScancodeFn, lo
       if (sc === undefined) return;
       e.preventDefault();
       heldCodesRef.current.delete(sc);
-      sendScancodeFn(sc | 0x80);          // the break code IS the make, bit 7 set
+      sendScancodeFn(sc | 0x80);
       return;
     }
     if (useUlaKeys) {
@@ -172,15 +144,10 @@ export function VdpScreen({ videoFn, setButtonsFn, setKeysFn, sendScancodeFn, lo
 
   const handleBlur = useCallback(() => {
     setFocused(false);
-    // Release all on blur. For scancodes that means SENDING the break for
-    // everything still down -- a machine learns a key came up only from its
-    // break code, so clicking away mid-keypress would otherwise leave Shift or
-    // Ctrl held forever inside the emulated machine, and every later keystroke
-    // would arrive modified. The matrix path can just clear its set, because
-    // there the emulator reads the state rather than being told about edges.
+    // Release all on blur so modifiers cannot remain stuck in the guest.
     if (useScancodes) {
-        for (const sc of heldCodesRef.current) sendScancodeFn(sc | 0x80);
-        heldCodesRef.current.clear();
+      for (const sc of heldCodesRef.current) sendScancodeFn(sc | 0x80);
+      heldCodesRef.current.clear();
     } else if (useUlaKeys) { heldKeysRef.current.clear(); updateKeys(); }
     else updateButtons(0);
   }, [useScancodes, sendScancodeFn, useUlaKeys, updateButtons, updateKeys]);

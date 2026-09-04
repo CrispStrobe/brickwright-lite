@@ -137,12 +137,6 @@ const gestureForMicroPython = label => {
 const MICROBIT_GESTURE_RE = new RegExp(
     `^(${MICROBIT_GESTURES.map(g => g.replace(' ', '\\s+')).join('|')})\\s+happening\\??$`, 'i');
 
-/** Opcodes whose whole purpose is to hold a body. See the empty-body warning. */
-const OPENS_A_BODY = new Set([
-    'control_if', 'control_if_else', 'control_repeat',
-    'control_repeat_until', 'control_forever',
-]);
-
 class SB3Creator {
     constructor() {
         this.reset();
@@ -2791,15 +2785,8 @@ class SB3Creator {
             const part = SB3Creator.STC_PARTS[cfg.device];
             // No explicit core key = 8051 (the P<p>.<b> pin form), same
             // convention as the 74HC595 branches above.
-            // A DECLARED CAPABILITY, NOT A CORE NAME. The scan needs to drive
-            // four rows and read four columns, which an 8051 does with
-            // quasi-bidirectional pins and an 8086 does through an 8255 (rows
-            // and columns on different ports, or the two nibbles of port C,
-            // whose directions are independent). Both can scan a matrix, so
-            // the gate asks whether the device can rather than whether it is
-            // an 8051 -- otherwise every future core has to be named here.
-            if (!part || !(part.keypad || !part.core || part.core === '8051')) {
-                this.warn(lineIndex, `KEYPAD4X4 is not available on ${cfg.device}: the scan has to drive four rows while reading four columns, and this device has no way to do both. Devices that have it: the STC parts, and i8086 (through its 8255).`);
+            if (!part || (part.core && part.core !== '8051')) {
+                this.warn(lineIndex, `KEYPAD4X4 is not available on ${cfg.device}: the scan relies on quasi-bidirectional rows (8051 family). Devices that have it: the STC parts.`);
                 return true;
             }
             if (this.stcPin(name) || this.stcPort(name) || this.stcPart(name)) {
@@ -2968,14 +2955,8 @@ class SB3Creator {
             const name = m[1];
             const cfg = this.stcConfig();
             const part = SB3Creator.STC_PARTS[cfg.device];
-            // A DECLARED CAPABILITY, NOT A CORE NAME -- the same change the
-            // keypad gate got, and for the same reason. A multiplexed display
-            // needs somewhere to run a digit scan: an 8051 uses its Timer-0
-            // ISR, an 8086 uses the preemptive scheduler's timer. Both can
-            // scan, so the gate asks whether the device CAN rather than
-            // whether it happens to be an 8051.
-            if (!part || !(part.sevenseg || !part.core || part.core === '8051')) {
-                this.warn(lineIndex, `SEVENSEG8 is not available on ${cfg.device}: a multiplexed display needs a timer to scan the digits one at a time, and this device has none. Devices that have it: the STC parts, and i8086.`);
+            if (!part || (part.core && part.core !== '8051')) {
+                this.warn(lineIndex, `SEVENSEG8 is not available on ${cfg.device}: the digit scan lives in the 8051 Timer-0 ISR (8051 family). Devices that have it: the STC parts.`);
                 return true;
             }
             if (this.stcPin(name) || this.stcPort(name) || this.stcPart(name)) {
@@ -5118,30 +5099,6 @@ class SB3Creator {
                             newBlockData.block[blockId].inputs.SUBSTACK = [2, childResult.firstBlockId];
                             childResult.blocks[childResult.firstBlockId].parent = blockId;
                             Object.assign(newBlockData.extraBlocks, childResult.blocks);
-                        } else if (OPENS_A_BODY.has(newBlockData.block[blockId].opcode)) {
-                            // AN EMPTY BODY IS REPORTED, and this used to be the
-                            // `if` with no `else`. A control block with no body
-                            // does nothing at all, and the commonest way to write
-                            // one by accident is to under-indent the body:
-                            //
-                            //   IF n = 1 THEN:
-                            //   say 111          <- same indent, so NOT the body
-                            //
-                            // That produces an empty IF and an UNCONDITIONAL say,
-                            // and it produced no warning of any kind. It is the
-                            // same species as the missing-THEN defect and a more
-                            // plausible typo, indentation being the commonest
-                            // beginner error there is.
-                            //
-                            // A deliberately empty block is reported too. That is
-                            // intended rather than a false positive: the parser
-                            // cannot tell "I meant it to be empty" from "my
-                            // indentation is wrong", a body-less control block is
-                            // dead code either way, and this is a WARNING and not
-                            // a refusal.
-                            this.warn(i, `Empty body: "${trimmed}" has no indented lines under it, `
-                                + 'so it does nothing. If the following lines were meant to be its '
-                                + 'body, indent them further than this line.');
                         }
                         
                         this._pendingComment = ownComment;   // …and hand it to the block it was written for
@@ -8244,7 +8201,13 @@ class SB3Creator {
                 return [`${pad}${name} = (${v('TIMES')});`,
                     `${pad}${task}_state = ${s};`,
                     `${pad}case ${s}:`,
-                    `${pad}if (${name}) {`,
+                    // `> 0`, not truthiness: `repeat (-5)` runs the body zero
+                    // times in Scratch and in the trace oracle, and `if (n)` is
+                    // true for every non-zero n. Testing the sign here rather
+                    // than clamping at the assignment keeps `v('TIMES')`
+                    // evaluated exactly once — it can be a side-effecting read
+                    // such as an ADC sample.
+                    `${pad}if (${name} > 0) {`,
                     ...sub('SUBSTACK', level + 1),
                     `${pad}    ${name}--;`,
                     `${pad}    ${task}_state = ${s};`,
@@ -13692,8 +13655,16 @@ class SB3Creator {
         if (procProtos.length) out.push(...procProtos, '');
         if (procDefs.length) out.push(...procDefs);
         if (statics.length) {
+            // SIGNED, and `long` to match the type generated variables use.
+            // These were `unsigned int`, so a negative repeat count did not run
+            // zero times as Scratch says — it converted to a huge positive and
+            // counted down from it. `REPEAT (100 - duty)` with duty 340 became
+            // REPEAT 4294967196: an effectively infinite loop. Found by the
+            // corpus differential once it could tell a semantic disagreement
+            // from a timing one (lite D-CORPUS1); 02-dimmer and 10-motor-speed
+            // on pico both stopped emitting events part-way through the run.
             out.push('/* REPEAT counters live across yields. */',
-                ...statics.map((n) => `static unsigned int ${n};`), '');
+                ...statics.map((n) => `static long ${n};`), '');
         }
         // Forward-declare the print helpers when used inside task bodies.
         // The definitions come later (after the timer/print-library section),
@@ -15234,22 +15205,6 @@ SB3Creator.STC_PARTS = {
     // generateC() emits sdcc -mz80 compatible C: __sfr __at port declarations,
     // shadow byte + OUT for pin writes, IN & mask for pin reads.
     z80: { core: 'z80', header: null, portModes: false, aux1T: false, adc: false },
-    // The 8086 tier. `core: 'i8086'` rather than an 8051 core, so nothing tries
-    // to emit 8051 C for it -- its own back end (bw-asm/pseudocode-8086.js)
-    // lowers straight to 8086 assembly.
-    //
-    // IT KEEPS THE 8051's P1/P2/P3 PIN NAMES ON PURPOSE. The 8086 boards here
-    // carry an 8255, which has exactly three ports, so P1/P2/P3 map onto A/B/C
-    // and a pin declaration means the same wire on either chip. That is what
-    // lets an 8051 program reseat onto an 8086 with only its DEVICE line
-    // changed -- if this used a private pin syntax, every reseat would be a
-    // rewrite.
-    // keypad: an 8255 can scan a matrix -- rows driven from one port, columns
-    // read on another (or the two nibbles of port C, which have independent
-    // directions). adc: false, and it is a fact about the chip rather than
-    // this board: an 8255 is a digital parallel port with no analog path.
-    i8086: { core: 'i8086', header: null, portModes: false, aux1T: false, adc: false,
-        keypad: true, sevenseg: true },
     // ATtiny88: 28-pin DIP, avr25 family. Pins are PB0-7/PC0-7/PD0-7/PA0-3
     // (port/bit, not Arduino Dn numbering). Timer0 has NO CTC mode — the ms
     // tick uses Timer1 CTC instead. ADC on PC0-PC5 (channels 0-5).
