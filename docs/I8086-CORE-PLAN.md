@@ -182,6 +182,14 @@ ms** on desktop and **9.6 to 8.2 ms** on mobile. The profiler still reported
 15 `CircuitDesigner` commits, as expected: CPU-loop work and initial React
 reconciliation are independent costs.
 
+An explicit React-16 batch around declarative circuit loading was then tested
+separately (run `33923725092`). Circuit opening measured **356 / 353 ms**, but
+`CircuitDesigner` still made 15 commits in both viewports. That timing change
+is not credited as a win: the stable commit count shows that this load path was
+already coalesced in practice. The next change instead targets the distinct
+post-layout `requestAnimationFrame` fit retry, batching its zoom/pan pair and
+retaining identical pan state so an idempotent retry performs no render.
+
 The tempting next changes are deliberately deferred. These are activation
 rules, so “later” has a measurable meaning:
 
