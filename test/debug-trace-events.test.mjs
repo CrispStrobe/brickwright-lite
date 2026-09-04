@@ -31,3 +31,17 @@ test('clearing trace also resets compatibility stream ordering', () => {
     trace.record(target);
     assert.deepEqual(events.drain().map(event => event.seq), [0]);
 });
+
+test('a CPU reset opens a new time domain without discarding prior history', () => {
+    let now = 500n;
+    const resettable = {...target, timeNs: () => now};
+    const events = createDebugEventStream({capacity: 4});
+    const trace = createTrace({eventStream: events});
+    trace.record(resettable);
+    now = 0n;
+    trace.record(resettable, 'reset');
+    const batch = events.drain();
+    assert.deepEqual(batch.map(event => event.time.domain),
+        ['simulation-ns', 'simulation-ns-reset-1']);
+    assert.equal(trace.rows().length, 2, 'reset is a boundary in history, not a request to erase it');
+});

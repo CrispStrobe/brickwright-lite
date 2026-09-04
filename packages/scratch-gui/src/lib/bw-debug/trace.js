@@ -61,6 +61,8 @@ export function createTrace({ capacity = DEFAULT_CAPACITY, eventStream = null, c
     let rows = [];
     let dropped = 0;
     let seq = 0;
+    let timeEpoch = 0;
+    let lastEventTime = null;
 
     return {
         /**
@@ -113,10 +115,16 @@ export function createTrace({ capacity = DEFAULT_CAPACITY, eventStream = null, c
             // target is not evidence that we observed an instruction retire.
             // New CPU integrations emit recorded retire/cycle events directly.
             if (eventStream) {
+                // A CPU reset legitimately restarts its simulation clock. Keep
+                // the history, but open a new named clock domain so time stays
+                // monotonic inside each domain as the event contract requires.
+                if (lastEventTime !== null && row.tNs < lastEventTime) timeEpoch++;
+                lastEventTime = row.tNs;
                 eventStream.append({
                     schema: 1,
                     seq: row.seq,
-                    time: {ticks: row.tNs, domain: 'simulation-ns', hz: 1e9},
+                    time: {ticks: row.tNs, domain: timeEpoch
+                        ? `simulation-ns-reset-${timeEpoch}` : 'simulation-ns', hz: 1e9},
                     cpuId,
                     kind: 'instruction',
                     phase: 'snapshot',
@@ -141,6 +149,8 @@ export function createTrace({ capacity = DEFAULT_CAPACITY, eventStream = null, c
             rows = [];
             dropped = 0;
             seq = 0;
+            timeEpoch = 0;
+            lastEventTime = null;
             if (eventStream) eventStream.clear();
         }
     };
