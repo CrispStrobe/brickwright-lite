@@ -57,6 +57,16 @@ test('React profiling is opt-in and wraps only the two relevant subtrees', () =>
     assert.match(webpack, /reactProfiling \? 'build-profile' : 'build'/,
         'the profiling renderer must not replace the deployable production build');
     assert.match(workflow, /BW_REACT_PROFILE=1[\s\S]*build-profile[\s\S]*bench-i8086-browser\.mjs/);
+    const preserve = workflow.indexOf(
+        'mv packages/scratch-gui/build packages/scratch-gui/build-production-ci');
+    const profile = workflow.indexOf('BW_REACT_PROFILE=1', preserve);
+    const restore = workflow.indexOf(
+        'mv packages/scratch-gui/build-production-ci packages/scratch-gui/build');
+    const cleanupTrap = workflow.indexOf('trap cleanup_profile_build EXIT', preserve);
+    assert.ok(preserve >= 0 && preserve < profile,
+        'CI must shelter the production build before npm run build cleans it');
+    assert.ok(restore >= 0 && cleanupTrap > preserve && cleanupTrap < profile,
+        'CI must install the production-build restore trap before profiling');
 });
 
 test('setup attribution owns crossing work by start phase without losing overlap', () => {

@@ -616,12 +616,29 @@ jobs:
           # React's ordinary production renderer removes Profiler timings.
           # Build a separate minified profiling artifact so the deployable
           # build keeps the zero-profiler-overhead renderer used by everyone.
-          cd packages/scratch-gui
-          BW_REACT_PROFILE=1 NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build
-          cd ../..
+          # npm run build starts by cleaning build/, so shelter the production
+          # artifact that the remaining browser gates and deploy job consume.
+          profile_server=
+          cleanup_profile_build() {
+            ci_status=$?
+            if [ -n "$profile_server" ]; then
+              kill "$profile_server" 2>/dev/null || true
+            fi
+            rm -rf packages/scratch-gui/build
+            if ! mv packages/scratch-gui/build-production-ci packages/scratch-gui/build; then
+              ci_status=1
+            fi
+            trap - EXIT
+            exit "$ci_status"
+          }
+          mv packages/scratch-gui/build packages/scratch-gui/build-production-ci
+          trap cleanup_profile_build EXIT
+          (
+            cd packages/scratch-gui
+            BW_REACT_PROFILE=1 NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build
+          )
           python3 -m http.server 8618 --directory packages/scratch-gui/build-profile &
           profile_server=$!
-          trap 'kill "$profile_server" 2>/dev/null || true' EXIT
           for i in $(seq 1 30); do curl -sf http://localhost:8618/ >/dev/null && break; sleep 1; done
           PROOF_URL=http://localhost:8618/ node scripts/bench-i8086-browser.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
