@@ -132,6 +132,16 @@ class DebugPanel extends React.Component {
          *  cancelled and rescheduled its own rAF every frame, so the
          *  paint callback never once ran and the screen stayed black
          *  while the machine rendered perfect frames behind it. */
+        /** STABLE identity, bound once -- same reason as _videoFn below. An
+         *  inline arrow here would give VdpScreen a new sendScancodeFn every
+         *  render, and its key handlers are useCallback'd on that prop, so
+         *  every render would rebuild them. Returns undefined when the runner
+         *  has no keyIn, which is how VdpScreen decides not to offer a
+         *  keyboard at all. */
+        this._scancodeFn = (sc) => {
+            const r = this.state.runner;
+            if (r && typeof r.keyIn === 'function') r.keyIn(sc);
+        };
         this._videoFn = () => {
             const r = this.state.runner;
             return r && typeof r.video === 'function' ? r.video() : null;
@@ -757,6 +767,8 @@ class DebugPanel extends React.Component {
                     <React.Suspense fallback={null}>
                         <VdpScreen
                             videoFn={this._videoFn}
+                            {...(this.state.runner && typeof this.state.runner.keyIn === 'function'
+                                ? {sendScancodeFn: this._scancodeFn} : {})}
                             lang={this.props.locale}
                             data-testid="bw-vdp-screen"
                         />

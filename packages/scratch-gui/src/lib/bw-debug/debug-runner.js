@@ -1385,6 +1385,22 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             delete runner.video;
         }
 
+        // Keyboard face, on the same terms as the video one and for the same
+        // reason: exposed only when the TARGET says the machine can take a
+        // key. `capabilities().keys` reports ['scancode'] when there is a PPI
+        // to latch it and a PIC to raise IRQ1 on, and [] otherwise — so a
+        // board with no keyboard hardware never gets a keyboard widget, and a
+        // user never types into something that cannot hear them. That is the
+        // failure this guards: a key swallowed silently looks exactly like a
+        // program ignoring input.
+        const caps = target && typeof target.capabilities === 'function' ? target.capabilities() : null;
+        if (target && typeof target.keyIn === 'function'
+            && caps && Array.isArray(caps.keys) && caps.keys.includes('scancode')) {
+            runner.keyIn = (scancode) => target.keyIn(scancode);
+        } else {
+            delete runner.keyIn;
+        }
+
         // Media applied to a LIVE machine (loader while running). A boot
         // image should arrive via bootMedia instead — recreating the
         // runner is what makes the reset vector come from the real bytes.
