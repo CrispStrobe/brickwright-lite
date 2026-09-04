@@ -174,6 +174,14 @@ window. This makes Circuit's initial load/reconciliation the next UI target;
 it is no longer defensible to infer that the old long-task count came from the
 emulator pump.
 
+The next separately attributable receipt (run `33922826841`, after replacing
+the DOS whole-machine `Proxy` with an explicit boundary step and comparing
+cycle deadlines directly) kept the paced result at **30.34x XT**. Across the
+same 180 useful samples, measured emulator execution fell from **10.0 to 7.5
+ms** on desktop and **9.6 to 8.2 ms** on mobile. The profiler still reported
+15 `CircuitDesigner` commits, as expected: CPU-loop work and initial React
+reconciliation are independent costs.
+
 The tempting next changes are deliberately deferred. These are activation
 rules, so “later” has a measurable meaning:
 
