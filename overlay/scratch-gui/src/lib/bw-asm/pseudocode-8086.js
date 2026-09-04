@@ -127,10 +127,12 @@
  * a hard stop with a message that names the block and lists what does work.
  *
  * NOT DONE, and named rather than left to be discovered:
- *   - WHEN I receive / WHEN <key> pressed. Broadcast needs a queue, and the
- *     key hat needs the keyboard's own edge, neither of which exists here.
- *     (More than one WHEN flag script, and WHEN <pin> pressed/released, WORK
- *     as of 2026-09-04 — see `schedRuntime` and `emitPinHat`.)
+ *   - WHEN <key> pressed. It needs the keyboard's own edge, and the DOS key
+ *     queue reports presses rather than transitions.
+ *     (More than one WHEN flag script, WHEN <pin> pressed/released, and
+ *     WHEN I receive all WORK as of 2026-09-04 — see `schedRuntime`,
+ *     `emitPinHat` and `emitMessageHat`. Broadcast needed no queue: the
+ *     receiver is already a task watching one byte.)
  *   - Sprites. A DOS program has no stage; a project with a SPRITE section
  *     is refused rather than silently flattened.
  *   - Custom blocks (DEFINE), lists, strings-in-variables, `join`, and every
@@ -207,7 +209,9 @@ export const SUPPORTED = Object.freeze({
     stc12_writepin: 'set <pin> to <value>',
     stc12_settone: 'set <pin> to <n> hz',
     control_wait_until: 'wait until <cond>',
-    stc12_whenpin: 'WHEN <pin> pressed/released:'
+    stc12_whenpin: 'WHEN <pin> pressed/released:',
+    event_whenbroadcastreceived: 'WHEN I receive "<message>":',
+    event_broadcast: 'broadcast "<message>"'
 });
 
 /** What a refused block is called, when the opcode alone would not say. */
@@ -222,7 +226,6 @@ const BLOCK_NAMES = {
     data_addtolist: 'add ... to <list>',
     control_create_clone_of: 'create clone of ...',
     event_whenkeypressed: 'WHEN <key> key pressed:',
-    event_whenbroadcastreceived: 'WHEN I receive ...:',
     procedures_definition: 'DEFINE ...',
     procedures_call: 'a custom block call',
     stc12_setpwm: 'set <pin> to <n> percent'
@@ -366,6 +369,7 @@ class Emitter {
         // keeps the straight-line path: simpler code, and no reason to make
         // every existing program pay for a scheduler it does not use.
         this.tasks = 1;
+        this.messages = new Map();  // broadcast name -> its flag symbol
         this.parts = [];            // declared PARTs (keypad4x4 only, so far)
         this.keypads = new Map();   // name -> label, one scan routine each
     }
@@ -1287,6 +1291,67 @@ class Emitter {
         this.op('CALL BW_SLEEP');
     }
 
+    /** The flag byte for a broadcast name, created on first mention. */
+    messageSym (name) {
+        const key = String(name);
+        if (!this.messages.has(key)) {
+            // BW_BCAST, not BW_MSG: `label('MSG')` already generates BW_MSG0
+            // for the receiver loop, and the two collided -- the assembler
+            // caught it as "defined twice", which is exactly the error a
+            // generated-name scheme should produce rather than a silent
+            // aliasing of a jump target onto a data byte.
+            this.messages.set(key, `BW_BCAST${this.messages.size}`);
+        }
+        return this.messages.get(key);
+    }
+
+    /**
+     * `broadcast "x"` — SET A FLAG, and that is the whole mechanism.
+     *
+     * Scratch's broadcast starts the receiving script. Here the receiver is
+     * already a task, sitting in a loop watching one byte, so a broadcast is
+     * a single store and the scheduler does the rest. No queue: a second
+     * broadcast of the same message before the first was noticed is the same
+     * event, which is also what Scratch does -- a script already running is
+     * restarted rather than run twice over.
+     */
+    emitBroadcast (block) {
+        const input = block.inputs && block.inputs.BROADCAST_INPUT;
+        const inner = Array.isArray(input) ? input[1] : null;
+        const name = Array.isArray(inner) ? inner[1] : null;
+        if (!name) {
+            refuse('this `broadcast` names no message', 'broadcast without a name',
+                block.opcode);
+        }
+        if (!this.messages.has(String(name))) {
+            refuse(`nothing receives the broadcast "${name}". A message with no `
+                + '`WHEN I receive` script is a store to a byte nobody reads -- which '
+                + 'runs, does nothing, and looks like the receiver was never reached.',
+                'broadcast with no receiver', block.opcode);
+        }
+        this.op(`MOV BYTE PTR [${this.messageSym(name)}], 1`);
+    }
+
+    /**
+     * `WHEN I receive "x":` — a task watching one byte.
+     *
+     * It CLEARS the flag before running the body, not after, so a broadcast
+     * sent by the body itself is not swallowed by its own handler.
+     */
+    emitMessageHat (block, name) {
+        const sym = this.messageSym(name);
+        const top = this.label('MSG'), fire = this.label('MSG');
+        this.code.push(`${top}:`);
+        this.op(`CMP BYTE PTR [${sym}], 0`);
+        this.op(`JNE ${fire}`);
+        this.op('CALL BW_POLL1MS');
+        this.op(`JMP ${top}`);
+        this.code.push(`${fire}:`);
+        this.op(`MOV BYTE PTR [${sym}], 0   ; cleared BEFORE the body runs`);
+        this.stack(block.next);
+        this.op(`JMP ${top}`);
+    }
+
     /**
      * `WHEN <pin> pressed:` — AN EDGE, WHICH IS WHY IT NEEDS ITS OWN TASK.
      *
@@ -1612,6 +1677,10 @@ class Emitter {
         case 'stc12_settone':
             this.note('tone');
             this.emitTone(b.fields.PIN[0], b.inputs.VALUE, b.opcode);
+            return;
+        case 'event_broadcast':
+            this.note('broadcast');
+            this.emitBroadcast(b);
             return;
         case 'stc12_setport':
             this.note('port');
@@ -2314,6 +2383,9 @@ class Emitter {
                 'BW_PORTB DB 0    ; shadow of port B',
                 'BW_PORTC DB 0    ; shadow of port C');
         }
+        for (const [name, sym] of this.messages) {
+            d.push(`${sym} DB 0            ; the broadcast "${name}"`);
+        }
         d.push(...this.keypadTables());
         if (this.uses.sched) d.push(...this.schedData());
         if (this.uses.sdiv) {
@@ -2392,9 +2464,11 @@ export function emitI8086Asm (project, opts = {}) {
     const hats = Object.entries(blocks).filter(([, b]) => b && b.topLevel);
     const flags = hats.filter(([, b]) => b.opcode === 'event_whenflagclicked');
     const pinHats = hats.filter(([, b]) => b.opcode === 'stc12_whenpin');
+    const msgHats = hats.filter(([, b]) => b.opcode === 'event_whenbroadcastreceived');
     for (const [, b] of hats) {
         if (b.opcode === 'event_whenflagclicked') continue;
         if (b.opcode === 'stc12_whenpin') continue;
+        if (b.opcode === 'event_whenbroadcastreceived') continue;
         if (b.opcode === 'procedures_definition') {
             refuse('DEFINE (a custom block) is not supported on the 8086 — a call ' +
                 'needs a frame this back end does not build', 'custom block');
@@ -2407,12 +2481,13 @@ export function emitI8086Asm (project, opts = {}) {
     }
     // A pin hat is a script too, so a project made only of them has something
     // to run -- it just never finishes, which is what an event program does.
-    if (flags.length === 0 && pinHats.length === 0) {
-        refuse('this project has no "WHEN flag clicked:" script and no pin event, so ' +
+    if (flags.length === 0 && pinHats.length === 0 && msgHats.length === 0) {
+        refuse('this project has no "WHEN flag clicked:" script and no event, so ' +
             'there is nothing to run', 'no script');
     }
-    if (flags.length + pinHats.length > MAX_SCRIPTS) {
-        refuse(`this project has ${flags.length + pinHats.length} scripts and the `
+    if (flags.length + pinHats.length + msgHats.length > MAX_SCRIPTS) {
+        refuse(`this project has ${flags.length + pinHats.length + msgHats.length} `
+            + `scripts and the `
             + `scheduler here carries ${MAX_SCRIPTS}. Each one needs its own stack, and `
             + 'beyond that the stacks crowd out the program in a .COM\'s single segment. '
             + 'Join some of the scripts.', 'too many scripts');
@@ -2421,7 +2496,7 @@ export function emitI8086Asm (project, opts = {}) {
     // An EMPTY script is refused too, and for the same reason the hardware
     // check above exists: a program that runs, terminates and prints nothing
     // is indistinguishable from a broken emulator.
-    for (const [, f] of [...flags, ...pinHats]) {
+    for (const [, f] of [...flags, ...pinHats, ...msgHats]) {
         if (!f.next) {
             refuse('a "WHEN flag clicked:" script is empty, so this program would run, ' +
                 'finish, and leave the screen blank — which looks exactly like a bench ' +
@@ -2435,7 +2510,12 @@ export function emitI8086Asm (project, opts = {}) {
     em.parts = declared;
     em.ports = (project && project.stc && project.stc.ports) || [];
     em.blocks = blocks;
-    em.tasks = flags.length + pinHats.length;
+    em.tasks = flags.length + pinHats.length + msgHats.length;
+    // REGISTER EVERY RECEIVER BEFORE ANY BODY IS EMITTED. A `broadcast` is
+    // refused when nothing receives it, and the flag's symbol has to exist
+    // before the first script that sends one is lowered -- otherwise whether
+    // a program compiles would depend on which script came first in the file.
+    for (const [, h] of msgHats) em.messageSym(h.fields.BROADCAST_OPTION[0]);
     if (em.tasks > 1) {
         // EACH SCRIPT IS A COROUTINE WITH ITS OWN STACK. They are emitted one
         // after another, each ending in BW_TEND, and the scheduler decides
@@ -2460,6 +2540,15 @@ export function emitI8086Asm (project, opts = {}) {
             em.code.push('', `BW_TASK${flags.length + i}:`);
             em.emitPinHat(h, h.fields.PIN[0], h.fields.EDGE ? h.fields.EDGE[0] : 'pressed');
         });
+        msgHats.forEach(([, h], i) => {
+            em.code.push('', `BW_TASK${flags.length + pinHats.length + i}:`);
+            em.emitMessageHat(h, h.fields.BROADCAST_OPTION[0]);
+        });
+    } else if (msgHats.length === 1 && flags.length === 0 && pinHats.length === 0) {
+        em.tasks = 1;
+        em.uses.sched = true;
+        em.code.push('', 'BW_TASK0:');
+        em.emitMessageHat(msgHats[0][1], msgHats[0][1].fields.BROADCAST_OPTION[0]);
     } else if (pinHats.length === 1 && flags.length === 0) {
         // A LONE PIN HAT STILL NEEDS THE SCHEDULER, because its poll hands
         // over -- there is nothing else to hand over TO, but the polling

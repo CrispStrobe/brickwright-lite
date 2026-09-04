@@ -326,6 +326,10 @@ const PROGRAMS = {
         // An 8255 input port with nothing driving it reads all ones.
         `DEVICE i8086\nPORT sw = P2 INPUT\nWHEN flag clicked:\n  say (read sw)\n`,
         ['255']],
+    'event_broadcast / event_whenbroadcastreceived': [
+        `DEVICE i8086\nWHEN flag clicked:\n  broadcast "go"\n  wait 0.05 secs\n  stop all\n`
+            + `WHEN I receive "go":\n  print "got"\n`,
+        ['got']],
     stc12_whenpin: [
         // The hat ARMS but never fires: an undriven 8255 input reads high, so
         // a pin that is not ACTIVE LOW never reaches "pressed", and the hat
@@ -734,4 +738,50 @@ test('a scheduled `wait` waits the RIGHT length, not merely some length', async 
     // And it SCALES -- a constant offset would satisfy the check above.
     const delta = long.tMs - short.tMs;
     assert.ok(Math.abs(delta - 50) < 8, `0.05s -> 0.1s moved ${delta.toFixed(1)} ms`);
+});
+
+test('a broadcast reaches its receiver, and two messages stay distinct', async () => {
+    const one = await runPseudocode(
+        'DEVICE i8086\n'
+        + 'WHEN flag clicked:\n  print "send"\n  broadcast "go"\n  wait 0.05 secs\n  stop all\n'
+        + 'WHEN I receive "go":\n  print "got it"\n');
+    assert.deepEqual(one.screen, ['send', 'got it']);
+
+    const two = await runPseudocode(
+        'DEVICE i8086\n'
+        + 'WHEN flag clicked:\n  broadcast "one"\n  wait 0.02 secs\n  broadcast "two"\n'
+        + '  wait 0.05 secs\n  stop all\n'
+        + 'WHEN I receive "one":\n  print "A"\n'
+        + 'WHEN I receive "two":\n  print "B"\n');
+    assert.deepEqual(two.screen, ['A', 'B'], 'each message woke only its own receiver');
+});
+
+test('a broadcast nobody receives is refused, not silently dropped', async () => {
+    // A store to a byte no script reads. It would run, do nothing, and look
+    // exactly like a receiver that was never reached -- so it is refused by
+    // name instead, the way an undeclared pin is.
+    const src = 'DEVICE i8086\nWHEN flag clicked:\n  broadcast "nobody"\n'
+        + 'WHEN flag clicked:\n  print "x"\n';
+    const c = new SB3Creator();
+    c.parse(src);
+    await assert.rejects(
+        () => buildPseudocode8086({project: c.project, source: src}, {hostedFetch: forbiddenFetch}),
+        /nothing receives the broadcast/);
+});
+
+test('which script comes first in the file does not decide whether it compiles', async () => {
+    // Every receiver is registered BEFORE any body is lowered. Without that,
+    // a `broadcast` lowered before its receiver was seen would be refused for
+    // having no receiver -- so the same program would compile or not
+    // depending on the order two scripts happened to be written in.
+    const sender_first = await runPseudocode(
+        'DEVICE i8086\n'
+        + 'WHEN flag clicked:\n  broadcast "m"\n  wait 0.05 secs\n  stop all\n'
+        + 'WHEN I receive "m":\n  print "ok"\n');
+    const receiver_first = await runPseudocode(
+        'DEVICE i8086\n'
+        + 'WHEN I receive "m":\n  print "ok"\n'
+        + 'WHEN flag clicked:\n  broadcast "m"\n  wait 0.05 secs\n  stop all\n');
+    assert.deepEqual(sender_first.screen, ['ok']);
+    assert.deepEqual(receiver_first.screen, ['ok']);
 });
