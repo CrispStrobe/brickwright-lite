@@ -13,6 +13,7 @@ import installNativeWebBluetooth from '../lib/native-web-bluetooth.js';
 import installVirtualWebBluetooth from '../lib/virtual-hub/web-bluetooth-shim.js';
 import {registerVirtualSpikePrime} from '../lib/virtual-hub/spike-prime-peripheral.js';
 import installVirtualSpikeClassicScratchLink from '../lib/virtual-hub/spike-classic-scratch-link.js';
+import VirtualSpikeHubState from '../lib/virtual-hub/spike-hub-state.js';
 import installScratchLinkBridge from '../lib/native-scratch-link-bridge.js';
 import initTauriBridge from '../lib/tauri-bridge.js';
 import initUrlExtensions from '../lib/url-extensions.js';
@@ -60,13 +61,22 @@ export default appTarget => {
 
     // Add in-memory peripherals without replacing the real/native radio path.
     // With no registered emulator this forwards requestDevice unchanged.
-    registerVirtualSpikePrime();
+    const virtualSpikeState = new VirtualSpikeHubState();
+    const virtualSpikeBle = registerVirtualSpikePrime({hubState: virtualSpikeState});
+    window.__brickwrightVirtualSpike = {
+        enable: value => { window.__brickwrightUseVirtualSpike = value !== false; },
+        setPort: (...args) => virtualSpikeState.setPort(...args),
+        setBattery: value => virtualSpikeState.setBattery(value),
+        setImu: value => virtualSpikeState.setImu(value),
+        snapshot: () => virtualSpikeState.snapshot(),
+        get blePeripheral () { return virtualSpikeBle.peripheral; }
+    };
     installVirtualWebBluetooth();
 
     // Optional Classic-firmware simulation. It is inert unless the virtual
     // SPIKE control explicitly enables it, preserving real Scratch Link and
     // every non-SPIKE Bluetooth Classic extension.
-    installVirtualSpikeClassicScratchLink();
+    installVirtualSpikeClassicScratchLink(virtualSpikeState);
 
     // The Scratch Link route's fallback transport. Installed BEFORE the VM or
     // any extension can dial, and additive by construction: it touches only

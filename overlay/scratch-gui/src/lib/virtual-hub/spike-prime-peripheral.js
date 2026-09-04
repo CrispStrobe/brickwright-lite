@@ -2,6 +2,7 @@
 // Framing is shared with Brickwright SPIKE Firmware's independently authored
 // protocol/js/spike-codec.js and its Apache-2.0 conformance fixtures.
 import {registerVirtualPeripheral} from './web-bluetooth-shim.js';
+import VirtualSpikeHubState from './spike-hub-state.js';
 
 export const SPIKE_SERVICE = '0000fd02-0000-1000-8000-00805f9b34fb';
 export const SPIKE_RX = '0000fd02-0001-1000-8000-00805f9b34fb';
@@ -68,19 +69,6 @@ export const unpackSpikeFrame = frame => {
     return cobsDecode(encoded);
 };
 
-const initialState = () => ({
-    connected: false,
-    notificationIntervalMs: null,
-    motors: Array.from({length: 6}, () => ({speed: 0, position: 0})),
-    sensors: Array.from({length: 6}, () => null),
-    battery: 100,
-    imu: {
-        faceUp: 0, yaw: 0, pitch: 0, roll: 0,
-        acceleration: {x: 0, y: 0, z: 1000},
-        angularVelocity: {x: 0, y: 0, z: 0}
-    }
-});
-
 const clampInt = (value, minimum, maximum) =>
     Math.max(minimum, Math.min(maximum, Math.round(Number(value) || 0)));
 
@@ -92,7 +80,8 @@ const writeInt32 = (target, offset, value) =>
         .setInt32(offset, clampInt(value, -2147483648, 2147483647), true);
 
 export class VirtualSpikePrimePeripheral {
-    constructor ({id = 'brickwright-virtual-spike-prime', name = 'Brickwright Virtual SPIKE Prime'} = {}) {
+    constructor ({id = 'brickwright-virtual-spike-prime', name = 'Brickwright Virtual SPIKE Prime',
+        hubState = new VirtualSpikeHubState()} = {}) {
         this.id = id;
         this.name = name;
         this.services = [{
@@ -102,7 +91,9 @@ export class VirtualSpikePrimePeripheral {
                 {uuid: SPIKE_TX, properties: {notify: true}}
             ]
         }];
-        this.state = initialState();
+        this.hubState = hubState;
+        this.state = hubState.data;
+        this.hubState.subscribe(() => this.emitDeviceNotification());
         this._frame = [];
         this._sink = null;
     }
@@ -113,7 +104,7 @@ export class VirtualSpikePrimePeripheral {
 
     disconnect () {
         this.state.connected = false;
-        this.state.motors.forEach(motor => { motor.speed = 0; });
+        this.hubState.stopAll();
         this._frame = [];
     }
 
@@ -143,8 +134,7 @@ export class VirtualSpikePrimePeripheral {
     }
 
     setBattery (percent) {
-        this.state.battery = clampInt(percent, 0, 100);
-        this.emitDeviceNotification();
+        this.hubState.setBattery(percent);
     }
 
     setImu (values) {
@@ -160,7 +150,7 @@ export class VirtualSpikePrimePeripheral {
                 }
             }
         }
-        this.emitDeviceNotification();
+        this.hubState.changed();
     }
 
     setPort (port, kind, value = {}) {
@@ -168,9 +158,7 @@ export class VirtualSpikePrimePeripheral {
         if (!Number.isInteger(index) || index < 0 || index > 5) throw new RangeError('SPIKE port must be A-F or 0-5');
         const allowed = new Set(['motor', 'color', 'distance', 'force', 'matrix3', 'none']);
         if (!allowed.has(kind)) throw new TypeError(`unsupported virtual SPIKE port kind: ${kind}`);
-        this.state.sensors[index] = kind === 'none' ? null : {kind, ...value};
-        if (kind === 'motor') Object.assign(this.state.motors[index], value);
-        this.emitDeviceNotification();
+        this.hubState.setPort(index, kind, value);
     }
 
     _deviceRecords () {
@@ -271,7 +259,7 @@ export class VirtualSpikePrimePeripheral {
         if (command && command.m === 'motor') {
             const port = Number(command.p && command.p.port);
             if (Number.isInteger(port) && port >= 0 && port < 6) {
-                this.state.motors[port].speed = Math.max(-100, Math.min(100, Number(command.p.speed) || 0));
+                this.hubState.setMotorSpeed(port, command.p.speed);
             }
         }
         this.state.lastTunnelCommand = command;
@@ -282,12 +270,12 @@ export class VirtualSpikePrimePeripheral {
         const run = /\bmotor\.run\(port\.([A-F]),\s*(-?\d+(?:\.\d+)?)\)/.exec(text);
         if (run) {
             const port = 'ABCDEF'.indexOf(run[1]);
-            this.state.motors[port].speed = clampInt(run[2], -1000, 1000) / 10;
+            this.hubState.setMotorSpeed(port, clampInt(run[2], -1000, 1000) / 10);
             return true;
         }
         const stop = /\bmotor\.stop\(port\.([A-F])\)/.exec(text);
         if (stop) {
-            this.state.motors['ABCDEF'.indexOf(stop[1])].speed = 0;
+            this.hubState.setMotorSpeed(stop[1], 0);
             return true;
         }
         this.state.lastUnsupportedPythonTunnel = text;

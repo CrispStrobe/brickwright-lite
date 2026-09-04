@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import VirtualSpikeHubState from './spike-hub-state.js';
 
 const isClassicScratchLink = url => /:(20110|20111)\//.test(String(url)) && /\/bt\b|\/scratch\/bt/.test(String(url));
 const encodeBase64 = bytes => {
@@ -11,18 +12,8 @@ const decodeBase64 = text => {
     return Uint8Array.from(binary, character => character.charCodeAt(0));
 };
 
-const initialClassicState = () => ({
-    connected: false,
-    battery: 100,
-    ports: Array.from({length: 6}, () => [0, []]),
-    imu: {yaw: 0, pitch: 0, roll: 0},
-    buttons: {left: false, center: false, right: false},
-    lastCommand: null,
-    lastPython: null
-});
-
 export class VirtualSpikeClassicSocket {
-    constructor (url) {
+    constructor (url, {hubState = new VirtualSpikeHubState()} = {}) {
         this.url = String(url);
         this.readyState = 0;
         this.onopen = null;
@@ -31,7 +22,8 @@ export class VirtualSpikeClassicSocket {
         this.onmessage = null;
         this._listeners = {};
         this._input = '';
-        this.state = initialClassicState();
+        this.hubState = hubState;
+        this.state = hubState.data;
         queueMicrotask(() => {
             if (this.readyState !== 0) return;
             this.readyState = 1;
@@ -130,7 +122,7 @@ export class VirtualSpikeClassicSocket {
         if (command.m === 'motor' && command.p) {
             const port = Number(command.p.port);
             if (Number.isInteger(port) && port >= 0 && port < 6) {
-                this.state.ports[port] = [48, [Number(command.p.speed) || 0, 0, 0, 0]];
+                this.hubState.setMotorSpeed(port, command.p.speed);
             }
         }
         if (command.i !== undefined) this._sendRfcomm(`${JSON.stringify({i: command.i, r: null})}\r\n`);
@@ -140,20 +132,20 @@ export class VirtualSpikeClassicSocket {
         const pwm = /hub\.port\.([A-F])\.motor\.pwm\((-?\d+(?:\.\d+)?)\)/.exec(text);
         if (pwm) {
             const port = 'ABCDEF'.indexOf(pwm[1]);
-            this.state.ports[port] = [48, [Number(pwm[2]), 0, 0, Number(pwm[2])]];
+            this.hubState.setMotorSpeed(port, pwm[2]);
             return true;
         }
         const stop = /hub\.port\.([A-F])\.motor\.stop\(\)/.exec(text);
         if (stop) {
             const port = 'ABCDEF'.indexOf(stop[1]);
-            this.state.ports[port] = [48, [0, 0, 0, 0]];
+            this.hubState.setMotorSpeed(port, 0);
             return true;
         }
         return false;
     }
 
     emitCurrentState () {
-        const ports = this.state.ports.map(port => [port[0], [...port[1]]]);
+        const ports = this.state.classicPorts.map(port => [port[0], [...port[1]]]);
         const payload = [...ports, [], [], [this.state.imu.yaw, this.state.imu.pitch, this.state.imu.roll]];
         this._sendRfcomm(`${JSON.stringify({m: 0, p: payload})}\r\n`);
     }
@@ -162,18 +154,18 @@ export class VirtualSpikeClassicSocket {
         if (this.readyState === 3) return;
         this.readyState = 3;
         this.state.connected = false;
-        for (const port of this.state.ports) if (port[0] === 48 || port[0] === 49) port[1][0] = 0;
+        this.hubState.stopAll();
         this._emit('close', {code: 1000, wasClean: true});
     }
 }
 
-export default function installVirtualSpikeClassicScratchLink () {
+export default function installVirtualSpikeClassicScratchLink (hubState = new VirtualSpikeHubState()) {
     if (typeof window === 'undefined' || typeof window.WebSocket !== 'function') return 'unavailable';
     if (window.WebSocket.__brickwrightVirtualSpikeClassic) return 'already installed';
     const NativeWebSocket = window.WebSocket;
     const Wrapped = function WebSocket (url, protocols) {
         if (globalThis.__brickwrightUseVirtualSpike === true && isClassicScratchLink(url)) {
-            return new VirtualSpikeClassicSocket(url);
+            return new VirtualSpikeClassicSocket(url, {hubState});
         }
         return protocols === undefined ? new NativeWebSocket(url) : new NativeWebSocket(url, protocols);
     };
