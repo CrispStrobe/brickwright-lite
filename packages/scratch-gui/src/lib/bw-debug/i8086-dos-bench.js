@@ -16,22 +16,19 @@
  * constructor is what stops the trap page from ever being mapped on top of
  * a BIOS that is trying to boot.
  *
- * THE ONE PIECE OF GLUE, AND WHY IT IS A PROXY. `createI8086DebugTarget`
- * owns the stepping loop and calls `machine.step()` directly; the DOS layer
- * services a trap by looking at CS:IP BETWEEN instructions. Neither knows
- * about the other, and both are VENDORED — `overlay/.../bw-board/` is
- * overwritten wholesale by `npm run sync:bwboard`, so an edit there is lost
- * work by design. So the machine handed to the debug target is a Proxy whose
- * `step` services first: `dos.service()` is idempotent (every vector points
- * at a `jmp $` that cannot move IP, which is that module's central trick),
- * so servicing before the instruction is safe no matter how the caller
- * schedules it. Everything else passes straight through to the real machine,
- * receiver-bound so getters like `tMs` and methods like `_read` behave.
+ * THE ONE PIECE OF GLUE. `createI8086DebugTarget` owns the stepping loop, but
+ * accepts an explicit adapter step for a service layer that has work to do at
+ * an instruction boundary. The DOS layer supplies one that looks at CS:IP
+ * and services a trap BEFORE the hardware machine steps. `dos.service()` is
+ * idempotent (every vector points at a `jmp $` that cannot move IP, which is
+ * that module's central trick), so servicing there is safe no matter how the
+ * caller schedules it. The target still receives the real machine directly;
+ * its hot time and state reads therefore stay ordinary property accesses.
  *
  * AND WHY THE TERMINATED PROGRAM IS HALTED RATHER THAN LEFT SPINNING. When
  * INT 21h/4Ch has run, CS:IP sits on the trap page's `jmp $`. Returning zero
- * cycles forever would hang the caller's `while (machine.tMs < deadline)`
- * loop with a browser tab that never returns; letting it execute the jump
+ * cycles forever would hang the caller's execution-deadline loop with a
+ * browser tab that never returns; letting it execute the jump
  * forever would burn every frame and look exactly like a program still
  * working. Halting the CPU does neither: `_wakeHorizon()` guarantees time
  * still advances, nothing executes, and `onExit` fires once so the panel can
@@ -142,21 +139,7 @@ export async function createI8086DosBench (opts) {
         return cycles;
     };
 
-    /**
-     * The machine as the debug target sees it: identical, except that
-     * stepping services DOS first. `Reflect.get(t, prop, t)` rather than the
-     * proxy receiver so accessors read the real machine's own fields, and
-     * methods are bound to it for the same reason.
-     */
-    const serviced = new Proxy(machine, {
-        get (t, prop) {
-            if (prop === 'step') return dosStep;
-            const v = Reflect.get(t, prop, t);
-            return typeof v === 'function' ? v.bind(t) : v;
-        }
-    });
-
-    const target = createI8086DebugTarget({machine: serviced}, {
+    const target = createI8086DebugTarget({machine, step: dosStep}, {
         // Which video mode the program BELIEVES it is in. Without this the
         // renderer assumes the power-on text mode, which is right for these
         // programs and wrong for any that sets a mode — and being wrong here
@@ -173,8 +156,8 @@ export async function createI8086DosBench (opts) {
          * without ever servicing DOS, so an INT 21h lands on the trap page's
          * `jmp $` and the program spins forever having printed nothing. That
          * looks exactly like a hung emulator, and it is simply the wrong step
-         * function -- the serviced one lived only inside the Proxy handed to
-         * the debug target, reachable from the session and from nowhere else.
+         * function -- the serviced one is injected into the target adapter
+         * and otherwise reachable only here.
          *
          * Found by writing a probe against this bench and watching a
          * print-one-character program produce no output.

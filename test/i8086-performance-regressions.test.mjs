@@ -5,6 +5,26 @@ import {I8086Machine} from '../overlay/scratch-gui/src/lib/bw-board/i8086-machin
 import {DOSBOX8086} from '../overlay/scratch-gui/src/lib/bw-board/i8086-dos.js';
 import {createI8086DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/i8086-debug.js';
 
+test('the 8086 runner uses its boundary step without rounding away tiny budgets', () => {
+    const machine = new I8086Machine(DOSBOX8086);
+    machine.cpu.cs = 0;
+    machine.cpu.ip = 0x100;
+    machine.mem[0x100] = 0x90;           // NOP
+    const hardwareStep = machine.step.bind(machine);
+    let injectedSteps = 0;
+    machine.step = () => assert.fail('runFor bypassed the adapter boundary step');
+    const target = createI8086DebugTarget({
+        machine,
+        step: () => { injectedSteps++; return hardwareStep(); },
+    });
+
+    target.run();
+    assert.equal(target.runFor(1), 'budget'); // 1 ns = 0.005 cycle at 5 MHz
+    assert.equal(injectedSteps, 1,
+        'a positive sub-cycle budget still retires one whole instruction');
+    assert.ok(machine.cycles > 0);
+});
+
 test('the shipped core physically fetches each prefix and opcode once', () => {
     const bytes = [0x26, 0x2e, 0x90];
     const reads = [];

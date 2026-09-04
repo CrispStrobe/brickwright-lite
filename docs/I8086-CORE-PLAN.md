@@ -162,6 +162,18 @@ resource timing names the slowest JavaScript chunks in the same artifact. Thus
 an attach task that ends after sample zero is no longer called steady runtime
 merely because the old interval-overlap filter saw its tail.
 
+The first profiling receipt from that instrument (Lite Actions run
+`33921525472`, artifact `i8086-browser-performance`) sustained **30.34x XT**
+on both desktop and mobile, with pump p95 at **0.2 ms**, no steady long tasks,
+and no setup task crossing into the steady window. Assembly and attach took
+**149 ms desktop / 138 ms mobile** and started no long task. The larger
+interactive cost is opening Circuit: **401 / 376 ms**, including three long
+tasks and about **124 ms** across 15 `CircuitDesigner` commits in either
+viewport. `DebugPanel` accounted for only **20 / 18 ms** before the steady
+window. This makes Circuit's initial load/reconciliation the next UI target;
+it is no longer defensible to infer that the old long-task count came from the
+emulator pump.
+
 The tempting next changes are deliberately deferred. These are activation
 rules, so “later” has a measurable meaning:
 
