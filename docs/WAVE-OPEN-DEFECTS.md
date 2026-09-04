@@ -723,34 +723,67 @@ word in a comment promote a host program fails.
 The `devices` computation is still wrong and still sb3-creator's: a list that claims eleven chips
 for a program binding nothing is over-claiming whatever the harness does about it.
 
-### What the gate finds now that it can run — measured, not diagnosed
+### What the gate finds — DIAGNOSED 2026-09-04, and my first two readings were both wrong
 
 40 pairs from offset 0, in 44 seconds: **31 AGREE, 9 DIFF, 0 ERROR.** Every disagreement is a
-timing one, and they fall into two clearly different groups:
+timing one, and **all nine have a single cause, which is not an emitter defect.**
 
-- **A systematic small skew** — 12 gaps of 6 ms and 3 of 7 ms, against a 5 ms tolerance. All nine
-  DIFF pairs are PWM, shift-register or motor programs, i.e. the ones toggling pins fastest
-  (`02-dimmer`, `08-led-chaser-595`, `10-motor-speed`, `20-shift-register-binary`, `24-pwm-fade`).
-  Just over tolerance and suspiciously uniform, which is the signature of a fixed per-loop
-  overhead in one model and not the other.
-- **Two end-of-trace divergences of 692 ms** — `02-dimmer -> pico` and `10-motor-speed -> pico`,
-  where the last event lands at 1932 ms against 1240 ms. Different in kind and much larger; a
-  tolerance argument cannot explain it.
+**The referee models program execution as instantaneous; a real device spends time.**
+`interpretTrace` walks the project's blocks and charges nothing for the walk, so a bit-banging
+inner loop completes at `t=0`. The compiled program on avr8js or rp2040js pays for every
+instruction. The divergence is therefore a function of how much work a program's inner loop does
+per unit of simulated time, which is why it lands on exactly the PWM, shift-register, dimmer and
+motor programs and on nothing else.
 
-One more cheap measurement sharpens both, and it is worth doing before anyone reaches for the
-tolerance knob. Printing every disagreement as `ref -> actual` shows the first group is a
-**constant** `+6 ms`, not a drift: the same `+6` at ref 250, 600, 603, 606 and 1000, with a single
-`+7` at 700 that is consistent with rounding. An error that does not grow with elapsed time is not
-a rate error — it is a fixed offset, which is what a startup or prologue cost present in one model
-and absent from the other looks like. And the second group's sign is the opposite of the first's:
-`actual` lands at 1240 against a `ref` of 1932, so the compiled trace ends **early**, whereas the
-6 ms group has `actual` running **late**. Two signatures pointing in two directions are unlikely
-to have one cause.
+The evidence is one dump of both traces, event by event, rather than the comparator's summary:
 
-**This is recorded as a measurement and not as a diagnosis.** I have not established whether the
-emitter or the oracle model is the one that is wrong, and widening `tolMs` from 5 to 8 would make
-the first group disappear without anyone finding out which — the exact move this repository's gate
-work exists to prevent. The second group would survive it anyway.
+    20-shift-register-binary -> pico
+      ref    224 events   clock@0=1 clock@0=0 clock@0=1 clock@0=0 …   (the whole shift, at t=0)
+      actual 204 events   clock@0=1 clock@0=0 clock@1=1 clock@1=0 …   (the same shift, over ms)
 
-So the gate stays off in CI pending that diagnosis, and the reason is now an honest one: it fails
-because it has found something, not because it was pointed at the wrong pairs.
+Same 2500 ms horizon, 20 fewer toggles completed. And the device-speed prediction holds where it
+can be checked against itself: `24-pwm-fade` drifts **+1 % linearly** on the nano (+1 ms at ref
+100, +2 at 200, +6 at 600, **+24 at 2400**) and matches the referee **exactly** on the pico, which
+does the same work about ten times faster and stays inside the 5 ms tolerance.
+
+### Two corrections to my own entries above, of the same shape
+
+**I reported the skew as "a constant +6 ms, not a drift". It is a drift — 1 %.** The error was in
+where I read: `compareTraces` reports only the first three disagreements *past* its tolerance, so
+every value I saw was from the tail of an accumulating error, after it crossed 5 ms. The +6 at ref
+600 and the +6 at ref 1000 looked like the same fixed offset; the +1 at ref 100 and +2 at ref 200
+were below tolerance and never printed. **I read a filtered view as if it were the data**, which is
+the same mistake as reading two fields of a probe and ignoring the third.
+
+**I then reported "two signatures pointing in opposite directions … unlikely to share a cause".**
+There is one cause. The 692 ms item was not a second signature: with fewer iterations completed
+inside the horizon, the per-pin sequences end at different points, and comparing the Nth entry of
+each is comparing different moments in the program. It is the same instantaneous-referee gap seen
+from the end of the trace instead of the middle.
+
+Both corrections were available from one command — printing `ref` and `actual` side by side — and
+I filed twice before running it. The lesson is the one this document keeps re-learning in new
+costumes: **a comparator's diff list is not the measurement, it is the comparator's opinion about
+the measurement.** Ask the two sides directly.
+
+### What this means for the gate, and a dead option that was built for exactly this
+
+The nine DIFFs are not emitter bugs, so there is nothing here for sb3-creator to repair. What is
+missing is a budget for a modelling gap that is known and documented — and `compareTraces` already
+has the knobs, added with measured comments citing the 6502 (`~9 ms/s under cc65 -O`, `main ~8 ms
+after reset`):
+
+    const driftPerSec = opts.driftPerSecMs ?? 0;
+    const startup     = opts.startupMs ?? 0;
+
+**No caller anywhere in the repository passes either.** Both corpus call sites pass only `tolMs`
+and `serialMsPerByte`, and `test/oracle-trace.test.mjs` passes nothing at all. They are dead
+parameters: a capability built for this exact situation, never wired, and therefore never able to
+help the one gate that needed it.
+
+Wiring them is the repair, and it is deliberately NOT done here, because the number matters more
+than the mechanism. A per-device `driftPerSecMs` has to be measured across the corpus and then
+justified, and one chosen to turn today's nine red pairs green would hide every future emitter
+regression smaller than itself — which is precisely the move the rest of this document exists to
+prevent. It needs a measured budget with the measurement written down, not a number that makes the
+build pass.

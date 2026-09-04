@@ -17,6 +17,9 @@
  * Usage:
  *   node scripts/oracle-differential.mjs             # built-in programs, both devices
  *   node scripts/oracle-differential.mjs pico        # one device
+ *   node scripts/oracle-differential.mjs explain 24-pwm-fade nano
+ *       # BOTH traces for one pair, side by side, comparing nothing — use this
+ *       # before believing anything the diff list implies about a shape
  *   node scripts/oracle-differential.mjs corpus 10 0 # N gallery pairs from offset,
  *       retargeted per device, sweep stimulus — the amplified corpus under
  *       the REAL emulators, sampled to respect the hosted compile budget
@@ -277,7 +280,74 @@ async function corpusMode(count, offset) {
   return bad;
 }
 
+/**
+ * Print BOTH traces for one gallery pair, side by side, and compare nothing.
+ *
+ * This exists because the comparator's diff list is not the measurement — it is
+ * the comparator's opinion about the measurement. `compareTraces` reports the
+ * first three disagreements PAST its tolerance, so an accumulating error is
+ * only ever visible from the point where it crosses the threshold, and reads
+ * exactly like a constant offset. That misfiled D-CORPUS1 twice: once as "a
+ * constant +6 ms, not a drift" (it is a 1 % drift) and once as "two signatures
+ * pointing in opposite directions" (there is one cause). Both corrections came
+ * from looking at the two sides directly, which took one command and should not
+ * have taken two wrong filings first.
+ *
+ *   node scripts/oracle-differential.mjs explain 24-pwm-fade nano
+ */
+async function explainMode(exId, devName) {
+  const root = process.env.EXAMPLES_DIR ||
+    join(dirname(fileURLToPath(import.meta.url)), '..', 'packages', 'scratch-gui', 'examples');
+  const index = JSON.parse(readFileSync(join(root, 'index.json'), 'utf8'));
+  const entries = (Array.isArray(index) ? index : index.examples || []);
+  const e = entries.find((x) => x.id === exId);
+  if (!e) throw new Error(`no such example: ${exId} (ids come from examples/index.json)`);
+  const dev = DEVICE[devName];
+  if (!dev) throw new Error(`no such device: ${devName} (one of ${Object.keys(DEVICE).join(', ')})`);
+  const retargetId = RETARGET_DEVICE[devName];
+
+  const src = readFileSync(join(root, e.files.program), 'utf8');
+  if (!bindsHardware(src)) {
+    console.log(`${exId} binds no PIN/PART/CHIP — it is a HOST program and is not paired with a chip (D-CORPUS1).`);
+    return;
+  }
+  const r = SB3Creator.retargetPseudocode(src, retargetId);
+  if (!r.ok) { console.log(`retarget refused: ${r.reasons[0]}`); return; }
+  const creator = new SB3Creator();
+  creator.parse(r.pseudocode);
+  const stimulus = sweepStimulus(creator.project.stc.pins, dev.adc);
+  const ref = interpretTrace(creator.project, { horizonMs: HORIZON_MS, stimulus, adc: dev.adc });
+  const out = await compile(creator.generateC(undefined, { debug: true }), dev.target);
+  const actual = runUnderEmulator(dev, creator, out, stimulus);
+
+  console.log(`${exId} -> ${devName}: ref ${ref.events.length} events, actual ${actual.events.length}`);
+  // Per pin, and with leading OFFs dropped, because that is what compareTraces
+  // compares — printing the raw lists instead invites the reader to "find" a
+  // one-event shift the comparator has already accounted for.
+  const byPin = (evs) => {
+    const m = new Map();
+    for (const ev of evs) { if (!m.has(ev.pin)) m.set(ev.pin, []); m.get(ev.pin).push(ev); }
+    for (const [, l] of m) while (l.length && l[0].level === 0) l.shift();
+    return m;
+  };
+  const R = byPin(ref.events), A = byPin(actual.events);
+  for (const pin of new Set([...R.keys(), ...A.keys()])) {
+    const a = R.get(pin) || [], b = A.get(pin) || [];
+    console.log(`  ${pin}: ref ${a.length}, actual ${b.length}`);
+    for (let i = 0; i < Math.min(a.length, b.length, 12); i++) {
+      const d = b[i].tMs - a[i].tMs;
+      console.log(`    [${String(i).padStart(3)}] ref ${String(a[i].tMs).padStart(6)}=${a[i].level}` +
+        `  actual ${String(b[i].tMs).padStart(6)}=${b[i].level}  delta ${d >= 0 ? '+' : ''}${d}` +
+        (a[i].level !== b[i].level ? '  <- LEVEL differs' : ''));
+    }
+  }
+}
+
 const only = process.argv[2];
+if (only === 'explain') {
+  await explainMode(process.argv[3], process.argv[4] ?? 'nano');
+  process.exit(0);
+}
 if (only === 'corpus') {
   const bad = await corpusMode(Number(process.argv[3] ?? 10), Number(process.argv[4] ?? 0));
   process.exit(bad ? 1 : 0);
