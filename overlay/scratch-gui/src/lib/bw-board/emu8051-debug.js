@@ -117,6 +117,7 @@ const MAX_BREAKPOINTS = 32;
  * @param {object} wasm the Emscripten module instance
  * @param {object} [opts]
  * @param {SymbolTable} [opts.symbols] load it now instead of calling setSymbols
+ * @param {number} [opts.clockHz] oscillator frequency, for exact cycle-domain timestamps
  * @returns {object} the DebugTarget
  */
 export function createEmu8051DebugTarget(wasm, opts = {}) {
@@ -142,6 +143,9 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
 
     let symbols = null;
     let listeners = [];
+    let debugListeners = [];
+    let debugTimeEpoch = 0;
+    let pendingStep = null;
     /**
      * Set while runFor is inside emu_dbg_run_until_ns. Every halt that arrives
      * in that window is swallowed: the budget expiring is one of them and is
@@ -236,8 +240,52 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
         return why;
     }
 
+    function debugTime() {
+        const ns = nowNs();
+        const hz = Number(opts.clockHz);
+        return Number.isSafeInteger(hz) && hz > 0
+            ? {ticks: (ns * BigInt(hz) + 500000000n) / 1000000000n,
+                domain: debugTimeEpoch ? `8051-oscillator-reset-${debugTimeEpoch}` : '8051-oscillator', hz}
+            : {ticks: ns,
+                domain: debugTimeEpoch ? `8051-simulation-ns-reset-${debugTimeEpoch}` : '8051-simulation-ns',
+                hz: 1e9};
+    }
+
+    function emitDebug(event) {
+        for (const cb of debugListeners) cb({...event, time: debugTime(), cpuId: 'main'});
+    }
+
+    function emitHaltEvidence(why) {
+        if (pendingStep && why.cause === 'step') {
+            const step = pendingStep;
+            pendingStep = null;
+            if (step.kind === 'cycle') {
+                // The WASM's cycle step is one real oscillator tick. No bus
+                // pins are claimed: this build exposes the boundary, not its
+                // internal address/data/control signals.
+                emitDebug({kind: 'bus', phase: 'oscillator-clock', fidelity: 'recorded',
+                    pcBefore: step.pcBefore, pcAfter: why.pc,
+                    cause: 'step'});
+            } else if (step.kind === 'insn') {
+                emitDebug({kind: 'instruction', phase: 'retire', fidelity: 'recorded',
+                    pcBefore: step.pcBefore, pcAfter: why.pc,
+                    instruction: {address: step.pcBefore}, cause: 'step'});
+            }
+        }
+        if (why.cause === 'watchpoint') {
+            // This is evidence of a value transition sampled by the native
+            // change watchpoint, not proof of every store (same-value stores
+            // and multiple writes within one instruction remain invisible).
+            emitDebug({kind: 'memory', phase: 'change-watchpoint', fidelity: 'recorded',
+                memory: {space: why.space, address: why.addr, width: 1,
+                    direction: 'write', before: why.prev, value: why.value},
+                pcAfter: why.pc, cause: 'watchpoint'});
+        }
+    }
+
     function announce(cause) {
         const why = haltReason(cause);
+        emitHaltEvidence(why);
         for (const cb of listeners) cb(why);
         return why;
     }
@@ -350,6 +398,7 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
         capabilities() {
             // Feature-detect watchpoints: available if _emu_dbg_set_bp_write exists
             const hasWatchpoints = typeof wasm._emu_dbg_set_bp_write === 'function';
+            const hasWatchpointEvidence = hasWatchpoints && hasHaltReason;
 
             return {
                 // `line` is absent on purpose — see "Two corrections" above.
@@ -373,7 +422,23 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
                 // An emulator takes nothing from the program: no timer, no
                 // UART, no pin. The on-chip monitor is the one that has to
                 // confess here (§7 decision 5).
-                consumes: []
+                consumes: [],
+                events: [
+                    'instruction',
+                    ...(hasCycleStep ? ['bus'] : []),
+                    ...(hasWatchpointEvidence ? ['memory'] : [])
+                ],
+                fidelity: {
+                    instruction: 'recorded',
+                    cycle: hasCycleStep ? 'recorded' : 'unsupported',
+                    memory: hasWatchpointEvidence ? 'recorded' : 'unsupported'
+                },
+                extensions: {
+                    cycleEvidence: hasCycleStep ? 'oscillator-step-boundary' : 'none',
+                    instructionEvidence: 'single-step-retire-only',
+                    busSignals: false,
+                    memoryEvidence: hasWatchpointEvidence ? 'change-watchpoint-only' : 'none'
+                }
             };
         },
 
@@ -385,10 +450,12 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
         run() {
             stepping = false;
             pendingCause = null;
+            pendingStep = null;
             wasm._emu_dbg_run();
         },
 
         halt() {
+            pendingStep = null;
             pendingCause = 'user';
             wasm._emu_dbg_halt();
         },
@@ -408,12 +475,16 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
             if (k === undefined) return { unsupported: `no such step kind: ${kind}` };
             stepping = true;
             pendingCause = 'step';
+            pendingStep = (count === 1 && (kind === 'cycle' || kind === 'insn'))
+                ? {kind, pcBefore: wasm._emu_dbg_pc()}
+                : null;
             // -1 means the emulator itself declined the kind. Passing that back
             // matters: the alternative is reporting "stepping" for a step that
             // never started, and then waiting for a halt that never comes.
             if (wasm._emu_dbg_step(k, count) < 0) {
                 stepping = false;
                 pendingCause = null;
+                pendingStep = null;
                 return { unsupported: `this emulator build does not implement step kind: ${kind}` };
             }
             return undefined;
@@ -422,6 +493,8 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
         reset() {
             stepping = false;
             pendingCause = null;
+            pendingStep = null;
+            debugTimeEpoch++;
             wasm._emu_dbg_reset();
             // Breakpoints deliberately survive: `dbg_reset` resets the CPU and
             // the peripherals and does not touch `t->bps`, so the emulator will
@@ -561,6 +634,13 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
             return () => { listeners = listeners.filter((f) => f !== cb); };
         },
 
+        /** Subscribe to recorded facts. Sequencing/schema wrapping belongs to the runner. */
+        onDebugEvent(cb) {
+            if (typeof cb !== 'function') throw new TypeError('debug event listener must be a function');
+            debugListeners.push(cb);
+            return () => { debugListeners = debugListeners.filter((f) => f !== cb); };
+        },
+
         // ─── beyond the interface ────────────────────────────────────────
 
         /** Load stc_symtab.py's JSON. Needed for position and yield breakpoints. */
@@ -667,6 +747,7 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
             }
             haltCbPtr = null;
             listeners = [];
+            debugListeners = [];
         }
     };
 

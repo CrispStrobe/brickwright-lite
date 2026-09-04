@@ -15,11 +15,15 @@
  * @param {object} [opts.symbols] — { scheduler: { tasks: [...] } }
  */
 import { disasm6502 } from './w65c02-disasm.js';
+import {installInstructionDebugEvents} from './instruction-debug-events.js';
 
 export function createM6502DebugTarget(adapter, opts = {}) {
   const machine = adapter.machine;
   const cpu = machine.cpu;
   const symbols = opts.symbols ?? null;
+  const debugEvents = installInstructionDebugEvents({
+    cpu, machine, cpuId: opts.cpuId || 'm6502', timeDomain: 'm6502-cycles'
+  });
 
   let runState = 'halted'; // 'halted' | 'running'
   let pendingStep = null;  // { kind: 'insn'|'block'|'over'|'out', ... }
@@ -63,6 +67,8 @@ export function createM6502DebugTarget(adapter, opts = {}) {
         breakpoints: [...(symbols ? ['code', 'yield'] : ['code']), 'write'],
         timeFreezes: true,
         consumes: [],
+        events: ['instruction', 'memory'],
+        fidelity: {instruction: 'recorded', memory: 'reconstructed', cycle: 'unsupported'},
         // Two audio contracts (E6.8.11a). 'tone' is what the hardware is
         // CONFIGURED to produce and 'samples' is what it SOUNDS like;
         // 'samples' is advertised only when a chip on this machine can
@@ -90,6 +96,8 @@ export function createM6502DebugTarget(adapter, opts = {}) {
     },
 
     state() { return runState; },
+
+    onDebugEvent: debugEvents.onDebugEvent,
 
     regs() {
       return {

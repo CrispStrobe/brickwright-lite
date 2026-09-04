@@ -10,11 +10,15 @@
 import { disasmZ80 } from './z80-disasm.js';
 import { loadSNA, SNA_SIZE } from './zx-sna.js';
 import { loadZ80 } from './zx-z80file.js';
+import {installInstructionDebugEvents} from './instruction-debug-events.js';
 
 /** @param {{ machine: import('./z80-machine.js').Z80Machine }} adapter */
-export function createZ80DebugTarget(adapter) {
+export function createZ80DebugTarget(adapter, opts = {}) {
   const machine = adapter.machine;
   const cpu = machine.cpu;
+  const debugEvents = installInstructionDebugEvents({
+    cpu, machine, cpuId: opts.cpuId || 'z80', timeDomain: 'z80-tstates', port: true
+  });
 
   let runState = 'halted';
   let pendingStep = null;
@@ -51,10 +55,16 @@ export function createZ80DebugTarget(adapter) {
 
   return {
     capabilities() {
-      return { steps: ['insn', 'over', 'out'], breakpoints: ['code', 'write'], timeFreezes: true, consumes: [] };
+      return {
+        steps: ['insn', 'over', 'out'], breakpoints: ['code', 'write'], timeFreezes: true,
+        consumes: [], events: ['instruction', 'memory', 'port'],
+        fidelity: {instruction: 'recorded', memory: 'reconstructed', port: 'reconstructed', cycle: 'unsupported'}
+      };
     },
 
     state() { return runState; },
+
+    onDebugEvent: debugEvents.onDebugEvent,
 
     regs() {
       return {

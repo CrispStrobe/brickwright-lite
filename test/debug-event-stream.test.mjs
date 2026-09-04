@@ -92,6 +92,36 @@ test('batch drain preserves order and leaves the undrained tail', () => {
     assert.deepEqual(stream.drain().map(row => row.seq), [2, 3]);
 });
 
+test('publish owns one total sequence across independent producers', () => {
+    const stream = createDebugEventStream();
+    const facts = extra => ({
+        time: {ticks: 1, domain: extra.cpuId},
+        kind: 'instruction', phase: 'retire', fidelity: 'recorded',
+        pcBefore: 0, pcAfter: 1, ...extra
+    });
+    stream.publish(facts({cpuId: 'cpu0'}));
+    stream.publish(facts({cpuId: 'cpu1'}));
+    assert.deepEqual(stream.drain().map(row => row.seq), [0, 1]);
+});
+
+test('publish continues after explicitly sequenced compatibility events and resets on clear', () => {
+    const stream = createDebugEventStream();
+    stream.append(event(41));
+    stream.publish({
+        time: {ticks: 42, domain: 'oscillator', hz: 12000000}, cpuId: 'main',
+        kind: 'instruction', phase: 'retire', fidelity: 'recorded',
+        pcBefore: 1, pcAfter: 2
+    });
+    assert.deepEqual(stream.drain().map(row => row.seq), [41, 42]);
+    stream.clear();
+    stream.publish({
+        time: {ticks: 0, domain: 'oscillator'}, cpuId: 'main',
+        kind: 'instruction', phase: 'retire', fidelity: 'recorded',
+        pcBefore: 0, pcAfter: 1
+    });
+    assert.deepEqual(stream.drain().map(row => row.seq), [0]);
+});
+
 test('stable serialization sorts keys and carries bigint without JSON loss', () => {
     const first = serializeDebugEvent(event(0x20000000000001n, 0x20000000000002n));
     const second = serializeDebugEvent({...event(0x20000000000001n, 0x20000000000002n)});

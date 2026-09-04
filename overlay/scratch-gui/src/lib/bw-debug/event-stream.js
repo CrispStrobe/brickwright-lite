@@ -142,6 +142,7 @@ export function createDebugEventStream({capacity = 1024} = {}) {
     let start = 0;
     let length = 0;
     let lastSeq = null;
+    let nextSeq = 0;
     let totalDropped = 0;
     let undrainedDropped = 0;
 
@@ -155,6 +156,11 @@ export function createDebugEventStream({capacity = 1024} = {}) {
             if (prior !== undefined && ticks < prior) fail(`time decreased in domain ${event.time.domain}`);
 
             lastSeq = seq;
+            if (seq >= BigInt(nextSeq)) {
+                const following = seq + 1n;
+                nextSeq = following <= BigInt(Number.MAX_SAFE_INTEGER)
+                    ? Number(following) : following;
+            }
             lastTime.set(event.time.domain, ticks);
             if (length < capacity) {
                 ring[(start + length) % capacity] = event;
@@ -166,6 +172,19 @@ export function createDebugEventStream({capacity = 1024} = {}) {
                 undrainedDropped++;
             }
             return event;
+        },
+
+        /**
+         * Publish an event from a target producer. Targets deliberately do
+         * not allocate stream sequence numbers: several CPUs, devices and the
+         * compatibility trace can share this ring, and only the ring knows
+         * their total order.
+         */
+        publish(input) {
+            if (!input || typeof input !== 'object' || Array.isArray(input)) {
+                fail('event must be an object');
+            }
+            return this.append({...input, schema: DEBUG_EVENT_SCHEMA, seq: nextSeq});
         },
 
         drain(max = length) {
@@ -194,6 +213,7 @@ export function createDebugEventStream({capacity = 1024} = {}) {
             start = 0;
             length = 0;
             lastSeq = null;
+            nextSeq = 0;
             totalDropped = 0;
             undrainedDropped = 0;
             lastTime.clear();

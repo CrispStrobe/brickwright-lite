@@ -325,6 +325,17 @@ watchpoint and must not be labelled one.
 - 8051 and 8086 instruction-retire producers, mutation-proved for PC/order;
 - bounded overhead benchmarks with tracing off, live ring and recording on.
 
+Implementation status (2026-09-04): the decoded bounded stream, global
+sequencer, runner subscription lifecycle and compatibility trace are delivered.
+The 8051 emits recorded single-instruction retire and genuine oscillator-step
+boundaries, plus native change-watchpoint evidence. The 8086 emits recorded
+retires, program writes, port accesses and accepted interrupts. The current
+instruction-atomic 6502 and Z80 cores emit recorded retires and conservatively
+`reconstructed` ordered memory/port accesses because they cannot timestamp an
+access within an instruction. None of these changes upgrades 8086, 6502 or Z80
+to cycle stepping. Free-running 8051 trace completeness, compact typed transport
+and the three overhead modes remain acceptance work for this slice.
+
 ### Slice 2 — recorder and replay
 
 - versioned snapshot/input contracts and storage budgets;

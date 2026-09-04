@@ -1,6 +1,9 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createDebugFoundation} from '../overlay/scratch-gui/src/lib/bw-debug/debug-foundation.js';
+import {
+    createDebugFoundation,
+    subscribeDebugTargetEvents
+} from '../overlay/scratch-gui/src/lib/bw-debug/debug-foundation.js';
 
 test('foundation composes explicit capabilities with event predicates', () => {
     const foundation = createDebugFoundation();
@@ -18,4 +21,30 @@ test('attaching another target drops predicates compiled for the old address spa
     foundation.addBreakpoint({id: 'old', kind: 'execute', address: 1});
     foundation.attachCapabilities({events: ['instruction']});
     assert.deepEqual(foundation.evaluateBreakpoints({kind: 'instruction', pcBefore: 1}).matchingIds, []);
+});
+
+test('target facts enter the runner stream in total order and teardown unsubscribes', () => {
+    const foundation = createDebugFoundation();
+    let listener = null;
+    const target = {onDebugEvent(callback) {
+        listener = callback;
+        return () => { listener = null; };
+    }};
+    const off = subscribeDebugTargetEvents(target, foundation.events);
+    const fact = pc => ({
+        time: {ticks: pc, domain: 'cpu'}, cpuId: 'cpu0', kind: 'instruction',
+        phase: 'retire', fidelity: 'recorded', pcBefore: pc, pcAfter: pc + 1
+    });
+    listener(fact(0));
+    listener(fact(1));
+    assert.deepEqual(foundation.events.drain().map(event => event.seq), [0, 1]);
+    off();
+    assert.equal(listener, null);
+});
+
+test('target event bridge refuses a broken subscription contract', () => {
+    const foundation = createDebugFoundation();
+    assert.equal(subscribeDebugTargetEvents({}, foundation.events), null);
+    assert.throws(() => subscribeDebugTargetEvents({onDebugEvent: () => null}, foundation.events),
+        /unsubscribe function/);
 });

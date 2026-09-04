@@ -7,6 +7,19 @@ import {EventBreakpointEngine} from './event-breakpoints.js';
 import {createDebugEventStream} from './event-stream.js';
 import {createDebugRecorder} from './recorder.js';
 
+/** Connect a target-owned fact source to the runner-owned sequenced stream. */
+export function subscribeDebugTargetEvents (target, eventStream) {
+    if (!target || typeof target.onDebugEvent !== 'function') return null;
+    if (!eventStream || typeof eventStream.publish !== 'function') {
+        throw new TypeError('debug target events require a publish-capable event stream');
+    }
+    const unsubscribe = target.onDebugEvent(event => eventStream.publish(event));
+    if (typeof unsubscribe !== 'function') {
+        throw new TypeError('onDebugEvent must return an unsubscribe function');
+    }
+    return unsubscribe;
+}
+
 export function createDebugFoundation ({eventCapacity = 4096, conditionEvaluator = null} = {}) {
     const events = createDebugEventStream({capacity: eventCapacity});
     const recorder = createDebugRecorder();

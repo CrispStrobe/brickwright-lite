@@ -284,7 +284,7 @@ async function createZ80Target(opts) {
   try {
     const mod = await import('./z80-debug.js');
     if (mod.createZ80DebugTarget) {
-      target = mod.createZ80DebugTarget({ machine: adapter.machine });
+      target = mod.createZ80DebugTarget({ machine: adapter.machine }, {cpuId: opts.cpuId});
     }
   } catch { /* adapter-only mode */ }
   return { target, adapter };
@@ -377,7 +377,7 @@ async function createEater6502Target(opts) {
   try {
     const mod = await import('./m6502-debug.js');
     if (mod.createM6502DebugTarget) {
-      target = mod.createM6502DebugTarget(adapter, { symbols });
+      target = mod.createM6502DebugTarget(adapter, { symbols, cpuId: opts.cpuId });
     }
   } catch {
     // m6502-debug.js not available — adapter-only mode

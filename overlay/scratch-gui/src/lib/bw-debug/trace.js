@@ -120,9 +120,11 @@ export function createTrace({ capacity = DEFAULT_CAPACITY, eventStream = null, c
                 // monotonic inside each domain as the event contract requires.
                 if (lastEventTime !== null && row.tNs < lastEventTime) timeEpoch++;
                 lastEventTime = row.tNs;
-                eventStream.append({
-                    schema: 1,
-                    seq: row.seq,
+                const publish = typeof eventStream.publish === 'function'
+                    ? eventStream.publish.bind(eventStream)
+                    : eventStream.append.bind(eventStream);
+                publish({
+                    ...(typeof eventStream.publish === 'function' ? {} : {schema: 1, seq: row.seq}),
                     time: {ticks: row.tNs, domain: timeEpoch
                         ? `simulation-ns-reset-${timeEpoch}` : 'simulation-ns', hz: 1e9},
                     cpuId,

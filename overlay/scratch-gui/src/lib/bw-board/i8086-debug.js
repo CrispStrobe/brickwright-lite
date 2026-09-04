@@ -190,6 +190,7 @@ export function labelsFromAssembly(result, opts = {}) {
 export function createI8086DebugTarget(adapter, opts = {}) {
     const machine = adapter.machine;
     const cpu = machine.cpu;
+    const cpuId = opts.cpuId || 'i8086';
 
     let runState = 'halted';
     let pendingStep = null;
@@ -200,6 +201,24 @@ export function createI8086DebugTarget(adapter, opts = {}) {
     let cachedVideoKey = null;
     let cachedVideoFrame = null;
     let nextBpId = 1;
+    let debugEventListener = null;
+    const originalPortHook = machine.hooks?.onPortAccess || null;
+    const originalInterruptHook = machine.hooks?.onInterrupt || null;
+    const originalInstructionHook = machine.hooks?.onInstruction || null;
+    let eventTimeEpoch = 0;
+    let lastEventTicks = -1;
+    const eventTime = (ticks = machine.cycles) => {
+        if (ticks < lastEventTicks) eventTimeEpoch++;
+        lastEventTicks = ticks;
+        return {
+            ticks,
+            domain: eventTimeEpoch ? `i8086-cycles-reset-${eventTimeEpoch}` : 'i8086-cycles',
+            hz: machine.clockHz
+        };
+    };
+    const publishDebugEvent = event => {
+        if (debugEventListener) debugEventListener(event);
+    };
     const halt = (info) => { runState = 'halted'; for (const cb of haltListeners) cb(info); };
 
     // Write watchpoints trap TRUE writes by wrapping the core's write
@@ -228,8 +247,16 @@ export function createI8086DebugTarget(adapter, opts = {}) {
      * gave up rather than what it was about to.
      */
     const syncEventHooks = () => {
-        machine.hooks.onPortAccess = portWatches.size
+        machine.hooks.onPortAccess = (portWatches.size || debugEventListener || originalPortHook)
             ? (ev) => {
+                if (originalPortHook) originalPortHook(ev);
+                publishDebugEvent({
+                    time: eventTime(), cpuId, kind: 'port',
+                    phase: 'access', fidelity: 'recorded',
+                    port: {address: ev.port & 0xffff,
+                        direction: ev.dir === 'in' ? 'read' : ev.dir === 'out' ? 'write' : ev.dir,
+                        value: ev.value & 0xff}
+                });
                 for (const [id, w] of portWatches) {
                     if (w.port !== (ev.port & 0xffff)) continue;
                     if (w.dir && w.dir !== ev.dir) continue;
@@ -237,8 +264,14 @@ export function createI8086DebugTarget(adapter, opts = {}) {
                 }
             }
             : null;
-        machine.hooks.onInterrupt = intWatches.size
+        machine.hooks.onInterrupt = (intWatches.size || debugEventListener || originalInterruptHook)
             ? (ev) => {
+                if (originalInterruptHook) originalInterruptHook(ev);
+                publishDebugEvent({
+                    time: eventTime(), cpuId, kind: 'interrupt',
+                    phase: 'accepted', fidelity: 'recorded',
+                    interrupt: {vector: ev.vector, source: ev.source}
+                });
                 for (const [id, w] of intWatches) {
                     if (w.vector != null && w.vector !== ev.vector) continue;
                     if (w.source && w.source !== ev.source) continue;
@@ -246,19 +279,35 @@ export function createI8086DebugTarget(adapter, opts = {}) {
                 }
             }
             : null;
+        machine.hooks.onInstruction = (debugEventListener || originalInstructionHook)
+            ? (ev) => {
+                if (originalInstructionHook) originalInstructionHook(ev);
+                publishDebugEvent({
+                    time: eventTime(ev.cyclesAfter), cpuId, kind: 'instruction',
+                    phase: 'retire', fidelity: 'recorded',
+                    pcBefore: ev.pcBefore, pcAfter: ev.pcAfter,
+                    instruction: {address: ev.pcBefore, cycles: ev.cycles}
+                });
+            }
+            : null;
     };
 
     const syncWriteTrap = () => {
-        if (writeWatches.size && !origWrite) {
+        if ((writeWatches.size || debugEventListener) && !origWrite) {
             origWrite = cpu.write;
             cpu.write = (a, v) => {
                 const aa = a & 0xfffff;
+                publishDebugEvent({
+                    time: eventTime(), cpuId, kind: 'memory',
+                    phase: 'access', fidelity: 'recorded',
+                    memory: {space: 'mem', address: aa, value: v & 0xff, direction: 'write'}
+                });
                 for (const [id, w] of writeWatches) {
                     if (aa >= w.addr && aa < w.addr + w.len) watchHit = { bp: id, addr: aa, value: v & 0xff };
                 }
                 return origWrite(a, v);
             };
-        } else if (!writeWatches.size && origWrite) {
+        } else if (!writeWatches.size && !debugEventListener && origWrite) {
             cpu.write = origWrite;
             origWrite = null;
         }
@@ -292,6 +341,9 @@ export function createI8086DebugTarget(adapter, opts = {}) {
         capabilities() {
             return {
                 steps: ['insn', 'over', 'out'],
+                events: ['instruction', 'memory', 'port', 'interrupt'],
+                fidelity: {instruction: 'recorded', cycle: 'unsupported'},
+                spaces: {mem: {read: true, write: true, passiveRead: true}},
                 // 'port' and 'int' are declared only because the machine can
                 // actually observe them. They rest on machine.hooks, which the
                 // machine layer owns; a target wired to a machine without them
@@ -338,6 +390,21 @@ export function createI8086DebugTarget(adapter, opts = {}) {
                 audio: machine.canRenderAudio && machine.canRenderAudio()
                     ? ['tone', 'samples']
                     : ['tone'],
+            };
+        },
+
+        /** Subscribe to facts observed at the execution boundary. */
+        onDebugEvent(listener) {
+            if (typeof listener !== 'function') throw new TypeError('debug event listener must be a function');
+            if (debugEventListener) throw new Error('the 8086 debug event listener is already attached');
+            debugEventListener = listener;
+            syncEventHooks();
+            syncWriteTrap();
+            return () => {
+                if (debugEventListener !== listener) return;
+                debugEventListener = null;
+                syncEventHooks();
+                syncWriteTrap();
             };
         },
 

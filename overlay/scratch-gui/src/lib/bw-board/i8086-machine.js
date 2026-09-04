@@ -1182,9 +1182,24 @@ export class I8086Machine {
             this._advanceChips(n);
             return n;
         }
+        // The instruction observer is deliberately at the machine boundary,
+        // after interrupt arbitration and around the one core call which
+        // retires an instruction.  A debugger observing outside step() cannot
+        // identify the true pcBefore when a pending IRQ redirects execution.
+        const pcBefore = this.cpu.pc;
+        const cyclesBefore = this.cycles;
         const n = this.cpu.step();
         this.cycles += n;
         this._advanceChips(n);
+        if (this.hooks.onInstruction) {
+            this.hooks.onInstruction({
+                pcBefore,
+                pcAfter: this.cpu.pc,
+                cycles: n,
+                cyclesBefore,
+                cyclesAfter: this.cycles
+            });
+        }
         return n;
     }
 

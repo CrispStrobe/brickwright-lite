@@ -40,7 +40,7 @@ import {
 } from './breakpoints.js';
 import { parseCondition } from './condition.js';
 import { createTrace, IO_SFRS, TIMER_SFRS } from './trace.js';
-import {createDebugFoundation} from './debug-foundation.js';
+import {createDebugFoundation, subscribeDebugTargetEvents} from './debug-foundation.js';
 import { setValueResolver } from './hover-values.js';
 import { instructionLength } from './opcodes.js';
 import {
@@ -436,6 +436,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     /** The execution history the drawer renders. See trace.js. */
     const debugFoundation = createDebugFoundation({eventCapacity: 4096});
     const eventStream = debugFoundation.events;
+    let unsubscribeDebugEvents = null;
     const trace = createTrace({eventStream});
     /** The user's own variables: {name, space, addr, size}. From the symbol table. */
     let variableTable = [];
@@ -492,8 +493,18 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             capsFor = target;
             capsOf = target.capabilities();
             debugFoundation.attachCapabilities(capsOf);
+            bindDebugEvents();
         }
         return capsOf;
+    }
+
+    /** Attach one target-owned fact stream to the runner-owned total order. */
+    function bindDebugEvents() {
+        if (unsubscribeDebugEvents) {
+            unsubscribeDebugEvents();
+            unsubscribeDebugEvents = null;
+        }
+        unsubscribeDebugEvents = subscribeDebugTargetEvents(target, eventStream);
     }
 
     function setStatus(phase, message = '') {
@@ -1018,7 +1029,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         symbols = built.symbols;
         variableTable = (symbols.variables || []).filter((v) => v.space);
         pinTable = stc.pins || [];
-        target = createEmu8051DebugTarget(wasm, { symbols });
+        target = createEmu8051DebugTarget(wasm, {symbols, clockHz: fosc});
         session = createDebugSession(target, {
             onChange: (st) => {
                 if (st.halted) {
@@ -2618,6 +2629,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             if (vm && vm.runtime) delete vm.runtime._bwDebugVariables;
             unschedule();
             if (unsubscribeBps) { unsubscribeBps(); unsubscribeBps = null; }
+            if (unsubscribeDebugEvents) { unsubscribeDebugEvents(); unsubscribeDebugEvents = null; }
             clearGlow();
             if (session) session.destroy();
             // Machine-bench targets carry no destroy (nothing to free — the
