@@ -1067,7 +1067,20 @@ bw-board moves 4 commits over 3 vendored files (`board.js`, `emu8051-debug.js`, 
 readMem fix plus two pin-aliasing commits, which is what the three browser gates are for);
 sb3-creator moves 1 commit over `cToPseudocode.js` and `sb3Creator.js`, landing the `repeat` fix
 and resolving 2 of the 11 remaining disagreements. **Do not let it take bw-board's master**, which
-has since absorbed the i8086 consolidation merges.
+has since absorbed the i8086 consolidation merges — **and which is RED as of `c3e9fcf`.**
+`test/reseat-gate.test.mjs` there resolves its fixtures through
+`join(here, '..', '..', 'wt', 'i8086-ui-cui', 'gallery')`: a path inside a git WORKTREE on one
+developer box, on the unmerged branch `feat/i8086-ui`, with the two fixtures tracked nowhere in
+bw-board. CI can never have them, and the tell is that the GREEN case and the RED mutation case
+fail together — a missing fixture, not changed behaviour. `a577476` is the last green commit on
+that branch, which is a second and independent reason to pin there.
+
+bw-board's own `ci.yml` predicted the species: it checks `emu8051-stc` out INSIDE the workspace
+because "Actions refuses a path outside the workspace", and records that fifteen cross-repo tests
+once skipped silently for weeks. This is that hazard one step further out. **"Works on the box with
+both checkouts" has a worse cousin: works on the box with both WORKTREES** — and a worktree is not
+something CI can be pointed at, so the fixture has to be committed or the gate has to say it is
+absent.
 
 Asserting a tool's constraint without reading its flags is the same shape as every other error in
 this document: a plausible reading of something adjacent to the evidence.
