@@ -160,3 +160,20 @@ test('Settings exposes an app-internal hard reload without clearing project stor
     assert.match(reload, /bw-hard-reload/);
     assert.doesNotMatch(reload, /localStorage\.clear/);
 });
+
+test('the full-screen exit control clears the menu bar band instead of hiding inside it', () => {
+    const header = read('overlay/scratch-gui/src/components/stage-header/stage-header.jsx');
+    // Measured on the built app in WebKit at an iPad viewport: with top:8 this row
+    // occupied y 13..47 while the menu bar occupied y 0..48 — a total overlap. It
+    // still WON the stacking (z 5100 vs 491, and elementFromPoint at its centre
+    // returned the button), so the bug was never paint order and raising z-index
+    // would have fixed nothing. After the offset the row measures y 61..95 and no
+    // longer intersects the menu bar. Pin the offset, not the z-index.
+    assert.match(header, /top: 'calc\(env\(safe-area-inset-top, 0px\) \+ 56px\)'/,
+        'the full-screen control row must clear the 48px menu bar (3rem) plus a gap, ' +
+        'or it lands inside the top bar where the iOS status bar can also cover it');
+    assert.match(header, /right: 'calc\(env\(safe-area-inset-right, 0px\) \+ 8px\)'/,
+        'the row must respect the right safe-area inset');
+    // The stacking it already had must not be traded away for the offset.
+    assert.match(header, /zIndex: 5100/);
+});
