@@ -286,3 +286,34 @@ test('KNOWN DEFECT: `IF n = THEN:` builds a nonsense condition in silence', () =
     assert.deepEqual(w, [],
         'if this now warns, the defect is fixed — assert the warning instead of the silence');
 });
+
+test('the round trip is lossless for every construct — and asserts one wrong line', () => {
+    // TEXT -> BLOCKS -> TEXT. A construct the decompiler does not know vanishes
+    // from what the learner is shown, which is the same species as a block the
+    // parser drops, pointed the other way. Swept: nothing is lost.
+    const prog = ['DEVICE i8086', 'GLOBAL n', 'WHEN flag clicked:', '  set n to 0',
+        '  REPEAT 3:', '    change n by 1', '  IF n = 3 THEN:', '    say 111',
+        '  ELSE:', '    say 222', '  REPEAT UNTIL n = 5:', '    change n by 1',
+        '  say n', ''].join('\n');
+    const c = new SB3Creator();
+    c.parse(prog);
+    assert.deepEqual(c.warnings, [], 'a program using everything warns about nothing');
+    const back = c.decompile();
+    for (const construct of ['REPEAT 3:', 'IF n = 3 THEN:', 'ELSE:', 'REPEAT UNTIL n = 5:',
+        'set n to 0', 'change n by 1', 'say 111', 'say 222', 'say n']) {
+        assert.ok(back.includes(construct), `the round trip lost: ${construct}`);
+    }
+
+    // KNOWN DEFECT, pinned and NOT fixed: the decompiler asserts an 8051
+    // crystal for a device that never declared one. `CLOCK ${cfg.clock ||
+    // 11059200}` is hardcoded and device-independent, so an 8086 program round
+    // trips as CLOCK 11059200 — 11.0592 MHz, a number chosen because 8051 UARTs
+    // divide it evenly, and nothing to do with an XT's 4.77 MHz.
+    //
+    // It predates the i8086 device entry (the fallback is in the emitter, not
+    // in the device table) and it is not fixed here because the RIGHT value is
+    // a per-device fact this file should not be guessing. When somebody gives
+    // the devices clocks, this goes red.
+    assert.match(back, /CLOCK 11059200/,
+        'if this no longer says 11059200, the device clocks were fixed — assert the real one');
+});
