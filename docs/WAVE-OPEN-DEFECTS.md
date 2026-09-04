@@ -894,7 +894,55 @@ watching"**. Their D2 gate asserts zero hosted-compiler requests, where a broken
 produces the same zero as a correct one — so it now drives a known-positive request through the
 same path first and requires it to be caught. Same disease, two gates, found independently.
 
-**`02-dimmer` and `10-motor-speed` on pico — undiagnosed, and stated as such.** Both read
+**`02-dimmer` and `10-motor-speed` on pico — DIAGNOSED AND FIXED 2026-09-04 (sb3-creator
+`85fcf9f`). A real emitter defect, the first this differential has found.** Scratch's
+`repeat (n)` with n <= 0 runs the body zero times and `interpretTrace` implements that. The
+emitted C did not:
+
+    static unsigned int bw_i1;
+    bw_i1 = (n);                 /* n = -5  ->  4294967291 */
+    if (bw_i1) { … bw_i1--; }    /* true for every non-zero n */
+
+An UNSIGNED counter assigned a possibly-negative expression, guarded on truthiness and
+decremented AWAY from zero. `02-dimmer` computes `duty = (read pot * 100) / 1023`, a hardcoded
+10-bit divisor, so pico's 12-bit ADC yields duty ~340 and `REPEAT 100 - duty` becomes
+`REPEAT 4294967056`. The device wedged while the referee carried on — exactly the "ten events the
+actual lacks" recorded below.
+
+Two tokens: a signed `long` counter and a `> 0` guard. NOT a clamp at the assignment, which would
+double-evaluate `v('TIMES')` — that can be a side-effecting ADC read. Re-measured through this
+harness with the fixed emitter: **`02-dimmer -> pico` and `10-motor-speed -> pico` both AGREE**,
+and `02-dimmer -> nano` stays SKEW, which is the benign timing gap and correct.
+
+Fixing it broke seven round-trip tests, which is the part worth keeping. `cToPseudocode`
+recognised the loop by its exact `if (bw_iN)` shape, and `ctarget.test.mjs` pinned
+`static unsigned int` incidentally while asserting that the counter outlives the yield. The reader
+now accepts both guard forms — that round-trip is asserted as a FIXED POINT, so refusing to read
+our own older output would break it in the direction that looks like a parser bug rather than a
+version skew — and the gate pins signedness deliberately.
+
+### The last two: `08-led-chaser-595` — a modelling difference in the LATCH IDLE LEVEL
+
+Diagnosed 2026-09-04, and neither side is wrong. The emitted `shift_out` helper does latch-low,
+eight clocked bits, latch-high — so it ENDS with the latch high and lowers it again at the start
+of the next update. The referee pulses it high and low within the same instant:
+
+    ref     latch: 0=1  0=0    100=1  100=0     (a pulse inside one millisecond)
+    actual  latch: 0=1  100=0  100=1  200=0     (idles HIGH between updates)
+
+A 74HC595 transfers to its output register on the RISING edge of RCLK, and both sequences give
+exactly one rising edge per update, so both are electrically correct and the LEDs do the same
+thing. What differs is the level the pin rests at between updates — not a property either side was
+trying to assert. Left as-is deliberately: making them agree means changing the oracle's 595 model
+or the emitted helper, which is a design call in someone else's component for a difference that
+cannot change what the hardware does.
+
+**With this the triage is complete.** Of the nine original disagreements: five were the benign
+referee-is-instantaneous timing gap, two were lite's own recorder, two were the emitter defect
+above, and two are this modelling difference. **Zero unexplained.**
+
+The superseded record of the two pico pairs, kept because the wrong readings are the point: both
+read
 `referee has 10 events the actual lacks (first: {tMs: 2020, …})`. The head agrees to the
 millisecond for nineteen events, then the referee holds the output on until 1932 where the device
 releases at 1240, and continues with ten more. The divergence begins after t≈900, which is when
@@ -906,3 +954,31 @@ That is four consumer-side findings and zero producer-side ones, again. The gate
 precisely because it now points at four specific pairs instead of drowning them in nine benign
 timing failures — but it still cannot be switched on in CI until the recorder gap is closed and
 the pico pair is understood.
+
+## D-EMU-BP3, second half — the fix was in the wrong repository (2026-09-04)
+
+The readMem repair landed in lite's VENDORED copy of `emu8051-debug.js`. That file is synced from
+bw-board, and lite's own `vendor-freshness` gate said so: `STALE emu8051-debug.js`. The consequence
+was worse than a red gate — **the next `sync:bw-board` would have silently reverted it and restored
+the 256-byte short read**, because bw-board carried no such change at its pin or on master. A fix
+applied in the consumer of a vendored file is a fix with an expiry date, and nothing about it looks
+temporary while you are writing it.
+
+Ported and pushed as bw-board `a577476` (CI green), verified there against a FAKE wasm rather than
+the real binary: the vendored emulator lives here, not there, and the property under test is not
+"the emulator works" but "this adapter respects the C side's buffer limit". The fake encodes that
+limit exactly — it fills at most 256 bytes per call and leaves the rest of the scratch region
+POISONED, because a fake that zero-filled would let the broken version pass. Zeroes are what the
+bug produced. Mutation-proved.
+
+**The danger is closed even though the gate is still red.** bw-board master carries the fix, so a
+future vendor can only keep it. What remains is the pin: lite pins `5f79057`, which predates it, so
+`--check` reports STALE until someone runs `vendor-forward`. That is deliberately not done here —
+it clones every upstream fresh, advances bw-board, bw-circuit-ui and sb3-creator together, then
+runs integrate, a build and three browser gates before committing. The build does not fit on this
+box, and lite's CI queue was nine deep.
+
+The rule, learned the expensive way: **before fixing a file under `lib/bw-board/`,
+`lib/bw-circuit-ui/` or any `sb3-creator-*.js`, check whether it is vendored.** `scripts/sync-*.mjs`
+name every file they own. Fixing it here is not a shortcut to fixing it there; it is a fix that
+will be deleted by the next person doing their job correctly.
