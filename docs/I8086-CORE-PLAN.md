@@ -145,6 +145,12 @@ totalled only 0.1–0.2 ms. The default right/off docks therefore no longer copy
 progress-only state into `CircuitTab`, where it had no visible consumer but
 reconciled the whole `CircuitDesigner`; board changes, halts and halt reasons
 remain immediate, and top/solo docks retain their visible periodic status.
+React 16 also batches the DebugPanel and CircuitTab consumers into one update.
+The follow-up hosted receipt held throughput at **25.82x desktop / 25.89x
+mobile**, cut publication from **93.9 to 5.9 ms** total on desktop and **91.1
+to 6.4 ms** on mobile (a 93–94% reduction), and cut pump p95 from **6.6 to
+0.6 ms** desktop and **6.8 to 0.4 ms** mobile. Execution is now the measured
+pump majority; board advancement remains below the receipt's 0.1 ms resolution.
 
 The tempting next changes are deliberately deferred. These are activation
 rules, so “later” has a measurable meaning:
