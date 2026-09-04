@@ -104,7 +104,10 @@ test('the 8255 is configured ONCE, because a mode word clears the latches', asyn
         '  turn on led',
         '  turn on led',
     ]);
-    const ctrlWrites = (r.built.asm.match(/MOV\s+AL,\s*80h/gi) || []).length;
+    // Counted by writes to the CONTROL PORT, not by a literal -- the word is
+    // computed from the declarations now, so its spelling changes with the
+    // program while the "exactly one" property must not.
+    const ctrlWrites = (r.built.asm.match(/MOV DX, 99[\s\S]{0,60}?OUT DX, AL/g) || []).length;
     assert.equal(ctrlWrites, 1, `the control word is written once, not ${ctrlWrites} times`);
     assert.equal(r.ports.a.value & 0x01, 0x01, 'and the pin is still lit at the end');
 });
@@ -127,4 +130,81 @@ test('a PART is still refused, and the message says why a PIN is different', asy
         'WHEN flag clicked:',
         '  say "hi"',
     ]), /a PIN is one wire and works|device with a protocol/);
+});
+
+// ---------------------------------------------------------------------------
+// The input half — what the switch panel exists to drive
+// ---------------------------------------------------------------------------
+
+test('a program READS a switch and lights an LED, and the switch decides', async () => {
+    // The whole loop: a person flips a toggle, an 8255 input port sees it, the
+    // program branches, an output port drives a lamp. Both cases asserted,
+    // because a program that lit the LED regardless would pass a one-sided
+    // test and would be exactly as broken.
+    const src = [
+        'DEVICE i8086',
+        'PIN btn = P3.2 INPUT ACTIVE LOW',
+        'PIN led = P1.0 OUTPUT',
+        'WHEN flag clicked:',
+        '  REPEAT 3:',
+        '    IF (read btn) = 1 THEN:',
+        '      turn on led',
+    ].join('\n');
+    const c = new SB3();
+    c.parse(src);
+    const built = await buildPseudocode8086({ project: c.project, source: src });
+
+    for (const [held, want] of [[false, 0], [true, 1]]) {
+        const b = await createI8086DosBench({ bytes: built.bytes, format: built.format });
+        // CLOSED PULLS THE LINE LOW, which is how a breadboard button is wired
+        // and what the switch panel sends. ACTIVE LOW on the declaration is
+        // what turns that back into "pressed" for the learner.
+        if (held) b.target.setInput('ppi1', 'c', 2, 0);
+        let n = 0;
+        while (n < 500_000 && !b.terminated) { b.step(); n++; }
+        const a = b.target.outputs().find((o) => o.port === 'a');
+        assert.equal(a.value & 1, want,
+            held ? 'held: the LED is lit' : 'open: the LED is dark — an undriven input '
+                + 'floats HIGH, so without ACTIVE LOW this program would light either way');
+    }
+});
+
+test('the control word is computed from ALL declarations, once', async () => {
+    // A mode word CLEARS every output latch, so it can be written exactly
+    // once -- which means every port's direction must be known before the
+    // first pin is touched. That is why direction lives on the PIN line and is
+    // not inferred from first use: inferring would need a second mode word,
+    // and the second would darken whatever the first had lit.
+    const src = [
+        'DEVICE i8086',
+        'PIN sw = P3.1 INPUT',        // port C lower -> bit 0 of the control word
+        'PIN led = P1.0 OUTPUT',      // port A stays an output
+        'WHEN flag clicked:',
+        '  IF (read sw) = 1 THEN:',
+        '    turn on led',
+    ].join('\n');
+    const c = new SB3();
+    c.parse(src);
+    const built = await buildPseudocode8086({ project: c.project, source: src });
+    const writes = built.asm.match(/MOV DX, 99[\s\S]{0,60}?OUT DX, AL/g) || [];
+    assert.equal(writes.length, 1, 'exactly one mode word');
+    assert.match(writes[0], /MOV AL, 129\b/,
+        '0x81: mode 0, port C LOWER an input, everything else an output');
+});
+
+test('port C is two half-ports, so four switches and four LEDs can share it', async () => {
+    // The thing that makes port C the handshake port on a real 8255, and here
+    // it means a program can read PC0-PC3 while driving PC4-PC7.
+    const src = [
+        'DEVICE i8086',
+        'PIN sw = P3.0 INPUT',
+        'PIN lamp = P3.7 OUTPUT',
+        'WHEN flag clicked:',
+        '  turn on lamp',
+    ].join('\n');
+    const c = new SB3();
+    c.parse(src);
+    const built = await buildPseudocode8086({ project: c.project, source: src });
+    assert.match(built.asm, /MOV AL, 129\b/,
+        'C lower in (0x01), C upper OUT — 0x81, not 0x89');
 });

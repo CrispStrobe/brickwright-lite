@@ -476,6 +476,10 @@ class Emitter {
         case 'operator_and': case 'operator_or': case 'operator_not':
             this.evalCond(b);
             return;
+        case 'stc12_read':
+            this.note('pin');
+            this.emitPinRead(b.fields.PIN[0], b.opcode);
+            return;
         default:
             refuse(`"${nameOf(b.opcode)}" is not supported on the 8086 — ` +
                 SUPPORTED_SENTENCE(), `unsupported reporter ${b.opcode}`, b.opcode);
@@ -677,6 +681,50 @@ class Emitter {
         this.op(`MOV [BW_PORT${p.PORT}], AL`);
         this.op(`MOV DX, ${p.dataPort}`);
         this.op('OUT DX, AL');
+    }
+
+
+    /**
+     * READ A PIN — the input half, and what the switch panel exists to drive.
+     *
+     * `IN AL, DX` reads the PINS, not the latch: on an 8255 an input port
+     * returns what the outside world is holding the line at, which is exactly
+     * what a switch changes. A learner flips a toggle and this sees it.
+     *
+     * THE PORT MUST BE AN INPUT AND THIS DOES NOT MAKE IT ONE. The control
+     * word is written once at entry, configuring every port as an OUTPUT --
+     * because a mode word clears the latches, so reconfiguring per-access
+     * would blink every pin off. A program that declares an INPUT pin gets a
+     * control word that says so, computed once from ALL the declarations
+     * together. That is why the direction lives on the PIN line rather than
+     * being inferred from use.
+     *
+     * Result is 0 or 1 in the 32-bit pair, because every value in this back
+     * end is 32 bits and a pin read has to be comparable with a number the
+     * learner wrote.
+     */
+    emitPinRead (name, opcode) {
+        const p = this.pinAddr(name, opcode);
+        this.uses.ppi = true;
+        this.op(`MOV DX, ${p.dataPort}`);
+        this.op('IN AL, DX');
+        this.op(`AND AL, ${1 << p.bit}`);
+        // activeLow at the declaration again: a button wired to pull LOW reads
+        // 0 when pressed, and the learner who wrote ACTIVE LOW means "pressed".
+        if (p.activeLow) {
+            this.op(`XOR AL, ${1 << p.bit}`);
+        }
+        // A LABEL, not `JZ $+5`. The relative form works only while the two
+        // instructions it jumps over keep their exact encodings, and an
+        // assembler that shortened one -- which this one does, deliberately --
+        // would silently land the jump one byte into the next instruction.
+        const one = this.label('PIN');
+        this.op('CMP AL, 0');
+        this.op('MOV AX, 0');
+        this.op(`JZ ${one}`);
+        this.op('MOV AX, 1');
+        this.code.push(`${one}:`);
+        this.op('MOV DX, 0');
     }
 
     emitSay (input, opcode, textMode) {
@@ -1318,13 +1366,33 @@ export function emitI8086Asm (project, opts = {}) {
     // The shadow bytes start at 0 and the ports start at 0, so they agree
     // before the first instruction rather than after the first write.
     if (em.uses.ppi) {
+        // THE CONTROL WORD IS COMPUTED FROM ALL THE PIN DECLARATIONS AT ONCE,
+        // and it has to be. A mode word clears every output latch, so it can
+        // be written exactly once -- which means the direction of every port
+        // must be known before the first pin is touched. That is why direction
+        // lives on the PIN line and is not inferred from first use: inferring
+        // it would need a second mode word, and the second one would darken
+        // whatever the first had lit.
+        //
+        // Mode 0. Bit 4 = port A input, bit 1 = port B input, bit 3 = port C
+        // upper input, bit 0 = port C lower. Port C is TWO half-ports with
+        // independent directions, which is what makes it the handshake port --
+        // and here it means a program can read four switches on PC0-PC3 while
+        // driving four LEDs on PC4-PC7.
+        let ctrl = 0x80;
+        for (const pin of em.pins) {
+            if (pin.direction !== 'input') continue;
+            if (pin.port === 1) ctrl |= 0x10;
+            else if (pin.port === 2) ctrl |= 0x02;
+            else if (pin.port === 3) ctrl |= (pin.bit >= 4 ? 0x08 : 0x01);
+        }
         head.push(
             '',
-            '    ; 8255: mode 0, ports A, B and C all outputs. Written ONCE --',
-            '    ; a mode word clears the output latches, so repeating it would',
+            '    ; 8255 mode 0. Written ONCE, from every PIN declaration at once:',
+            '    ; a mode word CLEARS the output latches, so a second one would',
             '    ; blink every pin off.',
             `    MOV DX, ${PPI_CTRL}`,
-            '    MOV AL, 80h',
+            `    MOV AL, ${ctrl}`,
             '    OUT DX, AL'
         );
     }

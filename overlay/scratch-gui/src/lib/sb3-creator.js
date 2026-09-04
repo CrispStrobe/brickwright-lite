@@ -15191,6 +15191,17 @@ SB3Creator.STC_PARTS = {
     // generateC() emits sdcc -mz80 compatible C: __sfr __at port declarations,
     // shadow byte + OUT for pin writes, IN & mask for pin reads.
     z80: { core: 'z80', header: null, portModes: false, aux1T: false, adc: false },
+    // The 8086 tier. `core: 'i8086'` rather than an 8051 core, so nothing tries
+    // to emit 8051 C for it -- its own back end (bw-asm/pseudocode-8086.js)
+    // lowers straight to 8086 assembly.
+    //
+    // IT KEEPS THE 8051's P1/P2/P3 PIN NAMES ON PURPOSE. The 8086 boards here
+    // carry an 8255, which has exactly three ports, so P1/P2/P3 map onto A/B/C
+    // and a pin declaration means the same wire on either chip. That is what
+    // lets an 8051 program reseat onto an 8086 with only its DEVICE line
+    // changed -- if this used a private pin syntax, every reseat would be a
+    // rewrite.
+    i8086: { core: 'i8086', header: null, portModes: false, aux1T: false, adc: false },
     // ATtiny88: 28-pin DIP, avr25 family. Pins are PB0-7/PC0-7/PD0-7/PA0-3
     // (port/bit, not Arduino Dn numbering). Timer0 has NO CTC mode — the ms
     // tick uses Timer1 CTC instead. ADC on PC0-PC5 (channels 0-5).
