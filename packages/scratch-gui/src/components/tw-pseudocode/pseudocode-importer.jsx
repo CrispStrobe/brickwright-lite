@@ -68,12 +68,15 @@ const DEVICE_GROUPS = [
     // is the ▶ button for it. The two flags are about different roads, so
     // the device is offered as compilable-by-neither and runnable anyway.
     //
-    // It is in the picker at all because it is the ONLY way to reach the
-    // 8086: the circuit palette has no 8086 part yet (the extractor and the
-    // debug target are here, the DIP drawing is not), so "seat one on the
-    // board" — how the 6502 and Z80 benches are usually chosen — cannot be
-    // done today. When the part lands, circuit-tab.jsx already publishes
-    // bwDeviceCore = 'i8086' and this entry keeps working unchanged.
+    // It is in the picker because it is the BOARDLESS way to reach the 8086 —
+    // a DOS bench with no drawn circuit at all, which is what most 8086
+    // coursework wants. It is no longer the ONLY way: this comment used to say
+    // "the circuit palette has no 8086 part yet", which was true when written
+    // and is now false. The DIP drawings (i8086, i8088, i8251, i8254, i8255,
+    // i8259, i8284) and the device registrations both landed, so "seat one on
+    // the board" — how the 6502 and Z80 benches are usually chosen — works.
+    // circuit-tab.jsx detects the part and publishes bwDeviceCore = 'i8086',
+    // and this entry keeps working unchanged, as it was written to.
     { label: '8086', core: 'i8086', devices: [
         { id: 'i8086', label: 'Intel 8086 (DOS bench)', compile: false, emulator: null },
     ]},
