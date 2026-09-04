@@ -872,12 +872,27 @@ Over the same 40 pairs, **31 AGREE, 5 SKEW, 4 DIFF** — five of the original ni
 the benign referee-vs-device gap, four surviving as real disagreements. Those four are two shapes,
 and neither is the emitter:
 
-**`08-led-chaser-595` on both nano and pico — lite's recorder, not the emitter.** The actual trace
-has **zero** events while the referee has 50 on `leds.latch` and `leds.data`. Measured: this
-example's `stc.pins` is EMPTY — all its hardware is `PART leds = 74HC595 data P1.0 clock P1.1
-latch P1.2` — and `runUnderEmulator` builds its `decl` map only from `stc.pins`, so `setPin`
-returns early for every part terminal and records nothing. The differential is comparing a full
-referee trace against a recorder that cannot see the pins in question. Lite's, and open.
+**`08-led-chaser-595` on both nano and pico — lite's recorder, and now FIXED.** The actual trace
+had **zero** events against the referee's 50 on `leds.latch` and `leds.data`. This example's
+`stc.pins` is EMPTY — all its hardware is `PART leds = 74HC595 data P1.0 clock P1.1 latch P1.2`,
+which becomes `stc.parts[]` with a `{where}` per terminal — and `runUnderEmulator` built its `decl`
+map only from `stc.pins`, so `setPin` returned early for every part terminal. The recorder now
+walks parts too and names them `<part>.<terminal>` as the referee does: **0 events became 501.**
+
+Fixing it exposed a second gap of the same family, and a sharper one. The referee reported
+`device count: referee 25 vs actual 0` — device-model events (a 74HC595 `shift_out` value, a servo
+angle, a motor speed) that this recorder never produces at all, because producing them would mean
+reimplementing the device models. `compareTraces` reads `actual.devices ?? []`, so **"not recorded"
+and "recorded, none occurred" arrive as the same empty array**, and a dimension nobody measured was
+being reported as a disagreement. The trace now carries `devicesRecorded: false` and the
+differential drops that dimension with a printed note rather than comparing it — stated, because an
+unmeasured dimension reported as agreement is the same lie as reporting it as failure.
+
+That is the general shape, and bw-ci put it better than I did while auditing a different gate the
+same day: **an assertion of absence cannot distinguish "nothing happened" from "nothing was
+watching"**. Their D2 gate asserts zero hosted-compiler requests, where a broken interception
+produces the same zero as a correct one — so it now drives a known-positive request through the
+same path first and requires it to be caught. Same disease, two gates, found independently.
 
 **`02-dimmer` and `10-motor-speed` on pico — undiagnosed, and stated as such.** Both read
 `referee has 10 events the actual lacks (first: {tMs: 2020, …})`. The head agrees to the

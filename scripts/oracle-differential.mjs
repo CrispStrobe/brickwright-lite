@@ -140,6 +140,27 @@ function runUnderEmulator(dev, creator, out, stimulus) {
   for (const p of creator.project.stc.pins || []) {
     decl.set(String(p.where).toLowerCase(), { name: String(p.name).toLowerCase(), activeLow: !!p.activeLow });
   }
+  // PART terminals are pins too, and this recorder could not see them. A
+  // `PART leds = 74HC595 data P1.0 clock P1.1 latch P1.2` puts nothing in
+  // `stc.pins` — it becomes `stc.parts[]` with a `{where}` per terminal — so
+  // `setPin` found no declaration and recorded NOTHING. 08-led-chaser-595 has
+  // no plain PIN at all, so its actual trace was empty on every device while
+  // the referee reported 50 events on `leds.data` and `leds.latch`, and the
+  // differential read that as the emitter emitting nothing.
+  //
+  // The referee names them `<part>.<terminal>`, so this must too, or the two
+  // sides describe the same wire under different names and never compare.
+  const PART_META = new Set(['name', 'type', 'claims', 'activeLow', 'kind']);
+  for (const part of creator.project.stc.parts || []) {
+    for (const [terminal, spec] of Object.entries(part)) {
+      if (PART_META.has(terminal) || !spec || typeof spec !== 'object') continue;
+      if (typeof spec.where !== 'string') continue;
+      decl.set(spec.where.toLowerCase(), {
+        name: `${String(part.name).toLowerCase()}.${terminal.toLowerCase()}`,
+        activeLow: !!part.activeLow,
+      });
+    }
+  }
   const stimFor = (where) => {
     const d = decl.get(String(where).toLowerCase());
     if (!d) return null;
@@ -152,7 +173,18 @@ function runUnderEmulator(dev, creator, out, stimulus) {
     return hit;
   };
 
-  const trace = { events: [], serial: [], pwm: [], vars: {}, horizon: HORIZON_MS };
+  // `devicesRecorded: false` is the honest flag, and it exists because an
+  // EMPTY LIST cannot say which of two things happened. This recorder captures
+  // pin edges and serial bytes; it does not synthesize device-model events
+  // (a 74HC595 `shift_out` value, a servo angle, a motor speed) — that would
+  // mean reimplementing the device models the referee runs. `compareTraces`
+  // reads `actual.devices ?? []`, so "not recorded" and "recorded, none
+  // occurred" arrive as the same empty array, and the referee's 25 shift_out
+  // events on 08-led-chaser-595 were being reported as
+  // `device count: referee 25 vs actual 0` — a disagreement about a dimension
+  // nobody measured.
+  const trace = { events: [], serial: [], pwm: [], vars: {}, devices: [], devicesRecorded: false,
+    horizon: HORIZON_MS };
   const lastIntent = new Map();
   const serialBytes = [];
   if (adapter.onSerial) adapter.onSerial((b) => serialBytes.push({ tMs: Number(adapter.timeNs() / 1000000n), b }));
@@ -268,7 +300,12 @@ async function corpusMode(count, offset) {
       const c = creator.generateC(undefined, { debug: true });
       const out = await compile(c, dev.target);
       const actual = runUnderEmulator(dev, creator, out, stimulus);
-      const cmp = compareTraces(ref, actual, { tolMs: 5, serialMsPerByte: dev.serialMsPerByte });
+      // Do not compare a dimension this recorder cannot produce. Stated, not
+      // dropped: an unmeasured dimension reported as agreement is the same lie
+      // as reporting it as failure.
+      const unrecorded = !actual.devicesRecorded && (ref.devices || []).length > 0;
+      const refCmp = unrecorded ? { ...ref, devices: [] } : ref;
+      const cmp = compareTraces(refCmp, actual, { tolMs: 5, serialMsPerByte: dev.serialMsPerByte });
       // WHAT vs WHEN. A disagreement about what the program did — a level, a
       // serial line, an event count, a pwm duty — is an emitter defect and
       // fails. A disagreement only about WHEN is the referee-vs-device gap
@@ -293,6 +330,10 @@ async function corpusMode(count, offset) {
         const semantic = cmp.findings.filter((f) => f.kind !== 'time');
         const skew = cmp.findings.filter((f) => f.kind === 'time');
         const verdict = semantic.length ? 'DIFF' : (skew.length ? 'SKEW' : 'AGREE');
+        if (unrecorded) {
+          console.log(`  note: ${ref.devices.length} referee device-model events not compared ` +
+            `(this recorder captures pin edges and serial, not device state)`);
+        }
         console.log(`${label}: ${verdict} (${actual.events.length} ev, ${actual.serial.length} ser` +
           (skew.length ? `, ${skew.length} timing` : '') + ')' +
           (semantic.length ? '\n  ' + semantic.slice(0, 3).map((f) => f.text).join('\n  ') : '') +
