@@ -269,9 +269,36 @@ async function corpusMode(count, offset) {
       const out = await compile(c, dev.target);
       const actual = runUnderEmulator(dev, creator, out, stimulus);
       const cmp = compareTraces(ref, actual, { tolMs: 5, serialMsPerByte: dev.serialMsPerByte });
-      console.log(`${label}: ${cmp.ok ? 'AGREE' : 'DIFF'} (${actual.events.length} ev, ${actual.serial.length} ser)` +
-        (cmp.ok ? '' : '\n  ' + cmp.diffs.slice(0, 3).join('\n  ')));
-      if (!cmp.ok) bad = true;
+      // WHAT vs WHEN. A disagreement about what the program did — a level, a
+      // serial line, an event count, a pwm duty — is an emitter defect and
+      // fails. A disagreement only about WHEN is the referee-vs-device gap
+      // measured on 2026-09-04 and neither side's bug: interpretTrace charges
+      // nothing for walking the blocks, a real MCU pays per loop pass, and the
+      // size tracks the program's inner loop rather than the chip (0 ms/s on
+      // 01-blink, ~9.95 on three PWM/motor programs, 21.50 on
+      // 20-shift-register-binary — see D-CORPUS1).
+      //
+      // Before this split the gate was all-or-nothing, so nine benign timing
+      // divergences kept it switched off and it covered nothing at all. Skew is
+      // REPORTED, with its numbers, so a change in it is visible to a reader
+      // even though it does not fail the run.
+      if (!cmp.findings) {
+        // A vendored trace-oracle too old to classify. Fail closed: treat every
+        // disagreement as semantic rather than let the gate quietly stop
+        // failing because the vendor lagged.
+        console.log(`${label}: ${cmp.ok ? 'AGREE' : 'DIFF'} (no classification — vendored oracle predates findings)` +
+          (cmp.ok ? '' : '\n  ' + cmp.diffs.slice(0, 3).join('\n  ')));
+        if (!cmp.ok) bad = true;
+      } else {
+        const semantic = cmp.findings.filter((f) => f.kind !== 'time');
+        const skew = cmp.findings.filter((f) => f.kind === 'time');
+        const verdict = semantic.length ? 'DIFF' : (skew.length ? 'SKEW' : 'AGREE');
+        console.log(`${label}: ${verdict} (${actual.events.length} ev, ${actual.serial.length} ser` +
+          (skew.length ? `, ${skew.length} timing` : '') + ')' +
+          (semantic.length ? '\n  ' + semantic.slice(0, 3).map((f) => f.text).join('\n  ') : '') +
+          (skew.length && !semantic.length ? `\n  skew: ${skew[0].text}` : ''));
+        if (semantic.length) bad = true;
+      }
     } catch (err) {
       console.log(`${label}: ERROR ${String(err.message || err).slice(0, 140)}`);
       bad = true;
@@ -334,11 +361,28 @@ async function explainMode(exId, devName) {
   for (const pin of new Set([...R.keys(), ...A.keys()])) {
     const a = R.get(pin) || [], b = A.get(pin) || [];
     console.log(`  ${pin}: ref ${a.length}, actual ${b.length}`);
-    for (let i = 0; i < Math.min(a.length, b.length, 12); i++) {
+    // HEAD AND TAIL, not just the head. A flat cap of 12 hid the only thing
+    // worth seeing on 02-dimmer -> pico, where the first twelve rows agree to
+    // the millisecond and the traces diverge at the END — the same shape as
+    // reading a comparator's first three diffs and inferring what the whole
+    // disagreement looks like. A drift is visible from the head; a truncation
+    // is only visible from the tail.
+    const n = Math.min(a.length, b.length);
+    const rows = n <= 24 ? [...Array(n).keys()]
+      : [...Array(12).keys(), null, ...[...Array(12).keys()].map((k) => n - 12 + k)];
+    for (const i of rows) {
+      if (i === null) { console.log(`    …  ${n - 24} rows elided  …`); continue; }
       const d = b[i].tMs - a[i].tMs;
       console.log(`    [${String(i).padStart(3)}] ref ${String(a[i].tMs).padStart(6)}=${a[i].level}` +
         `  actual ${String(b[i].tMs).padStart(6)}=${b[i].level}  delta ${d >= 0 ? '+' : ''}${d}` +
         (a[i].level !== b[i].level ? '  <- LEVEL differs' : ''));
+    }
+    // And what the shorter list is missing, which no aligned row can show.
+    const longer = a.length > b.length ? 'ref' : (b.length > a.length ? 'actual' : null);
+    if (longer) {
+      const extra = (a.length > b.length ? a : b).slice(n);
+      console.log(`    ${longer} continues past the other with ${extra.length} more: ` +
+        extra.slice(0, 4).map((e) => `${e.tMs}=${e.level}`).join(' ') + (extra.length > 4 ? ' …' : ''));
     }
   }
 }

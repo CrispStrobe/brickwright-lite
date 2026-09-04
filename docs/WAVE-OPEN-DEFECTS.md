@@ -854,3 +854,40 @@ Both are design decisions in someone else's component, and neither is a number t
 the build passes. The measurement above is written down so that whoever makes that decision starts
 from it rather than from the option's own comment, which proposes the per-device rate this table
 rules out.
+
+### The gate can now run on semantics — and its first output is a triage (2026-09-04)
+
+The diagnosis above said the nine disagreements were one benign cause, which left the gate still
+unable to run: `compareTraces` returned `diffs` as English, so a consumer could fail on everything
+or nothing. It **decides** the kind of every disagreement and was discarding it.
+
+`compareTraces` now also returns `findings` — one per diff, same order, `{kind, text}` with kind in
+`{level, time, count, value}` — and `diffs` is unchanged, so every existing caller keeps working
+(sb3-creator `6f82969`, vendored here, pin `af09a0d` → `6f82969`). The corpus differential fails on
+`kind !== 'time'` and REPORTS timing skew with its numbers. It also fails closed: an older vendored
+oracle with no `findings` is treated as all-semantic, so the gate cannot quietly stop failing
+because the vendor lagged.
+
+Over the same 40 pairs, **31 AGREE, 5 SKEW, 4 DIFF** — five of the original nine reclassified as
+the benign referee-vs-device gap, four surviving as real disagreements. Those four are two shapes,
+and neither is the emitter:
+
+**`08-led-chaser-595` on both nano and pico — lite's recorder, not the emitter.** The actual trace
+has **zero** events while the referee has 50 on `leds.latch` and `leds.data`. Measured: this
+example's `stc.pins` is EMPTY — all its hardware is `PART leds = 74HC595 data P1.0 clock P1.1
+latch P1.2` — and `runUnderEmulator` builds its `decl` map only from `stc.pins`, so `setPin`
+returns early for every part terminal and records nothing. The differential is comparing a full
+referee trace against a recorder that cannot see the pins in question. Lite's, and open.
+
+**`02-dimmer` and `10-motor-speed` on pico — undiagnosed, and stated as such.** Both read
+`referee has 10 events the actual lacks (first: {tMs: 2020, …})`. The head agrees to the
+millisecond for nineteen events, then the referee holds the output on until 1932 where the device
+releases at 1240, and continues with ten more. The divergence begins after t≈900, which is when
+`sweepStimulus` moves the analog input — so it is about how each side responds to a new ADC
+reading, not about drift (both measure 0 ms/s here). That is the whole of what has been
+established; the cause is not.
+
+That is four consumer-side findings and zero producer-side ones, again. The gate is worth having
+precisely because it now points at four specific pairs instead of drowning them in nine benign
+timing failures — but it still cannot be switched on in CI until the recorder gap is closed and
+the pico pair is understood.
