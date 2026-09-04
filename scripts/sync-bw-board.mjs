@@ -203,7 +203,27 @@ if (check && stale && !allowStale) {
 // however wrong the content was, because `master` is the one part of the
 // sentence guaranteed not to be about what arrived. Say the sha.
 const sourceSha = srcDir ? await localSha(srcDir) : remoteSha;
-console.log(check ? (stale ? `\n${stale} intentional downstream file delta(s) allowed.` : '\nvendored engine up to date.')
+
+// AND THIS LINE LIED IN A SECOND WAY. "vendored engine up to date" is a
+// statement about FILES, and in remote mode FILES is the hand-written FALLBACK
+// list -- 26 entries against 120 .js files actually vendored. The other 94,
+// which include the ENTIRE 8086 tier (i8086-*.js, i8254.js, i8237.js,
+// i8251.js, adc0809.js), were never compared and the summary said nothing
+// about them. That is how lite's i8086-machine.js drifted from bw-board's
+// without anything noticing.
+//
+// A check reports on the files it FOUND, never on the files that exist. So it
+// says which, and a `--dir` sync (which globs the real tree) is the only mode
+// entitled to the unqualified sentence.
+const vendored = (await readdir(dest)).filter((f) => f.endsWith('.js')).length;
+const covered = FILES.length;
+const uncovered = Math.max(0, vendored - covered);
+const coverage = uncovered
+    ? ` -- but only ${covered} of ${vendored} vendored files are in this manifest;`
+      + ` ${uncovered} were NOT checked (run with --dir <bw-board checkout> to cover every file)`
+    : '';
+
+console.log(check ? (stale ? `\n${stale} intentional downstream file delta(s) allowed.` : `\n${covered} vendored files up to date${coverage}.`)
     : `\nsynced from ${REPO}@${sourceSha}${srcDir ? ` (local checkout ${srcDir})` : ` (resolved from ${REF})`}.`
       + ' Next: npm run integrate');
 
