@@ -612,7 +612,18 @@ jobs:
 
       - name: Browser benchmark — 8086 desktop and mobile
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
-        run: PROOF_URL=http://localhost:8617/ node scripts/bench-i8086-browser.mjs
+        run: |
+          # React's ordinary production renderer removes Profiler timings.
+          # Build a separate minified profiling artifact so the deployable
+          # build keeps the zero-profiler-overhead renderer used by everyone.
+          cd packages/scratch-gui
+          BW_REACT_PROFILE=1 NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build
+          cd ../..
+          python3 -m http.server 8618 --directory packages/scratch-gui/build-profile &
+          profile_server=$!
+          trap 'kill "$profile_server" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do curl -sf http://localhost:8618/ >/dev/null && break; sleep 1; done
+          PROOF_URL=http://localhost:8618/ node scripts/bench-i8086-browser.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always() && steps.playwright.outcome == 'success'
         with:

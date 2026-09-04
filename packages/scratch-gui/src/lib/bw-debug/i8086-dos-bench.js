@@ -64,9 +64,9 @@ export async function createI8086DosBench (opts) {
     if (!bytes || !bytes.length) throw new Error('the DOS bench was handed an empty image');
 
     const [{I8086Machine}, dosMod, dbgMod] = await Promise.all([
-        import(/* webpackChunkName: "bw-board" */ '../bw-board/i8086-machine.js'),
-        import(/* webpackChunkName: "bw-board" */ '../bw-board/i8086-dos.js'),
-        import(/* webpackChunkName: "bw-board" */ '../bw-board/i8086-debug.js')
+        import(/* webpackChunkName: "bw-debug-i8086" */ '../bw-board/i8086-machine.js'),
+        import(/* webpackChunkName: "bw-debug-i8086" */ '../bw-board/i8086-dos.js'),
+        import(/* webpackChunkName: "bw-debug-i8086" */ '../bw-board/i8086-debug.js')
     ]);
     const {createDos8086, DOSBOX8086_XT} = dosMod;
     const {createI8086DebugTarget} = dbgMod;

@@ -4,6 +4,7 @@ import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
 import {normalizeDeviceId, resolveExampleBench} from '../../lib/example-bench.js';
 import {advanceDebugPhase} from '../../lib/bw-debug/debug-phase-transition.js';
+import {profileReactSubtree} from '../../lib/bw-debug/react-perf-profiler.js';
 import {shouldRefreshDesignerDebugState} from '../../lib/bw-debug/debug-ui-refresh.js';
 import {setProjectTitle} from '../../reducers/project-title';
 import {getIsAnyCreatingNewState} from '../../reducers/project-state';
@@ -1750,7 +1751,7 @@ class CircuitTab extends React.Component {
                     on the way back. Hidden, not destroyed. */}
                 <div style={this.state.panel === 'designer' ?
                     {flex: '1 1 auto', minHeight: 0, overflow: 'auto'} : {display: 'none'}}>
-                    <Designer
+                    {profileReactSubtree(React, 'CircuitDesigner', (<Designer
                     stc={stc}
                     examples={this.state.examples || undefined}
                     onLoadExample={this.loadExample}
@@ -1817,7 +1818,7 @@ class CircuitTab extends React.Component {
                         runToken={this.state.runToken}
                         stopToken={this.state.stopToken}
                         onSimulationStart={this.handleProjectStart}
-                    />
+                    />))}
                 </div>
                 </div>
 {/* dock 'right' renders in the ACTUAL right pane (the stage
@@ -1869,12 +1870,12 @@ class CircuitTab extends React.Component {
         return (
             <PanelBoundary>
                 <React.Suspense fallback={null}>
-                    <DebugPanel
+                    {profileReactSubtree(React, 'DebugPanel', (<DebugPanel
                         clockHz={(stc && Number(stc.clock)) || 11059200}
                         runToken={this.state.runToken}
                         stopToken={this.state.stopToken}
                         onRunnerChange={this.handleRunnerChange}
-                    />
+                    />))}
                 </React.Suspense>
             </PanelBoundary>
         );

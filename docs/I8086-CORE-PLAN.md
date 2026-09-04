@@ -152,6 +152,16 @@ to 6.4 ms** on mobile (a 93–94% reduction), and cut pump p95 from **6.6 to
 0.6 ms** desktop and **6.8 to 0.4 ms** mobile. Execution is now the measured
 pump majority; board advancement remains below the receipt's 0.1 ms resolution.
 
+The long-task receipt now makes a second distinction the first instrument did
+not: a task is owned by the setup phase in which it **started**, while clipped
+overlap time records any work crossing into the first pump. Page bootstrap,
+editor readiness, target selection, ASM chunk load, example selection,
+assembly/attach (ending only when DebugPanel reports `running`), attached work
+while hidden, Circuit first render and steady pump are separate windows;
+resource timing names the slowest JavaScript chunks in the same artifact. Thus
+an attach task that ends after sample zero is no longer called steady runtime
+merely because the old interval-overlap filter saw its tail.
+
 The tempting next changes are deliberately deferred. These are activation
 rules, so “later” has a measurable meaning:
 

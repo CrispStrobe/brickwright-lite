@@ -21,7 +21,7 @@ The vector totals above are declarations carried by the pinned, byte-verified en
 
 The upstream-CI verifier fails closed on missing, partial, wrong-SHA or unreachable GitHub evidence and runs before `npm run vendor`. It checks named successful steps inside all four required jobs, rather than accepting a workflow's overall badge.
 
-The production-browser gate exercises local assembly with the hosted compiler blocked, DOS-bench startup, CGA pixels, keyboard input and the 8255 face. The companion desktop/mobile benchmark retains a JSON receipt, splits pump time into emulator execution, board advancement and debug/UI publication, and rejects fewer than **150** useful pump samples or less than **0.25x XT real time**. Those are regression floors, not claims that every device matches one benchmark runner.
+The production-browser gate exercises local assembly with the hosted compiler blocked, DOS-bench startup, CGA pixels, keyboard input and the 8255 face. The companion desktop/mobile benchmark retains a JSON receipt, splits pump time into emulator execution, board advancement and debug/UI publication, and attributes long tasks and script resources across named setup, attach, first-render and steady-pump windows. It rejects fewer than **150** useful pump samples or less than **0.25x XT real time**. Those are regression floors, not claims that every device matches one benchmark runner.
 
 The shipped 8086 runner also bounds one browser callback to **8 ms**, with a maximum simulated-time quantum of **1,000,000 ns**, carrying debt forward. Progress-only debug snapshots are built at most every **250 ms**; semantic transitions and failures remain immediate.
 

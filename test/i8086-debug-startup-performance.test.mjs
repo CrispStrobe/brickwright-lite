@@ -1,0 +1,46 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+
+const sources = [
+    '../overlay/scratch-gui/src/lib/bw-debug/debug-runner.js',
+    '../packages/scratch-gui/src/lib/bw-debug/debug-runner.js'
+].map(path => readFileSync(new URL(path, import.meta.url), 'utf8'));
+const benchSources = [
+    '../overlay/scratch-gui/src/lib/bw-debug/i8086-dos-bench.js',
+    '../packages/scratch-gui/src/lib/bw-debug/i8086-dos-bench.js'
+].map(path => readFileSync(new URL(path, import.meta.url), 'utf8'));
+
+test('the assembled DOS path does not eagerly load the bw-board barrel', () => {
+    for (const source of sources) {
+        const start = source.indexOf('    async function attachI8086() {');
+        const end = source.indexOf('\n    /**\n     * Should this halt be swallowed?', start);
+        const attach = start >= 0 && end > start ? source.slice(start, end) : '';
+        assert.ok(attach.length > 3000, 'attachI8086 capture is empty or truncated');
+        const dosBranch = attach.indexOf('if (isDosProgram)');
+        const dosReturn = attach.indexOf('return session;', dosBranch);
+        const barrelImport = attach.indexOf("'../bw-board/index.js'", dosBranch);
+
+        assert.ok(dosBranch >= 0 && dosReturn > dosBranch, 'DOS branch boundaries moved');
+        assert.ok(barrelImport > dosReturn,
+            'the 55-module board barrel must remain deferred until the hardware branch');
+
+        const dosStartup = attach.slice(dosBranch, dosReturn);
+        assert.match(dosStartup, /Promise\.all\(\[/,
+            'the independent session and DOS-bench chunks should load in parallel');
+        assert.match(dosStartup, /'\.\.\/bw-board\/debug-session\.js'/,
+            'DOS startup needs the small session module directly');
+        assert.match(dosStartup, /'\.\/i8086-dos-bench\.js'/,
+            'DOS startup still needs its service-layer bench');
+        assert.ok(dosStartup.indexOf("setStatus('attaching'") < dosStartup.indexOf('Promise.all(['),
+            'publish progress before a cold chunk fetch begins');
+    }
+});
+
+test('the DOS bench keeps its direct dependencies in the dedicated chunk', () => {
+    for (const source of benchSources) {
+        assert.equal((source.match(/webpackChunkName: "bw-debug-i8086"/g) || []).length, 3);
+        assert.doesNotMatch(source, /webpackChunkName: "bw-board"/,
+            'a generic chunk label can pull the broad board registry back into DOS startup');
+    }
+});

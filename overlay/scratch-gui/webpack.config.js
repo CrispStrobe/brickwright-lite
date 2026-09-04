@@ -4,6 +4,7 @@ const webpack = require('webpack');
 // Plugins
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const reactProfiling = process.env.BW_REACT_PROFILE === '1';
 
 const ScratchWebpackConfigBuilder = require('scratch-webpack-configuration');
 
@@ -50,6 +51,10 @@ const baseConfig = new ScratchWebpackConfigBuilder(
             }
         },
         resolve: {
+            alias: reactProfiling ? {
+                'react-dom$': 'react-dom/profiling',
+                'scheduler/tracing$': 'scheduler/tracing-profiling'
+            } : {},
             fallback: {
                 Buffer: require.resolve('buffer/'),
                 stream: require.resolve('stream-browserify'),
@@ -174,7 +179,11 @@ const buildConfig = baseConfig.clone()
             gui: './src/playground/index.jsx'
         },
         output: {
-            path: path.resolve(__dirname, 'build'),
+            // React strips Profiler timings from its ordinary production
+            // renderer. CI builds a separate profiling artifact for the 8086
+            // benchmark; the deployable build remains on the ordinary
+            // renderer and keeps its normal runtime cost.
+            path: path.resolve(__dirname, reactProfiling ? 'build-profile' : 'build'),
             filename: '[name].[contenthash:8].js',
             // Keep lazy feature chunks addressable across Pages deploys.
             // Hashed lazy URLs let a cached HTML/runtime request a chunk that

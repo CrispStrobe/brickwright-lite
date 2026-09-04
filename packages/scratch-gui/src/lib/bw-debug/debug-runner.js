@@ -1746,9 +1746,6 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     // executes nothing is indistinguishable on screen from one that failed to
     // start — the exact shape of failure this codebase keeps paying for.
     async function attachI8086() {
-        const { createDebugTarget, createDebugSession } =
-            await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
-
         const targetOpts = {};
         let readyMsg;
         const isDosProgram = bootMedia &&
@@ -1765,8 +1762,16 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // local 8086 assembler emits, and what a preset could hand over.
         if (isDosProgram) {
             setStatus('attaching', `loading ${bootMedia.name || 'the program'} into the DOS bench…`);
-            const {createI8086DosBench} = await import(
-                /* webpackChunkName: "bw-debug-i8086" */ './i8086-dos-bench.js');
+            // Do not import bw-board's barrel for this path. It re-exports the
+            // circuit solver, device catalogue, controllers and every other
+            // CPU family, while a DOS program needs only the session and its
+            // deliberately small bench. Load those two independent modules in
+            // parallel, after publishing the attaching state so a cold chunk
+            // fetch never looks like a dead Run button.
+            const [{createDebugSession}, {createI8086DosBench}] = await Promise.all([
+                import(/* webpackChunkName: "bw-debug-i8086" */ '../bw-board/debug-session.js'),
+                import(/* webpackChunkName: "bw-debug-i8086" */ './i8086-dos-bench.js')
+            ]);
             const img = await resolveMediaImage(bootMedia);
             // The slot is authoritative when the loader named one; the MZ
             // signature decides otherwise. Guessing 'com' for an .EXE would
@@ -1829,6 +1834,11 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             }
             return session;
         }
+
+        // Hardware machines still use the target factory. Keep its broad
+        // registry out of the overwhelmingly common assembled-DOS startup.
+        const { createDebugTarget, createDebugSession } =
+            await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
 
         if (bootMedia) {
             setStatus('attaching', `booting ${bootMedia.name || 'ROM'}…`);
