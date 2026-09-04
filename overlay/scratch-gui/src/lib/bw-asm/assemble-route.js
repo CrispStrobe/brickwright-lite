@@ -1,0 +1,223 @@
+/**
+ * Which assembler the ▶ button uses, and why one tab now has two.
+ *
+ * THE INCONSISTENCY IS REAL AND IT IS ARGUED FOR, NOT APOLOGISED FOR.
+ * Until now every ▶ Assemble & Run posted the editor's text to the hosted
+ * service (stc-compiler /assemble — sdas8051, ca65+ld65, sdasz80, avr-gcc).
+ * One route, one error surface, one thing to explain. The 8086 breaks that,
+ * and the reason is not that nobody got round to it: NEITHER ca65 NOR
+ * sdasz80 KNOWS THE 8086. There is no 8086 back end behind that URL, so the
+ * choice was never "one route or two" — it was "two routes, or the 8086 has
+ * no ASM tab at all". ROADMAP §4.4 recorded that as a decision owed rather
+ * than a task pending, and this file is the decision.
+ *
+ * The case FOR, beyond necessity: where the local route applies it is
+ * strictly better. It needs no network, so the button works on a train and
+ * in a school that blocks the domain; it is the same assembler the 8086
+ * corpus harness runs, differentially checked against MASM 1.10 across 404
+ * programs and round-trip-verified against a disassembler that agrees with
+ * 646,000 hardware vectors; and it returns a loadable image rather than a
+ * base64 round trip.
+ *
+ * The case AGAINST is the one worth taking seriously: two routes mean two
+ * error surfaces and two sets of behaviour to learn. A syntax error from
+ * ca65 reads nothing like an `AsmError` from i8086-asm.js, and a user who
+ * has learned one has not learned the other. That cost is paid, not dodged.
+ * What is bought with it is that the SAME learner can write 8086 assembly at
+ * all.
+ *
+ * THREE RULES KEEP THE COST BOUNDED, and each is asserted by
+ * `test/asm-assemble-route.test.mjs`:
+ *
+ *   1. ONE function decides. `asmTargetForDevice` is the only place a device
+ *      becomes a target and `asmRouteFor` the only place a target becomes a
+ *      route. The call site does not get a vote, so the tab cannot pick
+ *      differently in two places.
+ *   2. NEITHER ROUTE CAN LEAK INTO THE OTHER. An 8086 program is never
+ *      posted anywhere — the gate injects a `hostedFetch` that throws and
+ *      requires it untouched — and a 6502/Z80/8051 program never reaches the
+ *      local assembler, which would refuse its syntax with a message about
+ *      the wrong architecture.
+ *   3. THE RESULT SAYS WHICH ROUTE RAN. `route` comes back on every result
+ *      and the tab puts it in the status line, because "it assembled" is a
+ *      different sentence from "it assembled here, without the network".
+ *      Silence about which of two things happened is the failure mode this
+ *      whole codebase keeps paying for.
+ *
+ * NOT DONE, deliberately: moving the 6502/Z80/8051 targets local as well.
+ * That is the change that would REMOVE the inconsistency, and it is much
+ * larger — ca65, sdasz80 and sdas8051 are C programs, and lite already
+ * carries one Emscripten toolchain (`lib/sdcc-wasm`) whose size is a
+ * standing complaint. Recording it as the alternative that was weighed is
+ * more honest than pretending two routes were the only shape available.
+ *
+ * @module
+ */
+
+/** The hosted assembler, verbatim from the call site it replaced. */
+export const HOSTED_ASSEMBLER = 'https://stc-compiler.vercel.app/assemble';
+
+/**
+ * Targets assembled IN THE BROWSER. One entry, and it is a whitelist rather
+ * than a "not hosted" fallback on purpose: a device this file has never
+ * heard of must go to the hosted service, which knows about devices this
+ * file does not, rather than to an 8086 assembler that would read its 8051
+ * source as garbage.
+ */
+export const LOCAL_ASM_TARGETS = new Set(['i8086']);
+
+/**
+ * A refusal with its route attached, so the tab can say WHERE a program was
+ * refused as well as why. `reason` separates a program the assembler read
+ * and rejected ('source' — the user's problem, and the message names the
+ * line) from a route that could not run at all ('transport' — the network,
+ * or a missing module).
+ */
+export class AsmRouteError extends Error {
+    constructor (message, {route, target, reason} = {}) {
+        super(message);
+        this.name = 'AsmRouteError';
+        this.route = route;
+        this.target = target;
+        this.reason = reason || 'transport';
+    }
+}
+
+/**
+ * Device id → assembler target.
+ *
+ * The 8086 family is tested FIRST and by whole-string match. `i8088` and
+ * `8088` answer to it because the 8088 is an 8086 with an eight-bit bus:
+ * same instruction set, same encodings, so the same assembler emits the
+ * same bytes — the difference is bus timing, which no assembler expresses.
+ * Refusing the 8088 by name would refuse a machine we can in fact assemble
+ * for, which is the reading `circuit-tab.jsx` already takes for the debug
+ * core.
+ */
+export function asmTargetForDevice (device) {
+    const d = String(device || '').toLowerCase();
+    if (/^(i8086|8086|i8088|8088)$/.test(d)) return 'i8086';
+    if (/6502|eater/.test(d)) return 'eater6502';
+    if (/^(z80|zx48|zx128)$/.test(d)) return 'z80';
+    // /assemble takes 8051 and AVR device ids directly (stc*, atmega*,
+    // attiny*), so an unrecognised id is passed through rather than mapped.
+    return d || 'stc12c5a60s2';
+}
+
+/** 'local' or 'hosted', for a device id. The tab shows this to the user. */
+export function asmRouteFor (device) {
+    return LOCAL_ASM_TARGETS.has(asmTargetForDevice(device)) ? 'local' : 'hosted';
+}
+
+/**
+ * The in-browser 8086 assembler, loaded on demand.
+ *
+ * THE COMPONENT AND THE GATE BOTH REACH IT THROUGH THIS FUNCTION, and that
+ * is the point of it existing rather than being inlined at the call site.
+ * The recurring defect in this repo is "a test that supplied a precondition
+ * production code never supplies"; a gate that imported `i8086-asm.js`
+ * itself would prove the assembler works and prove nothing about the button.
+ * `requestAssembly` DEFAULTS to this, the tab passes no override, and the
+ * gate passes none either — so there is exactly one local path and both run
+ * it.
+ *
+ * The chunk is ~90 KB of JavaScript and is not in the main bundle: nobody
+ * who is not writing 8086 assembly pays for it.
+ */
+export async function assembleLocal8086 (source) {
+    const mod = await import(/* webpackChunkName: "i8086-asm" */ '../bw-board/i8086-asm.js');
+    const assemble = mod.assemble || mod.default;
+    if (typeof assemble !== 'function') {
+        throw new AsmRouteError(
+            'the local 8086 assembler loaded but exports no assemble()',
+            {route: 'local', target: 'i8086', reason: 'transport'});
+    }
+    // longJumps stays OFF. The module's header explains why at length: the
+    // programs it rescues cannot assemble under MASM either, so promoting
+    // them silently would hand a learner a program that works here and fails
+    // on the lab machine with nothing to say why. A refusal that names the
+    // line is the better teacher.
+    return assemble(source, {});
+}
+
+/**
+ * Assemble the ASM editor's buffer for a device, by whichever route that
+ * device's target demands, and return an image the machine bench can boot.
+ *
+ * @param {{source: string, device: string}} req
+ * @param {{assembleLocal?: Function, hostedFetch?: Function}} [seams]
+ *   Only the NETWORK is normally injected (the gate replaces it with a spy
+ *   that throws, to prove an 8086 never reaches it). `assembleLocal`
+ *   defaults to the same function the tab uses — see `assembleLocal8086`.
+ * @returns {Promise<{bytes: Uint8Array, target: string, route: 'local'|'hosted',
+ *   format: 'rom'|'com'|'exe', slotId: string, profile: string|null,
+ *   org: number|null, warnings: string[], listing: any}>}
+ */
+export async function requestAssembly ({source, device}, seams = {}) {
+    const {assembleLocal = assembleLocal8086, hostedFetch = globalThis.fetch} = seams;
+    const target = asmTargetForDevice(device);
+
+    if (LOCAL_ASM_TARGETS.has(target)) {
+        let out;
+        try {
+            out = await assembleLocal(source, {target});
+        } catch (e) {
+            // AsmError already names the line and the construct; re-wrapping
+            // it would only bury that. `reason: 'source'` tells the tab this
+            // is the user's program, not a broken toolchain.
+            throw new AsmRouteError(e.message, {route: 'local', target, reason: 'source'});
+        }
+        if (!out || !out.bytes || !out.bytes.length) {
+            throw new AsmRouteError(
+                'the local 8086 assembler produced no image',
+                {route: 'local', target, reason: 'source'});
+        }
+        // .COM and .EXE are DOS executables, not ROM images, and the bench
+        // must be told so — a .COM loaded as a ROM at F0000 executes nothing
+        // and a machine that executes nothing looks exactly like one that
+        // failed to start. slotId/profile carry that to debug-runner.js.
+        const format = out.format === 'exe' ? 'exe' : 'com';
+        return {
+            bytes: out.bytes, target, route: 'local', format,
+            slotId: format, profile: 'dos',
+            org: out.org ?? null,
+            // Every give the assembler made (an expanded 80186 shift, a
+            // synthesised segment override) is recorded rather than silent,
+            // so the tab can show it.
+            warnings: (out.warnings || []).map(w => (w.line ? `L${w.line}: ` : '') + w.message),
+            listing: null
+        };
+    }
+
+    let res;
+    try {
+        res = await hostedFetch(HOSTED_ASSEMBLER, {
+            method: 'POST',
+            headers: {'content-type': 'application/json'},
+            body: JSON.stringify({asm: source, target})
+        });
+    } catch (e) {
+        throw new AsmRouteError(e.message, {route: 'hosted', target, reason: 'transport'});
+    }
+    if (!res.ok) {
+        throw new AsmRouteError(`Assembler HTTP ${res.status}`,
+            {route: 'hosted', target, reason: 'transport'});
+    }
+    const result = await res.json();
+    if (!result.success) {
+        const msgs = (result.errors || []).map(e => (e.line ? `L${e.line}: ` : '') + e.message);
+        throw new AsmRouteError(msgs.join('; ') || result.error || 'assembly failed',
+            {route: 'hosted', target, reason: 'source'});
+    }
+    if (!result.base64) {
+        throw new AsmRouteError('Assembler returned no image',
+            {route: 'hosted', target, reason: 'transport'});
+    }
+    return {
+        bytes: Uint8Array.from(atob(result.base64), c => c.charCodeAt(0)),
+        target, route: 'hosted', format: 'rom', slotId: 'rom', profile: null,
+        org: null, warnings: [], listing: result.listing || null
+    };
+}
+
+export default requestAssembly;

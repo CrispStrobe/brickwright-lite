@@ -138,13 +138,11 @@ const KNOWN_DEAD = new Map([
     // config in any repo could instantiate either. Both chips' own suites were
     // green. This gate found it by asking a question nobody upstream was asking,
     // which is the fourth time a finding here came from an unrelated direction.
-    ['lib/bw-board/i8086-asm.js', {roadmap: '4.4',
-        reason: 'Vendored; the 8086 MASM-subset assembler. NOT merely "wired later": '
-            + 'the ASM tab assembles through HOSTED ca65 and sdasz80, and neither '
-            + 'knows the 8086 — so unlike every other entry in this list, the tab '
-            + 'cannot grow an 8086 target without a LOCAL assemble path, and this '
-            + 'file is the only candidate. It is a tab design change, not a wiring '
-            + 'change, which is why it is recorded rather than smuggled in here.'}],
+    // i8086-asm.js removed from KNOWN_DEAD 2026-09-04: lib/bw-asm/assemble-route.js
+    // imports it, and the ▶ button routes 8086 devices to it. The entry said the
+    // blocker was "a tab design change, not a wiring change" — so the change was
+    // designed and argued for in that module's header rather than smuggled in
+    // here, and one tab now has two assemble routes on purpose.
     ['lib/bw-board/i8086-emu8086.js', {roadmap: '4.4',
         reason: 'Vendored; the emu8086 dialect adapter. Its consumer is bw-board\'s '
             + 'corpus harness (scripts/run-i8086-corpus.mjs), which lite does not '

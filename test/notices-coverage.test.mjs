@@ -64,6 +64,18 @@ const VENDORED = [
         text: 'overlay/scratch-gui/static/licenses/labwired-core.MIT.txt',
     },
     {
+        // Not a library: six source FILES from someone else's repository,
+        // compiled into the bundle as strings. A lockfile cannot see them and
+        // neither can a dependency audit, which is exactly the category this
+        // list exists for.
+        name: '8086 example programs',
+        licence: 'MIT',
+        holder: 'Amey Thakur and Mega Satish',
+        evidence: 'overlay/scratch-gui/src/lib/bw-asm/examples-i8086.js',
+        inBinary: true,
+        text: 'overlay/scratch-gui/static/licenses/amey-thakur-8086.MIT.txt',
+    },
+    {
         name: 'rp2040js',
         licence: 'MIT',
         holder: 'Uri Shaked',

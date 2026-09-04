@@ -16,12 +16,25 @@
  *   8051   sdas8051  — `.area`, `.org`, `#` immediates, `mov P1, #0x00`
  *   6502   ca65      — `.segment`, `$` hex, `lda #$00`
  *   Z80    sdasz80   — sdas syntax again, but Z80 mnemonics
+ *   8086   i8086-asm — MASM: `.MODEL`, `.DATA`, `PROC`, `INT 21h`
+ *
+ * THE 8086's ARE NOT LIKE THE OTHER THREE, in two ways worth stating here
+ * rather than leaving to be discovered. They are assembled IN THE BROWSER
+ * (`lib/bw-asm/assemble-route.js` says why one tab has two routes), so the
+ * gate does not skip them when the network is absent — it assembles AND RUNS
+ * every one of them. And they are not written here: they are MIT-licensed
+ * files carried verbatim from a teaching corpus, attribution included, which
+ * is the condition they ship under. `examples-i8086.js` holds them and the
+ * terms.
  *
  * @module
  */
 
+import {I8086_EXAMPLES} from './examples-i8086.js';
+
 /**
- * @typedef {{id: string, label: string, labelDe: string, source: string}} AsmExample
+ * @typedef {{id: string, label: string, labelDe: string, source: string,
+ *            attribution?: {author: string, repo: string, licence: string}}} AsmExample
  */
 
 /** ATmel-style 8051 parts: every STC device here. */
@@ -187,6 +200,10 @@ export function asmExamplesFor (device) {
     if (/^stc/.test(d)) return STC;
     if (/^(eater6502|6502|w65c02)$/.test(d)) return EATER6502;
     if (/^(z80|zx48|zx128)$/.test(d)) return Z80;
+    // The 8088 answers here too: same instruction set, same encodings, so
+    // the same assembler and the same programs. Only the bus width differs,
+    // and no source file can tell.
+    if (/^(i8086|8086|i8088|8088)$/.test(d)) return I8086_EXAMPLES;
     return [];
 }
 
@@ -194,7 +211,15 @@ export function asmExamplesFor (device) {
 export const ALL_ASM_EXAMPLES = [
     ...STC.map(e => ({...e, target: 'stc12c5a60s2'})),
     ...EATER6502.map(e => ({...e, target: 'eater6502'})),
-    ...Z80.map(e => ({...e, target: 'z80'}))
+    ...Z80.map(e => ({...e, target: 'z80'})),
+    ...I8086_EXAMPLES.map(e => ({...e, target: 'i8086'}))
 ];
+
+/**
+ * The examples assembled LOCALLY, so a gate can tell the two populations
+ * apart without re-deriving the routing rule. The hosted ones skip when
+ * there is no network; these never have an excuse.
+ */
+export const LOCAL_ASM_EXAMPLES = I8086_EXAMPLES.map(e => ({...e, target: 'i8086'}));
 
 export default asmExamplesFor;
