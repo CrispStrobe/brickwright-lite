@@ -122,7 +122,7 @@ class DebugPanel extends React.Component {
         this._onMediaLoad = this._onMediaLoad.bind(this);
         this._onAsmRomReady = this._onAsmRomReady.bind(this);
         /** Boot image handed over by the Machine Loader / ASM tab —
-         *  {slot, bytes, profile, name}. Kept off state: the bytes are
+         *  {slot, bytes, profile, name, romAt}. Kept off state: the bytes are
          *  runner input, not render input. */
         this._bootMedia = null;
         /** STABLE identity, bound once: the panel re-renders on every
@@ -165,18 +165,29 @@ class DebugPanel extends React.Component {
      *  must boot TOGETHER so the CPU reads its reset vector from the
      *  real bytes, not from a zero-filled ROM it booted with earlier. */
     async _onMediaLoad (e) {
-        const {slotId, bytes, kind, profile, name} = e.detail || {};
+        const {slotId, bytes, kind, profile, name, romAt} = e.detail || {};
         if (!bytes) return;
         this._teardownRunner();
         this._bootMedia = {
             slot: slotId,
             bytes: bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes),
             profile: profile || null,
-            name: name || null
+            name: name || null,
+            // WHERE the image is mapped, when the sender knows and we cannot
+            // infer it. A raw .bin carries no origin, so without this the
+            // runner falls back to the machine's default ROM base — and for
+            // an 8086 that is wrong for every image that is not exactly 64K.
+            // The loader computes `0x100000 - length` so the reset vector at
+            // FFFF0h lands INSIDE the image: a 32K monitor maps at F8000h, a
+            // 64K BIOS at F0000h. Dropped silently before this, and the
+            // symptom is a machine that starts executing open bus and looks
+            // identical to one that failed to start.
+            romAt: typeof romAt === 'number' ? romAt : null
         };
         const nextKind = kind === 'z80' ? 'z80'
             : kind === 'eater6502' || kind === '6502' ? 'eater6502'
-                : this.state.kind;
+                : kind === 'i8086' || kind === '8086' || kind === 'i8088' || kind === '8088' ? 'i8086'
+                    : this.state.kind;
         await new Promise(resolve => this.setState(
             {kind: nextKind, runner: null, ui: {phase: 'idle', message: ''}}, resolve));
         const runner = await this.runner();

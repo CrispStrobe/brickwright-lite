@@ -300,7 +300,7 @@ function netlistFromCircuitFile(data) {
  * @param {object} [opts.machineConfig] wired-extractor {regions, chips} from
  *   Build Machine (bw-machine-extracted) — threads into createDebugTarget
  *   so the bench boots the machine the user wired, not a hardcoded preset.
- * @param {object} [opts.bootMedia] {slot, bytes, profile, name} from the
+ * @param {object} [opts.bootMedia] {slot, bytes, profile, name, romAt} from the
  *   Machine Loader / ASM tab — the image the machine boots WITH, so the
  *   reset vector is read from real bytes. profile 'py65mon'/'eater'/'cpm'
  *   names the machine shape a preset image was built for; absent, the
@@ -1571,7 +1571,15 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             setStatus('attaching', `booting ${bootMedia.name || 'ROM'}…`);
             const img = await resolveMediaImage(bootMedia);
             targetOpts.rom = img.bytes;
+            // Three sources for the load address, most specific first. Intel
+            // HEX states its own origin; the Machine Loader computes one from
+            // the image length so the reset vector at FFFF0h falls inside it;
+            // otherwise the machine's own ROM region decides. An 8086 image
+            // that is not exactly 64K and gets none of the first two starts
+            // executing open bus, which on screen is indistinguishable from a
+            // machine that never started.
             if (img.origin != null) targetOpts.romAt = img.origin;
+            else if (typeof bootMedia.romAt === 'number') targetOpts.romAt = bootMedia.romAt;
             if (machineConfig) targetOpts.config = benchConfigI8086();
             readyMsg = `${bootMedia.name || 'ROM'} on ${machineConfig ? 'the extracted machine' : 'the default 8086 map'}`;
         } else if (machineConfig) {
