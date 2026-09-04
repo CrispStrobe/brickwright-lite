@@ -1716,7 +1716,8 @@ class PseudocodeImporter extends React.Component {
             blocks = stage ? Object.keys(stage.blocks || {}).length : 0;
             const mod = await import(
                 /* webpackChunkName: "bw-pc8086" */ '../../lib/bw-asm/pseudocode-8086.js');
-            out = await mod.buildPseudocode8086({project: creator.project, source: src});
+            out = await mod.buildPseudocode8086(
+                {project: creator.project, source: src, parseWarnings: creator.warnings});
         } catch (e) {
             this.setState({busy: false, status: e && e.name === 'Pseudocode8086Error'
                 ? this.L.run8086Refused(e.message)

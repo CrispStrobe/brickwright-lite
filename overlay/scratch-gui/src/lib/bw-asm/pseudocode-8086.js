@@ -3237,14 +3237,18 @@ export function emitI8086Asm (project, opts = {}) {
  * test that called the code generator directly would prove the code
  * generator works and prove nothing about the button.
  *
- * @param {{project: object, source?: string}} req the parsed project and the
+ * @param {{project: object, source?: string, parseWarnings?: string[]}} req the
+ *   parsed project, the pseudocode it came from, and the PARSER's own
+ *   warnings -- which are not recoverable from the project, because a block
+ *   the parser refused is simply not in it. See the warnings field below.
+ *   The parsed project and the
  *   pseudocode it came from — see `emitI8086Asm` for why the text is needed
  *   as well as the project
  * @param {{hostedFetch?: Function, assembleLocal?: Function}} [seams]
  * @returns {Promise<{bytes: Uint8Array, format: 'com'|'exe', asm: string,
  *   warnings: string[], route: string, target: string, org: number|null}>}
  */
-export async function buildPseudocode8086 ({project, source}, seams = {}) {
+export async function buildPseudocode8086 ({project, source, parseWarnings = []}, seams = {}) {
     const {asm, chips, warnings, variables} = emitI8086Asm(project, {source});
     const out = await requestAssembly({source: asm, device: 'i8086'}, seams);
     return {
@@ -3263,9 +3267,20 @@ export async function buildPseudocode8086 ({project, source}, seams = {}) {
         // on the board; the warnings say so out loud.
         chips,
         variables,
-        // The emitter's give-and-take first, then the assembler's. Both are
-        // shown; neither is silent.
-        warnings: [...warnings, ...out.warnings]
+        // THREE SOURCES, AND THE FIRST ONE USED TO BE MISSING. This said "the
+        // emitter's give-and-take first, then the assembler's -- both are
+        // shown; neither is silent", which enumerated two of three and was
+        // believed complete. The PARSER's warnings were dropped on the floor
+        // between `creator.parse()` and here, because the caller passed
+        // `creator.project` and not `creator.warnings`.
+        //
+        // What that cost: `IF n = 1:` (no THEN) is diagnosed precisely by the
+        // parser -- `Malformed IF (expected "IF <condition> THEN:")` plus
+        // `Skipping line with unexpected indentation` for the orphaned body --
+        // and the learner saw NEITHER. The program built clean, ran, and
+        // printed plausible output with the branch silently gone. A learner
+        // has no way to tell a dropped block from their own misunderstanding.
+        warnings: [...parseWarnings, ...warnings, ...out.warnings]
     };
 }
 
