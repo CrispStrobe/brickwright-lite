@@ -970,7 +970,33 @@ The fifteen, by class, measured and only partly diagnosed:
   index. Those are the low and high pot readings the sweep stimulus sets, so the two sides
   disagree about which reading is current when the line is printed — a phase difference, plausibly
   the same gap again. Plausibly is not measured.
-- **A value that is not a number the other side has, 3 — the most interesting, undiagnosed.**
+**RE-RUN after adding `SKIP emitter`: AGREE 94, SKEW 5, DIFF 11, SKIP 66, ERROR 0.** The skip
+caught four pairs, not the two expected — `arduino-08-string-addition` on both devices AND
+`arduino-sk-p11-crystal-ball` on both, confirming the latter's "serial count 1 vs 0" was the same
+unlowered-operation cause rather than a horizon edge.
+
+**The remaining eleven, and the serial class now has an evidenced diagnosis.** Four are pin-event
+(two the `repeat` defect, fixed upstream and not yet vendored here; two the latch idle level).
+The other seven are serial, and three independent facts point the same way:
+
+- every one of the seven is **nano-only**;
+- the same examples **AGREE on pico** (`arduino-01-read-analog-voltage`, `arduino-05-if-statement`,
+  `arduino-04-serial-passthrough`, `arduino-sk-p14-serial-pot` all pass there);
+- nano is the device with a BLOCKING UART — `serialMsPerByte: 1.05` at 9600 baud — while pico's
+  16-deep FIFO is `0`.
+
+So the device spends real time printing and therefore samples the ADC at a different point in the
+stimulus sweep than a referee that prints instantly. That is why the disagreements are `"31"`
+against `"870"` — the sweep's low and high pot readings transposed — and why they appear at LATER
+serial indices (17, 34, 70), where cumulative byte time is largest. `compareTraces` already carries
+a `serialMsPerByte` allowance for the TIMING consequence of exactly this; nothing models the VALUE
+consequence, and nothing could without the referee charging for its own output.
+
+**Evidenced, not proven.** Proving it means instrumenting the moment each side samples the ADC and
+showing the device's falls the other side of a stimulus step. The three facts above are consistent
+with no other explanation I can construct, which is not the same as measuring it.
+
+- **The superseded reading of the `"0"` class, kept because it was wrong in an instructive way.**
   `arduino-08-string-addition` prints `"Sensor value: 31"` on the referee and bare `"0"` on the
   device, on BOTH nano and pico; `arduino-07-row-column-scanning` prints `"5"` against `"0"`. A
   device printing `0` where a concatenated string is expected has the shape of an operation that

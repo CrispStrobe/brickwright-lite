@@ -298,6 +298,30 @@ async function corpusMode(count, offset) {
       if (ref.unsupported.length) { console.log(`${label}: SKIP referee (${[...new Set(ref.unsupported)][0]})`); continue; }
       if (ref.pwm.length) { console.log(`${label}: SKIP pwm (duty recording not built yet — stated, not silent)`); continue; }
       const c = creator.generateC(undefined, { debug: true });
+      // The mirror of `SKIP referee`. Where the referee refuses a block it cannot
+      // model, the EMITTER marks an operation it cannot lower for this target by
+      // emitting a literal `0` with the source text left in a comment:
+      //
+      //     s0_stringOne = 0 /* Sensor value:  */;
+      //     bw_print_num(0 /* stringOne join (read sensor) */);
+      //
+      // Strings and `join` do not exist on the device targets — the same idiom
+      // D26 records for list operations. So `arduino-08-string-addition` prints
+      // "0" on the device and "Sensor value: 31" in the referee, on BOTH nano and
+      // pico, and no agreement is possible: the referee models Scratch semantics
+      // correctly and the device cannot execute them. Comparing them measures a
+      // documented limitation, not a defect — the same category error as pairing
+      // a host program with a chip.
+      //
+      // Stated, never silent: the reason names the count and the first marker, so
+      // a program that STARTS lowering to zeroes shows up here rather than
+      // arriving later as an inexplicable value mismatch.
+      const unlowered = c.match(/\b0 \/\* [^*]* \*\//g) || [];
+      if (unlowered.length) {
+        console.log(`${label}: SKIP emitter (${unlowered.length} operation(s) do not lower on ` +
+          `${dev.target} — first: ${unlowered[0].slice(0, 48)})`);
+        continue;
+      }
       const out = await compile(c, dev.target);
       const actual = runUnderEmulator(dev, creator, out, stimulus);
       // Do not compare a dimension this recorder cannot produce. Stated, not
