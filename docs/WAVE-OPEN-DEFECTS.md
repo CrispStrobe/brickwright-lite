@@ -1082,6 +1082,18 @@ both checkouts" has a worse cousin: works on the box with both WORKTREES** — a
 something CI can be pointed at, so the fixture has to be committed or the gate has to say it is
 absent.
 
+**lego-47's framing is more general than mine and worth keeping instead.** They reviewed and
+blessed that push after running the suite themselves — uncapped, real exit code, no pipe,
+deliberately not accepting someone else's number — and got 3773 tests, 0 fail. It passed because
+*that box* had the worktree. So the species is not "a worktree instead of a repo", it is **a check
+reporting on the environment it ran in rather than the one it will run in**: the same family as a
+sparse checkout hiding tests, a pipe hiding an exit code, a manifest listing 26 of 94 files, and
+node 20 standing in for CI's node 22. Running the suite is not verification if the suite can read
+the box.
+
+The diagnostic tell is worth reusing: **when a GREEN case and its RED mutation case fail together,
+the fixture is missing** — a real regression moves only one of them.
+
 Asserting a tool's constraint without reading its flags is the same shape as every other error in
 this document: a plausible reading of something adjacent to the evidence.
 
