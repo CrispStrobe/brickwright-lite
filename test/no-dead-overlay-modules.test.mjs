@@ -156,6 +156,12 @@ const KNOWN_DEAD = new Map([
             + 'ship — it exists to run the 525-file teaching corpus against the '
             + 'core, not to serve the app. Arrives with the sync, which copies the '
             + 'full src/ tree.'}],
+    ['lib/bw-board/i8088-biu.js', {roadmap: '4.4',
+        reason: 'Vendored; the experimental 8088 bus-timing predictor is exercised by '
+            + 'bw-board\'s cycle-model corpus, not by lite\'s instruction-stepped app.'}],
+    ['lib/bw-board/reseat-gate.js', {roadmap: '4.4',
+        reason: 'Vendored; a bw-board acceptance helper used to compare machines during '
+            + 'cross-family reseating. It is test infrastructure, not app runtime code.'}],
 ]);
 
 const SPEC = /from\s+['"]([^'"]+)['"]|import\(\s*(?:\/\*[^*]*\*\/\s*)?['"]([^'"]+)['"]|require\(\s*['"]([^'"]+)['"]/g;

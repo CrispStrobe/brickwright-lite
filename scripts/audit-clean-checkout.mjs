@@ -81,7 +81,7 @@ try {
     // EXACTLY THE TRACKED TREE. `git archive` cannot include an untracked
     // file, which is the point: if a fixture is missing here it was missing
     // from the repository all along.
-    execFileSync('bash', ['-c',
+    execFileSync('/bin/bash', ['-c',
         `git -C ${JSON.stringify(ROOT)} archive HEAD | tar -x -C ${JSON.stringify(work)}`],
     {stdio: 'inherit'});
 

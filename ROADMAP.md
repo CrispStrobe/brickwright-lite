@@ -865,7 +865,7 @@ here rather than implied by a one-line comment in a test.
 
 ### 4.4 bw-board device modules waiting on their device
 
-Six leaves of the vendored bw-board tree. Each is a leaf in the strict sense — nothing inside the
+Leaves of the vendored bw-board tree. Each is a leaf in the strict sense — nothing inside the
 vendored tree imports it either — so they cost nothing in the bundle (webpack never reaches them)
 and everything in legibility, which is what §4 was complaining about. These are the six device and
 hardware features the planning docs could not see.
@@ -880,6 +880,8 @@ hardware features the planning docs could not see.
 | `zx-tzx.js` | loading ZX Spectrum tape images | a Z80 machine target that accepts tape input — `z80-debug.js` and `z80-extract.js` both came OFF this list already, so the machine half is live; the tape half is not | a file-in affordance and a decision about where tape images come from (bundled corpus vs user upload) |
 | `i8086-asm.js` | **LANDED 2026-09-04:** writing 8086 assembly in the ASM tab and running it | `lib/bw-asm/assemble-route.js` routes an 8086/8088 device to this module IN THE BROWSER and everything else to the hosted service; `lib/bw-debug/i8086-dos-bench.js` boots the resulting .COM/.EXE on the DOS service layer, which `debug-runner.js` used to refuse by name. Six MIT programs from the Amey-Thakur corpus ship as ASM-tab examples, attribution included, and the gate assembles AND RUNS every one | unblocked and removed from `KNOWN_DEAD`. **The decision this row asked for was taken, not dodged:** two assemble routes in one tab, argued for in that module's header — the alternative was never one route, it was no 8086 ASM tab, because neither ca65 nor sdasz80 has an 8086 back end. The cost (two error surfaces) is bounded by three asserted rules: one function decides the route, neither route can leak into the other, and every result says which one ran |
 | `i8086-emu8086.js` | nothing in lite, by design | its consumer is bw-board's corpus harness, which lite does not ship. It adapts the emu8086 dialect (flat `ORG 100h` files with no segment) so the 525-file teaching corpus can be run against the core | nothing. It is here because the sync copies bw-board's full `src/` tree, and the honest entry for that is "not ours to wire", not a pending feature |
+| `i8088-biu.js` | measured 8088 bus-cycle prediction | its consumer is bw-board's cycle-model corpus; lite runs the instruction-stepped machine and does not expose a cycle-accurate mode | the cycle model is upstream verification infrastructure, copied here only because the vendor sync carries the full `src/` tree |
+| `reseat-gate.js` | cross-family machine equivalence checking | its consumers are bw-board's reseat acceptance tests, which compare edge sequences while developing machine substitutions; it is not an app service | nothing in lite. Keep it with the complete vendored source until the upstream project moves test helpers out of `src/` |
 
 None of these has an owner, and saying so is the point: the rule was "no entry may remain *later*,
 no owner, no date", and the honest resolution for five of six is **no owner, and here is exactly

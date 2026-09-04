@@ -486,6 +486,17 @@ const GROUPS = [
         ['stc_blink', '💡 Blink two LEDs'], ['stc_button', '🔘 Button'],
         ['stc_potentiometer', '🎛️ Potentiometer (ADC)'],
         ['stc_two_scripts', '⏱️ Two scripts at once'], ['stc_pwm_fade', '🌗 PWM fade']
+    ]},
+    // The 8086 examples compile to ASSEMBLY through our own assembler rather
+    // than to C — there is no ia16 compiler in the service and this tier does
+    // not need one. `i8086_blink` is deliberately the STC blink with its
+    // DEVICE line changed and its two 8051-only lines removed, because that
+    // is the claim the whole tier rests on.
+    {label: 'Hardware (8086)', items: [
+        ['i8086_blink', '💡 Blink, reseated from the 8051'],
+        ['i8086_keypad', '⌨️ Keypad on an 8255'],
+        ['i8086_events', '⏱️ Four scripts, preemptive'],
+        ['i8086_analog', '🎛️ Analog in (ADC0809)']
     ]}
 ];
 
