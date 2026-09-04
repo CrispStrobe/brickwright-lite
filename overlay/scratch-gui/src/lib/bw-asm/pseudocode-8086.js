@@ -191,7 +191,8 @@ export const SUPPORTED = Object.freeze({
     stc12_setport: 'set <port> to <value>',
     stc12_readport: 'read <port>',
     stc12_writepin: 'set <pin> to <value>',
-    stc12_settone: 'set <pin> to <n> hz'
+    stc12_settone: 'set <pin> to <n> hz',
+    control_wait_until: 'wait until <cond>'
 });
 
 /** What a refused block is called, when the opcode alone would not say. */
@@ -204,7 +205,6 @@ const BLOCK_NAMES = {
     operator_random: 'pick random ... to ...',
     operator_mathop: 'sqrt/sin/cos/... of ...',
     data_addtolist: 'add ... to <list>',
-    control_wait_until: 'wait until <cond>',
     control_create_clone_of: 'create clone of ...',
     event_whenkeypressed: 'WHEN <key> key pressed:',
     event_whenbroadcastreceived: 'WHEN I receive ...:',
@@ -536,6 +536,31 @@ class Emitter {
         this.op('MOV AX, 1');
         this.code.push(`${done}:`);
         this.op('XOR DX, DX');
+    }
+
+    /**
+     * Does this expression read anything OUTSIDE the program's own variables?
+     *
+     * Used only to decide whether a `wait until` can ever finish. A pin, a
+     * port or a keypad can change without the program doing anything; a
+     * variable in a single-script program with no interrupt handlers cannot
+     * change inside a loop whose body is empty.
+     */
+    readsTheWorld (input) {
+        const OUTSIDE = new Set(['stc12_read', 'stc12_readport', 'stc12_keypad']);
+        const seen = new Set();
+        const walk = (id) => {
+            if (!id || seen.has(id)) return false;      // `seen` guards a cycle
+            seen.add(id);
+            const b = this.blocks[id];
+            if (!b) return false;
+            if (OUTSIDE.has(b.opcode)) return true;
+            for (const v of Object.values(b.inputs || {})) {
+                if (Array.isArray(v) && typeof v[1] === 'string' && walk(v[1])) return true;
+            }
+            return false;
+        };
+        return Array.isArray(input) && typeof input[1] === 'string' && walk(input[1]);
     }
 
     /** Evaluate a boolean input to 0/1 in DX:AX. */
@@ -1325,6 +1350,32 @@ class Emitter {
             this.sub(b, 'SUBSTACK');
             this.op(`JMP ${top}`);
             this.code.push(`${end}:`);
+            return;
+        }
+        case 'control_wait_until': {
+            // `wait until <cond>` is `repeat until <cond>` with an empty body,
+            // and spinning is the right implementation: it is what the same
+            // program does on hardware, and the bench reports a spinning
+            // program as running rather than hung.
+            const top = this.label('W');
+            this.note('wait until');
+            if (!this.readsTheWorld(b.inputs.CONDITION)) {
+                // NOTHING IN THIS LOOP CAN CHANGE THE ANSWER. One script, no
+                // interrupt handlers, and a condition that reads no pin, port
+                // or keypad -- so if it is false on entry it is false forever.
+                // That is not a hunch, it is the whole state of the machine:
+                // a spin with an empty body writes nothing.
+                this.warn('`wait until` here tests only variables and constants. '
+                    + 'Nothing inside the wait can change them -- there is one script and '
+                    + 'no interrupt handler on this bench -- so if the condition is false '
+                    + 'when the wait is reached, it stays false and the program stops '
+                    + 'there. Wait on a pin, a port or a keypad, or use `repeat until` '
+                    + 'with a body that changes something.');
+            }
+            this.code.push(`${top}:`);
+            this.evalCondInput(b.inputs.CONDITION, b.opcode);
+            this.op('OR AX, DX');
+            this.op(`JZ ${top}`);
             return;
         }
         case 'control_if': {

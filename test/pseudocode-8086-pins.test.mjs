@@ -395,3 +395,45 @@ test('a TONE pin that is not the speaker is refused by name', async () => {
         () => buildPseudocode8086({project: c.project, source: src}),
         /the speaker is not on a pin you can choose/);
 });
+
+// ── WAIT UNTIL ──────────────────────────────────────────────────────────
+
+test('`wait until` on a pin finishes when the world changes', async () => {
+    const src = ['DEVICE i8086', 'PIN sw = P2.0 INPUT', 'WHEN flag clicked:',
+        '  wait until (read sw) = 0', '  say "pressed"'].join('\n');
+    const c = new SB3();
+    c.parse(src);
+    const built = await buildPseudocode8086({project: c.project, source: src});
+    assert.deepEqual(built.warnings, [], 'a wait on a pin CAN finish, so nothing is warned');
+    const b = await createI8086DosBench(
+        {bytes: built.bytes, format: built.format, chips: built.chips});
+    let n = 0;
+    while (n < 300_000 && !b.terminated) {
+        if (n > 5000) b.target.setInput('ppi1', 'b', 0, 0);   // the switch closes
+        b.step();
+        n++;
+    }
+    assert.ok(b.terminated, 'the spin ended when the pin went low');
+    assert.deepEqual(b.screenText().filter(Boolean), ['pressed']);
+});
+
+test('`wait until` on variables alone is warned, and the warning is TRUE', async () => {
+    // Not a hunch about style -- it is the whole state of the machine. One
+    // script, no interrupt handlers, and a spin whose body is empty writes
+    // nothing, so a condition over variables that is false on entry is false
+    // forever. The second half of this test is the part that matters: the
+    // program really does stop there, so the warning describes what happens
+    // rather than what someone suspected might.
+    const src = ['DEVICE i8086', 'GLOBAL n', 'WHEN flag clicked:', '  set n to 0',
+        '  wait until n = 5', '  say "never"'].join('\n');
+    const c = new SB3();
+    c.parse(src);
+    const built = await buildPseudocode8086({project: c.project, source: src});
+    assert.match(built.warnings.join(' '), /tests only variables and constants/);
+    const b = await createI8086DosBench(
+        {bytes: built.bytes, format: built.format, chips: built.chips});
+    let n = 0;
+    while (n < 200_000 && !b.terminated) { b.step(); n++; }
+    assert.ok(!b.terminated, 'and it really does stop there');
+    assert.deepEqual(b.screenText().filter(Boolean), [], 'nothing after the wait ever runs');
+});
