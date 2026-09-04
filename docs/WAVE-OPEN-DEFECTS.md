@@ -1104,8 +1104,9 @@ transcript is a finding the next auditor cannot see — the same reason a stash 
 reads as nothing.
 
 `extension-support/extension-manager.js` registers its builtins as
-`planetemaths: () => require('../extensions/crispstrobe/planetemaths')` — 38 such entries, of which
-26 are gallery extensions. The arrow LOOKS like deferral and is not: webpack resolves `require` at
+`planetemaths: () => require('../extensions/crispstrobe/planetemaths')` — **37** such entries
+(counted, not 38: `grep -cE "\(\) => require\('\.\./extensions/"`), 27 of them pointing into
+`crispstrobe/`, and 26 distinct gallery extension IDs actually embedded in the shipped chunk. The arrow LOOKS like deferral and is not: webpack resolves `require` at
 build time regardless, so all 26 bodies land in the first-paint chunk. Verified here: the pattern
 is at `extension-manager.js:18` onward.
 
