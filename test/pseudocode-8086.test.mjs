@@ -326,6 +326,17 @@ const PROGRAMS = {
         // An 8255 input port with nothing driving it reads all ones.
         `DEVICE i8086\nPORT sw = P2 INPUT\nWHEN flag clicked:\n  say (read sw)\n`,
         ['255']],
+    control_wait_until: [
+        // An 8255 input port with nothing driving it reads high, so this one
+        // is already true when it is reached and the program runs on.
+        `DEVICE i8086\nPIN sw = P2.0 INPUT\nWHEN flag clicked:\n  wait until (read sw) = 1\n  say "on"\n`,
+        ['on']],
+    stc12_writepin: [
+        `DEVICE i8086\nPIN led = P1.0 OUTPUT\nWHEN flag clicked:\n  set led to 128\n  say "lvl"\n`,
+        ['lvl']],
+    stc12_settone: [
+        `DEVICE i8086\nPIN spk = P2.1 TONE\nWHEN flag clicked:\n  set spk to 440 hz\n  say "hz"\n`,
+        ['hz']],
     stc12_keypad: [
         // NOTHING PRESSED IS -1, NOT 0, and that is the STC extension's
         // contract verbatim rather than a choice made here: a keypad that

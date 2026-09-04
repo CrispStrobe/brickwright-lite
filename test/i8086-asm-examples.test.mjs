@@ -39,7 +39,7 @@ import assert from 'node:assert/strict';
 import {existsSync, readFileSync} from 'node:fs';
 import {join} from 'node:path';
 
-import {I8086_EXAMPLES, AMEY_THAKUR}
+import I8086_ALL, {I8086_EXAMPLES, AMEY_THAKUR}
     from '../overlay/scratch-gui/src/lib/bw-asm/examples-i8086.js';
 import {asmExamplesFor} from '../overlay/scratch-gui/src/lib/bw-asm/examples.js';
 import {requestAssembly} from '../overlay/scratch-gui/src/lib/bw-asm/assemble-route.js';
@@ -56,12 +56,33 @@ const CORPUS = process.env.I8086_CORPUS ||
 test('the 8086 has examples, and they are the ones this file knows about', () => {
     assert.ok(I8086_EXAMPLES.length >= 5,
         'fewer than five 8086 examples — a device with one example is a device nobody uses');
+    // THE TAB OFFERS THE FULL SET -- upstream's AND ours. It offered only
+    // upstream's until 2026-09-04, so the 8255 pin panel, the keyboard demo
+    // and mode 13h shipped in the file and were reachable from nowhere. The
+    // roadmap still said "no graphics example" for exactly that reason.
     for (const spelling of ['i8086', '8086', 'i8088', '8088']) {
-        assert.deepEqual(asmExamplesFor(spelling).map(e => e.id), I8086_EXAMPLES.map(e => e.id),
+        assert.deepEqual(asmExamplesFor(spelling).map(e => e.id), I8086_ALL.map(e => e.id),
             `the ASM tab offers a different set for "${spelling}"`);
     }
-    const ids = I8086_EXAMPLES.map(e => e.id);
+    const ids = I8086_ALL.map(e => e.id);
     assert.equal(new Set(ids).size, ids.length, 'duplicate example id');
+    // And the ones we wrote are actually in it, by name -- `length >= 5` would
+    // pass on upstream's six alone and say nothing about ours.
+    for (const mine of ['pins', 'keys', 'mode13']) {
+        assert.ok(ids.includes(mine), `"${mine}" is written here and offered nowhere`);
+    }
+});
+
+test('our examples do NOT carry upstream\'s attribution', () => {
+    // The split exists so that a `.map` stamping the upstream licence cannot
+    // reach work that is not upstream's. Asserting it here means the two
+    // populations stay distinguishable even as both grow.
+    const upstream = new Set(I8086_EXAMPLES.map(e => e.id));
+    for (const ex of I8086_ALL) {
+        if (upstream.has(ex.id)) continue;
+        assert.equal(ex.attribution, undefined,
+            `"${ex.id}" is ours and must not be stamped with someone else's attribution`);
+    }
 });
 
 test('every example carries the attribution it ships under', () => {

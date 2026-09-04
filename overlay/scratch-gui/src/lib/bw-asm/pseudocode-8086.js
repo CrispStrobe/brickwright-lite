@@ -189,7 +189,10 @@ export const SUPPORTED = Object.freeze({
     stc12_read: 'read <pin>',
     stc12_keypad: 'read <keypad>',
     stc12_setport: 'set <port> to <value>',
-    stc12_readport: 'read <port>'
+    stc12_readport: 'read <port>',
+    stc12_writepin: 'set <pin> to <value>',
+    stc12_settone: 'set <pin> to <n> hz',
+    control_wait_until: 'wait until <cond>'
 });
 
 /** What a refused block is called, when the opcode alone would not say. */
@@ -202,13 +205,12 @@ const BLOCK_NAMES = {
     operator_random: 'pick random ... to ...',
     operator_mathop: 'sqrt/sin/cos/... of ...',
     data_addtolist: 'add ... to <list>',
-    control_wait_until: 'wait until <cond>',
     control_create_clone_of: 'create clone of ...',
     event_whenkeypressed: 'WHEN <key> key pressed:',
     event_whenbroadcastreceived: 'WHEN I receive ...:',
     procedures_definition: 'DEFINE ...',
     procedures_call: 'a custom block call',
-    stc12_writepin: 'write <expr> to <pin>'
+    stc12_setpwm: 'set <pin> to <n> percent'
 };
 
 /** The list a refusal prints, so "unsupported" is never the whole message. */
@@ -257,6 +259,20 @@ export function boolishTruthTest (b) {
  *  why one board can serve a pin program and a keyboard program at once. */
 // The ADC0809 lives in 300h-31Fh, the block IBM documented for cards a user
 // adds -- a learner's add-on board belongs where add-on boards went.
+// The 8254's input clock on a PC: 14.31818 MHz / 12. Every tone this machine
+// can make is this divided by a whole number.
+const PIT_HZ = 1193182;
+const PIT_BASE = 0x40;
+
+/** The literal behind an input, or null if it is computed. Used only to say
+ *  which frequency will actually be played -- never to change what is emitted. */
+function literalNumber (input) {
+    const inner = Array.isArray(input) ? input[1] : null;
+    if (!Array.isArray(inner)) return null;
+    const n = Number(inner[1]);
+    return Number.isFinite(n) ? n : null;
+}
+
 const ADC_BASE = 0x300;
 const ADC_EOC = 0x308;
 
@@ -520,6 +536,31 @@ class Emitter {
         this.op('MOV AX, 1');
         this.code.push(`${done}:`);
         this.op('XOR DX, DX');
+    }
+
+    /**
+     * Does this expression read anything OUTSIDE the program's own variables?
+     *
+     * Used only to decide whether a `wait until` can ever finish. A pin, a
+     * port or a keypad can change without the program doing anything; a
+     * variable in a single-script program with no interrupt handlers cannot
+     * change inside a loop whose body is empty.
+     */
+    readsTheWorld (input) {
+        const OUTSIDE = new Set(['stc12_read', 'stc12_readport', 'stc12_keypad']);
+        const seen = new Set();
+        const walk = (id) => {
+            if (!id || seen.has(id)) return false;      // `seen` guards a cycle
+            seen.add(id);
+            const b = this.blocks[id];
+            if (!b) return false;
+            if (OUTSIDE.has(b.opcode)) return true;
+            for (const v of Object.values(b.inputs || {})) {
+                if (Array.isArray(v) && typeof v[1] === 'string' && walk(v[1])) return true;
+            }
+            return false;
+        };
+        return Array.isArray(input) && typeof input[1] === 'string' && walk(input[1]);
     }
 
     /** Evaluate a boolean input to 0/1 in DX:AX. */
@@ -1035,6 +1076,133 @@ class Emitter {
         this.op('XOR DX, DX');
     }
 
+    /**
+     * `set <pin> to <expr>` — A LEVEL, NOT A VOLTAGE.
+     *
+     * This was nearly lowered to a DAC, and it would have been wrong. The
+     * parser calls it a computed LEVEL and every other back end emits
+     * `if (VALUE) high else low` -- so `set led to 128` means "drive it
+     * high", not "put 128/255 of Vref on it". A converter here would run,
+     * look plausible, and mean something else.
+     *
+     * ACTIVE LOW DOES NOT INVERT IT, deliberately and consistently with
+     * `set high` / `set low`: a level is a level. Only `turn on` / `turn off`
+     * are states, and only states respect the wiring.
+     */
+    emitPinWrite (name, input, opcode) {
+        const p = this.pinAddr(name, opcode);
+        this.checkDirection(p, 'output', opcode);
+        this.uses.ppi = true;
+        const mask = 1 << p.bit;
+        this.evalNum(input, `set ${name}`);      // the value, 32 bits in AX:DX
+        const low = this.label('LVL'), done = this.label('LVL');
+        this.op('OR AX, DX             ; nonzero in either half is HIGH');
+        // MOV does not touch the flags, so the shadow load is safe between
+        // the test and the branch.
+        this.op(`MOV AL, [BW_PORT${p.PORT}]`);
+        this.op(`JZ ${low}`);
+        this.op(`OR AL, ${mask}`);
+        this.op(`JMP ${done}`);
+        this.code.push(`${low}:`);
+        this.op(`AND AL, ${(~mask) & 0xff}`);
+        this.code.push(`${done}:`);
+        this.op(`MOV [BW_PORT${p.PORT}], AL`);
+        this.op(`MOV DX, ${p.dataPort}`);
+        this.op('OUT DX, AL');
+    }
+
+    /**
+     * `set <pin> to <n> hz` — A TONE, FROM THE HARDWARE THAT ACTUALLY MAKES IT.
+     *
+     * On an 8051 a tone comes out of whichever pin you name. On this bench it
+     * cannot: the speaker is fixed hardware, gated by 8255 port B bits 0 and 1
+     * and driven by 8254 counter 2. Bit 0 opens the counter's gate, bit 1
+     * connects its output to the cone, and BOTH are needed.
+     *
+     * So a TONE pin anywhere else is REFUSED rather than silently ignored --
+     * a program whose sound comes from a pin it did not name is the "runs but
+     * means something different" failure. P2 maps to port B, so `P2.0` and
+     * `P2.1` genuinely ARE the speaker and the declaration that works is one
+     * the learner can write.
+     *
+     * IT GOES THROUGH BW_PORTB, and that is not tidiness. The review lane
+     * measured the alternative: a raw `OUT 61h` and a pin write on the same
+     * port diverge, and afterwards the shadow says a lamp is lit while the
+     * port holds it dark. Nothing stops and nothing errors -- there is no
+     * diagnostic a learner could act on.
+     */
+    emitTone (name, input, opcode) {
+        const p = this.pinAddr(name, opcode);
+        if (p.direction !== 'tone') {
+            refuse(`"${name}" is declared ${String(p.direction).toUpperCase()} and this asks `
+                + 'it for a frequency. Declare it TONE.', 'tone on a non-tone pin', opcode);
+        }
+        if (p.PORT !== 'B' || p.bit > 1) {
+            refuse(`"${name}" is a TONE pin on P${p.port}.${p.bit}, and on this machine the `
+                + 'speaker is not on a pin you can choose. It is fixed hardware: 8254 '
+                + 'counter 2 makes the square wave and 8255 port B bits 0 and 1 gate it. '
+                + 'P2 maps to port B, so declare the speaker as P2.0 or P2.1 -- those bits '
+                + 'ARE the speaker. On an 8051 a tone comes out of whatever pin you name, '
+                + 'which is a real difference between the two machines rather than a '
+                + 'limitation here.', 'tone on a pin that is not the speaker', opcode);
+        }
+        this.uses.ppi = true;
+        this.uses.div = true; this.uses.sdiv = true;
+        // THE REQUESTED TONE IS NOT THE TONE PRODUCED. A PIT can only make
+        // 1193182/n for whole n, so the frequency is reported back from the
+        // divisor rather than echoed from what was typed -- echoing it would
+        // invent a precision the chip does not have.
+        const lit = literalNumber(input);
+        if (lit != null) {
+            if (lit <= 0) {
+                this.warn(`"${name}" is set to ${lit} Hz, which turns the speaker OFF.`);
+            } else {
+                const div = Math.max(1, Math.min(65535, Math.round(PIT_HZ / lit)));
+                const got = Math.round(PIT_HZ / div);
+                this.warn(`"${name}" asks for ${lit} Hz and the speaker plays ${got} Hz. `
+                    + `An 8254 divides a ${PIT_HZ} Hz clock by a whole number, so only `
+                    + `${PIT_HZ}/n is reachable -- here n = ${div}.`);
+            }
+        } else {
+            this.warn(`"${name}" is set from a computed frequency. An 8254 divides a `
+                + `${PIT_HZ} Hz clock by a whole number, so the tone played is the nearest `
+                + `${PIT_HZ}/n rather than exactly the value asked for.`);
+        }
+
+        const off = this.label('TONE'), done = this.label('TONE');
+        this.evalNum(input, `set ${name}`);          // Hz, 32 bits in AX:DX
+        this.op('OR AX, DX             ; 0 Hz means silence, not a divide by zero');
+        this.op(`JZ ${off}`);
+        this.evalNum(input, `set ${name}`);
+        this.op('MOV CX, DX');
+        this.op('MOV BX, AX            ; divisor := the requested Hz');
+        this.op(`MOV AX, ${PIT_HZ & 0xffff}`);
+        this.op(`MOV DX, ${PIT_HZ >>> 16}            ; dividend := ${PIT_HZ}`);
+        this.op('CALL BW_DIV32         ; AX = the PIT count');
+        this.op('PUSH AX');
+        this.op('MOV AL, 0B6h          ; counter 2, mode 3 square wave, lo/hi');
+        this.op(`MOV DX, ${PIT_BASE + 3}`);
+        this.op('OUT DX, AL');
+        this.op('POP AX');
+        this.op(`MOV DX, ${PIT_BASE + 2}`);
+        this.op('OUT DX, AL            ; count, low byte');
+        this.op('MOV AL, AH');
+        this.op('OUT DX, AL            ; count, high byte');
+        this.op(`MOV AL, [BW_PORT${p.PORT}]   ; the SAME shadow the pin writes use`);
+        this.op('OR AL, 3              ; bit 0 gates the counter, bit 1 the cone');
+        this.op(`MOV [BW_PORT${p.PORT}], AL`);
+        this.op(`MOV DX, ${p.dataPort}`);
+        this.op('OUT DX, AL');
+        this.op(`JMP ${done}`);
+        this.code.push(`${off}:`);
+        this.op(`MOV AL, [BW_PORT${p.PORT}]`);
+        this.op('AND AL, 0FCh          ; both gate bits down: silence');
+        this.op(`MOV [BW_PORT${p.PORT}], AL`);
+        this.op(`MOV DX, ${p.dataPort}`);
+        this.op('OUT DX, AL');
+        this.code.push(`${done}:`);
+    }
+
     emitSay (input, opcode, textMode) {
         const inner = Array.isArray(input) ? input[1] : null;
         const isLiteralText = Array.isArray(inner) && (inner[0] === 10 || textMode);
@@ -1184,6 +1352,32 @@ class Emitter {
             this.code.push(`${end}:`);
             return;
         }
+        case 'control_wait_until': {
+            // `wait until <cond>` is `repeat until <cond>` with an empty body,
+            // and spinning is the right implementation: it is what the same
+            // program does on hardware, and the bench reports a spinning
+            // program as running rather than hung.
+            const top = this.label('W');
+            this.note('wait until');
+            if (!this.readsTheWorld(b.inputs.CONDITION)) {
+                // NOTHING IN THIS LOOP CAN CHANGE THE ANSWER. One script, no
+                // interrupt handlers, and a condition that reads no pin, port
+                // or keypad -- so if it is false on entry it is false forever.
+                // That is not a hunch, it is the whole state of the machine:
+                // a spin with an empty body writes nothing.
+                this.warn('`wait until` here tests only variables and constants. '
+                    + 'Nothing inside the wait can change them -- there is one script and '
+                    + 'no interrupt handler on this bench -- so if the condition is false '
+                    + 'when the wait is reached, it stays false and the program stops '
+                    + 'there. Wait on a pin, a port or a keypad, or use `repeat until` '
+                    + 'with a body that changes something.');
+            }
+            this.code.push(`${top}:`);
+            this.evalCondInput(b.inputs.CONDITION, b.opcode);
+            this.op('OR AX, DX');
+            this.op(`JZ ${top}`);
+            return;
+        }
         case 'control_if': {
             const end = this.label('L');
             this.note('if');
@@ -1237,6 +1431,14 @@ class Emitter {
         case 'stc12_toggle':
             this.note('pin');
             this.emitPinToggle(b.fields.PIN[0], b.opcode);
+            return;
+        case 'stc12_writepin':
+            this.note('pin');
+            this.emitPinWrite(b.fields.PIN[0], b.inputs.VALUE, b.opcode);
+            return;
+        case 'stc12_settone':
+            this.note('tone');
+            this.emitTone(b.fields.PIN[0], b.inputs.VALUE, b.opcode);
             return;
         case 'stc12_setport':
             this.note('port');
