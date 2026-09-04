@@ -584,6 +584,50 @@ sub-steps:
    register. That is a per-board mapping, so it needs the extracted machine's
    chip list — which the extractor already produces.
 
+#### 3.8.2b Pseudocode → C → 8086 — the route most learners will actually take
+
+3.8.2 above routes pseudocode to assembly. **That is the wrong default for a
+child**, and the owner is right about it: almost nobody learns assembly first,
+and every other device in this app reaches the machine through C. An 8086 that
+can only be programmed in assembly is a museum piece next to the Arduino.
+
+So both routes ship, and they serve different people. THREE DOORS, and two are
+open:
+
+**1. The hosted compiler already does this — it is a service change, not engine
+work.** `stc-compiler.vercel.app` compiles C for 8051, AVR and STM32 today. Add
+`ia16-elf-gcc` server-side and real 8086 C works immediately. The licence
+question that stops people does not arise: **a GPL COMPILER running on a server
+does not affect the binaries it emits** — that is how every compiler service on
+earth works, and it is the same relationship gcc has with every proprietary
+program ever built with it. The client side of this is small: `asmRouteFor`
+already picks hosted-vs-local, and a C build for an 8086 target is one more
+hosted request with `target: 'ia16'`.
+
+**2. Compile our OWN C, which is a far smaller job than compiling C.**
+`generateC` emits a subset WE author: no pointers, no malloc, no structs,
+`int` variables, and a state machine over a millisecond tick. A compiler for
+that subset is a term rewriter, not a C front end, and it shares the whole back
+half with 3.8.2 — both end in our MASM-subset assembler. This is the offline
+path, and offline is not a nicety: it is what works on a school network.
+
+**3. A vendorable C compiler, IF one is permissively licensed.** SmallerC
+targets 8086 and DOS and is small enough to read. **Its licence is NOT yet
+verified** — a fetch failed and nobody has confirmed it — so it stays a
+candidate rather than a plan. Do not put it on a list until someone reads the
+file.
+
+**RECOMMENDED ORDER: 1 then 2.** Door 1 gives real C soonest for the least
+work in this repo; door 2 removes the network. Door 3 only if verified.
+
+**THE CONSTRAINT BOTH ROUTES SHARE, and it is the one that must not be fudged:
+pseudocode variables are 32-bit and the 8086 is 16-bit.** Narrowing silently
+gives a counter that wraps at 65535 where the Scratch version reaches 100000 —
+a program that runs, produces wrong numbers, and blames the learner. Either
+emit 32-bit arithmetic as register pairs, or refuse the narrowing by name in
+the shape `i8086-asm.js` already uses for unsupported directives. `ia16-gcc`
+gets this right for free, which is a genuine argument for door 1 beyond speed.
+
 #### 3.8.3 Circuit examples that RESEAT onto an 8086 — MEDIUM, and it is the point
 
 The owner's framing: an example currently drawn around a Nano, a Pico, a 6502
