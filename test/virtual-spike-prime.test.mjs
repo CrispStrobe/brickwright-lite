@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const MODULE = resolve(here, '../overlay/scratch-gui/src/lib/virtual-hub/spike-prime-peripheral.js');
-const {VirtualSpikePrimePeripheral, SPIKE_RX, packSpikeFrame} = await import(MODULE);
+const {VirtualSpikePrimePeripheral, SPIKE_RX, packSpikeFrame, unpackSpikeFrame} = await import(MODULE);
 
 test('answers fragmented info and notification requests', () => {
     const hub = new VirtualSpikePrimePeripheral();
@@ -21,7 +21,8 @@ test('answers fragmented info and notification requests', () => {
 
     hub.onWrite(SPIKE_RX, packSpikeFrame(Uint8Array.of(0x28, 100, 0)));
     assert.equal(hub.state.notificationIntervalMs, 100);
-    assert.equal(notifications.length, 2);
+    assert.equal(notifications.length, 3);
+    assert.equal(unpackSpikeFrame(notifications[2].bytes)[0], 0x3c);
 });
 
 test('maps JSON motor tunnels and safely retains the Python subset', () => {
@@ -36,6 +37,26 @@ test('maps JSON motor tunnels and safely retains the Python subset', () => {
     assert.equal(hub.state.motors[2].speed, 75);
     tunnel('import motor; motor.stop(port.A)');
     assert.equal(hub.state.lastPythonTunnel, 'import motor; motor.stop(port.A)');
+    tunnel('import motor; motor.run(port.C, 750)');
+    assert.equal(hub.state.motors[2].speed, 75);
     hub.disconnect();
     assert.equal(hub.state.motors[2].speed, 0);
+});
+
+test('emits signed, correctly sized device records', () => {
+    const hub = new VirtualSpikePrimePeripheral();
+    const messages = [];
+    hub.setNotificationSink((_uuid, bytes) => messages.push(unpackSpikeFrame(bytes)));
+    hub.onWrite(SPIKE_RX, packSpikeFrame(Uint8Array.of(0x28, 100, 0)));
+    hub.setPort('A', 'motor', {speed: -25, position: -123456});
+    hub.setPort('B', 'distance', {distance: -1});
+    const message = messages.at(-1);
+    assert.equal(message[0], 0x3c);
+    assert.equal(message[1] | (message[2] << 8), message.length - 3);
+    const motorOffset = 3 + 2 + 21;
+    assert.equal(message[motorOffset], 0x0a);
+    assert.equal(new DataView(message.buffer, message.byteOffset + motorOffset).getInt32(8, true), -123456);
+    const distanceOffset = motorOffset + 12;
+    assert.equal(message[distanceOffset], 0x0d);
+    assert.equal(new DataView(message.buffer, message.byteOffset + distanceOffset).getInt16(2, true), -1);
 });
