@@ -30,7 +30,12 @@
  * @module
  */
 
-import {I8086_EXAMPLES} from './examples-i8086.js';
+// THE DEFAULT EXPORT, NOT THE NAMED ONE. `I8086_EXAMPLES` is the upstream
+// set that ships under Amey Thakur's attribution; the default adds the ones
+// written here (the 8255 pin panel, the keyboard, mode 13h). Importing the
+// named export meant those shipped in the file and were offered NOWHERE --
+// the ASM tab, the gate and the local-assembly list all read this.
+import I8086_ALL, {I8086_EXAMPLES} from './examples-i8086.js';
 
 /**
  * @typedef {{id: string, label: string, labelDe: string, source: string,
@@ -203,7 +208,7 @@ export function asmExamplesFor (device) {
     // The 8088 answers here too: same instruction set, same encodings, so
     // the same assembler and the same programs. Only the bus width differs,
     // and no source file can tell.
-    if (/^(i8086|8086|i8088|8088)$/.test(d)) return I8086_EXAMPLES;
+    if (/^(i8086|8086|i8088|8088)$/.test(d)) return I8086_ALL;
     return [];
 }
 
@@ -212,7 +217,7 @@ export const ALL_ASM_EXAMPLES = [
     ...STC.map(e => ({...e, target: 'stc12c5a60s2'})),
     ...EATER6502.map(e => ({...e, target: 'eater6502'})),
     ...Z80.map(e => ({...e, target: 'z80'})),
-    ...I8086_EXAMPLES.map(e => ({...e, target: 'i8086'}))
+    ...I8086_ALL.map(e => ({...e, target: 'i8086'}))
 ];
 
 /**
@@ -220,6 +225,6 @@ export const ALL_ASM_EXAMPLES = [
  * apart without re-deriving the routing rule. The hosted ones skip when
  * there is no network; these never have an excuse.
  */
-export const LOCAL_ASM_EXAMPLES = I8086_EXAMPLES.map(e => ({...e, target: 'i8086'}));
+export const LOCAL_ASM_EXAMPLES = I8086_ALL.map(e => ({...e, target: 'i8086'}));
 
 export default asmExamplesFor;

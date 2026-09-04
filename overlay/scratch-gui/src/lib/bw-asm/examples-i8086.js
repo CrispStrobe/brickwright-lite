@@ -769,6 +769,192 @@ DRIVE:
 ; = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 `
     },
+    {
+        id: 'keys',
+        label: 'Type at it (INT 21h keyboard)',
+        labelDe: 'Tastatureingabe (INT 21h)',
+        expect: 'Type in the console. ESC quits.',
+        source: `; =============================================================================
+; TITLE: A Program That Waits For You
+; DESCRIPTION: Every other example here runs to the end on its own. This one
+;              STOPS and waits, which is the whole difference between a program
+;              and a machine. Type in the console below; ESC ends it.
+; =============================================================================
+
+    ORG 100H
+
+START:
+    MOV DX, OFFSET PROMPT
+    MOV AH, 9
+    INT 21H
+
+MAIN:
+    ; -------------------------------------------------------------------------
+    ; AH=01h READS ONE KEY AND WAITS FOR IT.
+    ;
+    ; "Waits" is doing real work. The bench does not hand the program a NUL and
+    ; run on -- it declines the service and the CPU keeps burning cycles until
+    ; a key actually arrives. So the program is genuinely BLOCKED, exactly as
+    ; it would be on hardware, and the run status says "running" rather than
+    ; pretending something finished.
+    ;
+    ; AH=01h also ECHOES. That is why a typed character appears without this
+    ; program printing it.
+    ; -------------------------------------------------------------------------
+    MOV AH, 1
+    INT 21H
+
+    CMP AL, 1BH                 ; ESC?
+    JE  DONE
+
+    ; Show the code as two hex digits, so a key with no glyph still says
+    ; something. AL holds the character; keep it while we take it apart.
+    MOV BL, AL
+    MOV DL, ' '
+    MOV AH, 2
+    INT 21H
+
+    MOV AL, BL
+    SHR AL, 1
+    SHR AL, 1
+    SHR AL, 1
+    SHR AL, 1                   ; the high nibble
+    CALL NIBBLE
+
+    MOV AL, BL
+    AND AL, 0FH                 ; the low nibble
+    CALL NIBBLE
+
+    MOV DL, 0DH
+    MOV AH, 2
+    INT 21H
+    MOV DL, 0AH
+    MOV AH, 2
+    INT 21H
+    JMP MAIN
+
+DONE:
+    MOV DX, OFFSET BYE
+    MOV AH, 9
+    INT 21H
+    MOV AX, 4C00H
+    INT 21H
+
+; -----------------------------------------------------------------------------
+; One hex digit from the low nibble of AL.
+; -----------------------------------------------------------------------------
+NIBBLE PROC
+    ADD AL, '0'
+    CMP AL, '9'
+    JBE PRINT
+    ADD AL, 7                   ; 'A'-'9'-1: skip the punctuation between them
+PRINT:
+    MOV DL, AL
+    MOV AH, 2
+    INT 21H
+    RET
+NIBBLE ENDP
+
+PROMPT DB 'Type something. ESC quits.', 0DH, 0AH, '$'
+BYE    DB 0DH, 0AH, 'Bye.', 0DH, 0AH, '$'
+
+END START
+
+; =============================================================================
+; TECHNICAL NOTES
+; =============================================================================
+; 1. THIS BENCH HAS NO PIC, so there is no IRQ1 and no hardware scancode path.
+;    The keyboard here IS the DOS queue: a program blocked in INT 21h wakes on
+;    the next service call once a key is queued. A program that wants raw
+;    scancodes from port 60h needs the hardware bench, not this one.
+; 2. AH=01h ECHOES, AH=07h and AH=08h DO NOT. Use 07h when reading a password
+;    or driving a game, where echoing would corrupt the display.
+; = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+`
+    },
+    {
+        id: 'mode13',
+        label: 'Draw in 256 colours (VGA mode 13h)',
+        labelDe: 'Zeichnen in 256 Farben (VGA Modus 13h)',
+        expect: 'A colour texture. Press a key to quit.',
+        source: `; =============================================================================
+; TITLE: Mode 13h -- 320x200 in 256 Colours
+; DESCRIPTION: The mode every DOS demo and half the games of the era used, for
+;              one reason: 320*200 = 64000 bytes, which fits in a single 64K
+;              segment. One byte is one pixel. No planes, no bit masks, no
+;              banking -- you write a byte, a pixel changes colour.
+; =============================================================================
+
+    ORG 100H
+
+START:
+    ; -------------------------------------------------------------------------
+    ; AH=00h, AL=13h: set the video mode. This CLEARS the screen, so it belongs
+    ; before the drawing rather than after it.
+    ; -------------------------------------------------------------------------
+    MOV AX, 0013H
+    INT 10H
+
+    ; -------------------------------------------------------------------------
+    ; THE FRAME BUFFER IS AT A000:0000 AND IT IS LINEAR.
+    ;
+    ; Pixel (x, y) is byte y*320 + x. That is what makes this mode the friendly
+    ; one: mode 4's CGA buffer splits even and odd scanlines into two banks
+    ; 8K apart, and mode 0Dh's EGA buffer needs four bit planes selected
+    ; through a port. Here the address IS the arithmetic.
+    ; -------------------------------------------------------------------------
+    MOV AX, 0A000H
+    MOV ES, AX
+    XOR DI, DI                  ; ES:DI walks the whole 64000 bytes in order
+
+    XOR DX, DX                  ; DX = y
+ROW:
+    XOR CX, CX                  ; CX = x
+COL:
+    ; The classic XOR texture: colour = x XOR y. It costs one instruction and
+    ; it is not a flat fill -- which matters, because a screen filled with one
+    ; colour looks identical to a screen that was never drawn on.
+    MOV AX, CX
+    XOR AX, DX
+    STOSB                       ; write AL to ES:DI, then DI = DI + 1
+
+    INC CX
+    CMP CX, 320
+    JB  COL
+
+    INC DX
+    CMP DX, 200
+    JB  ROW
+
+    ; -------------------------------------------------------------------------
+    ; Wait, then put the text mode back. A graphics program that exits without
+    ; restoring mode 3 leaves the shell drawing text into a 256-colour buffer,
+    ; which on real hardware is a screenful of confetti.
+    ; -------------------------------------------------------------------------
+    MOV AH, 0
+    INT 16H                     ; BIOS: wait for a keystroke
+
+    MOV AX, 0003H
+    INT 10H
+    MOV AX, 4C00H
+    INT 21H
+
+END START
+
+; =============================================================================
+; TECHNICAL NOTES
+; =============================================================================
+; 1. STOSB USES ES:DI, NOT DS:SI. That is why ES is loaded and DS is left
+;    alone -- the string instructions take their destination from ES, and it
+;    is the one segment register a .COM program must set for itself here.
+; 2. 64000 BYTES, NOT 65536. The last 1536 bytes of the segment are not on
+;    screen. Writing past 63999 is harmless here and invisible on hardware.
+; 3. THE PALETTE IS THE DEFAULT ONE. Mode 13h has 256 entries of 6-bit RGB,
+;    reprogrammable through ports 3C8h/3C9h -- which is how a fade to black is
+;    done without touching a single pixel.
+; = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+`
+    },
 ];
 
 export default [...I8086_EXAMPLES, ...OURS];

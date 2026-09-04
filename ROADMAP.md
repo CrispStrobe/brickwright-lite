@@ -543,15 +543,38 @@ already assembles 8086 locally and runs it on a DOS bench. Six example
 programs ship with attribution. Six ROMs are served from `static/roms`. The
 debug target, extractor, video for all five cards and the keyboard are wired.
 
-#### 3.8.1 The ASM tab, finished — SMALL
+#### 3.8.1 The ASM tab — KEYBOARD AND GRAPHICS LANDED 2026-09-04
 
-The route exists; the gaps are affordances. **No keyboard on the ASM bench**
-(`createI8086DosBench` accepts a `keys` queue and the tab passes none, so a
-program that waits for a keystroke sits there — which is why no shipped example
-asks for one). **No graphics example**, now unblocked: the BIOS draws modes
-4/5/6 and 13h and all five cards render. **No 8086 part in the circuit
-palette**, which is why the device sits in the Code tab's picker labelled
-"assembly only" rather than arriving from a drawn board.
+**Two of the three gaps are closed, and one of them was never what it said.**
+
+**The keyboard was already wired and the entry was stale.** `debug-runner.js`
+overrides `runner.sendSerial` to call `bench.sendKeys`, and the bench sets
+`blockOnKey: true`, so a program in INT 21h/AH=01h genuinely blocks and wakes
+on the next service call. Measured: a program that waits sits at 200,000 steps
+with no key, then completes and echoes on `sendKeys('K')`. What was actually
+missing was an EXAMPLE that asks for one — now `keys`, which reads until ESC
+and prints each character's hex code.
+
+**The graphics example is in: `mode13`.** 49 bytes, 320x200x256 at A000:0000,
+an XOR texture, INT 16h to wait, mode 3 restored before exit. Verified as 245
+distinct colours sampled across the frame rather than "the mode was set" — a
+uniform fill would pass the second check and show nothing.
+
+**AND THE REASON THERE WAS NO GRAPHICS EXAMPLE WAS NOT THAT NOBODY WROTE ONE.**
+`examples.js` imported the NAMED export `I8086_EXAMPLES` — upstream's six,
+under Amey Thakur's attribution — and never the default, which adds ours. So
+`pins` (written earlier) shipped in the file and was offered nowhere: not in
+the ASM tab, not in `ALL_ASM_EXAMPLES`, not in the local-assembly gate. Fixed;
+the gate now pins our ids by name, because `length >= 5` passed on upstream's
+six alone and said nothing about ours.
+
+**STILL OPEN: no 8086 part in the circuit palette**, which is why the device
+sits in the Code tab's picker labelled "assembly only" rather than arriving
+from a drawn board. The coverage lane found the deeper half of this on
+2026-09-04 — there is no `i8255` schematic part either (no DIP in
+`retro-dips.js`, no registry entry, no sidecar), so an 8086/8255 GPIO board has
+never been drawable. They own that; the pinout and the active-HIGH RESET trap
+are in the thread.
 
 #### 3.8.2 Pseudocode → ASM → 8086 — MEDIUM, and the design decision is the work
 
