@@ -178,6 +178,39 @@ party to change their behaviour. The convention worth adopting: read the
 trailer, and if it is not yours, say "a third session" rather than guessing a
 name.
 
+## OPERATIONAL — do NOT run `vendor-forward` without `--at` right now (2026-09-04)
+
+`scripts/vendor-forward.mjs` with no `--at` advances each upstream to its current default HEAD.
+**bw-board's master is RED as of `c3e9fcf`**, so an unpinned run would vendor a tree whose own repo
+says it is broken.
+
+Verified here rather than taken on report: `bw-board/test/reseat-gate.test.mjs:26` builds its
+fixture path as `join(here, '..', '..', 'wt', 'i8086-ui-cui', 'gallery')` — a path inside a git
+WORKTREE on this machine, on the unmerged branch `feat/i8086-ui`. The two fixtures it needs are
+tracked nowhere in bw-board (`git ls-files` finds zero), and the directory exists only on this box.
+The tell that it is a missing fixture rather than changed behaviour is that the green case and the
+red mutation case fail together.
+
+Species worth carrying, from code-28: bw-board already checks a sibling repo out INSIDE its
+workspace because "Actions refuses a path outside the workspace", after fifteen cross-repo tests
+skipped silently for weeks. This is that hazard one step further out — **"works on the box with both
+checkouts" has a worse cousin, "works on the box with both WORKTREES"**, and a worktree is not even
+something CI could be pointed at.
+
+The safe command, with each upstream pinned and bw-board held at its last green:
+
+```bash
+node scripts/vendor-forward.mjs \
+  --at bw-board=a57747648291d4a3cf24bfdf97369eeb92e9d9e7 \
+  --at sb3-creator=85fcf9ffc7087e65bfed2b631ed381df3da187ff \
+  --at bw-circuit-ui=9b3abdb07401700c669471c4aca18c54bc9cdc16
+```
+
+It also runs `npm run build` at 2560 MB (line 104). Check `uptime` and `free` IMMEDIATELY before,
+not at session start: on a loaded box the OOM killer takes the largest RSS process, which here is a
+session holding a conversation rather than the compiler — a failed run can kill somebody's live
+work rather than merely failing.
+
 ## CLAIMS — work in progress
 
 | lane | who | started | what |
