@@ -781,9 +781,34 @@ and `serialMsPerByte`, and `test/oracle-trace.test.mjs` passes nothing at all. T
 parameters: a capability built for this exact situation, never wired, and therefore never able to
 help the one gate that needed it.
 
-Wiring them is the repair, and it is deliberately NOT done here, because the number matters more
-than the mechanism. A per-device `driftPerSecMs` has to be measured across the corpus and then
-justified, and one chosen to turn today's nine red pairs green would hide every future emitter
-regression smaller than itself — which is precisely the move the rest of this document exists to
-prevent. It needs a measured budget with the measurement written down, not a number that makes the
-build pass.
+Wiring them is the obvious repair. **Measured 2026-09-04, it is the wrong one**, and the numbers
+say so before anyone has to argue about the value:
+
+    device  program                     drift
+    nano    01-blink                     0.00 ms/s
+    nano    02-dimmer                    9.95 ms/s
+    nano    10-motor-speed               9.95 ms/s
+    nano    24-pwm-fade                  9.94 ms/s
+    nano    20-shift-register-binary    21.50 ms/s
+    pico    05-counter / 02-dimmer /
+            10-motor-speed / 24-pwm-fade 0.00 ms/s
+    pico    20-shift-register-binary     7.64 ms/s
+
+`driftPerSecMs` is a PER-DEVICE rate, and drift here is not a property of the device. On the nano
+it ranges from 0 to 21.50 ms/s **across programs on the same chip**, because it is a per-iteration
+cost and the programs do different amounts of work per pass — three of them cluster at ~9.95 ms/s
+(the same loop shape), the shift-register is twice that, and blink is exactly zero because its
+loop does nothing but wait.
+
+So a per-device budget would have to be at least 21.5 ms/s to cover the nano's worst program, and
+would then permit a 21.5 ms/s regression in every other program on that chip — including blink,
+which today agrees to the millisecond. That is a budget that licenses far more than it excuses,
+and switching the gate on behind it would be worse than leaving the gate off: it would report
+green over a corpus where a real emitter regression of 2 % had become invisible.
+
+What the repair actually needs is a budget that scales with the thing that causes the divergence —
+the work the program's inner loop does per pass — or a referee that charges for its own walk.
+Both are design decisions in someone else's component, and neither is a number to be tuned until
+the build passes. The measurement above is written down so that whoever makes that decision starts
+from it rather than from the option's own comment, which proposes the per-device rate this table
+rules out.
