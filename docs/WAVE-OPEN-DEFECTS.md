@@ -1050,9 +1050,27 @@ bug produced. Mutation-proved.
 **The danger is closed even though the gate is still red.** bw-board master carries the fix, so a
 future vendor can only keep it. What remains is the pin: lite pins `5f79057`, which predates it, so
 `--check` reports STALE until someone runs `vendor-forward`. That is deliberately not done here —
-it clones every upstream fresh, advances bw-board, bw-circuit-ui and sb3-creator together, then
-runs integrate, a build and three browser gates before committing. The build does not fit on this
-box, and lite's CI queue was nine deep.
+it clones every upstream fresh, then runs integrate, a build and three browser gates before
+committing. The build wants a quiet box (`--max-old-space-size=2560`, and the OOM killer here
+takes the largest RSS process, which is another session's conversation).
+
+**CORRECTED 2026-09-04 — it does NOT have to advance all three together.** I wrote that twice, as
+the reason for deferring, without reading the script's options. It takes `--at <repo>=<40-hex>`,
+repeatable, and `--no-commit`. So the narrow advance is one command:
+
+    node scripts/vendor-forward.mjs \
+      --at bw-board=a57747648291d4a3cf24bfdf97369eeb92e9d9e7 \
+      --at sb3-creator=85fcf9ffc7087e65bfed2b631ed381df3da187ff \
+      --at bw-circuit-ui=9b3abdb07401700c669471c4aca18c54bc9cdc16
+
+bw-board moves 4 commits over 3 vendored files (`board.js`, `emu8051-debug.js`, `index.js` — the
+readMem fix plus two pin-aliasing commits, which is what the three browser gates are for);
+sb3-creator moves 1 commit over `cToPseudocode.js` and `sb3Creator.js`, landing the `repeat` fix
+and resolving 2 of the 11 remaining disagreements. **Do not let it take bw-board's master**, which
+has since absorbed the i8086 consolidation merges.
+
+Asserting a tool's constraint without reading its flags is the same shape as every other error in
+this document: a plausible reading of something adjacent to the evidence.
 
 Measured, so the deferral is a fact rather than a preference: bumping bw-board from `5f79057` to
 `a577476` spans four commits and changes three VENDORED files — `src/board.js`, `src/index.js` and
