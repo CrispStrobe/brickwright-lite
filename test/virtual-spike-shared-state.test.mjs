@@ -21,3 +21,14 @@ test('BLE and Classic adapters share one neutral state and failsafe', () => {
     classic.close();
     assert.equal(ble.state.motors[3].speed, 0);
 });
+
+test('firmware target controls which transport is advertised', () => {
+    const state = new HubState();
+    state.setFirmwareTarget('legacy-v2');
+    assert.equal(new VirtualSpikePrimePeripheral({hubState: state}).services.length, 0);
+    state.setFirmwareTarget('official-v3');
+    assert.equal(new VirtualSpikePrimePeripheral({hubState: state}).services.length, 1);
+    state.setFirmwareTarget('brickwright');
+    assert.equal(new VirtualSpikePrimePeripheral({hubState: state}).services.length, 1);
+    assert.equal(globalThis.__brickwrightUseVirtualSpike, true);
+});

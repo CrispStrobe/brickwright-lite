@@ -36,6 +36,19 @@ export const openVirtualSpikePanel = hubState => {
     card.appendChild(element('p', {style: 'margin:0 0 14px;color:#596675'},
         'One simulated hub shared by modern BLE and Classic Scratch Link. Disconnect always stops its motors.'));
 
+    const profile = element('select', {style: 'width:100%;padding:8px;margin-bottom:12px'});
+    for (const [value, label] of [
+        ['legacy-v2', 'LEGO SPIKE legacy firmware v2 — Classic'],
+        ['official-v3', 'LEGO SPIKE official firmware v3 — BLE'],
+        ['brickwright', 'Brickwright firmware — Classic + BLE compatibility']
+    ]) profile.appendChild(element('option', {value}, label));
+    profile.value = hubState.data.firmwareTarget;
+    profile.addEventListener('change', () => {
+        hubState.setFirmwareTarget(profile.value);
+        classic.checked = profile.value !== 'official-v3';
+    });
+    card.appendChild(profile);
+
     const classic = element('input', {type: 'checkbox'});
     classic.checked = globalThis.__brickwrightUseVirtualSpike === true;
     classic.addEventListener('change', () => { globalThis.__brickwrightUseVirtualSpike = classic.checked; });
@@ -49,6 +62,33 @@ export const openVirtualSpikePanel = hubState => {
     battery.addEventListener('input', () => { hubState.setBattery(battery.value); batteryValue.textContent = `${battery.value}%`; });
     batteryLabel.append(element('span', {}, 'Battery'), battery, batteryValue);
     card.appendChild(batteryLabel);
+
+    const brick = element('div', {style: 'margin-top:14px;padding:14px;border-radius:18px;background:#7654c6;' +
+        'box-shadow:inset 0 -5px 0 #54379d;color:white'});
+    brick.appendChild(element('div', {style: 'text-align:center;font-weight:700;margin-bottom:10px'},
+        'BRICKWRIGHT · SPIKE PRIME'));
+    const portView = element('div', {style: 'display:grid;grid-template-columns:repeat(6,1fr);gap:7px'});
+    const portLabels = [];
+    for (const port of 'ABCDEF') {
+        const socket = element('div', {style: 'background:#241d36;border:3px solid #b9adcf;border-radius:8px;' +
+            'padding:7px 3px;text-align:center;min-width:0'});
+        socket.appendChild(element('strong', {}, port));
+        const status = element('div', {style: 'font-size:10px;overflow:hidden;text-overflow:ellipsis'}, 'empty');
+        socket.appendChild(status);
+        portLabels.push(status);
+        portView.appendChild(socket);
+    }
+    brick.appendChild(portView);
+    card.appendChild(brick);
+    const refreshBrick = () => hubState.data.sensors.forEach((sensor, index) => {
+        if (!sensor) portLabels[index].textContent = 'empty';
+        else if (sensor.kind === 'motor') portLabels[index].textContent = `motor ${hubState.data.motors[index].speed}%`;
+        else if (sensor.kind === 'distance') portLabels[index].textContent = `${sensor.distance ?? -1} mm`;
+        else if (sensor.kind === 'force') portLabels[index].textContent = `force ${sensor.force ?? 0}%`;
+        else portLabels[index].textContent = sensor.kind;
+    });
+    refreshBrick();
+    const unsubscribe = hubState.subscribe(refreshBrick);
 
     const grid = element('div', {style: 'display:grid;grid-template-columns:40px 140px 1fr;gap:8px;margin-top:14px'});
     for (const port of 'ABCDEF') {
@@ -74,7 +114,7 @@ export const openVirtualSpikePanel = hubState => {
     }
     card.appendChild(imu);
     const close = element('button', {style: 'margin-top:16px;padding:9px 18px'}, 'Done');
-    close.addEventListener('click', closeVirtualSpikePanel);
+    close.addEventListener('click', () => { unsubscribe(); closeVirtualSpikePanel(); });
     card.appendChild(close);
     shade.appendChild(card);
     document.body.appendChild(shade);

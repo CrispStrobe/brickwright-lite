@@ -69,6 +69,7 @@ export default appTarget => {
         setPort: (...args) => virtualSpikeState.setPort(...args),
         setBattery: value => virtualSpikeState.setBattery(value),
         setImu: value => virtualSpikeState.setImu(value),
+        setFirmwareTarget: value => virtualSpikeState.setFirmwareTarget(value),
         snapshot: () => virtualSpikeState.snapshot(),
         get blePeripheral () { return virtualSpikeBle.peripheral; }
     };

@@ -125,6 +125,20 @@ export class VirtualSpikeClassicSocket {
                 this.hubState.setMotorSpeed(port, command.p.speed);
             }
         }
+        if (command.m === 'scratch.motor_start' && command.p) {
+            this.hubState.setMotorSpeed(command.p.port, command.p.speed);
+        } else if (command.m === 'scratch.motor_stop' && command.p) {
+            this.hubState.setMotorSpeed(command.p.port, 0);
+        } else if (command.m === 'scratch.display_clear') {
+            this.hubState.setDisplay(Array(25).fill(0));
+        } else if (command.m === 'scratch.display_image' && command.p) {
+            this.hubState.setDisplay(String(command.p.image || '').replaceAll(':', '').split('').map(Number));
+        } else if (command.m === 'scratch.display_set_pixel' && command.p) {
+            const pixels = [...this.state.display];
+            const index = Number(command.p.y) * 5 + Number(command.p.x);
+            if (index >= 0 && index < 25) pixels[index] = Number(command.p.brightness) || 0;
+            this.hubState.setDisplay(pixels);
+        }
         if (command.i !== undefined) this._sendRfcomm(`${JSON.stringify({i: command.i, r: null})}\r\n`);
     }
 
@@ -164,7 +178,8 @@ export default function installVirtualSpikeClassicScratchLink (hubState = new Vi
     if (window.WebSocket.__brickwrightVirtualSpikeClassic) return 'already installed';
     const NativeWebSocket = window.WebSocket;
     const Wrapped = function WebSocket (url, protocols) {
-        if (globalThis.__brickwrightUseVirtualSpike === true && isClassicScratchLink(url)) {
+        if (globalThis.__brickwrightUseVirtualSpike === true &&
+            hubState.data.firmwareTarget !== 'official-v3' && isClassicScratchLink(url)) {
             return new VirtualSpikeClassicSocket(url, {hubState});
         }
         return protocols === undefined ? new NativeWebSocket(url) : new NativeWebSocket(url, protocols);
