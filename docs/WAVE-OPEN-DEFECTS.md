@@ -1095,3 +1095,31 @@ The rule, learned the expensive way: **before fixing a file under `lib/bw-board/
 `lib/bw-circuit-ui/` or any `sb3-creator-*.js`, check whether it is vendored.** `scripts/sync-*.mjs`
 name every file they own. Fixing it here is not a shortcut to fixing it there; it is a fix that
 will be deleted by the next person doing their job correctly.
+
+## D-FIRSTLOAD1 — 3.41 MB of first paint is 26 extension bodies that only LOOK lazy (2026-09-04)
+
+Found by bw-ci while fixing the labwired probe, characterised by them, deliberately not landed,
+and recorded HERE because it existed only in a chat message. A finding that lives in one session's
+transcript is a finding the next auditor cannot see — the same reason a stash on a detached HEAD
+reads as nothing.
+
+`extension-support/extension-manager.js` registers its builtins as
+`planetemaths: () => require('../extensions/crispstrobe/planetemaths')` — 38 such entries, of which
+26 are gallery extensions. The arrow LOOKS like deferral and is not: webpack resolves `require` at
+build time regardless, so all 26 bodies land in the first-paint chunk. Verified here: the pattern
+is at `extension-manager.js:18` onward.
+
+**Converting them to `import()` works and immediately breaks the VM game suite.** lite's
+`deserializeProject` patch pre-loads extensions fire-and-forget and then asks `isExtensionLoaded()`
+in the same breath; both halves assume the `require` completed synchronously, which a dynamic
+import does not. Making it correct means wrapping the remainder of `deserializeProject` in a
+promise through string surgery into vendored VM internals — unverifiable on this box, with
+"projects silently lose their extension blocks" as the failure mode. bw-ci reverted clean, 69/69
+green, and left it.
+
+**This is species 19 again** — a gate that asserts where code LIVES says nothing about what it
+FETCHES — one level down. `verify-labwired-lazy-bundle.mjs` correctly asserts the heavy engine's
+loader is not in the entry bundle; nothing asserted that the 26 extension bodies are not, and they
+are. The measurement that finds it is a live network read, not a static scan.
+
+Scoped as a day's work with a PR of its own, not an end-of-session edit. Owner: unassigned.
