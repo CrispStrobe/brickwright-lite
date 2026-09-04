@@ -362,6 +362,17 @@ the central claim, documentation of unsupported cases and measurements of
 runtime/memory cost. A green test that never observes a producer is not
 evidence; producer activity and non-empty event ranges are preconditions.
 
+### Verification resource policy
+
+This repository's full suite includes CPU-heavy circuit, lesson and corpus
+workers. The shared four-vCPU development host is for focused tests: changed
+modules, their direct integration gates, overlay/package parity and quick
+smokes. Before any local run, use `npm run check:load`; do not launch the full
+`npm test` or production webpack build on this host. Push the reviewed commit
+and let GitHub Actions run the parallel full suite/build on disposable runners.
+If CI fails, reproduce only the named failing gate locally. This is an
+execution policy, not permission to weaken or skip the full remote verdict.
+
 ## Work ownership and integration order
 
 The coordinator owns contracts, cross-module integration, compatibility,

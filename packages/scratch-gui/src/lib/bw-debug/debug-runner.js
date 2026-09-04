@@ -40,6 +40,7 @@ import {
 } from './breakpoints.js';
 import { parseCondition } from './condition.js';
 import { createTrace, IO_SFRS, TIMER_SFRS } from './trace.js';
+import {createDebugFoundation} from './debug-foundation.js';
 import { setValueResolver } from './hover-values.js';
 import { instructionLength } from './opcodes.js';
 import {
@@ -433,7 +434,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     const bps = new Map();
     let unsubscribeBps = null;
     /** The execution history the drawer renders. See trace.js. */
-    const trace = createTrace();
+    const debugFoundation = createDebugFoundation({eventCapacity: 4096});
+    const eventStream = debugFoundation.events;
+    const trace = createTrace({eventStream});
     /** The user's own variables: {name, space, addr, size}. From the symbol table. */
     let variableTable = [];
     /** The project's declared pins, for the physical view. */
@@ -485,7 +488,11 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
      */
     function capsNow() {
         if (!target) return null;
-        if (capsFor !== target) { capsFor = target; capsOf = target.capabilities(); }
+        if (capsFor !== target) {
+            capsFor = target;
+            capsOf = target.capabilities();
+            debugFoundation.attachCapabilities(capsOf);
+        }
         return capsOf;
     }
 
@@ -518,8 +525,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             message: status.message,
             session: sess,
             capabilities: target
-                ? (capsFor === target ? capsOf : (capsFor = target, capsOf = target.capabilities()))
+                ? capsNow()
                 : null,
+            /** Versioned, conservative capabilities for the event/replay debugger. */
+            debugCapabilities: target ? debugFoundation.capabilities() : null,
             breakpoints: breakpointList,
             /** Marked blocks the current build has no yield point for. */
             unreachableBreakpoints: breakpointList.filter((id) => yieldOf.size && !yieldOf.has(id)),
@@ -2419,6 +2428,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         /** The execution history. Newest last. */
         trace: () => trace.rows(),
         traceDropped: () => trace.dropped(),
+        /** Canonical compatibility events, bulk-drained by future timeline consumers. */
+        drainDebugEvents: (max) => eventStream.drain(max),
+        debugEventStats: () => ({queued: eventStream.size(), dropped: eventStream.dropped()}),
+        addEventBreakpoint: spec => debugFoundation.addBreakpoint(spec),
+        evaluateEventBreakpoints: (event, context) => debugFoundation.evaluateBreakpoints(event, context),
+        debugRecorder: () => debugFoundation.recorder,
         clearTrace() { trace.clear(); emit(); },
 
         /**
@@ -2593,6 +2608,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             // machine is plain JS); the 8051 target's tears down WASM state.
             if (target && typeof target.destroy === 'function') target.destroy();
             session = target = board = symbols = null;
+            debugFoundation.clear();
         }
     };
 

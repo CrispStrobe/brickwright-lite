@@ -56,7 +56,7 @@ export const IO_SFRS = [
  * @param {object} opts
  * @param {number} [opts.capacity]
  */
-export function createTrace({ capacity = DEFAULT_CAPACITY } = {}) {
+export function createTrace({ capacity = DEFAULT_CAPACITY, eventStream = null, cpuId = 'main' } = {}) {
     /** @type {Array<object>} */
     let rows = [];
     let dropped = 0;
@@ -108,6 +108,26 @@ export function createTrace({ capacity = DEFAULT_CAPACITY } = {}) {
                 dropped += rows.length - capacity;
                 rows = rows.slice(-capacity);
             }
+            // Compatibility producer for the existing snapshot trace. This is
+            // explicitly reconstructed and `phase: snapshot`: sampling a halted
+            // target is not evidence that we observed an instruction retire.
+            // New CPU integrations emit recorded retire/cycle events directly.
+            if (eventStream) {
+                eventStream.append({
+                    schema: 1,
+                    seq: row.seq,
+                    time: {ticks: row.tNs, domain: 'simulation-ns', hz: 1e9},
+                    cpuId,
+                    kind: 'instruction',
+                    phase: 'snapshot',
+                    fidelity: 'reconstructed',
+                    pcBefore: row.pc,
+                    pcAfter: row.pc,
+                    instruction: {address: row.pc, bytes: row.bytes, text: row.text},
+                    source: row.tasks ? {tasks: row.tasks} : undefined,
+                    cause: why
+                });
+            }
             return row;
         },
 
@@ -117,7 +137,12 @@ export function createTrace({ capacity = DEFAULT_CAPACITY } = {}) {
         dropped: () => dropped,
         last: () => rows[rows.length - 1] || null,
 
-        clear() { rows = []; dropped = 0; seq = 0; }
+        clear() {
+            rows = [];
+            dropped = 0;
+            seq = 0;
+            if (eventStream) eventStream.clear();
+        }
     };
 }
 
