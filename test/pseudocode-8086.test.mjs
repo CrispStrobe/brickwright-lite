@@ -326,6 +326,26 @@ const PROGRAMS = {
         // An 8255 input port with nothing driving it reads all ones.
         `DEVICE i8086\nPORT sw = P2 INPUT\nWHEN flag clicked:\n  say (read sw)\n`,
         ['255']],
+    event_whenkeypressed: [
+        // The hat never fires -- nothing is typed -- while the flag script
+        // prints and stops everything. That is what lets a key-hat program
+        // terminate without being driven.
+        `DEVICE i8086\nWHEN flag clicked:\n  print "ok"\n  stop all\n`
+            + `WHEN space key pressed:\n  print "never"\n`,
+        ['ok']],
+    'event_broadcast / event_whenbroadcastreceived': [
+        `DEVICE i8086\nWHEN flag clicked:\n  broadcast "go"\n  wait 0.05 secs\n  stop all\n`
+            + `WHEN I receive "go":\n  print "got"\n`,
+        ['got']],
+    stc12_whenpin: [
+        // The hat ARMS but never fires: an undriven 8255 input reads high, so
+        // a pin that is not ACTIVE LOW never reaches "pressed", and the hat
+        // sits waiting for the release that comes first. Meanwhile the flag
+        // script prints and stops everything -- which is also what makes this
+        // the one pin-hat program that can terminate without being driven.
+        `DEVICE i8086\nPIN sw = P2.0 INPUT\nWHEN flag clicked:\n  print "ok"\n  stop all\n`
+            + `WHEN sw pressed:\n  print "never"\n`,
+        ['ok']],
     control_wait_until: [
         // An 8255 input port with nothing driving it reads high, so this one
         // is already true when it is reached and the program runs on.
@@ -368,8 +388,6 @@ test('every entry in SUPPORTED has a program above that exercises it', () => {
 // ── The refusals, by name ────────────────────────────────────────────────
 
 const REFUSALS = {
-    'multiple scripts': `WHEN flag clicked:\n  say "a"\nWHEN flag clicked:\n  say "b"\n`,
-    'unsupported hat event_whenkeypressed': `WHEN space key pressed:\n  say "a"\n`,
     'no script': `GLOBAL n\n`,
     'empty script': `WHEN flag clicked:\n`,
     'unsupported block motion_movesteps': `WHEN flag clicked:\n  move 10 steps\n`,
@@ -603,4 +621,231 @@ test('the assembly names the learner\'s own variables, not BW_V0', () => {
 test('the component leaves the generated assembly where it can be read', () => {
     assert.match(importer, /buffers: \{\.\.\.st\.buffers, asm: out\.asm\}/,
         'the assembly the blocks became is thrown away, so a learner cannot see it');
+});
+
+// ── TWO SCRIPTS, WHICH USED TO BE A REFUSAL ─────────────────────────────
+
+test('two WHEN scripts run together, preemptively', async () => {
+    // This was refused, on the grounds that a scheduler needs a clock that
+    // can be polled while "the clock on this bench (INT 15h/86h) blocks".
+    // The premise was wrong twice over: the 8254 can be read at any time,
+    // and once a PIC is present it can INTERRUPT, which is what makes this
+    // preemptive rather than cooperative.
+    const {screen, bench} = await runPseudocode(
+        'DEVICE i8086\n'
+        + 'WHEN flag clicked:\n  REPEAT 3:\n    print "a"\n    wait 0.01 secs\n'
+        + 'WHEN flag clicked:\n  REPEAT 3:\n    print "b"\n    wait 0.01 secs\n');
+    assert.ok(bench.terminated, 'both scripts finished and the program exited');
+    assert.equal(screen.filter(x => x === 'a').length, 3);
+    assert.equal(screen.filter(x => x === 'b').length, 3);
+    // Interleaved, not one script then the other. The exact order at a tie is
+    // a scan-order detail and pinning it made an earlier version of this test
+    // fail when the TIMING was fixed rather than when anything broke.
+    assert.notDeepEqual(screen, ['a', 'a', 'a', 'b', 'b', 'b']);
+    assert.notDeepEqual(screen, ['b', 'b', 'b', 'a', 'a', 'a']);
+});
+
+test('the interleaving follows the CLOCK, not a round-robin', async () => {
+    // The test that can tell a real scheduler from a turn-taking one. A
+    // round-robin would give "f S f S f S f S"; honouring the requested
+    // delays gives the fast script twice as many turns. If this ever reads
+    // as strict alternation, the wake times have stopped being consulted.
+    const {screen} = await runPseudocode(
+        'DEVICE i8086\n'
+        + 'WHEN flag clicked:\n  REPEAT 4:\n    print "f"\n    wait 0.01 secs\n'
+        + 'WHEN flag clicked:\n  REPEAT 2:\n    print "S"\n    wait 0.02 secs\n');
+    // The COUNTS are the property; the exact order at a tie (both scripts due
+    // in the same instant) is a scan-order detail and pinning it made this
+    // test fail when the timing was FIXED rather than when it broke.
+    assert.equal(screen.filter(x => x === 'f').length, 4);
+    assert.equal(screen.equals ? 0 : screen.filter(x => x === 'S').length, 2);
+    assert.ok(!screen.every((x, i) => x === (i % 2 ? 'S' : 'f')),
+        'strict f/S alternation would mean the wake times are not being consulted');
+});
+
+test('`stop this script` ends one task; `stop all` ends the program', async () => {
+    // With one script these coincide, which is why the distinction never had
+    // to exist before.
+    const one = await runPseudocode(
+        'DEVICE i8086\n'
+        + 'WHEN flag clicked:\n  print "x"\n  stop this script\n  print "never"\n'
+        + 'WHEN flag clicked:\n  REPEAT 2:\n    print "y"\n    wait 0.01 secs\n');
+    assert.equal(one.screen.filter(v => v === 'x').length, 1);
+    assert.equal(one.screen.filter(v => v === 'y').length, 2, 'the other script ran on');
+    assert.ok(!one.screen.includes('never'), 'and the stopped script really stopped');
+
+    const all = await runPseudocode(
+        'DEVICE i8086\n'
+        + 'WHEN flag clicked:\n  wait 0.05 secs\n  print "late"\n'
+        + 'WHEN flag clicked:\n  print "first"\n  stop all\n');
+    assert.deepEqual(all.screen, ['first'], 'the waiting script never woke');
+});
+
+test('a scheduled program says what hardware it grew, and why', async () => {
+    const {out} = await runPseudocode(
+        'DEVICE i8086\n'
+        + 'WHEN flag clicked:\n  print "a"\n'
+        + 'WHEN flag clicked:\n  print "b"\n');
+    assert.match(out.warnings.join(' '), /PREEMPTIVE/);
+    assert.match(out.warnings.join(' '), /8259 interrupt controller/);
+    // A DECLARATION CAUSES HARDWARE TO APPEAR, and the build returns it so the
+    // bench can put it on the board -- the same rule as the ADC0809.
+    assert.deepEqual(out.chips, [
+        {kind: 'pic', name: 'pic1', at: 0x20},
+        {kind: 'pit', name: 'pit1', at: 0x40, irq: 0}
+    ]);
+});
+
+test('a scheduled program handed no timer SAYS SO instead of hanging', async () => {
+    // The worst failure this could have: every `wait` spinning forever with a
+    // blank screen and no message. It is what happened when a bench was given
+    // the program but not the `chips` the build asked for -- so the scheduler
+    // now checks that its own clock is running before it trusts it.
+    const {out} = await runPseudocode(
+        'DEVICE i8086\nWHEN flag clicked:\n  wait 0.1 secs\n  print "x"\n'
+        + 'WHEN flag clicked:\n  print "y"\n');
+    const bench = await createI8086DosBench({bytes: out.bytes, format: out.format});
+    let n = 0;
+    while (n < 4_000_000 && !bench.terminated) { bench.step(); n++; }
+    assert.ok(bench.terminated, 'it exits rather than spinning');
+    assert.match(bench.screenText().filter(Boolean).join(' '), /timer never ticked/);
+});
+
+test('ONE script still takes the straight-line path', async () => {
+    // No scheduler, no per-script stacks, no polled clock -- there is nothing
+    // to schedule, and every existing program should keep paying nothing for
+    // the feature it does not use.
+    const {out} = await runPseudocode(
+        'DEVICE i8086\nWHEN flag clicked:\n  print "solo"\n  wait 0.01 secs\n  print "done"\n');
+    assert.ok(!/BW_YIELD/.test(out.asm), 'no dispatcher is emitted');
+    assert.match(out.asm, /INT 15H/i, 'and `wait` is still the blocking BIOS call');
+    assert.ok(out.bytes.length < 200, `still small (${out.bytes.length} bytes)`);
+});
+
+test('a scheduled `wait` waits the RIGHT length, not merely some length', async () => {
+    // THE BUG THIS CATCHES, WHICH SHIPPED FOR AN HOUR under the cooperative
+    // version: the rate of the timer was ASSUMED, and every wait came out
+    // 4.19x short while every ordering test still passed, because order does
+    // not change when all delays scale by one factor. Only absolute time
+    // showed it. The rate is measured now, so this asserts the measurement.
+    const base = await runPseudocode(
+        'DEVICE i8086\nWHEN flag clicked:\n  print "x"\nWHEN flag clicked:\n  print "y"\n');
+    const short = await runPseudocode(
+        'DEVICE i8086\nWHEN flag clicked:\n  wait 0.05 secs\n  print "x"\n'
+        + 'WHEN flag clicked:\n  print "y"\n');
+    const long = await runPseudocode(
+        'DEVICE i8086\nWHEN flag clicked:\n  wait 0.1 secs\n  print "x"\n'
+        + 'WHEN flag clicked:\n  print "y"\n');
+
+    const overhead = base.tMs;
+    assert.ok(overhead > 10 && overhead < 40, `startup calibration cost ${overhead} ms`);
+    const waited = short.tMs - overhead;
+    assert.ok(Math.abs(waited - 50) < 8, `0.05 secs waited ${waited.toFixed(1)} ms`);
+    // And it SCALES -- a constant offset would satisfy the check above.
+    const delta = long.tMs - short.tMs;
+    assert.ok(Math.abs(delta - 50) < 8, `0.05s -> 0.1s moved ${delta.toFixed(1)} ms`);
+});
+
+test('a broadcast reaches its receiver, and two messages stay distinct', async () => {
+    const one = await runPseudocode(
+        'DEVICE i8086\n'
+        + 'WHEN flag clicked:\n  print "send"\n  broadcast "go"\n  wait 0.05 secs\n  stop all\n'
+        + 'WHEN I receive "go":\n  print "got it"\n');
+    assert.deepEqual(one.screen, ['send', 'got it']);
+
+    const two = await runPseudocode(
+        'DEVICE i8086\n'
+        + 'WHEN flag clicked:\n  broadcast "one"\n  wait 0.02 secs\n  broadcast "two"\n'
+        + '  wait 0.05 secs\n  stop all\n'
+        + 'WHEN I receive "one":\n  print "A"\n'
+        + 'WHEN I receive "two":\n  print "B"\n');
+    assert.deepEqual(two.screen, ['A', 'B'], 'each message woke only its own receiver');
+});
+
+test('a broadcast nobody receives is refused, not silently dropped', async () => {
+    // A store to a byte no script reads. It would run, do nothing, and look
+    // exactly like a receiver that was never reached -- so it is refused by
+    // name instead, the way an undeclared pin is.
+    const src = 'DEVICE i8086\nWHEN flag clicked:\n  broadcast "nobody"\n'
+        + 'WHEN flag clicked:\n  print "x"\n';
+    const c = new SB3Creator();
+    c.parse(src);
+    await assert.rejects(
+        () => buildPseudocode8086({project: c.project, source: src}, {hostedFetch: forbiddenFetch}),
+        /nothing receives the broadcast/);
+});
+
+test('which script comes first in the file does not decide whether it compiles', async () => {
+    // Every receiver is registered BEFORE any body is lowered. Without that,
+    // a `broadcast` lowered before its receiver was seen would be refused for
+    // having no receiver -- so the same program would compile or not
+    // depending on the order two scripts happened to be written in.
+    const sender_first = await runPseudocode(
+        'DEVICE i8086\n'
+        + 'WHEN flag clicked:\n  broadcast "m"\n  wait 0.05 secs\n  stop all\n'
+        + 'WHEN I receive "m":\n  print "ok"\n');
+    const receiver_first = await runPseudocode(
+        'DEVICE i8086\n'
+        + 'WHEN I receive "m":\n  print "ok"\n'
+        + 'WHEN flag clicked:\n  broadcast "m"\n  wait 0.05 secs\n  stop all\n');
+    assert.deepEqual(sender_first.screen, ['ok']);
+    assert.deepEqual(receiver_first.screen, ['ok']);
+});
+
+// ── KEY HATS, AND THE RACE THEY WOULD HAVE LOST ─────────────────────────
+
+/** Type `keys` into the bench, early enough that the program is still alive. */
+async function runTyping (source, keys, cap = 6_000_000) {
+    const creator = new SB3Creator();
+    creator.parse(source);
+    const out = await buildPseudocode8086({project: creator.project, source},
+        {hostedFetch: forbiddenFetch});
+    const bench = await createI8086DosBench(
+        {bytes: out.bytes, format: out.format, chips: out.chips});
+    let n = 0, sent = 0;
+    while (n < cap && !bench.terminated) {
+        if (sent < keys.length && n > 40_000 && n % 80_000 === 0) bench.sendKeys(keys[sent++]);
+        bench.step();
+        n++;
+    }
+    return {out, screen: bench.screenText().filter(Boolean), sent, terminated: bench.terminated};
+}
+
+test('`WHEN <key> pressed` fires once per keystroke', async () => {
+    // I refused this once for needing "the keyboard's own edge". That was
+    // wrong: a pin has a LEVEL, so a hat on it must manufacture an edge, but
+    // DOS hands over a QUEUE OF KEYSTROKES and each arrival is already an
+    // event. There was nothing to detect.
+    const r = await runTyping(
+        'DEVICE i8086\nWHEN a key pressed:\n  print "got A"\n'
+        + 'WHEN flag clicked:\n  wait 0.9 secs\n  stop all\n', ['a', 'a']);
+    assert.equal(r.sent, 2, 'the test actually typed twice');
+    assert.deepEqual(r.screen, ['got A', 'got A']);
+});
+
+test('TWO key hats each get their own key — the race the pump exists for', async () => {
+    // READING A KEY CONSUMES IT. Two hats polling INT 21h directly would race
+    // for every keystroke, and a program with `WHEN a` and `WHEN b` would drop
+    // half its input with nothing to show why. One pump reads and publishes;
+    // the hats watch what it read.
+    const r = await runTyping(
+        'DEVICE i8086\nWHEN a key pressed:\n  print "A"\n'
+        + 'WHEN b key pressed:\n  print "B"\n'
+        + 'WHEN flag clicked:\n  wait 1.2 secs\n  stop all\n', ['a', 'b', 'a']);
+    assert.equal(r.sent, 3, 'the test actually typed three times');
+    assert.deepEqual(r.screen, ['A', 'B', 'A'], 'neither hat swallowed the other\'s key');
+    assert.match(r.out.warnings.join(' '), /keyboard PUMP/,
+        'and the build says it added a script the program did not write');
+});
+
+test('a key DOS cannot report is refused by name', async () => {
+    // Arrows and function keys arrive as a NUL followed by a scan code, which
+    // is a second read this back end does not do. Refusing beats reporting a
+    // key that never arrives.
+    const src = 'DEVICE i8086\nWHEN up arrow key pressed:\n  print "up"\n';
+    const c = new SB3Creator();
+    c.parse(src);
+    await assert.rejects(
+        () => buildPseudocode8086({project: c.project, source: src}, {hostedFetch: forbiddenFetch}),
+        /names a key this bench cannot report/);
 });

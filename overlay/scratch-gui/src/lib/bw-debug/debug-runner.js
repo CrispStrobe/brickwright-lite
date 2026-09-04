@@ -1631,6 +1631,11 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             let exited = null;
             const bench = await createI8086DosBench({
                 bytes: img.bytes, format,
+                // Hardware the program asked for. `createI8086DosBench`
+                // merges these onto the preset BY NAME, so a scheduled
+                // program's IRQ0-wired timer replaces the preset's plain one
+                // rather than sitting beside it at the same port.
+                chips: bootMedia.chips || undefined,
                 // INT 21h's character output, line-buffered into the same
                 // console the serial machines use. The CGA text page is the
                 // primary surface (video() reads it), but a program whose

@@ -198,7 +198,7 @@ class DebugPanel extends React.Component {
      *  must boot TOGETHER so the CPU reads its reset vector from the
      *  real bytes, not from a zero-filled ROM it booted with earlier. */
     async _onMediaLoad (e) {
-        const {slotId, bytes, kind, profile, name, romAt} = e.detail || {};
+        const {slotId, bytes, kind, profile, name, romAt, chips} = e.detail || {};
         if (!bytes) return;
         this._teardownRunner();
         this._bootMedia = {
@@ -206,6 +206,12 @@ class DebugPanel extends React.Component {
             bytes: bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes),
             profile: profile || null,
             name: name || null,
+            // HARDWARE THE PROGRAM ASKED FOR, and it has to be listed here
+            // explicitly: this destructure is a fixed field list, so a new
+            // field on the event is silently dropped unless it is named in
+            // both places. An ANALOG pin's converter and a scheduled
+            // program's interrupt controller both arrive this way.
+            chips: chips || null,
             // WHERE the image is mapped, when the sender knows and we cannot
             // infer it. A raw .bin carries no origin, so without this the
             // runner falls back to the machine's default ROM base — and for
@@ -241,11 +247,15 @@ class DebugPanel extends React.Component {
      * build behaves as it always did.
      */
     _onAsmRomReady (e) {
-        const {rom, target, slotId, profile} = e.detail || {};
+        const {rom, target, slotId, profile, chips} = e.detail || {};
         if (!rom) return;
         this._onMediaLoad({detail: {
             slotId: slotId || 'rom', bytes: rom,
             profile: profile || null,
+            // The chips the program's own declarations require. Carried with
+            // the image because they are a property of the PROGRAM, not of
+            // the board the user happened to draw.
+            chips: chips || null,
             kind: target === 'z80' ? 'z80'
                 : target === 'i8086' ? 'i8086' : 'eater6502',
             name: 'assembled image'

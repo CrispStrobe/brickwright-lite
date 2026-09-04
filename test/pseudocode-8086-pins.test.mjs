@@ -437,3 +437,91 @@ test('`wait until` on variables alone is warned, and the warning is TRUE', async
     assert.ok(!b.terminated, 'and it really does stop there');
     assert.deepEqual(b.screenText().filter(Boolean), [], 'nothing after the wait ever runs');
 });
+
+// ── PIN EVENT HATS ──────────────────────────────────────────────────────
+
+/** Press the switch three times, ACTIVE LOW: pressed = the pin driven low. */
+function threePresses (b, n) {
+    const phase = Math.floor(n / 400_000);
+    b.target.setInput('ppi1', 'b', 0, (phase % 2 === 1 && phase < 6) ? 0 : 1);
+}
+
+async function runDriven (lines, drive, cap = 6_000_000) {
+    const src = lines.join('\n');
+    const c = new SB3();
+    c.parse(src);
+    assert.deepEqual(c.warnings || [], [], 'parses clean');
+    const built = await buildPseudocode8086({project: c.project, source: src});
+    const b = await createI8086DosBench(
+        {bytes: built.bytes, format: built.format, chips: built.chips});
+    let n = 0;
+    while (n < cap && !b.terminated) { drive(b, n); b.step(); n++; }
+    return {built, bench: b, screen: b.screenText().filter(Boolean)};
+}
+
+test('`WHEN <pin> pressed` fires on the EDGE, once per press', async () => {
+    // A hat that fired on the LEVEL would run its body thousands of times
+    // while a finger rested on the button. Three presses, three runs.
+    const r = await runDriven(['DEVICE i8086', 'PIN sw = P2.0 INPUT ACTIVE LOW',
+        'WHEN sw pressed:', '  print "hit"'], threePresses);
+    assert.deepEqual(r.screen, ['hit', 'hit', 'hit']);
+    assert.ok(!r.bench.terminated, 'an event program does not finish, and should not');
+});
+
+test('a pin hat runs beside a flag script', async () => {
+    const r = await runDriven(['DEVICE i8086', 'PIN sw = P2.0 INPUT ACTIVE LOW',
+        'WHEN flag clicked:', '  print "go"',
+        'WHEN sw pressed:', '  print "hit"'], threePresses);
+    assert.deepEqual(r.screen, ['go', 'hit', 'hit', 'hit']);
+});
+
+test('`released` is the other edge, not the same one', async () => {
+    const r = await runDriven(['DEVICE i8086', 'PIN sw = P2.0 INPUT ACTIVE LOW',
+        'WHEN sw released:', '  print "up"'], threePresses);
+    assert.deepEqual(r.screen, ['up', 'up', 'up']);
+});
+
+test('one script waits, another frees it — through a variable', async () => {
+    // The test that proves `wait until` HANDS OVER under the scheduler. A
+    // spin that did not would starve the very hat that can end it, and the
+    // program would sit there forever with everything looking correct.
+    const r = await runDriven(['DEVICE i8086', 'PIN sw = P2.0 INPUT ACTIVE LOW', 'GLOBAL go',
+        'WHEN flag clicked:', '  set go to 0', '  wait until go = 1', '  print "freed"',
+        'WHEN sw pressed:', '  set go to 1'], threePresses);
+    assert.deepEqual(r.screen, ['freed']);
+});
+
+test('a FOREVER that never waits no longer starves anything', async () => {
+    // THE WHOLE POINT OF PREEMPTION, and the thing the cooperative scheduler
+    // could only warn about. Script one is a tight loop that never yields.
+    // Under cooperative scheduling it took the CPU and never gave it back;
+    // the timer now takes it away whether the script cooperates or not.
+    const src = ['DEVICE i8086', 'GLOBAL n',
+        'WHEN flag clicked:', '  FOREVER:', '    change n by 1',
+        'WHEN flag clicked:', '  REPEAT 3:', '    print "alive"', '    wait 0.01 secs',
+        '  stop all'].join('\n');
+    const c = new SB3();
+    c.parse(src);
+    const built = await buildPseudocode8086({project: c.project, source: src});
+    assert.ok(!/never hands control back/.test(built.warnings.join(' ')),
+        'and the old warning is gone, because it is no longer true');
+    const b = await createI8086DosBench(
+        {bytes: built.bytes, format: built.format, chips: built.chips});
+    let n = 0;
+    while (n < 6_000_000 && !b.terminated) { b.step(); n++; }
+    assert.deepEqual(b.screenText().filter(Boolean), ['alive', 'alive', 'alive']);
+    assert.ok(b.terminated, 'and the other script could still end the program');
+});
+
+test('`wait until` on variables is NOT warned when another script could change them', async () => {
+    // The single-script warning says nothing can change the condition. With a
+    // second script that claim is false, so making it would be worse than
+    // saying nothing.
+    const src = ['DEVICE i8086', 'GLOBAL go',
+        'WHEN flag clicked:', '  wait until go = 1', '  print "a"',
+        'WHEN flag clicked:', '  set go to 1'].join('\n');
+    const c = new SB3();
+    c.parse(src);
+    const built = await buildPseudocode8086({project: c.project, source: src});
+    assert.ok(!/tests only variables and constants/.test(built.warnings.join(' ')));
+});

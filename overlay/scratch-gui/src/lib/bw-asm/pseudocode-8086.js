@@ -21,8 +21,21 @@
  *
  * ── DECISION 1: WHAT IS THE TICK? ────────────────────────────────────────
  *
- * One MICROSECOND, and `wait` is INT 15h AH=86h. Not the 18.2 Hz BIOS tick,
- * and emphatically not the 8254.
+ * One MICROSECOND, and `wait` is INT 15h AH=86h — FOR A SINGLE SCRIPT. Not
+ * the 18.2 Hz BIOS tick, and emphatically not the 8254.
+ *
+ * **AMENDED 2026-09-04.** The reasoning below is still right about the 8254's
+ * RATE and still right that INT 15h is the best single-script answer. It was
+ * wrong about one thing, and the error was load-bearing: it concluded that
+ * because the 8254 cannot INTERRUPT here, a cooperative scheduler was
+ * impossible, and two WHEN scripts were refused on that basis. A scheduler
+ * does not need an interrupt — it needs a clock it can READ, and counter 0
+ * can be latched and read at any time. Two scripts now work (see
+ * `schedRuntime`), on a polled counter, with no PIC.
+ *
+ * The rate caveat below is exactly why that scheduler MEASURES the counter
+ * instead of assuming 1193182 Hz: assuming it made every wait 4.19x too
+ * short, which is the same 4.19x this section predicted.
  *
  * The 8254 is the obvious answer and it is the wrong one HERE, for a reason
  * that is measurable rather than aesthetic. `DOSBOX8086_XT` (i8086-dos.js)
@@ -114,9 +127,16 @@
  * a hard stop with a message that names the block and lists what does work.
  *
  * NOT DONE, and named rather than left to be discovered:
- *   - More than one WHEN script, and every event hat other than the green
- *     flag. Both need the cooperative scheduler, which needs a polled clock
- *     (see DECISION 1). Refused.
+ *   - Sprites, DEFINE (custom blocks), lists, strings in variables, `join`.
+ *
+ * EVERY EVENT HAT NOW LOWERS, as of 2026-09-04: more than one WHEN flag
+ * script, WHEN <pin> pressed/released, WHEN I receive, and WHEN <key>
+ * pressed — see `schedRuntime`, `emitPinHat`, `emitMessageHat` and
+ * `emitKeyHat`. Two of the three refusal REASONS turned out to be wrong
+ * rather than merely expensive: broadcast needed no queue (the receiver is
+ * already a task watching one byte), and the key hat needed no edge (a pin
+ * has a level so a hat must manufacture one, but DOS hands over a QUEUE of
+ * keystrokes and each arrival is already an event).
  *   - Sprites. A DOS program has no stage; a project with a SPRITE section
  *     is refused rather than silently flattened.
  *   - Custom blocks (DEFINE), lists, strings-in-variables, `join`, and every
@@ -192,7 +212,11 @@ export const SUPPORTED = Object.freeze({
     stc12_readport: 'read <port>',
     stc12_writepin: 'set <pin> to <value>',
     stc12_settone: 'set <pin> to <n> hz',
-    control_wait_until: 'wait until <cond>'
+    control_wait_until: 'wait until <cond>',
+    stc12_whenpin: 'WHEN <pin> pressed/released:',
+    event_whenbroadcastreceived: 'WHEN I receive "<message>":',
+    event_broadcast: 'broadcast "<message>"',
+    event_whenkeypressed: 'WHEN <key> key pressed:'
 });
 
 /** What a refused block is called, when the opcode alone would not say. */
@@ -206,8 +230,6 @@ const BLOCK_NAMES = {
     operator_mathop: 'sqrt/sin/cos/... of ...',
     data_addtolist: 'add ... to <list>',
     control_create_clone_of: 'create clone of ...',
-    event_whenkeypressed: 'WHEN <key> key pressed:',
-    event_whenbroadcastreceived: 'WHEN I receive ...:',
     procedures_definition: 'DEFINE ...',
     procedures_call: 'a custom block call',
     stc12_setpwm: 'set <pin> to <n> percent'
@@ -263,6 +285,17 @@ export function boolishTruthTest (b) {
 // can make is this divided by a whole number.
 const PIT_HZ = 1193182;
 const PIT_BASE = 0x40;
+// Per-script stack. Deep enough for the nesting this back end can produce
+// (expressions push at most a few words, and there are no recursive calls),
+// small enough that eight scripts cost 2K.
+// Per-script stack. PREEMPTION CAN HAPPEN ANYWHERE, so each stack must also
+// hold an interrupt frame (3 words) plus the nine saved registers on top of
+// whatever the script itself is using -- 24 bytes of overhead per suspension,
+// which the cooperative version did not have to carry.
+const SCHED_STACK = 512;
+// Eight scripts is 2K of stack. Past that a .COM has more scheduler than
+// program in its one segment.
+const MAX_SCRIPTS = 8;
 
 /** The literal behind an input, or null if it is computed. Used only to say
  *  which frequency will actually be played -- never to change what is emitted. */
@@ -331,10 +364,16 @@ class Emitter {
         this.uses = {
             puts: false, crlf: false, printn: false,
             mul: false, div: false, mod: false, sdiv: false, ppi: false,
-            keypad: false, adc: false
+            keypad: false, adc: false, sched: false, keypump: false
         };
         this.pins = [];             // declared PINs, from the parser
         this.ports = [];            // declared PORTs -- eight bits at once
+        // More than one WHEN script means the cooperative scheduler, and that
+        // changes what `wait` and `stop this script` compile to. One script
+        // keeps the straight-line path: simpler code, and no reason to make
+        // every existing program pay for a scheduler it does not use.
+        this.tasks = 1;
+        this.messages = new Map();  // broadcast name -> its flag symbol
         this.parts = [];            // declared PARTs (keypad4x4 only, so far)
         this.keypads = new Map();   // name -> label, one scan routine each
     }
@@ -1203,7 +1242,253 @@ class Emitter {
         this.code.push(`${done}:`);
     }
 
+    /**
+     * `wait` INSIDE A SCHEDULED PROGRAM — a yield, not a blocking call.
+     *
+     * The single-script path waits with INT 15h/86h, which BLOCKS: nothing
+     * else can run, which is fine when there is nothing else. With two
+     * scripts it would stop the other one dead, so the wait becomes "wake me
+     * at time T" followed by a switch to whoever is due.
+     *
+     * TIME IS MEASURED IN PIT TICKS, NOT MICROSECONDS, because the clock has
+     * to be POLLED rather than waited on. 8254 counter 0 free-runs at
+     * 1193182 Hz; the scheduler samples it and accumulates the difference, so
+     * elapsed time is exact and no interrupt is needed. That matters: this
+     * bench has no PIC, so an interrupt-driven tick could not exist here --
+     * which is what "the clock blocks" used to mean and why two scripts were
+     * refused.
+     */
+    emitSleep (input, opcode) {
+        this.uses.sched = true;
+        this.uses.mul = true;
+        const inner = Array.isArray(input) ? input[1] : null;
+        if (Array.isArray(inner) && inner[0] !== 12 && inner[0] !== 13) {
+            const secs = Number(inner[1]);
+            if (!Number.isFinite(secs) || secs < 0) {
+                refuse(`"wait ${inner[1]} secs" is not a length of time`,
+                    'bad wait duration', opcode);
+            }
+            const ms = Math.round(secs * 1000);
+            if (ms > 0x7fffff) {
+                refuse(`"wait ${secs} secs" is longer than a scheduled program can time. `
+                    + 'The scheduler compares wake times as SIGNED 32-bit counts of timer '
+                    + 'ticks so they stay correct when the counter wraps, and the tick is '
+                    + 'faster than a millisecond.', 'wait too long', opcode);
+            }
+            this.op(`MOV AX, ${hex16(ms & 0xffff)}`);
+            this.op(`MOV DX, ${hex16(Math.floor(ms / 65536))}`);
+            this.op('MOV BX, [BW_TPMS]   ; ticks per ms, MEASURED at startup');
+            this.op('XOR CX, CX');
+            this.op('CALL BW_MUL32');
+        } else {
+            this.warn('a "wait" whose length is computed is rounded to whole seconds '
+                + 'before it is converted to timer ticks. A typed-in length such as '
+                + '"wait 0.5 secs" is exact.');
+            this.evalNum(input, opcode);
+            this.op('MOV BX, 1000');
+            this.op('XOR CX, CX');
+            this.op('CALL BW_MUL32       ; seconds -> milliseconds');
+            this.op('MOV BX, [BW_TPMS]');
+            this.op('XOR CX, CX');
+            this.op('CALL BW_MUL32       ; -> ticks, at the MEASURED rate');
+        }
+        this.op('CALL BW_SLEEP');
+    }
+
+    /**
+     * `WHEN <key> pressed:` — A KEYSTROKE IS ALREADY AN EVENT.
+     *
+     * I refused this once on the grounds that it "needs the keyboard's own
+     * edge", and that was wrong. A pin has a level, so a hat on it must
+     * manufacture an edge. DOS hands over a QUEUE OF KEYSTROKES: each arrival
+     * is an event, which is strictly more than an edge and needs no
+     * transition detection at all.
+     *
+     * READING A KEY CONSUMES IT, and that is the real design problem. Two
+     * hats each polling INT 21h would race: whichever ran first would take
+     * the keystroke and the other would never see it — and a program with
+     * `WHEN a` and `WHEN b` would drop half its input for no visible reason.
+     *
+     * So ONE pump task reads the keyboard and publishes; the hats watch what
+     * it published. The pump is a task the program did not write, which is
+     * why the build says it added one.
+     */
+    keyChar (name, opcode) {
+        const key = String(name || '').toLowerCase();
+        if (key === 'any') return null;                  // matches anything
+        const NAMED = {space: 0x20, enter: 0x0d};
+        if (Object.prototype.hasOwnProperty.call(NAMED, key)) return NAMED[key];
+        if (key.length === 1) {
+            const c = key.charCodeAt(0);
+            if (c >= 0x20 && c < 0x7f) return c;
+        }
+        refuse(`"WHEN ${name} key pressed" names a key this bench cannot report. DOS `
+            + 'hands over printable characters, space and enter; the arrows, function '
+            + 'keys and the like arrive as a NUL followed by a scan code, which is a '
+            + 'second read this back end does not do. Use a printable key, space or '
+            + 'enter — or `any`.', 'key not reportable', opcode);
+        return 0;
+    }
+
+    /** The pump: read the keyboard once and publish what it said. */
+    keyPumpRoutine () {
+        return ['',
+            '; ---- the keyboard pump ---------------------------------------',
+            '; ONE reader, because reading CONSUMES. Two hats polling INT 21h',
+            '; would race for each keystroke and a program with two key hats',
+            '; would drop half its input with nothing to show why.',
+            '; AH=0Bh asks whether a key is waiting and does NOT block; AH=07h',
+            '; then takes it without echoing, so the program decides what the',
+            '; screen shows rather than DOS deciding for it.',
+            'BW_KEYPUMP:',
+            '    MOV AH, 0BH',
+            '    INT 21H',
+            '    OR AL, AL',
+            '    JZ BW_KP1',
+            '    MOV AH, 7',
+            '    INT 21H',
+            '    MOV [BW_KEY], AL',
+            '    MOV BYTE PTR [BW_KFRESH], 1',
+            'BW_KP1:',
+            '    CALL BW_POLL1MS',
+            '    JMP BW_KEYPUMP'];
+    }
+
+    /** One key hat: watch what the pump published. */
+    emitKeyHat (block, name) {
+        const want = this.keyChar(name, block.opcode);
+        const top = this.label('KEY'), wait = this.label('KEY');
+        this.code.push(`${top}:`);
+        this.op('CMP BYTE PTR [BW_KFRESH], 0');
+        this.op(`JE ${wait}`);
+        if (want !== null) {
+            this.op('MOV AL, [BW_KEY]');
+            this.op(`CMP AL, ${want}`);
+            this.op(`JNE ${wait}          ; another hat's key, or nobody's`);
+        }
+        this.op('MOV BYTE PTR [BW_KFRESH], 0');
+        this.stack(block.next);
+        this.op(`JMP ${top}`);
+        this.code.push(`${wait}:`);
+        this.op('CALL BW_POLL1MS');
+        this.op(`JMP ${top}`);
+    }
+
+    /** The flag byte for a broadcast name, created on first mention. */
+    messageSym (name) {
+        const key = String(name);
+        if (!this.messages.has(key)) {
+            // BW_BCAST, not BW_MSG: `label('MSG')` already generates BW_MSG0
+            // for the receiver loop, and the two collided -- the assembler
+            // caught it as "defined twice", which is exactly the error a
+            // generated-name scheme should produce rather than a silent
+            // aliasing of a jump target onto a data byte.
+            this.messages.set(key, `BW_BCAST${this.messages.size}`);
+        }
+        return this.messages.get(key);
+    }
+
+    /**
+     * `broadcast "x"` — SET A FLAG, and that is the whole mechanism.
+     *
+     * Scratch's broadcast starts the receiving script. Here the receiver is
+     * already a task, sitting in a loop watching one byte, so a broadcast is
+     * a single store and the scheduler does the rest. No queue: a second
+     * broadcast of the same message before the first was noticed is the same
+     * event, which is also what Scratch does -- a script already running is
+     * restarted rather than run twice over.
+     */
+    emitBroadcast (block) {
+        const input = block.inputs && block.inputs.BROADCAST_INPUT;
+        const inner = Array.isArray(input) ? input[1] : null;
+        const name = Array.isArray(inner) ? inner[1] : null;
+        if (!name) {
+            refuse('this `broadcast` names no message', 'broadcast without a name',
+                block.opcode);
+        }
+        if (!this.messages.has(String(name))) {
+            refuse(`nothing receives the broadcast "${name}". A message with no `
+                + '`WHEN I receive` script is a store to a byte nobody reads -- which '
+                + 'runs, does nothing, and looks like the receiver was never reached.',
+                'broadcast with no receiver', block.opcode);
+        }
+        this.op(`MOV BYTE PTR [${this.messageSym(name)}], 1`);
+    }
+
+    /**
+     * `WHEN I receive "x":` — a task watching one byte.
+     *
+     * It CLEARS the flag before running the body, not after, so a broadcast
+     * sent by the body itself is not swallowed by its own handler.
+     */
+    emitMessageHat (block, name) {
+        const sym = this.messageSym(name);
+        const top = this.label('MSG'), fire = this.label('MSG');
+        this.code.push(`${top}:`);
+        this.op(`CMP BYTE PTR [${sym}], 0`);
+        this.op(`JNE ${fire}`);
+        this.op('CALL BW_POLL1MS');
+        this.op(`JMP ${top}`);
+        this.code.push(`${fire}:`);
+        this.op(`MOV BYTE PTR [${sym}], 0   ; cleared BEFORE the body runs`);
+        this.stack(block.next);
+        this.op(`JMP ${top}`);
+    }
+
+    /**
+     * `WHEN <pin> pressed:` — AN EDGE, WHICH IS WHY IT NEEDS ITS OWN TASK.
+     *
+     * The hat fires on the TRANSITION into the named state, not while the pin
+     * sits there. A hat that fired on the level would run its body thousands
+     * of times while a finger rested on a button, which is not what anyone
+     * means by "when pressed".
+     *
+     * So the task arms first — it waits for the pin to be in the OPPOSITE
+     * state — and only then watches for the state itself. Between samples it
+     * hands over, so a `WHEN flag clicked` script beside it keeps running.
+     * That is the whole reason this could not exist before the scheduler: an
+     * edge needs somewhere to sample from that is not inside another script's
+     * turn, and now there is one.
+     *
+     * ACTIVE LOW is already handled by the pin read, so "pressed" means what
+     * the learner's wiring says it means rather than what the voltage does.
+     */
+    emitPinHat (block, name, edge) {
+        const arm = this.label('HAT'), watch = this.label('HAT');
+        // `pressed` is a 1 out of emitPinRead (ACTIVE LOW inverts there).
+        const wantOne = edge !== 'released';
+        this.code.push(`${arm}:`);
+        this.emitPinRead(name, block.opcode);
+        this.op('OR AX, AX');
+        this.op(`${wantOne ? 'JZ' : 'JNZ'} ${watch}      ; armed: the pin is in the other state`);
+        this.op('CALL BW_POLL1MS');
+        this.op(`JMP ${arm}`);
+        this.code.push(`${watch}:`);
+        this.emitPinRead(name, block.opcode);
+        this.op('OR AX, AX');
+        const fire = this.label('HAT');
+        this.op(`${wantOne ? 'JNZ' : 'JZ'} ${fire}       ; the edge`);
+        this.op('CALL BW_POLL1MS');
+        this.op(`JMP ${watch}`);
+        this.code.push(`${fire}:`);
+        this.stack(block.next);
+        this.op(`JMP ${arm}                ; re-arm: one run per press`);
+    }
+
     emitSay (input, opcode, textMode) {
+        // A LINE IS A SHARED RESOURCE, so under the scheduler printing one is
+        // a critical section. `print` is a string followed by a CRLF, and a
+        // preemption between them lets another script's text land on the same
+        // line: two scripts printing "a" and "b" produced "ba" on one line and
+        // then singles. That is honest hardware behaviour -- it is exactly
+        // what two tasks sharing a device without a lock do -- but a learner
+        // reading it would blame the program rather than the concurrency.
+        //
+        // PUSHF/CLI rather than CLI/STI: it restores whatever the flags were
+        // instead of asserting that interrupts must have been on, which is
+        // the difference between a lock and an assumption.
+        const atomic = this.tasks > 1;
+        if (atomic) { this.op('PUSHF'); this.op('CLI'); }
         const inner = Array.isArray(input) ? input[1] : null;
         const isLiteralText = Array.isArray(inner) && (inner[0] === 10 || textMode);
         if (isLiteralText) {
@@ -1219,6 +1504,7 @@ class Emitter {
         }
         this.uses.crlf = true;
         this.op('CALL BW_CRLF');
+        if (atomic) this.op('POPF');
     }
 
     // ---- waiting ------------------------------------------------------
@@ -1233,6 +1519,7 @@ class Emitter {
      * seconds and the learner is told so rather than left to find it.
      */
     emitWait (input, opcode) {
+        if (this.tasks > 1) { this.emitSleep(input, opcode); return; }
         const inner = Array.isArray(input) ? input[1] : null;
         if (Array.isArray(inner) && inner[0] !== 12 && inner[0] !== 13) {
             const secs = Number(inner[1]);
@@ -1333,6 +1620,17 @@ class Emitter {
             return;
         }
         case 'control_forever': {
+            // NO STARVATION WARNING HERE ANY MORE, and removing it is the
+            // point of the preemptive scheduler. It used to say a FOREVER
+            // without a `wait` "never hands control back" — true of the
+            // cooperative version and FALSE now, because the timer takes the
+            // CPU away whether the script cooperates or not. Measured: a
+            // FOREVER that only increments a variable no longer stops the
+            // script beside it from printing or from ending the program.
+            //
+            // Leaving the warning in would have been the same defect this
+            // file keeps finding elsewhere — a claim that was true when it
+            // was written and was never re-checked against what the code does.
             const top = this.label('L');
             this.note('forever');
             this.code.push(`${top}:`);
@@ -1359,7 +1657,11 @@ class Emitter {
             // program as running rather than hung.
             const top = this.label('W');
             this.note('wait until');
-            if (!this.readsTheWorld(b.inputs.CONDITION)) {
+            // WITH MORE THAN ONE SCRIPT THIS WARNING WOULD BE WRONG: another
+            // script can change a variable while this one waits, so a wait on
+            // variables alone is perfectly reasonable there. The claim only
+            // holds when there is exactly one script and nothing else running.
+            if (this.tasks === 1 && !this.readsTheWorld(b.inputs.CONDITION)) {
                 // NOTHING IN THIS LOOP CAN CHANGE THE ANSWER. One script, no
                 // interrupt handlers, and a condition that reads no pin, port
                 // or keypad -- so if it is false on entry it is false forever.
@@ -1375,7 +1677,19 @@ class Emitter {
             this.code.push(`${top}:`);
             this.evalCondInput(b.inputs.CONDITION, b.opcode);
             this.op('OR AX, DX');
-            this.op(`JZ ${top}`);
+            if (this.tasks > 1) {
+                // A SPIN THAT DOES NOT HAND OVER WOULD STARVE EVERY OTHER
+                // SCRIPT, including the pin hat that might be the only thing
+                // able to make this condition true. Cooperative scheduling
+                // means the cooperation has to be emitted.
+                const done = this.label('W');
+                this.op(`JNZ ${done}`);
+                this.op('CALL BW_POLL1MS');
+                this.op(`JMP ${top}`);
+                this.code.push(`${done}:`);
+            } else {
+                this.op(`JZ ${top}`);
+            }
             return;
         }
         case 'control_if': {
@@ -1411,7 +1725,14 @@ class Emitter {
                 return;
             }
             this.note(`stop ${option}`);
-            this.op('JMP BW_EXIT');
+            // `stop this script` ends THIS task and lets the others run on;
+            // `stop all` ends the program. With one script they coincide,
+            // which is why this distinction never had to exist before.
+            if (this.tasks > 1 && option === 'this script') {
+                this.op('JMP BW_TEND');
+            } else {
+                this.op('JMP BW_EXIT');
+            }
             return;
         }
         case 'looks_say':
@@ -1440,6 +1761,10 @@ class Emitter {
             this.note('tone');
             this.emitTone(b.fields.PIN[0], b.inputs.VALUE, b.opcode);
             return;
+        case 'event_broadcast':
+            this.note('broadcast');
+            this.emitBroadcast(b);
+            return;
         case 'stc12_setport':
             this.note('port');
             this.emitPortWrite(b.fields.PORT[0], b.inputs.VALUE, b.opcode);
@@ -1467,7 +1792,14 @@ class Emitter {
     runtime () {
         const r = [];
         const need = this.uses;
+        // The scheduler's own poll routine multiplies milliseconds by the
+        // measured tick rate, so BW_MUL32 is part of it -- not something only
+        // a `wait` drags in. A program of nothing but pin hats never calls
+        // emitSleep and was assembling with an undefined symbol.
+        if (need.sched) need.mul = true;
         for (const { label, kp } of this.keypads.values()) r.push(...this.keypadRoutine(label, kp));
+        if (need.sched) r.push(...this.schedRuntime());
+        if (need.keypump) r.push(...this.keyPumpRoutine());
         if (need.printn) { need.crlf = true; }
         if (need.div || need.mod) need.sdiv = true;
 
@@ -1786,6 +2118,323 @@ class Emitter {
             '    RET'];
     }
 
+    /**
+     * THE COOPERATIVE SCHEDULER — one stack per script, and a switch is a
+     * swap of SP.
+     *
+     * The alternative was to rewrite each script as a state machine over a
+     * tick, which is what the C back end does. A coroutine is better here:
+     * arbitrary control flow survives a wait for free, so a `wait` nested
+     * three loops deep needs no special handling, whereas a state-machine
+     * transform has to lift every one of those loops into explicit state.
+     *
+     * NO INTERRUPTS ARE INVOLVED, and that is not a shortcut -- this bench
+     * has no PIC, so an interrupt-driven scheduler could not exist on it. The
+     * clock is 8254 counter 0, free-running and POLLED: the dispatcher samples
+     * it and accumulates the difference into a 32-bit tick count. That is what
+     * makes the whole thing possible and is exactly the thing the old refusal
+     * said was missing.
+     */
+    schedRuntime () {
+        const n = this.tasks;
+        const R = ['AX', 'BX', 'CX', 'DX', 'SI', 'DI', 'BP', 'DS', 'ES'];
+        const push = R.map(r => `    PUSH ${r}`);
+        const pop = [...R].reverse().map(r => `    POP ${r}`);
+        return ['',
+            '; ---- the preemptive scheduler --------------------------------',
+            '; One stack per script, switched by a TIMER INTERRUPT rather than',
+            '; only at a `wait`. A script that never waits still loses the CPU,',
+            '; so a FOREVER with no wait can no longer starve the others -- which',
+            '; the cooperative version could only warn about.',
+            ';',
+            '; VECTOR 70h, NOT 8. The PIC is programmed with vector base 70h and',
+            '; INT 8 / INT 1Ch are deliberately LEFT POINTING AT THE TRAP PAGE.',
+            '; The DOS layer synthesises an 18.2 Hz BIOS tick whenever either of',
+            '; those is hooked away, so taking INT 8 would deliver TWO unrelated',
+            '; clocks -- the real IRQ0 and a synthetic one -- and quantum',
+            '; accounting would drift with nothing to show why. Leaving them',
+            '; alone also means INT 1Ah keeps working for the program.',
+            ';',
+            '; ONE FRAME SHAPE. A voluntary yield is `INT 0F0h`, so it pushes',
+            '; exactly what a hardware interrupt pushes. A task suspended by the',
+            '; timer and a task suspended by a `wait` are indistinguishable when',
+            '; resumed, which is what lets one dispatcher serve both. A CALL-based',
+            '; yield beside an IRET-based preemption cannot share a dispatcher.',
+            '',
+            '; The timer. EOI BEFORE the switch, deliberately: if we switched',
+            '; first, this interrupt would never be acknowledged -- the task we',
+            '; left is resumed by whoever preempts IT -- and the PIC would hold',
+            '; IRQ0 in service forever, so exactly one tick would ever arrive.',
+            'BW_ISR:',
+            ...push,
+            '    ADD WORD PTR [BW_TICKS], 1',
+            '    ADC WORD PTR [BW_TICKS + 2], 0',
+            '    MOV AL, 20H',
+            '    OUT 20H, AL',
+            '    CALL BW_PICK',
+            ...pop,
+            '    IRET',
+            '',
+            '; The voluntary yield, INT 0F0h. No EOI: nothing is in service.',
+            'BW_ISRV:',
+            ...push,
+            '    CALL BW_PICK',
+            ...pop,
+            '    IRET',
+            '',
+            '; Save SP, choose the next runnable script, load its SP. Called, so',
+            '; its return address is on the stack -- and every suspended task has',
+            '; one too, in the same place, which is why RET lands correctly in',
+            '; whichever ISR that task was suspended from.',
+            ';',
+            '; IF NOBODY ELSE IS DUE IT RETURNS TO THE CURRENT TASK. It must not',
+            '; wait here: interrupts are off inside an ISR, so a wait loop in this',
+            '; routine could never be ended by the tick it is waiting for.',
+            'BW_PICK:',
+            '    MOV BX, [BW_CUR]',
+            '    SHL BX, 1',
+            '    MOV [BW_TSP + BX], SP',
+            `    MOV CX, ${n}`,
+            '    MOV BX, [BW_CUR]',
+            'BW_NEXT:',
+            '    INC BX',
+            `    CMP BX, ${n}`,
+            '    JB BW_NOWRAP',
+            '    XOR BX, BX',
+            'BW_NOWRAP:',
+            '    CMP BYTE PTR [BW_TDONE + BX], 0',
+            '    JNE BW_SKIP',
+            '    ; due when (ticks - wake) >= 0 as a SIGNED 32-bit difference,',
+            '    ; which stays correct across the tick count wrapping.',
+            '    MOV DI, BX',
+            '    SHL DI, 1',
+            '    SHL DI, 1',
+            '    MOV AX, [BW_TICKS]',
+            '    MOV DX, [BW_TICKS + 2]',
+            '    SUB AX, [BW_TWAKE + DI]',
+            '    SBB DX, [BW_TWAKE + DI + 2]',
+            '    OR DX, DX',
+            '    JS BW_SKIP',
+            '    MOV [BW_CUR], BX',
+            'BW_RESUME:',
+            '    MOV BX, [BW_CUR]',
+            '    SHL BX, 1',
+            '    MOV SP, [BW_TSP + BX]',
+            '    RET',
+            'BW_SKIP:',
+            '    LOOP BW_NEXT',
+            '    JMP BW_RESUME           ; nobody else due: carry on where we were',
+            '',
+            '; Give up the rest of this quantum.',
+            'BW_YIELD:',
+            '    INT 0F0H',
+            '    RET',
+            '',
+            '; Sleep DX:AX TICKS. Loops rather than yielding once, because the',
+            '; dispatcher hands control back to a task that is not yet due when',
+            '; nothing else can run.',
+            'BW_SLEEP:',
+            '    MOV BX, [BW_CUR]',
+            '    SHL BX, 1',
+            '    SHL BX, 1',
+            '    ADD AX, [BW_TICKS]',
+            '    ADC DX, [BW_TICKS + 2]',
+            '    MOV [BW_TWAKE + BX], AX',
+            '    MOV [BW_TWAKE + BX + 2], DX',
+            'BW_SLP1:',
+            '    INT 0F0H',
+            '    MOV BX, [BW_CUR]',
+            '    SHL BX, 1',
+            '    SHL BX, 1',
+            '    MOV AX, [BW_TICKS]',
+            '    MOV DX, [BW_TICKS + 2]',
+            '    SUB AX, [BW_TWAKE + BX]',
+            '    SBB DX, [BW_TWAKE + BX + 2]',
+            '    OR DX, DX',
+            '    JS BW_SLP1',
+            '    RET',
+            '',
+            '; Hand over for about a millisecond -- a pin hat samples at 1 kHz,',
+            '; far finer than a finger and cheap enough that nothing notices.',
+            'BW_POLL1MS:',
+            '    MOV AX, [BW_TPMS]',
+            '    XOR DX, DX',
+            '    CALL BW_SLEEP',
+            '    RET',
+            '',
+            '; This script is finished. The others carry on; when none are left',
+            '; the program is over.',
+            'BW_TEND:',
+            '    MOV BX, [BW_CUR]',
+            '    MOV BYTE PTR [BW_TDONE + BX], 1',
+            'BW_TEND1:',
+            `    MOV CX, ${n}`,
+            '    XOR BX, BX',
+            '    XOR AL, AL',
+            'BW_ALLD:',
+            '    ADD AL, [BW_TDONE + BX]',
+            '    INC BX',
+            '    LOOP BW_ALLD',
+            `    CMP AL, ${n}`,
+            '    JNE BW_TEND2',
+            '    JMP BW_EXIT',
+            'BW_TEND2:',
+            '    INT 0F0H',
+            '    JMP BW_TEND1',
+            '',
+            '; ---- startup -------------------------------------------------',
+            '; Arrange one task\'s stack so the dispatcher can resume it as if it',
+            '; had been interrupted: a full IRET frame, then the register set the',
+            '; ISR epilogue pops, then the return address BW_PICK will RET to.',
+            '; AX = stack top, BX = entry point, SI = task index.',
+            '; NO PUSH SP anywhere -- on an 8086 that pushes SP AFTER the',
+            '; decrement, a real difference from every later x86.',
+            'BW_TINIT:',
+            '    MOV DI, AX',
+            '    SUB DI, 2',
+            '    MOV WORD PTR [DI], 0202H    ; FLAGS with IF set: the task runs enabled',
+            '    SUB DI, 2',
+            '    MOV [DI], CS                ; CS',
+            '    SUB DI, 2',
+            '    MOV [DI], BX                ; IP -- the script entry',
+            '    ; The nine saved registers, in the order the ISR epilogue pops',
+            '    ; them: AX BX CX DX SI DI BP are zero, but DS AND ES MUST NOT BE.',
+            '    ; A .COM has DS = ES = its PSP, and a task resumed with DS = 0',
+            '    ; reads every string and variable out of segment zero -- which',
+            '    ; prints control characters instead of text and looks like a',
+            '    ; broken emulator rather than a wrong register.',
+            '    MOV CX, 7',
+            'BW_TI1:',
+            '    SUB DI, 2',
+            '    MOV WORD PTR [DI], 0',
+            '    LOOP BW_TI1',
+            '    SUB DI, 2',
+            '    MOV [DI], DS                ; DS',
+            '    SUB DI, 2',
+            '    MOV [DI], DS                ; ES',
+            '    SUB DI, 2',
+            '    MOV WORD PTR [DI], OFFSET BW_TIRET   ; where BW_PICK returns to',
+            '    MOV BX, SI',
+            '    SHL BX, 1',
+            '    MOV [BW_TSP + BX], DI',
+            '    SHL BX, 1',
+            '    MOV WORD PTR [BW_TWAKE + BX], 0',
+            '    MOV WORD PTR [BW_TWAKE + BX + 2], 0',
+            '    MOV BYTE PTR [BW_TDONE + SI], 0',
+            '    RET',
+            '',
+            '; A fresh task resumes here: pop the zeroed registers and IRET into',
+            '; its entry point with interrupts on.',
+            'BW_TIRET:',
+            ...pop,
+            '    IRET',
+            '',
+            'BW_SCHINIT:',
+            '    ; counter 0, mode 2, divisor 1193 -- about 1 kHz on a PC crystal',
+            '    ; and about 4 kHz if the counter is fed the CPU clock. Either is',
+            '    ; a fine quantum, and the rate is MEASURED below rather than',
+            '    ; assumed, so which one it is does not matter.',
+            '    MOV AL, 34H',
+            `    MOV DX, ${PIT_BASE + 3}`,
+            '    OUT DX, AL',
+            '    MOV AL, 0A9H',
+            `    MOV DX, ${PIT_BASE}`,
+            '    OUT DX, AL',
+            '    MOV AL, 04H',
+            '    OUT DX, AL',
+            '    ; the PIC: single, edge, ICW4, vector base 70h, IRQ0 unmasked',
+            '    MOV AL, 13H',
+            '    OUT 20H, AL',
+            '    MOV AL, 70H',
+            '    OUT 21H, AL',
+            '    MOV AL, 01H',
+            '    OUT 21H, AL',
+            '    MOV AL, 0FEH',
+            '    OUT 21H, AL',
+            '    ; vectors 70h (timer) and F0h (voluntary yield)',
+            '    PUSH DS',
+            '    MOV AX, 2570H',
+            '    MOV DX, OFFSET BW_ISR',
+            '    INT 21H',
+            '    MOV AX, 25F0H',
+            '    MOV DX, OFFSET BW_ISRV',
+            '    INT 21H',
+            '    POP DS',
+            '    MOV WORD PTR [BW_TICKS], 0',
+            '    MOV WORD PTR [BW_TICKS + 2], 0',
+            '    STI',
+            '    ; fall through into the calibration',
+            '',
+            '; HOW FAST IS THE TICK? MEASURE IT. The counter may be clocked at a',
+            '; PC\'s 1193182 Hz or at the CPU clock, and a scheduler that assumed',
+            '; one got every wait 4.19x wrong while every ordering test passed.',
+            '; INT 21h/2Ch is the reference because it is computed from simulated',
+            '; time and is independent of the counter entirely.',
+            'BW_CALIB:',
+            '    CALL BW_CSEDGE',
+            '    MOV AX, [BW_TICKS]',
+            '    MOV [BW_CSA], AX',
+            '    CALL BW_CSEDGE',
+            '    MOV AX, [BW_TICKS]',
+            '    SUB AX, [BW_CSA]        ; ticks in one centisecond',
+            '    XOR DX, DX',
+            '    MOV BX, 10',
+            '    DIV BX                  ; -> ticks per millisecond',
+            '    ; ZERO TICKS MEANS THE TIMER IS NOT RUNNING, and carrying on',
+            '    ; would be the worst possible failure: every `wait` would spin',
+            '    ; forever with nothing on screen and no message -- which is',
+            '    ; exactly what happened when a bench was handed this program',
+            '    ; WITHOUT the PIC and timer the build asked for. Say so and',
+            '    ; exit, rather than hang and look like a broken emulator.',
+            '    OR AX, AX',
+            '    JNZ BW_CALOK',
+            '    MOV DX, OFFSET BW_NOTICK',
+            '    MOV AH, 9',
+            '    INT 21H',
+            '    MOV AX, 4C01H',
+            '    INT 21H',
+            'BW_CALOK:',
+            '    MOV [BW_TPMS], AX',
+            '    RET',
+            '',
+            'BW_CSEDGE:',
+            '    MOV AH, 2CH',
+            '    INT 21H',
+            '    MOV [BW_CSV], DL',
+            'BW_CSE1:',
+            '    MOV AH, 2CH',
+            '    INT 21H',
+            '    CMP DL, [BW_CSV]',
+            '    JE BW_CSE1',
+            '    RET'];
+    }
+
+    /** The scheduler's tables and per-script stacks. */
+    schedData () {
+        const n = this.tasks;
+        return ['',
+            'BW_CUR   DW 0            ; the running script',
+            'BW_TPMS  DW 1            ; timer ticks per millisecond, MEASURED',
+            'BW_CSA   DW 0            ; calibration scratch',
+            'BW_CSV   DB 0            ; last centisecond seen',
+            "BW_NOTICK DB 'scheduler: the timer never ticked. This program needs an 8259 "
+                + "PIC at 20h and the 8254 wired to IRQ0 -- the build asks for both, and "
+                + "this machine was started without them.', 0DH, 0AH, '$'",
+            'BW_TICKS DW 0, 0         ; 32-bit tick count -- THE clock',
+            `BW_TSP   DW ${n} DUP (0)        ; saved SP per script`,
+            `BW_TWAKE DW ${n * 2} DUP (0)        ; 32-bit wake time per script`,
+            `BW_TDONE DB ${n} DUP (1)        ; finished flags -- START AT 1`,
+            '                         ; The timer is running during calibration,',
+            '                         ; BEFORE any task stack exists. A task',
+            '                         ; whose saved SP is still zero must never',
+            '                         ; be chosen, so every slot begins DORMANT',
+            '                         ; and BW_TINIT wakes it once its stack is',
+            '                         ; real. Starting at 0 let the dispatcher',
+            '                         ; load SP=0 and the program walked over',
+            '                         ; its own PSP.',
+            `BW_STK   DB ${n * SCHED_STACK} DUP (0)      ; ${SCHED_STACK} bytes of stack each`];
+    }
+
     /** The row and column bit masks, as data — see keypadRoutine. */
     keypadTables () {
         const d = [];
@@ -1818,7 +2467,15 @@ class Emitter {
                 'BW_PORTB DB 0    ; shadow of port B',
                 'BW_PORTC DB 0    ; shadow of port C');
         }
+        if (this.uses.keypump) {
+            d.push('BW_KEY    DB 0          ; the last key the pump read',
+                'BW_KFRESH DB 0          ; and whether anyone has taken it yet');
+        }
+        for (const [name, sym] of this.messages) {
+            d.push(`${sym} DB 0            ; the broadcast "${name}"`);
+        }
         d.push(...this.keypadTables());
+        if (this.uses.sched) d.push(...this.schedData());
         if (this.uses.sdiv) {
             d.push('BW_Q DW 0', 'BW_Q2 DW 0', 'BW_D DW 0', 'BW_D2 DW 0',
                 'BW_R DW 0', 'BW_R2 DW 0');
@@ -1894,8 +2551,14 @@ export function emitI8086Asm (project, opts = {}) {
     const blocks = stage.blocks || {};
     const hats = Object.entries(blocks).filter(([, b]) => b && b.topLevel);
     const flags = hats.filter(([, b]) => b.opcode === 'event_whenflagclicked');
+    const pinHats = hats.filter(([, b]) => b.opcode === 'stc12_whenpin');
+    const msgHats = hats.filter(([, b]) => b.opcode === 'event_whenbroadcastreceived');
+    const keyHats = hats.filter(([, b]) => b.opcode === 'event_whenkeypressed');
     for (const [, b] of hats) {
         if (b.opcode === 'event_whenflagclicked') continue;
+        if (b.opcode === 'stc12_whenpin') continue;
+        if (b.opcode === 'event_whenbroadcastreceived') continue;
+        if (b.opcode === 'event_whenkeypressed') continue;
         if (b.opcode === 'procedures_definition') {
             refuse('DEFINE (a custom block) is not supported on the 8086 — a call ' +
                 'needs a frame this back end does not build', 'custom block');
@@ -1906,26 +2569,33 @@ export function emitI8086Asm (project, opts = {}) {
             'lib/bw-asm/pseudocode-8086.js. Use WHEN flag clicked.',
         `unsupported hat ${b.opcode}`, b.opcode);
     }
-    if (flags.length === 0) {
-        refuse('this project has no "WHEN flag clicked:" script, so there is nothing ' +
-            'to run', 'no script');
+    // A pin hat is a script too, so a project made only of them has something
+    // to run -- it just never finishes, which is what an event program does.
+    if (flags.length === 0 && pinHats.length === 0 && msgHats.length === 0
+        && keyHats.length === 0) {
+        refuse('this project has no "WHEN flag clicked:" script and no event, so ' +
+            'there is nothing to run', 'no script');
     }
-    if (flags.length > 1) {
-        refuse(`this project has ${flags.length} "WHEN flag clicked:" scripts and this ` +
-            'back end runs one. Two scripts need the cooperative scheduler generateC ' +
-            'emits, which needs a clock that can be POLLED; the exact clock on this ' +
-            'bench (INT 15h/86h) blocks instead — see DECISION 1 in ' +
-            'lib/bw-asm/pseudocode-8086.js. Join the two scripts into one.',
-        'multiple scripts');
+    const pump = keyHats.length ? 1 : 0;
+    if (flags.length + pinHats.length + msgHats.length + keyHats.length + pump
+        > MAX_SCRIPTS) {
+        refuse(`this project has ${flags.length + pinHats.length + msgHats.length
+            + keyHats.length} scripts${pump ? ' (plus the keyboard pump the build adds)' : ''} `
+            + `and the `
+            + `scheduler here carries ${MAX_SCRIPTS}. Each one needs its own stack, and `
+            + 'beyond that the stacks crowd out the program in a .COM\'s single segment. '
+            + 'Join some of the scripts.', 'too many scripts');
     }
 
     // An EMPTY script is refused too, and for the same reason the hardware
     // check above exists: a program that runs, terminates and prints nothing
     // is indistinguishable from a broken emulator.
-    if (!flags[0][1].next) {
-        refuse('the "WHEN flag clicked:" script is empty, so this program would run, ' +
-            'finish, and leave the screen blank — which looks exactly like a bench ' +
-            'that failed to start', 'empty script');
+    for (const [, f] of [...flags, ...pinHats, ...msgHats, ...keyHats]) {
+        if (!f.next) {
+            refuse('a "WHEN flag clicked:" script is empty, so this program would run, ' +
+                'finish, and leave the screen blank — which looks exactly like a bench ' +
+                'that failed to start', 'empty script');
+        }
     }
 
     const em = new Emitter();
@@ -1934,7 +2604,73 @@ export function emitI8086Asm (project, opts = {}) {
     em.parts = declared;
     em.ports = (project && project.stc && project.stc.ports) || [];
     em.blocks = blocks;
-    em.stack(flags[0][1].next);
+    em.tasks = flags.length + pinHats.length + msgHats.length + keyHats.length + pump;
+    if (keyHats.length) {
+        em.uses.keypump = true;
+        em.warn('this program has a `WHEN <key> pressed` script, so the build adds a '
+            + 'keyboard PUMP as an extra script. Reading a key CONSUMES it, so two hats '
+            + 'polling DOS directly would race and a program with two key scripts would '
+            + 'drop half its input. One reader publishes; the hats watch what it read.');
+    }
+    // REGISTER EVERY RECEIVER BEFORE ANY BODY IS EMITTED. A `broadcast` is
+    // refused when nothing receives it, and the flag's symbol has to exist
+    // before the first script that sends one is lowered -- otherwise whether
+    // a program compiles would depend on which script came first in the file.
+    for (const [, h] of msgHats) em.messageSym(h.fields.BROADCAST_OPTION[0]);
+    if (em.tasks > 1) {
+        // EACH SCRIPT IS A COROUTINE WITH ITS OWN STACK. They are emitted one
+        // after another, each ending in BW_TEND, and the scheduler decides
+        // which runs. Nothing about the block emitters changes -- only `wait`
+        // and `stop this script`, which is the whole benefit of a coroutine
+        // over a state-machine rewrite.
+        em.uses.sched = true;
+        em.warn(`this project has ${em.tasks} scripts, so the build adds a PREEMPTIVE `
+            + 'scheduler and the hardware it needs: an 8259 interrupt controller at 20h '
+            + 'and the 8254 timer wired to IRQ0. Each script gets its own stack, and a '
+            + 'timer interrupt switches between them -- so a script that never waits '
+            + 'still loses the CPU and cannot starve the others. The timer runs at vector '
+            + '70h, leaving INT 8 and INT 1Ch alone so the BIOS tick keeps working. The '
+            + 'tick rate is MEASURED at startup rather than assumed, which costs about '
+            + '20 ms before the first script runs.');
+        flags.forEach(([, f], i) => {
+            em.code.push('', `BW_TASK${i}:`);
+            em.stack(f.next);
+            em.op('JMP BW_TEND');
+        });
+        pinHats.forEach(([, h], i) => {
+            em.code.push('', `BW_TASK${flags.length + i}:`);
+            em.emitPinHat(h, h.fields.PIN[0], h.fields.EDGE ? h.fields.EDGE[0] : 'pressed');
+        });
+        msgHats.forEach(([, h], i) => {
+            em.code.push('', `BW_TASK${flags.length + pinHats.length + i}:`);
+            em.emitMessageHat(h, h.fields.BROADCAST_OPTION[0]);
+        });
+        const keyBase = flags.length + pinHats.length + msgHats.length;
+        keyHats.forEach(([, h], i) => {
+            em.code.push('', `BW_TASK${keyBase + i}:`);
+            em.emitKeyHat(h, h.fields.KEY_OPTION ? h.fields.KEY_OPTION[0] : 'any');
+        });
+        if (pump) {
+            em.code.push('', `BW_TASK${keyBase + keyHats.length}:`, '    JMP BW_KEYPUMP');
+        }
+    } else if (msgHats.length === 1 && flags.length === 0 && pinHats.length === 0) {
+        em.tasks = 1;
+        em.uses.sched = true;
+        em.code.push('', 'BW_TASK0:');
+        em.emitMessageHat(msgHats[0][1], msgHats[0][1].fields.BROADCAST_OPTION[0]);
+    } else if (pinHats.length === 1 && flags.length === 0) {
+        // A LONE PIN HAT STILL NEEDS THE SCHEDULER, because its poll hands
+        // over -- there is nothing else to hand over TO, but the polling
+        // routine lives in the scheduler runtime and the clock it waits on is
+        // the scheduler's. Cheaper to reuse it than to grow a second timer.
+        em.tasks = 1;
+        em.uses.sched = true;
+        em.code.push('', 'BW_TASK0:');
+        em.emitPinHat(pinHats[0][1], pinHats[0][1].fields.PIN[0],
+            pinHats[0][1].fields.EDGE ? pinHats[0][1].fields.EDGE[0] : 'pressed');
+    } else {
+        em.stack(flags[0][1].next);
+    }
 
     // Variables carry their declared initial value, as `cInit` does in the C
     // back end: a non-numeric initial value becomes 0 rather than a refusal,
@@ -2043,6 +2779,37 @@ export function emitI8086Asm (project, opts = {}) {
             '    OUT DX, AL'
         );
     }
+    // The scheduler's startup: build one stack per script, then dispatch into
+    // the first. It goes AFTER the variable initialisers, because a script may
+    // read a variable before the scheduler ever runs.
+    if (em.uses.sched) {
+        inits.push('', '    ; ---- start the scheduler ----',
+            '    CALL BW_SCHINIT',
+            '    ; INTERRUPTS OFF WHILE THE STACKS ARE BUILT. Calibration needs',
+            '    ; the timer, so it runs with interrupts ON -- safe, because every',
+            '    ; task is still marked dormant and the dispatcher can only',
+            '    ; resume the slot it just saved. The moment BW_TINIT wakes task',
+            '    ; 0, though, a tick would save the STARTUP code\'s SP over the',
+            '    ; frame BW_TINIT just built for it, and task 0 would resume into',
+            '    ; the startup path instead of its own script -- which printed',
+            '    ; exactly one line per script and then lost them.',
+            '    CLI');
+        for (let i = 0; i < em.tasks; i++) {
+            inits.push(
+                `    MOV AX, OFFSET BW_STK + ${(i + 1) * SCHED_STACK}`,
+                `    MOV BX, OFFSET BW_TASK${i}`,
+                `    MOV SI, ${i}`,
+                '    CALL BW_TINIT');
+        }
+        inits.push(
+            '    MOV WORD PTR [BW_CUR], 0',
+            '    MOV SP, [BW_TSP]',
+            '    RET                     ; into BW_TIRET, whose IRET restores a',
+            '                            ; FLAGS with IF set -- so interrupts come',
+            '                            ; back on as the first script starts, and',
+            '                            ; not one instruction before.');
+    }
+
     const tail = [
         '',
         'BW_EXIT:',
@@ -2056,9 +2823,17 @@ export function emitI8086Asm (project, opts = {}) {
     // and the 8255 already works this way. But appearing INVISIBLY is the
     // same failure class as a silently chosen default, so every added chip
     // is named in a warning as well as returned here.
-    const chips = em.uses.adc
-        ? [{ kind: 'adc0809', name: 'adc1', at: ADC_BASE }]
-        : [];
+    const chips = [];
+    if (em.uses.adc) chips.push({ kind: 'adc0809', name: 'adc1', at: ADC_BASE });
+    if (em.uses.sched) {
+        // A PREEMPTIVE SCHEDULER NEEDS AN INTERRUPT, so a scheduled program
+        // asks for a PIC and a timer wired to IRQ0. Same rule as the ADC: the
+        // declaration causes the hardware to appear and the build says so.
+        // Programs that do not schedule see an unchanged board -- which is why
+        // this is requested here rather than added to the preset.
+        chips.push({ kind: 'pic', name: 'pic1', at: 0x20 });
+        chips.push({ kind: 'pit', name: 'pit1', at: PIT_BASE, irq: 0 });
+    }
 
     const asm = [
         ...head,
