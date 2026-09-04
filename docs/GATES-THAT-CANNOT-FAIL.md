@@ -9,7 +9,31 @@ A gate that cannot fail is worse than no gate: it reads as coverage. This repo's
 already says so ("a gate that can't fail is not a gate — mutation-prove it"); what was missing
 was any way to find the ones already written.
 
-## The nine
+> **THIS FILE HAS GROWN PAST ITS TITLE. Updated 2026-09-04: TWENTY species, not nine.** The
+> opening paragraph is kept as written because it dates the original wave, but do not read "nine"
+> as the count. The table below already carries eleven rows; species 12–20 are sections further
+> down, and three of them (18, 19, 20) were named on 2026-09-04. Species 13 was originally titled
+> only "the sixth shape" and had no number, which is why the sequence appeared to skip it — it is
+> numbered now.
+>
+> | # | Name | Where |
+> | --- | --- | --- |
+> | 1–11 | the original wave, plus PAYLOAD-BLIND and AMBIENT-BINDING | the table below |
+> | 12 | POSITIONAL SUBJECT | found in the detector's own harness |
+> | 13 | SWALLOWED-PRECONDITION | came out of the 69→0 triage |
+> | 14 | TIMEOUT-AS-VALUE | a timeout read as a measurement |
+> | 15 | SHADOWED-BY-PRECONDITION | + its cousin, a condition that can never be true |
+> | 16 | THE FIX WHOSE ONLY GATE IS SKIPPED | 2026-09-03 |
+> | 17 | THE PREREQUISITE THAT WAS NEVER REAL | 2026-09-03 |
+> | 18 | ABSENCE CANNOT NAME ITS CAUSE | 2026-09-04 |
+> | 19 | WHERE CODE LIVES IS NOT WHETHER IT RUNS | 2026-09-04 |
+> | 20 | A CHECK REPORTING ON THE ENVIRONMENT IT RAN IN | 2026-09-04 |
+>
+> Species 16 and 17 are both now CLOSED as instances: `smoke:debugger` runs on every push, and
+> `KNOWN_SWALLOWED` in `gate-coverage` is empty. Passages below that describe its sdcc
+> prerequisite in the present tense are annotated where they occur.
+
+## The nine (eleven rows — see the index above)
 
 | # | Mechanism | How it was found | Mechanical? |
 | --- | --- | --- | --- |
@@ -228,7 +252,9 @@ it is missing.
 
 The rest were triaged at their sites, and the justification in each case is the same: **they
 fail CLOSED.** `smoke-debugger` checks for a runnable `sdcc` and its stc-compiler checkout and
-`exit 2`s with a named message; `oracle-simavr` rejects with the tool's own stderr;
+`exit 2`s with a named message
+(**superseded 2026-09-03 — see the seventeenth species: the sdcc half of that check was for a
+tool the script does not use, and removing it is what let the gate run in CI at all**); `oracle-simavr` rejects with the tool's own stderr;
 `overlay-packages-pairs` asks `git` about THIS repository's own tracked blobs, so a different
 git still answers about the same objects. None of them can pass while their tool is absent,
 which is what the shape is about.
@@ -254,7 +280,7 @@ requires all six kinds to fire; and the ratchet was checked by dropping a genuin
 of each class into the tree and confirming it goes red, then removing it. Without that, every
 baseline reading zero is indistinguishable from a detector that has been quietly switched off.
 
-### The sixth shape: SWALLOWED-PRECONDITION
+### Thirteenth species (the sixth MECHANISED shape): SWALLOWED-PRECONDITION
 
 Found by triaging EVENT-AS-STATE, in two files carrying the same copy-pasted comment:
 
@@ -393,7 +419,15 @@ Not a gate that cannot fail. **A gate nobody ever let start.**
 
 The instance: `scripts/smoke-debugger.mjs` checks for a runnable sdcc and a stc-compiler
 checkout and `exit 2`s by name when either is missing — correct, fail-closed behaviour. The
-workflow step swallows exit 2 as a warning — also defensible on its own. Together they meant the
+workflow step swallows exit 2 as a warning — also defensible on its own.
+
+> **BOTH HALVES ARE GONE, 2026-09-03.** The sdcc prerequisite was for a tool the script never
+> calls (measured: it exits 0 with sdcc absent from `PATH`), and is now checked at the point of
+> use inside the fallback. The workflow no longer swallows exit 2, CI checks out the stc-compiler
+> oracle, and the step runs on every push — its log carries `pc 0x180, cause breakpoint` and
+> `opcode lengths: 286 instructions from stc_disasm, 0 disagree`. `KNOWN_SWALLOWED` in
+> `gate-coverage` is consequently EMPTY. The paragraphs below are kept as the diagnosis that got
+> there; the seventeenth species records what the prerequisite turned out to be worth. Together they meant the
 assertions had never executed since the script was written, and behind that skip were three
 defects, one of them a product bug in the in-browser compiler's error path.
 
@@ -630,3 +664,84 @@ believed.
 
 That is the whole discipline in one paragraph, and it is cheap: **the only checks any of us
 caught today were the ones we deliberately tried to break.**
+---
+
+## Eighteenth species: ABSENCE CANNOT NAME ITS CAUSE (2026-09-04)
+
+An assertion that a collection is EMPTY cannot distinguish "nothing happened" from "nothing was
+watching" — and those are exactly the two states a breaking gate moves between.
+
+Named by bw-ci while auditing `verify-debug-frames-watch.mjs`, whose entire claim is that zero
+requests reach the hosted compiler. An interception that never fires produces the same zero as a
+correct one. Note the asymmetry that makes this worse than it sounds: a POSITIVE assertion fails
+visibly when its plumbing breaks — a 404, a timeout, a thrown error — while an ABSENCE assertion
+fails invisibly, as success.
+
+**The fix is a synthetic positive through the same path.** Before believing the empty list, drive
+one known-bad request that MUST be caught, assert it was, clear the record, and only then make the
+real claim. `.invalid` (RFC 2606) resolves nowhere, so a broken interception leaks no traffic — it
+simply fails to see the probe.
+
+The same disease cost this repository two findings the same day, both in lite's corpus
+differential. Its recorder built its pin map only from `stc.pins`, so `08-led-chaser-595` — whose
+hardware is entirely a `PART` — recorded ZERO events against the referee's 50, and the differential
+read that as the emitter emitting nothing. Fixing that surfaced the sharper one: the recorder does
+not produce device-model events at all, and `compareTraces` reads `actual.devices ?? []`, so "not
+recorded" and "recorded, none occurred" arrive as the same empty array. A dimension nobody measured
+was being reported as disagreement.
+
+**Whenever a gate concludes from an empty collection, ask what else produces that empty
+collection.**
+
+## Nineteenth species: WHERE CODE LIVES IS NOT WHETHER IT RUNS (2026-09-04)
+
+bw-ci's phrasing, and it is the whole species: *a gate that asserts where code LIVES says nothing
+about whether it RUNS or what it FETCHES.*
+
+`verify-labwired-lazy-bundle.mjs` asserts the heavy engine's loader stays out of the entry bundle.
+That was true throughout. Meanwhile `isLabwiredAvailable()` was
+`(await loadLabwired()) !== null` — downloading and instantiating a 20 MB engine to answer a yes/no
+question, at debug-panel mount, on every first load. Its docstring called it a "cheap availability
+probe". Measured on the DEPLOYED site: 8.49 MB over 27 requests, first paint 5.5–9.7 s.
+
+No static analysis of loader position could see it. Only a live network measurement could.
+
+The species has a second instance one layer down, recorded as D-FIRSTLOAD1: `extension-manager.js`
+registers builtins as `() => require('…')`, which LOOKS like deferral and is not — webpack resolves
+`require` at build time, so 26 gallery extension bodies sit in the first-paint chunk regardless.
+Same gate shape, same blind spot, same instrument required to see it.
+
+**When a gate pins a location, ask separately what executes and what it pulls.**
+
+## Twentieth species: A CHECK REPORTING ON THE ENVIRONMENT IT RAN IN (2026-09-04)
+
+lego-47's framing, and it unifies much of this file.
+
+They ran bw-board's full suite before approving a push to master — uncapped, real exit code, no
+pipe, deliberately careful because they did not want to accept someone else's number. It returned
+3773 tests, 3727 pass, **0 fail**. It returned that *on that box*, because that box happened to
+have a git WORKTREE the test resolved a fixture through:
+
+    const galleryDir = join(here, '..', '..', 'wt', 'i8086-ui-cui', 'gallery');
+
+`/mnt/volume1/code/wt/i8086-ui-cui/gallery`, on the unmerged branch `feat/i8086-ui`, with the
+fixtures tracked nowhere in bw-board. CI can never have it. master went red and stayed red.
+
+This is not "a sibling worktree instead of a sibling repo". It is **a check reporting on the
+environment it ran in rather than the one it will run in**, and its siblings all appeared within
+the same fortnight: a sparse checkout hiding tests, a pipe hiding an exit code, a manifest listing
+26 of 94 files, node 20 standing in for CI's node 22, an unpinned sibling engine revision producing
+bench-vs-catalogue mismatches. Note that `ci.yml` in that repo already argues the general case, for
+`emu8051-stc`: it checks the sibling out INSIDE the workspace because "Actions refuses a path
+outside the workspace", and records that fifteen cross-repo tests once skipped silently for weeks.
+The rule was written; the next test walked around it.
+
+**Running the suite is not verification if the suite can read the box.** Ask what the check touched
+outside the repository.
+
+### The diagnostic tell, which generalises
+
+When a GREEN case and its RED mutation case fail **together**, the fixture is missing — a real
+regression moves only one of them. That distinguished "the file is not there" from "the behaviour
+changed" on bw-board without running anything, and it applies to any gate that pins both a
+positive and its mutation.
