@@ -326,6 +326,10 @@ const PROGRAMS = {
         // An 8255 input port with nothing driving it reads all ones.
         `DEVICE i8086\nPORT sw = P2 INPUT\nWHEN flag clicked:\n  say (read sw)\n`,
         ['255']],
+    stc12_setpwm: [
+        `DEVICE i8086\nPIN led = P1.0 PWM\nWHEN flag clicked:\n  set led to 50 percent\n`
+            + `  print "pwm"\n  stop all\n`,
+        ['pwm']],
     event_whenkeypressed: [
         // The hat never fires -- nothing is typed -- while the flag script
         // prints and stops everything. That is what lets a key-hat program

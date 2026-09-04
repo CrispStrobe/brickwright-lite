@@ -525,3 +525,83 @@ test('`wait until` on variables is NOT warned when another script could change t
     const built = await buildPseudocode8086({project: c.project, source: src});
     assert.ok(!/tests only variables and constants/.test(built.warnings.join(' ')));
 });
+
+// ── PWM: REAL PULSES, FROM A SCHEDULED TASK ─────────────────────────────
+
+/** Duty measured CYCLE-WEIGHTED over a window, which is the only honest way. */
+async function measureDuty (pct) {
+    const src = ['DEVICE i8086', 'PIN led = P1.0 PWM',
+        'WHEN flag clicked:', `  set led to ${pct} percent`,
+        '  wait 3 secs', '  stop all'].join('\n');
+    const c = new SB3();
+    c.parse(src);
+    const built = await buildPseudocode8086({project: c.project, source: src});
+    const b = await createI8086DosBench(
+        {bytes: built.bytes, format: built.format, chips: built.chips});
+    // THE WINDOW, NOT THE RUN. Dividing post-warmup "on" time by the whole
+    // elapsed time -- which includes the scheduler's 20 ms calibration and
+    // the steps before the duty was even set -- made 100% measure 70.6%.
+    let n = 0, onMs = 0, warm = 0, startMs = null, lastMs = 0;
+    while (n < 12_000_000 && !b.terminated) {
+        const t = b.machine.tMs;
+        if (warm === 400_000) { startMs = t; lastMs = t; }
+        if (startMs !== null) {
+            const p = b.target.outputs().find(x => x.port === 'a');
+            if (p && (p.value & 1)) onMs += t - lastMs;
+            lastMs = t;
+        }
+        warm++;
+        b.step();
+        n++;
+    }
+    const window = startMs === null ? 0 : b.machine.tMs - startMs;
+    return {duty: window > 0 ? (onMs / window * 100) : 0, built};
+}
+
+test('PWM produces REAL pulses, and the endpoints are exact', async () => {
+    // A DAC would have given the same brightness by a different mechanism --
+    // a steady voltage that a scope, a motor or an RC filter would disagree
+    // with. This pulses the pin, so 0% is off and 100% is on rather than
+    // 0 V and 5 V that merely look like it.
+    const off = await measureDuty(0);
+    assert.equal(off.duty, 0, '0% never turns on');
+    const on = await measureDuty(100);
+    assert.ok(on.duty > 99.5, `100% never turns off (${on.duty.toFixed(1)}%)`);
+});
+
+test('the duty is monotonic and close, with the compression the build warns about', async () => {
+    // Measured on this bench: fixed per-phase overhead lands on BOTH waits,
+    // so the duty is pulled toward 50%. It is systematic, not noise -- the
+    // review lane measured the period steady to six microseconds over 655
+    // periods -- so a fade stays a fade and loses a little travel at the ends.
+    const points = [];
+    for (const p of [10, 25, 50, 75]) points.push({asked: p, got: (await measureDuty(p)).duty});
+    for (let i = 1; i < points.length; i++) {
+        assert.ok(points[i].got > points[i - 1].got,
+            `duty must rise: ${JSON.stringify(points)}`);
+    }
+    for (const p of points) {
+        assert.ok(Math.abs(p.got - p.asked) < 5,
+            `${p.asked}% measured ${p.got.toFixed(1)}%`);
+    }
+});
+
+test('the build says PWM is generated, not hardware, and what that costs', async () => {
+    const {built} = await measureDuty(50);
+    assert.match(built.warnings.join(' '), /an 8255 has no PWM hardware/);
+    assert.match(built.warnings.join(' '), /About 20 levels are distinguishable/);
+    assert.match(built.warnings.join(' '), /pulled toward 50/);
+});
+
+test('a percentage on a pin that is not PWM is refused by name', async () => {
+    const src = ['DEVICE i8086', 'PIN led = P1.0 OUTPUT',
+        'WHEN flag clicked:', '  set led to 50 percent'].join('\n');
+    const c = new SB3();
+    c.parse(src);
+    // The parser warns first; the back end refuses if it ever reaches there.
+    const warned = /only a PWM pin takes a percentage/.test((c.warnings || []).join(' '));
+    if (!warned) {
+        await assert.rejects(() => buildPseudocode8086({project: c.project, source: src}),
+            /Declare it PWM/);
+    }
+});

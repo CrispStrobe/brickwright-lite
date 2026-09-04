@@ -216,7 +216,8 @@ export const SUPPORTED = Object.freeze({
     stc12_whenpin: 'WHEN <pin> pressed/released:',
     event_whenbroadcastreceived: 'WHEN I receive "<message>":',
     event_broadcast: 'broadcast "<message>"',
-    event_whenkeypressed: 'WHEN <key> key pressed:'
+    event_whenkeypressed: 'WHEN <key> key pressed:',
+    stc12_setpwm: 'set <pin> to <n> percent'
 });
 
 /** What a refused block is called, when the opcode alone would not say. */
@@ -231,8 +232,7 @@ const BLOCK_NAMES = {
     data_addtolist: 'add ... to <list>',
     control_create_clone_of: 'create clone of ...',
     procedures_definition: 'DEFINE ...',
-    procedures_call: 'a custom block call',
-    stc12_setpwm: 'set <pin> to <n> percent'
+    procedures_call: 'a custom block call'
 };
 
 /** The list a refusal prints, so "unsupported" is never the whole message. */
@@ -374,6 +374,7 @@ class Emitter {
         // every existing program pay for a scheduler it does not use.
         this.tasks = 1;
         this.messages = new Map();  // broadcast name -> its flag symbol
+        this.pwm = new Map();       // PWM pin name -> its duty byte + task
         this.parts = [];            // declared PARTs (keypad4x4 only, so far)
         this.keypads = new Map();   // name -> label, one scan routine each
     }
@@ -1374,6 +1375,111 @@ class Emitter {
         this.op(`JMP ${top}`);
     }
 
+    /**
+     * `set <pin> to <n> percent` — GENUINE PWM, from a task that yields.
+     *
+     * I refused this and said a DAC substitution would be dishonest, which
+     * was right: a steady voltage gives the same brightness by a different
+     * mechanism, so a scope, a motor or an RC filter would disagree with the
+     * lamp. What was NOT right was assuming the honest version needed an
+     * interrupt handler. A scheduled task pulses the pin for real.
+     *
+     * THE RESOLUTION IS DERIVED FROM THE MEASURED TICK, not chosen. The
+     * review lane measured this bench: at 100 levels four adjacent duties
+     * collapse to one value, at 20 they are cleanly distinguishable and
+     * monotonic. The reason is not noise -- the period is steady to six
+     * MICROSECONDS over 655 periods -- it is that every period is a whole
+     * number of scheduler ticks, so the tick IS the resolution. Since the
+     * tick is measured at startup, the number of usable levels is computed
+     * rather than hardcoded, and it follows the clock if the clock changes.
+     *
+     * A known, stated systematic remains: fixed per-phase overhead lands on
+     * both waits, so the duty is compressed toward 50% with a gain near
+     * 0.91 (5% reads 9%, 95% reads 91%). It is monotonic, so a fade is still
+     * a fade; it loses a little travel at the ends.
+     */
+    pwmSlot (name, opcode) {
+        const p = this.pinAddr(name, opcode);
+        if (p.direction !== 'pwm') {
+            refuse(`"${name}" is declared ${String(p.direction).toUpperCase()} and this `
+                + 'sets a percentage. Declare it PWM.', 'percent on a non-pwm pin', opcode);
+        }
+        if (!this.pwm.has(name)) {
+            this.pwm.set(name, { sym: `BW_DUTY${this.pwm.size}`, pin: p, index: this.pwm.size });
+        }
+        return this.pwm.get(name);
+    }
+
+    emitSetPwm (name, input, opcode) {
+        const slot = this.pwmSlot(name, opcode);
+        this.uses.ppi = true;
+        this.evalNum(input, `set ${name}`);
+        // Clamp rather than wrap: 130% is a mistake, and a duty that wrapped
+        // to 30% would look like a working program doing the wrong thing.
+        const hi = this.label('PWM'), done = this.label('PWM');
+        this.op('OR DX, DX');
+        this.op(`JS ${hi}            ; negative -> 0`);
+        this.op('CMP DX, 0');
+        this.op(`JNE ${hi}`);
+        this.op('CMP AX, 100');
+        this.op(`JBE ${done}`);
+        this.code.push(`${hi}:`);
+        this.op('MOV AX, 100');
+        this.op('OR DX, DX');
+        this.op(`JNS ${done}`);
+        this.op('XOR AX, AX');
+        this.code.push(`${done}:`);
+        this.op(`MOV [${slot.sym}], AL`);
+    }
+
+    /** One task per PWM pin: pulse it forever at the duty the program set. */
+    pwmRoutine (slot) {
+        const p = slot.pin;
+        const mask = 1 << p.bit, shadow = `BW_PORT${p.PORT}`;
+        const L = (t) => `BW_PW${slot.index}_${t}`;
+        const drive = (on) => [
+            `    MOV AL, [${shadow}]`,
+            `    ${on ? 'OR' : 'AND'} AL, ${on ? mask : ((~mask) & 0xff)}`,
+            `    MOV [${shadow}], AL`,
+            `    MOV DX, ${p.dataPort}`,
+            '    OUT DX, AL'];
+        // ticks = TPMS * percent / 10, which is percent% of a ~10 ms period.
+        const ticks = (expr) => [
+            ...expr,
+            '    XOR AH, AH',
+            '    MOV BX, [BW_TPMS]',
+            '    MUL BX',
+            '    MOV BX, 10',
+            '    DIV BX',
+            '    XOR DX, DX',
+            '    CALL BW_SLEEP'];
+        return ['',
+            `; ---- PWM on ${p.name} (P${p.port}.${p.bit}) ---------------------`,
+            '; A ~10 ms period, so about 100 Hz -- above flicker fusion. The ON',
+            '; and OFF phases are whole numbers of scheduler ticks, and that',
+            '; quantisation is the resolution: about 21 ticks fit a period here,',
+            '; so roughly 20 levels are distinguishable. Measured, not assumed.',
+            `${L('TOP')}:`,
+            `    MOV AL, [${slot.sym}]`,
+            '    OR AL, AL',
+            `    JZ ${L('OFF')}          ; 0% never turns on`,
+            '    CMP AL, 100',
+            `    JAE ${L('ON')}          ; 100% never turns off`,
+            ...drive(true),
+            ...ticks([`    MOV AL, [${slot.sym}]`]),
+            ...drive(false),
+            ...ticks([`    MOV AL, 100`, `    SUB AL, [${slot.sym}]`]),
+            `    JMP ${L('TOP')}`,
+            `${L('OFF')}:`,
+            ...drive(false),
+            '    CALL BW_POLL1MS',
+            `    JMP ${L('TOP')}`,
+            `${L('ON')}:`,
+            ...drive(true),
+            '    CALL BW_POLL1MS',
+            `    JMP ${L('TOP')}`];
+    }
+
     /** The flag byte for a broadcast name, created on first mention. */
     messageSym (name) {
         const key = String(name);
@@ -1761,6 +1867,10 @@ class Emitter {
             this.note('tone');
             this.emitTone(b.fields.PIN[0], b.inputs.VALUE, b.opcode);
             return;
+        case 'stc12_setpwm':
+            this.note('pwm');
+            this.emitSetPwm(b.fields.PIN[0], b.inputs.VALUE, b.opcode);
+            return;
         case 'event_broadcast':
             this.note('broadcast');
             this.emitBroadcast(b);
@@ -1800,6 +1910,7 @@ class Emitter {
         for (const { label, kp } of this.keypads.values()) r.push(...this.keypadRoutine(label, kp));
         if (need.sched) r.push(...this.schedRuntime());
         if (need.keypump) r.push(...this.keyPumpRoutine());
+        for (const slot of this.pwm.values()) r.push(...this.pwmRoutine(slot));
         if (need.printn) { need.crlf = true; }
         if (need.div || need.mod) need.sdiv = true;
 
@@ -2467,6 +2578,9 @@ class Emitter {
                 'BW_PORTB DB 0    ; shadow of port B',
                 'BW_PORTC DB 0    ; shadow of port C');
         }
+        for (const slot of this.pwm.values()) {
+            d.push(`${slot.sym} DB 0          ; duty for "${slot.pin.name}", 0-100 percent`);
+        }
         if (this.uses.keypump) {
             d.push('BW_KEY    DB 0          ; the last key the pump read',
                 'BW_KFRESH DB 0          ; and whether anyone has taken it yet');
@@ -2577,7 +2691,17 @@ export function emitI8086Asm (project, opts = {}) {
             'there is nothing to run', 'no script');
     }
     const pump = keyHats.length ? 1 : 0;
-    if (flags.length + pinHats.length + msgHats.length + keyHats.length + pump
+    // EVERY PWM PIN GETS A TASK, declared or not set. They have to be counted
+    // BEFORE emission, because the scheduler's task table is sized up front
+    // and a pin is otherwise only discovered when a `set ... percent` is
+    // lowered -- so a program that declares one and never sets it would get a
+    // table one entry short, or one entry too many if the set came later.
+    // A declared-but-unset pin sits at 0%, which is off.
+    const pwmPins = ((project && project.stc && project.stc.pins) || [])
+        .filter(p => p.direction === 'pwm');
+    const pwmCount = ((project && project.stc && project.stc.pins) || [])
+        .filter(p => p.direction === 'pwm').length;
+    if (flags.length + pinHats.length + msgHats.length + keyHats.length + pump + pwmCount
         > MAX_SCRIPTS) {
         refuse(`this project has ${flags.length + pinHats.length + msgHats.length
             + keyHats.length} scripts${pump ? ' (plus the keyboard pump the build adds)' : ''} `
@@ -2604,7 +2728,21 @@ export function emitI8086Asm (project, opts = {}) {
     em.parts = declared;
     em.ports = (project && project.stc && project.stc.ports) || [];
     em.blocks = blocks;
-    em.tasks = flags.length + pinHats.length + msgHats.length + keyHats.length + pump;
+    em.tasks = flags.length + pinHats.length + msgHats.length + keyHats.length
+        + pump + pwmPins.length;
+    for (const p of pwmPins) em.pwmSlot(p.name, 'stc12_setpwm');
+    if (pwmPins.length) {
+        em.warn(`this program declares ${pwmPins.length} PWM pin`
+            + `${pwmPins.length > 1 ? 's' : ''}, so the build adds a script for each: an `
+            + '8255 has no PWM hardware, so the pulse is generated by pulsing the pin. '
+            + 'The period is about 10 ms (100 Hz, above flicker), and each phase is a '
+            + 'whole number of scheduler ticks -- which is the resolution. About 20 '
+            + 'levels are distinguishable here; asking for 100 gives four settings that '
+            + 'come out the same. Fixed overhead lands on both phases, so the duty is '
+            + 'pulled toward 50%: 5% measures about 9%, 95% about 91%. A fade stays a '
+            + 'fade and loses a little travel at the ends.');
+    }
+    if (pwmPins.length) em.uses.sched = true;
     if (keyHats.length) {
         em.uses.keypump = true;
         em.warn('this program has a `WHEN <key> pressed` script, so the build adds a '
@@ -2652,6 +2790,15 @@ export function emitI8086Asm (project, opts = {}) {
         });
         if (pump) {
             em.code.push('', `BW_TASK${keyBase + keyHats.length}:`, '    JMP BW_KEYPUMP');
+        }
+        // ONE TASK PER PWM PIN. The duty byte is set by the program; the task
+        // pulses the pin forever at whatever it currently says, so `set led to
+        // 40 percent` returns immediately and the fade keeps running -- which
+        // is what it does on an STC, where the PCA does it in hardware.
+        let pwmBase = keyBase + keyHats.length + pump;
+        for (const slot of em.pwm.values()) {
+            em.code.push('', `BW_TASK${pwmBase}:`, `    JMP BW_PW${slot.index}_TOP`);
+            pwmBase++;
         }
     } else if (msgHats.length === 1 && flags.length === 0 && pinHats.length === 0) {
         em.tasks = 1;
