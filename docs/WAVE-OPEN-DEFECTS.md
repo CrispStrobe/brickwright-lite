@@ -980,8 +980,11 @@ unlowered-operation cause rather than a horizon edge.
 The other seven are serial, and three independent facts point the same way:
 
 - every one of the seven is **nano-only**;
-- the same examples **AGREE on pico** (`arduino-01-read-analog-voltage`, `arduino-05-if-statement`,
-  `arduino-04-serial-passthrough`, `arduino-sk-p14-serial-pot` all pass there);
+- the same examples **AGREE on pico — all seven of them**, checked pair by pair rather than
+  sampled: `arduino-01-read-analog-voltage`, `arduino-04-serial-call-response`,
+  `arduino-04-serial-passthrough`, `arduino-05-if-statement`, `arduino-07-row-column-scanning`,
+  `arduino-sk-p03-love-o-meter`, `arduino-sk-p14-serial-pot`. Seven DIFF on nano, seven AGREE on
+  pico, no exceptions in either direction;
 - nano is the device with a BLOCKING UART — `serialMsPerByte: 1.05` at 9600 baud — while pico's
   16-deep FIFO is `0`.
 
