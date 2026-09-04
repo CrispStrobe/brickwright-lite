@@ -13,7 +13,7 @@
 
 import {readFile, writeFile, mkdir, readdir} from 'node:fs/promises';
 import { guardSource } from './lib-source-guard.mjs';
-import { resolveRef, recordPin, localSha } from './lib-pin.mjs';
+import { resolveRef, recordPin, localSha, listTree } from './lib-pin.mjs';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 
@@ -71,7 +71,7 @@ const listSrc = async () => {
     return out.sort();
 };
 
-const FILES = srcDir ? await listSrc() : FALLBACK;
+
 
 // Remote mode fetches BY RESOLVED SHA, never by branch name: the raw
 // CDN caches branch URLs for minutes, and a sync run right after a push
@@ -87,6 +87,48 @@ const FILES = srcDir ? await listSrc() : FALLBACK;
 let remoteSha = null;
 if (!srcDir) remoteSha = (await resolveRef(REPO, REF)).sha;
 const RAW = `https://raw.githubusercontent.com/${REPO}/${remoteSha}`;
+
+/**
+ * THE FILE LIST IS NOW ASKED FOR, NOT REMEMBERED.
+ *
+ * `FALLBACK` had 26 entries. 120 .js files were vendored. The 94 it did not
+ * name -- the whole 8086 tier: i8086-*.js, i8254.js, i8237.js, i8251.js,
+ * adc0809.js -- were never fetched in remote mode and never compared in
+ * `--check`, which still printed "vendored engine up to date". A hand list
+ * does not fail when it falls behind; it succeeds about less.
+ *
+ * So remote mode lists the tree at the RESOLVED SHA (never a branch name --
+ * same reason the raw URLs are sha-addressed) and applies exactly the rules
+ * `listSrc()` applies locally: files under `src/`, at most one directory deep,
+ * `.js`, minus EXCLUDE. The two modes cannot now disagree about what "the
+ * engine" is.
+ *
+ * FALLBACK IS GONE RATHER THAN KEPT AS A SAFETY NET. A net that catches a
+ * failed listing by vendoring 26 of 120 files is not a safety net -- it is the
+ * original defect, reached by a different route and harder to notice because
+ * it only happens when something else has already gone wrong.
+ */
+const listRemote = async () => (await listTree(REPO, remoteSha).catch((e) => {
+    // 403/429 here is the api.github.com limit: 60 requests/hour PER IP when
+    // unauthenticated, shared with everything else on this address. It is a
+    // FAILED SYNC and says so, rather than falling back to a short list --
+    // that fallback was the defect this replaces, and reaching it only under
+    // rate-limiting would make it appear exactly when nobody is watching.
+    if (e.status === 403 || e.status === 429) {
+        throw new Error(`GitHub API refused the tree listing (HTTP ${e.status}) — this is the `
+            + 'unauthenticated 60-per-hour limit, not a missing repo. Set GITHUB_TOKEN or GH_TOKEN '
+            + 'and re-run, or sync from a checkout with --dir <bw-board>. Refusing to vendor a '
+            + 'partial file list.');
+    }
+    throw e;
+}))
+    .filter((p) => p.startsWith('src/') && p.endsWith('.js'))
+    .filter((p) => p.split('/').length <= 3)          // src/x.js or src/dir/x.js
+    .filter((p) => !EXCLUDE.has(path.basename(p)))
+    .sort();
+
+const FILES = srcDir ? await listSrc() : await listRemote();
+if (!FILES.length) throw new Error('empty file list — refusing to "sync" nothing');
 
 // cortex-m0-machine.js deep-imports rp2040js's core BY FILE PATH
 // ('../node_modules/rp2040js/dist/esm/cortex-m0-core.js') because the
@@ -132,7 +174,7 @@ for (const rel of FILES) {
     const current = await readFile(out, 'utf8').catch(() => null);
     if (current === next) { console.log(`  ok    ${path.basename(rel)}`); continue; }
     stale++;
-    if (check) console.log(`  STALE ${path.basename(rel)}`);
+    if (check) console.log(`  DIFFERS ${path.basename(rel)}`);
     else { await writeFile(out, next); console.log(`  wrote ${path.basename(rel)}`); }
 }
 
@@ -194,7 +236,33 @@ if (!check) {
 }
 
 if (check && stale && !allowStale) {
-    console.error(`\n${stale} stale — run: npm run sync:bwboard`);
+    // "STALE — run the sync" WAS THE WRONG SENTENCE, and once the file list
+    // covered the whole tree it became a dangerous one.
+    //
+    // This check compares vendored content against UPSTREAM content. A
+    // difference has two possible directions and the comparison cannot tell
+    // them apart: the vendored copy may be behind, or it may be AHEAD --
+    // carrying work forward-ported here before it reached bw-board's master.
+    // Measured 2026-09-04: all ten differences were the second kind. lite's
+    // `debug-target-factory.js` has six references to the 8086 and master's
+    // has none, because the tier lives on feature branches. Running the sync
+    // on that advice would have OVERWRITTEN the newer files with older ones
+    // and silently undone the integration.
+    //
+    // So it reports a direction-free fact and names both readings. The
+    // remedy depends on which one is true, and only a human knows that.
+    // NAME THE ACTUAL SOURCE. In --dir mode there is no remoteSha, and falling
+    // back to `${REPO}@master` printed a provenance the run never consulted --
+    // the same species of wrong sentence as the one this file already
+    // apologises for two comments down.
+    const src = srcDir ? `the checkout at ${srcDir}` : `${REPO}@${(remoteSha || '').slice(0, 7)}`;
+    console.error(`\n${stale} file(s) DIFFER from ${src}.`);
+    console.error('  This does NOT mean they are stale. A difference can mean the vendored');
+    console.error('  copy is BEHIND upstream, or AHEAD of it (forward-ported work that has');
+    console.error('  not reached upstream yet) -- and this comparison cannot tell which.');
+    console.error('  `npm run sync:bwboard` OVERWRITES the vendored copy with upstream, so');
+    console.error('  it is the wrong move for anything that is ahead. Check the direction');
+    console.error('  first; --allow-stale accepts the differences and exits 0.');
     process.exit(1);
 }
 
@@ -215,13 +283,22 @@ const sourceSha = srcDir ? await localSha(srcDir) : remoteSha;
 // A check reports on the files it FOUND, never on the files that exist. So it
 // says which, and a `--dir` sync (which globs the real tree) is the only mode
 // entitled to the unqualified sentence.
-const vendored = (await readdir(dest)).filter((f) => f.endsWith('.js')).length;
-const covered = FILES.length;
-const uncovered = Math.max(0, vendored - covered);
-const coverage = uncovered
-    ? ` -- but only ${covered} of ${vendored} vendored files are in this manifest;`
-      + ` ${uncovered} were NOT checked (run with --dir <bw-board checkout> to cover every file)`
+// FILES NOW COMES FROM THE TREE, so "did the manifest cover everything?" is
+// answered the other way round: what is vendored here that upstream does not
+// have? Those files are UNMANAGED -- no sync will update them and no check
+// will compare them -- and they are invisible unless counted.
+//
+// They are not necessarily wrong. Right now they are the forward-ported 8086
+// tier, deliberately here ahead of bw-board's master. But "deliberate" and
+// "unwatched" are different things, and the second is what this prints.
+const managed = new Set(FILES.map((f) => f.replace(/^src\//, '')));
+const unmanaged = (await vendoredFiles())
+    .filter((f) => f.endsWith('.js') && !managed.has(f));
+const coverage = unmanaged.length
+    ? `\n  ${unmanaged.length} vendored file(s) are NOT in ${srcDir ? srcDir : `${REPO}@${(remoteSha || '').slice(0, 7)}`}`
+      + ` and so are neither synced nor checked:\n    ${unmanaged.sort().join('\n    ')}`
     : '';
+const covered = FILES.length;
 
 console.log(check ? (stale ? `\n${stale} intentional downstream file delta(s) allowed.` : `\n${covered} vendored files up to date${coverage}.`)
     : `\nsynced from ${REPO}@${sourceSha}${srcDir ? ` (local checkout ${srcDir})` : ` (resolved from ${REF})`}.`
