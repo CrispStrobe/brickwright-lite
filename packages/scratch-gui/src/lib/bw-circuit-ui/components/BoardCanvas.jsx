@@ -27,6 +27,7 @@ import { DrcOverlay } from './DrcOverlay.jsx';
 import { useTouch } from '../hooks/useTouch.js';
 import { WokwiLed, WokwiResistor, WokwiBuzzer, WokwiPushbutton, WokwiPotentiometer, WokwiSevenSegment, WokwiLcd1602, WokwiIrReceiver } from '../wokwi-wrappers/index.js';
 import { partLabel } from '../model/format.js';
+import ExportNetlistMenu from './ExportNetlistMenu.jsx';
 
 // DIP chip kinds that get a generic IC body renderer (not a custom SVG).
 // These are discrete retro/logic ICs placed on breadboards — without a
@@ -188,6 +189,8 @@ function terminalOffsetsForPart(part) {
     case 'joystick': return { vcc: r(-20, 30), gnd: r(-10, 30), vrx: r(0, 30), vry: r(10, 30), sw: r(20, 30) };
     case 'slider': return { a: r(-20, 15), wiper: r(0, 15), b: r(20, 15) };
     case 'gauge': return { signal: r(0, 25), vcc: r(-15, 25), gnd: r(15, 25) };
+    case 'mono_lcd': return { vcc: r(-15, 40), gnd: r(15, 40) };
+    case 'rgb_light': return { vcc: r(-10, 15), gnd: r(10, 15) };
     case 'keypad': return {
       r1: r(-21, 35), r2: r(-15, 35), r3: r(-9, 35), r4: r(-3, 35),
       c1: r(3, 35), c2: r(9, 35), c3: r(15, 35), c4: r(21, 35),
@@ -295,7 +298,7 @@ function fmtV(v) {
 // Standard 4×4 keypad key labels, row-major (key 0 = '1', key 15 = 'D').
 const KEYPAD_LABELS = ['1','2','3','A','4','5','6','B','7','8','9','C','*','0','#','D'];
 
-function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates, simulate, onKeypadKey, onSetPartParam }) {
+function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceStates, simulate, onKeypadKey, onSetPartParam, videoFn }) {
   return parts.map(part => {
     const { id, kind, x, y } = part;
     const seatRot = part.seat?.rot ? part.seat.rot * 90 : 0;
@@ -1100,6 +1103,98 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
         );
       }
 
+      // ── Graphical mono LCD (EV3 178×128, NXT 100×64) ─────────────
+      // Parametric W×H monochrome pixel buffer. The fb is a 1bpp packed
+      // row-major buffer (byte 0 bit 7 = pixel (0,0)). Reads from
+      // part.params.fb (set via setPartParam from the pump) or
+      // deviceStates for engine-driven displays.
+      case 'mono_lcd': {
+        const ds = deviceStates?.get(id);
+        const FW = part.params?.width ?? ds?.width ?? 178;
+        const FH = part.params?.height ?? ds?.height ?? 128;
+        const fb = ds?.fb ?? part.params?.fb;
+        const displayOn = ds?.displayOn !== false && part.params?.displayOn !== false;
+        // Scale the native resolution into a compact SVG footprint.
+        // The rendered box is fixed at 60×40; the canvas stretches.
+        const boxW = 60, boxH = 40;
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            {/* Case body */}
+            <rect x={-boxW/2 - 3} y={-boxH/2 - 3} width={boxW + 6} height={boxH + 16} rx={3}
+              fill="#2c3e50" stroke={selStroke || '#95a5a6'} strokeWidth={isSelected ? 3 : 1.5} />
+            {/* Screen bezel */}
+            <rect x={-boxW/2} y={-boxH/2} width={boxW} height={boxH} rx={1}
+              fill={displayOn ? '#a8b8a0' : '#666'} stroke="#555" strokeWidth={0.5} />
+            {displayOn && fb && fb.length >= Math.ceil(FW * FH / 8) && (
+              <foreignObject x={-boxW/2} y={-boxH/2} width={boxW} height={boxH}>
+                <canvas
+                  ref={el => {
+                    if (!el) return;
+                    const rgba = new Uint8ClampedArray(FW * FH * 4);
+                    const stride = Math.ceil(FW / 8);
+                    for (let y = 0; y < FH; y++) {
+                      for (let x = 0; x < FW; x++) {
+                        const byteIdx = y * stride + (x >> 3);
+                        const bit = 7 - (x & 7); // MSB first
+                        const on = (fb[byteIdx] >> bit) & 1;
+                        const idx = (y * FW + x) * 4;
+                        // Mono LCD: dark green on light green-gray
+                        rgba[idx]     = on ? 0x20 : 0xa0;
+                        rgba[idx + 1] = on ? 0x30 : 0xb0;
+                        rgba[idx + 2] = on ? 0x10 : 0x90;
+                        rgba[idx + 3] = 255;
+                      }
+                    }
+                    if (el.width !== FW) el.width = FW;
+                    if (el.height !== FH) el.height = FH;
+                    el.style.width = `${boxW}px`;
+                    el.style.height = `${boxH}px`;
+                    el.style.imageRendering = 'pixelated';
+                    el.getContext('2d').putImageData(new ImageData(rgba, FW, FH), 0, 0);
+                  }}
+                  style={{ width: boxW, height: boxH, imageRendering: 'pixelated' }}
+                />
+              </foreignObject>
+            )}
+            {!displayOn && (
+              <text x={0} y={2} textAnchor="middle" fill="#444" fontSize={6}
+                fontFamily="monospace">OFF</text>
+            )}
+            {/* Resolution label */}
+            <text x={0} y={boxH/2 + 4} textAnchor="middle" fill="#7f8c8d" fontSize={5}
+              fontFamily="monospace">{FW}×{FH}</text>
+            <text x={0} y={boxH/2 + 12} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
+
+      // ── RGB status light (WeDo 2 / Boost single-colour indicator) ──
+      case 'rgb_light': {
+        const ds = deviceStates?.get(id);
+        const r0 = ds?.r ?? part.params?.r ?? 0;
+        const g0 = ds?.g ?? part.params?.g ?? 0;
+        const b0 = ds?.b ?? part.params?.b ?? 0;
+        const on = r0 > 0 || g0 > 0 || b0 > 0;
+        const fill = on ? `rgb(${r0},${g0},${b0})` : '#222';
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            {/* Diffuser body */}
+            <circle cx={0} cy={0} r={12}
+              fill="#1a1a2e" stroke={selStroke || '#555'} strokeWidth={isSelected ? 3 : 1.5} />
+            {/* Lit area */}
+            <circle cx={0} cy={0} r={9} fill={fill} />
+            {on && (
+              <circle cx={0} cy={0} r={9} fill="white" opacity={0.15} />
+            )}
+            {/* Highlight */}
+            <circle cx={-2} cy={-2} r={3} fill="white" opacity={on ? 0.25 : 0.05} />
+            <text x={0} y={20} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
+
       // ── LEDBANK8: 8 discrete LEDs with graded brightness ──────────
       case 'ledbank8': {
         const ds = deviceStates?.get(id);
@@ -1135,6 +1230,53 @@ function SvgParts({ parts, selectedParts, onSelectPart, onPartBodyClick, deviceS
                 fill={color} />;
             })}
             <text x={0} y={H / 2 + 10} textAnchor="middle" fill="#7f8c8d" fontSize={7}
+              fontFamily="monospace">{part.declName || id}</text>
+          </g>
+        );
+      }
+
+      // ── SimpleVGA / TMS9918 video thumbnail ───────────────────────
+      // Machine-class video peripherals expose a videoFn callback (via
+      // debugState.video). If available, render a compact live thumbnail
+      // on the chip body so the display content is visible on the board.
+      case 'simplevga_card':
+      case 'tms9918': {
+        // Fall through to default DIP body when no video available
+        if (typeof videoFn !== 'function') break;
+        const chipLabel = kind === 'tms9918' ? 'TMS9918' : 'SimpleVGA';
+        const vW = 48, vH = 36;
+        return (
+          <g key={id} transform={xform} onClick={handleClick} style={{ cursor: 'pointer' }}>
+            {/* DIP body */}
+            <rect x={-30} y={-25} width={60} height={50} rx={3}
+              fill="#1a1a2e" stroke={selStroke || '#6a5acd'} strokeWidth={isSelected ? 3 : 1.5} />
+            {/* Notch */}
+            <circle cx={-30} cy={-15} r={3} fill="#1a1a2e" stroke="#555" strokeWidth={0.5} />
+            {/* Video thumbnail */}
+            <foreignObject x={-vW / 2} y={-vH / 2 + 2} width={vW} height={vH}>
+              <canvas
+                ref={el => {
+                  if (!el) return;
+                  try {
+                    const f = videoFn();
+                    if (!f || !f.rgba) return;
+                    const W = f.width || 256, H = f.height || 192;
+                    if (el.width !== W) el.width = W;
+                    if (el.height !== H) el.height = H;
+                    el.style.width = `${vW}px`;
+                    el.style.height = `${vH}px`;
+                    el.style.imageRendering = 'pixelated';
+                    const ctx = el.getContext('2d');
+                    ctx.putImageData(new ImageData(new Uint8ClampedArray(f.rgba.buffer, f.rgba.byteOffset, f.rgba.byteLength), W, H), 0, 0);
+                  } catch { /* video not ready */ }
+                }}
+                style={{ width: vW, height: vH, imageRendering: 'pixelated' }}
+              />
+            </foreignObject>
+            {/* Chip label */}
+            <text x={0} y={-20} textAnchor="middle" fill="#888" fontSize={5}
+              fontFamily="monospace">{chipLabel}</text>
+            <text x={0} y={32} textAnchor="middle" fill="#7f8c8d" fontSize={7}
               fontFamily="monospace">{part.declName || id}</text>
           </g>
         );
@@ -2433,7 +2575,7 @@ export function BoardCanvas({
   statusText,
   placingProbe, onTerminalClickForProbe,
   onDuplicatePart, onRotatePart, onFlipPart, onDropPart, onUpdateParams, onSaveHistory, onCopy, onPaste, onUpdateWire, onNudgePart, onNudgeSeated, onUndo, onRedo, onSelectAll, warnings, annotations, cubeScans, activePartIds,
-  circuit, engineBoard, fitToken, sevenSegments, sevenSeg3,
+  circuit, engineBoard, videoFn, fitToken, sevenSegments, sevenSeg3,
   placing, onPlacingDone, onSeatPart, onUnseatPart, onAddHoleWire, onAddTapWire, simulate,
   onSaveCircuit, onLoadCircuit, onClearCircuit, onRewire,
   drcWarnings, panelNav, viewNav, rightOpen, theme = 'light', lang = 'en',
@@ -3528,6 +3670,7 @@ export function BoardCanvas({
             {toolbarCramped && viewNav ? <div data-circuit-control-group style={{display: 'flex', alignItems: 'center'}}>{viewNav}</div> : null}
             {toolbarCramped && (panelNav || viewNav) ? <span style={{width: 1, height: 24, background: '#334155', margin: '0 2px'}} /> : null}
             {onSaveCircuit && <button onClick={onSaveCircuit} title="Save wiring as file" aria-label="Save wiring as file" style={{width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #27ae60', borderRadius: 3, color: '#2ecc71', fontSize: 14, cursor: 'pointer'}}>💾</button>}
+            {circuit && <ExportNetlistMenu circuit={circuit} lang={lang} />}
             {onLoadCircuit && <button onClick={onLoadCircuit} title="Load wiring from file" aria-label="Load wiring from file" style={{width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #2980b9', borderRadius: 3, color: '#3498db', fontSize: 14, cursor: 'pointer'}}>📂</button>}
             {onClearCircuit && <button onClick={() => { onClearCircuit(); setToolbarMoreOpen(false); }} title={/^de/i.test(lang) ? 'Alles löschen' : 'Clear all'} aria-label={/^de/i.test(lang) ? 'Alles löschen' : 'Clear all'} style={{width: 34, minWidth: 34, height: 34, padding: 0, background: '#2c3e50', border: '1px solid #e74c3c', borderRadius: 3, color: '#e74c3c', fontSize: 14, cursor: 'pointer'}}>🗑</button>}
             <span data-zoom-indicator title="Canvas zoom" style={{height: 34, boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', color: '#e2e8f0', background: '#334155', border: '1px solid #64748b', borderRadius: 4, padding: '4px 7px', fontSize: 11, fontWeight: 700}}>{(zoom * 100).toFixed(0)}%</span>
@@ -3894,8 +4037,20 @@ export function BoardCanvas({
               if (!eb) return null;
               const m = new Map();
               for (const p of parts) {
-                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'ili9341_par' || p.kind === 'ili9341_parallel' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306' || p.kind === 'max7219' || p.kind === 'bargraph' || p.kind === 'keypad' || p.kind === 'sevenseg8' || p.kind === 'ledbank8' || p.kind === 'joystick' || p.kind === 'slider' || p.kind === 'gauge') {
-                  const ds = eb.getDeviceState(p.id);
+                if (p.kind === 'servo' || p.kind === 'ili9341' || p.kind === 'ili9341_par' || p.kind === 'ili9341_parallel' || p.kind === 'char_lcd' || p.kind === 'hd44780' || p.kind === 'char_lcd_i2c' || p.kind === 'matrix8x8' || p.kind === 'matrix16x8' || p.kind === 'matrix9x9' || p.kind === 'ssd1306' || p.kind === 'max7219' || p.kind === 'bargraph' || p.kind === 'keypad' || p.kind === 'sevenseg8' || p.kind === 'ledbank8' || p.kind === 'joystick' || p.kind === 'slider' || p.kind === 'gauge' || p.kind === 'mono_lcd' || p.kind === 'rgb_light') {
+                  let ds = eb.getDeviceState(p.id);
+                  // Bargraph: passive device exports no brightness — compute
+                  // from branch current across each anode/cathode pair.
+                  if (p.kind === 'bargraph' && eb.branchCurrent) {
+                    const brightness = new Float64Array(10);
+                    for (let i = 0; i < 10; i++) {
+                      try {
+                        const mA = Math.abs(eb.branchCurrent(p.id, `a${i}`)) * 1000;
+                        brightness[i] = Math.min(1, mA / 15); // 15 mA ≈ full brightness
+                      } catch { /* net missing */ }
+                    }
+                    ds = { ...(ds || {}), brightness };
+                  }
                   if (ds) m.set(p.id, ds);
                 }
               }
@@ -3903,7 +4058,8 @@ export function BoardCanvas({
             })()}
             simulate={!!simulate}
             onKeypadKey={onKeypadKey}
-            onSetPartParam={onSetPartParam} />
+            onSetPartParam={onSetPartParam}
+            videoFn={videoFn} />
 
           {/* ── WIRE LAYERS ── INSIDE the svg, painted after the substrate and
               the SvgParts chip bodies:

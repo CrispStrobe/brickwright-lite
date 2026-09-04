@@ -6231,6 +6231,39 @@
   }
  },
  {
+  "id": "70-calculator-simple",
+  "title": {
+   "en": "Pocket Calculator (simple)",
+   "de": "Taschenrechner (einfach)"
+  },
+  "category": "digital",
+  "difficulty": 3,
+  "files": {
+   "program": "70-calculator-simple/program.bw",
+   "circuit": "70-calculator-simple/circuit.json",
+   "expected": "70-calculator-simple/EXPECTED.md",
+   "intro": "70-calculator-simple/intro.md",
+   "introDE": "70-calculator-simple/intro.de.md"
+  },
+  "kind": "full",
+  "devices": [
+   "pico",
+   "stc12c5a60s2",
+   "stc89c52rc",
+   "stc15f2k60s2",
+   "arduino-mega",
+   "attiny88"
+  ],
+  "authored": "pico",
+  "benches": {
+   "arduino-mega": "70-calculator-simple/circuit.arduino-mega.json",
+   "attiny88": "70-calculator-simple/circuit.attiny88.json",
+   "stc12c5a60s2": "70-calculator-simple/circuit.stc12c5a60s2.json",
+   "stc15f2k60s2": "70-calculator-simple/circuit.stc15f2k60s2.json",
+   "stc89c52rc": "70-calculator-simple/circuit.stc89c52rc.json"
+  }
+ },
+ {
   "id": "72-pico-oled-hello",
   "title": {
    "en": "OLED on the Pico",
@@ -6576,15 +6609,13 @@
   "category": "digital",
   "difficulty": 3,
   "kind": "program",
-  "devices": [
-   "stc12c5a60s2"
-  ],
-  "authored": "stc12c5a60s2",
+  "deviceOnly": true,
   "files": {
    "program": "a2-faceplate-calculator/program.bw",
    "controller": "a2-faceplate-calculator/controller.json",
    "intro": "a2-faceplate-calculator/intro.md",
-   "introDE": "a2-faceplate-calculator/intro.de.md"
+   "introDE": "a2-faceplate-calculator/intro.de.md",
+   "expected": "a2-faceplate-calculator/EXPECTED.md"
   }
  },
  {
@@ -6596,15 +6627,13 @@
   "category": "digital",
   "difficulty": 3,
   "kind": "program",
-  "devices": [
-   "stc12c5a60s2"
-  ],
-  "authored": "stc12c5a60s2",
+  "deviceOnly": true,
   "files": {
    "program": "mb05-faceplate-calc/program.bw",
    "controller": "mb05-faceplate-calc/controller.json",
    "intro": "mb05-faceplate-calc/intro.md",
-   "introDE": "mb05-faceplate-calc/intro.de.md"
+   "introDE": "mb05-faceplate-calc/intro.de.md",
+   "expected": "mb05-faceplate-calc/EXPECTED.md"
   }
  },
  {
@@ -6616,15 +6645,13 @@
   "category": "digital",
   "difficulty": 2,
   "kind": "program",
-  "devices": [
-   "attiny88"
-  ],
-  "authored": "attiny88",
+  "deviceOnly": true,
   "files": {
    "program": "blinkenrocket-animation/program.bw",
    "controller": "blinkenrocket-animation/controller.json",
    "intro": "blinkenrocket-animation/intro.md",
-   "introDE": "blinkenrocket-animation/intro.de.md"
+   "introDE": "blinkenrocket-animation/intro.de.md",
+   "expected": "blinkenrocket-animation/EXPECTED.md"
   }
  },
  {
@@ -6636,15 +6663,31 @@
   "category": "digital",
   "difficulty": 2,
   "kind": "program",
-  "devices": [
-   "stc12c5a60s2"
-  ],
-  "authored": "stc12c5a60s2",
+  "deviceOnly": true,
   "files": {
    "program": "retro-console/program.bw",
    "controller": "retro-console/controller.json",
    "intro": "retro-console/intro.md",
-   "introDE": "retro-console/intro.de.md"
+   "introDE": "retro-console/intro.de.md",
+   "expected": "retro-console/EXPECTED.md"
+  }
+ },
+ {
+  "id": "lego-hub-face",
+  "title": {
+   "en": "Spike Prime hub face (matrix + gauges)",
+   "de": "Spike-Prime-Hub-Bedienfeld (Matrix + Anzeigen)"
+  },
+  "category": "digital",
+  "difficulty": 2,
+  "kind": "program",
+  "deviceOnly": true,
+  "files": {
+   "program": "lego-hub-face/program.bw",
+   "controller": "lego-hub-face/controller.json",
+   "intro": "lego-hub-face/intro.md",
+   "introDE": "lego-hub-face/intro.de.md",
+   "expected": "lego-hub-face/EXPECTED.md"
   }
  }
 ]
