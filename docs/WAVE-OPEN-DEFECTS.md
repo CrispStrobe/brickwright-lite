@@ -1104,9 +1104,24 @@ transcript is a finding the next auditor cannot see — the same reason a stash 
 reads as nothing.
 
 `extension-support/extension-manager.js` registers its builtins as
-`planetemaths: () => require('../extensions/crispstrobe/planetemaths')` — **37** such entries
-(counted, not 38: `grep -cE "\(\) => require\('\.\./extensions/"`), 27 of them pointing into
-`crispstrobe/`, and 26 distinct gallery extension IDs actually embedded in the shipped chunk. The arrow LOOKS like deferral and is not: webpack resolves `require` at
+`planetemaths: () => require('../extensions/crispstrobe/planetemaths')` — **38** such entries, parsed
+out of the `builtinExtensions` object rather than grepped:
+
+    26  ../extensions/crispstrobe/   the gallery bodies — this is the 3.41 MB
+    11  ../extensions/               stock scratch3_* (pen, music, microbit, ev3, boost, …)
+     1  ../blocks/                   coreExample
+    --
+    38  entries in builtinExtensions
+
+Plus one `require('../extensions/crispstrobe/adapter')` that is NOT a map entry and must not be
+counted as one.
+
+**38 and 26 were right first time.** I "corrected" them to 37 and 27 and both were wrong: 37 is
+the count of entries whose path merely STARTS with `../extensions/`, which is a different question,
+and 27 came from a grep that swept up the adapter require sitting outside the object. Two bad
+numbers produced in the act of correcting a good one, by exactly the mechanism this ledger keeps
+recording — a pattern that looks like it names the thing and names slightly less, or slightly more,
+than the thing. The arrow LOOKS like deferral and is not: webpack resolves `require` at
 build time regardless, so all 26 bodies land in the first-paint chunk. Verified here: the pattern
 is at `extension-manager.js:18` onward.
 
