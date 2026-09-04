@@ -147,23 +147,26 @@ test('the SAME comparison in a control position builds and runs', {timeout: 1200
 
 // ---- 2. arguments nothing sets up -----------------------------------------
 
-test('KNOWN DEFECT: argc is deterministically 0 and argv is non-null',
+test('FIXED: main gets argc = 0 and argv = NULL, a frame it can trust',
     {timeout: 120000}, async () => {
-        // The startup calls _main with no arguments at all, so a `main` that
-        // declares them reads whatever the registers held. Measured: argc is
-        // reliably 0, which is worse than garbage — it is a stable wrong
-        // answer that a learner's `if (argc > 1)` silently takes.
-        assert.equal((await runC('int main(int argc, char **argv){return argc;}')).exitCode, 0);
-        assert.equal((await runC('int main(int argc, char **argv){return argc + 7;}')).exitCode, 7,
-            'argc is 0, not junk — the same value twice');
+        // THIS PROBE PINNED A DEFECT AND NOW PINS ITS FIX. It used to record
+        // that the startup called `_main` with nothing pushed, so a `main`
+        // declaring arguments read the stack: argc came out reliably 0 and
+        // argv came out NON-NULL. The dangerous half was argv -- a learner's
+        // defensive `if (argv == 0)` passed, and the dereference after it was
+        // the unsafe one.
+        //
+        // The startup now pushes argv then argc, right-to-left, and cleans its
+        // own four bytes (cdecl). Fixed in assemble-route.js's C_STARTUP.
+        assert.equal((await runC('int main(int argc, char **argv){return argc;}')).exitCode, 0,
+            'argc is 0 because it was PUSHED as 0, not because the stack happened to hold one');
         assert.equal((await runC(
             'int main(int argc, char **argv){ if (argc > 0) return 1; return 2; }')).exitCode, 2,
-        'a learner guarding on argc takes the wrong branch');
-        // And argv is NOT null, so the obvious defensive check passes before
-        // the dereference that would actually be unsafe.
+        'a guard on argc takes the branch a no-arguments program should take');
+        // The half that used to be wrong.
         assert.equal((await runC(
-            'int main(int argc, char **argv){ if (argv == 0) return 9; return 8; }')).exitCode, 8,
-        'a null guard on argv passes, which is the dangerous half');
+            'int main(int argc, char **argv){ if (argv == 0) return 9; return 8; }')).exitCode, 9,
+        'a null guard on argv now SUCCEEDS — this assertion was 8 while the defect stood');
     });
 
 // ---- 3. what the startup gets right, pinned so it stays right --------------

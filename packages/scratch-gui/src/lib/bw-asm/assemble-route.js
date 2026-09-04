@@ -160,7 +160,26 @@ const C_STARTUP = [
     'bits 16',
     'org 100h',
     'section .text',
+    // ARGC AND ARGV ARE PUSHED, and they were not. SmallerC is cdecl, so a
+    // program declaring `main(int argc, char **argv)` reads argc from [bp+4]
+    // and argv from [bp+6]. With nothing pushed those are whatever the stack
+    // held below a .COM's SP -- measured: argc came out 0 by luck and argv
+    // came out NON-NULL, so a program testing `argv == 0` took the wrong
+    // branch. `int main(void)` never looks, which is why every earlier test
+    // passed and this stayed invisible.
+    //
+    // It does not crash. It produces a program that walks arguments that do
+    // not exist, which on this bench reads as the learner's own bug.
+    //
+    // Right-to-left, so argc lands nearest the return address; the caller
+    // cleans, which is cdecl. A real DOS startup would parse the PSP command
+    // tail into a real argv -- this hands over the honest empty case rather
+    // than inventing one.
+    '    xor ax, ax',
+    '    push ax',          // argv = NULL
+    '    push ax',          // argc = 0
     '    call _main',
+    '    add sp, 4',        // cdecl: the caller cleans
     '    mov ah, 4Ch',
     '    int 21h',
 ].join('\n') + '\n';
