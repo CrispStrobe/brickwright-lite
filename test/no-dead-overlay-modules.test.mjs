@@ -75,6 +75,13 @@ const ALLOWED = new Map([
         reason: 'Emscripten output, as above (assembler). compiler.js:45.'}],
     ['lib/sdcc-wasm/dist/sdld.js', {roadmap: '4.2',
         reason: 'Emscripten output, as above (linker). compiler.js:46.'}],
+    ['lib/smallerc-wasm/dist/smlrc.js', {roadmap: '4.6',
+        reason: 'Emscripten output (the C compiler). Loaded by smallerc-wasm/compiler.js as ' +
+            '`import(/* webpackIgnore: true */ resolve(\'smlrc.js\'))` — a computed specifier. ' +
+            'Executed by test/smallerc-wasm.test.mjs. Verified 2026-09-04.'}],
+    ['lib/smallerc-wasm/dist/smlrpp.js', {roadmap: '4.6',
+        reason: 'Emscripten output (the ucpp preprocessor), loaded the same way and executed by ' +
+            'the same test. Verified 2026-09-04.'}],
     ['lib/bw-circuit-ui/main.jsx', {roadmap: '4.3',
         reason: 'bw-circuit-ui\'s own standalone demo entry point. Vendored wholesale by ' +
             'sync-bw-circuit-ui.mjs, which copies the upstream src tree rather than ' +

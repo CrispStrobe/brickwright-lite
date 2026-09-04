@@ -808,6 +808,28 @@ The history below is kept because the METHOD is worth more than the verdict, and
 §5.1a's "gate it inside one repo so it cannot skip" is the pattern to reach for the next time
 a check needs two checkouts.
 
+### 4.6 smallerc-wasm dist: same computed-URL blindness, plus a caller that is not wired yet
+
+`smlrc.js` and `smlrpp.js` under `lib/smallerc-wasm/dist/` are Emscripten output, loaded by
+`lib/smallerc-wasm/compiler.js` as `import(/* webpackIgnore: true */ resolve('<name>'))`. That
+half is exactly §4.2's situation and is closed for the same reason: the specifier is a function
+call, so no import scan can ever follow it.
+
+The half that is NOT §4.2: **nothing in the app imports `compiler.js` yet, and that is
+deliberate.** SmallerC emits NASM (`bits 16`, `section .text`, `resb`, `alignb`), and the
+assembler that would consume it — `lib/bw-board/i8086-asm.js` — is MASM-dialect and rejects that
+output on line 1 (`"BITS" is not an instruction, directive or macro this assembler knows`,
+measured 2026-09-04). Wiring a compile button to a pipeline whose next stage cannot parse the
+output would be a worse outcome than leaving it unwired: it would look finished.
+
+`test/smallerc-wasm.test.mjs` executes both modules and gates the compiler on its own terms —
+C in, 16-bit NASM out — so the artifact is exercised rather than merely present.
+
+**What it would take to remove the exclusion:** a NASM front end in `i8086-asm.js` (§3.8.2b,
+door 3), after which `compiler.js` gets a real caller and only the two glue files stay listed.
+**Blocked on:** `i8086-asm.js` lives in the **vendored** `bw-board/` tree, which
+`npm run sync:bwboard` overwrites wholesale — the front end has to land upstream, not here.
+
 ### 5.1 The stc12 extension lite ships is missing 8 opcodes the emitter emits — FIXED
 
 A gate that needs two checkouts side by side runs on a developer machine and **skips in CI**, where

@@ -809,6 +809,57 @@ Each of the 11 files named in the licence file remains licensed under MPL-2.0.
 MPL-2.0 §3.3 ("Larger Work") permits distributing them alongside BSD-3-Clause
 files. Modifications to any of those files must be made available under MPL-2.0.
 
+## SmallerC — BSD-2-Clause (and ucpp, a BSD variant)
+
+**Location in this repo:** `overlay/scratch-gui/src/lib/smallerc-wasm/dist/`
+
+This directory contains SmallerC compiled to WebAssembly (Emscripten). It
+turns C into NASM `bits 16` assembly text for the 8086 in the browser, with no
+network and no installed toolchain. It is a separate program invoked at the
+user's request — it is NOT linked into the BSD-3 editor code.
+
+**Two works with two copyrights ship here, and both notices are discharged:**
+
+- **SmallerC** — `smlrc.wasm` (the compiler) and `dist/headers.js` (six
+  freestanding headers, copied verbatim from `v0100/include/`)
+  - **Licence:** BSD-2-Clause
+  - **Copyright:** © 2012–2021 Alexey Frunze
+  - **Source:** https://github.com/alexfru/SmallerC
+- **ucpp** — `smlrpp.wasm` (the preprocessor). ucpp merely *lives inside*
+  SmallerC's source tree at `v0100/ucpp/`; it is its own work.
+  - **Licence:** a three-condition BSD variant, recorded here as
+    `BSD-3-Clause-ucpp`. Upstream numbers its conditions 1, 2 and 4, and its
+    no-endorsement clause is worded differently from BSD-3-Clause, so the
+    plain SPDX id would misstate it.
+  - **Copyright:** © 1999–2002 Thomas Pornin
+
+**Both full licence texts ship with the app**, in one file, reachable from the
+About dialog with no network:
+`overlay/scratch-gui/static/licenses/smallerc.BSD-2-Clause.txt`
+
+- **Upstream commit:** `1865d79ce7a5ad3f8a9515a571437cee084b8b1d`
+- **Build toolchain:** Emscripten 6.0.6 (no patches to SmallerC or ucpp source)
+- **Components:** `smlrc.js`/`.wasm`, `smlrpp.js`/`.wasm`, `headers.js`
+- **Build script:** `overlay/scratch-gui/src/lib/smallerc-wasm/build.sh`,
+  provenance and measurements in the neighbouring `BUILD-INFO.md`
+
+### Not shipped, deliberately
+
+SmallerC's linker (`smlrl`), its driver (`smlrcc`), its standard library and
+the hosted headers (`stdio.h`, `stdlib.h`, `string.h`, `math.h`) are NOT built
+and NOT distributed. This path compiles to assembly text and stops; `smlrcc`
+drives its stages with fork/exec, which WebAssembly has no equivalent of, so
+the JavaScript in `compiler.js` is the driver.
+
+### Licence boundary
+
+Everything under `overlay/scratch-gui/src/lib/smallerc-wasm/dist/` is upstream
+material under the two licences above. Both are permissive and impose no
+copyleft, so — unlike SDCC — their presence raises no linking question; the
+condition they do impose is attribution in binary form, which the shipped
+licence file and the About dialog discharge. Everything else in this
+repository is BSD-3-Clause (see LICENSE at the repo root).
+
 ## SDCC (Small Device C Compiler) — GPL-2-or-later
 
 **Location in this repo:** `overlay/scratch-gui/src/lib/sdcc-wasm/dist/`

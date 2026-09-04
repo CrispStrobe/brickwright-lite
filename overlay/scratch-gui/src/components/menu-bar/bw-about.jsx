@@ -23,6 +23,7 @@ const BUNDLED_LICENCES = [
     ['Scrub (BSD-3-Clause)', 'static/licenses/scrub.BSD-3-Clause.txt'],
     ['labwired-core (MIT)', 'static/licenses/labwired-core.MIT.txt'],
     ['8086 example programs (MIT)', 'static/licenses/amey-thakur-8086.MIT.txt'],
+    ['SmallerC + ucpp (BSD-2-Clause / BSD)', 'static/licenses/smallerc.BSD-2-Clause.txt'],
 ];
 const COMPILER_ABOUT_URL = 'https://stc-compiler.vercel.app/#about';
 const COMPILER_HEALTH_URL = 'https://stc-compiler.vercel.app/health';
