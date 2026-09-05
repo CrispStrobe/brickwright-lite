@@ -711,6 +711,23 @@ jobs:
         with:
           name: costume-roundtrip-proof
           path: artifacts/costume-roundtrip/*
+      # Before the boot-payload split a built-in extension COULD NOT fail to
+      # load; its code was in the bundle. Now it is a chunk fetch, so it can
+      # fail on an offline reload or a cache miss against a redeployed hash.
+      # deserializeProject awaits those loads, so without a per-extension catch
+      # one missing chunk would reject the whole Promise.all and NO project
+      # would open. That degradation is the only new user-visible behaviour in
+      # the split, and CI cannot observe it by accident because CI always has
+      # the chunk -- so this gate removes it on purpose, and asserts the abort
+      # actually fired rather than trusting a route pattern to keep matching.
+      - name: Browser gate — a missing extension chunk costs its blocks, not the project
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-lazy-extension-degradation.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.playwright.outcome == 'success'
+        with:
+          name: lazy-degradation-proof
+          path: artifacts/lazy-extension-degradation/*
           if-no-files-found: warn
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always() && steps.playwright.outcome == 'success'

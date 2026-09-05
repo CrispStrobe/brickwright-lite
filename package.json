@@ -50,6 +50,7 @@
     "verify:lego-spike": "node scripts/verify-lego-spike-roundtrip.mjs",
     "verify:project-bundle": "node scripts/verify-project-bundle-integrity.mjs",
     "verify:arrays-table": "node scripts/verify-arrays-table-display.mjs",
+    "verify:lazy-degradation": "node scripts/verify-lazy-extension-degradation.mjs",
     "verify:dock": "node scripts/verify-debug-dock.mjs",
     "verify:bluetooth": "node scripts/verify-bluetooth.mjs",
     "verify:extension-sandbox": "node scripts/verify-extension-sandbox.mjs",
