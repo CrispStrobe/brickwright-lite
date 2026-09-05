@@ -56,9 +56,11 @@ test('host reconstruction follows verified event order and reports its failing c
     assert.equal(hostProgress, 0, 'partially reconstructed host state is rolled back atomically');
 });
 
-const replayFixture = ({step, restore, teardown = () => {}, normalizeEvent, inputs = []} = {}) => {
+const replayFixture = ({step, restore, teardown = () => {}, normalizeEvent, inputs = [],
+    replayToInputBoundary, initialTime = 0} = {}) => {
     let listener;
     let restores = 0;
+    let now = initialTime;
     const expected = [{...facts[1], seq: 0, inputCursor: inputs.length}];
     const target = {
         capabilities: () => ({recording: ['restore']}),
@@ -72,7 +74,12 @@ const replayFixture = ({step, restore, teardown = () => {}, normalizeEvent, inpu
             return {accepted: true};
         },
         applyReplayInput: input => input.applyResult ?? true,
-        debugTime: () => ({ticks: 0, domain: 'cpu'})
+        debugTime: () => ({ticks: now, domain: 'cpu'}),
+        ...(replayToInputBoundary ? {replayToInputBoundary: boundary => {
+            const result = replayToInputBoundary(boundary);
+            if (result?.time) now = result.time.ticks;
+            return result;
+        }} : {})
     };
     const controller = createInstructionReplayController({
         recorder: {
@@ -123,6 +130,47 @@ test('input refusal and async input both roll back without stepping', () => {
         assert.equal(fixture.restores(), 2);
         assert.equal(stepped, false);
     }
+});
+
+test('future inputs require an exact target boundary and never apply late after an instruction', () => {
+    const inputs = [{schema: 1, cursor: 0, time: {ticks: 1, domain: 'cpu'},
+        producer: 'irq', payload: {}}];
+    let stepped = false;
+    let applied = false;
+    let fixture = replayFixture({inputs, step: () => { stepped = true; return {accepted: true}; }});
+    assert.equal(fixture.controller.reverseToEvent(1).code, 'reverse-input-boundary-unsupported');
+    assert.equal(stepped, false);
+    assert.equal(fixture.restores(), 2);
+
+    fixture = replayFixture({inputs,
+        replayToInputBoundary: boundary => ({accepted: true, time: structuredClone(boundary)}),
+        step: (listener, expected) => { applied = true; listener(structuredClone(expected));
+            return {accepted: true}; }});
+    const result = fixture.controller.reverseToEvent(1);
+    assert.equal(result.accepted, true);
+    assert.equal(applied, true);
+});
+
+test('an inexact target input boundary rolls back before applying or stepping', () => {
+    const inputs = [{schema: 1, cursor: 0, time: {ticks: 1, domain: 'cpu'},
+        producer: 'irq', payload: {}}];
+    let stepped = false;
+    const fixture = replayFixture({inputs,
+        replayToInputBoundary: () => ({accepted: true, time: {ticks: 2, domain: 'cpu'}}),
+        step: () => { stepped = true; return {accepted: true}; }});
+    assert.equal(fixture.controller.reverseToEvent(1).code, 'reverse-input-boundary-inexact');
+    assert.equal(stepped, false);
+    assert.equal(fixture.restores(), 2);
+});
+
+test('late target time and contradictory recorded input ordering fail before mutation', () => {
+    const base = {schema: 1, cursor: 0, time: {ticks: 1, domain: 'cpu'},
+        producer: 'irq', payload: {}};
+    let fixture = replayFixture({inputs: [base], initialTime: 2});
+    assert.equal(fixture.controller.reverseToEvent(1).code, 'reverse-input-boundary-passed');
+    fixture = replayFixture({inputs: [{...base, time: {ticks: 3, domain: 'cpu'}}]});
+    assert.equal(fixture.controller.reverseToEvent(1).code, 'reverse-input-time-order-invalid');
+    assert.equal(fixture.restores(), 2);
 });
 
 test('rollback refusal has a distinct code and preserves the original failure code', () => {

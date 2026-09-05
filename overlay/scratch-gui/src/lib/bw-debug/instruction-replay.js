@@ -125,12 +125,51 @@ export function createInstructionReplayController ({
             let operationFailure = null;
             const retireCount = expected.filter(
                 event => event.kind === 'instruction' && event.phase === 'retire').length;
+            const retires = expected.filter(
+                event => event.kind === 'instruction' && event.phase === 'retire');
             try {
                 for (let instruction = 0; instruction < retireCount; instruction++) {
-                    const now = target.debugTime();
+                    let now = target.debugTime();
                     if (promiseLike(now)) throw replayError('reverse-replay-failed',
                         'debug time inspection must be synchronous');
+                    const nextInput = inputs[inputIndex];
+                    const retire = retires[instruction];
+                    const retireInputCursor = retire.inputCursor ?? checkpoint.inputCursor;
+                    if (nextInput && nextInput.cursor < retireInputCursor &&
+                        BigInt(nextInput.time.ticks) < BigInt(now.ticks)) {
+                        throw replayError('reverse-input-boundary-passed',
+                            'target is already past the next recorded input boundary',
+                            {inputCursor: nextInput.cursor});
+                    }
+                    if (nextInput && nextInput.cursor < retireInputCursor &&
+                        BigInt(nextInput.time.ticks) > BigInt(retire.time.ticks)) {
+                        throw replayError('reverse-input-time-order-invalid',
+                            'recorded input prefix contradicts the instruction retire time',
+                            {inputCursor: nextInput.cursor});
+                    }
+                    if (nextInput && BigInt(nextInput.time.ticks) > BigInt(now.ticks) &&
+                        nextInput.cursor < retireInputCursor) {
+                        if (typeof target.replayToInputBoundary !== 'function') {
+                            throw replayError('reverse-input-boundary-unsupported',
+                                'target cannot stop at the next recorded input boundary',
+                                {inputCursor: nextInput.cursor});
+                        }
+                        const advanced = target.replayToInputBoundary(structuredClone(nextInput.time));
+                        const advanceRefusal = outcomeRefusal(advanced,
+                            'recorded input boundary replay', {allowUndefined: true});
+                        if (advanceRefusal) throw replayError('reverse-input-boundary-refused',
+                            advanceRefusal, {inputCursor: nextInput.cursor});
+                        now = advanced?.time ?? target.debugTime();
+                        if (promiseLike(now) || !now ||
+                            normalizeTimeDomain(now.domain) !== clockDomain ||
+                            BigInt(now.ticks) !== BigInt(nextInput.time.ticks)) {
+                            throw replayError('reverse-input-boundary-inexact',
+                                'target did not stop at the exact recorded input boundary',
+                                {inputCursor: nextInput.cursor});
+                        }
+                    }
                     while (inputIndex < inputs.length &&
+                        inputs[inputIndex].cursor < retireInputCursor &&
                         BigInt(inputs[inputIndex].time.ticks) <= BigInt(now.ticks)) {
                         const applied = applyInput
                             ? applyInput(target, inputs[inputIndex])
