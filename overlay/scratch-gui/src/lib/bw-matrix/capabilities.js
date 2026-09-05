@@ -535,7 +535,15 @@ export const CELLS = Object.freeze({
             }),
             lowered: [via('c')]
         },
-        basic: {native: open('bas', 'GW-BASIC (MIT, 2020)', 'none', 'N6'), lowered: [via('asm')]},
+        // N6 measured 2026-09-05: 0 of 35 GW-BASIC (MIT) sources assemble —
+        // they need full MASM (COMMENT, EXTRN, PUBLIC, IF1, macros), a linker
+        // and the unreleased OEM layer — and no redistributable binary exists,
+        // unlike the 6502's MS BASIC ROM and the Z80's BBC BASIC image.
+        basic: {
+            native: no('no-port', '0 of 35 GW-BASIC sources assemble on the bench and there is no ' +
+                'redistributable binary to boot (bw-board docs/GW-BASIC-ON-THE-BENCH.md)'),
+            lowered: [via('asm')]
+        },
         asm: {
             native: shipped('com', 'i8086-asm.js (MASM and NASM dialects)', 'local', {
                 tier: '2a',
@@ -736,7 +744,8 @@ export const explain = function (langId, deviceId, locale = 'en') {
         const r = REASONS[c.native.reason] || {};
         parts.push(`${t.nativeNo} (${r[locale] || r.en || c.native.reason})`);
     } else if (c.native.status === STATUS.SHIPPED) {
-        parts.push(`${t.native} (${c.native.toolchain}, ${t[c.native.where] || c.native.where}) · ${reachWord(t, c.native)}`);
+        const where = t[c.native.where] || c.native.where;
+        parts.push(`${t.native} (${c.native.toolchain}, ${where}) · ${reachWord(t, c.native)}`);
     } else {
         const task = c.native.task ? ` · ${t.task} ${c.native.task}` : '';
         parts.push(`${t.native} (${c.native.toolchain}): ${t.open}${task}`);
