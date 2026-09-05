@@ -295,7 +295,7 @@ Remaining, in order:
       (fetched by a `sync:` script with sha256, never committed) and drives the SAME
       `createPicoRepl(transport)` the silicon path uses; `verify:pico-micropython` playwright.
 
-**N4. ARM assembly, hosted — extend the chain that exists.** Repo: stc-compiler, then lite.
+**N4. ARM assembly, hosted — extend the chain that exists.** Repo: stc-compiler, then lite. **stc-compiler half BUILT 2026-09-05** on branch `lane/arm-assemble-rp2040-stm32f030` (`a45ba77`, a second session): `rp2040` (cortex-m0plus, `pico-sram.ld`) and `stm32f030` (cortex-m0, `stm32f030-flash.ld`) beside `nrf52833` in the three maps the arm branch reads; router verified end to end (68 and 84 bytes of Intel HEX), 41/41 in `test_assemble.py`, each assertion mutation-proven. Awaits the owner's merge and deploy; the lite routing half (`asmTargetForDevice` mapping `pico`, `stm32f030`, `microbit`) follows the deploy.
 `ASSEMBLE_TARGETS` already routes `nrf52833` through `arm-none-eabi-gcc -x
 assembler-with-cpp` with `nrf52833.ld`. Add `rp2040` (`pico-sram.ld`) and
 `stm32f030` (`stm32f030-flash.ld`) to the same map. Lite: `asmTargetForDevice`
