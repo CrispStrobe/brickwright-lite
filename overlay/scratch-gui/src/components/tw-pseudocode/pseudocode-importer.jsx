@@ -1779,18 +1779,25 @@ class PseudocodeImporter extends React.Component {
                 const bits = spec.trim().match(/^([a-z0-9]+)(?:@([0-9a-f]+))?$/i);
                 if (!bits) continue;
                 const kind = bits[1].toLowerCase();
-                if (seen.has(kind)) continue;
-                seen.add(kind);
                 const at = bits[2] ? parseInt(bits[2], 16) : undefined;
-                const chip = {kind, name: `${kind}0`};
+                // KEYED ON KIND AND ADDRESS, not kind alone. Two cards at two
+                // ports on one board is the whole point of a hub, and the
+                // first version deduplicated by kind -- silently dropping the
+                // second card and leaving an example that talks to nobody.
+                const key = `${kind}@${at === undefined ? '-' : at}`;
+                if (seen.has(key)) continue;
+                seen.add(key);
+                const chip = {kind, name: `${kind}${out.filter(c => c.kind === kind).length}`};
                 if (at !== undefined) chip.at = at;
-                // A card with no link hears nothing. Loopback is what a real
-                // card's self-test uses, and it is the only link one machine
-                // can have.
-                if (kind === 'ne2000') chip.loopback = true;
                 out.push(chip);
             }
         }
+        // A card with no link hears nothing. ONE card gets a loopback, which
+        // is what a real card's self-test uses; SEVERAL get a shared hub, so
+        // they hear each other and the MAC filter becomes the visible thing.
+        const cards = out.filter(c => c.kind === 'ne2000');
+        if (cards.length === 1) cards[0].loopback = true;
+        else if (cards.length > 1) for (const c of cards) c.hub = true;
         return out;
     }
 

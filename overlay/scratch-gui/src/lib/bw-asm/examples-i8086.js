@@ -1126,6 +1126,191 @@ END START
 ; = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 `
     },
+    {
+        id: 'ether2',
+        label: 'Two cards on one wire (MAC filter)',
+        labelDe: 'Zwei Karten an einem Draht (MAC-Filter)',
+        expect: 'B hears one frame and ignores the other.',
+        source: `; =============================================================================
+; TITLE: Two Cards, One Wire
+; DESCRIPTION: Two NE2000s on one board, joined by a hub, and the thing worth
+;              watching is what card B DOES NOT hear. A hub is a repeater --
+;              every card sees every frame -- so the MAC filter in the chip is
+;              the only reason a frame is "yours".
+; =============================================================================
+; BW-CHIPS: ne2000@320, ne2000@340
+;
+; Two cards at two addresses. They are NOT at the same address, and the
+; machine would refuse the board if they were: two chips answering one port
+; is a board that runs and reads the wrong device.
+;
+; Asking for more than one card is what makes the bench build a HUB instead
+; of a loopback. A switch would decide who gets what in the wire, and the
+; lesson -- that the CHIP decides -- would be invisible.
+; =============================================================================
+A_NIC EQU 320H
+B_NIC EQU 340H
+
+    ORG 100H
+START:
+    MOV BX, A_NIC
+    MOV SI, OFFSET MAC_A
+    CALL SETUP
+    MOV BX, B_NIC
+    MOV SI, OFFSET MAC_B
+    CALL SETUP
+
+    ; --- A sends a frame addressed to B -------------------------------------
+    MOV SI, OFFSET TO_B
+    CALL SEND_A
+    MOV DX, B_NIC + 7
+    IN AL, DX
+    TEST AL, 01H
+    JZ  MISS1
+    MOV DX, OFFSET GOT
+    MOV AH, 9
+    INT 21H
+    JMP SECOND
+MISS1:
+    MOV DX, OFFSET NOGOT
+    MOV AH, 9
+    INT 21H
+
+    ; --- A sends a frame addressed to a stranger ----------------------------
+SECOND:
+    MOV DX, B_NIC + 7          ; clear B's ISR
+    MOV AL, 0FFH
+    OUT DX, AL
+    MOV SI, OFFSET TO_NOBODY
+    CALL SEND_A
+    MOV DX, B_NIC + 7
+    IN AL, DX
+    TEST AL, 01H
+    JNZ WRONG
+    MOV DX, OFFSET IGNORED
+    MOV AH, 9
+    INT 21H
+    JMP DONE
+WRONG:
+    MOV DX, OFFSET TOOK
+    MOV AH, 9
+    INT 21H
+DONE:
+    MOV AX, 4C00H
+    INT 21H
+
+; BX = card base, SI = its six-byte MAC
+SETUP PROC
+    MOV DX, BX
+    MOV AL, 21H
+    OUT DX, AL
+    LEA DX, [BX + 0EH]
+    MOV AL, 49H
+    OUT DX, AL
+    LEA DX, [BX + 1]
+    MOV AL, 46H
+    OUT DX, AL
+    LEA DX, [BX + 2]
+    MOV AL, 80H
+    OUT DX, AL
+    LEA DX, [BX + 3]
+    MOV AL, 46H
+    OUT DX, AL
+    LEA DX, [BX + 0CH]
+    MOV AL, 04H
+    OUT DX, AL
+    LEA DX, [BX + 0DH]
+    XOR AL, AL
+    OUT DX, AL
+    MOV DX, BX                 ; page 1
+    MOV AL, 61H
+    OUT DX, AL
+    MOV CX, 6
+    LEA DX, [BX + 1]
+PAR:
+    MOV AL, [SI]
+    OUT DX, AL
+    INC SI
+    INC DX
+    LOOP PAR
+    LEA DX, [BX + 7]
+    MOV AL, 47H
+    OUT DX, AL
+    MOV DX, BX
+    MOV AL, 22H
+    OUT DX, AL
+    RET
+SETUP ENDP
+
+; SI = a 14-byte frame; sends it from card A
+SEND_A PROC
+    MOV DX, A_NIC + 8
+    XOR AL, AL
+    OUT DX, AL
+    MOV DX, A_NIC + 9
+    MOV AL, 40H
+    OUT DX, AL
+    MOV DX, A_NIC + 0AH
+    MOV AL, 14
+    OUT DX, AL
+    MOV DX, A_NIC + 0BH
+    XOR AL, AL
+    OUT DX, AL
+    MOV DX, A_NIC
+    MOV AL, 12H
+    OUT DX, AL
+    MOV CX, 14
+    MOV DX, A_NIC + 10H
+PUSHB:
+    MOV AL, [SI]
+    OUT DX, AL
+    INC SI
+    LOOP PUSHB
+    MOV DX, A_NIC + 4
+    MOV AL, 40H
+    OUT DX, AL
+    MOV DX, A_NIC + 5
+    MOV AL, 14
+    OUT DX, AL
+    MOV DX, A_NIC + 6
+    XOR AL, AL
+    OUT DX, AL
+    MOV DX, A_NIC
+    MOV AL, 26H
+    OUT DX, AL
+    RET
+SEND_A ENDP
+
+MAC_A DB 002H, 000H, 000H, 000H, 000H, 00AH
+MAC_B DB 002H, 000H, 000H, 000H, 000H, 00BH
+TO_B  DB 002H, 000H, 000H, 000H, 000H, 00BH
+      DB 002H, 000H, 000H, 000H, 000H, 00AH
+      DB 008H, 000H
+TO_NOBODY DB 002H, 000H, 000H, 000H, 000H, 0CCH
+      DB 002H, 000H, 000H, 000H, 000H, 00AH
+      DB 008H, 000H
+
+GOT     DB 'B received the frame addressed to it.', 0DH, 0AH, '$'
+NOGOT   DB 'B heard nothing -- check the ring.', 0DH, 0AH, '$'
+IGNORED DB 'B ignored the frame addressed to someone else.', 0DH, 0AH, '$'
+TOOK    DB 'B took a frame that was not its own -- the filter is wrong.', 0DH, 0AH, '$'
+END START
+
+; =============================================================================
+; TECHNICAL NOTES
+; =============================================================================
+; 1. A HUB IS A REPEATER, NOT A SWITCH. Both cards hear both frames. B's
+;    silence on the second one is the filter working, not the wire being
+;    clever -- and that is the difference between the two devices.
+; 2. RCR DECIDES WHAT COUNTS AS YOURS. 04h here accepts broadcast plus your
+;    own address. Setting bit 4 makes the card promiscuous and it accepts
+;    everything -- which is what a packet sniffer is, in one bit.
+; 3. A CARD NEVER HEARS ITSELF on a hub. That is why the single-card example
+;    uses a loopback instead: with one card and a hub there is nobody to
+;    talk to.
+; = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+`
+    },
 ];
 
 export default [...I8086_EXAMPLES, ...OURS];

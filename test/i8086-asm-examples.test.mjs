@@ -68,7 +68,7 @@ test('the 8086 has examples, and they are the ones this file knows about', () =>
     assert.equal(new Set(ids).size, ids.length, 'duplicate example id');
     // And the ones we wrote are actually in it, by name -- `length >= 5` would
     // pass on upstream's six alone and say nothing about ours.
-    for (const mine of ['pins', 'keys', 'mode13', 'ether']) {
+    for (const mine of ['pins', 'keys', 'mode13', 'ether', 'ether2']) {
         assert.ok(ids.includes(mine), `"${mine}" is written here and offered nowhere`);
     }
 });
@@ -252,4 +252,46 @@ test('the Ethernet example REQUESTS its card, and hears its own frame', async ()
     assert.ok(bench.terminated, 'it finishes');
     assert.match(text, /heard its own frame/,
         `the loopback round trip worked — it said: ${JSON.stringify(text.trim())}`);
+});
+
+test('two cards on one hub: B hears one frame and IGNORES the other', async () => {
+    // THE ASSERTION THAT MATTERS IS THE SECOND LINE. A hub is a repeater --
+    // both cards see both frames -- so B staying silent on a frame addressed
+    // to someone else is the MAC filter working, not the wire being clever.
+    // A test that only checked the first line would pass against a card with
+    // no filter at all.
+    const ex = I8086_ALL.find(e => e.id === 'ether2');
+    assert.ok(ex, 'the example ships');
+    assert.match(ex.source, /BW-CHIPS:\s*ne2000@320,\s*ne2000@340/,
+        'two cards, at two addresses — the machine refuses them at one');
+
+    const chips = [
+        {kind: 'ne2000', name: 'ne20000', at: 0x320, hub: true},
+        {kind: 'ne2000', name: 'ne20001', at: 0x340, hub: true},
+    ];
+    const out = await requestAssembly({source: ex.source, device: 'i8086'},
+        {hostedFetch: forbiddenFetch});
+    let text = '';
+    const bench = await createI8086DosBench(
+        {bytes: out.bytes, format: out.format, chips, onChar: (c) => { text += c; }});
+    let n = 0;
+    while (n < 3_000_000 && !bench.terminated) { bench.step(); n++; }
+
+    assert.ok(bench.terminated);
+    assert.match(text, /B received the frame addressed to it/, 'the wire carries');
+    assert.match(text, /B ignored the frame addressed to someone else/,
+        'and the filter refuses — this is the half that a broken filter fails');
+    assert.ok(!/filter is wrong/.test(text), 'B did not take a frame that was not its own');
+});
+
+test('two cards at ONE address is refused by the machine', async () => {
+    // Why the example uses 320h and 340h rather than whatever came to hand.
+    const {I8086Machine} = await import(
+        new URL('../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js', import.meta.url).href);
+    assert.throws(() => new I8086Machine({
+        clockHz: 5e6,
+        regions: [{kind: 'ram', start: 0, end: 0xffff}],
+        chips: [{kind: 'ne2000', name: 'a', at: 0x320},
+            {kind: 'ne2000', name: 'b', at: 0x320}],
+    }), /both claim I\/O address/);
 });

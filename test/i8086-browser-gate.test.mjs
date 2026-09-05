@@ -29,7 +29,35 @@ test('the 8086 browser proof closes the local assembly, display, key and port jo
         'launching an assembled program must expose the default right-docked debugger');
     const circuit = readFileSync(path.join(root,
         'overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx'), 'utf8');
-    assert.match(circuit, /if \(window\.__bwPendingMedia\) this\.setState\(\{machineBooted: true\}\)/,
+    // MATCHED AS A BLOCK, NOT AS ONE LINE, and the reason is a false RED this
+    // gate produced on 2026-09-04. The assertion required the exact spelling
+    //
+    //     if (window.__bwPendingMedia) this.setState({machineBooted: true})
+    //
+    // and `perf(react): attribute circuit update sources` (20a7832da) inserted
+    // a `_markReactUpdate` call into that block, splitting the one-liner. The
+    // replay still works; only the formatting moved, and lite's suite went red
+    // for it.
+    //
+    // That is species 1 of GATES-THAT-CANNOT-FAIL -- a source-text match that
+    // tracks SPELLING rather than behaviour -- running in the other direction.
+    // The documented failure is a gate that passes while checking nothing;
+    // this is the same defect producing a failure while nothing is wrong, and
+    // it costs more than it looks: a red that everyone learns to explain away
+    // is how a real one hides.
+    //
+    // Still source-text, because that is what this gate is for. But it now
+    // requires the CONDITION and the SETSTATE with anything between them,
+    // which is the claim -- a program assembled before the tab mounted is
+    // replayed -- rather than a claim about line breaks.
+    // SAME BLOCK, enforced by allowing no closing brace between them. A
+    // window of "some characters" is not enough: this file has FOUR
+    // `machineBooted: true` sites and several `__bwPendingMedia` ones, so a
+    // 200-character window matched a different pair and the assertion
+    // survived deleting the very line it exists to protect. Caught by
+    // red-proving the fix rather than by trusting that it went green.
+    assert.match(circuit,
+        /if \(window\.__bwPendingMedia\) \{[^}]*?machineBooted: true/,
         'the lazy Circuit tab must replay a program assembled before it mounted');
     assert.match(circuit, /!prevState\.machineBooted && this\.state\.machineBooted/,
         'the retained image must be replayed after the lazy debugger commit');
