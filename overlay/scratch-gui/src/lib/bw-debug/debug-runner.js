@@ -52,6 +52,7 @@ import {createForkRecordingStore} from './fork-recording-store.js';
 import {createBranchCursor} from './fork-history.js';
 import {createRunToCoordinator} from './run-to.js';
 import {createSelectedEventInspectionStore} from './selected-event-inspection.js';
+import {createTimingWaveform} from './timing-waveform.js';
 import {negotiateCycleProvider} from './cycle-provider.js';
 import { setValueResolver } from './hover-values.js';
 import { instructionLength } from './opcodes.js';
@@ -466,6 +467,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     let unsubscribeBps = null;
     /** The execution history the drawer renders. See trace.js. */
     const debugFoundation = createDebugFoundation({eventCapacity: 4096});
+    const debugTimingWaveform = createTimingWaveform({capacity: 4096, maxLanes: 64});
     const eventStream = debugFoundation.events;
     const selectedInspectionStore = createSelectedEventInspectionStore();
     let selectedInspectionKey = null;
@@ -2828,6 +2830,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             ensureDebugEvents();
             const batch = eventStream.drain(max);
             debugFoundation.ingestTimeline(batch);
+            debugTimingWaveform.append(batch.filter(event => event.kind !== 'gap'));
             return batch;
         },
         debugEventStats: () => {
@@ -2935,6 +2938,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             return {...result, branch: activated.branch};
         },
         debugTimeline: () => debugFoundation.timeline,
+        debugTimingWaveform: () => debugTimingWaveform,
         selectedEventInspection() {
             const selectedEvent = debugFoundation.timeline.state().selectedEvent;
             if (!selectedEvent) return {accepted: false, code: 'inspection-selection-missing',

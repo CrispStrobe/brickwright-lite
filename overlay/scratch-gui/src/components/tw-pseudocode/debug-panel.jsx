@@ -6,6 +6,7 @@ import {connect} from 'react-redux';
 import DebugDrawer from './debug-drawer.jsx';
 import DebugInspector from './debug-inspector.jsx';
 import DebugFrames from './debug-frames.jsx';
+import DebugTimingWaveform from './debug-timing-waveform.jsx';
 import {mergeTargetKinds} from '../../lib/bw-debug/target-kinds.js';
 
 // VDP screen — lazy-loaded, only renders when the runner has video output.
@@ -161,6 +162,13 @@ class DebugPanel extends React.Component {
         this.onTimelineLatest = this.onTimelineLatest.bind(this);
         this.onTimelineCheckpoint = this.onTimelineCheckpoint.bind(this);
         this.onTimelineGoSelected = this.onTimelineGoSelected.bind(this);
+        this.onWaveformSelect = this.onWaveformSelect.bind(this);
+        this.onWaveformZoom = this.onWaveformZoom.bind(this);
+        this.onWaveformPan = this.onWaveformPan.bind(this);
+        this.onWaveformSetTrigger = this.onWaveformSetTrigger.bind(this);
+        this.onWaveformPreviousTrigger = this.onWaveformPreviousTrigger.bind(this);
+        this.onWaveformNextTrigger = this.onWaveformNextTrigger.bind(this);
+        this.onWaveformExport = this.onWaveformExport.bind(this);
         this.syncProjectTokens = this.syncProjectTokens.bind(this);
         this._onMachineExtracted = this._onMachineExtracted.bind(this);
         this._onMediaLoad = this._onMediaLoad.bind(this);
@@ -642,6 +650,7 @@ class DebugPanel extends React.Component {
         const runner = this.state.runner;
         if (!runner) return;
         const result = operation(runner.debugTimeline());
+        if (result.accepted && result.event) runner.debugTimingWaveform().selectEvent(result.event.seq);
         this.setState({timelineStatus: result.accepted ? null : result});
     }
 
@@ -660,6 +669,48 @@ class DebugPanel extends React.Component {
         if (!runner) return;
         const result = runner.seekSelectedDebugEvent();
         this.setState({timelineStatus: result.accepted ? null : result});
+    }
+
+    onWaveformSelect (seq) {
+        const runner = this.state.runner;
+        if (!runner) return;
+        const result = runner.debugTimeline().selectEvent(seq);
+        if (result.accepted) runner.debugTimingWaveform().selectEvent(seq);
+        this.setState({timelineStatus: result.accepted ? null : result});
+    }
+
+    updateWaveform (operation) {
+        const waveform = this.state.runner?.debugTimingWaveform();
+        if (!waveform) return;
+        const result = operation(waveform);
+        if (result.accepted && result.selectedSeq !== undefined) {
+            this.state.runner.debugTimeline().selectEvent(result.selectedSeq);
+        }
+        this.setState({timelineStatus: result.accepted ? null : result});
+    }
+
+    onWaveformZoom (factor) { this.updateWaveform(waveform => waveform.zoom(factor)); }
+    onWaveformPan (delta) { this.updateWaveform(waveform => waveform.pan(delta)); }
+    onWaveformSetTrigger (lane) {
+        if (lane) this.updateWaveform(waveform => waveform.setTrigger({lane, edge: 'change'}));
+    }
+    onWaveformPreviousTrigger () { this.updateWaveform(waveform => waveform.previousTrigger()); }
+    onWaveformNextTrigger () { this.updateWaveform(waveform => waveform.nextTrigger()); }
+    onWaveformExport (format) {
+        const waveform = this.state.runner?.debugTimingWaveform();
+        if (!waveform) return;
+        try {
+            const body = format === 'vcd' ? waveform.exportVCD() : waveform.exportJSON();
+            const blob = new Blob([body], {type: format === 'vcd' ? 'text/plain' : 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url; anchor.download = `debug-timing.${format}`; anchor.click();
+            URL.revokeObjectURL(url);
+            this.setState({timelineStatus: null});
+        } catch (error) {
+            this.setState({timelineStatus: {accepted: false, code: 'waveform-export-refused',
+                reason: error?.message || String(error)}});
+        }
     }
 
     render () {
@@ -710,6 +761,7 @@ class DebugPanel extends React.Component {
             (timelineRefusalResult.reason || timelineRefusalResult.code) : null;
         const selectedInspection = timelineEvent && this.state.runner ?
             this.state.runner.selectedEventInspection() : null;
+        const timingWaveform = this.state.runner ? this.state.runner.debugTimingWaveform().view() : null;
         // This is a bounded summary API: no event bodies, target snapshots or
         // checkpoint payloads cross the render path. Cap the visible tail too,
         // so a crowded action setup cannot grow the panel without bound.
@@ -964,6 +1016,21 @@ class DebugPanel extends React.Component {
                                 <div role="status">{'No recorded memory writes'}</div>}
                         </div>
                     </div>
+                ) : null}
+
+                {timingWaveform?.samples.length ? (
+                    <DebugTimingWaveform
+                        view={timingWaveform}
+                        selectedSeq={timeline?.selectedSeq}
+                        refusal={timelineRefusal}
+                        onSelect={this.onWaveformSelect}
+                        onZoom={this.onWaveformZoom}
+                        onPan={this.onWaveformPan}
+                        onSetTrigger={this.onWaveformSetTrigger}
+                        onPreviousTrigger={this.onWaveformPreviousTrigger}
+                        onNextTrigger={this.onWaveformNextTrigger}
+                        onExport={this.onWaveformExport}
+                    />
                 ) : null}
 
                 {hasActionStatus ? (
