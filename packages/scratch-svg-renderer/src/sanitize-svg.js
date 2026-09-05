@@ -3,7 +3,11 @@
  * as possible
  */
 const fixupSvgString = require('./fixup-svg-string');
-const {generate, parse, walk} = require('css-tree');
+// The css-tree barrel constructs its validation lexer and imports the complete
+// MDN grammar database. Sanitizing only needs AST parse/walk/generate.
+const generate = require('css-tree/lib/generator');
+const parse = require('css-tree/lib/parser');
+const walk = require('css-tree/lib/walker');
 const DOMPurify = require('isomorphic-dompurify');
 
 const sanitizeSvg = {};
