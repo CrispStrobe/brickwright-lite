@@ -229,7 +229,17 @@ export const DEVICES = Object.freeze([
         sim: [eng('rp2040js', ['hex', 'bin', 'uf2'])],
         silicon: [
             tx('micropython-raw-repl', ['py'], 'micropython'),
-            tx('uf2-bootsel-download', ['uf2'], null, {task: 'L2', note: 'C compiles to an rp2040 bin (hosted /compile), /uf2 wraps it, deployPicoUf2() in pseudocode-importer.jsx offers firmware.uf2 for BOOTSEL drag-flash; flashFamily null — the deploy handler branches on artefact kind, not a vendored flasher'})
+            tx('uf2-bootsel-download', ['uf2'], null, {
+                task: 'L2',
+                // The route is checked (the contract test reads the handler);
+                // the silicon claim is not: the image is the SRAM-linked bin
+                // (origin 0x20000000, ENTRY(main), no vector table) that
+                // rp2040js runs, and no Pico has booted it from a UF2 yet.
+                tier: '3',
+                note: 'C compiles to an rp2040 bin (hosted /compile), /uf2 wraps it, deployPicoUf2() offers ' +
+                    'firmware.uf2 for BOOTSEL; flashFamily null because the deploy handler branches on artefact ' +
+                    'kind. UNMEASURED on hardware: a RAM-resident image without a vector table'
+            })
         ]
     }),
     dev('stm32f030', 'STM32F030', 'STM32 (ARM)', 'stm32', {

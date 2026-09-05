@@ -406,6 +406,7 @@ handler reads the C buffer and takes the `/uf2` path (so the cell's `checked`
 evidence is earned, not asserted). A browser gate (playwright: C tab → offers
 `firmware.uf2`; Python tab → still the REPL) remains for when the box allows
 playwright — the same limitation N2 records.
+**Audit note (lego-ac):** the transport ships with `tier: '3'`. The UF2 wraps the SRAM-linked bin (origin `0x20000000`, `ENTRY(main)`, no vector table) that rp2040js runs; whether the RP2040 bootrom boots such a RAM-resident UF2 on a real Pico is unmeasured, and a flash-resident image with boot2 is the follow-up. The reach column shows silicon because the route exists; the tier says how little is known about it.
 
 **L3. Reader coverage audit.**
 For each reader, a fixture set per device family (Arduino `.ino`, Pico and
