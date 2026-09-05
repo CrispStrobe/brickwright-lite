@@ -107,6 +107,34 @@ const rewriteImports = (src) => src
     .replace(/(['"])\.\/cHostRuntime\.js\1/g, "'./sb3-creator-chostruntime.js'")
     .replace(/(['"])\.\/cHostToPseudocode\.js\1/g, "'./sb3-creator-chost.js'");
 
+// REFUSE TO DELETE WORK THAT EXISTS ONLY HERE.
+//
+// This sync overwrote every file wholesale with no direction check. lego-ac
+// filed one symptom -- a lite-only `i8086_counter` example that every sync
+// deleted -- and deriving the set rather than trusting the count found FIVE:
+// i8086_analog, i8086_blink, i8086_counter, i8086_events, i8086_keypad. lite
+// has 40 example keys, sb3-creator has 35, and the five extra are the whole
+// 8086 family.
+//
+// UPSTREAMING THEM WAS THE OBVIOUS FIX AND IT IS THE WRONG ONE. sb3-creator
+// has NO i8086 support at all -- zero references in src/, every example
+// `DEVICE STC12C5A60S2`. Moving them there puts content in a repository whose
+// own tooling cannot parse it: present, unverifiable, and indistinguishable
+// from working. The examples are lite-only because the DEVICE is lite-only.
+//
+// So the fix is the same one sync-bw-board.mjs got today: derive the direction
+// from content on every run, and refuse. It protects every file this script
+// touches, not just the one whose loss someone happened to notice -- which is
+// the whole argument, since the reason a curated list fails is that it
+// enumerates what you already know.
+const linesLostBy = (current, next) => {
+    const incoming = new Set(next.split('\n').map((l) => l.trim()));
+    return current.split('\n').map((l) => l.trim())
+        .filter((l) => l && l !== '}' && l !== '};' && l !== '{' && !incoming.has(l));
+};
+const force = process.argv.includes('--force');
+const wouldTruncate = [];
+
 let stale = 0;
 for (const [remote, dest] of FILES) {
     const next = rewriteImports(await readSource(remote));
@@ -119,9 +147,32 @@ for (const [remote, dest] of FILES) {
     if (check) {
         console.log(`  STALE ${path.basename(dest)}  (differs from sb3-creator@${REF})`);
     } else {
+        const lost = force ? [] : linesLostBy(current ?? '', next);
+        if (lost.length) {
+            wouldTruncate.push({file: path.basename(dest), count: lost.length, sample: lost.slice(0, 3)});
+            console.log(`  REFUSED ${path.basename(dest)} (would delete ${lost.length} line(s) that exist only here)`);
+            continue;
+        }
         await writeFile(dest, next);
         console.log(`  wrote ${path.basename(dest)}`);
     }
+}
+
+if (wouldTruncate.length) {
+    const total = wouldTruncate.reduce((n, f) => n + f.count, 0);
+    console.error(`\nREFUSED: ${total} line(s) in ${wouldTruncate.length} file(s) exist here and not upstream.\n`);
+    for (const f of wouldTruncate) {
+        console.error(`  ${f.file}  (${f.count} lines)`);
+        for (const l of f.sample) console.error(`      - ${l.slice(0, 92)}`);
+    }
+    console.error('\n  A sync OVERWRITES the vendored copy, so every one of those lines would');
+    console.error('  be gone. Nothing would fail: an example that stops existing is not a');
+    console.error('  test failure, it is a menu with fewer entries, which is why this went');
+    console.error('  unnoticed long enough to be filed as a symptom rather than a defect.');
+    console.error('\n  Measured from the content, not read from a list, so it stays true for');
+    console.error('  files nobody has documented. If upstream genuinely supersedes this work,');
+    console.error('  --force. Check the direction first.');
+    process.exit(1);
 }
 
 // A hardcoded file list is only as good as the last person to edit it: a new
