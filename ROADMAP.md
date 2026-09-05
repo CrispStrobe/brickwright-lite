@@ -1001,12 +1001,15 @@ Next tasks, in order:
    and 397,929 DOS-load bytes. The overall workflow is red only on the existing
    i8254 capability-report mismatch; its build, corpus, smoke, production 8086
    browser proof and performance step passed.
-9. **Implemented; hosted receipt pending.** `pseudocode-examples.js` is 265,252
-   encoded bytes and still appears in all nine accepted ASM journeys because
-   Code reveal fetched it for a closed Tools picker. It now loads only when the
-   no-device Tools menu is open or restored-game controls need it, with shared
-   retry, stale-request and unmount guards. Acceptance is zero example chunks
-   before Circuit plus a working loading/retry/select interaction.
+9. **Complete (hosted runs `33964687451`, `33965722132`).**
+   `pseudocode-examples.js` was 265,252 encoded bytes in all nine accepted ASM
+   journeys because Code reveal fetched it for a closed Tools picker. It now
+   loads only when the no-device Tools menu is open or restored-game controls
+   need it, with shared retry, stale-request and unmount guards. All nine new
+   receipts contain zero example/compiler chunks before Circuit and measure
+   7,148,596 pre-Circuit bytes, 254,213 below P8, at 30.31–30.35× XT. The
+   browser journey separately proves Code keeps the chunk cold, opening Tools
+   fetches and populates it exactly once, and reopening Tools reuses it.
 10. **Next.** Split CodeMirror's statically imported C/C++, Python and JavaScript
     grammars. They contribute 266,069 webpack-source bytes to the Code chunk
     during an ASM-only journey. Require at least 250 KiB source and 100 KiB
