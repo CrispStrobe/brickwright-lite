@@ -898,6 +898,69 @@ catalogue: they answer a question adjacent to the one asked, in the vocabulary
 of the one asked. The catalogue has been pointed at `test/` all week. It applies
 to the shell history too, and the shell history is not reviewed by anyone.
 
+## Species 1, running BACKWARDS: the same defect producing a FALSE RED
+
+Species 1 is *a source-text match that tracks SPELLING, not behaviour*, and it
+is listed as a gate that **passes** while checking nothing. On 2026-09-04 the
+identical defect produced the opposite symptom three times in one afternoon.
+
+| Gate | Required, literally | What actually changed |
+| --- | --- | --- |
+| `i8086-browser-gate` | `if (window.__bwPendingMedia) this.setState({machineBooted: true})` | a `_markReactUpdate` call was inserted, splitting the one-liner into a block |
+| `circuit-camera-performance` | `React.useCallback((arr) => { … }, [])` | became `(arr, reason = 'programmatic')` with `[performanceProbe]` |
+
+Both from one commit — `perf(react): attribute circuit update sources` — and in
+**neither case did the behaviour move**. The replay still replays; the batching
+contract still batches one React update for zoom and pan. lite's suite went red
+for a parameter name and a line break.
+
+**Why this is worse than the documented direction, not milder.** A false green
+hides a defect that is already there. A false red *manufactures* a defect,
+teaches everyone that this gate cries wolf, and the next real failure in it
+gets explained away with the same shrug that was correct twice before. **A red
+everyone learns to dismiss is how a real one hides.**
+
+### And the fix is where the danger is
+
+The first repair of the browser gate widened it to "the condition, then the
+setState **within 200 characters**". It went green. It also **stayed green
+after the line it exists to protect was deleted** — that file has four
+`machineBooted: true` sites and several `__bwPendingMedia` ones, so the window
+matched a different pair.
+
+For a few minutes a false red had been replaced by a gate that could not fail,
+by someone who had spent the day cataloguing gates that cannot fail.
+
+**Going green is not evidence that a widened assertion still asserts
+anything.** The only check that separates the two is deleting what the gate
+protects and confirming it goes red. Both repairs are red-proved now; the
+second was done that way from the start, and the correct shape turned out to be
+"same block" — `if (…) {` with no closing brace before the assertion — rather
+than any character window.
+
+### Four more of these are already loaded, and they have not fired yet
+
+Assertions that pin a **one-line `if`** in files the same refactor is working
+through. All green today, all one inserted line from a false red:
+
+    circuit-rendering-regressions.test.mjs:71   if (debuggerOn || benchOpen) setRightOpen(true)
+    circuit-designer-ux-contract.test.mjs:66    if (debuggerOn || benchOpen) setRightOpen(true)
+    circuit-designer-ux-contract.test.mjs:127   if (onSimulationStart) onSimulationStart()
+    wave-open-defects.test.mjs:114              if (arming) setArmed(
+
+Listed rather than rewritten. They belong to another lane, they are green, and
+loosening a passing assertion is the move that produced the vacuous gate above.
+Whoever owns them can decide; what they should not have to do is discover the
+pattern a third time.
+
+### The rule
+
+**A source-text gate should match the CLAIM, not the layout.** If the claim is
+"these two things happen together", require them in the same block. If it is
+"this callback batches its updates", match the body and let the signature and
+the dependency array be whatever they are. Anything a formatter, a linter, or
+an added log line can change is not the thing being asserted.
+
 ## A fifth: the build that verified the previous build (2026-09-05, lego-b9's)
 
 Found by lego-b9 and reported against their own work, which is the only reason
