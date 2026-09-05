@@ -211,6 +211,24 @@ not at session start: on a loaded box the OOM killer takes the largest RSS proce
 session holding a conversation rather than the compiler — a failed run can kill somebody's live
 work rather than merely failing.
 
+## RULE — every commit carries a `Claude-Session` trailer (adopted 2026-09-05)
+
+Every session on this box commits as `CrispStrobe <cze+github@mailbox.org>`, so the author line
+identifies nobody. The `Claude-Session` trailer is the only thing that does, and it is not
+universal: measured on 2026-09-04, of the last 25 commits on main, 16 carried one session's id, 3
+carried another's, and **the rest carried none — including every one of mine.**
+
+The cost is concrete and was paid twice in one morning. Two sessions each named the wrong party for
+somebody else's commit and each told that wrong party to change their behaviour. The correct reading
+rule is: **absent OR not-yours both mean "another session"** — absence is not evidence that a commit
+is unattributed-therefore-yours.
+
+So: emit the trailer. It costs a line. And when reading, if the trailer is missing you have learned
+nothing about who wrote it.
+
+Recorded by the session that was advocating this while being the least identifiable participant in
+the repository, which is the only reason the numbers above were measured at all.
+
 ## CLAIMS — work in progress
 
 | lane | who | started | what |
