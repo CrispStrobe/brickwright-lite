@@ -336,6 +336,26 @@ the marker still discriminates), and not preloaded by `index.html`; for `text-en
 asserts the tables are in no script at all. Sizes are printed, not asserted — a byte budget
 tuned to a production build fails a development one for being a development one.
 
+**Also in this tranche, same motive (time to a verdict, time to a first paint):**
+
+- `vercel.json` now sends `Cache-Control: public, max-age=31536000, immutable` for every
+  content-hashed file (the `/(.*)\.([a-f0-9]{8,32})\.js` shape `sw.js` already recognises, plus
+  `static/assets/`). The live site was revalidating the 3.4 MB boot chunk on every visit under
+  `max-age=0, must-revalidate`. Unhashed lazy chunks, `index.html`, `sw.js` and `examples/`
+  keep revalidating, and `test/vercel-deployment-policy.test.mjs` checks both halves of that.
+- The two lesson-corpus walks (`lesson-numeric-contract`, `lesson-defect-detector`: 483 s and
+  350 s on this box, ~278 s of CI's "Run unit tests") run in their own `corpus` job, off the
+  build job's critical path; the deploy needs both. They import from `overlay/` directly and
+  were run from a copy holding only `overlay/`, `scripts/` and `test/` to prove the job needs
+  no vendor/install. `npm test` is unchanged; `test:fast` and `test:corpus` are the halves.
+- `webpack.config.js` turns on webpack's filesystem cache for LOCAL builds only (CI's cache
+  directory does not survive the run, so there it would only cost the write).
+
+**Not done, on purpose:** fanning the ~30 browser gates into a matrix job. It would take ~4 min
+off the critical path and cost 3-4× the runner minutes on an account whose queue starvation is
+documented in BLOCKED.md and §2.1; the restructure cannot be verified without pushing, and
+every gate carries hand-tuned `if:` conditions. Left as a decision, not a default.
+
 `webpack.config.js` also turns on webpack's filesystem cache for LOCAL builds only (CI's cache
 directory does not survive the run, so there it would only cost the write). Immutable deployment
 headers and moving corpus tests into another CI job were evaluated on the source branch but are

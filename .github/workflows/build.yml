@@ -359,7 +359,11 @@ jobs:
             exit 1
           fi
           set -o pipefail
-          npm test 2>&1 | tee /tmp/unit.tap
+          # Everything except the two corpus walks (every lesson bench solved,
+          # twice over): those are ~14 CPU-minutes and were this step's whole
+          # duration. They run in the `corpus` job below, in parallel with this
+          # one, and the deploy needs both. `npm test` locally is still all of it.
+          npm run test:fast 2>&1 | tee /tmp/unit.tap
           # A SUITE THAT CANNOT BE CONSTRUCTED CURRENTLY READS AS A SUITE THAT
           # PASSED, and that is not a hypothesis — it happened in run
           # 32779945069 on this branch. `test/wait-census.test.mjs` calls a
@@ -421,9 +425,12 @@ jobs:
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         run: node scripts/verify-labwired-lazy-bundle.mjs
 
-      # P6 moves large extension data, render fonts, asset manifests and
-      # lesson/example catalogs out of the eager scripts. Inspect the emitted
-      # bundle: ordinary UI tests cannot distinguish eager from lazy loading.
+      # Same question for everything the 2026-09-05 campaign moved OUT of the
+      # first load — music samples, render fonts, LEGO hub drivers, the asset
+      # library manifests, the lesson waves — and for the text-encoding polyfill
+      # that was aliased away. Each is one edit from quietly coming back, and the
+      # app works identically either way, so only a look at the built bytes can
+      # tell. Header of scripts/verify-boot-payload.mjs has the measurements.
       - name: Guard — the first load stays lean
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         run: node scripts/verify-boot-payload.mjs
@@ -1037,8 +1044,38 @@ jobs:
   # asserts it rather than leaving it as a comment: BUILD AND UPLOAD STAY IN ONE
   # JOB, and this job takes the artifact from its own run and never fetches one
   # by name. Making the build groups per-commit does not touch that.
+  # The two lesson-corpus walks — lesson-numeric-contract and
+  # lesson-defect-detector — solve every bench in the catalog and were 278 s of
+  # the build job's critical path, ahead of the build and 30 browser gates that
+  # cannot start until they finish. Nothing downstream needs their output, so
+  # they run here, alongside. Their inputs are overlay/, scripts/ and test/ —
+  # they import from the overlay tree directly and need neither the vendored
+  # packages nor node_modules (checked 2026-09-05 by running them from a copy
+  # with only those three directories). A red here blocks the deploy exactly as
+  # it did when it was a step of `build`.
+  #
+  # Same TAP reading as the unit-test step, for the same reason: a suite that
+  # threw while being constructed prints `not ok` and a summary that does not
+  # count it.
+  corpus:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: { node-version: 22 }
+      - name: Run the lesson corpus walks
+        run: |
+          set -o pipefail
+          npm run test:corpus 2>&1 | tee /tmp/corpus.tap
+          if grep -qE '^not ok ' /tmp/corpus.tap; then
+            echo "::error::TAP reports failures the summary did not count — a suite probably threw while being CONSTRUCTED."
+            grep -E '^not ok ' /tmp/corpus.tap | head -20
+            exit 1
+          fi
+
   deploy:
-    needs: build
+    needs: [build, corpus]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
