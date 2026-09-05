@@ -55,6 +55,8 @@ import {createBranchCursor} from './fork-history.js';
 import {createRunToCoordinator} from './run-to.js';
 import {createSelectedEventInspectionStore} from './selected-event-inspection.js';
 import {createTimingWaveform} from './timing-waveform.js';
+import {createDebuggerSessionBundle, importDebuggerSessionBundle} from './session-bundle.js';
+import {DEBUG_SESSION_SNAPSHOT_CODEC, structuredSessionSnapshotCodec} from './session-snapshot-codec.js';
 import {negotiateCycleProvider} from './cycle-provider.js';
 import { setValueResolver } from './hover-values.js';
 import { instructionLength } from './opcodes.js';
@@ -574,6 +576,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         canReverse: (...args) => activeBranchPayload.cycleReplay.canReverse(...args),
         reverseToCycle: (...args) => activeBranchPayload.cycleReplay.reverseToCycle(...args)
     };
+    const sessionCodecs = Object.freeze({[DEBUG_SESSION_SNAPSHOT_CODEC]: structuredSessionSnapshotCodec});
     const unsubscribeRecordingEvents = eventStream.onEvent(event =>
         activeBranchPayload.recordingSession.appendBatch([event]));
     let unsubscribeDebugEvents = null;
@@ -2915,6 +2918,104 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             return {...branch, recording: payload.recordingSession.status(),
                 checkpoints: payload.recorder.checkpointSummary()};
         }),
+        async exportDebugSession () {
+            const branches = forkRecordingStore.summaries();
+            if (branches.length !== 1) return {accepted: false,
+                code: 'session-export-branch-topology-unsupported',
+                reason: 'Export currently requires one retained branch; fork snapshots cannot be flattened safely'};
+            const recorder = activeBranchPayload.recorder;
+            const summaries = recorder.checkpointSummary();
+            if (!summaries.length) return {accepted: false, code: 'session-export-empty',
+                reason: 'Start recording and capture a checkpoint before exporting a session'};
+            const checkpoints = recorder.checkpoints().map(checkpoint => ({
+                id: checkpoint.id, eventCursor: checkpoint.eventCursor,
+                inputCursor: checkpoint.inputCursor, time: checkpoint.time,
+                codec: DEBUG_SESSION_SNAPSHOT_CODEC,
+                snapshot: {target: checkpoint.snapshot,
+                    ...(Object.hasOwn(checkpoint, 'hostSnapshot') ? {host: checkpoint.hostSnapshot} : {})}
+            }));
+            if (checkpoints.some(checkpoint => checkpoint.inputCursor !== 0)) return {accepted: false,
+                code: 'session-export-input-log-unsupported',
+                reason: 'This bundle schema cannot yet preserve deterministic input logs'};
+            try {
+                const bundle = await createDebuggerSessionBundle({
+                    firmware: bootMedia?.bytes || new Uint8Array(), source: '',
+                    trace: recorder.eventsFrom(summaries[0].eventCursor),
+                    branches: [{branchId: 'main', parentBranchId: null,
+                        forkCursor: {branchId: 'main', eventCursor: summaries[0].eventCursor}}],
+                    checkpoints, codecs: sessionCodecs
+                });
+                return {accepted: true, text: JSON.stringify(bundle), filename: 'debug-session.bwdebug'};
+            } catch (error) {
+                return {accepted: false, code: error?.code || 'session-export-failed',
+                    reason: error?.message || String(error)};
+            }
+        },
+        async importDebugSession (text) {
+            if (recordingSession.status().active) return {accepted: false,
+                code: 'session-import-recording-active',
+                reason: 'Stop the active recording before importing a session'};
+            if (typeof text !== 'string' || text.length > 48 * 1024 * 1024) return {accepted: false,
+                code: 'session-import-size', reason: 'Session file exceeds the browser import limit'};
+            let bundle;
+            try { bundle = JSON.parse(text); } catch (error) {
+                return {accepted: false, code: 'session-import-json',
+                    reason: `Session file is not valid JSON (${error?.message || String(error)})`};
+            }
+            try {
+                const imported = await importDebuggerSessionBundle({bundle, codecs: sessionCodecs,
+                    commit: staged => {
+                        if (staged.branches.length !== 1 || staged.branches[0].parentBranchId !== null) {
+                            throw Object.assign(new Error('Imported branch topology is unsupported'),
+                                {code: 'session-import-branch-topology-unsupported'});
+                        }
+                        if (staged.checkpoints.some(checkpoint => checkpoint.inputCursor !== 0)) {
+                            throw Object.assign(new Error('Imported bundle omits required deterministic inputs'),
+                                {code: 'session-import-input-log-unsupported'});
+                        }
+                        const importedRecorder = createDebugRecorder();
+                        let eventIndex = 0;
+                        for (const checkpoint of staged.checkpoints) {
+                            while (eventIndex < staged.trace.length &&
+                                staged.trace[eventIndex].seq < checkpoint.eventCursor) {
+                                importedRecorder.appendEvent(staged.trace[eventIndex++]);
+                            }
+                            const decoded = checkpoint.snapshot;
+                            if (!decoded || !Object.hasOwn(decoded, 'target')) {
+                                throw Object.assign(new Error('Checkpoint snapshot has no target state'),
+                                    {code: 'session-import-checkpoint-invalid'});
+                            }
+                            importedRecorder.createCheckpoint({schema: 1, id: checkpoint.id,
+                                eventCursor: checkpoint.eventCursor, inputCursor: checkpoint.inputCursor,
+                                time: checkpoint.time, snapshot: decoded.target,
+                                ...(Object.hasOwn(decoded, 'host') ? {hostSnapshot: decoded.host} : {})});
+                        }
+                        while (eventIndex < staged.trace.length) {
+                            importedRecorder.appendEvent(staged.trace[eventIndex++]);
+                        }
+                        const importedPayload = createBranchPayload(importedRecorder,
+                            createHaltOccurrenceLedger());
+                        const importedStore = createForkRecordingStore({rootRecording: importedPayload});
+                        // Commit is deliberately the first mutation: decoding,
+                        // hashing and recorder reconstruction all completed above.
+                        activeBranchPayload = importedPayload;
+                        forkRecordingStore = importedStore;
+                        reverseCursor = null;
+                        reverseContinue.reset();
+                        selectedInspectionKey = null;
+                        selectedInspectionView = null;
+                        return {traceEvents: staged.trace.length,
+                            checkpoints: staged.checkpoints.length};
+                    }});
+                // Rendering is not part of the transaction: a consumer error
+                // cannot turn a committed, validated import into a false refusal.
+                try { emit(); } catch { /* the next UI refresh can recover */ }
+                return imported;
+            } catch (error) {
+                return {accepted: false, code: error?.code || 'session-import-failed',
+                    reason: error?.message || String(error)};
+            }
+        },
         activeDebugBranch: () => forkRecordingStore.active().branch,
         forkDebugHistory(branchId) {
             if (reverseCursor === null) return {accepted: false, code: 'fork-cursor-unavailable',

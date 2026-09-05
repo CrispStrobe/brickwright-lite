@@ -7,6 +7,7 @@ import DebugDrawer from './debug-drawer.jsx';
 import DebugInspector from './debug-inspector.jsx';
 import DebugFrames from './debug-frames.jsx';
 import DebugTimingWaveform from './debug-timing-waveform.jsx';
+import DebugSessionTransfer from './debug-session-transfer.jsx';
 import {mergeTargetKinds} from '../../lib/bw-debug/target-kinds.js';
 import {reverseCycleControlStatus} from '../../lib/bw-debug/reverse-cycle-ui.js';
 
@@ -145,7 +146,8 @@ class DebugPanel extends React.Component {
         // order a user works in.
         this.state = {runner: null, ui: {phase: 'idle', message: ''}, kind: 'emulator', kinds: null,
             machineConfig: null, serialInput: '', firmwareName: null,
-            recordingStatus: null, reverseStatus: null, timelineStatus: null};
+            recordingStatus: null, reverseStatus: null, timelineStatus: null,
+            sessionTransferStatus: null};
         this.onStart = this.onStart.bind(this);
         this.onPause = this.onPause.bind(this);
         this.onStep = this.onStep.bind(this);
@@ -173,6 +175,8 @@ class DebugPanel extends React.Component {
         this.onWaveformPreviousTrigger = this.onWaveformPreviousTrigger.bind(this);
         this.onWaveformNextTrigger = this.onWaveformNextTrigger.bind(this);
         this.onWaveformExport = this.onWaveformExport.bind(this);
+        this.onDebugSessionExport = this.onDebugSessionExport.bind(this);
+        this.onDebugSessionImport = this.onDebugSessionImport.bind(this);
         this.syncProjectTokens = this.syncProjectTokens.bind(this);
         this._onMachineExtracted = this._onMachineExtracted.bind(this);
         this._onMediaLoad = this._onMediaLoad.bind(this);
@@ -724,6 +728,40 @@ class DebugPanel extends React.Component {
         }
     }
 
+    async onDebugSessionExport () {
+        const runner = this.state.runner;
+        if (!runner) return;
+        this.setState({sessionTransferStatus: {message: 'Preparing session…'}});
+        try {
+            const result = await runner.exportDebugSession();
+            if (!result.accepted) return this.setState({sessionTransferStatus: result});
+            const blob = new Blob([result.text], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url; anchor.download = result.filename || 'debug-session.bwdebug'; anchor.click();
+            URL.revokeObjectURL(url);
+            this.setState({sessionTransferStatus: {accepted: true, message: 'Session exported'}});
+        } catch (error) {
+            this.setState({sessionTransferStatus: {accepted: false, code: 'session-export-failed',
+                reason: error?.message || String(error)}});
+        }
+    }
+
+    async onDebugSessionImport (file) {
+        const runner = this.state.runner;
+        if (!runner) return;
+        this.setState({sessionTransferStatus: {message: 'Validating session…'}});
+        try {
+            const text = await file.text();
+            const result = await runner.importDebugSession(text);
+            this.setState({sessionTransferStatus: result.accepted ?
+                {accepted: true, message: 'Session imported'} : result});
+        } catch (error) {
+            this.setState({sessionTransferStatus: {accepted: false, code: 'session-import-failed',
+                reason: error?.message || String(error)}});
+        }
+    }
+
     render () {
         const {ui} = this.state;
         const {phase, message} = ui;
@@ -1002,6 +1040,13 @@ class DebugPanel extends React.Component {
                         {timelineRefusal}
                     </span> : null}
                 </div>
+
+                {this.state.runner ? <DebugSessionTransfer
+                    disabled={running || busy}
+                    status={this.state.sessionTransferStatus}
+                    onExport={this.onDebugSessionExport}
+                    onImport={this.onDebugSessionImport}
+                /> : null}
 
                 {selectedInspection?.accepted ? (
                     <div data-debug-selected-inspection data-inspection-provenance="recorded-event"
