@@ -21,7 +21,7 @@ const EXAMPLES = (await import(new URL('sb3-creator-examples.js', L).href)).defa
 const {buildPseudocode8086} = await import(new URL('bw-asm/pseudocode-8086.js', L).href);
 const {createI8086DosBench} = await import(new URL('bw-debug/i8086-dos-bench.js', L).href);
 
-const IDS = ['i8086_blink', 'i8086_keypad', 'i8086_events', 'i8086_analog'];
+const IDS = ['i8086_blink', 'i8086_keypad', 'i8086_events', 'i8086_analog', 'i8086_counter'];
 
 test('every 8086 example is OFFERED in the editor, not merely present', () => {
     // The failure this guards: shipping in the examples file and being listed

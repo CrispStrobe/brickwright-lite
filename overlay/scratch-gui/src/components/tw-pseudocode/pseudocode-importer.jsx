@@ -496,7 +496,8 @@ const GROUPS = [
         ['i8086_blink', '💡 Blink, reseated from the 8051'],
         ['i8086_keypad', '⌨️ Keypad on an 8255'],
         ['i8086_events', '⏱️ Four scripts, preemptive'],
-        ['i8086_analog', '🎛️ Analog in (ADC0809)']
+        ['i8086_analog', '🎛️ Analog in (ADC0809)'],
+        ['i8086_counter', '🔢 Eight-digit display']
     ]}
 ];
 
