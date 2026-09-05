@@ -93,9 +93,14 @@ try {
     // never goes idle still yields a measurement rather than failing here.
     await page.waitForLoadState('networkidle', {timeout: 20000}).catch(() => {});
 
-    // A HEAD or a 206 is the probe; a GET with a body is the download.
+    // A HEAD or a 206 is the probe; a GET with a body is the download. So is a
+    // GET that never found one: on a build WITHOUT the artifact the probe's
+    // ranged-GET fallback comes back 404 with the server's error page as its
+    // body, and that was counted as the engine (2026-09-05, locally, on a
+    // build where sync-labwired-wasm had not run — the same shape CI has when
+    // the release fetch fails). Nothing was downloaded; the probe learned "no".
     const heavy = seen.filter(r => /labwired_wasm_bg\.wasm|labwired_wasm\.js/.test(r.url))
-        .filter(r => r.method !== 'HEAD' && r.status !== 206);
+        .filter(r => r.method !== 'HEAD' && r.status !== 206 && r.status < 400);
     const probes = seen.filter(r => /labwired_wasm_bg\.wasm/.test(r.url) &&
         (r.method === 'HEAD' || r.status === 206));
     const total = seen.reduce((sum, r) => sum + r.bytes, 0) / 1048576;
