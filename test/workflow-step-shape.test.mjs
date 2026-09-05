@@ -54,19 +54,59 @@ const uploadStepsMissingPath = text => {
     const lines = text.split('\n');
     const out = [];
     for (let i = 0; i < lines.length; i++) {
-        if (!/uses:\s*actions\/upload-artifact/.test(lines[i])) continue;
+        // EVERY upload action, not just `upload-artifact`. The first version of
+        // this gate matched `actions/upload-artifact` and so skipped
+        // `actions/upload-pages-artifact` — the ONE upload whose loss stops
+        // every deploy. It covered 23 steps and missed the one that mattered.
+        if (!/uses:\s*actions\/upload-[a-z-]*artifact/.test(lines[i])) continue;
         const indent = lines[i].match(/^\s*/)[0].length;
         let hasPath = false;
         for (let j = i + 1; j < lines.length; j++) {
             const line = lines[j];
             if (line.trim() === '') continue;
             const lead = line.match(/^\s*/)[0].length;
-            // A new step starts at or below the `uses:` indentation.
             if (lead < indent || /^\s*- /.test(line)) break;
-            if (/^\s*path:/.test(line)) { hasPath = true; break; }
+            // Both spellings: a `path:` key, or the inline `with: { path: … }`
+            // flow-mapping form. Checking only the first reports the Pages
+            // upload as missing a path it plainly has — a false red on the
+            // step nobody can afford one on.
+            if (/^\s*path:/.test(line) || /with:\s*\{[^}]*\bpath:/.test(line)) { hasPath = true; break; }
         }
         if (!hasPath) out.push(i + 1);
     }
+    return out;
+};
+
+// A step is a `- ` entry inside a job's `steps:` block. Anchoring on `steps:`
+// matters: `on: push: paths-ignore:` entries are `- ` lines at the same
+// indentation, and treating `- 'BLOCKED.md'` as a step reports a filename for
+// having neither `uses` nor `run`, which is true and meaningless.
+const stepsWithoutExactlyOneAction = text => {
+    const lines = text.split('\n');
+    const out = [];
+    let inSteps = false, stepsIndent = 0;
+    let cur = null;
+    const finish = () => {
+        if (cur && (cur.uses + cur.run) !== 1) out.push(cur);
+        cur = null;
+    };
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.trim() === '') continue;
+        const lead = line.match(/^\s*/)[0].length;
+        const m = line.match(/^(\s*)steps:\s*$/);
+        if (m) { finish(); inSteps = true; stepsIndent = m[1].length; continue; }
+        if (inSteps && lead <= stepsIndent && !/^\s*- /.test(line)) { finish(); inSteps = false; continue; }
+        if (!inSteps) continue;
+        if (/^\s*- /.test(line) && lead === stepsIndent + 2) {
+            finish();
+            cur = {line: i + 1, uses: 0, run: 0, name: (line.match(/name:\s*(.*)$/) || [])[1] || line.trim().slice(0, 44)};
+        }
+        if (!cur) continue;
+        if (/^\s*-?\s*uses:/.test(line)) cur.uses++;
+        if (/^\s*-?\s*run:/.test(line)) cur.run++;
+    }
+    finish();
     return out;
 };
 
@@ -84,6 +124,15 @@ test('no run: block contains a line shaped like a step key', () => {
         assert.deepEqual(bad, [], `${f}: step key(s) buried inside a \`run:\` literal — valid YAML, ` +
             `silently shell, and the step they belong to has lost them:\n  ` +
             bad.map(b => `line ${b.line}: ${b.text}`).join('\n  '));
+    }
+});
+
+test('every step has exactly one of uses or run', () => {
+    for (const f of FILES) {
+        const bad = stepsWithoutExactlyOneAction(readFileSync(path.join(DIR, f), 'utf8'));
+        assert.deepEqual(bad.map(b => `line ${b.line}: ${b.name}`), [],
+            `${f}: step(s) with neither or both of \`uses\`/\`run\` — a step that does nothing, or ` +
+            `one whose action was severed from it and landed elsewhere.`);
     }
 });
 
