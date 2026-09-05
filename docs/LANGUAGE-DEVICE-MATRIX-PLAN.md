@@ -332,21 +332,17 @@ Remaining, in order:
 - [x] N3a (upstream half): landed in bw-board — flash ROM functions `be02550`, reviewed by a
       second session that re-ran the oracle in both directions; `bootFromFlash(image)` on the
       adapter `ff744c5`.
-- [ ] N3a (lite half): **blocked on the bw-board pin bump, which is not a file copy, and
-      nobody owns it** (checked with brickwright-lite-ea 2026-09-05). What the next person
-      starts from: at `ff744c5` `src/target-kinds.js` was CONSOLIDATED, not lost — its two
-      exports (`LABWIRED_KIND`, `getTargetKinds()`) now come from `src/debug-target-factory.js`.
-      Lite imports the old module from `bw-board/index.js`, `bw-board/debug-target-factory.js`
-      and `components/tw-pseudocode/debug-panel.jsx`; the fix is three import paths. The
-      hazard is the chunk graph, not the code: the perf lane isolated `target-kinds` in its
-      own `bw-debug-target-kinds` chunk, and folding it into `debug-target-factory` (reachable
-      from the debugger surface) can re-eager those bytes into first load, whose ratchet is
-      9 MB against a measured 7.64. Check emitted chunk names before and after, not only the
-      tests. The bump is 17 src files (8086/8088 timing, 8254, 8259, ne2000, reseat-gate,
-      debugger); it needs bw-board, the debugger lane and the perf lane at once, and a main
-      that can complete a build (none since 11:03 today). The two rp2040 files are
-      byte-identical to upstream at the current pin, so N3a's real dependency is narrower
-      than the whole bump.
+- [x] N3a (lite half): **UNBLOCKED 2026-09-05** — bw-board pin 547bb4e → `88bbdcf78` landed
+      (lego-be, `lane/bwboard-pin-0a779af`, audited by lego-ac): `rp2040-bootrom.js` with the five flash
+      ROM functions and `rp2040js-adapter.js` with `bootFromFlash(image)` are now vendored, plus the
+      i8086/i8259/ne2000/cga-card files and `target-kinds.js` (upstream RESTORED the leaf at `0a779af`,
+      so the three import paths and the `bw-debug-target-kinds` chunk are unchanged; the hazard above
+      did not materialise). Done with `--only` (six files, not the other twenty-two), the vendor
+      allow-list extended by name, and the three-way sync guard PASSED rather than overridden.
+      Bisect on the way: `c843708be` carried upstream `71cc1ca`'s double opcode fetch after a prefix,
+      caught only by lite's `test/i8086-performance-regressions.test.mjs`; fixed upstream (`88bbdcf`),
+      lite's assertion stays as the consumer's proof. N3b (`deployMainPy` via `bootFromFlash`) and
+      N3c (the Pico deploy button) are now plain lite work; T7 lands before N3c.
 - [x] N3b: `bootFromFlash(image)` on the rp2040js adapter, bw-board `ff744c5` (a second session;
       2/2 tests, stage-2 stub proves execution from flash base). Reaches lite with the pin bump.
 - [ ] N3c: lite wiring — the Python tab's ▶ Run for the Pico boots the pinned MicroPython UF2
