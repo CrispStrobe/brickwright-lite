@@ -115,20 +115,22 @@ try {
     check('recording starts with checkpoint capability', true);
 
     const run = page.getByRole('button', {name: /Run/}).first();
-    await run.click();
-    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() =>
-        requestAnimationFrame(resolve))));
-    await pause.click();
+    const stepRecorded = async () => {
+        const stepping = page.waitForFunction(() => document.querySelector('[data-debug-panel]')
+            ?.getAttribute('data-debug-phase') === 'stepping', null, {timeout: 10000});
+        await Promise.all([stepping, page.getByRole('button', {name: /Step instruction/}).first().click()]);
+        await page.waitForFunction(() => document.querySelector('[data-debug-panel]')
+            ?.getAttribute('data-debug-phase') === 'paused', null, {timeout: 10000});
+    };
+    await stepRecorded();
     await page.locator('[data-debug-checkpoint]').click();
     await page.waitForFunction(() => !document.querySelector('[data-debug-restore]')?.disabled,
         null, {timeout: 15000});
     check('manual checkpoint is retained and restorable', true);
     await snap('checkpoint');
 
-    await run.click();
-    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() =>
-        requestAnimationFrame(resolve))));
-    await pause.click();
+    await stepRecorded();
+    await stepRecorded();
     await page.locator('[data-debug-record]').click();
     await page.waitForFunction(() => /Record/.test(
         document.querySelector('[data-debug-record]')?.textContent || '') &&

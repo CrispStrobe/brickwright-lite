@@ -123,12 +123,13 @@ try {
         /Run to address.*hex/i.test(promptSeen), promptSeen);
     await page.screenshot({path: join(artifacts, '01-run-to-paused.png'), fullPage: true});
 
-    const observedStepping = page.waitForFunction(() => document.querySelector('[data-debug-panel]')
-        ?.getAttribute('data-debug-phase') === 'stepping', null, {timeout: 10000});
-    await Promise.all([observedStepping, panel.getByRole('button', {name: /Step instruction/}).click()]);
+    await panel.getByRole('button', {name: /Step instruction/}).click();
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() =>
+        requestAnimationFrame(resolve))));
     await page.waitForFunction(() => document.querySelector('[data-debug-panel]')
         ?.getAttribute('data-debug-phase') === 'paused', null, {timeout: 10000});
     await panel.locator('[data-debug-timeline-refresh]').click();
+    await panel.locator('[data-debug-timeline-latest]:not([disabled])').waitFor({timeout: 10000});
     await panel.locator('[data-debug-timeline-latest]').click();
     const inspection = panel.locator('[data-debug-selected-inspection]');
     await inspection.waitFor({state: 'visible', timeout: 10000});
