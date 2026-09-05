@@ -51,32 +51,34 @@ jobs:
             else gh issue create --repo "${{ github.repository }}" --title "$title" --body "$body"; fi
             exit 1
           fi
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Cancel stuck build runs (zombie blocks the concurrency group)
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          now=$(date -u +%s)
-          # Age from when the job actually STARTED EXECUTING, not from
-          # run_started_at. run_started_at is when the run was created, so it
-          # includes time spent QUEUED — and this repo queues for 10+ minutes
-          # whenever several branches build at once. Measured that way a healthy
-          # build that waited 20 minutes for a runner and has been compiling for
-          # five looks 25 minutes old, and the watchdog kills it. Falls back to
-          # run_started_at when no job has started yet, which cannot over-report
-          # because such a run is still queued and has an age of roughly zero.
-          gh api "repos/${{ github.repository }}/actions/workflows/build.yml/runs?status=in_progress&per_page=10" \
-            --jq '.workflow_runs[] | "\(.id) \(.run_started_at)"' | while read -r id created; do
-            [ -n "$created" ] || continue
-            started=$(gh api "repos/${{ github.repository }}/actions/runs/$id/jobs" \
-              --jq '[.jobs[].started_at | select(. != null)] | sort | first // empty' 2>/dev/null)
-            [ -n "$started" ] || started="$created"
-            age=$(( (now - $(date -u -d "$started" +%s)) / 60 ))
-            if [ "$age" -gt 25 ]; then
-              echo "run $id in_progress for ${age}m — cancelling"
-              gh api -X POST "repos/${{ github.repository }}/actions/runs/$id/cancel"
-              title="deploy watchdog: cancelled a stuck build run"
-              body="Build run $id has been EXECUTING for ${age} minutes (healthy: 10–15; queue time excluded). Cancelled it so the concurrency group unblocks and the next push deploys. If this recurs, something in the build hangs — check that run's logs."
-              gh issue create --repo "${{ github.repository }}" --title "$title" --body "$body" || true
-            fi
+          # WHICH runs are stuck is decided by scripts/watchdog-stuck-runs.mjs,
+          # not here, because the interesting distinction is invisible from the
+          # run object alone: a run reports `in_progress` the moment GitHub
+          # accepts it, while its jobs can still be QUEUED with a null
+          # started_at. Such a run has no execution age yet -- which is not an
+          # age of zero -- and the previous shell fell back to the creation
+          # time, inventing exactly the queue time it was trying to exclude. On
+          # 2026-09-05 five consecutive main runs were cancelled while queued.
+          # The selector is pure and has fixtures in
+          # test/deploy-watchdog-age.test.mjs; this step only gathers and acts.
+          runs=$(gh api "repos/${{ github.repository }}/actions/workflows/build.yml/runs?status=in_progress&per_page=10" \
+            --jq '[.workflow_runs[].id]')
+          payload='[]'
+          for id in $(echo "$runs" | jq -r '.[]'); do
+            jobs=$(gh api "repos/${{ github.repository }}/actions/runs/$id/jobs" \
+              --jq '[.jobs[] | {started_at}]' 2>/dev/null || echo '[]')
+            payload=$(jq -c --argjson j "$jobs" --arg id "$id" '. + [{id: $id, jobs: $j}]' <<<"$payload")
+          done
+          echo "$payload" | node scripts/watchdog-stuck-runs.mjs | while read -r id age; do
+            echo "run $id EXECUTING for ${age}m — cancelling"
+            gh api -X POST "repos/${{ github.repository }}/actions/runs/$id/cancel"
+            title="deploy watchdog: cancelled a stuck build run"
+            body="Build run $id has been EXECUTING for ${age} minutes (healthy: 10-15; queue time excluded, and a run whose jobs have not started is skipped rather than aged). Cancelled it so the runner is freed. If this recurs, something in the build hangs — check that run's logs."
+            gh issue create --repo "${{ github.repository }}" --title "$title" --body "$body" || true
           done
