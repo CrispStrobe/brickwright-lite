@@ -1031,6 +1031,32 @@ Next tasks, in order:
     6,543,080 pre-Circuit bytes, 356,460 below P10. First Costume is 379.7 ms
     with one 61 ms task, real Matrix state and a green vector/bitmap
     draw/save/reload round trip, passing every 449.075 ms / 1 s / 100 ms limit.
+12. **Active.** Replace the sole `react-virtualized` barrel import with its
+    direct ES `List` entry. The barrel makes 350,770 source bytes initial across
+    66 modules although list monitors use only List/Grid. Hosted ownership must
+    cap the retained initial closure at 140 KiB, exclude unused Table, Masonry,
+    Collection, MultiGrid and WindowScroller families, and keep long-list
+    scrolling and editing green. Reject below 75 KiB emitted reduction.
+13. **Queued.** Narrow synchronous `scratch-svg-renderer` consumers and load its
+    sanitizer only in the SVG-upload branch. `css-tree` plus `mdn-data` currently
+    contribute 572,453 initial source bytes. A named retryable sanitizer asset
+    must be absent from default rendering and Costume activation, strip hostile
+    SVG before storage, make no external request, survive save/reload and recover
+    from a failed chunk. Keep rendering itself synchronous.
+14. **Queued.** After an isolated baseline, demand-load the remaining List/Grid
+    closure only for a visible list monitor while its outer geometry remains
+    synchronous. Prove a 1,000-row saved list retains position, scrolls, edits,
+    loads once and retries safely; enforce the 15% / 1 s / 100 ms limits.
+15. **Queued.** Split hidden tutorial/card/library bodies from compact synchronous
+    metadata. Preserve tutorial URL lookup, `initTutorialCard`, extension
+    connection metadata and every selection flow. Treat each independently and
+    reject a slice which saves less than 75 KiB emitted or exceeds activation
+    limits.
+16. **Experiment only.** Differentially test a CI-generated precompiled
+    scratch-parser schema validator. AJV is on every project-load path, so a
+    dynamic import is not an optimization. Accept only exact callback/error/
+    result/SB1 parity across valid, invalid, adversarial and full-corpus inputs,
+    plus a material net initial and encoded-byte reduction.
 
 **Debugger-only circuit deferral — complete (hosted performance step
 `33962284105`).** The existing nine fresh-context receipts proved that the

@@ -4,6 +4,7 @@ import {
     assertDosChunkBoundary,
     assertLazyPaintEditorBoundary,
     assertOptionalCodeMirrorGrammarBoundary,
+    assertReactVirtualizedBoundary,
     auditWebpackResourceWindow,
     summarizeWebpackOwnership
 } from '../scripts/lib/webpack-ownership.mjs';
@@ -180,4 +181,44 @@ test('paint boundary rejects eager or collapsed activation stages', () => {
     assert.match(failures.join('\n'), /paint-reducer became an initial chunk/);
     assert.match(failures.join('\n'), /paint-editor became an initial chunk/);
     assert.match(failures.join('\n'), /same emitted JavaScript asset/);
+});
+
+test('react-virtualized ownership permits only the List dependency closure', () => {
+    const stats = fixture();
+    stats.modules.push(
+        {name: './node_modules/react-virtualized/dist/es/List/List.js', size: 13000, chunks: [2]},
+        {name: './node_modules/react-virtualized/dist/es/Grid/Grid.js', size: 100000, chunks: [2]},
+        {name: './node_modules/react-virtualized/dist/es/utils/requestAnimationTimeout.js',
+            size: 5000, chunks: [2]}
+    );
+    const report = summarizeWebpackOwnership(stats);
+    assert.equal(report.initialReactVirtualized.sourceBytes, 118000);
+    assert.deepEqual(report.initialReactVirtualized.families, ['Grid', 'List', 'utils']);
+    assert.deepEqual(report.initialReactVirtualized.unusedFamilies, []);
+    assert.deepEqual(assertReactVirtualizedBoundary(report), []);
+});
+
+test('react-virtualized ownership rejects its broad barrel families and size', () => {
+    const stats = fixture();
+    stats.modules.push(
+        {name: './node_modules/react-virtualized/dist/es/List/List.js', size: 13000, chunks: [2]},
+        {name: './node_modules/react-virtualized/dist/es/Grid/Grid.js', size: 100000, chunks: [2]},
+        {name: './node_modules/react-virtualized/dist/es/Table/Table.js', size: 41000, chunks: [2]},
+        {name: './node_modules/react-virtualized/dist/es/Masonry/Masonry.js', size: 23000, chunks: [2]}
+    );
+    const report = summarizeWebpackOwnership(stats);
+    assert.deepEqual(report.initialReactVirtualized.unusedFamilies, ['Masonry', 'Table']);
+    const failures = assertReactVirtualizedBoundary(report);
+    assert.equal(failures.length, 2);
+    assert.match(failures.join('\n'), /exceeds 140 KiB/);
+    assert.match(failures.join('\n'), /Masonry, Table/);
+});
+
+test('react-virtualized ownership rejects a missing List implementation', () => {
+    const stats = fixture();
+    stats.modules.push(
+        {name: './node_modules/react-virtualized/dist/es/Grid/Grid.js', size: 100000, chunks: [2]}
+    );
+    assert.match(assertReactVirtualizedBoundary(summarizeWebpackOwnership(stats)).join('\n'),
+        /List implementation is missing/);
 });
