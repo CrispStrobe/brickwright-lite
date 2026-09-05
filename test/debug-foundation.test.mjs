@@ -79,6 +79,18 @@ test('foundation executes an arbitrated breakpoint plan with one halt', () => {
     assert.equal(outcome.halted, true);
 });
 
+test('foundation exposes prepared breakpoint runtime restore without leaking its engine', () => {
+    const foundation = createDebugFoundation();
+    foundation.attachCapabilities({events: ['instruction']});
+    foundation.addBreakpoint({id: 'pc', kind: 'execute', address: 2});
+    const saved = foundation.exportBreakpointState();
+    foundation.evaluateBreakpoints({kind: 'instruction', pcBefore: 2});
+    assert.equal(foundation.listBreakpoints()[0].matches, 1);
+    const prepared = foundation.prepareBreakpointState(saved);
+    assert.equal(prepared.commit().committed, true);
+    assert.equal(foundation.listBreakpoints()[0].matches, 0);
+});
+
 test('foundation timeline follows explicitly drained batches including gaps', () => {
     const foundation = createDebugFoundation({eventCapacity: 2});
     const base = seq => ({schema: 1, seq, time: {ticks: seq, domain: 'cpu'},

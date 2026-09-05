@@ -20,3 +20,11 @@ test('recording controls are capability gated and expose checkpoint lifecycle co
         'restoreDebugCheckpoint', 'debugRecordingStatus'
     ]) assert.ok(runner.includes(command), `runner lost ${command}`);
 });
+
+test('runner checkpoints debugger-host state and replay uses the atomic restore path', () => {
+    assert.match(runner, /captureHostState:[\s\S]*exportBreakpointState\(\)[\s\S]*eventBreakpointCounters/);
+    assert.match(runner, /prepareHostRestore:[\s\S]*prepareBreakpointState\(snapshot\.breakpoints\)/);
+    assert.match(runner, /commitHostRestore:[\s\S]*preparedBreakpoints\.commit\(\)/);
+    assert.match(runner, /restoreCheckpoint: checkpoint => recordingSession\.restore\(checkpoint\.eventCursor\)/,
+        'verified replay must not bypass debugger-host restoration');
+});

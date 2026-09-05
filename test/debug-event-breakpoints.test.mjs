@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
     compileEventBreakpoint,
+    EVENT_BREAKPOINT_STATE_SCHEMA,
     EventBreakpointEngine,
     executeBreakpointPlan
 } from '../overlay/scratch-gui/src/lib/bw-debug/event-breakpoints.js';
@@ -102,6 +103,124 @@ test('clear returns its count, empties summaries, and never recycles generations
     const later = engine.add({id: 'one', kind: 'execute', address: 3}).breakpoint;
     assert.ok(later.generation > first.generation);
     assert.equal(engine.disable('one', first.generation), false);
+});
+
+test('versioned engine state restores mutable counters and one-shot consumption defensively', () => {
+    const engine = new EventBreakpointEngine(capabilities);
+    engine.add({id: 'periodic', kind: 'execute', address: 7, modulo: 2});
+    engine.add({id: 'once', kind: 'execute', address: 7, oneShot: true});
+    engine.evaluate({kind: 'instruction', pcBefore: 7});
+    engine.evaluate({kind: 'instruction', pcBefore: 7});
+    const saved = engine.exportState();
+    assert.equal(saved.schema, EVENT_BREAKPOINT_STATE_SCHEMA);
+    assert.equal(saved.definitions[1].oneShotConsumed, true);
+    assert.equal(Object.hasOwn(saved.definitions[0], 'actions'), false);
+    assert.equal(Object.hasOwn(saved.definitions[0], 'test'), false);
+
+    engine.disable('periodic', engine.list()[0].generation);
+    engine.evaluate({kind: 'instruction', pcBefore: 7});
+    const restored = engine.importState(saved);
+    assert.equal(restored[0].enabled, true);
+    assert.equal(restored[0].encounters, 2);
+    assert.equal(restored[0].matches, 1);
+    assert.equal(restored[1].enabled, false);
+
+    saved.definitions[0].enabled = false;
+    saved.definitions[0].encounters = 999;
+    assert.equal(engine.list()[0].enabled, true);
+    assert.equal(engine.list()[0].encounters, 2);
+});
+
+test('state import rejects incompatible definitions, topology, generations and schemas atomically', () => {
+    const make = address => {
+        const engine = new EventBreakpointEngine(capabilities);
+        engine.add({id: 'bp', kind: 'execute', address});
+        return engine;
+    };
+    const source = make(1);
+    source.evaluate({kind: 'instruction', pcBefore: 1});
+    const saved = source.exportState();
+
+    const incompatible = make(2);
+    const before = incompatible.list();
+    assert.throws(() => incompatible.importState(saved), /definition mismatch/);
+    assert.deepEqual(incompatible.list(), before, 'failed import must not partially mutate runtime');
+
+    assert.throws(() => source.importState({...saved, schema: 99}), /Unsupported/);
+    assert.throws(() => source.importState({...saved, definitions: []}), /do not match/);
+    const stale = structuredClone(saved);
+    stale.definitions[0].generation++;
+    assert.throws(() => source.importState(stale), /definition mismatch/);
+});
+
+test('state runtime validation is fail-closed and atomic', () => {
+    const engine = new EventBreakpointEngine(capabilities);
+    engine.add({id: 'a', kind: 'execute', address: 1});
+    engine.add({id: 'b', kind: 'execute', address: 1});
+    engine.evaluate({kind: 'instruction', pcBefore: 1});
+    const before = engine.list();
+    for (const corrupt of [
+        state => { state.definitions[0].encounters = -1; },
+        state => { state.definitions[0].matches = 2; },
+        state => { state.definitions[1].enabled = 'yes'; },
+        state => { state.definitions[1].oneShotConsumed = true; }
+    ]) {
+        const state = structuredClone(engine.exportState());
+        corrupt(state);
+        assert.throws(() => engine.importState(state), /Invalid event-breakpoint runtime/);
+        assert.deepEqual(engine.list(), before);
+    }
+});
+
+test('prepared state commit is atomic, single-use and detached from caller mutation', () => {
+    const engine = new EventBreakpointEngine(capabilities);
+    engine.add({id: 'a', kind: 'execute', address: 1});
+    engine.evaluate({kind: 'instruction', pcBefore: 1});
+    const state = engine.exportState();
+    const prepared = engine.prepareImportState(state);
+    state.definitions[0].enabled = false;
+    state.definitions[0].encounters = 999;
+    const result = prepared.commit();
+    assert.equal(result.committed, true);
+    assert.equal(result.breakpoints[0].enabled, true);
+    assert.equal(result.breakpoints[0].encounters, 1);
+    assert.deepEqual(prepared.commit(), {committed: false, code: 'already-committed'});
+});
+
+test('prepared commit detects lifecycle generation and evaluation staleness without throwing', () => {
+    const engine = new EventBreakpointEngine(capabilities);
+    const added = engine.add({id: 'a', kind: 'execute', address: 1}).breakpoint;
+    const lifecyclePrepared = engine.prepareImportState(engine.exportState());
+    engine.remove('a', added.generation);
+    engine.add({id: 'a', kind: 'execute', address: 1});
+    assert.deepEqual(lifecyclePrepared.commit(), {
+        committed: false, code: 'stale-breakpoint-engine'
+    });
+
+    const evaluationPrepared = engine.prepareImportState(engine.exportState());
+    engine.evaluate({kind: 'instruction', pcBefore: 1});
+    assert.deepEqual(evaluationPrepared.commit(), {
+        committed: false, code: 'stale-breakpoint-engine'
+    });
+});
+
+test('prepare rejects every topology entry before producing a commit capability', () => {
+    const engine = new EventBreakpointEngine(capabilities);
+    engine.add({id: 'a', kind: 'execute', address: 1});
+    engine.add({id: 'b', kind: 'execute', address: 2});
+    const corruptions = [
+        state => { state.definitions.reverse(); },
+        state => { state.definitions[0].id = 'other'; },
+        state => { state.definitions[0].generation += 1; },
+        state => { state.definitions[0].fingerprint = '0000000000000000'; },
+        state => { state.definitions.push({...state.definitions[0]}); },
+        state => { state.definitions = null; }
+    ];
+    for (const corrupt of corruptions) {
+        const state = structuredClone(engine.exportState());
+        corrupt(state);
+        assert.throws(() => engine.prepareImportState(state));
+    }
 });
 
 test('supports event, time and context count predicates', () => {

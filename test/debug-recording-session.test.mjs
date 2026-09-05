@@ -111,3 +111,122 @@ test('target input subscription records only while active and returns recorder r
     unsubscribe();
     assert.equal(listener, null);
 });
+
+test('optional host state is captured separately and committed after target restore', () => {
+    const f = fixture();
+    let host = {counter: 2};
+    const calls = [];
+    const session = createRecordingSession({
+        recorder: f.recorder,
+        eventStream: f.eventStream,
+        getTarget: () => f.target,
+        captureHostState: () => ({schema: 1, counter: host.counter}),
+        prepareHostRestore: snapshot => {
+            calls.push(['prepare', snapshot.counter, f.state()]);
+            return {counter: snapshot.counter};
+        },
+        commitHostRestore: staged => {
+            calls.push(['commit', staged.counter, f.state()]);
+            host = {...staged};
+        }
+    });
+    const started = session.start();
+    assert.deepEqual(started.checkpoint.hostSnapshot, {schema: 1, counter: 2});
+    assert.equal(Object.hasOwn(started.checkpoint.snapshot, 'hostSnapshot'), false,
+        'host state must not be passed through the target-owned snapshot');
+    f.state(9);
+    host.counter = 7;
+    assert.equal(session.restore(0).accepted, true);
+    assert.equal(f.state(), 3);
+    assert.deepEqual(host, {counter: 2});
+    assert.deepEqual(calls, [['prepare', 2, 9], ['commit', 2, 3]],
+        'host validation precedes target mutation and host commit follows it');
+});
+
+test('host prepare refusal is atomic and never mutates the target', () => {
+    const f = fixture();
+    let restores = 0;
+    const originalRestore = f.target.restoreCheckpoint;
+    f.target.restoreCheckpoint = snapshot => { restores++; originalRestore(snapshot); };
+    const session = createRecordingSession({
+        recorder: f.recorder, eventStream: f.eventStream, getTarget: () => f.target,
+        captureHostState: () => ({schema: 1, counter: 1}),
+        prepareHostRestore: () => { throw new Error('definition capability changed'); },
+        commitHostRestore: () => assert.fail('incompatible host state cannot commit')
+    });
+    session.start();
+    f.state(9);
+    assert.deepEqual(session.restore(0), {accepted: false, code: 'host-restore-incompatible',
+        reason: 'definition capability changed'});
+    assert.equal(f.state(), 9);
+    assert.equal(restores, 0);
+    assert.equal(session.status().active, true);
+});
+
+test('host commit failure rolls the target back and preserves recording lifecycle', () => {
+    const f = fixture();
+    const restoredStates = [];
+    f.target.restoreCheckpoint = snapshot => {
+        restoredStates.push(snapshot.state);
+        f.state(snapshot.state);
+    };
+    const session = createRecordingSession({
+        recorder: f.recorder, eventStream: f.eventStream, getTarget: () => f.target,
+        captureHostState: () => ({schema: 1, counter: 1}),
+        prepareHostRestore: snapshot => snapshot,
+        commitHostRestore: () => { throw new Error('host swap failed'); }
+    });
+    session.start();
+    f.state(9);
+    assert.deepEqual(session.restore(0), {accepted: false, code: 'host-restore-failed',
+        reason: 'host swap failed'});
+    assert.equal(f.state(), 9, 'rollback restores the exact pre-command target state');
+    assert.deepEqual(restoredStates, [3, 9]);
+    assert.equal(session.status().active, true);
+});
+
+test('target rollback failure is distinguished from an ordinary host refusal', () => {
+    const f = fixture();
+    f.target.restoreCheckpoint = snapshot => {
+        if (snapshot.state === 9) throw new Error('rollback topology failed');
+        f.state(snapshot.state);
+    };
+    const session = createRecordingSession({
+        recorder: f.recorder, eventStream: f.eventStream, getTarget: () => f.target,
+        captureHostState: () => ({schema: 1}),
+        prepareHostRestore: snapshot => snapshot,
+        commitHostRestore: () => ({accepted: false, reason: 'host commit refused'})
+    });
+    session.start();
+    f.state(9);
+    const result = session.restore(0);
+    assert.equal(result.code, 'restore-rollback-failed');
+    assert.match(result.reason, /host commit refused/);
+    assert.match(result.reason, /rollback topology failed/);
+    assert.equal(session.status().active, true);
+});
+
+test('legacy sessions keep target-only checkpoint shape and host snapshots fail closed without hooks', () => {
+    const legacy = fixture();
+    const checkpoint = legacy.session.start().checkpoint;
+    assert.equal(Object.hasOwn(checkpoint, 'hostSnapshot'), false);
+
+    const host = fixture();
+    const hostSession = createRecordingSession({
+        recorder: host.recorder, eventStream: host.eventStream, getTarget: () => host.target,
+        captureHostState: () => ({schema: 1}),
+        prepareHostRestore: snapshot => snapshot,
+        commitHostRestore: () => true
+    });
+    hostSession.start();
+    host.state(8);
+    const legacyReader = createRecordingSession({
+        recorder: host.recorder, eventStream: host.eventStream, getTarget: () => host.target
+    });
+    assert.equal(legacyReader.restore(0).code, 'host-restore-unavailable');
+    assert.equal(host.state(), 8);
+    assert.throws(() => createRecordingSession({
+        recorder: host.recorder, eventStream: host.eventStream, getTarget: () => host.target,
+        captureHostState: () => ({})
+    }), /capture, prepare, and commit hooks/);
+});

@@ -459,7 +459,39 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     const recordingSession = createRecordingSession({
         recorder: debugFoundation.recorder,
         eventStream,
-        getTarget: () => target
+        getTarget: () => target,
+        captureHostState: () => ({
+            schema: 1,
+            breakpoints: debugFoundation.exportBreakpointState(),
+            counters: [...eventBreakpointCounters].map(([name, value]) => [name, value]),
+            breakpointGeneration
+        }),
+        prepareHostRestore: snapshot => {
+            if (!snapshot || snapshot.schema !== 1 || !Array.isArray(snapshot.counters) ||
+                !Number.isSafeInteger(snapshot.breakpointGeneration) || snapshot.breakpointGeneration < 0) {
+                throw new TypeError('Unsupported debugger-host checkpoint');
+            }
+            const seen = new Set();
+            const counters = snapshot.counters.map(entry => {
+                if (!Array.isArray(entry) || entry.length !== 2 || typeof entry[0] !== 'string' ||
+                    seen.has(entry[0]) || !Number.isFinite(entry[1])) {
+                    throw new TypeError('Invalid debugger-host counter state');
+                }
+                seen.add(entry[0]);
+                return [entry[0], entry[1]];
+            });
+            const preparedBreakpoints = debugFoundation.prepareBreakpointState(snapshot.breakpoints);
+            return {preparedBreakpoints, counters, breakpointGeneration: snapshot.breakpointGeneration};
+        },
+        commitHostRestore: prepared => {
+            const committed = prepared.preparedBreakpoints.commit();
+            if (!committed.committed) throw new Error(`Breakpoint restore failed: ${committed.code}`);
+            eventBreakpointCounters.clear();
+            for (const [name, value] of prepared.counters) eventBreakpointCounters.set(name, value);
+            breakpointGeneration = prepared.breakpointGeneration;
+            eventBreakpointDispatcher?.clear();
+            return true;
+        }
     });
     const replayClockDomain = domain => String(domain).replace(/-reset-\d+$/, '');
     const normalizeReplayEvent = event => {
@@ -471,6 +503,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     const instructionReplay = createInstructionReplayController({
         recorder: debugFoundation.recorder,
         getTarget: () => target,
+        restoreCheckpoint: checkpoint => recordingSession.restore(checkpoint.eventCursor),
         subscribeEvents: listener => eventStream.onEvent(listener),
         normalizeTimeDomain: replayClockDomain,
         normalizeEvent: normalizeReplayEvent

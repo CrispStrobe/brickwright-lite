@@ -4,6 +4,29 @@ Started 2026-09-04. This is the contract and delivery plan for turning the
 existing per-CPU debug adapters into a deterministic, inspectable,
 time-travelling debugger without claiming fidelity a core does not possess.
 
+## Delivery ledger
+
+The implementation proceeds in this order; a later row does not make an
+earlier row optional.
+
+| step | deliverable | state |
+| --- | --- | --- |
+| 1 | checkpoint debugger-host state and retain parent-linked fork histories | in progress — atomic host capture/restore and branch-qualified lineage model implemented; live branch payload integration remains |
+| 2 | run-to plus live-tested step over/out | pending |
+| 3 | event-synchronized register, disassembly and memory panes | pending |
+| 4 | Z80 and 6502 checkpoint/replay certification | pending |
+| 5 | browser debugger workflows in GitHub CI | pending |
+| 6 | cycle-accurate core evaluation and justified integration | pending |
+
+Debugger-host snapshots are deliberately separate from target snapshots.
+Restore validates host state first, captures a target rollback point, restores
+the target, and only then commits the prepared host state. Replay uses this
+same transaction. Breakpoint definitions are topology-locked; counters,
+one-shot consumption, enabled state and host action counters are restored, and
+changed definitions fail closed. Branch cursors are `{branchId, eventCursor}`:
+the same numeric event position on two siblings is never treated as the same
+history location.
+
 ## Outcome
 
 A learner must be able to stop on the event that matters, inspect why it

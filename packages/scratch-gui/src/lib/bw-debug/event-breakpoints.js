@@ -30,6 +30,35 @@ const ACTIONS = new Set([
     'script-safe-expression', 'write'
 ]);
 
+export const EVENT_BREAKPOINT_STATE_SCHEMA = 1;
+
+const definitionFingerprint = spec => {
+    const active = new Set();
+    const encode = value => {
+        if (value === null || typeof value === 'string' || typeof value === 'boolean') {
+            return JSON.stringify(value);
+        }
+        if (typeof value === 'number') return Number.isFinite(value) ? String(value) : `number:${String(value)}`;
+        if (typeof value === 'bigint') return `bigint:${value}`;
+        if (typeof value === 'undefined') return 'undefined';
+        if (typeof value === 'function' || typeof value === 'symbol') return `${typeof value}:${String(value)}`;
+        if (active.has(value)) throw new TypeError('Breakpoint definitions cannot contain cycles');
+        active.add(value);
+        const encoded = Array.isArray(value) ? `[${value.map(encode).join(',')}]` :
+            `{${Object.keys(value).filter(key => key !== 'enabled').sort()
+                .map(key => `${JSON.stringify(key)}:${encode(value[key])}`).join(',')}}`;
+        active.delete(value);
+        return encoded;
+    };
+    const text = encode(spec);
+    let hash = 0xcbf29ce484222325n;
+    for (const byte of new TextEncoder().encode(text)) {
+        hash ^= BigInt(byte);
+        hash = BigInt.asUintN(64, hash * 0x100000001b3n);
+    }
+    return hash.toString(16).padStart(16, '0');
+};
+
 const refusal = (code, message, details = {}) => ({
     ok: false,
     refusal: {code, message, ...details}
@@ -304,6 +333,7 @@ export class EventBreakpointEngine {
         this.breakpoints = [];
         this.nextCreation = 0;
         this.nextGeneration = 0;
+        this.revision = 0;
     }
 
     add(spec) {
@@ -313,8 +343,10 @@ export class EventBreakpointEngine {
         const result = compileEventBreakpoint(spec, this.capabilities, this.evaluator, this.nextCreation);
         if (!result.ok) return result;
         result.breakpoint.generation = this.nextGeneration++;
+        result.breakpoint.definitionFingerprint = definitionFingerprint(spec);
         this.nextCreation++;
         this.breakpoints.push(result.breakpoint);
+        this.revision++;
         return {ok: true, breakpoint: this.#summary(result.breakpoint)};
     }
 
@@ -342,13 +374,82 @@ export class EventBreakpointEngine {
             item.id === String(id) && item.generation === generation);
         if (index < 0) return false;
         this.breakpoints.splice(index, 1);
+        this.revision++;
         return true;
     }
 
     clear() {
         const removed = this.breakpoints.length;
         this.breakpoints = [];
+        if (removed) this.revision++;
         return removed;
+    }
+
+    exportState() {
+        return {
+            schema: EVENT_BREAKPOINT_STATE_SCHEMA,
+            definitions: this.breakpoints.map(breakpoint => ({
+                id: breakpoint.id,
+                generation: breakpoint.generation,
+                fingerprint: breakpoint.definitionFingerprint,
+                enabled: breakpoint.enabled,
+                encounters: breakpoint.encounters,
+                matches: breakpoint.matches,
+                oneShotConsumed: breakpoint.oneShot && !breakpoint.enabled && breakpoint.matches > 0
+            }))
+        };
+    }
+
+    prepareImportState(state) {
+        if (!state || typeof state !== 'object' || Array.isArray(state) ||
+            state.schema !== EVENT_BREAKPOINT_STATE_SCHEMA || !Array.isArray(state.definitions)) {
+            throw new TypeError(`Unsupported event-breakpoint state schema ${String(state?.schema)}`);
+        }
+        if (state.definitions.length !== this.breakpoints.length) {
+            throw new RangeError('Event-breakpoint state definitions do not match the active engine');
+        }
+        const runtime = state.definitions.map((saved, index) => {
+            const active = this.breakpoints[index];
+            if (!saved || typeof saved !== 'object' || saved.id !== active.id ||
+                saved.generation !== active.generation || saved.fingerprint !== active.definitionFingerprint) {
+                throw new RangeError(`Event-breakpoint definition mismatch at index ${index}`);
+            }
+            if (typeof saved.enabled !== 'boolean' || !Number.isSafeInteger(saved.encounters) ||
+                saved.encounters < 0 || !Number.isSafeInteger(saved.matches) || saved.matches < 0 ||
+                saved.matches > saved.encounters || typeof saved.oneShotConsumed !== 'boolean' ||
+                saved.oneShotConsumed !== (active.oneShot && !saved.enabled && saved.matches > 0)) {
+                throw new TypeError(`Invalid event-breakpoint runtime at index ${index}`);
+            }
+            return {enabled: saved.enabled, encounters: saved.encounters, matches: saved.matches};
+        });
+        const preparedRevision = this.revision;
+        const topology = this.breakpoints.map(item => ({
+            id: item.id, generation: item.generation, fingerprint: item.definitionFingerprint
+        }));
+        let committed = false;
+        return {commit: () => {
+            if (committed) return {committed: false, code: 'already-committed'};
+            const topologyCurrent = this.breakpoints.length === topology.length &&
+                topology.every((expected, index) => {
+                    const current = this.breakpoints[index];
+                    return current && current.id === expected.id &&
+                        current.generation === expected.generation &&
+                        current.definitionFingerprint === expected.fingerprint;
+                });
+            if (this.revision !== preparedRevision || !topologyCurrent) {
+                return {committed: false, code: 'stale-breakpoint-engine'};
+            }
+            runtime.forEach((saved, index) => Object.assign(this.breakpoints[index], saved));
+            committed = true;
+            this.revision++;
+            return {committed: true, breakpoints: this.list()};
+        }};
+    }
+
+    importState(state) {
+        const result = this.prepareImportState(state).commit();
+        if (!result.committed) throw new Error(`Event-breakpoint state commit failed: ${result.code}`);
+        return result.breakpoints;
     }
 
     setEnabled(id, enabled, generation) {
@@ -358,6 +459,7 @@ export class EventBreakpointEngine {
         const next = Boolean(enabled);
         if (breakpoint.enabled === next) return false;
         breakpoint.enabled = next;
+        this.revision++;
         return true;
     }
 
@@ -380,6 +482,7 @@ export class EventBreakpointEngine {
             }));
             if (breakpoint.oneShot) breakpoint.enabled = false;
         }
+        this.revision++;
         return {
             matchingIds: matches.map(breakpoint => breakpoint.id),
             halt: actions.some(action => action.type === 'halt'),

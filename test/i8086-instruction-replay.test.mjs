@@ -110,3 +110,30 @@ test('replay preserves a target restore refusal', () => {
         accepted: false, code: 'reverse-restore-failed', reason: 'machine topology changed'
     });
 });
+
+test('replay can restore target and debugger-host state through one checkpoint transaction', () => {
+    const f = fixture();
+    f.session.start();
+    f.machine.step();
+    const cursor = f.stream.nextSequence();
+    f.session.stop();
+    let restoredCheckpoint = null;
+    const controller = createInstructionReplayController({
+        recorder: f.recorder,
+        getTarget: () => f.target,
+        subscribeEvents: listener => f.stream.onEvent(listener),
+        applyInput: () => true,
+        restoreCheckpoint: checkpoint => {
+            restoredCheckpoint = checkpoint;
+            return f.target.restoreCheckpoint(checkpoint.snapshot);
+        },
+        normalizeTimeDomain: domain => domain.replace(/-reset-\d+$/, ''),
+        normalizeEvent: event => {
+            const {schema, seq, inputCursor, ...fact} = event;
+            return {...fact, time: {...fact.time, domain: fact.time.domain.replace(/-reset-\d+$/, '')}};
+        }
+    });
+
+    assert.equal(controller.reverseToEvent(cursor).accepted, true);
+    assert.equal(restoredCheckpoint.id, 0);
+});
