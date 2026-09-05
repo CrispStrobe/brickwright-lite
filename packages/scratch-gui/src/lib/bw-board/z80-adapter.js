@@ -226,6 +226,7 @@ export function createZ80Adapter(opts = {}) {
 
         attachBoard(b) {
             board = b;
+            machine._unloggedBoardInputs = bufferChips.length > 0 && typeof b.readPin === 'function';
             bridgePS2(b);
             machine.cpu.pc = opts.pc ?? (opts.cpm ? 0x0100 : 0);
             if (opts.cpm) machine.cpu.sp = 0xfdff;

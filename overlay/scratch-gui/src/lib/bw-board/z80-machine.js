@@ -324,6 +324,7 @@ export class Z80Machine {
     checkpointSupport() {
         const reasons = [];
         if (this.pcTraps.size) reasons.push('host PC traps may own state outside the machine');
+        if (this._unloggedBoardInputs) reasons.push('live board buffer-input sampling is not logged');
         return checkpointSupport(this.chips, this.devices, reasons);
     }
 

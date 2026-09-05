@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {createM6502Adapter} from '../overlay/scratch-gui/src/lib/bw-board/m6502-adapter.js';
 import {createM6502DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/m6502-debug.js';
 import {Z80Machine} from '../overlay/scratch-gui/src/lib/bw-board/z80-machine.js';
+import {createZ80Adapter} from '../overlay/scratch-gui/src/lib/bw-board/z80-adapter.js';
 import {createZ80DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/z80-debug.js';
 
 const mConfig = {
@@ -78,4 +79,16 @@ test('live 6502 board sampling suppresses recording with an explicit reason', ()
     assert.deepEqual(target.capabilities().recording, []);
     assert.match(target.capabilities().extensions.checkpointRefusal.join('; '), /input-net sampling/);
     assert.equal(target.captureCheckpoint().code, 'INCOMPLETE_CHECKPOINT_STATE');
+});
+
+test('live Z80 buffer sampling suppresses recording with an explicit reason', () => {
+    const adapter = createZ80Adapter({config: {
+        clockHz: 4_000_000,
+        regions: [{kind: 'ram', start: 0, end: 0xffff}],
+        ports: [{kind: 'buffer', name: 'inputs', at: 0x10}]
+    }});
+    adapter.attachBoard({readPin: () => false, setPin() {}});
+    const target = createZ80DebugTarget(adapter);
+    assert.deepEqual(target.capabilities().recording, []);
+    assert.match(target.captureCheckpoint().refused, /buffer-input sampling/);
 });
