@@ -8,7 +8,7 @@
  *   1. Each known kind reaches its engine (not someone else's).
  *   2. An unknown kind fails loudly rather than defaulting to 8051.
  *   3. The lazy imports for avr8js and rp2040js actually resolve.
- *   4. getTargetKinds() lists all three simulator kinds.
+ *   4. The dependency-free metadata seam lists all simulator kinds.
  *
  * These assertions cannot be replaced by single-engine tests, because a
  * wrong-default routing produces a program that runs on the wrong
@@ -24,11 +24,15 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const LITE = join(here, '..', 'packages', 'scratch-gui', 'src');
 const factoryPath = join(LITE, 'lib', 'bw-board', 'debug-target-factory.js');
+const targetKindsPath = join(LITE, 'lib', 'bw-board', 'target-kinds.js');
 
 test('getTargetKinds lists all three simulator engines', {
-    skip: existsSync(factoryPath) ? false : 'not integrated'
+    skip: existsSync(targetKindsPath) ? false : 'not integrated'
 }, async () => {
-    const { getTargetKinds } = await import(factoryPath);
+    // Import the picker seam directly. Pulling this assertion through the
+    // factory would also initialize every CPU adapter and would fail to prove
+    // the dependency boundary the production picker relies on.
+    const { getTargetKinds } = await import(targetKindsPath);
     const kinds = getTargetKinds();
     const kindIds = kinds.map(k => k.kind);
 
