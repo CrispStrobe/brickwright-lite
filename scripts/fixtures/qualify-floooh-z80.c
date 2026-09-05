@@ -43,6 +43,33 @@ static uint64_t run(machine_t* m, int ticks, unsigned* controls) {
     return hash;
 }
 
+static bool single_step_ld_a(unsigned* ticks_out) {
+    machine_t m;
+    memset(&m, 0, sizeof(m));
+    m.mem[12180] = 0x3e;
+    m.mem[12181] = 169;
+    m.pins = z80_init(&m.cpu);
+    m.cpu.a = 150; m.cpu.f = 240;
+    m.cpu.b = 201; m.cpu.c = 216; m.cpu.d = 178; m.cpu.e = 120;
+    m.cpu.h = 236; m.cpu.l = 250; m.cpu.i = 188; m.cpu.r = 14;
+    m.cpu.sp = 54538; m.cpu.wz = 22259; m.cpu.ix = 12801; m.cpu.iy = 37525;
+    m.cpu.af2 = 2030; m.cpu.bc2 = 33616; m.cpu.de2 = 2697; m.cpu.hl2 = 63694;
+    m.cpu.im = 2; m.cpu.iff1 = false; m.cpu.iff2 = false;
+    m.pins = z80_prefetch(&m.cpu, 12180);
+    unsigned ticks = 0;
+    while (ticks < 7) {
+        service(&m);
+        ticks++;
+    }
+    *ticks_out = ticks;
+    return ticks == 7 && m.cpu.a == 169 && m.cpu.f == 240 && m.cpu.b == 201 &&
+        m.cpu.c == 216 && m.cpu.d == 178 && m.cpu.e == 120 && m.cpu.h == 236 &&
+        m.cpu.l == 250 && m.cpu.i == 188 && m.cpu.r == 15 && m.cpu.sp == 54538 &&
+        m.cpu.wz == 22259 && m.cpu.ix == 12801 && m.cpu.iy == 37525 &&
+        m.cpu.af2 == 2030 && m.cpu.bc2 == 33616 && m.cpu.de2 == 2697 &&
+        m.cpu.hl2 == 63694 && m.cpu.im == 2 && !m.cpu.iff1 && !m.cpu.iff2;
+}
+
 int main(void) {
     machine_t m;
     memset(&m, 0, sizeof(m));
@@ -87,11 +114,15 @@ int main(void) {
         int_ack_seen = int_ack_seen || ((pins & (Z80_M1 | Z80_IORQ)) == (Z80_M1 | Z80_IORQ));
         if ((pins & (Z80_M1 | Z80_IORQ)) == (Z80_M1 | Z80_IORQ)) Z80_SET_DATA(irq.pins, 0xff);
     }
+    unsigned oracle_ticks = 0;
+    const bool oracle_match = single_step_ld_a(&oracle_ticks);
     printf("{\"schema\":1,\"ticks\":48,\"traceHash\":\"%016llx\","
            "\"snapshotReplay\":%s,\"snapshotPoints\":%u,\"memory8000\":%u,"
-           "\"controlMask\":%u,\"haltSeen\":%s,\"interruptAcknowledgeSeen\":%s}\n",
+           "\"controlMask\":%u,\"haltSeen\":%s,\"interruptAcknowledgeSeen\":%s,"
+           "\"oracleVector\":\"3E 0000\",\"oracleTicks\":%u,\"oracleMatch\":%s}\n",
         (unsigned long long)first, equal ? "true" : "false", snapshot_points,
-        m.mem[0x8000], controls, halt_seen ? "true" : "false", int_ack_seen ? "true" : "false");
+        m.mem[0x8000], controls, halt_seen ? "true" : "false", int_ack_seen ? "true" : "false",
+        oracle_ticks, oracle_match ? "true" : "false");
     return equal && snapshot_points == 42 && m.mem[0x8000] == 0x2a && (controls & 15) == 15 &&
-        halt_seen && int_ack_seen ? 0 : 1;
+        halt_seen && int_ack_seen && oracle_match ? 0 : 1;
 }
