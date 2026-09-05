@@ -45,6 +45,7 @@ import { I8251 } from './i8251.js';
 import { CGACard } from './cga-card.js';
 import { PCSpeaker } from './pc-speaker.js';
 import { ADC0809 } from './adc0809.js';
+import { NE2000 } from './ne2000.js';
 import { DAC0832 } from './dac0832.js';
 import { HerculesCard } from './hercules-card.js';
 import { VGACard } from './vga-card.js';
@@ -100,6 +101,9 @@ const REGS = {
     // End-Of-Conversion, which is the only way to know a result is ready on a
     // bench with no PIC to deliver an interrupt.
     adc0809: 9,
+    // The NE2000 decodes a 32-port block: the NIC's sixteen registers, the
+    // remote-DMA data window, and the reset port.
+    ne2000: 32,
     // FOUR PORTS FOR A ONE-BYTE CHIP, because the 0832's two latches are its
     // feature: 310h loads and transfers, 311h stages, 312h is the XFER strobe.
     // A card that tied XFER low would need one port and could not move two
@@ -539,6 +543,11 @@ export class I8086Machine {
                 chip = new I8251({
                     onTx: (byte) => { if (this.hooks.onSerial) this.hooks.onSerial(byte, this.tMs); },
                 });
+            } else if (c.kind === 'ne2000') {
+                chip = new NE2000({
+                    mac: c.mac, link: c.link || null,
+                    onIRQ: (level) => { if (this.hooks.onIntr) this.hooks.onIntr(c.name, !!level); },
+                });
             } else if (c.kind === 'adc0809') {
                 chip = new ADC0809(config.clockHz, {vref: c.vref, adcClockHz: c.adcClockHz});
             } else if (c.kind === 'dac0832') {
@@ -596,6 +605,28 @@ export class I8086Machine {
                 start: c.at, end: c.at + stride * span - 1,
             };
             ((c.bus ?? 'io') === 'io' ? this._io : this._mmio).push(win);
+        }
+
+        // TWO CHIPS MUST NOT CLAIM ONE ADDRESS. An ADC0809 sits at 300h and an
+        // NE2000's first jumper setting is also 300h, so a board declaring both
+        // is a plausible mistake. Without this the later chip wins every read,
+        // the earlier answers nothing, and the board runs while a program gets
+        // believable bytes from the wrong device. Checked per bus: an I/O
+        // window and a memory window at the same number are different places.
+        for (const [busName, wins] of [['I/O', this._io], ['memory', this._mmio]]) {
+            const sorted = [...wins].sort((a, b) => a.start - b.start);
+            for (let i = 1; i < sorted.length; i++) {
+                const prev = sorted[i - 1], cur = sorted[i];
+                if (cur.start <= prev.end) {
+                    const hex = (n) => n.toString(16).toUpperCase().padStart(3, '0');
+                    throw new Error(
+                        `machine config: "${prev.name}" and "${cur.name}" both claim ${busName} `
+                        + `address ${hex(cur.start)}h. "${prev.name}" decodes ${hex(prev.start)}h-`
+                        + `${hex(prev.end)}h and "${cur.name}" decodes ${hex(cur.start)}h-`
+                        + `${hex(cur.end)}h. Move one of them: two chips answering one address `
+                        + 'is a board that runs and reads the wrong device.');
+                }
+            }
         }
 
         // The master PIC — the one step() polls to deliver INTR. A breadboard
