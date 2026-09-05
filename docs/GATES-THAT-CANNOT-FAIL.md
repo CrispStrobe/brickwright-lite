@@ -812,3 +812,88 @@ the rule it produced:
 They had two independent supports for their original report and abandoned both
 on one sentence of mine — a sentence that happened to be wrong. **A correction
 that makes your earlier mistake smaller deserves more scrutiny, not less.**
+
+# 2026-09-05: the instrument, four times in one day
+
+Species (20) says a check can report on the environment it ran in. Today the
+same shape arrived four times without touching a single gate under test. In
+every case the *subject* was fine and the *instrument* was lying, and in three
+of the four the lie was in the shape of good news.
+
+## The exit code that disagreed with its own TAP
+
+A full-suite run came back **exit 0** with `# fail 1` and `not ok 1307` in the
+output. Node 20.20.2 exits 1 on a genuinely failing suite; it exits 0 when the
+same command is piped without `set -o pipefail`, because the status belongs to
+the last stage — `tee`. The TAP was honest and the *status* lied.
+
+This is the inverse of the failure already documented at `build.yml:363`. There,
+a suite that could not be CONSTRUCTED printed `# fail 0` beside a `not ok` — the
+miscount is in the TAP itself. Here the TAP was correct and the exit code was
+not. **The remedies are different and neither covers the other**: that one needs
+the TAP parsed, this one needs one line of shell. CI has that line and a comment
+explaining why. Ad-hoc local runners are where this bites, and a local runner is
+exactly what nobody reviews.
+
+If you take one habit from this file, make it: **never read an exit code as a
+verdict on a suite that prints TAP.** Read the TAP.
+
+## A worktree with no `node_modules` reports zero tests and zero failures
+
+Running the suite from a fresh `git worktree` turns every acorn-dependent gate
+into the construction failure above. `scripts/aggregate-timeouts.mjs` resolves
+`acorn` from the repo root or `packages/scratch-gui`; a worktree has neither, so
+the `describe` body throws while the suite is being built and the runner prints
+
+    not ok 20 - the wait census: fixed sleeps are counted, and may only shrink
+    # tests 0   # pass 0   # fail 0
+
+`# tests 0` alongside a `not ok` is the tell, and it reads as *nothing to see*
+rather than *nothing ran*. The same test is 4/4 green in the real checkout.
+
+This is the counterpart to lego-47's master-red: there, a stray sibling worktree
+made a fixture path resolve and the suite went GREEN where CI could not. Here the
+worktree makes it go red. **A worktree changes what resolves in both directions**,
+so a verdict produced in one is a verdict about the worktree until proven
+otherwise — which costs one re-run in the real checkout.
+
+## A metric that counted discussion of a rule as compliance with it
+
+Measuring adoption of the `Claude-Session` trailer, the first count said 78
+trailered commits across six sessions — evidence the rule had landed, and it was
+about to be written down as such. The command was
+
+    git log --since=… --format='%b' | grep -oE 'session_[A-Za-z0-9]+'
+
+which counts the string ANYWHERE in a concatenated body. Every commit that
+*quotes* a session id in prose — this file's neighbours, every message about
+attribution — counted as an attribution. After a week of writing about
+attribution, prose was most of the corpus. Counted one commit at a time against
+the trailer line: **2 of the last 25, and both were mine.**
+
+The instrument agreed with what its author wanted to be true, which is the only
+reason it was not checked. Species (11), PAYLOAD-BLIND, pointed at a measurement
+rather than a gate: would this number look different if the thing it claims to
+count were entirely absent?
+
+## A grep that reported the absence of a thing that was there
+
+Checking whether a browser gate reloads the file it saves, `grep -c setInputFiles`
+returned **0** on `verify-lego-spike-roundtrip.mjs`, and most of a finding was
+written saying the gate saves and inspects but never reopens — a round trip that
+is a one-way trip. It uses `chooser.setFiles(fixture)` through the filechooser
+event. The gate does load, and it is in fact a mutation-provable gate on exactly
+the defect it was being doubted over: its fixture is generated from a
+`DEVICE SPIKE` program, so it carries `extensions: ["spikeprime"]` — a lazy
+builtin — without anyone having arranged for it to.
+
+**A grep's zero is a statement about a pattern, never about a repository.** The
+only cost of checking was opening the one line the count disagreed with.
+
+## What these four have in common
+
+None of them is a gate. They are the tools used to decide whether gates are
+telling the truth, and they fail in precisely the way this file exists to
+catalogue: they answer a question adjacent to the one asked, in the vocabulary
+of the one asked. The catalogue has been pointed at `test/` all week. It applies
+to the shell history too, and the shell history is not reviewed by anyone.
