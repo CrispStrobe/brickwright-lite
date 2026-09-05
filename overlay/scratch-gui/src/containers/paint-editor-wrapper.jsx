@@ -1,30 +1,69 @@
 import PropTypes from 'prop-types';
 import React from 'react';
+import {FormattedMessage} from 'react-intl';
 import bindAll from 'lodash.bindall';
 import VM from 'scratch-vm';
 import {inlineSvgFonts} from 'scratch-svg-renderer';
 
 import {connect} from 'react-redux';
+import DynamicReducerContext from '../lib/dynamic-reducer-context';
 
-// Lazy-load the paint editor — it's only needed when the costume tab is opened.
-// The reducer is imported separately (in app-state-hoc.jsx) so it's available at
-// store initialization without pulling in the full paint UI.
-const LazyPaintEditor = React.lazy(() =>
-    import(/* webpackChunkName: "paint-editor" */ 'scratch-paint')
-);
+// Share the network/parse request, but install the returned reducer separately
+// into each GUI store. Rejected requests reset the promise for the retry control.
+let paintEditorRequest = null;
+const loadPaintEditor = () => {
+    if (!paintEditorRequest) {
+        paintEditorRequest = import(/* webpackChunkName: "paint-editor" */ 'scratch-paint')
+            .catch(error => {
+                paintEditorRequest = null;
+                throw error;
+            });
+    }
+    return paintEditorRequest;
+};
 
 class PaintEditorWrapper extends React.Component {
     constructor (props) {
         super(props);
         bindAll(this, [
             'handleUpdateImage',
-            'handleUpdateName'
+            'handleUpdateName',
+            'loadEditor'
         ]);
+        this.state = {PaintEditor: null, loadError: null};
+        this.mounted = false;
+        this.loadGeneration = 0;
     }
-    shouldComponentUpdate (nextProps) {
+    componentDidMount () {
+        this.mounted = true;
+        this.loadEditor();
+    }
+    componentWillUnmount () {
+        this.mounted = false;
+        this.loadGeneration++;
+    }
+    loadEditor () {
+        const generation = ++this.loadGeneration;
+        if (this.state.loadError) this.setState({loadError: null});
+        loadPaintEditor().then(module => {
+            if (!this.mounted || generation !== this.loadGeneration) return;
+            if (!this.props.installReducer) {
+                throw new Error('The paint editor requires a dynamic reducer installer');
+            }
+            this.props.installReducer('scratchPaint', module.ScratchPaintReducer);
+            if (this.mounted && generation === this.loadGeneration) {
+                this.setState({PaintEditor: module.default, loadError: null});
+            }
+        }).catch(error => {
+            if (this.mounted && generation === this.loadGeneration) this.setState({loadError: error});
+        });
+    }
+    shouldComponentUpdate (nextProps, nextState) {
         return this.props.imageId !== nextProps.imageId ||
             this.props.rtl !== nextProps.rtl ||
-            this.props.name !== nextProps.name;
+            this.props.name !== nextProps.name ||
+            this.state.PaintEditor !== nextState.PaintEditor ||
+            this.state.loadError !== nextState.loadError;
     }
     handleUpdateName (name) {
         this.props.vm.renameCostume(this.props.selectedCostumeIndex, name);
@@ -47,22 +86,34 @@ class PaintEditorWrapper extends React.Component {
     }
     render () {
         if (!this.props.imageId) return null;
+        if (this.state.loadError) {
+            return (
+                <button type="button" onClick={this.loadEditor}>
+                    <FormattedMessage
+                        defaultMessage="Retry costume editor"
+                        description="Button to retry loading the costume paint editor"
+                        id="gui.costumeTab.retryPaintEditor"
+                    />
+                </button>
+            );
+        }
+        const PaintEditor = this.state.PaintEditor;
+        if (!PaintEditor) return null;
         const {
             selectedCostumeIndex,
+            installReducer, // eslint-disable-line no-unused-vars
             vm,
             ...componentProps
         } = this.props;
 
         return (
-            <React.Suspense fallback={null}>
-                <LazyPaintEditor
-                    {...componentProps}
-                    image={vm.getCostume(selectedCostumeIndex)}
-                    onUpdateImage={this.handleUpdateImage}
-                    onUpdateName={this.handleUpdateName}
-                    fontInlineFn={inlineSvgFonts}
-                />
-            </React.Suspense>
+            <PaintEditor
+                {...componentProps}
+                image={vm.getCostume(selectedCostumeIndex)}
+                onUpdateImage={this.handleUpdateImage}
+                onUpdateName={this.handleUpdateName}
+                fontInlineFn={inlineSvgFonts}
+            />
         );
     }
 }
@@ -70,6 +121,7 @@ class PaintEditorWrapper extends React.Component {
 PaintEditorWrapper.propTypes = {
     imageFormat: PropTypes.string.isRequired,
     imageId: PropTypes.string.isRequired,
+    installReducer: PropTypes.func,
     name: PropTypes.string,
     rotationCenterX: PropTypes.number,
     rotationCenterY: PropTypes.number,
@@ -98,6 +150,13 @@ const mapStateToProps = (state, {selectedCostumeIndex}) => {
     };
 };
 
+const PaintEditorWithReducer = props => (
+    <DynamicReducerContext.Consumer>
+        {installReducer => <PaintEditorWrapper {...props} installReducer={installReducer} />}
+    </DynamicReducerContext.Consumer>
+);
+PaintEditorWithReducer.propTypes = PaintEditorWrapper.propTypes;
+
 export default connect(
     mapStateToProps
-)(PaintEditorWrapper);
+)(PaintEditorWithReducer);

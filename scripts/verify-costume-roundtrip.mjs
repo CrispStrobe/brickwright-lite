@@ -29,6 +29,13 @@ const url = process.env.PROOF_URL || 'http://localhost:8617/';
 const SHOTS = path.resolve('artifacts/costume-roundtrip');
 const work = mkdtempSync(path.join(tmpdir(), 'bw-costume-'));
 const saved = path.join(work, 'costume-roundtrip.sb3');
+// Accepted pre-deferral receipt from hosted run 33967333844.
+const baselineRun = 33967333844;
+const baselineMs = 390.5;
+const baselineLongTasksMs = [50, 55];
+const relativeLimitMs = 449.075; // Accepted baseline + 15%.
+const absoluteLimitMs = 1000;
+const maxLongTaskMs = 100;
 
 let failed = 0;
 const record = (name, ok, detail = '') => {
@@ -110,12 +117,15 @@ const openCostumesTab = async page => {
             for (const entry of probe?.observer?.takeRecords?.() || []) {
                 probe.longTasks.push({at: entry.startTime, ms: entry.duration});
             }
+            const paint = window.__brickwrightStore?.getState?.()?.scratchPaint;
             resolve({
                 startedAt: start,
                 readyAt,
                 durationMs: readyAt - start,
                 activationLongTasks: (probe?.longTasks || [])
-                    .filter(task => task.at >= start && task.at < readyAt)
+                    .filter(task => task.at >= start && task.at < readyAt),
+                matrixBacked: paint?.viewBounds?.constructor?.name === 'Matrix' &&
+                    typeof paint.viewBounds.clone === 'function'
             });
         }))), startedAt);
 };
@@ -151,15 +161,30 @@ const drawRect = async (page, box, from, to) => {
 try {
     // ── author artwork in both paint modes ──────────────────────────────
     let page = await open();
+    const absentBeforeCostume = await page.evaluate(() =>
+        !Object.prototype.hasOwnProperty.call(window.__brickwrightStore.getState(), 'scratchPaint'));
+    record('paint state is absent before the Costume editor is requested', absentBeforeCostume);
     const paintPerformance = await openCostumesTab(page);
+    const longestPaintTask = Math.max(0, ...paintPerformance.activationLongTasks.map(task => task.ms));
+    record('the real Matrix-backed paint reducer exists before the editor renders',
+        paintPerformance.matrixBacked);
+    record('first Costume interactivity stays within its 15% and one-second ceilings',
+        paintPerformance.durationMs <= relativeLimitMs && paintPerformance.durationMs <= absoluteLimitMs,
+        `${paintPerformance.durationMs.toFixed(1)} ms; limits ${relativeLimitMs.toFixed(1)} / ${absoluteLimitMs} ms`);
+    record('first Costume activation adds no task longer than 100 ms', longestPaintTask <= maxLongTaskMs,
+        `${paintPerformance.activationLongTasks.length} long task(s), longest ${longestPaintTask.toFixed(1)} ms`);
     await writeFile(path.join(SHOTS, 'paint-performance.json'), `${JSON.stringify({
-        schema: 'brickwright/paint-first-costume-baseline/v1',
+        schema: 'brickwright/paint-first-costume/v1',
         url,
         userAgent: await page.evaluate(() => navigator.userAgent),
+        baselineRun,
+        baselineMs,
+        baselineLongTasksMs,
+        relativeLimitMs,
+        absoluteLimitMs,
+        maxLongTaskMs,
         ...paintPerformance
     }, null, 2)}\n`);
-    console.log(`MEASURE: first Costume became interactive in ${paintPerformance.durationMs.toFixed(1)} ms; ` +
-        `${paintPerformance.activationLongTasks.length} activation long task(s)`);
     const start = await costumes(page);
     record('the paint editor opened on the shipped costumes', start.length > 0,
         start.map(c => `${c.name}:${c.fmt}`).join(', '));
