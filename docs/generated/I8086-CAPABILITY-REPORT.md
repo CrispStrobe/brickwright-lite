@@ -67,7 +67,7 @@ The framebuffer renderer and DOS/BIOS service layer also ship as `i8086-cga.js` 
 | CPU timing | Instruction-level architectural state; no prefetch/BIU or T-state schedule | `overlay/scratch-gui/src/lib/bw-board/i8086.js` |
 | 8088 BIU experiment | Orders bus operations, but omits wait states, DMA stealing and exact transfer T-states | `overlay/scratch-gui/src/lib/bw-board/i8088-biu.js` |
 | 8255 | Mode 0 exact; modes 1/2 fall back with a warning and no handshake IRQ | `overlay/scratch-gui/src/lib/bw-board/i8255.js` |
-| 8254 | Modes 0/2/3/4; no modes 1/5, BCD, or sub-instruction timing | `overlay/scratch-gui/src/lib/bw-board/i8254.js` |
+| 8254 | Modes 0-5 and BCD decades; no sub-instruction timing | `overlay/scratch-gui/src/lib/bw-board/i8254.js` |
 | 8259 | One fixed-priority controller; no rotation, poll, cascade, or trigger-mode distinction | `overlay/scratch-gui/src/lib/bw-board/i8259.js` |
 | 8251 | Byte protocol only; no bit timing, parity/framing, or synchronous data path | `overlay/scratch-gui/src/lib/bw-board/i8251.js` |
 | 8237 | Programmer-visible transfer model without bus-cycle arbitration | `overlay/scratch-gui/src/lib/bw-board/i8237.js` |

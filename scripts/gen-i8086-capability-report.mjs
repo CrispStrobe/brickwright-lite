@@ -95,7 +95,12 @@ export function buildI8086CapabilityReport() {
         ['CPU timing', 'Instruction-level architectural state; no prefetch/BIU or T-state schedule', 'overlay/scratch-gui/src/lib/bw-board/i8086.js', /NOT modeled, deliberately: the prefetch queue and the BIU/],
         ['8088 BIU experiment', 'Orders bus operations, but omits wait states, DMA stealing and exact transfer T-states', 'overlay/scratch-gui/src/lib/bw-board/i8088-biu.js', /WHAT THIS DOES NOT MODEL/],
         ['8255', 'Mode 0 exact; modes 1/2 fall back with a warning and no handshake IRQ', 'overlay/scratch-gui/src/lib/bw-board/i8255.js', /MODES 1 AND 2 ARE NOT MODELLED/],
-        ['8254', 'Modes 0/2/3/4; no modes 1/5, BCD, or sub-instruction timing', 'overlay/scratch-gui/src/lib/bw-board/i8254.js', /NO MODES 1 OR 5/],
+        // Modes 1 and 5 and BCD decade counting were all added 2026-09-05, so the
+        // old anchor /NO MODES 1 OR 5/ no longer appears and the row read as
+        // "evidence disappeared" -- which sounds like a capability was LOST when
+        // in fact two limitations were lifted. The anchor now names the one
+        // limitation that remains, so the row fails again only if that changes.
+        ['8254', 'Modes 0-5 and BCD decades; no sub-instruction timing', 'overlay/scratch-gui/src/lib/bw-board/i8254.js', /STILL NO SUB-INSTRUCTION TIMING/],
         ['8259', 'One fixed-priority controller; no rotation, poll, cascade, or trigger-mode distinction', 'overlay/scratch-gui/src/lib/bw-board/i8259.js', /NO PRIORITY ROTATION/],
         ['8251', 'Byte protocol only; no bit timing, parity/framing, or synchronous data path', 'overlay/scratch-gui/src/lib/bw-board/i8251.js', /NO BIT TIMING/],
         ['8237', 'Programmer-visible transfer model without bus-cycle arbitration', 'overlay/scratch-gui/src/lib/bw-board/i8237.js', /programmer-visible register model, cycle-count-free/i],
