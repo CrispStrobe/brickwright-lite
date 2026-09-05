@@ -1,7 +1,7 @@
 /** Portable, bounded and transactional debugger-session bundles. */
 export const DEBUG_SESSION_BUNDLE_SCHEMA = 1;
 export const DEFAULT_BUNDLE_LIMITS = Object.freeze({totalBytes: 32 * 1024 * 1024,
-    chunkBytes: 8 * 1024 * 1024, traceEvents: 100_000, branches: 64,
+    chunkBytes: 8 * 1024 * 1024, traceEvents: 100_000, inputs: 100_000, branches: 64,
     checkpoints: 512, bookmarks: 1024, annotations: 1024, textBytes: 64 * 1024});
 
 const encoder = new TextEncoder();
@@ -40,12 +40,14 @@ const boundedArray = (value, name, max) => {
     if (!Array.isArray(value) || value.length > max) fail('BUNDLE_LIMIT_EXCEEDED', `${name} exceeds bundle limit`);
 };
 
-export async function createDebuggerSessionBundle ({firmware, source = '', trace = [], branches = [],
-    checkpoints = [], bookmarks = [], annotations = [], codecs = {}, limits} = {}) {
+export async function createDebuggerSessionBundle ({firmware, source = '', trace = [], inputs = [], branches = [],
+    checkpoints = [], recordings = null, bookmarks = [], annotations = [], codecs = {}, limits} = {}) {
     const cap = limitsOf(limits);
-    boundedArray(trace, 'trace', cap.traceEvents); boundedArray(branches, 'branches', cap.branches);
-    boundedArray(checkpoints, 'checkpoints', cap.checkpoints); boundedArray(bookmarks, 'bookmarks', cap.bookmarks);
+    boundedArray(branches, 'branches', cap.branches); boundedArray(bookmarks, 'bookmarks', cap.bookmarks);
     boundedArray(annotations, 'annotations', cap.annotations);
+    const rootId = branches[0]?.branchId ?? branches[0]?.id ?? 'main';
+    const sources = recordings || [{branchId: rootId, trace, inputs, checkpoints}];
+    boundedArray(sources, 'recordings', cap.branches);
     const chunks = {};
     const add = async (id, bytes) => {
         if (bytes.length > cap.chunkBytes) fail('BUNDLE_LIMIT_EXCEEDED', `${id} exceeds chunk limit`);
@@ -55,19 +57,32 @@ export async function createDebuggerSessionBundle ({firmware, source = '', trace
     };
     const firmwareRef = await add('firmware', bytesOf(firmware));
     const sourceRef = await add('source', bytesOf(source));
-    const traceRef = await add('trace', jsonBytes(trace));
     const checkpointDescriptors = [];
-    for (let i = 0; i < checkpoints.length; i++) {
-        const item = checkpoints[i]; const codec = codecs[item.codec];
-        if (!codec || typeof codec.encode !== 'function') fail('UNSUPPORTED_CODEC', `missing snapshot codec ${item.codec}`);
-        const encoded = await codec.encode(structuredClone(item.snapshot));
-        if (!(encoded instanceof Uint8Array)) fail('INVALID_CODEC_OUTPUT', 'snapshot codecs must emit Uint8Array');
-        const snapshot = await add(`snapshot-${i}`, encoded);
-        checkpointDescriptors.push({id: item.id, eventCursor: item.eventCursor,
-            inputCursor: item.inputCursor, time: item.time, codec: item.codec, snapshot});
+    const recordingDescriptors = [];
+    for (let r = 0; r < sources.length; r++) {
+        const recording = sources[r];
+        boundedArray(recording.trace, 'trace', cap.traceEvents);
+        boundedArray(recording.inputs, 'inputs', cap.inputs);
+        boundedArray(recording.checkpoints, 'checkpoints', cap.checkpoints);
+        const traceRef = await add(`trace-${r}`, jsonBytes(recording.trace));
+        const inputRef = await add(`inputs-${r}`, jsonBytes(recording.inputs));
+        const checkpointIds = [];
+        for (const item of recording.checkpoints) {
+            const codec = codecs[item.codec];
+            if (!codec || typeof codec.encode !== 'function') fail('UNSUPPORTED_CODEC', `missing snapshot codec ${item.codec}`);
+            const encoded = await codec.encode(structuredClone(item.snapshot));
+            if (!(encoded instanceof Uint8Array)) fail('INVALID_CODEC_OUTPUT', 'snapshot codecs must emit Uint8Array');
+            const snapshot = await add(`snapshot-${checkpointDescriptors.length}`, encoded);
+            checkpointDescriptors.push({id: item.id, branchId: recording.branchId,
+                eventCursor: item.eventCursor, inputCursor: item.inputCursor,
+                time: item.time, codec: item.codec, snapshot});
+            checkpointIds.push(item.id);
+        }
+        recordingDescriptors.push({branchId: recording.branchId, trace: traceRef,
+            inputs: inputRef, checkpointIds});
     }
     const manifest = {schema: DEBUG_SESSION_BUNDLE_SCHEMA, kind: 'brickworks-debug-session',
-        firmware: firmwareRef, source: sourceRef, trace: traceRef, branches: structuredClone(branches),
+        firmware: firmwareRef, source: sourceRef, recordings: recordingDescriptors, branches: structuredClone(branches),
         checkpoints: checkpointDescriptors, bookmarks: structuredClone(bookmarks),
         annotations: structuredClone(annotations), codecs: [...new Set(checkpointDescriptors.map(x => x.codec))].sort()};
     const total = Object.values(chunks).reduce((sum, item) => sum + unbase64(item.bytes).length, 0);
@@ -82,12 +97,14 @@ export async function validateDebuggerSessionBundle (bundle, {codecs = {}, limit
         fail('INVALID_BUNDLE_SCHEMA', 'unsupported debugger session bundle');
     }
     boundedArray(manifest.branches, 'branches', cap.branches);
+    boundedArray(manifest.recordings, 'recordings', cap.branches);
     boundedArray(manifest.checkpoints, 'checkpoints', cap.checkpoints);
     boundedArray(manifest.bookmarks, 'bookmarks', cap.bookmarks);
     boundedArray(manifest.annotations, 'annotations', cap.annotations);
     if (!Array.isArray(manifest.codecs) || manifest.codecs.some(id => typeof id !== 'string' ||
         !codecs[id] || typeof codecs[id].decode !== 'function')) fail('UNSUPPORTED_CODEC', 'bundle requires an unavailable codec');
-    const refs = [manifest.firmware, manifest.source, manifest.trace,
+    const refs = [manifest.firmware, manifest.source,
+        ...manifest.recordings.flatMap(x => [x?.trace, x?.inputs]),
         ...manifest.checkpoints.map(x => x?.snapshot)];
     const wanted = new Set(refs.map(ref => ref?.chunk));
     if (wanted.has(undefined) || wanted.size !== refs.length || Object.keys(chunks).some(id => !wanted.has(id)) ||
@@ -104,16 +121,6 @@ export async function validateDebuggerSessionBundle (bundle, {codecs = {}, limit
         if (await sha256(bytes) !== ref.sha256) fail('CHUNK_HASH_MISMATCH', `chunk hash mismatch: ${ref.chunk}`);
         decodedChunks.set(ref.chunk, bytes);
     }
-    let trace;
-    try { trace = JSON.parse(decoder.decode(decodedChunks.get(manifest.trace.chunk))); } catch {
-        fail('INVALID_TRACE_CHUNK', 'trace chunk is not valid UTF-8 JSON');
-    }
-    boundedArray(trace, 'trace', cap.traceEvents);
-    let lastSeq = -1;
-    for (const event of trace) {
-        if (!plain(event) || ordinal(event.seq) === null || event.seq <= lastSeq) fail('INVALID_TRACE_ORDER', 'trace sequence must increase');
-        lastSeq = event.seq;
-    }
     const branchIds = new Set();
     for (const branch of manifest.branches) {
         const id = branch?.id ?? branch?.branchId;
@@ -126,18 +133,55 @@ export async function validateDebuggerSessionBundle (bundle, {codecs = {}, limit
         }
         branchIds.add(id);
     }
-    let priorCheckpoint = -1;
+    let traceCount = 0; let inputCount = 0;
+    const recordingIds = new Set();
+    for (const recording of manifest.recordings) {
+        if (!plain(recording) || !branchIds.has(recording.branchId) || recordingIds.has(recording.branchId) ||
+            !Array.isArray(recording.checkpointIds)) fail('INVALID_RECORDING_BRANCH', 'each retained branch requires one recording');
+        recordingIds.add(recording.branchId);
+        let trace; let inputs;
+        try {
+            trace = JSON.parse(decoder.decode(decodedChunks.get(recording.trace.chunk)));
+            inputs = JSON.parse(decoder.decode(decodedChunks.get(recording.inputs.chunk)));
+        } catch { fail('INVALID_RECORDING_CHUNK', 'recording trace/input chunk is not valid UTF-8 JSON'); }
+        boundedArray(trace, 'trace', cap.traceEvents); boundedArray(inputs, 'inputs', cap.inputs);
+        let lastSeq = -1;
+        for (const event of trace) {
+            if (!plain(event) || ordinal(event.seq) === null || event.seq <= lastSeq) fail('INVALID_TRACE_ORDER', 'trace sequence must increase per branch');
+            lastSeq = event.seq;
+        }
+        let lastCursor = -1; const inputTimes = new Map();
+        for (const input of inputs) {
+            if (!plain(input) || ordinal(input.cursor) === null || input.cursor <= lastCursor ||
+                !plain(input.time) || typeof input.time.domain !== 'string' || ordinal(input.time.ticks) === null) {
+                fail('INVALID_INPUT_ORDER', 'input cursor must increase per branch with deterministic time');
+            }
+            const tick = BigInt(input.time.ticks); const prior = inputTimes.get(input.time.domain);
+            if (prior !== undefined && tick < prior) fail('INVALID_INPUT_ORDER', 'input time decreased within its clock domain');
+            inputTimes.set(input.time.domain, tick);
+            lastCursor = input.cursor;
+        }
+        traceCount += trace.length; inputCount += inputs.length;
+    }
+    if (recordingIds.size !== branchIds.size) fail('INVALID_RECORDING_BRANCH', 'branch recording association is incomplete');
+    const priorByBranch = new Map(); const checkpointKeys = new Set();
     for (const checkpoint of manifest.checkpoints) {
         if (!plain(checkpoint) || ordinal(checkpoint.eventCursor) === null ||
-            checkpoint.eventCursor < priorCheckpoint || ordinal(checkpoint.inputCursor) === null ||
-            !manifest.codecs.includes(checkpoint.codec)) fail('INVALID_CHECKPOINT_ORDER', 'invalid checkpoint descriptor order');
-        priorCheckpoint = checkpoint.eventCursor;
+            checkpoint.eventCursor < (priorByBranch.get(checkpoint.branchId) ?? -1) ||
+            ordinal(checkpoint.inputCursor) === null || !recordingIds.has(checkpoint.branchId) ||
+            !manifest.codecs.includes(checkpoint.codec) || checkpointKeys.has(`${checkpoint.branchId}\0${checkpoint.id}`)) {
+            fail('INVALID_CHECKPOINT_ORDER', 'invalid branch-qualified checkpoint descriptor order');
+        }
+        const recording = manifest.recordings.find(x => x.branchId === checkpoint.branchId);
+        if (!recording.checkpointIds.includes(checkpoint.id)) fail('INVALID_CHECKPOINT_ORDER', 'recording omits checkpoint association');
+        checkpointKeys.add(`${checkpoint.branchId}\0${checkpoint.id}`);
+        priorByBranch.set(checkpoint.branchId, checkpoint.eventCursor);
     }
     for (const [name, values] of [['bookmarks', manifest.bookmarks], ['annotations', manifest.annotations]]) {
         for (const value of values) if (!plain(value) || ordinal(value.eventCursor) === null ||
             encoder.encode(JSON.stringify(value)).length > cap.textBytes) fail('INVALID_SESSION_MARK', `invalid ${name} entry`);
     }
-    return Object.freeze({accepted: true, schema: 1, traceEvents: trace.length,
+    return Object.freeze({accepted: true, schema: 1, traceEvents: traceCount, inputs: inputCount,
         branches: manifest.branches.length, checkpoints: manifest.checkpoints.length,
         bookmarks: manifest.bookmarks.length, annotations: manifest.annotations.length,
         firmwareSha256: manifest.firmware.sha256, sourceSha256: manifest.source.sha256, totalBytes: total});
@@ -153,10 +197,14 @@ export async function importDebuggerSessionBundle ({bundle, codecs = {}, limits,
         const snapshot = await codecs[item.codec].decode(get(item.snapshot.chunk));
         checkpoints.push({...structuredClone(item), snapshot});
     }
+    const recordings = bundle.manifest.recordings.map(item => ({branchId: item.branchId,
+        trace: JSON.parse(decoder.decode(get(item.trace.chunk))),
+        inputs: JSON.parse(decoder.decode(get(item.inputs.chunk))),
+        checkpoints: checkpoints.filter(checkpoint => checkpoint.branchId === item.branchId)}));
     const staged = {firmware: get(bundle.manifest.firmware.chunk),
         source: decoder.decode(get(bundle.manifest.source.chunk)),
-        trace: JSON.parse(decoder.decode(get(bundle.manifest.trace.chunk))),
-        branches: structuredClone(bundle.manifest.branches), checkpoints,
+        recordings, branches: structuredClone(bundle.manifest.branches), checkpoints,
+        ...(recordings.length === 1 ? {trace: recordings[0].trace, inputs: recordings[0].inputs} : {}),
         bookmarks: structuredClone(bundle.manifest.bookmarks), annotations: structuredClone(bundle.manifest.annotations)};
     const result = await commit(staged);
     return Object.freeze({accepted: true, summary, result});
