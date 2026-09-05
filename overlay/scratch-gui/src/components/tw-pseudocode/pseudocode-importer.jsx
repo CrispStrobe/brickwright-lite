@@ -2223,12 +2223,7 @@ class PseudocodeImporter extends React.Component {
             const creator = new SB3Creator();
             creator.parse(src);
             const cSrc = creator.generateC(creator.project, {debug: false});
-            const res = await fetch('https://stc-compiler.vercel.app/compile', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({code: cSrc, language: 'c', target: 'stm32f030', format: 'bin'})
-            });
-            const out = await res.json();
-            if (!out.success) throw new Error(out.error || 'the compiler refused this program');
+            const out = await this.hostedCompileC(cSrc, 'stm32f030', 'bin');
             const raw = Uint8Array.from(atob(out.base64), c => c.charCodeAt(0));
             const flasher = await import(/* webpackChunkName: "bw-flasher" */ '../../lib/flasher.js');
             const lines = [];
@@ -2276,17 +2271,33 @@ class PseudocodeImporter extends React.Component {
      *  address (0x20000000, the SRAM layout the rp2040 target links and the sim
      *  runs); a flash-resident image with boot2 is the functional follow-up, out
      *  of L2's scope — L2 delivers the route and the UF2 offer. */
+    /**
+     * The ONE hosted C compile in this component. Every caller that needs
+     * stc-compiler's /compile goes through here — flashToBoard, the STM32 SWD
+     * path and the Pico UF2 deploy — so the URL literal exists once, the
+     * sdcc-wasm intercept sees every 8051 request, and a gate can count call
+     * sites instead of trusting a comment. Throws with the service's message.
+     * @param {string} code C source
+     * @param {string} target the service's target id
+     * @param {string} format 'ihx' | 'hex' | 'bin'
+     * @returns {Promise<object>} the service's successful response
+     */
+    async hostedCompileC (code, target, format) {
+        const res = await fetch('https://stc-compiler.vercel.app/compile', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({code, language: 'c', target, format})
+        });
+        const out = await res.json();
+        if (!out.success) throw new Error(out.error || 'the compiler refused this program');
+        return out;
+    }
+
     async deployPicoUf2 () {
         const cSrc = this.state.buffers.c;
         if (!cSrc || !cSrc.trim()) { this.setState({status: this.L.deployPicoNoC}); return; }
         this.setState({busy: true, status: this.L.flashCompiling});
         try {
-            const cres = await fetch('https://stc-compiler.vercel.app/compile', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({code: cSrc, language: 'c', target: 'rp2040', format: 'bin'})
-            });
-            const cout = await cres.json();
-            if (!cout.success) throw new Error(cout.error || 'the compiler refused this program');
+            const cout = await this.hostedCompileC(cSrc, 'rp2040', 'bin');
             const ures = await fetch('https://stc-compiler.vercel.app/uf2', {
                 method: 'POST', headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({base64: cout.base64, origin: 0x20000000})
@@ -2350,12 +2361,7 @@ class PseudocodeImporter extends React.Component {
             };
             const target = COMPILE_TARGET[String(device).toLowerCase()] || String(device).toLowerCase();
             const format = (family === 'stm32' || family === 'eeprom') ? 'bin' : 'ihx';
-            const res = await fetch('https://stc-compiler.vercel.app/compile', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({code: cSrc, language: 'c', target, format})
-            });
-            const out = await res.json();
-            if (!out.success) throw new Error(out.error || 'the compiler refused this program');
+            const out = await this.hostedCompileC(cSrc, target, format);
             const raw = Uint8Array.from(atob(out.base64), c => c.charCodeAt(0));
 
             if (family === null) {
