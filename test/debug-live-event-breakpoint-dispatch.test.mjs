@@ -64,7 +64,8 @@ test('checkpoint actions run only during recording and failures remain observabl
     const stopped = dispatcher.dispatch(event({kind: 'instruction', phase: 'retire',
         pcBefore: 0, pcAfter: 1})).outcome;
     assert.equal(checkpoints, 0);
-    assert.deepEqual(stopped.failures.map(failure => failure.actionType), ['checkpoint', 'capture']);
+    assert.deepEqual(stopped.failures.map(failure => failure.actionType), ['capture', 'checkpoint'],
+        'checkpoint arbitration follows every other boundary action, including failures');
     assert.deepEqual(failures, stopped.failures, 'action failures must reach an observable sink');
 
     active = true;

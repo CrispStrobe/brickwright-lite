@@ -114,7 +114,74 @@ test('defers in-instruction matches and flushes ordered actions with one halt at
     assert.deepEqual(calls, ['memory', 'port', 'instruction', 'halt:memory,port,instruction']);
     assert.equal(retired.outcome.halted, true);
     assert.deepEqual(dispatcher.pending(), {plans: 0, maxPendingPlans: 1024});
-    assert.deepEqual(retired.triggerEventSeqs, [1, 2]);
+    assert.deepEqual(retired.triggerEventSeqs, [1, 2, 3],
+        'provenance includes the retire event that contributed its own decision');
+});
+
+test('suppressed replay actions are no-ops without concealing counter failures', () => {
+    const dispatcher = createEventBreakpointDispatcher({
+        engine: {evaluate: () => ({
+            matchingIds: ['replay-state'],
+            halt: true,
+            actions: [
+                {breakpointId: 'replay-state', actionIndex: 0, type: 'counter'},
+                {breakpointId: 'replay-state', actionIndex: 1, type: 'log'},
+                {breakpointId: 'replay-state', actionIndex: 2, type: 'halt'}
+            ]
+        })},
+        suppressedActions: ['log', 'halt'],
+        handlers: {counter: () => { throw new Error('counter reconstruction failed'); }}
+    });
+
+    const result = dispatcher.dispatch(event({seq: 12}));
+    assert.deepEqual(result.suppressedActions.map(action => action.type), ['log', 'halt']);
+    assert.equal(result.outcome.halted, false);
+    assert.deepEqual(result.outcome.failures, [{
+        code: 'breakpoint-action-failed',
+        breakpointId: 'replay-state',
+        actionIndex: 0,
+        actionType: 'counter',
+        message: 'counter reconstruction failed'
+    }]);
+    assert.equal(result.plan.actions.every(action => action.triggerEventSeq === 12), true,
+        'historical plan retains complete per-action trigger provenance');
+});
+
+test('checkpoint arbitration captures actions declared after the checkpoint', () => {
+    let counter = 0;
+    const capturedCounters = [];
+    const calls = [];
+    const dispatcher = createEventBreakpointDispatcher({
+        engine: {evaluate: () => ({
+            matchingIds: ['boundary'],
+            halt: true,
+            actions: [
+                {breakpointId: 'boundary', actionIndex: 0, type: 'checkpoint'},
+                {breakpointId: 'boundary', actionIndex: 1, type: 'counter'},
+                {breakpointId: 'boundary', actionIndex: 2, type: 'halt'}
+            ]
+        })},
+        recordingSession: {
+            status: () => ({active: true}),
+            checkpoint: () => {
+                calls.push('checkpoint');
+                capturedCounters.push(counter);
+                return {accepted: true};
+            }
+        },
+        handlers: {
+            counter: () => { calls.push('counter'); counter++; },
+            halt: () => calls.push('halt')
+        }
+    });
+
+    const result = dispatcher.dispatch(event({seq: 13}));
+    assert.deepEqual(calls, ['counter', 'checkpoint', 'halt']);
+    assert.deepEqual(capturedCounters, [1],
+        'the checkpoint sees host state after every non-checkpoint boundary action');
+    assert.deepEqual(result.plan.actions.map(action => action.type),
+        ['checkpoint', 'counter', 'halt'], 'the historical plan retains declaration order');
+    assert.deepEqual(result.outcome.results.map(item => item.actionType), ['counter', 'checkpoint']);
 });
 
 test('signal/device/scheduler decisions execute immediately without flushing queued plans', () => {

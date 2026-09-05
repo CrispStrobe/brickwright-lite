@@ -1,6 +1,16 @@
 import {compareReplayValues} from './recorder.js';
 
 const refusal = (code, reason, details = {}) => ({accepted: false, code, reason, ...details});
+const promiseLike = value => value && typeof value.then === 'function';
+const outcomeRefusal = (value, label, {allowUndefined = false} = {}) => {
+    if (promiseLike(value)) return `${label} must be synchronous`;
+    if (value === undefined && !allowUndefined) return `${label} returned no result`;
+    if (value === false || value?.accepted === false || value?.refused) {
+        return value?.reason || value?.refused || `${label} was refused`;
+    }
+    return null;
+};
+const replayError = (code, reason, details = {}) => Object.assign(new Error(reason), {code, details});
 
 /**
  * Restore an instruction-boundary checkpoint and deterministically replay to
@@ -13,6 +23,7 @@ export function createInstructionReplayController ({
     restoreCheckpoint = null,
     subscribeEvents = null,
     applyInput = null,
+    replayHostEvent = null,
     normalizeTimeDomain = domain => domain,
     normalizeEvent = event => {
         const {schema, seq, inputCursor, ...fact} = event;
@@ -74,54 +85,119 @@ export function createInstructionReplayController ({
 
             const actual = [];
             let unsubscribe;
-            try {
-                const restored = typeof restoreCheckpoint === 'function'
-                    ? restoreCheckpoint(checkpoint, target)
-                    : target.restoreCheckpoint(checkpoint.snapshot);
-                if (restored?.accepted === false || restored?.refused) {
-                    return refusal('reverse-restore-failed', restored.reason || restored.refused);
+            const restoreRecordedCheckpoint = () => typeof restoreCheckpoint === 'function'
+                ? restoreCheckpoint(checkpoint, target)
+                : target.restoreCheckpoint(checkpoint.snapshot);
+            const rollbackFailure = (failure, rollbackCode = 'reverse-source-rollback-failed') => {
+                try {
+                    const rolledBack = restoreRecordedCheckpoint();
+                    const rollbackRefusal = outcomeRefusal(rolledBack,
+                        'source checkpoint rollback', {allowUndefined: true});
+                    if (rollbackRefusal) throw new Error(rollbackRefusal);
+                } catch (rollbackError) {
+                    return refusal(rollbackCode,
+                        `${failure.reason}; source checkpoint restore failed ` +
+                        `(${rollbackError?.message || String(rollbackError)})`,
+                    {...failure.details, failureCode: failure.code});
                 }
+                return refusal(failure.code, failure.reason, failure.details);
+            };
+            try {
+                const restored = restoreRecordedCheckpoint();
+                const restoreRefusal = outcomeRefusal(restored,
+                    'source checkpoint restore', {allowUndefined: true});
+                if (restoreRefusal) return refusal('reverse-restore-failed', restoreRefusal);
                 unsubscribe = subscribeEvents
                     ? subscribeEvents(event => actual.push(event))
                     : target.onDebugEvent(event => actual.push(event));
+                if (promiseLike(unsubscribe) || typeof unsubscribe !== 'function') {
+                    throw replayError('reverse-subscribe-failed',
+                        'replay event subscription must synchronously return an unsubscribe function');
+                }
             } catch (error) {
+                if (error?.code === 'reverse-subscribe-failed') {
+                    return rollbackFailure(error);
+                }
                 return refusal('reverse-restore-failed', error?.message || String(error));
             }
 
             let inputIndex = 0;
+            let operationFailure = null;
             const retireCount = expected.filter(
                 event => event.kind === 'instruction' && event.phase === 'retire').length;
             try {
                 for (let instruction = 0; instruction < retireCount; instruction++) {
                     const now = target.debugTime();
+                    if (promiseLike(now)) throw replayError('reverse-replay-failed',
+                        'debug time inspection must be synchronous');
                     while (inputIndex < inputs.length &&
                         BigInt(inputs[inputIndex].time.ticks) <= BigInt(now.ticks)) {
                         const applied = applyInput
                             ? applyInput(target, inputs[inputIndex])
                             : target.applyReplayInput(inputs[inputIndex]);
-                        if (applied === false || applied?.accepted === false || applied === undefined) {
-                            return refusal('reverse-input-refused',
+                        const applyRefusal = outcomeRefusal(applied, 'recorded input replay');
+                        if (applyRefusal) {
+                            throw replayError('reverse-input-refused',
                                 `recorded input ${inputs[inputIndex].cursor} could not be replayed`,
                                 {inputCursor: inputs[inputIndex].cursor});
                         }
                         inputIndex++;
                     }
                     const stepped = target.replayInstruction();
-                    if (!stepped || stepped.accepted === false) {
-                        return refusal('reverse-step-failed', stepped?.reason || 'instruction replay was refused');
-                    }
+                    const stepRefusal = outcomeRefusal(stepped, 'instruction replay');
+                    if (stepRefusal) throw replayError('reverse-step-failed', stepRefusal);
                 }
             } catch (error) {
-                return refusal('reverse-replay-failed', error?.message || String(error));
+                operationFailure = {
+                    code: error?.code || 'reverse-replay-failed',
+                    reason: error?.message || String(error), details: error?.details || {}
+                };
             } finally {
-                unsubscribe?.();
+                try {
+                    const tornDown = unsubscribe();
+                    const teardownRefusal = outcomeRefusal(tornDown,
+                        'replay subscription teardown', {allowUndefined: true});
+                    if (teardownRefusal) throw new Error(teardownRefusal);
+                } catch (error) {
+                    operationFailure = {
+                        code: 'reverse-unsubscribe-failed',
+                        reason: error?.message || String(error),
+                        details: operationFailure ? {priorFailureCode: operationFailure.code} : {}
+                    };
+                }
             }
+            if (operationFailure) return rollbackFailure(operationFailure);
 
-            const comparison = compareReplayValues(
-                expected.map(normalizeEvent), actual.map(normalizeEvent),
-                {baseCursor: checkpoint.eventCursor});
+            let comparison;
+            try {
+                comparison = compareReplayValues(
+                    expected.map(normalizeEvent), actual.map(normalizeEvent),
+                    {baseCursor: checkpoint.eventCursor});
+            } catch (error) {
+                return rollbackFailure({code: 'reverse-compare-failed',
+                    reason: error?.message || String(error), details: {}});
+            }
             if (!comparison.matches) {
-                return refusal('REPLAY_DIVERGED', 'replayed event stream diverged', {divergence: comparison});
+                return rollbackFailure({code: 'REPLAY_DIVERGED', reason: 'replayed event stream diverged',
+                    details: {divergence: comparison}});
+            }
+            if (typeof replayHostEvent === 'function') {
+                for (let index = 0; index < expected.length; index++) {
+                    const eventCursor = checkpoint.eventCursor + index;
+                    try {
+                        // Reconstruct from recorded facts only after the actual
+                        // stream has matched them; unverified replay output must
+                        // never become debugger-host truth.
+                        const reconstructed = replayHostEvent(structuredClone(expected[index]), {eventCursor});
+                        const hostRefusal = outcomeRefusal(reconstructed,
+                            'debugger-host reconstruction', {allowUndefined: true});
+                        if (hostRefusal) throw new Error(hostRefusal);
+                    } catch (error) {
+                        return rollbackFailure({code: 'reverse-host-replay-failed',
+                            reason: error?.message || String(error), details: {eventCursor}},
+                        'reverse-host-rollback-failed');
+                    }
+                }
             }
             return {
                 accepted: true,

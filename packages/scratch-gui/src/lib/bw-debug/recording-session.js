@@ -1,6 +1,15 @@
 import {RECORDER_SCHEMA} from './recorder.js';
 
 const refusal = (code, reason) => ({accepted: false, code, reason});
+const promiseLike = value => value && typeof value.then === 'function';
+const outcomeRefusal = (value, label, {allowUndefined = false} = {}) => {
+    if (promiseLike(value)) return `${label} must be synchronous`;
+    if (value === undefined && !allowUndefined) return `${label} returned no state`;
+    if (value === false || value?.accepted === false || value?.refused) {
+        return value?.reason || value?.refused || `${label} was refused`;
+    }
+    return null;
+};
 
 /** Bind target-owned external inputs to the lossless recorder lifecycle. */
 export function subscribeDebugTargetInputs (target, recordingSession) {
@@ -33,6 +42,18 @@ export function createRecordingSession ({
     }
     let active = false;
     let failure = null;
+    let suspension = null;
+
+    const suspensionSignature = () => {
+        const retention = recorder.retention();
+        return JSON.stringify({
+            retention,
+            checkpoints: recorder.checkpointSummary().map(item => ({
+                id: item.id, eventCursor: item.eventCursor, inputCursor: item.inputCursor
+            })),
+            streamCursor: eventStream.nextSequence()
+        });
+    };
 
     const targetNow = () => typeof getTarget === 'function' ? getTarget() : null;
     const supports = (target, operation) =>
@@ -48,9 +69,8 @@ export function createRecordingSession ({
         } catch (error) {
             return refusal('checkpoint-failed', error?.message || String(error));
         }
-        if (snapshot?.accepted === false || snapshot?.refused) {
-            return refusal('checkpoint-failed', snapshot.reason || snapshot.refused);
-        }
+        const captureRefusal = outcomeRefusal(snapshot, 'target checkpoint capture');
+        if (captureRefusal) return refusal('checkpoint-failed', captureRefusal);
         if (!snapshot?.time) {
             return refusal('invalid-target-checkpoint', 'target checkpoint has no simulation time');
         }
@@ -68,12 +88,8 @@ export function createRecordingSession ({
             } catch (error) {
                 return refusal('host-checkpoint-failed', error?.message || String(error));
             }
-            if (hostSnapshot?.accepted === false || hostSnapshot?.refused) {
-                return refusal('host-checkpoint-failed', hostSnapshot.reason || hostSnapshot.refused);
-            }
-            if (hostSnapshot === undefined) {
-                return refusal('host-checkpoint-failed', 'host checkpoint capture returned no state');
-            }
+            const hostCaptureRefusal = outcomeRefusal(hostSnapshot, 'host checkpoint capture');
+            if (hostCaptureRefusal) return refusal('host-checkpoint-failed', hostCaptureRefusal);
         }
         const retention = recorder.retention();
         const value = recorder.createCheckpoint({
@@ -90,6 +106,8 @@ export function createRecordingSession ({
     return {
         start () {
             if (active) return refusal('recording-active', 'recording is already active');
+            if (suspension) return refusal('recording-suspended',
+                'recording is suspended and must be resumed or stopped before starting');
             recorder.clear();
             failure = null;
             const result = checkpoint();
@@ -146,9 +164,8 @@ export function createRecordingSession ({
                     } catch (error) {
                         return refusal('host-restore-incompatible', error?.message || String(error));
                     }
-                    if (stagedHost?.accepted === false || stagedHost?.refused) {
-                        return refusal('host-restore-incompatible', stagedHost.reason || stagedHost.refused);
-                    }
+                    const prepareRefusal = outcomeRefusal(stagedHost, 'host restore preparation');
+                    if (prepareRefusal) return refusal('host-restore-incompatible', prepareRefusal);
                     const rollback = capture(target);
                     if (!rollback.accepted) {
                         return refusal('restore-rollback-unavailable', rollback.reason);
@@ -159,24 +176,28 @@ export function createRecordingSession ({
                         'checkpoint predates required debugger-host state');
                 }
                 const restored = target.restoreCheckpoint(saved.snapshot);
-                if (restored?.accepted === false || restored?.refused) {
-                    return refusal('restore-failed', restored.reason || restored.refused);
-                }
+                // Existing target adapters use undefined to mean successful
+                // synchronous restoration, so that one legacy shape remains.
+                const restoreRefusal = outcomeRefusal(restored,
+                    'target checkpoint restore', {allowUndefined: true});
+                if (restoreRefusal) return refusal('restore-failed', restoreRefusal);
             } catch (error) {
                 return refusal('restore-failed', error?.message || String(error));
             }
             if (hostAware) {
                 try {
                     const committed = commitHostRestore(stagedHost);
-                    if (committed?.accepted === false || committed?.refused) {
-                        throw new Error(committed.reason || committed.refused);
-                    }
+                    // Legacy host commit hooks are commands and commonly have
+                    // no return value; undefined remains synchronous success.
+                    const commitRefusal = outcomeRefusal(committed,
+                        'host restore commit', {allowUndefined: true});
+                    if (commitRefusal) throw new Error(commitRefusal);
                 } catch (error) {
                     try {
                         const rolledBack = target.restoreCheckpoint(rollbackTarget);
-                        if (rolledBack?.accepted === false || rolledBack?.refused) {
-                            throw new Error(rolledBack.reason || rolledBack.refused);
-                        }
+                        const rollbackRefusal = outcomeRefusal(rolledBack,
+                            'target checkpoint rollback', {allowUndefined: true});
+                        if (rollbackRefusal) throw new Error(rollbackRefusal);
                     } catch (rollbackError) {
                         return refusal('restore-rollback-failed',
                             `host restore failed (${error?.message || String(error)}); ` +
@@ -186,16 +207,43 @@ export function createRecordingSession ({
                 }
             }
             active = false;
+            suspension = null;
             return {accepted: true, checkpoint: saved, boundary: 'instruction'};
+        },
+
+        /** Temporarily stop appends without clearing or recapturing history. */
+        suspend () {
+            if (suspension) return refusal('recording-already-suspended',
+                'recording is already suspended');
+            suspension = {wasActive: active, signature: suspensionSignature()};
+            active = false;
+            return {accepted: true, wasActive: suspension.wasActive};
+        },
+
+        /** Restore the pre-suspend lifecycle only if no history cursor moved. */
+        resume () {
+            if (!suspension) return refusal('recording-not-suspended',
+                'recording was not suspended');
+            const saved = suspension;
+            suspension = null;
+            if (suspensionSignature() !== saved.signature) {
+                active = false;
+                return refusal('recording-changed-while-suspended',
+                    'recorder or event stream cursors changed while recording was suspended');
+            }
+            active = saved.wasActive;
+            return {accepted: true, active};
         },
 
         stop () {
             active = false;
+            suspension = null;
             return this.status();
         },
 
         status () {
-            return {active, failure: failure ? {...failure} : null, retention: recorder.retention()};
+            return {active, suspended: suspension !== null,
+                failure: failure ? {...failure} : null, retention: recorder.retention()};
         }
     };
 }

@@ -11,7 +11,7 @@ import {normalizeDebugEvent} from './event-stream.js';
 const DEFERRED_KINDS = new Set(['memory', 'port', 'interrupt']);
 
 export function createEventBreakpointDispatcher ({engine, handlers = {}, recordingSession = null,
-    maxPendingPlans = 1024} = {}) {
+    maxPendingPlans = 1024, suppressedActions = []} = {}) {
     if (!engine || typeof engine.evaluate !== 'function') {
         throw new TypeError('event breakpoint dispatcher requires an evaluate-capable engine');
     }
@@ -21,6 +21,11 @@ export function createEventBreakpointDispatcher ({engine, handlers = {}, recordi
     if (!Number.isSafeInteger(maxPendingPlans) || maxPendingPlans < 1) {
         throw new RangeError('maxPendingPlans must be a positive safe integer');
     }
+    if (!Array.isArray(suppressedActions) || suppressedActions.some(type =>
+        typeof type !== 'string' || type.length === 0)) {
+        throw new TypeError('suppressedActions must be an array of non-empty action type names');
+    }
+    const suppressedTypes = new Set(suppressedActions);
     let pending = [];
     const effectiveHandlers = {...handlers};
     if (recordingSession) effectiveHandlers.checkpoint = () => {
@@ -38,18 +43,40 @@ export function createEventBreakpointDispatcher ({engine, handlers = {}, recordi
         const seen = new Set();
         const actions = [];
         let halt = false;
-        for (const {plan} of entries) {
+        for (const entry of entries) {
+            const {plan} = entry;
             for (const id of plan.matchingIds) {
                 if (!seen.has(id)) {
                     seen.add(id);
                     matchingIds.push(id);
                 }
             }
-            actions.push(...plan.actions);
+            actions.push(...plan.actions.map(action => ({...action,
+                triggerEventSeq: entry.triggerEventSeq})));
             halt ||= plan.halt;
         }
         return {matchingIds, halt, actions};
     };
+    const withTrigger = (plan, triggerEventSeq) => ({...plan,
+        actions: plan.actions.map(action => ({...action, triggerEventSeq}))});
+    const suppress = plan => {
+        const suppressed = plan.actions.filter(action => suppressedTypes.has(action.type));
+        return {
+            plan: {
+                ...plan,
+                halt: plan.halt && !suppressedTypes.has('halt'),
+                actions: plan.actions.filter(action => !suppressedTypes.has(action.type))
+            },
+            suppressed
+        };
+    };
+    const checkpointLast = plan => ({
+        ...plan,
+        actions: [
+            ...plan.actions.filter(action => action.type !== 'checkpoint'),
+            ...plan.actions.filter(action => action.type === 'checkpoint')
+        ]
+    });
 
     return {
         /**
@@ -97,18 +124,20 @@ export function createEventBreakpointDispatcher ({engine, handlers = {}, recordi
 
             const isRetire = event.kind === 'instruction' && event.phase === 'retire';
             const flushedPlans = isRetire ? pending.length : 0;
-            const pendingEntries = pending;
-            const executable = isRetire && pending.length ?
-                aggregate([...pending, {plan, triggerEventSeq: event.seq}]) : plan;
-            const triggerEventSeqs = isRetire && pendingEntries.length ?
-                pendingEntries.map(entry => entry.triggerEventSeq) :
+            const entries = isRetire ? [...pending,
+                ...(hasDecision(plan) ? [{plan, triggerEventSeq: event.seq}] : [])] : [];
+            const executable = isRetire && entries.length ? aggregate(entries) :
+                withTrigger(plan, event.seq);
+            const triggerEventSeqs = isRetire ? entries.map(entry => entry.triggerEventSeq) :
                 (hasDecision(plan) ? [event.seq] : []);
             if (isRetire) pending = [];
-            const outcome = executeBreakpointPlan(executable, effectiveHandlers,
+            const filtered = suppress(executable);
+            const outcome = executeBreakpointPlan(checkpointLast(filtered.plan), effectiveHandlers,
                 {...context, triggerEventSeqs});
             return {
                 suppressed: false, reason: null, event, plan: executable, outcome,
-                deferred: false, flushedPlans, triggerEventSeqs, failure: null
+                deferred: false, flushedPlans, triggerEventSeqs,
+                suppressedActions: filtered.suppressed.map(action => ({...action})), failure: null
             };
         },
 

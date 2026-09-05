@@ -39,9 +39,11 @@ export function createForkHistory ({maxBranches = 128, rootBranchId = 'main'} = 
     const root = branchId(rootBranchId, 'rootBranchId');
     const branches = new Map();
     const usedIds = new Set([root]);
+    const reservedIds = new Set();
     let active = root;
     let nextCreation = 1;
     let evictedBranches = 0;
+    let revision = 0;
 
     const freeze = summary => Object.freeze({...summary,
         forkCursor: branchCursor(summary.forkCursor)});
@@ -55,11 +57,11 @@ export function createForkHistory ({maxBranches = 128, rootBranchId = 'main'} = 
     const copy = summary => summary ? freeze(summary) : null;
 
     return {
-        fork ({branchId: requestedId, parentBranchId = active, forkCursor}) {
+        prepareFork ({branchId: requestedId, parentBranchId = active, forkCursor}) {
             const id = branchId(requestedId);
             const parentId = branchId(parentBranchId, 'parentBranchId');
             const at = branchCursor(forkCursor);
-            if (usedIds.has(id)) {
+            if (usedIds.has(id) || reservedIds.has(id)) {
                 return refusal('branch-id-used', `branch id "${id}" has already been used`, {branchId: id});
             }
             const parent = branches.get(parentId);
@@ -76,20 +78,44 @@ export function createForkHistory ({maxBranches = 128, rootBranchId = 'main'} = 
                 return refusal('fork-before-parent', 'fork cursor precedes the parent branch boundary',
                     {forkCursor: at.eventCursor, parentForkCursor: parent.forkCursor.eventCursor});
             }
-            if (branches.size >= maxBranches) {
+            if (branches.size + reservedIds.size >= maxBranches) {
                 return refusal('branch-capacity', 'fork history capacity is exhausted; retain or evict explicitly',
                     {maxBranches});
             }
-            const summary = freeze({
-                branchId: id,
-                parentBranchId: parentId,
-                forkCursor: at,
-                creation: nextCreation++
-            });
-            usedIds.add(id);
-            branches.set(id, summary);
-            active = id;
-            return {accepted: true, branch: copy(summary)};
+            const preparedRevision = revision;
+            const preparedActive = active;
+            reservedIds.add(id);
+            let finished = false;
+            const abort = () => {
+                if (finished) return {accepted: false, code: 'reservation-finished'};
+                finished = true;
+                reservedIds.delete(id);
+                return {accepted: true, aborted: true};
+            };
+            const commit = () => {
+                if (finished) return {accepted: false, code: 'reservation-finished'};
+                if (revision !== preparedRevision || active !== preparedActive || !branches.has(parentId)) {
+                    finished = true;
+                    reservedIds.delete(id);
+                    return refusal('stale-fork-reservation', 'fork history changed before commit');
+                }
+                const summary = freeze({
+                    branchId: id, parentBranchId: parentId, forkCursor: at, creation: nextCreation++
+                });
+                finished = true;
+                reservedIds.delete(id);
+                usedIds.add(id);
+                branches.set(id, summary);
+                active = id;
+                revision++;
+                return {accepted: true, branch: copy(summary)};
+            };
+            return {accepted: true, reservation: Object.freeze({branchId: id, commit, abort})};
+        },
+
+        fork (request) {
+            const prepared = this.prepareFork(request);
+            return prepared.accepted ? prepared.reservation.commit() : prepared;
         },
 
         activate (idValue) {
@@ -98,6 +124,7 @@ export function createForkHistory ({maxBranches = 128, rootBranchId = 'main'} = 
                 return refusal('branch-not-retained', `branch "${id}" is not retained`, {branchId: id});
             }
             active = id;
+            revision++;
             return {accepted: true, branch: copy(branches.get(id))};
         },
 
@@ -114,22 +141,35 @@ export function createForkHistory ({maxBranches = 128, rootBranchId = 'main'} = 
          * Repeating the leaf pass permits whole obsolete subtrees to disappear
          * without ever leaving a retained child pointing at a missing parent.
          */
-        evictBeforeCheckpoint (eventCursor) {
-            const boundary = cursor(eventCursor, 'eventCursor');
+        evictBeforeCheckpoint (checkpointCursor) {
+            const boundary = branchCursor(checkpointCursor, 'checkpointCursor');
             const removed = [];
-            let changed = true;
-            while (changed) {
-                changed = false;
-                const parents = new Set([...branches.values()].map(item => item.parentBranchId));
-                for (const [id, summary] of [...branches]) {
-                    if (id === root || id === active || parents.has(id) ||
-                        summary.forkCursor.eventCursor >= boundary) continue;
-                    branches.delete(id);
-                    removed.push(id);
-                    evictedBranches++;
-                    changed = true;
-                }
+            if (!branches.has(boundary.branchId)) {
+                return refusal('checkpoint-branch-not-retained', 'checkpoint branch is not retained',
+                    {checkpointCursor: boundary});
             }
+            const children = new Map();
+            for (const summary of branches.values()) {
+                if (!children.has(summary.parentBranchId)) children.set(summary.parentBranchId, []);
+                children.get(summary.parentBranchId).push(summary.branchId);
+            }
+            const activeAncestors = new Set();
+            for (let id = active; id !== null;) {
+                activeAncestors.add(id);
+                id = branches.get(id)?.parentBranchId ?? null;
+            }
+            const removeTree = id => {
+                for (const child of children.get(id) || []) removeTree(child);
+                branches.delete(id);
+                removed.push(id);
+                evictedBranches++;
+            };
+            const obsoleteRoots = [...branches.values()].filter(summary =>
+                summary.parentBranchId === boundary.branchId &&
+                summary.forkCursor.eventCursor < boundary.eventCursor &&
+                !activeAncestors.has(summary.branchId));
+            for (const summary of obsoleteRoots) removeTree(summary.branchId);
+            if (removed.length) revision++;
             return {accepted: true, removed: Object.freeze(removed), checkpointCursor: boundary};
         },
 
@@ -138,7 +178,8 @@ export function createForkHistory ({maxBranches = 128, rootBranchId = 'main'} = 
                 maxBranches,
                 retainedBranches: branches.size,
                 evictedBranches,
-                activeBranchId: active
+                activeBranchId: active,
+                reservedBranches: reservedIds.size
             });
         }
     };

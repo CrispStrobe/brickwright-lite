@@ -44,7 +44,7 @@ test('capacity refuses without silently evicting or consuming an identity', () =
     assert.equal(history.fork({branchId: 'b', forkCursor: at('a', 3)}).code, 'branch-capacity');
     assert.deepEqual(history.summaries().map(item => item.branchId), ['main', 'a']);
     assert.deepEqual(history.retention(), {
-        maxBranches: 2, retainedBranches: 2, evictedBranches: 0, activeBranchId: 'a'
+        maxBranches: 2, retainedBranches: 2, evictedBranches: 0, activeBranchId: 'a', reservedBranches: 0
     });
 });
 
@@ -54,7 +54,7 @@ test('checkpoint retention removes only inactive leaves and preserves ancestry',
     history.fork({branchId: 'old-leaf', forkCursor: at('old-parent', 3)});
     history.activate('main');
     history.fork({branchId: 'active', forkCursor: at('main', 8)});
-    const result = history.evictBeforeCheckpoint(7);
+    const result = history.evictBeforeCheckpoint(at('main', 7));
     assert.deepEqual([...result.removed], ['old-leaf', 'old-parent']);
     assert.deepEqual(history.summaries().map(item => item.branchId), ['main', 'active']);
     assert.equal(history.activeBranch().branchId, 'active');
@@ -93,8 +93,44 @@ test('a retained child always keeps its real parent record retained', () => {
     history.fork({branchId: 'parent', forkCursor: at('main', 1)});
     history.fork({branchId: 'child', forkCursor: at('parent', 2)});
     history.activate('main');
-    history.evictBeforeCheckpoint(2);
-    assert.deepEqual(history.summaries().map(item => item.branchId), ['main', 'parent', 'child']);
-    history.evictBeforeCheckpoint(3);
+    history.evictBeforeCheckpoint(at('main', 2));
     assert.deepEqual(history.summaries().map(item => item.branchId), ['main']);
+});
+
+test('prepared forks reserve invisibly and commit or abort exactly once', () => {
+    const history = createForkHistory({maxBranches: 2});
+    const prepared = history.prepareFork({branchId: 'child', forkCursor: at('main', 3)});
+    assert.equal(prepared.accepted, true);
+    assert.deepEqual(history.summaries().map(item => item.branchId), ['main']);
+    assert.equal(history.retention().reservedBranches, 1);
+    assert.equal(history.prepareFork({branchId: 'other', forkCursor: at('main', 3)}).code,
+        'branch-capacity');
+    assert.equal(prepared.reservation.abort().accepted, true);
+    assert.equal(prepared.reservation.commit().code, 'reservation-finished');
+    assert.equal(history.retention().reservedBranches, 0);
+
+    const retry = history.prepareFork({branchId: 'child', forkCursor: at('main', 3)});
+    assert.equal(retry.reservation.commit().accepted, true);
+    assert.equal(retry.reservation.commit().code, 'reservation-finished');
+});
+
+test('prepared fork detects active/history changes without publishing an orphan', () => {
+    const history = createForkHistory();
+    const prepared = history.prepareFork({branchId: 'reserved', forkCursor: at('main', 2)});
+    history.fork({branchId: 'other', forkCursor: at('main', 3)});
+    assert.equal(prepared.reservation.commit().code, 'stale-fork-reservation');
+    assert.equal(history.summaries().some(item => item.branchId === 'reserved'), false);
+    assert.equal(history.retention().reservedBranches, 0);
+});
+
+test('checkpoint retention refuses cross-branch ordinals and removes only qualified subtrees', () => {
+    const history = createForkHistory();
+    history.fork({branchId: 'left', forkCursor: at('main', 2)});
+    history.activate('main');
+    history.fork({branchId: 'right', forkCursor: at('main', 2)});
+    history.activate('right');
+    assert.equal(history.evictBeforeCheckpoint(at('missing', 99)).code,
+        'checkpoint-branch-not-retained');
+    const result = history.evictBeforeCheckpoint(at('left', 99));
+    assert.deepEqual([...result.removed], [], 'right ordinal 2 is not comparable to a left checkpoint');
 });

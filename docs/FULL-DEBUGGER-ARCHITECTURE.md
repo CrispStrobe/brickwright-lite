@@ -11,7 +11,7 @@ earlier row optional.
 
 | step | deliverable | state |
 | --- | --- | --- |
-| 1 | checkpoint debugger-host state and retain parent-linked fork histories | in progress — atomic host capture/restore and branch-qualified lineage model implemented; live branch payload integration remains |
+| 1 | checkpoint debugger-host state and retain parent-linked fork histories | complete — atomic host capture/restore/reconstruction plus transactional live branch payloads |
 | 2 | run-to plus live-tested step over/out | pending |
 | 3 | event-synchronized register, disassembly and memory panes | pending |
 | 4 | Z80 and 6502 checkpoint/replay certification | pending |
@@ -26,6 +26,17 @@ one-shot consumption, enabled state and host action counters are restored, and
 changed definitions fail closed. Branch cursors are `{branchId, eventCursor}`:
 the same numeric event position on two siblings is never treated as the same
 history location.
+
+Each retained branch now owns a stable recorder, recording session, replay
+controller and halt ledger. Fork reservations are invisible until a complete
+child root checkpoint exists; failures resume the unchanged parent. Forward
+execution from a restored point creates and activates that child, while branch
+switching verifies replay before changing the active payload. Starting a new
+recording explicitly begins a new epoch and releases stale lineage only after
+the replacement root checkpoint succeeds. Replay reconstructs stateful
+breakpoint predicates and deterministic debugger counters from verified
+recorded events, suppresses external actions, and rolls back to its source
+checkpoint on every failed replay phase.
 
 ## Outcome
 

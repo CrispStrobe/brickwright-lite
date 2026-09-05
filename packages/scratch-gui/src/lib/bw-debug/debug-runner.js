@@ -46,6 +46,10 @@ import {createInstructionReplayController} from './instruction-replay.js';
 import {createReverseContinueCoordinator} from './reverse-continue.js';
 import {createEventBreakpointDispatcher} from './event-breakpoint-dispatcher.js';
 import {createSelectedEventSeekCoordinator} from './selected-event-seek.js';
+import {createDebugRecorder} from './recorder.js';
+import {createHaltOccurrenceLedger} from './halt-occurrence-ledger.js';
+import {createForkRecordingStore} from './fork-recording-store.js';
+import {createBranchCursor} from './fork-history.js';
 import { setValueResolver } from './hover-values.js';
 import { instructionLength } from './opcodes.js';
 import {
@@ -456,17 +460,18 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     /** The execution history the drawer renders. See trace.js. */
     const debugFoundation = createDebugFoundation({eventCapacity: 4096});
     const eventStream = debugFoundation.events;
-    const recordingSession = createRecordingSession({
-        recorder: debugFoundation.recorder,
-        eventStream,
-        getTarget: () => target,
-        captureHostState: () => ({
+    const replayClockDomain = domain => String(domain).replace(/-reset-\d+$/, '');
+    const normalizeReplayEvent = event => {
+        const {schema, seq, inputCursor, ...fact} = event;
+        return {...fact, time: {...fact.time, domain: replayClockDomain(fact.time.domain)}};
+    };
+    const captureHostState = () => ({
             schema: 1,
             breakpoints: debugFoundation.exportBreakpointState(),
             counters: [...eventBreakpointCounters].map(([name, value]) => [name, value]),
             breakpointGeneration
-        }),
-        prepareHostRestore: snapshot => {
+        });
+    const prepareHostRestore = snapshot => {
             if (!snapshot || snapshot.schema !== 1 || !Array.isArray(snapshot.counters) ||
                 !Number.isSafeInteger(snapshot.breakpointGeneration) || snapshot.breakpointGeneration < 0) {
                 throw new TypeError('Unsupported debugger-host checkpoint');
@@ -482,34 +487,52 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             });
             const preparedBreakpoints = debugFoundation.prepareBreakpointState(snapshot.breakpoints);
             return {preparedBreakpoints, counters, breakpointGeneration: snapshot.breakpointGeneration};
-        },
-        commitHostRestore: prepared => {
+        };
+    const commitHostRestore = prepared => {
             const committed = prepared.preparedBreakpoints.commit();
             if (!committed.committed) throw new Error(`Breakpoint restore failed: ${committed.code}`);
             eventBreakpointCounters.clear();
             for (const [name, value] of prepared.counters) eventBreakpointCounters.set(name, value);
             breakpointGeneration = prepared.breakpointGeneration;
             eventBreakpointDispatcher?.clear();
+            replayBreakpointDispatcher?.clear();
             return true;
-        }
-    });
-    const replayClockDomain = domain => String(domain).replace(/-reset-\d+$/, '');
-    const normalizeReplayEvent = event => {
-        const {schema, seq, inputCursor, ...fact} = event;
-        return {...fact, time: {...fact.time, domain: replayClockDomain(fact.time.domain)}};
+        };
+    const createBranchPayload = (recorder, haltOccurrences) => {
+        const branchSession = createRecordingSession({recorder, eventStream, getTarget: () => target,
+            captureHostState, prepareHostRestore, commitHostRestore});
+        const replay = createInstructionReplayController({
+            recorder,
+            getTarget: () => target,
+            restoreCheckpoint: checkpoint => branchSession.restore(checkpoint.eventCursor),
+            subscribeEvents: listener => eventStream.onEvent(listener),
+            replayHostEvent: event => {
+                const result = replayBreakpointDispatcher.dispatch(event, {
+                    context: {event, counts: Object.fromEntries(eventBreakpointCounters)}
+                });
+                if (result.failure) throw new Error(result.failure.code);
+                if (result.outcome?.failures?.length) {
+                    throw new Error(result.outcome.failures[0].code || 'replay-host-action-failed');
+                }
+                return true;
+            },
+            normalizeTimeDomain: replayClockDomain,
+            normalizeEvent: normalizeReplayEvent
+        });
+        return {recorder, recordingSession: branchSession, instructionReplay: replay, haltOccurrences};
     };
-    // Reverse readiness is composed here from checkpoint/replay support and
-    // complete input applicators. Targets never advertise it on their own.
-    const instructionReplay = createInstructionReplayController({
-        recorder: debugFoundation.recorder,
-        getTarget: () => target,
-        restoreCheckpoint: checkpoint => recordingSession.restore(checkpoint.eventCursor),
-        subscribeEvents: listener => eventStream.onEvent(listener),
-        normalizeTimeDomain: replayClockDomain,
-        normalizeEvent: normalizeReplayEvent
-    });
-    const unsubscribeRecordingEvents = eventStream.onEvent(
-        event => recordingSession.appendBatch([event]));
+    let activeBranchPayload = createBranchPayload(debugFoundation.recorder,
+        debugFoundation.haltOccurrences);
+    let forkRecordingStore = createForkRecordingStore({rootRecording: activeBranchPayload});
+    const recordingSession = Object.fromEntries([
+        'start', 'appendBatch', 'appendInput', 'checkpoint', 'restore', 'suspend', 'resume', 'stop', 'status'
+    ].map(name => [name, (...args) => activeBranchPayload.recordingSession[name](...args)]));
+    const instructionReplay = {
+        canReverse: (...args) => activeBranchPayload.instructionReplay.canReverse(...args),
+        reverseToEvent: (...args) => activeBranchPayload.instructionReplay.reverseToEvent(...args)
+    };
+    const unsubscribeRecordingEvents = eventStream.onEvent(event =>
+        activeBranchPayload.recordingSession.appendBatch([event]));
     let unsubscribeDebugEvents = null;
     let debugEventsTarget = null;
     let unsubscribeDebugInputs = null;
@@ -524,6 +547,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     let breakpointGeneration = 0;
     let haltLedgerRefusal = null;
     let reverseHistoryRefusal = null;
+    let nextForkBranchId = 1;
     const trace = createTrace({eventStream});
     /** The user's own variables: {name, space, addr, size}. From the symbol table. */
     let variableTable = [];
@@ -617,12 +641,41 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         eventBreakpointCounters.clear();
     }
 
-    function beginForwardBranch() {
-        if (reverseCursor === null) return;
-        reverseHistoryRefusal = {accepted: false, code: 'history-branched',
-            reason: 'Forward execution branched from recorded history; start a new recording epoch'};
-        debugFoundation.haltOccurrences.clear();
+    function beginForwardBranch(requestedBranchId = null) {
+        if (reverseCursor === null) return {accepted: true, forked: false};
+        const parent = forkRecordingStore.active();
+        let branchId = requestedBranchId;
+        if (branchId === null) do { branchId = `branch-${nextForkBranchId++}`; } while (
+            forkRecordingStore.recordingFor(branchId).accepted);
+        const prepared = forkRecordingStore.prepareFork({branchId,
+            parentBranchId: parent.branch.branchId,
+            forkCursor: createBranchCursor(parent.branch.branchId, reverseCursor)});
+        if (!prepared.accepted) return prepared;
+        const suspended = parent.recording.recordingSession.suspend();
+        if (!suspended.accepted) { prepared.reservation.abort(); return suspended; }
+        const child = createBranchPayload(createDebugRecorder(), createHaltOccurrenceLedger());
+        const rooted = child.recordingSession.start();
+        if (!rooted.accepted) {
+            prepared.reservation.abort();
+            const resumed = parent.recording.recordingSession.resume();
+            return resumed.accepted ? rooted : {accepted: false, code: 'fork-rollback-failed',
+                reason: resumed.reason || resumed.code};
+        }
+        const committed = prepared.reservation.commit(child);
+        if (!committed.accepted) {
+            child.recordingSession.stop();
+            const resumed = parent.recording.recordingSession.resume();
+            return resumed.accepted ? committed : {accepted: false, code: 'fork-rollback-failed',
+                reason: resumed.reason || resumed.code};
+        }
+        const activated = forkRecordingStore.activate(branchId);
+        if (!activated.accepted) return activated;
+        activeBranchPayload = activated.recording;
+        reverseHistoryRefusal = null;
+        haltLedgerRefusal = null;
         reverseContinue.reset();
+        return {accepted: true, forked: true, branch: activated.branch,
+            checkpoint: rooted.checkpoint};
     }
 
     const breakpointIdsForHandle = handle => {
@@ -638,11 +691,11 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         if (targetKind !== 'i8086' || !recordingSession.status().active || !why) return null;
         if (!['breakpoint', 'watchpoint', 'port', 'interrupt'].includes(why.cause)) return null;
         if (why.bp === undefined || why.bp === null) return null;
-        const checkpoints = debugFoundation.recorder.checkpointSummary();
+        const checkpoints = activeBranchPayload.recorder.checkpointSummary();
         if (!checkpoints.length) return null;
-        debugFoundation.haltOccurrences.evictBeforeCheckpoint(checkpoints[0].eventCursor);
+        activeBranchPayload.haltOccurrences.evictBeforeCheckpoint(checkpoints[0].eventCursor);
         try {
-            return debugFoundation.haltOccurrences.append({
+            return activeBranchPayload.haltOccurrences.append({
                 boundaryCursor: eventStream.nextSequence(),
                 triggerEventSeq: null,
                 matchingIds: breakpointIdsForHandle(why.bp),
@@ -659,11 +712,11 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
     function recordEventBreakpointHalt(result) {
         if (targetKind !== 'i8086' || !recordingSession.status().active || !result?.outcome?.halted) return;
-        const checkpoints = debugFoundation.recorder.checkpointSummary();
+        const checkpoints = activeBranchPayload.recorder.checkpointSummary();
         if (!checkpoints.length) return;
-        debugFoundation.haltOccurrences.evictBeforeCheckpoint(checkpoints[0].eventCursor);
+        activeBranchPayload.haltOccurrences.evictBeforeCheckpoint(checkpoints[0].eventCursor);
         try {
-            debugFoundation.haltOccurrences.append({
+            activeBranchPayload.haltOccurrences.append({
                 boundaryCursor: eventStream.nextSequence(),
                 triggerEventSeq: result.triggerEventSeqs?.[0] ?? null,
                 matchingIds: result.outcome.matchingIds,
@@ -2310,6 +2363,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
     let reverseContinue;
     let eventBreakpointDispatcher;
+    let replayBreakpointDispatcher;
     let selectedEventSeek;
     const runner = {
         /** Use this image instead of compiling the blocks. */
@@ -2324,7 +2378,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
         /** Build, attach, and run. The ⚑ of the debug world. */
         async start() {
-            beginForwardBranch();
+            const forked = beginForwardBranch();
+            if (!forked.accepted) { setStatus('paused', forked.reason || forked.code); return forked; }
             reverseCursor = null;
             reverseContinue.reset();
             if (!session) resetEventBreakpointRuntime();
@@ -2380,18 +2435,21 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
         resume() {
             if (!session) return;
-            beginForwardBranch();
+            const forked = beginForwardBranch();
+            if (!forked.accepted) { setStatus('paused', forked.reason || forked.code); return forked; }
             reverseCursor = null;
             reverseContinue.reset();
             session.resume();
             setStatus('running');
             schedule();
+            return forked;
         },
 
         /** One block by default — the granularity every target supports. */
         step(kind = 'block') {
             if (!session) return { unsupported: 'nothing is running yet' };
-            beginForwardBranch();
+            const forked = beginForwardBranch();
+            if (!forked.accepted) { setStatus('paused', forked.reason || forked.code); return forked; }
             reverseCursor = null;
             reverseContinue.reset();
             const refusal = session.step(kind);
@@ -2760,16 +2818,94 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             resetEventBreakpointRuntime();
             emit();
         },
-        debugRecorder: () => debugFoundation.recorder,
+        debugRecorder: () => activeBranchPayload.recorder,
+        debugBranchSummaries: () => forkRecordingStore.summaries().map(branch => {
+            const payload = forkRecordingStore.recordingFor(branch.branchId).recording;
+            return {...branch, recording: payload.recordingSession.status(),
+                checkpoints: payload.recorder.checkpointSummary()};
+        }),
+        activeDebugBranch: () => forkRecordingStore.active().branch,
+        forkDebugHistory(branchId) {
+            if (reverseCursor === null) return {accepted: false, code: 'fork-cursor-unavailable',
+                reason: 'restore or seek to a recorded instruction boundary before forking'};
+            if (typeof branchId !== 'string' || !branchId) return {accepted: false,
+                code: 'invalid-branch-id', reason: 'branch id must be a non-empty string'};
+            const result = beginForwardBranch(branchId);
+            if (result.accepted) {
+                // The child root is now the active live end. Leaving the
+                // parent's restored cursor selected would make the next
+                // forward command create an accidental second child.
+                reverseCursor = null;
+                reverseContinue.reset();
+                emit();
+            }
+            return result;
+        },
+        activateDebugBranch(cursor) {
+            if (!cursor || typeof cursor !== 'object') return {accepted: false,
+                code: 'branch-cursor-required', reason: 'branch activation requires a branch-qualified cursor'};
+            const destination = forkRecordingStore.recordingFor(cursor.branchId);
+            if (!destination.accepted) return destination;
+            if (recordingSession.status().active) return {accepted: false,
+                code: 'branch-switch-recording-active',
+                reason: 'stop or suspend active recording before switching branches'};
+            if (session) session.pause();
+            unschedule();
+            const prior = forkRecordingStore.active();
+            const priorRetention = prior.recording.recorder.retention();
+            const priorCursor = reverseCursor ?? (priorRetention.lastEventSeq === null ?
+                prior.recording.recorder.checkpointSummary().at(-1)?.eventCursor :
+                priorRetention.lastEventSeq + 1);
+            replayingDebugHistory = true;
+            let result;
+            try {
+                result = destination.recording.instructionReplay.reverseToEvent(cursor.eventCursor);
+                if (!result.accepted) {
+                    const rollback = priorCursor === undefined ? null :
+                        prior.recording.instructionReplay.reverseToEvent(priorCursor);
+                    if (rollback && !rollback.accepted) return {accepted: false,
+                        code: 'branch-switch-rollback-failed', reason: rollback.reason || rollback.code};
+                    return result;
+                }
+            } finally {
+                replayingDebugHistory = false;
+                eventBreakpointDispatcher?.clear();
+                replayBreakpointDispatcher?.clear();
+            }
+            const activated = forkRecordingStore.activate(cursor.branchId);
+            if (!activated.accepted) return activated;
+            activeBranchPayload = activated.recording;
+            reverseCursor = cursor.eventCursor;
+            reverseContinue.reset();
+            emit();
+            return {...result, branch: activated.branch};
+        },
         debugTimeline: () => debugFoundation.timeline,
         startDebugRecording() {
-            reverseCursor = null;
-            reverseContinue.reset();
-            debugFoundation.haltOccurrences.clear();
+            activeBranchPayload.haltOccurrences.clear();
             haltLedgerRefusal = null;
             reverseHistoryRefusal = null;
             ensureDebugEvents();
-            return recordingSession.start();
+            const previousStore = forkRecordingStore;
+            const result = recordingSession.start();
+            if (!result.accepted) return result;
+            // Starting is an explicit new recording epoch. The active payload
+            // was just cleared by start(); retaining its former ancestry would
+            // leave branch metadata pointing into a history that no longer
+            // exists. Release every other payload only after the new root
+            // checkpoint succeeds.
+            for (const branch of previousStore.summaries()) {
+                const payload = previousStore.recordingFor(branch.branchId).recording;
+                if (payload === activeBranchPayload) continue;
+                payload.recordingSession.stop();
+                payload.recorder.clear();
+                payload.haltOccurrences.clear();
+            }
+            forkRecordingStore = createForkRecordingStore({rootRecording: activeBranchPayload});
+            nextForkBranchId = 1;
+            reverseCursor = null;
+            reverseContinue.reset();
+            return result;
         },
         stopDebugRecording: () => recordingSession.stop(),
         checkpointDebugRecording: () => recordingSession.checkpoint(),
@@ -2809,12 +2945,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             if (reverseHistoryRefusal) return reverseHistoryRefusal;
             const capability = instructionReplay.canReverse();
             if (!capability.accepted) return capability;
-            const retained = debugFoundation.recorder.retention();
+            const retained = activeBranchPayload.recorder.retention();
             const before = reverseCursor ??
                 (retained.lastEventSeq === null ? 0 : retained.lastEventSeq + 1);
             let previous;
             try {
-                previous = debugFoundation.recorder.previousInstructionBoundaryCursor(before);
+                previous = activeBranchPayload.recorder.previousInstructionBoundaryCursor(before);
             } catch (error) {
                 return {accepted: false, code: 'reverse-history-unavailable',
                     reason: error?.message || String(error)};
@@ -2832,13 +2968,13 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             return result;
         },
         reverseContinueDebugStatus() {
-            const retained = debugFoundation.recorder.retention();
+            const retained = activeBranchPayload.recorder.retention();
             const before = reverseCursor ??
                 (retained.lastEventSeq === null ? 0 : retained.lastEventSeq + 1);
             return reverseContinue.status(before);
         },
         reverseContinueDebug() {
-            const retained = debugFoundation.recorder.retention();
+            const retained = activeBranchPayload.recorder.retention();
             const before = reverseCursor ??
                 (retained.lastEventSeq === null ? 0 : retained.lastEventSeq + 1);
             return reverseContinue.reverse(before);
@@ -2871,7 +3007,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
          */
         stepInstruction(count = 1) {
             if (!target) return { unsupported: 'nothing is running yet' };
-            beginForwardBranch();
+            const forked = beginForwardBranch();
+            if (!forked.accepted) return forked;
             reverseCursor = null;
             reverseContinue.reset();
             for (let i = 0; i < count; i++) {
@@ -2889,13 +3026,15 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
         /** `over` and `out`, which the target defines in terms of SP. */
         stepOver() {
-            beginForwardBranch();
+            const forked = beginForwardBranch();
+            if (!forked.accepted) return forked;
             reverseCursor = null;
             reverseContinue.reset();
             return session ? session.step('over') : { unsupported: 'not running' };
         },
         stepOut() {
-            beginForwardBranch();
+            const forked = beginForwardBranch();
+            if (!forked.accepted) return forked;
             reverseCursor = null;
             reverseContinue.reset();
             return session ? session.step('out') : { unsupported: 'not running' };
@@ -3043,6 +3182,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             // machine is plain JS); the 8051 target's tears down WASM state.
             if (target && typeof target.destroy === 'function') target.destroy();
             session = target = board = symbols = null;
+            for (const branch of forkRecordingStore.summaries()) {
+                const payload = forkRecordingStore.recordingFor(branch.branchId).recording;
+                payload.recordingSession.stop();
+                payload.recorder.clear();
+                payload.haltOccurrences.clear();
+            }
             debugFoundation.clear();
             resetEventBreakpointRuntime();
         }
@@ -3080,7 +3225,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
     reverseContinue = createReverseContinueCoordinator({
         canReverse: () => reverseHistoryRefusal || haltLedgerRefusal || instructionReplay.canReverse(),
-        haltOccurrences: debugFoundation.haltOccurrences,
+        haltOccurrences: {
+            previousBeforeBoundary: cursor =>
+                activeBranchPayload.haltOccurrences.previousBeforeBoundary(cursor),
+            previousByOccurrenceCursor: cursor =>
+                activeBranchPayload.haltOccurrences.previousByOccurrenceCursor(cursor)
+        },
         reverseToEvent: eventCursor => runner.reverseDebugToEvent(eventCursor)
     });
     eventBreakpointDispatcher = createEventBreakpointDispatcher({
@@ -3105,6 +3255,21 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             onActionError: failure => {
                 eventBreakpointFailures.push(failure);
                 if (eventBreakpointFailures.length > 64) eventBreakpointFailures.shift();
+            }
+        }
+    });
+    replayBreakpointDispatcher = createEventBreakpointDispatcher({
+        engine: {evaluate: (event, context) => debugFoundation.evaluateBreakpoints(event, context)},
+        suppressedActions: ['log', 'checkpoint', 'capture', 'write', 'halt', 'script-safe-expression'],
+        handlers: {
+            // Counter actions are debugger-host state and may feed later
+            // count predicates. External log/checkpoint/write/halt actions
+            // remain suppressed while the recorded prefix is reconstructed.
+            counter: action => {
+                const name = String(action.name || action.counter || action.breakpointId);
+                const value = (eventBreakpointCounters.get(name) || 0) + (Number(action.delta) || 1);
+                eventBreakpointCounters.set(name, value);
+                return value;
             }
         }
     });
