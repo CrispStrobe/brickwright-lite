@@ -1019,16 +1019,18 @@ Next tasks, in order:
     example or compiler chunks; pre-Circuit payload is 6,899,540 bytes, down
     249,056 from P9, at 30.32–30.35× XT. The editor gate loaded all three on
     demand and the hosted ownership ratchets passed.
-11. **Implemented; hosted candidate pending.** Store construction imported the
+11. **Complete (baseline `33967333844`, accepted run `33973982315`).** Store construction imported the
     lazy paint editor's reducer eagerly, pulling 533,665 bytes of `@scratch/paper`
     and 104,459 bytes of scratch-paint source into first load. Baseline run
     `33967333844` measured first-Costume PaperCanvas readiness at 390.5 ms with
-    50/55 ms activation tasks. The candidate installs the real reducer through
-    a store-local `replaceReducer` manager before PaintEditor renders, with a
-    shared retryable import and stale/unmount guards. Acceptance requires zero
-    initial paint/Paper ownership, real Matrix state, preserved/idempotent store
-    state, the hosted vector/bitmap draw/save/reload round trip, <=449.075 ms
-    first-Costume readiness, <=1 s absolute, and no activation task >100 ms.
+    50/55 ms activation tasks. The final staged loader installs the real reducer
+    through a store-local `replaceReducer` manager, yields, then loads PaintEditor
+    through a distinct named bridge, with shared retry and stale/unmount guards.
+    Hosted ownership reports 1,484,050 source / 850,000 emitted bytes, all
+    non-initial; all nine ASM receipts contain zero paint assets and fall to
+    6,543,080 pre-Circuit bytes, 356,460 below P10. First Costume is 379.7 ms
+    with one 61 ms task, real Matrix state and a green vector/bitmap
+    draw/save/reload round trip, passing every 449.075 ms / 1 s / 100 ms limit.
 
 **Debugger-only circuit deferral — complete (hosted performance step
 `33962284105`).** The existing nine fresh-context receipts proved that the
