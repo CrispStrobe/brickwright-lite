@@ -18,7 +18,7 @@ export const DEBUG_EVENT_KINDS = Object.freeze([
 
 const TOP_LEVEL_FIELDS = new Set([
     'schema', 'seq', 'time', 'cpuId', 'kind', 'phase', 'fidelity',
-    'pcBefore', 'pcAfter', 'instruction', 'changes', 'memory', 'source',
+    'pcBefore', 'pcAfter', 'instruction', 'registersAfter', 'changes', 'memory', 'source',
     'device', 'signals', 'signal', 'port', 'interrupt', 'register', 'cause',
     'checkpoint', 'inputCursor', 'requiredFields'
 ]);

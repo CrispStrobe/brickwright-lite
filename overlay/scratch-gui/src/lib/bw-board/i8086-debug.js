@@ -298,18 +298,40 @@ export function createI8086DebugTarget(adapter, opts = {}) {
                 }
             }
             : null;
-        machine.hooks.onInstruction = (debugEventListener || originalInstructionHook || pendingStep)
-            ? (ev) => {
+        const instructionObserver = (ev) => {
                 lastRetiredPcBefore = ev.pcBefore;
                 if (originalInstructionHook) originalInstructionHook(ev);
+                let instruction = {address: ev.pcBefore, cycles: ev.cycles};
+                let changes;
+                if (ev.bytesBefore && ev.registersBefore && ev.registersAfter) {
+                    // Timeline synchronization costs one <=15-byte instruction image,
+                    // one compact architectural snapshot and changed-register pairs per
+                    // retire. The machine captures them only for an attached event
+                    // consumer. Fidelity is still instruction-recorded, never cycle/bus.
+                    const decoded = disasmI8086(address =>
+                        ev.bytesBefore[(address - ev.pcBefore) & 0xfffff] ?? 0,
+                    ev.pcBefore, {ip: ev.registersBefore.ip});
+                    instruction = {...instruction, bytes: ev.bytesBefore.slice(0, decoded.length),
+                        length: decoded.length, text: decoded.text};
+                    const registers = {};
+                    for (const [name, after] of Object.entries(ev.registersAfter)) {
+                        const before = ev.registersBefore[name];
+                        if (before !== after) registers[name] = {before, after};
+                    }
+                    changes = {registers};
+                }
                 publishDebugEvent({
                     time: eventTime(ev.cyclesAfter), cpuId, kind: 'instruction',
                     phase: 'retire', fidelity: 'recorded',
                     pcBefore: ev.pcBefore, pcAfter: ev.pcAfter,
-                    instruction: {address: ev.pcBefore, cycles: ev.cycles}
+                    instruction,
+                    registersAfter: ev.registersAfter,
+                    changes
                 });
-            }
-            : null;
+            };
+        instructionObserver.captureSnapshot = Boolean(debugEventListener);
+        machine.hooks.onInstruction = (debugEventListener || originalInstructionHook || pendingStep)
+            ? instructionObserver : null;
     };
 
     const syncWriteTrap = () => {
@@ -317,10 +339,12 @@ export function createI8086DebugTarget(adapter, opts = {}) {
             origWrite = cpu.write;
             cpu.write = (a, v) => {
                 const aa = a & 0xfffff;
+                const before = machine._read(aa);
                 publishDebugEvent({
                     time: eventTime(), cpuId, kind: 'memory',
                     phase: 'access', fidelity: 'recorded',
-                    memory: {space: 'mem', address: aa, value: v & 0xff, direction: 'write'}
+                    memory: {space: 'mem', address: aa, width: 1,
+                        before, value: v & 0xff, direction: 'write'}
                 });
                 for (const [id, w] of writeWatches) {
                     if (aa >= w.addr && aa < w.addr + w.len) watchHit = { bp: id, addr: aa, value: v & 0xff };

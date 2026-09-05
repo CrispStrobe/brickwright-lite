@@ -13,7 +13,7 @@ earlier row optional.
 | --- | --- | --- |
 | 1 | checkpoint debugger-host state and retain parent-linked fork histories | complete — atomic host capture/restore/reconstruction plus transactional live branch payloads |
 | 2 | run-to plus live-tested step over/out | complete — bounded address run-to on six cores; live depth-step certification |
-| 3 | event-synchronized register, disassembly and memory panes | pending |
+| 3 | event-synchronized register, disassembly and memory panes | complete — one selected recorded cursor, three provenance-labelled panes |
 | 4 | Z80 and 6502 checkpoint/replay certification | pending |
 | 5 | browser debugger workflows in GitHub CI | pending |
 | 6 | cycle-accurate core evaluation and justified integration | pending |
@@ -49,6 +49,17 @@ RP2040 leaf-function step-out (unchanged SP) and an 8086 step-over false stop
 when an interrupt returned before the CALL instruction retired. Event/time
 run-to remains explicitly named instruction-atomic: it stops at the complete
 retire boundary after the matching interior event or requested time.
+
+Timeline selection now projects one checkpoint-anchored, immutable recorded
+cursor into register, disassembly and memory-write panes. These panes never
+borrow values from the live target: missing evidence is labelled unavailable,
+opaque checkpoint snapshots are not inspected, and memory history is bounded
+with an exact truncation count. Retire producers for 8051, Z80, 6502 and 8086
+capture executed bytes before execution (including self-modifying code), full
+post-retire architectural registers and changed-register pairs only while an
+event listener is active. 8086 write facts also carry width and passive prior
+value. Fidelity remains instruction-recorded or reconstructed as appropriate;
+none of this invents sub-instruction bus state.
 
 ## Outcome
 

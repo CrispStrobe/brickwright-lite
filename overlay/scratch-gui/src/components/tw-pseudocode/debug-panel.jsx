@@ -708,6 +708,8 @@ class DebugPanel extends React.Component {
             this.state.timelineStatus : selectedSeek?.accepted === false ? selectedSeek : null;
         const timelineRefusal = timelineRefusalResult ?
             (timelineRefusalResult.reason || timelineRefusalResult.code) : null;
+        const selectedInspection = timelineEvent && this.state.runner ?
+            this.state.runner.selectedEventInspection() : null;
         // This is a bounded summary API: no event bodies, target snapshots or
         // checkpoint payloads cross the render path. Cap the visible tail too,
         // so a crowded action setup cannot grow the panel without bound.
@@ -922,6 +924,46 @@ class DebugPanel extends React.Component {
                         {timelineRefusal}
                     </span> : null}
                 </div>
+
+                {selectedInspection?.accepted ? (
+                    <div data-debug-selected-inspection data-inspection-provenance="recorded-event"
+                        style={{display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                            gap: 8, border: '1px solid #2c3e50', borderRadius: 4, padding: 7}}>
+                        <div data-debug-selected-registers>
+                            <strong>{`${this.tx('now')} · recorded event`}</strong>
+                            {selectedInspection.registers.full.available ?
+                                Object.entries(selectedInspection.registers.full.values).slice(0, 16)
+                                    .map(([name, value]) => <div key={name}>{`${name}: ${String(value)}`}</div>) :
+                                <div role="status">{selectedInspection.registers.full.refusal}</div>}
+                            {Object.entries(selectedInspection.registers.changes.values).slice(0, 8)
+                                .map(([name, value]) => <div key={`change-${name}`}>
+                                    {`${name}: ${String(value.before)} → ${String(value.after)}`}
+                                </div>)}
+                        </div>
+                        <div data-debug-selected-disassembly>
+                            <strong>{`${this.tx('code')} · recorded event`}</strong>
+                            {selectedInspection.disassembly ? <div>
+                                {selectedInspection.disassembly.instruction?.text ||
+                                    selectedInspection.disassembly.instruction?.mnemonic || '—'}
+                            </div> : <div role="status">{'No recorded instruction evidence'}</div>}
+                            {selectedInspection.disassembly?.instruction?.bytes ? <div>
+                                {selectedInspection.disassembly.instruction.bytes.map(byte =>
+                                    Number(byte).toString(16).padStart(2, '0')).join(' ')}
+                            </div> : null}
+                        </div>
+                        <div data-debug-selected-memory>
+                            <strong>{`${this.tx('memory')} · recorded writes`}</strong>
+                            {selectedInspection.memory.changes.slice(-8).map(change =>
+                                <div key={`${change.seq}:${change.memory.space}:${change.memory.address}`}>
+                                    {`${change.memory.space || 'mem'}:${Number(change.memory.address)
+                                        .toString(16)} ${String(change.memory.before ?? '—')} → ` +
+                                        `${String(change.memory.value)}`}
+                                </div>)}
+                            {selectedInspection.memory.changes.length ? null :
+                                <div role="status">{'No recorded memory writes'}</div>}
+                        </div>
+                    </div>
+                ) : null}
 
                 {hasActionStatus ? (
                     <div data-debug-event-action-status style={{display: 'flex', gap: 10,

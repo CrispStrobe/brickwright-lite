@@ -177,7 +177,12 @@ test('real single instruction and oscillator steps emit distinct recorded eviden
     assert.equal(instructionEvents[0].phase, 'retire');
     assert.equal(instructionEvents[0].pcBefore, 0);
     assert.equal(instructionEvents[0].pcAfter, 3);
-    assert.deepEqual(instructionEvents[0].instruction, {address: 0});
+    assert.deepEqual(instructionEvents[0].instruction.bytes, [0x90, 0x12, 0x34]);
+    assert.equal(instructionEvents[0].instruction.address, 0);
+    assert.equal(instructionEvents[0].instruction.length, 3);
+    assert.equal(typeof instructionEvents[0].instruction.text, 'string');
+    assert.equal(instructionEvents[0].registersAfter.dptr, 0x1234);
+    assert.deepEqual(instructionEvents[0].changes.registers.dptr, {before: 0, after: 0x1234});
 });
 
 test('native write-watchpoint emits the measured before/after transition', async () => {

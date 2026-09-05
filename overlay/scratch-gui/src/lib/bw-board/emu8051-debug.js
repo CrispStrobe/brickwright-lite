@@ -1,3 +1,5 @@
+import {instructionLength} from '../bw-debug/opcodes.js';
+
 /**
  * emu8051-stc debug target — boundary D (DEBUG-CONTROL-MODEL.md §7).
  *
@@ -366,9 +368,25 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
                     pcBefore: step.pcBefore, pcAfter: why.pc,
                     cause: 'step'});
             } else if (step.kind === 'insn') {
+                if (!step.registersBefore) {
+                    emitDebug({kind: 'instruction', phase: 'retire', fidelity: 'recorded',
+                        pcBefore: step.pcBefore, pcAfter: why.pc,
+                        instruction: {address: step.pcBefore}, cause: 'step'});
+                    return;
+                }
+                const registersAfter = readRegisters();
+                const registerChanges = {};
+                for (const [name, after] of Object.entries(registersAfter)) {
+                    const before = step.registersBefore[name];
+                    const equal = Array.isArray(after) && Array.isArray(before) ?
+                        after.length === before.length && after.every((value, index) => value === before[index]) :
+                        Object.is(after, before);
+                    if (!equal) registerChanges[name] = {before, after};
+                }
                 emitDebug({kind: 'instruction', phase: 'retire', fidelity: 'recorded',
                     pcBefore: step.pcBefore, pcAfter: why.pc,
-                    instruction: {address: step.pcBefore}, cause: 'step'});
+                    instruction: step.instruction, registersAfter,
+                    changes: {registers: registerChanges}, cause: 'step'});
             }
         }
         if (why.cause === 'watchpoint') {
@@ -428,6 +446,23 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
             return (byte >> (a & 7)) & 1;
         }
         default: return 0;
+        }
+    }
+
+    function readRegisters() {
+        const psw = wasm._emu_dbg_psw();
+        return {pc: wasm._emu_dbg_pc(), a: wasm._emu_dbg_acc(), b: wasm._emu_dbg_b(),
+            dptr: wasm._emu_dbg_dptr(), sp: wasm._emu_dbg_sp(), psw,
+            bank: (psw >> 3) & 3,
+            r: Array.from({length: 8}, (_, n) => wasm._emu_dbg_rn(n))};
+    }
+
+    function disassemble(addr) {
+        if (!wasm.ccall || !wasm._emu_disasm) return '';
+        try {
+            return wasm.ccall('emu_disasm', 'string', ['number'], [addr & 0xFFFF]) || '';
+        } catch {
+            return '';
         }
     }
 
@@ -585,9 +620,19 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
             if (k === undefined) return { unsupported: `no such step kind: ${kind}` };
             stepping = true;
             pendingCause = 'step';
-            pendingStep = (count === 1 && (kind === 'cycle' || kind === 'insn'))
-                ? {kind, pcBefore: wasm._emu_dbg_pc()}
-                : null;
+            const pcBefore = wasm._emu_dbg_pc();
+            let stepEvidence = null;
+            if (count === 1 && (kind === 'cycle' || kind === 'insn')) {
+                stepEvidence = {kind, pcBefore};
+                if (kind === 'insn' && debugListeners.length) {
+                    const length = instructionLength(readByte('code', pcBefore));
+                    stepEvidence.registersBefore = readRegisters();
+                    stepEvidence.instruction = {address: pcBefore,
+                        bytes: Array.from({length}, (_, offset) => readByte('code', pcBefore + offset)),
+                        text: disassemble(pcBefore), length};
+                }
+            }
+            pendingStep = stepEvidence;
             // -1 means the emulator itself declined the kind. Passing that back
             // matters: the alternative is reporting "stepping" for a step that
             // never started, and then waiting for a halt that never comes.
@@ -732,19 +777,7 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
         },
 
         regs() {
-            const psw = wasm._emu_dbg_psw();
-            return {
-                pc: wasm._emu_dbg_pc(),
-                a: wasm._emu_dbg_acc(),
-                b: wasm._emu_dbg_b(),
-                dptr: wasm._emu_dbg_dptr(),
-                sp: wasm._emu_dbg_sp(),
-                psw,
-                // Reported, not left for the front end to derive from PSW —
-                // §6 says a conforming target states the bank explicitly.
-                bank: (psw >> 3) & 3,
-                r: Array.from({ length: 8 }, (_, n) => wasm._emu_dbg_rn(n))
-            };
+            return readRegisters();
         },
 
         /** Refuse partial architectural dumps as deterministic checkpoints. */
@@ -795,12 +828,7 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
          * walk forward gets that from an opcode table.
          */
         disasm(addr) {
-            if (!wasm.ccall || !wasm._emu_disasm) return '';
-            try {
-                return wasm.ccall('emu_disasm', 'string', ['number'], [addr & 0xFFFF]) || '';
-            } catch {
-                return '';
-            }
+            return disassemble(addr);
         },
 
         /**

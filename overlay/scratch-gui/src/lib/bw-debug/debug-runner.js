@@ -51,6 +51,7 @@ import {createHaltOccurrenceLedger} from './halt-occurrence-ledger.js';
 import {createForkRecordingStore} from './fork-recording-store.js';
 import {createBranchCursor} from './fork-history.js';
 import {createRunToCoordinator} from './run-to.js';
+import {createSelectedEventInspectionStore} from './selected-event-inspection.js';
 import { setValueResolver } from './hover-values.js';
 import { instructionLength } from './opcodes.js';
 import {
@@ -464,6 +465,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     /** The execution history the drawer renders. See trace.js. */
     const debugFoundation = createDebugFoundation({eventCapacity: 4096});
     const eventStream = debugFoundation.events;
+    const selectedInspectionStore = createSelectedEventInspectionStore();
+    let selectedInspectionKey = null;
+    let selectedInspectionView = null;
     const replayClockDomain = domain => String(domain).replace(/-reset-\d+$/, '');
     const normalizeReplayEvent = event => {
         const {schema, seq, inputCursor, ...fact} = event;
@@ -2926,6 +2930,32 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             return {...result, branch: activated.branch};
         },
         debugTimeline: () => debugFoundation.timeline,
+        selectedEventInspection() {
+            const selectedEvent = debugFoundation.timeline.state().selectedEvent;
+            if (!selectedEvent) return {accepted: false, code: 'inspection-selection-missing',
+                reason: 'select a recorded timeline event'};
+            const recorder = activeBranchPayload.recorder;
+            const checkpoints = recorder.checkpointSummary();
+            if (!checkpoints.length) return {accepted: false, code: 'inspection-unavailable',
+                reason: 'the active branch has no retained checkpoint'};
+            const retention = recorder.retention();
+            const branchId = forkRecordingStore.active().branch.branchId;
+            const key = `${branchId}:${selectedEvent.seq}:${retention.firstEventSeq}:${retention.lastEventSeq}:` +
+                `${checkpoints[0].id}:${checkpoints.at(-1).id}`;
+            if (key === selectedInspectionKey) return selectedInspectionView;
+            try {
+                selectedInspectionStore.load({
+                    events: recorder.eventsFrom(checkpoints[0].eventCursor),
+                    checkpoints
+                });
+                selectedInspectionView = selectedInspectionStore.select(selectedEvent.seq + 1);
+            } catch (error) {
+                selectedInspectionView = {accepted: false, code: 'inspection-unavailable',
+                    reason: error?.message || String(error)};
+            }
+            selectedInspectionKey = key;
+            return selectedInspectionView;
+        },
         startDebugRecording() {
             activeBranchPayload.haltOccurrences.clear();
             haltLedgerRefusal = null;
@@ -2948,6 +2978,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             }
             forkRecordingStore = createForkRecordingStore({rootRecording: activeBranchPayload});
             nextForkBranchId = 1;
+            selectedInspectionKey = null;
+            selectedInspectionView = null;
             reverseCursor = null;
             reverseContinue.reset();
             return result;

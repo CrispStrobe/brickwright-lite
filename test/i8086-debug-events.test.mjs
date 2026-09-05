@@ -43,8 +43,45 @@ test('8086 publishes a true retire boundary with exact PCs, cost, and machine cl
     assert.equal(retire.pcBefore, 0x100);
     assert.equal(retire.pcAfter, 0x101);
     assert.equal(retire.instruction.cycles, machine.cycles);
+    assert.deepEqual(retire.instruction.bytes, [0x90]);
+    assert.equal(retire.instruction.length, 1);
+    assert.equal(retire.instruction.text.toLowerCase(), 'nop');
+    assert.equal(retire.registersAfter.pc, retire.pcAfter);
+    assert.deepEqual(retire.changes.registers.ip, {before: 0x100, after: 0x101});
+    assert.deepEqual(retire.changes.registers.pc, {before: 0x100, after: 0x101});
     assert.equal(retire.phase, 'retire');
     assert.equal(retire.fidelity, 'recorded');
+});
+
+test('8086 retire snapshots pre-execution bytes and post-boundary architectural registers', () => {
+    // mov byte [0100h],90h rewrites its own first opcode before the retire hook.
+    const {machine, target, events} = fixture(Uint8Array.of(0xc6, 0x06, 0x00, 0x01, 0x90));
+    target.step('insn', 1);
+    target.runFor(10_000);
+    const retire = events.find(event => event.kind === 'instruction');
+    assert.equal(machine.mem[0x100], 0x90);
+    assert.deepEqual(retire.instruction.bytes, [0xc6, 0x06, 0x00, 0x01, 0x90],
+        'historical disassembly uses bytes captured before the self-modifying write');
+    assert.equal(retire.instruction.length, 5);
+    assert.match(retire.instruction.text, /^mov /i);
+    assert.equal(retire.registersAfter.ip, 0x105);
+    assert.equal(retire.registersAfter.cs, 0);
+    assert.equal(retire.registersAfter.flags, machine.cpu.flags);
+    assert.deepEqual(Object.keys(retire.changes.registers).sort(), ['ip', 'pc']);
+});
+
+test('8086 avoids snapshot/disassembly capture when no debug listener is active', () => {
+    let observed;
+    const machine = new I8086Machine(CONFIG, {onInstruction: event => { observed = event; }});
+    machine.cpu.cs = 0;
+    machine.cpu.ip = 0x100;
+    machine.mem[0x100] = 0x90;
+    createI8086DebugTarget({machine});
+    machine.step();
+    assert.equal(observed.pcBefore, 0x100);
+    assert.equal('bytesBefore' in observed, false);
+    assert.equal('registersBefore' in observed, false);
+    assert.equal('registersAfter' in observed, false);
 });
 
 test('8086 records program writes and OUT values without debugger-initiated reads', () => {
@@ -53,7 +90,7 @@ test('8086 records program writes and OUT values without debugger-initiated read
     target.step('insn', 3);
     target.runFor(10_000);
     assert.deepEqual(events.filter(e => e.kind === 'memory').map(e => e.memory), [
-        {space: 'mem', address: 0x200, value: 0x5a, direction: 'write'}
+        {space: 'mem', address: 0x200, width: 1, before: 0, value: 0x5a, direction: 'write'}
     ]);
     assert.deepEqual(events.filter(e => e.kind === 'port').map(e => e.port), [
         {address: 0x20, direction: 'write', value: 0x5a}

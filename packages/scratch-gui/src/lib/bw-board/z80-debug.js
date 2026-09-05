@@ -17,7 +17,14 @@ export function createZ80DebugTarget(adapter, opts = {}) {
   const machine = adapter.machine;
   const cpu = machine.cpu;
   const debugEvents = installInstructionDebugEvents({
-    cpu, machine, cpuId: opts.cpuId || 'z80', timeDomain: 'z80-tstates', port: true
+    cpu, machine, cpuId: opts.cpuId || 'z80', timeDomain: 'z80-tstates', port: true,
+    captureRegisters: () => ({pc: cpu.pc, sp: cpu.sp, a: cpu.a, f: cpu.f, bc: cpu.bc,
+      de: cpu.de, hl: cpu.hl, ix: cpu.ix, iy: cpu.iy, i: cpu.i, r: cpu.r,
+      af_: cpu.af_, bc_: cpu.bc_, de_: cpu.de_, hl_: cpu.hl_, iff1: cpu.iff1, im: cpu.im}),
+    captureInstruction: address => {
+      const read = machine.readBus ?? (a => machine.mem[a & 0xffff]);
+      return {address, ...disasmZ80(a => read(a & 0xffff), address)};
+    }
   });
   const inputListeners = new Set();
   const publishInput = (producer, payload) => {

@@ -4,7 +4,8 @@
  * directly; accesses are real, ordered evidence but share the instruction's
  * start time and are therefore explicitly reconstructed.
  */
-export function installInstructionDebugEvents({cpu, machine, cpuId, timeDomain, port = false}) {
+export function installInstructionDebugEvents({cpu, machine, cpuId, timeDomain, port = false,
+  captureRegisters, captureInstruction}) {
   const listeners = new Set();
   let accesses = null;
   let timeEpoch = 0;
@@ -64,6 +65,10 @@ export function installInstructionDebugEvents({cpu, machine, cpuId, timeDomain, 
     if (!listeners.size) return originalStep();
     const pcBefore = cpu.pc & 0xffff;
     const ticksBefore = machine.cycles;
+    // These samples are intentionally behind listener opt-in. Instruction
+    // bytes must be captured before execution: code may overwrite itself.
+    const registersBefore = captureRegisters ? captureRegisters() : null;
+    const instruction = captureInstruction ? captureInstruction(pcBefore) : {address: pcBefore};
     accesses = [];
     let cycles;
     try {
@@ -77,6 +82,14 @@ export function installInstructionDebugEvents({cpu, machine, cpuId, timeDomain, 
       });
     }
     if (cycles > 0) {
+      const registersAfter = captureRegisters ? captureRegisters() : null;
+      const registerChanges = {};
+      if (registersBefore && registersAfter) {
+        for (const [name, after] of Object.entries(registersAfter)) {
+          const before = registersBefore[name];
+          if (!Object.is(before, after)) registerChanges[name] = {before, after};
+        }
+      }
       publish({
         cpuId,
         kind: 'instruction',
@@ -85,8 +98,9 @@ export function installInstructionDebugEvents({cpu, machine, cpuId, timeDomain, 
         time: time(ticksBefore + cycles),
         pcBefore,
         pcAfter: cpu.pc & 0xffff,
-        instruction: {address: pcBefore},
-        changes: {cycles}
+        instruction,
+        ...(registersAfter ? {registersAfter} : {}),
+        changes: {cycles, registers: registerChanges}
       });
     }
     return cycles;
