@@ -23,9 +23,9 @@ Each run of a fixture through its reader is one of three outcomes:
 
 ## Overall
 
-301 clean · 342 degraded · 20 refused (of 663; 45% clean)
+303 clean · 345 degraded · 15 refused (of 663; 46% clean)
 
-- round-trip (emit → read back): 301 clean · 340 degraded · 9 refused (of 650; 46% clean)
+- round-trip (emit → read back): 303 clean · 343 degraded · 4 refused (of 650; 47% clean)
 - native (real source fed to the reader): 0 clean · 2 degraded · 11 refused (of 13; 0% clean)
 
 ## By method, language and device family
@@ -46,12 +46,12 @@ programs are refused as foreign. The refusal reasons below say which.
 
 | method | reader (language) | device family | outcome |
 | --- | --- | --- | --- |
-| round-trip | python | 8051 | 32 clean · 15 degraded · 2 refused (of 49; 65% clean) |
+| round-trip | python | 8051 | 33 clean · 16 degraded · 0 refused (of 49; 67% clean) |
 | round-trip | python | arduino | 15 clean · 52 degraded · 0 refused (of 67; 22% clean) |
 | round-trip | python | microbit | 2 clean · 7 degraded · 0 refused (of 9; 22% clean) |
 | round-trip | python | pico | 0 clean · 3 degraded · 0 refused (of 3; 0% clean) |
 | round-trip | python | spike | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
-| round-trip | javascript | 8051 | 32 clean · 15 degraded · 2 refused (of 49; 65% clean) |
+| round-trip | javascript | 8051 | 33 clean · 16 degraded · 0 refused (of 49; 67% clean) |
 | round-trip | javascript | arduino | 15 clean · 52 degraded · 0 refused (of 67; 22% clean) |
 | round-trip | javascript | microbit | 9 clean · 0 degraded · 0 refused (of 9; 100% clean) |
 | round-trip | javascript | pico | 0 clean · 3 degraded · 0 refused (of 3; 0% clean) |
@@ -71,7 +71,7 @@ programs are refused as foreign. The refusal reasons below say which.
 | round-trip | micropython | microbit | 0 clean · 9 degraded · 0 refused (of 9; 0% clean) |
 | round-trip | micropython | pico | 0 clean · 3 degraded · 0 refused (of 3; 0% clean) |
 | round-trip | micropython | spike | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
-| round-trip | asm | 8086 | 0 clean · 0 degraded · 5 refused (of 5; 0% clean) |
+| round-trip | asm | 8086 | 0 clean · 1 degraded · 4 refused (of 5; 0% clean) |
 | native | c | 8051 | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
 | native | c | arduino | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
 | native | asm | 8086 | 0 clean · 0 degraded · 11 refused (of 11; 0% clean) |
@@ -80,7 +80,7 @@ programs are refused as foreign. The refusal reasons below say which.
 
 | fixtures | construct kept as a placeholder |
 | --- | --- |
-| 140 | dropped expression statement |
+| 142 | dropped expression statement |
 | 124 | no pins found |
 | 106 | kept verbatim as a grey block: "…" |
 | 29 | no dialect form for "…" |
@@ -107,6 +107,7 @@ programs are refused as foreign. The refusal reasons below say which.
 | 1 | early ENDPROC |
 | 1 | no dialect form for "…"combined: "…" |
 | 1 | 16 output pins × 20 mA = up to 320 mA at maximum pin ratings (actual current depends on se |
+| 1 | pin polarity (ACTIVE LOW) is not recoverable from the bytes; every pin is lifted as active |
 | 1 | inferred DEVICE STC89C52RC from <8051.h> |
 | 1 | polarity of "…" is unknown |
 | 1 | statement dropped (not representable as a block): __asm nop __endasm |
@@ -118,13 +119,9 @@ programs are refused as foreign. The refusal reasons below say which.
 | fixtures | reason nothing was produced |
 | --- | --- |
 | 11 | refused (foreign): no Brickwright anchors found: this reader lifts programs the ▶ button lowered, not hand-wr |
-| 3 | refused (refused): line N: the "…" statement is not lifted yet (pins, ports, displays, tones, PWM, keypad, br |
-| 1 | Python parse error : unexpected OP < |
-| 1 | JavaScript parse error : unexpected OP < |
-| 1 | Python parse error : unexpected character "…" |
-| 1 | JavaScript parse error : unexpected character "…" |
-| 1 | refused (refused): the scheduler form (2 WHEN scripts) is not lifted yet; one script only |
-| 1 | refused (refused): the scheduler form (5 WHEN scripts) is not lifted yet; one script only |
+| 2 | refused (refused): line N: the "…" statement is not lifted yet (displays, tones, PWM, keypad, broadcast and " |
+| 1 | lift-fail: line N: expected a statement anchor (`…`, `…`, …), found label BW_HAT4 |
+| 1 | lift-fail: line N: expected a value into DX:AX, found keypad |
 
 ## Per-fixture ledger (non-clean outcomes)
 
@@ -143,8 +140,8 @@ fixture appears here so its verdict is traceable to the program that caused it.
 | round-trip | python | 8051 | 07-buzzer-siren | degraded | dropped expression statement |
 | round-trip | javascript | 8051 | 07-buzzer-siren | degraded | dropped expression statement |
 | round-trip | micropython | 8051 | 07-buzzer-siren | degraded | kept verbatim as a grey block: "…"; no pins found |
-| round-trip | python | 8051 | 08-led-chaser-595 | refused | Python parse error : unexpected OP < |
-| round-trip | javascript | 8051 | 08-led-chaser-595 | refused | JavaScript parse error : unexpected OP < |
+| round-trip | python | 8051 | 08-led-chaser-595 | degraded | dropped expression statement |
+| round-trip | javascript | 8051 | 08-led-chaser-595 | degraded | dropped expression statement |
 | round-trip | basic | 8051 | 08-led-chaser-595 | degraded | unstructured "…" |
 | round-trip | micropython | 8051 | 08-led-chaser-595 | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | micropython | 8051 | 09-relay-clicker | degraded | kept verbatim as a grey block: "…"; no pins found |
@@ -164,8 +161,6 @@ fixture appears here so its verdict is traceable to the program that caused it.
 | round-trip | micropython | 8051 | 18-logic-and-gate | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | basic | 8051 | 19-logic-or-gate | degraded | no dialect form for "…"; unstructured "…" |
 | round-trip | micropython | 8051 | 19-logic-or-gate | degraded | kept verbatim as a grey block: "…"; no pins found |
-| round-trip | python | 8051 | 20-shift-register-binary | refused | Python parse error : unexpected character "…" |
-| round-trip | javascript | 8051 | 20-shift-register-binary | refused | JavaScript parse error : unexpected character "…" |
 | round-trip | micropython | 8051 | 20-shift-register-binary | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | micropython | 8051 | 24-pwm-fade | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | basic | 8051 | 25-reaction-timer | degraded | no dialect form for "…" |
@@ -477,11 +472,11 @@ fixture appears here so its verdict is traceable to the program that caused it.
 | round-trip | python | spike | spike01-obstacle-avoid | degraded | dropped expression statement; dropped call in expression |
 | round-trip | javascript | spike | spike01-obstacle-avoid | degraded | dropped expression statement; dropped call in expression |
 | round-trip | micropython | spike | spike01-obstacle-avoid | degraded | kept verbatim as a grey block: "…"; no pins found |
-| round-trip | asm | 8086 | i8086_analog | refused | refused (refused): line N: the "…" statement is not lifted yet (pins, ports, displays, tones, PWM, keypad, br |
-| round-trip | asm | 8086 | i8086_blink | refused | refused (refused): line N: the "…" statement is not lifted yet (pins, ports, displays, tones, PWM, keypad, br |
-| round-trip | asm | 8086 | i8086_counter | refused | refused (refused): the scheduler form (2 WHEN scripts) is not lifted yet; one script only |
-| round-trip | asm | 8086 | i8086_events | refused | refused (refused): the scheduler form (5 WHEN scripts) is not lifted yet; one script only |
-| round-trip | asm | 8086 | i8086_keypad | refused | refused (refused): line N: the "…" statement is not lifted yet (pins, ports, displays, tones, PWM, keypad, br |
+| round-trip | asm | 8086 | i8086_analog | refused | refused (refused): line N: the "…" statement is not lifted yet (displays, tones, PWM, keypad, broadcast and " |
+| round-trip | asm | 8086 | i8086_blink | degraded | pin polarity (ACTIVE LOW) is not recoverable from the bytes; every pin is lifted as active |
+| round-trip | asm | 8086 | i8086_counter | refused | refused (refused): line N: the "…" statement is not lifted yet (displays, tones, PWM, keypad, broadcast and " |
+| round-trip | asm | 8086 | i8086_events | refused | lift-fail: line N: expected a statement anchor (`…`, `…`, …), found label BW_HAT4 |
+| round-trip | asm | 8086 | i8086_keypad | refused | lift-fail: line N: expected a value into DX:AX, found keypad |
 | native | asm | 8086 | hello | refused | refused (foreign): no Brickwright anchors found: this reader lifts programs the ▶ button lowered, not hand-wr |
 | native | asm | 8086 | loop | refused | refused (foreign): no Brickwright anchors found: this reader lifts programs the ▶ button lowered, not hand-wr |
 | native | asm | 8086 | hex | refused | refused (foreign): no Brickwright anchors found: this reader lifts programs the ▶ button lowered, not hand-wr |
