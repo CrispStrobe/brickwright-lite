@@ -83,6 +83,9 @@ export function createI8086Adapter(opts = {}) {
             syncInputs();
         },
 
+        /** A live board is an input producer whose state is not in the CPU snapshot. */
+        hasLiveInputSource() { return !!(board && typeof board.readPin === 'function'); },
+
         syncInputs,
 
         advanceNs(deltaNs) {

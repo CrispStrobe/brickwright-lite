@@ -117,6 +117,21 @@ export function createDebugSnapshotEmitter({
     };
 }
 
+/** Atomic recorder-before-application gate for replayable external inputs. */
+export function applyRecordedTargetInput ({target, recordingSession, producer, payload, apply}) {
+    const input = {producer, payload};
+    if (typeof target?.canApplyReplayInput === 'function' && !target.canApplyReplayInput(input)) return false;
+    if (!recordingSession.status().active) return apply();
+    let logged;
+    try {
+        logged = recordingSession.appendInput({...input, time: target.debugTime()});
+    } catch (error) {
+        return false;
+    }
+    if (!logged.accepted) return false;
+    return apply();
+}
+
 /**
  * Install target-aware compilation routing before the debugger builds.
  *
@@ -443,17 +458,25 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         eventStream,
         getTarget: () => target
     });
+    const replayClockDomain = domain => String(domain).replace(/-reset-\d+$/, '');
+    const normalizeReplayEvent = event => {
+        const {schema, seq, inputCursor, ...fact} = event;
+        return {...fact, time: {...fact.time, domain: replayClockDomain(fact.time.domain)}};
+    };
     // The controller is wired as a programmatic boundary now, but targets do
     // not advertise reverse (and the panel shows no reverse control) until all
     // external input paths have deterministic applicators and logging.
     const instructionReplay = createInstructionReplayController({
         recorder: debugFoundation.recorder,
         getTarget: () => target,
-        subscribeEvents: listener => eventStream.onEvent(listener)
+        subscribeEvents: listener => eventStream.onEvent(listener),
+        normalizeTimeDomain: replayClockDomain,
+        normalizeEvent: normalizeReplayEvent
     });
     const unsubscribeRecordingEvents = eventStream.onEvent(
         event => recordingSession.appendBatch([event]));
     let unsubscribeDebugEvents = null;
+    let unsubscribeDebugInputs = null;
     const trace = createTrace({eventStream});
     /** The user's own variables: {name, space, addr, size}. From the symbol table. */
     let variableTable = [];
@@ -521,6 +544,14 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             unsubscribeDebugEvents = null;
         }
         unsubscribeDebugEvents = subscribeDebugTargetEvents(target, eventStream);
+        if (unsubscribeDebugInputs) {
+            unsubscribeDebugInputs();
+            unsubscribeDebugInputs = null;
+        }
+        if (typeof target?.onDebugInput === 'function') {
+            unsubscribeDebugInputs = target.onDebugInput(input =>
+                !recordingSession.status().active || recordingSession.appendInput(input));
+        }
     }
 
     // Per-instruction capture is intentionally opt-in. Merely opening a bench
@@ -528,6 +559,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     // place; a timeline consumer or event breakpoint activates production.
     function ensureDebugEvents() {
         if (!unsubscribeDebugEvents) bindDebugEvents();
+    }
+
+    /** Log an 8086 external mutation before allowing it to reach the machine. */
+    function applyI8086Input(producer, payload, apply) {
+        if (targetKind !== 'i8086') return apply();
+        return applyRecordedTargetInput({target, recordingSession, producer, payload, apply});
     }
 
     function setStatus(phase, message = '') {
@@ -1521,13 +1558,17 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         runner.sendSerial = (data) => {
             if (!adapter.sendSerial) return;
             if (typeof data === 'number') {
-                adapter.sendSerial(data & 0xff);
-                return;
+                const byte = data & 0xff;
+                return applyI8086Input('i8086.serial', {byte}, () => adapter.sendSerial(byte));
             }
             const text = String(data);
             for (let i = 0; i < text.length; i++) {
-                adapter.sendSerial(text.charCodeAt(i));
+                const byte = text.charCodeAt(i) & 0xff;
+                if (applyI8086Input('i8086.serial', {byte}, () => adapter.sendSerial(byte)) === false) {
+                    return false;
+                }
             }
+            return true;
         };
 
         // Diagnosis hook, same stance as window.__activeBoard: production
@@ -1560,7 +1601,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const caps = target && typeof target.capabilities === 'function' ? target.capabilities() : null;
         if (target && typeof target.keyIn === 'function'
             && caps && Array.isArray(caps.keys) && caps.keys.includes('scancode')) {
-            runner.keyIn = (scancode) => target.keyIn(scancode);
+            runner.keyIn = (scancode) => {
+                const byte = scancode & 0xff;
+                return applyI8086Input('i8086.key', {scancode: byte}, () => target.keyIn(byte));
+            };
         } else {
             delete runner.keyIn;
         }
@@ -1579,7 +1623,11 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         if (target && typeof target.setInput === 'function'
             && caps && Array.isArray(caps.inputs) && caps.inputs.length) {
             runner.inputs = caps.inputs;
-            runner.setInput = (chip, port, bit, level) => target.setInput(chip, port, bit, level);
+            runner.setInput = (chip, port, bit, level) => {
+                const value = level ? 1 : 0;
+                return applyI8086Input('i8086.gpio', {chip, port, bit, level: value},
+                    () => target.setInput(chip, port, bit, value));
+            };
         } else {
             delete runner.inputs;
             delete runner.setInput;
@@ -1602,10 +1650,21 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // image should arrive via bootMedia instead — recreating the
         // runner is what makes the reset vector come from the real bytes.
         runner.loadRom = (bytes, at) => {
+            const image = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+            if (targetKind === 'i8086' && typeof target?.applyReplayInput === 'function') {
+                return applyI8086Input('i8086.rom', {bytes: image, at},
+                    () => target.applyReplayInput({producer: 'i8086.rom', payload: {bytes: image, at}}).accepted);
+            }
             const load = adapter.loadRom || adapter.load;
-            if (load) load.call(adapter, bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes), at);
+            if (load) load.call(adapter, image, at);
             if (target && target.reset) target.reset();
         };
+
+        if (targetKind === 'i8086' && typeof target.nmi === 'function') {
+            runner.nmi = () => applyI8086Input('i8086.nmi', {}, () => target.nmi());
+        } else {
+            delete runner.nmi;
+        }
 
         return adapter;
     }
@@ -2514,7 +2573,14 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         },
         recordDebugInput: input => recordingSession.appendInput(input),
         debugRecordingStatus: () => recordingSession.status(),
-        reverseDebugToEvent: eventCursor => instructionReplay.reverseToEvent(eventCursor),
+        reverseDebugToEvent: eventCursor => {
+            // Replayed events must be observed and compared, never appended to
+            // the recording they are being checked against.
+            recordingSession.stop();
+            const result = instructionReplay.reverseToEvent(eventCursor);
+            if (result.accepted) emit();
+            return result;
+        },
         canReverseDebug: () => instructionReplay.canReverse(),
         clearTrace() { trace.clear(); emit(); },
 
@@ -2685,6 +2751,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             unschedule();
             if (unsubscribeBps) { unsubscribeBps(); unsubscribeBps = null; }
             if (unsubscribeDebugEvents) { unsubscribeDebugEvents(); unsubscribeDebugEvents = null; }
+            if (unsubscribeDebugInputs) { unsubscribeDebugInputs(); unsubscribeDebugInputs = null; }
             unsubscribeRecordingEvents();
             clearGlow();
             if (session) session.destroy();

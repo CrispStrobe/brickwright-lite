@@ -19,6 +19,21 @@ export function createZ80DebugTarget(adapter, opts = {}) {
   const debugEvents = installInstructionDebugEvents({
     cpu, machine, cpuId: opts.cpuId || 'z80', timeDomain: 'z80-tstates', port: true
   });
+  const inputListeners = new Set();
+  const publishInput = (producer, payload) => {
+    const fact = {producer, time: debugEvents.debugTime(), payload};
+    for (const listener of [...inputListeners]) {
+      const result = listener(structuredClone(fact));
+      if (result === false || result?.accepted === false) return false;
+    }
+    return true;
+  };
+  const rawSendSerial = typeof adapter.sendSerial === 'function' ? adapter.sendSerial.bind(adapter) : null;
+  if (rawSendSerial) adapter.sendSerial = byte => {
+    const value = byte & 0xff;
+    if (!publishInput('z80.serial', {byte: value})) return false;
+    return rawSendSerial(value);
+  };
 
   let runState = 'halted';
   let pendingStep = null;
@@ -61,13 +76,41 @@ export function createZ80DebugTarget(adapter, opts = {}) {
         consumes: [], events: ['instruction', 'memory', 'port'],
         fidelity: {instruction: 'recorded', memory: 'reconstructed', port: 'reconstructed', cycle: 'unsupported'},
         recording: checkpointStatus.supported ? ['checkpoint', 'restore'] : [],
-        extensions: checkpointStatus.supported ? {} : {checkpointRefusal: checkpointStatus.reasons}
+        extensions: {
+          ...(checkpointStatus.supported ? {} : {checkpointRefusal: checkpointStatus.reasons}),
+          inputReplay: ['z80.buttons', 'z80.keys', ...(rawSendSerial ? ['z80.serial'] : [])],
+          inputRefusals: [
+            'tape insertion and snapshot/media loading are configuration changes, not replayable runtime inputs',
+            'board-buffer input nets bypass the target and require a complete device codec'
+          ]
+        }
       };
     },
 
     state() { return runState; },
 
     onDebugEvent: debugEvents.onDebugEvent,
+
+    onDebugInput(listener) {
+      if (typeof listener !== 'function') throw new TypeError('debug input listener must be a function');
+      inputListeners.add(listener);
+      return () => inputListeners.delete(listener);
+    },
+
+    applyDebugInput(input) {
+      const payload = input?.payload;
+      if (input?.producer === 'z80.buttons' && Number.isSafeInteger(payload?.mask)) {
+        return typeof machine.setButtons === 'function' ? machine.setButtons(payload.mask & 0x1f) : false;
+      }
+      if (input?.producer === 'z80.keys' && Array.isArray(payload?.names) && payload.names.length <= 40 &&
+          payload.names.every(name => typeof name === 'string' && name.length <= 16) && machine.ula) {
+        machine.ula.setKeys([...payload.names]); return true;
+      }
+      if (input?.producer === 'z80.serial' && Number.isSafeInteger(payload?.byte) && rawSendSerial) {
+        return rawSendSerial(payload.byte & 0xff);
+      }
+      return {refused: 'unsupported or malformed Z80 replay input', code: 'UNSUPPORTED_REPLAY_INPUT'};
+    },
 
     captureCheckpoint() {
       const checkpoint = machine.captureCheckpoint();
@@ -204,7 +247,10 @@ export function createZ80DebugTarget(adapter, opts = {}) {
     /** Face-input contract, joystick side: the VdpScreen button mask
      *  onto the Kempston port. False without the interface. */
     setButtons(mask) {
-      return typeof machine.setButtons === 'function' ? machine.setButtons(mask) : false;
+      if (!Number.isSafeInteger(mask)) return false;
+      if (typeof machine.setButtons !== 'function' ||
+          !publishInput('z80.buttons', {mask: mask & 0x1f})) return false;
+      return machine.setButtons(mask);
     },
 
     /**
@@ -214,8 +260,11 @@ export function createZ80DebugTarget(adapter, opts = {}) {
      * false when the machine has no ULA to receive them.
      */
     setKeys(names) {
-      if (!machine.ula || typeof machine.ula.setKeys !== 'function') return false;
-      machine.ula.setKeys(names);
+      if (!machine.ula || typeof machine.ula.setKeys !== 'function' || !Array.isArray(names) ||
+          names.length > 40 || names.some(name => typeof name !== 'string' || name.length > 16)) return false;
+      const copy = [...names];
+      if (!publishInput('z80.keys', {names: copy})) return false;
+      machine.ula.setKeys(copy);
       return true;
     },
 

@@ -284,7 +284,7 @@ async function createZ80Target(opts) {
   try {
     const mod = await import('./z80-debug.js');
     if (mod.createZ80DebugTarget) {
-      target = mod.createZ80DebugTarget({ machine: adapter.machine }, {cpuId: opts.cpuId});
+      target = mod.createZ80DebugTarget(adapter, {cpuId: opts.cpuId});
     }
   } catch { /* adapter-only mode */ }
   return { target, adapter };
@@ -313,7 +313,7 @@ async function createI8086Target(opts) {
   try {
     const mod = await import('./i8086-debug.js');
     if (mod.createI8086DebugTarget) {
-      target = mod.createI8086DebugTarget({ machine: adapter.machine });
+      target = mod.createI8086DebugTarget(adapter);
     }
   } catch { /* adapter-only mode */ }
   return { target, adapter };

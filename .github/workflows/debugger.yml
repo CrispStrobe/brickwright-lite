@@ -1,0 +1,63 @@
+name: debugger-focused
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/debugger.yml'
+      - 'docs/FULL-DEBUGGER-ARCHITECTURE.md'
+      - 'overlay/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx'
+      - 'overlay/scratch-gui/src/lib/bw-board/**'
+      - 'overlay/scratch-gui/src/lib/bw-debug/**'
+      - 'scripts/integrate.mjs'
+      - 'test/*debug*.test.mjs'
+      - 'test/*checkpoint*.test.mjs'
+      - 'test/*input*.test.mjs'
+  pull_request:
+    paths:
+      - '.github/workflows/debugger.yml'
+      - 'docs/FULL-DEBUGGER-ARCHITECTURE.md'
+      - 'overlay/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx'
+      - 'overlay/scratch-gui/src/lib/bw-board/**'
+      - 'overlay/scratch-gui/src/lib/bw-debug/**'
+      - 'scripts/integrate.mjs'
+      - 'test/*debug*.test.mjs'
+      - 'test/*checkpoint*.test.mjs'
+      - 'test/*input*.test.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: debugger-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: {node-version: 22}
+      - name: Vendor pinned sources
+        run: npm run vendor
+      - name: Integrate overlays
+        run: node scripts/integrate.mjs
+      - name: Focused debugger contracts and live cores
+        run: |
+          node --test \
+            test/debug-*.test.mjs \
+            test/classic-machine-checkpoint.test.mjs \
+            test/classic-debug-events.test.mjs \
+            test/classic-input-replay.test.mjs \
+            test/emu8051-checkpoint-refusal.test.mjs \
+            test/emu8051-debug-events.test.mjs \
+            test/emu8051-input-log.test.mjs \
+            test/i8086-checkpoints.test.mjs \
+            test/i8086-debug-events.test.mjs \
+            test/i8086-instruction-replay.test.mjs \
+            test/i8086-input-recording.test.mjs \
+            test/i8086-performance-regressions.test.mjs \
+            test/overlay-packages-pairs.test.mjs

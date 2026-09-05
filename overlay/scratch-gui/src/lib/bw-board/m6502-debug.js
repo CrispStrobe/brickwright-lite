@@ -24,6 +24,21 @@ export function createM6502DebugTarget(adapter, opts = {}) {
   const debugEvents = installInstructionDebugEvents({
     cpu, machine, cpuId: opts.cpuId || 'm6502', timeDomain: 'm6502-cycles'
   });
+  const inputListeners = new Set();
+  const publishInput = (producer, payload) => {
+    const fact = {producer, time: debugEvents.debugTime(), payload};
+    for (const listener of [...inputListeners]) {
+      const result = listener(structuredClone(fact));
+      if (result === false || result?.accepted === false) return false;
+    }
+    return true;
+  };
+  const rawSendSerial = typeof adapter.sendSerial === 'function' ? adapter.sendSerial.bind(adapter) : null;
+  if (rawSendSerial) adapter.sendSerial = byte => {
+    const value = byte & 0xff;
+    if (!publishInput('m6502.serial', {byte: value})) return false;
+    return rawSendSerial(value);
+  };
 
   let runState = 'halted'; // 'halted' | 'running'
   let pendingStep = null;  // { kind: 'insn'|'block'|'over'|'out', ... }
@@ -71,7 +86,14 @@ export function createM6502DebugTarget(adapter, opts = {}) {
         events: ['instruction', 'memory'],
         fidelity: {instruction: 'recorded', memory: 'reconstructed', cycle: 'unsupported'},
         recording: checkpointStatus.supported ? ['checkpoint', 'restore'] : [],
-        extensions: checkpointStatus.supported ? {} : {checkpointRefusal: checkpointStatus.reasons},
+        extensions: {
+          ...(checkpointStatus.supported ? {} : {checkpointRefusal: checkpointStatus.reasons}),
+          inputReplay: ['m6502.buttons', ...(rawSendSerial ? ['m6502.serial'] : [])],
+          inputRefusals: [
+            'live board input-net changes bypass the target and disable checkpoint recording',
+            'ROM/media loading is configuration, not a replayable runtime input'
+          ]
+        },
         // Two audio contracts (E6.8.11a). 'tone' is what the hardware is
         // CONFIGURED to produce and 'samples' is what it SOUNDS like;
         // 'samples' is advertised only when a chip on this machine can
@@ -101,6 +123,22 @@ export function createM6502DebugTarget(adapter, opts = {}) {
     state() { return runState; },
 
     onDebugEvent: debugEvents.onDebugEvent,
+
+    onDebugInput(listener) {
+      if (typeof listener !== 'function') throw new TypeError('debug input listener must be a function');
+      inputListeners.add(listener);
+      return () => inputListeners.delete(listener);
+    },
+
+    applyDebugInput(input) {
+      if (input?.producer === 'm6502.buttons' && Number.isSafeInteger(input.payload?.mask)) {
+        return typeof machine.setButtons === 'function' ? machine.setButtons(input.payload.mask & 0x1f) : false;
+      }
+      if (input?.producer === 'm6502.serial' && Number.isSafeInteger(input.payload?.byte) && rawSendSerial) {
+        return rawSendSerial(input.payload.byte & 0xff);
+      }
+      return {refused: 'unsupported or malformed 6502 replay input', code: 'UNSUPPORTED_REPLAY_INPUT'};
+    },
 
     captureCheckpoint() {
       const checkpoint = machine.captureCheckpoint();
@@ -308,7 +346,10 @@ export function createM6502DebugTarget(adapter, opts = {}) {
      * PA0..3). Returns false when the machine has no VIA to receive it.
      */
     setButtons(mask) {
-      return typeof machine.setButtons === 'function' ? machine.setButtons(mask) : false;
+      if (!Number.isSafeInteger(mask)) return false;
+      if (typeof machine.setButtons !== 'function' ||
+          !publishInput('m6502.buttons', {mask: mask & 0x1f})) return false;
+      return machine.setButtons(mask);
     },
 
     video() {

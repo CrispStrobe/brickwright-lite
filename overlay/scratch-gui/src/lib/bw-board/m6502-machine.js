@@ -757,6 +757,7 @@ export class M6502Machine {
         const reasons = [];
         if (this._bb) reasons.push('bit-banged serial queues are not checkpointed');
         if (this._audioBus) reasons.push('rendered audio queues are not checkpointed');
+        if (this._unloggedBoardInputs) reasons.push('live board input-net sampling is not logged');
         return checkpointSupport(this.chips, this.devices, reasons);
     }
 

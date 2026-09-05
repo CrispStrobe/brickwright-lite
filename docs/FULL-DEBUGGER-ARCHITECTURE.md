@@ -388,6 +388,16 @@ without exposing payloads. Real 8086 tests cover port, memory, retire and a
 logged GPIO input. Reverse remains unadvertised in the runner until every UI and
 machine input path is automatically appended before application.
 
+The next input slice routes 8086 hardware UART receive, XT scancodes, PPI GPIO,
+hot ROM/reset and NMI through an atomic recorder-before-application gate. Live
+designer-board pin sampling withdraws checkpoints, and DOS service input remains
+non-reversible because that service has opaque state. Classic targets expose
+bounded replay facts for 6502 buttons/serial and Z80 buttons/keys/serial; live
+6502 net sampling likewise withdraws checkpoint support. The 8051 adapter logs
+deduplicated digital/ADC observations at its native boundary and can reapply
+them in polling mode, but refuses replay while a live push callback owns the
+input latch. These contracts still do not upgrade any target to cycle fidelity.
+
 ### Slice 3 — unified breakpoints
 
 - predicate compiler and ordered action engine;
@@ -421,6 +431,12 @@ for complete targets. Its live render path consumes snapshot-free checkpoint
 summaries so it never clones full RAM at frame cadence. Restore currently means
 the most recent retained checkpoint; event-cursor navigation, fork selection
 and reverse controls remain future UI work.
+
+Debugger changes also have a path-filtered `debugger-focused` GitHub Actions
+workflow. It vendors and integrates the pinned sources on a fresh runner, then
+runs the debugger contracts and real-core checkpoint/event/replay tests. This
+keeps the fast, resource-intensive validation off small development hosts; the
+full build and browser matrix remains the final integration authority.
 
 ### Slice 5 — real cycle targets
 

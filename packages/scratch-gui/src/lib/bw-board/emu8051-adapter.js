@@ -97,6 +97,22 @@ export function createEmu8051Adapter(wasm, opts = {}) {
 
   /** @type {Map<string, PinSnapshot>} */
   const lastState = new Map();
+  const observedInputs = new Map();
+  let inputListeners = [];
+  let inputTimeEpoch = 0;
+
+  function inputTime() {
+    return {ticks: getCurrentTimeNs(),
+      domain: inputTimeEpoch ? `8051-input-ns-reset-${inputTimeEpoch}` : '8051-input-ns', hz: 1e9};
+  }
+
+  function recordInput(producer, key, payload) {
+    const signature = JSON.stringify(payload);
+    if (observedInputs.get(key) === signature) return;
+    observedInputs.set(key, signature);
+    const input = {time: inputTime(), producer, payload: {...payload}};
+    for (const listener of inputListeners) listener(input);
+  }
 
   const stats = {
     pollCount: 0,
@@ -166,12 +182,19 @@ export function createEmu8051Adapter(wasm, opts = {}) {
 
       readPinCbPtr = wasm.addFunction((port, bit, _ud) => {
         if (!board) return 0;
-        return board.readPin(`P${port}.${bit}`);
+        const level = board.readPin(`P${port}.${bit}`) ? 1 : 0;
+        recordInput('emu8051.pin', `pin:${port}.${bit}`, {port, bit, level});
+        return level;
       }, 'iiii');
 
       readAnalogCbPtr = wasm.addFunction((port, bit, _ud) => {
         if (!board) return 0;
-        return board.readAnalog(`P${port}.${bit}`);
+        const volts = Number(board.readAnalog(`P${port}.${bit}`));
+        if (Number.isFinite(volts)) {
+          recordInput('emu8051.adc', `adc:${bit}`, {channel: bit, volts});
+          return volts;
+        }
+        return 0;
       }, 'diii');
 
       // on_advance: uint64_t is legalized to two i32 args without WASM_BIGINT
@@ -253,7 +276,9 @@ export function createEmu8051Adapter(wasm, opts = {}) {
         const state = lastState.get(pinId);
         if (state && (state.mode === 'input' || state.mode === 'quasi' || state.mode === 'opendrain')) {
           const level = board.readPin(pinId);
-          wasm._emu_set_pin_input(port, bit, level);
+          const normalized = level ? 1 : 0;
+          wasm._emu_set_pin_input(port, bit, normalized);
+          recordInput('emu8051.pin', `pin:${port}.${bit}`, {port, bit, level: normalized});
         }
       }
     }
@@ -263,7 +288,9 @@ export function createEmu8051Adapter(wasm, opts = {}) {
     if (!board) return;
     for (let ch = 0; ch < 8; ch++) {
       const volts = board.readAnalog(`P1.${ch}`);
-      wasm._emu_set_adc_voltage(ch, volts);
+      if (!Number.isFinite(Number(volts))) continue;
+      wasm._emu_set_adc_voltage(ch, Number(volts));
+      recordInput('emu8051.adc', `adc:${ch}`, {channel: ch, volts: Number(volts)});
     }
   }
 
@@ -277,6 +304,8 @@ export function createEmu8051Adapter(wasm, opts = {}) {
       stats.pinChangeCount = 0;
       stats.advanceToCount = 0;
       stats.pushCallbackCount = 0;
+      observedInputs.clear();
+      inputTimeEpoch++;
     },
 
     setFosc(hz) { wasm._emu_set_fosc(hz); },
@@ -404,6 +433,35 @@ export function createEmu8051Adapter(wasm, opts = {}) {
 
     getStats() { return { ...stats, sleptClocks: sleptClocks() }; },
 
+    /** Recorder-compatible host-input facts, deduplicated at the native boundary. */
+    onInput(cb) {
+      if (typeof cb !== 'function') throw new TypeError('input listener must be a function');
+      inputListeners.push(cb);
+      return () => { inputListeners = inputListeners.filter(listener => listener !== cb); };
+    },
+
+    /** Apply a recorded input only where no live board callback can override it. */
+    applyReplayInput(input) {
+      if (stats.mode === 'push') return {accepted: false, code: 'live-board-input-authority',
+        reason: 'push mode reads the attached board directly; replay must control that board'};
+      const payload = input && input.payload;
+      if (input?.producer === 'emu8051.pin' && Number.isInteger(payload?.port) &&
+          payload.port >= 0 && payload.port <= 5 && Number.isInteger(payload?.bit) &&
+          payload.bit >= 0 && payload.bit <= 7 && (payload.level === 0 || payload.level === 1)) {
+        wasm._emu_set_pin_input(payload.port, payload.bit, payload.level);
+        observedInputs.set(`pin:${payload.port}.${payload.bit}`, JSON.stringify(payload));
+        return {accepted: true};
+      }
+      if (input?.producer === 'emu8051.adc' && Number.isInteger(payload?.channel) &&
+          payload.channel >= 0 && payload.channel <= 7 && Number.isFinite(payload?.volts)) {
+        wasm._emu_set_adc_voltage(payload.channel, payload.volts);
+        observedInputs.set(`adc:${payload.channel}`, JSON.stringify(payload));
+        return {accepted: true};
+      }
+      return {accepted: false, code: 'unsupported-replay-input',
+        reason: 'expected a validated emu8051.pin or emu8051.adc input'};
+    },
+
     /** Is the emulated core parked on PCON.IDL right now? */
     isCoreIdle() { return coreIsIdle(); },
 
@@ -432,6 +490,7 @@ export function createEmu8051Adapter(wasm, opts = {}) {
         if (advanceCbPtr) wasm.removeFunction(advanceCbPtr);
       }
       pinCbPtr = readPinCbPtr = readAnalogCbPtr = advanceCbPtr = null;
+      inputListeners = [];
     },
 
     // Conformance adapter interface

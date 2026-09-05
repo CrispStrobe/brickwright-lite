@@ -173,6 +173,10 @@ export function createM6502Adapter(opts = {}) {
 
     attachBoard(b) {
       board = b;
+      // A live board may change input nets without going through the debug
+      // target. Until those solver transitions are logged, checkpoint replay
+      // must refuse this topology rather than silently diverge.
+      machine._unloggedBoardInputs = typeof b.readPin === 'function';
       // Bridge PS/2 parts to the machine VIA before reset, so the
       // capture chain's advance() runs from the first instruction.
       bridgePS2(b);

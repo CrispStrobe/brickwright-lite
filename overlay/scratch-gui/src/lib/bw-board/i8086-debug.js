@@ -201,7 +201,8 @@ export function createI8086DebugTarget(adapter, opts = {}) {
     // A boundary service (notably the DOS trap layer) owns functional state
     // outside I8086Machine. Until that service supplies an atomic snapshot
     // contract, this target must not advertise a machine-only checkpoint.
-    const hasExternalStepState = typeof adapter.step === 'function';
+    const hasExternalStepState = () => typeof adapter.step === 'function' ||
+        adapter.hasLiveInputSource?.() === true;
     const cpuId = opts.cpuId || 'i8086';
 
     let runState = 'halted';
@@ -356,7 +357,7 @@ export function createI8086DebugTarget(adapter, opts = {}) {
                 events: ['instruction', 'memory', 'port', 'interrupt'],
                 fidelity: {instruction: 'recorded', cycle: 'unsupported'},
                 spaces: {mem: {read: true, write: true, passiveRead: true}},
-                recording: !hasExternalStepState && machine.canCheckpoint?.()
+                recording: !hasExternalStepState() && machine.canCheckpoint?.()
                     ? ['checkpoint', 'restore'] : [],
                 // 'port' and 'int' are declared only because the machine can
                 // actually observe them. They rest on machine.hooks, which the
@@ -423,7 +424,7 @@ export function createI8086DebugTarget(adapter, opts = {}) {
         },
 
         captureCheckpoint() {
-            if (hasExternalStepState || !machine.canCheckpoint?.()) {
+            if (hasExternalStepState() || !machine.canCheckpoint?.()) {
                 throw new Error('8086 checkpoint refused: machine state is incomplete');
             }
             return {
@@ -452,7 +453,7 @@ export function createI8086DebugTarget(adapter, opts = {}) {
                 !snapshot.machine || !snapshot.debugger) {
                 throw new Error('8086 checkpoint refused: incompatible target snapshot');
             }
-            if (hasExternalStepState || !machine.canCheckpoint?.()) {
+            if (hasExternalStepState() || !machine.canCheckpoint?.()) {
                 throw new Error('8086 checkpoint refused: machine state is incomplete');
             }
             const state = snapshot.debugger.runState;
@@ -481,7 +482,7 @@ export function createI8086DebugTarget(adapter, opts = {}) {
 
         /** Execute exactly one instruction boundary for verified replay. */
         replayInstruction() {
-            if (hasExternalStepState || !machine.canCheckpoint?.()) {
+            if (hasExternalStepState() || !machine.canCheckpoint?.()) {
                 return {accepted: false, code: 'unsupported-replay',
                     reason: '8086 machine state is not completely replayable'};
             }
@@ -500,6 +501,57 @@ export function createI8086DebugTarget(adapter, opts = {}) {
                 domain: eventTimeEpoch ? `i8086-cycles-reset-${eventTimeEpoch}` : 'i8086-cycles',
                 hz: machine.clockHz
             };
+        },
+
+        /** Pure preflight for recorder-before-application input handling. */
+        canApplyReplayInput(input) {
+            const p = input?.payload;
+            if (!p || typeof p !== 'object') return false;
+            switch (input.producer) {
+            case 'i8086.key':
+                return Number.isInteger(p.scancode) && p.scancode >= 0 && p.scancode <= 0xff &&
+                    machine.canTakeKeys() === true;
+            case 'i8086.gpio':
+                return typeof p.chip === 'string' && !!machine.chips[p.chip] &&
+                    typeof machine.chips[p.chip].setInput === 'function' &&
+                    ['a', 'b', 'c'].includes(p.port) &&
+                    Number.isInteger(p.bit) && p.bit >= 0 && p.bit <= 7 &&
+                    (p.level === 0 || p.level === 1);
+            case 'i8086.serial':
+                return Number.isInteger(p.byte) && p.byte >= 0 && p.byte <= 0xff &&
+                    Object.values(machine.chips).some(c => typeof c.rxPush === 'function');
+            case 'i8086.nmi':
+                return Object.keys(p).length === 0;
+            case 'i8086.rom':
+                return p.bytes instanceof Uint8Array &&
+                    (p.at === undefined || (Number.isInteger(p.at) && p.at >= 0 && p.at < 0x100000));
+            default:
+                return false;
+            }
+        },
+
+        /** Apply one recorder-owned external input without generating another log entry. */
+        applyReplayInput(input) {
+            if (!this.canApplyReplayInput(input)) {
+                return {accepted: false, code: 'invalid-replay-input', producer: input?.producer};
+            }
+            const p = input.payload;
+            if (input.producer === 'i8086.key') return {accepted: machine.keyIn(p.scancode) === true};
+            if (input.producer === 'i8086.gpio') {
+                return {accepted: machine.setInput(p.chip, p.port, p.bit, p.level) === true};
+            }
+            if (input.producer === 'i8086.serial') return {accepted: machine.serialIn(p.byte) === true};
+            if (input.producer === 'i8086.nmi') machine.nmi();
+            if (input.producer === 'i8086.rom') {
+                machine.loadRom(p.bytes, p.at);
+                machine.reset();
+            }
+            return {accepted: true};
+        },
+
+        nmi() {
+            machine.nmi();
+            return true;
         },
 
         /**
