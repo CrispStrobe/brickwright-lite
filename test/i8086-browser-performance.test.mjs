@@ -2,6 +2,7 @@ import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {
+    attributeReactCommits,
     summarizeI8086Pump,
     summarizeI8086Repetitions,
     summarizeSpread,
@@ -16,9 +17,9 @@ test('the production 8086 benchmark covers desktop and mobile pump health', () =
         "selectOption('i8086')", "selectOption('pins')", 'realTimeRatio',
         'pumpMs', 'pumpBreakdown', 'setupTimeline', 'steadyLongTasks',
         'milestones', 'resources', 'longTasks', 'reactProfiles', 'heapBytes', "ratio < 0.25",
-        'encodedBodySize', 'decodedBodySize', 'newCDPSession',
-        "'Emulation.setCPUThrottlingRate'", 'browser-performance-raw/v1',
-        'browser-performance/v2', 'summarizeI8086Repetitions', 'cpuThrottleRate: 4',
+        'encodedBodySize', 'decodedBodySize', 'newCDPSession', 'reactUpdateSources',
+        "'Emulation.setCPUThrottlingRate'", 'browser-performance-raw/v2',
+        'browser-performance/v3', 'summarizeI8086Repetitions', 'cpuThrottleRate: 4',
     ]) assert.ok(script.includes(fact), `benchmark lost ${fact}`);
     assert.match(script, /Math\.max\(3, requestedRepetitions\)/,
         'the statistical gate must not accept fewer than three repetitions');
@@ -79,23 +80,102 @@ test('the receipt reports React commit counts and actual durations by subtree', 
     assert.equal(result.CircuitDesigner.actualDurationMs.totalMs, 30);
 });
 
-test('React profiling is opt-in and wraps only the two relevant subtrees', () => {
+test('React update attribution accounts for every commit per nested boundary', () => {
+    const result = attributeReactCommits([
+        {id: 'CircuitDesigner', phase: 'mount', actualDurationMs: 20, startTime: 8, commitTime: 10},
+        {id: 'BoardCanvas', phase: 'mount', actualDurationMs: 15, startTime: 8, commitTime: 11},
+        {id: 'CircuitDesigner', phase: 'update', actualDurationMs: 8, startTime: 18, commitTime: 20},
+        {id: 'BoardCanvas', phase: 'update', actualDurationMs: 6, startTime: 18, commitTime: 21},
+        {id: 'CircuitDesigner', phase: 'update', actualDurationMs: 2, startTime: 29, commitTime: 30}
+    ], [
+        {seq: 1, source: 'host:designer-load', at: 5},
+        {seq: 2, source: 'fit:auto', at: 15},
+        {seq: 3, source: 'resize:fit', at: 16},
+        {seq: 4, source: 'host:late', at: 40}
+    ], {from: 0, to: 50});
+    const designer = result.boundaries.CircuitDesigner;
+    assert.equal(designer.commits, 3);
+    assert.equal(designer.attributedCommits, 2);
+    assert.equal(designer.unattributedCommits, 1);
+    assert.equal(designer.attributedCommits + designer.unattributedCommits, designer.commits);
+    assert.equal(designer.sources['fit:auto'].commits, 1);
+    assert.equal(designer.sources['react:mount'].commits, 1);
+    assert.deepEqual(designer.commitRows[1].sources, ['fit:auto', 'resize:fit']);
+    assert.deepEqual(designer.uncommittedMarks.map(mark => mark.source), ['host:late']);
+    const board = result.boundaries.BoardCanvas;
+    assert.equal(board.commits, 2);
+    assert.equal(board.attributedCommits + board.unattributedCommits, board.commits);
+    assert.equal(board.sources['fit:auto'].actualDurationMs, 6);
+});
+
+test('the React performance probe is lazy, stable and identity-preserving when absent', async () => {
+    const source = readFileSync(new URL(
+        '../overlay/scratch-gui/src/lib/bw-debug/react-perf-profiler.js', import.meta.url), 'utf8');
+    const {getReactPerformanceProbe, profileReactSubtree} = await import(
+        `data:text/javascript,${encodeURIComponent(source)}`);
+    const previousWindow = globalThis.window;
+    try {
+        delete globalThis.window;
+        const child = {type: 'board'};
+        assert.equal(getReactPerformanceProbe(), null);
+        assert.equal(profileReactSubtree({Profiler: true}, 'BoardCanvas', child), child);
+        globalThis.window = {__BW_I8086_PERF__: {reactUpdateSources: [], sourceLimit: 2}};
+        const first = getReactPerformanceProbe();
+        assert.equal(first, getReactPerformanceProbe(), 'the benchmark prop identity must stay stable');
+        first.mark('fit:auto', {zoom: 1});
+        first.mark('resize:fit');
+        first.mark('ignored:over-limit');
+        assert.deepEqual(globalThis.window.__BW_I8086_PERF__.reactUpdateSources.map(mark => mark.source),
+            ['fit:auto', 'resize:fit']);
+    } finally {
+        if (previousWindow === undefined) delete globalThis.window;
+        else globalThis.window = previousWindow;
+    }
+});
+
+test('React profiling and source marks are opt-in at all three relevant subtrees', () => {
     const helper = readFileSync(new URL(
         '../overlay/scratch-gui/src/lib/bw-debug/react-perf-profiler.js', import.meta.url), 'utf8');
     const panel = readFileSync(new URL(
         '../overlay/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx', import.meta.url), 'utf8');
     const circuit = readFileSync(new URL(
         '../overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx', import.meta.url), 'utf8');
+    const designer = readFileSync(new URL(
+        '../overlay/scratch-gui/src/lib/bw-circuit-ui/components/CircuitDesigner.jsx', import.meta.url), 'utf8');
+    const canvas = readFileSync(new URL(
+        '../overlay/scratch-gui/src/lib/bw-circuit-ui/components/BoardCanvas.jsx', import.meta.url), 'utf8');
+    const boardHook = readFileSync(new URL(
+        '../overlay/scratch-gui/src/lib/bw-circuit-ui/hooks/useBoard.js', import.meta.url), 'utf8');
     const webpack = readFileSync(new URL(
         '../packages/scratch-gui/webpack.config.js', import.meta.url), 'utf8');
     const workflow = readFileSync(new URL('../.github/workflows/build.yml', import.meta.url), 'utf8');
     assert.match(helper, /if \(!enabled \|\| !React\.Profiler\) return child;/,
         'normal runtime must retain the original subtree without a Profiler element');
     assert.match(helper, /window\.__BW_I8086_PERF__/);
+    assert.match(helper, /const getReactPerformanceProbe = \(\) =>/);
+    assert.match(helper, /if \(!probe\) return;/,
+        'normal production must not allocate source receipts');
     assert.doesNotMatch(panel, /profileReactSubtree/,
         'a Profiler returned inside DebugPanel would omit DebugPanel.render itself');
     assert.match(circuit, /profileReactSubtree\(React, 'DebugPanel', \(<DebugPanel/);
     assert.match(circuit, /profileReactSubtree\(React, 'CircuitDesigner', \(<Designer/);
+    assert.match(circuit, /performanceProbe=\{this\._performanceProbe\}/);
+    assert.match(designer, /profilePerformanceSubtree\(performanceProbe, React, 'BoardCanvas'/);
+    for (const source of ['designer:declaration', 'designer:board-ready']) {
+        assert.ok(designer.includes(source), `designer lost ${source} attribution`);
+    }
+    assert.match(canvas, /performanceProbe\.mark\(`fit:\$\{reason\}`/);
+    for (const source of ["'auto'", "'settled-retry'", 'resize:fit',
+        'resize:viewport-initial', 'resize:viewport-observer']) {
+        assert.ok(canvas.includes(source), `canvas lost ${source} attribution`);
+    }
+    assert.match(boardHook, /performanceProbe\.mark\(`board-state:\$\{source\}`\)/);
+    assert.match(boardHook, /doRefresh\('initial'\)/);
+    assert.match(boardHook, /doRefresh\('change'\)/);
+    for (const source of ['host:circuit-ready', 'host:declaration-revision',
+        'host:declaration-stc', 'host:runner-state', 'host:box-measure']) {
+        assert.ok(circuit.includes(source), `host lost ${source} attribution`);
+    }
     assert.match(webpack, /BW_REACT_PROFILE/);
     assert.match(webpack, /'react-dom\$': 'react-dom\/profiling'/,
         'a normal production React renderer cannot emit actualDuration');

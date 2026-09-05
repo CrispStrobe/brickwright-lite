@@ -41,6 +41,30 @@ export function summarizeI8086Repetitions(runs) {
         commits: metric(run => run.reactProfiles?.startup?.[id]?.commits),
         actualDurationMs: metric(run => run.reactProfiles?.startup?.[id]?.actualDurationMs?.totalMs)
     }]));
+    const attributionWindows = Object.fromEntries(['startup', 'circuitOpen'].map(windowName => {
+        const boundaryIds = [...new Set(list.flatMap(run => Object.keys(
+            run.reactAttribution?.[windowName]?.boundaries || {})))];
+        const boundaries = Object.fromEntries(boundaryIds.map(id => {
+            const sourceNames = [...new Set(list.flatMap(run => Object.keys(
+                run.reactAttribution?.[windowName]?.boundaries?.[id]?.sources || {})))];
+            return [id, {
+                commits: metric(run => run.reactAttribution?.[windowName]?.boundaries?.[id]?.commits),
+                attributedCommits: metric(run =>
+                    run.reactAttribution?.[windowName]?.boundaries?.[id]?.attributedCommits),
+                unattributedCommits: metric(run =>
+                    run.reactAttribution?.[windowName]?.boundaries?.[id]?.unattributedCommits),
+                sources: Object.fromEntries(sourceNames.map(source => [source, {
+                    marks: metric(run => run.reactAttribution?.[windowName]
+                        ?.boundaries?.[id]?.sources?.[source]?.marks),
+                    commits: metric(run => run.reactAttribution?.[windowName]
+                        ?.boundaries?.[id]?.sources?.[source]?.commits),
+                    actualDurationMs: metric(run => run.reactAttribution?.[windowName]
+                        ?.boundaries?.[id]?.sources?.[source]?.actualDurationMs)
+                }]))
+            }];
+        }));
+        return [windowName, {boundaries}];
+    }));
     const pumpPhase = name => ({
         totalMs: metric(run => run.pumpBreakdown?.phases?.[name]?.totalMs),
         percentOfPump: metric(run => run.pumpBreakdown?.phases?.[name]?.percentOfPump)
@@ -65,7 +89,8 @@ export function summarizeI8086Repetitions(runs) {
             startup: metric(run => run.startupLongTaskCount)
         },
         setupPhases,
-        startupReact
+        startupReact,
+        reactAttribution: attributionWindows
     };
 }
 
@@ -125,6 +150,73 @@ export function summarizeReactProfiles(samples) {
         delete bucket.base;
     }
     return result;
+}
+
+/**
+ * Attribute benchmark-only update-source marks to React commits. Attribution
+ * is per Profiler boundary: nested BoardCanvas and outer CircuitDesigner may
+ * legitimately receive the same mark, but their commit totals are never added.
+ */
+export function attributeReactCommits(samples, marks, {from = -Infinity, to = Infinity} = {}) {
+    const profiles = (samples || []).filter(sample =>
+        Number.isFinite(Number(sample.commitTime))).sort((a, b) =>
+        finite(a.commitTime) - finite(b.commitTime));
+    const sourceMarks = (marks || []).filter(mark =>
+        Number.isFinite(Number(mark.at)) && finite(mark.at) >= from && finite(mark.at) < to)
+        .sort((a, b) => finite(a.at) - finite(b.at) || finite(a.seq) - finite(b.seq));
+    const ids = [...new Set(profiles.map(sample => String(sample.id || 'unknown')))];
+    const boundaries = {};
+
+    for (const id of ids) {
+        const allBoundaryCommits = profiles.filter(sample => String(sample.id || 'unknown') === id);
+        const commits = allBoundaryCommits.filter(sample =>
+            finite(sample.commitTime) >= from && finite(sample.commitTime) < to);
+        if (!commits.length) continue;
+        const attachedMarkKeys = new Set();
+        const rows = commits.map(commit => {
+            const index = allBoundaryCommits.indexOf(commit);
+            const previousCommitTime = index > 0 ? finite(allBoundaryCommits[index - 1].commitTime) : -Infinity;
+            const attached = sourceMarks.filter(mark =>
+                finite(mark.at) > previousCommitTime && finite(mark.at) <= finite(commit.commitTime));
+            for (const mark of attached) attachedMarkKeys.add(`${mark.seq ?? ''}:${mark.at}:${mark.source}`);
+            const sources = [...new Set([
+                ...(commit.phase === 'mount' ? ['react:mount'] : []),
+                ...attached.map(mark => String(mark.source || 'unknown'))
+            ])];
+            return {
+                phase: commit.phase,
+                startTime: finite(commit.startTime),
+                commitTime: finite(commit.commitTime),
+                actualDurationMs: finite(commit.actualDurationMs),
+                sources,
+                marks: attached.map(mark => ({...mark, ageMs: finite(commit.commitTime) - finite(mark.at)}))
+            };
+        });
+        const sourceSummary = {};
+        for (const row of rows) {
+            for (const source of row.sources) {
+                const bucket = sourceSummary[source] || (sourceSummary[source] = {
+                    marks: 0, commits: 0, actualDurationMs: 0
+                });
+                bucket.commits++;
+                bucket.actualDurationMs += row.actualDurationMs;
+                bucket.marks += source === 'react:mount' ? 1 :
+                    row.marks.filter(mark => String(mark.source || 'unknown') === source).length;
+            }
+        }
+        const attributedCommits = rows.filter(row => row.sources.length).length;
+        boundaries[id] = {
+            commits: rows.length,
+            attributedCommits,
+            unattributedCommits: rows.length - attributedCommits,
+            multiSourceCommits: rows.filter(row => row.sources.length > 1).length,
+            sources: sourceSummary,
+            commitRows: rows,
+            uncommittedMarks: sourceMarks.filter(mark =>
+                !attachedMarkKeys.has(`${mark.seq ?? ''}:${mark.at}:${mark.source}`))
+        };
+    }
+    return {from, to, boundaries};
 }
 
 const SETUP_PHASES = [

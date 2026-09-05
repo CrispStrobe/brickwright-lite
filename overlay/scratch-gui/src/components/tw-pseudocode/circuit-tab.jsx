@@ -4,7 +4,7 @@ import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
 import {normalizeDeviceId, resolveExampleBench} from '../../lib/example-bench.js';
 import {advanceDebugPhase} from '../../lib/bw-debug/debug-phase-transition.js';
-import {profileReactSubtree} from '../../lib/bw-debug/react-perf-profiler.js';
+import {getReactPerformanceProbe, profileReactSubtree} from '../../lib/bw-debug/react-perf-profiler.js';
 import {shouldRefreshDesignerDebugState} from '../../lib/bw-debug/debug-ui-refresh.js';
 import {setProjectTitle} from '../../reducers/project-title';
 import {getIsAnyCreatingNewState} from '../../reducers/project-state';
@@ -144,6 +144,14 @@ class CircuitTab extends React.Component {
         // The File-menu action waiting for the designer to exist, or null. Not
         // state: replaying it must not itself schedule a render.
         this._circuitFilePending = null;
+        // The benchmark installs this before application boot. It remains null
+        // for ordinary production sessions, so source attribution has neither
+        // trace allocation nor a changing prop identity outside the receipt.
+        this._performanceProbe = getReactPerformanceProbe();
+    }
+
+    _markReactUpdate (source, detail) {
+        if (this._performanceProbe) this._performanceProbe.mark(source, detail);
     }
 
     /**
@@ -262,11 +270,13 @@ class CircuitTab extends React.Component {
                 if (raw) {
                     const parsed = JSON.parse(raw);
                     try { localStorage.setItem('bw-circuit-file-loaded', '1'); } catch (e) { /* full */ }
+                    this._markReactUpdate('host:circuit-data');
                     this.setState({circuitData: parsed});
                     this._applyToLiveCircuit(parsed);
                 } else if (event?.detail?.outcome === 'legacy' || event?.detail?.outcome === 'loaded') {
                     try { localStorage.setItem('bw-circuit-file-loaded', '1'); } catch (e) { /* full */ }
                     const emptied = {version: 1, parts: [], wires: []};
+                    this._markReactUpdate('host:circuit-data');
                     this.setState({circuitData: emptied});
                     this._applyToLiveCircuit(emptied);
                 }
@@ -371,20 +381,26 @@ class CircuitTab extends React.Component {
         // delivered (preset / file / ASM) before the panel finished mounting.
         this._machineExtractedHandler = e => {
             window.__bwMachineExtracted = e && e.detail;
+            this._markReactUpdate('host:machine-booted');
             this.setState({machineBooted: true});
         };
         window.addEventListener('bw-machine-extracted', this._machineExtractedHandler);
         this._mediaStashHandler = e => {
             window.__bwPendingMedia = {type: 'media', detail: e && e.detail};
+            this._markReactUpdate('host:machine-booted');
             this.setState({machineBooted: true});
         };
         window.addEventListener('bw-machine-media-load', this._mediaStashHandler);
         this._asmStashHandler = e => {
             window.__bwPendingMedia = {type: 'asm', detail: e && e.detail};
+            this._markReactUpdate('host:machine-booted');
             this.setState({machineBooted: true});
         };
         window.addEventListener('bw-asm-rom-ready', this._asmStashHandler);
-        if (window.__bwPendingMedia) this.setState({machineBooted: true});
+        if (window.__bwPendingMedia) {
+            this._markReactUpdate('host:machine-booted');
+            this.setState({machineBooted: true});
+        }
         // Code-tab catalog loads name the bench for the chosen device; the
         // board must show THAT wiring and seating, not the authored default
         // and never the runner's inferred fallback.
@@ -402,6 +418,7 @@ class CircuitTab extends React.Component {
                     !(Array.isArray(data.wires) || Array.isArray(data.nets))) {
                     throw new Error('not a circuit (no parts with wires or nets)');
                 }
+                this._markReactUpdate('host:circuit-data');
                 this.setState({circuitData: {...data, fileOnly: true},
                     loadingExample: null, examplesError: null});
             } catch (err) {
@@ -490,6 +507,7 @@ class CircuitTab extends React.Component {
         const portalNow = this._stagePortalOn();
         if (portalNow !== !!this._portalOn && !this._portalRefreshQueued) {
             this._portalRefreshQueued = true;
+            this._markReactUpdate('host:portal-refresh');
             this.setState({});
             Promise.resolve().then(() => { this._portalRefreshQueued = false; });
         }
@@ -530,6 +548,7 @@ class CircuitTab extends React.Component {
         const left = Math.round(r.left);
         if (Math.abs((this.state.boxTop ?? -99) - top) > 1 ||
             Math.abs((this.state.boxLeft ?? -99) - left) > 1) {
+            if (this._performanceProbe) this._markReactUpdate('host:box-measure', {top, left});
             this.setState({boxTop: top, boxLeft: left});
         }
     }
@@ -715,6 +734,7 @@ class CircuitTab extends React.Component {
     }
 
     async load () {
+        this._markReactUpdate('host:stc-load');
         this.setState({stc: this.readStc()});
         if (this.state.Designer || this.loading) return;
         this.loading = true;
@@ -798,6 +818,7 @@ class CircuitTab extends React.Component {
             // list and examples panels are separate exports, and a build may
             // legitimately not have them yet — which the panel strip reports
             // rather than hides.
+            this._markReactUpdate('host:designer-load');
             this.setState({Designer: ui.CircuitDesigner, ui});
         } catch (e) {
             // A chunk that 404s because the deploy moved on is not an error the
@@ -848,6 +869,7 @@ class CircuitTab extends React.Component {
                 this.setState(st => ({stopToken: (st.stopToken || 0) + 1}));
             }
         } catch { /* never block circuit publication */ }
+        this._markReactUpdate('host:circuit-ready');
         this.setState({circuit});
         if (typeof window !== 'undefined') {
             const parts = circuit && circuit.parts ?
@@ -910,6 +932,7 @@ class CircuitTab extends React.Component {
     }
 
     handleDeclarationChange (decls) {
+        this._markReactUpdate('host:declaration-revision');
         this.setState(s => ({circuitRev: (s.circuitRev || 0) + 1}));
         if (!decls || !decls.device || !Array.isArray(decls.pins)) return;
         const vm = this.props.vm;
@@ -950,6 +973,7 @@ class CircuitTab extends React.Component {
         { const stcTraceObj = next; if (typeof window !== 'undefined') { (window.__bwStcTrace = window.__bwStcTrace || []).push({who: 'declChange', t: Date.now(), b4: JSON.stringify((stcTraceObj && stcTraceObj.pins || []).find(p => p.name === 'b4') || null), dbg: JSON.stringify({hasProgram, src: !!(rt && rt.bwPseudocodeSource), curLen: (current.pins || []).length, curB4: (current.pins || []).find(p => p.name === 'b4') || null})}); } }
         if (vm.setStc) vm.setStc(next);
         else if (vm.runtime) vm.runtime.stc = next;
+        this._markReactUpdate('host:declaration-stc');
         this.setState({stc: next});
         if (vm.runtime && vm.runtime.emit) vm.runtime.emit('PROJECT_CHANGED');
     }
@@ -976,6 +1000,7 @@ class CircuitTab extends React.Component {
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
                 const list = Array.isArray(data) ? data : (data.examples || []);
+                this._markReactUpdate('host:examples');
                 this.setState({examples: list});
                 return list;
             } catch (e) {
@@ -1462,7 +1487,10 @@ class CircuitTab extends React.Component {
             window.dispatchEvent(new CustomEvent('bw-debug-phase', {detail: {phase}}));
         }
         if (phase === 'idle' || phase === 'error') {
-            if (this.state.debugState !== null) this.setState({debugState: null});
+            if (this.state.debugState !== null) {
+                this._markReactUpdate('host:runner-state');
+                this.setState({debugState: null});
+            }
             return;
         }
         // GAP C fix: rebind the diagnostic hook to the ACTIVE board while a
@@ -1540,6 +1568,7 @@ class CircuitTab extends React.Component {
             floorDue
         })) {
             this._debugStateAt = now;
+            this._markReactUpdate('host:runner-state');
             this.setState({
                 board,
                 debugState: {
@@ -1752,6 +1781,7 @@ class CircuitTab extends React.Component {
                 <div style={this.state.panel === 'designer' ?
                     {flex: '1 1 auto', minHeight: 0, overflow: 'auto'} : {display: 'none'}}>
                     {profileReactSubtree(React, 'CircuitDesigner', (<Designer
+                    performanceProbe={this._performanceProbe}
                     stc={stc}
                     examples={this.state.examples || undefined}
                     onLoadExample={this.loadExample}

@@ -8,6 +8,7 @@ import {mkdir, writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {chromium} from 'playwright';
 import {
+    attributeReactCommits,
     summarizeI8086Pump,
     summarizeI8086Repetitions,
     summarizeI8086Timeline,
@@ -49,9 +50,9 @@ try {
             localStorage.clear();
             localStorage.setItem('bw-starter-v1-complete', '1');
             window.__BW_I8086_PERF__ = {
-                samples: [], longTasks: [], reactProfiles: [], milestones: [
+                samples: [], longTasks: [], reactProfiles: [], reactUpdateSources: [], milestones: [
                     {name: 'probe-installed', at: performance.now()}
-                ], limit: 1000, profileLimit: 2000
+                ], limit: 1000, profileLimit: 2000, sourceLimit: 4000
             };
             if (typeof PerformanceObserver === 'function') {
                 try {
@@ -144,6 +145,12 @@ try {
             sampleStart,
             sampleEnd
         });
+        const probeInstalledAt = raw.milestones.find(mark => mark.name === 'probe-installed')?.at ?? 0;
+        const circuitOpenAt = raw.milestones.find(mark => mark.name === 'circuit-open-request')?.at ?? 0;
+        const startupAttribution = attributeReactCommits(
+            raw.reactProfiles, raw.reactUpdateSources, {from: probeInstalledAt, to: sampleStart});
+        const circuitOpenAttribution = attributeReactCommits(
+            raw.reactProfiles, raw.reactUpdateSources, {from: circuitOpenAt, to: sampleStart});
         const ratio = simMs / elapsedMs;
         const result = {
             profile: name,
@@ -164,6 +171,10 @@ try {
                 runtime: summarizeReactProfiles(runtimeProfiles),
                 all: summarizeReactProfiles(raw.reactProfiles)
             },
+            reactAttribution: {
+                startup: startupAttribution,
+                circuitOpen: circuitOpenAttribution
+            },
             heapBytes: raw.heapBytes,
             userAgent: raw.userAgent,
         };
@@ -171,7 +182,7 @@ try {
         profileResults.push(result);
         await writeFile(resolve(rawDir, `${name}-${String(repetition).padStart(2, '0')}.json`),
             `${JSON.stringify({
-                schema: 'brickwright/i8086-browser-performance-raw/v1',
+                schema: 'brickwright/i8086-browser-performance-raw/v2',
                 url,
                 profile: {name, ...contextOptions, cpuThrottleRate},
                 repetition,
@@ -191,10 +202,21 @@ try {
             + `board ${result.pumpBreakdown.phases.boardMs.percentOfPump.toFixed(1)}%, `
             + `publish ${result.pumpBreakdown.phases.publishMs.percentOfPump.toFixed(1)}%; `
             + `${result.pumpBreakdown.snapshots.built}/${samples.length} snapshots built`);
-        const missingProfiles = ['DebugPanel', 'CircuitDesigner'].filter(id =>
+        const startupDesigner = startupAttribution.boundaries.CircuitDesigner;
+        if (startupDesigner) console.log(`  React attribution: CircuitDesigner `
+            + `${startupDesigner.attributedCommits}/${startupDesigner.commits} startup commits attributed, `
+            + `${startupDesigner.unattributedCommits} unknown`);
+        const missingProfiles = ['DebugPanel', 'CircuitDesigner', 'BoardCanvas'].filter(id =>
             !raw.reactProfiles.some(sample => sample.id === id));
         if (missingProfiles.length) {
             throw new Error(`${name} #${repetition} profiling build emitted no ${missingProfiles.join(', ')} commits`);
+        }
+        for (const [windowName, attribution] of Object.entries(result.reactAttribution)) {
+            for (const [id, boundary] of Object.entries(attribution.boundaries)) {
+                if (boundary.attributedCommits + boundary.unattributedCommits !== boundary.commits) {
+                    throw new Error(`${name} #${repetition} ${windowName}/${id} attribution lost commits`);
+                }
+            }
         }
         if (samples.length < 150 || ratio < 0.25) {
             throw new Error(`${name} #${repetition} 8086 benchmark did not sustain 0.25x real time`);
@@ -212,7 +234,7 @@ try {
     }
 } finally {
     await writeFile(resolve(outDir, 'report.json'), `${JSON.stringify({
-        schema: 'brickwright/i8086-browser-performance/v2', url, repetitions, results, summaries,
+        schema: 'brickwright/i8086-browser-performance/v3', url, repetitions, results, summaries,
     }, null, 2)}\n`);
     await browser.close();
 }

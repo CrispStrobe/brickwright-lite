@@ -837,8 +837,11 @@ Next tasks, in order:
    does not claim to emulate RAM, core count, network or a named phone. All
    nine receipts passed; median speed remained about 30.35× XT, including the
    throttled profile.
-4. Instrument `BoardCanvas`/host update ownership. The outer boundary stayed
-   at 15 commits, so further setter edits without this evidence are guessing.
+4. **Implemented; hosted proof pending.** Benchmark-only `BoardCanvas`, host,
+   fit, resize, board-state and declaration marks now attribute both the full
+   startup and the narrower Circuit-open window. Normal sessions retain their
+   original React hierarchy and allocate no trace state. Do not begin item 5
+   until the hosted receipt names resize/fit work as material.
 5. Merge the two observers of the same canvas container only after task 4
    identifies resize/fit work as material.
 6. Use CI webpack stats to attribute the approximately 9.1 MB initial chunk

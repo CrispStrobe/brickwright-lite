@@ -14,6 +14,20 @@ const recordReactProfile = (id, phase, actualDuration, baseDuration, startTime, 
     });
 };
 
+/** Record why React was asked to update, only while the benchmark probe exists. */
+const recordReactUpdateSource = (source, detail) => {
+    const probe = typeof window !== 'undefined' ? window.__BW_I8086_PERF__ : null;
+    if (!probe) return;
+    const sources = probe.reactUpdateSources || (probe.reactUpdateSources = []);
+    if (sources.length >= (probe.sourceLimit || 4000)) return;
+    sources.push({
+        seq: sources.length + 1,
+        source,
+        at: performance.now(),
+        ...(detail === undefined ? {} : {detail})
+    });
+};
+
 /**
  * Wrap a subtree only while the production performance probe is installed.
  * The normal application keeps the original child and element hierarchy.
@@ -29,4 +43,22 @@ const profileReactSubtree = (React, id, child) => {
     return React.createElement(React.Profiler, {id, onRender: recordReactProfile}, child);
 };
 
-export {profileReactSubtree, recordReactProfile};
+// Stable identities keep an opt-in probe from changing hook dependencies. The
+// object is exposed only when the benchmark installed its global before boot;
+// ordinary production renders allocate no probe object and record no marks.
+let reactPerformanceProbe = null;
+const getReactPerformanceProbe = () => {
+    if (typeof window === 'undefined' || !window.__BW_I8086_PERF__) return null;
+    if (!reactPerformanceProbe) reactPerformanceProbe = Object.freeze({
+        mark: recordReactUpdateSource,
+        profile: profileReactSubtree
+    });
+    return reactPerformanceProbe;
+};
+
+export {
+    getReactPerformanceProbe,
+    profileReactSubtree,
+    recordReactProfile,
+    recordReactUpdateSource
+};
