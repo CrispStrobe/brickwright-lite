@@ -71,9 +71,11 @@
     "test:all": "npm run test && npm run smoke:debugger",
     "probe:layout": "node scripts/probe-layout.mjs",
     "verify:boot-payload": "node scripts/verify-boot-payload.mjs",
-    "test:fast": "node --test $(ls test/*.test.mjs | grep -v -E 'lesson-numeric-contract|lesson-defect-detector')",
-    "test:corpus": "node --test test/lesson-numeric-contract.test.mjs test/lesson-defect-detector.test.mjs",
-    "verify:text-costume-fonts": "node scripts/verify-text-costume-fonts.mjs"
+    "test:fast": "node --test --test-reporter=tap --test-reporter-destination=stdout --test-reporter=./scripts/lib/test-census-reporter.mjs --test-reporter-destination=test-results/fast.census.json $(node scripts/list-tests.mjs fast)",
+    "test:corpus": "node --test --test-reporter=tap --test-reporter-destination=stdout --test-reporter=./scripts/lib/test-census-reporter.mjs --test-reporter-destination=test-results/corpus.census.json $(node scripts/list-tests.mjs corpus)",
+    "verify:text-costume-fonts": "node scripts/verify-text-costume-fonts.mjs",
+    "check:test-run": "node scripts/check-test-run.mjs",
+    "audit:clean": "node scripts/audit-clean-checkout.mjs --integrate"
   },
   "engines": {
     "node": "22.x"

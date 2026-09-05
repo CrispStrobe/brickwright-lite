@@ -48,7 +48,10 @@ test('CircuitTab keeps broad circuit imports behind the guarded load boundary', 
         `${lib}bw-board/i8086-extract.js`,
         `${lib}bw-circuit-ui/index.js`
     ]) {
-        assert.ok(load.includes(`import(/* webpackChunkName:`) && load.includes(specifier),
+        // Containment, not co-presence: the specifier must sit INSIDE a dynamic
+        // import with a chunk name, not merely somewhere in the same slice as one.
+        const escaped = specifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        assert.match(load, new RegExp(`import\\(/\\* webpackChunkName: "[^"]+" \\*/ '${escaped}'\\)`),
             `${specifier} is no longer dynamically owned by the guarded designer load`);
     }
     const wake = source.slice(source.indexOf('_circuitFileWake ('), source.indexOf('componentDidMount ()'));

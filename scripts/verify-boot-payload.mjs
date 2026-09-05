@@ -53,6 +53,18 @@ const LAZY = [
     // carry that key too. The first sprite's name occurs only in the manifests.
     {what: 'asset library manifests', marker: '"name":"Abby"', chunk: 'asset-library-index',
         why: 'the import() calls in the library containers and src/lib/offline-assets.js'},
+    // The circuit designer and the board library (971bf4207 deferred them for the
+    // debugger-only layouts). test/circuit-designer-load-policy.test.mjs asserts
+    // the boundary by reading circuit-tab.jsx's TEXT; this asserts it in BYTES —
+    // a specifier that moves to a third file the initial chunk still pulls in
+    // passes the text and fails here. Location only: some layouts DO request
+    // these chunks at first paint, so "not preloaded" is the eager-script check.
+    {what: 'circuit DRC rules', marker: 'Check the address decode wiring on the breadboard.', chunk: 'bw-circuit-ui',
+        why: 'the guarded load in overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx (webpackChunkName "bw-circuit-ui")'},
+    {what: 'board canvas', marker: 'Could not recognise this file', chunk: 'bw-circuit-ui',
+        why: 'the guarded load in circuit-tab.jsx (webpackChunkName "bw-circuit-ui")'},
+    {what: '6502 bus extractor (bw-board)', marker: 'no RAM, ROM, VIA or ACIA on the board', chunk: 'bw-board',
+        why: 'the guarded load in circuit-tab.jsx (webpackChunkName "bw-board")'},
     {what: 'lesson waves', marker: '"journeyId":"lesson-waves', altMarkers: ['journeyId:"lesson-waves'], chunk: 'guided-lessons',
         why: 'React.lazy(GuidedLessons) in src/components/gui/gui.jsx',
         // The core lessons.json IS eager (gui.jsx needs it for journey routing), so the

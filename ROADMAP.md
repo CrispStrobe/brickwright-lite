@@ -363,6 +363,19 @@ tuned to a production build fails a development one for being a development one.
 - `webpack.config.js` turns on webpack's filesystem cache for LOCAL builds only (CI's cache
   directory does not survive the run, so there it would only cost the write).
 
+- (2026-09-05, afternoon) `verify-boot-payload` also holds the circuit-designer boundary from
+  971bf4207 in BYTES — bw-board / bw-circuit-ui markers absent from the eager scripts, present in
+  `chunks/bw-board.js` and `chunks/bw-circuit-ui.js` — beside the text assertions in
+  `test/circuit-designer-load-policy.test.mjs`, whose line-51 co-presence check became containment.
+  Measured on main 115b4da18: first load 5.86 MB over 14 requests; ratchet 9 → 7 MB.
+- `scripts/check-test-run.mjs` + `scripts/lib/test-census-reporter.mjs`: both CI test steps now
+  verify that the run REPORTED ON WHAT IT WAS HANDED — any `not ok` is counted by `# fail`, and
+  every file `scripts/list-tests.mjs` puts in the set appears in a per-file census with ≥1 test.
+  node's own reporters (TAP and junit alike) flatten a multi-file run and lose the file, so a
+  suite that vanished from the glob or threw before defining a test was a smaller green number;
+  the census reporter keys `test:pass`/`test:fail` on `event.data.file`. The npm scripts read
+  the fast/corpus split from `list-tests.mjs` too, so runner and auditor cannot disagree.
+
 **Not done, on purpose:** fanning the ~30 browser gates into a matrix job. It would take ~4 min
 off the critical path and cost 3-4× the runner minutes on an account whose queue starvation is
 documented in BLOCKED.md and §2.1; the restructure cannot be verified without pushing, and

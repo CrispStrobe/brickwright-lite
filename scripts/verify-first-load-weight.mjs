@@ -59,8 +59,12 @@ const OUT = path.resolve('artifacts/first-load-weight');
  *
  *  7.64 MB over 24 requests once the render fonts stopped arriving at boot
  *  (they are fetched by the first SVG with text; scripts/apply-render-overlay.mjs
- *  and verify-text-costume-fonts.mjs). 9 MB. */
-const BUDGET_MB = 9.0;
+ *  and verify-text-costume-fonts.mjs). 9 MB.
+ *
+ *  5.86 MB over 14 requests once the circuit designer and bw-board stopped
+ *  loading in layouts that cannot paint them (971bf4207, another lane's work;
+ *  measured here on main 115b4da18 rather than taken from its bench). 7 MB. */
+const BUDGET_MB = 7.0;
 
 let failed = 0;
 const record = (name, ok, detail = '') => {
