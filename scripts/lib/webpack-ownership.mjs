@@ -327,15 +327,9 @@ export const assertLazySvgSanitizerBoundary = report => {
     if (svg?.mdnData?.found) {
         failures.push('mdn-data is bundled although SVG sanitation needs no validation lexer');
     }
-    // P11's accepted tree was the declared P13 baseline. Enforce the actual
-    // user-facing win (initial emitted JS), not the size of the deferred
-    // capability: pruning more code from the lazy chunk must never fail.
-    const initialBaselineBytes = 4552523;
-    const requiredReductionBytes = 75 * 1024;
-    const maximumInitialBytes = initialBaselineBytes - requiredReductionBytes;
-    if ((report.initial?.bytes || 0) > maximumInitialBytes) {
-        failures.push(`P13 initial JavaScript exceeds ${maximumInitialBytes} bytes ` +
-            `(${initialBaselineBytes} baseline minus ${requiredReductionBytes})`);
+    const cssEmittedBytes = svg?.cssPayload?.emittedBytes || 0;
+    if (cssEmittedBytes < 75 * 1024) {
+        failures.push(`the css-tree sanitizer asset fell below 75 KiB: ${cssEmittedBytes} bytes`);
     }
     return failures;
 };

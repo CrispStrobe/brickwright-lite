@@ -28,8 +28,6 @@ describe('SVG costume upload sanitation', () => {
         let releaseFirst;
         let markFirstStarted;
         const firstStarted = new Promise(resolve => { markFirstStarted = resolve; });
-        let markSecondSeen;
-        const secondSeen = new Promise(resolve => { markSecondSeen = resolve; });
         global.FileReader = class FileReader {
             readAsArrayBuffer (file) {
                 this.result = file.data;
@@ -45,19 +43,19 @@ describe('SVG costume upload sanitation', () => {
         };
 
         try {
-            handleFileUpload(fileInput, (data, type, name) => {
+            const completed = handleFileUpload(fileInput, (data, type, name) => {
                 seen.push(name);
                 if (name === 'first') {
                     markFirstStarted();
                     return new Promise(resolve => { releaseFirst = resolve; });
                 }
-                markSecondSeen();
             }, jest.fn());
             await firstStarted;
             expect(seen).toEqual(['first']);
             releaseFirst();
-            await secondSeen;
+            await completed;
             expect(seen).toEqual(['first', 'second']);
+            expect(fileInput.value).toBeNull();
         } finally {
             global.FileReader = originalFileReader;
         }

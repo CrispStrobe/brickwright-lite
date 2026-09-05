@@ -133,7 +133,7 @@ const waitForCostume = async (page, name = 'adversarial') => {
 
 const uploadAndMeasure = async (page, file) => {
     const startedAt = await page.evaluate(() => performance.now());
-    await costumeFileInput(page).setInputFiles(file, {timeout: 30000});
+    await costumeFileInput(page).setInputFiles(file);
     await waitForCostume(page);
     return page.evaluate(start => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => {
         const readyAt = performance.now();
@@ -269,7 +269,7 @@ try {
     const requestFailed = page.waitForEvent('requestfailed', {
         predicate: request => SANITIZER_CHUNK.test(request.url()), timeout: 30000
     });
-    await costumeFileInput(page).setInputFiles(fixture, {timeout: 30000});
+    await costumeFileInput(page).setInputFiles(fixture);
     await requestFailed;
     // Cross a rendering turn after the script element's error event so
     // webpack's rejected chunk promise and our retry-cache reset have both
@@ -285,7 +285,7 @@ try {
         failedState.count === before && failedState.creates === 0, JSON.stringify(failedState));
 
     await context.unroute('**/*', abortSanitizerOnce);
-    await costumeFileInput(page).setInputFiles(fixture, {timeout: 30000});
+    await costumeFileInput(page).setInputFiles(fixture);
     await waitForCostume(page);
     const retryState = await costumeState(page);
     record('selecting the same file retries with a new request and succeeds',

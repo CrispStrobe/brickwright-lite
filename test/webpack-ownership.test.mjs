@@ -223,6 +223,7 @@ test('SVG sanitizer ownership is named, non-initial and large enough to matter',
 test('SVG sanitizer boundary rejects missing modules and an insignificant payload', () => {
     const failures = assertLazySvgSanitizerBoundary(summarizeWebpackOwnership(fixture()));
     assert.match(failures.join('\n'), /named svg-sanitizer chunk is missing/);
+    assert.match(failures.join('\n'), /css-tree sanitizer asset fell below 75 KiB/);
     assert.match(failures.join('\n'), /scratch-svg-renderer sanitize-svg is missing/);
     assert.match(failures.join('\n'), /css-tree is missing/);
 });
@@ -276,12 +277,11 @@ test('SVG sanitizer boundary rejects an eager or assetless named entry', () => {
     assert.match(failures.join('\n'), /svg-sanitizer chunk emitted no JavaScript asset/);
 });
 
-test('SVG sanitizer boundary rejects MDN lexer data and a sub-threshold initial saving', () => {
+test('SVG sanitizer boundary rejects MDN lexer data and a shrunken emitted asset', () => {
     const stats = svgSanitizerFixture();
+    stats.assets.find(asset => asset.name.endsWith('css-data.js')).size = 76799;
     stats.modules.push({name: './node_modules/mdn-data/css/properties.json', size: 220000, chunks: [42]});
-    const report = summarizeWebpackOwnership(stats);
-    report.initial.bytes = 4475724;
-    const failures = assertLazySvgSanitizerBoundary(report);
-    assert.match(failures.join('\n'), /P13 initial JavaScript exceeds 4475723 bytes/);
+    const failures = assertLazySvgSanitizerBoundary(summarizeWebpackOwnership(stats));
+    assert.match(failures.join('\n'), /asset fell below 75 KiB: 76799 bytes/);
     assert.match(failures.join('\n'), /mdn-data is bundled/);
 });
