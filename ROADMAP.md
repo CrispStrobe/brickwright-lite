@@ -968,22 +968,27 @@ Next tasks, in order:
    `bw-board/target-kinds.js` in its own `bw-debug-target-kinds` chunk instead
    of importing the broad board barrel merely to obtain labels. The old root
    and factory exports remain compatible. This removes an accidental load
-   edge; it does not mislabel or suppress the separate, deliberate circuit
-   preview load. The next hosted webpack receipt must confirm the boundary.
+   edge; hosted run `33959505220` confirmed a 1.7 KiB non-initial metadata
+   asset while the broad graph remained separately attributable.
 7. **Not activated (2026-09-05).** P6 leaves the engine at about 30.34× XT;
    desktop/mobile median execution totals are 4.7/4.9 ms across roughly 180
    pumps, and earlier P1/P2 deltas remained below timer resolution. Keep the
    deferred engine/JIT/worker hypotheses closed until a workload crosses its
    documented activation threshold.
 
-The next payload hypothesis is also gated: `CircuitTab` currently loads the
-designer graph in debugger-only `right`/`solo` layouts even though no designer
-can paint. Measure that layout in fresh hosted desktop/mobile contexts before
-changing it. Proceed only if pre-paint board/Circuit UI assets exceed 512 KiB
-encoded or 10% of cold-to-runner bytes in both profiles, and preserve File
-actions, starter projects, the Circuit tab, and `top`/`off` stage previews.
-Re-baseline first Circuit paint because the optimization intentionally moves
-work to that boundary.
+**Debugger-only circuit deferral — complete (hosted performance step
+`33962284105`).** The existing nine fresh-context receipts proved that the
+default `right` layout fetched 1,604,171 encoded bytes of `bw-board.js` and
+`bw-circuit-ui.js` before the Circuit click—14.2% of its cold-to-runner bytes
+and well above the 512 KiB activation floor. `right`/`solo` now load the
+debugger without the hidden designer; File actions, circuit starters, the
+dedicated Circuit tab, and `top`/`off` previews still wake it. Debugger faces
+have their own 21,724-byte chunk instead of sharing the full designer label.
+All nine post-change receipts contain zero broad circuit assets before the
+click and zero unmatched or forbidden causal modules; pre-Circuit bytes are
+8,122,239. Median emulator speed remains 30.34x XT. The full workflow was red
+only on separately introduced capability-report and dead-module unit failures;
+the performance step, focused debugger, vendor, and corpus jobs were green.
 
 Every performance change gets an isolated GitHub Actions receipt. Full builds,
 browser profiles and repeated timing runs do not run on the VPS.
