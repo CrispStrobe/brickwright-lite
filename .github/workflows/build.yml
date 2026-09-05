@@ -642,7 +642,8 @@ jobs:
             rm -rf build-profile
             npm run clean
             BW_REACT_PROFILE=1 NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 \
-              ./node_modules/.bin/webpack --profile --json ../../artifacts/i8086-performance/webpack-stats.json
+              ./node_modules/.bin/webpack --profile --stats verbose \
+                --json ../../artifacts/i8086-performance/webpack-stats.json
           )
           node scripts/report-webpack-ownership.mjs
           python3 -m http.server 8618 --directory packages/scratch-gui/build-profile &

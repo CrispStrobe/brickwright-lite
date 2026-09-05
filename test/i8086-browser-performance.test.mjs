@@ -261,7 +261,7 @@ test('CI retains the browser performance receipt', () => {
     assert.match(workflow, /I8086_PERF_REPETITIONS=3/);
     assert.match(workflow, /name: i8086-browser-performance/);
     assert.match(workflow, /path: artifacts\/i8086-performance\/\*\*/);
-    assert.match(workflow, /\.\/node_modules\/\.bin\/webpack --profile --json \.\.\/\.\.\/artifacts\/i8086-performance\/webpack-stats\.json/);
+    assert.match(workflow, /\.\/node_modules\/\.bin\/webpack --profile --stats verbose[\s\\]*\n[\s\\]*--json \.\.\/\.\.\/artifacts\/i8086-performance\/webpack-stats\.json/);
     assert.match(workflow, /node scripts\/report-webpack-ownership\.mjs/);
     assert.match(workflow, /I8086_WEBPACK_STATS=artifacts\/i8086-performance\/webpack-stats\.json/);
     assert.match(workflow, /gzip -9 artifacts\/i8086-performance\/webpack-stats\.json/);
