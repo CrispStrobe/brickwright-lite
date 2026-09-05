@@ -48,7 +48,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  contracts:
+    # Cheap, dependency-free policy verdict before GitHub spends minutes on
+    # four external checkouts, native/WASM compilers and Chromium.
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: {node-version: 22}
+      - name: Static qualification contracts
+        run: node --test test/cycle-core-qualification.test.mjs test/cycle-browser-receipt.test.mjs test/cycle-candidate-decision.test.mjs
+
   qualify:
+    needs: contracts
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -133,18 +146,13 @@ jobs:
           W65C02_ORACLE_ROOT: ${{ github.workspace }}/.cycle-oracles/w65c02
         run: node scripts/qualify-cycle-candidates.mjs
       - name: Install the qualification browser
-        if: always()
         run: npm install --no-save playwright && npx playwright install --with-deps chromium
       - name: Measure the candidate in Chromium
-        if: always()
         env:
           CI: '1'
           Z80_QUALIFICATION_WASM: ${{ github.workspace }}/artifacts/cycle-core-qualification/z80.wasm
           CYCLE_BROWSER_OUTPUT: ${{ github.workspace }}/artifacts/cycle-core-qualification/browser-report.json
         run: node scripts/verify-cycle-candidate-browser.mjs
-      - name: Static qualification contracts
-        if: always()
-        run: node --test test/cycle-core-qualification.test.mjs test/cycle-browser-receipt.test.mjs test/cycle-candidate-decision.test.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:

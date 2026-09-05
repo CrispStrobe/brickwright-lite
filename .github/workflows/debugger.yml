@@ -9,6 +9,7 @@ on:
       - 'docs/CYCLE-ACCURATE-CORE-EVALUATION.md'
       - 'overlay/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx'
       - 'overlay/scratch-gui/src/components/tw-pseudocode/debug-drawer.jsx'
+      - 'overlay/scratch-gui/src/components/tw-pseudocode/debug-*.jsx'
       - 'overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx'
       - 'overlay/scratch-gui/src/lib/bw-board/**'
       - 'overlay/scratch-gui/src/lib/bw-debug/**'
@@ -26,6 +27,7 @@ on:
       - 'docs/CYCLE-ACCURATE-CORE-EVALUATION.md'
       - 'overlay/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx'
       - 'overlay/scratch-gui/src/components/tw-pseudocode/debug-drawer.jsx'
+      - 'overlay/scratch-gui/src/components/tw-pseudocode/debug-*.jsx'
       - 'overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx'
       - 'overlay/scratch-gui/src/lib/bw-board/**'
       - 'overlay/scratch-gui/src/lib/bw-debug/**'
@@ -46,13 +48,35 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: {node-version: 22}
+      - name: Dependency-free debugger architecture verdict
+        run: |
+          node --test \
+            test/debug-cycle-provider.test.mjs \
+            test/debug-cycle-replay.test.mjs \
+            test/debug-correlated-multicpu.test.mjs \
+            test/debug-divergence-bisection.test.mjs \
+            test/debug-session-bundle.test.mjs \
+            test/debug-timed-replay-io.test.mjs \
+            test/debug-timing-waveform.test.mjs
+
   focused:
+    needs: contracts
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with: {node-version: 22}
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: packages/scratch-gui/package-lock.json
       - name: Vendor pinned sources
         run: npm run vendor
       - name: Integrate overlays
