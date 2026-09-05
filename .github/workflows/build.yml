@@ -49,6 +49,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  actions: read        # the browser job audits its own steps (scripts/audit-job-steps.mjs); read-only, never cancels or reruns
 # ROADMAP §2.1, and the reason this is keyed on the COMMIT rather than the ref.
 #
 # `pages-<ref>` is one group for all of main, and GitHub holds exactly ONE
@@ -1215,6 +1216,22 @@ jobs:
             wait-report.txt
             wait-report.json
           if-no-files-found: warn
+
+      # A GREEN JOB MUST NOT HIDE A SKIPPED GATE. Twice on 2026-09-05 a job
+      # reported success while a browser gate inside it was `skipped` — once an
+      # `if:` naming a status function silenced the 17 steps after it, once a
+      # merge moved steps into a job whose conditions no longer held — and every
+      # such green was read as "the gate passed". This is the reviewer's per-step
+      # audit, done by the job itself: it asks the API for this run's steps and
+      # fails, naming them, if any browser gate was skipped while no earlier step
+      # failed. After a real failure it only notes the skipped ones. It MUST stay
+      # the last step of the job that holds the gates — test/browser-gate-timeouts
+      # .test.mjs asserts that, with `if: always()` — and needs `actions: read`.
+      - name: Audit — every browser gate ran
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/audit-job-steps.mjs
 
   corpus:
     runs-on: ubuntu-latest
