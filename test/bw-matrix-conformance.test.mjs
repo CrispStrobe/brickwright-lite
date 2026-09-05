@@ -193,6 +193,7 @@ test('every language with a reader names a module that exists; the one without s
             assert.match(String(l.readerTask), /^L\d+$/, `${l.id}: no reader and no task`);
             continue;
         }
+        if (l.readerNote) assert.match(String(l.readerTask), /^L\d+$/, `${l.id}: a partial reader must name the task that widens it`);
         if (l.reader.endsWith('.js')) assert.ok(existsSync(join(REPO, 'overlay/scratch-gui/src/lib', l.reader)), `${l.id}: reader ${l.reader} missing`);
         if (l.emitter && /^generate/.test(l.emitter)) assert.ok(creator.includes(`    ${l.emitter}(project = this.project`), `${l.id}: emitter ${l.emitter} not in sb3-creator.js`);
     }

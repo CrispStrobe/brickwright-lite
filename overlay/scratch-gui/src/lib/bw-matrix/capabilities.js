@@ -99,12 +99,13 @@ export const LANGUAGES = Object.freeze([
     {id: 'javascript', label: 'JavaScript', reader: 'sb3-creator-javascript.js', emitter: 'generateJavaScript'},
     {id: 'c', label: 'C', reader: 'sb3-creator-c.js', emitter: 'generateC'},
     {id: 'basic', label: 'BASIC', reader: 'sb3-creator-basic.js', emitter: 'generateBASIC'},
-    // The only language without a reader. The ASM tab says so; plan task L1
-    // turns the wall into a partial reader with counted refusals.
+    // The reader lifts the 8086 emitter's own shapes and refuses the rest by
+    // name (plan task L1); 8051/6502/Z80/AVR assembly is still one-way.
     {
         id: 'asm',
         label: 'ASM',
-        reader: null,
+        reader: 'bw-asm/asm-8086-to-pseudocode.js',
+        readerNote: '8086 only: lifts what the ▶ button lowered, refuses hand-written assembly by name',
         readerTask: 'L1',
         emitter: 'pseudocode-8086.js (8086); compiler listings elsewhere'
     },

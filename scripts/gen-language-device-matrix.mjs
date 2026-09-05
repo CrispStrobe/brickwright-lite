@@ -51,7 +51,7 @@ export function buildLanguageDeviceMatrix () {
     for (const r of rows) if (!families.some(d => d.family === r.device.family)) families.push(r.device);
     const head = `| language ↓ / device → | ${families.map(d => d.group === d.label ? d.label : `${d.group}<br>_${d.label}${rows.filter(r => r.device.family === d.family).length > 1 ? ' and kin' : ''}_`).join(' | ')} |`;
     const sep = `| --- | ${families.map(() => '---').join(' | ')} |`;
-    const body = LANGUAGES.map(l => `| **${l.label}**${l.reader ? '' : ` (no reader: ${l.readerTask})`} | ${families.map(d => cellText(cell(l.id, d.id))).join(' | ')} |`);
+    const body = LANGUAGES.map(l => `| **${l.label}**${l.reader ? (l.readerNote ? ` (reader: ${l.readerNote}; ${l.readerTask})` : '') : ` (no reader: ${l.readerTask})`} | ${families.map(d => cellText(cell(l.id, d.id))).join(' | ')} |`);
 
     const devRows = DEVICES.map(d => {
         const sims = d.sim.map(e => `${e.engine} [${e.runs.join(',')}]${e.status === STATUS.OPEN ? ' (open)' : ''}`).join('<br>') || '—';

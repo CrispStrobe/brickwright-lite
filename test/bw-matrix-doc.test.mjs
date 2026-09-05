@@ -23,7 +23,7 @@ test('the document carries the things a reader must not have to look up', () => 
     const doc = buildLanguageDeviceMatrix();
     assert.match(doc, /schema v2/);
     assert.match(doc, /\*\*N\*\* SmallerC/, 'the 8086 C cell is native');
-    assert.match(doc, /no reader: L1/, 'ASM says it has no reader and which task adds one');
+    assert.match(doc, /reader: 8086 only[^|]*L1/, 'ASM says what its reader lifts and which task widens it');
     assert.match(doc, /stc89c52 \|[^\n]*c: hosted/, 'the STC89C52 override is visible');
     assert.match(doc, /\| N1 \| \d+ \|/, 'open tasks are listed by id with a cell count');
     assert.match(doc, /tier 2a/, 'tiers are rendered');
