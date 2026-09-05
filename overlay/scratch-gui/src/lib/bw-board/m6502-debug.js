@@ -155,6 +155,22 @@ export function createM6502DebugTarget(adapter, opts = {}) {
       return result;
     },
 
+    /** Execute one complete instruction for checked history replay. */
+    replayInstruction() {
+      const support = machine.checkpointSupport();
+      if (!support.supported) return {accepted: false, code: 'unsupported-replay',
+        reason: support.reasons.join('; ')};
+      if (cpu.stopped || cpu.waiting) return {accepted: false, code: 'halted-without-instruction',
+        reason: 'the stopped or waiting 6502 cannot retire an instruction without a recorded wake input'};
+      const before = machine.cycles;
+      const cycles = machine.step();
+      if (!(cycles > 0)) return {accepted: false, code: 'instruction-not-retired',
+        reason: 'the 6502 did not retire an instruction'};
+      return {accepted: true, boundary: 'instruction', cycles: machine.cycles - before};
+    },
+
+    debugTime() { return debugEvents.debugTime(); },
+
     regs() {
       return {
         pc: cpu.pc,

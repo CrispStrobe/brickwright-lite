@@ -10,6 +10,7 @@ import {hashReplayValues} from '../overlay/scratch-gui/src/lib/bw-debug/recorder
 import {createDebugRecorder} from '../overlay/scratch-gui/src/lib/bw-debug/recorder.js';
 import {createDebugEventStream} from '../overlay/scratch-gui/src/lib/bw-debug/event-stream.js';
 import {createRecordingSession} from '../overlay/scratch-gui/src/lib/bw-debug/recording-session.js';
+import {createInstructionReplayController} from '../overlay/scratch-gui/src/lib/bw-debug/instruction-replay.js';
 
 const m6502Config = (clockHz = 1_000_000, chips = []) => ({
     clockHz, regions: [{kind: 'ram', start: 0, end: 0xffff}], chips
@@ -50,7 +51,7 @@ test('6502 target checkpoints replay CPU, memory and paired VIA state determinis
     assert.equal(run6502(machine, 12), expected);
 });
 
-test('Z80 target checkpoints replay CPU and memory deterministically without reverse claims', () => {
+test('Z80 target checkpoints replay CPU and memory deterministically', () => {
     const machine = new Z80Machine(z80Config());
     machine.mem.set([0x21, 0x00, 0x80, 0x34, 0xc3, 0x03, 0x00], 0);
     const target = createZ80DebugTarget({machine});
@@ -63,6 +64,48 @@ test('Z80 target checkpoints replay CPU and memory deterministically without rev
     const expected = runZ80(machine, 20);
     assert.equal(target.restoreCheckpoint(checkpoint), undefined);
     assert.equal(runZ80(machine, 20), expected);
+});
+
+test('classic targets reverse to a recorded instruction boundary with verified event replay', () => {
+    const fixtures = [
+        (() => {
+            const machine = new M6502Machine(m6502Config());
+            machine.mem.set([0xe8, 0xe8, 0x4c, 0x00, 0x02], 0x0200);
+            machine.cpu.pc = 0x0200;
+            return {machine, target: createM6502DebugTarget({machine})};
+        })(),
+        (() => {
+            const machine = new Z80Machine(z80Config());
+            machine.mem.set([0x3c, 0x3c, 0xc3, 0x00, 0x00], 0);
+            return {machine, target: createZ80DebugTarget({machine})};
+        })()
+    ];
+    for (const {machine, target} of fixtures) {
+        const recorder = createDebugRecorder();
+        const eventStream = createDebugEventStream();
+        const session = createRecordingSession({recorder, eventStream, getTarget: () => target});
+        target.onDebugEvent(event => eventStream.publish(event));
+        eventStream.onEvent(event => session.appendBatch([event]));
+        assert.equal(session.start().accepted, true);
+        machine.step();
+        const destination = machine.saveState();
+        const eventCursor = eventStream.nextSequence();
+        machine.step();
+        session.stop();
+        const logicalDomain = domain => domain.replace(/-reset-\d+$/, '');
+        const replay = createInstructionReplayController({recorder, getTarget: () => target,
+            restoreCheckpoint: checkpoint => session.restore(checkpoint.eventCursor),
+            subscribeEvents: listener => eventStream.onEvent(listener),
+            normalizeTimeDomain: logicalDomain,
+            normalizeEvent: event => {
+                const {schema, seq, inputCursor, ...fact} = event;
+                return {...fact, time: {...fact.time, domain: logicalDomain(fact.time.domain)}};
+            }});
+        assert.equal(replay.canReverse().accepted, true);
+        const result = replay.reverseToEvent(eventCursor);
+        assert.equal(result.accepted, true, result.reason);
+        assert.deepEqual(machine.saveState(), destination);
+    }
 });
 
 test('checkpoint restore fails closed on schema, topology and incomplete state', () => {

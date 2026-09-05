@@ -132,6 +132,22 @@ export function createZ80DebugTarget(adapter, opts = {}) {
       return result;
     },
 
+    /** Execute one complete instruction for checked history replay. */
+    replayInstruction() {
+      const support = machine.checkpointSupport();
+      if (!support.supported) return {accepted: false, code: 'unsupported-replay',
+        reason: support.reasons.join('; ')};
+      if (cpu.halted) return {accepted: false, code: 'halted-without-instruction',
+        reason: 'the halted Z80 cannot retire an instruction without a recorded interrupt input'};
+      const before = machine.cycles;
+      const cycles = machine.step();
+      if (!(cycles > 0)) return {accepted: false, code: 'instruction-not-retired',
+        reason: 'the Z80 did not retire an instruction'};
+      return {accepted: true, boundary: 'instruction', cycles: machine.cycles - before};
+    },
+
+    debugTime() { return debugEvents.debugTime(); },
+
     regs() {
       return {
         pc: cpu.pc, sp: cpu.sp,

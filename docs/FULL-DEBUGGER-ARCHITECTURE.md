@@ -468,6 +468,11 @@ with host traps, live bit-banged queues, rendered-audio queues or an unpaired
 component codec refuse and withdraw recording capability. Restore opens a new
 event-time epoch. Cross-instance, topology, mutation-isolation and live
 recording-session tests cover both architectures.
+Both classic adapters now also expose the synchronous instruction-replay and
+debug-clock boundary required by the target-neutral reverse engine. Focused
+live tests restore and replay each real core to a recorded retire cursor and
+compare the complete resulting machine state; stopped/WAI/HALT states refuse
+when no recorded wake input can retire an instruction.
 
 A target-neutral instruction replay controller can restore the nearest complete
 checkpoint, reapply the exact input prefix at target-clock boundaries, execute
