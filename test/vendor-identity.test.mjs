@@ -20,6 +20,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
@@ -179,7 +180,32 @@ test('upstream has not converged on the lite-only work (needs the bw-board tree)
         path.resolve(ROOT, '../../bw-board'),
         path.resolve(ROOT, '../bw-board')
     ].filter(Boolean);
-    const srcDir = candidates.map(d => path.join(d, 'src')).find(d => fs.existsSync(d));
+    // NEVER BIND TO A CANDIDATE INSIDE THE SYSTEM TEMP DIR.
+    //
+    // `path.resolve(ROOT, '../bw-board')` is meant to find a sibling checkout.
+    // When ROOT is a reproduction tree at /tmp/clean-checkout-XXXX, that
+    // candidate is `/tmp/bw-board` -- and on this box `/tmp/bw-board` is a
+    // SYMLINK TO THE REAL REPOSITORY, created weeks ago by someone else. So a
+    // run inside a deliberately isolated tree reached straight back out to the
+    // host's live bw-board, which defeats the entire point of reproducing a
+    // clean checkout.
+    //
+    // It happened to resolve somewhere real. That is luck: /tmp is shared and
+    // world-writable, and the next thing named `bw-board` there could be
+    // anything at all. A source sibling is never legitimately inside the
+    // system temp directory, so refuse the whole class rather than special-case
+    // the symlink.
+    //
+    // Found because `audit-clean-checkout` reported this file FAILING while the
+    // same tree run by hand PASSED -- the two disagreed, and the disagreement
+    // was the finding.
+    const TMP = fs.realpathSync(os.tmpdir());
+    const outsideTmp = (d) => {
+        try { return !fs.realpathSync(d).startsWith(TMP); } catch { return false; }
+    };
+    const srcDir = candidates.map(d => path.join(d, 'src'))
+        .filter(d => fs.existsSync(d))
+        .filter(d => process.env.BW_BOARD_DIR ? true : outsideTmp(d))[0];
     if (!srcDir) {
         // Not an assertion failure -- upstream genuinely is not here. But it is
         // reported, and it is NOT counted as the invariant having been checked.

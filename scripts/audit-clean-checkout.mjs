@@ -63,7 +63,7 @@
  * @module
  */
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, symlinkSync, existsSync, readdirSync, mkdirSync, statSync, realpathSync } from 'node:fs';
+import { mkdtempSync, rmSync, symlinkSync, existsSync, readdirSync, mkdirSync, statSync, realpathSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -181,6 +181,105 @@ function killStragglersIn (dir) {
     return killed;
 }
 
+/**
+ * THE CLASS THIS SCRIPT STRUCTURALLY CANNOT REPRODUCE: an absolute path.
+ *
+ * Everything else here works because `git archive HEAD` produces exactly the
+ * tracked tree, so a RELATIVE path that escapes it fails in the temp dir the
+ * same way it fails in CI. AN ABSOLUTE PATH DOES NOT. `/mnt/volume1/...`
+ * resolves identically inside the clean tree and outside it, so a test
+ * depending on one PASSES HERE AND FAILS IN CI -- which is the exact failure
+ * this script exists to make impossible, arriving through the one door it
+ * cannot close.
+ *
+ * Reproduction is the right technique and this is its blind spot, so the
+ * blind spot gets a DETECTOR rather than a comment. Named as such: a detector
+ * needs a signal and can be fooled, which is why the rest of this file is not
+ * one.
+ *
+ * Raised by lego-a4, who hit three in bw-board -- the ehBASIC ROM, an MS-DOS
+ * toolchain, and a 191 MB corpus at an absolute path no runner has -- after
+ * building a CI step whose success quantified over "the assembler is present"
+ * while its goal was "the comparison ran".
+ *
+ * ONLY PATHS THAT ARE ACTUALLY READ COUNT. lite's own `gate-shapes.test.mjs`
+ * contains `/mnt/volume1/code/bw-board/src/i8086.js` as a FIXTURE STRING for
+ * a detector test -- it is a needle, not a dependency, and flagging it would
+ * be the same false positive that had this repo's shape auditor crying wolf
+ * on nine module specifiers this morning.
+ */
+const SAFE_ROOTS = ['/tmp/', '/dev/', '/proc/', '/sys/', '/var/tmp/'];
+function absolutePathDeps (dir, files) {
+    const hits = [];
+    let scanned = 0;
+    for (const rel of files) {
+        let src;
+        try { src = readFileSync(join(dir, rel), 'utf8'); }
+        catch (e) {
+            // NOT `catch { continue }`. A silent skip makes "no absolute-path
+            // dependencies" indistinguishable from "read nothing at all" --
+            // species 13, swallowed precondition, in the detector I had just
+            // written to close a different blind spot. It cost twenty minutes
+            // of debugging a regex that was correct.
+            console.error(`  (could not scan ${rel} for absolute paths: ${e.code || e.message})`);
+            continue;
+        }
+        scanned++;
+        for (const m of src.matchAll(/['"`](\/[A-Za-z0-9_.@-][^'"`\n]{3,})['"`]/g)) {
+            const target = m[1];
+            if (SAFE_ROOTS.some((r) => target.startsWith(r))) continue;
+            if (target.startsWith(dir)) continue;
+            // Argument to a filesystem or exec call, not a string being searched for.
+            const before = src.slice(Math.max(0, m.index - 90), m.index);
+            if (!/(?:readFileSync|readFile|existsSync|statSync|realpathSync|readdirSync|access|createRequire|execFileSync|execSync|spawnSync|spawn|import)\s*\(\s*(?:[A-Za-z_$][\w$]*\s*,\s*)?$|path\.(?:join|resolve)\s*\(\s*$/.test(before)) continue;
+            hits.push({file: rel, line: src.slice(0, m.index).split('\n').length, target});
+        }
+
+        // THE DOMINANT REAL SHAPE IS A CONFIG DEFAULT, not a call argument:
+        //
+        //     const CORPUS = process.env.I8086_CORPUS ||
+        //         '/mnt/volume1/code/retro-corpus-8086/.../Source Code';
+        //
+        // The literal is never passed to readFileSync -- the VARIABLE is,
+        // pages later. My first version required the literal to be an argument
+        // and therefore missed the one real instance in this repo, and I only
+        // knew because I ran it against a file I KNEW had the dependency and
+        // watched it report clean. A detector that reports clean on its own
+        // motivating example is not a detector.
+        //
+        // So: assign-then-use, the same two-step derivation the perf-hint gate
+        // uses. It also keeps the fixture case out -- gate-shapes.test.mjs has
+        // `const p = '/mnt/.../i8086.js';` INSIDE A STRING passed to scan(), so
+        // `p` is never a variable in this file's own code and never reaches a
+        // read.
+        for (const m of src.matchAll(
+            // `[^;]*?` NOT `[^;\n]*?`: the real instance wraps across two lines --
+            // `const CORPUS = process.env.I8086_CORPUS ||\n    '/mnt/...';` -- and
+            // forbidding the newline made this match nothing at all. Found by
+            // running the regex against the actual file after the tool reported
+            // clean on the dependency it was written to find.
+            /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*[^;]*?['"`](\/[A-Za-z0-9_.@-][^'"`\n]{3,})['"`]/g
+        )) {
+            const [, name, target] = m;
+            if (SAFE_ROOTS.some((r) => target.startsWith(r))) continue;
+            if (target.startsWith(dir)) continue;
+            if (hits.some((h) => h.target === target && h.file === rel)) continue;
+            const used = new RegExp(
+                `(?:readFileSync|readFile|existsSync|statSync|realpathSync|readdirSync|access|` +
+                `execFileSync|execSync|spawnSync|spawn)\\s*\\([^)]*\\b${name}\\b|` +
+                `path\\.(?:join|resolve)\\s*\\(\\s*${name}\\b`
+            );
+            if (!used.test(src)) continue;
+            hits.push({file: rel, line: src.slice(0, m.index).split('\n').length, target,
+                via: name});
+        }
+    }
+    // The count is returned so the caller can say what it looked at rather
+    // than only what it found.
+    hits.scanned = scanned;
+    return hits;
+}
+
 const work = mkdtempSync(join(tmpdir(), 'clean-checkout-'));
 
 // CLEAN UP WHEN KILLED, NOT ONLY WHEN FINISHED.
@@ -261,6 +360,25 @@ try {
         for (const line of why.slice(0, 3)) console.log(`       ${line.trim()}`);
     }
     console.log(`\n${files.length} file(s) run from the tracked tree; ${failed} failed.`);
+
+    // REPORTED SEPARATELY FROM THE PASS/FAIL, because these did not fail here
+    // and cannot: an absolute path resolves the same inside the clean tree as
+    // outside it. A green run above says nothing about them, and the whole
+    // point of this section is that the green does not cover them.
+    const abs = absolutePathDeps(work, files);
+    if (abs.length) {
+        console.error(`\n${abs.length} ABSOLUTE PATH(S) THIS REPRODUCTION CANNOT TEST:`);
+        for (const a of abs) console.error(`  ${a.file}:${a.line}  ${a.target}`);
+        console.error('\n  These resolve identically inside the clean tree and outside it, so');
+        console.error('  they PASSED ABOVE and will fail on any machine that lacks them. That');
+        console.error('  is the exact failure this script exists to catch, arriving through the');
+        console.error('  one door reproduction cannot close. Commit the fixture, take the path');
+        console.error('  from an environment variable with a loud skip when it is unset, or');
+        console.error('  accept it knowingly -- but do not read the green above as covering it.');
+    } else {
+        console.log(`  no absolute-path dependencies in the ${abs.scanned} file(s) scanned ` +
+            '(the class this reproduction cannot cover)');
+    }
     if (failed) {
         console.error('These pass here and cannot pass from a clean checkout: they depend on '
             + 'files git does not have, or on paths outside the repository. Commit the '

@@ -316,8 +316,9 @@ fails unless it touched both.
     }
   },
   "lineLevelOnly": {
-    "why": "These files carry forward-ported work that adds no NEW declared identifier -- changed method bodies, extra branches, comments -- so the identifier-based coverage above cannot see them. 458 lines as of 2026-09-05. They are protected by the sync's content-derived guard, but that only runs when someone runs the sync; this inventory is what makes the test suite see them too. Recorded as a SET, not counts, so ordinary edits do not churn it.",
+    "why": "These files carry forward-ported work that adds no NEW declared identifier -- changed method bodies, extra branches, comments -- so the identifier-based coverage above cannot see them. 458 lines as of 2026-09-05. They are protected by the sync's content-derived guard, but that only runs when someone runs the sync; this inventory is what makes the test suite see them too. Recorded as a SET, not counts, so ordinary edits do not churn it. UPDATED 2026-09-05 (later): six files joined the set -- avr8js-debug, i8259, rp2040-bootrom, rp2040js-debug, w65c51, zx-ula. THE SET DOES NOT DISTINGUISH AHEAD FROM BEHIND, and these show both. Measured lite-only vs upstream-only lines: i8259 32/156 and rp2040-bootrom 56/91 are lite being BEHIND (the 8259 rotation work landed in bw-board this afternoon and the vendor is held pending a readable CI verdict); zx-ula 19/3 and avr8js-debug 5/1 look forward-ported. The ratio is a SIGNAL, not proof -- sync-bw-board.mjs says plainly that a content comparison cannot tell direction, and that is still true. What the ratio does is tell you which way to look first. Re-derive after the vendor lands.",
     "files": [
+      "avr8js-debug.js",
       "cortex-m0-machine.js",
       "debug-session.js",
       "debug-target-factory.js",
@@ -325,10 +326,15 @@ fails unless it touched both.
       "i8086-adapter.js",
       "i8086-debug.js",
       "i8086.js",
+      "i8259.js",
       "index.js",
       "m6502-adapter.js",
       "ne2000.js",
-      "reseat-gate.js"
+      "reseat-gate.js",
+      "rp2040-bootrom.js",
+      "rp2040js-debug.js",
+      "w65c51.js",
+      "zx-ula.js"
     ]
   }
 }
