@@ -239,6 +239,16 @@ for (const [remote, dest] of FILES) {
             console.error('  using the two-way rule, which reports upstream\'s own edits as losses.');
             console.error(`  (git -C ${srcDir || '<no --dir>'} show ${OLD_PIN ? OLD_PIN.slice(0, 9) : '<no pin>'}:<file>)`);
         }
+        // Upstream did not touch this file since the old pin: the vendored copy
+        // differs from the incoming only by what lite added on top, and there
+        // is nothing to sync. Keeping it is not a refusal -- a permanently
+        // lite-only addition (the i8086 examples) must not make EVERY bump
+        // refuse, or the guard becomes the thing people --force past.
+        if (!force && base !== null && rewriteImports(base) === next && current !== null) {
+            const kept = linesLostBy(current, next, base).length;
+            console.log(`  kept  ${path.basename(dest)} (unchanged upstream since ${OLD_PIN.slice(0, 9)}; ${kept} lite-only line(s) preserved)`);
+            continue;
+        }
         const lost = force ? [] : linesLostBy(current ?? '', next, base);
         if (lost.length) {
             wouldTruncate.push({file: path.basename(dest), count: lost.length, sample: lost.slice(0, 3)});
