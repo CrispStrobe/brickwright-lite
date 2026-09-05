@@ -140,6 +140,31 @@ test('devices flashFamily() routes are the ones the matrix gives a silicon trans
     }
 });
 
+// ---- artefact-kind deploy branch (L2) ---------------------------------------
+
+// The Pico's C silicon transport carries `flashFamily: null` — it is dispatched
+// not by the vendored flasher map (which the flashFamily sentinels above police)
+// but by an artefact-kind branch in the deploy handler. A C program on the Pico
+// is a bin, not a .py, so the REPL path (deployToPico) cannot carry it. Its cell
+// says `shipped`/`checked`, which is a claim about code: deployPicoUf2() must
+// exist, be reached for pico+C, and take the /uf2 path a REPL cannot. If the
+// route or the handler goes, this goes red and the cell must drop to declared.
+test('the Pico C UF2 transport (L2) is backed by an artefact-kind deploy handler', () => {
+    const pico = deviceById('pico');
+    const t = pico.silicon.find(x => x.transport === 'uf2-bootsel-download');
+    assert.ok(t, 'pico uf2-bootsel-download transport is gone');
+    if (t.status !== STATUS.SHIPPED || t.evidence !== EVIDENCE.CHECKED) return; // still open: nothing to back
+    assert.equal(t.flashFamily, null, 'a checked pico UF2 transport must be null-flashFamily (artefact-kind, not flasher-map)');
+    // The route reads the artefact kind (the active language), not the device alone.
+    assert.match(importer, /device === 'pico' && this\.state\.lang === 'c'[^\n]*deployPicoUf2\(\)/,
+        'flashToBoard route no longer sends pico+C to deployPicoUf2()');
+    // The handler is real, reads the C buffer, and wraps the image as UF2.
+    assert.match(importer, /async deployPicoUf2 \(\)/, 'deployPicoUf2() handler missing');
+    const body = importer.slice(importer.indexOf('async deployPicoUf2 ()'), importer.indexOf('async flashToBoard'));
+    assert.ok(body.includes('/uf2'), 'deployPicoUf2() does not wrap the image as UF2');
+    assert.ok(body.includes('buffers.c'), 'deployPicoUf2() does not read the C buffer');
+});
+
 // ---- local toolchains -------------------------------------------------------
 
 test('the local assembler whitelist and the ASM row agree', () => {

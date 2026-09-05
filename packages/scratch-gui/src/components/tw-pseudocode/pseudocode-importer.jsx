@@ -213,6 +213,9 @@ const L10N = {
         deployPicoFail: e => `Pico deploy failed: ${e}`,
         deployPicoNoPort: 'No Pico found on USB. Plug it in (a normal boot, not BOOTSEL) and try again.',
         deployPicoBootsel: 'The Pico is in BOOTSEL mode — it needs MicroPython first. Flash a MicroPython UF2 onto the RPI-RP2 volume, then deploy again.',
+        deployPicoNoC: 'Write or import C in the C tab first, then deploy.',
+        deployPicoUf2Done: 'firmware.uf2 downloaded. Hold BOOTSEL, plug the Pico into USB (it mounts as the RPI-RP2 drive), and drag firmware.uf2 onto it — it flashes and reboots into your program.',
+        deployPicoUf2Fail: e => `Pico UF2 build failed: ${e}`,
         flashBoard: '⚡ Flash to board',
         flashBoardTitle: 'Compile and write this program to a real board over USB serial',
         flashCompiling: 'compiling for the board…',
@@ -389,6 +392,9 @@ const L10N = {
         deployPicoFail: e => `Pico-Übertragung fehlgeschlagen: ${e}`,
         deployPicoNoPort: 'Kein Pico am USB gefunden. Anstecken (normaler Start, nicht BOOTSEL) und erneut versuchen.',
         deployPicoBootsel: 'Der Pico ist im BOOTSEL-Modus — er braucht zuerst MicroPython. Ein MicroPython-UF2 auf das RPI-RP2-Laufwerk kopieren, dann erneut übertragen.',
+        deployPicoNoC: 'Zuerst C im C-Tab schreiben oder importieren, dann übertragen.',
+        deployPicoUf2Done: 'firmware.uf2 heruntergeladen. BOOTSEL gedrückt halten, den Pico per USB anstecken (er erscheint als Laufwerk RPI-RP2) und firmware.uf2 darauf ziehen — er flasht und startet in dein Programm.',
+        deployPicoUf2Fail: e => `Pico-UF2-Erstellung fehlgeschlagen: ${e}`,
         flashBoard: '⚡ Auf Platine flashen',
         flashBoardTitle: 'Dieses Programm kompilieren und per USB auf eine echte Platine schreiben',
         flashCompiling: 'wird für die Platine kompiliert…',
@@ -881,6 +887,7 @@ class PseudocodeImporter extends React.Component {
         this.flashMicrobitSim = this.flashMicrobitSim.bind(this);
         this.flashMicrobitSimDebug = this.flashMicrobitSimDebug.bind(this);
         this.deployToPico = this.deployToPico.bind(this);
+        this.deployPicoUf2 = this.deployPicoUf2.bind(this);
         this.flashToBoard = this.flashToBoard.bind(this);
         this.flashStm32ViaSwd = this.flashStm32ViaSwd.bind(this);
         this.runPseudocodeOn8086 = this.runPseudocodeOn8086.bind(this);
@@ -2262,6 +2269,41 @@ class PseudocodeImporter extends React.Component {
         return null;
     }
 
+    /** The Pico's C silicon half (L2): a C-tab program compiles to a bare-metal
+     *  RP2040 image on the hosted service, which /uf2 wraps as a UF2 container
+     *  the RP2040 bootrom drag-flashes over BOOTSEL. The REPL path (deployToPico)
+     *  cannot serve this — a bin is not a .py. Origin is the image's own load
+     *  address (0x20000000, the SRAM layout the rp2040 target links and the sim
+     *  runs); a flash-resident image with boot2 is the functional follow-up, out
+     *  of L2's scope — L2 delivers the route and the UF2 offer. */
+    async deployPicoUf2 () {
+        const cSrc = this.state.buffers.c;
+        if (!cSrc || !cSrc.trim()) { this.setState({status: this.L.deployPicoNoC}); return; }
+        this.setState({busy: true, status: this.L.flashCompiling});
+        try {
+            const cres = await fetch('https://stc-compiler.vercel.app/compile', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({code: cSrc, language: 'c', target: 'rp2040', format: 'bin'})
+            });
+            const cout = await cres.json();
+            if (!cout.success) throw new Error(cout.error || 'the compiler refused this program');
+            const ures = await fetch('https://stc-compiler.vercel.app/uf2', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({base64: cout.base64, origin: 0x20000000})
+            });
+            const uout = await ures.json();
+            if (!uout.success) throw new Error(uout.error || 'UF2 conversion failed');
+            const uf2 = Uint8Array.from(atob(uout.base64), c => c.charCodeAt(0));
+            const url = URL.createObjectURL(new Blob([uf2], {type: 'application/octet-stream'}));
+            const a = document.createElement('a');
+            a.href = url; a.download = uout.filename || 'firmware.uf2'; a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+            this.setState({busy: false, status: this.L.deployPicoUf2Done});
+        } catch (e) {
+            this.setState({busy: false, status: this.L.deployPicoUf2Fail(e.message)});
+        }
+    }
+
     /** Compile the current program for its device and write it to a real
      *  board over Web Serial, dispatching to the vendored flasher by
      *  family. Non-serial-bootloader devices get their image downloaded
@@ -2269,7 +2311,16 @@ class PseudocodeImporter extends React.Component {
     async flashToBoard () {
         const device = this.currentDevice();
         const family = this.flashFamily(device);
-        if (family === 'micropython') { return this.deployToPico(); }
+        if (family === 'micropython') {
+            // The Pico decides by ARTEFACT KIND, not just device (L2): a C-tab
+            // program is a bare-metal bin, which BOOTSEL drag-flashes as a UF2 —
+            // the MicroPython REPL (deployToPico) cannot take a bin. Pseudocode
+            // and MicroPython still go to the REPL. flashFamily() stays a
+            // device->family map; the kind branch lives here, where the buffer
+            // origin is known.
+            if (device === 'pico' && this.state.lang === 'c') return this.deployPicoUf2();
+            return this.deployToPico();
+        }
 
         const src = this.state.buffers.pseudocode || '';
         if (!src.trim()) return;
