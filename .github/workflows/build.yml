@@ -421,6 +421,13 @@ jobs:
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         run: node scripts/verify-labwired-lazy-bundle.mjs
 
+      # P6 moves large extension data, render fonts, asset manifests and
+      # lesson/example catalogs out of the eager scripts. Inspect the emitted
+      # bundle: ordinary UI tests cannot distinguish eager from lazy loading.
+      - name: Guard — the first load stays lean
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        run: node scripts/verify-boot-payload.mjs
+
       # The debugger smoke compares lite's own emitter against an INDEPENDENT
       # disassembler, which lives in another repo. Fetching it is what turns
       # this step from a permanent skip into a verdict — see below.
