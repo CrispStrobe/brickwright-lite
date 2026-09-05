@@ -8,6 +8,7 @@ import DebugInspector from './debug-inspector.jsx';
 import DebugFrames from './debug-frames.jsx';
 import DebugTimingWaveform from './debug-timing-waveform.jsx';
 import DebugSessionTransfer from './debug-session-transfer.jsx';
+import DebugDivergenceBisection from './debug-divergence-bisection.jsx';
 import {mergeTargetKinds} from '../../lib/bw-debug/target-kinds.js';
 import {reverseCycleControlStatus} from '../../lib/bw-debug/reverse-cycle-ui.js';
 
@@ -177,6 +178,10 @@ class DebugPanel extends React.Component {
         this.onWaveformExport = this.onWaveformExport.bind(this);
         this.onDebugSessionExport = this.onDebugSessionExport.bind(this);
         this.onDebugSessionImport = this.onDebugSessionImport.bind(this);
+        this.onBisectionMarkGood = this.onBisectionMarkGood.bind(this);
+        this.onBisectionMarkBad = this.onBisectionMarkBad.bind(this);
+        this.onBisectionStart = this.onBisectionStart.bind(this);
+        this.onBisectionCancel = this.onBisectionCancel.bind(this);
         this.syncProjectTokens = this.syncProjectTokens.bind(this);
         this._onMachineExtracted = this._onMachineExtracted.bind(this);
         this._onMediaLoad = this._onMediaLoad.bind(this);
@@ -762,6 +767,11 @@ class DebugPanel extends React.Component {
         }
     }
 
+    onBisectionMarkGood () { this.state.runner?.markDebugBisectionEndpoint('good'); }
+    onBisectionMarkBad () { this.state.runner?.markDebugBisectionEndpoint('bad'); }
+    onBisectionStart () { this.state.runner?.startDebugBisection(); }
+    onBisectionCancel () { this.state.runner?.cancelDebugBisection(); }
+
     render () {
         const {ui} = this.state;
         const {phase, message} = ui;
@@ -1046,6 +1056,15 @@ class DebugPanel extends React.Component {
                     status={this.state.sessionTransferStatus}
                     onExport={this.onDebugSessionExport}
                     onImport={this.onDebugSessionImport}
+                /> : null}
+
+                {this.state.runner ? <DebugDivergenceBisection
+                    disabled={running || busy}
+                    status={this.state.runner.debugBisectionStatus()}
+                    onMarkGood={this.onBisectionMarkGood}
+                    onMarkBad={this.onBisectionMarkBad}
+                    onStart={this.onBisectionStart}
+                    onCancel={this.onBisectionCancel}
                 /> : null}
 
                 {selectedInspection?.accepted ? (

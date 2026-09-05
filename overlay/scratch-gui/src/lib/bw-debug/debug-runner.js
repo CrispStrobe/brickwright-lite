@@ -57,6 +57,7 @@ import {createSelectedEventInspectionStore} from './selected-event-inspection.js
 import {createTimingWaveform} from './timing-waveform.js';
 import {createDebuggerSessionBundle, importDebuggerSessionBundle} from './session-bundle.js';
 import {DEBUG_SESSION_SNAPSHOT_CODEC, structuredSessionSnapshotCodec} from './session-snapshot-codec.js';
+import {createDivergenceBisection} from './divergence-bisection.js';
 import {negotiateCycleProvider} from './cycle-provider.js';
 import { setValueResolver } from './hover-values.js';
 import { instructionLength } from './opcodes.js';
@@ -588,6 +589,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     const eventBreakpointCounters = new Map();
     // Cursor of the last successful UI reverse; null means the retained live end.
     let reverseCursor = null;
+    let bisectionEndpoints = {good: null, bad: null};
+    let bisectionRun = {phase: 'idle', probes: 0, maxProbes: 64, result: null};
+    let bisectionGeneration = 0;
     // Halt occurrence is a separate order because several native stops may
     // share one instruction boundary. It is advanced only after verified replay.
     let breakpointGeneration = 0;
@@ -3038,6 +3042,96 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 return {accepted: false, code: error?.code || 'session-import-failed',
                     reason: error?.message || String(error)};
             }
+        },
+        debugBisectionStatus: () => ({...bisectionRun, ...bisectionEndpoints}),
+        markDebugBisectionEndpoint (which) {
+            if (!['good', 'bad'].includes(which)) return {accepted: false,
+                code: 'invalid-bisection-endpoint', reason: 'Endpoint must be good or bad'};
+            if (bisectionRun.phase === 'running') return {accepted: false,
+                code: 'bisection-running', reason: 'Cancel the active bisection before changing endpoints'};
+            const selected = debugFoundation.timeline.state().selectedEvent;
+            if (!selected || !Number.isSafeInteger(selected.seq) || selected.seq === Number.MAX_SAFE_INTEGER) {
+                return {accepted: false, code: 'bisection-selection-missing',
+                    reason: 'Select a retained timeline event first'};
+            }
+            const cursor = createBranchCursor(forkRecordingStore.active().branch.branchId, selected.seq + 1);
+            bisectionEndpoints = {...bisectionEndpoints, [which]: cursor};
+            bisectionRun = {...bisectionRun, phase: 'idle', result: null};
+            emit();
+            return {accepted: true, cursor};
+        },
+        cancelDebugBisection () {
+            if (bisectionRun.phase !== 'running') return {accepted: false,
+                code: 'bisection-not-running', reason: 'No divergence search is running'};
+            bisectionGeneration++;
+            bisectionRun = {...bisectionRun, phase: 'cancelling'};
+            emit();
+            return {accepted: true};
+        },
+        async startDebugBisection () {
+            if (bisectionRun.phase === 'running' || bisectionRun.phase === 'cancelling') {
+                return {accepted: false, code: 'bisection-running', reason: 'A divergence search is already running'};
+            }
+            if (!bisectionEndpoints.good || !bisectionEndpoints.bad) return {accepted: false,
+                code: 'bisection-endpoints-missing', reason: 'Mark known-good and bad timeline events first'};
+            const branch = forkRecordingStore.recordingFor(bisectionEndpoints.good.branchId);
+            if (!branch.accepted || bisectionEndpoints.bad.branchId !== bisectionEndpoints.good.branchId) {
+                return {accepted: false, code: 'bisection-branch-mismatch',
+                    reason: 'Good and bad events must belong to one retained branch'};
+            }
+            const replay = branch.recording.cycleReplay;
+            const capability = replay.canReverse();
+            if (!capability.accepted) return {accepted: false, code: 'bisection-cycle-replay-required',
+                reason: 'Divergence bisection currently requires recorded resumable cycle replay'};
+            recordingSession.stop();
+            if (session) session.pause();
+            unschedule();
+            const output = replayOutputGate.begin();
+            if (!output.accepted) return output;
+            const generation = ++bisectionGeneration;
+            bisectionRun = {phase: 'running', probes: 0, maxProbes: 64, result: null};
+            emit();
+            const capture = () => ({target: target.captureCheckpoint(), host: captureHostState()});
+            const restore = source => {
+                target.restoreCheckpoint(source.target);
+                return commitHostRestore(prepareHostRestore(source.host));
+            };
+            const coordinator = createDivergenceBisection({maxProbes: 64,
+                captureSource: capture, restoreSource: restore,
+                probe: async cursor => {
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                    if (generation !== bisectionGeneration) return {accepted: false,
+                        reason: 'Divergence search cancelled'};
+                    bisectionRun = {...bisectionRun, probes: bisectionRun.probes + 1};
+                    emit();
+                    replayingDebugHistory = true;
+                    let result;
+                    try { result = replay.reverseToCycle(cursor.eventCursor); } finally {
+                        replayingDebugHistory = false;
+                        eventBreakpointDispatcher?.clear();
+                        replayBreakpointDispatcher?.clear();
+                    }
+                    if (!result.accepted && result.code !== 'REPLAY_DIVERGED') return result;
+                    return {accepted: true, matches: result.accepted, passive: true,
+                        deterministic: true, externalEffects: 0};
+                }});
+            let result;
+            try {
+                result = await coordinator.bisect(bisectionEndpoints);
+                if (generation !== bisectionGeneration) result = {accepted: false,
+                    code: 'bisection-cancelled', reason: 'Divergence search cancelled'};
+            } catch (error) {
+                result = {accepted: false, code: error?.code || 'bisection-failed',
+                    reason: error?.message || String(error)};
+            }
+            // The coordinator restored the captured source after every probe.
+            // Publish exactly one complete output view after leaving history.
+            const synchronized = replayOutputGate.resynchronize(snapshot());
+            if (!synchronized.accepted && result.accepted) result = synchronized;
+            bisectionRun = {...bisectionRun, phase: result.code === 'bisection-cancelled' ?
+                'cancelled' : 'complete', result};
+            emit();
+            return result;
         },
         activeDebugBranch: () => forkRecordingStore.active().branch,
         forkDebugHistory(branchId) {
