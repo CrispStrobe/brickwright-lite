@@ -747,6 +747,20 @@ jobs:
       - name: Browser gate — costume artwork survives save/reload and records first-open performance
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-costume-roundtrip.mjs
+      # P13 keeps the sanitizer's css-tree/MDN payload upload-only. This gate
+      # proves the causal boundary on the built app, inspects bytes only after
+      # they have entered real VM storage, and aborts the chunk in a fresh
+      # context to cover the no-store/retry contract that a healthy CDN cannot.
+      - name: Browser gate — SVG upload sanitizer is lazy, safe and retryable
+        id: svg_sanitizer_upload
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-svg-sanitizer-upload.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.svg_sanitizer_upload.outcome != 'skipped'
+        with:
+          name: svg-sanitizer-upload-proof
+          path: artifacts/svg-sanitizer-upload/*
+          if-no-files-found: error
       # The unit suite asserts the table SVG and the mark state as pure values.
       # It cannot see whether the RENDERER accepts that SVG: a skin that fails
       # to parse, or a drawable in a layer group the renderer lacks, throws
