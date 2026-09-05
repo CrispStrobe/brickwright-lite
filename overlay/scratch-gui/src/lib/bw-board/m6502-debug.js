@@ -163,7 +163,14 @@ export function createM6502DebugTarget(adapter, opts = {}) {
       if (cpu.stopped || cpu.waiting) return {accepted: false, code: 'halted-without-instruction',
         reason: 'the stopped or waiting 6502 cannot retire an instruction without a recorded wake input'};
       const before = machine.cycles;
-      const cycles = machine.step();
+      let cycles;
+      watchHit = null;
+      try {
+        cycles = machine.step();
+      } finally {
+        // Replay reconstructs history; it must not arm a future live halt.
+        watchHit = null;
+      }
       if (!(cycles > 0)) return {accepted: false, code: 'instruction-not-retired',
         reason: 'the 6502 did not retire an instruction'};
       return {accepted: true, boundary: 'instruction', cycles: machine.cycles - before};

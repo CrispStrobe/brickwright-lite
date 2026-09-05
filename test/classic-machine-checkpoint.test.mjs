@@ -108,6 +108,24 @@ test('classic targets reverse to a recorded instruction boundary with verified e
     }
 });
 
+test('classic replay writes do not leave a stale live watchpoint halt', () => {
+    const m6502 = new M6502Machine(m6502Config());
+    m6502.mem.set([0xee, 0x00, 0x60, 0xea], 0x0200);
+    m6502.cpu.pc = 0x0200;
+    const z80 = new Z80Machine(z80Config());
+    z80.mem.set([0x32, 0x00, 0x80, 0x00], 0);
+    for (const [target, address] of [
+        [createM6502DebugTarget({machine: m6502}), 0x6000],
+        [createZ80DebugTarget({machine: z80}), 0x8000]
+    ]) {
+        const breakpoint = target.setBreakpoint({kind: 'write', addr: address});
+        assert.equal(target.replayInstruction().accepted, true);
+        target.clearBreakpoint(breakpoint);
+        target.run();
+        assert.equal(target.runFor(1), 'budget');
+    }
+});
+
 test('checkpoint restore fails closed on schema, topology and incomplete state', () => {
     const one = new M6502Machine(m6502Config());
     const other = new M6502Machine(m6502Config(2_000_000));

@@ -140,7 +140,14 @@ export function createZ80DebugTarget(adapter, opts = {}) {
       if (cpu.halted) return {accepted: false, code: 'halted-without-instruction',
         reason: 'the halted Z80 cannot retire an instruction without a recorded interrupt input'};
       const before = machine.cycles;
-      const cycles = machine.step();
+      let cycles;
+      watchHit = null;
+      try {
+        cycles = machine.step();
+      } finally {
+        // Replay reconstructs history; it must not arm a future live halt.
+        watchHit = null;
+      }
       if (!(cycles > 0)) return {accepted: false, code: 'instruction-not-retired',
         reason: 'the Z80 did not retire an instruction'};
       return {accepted: true, boundary: 'instruction', cycles: machine.cycles - before};
