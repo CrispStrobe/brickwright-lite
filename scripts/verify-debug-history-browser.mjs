@@ -114,6 +114,7 @@ try {
         document.querySelector('[data-debug-record]')?.textContent || '') &&
         !document.querySelector('[data-debug-checkpoint]')?.disabled, null, {timeout: 15000});
     check('recording starts with checkpoint capability', true);
+    await panel.getByRole('button', {name: /Under the hood/}).click();
 
     const run = panel.getByRole('button', {name: /Run/});
     const stepRecorded = async () => {
