@@ -587,6 +587,11 @@ full build and browser matrix remains the final integration authority.
 
 ### Slice 5 — real cycle targets
 
+Execution of the post-foundation work is tracked in
+[`DEBUGGER-NEXT-ROADMAP.md`](DEBUGGER-NEXT-ROADMAP.md). Its ordered ledger and
+acceptance evidence supersede the informal bullets below without weakening
+their fidelity requirements.
+
 - 8086/8088 resumable BIU/EU core first;
 - 6502 and Z80 cycle cores next;
 - waveform/hardware comparison harnesses and recorded-fidelity gates.
