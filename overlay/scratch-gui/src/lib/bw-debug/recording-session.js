@@ -21,6 +21,9 @@ export function createRecordingSession ({recorder, eventStream, getTarget}) {
         } catch (error) {
             return refusal('checkpoint-failed', error?.message || String(error));
         }
+        if (snapshot?.accepted === false || snapshot?.refused) {
+            return refusal('checkpoint-failed', snapshot.reason || snapshot.refused);
+        }
         if (!snapshot?.time) {
             return refusal('invalid-target-checkpoint', 'target checkpoint has no simulation time');
         }
@@ -89,7 +92,10 @@ export function createRecordingSession ({recorder, eventStream, getTarget}) {
             let saved;
             try {
                 saved = recorder.findCheckpoint(eventCursor);
-                target.restoreCheckpoint(saved.snapshot);
+                const restored = target.restoreCheckpoint(saved.snapshot);
+                if (restored?.accepted === false || restored?.refused) {
+                    return refusal('restore-failed', restored.reason || restored.refused);
+                }
             } catch (error) {
                 return refusal('restore-failed', error?.message || String(error));
             }

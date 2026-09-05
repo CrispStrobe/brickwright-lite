@@ -340,8 +340,11 @@ retires, program writes, port accesses and accepted interrupts. The current
 instruction-atomic 6502 and Z80 cores emit recorded retires and conservatively
 `reconstructed` ordered memory/port accesses because they cannot timestamp an
 access within an instruction. None of these changes upgrades 8086, 6502 or Z80
-to cycle stepping. Free-running 8051 trace completeness, compact typed transport
-and the three overhead modes remain acceptance work for this slice.
+to cycle stepping. The 8051 adapter now batch-decodes the pinned native
+4,096-entry pin-transition ring, including native timestamps/modes/levels and
+exact wrap-loss markers; an overflow test proves post-wrap head handling. This
+is recorded pin evidence, not an internal address/data bus. Generic bulk CPU
+transport and the three overhead modes remain acceptance work for this slice.
 
 ### Slice 2 — recorder and replay
 
@@ -368,6 +371,22 @@ ABI omits in-flight microstate, program time, timer/interrupt internals, UART
 queues and input latches. It now refuses explicitly and tests prove the refusal
 does not perturb later execution. Reverse commands remain disabled until input
 application and restore-plus-replay are connected end to end.
+
+The 6502 and Z80 machine targets now apply the same completeness rule. Their
+checkpoints include private CPU state, RAM, clock, pin/input state, paired chip
+and attached-device state, plus Z80 tape and 128K page/ROM/bank state. Machines
+with host traps, live bit-banged queues, rendered-audio queues or an unpaired
+component codec refuse and withdraw recording capability. Restore opens a new
+event-time epoch. Cross-instance, topology, mutation-isolation and live
+recording-session tests cover both architectures.
+
+A target-neutral instruction replay controller can restore the nearest complete
+checkpoint, reapply the exact input prefix at target-clock boundaries, execute
+one real instruction at a time and compare every resulting event hash. It
+refuses mid-instruction cursors and reports the first divergent absolute cursor
+without exposing payloads. Real 8086 tests cover port, memory, retire and a
+logged GPIO input. Reverse remains unadvertised in the runner until every UI and
+machine input path is automatically appended before application.
 
 ### Slice 3 — unified breakpoints
 
@@ -396,6 +415,12 @@ and per-domain time seeking, preserves ring-gap evidence and moves a selection
 safely when retention evicts it. The runner feeds it only from explicit bulk
 drains, preserving the zero-consumer fast path. Visual panes and recording,
 checkpoint, fork and reverse controls are not yet exposed in the React drawer.
+
+The drawer now exposes capability-gated Record, Checkpoint and Restore controls
+for complete targets. Its live render path consumes snapshot-free checkpoint
+summaries so it never clones full RAM at frame cadence. Restore currently means
+the most recent retained checkpoint; event-cursor navigation, fork selection
+and reverse controls remain future UI work.
 
 ### Slice 5 — real cycle targets
 

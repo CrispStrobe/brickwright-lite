@@ -55,16 +55,30 @@ export function createZ80DebugTarget(adapter, opts = {}) {
 
   return {
     capabilities() {
+      const checkpointStatus = machine.checkpointSupport();
       return {
         steps: ['insn', 'over', 'out'], breakpoints: ['code', 'write'], timeFreezes: true,
         consumes: [], events: ['instruction', 'memory', 'port'],
-        fidelity: {instruction: 'recorded', memory: 'reconstructed', port: 'reconstructed', cycle: 'unsupported'}
+        fidelity: {instruction: 'recorded', memory: 'reconstructed', port: 'reconstructed', cycle: 'unsupported'},
+        recording: checkpointStatus.supported ? ['checkpoint', 'restore'] : [],
+        extensions: checkpointStatus.supported ? {} : {checkpointRefusal: checkpointStatus.reasons}
       };
     },
 
     state() { return runState; },
 
     onDebugEvent: debugEvents.onDebugEvent,
+
+    captureCheckpoint() {
+      const checkpoint = machine.captureCheckpoint();
+      if (!checkpoint.refused) checkpoint.time = debugEvents.debugTime();
+      return checkpoint;
+    },
+    restoreCheckpoint(checkpoint) {
+      const result = machine.restoreCheckpoint(checkpoint);
+      if (!result) debugEvents.openTimeEpoch();
+      return result;
+    },
 
     regs() {
       return {

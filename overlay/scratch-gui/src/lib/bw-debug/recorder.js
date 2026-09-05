@@ -275,7 +275,11 @@ export function createDebugRecorder ({
                     `Lossless recording expected event seq ${lastEventSeq + 1}, got ${event.seq}`,
                     {expected: lastEventSeq + 1, actual: event.seq});
             }
-            const value = clone(event);
+            // Link every retained event to the deterministic input prefix
+            // already applied when it occurred. Replay uses this cursor to
+            // avoid injecting later same-timestamp inputs too early.
+            const value = clone({...event,
+                inputCursor: event.inputCursor ?? nextInputCursor});
             const stored = {...value, _bytes: utf8Bytes(value)};
             events.push(stored);
             eventBytes += stored._bytes;
@@ -336,6 +340,12 @@ export function createDebugRecorder ({
         },
 
         checkpoints: () => checkpoints.map(({_bytes, ...checkpoint}) => clone(checkpoint)),
+        checkpointSummary: () => checkpoints.map(checkpoint => ({
+            id: checkpoint.id,
+            eventCursor: checkpoint.eventCursor,
+            inputCursor: checkpoint.inputCursor,
+            time: clone(checkpoint.time)
+        })),
         retention,
 
         clear () {

@@ -71,7 +71,9 @@ const L10N = {
         watchNow: 'now',
         watchNote: 'A watchpoint here reports a CHANGE, not every store: writing the value ' +
             'that is already there is invisible, and a byte the peripherals move fires ' +
-            'with no instruction of yours responsible.'
+            'with no instruction of yours responsible.',
+        record: 'Record', recording: 'Recording', checkpoint: 'Checkpoint', restore: 'Restore',
+        recordUnsupported: 'This target cannot capture a complete deterministic checkpoint'
     },
     de: {
         run: 'Start', pause: 'Pause', step: 'Schritt', stop: 'Stopp',
@@ -100,7 +102,9 @@ const L10N = {
         watchNow: 'jetzt',
         watchNote: 'Ein Watchpoint meldet hier eine ÄNDERUNG, nicht jeden Schreibzugriff: ' +
             'denselben Wert erneut zu schreiben bleibt unsichtbar, und ein Byte, das die ' +
-            'Peripherie bewegt, löst aus, ohne dass eine deiner Anweisungen schuld ist.'
+            'Peripherie bewegt, löst aus, ohne dass eine deiner Anweisungen schuld ist.',
+        record: 'Aufzeichnen', recording: 'Aufzeichnung', checkpoint: 'Prüfpunkt', restore: 'Wiederherstellen',
+        recordUnsupported: 'Dieses Ziel kann keinen vollständigen deterministischen Prüfpunkt erfassen'
     }
 };
 
@@ -118,7 +122,7 @@ class DebugPanel extends React.Component {
         // than in the runner: picking "Live board" and then pressing Run is the
         // order a user works in.
         this.state = {runner: null, ui: {phase: 'idle', message: ''}, kind: 'emulator', kinds: null,
-            machineConfig: null, serialInput: '', firmwareName: null};
+            machineConfig: null, serialInput: '', firmwareName: null, recordingStatus: null};
         this.onStart = this.onStart.bind(this);
         this.onPause = this.onPause.bind(this);
         this.onStep = this.onStep.bind(this);
@@ -127,6 +131,9 @@ class DebugPanel extends React.Component {
         this.onSerialInput = this.onSerialInput.bind(this);
         this.onSerialKeyDown = this.onSerialKeyDown.bind(this);
         this.onSerialSend = this.onSerialSend.bind(this);
+        this.onRecord = this.onRecord.bind(this);
+        this.onCheckpoint = this.onCheckpoint.bind(this);
+        this.onRestoreLast = this.onRestoreLast.bind(this);
         this.syncProjectTokens = this.syncProjectTokens.bind(this);
         this._onMachineExtracted = this._onMachineExtracted.bind(this);
         this._onMediaLoad = this._onMediaLoad.bind(this);
@@ -559,6 +566,31 @@ class DebugPanel extends React.Component {
     async onStep () { (await this.runner()).step('block'); }
     onSpeed (e) { if (this.state.runner) this.state.runner.setSpeed(Number(e.target.value)); }
 
+    onRecord () {
+        const runner = this.state.runner;
+        if (!runner) return;
+        const current = runner.debugRecordingStatus();
+        const result = current.active ? runner.stopDebugRecording() : runner.startDebugRecording();
+        this.setState({recordingStatus: result.accepted === false ? result : runner.debugRecordingStatus()});
+    }
+
+    onCheckpoint () {
+        const runner = this.state.runner;
+        if (!runner) return;
+        const result = runner.checkpointDebugRecording();
+        this.setState({recordingStatus: result.accepted === false ? result : runner.debugRecordingStatus()});
+    }
+
+    onRestoreLast () {
+        const runner = this.state.runner;
+        if (!runner) return;
+        const checkpoints = runner.debugRecorder().checkpointSummary();
+        const latest = checkpoints.at(-1);
+        if (!latest) return;
+        const result = runner.restoreDebugCheckpoint(latest.eventCursor);
+        this.setState({recordingStatus: result.accepted === false ? result : runner.debugRecordingStatus()});
+    }
+
     render () {
         const {ui} = this.state;
         const {phase, message} = ui;
@@ -577,6 +609,16 @@ class DebugPanel extends React.Component {
         // input line rather than a dead one.
         const canSendSerial = !!(this.state.runner &&
             typeof this.state.runner.sendSerial === 'function');
+        const recording = this.state.runner && this.state.runner.debugRecordingStatus();
+        const recordingCaps = caps && (caps.recording || []);
+        const canCheckpoint = !!(recordingCaps && recordingCaps.includes('checkpoint'));
+        const canRestore = !!(recordingCaps && recordingCaps.includes('restore'));
+        // Summary deliberately excludes the potentially-megabyte target
+        // snapshots; render runs at live UI cadence and must not clone RAM.
+        const checkpoints = this.state.runner ?
+            this.state.runner.debugRecorder().checkpointSummary() : [];
+        const recordingRefusal = this.state.recordingStatus?.accepted === false ?
+            this.state.recordingStatus.reason : null;
 
         const inferredBoard = this.state.boardSource === 'inferred';
         return (
@@ -627,6 +669,32 @@ class DebugPanel extends React.Component {
                         disabled={!running && !paused}
                         onClick={this.onStop}
                     >{'⏹ '}{this.tx('stop')}</button>
+
+                    <button
+                        data-debug-record
+                        style={canCheckpoint ? (recording && recording.active ?
+                            {...BTN, borderColor: '#e74c3c', color: '#e74c3c'} : BTN) : OFF}
+                        disabled={!canCheckpoint}
+                        onClick={this.onRecord}
+                        title={canCheckpoint ? this.tx('record') : this.tx('recordUnsupported')}
+                    >{'● '}{recording && recording.active ? this.tx('recording') : this.tx('record')}</button>
+
+                    <button
+                        data-debug-checkpoint
+                        style={canCheckpoint && recording && recording.active ? BTN : OFF}
+                        disabled={!canCheckpoint || !recording || !recording.active}
+                        onClick={this.onCheckpoint}
+                    >{'◆ '}{this.tx('checkpoint')}</button>
+
+                    <button
+                        data-debug-restore
+                        style={canRestore && checkpoints.length ? BTN : OFF}
+                        disabled={!canRestore || !checkpoints.length}
+                        onClick={this.onRestoreLast}
+                    >{'↶ '}{this.tx('restore')}</button>
+                    {recordingRefusal ? (
+                        <span data-debug-recording-refusal role="status">{recordingRefusal}</span>
+                    ) : null}
 
                     {/* The target picker. Everything else in this panel branches on
                         capabilities(), never on which target is selected — §1 is

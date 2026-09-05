@@ -62,6 +62,7 @@ export function createM6502DebugTarget(adapter, opts = {}) {
 
   return {
     capabilities() {
+      const checkpointStatus = machine.checkpointSupport();
       return {
         steps: [...(symbols ? ['insn', 'block'] : ['insn']), 'over', 'out'],
         breakpoints: [...(symbols ? ['code', 'yield'] : ['code']), 'write'],
@@ -69,6 +70,8 @@ export function createM6502DebugTarget(adapter, opts = {}) {
         consumes: [],
         events: ['instruction', 'memory'],
         fidelity: {instruction: 'recorded', memory: 'reconstructed', cycle: 'unsupported'},
+        recording: checkpointStatus.supported ? ['checkpoint', 'restore'] : [],
+        extensions: checkpointStatus.supported ? {} : {checkpointRefusal: checkpointStatus.reasons},
         // Two audio contracts (E6.8.11a). 'tone' is what the hardware is
         // CONFIGURED to produce and 'samples' is what it SOUNDS like;
         // 'samples' is advertised only when a chip on this machine can
@@ -98,6 +101,17 @@ export function createM6502DebugTarget(adapter, opts = {}) {
     state() { return runState; },
 
     onDebugEvent: debugEvents.onDebugEvent,
+
+    captureCheckpoint() {
+      const checkpoint = machine.captureCheckpoint();
+      if (!checkpoint.refused) checkpoint.time = debugEvents.debugTime();
+      return checkpoint;
+    },
+    restoreCheckpoint(checkpoint) {
+      const result = machine.restoreCheckpoint(checkpoint);
+      if (!result) debugEvents.openTimeEpoch();
+      return result;
+    },
 
     regs() {
       return {

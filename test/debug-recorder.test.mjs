@@ -39,6 +39,14 @@ test('same-time external inputs retain append order and immutable absolute curso
     ]);
 });
 
+test('events link to the input prefix applied at their boundary', () => {
+    const recorder = createDebugRecorder();
+    recorder.createCheckpoint(checkpoint(0, 0, 1));
+    recorder.appendInput(input(0, 'key'));
+    recorder.appendEvent({schema: RECORDER_SCHEMA, seq: 0, kind: 'instruction'});
+    assert.equal(recorder.eventsFrom(0)[0].inputCursor, 1);
+});
+
 test('input time is monotonic per clock domain while cursor orders different producers', () => {
     const recorder = createDebugRecorder();
     recorder.appendInput(input(10, 'keyboard'));
@@ -195,4 +203,8 @@ test('returned records are defensive clones of stored recording truth', () => {
     source.snapshot.timer.pending = 99;
     returned.snapshot.timer.pending = 88;
     assert.equal(recorder.findCheckpoint(0).snapshot.timer.pending, 4);
+    const summary = recorder.checkpointSummary()[0];
+    assert.equal('snapshot' in summary, false, 'render-facing summaries must not clone target memory');
+    summary.time.ticks = 99n;
+    assert.equal(recorder.checkpointSummary()[0].time.ticks, 0n);
 });

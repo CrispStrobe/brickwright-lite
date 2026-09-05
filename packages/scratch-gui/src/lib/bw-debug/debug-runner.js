@@ -2496,6 +2496,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         debugRecorder: () => debugFoundation.recorder,
         debugTimeline: () => debugFoundation.timeline,
         startDebugRecording() { ensureDebugEvents(); return recordingSession.start(); },
+        stopDebugRecording: () => recordingSession.stop(),
         checkpointDebugRecording: () => recordingSession.checkpoint(),
         restoreDebugCheckpoint: eventCursor => {
             const result = recordingSession.restore(eventCursor);

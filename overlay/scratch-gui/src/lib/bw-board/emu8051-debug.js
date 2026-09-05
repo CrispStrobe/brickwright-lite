@@ -99,6 +99,14 @@
  * remains empty. An architectural dump is useful for display; it is not a
  * deterministic continuation point.
  *
+ * ## Native pin-event transport
+ *
+ * The pinned ABI exposes a 4,096-entry C ring of pin transitions. It is
+ * decoded after execution in one batch, preserving native nanosecond time,
+ * pin mode and drive level. Overflow becomes an explicit `history-gap`
+ * signal. This is signal evidence, not an internal address/data bus trace or
+ * a passive memory-read watchpoint.
+ *
  * @module
  */
 
@@ -110,9 +118,12 @@ const SPACE = { code: 0, iram: 1, sfr: 2, xram: 3, bit: 4 };
 
 /** The same table read the other way, for turning a reported space back into a name. */
 const SPACE_NAME = Object.keys(SPACE);
+const MODE_NAMES = ['quasi', 'pushpull', 'input', 'opendrain'];
 
 /** DBG_MAX_BP in debug.h. Exceeding it returns -1, which we turn into a reason. */
 const MAX_BREAKPOINTS = 32;
+/** PIN_HISTORY_SIZE in the pinned native ABI. */
+const PIN_HISTORY_CAPACITY = 4096;
 
 const CHECKPOINT_MISSING = Object.freeze([
     'cpu-in-flight-microstate',
@@ -174,6 +185,8 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
     let debugListeners = [];
     let debugTimeEpoch = 0;
     let pendingStep = null;
+    let pinHistoryReadCount = 0;
+    let pinHistoryReadHead = 0;
     /**
      * Set while runFor is inside emu_dbg_run_until_ns. Every halt that arrives
      * in that window is swallowed: the budget expiring is one of them and is
@@ -218,6 +231,21 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
      */
     const hasCycleStep = typeof wasm._emu_dbg_supports_step === 'function'
         && wasm._emu_dbg_supports_step(STEP_KIND.cycle) === 1;
+
+    /** Complete native pin-history surface; partial/older ABIs fail closed. */
+    const hasPinHistoryApi = !!(wasm.HEAPU8 &&
+        typeof wasm._emu_pin_history_enable === 'function' &&
+        typeof wasm._emu_pin_history_count === 'function' &&
+        typeof wasm._emu_pin_history_head === 'function' &&
+        typeof wasm._emu_pin_history_get === 'function' &&
+        typeof wasm._emu_pin_event_size === 'function');
+    const pinEventSize = hasPinHistoryApi ? wasm._emu_pin_event_size() : 0;
+    const hasPinHistory = hasPinHistoryApi && pinEventSize >= 12;
+    if (hasPinHistory) {
+        wasm._emu_pin_history_enable();
+        pinHistoryReadCount = wasm._emu_pin_history_count() >>> 0;
+        pinHistoryReadHead = wasm._emu_pin_history_head() >>> 0;
+    }
 
     function haltReason(cause) {
         const pc = wasm._emu_dbg_pc();
@@ -280,7 +308,50 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
     }
 
     function emitDebug(event) {
-        for (const cb of debugListeners) cb({...event, time: debugTime(), cpuId: 'main'});
+        for (const cb of debugListeners) cb({...event, time: event.time || debugTime(), cpuId: 'main'});
+    }
+
+    /**
+     * Decode the native ring in batches after execution. Unlike pin polling,
+     * this preserves every retained sub-instruction edge and its native time.
+     */
+    function drainPinHistory() {
+        if (!hasPinHistory) return;
+        const count = wasm._emu_pin_history_count() >>> 0;
+        const head = wasm._emu_pin_history_head() >>> 0;
+        const produced = (count - pinHistoryReadCount) >>> 0;
+        let available = produced;
+        let first = pinHistoryReadHead;
+        if (available > PIN_HISTORY_CAPACITY) {
+            const dropped = available - PIN_HISTORY_CAPACITY;
+            available = PIN_HISTORY_CAPACITY;
+            // `head` is the native next-write position. Work backwards from
+            // it to the oldest retained entry; count is used only for loss.
+            first = (head - PIN_HISTORY_CAPACITY) >>> 0;
+            emitDebug({kind: 'signal', phase: 'history-gap', fidelity: 'recorded',
+                signal: {name: '8051.pin-history-gap', value: dropped}});
+        }
+        // The ABI returns sizeof(struct stc12_pin_event); offsets 0 and 8..11
+        // are fixed by its exported C definition. Malformed layouts were
+        // rejected during feature detection and never become a capability.
+        const view = new DataView(wasm.HEAPU8.buffer);
+        for (let n = 0; n < available; n++) {
+            const index = (first + n) >>> 0;
+            const ptr = wasm._emu_pin_history_get(index);
+            if (!ptr || ptr + pinEventSize > view.byteLength) break;
+            const tNs = view.getBigUint64(ptr, true);
+            const port = view.getUint8(ptr + 8);
+            const bit = view.getUint8(ptr + 9);
+            const mode = MODE_NAMES[view.getUint8(ptr + 10)] ?? 'unknown';
+            const drive = view.getUint8(ptr + 11) !== 0;
+            emitDebug({kind: 'signal', phase: 'pin-change', fidelity: 'recorded',
+                time: {ticks: tNs,
+                    domain: debugTimeEpoch ? `8051-simulation-ns-reset-${debugTimeEpoch}` :
+                        '8051-simulation-ns', hz: 1e9},
+                signal: {name: `P${port}.${bit}`, value: drive, mode}});
+        }
+        pinHistoryReadCount = count;
+        pinHistoryReadHead = head;
     }
 
     function emitHaltEvidence(why) {
@@ -455,7 +526,8 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
                 events: [
                     'instruction',
                     ...(hasCycleStep ? ['bus'] : []),
-                    ...(hasWatchpointEvidence ? ['memory'] : [])
+                    ...(hasWatchpointEvidence ? ['memory'] : []),
+                    ...(hasPinHistory ? ['signal'] : [])
                 ],
                 fidelity: {
                     instruction: 'recorded',
@@ -466,6 +538,8 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
                     cycleEvidence: hasCycleStep ? 'oscillator-step-boundary' : 'none',
                     instructionEvidence: 'single-step-retire-only',
                     busSignals: false,
+                    signalEvidence: hasPinHistory ? 'native-pin-history' : 'none',
+                    pinHistoryCapacity: hasPinHistory ? PIN_HISTORY_CAPACITY : 0,
                     memoryEvidence: hasWatchpointEvidence ? 'change-watchpoint-only' : 'none',
                     checkpoint: {
                         supported: false,
@@ -530,6 +604,10 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
             pendingStep = null;
             debugTimeEpoch++;
             wasm._emu_dbg_reset();
+            if (hasPinHistory) {
+                pinHistoryReadCount = wasm._emu_pin_history_count() >>> 0;
+                pinHistoryReadHead = wasm._emu_pin_history_head() >>> 0;
+            }
             // Breakpoints deliberately survive: `dbg_reset` resets the CPU and
             // the peripherals and does not touch `t->bps`, so the emulator will
             // still stop at them. Clearing our record here would leave the two
@@ -644,6 +722,7 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
             for (let i = 0; i < data.length; i++) {
                 wasm._emu_dbg_write_mem(s, (addr + i) & 0xFFFF, data[i]);
             }
+            drainPinHistory();
             return undefined;
         },
 
@@ -764,6 +843,7 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
             } finally {
                 inBudgetedRun = false;
             }
+            drainPinHistory();
 
             if (stopped) {
                 // The return value is what separates a real stop from the

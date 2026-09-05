@@ -97,6 +97,17 @@ export function installInstructionDebugEvents({cpu, machine, cpuId, timeDomain, 
       if (typeof listener !== 'function') throw new TypeError('debug event listener must be a function');
       listeners.add(listener);
       return () => listeners.delete(listener);
+    },
+    debugTime() {
+      return {
+        ticks: machine.cycles,
+        domain: timeEpoch ? `${timeDomain}-reset-${timeEpoch}` : timeDomain,
+        hz: machine.clockHz
+      };
+    },
+    openTimeEpoch() {
+      timeEpoch++;
+      lastTicks = null;
     }
   };
 }

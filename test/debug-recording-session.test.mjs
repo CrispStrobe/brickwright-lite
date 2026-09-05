@@ -75,3 +75,18 @@ test('target checkpoint errors cross the command boundary as structured refusals
         accepted: false, code: 'checkpoint-failed', reason: 'opaque timer'
     });
 });
+
+test('target checkpoint and restore refusals remain refusals at the session boundary', () => {
+    const f = fixture();
+    f.target.captureCheckpoint = () => ({accepted: false, reason: 'device is opaque'});
+    assert.deepEqual(f.session.start(), {
+        accepted: false, code: 'checkpoint-failed', reason: 'device is opaque'
+    });
+
+    f.target.captureCheckpoint = () => ({schema: 1, time: {domain: 'cpu', ticks: 3}, state: 3});
+    assert.equal(f.session.start().accepted, true);
+    f.target.restoreCheckpoint = () => ({accepted: false, reason: 'topology changed'});
+    assert.deepEqual(f.session.restore(0), {
+        accepted: false, code: 'restore-failed', reason: 'topology changed'
+    });
+});

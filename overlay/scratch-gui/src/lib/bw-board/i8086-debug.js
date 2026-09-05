@@ -479,6 +479,29 @@ export function createI8086DebugTarget(adapter, opts = {}) {
             return true;
         },
 
+        /** Execute exactly one instruction boundary for verified replay. */
+        replayInstruction() {
+            if (hasExternalStepState || !machine.canCheckpoint?.()) {
+                return {accepted: false, code: 'unsupported-replay',
+                    reason: '8086 machine state is not completely replayable'};
+            }
+            if (cpu.halted) {
+                return {accepted: false, code: 'halted-without-instruction',
+                    reason: 'the halted CPU cannot retire an instruction without a recorded wake input'};
+            }
+            const before = machine.cycles;
+            executeStep();
+            return {accepted: true, boundary: 'instruction', cycles: machine.cycles - before};
+        },
+
+        debugTime() {
+            return {
+                ticks: machine.cycles,
+                domain: eventTimeEpoch ? `i8086-cycles-reset-${eventTimeEpoch}` : 'i8086-cycles',
+                hz: machine.clockHz
+            };
+        },
+
         /**
          * A key, as a set-1 scancode. This is the HARDWARE path -- port A of
          * the 8255 plus IRQ1 -- so it works on a bare-metal board and on one
