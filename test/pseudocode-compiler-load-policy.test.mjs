@@ -37,3 +37,54 @@ test('hosted pre-Circuit receipts reject a speculative compiler fetch', () => {
         bench.includes('retarget, conversion, compile, or export request:'),
     'the verdict must explain which user actions legitimately load the compiler');
 });
+
+test('bundled examples wait for the no-device Tools menu', () => {
+    const reveal = source.slice(source.indexOf('_reveal ()'), source.indexOf('componentDidUpdate'));
+    assert.doesNotMatch(reveal, /loadExamples|_loadBundledExamples/,
+        'showing Code must not fetch its optional bundled-example picker');
+
+    const menu = source.slice(source.indexOf('renderActionMenu (csel)'), source.indexOf('render ()'));
+    assert.match(menu,
+        /onToggle=\{event => \{[\s\S]*event\.currentTarget\.open && !this\.currentDevice\(\)[\s\S]*this\._loadBundledExamples\(\)/,
+        'opening Tools without a device is the normal bundled-example demand boundary');
+    assert.match(menu, /bundledExamplesStatus === 'error'[\s\S]*bw-load-example-retry/,
+        'a failed chunk fetch must expose a retry action');
+    assert.match(menu, /bundledExamplesStatus !== 'ready'[\s\S]*bw-load-example-loading/,
+        'the picker must describe its loading state instead of appearing empty');
+    for (const text of ['Loading built-in examples…', 'Built-in examples unavailable — retry',
+        'Eingebaute Beispiele werden geladen…',
+        'Eingebaute Beispiele nicht verfügbar — erneut versuchen']) {
+        assert.ok(source.includes(text), `the retry/loading UX lost its localized text: ${text}`);
+    }
+});
+
+test('bundled example loading is retryable, race-safe and unmount-safe', () => {
+    const loader = source.slice(source.indexOf('const loadExamples = () =>'),
+        source.indexOf('// Device groups'));
+    assert.match(loader, /if \(examplesPending === pending\) examplesPending = null/,
+        'only the failed request may reopen the shared loader for retry');
+
+    const componentLoader = source.slice(source.indexOf('_loadBundledExamples ()'),
+        source.indexOf('/** The tab is (or has been) shown'));
+    assert.match(componentLoader, /if \(examplesReady\)[\s\S]*return Promise\.resolve\(examples\)/,
+        'reopening Tools after success must not flash a second loading state');
+    assert.match(componentLoader, /this\._examplesLoadRequest = request/);
+    assert.match(componentLoader, /!this\._unmounted && this\._examplesLoadRequest === request/g,
+        'late or stale async completions must not mutate component state');
+
+    const controls = source.slice(source.indexOf('_publishControlsFor (source)'),
+        source.indexOf('_loadBundledExamples ()'));
+    assert.match(controls, /loadExamples\(\)\.then/,
+        'restored games still demand-load examples to publish their controls');
+    const loadExample = source.slice(source.indexOf('async loadExample (key)'),
+        source.indexOf('publishGameControls (gameKey)'));
+    assert.match(loadExample, /await this\._loadBundledExamples\(\)/,
+        'selecting while a fetch is pending must await that same loader');
+});
+
+test('hosted pre-Circuit receipts reject speculative bundled examples', () => {
+    const bench = readFileSync(new URL('../scripts/bench-i8086-browser.mjs', import.meta.url), 'utf8');
+    assert.match(bench, /speculativeExampleAssets/);
+    assert.match(bench, /pseudocode-examples\\\.js/);
+    assert.match(bench, /bundled examples before[\s\S]*no-device Tools menu opened/);
+});

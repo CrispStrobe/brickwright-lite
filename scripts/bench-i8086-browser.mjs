@@ -272,9 +272,12 @@ try {
                 /(?:^|\/)bw-(?:board|circuit-ui)\.js$/.test(asset));
             const speculativeCompilerAssets = preCircuitResources.assets.filter(asset =>
                 /(?:^|\/)sb3-creator\.js$/.test(asset));
+            const speculativeExampleAssets = preCircuitResources.assets.filter(asset =>
+                /(?:^|\/)pseudocode-examples\.js$/.test(asset));
             console.log(`  pre-Circuit: ${(preCircuitResources.encodedBodyBytes / 1048576).toFixed(2)} MiB ` +
                 `encoded, ${eagerCircuitAssets.length} deferred circuit asset(s) and ` +
-                `${speculativeCompilerAssets.length} speculative compiler asset(s) fetched early`);
+                `${speculativeCompilerAssets.length} speculative compiler asset(s), ` +
+                `${speculativeExampleAssets.length} speculative examples asset(s) fetched early`);
             if (preCircuitResources.unmatchedAssets.length) {
                 throw new Error(`${name} #${repetition} pre-Circuit window fetched JavaScript absent ` +
                     `from webpack stats: ${preCircuitResources.unmatchedAssets.join(', ')}`);
@@ -286,6 +289,10 @@ try {
             if (speculativeCompilerAssets.length) {
                 throw new Error(`${name} #${repetition} Code layout fetched the compiler without a ` +
                     `retarget, conversion, compile, or export request: ${speculativeCompilerAssets.join(', ')}`);
+            }
+            if (speculativeExampleAssets.length) {
+                throw new Error(`${name} #${repetition} Code layout fetched bundled examples before ` +
+                    `the no-device Tools menu opened: ${speculativeExampleAssets.join(', ')}`);
             }
         }
         for (const [windowName, attribution] of Object.entries(result.reactAttribution)) {
