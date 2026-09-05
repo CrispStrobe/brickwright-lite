@@ -12,8 +12,6 @@
  * reader's doctrine (sb3-creator-basic.js) applied to machine code.
  *
  * Deliberately NOT here, each with its refusal text:
- *   - the two-or-more-script scheduler form (`CALL BW_SCHINIT`): one WHEN
- *     script only in v1;
  *   - pins, ports, displays, tones, PWM, keypad, broadcast, `say ... for N
  *     secs` (the emitter's other anchors): named when met;
  *   - hand-written assembly with no anchors: reported as "no Brickwright
@@ -335,19 +333,36 @@ class Lifter {
             return `change ${m[1]} by ${renderExpr(e)}`;
         }
         if (text === 'say' || text === 'print') {
+            // In the scheduler form output runs with interrupts off, so the
+            // tick handler cannot interleave two scripts' characters.
+            const guarded = this.at('PUSHF');
+            if (guarded) {
+                this.next(); this.take('CLI');
+            }
             const e = this.expr();
             if (e.type === 'str') this.take('CALL', 'BW_PUTS');
             else this.take('CALL', 'BW_PRINTN');
             this.take('CALL', 'BW_CRLF');
+            if (guarded) this.take('POPF');
             return `${text} ${renderExpr(e)}`;
         }
         if (text === 'wait') {
+            if (this.at('MOV', 'AX')) {
+                // Scheduler form: milliseconds times the measured ticks-per-ms,
+                // then sleep on the tick count.
+                const lo = parseNumber(this.take('MOV', 'AX').args[1]);
+                const hi = parseNumber(this.take('MOV', 'DX').args[1]);
+                this.take('MOV', 'BX', '[BW_TPMS]'); this.take('XOR', 'CX', 'CX');
+                this.take('CALL', 'BW_MUL32'); this.take('CALL', 'BW_SLEEP');
+                const ms = (hi * 0x10000) + lo;
+                return `wait ${String(ms / 1000)} secs`;
+            }
+            // Single script: INT 15h AH=86h, microseconds in CX:DX.
             const hi = parseNumber(this.take('MOV', 'CX').args[1]);
             const lo = parseNumber(this.take('MOV', 'DX').args[1]);
             this.take('MOV', 'AH', '86h'); this.take('INT', '15h');
             const micros = (hi * 0x10000) + lo;
-            const secs = micros / 1e6;
-            return `wait ${Number.isInteger(secs) ? secs : String(secs)} secs`;
+            return `wait ${String(micros / 1e6)} secs`;
         }
         if (text === 'repeat') {
             const count = this.expr();
@@ -436,18 +451,26 @@ class Lifter {
             throw new LiftError('no Brickwright anchors found: this reader lifts programs the ▶ button lowered, ' +
                 'not hand-written assembly', {kind: 'foreign'});
         }
-        if (this.toks.some(t => t.kind === 'ins' && t.op === 'CALL' && t.args[0] === 'BW_SCHINIT')) {
-            const scripts = this.toks.filter(t => t.kind === 'label' && /^BW_TASK\d+$/.test(t.name)).length;
-            throw new LiftError(`the scheduler form (${scripts} WHEN scripts) is not lifted yet; one script only`,
-                {kind: 'refused'});
+        const scheduler = this.toks.some(t => t.kind === 'ins' && t.op === 'CALL' && t.args[0] === 'BW_SCHINIT');
+        const scripts = [];
+        if (scheduler) {
+            // Two or more WHEN scripts: BW_MAIN is the startup code, and each
+            // script is a BW_TASKn block ending in JMP BW_TEND. The startup
+            // code is the emitter's, not the learner's, so it is skipped.
+            const tasks = this.toks.filter(t => t.kind === 'label' && /^BW_TASK\d+$/.test(t.name)).map(t => t.name);
+            for (const name of tasks) {
+                while (this.peek() && !(this.peek().kind === 'label' && this.peek().name === name)) this.next();
+                this.takeLabel(name);
+                scripts.push(this.block(t => t.kind === 'ins' && t.op === 'JMP' && t.args[0] === 'BW_TEND'));
+                this.take('JMP', 'BW_TEND');
+            }
+        } else {
+            while (this.peek() && !(this.peek().kind === 'label' && this.peek().name === 'BW_MAIN')) this.next();
+            this.takeLabel('BW_MAIN');
+            scripts.push(this.block(t => t.kind === 'label' && t.name === 'BW_EXIT'));
         }
-        // skip the header up to BW_MAIN:
-        while (this.peek() && !(this.peek().kind === 'label' && this.peek().name === 'BW_MAIN')) this.next();
-        this.takeLabel('BW_MAIN');
-        const body = this.block(t => t.kind === 'label' && t.name === 'BW_EXIT');
         const lines = ['DEVICE i8086'];
         for (const v of this.vars) lines.push(`GLOBAL ${v}`);
-        lines.push('WHEN flag clicked:');
         const emit = (items, depth) => {
             for (const it of items) {
                 if (Array.isArray(it)) {
@@ -460,7 +483,10 @@ class Lifter {
                 } else lines.push(`${'  '.repeat(depth)}${it}`);
             }
         };
-        emit(body, 1);
+        for (const body of scripts) {
+            lines.push('WHEN flag clicked:');
+            emit(body, 1);
+        }
         return `${lines.join('\n')}\n`;
     }
 }

@@ -127,18 +127,29 @@ test('hand-written assembly is refused as foreign, with the reason, not lifted a
     assert.ok(foreign >= 10, `only ${foreign} hand-written programs in the fixture set`);
 });
 
-test('two WHEN scripts are the scheduler form, refused by name with the count', () => {
-    const A = lower(`DEVICE i8086
+test('two WHEN scripts are the scheduler form: each task reads back as its own script', () => {
+    const src = `DEVICE i8086
 GLOBAL a
 WHEN flag clicked:
-  set a to 1
-WHEN flag clicked:
+  set a to 0
+  REPEAT 3:
+    change a by 1
+    wait 0.2 secs
   say a
-`);
+WHEN flag clicked:
+  FOREVER:
+    IF a > 2 THEN:
+      say "done"
+      stop all
+    wait 0.1 secs
+`;
+    const A = lower(src);
+    assert.match(A, /CALL BW_SCHINIT/, 'the fixture is not in scheduler form');
     const r = asm8086ToPseudocode(A);
-    assert.equal(r.ok, false);
-    assert.equal(r.error.kind, 'refused');
-    assert.match(r.error.message, /scheduler form \(2 WHEN scripts\)/);
+    assert.ok(r.ok, r.ok ? '' : r.error.message);
+    assert.equal((r.pseudocode.match(/^WHEN flag clicked:$/gm) || []).length, 2, 'one WHEN per task');
+    assert.match(r.pseudocode, /\n    wait 0\.2 secs\n/, 'the scheduler wait (ms x ticks-per-ms) reads back in seconds');
+    assert.equal(lower(r.pseudocode), A, 'the two-script program re-lowers differently');
 });
 
 test('an anchor the reader does not handle names the feature and is counted', () => {
