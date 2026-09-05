@@ -8,6 +8,7 @@ import DebugInspector from './debug-inspector.jsx';
 import DebugFrames from './debug-frames.jsx';
 import DebugTimingWaveform from './debug-timing-waveform.jsx';
 import {mergeTargetKinds} from '../../lib/bw-debug/target-kinds.js';
+import {reverseCycleControlStatus} from '../../lib/bw-debug/reverse-cycle-ui.js';
 
 // VDP screen — lazy-loaded, only renders when the runner has video output.
 const PortLeds = React.lazy(() =>
@@ -47,7 +48,7 @@ const VdpScreen = React.lazy(() =>
 
 const L10N = {
     en: {
-        run: 'Run', pause: 'Pause', step: 'Step', reverseStep: 'Reverse Step',
+        run: 'Run', pause: 'Pause', step: 'Step', reverseStep: 'Reverse Step', reverseCycle: 'Reverse Cycle',
         reverseContinue: 'Reverse Continue', stop: 'Stop',
         speed: 'Speed', idle: 'not running', building: 'building…', attaching: 'starting…',
         ready: 'ready', running: 'running', paused: 'paused', stepping: 'stepping…',
@@ -77,6 +78,7 @@ const L10N = {
         record: 'Record', recording: 'Recording', checkpoint: 'Checkpoint', restore: 'Restore',
         recordUnsupported: 'This target cannot capture a complete deterministic checkpoint',
         reverseHint: 'Restore and replay to the previous recorded instruction',
+        reverseCycleHint: 'Restore and verify replay to the previous recorded hardware cycle',
         reverseContinueHint: 'Restore and replay to the previous recorded breakpoint halt',
         timeline: 'Timeline', timelineRefresh: 'Read events', timelineOlder: 'Older',
         timelineNewer: 'Newer', timelineLatest: 'Latest', timelineCheckpoint: 'Last checkpoint',
@@ -86,7 +88,7 @@ const L10N = {
         actionLog: 'Log', actionCounters: 'Counters', actionEvent: 'event'
     },
     de: {
-        run: 'Start', pause: 'Pause', step: 'Schritt', reverseStep: 'Zurück',
+        run: 'Start', pause: 'Pause', step: 'Schritt', reverseStep: 'Zurück', reverseCycle: 'Takt zurück',
         reverseContinue: 'Zurück fortsetzen', stop: 'Stopp',
         speed: 'Tempo', idle: 'läuft nicht', building: 'wird gebaut…', attaching: 'startet…',
         ready: 'bereit', running: 'läuft', paused: 'angehalten', stepping: 'Schritt…',
@@ -117,6 +119,7 @@ const L10N = {
         record: 'Aufzeichnen', recording: 'Aufzeichnung', checkpoint: 'Prüfpunkt', restore: 'Wiederherstellen',
         recordUnsupported: 'Dieses Ziel kann keinen vollständigen deterministischen Prüfpunkt erfassen',
         reverseHint: 'Zum vorherigen aufgezeichneten Befehl zurückkehren und verifiziert abspielen',
+        reverseCycleHint: 'Zum vorherigen aufgezeichneten Hardwaretakt zurückkehren und verifiziert abspielen',
         reverseContinueHint: 'Zum vorherigen aufgezeichneten Haltepunkt zurückkehren und verifiziert abspielen',
         timeline: 'Zeitleiste', timelineRefresh: 'Ereignisse lesen', timelineOlder: 'Älter',
         timelineNewer: 'Neuer', timelineLatest: 'Neueste', timelineCheckpoint: 'Letzter Prüfpunkt',
@@ -147,6 +150,7 @@ class DebugPanel extends React.Component {
         this.onPause = this.onPause.bind(this);
         this.onStep = this.onStep.bind(this);
         this.onReverseStep = this.onReverseStep.bind(this);
+        this.onReverseCycle = this.onReverseCycle.bind(this);
         this.onReverseContinue = this.onReverseContinue.bind(this);
         this.onStop = this.onStop.bind(this);
         this.onSpeed = this.onSpeed.bind(this);
@@ -606,6 +610,13 @@ class DebugPanel extends React.Component {
         this.setState({reverseStatus: result.accepted ? null : result});
     }
 
+    onReverseCycle () {
+        const runner = this.state.runner;
+        if (!runner || typeof runner.reverseStepDebugCycle !== 'function') return;
+        const result = runner.reverseStepDebugCycle();
+        this.setState({reverseStatus: result.accepted ? null : result});
+    }
+
     onReverseContinue () {
         const runner = this.state.runner;
         if (!runner) return;
@@ -743,6 +754,12 @@ class DebugPanel extends React.Component {
             this.state.recordingStatus.reason : null;
         const reverse = this.state.runner && this.state.runner.reverseStepDebugStatus();
         const canReverse = !!(reverse && reverse.accepted);
+        const reverseCycleRunner = this.state.runner &&
+            typeof this.state.runner.reverseStepDebugCycleStatus === 'function' ?
+            this.state.runner.reverseStepDebugCycleStatus() : null;
+        const reverseCycle = reverseCycleControlStatus({provider: ui.cycleProvider,
+            capabilities: caps, runnerStatus: reverseCycleRunner});
+        const canReverseCycle = reverseCycle.accepted;
         const reverseContinue = this.state.runner && this.state.runner.reverseContinueDebugStatus();
         const canReverseContinue = !!(reverseContinue && reverseContinue.accepted);
         const reverseRefusal = this.state.reverseStatus?.accepted === false ?
@@ -824,6 +841,14 @@ class DebugPanel extends React.Component {
                         onClick={this.onReverseStep}
                         title={canReverse ? this.tx('reverseHint') : (reverse?.reason || this.tx('reverseHint'))}
                     >{'⏮ '}{this.tx('reverseStep')}</button>
+
+                    <button
+                        data-debug-reverse-cycle
+                        style={canReverseCycle && !busy ? BTN : OFF}
+                        disabled={!canReverseCycle || busy}
+                        onClick={this.onReverseCycle}
+                        title={canReverseCycle ? this.tx('reverseCycleHint') : reverseCycle.reason}
+                    >{'↤ '}{this.tx('reverseCycle')}</button>
 
                     <button
                         data-debug-reverse-continue
