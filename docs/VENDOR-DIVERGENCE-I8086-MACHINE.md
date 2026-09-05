@@ -251,6 +251,12 @@ fails unless it touched both.
           "falsifiable": "A saved file loads into a differently-wired board and runs as nonsense instead of refusing.",
           "why": "checkpointTopology() stamps the wiring into the file so a restore into a different board is refused, not silently misapplied.",
           "contains": "checkpointTopology\\(\\)"
+        },
+        {
+          "id": "m6502-external-nmi-pin",
+          "falsifiable": "Pulsing the 6502's NMI pin from outside the CPU does nothing, or the machine's peripherals fall behind the processor by the interrupt's bus time so a timer fires late.",
+          "why": "nmi() pulses NMI as an EXTERNAL PIN EVENT and then advances the peripherals through the 7 cycles it costs. Upstream calls this.cpu.nmi() internally from the VGA path but declares no such entry point, so a host driving the pin has nothing to call. NAMED 2026-09-05 after a rebase moved what 'upstream' means and the derived-coverage check found it unexplained -- the third time a pin bump has surfaced an identifier that was lite-only all along.",
+          "contains": "nmi\\(\\) \\{"
         }
       ]
     },
@@ -319,6 +325,18 @@ fails unless it touched both.
           "falsifiable": "Stepping backwards one instruction silently does nothing instead of saying why it cannot.",
           "why": "replayInstruction() checks checkpointSupport() first and returns a CODED refusal with a reason. The refusal is the feature: an unsupported reverse-step that returns nothing is indistinguishable from one that worked and changed nothing.",
           "contains": "replayInstruction\\(\\)"
+        },
+        {
+          "id": "m6502-debug-nmi-is-recorded",
+          "falsifiable": "A recorded session that used the NMI button replays without it -- the interrupt happens live and is missing on playback, so the run diverges at that point and nowhere before it.",
+          "why": "nmi() calls publishInput('m6502.nmi') FIRST and refuses if the recorder rejects it, so the interrupt cannot happen without being recorded. Dropping the publish leaves a working button and an unreplayable recording, which is the failure that looks like a working feature.",
+          "contains": "publishInput\\('m6502\\.nmi'"
+        },
+        {
+          "id": "m6502-debug-replay-boundary",
+          "falsifiable": "Reverse-stepping to a recorded input lands somewhere else, or accepts a malformed boundary and runs to an arbitrary point instead of saying the boundary was invalid.",
+          "why": "replayToInputBoundary() parses the boundary as a BigInt inside a try and returns a CODED refusal ('invalid-input-boundary') rather than throwing or coercing. A NaN tick count that is silently accepted replays to the wrong place and reports success.",
+          "contains": "replayToInputBoundary\\(boundary\\)"
         }
       ]
     },
