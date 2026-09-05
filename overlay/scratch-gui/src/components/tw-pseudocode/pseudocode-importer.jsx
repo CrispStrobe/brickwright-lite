@@ -15,21 +15,30 @@ import {requestAssembly, asmRouteFor, asmTargetForDevice} from '../../lib/bw-asm
 // The example sources — upstream's and the locally-authored games, kept in
 // separate files so the upstream one stays synchronizable — are 266 KiB raw
 // (51 KiB compressed) that the entry bundle carried for a picker on one tab.
-// They are fetched when this tab mounts; `examples` is empty until then and the
-// picker re-renders when they land. `loadExample` awaits the load itself, so
-// a click that races the fetch still works.
+// They are fetched when the no-device Tools menu opens (or when restored game
+// controls need to identify their source). `loadExample` awaits the load
+// itself, so a click that races the fetch still works.
 let examples = {};
 let examplesPending = null;
+let examplesReady = false;
 const loadExamples = () => {
     if (!examplesPending) {
-        examplesPending = Promise.all([
+        const pending = Promise.all([
             import(/* webpackChunkName: "pseudocode-examples" */ '../../lib/sb3-creator-examples.js'),
             import(/* webpackChunkName: "pseudocode-examples" */ '../../lib/sb3-creator-game-examples.js')
         ]).then(([upstreamExamples, gameExamples]) => {
             // Keep locally-authored games outside the upstream-synchronized examples file.
             examples = {...upstreamExamples.default, ...gameExamples.default};
+            examplesReady = true;
             return examples;
+        }).catch(error => {
+            // A transient offline/cache miss must not poison every later Tools
+            // open. Only clear the promise that actually failed: a future
+            // retry may already have installed a new one.
+            if (examplesPending === pending) examplesPending = null;
+            throw error;
         });
+        examplesPending = pending;
     }
     return examplesPending;
 };
@@ -122,6 +131,8 @@ for (const g of DEVICE_GROUPS) for (const d of g.devices) DEVICE_BY_ID[d.id] = {
 const L10N = {
     en: {
         loadExample: '📚 Load example…', loadExampleTitle: 'Load a built-in example',
+        examplesLoading: 'Loading built-in examples…',
+        examplesRetry: 'Built-in examples unavailable — retry',
         openFile: '📂 Open', openFileTitle: t => `Open a source file (${t})`,
         saveFile: '💾 Save', saveFileTitle: n => `Save this tab as ${n}`,
         exportMakeCode: '📦 MakeCode source',
@@ -281,6 +292,8 @@ const L10N = {
     },
     de: {
         loadExample: '📚 Beispiel laden…', loadExampleTitle: 'Ein eingebautes Beispiel laden',
+        examplesLoading: 'Eingebaute Beispiele werden geladen…',
+        examplesRetry: 'Eingebaute Beispiele nicht verfügbar — erneut versuchen',
         openFile: '📂 Öffnen', openFileTitle: t => `Eine Quelldatei öffnen (${t})`,
         saveFile: '💾 Speichern', saveFileTitle: n => `Diesen Tab als ${n} speichern`,
         exportMakeCode: '📦 MakeCode-Quellcode',
@@ -817,7 +830,8 @@ class PseudocodeImporter extends React.Component {
             // gallery loads). Fetched once, on demand, when a chip is selected:
             // the "Load example…" control then lists catalog programs for that
             // device instead of the built-in stage games.
-            catalog: null, catalogError: null, showCatalog: false, exampleFilter: ''};
+            catalog: null, catalogError: null, showCatalog: false, exampleFilter: '', actionsOpen: false,
+            bundledExamplesStatus: 'idle'};
         this._cmEditor = null;
         // Cache compiled ASM by source hash so tab switching doesn't recompile.
         this._asmCache = {hash: null, asm: '', lineMap: null};
@@ -827,6 +841,7 @@ class PseudocodeImporter extends React.Component {
         this.compile = this.compile.bind(this);
         this.fromBlocks = this.fromBlocks.bind(this);
         this.loadExample = this.loadExample.bind(this);
+        this._loadBundledExamples = this._loadBundledExamples.bind(this);
         this.run = this.run.bind(this);
         this.switchTab = this.switchTab.bind(this);
         this.flashMicrobitSim = this.flashMicrobitSim.bind(this);
@@ -842,9 +857,10 @@ class PseudocodeImporter extends React.Component {
 
     componentDidMount () {
         this._unmounted = false;
-        // Heavy things — the example sources, the CodeMirror chunk — arrive when
-        // the tab is first shown (_reveal), not now: every TabPanel is
-        // force-rendered, so "mounted" is every first paint.
+        // CodeMirror arrives when the tab is first shown (_reveal), not now:
+        // every TabPanel is force-rendered, so "mounted" is every first paint.
+        // Bundled examples wait for the no-device Tools menu or a real source
+        // consumer such as restored-game control discovery.
         if (this.state.revealed) this._reveal();
         // Pick up pseudocode from an example loaded via the Circuit tab.
         // loadExampleProgram stores the source on vm.runtime.bwPseudocodeSource
@@ -972,21 +988,53 @@ class PseudocodeImporter extends React.Component {
         loadExamples().then(() => {
             if (this._unmounted) return;
             this.publishGameControls(this.gameKeyForSource(source));
+        }).catch(() => {
+            if (!this._unmounted) this.publishGameControls(null);
         });
     }
 
-    /** The tab is (or has been) shown: fetch what a hidden tab has no use for. */
+    /** Load the no-device picker on demand, with retry and stale-request guards. */
+    _loadBundledExamples () {
+        if (examplesReady) {
+            if (!this._unmounted && this.state.bundledExamplesStatus !== 'ready') {
+                this.setState({bundledExamplesStatus: 'ready'});
+            }
+            return Promise.resolve(examples);
+        }
+        const request = loadExamples();
+        this._examplesLoadRequest = request;
+        if (this.state.bundledExamplesStatus !== 'loading') {
+            this.setState({bundledExamplesStatus: 'loading'});
+        }
+        return request.then(loaded => {
+            if (!this._unmounted && this._examplesLoadRequest === request) {
+                this.setState({bundledExamplesStatus: 'ready'});
+            }
+            return loaded;
+        }, () => {
+            if (!this._unmounted && this._examplesLoadRequest === request) {
+                this.setState({bundledExamplesStatus: 'error'});
+            }
+            return null;
+        });
+    }
+
+    /** The tab is (or has been) shown: reveal the editor, not its Tools payload. */
     _reveal () {
         if (this._revealing) return;
         this._revealing = true;
         if (!this.state.revealed) this.setState({revealed: true});
-        loadExamples().then(() => {
-            if (!this._unmounted) this.forceUpdate();
-        });
     }
 
     componentDidUpdate (prevProps, prevState) {
         if (this.props.isVisible && !this.state.revealed) this._reveal();
+        // Tools may have opened while a hardware device was selected. If the
+        // user then chooses "none" without closing it, onToggle does not fire
+        // again; this transition still has to wake the bundled picker.
+        if (this.state.actionsOpen && !this.currentDevice() &&
+            this.state.bundledExamplesStatus === 'idle') {
+            this._loadBundledExamples();
+        }
         // Debounced so a fast typist writes localStorage once per pause, not
         // once per keystroke. Watches the ACTIVE tab, both its language and
         // its text, so switching tabs re-saves under the new language.
@@ -2738,7 +2786,8 @@ class PseudocodeImporter extends React.Component {
     }
 
     async loadExample (key) {
-        const src = key && (await loadExamples())[key];
+        const loaded = key && (await this._loadBundledExamples());
+        const src = loaded && loaded[key];
         if (!src) return;
         this.publishGameControls(GROUPS[0].items.some(([gameKey]) => gameKey === key) ? key : null);
         const device = this.currentDevice();
@@ -3127,7 +3176,10 @@ class PseudocodeImporter extends React.Component {
         const item = {...csel, display: 'block', width: '100%', boxSizing: 'border-box',
             textAlign: 'left', cursor: 'pointer', border: 'none', background: 'transparent'};
         return (
-            <details style={{position: 'relative', alignSelf: 'center'}} data-testid="bw-code-actions">
+            <details style={{position: 'relative', alignSelf: 'center'}} data-testid="bw-code-actions"
+                onToggle={event => {
+                    this.setState({actionsOpen: event.currentTarget.open});
+                }}>
                 <summary style={{...csel, cursor: 'pointer', listStyle: 'none', border: '1px solid #cbd5e1',
                     background: '#f1f5f9', whiteSpace: 'nowrap'}} title="Open, save, import, examples and reference">
                     ⋯
@@ -3161,7 +3213,16 @@ class PseudocodeImporter extends React.Component {
                         </button>
                     ) : null}
                     <div style={{borderTop: '1px solid #e2e8f0', margin: '3px 0'}} />
-                    {this.currentDevice() ? this.renderCatalogControl(item) : (
+                    {this.currentDevice() ? this.renderCatalogControl(item) :
+                        this.state.bundledExamplesStatus === 'error' ? (
+                            <button type="button" onClick={this._loadBundledExamples} style={item}
+                                title={this.L.loadExampleTitle} data-testid="bw-load-example-retry">
+                                {this.L.examplesRetry}
+                            </button>
+                        ) : this.state.bundledExamplesStatus !== 'ready' ? (
+                            <span style={{...item, cursor: 'wait', color: '#64748b'}} aria-live="polite"
+                                data-testid="bw-load-example-loading">{this.L.examplesLoading}</span>
+                        ) : (
                         <select defaultValue="" onChange={e => this.loadExample(e.target.value)}
                             style={{...item, border: 'none'}} title={this.L.loadExampleTitle}
                             data-testid="bw-load-example">
