@@ -312,7 +312,8 @@ export const assertLazySvgSanitizerBoundary = report => {
     }
     const expected = [
         ['sanitizeSvg', 'scratch-svg-renderer sanitize-svg'],
-        ['cssTree', 'css-tree']
+        ['cssTree', 'css-tree'],
+        ['mdnData', 'mdn-data']
     ];
     for (const [key, label] of expected) {
         if (!svg?.[key]?.found) failures.push(`${label} is missing from webpack ownership`);
@@ -324,12 +325,13 @@ export const assertLazySvgSanitizerBoundary = report => {
     if (svg?.rendererIndex?.initial) {
         failures.push('scratch-svg-renderer barrel/index became initial JavaScript');
     }
-    if (svg?.mdnData?.found) {
-        failures.push('mdn-data is bundled although SVG sanitation needs no validation lexer');
+    const cssSourceBytes = svg?.cssPayload?.sourceBytes || 0;
+    if (cssSourceBytes < 500 * 1024) {
+        failures.push(`css-tree and mdn-data ownership fell below 500 KiB: ${cssSourceBytes} bytes`);
     }
     const cssEmittedBytes = svg?.cssPayload?.emittedBytes || 0;
     if (cssEmittedBytes < 75 * 1024) {
-        failures.push(`the css-tree sanitizer asset fell below 75 KiB: ${cssEmittedBytes} bytes`);
+        failures.push(`css-tree and mdn-data assets fell below 75 KiB: ${cssEmittedBytes} bytes`);
     }
     return failures;
 };

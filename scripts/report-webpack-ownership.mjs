@@ -41,8 +41,8 @@ console.log(`Optional CodeMirror grammars: ${(report.optionalCodeMirrorGrammars.
 console.log(`Lazy paint editor: ${(report.lazyPaintEditor.sourceBytes / 1024).toFixed(1)} KiB source, ` +
     `${(report.lazyPaintEditor.emittedBytes / 1024).toFixed(1)} KiB emitted in ` +
     `${report.lazyPaintEditor.files.join(', ') || 'missing assets'}`);
-console.log(`Lazy SVG sanitizer: ${(report.lazySvgSanitizer.cssTree.sourceBytes / 1024).toFixed(1)} KiB ` +
-    `css-tree source, ${(report.lazySvgSanitizer.cssPayload.emittedBytes / 1024).toFixed(1)} KiB ` +
+console.log(`Lazy SVG sanitizer: ${(report.lazySvgSanitizer.cssPayload.sourceBytes / 1024).toFixed(1)} KiB ` +
+    `css-tree/mdn-data source, ${(report.lazySvgSanitizer.cssPayload.emittedBytes / 1024).toFixed(1)} KiB ` +
     `emitted in ${report.lazySvgSanitizer.cssPayload.files.join(', ') || 'missing assets'}; named entry ` +
     `${report.lazySvgSanitizer.namedChunk.files.join(', ') || 'missing'}`);
 for (const failure of failures) console.error(`FAIL: ${failure}`);

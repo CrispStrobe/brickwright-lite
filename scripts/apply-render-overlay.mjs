@@ -53,24 +53,6 @@ if (exportsChanged) {
     console.log('  scratch-svg-renderer narrow source entries already exported');
 }
 
-const sanitizerPath = path.join(path.dirname(svgRendererPath), 'src', 'sanitize-svg.js');
-let sanitizer = readFileSync(sanitizerPath, 'utf8');
-const cssTreeAnchor = "const {generate, parse, walk} = require('css-tree');";
-const cssTreeNarrow = `// Brickwright: avoid css-tree's validation lexer and complete MDN database.
-const generate = require('css-tree/lib/generator');
-const parse = require('css-tree/lib/parser');
-const walk = require('css-tree/lib/walker');`;
-if (sanitizer.includes(cssTreeNarrow)) {
-    console.log('  sanitize-svg.js narrow css-tree imports already applied');
-} else if (sanitizer.includes(cssTreeAnchor)) {
-    sanitizer = sanitizer.replace(cssTreeAnchor, cssTreeNarrow);
-    writeFileSync(sanitizerPath, sanitizer);
-    console.log('  patched sanitize-svg.js (narrow css-tree imports)');
-} else {
-    console.error('  ! sanitize-svg.js css-tree anchor not found — base renderer version changed?');
-    process.exit(1);
-}
-
 const skinPath = path.join(ROOT, 'packages', 'scratch-gui', 'node_modules', 'scratch-render', 'src', 'SVGSkin.js');
 if (!existsSync(skinPath)) {
     console.error(`node_modules/scratch-render missing at ${skinPath} — run npm install first.`);

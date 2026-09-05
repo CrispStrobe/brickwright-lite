@@ -48,14 +48,6 @@ describe('SVG renderer demand boundary', () => {
             'bitmap, GIF, sound and sprite-only paths must not demand the sanitizer');
     });
 
-    test('the sanitizer uses only css-tree syntax leaves and excludes the MDN lexer database', () => {
-        const sanitizer = read('../packages/scratch-svg-renderer/src/sanitize-svg.js');
-        assert.doesNotMatch(sanitizer, /require\(['"]css-tree['"]\)/);
-        assert.match(sanitizer, /css-tree\/lib\/parser/);
-        assert.match(sanitizer, /css-tree\/lib\/generator/);
-        assert.match(sanitizer, /css-tree\/lib\/walker/);
-    });
-
     test('owned GUI mirrors and fresh-install patchers preserve the boundary', () => {
         for (const relative of [
             'containers/paint-editor-wrapper.jsx',
@@ -85,7 +77,6 @@ describe('SVG renderer demand boundary', () => {
         const renderPatch = read('../scripts/apply-render-overlay.mjs');
         const vmPatch = read('../scripts/apply-vm-overlay.mjs');
         assert.match(renderPatch, /leafExports/);
-        assert.match(renderPatch, /sanitize-svg\.js \(narrow css-tree imports\)/);
         assert.match(renderPatch, /scratch-svg-renderer\/src\/load-svg-string/);
         assert.match(vmPatch, /load-costume\.js \(narrow SVG imports\)/);
         assert.match(vmPatch, /scratch-svg-renderer\/src\/serialize-svg-to-string/);

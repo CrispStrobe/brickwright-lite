@@ -16,7 +16,7 @@ import {chromium} from 'playwright';
 
 const url = process.env.PROOF_URL || 'http://localhost:8617/';
 const OUT = path.resolve('artifacts/svg-sanitizer-upload');
-const SANITIZER_CHUNK = /\/chunks\/svg-sanitizer(?:\.[a-f0-9]+)?\.js(?:[?#]|$)/;
+const SANITIZER_CHUNK = /\/chunks\/svg-sanitizer\.js(?:[?#]|$)/;
 const ATTACKER = /(?:attacker\.invalid|evil\.invalid)/i;
 // Same-probe eager baseline: hosted run 33977434631, 65.7 ms and no long
 // tasks. P13 may spend at most 15% more to fetch/parse the lazy capability.
@@ -92,7 +92,6 @@ const makeSession = async () => {
 
 const openCostumes = async page => {
     await page.getByRole('tab', {name: /Costumes?/}).first().click();
-    // gate-shapes-allow: readiness precondition; upload/storage/render assertions below are the verdict.
     await page.locator('canvas[resize="true"]:visible').waitFor({state: 'visible', timeout: 30000});
     await page.getByRole('tabpanel', {name: /Costumes?/}).first()
         .locator('input[type="file"][accept*=".svg"]')
@@ -147,7 +146,7 @@ const uploadAndMeasure = async (page, file) => {
             durationMs: readyAt - start,
             longTasks: (receipt?.longTasks || []).filter(task => task.at >= start && task.at < readyAt),
             resources: performance.getEntriesByType('resource')
-                .filter(entry => SANITIZER_CHUNK.test(new URL(entry.name).pathname))
+                .filter(entry => /\/chunks\/svg-sanitizer\.js$/.test(new URL(entry.name).pathname))
                 .map(entry => ({name: new URL(entry.name).pathname, startTime: entry.startTime,
                     responseEnd: entry.responseEnd, transferSize: entry.transferSize}))
         });
@@ -202,7 +201,6 @@ try {
         `${longestUploadTask.toFixed(1)} ms longest task`);
     let stored = await costumeState(page);
     const uploadedTile = page.getByText('adversarial', {exact: true}).first();
-    // gate-shapes-allow: synchronize React; the following record checks tile, bytes, skin, format and size.
     await uploadedTile.waitFor({state: 'visible', timeout: 30000});
     const uploadedTileVisible = await uploadedTile.isVisible();
     record('one real SVG upload requests the sanitizer chunk exactly once', sanitizerRequests.length === 1,
@@ -230,7 +228,6 @@ try {
     stored = await costumeState(page);
     const reloadedTile = page.getByRole('tabpanel', {name: /Costumes?/}).first()
         .getByText('adversarial', {exact: true}).first();
-    // gate-shapes-allow: synchronize React; the following record checks the reloaded skin and stored bytes.
     await reloadedTile.waitFor({state: 'visible', timeout: 30000});
     const reloadedTileVisible = await reloadedTile.isVisible();
     record('the sanitized SVG survives save and reload visibly', reloadedTileVisible &&
