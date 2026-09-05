@@ -955,6 +955,177 @@ END START
 ; = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 `
     },
+    {
+        id: 'ether',
+        label: 'Ethernet card self-test (NE2000)',
+        labelDe: 'Netzwerkkarte testen (NE2000)',
+        expect: 'Sends a frame and hears it come back.',
+        source: `; =============================================================================
+; TITLE: An NE2000 Talking To Itself
+; DESCRIPTION: A network card with nothing plugged into it, doing what a real
+;              one does at power-on: send a frame and check it comes back.
+;              Every step here is what a driver does -- there is no library
+;              between this program and the chip.
+; =============================================================================
+; BW-CHIPS: ne2000@320
+;
+; That comment line is not decoration. An assembly program has no PIN
+; declarations, so it asks for hardware this way -- the bench reads it and
+; puts a card at 320h with its transmit looped back to its own receiver.
+; Without it the ports below are open bus and every read returns FFh.
+;
+; 320h and not 300h: the ADC0809 already lives at 300h, and two chips
+; answering one address is a board that runs and reads the wrong device.
+; =============================================================================
+
+NIC      EQU 320H          ; the DP8390's sixteen registers
+NIC_DATA EQU NIC + 10H     ; the remote DMA window
+CR       EQU NIC + 0
+
+    ORG 100H
+
+START:
+    ; -------------------------------------------------------------------------
+    ; STOP THE CHIP BEFORE CONFIGURING IT. It comes up stopped and a driver's
+    ; first act is to say so anyway: 21h is page 0, abort any DMA, STOP.
+    ; -------------------------------------------------------------------------
+    MOV DX, CR
+    MOV AL, 21H
+    OUT DX, AL
+
+    MOV DX, NIC + 0EH      ; DCR: word mode, no loopback in the chip itself
+    MOV AL, 49H
+    OUT DX, AL
+
+    ; -------------------------------------------------------------------------
+    ; THE RECEIVE RING. PSTART..PSTOP are 256-byte pages of the card's own
+    ; 16K buffer -- the host cannot address it directly, only through remote
+    ; DMA. BNRY is the last page WE have finished with; CURR is where the
+    ; card will write next. They meet when the ring is full, which is why a
+    ; driver must advance BNRY as it reads.
+    ; -------------------------------------------------------------------------
+    MOV DX, NIC + 1
+    MOV AL, 46H            ; PSTART
+    OUT DX, AL
+    MOV DX, NIC + 2
+    MOV AL, 80H            ; PSTOP
+    OUT DX, AL
+    MOV DX, NIC + 3
+    MOV AL, 46H            ; BNRY
+    OUT DX, AL
+
+    MOV DX, NIC + 0CH      ; RCR: accept broadcast
+    MOV AL, 04H
+    OUT DX, AL
+    MOV DX, NIC + 0DH      ; TCR: normal operation
+    XOR AL, AL
+    OUT DX, AL
+
+    MOV DX, CR             ; page 1
+    MOV AL, 61H
+    OUT DX, AL
+    MOV DX, NIC + 7        ; CURR = one page past PSTART
+    MOV AL, 47H
+    OUT DX, AL
+    MOV DX, CR             ; back to page 0, and START
+    MOV AL, 22H
+    OUT DX, AL
+
+    ; -------------------------------------------------------------------------
+    ; LOAD A FRAME INTO THE CARD'S BUFFER, through the only door there is.
+    ; RSAR is where to write, RBCR is how many bytes; then every OUT to the
+    ; data window moves one byte and the chip advances the address itself.
+    ; -------------------------------------------------------------------------
+    MOV DX, NIC + 8
+    XOR AL, AL             ; RSAR low  = 00
+    OUT DX, AL
+    MOV DX, NIC + 9
+    MOV AL, 40H            ; RSAR high = 40h -> page 40, the transmit buffer
+    OUT DX, AL
+    MOV DX, NIC + 0AH
+    MOV AL, 14            ; RBCR low: fourteen bytes of header
+    OUT DX, AL
+    MOV DX, NIC + 0BH
+    XOR AL, AL
+    OUT DX, AL
+    MOV DX, CR
+    MOV AL, 12H            ; remote WRITE, start
+    OUT DX, AL
+
+    MOV SI, OFFSET FRAME
+    MOV CX, 14
+    MOV DX, NIC_DATA
+PUSHB:
+    MOV AL, [SI]
+    OUT DX, AL
+    INC SI
+    LOOP PUSHB
+
+    MOV DX, NIC + 4        ; TPSR: transmit from page 40h
+    MOV AL, 40H
+    OUT DX, AL
+    MOV DX, NIC + 5        ; TBCR: fourteen bytes
+    MOV AL, 14
+    OUT DX, AL
+    MOV DX, NIC + 6
+    XOR AL, AL
+    OUT DX, AL
+
+    MOV DX, CR             ; START | TXP -- send it
+    MOV AL, 26H
+    OUT DX, AL
+
+    ; -------------------------------------------------------------------------
+    ; DID IT COME BACK? ISR bit 0 is PRX, "a packet was received". The card is
+    ; looped back, so the frame it just sent is the frame it should hear.
+    ; -------------------------------------------------------------------------
+    MOV DX, NIC + 7
+    IN AL, DX
+    TEST AL, 01H
+    JZ  NOTHING
+
+    MOV DX, OFFSET GOTIT
+    MOV AH, 9
+    INT 21H
+    JMP DONE
+
+NOTHING:
+    MOV DX, OFFSET SILENT
+    MOV AH, 9
+    INT 21H
+
+DONE:
+    MOV AX, 4C00H
+    INT 21H
+
+; A minimal Ethernet header: broadcast destination, our own source, and the
+; type field. Fourteen bytes -- the card pads the rest to the sixty a wire
+; requires, which is why what comes back is longer than what went out.
+FRAME  DB 0FFH, 0FFH, 0FFH, 0FFH, 0FFH, 0FFH
+       DB 002H, 000H, 000H, 08BH, 086H, 001H
+       DB 008H, 000H
+
+GOTIT  DB 'The card heard its own frame.', 0DH, 0AH, '\$'
+SILENT DB 'Nothing came back -- check the ring setup.', 0DH, 0AH, '\$'
+
+END START
+
+; =============================================================================
+; TECHNICAL NOTES
+; =============================================================================
+; 1. THE HOST CANNOT SEE THE CARD'S MEMORY. Sixteen kilobytes live on the
+;    card and every byte crosses through the remote-DMA window at +10h. That
+;    is the whole shape of the chip: set an address, set a count, then move
+;    bytes one at a time.
+; 2. A FULL RING DROPS FRAMES AND SETS OVW rather than overwriting. A driver
+;    that forgets to advance BNRY stops receiving after 16K with no error --
+;    which is why BNRY and CURR are the two registers worth understanding.
+; 3. WITH A SECOND MACHINE the loopback becomes a hub and this same program
+;    talks to another 8086. The card cannot tell the difference; only the
+;    board it is plugged into changes.
+; = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+`
+    },
 ];
 
 export default [...I8086_EXAMPLES, ...OURS];

@@ -68,7 +68,7 @@ test('the 8086 has examples, and they are the ones this file knows about', () =>
     assert.equal(new Set(ids).size, ids.length, 'duplicate example id');
     // And the ones we wrote are actually in it, by name -- `length >= 5` would
     // pass on upstream's six alone and say nothing about ours.
-    for (const mine of ['pins', 'keys', 'mode13']) {
+    for (const mine of ['pins', 'keys', 'mode13', 'ether']) {
         assert.ok(ids.includes(mine), `"${mine}" is written here and offered nowhere`);
     }
 });
@@ -213,4 +213,43 @@ test('a terminated program does not spin and does not stall', async () => {
     // And the screen still holds the output: an exited program whose text
     // was scrolled or cleared away tells the learner nothing.
     assert.ok(bench.screenText().filter(Boolean).length > 0);
+});
+
+test('the Ethernet example REQUESTS its card, and hears its own frame', async () => {
+    // AN ASSEMBLY PROGRAM HAS NO DECLARATIONS, so it cannot ask for hardware
+    // the way a pseudocode program does. `; BW-CHIPS: ne2000@320` is a
+    // COMMENT -- it assembles everywhere and means something only to the
+    // bench, which is what lets an example request a card without inventing
+    // an assembler directive MASM would reject.
+    //
+    // Without the card those ports are open bus and every read returns FFh,
+    // so this example would print its failure message and still "pass" a test
+    // that only checked it ran. The assertion is on what it SAYS.
+    const ex = I8086_ALL.find(e => e.id === 'ether');
+    assert.ok(ex, 'the example ships');
+    assert.match(ex.source, /^\s*;\s*BW-CHIPS:\s*ne2000@320\s*$/m,
+        'and declares the card it needs, at 320h rather than the ADC0809\'s 300h');
+
+    const chips = [];
+    for (const m of ex.source.matchAll(/^\s*;\s*BW-CHIPS:\s*(.+)$/gim)) {
+        for (const spec of m[1].split(',')) {
+            const b = spec.trim().match(/^([a-z0-9]+)(?:@([0-9a-f]+))?$/i);
+            if (b) {
+                chips.push({kind: b[1].toLowerCase(), name: `${b[1].toLowerCase()}0`,
+                    ...(b[2] ? {at: parseInt(b[2], 16)} : {}), loopback: true});
+            }
+        }
+    }
+    assert.deepEqual(chips.map(c => c.kind), ['ne2000']);
+
+    const out = await requestAssembly({source: ex.source, device: 'i8086'},
+        {hostedFetch: forbiddenFetch});
+    let text = '';
+    const bench = await createI8086DosBench(
+        {bytes: out.bytes, format: out.format, chips, onChar: (c) => { text += c; }});
+    let n = 0;
+    while (n < 2_000_000 && !bench.terminated) { bench.step(); n++; }
+    assert.ok(bench.terminated, 'it finishes');
+    assert.match(text, /heard its own frame/,
+        `the loopback round trip worked — it said: ${JSON.stringify(text.trim())}`);
 });

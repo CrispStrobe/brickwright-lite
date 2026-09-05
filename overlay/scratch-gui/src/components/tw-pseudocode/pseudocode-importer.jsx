@@ -1659,8 +1659,15 @@ class PseudocodeImporter extends React.Component {
         const warn = out.warnings.length ? this.L.asmWarnings(out.warnings) : '';
         const bench = BENCHES[out.target];
         if (bench) {
+            // HARDWARE THE SOURCE ASKS FOR. A pseudocode program declares its
+            // pins and the build returns the chips they need; an assembly
+            // program has no declarations, so the EXAMPLE carries them. That
+            // is how a program driving an NE2000's registers gets an NE2000
+            // to drive -- without putting one on every learner's board.
+            const chips = this.asmChipsForSource(this.state.buffers.asm);
             const detail = {rom: out.bytes, listing: out.listing, target: out.target,
-                slotId: out.slotId, profile: out.profile, format: out.format};
+                slotId: out.slotId, profile: out.profile, format: out.format,
+                ...(chips.length ? {chips} : {})};
             // The default debugger dock is the optional right pane. A program
             // handed to a hidden pane is technically running but unusable, so
             // open the pane as part of the same user gesture (as the Arduboy
@@ -1749,6 +1756,42 @@ class PseudocodeImporter extends React.Component {
             buffers: {...st.buffers, asm: out.asm},
             status: this.L.run8086Built(out.bytes.length, blocks) + warn
         }));
+    }
+
+    /**
+     * Which chips an assembly source needs, from a declaration IN the source.
+     *
+     * `; BW-CHIPS: ne2000@320` on any line asks the bench for that card. It is
+     * a comment, so it assembles everywhere and means something only here --
+     * the same trick a `#pragma` plays, and the reason an example can request
+     * hardware without inventing an assembler directive that MASM would
+     * reject.
+     *
+     * NOT INFERRED FROM THE CODE. A source that happens to `OUT 320h` gets
+     * nothing: guessing hardware from port writes would give a learner a card
+     * they did not ask for and hide the fact that a board needs one.
+     */
+    asmChipsForSource (src) {
+        const out = [];
+        const seen = new Set();
+        for (const m of String(src || '').matchAll(/^\s*;\s*BW-CHIPS:\s*(.+)$/gim)) {
+            for (const spec of m[1].split(',')) {
+                const bits = spec.trim().match(/^([a-z0-9]+)(?:@([0-9a-f]+))?$/i);
+                if (!bits) continue;
+                const kind = bits[1].toLowerCase();
+                if (seen.has(kind)) continue;
+                seen.add(kind);
+                const at = bits[2] ? parseInt(bits[2], 16) : undefined;
+                const chip = {kind, name: `${kind}0`};
+                if (at !== undefined) chip.at = at;
+                // A card with no link hears nothing. Loopback is what a real
+                // card's self-test uses, and it is the only link one machine
+                // can have.
+                if (kind === 'ne2000') chip.loopback = true;
+                out.push(chip);
+            }
+        }
+        return out;
     }
 
     // Keil C51 gives itself away: keywords SDCC spells differently, and its register headers.
