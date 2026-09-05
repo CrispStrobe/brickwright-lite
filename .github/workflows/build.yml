@@ -645,11 +645,13 @@ jobs:
               ./node_modules/.bin/webpack --profile --json ../../artifacts/i8086-performance/webpack-stats.json
           )
           node scripts/report-webpack-ownership.mjs
-          gzip -9 artifacts/i8086-performance/webpack-stats.json
           python3 -m http.server 8618 --directory packages/scratch-gui/build-profile &
           profile_server=$!
           for i in $(seq 1 30); do curl -sf http://localhost:8618/ >/dev/null && break; sleep 1; done
-          I8086_PERF_REPETITIONS=3 PROOF_URL=http://localhost:8618/ node scripts/bench-i8086-browser.mjs
+          I8086_PERF_REPETITIONS=3 \
+            I8086_WEBPACK_STATS=artifacts/i8086-performance/webpack-stats.json \
+            PROOF_URL=http://localhost:8618/ node scripts/bench-i8086-browser.mjs
+          gzip -9 artifacts/i8086-performance/webpack-stats.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always() && steps.playwright.outcome == 'success'
         with:

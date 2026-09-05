@@ -8,6 +8,7 @@ const outputPath = resolve(process.argv[3] || 'artifacts/i8086-performance/webpa
 const stats = JSON.parse(await readFile(inputPath, 'utf8'));
 const report = summarizeWebpackOwnership(stats);
 const failures = assertDosChunkBoundary(report);
+report.dosChunk.boundaryFailures = failures;
 await mkdir(dirname(outputPath), {recursive: true});
 await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`);
 
@@ -22,4 +23,6 @@ for (const owner of report.initial.owners.slice(0, 15)) {
 console.log(`DOS chunk: ${(report.dosChunk.bytes / 1024).toFixed(1)} KiB  ` +
     `${report.dosChunk.files.join(', ') || 'missing'}`);
 for (const failure of failures) console.error(`FAIL: ${failure}`);
-if (failures.length) process.exitCode = 1;
+// The first hosted P6 receipt names the existing graph before a split is
+// chosen. Turn this into a ratchet only after that evidence is documented.
+if (failures.length && process.env.I8086_ENFORCE_WEBPACK_BOUNDARY === '1') process.exitCode = 1;

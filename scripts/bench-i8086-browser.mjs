@@ -4,7 +4,7 @@
 // minimum-device runs; thresholds are deliberately limited to catching a machine
 // that cannot sustain one quarter of an XT, while raw and statistical JSON
 // receipts carry the distributions used for performance work.
-import {mkdir, writeFile} from 'node:fs/promises';
+import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {chromium} from 'playwright';
 import {
@@ -14,12 +14,15 @@ import {
     summarizeI8086Timeline,
     summarizeReactProfiles
 } from './lib/i8086-performance.mjs';
+import {auditWebpackResourceWindow} from './lib/webpack-ownership.mjs';
 
 const url = process.env.PROOF_URL || process.env.BW_URL || 'http://localhost:8617/';
 const outDir = resolve(process.env.I8086_PERF_ARTIFACTS || 'artifacts/i8086-performance');
 const rawDir = resolve(outDir, 'raw');
 const requestedRepetitions = Number.parseInt(process.env.I8086_PERF_REPETITIONS || '3', 10);
 const repetitions = Number.isFinite(requestedRepetitions) ? Math.max(3, requestedRepetitions) : 3;
+const webpackStatsPath = process.env.I8086_WEBPACK_STATS;
+const webpackStats = webpackStatsPath ? JSON.parse(await readFile(resolve(webpackStatsPath), 'utf8')) : null;
 const profiles = [
     {name: 'desktop', viewport: {width: 1440, height: 900}, deviceScaleFactor: 1, cpuThrottleRate: 1},
     {name: 'mobile', viewport: {width: 412, height: 915}, deviceScaleFactor: 2, isMobile: true,
@@ -74,6 +77,8 @@ try {
         const device = page.getByTestId('bw-device-select');
         await device.waitFor({state: 'visible', timeout: 30000});
         await mark('device-ready');
+        await page.waitForLoadState('networkidle', {timeout: 20000}).catch(() => {});
+        await mark('dos-load-start');
         await device.selectOption('i8086');
         await mark('i8086-selected');
         // The minimum-width language row overlaps sibling controls visually;
@@ -114,9 +119,10 @@ try {
             ...window.__BW_I8086_PERF__,
             heapBytes: performance.memory?.usedJSHeapSize ?? null,
             userAgent: navigator.userAgent,
-            resources: performance.getEntriesByType('resource').map(entry => ({
+            resources: [...performance.getEntriesByType('navigation'),
+                ...performance.getEntriesByType('resource')].map(entry => ({
                 name: entry.name,
-                kind: entry.initiatorType,
+                kind: entry.entryType === 'navigation' ? 'document' : entry.initiatorType,
                 at: entry.startTime,
                 ms: entry.duration,
                 transferSize: entry.transferSize || 0,
@@ -147,6 +153,13 @@ try {
         });
         const probeInstalledAt = raw.milestones.find(mark => mark.name === 'probe-installed')?.at ?? 0;
         const circuitOpenAt = raw.milestones.find(mark => mark.name === 'circuit-open-request')?.at ?? 0;
+        const dosLoadAt = raw.milestones.find(mark => mark.name === 'dos-load-start')?.at ?? 0;
+        const runnerRunningAt = raw.milestones.find(mark => mark.name === 'runner-running')?.at ?? sampleStart;
+        const dosLoadResources = webpackStats ? auditWebpackResourceWindow(webpackStats, raw.resources, {
+            from: dosLoadAt,
+            to: runnerRunningAt,
+            origin: new URL(url).origin
+        }) : null;
         const startupAttribution = attributeReactCommits(
             raw.reactProfiles, raw.reactUpdateSources, {from: probeInstalledAt, to: sampleStart});
         const circuitOpenAttribution = attributeReactCommits(
@@ -175,6 +188,7 @@ try {
                 startup: startupAttribution,
                 circuitOpen: circuitOpenAttribution
             },
+            dosLoadResources,
             heapBytes: raw.heapBytes,
             userAgent: raw.userAgent,
         };
@@ -182,7 +196,7 @@ try {
         profileResults.push(result);
         await writeFile(resolve(rawDir, `${name}-${String(repetition).padStart(2, '0')}.json`),
             `${JSON.stringify({
-                schema: 'brickwright/i8086-browser-performance-raw/v2',
+                schema: 'brickwright/i8086-browser-performance-raw/v3',
                 url,
                 profile: {name, ...contextOptions, cpuThrottleRate},
                 repetition,
@@ -211,6 +225,15 @@ try {
         if (missingProfiles.length) {
             throw new Error(`${name} #${repetition} profiling build emitted no ${missingProfiles.join(', ')} commits`);
         }
+        if (dosLoadResources) {
+            console.log(`  DOS load: ${(dosLoadResources.encodedBodyBytes / 1024).toFixed(1)} KiB encoded, ` +
+                `${dosLoadResources.assets.length} webpack asset(s), ` +
+                `${dosLoadResources.forbiddenModules.length} forbidden module(s)`);
+            if (dosLoadResources.unmatchedAssets.length) {
+                throw new Error(`${name} #${repetition} DOS load fetched JavaScript absent from webpack stats: ` +
+                    dosLoadResources.unmatchedAssets.join(', '));
+            }
+        }
         for (const [windowName, attribution] of Object.entries(result.reactAttribution)) {
             for (const [id, boundary] of Object.entries(attribution.boundaries)) {
                 if (boundary.attributedCommits + boundary.unattributedCommits !== boundary.commits) {
@@ -234,7 +257,7 @@ try {
     }
 } finally {
     await writeFile(resolve(outDir, 'report.json'), `${JSON.stringify({
-        schema: 'brickwright/i8086-browser-performance/v3', url, repetitions, results, summaries,
+        schema: 'brickwright/i8086-browser-performance/v4', url, repetitions, results, summaries,
     }, null, 2)}\n`);
     await browser.close();
 }

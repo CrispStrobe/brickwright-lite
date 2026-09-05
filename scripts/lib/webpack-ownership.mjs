@@ -17,13 +17,13 @@ const moduleLeaves = (modules, inheritedChunks = []) => (modules || []).flatMap(
     return module.modules?.length ? moduleLeaves(module.modules, chunks) : [{...module, chunks}];
 });
 
-const forbiddenReason = name => {
+export const forbiddenDosModuleReason = name => {
     const normalized = stripLoaders(name);
-    if (/(?:^|\/)(?:avr8js|emu8051|rp2040js|bbc-z80|z80|mos6502|m6502|arm-thumb|riscv|labwired)(?:[-./]|$)/i
+    if (/(?:^|\/)(?:avr8js|avr-chips|emu8051|rp2040js?|bbc-z80|z80|mos6502|m6502|w65c02|stm32|arm-thumb|riscv|labwired)(?:[-./]|$)/i
         .test(normalized)) return 'unrelated-cpu-family';
-    if (/\/bw-board\/(?:index|devices|boards)\.js$/i.test(normalized) ||
+    if (/\/bw-board\/(?:index|devices|boards|register-all|stimulus-catalogue)\.js$/i.test(normalized) ||
         /\/bw-board\/devices\//i.test(normalized)) return 'broad-board-or-device-registry';
-    if (/\/bw-board\/(?:analog|circuit|netlist|solver|spice)(?:[-./]|$)/i.test(normalized)) return 'solver';
+    if (/\/bw-board\/(?:mna|ac|sweep|analog|circuit|netlist|solver|spice)(?:[-./]|$)/i.test(normalized)) return 'solver';
     return null;
 };
 
@@ -54,7 +54,7 @@ export const summarizeWebpackOwnership = input => {
         /\.js$/.test(asset.name) && (asset.chunks || []).some(id => dosIds.has(String(id))));
     const forbiddenModules = dosModules.map(module => ({
         name: stripLoaders(module.name || module.identifier),
-        reason: forbiddenReason(module.name || module.identifier)
+        reason: forbiddenDosModuleReason(module.name || module.identifier)
     })).filter(module => module.reason);
 
     return {
@@ -77,6 +77,44 @@ export const summarizeWebpackOwnership = input => {
             owners: sumOwners(dosModules),
             forbiddenModules
         }
+    };
+};
+
+export const auditWebpackResourceWindow = (input, resources, {from, to, origin}) => {
+    const stats = input.children?.length === 1 ? input.children[0] : input;
+    const assets = (stats.assets || []).filter(asset => /\.js$/.test(asset.name));
+    const modules = moduleLeaves(stats.modules);
+    const scripts = (resources || []).filter(resource => resource.kind === 'script' &&
+        resource.at >= from && resource.at < to && (!origin || resource.name.startsWith(origin)));
+    const matched = [];
+    const unmatchedAssets = [];
+    const chunkIds = new Set();
+    for (const resource of scripts) {
+        const pathname = decodeURIComponent(new URL(resource.name).pathname).replace(/^\//, '');
+        const asset = assets.find(candidate => pathname === candidate.name || pathname.endsWith(`/${candidate.name}`));
+        if (!asset) unmatchedAssets.push(pathname);
+        else {
+            matched.push(asset.name);
+            for (const id of asset.chunks || []) chunkIds.add(String(id));
+        }
+    }
+    const fetchedModules = modules.filter(module =>
+        (module.chunks || []).some(id => chunkIds.has(String(id))));
+    const forbiddenModules = fetchedModules.map(module => ({
+        name: stripLoaders(module.name || module.identifier),
+        reason: forbiddenDosModuleReason(module.name || module.identifier)
+    })).filter(module => module.reason);
+    const bytes = field => scripts.reduce((sum, resource) => sum + (Number(resource[field]) || 0), 0);
+    return {
+        from, to,
+        scripts: scripts.length,
+        transferBytes: bytes('transferSize'),
+        encodedBodyBytes: bytes('encodedBodySize'),
+        decodedBodyBytes: bytes('decodedBodySize'),
+        assets: [...new Set(matched)].sort(),
+        unmatchedAssets: [...new Set(unmatchedAssets)].sort(),
+        owners: sumOwners(fetchedModules),
+        forbiddenModules
     };
 };
 

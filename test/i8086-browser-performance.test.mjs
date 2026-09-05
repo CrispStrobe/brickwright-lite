@@ -18,8 +18,9 @@ test('the production 8086 benchmark covers desktop and mobile pump health', () =
         'pumpMs', 'pumpBreakdown', 'setupTimeline', 'steadyLongTasks',
         'milestones', 'resources', 'longTasks', 'reactProfiles', 'heapBytes', "ratio < 0.25",
         'encodedBodySize', 'decodedBodySize', 'newCDPSession', 'reactUpdateSources',
-        "'Emulation.setCPUThrottlingRate'", 'browser-performance-raw/v2',
-        'browser-performance/v3', 'summarizeI8086Repetitions', 'cpuThrottleRate: 4',
+        "'Emulation.setCPUThrottlingRate'", 'browser-performance-raw/v3',
+        'browser-performance/v4', 'summarizeI8086Repetitions', 'cpuThrottleRate: 4',
+        'dos-load-start', 'dosLoadResources', 'I8086_WEBPACK_STATS',
     ]) assert.ok(script.includes(fact), `benchmark lost ${fact}`);
     assert.match(script, /Math\.max\(3, requestedRepetitions\)/,
         'the statistical gate must not accept fewer than three repetitions');
@@ -262,5 +263,6 @@ test('CI retains the browser performance receipt', () => {
     assert.match(workflow, /path: artifacts\/i8086-performance\/\*\*/);
     assert.match(workflow, /\.\/node_modules\/\.bin\/webpack --profile --json \.\.\/\.\.\/artifacts\/i8086-performance\/webpack-stats\.json/);
     assert.match(workflow, /node scripts\/report-webpack-ownership\.mjs/);
+    assert.match(workflow, /I8086_WEBPACK_STATS=artifacts\/i8086-performance\/webpack-stats\.json/);
     assert.match(workflow, /gzip -9 artifacts\/i8086-performance\/webpack-stats\.json/);
 });

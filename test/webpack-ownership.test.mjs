@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {assertDosChunkBoundary, summarizeWebpackOwnership} from '../scripts/lib/webpack-ownership.mjs';
+import {
+    assertDosChunkBoundary,
+    auditWebpackResourceWindow,
+    summarizeWebpackOwnership
+} from '../scripts/lib/webpack-ownership.mjs';
 
 const fixture = (dosModules = [
     {name: './src/lib/bw-board/i8086-machine.js', size: 700, chunks: [8]},
@@ -23,6 +27,27 @@ const fixture = (dosModules = [
         {name: './node_modules/@scope/large/index.js', size: 5000, chunks: [2]},
         ...dosModules
     ]
+});
+
+test('a causal resource window maps fetched assets back to nested webpack modules and bytes', () => {
+    const stats = fixture();
+    stats.modules.push({name: './concatenated', size: 1000, chunks: [8], modules: [
+        {name: './src/lib/bw-board/mna.js', size: 600},
+        {name: './src/lib/bw-board/audio-bus.js', size: 400}
+    ]});
+    const report = auditWebpackResourceWindow(stats, [
+        {name: 'http://localhost/chunks/bw-debug-i8086.js', kind: 'script', at: 12,
+            transferSize: 0, encodedBodySize: 1000, decodedBodySize: 2200},
+        {name: 'http://localhost/gui.12345678.js', kind: 'script', at: 2,
+            transferSize: 3000, encodedBodySize: 3000, decodedBodySize: 3000}
+    ], {from: 10, to: 20, origin: 'http://localhost'});
+    assert.equal(report.scripts, 1);
+    assert.equal(report.transferBytes, 0, 'cached scripts legitimately transfer zero bytes');
+    assert.equal(report.encodedBodyBytes, 1000);
+    assert.equal(report.decodedBodyBytes, 2200);
+    assert.deepEqual(report.assets, ['chunks/bw-debug-i8086.js']);
+    assert.deepEqual(report.forbiddenModules.map(module => module.reason), ['solver']);
+    assert.deepEqual(report.unmatchedAssets, []);
 });
 
 test('webpack ownership reports initial assets, package owners and the isolated DOS chunk', () => {
