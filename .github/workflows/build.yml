@@ -479,13 +479,6 @@ jobs:
           # No `||` branch on purpose: this step no longer swallows anything,
           # and the script's own stderr names any missing prerequisite.
           npm run smoke:debugger
-
-          path: |
-            wait-observations.jsonl
-            wait-report.txt
-            wait-report.json
-          if-no-files-found: warn
-
       # `!cancelled()` because the built app is the primary DIAGNOSTIC, and the
       # runs you most want to inspect are the ones that failed. Without it this
       # step carries an implicit success() and is skipped after any red gate, so
@@ -523,32 +516,31 @@ jobs:
   # they import from the overlay tree directly and need neither the vendored
   # packages nor node_modules (checked 2026-09-05 by running them from a copy
   # with only those three directories). A red here blocks the deploy exactly as
+  # it did when it was a step of `build`.
+  #
+  # Same TAP reading as the unit-test step, for the same reason: a suite that
+  # threw while being constructed prints `not ok` and a summary that does not
+  # count it.
+
 
   # SPLIT 2026-09-05: the browser gates are their own job.
   #
-  # The build job was being killed by its own `timeout-minutes: 30`, and
-  # GitHub reports a timeout-killed job as CANCELLED, not failure. Five
-  # sessions spent a day hunting an external canceller because of that one
-  # word. Measured on the last green run: 17.1 min over 97 steps, of which the
-  # BROWSER PHASE WAS 11.5 (67%) and everything else 5.6. On a slightly slow
-  # runner the sum crossed 30 -- and `deploy` needs `build`, so nothing
-  # shipped for five hours.
+  # The build job was killed by its own `timeout-minutes: 30`, which GitHub
+  # reports as CANCELLED rather than failure -- five sessions spent a day
+  # hunting an external canceller because of that word. Unsplit: 17.1 min over
+  # 97 steps, browser phase 11.5 (67%). Split and measured: build 5m18s,
+  # browser 13m23s, parallel, neither cancelled.
   #
-  # Raising the ceiling hides genuine hangs, which is what the watchdog exists
-  # to catch and what its author warned against tightening. Splitting gives
-  # each half its own ceiling with room, and makes a red attributable to what
-  # it ran rather than to whatever the job reached at minute 30.
+  # THIS JOB'S `timeout-minutes: 30` BOUNDS THE 41 GATE STEPS, and lego-b9's
+  # per-step timeouts bound each one beneath it. The browser half is the one
+  # that grows, so its headroom is the number to watch.
   #
-  # THE SETUP HERE IS THE MINIMAL CHAIN, not a copy of build's: the gates need
-  # the vendored tree, the overlays and a built editor, and none of build's
-  # ~15 guard steps. IDS ARE SUFFIXED `_browser` because test/gate-coverage
-  # resolves step ids FILE-WIDE while GitHub scopes them per job -- a
-  # duplicate there reads as a forward reference and marks every later
-  # condition permanently false. Satisfying that gate beats weakening it.
-  #
-  # THE PAGES ARTIFACT STAYS IN `build`: pages-deploy-ordering asserts it is
-  # uploaded once, by the job that built it, and that `deploy` never resolves
-  # an artifact by name. This job uploads nothing to Pages.
+  # BOUNDARIES ARE CONTENT ANCHORS, and the rebuild ASSERTS them -- including
+  # that this block's `steps:` is the only one. Two earlier attempts produced
+  # a file that parsed and was wrong: line numbers read from a stale revision
+  # severed an `upload-artifact` step, and a slice that began one line early
+  # gave the job TWO `steps:` keys, which PyYAML silently accepts and Actions
+  # rejects with a run that has no jobs at all.
   browser:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -1218,12 +1210,12 @@ jobs:
         if: always() && steps.waits.outcome != 'skipped'
         with:
           name: wait-observations
+          path: |
+            wait-observations.jsonl
+            wait-report.txt
+            wait-report.json
+          if-no-files-found: warn
 
-  # it did when it was a step of `build`.
-  #
-  # Same TAP reading as the unit-test step, for the same reason: a suite that
-  # threw while being constructed prints `not ok` and a summary that does not
-  # count it.
   corpus:
     runs-on: ubuntu-latest
     timeout-minutes: 30
