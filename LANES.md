@@ -241,6 +241,57 @@ evidence the rule had landed. It was `git log --since=… --format='%b' | grep -
 counted discussion of the rule as compliance with it, and discussion was the thing there was most of.
 Count commits whose trailer LINE matches, one commit at a time; never grep a concatenated log.
 
+## OPERATIONAL — a `cancelled` build is usually the 30-minute job timeout (2026-09-05)
+
+**Five sessions spent most of a day hunting an external canceller that does not exist.**
+GitHub reports a job killed by its own `timeout-minutes` with conclusion **`cancelled`**,
+not `failure`. `build.yml`'s build job has `timeout-minutes: 30`, and the build has grown
+past it.
+
+Measured on the build job's own `started_at -> completed_at` — NOT the run's:
+
+    0.9 min        (a genuine different cause)
+    30.4 min       <- timeout
+    30.4 min       <- timeout
+    30.4 min       <- timeout
+    30.4 min       <- timeout
+    30m24s 30m21s 30m21s   (independently re-measured by a second session)
+
+Seven of eight, to within three seconds. The case that settles it could not be
+supersession: a `workflow_dispatch` on `lane/listing-gate-artifact`, own sha-keyed
+concurrency group, no competing push — build job `17:35:13 -> 18:05:35`, killed at
+step 60.
+
+**Why it hid for a day, which is the reusable part.** The first elimination read
+*"cancelled builds ran 98 seconds, 11m20s, 11m40s — no clustering at 30"*. Those are
+**RUN** durations: the run clock includes queue time and stops early when a run is
+superseded. The ceiling applies to the **JOB**. Two quantities, both truthfully called
+"how long did it take", and only one is what the timeout is measured against. The
+job-level field is in the same API response.
+
+**The word is the trap.** `cancelled` names an ACTOR. It sent five people looking for
+who, when the answer was what — the same species as `audit-clean-checkout` printing
+"they depend on files git does not have" for every failure, and as the 8086 report
+saying "evidence disappeared" when a limitation had been LIFTED. **A status that
+carries an implied cause it has not established.**
+
+**Consequences, so nobody re-derives them:**
+- `deploy` needs `build`, so a build that never completes never deploys. The 10:17 ->
+  15:43 Pages stall was this, not a queue problem.
+- A branch whose run keeps timing out cannot be waited on. `lane/listing-gate-artifact`
+  was killed three times by the clock, not by its change.
+- Green ticks ABOVE the kill line mean nothing. A run that dies at step 60 of ~80 has
+  verified only what it reached.
+
+**Not fixed here, deliberately.** Raising `timeout-minutes` hides genuine hangs, which
+is what the deploy watchdog exists to catch and what its own comments warn against
+tightening for. The shape that fits is splitting the browser gates into a second job as
+`corpus` already is — preserving the property `corpus` has, that **a job's failure is
+attributable to what it ran** rather than to whatever it happened to reach at minute 30.
+Three lanes had branch builds in flight against `build.yml` when this was found, so
+changing it then would have made every reading ambiguous. It wants an owner and a quiet
+window.
+
 ## CLAIMS — work in progress
 
 | `paths-ignore` covers root `.md` only, and 41 of 47 `docs/*.md` are read by nothing | **UNCLAIMED**, measured by bw-ci 2026-09-05 | 2026-09-05 | **A prose-only edit under `docs/` costs a full build slot, and on a day when nine of twenty main builds were cancelled that is the scarcest thing in the repo.** `build.yml`'s `paths-ignore` lists ROOT files — `LANES.md`, `ROADMAP.md`, `README.md`, `PLAN.md` and so on — so `LANES.md` is free and `docs/ANYTHING.md` is not. Measured: 47 tracked `docs/*.md`, and **41 are read by no test or script** (a real read — the basename on a line with `readFile`/`join`/`resolve`, comment lines excluded). The six that ARE read are `docs/app-store-metadata.md`, `docs/EVIDENCE-CATEGORIES.md`, the `LESSON-REVIEW-WAVE-*` set and `docs/generated/*`, and those must keep triggering builds — `i8086-capability-report` asserts the generated report against source. **NOT done, and deliberately**: `paths-ignore` has no negation, so the fix is either enumerating 41 paths (brittle: a doc that later gains a reader would be silently skipped) or a gate asserting the ignore list and the read-by-nothing set agree (self-maintaining, more work). That is a CI-trigger change affecting every lane and wants an owner, not a drive-by. **CORRECTION, recorded because I asserted it twice**: I told a peer and wrote in `53a40937f` that my three prose pushes to `docs/` were "not waste, since the shape detector scans docs/". Both halves are false. `audit-gate-shapes.mjs` defaults to `roots = ['test', 'scripts']`, and nothing reads `GATES-THAT-CANNOT-FAIL.md` at all — my grep had matched the filename inside a COMMENT in `gate-shapes.test.mjs`, the third time in one day I read a mention in prose as a use. The three slots were waste. |
