@@ -1010,11 +1010,14 @@ Next tasks, in order:
    7,148,596 pre-Circuit bytes, 254,213 below P8, at 30.31–30.35× XT. The
    browser journey separately proves Code keeps the chunk cold, opening Tools
    fetches and populates it exactly once, and reopening Tools reuses it.
-10. **Next.** Split CodeMirror's statically imported C/C++, Python and JavaScript
-    grammars. They contribute 266,069 webpack-source bytes to the Code chunk
-    during an ASM-only journey. Require at least 250 KiB source and 100 KiB
-    encoded isolation, no optional grammar request in the ASM receipt, and a
-    generation guard for rapid language changes.
+10. **Implemented; hosted receipt pending.** CodeMirror's C/C++, Python and
+    JavaScript grammars contributed 266,069 webpack-source bytes to the Code
+    chunk during an ASM-only journey. Pseudocode/BASIC/ASM remain synchronous;
+    the optional grammars now use named demand-loaded chunks with a
+    generation/dispose guard and plain-text failure fallback. Acceptance is at
+    least 250 KiB source and 100 KiB encoded isolation, zero optional grammar
+    requests in all nine ASM receipts, and all three chunks exercised by the
+    editor browser gate.
 11. **Then, with the stronger costume gate.** Store construction imports the
     lazy paint editor's reducer eagerly, pulling 533,665 bytes of `@scratch/paper`
     and 104,459 bytes of scratch-paint source into first load. Install the real
