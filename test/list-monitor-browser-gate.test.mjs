@@ -15,6 +15,7 @@ test('the large-list browser proof is served by the build workflow', () => {
 
 test('the browser proof owns the large-list and mutation seams', () => {
     assert.match(gate, /const ROW_COUNT = 1000;/);
+    assert.match(gate, /\[data-right-pane-toggle\]/);
     assert.match(gate, /\.ReactVirtualized__List/);
     assert.match(gate, /edited-row-1000/);
     assert.match(gate, /dispatchEvent\('mousedown'\)/);

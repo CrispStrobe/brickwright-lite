@@ -77,6 +77,14 @@ try {
         return stageTarget?.variables?.[id]?.value?.length === count;
     }, {id: LIST_ID, count: ROW_COUNT}, {timeout: 45000});
 
+    // The owner default keeps the optional stage pane collapsed. The monitor
+    // is correctly mounted in that state, but a hidden grid cannot prove
+    // layout, scrolling or pointer editing. Expand through the shipped control
+    // before selecting the one visible List instance.
+    const paneToggle = page.locator('[data-right-pane-toggle]');
+    await paneToggle.waitFor({state: 'visible', timeout: 15000});
+    if (await paneToggle.getAttribute('aria-pressed') === 'false') await paneToggle.click();
+
     const grid = page.locator('.ReactVirtualized__List').filter({has: page.locator('[dataindex]')});
     await grid.waitFor({state: 'visible', timeout: 30000});
     if (await grid.count() !== 1) throw new Error(`expected one virtualized list, found ${await grid.count()}`);
