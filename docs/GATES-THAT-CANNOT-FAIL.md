@@ -963,6 +963,20 @@ worktree makes it go red. **A worktree changes what resolves in both directions*
 so a verdict produced in one is a verdict about the worktree until proven
 otherwise — which costs one re-run in the real checkout.
 
+**The cheap remedy, measured 2026-09-05.** Symlinking the real checkout's
+`node_modules` (and `packages/scratch-gui/node_modules`) into the worktree makes
+those gates resolve and run: 31/31 across `wait-census`, `gate-shapes`,
+`gate-coverage`, `no-dead-overlay-modules` and `i8086-capability-report` against
+an `origin/main` worktree that reported `# tests 0` without it. Remove the links
+before `git worktree remove`.
+
+Scoped deliberately: this worked *here*. A symlinked `node_modules` is itself a
+known hazard elsewhere — bw-board tracks one, and a fresh worktree of it turns
+five sb3-creator gates red for reasons that have nothing to do with the change
+under test. So the rule is not "symlink node_modules", it is **a worktree verdict
+is about the worktree until you have made its dependency resolution match the
+real checkout, and then said which you did**.
+
 ## A metric that counted discussion of a rule as compliance with it
 
 Measuring adoption of the `Claude-Session` trailer, the first count said 78
