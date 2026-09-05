@@ -11,6 +11,7 @@ import {IMPORT_ACCEPT, isImportableArtefact} from '../../lib/bw-makecode/accept.
 // splitting.
 import {asmExamplesFor} from '../../lib/bw-asm/examples.js';
 import {requestAssembly, asmRouteFor, asmTargetForDevice} from '../../lib/bw-asm/assemble-route.js';
+import {summarize as matrixSummary, explain as matrixExplain} from '../../lib/bw-matrix/capabilities.js';
 
 // The example sources — upstream's and the locally-authored games, kept in
 // separate files so the upstream one stays synchronizable — are 266 KiB raw
@@ -3305,6 +3306,17 @@ class PseudocodeImporter extends React.Component {
                                 </optgroup>
                             ))}
                         </select>
+                        {/* What this language can do on this device: native, lowered, or
+                            an open task — one line, read from lib/bw-matrix/capabilities.js,
+                            the same table the docs are generated from. Title = the long form. */}
+                        {this.currentDevice() && matrixSummary(this.state.lang, this.currentDevice(), pickLocale(this.props.locale)) ? (
+                            <span data-testid="bw-matrix-badge"
+                                title={matrixExplain(this.state.lang, this.currentDevice(), pickLocale(this.props.locale))}
+                                style={{...csel, alignSelf: 'center', fontSize: 11, color: '#475569', background: '#f1f5f9',
+                                    border: '1px solid #cbd5e1', whiteSpace: 'nowrap', cursor: 'help'}}>
+                                {matrixSummary(this.state.lang, this.currentDevice(), pickLocale(this.props.locale))}
+                            </span>
+                        ) : null}
                         {this.renderActionMenu(csel)}
                     </React.Fragment>
                     {/* In maximize mode: compact To/From-blocks in the tab row */}

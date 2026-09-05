@@ -51,7 +51,7 @@ cross-checked by a test that reads the real source:
 | local vs hosted C compiler | `LOCAL_TARGETS` in `sdcc-wasm/compiler.js` and `smallerc-wasm/compiler.js` |
 | which cores `generateC` emits for | the `_core` selection in `sb3-creator.js` |
 | which languages have a reader | the `sb3-creator-*.js` reader modules |
-| hosted compile/assemble targets | `docs/generated/hosted-targets.json`, a pinned snapshot with a freshness script |
+| hosted compile/assemble targets | `docs/generated/hosted-targets.json`, a pinned snapshot (hand-read at stc-compiler `79df4b6d` on 2026-09-05; T2 adds the refresh script) |
 
 A table row that the source contradicts fails the build by name. A table row
 that nothing checks is marked `evidence: 'declared'` and rendered with that
@@ -106,9 +106,9 @@ task named · **—** physically out, reason given · `?` needs a measurement.
 | **Pseudocode** (the AST) | L via C | L via C | L via MicroPython, and via C for the emulator; the C artefact has no silicon deploy → **l** (L2) | L via C | L via MicroPython | L via C (cc65) and BASIC (`ms`) | L via BASIC (`bbc`); C emitted, no compiler → **l** (N1) | L via 8086 asm, in-browser | L via PXT TypeScript, hosted; no UF2 → **l** (L4) |
 | **Python** | L · native — (MicroPython needs ≥256 KB flash / 16 KB RAM; STC12 has 60 KB / 1.3 KB) | L · native — (ATmega328P 32 KB / 2 KB) | L · **N** MicroPython on silicon (REPL deploy) · sim **n** (N3) | L · native — (F030 16–32 KB flash) | L · **N** MicroPython, sim + silicon | L · native — (no port) | L · native — (no port) | L · native — (no port) | L · **N** CircuitPython on silicon (copy `code.py`) · sim — (no SAMD51 emulator, see CHOOSING-HARDWARE) |
 | **JavaScript** | L · native — | L · native — | L · native **n** Kaluma (Apache-2.0) or Espruino (MPL-2.0), silicon (N5) | L · native — (Espruino needs F4-class) | L · native **n** PXT static TypeScript (MIT), the MakeCode path (N5) | L · native — | L · native — | L · native — | L via Arcade TS |
-| **C** | **N** local SDCC-WASM + hosted · L | **N** hosted avr-gcc · L — picker says `compile: false`, which is stale (T5) | **N** hosted bare-metal rp2040, runs in rp2040js · no UF2 deploy from the UI → (L2) | **N** hosted · L | **n** hosted has an `nrf52833` ARM target; UI does not offer it (N7) | **N** hosted cc65 · L | **n** SDCC `-mz80` hosted, not present (N1) | **n** SmallerC-WASM built and the local assembler HAS a NASM front end; nobody has pointed one at the other (N2) | native — sim (no emulator) · silicon **n** low priority |
+| **C** | **N** local SDCC-WASM + hosted · L | **N** hosted avr-gcc · L — picker says `compile: false`, which is stale (T5) | **N** hosted bare-metal rp2040, runs in rp2040js · no UF2 deploy from the UI → (L2) | **N** hosted · L | **n** hosted has an `nrf52833` linker script and an ARM *assemble* chain, but no C compile target (N7) | **N** hosted cc65 · L | **n** SDCC `-mz80` hosted, not present (N1) | **n** SmallerC-WASM built and the local assembler HAS a NASM front end; nobody has pointed one at the other (N2) | native — sim (no emulator) · silicon **n** low priority |
 | **BASIC** | L · native `?` BASIC-52 (N8, investigation) | L · native `?` Tiny BASIC (MIT) on 328P (N8) | L · native — (no permissive interpreter found; MMBasic licence excludes) | L · native — | L · native — | L · **N** MS BASIC ROM (`ms` profile) | L · **N** BBC BASIC (`bbc` profile) | L · native **n** GW-BASIC (MIT, 2020) (N6) | L |
-| **ASM** | **N** hosted sdas8051 · reader **l** (L1) | **N** hosted avr-gcc · **l** | **n** hosted ARM `as` missing (N4) · **l** | **n** (N4) · **l** | **n** (N4) · **l** | **N** hosted ca65 · **l** | **N** hosted sdasz80 · **l** | **N** local, MASM dialect · **l** (L1 starts here) | native — (no emulator) |
+| **ASM** | **N** hosted sdas8051 · reader **l** (L1) | **N** hosted avr-gcc · **l** | **n** hosted ARM chain exists for `nrf52833` only; add `rp2040` (N4) · **l** | **n** add `stm32f030` (N4) · **l** | **N** hosted `nrf52833` assemble exists; check the ASM tab routes to it (N4) · **l** | **N** hosted ca65 · **l** | **N** hosted sdasz80 · **l** | **N** local, MASM dialect · **l** (L1 starts here) | native — (no emulator) |
 | **MicroPython** (tab) | as Python | as Python | as Python | as Python | as Python | as Python | as Python | as Python | as Python |
 
 **Readers into the AST** (the lowered half's precondition): Pseudocode ✓,
@@ -135,11 +135,14 @@ refusals rather than a wall.
 | Arcade / PyBadge / SAMD51 | Arcade game console (translated); **no instruction emulator** | CircuitPython `code.py` **n**; PXT UF2 **n** (L4) |
 | Arduboy | avr8js console, runs a `.hex` | out of scope (runs, not programs) |
 
-Three contradictions the table already surfaces, and T2 will fail on until
-fixed: the AVR `compile: false` flag versus a hosted compiler the C tab uses;
-the Mega STK500v2 comment versus `flashAvrMega`; and `CHOOSING-HARDWARE.md`
-listing compile targets as "STC12, Pico, STM32F030" while stc-compiler also
-builds AVR, 6502 and nRF52833.
+Four contradictions the table already surfaces, carried as sentinels in
+`test/bw-matrix-conformance.test.mjs` until T5 fixes them: the AVR
+`compile: false` flag versus a hosted compiler the C tab uses; the Mega
+STK500v2 comment versus `flashAvrMega`; `CHOOSING-HARDWARE.md` listing compile
+targets as "STC12, Pico, STM32F030" while stc-compiler also builds AVR and
+6502; and the ASM tab sending `arduino-uno` / `arduino-nano` / `arduino-mega`
+to `/assemble` unmapped, where the service knows only MCU ids (`atmega328p`,
+`atmega2560`) — the C tab maps them, the ASM tab does not.
 
 ---
 
@@ -273,11 +276,14 @@ DoD:
 - [ ] Firmware fetched by a `sync:` script with sha256, never committed;
       notices updated.
 
-**N4. ARM assembly, hosted.** Repo: stc-compiler, then lite.
-`/assemble` gains `rp2040`, `stm32f030`, `nrf52833` via `arm-none-eabi-as` +
-`ld` with the existing linker scripts. Lite: `asmTargetForDevice` maps the
-three devices; the ASM tab's status line says hosted.
-DoD: an `.s` that toggles a GPIO assembles and runs on the STM32 light tier.
+**N4. ARM assembly, hosted — extend the chain that exists.** Repo: stc-compiler, then lite.
+`ASSEMBLE_TARGETS` already routes `nrf52833` through `arm-none-eabi-gcc -x
+assembler-with-cpp` with `nrf52833.ld`. Add `rp2040` (`pico-sram.ld`) and
+`stm32f030` (`stm32f030-flash.ld`) to the same map. Lite: `asmTargetForDevice`
+maps the three devices; the ASM tab's status line says hosted.
+DoD: an `.s` that toggles a GPIO assembles for `stm32f030` and runs on the
+light tier; the micro:bit ASM tab reaches `nrf52833` (today's routing is
+measured first — the map may already cover it).
 
 **N5. JavaScript native on Pico and micro:bit.** Investigation then build.
 Pico: Kaluma (Apache-2.0) firmware + its REPL `.load` protocol, mirroring the
@@ -293,13 +299,16 @@ assembler. Measure whether it assembles and boots on the DOS bench; if not,
 list what is missing. Alternative candidates must be permissively licensed.
 DoD: a doc with the measurement; a LANES row if it turns into a build.
 
-**N7. C on the micro:bit.** Lite only.
-stc-compiler already builds `nrf52833` bare-metal ARM. Offer it: the
-micro:bit's cell gains a native C half, artefact `.hex`, silicon via the same
-drag-and-drop; no simulator (the MicroPython simulator does not run
-arbitrary ARM code) — the badge says so.
-DoD: T2 hosted-targets snapshot lists `nrf52833`; the C tab compiles a blink
-for it; the matrix cell reads `native · silicon only`.
+**N7. C on the micro:bit.** Repo: stc-compiler, then lite.
+stc-compiler has `nrf52833.ld` and an ARM *assemble* chain for it, but no
+`nrf52833` entry in the C compile targets (checked at `79df4b6d`, see
+`docs/generated/hosted-targets.json`). Add the compile target beside `rp2040`
+and `stm32f030` in `ARM_TARGETS` (bare-metal, `.hex` out), then offer it in
+lite: the micro:bit's cell gains a native C half, silicon via the same
+drag-and-drop; no simulator (the MicroPython simulator does not run arbitrary
+ARM code) — the badge says so.
+DoD: the hosted snapshot lists `nrf52833` under compile; the C tab compiles a
+blink for it; the matrix cell reads `native · silicon only`.
 
 **N8. BASIC on 8-bit MCUs.** Investigation, low priority.
 BASIC-52 on the 8052-class STC parts and a permissively licensed Tiny BASIC on
