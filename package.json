@@ -19,6 +19,8 @@
     "gen:reader-coverage:check": "node scripts/gen-reader-coverage.mjs --check",
     "gen:hosted-targets": "node scripts/gen-hosted-targets.mjs",
     "gen:hosted-targets:check": "node scripts/gen-hosted-targets.mjs --check",
+    "gen:census": "node scripts/gen-bw-board-census.mjs",
+    "gen:census:check": "node scripts/gen-bw-board-census.mjs --check",
     "verify:bwboard-ci": "node scripts/verify-bw-board-ci.mjs",
     "bench:debug-snapshots": "node scripts/bench-debug-snapshots.mjs",
     "sync:sb3creator": "node scripts/sync-sb3creator.mjs",

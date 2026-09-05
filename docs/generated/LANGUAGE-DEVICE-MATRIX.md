@@ -19,39 +19,39 @@ question from whether the row agrees with the code.
 | **Pseudocode** | **L** via C · sim + silicon | **L** via C · sim + silicon | **L** via MicroPython, C · sim + silicon | **L** via C · sim + silicon | **L** via C, BASIC · sim + silicon | **L** via BASIC · sim<br>open: N1 | **L** via ASM, C · sim | **L** via MicroPython · sim + silicon | **L** via ts · no reach<br>_declared_ |
 | **Python** | **L** via C · sim + silicon<br>native — (ram: STC12C5A60S2: 1,280 B RAM; MicroPython needs roughly 256 KB flash and 16 KB RAM (its smallest official ports)) | **L** via C · sim + silicon<br>native — (ram: ATmega328P: 2 KB RAM; MicroPython needs roughly 256 KB flash and 16 KB RAM (its smallest official ports)) | **N** MicroPython (none) · silicon · tier 2a<br>**L** via MicroPython, C · sim + silicon | **L** via C · sim + silicon<br>native — (flash: STM32F030: 16–32 KB flash, 4 KB RAM; MicroPython needs roughly 256 KB flash and 16 KB RAM (its smallest official ports)) | **L** via C, BASIC · sim + silicon<br>native — (no-port: no MicroPython or other Python for the 6502) | **L** via BASIC · sim<br>native — (no-port: no MicroPython or other Python for the Z80)<br>open: N1 | **L** via ASM, C · sim<br>native — (no-port: no MicroPython or other Python for the 8086) | **N** MicroPython (none) · sim + silicon · tier 2a<br>**L** via MicroPython · sim + silicon | **N** CircuitPython (none) · no reach · tier 3<br>**L** via ts · no reach<br>_declared_ |
 | **JavaScript** | **L** via C · sim + silicon<br>native — (ram: STC12C5A60S2: 1,280 B RAM; Kaluma and Espruino need a Cortex-M with 64 KB RAM or more) | **L** via C · sim + silicon<br>native — (ram: ATmega328P: 2 KB RAM; Kaluma and Espruino need a Cortex-M with 64 KB RAM or more) | **L** via MicroPython, C · sim + silicon<br>open: N5 | **L** via C · sim + silicon<br>native — (flash: STM32F030: 16–32 KB flash, 4 KB RAM; Kaluma and Espruino need a Cortex-M with 64 KB RAM or more) | **L** via C, BASIC · sim + silicon<br>native — (no-port: no JavaScript engine for the 6502) | **L** via BASIC · sim<br>native — (no-port: no JavaScript engine for the Z80)<br>open: N1 | **L** via ASM, C · sim<br>native — (no-port: no JavaScript engine for the 8086) | **L** via MicroPython · sim + silicon<br>open: N5 | **L** via ts · no reach<br>open: L4<br>_declared_ |
-| **C** | **N** SDCC mcs51 (local) · sim + silicon · tier 2a<br>**L** via C · sim + silicon | **N** avr-gcc (hosted) · sim + silicon · tier 2c<br>**L** via C · sim + silicon | **N** arm-none-eabi-gcc bare-metal (hosted) · sim + silicon · tier 2c<br>**L** via C · sim + silicon | **N** arm-none-eabi-gcc bare-metal (hosted) · sim + silicon · tier 2c<br>**L** via C · sim + silicon | **N** cc65 (hosted) · sim + silicon · tier 2c<br>**L** via C · sim + silicon | open: N1 | **N** SmallerC (WASM) + i8086-asm.js (local) · sim · tier 2c<br>**L** via C · sim | **L** via MicroPython · sim + silicon<br>open: N7 | **L** via ts · no reach<br>_declared_ |
+| **C** | **N** SDCC mcs51 (local) · sim + silicon · tier 2a · needs emu8051 (standing)<br>**L** via C · sim + silicon | **N** avr-gcc (hosted) · sim + silicon · tier 2c<br>**L** via C · sim + silicon | **N** arm-none-eabi-gcc bare-metal (hosted) · sim + silicon · tier 2c<br>**L** via C · sim + silicon | **N** arm-none-eabi-gcc bare-metal (hosted) · sim + silicon · tier 2c<br>**L** via C · sim + silicon | **N** cc65 (hosted) · sim + silicon · tier 2c<br>**L** via C · sim + silicon | open: N1 | **N** SmallerC (WASM) + i8086-asm.js (local) · sim · tier 2c<br>**L** via C · sim | **L** via MicroPython · sim + silicon<br>open: N7 | **L** via ts · no reach<br>_declared_ |
 | **BASIC** | **L** via C · sim + silicon<br>open: N8 | **L** via C · sim + silicon<br>open: N8 | **L** via MicroPython, C · sim + silicon<br>native — (licence: MMBasic (PicoMite) is not permissively licensed; no other Pico BASIC found) | **L** via C · sim + silicon<br>native — (flash: STM32F030: 16–32 KB flash, 4 KB RAM; no BASIC fits beside a program) | **N** MS BASIC ROM (`ms` profile) (none) · sim · tier 2c<br>**L** via BASIC · sim | **N** BBC BASIC (`bbc` profile) (none) · sim · tier 2c<br>**L** via BASIC · sim | **L** via ASM · sim<br>native — (no-port: 0 of 35 GW-BASIC sources assemble on the bench and there is no redistributable binary to boot (bw-board docs/GW-BASIC-ON-THE-BENCH.md)) | **L** via MicroPython · sim + silicon<br>native — (no-port: no BASIC interpreter for the nRF52833 found) | **L** via ts · no reach<br>native — (no-port: no permissively licensed BASIC for the SAMD51 found)<br>_declared_ |
-| **ASM** (reader: 8086 only: lifts what the ▶ button lowered, refuses hand-written assembly by name; L1) | **N** sdas8051 (hosted) · sim + silicon · tier 2c<br>**L** via C · sim + silicon | **N** avr-gcc (as) (hosted) · sim + silicon · tier 2c<br>**L** via C · sim + silicon | **L** via C · sim + silicon<br>open: N4 | **L** via C · sim + silicon<br>open: N4 | **N** ca65 + ld65 (hosted) · sim + silicon · tier 2c<br>**L** via C · sim + silicon | **N** sdasz80 + sdldz80 (hosted) · sim + silicon · tier 2c<br>open: N1 | **N** i8086-asm.js (MASM and NASM dialects) (local) · sim · tier 2a<br>**L** via ASM · sim | open: N4 |  |
+| **ASM** (reader: 8086 only: lifts what the ▶ button lowered, refuses hand-written assembly by name; L1) | **N** sdas8051 (hosted) · sim + silicon · tier 2c<br>**L** via C · sim + silicon | **N** avr-gcc (as) (hosted) · sim + silicon · tier 2c<br>**L** via C · sim + silicon | **L** via C · sim + silicon<br>open: N4 | **L** via C · sim + silicon<br>open: N4 | **N** ca65 + ld65 (hosted) · sim + silicon · tier 2c<br>**L** via C · sim + silicon | **N** sdasz80 + sdldz80 (hosted) · sim + silicon · tier 2c<br>open: N1 | **N** i8086-asm.js (MASM and NASM dialects) (local) · sim · tier 2a · needs nasm (standing), retro-corpus-8086 (recorded)<br>**L** via ASM · sim | open: N4 |  |
 | **MicroPython** | **L** via C · sim + silicon<br>native — (ram: STC12C5A60S2: 1,280 B RAM; MicroPython needs roughly 256 KB flash and 16 KB RAM (its smallest official ports)) | **L** via C · sim + silicon<br>native — (ram: ATmega328P: 2 KB RAM; MicroPython needs roughly 256 KB flash and 16 KB RAM (its smallest official ports)) | **N** MicroPython (none) · silicon · tier 2a<br>**L** via MicroPython · silicon | **L** via C · sim + silicon<br>native — (flash: STM32F030: 16–32 KB flash, 4 KB RAM; MicroPython needs roughly 256 KB flash and 16 KB RAM (its smallest official ports)) | **L** via C, BASIC · sim + silicon<br>native — (no-port: no MicroPython for the 6502) | **L** via BASIC · sim<br>native — (no-port: no MicroPython for the Z80)<br>open: N1 | **L** via ASM, C · sim<br>native — (no-port: no MicroPython for the 8086) | **N** MicroPython (none) · sim + silicon · tier 2a<br>**L** via MicroPython · sim + silicon | **N** CircuitPython (none) · no reach · tier 3<br>**L** via ts · no reach<br>_declared_ |
 
 ## Devices: simulator engines and silicon transports
 
 | device | group | family | simulator runs | silicon accepts | overrides |
 | --- | --- | --- | --- | --- | --- |
-| stc12c5a60s2 | STC12 (8051) | 8051 | emu8051 [hex] | stc-isp-webserial [hex] |  |
-| stc12c5a16s2 | STC12 (8051) | 8051 | emu8051 [hex] | stc-isp-webserial [hex] |  |
-| stc15f2k60s2 | STC12 (8051) | 8051 | emu8051 [hex] | stc-isp-webserial [hex] |  |
-| stc15w408as | STC12 (8051) | 8051 | emu8051 [hex] | stc-isp-webserial [hex] |  |
-| stc89c52rc | STC12 (8051) | 8051 | emu8051 [hex] | stc-isp-webserial [hex] |  |
-| stc89c52 | STC12 (8051) | 8051 | emu8051 [hex] | stc-isp-webserial [hex] | c: hosted — not in sdcc-wasm LOCAL_TARGETS; compiled by the hosted SDCC |
-| arduino-uno | Arduino (AVR) | avr | avr8js [hex] | stk500v1-webserial [hex] |  |
-| arduino-nano | Arduino (AVR) | avr | avr8js [hex] | stk500v1-webserial [hex] |  |
-| arduino-mega | Arduino (AVR) | avr | avr8js [hex] | stk500v2-webserial [hex] |  |
-| atmega328p | Arduino (AVR) | avr | avr8js [hex] | stk500v1-webserial [hex] |  |
-| atmega168p | Arduino (AVR) | avr | avr8js [hex] | stk500v1-webserial [hex] |  |
-| attiny88 | Arduino (AVR) | avr | attiny88 [hex] | usbasp-webusb [hex] |  |
-| attiny85 | Arduino (AVR) | avr | attiny85 [hex] | usbasp-webusb [hex] |  |
-| arduboy | Arduino (AVR) | console, not programmable | arduboy [hex] | — |  |
-| pico | Raspberry Pi | rp2040 | rp2040js [hex,bin,uf2] | micropython-raw-repl [py]<br>uf2-bootsel-download [uf2] |  |
-| stm32f030 | STM32 (ARM) | stm32 | stm32f0 [bin,hex] | stm32-uart-bootloader-webserial [bin,hex]<br>cmsis-dap-swd-webusb [bin] |  |
-| eater6502 | 6502 | w65c02 | eater6502 [hex,bin,bas] | eeprom-programmer-webserial [hex,bin] |  |
-| z80 | Z80 | z80 | z80 [hex,bin,bas] | eeprom-programmer-webserial [hex,bin] |  |
-| i8086 | 8086 | i8086 | i8086 [com,bin] | com-export [com] (open: N10) |  |
-| microbit | MicroPython | microbit | microbit-sim [py] | hex-append-download [py]<br>daplink-webusb [hex] (open: N9) |  |
-| calliopemini | MicroPython | microbit | microbit-sim [py] | hex-append-download [py]<br>daplink-webusb [hex] (open: N9) |  |
-| arcade | Arcade & SAMD51 | samd51 | arcade [ts] | circuitpython-copy [py] (open)<br>uf2-bootsel-download [uf2] (open: L4) |  |
-| pybadge | Arcade & SAMD51 | samd51 | arcade [ts] | circuitpython-copy [py] (open)<br>uf2-bootsel-download [uf2] (open: L4) |  |
-| pybadge-lc | Arcade & SAMD51 | samd51 | arcade [ts] | circuitpython-copy [py] (open)<br>uf2-bootsel-download [uf2] (open: L4) |  |
+| stc12c5a60s2 | STC12 (8051) | 8051 | emu8051 [hex] · tier 2a · needs emu8051 (standing) | stc-isp-webserial [hex] |  |
+| stc12c5a16s2 | STC12 (8051) | 8051 | emu8051 [hex] · tier 2a · needs emu8051 (standing) | stc-isp-webserial [hex] |  |
+| stc15f2k60s2 | STC12 (8051) | 8051 | emu8051 [hex] · tier 2a · needs emu8051 (standing) | stc-isp-webserial [hex] |  |
+| stc15w408as | STC12 (8051) | 8051 | emu8051 [hex] · tier 2a · needs emu8051 (standing) | stc-isp-webserial [hex] |  |
+| stc89c52rc | STC12 (8051) | 8051 | emu8051 [hex] · tier 2a · needs emu8051 (standing) | stc-isp-webserial [hex] |  |
+| stc89c52 | STC12 (8051) | 8051 | emu8051 [hex] · tier 2a · needs emu8051 (standing) | stc-isp-webserial [hex] | c: hosted — not in sdcc-wasm LOCAL_TARGETS; compiled by the hosted SDCC |
+| arduino-uno | Arduino (AVR) | avr | avr8js [hex] · tier 2c | stk500v1-webserial [hex] |  |
+| arduino-nano | Arduino (AVR) | avr | avr8js [hex] · tier 2c | stk500v1-webserial [hex] |  |
+| arduino-mega | Arduino (AVR) | avr | avr8js [hex] · tier 2c | stk500v2-webserial [hex] |  |
+| atmega328p | Arduino (AVR) | avr | avr8js [hex] · tier 2c | stk500v1-webserial [hex] |  |
+| atmega168p | Arduino (AVR) | avr | avr8js [hex] · tier 2c | stk500v1-webserial [hex] |  |
+| attiny88 | Arduino (AVR) | avr | attiny88 [hex] · tier 2c | usbasp-webusb [hex] |  |
+| attiny85 | Arduino (AVR) | avr | attiny85 [hex] · tier 2c | usbasp-webusb [hex] |  |
+| arduboy | Arduino (AVR) | console, not programmable | arduboy [hex] · tier 2c | — |  |
+| pico | Raspberry Pi | rp2040 | rp2040js [hex,bin,uf2] · tier 2c | micropython-raw-repl [py]<br>uf2-bootsel-download [uf2] |  |
+| stm32f030 | STM32 (ARM) | stm32 | stm32f0 [bin,hex] · tier 2a · needs labwired-wasm (absent) | stm32-uart-bootloader-webserial [bin,hex]<br>cmsis-dap-swd-webusb [bin] |  |
+| eater6502 | 6502 | w65c02 | eater6502 [hex,bin,bas] · tier 2a · needs 65c02-vectors (standing) | eeprom-programmer-webserial [hex,bin] |  |
+| z80 | Z80 | z80 | z80 [hex,bin,bas] · tier 2a · needs z80-vectors (standing) | eeprom-programmer-webserial [hex,bin] |  |
+| i8086 | 8086 | i8086 | i8086 [com,bin] · tier 2a · needs 8086-vectors (standing) | com-export [com] (open: N10) |  |
+| microbit | MicroPython | microbit | microbit-sim [py] · tier 2a | hex-append-download [py]<br>daplink-webusb [hex] (open: N9) |  |
+| calliopemini | MicroPython | microbit | microbit-sim [py] · tier 2a | hex-append-download [py]<br>daplink-webusb [hex] (open: N9) |  |
+| arcade | Arcade & SAMD51 | samd51 | arcade [ts] · tier 3 | circuitpython-copy [py] (open)<br>uf2-bootsel-download [uf2] (open: L4) |  |
+| pybadge | Arcade & SAMD51 | samd51 | arcade [ts] · tier 3 | circuitpython-copy [py] (open)<br>uf2-bootsel-download [uf2] (open: L4) |  |
+| pybadge-lc | Arcade & SAMD51 | samd51 | arcade [ts] · tier 3 | circuitpython-copy [py] (open)<br>uf2-bootsel-download [uf2] (open: L4) |  |
 | samd51 | Arcade & SAMD51 | samd51 | — | circuitpython-copy [py] (open) |  |
 
 ## Open tasks, by cell
@@ -129,6 +129,22 @@ question from whether the row agrees with the code.
 | BASIC | pybadge | no-port | no permissively licensed BASIC for the SAMD51 found |
 | BASIC | pybadge-lc | no-port | no permissively licensed BASIC for the SAMD51 found |
 | BASIC | samd51 | no-port | no permissively licensed BASIC for the SAMD51 found |
+
+## Oracles the tiers rest on (bw-board census at the pinned sha)
+
+Joined from `docs/generated/bw-board-census.json` (bw-board `88bbdcf78`, read 2026-09-05).
+**standing** = CI runs the oracle on every push; **recorded** = measured once on a box where it was present;
+**absent** = not present where the census was read; a **service** row is reachability, never probed.
+
+| census id | kind | status | gates in bw-board | what |
+| --- | --- | --- | --- | --- |
+| 8086-vectors | oracle | standing | test/i8086.test.mjs<br>test/i8086-disasm.test.mjs<br>test/moo.test.mjs<br>scripts/grind-i8086.mjs<br>scripts/grind-i8086-disasm.mjs | SingleStepTests 8086 — 646,000 vectors from an Intel P80C86A-2. |
+| z80-vectors | oracle | standing | test/z80-disasm.test.mjs<br>scripts/grind-z80.mjs | SingleStepTests z80 — 1,604 opcode files with full undocumented state (X/Y flags, Q latch, R per-M1, WZ). |
+| 65c02-vectors | oracle | standing | test/w65c02.test.mjs<br>test/w65c02-disasm.test.mjs<br>scripts/grind-w65c02.mjs | SingleStepTests 65x02, WDC variant — ~10k vectors per opcode including cycle counts. |
+| emu8051 | oracle | standing | test/emu8051-idle-fastforward.test.mjs<br>test/brightness-emu8051.test.js<br>test/emu8051-debug.test.js | A second 8051 implementation (MIT sibling repo), built to WASM. |
+| labwired-wasm | oracle | absent | test/labwired-adapter.test.mjs<br>test/labwired-roundtrip.test.mjs<br>test/pad-drive-parity.test.mjs | The labwired engine as WASM — the differential oracle for the labwired bridge. |
+| retro-corpus-8086 | fixture | recorded | test/oracle-nasm.test.mjs | Four real DOS assembly programs (Snake, typing-balloon, Maze Runner, retro-dos-graphics) that the NASM oracle assembles with both nasm and src/i8086-asm. |
+| nasm | oracle | standing | test/oracle-nasm.test.mjs | NASM (BSD-2), an independent assembler. |
 
 ## Verification tiers used above
 

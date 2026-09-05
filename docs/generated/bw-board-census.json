@@ -1,0 +1,265 @@
+{
+  "schema": 1,
+  "source": {
+    "repo": "https://github.com/CrispStrobe/bw-board",
+    "sha": "88bbdcf7846fa6f51be4ae9beca2d65a9e4c9f0e",
+    "read": "2026-09-05"
+  },
+  "rows": [
+    {
+      "id": "8086-vectors",
+      "kind": "oracle",
+      "present": true,
+      "ciAvailable": true,
+      "ci": "yes — the `vectors` job checks out v1_binary and grinds all 646,000 per push",
+      "via": "/home/claudeuser/code/8086-vectors/v1_binary",
+      "gates": [
+        "test/i8086.test.mjs",
+        "test/i8086-disasm.test.mjs",
+        "test/moo.test.mjs",
+        "scripts/grind-i8086.mjs",
+        "scripts/grind-i8086-disasm.mjs"
+      ],
+      "what": "SingleStepTests 8086 — 646,000 vectors from an Intel P80C86A-2. Grounds src/i8086.js and src/i8086-disasm.js on TEXT as well as state."
+    },
+    {
+      "id": "8088-vectors",
+      "kind": "oracle",
+      "present": true,
+      "ciAvailable": false,
+      "ci": "not yet — the grind is young and its scores are still moving",
+      "via": "/home/claudeuser/code/8088-vectors/v2",
+      "gates": [
+        "scripts/grind-i8088-cycles.mjs"
+      ],
+      "what": "SingleStepTests 8088 v2 — per-CYCLE bus traces: m-cycle type, T-state, and the queue F/S/E operations with the byte read. The ONLY thing that can grade timing and access ORDER; the 8086 suite compares final state and is blind to both (it could not see INT n reading its vector after pushing). Grounds src/i8088-biu.js and the cycle costs in src/i8086.js."
+    },
+    {
+      "id": "z80-vectors",
+      "kind": "oracle",
+      "present": true,
+      "ciAvailable": true,
+      "ci": "yes — the `vectors-full` job, on a schedule rather than per push (1.6 GB unpacked)",
+      "via": "/home/claudeuser/code/z80-vectors/v1",
+      "gates": [
+        "test/z80-disasm.test.mjs",
+        "scripts/grind-z80.mjs"
+      ],
+      "what": "SingleStepTests z80 — 1,604 opcode files with full undocumented state (X/Y flags, Q latch, R per-M1, WZ). Grounds src/z80.js."
+    },
+    {
+      "id": "65c02-vectors",
+      "kind": "oracle",
+      "present": true,
+      "ciAvailable": true,
+      "ci": "yes — the `vectors-full` job, on a schedule rather than per push",
+      "via": "/home/claudeuser/code/65x02-vectors/wdc65c02/v1",
+      "gates": [
+        "test/w65c02.test.mjs",
+        "test/w65c02-disasm.test.mjs",
+        "scripts/grind-w65c02.mjs"
+      ],
+      "what": "SingleStepTests 65x02, WDC variant — ~10k vectors per opcode including cycle counts. Grounds src/w65c02.js."
+    },
+    {
+      "id": "lcapy",
+      "kind": "oracle",
+      "present": false,
+      "ciAvailable": false,
+      "ci": "no",
+      "via": "tried $LCAPY_PYTHON, /home/claudeuser/.local/pipx/venvs/lcapy/bin/python",
+      "gates": [
+        "test/lcapy-oracle.test.mjs"
+      ],
+      "what": "An independent SYMBOLIC circuit solver. The only non-numerical check on mna.js."
+    },
+    {
+      "id": "emu8051",
+      "kind": "oracle",
+      "present": true,
+      "ciAvailable": true,
+      "ci": "yes — checked out at a pinned ref by the `test` job",
+      "via": "/mnt/volume1/code/emu8051-stc",
+      "gates": [
+        "test/emu8051-idle-fastforward.test.mjs",
+        "test/brightness-emu8051.test.js",
+        "test/emu8051-debug.test.js"
+      ],
+      "what": "A second 8051 implementation (MIT sibling repo), built to WASM. Cross-checks the emu8051 adapter against a different upstream."
+    },
+    {
+      "id": "labwired-wasm",
+      "kind": "oracle",
+      "present": false,
+      "ciAvailable": false,
+      "ci": "no",
+      "via": "tried $LABWIRED_WASM",
+      "gates": [
+        "test/labwired-adapter.test.mjs",
+        "test/labwired-roundtrip.test.mjs",
+        "test/pad-drive-parity.test.mjs"
+      ],
+      "what": "The labwired engine as WASM — the differential oracle for the labwired bridge."
+    },
+    {
+      "id": "labwired-cli",
+      "kind": "oracle",
+      "present": false,
+      "ciAvailable": false,
+      "ci": "no",
+      "via": "tried $LABWIRED_CLI",
+      "gates": [
+        "test/labwired-oracle.test.mjs"
+      ],
+      "what": "The labwired binary — the STM32F030 differential oracle."
+    },
+    {
+      "id": "v86",
+      "kind": "oracle",
+      "present": false,
+      "ciAvailable": false,
+      "ci": "no",
+      "via": "tried $V86_ORACLE_DIR",
+      "gates": [
+        "scripts/oracle-v86.mjs"
+      ],
+      "what": "v86 (BSD-2) run headless — a whole-program second opinion on the support chips. Established that our i8254 read-back is more complete than its. ABSENT ON THIS BOX as of 2026-09-04 (V86_ORACLE_DIR unset), which is why src/ne2000.js rests on the DP8390D datasheet and nothing else — tier 3, where the 8254 and 16550 are 2a. v86 HAS an NE2000; the diff is one download away and has simply never been run."
+    },
+    {
+      "id": "elks-image",
+      "kind": "fixture",
+      "present": true,
+      "ciAvailable": false,
+      "ci": "no — GPL-2, run as a workload but never vendored, so the OS acceptance test skips in CI and its claim is recorded rather than standing",
+      "via": "/mnt/volume1/code/elks-images/fd1440-fat.img",
+      "gates": [
+        "test/i8086-elks-boot.test.mjs"
+      ],
+      "what": "An ELKS 1.44 MB boot floppy (fd1440-fat.img). The FIRST third-party OS this tier runs — not a program we assembled, not a service answered one call at a time, but a kernel that boots itself, probes the hardware and takes over the machine. Exercises interrupts, the timer and the FDC together in a way 525 textbook programs never will (E6.8.8)."
+    },
+    {
+      "id": "amey-corpus",
+      "kind": "fixture",
+      "present": true,
+      "ciAvailable": true,
+      "ci": "yes — the `corpus` job (ci.yml:287) checks out Amey-Thakur/…, asserts all 525 are present (ci.yml:304), and assembles and runs each per push on VERDICT COUNTS rather than a text diff. The unit test reads a local /tmp/amey copy and its corpus subtests skip without it, but the claim is standing via that job.",
+      "via": "/tmp/amey/Source Code (under /tmp: shared and cleared on reboot)",
+      "gates": [
+        "test/i8086-asm.test.mjs"
+      ],
+      "what": "The Amey-Thakur corpus — 525 real DOS assembly programs (github.com/Amey-Thakur/8086-ASSEMBLY-LANGUAGE-PROGRAMS). The single largest evidence that src/i8086-asm.js handles real-world MASM/NASM source rather than crafted tests: all 525 assemble now, 15 refused earlier the same day. 191 MB, unvendored."
+    },
+    {
+      "id": "retro-corpus-8086",
+      "kind": "fixture",
+      "present": true,
+      "ciAvailable": false,
+      "ci": "no — 191 MB of third-party game sources, not vendored. nasm itself IS installed in CI (0d9f984), so the liveness probe and the encoder comparisons run there; the corpus comparisons skip and say so.",
+      "via": "/mnt/volume1/code/retro-corpus-8086",
+      "gates": [
+        "test/oracle-nasm.test.mjs"
+      ],
+      "what": "Four real DOS assembly programs (Snake, typing-balloon, Maze Runner, retro-dos-graphics) that the NASM oracle assembles with both nasm and src/i8086-asm.js and compares BYTE FOR BYTE. Without it the nasm oracle still proves the assembler binary works, and proves nothing about our assembler."
+    },
+    {
+      "id": "ehbasic-rom",
+      "kind": "fixture",
+      "present": true,
+      "ciAvailable": false,
+      "ci": "no — non-commercial licence, and permanently so",
+      "via": "/tmp/mike42-6502/rom/basic/basic.bin (under /tmp: shared and cleared on reboot)",
+      "gates": [
+        "test/hb6502-ehbasic-boot.mjs"
+      ],
+      "what": "mike42 ehBASIC ROM for the HB6502 preset. The only realistic 6502 PROGRAM workload in the tree — every other 6502 check is a unit test or a vector grind, so without it the w65c02 core is proven instruction-by-instruction and never as something that runs software."
+    },
+    {
+      "id": "zx-roms",
+      "kind": "fixture",
+      "present": false,
+      "ciAvailable": false,
+      "ci": "no — deliberately, the ROMs are not ours to ship",
+      "via": "tried $ZX_ROM",
+      "gates": [
+        "test/zx-tape.test.mjs",
+        "test/zx-sna.test.mjs",
+        "test/zx-z80file.test.mjs",
+        "test/zx128.test.mjs"
+      ],
+      "what": "Spectrum 48K/128K ROMs. Without them the ZX tier boots nothing and its snapshot, tape and banking gates do not run."
+    },
+    {
+      "id": "blinkenrocket-fw",
+      "kind": "fixture",
+      "present": true,
+      "ciAvailable": false,
+      "ci": "no",
+      "via": "/mnt/volume1/code/blinkenrocket-firmware/build/main.hex",
+      "gates": [
+        "test/blinkenrocket-modem-e2e.test.mjs"
+      ],
+      "what": "The reference Blinkenrocket firmware hex. Without it the sound-becomes-data modem loop is unproven end to end."
+    },
+    {
+      "id": "smlrc",
+      "kind": "oracle",
+      "present": false,
+      "ciAvailable": false,
+      "ci": "no — not vendored or built in CI; $SMLRC is a local build, so the 186 driver skips there",
+      "via": "tried $SMLRC",
+      "gates": [
+        "test/i8086-asm-186.test.mjs"
+      ],
+      "what": "SmallerC (smlrc) — a small INDEPENDENT C compiler. Its verbatim `smlrc -seg16` output is the fixture test/fixtures/smallerc/acc.asm that the 186 assembler round-trips, so re-running smlrc proves the fixture still reflects the compiler rather than a snapshot of it. Independent tool, not our own opinion; it drives LEAVE, PUSH imm and three-operand IMUL."
+    },
+    {
+      "id": "avr-compile-service",
+      "kind": "service",
+      "present": false,
+      "ciAvailable": false,
+      "ci": "no — no avr-compile service in CI, so the e2e skips there",
+      "via": "tried $AVR_COMPILE_URL",
+      "gates": [
+        "test/avr-e2e.test.js"
+      ],
+      "what": "An HTTP AVR-compile endpoint (avr-gcc behind a service) that test/avr-e2e.test.js POSTs to. A SERVICE, not a file: its presence is reachability, which this census deliberately does not probe — see resolve()."
+    },
+    {
+      "id": "nasm",
+      "kind": "oracle",
+      "present": false,
+      "ciAvailable": true,
+      "ci": "YES — standing since 0d9f984: ci.yml installs nasm (`apt-get install -y nasm`) AND then asserts it is present (`oracle-census.mjs --require nasm`), so a failed or skipped install fails the build at the install rather than passing green with six tests silently skipped. It was the one dark oracle absent by ACCIDENT not licence (unlike the ehBASIC ROM or the MASM binaries), which is why it was the one worth taking live — now the byte-for-byte assembler claim is re-verified on every push. Dark only on a fresh developer box until they install nasm.",
+      "via": "tried $NASM, /usr/bin/nasm",
+      "gates": [
+        "test/oracle-nasm.test.mjs"
+      ],
+      "what": "NASM (BSD-2), an independent assembler. The differential oracle for the NASM side of src/i8086-asm.js — its own header says \"the whole strength of the NASM side rests on this comparison\". Byte-for-byte agreement with a real assembler, the strongest evidence tier there is. VERIFIED GREEN 2026-09-05 with NASM 2.16 (6/6), so the claim STANDS. Runs dark on a fresh developer box (nasm not installed → all three tests skip) until $NASM or PATH provides it, but CI installs it — see ci. Its absence had no census row, which is exactly why the assembler's strongest claim could be merely recorded rather than standing and nobody could tell which."
+    },
+    {
+      "id": "masm",
+      "kind": "oracle",
+      "present": true,
+      "ciAvailable": false,
+      "ci": "no — the binaries live at an absolute /tmp path, the same blind spot as the ehBASIC ROM: audit-clean-checkout strips untracked REPO files by archiving HEAD and cannot reach /tmp, so their absence in a fresh checkout is invisible to it. Can only stand in CI if the job fetches them explicitly.",
+      "via": "/tmp/msdosbin (under /tmp: shared and cleared on reboot)",
+      "gates": [
+        "test/oracle-masm.test.mjs",
+        "scripts/oracle-masm.mjs"
+      ],
+      "what": "MASM 1.10 + LINK + EXE2BIN (Microsoft, MIT-relicensed 1982 binaries), an independent assembler toolchain. The differential oracle for MASM compatibility in src/i8086-asm.js — that our .COM is byte-identical to MASM's and that our ASSUME/segment-override and simplified-directive handling matches a real MASM. VERIFIED GREEN 2026-09-05 (10/10). Present on this box at /tmp/msdosbin."
+    }
+  ],
+  "lite": {
+    "how": "generated by scripts/gen-bw-board-census.mjs, which runs the PINNED bw-board tree's scripts/oracle-census.mjs --snapshot; refresh with `node scripts/gen-bw-board-census.mjs --dir <bw-board>`",
+    "stable": [
+      "id",
+      "kind",
+      "ciAvailable",
+      "ci",
+      "gates",
+      "what"
+    ],
+    "note": "`present` and `via` are the box the census was read on; `ciAvailable`/`ci` are the standing facts the matrix joins to. A row with kind \"service\" is reachability, never probed: present is false by design."
+  }
+}

@@ -249,16 +249,25 @@ DoD: `test/bw-matrix-conformance.test.mjs` 11/11 green; overlay + tracked
 the changes are picker/marker, not cell values, so the rendered matrix is
 unchanged).
 
-**T6. Census snapshot join (`needs` → bw-board census rows).** Open; unblocks
-when the bw-board pin passes `a9fea52` (lego-be's `lane/bwboard-pin-0a779af`
-re-pins to `c843708be`, which contains it). The census contract is schema 1
-`{source, rows[{id, kind, present, ciAvailable, ci, via, gates, what}]}`; `kind`
-is `oracle | fixture | service`, and `service` rows are reachability, never
-probed (`present: false` by design — render them as such, beside
-`ciAvailable`, not as ABSENT). The `via` suffix "(under /tmp: …)" is
-deliberate and is shown verbatim. lego-a4 adds a `census:json` invocation that
-refuses BY NAME on a tree older than `a9fea52`, so an old pin surfaces a
-sentence, not an empty file.
+**T6. Census snapshot join (`needs` → bw-board census rows). DONE 2026-09-05** (lego-ac).
+`scripts/gen-bw-board-census.mjs --dir <bw-board>` runs the PINNED tree's `oracle-census.mjs
+--snapshot` (refusing by name when the checkout is not at `vendor-pins.json`'s sha, or when
+the tree predates `a9fea52` and has no `--snapshot`) and writes
+`docs/generated/bw-board-census.json` (schema 1, 19 rows at `88bbdcf78`); `--check` compares
+the STABLE fields (`id, kind, ciAvailable, ci, gates, what`) — `present`/`via` are the box the
+census was read on and do not make the snapshot stale. Every `needs` name in `capabilities.js`
+is now a census ROW ID (`ucsim-stc`→`emu8051`, `singlesteptests-*`→`*-vectors`,
+`labwired`→`labwired-wasm`), gated by `test/bw-board-census.test.mjs` (a name with no row is
+red by name; a `service` row must not claim presence). The generated matrix renders each
+need beside its tier as **standing** (CI runs it), **recorded** (measured once where present)
+or **absent**, plus a table of the census rows the tiers rest on. First finding of the join:
+the STM32F030 sim tier 2a rests on `labwired-wasm`, which bw-board's census marks absent and
+CI-less — lite's own build fetches the engine and gates on it ("the labwired heavy tier
+actually executes"), so the standing check for that cell is lite's, not bw-board's; the doc
+now says so instead of showing an unqualified 2a. Refresh on every bw-board pin bump
+(`npm run gen:census -- --dir <checkout at the pin>`), and set `BW_BOARD_DIR` to have the
+test verify freshness locally. Contract notes kept: `kind: service` rows are reachability,
+never probed; the `via` "(under /tmp: …)" suffix is shown verbatim.
 
 **T7. The Code-tab picker is GENERATED from `bw-matrix/capabilities.js`.**
 Lite only, unclaimed. T5 reconciled the picker's device facts against the

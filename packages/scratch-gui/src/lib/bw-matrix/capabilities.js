@@ -41,7 +41,8 @@ export const STATUS = Object.freeze({SHIPPED: 'shipped', OPEN: 'open'});
 /**
  * How well a capability is KNOWN, as distinct from whether this table agrees
  * with the code (`evidence`). The vocabulary is bw-board's VERIFICATION.md.
- * `needs` on a fact names the external oracles its tier rests on; a fact whose
+ * `needs` on a fact names the external oracles its tier rests on, BY THEIR bw-board
+ * CENSUS ROW ID (docs/generated/bw-board-census.json, T6) so the join is measured; a fact whose
  * oracle is absent from CI is "recorded", not "standing" — that derivation
  * belongs to the generated doc, never to a typed column.
  */
@@ -209,7 +210,7 @@ export const DEVICES = Object.freeze([
     ...STC_IDS.map(id => dev(id, id.toUpperCase(), 'STC12 (8051)', '8051', {
         pickerCompile: true,
         pickerEmulator: 'emu8051',
-        sim: [eng('emu8051', ['hex'], {tier: '2a', needs: ['ucsim-stc']})],
+        sim: [eng('emu8051', ['hex'], {tier: '2a', needs: ['emu8051']})],
         silicon: [tx('stc-isp-webserial', ['hex'], 'stc', {note: 'answers only after a cold power-on'})],
         // sdcc-wasm links five of the six STC parts locally; the STC89C52 is
         // not in its LOCAL_TARGETS, so its C still goes to the hosted SDCC.
@@ -281,7 +282,7 @@ export const DEVICES = Object.freeze([
         pickerEmulator: 'stm32f0',
         sim: [eng('stm32f0', ['bin', 'hex'], {
             tier: '2a',
-            needs: ['labwired'],
+            needs: ['labwired-wasm'],
             note: 'light tier; labwired heavy tier optional, see CHOOSING-HARDWARE'
         })],
         silicon: [
@@ -294,7 +295,7 @@ export const DEVICES = Object.freeze([
         pickerEmulator: 'eater6502',
         sim: [eng('eater6502', ['hex', 'bin', 'bas'], {
             tier: '2a',
-            needs: ['singlesteptests-65c02'],
+            needs: ['65c02-vectors'],
             note: 'chosen by seating the part; BASIC typed into the MS BASIC ROM over the ACIA'
         })],
         silicon: [tx('eeprom-programmer-webserial', ['hex', 'bin'], 'eeprom')]
@@ -304,7 +305,7 @@ export const DEVICES = Object.freeze([
         pickerEmulator: 'z80',
         sim: [eng('z80', ['hex', 'bin', 'bas'], {
             tier: '2a',
-            needs: ['singlesteptests-z80'],
+            needs: ['z80-vectors'],
             note: 'BBC BASIC on the bench'
         })],
         silicon: [tx('eeprom-programmer-webserial', ['hex', 'bin'], 'eeprom')]
@@ -330,7 +331,7 @@ export const DEVICES = Object.freeze([
     dev('i8086', 'Intel 8086 (DOS bench)', '8086', 'i8086', {
         pickerCompile: false,
         pickerEmulator: 'i8086',
-        sim: [eng('i8086', ['com', 'bin'], {tier: '2a', needs: ['singlesteptests-8086']})],
+        sim: [eng('i8086', ['com', 'bin'], {tier: '2a', needs: ['8086-vectors']})],
         silicon: [tx('com-export', ['com'], null, {...OPEN_DECLARED, task: 'N10'})]
     }),
     // Moved here from DEVICE_GROUPS in pseudocode-importer.jsx (T7): the picker is derived
@@ -477,7 +478,7 @@ export const CELLS = Object.freeze({
         c: {
             native: shipped('hex', 'SDCC mcs51', 'local', {
                 tier: '2a',
-                needs: ['ucsim-stc'],
+                needs: ['emu8051'],
                 note: 'SDCC 4.5.0 as four WASM stages; the hosted service is the same compiler'
             }),
             lowered: [via('c')]

@@ -11,13 +11,29 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 import {
-    SCHEMA_VERSION, LANGUAGES, DEVICES, REASONS, STATUS, EVIDENCE, TIERS,
+    SCHEMA_VERSION, LANGUAGES, DEVICES, CELLS, REASONS, STATUS, EVIDENCE, TIERS,
     cell, overall, isNativeNull
 } from '../overlay/scratch-gui/src/lib/bw-matrix/capabilities.js';
 
 const root = path.resolve(import.meta.dirname, '..');
 const output = path.join(root, 'docs/generated/LANGUAGE-DEVICE-MATRIX.md');
 const rel = p => path.relative(root, p).replaceAll(path.sep, '/');
+
+// T6: the bw-board oracle census at the pinned sha. A `needs` name is a census
+// row id; the row says whether CI runs the oracle (standing) or it was measured
+// once on a box (recorded), or is absent. Rendered beside every tier so a reader
+// can tell a 2a that CI re-verifies from one that rests on a dark oracle.
+const census = JSON.parse(fs.readFileSync(path.join(root, 'docs/generated/bw-board-census.json'), 'utf8'));
+const censusRow = id => census.rows.find(r => r.id === id);
+const needsText = f => {
+    if (!f || !Array.isArray(f.needs) || !f.needs.length) return '';
+    return ' · needs ' + f.needs.map(id => {
+        const r = censusRow(id);
+        if (!r) return `${id} (NO CENSUS ROW)`;
+        if (r.kind === 'service') return `${id} (service, ${r.ciAvailable ? 'standing' : 'reachability only'})`;
+        return `${id} (${r.ciAvailable ? 'standing' : r.present ? 'recorded' : 'absent'})`;
+    }).join(', ');
+};
 
 const label = id => (LANGUAGES.find(l => l.id === id) || {label: id}).label;
 const reach = r => (r.sim && r.silicon ? 'sim + silicon' : r.sim ? 'sim' : r.silicon ? 'silicon' : 'no reach');
@@ -27,7 +43,7 @@ function cellText (c) {
     if (!c) return '·';
     const bits = [];
     if (!isNativeNull(c.native) && c.native.status === STATUS.SHIPPED) {
-        bits.push(`**N** ${c.native.toolchain} (${c.native.where}) · ${reach(c.native)} · tier ${c.native.tier}`);
+        bits.push(`**N** ${c.native.toolchain} (${c.native.where}) · ${reach(c.native)} · tier ${c.native.tier}${needsText(c.native)}`);
     }
     const shippedLowered = c.lowered.filter(l => l.status === STATUS.SHIPPED);
     if (shippedLowered.length) {
@@ -54,7 +70,7 @@ export function buildLanguageDeviceMatrix () {
     const body = LANGUAGES.map(l => `| **${l.label}**${l.reader ? (l.readerNote ? ` (reader: ${l.readerNote}; ${l.readerTask})` : '') : ` (no reader: ${l.readerTask})`} | ${families.map(d => cellText(cell(l.id, d.id))).join(' | ')} |`);
 
     const devRows = DEVICES.map(d => {
-        const sims = d.sim.map(e => `${e.engine} [${e.runs.join(',')}]${e.status === STATUS.OPEN ? ' (open)' : ''}`).join('<br>') || '—';
+        const sims = d.sim.map(e => `${e.engine} [${e.runs.join(',')}]${e.status === STATUS.OPEN ? ' (open)' : ''} · tier ${e.tier}${needsText(e)}`).join('<br>') || '—';
         const sil = d.silicon.map(t => `${t.transport} [${t.accepts.join(',')}]${t.status === STATUS.OPEN ? ` (open${t.task ? `: ${t.task}` : ''})` : ''}`).join('<br>') || '—';
         const over = d.overrides ? Object.entries(d.overrides).map(([lang, o]) => `${lang}: ${o.where}${o.note ? ` — ${o.note}` : ''}`).join('<br>') : '';
         return `| ${d.id} | ${d.group} | ${d.programmable === false ? 'console, not programmable' : d.family} | ${sims} | ${sil} | ${over} |`;
@@ -68,6 +84,10 @@ export function buildLanguageDeviceMatrix () {
     for (const r of rows) for (const c of r.cells) if (isNativeNull(c.native) && c.native.reason !== 'is-ast') nulls.push(`| ${c.language.label} | ${c.device.id} | ${c.native.reason} | ${c.native.cite} |`);
 
     const tierRows = Object.entries(TIERS).map(([k, v]) => `| ${k} | ${v} |`);
+    const referenced = new Set();
+    for (const d of DEVICES) for (const f of [...d.sim, ...d.silicon]) for (const id of f.needs || []) referenced.add(id);
+    for (const langs of Object.values(CELLS)) for (const c of Object.values(langs)) for (const f of [c.native, ...(c.lowered || [])]) for (const id of (f && f.needs) || []) referenced.add(id);
+    const referencedRows = census.rows.filter(r => referenced.has(r.id));
 
     return `# Language × device matrix
 
@@ -106,6 +126,16 @@ ${openRows.join('\n')}
 | language | device | reason | cite |
 | --- | --- | --- | --- |
 ${nulls.join('\n')}
+
+## Oracles the tiers rest on (bw-board census at the pinned sha)
+
+Joined from \`docs/generated/bw-board-census.json\` (bw-board \`${census.source.sha.slice(0, 9)}\`, read ${census.source.read}).
+**standing** = CI runs the oracle on every push; **recorded** = measured once on a box where it was present;
+**absent** = not present where the census was read; a **service** row is reachability, never probed.
+
+| census id | kind | status | gates in bw-board | what |
+| --- | --- | --- | --- | --- |
+${referencedRows.map(r => `| ${r.id} | ${r.kind} | ${r.kind === 'service' ? (r.ciAvailable ? 'standing' : 'reachability only') : r.ciAvailable ? 'standing' : r.present ? 'recorded' : 'absent'} | ${r.gates.join('<br>')} | ${String(r.what).split('.')[0]}. |`).join('\n')}
 
 ## Verification tiers used above
 
