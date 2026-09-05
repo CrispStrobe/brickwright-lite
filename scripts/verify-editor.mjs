@@ -256,8 +256,11 @@ async function verify () {
                 await asmInfo.click();
                 await page.waitForTimeout(300);
                 const noteText = await page.locator('body').innerText();
-                if (noteText.includes('ASM-to-blocks') || noteText.includes('ASM-zu')) {
-                    pass('ASM tab: asymmetry note behind the (i) toggle');
+                // The note used to declare "No ASM-to-blocks path". Since the
+                // 8086 reader (plan task L1) it says what reads back and what is
+                // refused, in both locales.
+                if (noteText.includes('To blocks: 8086') || noteText.includes('Zu Blöcken: 8086')) {
+                    pass('ASM tab: read-back note behind the (i) toggle');
                 } else {
                     fail('ASM tab: (i) opened but the note text is missing');
                 }
