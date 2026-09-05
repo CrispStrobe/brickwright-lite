@@ -276,6 +276,17 @@ async function createAvr8jsTarget(kind, opts) {
 
 async function createZ80Target(opts) {
   const { board, rom, config, pc, cpm } = opts;
+  const executionMode = opts.executionMode ?? 'fast';
+  if (!['fast', 'cycle'].includes(executionMode)) {
+    throw new Error(`unknown Z80 execution mode: ${executionMode}`);
+  }
+  if (executionMode === 'cycle') {
+    const {createZ80CycleDebugTarget} = await import('./z80-cycle-debug.js');
+    const result = await createZ80CycleDebugTarget(opts);
+    if (!result.accepted) return {target: null, adapter: null, refusal: result};
+    if (board) result.adapter.attachBoard(board);
+    return {target: result.target, adapter: result.adapter};
+  }
   // The Z80 bench has no GPIO boundary — board is optional; when
   // present it only receives time sync (the serial console is the
   // observable surface, via adapter.onSerial / sendSerial).
@@ -386,8 +397,11 @@ async function createEater6502Target(opts) {
   } catch {
     // m6502-debug.js not available — adapter-only mode
   }
-
-  return { target, adapter };
+  if (!target) return {target, adapter};
+  const {createW65C02ProviderBoundary} = await import('./w65c02-cycle-provider.js');
+  const providerBoundary = createW65C02ProviderBoundary(target);
+  const providerSelection = providerBoundary.select(opts.cycleProvider || 'fast-w65c02');
+  return {target: providerSelection.target, adapter, providerBoundary, providerSelection};
 }
 
 // ─── Pico target (RP2040 via rp2040js) ──────────────────────────────────
