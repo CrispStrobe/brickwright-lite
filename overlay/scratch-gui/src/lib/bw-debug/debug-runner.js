@@ -42,6 +42,7 @@ import { parseCondition } from './condition.js';
 import { createTrace, IO_SFRS, TIMER_SFRS } from './trace.js';
 import {createDebugFoundation, subscribeDebugTargetEvents} from './debug-foundation.js';
 import {createRecordingSession} from './recording-session.js';
+import {createInstructionReplayController} from './instruction-replay.js';
 import { setValueResolver } from './hover-values.js';
 import { instructionLength } from './opcodes.js';
 import {
@@ -441,6 +442,14 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         recorder: debugFoundation.recorder,
         eventStream,
         getTarget: () => target
+    });
+    // The controller is wired as a programmatic boundary now, but targets do
+    // not advertise reverse (and the panel shows no reverse control) until all
+    // external input paths have deterministic applicators and logging.
+    const instructionReplay = createInstructionReplayController({
+        recorder: debugFoundation.recorder,
+        getTarget: () => target,
+        subscribeEvents: listener => eventStream.onEvent(listener)
     });
     const unsubscribeRecordingEvents = eventStream.onEvent(
         event => recordingSession.appendBatch([event]));
@@ -2505,6 +2514,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         },
         recordDebugInput: input => recordingSession.appendInput(input),
         debugRecordingStatus: () => recordingSession.status(),
+        reverseDebugToEvent: eventCursor => instructionReplay.reverseToEvent(eventCursor),
+        canReverseDebug: () => instructionReplay.canReverse(),
         clearTrace() { trace.clear(); emit(); },
 
         /**
