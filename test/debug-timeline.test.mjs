@@ -46,3 +46,40 @@ test('rejects ambiguous ordering and returns defensive views', () => {
     assert.throws(() => timeline.append([event(1)]), /does not follow/);
     assert.equal(timeline.seekTime({domain: 'wall', ticks: 1}).code, 'time-not-retained');
 });
+
+test('selected retire resolves its strict after-event boundary without snapshots', () => {
+    const timeline = createDebugTimeline();
+    assert.deepEqual(timeline.selectedBoundaryCursor(), {accepted: false, code: 'no-selected-event'});
+    timeline.append([
+        {...event(4), phase: 'retire', snapshot: {cpu: new Uint8Array([1])}},
+        {...event(5), phase: 'execute'},
+        event(6, 6, 'memory')
+    ]);
+    assert.deepEqual(timeline.selectedBoundaryCursor(), {
+        accepted: true, boundaryCursor: 5, selectedSeq: 4
+    });
+    timeline.selectEvent(5);
+    assert.deepEqual(timeline.selectedBoundaryCursor(), {
+        accepted: false, code: 'selected-event-not-retire',
+        selectedSeq: 5, kind: 'instruction', phase: 'execute'
+    });
+    timeline.selectEvent(6);
+    assert.deepEqual(timeline.selectedBoundaryCursor(), {
+        accepted: false, code: 'selected-event-not-retire',
+        selectedSeq: 6, kind: 'memory', phase: null
+    });
+});
+
+test('selected boundary preserves ordinal precision and refuses unsafe numeric addition', () => {
+    const bigintTimeline = createDebugTimeline();
+    bigintTimeline.append([{...event(1n), phase: 'retire'}]);
+    assert.deepEqual(bigintTimeline.selectedBoundaryCursor(), {
+        accepted: true, boundaryCursor: 2n, selectedSeq: 1n
+    });
+
+    const overflowTimeline = createDebugTimeline();
+    overflowTimeline.append([{...event(Number.MAX_SAFE_INTEGER), phase: 'retire'}]);
+    assert.deepEqual(overflowTimeline.selectedBoundaryCursor(), {
+        accepted: false, code: 'invalid-boundary-cursor', selectedSeq: Number.MAX_SAFE_INTEGER
+    });
+});

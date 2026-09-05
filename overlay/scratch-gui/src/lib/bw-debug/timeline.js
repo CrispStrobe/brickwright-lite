@@ -108,6 +108,33 @@ export function createDebugTimeline ({capacity = 4096} = {}) {
             return selectIndex(events.length - 1);
         },
 
+        /**
+         * Resolve the recorder cursor immediately after the selected retire.
+         * This reads only the retained event index; it never clones a snapshot
+         * or asks a target to inspect machine state.
+         */
+        selectedBoundaryCursor () {
+            const event = selection();
+            if (!event) return refusal('no-selected-event');
+            if (event.kind !== 'instruction' || event.phase !== 'retire') {
+                return refusal('selected-event-not-retire', {
+                    selectedSeq: event.seq,
+                    kind: event.kind,
+                    phase: event.phase ?? null
+                });
+            }
+            if (typeof event.seq === 'number') {
+                if (!Number.isSafeInteger(event.seq) || event.seq < 0 ||
+                    event.seq === Number.MAX_SAFE_INTEGER) {
+                    return refusal('invalid-boundary-cursor', {selectedSeq: event.seq});
+                }
+                return {accepted: true, boundaryCursor: event.seq + 1, selectedSeq: event.seq};
+            }
+            const seq = ordinal(event.seq);
+            if (seq == null) return refusal('invalid-boundary-cursor', {selectedSeq: event.seq});
+            return {accepted: true, boundaryCursor: seq + 1n, selectedSeq: event.seq};
+        },
+
         state () {
             const event = selection();
             return {

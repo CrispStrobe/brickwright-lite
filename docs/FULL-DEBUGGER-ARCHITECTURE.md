@@ -466,6 +466,14 @@ forward arbitration. Re-evaluating retained events against current breakpoint
 definitions would be incorrect for conditions, hit counts, modulo/ignore rules,
 one-shot breakpoints and native stops, so no such shortcut is exposed.
 
+The timeline now also offers an explicit Go to selected command. Its separate
+status path accepts only a selected canonical instruction-retire event and maps
+that exact event to its half-open replay cursor; memory, port, interrupt and
+other interior events are refused visibly rather than rounded. Successful
+navigation uses verified restore/replay and resets reverse-continue occurrence
+selection at the new boundary. A failed replay leaves both logical cursor and
+reverse chain unchanged.
+
 A bounded immutable halt-occurrence ledger and the first end-to-end Reverse
 Continue path are now implemented for the fully replayable 8086 composition.
 The ledger stores occurrence/boundary cursors, ordered breakpoint IDs,

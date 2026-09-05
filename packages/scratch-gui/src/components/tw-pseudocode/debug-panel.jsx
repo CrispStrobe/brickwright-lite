@@ -79,6 +79,8 @@ const L10N = {
         reverseContinueHint: 'Restore and replay to the previous recorded breakpoint halt',
         timeline: 'Timeline', timelineRefresh: 'Read events', timelineOlder: 'Older',
         timelineNewer: 'Newer', timelineLatest: 'Latest', timelineCheckpoint: 'Last checkpoint',
+        timelineGoSelected: 'Go to selected',
+        timelineGoSelectedHint: 'Restore and replay to the selected event boundary',
         actionActivity: 'Breakpoint actions', actionFailures: 'Failures',
         actionLog: 'Log', actionCounters: 'Counters', actionEvent: 'event'
     },
@@ -117,6 +119,8 @@ const L10N = {
         reverseContinueHint: 'Zum vorherigen aufgezeichneten Haltepunkt zurückkehren und verifiziert abspielen',
         timeline: 'Zeitleiste', timelineRefresh: 'Ereignisse lesen', timelineOlder: 'Älter',
         timelineNewer: 'Neuer', timelineLatest: 'Neueste', timelineCheckpoint: 'Letzter Prüfpunkt',
+        timelineGoSelected: 'Zur Auswahl springen',
+        timelineGoSelectedHint: 'Bis zur ausgewählten Ereignisgrenze wiederherstellen und abspielen',
         actionActivity: 'Haltepunkt-Aktionen', actionFailures: 'Fehler',
         actionLog: 'Protokoll', actionCounters: 'Zähler', actionEvent: 'Ereignis'
     }
@@ -156,6 +160,7 @@ class DebugPanel extends React.Component {
         this.onTimelineNewer = this.onTimelineNewer.bind(this);
         this.onTimelineLatest = this.onTimelineLatest.bind(this);
         this.onTimelineCheckpoint = this.onTimelineCheckpoint.bind(this);
+        this.onTimelineGoSelected = this.onTimelineGoSelected.bind(this);
         this.syncProjectTokens = this.syncProjectTokens.bind(this);
         this._onMachineExtracted = this._onMachineExtracted.bind(this);
         this._onMediaLoad = this._onMediaLoad.bind(this);
@@ -650,6 +655,13 @@ class DebugPanel extends React.Component {
         this.navigateTimeline(timeline => timeline.seekCursor(latest.eventCursor));
     }
 
+    onTimelineGoSelected () {
+        const runner = this.state.runner;
+        if (!runner) return;
+        const result = runner.seekSelectedDebugEvent();
+        this.setState({timelineStatus: result.accepted ? null : result});
+    }
+
     render () {
         const {ui} = this.state;
         const {phase, message} = ui;
@@ -690,8 +702,12 @@ class DebugPanel extends React.Component {
             String(timeline.selectedSeq) !== String(timeline.firstSeq));
         const canTimelineNewer = !!(timeline?.retained &&
             String(timeline.selectedSeq) !== String(timeline.lastSeq));
-        const timelineRefusal = this.state.timelineStatus?.accepted === false ?
-            this.state.timelineStatus.code : null;
+        const selectedSeek = this.state.runner ? this.state.runner.seekSelectedDebugStatus() : null;
+        const canSeekSelected = !!(selectedSeek && selectedSeek.accepted);
+        const timelineRefusalResult = this.state.timelineStatus?.accepted === false ?
+            this.state.timelineStatus : selectedSeek?.accepted === false ? selectedSeek : null;
+        const timelineRefusal = timelineRefusalResult ?
+            (timelineRefusalResult.reason || timelineRefusalResult.code) : null;
         // This is a bounded summary API: no event bodies, target snapshots or
         // checkpoint payloads cross the render path. Cap the visible tail too,
         // so a crowded action setup cannot grow the panel without bound.
@@ -897,6 +913,11 @@ class DebugPanel extends React.Component {
                         style={timeline?.retained && checkpoints.length ? BTN : OFF}
                         disabled={!timeline?.retained || !checkpoints.length}
                         onClick={this.onTimelineCheckpoint}>{this.tx('timelineCheckpoint')}</button>
+                    <button data-debug-timeline-go-selected
+                        style={canSeekSelected ? BTN : OFF}
+                        disabled={!canSeekSelected}
+                        title={selectedSeek?.reason || this.tx('timelineGoSelectedHint')}
+                        onClick={this.onTimelineGoSelected}>{this.tx('timelineGoSelected')}</button>
                     {timelineRefusal ? <span role="status" data-debug-timeline-refusal>
                         {timelineRefusal}
                     </span> : null}

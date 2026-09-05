@@ -45,6 +45,7 @@ import {createRecordingSession, subscribeDebugTargetInputs} from './recording-se
 import {createInstructionReplayController} from './instruction-replay.js';
 import {createReverseContinueCoordinator} from './reverse-continue.js';
 import {createEventBreakpointDispatcher} from './event-breakpoint-dispatcher.js';
+import {createSelectedEventSeekCoordinator} from './selected-event-seek.js';
 import { setValueResolver } from './hover-values.js';
 import { instructionLength } from './opcodes.js';
 import {
@@ -2276,6 +2277,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
     let reverseContinue;
     let eventBreakpointDispatcher;
+    let selectedEventSeek;
     const runner = {
         /** Use this image instead of compiling the blocks. */
         setFirmware(fw) { userFirmware = fw || null; },
@@ -2808,6 +2810,15 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 (retained.lastEventSeq === null ? 0 : retained.lastEventSeq + 1);
             return reverseContinue.reverse(before);
         },
+        seekSelectedDebugStatus() {
+            return selectedEventSeek.status(debugFoundation.timeline.state().selectedEvent);
+        },
+        seekSelectedDebugEventStatus() {
+            return this.seekSelectedDebugStatus();
+        },
+        seekSelectedDebugEvent() {
+            return selectedEventSeek.seek(debugFoundation.timeline.state().selectedEvent);
+        },
         clearTrace() { trace.clear(); emit(); },
 
         /**
@@ -3063,6 +3074,11 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 if (eventBreakpointFailures.length > 64) eventBreakpointFailures.shift();
             }
         }
+    });
+    selectedEventSeek = createSelectedEventSeekCoordinator({
+        canReverse: () => reverseHistoryRefusal || instructionReplay.canReverse(),
+        reverseToEvent: eventCursor => runner.reverseDebugToEvent(eventCursor),
+        onAccepted: () => reverseContinue.reset()
     });
     return runner;
 }
