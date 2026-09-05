@@ -814,6 +814,13 @@ jobs:
       - name: Browser gate — debugger dock and serial input
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-debug-dock.mjs
+      # The language x device matrix: the badge beside the device picker and
+      # the "What runs where" panel both read lib/bw-matrix/capabilities.js,
+      # the table docs/generated/LANGUAGE-DEVICE-MATRIX.md is generated from.
+      # Unit tests hold the table to source; this holds the GUI to the table.
+      - name: Browser gate — language x device matrix badge and panel
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-matrix-ui.mjs
 
       # The heavy simulation tier. Everything else about it — the adapter, the
       # debug target, the chunk contents — was green while selecting it in a

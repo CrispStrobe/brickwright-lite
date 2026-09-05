@@ -56,6 +56,7 @@
     "verify:dock": "node scripts/verify-debug-dock.mjs",
     "verify:debug-history": "node scripts/verify-debug-history-browser.mjs",
     "verify:debug-inspection": "node scripts/verify-debug-run-to-inspection.mjs",
+    "verify:matrix-ui": "node scripts/verify-matrix-ui.mjs",
     "verify:bluetooth": "node scripts/verify-bluetooth.mjs",
     "verify:extension-sandbox": "node scripts/verify-extension-sandbox.mjs",
     "verify:pinned-worker": "node scripts/verify-pinned-worker.mjs",

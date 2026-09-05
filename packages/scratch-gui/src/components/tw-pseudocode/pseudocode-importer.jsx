@@ -11,7 +11,10 @@ import {IMPORT_ACCEPT, isImportableArtefact} from '../../lib/bw-makecode/accept.
 // splitting.
 import {asmExamplesFor} from '../../lib/bw-asm/examples.js';
 import {requestAssembly, requestCBuild, asmRouteFor, cRouteFor, asmTargetForDevice} from '../../lib/bw-asm/assemble-route.js';
-import {summarize as matrixSummary, explain as matrixExplain} from '../../lib/bw-matrix/capabilities.js';
+import {
+    summarize as matrixSummary, explain as matrixExplain, LANGUAGES as MATRIX_LANGUAGES,
+    DEVICES as MATRIX_DEVICES, cell as matrixCell
+} from '../../lib/bw-matrix/capabilities.js';
 
 // The example sources — upstream's and the locally-authored games, kept in
 // separate files so the upstream one stays synchronizable — are 266 KiB raw
@@ -173,6 +176,11 @@ const L10N = {
         catalogUnavailable: e => `Example catalog unavailable (${e})`,
         catalogNeeds: devs => `Needs: ${devs}`,
         infoTitle: 'Click for info', infoAria: 'About the Code tab',
+        matrixTitle: 'What runs where: every language on every chip, native or lowered, simulator or silicon',
+        matrixAria: 'Show the language and device matrix',
+        matrixHeading: 'What runs where',
+        matrixLegend: 'native = the language itself runs on the chip · lowered = read into the dialect and re-emitted as something the chip runs · sim / silicon = where the result can go · open = a named task, not yet',
+        matrixCurrent: 'current choice',
         reference: 'reference', referenceTitle: l => `Reference for ${l}`,
         customArt: 'Custom sprite art', customArtTitle: 'Upload SVGs and bake them in as sprite costumes',
         toBlocks: '⇦ To blocks', toBlocksTitle: l => `Compile this ${l} into blocks`,
@@ -342,6 +350,11 @@ const L10N = {
         catalogUnavailable: e => `Beispiel-Katalog nicht verfügbar (${e})`,
         catalogNeeds: devs => `Benötigt: ${devs}`,
         infoTitle: 'Für Infos klicken', infoAria: 'Über den Code-Tab',
+        matrixTitle: 'Was läuft wo: jede Sprache auf jedem Chip, nativ oder übersetzt, Simulator oder Hardware',
+        matrixAria: 'Sprach- und Geräte-Matrix anzeigen',
+        matrixHeading: 'Was läuft wo',
+        matrixLegend: 'nativ = die Sprache selbst läuft auf dem Chip · übersetzt = in den Dialekt gelesen und als etwas ausgegeben, das der Chip nativ ausführt · Sim / Hardware = wohin das Ergebnis kann · offen = eine benannte Aufgabe, noch nicht',
+        matrixCurrent: 'aktuelle Wahl',
         reference: 'Referenz', referenceTitle: l => `Referenz für ${l}`,
         customArt: 'Eigene Sprite-Grafik', customArtTitle: 'SVGs hochladen und als Sprite-Kostüme einbacken',
         toBlocks: '⇦ Zu Blöcken', toBlocksTitle: l => `Diesen ${l}-Code zu Blöcken kompilieren`,
@@ -825,7 +838,7 @@ class PseudocodeImporter extends React.Component {
         this.state = {revealed: props.isVisible !== false, lang: 'pseudocode', importedPython: false,
             buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''},
             basicProfile: 'bbc', basicLineNumbers: true,
-            uploads: [], status: '', conversionReport: null, reportExpanded: false, busy: false, showRef: false, showInfo: false,
+            uploads: [], status: '', conversionReport: null, reportExpanded: false, busy: false, showRef: false, showInfo: false, showMatrix: false,
             showRepresentation: true,
             showArt: false, output: null, running: false,
             // Hardware-extension codegen options (see reference/runtime-drivers.md): the emitted
@@ -3143,7 +3156,7 @@ class PseudocodeImporter extends React.Component {
     /** Toggle maximize: collapse reference/art/info panels and hide the right pane. */
     toggleMaximize () {
         const next = !this.state.maximized;
-        this.setState({maximized: next, showRef: false, showArt: false, showInfo: false});
+        this.setState({maximized: next, showRef: false, showArt: false, showInfo: false, showMatrix: false});
         try { localStorage.setItem('bw-editor-max', next ? '1' : '0'); } catch { /* noop */ }
         // Toggle the right pane via the existing mechanic
         window.dispatchEvent(new CustomEvent('bw-settings-change', {
@@ -3333,6 +3346,76 @@ class PseudocodeImporter extends React.Component {
         );
     }
 
+    /**
+     * The overall view of lib/bw-matrix/capabilities.js: one column per chip
+     * family (the family's first device stands for it, plus the chosen device
+     * when it is not that one), one row per language, each cell the same
+     * summary the badge shows with the full sentence as its title. The table
+     * is read from the module every render, so it cannot disagree with the
+     * badge or with docs/generated/LANGUAGE-DEVICE-MATRIX.md.
+     */
+    renderMatrixPanel () {
+        const locale = pickLocale(this.props.locale);
+        const current = this.currentDevice();
+        const cols = [];
+        for (const d of MATRIX_DEVICES) {
+            if (d.programmable === false) continue;
+            if (!cols.some(c => c.family === d.family)) cols.push(d);
+        }
+        if (current && !cols.some(c => c.id === current)) {
+            const cur = MATRIX_DEVICES.find(d => d.id === current);
+            if (cur && cur.programmable !== false) {
+                const i = cols.findIndex(c => c.family === cur.family);
+                cols.splice(i + 1, 0, cur);
+            }
+        }
+        const cellStyle = {padding: '3px 6px', border: '1px solid #cbd5e1', fontSize: 11, whiteSpace: 'nowrap'};
+        return (
+            <div data-testid="bw-matrix-panel"
+                style={{padding: '8px 12px', background: '#eff6ff', border: '1px solid #bfdbfe',
+                    borderRadius: '0 0 8px 8px', fontSize: 12, color: '#334155', flexShrink: 0, overflowX: 'auto'}}>
+                <div style={{fontWeight: 'bold', marginBottom: 4, color: '#1e3a8a'}}>{this.L.matrixHeading}</div>
+                <div style={{marginBottom: 6, fontSize: 11, color: '#475569'}}>{this.L.matrixLegend}</div>
+                <table style={{borderCollapse: 'collapse'}}>
+                    <thead>
+                        <tr>
+                            <th style={cellStyle} />
+                            {cols.map(d => (
+                                <th key={d.id} style={{...cellStyle, background: d.id === current ? '#dbeafe' : '#f8fafc'}}
+                                    title={d.id === current ? this.L.matrixCurrent : d.group}>
+                                    {d.label}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {MATRIX_LANGUAGES.map(l => (
+                            <tr key={l.id}>
+                                <th style={{...cellStyle, textAlign: 'left',
+                                    background: l.id === this.state.lang ? '#dbeafe' : '#f8fafc'}}>
+                                    {l.label}
+                                </th>
+                                {cols.map(d => {
+                                    const c = matrixCell(l.id, d.id);
+                                    const here = l.id === this.state.lang && d.id === current;
+                                    return (
+                                        <td key={d.id} data-testid={`bw-matrix-cell-${l.id}-${d.id}`}
+                                            data-kind={c ? c.kind : 'none'}
+                                            title={matrixExplain(l.id, d.id, locale)}
+                                            style={{...cellStyle, cursor: 'help',
+                                                background: here ? '#bfdbfe' : c && c.kind === 'none' ? '#fff7ed' : '#fff'}}>
+                                            {matrixSummary(l.id, d.id, locale)}
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        );
+    }
+
     render () {
         // The selected .tab-panel is display:flex (row); like .blocks-wrapper we must
         // flex-grow to fill the column width, else we shrink to content (~660px) and
@@ -3381,6 +3464,16 @@ class PseudocodeImporter extends React.Component {
                                 color: this.state.showInfo ? '#fff' : '#475569', fontSize: 11, fontWeight: 700, cursor: 'pointer',
                                 fontStyle: 'italic', alignSelf: 'center'}}>
                             i
+                        </button>
+                        <button type="button" onClick={() => this.setState(s => ({showMatrix: !s.showMatrix}))}
+                            aria-label={this.L.matrixAria} title={this.L.matrixTitle}
+                            data-testid="bw-matrix-toggle"
+                            style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: 20,
+                                padding: '0 6px', border: 'none', borderRadius: 10,
+                                background: this.state.showMatrix ? '#4c97ff' : '#e2e8f0',
+                                color: this.state.showMatrix ? '#fff' : '#475569', fontSize: 11, fontWeight: 700,
+                                cursor: 'pointer', alignSelf: 'center'}}>
+                            ⊞⊟
                         </button>
                         <select value={this.currentDevice() || ''} onChange={e => this.setDevice(e.target.value)}
                             style={{...csel, alignSelf: 'center'}} title={this.L.deviceTitle}
@@ -3441,6 +3534,8 @@ class PseudocodeImporter extends React.Component {
                         <button onClick={() => this.setState({showRepresentation: false})} style={{background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', fontSize: 14}}>✕</button>
                     </div>
                 )}
+
+                {this.state.showMatrix && !max && this.renderMatrixPanel()}
 
                 {this.state.showInfo && !max && (
                     <div style={{padding: '8px 12px', background: '#eff6ff', border: '1px solid #bfdbfe',
