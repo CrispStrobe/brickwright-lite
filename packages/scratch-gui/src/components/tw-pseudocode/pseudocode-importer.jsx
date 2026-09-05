@@ -10,7 +10,7 @@ import {IMPORT_ACCEPT, isImportableArtefact} from '../../lib/bw-makecode/accept.
 // synchronous — and the module is a few KB of strings, not a chunk worth
 // splitting.
 import {asmExamplesFor} from '../../lib/bw-asm/examples.js';
-import {requestAssembly, asmRouteFor, asmTargetForDevice} from '../../lib/bw-asm/assemble-route.js';
+import {requestAssembly, requestCBuild, asmRouteFor, cRouteFor, asmTargetForDevice} from '../../lib/bw-asm/assemble-route.js';
 
 // The example sources — upstream's and the locally-authored games, kept in
 // separate files so the upstream one stays synchronizable — are 266 KiB raw
@@ -265,6 +265,14 @@ const L10N = {
         run8086Refused: m => `The 8086 back end refused this program: ${m}`,
         run8086Failed: m => `Could not build for the 8086: ${m}`,
         run8086Empty: 'Write some pseudocode first.',
+        runC8086: '▶ Run C on 8086',
+        runC8086Title: 'Compile this C with SmallerC in this browser, assemble it here too, and run it on the DOS bench — no network, no toolchain.',
+        runC8086Building: 'Compiling C for the 8086 in this browser…',
+        runC8086Built: (n, r) => `Built ${n} bytes ${r} — booting the 8086 DOS bench…`,
+        runC8086Refused: (r, m) => `The C compiler ${r} refused this program: ${m}`,
+        runC8086Failed: (r, m) => `The 8086 C route (${r}) could not run: ${m}`,
+        runC8086Empty: 'Write some C first.',
+        runC8086Route: 'in this browser',
         // reference section headers
         h: {
             Structure: 'Structure', EventsHats: 'Events (hats)', Control: 'Control',
@@ -413,6 +421,14 @@ const L10N = {
         run8086Refused: m => `Das 8086-Backend hat dieses Programm abgelehnt: ${m}`,
         run8086Failed: m => `Build für den 8086 fehlgeschlagen: ${m}`,
         run8086Empty: 'Schreibe zuerst Pseudocode.',
+        runC8086: '▶ C auf 8086 ausführen',
+        runC8086Title: 'Dieses C mit SmallerC in diesem Browser übersetzen, hier auch assemblieren und auf der DOS-Werkbank ausführen — ohne Netz, ohne Toolchain.',
+        runC8086Building: 'Übersetze C für den 8086 in diesem Browser…',
+        runC8086Built: (n, r) => `${n} Bytes ${r} erzeugt — starte die 8086-DOS-Werkbank…`,
+        runC8086Refused: (r, m) => `Der C-Compiler ${r} hat dieses Programm abgelehnt: ${m}`,
+        runC8086Failed: (r, m) => `Die 8086-C-Route (${r}) lief nicht: ${m}`,
+        runC8086Empty: 'Schreibe zuerst C.',
+        runC8086Route: 'in diesem Browser',
         // reference section headers
         h: {
             Structure: 'Struktur', EventsHats: 'Events (Hats)', Control: 'Steuerung',
@@ -835,6 +851,7 @@ class PseudocodeImporter extends React.Component {
         this.flashToBoard = this.flashToBoard.bind(this);
         this.flashStm32ViaSwd = this.flashStm32ViaSwd.bind(this);
         this.runPseudocodeOn8086 = this.runPseudocodeOn8086.bind(this);
+        this.runCOn8086 = this.runCOn8086.bind(this);
         this.openCodeFile = this.openCodeFile.bind(this);
         this.saveCodeFile = this.saveCodeFile.bind(this);
         this._autosaveTimer = null;
@@ -1807,6 +1824,75 @@ class PseudocodeImporter extends React.Component {
             busy: false,
             buffers: {...st.buffers, asm: out.asm},
             status: this.L.run8086Built(out.bytes.length, blocks) + warn
+        }));
+    }
+
+    /**
+     * ▶ Run C on 8086 — the C tab's offline route, and the last cell of the
+     * 8086 column to close.
+     *
+     * EVERY OTHER DEVICE COMPILES C BY POSTING IT. `flashToBoard` and the
+     * listing view both send the buffer to `stc-compiler /compile`, and for
+     * the 8051 `sdcc-wasm/intercept.js` quietly answers that POST locally.
+     * Neither works here: that service has no 8086 C back end and is not
+     * getting one (ROADMAP §3.8.2b, door 1 is unbuilt), so the choice was a
+     * local compiler or no C on this device at all.
+     *
+     * SmallerC (BSD-2, compiled to WASM) emits NASM `bits 16`;
+     * `bw-board/i8086-asm.js` grew a NASM front end; `requestCBuild` is the
+     * one place that decides those two are what an `i8086` C build means. The
+     * image then travels the SAME `bw-asm-rom-ready` → circuit-tab →
+     * debug-panel path that ▶ Assemble & Run and ▶ Run on 8086 use. Nothing
+     * is fetched at any point.
+     *
+     * THE TWO STAGES BOTH NAME WHAT THEY REFUSE, and the status line carries
+     * that verbatim rather than replacing it with "compilation failed":
+     * smlrc says `Error in "main.c" (1:21) Unexpected token long`, the
+     * assembler says `EXTERN "___fixsfsi" cannot be resolved`. Those are the
+     * two edges this pipeline actually has (measured in
+     * `test/smallerc-to-i8086-asm.test.mjs`) and a learner who meets one
+     * should be told which stage met it.
+     *
+     * The generated assembly is left in the ASM tab, as ▶ Run on 8086 leaves
+     * its own — a learner who wants to see what their C became can go and
+     * read it.
+     */
+    async runCOn8086 () {
+        const source = this.state.buffers.c || '';
+        if (!source.trim()) {
+            this.setState({status: this.L.runC8086Empty});
+            return;
+        }
+        const device = this.currentDevice();
+        const routeName = cRouteFor(device) === 'local'
+            ? this.L.runC8086Route : this.L.asmRouteHosted;
+        this.setState({busy: true, status: this.L.runC8086Building, output: null});
+        let out;
+        try {
+            // NO SEAMS. `requestCBuild` defaults to the compiler and the
+            // assembler the tests drive; an override here would be a second
+            // local path that no gate runs, which is this repo's named
+            // recurring defect.
+            out = await requestCBuild({source, device});
+        } catch (e) {
+            this.setState({busy: false, status: e.reason === 'source'
+                ? this.L.runC8086Refused(routeName, e.message)
+                : this.L.runC8086Failed(routeName, e.message)});
+            return;
+        }
+        const detail = {rom: out.bytes, listing: null, target: out.target,
+            slotId: out.slotId, profile: out.profile, format: out.format};
+        try { localStorage.setItem('bw-right-pane-hidden', '0'); } catch { /* private mode */ }
+        window.dispatchEvent(new CustomEvent('bw-settings-change', {
+            detail: {key: 'bw-right-pane-hidden', value: '0'}
+        }));
+        window.__bwPendingMedia = {type: 'asm', detail};
+        window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {detail}));
+        const warn = out.warnings.length ? this.L.asmWarnings(out.warnings) : '';
+        this.setState(st => ({
+            busy: false,
+            buffers: {...st.buffers, asm: out.asm || st.buffers.asm},
+            status: this.L.runC8086Built(out.bytes.length, routeName) + warn
         }));
     }
 
@@ -3681,6 +3767,20 @@ class PseudocodeImporter extends React.Component {
                                 title={this.L.run8086Title}
                                 style={{...btn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
                                 {this.L.run8086}
+                            </button>
+                        ) : null}
+                    {/* The C tab's ▶, and it is the same shape as the one
+                        above: build for the selected device and start it. It
+                        appears only where a LOCAL C route exists, because the
+                        hosted compiler has no 8086 back end — so this button
+                        can never be the thing that posts a program. */}
+                    {this.state.lang === 'c'
+                     && cRouteFor(this.currentDevice()) === 'local' ? (
+                            <button onClick={this.runCOn8086} disabled={this.state.busy}
+                                data-testid="bw-run-c-8086"
+                                title={this.L.runC8086Title}
+                                style={{...btn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
+                                {this.L.runC8086}
                             </button>
                         ) : null}
                     {this.currentDevice() === 'stm32f030' && this.state.lang === 'pseudocode' ? (

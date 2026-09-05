@@ -37,7 +37,9 @@
  *
  * Reached from the app through `bw-asm/assemble-route.js`, whose
  * `compileC8086` prepends the `.COM` startup SmallerC's own linker would have
- * supplied and passes both options above. See ROADMAP.md 3.8.2b.
+ * supplied and passes both options above, and whose `requestCBuild` decides
+ * that an `i8086` device means this compiler. The C tab's ▶ Run C on 8086
+ * button is the caller. See ROADMAP.md 3.8.2b.
  */
 import {HEADERS} from './dist/headers.js';
 
