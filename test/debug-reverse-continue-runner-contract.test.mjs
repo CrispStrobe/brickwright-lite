@@ -6,6 +6,8 @@ const runner = readFileSync(new URL(
     '../overlay/scratch-gui/src/lib/bw-debug/debug-runner.js', import.meta.url), 'utf8');
 const panel = readFileSync(new URL(
     '../overlay/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx', import.meta.url), 'utf8');
+const coordinator = readFileSync(new URL(
+    '../overlay/scratch-gui/src/lib/bw-debug/reverse-continue.js', import.meta.url), 'utf8');
 
 const methodBody = (name, nextName) => {
     const start = runner.indexOf(`${name}()`);
@@ -17,11 +19,11 @@ const methodBody = (name, nextName) => {
 
 test('reverse continue exposes a readiness query and command over recorded halt occurrences', () => {
     const status = methodBody('reverseContinueDebugStatus', 'reverseContinueDebug()');
-    assert.match(status, /instructionReplay\.canReverse\(\)/,
+    assert.match(runner, /canReverse: \(\) => haltLedgerRefusal \|\| instructionReplay\.canReverse\(\)/,
         'recorded history is not enough unless restore/replay and inputs are complete');
-    assert.match(status, /haltOccurrences\.previousBeforeBoundary\(before\)/,
+    assert.match(coordinator, /haltOccurrences\.previousBeforeBoundary\(beforeCursor\)/,
         'status must use the bounded halt-occurrence index, not scan event payloads');
-    assert.match(status, /code:\s*['"]no-previous-breakpoint['"]/,
+    assert.match(coordinator, /['"]no-previous-breakpoint['"]/,
         'absence of an earlier retained halt must be a structured refusal');
     assert.doesNotMatch(status, /eventsFrom\(|checkpoints\(/,
         'a status/UI query must not clone recorded events or snapshots');
@@ -36,16 +38,24 @@ test('only active 8086 forward breakpoint halts enter the occurrence ledger', ()
         'steps, user pauses, stops and replay orchestration are not historical breakpoint decisions');
 });
 
+test('successful condition edits advance the breakpoint history generation', () => {
+    const start = runner.indexOf('setCondition(blockId, source)');
+    const end = runner.indexOf('conditionOf,', start);
+    assert.ok(start >= 0 && end > start);
+    const condition = runner.slice(start, end);
+    assert.match(condition, /setCondition\(blockId, source\);\s*breakpointGeneration\+\+/);
+});
+
 test('reverse continue chains strictly from the last successful reverse cursor', () => {
     const status = methodBody('reverseContinueDebugStatus', 'reverseContinueDebug()');
     assert.match(status, /const before = reverseCursor \?\?/,
         'the first command searches from live end and later commands from restored history');
-    assert.match(status, /previousBeforeBoundary\(before\)/,
+    assert.match(coordinator, /previousBeforeBoundary\(beforeCursor\)/,
         'the recorder query owns strict-before occurrence ordering');
 
     const command = methodBody('reverseContinueDebug', 'clearTrace');
-    assert.match(command, /this\.reverseContinueDebugStatus\(\)/);
-    assert.match(command, /this\.reverseDebugToEvent\(status\.eventCursor\)/,
+    assert.match(command, /reverseContinue\.reverse\(before\)/);
+    assert.match(runner, /reverseToEvent: eventCursor => runner\.reverseDebugToEvent\(eventCursor\)/,
         'successful selection must reuse verified replay and its cursor update');
 });
 

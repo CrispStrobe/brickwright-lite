@@ -43,6 +43,7 @@ import { createTrace, IO_SFRS, TIMER_SFRS } from './trace.js';
 import {createDebugFoundation, subscribeDebugTargetEvents} from './debug-foundation.js';
 import {createRecordingSession, subscribeDebugTargetInputs} from './recording-session.js';
 import {createInstructionReplayController} from './instruction-replay.js';
+import {createReverseContinueCoordinator} from './reverse-continue.js';
 import { setValueResolver } from './hover-values.js';
 import { instructionLength } from './opcodes.js';
 import {
@@ -480,7 +481,6 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     let reverseCursor = null;
     // Halt occurrence is a separate order because several native stops may
     // share one instruction boundary. It is advanced only after verified replay.
-    let reverseOccurrenceCursor = null;
     let breakpointGeneration = 0;
     let haltLedgerRefusal = null;
     const trace = createTrace({eventStream});
@@ -2198,6 +2198,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         throw new Error(`arbitrary firmware is not wired for the '${kind}' engine yet`);
     }
 
+    let reverseContinue;
     const runner = {
         /** Use this image instead of compiling the blocks. */
         setFirmware(fw) { userFirmware = fw || null; },
@@ -2212,7 +2213,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         /** Build, attach, and run. The ⚑ of the debug world. */
         async start() {
             reverseCursor = null;
-            reverseOccurrenceCursor = null;
+            reverseContinue.reset();
             try {
                 if (!session) {
                     // Clear it HERE and not in build(): the ROM and
@@ -2266,7 +2267,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         resume() {
             if (!session) return;
             reverseCursor = null;
-            reverseOccurrenceCursor = null;
+            reverseContinue.reset();
             session.resume();
             setStatus('running');
             schedule();
@@ -2276,7 +2277,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         step(kind = 'block') {
             if (!session) return { unsupported: 'nothing is running yet' };
             reverseCursor = null;
-            reverseOccurrenceCursor = null;
+            reverseContinue.reset();
             const refusal = session.step(kind);
             if (refusal) { setStatus('paused', refusal.unsupported); return refusal; }
             setStatus('stepping');
@@ -2362,6 +2363,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 delete conditionErrors[blockId];
             }
             setCondition(blockId, source);
+            breakpointGeneration++;
             emit();
             return undefined;
         },
@@ -2610,7 +2612,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         debugTimeline: () => debugFoundation.timeline,
         startDebugRecording() {
             reverseCursor = null;
-            reverseOccurrenceCursor = null;
+            reverseContinue.reset();
             debugFoundation.haltOccurrences.clear();
             haltLedgerRefusal = null;
             ensureDebugEvents();
@@ -2620,7 +2622,11 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         checkpointDebugRecording: () => recordingSession.checkpoint(),
         restoreDebugCheckpoint: eventCursor => {
             const result = recordingSession.restore(eventCursor);
-            if (result.accepted) { reverseCursor = eventCursor; emit(); }
+            if (result.accepted) {
+                reverseCursor = eventCursor;
+                reverseContinue.reset();
+                emit();
+            }
             return result;
         },
         recordDebugInput: input => recordingSession.appendInput(input),
@@ -2659,32 +2665,22 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         },
         reverseStepDebugInstruction() {
             const status = this.reverseStepDebugStatus();
-            return status.accepted ? this.reverseDebugToEvent(status.eventCursor) : status;
+            if (!status.accepted) return status;
+            const result = this.reverseDebugToEvent(status.eventCursor);
+            if (result.accepted) reverseContinue.reset();
+            return result;
         },
         reverseContinueDebugStatus() {
-            const capability = instructionReplay.canReverse();
-            if (!capability.accepted) return capability;
-            if (haltLedgerRefusal) return haltLedgerRefusal;
             const retained = debugFoundation.recorder.retention();
             const before = reverseCursor ??
                 (retained.lastEventSeq === null ? 0 : retained.lastEventSeq + 1);
-            const occurrence = reverseOccurrenceCursor === null ?
-                debugFoundation.haltOccurrences.previousBeforeBoundary(before) :
-                debugFoundation.haltOccurrences.previousByOccurrenceCursor(reverseOccurrenceCursor);
-            return occurrence === null
-                ? {accepted: false, code: 'no-previous-breakpoint',
-                    reason: 'No earlier recorded breakpoint halt is retained'}
-                : {accepted: true, beforeCursor: before, eventCursor: occurrence.boundaryCursor,
-                    occurrenceCursor: occurrence.occurrenceCursor,
-                    matchingIds: occurrence.matchingIds, generation: occurrence.generation};
+            return reverseContinue.status(before);
         },
         reverseContinueDebug() {
-            const status = this.reverseContinueDebugStatus();
-            if (!status.accepted) return status;
-            const result = this.reverseDebugToEvent(status.eventCursor);
-            if (result.accepted) reverseOccurrenceCursor = status.occurrenceCursor;
-            return result.accepted ? {...result, matchingIds: status.matchingIds,
-                occurrenceCursor: status.occurrenceCursor, generation: status.generation} : result;
+            const retained = debugFoundation.recorder.retention();
+            const before = reverseCursor ??
+                (retained.lastEventSeq === null ? 0 : retained.lastEventSeq + 1);
+            return reverseContinue.reverse(before);
         },
         clearTrace() { trace.clear(); emit(); },
 
@@ -2706,7 +2702,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         stepInstruction(count = 1) {
             if (!target) return { unsupported: 'nothing is running yet' };
             reverseCursor = null;
-            reverseOccurrenceCursor = null;
+            reverseContinue.reset();
             for (let i = 0; i < count; i++) {
                 const refusal = target.step('insn', 1);
                 if (refusal) return refusal;
@@ -2723,12 +2719,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         /** `over` and `out`, which the target defines in terms of SP. */
         stepOver() {
             reverseCursor = null;
-            reverseOccurrenceCursor = null;
+            reverseContinue.reset();
             return session ? session.step('over') : { unsupported: 'not running' };
         },
         stepOut() {
             reverseCursor = null;
-            reverseOccurrenceCursor = null;
+            reverseContinue.reset();
             return session ? session.step('out') : { unsupported: 'not running' };
         },
 
@@ -2907,6 +2903,11 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         if (changed) breakpointGeneration++;
     }
 
+    reverseContinue = createReverseContinueCoordinator({
+        canReverse: () => haltLedgerRefusal || instructionReplay.canReverse(),
+        haltOccurrences: debugFoundation.haltOccurrences,
+        reverseToEvent: eventCursor => runner.reverseDebugToEvent(eventCursor)
+    });
     return runner;
 }
 

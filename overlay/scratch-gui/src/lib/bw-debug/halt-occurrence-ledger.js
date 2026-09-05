@@ -48,6 +48,7 @@ export function createHaltOccurrenceLedger ({maxOccurrences = DEFAULT_MAX_OCCURR
     let occurrences = [];
     let nextOccurrenceCursor = 0;
     let evictedOccurrences = 0;
+    let lastBoundaryCursor = null;
 
     const copy = occurrence => ({...occurrence, matchingIds: [...occurrence.matchingIds]});
 
@@ -85,10 +86,9 @@ export function createHaltOccurrenceLedger ({maxOccurrences = DEFAULT_MAX_OCCURR
                     matchingIds.push(id);
                 }
             }
-            const previous = occurrences.at(-1);
-            if (previous && summary.boundaryCursor < previous.boundaryCursor) {
+            if (lastBoundaryCursor !== null && summary.boundaryCursor < lastBoundaryCursor) {
                 fail('BOUNDARY_ORDER', 'Halt occurrence boundaries must be monotonic', {
-                    previous: previous.boundaryCursor,
+                    previous: lastBoundaryCursor,
                     actual: summary.boundaryCursor
                 });
             }
@@ -107,12 +107,21 @@ export function createHaltOccurrenceLedger ({maxOccurrences = DEFAULT_MAX_OCCURR
                 source: summary.source
             });
             occurrences.push(occurrence);
+            lastBoundaryCursor = occurrence.boundaryCursor;
             return copy(occurrence);
         },
 
         /** Return the occurrence strictly before an absolute occurrence cursor. */
         previousByOccurrenceCursor (fromCursor) {
             safeNonNegative(fromCursor, 'fromCursor');
+            const firstRetained = occurrences.length ? occurrences[0].occurrenceCursor : nextOccurrenceCursor;
+            if (fromCursor < firstRetained || fromCursor > nextOccurrenceCursor) {
+                fail('INVALID_CURSOR', 'Occurrence cursor is outside the retained range', {
+                    cursor: fromCursor,
+                    min: firstRetained,
+                    max: nextOccurrenceCursor
+                });
+            }
             const index = upperBound(occurrences, fromCursor, item => item.occurrenceCursor) - 1;
             return index < 0 ? null : copy(occurrences[index]);
         },
@@ -151,6 +160,7 @@ export function createHaltOccurrenceLedger ({maxOccurrences = DEFAULT_MAX_OCCURR
             occurrences = [];
             nextOccurrenceCursor = 0;
             evictedOccurrences = 0;
+            lastBoundaryCursor = null;
         }
     };
 }

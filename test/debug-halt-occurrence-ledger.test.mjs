@@ -30,6 +30,11 @@ test('appends compact immutable summaries with independent monotonic cursors', (
     assert.equal(second.occurrenceCursor, 1);
     first.matchingIds[0] = 'caller mutation';
     assert.deepEqual(ledger.summaries()[0].matchingIds, ['b', 'a']);
+    const summaries = ledger.summaries();
+    summaries[0].source = 'caller mutation';
+    summaries[0].matchingIds.push('caller mutation');
+    assert.equal(ledger.summaries()[0].source, 'breakpoint-engine');
+    assert.deepEqual(ledger.summaries()[0].matchingIds, ['b', 'a']);
     assert.throws(() => ledger.append({...halt(10), payload: {registers: 'forbidden'}}), error =>
         error instanceof HaltOccurrenceLedgerError && error.code === 'UNSUPPORTED_FIELD');
 });
@@ -46,6 +51,7 @@ test('strict previous lookups handle equal cursors and equal boundaries', () => 
     assert.equal(ledger.previousBeforeBoundary(10), null);
     assert.equal(ledger.previousBeforeBoundary(20).occurrenceCursor, 1);
     assert.equal(ledger.previousBeforeBoundary(21).occurrenceCursor, 2);
+    assert.throws(() => ledger.previousByOccurrenceCursor(4), error => error.code === 'INVALID_CURSOR');
 });
 
 test('checkpoint eviction is explicit, boundary-aligned and cursors never recycle', () => {
@@ -58,6 +64,7 @@ test('checkpoint eviction is explicit, boundary-aligned and cursors never recycl
 
     assert.equal(ledger.evictBeforeCheckpoint(8), 1);
     assert.deepEqual(ledger.summaries().map(item => item.boundaryCursor), [8, 12]);
+    assert.throws(() => ledger.previousByOccurrenceCursor(0), error => error.code === 'INVALID_CURSOR');
     assert.equal(ledger.append(halt(16)).occurrenceCursor, 3);
     assert.deepEqual(ledger.retention(), {
         maxOccurrences: 3,
@@ -66,6 +73,18 @@ test('checkpoint eviction is explicit, boundary-aligned and cursors never recycl
         nextOccurrenceCursor: 4,
         firstOccurrenceCursor: 1
     });
+});
+
+test('duplicate checkpoint boundaries remain retained and full eviction preserves global ordering', () => {
+    const ledger = createHaltOccurrenceLedger({maxOccurrences: 3});
+    ledger.append(halt(8));
+    ledger.append(halt(8));
+    assert.equal(ledger.evictBeforeCheckpoint(8), 0,
+        'occurrences exactly at the retained checkpoint boundary remain addressable');
+    assert.equal(ledger.evictBeforeCheckpoint(9), 2);
+    assert.deepEqual(ledger.summaries(), []);
+    assert.throws(() => ledger.append(halt(7)), error => error.code === 'BOUNDARY_ORDER');
+    assert.equal(ledger.append(halt(9)).occurrenceCursor, 2);
 });
 
 test('invalid and out-of-order facts fail closed without consuming a cursor', () => {
