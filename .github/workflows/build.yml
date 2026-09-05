@@ -366,7 +366,14 @@ jobs:
           # twice over): those are ~14 CPU-minutes and were this step's whole
           # duration. They run in the `corpus` job below, in parallel with this
           # one, and the deploy needs both. `npm test` locally is still all of it.
+          mkdir -p test-results
           npm run test:fast 2>&1 | tee /tmp/unit.tap
+          # FIRST, before any early exit: did the run report on what it was
+          # handed? Every file scripts/list-tests.mjs puts in this set must
+          # appear in the per-file census with at least one test, and any
+          # `not ok` must be counted by the summary (header of the script). It
+          # runs before the grep below so a red suite still exercises it.
+          node scripts/check-test-run.mjs --set fast --tap /tmp/unit.tap --census test-results/fast.census.json
           # A SUITE THAT CANNOT BE CONSTRUCTED CURRENTLY READS AS A SUITE THAT
           # PASSED, and that is not a hypothesis — it happened in run
           # 32779945069 on this branch. `test/wait-census.test.mjs` calls a
@@ -1109,7 +1116,9 @@ jobs:
       - name: Run the lesson corpus walks
         run: |
           set -o pipefail
+          mkdir -p test-results
           npm run test:corpus 2>&1 | tee /tmp/corpus.tap
+          node scripts/check-test-run.mjs --set corpus --tap /tmp/corpus.tap --census test-results/corpus.census.json
           if grep -qE '^not ok ' /tmp/corpus.tap; then
             echo "::error::TAP reports failures the summary did not count — a suite probably threw while being CONSTRUCTED."
             grep -E '^not ok ' /tmp/corpus.tap | head -20

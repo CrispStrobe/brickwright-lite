@@ -34,3 +34,6 @@ CLAUDE.md
 # a 21 MB wasm blob got committed in bw-board (LABWIRED-BRIDGE.md §7), and this
 # directory now collects PNGs on every browser-gate run.
 /artifacts/
+
+# node --test per-file census output (scripts/check-test-run.mjs reads it; never an input)
+/test-results/
