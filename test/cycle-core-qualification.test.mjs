@@ -39,11 +39,25 @@ test('heavy qualification is hosted, bounded, fail-closed and retains evidence',
     assert.match(qualifier, /publishes bounded cost receipts/);
     assert.match(qualifier, /JSMoo W65C02 promotion decision matches replay evidence/);
     assert.match(qualifier, /JSMoo W65C02 emits non-empty bus activity/);
+    assert.match(qualifier, /runs the bounded pinned WDC65C02 corpus/);
+    assert.match(qualifier, /prove every selected oracle shard hash/);
+    assert.match(qualifier, /WAI and STP corpus omissions remain explicit rejection receipts/);
+    assert.match(qualifier, /corpus failure evidence is bounded, never discarded/);
+    assert.match(qualifier, /known B-latch defect is reproduced by real oracle vectors/);
 });
 
 test('candidate licenses and every admitted source are hash-pinned', () => {
     assert.equal(manifest.candidates.w65c02.license, 'MIT');
     assert.equal(manifest.candidates.w65c02.decision, 'reject');
+    assert.equal(manifest.candidates.w65c02.oracle.variant, 'wdc65c02/v1');
+    assert.ok(manifest.candidates.w65c02.oracle.vectorPaths.length >= 8);
+    assert.ok(manifest.candidates.w65c02.oracle.vectorsPerOpcode > 0);
+    for (const path of manifest.candidates.w65c02.oracle.vectorPaths) {
+        assert.match(manifest.candidates.w65c02.oracle.vectorSha256[path], /^[0-9a-f]{64}$/);
+        assert.ok(workflow.includes(path));
+    }
+    assert.match(manifest.candidates.w65c02.oracle.excluded.cb, /WAI/);
+    assert.match(manifest.candidates.w65c02.oracle.excluded.db, /STP/);
     for (const candidate of Object.values(manifest.candidates)) {
         assert.ok(candidate.licensePath);
         for (const path of [...candidate.sourcePaths, candidate.licensePath]) {

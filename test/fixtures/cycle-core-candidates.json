@@ -46,7 +46,33 @@
       "oracle": {
         "repository": "SingleStepTests/65x02",
         "commit": "2f6980a2d95757486c7bee24355c360e40e2a224",
-        "license": "MIT"
+        "license": "MIT",
+        "variant": "wdc65c02/v1",
+        "vectorsPerOpcode": 32,
+        "vectorPaths": [
+          "wdc65c02/v1/04.json",
+          "wdc65c02/v1/07.json",
+          "wdc65c02/v1/0f.json",
+          "wdc65c02/v1/1a.json",
+          "wdc65c02/v1/64.json",
+          "wdc65c02/v1/80.json",
+          "wdc65c02/v1/a9.json",
+          "wdc65c02/v1/ea.json"
+        ],
+        "vectorSha256": {
+          "wdc65c02/v1/04.json": "94ecf72eb9519dccd268deaed266c1e43f32a21531284c1a67429da28bcff27a",
+          "wdc65c02/v1/07.json": "4477e951b23fec39ec44f53fe91e77315e64430da6af7eb0bbc9b70bc571b41b",
+          "wdc65c02/v1/0f.json": "d197d3eb47d853c3f613d7d4144f4b81406e3775501ac63bf0a8022089fd594c",
+          "wdc65c02/v1/1a.json": "caf4bd9c84cc9678c50b998a0785c73b4586bd94b627fec421cf4ac875ad726d",
+          "wdc65c02/v1/64.json": "dcfc93218d41f366a308feadbe17a8092ac2736272c002b425891f0b4518a632",
+          "wdc65c02/v1/80.json": "96cbbddd5e01a04df02c958ce6326b096ac7b5044e54dc27e3260186fed278f9",
+          "wdc65c02/v1/a9.json": "09fbe34f626eda86516f1fd0f270827e9bf7d174a4fe2ab5c33aae3f5c3aa5cd",
+          "wdc65c02/v1/ea.json": "28090c731deddb76a25fc5819681b8484791e8051a3b35957e71d47f62259c33"
+        },
+        "excluded": {
+          "cb": "the upstream WDC corpus explicitly omits WAI as incompatible with single-instruction tests",
+          "db": "the upstream WDC corpus explicitly omits STP as incompatible with single-instruction tests"
+        }
       }
     }
   }

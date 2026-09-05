@@ -85,6 +85,31 @@ if (w65Runner) {
     report ? JSON.stringify(report) : result.stdout);
     check('JSMoo W65C02 emits non-empty bus activity', report?.busActivity === true,
         report ? JSON.stringify(report) : 'no report');
+    const expectedVectors = manifest.candidates.w65c02.oracle.vectorPaths.length *
+        manifest.candidates.w65c02.oracle.vectorsPerOpcode;
+    check('JSMoo W65C02 runs the bounded pinned WDC65C02 corpus',
+        report?.corpus?.total === expectedVectors &&
+        Number.isSafeInteger(report?.corpus?.retirePassed) &&
+        Number.isSafeInteger(report?.corpus?.busPassed),
+    report?.corpus ? `${report.corpus.total} vectors; ${report.corpus.retirePassed} retire; ` +
+        `${report.corpus.busPassed} bus matches` : 'no corpus receipt');
+    check('JSMoo W65C02 corpus receipts prove every selected oracle shard hash',
+        report?.corpus?.vectorReceipts?.length === manifest.candidates.w65c02.oracle.vectorPaths.length &&
+        report.corpus.vectorReceipts.every(receipt =>
+            manifest.candidates.w65c02.oracle.vectorSha256[receipt.path] === receipt.sha256 &&
+            receipt.selected === manifest.candidates.w65c02.oracle.vectorsPerOpcode),
+    report?.corpus ? JSON.stringify(report.corpus.vectorReceipts) : 'no vector receipts');
+    check('WAI and STP corpus omissions remain explicit rejection receipts',
+        typeof report?.corpus?.excluded?.cb === 'string' && typeof report?.corpus?.excluded?.db === 'string',
+        report?.corpus ? JSON.stringify(report.corpus.excluded) : 'no exclusion receipt');
+    check('JSMoo W65C02 corpus failure evidence is bounded, never discarded',
+        Array.isArray(report?.corpus?.failures) && report.corpus.failures.length <= 12 &&
+        report.corpus.retirePassed <= report.corpus.total && report.corpus.busPassed <= report.corpus.total,
+        report?.corpus ? `${report.corpus.failures.length} retained first-failure receipts` : 'no corpus receipt');
+    check('JSMoo W65C02 known B-latch defect is reproduced by real oracle vectors',
+        report?.corpus?.statusLatchOnly > 0 && report.corpus.failures.some(failure =>
+            failure.statusOnly === true && failure.registerDiffs?.p),
+        report?.corpus ? `${report.corpus.statusLatchOnly} otherwise-matching vectors changed P.B` : 'no corpus receipt');
 } else {
     check('JSMoo W65C02 isolated runner supplied', false, 'W65C02_QUALIFICATION_RUNNER is required');
 }

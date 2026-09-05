@@ -73,6 +73,23 @@ jobs:
             component/cpu/m6502
             license.txt
           sparse-checkout-cone-mode: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: SingleStepTests/65x02
+          ref: 2f6980a2d95757486c7bee24355c360e40e2a224
+          path: .cycle-oracles/w65c02
+          sparse-checkout: |
+            LICENSE
+            wdc65c02/README.md
+            wdc65c02/v1/04.json
+            wdc65c02/v1/07.json
+            wdc65c02/v1/0f.json
+            wdc65c02/v1/1a.json
+            wdc65c02/v1/64.json
+            wdc65c02/v1/80.json
+            wdc65c02/v1/a9.json
+            wdc65c02/v1/ea.json
+          sparse-checkout-cone-mode: false
       - name: Generate the bounded Z80 corpus from pinned oracle JSON
         env:
           CI: '1'
@@ -88,6 +105,7 @@ jobs:
           CYCLE_QUALIFICATION_OUTPUT: ${{ github.workspace }}/artifacts/cycle-core-qualification/report.json
           Z80_QUALIFICATION_RUNNER: ${{ runner.temp }}/qualify-z80
           W65C02_QUALIFICATION_RUNNER: ${{ github.workspace }}/scripts/fixtures/qualify-jsmoo-w65c02.mjs
+          W65C02_ORACLE_ROOT: ${{ github.workspace }}/.cycle-oracles/w65c02
         run: node scripts/qualify-cycle-candidates.mjs
       - name: Static qualification contracts
         if: always()

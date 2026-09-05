@@ -47,6 +47,15 @@ to match. The hosted lane records this as an expected rejection, not a waiver;
 JSMoo cannot be promoted unless a reviewed wrapper serializes and restores each
 flag exactly and the complete qualification set then passes.
 
+That rejection is now independently exercised against a hash-pinned,
+CI-fetched WDC65C02 v1 corpus slice: 32 vectors apiece for TSB, RMB, BBR, INC A,
+STZ, BRA, LDA and NOP (256 total). The receipt separates architectural retire
+state from ordered bus activity per opcode and retains examples from both
+failure classes, so the known `P.B` defect cannot hide a later bus mismatch.
+The upstream suite deliberately has no WAI (`CB`) or STP (`DB`) single-step
+files; those two omissions are recorded explicitly and remain separate
+qualification work rather than being counted as passes.
+
 ## Intel 8086/8088
 
 An instruction timing total or post-hoc bus schedule is not cycle-accurate.
