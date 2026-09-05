@@ -271,10 +271,26 @@ miss and the SDK calls the null result, so `deployMainPy` gets `ENODEV`. Fix wri
 measured as `docs/bw-board-rp2040-bootrom-flash-funcs.patch` — it belongs in **bw-board**
 `src/rp2040-bootrom.js` (vendored here), not in lite.
 Remaining, in order:
-- [ ] N3a: land the patch upstream in bw-board with its test, bump the pin here (the cell's
-      `sim` gains `'py'` the moment `sync:bwboard` brings it in).
-- [ ] N3b: `bootFromFlash()` on the rp2040js adapter (bw-board), since `loadProgram` writes SRAM
-      only and the probe sets `PC = 0x10000000` by hand.
+- [x] N3a (upstream half): landed in bw-board — flash ROM functions `be02550`, reviewed by a
+      second session that re-ran the oracle in both directions; `bootFromFlash(image)` on the
+      adapter `ff744c5`.
+- [ ] N3a (lite half): **blocked on the bw-board pin bump, which is not a file copy, and
+      nobody owns it** (checked with brickwright-lite-ea 2026-09-05). What the next person
+      starts from: at `ff744c5` `src/target-kinds.js` was CONSOLIDATED, not lost — its two
+      exports (`LABWIRED_KIND`, `getTargetKinds()`) now come from `src/debug-target-factory.js`.
+      Lite imports the old module from `bw-board/index.js`, `bw-board/debug-target-factory.js`
+      and `components/tw-pseudocode/debug-panel.jsx`; the fix is three import paths. The
+      hazard is the chunk graph, not the code: the perf lane isolated `target-kinds` in its
+      own `bw-debug-target-kinds` chunk, and folding it into `debug-target-factory` (reachable
+      from the debugger surface) can re-eager those bytes into first load, whose ratchet is
+      9 MB against a measured 7.64. Check emitted chunk names before and after, not only the
+      tests. The bump is 17 src files (8086/8088 timing, 8254, 8259, ne2000, reseat-gate,
+      debugger); it needs bw-board, the debugger lane and the perf lane at once, and a main
+      that can complete a build (none since 11:03 today). The two rp2040 files are
+      byte-identical to upstream at the current pin, so N3a's real dependency is narrower
+      than the whole bump.
+- [x] N3b: `bootFromFlash(image)` on the rp2040js adapter, bw-board `ff744c5` (a second session;
+      2/2 tests, stage-2 stub proves execution from flash base). Reaches lite with the pin bump.
 - [ ] N3c: lite wiring — the Python tab's ▶ Run for the Pico boots the pinned MicroPython UF2
       (fetched by a `sync:` script with sha256, never committed) and drives the SAME
       `createPicoRepl(transport)` the silicon path uses; `verify:pico-micropython` playwright.
