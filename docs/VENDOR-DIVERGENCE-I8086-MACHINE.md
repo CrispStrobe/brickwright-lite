@@ -166,6 +166,12 @@ fails unless it touched both.
       "falsifiable": "A saved file changes by itself after you save it, because it shares memory with the running machine.",
       "why": "getState/saveState dual-API bridge with deep clone, so a checkpoint does not alias live device buffers.",
       "contains": "static _cloneCheckpointValue\\(value\\)"
+    },
+    {
+      "id": "checkpoint-component-bridge",
+      "falsifiable": "Saving works on one board and produces a file that will not load on the same board, with no explanation of which part failed.",
+      "why": "_saveComponent and _loadComponent name the failing component in the error ('component X has no state API', 'X state API is incompatible') rather than throwing from inside a generic loop. ADDED 2026-09-05 BECAUSE THE DERIVED COVERAGE CHECK FOUND THEM UNEXPLAINED -- the pinned >=8 floor had never noticed, because 8 entries is 8 entries whatever they cover.",
+      "contains": "static _saveComponent\\(name, component\\)"
     }
   ],
   "graftedFromUpstream": [

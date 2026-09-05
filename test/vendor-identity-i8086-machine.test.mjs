@@ -38,10 +38,17 @@ const readAllowList = () => {
 // allow-list is populated BEFORE trusting any result derived from iterating it.
 test('the vendor allow-list is non-empty and covers both dual-tracked copies', () => {
     const spec = readAllowList();
-    assert.ok(spec.liteOnly.length >= 8,
-        `allow-list has ${spec.liteOnly.length} lite-only entries; expected at least 8. ` +
-        'If work was legitimately upstreamed, lower this floor in the same commit that ' +
-        'removes the entry -- so the shrink is a decision someone made, not a silent drift.');
+    // NOT A PINNED COUNT. This used to read `>= 8`, which is a number pinned to
+    // my own measurement -- so legitimate upstreaming turns it red and the
+    // obvious repair is to edit the digit. A floor that is fixed by editing the
+    // floor is a convention, not a mechanism. The real coverage check is
+    // DERIVED from content, lives in the cross-tree tier below, and cannot be
+    // satisfied by changing a number.
+    //
+    // What survives here is only the species-1 defence: a gate iterating an
+    // empty list passes everything, so refuse an empty list. No magic number.
+    assert.ok(spec.liteOnly.length > 0,
+        'the allow-list is empty. Every check that iterates it would pass vacuously.');
     // The kerotakis lane's rule, enforced rather than suggested: every entry
     // must carry the one sentence a non-programmer could falsify. If nobody
     // can write that sentence for an entry, the entry is protecting something
@@ -163,6 +170,53 @@ test('upstream has not converged on the lite-only work (needs the bw-board tree)
         assert.ok(re.test(up), `grafted work '${g.id}' is gone from UPSTREAM`);
         assert.ok(re.test(lite), `grafted work '${g.id}' is gone from the vendored copy`);
     }
+    // DERIVED COVERAGE, replacing the pinned floor. Extract the identifiers this
+    // file DECLARES here and not upstream; every one must be named by some
+    // entry. This is self-maintaining in both directions, which is the whole
+    // point: delete an entry and its identifier becomes unexplained -- red, by
+    // name. Upstream the work and the identifier stops being lite-only, so the
+    // entry is no longer required and NOTHING needs editing to stay green.
+    //
+    // The kerotakis lane's literature-band argument, one domain over: pin to
+    // something the outside world determines, not to your own computed number,
+    // so a correction elsewhere MOVES your answer instead of BREAKING your
+    // test. Upstream is the outside world here.
+    // TWO STRATEGIES, CHECKED SEPARATELY. My first version returned one merged
+    // Set and asserted its total size -- and that guard did not fire when I
+    // broke the method-name regex, because the `this.X =` matches alone kept
+    // the total well above the floor. HALF A BROKEN EXTRACTOR STILL REPORTED
+    // "ALL COVERED". Found by trying to red-prove the guard and watching it
+    // stay green, which is the only reason I know.
+    //
+    // A sum hides a zero. Each strategy must be shown to have reached
+    // something on its own, or its half of the corpus is silently empty.
+    const declared = src => ({
+        methods: new Set([...src.matchAll(/^\s{4}(?:static\s+)?([A-Za-z_]\w*)\s*\(/gm)].map(m => m[1])),
+        fields: new Set([...src.matchAll(/this\.([A-Za-z_]\w*)\s*=/g)].map(m => m[1]))
+    });
+    const upD = declared(up);
+    const liteD = declared(lite);
+    for (const [which, set] of [['methods', upD.methods], ['fields', upD.fields]]) {
+        assert.ok(set.size > 10,
+            `the ${which} extractor found only ${set.size} declarations upstream. It has ` +
+            'probably stopped matching, and an empty half yields an empty lite-only list, ' +
+            'which reads as "all covered". Refusing to conclude coverage from it.');
+    }
+    const upDecl = new Set([...upD.methods, ...upD.fields]);
+    const liteOnlyIds = [...new Set([...liteD.methods, ...liteD.fields])]
+        .filter(x => !upDecl.has(x)).sort();
+
+    const described = spec.liteOnly.map(d => `${d.id} ${d.contains} ${d.why}`).join(' ');
+    const unexplained = liteOnlyIds.filter(id => !described.includes(id));
+    assert.deepEqual(unexplained, [],
+        `\n  LITE-ONLY WORK THAT NO ALLOW-LIST ENTRY NAMES: ${unexplained.join(', ')}.\n` +
+        '  These are declared here and not upstream, so a sync deletes them, and no\n' +
+        '  entry explains what that would cost. Either add an entry (with its\n' +
+        '  falsifiable sentence) or, if the work is obsolete, delete it from the file.\n' +
+        '  This count is DERIVED, not pinned -- it cannot be fixed by editing a number.\n');
+
+    t.diagnostic(`derived coverage: ${liteOnlyIds.length} lite-only identifiers, all named ` +
+        `(${liteOnlyIds.join(', ')})`);
     t.diagnostic(`cross-tree invariant verified against ${found}: ` +
         `${spec.liteOnly.length} lite-only divergences, ${spec.graftedFromUpstream.length} grafted.`);
 });
