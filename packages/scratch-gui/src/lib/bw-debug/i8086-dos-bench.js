@@ -105,9 +105,22 @@ export async function createI8086DosBench (opts) {
         // object and the detail is plain data. So a requested NE2000 says
         // `loopback: true` and the link is constructed HERE, at the only
         // place that has the chip module in scope.
+        // ONE SHARED HUB for every card that asked for one, built here because
+        // a link is a live object and an event detail is plain data. The hub
+        // is a REPEATER: every card hears every frame except its own, and the
+        // MAC filter decides what is theirs. A switch would do that filtering
+        // in the wire and hide the lesson.
+        let hub = null;
         for (const c of chips) {
-            if (c.kind === 'ne2000' && c.loopback && !c.link) {
+            if (c.kind !== 'ne2000' || c.link) continue;
+            if (c.loopback) {
                 c.link = {send: (frame, from) => from.deliver(frame)};
+            } else if (c.hub) {
+                if (!hub) hub = {cards: [], send(frame, from) {
+                    for (const card of this.cards) if (card !== from) card.deliver(frame);
+                }};
+                c.link = hub;
+                c._joinHub = hub;
             }
         }
         const merged = base.chips.filter(
@@ -115,6 +128,10 @@ export async function createI8086DosBench (opts) {
         cfg = {...base, chips: [...merged, ...chips]};
     }
     const machine = new I8086Machine(cfg);
+    // The hub holds CHIPS, and they do not exist until the machine is built.
+    for (const c of (chips || [])) {
+        if (c._joinHub && machine.chips[c.name]) c._joinHub.cards.push(machine.chips[c.name]);
+    }
     const dos = createDos8086(machine, {
         onChar: onChar || null,
         keys: keys || [],
