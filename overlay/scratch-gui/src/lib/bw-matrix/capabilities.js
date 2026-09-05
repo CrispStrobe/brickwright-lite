@@ -247,8 +247,8 @@ export const DEVICES = Object.freeze([
     }),
     dev('eater6502', 'Eater 6502', '6502', 'w65c02', {
         pickerCompile: true,
-        pickerEmulator: 'w65c02-bench',
-        sim: [eng('w65c02-bench', ['hex', 'bin', 'bas'], {
+        pickerEmulator: 'eater6502',
+        sim: [eng('eater6502', ['hex', 'bin', 'bas'], {
             tier: '2a',
             needs: ['singlesteptests-65c02'],
             note: 'chosen by seating the part; BASIC typed into the MS BASIC ROM over the ACIA'
@@ -257,8 +257,8 @@ export const DEVICES = Object.freeze([
     }),
     dev('z80', 'Z80 bench', 'Z80', 'z80', {
         pickerCompile: false,
-        pickerEmulator: null,
-        sim: [eng('z80-bench', ['hex', 'bin', 'bas'], {
+        pickerEmulator: 'z80',
+        sim: [eng('z80', ['hex', 'bin', 'bas'], {
             tier: '2a',
             needs: ['singlesteptests-z80'],
             note: 'BBC BASIC on the bench'
@@ -267,8 +267,8 @@ export const DEVICES = Object.freeze([
     }),
     dev('i8086', 'Intel 8086 (DOS bench)', '8086', 'i8086', {
         pickerCompile: false,
-        pickerEmulator: null,
-        sim: [eng('i8086-machine', ['com', 'bin'], {tier: '2a', needs: ['singlesteptests-8086']})],
+        pickerEmulator: 'i8086',
+        sim: [eng('i8086', ['com', 'bin'], {tier: '2a', needs: ['singlesteptests-8086']})],
         silicon: [tx('com-export', ['com'], null, {...OPEN_DECLARED, task: 'N10'})]
     }),
     ...[['microbit', 'micro:bit'], ['calliopemini', 'Calliope mini']].map(([id, label]) =>

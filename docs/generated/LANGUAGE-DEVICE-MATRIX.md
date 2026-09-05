@@ -44,9 +44,9 @@ question from whether the row agrees with the code.
 | arduboy | Arduino (AVR) | console, not programmable | arduboy [hex] | — |  |
 | pico | Raspberry Pi | rp2040 | rp2040js [hex,bin,uf2] | micropython-raw-repl [py]<br>uf2-bootsel-download [uf2] (open: L2) |  |
 | stm32f030 | STM32 (ARM) | stm32 | stm32f0 [bin,hex] | stm32-uart-bootloader-webserial [bin,hex]<br>cmsis-dap-swd-webusb [bin] |  |
-| eater6502 | 6502 | w65c02 | w65c02-bench [hex,bin,bas] | eeprom-programmer-webserial [hex,bin] |  |
-| z80 | Z80 | z80 | z80-bench [hex,bin,bas] | eeprom-programmer-webserial [hex,bin] |  |
-| i8086 | 8086 | i8086 | i8086-machine [com,bin] | com-export [com] (open: N10) |  |
+| eater6502 | 6502 | w65c02 | eater6502 [hex,bin,bas] | eeprom-programmer-webserial [hex,bin] |  |
+| z80 | Z80 | z80 | z80 [hex,bin,bas] | eeprom-programmer-webserial [hex,bin] |  |
+| i8086 | 8086 | i8086 | i8086 [com,bin] | com-export [com] (open: N10) |  |
 | microbit | MicroPython | microbit | microbit-sim [py] | hex-append-download [py]<br>daplink-webusb [hex] (open: N9) |  |
 | calliopemini | MicroPython | microbit | microbit-sim [py] | hex-append-download [py]<br>daplink-webusb [hex] (open: N9) |  |
 | arcade | Arcade & SAMD51 | samd51 | arcade [ts] | circuitpython-copy [py] (open)<br>uf2-bootsel-download [uf2] (open: L4) |  |

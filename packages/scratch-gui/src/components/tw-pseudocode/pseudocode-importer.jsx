@@ -82,10 +82,10 @@ const DEVICE_GROUPS = [
         { id: 'stm32f030', label: 'STM32F030', compile: true, emulator: 'stm32f0' },
     ]},
     { label: '6502', core: 'w65c02', devices: [
-        { id: 'eater6502', label: 'Eater 6502', compile: true, emulator: 'w65c02-bench' },
+        { id: 'eater6502', label: 'Eater 6502', compile: true, emulator: 'eater6502' },
     ]},
     { label: 'Z80', core: 'z80', devices: [
-        { id: 'z80', label: 'Z80 bench', compile: false, emulator: null },
+        { id: 'z80', label: 'Z80 bench', compile: false, emulator: 'z80' },
     ]},
     // `compile: false` STILL MEANS WHAT IT SAYS, and it is not a leftover.
     // It is read as "the hosted C compiler can build this", and it cannot:
@@ -108,7 +108,7 @@ const DEVICE_GROUPS = [
     // circuit-tab.jsx detects the part and publishes bwDeviceCore = 'i8086',
     // and this entry keeps working unchanged, as it was written to.
     { label: '8086', core: 'i8086', devices: [
-        { id: 'i8086', label: 'Intel 8086 (DOS bench)', compile: false, emulator: null },
+        { id: 'i8086', label: 'Intel 8086 (DOS bench)', compile: false, emulator: 'i8086' },
     ]},
     { label: 'MicroPython', core: 'micropython', devices: [
         { id: 'microbit', label: 'micro:bit', compile: false, emulator: null },

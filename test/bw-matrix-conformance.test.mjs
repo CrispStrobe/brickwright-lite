@@ -41,6 +41,7 @@ const assembleRoute = src('lib/bw-asm/assemble-route.js');
 const sdcc = src('lib/sdcc-wasm/compiler.js');
 const smallerc = src('lib/smallerc-wasm/compiler.js');
 const creator = src('lib/sb3-creator.js');
+const factory = src('lib/bw-board/debug-target-factory.js');
 const hosted = JSON.parse(readFileSync(join(REPO, 'docs/generated/hosted-targets.json'), 'utf8'));
 
 // ---- DEVICE_GROUPS -----------------------------------------------------------
@@ -57,6 +58,26 @@ test('DEVICE_GROUPS and the matrix list the same devices, in the same order', ()
         assert.equal(d.label, p.label, `${p.id}: label differs from the picker`);
         assert.equal(d.pickerCompile, p.compile, `${p.id}: compile flag differs from the picker`);
         assert.equal(d.pickerEmulator, p.emulator, `${p.id}: emulator differs from the picker`);
+    }
+});
+
+test('every shipped engine that has a debug target is a kind the factory dispatches on', () => {
+    // The table mirrors the code, never the other way round: an engine id here
+    // that the factory does not know is an invented name (this file once said
+    // `w65c02-bench`, and a fix made the PICKER say it too).
+    const kinds = new Set([...factory.matchAll(/kind === '([a-z0-9-]+)'/g)].map(m => m[1]));
+    assert.ok(kinds.has('eater6502') && kinds.has('z80') && kinds.has('i8086'), `factory kinds moved: ${[...kinds]}`);
+    const NOT_DEBUG_TARGETS = new Set(['microbit-sim', 'arcade', 'arduboy']); // their own panes, not the debugger
+    // The factory's 8051 kind is the generic 'emulator' (createEmulatorTarget,
+    // over emu8051-adapter.js); the picker and this table name the adapter.
+    const ALIAS = {emu8051: 'emulator'};
+    assert.ok(/emu8051-adapter/.test(factory) && /createEmulatorTarget/.test(factory),
+        'the generic emulator kind is no longer the 8051 (emu8051-adapter.js)');
+    for (const d of DEVICES) {
+        for (const e of d.sim) {
+            if (e.status !== STATUS.SHIPPED || NOT_DEBUG_TARGETS.has(e.engine)) continue;
+            assert.ok(kinds.has(ALIAS[e.engine] || e.engine), `${d.id}: engine "${e.engine}" is not a debug-target-factory kind`);
+        }
     }
 });
 
