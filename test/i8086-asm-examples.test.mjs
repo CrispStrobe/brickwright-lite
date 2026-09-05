@@ -295,3 +295,35 @@ test('two cards at ONE address is refused by the machine', async () => {
             {kind: 'ne2000', name: 'b', at: 0x320}],
     }), /both claim I\/O address/);
 });
+
+test('BOTH Ethernet examples refuse when there is no card — they used not to', async () => {
+    // THE DEFECT THIS CLOSES WAS IN MY OWN TESTS, not just the examples.
+    //
+    // An absent card is open bus: every port answers FFh. FFh has every status
+    // bit SET, so `TEST AL, 01H` on the ISR reads as "a packet arrived" and
+    // BOTH examples printed their SUCCESS message on a board with no card in
+    // it. The two tests above assert those success strings — so they passed
+    // without a card too, and would have kept passing if the NE2000 had been
+    // deleted entirely.
+    //
+    // That is a correct fallback hiding a dead feature (open bus is a truthful
+    // answer to "what is on this wire"), plus a payload-blind gate on top of
+    // it. The examples now read the PROM signature — 'WW' at offset 28, which
+    // FFh cannot forge — and refuse. This asserts the refusal, which is the
+    // half that makes the assertions above mean anything.
+    for (const id of ['ether', 'ether2']) {
+        const ex = I8086_ALL.find(e => e.id === id);
+        const out = await requestAssembly({source: ex.source, device: 'i8086'},
+            {hostedFetch: forbiddenFetch});
+        let text = '';
+        // Deliberately NO chips: the board the example asks for is absent.
+        const bench = await createI8086DosBench(
+            {bytes: out.bytes, format: out.format, onChar: (c) => { text += c; }});
+        let n = 0;
+        while (n < 3_000_000 && !bench.terminated) { bench.step(); n++; }
+        assert.match(text, /No card answered at 320h/, `${id} says the card is missing`);
+        assert.ok(!/heard its own frame|received the frame addressed to it/.test(text),
+            `${id} must NOT report success — a plausible success on an empty board is `
+            + 'worse than a failure, because nothing downstream can tell');
+    }
+});

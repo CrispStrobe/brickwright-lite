@@ -986,6 +986,51 @@ CR       EQU NIC + 0
 
 START:
     ; -------------------------------------------------------------------------
+    ; IS A CARD ACTUALLY THERE? Ask before believing anything it says.
+    ;
+    ; An absent card is open bus: every port answers FFh. Every ISR bit then
+    ; reads SET, so the "did a packet arrive?" check below reports YES on a
+    ; board with no card in it. This example printed exactly that -- a
+    ; plausible success, with nothing wrong on its face -- until this check
+    ; existed.
+    ;
+    ; The PROM is what open bus cannot forge. An NE2000 stores 'WW' (57h) at
+    ; PROM offsets 28-29 to mark itself a 16-bit card, and FFh is not 57h.
+    ; -------------------------------------------------------------------------
+    MOV DX, CR
+    MOV AL, 21H
+    OUT DX, AL
+    MOV DX, NIC + 8
+    XOR AL, AL
+    OUT DX, AL
+    MOV DX, NIC + 9
+    XOR AL, AL
+    OUT DX, AL
+    MOV DX, NIC + 0AH
+    MOV AL, 30
+    OUT DX, AL
+    MOV DX, NIC + 0BH
+    XOR AL, AL
+    OUT DX, AL
+    MOV DX, CR
+    MOV AL, 0AH
+    OUT DX, AL
+    MOV CX, 28
+    MOV DX, NIC_DATA
+SKIPPROM:
+    IN AL, DX
+    LOOP SKIPPROM
+    IN AL, DX                  ; PROM byte 28
+    CMP AL, 57H
+    JE  HAVECARD
+    MOV DX, OFFSET NOCARD
+    MOV AH, 9
+    INT 21H
+    MOV AX, 4C01H
+    INT 21H
+HAVECARD:
+
+    ; -------------------------------------------------------------------------
     ; STOP THE CHIP BEFORE CONFIGURING IT. It comes up stopped and a driver's
     ; first act is to say so anyway: 21h is page 0, abort any DMA, STOP.
     ; -------------------------------------------------------------------------
@@ -1105,6 +1150,9 @@ FRAME  DB 0FFH, 0FFH, 0FFH, 0FFH, 0FFH, 0FFH
        DB 002H, 000H, 000H, 08BH, 086H, 001H
        DB 008H, 000H
 
+NOCARD DB 'No card answered at 320h -- the PROM signature is missing. Every', 0DH, 0AH
+       DB 'port reads FFh with no card, and FFh has every status bit SET,', 0DH, 0AH
+       DB 'so the checks below would report success on an empty board.', 0DH, 0AH, '\$'
 GOTIT  DB 'The card heard its own frame.', 0DH, 0AH, '\$'
 SILENT DB 'Nothing came back -- check the ring setup.', 0DH, 0AH, '\$'
 
@@ -1153,6 +1201,43 @@ B_NIC EQU 340H
 
     ORG 100H
 START:
+    ; IS THERE A CARD? Open bus answers FFh to every port, and FFh has every
+    ; status bit SET -- so the "did B receive it?" check below reports YES on
+    ; an empty board. This example printed exactly that until this existed.
+    ; 'WW' (57h) at PROM offset 28 is what open bus cannot forge.
+    MOV DX, A_NIC
+    MOV AL, 21H
+    OUT DX, AL
+    MOV DX, A_NIC + 8
+    XOR AL, AL
+    OUT DX, AL
+    MOV DX, A_NIC + 9
+    XOR AL, AL
+    OUT DX, AL
+    MOV DX, A_NIC + 0AH
+    MOV AL, 30
+    OUT DX, AL
+    MOV DX, A_NIC + 0BH
+    XOR AL, AL
+    OUT DX, AL
+    MOV DX, A_NIC
+    MOV AL, 0AH
+    OUT DX, AL
+    MOV CX, 28
+    MOV DX, A_NIC + 10H
+SKIPPROM:
+    IN AL, DX
+    LOOP SKIPPROM
+    IN AL, DX
+    CMP AL, 57H
+    JE  HAVECARDS
+    MOV DX, OFFSET NOCARDS
+    MOV AH, 9
+    INT 21H
+    MOV AX, 4C01H
+    INT 21H
+HAVECARDS:
+
     MOV BX, A_NIC
     MOV SI, OFFSET MAC_A
     CALL SETUP
@@ -1290,6 +1375,7 @@ TO_NOBODY DB 002H, 000H, 000H, 000H, 000H, 0CCH
       DB 002H, 000H, 000H, 000H, 000H, 00AH
       DB 008H, 000H
 
+NOCARDS DB 'No card answered at 320h -- the PROM signature is missing.', 0DH, 0AH, '$'
 GOT     DB 'B received the frame addressed to it.', 0DH, 0AH, '$'
 NOGOT   DB 'B heard nothing -- check the ring.', 0DH, 0AH, '$'
 IGNORED DB 'B ignored the frame addressed to someone else.', 0DH, 0AH, '$'
