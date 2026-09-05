@@ -20,6 +20,8 @@ import {INTEGRATED} from './helpers/bw-integrated.mjs';
 import {emitI8086Asm, SUPPORTED} from '../overlay/scratch-gui/src/lib/bw-asm/pseudocode-8086.js';
 import asm8086ToPseudocode, {renderExpr} from '../overlay/scratch-gui/src/lib/bw-asm/asm-8086-to-pseudocode.js';
 import I8086_ASM_EXAMPLES from '../overlay/scratch-gui/src/lib/bw-asm/examples-i8086.js';
+import {readFileSync} from 'node:fs';
+import {REPO} from './helpers/bw-integrated.mjs';
 
 const SB3Creator = (await import(path.join(INTEGRATED, 'src/lib/sb3-creator.js'))).default;
 
@@ -222,4 +224,16 @@ test('census: which of the emitter\'s anchors this reader lifts (printed, and th
         'operator_lt', 'operator_gt', 'operator_equals', 'operator_and', 'operator_or', 'operator_not',
         'control_wait_until'];
     for (const op of MUST_LIFT) assert.ok(lifted.includes(op), `${op} used to lift and no longer does`);
+});
+
+test('the ASM tab reads back through THIS module, for the 8086 only, and says so', () => {
+    const jsx = readFileSync(path.join(REPO, 'overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx'), 'utf8');
+    assert.match(jsx, /import\(\/\* webpackChunkName: "bw-asm-reader" \*\/ '\.\.\/\.\.\/lib\/bw-asm\/asm-8086-to-pseudocode\.js'\)/,
+        'the Code tab must lazy-load the reader, not a copy of it');
+    assert.match(jsx, /asmTargetForDevice\(this\.currentDevice\(\)\) === 'i8086'/, 'the 8086 gate is decided by the route module');
+    assert.match(jsx, /if \(!TWO_WAY\.has\(lang\) && !this\.canLiftAsm\(\)\)/, 'other one-way languages are still refused');
+    assert.doesNotMatch(jsx, /No ASM-to-blocks path — that asymmetry is deliberate/, 'the old note would now be false');
+    for (const key of ['asmLifted', 'asmLiftRefused']) {
+        assert.equal((jsx.match(new RegExp(`^\\s+${key}:`, 'gm')) || []).length, 2, `${key} must exist in EN and DE`);
+    }
 });

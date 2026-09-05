@@ -235,7 +235,9 @@ const L10N = {
         foreverLoop: 'This project has a forever (game) loop, so it runs in the blocks — press the green flag to play it. For a text run, try an algorithmic example (quiz, operators, 2048, …).',
         cNote: 'C for the STC12 / 8051. Paste your own firmware and press ⇦ To blocks, or compile it to a .hex with stc-compiler.vercel.app.',
         basicNote: 'Runs BBC BASIC (R.T. Russell, zlib) or 6502 BASIC (derived from MIT-licensed source). Toggle profile and line numbers above. Multi-WHEN programs cannot be shown (BASIC is single-threaded).',
-        asmNote: 'Write assembly or view the compiled listing. Source mode: write per-device assembly and assemble+run — the 6502/Z80/8086 benches boot the image directly. TWO ASSEMBLERS, and which one runs is always in the status line: 8086 assembly is built IN THIS BROWSER (no network, MASM syntax), while 8051/6502/Z80/AVR go to the hosted toolchain. Listing mode: generated read-only evidence, linked locally for bundled 8051 targets and explicitly hosted for unsupported targets. No ASM-to-blocks path — that asymmetry is deliberate.',
+        asmNote: 'Write assembly or view the compiled listing. Source mode: write per-device assembly and assemble+run — the 6502/Z80/8086 benches boot the image directly. TWO ASSEMBLERS, and which one runs is always in the status line: 8086 assembly is built IN THIS BROWSER (no network, MASM syntax), while 8051/6502/Z80/AVR go to the hosted toolchain. Listing mode: generated read-only evidence, linked locally for bundled 8051 targets and explicitly hosted for unsupported targets. To blocks: 8086 assembly that ▶ Run on 8086 produced reads back; anything else is refused by name, with a count.',
+        asmLifted: n => `${n} assembly statement(s) read back into the dialect`,
+        asmLiftRefused: (why, n) => `Not read back: ${why}${n ? ` (${n} statement(s) before it were)` : ''}`,
         stCOneWay: 'That language cannot be compiled back to blocks.',
         // BASIC / ASM mode bar
         profile: 'Profile:', lineNumbers: 'Line numbers', alwaysOn6502: '(always on for 6502)',
@@ -409,7 +411,9 @@ const L10N = {
         foreverLoop: 'Dieses Projekt hat eine Endlosschleife (Spiel), es läuft daher in den Blöcken — klicke die grüne Flagge zum Spielen. Für einen Text-Lauf nimm ein algorithmisches Beispiel (Quiz, Operatoren, 2048, …).',
         cNote: 'C für den STC12 / 8051. Eigene Firmware einfügen und „⇦ Zu Blöcken” drücken, oder auf stc-compiler.vercel.app zu .hex kompilieren.',
         basicNote: 'BBC BASIC (R.T. Russell, zlib) oder 6502 BASIC (abgeleitet von MIT-lizenzierter Quelle). Profil und Zeilennummern oben umschalten. Multi-WHEN-Programme werden nicht dargestellt (BASIC ist einzel-threaded).',
-        asmNote: 'Assembler schreiben oder kompiliertes Listing ansehen. Source-Modus: gerätespezifischen Assembler schreiben und assemblieren+ausführen — die 6502-/Z80-/8086-Werkbänke booten das Image direkt. ZWEI ASSEMBLER, und welcher lief, steht immer in der Statuszeile: 8086-Assembler wird IN DIESEM BROWSER gebaut (ohne Netz, MASM-Syntax), 8051/6502/Z80/AVR gehen an den gehosteten Dienst. Listing-Modus: erzeugter, schreibgeschützter Beleg, für gebündelte 8051-Ziele lokal gelinkt und für nicht unterstützte Ziele ausdrücklich gehostet. Kein ASM-zu-Blöcke-Pfad — diese Asymmetrie ist beabsichtigt.',
+        asmNote: 'Assembler schreiben oder kompiliertes Listing ansehen. Source-Modus: gerätespezifischen Assembler schreiben und assemblieren+ausführen — die 6502-/Z80-/8086-Werkbänke booten das Image direkt. ZWEI ASSEMBLER, und welcher lief, steht immer in der Statuszeile: 8086-Assembler wird IN DIESEM BROWSER gebaut (ohne Netz, MASM-Syntax), 8051/6502/Z80/AVR gehen an den gehosteten Dienst. Listing-Modus: erzeugter, schreibgeschützter Beleg, für gebündelte 8051-Ziele lokal gelinkt und für nicht unterstützte Ziele ausdrücklich gehostet. Zu Blöcken: 8086-Assembler, den ▶ Auf 8086 ausführen erzeugt hat, wird zurückgelesen; alles andere wird namentlich und gezählt abgelehnt.',
+        asmLifted: n => `${n} Assembler-Anweisung(en) in den Dialekt zurückgelesen`,
+        asmLiftRefused: (why, n) => `Nicht zurückgelesen: ${why}${n ? ` (${n} Anweisung(en) davor schon)` : ''}`,
         stCOneWay: 'Diese Sprache lässt sich nicht zu Blöcken zurückführen.',
         // BASIC / ASM mode bar
         profile: 'Profil:', lineNumbers: 'Zeilennummern', alwaysOn6502: '(immer an bei 6502)',
@@ -2963,14 +2967,33 @@ class PseudocodeImporter extends React.Component {
     // Compile the active tab's code to blocks. Python/JavaScript go through their
     // parser to pseudocode first. After loading, the other two tabs are regenerated
     // from the compiled project so all three stay consistent.
+    /**
+     * The ASM tab reads back to blocks only for 8086 assembly the ▶ button
+     * produced (plan task L1): the reader lifts the emitter's own shapes and
+     * refuses everything else by name. Other devices' assembly stays one-way.
+     */
+    canLiftAsm () {
+        return this.state.lang === 'asm' && this.state.asmMode === 'source' &&
+            asmTargetForDevice(this.currentDevice()) === 'i8086';
+    }
+
     async compile () {
         const lang = this.state.lang;
-        if (!TWO_WAY.has(lang)) { this.setState({status: this.L.stCOneWay}); return; }
+        if (!TWO_WAY.has(lang) && !this.canLiftAsm()) { this.setState({status: this.L.stCOneWay}); return; }
         this.setState({busy: true, status: this.L.stCompiling});
         try {
             let source = this.activeCode();
             let parseWarnings = [];
-            if (lang === 'python') {
+            if (lang === 'asm') {
+                const lift = (await import(/* webpackChunkName: "bw-asm-reader" */ '../../lib/bw-asm/asm-8086-to-pseudocode.js')).default;
+                const res = lift(source);
+                if (!res.ok) {
+                    this.setState({busy: false, status: this.L.asmLiftRefused(res.error.message, res.stats.lifted)});
+                    return;
+                }
+                source = res.pseudocode;
+                parseWarnings = [this.L.asmLifted(res.stats.lifted)];
+            } else if (lang === 'python') {
                 const res = (await import(/* webpackChunkName: "sb3-creator-python" */ '../../lib/sb3-creator-python.js')).default(source);
                 source = res.pseudocode; parseWarnings = res.warnings || [];
             } else if (lang === 'javascript') {
@@ -3502,7 +3525,7 @@ class PseudocodeImporter extends React.Component {
                     {max && (
                         <React.Fragment>
                             <button onClick={this.compile}
-                                disabled={this.state.busy || !this.activeCode().trim() || !TWO_WAY.has(this.state.lang)}
+                                disabled={this.state.busy || !this.activeCode().trim() || !(TWO_WAY.has(this.state.lang) || this.canLiftAsm())}
                                 title={this.L.toBlocksTitle(LANG_LABEL[this.state.lang])}
                                 style={{...csel, cursor: 'pointer', fontWeight: 600, alignSelf: 'center',
                                     background: 'linear-gradient(135deg,#4c97ff,#4280d7)', color: '#fff', border: 'none'}}>
@@ -3861,7 +3884,7 @@ class PseudocodeImporter extends React.Component {
                 {/* Bottom controls row — hidden in maximize mode (compact To/From are in the tab row) */}
                 <div style={{marginTop: max ? 4 : 12, display: max ? 'none' : 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', flexShrink: 0}}>
                     <button onClick={this.compile}
-                        disabled={this.state.busy || !this.activeCode().trim() || !TWO_WAY.has(this.state.lang)}
+                        disabled={this.state.busy || !this.activeCode().trim() || !(TWO_WAY.has(this.state.lang) || this.canLiftAsm())}
                         title={this.L.toBlocksTitle(LANG_LABEL[this.state.lang])}
                         style={btn}>
                         {this.L.toBlocks}
