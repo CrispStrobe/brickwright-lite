@@ -101,6 +101,15 @@ export async function createI8086DosBench (opts) {
     // A requested chip REPLACES the preset's entry of that name.
     let cfg = base;
     if (chips && chips.length) {
+        // A LOOPBACK LINK CANNOT TRAVEL THROUGH A CustomEvent -- it is a live
+        // object and the detail is plain data. So a requested NE2000 says
+        // `loopback: true` and the link is constructed HERE, at the only
+        // place that has the chip module in scope.
+        for (const c of chips) {
+            if (c.kind === 'ne2000' && c.loopback && !c.link) {
+                c.link = {send: (frame, from) => from.deliver(frame)};
+            }
+        }
         const merged = base.chips.filter(
             (c) => !chips.some((x) => x.name === c.name));
         cfg = {...base, chips: [...merged, ...chips]};
