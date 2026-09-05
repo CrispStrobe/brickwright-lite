@@ -22,6 +22,8 @@ test('the production 8086 benchmark covers desktop and mobile pump health', () =
     ]) assert.ok(script.includes(fact), `benchmark lost ${fact}`);
     assert.match(script, /Math\.max\(3, requestedRepetitions\)/,
         'the statistical gate must not accept fewer than three repetitions');
+    assert.match(script, /getByRole\('button', \{name: \/ASM\/\}\)\.click\(\{force: true\}\)/,
+        'the minimum-width profile must dispatch the overlapped but enabled ASM control');
     const repetitionLoop = script.indexOf('for (let repetition = 1; repetition <= repetitions; repetition++)');
     const freshContext = script.indexOf('browser.newContext(contextOptions)', repetitionLoop);
     const rawReceipt = script.indexOf('writeFile(resolve(rawDir', freshContext);

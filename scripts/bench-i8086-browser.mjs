@@ -75,7 +75,10 @@ try {
         await mark('device-ready');
         await device.selectOption('i8086');
         await mark('i8086-selected');
-        await page.getByTestId('bw-lang-row').getByRole('button', {name: /ASM/}).click();
+        // The minimum-width language row overlaps sibling controls visually;
+        // dispatch the enabled production control just as the assemble step
+        // below does. Setup interaction is outside the measured window.
+        await page.getByTestId('bw-lang-row').getByRole('button', {name: /ASM/}).click({force: true});
         const examples = page.getByTestId('bw-asm-examples');
         await examples.waitFor({state: 'visible', timeout: 15000});
         await mark('asm-ready');
