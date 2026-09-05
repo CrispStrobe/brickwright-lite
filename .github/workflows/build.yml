@@ -49,7 +49,6 @@ permissions:
   contents: read
   pages: write
   id-token: write
-  actions: read        # the browser job audits its own steps (scripts/audit-job-steps.mjs); read-only, never cancels or reruns
 # ROADMAP §2.1, and the reason this is keyed on the COMMIT rather than the ref.
 #
 # `pages-<ref>` is one group for all of main, and GitHub holds exactly ONE
@@ -545,6 +544,14 @@ jobs:
   browser:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Job-level permissions REPLACE the workflow's for this job, so the two it
+    # needs are both named: contents to check out, actions so the last step can
+    # read this run's own steps (scripts/audit-job-steps.mjs). Scoped here rather
+    # than workflow-wide so the wider token reaches only the job that audits;
+    # read-only either way — the step never cancels, reruns or writes.
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -1226,7 +1233,7 @@ jobs:
       # fails, naming them, if any browser gate was skipped while no earlier step
       # failed. After a real failure it only notes the skipped ones. It MUST stay
       # the last step of the job that holds the gates — test/browser-gate-timeouts
-      # .test.mjs asserts that, with `if: always()` — and needs `actions: read`.
+      # .test.mjs asserts that, with `if: always()` — and needs the job's actions: read.
       - name: Audit — every browser gate ran
         if: always()
         env:
