@@ -116,9 +116,9 @@ try {
 
     const run = page.getByRole('button', {name: /Run/}).first();
     const stepRecorded = async () => {
-        const stepping = page.waitForFunction(() => document.querySelector('[data-debug-panel]')
-            ?.getAttribute('data-debug-phase') === 'stepping', null, {timeout: 10000});
-        await Promise.all([stepping, page.getByRole('button', {name: /Step instruction/}).first().click()]);
+        await page.getByRole('button', {name: /Step instruction/}).first().click();
+        await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() =>
+            requestAnimationFrame(resolve))));
         await page.waitForFunction(() => document.querySelector('[data-debug-panel]')
             ?.getAttribute('data-debug-phase') === 'paused', null, {timeout: 10000});
     };
