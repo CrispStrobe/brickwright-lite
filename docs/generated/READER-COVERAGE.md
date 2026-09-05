@@ -23,9 +23,9 @@ Each run of a fixture through its reader is one of three outcomes:
 
 ## Overall
 
-303 clean · 345 degraded · 15 refused (of 663; 46% clean)
+363 clean · 285 degraded · 15 refused (of 663; 55% clean)
 
-- round-trip (emit → read back): 303 clean · 343 degraded · 4 refused (of 650; 47% clean)
+- round-trip (emit → read back): 363 clean · 283 degraded · 4 refused (of 650; 56% clean)
 - native (real source fed to the reader): 0 clean · 2 degraded · 11 refused (of 13; 0% clean)
 
 ## By method, language and device family
@@ -66,10 +66,10 @@ programs are refused as foreign. The refusal reasons below say which.
 | round-trip | basic | microbit | 7 clean · 2 degraded · 0 refused (of 9; 78% clean) |
 | round-trip | basic | pico | 1 clean · 2 degraded · 0 refused (of 3; 33% clean) |
 | round-trip | basic | spike | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
-| round-trip | micropython | 8051 | 0 clean · 49 degraded · 0 refused (of 49; 0% clean) |
-| round-trip | micropython | arduino | 0 clean · 67 degraded · 0 refused (of 67; 0% clean) |
-| round-trip | micropython | microbit | 0 clean · 9 degraded · 0 refused (of 9; 0% clean) |
-| round-trip | micropython | pico | 0 clean · 3 degraded · 0 refused (of 3; 0% clean) |
+| round-trip | micropython | 8051 | 29 clean · 20 degraded · 0 refused (of 49; 59% clean) |
+| round-trip | micropython | arduino | 28 clean · 39 degraded · 0 refused (of 67; 42% clean) |
+| round-trip | micropython | microbit | 1 clean · 8 degraded · 0 refused (of 9; 11% clean) |
+| round-trip | micropython | pico | 2 clean · 1 degraded · 0 refused (of 3; 67% clean) |
 | round-trip | micropython | spike | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
 | round-trip | asm | 8086 | 0 clean · 1 degraded · 4 refused (of 5; 0% clean) |
 | native | c | 8051 | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
@@ -81,32 +81,61 @@ programs are refused as foreign. The refusal reasons below say which.
 | fixtures | construct kept as a placeholder |
 | --- | --- |
 | 142 | dropped expression statement |
-| 124 | no pins found |
-| 106 | kept verbatim as a grey block: "…" |
+| 56 | no pins found |
 | 29 | no dialect form for "…" |
-| 23 | no bw_script() and no `…` |
 | 22 | unstructured "…" |
+| 14 | kept verbatim as a grey block: "…" |
 | 13 | dropped call in expression |
 | 11 | no pseudocode for the call "…" |
 | 6 | top-level declaration dropped (no block equivalent): struct __bw_bits2 |
+| 5 | devices_lcdclear: no equivalent on this board; the block was not translated |
+| 5 | devices_lcdprint: no equivalent on this board; the block was not translated |
+| 5 | devices_lcdcursor: no equivalent on this board; the block was not translated |
+| 5 | devices_oledclear: no equivalent on this board; the block was not translated |
+| 5 | devices_oledprint: no equivalent on this board; the block was not translated |
+| 5 | devices_oledcursor: no equivalent on this board; the block was not translated |
+| 3 | devices_setservo: no equivalent on this board; the block was not translated |
 | 3 | Port 1 has 7 output pins |
 | 3 | top-level declaration dropped (no block equivalent): typedef void ( * bw_vec_t ) ( void … |
 | 2 | 8 output pins × 20 mA = up to 160 mA at maximum pin ratings (actual current depends on ser |
 | 2 | 7 output pins × 20 mA = up to 140 mA at maximum pin ratings (actual current depends on ser |
 | 2 | Port 2 has 8 output pins |
 | 2 | Port 0 has 8 output pins |
+| 2 | stc12_seg_shownum: no equivalent on this board; the block was not translated |
 | 2 | top-level declaration dropped (no block equivalent): static int _servo_angle [ 2 ] |
 | 2 | no clock #define found |
+| 1 | stc12_setpart: no equivalent on this board; the block was not translated |
 | 1 | Port 1 has 8 output pins |
 | 1 | Port 0 has 7 output pins |
+| 1 | devices_tftclear: no equivalent on this board; the block was not translated |
+| 1 | devices_tftfill: no equivalent on this board; the block was not translated |
+| 1 | devices_tftpixel: no equivalent on this board; the block was not translated |
+| 1 | devices_setmotor: no equivalent on this board; the block was not translated |
+| 1 | devices_setdirection: no equivalent on this board; the block was not translated |
 | 1 | 28 output pins × 20 mA = up to 560 mA at maximum pin ratings (actual current depends on se |
 | 1 | 26 output pins × 20 mA = up to 520 mA at maximum pin ratings (actual current depends on se |
 | 1 | Port 2 has 7 output pins |
+| 1 | 1 more WHEN script(s) not lifted |
+| 1 | kept verbatim as a grey block: "…"HELLO"…" |
+| 1 | kept verbatim as a grey block: "…"FROM PICO"…" |
 | 1 | statement dropped (not representable as a block): = ( unsigned char ) ( 0 ) |
 | 1 | statement dropped (not representable as a block): = ( unsigned char ) ( bw_tab_font [ … |
+| 1 | stc12_setport: no equivalent on this board; the block was not translated |
+| 1 | stc12_led_only: no equivalent on this board; the block was not translated |
 | 1 | early ENDPROC |
+| 1 | data_deletealloflist: no equivalent on this board; the block was not translated |
+| 1 | data_addtolist: no equivalent on this board; the block was not translated |
+| 1 | data_replaceitemoflist: no equivalent on this board; the block was not translated |
 | 1 | no dialect form for "…"combined: "…" |
 | 1 | 16 output pins × 20 mA = up to 320 mA at maximum pin ratings (actual current depends on se |
+| 1 | devices_clearmatrix: no equivalent on this board; the block was not translated |
+| 1 | devices_setpixel: no equivalent on this board; the block was not translated |
+| 1 | devices_setneopixel: no equivalent on this board; the block was not translated |
+| 1 | devices_showdigit: no equivalent on this board; the block was not translated |
+| 1 | spikeprime_motorStart: no equivalent on this board; the block was not translated |
+| 1 | spikeprime_motorStop: no equivalent on this board; the block was not translated |
+| 1 | spikeprime_displayText: no equivalent on this board; the block was not translated |
+| 1 | spikeprime_displayClear: no equivalent on this board; the block was not translated |
 | 1 | pin polarity (ACTIVE LOW) is not recoverable from the bytes; every pin is lifted as active |
 | 1 | inferred DEVICE STC89C52RC from <8051.h> |
 | 1 | polarity of "…" is unknown |
@@ -130,149 +159,113 @@ fixture appears here so its verdict is traceable to the program that caused it.
 
 | method | language | family | fixture | outcome | reasons |
 | --- | --- | --- | --- | --- | --- |
-| round-trip | micropython | 8051 | 01-blink | degraded | kept verbatim as a grey block: "…"; no pins found |
-| round-trip | micropython | 8051 | 02-dimmer | degraded | kept verbatim as a grey block: "…"; no pins found |
-| round-trip | micropython | 8051 | 03-night-light | degraded | kept verbatim as a grey block: "…"; no pins found |
-| round-trip | micropython | 8051 | 04-thermostat | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | basic | 8051 | 05-counter | degraded | no dialect form for "…" |
-| round-trip | micropython | 8051 | 05-counter | degraded | kept verbatim as a grey block: "…"; no pins found |
-| round-trip | micropython | 8051 | 06-active-low-high | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | python | 8051 | 07-buzzer-siren | degraded | dropped expression statement |
 | round-trip | javascript | 8051 | 07-buzzer-siren | degraded | dropped expression statement |
 | round-trip | micropython | 8051 | 07-buzzer-siren | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | python | 8051 | 08-led-chaser-595 | degraded | dropped expression statement |
 | round-trip | javascript | 8051 | 08-led-chaser-595 | degraded | dropped expression statement |
 | round-trip | basic | 8051 | 08-led-chaser-595 | degraded | unstructured "…" |
-| round-trip | micropython | 8051 | 08-led-chaser-595 | degraded | kept verbatim as a grey block: "…"; no pins found |
-| round-trip | micropython | 8051 | 09-relay-clicker | degraded | kept verbatim as a grey block: "…"; no pins found |
-| round-trip | micropython | 8051 | 10-motor-speed | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | 8051 | 08-led-chaser-595 | degraded | stc12_setpart: no equivalent on this board; the block was not translated; no pins found |
 | round-trip | basic | 8051 | 11-toggle-button | degraded | no dialect form for "…" |
-| round-trip | micropython | 8051 | 11-toggle-button | degraded | kept verbatim as a grey block: "…"; no pins found |
-| round-trip | micropython | 8051 | 12-dual-blink | degraded | kept verbatim as a grey block: "…"; no pins found |
-| round-trip | micropython | 8051 | 13-sos-morse | degraded | kept verbatim as a grey block: "…"; no pins found |
-| round-trip | micropython | 8051 | 14-traffic-light | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | basic | 8051 | 15-voltage-divider | degraded | no dialect form for "…"; unstructured "…" |
-| round-trip | micropython | 8051 | 15-voltage-divider | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | basic | 8051 | 16-ldr-bargraph | degraded | no dialect form for "…"; unstructured "…" |
-| round-trip | micropython | 8051 | 16-ldr-bargraph | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | basic | 8051 | 17-comparator | degraded | no dialect form for "…"; unstructured "…" |
-| round-trip | micropython | 8051 | 17-comparator | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | basic | 8051 | 18-logic-and-gate | degraded | no dialect form for "…"; unstructured "…" |
-| round-trip | micropython | 8051 | 18-logic-and-gate | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | basic | 8051 | 19-logic-or-gate | degraded | no dialect form for "…"; unstructured "…" |
-| round-trip | micropython | 8051 | 19-logic-or-gate | degraded | kept verbatim as a grey block: "…"; no pins found |
-| round-trip | micropython | 8051 | 20-shift-register-binary | degraded | kept verbatim as a grey block: "…"; no pins found |
-| round-trip | micropython | 8051 | 24-pwm-fade | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | basic | 8051 | 25-reaction-timer | degraded | no dialect form for "…" |
-| round-trip | micropython | 8051 | 25-reaction-timer | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | basic | 8051 | 26-debounce | degraded | no dialect form for "…" |
-| round-trip | micropython | 8051 | 26-debounce | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | basic | 8051 | 27-led-dice | degraded | no dialect form for "…" |
-| round-trip | micropython | 8051 | 27-led-dice | degraded | kept verbatim as a grey block: "…"; no pins found |
-| round-trip | micropython | 8051 | 30-multi-led-pattern | degraded | kept verbatim as a grey block: "…"; no pins found |
-| round-trip | micropython | 8051 | 32-source-vs-sink | degraded | kept verbatim as a grey block: "…"; no pins found |
-| round-trip | micropython | 8051 | 33-inductive-no-flyback | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | c | 8051 | 46-port-overcurrent | degraded | 8 output pins × 20 mA = up to 160 mA at maximum pin ratings (actual current depends on ser; Port 1 has 8 output pins |
-| round-trip | micropython | 8051 | 46-port-overcurrent | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | python | 8051 | 49-lcd-hello | degraded | dropped expression statement |
 | round-trip | javascript | 8051 | 49-lcd-hello | degraded | dropped expression statement |
-| round-trip | micropython | 8051 | 49-lcd-hello | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | 8051 | 49-lcd-hello | degraded | devices_lcdclear: no equivalent on this board; the block was not translated; devices_lcdprint: no equivalent on this board; the block was not translated; devices_lcdcursor: no equivalent on this board; the block was not translated; no pins found |
 | round-trip | c | 8051 | 50-7seg-chase | degraded | 7 output pins × 20 mA = up to 140 mA at maximum pin ratings (actual current depends on ser; Port 0 has 7 output pins |
-| round-trip | micropython | 8051 | 50-7seg-chase | degraded | kept verbatim as a grey block: "…"; no pins found |
-| round-trip | micropython | 8051 | 51-tft-pixels | degraded | no bw_script() and no `…`; no pins found |
+| round-trip | micropython | 8051 | 51-tft-pixels | degraded | devices_tftclear: no equivalent on this board; the block was not translated; devices_tftfill: no equivalent on this board; the block was not translated; devices_tftpixel: no equivalent on this board; the block was not translated; no pins found |
 | round-trip | python | 8051 | 53-servo-sweep | degraded | dropped expression statement |
 | round-trip | javascript | 8051 | 53-servo-sweep | degraded | dropped expression statement |
-| round-trip | micropython | 8051 | 53-servo-sweep | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | 8051 | 53-servo-sweep | degraded | devices_setservo: no equivalent on this board; the block was not translated; no pins found |
 | round-trip | python | 8051 | 54-motor-driver | degraded | dropped expression statement |
 | round-trip | javascript | 8051 | 54-motor-driver | degraded | dropped expression statement |
-| round-trip | micropython | 8051 | 54-motor-driver | degraded | no bw_script() and no `…`; no pins found |
+| round-trip | micropython | 8051 | 54-motor-driver | degraded | devices_setmotor: no equivalent on this board; the block was not translated; devices_setdirection: no equivalent on this board; the block was not translated |
 | round-trip | python | 8051 | 55-oled-hello | degraded | dropped expression statement |
 | round-trip | javascript | 8051 | 55-oled-hello | degraded | dropped expression statement |
-| round-trip | micropython | 8051 | 55-oled-hello | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | 8051 | 55-oled-hello | degraded | devices_oledclear: no equivalent on this board; the block was not translated; devices_oledprint: no equivalent on this board; the block was not translated; devices_oledcursor: no equivalent on this board; the block was not translated; no pins found |
 | round-trip | c | 8051 | 60-retro-console | degraded | 28 output pins × 20 mA = up to 560 mA at maximum pin ratings (actual current depends on se; Port 1 has 7 output pins; Port 2 has 8 output pins; Port 0 has 8 output pins |
 | round-trip | basic | 8051 | 60-retro-console | degraded | no dialect form for "…" |
-| round-trip | micropython | 8051 | 60-retro-console | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | c | 8051 | 61-console-pong | degraded | 26 output pins × 20 mA = up to 520 mA at maximum pin ratings (actual current depends on se; Port 1 has 7 output pins; Port 2 has 7 output pins; Port 0 has 8 output pins |
 | round-trip | basic | 8051 | 61-console-pong | degraded | unstructured "…"; no dialect form for "…" |
-| round-trip | micropython | 8051 | 61-console-pong | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | 8051 | 61-console-pong | degraded | 1 more WHEN script(s) not lifted |
 | round-trip | python | pico | 70-calculator | degraded | dropped expression statement |
 | round-trip | javascript | pico | 70-calculator | degraded | dropped expression statement |
 | round-trip | c | pico | 70-calculator | degraded | top-level declaration dropped (no block equivalent): typedef void ( * bw_vec_t ) ( void …; top-level declaration dropped (no block equivalent): struct __bw_bits2; no pseudocode for the call "…" |
 | round-trip | basic | pico | 70-calculator | degraded | no dialect form for "…"; unstructured "…" |
-| round-trip | micropython | pico | 70-calculator | degraded | kept verbatim as a grey block: "…" |
 | round-trip | python | pico | 70-calculator-simple | degraded | dropped expression statement |
 | round-trip | javascript | pico | 70-calculator-simple | degraded | dropped expression statement |
 | round-trip | c | pico | 70-calculator-simple | degraded | top-level declaration dropped (no block equivalent): typedef void ( * bw_vec_t ) ( void …; top-level declaration dropped (no block equivalent): struct __bw_bits2; no pseudocode for the call "…" |
 | round-trip | basic | pico | 70-calculator-simple | degraded | no dialect form for "…"; unstructured "…" |
-| round-trip | micropython | pico | 70-calculator-simple | degraded | kept verbatim as a grey block: "…" |
 | round-trip | python | pico | 72-pico-oled-hello | degraded | dropped expression statement |
 | round-trip | javascript | pico | 72-pico-oled-hello | degraded | dropped expression statement |
 | round-trip | c | pico | 72-pico-oled-hello | degraded | top-level declaration dropped (no block equivalent): typedef void ( * bw_vec_t ) ( void …; top-level declaration dropped (no block equivalent): struct __bw_bits2 |
-| round-trip | micropython | pico | 72-pico-oled-hello | degraded | no bw_script() and no `…` |
+| round-trip | micropython | pico | 72-pico-oled-hello | degraded | kept verbatim as a grey block: "…"; kept verbatim as a grey block: "…"HELLO"…"; kept verbatim as a grey block: "…"FROM PICO"…" |
 | round-trip | python | arduino | 73-voltmeter | degraded | dropped expression statement |
 | round-trip | javascript | arduino | 73-voltmeter | degraded | dropped expression statement |
 | round-trip | c | arduino | 73-voltmeter | degraded | top-level declaration dropped (no block equivalent): struct __bw_bits2 |
-| round-trip | micropython | arduino | 73-voltmeter | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | arduino | 73-voltmeter | degraded | devices_oledclear: no equivalent on this board; the block was not translated; devices_oledcursor: no equivalent on this board; the block was not translated; devices_oledprint: no equivalent on this board; the block was not translated |
 | round-trip | python | arduino | 74-ammeter | degraded | dropped expression statement |
 | round-trip | javascript | arduino | 74-ammeter | degraded | dropped expression statement |
 | round-trip | c | arduino | 74-ammeter | degraded | top-level declaration dropped (no block equivalent): struct __bw_bits2 |
-| round-trip | micropython | arduino | 74-ammeter | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | arduino | 74-ammeter | degraded | devices_lcdclear: no equivalent on this board; the block was not translated; devices_lcdcursor: no equivalent on this board; the block was not translated; devices_lcdprint: no equivalent on this board; the block was not translated |
 | round-trip | python | arduino | 75-battery-tester | degraded | dropped expression statement |
 | round-trip | javascript | arduino | 75-battery-tester | degraded | dropped expression statement |
 | round-trip | c | arduino | 75-battery-tester | degraded | top-level declaration dropped (no block equivalent): struct __bw_bits2 |
 | round-trip | basic | arduino | 75-battery-tester | degraded | unstructured "…" |
-| round-trip | micropython | arduino | 75-battery-tester | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | arduino | 75-battery-tester | degraded | devices_oledclear: no equivalent on this board; the block was not translated; devices_oledcursor: no equivalent on this board; the block was not translated; devices_oledprint: no equivalent on this board; the block was not translated |
 | round-trip | python | 8051 | 77-keypad-keyshow | degraded | dropped expression statement; dropped call in expression |
 | round-trip | javascript | 8051 | 77-keypad-keyshow | degraded | dropped expression statement; dropped call in expression |
 | round-trip | c | 8051 | 77-keypad-keyshow | degraded | statement dropped (not representable as a block): = ( unsigned char ) ( 0 ); statement dropped (not representable as a block): = ( unsigned char ) ( bw_tab_font [ … |
 | round-trip | basic | 8051 | 77-keypad-keyshow | degraded | no dialect form for "…" |
-| round-trip | micropython | 8051 | 77-keypad-keyshow | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | 8051 | 77-keypad-keyshow | degraded | stc12_setport: no equivalent on this board; the block was not translated |
 | round-trip | basic | 8051 | 78-a2-calculator | degraded | unstructured "…"; no dialect form for "…" |
-| round-trip | micropython | 8051 | 78-a2-calculator | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | 8051 | 78-a2-calculator | degraded | stc12_seg_shownum: no equivalent on this board; the block was not translated |
 | round-trip | python | 8051 | 79-a2-sampler | degraded | dropped call in expression |
 | round-trip | javascript | 8051 | 79-a2-sampler | degraded | dropped call in expression |
 | round-trip | basic | 8051 | 79-a2-sampler | degraded | no dialect form for "…" |
-| round-trip | micropython | 8051 | 79-a2-sampler | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | 8051 | 79-a2-sampler | degraded | stc12_seg_shownum: no equivalent on this board; the block was not translated; no pins found |
 | round-trip | python | 8051 | 80-a2-lcd-moving-text | degraded | dropped expression statement |
 | round-trip | javascript | 8051 | 80-a2-lcd-moving-text | degraded | dropped expression statement |
-| round-trip | micropython | 8051 | 80-a2-lcd-moving-text | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | 8051 | 80-a2-lcd-moving-text | degraded | devices_lcdclear: no equivalent on this board; the block was not translated; devices_lcdcursor: no equivalent on this board; the block was not translated; devices_lcdprint: no equivalent on this board; the block was not translated; no pins found |
 | round-trip | python | 8051 | 81-8051-lcd1602-parallel | degraded | dropped expression statement |
 | round-trip | javascript | 8051 | 81-8051-lcd1602-parallel | degraded | dropped expression statement |
-| round-trip | micropython | 8051 | 81-8051-lcd1602-parallel | degraded | no bw_script() and no `…`; no pins found |
-| round-trip | micropython | 8051 | 82-a2-led-row | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | 8051 | 81-8051-lcd1602-parallel | degraded | devices_lcdclear: no equivalent on this board; the block was not translated; devices_lcdprint: no equivalent on this board; the block was not translated; devices_lcdcursor: no equivalent on this board; the block was not translated; no pins found |
+| round-trip | micropython | 8051 | 82-a2-led-row | degraded | stc12_led_only: no equivalent on this board; the block was not translated; no pins found |
 | round-trip | python | arduino | arduino-01-analog-read-serial | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-01-analog-read-serial | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-01-analog-read-serial | degraded | kept verbatim as a grey block: "…"; no pins found |
-| round-trip | micropython | arduino | arduino-01-blink | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | arduino | arduino-01-analog-read-serial | degraded | no pins found |
 | round-trip | python | arduino | arduino-01-digital-read-serial | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-01-digital-read-serial | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-01-digital-read-serial | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | arduino | arduino-01-digital-read-serial | degraded | no pins found |
 | round-trip | python | arduino | arduino-01-fade | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-01-fade | degraded | dropped expression statement |
 | round-trip | c | arduino | arduino-01-fade | degraded | no pseudocode for the call "…" |
-| round-trip | micropython | arduino | arduino-01-fade | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | arduino | arduino-01-fade | degraded | no pins found |
 | round-trip | python | arduino | arduino-01-read-analog-voltage | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-01-read-analog-voltage | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-01-read-analog-voltage | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | arduino | arduino-01-read-analog-voltage | degraded | no pins found |
 | round-trip | basic | arduino | arduino-02-blink-without-delay | degraded | unstructured "…" |
-| round-trip | micropython | arduino | arduino-02-blink-without-delay | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | basic | arduino | arduino-02-button | degraded | no dialect form for "…"; unstructured "…" |
-| round-trip | micropython | arduino | arduino-02-button | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | basic | arduino | arduino-02-debounce | degraded | unstructured "…" |
-| round-trip | micropython | arduino | arduino-02-debounce | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | python | arduino | arduino-02-digital-input-pullup | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-02-digital-input-pullup | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-02-digital-input-pullup | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | python | arduino | arduino-02-state-change | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-02-state-change | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-02-state-change | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | python | arduino | arduino-02-tone-keyboard | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-02-tone-keyboard | degraded | dropped expression statement |
 | round-trip | basic | arduino | arduino-02-tone-keyboard | degraded | no dialect form for "…"; unstructured "…" |
-| round-trip | micropython | arduino | arduino-02-tone-keyboard | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | arduino | arduino-02-tone-keyboard | degraded | kept verbatim as a grey block: "…" |
 | round-trip | python | arduino | arduino-02-tone-melody | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-02-tone-melody | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-02-tone-melody | degraded | no bw_script() and no `…`; no pins found |
+| round-trip | micropython | arduino | arduino-02-tone-melody | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | python | arduino | arduino-02-tone-multiple | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-02-tone-multiple | degraded | dropped expression statement |
 | round-trip | micropython | arduino | arduino-02-tone-multiple | degraded | kept verbatim as a grey block: "…"; no pins found |
@@ -282,188 +275,164 @@ fixture appears here so its verdict is traceable to the program that caused it.
 | round-trip | python | arduino | arduino-03-analog-in-out-serial | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-03-analog-in-out-serial | degraded | dropped expression statement |
 | round-trip | c | arduino | arduino-03-analog-in-out-serial | degraded | no pseudocode for the call "…" |
-| round-trip | micropython | arduino | arduino-03-analog-in-out-serial | degraded | kept verbatim as a grey block: "…"; no pins found |
-| round-trip | micropython | arduino | arduino-03-analog-input | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | arduino | arduino-03-analog-in-out-serial | degraded | no pins found |
 | round-trip | python | arduino | arduino-03-analog-write-mega | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-03-analog-write-mega | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-03-analog-write-mega | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | arduino | arduino-03-analog-write-mega | degraded | no pins found |
 | round-trip | python | arduino | arduino-03-calibration | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-03-calibration | degraded | dropped expression statement |
 | round-trip | c | arduino | arduino-03-calibration | degraded | no pseudocode for the call "…" |
-| round-trip | micropython | arduino | arduino-03-calibration | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | python | arduino | arduino-03-fading | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-03-fading | degraded | dropped expression statement |
 | round-trip | c | arduino | arduino-03-fading | degraded | no pseudocode for the call "…" |
-| round-trip | micropython | arduino | arduino-03-fading | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | arduino | arduino-03-fading | degraded | no pins found |
 | round-trip | python | arduino | arduino-03-smoothing | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-03-smoothing | degraded | dropped expression statement |
 | round-trip | basic | arduino | arduino-03-smoothing | degraded | no dialect form for "…"; early ENDPROC |
-| round-trip | micropython | arduino | arduino-03-smoothing | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | arduino | arduino-03-smoothing | degraded | data_deletealloflist: no equivalent on this board; the block was not translated; data_addtolist: no equivalent on this board; the block was not translated; data_replaceitemoflist: no equivalent on this board; the block was not translated; no pins found |
 | round-trip | python | arduino | arduino-04-ascii-table | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-04-ascii-table | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-04-ascii-table | degraded | no bw_script() and no `…`; no pins found |
+| round-trip | micropython | arduino | arduino-04-ascii-table | degraded | no pins found |
 | round-trip | python | arduino | arduino-04-dimmer | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-04-dimmer | degraded | dropped expression statement |
 | round-trip | c | arduino | arduino-04-dimmer | degraded | no pseudocode for the call "…" |
-| round-trip | micropython | arduino | arduino-04-dimmer | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | python | arduino | arduino-04-read-ascii-string | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-04-read-ascii-string | degraded | dropped expression statement |
 | round-trip | c | arduino | arduino-04-read-ascii-string | degraded | no pseudocode for the call "…" |
-| round-trip | micropython | arduino | arduino-04-read-ascii-string | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | arduino | arduino-04-read-ascii-string | degraded | no pins found |
 | round-trip | python | arduino | arduino-04-serial-call-response | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-04-serial-call-response | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-04-serial-call-response | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | arduino | arduino-04-serial-call-response | degraded | no pins found |
 | round-trip | python | arduino | arduino-04-serial-passthrough | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-04-serial-passthrough | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-04-serial-passthrough | degraded | kept verbatim as a grey block: "…"; no pins found |
-| round-trip | micropython | arduino | arduino-05-arrays | degraded | kept verbatim as a grey block: "…"; no pins found |
-| round-trip | micropython | arduino | arduino-05-for-loop | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | arduino | arduino-04-serial-passthrough | degraded | no pins found |
 | round-trip | python | arduino | arduino-05-if-statement | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-05-if-statement | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-05-if-statement | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | python | arduino | arduino-05-switch-case | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-05-switch-case | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-05-switch-case | degraded | kept verbatim as a grey block: "…"; no pins found |
-| round-trip | micropython | arduino | arduino-05-switch-case-2 | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | arduino | arduino-05-switch-case | degraded | no pins found |
 | round-trip | python | arduino | arduino-05-while-statement | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-05-while-statement | degraded | dropped expression statement |
 | round-trip | c | arduino | arduino-05-while-statement | degraded | no pseudocode for the call "…" |
 | round-trip | basic | arduino | arduino-05-while-statement | degraded | no dialect form for "…"; unstructured "…" |
-| round-trip | micropython | arduino | arduino-05-while-statement | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | python | arduino | arduino-06-knock | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-06-knock | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-06-knock | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | python | arduino | arduino-06-ping | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-06-ping | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-06-ping | degraded | kept verbatim as a grey block: "…"; no pins found |
-| round-trip | micropython | arduino | arduino-07-bar-graph | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | python | arduino | arduino-07-row-column-scanning | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-07-row-column-scanning | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-07-row-column-scanning | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | python | arduino | arduino-08-char-analysis | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-char-analysis | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-08-char-analysis | degraded | no bw_script() and no `…`; no pins found |
+| round-trip | micropython | arduino | arduino-08-char-analysis | degraded | no pins found |
 | round-trip | python | arduino | arduino-08-string-addition | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-string-addition | degraded | dropped expression statement |
 | round-trip | basic | arduino | arduino-08-string-addition | degraded | no dialect form for "…"combined: "…" |
-| round-trip | micropython | arduino | arduino-08-string-addition | degraded | no bw_script() and no `…`; no pins found |
 | round-trip | python | arduino | arduino-08-string-append | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-string-append | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-08-string-append | degraded | no bw_script() and no `…`; no pins found |
+| round-trip | micropython | arduino | arduino-08-string-append | degraded | no pins found |
 | round-trip | python | arduino | arduino-08-string-case | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-string-case | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-08-string-case | degraded | no bw_script() and no `…`; no pins found |
+| round-trip | micropython | arduino | arduino-08-string-case | degraded | no pins found |
 | round-trip | python | arduino | arduino-08-string-chars | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-string-chars | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-08-string-chars | degraded | no bw_script() and no `…`; no pins found |
+| round-trip | micropython | arduino | arduino-08-string-chars | degraded | no pins found |
 | round-trip | python | arduino | arduino-08-string-compare | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-string-compare | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-08-string-compare | degraded | no bw_script() and no `…`; no pins found |
+| round-trip | micropython | arduino | arduino-08-string-compare | degraded | no pins found |
 | round-trip | python | arduino | arduino-08-string-constructors | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-string-constructors | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-08-string-constructors | degraded | no bw_script() and no `…`; no pins found |
+| round-trip | micropython | arduino | arduino-08-string-constructors | degraded | no pins found |
 | round-trip | python | arduino | arduino-08-string-indexof | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-string-indexof | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-08-string-indexof | degraded | no bw_script() and no `…`; no pins found |
+| round-trip | micropython | arduino | arduino-08-string-indexof | degraded | no pins found |
 | round-trip | python | arduino | arduino-08-string-length | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-string-length | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-08-string-length | degraded | no bw_script() and no `…`; no pins found |
+| round-trip | micropython | arduino | arduino-08-string-length | degraded | no pins found |
 | round-trip | python | arduino | arduino-08-string-length-trim | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-string-length-trim | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-08-string-length-trim | degraded | no bw_script() and no `…`; no pins found |
+| round-trip | micropython | arduino | arduino-08-string-length-trim | degraded | no pins found |
 | round-trip | python | arduino | arduino-08-string-replace | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-string-replace | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-08-string-replace | degraded | no bw_script() and no `…`; no pins found |
+| round-trip | micropython | arduino | arduino-08-string-replace | degraded | no pins found |
 | round-trip | python | arduino | arduino-08-string-startswith | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-string-startswith | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-08-string-startswith | degraded | no bw_script() and no `…`; no pins found |
+| round-trip | micropython | arduino | arduino-08-string-startswith | degraded | no pins found |
 | round-trip | python | arduino | arduino-08-string-substring | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-string-substring | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-08-string-substring | degraded | no bw_script() and no `…`; no pins found |
+| round-trip | micropython | arduino | arduino-08-string-substring | degraded | no pins found |
 | round-trip | python | arduino | arduino-08-string-toint | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-string-toint | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-08-string-toint | degraded | no bw_script() and no `…`; no pins found |
+| round-trip | micropython | arduino | arduino-08-string-toint | degraded | no pins found |
 | round-trip | basic | arduino | arduino-sk-p02-spaceship | degraded | no dialect form for "…"; unstructured "…" |
-| round-trip | micropython | arduino | arduino-sk-p02-spaceship | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | python | arduino | arduino-sk-p03-love-o-meter | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-sk-p03-love-o-meter | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-sk-p03-love-o-meter | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | python | arduino | arduino-sk-p04-color-mixing | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-sk-p04-color-mixing | degraded | dropped expression statement |
 | round-trip | c | arduino | arduino-sk-p04-color-mixing | degraded | no pseudocode for the call "…" |
-| round-trip | micropython | arduino | arduino-sk-p04-color-mixing | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | arduino | arduino-sk-p04-color-mixing | degraded | no pins found |
 | round-trip | python | arduino | arduino-sk-p05-servo-mood | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-sk-p05-servo-mood | degraded | dropped expression statement |
 | round-trip | c | arduino | arduino-sk-p05-servo-mood | degraded | top-level declaration dropped (no block equivalent): static int _servo_angle [ 2 ] |
-| round-trip | micropython | arduino | arduino-sk-p05-servo-mood | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | arduino | arduino-sk-p05-servo-mood | degraded | devices_setservo: no equivalent on this board; the block was not translated |
 | round-trip | python | arduino | arduino-sk-p06-light-theremin | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-sk-p06-light-theremin | degraded | dropped expression statement |
 | round-trip | micropython | arduino | arduino-sk-p06-light-theremin | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | python | arduino | arduino-sk-p07-keyboard | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-sk-p07-keyboard | degraded | dropped expression statement |
 | round-trip | basic | arduino | arduino-sk-p07-keyboard | degraded | no dialect form for "…" |
-| round-trip | micropython | arduino | arduino-sk-p07-keyboard | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | arduino | arduino-sk-p07-keyboard | degraded | kept verbatim as a grey block: "…" |
 | round-trip | basic | arduino | arduino-sk-p08-hourglass | degraded | no dialect form for "…" |
-| round-trip | micropython | arduino | arduino-sk-p08-hourglass | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | basic | arduino | arduino-sk-p09-motorized-pinwheel | degraded | no dialect form for "…"; unstructured "…" |
-| round-trip | micropython | arduino | arduino-sk-p09-motorized-pinwheel | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | python | arduino | arduino-sk-p10-zoetrope | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-sk-p10-zoetrope | degraded | dropped expression statement |
 | round-trip | c | arduino | arduino-sk-p10-zoetrope | degraded | no pseudocode for the call "…" |
 | round-trip | basic | arduino | arduino-sk-p10-zoetrope | degraded | no dialect form for "…" |
-| round-trip | micropython | arduino | arduino-sk-p10-zoetrope | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | python | arduino | arduino-sk-p11-crystal-ball | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-sk-p11-crystal-ball | degraded | dropped expression statement |
 | round-trip | basic | arduino | arduino-sk-p11-crystal-ball | degraded | no dialect form for "…" |
-| round-trip | micropython | arduino | arduino-sk-p11-crystal-ball | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | python | arduino | arduino-sk-p12-knock-lock | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-sk-p12-knock-lock | degraded | dropped expression statement |
 | round-trip | c | arduino | arduino-sk-p12-knock-lock | degraded | top-level declaration dropped (no block equivalent): static int _servo_angle [ 2 ] |
 | round-trip | basic | arduino | arduino-sk-p12-knock-lock | degraded | unstructured "…"; no dialect form for "…" |
-| round-trip | micropython | arduino | arduino-sk-p12-knock-lock | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | arduino | arduino-sk-p12-knock-lock | degraded | devices_setservo: no equivalent on this board; the block was not translated |
 | round-trip | basic | arduino | arduino-sk-p13-touch-lamp | degraded | unstructured "…" |
-| round-trip | micropython | arduino | arduino-sk-p13-touch-lamp | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | python | arduino | arduino-sk-p14-serial-pot | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-sk-p14-serial-pot | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-sk-p14-serial-pot | degraded | kept verbatim as a grey block: "…"; no pins found |
-| round-trip | micropython | arduino | arduino-sk-p15-hacking-buttons | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | arduino | arduino-sk-p14-serial-pot | degraded | no pins found |
 | round-trip | c | arduino | blinkenrocket-pendant | degraded | 16 output pins × 20 mA = up to 320 mA at maximum pin ratings (actual current depends on se |
 | round-trip | basic | arduino | blinkenrocket-pendant | degraded | no dialect form for "…" |
-| round-trip | micropython | arduino | blinkenrocket-pendant | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | c | 8051 | disp-bargraph | degraded | 8 output pins × 20 mA = up to 160 mA at maximum pin ratings (actual current depends on ser; Port 2 has 8 output pins |
-| round-trip | micropython | 8051 | disp-bargraph | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | python | 8051 | disp-lcd | degraded | dropped expression statement |
 | round-trip | javascript | 8051 | disp-lcd | degraded | dropped expression statement |
-| round-trip | micropython | 8051 | disp-lcd | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | 8051 | disp-lcd | degraded | devices_lcdclear: no equivalent on this board; the block was not translated; devices_lcdprint: no equivalent on this board; the block was not translated; devices_lcdcursor: no equivalent on this board; the block was not translated; no pins found |
 | round-trip | python | 8051 | disp-led-matrix | degraded | dropped expression statement |
 | round-trip | javascript | 8051 | disp-led-matrix | degraded | dropped expression statement |
-| round-trip | micropython | 8051 | disp-led-matrix | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | 8051 | disp-led-matrix | degraded | devices_clearmatrix: no equivalent on this board; the block was not translated; devices_setpixel: no equivalent on this board; the block was not translated; no pins found |
 | round-trip | python | 8051 | disp-mono-lcd | degraded | dropped expression statement |
 | round-trip | javascript | 8051 | disp-mono-lcd | degraded | dropped expression statement |
-| round-trip | micropython | 8051 | disp-mono-lcd | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | 8051 | disp-mono-lcd | degraded | devices_oledclear: no equivalent on this board; the block was not translated; devices_oledprint: no equivalent on this board; the block was not translated; devices_oledcursor: no equivalent on this board; the block was not translated; no pins found |
 | round-trip | python | 8051 | disp-oled | degraded | dropped expression statement |
 | round-trip | javascript | 8051 | disp-oled | degraded | dropped expression statement |
-| round-trip | micropython | 8051 | disp-oled | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | 8051 | disp-oled | degraded | devices_oledclear: no equivalent on this board; the block was not translated; devices_oledprint: no equivalent on this board; the block was not translated; devices_oledcursor: no equivalent on this board; the block was not translated; no pins found |
 | round-trip | python | 8051 | disp-rgb-light | degraded | dropped expression statement |
 | round-trip | javascript | 8051 | disp-rgb-light | degraded | dropped expression statement |
-| round-trip | micropython | 8051 | disp-rgb-light | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | 8051 | disp-rgb-light | degraded | devices_setneopixel: no equivalent on this board; the block was not translated; no pins found |
 | round-trip | python | 8051 | disp-sevenseg | degraded | dropped expression statement |
 | round-trip | javascript | 8051 | disp-sevenseg | degraded | dropped expression statement |
 | round-trip | c | 8051 | disp-sevenseg | degraded | 7 output pins × 20 mA = up to 140 mA at maximum pin ratings (actual current depends on ser; Port 1 has 7 output pins |
-| round-trip | micropython | 8051 | disp-sevenseg | degraded | kept verbatim as a grey block: "…"; no pins found |
-| round-trip | micropython | microbit | mb01-display | degraded | no bw_script() and no `…`; no pins found |
+| round-trip | micropython | 8051 | disp-sevenseg | degraded | devices_showdigit: no equivalent on this board; the block was not translated; no pins found |
+| round-trip | micropython | microbit | mb01-display | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | python | microbit | mb02-sensors | degraded | dropped call in expression |
-| round-trip | micropython | microbit | mb02-sensors | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | microbit | mb02-sensors | degraded | no pins found |
 | round-trip | python | microbit | mb03-pins | degraded | dropped call in expression |
-| round-trip | micropython | microbit | mb03-pins | degraded | no bw_script() and no `…` |
 | round-trip | python | microbit | mb04-radio | degraded | dropped call in expression |
 | round-trip | micropython | microbit | mb04-radio | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | basic | microbit | mb05-faceplate-matrix | degraded | unstructured "…" |
-| round-trip | micropython | microbit | mb05-faceplate-matrix | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | microbit | mb05-faceplate-matrix | degraded | no pins found |
 | round-trip | python | microbit | mb05-lesson | degraded | dropped call in expression |
 | round-trip | micropython | microbit | mb05-lesson | degraded | kept verbatim as a grey block: "…" |
 | round-trip | python | microbit | mb06-reaction | degraded | dropped call in expression |
-| round-trip | micropython | microbit | mb06-reaction | degraded | no bw_script() and no `…` |
+| round-trip | micropython | microbit | mb06-reaction | degraded | kept verbatim as a grey block: "…" |
 | round-trip | python | microbit | mb07-stepcounter | degraded | dropped call in expression |
 | round-trip | micropython | microbit | mb07-stepcounter | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | python | microbit | mb08-thermometer | degraded | dropped call in expression |
@@ -471,7 +440,7 @@ fixture appears here so its verdict is traceable to the program that caused it.
 | round-trip | micropython | microbit | mb08-thermometer | degraded | kept verbatim as a grey block: "…"; no pins found |
 | round-trip | python | spike | spike01-obstacle-avoid | degraded | dropped expression statement; dropped call in expression |
 | round-trip | javascript | spike | spike01-obstacle-avoid | degraded | dropped expression statement; dropped call in expression |
-| round-trip | micropython | spike | spike01-obstacle-avoid | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | spike | spike01-obstacle-avoid | degraded | spikeprime_motorStart: no equivalent on this board; the block was not translated; spikeprime_motorStop: no equivalent on this board; the block was not translated; spikeprime_displayText: no equivalent on this board; the block was not translated; spikeprime_displayClear: no equivalent on this board; the block was not translated; no pins found |
 | round-trip | asm | 8086 | i8086_analog | refused | refused (refused): line N: the "…" statement is not lifted yet (displays, tones, PWM, keypad, broadcast and " |
 | round-trip | asm | 8086 | i8086_blink | degraded | pin polarity (ACTIVE LOW) is not recoverable from the bytes; every pin is lifted as active |
 | round-trip | asm | 8086 | i8086_counter | refused | refused (refused): line N: the "…" statement is not lifted yet (displays, tones, PWM, keypad, broadcast and " |
