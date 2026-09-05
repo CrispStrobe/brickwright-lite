@@ -30,6 +30,11 @@ test('listing proof retains cache invalidation and offline linked evidence', asy
     assert.match(source, /route\.abort\('blockedbyclient'\)/);
     assert.match(source, /hosted\.length === 0/);
     assert.match(source, /main\\\.c:\\d\+:/);
-    assert.match(source, /second !== firstListing/);
+    // The second-listing verdict compares two DOWNLOADED artifacts, never the
+    // CodeMirror viewport (which is the same runtime prologue for any two
+    // programs and failed identical runs by render timing on 2026-09-05).
+    assert.match(source, /secondFile\.text !== linkedRows/);
+    assert.equal((source.match(/await downloadListing\(\)/g) || []).length, 2, 'the listing must be downloaded twice');
+    assert.doesNotMatch(source, /second !== firstListing/, 'the viewport comparison is gone');
     assert.match(source, /contenteditable/);
 });
