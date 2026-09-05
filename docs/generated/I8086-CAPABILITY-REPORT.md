@@ -29,7 +29,7 @@ The shipped 8086 runner also bounds one browser callback to **8 ms**, with a max
 
 | Claim | Test evidence | Static declaration count |
 |---|---|---:|
-| Assembly → machine → screen | `test/i8086-asm-examples.test.mjs` | 11 declared test sites |
+| Assembly → machine → screen | `test/i8086-asm-examples.test.mjs` | 13 declared test sites |
 | C → 80186 → DOS result | `test/c-to-8086.test.mjs` | 5 declared test sites |
 | Pseudocode execution and refusals | `test/pseudocode-8086.test.mjs` | 37 declared test sites |
 | Pin, ADC, timer, speaker and display paths | `test/pseudocode-8086-pins.test.mjs` | 44 declared test sites |
