@@ -10,6 +10,10 @@ const benchSources = [
     '../overlay/scratch-gui/src/lib/bw-debug/i8086-dos-bench.js',
     '../packages/scratch-gui/src/lib/bw-debug/i8086-dos-bench.js'
 ].map(path => readFileSync(new URL(path, import.meta.url), 'utf8'));
+const panelSources = [
+    '../overlay/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx',
+    '../packages/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx'
+].map(path => readFileSync(new URL(path, import.meta.url), 'utf8'));
 
 test('the assembled DOS path does not eagerly load the bw-board barrel', () => {
     for (const source of sources) {
@@ -42,5 +46,16 @@ test('the DOS bench keeps its direct dependencies in the dedicated chunk', () =>
         assert.equal((source.match(/webpackChunkName: "bw-debug-i8086"/g) || []).length, 3);
         assert.doesNotMatch(source, /webpackChunkName: "bw-board"/,
             'a generic chunk label can pull the broad board registry back into DOS startup');
+    }
+});
+
+test('the target picker loads metadata without the bw-board barrel', () => {
+    for (const source of panelSources) {
+        assert.match(source,
+            /webpackChunkName: "bw-debug-target-kinds" \*\/ '\.\.\/\.\.\/lib\/bw-board\/target-kinds\.js'/,
+            'picker metadata should have its own dependency-free chunk');
+        assert.doesNotMatch(source,
+            /webpackChunkName: "bw-board" \*\/ '\.\.\/\.\.\/lib\/bw-board\/index\.js'/,
+            'opening the picker must not request the broad board barrel');
     }
 });

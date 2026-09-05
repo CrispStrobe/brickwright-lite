@@ -952,6 +952,12 @@ Next tasks, in order:
    unrelated CPU, solver or device-catalogue modules. CI now enforces both
    claims. The separately reported broad graph belongs to the intentionally
    visible circuit preview, not the DOS attach path.
+   **Follow-through:** the target picker now imports dependency-free
+   `bw-board/target-kinds.js` in its own `bw-debug-target-kinds` chunk instead
+   of importing the broad board barrel merely to obtain labels. The old root
+   and factory exports remain compatible. This removes an accidental load
+   edge; it does not mislabel or suppress the separate, deliberate circuit
+   preview load. The next hosted webpack receipt must confirm the boundary.
 7. **Not activated (2026-09-05).** P6 leaves the engine at about 30.34× XT;
    desktop/mobile median execution totals are 4.7/4.9 ms across roughly 180
    pumps, and earlier P1/P2 deltas remained below timer resolution. Keep the

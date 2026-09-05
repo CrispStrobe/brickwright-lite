@@ -354,7 +354,7 @@ class DebugPanel extends React.Component {
         }
         // The menu comes from bw-board, not from a list duplicated here: it owns
         // which targets exist and what each one is called.
-        import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/index.js')
+        import(/* webpackChunkName: "bw-debug-target-kinds" */ '../../lib/bw-board/target-kinds.js')
             .then(async m => {
                 if (!m.getTargetKinds) return;
                 // ...plus the kinds the app can SELECT and bw-board does not

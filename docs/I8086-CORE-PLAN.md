@@ -218,6 +218,14 @@ Actions, not on the small VPS.
 | P6 — complete (hosted run `33953002119`) | **Audit and split startup chunks from evidence, not filenames.** Baseline run `33952110716` measured 11.52 MiB uncompressed eager JavaScript (`2923`: 8.65 MiB; `gui`: 2.88 MiB), led by scratch-vm 4.86 MiB, render fonts 1.31 MiB, asset-library data 0.72 MiB and text-encoding 0.60 MiB. The evidence-backed split moved optional builtin extensions, render fonts, asset manifests, lesson/example catalogs and redundant encoding tables behind demand. Post-split eager JavaScript is 4.73 MiB (`2008`: 2.92 MiB; `gui`: 1.81 MiB), a 59% reduction; the cold DOS journey fell from 16.0 to 10.78 MiB. The selection/assembly/attach window is 1.02 MiB across six fully attributed scripts and contains zero unrelated CPU, solver or catalogue modules in all nine runs. The dedicated 22.1 KiB `bw-debug-i8086` chunk is non-initial and clean. | The profiling build alone emits compressed raw stats plus an owner report; the deployable production invocation is unchanged. CI enforces the dedicated chunk boundary, complete asset attribution and zero forbidden modules in the causal DOS window. The broader cold journey still loads the intentionally visible circuit preview's board/Circuit UI graph; that shared UI cost is reported separately instead of being mislabelled a DOS dependency. The 11 MiB first-load network ratchet and a deliberate missing-extension-chunk gate protect both size and graceful degradation. |
 | P7 — not activated (2026-09-05) | **Reassess the deferred engine changes below.** After P6, all nine hosted runs still sustain about 30.34× XT. Desktop/mobile median engine `runMs` totals are 4.7/4.9 ms across roughly 180 pumps; the 4× renderer-throttled median is 13.6 ms. P1 and P2 remained below timer resolution, and P6 removed payload rather than exposing an engine bottleneck. | Peripheral batching, word-memory fast paths, timer-listener caching, workers and JIT remain deferred hypotheses. Reopen only when a real workload crosses its table threshold or repeated profiling assigns material time to that subsystem. |
 
+P6 follow-through isolates the debugger target-picker metadata in
+`bw-board/target-kinds.js` and a dedicated `bw-debug-target-kinds` chunk. The
+picker no longer imports the full board barrel just to obtain labels, while
+the factory and root exports remain source-compatible. This closes an
+accidental dependency edge only: the broader cold journey may still fetch the
+board and Circuit UI for the intentionally visible circuit preview, and the
+hosted webpack receipt must continue to report that separately.
+
 The tempting next changes are deliberately deferred. These are activation
 rules, so “later” has a measurable meaning:
 
