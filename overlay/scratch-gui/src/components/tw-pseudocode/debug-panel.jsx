@@ -9,6 +9,7 @@ import DebugFrames from './debug-frames.jsx';
 import DebugTimingWaveform from './debug-timing-waveform.jsx';
 import DebugSessionTransfer from './debug-session-transfer.jsx';
 import DebugDivergenceBisection from './debug-divergence-bisection.jsx';
+import DebugCorrelatedTargets from './debug-correlated-targets.jsx';
 import {mergeTargetKinds} from '../../lib/bw-debug/target-kinds.js';
 import {reverseCycleControlStatus} from '../../lib/bw-debug/reverse-cycle-ui.js';
 
@@ -182,6 +183,12 @@ class DebugPanel extends React.Component {
         this.onBisectionMarkBad = this.onBisectionMarkBad.bind(this);
         this.onBisectionStart = this.onBisectionStart.bind(this);
         this.onBisectionCancel = this.onBisectionCancel.bind(this);
+        this.onCorrelatedTarget = this.onCorrelatedTarget.bind(this);
+        this.onCorrelatedEvent = this.onCorrelatedEvent.bind(this);
+        this.onCorrelatedTrigger = this.onCorrelatedTrigger.bind(this);
+        this.onCorrelatedCause = this.onCorrelatedCause.bind(this);
+        this.onCorrelatedCheckpoint = this.onCorrelatedCheckpoint.bind(this);
+        this.onCorrelatedRestore = this.onCorrelatedRestore.bind(this);
         this.syncProjectTokens = this.syncProjectTokens.bind(this);
         this._onMachineExtracted = this._onMachineExtracted.bind(this);
         this._onMediaLoad = this._onMediaLoad.bind(this);
@@ -771,6 +778,12 @@ class DebugPanel extends React.Component {
     onBisectionMarkBad () { this.state.runner?.markDebugBisectionEndpoint('bad'); }
     onBisectionStart () { this.state.runner?.startDebugBisection(); }
     onBisectionCancel () { this.state.runner?.cancelDebugBisection(); }
+    onCorrelatedTarget (targetId) { this.state.runner?.selectCorrelatedDebugTarget(targetId); }
+    onCorrelatedEvent (cursor) { this.state.runner?.selectCorrelatedDebugEvent(cursor); }
+    onCorrelatedTrigger () { this.state.runner?.addCorrelatedDebugTrigger(); }
+    onCorrelatedCause () { this.state.runner?.followCorrelatedDebugCause(); }
+    onCorrelatedCheckpoint () { this.state.runner?.checkpointCorrelatedDebugTargets(); }
+    onCorrelatedRestore () { this.state.runner?.restoreCorrelatedDebugTargets(); }
 
     render () {
         const {ui} = this.state;
@@ -827,6 +840,7 @@ class DebugPanel extends React.Component {
         const selectedInspection = timelineEvent && this.state.runner ?
             this.state.runner.selectedEventInspection() : null;
         const timingWaveform = this.state.runner ? this.state.runner.debugTimingWaveform().view() : null;
+        const correlatedView = this.state.runner ? this.state.runner.correlatedDebugView() : null;
         // This is a bounded summary API: no event bodies, target snapshots or
         // checkpoint payloads cross the render path. Cap the visible tail too,
         // so a crowded action setup cannot grow the panel without bound.
@@ -1065,6 +1079,18 @@ class DebugPanel extends React.Component {
                     onMarkBad={this.onBisectionMarkBad}
                     onStart={this.onBisectionStart}
                     onCancel={this.onBisectionCancel}
+                /> : null}
+
+                {correlatedView ? <DebugCorrelatedTargets
+                    view={correlatedView}
+                    selectedTarget={this.state.runner.selectedCorrelatedDebugTarget()}
+                    status={this.state.runner.correlatedDebugStatus()}
+                    onSelectTarget={this.onCorrelatedTarget}
+                    onSelectEvent={this.onCorrelatedEvent}
+                    onAddTrigger={this.onCorrelatedTrigger}
+                    onFollowCause={this.onCorrelatedCause}
+                    onCheckpoint={this.onCorrelatedCheckpoint}
+                    onRestore={this.onCorrelatedRestore}
                 /> : null}
 
                 {selectedInspection?.accepted ? (

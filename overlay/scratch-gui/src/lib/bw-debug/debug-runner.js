@@ -58,6 +58,7 @@ import {createTimingWaveform} from './timing-waveform.js';
 import {createDebuggerSessionBundle, importDebuggerSessionBundle} from './session-bundle.js';
 import {DEBUG_SESSION_SNAPSHOT_CODEC, structuredSessionSnapshotCodec} from './session-snapshot-codec.js';
 import {createDivergenceBisection} from './divergence-bisection.js';
+import {createCorrelatedDebugger} from './correlated-debug.js';
 import {negotiateCycleProvider} from './cycle-provider.js';
 import { setValueResolver } from './hover-values.js';
 import { instructionLength } from './opcodes.js';
@@ -592,6 +593,30 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     let bisectionEndpoints = {good: null, bad: null};
     let bisectionRun = {phase: 'idle', probes: 0, maxProbes: 64, result: null};
     let bisectionGeneration = 0;
+    let correlatedDebugger = null;
+    let correlatedSelectedTarget = null;
+    let correlatedSelectedCursor = null;
+    let correlatedCheckpoint = null;
+    let correlatedStatus = null;
+    let correlatedTriggerId = 1;
+
+    const ensureCorrelatedDebugger = event => {
+        if (correlatedDebugger) return correlatedDebugger;
+        let descriptors = typeof target?.correlatedDebugTargets === 'function' ?
+            target.correlatedDebugTargets() : null;
+        if (!descriptors || !Object.keys(descriptors).length) {
+            if (!target?.captureCheckpoint || !target?.restoreCheckpoint || !event) return null;
+            descriptors = {[event.cpuId]: {
+                clockDomain: event.time.domain,
+                captureCheckpoint: () => target.captureCheckpoint(),
+                prepareRestore: snapshot => structuredClone(snapshot),
+                restoreCheckpoint: snapshot => target.restoreCheckpoint(snapshot)
+            }};
+        }
+        correlatedDebugger = createCorrelatedDebugger({targets: descriptors, capacity: 8192, maxBranches: 64});
+        correlatedSelectedTarget = Object.keys(descriptors)[0];
+        return correlatedDebugger;
+    };
     // Halt occurrence is a separate order because several native stops may
     // share one instruction boundary. It is advanced only after verified replay.
     let breakpointGeneration = 0;
@@ -654,6 +679,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             capsFor = target;
             capsOf = target.capabilities();
             cycleProviderOf = negotiateCycleProvider(target);
+            correlatedDebugger = null;
+            correlatedSelectedTarget = correlatedSelectedCursor = correlatedCheckpoint = null;
+            correlatedStatus = null;
             debugFoundation.attachCapabilities(capsOf);
             eventBreakpointDispatcher?.clear();
         }
@@ -802,6 +830,24 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     }
 
     function dispatchPublishedEvent(event) {
+        try {
+            const correlated = ensureCorrelatedDebugger(event);
+            if (correlated) {
+                const ids = correlated.view().targets.map(item => item.id);
+                const targetId = ids.includes(event.cpuId) ? event.cpuId :
+                    (ids.length === 1 ? ids[0] : null);
+                if (targetId) {
+                    const appended = correlated.append('main', {targetId, kind: event.kind,
+                        time: event.time, ...(event.cause ? {cause: event.cause} : {})});
+                    correlatedSelectedCursor = appended.event.cursor;
+                    if (appended.triggers.length) correlatedStatus = {accepted: true,
+                        message: `${appended.triggers.length} cross-CPU trigger(s) matched`};
+                }
+            }
+        } catch (error) {
+            correlatedStatus = {accepted: false, code: 'correlated-event-refused',
+                reason: error?.message || String(error)};
+        }
         // Only the 8086 currently proves that an interior event is followed by
         // a replay-addressable retire boundary before the halt is delivered.
         if (targetKind !== 'i8086' || !eventBreakpointDispatcher) return null;
@@ -3130,6 +3176,89 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             if (!synchronized.accepted && result.accepted) result = synchronized;
             bisectionRun = {...bisectionRun, phase: result.code === 'bisection-cancelled' ?
                 'cancelled' : 'complete', result};
+            emit();
+            return result;
+        },
+        correlatedDebugView () {
+            const raw = correlatedDebugger?.view();
+            if (!raw) return null;
+            const selectedEvent = raw.events.find(event => correlatedSelectedCursor &&
+                event.cursor.branchId === correlatedSelectedCursor.branchId &&
+                event.cursor.eventCursor === correlatedSelectedCursor.eventCursor) || null;
+            return {...raw, selectedEvent, lastCheckpoint: correlatedCheckpoint,
+                lanes: raw.targets.map(item => ({targetId: item.id, clockDomain: item.clockDomain,
+                    events: raw.events.filter(event => event.targetId === item.id)}))};
+        },
+        correlatedDebugStatus: () => correlatedStatus,
+        selectCorrelatedDebugTarget (targetId) {
+            const ids = correlatedDebugger?.view().targets.map(item => item.id) || [];
+            if (!ids.includes(targetId)) return {accepted: false, code: 'correlated-target-unknown',
+                reason: 'Selected CPU is not retained'};
+            correlatedSelectedTarget = targetId;
+            correlatedStatus = null;
+            emit();
+            return {accepted: true, targetId};
+        },
+        selectedCorrelatedDebugTarget: () => correlatedSelectedTarget,
+        selectCorrelatedDebugEvent (cursor) {
+            const view = correlatedDebugger?.view();
+            const event = view?.events.find(item => item.cursor.branchId === cursor?.branchId &&
+                item.cursor.eventCursor === cursor?.eventCursor);
+            if (!event) return {accepted: false, code: 'causal-cursor-not-retained',
+                reason: 'The correlated event is no longer retained'};
+            correlatedSelectedCursor = event.cursor;
+            correlatedSelectedTarget = event.targetId;
+            correlatedStatus = null;
+            emit();
+            return {accepted: true, cursor: event.cursor, targetId: event.targetId};
+        },
+        addCorrelatedDebugTrigger () {
+            const view = correlatedDebugger?.view();
+            const selected = view?.events.find(event => correlatedSelectedCursor &&
+                event.cursor.branchId === correlatedSelectedCursor.branchId &&
+                event.cursor.eventCursor === correlatedSelectedCursor.eventCursor);
+            const destination = view?.targets.find(item => item.id !== selected?.targetId)?.id;
+            if (!selected || !destination) return {accepted: false, code: 'cross-core-trigger-unavailable',
+                reason: 'Select an event in a session with at least two CPUs'};
+            const result = correlatedDebugger.addTrigger({id: `cross-${correlatedTriggerId++}`,
+                sourceTarget: selected.targetId, targetId: destination, kind: selected.kind});
+            correlatedStatus = result;
+            emit();
+            return result;
+        },
+        followCorrelatedDebugCause () {
+            const view = correlatedDebugger?.view();
+            const selected = view?.events.find(event => correlatedSelectedCursor &&
+                event.cursor.branchId === correlatedSelectedCursor.branchId &&
+                event.cursor.eventCursor === correlatedSelectedCursor.eventCursor);
+            const cause = selected?.cause;
+            const source = cause && view.events.find(event => event.cursor.branchId === cause.branchId &&
+                event.cursor.eventCursor === cause.eventCursor);
+            if (!source) return {accepted: false, code: 'causal-link-unavailable',
+                reason: 'The selected event has no retained causal source'};
+            correlatedSelectedCursor = source.cursor;
+            correlatedSelectedTarget = source.targetId;
+            correlatedStatus = null;
+            emit();
+            return {accepted: true, cursor: source.cursor, targetId: source.targetId};
+        },
+        async checkpointCorrelatedDebugTargets () {
+            if (!correlatedDebugger) return {accepted: false, code: 'correlated-debug-unavailable',
+                reason: 'No correlated CPU session is active'};
+            const result = await correlatedDebugger.captureCheckpoint('main');
+            if (result.accepted) correlatedCheckpoint = result.checkpoint;
+            correlatedStatus = result;
+            emit();
+            return result;
+        },
+        async restoreCorrelatedDebugTargets () {
+            if (!correlatedDebugger || !correlatedCheckpoint) return {accepted: false,
+                code: 'correlated-checkpoint-unavailable', reason: 'Capture an all-CPU checkpoint first'};
+            if (session) session.pause();
+            unschedule();
+            const result = await correlatedDebugger.restoreCheckpoint(correlatedCheckpoint);
+            correlatedStatus = result;
+            if (result.accepted) status = {phase: 'paused', message: ''};
             emit();
             return result;
         },
