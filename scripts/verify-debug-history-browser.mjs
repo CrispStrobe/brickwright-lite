@@ -102,28 +102,29 @@ try {
         window.__bwPendingMedia = {type: 'asm', detail};
         window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {detail}));
     });
-    await page.locator('[data-debug-record]:not([disabled])').waitFor({timeout: 30000});
+    const panel = page.locator('[data-debug-panel]:visible').first();
+    await panel.locator('[data-debug-record]:not([disabled])').waitFor({timeout: 30000});
 
-    const pause = page.getByRole('button', {name: /Pause/}).first();
+    const pause = panel.getByRole('button', {name: /Pause/});
     await pause.click();
     await page.waitForFunction(() => !document.querySelector('[data-debug-record]')?.disabled,
         null, {timeout: 15000});
-    await page.locator('[data-debug-record]').click();
+    await panel.locator('[data-debug-record]').click();
     await page.waitForFunction(() => /Recording/.test(
         document.querySelector('[data-debug-record]')?.textContent || '') &&
         !document.querySelector('[data-debug-checkpoint]')?.disabled, null, {timeout: 15000});
     check('recording starts with checkpoint capability', true);
 
-    const run = page.getByRole('button', {name: /Run/}).first();
+    const run = panel.getByRole('button', {name: /Run/});
     const stepRecorded = async () => {
-        await page.getByRole('button', {name: /Step instruction/}).first().click();
+        await panel.getByRole('button', {name: /Step instruction/}).click();
         await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() =>
             requestAnimationFrame(resolve))));
         await page.waitForFunction(() => document.querySelector('[data-debug-panel]')
             ?.getAttribute('data-debug-phase') === 'paused', null, {timeout: 10000});
     };
     await stepRecorded();
-    await page.locator('[data-debug-checkpoint]').click();
+    await panel.locator('[data-debug-checkpoint]').click();
     await page.waitForFunction(() => !document.querySelector('[data-debug-restore]')?.disabled,
         null, {timeout: 15000});
     check('manual checkpoint is retained and restorable', true);
@@ -131,13 +132,13 @@ try {
 
     await stepRecorded();
     await stepRecorded();
-    await page.locator('[data-debug-record]').click();
+    await panel.locator('[data-debug-record]').click();
     await page.waitForFunction(() => /Record/.test(
         document.querySelector('[data-debug-record]')?.textContent || '') &&
         !/Recording/.test(document.querySelector('[data-debug-record]')?.textContent || ''),
     null, {timeout: 15000});
-    await page.locator('[data-debug-reverse-step]:not([disabled])').waitFor({timeout: 15000});
-    await page.locator('[data-debug-reverse-step]').click();
+    await panel.locator('[data-debug-reverse-step]:not([disabled])').waitFor({timeout: 15000});
+    await panel.locator('[data-debug-reverse-step]').click();
     await page.waitForFunction(() => !document.querySelector('[data-debug-reverse-refusal]') &&
         [...document.querySelectorAll('button')].some(button =>
             /Run/.test(button.textContent || '') && !button.disabled), null, {timeout: 20000});
@@ -153,7 +154,7 @@ try {
     await pause.click();
     check('forward execution after reverse creates an active child recording', true);
     await snap('forked');
-    await page.locator('[data-debug-record]').click();
+    await panel.locator('[data-debug-record]').click();
     check('browser emitted no console, page, or request failure', diagnostics.length === 0,
         diagnostics.join(' | '));
 } catch (error) {
