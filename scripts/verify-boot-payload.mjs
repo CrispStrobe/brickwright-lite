@@ -85,7 +85,12 @@ const PRESENT = [
 /** Present nowhere in the build: the polyfill is aliased away, not moved. */
 const GONE = [
     {what: 'text-encoding polyfill (encoding-indexes)', marker: '"ibm866":[',
-        why: "the text-encoding alias in overlay/scratch-gui/webpack.config.js"}
+        why: "the text-encoding alias in overlay/scratch-gui/webpack.config.js"},
+    // `IntlPolyfill` is the intl package's own global; react-intl's locale data
+    // uses `addLocaleData` without the underscore prefix, so this does not
+    // match the messages we do ship.
+    {what: 'Intl polyfill (the intl package)', marker: 'IntlPolyfill',
+        why: "overlay/scratch-gui/src/playground/index.jsx no longer imports 'intl'; every browserslist target has Intl"}
 ];
 
 const failures = [];
@@ -125,6 +130,25 @@ for (const {p, src} of eagerSources) {
     console.log(`     ${basename(p).slice(0, 60).padEnd(60)} ${kib(src.length).padStart(10)} raw ${kib(gz).padStart(9)} gz`);
 }
 console.log(`     ${'FIRST LOAD (scripts)'.padEnd(60)} ${kib(rawTotal).padStart(10)} raw ${kib(gzTotal).padStart(9)} gz`);
+// A RATCHET on the compressed size of the eager scripts. verify-first-load-weight
+// sees what the browser fetched from python's uncompressed server; this sees what
+// webpack emitted, gzipped here, so it does not move with the serving stack. Lower
+// it when the app gets lighter; never raise it to make a build pass.
+//   2026-09-05: 1,130 KiB gz locally and 1,174 KiB gz on CI's runner for the same
+//   tree (run 33989610164) — the two toolchains minify slightly differently, and
+//   CI's number is the one this check meets, so the budget is set from it. The
+//   morning's live site was ~4,238 KiB gz.
+// Production builds only: a development build is 3-4x larger and unminified, and
+// a budget that is right for one is meaningless for the other. Minified output
+// has no `/***/ "./src/...":` module headers; that is the discriminator.
+const EAGER_GZ_BUDGET_KIB = 1300;
+const looksMinified = !eagerSources.some(({src}) => /^\/\*\*\*\/ "\.\/(?:src|node_modules)\//m.test(src));
+if (looksMinified) {
+    check(`eager scripts stay under ${EAGER_GZ_BUDGET_KIB} KiB gzipped`, gzTotal / 1024 <= EAGER_GZ_BUDGET_KIB,
+        `${kib(gzTotal)} gz`);
+} else {
+    console.log(`skip eager gzip ratchet — development build (module headers present); ${kib(gzTotal)} gz here says nothing about production`);
+}
 
 const chunksDir = join(build, 'chunks');
 const chunkFiles = existsSync(chunksDir) ? readdirSync(chunksDir) : [];
@@ -157,7 +181,7 @@ for (const m of GONE) {
         ...chunkFiles.map(f => ({p: join(chunksDir, f), src: readFileSync(join(chunksDir, f), 'utf8')}))]
         .filter(({src}) => has(src, m)).map(({p}) => basename(p));
     check(`${m.what} is not in the build at all`, anywhere.length === 0,
-        anywhere.length ? `${anywhere.join(', ')} — check ${m.why}` : 'no script carries the legacy encoding tables');
+        anywhere.length ? `${anywhere.join(', ')} — check ${m.why}` : `no script carries ${JSON.stringify(m.marker)}`);
 }
 
 if (failures.length) {
