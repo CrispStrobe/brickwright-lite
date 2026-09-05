@@ -94,6 +94,12 @@ try {
     // refuses recording because its live schematic input source is unlogged.
     await page.getByTestId('bw-device-select').selectOption('z80');
     await page.getByRole('tab', {name: /Circuit/}).click();
+    await page.evaluate(() => {
+        const detail = {rom: Uint8Array.of(0x3e, 0, 0x32, 0, 0x80, 0x3c, 0xc3, 2, 0),
+            target: 'z80', slotId: 'rom'};
+        window.__bwPendingMedia = {type: 'asm', detail};
+        window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {detail}));
+    });
     await page.locator('[data-debug-record]:not([disabled])').waitFor({timeout: 30000});
 
     const pause = page.getByRole('button', {name: /Pause/}).first();

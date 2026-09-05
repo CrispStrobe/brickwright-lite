@@ -52,6 +52,7 @@ import {createForkRecordingStore} from './fork-recording-store.js';
 import {createBranchCursor} from './fork-history.js';
 import {createRunToCoordinator} from './run-to.js';
 import {createSelectedEventInspectionStore} from './selected-event-inspection.js';
+import {negotiateCycleProvider} from './cycle-provider.js';
 import { setValueResolver } from './hover-values.js';
 import { instructionLength } from './opcodes.js';
 import {
@@ -445,6 +446,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
      *  by design, so hand out one object per attached target. */
     let capsFor = null;
     let capsOf = null;
+    let cycleProviderOf = null;
     let board = null;
     let symbols = null;
     /** `${task}/${state}` -> block id, joined from the two halves. */
@@ -611,6 +613,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         if (capsFor !== target) {
             capsFor = target;
             capsOf = target.capabilities();
+            cycleProviderOf = negotiateCycleProvider(target);
             debugFoundation.attachCapabilities(capsOf);
             eventBreakpointDispatcher?.clear();
         }
@@ -826,6 +829,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 : null,
             /** Versioned, conservative capabilities for the event/replay debugger. */
             debugCapabilities: target ? debugFoundation.capabilities() : null,
+            /** Native cycle boundary provenance, or null for instruction-only engines. */
+            cycleProvider: target ? cycleProviderOf : null,
             breakpoints: breakpointList,
             /** Marked blocks the current build has no yield point for. */
             unreachableBreakpoints: breakpointList.filter((id) => yieldOf.size && !yieldOf.has(id)),

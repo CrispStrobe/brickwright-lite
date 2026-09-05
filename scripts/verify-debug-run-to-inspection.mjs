@@ -80,11 +80,17 @@ try {
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
     await page.getByTestId('bw-device-select').selectOption('z80');
     await page.getByRole('tab', {name: /Circuit/}).click();
+    await page.evaluate(() => {
+        // A deterministic local ROM enters through the same public event as
+        // the ASM tab, avoiding both a hosted assembler and an unlogged board.
+        const detail = {rom: Uint8Array.of(0x3e, 0, 0x32, 0, 0x80, 0x3c, 0xc3, 2, 0),
+            target: 'z80', slotId: 'rom'};
+        window.__bwPendingMedia = {type: 'asm', detail};
+        window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {detail}));
+    });
     const panel = page.locator('[data-debug-panel]').first();
-    // Synchronisation before use: the panel is clicked at Pause, [data-debug-record]
-    // and Under the hood below. The detector looks 180 chars ahead for a use verb and
-    // finds the waitForFunction block instead, which pushes that first click out of range.
-    await panel.waitFor({state: 'visible', timeout: 30000}); // gate-shapes-allow: used by the clicks below
+    await panel.waitFor({state: 'visible', timeout: 30000});
+    check('debug panel mounted after the public machine-media event', await panel.count() === 1);
     await page.waitForFunction(() => document.querySelector('[data-debug-panel]')
         ?.getAttribute('data-debug-phase') === 'running', null, {timeout: 30000});
 
@@ -94,9 +100,8 @@ try {
     await panel.locator('[data-debug-record]').click();
     await panel.getByRole('button', {name: /Under the hood/}).click();
     const runTo = panel.locator('[data-run-to-address]');
-    // Synchronisation before runTo.isDisabled() on the next line. `isDisabled` is not in
-    // the detector's use-verb list, so a query that IS a use reads as no use at all.
-    await runTo.waitFor({state: 'visible', timeout: 10000}); // gate-shapes-allow: used by isDisabled() below
+    await runTo.waitFor({state: 'visible', timeout: 10000});
+    check('run-to control appeared', await runTo.count() === 1);
     check('run-to is capability-gated and enabled on the attached target', !(await runTo.isDisabled()));
 
     let promptSeen = '';
@@ -119,6 +124,7 @@ try {
     await panel.locator('[data-debug-timeline-latest]').click();
     const inspection = panel.locator('[data-debug-selected-inspection]');
     await inspection.waitFor({state: 'visible', timeout: 10000});
+    check('selected inspection appeared', await inspection.count() === 1);
     const evidence = await panel.evaluate(node => {
         const timeline = node.querySelector('[data-debug-timeline-controls]')?.innerText || '';
         const root = node.querySelector('[data-debug-selected-inspection]');
