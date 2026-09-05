@@ -15,7 +15,7 @@ earlier row optional.
 | 2 | run-to plus live-tested step over/out | complete — bounded address run-to on six cores; live depth-step certification |
 | 3 | event-synchronized register, disassembly and memory panes | complete — one selected recorded cursor, three provenance-labelled panes |
 | 4 | Z80 and 6502 checkpoint/replay certification | complete — shared omission-sensitive harness and repaired machine state |
-| 5 | browser debugger workflows in GitHub CI | pending |
+| 5 | browser debugger workflows in GitHub CI | complete — production journeys and retained failure evidence, with no VPS browser workload |
 | 6 | cycle-accurate core evaluation and justified integration | pending |
 
 Debugger-host snapshots are deliberately separate from target snapshots.
@@ -70,6 +70,16 @@ chip/device codec shapes and every CPU/machine field before mutation; logged
 VIA buttons and ACIA serial input replay identically. Configurations with
 unpaired mutable devices, unlogged board sampling, bit-bang queues or rendered
 audio continue to refuse recording rather than claim incomplete checkpoints.
+
+The existing production-build GitHub job now owns two fail-closed Playwright
+journeys. One proves recording, a manual checkpoint, reverse step and the
+automatic child branch created by running after reverse; the other proves
+bounded address run-to and that one selected retire event drives the register,
+disassembly and memory panes. Both reject page, console and request failures
+and retain JSON plus screenshots independently, including on journey failure.
+They reuse the job's single webpack build, server and Chromium installation.
+The scripts refuse local execution unless explicitly overridden, keeping this
+resource-heavy integration authority off the small development VPS.
 
 ## Outcome
 

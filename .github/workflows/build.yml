@@ -937,6 +937,33 @@ jobs:
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: node scripts/verify-debugger-solo.mjs
 
+      # Reuse this job's production build, long-lived server and one Chromium
+      # installation. These are CI-only because the development VPS is too
+      # small for a second webpack/browser workload.
+      - name: Browser gate — debugger recording, reverse and fork history
+        id: debug_history
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        run: PROOF_URL=http://localhost:8617/ npm run verify:debug-history
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.debug_history.outcome != 'skipped'
+        with:
+          name: debugger-history-browser-proof
+          path: artifacts/debug-history-browser/*
+          if-no-files-found: error
+
+      - name: Browser gate — debugger run-to and synchronized inspection
+        id: debug_inspection
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        run: PROOF_URL=http://localhost:8617/ npm run verify:debug-inspection
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.debug_inspection.outcome != 'skipped'
+        with:
+          name: debugger-inspection-browser-proof
+          path: artifacts/debug-run-to-inspection/*
+          if-no-files-found: error
+
       # The navigator.bluetooth shim the LEGO extensions depend on inside the
       # app. It is under active investigation on iOS right now, which is the
       # worst possible time for it to regress unnoticed — and it was one of the
