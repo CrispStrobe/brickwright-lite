@@ -57,7 +57,18 @@ test('the 8086 browser proof closes the local assembly, display, key and port jo
     // survived deleting the very line it exists to protect. Caught by
     // red-proving the fix rather than by trusting that it went green.
     assert.match(circuit,
-        /if \(window\.__bwPendingMedia\) \{[^}]*?machineBooted: true/,
+        // OPTIONAL BRACE — brickwright-lite-ea's form, and it fixes a weakness
+        // in mine. Requiring `{` meant the gate went RED again if anyone
+        // un-braced the block back to a one-liner: I had not removed the
+        // brittleness, only moved it to the opposite refactor. Proved by
+        // doing exactly that and watching it fail.
+        //
+        // `\{?[^}]*?` matches both forms while still forbidding a closing
+        // brace between the condition and the effect — which is what keeps it
+        // asserting CONTAINMENT rather than mere proximity. A character window
+        // passes when the effect is hoisted OUT of the condition; this does
+        // not, and that is the case my 200-character version failed.
+        /if \(window\.__bwPendingMedia\) \{?[^}]*?machineBooted: true/,
         'the lazy Circuit tab must replay a program assembled before it mounted');
     assert.match(circuit, /!prevState\.machineBooted && this\.state\.machineBooted/,
         'the retained image must be replayed after the lazy debugger commit');
