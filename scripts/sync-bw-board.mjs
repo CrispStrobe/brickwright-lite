@@ -261,6 +261,38 @@ const atOldPin = async (rel) => {
 };
 let warnedFallback = false;
 
+// THE PIN MUST STILL BE THE OLD ONE WHEN THIS RUNS, and that is checkable
+// rather than merely documented.
+//
+// The three-way comparison's base is `git show <pin>:<file>` — the file as it
+// stood at the pin the vendored copy came from. If the pin has ALREADY been
+// moved to the sha being synced (say, resolved by hand during a rebase
+// conflict, which is exactly how I did it), the base becomes the INCOMING
+// file. Every line upstream deleted then looks lite-only, and every line it
+// added looks like work about to be lost. The guard inverts.
+//
+// It fails in the direction that makes the guard look broken rather than
+// permissive, which is the safer half — but it is silent, and a maintainer
+// reading four bogus refusals concludes the rule is wrong rather than that
+// the pin moved early. So: say so, by name.
+//
+// The script records the new pin itself at the end. Nothing should set it
+// beforehand.
+const pinAlreadyMoved = async () => {
+    if (!srcDir || !OLD_PIN) return false;
+    try {
+        const {stdout} = await execFileP('git', ['-C', srcDir, 'rev-parse', 'HEAD']);
+        return stdout.trim() === OLD_PIN.trim();
+    } catch { return false; }
+};
+if (await pinAlreadyMoved()) {
+    console.error('\n  PIN ALREADY MOVED: vendor-pins.json records the sha this run is syncing');
+    console.error(`  FROM (${OLD_PIN.slice(0, 9)}), so the guard's three-way base is the incoming`);
+    console.error('  file and every upstream edit will read as lite-only work being deleted.');
+    console.error('  Restore the PREVIOUS pin and re-run; this script records the new one itself.');
+    process.exit(2);
+}
+
 await mkdir(dest, {recursive: true});
 let stale = 0;
 for (const rel of FILES) {
