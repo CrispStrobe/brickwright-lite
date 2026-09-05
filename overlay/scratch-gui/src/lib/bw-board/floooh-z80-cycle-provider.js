@@ -12,6 +12,9 @@ const refusal = (code, reason) => Object.freeze({accepted: false, code, reason})
 const plain = value => value && typeof value === 'object' && !Array.isArray(value);
 const clone = value => structuredClone(value);
 const BOOL_STATE = new Set(['prefixActive', 'iff1', 'iff2']);
+const HOST_MAX_BATCH_TICKS = 65_536;
+const HOST_MAX_EVENT_BYTES = 4 * 1024 * 1024;
+const HOST_MAX_MODULE_BYTES = 2 * 1024 * 1024;
 
 function validateState(state) {
   if (!plain(state) || state.schema !== 1 || state.engine !== 'floooh-z80' ||
@@ -39,7 +42,7 @@ export async function createFlooohZ80CycleProvider({loadModule, clockHz}) {
   try { core = await loadModule(); } catch (error) {
     return refusal('cycle-provider-load-failed', error?.message || String(error));
   }
-  for (const method of ['reset', 'tick', 'registers', 'saveState', 'loadState']) {
+  for (const method of ['reset', 'tickBatch', 'registers', 'saveState', 'loadState', 'costMetadata']) {
     if (typeof core?.[method] !== 'function') {
       return refusal('cycle-provider-abi-mismatch', `floooh Z80 wrapper lacks ${method}()`);
     }
@@ -52,6 +55,36 @@ export async function createFlooohZ80CycleProvider({loadModule, clockHz}) {
   if (!plain(pinState) || PIN_NAMES.some(name => !Object.hasOwn(pinState, name))) {
     return refusal('cycle-provider-abi-mismatch', 'floooh Z80 wrapper returned incomplete pins');
   }
+  const cost = core.costMetadata();
+  if (!plain(cost) || !Number.isSafeInteger(cost.maxBatchTicks) || cost.maxBatchTicks < 1 ||
+      cost.maxBatchTicks > HOST_MAX_BATCH_TICKS || !Number.isSafeInteger(cost.maxEvents) ||
+      cost.maxEvents < cost.maxBatchTicks || cost.maxEvents > HOST_MAX_BATCH_TICKS ||
+      !Number.isSafeInteger(cost.eventBytes) || cost.eventBytes < 1 ||
+      cost.eventBytes > HOST_MAX_EVENT_BYTES || !Number.isSafeInteger(cost.moduleBytes) ||
+      cost.moduleBytes < 1 || cost.moduleBytes > HOST_MAX_MODULE_BYTES) {
+    return refusal('cycle-provider-cost-unsupported', 'floooh Z80 wrapper exceeds bounded batch/module limits');
+  }
+
+  const drainBatch = count => {
+    if (!Number.isSafeInteger(count) || count < 1 || count > cost.maxBatchTicks) {
+      throw new RangeError(`Z80 cycle batch must contain 1..${cost.maxBatchTicks} ticks`);
+    }
+    const batch = core.tickBatch(count);
+    if (!Array.isArray(batch) || batch.length !== count || batch.length > cost.maxEvents) {
+      throw new Error('floooh Z80 wrapper returned an incomplete or oversized cycle batch');
+    }
+    for (const next of batch) {
+      if (!plain(next) || !plain(next.registers) ||
+          PIN_NAMES.some(name => !Object.hasOwn(next, name))) {
+        throw new Error('floooh Z80 wrapper emitted incomplete pins/registers');
+      }
+    }
+    return batch.map(next => {
+      pinState = clone(next); ticks++;
+      return Object.freeze({ticks, pins: Object.freeze(clone(pinState)),
+        registers: Object.freeze(clone(next.registers)), retired: next.retired === true});
+    });
+  };
 
   return {
     accepted: true,
@@ -59,15 +92,9 @@ export async function createFlooohZ80CycleProvider({loadModule, clockHz}) {
       engine: 'floooh-z80@ca7d7ddd3ba77b48685d24120cf413ea53786767', boundary: 'clock',
       timeDomain: 'z80-tstates', clockHz, fidelity: 'recorded', resumable: true,
       signals: [...PIN_NAMES], checkpoint: true}; },
-    tick() {
-      const next = core.tick();
-      if (!plain(next) || PIN_NAMES.some(name => !Object.hasOwn(next, name))) {
-        throw new Error('floooh Z80 wrapper emitted incomplete pins');
-      }
-      pinState = clone(next); ticks++;
-      return Object.freeze({ticks, pins: clone(pinState), registers: clone(core.registers()),
-        retired: next.retired === true});
-    },
+    costMetadata() { return Object.freeze({...cost, transport: 'bounded-batch-drain'}); },
+    tick() { return drainBatch(1)[0]; },
+    tickBatch(count) { return Object.freeze(drainBatch(count)); },
     registers() { return clone(core.registers()); },
     debugTime() { return {ticks, domain: 'z80-tstates', hz: clockHz}; },
     captureState() {

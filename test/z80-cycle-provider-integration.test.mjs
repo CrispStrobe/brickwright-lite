@@ -11,14 +11,18 @@ const pins = value => Object.fromEntries(FLOOOH_Z80_PINS.map((name, i) => [name,
 const state = value => Object.fromEntries(FLOOOH_Z80_STATE_FIELDS.map((name, i) =>
   [name, ['prefixActive', 'iff1', 'iff2'].includes(name) ? false : value + i]));
 const fakeModule = () => {
-  let cpu = state(10); let pinState = pins(0); let loads = 0;
+  let cpu = state(10); let pinState = pins(0); let loads = 0; let crossings = 0;
   return {
     reset() { pinState = pins(0); return pinState; },
-    tick() { cpu.step++; pinState = pins(cpu.step); return {...pinState, retired: cpu.step % 4 === 0}; },
+    tickBatch(count) { crossings++; return Array.from({length: count}, () => {
+      cpu.step++; pinState = pins(cpu.step);
+      return {...pinState, registers: {pc: cpu.pc, step: cpu.step}, retired: cpu.step % 4 === 0};
+    }); },
+    costMetadata: () => ({maxBatchTicks: 64, maxEvents: 64, eventBytes: 4096, moduleBytes: 8192}),
     registers() { return {pc: cpu.pc, step: cpu.step}; },
     saveState() { return structuredClone(cpu); },
     loadState(next, nextPins) { cpu = structuredClone(next); pinState = structuredClone(nextPins); loads++; },
-    loadCount: () => loads
+    loadCount: () => loads, crossings: () => crossings
   };
 };
 
@@ -49,6 +53,9 @@ test('injected floooh boundary records one immutable pin event per real tick', a
   assert.deepEqual(events.map(event => event.time.ticks), [1, 2]);
   assert.ok(events.every(event => event.fidelity === 'recorded' && event.phase === 'tick'));
   assert.notEqual(events[0].signals, events[1].signals);
+  assert.equal(core.crossings(), 1, 'a run slice drains one batch, not one WASM call per tick');
+  assert.equal(made.target.cycleProvider().checkpoint, true);
+  assert.equal(made.adapter.provider.costMetadata().transport, 'bounded-batch-drain');
 });
 
 test('snapshots enumerate named state, reject omissions before mutation, and restore defensively', async () => {
@@ -74,4 +81,9 @@ test('wrapper ABI and loader failures return stable refusals', async () => {
     'cycle-provider-abi-mismatch');
   assert.equal((await createFlooohZ80CycleProvider({clockHz: 1,
     loadModule: async () => { throw new Error('missing wasm'); }})).code, 'cycle-provider-load-failed');
+  const oversized = fakeModule();
+  oversized.costMetadata = () => ({maxBatchTicks: 70_000, maxEvents: 70_000,
+    eventBytes: 5_000_000, moduleBytes: 3_000_000});
+  assert.equal((await createFlooohZ80CycleProvider({clockHz: 1,
+    loadModule: async () => oversized})).code, 'cycle-provider-cost-unsupported');
 });

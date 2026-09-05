@@ -37,8 +37,9 @@ export async function createZ80CycleDebugTarget(opts = {}) {
       if (runState !== 'running') return 'halted';
       const budget = Math.min(65_536,
         Math.max(1, Math.floor(budgetNs * provider.metadata().clockHz / 1e9)));
-      for (let i = 0; i < budget && runState === 'running'; i++) {
-        const fact = provider.tick();
+      const wanted = pendingCycles ? Math.min(budget, pendingCycles) : budget;
+      const facts = provider.tickBatch(Math.min(wanted, provider.costMetadata().maxBatchTicks));
+      for (const fact of facts) {
         const event = {cpuId: 'z80', kind: 'cycle', phase: 'tick', fidelity: 'recorded',
           time: {ticks: fact.ticks, domain: 'z80-tstates', hz: provider.metadata().clockHz},
           signals: fact.pins, retired: fact.retired};
