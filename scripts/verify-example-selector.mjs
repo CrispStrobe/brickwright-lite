@@ -75,18 +75,39 @@ try {
     await page.waitForFunction(() => document.querySelector(
         '[data-testid="bw-device-select"]')?.value === '', null, {timeout: 15000});
 
+    const bundledExampleRequests = () => page.evaluate(() =>
+        performance.getEntriesByType('resource')
+            .filter(entry => entry.name.includes('/chunks/pseudocode-examples.js'))
+            .map(entry => entry.name));
+    check('opening Code does not fetch bundled examples',
+        (await bundledExampleRequests()).length === 0);
+
     // Open / Save / examples / catalog live behind the `⋯` menu since the UI
     // consolidation. Opening it is the user's click, not a shortcut around one:
     // everything below still has to find and use the real control.
     check('the Code tab offers an actions menu', await openCodeActions(page));
 
     const games = page.locator('[data-testid="bw-load-example"]');
+    // The picker is deliberately replaced by a loading status until its named
+    // chunk resolves. Waiting for the real control proves the user-triggered
+    // boundary without sampling the intentional placeholder as an empty list.
+    await games.waitFor({state: 'visible', timeout: 10000});
+    const firstBundledRequests = await bundledExampleRequests();
+    check('opening no-chip Tools fetches one bundled-examples chunk',
+        firstBundledRequests.length === 1, `${firstBundledRequests.length} requests`);
     const labels = await games.locator('option').allTextContents();
     const missing = NEW_GAMES.filter(name => !labels.some(label => label.includes(name)));
     check('all quality-approved games are visible in the gallery', missing.length === 0,
         missing.length ? `missing: ${missing.join(', ')}` : `${NEW_GAMES.length} present`);
     check('the hardware catalog is hidden in no-chip mode',
         await page.locator('[data-testid="bw-catalog-toggle"]').count() === 0);
+
+    const actions = page.locator('[data-testid="bw-code-actions"]');
+    await actions.locator('summary').click();
+    await page.waitForFunction(() => !document.querySelector('[data-testid="bw-code-actions"]')?.open);
+    await openCodeActions(page);
+    check('reopening Tools reuses the bundled-examples chunk',
+        (await bundledExampleRequests()).length === 1);
 
     await games.selectOption('sky_skim');
     await page.waitForFunction(() => /Skyline Swoop/.test(document.querySelector('.cm-content')?.textContent || ''),

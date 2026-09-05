@@ -94,3 +94,15 @@ test('hosted pre-Circuit receipts reject speculative bundled examples', () => {
     assert.match(bench, /pseudocode-examples\\\.js/);
     assert.match(bench, /bundled examples before[\s\S]*no-device Tools menu opened/);
 });
+
+test('the browser journey waits for and receipts the deferred examples picker', () => {
+    const gate = readFileSync(new URL('../scripts/verify-example-selector.mjs', import.meta.url), 'utf8');
+    assert.match(gate, /opening Code does not fetch bundled examples/,
+        'the activation journey must prove Code reveal keeps the chunk cold');
+    assert.match(gate, /games\.waitFor\(\{state: 'visible', timeout: 10000\}\)/,
+        'the journey must wait through the intentional loading placeholder');
+    assert.match(gate, /opening no-chip Tools fetches one bundled-examples chunk/,
+        'opening Tools must receipt the demand-loaded chunk');
+    assert.match(gate, /reopening Tools reuses the bundled-examples chunk/,
+        'the journey must reject duplicate loads after reopening Tools');
+});
