@@ -110,6 +110,27 @@ export function asmRouteFor (device) {
 }
 
 /**
+ * Targets whose **C** is compiled IN THE BROWSER, by SmallerC rather than by
+ * `stc-compiler /compile`.
+ *
+ * A separate set from `LOCAL_ASM_TARGETS` even though today they hold the
+ * same one id, because they answer different questions and will diverge: the
+ * 8051 has a local C compiler (`sdcc-wasm`) and a HOSTED assembler, which is
+ * the exact opposite pairing. Deriving one from the other would encode a
+ * coincidence.
+ *
+ * The 8086 is here because the hosted service has no 8086 C back end at all
+ * (ROADMAP §3.8.2b, door 1 — `ia16-elf-gcc` is not deployed), so this is not
+ * "local instead of hosted", it is "local or nothing".
+ */
+export const LOCAL_C_TARGETS = new Set(['i8086']);
+
+/** 'local' or 'hosted', for a C build on a device id. The tab shows this. */
+export function cRouteFor (device) {
+    return LOCAL_C_TARGETS.has(asmTargetForDevice(device)) ? 'local' : 'hosted';
+}
+
+/**
  * The in-browser 8086 assembler, loaded on demand.
  *
  * THE COMPONENT AND THE GATE BOTH REACH IT THROUGH THIS FUNCTION, and that
@@ -241,6 +262,76 @@ export async function compileC8086 (cSource, seams = {}) {
         asm,
         symbols: image.symbols,
         warnings: [...(out.warnings || []), ...(image.warnings || [])],
+    };
+}
+
+/**
+ * Build the C editor's buffer for a device, and return the SAME shape
+ * `requestAssembly` returns, so the ▶ handler that boots an assembly program
+ * boots a C one with no second code path.
+ *
+ * WHY THIS EXISTS RATHER THAN THE COMPONENT CALLING `compileC8086`. Rule 1 of
+ * this module's header — one function decides the route — was written about
+ * assembly and applies unchanged to C. `compileC8086` is the local PIPELINE;
+ * it does not know what a device is and must not learn. This is where a
+ * device becomes a decision, and it is the only such place for C.
+ *
+ * NO FALLBACK TO THE NETWORK, and that is a rule and not an omission. The
+ * `sdcc-wasm/intercept.js` header states it for the 8051: "a supported request
+ * never silently falls back after a local failure: that would turn
+ * offline/debug failures into surprising network traffic". Here it is stronger
+ * still, because there is nothing to fall back TO: the hosted service has no
+ * 8086 C target, so a fallback would trade a message naming the learner's
+ * construct for `unknown compile target 'i8086'`.
+ *
+ * A NON-LOCAL DEVICE IS REFUSED BY NAME rather than quietly posted, for the
+ * same reason `requestAssembly` whitelists: the STC12's C already has a route
+ * (hosted `/compile`, with `sdcc-wasm` intercepting it) and sending it here
+ * would hand an 8051 program to a compiler that emits 8086.
+ *
+ * @param {{source: string, device: string}} req
+ * @param {{compileC?: Function, assembleLocal?: Function}} [seams] passed
+ *   straight to `compileC8086`; the tab injects neither.
+ */
+export async function requestCBuild ({source, device}, seams = {}) {
+    const target = asmTargetForDevice(device);
+    if (!LOCAL_C_TARGETS.has(target)) {
+        throw new AsmRouteError(
+            `${target} has no local C route — its C goes to the hosted compiler`,
+            {route: 'hosted', target, reason: 'transport'});
+    }
+    if (typeof source !== 'string' || !source.trim()) {
+        throw new AsmRouteError('there is no C to compile',
+            {route: 'local', target, reason: 'source'});
+    }
+    let built;
+    try {
+        built = await compileC8086(source, seams);
+    } catch (e) {
+        // Both stages already name what they refused -- smlrc names the token
+        // and the line, the assembler names the instruction or the symbol --
+        // so re-wrapping the text would only bury it. What is added is the
+        // route, because "the compiler in your browser refused this" and "the
+        // service refused this" are different sentences.
+        if (e instanceof AsmRouteError) throw e;
+        throw new AsmRouteError(e.message, {route: 'local', target, reason: 'source'});
+    }
+    if (!built.bytes || !built.bytes.length) {
+        throw new AsmRouteError('the local C route produced no image',
+            {route: 'local', target, reason: 'source'});
+    }
+    // .COM, not ROM -- the same distinction requestAssembly draws, and for the
+    // same reason: a .COM loaded as a ROM at F0000 executes nothing, and a
+    // machine that executes nothing looks exactly like one that failed.
+    const format = built.format === 'exe' ? 'exe' : 'com';
+    return {
+        bytes: built.bytes, target, route: 'local', format,
+        slotId: format, profile: 'dos',
+        org: built.org ?? null,
+        asm: built.asm,
+        warnings: (built.warnings || []).map(w => (typeof w === 'string' ?
+            w : (w.line ? `L${w.line}: ` : '') + w.message)),
+        listing: null
     };
 }
 
