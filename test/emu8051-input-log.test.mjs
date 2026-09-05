@@ -81,3 +81,36 @@ test('push mode refuses latch replay while the live board callback owns input', 
     assert.equal(result.accepted, false);
     assert.equal(result.code, 'live-board-input-authority');
 });
+
+test('reset starts a fresh monotonic input domain and republishes initial state', async () => {
+    if (!have) return;
+    const {adapter} = await fixture();
+    const inputs = [];
+    adapter.onInput(input => inputs.push(input));
+    adapter.runNs(1000);
+    adapter.reset();
+    adapter.runNs(1000);
+    const afterReset = inputs.slice(16);
+    assert.equal(afterReset.length, 16);
+    assert.ok(afterReset.every(input => input.time.domain === '8051-input-ns-reset-1'));
+    assert.ok(afterReset.every(input => input.time.ticks === 0n),
+        'inputs are seated at reset time before the first execution slice');
+});
+
+test('listeners receive isolated records and ADC logs the native clamped value', async () => {
+    if (!have) return;
+    const {adapter, analog, calls} = await fixture();
+    analog.set('P1.0', 99);
+    analog.set('P1.1', Number.NaN);
+    const observed = [];
+    adapter.onInput(input => { input.payload.level = 99; input.time.domain = 'mutated'; });
+    adapter.onInput(input => observed.push(input));
+    adapter.runNs(1000);
+    const pin = observed.find(input => input.producer === 'emu8051.pin');
+    assert.equal(pin.payload.level, 1);
+    assert.equal(pin.time.domain, '8051-input-ns');
+    assert.deepEqual(observed.filter(input => input.producer === 'emu8051.adc').slice(0, 2)
+        .map(input => input.payload.volts), [5, 0]);
+    assert.deepEqual(calls.adc.slice(0, 2), [[0, 5], [1, 0]],
+        'the record must contain the same clamped voltage passed to native code');
+});

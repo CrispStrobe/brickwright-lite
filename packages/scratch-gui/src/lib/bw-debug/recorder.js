@@ -181,6 +181,10 @@ export function createDebugRecorder ({
 
     let inputs = [];
     let events = [];
+    // Event cursors immediately AFTER an instruction-retire event. This small
+    // index makes Reverse Step O(log retires) without cloning event payloads or
+    // touching checkpoint snapshots.
+    let retireCursors = [];
     let checkpoints = [];
     let inputBaseCursor = 0;
     let nextInputCursor = 0;
@@ -219,6 +223,7 @@ export function createDebugRecorder ({
             const discardedEvents = events.filter(event => event.seq < anchor.eventCursor);
             eventBytes -= discardedEvents.reduce((total, event) => total + event._bytes, 0);
             events = events.filter(event => event.seq >= anchor.eventCursor);
+            retireCursors = retireCursors.filter(cursor => cursor > anchor.eventCursor);
             const discardedInputs = inputs.filter(input => input.cursor < anchor.inputCursor);
             inputBytes -= discardedInputs.reduce((total, input) => total + input._bytes, 0);
             inputs = inputs.filter(input => input.cursor >= anchor.inputCursor);
@@ -282,6 +287,9 @@ export function createDebugRecorder ({
                 inputCursor: event.inputCursor ?? nextInputCursor});
             const stored = {...value, _bytes: utf8Bytes(value)};
             events.push(stored);
+            if (value.kind === 'instruction' && value.phase === 'retire') {
+                retireCursors.push(value.seq + 1);
+            }
             eventBytes += stored._bytes;
             lastEventSeq = event.seq;
             return clone(value);
@@ -339,6 +347,47 @@ export function createDebugRecorder ({
             return events.filter(event => event.seq >= eventCursor).map(({_bytes, ...event}) => clone(event));
         },
 
+        /**
+         * Cursor immediately after the last complete retire strictly before
+         * `eventCursor`, or null when the retained range has no earlier
+         * instruction boundary. Strictness is intentional: from the live end
+         * cursor, Reverse Step must skip the current boundary and select the
+         * preceding instruction.
+         */
+        previousRetireCursor (eventCursor) {
+            const min = checkpoints.length ? checkpoints[0].eventCursor : 0;
+            assertCursor(eventCursor, 'eventCursor', min, lastEventSeq + 1);
+            let lo = 0;
+            let hi = retireCursors.length;
+            while (lo < hi) {
+                const mid = (lo + hi) >>> 1;
+                if (retireCursors[mid] < eventCursor) lo = mid + 1;
+                else hi = mid;
+            }
+            return lo ? retireCursors[lo - 1] : null;
+        },
+
+        /** Previous complete instruction boundary, including checkpoint anchors. */
+        previousInstructionBoundaryCursor (eventCursor) {
+            const min = checkpoints.length ? checkpoints[0].eventCursor : 0;
+            assertCursor(eventCursor, 'eventCursor', min, lastEventSeq + 1);
+            const before = (length, at) => {
+                let lo = 0;
+                let hi = length;
+                while (lo < hi) {
+                    const mid = (lo + hi) >>> 1;
+                    if (at(mid) < eventCursor) lo = mid + 1;
+                    else hi = mid;
+                }
+                return lo ? at(lo - 1) : null;
+            };
+            const retired = before(retireCursors.length, index => retireCursors[index]);
+            const anchored = before(checkpoints.length, index => checkpoints[index].eventCursor);
+            if (retired === null) return anchored;
+            if (anchored === null) return retired;
+            return Math.max(retired, anchored);
+        },
+
         checkpoints: () => checkpoints.map(({_bytes, ...checkpoint}) => clone(checkpoint)),
         checkpointSummary: () => checkpoints.map(checkpoint => ({
             id: checkpoint.id,
@@ -351,6 +400,7 @@ export function createDebugRecorder ({
         clear () {
             inputs = [];
             events = [];
+            retireCursors = [];
             checkpoints = [];
             inputBaseCursor = 0;
             nextInputCursor = 0;

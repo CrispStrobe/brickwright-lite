@@ -385,8 +385,9 @@ checkpoint, reapply the exact input prefix at target-clock boundaries, execute
 one real instruction at a time and compare every resulting event hash. It
 refuses mid-instruction cursors and reports the first divergent absolute cursor
 without exposing payloads. Real 8086 tests cover port, memory, retire and a
-logged GPIO input. Reverse remains unadvertised in the runner until every UI and
-machine input path is automatically appended before application.
+logged GPIO input. Reverse is composed by the runner only after every applicable
+input path is appended before application; the target does not claim reverse by
+itself.
 
 The next input slice routes 8086 hardware UART receive, XT scancodes, PPI GPIO,
 hot ROM/reset and NMI through an atomic recorder-before-application gate. Live
@@ -424,13 +425,16 @@ owns the selected event for synchronized consumers, supports older/newer/latest
 and per-domain time seeking, preserves ring-gap evidence and moves a selection
 safely when retention evicts it. The runner feeds it only from explicit bulk
 drains, preserving the zero-consumer fast path. Visual panes and recording,
-checkpoint, fork and reverse controls are not yet exposed in the React drawer.
+checkpoint, fork and reverse controls were not yet exposed in the initial model.
 
 The drawer now exposes capability-gated Record, Checkpoint and Restore controls
 for complete targets. Its live render path consumes snapshot-free checkpoint
 summaries so it never clones full RAM at frame cadence. Restore currently means
-the most recent retained checkpoint; event-cursor navigation, fork selection
-and reverse controls remain future UI work.
+the most recent retained checkpoint. Reverse Step is runner-gated, finds the
+strict previous retire/checkpoint boundary through an O(log n) snapshot-free
+index, then pauses, restores and verifies replay; refusals remain visible.
+General event-cursor navigation, fork selection, reverse continue and reverse
+cycle remain future UI work.
 
 Debugger changes also have a path-filtered `debugger-focused` GitHub Actions
 workflow. It vendors and integrates the pinned sources on a fresh runner, then

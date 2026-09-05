@@ -71,6 +71,44 @@ test('restore lookup selects the newest checkpoint no later than the cursor', ()
     assert.deepEqual(recorder.eventsFrom(2).map(event => event.seq), [2]);
 });
 
+test('previous retire lookup is strict, snapshot-free and works inside an instruction group', () => {
+    const recorder = createDebugRecorder();
+    recorder.createCheckpoint(checkpoint(0, 0, 1));
+    recorder.appendEvent({schema: RECORDER_SCHEMA, seq: 0, kind: 'memory'});
+    recorder.appendEvent({schema: RECORDER_SCHEMA, seq: 1, kind: 'instruction', phase: 'retire'});
+    recorder.appendEvent({schema: RECORDER_SCHEMA, seq: 2, kind: 'port'});
+    recorder.appendEvent({schema: RECORDER_SCHEMA, seq: 3, kind: 'memory'});
+    recorder.appendEvent({schema: RECORDER_SCHEMA, seq: 4, kind: 'instruction', phase: 'retire'});
+
+    assert.equal(recorder.previousRetireCursor(0), null);
+    assert.equal(recorder.previousRetireCursor(2), null,
+        'a boundary equal to the query is the current boundary, not the previous one');
+    assert.equal(recorder.previousRetireCursor(3), 2,
+        'a cursor inside the next instruction resolves to the completed prior retire');
+    assert.equal(recorder.previousRetireCursor(5), 2);
+    assert.equal(recorder.previousInstructionBoundaryCursor(2), 0,
+        'the first instruction reverses to its retained checkpoint anchor');
+    assert.equal(recorder.previousInstructionBoundaryCursor(5), 2,
+        'strict lookup skips the current retire boundary');
+    assert.equal(recorder.checkpoints()[0].snapshot.cpu[0], 1,
+        'lookup neither reads nor mutates the checkpoint snapshot');
+});
+
+test('retire index is trimmed atomically with checkpoint-boundary eviction', () => {
+    const recorder = createDebugRecorder({eventBudgetBytes: 1});
+    recorder.createCheckpoint(checkpoint(0, 0, 1));
+    recorder.appendEvent({schema: RECORDER_SCHEMA, seq: 0, kind: 'instruction', phase: 'retire'});
+    recorder.appendEvent({schema: RECORDER_SCHEMA, seq: 1, kind: 'memory'});
+    recorder.createCheckpoint(checkpoint(2, 0, 2));
+    recorder.appendEvent({schema: RECORDER_SCHEMA, seq: 2, kind: 'instruction', phase: 'retire'});
+
+    assert.equal(recorder.previousRetireCursor(3), null,
+        'the retire before the retained restore point must not remain addressable');
+    assert.equal(recorder.previousInstructionBoundaryCursor(3), 2,
+        'the retained checkpoint is the preceding boundary for its first instruction');
+    assert.throws(() => recorder.previousRetireCursor(1), error => error.code === 'INVALID_CURSOR');
+});
+
 test('a recording may begin at the live stream current cursor', () => {
     const recorder = createDebugRecorder();
     recorder.createCheckpoint(checkpoint(40, 0, 1));

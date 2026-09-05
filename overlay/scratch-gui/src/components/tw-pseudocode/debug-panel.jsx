@@ -46,7 +46,7 @@ const VdpScreen = React.lazy(() =>
 
 const L10N = {
     en: {
-        run: 'Run', pause: 'Pause', step: 'Step', stop: 'Stop',
+        run: 'Run', pause: 'Pause', step: 'Step', reverseStep: 'Reverse Step', stop: 'Stop',
         speed: 'Speed', idle: 'not running', building: 'building…', attaching: 'starting…',
         ready: 'ready', running: 'running', paused: 'paused', stepping: 'stepping…',
         error: 'error',
@@ -73,10 +73,11 @@ const L10N = {
             'that is already there is invisible, and a byte the peripherals move fires ' +
             'with no instruction of yours responsible.',
         record: 'Record', recording: 'Recording', checkpoint: 'Checkpoint', restore: 'Restore',
-        recordUnsupported: 'This target cannot capture a complete deterministic checkpoint'
+        recordUnsupported: 'This target cannot capture a complete deterministic checkpoint',
+        reverseHint: 'Restore and replay to the previous recorded instruction'
     },
     de: {
-        run: 'Start', pause: 'Pause', step: 'Schritt', stop: 'Stopp',
+        run: 'Start', pause: 'Pause', step: 'Schritt', reverseStep: 'Zurück', stop: 'Stopp',
         speed: 'Tempo', idle: 'läuft nicht', building: 'wird gebaut…', attaching: 'startet…',
         ready: 'bereit', running: 'läuft', paused: 'angehalten', stepping: 'Schritt…',
         error: 'Fehler',
@@ -104,7 +105,8 @@ const L10N = {
             'denselben Wert erneut zu schreiben bleibt unsichtbar, und ein Byte, das die ' +
             'Peripherie bewegt, löst aus, ohne dass eine deiner Anweisungen schuld ist.',
         record: 'Aufzeichnen', recording: 'Aufzeichnung', checkpoint: 'Prüfpunkt', restore: 'Wiederherstellen',
-        recordUnsupported: 'Dieses Ziel kann keinen vollständigen deterministischen Prüfpunkt erfassen'
+        recordUnsupported: 'Dieses Ziel kann keinen vollständigen deterministischen Prüfpunkt erfassen',
+        reverseHint: 'Zum vorherigen aufgezeichneten Befehl zurückkehren und verifiziert abspielen'
     }
 };
 
@@ -122,10 +124,12 @@ class DebugPanel extends React.Component {
         // than in the runner: picking "Live board" and then pressing Run is the
         // order a user works in.
         this.state = {runner: null, ui: {phase: 'idle', message: ''}, kind: 'emulator', kinds: null,
-            machineConfig: null, serialInput: '', firmwareName: null, recordingStatus: null};
+            machineConfig: null, serialInput: '', firmwareName: null,
+            recordingStatus: null, reverseStatus: null};
         this.onStart = this.onStart.bind(this);
         this.onPause = this.onPause.bind(this);
         this.onStep = this.onStep.bind(this);
+        this.onReverseStep = this.onReverseStep.bind(this);
         this.onStop = this.onStop.bind(this);
         this.onSpeed = this.onSpeed.bind(this);
         this.onSerialInput = this.onSerialInput.bind(this);
@@ -564,6 +568,12 @@ class DebugPanel extends React.Component {
     onPause () { if (this.state.runner) this.state.runner.pause(); }
     onStop () { if (this.state.runner) this.state.runner.stop(); }
     async onStep () { (await this.runner()).step('block'); }
+    onReverseStep () {
+        const runner = this.state.runner;
+        if (!runner) return;
+        const result = runner.reverseStepDebugInstruction();
+        this.setState({reverseStatus: result.accepted ? null : result});
+    }
     onSpeed (e) { if (this.state.runner) this.state.runner.setSpeed(Number(e.target.value)); }
 
     onRecord () {
@@ -619,6 +629,10 @@ class DebugPanel extends React.Component {
             this.state.runner.debugRecorder().checkpointSummary() : [];
         const recordingRefusal = this.state.recordingStatus?.accepted === false ?
             this.state.recordingStatus.reason : null;
+        const reverse = this.state.runner && this.state.runner.reverseStepDebugStatus();
+        const canReverse = !!(reverse && reverse.accepted);
+        const reverseRefusal = this.state.reverseStatus?.accepted === false ?
+            this.state.reverseStatus.reason : null;
 
         const inferredBoard = this.state.boardSource === 'inferred';
         return (
@@ -665,6 +679,14 @@ class DebugPanel extends React.Component {
                     >{'⏭ '}{this.tx('step')}</button>
 
                     <button
+                        data-debug-reverse-step
+                        style={canReverse && !busy ? BTN : OFF}
+                        disabled={!canReverse || busy}
+                        onClick={this.onReverseStep}
+                        title={canReverse ? this.tx('reverseHint') : (reverse?.reason || this.tx('reverseHint'))}
+                    >{'⏮ '}{this.tx('reverseStep')}</button>
+
+                    <button
                         style={running || paused ? {...BTN, borderColor: '#c0392b', color: '#e74c3c'} : OFF}
                         disabled={!running && !paused}
                         onClick={this.onStop}
@@ -694,6 +716,9 @@ class DebugPanel extends React.Component {
                     >{'↶ '}{this.tx('restore')}</button>
                     {recordingRefusal ? (
                         <span data-debug-recording-refusal role="status">{recordingRefusal}</span>
+                    ) : null}
+                    {reverseRefusal ? (
+                        <span data-debug-reverse-refusal role="status">{reverseRefusal}</span>
                     ) : null}
 
                     {/* The target picker. Everything else in this panel branches on

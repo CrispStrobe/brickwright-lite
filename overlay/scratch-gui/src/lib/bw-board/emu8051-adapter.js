@@ -111,8 +111,14 @@ export function createEmu8051Adapter(wasm, opts = {}) {
     if (observedInputs.get(key) === signature) return;
     observedInputs.set(key, signature);
     const input = {time: inputTime(), producer, payload: {...payload}};
-    for (const listener of inputListeners) listener(input);
+    for (const listener of inputListeners) {
+      listener({...input, time: {...input.time}, payload: {...input.payload}});
+    }
   }
+
+  /** Match the native ADC setter: record the value the MCU actually receives. */
+  const normalizeVolts = value => Math.max(0, Math.min(vcc,
+    Number.isFinite(Number(value)) ? Number(value) : 0));
 
   const stats = {
     pollCount: 0,
@@ -189,12 +195,9 @@ export function createEmu8051Adapter(wasm, opts = {}) {
 
       readAnalogCbPtr = wasm.addFunction((port, bit, _ud) => {
         if (!board) return 0;
-        const volts = Number(board.readAnalog(`P${port}.${bit}`));
-        if (Number.isFinite(volts)) {
-          recordInput('emu8051.adc', `adc:${bit}`, {channel: bit, volts});
-          return volts;
-        }
-        return 0;
+        const volts = normalizeVolts(board.readAnalog(`P${port}.${bit}`));
+        recordInput('emu8051.adc', `adc:${bit}`, {channel: bit, volts});
+        return volts;
       }, 'diii');
 
       // on_advance: uint64_t is legalized to two i32 args without WASM_BIGINT
@@ -274,7 +277,11 @@ export function createEmu8051Adapter(wasm, opts = {}) {
       for (let bit = 0; bit < 8; bit++) {
         const pinId = `P${port}.${bit}`;
         const state = lastState.get(pinId);
-        if (state && (state.mode === 'input' || state.mode === 'quasi' || state.mode === 'opendrain')) {
+        // Reset clears the JS output shadow before the first post-reset poll.
+        // Query native mode in that window so external inputs are seated
+        // before execution instead of one run slice late.
+        const mode = state?.mode ?? MODE_NAMES[wasm._emu_get_pin_mode(port, bit)] ?? 'quasi';
+        if (mode === 'input' || mode === 'quasi' || mode === 'opendrain') {
           const level = board.readPin(pinId);
           const normalized = level ? 1 : 0;
           wasm._emu_set_pin_input(port, bit, normalized);
@@ -287,10 +294,9 @@ export function createEmu8051Adapter(wasm, opts = {}) {
   function syncAdcInputs() {
     if (!board) return;
     for (let ch = 0; ch < 8; ch++) {
-      const volts = board.readAnalog(`P1.${ch}`);
-      if (!Number.isFinite(Number(volts))) continue;
-      wasm._emu_set_adc_voltage(ch, Number(volts));
-      recordInput('emu8051.adc', `adc:${ch}`, {channel: ch, volts: Number(volts)});
+      const volts = normalizeVolts(board.readAnalog(`P1.${ch}`));
+      wasm._emu_set_adc_voltage(ch, volts);
+      recordInput('emu8051.adc', `adc:${ch}`, {channel: ch, volts});
     }
   }
 
@@ -454,8 +460,9 @@ export function createEmu8051Adapter(wasm, opts = {}) {
       }
       if (input?.producer === 'emu8051.adc' && Number.isInteger(payload?.channel) &&
           payload.channel >= 0 && payload.channel <= 7 && Number.isFinite(payload?.volts)) {
-        wasm._emu_set_adc_voltage(payload.channel, payload.volts);
-        observedInputs.set(`adc:${payload.channel}`, JSON.stringify(payload));
+        const applied = {...payload, volts: normalizeVolts(payload.volts)};
+        wasm._emu_set_adc_voltage(applied.channel, applied.volts);
+        observedInputs.set(`adc:${applied.channel}`, JSON.stringify(applied));
         return {accepted: true};
       }
       return {accepted: false, code: 'unsupported-replay-input',

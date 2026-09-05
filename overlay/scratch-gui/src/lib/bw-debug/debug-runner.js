@@ -463,9 +463,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const {schema, seq, inputCursor, ...fact} = event;
         return {...fact, time: {...fact.time, domain: replayClockDomain(fact.time.domain)}};
     };
-    // The controller is wired as a programmatic boundary now, but targets do
-    // not advertise reverse (and the panel shows no reverse control) until all
-    // external input paths have deterministic applicators and logging.
+    // Reverse readiness is composed here from checkpoint/replay support and
+    // complete input applicators. Targets never advertise it on their own.
     const instructionReplay = createInstructionReplayController({
         recorder: debugFoundation.recorder,
         getTarget: () => target,
@@ -477,6 +476,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         event => recordingSession.appendBatch([event]));
     let unsubscribeDebugEvents = null;
     let unsubscribeDebugInputs = null;
+    // Cursor of the last successful UI reverse; null means the retained live end.
+    let reverseCursor = null;
     const trace = createTrace({eventStream});
     /** The user's own variables: {name, space, addr, size}. From the symbol table. */
     let variableTable = [];
@@ -2172,6 +2173,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
         /** Build, attach, and run. The ⚑ of the debug world. */
         async start() {
+            reverseCursor = null;
             try {
                 if (!session) {
                     // Clear it HERE and not in build(): the ROM and
@@ -2224,6 +2226,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
         resume() {
             if (!session) return;
+            reverseCursor = null;
             session.resume();
             setStatus('running');
             schedule();
@@ -2232,6 +2235,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         /** One block by default — the granularity every target supports. */
         step(kind = 'block') {
             if (!session) return { unsupported: 'nothing is running yet' };
+            reverseCursor = null;
             const refusal = session.step(kind);
             if (refusal) { setStatus('paused', refusal.unsupported); return refusal; }
             setStatus('stepping');
@@ -2560,12 +2564,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         evaluateEventBreakpoints: (event, context) => debugFoundation.evaluateBreakpoints(event, context),
         debugRecorder: () => debugFoundation.recorder,
         debugTimeline: () => debugFoundation.timeline,
-        startDebugRecording() { ensureDebugEvents(); return recordingSession.start(); },
+        startDebugRecording() { reverseCursor = null; ensureDebugEvents(); return recordingSession.start(); },
         stopDebugRecording: () => recordingSession.stop(),
         checkpointDebugRecording: () => recordingSession.checkpoint(),
         restoreDebugCheckpoint: eventCursor => {
             const result = recordingSession.restore(eventCursor);
-            if (result.accepted) emit();
+            if (result.accepted) { reverseCursor = eventCursor; emit(); }
             return result;
         },
         recordDebugInput: input => recordingSession.appendInput(input),
@@ -2574,11 +2578,38 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             // Replayed events must be observed and compared, never appended to
             // the recording they are being checked against.
             recordingSession.stop();
+            if (session) session.pause();
+            unschedule();
             const result = instructionReplay.reverseToEvent(eventCursor);
-            if (result.accepted) emit();
+            if (result.accepted) {
+                reverseCursor = eventCursor;
+                setStatus('paused');
+            }
             return result;
         },
         canReverseDebug: () => instructionReplay.canReverse(),
+        reverseStepDebugStatus() {
+            const capability = instructionReplay.canReverse();
+            if (!capability.accepted) return capability;
+            const retained = debugFoundation.recorder.retention();
+            const before = reverseCursor ??
+                (retained.lastEventSeq === null ? 0 : retained.lastEventSeq + 1);
+            let previous;
+            try {
+                previous = debugFoundation.recorder.previousInstructionBoundaryCursor(before);
+            } catch (error) {
+                return {accepted: false, code: 'reverse-history-unavailable',
+                    reason: error?.message || String(error)};
+            }
+            return previous === null
+                ? {accepted: false, code: 'no-previous-instruction',
+                    reason: 'No earlier recorded instruction boundary is retained'}
+                : {accepted: true, beforeCursor: before, eventCursor: previous};
+        },
+        reverseStepDebugInstruction() {
+            const status = this.reverseStepDebugStatus();
+            return status.accepted ? this.reverseDebugToEvent(status.eventCursor) : status;
+        },
         clearTrace() { trace.clear(); emit(); },
 
         /**
@@ -2598,6 +2629,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
          */
         stepInstruction(count = 1) {
             if (!target) return { unsupported: 'nothing is running yet' };
+            reverseCursor = null;
             for (let i = 0; i < count; i++) {
                 const refusal = target.step('insn', 1);
                 if (refusal) return refusal;
@@ -2612,8 +2644,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         },
 
         /** `over` and `out`, which the target defines in terms of SP. */
-        stepOver() { return session ? session.step('over') : { unsupported: 'not running' }; },
-        stepOut() { return session ? session.step('out') : { unsupported: 'not running' }; },
+        stepOver() { reverseCursor = null; return session ? session.step('over') : { unsupported: 'not running' }; },
+        stepOut() { reverseCursor = null; return session ? session.step('out') : { unsupported: 'not running' }; },
 
         /**
          * The user's OWN variables, by the name they typed.
