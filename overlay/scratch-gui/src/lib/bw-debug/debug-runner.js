@@ -2920,30 +2920,30 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         }),
         async exportDebugSession () {
             const branches = forkRecordingStore.summaries();
-            if (branches.length !== 1) return {accepted: false,
-                code: 'session-export-branch-topology-unsupported',
-                reason: 'Export currently requires one retained branch; fork snapshots cannot be flattened safely'};
-            const recorder = activeBranchPayload.recorder;
-            const summaries = recorder.checkpointSummary();
-            if (!summaries.length) return {accepted: false, code: 'session-export-empty',
+            const activeBranchId = forkRecordingStore.active().branch.branchId;
+            const recordings = branches.map(branch => {
+                const recorder = forkRecordingStore.recordingFor(branch.branchId).recording.recorder;
+                const summaries = recorder.checkpointSummary();
+                return {branchId: branch.branchId,
+                    trace: summaries.length ? recorder.eventsFrom(summaries[0].eventCursor) : [],
+                    inputs: recorder.inputsFrom(recorder.retention().inputBaseCursor),
+                    checkpoints: recorder.checkpoints().map(checkpoint => ({
+                        id: checkpoint.id, eventCursor: checkpoint.eventCursor,
+                        inputCursor: checkpoint.inputCursor, time: checkpoint.time,
+                        codec: DEBUG_SESSION_SNAPSHOT_CODEC,
+                        snapshot: {target: checkpoint.snapshot,
+                            ...(Object.hasOwn(checkpoint, 'hostSnapshot') ?
+                                {host: checkpoint.hostSnapshot} : {})}
+                    }))};
+            });
+            if (recordings.some(recording => !recording.checkpoints.length)) return {accepted: false, code: 'session-export-empty',
                 reason: 'Start recording and capture a checkpoint before exporting a session'};
-            const checkpoints = recorder.checkpoints().map(checkpoint => ({
-                id: checkpoint.id, eventCursor: checkpoint.eventCursor,
-                inputCursor: checkpoint.inputCursor, time: checkpoint.time,
-                codec: DEBUG_SESSION_SNAPSHOT_CODEC,
-                snapshot: {target: checkpoint.snapshot,
-                    ...(Object.hasOwn(checkpoint, 'hostSnapshot') ? {host: checkpoint.hostSnapshot} : {})}
-            }));
-            if (checkpoints.some(checkpoint => checkpoint.inputCursor !== 0)) return {accepted: false,
-                code: 'session-export-input-log-unsupported',
-                reason: 'This bundle schema cannot yet preserve deterministic input logs'};
             try {
                 const bundle = await createDebuggerSessionBundle({
                     firmware: bootMedia?.bytes || new Uint8Array(), source: '',
-                    trace: recorder.eventsFrom(summaries[0].eventCursor),
-                    branches: [{branchId: 'main', parentBranchId: null,
-                        forkCursor: {branchId: 'main', eventCursor: summaries[0].eventCursor}}],
-                    checkpoints, codecs: sessionCodecs
+                    branches: branches.map(branch => ({...branch,
+                        active: branch.branchId === activeBranchId})),
+                    recordings, codecs: sessionCodecs
                 });
                 return {accepted: true, text: JSON.stringify(bundle), filename: 'debug-session.bwdebug'};
             } catch (error) {
@@ -2965,46 +2965,69 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             try {
                 const imported = await importDebuggerSessionBundle({bundle, codecs: sessionCodecs,
                     commit: staged => {
-                        if (staged.branches.length !== 1 || staged.branches[0].parentBranchId !== null) {
-                            throw Object.assign(new Error('Imported branch topology is unsupported'),
-                                {code: 'session-import-branch-topology-unsupported'});
-                        }
-                        if (staged.checkpoints.some(checkpoint => checkpoint.inputCursor !== 0)) {
-                            throw Object.assign(new Error('Imported bundle omits required deterministic inputs'),
-                                {code: 'session-import-input-log-unsupported'});
-                        }
-                        const importedRecorder = createDebugRecorder();
-                        let eventIndex = 0;
-                        for (const checkpoint of staged.checkpoints) {
-                            while (eventIndex < staged.trace.length &&
-                                staged.trace[eventIndex].seq < checkpoint.eventCursor) {
-                                importedRecorder.appendEvent(staged.trace[eventIndex++]);
+                        const payloads = new Map();
+                        for (const recording of staged.recordings) {
+                            const firstInput = recording.inputs[0]?.cursor ??
+                                recording.checkpoints[0]?.inputCursor ?? 0;
+                            const importedRecorder = createDebugRecorder({initialInputCursor: firstInput});
+                            for (const input of recording.inputs) {
+                                const appended = importedRecorder.appendInput(input);
+                                if (appended.cursor !== input.cursor) throw Object.assign(
+                                    new Error('Imported input cursors are not contiguous'),
+                                    {code: 'session-import-input-order'});
                             }
-                            const decoded = checkpoint.snapshot;
-                            if (!decoded || !Object.hasOwn(decoded, 'target')) {
-                                throw Object.assign(new Error('Checkpoint snapshot has no target state'),
+                            let eventIndex = 0;
+                            for (const checkpoint of recording.checkpoints) {
+                                while (eventIndex < recording.trace.length &&
+                                    recording.trace[eventIndex].seq < checkpoint.eventCursor) {
+                                    importedRecorder.appendEvent(recording.trace[eventIndex++]);
+                                }
+                                const decoded = checkpoint.snapshot;
+                                if (!decoded || !Object.hasOwn(decoded, 'target')) throw Object.assign(
+                                    new Error('Checkpoint snapshot has no target state'),
                                     {code: 'session-import-checkpoint-invalid'});
+                                importedRecorder.createCheckpoint({schema: 1, id: checkpoint.id,
+                                    eventCursor: checkpoint.eventCursor, inputCursor: checkpoint.inputCursor,
+                                    time: checkpoint.time, snapshot: decoded.target,
+                                    ...(Object.hasOwn(decoded, 'host') ? {hostSnapshot: decoded.host} : {})});
                             }
-                            importedRecorder.createCheckpoint({schema: 1, id: checkpoint.id,
-                                eventCursor: checkpoint.eventCursor, inputCursor: checkpoint.inputCursor,
-                                time: checkpoint.time, snapshot: decoded.target,
-                                ...(Object.hasOwn(decoded, 'host') ? {hostSnapshot: decoded.host} : {})});
+                            while (eventIndex < recording.trace.length) {
+                                importedRecorder.appendEvent(recording.trace[eventIndex++]);
+                            }
+                            payloads.set(recording.branchId, createBranchPayload(importedRecorder,
+                                createHaltOccurrenceLedger()));
                         }
-                        while (eventIndex < staged.trace.length) {
-                            importedRecorder.appendEvent(staged.trace[eventIndex++]);
+                        const branchIdOf = branch => branch.branchId ?? branch.id;
+                        const parentIdOf = branch => branch.parentBranchId ?? branch.parentId ?? null;
+                        const root = staged.branches.find(branch => parentIdOf(branch) === null);
+                        const rootId = root && branchIdOf(root);
+                        if (!root || !payloads.has(rootId)) throw Object.assign(
+                            new Error('Imported session has no root recording'),
+                            {code: 'session-import-root-missing'});
+                        const importedStore = createForkRecordingStore({rootBranchId: rootId,
+                            rootRecording: payloads.get(rootId)});
+                        for (const branch of staged.branches.filter(item => parentIdOf(item) !== null)) {
+                            const id = branchIdOf(branch); const parentId = parentIdOf(branch);
+                            const added = importedStore.fork({branchId: id, parentBranchId: parentId,
+                                forkCursor: branch.forkCursor ||
+                                    {branchId: parentId, eventCursor: branch.eventCursor},
+                                recording: payloads.get(id)});
+                            if (!added.accepted) throw Object.assign(new Error(added.reason || added.code),
+                                {code: added.code});
                         }
-                        const importedPayload = createBranchPayload(importedRecorder,
-                            createHaltOccurrenceLedger());
-                        const importedStore = createForkRecordingStore({rootRecording: importedPayload});
+                        const wantedActive = branchIdOf(staged.branches.find(branch => branch.active) || root);
+                        const activated = importedStore.activate(wantedActive);
+                        if (!activated.accepted) throw Object.assign(new Error(activated.reason || activated.code),
+                            {code: activated.code});
                         // Commit is deliberately the first mutation: decoding,
                         // hashing and recorder reconstruction all completed above.
-                        activeBranchPayload = importedPayload;
+                        activeBranchPayload = activated.recording;
                         forkRecordingStore = importedStore;
                         reverseCursor = null;
                         reverseContinue.reset();
                         selectedInspectionKey = null;
                         selectedInspectionView = null;
-                        return {traceEvents: staged.trace.length,
+                        return {traceEvents: staged.recordings.reduce((sum, item) => sum + item.trace.length, 0),
                             checkpoints: staged.checkpoints.length};
                     }});
                 // Rendering is not part of the transaction: a consumer error

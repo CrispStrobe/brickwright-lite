@@ -173,11 +173,15 @@ export function compareReplayValues (expectedValues, actualValues, {baseCursor =
 export function createDebugRecorder ({
     checkpointBudgetBytes = DEFAULT_CHECKPOINT_BUDGET,
     eventBudgetBytes = DEFAULT_EVENT_BUDGET,
-    inputBudgetBytes = DEFAULT_INPUT_BUDGET
+    inputBudgetBytes = DEFAULT_INPUT_BUDGET,
+    initialInputCursor = 0
 } = {}) {
     assertBudget(checkpointBudgetBytes, 'checkpointBudgetBytes');
     assertBudget(eventBudgetBytes, 'eventBudgetBytes');
     assertBudget(inputBudgetBytes, 'inputBudgetBytes');
+    if (!Number.isSafeInteger(initialInputCursor) || initialInputCursor < 0) {
+        throw new TypeError('initialInputCursor must be a non-negative safe integer');
+    }
 
     let inputs = [];
     let events = [];
@@ -187,8 +191,8 @@ export function createDebugRecorder ({
     let retireCursors = [];
     let cycleCursors = [];
     let checkpoints = [];
-    let inputBaseCursor = 0;
-    let nextInputCursor = 0;
+    let inputBaseCursor = initialInputCursor;
+    let nextInputCursor = initialInputCursor;
     let lastEventSeq = -1;
     let nextCheckpointId = 0;
     let checkpointBytes = 0;
