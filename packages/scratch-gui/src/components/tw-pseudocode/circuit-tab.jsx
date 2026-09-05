@@ -1623,7 +1623,8 @@ class CircuitTab extends React.Component {
                     // Step-over and step-out were the same shape of gap: the
                     // buttons render from `capabilities` and called undefined.
                     stepOver: () => runner.stepOver(),
-                    stepOut: () => runner.stepOut()
+                    stepOut: () => runner.stepOut(),
+                    runToAddress: address => runner.runToAddress(address)
                 }
             });
         }

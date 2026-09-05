@@ -50,6 +50,7 @@ import {createDebugRecorder} from './recorder.js';
 import {createHaltOccurrenceLedger} from './halt-occurrence-ledger.js';
 import {createForkRecordingStore} from './fork-recording-store.js';
 import {createBranchCursor} from './fork-history.js';
+import {createRunToCoordinator} from './run-to.js';
 import { setValueResolver } from './hover-values.js';
 import { instructionLength } from './opcodes.js';
 import {
@@ -433,6 +434,9 @@ function netlistFromCircuitFile(data) {
 export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.vercel.app', targetKind = 'emulator', machineConfig = null, bootMedia = null, onChange = () => {} }) {
     let session = null;
     let target = null;
+    let runToTarget = null;
+    let runToController = null;
+    let activeRunTo = null;
     /** capabilities() builds a fresh literal per call, and snapshot() runs on
      *  every change event — consumers that guard their setState on capability
      *  IDENTITY (circuit-tab's debugState stamp) then re-render at the event
@@ -676,6 +680,26 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         reverseContinue.reset();
         return {accepted: true, forked: true, branch: activated.branch,
             checkpoint: rooted.checkpoint};
+    }
+
+    function addressRunTo() {
+        if (!target) return null;
+        if (runToTarget === target && runToController) return runToController;
+        runToTarget = target;
+        runToController = createRunToCoordinator({target: {
+            capabilities: () => debugFoundation.capabilities(),
+            setBreakpoint: spec => target.setBreakpoint(spec),
+            clearBreakpoint: id => target.clearBreakpoint(id),
+            onHalt: listener => target.onHalt(listener),
+            // Keep the debug session's intent coherent while the coordinator
+            // owns the target's bounded execution slices.
+            run: () => session.resume(),
+            runFor: budget => target.runFor(budget),
+            state: () => target.state(),
+            halt: () => target.halt(),
+            regs: () => target.regs()
+        }});
+        return runToController;
     }
 
     const breakpointIdsForHandle = handle => {
@@ -2244,6 +2268,19 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     function pumpFrame() {
         rafId = null;
         if (!session) return;
+        if (activeRunTo) {
+            const result = runToController.pump();
+            if (board) board.advanceTo(target.timeNs());
+            if (result.accepted && result.reason === 'running') {
+                schedule();
+                emitLive();
+                return;
+            }
+            activeRunTo = null;
+            setStatus('paused', result.accepted ?
+                `Reached 0x${result.address.toString(16)}` : result.reason);
+            return;
+        }
         // Opt-in production-bundle telemetry for the browser/mobile benchmark.
         // The global is absent in normal use, so this is one property read and
         // no allocation on the regular pump path.
@@ -2428,6 +2465,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
         pause() {
             if (!session) return;
+            if (activeRunTo) {
+                runToController.cancel();
+                activeRunTo = null;
+            }
             session.pause();
             unschedule();
             setStatus('paused');
@@ -2461,6 +2502,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
         stop() {
             unschedule();
+            if (activeRunTo) {
+                runToController.cancel();
+                activeRunTo = null;
+            }
             if (session) session.stop();
             clearGlow();
             // The run board dies with the run — fall back to the designer's.
@@ -3040,6 +3085,25 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             return session ? session.step('out') : { unsupported: 'not running' };
         },
 
+        runToAddress(address) {
+            if (!target || !session) return {accepted: false, code: 'run-to-unavailable',
+                reason: 'nothing is running yet'};
+            const forked = beginForwardBranch();
+            if (!forked.accepted) return forked;
+            const coordinator = addressRunTo();
+            const result = coordinator.startAddress(address);
+            if (!result.accepted) {
+                setStatus('paused', result.reason);
+                return result;
+            }
+            activeRunTo = {generation: result.generation, address};
+            reverseCursor = null;
+            reverseContinue.reset();
+            setStatus('running', `Running to 0x${address.toString(16)}`);
+            schedule();
+            return result;
+        },
+
         /**
          * The user's OWN variables, by the name they typed.
          *
@@ -3171,6 +3235,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             setValueResolver(null);
             if (vm && vm.runtime) delete vm.runtime._bwDebugVariables;
             unschedule();
+            if (activeRunTo) {
+                runToController.cancel();
+                activeRunTo = null;
+            }
             if (unsubscribeBps) { unsubscribeBps(); unsubscribeBps = null; }
             if (unsubscribeDebugEvents) { unsubscribeDebugEvents(); unsubscribeDebugEvents = null; }
             debugEventsTarget = null;
@@ -3182,6 +3250,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             // machine is plain JS); the 8051 target's tears down WASM state.
             if (target && typeof target.destroy === 'function') target.destroy();
             session = target = board = symbols = null;
+            runToTarget = runToController = null;
             for (const branch of forkRecordingStore.summaries()) {
                 const payload = forkRecordingStore.recordingFor(branch.branchId).recording;
                 payload.recordingSession.stop();

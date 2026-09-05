@@ -12,7 +12,7 @@ earlier row optional.
 | step | deliverable | state |
 | --- | --- | --- |
 | 1 | checkpoint debugger-host state and retain parent-linked fork histories | complete — atomic host capture/restore/reconstruction plus transactional live branch payloads |
-| 2 | run-to plus live-tested step over/out | pending |
+| 2 | run-to plus live-tested step over/out | complete — bounded address run-to on six cores; live depth-step certification |
 | 3 | event-synchronized register, disassembly and memory panes | pending |
 | 4 | Z80 and 6502 checkpoint/replay certification | pending |
 | 5 | browser debugger workflows in GitHub CI | pending |
@@ -37,6 +37,18 @@ the replacement root checkpoint succeeds. Replay reconstructs stateful
 breakpoint predicates and deterministic debugger counters from verified
 recorded events, suppresses external actions, and rolls back to its source
 checkpoint on every failed replay phase.
+
+Address run-to is an explicit capability, never inferred from ordinary
+breakpoints. Each descriptor names its code-space bounds, before-execution
+stop side and synchronous installation contract. The browser installs one
+owned temporary breakpoint and pumps one bounded slice per animation frame;
+pause, stop, target replacement, unrelated halts, exhaustion and cleanup all
+terminate it visibly. Live core tests cover address run-to and call-depth
+stepping on 8051, AVR, RP2040, Z80, 6502 and 8086. Those tests found and fixed
+RP2040 leaf-function step-out (unchanged SP) and an 8086 step-over false stop
+when an interrupt returned before the CALL instruction retired. Event/time
+run-to remains explicitly named instruction-atomic: it stops at the complete
+retire boundary after the matching interior event or requested time.
 
 ## Outcome
 

@@ -73,6 +73,8 @@ export function createZ80DebugTarget(adapter, opts = {}) {
       const checkpointStatus = machine.checkpointSupport();
       return {
         steps: ['insn', 'over', 'out'], breakpoints: ['code', 'write'], timeFreezes: true,
+        runTo: [{kind: 'address', space: 'code', addressMin: 0, addressMax: 0xffff,
+          stopSides: ['before'], installation: 'sync'}],
         consumes: [], events: ['instruction', 'memory', 'port'],
         fidelity: {instruction: 'recorded', memory: 'reconstructed', port: 'reconstructed', cycle: 'unsupported'},
         recording: checkpointStatus.supported ? ['checkpoint', 'restore'] : [],
@@ -160,7 +162,9 @@ export function createZ80DebugTarget(adapter, opts = {}) {
         return id;
       }
       if (spec.kind !== 'code') return { unsupported: `unknown breakpoint kind: ${spec.kind}` };
-      if (spec.addr == null) return { unsupported: 'addr required' };
+      if (!Number.isSafeInteger(spec.addr) || spec.addr < 0 || spec.addr > 0xffff) {
+        return { unsupported: 'code breakpoint addr must be in 0x0000..0xffff' };
+      }
       const id = nextBpId++;
       breakpoints.set(id, { kind: 'code', addr: spec.addr & 0xffff });
       return id;

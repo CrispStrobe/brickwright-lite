@@ -22,12 +22,51 @@ const COMMAND_REQUIREMENTS = Object.freeze({
     reverseContinue: ['reverse', 'continue'],
     checkpoint: ['recording', 'checkpoint'],
     restore: ['recording', 'restore'],
-    fork: ['recording', 'fork']
+    fork: ['recording', 'fork'],
+    runTo: ['runTo', null]
 });
 
 const uniqueStrings = (value) => [...new Set(
     (Array.isArray(value) ? value : []).filter(item => typeof item === 'string')
 )];
+
+const RUN_TO_KINDS = new Set(['address', 'source', 'block', 'event']);
+const RUN_TO_SIDES = new Set(['before', 'after']);
+const RUN_TO_INSTALLATIONS = new Set(['sync', 'async']);
+const RUN_TO_FIELDS = new Set([
+    'kind', 'space', 'addressMin', 'addressMax', 'stopSides', 'installation', 'eventKinds'
+]);
+
+const normalizeRunTo = value => {
+    if (!Array.isArray(value)) return [];
+    const descriptors = [];
+    for (const raw of value) {
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw) ||
+            Object.keys(raw).some(key => !RUN_TO_FIELDS.has(key)) ||
+            !RUN_TO_KINDS.has(raw.kind) || !RUN_TO_INSTALLATIONS.has(raw.installation) ||
+            !Array.isArray(raw.stopSides)) continue;
+        const stopSides = uniqueStrings(raw.stopSides);
+        if (!stopSides.length || stopSides.some(side => !RUN_TO_SIDES.has(side))) continue;
+        const descriptor = {kind: raw.kind};
+        if (raw.kind === 'address') {
+            if (typeof raw.space !== 'string' || raw.space.length === 0 || raw.eventKinds !== undefined ||
+                !Number.isSafeInteger(raw.addressMin) || raw.addressMin < 0 ||
+                !Number.isSafeInteger(raw.addressMax) || raw.addressMax < raw.addressMin) continue;
+            descriptor.space = raw.space;
+            descriptor.addressMin = raw.addressMin;
+            descriptor.addressMax = raw.addressMax;
+        } else if (raw.space !== undefined || raw.addressMin !== undefined || raw.addressMax !== undefined) continue;
+        if (raw.kind === 'event') {
+            const eventKinds = uniqueStrings(raw.eventKinds);
+            if (!eventKinds.length) continue;
+            descriptor.eventKinds = Object.freeze(eventKinds);
+        } else if (raw.eventKinds !== undefined) continue;
+        descriptor.stopSides = Object.freeze(stopSides);
+        descriptor.installation = raw.installation;
+        descriptors.push(Object.freeze(descriptor));
+    }
+    return descriptors;
+};
 
 const normalizeSpaces = (raw) => {
     const spaces = {};
@@ -60,6 +99,7 @@ export function normalizeDebugCapabilities (raw = {}, {target = 'unknown'} = {})
 
     const steps = uniqueStrings(raw.steps);
     const events = uniqueStrings(raw.events);
+    const runTo = normalizeRunTo(raw.runTo);
     const fidelity = {...(raw.fidelity || {})};
     // This default is intentionally conservative. Existing cores execute whole
     // instructions per call; only a target explicitly advertising `cycle` may
@@ -75,6 +115,7 @@ export function normalizeDebugCapabilities (raw = {}, {target = 'unknown'} = {})
         events: Object.freeze(events),
         reverse: Object.freeze(uniqueStrings(raw.reverse)),
         recording: Object.freeze(uniqueStrings(raw.recording)),
+        runTo: Object.freeze(runTo),
         spaces: Object.freeze(normalizeSpaces(raw)),
         fidelity: Object.freeze(fidelity),
         haltPolicy: raw.haltPolicy || null,
@@ -103,6 +144,18 @@ export function commandCapability (capabilities, command) {
         });
     }
     const [group, value] = requirement;
+    if (group === 'runTo') {
+        if (Array.isArray(capabilities.runTo) && capabilities.runTo.length > 0) {
+            return Object.freeze({accepted: true, command, capability: 'runTo'});
+        }
+        return Object.freeze({
+            accepted: false,
+            command,
+            code: 'unsupported-capability',
+            missing: 'runTo',
+            reason: 'runTo requires an explicit runTo descriptor, which this target does not advertise'
+        });
+    }
     if (capabilities[group] && capabilities[group].includes(value)) {
         return Object.freeze({accepted: true, command, capability: `${group}.${value}`});
     }

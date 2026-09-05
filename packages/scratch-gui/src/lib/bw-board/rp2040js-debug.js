@@ -255,7 +255,7 @@ export function createRp2040jsDebugTarget(adapter, opts = {}) {
             return 'halted';
           }
         } else if (depthStep.kind === 'out') {
-          if (core.SP > depthStep.sp0) {
+          if (curPc === depthStep.returnPc) {
             running = false; depthStep = null;
             resumeGuard = curPc;
             syncBoard(); announce('step');
@@ -292,6 +292,8 @@ export function createRp2040jsDebugTarget(adapter, opts = {}) {
       return {
         steps: ['insn', 'block', 'over', 'out'],
         breakpoints: ['code', 'yield', 'write'],
+        runTo: [{kind: 'address', space: 'code', addressMin: 0, addressMax: 0xfffffffe,
+          stopSides: ['before'], installation: 'sync'}],
         spaces: ['code', 'sram'],
         writable: ['sram'],
         sfrs: 'memory-mapped',
@@ -363,11 +365,11 @@ export function createRp2040jsDebugTarget(adapter, opts = {}) {
         return undefined;
       }
       if (kind === 'out') {
-        // Run until SP rises above its current level (a POP {PC} or
-        // epilogue restoring LR then BX LR). For leaf functions that
-        // never touched SP this waits forever — a stated limitation,
-        // same as the AVR and 6502 targets.
-        depthStep = { kind: 'out', sp0: core.SP };
+        // LR names the caller's return site on entry and remains the
+        // correct stop boundary for leaf functions, which never change SP.
+        // A non-leaf function conventionally saves/restores LR around nested
+        // calls, so the same address also catches POP {pc}/BX lr epilogues.
+        depthStep = { kind: 'out', returnPc: core.LR & ~1 };
         insnRemaining = null;
         blockStep = false;
         running = true;
@@ -386,7 +388,9 @@ export function createRp2040jsDebugTarget(adapter, opts = {}) {
     setBreakpoint(bp) {
       if (!bp || typeof bp !== 'object') return { unsupported: 'not a breakpoint' };
       if (bp.kind === 'code') {
-        if (typeof bp.addr !== 'number') return { unsupported: 'code breakpoint needs addr' };
+        if (!Number.isSafeInteger(bp.addr) || bp.addr < 0 || bp.addr > 0xfffffffe) {
+          return { unsupported: 'code breakpoint addr must be in 0x00000000..0xfffffffe' };
+        }
         if ((bp.addr & 1) !== 0) {
           return { unsupported:
             `Thumb code addresses are halfword-aligned; bit 0 is the ` +

@@ -67,6 +67,7 @@ const L10N = {
             'disassembled backwards, because nothing marks where an instruction starts.',
         cols: 'Columns', regs: 'registers', ports: 'ports', timers: 'timers',
         stepInsn: 'Step instruction', over: 'Step over', out: 'Step out',
+        runTo: 'Run to address', runToHint: 'Run to a code address and stop before it executes',
         stepCycle: 'Step cycle',
         cycleHint: 'One CPU clock — finer than one instruction. A multi-cycle ' +
             'instruction takes several presses, and the PC only moves on the one ' +
@@ -104,6 +105,7 @@ const L10N = {
             'rückwärts disassemblieren, da nichts den Befehlsanfang markiert.',
         cols: 'Spalten', regs: 'Register', ports: 'Ports', timers: 'Timer',
         stepInsn: 'Ein Befehl', over: 'Überspringen', out: 'Heraus',
+        runTo: 'Bis Adresse', runToHint: 'Bis zu einer Codeadresse laufen und davor anhalten',
         stepCycle: 'Ein Takt',
         cycleHint: 'Ein CPU-Takt — feiner als ein Befehl. Ein mehrtaktiger Befehl ' +
             'braucht mehrere Klicks, und der PC bewegt sich nur bei dem Takt, der ihn ' +
@@ -171,16 +173,19 @@ class DebugDrawer extends React.Component {
     toggle () { this.setState(s => ({open: !s.open})); }
 
     /** Ask the user for a hex address. A prompt is honest about being a stopgap. */
-    askAddress (label, fallback) {
-        const raw = window.prompt(`${label} (hex)`, hex16(fallback || 0));
+    askAddress (label, fallback, maximum = 0xFFFF) {
+        const initial = Math.max(0, Number(fallback) || 0).toString(16).toUpperCase()
+            .padStart(maximum > 0xFFFF ? 5 : 4, '0');
+        const raw = window.prompt(`${label} (hex)`, initial);
         if (raw === null) return null;
         const n = parseInt(String(raw).replace(/^0x/i, ''), 16);
-        return Number.isFinite(n) ? (n & 0xFFFF) : null;
+        return Number.isSafeInteger(n) && n >= 0 && n <= maximum ? n : null;
     }
 
     renderControls () {
         const {runner} = this.props;
         const caps = (this.props.ui && this.props.ui.capabilities) || null;
+        const debugCaps = (this.props.ui && this.props.ui.debugCapabilities) || null;
         const can = kind => !caps || caps.steps.includes(kind);
         // `can` defaults to TRUE when capabilities have not arrived, which is
         // right for the controls every engine has and wrong for one that must
@@ -188,6 +193,11 @@ class DebugDrawer extends React.Component {
         // must mean no button, not a button that turns out to refuse. This is
         // the D5 lesson in one line.
         const hasCycle = !!(caps && (caps.steps || []).includes('cycle'));
+        const runToAddress = debugCaps && (debugCaps.runTo || []).find(item =>
+            item.kind === 'address' && item.space === 'code' &&
+            item.stopSides.includes('before'));
+        const runToDisabled = !runToAddress || ['running', 'stepping', 'building', 'attaching']
+            .includes(this.props.ui?.phase);
         const hasWatch = !!(caps && (caps.breakpoints || []).includes('write'));
         // Set PC and Wipe are NOT capability flags — only the 8051 target
         // implements them at all. These two buttons were ungated while their
@@ -228,6 +238,17 @@ class DebugDrawer extends React.Component {
                     disabled={!can('out')}
                     onClick={() => runner.stepOut()}
                 >{this.tx('out')}</button>
+                {runToAddress ? <button
+                    style={runToDisabled ? off : BTN}
+                    disabled={runToDisabled}
+                    data-run-to-address
+                    title={this.tx('runToHint')}
+                    onClick={() => {
+                        const address = this.askAddress(this.tx('runTo'), this.currentPc(),
+                            runToAddress.addressMax);
+                        if (address !== null) runner.runToAddress(address);
+                    }}
+                >{this.tx('runTo')}</button> : null}
                 <button
                     style={has('setPc') ? BTN : off}
                     disabled={!has('setPc')}

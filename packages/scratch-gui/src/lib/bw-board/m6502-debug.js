@@ -81,6 +81,8 @@ export function createM6502DebugTarget(adapter, opts = {}) {
       return {
         steps: [...(symbols ? ['insn', 'block'] : ['insn']), 'over', 'out'],
         breakpoints: [...(symbols ? ['code', 'yield'] : ['code']), 'write'],
+        runTo: [{kind: 'address', space: 'code', addressMin: 0, addressMax: 0xffff,
+          stopSides: ['before'], installation: 'sync'}],
         timeFreezes: true,
         consumes: [],
         events: ['instruction', 'memory'],
@@ -183,7 +185,9 @@ export function createM6502DebugTarget(adapter, opts = {}) {
 
     setBreakpoint(spec) {
       if (spec.kind === 'code') {
-        if (spec.addr == null) return { unsupported: 'addr required' };
+        if (!Number.isSafeInteger(spec.addr) || spec.addr < 0 || spec.addr > 0xffff) {
+          return { unsupported: 'code breakpoint addr must be in 0x0000..0xffff' };
+        }
         const id = nextBpId++;
         breakpoints.set(id, { kind: 'code', addr: spec.addr });
         return id;

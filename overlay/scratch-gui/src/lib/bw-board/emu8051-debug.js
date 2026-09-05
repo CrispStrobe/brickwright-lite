@@ -513,6 +513,8 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
                 breakpoints: hasWatchpoints
                     ? ['code', 'yield', 'write']
                     : ['code', 'yield'],
+                runTo: [{kind: 'address', space: 'code', addressMin: 0, addressMax: 0xffff,
+                    stopSides: ['before'], installation: 'sync'}],
                 spaces: ['code', 'iram', 'sfr', 'xram', 'bit'],
                 writable: ['code', 'iram', 'sfr', 'xram', 'bit'],
                 sfrs: 'all',
@@ -626,7 +628,10 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
             let handle;
             let pc;                       // where a hit will leave the PC
             if (bp.kind === 'code') {
-                pc = bp.addr & 0xFFFF;
+                if (!Number.isSafeInteger(bp.addr) || bp.addr < 0 || bp.addr > 0xffff) {
+                    return { unsupported: 'code breakpoint addr must be in 0x0000..0xffff' };
+                }
+                pc = bp.addr;
                 handle = wasm._emu_dbg_set_bp_code(pc);
             } else if (bp.kind === 'yield') {
                 const idx = taskIndex.get(bp.task);
