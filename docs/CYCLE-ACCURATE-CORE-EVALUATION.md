@@ -56,6 +56,15 @@ The upstream suite deliberately has no WAI (`CB`) or STP (`DB`) single-step
 files; those two omissions are recorded explicitly and remain separate
 qualification work rather than being counted as passes.
 
+A separate five-scenario WDC timing-chart suite now covers that gap: WAI with
+unmasked IRQ, masked IRQ and NMI, plus STP interrupt hold and reset-only wake.
+It records every read/write bus cycle and restores/replays every one of the 51
+relevant microsteps. At the pinned JSMoo revision both STP scenarios and all 51
+snapshot replays match, while all three WAI scenarios advance the externally
+visible PC during the wait and consequently push the wrong return address.
+Those are categorized timed-wake bus failures, not folded into the unrelated
+status-register serializer rejection.
+
 ## Intel 8086/8088
 
 An instruction timing total or post-hoc bus schedule is not cycle-accurate.

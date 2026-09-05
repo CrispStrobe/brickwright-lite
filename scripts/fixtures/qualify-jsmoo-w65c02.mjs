@@ -56,6 +56,134 @@ const context = vm.createContext({
 const harness = `
 ${source}
 (() => {
+  const newLowPowerCpu = (opcode, status = 0x30) => {
+    const memory = new Uint8Array(65536);
+    memory.set([opcode, 0xea, 0xea], 0x0200);
+    memory[0xfffa] = 0x00; memory[0xfffb] = 0x30;
+    memory[0xfffc] = 0x00; memory[0xfffd] = 0x40;
+    memory[0xfffe] = 0x00; memory[0xffff] = 0x50;
+    const clock = {trace_cycles: 0};
+    const cpu = new m6502_t(m65c02_opcodes_decoded, clock);
+    cpu.first_reset = false; cpu.regs.TCU = 0; cpu.regs.PC = 0x0201; cpu.regs.S = 0xff;
+    cpu.regs.P.setbyte(status); cpu.regs.new_I = cpu.regs.P.I;
+    cpu.pins.Addr = 0x0200; cpu.pins.D = opcode; cpu.pins.RW = 0;
+    return {cpu, memory, clock};
+  };
+  const busTick = state => {
+    const {cpu, memory} = state;
+    const address = cpu.pins.Addr & 0xffff;
+    let row;
+    if (cpu.pins.RW) {
+      memory[address] = cpu.pins.D & 0xff;
+      row = [address, cpu.pins.D & 0xff, 'write'];
+    } else {
+      cpu.pins.D = memory[address];
+      row = [address, cpu.pins.D & 0xff, 'read'];
+    }
+    cpu.cycle();
+    return row;
+  };
+  const applyAction = (state, action) => {
+    if (action.irq !== undefined) state.cpu.pins.IRQ = action.irq;
+    if (action.nmi !== undefined) state.cpu.pins.NMI = action.nmi;
+    if (action.reset) state.cpu.reset();
+    return busTick(state);
+  };
+  const restoreLowPower = snapshot => {
+    const memory = Uint8Array.from(snapshot.memory);
+    const clock = {trace_cycles: snapshot.clock};
+    const cpu = new m6502_t(m65c02_opcodes_decoded, clock);
+    if (!cpu.deserialize(snapshot.cpu)) throw new Error('low-power snapshot refused');
+    return {cpu, memory, clock};
+  };
+  const replayEveryMicrostep = (opcode, status, actions) => {
+    const baseline = newLowPowerCpu(opcode, status);
+    const snapshots = [];
+    for (let point = 0; point <= actions.length; point++) {
+      snapshots.push({cpu: baseline.cpu.serialize(), memory: Array.from(baseline.memory),
+        clock: baseline.clock.trace_cycles});
+      if (point < actions.length) applyAction(baseline, actions[point]);
+    }
+    const failures = [];
+    for (let point = 0; point < actions.length; point++) {
+      const first = restoreLowPower(snapshots[point]);
+      const second = restoreLowPower(snapshots[point]);
+      const traceA = [], traceB = [];
+      for (let index = point; index < actions.length; index++) {
+        traceA.push(applyAction(first, actions[index]));
+        traceB.push(applyAction(second, actions[index]));
+      }
+      if (JSON.stringify(traceA) !== JSON.stringify(traceB) ||
+          JSON.stringify(first.cpu.serialize()) !== JSON.stringify(second.cpu.serialize()) ||
+          JSON.stringify(Array.from(first.memory)) !== JSON.stringify(Array.from(second.memory))) {
+        failures.push({point, category: 'microstep-snapshot-replay'});
+      }
+    }
+    return {points: actions.length, passed: actions.length - failures.length, failures};
+  };
+  const runLowPower = (name, opcode, status, actions, expected) => {
+    const state = newLowPowerCpu(opcode, status);
+    const bus = actions.map(action => applyAction(state, action));
+    const failures = [];
+    if (expected.prefix && JSON.stringify(bus.slice(0, expected.prefix.length)) !== JSON.stringify(expected.prefix)) {
+      failures.push({category: 'entry-bus', expected: expected.prefix, actual: bus.slice(0, expected.prefix.length)});
+    }
+    if (expected.exactBus && JSON.stringify(bus) !== JSON.stringify(expected.exactBus)) {
+      failures.push({category: 'timed-wake-bus', expected: expected.exactBus, actual: bus});
+    }
+    if (expected.vector !== undefined && (state.cpu.pins.Addr & 0xffff) !== expected.vector) {
+      failures.push({category: 'interrupt-vector', expected: expected.vector,
+        actual: state.cpu.pins.Addr & 0xffff});
+    }
+    if (expected.vectorBus !== undefined && !bus.some(row =>
+      row[0] === expected.vectorBus && row[2] === 'read')) {
+      failures.push({category: 'reset-vector-bus', expected: expected.vectorBus, actual: bus});
+    }
+    if (expected.stackWrites !== undefined) {
+      const writes = bus.filter(row => row[2] === 'write' && row[0] >= 0x0100 && row[0] <= 0x01ff).length;
+      if (writes !== expected.stackWrites) failures.push({category: 'interrupt-stack',
+        expected: expected.stackWrites, actual: writes});
+    }
+    if (expected.stopped && (!state.cpu.regs.STP || new Set(bus.slice(3).map(row => JSON.stringify(row))).size !== 1)) {
+      failures.push({category: 'stop-hold', expected: 'STP latched with a stable PC+1 read bus',
+        actual: {stp: state.cpu.regs.STP, heldBus: bus.slice(3)}});
+    }
+    const replay = replayEveryMicrostep(opcode, status, actions);
+    if (replay.failures.length) failures.push(...replay.failures);
+    return {name, actions: actions.length, bus, replay, failures, passed: failures.length === 0};
+  };
+  const waiPrefix = [[0x0200, 0xcb, 'read'], [0x0201, 0xea, 'read'], [0x0201, 0xea, 'read']];
+  const stpPrefix = [[0x0200, 0xdb, 'read'], [0x0201, 0xea, 'read'], [0x0201, 0xea, 'read']];
+  const waiIrqBus = [...waiPrefix, [0x0201, 0xea, 'read'], [0x0201, 0xea, 'read'],
+    [0x0201, 0xea, 'read'], [0x0201, 0xea, 'read'], [0x01ff, 0x02, 'write'],
+    [0x01fe, 0x01, 'write'], [0x01fd, 0x20, 'write'], [0xfffe, 0x00, 'read'],
+    [0xffff, 0x50, 'read']];
+  const waiNmiBus = waiIrqBus.map(row => [...row]);
+  waiNmiBus[9][1] = 0x24; waiNmiBus[10][0] = 0xfffa; waiNmiBus[11][0] = 0xfffb;
+  waiNmiBus[11][1] = 0x30;
+  const lowPower = [
+    runLowPower('WAI wakes and vectors on unmasked IRQ', 0xcb, 0x30,
+      [{}, {}, {}, {}, {irq: 1}, {}, {}, {}, {}, {}, {}, {}],
+      {prefix: waiPrefix, exactBus: waiIrqBus, vector: 0x5000, stackWrites: 3}),
+    runLowPower('WAI wakes on masked IRQ without taking the vector', 0xcb, 0x34,
+      [{}, {}, {}, {}, {irq: 1}, {}, {}], {prefix: waiPrefix,
+        exactBus: [...waiPrefix, [0x0201, 0xea, 'read'], [0x0201, 0xea, 'read'],
+          [0x0201, 0xea, 'read'], [0x0202, 0xea, 'read']], vector: 0x0203, stackWrites: 0}),
+    runLowPower('WAI wakes and vectors on NMI edge', 0xcb, 0x34,
+      [{}, {}, {}, {}, {nmi: 1}, {}, {}, {}, {}, {}, {}, {}],
+      {prefix: waiPrefix, exactBus: waiNmiBus, vector: 0x3000, stackWrites: 3}),
+    runLowPower('STP ignores IRQ and NMI until reset', 0xdb, 0x30,
+      [{}, {}, {}, {irq: 1}, {}, {nmi: 1}, {}, {}], {prefix: stpPrefix, stopped: true}),
+    runLowPower('STP exits only through reset and fetches the reset vector', 0xdb, 0x30,
+      [{}, {}, {}, {}, {reset: true}, {}, {}, {}, {}, {}, {}, {}],
+      {prefix: stpPrefix, vectorBus: 0x4000, stackWrites: 0})
+  ];
+  const lowPowerQualification = {schema: 1, source: 'WDC W65C02S timing chart 8b/8c and interrupt sequence 10a',
+    scenarios: lowPower, total: lowPower.length, passed: lowPower.filter(item => item.passed).length,
+    snapshotPoints: lowPower.reduce((sum, item) => sum + item.replay.points, 0),
+    snapshotPassed: lowPower.reduce((sum, item) => sum + item.replay.passed, 0),
+    failures: lowPower.flatMap(item => item.failures.map(failure => ({scenario: item.name, ...failure}))).slice(0, 24)};
+
   const executeVector = item => {
     const test = item.vector;
     const memory = new Uint8Array(65536);
@@ -178,7 +306,8 @@ ${source}
   const memoryEqual = JSON.stringify(Array.from(memory)) === JSON.stringify(destination.memory);
   const equal = traceEqual && stateEqual && memoryEqual;
   return {schema: 1, ticks: 36, snapshotReplay: equal, memory8000: memory[0x8000],
-    busActivity: JSON.parse(first).length > 0, traceEqual, stateEqual, memoryEqual, stateMismatch, corpus};
+    busActivity: JSON.parse(first).length > 0, traceEqual, stateEqual, memoryEqual, stateMismatch,
+    corpus, lowPowerQualification};
 })()`;
 
 try {

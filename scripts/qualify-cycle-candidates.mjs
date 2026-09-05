@@ -124,6 +124,24 @@ if (w65Runner) {
         report?.corpus?.statusLatchOnly > 0 && report.corpus.failures.some(failure =>
             failure.statusOnly === true && failure.registerDiffs?.p),
     report?.corpus ? `${report.corpus.statusLatchOnly} otherwise-matching vectors changed P.B` : 'no corpus receipt');
+    const lowPower = report?.lowPowerQualification;
+    check('JSMoo W65C02 runs exact WAI/STP IRQ/NMI timed-bus scenarios',
+        lowPower?.schema === 1 && lowPower.total === 5 &&
+        lowPower.scenarios?.every(scenario => scenario.bus.length === scenario.actions),
+        lowPower ? `${lowPower.passed}/${lowPower.total} scenarios matched` : 'no low-power receipt');
+    check('JSMoo W65C02 snapshots replay at every low-power microstep',
+        lowPower?.snapshotPoints === 51 && lowPower.snapshotPassed === lowPower.snapshotPoints,
+        lowPower ? `${lowPower.snapshotPassed}/${lowPower.snapshotPoints} microsteps` : 'no low-power receipt');
+    check('JSMoo W65C02 WAI timing defects remain explicit rejection evidence',
+        lowPower?.scenarios?.filter(scenario => scenario.name.startsWith('WAI')).length === 3 &&
+        lowPower.scenarios.filter(scenario => scenario.name.startsWith('WAI')).every(scenario =>
+            !scenario.passed && scenario.failures.some(failure => failure.category === 'timed-wake-bus')),
+        lowPower ? JSON.stringify(lowPower.failures) : 'no low-power receipt');
+    check('JSMoo W65C02 STP hold and reset behavior match the bespoke vectors',
+        lowPower?.scenarios?.filter(scenario => scenario.name.startsWith('STP')).length === 2 &&
+        lowPower.scenarios.filter(scenario => scenario.name.startsWith('STP')).every(scenario => scenario.passed),
+        lowPower ? JSON.stringify(lowPower.scenarios.filter(scenario => scenario.name.startsWith('STP')))
+            : 'no low-power receipt');
     observations.w65c02 = {evidenceComplete: report?.schema === 1,
         qualifies: result.status === 0 && report?.snapshotReplay === true,
         rejectionEvidence: {runnerExit: result.status, snapshotReplay: report?.snapshotReplay,

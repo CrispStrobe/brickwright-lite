@@ -46,6 +46,10 @@ test('heavy qualification is hosted, bounded, fail-closed and retains evidence',
     assert.match(qualifier, /WAI and STP corpus omissions remain explicit rejection receipts/);
     assert.match(qualifier, /corpus failure evidence is bounded, never discarded/);
     assert.match(qualifier, /known B-latch defect is reproduced by real oracle vectors/);
+    assert.match(qualifier, /runs exact WAI\/STP IRQ\/NMI timed-bus scenarios/);
+    assert.match(qualifier, /snapshots replay at every low-power microstep/);
+    assert.match(qualifier, /WAI timing defects remain explicit rejection evidence/);
+    assert.match(qualifier, /STP hold and reset behavior match the bespoke vectors/);
 });
 
 test('candidate licenses and every admitted source are hash-pinned', () => {
