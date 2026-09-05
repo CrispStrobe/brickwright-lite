@@ -156,6 +156,69 @@ async function readSource (rel) {
     return text;
 }
 
+// THE ALLOW-LIST TURNS "ONLY A HUMAN KNOWS THE DIRECTION" INTO A FACT THE
+// REPO HOLDS. Read the message this script prints when files differ: it says,
+// correctly, that a difference can mean BEHIND or AHEAD and the comparison
+// cannot tell which. That was true when the only evidence was "the bytes
+// differ". It is no longer true for work that has been written down.
+//
+// docs/VENDOR-DIVERGENCE-I8086-MACHINE.md carries a JSON block naming each
+// piece of lite-only work in i8086-machine.js and a regex that must match it.
+// For those, the direction IS knowable: if the CURRENT vendored copy satisfies
+// an entry and the INCOMING upstream text does not, then this write deletes
+// forward-ported work, and the script can say so by name instead of asking
+// someone to notice a red test afterwards.
+//
+// A tripwire tells you after the fact. This refuses.
+const readVendorAllowList = async () => {
+    const md = await readFile(
+        path.join(here, '..', 'docs', 'VENDOR-DIVERGENCE-I8086-MACHINE.md'), 'utf8').catch(() => null);
+    if (md === null) return null;          // reported below; never silently empty
+    const m = md.match(/```json\n([\s\S]*?)\n```/);
+    if (!m) return null;
+    const spec = JSON.parse(m[1]);
+    // The vendored paths in the doc are repo-relative; reduce to a basename so
+    // this works whichever of the two dual-tracked trees `dest` points at.
+    return {file: path.basename(spec.upstream.path), entries: spec.liteOnly};
+};
+const allowList = await readVendorAllowList();
+if (!allowList) {
+    // Species 1: an empty guard is indistinguishable from a satisfied one. If
+    // the doc is gone or unparseable the sync must not proceed as though the
+    // protection were in force -- it must say the protection is NOT in force.
+    console.error('\n  WARNING: docs/VENDOR-DIVERGENCE-I8086-MACHINE.md is missing or has no');
+    console.error('  JSON allow-list block. Forward-ported work in i8086-machine.js is NOT');
+    console.error('  protected on this run. Nothing below is evidence that it survived.');
+}
+const wouldDelete = [];
+const wouldTruncate = [];
+const force = process.argv.includes('--force');
+
+// THE ALLOW-LIST EXPLAINS; THIS MEASURES. The named entries above cover ONE
+// file, because it is the one whose divergence someone sat down and wrote up.
+// I found out what that was worth by running this script for real against
+// bw-board to test the guard: i8086-machine.js was protected and FIFTEEN OTHER
+// FILES LOST 950 LINES. Reverted from git, but nothing in the tool would have
+// told me -- the sync printed `wrote` fifteen times and exited 0.
+//
+// Measured across the whole vendored tree: 1123 lines exist here and not
+// upstream, in 17 files. The tool's own comment already said all ten sampled
+// differences were the AHEAD kind. So the safe default is not a curated list
+// of protected files -- a list is one more thing that goes stale, and the
+// fifteen files it would have needed were not on it. It is to DERIVE the
+// direction from the content on every run: a write that removes lines present
+// here and absent upstream is a write that destroys forward-ported work,
+// whatever the file is called and whether or not anyone documented it.
+//
+// Refuses rather than warns, because `wrote i8086-debug.js` scrolling past is
+// indistinguishable from the correct outcome. --force overrides, deliberately.
+const linesLostBy = (current, next) => {
+    const incoming = new Set(next.split('\n').map(l => l.trim()));
+    return current.split('\n')
+        .map(l => l.trim())
+        .filter(l => l && l !== '}' && l !== '};' && l !== '{' && !incoming.has(l));
+};
+
 await mkdir(dest, {recursive: true});
 let stale = 0;
 for (const rel of FILES) {
@@ -174,8 +237,64 @@ for (const rel of FILES) {
     const current = await readFile(out, 'utf8').catch(() => null);
     if (current === next) { console.log(`  ok    ${path.basename(rel)}`); continue; }
     stale++;
+    // Refuse BEFORE writing, not after. `current` is what is here now and
+    // `next` is what upstream would put here; an entry that holds for the
+    // first and not the second is work this write destroys.
+    if (allowList && path.basename(rel) === allowList.file && current !== null) {
+        const lost = allowList.entries.filter(d => {
+            const re = new RegExp(d.contains);
+            return re.test(current) && !re.test(next);
+        });
+        if (lost.length) {
+            wouldDelete.push({file: path.basename(rel), lost});
+            console.log(`  REFUSED ${path.basename(rel)} (would delete ${lost.length} allow-listed divergence(s))`);
+            continue;
+        }
+    }
+    // Content-derived guard, for every file. Runs before the named allow-list
+    // so the coarse protection cannot be bypassed by an undocumented file.
+    if (!check && !force && current !== null) {
+        const lost = linesLostBy(current, next);
+        if (lost.length) {
+            wouldTruncate.push({file: path.basename(rel), count: lost.length, sample: lost.slice(0, 3)});
+            console.log(`  REFUSED ${path.basename(rel)} (would delete ${lost.length} line(s) that exist only here)`);
+            continue;
+        }
+    }
     if (check) console.log(`  DIFFERS ${path.basename(rel)}`);
     else { await writeFile(out, next); console.log(`  wrote ${path.basename(rel)}`); }
+}
+
+if (wouldTruncate.length) {
+    const total = wouldTruncate.reduce((n, f) => n + f.count, 0);
+    console.error(`\nREFUSED: ${total} line(s) in ${wouldTruncate.length} file(s) exist here and not upstream.\n`);
+    for (const f of wouldTruncate) {
+        console.error(`  ${f.file}  (${f.count} lines)`);
+        for (const l of f.sample) console.error(`      - ${l.slice(0, 96)}`);
+    }
+    console.error('\n  A sync OVERWRITES the vendored copy with upstream, so every one of those');
+    console.error('  lines would be gone. The machine would still construct and no other test');
+    console.error('  would fail -- which is why this refuses instead of warning.');
+    console.error('\n  This is measured from the content, not read from a list, so it stays');
+    console.error('  true for files nobody has documented. If upstream genuinely supersedes');
+    console.error('  this work, --force. Check the direction first: the ten differences');
+    console.error('  sampled on 2026-09-04 were ALL forward-ported work, none were stale.');
+    process.exit(1);
+}
+
+if (wouldDelete.length) {
+    console.error('\nREFUSED TO OVERWRITE forward-ported work:\n');
+    for (const {file, lost} of wouldDelete) {
+        for (const d of lost) console.error(`  ${file}: ${d.id}\n      ${d.why}\n`);
+    }
+    console.error('  These are recorded in docs/VENDOR-DIVERGENCE-I8086-MACHINE.md as work');
+    console.error('  that lives here and not upstream. Upstream does not have them, so this');
+    console.error('  sync would delete them -- and the machine would still construct and no');
+    console.error('  other test would fail, which is exactly why this refuses rather than');
+    console.error('  warns. Upstream the work, or graft the upstream change by hand and');
+    console.error('  leave the entry in place. If the work is genuinely obsolete, delete its');
+    console.error('  entry from the allow-list in the same commit that drops it.');
+    process.exit(1);
 }
 
 // A vendored engine that quietly grew a dependency would break the bundle at build time,
