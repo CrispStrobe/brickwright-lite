@@ -119,7 +119,26 @@ export function buildI8086CapabilityReport() {
     // repository keeps finding; here it is in our own generator.
     for (const [, , file, anchor] of limitations) {
         const text = read(file);
-        if (anchor.test(text)) continue;
+        if (anchor.test(text)) {
+            // AN ANCHOR THAT MATCHES TWICE IS NOT AN ANCHOR. If the phrase also
+            // appears in a summary line or a prose aside, the row survives
+            // deletion of the very limitation it exists to pin -- it silently
+            // stops being a gate while still reporting success. Found 2026-09-05
+            // when a proposed 8259 anchor, /ONE CONTROLLER/, turned out to match
+            // both the limitation line and a stale summary above it; the summary
+            // was itself false, written in the commit that lifted the limit.
+            // A comment a gate anchors on IS code, and restating it elsewhere in
+            // the file weakens the gate where nobody looks for that.
+            const all = text.match(new RegExp(anchor.source,
+                anchor.flags.includes('g') ? anchor.flags : `${anchor.flags}g`));
+            if (all && all.length > 1) {
+                throw new Error(`8086 capability anchor is ambiguous: ${anchor} matches `
+                    + `${all.length} times in ${file}. An anchor that matches more than once `
+                    + `survives deletion of the line it pins. Re-anchor on a phrase that occurs `
+                    + `exactly once, or stop restating it elsewhere in the file.`);
+            }
+            continue;
+        }
         // A dated "added"/"implemented" line is the file saying a limit moved.
         const lifted = text.match(/\b(?:added|implemented|modelled)\s+\d{4}-\d{2}-\d{2}/i);
         if (lifted) {
