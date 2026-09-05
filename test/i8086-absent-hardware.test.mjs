@@ -24,6 +24,27 @@
 // its own absence, and that is worth knowing before it ships rather than
 // after a learner has believed a number.
 //
+// AND THE COROLLARY, WHICH IS A DESIGN RULE RATHER THAN A TEST — lego-a4's,
+// after correcting a reading of mine that was wrong on this exact axis.
+//
+// I had claimed a missing table entry and a missing chip were the same defect
+// at different layers. They are not. A table lookup returns `undefined`, and
+// no legitimate cycle count collides with it: the absence is UNFORGEABLE by
+// construction, which is why that layer needs only a counter while this one
+// needs EOC, a PROM signature and an advancing tick. Open bus can forge
+// `ready`. A missing key cannot forge a value.
+//
+//   **DO NOT MANUFACTURE FORGEABILITY.**
+//
+// A fallback that substitutes a PLAUSIBLE value destroys the only signal the
+// layer had. Return the null and count the miss, and a counter suffices;
+// substitute the nearest reasonable answer and you are back to needing a
+// probe for a state that no longer exists.
+//
+// This is uncomfortable because most fallbacks are written precisely to
+// smooth over an absence — and smoothing is exactly what removes the tell.
+// `chip.read() ?? 0` is the shape to be suspicious of.
+//
 // A NEW FEATURE THAT REQUESTS A CHIP BELONGS IN THIS FILE. If you cannot
 // write the case, you have not found the unforgeable state yet.
 import {test} from 'node:test';
