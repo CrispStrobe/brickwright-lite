@@ -444,8 +444,16 @@ The extension registry **splits** into synchronous and lazy sets.
 `.then()`, so any code that loads an extension and checks the flag in the same
 synchronous run will now see false where it used to see true.
 
-Reported alongside it: extension blocks may be silently dropped during
-deserialization, and `installTargets` may produce a second sandboxed copy.
+Reported alongside it, and BOTH FIXED on main before the merge (lego-b9,
+2026-09-05): extension blocks dropped during deserialization / the gallery URL
+loaded a second time into a sandboxed worker — `3fd9d4622`, `deserializeProject`
+now awaits its pre-load before the `extensionURLs` strip; and a rejected lazy
+load emptying the project in `installTargets` / `shareBlocksToTarget` —
+`6e2604f5b`, both tolerate a failed load per extension. bw-ci's
+`scripts/verify-lazy-extension-degradation.mjs` holds the second contract in CI;
+`verify-lego-spike-roundtrip.mjs` holds the first (its fixture declares the lazy
+`spikeprime`). A failed chunk is also logged by the loader itself now, so
+"resolved" and "registered" are distinguishable on the console.
 
 **Provenance, because it changes how much weight to give them.** These were
 verified first-hand by `brickwright-lite-ea` against lego-b9's actual branch.

@@ -97,6 +97,11 @@ const recordStarterEvent = (type, journeyId) => {
     } catch { /* private mode, unavailable storage, or an old malformed value */ }
 };
 
+// Tab order of the <TabList> in GUIComponent: 0-2 are upstream's (blocks,
+// costumes, sounds), 3 and 4 are Brickwright's Code and Circuit tabs. The panels
+// are force-rendered, so a panel's own idea of "visible" has to come from here.
+const CODE_TAB_INDEX = 3;
+
 const GUIComponent = props => {
     const [starterOpen, setStarterOpen] = React.useState(false);
     const [starterBusy, setStarterBusy] = React.useState(false);
@@ -715,7 +720,7 @@ const GUIComponent = props => {
                                         /* Content swap: the code preset puts the pseudocode editor
                                            in the first (blocks) tab panel. The blocks workspace
                                            stays mounted in TabPanel index 3 so it is not destroyed. */
-                                        <PseudocodeImporter />
+                                        <PseudocodeImporter isVisible={activeTabIndex === 0} />
                                     ) : (
                                         <React.Fragment>
                                             <Box className={styles.blocksWrapper}>
@@ -758,7 +763,7 @@ const GUIComponent = props => {
                                     {soundsTabVisible ? <SoundTab vm={vm} /> : null}
                                 </TabPanel>
                                 <TabPanel className={tabClassNames.tabPanel}>
-                                    <PseudocodeImporter />
+                                    <PseudocodeImporter isVisible={activeTabIndex === CODE_TAB_INDEX} />
                                 </TabPanel>
                                 <TabPanel className={tabClassNames.tabPanel}>
                                     <CircuitTab />

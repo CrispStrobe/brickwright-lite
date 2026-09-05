@@ -321,8 +321,11 @@ module by module, over half of the vendor chunk was three things no first paint 
 - The four library manifests are `import()`ed by the six containers that read them (now owned
   in `overlay/`) and by `offline-assets.js`, all into one chunk, `asset-library-index`.
   `libraryTotal()` became async; the offline modal shows 0 until it lands.
-- `GuidedLessons` is `React.lazy`; the pseudocode importer fetches its example sources on mount
-  and re-publishes game controls for an autosaved game that was restored before they arrived.
+- `GuidedLessons` is `React.lazy`; the pseudocode importer fetches its example sources AND its
+  CodeMirror chunk when the Code tab is first shown, not when it mounts — gui.jsx force-renders
+  every TabPanel, so "on mount" was every first paint and the first version of this change
+  moved 870 KB out of the entry script only to have the hidden tab fetch it a moment later.
+  Game controls for a restored autosave are published once the sources exist.
 
 **After** (this branch's production build, same gzip yardstick): **1,309 KB** for all four eager
 scripts, a 69% cut. `scripts/verify-first-load-weight.mjs` — the browser-side ratchet — read

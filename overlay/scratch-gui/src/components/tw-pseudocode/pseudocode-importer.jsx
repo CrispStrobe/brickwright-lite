@@ -753,8 +753,12 @@ const PY_WORKER = [
 ].join('\n');
 
 // ── CodeMirror 6 editor (lazy-loaded) ──────────────────────────────
-// The CM chunk (~200 KB) loads only when the Code tab activates.
-// Blocks-only users never download it.
+// The CM chunk (~600 KB) loads when this tab is first SHOWN — not when it
+// mounts. gui.jsx force-renders every TabPanel, so this component mounts on
+// every first paint; `isVisible` (the tab is selected) is what gates the
+// editor and the example sources. Until then the FallbackEditor textarea
+// stands in, so the tab's DOM exists for anything that looks for it.
+// Blocks-only users never download either chunk.
 const CMEditor = React.lazy(() =>
     import(/* webpackChunkName: "bw-codemirror" */ '../../lib/codemirror-editor.jsx')
 );
@@ -788,7 +792,7 @@ class PseudocodeImporter extends React.Component {
         // One buffer per language tab. Editing the active tab clears the others so
         // switching tabs always re-derives them from the latest edit — you can never
         // end up with (say) pseudocode sitting in the Python tab.
-        this.state = {lang: 'pseudocode', importedPython: false,
+        this.state = {revealed: props.isVisible !== false, lang: 'pseudocode', importedPython: false,
             buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''},
             basicProfile: 'bbc', basicLineNumbers: true,
             uploads: [], status: '', conversionReport: null, reportExpanded: false, busy: false, showRef: false, showInfo: false,
@@ -838,15 +842,10 @@ class PseudocodeImporter extends React.Component {
 
     componentDidMount () {
         this._unmounted = false;
-        loadExamples().then(() => {
-            if (this._unmounted) return;
-            // An autosaved GAME restored above, before the sources arrived, got
-            // no controls because gameKeyForSource had nothing to match against.
-            const code = this.state.buffers && this.state.buffers.pseudocode;
-            const key = code ? this.gameKeyForSource(code) : null;
-            if (key) this.publishGameControls(key);
-            this.forceUpdate();
-        });
+        // Heavy things — the example sources, the CodeMirror chunk — arrive when
+        // the tab is first shown (_reveal), not now: every TabPanel is
+        // force-rendered, so "mounted" is every first paint.
+        if (this.state.revealed) this._reveal();
         // Pick up pseudocode from an example loaded via the Circuit tab.
         // loadExampleProgram stores the source on vm.runtime.bwPseudocodeSource
         // and emits PROJECT_CHANGED; we read it here so the Code tab fills.
@@ -855,7 +854,7 @@ class PseudocodeImporter extends React.Component {
             this._onProjectChanged = () => {
                 const src = vm.runtime.bwPseudocodeSource;
                 if (src && src !== this.state.buffers.pseudocode) {
-                    this.publishGameControls(this.gameKeyForSource(src));
+                    this._publishControlsFor(src);
                     this.setState(s => ({
                         lang: 'pseudocode',
                         buffers: {...s.buffers, pseudocode: src}
@@ -871,7 +870,7 @@ class PseudocodeImporter extends React.Component {
         if (!Object.values(this.state.buffers).some(b => b && b.trim())) {
             const saved = this.readAutosave();
             if (saved) {
-                this.publishGameControls(this.gameKeyForSource(saved.code));
+                this._publishControlsFor(saved.code);
                 this.setState(st => ({
                     lang: saved.lang,
                     buffers: {...st.buffers, [saved.lang]: saved.code},
@@ -940,7 +939,7 @@ class PseudocodeImporter extends React.Component {
             };
             const saved = this.readAutosave();
             if (saved) {
-                this.publishGameControls(this.gameKeyForSource(saved.code));
+                this._publishControlsFor(saved.code);
                 this.setState(st => ({
                     lang: saved.lang,
                     buffers: {...st.buffers, [saved.lang]: saved.code},
@@ -963,7 +962,32 @@ class PseudocodeImporter extends React.Component {
         window.addEventListener('bw-project-bundle-loaded', this._onBundleLoaded);
     }
 
+    /**
+     * Publish game controls for a source once the example sources it is matched
+     * against exist. Publishes null for a non-game, as the synchronous version
+     * did, so loading a plain program after a game still clears the controls.
+     * @param {string} source - pseudocode
+     */
+    _publishControlsFor (source) {
+        if (!source) return;
+        loadExamples().then(() => {
+            if (this._unmounted) return;
+            this.publishGameControls(this.gameKeyForSource(source));
+        });
+    }
+
+    /** The tab is (or has been) shown: fetch what a hidden tab has no use for. */
+    _reveal () {
+        if (this._revealing) return;
+        this._revealing = true;
+        if (!this.state.revealed) this.setState({revealed: true});
+        loadExamples().then(() => {
+            if (!this._unmounted) this.forceUpdate();
+        });
+    }
+
     componentDidUpdate (prevProps, prevState) {
+        if (this.props.isVisible && !this.state.revealed) this._reveal();
         // Debounced so a fast typist writes localStorage once per pause, not
         // once per keystroke. Watches the ACTIVE tab, both its language and
         // its text, so switching tabs re-saves under the new language.
@@ -3468,21 +3492,30 @@ class PseudocodeImporter extends React.Component {
                         </button>
                     </div>
                 )}
-                <React.Suspense fallback={
+                {this.state.revealed ? (
+                    <React.Suspense fallback={
+                        <FallbackEditor
+                        value={this.activeCode()}
+                        onChange={text => this.setActiveCode(text)}
+                        readOnly={!TWO_WAY.has(this.state.lang) && !(this.state.lang === 'asm' && this.state.asmMode === 'source')}
+                    />
+                    }>
+                        <CMEditor
+                            ref={ref => { this._cmEditor = ref; }}
+                            value={this.activeCode()}
+                            onChange={text => this.setActiveCode(text)}
+                            readOnly={!TWO_WAY.has(this.state.lang) && !(this.state.lang === 'asm' && this.state.asmMode === 'source')}
+                            lang={this.state.lang}
+                        />
+                    </React.Suspense>
+                ) : (
+                    /* Hidden tab: the textarea stands in and CodeMirror is not fetched. */
                     <FallbackEditor
                         value={this.activeCode()}
                         onChange={text => this.setActiveCode(text)}
                         readOnly={!TWO_WAY.has(this.state.lang) && !(this.state.lang === 'asm' && this.state.asmMode === 'source')}
                     />
-                }>
-                    <CMEditor
-                        ref={ref => { this._cmEditor = ref; }}
-                        value={this.activeCode()}
-                        onChange={text => this.setActiveCode(text)}
-                        readOnly={!TWO_WAY.has(this.state.lang) && !(this.state.lang === 'asm' && this.state.asmMode === 'source')}
-                        lang={this.state.lang}
-                    />
-                </React.Suspense>
+                )}
 
                 {this.state.showArt && (
                 <div style={{margin: '12px 0 4px', padding: 12, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8}}>
@@ -3789,9 +3822,17 @@ class PseudocodeImporter extends React.Component {
 PseudocodeImporter.propTypes = {
     vm: PropTypes.shape({loadProject: PropTypes.func, toJSON: PropTypes.func}).isRequired,
     locale: PropTypes.string,
+    // Whether this tab is the selected one. Gates the CodeMirror chunk and the
+    // example sources; see the comment above CMEditor. Defaults to visible so a
+    // host that does not manage tabs gets the full editor.
+    isVisible: PropTypes.bool,
     // Injected by connect() with no mapDispatchToProps. Declared so the refusal
     // alert is not a silent prop-types warning in development.
     dispatch: PropTypes.func
+};
+
+PseudocodeImporter.defaultProps = {
+    isVisible: true
 };
 
 export default connect(state => ({
