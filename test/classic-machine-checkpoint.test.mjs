@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {M6502Machine} from '../overlay/scratch-gui/src/lib/bw-board/m6502-machine.js';
+import {createM6502Adapter} from '../overlay/scratch-gui/src/lib/bw-board/m6502-adapter.js';
 import {createM6502DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/m6502-debug.js';
 import {Z80Machine} from '../overlay/scratch-gui/src/lib/bw-board/z80-machine.js';
 import {createZ80DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/z80-debug.js';
@@ -187,4 +188,56 @@ test('checkpoint time must match captured machine cycles and target clock', () =
     assert.equal(target.restoreCheckpoint({...checkpoint,
         time: {...checkpoint.time, ticks: checkpoint.time.ticks + 1}}).code,
     'INVALID_CHECKPOINT_TIME');
+});
+
+test('6502 checkpoint validation rejects every omitted machine, CPU, and VIA field atomically', () => {
+    const machine = new M6502Machine({clockHz: 1_000_000,
+        regions: [{kind: 'ram', start: 0, end: 0x5fff},
+            {kind: 'ram', start: 0x6010, end: 0xffff}],
+        chips: [{kind: 'via', name: 'via1', at: 0x6000}]});
+    const target = createM6502DebugTarget({machine});
+    machine.cpu.pc = 0x0200;
+    machine.mem[0x0200] = 0xea;
+    machine.step();
+    const checkpoint = target.captureCheckpoint();
+    const before = machine.saveState();
+    const omissions = [];
+    for (const key of Object.keys(checkpoint.state)) omissions.push(['state', key]);
+    for (const key of Object.keys(checkpoint.state.cpu)) omissions.push(['cpu', key]);
+    for (const key of Object.keys(checkpoint.state.chips.via1)) omissions.push(['via1', key]);
+    for (const [group, key] of omissions) {
+        const malformed = structuredClone(checkpoint);
+        if (group === 'state') delete malformed.state[key];
+        else if (group === 'cpu') delete malformed.state.cpu[key];
+        else delete malformed.state.chips.via1[key];
+        assert.equal(target.restoreCheckpoint(malformed).code, 'INVALID_CHECKPOINT', `${group}.${key}`);
+        assert.deepEqual(machine.saveState(), before, `${group}.${key} mutated the machine`);
+    }
+});
+
+test('6502 logged buttons and UART input replay to an identical checkpoint hash', () => {
+    const config = {clockHz: 1_000_000,
+        regions: [{kind: 'ram', start: 0, end: 0x4fff},
+            {kind: 'ram', start: 0x5004, end: 0x5fff},
+            {kind: 'ram', start: 0x6010, end: 0xffff}],
+        chips: [{kind: 'via', name: 'via1', at: 0x6000},
+            {kind: 'acia', name: 'acia1', at: 0x5000}]};
+    const adapter = createM6502Adapter({config});
+    adapter.attachBoard({advanceTo() {}, setPin() {}});
+    const target = createM6502DebugTarget(adapter);
+    adapter.machine.mem.set([0xea, 0x4c, 0x00, 0x02], 0x0200);
+    adapter.machine.cpu.pc = 0x0200;
+    const checkpoint = target.captureCheckpoint();
+    const inputs = [];
+    target.onDebugInput(input => inputs.push(input));
+    assert.equal(target.setButtons(0x05), true);
+    assert.equal(adapter.sendSerial(0x41), true);
+    run6502(adapter.machine, 7);
+    const expected = hashReplayValues(adapter.machine.saveState());
+
+    assert.equal(target.restoreCheckpoint(checkpoint), undefined);
+    for (const input of inputs) assert.equal(target.applyReplayInput(input), true);
+    run6502(adapter.machine, 7);
+    assert.equal(hashReplayValues(adapter.machine.saveState()), expected);
+    assert.deepEqual(inputs.map(input => input.producer), ['m6502.buttons', 'm6502.serial']);
 });

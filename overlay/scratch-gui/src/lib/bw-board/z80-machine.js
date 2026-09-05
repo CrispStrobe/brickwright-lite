@@ -354,6 +354,7 @@ export class Z80Machine {
         const actual = Object.keys(state.chips || {}).sort();
         const expectedDevices = Object.keys(this.devices || {}).sort();
         const actualDevices = Object.keys(state.devices || {}).sort();
+        const ulaState = this.ula && state.chips?.ula;
         if (state.v !== 1 || !(state.mem instanceof Uint8Array) || state.mem.length !== 65536 ||
             !state.cpu || Z80Machine.CPU_STATE.some(key => !Object.hasOwn(state.cpu, key)) ||
             JSON.stringify(expected) !== JSON.stringify(actual) ||
@@ -363,7 +364,16 @@ export class Z80Machine {
             (state.tape && (!Number.isSafeInteger(state.tape.pos) || !Array.isArray(state.tape.blocks) ||
                 state.tape.blocks.some(block => !Number.isSafeInteger(block.flag) ||
                     !(block.data instanceof Uint8Array)))) ||
-            (this._zx128 && (!Array.isArray(state.zx128.roms) || state.zx128.roms.length !== 2))) {
+            (this.ula && (!(ulaState?.rows instanceof Uint8Array) || ulaState.rows.length !== 8 ||
+                !Array.isArray(ulaState.speakerEdges) || !Array.isArray(ulaState.earEdges) ||
+                !Number.isSafeInteger(ulaState.earIdx) || ulaState.earIdx < 0 ||
+                ulaState.earIdx > ulaState.earEdges.length)) ||
+            (this._zx128 && (!Array.isArray(state.zx128.roms) || state.zx128.roms.length !== 2 ||
+                state.zx128.roms.some(rom => !(rom instanceof Uint8Array) || rom.length !== 16384) ||
+                !Array.isArray(state.zx128.pages) || state.zx128.pages.length !== 6 ||
+                state.zx128.pages.some(page => !(page instanceof Uint8Array) || page.length !== 16384) ||
+                !state.zx128.bank || !['page', 'rom', 'shadow', 'locked'].every(key =>
+                    Number.isSafeInteger(state.zx128.bank[key]))))) {
             return {refused: 'checkpoint machine state is incomplete', code: 'INVALID_CHECKPOINT'};
         }
         if (!checkpoint.time || checkpoint.time.ticks !== state.cycles ||

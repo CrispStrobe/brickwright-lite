@@ -34,6 +34,26 @@ import {
     checkpointTopology, statePair, validateCheckpointEnvelope
 } from './machine-checkpoint.js';
 
+// State codecs are part of the checkpoint schema. Comparing their structural
+// shape against a fresh sample catches a missing nested latch/counter before
+// any component is mutated. Array lengths may legitimately vary (UART RX
+// queues); typed memory blocks may not.
+const sameCheckpointShape = (actual, expected) => {
+    if (ArrayBuffer.isView(expected)) {
+        return ArrayBuffer.isView(actual) && actual.constructor === expected.constructor &&
+            actual.length === expected.length;
+    }
+    if (Array.isArray(expected)) return Array.isArray(actual);
+    if (expected && typeof expected === 'object') {
+        if (!actual || typeof actual !== 'object' || Array.isArray(actual)) return false;
+        const a = Object.keys(actual).sort();
+        const e = Object.keys(expected).sort();
+        return a.length === e.length && e.every((key, index) => key === a[index] &&
+            sameCheckpointShape(actual[key], expected[key]));
+    }
+    return typeof actual === typeof expected;
+};
+
 /**
  * @typedef {object} MachineConfig
  * @property {number} clockHz phi2 frequency
@@ -786,10 +806,16 @@ export class M6502Machine {
         const actual = Object.keys(state.chips || {}).sort();
         const expectedDevices = Object.keys(this.devices || {}).sort();
         const actualDevices = Object.keys(state.devices || {}).sort();
+        const currentShape = this.saveState();
         if (state.v !== 1 || !(state.mem instanceof Uint8Array) || state.mem.length !== 65536 ||
             !state.cpu || M6502Machine.CPU_STATE.some(key => !Object.hasOwn(state.cpu, key)) ||
+            !Number.isSafeInteger(state.cycles) || state.cycles < 0 ||
+            !state.pinLevels || typeof state.pinLevels !== 'object' || Array.isArray(state.pinLevels) ||
             JSON.stringify(expected) !== JSON.stringify(actual) ||
-            JSON.stringify(expectedDevices) !== JSON.stringify(actualDevices)) {
+            JSON.stringify(expectedDevices) !== JSON.stringify(actualDevices) ||
+            !sameCheckpointShape(state.cpu, currentShape.cpu) ||
+            !sameCheckpointShape(state.chips, currentShape.chips) ||
+            !sameCheckpointShape(state.devices, currentShape.devices)) {
             return {refused: 'checkpoint machine state is incomplete', code: 'INVALID_CHECKPOINT'};
         }
         if (!checkpoint.time || checkpoint.time.ticks !== state.cycles ||
@@ -809,7 +835,9 @@ export class M6502Machine {
      */
     saveState() {
         const cpu = {};
-        for (const k of M6502Machine.CPU_STATE) cpu[k] = this.cpu[k] ?? 0;
+        for (const k of M6502Machine.CPU_STATE) {
+            cpu[k] = ['stopped', 'waiting', '_crossed'].includes(k) ? !!this.cpu[k] : (this.cpu[k] ?? 0);
+        }
         const chips = {};
         for (const [name, c] of Object.entries(this.chips)) {
             // BOTH CONVENTIONS, as I8086Machine does. Chips in this tree

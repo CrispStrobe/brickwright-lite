@@ -14,7 +14,7 @@ earlier row optional.
 | 1 | checkpoint debugger-host state and retain parent-linked fork histories | complete — atomic host capture/restore/reconstruction plus transactional live branch payloads |
 | 2 | run-to plus live-tested step over/out | complete — bounded address run-to on six cores; live depth-step certification |
 | 3 | event-synchronized register, disassembly and memory panes | complete — one selected recorded cursor, three provenance-labelled panes |
-| 4 | Z80 and 6502 checkpoint/replay certification | pending |
+| 4 | Z80 and 6502 checkpoint/replay certification | complete — shared omission-sensitive harness and repaired machine state |
 | 5 | browser debugger workflows in GitHub CI | pending |
 | 6 | cycle-accurate core evaluation and justified integration | pending |
 
@@ -60,6 +60,16 @@ post-retire architectural registers and changed-register pairs only while an
 event listener is active. 8086 write facts also carry width and passive prior
 value. Fidelity remains instruction-recorded or reconstructed as appropriate;
 none of this invents sub-instruction bus state.
+
+Z80 and 6502 now pass one reusable certification contract for complete-state
+restore, normalized event/state replay hashes, schema refusal atomicity and a
+deliberately omitted functional field. The audit repaired Z80 ULA keyboard,
+EAR and speaker queues that were previously reset on restore, and tightened
+128K page/ROM/bank validation. The 6502 path now recursively validates paired
+chip/device codec shapes and every CPU/machine field before mutation; logged
+VIA buttons and ACIA serial input replay identically. Configurations with
+unpaired mutable devices, unlogged board sampling, bit-bang queues or rendered
+audio continue to refuse recording rather than claim incomplete checkpoints.
 
 ## Outcome
 
