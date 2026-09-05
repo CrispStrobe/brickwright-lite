@@ -82,8 +82,11 @@ test('the two dual-tracked vendored copies have not drifted apart', () => {
 // NOT pass quietly: a check reports on what it FOUND, never on what exists.
 test('upstream has not converged on the lite-only work (needs the bw-board tree)', t => {
     const spec = readAllowList();
+    // gate-shapes-allow: the ambient part is WHICH directory, and a wrong answer
+    // is now caught by the corpus check below rather than passing as a clean
+    // negative. The tier still skips loudly when there is no tree at all.
     const candidates = [
-        process.env.BW_BOARD_DIR,
+        process.env.BW_BOARD_DIR, // gate-shapes-allow: see the corpus check below
         path.resolve(ROOT, '../../bw-board'),
         path.resolve(ROOT, '../bw-board')
     ].filter(Boolean);
@@ -98,6 +101,23 @@ test('upstream has not converged on the lite-only work (needs the bw-board tree)
         return;
     }
     const up = fs.readFileSync(found, 'utf8');
+
+    // BEFORE trusting a negative result derived from this file, prove the file
+    // is the one we mean. Every assertion below is of the form "upstream does
+    // NOT contain X" -- and an empty, truncated or simply WRONG file satisfies
+    // all of them perfectly. That is species 1 (a gate with no corpus) one
+    // layer out: the tier would report "upstream has not converged" having
+    // never read upstream. scripts/audit-gate-shapes.mjs flagged the discovery
+    // below as AMBIENT-BINDING and was right to -- this is the hole it meant.
+    for (const [what, re] of [
+        ['the machine class', /class I8086Machine/],
+        ['the chip register table', /REGS/],
+        ['the grafted NE2000 wiring', /ne2000/]
+    ]) {
+        assert.match(up, re, `upstream file at ${found} does not contain ${what}. ` +
+            'Refusing to conclude anything from it: every check below is a NEGATIVE ' +
+            'assertion, which a wrong or truncated file passes trivially.');
+    }
 
     const converged = spec.liteOnly.filter(d => new RegExp(d.contains).test(up));
     assert.deepEqual(converged.map(d => d.id), [],
