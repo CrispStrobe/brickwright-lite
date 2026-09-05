@@ -963,6 +963,16 @@ Next tasks, in order:
    pumps, and earlier P1/P2 deltas remained below timer resolution. Keep the
    deferred engine/JIT/worker hypotheses closed until a workload crosses its
    documented activation threshold.
+
+The next payload hypothesis is also gated: `CircuitTab` currently loads the
+designer graph in debugger-only `right`/`solo` layouts even though no designer
+can paint. Measure that layout in fresh hosted desktop/mobile contexts before
+changing it. Proceed only if pre-paint board/Circuit UI assets exceed 512 KiB
+encoded or 10% of cold-to-runner bytes in both profiles, and preserve File
+actions, starter projects, the Circuit tab, and `top`/`off` stage previews.
+Re-baseline first Circuit paint because the optimization intentionally moves
+work to that boundary.
+
 Every performance change gets an isolated GitHub Actions receipt. Full builds,
 browser profiles and repeated timing runs do not run on the VPS.
 
