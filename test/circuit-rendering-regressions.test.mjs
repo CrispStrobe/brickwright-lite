@@ -68,7 +68,16 @@ test('wire hit paths match their visible curves and supply shorts warn', () => {
 
 test('Instruments are collapsed until debugging or simulation needs them', () => {
     assert.match(designer, /useState\(!!debuggerOn \|\| !!benchOpen\)/);
-    assert.match(designer, /if \(debuggerOn \|\| benchOpen\) setRightOpen\(true\)/);
+    // SAME BLOCK, not the same LINE. The old assertion pinned the exact
+    // one-line spelling, so inserting any statement into the block -- which the
+    // React update-source work does routinely -- split the line and turned this
+    // red while the behaviour was untouched. Species 1 running BACKWARDS: a
+    // source-text match tracking spelling rather than behaviour, producing a
+    // false failure instead of a false pass. `\{?[^}]*?` accepts the braced and
+    // unbraced forms and allows inserted statements, while forbidding a closing
+    // brace between condition and effect -- so the effect must still be INSIDE
+    // the condition, which is the actual claim.
+    assert.match(designer, /if \(debuggerOn \|\| benchOpen\)\s*\{?[^}]*?setRightOpen\(true\)/);
 });
 
 test('simulated potentiometers own their pointer gesture and stay within their footprint', () => {

@@ -63,7 +63,16 @@ test('Circuit Designer keeps simulation and debugger controls in the instruments
     assert.match(source, /onDebugDockChange\('right'\)/);
     assert.match(source, /useState\(!!debuggerOn \|\| !!benchOpen\)/,
         'fresh workspaces preserve bench space; debugger and lesson demand open instruments');
-    assert.match(source, /if \(debuggerOn \|\| benchOpen\) setRightOpen\(true\)/,
+    // SAME BLOCK, not the same LINE. The old assertion pinned the exact
+    // one-line spelling, so inserting any statement into the block -- which the
+    // React update-source work does routinely -- split the line and turned this
+    // red while the behaviour was untouched. Species 1 running BACKWARDS: a
+    // source-text match tracking spelling rather than behaviour, producing a
+    // false failure instead of a false pass. `\{?[^}]*?` accepts the braced and
+    // unbraced forms and allows inserted statements, while forbidding a closing
+    // brace between condition and effect -- so the effect must still be INSIDE
+    // the condition, which is the actual claim.
+    assert.match(source, /if \(debuggerOn \|\| benchOpen\)\s*\{?[^}]*?setRightOpen\(true\)/,
         'debugger and lesson demand must reveal instruments automatically');
 });
 
@@ -124,7 +133,16 @@ test('SIM starts the same MCU program path as Green Flag', () => {
     const tab = read('overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx');
     const designer = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/CircuitDesigner.jsx');
     assert.match(tab, /onSimulationStart=\{this\.handleProjectStart\}/);
-    assert.match(designer, /if \(onSimulationStart\) onSimulationStart\(\)/);
+    // SAME BLOCK, not the same LINE. The old assertion pinned the exact
+    // one-line spelling, so inserting any statement into the block -- which the
+    // React update-source work does routinely -- split the line and turned this
+    // red while the behaviour was untouched. Species 1 running BACKWARDS: a
+    // source-text match tracking spelling rather than behaviour, producing a
+    // false failure instead of a false pass. `\{?[^}]*?` accepts the braced and
+    // unbraced forms and allows inserted statements, while forbidding a closing
+    // brace between condition and effect -- so the effect must still be INSIDE
+    // the condition, which is the actual claim.
+    assert.match(designer, /if \(onSimulationStart\)\s*\{?[^}]*?onSimulationStart\(\)/);
 });
 
 test('example loading publishes its localized name as the project title', () => {

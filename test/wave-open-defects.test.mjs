@@ -111,7 +111,16 @@ test('D1 FIXED: circuit-ready arms a checkpoint rather than completing it', () =
         'the learner has measured anything.');
     assert.match(src, /const arming = ARMING_EVENTS\.has\(checkpoint\.observe\.event\)/,
         'the observable listener no longer asks whether the event is an arming one');
-    assert.match(src, /if \(arming\) setArmed\(/,
+    // SAME BLOCK, not the same LINE. The old assertion pinned the exact
+    // one-line spelling, so inserting any statement into the block -- which the
+    // React update-source work does routinely -- split the line and turned this
+    // red while the behaviour was untouched. Species 1 running BACKWARDS: a
+    // source-text match tracking spelling rather than behaviour, producing a
+    // false failure instead of a false pass. `\{?[^}]*?` accepts the braced and
+    // unbraced forms and allows inserted statements, while forbidding a closing
+    // brace between condition and effect -- so the effect must still be INSIDE
+    // the condition, which is the actual claim.
+    assert.match(src, /if \(arming\)\s*\{?[^}]*?setArmed\(/,
         'an arming event no longer arms — check that it does not complete() instead');
 });
 
