@@ -64,8 +64,12 @@ try {
     page.on('console', message => {
         if (message.type() === 'error') diagnostics.push(`console.error: ${message.text()}`);
     });
-    page.on('requestfailed', request => diagnostics.push(
-        `requestfailed: ${request.method()} ${request.url()} ${request.failure()?.errorText || ''}`));
+    page.on('requestfailed', request => {
+        const reason = request.failure()?.errorText || '';
+        if (request.method() === 'HEAD' && /labwired_wasm_bg\.wasm/.test(request.url()) &&
+            reason === 'net::ERR_ABORTED') return;
+        diagnostics.push(`requestfailed: ${request.method()} ${request.url()} ${reason}`);
+    });
     await page.addInitScript(() => {
         localStorage.clear();
         localStorage.setItem('bw-starter-v1-complete', '1');
@@ -74,12 +78,7 @@ try {
     });
     await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 90000});
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
-    await page.getByTestId('bw-device-select').selectOption('i8086');
-    await page.getByTestId('bw-lang-row').getByRole('button', {name: /ASM/}).click();
-    await page.getByTestId('bw-asm-examples').selectOption('pins');
-    await page.waitForFunction(() => /An LED and a Switch on the 8255/.test(
-        document.querySelector('.cm-content')?.textContent || ''), null, {timeout: 15000});
-    await page.getByTestId('bw-asm-assemble').click();
+    await page.getByTestId('bw-device-select').selectOption('z80');
     await page.getByRole('tab', {name: /Circuit/}).click();
     const panel = page.locator('[data-debug-panel]').first();
     await panel.waitFor({state: 'visible', timeout: 30000});

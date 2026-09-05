@@ -63,10 +63,14 @@ const snap = async name => {
     await page.screenshot({path, fullPage: true});
     check(`artifact ${name}`, existsSync(path));
 };
-const waitForLedChange = async before => page.waitForFunction(previous => {
-    const label = document.querySelector('[data-testid="bw-led-ppi1-a-7"]')?.getAttribute('aria-label');
-    return label && label !== previous;
-}, before, {timeout: 15000, polling: 'raf'});
+const recordRequestFailure = request => {
+    const reason = request.failure()?.errorText || '';
+    // The app deliberately aborts its optional labwired WASM HEAD probe once
+    // capability detection has its answer. It is not a failed app resource.
+    if (request.method() === 'HEAD' && /labwired_wasm_bg\.wasm/.test(request.url()) &&
+        reason === 'net::ERR_ABORTED') return;
+    diagnostics.push(`requestfailed: ${request.method()} ${request.url()} ${reason}`);
+};
 
 try {
     if (!url) ({server, url} = await serveBuild());
@@ -77,8 +81,7 @@ try {
     page.on('console', message => {
         if (message.type() === 'error') diagnostics.push(`console.error: ${message.text()}`);
     });
-    page.on('requestfailed', request => diagnostics.push(
-        `requestfailed: ${request.method()} ${request.url()} ${request.failure()?.errorText || ''}`));
+    page.on('requestfailed', recordRequestFailure);
     await page.addInitScript(() => {
         localStorage.clear();
         localStorage.setItem('bw-starter-v1-complete', '1');
@@ -86,13 +89,12 @@ try {
     });
     await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 90000});
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
-    await page.getByTestId('bw-device-select').selectOption('i8086');
-    await page.getByTestId('bw-lang-row').getByRole('button', {name: /ASM/}).click();
-    await page.getByTestId('bw-asm-examples').selectOption('pins');
-    await page.getByTestId('bw-asm-assemble').click();
+    // The default Z80 machine boots its bundled BBC BASIC image locally and
+    // has a complete checkpoint contract. The 8086 pins bench intentionally
+    // refuses recording because its live schematic input source is unlogged.
+    await page.getByTestId('bw-device-select').selectOption('z80');
     await page.getByRole('tab', {name: /Circuit/}).click();
     await page.locator('[data-debug-record]:not([disabled])').waitFor({timeout: 30000});
-    await page.locator('[data-testid="bw-led-ppi1-a-7"]').waitFor({timeout: 30000});
 
     const pause = page.getByRole('button', {name: /Pause/}).first();
     await pause.click();
@@ -105,9 +107,8 @@ try {
     check('recording starts with checkpoint capability', true);
 
     const run = page.getByRole('button', {name: /Run/}).first();
-    let led = await page.locator('[data-testid="bw-led-ppi1-a-7"]').getAttribute('aria-label');
     await run.click();
-    await waitForLedChange(led);
+    await page.locator('[data-debug-timeline-latest]:not([disabled])').waitFor({timeout: 15000});
     await pause.click();
     await page.locator('[data-debug-checkpoint]').click();
     await page.waitForFunction(() => !document.querySelector('[data-debug-restore]')?.disabled,
@@ -115,9 +116,17 @@ try {
     check('manual checkpoint is retained and restorable', true);
     await snap('checkpoint');
 
-    led = await page.locator('[data-testid="bw-led-ppi1-a-7"]').getAttribute('aria-label');
+    const priorCursor = await page.locator('[data-debug-timeline-controls]').evaluate(node => {
+        const match = (node.textContent || '').match(/#(\d+)/);
+        return match ? Number(match[1]) : -1;
+    });
     await run.click();
-    await waitForLedChange(led);
+    await page.waitForFunction(previous => {
+        const text = document.querySelector('[data-debug-timeline-controls]')?.textContent || '';
+        const match = text.match(/#(\d+)/);
+        if (!match || Number(match[1]) <= previous) return false;
+        return true;
+    }, priorCursor, {timeout: 15000});
     await pause.click();
     await page.locator('[data-debug-record]').click();
     await page.waitForFunction(() => /Record/.test(
