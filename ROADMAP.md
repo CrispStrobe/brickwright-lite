@@ -1182,27 +1182,32 @@ The history below is kept because the METHOD is worth more than the verdict, and
 §5.1a's "gate it inside one repo so it cannot skip" is the pattern to reach for the next time
 a check needs two checkouts.
 
-### 4.6 smallerc-wasm dist: same computed-URL blindness, plus a caller that is not wired yet
+### 4.6 smallerc-wasm dist: computed-URL blindness only — the caller is wired (2026-09-05)
 
 `smlrc.js` and `smlrpp.js` under `lib/smallerc-wasm/dist/` are Emscripten output, loaded by
-`lib/smallerc-wasm/compiler.js` as `import(/* webpackIgnore: true */ resolve('<name>'))`. That
-half is exactly §4.2's situation and is closed for the same reason: the specifier is a function
-call, so no import scan can ever follow it.
+`lib/smallerc-wasm/compiler.js` as `import(/* webpackIgnore: true */ resolve('<name>'))`. That is
+exactly §4.2's situation and is closed for the same reason: the specifier is a function call, so
+no import scan can ever follow it. Those two glue files are all that stays listed.
 
-The half that is NOT §4.2: **nothing in the app imports `compiler.js` yet, and that is
-deliberate.** SmallerC emits NASM (`bits 16`, `section .text`, `resb`, `alignb`), and the
-assembler that would consume it — `lib/bw-board/i8086-asm.js` — is MASM-dialect and rejects that
-output on line 1 (`"BITS" is not an instruction, directive or macro this assembler knows`,
-measured 2026-09-04). Wiring a compile button to a pipeline whose next stage cannot parse the
-output would be a worse outcome than leaving it unwired: it would look finished.
+**The second half of this section was wrong and is withdrawn.** It said nothing imported
+`compiler.js` because the assembler "is MASM-dialect and rejects that output on line 1
+(measured 2026-09-04)". The NASM front end landed in `bw-board/i8086-asm.js` the same week and
+nobody re-measured. Re-measured 2026-09-05 by `test/smallerc-to-i8086-asm.test.mjs`, which
+prints its tally on every run: **five of five** programs `test/smallerc-wasm.test.mjs` compiles
+assemble unwrapped, and `detectDialect` reads every one as NASM without being told. The only
+refusal on that corpus is the CPU variant (`"LEAVE" is an 80186 instruction`), which is why the
+C route passes `variant: '80186'` and `setcc: true`, both argued for in `bw-asm/assemble-route.js`.
 
-`test/smallerc-wasm.test.mjs` executes both modules and gates the compiler on its own terms —
-C in, 16-bit NASM out — so the artifact is exercised rather than merely present.
+`compiler.js` now has a real caller: `bw-asm/assemble-route.js` (`compileC8086` is the pipeline,
+`requestCBuild` the device decision), reached from the C tab's ▶ Run C on 8086. Zero network
+requests on that path — the hosted service has no 8086 C back end, so there is nothing to fall
+back to and the route does not try.
 
-**What it would take to remove the exclusion:** a NASM front end in `i8086-asm.js` (§3.8.2b,
-door 3), after which `compiler.js` gets a real caller and only the two glue files stay listed.
-**Blocked on:** `i8086-asm.js` lives in the **vendored** `bw-board/` tree, which
-`npm run sync:bwboard` overwrites wholesale — the front end has to land upstream, not here.
+**Where the pipeline still ends, named:** `float` compiles and does not assemble (smlrc emits
+`extern ___fixsfsi` for its soft-float runtime; the flat-image assembler has no second module to
+find it in), and `long` is refused by smlrc itself (`-seg16` has no 32-bit integer). Both are
+pinned as named expectations in the test. Matrix cell C × 8086: native, local, simulator only
+(`.COM` export for real hardware is plan task N10).
 
 ### 5.1 The stc12 extension lite ships is missing 8 opcodes the emitter emits — FIXED
 

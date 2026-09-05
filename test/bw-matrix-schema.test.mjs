@@ -70,6 +70,19 @@ test('every fact names an artefact the devices know, a status and an evidence le
     }
 });
 
+test('a device override names a language it has a cell for, and only where/note', () => {
+    for (const d of DEVICES) {
+        if (!d.overrides) continue;
+        for (const [lang, o] of Object.entries(d.overrides)) {
+            assert.ok(LANGUAGES.some(l => l.id === lang), `${d.id}: override for unknown language ${lang}`);
+            assert.ok(Object.keys(o).every(k => ['where', 'note'].includes(k)), `${d.id}/${lang}: override may change where/note only`);
+            assert.ok(!isNativeNull(CELLS[d.family][lang].native), `${d.id}/${lang}: override on a null native`);
+        }
+    }
+    assert.equal(cell('c', 'stc89c52').native.where, 'hosted');
+    assert.equal(cell('c', 'stc12c5a60s2').native.where, 'local');
+});
+
 test('no cell is a dead end: native, lowered, both, or an open task that says how', () => {
     const dead = [];
     for (const row of overall()) {

@@ -330,7 +330,7 @@ export async function requestCBuild ({source, device}, seams = {}) {
         org: built.org ?? null,
         asm: built.asm,
         warnings: (built.warnings || []).map(w => (typeof w === 'string' ?
-            w : (w.line ? `L${w.line}: ` : '') + w.message)),
+            w : `${w.line ? `L${w.line}: ` : ''}${w.message}`)),
         listing: null
     };
 }

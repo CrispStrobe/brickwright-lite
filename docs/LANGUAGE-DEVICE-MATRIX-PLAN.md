@@ -103,10 +103,10 @@ task named · **—** physically out, reason given · `?` needs a measurement.
 
 | language ↓ / device → | 8051 STC | AVR (Uno/Nano/Mega/ATtiny) | RP2040 Pico | STM32F030 | micro:bit / Calliope | 6502 Eater | Z80 bench | 8086 DOS bench | Arcade / PyBadge / SAMD51 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| **Pseudocode** (the AST) | L via C | L via C | L via MicroPython, and via C for the emulator; the C artefact has no silicon deploy → **l** (L2) | L via C | L via MicroPython | L via C (cc65) and BASIC (`ms`) | L via BASIC (`bbc`); C emitted, no compiler → **l** (N1) | L via 8086 asm, in-browser | L via PXT TypeScript, hosted; no UF2 → **l** (L4) |
+| **Pseudocode** (the AST) | L via C | L via C | L via MicroPython, and via C for the emulator; the C artefact has no silicon deploy → **l** (L2) | L via C | L via MicroPython | L via C (cc65) and BASIC (`ms`) | L via BASIC (`bbc`); C emitted, no compiler → **l** (N1) | L via 8086 asm, in-browser, and via C (SmallerC, local) | L via PXT TypeScript, hosted; no UF2 → **l** (L4) |
 | **Python** | L · native — (MicroPython needs ≥256 KB flash / 16 KB RAM; STC12 has 60 KB / 1.3 KB) | L · native — (ATmega328P 32 KB / 2 KB) | L · **N** MicroPython on silicon (REPL deploy) · sim **n** (N3) | L · native — (F030 16–32 KB flash) | L · **N** MicroPython, sim + silicon | L · native — (no port) | L · native — (no port) | L · native — (no port) | L · **N** CircuitPython on silicon (copy `code.py`) · sim — (no SAMD51 emulator, see CHOOSING-HARDWARE) |
 | **JavaScript** | L · native — | L · native — | L · native **n** Kaluma (Apache-2.0) or Espruino (MPL-2.0), silicon (N5) | L · native — (Espruino needs F4-class) | L · native **n** PXT static TypeScript (MIT), the MakeCode path (N5) | L · native — | L · native — | L · native — | L via Arcade TS |
-| **C** | **N** local SDCC-WASM + hosted · L | **N** hosted avr-gcc · L — picker says `compile: false`, which is stale (T5) | **N** hosted bare-metal rp2040, runs in rp2040js · no UF2 deploy from the UI → (L2) | **N** hosted · L | **n** hosted has an `nrf52833` linker script and an ARM *assemble* chain, but no C compile target (N7) | **N** hosted cc65 · L | **n** SDCC `-mz80` hosted, not present (N1) | **n** SmallerC-WASM built and the local assembler HAS a NASM front end; nobody has pointed one at the other (N2) | native — sim (no emulator) · silicon **n** low priority |
+| **C** | **N** local SDCC-WASM + hosted · L | **N** hosted avr-gcc · L — picker says `compile: false`, which is stale (T5) | **N** hosted bare-metal rp2040, runs in rp2040js · no UF2 deploy from the UI → (L2) | **N** hosted · L | **n** hosted has an `nrf52833` linker script and an ARM *assemble* chain, but no C compile target (N7) | **N** hosted cc65 · L | **n** SDCC `-mz80` hosted, not present (N1) | **N** local SmallerC-WASM + the assembler's NASM front end, sim only (N2 done 2026-09-05; `float`/`long` are named edges) | native — sim (no emulator) · silicon **n** low priority |
 | **BASIC** | L · native `?` BASIC-52 (N8, investigation) | L · native `?` Tiny BASIC (MIT) on 328P (N8) | L · native — (no permissive interpreter found; MMBasic licence excludes) | L · native — | L · native — | L · **N** MS BASIC ROM (`ms` profile) | L · **N** BBC BASIC (`bbc` profile) | L · native **n** GW-BASIC (MIT, 2020) (N6) | L |
 | **ASM** | **N** hosted sdas8051 · reader **l** (L1) | **N** hosted avr-gcc · **l** | **n** hosted ARM chain exists for `nrf52833` only; add `rp2040` (N4) · **l** | **n** add `stm32f030` (N4) · **l** | **N** hosted `nrf52833` assemble exists; check the ASM tab routes to it (N4) · **l** | **N** hosted ca65 · **l** | **N** hosted sdasz80 · **l** | **N** local, MASM dialect · **l** (L1 starts here) | native — (no emulator) |
 | **MicroPython** (tab) | as Python | as Python | as Python | as Python | as Python | as Python | as Python | as Python | as Python |
@@ -238,7 +238,7 @@ DoD:
       bench machine).
 - [ ] Later, N1b: `sdcc-wasm` rebuilt with the z80 port for a local route.
 
-**N2. 8086 C — connect SmallerC to the assembler that already reads NASM.** Lite only.
+**N2. 8086 C — connect SmallerC to the assembler that already reads NASM.** Lite only. **DONE 2026-09-05** on `lane/language-device-matrix` (delegate, audited by lego-ac): 5 of 5 corpus programs assemble, `requestCBuild`/`cRouteFor` in `bw-asm/assemble-route.js`, ▶ Run C on 8086 in the C tab, an exit-code leak in the WASM glue fixed; `test/smallerc-to-i8086-asm.test.mjs` prints the tally on every run. Not done: a browser gate (box forbids playwright today), `float` support.
 `ROADMAP.md` §4.6 says the local assembler "is MASM-dialect and rejects that
 output on line 1 (measured 2026-09-04)". **That is stale**: the vendored
 `bw-board/i8086-asm.js` carries a source-to-source NASM front end (header line
@@ -257,24 +257,27 @@ DoD:
 - [ ] §4.6's exclusion of `smallerc-wasm/compiler.js` is removed because it
       now has a caller; `no-dead-overlay-modules` stays green.
 
-**N3. MicroPython on the Pico, in the simulator — from a measured handoff.**
-This was attempted and the result is written in `bw-board/rp2040-bootrom.js`
-(header, "HOW FAR THAT GETS"): MicroPython 1.22.2 loads, boots, copies itself
-to RAM, gets eight of nine bootrom functions answered, and panics at step
-~26,600 in `hard_assert` on **SIO spinlock 20** (r0 = 0xf = `PICO_SPINLOCK_ID_OS2`),
-call chain recorded, reached from `0x1002e838`. The soft-float table is
-**not** the cause (measured: answering it moves the panic two steps). The task
-starts there, with `addr2line` on a symbol-carrying MicroPython build, not from
-zero. Once it boots: expose USB CDC or UART0 as a transport and drive the SAME
-`createPicoRepl(transport)` the silicon path uses to load `main.py`.
-DoD:
-- [ ] The three addresses in the handoff are resolved to source lines and
-      written back into the bootrom header (the next reader gets names).
-- [ ] Node harness: boot firmware, send `print(1+1)` over raw REPL, read `2`.
-- [ ] Lite: Pico + LED example, Python tab, ▶ Run → LED toggles in the
-      circuit; `verify:pico-micropython` playwright, sim only.
-- [ ] Firmware fetched by a `sync:` script with sha256, never committed;
-      notices updated.
+**N3. MicroPython on the Pico, in the simulator.** **MEASURED 2026-09-05, premise inverted**
+(delegate, verified independently by lego-ac): MicroPython v1.22.2 **boots to a working REPL**
+in rp2040js with the clean-room bootrom — `print(1+1)` answers `2` over the raw-REPL protocol
+`pico-repl.js` already speaks. The panic recorded in `rp2040-bootrom.js` was a probe artefact:
+the old probe entered at the image's reset vector and skipped boot stage 2, which is what writes
+VTOR; the real assert was `irq_set_exclusive_handler` on spinlock 9, and spinlock 20 was read by
+`panic()` afterwards. Addresses resolved to pico-sdk functions in `docs/PICO-MICROPYTHON-BOOT.md`;
+`scripts/probe-pico-micropython.mjs` reproduces every step; `test/pico-micropython-boot.test.mjs`
+(4 tests, named skip without the cached firmware).
+**The real gap:** the flash filesystem. Five bootrom table entries (`IF`/`EX`/`FC`/`RE`/`RP`)
+miss and the SDK calls the null result, so `deployMainPy` gets `ENODEV`. Fix written and
+measured as `docs/bw-board-rp2040-bootrom-flash-funcs.patch` — it belongs in **bw-board**
+`src/rp2040-bootrom.js` (vendored here), not in lite.
+Remaining, in order:
+- [ ] N3a: land the patch upstream in bw-board with its test, bump the pin here (the cell's
+      `sim` gains `'py'` the moment `sync:bwboard` brings it in).
+- [ ] N3b: `bootFromFlash()` on the rp2040js adapter (bw-board), since `loadProgram` writes SRAM
+      only and the probe sets `PC = 0x10000000` by hand.
+- [ ] N3c: lite wiring — the Python tab's ▶ Run for the Pico boots the pinned MicroPython UF2
+      (fetched by a `sync:` script with sha256, never committed) and drives the SAME
+      `createPicoRepl(transport)` the silicon path uses; `verify:pico-micropython` playwright.
 
 **N4. ARM assembly, hosted — extend the chain that exists.** Repo: stc-compiler, then lite.
 `ASSEMBLE_TARGETS` already routes `nrf52833` through `arm-none-eabi-gcc -x

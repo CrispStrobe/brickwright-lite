@@ -126,7 +126,7 @@ const OPEN_DECLARED = {status: STATUS.OPEN, evidence: EVIDENCE.DECLARED};
  * @param {string} label the picker label
  * @param {string} group the picker group
  * @param {string} family the CELLS family
- * @param {object} rest pickerCompile, pickerEmulator, sim, silicon, programmable
+ * @param {object} rest pickerCompile, pickerEmulator, sim, silicon, programmable, overrides
  * @returns {object} the device
  */
 const dev = function (id, label, group, family, rest) {
@@ -149,7 +149,13 @@ export const DEVICES = Object.freeze([
         pickerCompile: true,
         pickerEmulator: 'emu8051',
         sim: [eng('emu8051', ['hex'])],
-        silicon: [tx('stc-isp-webserial', ['hex'], 'stc', {note: 'answers only after a cold power-on'})]
+        silicon: [tx('stc-isp-webserial', ['hex'], 'stc', {note: 'answers only after a cold power-on'})],
+        // sdcc-wasm links five of the six STC parts locally; the STC89C52 is
+        // not in its LOCAL_TARGETS, so its C still goes to the hosted SDCC.
+        // Found by the conformance gate, not by reading.
+        ...(id === 'stc89c52' ?
+            {overrides: {c: {where: 'hosted', note: 'not in sdcc-wasm LOCAL_TARGETS; compiled by the hosted SDCC'}}} :
+            {})
     })),
     dev('arduino-uno', 'Arduino Uno', AVR, 'avr', {...avr8, silicon: [tx('stk500v1-webserial', ['hex'], 'avr')]}),
     dev('arduino-nano', 'Arduino Nano', AVR, 'avr', {...avr8, silicon: [tx('stk500v1-webserial', ['hex'], 'avr')]}),
@@ -182,8 +188,10 @@ export const DEVICES = Object.freeze([
     dev('pico', 'Raspberry Pi Pico', 'Raspberry Pi', 'rp2040', {
         pickerCompile: true,
         pickerEmulator: 'rp2040js',
-        // 'py' is deliberately absent: MicroPython firmware panics at boot in
-        // rp2040js today (bw-board/rp2040-bootrom.js header). Plan task N3.
+        // 'py' is deliberately absent: MicroPython boots to a REPL in rp2040js
+        // (measured 2026-09-05, docs/PICO-MICROPYTHON-BOOT.md) but the flash
+        // filesystem needs five bootrom entries that live upstream in bw-board,
+        // so deployMainPy cannot land a program yet. Plan tasks N3a-c.
         sim: [eng('rp2040js', ['hex', 'bin', 'uf2'])],
         silicon: [
             tx('micropython-raw-repl', ['py'], 'micropython'),
@@ -452,26 +460,22 @@ export const CELLS = Object.freeze({
     i8086: {
         pseudocode: {
             native: AST,
-            lowered: [via('asm', {note: 'pseudocode-8086.js lowers in the browser'}), viaOpen('c', 'N2')]
+            lowered: [via('asm', {note: 'pseudocode-8086.js lowers in the browser'}), via('c')]
         },
-        python: {
-            native: no('no-port', 'no MicroPython or other Python for the 8086'),
-            lowered: [via('asm'), viaOpen('c', 'N2')]
-        },
-        javascript: {
-            native: no('no-port', 'no JavaScript engine for the 8086'),
-            lowered: [via('asm'), viaOpen('c', 'N2')]
-        },
+        python: {native: no('no-port', 'no MicroPython or other Python for the 8086'), lowered: [via('asm'), via('c')]},
+        javascript: {native: no('no-port', 'no JavaScript engine for the 8086'), lowered: [via('asm'), via('c')]},
+        // SmallerC (WASM) emits NASM; the local assembler's NASM front end reads
+        // it: 5 of 5 corpus programs, measured by test/smallerc-to-i8086-asm.
+        // `float` and `long` are the two named edges.
         c: {
-            native: open('com', 'SmallerC (WASM)', 'local', 'N2', {
-                note: 'compiler built; its NASM output has not yet been pointed at the local ' +
-                    'assembler\'s NASM front end'
+            native: shipped('com', 'SmallerC (WASM) + i8086-asm.js', 'local', {
+                note: 'no libc; float does not link (soft-float helper), long is refused by smlrc (-seg16)'
             }),
-            lowered: [viaOpen('c', 'N2')]
+            lowered: [via('c')]
         },
         basic: {native: open('bas', 'GW-BASIC (MIT, 2020)', 'none', 'N6'), lowered: [via('asm')]},
         asm: {native: shipped('com', 'i8086-asm.js (MASM and NASM dialects)', 'local'), lowered: [via('asm')]},
-        micropython: {native: no('no-port', 'no MicroPython for the 8086'), lowered: [via('asm'), viaOpen('c', 'N2')]}
+        micropython: {native: no('no-port', 'no MicroPython for the 8086'), lowered: [via('asm'), via('c')]}
     },
     samd51: {
         pseudocode: {
@@ -559,9 +563,12 @@ export const cell = function (langId, deviceId) {
     const fam = CELLS[device.family];
     const raw = fam && fam[lang.id];
     if (!raw) return null;
+    // A device may override facts of its family's cell (e.g. one STC part
+    // whose C compiles hosted rather than locally). Reach is computed after.
+    const override = (device.overrides && device.overrides[lang.id]) || null;
     const native = isNativeNull(raw.native) ?
         {...raw.native, ...NO_REACH} :
-        {...raw.native, ...reachOf(raw.native, device)};
+        {...raw.native, ...override, ...reachOf(raw.native, device)};
     const lowered = raw.lowered.map(l => {
         const landing = fam[l.via] && fam[l.via].native;
         const reach = l.status === STATUS.SHIPPED ? reachOf(landing, device) : NO_REACH;

@@ -21,7 +21,7 @@ import {join} from 'node:path';
 import {REPO} from './helpers/bw-integrated.mjs';
 import {asmTargetForDevice} from '../overlay/scratch-gui/src/lib/bw-asm/assemble-route.js';
 import {
-    DEVICES, LANGUAGES, CELLS, STATUS, EVIDENCE, deviceById, isNativeNull
+    DEVICES, LANGUAGES, CELLS, STATUS, EVIDENCE, deviceById, isNativeNull, cell
 } from '../overlay/scratch-gui/src/lib/bw-matrix/capabilities.js';
 
 const src = rel => readFileSync(join(REPO, 'overlay/scratch-gui/src', rel), 'utf8');
@@ -131,15 +131,27 @@ test('the local C compilers and the C row agree', () => {
     for (const id of sdccTargets) {
         const d = deviceById(id);
         assert.ok(d, `sdcc-wasm knows ${id}, the picker does not offer it`);
-        const c = CELLS[d.family].c.native;
+        const c = cell('c', id).native;
         assert.equal(c.where, 'local', `${id}: sdcc-wasm compiles it locally, the matrix says ${c.where}`);
     }
     assert.match(smallerc, /LOCAL_TARGETS = Object\.freeze\(\{\s*i8086:/, 'smallerc-wasm target moved');
     const c8086 = CELLS.i8086.c.native;
     assert.equal(c8086.where, 'local');
-    // Sentinel: the moment SmallerC is wired (N2) this flips to shipped and
-    // the cell's task marker comes off.
-    assert.equal(c8086.status, STATUS.OPEN, 'C on the 8086 is marked shipped — is N2 done? Then update the cell and this line together');
+    // N2 landed 2026-09-05: the route module owns the decision. The C row's
+    // local cells must be exactly LOCAL_C_TARGETS plus the sdcc-wasm 8051 set.
+    const lc = assembleRoute.match(/export const LOCAL_C_TARGETS = new Set\(\[([^\]]*)\]\)/);
+    assert.ok(lc, 'LOCAL_C_TARGETS moved');
+    const localC = new Set([...lc[1].matchAll(/'([^']+)'/g)].map(x => x[1]));
+    assert.ok(localC.has('i8086') && c8086.status === STATUS.SHIPPED, 'the 8086 C cell and LOCAL_C_TARGETS disagree');
+    for (const d of DEVICES) {
+        if (d.programmable === false) continue;
+        const c = cell('c', d.id).native; // resolved: family cell plus the device's overrides
+        if (isNativeNull(c) || c.status !== STATUS.SHIPPED) continue;
+        const viaRoute = localC.has(asmTargetForDevice(d.id));
+        const viaSdcc = sdccTargets.includes(d.id);
+        assert.equal(c.where === 'local', viaRoute || viaSdcc,
+            `${d.id}: matrix says C is ${c.where}; LOCAL_C_TARGETS ${viaRoute ? 'has' : 'lacks'} it, sdcc-wasm ${viaSdcc ? 'has' : 'lacks'} it`);
+    }
 });
 
 // ---- the C emitter ----------------------------------------------------------
