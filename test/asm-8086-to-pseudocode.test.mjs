@@ -86,6 +86,30 @@ WHEN flag clicked:
   set n to 3
   say "plain"
 `,
+    pins: `DEVICE i8086
+PIN led = P1.0 OUTPUT
+PIN btn = P3.5 INPUT
+GLOBAL v
+WHEN flag clicked:
+  turn on led
+  toggle led
+  turn off led
+  set led to v + 1
+  set v to (read btn)
+  IF (read btn) = 1 THEN:
+    toggle led
+  wait until (read btn) = 0
+  say v
+`,
+    ports: `DEVICE i8086
+PORT leds = P1 OUTPUT
+PORT sw = P2 INPUT
+GLOBAL v
+WHEN flag clicked:
+  set leds to 129
+  set v to (read sw)
+  say v
+`,
     negative: `DEVICE i8086
 GLOBAL n
 WHEN flag clicked:
@@ -153,26 +177,35 @@ WHEN flag clicked:
 });
 
 test('an anchor the reader does not handle names the feature and is counted', () => {
-    // Pins: the emitter writes an 8255 setup comment before the first `; pin`,
-    // so the refusal must name pins, not quote the prose.
-    const A = lower(`DEVICE i8086
-PIN led = P1.0 OUTPUT
-WHEN flag clicked:
-  turn on led
-  toggle led
-  say "pin"
-`);
-    const r = asm8086ToPseudocode(A);
-    assert.equal(r.ok, false);
-    assert.equal(r.error.kind, 'refused');
-    assert.match(r.error.message, /"pin" statement is not lifted yet/);
-    assert.equal(r.stats.refused, 1);
-    // and the one anchor the dialect can carry in a plain script
     const B = lower('DEVICE i8086\nGLOBAL a\nWHEN flag clicked:\n  set a to 1\n  say "x" for 1 seconds\n');
     const rb = asm8086ToPseudocode(B);
     assert.equal(rb.ok, false);
+    assert.equal(rb.error.kind, 'refused');
     assert.match(rb.error.message, /"say for secs" statement is not lifted yet/);
     assert.equal(rb.stats.lifted, 1, 'the statement before the refusal was lifted and counted');
+});
+
+test('ACTIVE LOW is not recoverable from the bytes: lifted byte-faithfully, and warned, not guessed', () => {
+    const src = `DEVICE i8086
+PIN led = P1.3 OUTPUT ACTIVE LOW
+WHEN flag clicked:
+  turn on led
+  turn off led
+`;
+    const A = lower(src);
+    const r = asm8086ToPseudocode(A);
+    assert.ok(r.ok, r.ok ? '' : r.error.message);
+    assert.equal(lower(r.pseudocode), A, 'same bytes either way');
+    assert.match(r.pseudocode, /turn off pin1_3\n  turn on pin1_3/, 'the polarity swap is visible in the text');
+    assert.equal(r.warnings.filter(w => /ACTIVE LOW/.test(w)).length, 1, 'exactly one polarity warning');
+});
+
+test('an INPUT the program never reads cannot be recovered, and is refused by name', () => {
+    const A = lower('DEVICE i8086\nPIN led = P1.0 OUTPUT\nPIN unused = P2.0 INPUT\nWHEN flag clicked:\n  turn on led\n');
+    const r = asm8086ToPseudocode(A);
+    assert.equal(r.ok, false);
+    assert.equal(r.error.kind, 'refused');
+    assert.match(r.error.message, /control word 130 declares an input this program never reads/);
 });
 
 test('a corrupted shape is a named shape refusal at its line, never a silent guess', () => {
@@ -209,8 +242,12 @@ test('census: which of the emitter\'s anchors this reader lifts (printed, and th
         operator_gt: 'say a > 2', operator_equals: 'say a = 2', operator_and: 'say a = 1 and a = 2',
         operator_or: 'say a = 1 or a = 2', operator_not: 'say not a = 1',
         control_wait_until: 'wait until a = 1', event_broadcast: 'broadcast "x"',
-        looks_sayforsecs: 'say "x" for 1 seconds'
+        looks_sayforsecs: 'say "x" for 1 seconds',
+        stc12_setpin: 'turn on led', stc12_toggle: 'toggle led', stc12_writepin: 'set led to a',
+        stc12_read: 'say (read btn)', stc12_setport: 'set leds to 5', stc12_readport: 'say (read sw)'
     };
+    const DECL = 'PIN led = P1.0 OUTPUT\nPIN btn = P2.0 INPUT\nPORT leds = P3 OUTPUT\n';
+    const DECL_IN = 'PORT sw = P3 INPUT\n';
     const lifted = [];
     const refused = [];
     const unprobed = [];
@@ -218,7 +255,11 @@ test('census: which of the emitter\'s anchors this reader lifts (printed, and th
         if (!probes[opcode]) { unprobed.push(opcode); continue; }
         let A;
         try {
-            A = lower(`DEVICE i8086\nGLOBAL a\nWHEN flag clicked:\n  set a to 0\n  ${probes[opcode]}\n`);
+            const decl = /^stc12_(setpin|toggle|writepin|read|setport)$/.test(opcode) ? DECL :
+                opcode === 'stc12_readport' ? DECL_IN : '';
+            // declarations must be USED for the mode word to be recoverable
+            const use = decl === DECL ? '  turn on led\n  say (read btn)\n  set leds to 1\n' : '';
+            A = lower(`DEVICE i8086\n${decl}GLOBAL a\nWHEN flag clicked:\n  set a to 0\n${use}  ${probes[opcode]}\n`);
         } catch (e) {
             unprobed.push(`${opcode} (emitter refused: ${String(e.message).slice(0, 60)})`);
             continue;
@@ -233,7 +274,8 @@ test('census: which of the emitter\'s anchors this reader lifts (printed, and th
         'control_if_else', 'control_repeat_until', 'control_wait', 'control_stop', 'looks_say', 'stc12_print',
         'operator_add', 'operator_subtract', 'operator_multiply', 'operator_divide', 'operator_mod',
         'operator_lt', 'operator_gt', 'operator_equals', 'operator_and', 'operator_or', 'operator_not',
-        'control_wait_until'];
+        'control_wait_until', 'stc12_setpin', 'stc12_toggle', 'stc12_writepin', 'stc12_read', 'stc12_setport',
+        'stc12_readport'];
     for (const op of MUST_LIFT) assert.ok(lifted.includes(op), `${op} used to lift and no longer does`);
 });
 
