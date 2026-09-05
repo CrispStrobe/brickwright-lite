@@ -40,8 +40,9 @@ const setState = (prefix, s) => [
     `${prefix}.cpu.af2=${n(s.af_)}; ${prefix}.cpu.bc2=${n(s.bc_)}; ${prefix}.cpu.de2=${n(s.de_)}; ${prefix}.cpu.hl2=${n(s.hl_)};`,
     `${prefix}.cpu.im=${n(s.im)}; ${prefix}.cpu.iff1=${!!s.iff1}; ${prefix}.cpu.iff2=${!!s.iff2};`
 ].join('\n');
-const compareState = (prefix, s) => [
-    ['pc','sp','a','f','b','c','d','e','h','l','i','r','wz','ix','iy','im','iff1','iff2']
+const compareState = (prefix, s, overlappedFetch = false) => [
+    `${overlappedFetch ? `((${prefix}.cpu.pc-1)&65535)` : `${prefix}.cpu.pc`}==${n(s.pc)}`,
+    ['sp','a','f','b','c','d','e','h','l','i','r','wz','ix','iy','im','iff1','iff2']
         .flat().map(k => `${prefix}.cpu.${k}==${n(s[k])}`).join(' && '),
     `${prefix}.cpu.af2==${n(s.af_)} && ${prefix}.cpu.bc2==${n(s.bc_)} && ` +
         `${prefix}.cpu.de2==${n(s.de_)} && ${prefix}.cpu.hl2==${n(s.hl_)}`,
@@ -54,16 +55,38 @@ static bool oracle_${index}(void) {
     ${setState('m', v.initial)}
     ${(v.initial.ram || []).map(([a, x]) => `m.mem[${n(a)}]=${n(x)};`).join(' ')}
     m.pins=z80_prefetch(&m.cpu, m.cpu.pc);
-    for (unsigned tick=0; tick<${v.cycles.length}; tick++) service(&m);
-    return ${compareState('m', v.final)};
+    unsigned ticks=0; bool entered_instruction=false;
+    do {
+        service(&m); ticks++;
+        if (!z80_opdone(&m.cpu)) entered_instruction=true;
+    } while (!(entered_instruction && z80_opdone(&m.cpu)) && ticks<${v.cycles.length + 4});
+    oracle_last_ticks=ticks-1; /* discard prefetch's synthetic step-0 transition */
+    oracle_last_timing=(oracle_last_ticks==${v.cycles.length});
+    /* z80_opdone is observable in the overlapped next M1/T2. PC already
+       points beyond that prefetched byte, so compare pc-1 to the oracle's
+       instruction boundary while retaining the real core state for replay. */
+    return entered_instruction && ${compareState('m', v.final, true)};
 }`);
-const calls = vectors.map((v, index) => `if (oracle_${index}()) passed++; else if (!*first_failure) *first_failure="${v.name}";`).join('\n    ');
+const calls = vectors.map((v, index) => `{ bool state_ok=oracle_${index}();
+        if (state_ok) passed++;
+        if (oracle_last_timing) timing_passed++;
+        if ((!state_ok || !oracle_last_timing) && !*first_failure) {
+            *first_failure="${v.name}";
+            *first_failure_kind=state_ok ? "cycle-count" : "architectural-state";
+            *first_expected_ticks=${v.cycles.length}; *first_actual_ticks=oracle_last_ticks;
+        }
+    }`).join('\n    ');
 const header = `/* Generated only from hash-verified SingleStepTests JSON. */
 #define Z80_ORACLE_VECTOR_COUNT ${vectors.length}u
+static unsigned oracle_last_ticks;
+static bool oracle_last_timing;
 ${functions.join('\n')}
-static unsigned run_oracle_corpus(const char **first_failure) {
-    unsigned passed=0; *first_failure=NULL;
+static unsigned run_oracle_corpus(const char **first_failure, const char **first_failure_kind,
+        unsigned *timing_passed_out, unsigned *first_expected_ticks, unsigned *first_actual_ticks) {
+    unsigned passed=0, timing_passed=0; *first_failure=NULL; *first_failure_kind=NULL;
+    *first_expected_ticks=0; *first_actual_ticks=0;
     ${calls}
+    *timing_passed_out=timing_passed;
     return passed;
 }
 `;
