@@ -20,7 +20,7 @@
  * Asserting on ids here would fail for a reason that has nothing to do with
  * whether the artwork survived.
  */
-import {mkdir} from 'node:fs/promises';
+import {mkdir, writeFile} from 'node:fs/promises';
 import {mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
@@ -51,6 +51,17 @@ const open = async () => {
             localStorage.clear();
             localStorage.setItem('bw-starter-v1-complete', '1');
         } catch { /* private mode */ }
+        const probe = window.__BW_PAINT_PERF__ = {longTasks: []};
+        if (typeof PerformanceObserver === 'function') {
+            try {
+                probe.observer = new PerformanceObserver(list => {
+                    for (const entry of list.getEntries()) {
+                        probe.longTasks.push({at: entry.startTime, ms: entry.duration});
+                    }
+                });
+                probe.observer.observe({entryTypes: ['longtask']});
+            } catch { /* unsupported browsers retain an empty long-task receipt */ }
+        }
     });
     await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 90000});
     await page.waitForFunction(() => {
@@ -84,10 +95,26 @@ const costumes = page => page.evaluate(() => {
 });
 
 const openCostumesTab = async page => {
+    const startedAt = await page.evaluate(() => performance.now());
     await page.locator('[role="tab"]', {hasText: /Costume|Kost/}).first().click();
     // The paint editor loads as a lazy chunk, so the condition is "the canvas is
     // on screen", not "three seconds have passed".
     await page.locator('canvas:visible').last().waitFor({state: 'visible', timeout: 30000});
+    return page.evaluate(start => new Promise(resolve => requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+            const readyAt = performance.now();
+            const probe = window.__BW_PAINT_PERF__;
+            for (const entry of probe?.observer?.takeRecords?.() || []) {
+                probe.longTasks.push({at: entry.startTime, ms: entry.duration});
+            }
+            resolve({
+                startedAt: start,
+                readyAt,
+                durationMs: readyAt - start,
+                activationLongTasks: (probe?.longTasks || [])
+                    .filter(task => task.at >= start && task.at < readyAt)
+            });
+        }))), startedAt);
 };
 
 const contentHash = page => page.evaluate(() => {
@@ -121,7 +148,15 @@ const drawRect = async (page, box, from, to) => {
 try {
     // ── author artwork in both paint modes ──────────────────────────────
     let page = await open();
-    await openCostumesTab(page);
+    const paintPerformance = await openCostumesTab(page);
+    await writeFile(path.join(SHOTS, 'paint-performance.json'), `${JSON.stringify({
+        schema: 'brickwright/paint-first-costume-baseline/v1',
+        url,
+        userAgent: await page.evaluate(() => navigator.userAgent),
+        ...paintPerformance
+    }, null, 2)}\n`);
+    console.log(`MEASURE: first Costume became interactive in ${paintPerformance.durationMs.toFixed(1)} ms; ` +
+        `${paintPerformance.activationLongTasks.length} activation long task(s)`);
     const start = await costumes(page);
     record('the paint editor opened on the shipped costumes', start.length > 0,
         start.map(c => `${c.name}:${c.fmt}`).join(', '));
