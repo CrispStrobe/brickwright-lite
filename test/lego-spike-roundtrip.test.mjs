@@ -23,8 +23,13 @@ const projectFrom = async bytes => JSON.parse(await (await JSZip.loadAsync(bytes
     .file('project.json').async('string'));
 
 test('vendored SPIKE compiler emits a canonical executable round-trip artifact', async () => {
+    // The pin is asserted so a vendor bump cannot pass this file by accident:
+    // whoever moves it re-reads the assertions below against the new compiler.
+    // 4134b86 -> eb5b286 on 2026-09-05: the Python and JavaScript READERS gained
+    // bitwise/shift operators (sb3-creator fix/reader-bitwise-shift); nothing in
+    // the SPIKE emitter changed, and the artifact assertions below still hold.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '4134b8665ef5a5c76e8e58c54bfae7fda8507467');
+        'eb5b286af6673dea720b6d78acd061386fd5c266');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
