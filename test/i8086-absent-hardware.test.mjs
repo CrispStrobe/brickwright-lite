@@ -45,6 +45,32 @@
 // smooth over an absence — and smoothing is exactly what removes the tell.
 // `chip.read() ?? 0` is the shape to be suspicious of.
 //
+// RUNNING THE SWEEP, and the filter that makes it worth running. lego-a4's
+// point is that this rule can be grepped rather than reasoned about:
+//
+//     grep -rnE "(\?\?|\|\|)\s*(0x[0-9a-fA-F]+|[0-9]+|true|false)\s*[;,)]" src/*.js
+//
+// Run bare, it is mostly noise. `opts.headroom ?? 1`, `P.ohms ?? 1000`,
+// `chip.eepromBytes ?? 512` are CONFIGURATION defaults: a part with no stated
+// resistance uses a stated default, which is a design decision recorded in
+// code and not a hidden absence.
+//
+// THE DANGEROUS SUBSET IS A DEFAULT ON A READ PATH WHOSE VALUE IS ALSO A
+// LEGITIMATE ANSWER. That is the whole filter, and it is what separates
+//
+//     const size = chip.eepromBytes ?? 512;      // a decision, visible
+//     return this.txStatus || 0x01;              // a forgery, invisible
+//
+// The second was real, in this fleet's own NE2000: `txStatus` was never
+// initialised, and `0x01` is exactly what a completed transmission reports.
+// A driver polling TSR at startup saw a send that never happened, and no
+// probe or counter anywhere could have distinguished it from a true one —
+// because the value WAS the true one.
+//
+// So the sweep is: grep the shape, discard the configuration defaults, and
+// look hard at anything left that a caller READS as status or data. It took
+// one grep and found one forgery.
+//
 // A NEW FEATURE THAT REQUESTS A CHIP BELONGS IN THIS FILE. If you cannot
 // write the case, you have not found the unforgeable state yet.
 import {test} from 'node:test';
