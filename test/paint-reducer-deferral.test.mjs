@@ -45,11 +45,15 @@ test('the paint module is requested once, installed before render and retryable 
     assert.doesNotMatch(appState, /scratch-paint/,
         'store construction must not retain an eager paint edge');
     assert.match(appState, /replaceReducer\(this\.reducerManager\.reduce\)/);
+    assert.match(wrapper, /paintReducerRequest = import[\s\S]*paintReducerRequest = null/,
+        'a failed shared reducer request must be retryable');
     assert.match(wrapper, /paintEditorRequest = import[\s\S]*paintEditorRequest = null/,
-        'a failed shared request must be retryable');
+        'a failed shared editor request must be retryable');
     assert.match(wrapper,
-        /installReducer\('scratchPaint', module\.ScratchPaintReducer\);[\s\S]*setState\(\{PaintEditor:/,
+        /installReducer\('scratchPaint', module\.default\);[\s\S]*yieldTask\(\)[\s\S]*loadPaintEditor\(\)[\s\S]*yieldTask\(\)[\s\S]*setState\(\{PaintEditor:/,
         'the real reducer must be installed before a paint child can render');
+    assert.match(wrapper, /setTimeout\(resolve, 0\)/,
+        'module evaluation and editor render must use fresh task boundaries');
     assert.match(wrapper, /shouldComponentUpdate \(nextProps, nextState\)/);
     assert.match(wrapper, /generation !== this\.loadGeneration/);
     assert.match(wrapper, /Retry costume editor/);
@@ -59,6 +63,11 @@ test('the paint module is requested once, installed before render and retryable 
         'the installed reducer default must remain the real Matrix-backed state');
     assert.match(browserGate, /absent before the Costume editor/);
     assert.match(browserGate, /matrixBacked/);
+    assert.doesNotMatch(browserGate, /constructor\?\.name === 'Matrix'/,
+        'minification must not invalidate the real Matrix proof');
+    assert.match(browserGate, /clone\.translate\(7, 11\)/,
+        'the Matrix proof must exercise clone, equality and transformation behavior');
+    assert.match(browserGate, /paint reducer and editor arrive as ordered activation resources/);
     assert.match(browserGate, /baselineMs = 390\.5/);
     assert.match(browserGate, /baselineRun = 33967333844/);
     assert.match(browserGate, /relativeLimitMs = 449\.075/);

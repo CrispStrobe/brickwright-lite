@@ -118,14 +118,33 @@ const openCostumesTab = async page => {
                 probe.longTasks.push({at: entry.startTime, ms: entry.duration});
             }
             const paint = window.__brickwrightStore?.getState?.()?.scratchPaint;
+            const bounds = paint?.viewBounds;
+            let matrixBacked = false;
+            try {
+                const before = [bounds.a, bounds.b, bounds.c, bounds.d, bounds.tx, bounds.ty];
+                const clone = bounds.clone();
+                const equalClone = clone !== bounds && clone.equals(bounds) && bounds.equals(clone);
+                clone.translate(7, 11);
+                matrixBacked = equalClone && before.every((value, index) =>
+                    Number.isFinite(value) && value === [bounds.a, bounds.b, bounds.c,
+                        bounds.d, bounds.tx, bounds.ty][index]) && !clone.equals(bounds);
+            } catch { /* a lookalike object is not a usable Paper matrix */ }
+            const activationScripts = performance.getEntriesByType('resource')
+                .filter(entry => entry.initiatorType === 'script' &&
+                    entry.startTime >= start && entry.startTime < readyAt)
+                .map(entry => ({
+                    name: new URL(entry.name).pathname,
+                    startTime: entry.startTime,
+                    responseEnd: entry.responseEnd
+                }));
             resolve({
                 startedAt: start,
                 readyAt,
                 durationMs: readyAt - start,
                 activationLongTasks: (probe?.longTasks || [])
                     .filter(task => task.at >= start && task.at < readyAt),
-                matrixBacked: paint?.viewBounds?.constructor?.name === 'Matrix' &&
-                    typeof paint.viewBounds.clone === 'function'
+                matrixBacked,
+                activationScripts
             });
         }))), startedAt);
 };
@@ -168,6 +187,13 @@ try {
     const longestPaintTask = Math.max(0, ...paintPerformance.activationLongTasks.map(task => task.ms));
     record('the real Matrix-backed paint reducer exists before the editor renders',
         paintPerformance.matrixBacked);
+    const reducerResource = paintPerformance.activationScripts.find(resource =>
+        /\/paint-reducer\.js$/.test(resource.name));
+    const editorResource = paintPerformance.activationScripts.find(resource =>
+        /\/paint-editor\.js$/.test(resource.name));
+    record('paint reducer and editor arrive as ordered activation resources',
+        Boolean(reducerResource && editorResource && reducerResource.responseEnd <= editorResource.startTime),
+        paintPerformance.activationScripts.map(resource => resource.name).join(', '));
     record('first Costume interactivity stays within its 15% and one-second ceilings',
         paintPerformance.durationMs <= relativeLimitMs && paintPerformance.durationMs <= absoluteLimitMs,
         `${paintPerformance.durationMs.toFixed(1)} ms; limits ${relativeLimitMs.toFixed(1)} / ${absoluteLimitMs} ms`);
