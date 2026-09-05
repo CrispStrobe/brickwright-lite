@@ -400,6 +400,14 @@ links and the sim runs), and offers `firmware.uf2` with a BOOTSEL instruction
 (it is dispatched by artefact kind in the handler, not the flasher map) and a
 note naming the handler; reach auto-computes (C → uf2, transport accepts uf2)
 so the C·Pico and ASM·Pico cells now read `sim + silicon`.
+The transport ships `tier: '3'`: the UF2 wraps the SRAM-linked bin (origin
+`0x20000000`, `ENTRY(main)`, no vector table) that rp2040js runs, and no Pico
+has booted a RAM-resident UF2 of it, so nothing is measured on real hardware.
+`evidence: 'checked'` and `tier: '3'` are both true at once and answer different
+questions: `checked` is the table-vs-code question (the contract test earns
+it), `tier` is how much is known about the hardware claim — today, nothing
+measured. A flash-resident image with boot2 is the tier-raising follow-up,
+beyond L2's scope.
 DoD: `test/bw-matrix-conformance.test.mjs` — a node contract test greps the
 importer to prove the route sends pico+C to `deployPicoUf2()` and that the
 handler reads the C buffer and takes the `/uf2` path (so the cell's `checked`

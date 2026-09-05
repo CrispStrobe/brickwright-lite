@@ -229,7 +229,7 @@ export const DEVICES = Object.freeze([
         sim: [eng('rp2040js', ['hex', 'bin', 'uf2'])],
         silicon: [
             tx('micropython-raw-repl', ['py'], 'micropython'),
-            tx('uf2-bootsel-download', ['uf2'], null, {task: 'L2', note: 'C compiles to an rp2040 bin (hosted /compile), /uf2 wraps it, deployPicoUf2() in pseudocode-importer.jsx offers firmware.uf2 for BOOTSEL drag-flash; flashFamily null — the deploy handler branches on artefact kind, not a vendored flasher'})
+            tx('uf2-bootsel-download', ['uf2'], null, {task: 'L2', tier: '3', note: 'C compiles to an rp2040 bin (hosted /compile), /uf2 wraps it, deployPicoUf2() in pseudocode-importer.jsx offers firmware.uf2 for BOOTSEL drag-flash; flashFamily null — the deploy handler branches on artefact kind, not a vendored flasher. tier 3: the UF2 wraps the SRAM-linked bin (origin 0x20000000, ENTRY(main), no vector table) that rp2040js runs; no Pico has booted a RAM-resident UF2 of it, so nothing is measured on hardware. evidence checked answers table-vs-code (the contract test earns it); tier answers the hardware claim, which is unmeasured'})
         ]
     }),
     dev('stm32f030', 'STM32F030', 'STM32 (ARM)', 'stm32', {
