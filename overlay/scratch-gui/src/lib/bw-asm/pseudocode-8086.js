@@ -1775,6 +1775,57 @@ class Emitter {
         this.op(`JMP ${arm}                ; re-arm: one run per press`);
     }
 
+    /**
+     * IS THE CONVERTER ACTUALLY THERE? Asked once, at startup.
+     *
+     * THE FAILURE THIS EXISTS FOR IS THE WORST KIND THIS BENCH PRODUCES. With
+     * no ADC on the board, every port in its block is open bus and reads FFh.
+     * The EOC poll then succeeds immediately -- bit 0 of FFh is set -- and the
+     * data read returns FFh, which scales to 1020 out of 1023. Measured: a
+     * program that should read 0 printed **1020**, with no error, no warning
+     * and a plausible number. A learner would conclude their potentiometer was
+     * at maximum.
+     *
+     * That is a correct fallback hiding a dead feature: open bus is a truthful
+     * answer to "what is on this wire", and it is indistinguishable from data.
+     *
+     * THE SIGNATURE THAT SEPARATES THEM IS BUSY, NOT READY. A real 0809 pulls
+     * EOC LOW while converting and raises it when done; open bus can only ever
+     * read high. So the probe starts a conversion and checks EOC reads ZERO at
+     * least once -- a state absent hardware cannot produce.
+     */
+    adcProbeRoutine () {
+        return ['',
+            '; ---- is the converter present? -------------------------------',
+            '; Start a conversion and look for BUSY. An absent chip answers FFh',
+            '; to everything, so it reads "ready" instantly and its data reads',
+            '; full scale -- a plausible number with nothing wrong on its face.',
+            '; Only the LOW half of EOC is unforgeable by open bus.',
+            'BW_ADCPROBE:',
+            `    MOV DX, ${ADC_BASE}`,
+            '    OUT DX, AL             ; any write starts channel 0',
+            `    MOV DX, ${ADC_EOC}`,
+            '    IN AL, DX',
+            '    TEST AL, 1',
+            '    JZ BW_ADCOK            ; busy -> a real chip is converting',
+            '    MOV DX, OFFSET BW_NOADC',
+            '    MOV AH, 9',
+            '    INT 21H',
+            '    MOV AX, 4C01H',
+            '    INT 21H',
+            'BW_ADCOK:',
+            '    ; drain the conversion we started, so the first real read is',
+            '    ; not handed this one.',
+            `    MOV DX, ${ADC_EOC}`,
+            'BW_ADCW:',
+            '    IN AL, DX',
+            '    TEST AL, 1',
+            '    JZ BW_ADCW',
+            `    MOV DX, ${ADC_BASE}`,
+            '    IN AL, DX',
+            '    RET'];
+    }
+
     emitSay (input, opcode, textMode) {
         // A LINE IS A SHARED RESOURCE, so under the scheduler printing one is
         // a critical section. `print` is a string followed by a CRLF, and a
@@ -2113,6 +2164,7 @@ class Emitter {
         if (need.sched) r.push(...this.schedRuntime());
         if (need.keypump) r.push(...this.keyPumpRoutine());
         for (const slot of this.pwm.values()) r.push(...this.pwmRoutine(slot));
+        if (need.adc) r.push(...this.adcProbeRoutine());
         if (need.seg) r.push(...this.segRuntime());
         for (const d of this.segs.values()) r.push(...this.segRoutine(d));
         if (need.printn) { need.crlf = true; }
@@ -2782,6 +2834,12 @@ class Emitter {
                 'BW_PORTB DB 0    ; shadow of port B',
                 'BW_PORTC DB 0    ; shadow of port C');
         }
+        if (this.uses.adc) {
+            d.push("BW_NOADC DB 'analog: no converter answered at 300h. This program declares an "
+                + "ANALOG pin, and the build asks for an ADC0809 -- this machine was started "
+                + "without one. Open bus reads as full scale, so continuing would print a "
+                + "plausible reading that is not a measurement.', 0DH, 0AH, '$'");
+        }
         for (const disp of this.segs.values()) {
             d.push(`${disp.buf} DB 8 DUP (0)   ; frame buffer for "${disp.name}"`,
                 `${disp.cur} DB 0          ; which digit the scan is on`);
@@ -3156,6 +3214,9 @@ export function emitI8086Asm (project, opts = {}) {
     // The scheduler's startup: build one stack per script, then dispatch into
     // the first. It goes AFTER the variable initialisers, because a script may
     // read a variable before the scheduler ever runs.
+    if (em.uses.adc) {
+        inits.push('', '    ; ---- is the converter there? ----', '    CALL BW_ADCPROBE');
+    }
     if (em.uses.sched) {
         inits.push('', '    ; ---- start the scheduler ----',
             '    CALL BW_SCHINIT',

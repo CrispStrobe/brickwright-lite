@@ -673,3 +673,41 @@ test('the build says a display costs a script, and why', async () => {
     assert.match(r.built.warnings.join(' '), /adds a script for each to scan it/);
     assert.match(r.built.warnings.join(' '), /ONE digit at a time/);
 });
+
+test('an ANALOG program handed NO converter refuses, instead of reading fiction', async () => {
+    // THE WORST FAILURE THIS BENCH CAN PRODUCE, and it was live until now.
+    // With no ADC on the board every port in its block is open bus and reads
+    // FFh. The EOC poll then succeeds instantly — bit 0 of FFh is set — and
+    // the data read returns FFh, which scales to 1020 of 1023. Measured: a
+    // program that should read 0 printed **1020**. No error, no warning, a
+    // plausible number, and a learner concluding their potentiometer was at
+    // maximum.
+    //
+    // That is a correct fallback hiding a dead feature: open bus is a truthful
+    // answer to "what is on this wire" and is indistinguishable from data.
+    //
+    // The signature that separates them is BUSY, not READY. A real 0809 pulls
+    // EOC low while converting; open bus can only read high.
+    const src = ['DEVICE i8086', 'PIN pot = P1.3 ANALOG',
+        'WHEN flag clicked:', '  say (read pot)'].join('\n');
+    const c = new SB3();
+    c.parse(src);
+    const built = await buildPseudocode8086({project: c.project, source: src});
+
+    const withAdc = await createI8086DosBench(
+        {bytes: built.bytes, format: built.format, chips: built.chips});
+    withAdc.machine.chips.adc1.setChannel(3, 3.75);
+    let n = 0;
+    while (n < 2_000_000 && !withAdc.terminated) { withAdc.step(); n++; }
+    assert.deepEqual(withAdc.screenText().filter(Boolean), ['768'],
+        'with the converter it reads the voltage');
+
+    const without = await createI8086DosBench({bytes: built.bytes, format: built.format});
+    n = 0;
+    while (n < 2_000_000 && !without.terminated) { without.step(); n++; }
+    const said = without.screenText().filter(Boolean).join(' ');
+    assert.match(said, /no converter answered/, 'without it, it says so');
+    assert.ok(!/1020/.test(said),
+        'and above all does NOT print a reading — a plausible number is worse '
+        + 'than a refusal, because nothing downstream can tell it is fiction');
+});
