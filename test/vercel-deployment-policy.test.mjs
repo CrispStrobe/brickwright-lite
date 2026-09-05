@@ -29,3 +29,21 @@ test('every Vercel production run deploys the current main checkout', () => {
         assert.match(workflow, new RegExp(`secrets\\.${secret}`));
     }
 });
+
+test('content-hashed bundles are immutable; everything that can change by name is not', () => {
+    const rules = config.headers || [];
+    const immutable = rules.filter(r => r.headers.some(h =>
+        h.key === 'Cache-Control' && /immutable/.test(h.value)));
+    assert.ok(immutable.length > 0, 'vercel.json has no immutable Cache-Control rule; every ' +
+        'visit revalidates the 3.5 MB boot chunk under max-age=0');
+    // The sources use no path-to-regexp params, so they are ordinary regexes.
+    const matches = p => immutable.some(r => new RegExp(`^${r.source}$`).test(p));
+    for (const hashed of ['/gui.94f22fbe.js', '/chunks/2923.d693e18ac4a80ef5ddd1.js',
+        '/chunks/paint-editor.27b9d41482fe552a7c45.js', '/static/assets/icon.3f2a9c1b.svg']) {
+        assert.ok(matches(hashed), `${hashed} should be cached immutably`);
+    }
+    for (const mutable of ['/', '/index.html', '/sw.js', '/chunks/bw-circuit-ui.js',
+        '/chunks/ext-music.js', '/examples/index.json', '/static/emu8051.wasm']) {
+        assert.ok(!matches(mutable), `${mutable} changes under its own name and must revalidate`);
+    }
+});

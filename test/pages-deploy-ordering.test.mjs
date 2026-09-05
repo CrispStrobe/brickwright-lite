@@ -99,7 +99,10 @@ test('the deploy job never resolves an artifact by name', () => {
         'tree, and it is the shape that took the site down.');
     assert.ok(!/upload-pages-artifact/.test(deploy),
         'the deploy job uploads a Pages artifact — the build and the upload must stay together');
-    assert.match(deploy, /needs:\s*build/,
+    // `needs: build` or `needs: [build, corpus]` — the corpus job (the lesson walks,
+    // split out of build on 2026-09-05) is a second gate on publication, not a
+    // second producer: the artifact still comes from `build` alone.
+    assert.match(deploy, /needs:\s*(?:build|\[\s*build\b[^\]]*\])/,
         'the deploy job must depend on the build job that produced its artifact');
 });
 

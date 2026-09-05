@@ -63,7 +63,9 @@
     "prove:pins": "node scripts/prove-fetch-pinning.mjs",
     "test:all": "npm run test && npm run smoke:debugger",
     "probe:layout": "node scripts/probe-layout.mjs",
-    "verify:boot-payload": "node scripts/verify-boot-payload.mjs"
+    "verify:boot-payload": "node scripts/verify-boot-payload.mjs",
+    "test:fast": "node --test $(ls test/*.test.mjs | grep -v -E 'lesson-numeric-contract|lesson-defect-detector')",
+    "test:corpus": "node --test test/lesson-numeric-contract.test.mjs test/lesson-defect-detector.test.mjs"
   },
   "engines": {
     "node": "22.x"
