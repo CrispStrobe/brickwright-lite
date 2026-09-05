@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
     assertDosChunkBoundary,
+    assertLazyListMonitorBoundary,
     assertLazyPaintEditorBoundary,
     assertOptionalCodeMirrorGrammarBoundary,
     auditWebpackResourceWindow,
@@ -180,4 +181,64 @@ test('paint boundary rejects eager or collapsed activation stages', () => {
     assert.match(failures.join('\n'), /paint-reducer became an initial chunk/);
     assert.match(failures.join('\n'), /paint-editor became an initial chunk/);
     assert.match(failures.join('\n'), /same emitted JavaScript asset/);
+});
+
+const lazyListFixture = () => {
+    const stats = fixture();
+    stats.chunks.push(
+        {id: 40, names: ['list-monitor-body'], files: ['chunks/list-monitor-body.js'], initial: false},
+        {id: 41, names: [], files: ['chunks/react-virtualized.js'], initial: false}
+    );
+    stats.assets.push(
+        {name: 'chunks/list-monitor-body.js', size: 1200, chunks: [40]},
+        {name: 'chunks/react-virtualized.js', size: 39000, chunks: [41]}
+    );
+    stats.modules.push(
+        {name: './src/components/monitor/list-monitor-scroller-body.jsx', size: 6000, chunks: [40]},
+        {name: './node_modules/react-virtualized/dist/es/List/List.js', size: 12549, chunks: [41]},
+        {name: './node_modules/react-virtualized/dist/es/Grid/Grid.js', size: 65728, chunks: [41]},
+        {name: './node_modules/react-virtualized/dist/es/Grid/utils/CellSizeAndPositionManager.js',
+            size: 10614, chunks: [41]},
+        {name: './node_modules/react-virtualized/dist/es/Grid/utils/ScalingCellSizeAndPositionManager.js',
+            size: 6776, chunks: [41]},
+        {name: './node_modules/react-virtualized/dist/es/Grid/types.js', size: 6233, chunks: [41]},
+        {name: './node_modules/react-virtualized/dist/es/Grid/defaultCellRangeRenderer.js', size: 5855, chunks: [41]},
+        {name: './node_modules/react-virtualized/dist/es/utils/requestAnimationTimeout.js', size: 12119, chunks: [41]}
+    );
+    return stats;
+};
+
+test('list monitor owns a complete narrow virtualized closure outside initial JavaScript', () => {
+    const report = summarizeWebpackOwnership(lazyListFixture());
+    assert.equal(report.lazyListMonitor.initial, false);
+    assert.equal(report.lazyListMonitor.namedChunk.ownsBody, true);
+    assert.deepEqual(report.lazyListMonitor.families, ['Grid', 'List', 'utils']);
+    assert.deepEqual(report.lazyListMonitor.unusedFamilies, []);
+    assert.equal(report.lazyListMonitor.sourceBytes, 119874);
+    assert.deepEqual(report.lazyListMonitor.files, ['chunks/react-virtualized.js']);
+    assert.deepEqual(assertLazyListMonitorBoundary(report), []);
+});
+
+test('list monitor boundary rejects eager, broad or incomplete ownership', () => {
+    const stats = lazyListFixture();
+    stats.modules.find(module => module.name.includes('/List/List.js')).chunks.push(2);
+    stats.modules.push({
+        name: './node_modules/react-virtualized/dist/es/Table/Table.js', size: 40000, chunks: [41]
+    });
+    const failures = assertLazyListMonitorBoundary(summarizeWebpackOwnership(stats));
+    assert.match(failures.join('\n'), /react-virtualized became initial/);
+    assert.match(failures.join('\n'), /unused widget families: Table/);
+    assert.match(failures.join('\n'), /exceeds 140 KiB/);
+
+    const missing = lazyListFixture();
+    missing.modules = missing.modules.filter(module => !module.name.includes('/List/List.js'));
+    assert.match(assertLazyListMonitorBoundary(summarizeWebpackOwnership(missing)).join('\n'),
+        /react-virtualized List is missing/);
+});
+
+test('list monitor boundary enforces the measured 75 KiB reduction from the current eager tree', () => {
+    const stats = lazyListFixture();
+    stats.assets.find(asset => asset.name === 'gui.12345678.js').size = 4520399 - 9000 - 76799;
+    const failures = assertLazyListMonitorBoundary(summarizeWebpackOwnership(stats));
+    assert.match(failures.join('\n'), /P14 eager baseline fell below 75 KiB: 76799 bytes/);
 });
