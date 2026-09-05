@@ -897,3 +897,43 @@ telling the truth, and they fail in precisely the way this file exists to
 catalogue: they answer a question adjacent to the one asked, in the vocabulary
 of the one asked. The catalogue has been pointed at `test/` all week. It applies
 to the shell history too, and the shell history is not reviewed by anyone.
+
+## A fifth: the build that verified the previous build (2026-09-05, lego-b9's)
+
+Found by lego-b9 and reported against their own work, which is the only reason
+it is here rather than in a postmortem three weeks from now.
+
+They had verified a VM change in the browser twice and reported it green. Both
+verifications were against a **stale bundle**. The mechanism is specific to this
+repo and applies to everyone working in it:
+
+- `scripts/apply-vm-overlay.mjs` writes our patched `virtual-machine.js` and the
+  built-in extension registry **into** `packages/scratch-gui/node_modules/scratch-vm`
+  (`DEST`, line 16). That is the whole point of the script.
+- webpack's persistent filesystem cache treats `node_modules` as immutable, via
+  the default `snapshot.managedPaths`. It is a sound default almost everywhere:
+  package contents do not change without a lockfile change.
+- Here they do. So the cache never invalidated, and a 40-second "rebuild"
+  re-shipped the previous `virtual-machine.js`.
+
+The tell was available and cheap: **grep the built bundle for a symbol the new
+code introduces.** `_bwDeserializeCleared` appeared 0 times in a bundle built
+from a tree that contained it. A build that finishes suspiciously fast after a
+source change has not proved it is fast; it has proved it did not read the change.
+
+Two things make this worse than an ordinary stale artifact. The verification
+**passed**, so it produced positive evidence for a claim it never tested — the
+shape this whole file is about. And it is invisible in CI, because a runner's
+`node_modules/.cache` is gone next run, so every CI build is cold and correct.
+The failure is local-only, which means it lands on whoever is doing the careful
+manual check before a merge, and never on the machine everybody trusts.
+
+Fixed with `snapshot.managedPaths: []` for cached builds. The general rule:
+**a build cache is a claim that inputs have not changed, and any tool that
+writes into a "managed" path makes that claim false.** If your repo patches
+`node_modules` — vendoring, overlays, postinstall rewrites — the cache must be
+told, or every local verification after the first is reporting on a bundle
+nobody built.
+
+Corollary for reviewers: "I rebuilt and re-ran it" is not evidence unless the
+rebuild was cold or the bundle was grepped for the change. Ask which.
