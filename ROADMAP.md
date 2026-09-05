@@ -785,6 +785,38 @@ reseated example still extracts to a machine that runs. **The gate is the
 deliverable** — a reseat that produces a board which extracts but does not run
 is the failure this tier keeps finding in other forms.
 
+#### 3.8.4 8086 performance follow-up — ORDERED 2026-09-05
+
+The authoritative measurements, activation thresholds and correctness gates
+are in `docs/I8086-CORE-PLAN.md` under “Performance decision and next
+roadmap”. The design decision is settled: DOS uses the explicit boundary-step
+adapter and `runFor()` uses an exact, unrounded CPU-cycle deadline. They stay
+together and are not a user preference. Cycle-unit budgeting of the fast core
+is not the future cycle-accurate BIU/EU mode described in
+`docs/FULL-DEBUGGER-ARCHITECTURE.md`.
+
+Next tasks, in order:
+
+1. Add the no-`onInstruction` machine-step fast path, preserving the observed
+   retire path byte-for-byte in behavior.
+2. Gate interrupt arbitration on pending NMI or an active PIC line, with HLT,
+   IF and simultaneous-boundary tests.
+3. Make the hosted benchmark repeat each profile, report median/spread, add a
+   CPU-throttled minimum-device case, and retain real encoded/decoded chunk
+   sizes.
+4. Instrument `BoardCanvas`/host update ownership. The outer boundary stayed
+   at 15 commits, so further setter edits without this evidence are guessing.
+5. Merge the two observers of the same canvas container only after task 4
+   identifies resize/fit work as material.
+6. Use CI webpack stats to attribute the approximately 9.1 MB initial chunk
+   and 3.0 MB GUI script before changing split points; keep the DOS debugger
+   independent of unrelated board registries.
+7. Re-evaluate peripheral batching, word-memory fast paths, timer caching,
+   workers and JIT only against their existing measured activation thresholds.
+
+Every performance change gets an isolated GitHub Actions receipt. Full builds,
+browser profiles and repeated timing runs do not run on the VPS.
+
 ## 4. Standing debt
 
 ### 4.1 The dead-module ratchet — TRIAGED 2026-08-30, and the instrument was wrong

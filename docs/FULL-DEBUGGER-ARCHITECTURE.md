@@ -275,6 +275,13 @@ here first because it already has the precision the architecture needs.
 ### 8086/8088 — first new cycle engine
 
 Keep the validated functional core as the fast instruction mode and oracle.
+That fast mode already schedules `runFor()` against an exact, unrounded CPU
+cycle deadline and lets the DOS layer inject one explicit boundary-step
+function while all state/time reads use the raw machine. Those are mandatory
+internal fast-path invariants, not two execution modes and not a UI choice.
+They do not make the core cycle-accurate: an instruction still retires
+atomically.
+
 Add a separate resumable execution engine that owns decoder, EU microstate, BIU,
 prefetch queue, bus T1–T4/Tw phases, interrupt acknowledge, HOLD/DMA boundaries
 and partial-instruction snapshot state. The two modes must agree on

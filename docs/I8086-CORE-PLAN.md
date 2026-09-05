@@ -190,6 +190,34 @@ already coalesced in practice. The next change instead targets the distinct
 post-layout `requestAnimationFrame` fit retry, batching its zoom/pan pair and
 retaining identical pan state so an idempotent retry performs no render.
 
+## Performance decision and next roadmap — 2026-09-05
+
+**Keep the proxy-free boundary step and exact cycle deadline together.** They
+are complementary implementation choices, not modes a learner should select.
+The DOS service layer supplies `adapter.step`, while the debug target reads the
+raw machine and stops `runFor()` at the unrounded cycle target. Reintroducing a
+whole-machine `Proxy`, millisecond division per instruction, or a UI toggle
+between the two would add cost and a second behavior surface without adding
+fidelity. This is also **not cycle-accurate execution**: it budgets the current
+instruction-atomic core in cycle units. A future BIU/EU/prefetch engine remains
+a separate machine capability and, when it exists, is the accuracy/speed
+choice exposed to users.
+
+The next work is ordered below. Each task gets its own hosted receipt; do not
+combine adjacent CPU-loop changes and then guess which one moved the number.
+Heavy builds, browser profiling and repeated timing runs belong in GitHub
+Actions, not on the small VPS.
+
+| Order | Roadmap task | Required proof and stop rule |
+|---|---|---|
+| P1 | **Unobserved `I8086Machine.step()` fast path.** When `hooks.onInstruction` is absent at instruction entry, do not read `cpu.pc`, capture `cyclesBefore`, or construct a retire payload. The observed branch must remain the existing semantic path. | Unit tests must prove exact retire PC/cycle fields with a hook, no retire after unsubscribe, and that installing a hook during an instruction starts at the next boundary. Run all 8086/186 vectors and the corpus, then compare the hosted pump `runMs` receipt. Keep only if the median improves outside timer resolution. |
+| P2 | **Conditional interrupt arbitration.** Skip `_serviceInterrupts()` only when no NMI is pending and no attached PIC has an active interrupt line; preserve its position relative to HLT wake-up and instruction execution. Keep this separate from P1 for attribution. | Tests must cover pending NMI, maskable IRQ with IF clear/set, PIC acknowledgement, halted wake-up, and simultaneous boundary cases. Full vector/corpus CI remains mandatory. Revert if any observable ordering changes or the repeated receipt has no measurable CPU benefit. |
+| P3 | **Make performance comparisons statistical.** Run at least three repetitions per viewport, retain every raw receipt, and report median plus spread. Add a CPU-throttled minimum-device profile; the current “mobile” profile changes viewport, not processor speed. Record `encodedBodySize`/`decodedBodySize` as well as transfer bytes so cached dynamic chunks do not appear to be zero-sized. | The benchmark must still keep startup, attach, first render and steady pump as separate windows. A claimed win requires the same direction in both viewports and must exceed run-to-run spread; otherwise record it as inconclusive. |
+| P4 | **Attribute Circuit-open updates before more React surgery.** The outer profiler stayed at 15 `CircuitDesigner` commits after both load batching and camera-fit coalescing, so it cannot identify which state source survived. Add benchmark-only `BoardCanvas` and host-boundary profiling/marks that name fit, resize, board-state and declaration updates. | Normal builds must retain their original element hierarchy and no always-on tracing. The receipt must account for the 15 commits closely enough to name a dominant source before P5 or another setter change begins. |
+| P5 | **Merge the duplicate canvas size observers.** `BoardCanvas` currently observes the same container separately for fit size and rendered container size. Use one equality-guarded measurement state while updating the fit-size ref synchronously, preserving first viewBox, resize-triggered fit and genuinely changed post-layout framing. | Depends on P4. Focused tests cover initial measurement, unchanged observer entries, width-only/height-only changes and auto-fit ordering; production Circuit UX/rendering gates must remain green. Keep only if the profiler removes commits or long-task time in repeated runs. |
+| P6 | **Audit and split startup chunks from evidence, not filenames.** The profiling receipt loaded a roughly 9.1 MB initial chunk and a 3.0 MB GUI script; attach itself loaded five scripts in about 41–49 ms. Emit webpack stats in CI, identify the modules owning those bytes, and keep the DOS-specific `bw-debug-i8086` path independent of the broad board/device registries. | No speculative splitting. Set a budget only after stats name the owners; then assert first-load bytes and that an assembled DOS run does not request unrelated CPU families, solvers or device catalogues. Preserve the ordinary production build while producing the separate profiling build. |
+| P7 | **Reassess the deferred engine changes below.** Peripheral batching, word-memory fast paths, timer-listener caching, workers and JIT remain hypotheses until P1–P6 leave a measured bottleneck that crosses their activation threshold. | Do not implement merely because the optimization is conventional. Each item keeps the correctness exclusions and thresholds in the table below. |
+
 The tempting next changes are deliberately deferred. These are activation
 rules, so “later” has a measurable meaning:
 
