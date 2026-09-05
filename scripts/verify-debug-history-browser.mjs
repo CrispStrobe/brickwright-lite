@@ -85,6 +85,8 @@ try {
     await page.addInitScript(() => {
         localStorage.clear();
         localStorage.setItem('bw-starter-v1-complete', '1');
+        localStorage.setItem('bw-right-pane-hidden', '0');
+        localStorage.setItem('bw-debug-dock', 'right');
         sessionStorage.clear();
     });
     await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 90000});

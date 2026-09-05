@@ -8,7 +8,7 @@ test('browser proof drives existing run-to and selected-inspection controls', ()
     for (const selector of ['data-run-to-address', 'data-debug-record', 'data-debug-timeline-refresh',
         'data-debug-timeline-latest', 'data-debug-selected-inspection', 'data-debug-selected-registers',
         'data-debug-selected-disassembly', 'data-debug-selected-memory']) assert.ok(source.includes(selector), selector);
-    assert.match(source, /dialog\.accept\(\)/);
+    assert.match(source, /dialog\.accept\(`/);
     assert.match(source, /data-debug-phase[^]*paused/);
     assert.match(source, /instruction\\\/retire/);
 });

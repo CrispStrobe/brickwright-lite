@@ -105,10 +105,18 @@ try {
     check('run-to is capability-gated and enabled on the attached target', !(await runTo.isDisabled()));
 
     let promptSeen = '';
-    page.once('dialog', async dialog => { promptSeen = dialog.message(); await dialog.accept(); });
-    await runTo.click(); // Accept the displayed current PC: the native breakpoint must halt before it executes.
-    await page.waitForFunction(() => document.querySelector('[data-debug-panel]')
+    page.once('dialog', async dialog => {
+        promptSeen = dialog.message();
+        const current = Number.parseInt(dialog.defaultValue().replace(/^0x/i, ''), 16);
+        const next = current === 2 ? 5 : current === 5 ? 6 : 2;
+        await dialog.accept(`0x${next.toString(16)}`);
+    });
+    // Arm the observation before the click: this short ROM reaches the next
+    // address quickly, and polling only after click can miss the honest
+    // running render between installation and the following animation frame.
+    const observedRunning = page.waitForFunction(() => document.querySelector('[data-debug-panel]')
         ?.getAttribute('data-debug-phase') === 'running', null, {timeout: 10000});
+    await Promise.all([observedRunning, runTo.click()]);
     await page.waitForFunction(() => document.querySelector('[data-debug-panel]')
         ?.getAttribute('data-debug-phase') === 'paused', null, {timeout: 10000});
     check('run-to used the address prompt and returned to a paused before-boundary',
