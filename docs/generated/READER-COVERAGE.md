@@ -23,9 +23,9 @@ Each run of a fixture through its reader is one of three outcomes:
 
 ## Overall
 
-367 clean · 281 degraded · 15 refused (of 663; 55% clean)
+368 clean · 280 degraded · 15 refused (of 663; 56% clean)
 
-- round-trip (emit → read back): 367 clean · 279 degraded · 4 refused (of 650; 56% clean)
+- round-trip (emit → read back): 368 clean · 278 degraded · 4 refused (of 650; 57% clean)
 - native (real source fed to the reader): 0 clean · 2 degraded · 11 refused (of 13; 0% clean)
 
 ## By method, language and device family
@@ -69,7 +69,7 @@ programs are refused as foreign. The refusal reasons below say which.
 | round-trip | micropython | 8051 | 29 clean · 20 degraded · 0 refused (of 49; 59% clean) |
 | round-trip | micropython | arduino | 30 clean · 37 degraded · 0 refused (of 67; 45% clean) |
 | round-trip | micropython | microbit | 3 clean · 6 degraded · 0 refused (of 9; 33% clean) |
-| round-trip | micropython | pico | 2 clean · 1 degraded · 0 refused (of 3; 67% clean) |
+| round-trip | micropython | pico | 3 clean · 0 degraded · 0 refused (of 3; 100% clean) |
 | round-trip | micropython | spike | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
 | round-trip | asm | 8086 | 0 clean · 1 degraded · 4 refused (of 5; 0% clean) |
 | native | c | 8051 | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
@@ -115,9 +115,6 @@ programs are refused as foreign. The refusal reasons below say which.
 | 1 | 26 output pins × 20 mA = up to 520 mA at maximum pin ratings (actual current depends on se |
 | 1 | Port 2 has 7 output pins |
 | 1 | 1 more WHEN script(s) not lifted |
-| 1 | kept verbatim as a grey block: "…" |
-| 1 | kept verbatim as a grey block: "…"HELLO"…" |
-| 1 | kept verbatim as a grey block: "…"FROM PICO"…" |
 | 1 | statement dropped (not representable as a block): = ( unsigned char ) ( 0 ) |
 | 1 | statement dropped (not representable as a block): = ( unsigned char ) ( bw_tab_font [ … |
 | 1 | stc12_setport: no equivalent on this board; the block was not translated |
@@ -207,7 +204,6 @@ fixture appears here so its verdict is traceable to the program that caused it.
 | round-trip | python | pico | 72-pico-oled-hello | degraded | dropped expression statement |
 | round-trip | javascript | pico | 72-pico-oled-hello | degraded | dropped expression statement |
 | round-trip | c | pico | 72-pico-oled-hello | degraded | top-level declaration dropped (no block equivalent): typedef void ( * bw_vec_t ) ( void …; top-level declaration dropped (no block equivalent): struct __bw_bits2 |
-| round-trip | micropython | pico | 72-pico-oled-hello | degraded | kept verbatim as a grey block: "…"; kept verbatim as a grey block: "…"HELLO"…"; kept verbatim as a grey block: "…"FROM PICO"…" |
 | round-trip | python | arduino | 73-voltmeter | degraded | dropped expression statement |
 | round-trip | javascript | arduino | 73-voltmeter | degraded | dropped expression statement |
 | round-trip | c | arduino | 73-voltmeter | degraded | top-level declaration dropped (no block equivalent): struct __bw_bits2 |
