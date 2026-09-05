@@ -27,12 +27,15 @@ const read = rel => readFileSync(join(REPO, 'overlay/scratch-gui/src', rel), 'ut
 const importer = read('components/tw-pseudocode/pseudocode-importer.jsx');
 const header = read('components/stage-header/stage-header.jsx');
 const gui = read('components/gui/gui.jsx');
+// The dropdown is DERIVED from this table (T7); it no longer carries a device
+// list of its own, so these read the table rather than regex-parsing the JSX.
+const {DEVICES} = await import('../overlay/scratch-gui/src/lib/bw-matrix/capabilities.js');
 
 test('every device the dropdown offers has an id the program can carry', () => {
     // The dropdown writes `DEVICE <ID>` into the pseudocode, so an id with
     // a space or punctuation would produce a line the parser cannot read.
-    const ids = [...importer.matchAll(/\{ id: '([^']+)', label:/g)].map(m => m[1]);
-    assert.ok(ids.length > 15, `only ${ids.length} devices found — the list moved`);
+    const ids = DEVICES.map(d => d.id);
+    assert.ok(ids.length > 15, `only ${ids.length} devices in the matrix — the table moved`);
     for (const id of ids) {
         assert.match(id, /^[a-z0-9-]+$/, `${id} is not a usable DEVICE id`);
     }
@@ -64,10 +67,10 @@ test('the Arduboy is not offered as a compile target', () => {
     // avr-gcc, which is GPL and cannot ship in this repo. Listing it as
     // compilable would promise something the licence forbids, and the
     // failure would surface as a build button that never works.
-    const entry = importer.match(/\{ id: 'arduboy',[^}]*\}/);
-    assert.ok(entry, 'no arduboy entry');
-    assert.match(entry[0], /compile: false/, 'arduboy must not claim to compile');
-    assert.match(entry[0], /emulator: 'arduboy'/);
+    const entry = DEVICES.find(d => d.id === 'arduboy');
+    assert.ok(entry, 'no arduboy row in the matrix');
+    assert.equal(Boolean(entry.pickerCompile), false, 'arduboy must not claim to compile');
+    assert.equal(entry.pickerEmulator, 'arduboy');
 });
 
 test('a restored dock cannot strand the user on an empty console', () => {

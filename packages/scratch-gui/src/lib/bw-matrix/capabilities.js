@@ -178,6 +178,33 @@ const avr8 = {pickerCompile: true, pickerEmulator: 'avr8js', sim: [eng('avr8js',
  * list's flags and exist only so the conformance test can hold the two in
  * agreement; the truth about what compiles is in the cells.
  */
+/**
+ * The runtime device CORE for each picker group.
+ *
+ * NOT the same fact as `family`, and the difference is load-bearing. `family`
+ * keys the matrix `CELLS` table; `core` is what reaches
+ * `vm.runtime.bwDeviceCore` and drives pin naming and the compile target.
+ * They differ for most groups: Arduino (AVR) is `arduino` not `avr`, STM32
+ * (ARM) is `arm` not `stm32`, MicroPython is `micropython` not `microbit`,
+ * Raspberry Pi is `rp2040`, and 6502 is `w65c02`.
+ *
+ * Recorded here because the first attempt at deriving the Code-tab picker from
+ * this table used `family` as the core and changed all three silently: the
+ * device lists matched exactly, so nothing in the diff looked wrong. The
+ * equivalence check against the old literal is what caught it.
+ */
+export const DEVICE_GROUP_CORE = Object.freeze({
+    'STC12 (8051)': '8051',
+    'Arduino (AVR)': 'arduino',
+    'Raspberry Pi': 'rp2040',
+    'STM32 (ARM)': 'arm',
+    '6502': 'w65c02',
+    'Z80': 'z80',
+    '8086': 'i8086',
+    'MicroPython': 'micropython',
+    'Arcade & SAMD51': 'samd51'
+});
+
 export const DEVICES = Object.freeze([
     ...STC_IDS.map(id => dev(id, id.toUpperCase(), 'STC12 (8051)', '8051', {
         pickerCompile: true,
@@ -212,6 +239,13 @@ export const DEVICES = Object.freeze([
         silicon: [tx('usbasp-webusb', ['hex'], 'isp')]
     }),
     // A console: it runs a .hex somebody else built. No language cells.
+    // Moved here from DEVICE_GROUPS in pseudocode-importer.jsx (T7): the picker is
+    // derived from this table now, so the reason a flag is what it is belongs
+    // beside the flag.
+    // An ATmega32U4 console. `compile: false` is the important half: there is no path from blocks
+    // to an Arduboy binary — that needs avr-gcc, which is GPL and cannot ship here — so choosing
+    // this offers to RUN a .hex, not to build one. Listing it as compilable would promise
+    // something the licence forbids.
     dev('arduboy', 'Arduboy (run .hex)', AVR, 'arduboy', {
         programmable: false,
         pickerCompile: false,
@@ -275,12 +309,36 @@ export const DEVICES = Object.freeze([
         })],
         silicon: [tx('eeprom-programmer-webserial', ['hex', 'bin'], 'eeprom')]
     }),
+    // Moved here from DEVICE_GROUPS in pseudocode-importer.jsx (T7): the picker is
+    // derived from this table now, so the reason a flag is what it is belongs
+    // beside the flag.
+    // `compile: false` STILL MEANS WHAT IT SAYS, and it is not a leftover. It is read as "the
+    // hosted C compiler can build this", and it cannot: sb3-creator has no 8086 device profile and
+    // stc-compiler has no 8086 back end, so `generateC` + POST is a road that ends in "unknown
+    // device: i8086" three clicks later. What changed is that there is now a SECOND road —
+    // `lib/bw-asm/pseudocode-8086.js` lowers the blocks to 8086 assembly in the browser and
+    // `requestAssembly` assembles them here, with no network and no toolchain — and
+    // `runPseudocodeOn8086` is the ▶ button for it. The two flags are about different roads, so
+    // the device is offered as compilable-by-neither and runnable anyway.  It is in the picker
+    // because it is the BOARDLESS way to reach the 8086 — a DOS bench with no drawn circuit at
+    // all, which is what most 8086 coursework wants. It is no longer the ONLY way: this comment
+    // used to say "the circuit palette has no 8086 part yet", which was true when written and is
+    // now false. The DIP drawings (i8086, i8088, i8251, i8254, i8255, i8259, i8284) and the device
+    // registrations both landed, so "seat one on the board" — how the 6502 and Z80 benches are
+    // usually chosen — works. circuit-tab.jsx detects the part and publishes bwDeviceCore =
+    // 'i8086', and this entry keeps working unchanged, as it was written to.
     dev('i8086', 'Intel 8086 (DOS bench)', '8086', 'i8086', {
         pickerCompile: false,
         pickerEmulator: 'i8086',
         sim: [eng('i8086', ['com', 'bin'], {tier: '2a', needs: ['singlesteptests-8086']})],
         silicon: [tx('com-export', ['com'], null, {...OPEN_DECLARED, task: 'N10'})]
     }),
+    // Moved here from DEVICE_GROUPS in pseudocode-importer.jsx (T7): the picker is derived
+    // from this table now, so the reason two ids share one path belongs beside them.
+    // The Calliope runs the micro:bit's API on different hardware, so it shares the
+    // vocabulary, the simulator and the whole MicroPython path. It is listed separately
+    // because a program written for one says so — a Calliope import that claimed
+    // DEVICE MICROBIT told the reader their board was a micro:bit.
     ...[['microbit', 'micro:bit'], ['calliopemini', 'Calliope mini']].map(([id, label]) =>
         dev(id, label, 'MicroPython', 'microbit', {
             pickerCompile: false,

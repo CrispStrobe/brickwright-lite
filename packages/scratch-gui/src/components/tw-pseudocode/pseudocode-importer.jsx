@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
 import {closeAlertWithId, showStandardAlert} from '../../reducers/alerts';
 import {DEVICE_CHIP_LABELS} from '../../lib/device-labels.js';
+import {DEVICES, DEVICE_GROUP_CORE} from '../../lib/bw-matrix/capabilities.js';
 import {normalizeDeviceId, resolveExampleBench} from '../../lib/example-bench.js';
 import brickRobot from './brick-robot.svg';
 import {IMPORT_ACCEPT, isImportableArtefact} from '../../lib/bw-makecode/accept.js';
@@ -49,85 +50,44 @@ const loadExamples = () => {
     return examplesPending;
 };
 
-// Device groups for the device selector. Mirrors STC_PARTS in sb3-creator.js; the parser
-// validates the DEVICE line against STC_PARTS and warns on unknowns, so this list is a
-// presentation concern. Each group maps to a `core` that determines pin naming, compile
-// target, and emulator. Capability flags tell the UI what each target supports.
-const DEVICE_GROUPS = [
-    { label: 'STC12 (8051)', core: '8051', devices: [
-        { id: 'stc12c5a60s2', label: 'STC12C5A60S2', compile: true, emulator: 'emu8051' },
-        { id: 'stc12c5a16s2', label: 'STC12C5A16S2', compile: true, emulator: 'emu8051' },
-        { id: 'stc15f2k60s2', label: 'STC15F2K60S2', compile: true, emulator: 'emu8051' },
-        { id: 'stc15w408as', label: 'STC15W408AS', compile: true, emulator: 'emu8051' },
-        { id: 'stc89c52rc', label: 'STC89C52RC', compile: true, emulator: 'emu8051' },
-        { id: 'stc89c52', label: 'STC89C52', compile: true, emulator: 'emu8051' },
-    ]},
-    { label: 'Arduino (AVR)', core: 'arduino', devices: [
-        { id: 'arduino-uno', label: 'Arduino Uno', compile: true, emulator: 'avr8js' },
-        { id: 'arduino-nano', label: 'Arduino Nano', compile: true, emulator: 'avr8js' },
-        { id: 'arduino-mega', label: 'Arduino Mega', compile: true, emulator: 'avr8js' },
-        { id: 'atmega328p', label: 'ATmega328P (bare)', compile: true, emulator: 'avr8js' },
-        { id: 'atmega168p', label: 'ATmega168P (bare)', compile: true, emulator: 'avr8js' },
-        { id: 'attiny88', label: 'ATtiny88 (bare)', compile: true, emulator: 'attiny88' },
-        { id: 'attiny85', label: 'ATtiny85', compile: true, emulator: 'attiny85' },
-        // An ATmega32U4 console. `compile: false` is the important half:
-        // there is no path from blocks to an Arduboy binary — that needs
-        // avr-gcc, which is GPL and cannot ship here — so choosing this
-        // offers to RUN a .hex, not to build one. Listing it as compilable
-        // would promise something the licence forbids.
-        { id: 'arduboy', label: 'Arduboy (run .hex)', compile: false, emulator: 'arduboy' },
-    ]},
-    { label: 'Raspberry Pi', core: 'rp2040', devices: [
-        { id: 'pico', label: 'Raspberry Pi Pico', compile: true, emulator: 'rp2040js' },
-    ]},
-    { label: 'STM32 (ARM)', core: 'arm', devices: [
-        { id: 'stm32f030', label: 'STM32F030', compile: true, emulator: 'stm32f0' },
-    ]},
-    { label: '6502', core: 'w65c02', devices: [
-        { id: 'eater6502', label: 'Eater 6502', compile: true, emulator: 'eater6502' },
-    ]},
-    { label: 'Z80', core: 'z80', devices: [
-        { id: 'z80', label: 'Z80 bench', compile: false, emulator: 'z80' },
-    ]},
-    // `compile: false` STILL MEANS WHAT IT SAYS, and it is not a leftover.
-    // It is read as "the hosted C compiler can build this", and it cannot:
-    // sb3-creator has no 8086 device profile and stc-compiler has no 8086
-    // back end, so `generateC` + POST is a road that ends in "unknown
-    // device: i8086" three clicks later. What changed is that there is now a
-    // SECOND road — `lib/bw-asm/pseudocode-8086.js` lowers the blocks to
-    // 8086 assembly in the browser and `requestAssembly` assembles them
-    // here, with no network and no toolchain — and `runPseudocodeOn8086`
-    // is the ▶ button for it. The two flags are about different roads, so
-    // the device is offered as compilable-by-neither and runnable anyway.
-    //
-    // It is in the picker because it is the BOARDLESS way to reach the 8086 —
-    // a DOS bench with no drawn circuit at all, which is what most 8086
-    // coursework wants. It is no longer the ONLY way: this comment used to say
-    // "the circuit palette has no 8086 part yet", which was true when written
-    // and is now false. The DIP drawings (i8086, i8088, i8251, i8254, i8255,
-    // i8259, i8284) and the device registrations both landed, so "seat one on
-    // the board" — how the 6502 and Z80 benches are usually chosen — works.
-    // circuit-tab.jsx detects the part and publishes bwDeviceCore = 'i8086',
-    // and this entry keeps working unchanged, as it was written to.
-    { label: '8086', core: 'i8086', devices: [
-        { id: 'i8086', label: 'Intel 8086 (DOS bench)', compile: false, emulator: 'i8086' },
-    ]},
-    { label: 'MicroPython', core: 'micropython', devices: [
-        { id: 'microbit', label: 'micro:bit', compile: false, emulator: null },
-        // The Calliope runs the micro:bit's API on different hardware, so it
-        // shares the vocabulary, the simulator and the whole MicroPython
-        // path. It is listed separately because a program written for one
-        // says so — a Calliope import that claimed DEVICE MICROBIT told the
-        // reader their board was a micro:bit.
-        { id: 'calliopemini', label: 'Calliope mini', compile: false, emulator: null },
-    ]},
-    { label: 'Arcade & SAMD51', core: 'samd51', devices: [
-        { id: 'arcade', label: 'MakeCode Arcade (160×120)', compile: false, emulator: 'arcade' },
-        { id: 'pybadge', label: 'Adafruit PyBadge', compile: false, emulator: 'arcade' },
-        { id: 'pybadge-lc', label: 'Adafruit PyBadge LC', compile: false, emulator: 'arcade' },
-        { id: 'samd51', label: 'ATSAMD51J19 (generic)', compile: false, emulator: null },
-    ]},
-];
+// Device groups for the device selector, DERIVED from the capability table.
+//
+// This list used to be written out here, device by device, and reconciled against
+// `DEVICES` by a test that sliced this file between `const DEVICE_GROUPS = [` and
+// the next `\n];` and regex-parsed the entries back out. Two truths and a text
+// window over source to keep them equal: the picker could gain a device the matrix
+// did not have, or keep one the matrix dropped, and only a regex stood in the way.
+//
+// Now there is one truth. `group` and `family` in `capabilities.js` give the group
+// label and its core; `pickerCompile` and `pickerEmulator` give the two flags this
+// dropdown reads. A device removed from the table cannot appear here, and one added
+// there appears here in the table's order, without anyone editing this file.
+//
+// The names `pickerCompile`/`pickerEmulator` are kept deliberately rather than
+// shortened: they describe exactly one surface — what this dropdown offers — and a
+// bare `compile` would read as a claim about the device rather than about the Code
+// tab. What changed is that they are the SOURCE now, not a mirror; capabilities.js
+// says so where they are defined.
+const DEVICE_GROUPS = (() => {
+    const byGroup = new Map();
+    const groups = [];
+    for (const d of DEVICES) {
+        let g = byGroup.get(d.group);
+        if (!g) {
+            g = {label: d.group, core: DEVICE_GROUP_CORE[d.group], devices: []};
+            byGroup.set(d.group, g);
+            groups.push(g);
+        }
+        g.devices.push({
+            id: d.id,
+            label: d.label,
+            compile: Boolean(d.pickerCompile),
+            emulator: d.pickerEmulator ?? null
+        });
+    }
+    return groups;
+})();
+
 const DEVICE_BY_ID = {};
 for (const g of DEVICE_GROUPS) for (const d of g.devices) DEVICE_BY_ID[d.id] = { ...d, core: g.core, group: g.label };
 

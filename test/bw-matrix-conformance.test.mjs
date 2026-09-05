@@ -21,8 +21,7 @@ import {join} from 'node:path';
 import {REPO} from './helpers/bw-integrated.mjs';
 import {asmTargetForDevice} from '../overlay/scratch-gui/src/lib/bw-asm/assemble-route.js';
 import {
-    DEVICES, LANGUAGES, CELLS, STATUS, EVIDENCE, deviceById, isNativeNull, cell
-} from '../overlay/scratch-gui/src/lib/bw-matrix/capabilities.js';
+    DEVICES, LANGUAGES, CELLS, STATUS, EVIDENCE, deviceById, isNativeNull, cell, DEVICE_GROUP_CORE} from '../overlay/scratch-gui/src/lib/bw-matrix/capabilities.js';
 
 
 /** The text between a `{` at `open` and its matching `}`, by counting. */
@@ -44,21 +43,39 @@ const creator = src('lib/sb3-creator.js');
 const factory = src('lib/bw-board/debug-target-factory.js');
 const hosted = JSON.parse(readFileSync(join(REPO, 'docs/generated/hosted-targets.json'), 'utf8'));
 
-// ---- DEVICE_GROUPS -----------------------------------------------------------
+// ---- the picker is DERIVED, not reconciled -----------------------------------
+//
+// This block used to slice `pseudocode-importer.jsx` between
+// `const DEVICE_GROUPS = [` and the next `\n];`, regex-parse the devices back
+// out, and assert they equalled DEVICES. Two truths and a text window over
+// source holding them together. The picker now builds its groups FROM DEVICES,
+// so equality is not something to check — it is the only thing that can happen.
+// What is worth checking is that it stays that way, and that the one new place
+// the two could diverge is closed.
 
-const groupsSrc = importer.slice(importer.indexOf('const DEVICE_GROUPS = ['), importer.indexOf('\n];', importer.indexOf('const DEVICE_GROUPS = [')));
-const picker = [...groupsSrc.matchAll(/\{ id: '([^']+)', label: '([^']+)', compile: (true|false), emulator: (null|'[^']+') \}/g)]
-    .map(m => ({id: m[1], label: m[2], compile: m[3] === 'true', emulator: m[4] === 'null' ? null : m[4].slice(1, -1)}));
+test('the picker derives its devices from the matrix and carries no list of its own', () => {
+    assert.ok(!/const DEVICE_GROUPS = \[\s*\n\s*\{/.test(importer),
+        'pseudocode-importer.jsx has a literal DEVICE_GROUPS array again — the picker has re-grown ' +
+        'its own device list, and the matrix is back to being a mirror it can drift from');
+    assert.match(importer, /import \{DEVICES, DEVICE_GROUP_CORE\} from '\.\.\/\.\.\/lib\/bw-matrix\/capabilities\.js'/,
+        'the picker no longer imports the capability table');
+    const hardcoded = DEVICES.map(d => d.id).filter(id => importer.includes(`id: '${id}'`));
+    assert.deepEqual(hardcoded, [],
+        `device id(s) written literally into the picker: ${hardcoded.join(', ')} — a device removed ` +
+        'from the matrix would still be offered');
+});
 
-test('DEVICE_GROUPS and the matrix list the same devices, in the same order', () => {
-    assert.ok(picker.length > 15, `only ${picker.length} devices parsed from DEVICE_GROUPS — the regex or the list moved`);
-    assert.deepEqual(DEVICES.map(d => d.id), picker.map(d => d.id));
-    for (const p of picker) {
-        const d = deviceById(p.id);
-        assert.equal(d.label, p.label, `${p.id}: label differs from the picker`);
-        assert.equal(d.pickerCompile, p.compile, `${p.id}: compile flag differs from the picker`);
-        assert.equal(d.pickerEmulator, p.emulator, `${p.id}: emulator differs from the picker`);
-    }
+test('every matrix group has a core, and every core belongs to a group', () => {
+    // DEVICE_GROUP_CORE is the one place the picker and the matrix can still
+    // disagree: an unlisted group yields `undefined`, which reaches
+    // vm.runtime.bwDeviceCore and drives pin naming. Both directions asserted,
+    // because a stale entry is how the map outlives the group it described.
+    const groups = [...new Set(DEVICES.map(d => d.group))];
+    const missing = groups.filter(g => !DEVICE_GROUP_CORE[g]);
+    assert.deepEqual(missing, [], `matrix group(s) with no DEVICE_GROUP_CORE entry: ${missing.join(', ')} — ` +
+        'their devices would reach the runtime with core `undefined`');
+    const stale = Object.keys(DEVICE_GROUP_CORE).filter(k => !groups.includes(k));
+    assert.deepEqual(stale, [], `DEVICE_GROUP_CORE names group(s) no device uses: ${stale.join(', ')}`);
 });
 
 test('every shipped engine that has a debug target is a kind the factory dispatches on', () => {
