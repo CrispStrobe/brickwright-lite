@@ -123,9 +123,9 @@ try {
         /Run to address.*hex/i.test(promptSeen), promptSeen);
     await page.screenshot({path: join(artifacts, '01-run-to-paused.png'), fullPage: true});
 
-    await panel.getByRole('button', {name: /Step instruction/}).click();
-    await page.waitForFunction(() => document.querySelector('[data-debug-panel]')
+    const observedStepping = page.waitForFunction(() => document.querySelector('[data-debug-panel]')
         ?.getAttribute('data-debug-phase') === 'stepping', null, {timeout: 10000});
+    await Promise.all([observedStepping, panel.getByRole('button', {name: /Step instruction/}).click()]);
     await page.waitForFunction(() => document.querySelector('[data-debug-panel]')
         ?.getAttribute('data-debug-phase') === 'paused', null, {timeout: 10000});
     await panel.locator('[data-debug-timeline-refresh]').click();

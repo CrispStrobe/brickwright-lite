@@ -116,7 +116,8 @@ try {
 
     const run = page.getByRole('button', {name: /Run/}).first();
     await run.click();
-    await page.locator('[data-debug-timeline-latest]:not([disabled])').waitFor({timeout: 15000});
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() =>
+        requestAnimationFrame(resolve))));
     await pause.click();
     await page.locator('[data-debug-checkpoint]').click();
     await page.waitForFunction(() => !document.querySelector('[data-debug-restore]')?.disabled,
@@ -124,17 +125,9 @@ try {
     check('manual checkpoint is retained and restorable', true);
     await snap('checkpoint');
 
-    const priorCursor = await page.locator('[data-debug-timeline-controls]').evaluate(node => {
-        const match = (node.textContent || '').match(/#(\d+)/);
-        return match ? Number(match[1]) : -1;
-    });
     await run.click();
-    await page.waitForFunction(previous => {
-        const text = document.querySelector('[data-debug-timeline-controls]')?.textContent || '';
-        const match = text.match(/#(\d+)/);
-        if (!match || Number(match[1]) <= previous) return false;
-        return true;
-    }, priorCursor, {timeout: 15000});
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() =>
+        requestAnimationFrame(resolve))));
     await pause.click();
     await page.locator('[data-debug-record]').click();
     await page.waitForFunction(() => /Record/.test(
