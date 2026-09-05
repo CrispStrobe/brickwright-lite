@@ -40,17 +40,32 @@ const coveredFiles = spec => Object.entries(spec.files);
 // The vendored roots that are ACTUALLY PRESENT, which is not the same as the
 // roots the doc lists.
 //
-// THIS GATE WAS GREEN ONLY BECAUSE OF UNTRACKED FILES ON ONE MACHINE. packages/
-// is gitignored, and its tracking is PARTIAL: 150 files under
-// packages/scratch-gui/src/lib/bw-board are tracked, but i8086-machine.js and
-// i8254.js are not. So a clean checkout has overlay/ and only part of
-// packages/ -- and this test asserted BOTH copies of every covered file exist,
-// which failed all four subtests when reproduced with `git archive HEAD`.
+// CORRECTED 2026-09-05, SAME DAY, AND THE CORRECTION IS THE INTERESTING PART.
 //
-// That is the species this repo has already paid for once: a test that passes
-// here, passes for the reviewer, and can never pass in CI. I shipped four
-// commits of it today and only found it by applying the coverage lane's
-// question to my own instrument.
+// I first wrote here that this gate "was green only because of untracked files
+// on one machine" and "could never pass in CI". THAT WAS WRONG, and I had the
+// evidence to know it before I said it.
+//
+// What is true: packages/ is gitignored with PARTIAL tracking -- 94 of 127
+// files under packages/scratch-gui/src/lib/bw-board are tracked, and the whole
+// 8086 support-chip tier is not. Reproduced with `git archive HEAD`, this test
+// failed all four subtests.
+//
+// What is NOT true is the conclusion I drew from that. .gitignore says plainly
+// that packages/ is POPULATED, not tracked, and CI does exactly that:
+// `npm run vendor` then `node scripts/integrate.mjs`, which copies overlay/
+// into packages/. Reproduced with the integrate step, i8086-machine.js is
+// present and the existence assertion passes. The 33 untracked files are
+// correct to be untracked.
+//
+// So `git archive HEAD` alone is NOT CI's condition for anything under
+// packages/, and treating it as such manufactures a failure. I found a real
+// fragility and then described it as a species it was not, having read the
+// tar listing but not the .gitignore two lines above the answer.
+//
+// The fix below is kept, because it is right for a reason that survives the
+// correction: the gate should work whether or not packages/ has been
+// populated, and it must never count one copy as two.
 //
 // So: derive the roots from what is on disk, require at least one, and REPORT
 // which were found. A root that is absent is a fact, not a reason to skip.

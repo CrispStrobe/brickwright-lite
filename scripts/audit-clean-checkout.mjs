@@ -25,6 +25,30 @@
  * `node_modules` is symlinked rather than copied: dependencies are not the
  * subject, and a fresh install would take longer than the suite.
  *
+ * WHAT THIS REPRODUCES IS NOT QUITE CI, AND THE GAP IS packages/ (2026-09-05).
+ * CI runs `npm run vendor` and then `node scripts/integrate.mjs`, which copies
+ * overlay/ into packages/. .gitignore says so in as many words: packages/ is
+ * POPULATED, not tracked. 33 of the 127 files under
+ * packages/scratch-gui/src/lib/bw-board -- the whole 8086 support-chip tier --
+ * are correctly absent from git and correctly present after integrate.
+ *
+ * So a bare `git archive HEAD` MANUFACTURES A FAILURE for any test that reads
+ * packages/. It reported two on the day this note was written, and both are
+ * false: rp2040-bootrom.js and i8086-machine.js are tracked under overlay/ and
+ * arrive in packages/ when integrate runs.
+ *
+ * I drew a real conclusion from one of those and it was wrong -- I called a
+ * gate "green only because of untracked files, could never pass in CI" having
+ * read the tar listing and not the .gitignore two lines above the answer. A
+ * tool that reproduces the wrong condition is as misleading as a detector that
+ * models the wrong signal, and this one was built to replace exactly that.
+ *
+ * --integrate runs the populate step inside the temporary tree first, so the
+ * reproduction matches what CI actually does. Use it for anything touching
+ * packages/; the bare form still answers the original question, which was
+ * about sibling worktrees and untracked FIXTURES, where no populate step
+ * exists and absence is the whole point.
+ *
  * WHAT A FAILURE MEANS. Not "this test is wrong" -- a test may legitimately
  * need a large corpus checked out beside the repo. It means the dependency is
  * UNDECLARED. Commit the fixture, or make the test skip explicitly and
@@ -34,6 +58,7 @@
  * Usage:
  *   node scripts/audit-clean-checkout.mjs test/reseat-gate.test.mjs [...]
  *   node scripts/audit-clean-checkout.mjs --all
+ *   node scripts/audit-clean-checkout.mjs --integrate test/foo.test.mjs
  *
  * @module
  */
@@ -47,6 +72,9 @@ const here = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(here, '..');
 const argv = process.argv.slice(2);
 const all = argv.includes('--all');
+// Run CI's populate step inside the temporary tree. Without it, `git archive`
+// alone is not CI's condition for anything under packages/ -- see the header.
+const integrate = argv.includes('--integrate');
 const wanted = argv.filter((a) => !a.startsWith('--'));
 
 const files = all
@@ -84,6 +112,21 @@ try {
     execFileSync('/bin/bash', ['-c',
         `git -C ${JSON.stringify(ROOT)} archive HEAD | tar -x -C ${JSON.stringify(work)}`],
     {stdio: 'inherit'});
+
+    if (integrate) {
+        // `scripts/integrate.mjs` copies overlay/ into packages/, which is what
+        // .gitignore means by "populated by npm run vendor". Reported rather
+        // than assumed: if the step fails, say so instead of running the suite
+        // against a tree that is neither the tracked one nor CI's.
+        const r = spawnSync(process.execPath, [join(work, 'scripts/integrate.mjs')],
+            {cwd: work, stdio: 'inherit'});
+        if (r.status !== 0) {
+            console.error(`\nintegrate.mjs exited ${r.status} in the clean tree — ` +
+                'refusing to report on a tree that is neither the tracked one nor CI\'s.');
+            process.exit(2);
+        }
+        console.log('  integrated overlays (CI does this before the suite)\n');
+    }
 
     // EVERY node_modules, not just the root one. This is a monorepo: the
     // first version symlinked `<root>/node_modules` alone and a test importing
