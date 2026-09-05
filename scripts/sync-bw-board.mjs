@@ -177,9 +177,10 @@ const readVendorAllowList = async () => {
     const m = md.match(/```json\n([\s\S]*?)\n```/);
     if (!m) return null;
     const spec = JSON.parse(m[1]);
-    // The vendored paths in the doc are repo-relative; reduce to a basename so
-    // this works whichever of the two dual-tracked trees `dest` points at.
-    return {file: path.basename(spec.upstream.path), entries: spec.liteOnly};
+    // PER FILE NOW, not the single file whose divergence someone wrote up
+    // first. That single-file version protected i8086-machine.js and watched
+    // fifteen other files lose 950 lines on the run that tested it.
+    return new Map(Object.entries(spec.files).map(([f, cfg]) => [f, cfg.liteOnly]));
 };
 const allowList = await readVendorAllowList();
 if (!allowList) {
@@ -249,8 +250,8 @@ for (const rel of FILES) {
     // for everything else -- it still cannot be bypassed by an undocumented
     // file, because a file the named tier does not cover falls straight
     // through to it.
-    if (!check && !force && allowList && path.basename(rel) === allowList.file && current !== null) {
-        const lost = allowList.entries.filter(d => {
+    if (!check && !force && allowList && allowList.has(path.basename(rel)) && current !== null) {
+        const lost = allowList.get(path.basename(rel)).filter(d => {
             const re = new RegExp(d.contains);
             return re.test(current) && !re.test(next);
         });

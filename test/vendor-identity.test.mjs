@@ -34,6 +34,12 @@ const readAllowList = () => {
     return JSON.parse(m[1]);
 };
 
+// Every file the allow-list covers, as [filename, entryList] pairs.
+const coveredFiles = spec => Object.entries(spec.files);
+
+// Both dual-tracked copies of one covered file.
+const vendoredPaths = (spec, file) => spec.vendoredRoots.map(r => path.join(ROOT, r, file));
+
 // Species 1 defence: a gate whose corpus is empty passes everything. Assert the
 // allow-list is populated BEFORE trusting any result derived from iterating it.
 test('the vendor allow-list is non-empty and covers both dual-tracked copies', () => {
@@ -47,36 +53,45 @@ test('the vendor allow-list is non-empty and covers both dual-tracked copies', (
     //
     // What survives here is only the species-1 defence: a gate iterating an
     // empty list passes everything, so refuse an empty list. No magic number.
-    assert.ok(spec.liteOnly.length > 0,
-        'the allow-list is empty. Every check that iterates it would pass vacuously.');
+    assert.ok(coveredFiles(spec).length > 0,
+        'the allow-list covers no files. Every check that iterates it would pass vacuously.');
+    for (const [file, cfg] of coveredFiles(spec)) {
+        assert.ok(cfg.liteOnly.length > 0, `${file} is listed with no entries`);
+    }
     // The kerotakis lane's rule, enforced rather than suggested: every entry
     // must carry the one sentence a non-programmer could falsify. If nobody
     // can write that sentence for an entry, the entry is protecting something
     // whose loss has no observable consequence -- which is either not worth
     // protecting or not understood, and both want finding out now rather than
     // at the next sync.
-    for (const d of spec.liteOnly) {
+    for (const d of coveredFiles(spec).flatMap(([, c]) => c.liteOnly)) {
         assert.ok(d.falsifiable && d.falsifiable.length > 30,
             `allow-list entry '${d.id}' has no 'falsifiable' sentence. Write what BREAKS ` +
             'in terms a non-programmer could check -- not what the diff removes. ' +
             'If you cannot, the entry may be protecting something with no observable effect.');
     }
 
-    assert.equal(spec.vendored.length, 2,
+    assert.equal(spec.vendoredRoots.length, 2,
         'overlay/ and packages/ are both tracked in this repo; both must be checked. ' +
         'I created a divergence between them once by not force-adding an ignored path.');
-    for (const rel of spec.vendored) {
-        assert.ok(fs.existsSync(path.join(ROOT, rel)), `vendored copy missing: ${rel}`);
+    for (const [file] of coveredFiles(spec)) {
+        for (const p of vendoredPaths(spec, file)) {
+            assert.ok(fs.existsSync(p), `vendored copy missing: ${path.relative(ROOT, p)}`);
+        }
     }
 });
 
 test('a sync has not deleted the lite-only work in i8086-machine.js', () => {
     const spec = readAllowList();
     const missing = [];
-    for (const rel of spec.vendored) {
-        const src = fs.readFileSync(path.join(ROOT, rel), 'utf8');
-        for (const d of spec.liteOnly) {
-            if (!new RegExp(d.contains).test(src)) missing.push(`${d.id} -> ${rel}\n      why: ${d.why}`);
+    for (const [file, cfg] of coveredFiles(spec)) {
+        for (const p of vendoredPaths(spec, file)) {
+            const src = fs.readFileSync(p, 'utf8');
+            for (const d of cfg.liteOnly) {
+                if (!new RegExp(d.contains).test(src)) {
+                    missing.push(`${d.id} -> ${path.relative(ROOT, p)}\n      what breaks: ${d.falsifiable}`);
+                }
+            }
         }
     }
     assert.deepEqual(missing, [],
@@ -89,10 +104,13 @@ test('a sync has not deleted the lite-only work in i8086-machine.js', () => {
 
 test('the two dual-tracked vendored copies have not drifted apart', () => {
     const spec = readAllowList();
-    const [a, b] = spec.vendored.map(rel => fs.readFileSync(path.join(ROOT, rel), 'utf8'));
-    assert.equal(a, b, `${spec.vendored[0]} and ${spec.vendored[1]} differ. ` +
+    for (const [file] of coveredFiles(spec)) {
+        const [a, b] = vendoredPaths(spec, file).map(p => fs.readFileSync(p, 'utf8'));
+        assert.equal(a, b, `the two vendored copies of ${file} differ. ` +
         'These are the same file tracked twice; editing one and not the other is how ' +
-        'a fix ships in the dev build and not the packaged one.');
+            'These are the same file tracked twice; editing one and not the other is how ' +
+            'a fix ships in the dev build and not the packaged one.');
+    }
 });
 
 // The external anchor. Tiers 1-3 above are self-contained -- they can be
@@ -110,15 +128,64 @@ test('upstream has not converged on the lite-only work (needs the bw-board tree)
         path.resolve(ROOT, '../../bw-board'),
         path.resolve(ROOT, '../bw-board')
     ].filter(Boolean);
-    const found = candidates.map(d => path.join(d, spec.upstream.path)).find(p => fs.existsSync(p));
-    if (!found) {
+    const srcDir = candidates.map(d => path.join(d, 'src')).find(d => fs.existsSync(d));
+    if (!srcDir) {
         // Not an assertion failure -- upstream genuinely is not here. But it is
         // reported, and it is NOT counted as the invariant having been checked.
-        t.diagnostic(`SKIPPED, NOT PASSED: upstream ${spec.upstream.repo}/${spec.upstream.path} ` +
+        t.diagnostic(`SKIPPED, NOT PASSED: upstream ${spec.upstreamRepo}/src ` +
             `not found. Looked in: ${candidates.join(', ')}. ` +
             'Set BW_BOARD_DIR to check the cross-tree invariant.');
         t.skip('upstream tree not on disk -- cross-tree invariant NOT verified');
         return;
+    }
+
+    // EVERY COVERED FILE, not just the one whose divergence someone wrote up
+    // first. The single-file version protected i8086-machine.js and let fifteen
+    // others lose 950 lines when I ran the sync for real; scoping a gate to the
+    // instance that prompted it is how that happened.
+    //
+    // AND THE SET OF COVERED FILES IS ITSELF DERIVED. Iterating only the files
+    // the list names means DELETING a file from the list deletes its coverage
+    // requirement -- I red-proved exactly that and it passed silently, which is
+    // the kerotakis lane's "graveyard of stale exemptions" at file granularity:
+    // an allow-list that can only fail in one direction. So: scan the vendored
+    // tree, find every file that HAS lite-only declarations, and require the
+    // list to cover it. Removing an entry can then only be made green by
+    // removing the WORK, which is the decision the entry exists to force.
+    const summary = [];
+    const declaredIn = src => ({
+        methods: new Set([...src.matchAll(/^\s{4}(?:static\s+)?([A-Za-z_]\w*)\s*\(/gm)].map(m => m[1])),
+        fields: new Set([...src.matchAll(/this\.([A-Za-z_]\w*)\s*=/g)].map(m => m[1]))
+    });
+    const vendorRoot = path.join(ROOT, spec.vendoredRoots[0]);
+    const shouldCover = [];
+    for (const f of fs.readdirSync(vendorRoot).filter(x => x.endsWith('.js')).sort()) {
+        const u = path.join(srcDir, f);
+        if (!fs.existsSync(u)) continue;
+        const L = declaredIn(fs.readFileSync(path.join(vendorRoot, f), 'utf8'));
+        const U = declaredIn(fs.readFileSync(u, 'utf8'));
+        const upAll = new Set([...U.methods, ...U.fields]);
+        const only = [...new Set([...L.methods, ...L.fields])]
+            .filter(x => !upAll.has(x) && !spec.notIdentifiers.includes(x));
+        if (only.length) shouldCover.push(`${f} (${only.join(', ')})`);
+    }
+    const uncovered = shouldCover.filter(x => !spec.files[x.split(' ')[0]]);
+    assert.deepEqual(uncovered, [],
+        '\n  FILES WITH LITE-ONLY WORK THAT THE ALLOW-LIST DOES NOT COVER:\n    ' +
+        uncovered.join('\n    ') +
+        '\n\n  A sync deletes this work and nothing explains what it costs. Add the file\n' +
+        '  to the allow-list with a falsifiable sentence per entry. This set is SCANNED\n' +
+        '  from the tree, not read from the list, so dropping a file from the list does\n' +
+        '  not drop the requirement -- only removing the work does.\n');
+    t.diagnostic(`derived: ${shouldCover.length} file(s) carry lite-only work, all covered`);
+    for (const [file, cfg] of coveredFiles(spec)) {
+    const found = path.join(srcDir, file);
+    if (!fs.existsSync(found)) {
+        // Upstream does not have this file at all, so nothing here can have
+        // converged. Report it -- a file that vanished upstream is a fact worth
+        // seeing, not a silent pass.
+        t.diagnostic(`${file}: not present upstream at all -- nothing to compare`);
+        continue;
     }
     const up = fs.readFileSync(found, 'utf8');
 
@@ -146,16 +213,15 @@ test('upstream has not converged on the lite-only work (needs the bw-board tree)
     // damaged file. Features are checked separately, in graftedFromUpstream,
     // where a legitimate removal SHOULD be visible as a decision.
     for (const [what, re] of [
-        ['the machine class declaration', /class I8086Machine/],
-        ['the module export of that class', /export\s+(?:default\s+)?(?:class\s+I8086Machine|\{[^}]*I8086Machine)/],
-        ['a plausible amount of source (>200 lines)', /(?:.*\n){200}/]
+        ['at least one export', /^export\s/m],
+        ['a plausible amount of source (>100 lines)', /(?:.*\n){100}/]
     ]) {
         assert.match(up, re, `upstream file at ${found} does not contain ${what}. ` +
             'Refusing to conclude anything from it: every check below is a NEGATIVE ' +
             'assertion, which a wrong or truncated file passes trivially.');
     }
 
-    const converged = spec.liteOnly.filter(d => new RegExp(d.contains).test(up));
+    const converged = cfg.liteOnly.filter(d => new RegExp(d.contains).test(up));
     assert.deepEqual(converged.map(d => d.id), [],
         `\n  UPSTREAM NOW HAS WORK THE ALLOW-LIST CALLS LITE-ONLY: ` +
         `${converged.map(d => d.id).join(', ')}.\n` +
@@ -164,8 +230,8 @@ test('upstream has not converged on the lite-only work (needs the bw-board tree)
 
     // And the grafted work must still be present on BOTH sides -- the direction
     // that catches a graft being reverted upstream or lost here.
-    const lite = fs.readFileSync(path.join(ROOT, spec.vendored[0]), 'utf8');
-    for (const g of spec.graftedFromUpstream) {
+    const lite = fs.readFileSync(vendoredPaths(spec, file)[0], 'utf8');
+    for (const g of (cfg.graftedFromUpstream || [])) {
         const re = new RegExp(g.contains);
         assert.ok(re.test(up), `grafted work '${g.id}' is gone from UPSTREAM`);
         assert.ok(re.test(lite), `grafted work '${g.id}' is gone from the vendored copy`);
@@ -196,27 +262,55 @@ test('upstream has not converged on the lite-only work (needs the bw-board tree)
     });
     const upD = declared(up);
     const liteD = declared(lite);
-    for (const [which, set] of [['methods', upD.methods], ['fields', upD.fields]]) {
-        assert.ok(set.size > 10,
-            `the ${which} extractor found only ${set.size} declarations upstream. It has ` +
-            'probably stopped matching, and an empty half yields an empty lite-only list, ' +
-            'which reads as "all covered". Refusing to conclude coverage from it.');
+
+    // CALIBRATE EACH STRATEGY AGAINST THE OTHER COPY OF THE SAME MODULE, not
+    // against a fixed floor. My first version required >10 of each on the
+    // upstream side, which is right for a class and WRONG for the debug
+    // targets: z80-debug.js is a factory returning an object literal, so it has
+    // no `this.X =` at all and zero is the correct answer, not a broken regex.
+    // A fixed floor there is a false red, and a false red on a corpus proof is
+    // how a corpus proof gets deleted.
+    //
+    // The two files are the same module, so the invariant that actually holds
+    // is BETWEEN them: if one side yields plenty and the other yields nothing,
+    // the extractor has stopped matching on that side. If both yield nothing,
+    // the module genuinely has none of that construct. Same principle as the
+    // rest of this file -- an invariant between two things, never a property
+    // of each.
+    for (const which of ['methods', 'fields']) {
+        const a = liteD[which].size, b = upD[which].size;
+        assert.ok(!(a > 10 && b === 0) && !(b > 10 && a === 0),
+            `the ${which} extractor found ${a} in the vendored copy of ${file} and ${b} ` +
+            'upstream. One side yielding plenty while the other yields nothing means it ' +
+            'has stopped matching there -- and an empty half yields an empty lite-only ' +
+            'list, which reads as "all covered". Refusing to conclude coverage from it.');
     }
+    assert.ok(liteD.methods.size + liteD.fields.size > 0,
+        `no declarations of any kind found in the vendored copy of ${file}`);
     const upDecl = new Set([...upD.methods, ...upD.fields]);
     const liteOnlyIds = [...new Set([...liteD.methods, ...liteD.fields])]
         .filter(x => !upDecl.has(x)).sort();
 
-    const described = spec.liteOnly.map(d => `${d.id} ${d.contains} ${d.why}`).join(' ');
-    const unexplained = liteOnlyIds.filter(id => !described.includes(id));
+    const described = cfg.liteOnly.map(d => `${d.id} ${d.contains} ${d.why}`).join(' ');
+    const unexplained = liteOnlyIds
+        .filter(id => !spec.notIdentifiers.includes(id))   // `for (` matches the method regex
+        .filter(id => !described.includes(id));
     assert.deepEqual(unexplained, [],
-        `\n  LITE-ONLY WORK THAT NO ALLOW-LIST ENTRY NAMES: ${unexplained.join(', ')}.\n` +
+        `\n  ${file}: LITE-ONLY WORK THAT NO ALLOW-LIST ENTRY NAMES: ${unexplained.join(', ')}.\n` +
         '  These are declared here and not upstream, so a sync deletes them, and no\n' +
         '  entry explains what that would cost. Either add an entry (with its\n' +
         '  falsifiable sentence) or, if the work is obsolete, delete it from the file.\n' +
         '  This count is DERIVED, not pinned -- it cannot be fixed by editing a number.\n');
 
-    t.diagnostic(`derived coverage: ${liteOnlyIds.length} lite-only identifiers, all named ` +
-        `(${liteOnlyIds.join(', ')})`);
-    t.diagnostic(`cross-tree invariant verified against ${found}: ` +
-        `${spec.liteOnly.length} lite-only divergences, ${spec.graftedFromUpstream.length} grafted.`);
+    summary.push(`${file}: ${cfg.liteOnly.length} named, ${liteOnlyIds.length} identifiers`);
+    }
+
+    assert.ok(summary.length > 0,
+        'the cross-tree tier compared no files at all. Upstream src/ exists but nothing ' +
+        'in the allow-list was found in it; refusing to report this as a verified invariant.');
+    // One diagnostic per file: node's TAP writer escapes newlines inside a
+    // single diagnostic, so a multi-line summary renders as one long line of
+    // literal \n. Six short lines beat one unreadable one.
+    t.diagnostic(`cross-tree invariant verified against ${srcDir}, ${summary.length} file(s):`);
+    for (const line of summary) t.diagnostic(`  ${line}`);
 });

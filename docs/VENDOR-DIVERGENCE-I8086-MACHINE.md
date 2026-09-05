@@ -113,70 +113,207 @@ fails unless it touched both.
 
 ```json
 {
-  "upstream": {"repo": "bw-board", "path": "src/i8086-machine.js"},
-  "vendored": [
-    "overlay/scratch-gui/src/lib/bw-board/i8086-machine.js",
-    "packages/scratch-gui/src/lib/bw-board/i8086-machine.js"
+  "upstreamRepo": "bw-board",
+  "vendoredRoots": [
+    "overlay/scratch-gui/src/lib/bw-board",
+    "packages/scratch-gui/src/lib/bw-board"
   ],
-  "liteOnly": [
-    {
-      "id": "display-revision-token",
-      "falsifiable": "The screen redraws on every frame even when nothing on it changed, so the fan spins up on a program that is just sitting at a prompt.",
-      "why": "Host-renderer optimisation: a monotonic token bumped on visible VRAM and CRTC writes so the renderer can skip repaints. Never upstreamed. A sync deletes it and NOTHING FAILS -- the machine constructs, the screen just repaints every frame until someone profiles.",
-      "contains": "this\\.displayRevision = 0;"
+  "notIdentifiers": [
+    "for",
+    "if",
+    "while",
+    "switch",
+    "catch",
+    "return",
+    "do",
+    "else",
+    "function"
+  ],
+  "files": {
+    "i8086-machine.js": {
+      "liteOnly": [
+        {
+          "id": "display-revision-token",
+          "falsifiable": "The screen redraws on every frame even when nothing on it changed, so the fan spins up on a program that is just sitting at a prompt.",
+          "why": "Host-renderer optimisation: a monotonic token bumped on visible VRAM and CRTC writes so the renderer can skip repaints. Never upstreamed. A sync deletes it and NOTHING FAILS -- the machine constructs, the screen just repaints every frame until someone profiles.",
+          "contains": "this\\.displayRevision = 0;"
+        },
+        {
+          "id": "display-revision-bump-vram",
+          "falsifiable": "Same as above: the picture is right, the machine is just working far harder than it needs to.",
+          "why": "The bump must stay GOVERNED by the VRAM address test. Hoisting it out bumps on every write and destroys the optimisation while still reading as present.",
+          "contains": "if \\(addr >= 0xa0000 && addr <= 0xbffff\\) \\{?[^}]*?this\\.displayRevision = \\(this\\.displayRevision \\+ 1\\)"
+        },
+        {
+          "id": "display-revision-bump-crtc",
+          "falsifiable": "Switching video modes does not refresh the screen, or refreshes it constantly.",
+          "why": "Same, governed by the CRTC port range.",
+          "contains": "if \\(port >= 0x3b0 && port <= 0x3df\\) \\{?[^}]*?this\\.displayRevision = \\(this\\.displayRevision \\+ 1\\)"
+        },
+        {
+          "id": "display-revision-bump-block",
+          "falsifiable": "Loading an image into video memory does not make it appear until something else happens to trigger a repaint.",
+          "why": "Same, governed by the block-write overlap test.",
+          "contains": "if \\(base <= 0xbffff && base \\+ bytes\\.length > 0xa0000\\) \\{?[^}]*?this\\.displayRevision = \\(this\\.displayRevision \\+ 1\\)"
+        },
+        {
+          "id": "on-instruction-hook",
+          "falsifiable": "The debugger will not single-step: you press Step and nothing moves.",
+          "why": "Per-instruction hook carrying pcBefore/pcAfter and the cycle delta. The debugger's single-step and the trace view are both built on it.",
+          "contains": "if \\(this\\.hooks\\.onInstruction\\) \\{?[^}]*?pcBefore"
+        },
+        {
+          "id": "checkpoint-topology-snapshot",
+          "falsifiable": "You save a program on one board, load it on a board wired differently, and it runs as nonsense instead of refusing.",
+          "why": "A checkpoint restored into a DIFFERENT machine topology is silent corruption -- same registers, different wiring. The snapshot makes restore refuse rather than half-work.",
+          "contains": "_snapshotTopology\\(\\)"
+        },
+        {
+          "id": "checkpoint-refuses-incomplete-state",
+          "falsifiable": "You save, reload, and the machine comes back subtly wrong -- a sound still playing, a chip mid-transfer -- instead of telling you it could not save.",
+          "why": "canCheckpoint() refuses rather than saving a machine whose components lack a complete state API. THIS IS THE ABSENT-HARDWARE RULE APPLIED TO SAVE STATE: a partial checkpoint restores to a plausible-looking wrong machine, which is worse than no checkpoint.",
+          "contains": "canCheckpoint\\(\\)"
+        },
+        {
+          "id": "checkpoint-component-state-api",
+          "falsifiable": "A saved file changes by itself after you save it, because it shares memory with the running machine.",
+          "why": "getState/saveState dual-API bridge with deep clone, so a checkpoint does not alias live device buffers.",
+          "contains": "static _cloneCheckpointValue\\(value\\)"
+        },
+        {
+          "id": "checkpoint-component-bridge",
+          "falsifiable": "Saving works on one board and produces a file that will not load on the same board, with no explanation of which part failed.",
+          "why": "_saveComponent and _loadComponent name the failing component in the error ('component X has no state API', 'X state API is incompatible') rather than throwing from inside a generic loop. ADDED 2026-09-05 BECAUSE THE DERIVED COVERAGE CHECK FOUND THEM UNEXPLAINED -- the pinned >=8 floor had never noticed, because 8 entries is 8 entries whatever they cover.",
+          "contains": "static _saveComponent\\(name, component\\)"
+        }
+      ],
+      "graftedFromUpstream": [
+        {
+          "id": "ne2000-chip-kind",
+          "contains": "ne2000"
+        },
+        {
+          "id": "port-conflict-check",
+          "contains": "both claim"
+        }
+      ]
     },
-    {
-      "id": "display-revision-bump-vram",
-      "falsifiable": "Same as above: the picture is right, the machine is just working far harder than it needs to.",
-      "why": "The bump must stay GOVERNED by the VRAM address test. Hoisting it out bumps on every write and destroys the optimisation while still reading as present.",
-      "contains": "if \\(addr >= 0xa0000 && addr <= 0xbffff\\) \\{?[^}]*?this\\.displayRevision = \\(this\\.displayRevision \\+ 1\\)"
+    "z80-machine.js": {
+      "liteOnly": [
+        {
+          "id": "z80-checkpoint-capture",
+          "falsifiable": "You cannot save and reload a running program: the save does nothing, or produces a file that will not load on the same board.",
+          "why": "captureCheckpoint/restoreCheckpoint: the save and load path itself. Forward-ported here and never upstreamed.",
+          "contains": "captureCheckpoint\\(\\)"
+        },
+        {
+          "id": "z80-checkpoint-restore",
+          "falsifiable": "You cannot save and reload a running program: the save does nothing, or produces a file that will not load on the same board.",
+          "why": "The load half. Validates the envelope before touching machine state, so a bad file is refused rather than half-applied.",
+          "contains": "restoreCheckpoint\\("
+        },
+        {
+          "id": "z80-checkpoint-support",
+          "falsifiable": "The machine saves a file that silently comes back wrong -- a sound still playing, a chip mid-transfer -- instead of telling you it could not save.",
+          "why": "checkpointSupport() collects REASONS a save cannot be trusted (host PC traps owning state outside the machine) and refuses rather than saving something that reloads wrong.",
+          "contains": "checkpointSupport\\(\\)"
+        },
+        {
+          "id": "z80-checkpoint-topology",
+          "falsifiable": "A saved file loads into a differently-wired board and runs as nonsense instead of refusing.",
+          "why": "checkpointTopology() stamps the wiring into the file so a restore into a different board is refused, not silently misapplied.",
+          "contains": "checkpointTopology\\(\\)"
+        }
+      ]
     },
-    {
-      "id": "display-revision-bump-crtc",
-      "falsifiable": "Switching video modes does not refresh the screen, or refreshes it constantly.",
-      "why": "Same, governed by the CRTC port range.",
-      "contains": "if \\(port >= 0x3b0 && port <= 0x3df\\) \\{?[^}]*?this\\.displayRevision = \\(this\\.displayRevision \\+ 1\\)"
+    "m6502-machine.js": {
+      "liteOnly": [
+        {
+          "id": "m6502-checkpoint-capture",
+          "falsifiable": "You cannot save and reload a running program: the save does nothing, or produces a file that will not load on the same board.",
+          "why": "captureCheckpoint/restoreCheckpoint: the save and load path itself. Forward-ported here and never upstreamed.",
+          "contains": "captureCheckpoint\\(\\)"
+        },
+        {
+          "id": "m6502-checkpoint-restore",
+          "falsifiable": "You cannot save and reload a running program: the save does nothing, or produces a file that will not load on the same board.",
+          "why": "The load half. Validates the envelope before touching machine state, so a bad file is refused rather than half-applied.",
+          "contains": "restoreCheckpoint\\("
+        },
+        {
+          "id": "m6502-checkpoint-support",
+          "falsifiable": "The machine saves a file that silently comes back wrong -- a sound still playing, a chip mid-transfer -- instead of telling you it could not save.",
+          "why": "checkpointSupport() collects REASONS a save cannot be trusted (host PC traps owning state outside the machine) and refuses rather than saving something that reloads wrong.",
+          "contains": "checkpointSupport\\(\\)"
+        },
+        {
+          "id": "m6502-checkpoint-topology",
+          "falsifiable": "A saved file loads into a differently-wired board and runs as nonsense instead of refusing.",
+          "why": "checkpointTopology() stamps the wiring into the file so a restore into a different board is refused, not silently misapplied.",
+          "contains": "checkpointTopology\\(\\)"
+        }
+      ]
     },
-    {
-      "id": "display-revision-bump-block",
-      "falsifiable": "Loading an image into video memory does not make it appear until something else happens to trigger a repaint.",
-      "why": "Same, governed by the block-write overlap test.",
-      "contains": "if \\(base <= 0xbffff && base \\+ bytes\\.length > 0xa0000\\) \\{?[^}]*?this\\.displayRevision = \\(this\\.displayRevision \\+ 1\\)"
+    "z80-debug.js": {
+      "liteOnly": [
+        {
+          "id": "z80-debug-replay-input",
+          "falsifiable": "A recorded session plays back with no input -- the buttons you pressed during recording do nothing on replay.",
+          "why": "applyReplayInput routes a recorded producer event back into the machine; without it a replay runs with the program but none of the input.",
+          "contains": "applyReplayInput\\("
+        },
+        {
+          "id": "z80-debug-input-listener",
+          "falsifiable": "A recorded session plays back with no input -- the buttons you pressed during recording do nothing on replay.",
+          "why": "onDebugInput registers the listener the recorder subscribes to. No listener, nothing recorded to replay.",
+          "contains": "onDebugInput\\("
+        },
+        {
+          "id": "z80-debug-checkpoint-bridge",
+          "falsifiable": "You cannot save and reload a running program: the save does nothing, or produces a file that will not load on the same board.",
+          "why": "The debug target forwards captureCheckpoint and restoreCheckpoint to the machine; without it the debugger cannot save or reload at all.",
+          "contains": "captureCheckpoint"
+        }
+      ]
     },
-    {
-      "id": "on-instruction-hook",
-      "falsifiable": "The debugger will not single-step: you press Step and nothing moves.",
-      "why": "Per-instruction hook carrying pcBefore/pcAfter and the cycle delta. The debugger's single-step and the trace view are both built on it.",
-      "contains": "if \\(this\\.hooks\\.onInstruction\\) \\{?[^}]*?pcBefore"
+    "m6502-debug.js": {
+      "liteOnly": [
+        {
+          "id": "m6502-debug-replay-input",
+          "falsifiable": "A recorded session plays back with no input -- the buttons you pressed during recording do nothing on replay.",
+          "why": "applyReplayInput routes a recorded producer event back into the machine; without it a replay runs with the program but none of the input.",
+          "contains": "applyReplayInput\\("
+        },
+        {
+          "id": "m6502-debug-input-listener",
+          "falsifiable": "A recorded session plays back with no input -- the buttons you pressed during recording do nothing on replay.",
+          "why": "onDebugInput registers the listener the recorder subscribes to. No listener, nothing recorded to replay.",
+          "contains": "onDebugInput\\("
+        },
+        {
+          "id": "m6502-debug-checkpoint-bridge",
+          "falsifiable": "You cannot save and reload a running program: the save does nothing, or produces a file that will not load on the same board.",
+          "why": "Same bridge on the 6502 target: captureCheckpoint and restoreCheckpoint forwarded to the machine.",
+          "contains": "captureCheckpoint"
+        }
+      ]
     },
-    {
-      "id": "checkpoint-topology-snapshot",
-      "falsifiable": "You save a program on one board, load it on a board wired differently, and it runs as nonsense instead of refusing.",
-      "why": "A checkpoint restored into a DIFFERENT machine topology is silent corruption -- same registers, different wiring. The snapshot makes restore refuse rather than half-work.",
-      "contains": "_snapshotTopology\\(\\)"
-    },
-    {
-      "id": "checkpoint-refuses-incomplete-state",
-      "falsifiable": "You save, reload, and the machine comes back subtly wrong -- a sound still playing, a chip mid-transfer -- instead of telling you it could not save.",
-      "why": "canCheckpoint() refuses rather than saving a machine whose components lack a complete state API. THIS IS THE ABSENT-HARDWARE RULE APPLIED TO SAVE STATE: a partial checkpoint restores to a plausible-looking wrong machine, which is worse than no checkpoint.",
-      "contains": "canCheckpoint\\(\\)"
-    },
-    {
-      "id": "checkpoint-component-state-api",
-      "falsifiable": "A saved file changes by itself after you save it, because it shares memory with the running machine.",
-      "why": "getState/saveState dual-API bridge with deep clone, so a checkpoint does not alias live device buffers.",
-      "contains": "static _cloneCheckpointValue\\(value\\)"
-    },
-    {
-      "id": "checkpoint-component-bridge",
-      "falsifiable": "Saving works on one board and produces a file that will not load on the same board, with no explanation of which part failed.",
-      "why": "_saveComponent and _loadComponent name the failing component in the error ('component X has no state API', 'X state API is incompatible') rather than throwing from inside a generic loop. ADDED 2026-09-05 BECAUSE THE DERIVED COVERAGE CHECK FOUND THEM UNEXPLAINED -- the pinned >=8 floor had never noticed, because 8 entries is 8 entries whatever they cover.",
-      "contains": "static _saveComponent\\(name, component\\)"
+    "emu8051-adapter.js": {
+      "liteOnly": [
+        {
+          "id": "emu8051-replay-input",
+          "falsifiable": "A recorded session plays back with no input -- the buttons you pressed during recording do nothing on replay.",
+          "why": "applyReplayInput on the 8051 adapter.",
+          "contains": "applyReplayInput\\("
+        },
+        {
+          "id": "emu8051-input-listener",
+          "falsifiable": "A recorded session plays back with no input -- the buttons you pressed during recording do nothing on replay.",
+          "why": "onInput registers the recorder listener on the 8051 adapter.",
+          "contains": "onInput\\("
+        }
+      ]
     }
-  ],
-  "graftedFromUpstream": [
-    {"id": "ne2000-chip-kind", "contains": "ne2000"},
-    {"id": "port-conflict-check", "contains": "both claim"}
-  ]
+  }
 }
 ```
