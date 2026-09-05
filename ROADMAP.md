@@ -605,6 +605,23 @@ ours.**
 
 ---
 
+### 3.9 Language x device matrix — one truth for GUI and docs — PLANNED 2026-09-05
+
+`docs/LANGUAGE-DEVICE-MATRIX-PLAN.md`. Every (language, device) cell is **native**, **lowered**
+(through the dialect AST) or both; there is no refused cell, only `native: null` with a cited
+reason. A frozen data module (`lib/bw-matrix/capabilities.js`) becomes the source for a
+"What runs where?" GUI view, a contextual badge beside Run/Deploy, and a generated
+`docs/generated/LANGUAGE-DEVICE-MATRIX.md`; conformance tests hold it to `DEVICE_GROUPS`,
+`flashFamily`, the local assembler/compiler target lists and a pinned snapshot of the hosted
+service. The plan's §2 is the matrix as measured on 2026-09-05 and already names three
+contradictions in the tree (AVR `compile: false` vs a hosted compiler the C tab uses; the Mega
+STK500v2 comment vs `flashAvrMega`; the compile-target list in `CHOOSING-HARDWARE.md`).
+
+**Corrects §4.6 below:** the NASM front end in `i8086-asm.js` is **not** missing — it is in the
+vendored tree (header line 6, bw-board `df06ddd`). What is open is narrower: pointing
+`smallerc-wasm`'s output at it (plan task N2). Owner of the truth lane and the ASM reader:
+lego-ac; every other task is claimable per `LANES.md`.
+
 ## 3b. What an extension can reach — **TASKS 1, 2 + URL SANDBOX SHIPPED** (2026-08-28)
 
 Full reasoning, and the verification behind each claim, in
