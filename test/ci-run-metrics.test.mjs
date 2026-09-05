@@ -5,6 +5,16 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
 
+test('CI metrics workflow loads the reporter from the default branch but measures the triggering run', async () => {
+    const workflow = await readFile('.github/workflows/ci-metrics.yml', 'utf8');
+    assert.match(workflow, /ref: \$\{\{ github\.event\.repository\.default_branch \}\}/);
+    assert.doesNotMatch(workflow, /ref: \$\{\{ github\.event\.workflow_run\.head_sha \}\}/);
+    assert.match(workflow, /jq '\.workflow_run'/,
+        'the saved measurement input must remain the triggering workflow metadata');
+    assert.match(workflow, /RUN_ID: \$\{\{ github\.event\.workflow_run\.id \}\}/,
+        'job metadata must still come from the triggering workflow run');
+});
+
 test('CI metrics report exact runner duration and earliest terminal debugger verdict offline', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'bw-ci-metrics-'));
     const run = join(dir, 'run.json'); const jobs = join(dir, 'jobs.json'); const output = join(dir, 'out.json');
