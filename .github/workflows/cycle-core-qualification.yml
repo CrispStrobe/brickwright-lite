@@ -13,18 +13,28 @@ on:
       - 'scripts/qualify-cycle-candidates.mjs'
       - 'scripts/generate-floooh-z80-oracle-header.mjs'
       - 'scripts/fixtures/qualify-floooh-z80.c'
+      - 'scripts/fixtures/qualify-floooh-z80-wasm.c'
+      - 'scripts/fixtures/freestanding/string.h'
+      - 'scripts/verify-cycle-candidate-browser.mjs'
+      - 'scripts/lib/cycle-browser-receipt.mjs'
       - 'scripts/fixtures/qualify-jsmoo-w65c02.mjs'
       - 'test/fixtures/cycle-core-candidates.json'
       - 'test/cycle-core-qualification.test.mjs'
+      - 'test/cycle-browser-receipt.test.mjs'
   pull_request:
     paths:
       - '.github/workflows/cycle-core-qualification.yml'
       - 'scripts/qualify-cycle-candidates.mjs'
       - 'scripts/generate-floooh-z80-oracle-header.mjs'
       - 'scripts/fixtures/qualify-floooh-z80.c'
+      - 'scripts/fixtures/qualify-floooh-z80-wasm.c'
+      - 'scripts/fixtures/freestanding/string.h'
+      - 'scripts/verify-cycle-candidate-browser.mjs'
+      - 'scripts/lib/cycle-browser-receipt.mjs'
       - 'scripts/fixtures/qualify-jsmoo-w65c02.mjs'
       - 'test/fixtures/cycle-core-candidates.json'
       - 'test/cycle-core-qualification.test.mjs'
+      - 'test/cycle-browser-receipt.test.mjs'
 
 permissions:
   contents: read
@@ -98,6 +108,17 @@ jobs:
         run: node scripts/generate-floooh-z80-oracle-header.mjs | tee "$RUNNER_TEMP/z80-oracle-selection.json"
       - name: Compile the pinned native Z80 microstep runner
         run: cc -std=c99 -O2 -I .cycle-candidates/z80/chips -I "$RUNNER_TEMP" -DZ80_ORACLE_HEADER='"oracle-vectors.h"' scripts/fixtures/qualify-floooh-z80.c -o "$RUNNER_TEMP/qualify-z80"
+      - name: Install the WebAssembly linker
+        run: sudo apt-get update && sudo apt-get install -y lld-18
+      - name: Compile the pinned freestanding Z80 browser module
+        run: |
+          mkdir -p artifacts/cycle-core-qualification
+          clang --target=wasm32 -Oz -nostdlib \
+            -I scripts/fixtures/freestanding -I .cycle-candidates/z80/chips \
+            scripts/fixtures/qualify-floooh-z80-wasm.c \
+            -Wl,--no-entry -Wl,--export=candidate_init -Wl,--export=candidate_run_batch \
+            -Wl,--export-memory \
+            -o artifacts/cycle-core-qualification/z80.wasm
       - name: Qualify pinned cycle candidates
         env:
           CI: '1'
@@ -107,9 +128,19 @@ jobs:
           W65C02_QUALIFICATION_RUNNER: ${{ github.workspace }}/scripts/fixtures/qualify-jsmoo-w65c02.mjs
           W65C02_ORACLE_ROOT: ${{ github.workspace }}/.cycle-oracles/w65c02
         run: node scripts/qualify-cycle-candidates.mjs
+      - name: Install the qualification browser
+        if: always()
+        run: npm install --no-save playwright && npx playwright install --with-deps chromium
+      - name: Measure the candidate in Chromium
+        if: always()
+        env:
+          CI: '1'
+          Z80_QUALIFICATION_WASM: ${{ github.workspace }}/artifacts/cycle-core-qualification/z80.wasm
+          CYCLE_BROWSER_OUTPUT: ${{ github.workspace }}/artifacts/cycle-core-qualification/browser-report.json
+        run: node scripts/verify-cycle-candidate-browser.mjs
       - name: Static qualification contracts
         if: always()
-        run: node --test test/cycle-core-qualification.test.mjs
+        run: node --test test/cycle-core-qualification.test.mjs test/cycle-browser-receipt.test.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
