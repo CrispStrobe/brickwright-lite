@@ -802,8 +802,11 @@ Next tasks, in order:
    neither desktop nor mobile p50/p95 and moved aggregate `runMs` by only
    +0.8 ms over 182 samples (about 4.4 µs/sample, below timer resolution).
    It was reverted; reconsider only with P3's repeated, throttled evidence.
-2. Gate interrupt arbitration on pending NMI or an active PIC line, with HLT,
-   IF and simultaneous-boundary tests.
+2. **Evaluated and rejected (2026-09-05).** Conditional interrupt arbitration
+   passed the full matrix and moved aggregate `runMs` in the favorable
+   direction, but desktop/mobile p50 and p95 were unchanged and the deltas
+   were only about 5.7/1.3 µs per sample—below 0.1 ms timer resolution. It was
+   reverted pending P3's repeated, throttled evidence.
 3. Make the hosted benchmark repeat each profile, report median/spread, add a
    CPU-throttled minimum-device case, and retain real encoded/decoded chunk
    sizes.
