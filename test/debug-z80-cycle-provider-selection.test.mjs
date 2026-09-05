@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createDebugTarget}
-  from '../overlay/scratch-gui/src/lib/bw-board/debug-target-factory.js';
+import {createZ80Target} from '../overlay/scratch-gui/src/lib/bw-board/z80-target-factory.js';
 import {createFlooohZ80CycleProvider, FLOOOH_Z80_PINS, FLOOOH_Z80_STATE_FIELDS}
   from '../overlay/scratch-gui/src/lib/bw-board/floooh-z80-cycle-provider.js';
 
@@ -39,7 +38,7 @@ test('default and explicit fast selection never invoke the optional loader', asy
   let loads = 0;
   const loadCycleModule = async () => { loads++; throw new Error('must stay lazy'); };
   for (const options of [{}, {executionMode: 'fast'}]) {
-    const made = await createDebugTarget('z80', {...options, config: fastConfig, loadCycleModule});
+    const made = await createZ80Target({...options, config: fastConfig, loadCycleModule});
     assert.ok(made.target);
     assert.equal(made.target.capabilities().steps.includes('cycle'), false);
   }
@@ -48,7 +47,7 @@ test('default and explicit fast selection never invoke the optional loader', asy
 
 test('only explicit cycle selection loads once and failures never masquerade as fast success', async () => {
   let loads = 0;
-  const failed = await createDebugTarget('z80', {executionMode: 'cycle', config: fastConfig,
+  const failed = await createZ80Target({executionMode: 'cycle', config: fastConfig,
     loadCycleModule: async () => { loads++; throw new Error('missing optional chunk'); }});
   assert.equal(loads, 1);
   assert.equal(failed.target, null);
@@ -57,7 +56,7 @@ test('only explicit cycle selection loads once and failures never masquerade as 
     reason: 'missing optional chunk'});
   assert.equal(Object.hasOwn(failed, 'fallback'), false);
 
-  await assert.rejects(() => createDebugTarget('z80', {executionMode: 'automatic',
+  await assert.rejects(() => createZ80Target({executionMode: 'automatic',
     config: fastConfig, loadCycleModule: async () => { loads++; return wrapper(); }}),
   /unknown Z80 execution mode/);
   assert.equal(loads, 1, 'an invalid selection is rejected before optional code loads');
@@ -65,7 +64,7 @@ test('only explicit cycle selection loads once and failures never masquerade as 
 
 test('large run slices use bounded batches and preserve a multi-batch cycle step', async () => {
   const core = wrapper();
-  const made = await createDebugTarget('z80', {executionMode: 'cycle', config: fastConfig,
+  const made = await createZ80Target({executionMode: 'cycle', config: fastConfig,
     loadCycleModule: async () => core});
   const events = [];
   made.target.onDebugEvent(event => events.push(event));

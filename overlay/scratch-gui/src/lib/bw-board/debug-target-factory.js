@@ -82,6 +82,7 @@ export async function createDebugTarget(kind, opts) {
     return createAvr8jsTarget(kind, opts);
   }
   if (kind === 'z80') {
+    const {createZ80Target} = await import('./z80-target-factory.js');
     return createZ80Target(opts);
   }
   if (kind === 'eater6502') {
@@ -273,37 +274,6 @@ async function createAvr8jsTarget(kind, opts) {
 }
 
 // ─── 6502 breadboard computer (Eater-style) ─────────────────────────────
-
-async function createZ80Target(opts) {
-  const { board, rom, config, pc, cpm } = opts;
-  const executionMode = opts.executionMode ?? 'fast';
-  if (!['fast', 'cycle'].includes(executionMode)) {
-    throw new Error(`unknown Z80 execution mode: ${executionMode}`);
-  }
-  if (executionMode === 'cycle') {
-    const {createZ80CycleDebugTarget} = await import('./z80-cycle-debug.js');
-    const result = await createZ80CycleDebugTarget(opts);
-    if (!result.accepted) return {target: null, adapter: null, refusal: result};
-    if (board) result.adapter.attachBoard(board);
-    return {target: result.target, adapter: result.adapter};
-  }
-  // The Z80 bench has no GPIO boundary — board is optional; when
-  // present it only receives time sync (the serial console is the
-  // observable surface, via adapter.onSerial / sendSerial).
-  const { createZ80Adapter } = await import('./z80-adapter.js');
-  const adapter = createZ80Adapter({ config, rom, romAt: opts.romAt, pc, cpm });
-  if (board) adapter.attachBoard(board);
-  else adapter.attachBoard({ advanceTo() {} });
-
-  let target = null;
-  try {
-    const mod = await import('./z80-debug.js');
-    if (mod.createZ80DebugTarget) {
-      target = mod.createZ80DebugTarget(adapter, {cpuId: opts.cpuId});
-    }
-  } catch { /* adapter-only mode */ }
-  return { target, adapter };
-}
 
 /**
  * The 8086 breadboard. Like the z80 and 6502 targets, a board is optional:
