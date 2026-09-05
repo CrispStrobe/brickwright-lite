@@ -24,6 +24,17 @@ import {
     DEVICES, LANGUAGES, CELLS, STATUS, EVIDENCE, deviceById, isNativeNull, cell
 } from '../overlay/scratch-gui/src/lib/bw-matrix/capabilities.js';
 
+
+/** The text between a `{` at `open` and its matching `}`, by counting. */
+const balancedBlock = (text, open) => {
+    let depth = 0;
+    for (let i = open; i < text.length; i++) {
+        if (text[i] === '{') depth++;
+        else if (text[i] === '}' && --depth === 0) return text.slice(open + 1, i);
+    }
+    throw new Error('unbalanced braces');
+};
+
 const src = rel => readFileSync(join(REPO, 'overlay/scratch-gui/src', rel), 'utf8');
 const importer = src('components/tw-pseudocode/pseudocode-importer.jsx');
 const assembleRoute = src('lib/bw-asm/assemble-route.js');
@@ -194,9 +205,12 @@ test('hosted facts in the matrix match the pinned stc-compiler snapshot, through
     const assemble = new Set(Object.values(hosted.assemble).flat());
     // The C tab maps a board id to the MCU the service compiles for. Parse that
     // map from the source so this test cannot drift from the button.
-    const mapSrc = importer.match(/const COMPILE_TARGET = \{([\s\S]*?)\};/);
-    assert.ok(mapSrc, 'COMPILE_TARGET moved');
-    const compileTarget = Object.fromEntries([...mapSrc[1].matchAll(/'([a-z0-9-]+)': '([a-z0-9-]+)'/g)].map(m => [m[1], m[2]]));
+    // Walk the braces rather than lazily matching to a literal `}`: a nested
+    // brace would silently shorten a lazy match and drop the tail of the map.
+    const mapStart = importer.indexOf('const COMPILE_TARGET = {');
+    assert.ok(mapStart >= 0, 'COMPILE_TARGET moved');
+    const mapBody = balancedBlock(importer, importer.indexOf('{', mapStart));
+    const compileTarget = Object.fromEntries([...mapBody.matchAll(/'([a-z0-9-]+)': '([a-z0-9-]+)'/g)].map(m => [m[1], m[2]]));
     const compileIdFor = d => compileTarget[d.id] || (d.family === 'rp2040' ? 'rp2040' : d.id);
     for (const d of DEVICES) {
         if (d.programmable === false) continue;

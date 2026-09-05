@@ -124,6 +124,18 @@ try {
     const c89 = (await page.getByTestId('bw-matrix-cell-c-stc89c52').getAttribute('title')) || '';
     check('the STC89C52 override reaches the panel', /hosted/.test(c89), c89.slice(0, 100));
 
+    // The panel and the badge must also GO AWAY: toggling off removes the
+    // panel, and clearing the device removes the badge. Appearance alone
+    // proves nothing about a toggle.
+    await page.getByTestId('bw-matrix-toggle').click();
+    let gone = true;
+    await panel.waitFor({state: 'detached', timeout: 5000}).catch(() => { gone = false; });
+    check('toggling again removes the panel', gone);
+    await device.selectOption('');
+    let badgeGone = true;
+    await badge.waitFor({state: 'detached', timeout: 5000}).catch(() => { badgeGone = false; });
+    check('clearing the device removes the badge', badgeGone);
+
     check('no page errors', pageErrors.length === 0, pageErrors.join(' | ').slice(0, 200));
 } finally {
     await browser.close();
