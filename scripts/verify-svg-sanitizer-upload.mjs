@@ -18,6 +18,12 @@ const url = process.env.PROOF_URL || 'http://localhost:8617/';
 const OUT = path.resolve('artifacts/svg-sanitizer-upload');
 const SANITIZER_CHUNK = /\/chunks\/svg-sanitizer\.js(?:[?#]|$)/;
 const ATTACKER = /(?:attacker\.invalid|evil\.invalid)/i;
+// Same-probe eager baseline: hosted run 33977434631, 65.7 ms and no long
+// tasks. P13 may spend at most 15% more to fetch/parse the lazy capability.
+const EAGER_UPLOAD_BASELINE_MS = 65.7;
+const RELATIVE_UPLOAD_LIMIT_MS = EAGER_UPLOAD_BASELINE_MS * 1.15;
+const ABSOLUTE_UPLOAD_LIMIT_MS = 1000;
+const LONG_TASK_LIMIT_MS = 100;
 const work = await mkdtemp(path.join(tmpdir(), 'bw-svg-sanitizer-'));
 const fixture = path.join(work, 'adversarial.svg');
 const saved = path.join(work, 'sanitized-svg.sb3');
@@ -162,7 +168,17 @@ const loadProject = async page => {
     await waitForCostume(page);
 };
 
-const receipt = {schema: 'brickwright/svg-sanitizer-upload/v1', url, checks};
+const receipt = {
+    schema: 'brickwright/svg-sanitizer-upload/v1',
+    url,
+    checks,
+    limits: {
+        eagerBaselineMs: EAGER_UPLOAD_BASELINE_MS,
+        relativeUploadMs: RELATIVE_UPLOAD_LIMIT_MS,
+        absoluteUploadMs: ABSOLUTE_UPLOAD_LIMIT_MS,
+        longTaskMs: LONG_TASK_LIMIT_MS
+    }
+};
 try {
     // Successful upload and round trip.
     let session = await makeSession();
@@ -174,6 +190,15 @@ try {
 
     const performance = await uploadAndMeasure(page, fixture);
     receipt.successfulUpload = performance;
+    const longestUploadTask = Math.max(0, ...performance.longTasks.map(task => task.ms));
+    record('first SVG upload stays within 115% of the same-probe eager baseline',
+        performance.durationMs <= RELATIVE_UPLOAD_LIMIT_MS,
+        `${performance.durationMs.toFixed(1)} ms <= ${RELATIVE_UPLOAD_LIMIT_MS.toFixed(3)} ms`);
+    record('first SVG upload stays within the absolute one-second limit',
+        performance.durationMs <= ABSOLUTE_UPLOAD_LIMIT_MS,
+        `${performance.durationMs.toFixed(1)} ms <= ${ABSOLUTE_UPLOAD_LIMIT_MS} ms`);
+    record('first SVG upload creates no task over 100 ms', longestUploadTask <= LONG_TASK_LIMIT_MS,
+        `${longestUploadTask.toFixed(1)} ms longest task`);
     let stored = await costumeState(page);
     const uploadedTile = page.getByText('adversarial', {exact: true}).first();
     await uploadedTile.waitFor({state: 'visible', timeout: 30000});
@@ -201,7 +226,8 @@ try {
     await loadProject(page);
     await openCostumes(page);
     stored = await costumeState(page);
-    const reloadedTile = page.getByText('adversarial', {exact: true}).first();
+    const reloadedTile = page.getByRole('tabpanel', {name: /Costumes?/}).first()
+        .getByText('adversarial', {exact: true}).first();
     await reloadedTile.waitFor({state: 'visible', timeout: 30000});
     const reloadedTileVisible = await reloadedTile.isVisible();
     record('the sanitized SVG survives save and reload visibly', reloadedTileVisible &&

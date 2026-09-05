@@ -4,7 +4,7 @@
 // scratch-render from src, the package is pinned, and a file: link would make
 // npm skip its dependencies.
 //
-// THE CHANGE. The seven render fonts are a lazy chunk in lite (webpack aliases
+// THE CHANGES. The seven render fonts are a lazy chunk in lite (webpack aliases
 // `scratch-render-fonts` to overlay/scratch-gui/src/lib/lazy-render-fonts.js;
 // ROADMAP §2.4). SVGSkin.setSVG rasterises an SVG with its @font-face rules
 // inlined, and with the fonts not yet fetched it would inline nothing and draw
@@ -19,6 +19,40 @@ import {existsSync, readFileSync, writeFileSync} from 'node:fs';
 import path from 'node:path';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const svgRendererPath = path.join(
+    ROOT, 'packages', 'scratch-gui', 'node_modules', 'scratch-svg-renderer', 'package.json');
+if (!existsSync(svgRendererPath)) {
+    console.error(`node_modules/scratch-svg-renderer missing at ${svgRendererPath} — run npm install first.`);
+    process.exit(1);
+}
+const svgRendererPackage = JSON.parse(readFileSync(svgRendererPath, 'utf8'));
+let exportsChanged = false;
+// Adding subpaths beside a top-level condition map is invalid Node package
+// syntax; move the package's existing root conditions under the "." export.
+if (!svgRendererPackage.exports['.']) {
+    svgRendererPackage.exports = {'.': svgRendererPackage.exports};
+    exportsChanged = true;
+}
+const leafExports = {
+    './src/bitmap-adapter': './src/bitmap-adapter.js',
+    './src/font-inliner': './src/font-inliner.js',
+    './src/load-svg-string': './src/load-svg-string.js',
+    './src/sanitize-svg': './src/sanitize-svg.js',
+    './src/serialize-svg-to-string': './src/serialize-svg-to-string.js'
+};
+for (const [name, target] of Object.entries(leafExports)) {
+    if (svgRendererPackage.exports[name] !== target) {
+        svgRendererPackage.exports[name] = target;
+        exportsChanged = true;
+    }
+}
+if (exportsChanged) {
+    writeFileSync(svgRendererPath, `${JSON.stringify(svgRendererPackage, null, 2)}\n`);
+    console.log('  exported narrow scratch-svg-renderer source entries');
+} else {
+    console.log('  scratch-svg-renderer narrow source entries already exported');
+}
+
 const skinPath = path.join(ROOT, 'packages', 'scratch-gui', 'node_modules', 'scratch-render', 'src', 'SVGSkin.js');
 if (!existsSync(skinPath)) {
     console.error(`node_modules/scratch-render missing at ${skinPath} — run npm install first.`);
@@ -27,7 +61,10 @@ if (!existsSync(skinPath)) {
 let src = readFileSync(skinPath, 'utf8');
 
 const requireAnchor = `const {loadSvgString, serializeSvgToString} = require('scratch-svg-renderer');\n`;
-const requirePatch = requireAnchor +
+const narrowRequires = `const loadSvgString = require('scratch-svg-renderer/src/load-svg-string');
+const serializeSvgToString = require('scratch-svg-renderer/src/serialize-svg-to-string');
+`;
+const requirePatch = narrowRequires +
 `// Brickwright: the lazy render-fonts shim (see apply-render-overlay.mjs).
 const getRenderFonts = require('scratch-render-fonts');
 `;
@@ -54,8 +91,14 @@ const setSvgPatch = `    setSVG (svgData, rotationCenter) {
         const svgTag = loadSvgString(svgData);`;
 
 let changed = false;
-if (src.includes('const getRenderFonts = require')) {
+if (src.includes('const getRenderFonts = require') && src.includes(narrowRequires)) {
     console.log('  SVGSkin.js render-fonts require already applied');
+} else if (src.includes('const getRenderFonts = require') && src.includes(requireAnchor)) {
+    src = src.replace(requireAnchor, narrowRequires);
+    changed = true;
+} else if (src.includes(narrowRequires)) {
+    src = src.replace(narrowRequires, requirePatch);
+    changed = true;
 } else if (src.includes(requireAnchor)) {
     src = src.replace(requireAnchor, requirePatch);
     changed = true;

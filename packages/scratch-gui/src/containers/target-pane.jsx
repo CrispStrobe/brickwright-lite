@@ -143,7 +143,7 @@ class TargetPane extends React.Component {
         const storage = this.props.vm.runtime.storage;
         this.props.onShowImporting();
         handleFileUpload(e.target, (buffer, fileType, fileName, fileIndex, fileCount) => {
-            spriteUpload(buffer, fileType, fileName, storage, newSprite => {
+            return spriteUpload(buffer, fileType, fileName, storage, newSprite => {
                 this.handleNewSprite(newSprite)
                     .then(() => {
                         if (fileIndex === fileCount - 1) {

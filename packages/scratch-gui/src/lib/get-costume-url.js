@@ -1,5 +1,5 @@
 import storage from './storage';
-import {inlineSvgFonts} from 'scratch-svg-renderer';
+import inlineSvgFonts from 'scratch-svg-renderer/src/font-inliner';
 import getFonts from './lazy-render-fonts.js';
 
 // Contains 'font-family', but doesn't only contain 'font-family="none"'

@@ -1,6 +1,7 @@
 const StringUtil = require('../util/string-util');
 const log = require('../util/log');
-const {loadSvgString, serializeSvgToString} = require('scratch-svg-renderer');
+const loadSvgString = require('scratch-svg-renderer/src/load-svg-string');
+const serializeSvgToString = require('scratch-svg-renderer/src/serialize-svg-to-string');
 
 const loadVector_ = function (costume, runtime, rotationCenter, optVersion) {
     return new Promise(resolve => {

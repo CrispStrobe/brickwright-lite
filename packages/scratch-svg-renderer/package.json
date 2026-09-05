@@ -5,10 +5,17 @@
   "main": "./dist/node/scratch-svg-renderer.js",
   "browser": "./dist/web/scratch-svg-renderer.js",
   "exports": {
-    "webpack": "./src/index.js",
-    "browser": "./dist/web/scratch-svg-renderer.js",
-    "node": "./dist/node/scratch-svg-renderer.js",
-    "default": "./src/index.js"
+    ".": {
+      "webpack": "./src/index.js",
+      "browser": "./dist/web/scratch-svg-renderer.js",
+      "node": "./dist/node/scratch-svg-renderer.js",
+      "default": "./src/index.js"
+    },
+    "./src/bitmap-adapter": "./src/bitmap-adapter.js",
+    "./src/font-inliner": "./src/font-inliner.js",
+    "./src/load-svg-string": "./src/load-svg-string.js",
+    "./src/sanitize-svg": "./src/sanitize-svg.js",
+    "./src/serialize-svg-to-string": "./src/serialize-svg-to-string.js"
   },
   "scripts": {
     "build": "npm run clean && webpack",

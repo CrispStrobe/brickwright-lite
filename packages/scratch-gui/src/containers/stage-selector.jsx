@@ -108,7 +108,7 @@ class StageSelector extends React.Component {
         const storage = this.props.vm.runtime.storage;
         this.props.onShowImporting();
         handleFileUpload(e.target, (buffer, fileType, fileName, fileIndex, fileCount) => {
-            costumeUpload(buffer, fileType, storage, vmCostumes => {
+            return costumeUpload(buffer, fileType, storage, vmCostumes => {
                 this.props.vm.setEditingTarget(this.props.id);
                 vmCostumes.forEach((costume, i) => {
                     costume.name = `${fileName}${i ? i + 1 : ''}`;
