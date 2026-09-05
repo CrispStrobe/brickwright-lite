@@ -55,3 +55,61 @@ test('the bench merges requested chips BY NAME, not by appending', () => {
     assert.match(bench, /filter\(\s*\(c\) => !chips\.some\(\(x\) => x\.name === c\.name\)\)/,
         'the preset entry of the same name is replaced');
 });
+
+// ── THE SECOND PATH: an ASSEMBLY source asking for hardware ─────────────
+//
+// Pseudocode declares pins and the build returns `chips`. Assembly has no
+// declarations, so the SOURCE asks, with a `; BW-CHIPS:` comment. Both end at
+// the same place — `chips` on the bench — but they travel different hops, and
+// the pseudocode path was silently dropping the field for four of them until
+// somebody traced it by hand. The assembly path is newer and has never been
+// traced, which is the only reason these assertions exist.
+
+test('an ASM source can request hardware, and every hop names it', () => {
+    const importer = read('components/tw-pseudocode/pseudocode-importer.jsx');
+    // hop 1: the resolver exists and is called at the dispatch site
+    assert.match(importer, /asmChipsForSource \(src\)/, 'the resolver exists');
+    assert.match(importer, /const chips = this\.asmChipsForSource\(/,
+        'and the ASM dispatch actually calls it — a resolver nobody calls is worse '
+        + 'than none, because it reads as coverage');
+    assert.match(importer, /\.\.\.\(chips\.length \? \{chips\} : \{\}\)/,
+        'and puts them on the event');
+    // hops 2-4 are shared with the pseudocode path and asserted above.
+});
+
+test('BW-CHIPS is parsed from a COMMENT, so the source still assembles', () => {
+    // The whole reason it is a comment: MASM would reject an invented
+    // directive, and an example that only assembles here is not an example.
+    const importer = read('components/tw-pseudocode/pseudocode-importer.jsx');
+    // A PLAIN SUBSTRING, not a regex about a regex. The first version of this
+    // assertion escaped through Python, into JavaScript, into a regex literal
+    // and matched nothing — three layers of quoting to check one string.
+    assert.ok(importer.includes('BW-CHIPS:'), 'the marker is parsed at all');
+    assert.ok(importer.includes(String.raw`^\s*;\s*BW-CHIPS:`),
+        'and the pattern anchors on a leading semicolon, so it is a COMMENT');
+});
+
+test('two cards at two ports are BOTH requested — not deduplicated by kind', () => {
+    // The bug this guards, which existed for about ten minutes: keying the
+    // seen-set on kind alone dropped the second card silently, leaving an
+    // example that talks to nobody and a hub with one member.
+    const importer = read('components/tw-pseudocode/pseudocode-importer.jsx');
+    assert.match(importer, /const key = `\$\{kind\}@\$\{at === undefined \? '-' : at\}`/,
+        'the seen-set is keyed on kind AND address');
+    assert.ok(!/if \(seen\.has\(kind\)\) continue/.test(importer),
+        'and not on kind alone');
+});
+
+test('one card gets a loopback; several get a shared hub', () => {
+    const importer = read('components/tw-pseudocode/pseudocode-importer.jsx');
+    assert.match(importer, /if \(cards\.length === 1\) cards\[0\]\.loopback = true/);
+    assert.match(importer, /else if \(cards\.length > 1\) for \(const c of cards\) c\.hub = true/);
+    // The LINK itself cannot travel on an event — it is a live object and the
+    // detail is plain data — so the bench builds it. If that ever stops being
+    // true, a requested card arrives deaf.
+    const bench = read('lib/bw-debug/i8086-dos-bench.js');
+    assert.match(bench, /c\.link = \{send: \(frame, from\) => from\.deliver\(frame\)\}/,
+        'the loopback is constructed where the chip module is in scope');
+    assert.match(bench, /for \(const card of this\.cards\) if \(card !== from\) card\.deliver\(frame\)/,
+        'and the hub is a REPEATER: everyone hears everything except their own');
+});
