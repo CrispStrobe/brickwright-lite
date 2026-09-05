@@ -20,7 +20,7 @@
  *             survive. This is what stops the gate being vacuous: if the
  *             fixture did not really exercise a lazy extension, the abort run
  *             below would pass for the wrong reason and say nothing.
- *   ABORTED — `chunks/ext-music.js` is aborted. The project must still open,
+ *   ABORTED — the music chunk is aborted. The project must still open,
  *             the pen blocks (a SYNC builtin) must be intact, and nothing may
  *             reach the page as an uncaught error.
  *
@@ -40,7 +40,19 @@ const artifacts = resolve('artifacts/lazy-extension-degradation');
 await mkdir(artifacts, {recursive: true});
 const basePath = resolve(artifacts, 'base.sb3');
 const fixturePath = resolve(artifacts, 'music-and-pen.sb3');
-const CHUNK = 'chunks/ext-music.js';
+// The built filename is NOT `chunks/ext-music.js`. `chunkFilename:
+// 'chunks/[name].js'` only governs chunks made of overlay source — that is why
+// asset-library-index.js, guided-lessons.js and pseudocode-examples.js are
+// unhashed. A lazy EXTENSION chunk is node_modules code, so splitChunks' own
+// defaultVendors cacheGroup names it and the emitted file carries a content
+// hash: `chunks/ext-music.<hash>.js` — and a cacheGroup is also free to PREFIX
+// the name, so the pattern matches any chunk basename containing `ext-music`
+// rather than pinning a shape. Matched loosely for the same reason
+// verify-boot-payload matches by prefix. The first version of this gate pinned
+// the exact name, matched nothing, and was caught by the abort counter below
+// rather than by going quietly green — which is the whole reason it counts.
+const CHUNK_MATCH = /\/chunks\/[^/]*ext-music[^/]*\.js$/;
+const CHUNK_LABEL = 'chunks/ext-music.*.js';
 
 const browser = await chromium.launch({headless: true});
 const newPage = async () => {
@@ -121,7 +133,7 @@ try {
     const pageErrors = [];
     page.on('pageerror', error => pageErrors.push(error.message));
     let aborted = 0;
-    await page.route(`**/${CHUNK}`, route => {
+    await page.route(CHUNK_MATCH, route => {
         aborted++;
         return route.abort('failed');
     });
@@ -136,8 +148,10 @@ try {
     const degraded = await opcodes(page);
 
     if (aborted === 0) {
-        throw new Error(`nothing matched **/${CHUNK} — the interception never fired, so this ` +
-            'run says nothing about a missing chunk. Check chunkFilename in webpack.config.js.');
+        throw new Error(`nothing matched ${CHUNK_LABEL} — the interception never fired, so ` +
+            'this run says nothing about a missing chunk. The lazy extension chunks are ' +
+            'hashed by splitChunks, not by chunkFilename, so check the emitted names in ' +
+            'the build output before widening this pattern.');
     }
     if (!degraded.includes('pen_clear')) {
         throw new Error('a missing music chunk took the pen blocks with it');
@@ -148,9 +162,9 @@ try {
     }
     await page.screenshot({path: resolve(artifacts, 'degraded.png'), fullPage: true});
     await writeFile(resolve(artifacts, 'result.json'), JSON.stringify({
-        url, chunk: CHUNK, aborted, control, degraded, pageErrors
+        url, chunk: CHUNK_LABEL, aborted, control, degraded, pageErrors
     }, null, 2));
-    console.log(`  ok: ${aborted} abort(s) of ${CHUNK}; project still opened`);
+    console.log(`  ok: ${aborted} abort(s) of ${CHUNK_LABEL}; project still opened`);
     console.log(`  note: music_setTempo ${degraded.includes('music_setTempo') ? 'survived' : 'was dropped'} ` +
         '(either is acceptable — the contract is that the PROJECT opens)');
     console.log('Lazy extension degradation: a missing chunk costs its own blocks, not the project.');
