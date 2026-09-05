@@ -348,7 +348,7 @@ DoD: the exported `.COM` runs under a second emulator the developer has
 
 ### Lane L — lowered halves to add or complete
 
-**L1. ASM reader with named refusals.** Owner: lego-ac.
+**L1. ASM reader with named refusals.** Owner: lego-ac. **v1 BUILT 2026-09-05** on branch `lane/matrix-l1-asm-reader` (`lib/bw-asm/asm-8086-to-pseudocode.js`, `test/asm-8086-to-pseudocode.test.mjs`): the emitter's own shapes for the 8086 — the DX:AX stack-machine expression stream, the three comparison templates, and/or/not, set/change/say/print/wait/wait until/repeat/repeat until/if/if-else/forever/stop — read back and re-lower to byte-identical assembly over a five-program corpus; hand-written assembly (every fixture in `examples-i8086.js`) refused as foreign, the scheduler form refused with its script count, pins/ports/displays/tone/PWM/keypad/broadcast/say-for-secs refused by feature name; census 23 lifted / 1 refused / 16 unprobed of 40 anchors, and the lifted set may only grow. The ASM tab's To blocks is wired for the 8086 in source mode. Two mutations proven red. Not yet: 8051 (SDCC listings), the scheduler form, the pin family.
 Lifting, not decompilation: recognise (a) the shapes our own lowering emits
 (8086 from `pseudocode-8086.js`, 8051 from SDCC listings of `generateC`
 output) and (b) straight-line and single-loop hand-written programs per ISA.
