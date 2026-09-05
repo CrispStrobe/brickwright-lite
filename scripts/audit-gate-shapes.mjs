@@ -218,12 +218,35 @@ for (const file of roots.flatMap(r => walk(path.join(root, r)))) {
     // own vendored copy and is exactly what these gates should read; matching the library name
     // anywhere flagged 112 of those and buried the real thing. A sibling is an absolute path
     // into another checkout, or a relative one climbing above the repo root.
+    //
+    // A PATH THAT IS NEVER READ REACHES NOTHING. This fired 9 times on
+    // test/circuit-designer-load-policy.test.mjs, which does not read a single
+    // sibling checkout: the strings `'../../lib/bw-board/m6502-extract.js'` are
+    // MODULE SPECIFIERS USED AS SEARCH NEEDLES -- the test reads one file in
+    // this repo and asserts which specifiers appear in its text. The rule was
+    // keying on the SHAPE of the string and calling it a read.
+    //
+    // Nine false positives on a correct test, and a false red on a detector is
+    // how the detector gets deleted -- the lesson from my own extractor floor
+    // this morning, arriving in my own tool the same day. It also left main red
+    // on a commit that had done nothing wrong.
+    //
+    // So the two forms are now judged differently, because their hazards are:
+    //   ABSOLUTE  /mnt/... into another checkout is machine-specific however it
+    //             is used, so it is still flagged unconditionally.
+    //   RELATIVE  ../../ only escapes if something READS it. Require the literal
+    //             to be an argument to a filesystem or import call.
+    const readsIt = idx => {
+        const before = text.slice(Math.max(0, idx - 90), idx);
+        return /(?:readFileSync|readFile|existsSync|statSync|realpathSync|readdirSync|access|createRequire|execFileSync|execSync|spawnSync|import)\s*\(\s*(?:[A-Za-z_$][\w$]*\s*,\s*)?$|path\.(?:join|resolve)\s*\(\s*$/.test(before);
+    };
     for (const m of text.matchAll(/['"`](\/mnt\/[^'"`\n]*|(?:\.\.\/){2,}[^'"`\n]*)['"`]/g)) {
         const target = m[1];
-        if (/(?:bw-board|bw-circuit-ui|sb3-creator|bw-parts|extensions|stc-compiler)\b/.test(target)) {
-            note(file, lineOf(text, m.index), 'AMBIENT-BINDING',
-                `reads ${target.split('/').slice(-2).join('/')} — a checkout outside this repository`);
-        }
+        if (!/(?:bw-board|bw-circuit-ui|sb3-creator|bw-parts|extensions|stc-compiler)\b/.test(target)) continue;
+        const absolute = target.startsWith('/');
+        if (!absolute && !readsIt(m.index)) continue;   // a needle, not a path
+        note(file, lineOf(text, m.index), 'AMBIENT-BINDING',
+            `reads ${target.split('/').slice(-2).join('/')} — a checkout outside this repository`);
     }
     }
 

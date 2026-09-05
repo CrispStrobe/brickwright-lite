@@ -145,6 +145,27 @@ test('every rule still fires — all six, from one fixture', () => {
         'every baseline in this file is now zero');
 });
 
+test('AMBIENT-BINDING fires on a path that is READ, not on one merely mentioned', () => {
+    // The narrowing of 2026-09-05 must not have deleted the rule. Both halves
+    // proved from one fixture, because a rule that stopped firing and a rule
+    // that stopped false-firing look identical from the count alone.
+    // gate-shapes-allow
+    const read = "const src = readFileSync('../../../bw-board/src/i8086.js', 'utf8');";
+    assert.deepEqual(scan(read), ['AMBIENT-BINDING'],
+        'a sibling checkout that is actually READ is the hazard this rule exists for');
+
+    // gate-shapes-allow
+    const needle = "assert.ok(!before.includes('../../lib/bw-board/m6502-extract.js'));";
+    assert.deepEqual(scan(needle), [],
+        'a module specifier used as a SEARCH NEEDLE reaches nothing -- this fired 9 times ' +
+        'on a correct test and left main red');
+
+    // An ABSOLUTE machine path stays flagged however it is used: it is
+    // machine-specific whether or not this particular line opens it.
+    // gate-shapes-allow
+    assert.deepEqual(scan("const p = '/mnt/volume1/code/bw-board/src/i8086.js';"), ['AMBIENT-BINDING']);
+});
+
 test('no new gate-shape suspects', () => {
     const raw = execFileSync(process.execPath,
         [path.join(root, 'scripts/audit-gate-shapes.mjs'), '--json'],

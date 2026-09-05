@@ -37,8 +37,29 @@ const readAllowList = () => {
 // Every file the allow-list covers, as [filename, entryList] pairs.
 const coveredFiles = spec => Object.entries(spec.files);
 
-// Both dual-tracked copies of one covered file.
-const vendoredPaths = (spec, file) => spec.vendoredRoots.map(r => path.join(ROOT, r, file));
+// The vendored roots that are ACTUALLY PRESENT, which is not the same as the
+// roots the doc lists.
+//
+// THIS GATE WAS GREEN ONLY BECAUSE OF UNTRACKED FILES ON ONE MACHINE. packages/
+// is gitignored, and its tracking is PARTIAL: 150 files under
+// packages/scratch-gui/src/lib/bw-board are tracked, but i8086-machine.js and
+// i8254.js are not. So a clean checkout has overlay/ and only part of
+// packages/ -- and this test asserted BOTH copies of every covered file exist,
+// which failed all four subtests when reproduced with `git archive HEAD`.
+//
+// That is the species this repo has already paid for once: a test that passes
+// here, passes for the reviewer, and can never pass in CI. I shipped four
+// commits of it today and only found it by applying the coverage lane's
+// question to my own instrument.
+//
+// So: derive the roots from what is on disk, require at least one, and REPORT
+// which were found. A root that is absent is a fact, not a reason to skip.
+const presentRoots = spec => spec.vendoredRoots.filter(r => fs.existsSync(path.join(ROOT, r)));
+
+// Every present copy of one covered file. May be one path, not two.
+const vendoredPaths = (spec, file) => presentRoots(spec)
+    .map(r => path.join(ROOT, r, file))
+    .filter(p => fs.existsSync(p));
 
 // Species 1 defence: a gate whose corpus is empty passes everything. Assert the
 // allow-list is populated BEFORE trusting any result derived from iterating it.
@@ -71,13 +92,17 @@ test('the vendor allow-list is non-empty and covers both dual-tracked copies', (
             'If you cannot, the entry may be protecting something with no observable effect.');
     }
 
+    assert.ok(presentRoots(spec).length >= 1,
+        `none of the vendored roots exist: ${spec.vendoredRoots.join(', ')}`);
     assert.equal(spec.vendoredRoots.length, 2,
         'overlay/ and packages/ are both tracked in this repo; both must be checked. ' +
         'I created a divergence between them once by not force-adding an ignored path.');
+    // At least one copy of every covered file must exist. Requiring BOTH is
+    // what made this green-here-red-in-CI: packages/ is gitignored and only
+    // partially tracked.
     for (const [file] of coveredFiles(spec)) {
-        for (const p of vendoredPaths(spec, file)) {
-            assert.ok(fs.existsSync(p), `vendored copy missing: ${path.relative(ROOT, p)}`);
-        }
+        assert.ok(vendoredPaths(spec, file).length >= 1,
+            `no vendored copy of ${file} exists under any of ${spec.vendoredRoots.join(', ')}`);
     }
 });
 
@@ -102,15 +127,26 @@ test('a sync has not deleted the lite-only work in i8086-machine.js', () => {
         '  docs/VENDOR-DIVERGENCE-I8086-MACHINE.md in the same commit.\n');
 });
 
-test('the two dual-tracked vendored copies have not drifted apart', () => {
+test('the two dual-tracked vendored copies have not drifted apart', t => {
     const spec = readAllowList();
+    let compared = 0;
     for (const [file] of coveredFiles(spec)) {
-        const [a, b] = vendoredPaths(spec, file).map(p => fs.readFileSync(p, 'utf8'));
+        const paths = vendoredPaths(spec, file);
+        if (paths.length < 2) {
+            // Not a pass and not a failure: there is only one copy here to
+            // compare. Said out loud so "drift check green" is never read as
+            // "both copies agree" when only one was present.
+            t.diagnostic(`${file}: only ${paths.length} copy present, drift NOT checked`);
+            continue;
+        }
+        compared++;
+        const [a, b] = paths.map(p => fs.readFileSync(p, 'utf8'));
         assert.equal(a, b, `the two vendored copies of ${file} differ. ` +
         'These are the same file tracked twice; editing one and not the other is how ' +
             'These are the same file tracked twice; editing one and not the other is how ' +
             'a fix ships in the dev build and not the packaged one.');
     }
+    t.diagnostic(`drift compared for ${compared} of ${coveredFiles(spec).length} covered file(s)`);
 });
 
 // The external anchor. Tiers 1-3 above are self-contained -- they can be
