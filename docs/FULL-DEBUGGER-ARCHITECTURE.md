@@ -16,7 +16,7 @@ earlier row optional.
 | 3 | event-synchronized register, disassembly and memory panes | complete — one selected recorded cursor, three provenance-labelled panes |
 | 4 | Z80 and 6502 checkpoint/replay certification | complete — shared omission-sensitive harness and repaired machine state |
 | 5 | browser debugger workflows in GitHub CI | complete — production journeys and retained failure evidence, with no VPS browser workload |
-| 6 | cycle-accurate core evaluation and justified integration | pending |
+| 6 | cycle-accurate core evaluation and justified integration | complete — strict provider contract, native 8051 provider, pinned adoption gates |
 
 Debugger-host snapshots are deliberately separate from target snapshots.
 Restore validates host state first, captures a target rollback point, restores
@@ -80,6 +80,18 @@ and retain JSON plus screenshots independently, including on journey failure.
 They reuse the job's single webpack build, server and Chromium installation.
 The scripts refuse local execution unless explicitly overridden, keeping this
 resource-heavy integration authority off the small development VPS.
+
+Cycle execution now has a separate, fail-closed provider contract. The native
+8051 engine is the first negotiated provider: it advances one real oscillator
+clock and declares recorded/resumable fidelity, but explicitly claims neither
+internal bus signals nor deterministic checkpoints. Timing tables cannot pass
+this negotiation or unlock cycle stepping. The pinned candidate audit in
+[`CYCLE-ACCURATE-CORE-EVALUATION.md`](CYCLE-ACCURATE-CORE-EVALUATION.md)
+selects floooh/chips for a Z80 qualification lane, JSMoo for a W65C02 CI spike,
+and MartyPC as the 8088 cycle oracle. None is shipped prematurely: each still
+needs hosted bus-trace, mid-instruction snapshot, hook and browser-cost receipts.
+The existing fast cores remain the default and continue to label aggregate
+timing as predicted rather than recorded cycle evidence.
 
 ## Outcome
 

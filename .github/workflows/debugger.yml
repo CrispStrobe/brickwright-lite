@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/debugger.yml'
       - 'docs/FULL-DEBUGGER-ARCHITECTURE.md'
+      - 'docs/CYCLE-ACCURATE-CORE-EVALUATION.md'
       - 'overlay/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx'
       - 'overlay/scratch-gui/src/components/tw-pseudocode/debug-drawer.jsx'
       - 'overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx'
@@ -22,6 +23,7 @@ on:
     paths:
       - '.github/workflows/debugger.yml'
       - 'docs/FULL-DEBUGGER-ARCHITECTURE.md'
+      - 'docs/CYCLE-ACCURATE-CORE-EVALUATION.md'
       - 'overlay/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx'
       - 'overlay/scratch-gui/src/components/tw-pseudocode/debug-drawer.jsx'
       - 'overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx'

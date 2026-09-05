@@ -529,6 +529,28 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
     // ─── the target ──────────────────────────────────────────────────────
 
     const target = {
+        cycleProvider() {
+            if (!hasCycleStep) return null;
+            const hz = Number(opts.clockHz);
+            return {
+                schema: 1,
+                engine: 'emu8051-stc',
+                boundary: 'oscillator-clock',
+                timeDomain: Number.isSafeInteger(hz) && hz > 0 ?
+                    (debugTimeEpoch ? `8051-oscillator-reset-${debugTimeEpoch}` : '8051-oscillator') :
+                    (debugTimeEpoch ? `8051-simulation-ns-reset-${debugTimeEpoch}` : '8051-simulation-ns'),
+                ...(Number.isSafeInteger(hz) && hz > 0 ? {clockHz: hz} : {}),
+                fidelity: 'recorded',
+                resumable: true,
+                // This ABI exposes the clock boundary, not internal ALE,
+                // PSEN, address or data buses. An empty list is an important
+                // promise: clients must not synthesize a bus waveform.
+                signals: [],
+                // Architectural reads omit in-flight and peripheral state.
+                checkpoint: false
+            };
+        },
+
         capabilities() {
             // Feature-detect watchpoints: available if _emu_dbg_set_bp_write exists
             const hasWatchpoints = typeof wasm._emu_dbg_set_bp_write === 'function';
