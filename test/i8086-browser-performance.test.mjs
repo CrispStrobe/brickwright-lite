@@ -22,7 +22,7 @@ test('the production 8086 benchmark covers desktop and mobile pump health', () =
         'browser-performance/v5', 'summarizeI8086Repetitions', 'cpuThrottleRate: 4',
         'dos-load-start', 'dosLoadResources', 'dosJourneyResources', 'preCircuitResources',
         'eagerCircuitAssets', 'speculativeExampleAssets', 'pseudocode-examples\\.js',
-        'I8086_WEBPACK_STATS',
+        'eagerGrammarAssets', 'optionalCodeMirrorGrammars', 'I8086_WEBPACK_STATS',
     ]) assert.ok(script.includes(fact), `benchmark lost ${fact}`);
     assert.match(script, /Math\.max\(3, requestedRepetitions\)/,
         'the statistical gate must not accept fewer than three repetitions');

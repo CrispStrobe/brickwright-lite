@@ -22,6 +22,112 @@ test('cm-lang-basic.js exists', () => {
         'cm-lang-basic.js missing');
 });
 
+test('heavy grammars have dedicated deferred chunks while learner modes stay synchronous', () => {
+    const languages = readFileSync(resolve(overlay, 'lib/codemirror-languages.js'), 'utf8');
+    const editor = readFileSync(resolve(overlay, 'lib/codemirror-editor.jsx'), 'utf8');
+    for (const [language, chunk] of [
+        ['@codemirror/lang-cpp', 'bw-codemirror-lang-cpp'],
+        ['@codemirror/lang-python', 'bw-codemirror-lang-python'],
+        ['@codemirror/lang-javascript', 'bw-codemirror-lang-javascript']
+    ]) {
+        assert.match(languages, new RegExp(`import\\([^\\n]+${chunk}[^\\n]+${language}`),
+            `${language} must keep a named async boundary`);
+        assert.ok(!editor.includes(`from '${language}'`),
+            `${language} must not re-enter the base CodeMirror chunk`);
+    }
+    for (const localMode of ['pseudocodeLang()', 'basicLang()', 'asmLang()']) {
+        assert.ok(languages.includes(localMode), `${localMode} stopped loading synchronously`);
+    }
+    assert.match(editor, /_langCompartment\.reconfigure\(extension\)/,
+        'language arrival must reconfigure only the language compartment');
+});
+
+test('latest language request applies sync modes immediately and rejects stale grammar arrivals', async () => {
+    const source = readFileSync(resolve(overlay, 'lib/latest-language-request.js'), 'utf8');
+    const {default: LatestLanguageRequest} = await import(
+        `data:text/javascript,${encodeURIComponent(source)}`);
+    const pending = new Map();
+    const applied = [];
+    const editorState = {
+        document: 'MOV AX, 1',
+        selection: {anchor: 4, head: 6},
+        highlightedLine: 1
+    };
+    const request = new LatestLanguageRequest({
+        getImmediate: language => language === 'asm' ? 'asm-extension' : undefined,
+        loadDeferred: language => new Promise((resolvePromise, rejectPromise) => {
+            pending.set(language, {resolve: resolvePromise, reject: rejectPromise});
+        }),
+        fallback: 'plain-text',
+        apply: (extension, language) => applied.push({extension, language}),
+        onError: error => { throw error; }
+    });
+
+    assert.equal(request.select('asm'), null);
+    assert.deepEqual(applied.pop(), {extension: 'asm-extension', language: 'asm'},
+        'the ASM mode must apply in the selecting call stack');
+
+    const python = request.select('python');
+    const javascript = request.select('javascript');
+    pending.get('python').resolve('python-extension');
+    assert.equal(await python, false, 'an older grammar must not win a rapid switch');
+    pending.get('javascript').resolve('javascript-extension');
+    assert.equal(await javascript, true);
+    assert.deepEqual(applied.slice(-3), [
+        {extension: 'plain-text', language: 'python'},
+        {extension: 'plain-text', language: 'javascript'},
+        {extension: 'javascript-extension', language: 'javascript'}
+    ]);
+    assert.deepEqual(editorState, {
+        document: 'MOV AX, 1',
+        selection: {anchor: 4, head: 6},
+        highlightedLine: 1
+    }, 'language requests must not own or replace editor state');
+});
+
+test('failed and unmounted grammar requests stay on plain text without late application', async () => {
+    const source = readFileSync(resolve(overlay, 'lib/latest-language-request.js'), 'utf8');
+    const {default: LatestLanguageRequest} = await import(
+        `data:text/javascript,${encodeURIComponent(source)}#dispose`);
+    const applied = [];
+    const errors = [];
+    let rejectLoad;
+    const failed = new LatestLanguageRequest({
+        getImmediate: () => undefined,
+        loadDeferred: () => new Promise((resolvePromise, rejectPromise) => { rejectLoad = rejectPromise; }),
+        fallback: 'plain-text',
+        apply: extension => applied.push(extension),
+        onError: error => errors.push(error.message)
+    });
+    const result = failed.select('python');
+    rejectLoad(new Error('offline'));
+    assert.equal(await result, false);
+    assert.deepEqual(applied, ['plain-text']);
+    assert.deepEqual(errors, ['offline']);
+
+    let resolveLoad;
+    const unmounted = new LatestLanguageRequest({
+        getImmediate: () => undefined,
+        loadDeferred: () => new Promise(resolvePromise => { resolveLoad = resolvePromise; }),
+        fallback: 'plain-text',
+        apply: extension => applied.push(extension)
+    });
+    const late = unmounted.select('c');
+    unmounted.dispose();
+    resolveLoad('cpp-extension');
+    assert.equal(await late, false);
+    assert.ok(!applied.includes('cpp-extension'));
+});
+
+test('hosted editor gate proves ASM isolation and optional grammar encoded size', () => {
+    const gate = readFileSync(resolve(here, '../scripts/verify-editor.mjs'), 'utf8');
+    assert.match(gate, /ASM tab did not fetch optional C, Python or JavaScript grammars/);
+    assert.match(gate, /grammarReceipt\.encodedBodyBytes >= 100 \* 1024/);
+    for (const chunk of ['cpp', 'python', 'javascript']) {
+        assert.ok(gate.includes(`'${chunk}'`), `hosted gate stopped demanding ${chunk}`);
+    }
+});
+
 test('pseudocode-importer uses lazy CM import', () => {
     const src = readFileSync(
         resolve(overlay, 'components/tw-pseudocode/pseudocode-importer.jsx'), 'utf8'

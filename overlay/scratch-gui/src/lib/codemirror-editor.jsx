@@ -27,12 +27,12 @@ import {indentOnInput, foldGutter, syntaxHighlighting, defaultHighlightStyle,
     indentUnit, LanguageSupport} from '@codemirror/language';
 import {oneDark} from '@codemirror/theme-one-dark';
 
-import {cpp} from '@codemirror/lang-cpp';
-import {python} from '@codemirror/lang-python';
-import {javascript} from '@codemirror/lang-javascript';
-import {pseudocode as pseudocodeLang} from './cm-lang-pseudocode.js';
-import {basic as basicLang} from './cm-lang-basic.js';
-import {asm as asmLang} from './cm-lang-asm.js';
+import LatestLanguageRequest from './latest-language-request.js';
+import {
+    immediateCodeMirrorLanguage,
+    loadDeferredCodeMirrorLanguage,
+    plainTextLanguage
+} from './codemirror-languages.js';
 import {Decoration, ViewPlugin} from '@codemirror/view';
 import {StateField, StateEffect} from '@codemirror/state';
 
@@ -54,21 +54,6 @@ const highlightedLineField = StateField.define({
     },
     provide: f => EditorView.decorations.from(f)
 });
-
-// ── Language picker ────────────────────────────────────────────────
-function langExtension (lang) {
-    switch (lang) {
-    case 'c': return cpp();
-    case 'python':
-    case 'micropython': return python();
-    case 'javascript': return javascript();
-    case 'basic': return basicLang();
-    case 'asm': return asmLang();
-    case 'pseudocode':
-    default:
-        return pseudocodeLang();
-    }
-}
 
 // ── Auto-indent after colon (pseudocode pattern) ──────────────────
 // CM6 indentOnInput handles the re-indent on typing; this adds the
@@ -133,10 +118,27 @@ class CodeMirrorEditor extends React.Component {
         this._themeCompartment = new Compartment();
         this._readOnlyCompartment = new Compartment();
         this._onSettingsChange = this._onSettingsChange.bind(this);
+        this._languageRequest = new LatestLanguageRequest({
+            getImmediate: immediateCodeMirrorLanguage,
+            loadDeferred: loadDeferredCodeMirrorLanguage,
+            fallback: plainTextLanguage,
+            apply: extension => {
+                if (!this._view) return;
+                this._view.dispatch({
+                    effects: this._langCompartment.reconfigure(extension)
+                });
+            },
+            onError: (error, language) => {
+                // Highlighting is optional. The editor stays usable as plain
+                // text, and selecting the language again retries the chunk.
+                console.warn(`CodeMirror ${language} grammar failed to load`, error);
+            }
+        });
     }
 
     componentDidMount () {
         const dark = this._isDark();
+        const initialLanguage = immediateCodeMirrorLanguage(this.props.lang);
         const extensions = [
             lineNumbers(),
             highlightActiveLine(),
@@ -165,7 +167,9 @@ class CodeMirrorEditor extends React.Component {
             ]),
             highlightedLineField,
             pseudocodeIndent,
-            this._langCompartment.of(langExtension(this.props.lang)),
+            this._langCompartment.of(
+                initialLanguage || plainTextLanguage
+            ),
             this._themeCompartment.of(dark ? [oneDark, bwDarkTheme] : [bwLightTheme]),
             this._readOnlyCompartment.of(EditorState.readOnly.of(!!this.props.readOnly)),
             EditorView.updateListener.of(update => {
@@ -185,6 +189,10 @@ class CodeMirrorEditor extends React.Component {
             }),
             parent: this._ref.current
         });
+
+        if (initialLanguage === undefined) {
+            this._languageRequest.select(this.props.lang);
+        }
 
         window.addEventListener('bw-settings-change', this._onSettingsChange);
     }
@@ -206,9 +214,7 @@ class CodeMirrorEditor extends React.Component {
 
         // Language change
         if (this.props.lang !== prevProps.lang) {
-            this._view.dispatch({
-                effects: this._langCompartment.reconfigure(langExtension(this.props.lang))
-            });
+            this._languageRequest.select(this.props.lang);
         }
 
         // ReadOnly change
@@ -223,6 +229,7 @@ class CodeMirrorEditor extends React.Component {
 
     componentWillUnmount () {
         window.removeEventListener('bw-settings-change', this._onSettingsChange);
+        this._languageRequest.dispose();
         if (this._view) {
             this._view.destroy();
             this._view = null;
