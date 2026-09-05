@@ -633,10 +633,19 @@ jobs:
           }
           mv packages/scratch-gui/build packages/scratch-gui/build-production-ci
           trap cleanup_profile_build EXIT
+          mkdir -p artifacts/i8086-performance
           (
             cd packages/scratch-gui
-            BW_REACT_PROFILE=1 NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build
+            # P6 ownership evidence is emitted only by this already-separate
+            # profiling build. The deployable production build above remains
+            # byte-for-byte on its ordinary webpack invocation.
+            rm -rf build-profile
+            npm run clean
+            BW_REACT_PROFILE=1 NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 \
+              ./node_modules/.bin/webpack --profile --json ../../artifacts/i8086-performance/webpack-stats.json
           )
+          node scripts/report-webpack-ownership.mjs
+          gzip -9 artifacts/i8086-performance/webpack-stats.json
           python3 -m http.server 8618 --directory packages/scratch-gui/build-profile &
           profile_server=$!
           for i in $(seq 1 30); do curl -sf http://localhost:8618/ >/dev/null && break; sleep 1; done
