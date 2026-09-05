@@ -285,8 +285,10 @@ carries an implied cause it has not established.**
 
 **WHY the ceiling was crossed — corrected 2026-09-05, and the first answer was wrong.**
 This note originally said the build had "grown past its ceiling" and proposed splitting the
-browser gates into a second job. That diagnosis was mine and it was not measured. lego-b9
-found the actual cause: **one hanging gate.** `Browser gate — SVG upload sanitizer is lazy,
+browser gates into a second job. The 30.4-minute clustering was measured and is what made the
+mechanism findable at all; the CAUSE attached to it was not measured, and was mine. lego-b9
+asked the one question that separates the two stories — *which step was running when the clock
+ran out* — and found the actual cause: **one hanging gate.** `Browser gate — SVG upload sanitizer is lazy,
 safe and retryable` (`cdd1aa38f`) was the last-running step in every 30.4-minute
 cancellation, taking `17:45:55 -> 18:05:26` in the run that settled the mechanism. Main
 reverted it at 17:31 (`d86d9477a`, which removed the step AND
