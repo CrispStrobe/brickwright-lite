@@ -27,6 +27,9 @@
 import {readFile, writeFile} from 'node:fs/promises';
 import { guardSource } from './lib-source-guard.mjs';
 import { resolveRef, recordPin, localSha } from './lib-pin.mjs';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+const execFileP = promisify(execFile);
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 
@@ -45,6 +48,13 @@ if (dirIdx !== -1 && srcDir) guardSource(srcDir);
 
 // Resolve BEFORE the first content fetch, so nothing is ever read by name.
 const remoteSha = srcDir ? null : (await resolveRef(REPO, REF)).sha;
+
+// The pin the vendored copy currently came from — the third point of the
+// three-way comparison below. Read from vendor-pins.json BEFORE this run
+// overwrites it.
+const OLD_PIN = await readFile(new URL('../vendor-pins.json', import.meta.url), 'utf8')
+    .then((t) => JSON.parse(t)['sb3-creator'] ?? null)
+    .catch(() => null);
 const RAW = `https://raw.githubusercontent.com/${REPO}/${remoteSha}`;
 
 // [source path relative to the sb3-creator repo, local vendored destination]
@@ -127,13 +137,56 @@ const rewriteImports = (src) => src
 // touches, not just the one whose loss someone happened to notice -- which is
 // the whole argument, since the reason a curated list fails is that it
 // enumerates what you already know.
-const linesLostBy = (current, next) => {
-    const incoming = new Set(next.split('\n').map((l) => l.trim()));
-    return current.split('\n').map((l) => l.trim())
-        .filter((l) => l && l !== '}' && l !== '};' && l !== '{' && !incoming.has(l));
+/**
+ * THREE-WAY, NOT TWO-WAY, and the difference is whether this gate survives.
+ *
+ * The first version compared the vendored copy against the INCOMING one and
+ * called every line that did not appear in the incoming "lost". That is wrong
+ * for the ordinary case: when upstream EDITS a line that existed in both, the
+ * old text is absent from the incoming and the rule reports it as lite-only
+ * work about to be deleted.
+ *
+ * lego-ac measured it on the real bump this gate was about to meet --
+ * sb3-creator eb5b286 -> fdd9d7d, 14 files -- and it called SIX lines lost
+ * (1 in sb3Creator.js, 5 in micropythonToPseudocode.js), every one of them
+ * upstream's own edit. So every ordinary bump would have needed --force, and
+ * --force deletes the five lite-only i8086 examples this exists to protect.
+ * A gate that must be bypassed to do the normal thing is a gate people learn
+ * to bypass, and then it is not there for the abnormal thing either.
+ *
+ * THE THIRD POINT IS THE OLD PINNED VERSION. A line is lite-only if it is in
+ * the vendored copy and was NOT in the upstream file at the pin the vendored
+ * copy came from. Only those lines matter, and only their absence from the
+ * incoming is a loss. Upstream editing its own line changes the incoming, not
+ * the lite-only set, so it no longer fires.
+ *
+ * Falls back to the two-way rule when the old pinned version cannot be read
+ * (no local checkout of that sha, a first-ever sync) -- and SAYS SO, because
+ * a guard that quietly becomes stricter is worse than one that is loud about
+ * which rule it applied.
+ */
+const linesLostBy = (current, next, base) => {
+    const norm = (t) => t.split('\n').map((l) => l.trim());
+    const trivial = (l) => !l || l === '}' || l === '};' || l === '{';
+    const incoming = new Set(norm(next));
+    const liteOnly = base === null
+        ? norm(current)                                  // fallback: two-way
+        : (() => { const b = new Set(norm(base)); return norm(current).filter((l) => !b.has(l)); })();
+    return liteOnly.filter((l) => !trivial(l) && !incoming.has(l));
+};
+
+/** The file as it stood at the pin the vendored copy was taken from. */
+const atOldPin = async (rel) => {
+    if (!srcDir || !OLD_PIN) return null;
+    try {
+        const {stdout} = await execFileP('git', ['-C', srcDir, 'show', `${OLD_PIN}:${rel}`],
+            {maxBuffer: 32 * 1024 * 1024});
+        return stdout;
+    } catch { return null; }        // not fetched, or the file did not exist then
 };
 const force = process.argv.includes('--force');
 const wouldTruncate = [];
+let warnedFallback = false;
 
 let stale = 0;
 for (const [remote, dest] of FILES) {
@@ -147,7 +200,14 @@ for (const [remote, dest] of FILES) {
     if (check) {
         console.log(`  STALE ${path.basename(dest)}  (differs from sb3-creator@${REF})`);
     } else {
-        const lost = force ? [] : linesLostBy(current ?? '', next);
+        const base = force ? null : await atOldPin(remote);
+        if (!force && base === null && current !== null && !warnedFallback) {
+            warnedFallback = true;
+            console.error('  NOTE: the old pinned version is not readable here, so the guard is');
+            console.error('  using the two-way rule, which reports upstream\'s own edits as losses.');
+            console.error(`  (git -C ${srcDir || '<no --dir>'} show ${OLD_PIN ? OLD_PIN.slice(0, 9) : '<no pin>'}:<file>)`);
+        }
+        const lost = force ? [] : linesLostBy(current ?? '', next, base);
         if (lost.length) {
             wouldTruncate.push({file: path.basename(dest), count: lost.length, sample: lost.slice(0, 3)});
             console.log(`  REFUSED ${path.basename(dest)} (would delete ${lost.length} line(s) that exist only here)`);

@@ -15,6 +15,9 @@ import {readFile, writeFile, mkdir, readdir} from 'node:fs/promises';
 import { guardSource } from './lib-source-guard.mjs';
 import { resolveRef, recordPin, localSha, listTree } from './lib-pin.mjs';
 import {fileURLToPath} from 'node:url';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+const execFileP = promisify(execFile);
 import path from 'node:path';
 
 // bw-board's only branch is `master` — with 'main' every raw fetch 404s,
@@ -194,6 +197,11 @@ if (!allowList) {
 const wouldDelete = [];
 const wouldTruncate = [];
 const force = process.argv.includes('--force');
+// The pin the vendored copy came from — the third point of the comparison,
+// read before this run overwrites it.
+const OLD_PIN = await readFile(new URL('../vendor-pins.json', import.meta.url), 'utf8')
+    .then(t => JSON.parse(t)['bw-board'] ?? null)
+    .catch(() => null);
 
 // THE ALLOW-LIST EXPLAINS; THIS MEASURES. The named entries above cover ONE
 // file, because it is the one whose divergence someone sat down and wrote up.
@@ -213,12 +221,45 @@ const force = process.argv.includes('--force');
 //
 // Refuses rather than warns, because `wrote i8086-debug.js` scrolling past is
 // indistinguishable from the correct outcome. --force overrides, deliberately.
-const linesLostBy = (current, next) => {
-    const incoming = new Set(next.split('\n').map(l => l.trim()));
-    return current.split('\n')
-        .map(l => l.trim())
-        .filter(l => l && l !== '}' && l !== '};' && l !== '{' && !incoming.has(l));
+/**
+ * THREE-WAY, NOT TWO-WAY. See sync-sb3creator.mjs for the measurement that
+ * forced this; the rule was wrong in both scripts because I wrote it here
+ * first and ported the mistake.
+ *
+ * Comparing the vendored copy only against the INCOMING one calls every line
+ * absent from the incoming "lost" -- including lines UPSTREAM ITSELF EDITED,
+ * which is the ordinary case for any real bump. Measured on sb3-creator
+ * eb5b286 -> fdd9d7d it produced four refusals of which three were entirely
+ * upstream's own edits, so the normal bump required --force, and --force
+ * deletes the lite-only work the guard exists to protect. A gate that must be
+ * bypassed to do the routine thing stops being there for the exceptional one.
+ *
+ * The third point is the OLD PINNED VERSION: a line is lite-only if it is in
+ * the vendored copy and was not in upstream at the pin that copy came from.
+ * Upstream editing its own line changes the incoming, not that set.
+ *
+ * Falls back to two-way when the old pin is unreadable, and says so.
+ */
+const linesLostBy = (current, next, base) => {
+    const norm = t => t.split('\n').map(l => l.trim());
+    const trivial = l => !l || l === '}' || l === '};' || l === '{';
+    const incoming = new Set(norm(next));
+    const liteOnly = base === null
+        ? norm(current)
+        : (() => { const b = new Set(norm(base)); return norm(current).filter(l => !b.has(l)); })();
+    return liteOnly.filter(l => !trivial(l) && !incoming.has(l));
 };
+
+/** The file as it stood at the pin the vendored copy was taken from. */
+const atOldPin = async (rel) => {
+    if (!srcDir || !OLD_PIN) return null;
+    try {
+        const {stdout} = await execFileP('git', ['-C', srcDir, 'show', `${OLD_PIN}:${rel}`],
+            {maxBuffer: 32 * 1024 * 1024});
+        return stdout;
+    } catch { return null; }
+};
+let warnedFallback = false;
 
 await mkdir(dest, {recursive: true});
 let stale = 0;
@@ -264,7 +305,13 @@ for (const rel of FILES) {
 
     // Content-derived guard, for every file the named tier did not cover.
     if (!check && !force && current !== null) {
-        const lost = linesLostBy(current, next);
+        const base = await atOldPin(rel);
+        if (base === null && !warnedFallback) {
+            warnedFallback = true;
+            console.error('  NOTE: the old pinned version is not readable here, so the guard is');
+            console.error("  using the two-way rule, which reports upstream's own edits as losses.");
+        }
+        const lost = linesLostBy(current, next, base);
         if (lost.length) {
             wouldTruncate.push({file: path.basename(rel), count: lost.length, sample: lost.slice(0, 3)});
             console.log(`  REFUSED ${path.basename(rel)} (would delete ${lost.length} line(s) that exist only here)`);
