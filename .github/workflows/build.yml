@@ -509,7 +509,20 @@ jobs:
       # Keyed on `playwright` rather than `serve` because this gate needs no
       # server: it drives the packaged broker document from local files. It still
       # carries `!cancelled()` for the same reason every gate below does.
+      # EVERY BROWSER STEP CARRIES ITS OWN timeout-minutes (test/browser-gate-timeouts.test.mjs
+      # refuses one without). Reason, measured 2026-09-05: the build job's
+      # `timeout-minutes: 30` was the day's "unexplained canceller" — GitHub reports
+      # a timed-out JOB as `cancelled`, so four of five cancelled main builds were
+      # really one hanging browser gate (the since-reverted SVG-sanitizer gate ran
+      # twenty minutes) pushing a 17–19 minute job past thirty, and nothing named
+      # the step. A per-step budget turns the next hang into a red step WITH A
+      # NAME, at most eight minutes in, well inside the job ceiling. Budgets are
+      # ~3× each step's maximum over the last five main runs, floor 3, cap 8:
+      # labwired tier 165 s, 8051 listings 124 s, 8086 bench 123 s → 8; the
+      # 14–50 s tier → 4; everything under 10 s → 3. Raise one only with a new
+      # measurement in the commit message; never to make a hang pass.
       - name: Browser gate — native broker packaged assets
+        timeout-minutes: 3  # measured max 2 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.playwright.outcome == 'success' }}
         run: node scripts/verify-native-broker-assets.mjs
       # Every browser gate below hangs off THIS step's outcome, not
@@ -540,10 +553,12 @@ jobs:
       # now report before the unrelated product journeys rather than after
       # dozens of serial gates.
       - name: Browser gate — the debugger-only pane and its round trip
+        timeout-minutes: 4  # measured max 14 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: node scripts/verify-debugger-solo.mjs
 
       - name: Browser gate — debugger recording, reverse and fork history
+        timeout-minutes: 4  # measured max 35 s over 5 main runs, 2026-09-05
         id: debug_history
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ npm run verify:debug-history
@@ -556,6 +571,7 @@ jobs:
           if-no-files-found: error
 
       - name: Browser gate — debugger run-to and synchronized inspection
+        timeout-minutes: 3  # measured max 3 s over 5 main runs, 2026-09-05
         id: debug_inspection
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ npm run verify:debug-inspection
@@ -574,18 +590,22 @@ jobs:
       # itself on every run, so a scenario that stops biting says so here rather
       # than passing quietly for years the way the white-screen path did.
       - name: Browser gate — service worker failure modes
+        timeout-minutes: 4  # measured max 25 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: node scripts/verify-service-worker.mjs
       - name: Browser gate — circuit UX
+        timeout-minutes: 4  # measured max 21 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-circuit-ux.mjs
       # ROADMAP §2.4: the render fonts are fetched by the first SVG with text,
       # not at first paint. Both halves are asserted — no fetch on a fresh load,
       # and a text costume rasterised WITH its @font-face once one appears.
       - name: Browser gate — render fonts arrive with the first text costume, not before
+        timeout-minutes: 3  # measured max 4 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-text-costume-fonts.mjs
       - name: Browser gate — circuit rendering and placement
+        timeout-minutes: 3  # measured max 6 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-circuit-rendering.mjs
 
@@ -594,6 +614,7 @@ jobs:
       # the rendered LEDs: a dead X/Y wire, swapped code bit, stale example, or
       # non-interactive face can all pass the model's isolated unit tests.
       - name: Browser gate — physical 74C922 keypad encoder
+        timeout-minutes: 3  # measured max 3 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-74c922-keypad.mjs
 
@@ -622,6 +643,7 @@ jobs:
       # sentence ("Total circuit current is …") — the warning that names the
       # largest consumers and offers a fix.
       - name: Browser gate — the DRC can sum chip current
+        timeout-minutes: 3  # measured max 2 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-drc-current.mjs
 
@@ -636,18 +658,23 @@ jobs:
           path: artifacts/drc-current-*.png
           if-no-files-found: warn
       - name: Browser gate — view buttons
+        timeout-minutes: 4  # measured max 16 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-view-buttons.mjs
       - name: Browser gate — editor
+        timeout-minutes: 4  # measured max 19 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-editor.mjs
       - name: Browser gate — unpinned extension sandbox
+        timeout-minutes: 3  # measured max 1 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-extension-sandbox.mjs
       - name: Browser gate — game gallery and hardware examples
+        timeout-minutes: 3  # measured max 4 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-example-selector.mjs
       - name: Browser gate — both BASIC profiles execute on real machines
+        timeout-minutes: 3  # measured max 3 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-basic-run.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -662,6 +689,7 @@ jobs:
       # local assembler chunk, paints CGA, accepts a key, or refreshes the 8255
       # faces. One browser and two unchanged examples cover that whole seam.
       - name: Browser gate — 8086 local assembly, CGA, keyboard and 8255
+        timeout-minutes: 3  # measured max 5 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-i8086-browser.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -672,6 +700,7 @@ jobs:
           if-no-files-found: error
 
       - name: Browser benchmark — 8086 desktop and mobile
+        timeout-minutes: 8  # measured max 123 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: |
           # React's ordinary production renderer removes Profiler timings.
@@ -722,6 +751,7 @@ jobs:
           if-no-files-found: error
 
       - name: Browser gate — declared extension capability broker
+        timeout-minutes: 3  # measured max 3 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: |
           mkdir -p artifacts/capability-broker
@@ -736,12 +766,15 @@ jobs:
           path: artifacts/capability-broker/*
           if-no-files-found: error
       - name: Browser gate — first-run chooser and guided journeys
+        timeout-minutes: 3  # measured max 8 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-starter-journeys.mjs
       - name: Browser gate — LEGO SPIKE archive and Code-tab round trip
+        timeout-minutes: 3  # measured max 3 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-lego-spike-roundtrip.mjs
       - name: Browser gate — four-surface project save, reopen and vanilla replacement
+        timeout-minutes: 3  # measured max 6 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-project-bundle-integrity.mjs
       # The costume half of the same question. The gate above proves the four
@@ -750,6 +783,7 @@ jobs:
       # with its own asset pipeline (paper.js for vector, a canvas re-encode for
       # bitmap). Compares content hashed from asset.data, not declared ids.
       - name: Browser gate — costume artwork survives save/reload and records first-open performance
+        timeout-minutes: 3  # measured max 5 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-costume-roundtrip.mjs
       # The unit suite asserts the table SVG and the mark state as pure values.
@@ -760,6 +794,7 @@ jobs:
       # rather than pixels, because headless keeps the stage canvas at a 0x0
       # backing store and a working stage screenshots identically to a broken one.
       - name: Browser gate — the renderer accepts the table the arrays blocks describe
+        timeout-minutes: 3  # measured max 2 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-arrays-table-display.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -782,6 +817,7 @@ jobs:
       # the chunk -- so this gate removes it on purpose, and asserts the abort
       # actually fired rather than trusting a route pattern to keep matching.
       - name: Browser gate — a missing extension chunk costs its blocks, not the project
+        timeout-minutes: 3  # measured max 4 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-lazy-extension-degradation.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -809,6 +845,7 @@ jobs:
           path: artifacts/starter-journeys/*.png
           if-no-files-found: warn
       - name: Browser gates — About, intro, interaction, and schematic rendering
+        timeout-minutes: 4  # measured max 18 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: |
           PROOF_URL=http://localhost:8617/ node scripts/verify-about-dialog.mjs
@@ -825,6 +862,7 @@ jobs:
             artifacts/schematic-production/*.png
           if-no-files-found: warn
       - name: Browser gates — Code chrome, Controller, faceplates, and Instruments
+        timeout-minutes: 4  # measured max 19 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: |
           PROOF_URL=http://localhost:8617/ node scripts/verify-chrome-sweep.mjs
@@ -843,6 +881,7 @@ jobs:
             artifacts/verify-instruments-scroll-*
           if-no-files-found: warn
       - name: Browser gate — Aurora-65 keyboard, OLED and VGA workstation
+        timeout-minutes: 3  # measured max 8 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-aurora65-workstation.mjs
       # The debugger dock has now regressed to a blank pane twice, and the
@@ -850,6 +889,7 @@ jobs:
       # invisible to every unit suite: one is a chunk that was never
       # requested, the other a machine that could not be answered.
       - name: Browser gate — debugger dock and serial input
+        timeout-minutes: 4  # measured max 28 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-debug-dock.mjs
       # The language x device matrix: the badge beside the device picker and
@@ -857,6 +897,7 @@ jobs:
       # the table docs/generated/LANGUAGE-DEVICE-MATRIX.md is generated from.
       # Unit tests hold the table to source; this holds the GUI to the table.
       - name: Browser gate — language x device matrix badge and panel
+        timeout-minutes: 3  # measured max 2 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-matrix-ui.mjs
 
@@ -875,6 +916,7 @@ jobs:
       # the entry bundle (true throughout); this asserts the app does not FETCH
       # the 20 MB engine before anyone asks. It did, on every first load.
       - name: Browser gate — the heavy engine is not downloaded on first load
+        timeout-minutes: 3  # measured max 3 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-first-load-weight.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -884,6 +926,7 @@ jobs:
           path: artifacts/first-load-weight/*
           if-no-files-found: warn
       - name: Browser gate — the labwired heavy tier actually executes
+        timeout-minutes: 8  # measured max 165 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: node scripts/verify-labwired-engine.mjs
 
@@ -894,6 +937,7 @@ jobs:
       # by the gate's own server — proving it against a second, artifact-less
       # build would leave open whether the two builds differed elsewhere.
       - name: Browser gate — with no engine artifact, the tier is not offered
+        timeout-minutes: 4  # measured max 47 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: node scripts/verify-labwired-engine.mjs --absent
 
@@ -915,6 +959,7 @@ jobs:
       # Chromium, then proves the local image can attach, cycle-step, expose
       # source-linked scheduler state, and halt on a real write watchpoint.
       - name: Browser gate — offline 8051 compile and debugger evidence
+        timeout-minutes: 3  # measured max 5 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-debug-frames-watch.mjs
 
@@ -922,6 +967,7 @@ jobs:
       # proof changes the source, exports two distinct linked .rst listings,
       # and aborts hosted compiler POSTs before they leave Chromium.
       - name: Browser gate — offline linked 8051 assembly listings
+        timeout-minutes: 8  # measured max 124 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-local-asm-listing.mjs
 
@@ -948,6 +994,7 @@ jobs:
       # stop matching, the build goes for the hosted compiler, and the run fails
       # honestly instead of stepping through firmware nobody compiled.
       - name: Browser gate — an AVR lesson bench starts offline on its shipped image
+        timeout-minutes: 4  # measured max 35 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-offline-lesson-image.mjs
 
@@ -961,6 +1008,7 @@ jobs:
       # Run this short, independently green extension proof after the two heavy
       # labwired journeys, keeping the earlier product sweep's peak memory flat.
       - name: Browser gate — promoted pinned extension worker
+        timeout-minutes: 3  # measured max 2 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: |
           mkdir -p artifacts/pinned-worker
@@ -980,6 +1028,7 @@ jobs:
       # worst possible time for it to regress unnoticed — and it was one of the
       # four gates that still passed while nothing ran it.
       - name: Browser gate — the native Web Bluetooth shim
+        timeout-minutes: 3  # measured max 2 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: node scripts/verify-bluetooth.mjs
 
@@ -987,6 +1036,7 @@ jobs:
       # misconfiguration would show up in a browser and in no unit test —
       # and the routing from the Open button is JSX that nothing else runs.
       - name: Browser gate — MakeCode import
+        timeout-minutes: 3  # measured max 3 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-makecode.mjs
 
@@ -998,10 +1048,12 @@ jobs:
       # The MicroPython tab and the simulator are the far end of the MakeCode
       # importer, so they belong next to the gate above.
       - name: Browser gate — micro:bit MicroPython tab and simulator
+        timeout-minutes: 4  # measured max 18 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-microbit.mjs
 
       - name: Browser gate — micro:bit debugger, block and line stepping
+        timeout-minutes: 4  # measured max 18 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-microbit-debug-toggle.mjs
       # The Arduboy console is the only thing in the app that RUNS a
@@ -1010,6 +1062,7 @@ jobs:
       # reads pixels back off the canvas, and checks they keep changing —
       # one frame and a freeze is exactly what a stalled boot looks like.
       - name: Browser gate — Arduboy console runs a compiled game
+        timeout-minutes: 3  # measured max 4 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-arduboy.mjs
       # MEASURE the browser waits, on a runner instead of a developer box.
