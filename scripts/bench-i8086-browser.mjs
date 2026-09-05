@@ -25,6 +25,7 @@ const webpackStatsPath = process.env.I8086_WEBPACK_STATS;
 const webpackStats = webpackStatsPath ? JSON.parse(await readFile(resolve(webpackStatsPath), 'utf8')) : null;
 const webpackOwnership = webpackStats ? summarizeWebpackOwnership(webpackStats) : null;
 const optionalGrammarAssets = new Set(webpackOwnership?.optionalCodeMirrorGrammars.files || []);
+const lazyPaintAssets = new Set(webpackOwnership?.lazyPaintEditor.files || []);
 const profiles = [
     {name: 'desktop', viewport: {width: 1440, height: 900}, deviceScaleFactor: 1, cpuThrottleRate: 1},
     {name: 'mobile', viewport: {width: 412, height: 915}, deviceScaleFactor: 2, isMobile: true,
@@ -278,11 +279,13 @@ try {
                 /(?:^|\/)pseudocode-examples\.js$/.test(asset));
             const eagerGrammarAssets = preCircuitResources.assets.filter(asset =>
                 optionalGrammarAssets.has(asset));
+            const eagerPaintAssets = preCircuitResources.assets.filter(asset => lazyPaintAssets.has(asset));
             console.log(`  pre-Circuit: ${(preCircuitResources.encodedBodyBytes / 1048576).toFixed(2)} MiB ` +
                 `encoded, ${eagerCircuitAssets.length} deferred circuit asset(s) and ` +
                 `${speculativeCompilerAssets.length} speculative compiler asset(s), ` +
                 `${speculativeExampleAssets.length} speculative examples asset(s), and ` +
-                `${eagerGrammarAssets.length} optional grammar asset(s) fetched early`);
+                `${eagerGrammarAssets.length} optional grammar asset(s), and ` +
+                `${eagerPaintAssets.length} paint asset(s) fetched early`);
             if (preCircuitResources.unmatchedAssets.length) {
                 throw new Error(`${name} #${repetition} pre-Circuit window fetched JavaScript absent ` +
                     `from webpack stats: ${preCircuitResources.unmatchedAssets.join(', ')}`);
@@ -302,6 +305,10 @@ try {
             if (eagerGrammarAssets.length) {
                 throw new Error(`${name} #${repetition} ASM journey fetched unused CodeMirror grammars: ` +
                     eagerGrammarAssets.join(', '));
+            }
+            if (eagerPaintAssets.length) {
+                throw new Error(`${name} #${repetition} debugger-only journey fetched paint before Costume: ` +
+                    eagerPaintAssets.join(', '));
             }
         }
         for (const [windowName, attribution] of Object.entries(result.reactAttribution)) {

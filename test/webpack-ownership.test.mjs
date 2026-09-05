@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
     assertDosChunkBoundary,
+    assertLazyPaintEditorBoundary,
     assertOptionalCodeMirrorGrammarBoundary,
     auditWebpackResourceWindow,
     summarizeWebpackOwnership
@@ -124,4 +125,29 @@ test('optional grammar boundary rejects eager, incomplete or insignificant split
     assert.match(failures.join('\n'), /packages are missing/);
     assert.match(failures.join('\n'), /below 250 KiB/);
     assert.match(failures.join('\n'), /below 100 KiB/);
+});
+
+test('paint and Paper ownership stays together in a non-initial lazy asset', () => {
+    const stats = fixture();
+    stats.chunks.push({id: 30, names: ['paint-editor'], files: ['chunks/paint-editor.js'], initial: false});
+    stats.assets.push({name: 'chunks/paint-editor.js', size: 250000, chunks: [30]});
+    stats.modules.push(
+        {name: './node_modules/@scratch/paper/dist/paper-core.js', size: 535000, chunks: [30]},
+        {name: './node_modules/scratch-paint/src/index.js', size: 105000, chunks: [30]}
+    );
+    const report = summarizeWebpackOwnership(stats);
+    assert.deepEqual(report.lazyPaintEditor.packages, ['@scratch/paper', 'scratch-paint']);
+    assert.equal(report.lazyPaintEditor.sourceBytes, 640000);
+    assert.equal(report.lazyPaintEditor.emittedBytes, 250000);
+    assert.equal(report.lazyPaintEditor.initial, false);
+    assert.deepEqual(assertLazyPaintEditorBoundary(report), []);
+});
+
+test('paint boundary rejects eager, incomplete or insignificant ownership', () => {
+    const report = summarizeWebpackOwnership(fixture());
+    const failures = assertLazyPaintEditorBoundary(report);
+    assert.equal(failures.length, 3);
+    assert.match(failures.join('\n'), /packages are missing/);
+    assert.match(failures.join('\n'), /below 600 KiB/);
+    assert.match(failures.join('\n'), /below 200 KiB/);
 });
