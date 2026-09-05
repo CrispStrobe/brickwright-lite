@@ -992,6 +992,33 @@ Next tasks, in order:
    pumps, and earlier P1/P2 deltas remained below timer resolution. Keep the
    deferred engine/JIT/worker hypotheses closed until a workload crosses its
    documented activation threshold.
+8. **Complete (hosted performance step `33964040918`).** No-pin i8086 target
+   selection used to fetch the 734,682-byte `sb3-creator.js` chunk in all nine
+   runs merely to fill an unread compatibility cache. The obsolete producer,
+   cache and lookup are gone; action-time retarget, compile, conversion and
+   export keep the lazy compiler door. All nine post-change receipts contain
+   zero compiler assets before Circuit opens, at 7,402,809 pre-Circuit bytes
+   and 397,929 DOS-load bytes. The overall workflow is red only on the existing
+   i8254 capability-report mismatch; its build, corpus, smoke, production 8086
+   browser proof and performance step passed.
+9. **Implemented; hosted receipt pending.** `pseudocode-examples.js` is 265,252
+   encoded bytes and still appears in all nine accepted ASM journeys because
+   Code reveal fetched it for a closed Tools picker. It now loads only when the
+   no-device Tools menu is open or restored-game controls need it, with shared
+   retry, stale-request and unmount guards. Acceptance is zero example chunks
+   before Circuit plus a working loading/retry/select interaction.
+10. **Next.** Split CodeMirror's statically imported C/C++, Python and JavaScript
+    grammars. They contribute 266,069 webpack-source bytes to the Code chunk
+    during an ASM-only journey. Require at least 250 KiB source and 100 KiB
+    encoded isolation, no optional grammar request in the ASM receipt, and a
+    generation guard for rapid language changes.
+11. **Then, with the stronger costume gate.** Store construction imports the
+    lazy paint editor's reducer eagerly, pulling 533,665 bytes of `@scratch/paper`
+    and 104,459 bytes of scratch-paint source into first load. Install the real
+    reducer through `store.replaceReducer` immediately before PaintEditor
+    renders; accept only with state-preservation/idempotence tests and a complete
+    hosted draw/save/reload round trip. Stop for >15% first-Costume regression,
+    >1 s desktop interactivity, or a new >100 ms long task.
 
 **Debugger-only circuit deferral — complete (hosted performance step
 `33962284105`).** The existing nine fresh-context receipts proved that the
