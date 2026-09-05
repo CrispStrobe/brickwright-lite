@@ -2,8 +2,6 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
 import {closeAlertWithId, showStandardAlert} from '../../reducers/alerts';
-import upstreamExamples from '../../lib/sb3-creator-examples.js';
-import gameExamples from '../../lib/sb3-creator-game-examples.js';
 import {DEVICE_CHIP_LABELS} from '../../lib/device-labels.js';
 import {normalizeDeviceId, resolveExampleBench} from '../../lib/example-bench.js';
 import brickRobot from './brick-robot.svg';
@@ -14,8 +12,27 @@ import {IMPORT_ACCEPT, isImportableArtefact} from '../../lib/bw-makecode/accept.
 import {asmExamplesFor} from '../../lib/bw-asm/examples.js';
 import {requestAssembly, asmRouteFor, asmTargetForDevice} from '../../lib/bw-asm/assemble-route.js';
 
-// Keep locally-authored games outside the upstream-synchronized examples file.
-const examples = {...upstreamExamples, ...gameExamples};
+// The example sources — upstream's and the locally-authored games, kept in
+// separate files so the upstream one stays synchronizable — are 266 KiB raw
+// (51 KiB compressed) that the entry bundle carried for a picker on one tab.
+// They are fetched when this tab mounts; `examples` is empty until then and the
+// picker re-renders when they land. `loadExample` and `computeExampleCompat`
+// await the load themselves, so a click that races the fetch still works.
+let examples = {};
+let examplesPending = null;
+const loadExamples = () => {
+    if (!examplesPending) {
+        examplesPending = Promise.all([
+            import(/* webpackChunkName: "pseudocode-examples" */ '../../lib/sb3-creator-examples.js'),
+            import(/* webpackChunkName: "pseudocode-examples" */ '../../lib/sb3-creator-game-examples.js')
+        ]).then(([upstreamExamples, gameExamples]) => {
+            // Keep locally-authored games outside the upstream-synchronized examples file.
+            examples = {...upstreamExamples.default, ...gameExamples.default};
+            return examples;
+        });
+    }
+    return examplesPending;
+};
 
 // Device groups for the device selector. Mirrors STC_PARTS in sb3-creator.js; the parser
 // validates the DEVICE line against STC_PARTS and warns on unknowns, so this list is a
@@ -820,6 +837,16 @@ class PseudocodeImporter extends React.Component {
     }
 
     componentDidMount () {
+        this._unmounted = false;
+        loadExamples().then(() => {
+            if (this._unmounted) return;
+            // An autosaved GAME restored above, before the sources arrived, got
+            // no controls because gameKeyForSource had nothing to match against.
+            const code = this.state.buffers && this.state.buffers.pseudocode;
+            const key = code ? this.gameKeyForSource(code) : null;
+            if (key) this.publishGameControls(key);
+            this.forceUpdate();
+        });
         // Pick up pseudocode from an example loaded via the Circuit tab.
         // loadExampleProgram stores the source on vm.runtime.bwPseudocodeSource
         // and emits PROJECT_CHANGED; we read it here so the Code tab fills.
@@ -1426,6 +1453,7 @@ class PseudocodeImporter extends React.Component {
     }
 
     componentWillUnmount () {
+        this._unmounted = true;
         const vm = this.props.vm;
         if (vm && vm.runtime && this._onProjectChanged) {
             vm.runtime.removeListener('PROJECT_CHANGED', this._onProjectChanged);
@@ -2523,7 +2551,7 @@ class PseudocodeImporter extends React.Component {
         const SB3Creator = (await this.lib()).default;
         if (!SB3Creator.retargetPseudocode) return;
         const cache = {};
-        for (const [key, src] of Object.entries(examples)) {
+        for (const [key, src] of Object.entries(await loadExamples())) {
             if (!/^DEVICE\s/im.test(src)) continue; // not a hardware example
             const exDev = (src.match(/^DEVICE\s+([\w-]+)/im) || [])[1];
             if (exDev && exDev.toLowerCase() === device) { cache[key] = { ok: true }; continue; }
@@ -2714,7 +2742,7 @@ class PseudocodeImporter extends React.Component {
     }
 
     async loadExample (key) {
-        const src = key && examples[key];
+        const src = key && (await loadExamples())[key];
         if (!src) return;
         this.publishGameControls(GROUPS[0].items.some(([gameKey]) => gameKey === key) ? key : null);
         const device = this.currentDevice();

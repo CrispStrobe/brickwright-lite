@@ -36,7 +36,9 @@ import Box from '../box/box.jsx';
 import MenuBar from '../menu-bar/menu-bar.jsx';
 import ChromeToggle from './chrome-toggle.jsx';
 import StarterJourneys from './starter-journeys.jsx';
-import GuidedLessons from './guided-lessons.jsx';
+// The lessons panel carries seven wave catalogs (232 KiB raw, 74 KiB compressed)
+// and is closed on every first paint; it arrives when someone opens it.
+const GuidedLessons = React.lazy(() => import(/* webpackChunkName: "guided-lessons" */ './guided-lessons.jsx'));
 import lessonCatalog from './lessons.json';
 import chromeStyles from './compact-chrome.css';
 import PaneDivider from './pane-divider.jsx';
@@ -554,16 +556,18 @@ const GUIComponent = props => {
                     />
                 ) : null}
                 {lessonsOpen ? (
-                    <GuidedLessons
-                        initialEvent={lessonInitialEvent}
-                        lessonId={activeLessonId}
-                        locale={intl.locale}
-                        onClose={() => setLessonsOpen(false)}
-                        onSelectLesson={id => {
-                            setLessonInitialEvent('');
-                            setActiveLessonId(id);
-                        }}
-                    />
+                    <React.Suspense fallback={null}>
+                        <GuidedLessons
+                            initialEvent={lessonInitialEvent}
+                            lessonId={activeLessonId}
+                            locale={intl.locale}
+                            onClose={() => setLessonsOpen(false)}
+                            onSelectLesson={id => {
+                                setLessonInitialEvent('');
+                                setActiveLessonId(id);
+                            }}
+                        />
+                    </React.Suspense>
                 ) : null}
                 {tipsLibraryVisible ? (
                     <TipsLibrary />

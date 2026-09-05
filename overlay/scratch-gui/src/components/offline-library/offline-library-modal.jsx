@@ -19,7 +19,7 @@ class OfflineLibraryModal extends React.Component {
     constructor (props) {
         super(props);
         this.state = {
-            total: libraryTotal(),
+            total: 0,
             cached: 0,
             busy: false,
             progress: null,
@@ -32,6 +32,10 @@ class OfflineLibraryModal extends React.Component {
         this.handleCardClick = this.handleCardClick.bind(this);
     }
     componentDidMount () {
+        // The manifests are a lazy chunk (lib/offline-assets.js); 0 until they land.
+        libraryTotal().then(total => {
+            if (this.mounted) this.setState({total});
+        });
         this.refreshCached();
     }
     componentWillUnmount () {

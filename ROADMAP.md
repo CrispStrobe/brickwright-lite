@@ -261,6 +261,82 @@ the root `package.json` does not declare. Run `git checkout package-lock.json` a
 
 ---
 
+### 2.4 First-load payload — LANDED 2026-09-05, and it has a ratchet
+
+The two scripts `index.html` loads before anything renders were **4,238 KB gzipped**
+(live site, 2026-09-05: `2923.<hash>.js` 3,472 KB + `gui.<hash>.js` 766 KB). Attributed
+module by module, over half of the vendor chunk was three things no first paint uses:
+
+| in the boot chunk | compressed | why it was there |
+|---|---|---|
+| music extension: 61 sound samples, base64 in JS | 1,455 KB | `builtinExtensions.music` was a synchronous `require` |
+| scratch-render-fonts: seven faces, base64 | 644 KB | `scratch-svg-renderer/src/font-inliner.js` requires it at module load |
+| `text-encoding` polyfill (encoding-indexes) | 201 KB | three guarded `require('text-encoding')`s, all behind `typeof TextDecoder === 'undefined'` |
+| LEGO / EV3 / SPIKE / NXT hub drivers, 15 modules | ~400 KB | same synchronous registry |
+| in `gui.js`: sprite/costume/backdrop/sound manifests | 146 KB | `lib/offline-assets.js` imported them, and the menu bar imports that module for `isNativeApp` |
+| in `gui.js`: seven lesson-wave catalogs + the panel | 74 KB | `guided-lessons.jsx` was a static import, rendered only when open |
+| in `gui.js`: pseudocode example sources | 51 KB | the Code tab's picker |
+
+**What moved, and where the seam is:**
+
+- `overlay/scratch-vm/src/extension-support/extension-manager.js`: the registry is now
+  two maps. `builtinExtensions` (synchronous: pen, makeymakey, and every Brickwright hardware
+  extension the lessons reach for first) and `lazyBuiltinExtensions` (one `import()` per
+  extension, each its own chunk). `loadExtensionURL` — the promise the extension library and
+  the project loader already await — resolves lazy ids through `_loadLazyBuiltinExtension`,
+  which dedups concurrent loads. `loadExtensionIdSync` on a lazy id warns and loads async;
+  nothing calls it that way (`CORE_EXTENSIONS` is empty).
+- `overlay/scratch-gui/src/lib/lazy-render-fonts.js` + a webpack alias: `scratch-render-fonts`
+  resolves to a same-shaped shim; the real module is reachable only as
+  `scratch-render-fonts-base64` and arrives as `chunks/render-fonts.<hash>.js`. The ordering
+  guard that made the old design safe is KEPT, not replaced: the overlaid
+  `lib/font-loader-hoc.jsx` calls `loadFonts()` first and only then gathers
+  `document.fonts`, so `fontsLoaded` still means "the faces are in the document", and
+  `vm-manager-hoc` still refuses to load a project before that. A failed chunk fetch degrades
+  to fallback faces instead of a page that never loads.
+- `text-encoding` is aliased to `fastestsmallesttextencoderdecoder` (5 KB, already shipped by
+  scratch-storage, hands back the native classes). Every browser in `.browserslistrc` has
+  `TextDecoder`.
+- The four library manifests are `import()`ed by the six containers that read them (now owned
+  in `overlay/`) and by `offline-assets.js`, all into one chunk, `asset-library-index`.
+  `libraryTotal()` became async; the offline modal shows 0 until it lands.
+- `GuidedLessons` is `React.lazy`; the pseudocode importer fetches its example sources on mount
+  and re-publishes game controls for an autosaved game that was restored before they arrived.
+
+**After** (this branch's production build, same gzip yardstick): **1,309 KB** for all four eager
+scripts, a 69% cut. `scripts/verify-first-load-weight.mjs` — the browser-side ratchet — read
+**9.75 MB uncompressed over 24 requests** against its previous 14.90 MB, so its budget came down
+with it.
+
+**The gate:** `scripts/verify-boot-payload.mjs` (`npm run verify:boot-payload`, wired into
+`build.yml` after the labwired guard). For each thing that moved it asserts a string literal
+that survives minification is absent from every eager script, present in the named chunk (so
+the marker still discriminates), and not preloaded by `index.html`; for `text-encoding` it
+asserts the tables are in no script at all. Sizes are printed, not asserted — a byte budget
+tuned to a production build fails a development one for being a development one.
+
+**Also in this tranche, same motive (time to a verdict, time to a first paint):**
+
+- `vercel.json` now sends `Cache-Control: public, max-age=31536000, immutable` for every
+  content-hashed file (the `/(.*)\.([a-f0-9]{8,32})\.js` shape `sw.js` already recognises, plus
+  `static/assets/`). The live site was revalidating the 3.4 MB boot chunk on every visit under
+  `max-age=0, must-revalidate`. Unhashed lazy chunks, `index.html`, `sw.js` and `examples/`
+  keep revalidating, and `test/vercel-deployment-policy.test.mjs` checks both halves of that.
+- The two lesson-corpus walks (`lesson-numeric-contract`, `lesson-defect-detector`: 483 s and
+  350 s on this box, ~278 s of CI's "Run unit tests") run in their own `corpus` job, off the
+  build job's critical path; the deploy needs both. They import from `overlay/` directly and
+  were run from a copy holding only `overlay/`, `scripts/` and `test/` to prove the job needs
+  no vendor/install. `npm test` is unchanged; `test:fast` and `test:corpus` are the halves.
+- `webpack.config.js` turns on webpack's filesystem cache for LOCAL builds only (CI's cache
+  directory does not survive the run, so there it would only cost the write).
+
+**Not done, on purpose:** fanning the ~30 browser gates into a matrix job. It would take ~4 min
+off the critical path and cost 3-4× the runner minutes on an account whose queue starvation is
+documented in BLOCKED.md and §2.1; the restructure cannot be verified without pushing, and
+every gate carries hand-tuned `if:` conditions. Left as a decision, not a default.
+
+---
+
 ## 3. Hardware / debugger surfaces
 
 ### 3.1 Debugger surface — LARGELY RESOLVED (2026-08-21 tranche), verify before reopening
