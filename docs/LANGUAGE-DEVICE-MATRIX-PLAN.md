@@ -126,7 +126,7 @@ refusals rather than a wall.
 | AVR Uno/Nano/328P/168P | avr8js | STK500v1 over Web Serial |
 | AVR Mega | avr8js | `flashAvrMega` exists in `flasher.js`; `flashFamily` comment says STK500v2 is unimplemented → contradiction, T2 catches it |
 | ATtiny85/88 | attiny models | USBasp over WebUSB |
-| RP2040 Pico | rp2040js for raw images and compiled C; **MicroPython firmware panics at boot** — measured, see N3 | MicroPython raw REPL over Web Serial; C UF2 not offered (L2) |
+| RP2040 Pico | rp2040js for raw images and compiled C; **MicroPython firmware panics at boot** — measured, see N3 | MicroPython raw REPL over Web Serial (Python tab); C compiles → `/uf2` → `firmware.uf2` for BOOTSEL (C tab), L2 done |
 | STM32F030 | CortexM0Machine (light) + labwired (heavy) | UART bootloader over Web Serial; SWD over CMSIS-DAP (WebUSB) |
 | micro:bit / Calliope | MicroPython simulator (iframe) | `.hex` append (uflash format), drag-and-drop; DAPLink WebUSB flash **n** (N9) |
 | 6502 Eater | W65C02 bench | 28C256 EEPROM burn over Web Serial |
@@ -386,15 +386,26 @@ DoD:
 - [ ] The ASM tab gains "To blocks" with the refusal count in the status
       line; the "deliberate asymmetry" note is replaced by the truthful one.
 
-**L2. Pico C: the silicon half.**
+**L2. Pico C: the silicon half. DONE 2026-09-05** on branch `lane/l2-pico-uf2`
+(branch only, for lego-ac's audit).
 The C tab already compiles bare-metal RP2040 hosted and runs it in rp2040js
-(the device blurb says so, and `compile: true` is correct). Deploy routes the
-Pico to MicroPython only. Add: hosted UF2 (`uf2.py` exists) → download with
-the BOOTSEL instruction, beside the MicroPython deploy, chosen by which tab
-the program came from.
-DoD: playwright: Pico + blink, C tab → Deploy offers `firmware.uf2` with the
-BOOTSEL text; Python tab → Deploy still offers the REPL path; the matrix cell
-reads `native · sim + silicon`.
+(the device blurb says so, and `compile: true` is correct). Deploy routed the
+Pico to MicroPython only. Added: the deploy route branches on artefact kind —
+`device === 'pico' && lang === 'c'` → `deployPicoUf2()`, which POSTs the C
+source to hosted `/compile` (target `rp2040`, `format: 'bin'`), wraps the bin
+with hosted `/uf2` (origin `0x20000000`, the SRAM layout the rp2040 target
+links and the sim runs), and offers `firmware.uf2` with a BOOTSEL instruction
+(EN/DE). The Python tab still routes to the REPL (`deployToPico`). The matrix
+`uf2-bootsel-download` transport flips OPEN→shipped with `flashFamily: null`
+(it is dispatched by artefact kind in the handler, not the flasher map) and a
+note naming the handler; reach auto-computes (C → uf2, transport accepts uf2)
+so the C·Pico and ASM·Pico cells now read `sim + silicon`.
+DoD: `test/bw-matrix-conformance.test.mjs` — a node contract test greps the
+importer to prove the route sends pico+C to `deployPicoUf2()` and that the
+handler reads the C buffer and takes the `/uf2` path (so the cell's `checked`
+evidence is earned, not asserted). A browser gate (playwright: C tab → offers
+`firmware.uf2`; Python tab → still the REPL) remains for when the box allows
+playwright — the same limitation N2 records.
 
 **L3. Reader coverage audit.**
 For each reader, a fixture set per device family (Arduino `.ino`, Pico and
