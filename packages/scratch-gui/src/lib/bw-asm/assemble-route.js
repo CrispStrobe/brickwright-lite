@@ -151,7 +151,9 @@ export function cRouteFor (device) {
  * The chunk is ~90 KB of JavaScript and is not in the main bundle: nobody
  * who is not writing 8086 assembly pays for it.
  */
-export async function assembleLocal8086 (source) {
+export const ASM_DIALECTS = Object.freeze(['auto', 'masm', 'nasm']);
+
+export async function assembleLocal8086 (source, opts = {}) {
     const mod = await import(/* webpackChunkName: "i8086-asm" */ '../bw-board/i8086-asm.js');
     const assemble = mod.assemble || mod.default;
     if (typeof assemble !== 'function') {
@@ -164,7 +166,17 @@ export async function assembleLocal8086 (source) {
     // them silently would hand a learner a program that works here and fails
     // on the lab machine with nothing to say why. A refusal that names the
     // line is the better teacher.
-    return assemble(source, {});
+    //
+    // `dialect` is the learner's choice from the ASM tab: 'auto' lets the
+    // assembler read the source's own signals (and REFUSE when both dialects'
+    // signals are present), 'masm' or 'nasm' settles it. Anything else is
+    // refused here by name rather than defaulted, the assembler's own rule.
+    const dialect = opts.dialect || 'auto';
+    if (!ASM_DIALECTS.includes(dialect)) {
+        throw new AsmRouteError(`dialect "${dialect}" — only auto, masm and nasm exist`,
+            {route: 'local', target: 'i8086', reason: 'source'});
+    }
+    return assemble(source, {dialect});
 }
 
 /**
@@ -354,14 +366,21 @@ export async function requestCBuild ({source, device}, seams = {}) {
  *   format: 'rom'|'com'|'exe', slotId: string, profile: string|null,
  *   org: number|null, warnings: string[], listing: any}>}
  */
-export async function requestAssembly ({source, device}, seams = {}) {
+export async function requestAssembly ({source, device, dialect = 'auto'}, seams = {}) {
     const {assembleLocal = assembleLocal8086, hostedFetch = globalThis.fetch} = seams;
     const target = asmTargetForDevice(device);
+    // A dialect choice is an 8086 thing: sdas8051, ca65, sdasz80 and avr-as
+    // each read one syntax. Asking a hosted target for NASM is refused by
+    // name rather than silently ignored.
+    if (dialect !== 'auto' && !LOCAL_ASM_TARGETS.has(target)) {
+        throw new AsmRouteError(`the ${dialect.toUpperCase()} dialect applies to the 8086 only; ${target} has one syntax`,
+            {route: 'hosted', target, reason: 'source'});
+    }
 
     if (LOCAL_ASM_TARGETS.has(target)) {
         let out;
         try {
-            out = await assembleLocal(source, {target});
+            out = await assembleLocal(source, {target, dialect});
         } catch (e) {
             // AsmError already names the line and the construct; re-wrapping
             // it would only bury that. `reason: 'source'` tells the tab this
@@ -382,6 +401,10 @@ export async function requestAssembly ({source, device}, seams = {}) {
             bytes: out.bytes, target, route: 'local', format,
             slotId: format, profile: 'dos',
             org: out.org ?? null,
+            // The dialect the assembler actually used — under 'auto' that is
+            // what it detected, and the tab shows it so a learner learns which
+            // syntax they wrote.
+            dialect: out.dialect || null,
             // Every give the assembler made (an expanded 80186 shift, a
             // synthesised segment override) is recorded rather than silent,
             // so the tab can show it.
@@ -417,7 +440,7 @@ export async function requestAssembly ({source, device}, seams = {}) {
     return {
         bytes: Uint8Array.from(atob(result.base64), c => c.charCodeAt(0)),
         target, route: 'hosted', format: 'rom', slotId: 'rom', profile: null,
-        org: null, warnings: [], listing: result.listing || null
+        org: null, dialect: null, warnings: [], listing: result.listing || null
     };
 }
 
