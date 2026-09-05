@@ -249,6 +249,36 @@ DoD: `test/bw-matrix-conformance.test.mjs` 11/11 green; overlay + tracked
 the changes are picker/marker, not cell values, so the rendered matrix is
 unchanged).
 
+**T6. Census snapshot join (`needs` → bw-board census rows).** Open; unblocks
+when the bw-board pin passes `a9fea52` (lego-be's `lane/bwboard-pin-0a779af`
+re-pins to `c843708be`, which contains it). The census contract is schema 1
+`{source, rows[{id, kind, present, ciAvailable, ci, via, gates, what}]}`; `kind`
+is `oracle | fixture | service`, and `service` rows are reachability, never
+probed (`present: false` by design — render them as such, beside
+`ciAvailable`, not as ABSENT). The `via` suffix "(under /tmp: …)" is
+deliberate and is shown verbatim. lego-a4 adds a `census:json` invocation that
+refuses BY NAME on a tree older than `a9fea52`, so an old pin surfaces a
+sentence, not an empty file.
+
+**T7. The Code-tab picker is GENERATED from `bw-matrix/capabilities.js`.**
+Lite only, unclaimed. T5 reconciled the picker's device facts against the
+table by parsing the JSX of a 4,100-line component (the conformance test's
+`pickerCompile`/`pickerEmulator` sentinels) — a gate over text, which is the
+species the gate-shapes audit exists to retire. The owner's Codex assessment
+(`docs/SESSION-ROADMAP-2026-09-05.md`, track D, 2026-09-05) reached the same
+item independently. DoD:
+- [ ] `pseudocode-importer.jsx` imports `DEVICES` (and the picker groups derive
+      from `DEVICE_GROUPS`); no device fact is spelled twice.
+- [ ] The `pickerCompile`/`pickerEmulator` sentinels and every JSX-parsing
+      assertion in `test/bw-matrix-conformance.test.mjs` are DELETED, replaced
+      by a test that the picker renders exactly `DEVICES` (mutation: remove a
+      device from the table → the picker loses it → the test says which).
+- [ ] The badge, the "What runs where" panel and the picker cannot disagree by
+      construction; `verify-matrix-ui.mjs` gains one check that the picker's
+      option set equals the panel's device set.
+- [ ] Overlay + tracked `packages/` mirror together; browser gate run read per
+      step. Land D before N3c (both touch the picker), per the Codex sequencing.
+
 ### Lane N — native halves to add
 
 **N1. Z80 C via SDCC `-mz80`.** Repo: stc-compiler, then lite. **BUILT 2026-09-05** on stc-compiler branch `lane/z80-c-target` (`6e40fb6e`, delegate, audited by lego-ac: 21 new tests, 432 repo tests green, ten mutation proofs). The vendored SDCC 4.0.0 already had the z80 port; what was missing was `share/sdcc/lib/z80` (crt0 + z80.lib), now vendored from the same .deb the fetch script uses. Map: ROM $0000–$7FFF, RAM $8000–$FFFF from `examples/z80-pd-bench/EXPECTED.md`; `--code-loc 0x0200 --data-loc 0x8000`; stock crt0 (jp init at $0000, SP at $0000 so the first push lands at $FFFE). Also fixed: `stages.py` dropped every exported `GR` symbol (affects 8051 too). **Awaiting merge and deploy by the owner** — the hosted snapshot and the lite `compile: true` flip follow the deploy, not the branch. Lite half of the DoD (bench boot proof: `$0000 == 0xC3`, `latch1.Q0` toggles) is open.
