@@ -34,15 +34,6 @@ const isLazyPaintEditorModule = name => {
     return /\/node_modules\/(?:scratch-paint|@scratch\/paper)\//.test(normalized);
 };
 
-const svgSanitizerModuleKind = name => {
-    const normalized = stripLoaders(name);
-    if (/\/scratch-svg-renderer\/src\/index\.js$/.test(normalized)) return 'rendererIndex';
-    if (/\/scratch-svg-renderer\/src\/sanitize-svg\.js$/.test(normalized)) return 'sanitizeSvg';
-    if (/\/node_modules\/css-tree\//.test(normalized)) return 'cssTree';
-    if (/\/node_modules\/mdn-data\//.test(normalized)) return 'mdnData';
-    return null;
-};
-
 export const forbiddenDosModuleReason = name => {
     const normalized = stripLoaders(name);
     if (/(?:^|\/)(?:avr8js|avr-chips|emu8051|rp2040js?|bbc-z80|z80|mos6502|m6502|w65c02|stm32|arm-thumb|riscv|labwired)(?:[-./]|$)/i
@@ -94,39 +85,6 @@ export const summarizeWebpackOwnership = input => {
     const lazyPaintChunks = chunks.filter(chunk => lazyPaintIds.has(String(chunk.id)));
     const lazyPaintAssets = assets.filter(asset =>
         /\.js$/.test(asset.name) && (asset.chunks || []).some(id => lazyPaintIds.has(String(id))));
-    const svgSanitizerModules = modules.map(module => ({
-        module,
-        kind: svgSanitizerModuleKind(module.name || module.identifier)
-    })).filter(entry => entry.kind);
-    const svgSanitizerNamedChunks = chunks.filter(chunk => (chunk.names || []).includes('svg-sanitizer'));
-    const svgSanitizerNamedIds = new Set(svgSanitizerNamedChunks.map(chunk => String(chunk.id)));
-    // Webpack's default async splitChunks puts large vendor dependencies in
-    // anonymous sibling chunks in the same chunk group. Those siblings are
-    // fetched by the named import and are part of its causal boundary.
-    const svgSanitizerDemandIds = new Set(svgSanitizerNamedChunks.flatMap(chunk =>
-        [chunk.id, ...(chunk.siblings || [])]).map(id => String(id)));
-    const svgSanitizerNamedAssets = assets.filter(asset =>
-        /\.js$/.test(asset.name) && (asset.chunks || []).some(id => svgSanitizerNamedIds.has(String(id))));
-    const svgSanitizerNamedModules = modules.filter(module =>
-        (module.chunks || []).some(id => svgSanitizerNamedIds.has(String(id))));
-    const summarizeSvgKind = kind => {
-        const kindModules = svgSanitizerModules.filter(entry => entry.kind === kind).map(entry => entry.module);
-        const kindIds = new Set(kindModules.flatMap(module => module.chunks || []).map(id => String(id)));
-        return {
-            found: kindModules.length > 0,
-            sourceBytes: kindModules.reduce((sum, module) => sum + (Number(module.size) || 0), 0),
-            initial: kindModules.some(module => (module.chunks || []).some(id => initialIds.has(String(id)))),
-            demandChunkOwned: kindModules.length > 0 && kindModules.every(module =>
-                (module.chunks || []).some(id => svgSanitizerDemandIds.has(String(id)))),
-            files: [...new Set(assets.filter(asset => /\.js$/.test(asset.name) &&
-                (asset.chunks || []).some(id => kindIds.has(String(id)))).map(asset => asset.name))].sort()
-        };
-    };
-    const svgCssModules = svgSanitizerModules.filter(entry =>
-        entry.kind === 'cssTree' || entry.kind === 'mdnData').map(entry => entry.module);
-    const svgCssIds = new Set(svgCssModules.flatMap(module => module.chunks || []).map(id => String(id)));
-    const svgCssAssets = assets.filter(asset =>
-        /\.js$/.test(asset.name) && (asset.chunks || []).some(id => svgCssIds.has(String(id))));
     const namedPaintStage = name => {
         const stageChunks = chunks.filter(chunk => (chunk.names || []).includes(name));
         const stageIds = new Set(stageChunks.map(chunk => String(chunk.id)));
@@ -178,28 +136,6 @@ export const summarizeWebpackOwnership = input => {
         lazyPaintActivation: {
             reducer: namedPaintStage('paint-reducer'),
             editor: namedPaintStage('paint-editor')
-        },
-        lazySvgSanitizer: {
-            namedChunk: {
-                found: svgSanitizerNamedChunks.length > 0,
-                initial: svgSanitizerNamedChunks.some(chunk => chunk.initial),
-                files: [...new Set(svgSanitizerNamedAssets.map(asset => asset.name))].sort(),
-                emittedBytes: svgSanitizerNamedAssets.reduce((sum, asset) => sum + (Number(asset.size) || 0), 0),
-                modules: svgSanitizerNamedModules.map(module =>
-                    stripLoaders(module.name || module.identifier)).sort(),
-                ownsSanitizerEntry: svgSanitizerNamedModules.some(module =>
-                    /\/(?:lazy-)?svg-sanitizer(?:\.[cm]?[jt]sx?)?$|\/scratch-svg-renderer\/src\/sanitize-svg\.js$/
-                        .test(stripLoaders(module.name || module.identifier)))
-            },
-            rendererIndex: summarizeSvgKind('rendererIndex'),
-            sanitizeSvg: summarizeSvgKind('sanitizeSvg'),
-            cssTree: summarizeSvgKind('cssTree'),
-            mdnData: summarizeSvgKind('mdnData'),
-            cssPayload: {
-                sourceBytes: svgCssModules.reduce((sum, module) => sum + (Number(module.size) || 0), 0),
-                files: [...new Set(svgCssAssets.map(asset => asset.name))].sort(),
-                emittedBytes: svgCssAssets.reduce((sum, asset) => sum + (Number(asset.size) || 0), 0)
-            }
         }
     };
 };
@@ -295,43 +231,6 @@ export const assertLazyPaintEditorBoundary = report => {
     if (activation?.editor?.initial) failures.push('paint-editor became an initial chunk');
     if (activation?.reducer?.files?.some(file => activation.editor.files.includes(file))) {
         failures.push('paint reducer and editor resolve to the same emitted JavaScript asset');
-    }
-    return failures;
-};
-
-export const assertLazySvgSanitizerBoundary = report => {
-    const svg = report.lazySvgSanitizer;
-    const failures = [];
-    if (!svg?.namedChunk?.found) failures.push('the named svg-sanitizer chunk is missing');
-    if (svg?.namedChunk?.initial) failures.push('svg-sanitizer became an initial chunk');
-    if (svg?.namedChunk?.found && !svg.namedChunk.files.length) {
-        failures.push('the named svg-sanitizer chunk emitted no JavaScript asset');
-    }
-    if (svg?.namedChunk?.found && !svg.namedChunk.ownsSanitizerEntry) {
-        failures.push('the named svg-sanitizer chunk does not own a sanitizer bridge or module');
-    }
-    const expected = [
-        ['sanitizeSvg', 'scratch-svg-renderer sanitize-svg'],
-        ['cssTree', 'css-tree'],
-        ['mdnData', 'mdn-data']
-    ];
-    for (const [key, label] of expected) {
-        if (!svg?.[key]?.found) failures.push(`${label} is missing from webpack ownership`);
-        if (svg?.[key]?.initial) failures.push(`${label} became initial JavaScript`);
-        if (svg?.[key]?.found && !svg[key].demandChunkOwned) {
-            failures.push(`${label} is not owned by the svg-sanitizer demand chunk group`);
-        }
-    }
-    if (svg?.rendererIndex?.initial) {
-        failures.push('scratch-svg-renderer barrel/index became initial JavaScript');
-    }
-    const cssSourceBytes = svg?.cssPayload?.sourceBytes || 0;
-    if (cssSourceBytes < 500 * 1024) {
-        failures.push(`css-tree and mdn-data ownership fell below 500 KiB: ${cssSourceBytes} bytes`);
-    }
-    const cssEmittedBytes = svg?.cssPayload?.emittedBytes || 0;
-    if (cssEmittedBytes < 75 * 1024) {
-        failures.push(`css-tree and mdn-data assets fell below 75 KiB: ${cssEmittedBytes} bytes`);
     }
     return failures;
 };

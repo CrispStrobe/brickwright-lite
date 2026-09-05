@@ -1,26 +1,7 @@
-import BitmapAdapter from 'scratch-svg-renderer/src/bitmap-adapter';
+import {BitmapAdapter, sanitizeSvg} from 'scratch-svg-renderer';
 import randomizeSpritePosition from './randomize-sprite-position.js';
 import bmpConverter from './bmp-converter';
 import gifDecoder from './gif-decoder';
-
-// SVG sanitation pulls in css-tree and its MDN grammar database. Keep those
-// upload-only dependencies out of the editor's initial graph, while sharing an
-// in-flight request between concurrent uploads. A rejected request is cleared
-// so choosing the file again retries instead of preserving a poisoned promise.
-let svgSanitizerRequest = null;
-let svgUploadQueue = Promise.resolve();
-const loadSvgSanitizer = () => {
-    if (!svgSanitizerRequest) {
-        svgSanitizerRequest = import(
-            /* webpackChunkName: "svg-sanitizer" */
-            'scratch-svg-renderer/src/sanitize-svg'
-        ).then(module => module.default || module).catch(error => {
-            svgSanitizerRequest = null;
-            throw error;
-        });
-    }
-    return svgSanitizerRequest;
-};
 
 /**
  * Extract the file name given a string of the form fileName + ext
@@ -55,11 +36,8 @@ const handleFileUpload = function (fileInput, onload, onerror) {
         reader.onload = () => {
             const fileType = file.type;
             const fileName = extractFileName(file.name);
-            // Preserve selection order when an upload path (notably the lazy
-            // SVG sanitizer) performs asynchronous work.
-            Promise.resolve().then(() =>
-                onload(reader.result, fileType, fileName, i, files.length)
-            ).then(() => readFile(i + 1, files), onerror);
+            onload(reader.result, fileType, fileName, i, files.length);
+            readFile(i + 1, files);
         };
         reader.onerror = onerror;
         reader.readAsArrayBuffer(file);
@@ -124,21 +102,12 @@ const costumeUpload = function (fileData, fileType, storage, handleCostume, hand
     let assetType = null;
     switch (fileType) {
     case 'image/svg+xml': {
-        // Sanitize before the bytes can enter storage. Loading or sanitation
-        // failures take the existing error path and create no asset. Serialize
-        // SVG uploads so a delayed chunk cannot reverse a multi-file selection.
-        const upload = svgUploadQueue.then(() => loadSvgSanitizer()).then(sanitizeSvg => {
-            const sanitizedData = sanitizeSvg.sanitizeByteStream(fileData);
-            const vmCostume = createVMAsset(
-                storage,
-                storage.AssetType.ImageVector,
-                storage.DataFormat.SVG,
-                new Uint8Array(sanitizedData)
-            );
-            handleCostume([vmCostume]);
-        });
-        svgUploadQueue = upload.catch(() => {});
-        return upload.catch(handleError);
+        // run svg bytes through scratch-svg-renderer's sanitization code
+        fileData = sanitizeSvg.sanitizeByteStream(fileData);
+
+        costumeFormat = storage.DataFormat.SVG;
+        assetType = storage.AssetType.ImageVector;
+        break;
     }
     case 'image/jpeg': {
         costumeFormat = storage.DataFormat.JPG;
@@ -148,9 +117,10 @@ const costumeUpload = function (fileData, fileType, storage, handleCostume, hand
     case 'image/bmp': {
         // Convert .bmp files to .png to compress them. .bmps are completely uncompressed,
         // and would otherwise take up a lot of storage space and take much longer to upload and download.
-        return bmpConverter(fileData).then(dataUrl =>
-            costumeUpload(dataUrl, 'image/png', storage, handleCostume, handleError)
-        ).catch(handleError);
+        bmpConverter(fileData).then(dataUrl => {
+            costumeUpload(dataUrl, 'image/png', storage, handleCostume);
+        });
+        return; // Return early because we're triggering another proper costumeUpload
     }
     case 'image/png': {
         costumeFormat = storage.DataFormat.PNG;
@@ -185,8 +155,17 @@ const costumeUpload = function (fileData, fileType, storage, handleCostume, hand
         handleCostume([vmCostume]);
     };
 
-    return bitmapAdapter.importBitmap(fileData, fileType).then(addCostumeFromBuffer)
-        .catch(handleError);
+    if (costumeFormat === storage.DataFormat.SVG) {
+        // Must pass in file data as a Uint8Array,
+        // passing in an array buffer causes the sprite/costume
+        // thumbnails to not display because the data URI for the costume
+        // is invalid
+        addCostumeFromBuffer(new Uint8Array(fileData));
+    } else {
+        // otherwise it's a bitmap
+        bitmapAdapter.importBitmap(fileData, fileType).then(addCostumeFromBuffer)
+            .catch(handleError);
+    }
 };
 
 /**
@@ -242,7 +221,7 @@ const spriteUpload = function (fileData, fileType, spriteName, storage, handleSp
     case 'image/jpeg':
     case 'image/gif': {
         // Make a sprite from an image by making it a costume first
-        return costumeUpload(fileData, fileType, storage, vmCostumes => {
+        costumeUpload(fileData, fileType, storage, vmCostumes => {
             vmCostumes.forEach((costume, i) => {
                 costume.name = `${spriteName}${i ? i + 1 : ''}`;
             });
@@ -266,6 +245,7 @@ const spriteUpload = function (fileData, fileType, spriteName, storage, handleSp
             // TODO probably just want sprite upload to handle this object directly
             handleSprite(JSON.stringify(newSprite));
         }, handleError);
+        return;
     }
     default: {
         handleError(`Encountered unexpected file type: ${fileType}`);

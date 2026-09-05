@@ -22,24 +22,6 @@ if (!existsSync(DEST)) {
 cpSync(SRC, DEST, { recursive: true });
 console.log('  applied scratch-vm overlay onto node_modules/scratch-vm (built-in extensions)');
 
-// Keep SVG parsing synchronous without pulling scratch-svg-renderer's broad
-// barrel (and its upload-only sanitizer) into the VM's initial graph.
-const loadCostumePath = path.join(DEST, 'src', 'import', 'load-costume.js');
-let loadCostume = readFileSync(loadCostumePath, 'utf8');
-const svgRendererAnchor = "const {loadSvgString, serializeSvgToString} = require('scratch-svg-renderer');";
-const svgRendererNarrow = "const loadSvgString = require('scratch-svg-renderer/src/load-svg-string');\n" +
-    "const serializeSvgToString = require('scratch-svg-renderer/src/serialize-svg-to-string');";
-if (loadCostume.includes(svgRendererNarrow)) {
-    console.log('  load-costume.js narrow SVG imports already applied');
-} else if (loadCostume.includes(svgRendererAnchor)) {
-    loadCostume = loadCostume.replace(svgRendererAnchor, svgRendererNarrow);
-    writeFileSync(loadCostumePath, loadCostume);
-    console.log('  patched load-costume.js (narrow SVG imports)');
-} else {
-    console.error('  ! load-costume.js SVG renderer anchor not found — base VM version changed?');
-    process.exit(1);
-}
-
 // Upstream one-line bugfix (too small to justify carrying the whole 3000-line runtime.js as an
 // overlay): the base VM builds the extension palette category as `<category name="${name}" ...>`
 // with the RAW extension name. Any extension whose name contains & < > " (e.g. "Arrays & Tensors")

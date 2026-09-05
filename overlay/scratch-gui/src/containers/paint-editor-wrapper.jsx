@@ -3,7 +3,7 @@ import React from 'react';
 import {FormattedMessage} from 'react-intl';
 import bindAll from 'lodash.bindall';
 import VM from 'scratch-vm';
-import inlineSvgFonts from 'scratch-svg-renderer/src/font-inliner';
+import {inlineSvgFonts} from 'scratch-svg-renderer';
 
 import {connect} from 'react-redux';
 import DynamicReducerContext from '../lib/dynamic-reducer-context';

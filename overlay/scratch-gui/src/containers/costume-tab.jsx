@@ -208,7 +208,7 @@ class CostumeTab extends React.Component {
         const targetId = this.props.vm.editingTarget.id;
         this.props.onShowImporting();
         handleFileUpload(e.target, (buffer, fileType, fileName, fileIndex, fileCount) => {
-            return costumeUpload(buffer, fileType, storage, vmCostumes => {
+            costumeUpload(buffer, fileType, storage, vmCostumes => {
                 vmCostumes.forEach((costume, i) => {
                     costume.name = `${fileName}${i ? i + 1 : ''}`;
                 });
