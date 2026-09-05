@@ -66,7 +66,9 @@ export function createCorrelatedDebugger ({targets, capacity = 8192, maxBranches
             triggers.set(spec.id, freeze(clone(spec))); return Object.freeze({accepted: true, id: spec.id});
         },
         compareTimes (left, right) {
-            if (!plain(left) || !plain(right) || ticks(left.ticks) === null || ticks(right.ticks) === null) {
+            if (!plain(left) || !plain(right) || typeof left.domain !== 'string' || !left.domain ||
+                typeof right.domain !== 'string' || !right.domain ||
+                ticks(left.ticks) === null || ticks(right.ticks) === null) {
                 return refusal('invalid-clock-time', 'times require clock domains and integer ticks');
             }
             if (left.domain !== right.domain) return refusal('uncorrelated-clock-domains',
@@ -100,6 +102,15 @@ export function createCorrelatedDebugger ({targets, capacity = 8192, maxBranches
             try {
                 for (const [id, target] of Object.entries(targets)) {
                     rollback[id] = await target.captureCheckpoint();
+                    if (rollback[id] === undefined || rejected(rollback[id])) {
+                        throw new Error(`target ${id} refused rollback checkpoint capture`);
+                    }
+                }
+            } catch (error) {
+                return refusal('whole-machine-rollback-capture-failed', error?.message || String(error));
+            }
+            try {
+                for (const [id, target] of Object.entries(targets)) {
                     staged[id] = await target.prepareRestore(clone(checkpoint.states[id]));
                     if (staged[id] === undefined || rejected(staged[id])) throw new Error(`target ${id} refused restore preparation`);
                 }
@@ -110,7 +121,10 @@ export function createCorrelatedDebugger ({targets, capacity = 8192, maxBranches
                     if (rejected(result)) throw new Error(`target ${id} refused restore commit`);
                 }
             } catch (error) {
-                try { for (const [id, target] of Object.entries(targets)) await target.restoreCheckpoint(rollback[id]); }
+                try { for (const [id, target] of Object.entries(targets)) {
+                    const restored = await target.restoreCheckpoint(rollback[id]);
+                    if (rejected(restored)) throw new Error(`target ${id} refused rollback`);
+                } }
                 catch (rollbackError) { return refusal('whole-machine-rollback-failed',
                     `${error.message}; rollback failed (${rollbackError?.message || String(rollbackError)})`); }
                 return refusal('whole-machine-restore-failed', error?.message || String(error));
