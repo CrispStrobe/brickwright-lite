@@ -673,7 +673,10 @@ const T = {
         task: 'task',
         nativeNo: 'no native path',
         on: 'on',
-        unknown: 'no entry for this language and device'
+        unknown: 'no entry for this language and device',
+        local: 'in the browser',
+        hosted: 'hosted compiler',
+        none: 'runs the language itself'
     },
     de: {
         native: 'nativ',
@@ -687,7 +690,10 @@ const T = {
         task: 'Aufgabe',
         nativeNo: 'kein nativer Weg',
         on: 'auf',
-        unknown: 'kein Eintrag für diese Sprache und dieses Gerät'
+        unknown: 'kein Eintrag für diese Sprache und dieses Gerät',
+        local: 'im Browser',
+        hosted: 'gehosteter Compiler',
+        none: 'führt die Sprache selbst aus'
     }
 };
 
@@ -730,7 +736,7 @@ export const explain = function (langId, deviceId, locale = 'en') {
         const r = REASONS[c.native.reason] || {};
         parts.push(`${t.nativeNo} (${r[locale] || r.en || c.native.reason})`);
     } else if (c.native.status === STATUS.SHIPPED) {
-        parts.push(`${t.native} (${c.native.toolchain}) · ${reachWord(t, c.native)}`);
+        parts.push(`${t.native} (${c.native.toolchain}, ${t[c.native.where] || c.native.where}) · ${reachWord(t, c.native)}`);
     } else {
         const task = c.native.task ? ` · ${t.task} ${c.native.task}` : '';
         parts.push(`${t.native} (${c.native.toolchain}): ${t.open}${task}`);

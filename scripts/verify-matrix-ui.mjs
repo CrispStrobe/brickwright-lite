@@ -118,11 +118,14 @@ try {
     // Choosing a device that is not its family's first adds a column for it,
     // so the learner sees THEIR chip, not a stand-in.
     await device.selectOption('stc89c52');
-    await page.waitForTimeout(300);
+    const c89cell = page.getByTestId('bw-matrix-cell-c-stc89c52');
+    await c89cell.waitFor({state: 'visible', timeout: 10000});
     const cols2 = await panel.locator('thead th').count() - 1;
     check('a non-representative device gets its own column', cols2 === 10, `${cols2}`);
-    const c89 = (await page.getByTestId('bw-matrix-cell-c-stc89c52').getAttribute('title')) || '';
-    check('the STC89C52 override reaches the panel', /hosted/.test(c89), c89.slice(0, 100));
+    const c89 = (await c89cell.getAttribute('title')) || '';
+    check('the STC89C52 override reaches the panel', /hosted compiler/.test(c89), c89.slice(0, 120));
+    const c60 = (await page.getByTestId('bw-matrix-cell-c-stc12c5a60s2').getAttribute('title')) || '';
+    check('its sibling still compiles in the browser', /in the browser/.test(c60), c60.slice(0, 120));
 
     // The panel and the badge must also GO AWAY: toggling off removes the
     // panel, and clearing the device removes the badge. Appearance alone
