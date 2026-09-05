@@ -366,6 +366,14 @@ for (const rel of FILES) {
             console.error('  NOTE: the old pinned version is not readable here, so the guard is');
             console.error("  using the two-way rule, which reports upstream's own edits as losses.");
         }
+        // Upstream did not touch this file since the old pin: the vendored copy
+        // differs from the incoming only by what lite added on top, so keep it.
+        // Not a refusal -- a permanently lite-only addition must not make every
+        // bump refuse, or the guard becomes the thing people --force past.
+        if (base !== null && base === next) {
+            const kept = linesLostBy(current, next, base).length;
+            if (kept) { console.log(`  kept  ${path.basename(rel)} (unchanged upstream since ${OLD_PIN.slice(0, 9)}; ${kept} lite-only line(s) preserved)`); continue; }
+        }
         const lost = linesLostBy(current, next, base);
         if (lost.length) {
             wouldTruncate.push({file: path.basename(rel), count: lost.length, sample: lost.slice(0, 3)});

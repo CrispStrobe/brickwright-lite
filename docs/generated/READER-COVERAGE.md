@@ -23,9 +23,9 @@ Each run of a fixture through its reader is one of three outcomes:
 
 ## Overall
 
-368 clean · 280 degraded · 15 refused (of 663; 56% clean)
+366 clean · 282 degraded · 15 refused (of 663; 55% clean)
 
-- round-trip (emit → read back): 368 clean · 278 degraded · 4 refused (of 650; 57% clean)
+- round-trip (emit → read back): 366 clean · 280 degraded · 4 refused (of 650; 56% clean)
 - native (real source fed to the reader): 0 clean · 2 degraded · 11 refused (of 13; 0% clean)
 
 ## By method, language and device family
@@ -69,7 +69,7 @@ programs are refused as foreign. The refusal reasons below say which.
 | round-trip | micropython | 8051 | 29 clean · 20 degraded · 0 refused (of 49; 59% clean) |
 | round-trip | micropython | arduino | 30 clean · 37 degraded · 0 refused (of 67; 45% clean) |
 | round-trip | micropython | microbit | 3 clean · 6 degraded · 0 refused (of 9; 33% clean) |
-| round-trip | micropython | pico | 3 clean · 0 degraded · 0 refused (of 3; 100% clean) |
+| round-trip | micropython | pico | 1 clean · 2 degraded · 0 refused (of 3; 33% clean) |
 | round-trip | micropython | spike | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
 | round-trip | asm | 8086 | 0 clean · 1 degraded · 4 refused (of 5; 0% clean) |
 | native | c | 8051 | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
@@ -100,6 +100,9 @@ programs are refused as foreign. The refusal reasons below say which.
 | 2 | 7 output pins × 20 mA = up to 140 mA at maximum pin ratings (actual current depends on ser |
 | 2 | Port 2 has 8 output pins |
 | 2 | Port 0 has 8 output pins |
+| 2 | procedure handle_op with parameters not lifted yet |
+| 2 | procedure handle_digit with parameters not lifted yet |
+| 2 | procedure call with arguments not lifted yet: "…" |
 | 2 | stc12_seg_shownum: no equivalent on this board; the block was not translated |
 | 2 | top-level declaration dropped (no block equivalent): static int _servo_angle [ 2 ] |
 | 2 | no clock #define found |
@@ -197,10 +200,12 @@ fixture appears here so its verdict is traceable to the program that caused it.
 | round-trip | javascript | pico | 70-calculator | degraded | dropped expression statement |
 | round-trip | c | pico | 70-calculator | degraded | top-level declaration dropped (no block equivalent): typedef void ( * bw_vec_t ) ( void …; top-level declaration dropped (no block equivalent): struct __bw_bits2; no pseudocode for the call "…" |
 | round-trip | basic | pico | 70-calculator | degraded | no dialect form for "…"; unstructured "…" |
+| round-trip | micropython | pico | 70-calculator | degraded | procedure handle_op with parameters not lifted yet; procedure handle_digit with parameters not lifted yet; procedure call with arguments not lifted yet: "…" |
 | round-trip | python | pico | 70-calculator-simple | degraded | dropped expression statement |
 | round-trip | javascript | pico | 70-calculator-simple | degraded | dropped expression statement |
 | round-trip | c | pico | 70-calculator-simple | degraded | top-level declaration dropped (no block equivalent): typedef void ( * bw_vec_t ) ( void …; top-level declaration dropped (no block equivalent): struct __bw_bits2; no pseudocode for the call "…" |
 | round-trip | basic | pico | 70-calculator-simple | degraded | no dialect form for "…"; unstructured "…" |
+| round-trip | micropython | pico | 70-calculator-simple | degraded | procedure handle_op with parameters not lifted yet; procedure handle_digit with parameters not lifted yet; procedure call with arguments not lifted yet: "…" |
 | round-trip | python | pico | 72-pico-oled-hello | degraded | dropped expression statement |
 | round-trip | javascript | pico | 72-pico-oled-hello | degraded | dropped expression statement |
 | round-trip | c | pico | 72-pico-oled-hello | degraded | top-level declaration dropped (no block equivalent): typedef void ( * bw_vec_t ) ( void …; top-level declaration dropped (no block equivalent): struct __bw_bits2 |
