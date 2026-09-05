@@ -10,15 +10,15 @@ import {mergeTargetKinds} from '../../lib/bw-debug/target-kinds.js';
 
 // VDP screen — lazy-loaded, only renders when the runner has video output.
 const PortLeds = React.lazy(() =>
-    import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/components/PortLeds.jsx')
+    import(/* webpackChunkName: "bw-debug-faces" */ '../../lib/bw-circuit-ui/components/PortLeds.jsx')
         .then(m => ({default: m.PortLeds}))
 );
 const SwitchPanel = React.lazy(() =>
-    import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/components/SwitchPanel.jsx')
+    import(/* webpackChunkName: "bw-debug-faces" */ '../../lib/bw-circuit-ui/components/SwitchPanel.jsx')
         .then(m => ({default: m.SwitchPanel}))
 );
 const VdpScreen = React.lazy(() =>
-    import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/components/VdpScreen.jsx')
+    import(/* webpackChunkName: "bw-debug-faces" */ '../../lib/bw-circuit-ui/components/VdpScreen.jsx')
         .then(m => ({default: m.VdpScreen}))
 );
 

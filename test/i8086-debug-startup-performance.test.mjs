@@ -59,3 +59,12 @@ test('the target picker loads metadata without the bw-board barrel', () => {
             'opening the picker must not request the broad board barrel');
     }
 });
+
+test('debugger faces do not merge back into the full circuit designer chunk', () => {
+    for (const source of panelSources) {
+        assert.equal((source.match(/webpackChunkName: "bw-debug-faces"/g) || []).length, 3,
+            'port LEDs, switches and video should share only their focused face chunk');
+        assert.doesNotMatch(source, /webpackChunkName: "bw-circuit-ui"/,
+            'a shared chunk label would pull the full designer into DOS startup');
+    }
+});
