@@ -75,7 +75,7 @@ try {
         await mark('dom-ready');
         await page.getByRole('tab', {name: 'Code', exact: true}).click();
         const device = page.getByTestId('bw-device-select');
-        await device.waitFor({state: 'visible', timeout: 30000});
+        await device.waitFor({state: 'visible', timeout: 30000}); // gate-shapes-allow: synchronization before `device.selectOption` three lines below -- the detector looks at the IMMEDIATELY following statement and sees `mark()`, which is a timestamp rather than a use
         await mark('device-ready');
         await page.waitForLoadState('networkidle', {timeout: 20000}).catch(() => {});
         await mark('dos-load-start');
