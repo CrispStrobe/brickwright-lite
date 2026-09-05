@@ -133,10 +133,12 @@ question from whether the row agrees with the code.
 ## Oracles the tiers rest on (bw-board census at the pinned sha)
 
 Joined from `docs/generated/bw-board-census.json` (bw-board `88bbdcf78`, read 2026-09-05).
-**standing** = CI runs the oracle on every push; **recorded** = measured once on a box where it was present;
-**absent** = not present where the census was read; a **service** row is reachability, never probed.
+**standing** = bw-board's CI runs the oracle on every push (the census reports bw-board's gates only — a cell whose
+standing check lives in lite's own CI, like the labwired heavy tier, says so in its row); **recorded** = measured once
+on the box the census was read on; **absent** = not present there; a **service** row is reachability, never probed.
+The last column is bw-board's description AS AUTHORED: a stable string, not a re-measured fact.
 
-| census id | kind | status | gates in bw-board | what |
+| census id | kind | status in bw-board's CI | gates in bw-board | what (as authored) |
 | --- | --- | --- | --- | --- |
 | 8086-vectors | oracle | standing | test/i8086.test.mjs<br>test/i8086-disasm.test.mjs<br>test/moo.test.mjs<br>scripts/grind-i8086.mjs<br>scripts/grind-i8086-disasm.mjs | SingleStepTests 8086 — 646,000 vectors from an Intel P80C86A-2. |
 | z80-vectors | oracle | standing | test/z80-disasm.test.mjs<br>scripts/grind-z80.mjs | SingleStepTests z80 — 1,604 opcode files with full undocumented state (X/Y flags, Q latch, R per-M1, WZ). |

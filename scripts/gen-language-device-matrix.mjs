@@ -130,10 +130,12 @@ ${nulls.join('\n')}
 ## Oracles the tiers rest on (bw-board census at the pinned sha)
 
 Joined from \`docs/generated/bw-board-census.json\` (bw-board \`${census.source.sha.slice(0, 9)}\`, read ${census.source.read}).
-**standing** = CI runs the oracle on every push; **recorded** = measured once on a box where it was present;
-**absent** = not present where the census was read; a **service** row is reachability, never probed.
+**standing** = bw-board's CI runs the oracle on every push (the census reports bw-board's gates only — a cell whose
+standing check lives in lite's own CI, like the labwired heavy tier, says so in its row); **recorded** = measured once
+on the box the census was read on; **absent** = not present there; a **service** row is reachability, never probed.
+The last column is bw-board's description AS AUTHORED: a stable string, not a re-measured fact.
 
-| census id | kind | status | gates in bw-board | what |
+| census id | kind | status in bw-board's CI | gates in bw-board | what (as authored) |
 | --- | --- | --- | --- | --- |
 ${referencedRows.map(r => `| ${r.id} | ${r.kind} | ${r.kind === 'service' ? (r.ciAvailable ? 'standing' : 'reachability only') : r.ciAvailable ? 'standing' : r.present ? 'recorded' : 'absent'} | ${r.gates.join('<br>')} | ${String(r.what).split('.')[0]}. |`).join('\n')}
 
