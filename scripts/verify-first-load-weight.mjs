@@ -55,8 +55,12 @@ const OUT = path.resolve('artifacts/first-load-weight');
  *
  *  8.95 MB over 26 requests once the Code tab stopped fetching CodeMirror and
  *  its example sources while hidden (every TabPanel is force-rendered; the
- *  importer now waits to be SHOWN). 10 MB: the same headroom, one notch down. */
-const BUDGET_MB = 10.0;
+ *  importer now waits to be SHOWN). 10 MB: the same headroom, one notch down.
+ *
+ *  7.64 MB over 24 requests once the render fonts stopped arriving at boot
+ *  (they are fetched by the first SVG with text; scripts/apply-render-overlay.mjs
+ *  and verify-text-costume-fonts.mjs). 9 MB. */
+const BUDGET_MB = 9.0;
 
 let failed = 0;
 const record = (name, ok, detail = '') => {

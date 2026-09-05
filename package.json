@@ -67,7 +67,8 @@
     "probe:layout": "node scripts/probe-layout.mjs",
     "verify:boot-payload": "node scripts/verify-boot-payload.mjs",
     "test:fast": "node --test $(ls test/*.test.mjs | grep -v -E 'lesson-numeric-contract|lesson-defect-detector')",
-    "test:corpus": "node --test test/lesson-numeric-contract.test.mjs test/lesson-defect-detector.test.mjs"
+    "test:corpus": "node --test test/lesson-numeric-contract.test.mjs test/lesson-defect-detector.test.mjs",
+    "verify:text-costume-fonts": "node scripts/verify-text-costume-fonts.mjs"
   },
   "engines": {
     "node": "22.x"

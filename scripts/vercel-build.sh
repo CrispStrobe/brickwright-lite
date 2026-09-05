@@ -19,5 +19,5 @@ node scripts/integrate.mjs
 node scripts/sync-labwired-wasm.mjs || echo "labwired-wasm unavailable — the heavy tier will not be offered"
 cd packages/scratch-gui
 npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
-cd ../.. && node scripts/apply-vm-overlay.mjs && node scripts/apply-paint-overlay.mjs && cd packages/scratch-gui
+cd ../.. && node scripts/apply-vm-overlay.mjs && node scripts/apply-paint-overlay.mjs && node scripts/apply-render-overlay.mjs && cd packages/scratch-gui
 NODE_ENV=production CI=true NODE_OPTIONS=--max-old-space-size=2560 npm run build
