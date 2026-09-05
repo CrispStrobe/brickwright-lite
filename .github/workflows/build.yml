@@ -711,7 +711,7 @@ jobs:
       # paint editor is the one payload a learner edits in a separate editor
       # with its own asset pipeline (paper.js for vector, a canvas re-encode for
       # bitmap). Compares content hashed from asset.data, not declared ids.
-      - name: Browser gate — costume artwork survives save and reload, vector and bitmap
+      - name: Browser gate — costume artwork survives save/reload and records first-open performance
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-costume-roundtrip.mjs
       # The unit suite asserts the table SVG and the mark state as pure values.
