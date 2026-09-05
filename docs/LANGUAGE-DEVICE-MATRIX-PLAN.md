@@ -396,12 +396,31 @@ DoD: playwright: Pico + blink, C tab → Deploy offers `firmware.uf2` with the
 BOOTSEL text; Python tab → Deploy still offers the REPL path; the matrix cell
 reads `native · sim + silicon`.
 
-**L3. Reader coverage audit.**
-For each reader, a fixture set per device family (Arduino `.ino`, Pico and
-micro:bit `.py`, BBC `.bas`) with a measured mapped/refused ratio recorded in
-`docs/generated/READER-COVERAGE.md`, generated. Not a coverage target — a
-number that stops being folklore.
-DoD: the generator runs in CI; ratios are printed, not asserted.
+**L3. Reader coverage audit. DONE 2026-09-05** on branch
+`lane/l3-reader-coverage` (branch only, for lego-ac's audit).
+Premise correction, measured before building: the per-language source files the
+task imagined (Arduino `.ino`, Pico/micro:bit `.py`, BBC `.bas`) do NOT exist in
+the tree — python/js/basic/micropython are EMIT targets, not input. So coverage
+is measured two ways, both from in-tree sources: **round-trip** (each of the
+~130 device-tagged `program.bw` is parsed, emitted to the language, and read
+back — the honest half of the lowered column) for python/js/c/basic/micropython,
+and **native** (fed straight to the reader) for the 8086 lifter (11 in-tree MASM
+programs) and the two oracle `.c` fixtures. Three outcomes, not two: **clean**,
+**degraded** (parsed but a construct was kept as a placeholder — the silent loss
+a mapped/refused ratio hides), **refused**. Refusal and degradation reasons are
+bucketed by construct. `scripts/gen-reader-coverage.mjs` (+ `--check`) →
+`docs/generated/READER-COVERAGE.md`; `scripts/reader-coverage-fixtures.mjs`
+assembles the corpus (SB3 creator + emitters resolve from the INTEGRATED tree,
+readers and the corpus from `overlay/`). The external 525-program Amey Thakur
+corpus (`I8086_CORPUS`, MIT) is named as a larger asm input, not folded into the
+committed figures, so the doc is CI-reproducible.
+DoD: `test/reader-coverage-doc.test.mjs` runs the `--check` through the
+`test/*.test.mjs` glob in CI; it asserts the doc is CURRENT and carries the
+three-outcome structure, and asserts NO coverage floor — the numbers are printed,
+never a threshold. First run: 45% of round-trips clean, micropython degrades on
+100% (its reader keeps the emitted scheduler as grey blocks), and a real reader
+bug surfaced (python/js refuse a `<` operator in two 8051 programs) — filed as
+data, not fixed here.
 
 **L4. Arcade lowered to a UF2.** Investigation then build.
 `bw_arcade.py` emits PXT TypeScript; the PXT compiler (MIT) can produce a
