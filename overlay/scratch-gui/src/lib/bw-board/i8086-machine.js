@@ -1373,29 +1373,117 @@ export class I8086Machine {
         return true;
     }
 
-    /** CPU state keys to snapshot (same pattern as M6502Machine.CPU_STATE). */
+    /** CPU state keys which affect execution at an instruction boundary. */
     static CPU_STATE = ['ax', 'bx', 'cx', 'dx', 'sp', 'bp', 'si', 'di',
-        'ip', 'cs', 'ds', 'es', 'ss', 'flags', 'halted'];
+        'ip', 'cs', 'ds', 'es', 'ss', 'flags', 'halted', 'cycles',
+        // The interrupt inhibition after MOV/POP SS is architecturally live
+        // between instructions. repInterrupted is diagnostic state exposed by
+        // the core and therefore part of an equality-preserving checkpoint.
+        'intShadow', 'repInterrupted'];
+
+    _snapshotTopology() {
+        return JSON.stringify({
+            variant: this.variant,
+            regions: this.config.regions.map(r => [r.kind, r.start, r.end]),
+            chips: (this.config.chips || []).map(c => [
+                c.kind, c.name, c.at ?? null, c.bus ?? 'io', c.span ?? null,
+                c.stride ?? 1, c.irq ?? null, c.irqChannel ?? null
+            ]),
+            attached: Object.keys(this.devices || {}).sort()
+        });
+    }
+
+    static _cloneCheckpointValue(value) {
+        if (ArrayBuffer.isView(value)) return new value.constructor(value);
+        if (Array.isArray(value)) return value.map(v => I8086Machine._cloneCheckpointValue(v));
+        if (value && typeof value === 'object') {
+            return Object.fromEntries(Object.entries(value).map(
+                ([key, item]) => [key, I8086Machine._cloneCheckpointValue(item)]));
+        }
+        return value;
+    }
+
+    static _saveComponent(name, component) {
+        if (typeof component.getState === 'function') {
+            return {api: 'getState', state: I8086Machine._cloneCheckpointValue(component.getState())};
+        }
+        if (typeof component.saveState === 'function') {
+            return {api: 'saveState', state: I8086Machine._cloneCheckpointValue(component.saveState())};
+        }
+        throw new Error(`8086 checkpoint refused: component '${name}' has no state API`);
+    }
+
+    static _loadComponent(name, component, saved) {
+        if (!saved || typeof saved !== 'object' || !('state' in saved)) {
+            throw new Error(`8086 checkpoint refused: component '${name}' state is missing`);
+        }
+        if (saved.api === 'getState' && typeof component.setState === 'function') {
+            component.setState(I8086Machine._cloneCheckpointValue(saved.state));
+            return;
+        }
+        if (saved.api === 'saveState' && typeof component.loadState === 'function') {
+            component.loadState(I8086Machine._cloneCheckpointValue(saved.state));
+            return;
+        }
+        throw new Error(`8086 checkpoint refused: component '${name}' state API is incompatible`);
+    }
+
+    canCheckpoint() {
+        // busTrace is an externally-owned append cursor, and the audio mixer
+        // contains source phases/buffers not covered by every legacy chip's
+        // state API. Refuse these modes instead of claiming a deterministic
+        // restore that merely gets registers and RAM right.
+        if (this.cpu.busTrace !== null || this._audioBus) return false;
+        const components = [...Object.values(this.chips), ...Object.values(this.devices || {})];
+        return components.every(c =>
+            (typeof c.getState === 'function' && typeof c.setState === 'function') ||
+            (typeof c.saveState === 'function' && typeof c.loadState === 'function'));
+    }
 
     saveState() {
+        if (!this.canCheckpoint()) {
+            throw new Error('8086 checkpoint refused: the machine has a component without a complete state API');
+        }
         const cpu = {};
         for (const k of I8086Machine.CPU_STATE) cpu[k] = this.cpu[k] ?? 0;
         const chips = {};
         for (const [name, c] of Object.entries(this.chips)) {
-            if (typeof c.getState === 'function') chips[name] = c.getState();
-            else if (typeof c.saveState === 'function') chips[name] = c.saveState();
+            chips[name] = I8086Machine._saveComponent(name, c);
+        }
+        const devices = {};
+        for (const [name, d] of Object.entries(this.devices || {})) {
+            devices[name] = I8086Machine._saveComponent(`device:${name}`, d);
         }
         // THE VARIANT IS PART OF THE SNAPSHOT even though it is not CPU state,
         // because restoring without it fails SILENTLY and in the worst way:
         // the same bytes execute as different instructions. 60h is PUSHA on
         // one machine and JO on the other, and nothing about the restored
         // registers or memory would look wrong. See loadState().
-        return { v: 1, variant: this.variant, cpu, cycles: this.cycles,
-            mem: this.mem.slice(), chips };
+        return {
+            v: 2, topology: this._snapshotTopology(), cpu, cycles: this.cycles,
+            mem: this.mem.slice(), chips, devices,
+            machine: {
+                nmiPending: this._nmiPending,
+                kbdStrobe: this._kbdStrobe,
+                pinLevels: {...this._pinLevels}
+            }
+        };
     }
 
     loadState(s) {
-        if (s.v !== 1) throw new Error(`unknown machine state version ${s.v}`);
+        if (!s || s.v !== 2) {
+            throw new Error(`8086 checkpoint refused: complete state version 2 required (got ${s?.v})`);
+        }
+        if (s.topology !== this._snapshotTopology()) {
+            throw new Error('8086 checkpoint refused: machine topology does not match');
+        }
+        if (!s.cpu || !(s.mem instanceof Uint8Array) || s.mem.length !== this.mem.length ||
+            !s.machine || !s.chips || !s.devices) {
+            throw new Error('8086 checkpoint refused: snapshot is incomplete');
+        }
+        for (const k of I8086Machine.CPU_STATE) {
+            if (!(k in s.cpu)) throw new Error(`8086 checkpoint refused: CPU field '${k}' is missing`);
+        }
         // A MISMATCHED RESTORE IS REFUSED BY NAME, following z80-machine.js:370
         // (a snapshot with a tape position and no tape inserted). A snapshot
         // is restored onto an identically-BUILT machine; the variant is a
@@ -1405,25 +1493,52 @@ export class I8086Machine {
         // program correctly right up to the first 186 opcode and then quietly
         // takes a conditional jump instead.
         //
-        // A snapshot written before the variant existed carries no `variant`
-        // key at all, and those were all 8086s -- so an absent key reads as
-        // '8086' rather than as "any", which keeps the old snapshots loadable
-        // and still refuses to put one on a 186.
-        const want = s.variant ?? '8086';
+        // Debugger checkpoints use only the complete v2 contract above. Older
+        // internal v1 snapshots omitted live component and interrupt state and
+        // are intentionally not accepted as deterministic continuation points.
+        const want = JSON.parse(s.topology).variant;
         if (want !== this.variant) {
             throw new Error(`snapshot is from a ${want} machine and this is a ${this.variant}: `
                 + 'the same bytes decode differently on the two, so this would run '
                 + 'silently wrong rather than fail');
         }
-        for (const k of I8086Machine.CPU_STATE) if (k in s.cpu) this.cpu[k] = s.cpu[k];
+        const chipNames = Object.keys(this.chips).sort();
+        const savedChipNames = Object.keys(s.chips).sort();
+        const deviceNames = Object.keys(this.devices || {}).sort();
+        const savedDeviceNames = Object.keys(s.devices).sort();
+        if (JSON.stringify(chipNames) !== JSON.stringify(savedChipNames) ||
+            JSON.stringify(deviceNames) !== JSON.stringify(savedDeviceNames)) {
+            throw new Error('8086 checkpoint refused: component state set does not match');
+        }
+        // Verify all restore APIs before mutating any execution state.
+        for (const name of chipNames) {
+            const c = this.chips[name], saved = s.chips[name];
+            if (!saved || (saved.api === 'getState' ? typeof c.setState !== 'function'
+                : saved.api === 'saveState' ? typeof c.loadState !== 'function' : true)) {
+                throw new Error(`8086 checkpoint refused: component '${name}' state API is incompatible`);
+            }
+        }
+        for (const name of deviceNames) {
+            const d = this.devices[name], saved = s.devices[name];
+            if (!saved || (saved.api === 'getState' ? typeof d.setState !== 'function'
+                : saved.api === 'saveState' ? typeof d.loadState !== 'function' : true)) {
+                throw new Error(`8086 checkpoint refused: component 'device:${name}' state API is incompatible`);
+            }
+        }
+        if (!this.canCheckpoint()) {
+            throw new Error('8086 checkpoint refused: current machine mode has unsnapshotable live state');
+        }
+
+        for (const k of I8086Machine.CPU_STATE) this.cpu[k] = s.cpu[k];
         this.cycles = s.cycles;
         this.mem.set(s.mem);
+        this._nmiPending = !!s.machine.nmiPending;
+        this._kbdStrobe = !!s.machine.kbdStrobe;
+        this._pinLevels = {...s.machine.pinLevels};
         this.displayRevision = (this.displayRevision + 1) >>> 0;
-        for (const [name, cs] of Object.entries(s.chips || {})) {
-            const c = this.chips[name];
-            if (!c) continue;
-            if (typeof c.setState === 'function') c.setState(cs);
-            else if (typeof c.loadState === 'function') c.loadState(cs);
+        for (const name of chipNames) I8086Machine._loadComponent(name, this.chips[name], s.chips[name]);
+        for (const name of deviceNames) {
+            I8086Machine._loadComponent(`device:${name}`, this.devices[name], s.devices[name]);
         }
     }
 }

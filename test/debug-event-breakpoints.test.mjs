@@ -3,11 +3,15 @@ import assert from 'node:assert/strict';
 
 import {
     compileEventBreakpoint,
-    EventBreakpointEngine
+    EventBreakpointEngine,
+    executeBreakpointPlan
 } from '../overlay/scratch-gui/src/lib/bw-debug/event-breakpoints.js';
 
 const capabilities = {
-    eventKinds: ['instruction', 'memory', 'port', 'interrupt', 'register', 'signal'],
+    eventKinds: [
+        'instruction', 'memory', 'port', 'interrupt', 'register', 'signal',
+        'scheduler', 'device'
+    ],
     addressSpaces: {ram: {passive: true}, device: {passive: false}},
     maxConditionReads: 4
 };
@@ -59,6 +63,29 @@ test('supports event, time and context count predicates', () => {
         {counts: {cycles: 0}}).matchingIds, ['deadline']);
 });
 
+test('supports source, block, task, scheduler, device and call predicates', () => {
+    const engine = new EventBreakpointEngine(capabilities);
+    engine.add({id: 'line', kind: 'source', file: 'main.c', line: 9});
+    engine.add({id: 'block', kind: 'block', blockId: 'turn'});
+    engine.add({id: 'task', kind: 'task', task: 'main', state: 'ready'});
+    engine.add({id: 'switch', kind: 'scheduler', event: 'switch', task: 'worker'});
+    engine.add({id: 'uart', kind: 'device', deviceId: 'uart0', event: 'tx-ready'});
+    engine.add({id: 'return', kind: 'call', phase: 'return', depth: 1});
+
+    assert.deepEqual(engine.evaluate({kind: 'instruction', source: {
+        file: 'main.c', line: 9, blockId: 'turn', task: 'main', state: 'ready'
+    }}).matchingIds, ['line', 'block', 'task']);
+    assert.deepEqual(engine.evaluate({kind: 'scheduler', scheduler: {
+        event: 'switch', task: 'worker', state: 'running'
+    }}).matchingIds, ['switch']);
+    assert.deepEqual(engine.evaluate({kind: 'device', device: {
+        id: 'uart0', event: 'tx-ready'
+    }}).matchingIds, ['uart']);
+    assert.deepEqual(engine.evaluate({kind: 'instruction', instruction: {
+        controlFlow: 'return', depth: 1
+    }}).matchingIds, ['return']);
+});
+
 test('conditions are delegated to a bounded evaluator and never evaluated as JavaScript', () => {
     let request;
     const evaluator = {compile(source, limits) {
@@ -83,4 +110,31 @@ test('compile refusals name unsupported events, spaces, destructive reads and wr
     capabilities, evaluator).refusal.code, 'destructive-read');
     assert.equal(compileEventBreakpoint({id: 'write', kind: 'execute', address: 1,
         actions: [{type: 'write'}]}, capabilities).refusal.code, 'write-action-disabled');
+});
+
+test('executes every ordered action before one halt and reports failures as data', () => {
+    const calls = [];
+    const errors = [];
+    const plan = {
+        matchingIds: ['a', 'b'],
+        halt: true,
+        actions: [
+            {breakpointId: 'a', actionIndex: 0, type: 'log'},
+            {breakpointId: 'a', actionIndex: 1, type: 'halt'},
+            {breakpointId: 'b', actionIndex: 0, type: 'checkpoint'},
+            {breakpointId: 'b', actionIndex: 1, type: 'capture'}
+        ]
+    };
+    const outcome = executeBreakpointPlan(plan, {
+        log: action => calls.push(action.type),
+        checkpoint: action => calls.push(action.type),
+        capture: () => { throw new Error('sink full'); },
+        halt: cause => calls.push(`halt:${cause.matchingIds.join(',')}`),
+        onActionError: failure => errors.push(failure)
+    });
+    assert.deepEqual(calls, ['log', 'checkpoint', 'halt:a,b']);
+    assert.equal(outcome.halted, true);
+    assert.equal(outcome.failures[0].code, 'breakpoint-action-failed');
+    assert.equal(outcome.failures[0].message, 'sink full');
+    assert.deepEqual(errors, outcome.failures);
 });

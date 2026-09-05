@@ -41,6 +41,7 @@ import {
 import { parseCondition } from './condition.js';
 import { createTrace, IO_SFRS, TIMER_SFRS } from './trace.js';
 import {createDebugFoundation, subscribeDebugTargetEvents} from './debug-foundation.js';
+import {createRecordingSession} from './recording-session.js';
 import { setValueResolver } from './hover-values.js';
 import { instructionLength } from './opcodes.js';
 import {
@@ -436,6 +437,13 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     /** The execution history the drawer renders. See trace.js. */
     const debugFoundation = createDebugFoundation({eventCapacity: 4096});
     const eventStream = debugFoundation.events;
+    const recordingSession = createRecordingSession({
+        recorder: debugFoundation.recorder,
+        eventStream,
+        getTarget: () => target
+    });
+    const unsubscribeRecordingEvents = eventStream.onEvent(
+        event => recordingSession.appendBatch([event]));
     let unsubscribeDebugEvents = null;
     const trace = createTrace({eventStream});
     /** The user's own variables: {name, space, addr, size}. From the symbol table. */
@@ -2473,7 +2481,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         traceDropped: () => trace.dropped(),
         /** Canonical compatibility events, bulk-drained by future timeline consumers. */
         enableDebugEvents() { ensureDebugEvents(); return true; },
-        drainDebugEvents: (max) => { ensureDebugEvents(); return eventStream.drain(max); },
+        drainDebugEvents: (max) => {
+            ensureDebugEvents();
+            const batch = eventStream.drain(max);
+            debugFoundation.ingestTimeline(batch);
+            return batch;
+        },
         debugEventStats: () => {
             ensureDebugEvents();
             return {queued: eventStream.size(), dropped: eventStream.dropped()};
@@ -2481,6 +2494,16 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         addEventBreakpoint: spec => { ensureDebugEvents(); return debugFoundation.addBreakpoint(spec); },
         evaluateEventBreakpoints: (event, context) => debugFoundation.evaluateBreakpoints(event, context),
         debugRecorder: () => debugFoundation.recorder,
+        debugTimeline: () => debugFoundation.timeline,
+        startDebugRecording() { ensureDebugEvents(); return recordingSession.start(); },
+        checkpointDebugRecording: () => recordingSession.checkpoint(),
+        restoreDebugCheckpoint: eventCursor => {
+            const result = recordingSession.restore(eventCursor);
+            if (result.accepted) emit();
+            return result;
+        },
+        recordDebugInput: input => recordingSession.appendInput(input),
+        debugRecordingStatus: () => recordingSession.status(),
         clearTrace() { trace.clear(); emit(); },
 
         /**
@@ -2650,6 +2673,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             unschedule();
             if (unsubscribeBps) { unsubscribeBps(); unsubscribeBps = null; }
             if (unsubscribeDebugEvents) { unsubscribeDebugEvents(); unsubscribeDebugEvents = null; }
+            unsubscribeRecordingEvents();
             clearGlow();
             if (session) session.destroy();
             // Machine-bench targets carry no destroy (nothing to free — the

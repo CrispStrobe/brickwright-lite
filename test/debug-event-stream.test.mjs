@@ -94,6 +94,8 @@ test('batch drain preserves order and leaves the undrained tail', () => {
 
 test('publish owns one total sequence across independent producers', () => {
     const stream = createDebugEventStream();
+    const observed = [];
+    const off = stream.onEvent(event => observed.push(event.seq));
     const facts = extra => ({
         time: {ticks: 1, domain: extra.cpuId},
         kind: 'instruction', phase: 'retire', fidelity: 'recorded',
@@ -101,7 +103,10 @@ test('publish owns one total sequence across independent producers', () => {
     });
     stream.publish(facts({cpuId: 'cpu0'}));
     stream.publish(facts({cpuId: 'cpu1'}));
+    assert.equal(stream.nextSequence(), 2);
     assert.deepEqual(stream.drain().map(row => row.seq), [0, 1]);
+    assert.deepEqual(observed, [0, 1]);
+    off();
 });
 
 test('publish continues after explicitly sequenced compatibility events and resets on clear', () => {
@@ -114,6 +119,7 @@ test('publish continues after explicitly sequenced compatibility events and rese
     });
     assert.deepEqual(stream.drain().map(row => row.seq), [41, 42]);
     stream.clear();
+    assert.equal(stream.nextSequence(), 0);
     stream.publish({
         time: {ticks: 0, domain: 'oscillator'}, cpuId: 'main',
         kind: 'instruction', phase: 'retire', fidelity: 'recorded',

@@ -14,6 +14,7 @@ export const RECORDER_SCHEMA = 1;
 
 const DEFAULT_CHECKPOINT_BUDGET = 32 * 1024 * 1024;
 const DEFAULT_EVENT_BUDGET = 16 * 1024 * 1024;
+const DEFAULT_INPUT_BUDGET = 8 * 1024 * 1024;
 
 export class RecorderError extends Error {
     constructor (code, message, details = {}) {
@@ -76,11 +77,19 @@ export function canonicalStringify (value) {
         let result;
         if (ArrayBuffer.isView(item) && !(item instanceof DataView)) {
             result = `{"$typed":${JSON.stringify(item.constructor.name)},"values":${encode(Array.from(item))}}`;
+        } else if (item instanceof DataView) {
+            result = `{"$dataView":${encode(Array.from(
+                new Uint8Array(item.buffer, item.byteOffset, item.byteLength)))}}`;
         } else if (item instanceof ArrayBuffer) {
             result = `{"$buffer":${encode(Array.from(new Uint8Array(item)))}}`;
         } else if (Array.isArray(item)) {
             result = `[${item.map(encode).join(',')}]`;
         } else {
+            const prototype = Object.getPrototypeOf(item);
+            if (prototype !== Object.prototype && prototype !== null) {
+                fail('UNHASHABLE_VALUE',
+                    `Replay values cannot contain ${item.constructor?.name || 'non-plain objects'}`);
+            }
             const keys = Object.keys(item).sort();
             result = `{${keys.map(key => `${JSON.stringify(key)}:${encode(item[key])}`).join(',')}}`;
         }
@@ -118,16 +127,57 @@ export function compareReplayHash (expected, actualValues) {
 }
 
 /**
+ * Compare two ordered replay ranges and identify the first divergent entry.
+ * The values themselves stay with the caller: diagnostics contain hashes and
+ * cursors, not potentially large or sensitive snapshots/input payloads.
+ */
+export function compareReplayValues (expectedValues, actualValues, {baseCursor = 0} = {}) {
+    if (!Array.isArray(expectedValues) || !Array.isArray(actualValues)) {
+        throw new TypeError('Replay ranges must be arrays');
+    }
+    if (!Number.isSafeInteger(baseCursor) || baseCursor < 0) {
+        throw new TypeError('baseCursor must be a non-negative safe integer');
+    }
+    const length = Math.max(expectedValues.length, actualValues.length);
+    for (let index = 0; index < length; index++) {
+        const expectedPresent = index < expectedValues.length;
+        const actualPresent = index < actualValues.length;
+        const expectedHash = expectedPresent ? hashReplayValues(expectedValues[index]) : null;
+        const actualHash = actualPresent ? hashReplayValues(actualValues[index]) : null;
+        if (expectedHash !== actualHash) {
+            return {
+                matches: false,
+                reason: 'REPLAY_DIVERGED',
+                cursor: baseCursor + index,
+                expectedHash,
+                actualHash,
+                expectedPresent,
+                actualPresent
+            };
+        }
+    }
+    return {
+        matches: true,
+        reason: null,
+        cursor: baseCursor + length,
+        expectedHash: hashReplayValues(expectedValues),
+        actualHash: hashReplayValues(actualValues)
+    };
+}
+
+/**
  * @param {object} [options]
  * @param {number} [options.checkpointBudgetBytes]
  * @param {number} [options.eventBudgetBytes]
  */
 export function createDebugRecorder ({
     checkpointBudgetBytes = DEFAULT_CHECKPOINT_BUDGET,
-    eventBudgetBytes = DEFAULT_EVENT_BUDGET
+    eventBudgetBytes = DEFAULT_EVENT_BUDGET,
+    inputBudgetBytes = DEFAULT_INPUT_BUDGET
 } = {}) {
     assertBudget(checkpointBudgetBytes, 'checkpointBudgetBytes');
     assertBudget(eventBudgetBytes, 'eventBudgetBytes');
+    assertBudget(inputBudgetBytes, 'inputBudgetBytes');
 
     let inputs = [];
     let events = [];
@@ -138,15 +188,20 @@ export function createDebugRecorder ({
     let nextCheckpointId = 0;
     let checkpointBytes = 0;
     let eventBytes = 0;
+    let inputBytes = 0;
     let evictedCheckpoints = 0;
+    const lastInputTime = new Map();
 
     const retention = () => ({
         checkpointBudgetBytes,
         eventBudgetBytes,
+        inputBudgetBytes,
         checkpointBytes,
         eventBytes,
+        inputBytes,
         overCheckpointBudget: checkpointBytes > checkpointBudgetBytes,
         overEventBudget: eventBytes > eventBudgetBytes,
+        overInputBudget: inputBytes > inputBudgetBytes,
         evictedCheckpoints,
         inputBaseCursor,
         nextInputCursor,
@@ -155,7 +210,8 @@ export function createDebugRecorder ({
     });
 
     const evictAtBoundary = () => {
-        while ((checkpointBytes > checkpointBudgetBytes || eventBytes > eventBudgetBytes) &&
+        while ((checkpointBytes > checkpointBudgetBytes || eventBytes > eventBudgetBytes ||
+                inputBytes > inputBudgetBytes) &&
                checkpoints.length > 1) {
             const removed = checkpoints.shift();
             const anchor = checkpoints[0];
@@ -163,6 +219,8 @@ export function createDebugRecorder ({
             const discardedEvents = events.filter(event => event.seq < anchor.eventCursor);
             eventBytes -= discardedEvents.reduce((total, event) => total + event._bytes, 0);
             events = events.filter(event => event.seq >= anchor.eventCursor);
+            const discardedInputs = inputs.filter(input => input.cursor < anchor.inputCursor);
+            inputBytes -= discardedInputs.reduce((total, input) => total + input._bytes, 0);
             inputs = inputs.filter(input => input.cursor >= anchor.inputCursor);
             inputBaseCursor = anchor.inputCursor;
             evictedCheckpoints++;
@@ -178,10 +236,28 @@ export function createDebugRecorder ({
             if (typeof input.producer !== 'string' || !input.producer) {
                 fail('INVALID_INPUT', 'Input requires a non-empty producer');
             }
-            const stored = clone({...input, cursor: nextInputCursor, order: nextInputCursor});
+            if ((typeof input.time.ticks !== 'number' && typeof input.time.ticks !== 'bigint') ||
+                typeof input.time.domain !== 'string' || !input.time.domain) {
+                fail('INVALID_INPUT', 'Input time requires numeric ticks and a non-empty domain');
+            }
+            if (typeof input.time.ticks === 'number' && !Number.isSafeInteger(input.time.ticks)) {
+                fail('INVALID_INPUT', 'Input time ticks must be a safe integer');
+            }
+            const ticks = BigInt(input.time.ticks);
+            if (ticks < 0n) fail('INVALID_INPUT', 'Input time ticks must be non-negative');
+            const previous = lastInputTime.get(input.time.domain);
+            if (previous !== undefined && ticks < previous) {
+                fail('INVALID_INPUT_ORDER',
+                    `Input time decreased in domain ${input.time.domain}`,
+                    {domain: input.time.domain, previous, actual: ticks});
+            }
+            const value = clone({...input, cursor: nextInputCursor, order: nextInputCursor});
+            const stored = {...value, _bytes: utf8Bytes(value)};
             inputs.push(stored);
+            inputBytes += stored._bytes;
+            lastInputTime.set(input.time.domain, ticks);
             nextInputCursor++;
-            return clone(stored);
+            return clone(value);
         },
 
         appendEvent (event) {
@@ -193,6 +269,11 @@ export function createDebugRecorder ({
                 fail('INVALID_EVENT_SEQUENCE',
                     `Event seq must be a safe integer greater than ${lastEventSeq}`,
                     {previous: lastEventSeq, actual: event.seq});
+            }
+            if (event.seq !== lastEventSeq + 1) {
+                fail('EVENT_SEQUENCE_GAP',
+                    `Lossless recording expected event seq ${lastEventSeq + 1}, got ${event.seq}`,
+                    {expected: lastEventSeq + 1, actual: event.seq});
             }
             const value = clone(event);
             const stored = {...value, _bytes: utf8Bytes(value)};
@@ -207,18 +288,24 @@ export function createDebugRecorder ({
             if (!Object.hasOwn(checkpoint, 'snapshot')) {
                 fail('INVALID_CHECKPOINT', 'Checkpoint requires a target-owned snapshot');
             }
+            if (!checkpoint.time || typeof checkpoint.time !== 'object') {
+                fail('INVALID_CHECKPOINT', 'Checkpoint requires a simulation time object');
+            }
             const eventCursor = checkpoint.eventCursor;
             const minimumEventCursor = checkpoints.length ? checkpoints.at(-1).eventCursor : 0;
-            assertCursor(eventCursor, 'eventCursor', minimumEventCursor, lastEventSeq + 1);
+            const maximumEventCursor = checkpoints.length ? lastEventSeq + 1 : Number.MAX_SAFE_INTEGER;
+            assertCursor(eventCursor, 'eventCursor', minimumEventCursor, maximumEventCursor);
             assertCursor(checkpoint.inputCursor, 'inputCursor', inputBaseCursor, nextInputCursor);
+            while (checkpoints.some(existing => existing.id === nextCheckpointId)) nextCheckpointId++;
             const value = clone({...checkpoint, id: checkpoint.id ?? nextCheckpointId});
             if (checkpoints.some(existing => existing.id === value.id)) {
                 fail('DUPLICATE_CHECKPOINT', `Checkpoint id ${String(value.id)} already exists`);
             }
-            nextCheckpointId++;
+            if (checkpoint.id == null || checkpoint.id === nextCheckpointId) nextCheckpointId++;
             const stored = {...value, _bytes: utf8Bytes(value)};
             checkpoints.push(stored);
             checkpointBytes += stored._bytes;
+            if (checkpoints.length === 1) lastEventSeq = eventCursor - 1;
             evictAtBoundary();
             return clone(value);
         },
@@ -238,7 +325,8 @@ export function createDebugRecorder ({
 
         inputsFrom (cursor) {
             assertCursor(cursor, 'inputCursor', inputBaseCursor, nextInputCursor);
-            return inputs.filter(input => input.cursor >= cursor).map(clone);
+            return inputs.filter(input => input.cursor >= cursor)
+                .map(({_bytes, ...input}) => clone(input));
         },
 
         eventsFrom (eventCursor) {
@@ -260,7 +348,9 @@ export function createDebugRecorder ({
             nextCheckpointId = 0;
             checkpointBytes = 0;
             eventBytes = 0;
+            inputBytes = 0;
             evictedCheckpoints = 0;
+            lastInputTime.clear();
         }
     };
 }

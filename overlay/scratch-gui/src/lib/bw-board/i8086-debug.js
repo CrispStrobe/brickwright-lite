@@ -198,6 +198,10 @@ export function createI8086DebugTarget(adapter, opts = {}) {
     const executeStep = typeof adapter.step === 'function'
         ? adapter.step
         : () => machine.step();
+    // A boundary service (notably the DOS trap layer) owns functional state
+    // outside I8086Machine. Until that service supplies an atomic snapshot
+    // contract, this target must not advertise a machine-only checkpoint.
+    const hasExternalStepState = typeof adapter.step === 'function';
     const cpuId = opts.cpuId || 'i8086';
 
     let runState = 'halted';
@@ -352,6 +356,8 @@ export function createI8086DebugTarget(adapter, opts = {}) {
                 events: ['instruction', 'memory', 'port', 'interrupt'],
                 fidelity: {instruction: 'recorded', cycle: 'unsupported'},
                 spaces: {mem: {read: true, write: true, passiveRead: true}},
+                recording: !hasExternalStepState && machine.canCheckpoint?.()
+                    ? ['checkpoint', 'restore'] : [],
                 // 'port' and 'int' are declared only because the machine can
                 // actually observe them. They rest on machine.hooks, which the
                 // machine layer owns; a target wired to a machine without them
@@ -414,6 +420,63 @@ export function createI8086DebugTarget(adapter, opts = {}) {
                 syncEventHooks();
                 syncWriteTrap();
             };
+        },
+
+        captureCheckpoint() {
+            if (hasExternalStepState || !machine.canCheckpoint?.()) {
+                throw new Error('8086 checkpoint refused: machine state is incomplete');
+            }
+            return {
+                schema: 1,
+                target: 'i8086',
+                variant: machine.variant,
+                mode: 'instruction',
+                time: {
+                    ticks: machine.cycles,
+                    domain: eventTimeEpoch ? `i8086-cycles-reset-${eventTimeEpoch}` : 'i8086-cycles',
+                    hz: machine.clockHz
+                },
+                machine: machine.saveState(),
+                debugger: {
+                    runState,
+                    pendingStep: pendingStep ? {...pendingStep} : null,
+                    eventTimeEpoch,
+                    lastEventTicks
+                }
+            };
+        },
+
+        restoreCheckpoint(snapshot) {
+            if (!snapshot || snapshot.schema !== 1 || snapshot.target !== 'i8086' ||
+                snapshot.mode !== 'instruction' || snapshot.variant !== machine.variant ||
+                !snapshot.machine || !snapshot.debugger) {
+                throw new Error('8086 checkpoint refused: incompatible target snapshot');
+            }
+            if (hasExternalStepState || !machine.canCheckpoint?.()) {
+                throw new Error('8086 checkpoint refused: machine state is incomplete');
+            }
+            const state = snapshot.debugger.runState;
+            if (state !== 'running' && state !== 'halted') {
+                throw new Error('8086 checkpoint refused: invalid debugger run state');
+            }
+            const stepState = snapshot.debugger.pendingStep;
+            if (stepState !== null && (!stepState || typeof stepState !== 'object' ||
+                !['insn', 'over', 'out'].includes(stepState.kind))) {
+                throw new Error('8086 checkpoint refused: invalid pending instruction step');
+            }
+            machine.loadState(snapshot.machine);
+            runState = state;
+            pendingStep = stepState ? {...stepState} : null;
+            // Restoring is a branch in history, not permission to make the
+            // existing event clock run backwards. Start a fresh named epoch;
+            // the runner owns the global event sequence/cursor.
+            eventTimeEpoch++;
+            lastEventTicks = machine.cycles;
+            cachedVideoKey = null;
+            cachedVideoFrame = null;
+            watchHit = null;
+            eventHit = null;
+            return true;
         },
 
         /**

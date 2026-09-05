@@ -145,6 +145,7 @@ export function createDebugEventStream({capacity = 1024} = {}) {
     let nextSeq = 0;
     let totalDropped = 0;
     let undrainedDropped = 0;
+    const listeners = new Set();
 
     return {
         append(input) {
@@ -171,6 +172,7 @@ export function createDebugEventStream({capacity = 1024} = {}) {
                 totalDropped++;
                 undrainedDropped++;
             }
+            for (const listener of listeners) listener(event);
             return event;
         },
 
@@ -208,6 +210,12 @@ export function createDebugEventStream({capacity = 1024} = {}) {
 
         size: () => length,
         dropped: () => totalDropped,
+        nextSequence: () => nextSeq,
+        onEvent (listener) {
+            if (typeof listener !== 'function') throw new TypeError('event listener must be a function');
+            listeners.add(listener);
+            return () => listeners.delete(listener);
+        },
 
         clear() {
             start = 0;

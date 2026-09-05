@@ -14,6 +14,12 @@ const EVENT_KINDS = {
     interrupt: ['interrupt'],
     register: ['instruction', 'register'],
     signal: ['signal'],
+    source: ['instruction', 'scheduler'],
+    block: ['instruction', 'scheduler'],
+    task: ['scheduler', 'instruction'],
+    scheduler: ['scheduler'],
+    device: ['device'],
+    call: ['instruction'],
     time: null,
     count: null,
     event: null
@@ -144,6 +150,32 @@ function compileMatcher(spec) {
             (!spec.edge || spec.edge === 'any' ||
                 (spec.edge === 'rising' && event.signal.before === 0 && event.signal.value === 1) ||
                 (spec.edge === 'falling' && event.signal.before === 1 && event.signal.value === 0));
+    case 'source':
+        return event => (event.kind === 'instruction' || event.kind === 'scheduler') &&
+            (!spec.file || event.source?.file === spec.file) &&
+            (spec.line == null || event.source?.line === spec.line);
+    case 'block':
+        return event => (event.kind === 'instruction' || event.kind === 'scheduler') &&
+            event.source?.blockId === spec.blockId;
+    case 'task':
+        return event => (event.kind === 'scheduler' || event.kind === 'instruction') &&
+            (event.source?.task ?? event.scheduler?.task) === spec.task &&
+            (!spec.state || event.source?.state === spec.state || event.scheduler?.state === spec.state);
+    case 'scheduler':
+        return event => event.kind === 'scheduler' &&
+            (!spec.event || event.scheduler?.event === spec.event) &&
+            (!spec.task || event.scheduler?.task === spec.task) &&
+            (!spec.state || event.scheduler?.state === spec.state);
+    case 'device':
+        return event => event.kind === 'device' &&
+            (!spec.deviceId || event.device?.id === spec.deviceId) &&
+            (!spec.event || event.device?.event === spec.event) &&
+            (!spec.register || event.device?.register === spec.register) &&
+            (spec.value == null || event.device?.value === spec.value);
+    case 'call':
+        return event => event.kind === 'instruction' &&
+            (!spec.phase || event.instruction?.controlFlow === spec.phase) &&
+            (spec.depth == null || event.instruction?.depth === spec.depth);
     case 'time':
         return event => event.time?.domain === spec.domain &&
             ordinalAtLeast(event.time.ticks, spec.at);
@@ -203,6 +235,64 @@ export function compileEventBreakpoint(spec, capabilities = {}, evaluator = null
             return true;
         }
     }};
+}
+
+/**
+ * Execute an arbitration plan without allowing individual `halt` actions to
+ * stop later matches. Every non-halt action runs in the already-determined
+ * creation/action order, then the host receives one halt containing all causes.
+ * Failures are data and may be published by `onActionError`; they never vanish
+ * into a console side channel.
+ */
+export function executeBreakpointPlan(plan, handlers = {}, context = {}) {
+    if (!plan || !Array.isArray(plan.actions) || !Array.isArray(plan.matchingIds)) {
+        throw new TypeError('breakpoint action plan is invalid');
+    }
+    const results = [];
+    const failures = [];
+    for (const action of plan.actions) {
+        if (action.type === 'halt') continue;
+        const handler = handlers[action.type];
+        if (typeof handler !== 'function') {
+            const failure = {
+                code: 'breakpoint-action-handler-unavailable',
+                breakpointId: action.breakpointId,
+                actionIndex: action.actionIndex,
+                actionType: action.type
+            };
+            failures.push(failure);
+            if (typeof handlers.onActionError === 'function') handlers.onActionError(failure, context);
+            continue;
+        }
+        try {
+            const value = handler(action, context);
+            if (value && typeof value.then === 'function') {
+                throw new TypeError('breakpoint action handlers must be synchronous');
+            }
+            results.push({
+                breakpointId: action.breakpointId,
+                actionIndex: action.actionIndex,
+                actionType: action.type,
+                value
+            });
+        } catch (error) {
+            const failure = {
+                code: 'breakpoint-action-failed',
+                breakpointId: action.breakpointId,
+                actionIndex: action.actionIndex,
+                actionType: action.type,
+                message: error?.message || String(error)
+            };
+            failures.push(failure);
+            if (typeof handlers.onActionError === 'function') handlers.onActionError(failure, context);
+        }
+    }
+    let halted = false;
+    if (plan.halt && typeof handlers.halt === 'function') {
+        handlers.halt({matchingIds: [...plan.matchingIds]}, context);
+        halted = true;
+    }
+    return {matchingIds: [...plan.matchingIds], halted, results, failures};
 }
 
 /** Stateful collection whose arbitration order is breakpoint creation order. */

@@ -343,17 +343,52 @@ and the three overhead modes remain acceptance work for this slice.
 - deterministic replay hash and divergence reports;
 - reverse instruction/continue implemented as restore plus replay.
 
+Implementation status (2026-09-05): versioned recorder storage now enforces
+per-domain input ordering, contiguous lossless event sequences, independent
+input/event/checkpoint budgets and checkpoint-atomic eviction. Recordings may
+anchor at a live stream cursor; first-divergence diagnostics identify hashes
+and the absolute cursor without copying payloads. The runner has opt-in
+recording commands and captures at the global sequencer rather than depending
+on a UI drain.
+
+The instruction-mode 8086 target can checkpoint and restore only configurations
+whose CPU, RAM, clock, interrupt lines, chips and attached devices all expose a
+paired state contract. Topology, processor variant, active bus tracing, audio
+state and external DOS/boundary services are checked; incomplete configurations
+withdraw the capability. Focused tests prove state equality and identical
+replayed event hashes. The pinned 8051 WASM cannot truthfully checkpoint: its
+ABI omits in-flight microstate, program time, timer/interrupt internals, UART
+queues and input latches. It now refuses explicitly and tests prove the refusal
+does not perturb later execution. Reverse commands remain disabled until input
+application and restore-plus-replay are connected end to end.
+
 ### Slice 3 — unified breakpoints
 
 - predicate compiler and ordered action engine;
 - execute, memory, port, interrupt, register transition and time predicates;
 - legacy breakpoint migration and capability-sensitive refusals.
 
+Implementation status (2026-09-05): the predicate compiler covers execute,
+memory, port, interrupt, register, signal, source, block, task, scheduler,
+device, call/return, time, count and generic event predicates. Conditions can
+read only explicitly passive spaces. Ignore/hit/modulo/one-shot behavior and
+creation-order arbitration are tested. Action dispatch executes every ordered
+non-halt action, reports failures as data and issues one final halt containing
+all matching breakpoint IDs. Runner halt/action wiring and legacy migration
+remain acceptance work.
+
 ### Slice 4 — timeline workspace
 
 - event cursor and synchronized panes;
 - recording controls, retention/gap visibility and streamed exports;
 - checkpoint restore/fork and reverse controls.
+
+Implementation status (2026-09-05): a bounded target-neutral timeline model
+owns the selected event for synchronized consumers, supports older/newer/latest
+and per-domain time seeking, preserves ring-gap evidence and moves a selection
+safely when retention evicts it. The runner feeds it only from explicit bulk
+drains, preserving the zero-consumer fast path. Visual panes and recording,
+checkpoint, fork and reverse controls are not yet exposed in the React drawer.
 
 ### Slice 5 — real cycle targets
 

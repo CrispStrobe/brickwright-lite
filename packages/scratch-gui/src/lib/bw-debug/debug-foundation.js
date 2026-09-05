@@ -3,17 +3,21 @@ import {
     eventBreakpointCapabilities,
     normalizeDebugCapabilities
 } from './debug-capabilities.js';
-import {EventBreakpointEngine} from './event-breakpoints.js';
+import {EventBreakpointEngine, executeBreakpointPlan} from './event-breakpoints.js';
 import {createDebugEventStream} from './event-stream.js';
 import {createDebugRecorder} from './recorder.js';
+import {createDebugTimeline} from './timeline.js';
 
 /** Connect a target-owned fact source to the runner-owned sequenced stream. */
-export function subscribeDebugTargetEvents (target, eventStream) {
+export function subscribeDebugTargetEvents (target, eventStream, onPublished = null) {
     if (!target || typeof target.onDebugEvent !== 'function') return null;
     if (!eventStream || typeof eventStream.publish !== 'function') {
         throw new TypeError('debug target events require a publish-capable event stream');
     }
-    const unsubscribe = target.onDebugEvent(event => eventStream.publish(event));
+    const unsubscribe = target.onDebugEvent(event => {
+        const published = eventStream.publish(event);
+        if (typeof onPublished === 'function') onPublished(published);
+    });
     if (typeof unsubscribe !== 'function') {
         throw new TypeError('onDebugEvent must return an unsubscribe function');
     }
@@ -23,12 +27,15 @@ export function subscribeDebugTargetEvents (target, eventStream) {
 export function createDebugFoundation ({eventCapacity = 4096, conditionEvaluator = null} = {}) {
     const events = createDebugEventStream({capacity: eventCapacity});
     const recorder = createDebugRecorder();
+    const timeline = createDebugTimeline({capacity: eventCapacity});
     let capabilities = normalizeDebugCapabilities();
     let breakpoints = new EventBreakpointEngine(eventBreakpointCapabilities(capabilities), conditionEvaluator);
 
     return {
         events,
         recorder,
+        timeline,
+        ingestTimeline: batch => timeline.append(batch),
         attachCapabilities (raw, options) {
             capabilities = normalizeDebugCapabilities(raw, options);
             // Breakpoints are scoped to an attached execution target. Keeping
@@ -41,9 +48,12 @@ export function createDebugFoundation ({eventCapacity = 4096, conditionEvaluator
         capabilities: () => capabilities,
         addBreakpoint: spec => breakpoints.add(spec),
         evaluateBreakpoints: (event, context) => breakpoints.evaluate(event, context),
+        executeBreakpointPlan: (plan, handlers, context) =>
+            executeBreakpointPlan(plan, handlers, context),
         clear () {
             events.clear();
             recorder.clear();
+            timeline.clear();
             capabilities = normalizeDebugCapabilities();
             breakpoints = new EventBreakpointEngine(
                 eventBreakpointCapabilities(capabilities), conditionEvaluator);

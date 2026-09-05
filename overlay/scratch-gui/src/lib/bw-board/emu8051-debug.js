@@ -89,6 +89,16 @@
  * `'budget'` (this slice is over, call again). Nothing above this line ever
  * learns that the emulator technically stopped.
  *
+ * ## Checkpoints fail closed on this ABI
+ *
+ * The pinned WASM exposes architectural reads and memory writes, but no native
+ * state serializer. Rebuilding from PC, IRAM, SFR and XRAM would omit an
+ * instruction in flight, program time, timer/interrupt peripheral phases,
+ * UART queues and external input latches. `captureCheckpoint` and
+ * `restoreCheckpoint` therefore return a structured refusal and `recording`
+ * remains empty. An architectural dump is useful for display; it is not a
+ * deterministic continuation point.
+ *
  * @module
  */
 
@@ -103,6 +113,24 @@ const SPACE_NAME = Object.keys(SPACE);
 
 /** DBG_MAX_BP in debug.h. Exceeding it returns -1, which we turn into a reason. */
 const MAX_BREAKPOINTS = 32;
+
+const CHECKPOINT_MISSING = Object.freeze([
+    'cpu-in-flight-microstate',
+    'program-time',
+    'timer-and-interrupt-internals',
+    'uart-queues',
+    'external-input-latches'
+]);
+
+function checkpointRefusal(operation) {
+    return {
+        refused: 'deterministic 8051 checkpoints require a native complete-state WASM ABI; ' +
+            'copying visible registers and memory would omit mutable execution state',
+        code: 'incomplete-snapshot-abi',
+        operation,
+        missing: [...CHECKPOINT_MISSING]
+    };
+}
 
 /**
  * @typedef {object} SymbolTable stc_symtab.py's output (format 004)
@@ -419,6 +447,7 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
                 sfrs: 'all',
                 haltPolicy: 'freeze-timers',
                 timeFreezes: true,
+                recording: [],
                 // An emulator takes nothing from the program: no timer, no
                 // UART, no pin. The on-chip monitor is the one that has to
                 // confess here (§7 decision 5).
@@ -437,7 +466,12 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
                     cycleEvidence: hasCycleStep ? 'oscillator-step-boundary' : 'none',
                     instructionEvidence: 'single-step-retire-only',
                     busSignals: false,
-                    memoryEvidence: hasWatchpointEvidence ? 'change-watchpoint-only' : 'none'
+                    memoryEvidence: hasWatchpointEvidence ? 'change-watchpoint-only' : 'none',
+                    checkpoint: {
+                        supported: false,
+                        code: 'incomplete-snapshot-abi',
+                        missing: [...CHECKPOINT_MISSING]
+                    }
                 }
             };
         },
@@ -627,6 +661,16 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
                 bank: (psw >> 3) & 3,
                 r: Array.from({ length: 8 }, (_, n) => wasm._emu_dbg_rn(n))
             };
+        },
+
+        /** Refuse partial architectural dumps as deterministic checkpoints. */
+        captureCheckpoint() {
+            return checkpointRefusal('save');
+        },
+
+        /** Refuse before inspecting or mutating the supplied partial state. */
+        restoreCheckpoint(_snapshot) {
+            return checkpointRefusal('restore');
         },
 
         onHalt(cb) {
