@@ -333,3 +333,65 @@ fails unless it touched both.
   }
 }
 ```
+
+---
+
+# What this gate does NOT cover
+
+Written 2026-09-05, after building it, because every section above describes
+what the gate catches and a reader would reasonably take the remainder as
+covered. **The gate reports on what it found. This is what it did not look
+for.** Measured, not guessed — the numbers below come from the same scan the
+test runs.
+
+## 1. Three files exist only here, with no upstream counterpart at all
+
+    machine-checkpoint.js          67 lines
+    instruction-debug-events.js   114 lines
+    target-kinds.js                82 lines
+
+263 lines. These are the shared helpers the covered files import — the
+checkpoint envelope, the topology validator, the debug event shapes. **No
+comparison is possible**, so neither the identifier coverage nor the
+line-level inventory says anything about them.
+
+The exposure is lower than it looks: `sync:bwboard` builds its file list from
+the *upstream* tree, so a file with no upstream counterpart is never written
+and never deleted. They are unmanaged rather than at risk. But "unmanaged"
+and "safe" are different words, and only the first one is verified.
+
+## 2. Two upstream files are not vendored here
+
+`i8088-cycles.js` and `i8088-timing.js` exist in bw-board and not in lite.
+Nothing in lite imports them, so nothing is broken — the sync offers to add
+them on every run, and **I have deleted them from the working tree on every
+run today while testing the guard.** That is a decision I made repeatedly
+without recording it, which is exactly the kind of thing this document
+exists to stop. Recorded now. Whether to vendor them is open.
+
+(`pin-functions.js` is a third upstream-only file and is deliberately not
+vendored: it is node-only, reading the `bw-parts` sibling checkout at
+runtime. `index.js` says so at line 70. That one is a decision already
+written down, which is the difference.)
+
+## 3. The comparison is line-based and text-based
+
+A reformat, a rename, or moving a function between files reads as deletion.
+That direction is safe — it fails toward refusing — but it means a legitimate
+upstream refactor will need `--force` and a human. The gate cannot tell a
+refactor from a deletion, and does not claim to.
+
+## 4. Only the first vendored root is scanned for divergence
+
+`overlay/` is scanned; `packages/` is checked only for *drift against
+overlay*. If both were edited identically and wrongly, the pair test passes
+and the divergence scan sees one copy. Two copies agreeing is not two
+independent measurements.
+
+## 5. Nothing here checks that the vendored code WORKS
+
+Every assertion in `vendor-identity.test.mjs` is about text. It can tell you
+`captureCheckpoint` is still present and named; it cannot tell you it still
+saves anything. The behavioural gates are elsewhere, and this file is not a
+substitute for them — a point worth making because a green identity gate
+feels like more assurance than it is.
