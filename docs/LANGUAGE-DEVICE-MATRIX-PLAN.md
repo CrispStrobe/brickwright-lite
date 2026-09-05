@@ -519,6 +519,17 @@ library whitelist (`LiquidCrystal`, `Adafruit_SSD1306` → verbs) with named
 refusals. **P5.** One silicon wire-truth bench per family *(manual, recorded)*.
 Each gets its own LANES row when claimed.
 
+**Vocabulary source (2026-09-05):** bw-board `I8086Machine.chipRefusals()` (`bfd8b44`, lego-be)
+returns `{part, kind, feature, symptom, count}` rows — one per feature a program asked a chip
+for that the model does not implement, with a program-visible symptom sentence ("a block copy
+programmed through the DMA controller moves nothing and the temporary register reads back
+zero"), derived from every chip's refusal ledger by field name and gated so a new ledger cannot
+go unread. Two lite consumers, both open after the next bw-board pin: the debugger prints one
+line per row at halt and on each refusal; P1's part profiles take `part`/`feature` as the
+"verb X on part Y is unmodelled" vocabulary instead of inventing their own. Requested
+addition before the first consumer: `at` (port or register offset), so a row can point at an
+instruction and join a pin/port map.
+
 ---
 
 ## 4. Milestones
