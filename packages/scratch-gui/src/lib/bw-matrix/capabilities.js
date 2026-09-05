@@ -170,7 +170,7 @@ const dev = function (id, label, group, family, rest) {
 const STC_IDS = ['stc12c5a60s2', 'stc12c5a16s2', 'stc15f2k60s2', 'stc15w408as', 'stc89c52rc', 'stc89c52'];
 const AVR = 'Arduino (AVR)';
 const ARCADE = 'Arcade & SAMD51';
-const avr8 = {pickerCompile: false, pickerEmulator: 'avr8js', sim: [eng('avr8js', ['hex'])]};
+const avr8 = {pickerCompile: true, pickerEmulator: 'avr8js', sim: [eng('avr8js', ['hex'])]};
 
 /**
  * Devices, in the order and with the ids of DEVICE_GROUPS in
@@ -200,13 +200,13 @@ export const DEVICES = Object.freeze([
     dev('atmega328p', 'ATmega328P (bare)', AVR, 'avr', {...avr8, silicon: [tx('stk500v1-webserial', ['hex'], 'avr')]}),
     dev('atmega168p', 'ATmega168P (bare)', AVR, 'avr', {...avr8, silicon: [tx('stk500v1-webserial', ['hex'], 'avr')]}),
     dev('attiny88', 'ATtiny88 (bare)', AVR, 'avr', {
-        pickerCompile: false,
+        pickerCompile: true,
         pickerEmulator: 'attiny88',
         sim: [eng('attiny88', ['hex'])],
         silicon: [tx('usbasp-webusb', ['hex'], 'isp')]
     }),
     dev('attiny85', 'ATtiny85', AVR, 'avr', {
-        pickerCompile: false,
+        pickerCompile: true,
         pickerEmulator: 'attiny85',
         sim: [eng('attiny85', ['hex'])],
         silicon: [tx('usbasp-webusb', ['hex'], 'isp')]
@@ -246,8 +246,8 @@ export const DEVICES = Object.freeze([
         ]
     }),
     dev('eater6502', 'Eater 6502', '6502', 'w65c02', {
-        pickerCompile: false,
-        pickerEmulator: null,
+        pickerCompile: true,
+        pickerEmulator: 'w65c02-bench',
         sim: [eng('w65c02-bench', ['hex', 'bin', 'bas'], {
             tier: '2a',
             needs: ['singlesteptests-65c02'],
@@ -428,7 +428,7 @@ export const CELLS = Object.freeze({
         // DEVICE_GROUPS says `compile: false` for every AVR while the C tab
         // compiles through the hosted avr-gcc. Plan task T5 reconciles; until
         // then the conformance test carries this as a KNOWN contradiction.
-        c: {native: shipped('hex', 'avr-gcc', 'hosted', {contradiction: 'T5'}), lowered: [via('c')]},
+        c: {native: shipped('hex', 'avr-gcc', 'hosted'), lowered: [via('c')]},
         basic: {native: open('bas', 'Tiny BASIC (MIT)', 'none', 'N8'), lowered: [via('c')]},
         asm: {native: shipped('hex', 'avr-gcc (as)', 'hosted'), lowered: [LISTING]},
         micropython: {native: no('ram', AVR_RAM), lowered: [via('c')]}

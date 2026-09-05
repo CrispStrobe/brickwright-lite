@@ -61,13 +61,13 @@ const DEVICE_GROUPS = [
         { id: 'stc89c52', label: 'STC89C52', compile: true, emulator: 'emu8051' },
     ]},
     { label: 'Arduino (AVR)', core: 'arduino', devices: [
-        { id: 'arduino-uno', label: 'Arduino Uno', compile: false, emulator: 'avr8js' },
-        { id: 'arduino-nano', label: 'Arduino Nano', compile: false, emulator: 'avr8js' },
-        { id: 'arduino-mega', label: 'Arduino Mega', compile: false, emulator: 'avr8js' },
-        { id: 'atmega328p', label: 'ATmega328P (bare)', compile: false, emulator: 'avr8js' },
-        { id: 'atmega168p', label: 'ATmega168P (bare)', compile: false, emulator: 'avr8js' },
-        { id: 'attiny88', label: 'ATtiny88 (bare)', compile: false, emulator: 'attiny88' },
-        { id: 'attiny85', label: 'ATtiny85', compile: false, emulator: 'attiny85' },
+        { id: 'arduino-uno', label: 'Arduino Uno', compile: true, emulator: 'avr8js' },
+        { id: 'arduino-nano', label: 'Arduino Nano', compile: true, emulator: 'avr8js' },
+        { id: 'arduino-mega', label: 'Arduino Mega', compile: true, emulator: 'avr8js' },
+        { id: 'atmega328p', label: 'ATmega328P (bare)', compile: true, emulator: 'avr8js' },
+        { id: 'atmega168p', label: 'ATmega168P (bare)', compile: true, emulator: 'avr8js' },
+        { id: 'attiny88', label: 'ATtiny88 (bare)', compile: true, emulator: 'attiny88' },
+        { id: 'attiny85', label: 'ATtiny85', compile: true, emulator: 'attiny85' },
         // An ATmega32U4 console. `compile: false` is the important half:
         // there is no path from blocks to an Arduboy binary — that needs
         // avr-gcc, which is GPL and cannot ship here — so choosing this
@@ -82,7 +82,7 @@ const DEVICE_GROUPS = [
         { id: 'stm32f030', label: 'STM32F030', compile: true, emulator: 'stm32f0' },
     ]},
     { label: '6502', core: 'w65c02', devices: [
-        { id: 'eater6502', label: 'Eater 6502', compile: false, emulator: null },
+        { id: 'eater6502', label: 'Eater 6502', compile: true, emulator: 'w65c02-bench' },
     ]},
     { label: 'Z80', core: 'z80', devices: [
         { id: 'z80', label: 'Z80 bench', compile: false, emulator: null },
@@ -2245,11 +2245,13 @@ class PseudocodeImporter extends React.Component {
         if (d === 'pico') return 'micropython';        // handled by deployToPico
         if (d === 'stm32f030') return 'stm32';
         if (/^stc/.test(d)) return 'stc';
-        // optiboot STK500v1 boards only: the ATtinys have no bootloader and
-        // the Mega speaks STK500v2 (a different protocol flash.js does not
-        // implement) — both fall through to the programmer message.
+        // optiboot STK500v1 boards: pulsed on DTR and flashed over the Arduino
+        // bootloader. The Mega is NOT one of them — its stk500boot speaks
+        // STK500v2, a different protocol, which flasher.js DOES implement
+        // (flashAvrMega); it routes to its own 'avr-mega' family just below,
+        // matching the matrix's stk500v2-webserial transport for arduino-mega.
         if (['arduino-uno', 'arduino-nano', 'atmega328p', 'atmega168p'].includes(d)) return 'avr';
-        if (['arduino-mega', 'atmega2560'].includes(d)) return 'avr-mega';  // STK500v2
+        if (['arduino-mega', 'atmega2560'].includes(d)) return 'avr-mega';  // STK500v2, via flashAvrMega
         // ATtiny has no bootloader; a USBasp/USBISP dongle flashes it over
         // the ICSP header (WebUSB). The same path flashes any AVR too, but
         // those default to their bootloader above.
