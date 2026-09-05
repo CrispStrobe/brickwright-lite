@@ -33,10 +33,26 @@
  * @module
  */
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const EVIDENCE = Object.freeze({CHECKED: 'checked', DECLARED: 'declared'});
 export const STATUS = Object.freeze({SHIPPED: 'shipped', OPEN: 'open'});
+
+/**
+ * How well a capability is KNOWN, as distinct from whether this table agrees
+ * with the code (`evidence`). The vocabulary is bw-board's VERIFICATION.md.
+ * `needs` on a fact names the external oracles its tier rests on; a fact whose
+ * oracle is absent from CI is "recorded", not "standing" — that derivation
+ * belongs to the generated doc, never to a typed column.
+ */
+export const TIERS = Object.freeze({
+    '1': 'measured on real silicon, or read from the datasheet',
+    '2a': 'agrees with an independent implementation or an independently produced vector set',
+    '2b': 'agrees with a second reading of the same source',
+    '2c': 'a single implementation asserting about itself (its own tests)',
+    '3': 'asserted, unverified',
+    '4': 'known not to be modelled'
+});
 
 /** Why a native half is null. Closed set; the schema test refuses others. */
 export const REASONS = Object.freeze({
@@ -99,11 +115,19 @@ export const LANGUAGES = Object.freeze([
  * A simulator engine entry for a device.
  * @param {string} engine name, matching the picker's `emulator` where one exists
  * @param {string[]} runs artefact kinds it executes
- * @param {object} [extra] overrides (status, evidence, note)
+ * @param {object} [extra] overrides (status, evidence, tier, needs, note)
  * @returns {object} the engine fact
  */
 const eng = function (engine, runs, extra = {}) {
-    return {engine, runs, status: STATUS.SHIPPED, evidence: EVIDENCE.CHECKED, ...extra};
+    return {
+        engine,
+        runs,
+        status: STATUS.SHIPPED,
+        evidence: EVIDENCE.CHECKED,
+        tier: '2c',
+        needs: [],
+        ...extra
+    };
 };
 
 /**
@@ -111,11 +135,20 @@ const eng = function (engine, runs, extra = {}) {
  * @param {string} transport name
  * @param {string[]} accepts artefact kinds it flashes or loads
  * @param {?string} flashFamily the branch `flashFamily()` returns for it, or null
- * @param {object} [extra] overrides (status, task, evidence, note)
+ * @param {object} [extra] overrides (status, task, evidence, tier, needs, note)
  * @returns {object} the transport fact
  */
 const tx = function (transport, accepts, flashFamily, extra = {}) {
-    return {transport, accepts, flashFamily, status: STATUS.SHIPPED, evidence: EVIDENCE.CHECKED, ...extra};
+    return {
+        transport,
+        accepts,
+        flashFamily,
+        status: STATUS.SHIPPED,
+        evidence: EVIDENCE.CHECKED,
+        tier: '2c',
+        needs: [],
+        ...extra
+    };
 };
 
 const OPEN_DECLARED = {status: STATUS.OPEN, evidence: EVIDENCE.DECLARED};
@@ -148,7 +181,7 @@ export const DEVICES = Object.freeze([
     ...STC_IDS.map(id => dev(id, id.toUpperCase(), 'STC12 (8051)', '8051', {
         pickerCompile: true,
         pickerEmulator: 'emu8051',
-        sim: [eng('emu8051', ['hex'])],
+        sim: [eng('emu8051', ['hex'], {tier: '2a', needs: ['ucsim-stc']})],
         silicon: [tx('stc-isp-webserial', ['hex'], 'stc', {note: 'answers only after a cold power-on'})],
         // sdcc-wasm links five of the six STC parts locally; the STC89C52 is
         // not in its LOCAL_TARGETS, so its C still goes to the hosted SDCC.
@@ -202,6 +235,8 @@ export const DEVICES = Object.freeze([
         pickerCompile: true,
         pickerEmulator: 'stm32f0',
         sim: [eng('stm32f0', ['bin', 'hex'], {
+            tier: '2a',
+            needs: ['labwired'],
             note: 'light tier; labwired heavy tier optional, see CHOOSING-HARDWARE'
         })],
         silicon: [
@@ -213,6 +248,8 @@ export const DEVICES = Object.freeze([
         pickerCompile: false,
         pickerEmulator: null,
         sim: [eng('w65c02-bench', ['hex', 'bin', 'bas'], {
+            tier: '2a',
+            needs: ['singlesteptests-65c02'],
             note: 'chosen by seating the part; BASIC typed into the MS BASIC ROM over the ACIA'
         })],
         silicon: [tx('eeprom-programmer-webserial', ['hex', 'bin'], 'eeprom')]
@@ -220,22 +257,32 @@ export const DEVICES = Object.freeze([
     dev('z80', 'Z80 bench', 'Z80', 'z80', {
         pickerCompile: false,
         pickerEmulator: null,
-        sim: [eng('z80-bench', ['hex', 'bin', 'bas'], {note: 'BBC BASIC on the bench'})],
+        sim: [eng('z80-bench', ['hex', 'bin', 'bas'], {
+            tier: '2a',
+            needs: ['singlesteptests-z80'],
+            note: 'BBC BASIC on the bench'
+        })],
         silicon: [tx('eeprom-programmer-webserial', ['hex', 'bin'], 'eeprom')]
     }),
     dev('i8086', 'Intel 8086 (DOS bench)', '8086', 'i8086', {
         pickerCompile: false,
         pickerEmulator: null,
-        sim: [eng('i8086-machine', ['com', 'bin'])],
+        sim: [eng('i8086-machine', ['com', 'bin'], {tier: '2a', needs: ['singlesteptests-8086']})],
         silicon: [tx('com-export', ['com'], null, {...OPEN_DECLARED, task: 'N10'})]
     }),
     ...[['microbit', 'micro:bit'], ['calliopemini', 'Calliope mini']].map(([id, label]) =>
         dev(id, label, 'MicroPython', 'microbit', {
             pickerCompile: false,
             pickerEmulator: null,
-            sim: [eng('microbit-sim', ['py'], {note: 'the MicroPython simulator in its own pane'})],
+            sim: [eng('microbit-sim', ['py'], {
+                tier: '2a',
+                note: 'the real MicroPython firmware built for the browser, in its own pane'
+            })],
             silicon: [
-                tx('hex-append-download', ['py'], null, {note: 'uflash format: runtime + script, drag onto the board'}),
+                tx('hex-append-download', ['py'], null, {
+                    tier: '2b',
+                    note: 'uflash format: runtime + script, drag onto the board; our reader accepts our writer'
+                }),
                 tx('daplink-webusb', ['hex'], null, {...OPEN_DECLARED, task: 'N9'})
             ]
         })
@@ -246,6 +293,7 @@ export const DEVICES = Object.freeze([
             pickerEmulator: 'arcade',
             sim: [eng('arcade', ['ts'], {
                 evidence: EVIDENCE.DECLARED,
+                tier: '3',
                 note: 'the Arcade console runs PXT output; no SAMD51 instruction emulator'
             })],
             silicon: [
@@ -282,11 +330,20 @@ const no = function (reason, cite) {
  * @param {string} artefact an ARTEFACTS kind
  * @param {string} toolchain what produces it
  * @param {string} where 'local' | 'hosted' | 'none'
- * @param {object} [extra] note, contradiction, evidence
+ * @param {object} [extra] note, contradiction, evidence, tier, needs
  * @returns {object} the fact
  */
 const shipped = function (artefact, toolchain, where, extra = {}) {
-    return {artefact, toolchain, where, status: STATUS.SHIPPED, evidence: EVIDENCE.CHECKED, ...extra};
+    return {
+        artefact,
+        toolchain,
+        where,
+        status: STATUS.SHIPPED,
+        evidence: EVIDENCE.CHECKED,
+        tier: '2c',
+        needs: [],
+        ...extra
+    };
 };
 
 /**
@@ -331,8 +388,11 @@ const JS_MIN = 'Kaluma and Espruino need a Cortex-M with 64 KB RAM or more';
 const STC_RAM = `STC12C5A60S2: 1,280 B RAM; ${MPY_MIN}`;
 const AVR_RAM = `ATmega328P: 2 KB RAM; ${MPY_MIN}`;
 const F030 = 'STM32F030: 16–32 KB flash, 4 KB RAM';
-const MPY = shipped('py', 'MicroPython', 'none');
-const CPY = shipped('py', 'CircuitPython', 'none', {evidence: EVIDENCE.DECLARED});
+const MPY = shipped('py', 'MicroPython', 'none', {
+    tier: '2a',
+    note: 'the real interpreter; what is asserted is only the deploy protocol'
+});
+const CPY = shipped('py', 'CircuitPython', 'none', {evidence: EVIDENCE.DECLARED, tier: '3'});
 const TS = via('ts', {evidence: EVIDENCE.DECLARED});
 
 /**
@@ -347,6 +407,8 @@ export const CELLS = Object.freeze({
         javascript: {native: no('ram', `STC12C5A60S2: 1,280 B RAM; ${JS_MIN}`), lowered: [via('c')]},
         c: {
             native: shipped('hex', 'SDCC mcs51', 'local', {
+                tier: '2a',
+                needs: ['ucsim-stc'],
                 note: 'SDCC 4.5.0 as four WASM stages; the hosted service is the same compiler'
             }),
             lowered: [via('c')]
@@ -474,7 +536,13 @@ export const CELLS = Object.freeze({
             lowered: [via('c')]
         },
         basic: {native: open('bas', 'GW-BASIC (MIT, 2020)', 'none', 'N6'), lowered: [via('asm')]},
-        asm: {native: shipped('com', 'i8086-asm.js (MASM and NASM dialects)', 'local'), lowered: [via('asm')]},
+        asm: {
+            native: shipped('com', 'i8086-asm.js (MASM and NASM dialects)', 'local', {
+                tier: '2a',
+                needs: ['nasm', 'retro-corpus-8086']
+            }),
+            lowered: [via('asm')]
+        },
         micropython: {native: no('no-port', 'no MicroPython for the 8086'), lowered: [via('asm'), via('c')]}
     },
     samd51: {

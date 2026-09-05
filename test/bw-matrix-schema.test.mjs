@@ -11,14 +11,14 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-    SCHEMA_VERSION, REASONS, ARTEFACTS, LANGUAGES, DEVICES, CELLS, EVIDENCE, STATUS,
+    SCHEMA_VERSION, REASONS, ARTEFACTS, LANGUAGES, DEVICES, CELLS, EVIDENCE, STATUS, TIERS,
     cell, overall, explain, summarize, isNativeNull
 } from '../overlay/scratch-gui/src/lib/bw-matrix/capabilities.js';
 
 const programmable = DEVICES.filter(d => d.programmable !== false);
 
 test('schema version is pinned and the closed sets are frozen', () => {
-    assert.equal(SCHEMA_VERSION, 1);
+    assert.equal(SCHEMA_VERSION, 2);
     assert.ok(Object.isFrozen(REASONS) && Object.isFrozen(CELLS) && Object.isFrozen(DEVICES) && Object.isFrozen(LANGUAGES));
 });
 
@@ -68,6 +68,25 @@ test('every fact names an artefact the devices know, a status and an evidence le
         for (const e of d.sim) for (const a of e.runs) assert.ok(ARTEFACTS.includes(a), `${d.id}: engine ${e.engine} runs unknown artefact ${a}`);
         for (const t of d.silicon) for (const a of t.accepts) assert.ok(ARTEFACTS.includes(a), `${d.id}: transport ${t.transport} accepts unknown artefact ${a}`);
     }
+});
+
+test('every shipped fact carries a verification tier from the closed set and a needs list', () => {
+    const tiers = new Set(Object.keys(TIERS));
+    const check = (label, f) => {
+        if (f.status !== STATUS.SHIPPED) return;
+        assert.ok(tiers.has(String(f.tier)), `${label}: tier ${f.tier} is not in TIERS`);
+        assert.ok(Array.isArray(f.needs), `${label}: needs must be a list of oracle names`);
+        assert.ok(String(f.tier) !== '4', `${label}: a shipped fact cannot be "known not modelled"`);
+    };
+    for (const [fam, langs] of Object.entries(CELLS)) {
+        for (const [lang, c] of Object.entries(langs)) if (!isNativeNull(c.native)) check(`${fam}/${lang}`, c.native);
+    }
+    for (const d of DEVICES) {
+        for (const e of d.sim) check(`${d.id}/${e.engine}`, e);
+        for (const t of d.silicon) check(`${d.id}/${t.transport}`, t);
+    }
+    // tier 2a must say what it agrees with
+    for (const d of DEVICES) for (const e of d.sim) if (String(e.tier) === '2a') assert.ok(e.needs.length || /real/.test(e.note || ''), `${d.id}/${e.engine}: 2a with nothing named`);
 });
 
 test('a device override names a language it has a cell for, and only where/note', () => {

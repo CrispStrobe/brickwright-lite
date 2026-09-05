@@ -223,7 +223,7 @@ DoD: T2 green; the corrected cells render in T3's doc.
 
 ### Lane N — native halves to add
 
-**N1. Z80 C via SDCC `-mz80`.** Repo: stc-compiler, then lite.
+**N1. Z80 C via SDCC `-mz80`.** Repo: stc-compiler, then lite. **BUILT 2026-09-05** on stc-compiler branch `lane/z80-c-target` (`6e40fb6e`, delegate, audited by lego-ac: 21 new tests, 432 repo tests green, ten mutation proofs). The vendored SDCC 4.0.0 already had the z80 port; what was missing was `share/sdcc/lib/z80` (crt0 + z80.lib), now vendored from the same .deb the fetch script uses. Map: ROM $0000–$7FFF, RAM $8000–$FFFF from `examples/z80-pd-bench/EXPECTED.md`; `--code-loc 0x0200 --data-loc 0x8000`; stock crt0 (jp init at $0000, SP at $0000 so the first push lands at $FFFE). Also fixed: `stages.py` dropped every exported `GR` symbol (affects 8051 too). **Awaiting merge and deploy by the owner** — the hosted snapshot and the lite `compile: true` flip follow the deploy, not the branch. Lite half of the DoD (bench boot proof: `$0000 == 0xC3`, `latch1.Q0` toggles) is open.
 `generateC` already emits a `z80` core (OUT latch on port 0, shadow byte). The
 hosted service assembles Z80 (`sdasz80`, `/assemble`) but has **no Z80 C
 target** in `TARGETS`. Add `z80` to `TARGETS` with `sdcc -mz80`,
