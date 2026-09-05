@@ -191,7 +191,14 @@ let vm2 = readFileSync(vmPath2, 'utf8');
 // Pre-load declared extensions before deserialization.
 // sb3.js builds extensionIDs from block opcodes DURING deserialization, but
 // drops blocks whose extension prefix is unknown. Fix: load declared
-// extensions (builtins are sync) before the deserializer runs.
+// extensions before the deserializer runs — and WAIT for them. Since
+// 2026-09-05 (ROADMAP §2.4) the music and LEGO builtins are import()ed
+// chunks, so loadExtensionURL for them resolves later, not synchronously:
+// fire-and-forget left them "not loaded" when the extensionURLs strip below
+// ran, and installTargets then fetched the same extension a second time from
+// its gallery URL into a sandboxed worker. The method is split at the anchor:
+// deserializeProject clears, pre-loads and awaits; _bwDeserializeCleared
+// strips the URLs and continues into the upstream body.
 const deserAnchor = `    deserializeProject (projectJSON, zip) {
         // Clear the current runtime
         this.clear();`;
@@ -202,13 +209,31 @@ const deserPatch = `    deserializeProject (projectJSON, zip) {
         // Brickwright: pre-load declared extensions so their blocks survive
         // deserialization. Without this, sb3.js drops blocks whose extension
         // prefix is unknown, and the extension is never requested — circular.
+        // AWAITED: lazy builtins (music, the LEGO family) arrive as chunks, and
+        // the URL strip below must see them registered. A load that fails is
+        // not fatal here — installTargets reports it the way it always did.
+        const preloads = [];
         if (projectJSON.extensions && Array.isArray(projectJSON.extensions)) {
             for (const id of projectJSON.extensions) {
                 if (!this.extensionManager.isExtensionLoaded(id)) {
-                    this.extensionManager.loadExtensionURL(id);
+                    preloads.push(Promise.resolve(this.extensionManager.loadExtensionURL(id)).catch(() => {}));
                 }
             }
         }
+        if (preloads.length) {
+            return Promise.all(preloads).then(() => this._bwDeserializeCleared(projectJSON, zip));
+        }
+        return this._bwDeserializeCleared(projectJSON, zip);
+    }
+
+    /**
+     * Brickwright: the rest of deserializeProject, entered once every declared
+     * extension is registered. The upstream body follows.
+     * @param {object} projectJSON - the parsed project
+     * @param {?JSZip} zip - optional zipped project containing assets
+     * @returns {Promise} resolves after the project has loaded
+     */
+    _bwDeserializeCleared (projectJSON, zip) {
         // Brickwright: ids that just loaded as BUILTINS must not load a second
         // time from extensionURLs — the sb3 carries gallery URLs so the file
         // stays openable in stock TurboWarp, but here a URL load spawns a
@@ -231,15 +256,31 @@ const preloadBlock = `        if (projectJSON.extensions && Array.isArray(projec
             }
         }`;
 const stripBlock = deserPatch.slice(deserPatch.indexOf('\n        // Brickwright: ids that just loaded as BUILTINS'));
-if (vm2.includes('// Brickwright: ids that just loaded as BUILTINS')) {
-    console.log('  virtual-machine.js pre-load + URL-strip already applied');
-} else if (vm2.includes(preloadBlock)) {
-    // Older install: preload present, URL-strip missing. Append the strip —
-    // NOT a deserAnchor replace: the anchor is a SUBSTRING of the patched
-    // text and re-replacing it duplicates the preload block.
-    vm2 = vm2.replace(preloadBlock, preloadBlock + stripBlock);
+// The fire-and-forget shape this patch used until 2026-09-05: everything from
+// the anchor through the end of the URL strip. Rebuilt here so an installed
+// tree carrying it can be moved to the awaited shape in place.
+const oldDeserPatch = deserAnchor + '\n' + preloadBlock.replace(
+    `        if (projectJSON.extensions`,
+    `
+        // Brickwright: pre-load declared extensions so their blocks survive
+        // deserialization. Without this, sb3.js drops blocks whose extension
+        // prefix is unknown, and the extension is never requested — circular.
+        if (projectJSON.extensions`) + stripBlock;
+if (vm2.includes('_bwDeserializeCleared (projectJSON, zip) {')) {
+    console.log('  virtual-machine.js awaited pre-load + URL-strip already applied');
+} else if (vm2.includes(oldDeserPatch)) {
+    vm2 = vm2.replace(oldDeserPatch, deserPatch);
     writeFileSync(vmPath2, vm2);
-    console.log('  patched virtual-machine.js (added extensionURLs strip)');
+    console.log('  patched virtual-machine.js (pre-load is now awaited before the URL strip)');
+} else if (vm2.includes('// Brickwright: ids that just loaded as BUILTINS')) {
+    console.error('  ! virtual-machine.js carries an unrecognised Brickwright deserializeProject patch — reinstall scratch-vm');
+    process.exit(1);
+} else if (vm2.includes(preloadBlock)) {
+    // The 2026-08 preload-only shape. It must NOT fall through to the anchor
+    // replace below: the anchor is a SUBSTRING of that text, so replacing it
+    // would emit a second preload. Too old to migrate in place; reinstall.
+    console.error('  ! virtual-machine.js carries the pre-strip deserializeProject patch — reinstall scratch-vm (npm install) and re-run');
+    process.exit(1);
 } else if (vm2.includes(deserAnchor)) {
     vm2 = vm2.replace(deserAnchor, deserPatch);
     writeFileSync(vmPath2, vm2);
