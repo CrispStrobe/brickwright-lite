@@ -9,17 +9,35 @@
  * built or shipped, because smlrcc drives its stages with fork/exec, which
  * WebAssembly has no equivalent of -- the orchestration below IS the driver.
  *
- * The caller that turns this assembly into bytes is `bw-board/i8086-asm.js`.
- * As of this commit that assembler is MASM-dialect and rejects SmallerC's
- * output on line 1 (`BITS` is not a directive it knows); `SECTION`, `RESB` and
- * NASM's `align`/`alignb` are likewise unknown. So this module is CORRECT and
- * TESTED on its own terms and is NOT yet reachable end-to-end. Wiring it up
- * needs a NASM front end in the assembler, which lives in the vendored
- * bw-board tree (`npm run sync:bwboard` overwrites local edits) and is
- * therefore out of this module's reach. See ROADMAP.md 3.8.2b.
+ * The caller that turns this assembly into bytes is `bw-board/i8086-asm.js`,
+ * and IT READS THIS OUTPUT. This paragraph used to say the opposite -- that
+ * the assembler was MASM-dialect and refused `bits 16` on line 1 -- and that
+ * was true when it was written and stale within a day: the NASM front end
+ * landed in the vendored tree the same week and nobody re-measured. The
+ * correction is not a claim either; it is the tally
+ * `test/smallerc-to-i8086-asm.test.mjs` prints on every run, measured
+ * 2026-09-05:
  *
- * Nothing in the app imports this yet, on purpose: an unreachable compiler
- * that reports honestly beats one wired into a UI that cannot consume it.
+ *   Five of five programs the SmallerC suite compiles assemble unwrapped, and
+ *   the dialect DETECTOR reads every one of them as NASM without being told,
+ *   so there is no line-1 refusal to work around.
+ *
+ * TWO OPTIONS ARE NOT OPTIONAL for this output, and both are argued for at
+ * the place that passes them (`bw-asm/assemble-route.js`): `variant: '80186'`,
+ * because smlrc puts LEAVE in every function epilogue, and `setcc: true`,
+ * because it lowers a comparison used as a VALUE to SETcc, an 80386
+ * instruction the assembler synthesises and warns about per site.
+ *
+ * WHERE THE PIPELINE STILL ENDS, named rather than implied:
+ *   - `float` compiles and does not assemble. smlrc calls into its own
+ *     soft-float runtime and emits `extern ___fixsfsi`; this assembler writes
+ *     a flat loadable image, so there is no second module to find it in.
+ *   - `long` is refused HERE, by smlrc, not downstream: `-seg16` has no 32-bit
+ *     integer type and the parser says `Unexpected token long`.
+ *
+ * Reached from the app through `bw-asm/assemble-route.js`, whose
+ * `compileC8086` prepends the `.COM` startup SmallerC's own linker would have
+ * supplied and passes both options above. See ROADMAP.md 3.8.2b.
  */
 import {HEADERS} from './dist/headers.js';
 
@@ -108,6 +126,24 @@ async function runTool (factory, name, args, resolve, files) {
     const err = [];
     let aborted = null;
     let status = 0;
+    // THE STAGE'S EXIT CODE LEAKS INTO THE HOST PROCESS, and the `quit`
+    // option below does not stop it. Measured 2026-09-05: this Emscripten
+    // version captures `quit_` as a local before the Module options are read,
+    // so under Node it is always
+    //     quit_ = (status, toThrow) => { process.exitCode = status; throw toThrow }
+    // and `Module.quit` is never consulted. A failed compile therefore set
+    // `process.exitCode = 1` on the NODE PROCESS ITSELF, and a later
+    // successful one set it back to 0. In the browser that is nothing. Under
+    // `node --test` it means a test file whose every assertion passed exits 1
+    // if the last program it compiled was one it MEANT to fail -- a green
+    // suite reported as red, which is the inverse of the failure this repo
+    // usually hunts and just as bad.
+    //
+    // So the exit code is read (that is the only place the real status is)
+    // and then PUT BACK to whatever the host had. Restoring is the half that
+    // matters: without it a stage that succeeded would clear an exit code the
+    // host set for its own reasons.
+    const hostExitCode = IS_NODE ? process.exitCode : undefined;
     const module = await factory({
         thisProgram: name,
         arguments: args,
@@ -127,9 +163,15 @@ async function runTool (factory, name, args, resolve, files) {
         // harness documents.
         print: line => out.push(line),
         printErr: line => err.push(line),
+        // Kept because a future Emscripten may honour it again; it is not
+        // what makes `status` true today. See the note above.
         quit: code => { if (code) status = code; },
         onAbort: why => { aborted = String(why); }
     });
+    if (IS_NODE) {
+        if (!status && process.exitCode) status = process.exitCode;
+        process.exitCode = hostExitCode;
+    }
     return {module, out, err, aborted, status, text: out.concat(err).join('\n')};
 }
 
@@ -207,8 +249,10 @@ export async function compileWithToolchain (code, options, toolchain) {
         target,
         asm,
         format: 'nasm',
-        // Named so a future caller cannot mistake this for something the
-        // current i8086-asm.js can consume. See the header comment.
+        // Named, because `format: 'nasm'` alone does not say 16-bit and the
+        // caller's variant choice depends on it. `i8086-asm.js` reads this
+        // dialect -- see the header comment for what it does and does not
+        // swallow.
         dialect: 'nasm-bits16',
         warnings: pp.text.trim() ? [pp.text.trim()] : []
     };
