@@ -9,12 +9,14 @@ const script = readFileSync(join(import.meta.dirname, '..',
 test('CI-only browser gate proves record, checkpoint, reverse and automatic fork evidence', () => {
     for (const evidence of [
         'process.env.CI', 'BW_ALLOW_LOCAL_BROWSER_PROOF', 'data-debug-record',
-        'data-debug-checkpoint', 'data-debug-restore', 'data-debug-reverse-step',
+        'data-debug-checkpoint', 'data-debug-restore', 'data-debug-reverse-step', 'data-debug-run',
         "snap('checkpoint')", "snap('reversed')", "snap('forked')",
         'active child recording', 'report.json', 'diagnostics.length === 0'
     ]) assert.ok(script.includes(evidence), `missing browser proof evidence: ${evidence}`);
     assert.doesNotMatch(script, /waitForTimeout|setTimeout/,
         'the CI journey must poll observable state, never sleep a guessed duration');
+    assert.doesNotMatch(script, /name:\s*\/Run\//,
+        'the fork action must not ambiguously match the run-to control');
     assert.match(script, /process\.exit\(failed \? 1 : 0\)/,
         'missing evidence and browser diagnostics must fail the CI process');
 });

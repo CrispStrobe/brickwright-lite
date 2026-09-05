@@ -116,7 +116,7 @@ try {
     check('recording starts with checkpoint capability', true);
     await panel.getByRole('button', {name: /Under the hood/}).click();
 
-    const run = panel.getByRole('button', {name: /Run/});
+    const run = panel.locator('[data-debug-run]');
     const stepRecorded = async () => {
         await panel.getByRole('button', {name: /Step instruction/}).click();
         await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() =>
@@ -141,8 +141,7 @@ try {
     await panel.locator('[data-debug-reverse-step]:not([disabled])').waitFor({timeout: 15000});
     await panel.locator('[data-debug-reverse-step]').click();
     await page.waitForFunction(() => !document.querySelector('[data-debug-reverse-refusal]') &&
-        [...document.querySelectorAll('button')].some(button =>
-            /Run/.test(button.textContent || '') && !button.disabled), null, {timeout: 20000});
+        !document.querySelector('[data-debug-run]')?.disabled, null, {timeout: 20000});
     check('reverse step reaches an earlier verified retire without refusal', true);
     await snap('reversed');
 

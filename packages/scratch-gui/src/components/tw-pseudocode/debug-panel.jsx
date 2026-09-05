@@ -744,6 +744,7 @@ class DebugPanel extends React.Component {
                 ) : null}
                 <div style={{display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap'}}>
                     <button
+                        data-debug-run
                         style={running || busy ? OFF : {...BTN, borderColor: '#2ecc71', color: '#2ecc71'}}
                         disabled={running || busy}
                         onClick={this.onStart}
