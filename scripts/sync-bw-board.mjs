@@ -203,6 +203,28 @@ const OLD_PIN = await readFile(new URL('../vendor-pins.json', import.meta.url), 
     .then(t => JSON.parse(t)['bw-board'] ?? null)
     .catch(() => null);
 
+// --only <a.js,b.js>: restrict the sync to named files.
+//
+// WHY THIS EXISTS, added 2026-09-05 while bumping the pin for the first time
+// in months. 28 files differed, and measuring direction per file showed they
+// point BOTH WAYS: lite is behind on i8259 (32 lite-only lines against 156
+// upstream) and ahead on i8086-debug (232 against 12). A blanket --force
+// would have taken the five files the bump actually needs and destroyed
+// roughly 900 lines of forward-ported debugger work to get them.
+//
+// The refusal above is right that content cannot tell direction. What it
+// cannot do is act on a direction a human HAS established. Without --only the
+// choice was all-or-nothing, and all-or-nothing under time pressure is how
+// the nothing stops being chosen.
+//
+// The guard still applies to the named files: --only narrows WHAT is
+// considered, it does not weaken WHAT IS CHECKED. A file that is genuinely
+// behind still needs --force, and that force is now scoped to it.
+const onlyIdx = process.argv.indexOf('--only');
+const only = onlyIdx !== -1 && process.argv[onlyIdx + 1]
+    ? new Set(process.argv[onlyIdx + 1].split(',').map((s) => s.trim()).filter(Boolean))
+    : null;
+
 // THE ALLOW-LIST EXPLAINS; THIS MEASURES. The named entries above cover ONE
 // file, because it is the one whose divergence someone sat down and wrote up.
 // I found out what that was worth by running this script for real against
@@ -296,6 +318,7 @@ if (await pinAlreadyMoved()) {
 await mkdir(dest, {recursive: true});
 let stale = 0;
 for (const rel of FILES) {
+    if (only && !only.has(path.basename(rel))) continue;
     // Keep the layout under src/ rather than flattening to a basename: a file
     // in devices/ imports its siblings by relative path, and flattening would
     // break every one of them.

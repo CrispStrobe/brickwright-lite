@@ -101,7 +101,21 @@ export function buildI8086CapabilityReport() {
         // in fact two limitations were lifted. The anchor now names the one
         // limitation that remains, so the row fails again only if that changes.
         ['8254', 'Modes 0-5 and BCD decades; no sub-instruction timing', 'overlay/scratch-gui/src/lib/bw-board/i8254.js', /STILL NO SUB-INSTRUCTION TIMING/],
-        ['8259', 'One fixed-priority controller; no rotation, poll, cascade, or trigger-mode distinction', 'overlay/scratch-gui/src/lib/bw-board/i8259.js', /NO PRIORITY ROTATION/],
+        // RE-ANCHORED 2026-09-05 with the pin bump, text and anchor together.
+        // Rotation, poll mode and special mask mode landed upstream, so
+        // /NO PRIORITY ROTATION/ stopped matching -- and the discriminator
+        // called it correctly: "boundary MOVED, not lost ... a doc update, not
+        // a regression". First real case it handled, and it routed to a doc
+        // edit instead of sending someone hunting a regression.
+        //
+        // Anchored on LEVEL-SENSED rather than ONE CONTROLLER. Both are still
+        // true and both now occur exactly once, but LEVEL-SENSED is the
+        // limitation least likely to be lifted next, so it is the one that
+        // costs the fewest re-anchors. ONE CONTROLLER matched TWICE until this
+        // afternoon, because a stale summary line repeated it while also
+        // claiming FIXED PRIORITY in the very commit that implemented
+        // rotation; the ambiguity check would now catch that.
+        ['8259', 'Modes and priority rotation, poll and special mask; one controller, no cascaded slave; level-sensed, no LTIM edge/level distinction', 'overlay/scratch-gui/src/lib/bw-board/i8259.js', /LEVEL-SENSED/],
         ['8251', 'Byte protocol only; no bit timing, parity/framing, or synchronous data path', 'overlay/scratch-gui/src/lib/bw-board/i8251.js', /NO BIT TIMING/],
         ['8237', 'Programmer-visible transfer model without bus-cycle arbitration', 'overlay/scratch-gui/src/lib/bw-board/i8237.js', /programmer-visible register model, cycle-count-free/i],
         ['uPD765', 'Sector-level phase machine; no magnetic encoding or physical drive timing', 'overlay/scratch-gui/src/lib/bw-board/upd765.js', /ACCURACY TIER: SECTOR-LEVEL, PHASE-EXACT/],
