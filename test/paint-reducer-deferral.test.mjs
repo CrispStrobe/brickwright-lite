@@ -34,6 +34,10 @@ test('the paint module is requested once, installed before render and retryable 
         '../overlay/scratch-gui/src/lib/app-state-hoc.jsx', import.meta.url), 'utf8');
     const wrapper = readFileSync(new URL(
         '../overlay/scratch-gui/src/containers/paint-editor-wrapper.jsx', import.meta.url), 'utf8');
+    const reducerBridge = readFileSync(new URL(
+        '../overlay/scratch-gui/src/lib/lazy-paint-reducer.js', import.meta.url), 'utf8');
+    const editorBridge = readFileSync(new URL(
+        '../overlay/scratch-gui/src/lib/lazy-paint-editor.jsx', import.meta.url), 'utf8');
     const publicIndex = readFileSync(new URL(
         '../packages/scratch-gui/src/index.js', import.meta.url), 'utf8');
     const paintReducer = readFileSync(new URL(
@@ -54,6 +58,18 @@ test('the paint module is requested once, installed before render and retryable 
         'the real reducer must be installed before a paint child can render');
     assert.match(wrapper, /setTimeout\(resolve, 0\)/,
         'module evaluation and editor render must use fresh task boundaries');
+    assert.match(wrapper, /webpackChunkName: "paint-reducer"[\s\S]*\.\.\/lib\/lazy-paint-reducer/);
+    assert.match(wrapper, /webpackChunkName: "paint-editor"[\s\S]*\.\.\/lib\/lazy-paint-editor\.jsx/);
+    assert.doesNotMatch(wrapper, /import\([^)]*['"]scratch-paint(?:['"]|\/)/,
+        'the wrapper must not bypass the named local bridges');
+    assert.match(reducerBridge,
+        /from 'scratch-paint\/src\/reducers\/scratch-paint-reducer'/);
+    assert.doesNotMatch(reducerBridge, /from 'scratch-paint'/,
+        'the reducer bridge must not import the package root and editor');
+    assert.match(editorBridge,
+        /from 'scratch-paint\/src\/containers\/paint-editor\.jsx'/);
+    assert.doesNotMatch(editorBridge, /from 'scratch-paint'/,
+        'the editor bridge must not import the package root and reducer');
     assert.match(wrapper, /shouldComponentUpdate \(nextProps, nextState\)/);
     assert.match(wrapper, /generation !== this\.loadGeneration/);
     assert.match(wrapper, /Retry costume editor/);

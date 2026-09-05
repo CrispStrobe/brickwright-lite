@@ -17,7 +17,7 @@ const loadPaintReducer = () => {
     if (!paintReducerRequest) {
         paintReducerRequest = import(
             /* webpackChunkName: "paint-reducer" */
-            'scratch-paint/src/reducers/scratch-paint-reducer'
+            '../lib/lazy-paint-reducer'
         ).catch(error => {
             paintReducerRequest = null;
             throw error;
@@ -29,7 +29,7 @@ const loadPaintReducer = () => {
 let paintEditorRequest = null;
 const loadPaintEditor = () => {
     if (!paintEditorRequest) {
-        paintEditorRequest = import(/* webpackChunkName: "paint-editor" */ 'scratch-paint')
+        paintEditorRequest = import(/* webpackChunkName: "paint-editor" */ '../lib/lazy-paint-editor.jsx')
             .catch(error => {
                 paintEditorRequest = null;
                 throw error;

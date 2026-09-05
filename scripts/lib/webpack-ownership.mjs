@@ -221,6 +221,12 @@ export const assertLazyPaintEditorBoundary = report => {
     const activation = report.lazyPaintActivation;
     if (!activation?.reducer?.found) failures.push('the named paint-reducer chunk is missing');
     if (!activation?.editor?.found) failures.push('the named paint-editor chunk is missing');
+    if (activation?.reducer?.found && !activation.reducer.files.length) {
+        failures.push('the named paint-reducer chunk emitted no JavaScript asset');
+    }
+    if (activation?.editor?.found && !activation.editor.files.length) {
+        failures.push('the named paint-editor chunk emitted no JavaScript asset');
+    }
     if (activation?.reducer?.initial) failures.push('paint-reducer became an initial chunk');
     if (activation?.editor?.initial) failures.push('paint-editor became an initial chunk');
     if (activation?.reducer?.files?.some(file => activation.editor.files.includes(file))) {
