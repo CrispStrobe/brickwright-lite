@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "candidates": {
+    "z80": {
+      "repository": "floooh/chips",
+      "commit": "ca7d7ddd3ba77b48685d24120cf413ea53786767",
+      "license": "Zlib",
+      "decision": "qualify",
+      "licensePath": "LICENSE",
+      "sourcePaths": ["chips/z80.h"],
+      "sourceSha256": {
+        "chips/z80.h": "6ca70ffd91b1bdbaf00f7a41e7092b326145fd1c95dcdd7bb01183370de734f3",
+        "LICENSE": "0c692ece632a8ec6d2a566c9234fdabda655644e6abc70027da9ff7c35e48634"
+      },
+      "oracle": {
+        "repository": "SingleStepTests/z80",
+        "commit": "ebe1875d48f374bcfd4b505d8eb8ee751568b5f7",
+        "license": "MIT"
+      }
+    },
+    "w65c02": {
+      "repository": "raddad772/jsmoo",
+      "commit": "b6cc506e7c2f7b2b14cce6e98d0463467eb8c4d6",
+      "license": "MIT",
+      "decision": "reject",
+      "rejection": "upstream serializer changes the status-register B latch during restore",
+      "licensePath": "license.txt",
+      "sourcePaths": [
+        "component/cpu/m6502/m6502.js",
+        "component/cpu/m6502/m6502_opcodes.js",
+        "component/cpu/m6502/m65c02_generated_opcodes.js"
+      ],
+      "sourceSha256": {
+        "component/cpu/m6502/m6502.js": "6363eb6e89b1fe34fc7a9b69d8c299b165987d5b21d2111c3bca2a363dac4de9",
+        "component/cpu/m6502/m6502_opcodes.js": "175911b30b70119598af5fffdc711892cb530336500b9488e7b2ec68cda28e27",
+        "component/cpu/m6502/m65c02_generated_opcodes.js": "6e5b44880c4dbde2817880522a46adc7a33e752851850f83eb7fd234e4da8593",
+        "license.txt": "e3b290c7f726dbd375089cbe0290cb0496f3a6ccd54972f1b3f914e58703d03a"
+      },
+      "oracle": {
+        "repository": "SingleStepTests/65x02",
+        "commit": "2f6980a2d95757486c7bee24355c360e40e2a224",
+        "license": "MIT"
+      }
+    }
+  }
+}

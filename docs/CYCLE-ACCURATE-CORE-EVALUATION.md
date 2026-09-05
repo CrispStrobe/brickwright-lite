@@ -40,6 +40,13 @@ Until a W65C02 candidate passes those gates, expose predicted instruction
 timing only and keep cycle/reverse-cycle controls unavailable. Do not relabel a
 cycle countdown as bus evidence.
 
+The first isolated run at the pinned JSMoo revision found a concrete snapshot
+defect: its own status-register deserializer forces the B latch to one, so a
+save/restore changes `regs.P` even though the following short bus trace happens
+to match. The hosted lane records this as an expected rejection, not a waiver;
+JSMoo cannot be promoted unless a reviewed wrapper serializes and restores each
+flag exactly and the complete qualification set then passes.
+
 ## Intel 8086/8088
 
 An instruction timing total or post-hoc bus schedule is not cycle-accurate.

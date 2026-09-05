@@ -1,0 +1,74 @@
+name: cycle-core-qualification
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '41 3 * * 3'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/cycle-core-qualification.yml'
+      - 'docs/DEBUGGER-NEXT-ROADMAP.md'
+      - 'docs/CYCLE-ACCURATE-CORE-EVALUATION.md'
+      - 'scripts/qualify-cycle-candidates.mjs'
+      - 'scripts/fixtures/qualify-floooh-z80.c'
+      - 'scripts/fixtures/qualify-jsmoo-w65c02.mjs'
+      - 'test/fixtures/cycle-core-candidates.json'
+      - 'test/cycle-core-qualification.test.mjs'
+  pull_request:
+    paths:
+      - '.github/workflows/cycle-core-qualification.yml'
+      - 'scripts/qualify-cycle-candidates.mjs'
+      - 'scripts/fixtures/qualify-floooh-z80.c'
+      - 'scripts/fixtures/qualify-jsmoo-w65c02.mjs'
+      - 'test/fixtures/cycle-core-candidates.json'
+      - 'test/cycle-core-qualification.test.mjs'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cycle-qualification-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qualify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: floooh/chips
+          ref: ca7d7ddd3ba77b48685d24120cf413ea53786767
+          path: .cycle-candidates/z80
+          sparse-checkout: |
+            chips/z80.h
+            LICENSE
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: raddad772/jsmoo
+          ref: b6cc506e7c2f7b2b14cce6e98d0463467eb8c4d6
+          path: .cycle-candidates/w65c02
+          sparse-checkout: |
+            component/cpu/m6502
+            license.txt
+      - name: Compile the pinned native Z80 microstep runner
+        run: cc -std=c99 -O2 -I .cycle-candidates/z80/chips scripts/fixtures/qualify-floooh-z80.c -o "$RUNNER_TEMP/qualify-z80"
+      - name: Qualify pinned cycle candidates
+        env:
+          CI: '1'
+          CYCLE_CANDIDATE_ROOT: ${{ github.workspace }}/.cycle-candidates
+          CYCLE_QUALIFICATION_OUTPUT: ${{ github.workspace }}/artifacts/cycle-core-qualification/report.json
+          Z80_QUALIFICATION_RUNNER: ${{ runner.temp }}/qualify-z80
+          W65C02_QUALIFICATION_RUNNER: ${{ github.workspace }}/scripts/fixtures/qualify-jsmoo-w65c02.mjs
+        run: node scripts/qualify-cycle-candidates.mjs
+      - name: Static qualification contracts
+        if: always()
+        run: node --test test/cycle-core-qualification.test.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: cycle-core-qualification
+          path: artifacts/cycle-core-qualification/**
+          if-no-files-found: error

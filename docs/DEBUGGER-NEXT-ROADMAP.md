@@ -12,7 +12,7 @@ overlay/package parity, static workflow contracts and short smoke tests.
 
 | step | deliverable | acceptance evidence | state |
 | --- | --- | --- | --- |
-| 1 | CI-only qualification harnesses for candidate Z80 and W65C02 cycle cores | pinned-source provenance; retire corpus; non-empty bus traces; reset/IRQ/NMI/HALT or WAI/STP vectors; snapshot-at-every-microstep replay hashes; bounded transfer receipts | planned |
+| 1 | CI-only qualification harnesses for candidate Z80 and W65C02 cycle cores | pinned-source provenance; retire corpus; non-empty bus traces; reset/IRQ/NMI/HALT or WAI/STP vectors; snapshot-at-every-microstep replay hashes; bounded transfer receipts | in progress — dedicated hosted lane, hash-pinned source/license inventory and native microstep smoke landed; corpus/interrupt/size receipts remain |
 | 2 | opt-in floooh/chips Z80 provider | explicit provider selection; fast core remains default; recorded pin cycles; resumable versioned snapshots; unavailable module fails closed; browser cost receipt | blocked by step 1 qualification |
 | 3 | qualified JSMoo W65C02 provider | CMOS corpus and bus/snapshot gates pass before vendoring; opt-in selection; fast core remains default; rejected candidate leaves cycle controls unavailable | blocked by step 1 qualification |
 | 4 | waveform and timing views | bounded address/data/control/pin lanes aligned to the canonical cursor; trigger navigation; zoom/range controls; VCD/JSON export; recorded/reconstructed provenance visible | planned |
