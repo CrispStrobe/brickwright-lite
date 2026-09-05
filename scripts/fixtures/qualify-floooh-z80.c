@@ -72,10 +72,26 @@ int main(void) {
         if (point == 0) first = expected;
         snapshot_points++;
     }
+    machine_t irq;
+    memset(&irq, 0, sizeof(irq));
+    irq.mem[0] = 0x76; /* HALT */
+    irq.mem[0x0038] = 0x00;
+    irq.pins = z80_init(&irq.cpu);
+    irq.cpu.iff1 = irq.cpu.iff2 = true;
+    bool halt_seen = false;
+    bool int_ack_seen = false;
+    for (int tick = 0; tick < 80; tick++) {
+        if (tick == 16) irq.pins |= Z80_INT;
+        const uint64_t pins = service(&irq);
+        halt_seen = halt_seen || (pins & Z80_HALT);
+        int_ack_seen = int_ack_seen || ((pins & (Z80_M1 | Z80_IORQ)) == (Z80_M1 | Z80_IORQ));
+        if ((pins & (Z80_M1 | Z80_IORQ)) == (Z80_M1 | Z80_IORQ)) Z80_SET_DATA(irq.pins, 0xff);
+    }
     printf("{\"schema\":1,\"ticks\":48,\"traceHash\":\"%016llx\","
            "\"snapshotReplay\":%s,\"snapshotPoints\":%u,\"memory8000\":%u,"
-           "\"controlMask\":%u}\n",
+           "\"controlMask\":%u,\"haltSeen\":%s,\"interruptAcknowledgeSeen\":%s}\n",
         (unsigned long long)first, equal ? "true" : "false", snapshot_points,
-        m.mem[0x8000], controls);
-    return equal && snapshot_points == 42 && m.mem[0x8000] == 0x2a && (controls & 15) == 15 ? 0 : 1;
+        m.mem[0x8000], controls, halt_seen ? "true" : "false", int_ack_seen ? "true" : "false");
+    return equal && snapshot_points == 42 && m.mem[0x8000] == 0x2a && (controls & 15) == 15 &&
+        halt_seen && int_ack_seen ? 0 : 1;
 }

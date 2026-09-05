@@ -47,6 +47,9 @@ if (runner) {
     check('floooh Z80 emits non-empty recorded control activity',
         Number.isSafeInteger(report?.controlMask) && (report.controlMask & 15) === 15,
         report ? `mask ${report.controlMask}` : 'no report');
+    check('floooh Z80 HALT and interrupt acknowledge are observable cycle boundaries',
+        report?.haltSeen === true && report?.interruptAcknowledgeSeen === true,
+        report ? JSON.stringify(report) : 'no report');
 } else {
     check('floooh Z80 native runner supplied', false, 'Z80_QUALIFICATION_RUNNER is required');
 }

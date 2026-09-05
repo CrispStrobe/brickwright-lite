@@ -45,6 +45,7 @@ jobs:
           sparse-checkout: |
             chips/z80.h
             LICENSE
+          sparse-checkout-cone-mode: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: raddad772/jsmoo
@@ -53,6 +54,7 @@ jobs:
           sparse-checkout: |
             component/cpu/m6502
             license.txt
+          sparse-checkout-cone-mode: false
       - name: Compile the pinned native Z80 microstep runner
         run: cc -std=c99 -O2 -I .cycle-candidates/z80/chips scripts/fixtures/qualify-floooh-z80.c -o "$RUNNER_TEMP/qualify-z80"
       - name: Qualify pinned cycle candidates

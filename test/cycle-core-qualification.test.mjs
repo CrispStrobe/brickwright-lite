@@ -25,6 +25,7 @@ test('heavy qualification is hosted, bounded, fail-closed and retains evidence',
     assert.match(qualifier, /snapshot replay is byte-identical/);
     assert.match(qualifier, /snapshots replay from every exercised microstep/);
     assert.match(qualifier, /non-empty recorded control activity/);
+    assert.match(qualifier, /HALT and interrupt acknowledge are observable cycle boundaries/);
     assert.match(qualifier, /JSMoo W65C02 promotion decision matches replay evidence/);
     assert.match(qualifier, /JSMoo W65C02 emits non-empty bus activity/);
 });
