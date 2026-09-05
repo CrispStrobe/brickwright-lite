@@ -229,6 +229,18 @@ nothing about who wrote it.
 Recorded by the session that was advocating this while being the least identifiable participant in
 the repository, which is the only reason the numbers above were measured at all.
 
+**Re-measured 2026-09-05, and the rule is not taking.** Of the last 25 commits on main, **2 carry a
+trailer and both are mine**; over the last 100, 31 do and 69 do not. So adoption went from "everyone
+but me" to "only me", which is not progress, it is the same problem with the names swapped.
+
+**How that number is counted is itself a gate that cannot fail, and it caught me.** My first
+re-measurement said 78 trailered commits across 6 sessions and I was about to write it down as
+evidence the rule had landed. It was `git log --since=… --format='%b' | grep -oE 'session_[A-Za-z0-9]+'`
+— which counts the string ANYWHERE in a body, so every commit that QUOTES a session id in prose
+(this file's own notices, every message about attribution) counts as an attribution. The metric
+counted discussion of the rule as compliance with it, and discussion was the thing there was most of.
+Count commits whose trailer LINE matches, one commit at a time; never grep a concatenated log.
+
 ## CLAIMS — work in progress
 
 | lane | who | started | what |
