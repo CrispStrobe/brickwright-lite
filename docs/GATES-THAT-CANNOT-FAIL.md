@@ -33,6 +33,77 @@ was any way to find the ones already written.
 > `KNOWN_SWALLOWED` in `gate-coverage` is empty. Passages below that describe its sdcc
 > prerequisite in the present tense are annotated where they occur.
 
+## READ THE INDEX IN THIS ORDER INSTEAD (2026-09-05)
+
+The index above is sorted by when I found each species, which is close to
+useless — it is a diary, not a triage. The kerotakis lane and the 8086
+coverage lane arrived at the same reordering independently, and it is sharper
+than anything in this file:
+
+> **Sort by whether the check currently PASSES.**
+>
+> A failing one is already on someone's list. A *passing* check that cannot
+> reach what it names is a false statement about coverage that has been
+> believed, possibly for months, and it is strictly more dangerous.
+
+The coverage lane's census is the evidence: both soft-skip idioms it found
+were in the passing column, *"which is why a census found them and a year of
+green runs didn't."*
+
+The corollary is worth stating because it explains why these survive:
+**nobody thanks you for fixing a passing one.** The visible state before and
+after is identical — green to green. There is no moment where anything looks
+better. That is not a reason to skip them; it is the reason they are still
+here.
+
+### The two columns
+
+**Column A — found because something went RED.** These announced themselves.
+Species 12 (positional subject), 14 (timeout-as-value), 15
+(shadowed-by-precondition) and its cousin, 17 (the prerequisite that was
+never real). Ordinary debugging found each one; they cost an afternoon.
+
+**Column B — found only by going and looking, while everything was green.**
+Species 1 (spelling, not behaviour), 10 (the cached value), 13
+(swallowed-precondition), 16 (the fix whose only gate is skipped), 18
+(absence cannot name its cause), 19 (where code lives is not whether it
+runs), 20 (a check reporting on the environment it ran in), and the whole
+absent-hardware family below.
+
+Every one in column B was believed. Species 10 was believed twice — it came
+back and reached master.
+
+**I do not know the current pass/fail state of all twenty**, and I am not
+going to assert it from memory; today alone I have quoted a stale sha, a dead
+address, and a divergence count that had been wrong for a day. What the two
+columns above record is how each was *found*, which is verifiable from this
+file. Turning that into a live pass/fail column is mechanisable — that is the
+next piece of work on this document, not a claim about it.
+
+## The absent-device rule, in its strongest form
+
+From the 8086 coverage lane, and better than the version I had been using:
+
+> An absent 8255 reads open-bus `FFh`. But **`FFh` is a CONSTANT and the walk
+> is a SEQUENCE**, so it diverges at edge 0 — `0x01` expected, `0xFF` seen —
+> and never reads as a match.
+
+Mine required knowing what the absent device reads as, and I wrote three
+probes that each depended on a specific value: `EOC` low for the ADC, `'WW'`
+at PROM offset 28 for the NE2000, the tick advancing for the scheduler. Every
+one of those is a guess about the failure mode, and a wrong guess is a probe
+that passes.
+
+**Constant-versus-sequence needs no such guess.** `0xFF`, `0x00`, floating
+garbage, a device that latches the last value written — none of it matters,
+because a single held value cannot be a walk. The probe is not "does it read
+what a present device would read", it is "does it read something a *held
+line* cannot produce". That is a property of the stimulus, which you control,
+rather than of the absent hardware, which you are guessing about.
+
+Design the stimulus so that absence cannot imitate it, and you no longer need
+to know what absence looks like.
+
 ## The nine (eleven rows — see the index above)
 
 | # | Mechanism | How it was found | Mechanical? |
