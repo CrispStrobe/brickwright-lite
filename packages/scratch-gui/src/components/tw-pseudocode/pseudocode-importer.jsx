@@ -1648,8 +1648,19 @@ class PseudocodeImporter extends React.Component {
     switchTab (to) {
         const from = this.state.lang;
         if (to === from || this.state.busy) return;
-        // ASM tab: just switch — author mode by default, listing on demand
-        if (to === 'asm') { this.setState({lang: 'asm', output: null, status: ''}); return; }
+        // ASM tab: author mode just switches. Listing mode must RE-DERIVE: the
+        // listing belongs to the program as it is now, and the program may have
+        // changed since the listing was built (To blocks, an edit in another
+        // tab). fetchAsmListing() hashes the derived C and serves the cache when
+        // nothing changed, so this costs nothing for an unchanged program.
+        // Measured before this branch existed: a changed program re-entered the
+        // tab and downloaded the OLD 37,410-char listing for 120 s
+        // (verify-local-asm-listing, run 33984595568).
+        if (to === 'asm') {
+            if (this.state.asmMode === 'listing') { this.fetchAsmListing(); return; }
+            this.setState({lang: 'asm', output: null, status: ''});
+            return;
+        }
         const existing = this.state.buffers[to];
         const src = this.state.buffers[from];
         if ((existing && existing.trim()) || !src || !src.trim()) { this.setState({lang: to, output: null, status: ''}); return; }
