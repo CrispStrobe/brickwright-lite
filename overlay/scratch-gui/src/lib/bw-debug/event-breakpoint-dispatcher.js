@@ -104,7 +104,8 @@ export function createEventBreakpointDispatcher ({engine, handlers = {}, recordi
                 pendingEntries.map(entry => entry.triggerEventSeq) :
                 (hasDecision(plan) ? [event.seq] : []);
             if (isRetire) pending = [];
-            const outcome = executeBreakpointPlan(executable, effectiveHandlers, context);
+            const outcome = executeBreakpointPlan(executable, effectiveHandlers,
+                {...context, triggerEventSeqs});
             return {
                 suppressed: false, reason: null, event, plan: executable, outcome,
                 deferred: false, flushedPlans, triggerEventSeqs, failure: null

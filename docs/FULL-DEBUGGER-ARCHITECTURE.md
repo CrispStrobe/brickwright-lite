@@ -424,6 +424,16 @@ kept as bounded observable data, and verified replay is explicitly bracketed
 so it cannot consume one-shot/count state or repeat actions. Other targets stay
 observer-only until they expose an equally proven non-reentrant boundary latch.
 
+Breakpoint definitions now have defensive summaries and generation-checked
+list/enable/disable/remove/clear lifecycle operations, so a delayed control
+cannot mutate a replacement that reused the same ID. The drawer shows bounded
+action failures, log entries and counters without reading event or checkpoint
+payloads. Target reattachment clears pending plans and rebinds the canonical
+producer; dispatcher overflow or exceptions pause visibly instead of losing
+breakpoint truth. Moving forward after a reverse marks the abandoned future as
+branched and refuses further reverse navigation until a new recording epoch is
+started.
+
 ### Slice 4 — timeline workspace
 
 - event cursor and synchronized panes;

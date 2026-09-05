@@ -52,6 +52,58 @@ test('applies ignore, modulo and exact hit counts and disables one-shot breakpoi
     assert.deepEqual(ids, [[], [], ['periodic', 'third'], [], ['periodic']]);
 });
 
+test('lifecycle summaries are defensive and expose no compiled predicates or action payloads', () => {
+    const engine = new EventBreakpointEngine(capabilities, {compile: () => ({test: () => true})});
+    const added = engine.add({id: 'safe', kind: 'execute', address: 7,
+        condition: 'secret expression', actions: [{type: 'log', template: 'secret'}, {type: 'halt'}]});
+    assert.equal(added.ok, true);
+    assert.equal(typeof added.breakpoint.test, 'undefined');
+    assert.deepEqual(added.breakpoint.actionTypes, ['log', 'halt']);
+    assert.equal(Object.hasOwn(added.breakpoint, 'actions'), false);
+    assert.equal(Object.hasOwn(added.breakpoint, 'condition'), false);
+
+    added.breakpoint.actionTypes.push('write');
+    added.breakpoint.requiredEventKinds.push('device');
+    added.breakpoint.enabled = false;
+    const listed = engine.list()[0];
+    assert.deepEqual(listed.actionTypes, ['log', 'halt']);
+    assert.deepEqual(listed.requiredEventKinds, ['instruction']);
+    assert.equal(listed.enabled, true);
+    assert.equal(typeof listed.test, 'undefined');
+});
+
+test('generation-safe lifecycle rejects stale controls when an id is reused', () => {
+    const engine = new EventBreakpointEngine(capabilities);
+    const first = engine.add({id: 'same', kind: 'execute', address: 1}).breakpoint;
+    assert.equal(engine.add({id: 'same', kind: 'execute', address: 2}).refusal.code, 'duplicate-id');
+    assert.equal(engine.disable('same', first.generation), true);
+    assert.equal(engine.list()[0].enabled, false);
+    assert.equal(engine.enable('same', first.generation), true);
+    assert.equal(engine.enable('same', first.generation), false,
+        'an idempotent control is not a new breakpoint generation');
+    assert.equal(engine.remove('same', first.generation), true);
+
+    const replacement = engine.add({id: 'same', kind: 'execute', address: 2}).breakpoint;
+    assert.notEqual(replacement.generation, first.generation);
+    assert.equal(engine.disable('same', first.generation), false);
+    assert.equal(engine.setEnabled('same', false, first.generation), false);
+    assert.equal(engine.remove('same', first.generation), false);
+    assert.equal(engine.list()[0].enabled, true);
+    assert.equal(engine.evaluate({kind: 'instruction', pcBefore: 2}).matchingIds[0], 'same');
+});
+
+test('clear returns its count, empties summaries, and never recycles generations', () => {
+    const engine = new EventBreakpointEngine(capabilities);
+    const first = engine.add({id: 'one', kind: 'execute', address: 1}).breakpoint;
+    engine.add({id: 'two', kind: 'execute', address: 2});
+    assert.equal(engine.clear(), 2);
+    assert.deepEqual(engine.list(), []);
+    assert.equal(engine.clear(), 0);
+    const later = engine.add({id: 'one', kind: 'execute', address: 3}).breakpoint;
+    assert.ok(later.generation > first.generation);
+    assert.equal(engine.disable('one', first.generation), false);
+});
+
 test('supports event, time and context count predicates', () => {
     const engine = new EventBreakpointEngine(capabilities);
     engine.add({id: 'any-port', kind: 'event', eventKind: 'port'});

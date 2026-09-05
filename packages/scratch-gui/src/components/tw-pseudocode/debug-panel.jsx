@@ -78,7 +78,9 @@ const L10N = {
         reverseHint: 'Restore and replay to the previous recorded instruction',
         reverseContinueHint: 'Restore and replay to the previous recorded breakpoint halt',
         timeline: 'Timeline', timelineRefresh: 'Read events', timelineOlder: 'Older',
-        timelineNewer: 'Newer', timelineLatest: 'Latest', timelineCheckpoint: 'Last checkpoint'
+        timelineNewer: 'Newer', timelineLatest: 'Latest', timelineCheckpoint: 'Last checkpoint',
+        actionActivity: 'Breakpoint actions', actionFailures: 'Failures',
+        actionLog: 'Log', actionCounters: 'Counters', actionEvent: 'event'
     },
     de: {
         run: 'Start', pause: 'Pause', step: 'Schritt', reverseStep: 'Zurück',
@@ -114,7 +116,9 @@ const L10N = {
         reverseHint: 'Zum vorherigen aufgezeichneten Befehl zurückkehren und verifiziert abspielen',
         reverseContinueHint: 'Zum vorherigen aufgezeichneten Haltepunkt zurückkehren und verifiziert abspielen',
         timeline: 'Zeitleiste', timelineRefresh: 'Ereignisse lesen', timelineOlder: 'Älter',
-        timelineNewer: 'Neuer', timelineLatest: 'Neueste', timelineCheckpoint: 'Letzter Prüfpunkt'
+        timelineNewer: 'Neuer', timelineLatest: 'Neueste', timelineCheckpoint: 'Letzter Prüfpunkt',
+        actionActivity: 'Haltepunkt-Aktionen', actionFailures: 'Fehler',
+        actionLog: 'Protokoll', actionCounters: 'Zähler', actionEvent: 'Ereignis'
     }
 };
 
@@ -688,6 +692,15 @@ class DebugPanel extends React.Component {
             String(timeline.selectedSeq) !== String(timeline.lastSeq));
         const timelineRefusal = this.state.timelineStatus?.accepted === false ?
             this.state.timelineStatus.code : null;
+        // This is a bounded summary API: no event bodies, target snapshots or
+        // checkpoint payloads cross the render path. Cap the visible tail too,
+        // so a crowded action setup cannot grow the panel without bound.
+        const actionStatus = this.state.runner ?
+            this.state.runner.eventBreakpointActionStatus() : null;
+        const actionFailures = (actionStatus?.failures || []).slice(-3);
+        const actionLog = (actionStatus?.log || []).slice(-3);
+        const actionCounters = Object.entries(actionStatus?.counters || {}).slice(-4);
+        const hasActionStatus = actionFailures.length || actionLog.length || actionCounters.length;
 
         const inferredBoard = this.state.boardSource === 'inferred';
         return (
@@ -888,6 +901,34 @@ class DebugPanel extends React.Component {
                         {timelineRefusal}
                     </span> : null}
                 </div>
+
+                {hasActionStatus ? (
+                    <div data-debug-event-action-status style={{display: 'flex', gap: 10,
+                        alignItems: 'flex-start', flexWrap: 'wrap', fontSize: 11,
+                        border: '1px solid #2c3e50', borderRadius: 4, padding: '5px 7px'}}>
+                        <strong>{this.tx('actionActivity')}</strong>
+                        {actionFailures.length ? (
+                            <span data-debug-event-action-failures role="status" style={{color: '#ff9f8f'}}>
+                                {`${this.tx('actionFailures')}: ${actionFailures.map(item =>
+                                    `${item.breakpointId || '?'} ${item.actionType || '?'} ` +
+                                    `${item.code || item.message || '?'}`).join(' · ')}`}
+                            </span>
+                        ) : null}
+                        {actionLog.length ? (
+                            <span data-debug-event-action-log>
+                                {`${this.tx('actionLog')}: ${actionLog.map(item =>
+                                    `${item.breakpointId || '?'} (${this.tx('actionEvent')} ` +
+                                    `${item.eventSeq == null ? '—' : String(item.eventSeq)})`).join(' · ')}`}
+                            </span>
+                        ) : null}
+                        {actionCounters.length ? (
+                            <span data-debug-event-action-counters>
+                                {`${this.tx('actionCounters')}: ${actionCounters.map(([name, value]) =>
+                                    `${name}=${String(value)}`).join(' · ')}`}
+                            </span>
+                        ) : null}
+                    </div>
+                ) : null}
 
                 {/* What this target cannot do, named rather than left as greyed
                     buttons with no explanation. The capability matrix is a teaching

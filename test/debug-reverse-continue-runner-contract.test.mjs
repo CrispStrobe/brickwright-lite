@@ -19,7 +19,8 @@ const methodBody = (name, nextName) => {
 
 test('reverse continue exposes a readiness query and command over recorded halt occurrences', () => {
     const status = methodBody('reverseContinueDebugStatus', 'reverseContinueDebug()');
-    assert.match(runner, /canReverse: \(\) => haltLedgerRefusal \|\| instructionReplay\.canReverse\(\)/,
+    assert.match(runner,
+        /canReverse: \(\) => reverseHistoryRefusal \|\| haltLedgerRefusal \|\| instructionReplay\.canReverse\(\)/,
         'recorded history is not enough unless restore/replay and inputs are complete');
     assert.match(coordinator, /haltOccurrences\.previousBeforeBoundary\(beforeCursor\)/,
         'status must use the bounded halt-occurrence index, not scan event payloads');
@@ -89,4 +90,16 @@ test('UI exposes only runner-gated reverse continue and keeps refusals visible',
     assert.match(panel, /disabled=\{!canReverseContinue \|\| busy\}/);
     assert.ok(panel.includes('data-debug-reverse-continue'));
     assert.match(panel, /reverseStatus: result\.accepted \? null : result/);
+});
+
+test('forward execution after reverse invalidates abandoned future navigation', () => {
+    assert.match(runner, /function beginForwardBranch\(\)[\s\S]*code: 'history-branched'/);
+    for (const method of ['async start()', 'resume()', "step(kind = 'block')",
+        'stepInstruction(count = 1)', 'stepOver()', 'stepOut()']) {
+        const at = runner.indexOf(`\n        ${method}`);
+        assert.ok(at >= 0, method);
+        assert.match(runner.slice(at, at + 240), /beginForwardBranch\(\)/, method);
+    }
+    assert.match(runner, /startDebugRecording\(\)[\s\S]*reverseHistoryRefusal = null/,
+        'a new deterministic recording establishes the next valid history epoch');
 });

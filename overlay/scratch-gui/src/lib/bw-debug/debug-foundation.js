@@ -50,6 +50,11 @@ export function createDebugFoundation ({eventCapacity = 4096, conditionEvaluator
         },
         capabilities: () => capabilities,
         addBreakpoint: spec => breakpoints.add(spec),
+        listBreakpoints: () => breakpoints.list(),
+        removeBreakpoint: (id, generation) => breakpoints.remove(id, generation),
+        enableBreakpoint: (id, generation) => breakpoints.enable(id, generation),
+        disableBreakpoint: (id, generation) => breakpoints.disable(id, generation),
+        clearBreakpoints: () => breakpoints.clear(),
         evaluateBreakpoints: (event, context) => breakpoints.evaluate(event, context),
         executeBreakpointPlan: (plan, handlers, context) =>
             executeBreakpointPlan(plan, handlers, context),

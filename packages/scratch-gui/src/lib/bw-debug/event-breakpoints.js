@@ -219,6 +219,7 @@ export function compileEventBreakpoint(spec, capabilities = {}, evaluator = null
 
     return {ok: true, breakpoint: {
         id: String(spec.id), creation, enabled: spec.enabled !== false, oneShot: Boolean(spec.oneShot),
+        kind: spec.kind,
         encounters: 0, matches: 0, ignoreCount: Math.max(0, integer(spec.ignoreCount, 0)),
         modulo: Math.max(1, integer(spec.modulo, 1)),
         hitCount: Number.isSafeInteger(spec.hitCount) && spec.hitCount > 0 ? spec.hitCount : null,
@@ -302,19 +303,70 @@ export class EventBreakpointEngine {
         this.evaluator = evaluator;
         this.breakpoints = [];
         this.nextCreation = 0;
+        this.nextGeneration = 0;
     }
 
     add(spec) {
-        const result = compileEventBreakpoint(spec, this.capabilities, this.evaluator, this.nextCreation++);
-        if (result.ok) this.breakpoints.push(result.breakpoint);
-        return result;
+        if (spec && this.breakpoints.some(item => item.id === String(spec.id))) {
+            return refusal('duplicate-id', `Breakpoint id "${String(spec.id)}" is already active.`);
+        }
+        const result = compileEventBreakpoint(spec, this.capabilities, this.evaluator, this.nextCreation);
+        if (!result.ok) return result;
+        result.breakpoint.generation = this.nextGeneration++;
+        this.nextCreation++;
+        this.breakpoints.push(result.breakpoint);
+        return {ok: true, breakpoint: this.#summary(result.breakpoint)};
     }
 
-    setEnabled(id, enabled) {
-        const breakpoint = this.breakpoints.find(item => item.id === id);
-        if (!breakpoint) return false;
-        breakpoint.enabled = Boolean(enabled);
+    #summary(breakpoint) {
+        return {
+            id: breakpoint.id,
+            generation: breakpoint.generation,
+            creation: breakpoint.creation,
+            kind: breakpoint.kind,
+            enabled: breakpoint.enabled,
+            oneShot: breakpoint.oneShot,
+            encounters: breakpoint.encounters,
+            matches: breakpoint.matches,
+            actionTypes: breakpoint.actions.map(action => action.type),
+            requiredEventKinds: [...breakpoint.requiredEventKinds]
+        };
+    }
+
+    list() {
+        return this.breakpoints.map(breakpoint => this.#summary(breakpoint));
+    }
+
+    remove(id, generation) {
+        const index = this.breakpoints.findIndex(item =>
+            item.id === String(id) && item.generation === generation);
+        if (index < 0) return false;
+        this.breakpoints.splice(index, 1);
         return true;
+    }
+
+    clear() {
+        const removed = this.breakpoints.length;
+        this.breakpoints = [];
+        return removed;
+    }
+
+    setEnabled(id, enabled, generation) {
+        const breakpoint = this.breakpoints.find(item =>
+            item.id === String(id) && item.generation === generation);
+        if (!breakpoint) return false;
+        const next = Boolean(enabled);
+        if (breakpoint.enabled === next) return false;
+        breakpoint.enabled = next;
+        return true;
+    }
+
+    enable(id, generation) {
+        return this.setEnabled(id, true, generation);
+    }
+
+    disable(id, generation) {
+        return this.setEnabled(id, false, generation);
     }
 
     evaluate(event, context = {}) {

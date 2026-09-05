@@ -477,6 +477,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     const unsubscribeRecordingEvents = eventStream.onEvent(
         event => recordingSession.appendBatch([event]));
     let unsubscribeDebugEvents = null;
+    let debugEventsTarget = null;
     let unsubscribeDebugInputs = null;
     let replayingDebugHistory = false;
     let eventBreakpointFailures = [];
@@ -488,6 +489,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     // share one instruction boundary. It is advanced only after verified replay.
     let breakpointGeneration = 0;
     let haltLedgerRefusal = null;
+    let reverseHistoryRefusal = null;
     const trace = createTrace({eventStream});
     /** The user's own variables: {name, space, addr, size}. From the symbol table. */
     let variableTable = [];
@@ -544,6 +546,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             capsFor = target;
             capsOf = target.capabilities();
             debugFoundation.attachCapabilities(capsOf);
+            eventBreakpointDispatcher?.clear();
         }
         return capsOf;
     }
@@ -553,9 +556,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         if (unsubscribeDebugEvents) {
             unsubscribeDebugEvents();
             unsubscribeDebugEvents = null;
+            debugEventsTarget = null;
         }
+        eventBreakpointDispatcher?.clear();
         unsubscribeDebugEvents = subscribeDebugTargetEvents(target, eventStream,
             event => dispatchPublishedEvent(event));
+        debugEventsTarget = target;
         if (unsubscribeDebugInputs) {
             unsubscribeDebugInputs();
             unsubscribeDebugInputs = null;
@@ -567,7 +573,22 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     // or reading capabilities must leave the CPU's zero-listener fast path in
     // place; a timeline consumer or event breakpoint activates production.
     function ensureDebugEvents() {
-        if (!unsubscribeDebugEvents) bindDebugEvents();
+        if (!unsubscribeDebugEvents || debugEventsTarget !== target) bindDebugEvents();
+    }
+
+    function resetEventBreakpointRuntime() {
+        eventBreakpointDispatcher?.clear();
+        eventBreakpointFailures = [];
+        eventBreakpointLog = [];
+        eventBreakpointCounters.clear();
+    }
+
+    function beginForwardBranch() {
+        if (reverseCursor === null) return;
+        reverseHistoryRefusal = {accepted: false, code: 'history-branched',
+            reason: 'Forward execution branched from recorded history; start a new recording epoch'};
+        debugFoundation.haltOccurrences.clear();
+        reverseContinue.reset();
     }
 
     const breakpointIdsForHandle = handle => {
@@ -626,11 +647,28 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // Only the 8086 currently proves that an interior event is followed by
         // a replay-addressable retire boundary before the halt is delivered.
         if (targetKind !== 'i8086' || !eventBreakpointDispatcher) return null;
-        const result = eventBreakpointDispatcher.dispatch(event, {
-            replay: replayingDebugHistory,
-            context: {event, counts: Object.fromEntries(eventBreakpointCounters)}
-        });
+        const failuresBefore = eventBreakpointFailures.length;
+        let result;
+        try {
+            result = eventBreakpointDispatcher.dispatch(event, {
+                replay: replayingDebugHistory,
+                context: {event, counts: Object.fromEntries(eventBreakpointCounters)}
+            });
+        } catch (error) {
+            result = {failure: {code: 'event-breakpoint-dispatch-failed',
+                message: error?.message || String(error)}};
+        }
+        if (result.failure) {
+            eventBreakpointFailures.push(result.failure);
+            if (eventBreakpointFailures.length > 64) eventBreakpointFailures.shift();
+            eventBreakpointDispatcher.clear();
+            if (session) session.pause();
+            unschedule();
+            setStatus('paused', result.failure.code);
+            return result;
+        }
         recordEventBreakpointHalt(result);
+        if (eventBreakpointFailures.length !== failuresBefore && !result?.outcome?.halted) emit();
         return result;
     }
 
@@ -2251,8 +2289,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
         /** Build, attach, and run. The ⚑ of the debug world. */
         async start() {
+            beginForwardBranch();
             reverseCursor = null;
             reverseContinue.reset();
+            if (!session) resetEventBreakpointRuntime();
             try {
                 if (!session) {
                     // Clear it HERE and not in build(): the ROM and
@@ -2305,6 +2345,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
         resume() {
             if (!session) return;
+            beginForwardBranch();
             reverseCursor = null;
             reverseContinue.reset();
             session.resume();
@@ -2315,6 +2356,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         /** One block by default — the granularity every target supports. */
         step(kind = 'block') {
             if (!session) return { unsupported: 'nothing is running yet' };
+            beginForwardBranch();
             reverseCursor = null;
             reverseContinue.reset();
             const refusal = session.step(kind);
@@ -2651,12 +2693,38 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             if (result.ok) breakpointGeneration++;
             return result;
         },
+        eventBreakpoints: () => debugFoundation.listBreakpoints(),
+        removeEventBreakpoint: (id, generation) => {
+            const changed = debugFoundation.removeBreakpoint(id, generation);
+            if (changed) breakpointGeneration++;
+            return changed;
+        },
+        enableEventBreakpoint: (id, generation) => {
+            const changed = debugFoundation.enableBreakpoint(id, generation);
+            if (changed) breakpointGeneration++;
+            return changed;
+        },
+        disableEventBreakpoint: (id, generation) => {
+            const changed = debugFoundation.disableBreakpoint(id, generation);
+            if (changed) breakpointGeneration++;
+            return changed;
+        },
+        clearEventBreakpoints: () => {
+            const removed = debugFoundation.clearBreakpoints();
+            if (removed) breakpointGeneration++;
+            eventBreakpointDispatcher.clear();
+            return removed;
+        },
         evaluateEventBreakpoints: (event, context) => debugFoundation.evaluateBreakpoints(event, context),
         eventBreakpointActionStatus: () => ({
             failures: eventBreakpointFailures.map(item => ({...item})),
             log: eventBreakpointLog.map(item => ({...item})),
             counters: Object.fromEntries(eventBreakpointCounters)
         }),
+        clearEventBreakpointActionStatus: () => {
+            resetEventBreakpointRuntime();
+            emit();
+        },
         debugRecorder: () => debugFoundation.recorder,
         debugTimeline: () => debugFoundation.timeline,
         startDebugRecording() {
@@ -2664,6 +2732,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             reverseContinue.reset();
             debugFoundation.haltOccurrences.clear();
             haltLedgerRefusal = null;
+            reverseHistoryRefusal = null;
             ensureDebugEvents();
             return recordingSession.start();
         },
@@ -2702,6 +2771,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         },
         canReverseDebug: () => instructionReplay.canReverse(),
         reverseStepDebugStatus() {
+            if (reverseHistoryRefusal) return reverseHistoryRefusal;
             const capability = instructionReplay.canReverse();
             if (!capability.accepted) return capability;
             const retained = debugFoundation.recorder.retention();
@@ -2757,6 +2827,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
          */
         stepInstruction(count = 1) {
             if (!target) return { unsupported: 'nothing is running yet' };
+            beginForwardBranch();
             reverseCursor = null;
             reverseContinue.reset();
             for (let i = 0; i < count; i++) {
@@ -2774,11 +2845,13 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
         /** `over` and `out`, which the target defines in terms of SP. */
         stepOver() {
+            beginForwardBranch();
             reverseCursor = null;
             reverseContinue.reset();
             return session ? session.step('over') : { unsupported: 'not running' };
         },
         stepOut() {
+            beginForwardBranch();
             reverseCursor = null;
             reverseContinue.reset();
             return session ? session.step('out') : { unsupported: 'not running' };
@@ -2917,6 +2990,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             unschedule();
             if (unsubscribeBps) { unsubscribeBps(); unsubscribeBps = null; }
             if (unsubscribeDebugEvents) { unsubscribeDebugEvents(); unsubscribeDebugEvents = null; }
+            debugEventsTarget = null;
             if (unsubscribeDebugInputs) { unsubscribeDebugInputs(); unsubscribeDebugInputs = null; }
             unsubscribeRecordingEvents();
             clearGlow();
@@ -2926,6 +3000,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             if (target && typeof target.destroy === 'function') target.destroy();
             session = target = board = symbols = null;
             debugFoundation.clear();
+            resetEventBreakpointRuntime();
         }
     };
 
@@ -2960,7 +3035,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     }
 
     reverseContinue = createReverseContinueCoordinator({
-        canReverse: () => haltLedgerRefusal || instructionReplay.canReverse(),
+        canReverse: () => reverseHistoryRefusal || haltLedgerRefusal || instructionReplay.canReverse(),
         haltOccurrences: debugFoundation.haltOccurrences,
         reverseToEvent: eventCursor => runner.reverseDebugToEvent(eventCursor)
     });
@@ -2970,7 +3045,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         handlers: {
             log: (action, context) => {
                 eventBreakpointLog.push({breakpointId: action.breakpointId,
-                    eventSeq: context.event?.seq ?? null});
+                    eventSeq: context.triggerEventSeqs?.[0] ?? context.event?.seq ?? null});
                 if (eventBreakpointLog.length > 256) eventBreakpointLog.shift();
             },
             counter: action => {

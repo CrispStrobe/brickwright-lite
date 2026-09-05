@@ -114,6 +114,7 @@ test('defers in-instruction matches and flushes ordered actions with one halt at
     assert.deepEqual(calls, ['memory', 'port', 'instruction', 'halt:memory,port,instruction']);
     assert.equal(retired.outcome.halted, true);
     assert.deepEqual(dispatcher.pending(), {plans: 0, maxPendingPlans: 1024});
+    assert.deepEqual(retired.triggerEventSeqs, [1, 2]);
 });
 
 test('signal/device/scheduler decisions execute immediately without flushing queued plans', () => {
