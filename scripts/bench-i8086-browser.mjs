@@ -243,6 +243,11 @@ try {
                 throw new Error(`${name} #${repetition} DOS load fetched JavaScript absent from webpack stats: ` +
                     dosLoadResources.unmatchedAssets.join(', '));
             }
+            if (dosLoadResources.forbiddenModules.length) {
+                throw new Error(`${name} #${repetition} DOS load fetched unrelated webpack modules: ` +
+                    dosLoadResources.forbiddenModules.map(module =>
+                        `${module.reason}: ${module.name}`).join(', '));
+            }
         }
         if (dosJourneyResources) {
             console.log(`  cold DOS journey: ${(dosJourneyResources.encodedBodyBytes / 1048576).toFixed(2)} MiB ` +

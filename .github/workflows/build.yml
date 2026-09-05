@@ -659,7 +659,7 @@ jobs:
               ./node_modules/.bin/webpack --profile --stats verbose \
                 --json ../../artifacts/i8086-performance/webpack-stats.json
           )
-          node scripts/report-webpack-ownership.mjs
+          I8086_ENFORCE_WEBPACK_BOUNDARY=1 node scripts/report-webpack-ownership.mjs
           python3 -m http.server 8618 --directory packages/scratch-gui/build-profile &
           profile_server=$!
           for i in $(seq 1 30); do curl -sf http://localhost:8618/ >/dev/null && break; sleep 1; done

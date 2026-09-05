@@ -356,11 +356,6 @@ off the critical path and cost 3-4× the runner minutes on an account whose queu
 documented in BLOCKED.md and §2.1; the restructure cannot be verified without pushing, and
 every gate carries hand-tuned `if:` conditions. Left as a decision, not a default.
 
-`webpack.config.js` also turns on webpack's filesystem cache for LOCAL builds only (CI's cache
-directory does not survive the run, so there it would only cost the write). Immutable deployment
-headers and moving corpus tests into another CI job were evaluated on the source branch but are
-separate changes and were deliberately not included in this performance tranche.
-
 ---
 
 ## 3. Hardware / debugger surfaces
@@ -947,17 +942,21 @@ Next tasks, in order:
 5. **Not activated.** P4 did not identify resize/fit work as material, so the
    duplicate canvas observers stay unchanged. Reconsider only if later
    repeated evidence crosses that dependency gate.
-6. **In progress (baseline run `33952110716`).** CI webpack stats attribute
+6. **Complete (baseline `33952110716`, post-split `33953002119`).** CI webpack stats attribute
    11.52 MiB of uncompressed eager JavaScript: scratch-vm 4.86 MiB, render
    fonts 1.31 MiB, asset-library data 0.72 MiB and text-encoding 0.60 MiB are
-   the leading owners. The evidence-backed eager split is integrated for
-   current-main hosted validation. The dedicated 22.1 KiB DOS chunk is clean,
-   but Code/Debug has already fetched the broad board/Circuit UI graph before
-   device selection; the full cold DOS journey therefore remains the next P6
-   split and enforcement target.
-7. Re-evaluate peripheral batching, word-memory fast paths, timer caching,
-   workers and JIT only against their existing measured activation thresholds.
-
+   the leading owners. The evidence-backed eager split reduced those scripts
+   to 4.73 MiB (−59%) and the cold DOS journey from 16.0 to 10.78 MiB. The
+   dedicated 22.1 KiB DOS chunk stays non-initial and clean; all nine causal
+   selection/assembly/attach receipts attribute six scripts and contain zero
+   unrelated CPU, solver or device-catalogue modules. CI now enforces both
+   claims. The separately reported broad graph belongs to the intentionally
+   visible circuit preview, not the DOS attach path.
+7. **Not activated (2026-09-05).** P6 leaves the engine at about 30.34× XT;
+   desktop/mobile median execution totals are 4.7/4.9 ms across roughly 180
+   pumps, and earlier P1/P2 deltas remained below timer resolution. Keep the
+   deferred engine/JIT/worker hypotheses closed until a workload crosses its
+   documented activation threshold.
 Every performance change gets an isolated GitHub Actions receipt. Full builds,
 browser profiles and repeated timing runs do not run on the VPS.
 
