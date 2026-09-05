@@ -70,6 +70,15 @@ visible PC during the wait and consequently push the wrong return address.
 Those are categorized timed-wake bus failures, not folded into the unrelated
 status-register serializer rejection.
 
+The product selection boundary nevertheless exists now. `fast-w65c02` is the
+default and the only active provider; requesting `jsmoo-w65c02` returns an
+immutable `cycle-provider-rejected` receipt with the pinned candidate/oracle
+identities and the three independent defect classes. No JSMoo loader or source
+is present in the shipped tree, and the fallback target continues to advertise
+neither cycle nor reverse-cycle. The same provider-neutral gate can activate a
+future candidate only after it is marked qualified and negotiates a recorded,
+resumable cycle contract.
+
 ## Intel 8086/8088
 
 An instruction timing total or post-hoc bus schedule is not cycle-accurate.
