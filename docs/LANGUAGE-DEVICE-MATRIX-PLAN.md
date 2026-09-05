@@ -432,13 +432,45 @@ three-outcome structure, and asserts NO coverage floor — the numbers are print
 never a threshold. First run: 45% of round-trips clean, micropython degrades on
 100% (its reader keeps the emitted scheduler as grey blocks), and a real reader
 bug surfaced (python/js refuse a `<` operator in two 8051 programs) — filed as
-data, not fixed here.
+data. Every one of those findings was then fixed; the chain is recorded in
+**L3 findings acted on** below.
 
 **L4. Arcade lowered to a UF2.** Investigation then build.
 `bw_arcade.py` emits PXT TypeScript; the PXT compiler (MIT) can produce a
 UF2 for PyBadge. Measure whether it runs in the 250 MB function limit hosted;
 if not, name the alternative.
 DoD (investigation): doc with the measurement.
+
+#### L3 findings acted on
+
+The audit named the losses; each was then fixed in the vendored reader/emitter
+(`sb3-creator`; lite consumes by pin bump). All branch-only, measured against the
+129-program round-trip corpus, mutation-proved. The chain, in order, with the
+emit → read → emit idempotence count after each — the naming fixes hold the count
+while turning a silent loss into a named degraded row:
+
+| sha | what it fixed | measured effect |
+| --- | --- | --- |
+| `eb5b286` | bitwise/shift (`<< >> & \| ^ ~`) the python & js readers refused | 2 programs refused → clean: READER-COVERAGE 301 → 303 clean, 20 → 14 refused |
+| `db4096e` | MicroPython runtime skip — the reader was reading the emitted `_run` scheduler back as the program | every runtime grey block gone; degraded column collapses to genuine learner constructs; idempotence **0** |
+| `a56f400` | body fidelity: wait (`yield int(N*1000)`), change-by, print double-wrap, readPin quoting | touches 105 / 27 / 33 / 37 programs; idempotence 0 → **7** |
+| `ff0ee1e` | `pass # pin`: a dropped pin write → a named degraded comment | 77 programs name a loss that was silent (idempotence held at 7) |
+| `a701a5f` | condition lift: `_eq(a,b)` → `(a = b)`, and `while not` double-negation | idempotence 7 → **9** |
+| `fe60f4c` | STC pin-read loss named (guardrail: the table was not in the emit, so do not invent one) | 35 programs name the loss (idempotence held at 9) |
+| `eb876ba` | STC driver + pin table emitted (Part A) and reader synthesises `PIN` from it, writes routed through the driver (Part B) | idempotence 9 → **27** |
+| `fdd9d7d` | counted `repeat N` (`for _ in range`) and bodyless `wait until` | repeat: 18 programs, +6; wait: 4 programs, +2; idempotence 27 → **37** |
+
+**Executability gate** (`sb3-creator test/micropython-executable.test.mjs`, new
+with `eb876ba`): every `_stc*` name a program uses must be DEFINED in the same
+output, or it NameErrors on the board. Measured over the L3 corpus: **38 → 0
+undefined names**, 0 grammar-parse failures. It caught a write-only registration
+gap the idempotence count alone would have missed.
+
+The arc is **idempotence 0 → 37 of 129**. The remaining tail, each small and
+measurable later: device verbs still grey-blocked (display / oled / radio, the
+biggest bucket), helper/import ordering, and multi-WHEN scripts (the reader lifts
+one and names the rest). `READER-COVERAGE.md` regenerates on the pin bump as the
+proof.
 
 ### Lane P — peripherals (part profiles), summarised; full detail in its own plan
 
