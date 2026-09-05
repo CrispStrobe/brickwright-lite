@@ -89,7 +89,12 @@ test('game selection publishes controls and the right pane mounts them beside th
     const gui = read('components/gui/gui.jsx');
     const controls = read('components/tw-pseudocode/game-touch-controls.jsx');
     assert.match(importer, /runtime\.bwGameControlKey = gameKey \|\| null/);
-    assert.match(importer, /this\.gameKeyForSource\(saved\.code\)/);
+    // The restored autosave is classified into controls. Since 2026-09-05 that goes
+    // through _publishControlsFor, which awaits the (lazy) example sources and then
+    // calls gameKeyForSource — the classification is the same, a tick later.
+    assert.match(importer, /this\.(?:gameKeyForSource|_publishControlsFor)\(saved\.code\)/);
+    assert.match(importer, /_publishControlsFor \(source\) \{[\s\S]*?this\.publishGameControls\(this\.gameKeyForSource\(source\)\)/,
+        'the deferred path must still classify with gameKeyForSource and publish the result');
     assert.match(importer, /detail: \{key: 'bw-right-pane-hidden', value: '0'\}/);
     assert.match(importer, /BW_GAME_CONTROLS_CHANGED/);
     assert.match(gui, /<GameTouchControls gameKey=\{gameControlKey\} vm=\{vm\}/);

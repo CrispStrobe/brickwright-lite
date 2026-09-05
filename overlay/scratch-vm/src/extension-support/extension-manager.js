@@ -242,7 +242,18 @@ class ExtensionManager {
         if (this._pendingBuiltinLoads.has(extensionId)) {
             return this._pendingBuiltinLoads.get(extensionId);
         }
-        const pending = lazyBuiltinExtensions[extensionId]().then(mod => {
+        const pending = lazyBuiltinExtensions[extensionId]().catch(err => {
+            // The callers (deserializeProject's pre-load, installTargets,
+            // shareBlocksToTarget) tolerate this rejection on purpose, so that a
+            // chunk that fails to arrive costs its blocks and not the project.
+            // Which means that without this line "the module never came" is
+            // indistinguishable from "nobody asked" — a feature that asks for
+            // something must leave a trace its absence cannot produce. Rethrown
+            // unchanged: the callers' contract is not this line's to alter.
+            log.error(`Built-in extension ${extensionId} failed to load its chunk: ` +
+                `${(err && err.message) || err}`);
+            throw err;
+        }).then(mod => {
             // loadExtensionIdSync's fallback also arrives here without going
             // through the pending map, so the registration check is repeated.
             if (this.isExtensionLoaded(extensionId)) return;

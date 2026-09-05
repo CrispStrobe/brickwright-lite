@@ -51,8 +51,12 @@ const OUT = path.resolve('artifacts/first-load-weight');
  *  requests. The 3.4 MB chunk the correction above called "its own question
  *  for someone" was that question, and 62% of it is gone. 11 MB keeps the same
  *  kind of headroom; the music samples alone coming back would be +2.0 MB
- *  uncompressed and fail it, as would the fonts (+1.3 MB). */
-const BUDGET_MB = 11.0;
+ *  uncompressed and fail it, as would the fonts (+1.3 MB).
+ *
+ *  8.95 MB over 26 requests once the Code tab stopped fetching CodeMirror and
+ *  its example sources while hidden (every TabPanel is force-rendered; the
+ *  importer now waits to be SHOWN). 10 MB: the same headroom, one notch down. */
+const BUDGET_MB = 10.0;
 
 let failed = 0;
 const record = (name, ok, detail = '') => {
