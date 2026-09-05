@@ -6,6 +6,69 @@ const percentile = (values, fraction) => {
     return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * fraction))];
 };
 
+/** Median and full observed range for a repeated scalar measurement. */
+export function summarizeSpread(values) {
+    const sorted = (values || []).filter(value => value !== null && value !== undefined)
+        .map(Number).filter(Number.isFinite).sort((a, b) => a - b);
+    if (!sorted.length) return {median: null, min: null, max: null, range: null};
+    const middle = Math.floor(sorted.length / 2);
+    const median = sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+    return {median, min: sorted[0], max: sorted.at(-1), range: sorted.at(-1) - sorted[0]};
+}
+
+/** Cross-run summary. Every detailed run remains in report.results and in its
+ * raw receipt; this compact view makes comparisons statistical and reviewable. */
+export function summarizeI8086Repetitions(runs) {
+    const list = runs || [];
+    const metric = getter => summarizeSpread(list.map(getter));
+    const setupNames = [...new Set(list.flatMap(run =>
+        (run.setupTimeline?.phases || []).map(phase => phase.name)))];
+    const setupPhases = Object.fromEntries(setupNames.map(name => {
+        const phases = list.map(run => run.setupTimeline?.phases?.find(phase => phase.name === name));
+        const field = key => summarizeSpread(phases.map(phase => phase?.[key]));
+        return [name, {
+            durationMs: field('durationMs'),
+            longTasksStarted: field('longTasksStarted'),
+            longTaskOverlapMs: field('longTaskOverlapMs'),
+            scriptTransferBytes: field('scriptTransferBytes'),
+            scriptEncodedBodyBytes: field('scriptEncodedBodyBytes'),
+            scriptDecodedBodyBytes: field('scriptDecodedBodyBytes')
+        }];
+    }));
+    const reactIds = [...new Set(list.flatMap(run =>
+        Object.keys(run.reactProfiles?.startup || {})))];
+    const startupReact = Object.fromEntries(reactIds.map(id => [id, {
+        commits: metric(run => run.reactProfiles?.startup?.[id]?.commits),
+        actualDurationMs: metric(run => run.reactProfiles?.startup?.[id]?.actualDurationMs?.totalMs)
+    }]));
+    const pumpPhase = name => ({
+        totalMs: metric(run => run.pumpBreakdown?.phases?.[name]?.totalMs),
+        percentOfPump: metric(run => run.pumpBreakdown?.phases?.[name]?.percentOfPump)
+    });
+    return {
+        repetitions: list.length,
+        realTimeRatio: metric(run => run.realTimeRatio),
+        elapsedMs: metric(run => run.elapsedMs),
+        pumpMs: {
+            p50: metric(run => run.pumpMs?.p50),
+            p95: metric(run => run.pumpMs?.p95),
+            max: metric(run => run.pumpMs?.max)
+        },
+        pumpBreakdown: {
+            totalWallMs: metric(run => run.pumpBreakdown?.totalWallMs),
+            phases: Object.fromEntries(['runMs', 'boardMs', 'publishMs'].map(name =>
+                [name, pumpPhase(name)]))
+        },
+        longTasks: {
+            runtime: metric(run => run.longTasks?.length),
+            steady: metric(run => run.steadyLongTasks?.length),
+            startup: metric(run => run.startupLongTaskCount)
+        },
+        setupPhases,
+        startupReact
+    };
+}
+
 export function summarizeI8086Pump(samples) {
     const totalWallMs = samples.reduce((sum, sample) => sum + finite(sample.wallMs), 0);
     const phaseSummary = {};
@@ -111,7 +174,9 @@ export function summarizeI8086Timeline({milestones, longTasks, resources, sample
             }, 0),
             scriptCount: phaseScripts.length,
             scriptLoadMs: phaseScripts.reduce((sum, resource) => sum + finite(resource.ms), 0),
-            scriptTransferBytes: phaseScripts.reduce((sum, resource) => sum + finite(resource.bytes), 0)
+            scriptTransferBytes: phaseScripts.reduce((sum, resource) => sum + finite(resource.transferSize), 0),
+            scriptEncodedBodyBytes: phaseScripts.reduce((sum, resource) => sum + finite(resource.encodedBodySize), 0),
+            scriptDecodedBodyBytes: phaseScripts.reduce((sum, resource) => sum + finite(resource.decodedBodySize), 0)
         });
     }
     const boundaryCrossers = (longTasks || []).filter(task =>

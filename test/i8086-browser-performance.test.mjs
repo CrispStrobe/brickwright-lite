@@ -3,6 +3,8 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {
     summarizeI8086Pump,
+    summarizeI8086Repetitions,
+    summarizeSpread,
     summarizeI8086Timeline,
     summarizeReactProfiles
 } from '../scripts/lib/i8086-performance.mjs';
@@ -10,11 +12,52 @@ import {
 test('the production 8086 benchmark covers desktop and mobile pump health', () => {
     const script = readFileSync(new URL('../scripts/bench-i8086-browser.mjs', import.meta.url), 'utf8');
     for (const fact of [
-        "name: 'desktop'", "name: 'mobile'", '__BW_I8086_PERF__',
+        "name: 'desktop'", "name: 'mobile'", "name: 'minimum-device-4x'", '__BW_I8086_PERF__',
         "selectOption('i8086')", "selectOption('pins')", 'realTimeRatio',
         'pumpMs', 'pumpBreakdown', 'setupTimeline', 'steadyLongTasks',
         'milestones', 'resources', 'longTasks', 'reactProfiles', 'heapBytes', "ratio < 0.25",
+        'encodedBodySize', 'decodedBodySize', 'newCDPSession',
+        "'Emulation.setCPUThrottlingRate'", 'browser-performance-raw/v1',
+        'browser-performance/v2', 'summarizeI8086Repetitions', 'cpuThrottleRate: 4',
     ]) assert.ok(script.includes(fact), `benchmark lost ${fact}`);
+    assert.match(script, /Math\.max\(3, requestedRepetitions\)/,
+        'the statistical gate must not accept fewer than three repetitions');
+    const repetitionLoop = script.indexOf('for (let repetition = 1; repetition <= repetitions; repetition++)');
+    const freshContext = script.indexOf('browser.newContext(contextOptions)', repetitionLoop);
+    const rawReceipt = script.indexOf('writeFile(resolve(rawDir', freshContext);
+    const perRunFloor = script.indexOf('samples.length < 150 || ratio < 0.25', rawReceipt);
+    const closeContext = script.indexOf('await context.close()', perRunFloor);
+    assert.ok(repetitionLoop >= 0 && repetitionLoop < freshContext && freshContext < rawReceipt &&
+        rawReceipt < perRunFloor && perRunFloor < closeContext,
+    'each repetition needs a fresh context, a pre-verdict raw receipt, validation and cleanup');
+});
+
+test('repeated receipts report a true median and full observed spread', () => {
+    assert.deepEqual(summarizeSpread([9, 1, 5]), {median: 5, min: 1, max: 9, range: 8});
+    assert.deepEqual(summarizeSpread([8, 2, 4, 6]), {median: 5, min: 2, max: 8, range: 6});
+    const runs = [3, 1, 2].map((ratio, index) => ({
+        realTimeRatio: ratio,
+        elapsedMs: 100 + index,
+        pumpMs: {p50: ratio, p95: ratio + 1, max: ratio + 2},
+        pumpBreakdown: {totalWallMs: ratio * 10, phases: {
+            runMs: {totalMs: ratio, percentOfPump: 50},
+            boardMs: {totalMs: 0, percentOfPump: 0},
+            publishMs: {totalMs: ratio, percentOfPump: 50}
+        }},
+        longTasks: Array(index).fill({}),
+        steadyLongTasks: [],
+        startupLongTaskCount: index,
+        setupTimeline: {phases: [{name: 'circuit-open-to-first-pump', durationMs: ratio * 10,
+            longTasksStarted: index, longTaskOverlapMs: index,
+            scriptTransferBytes: 0, scriptEncodedBodyBytes: 100, scriptDecodedBodyBytes: 200}]},
+        reactProfiles: {startup: {CircuitDesigner: {commits: 10 + index,
+            actualDurationMs: {totalMs: ratio * 4}}}}
+    }));
+    const summary = summarizeI8086Repetitions(runs);
+    assert.equal(summary.repetitions, 3);
+    assert.deepEqual(summary.realTimeRatio, {median: 2, min: 1, max: 3, range: 2});
+    assert.equal(summary.setupPhases['circuit-open-to-first-pump'].scriptEncodedBodyBytes.median, 100);
+    assert.equal(summary.startupReact.CircuitDesigner.commits.median, 11);
 });
 
 test('the receipt reports React commit counts and actual durations by subtree', () => {
@@ -78,8 +121,11 @@ test('setup attribution owns crossing work by start phase without losing overlap
         ].map(([name, at]) => ({name, at})),
         longTasks: [{at: 10, ms: 60}, {at: 180, ms: 50}, {at: 230, ms: 60}],
         resources: [
-            {name: 'main.js', kind: 'script', at: 20, ms: 25, bytes: 1000},
-            {name: 'asm.chunk.js', kind: 'script', at: 135, ms: 5, bytes: 200}
+            {name: 'main.js', kind: 'script', at: 20, ms: 25,
+                transferSize: 1000, encodedBodySize: 900, decodedBodySize: 1200},
+            // A cached chunk has no transfer bytes but retains its body sizes.
+            {name: 'asm.chunk.js', kind: 'script', at: 135, ms: 5,
+                transferSize: 0, encodedBodySize: 200, decodedBodySize: 300}
         ],
         sampleStart: 220,
         sampleEnd: 300
@@ -87,6 +133,10 @@ test('setup attribution owns crossing work by start phase without losing overlap
     const phase = name => result.phases.find(item => item.name === name);
     assert.equal(phase('app-bootstrap').longTasksStarted, 1);
     assert.equal(phase('asm-chunk-load').scriptCount, 1);
+    assert.equal(phase('asm-chunk-load').scriptTransferBytes, 0);
+    assert.equal(phase('asm-chunk-load').scriptEncodedBodyBytes, 200);
+    assert.equal(phase('asm-chunk-load').scriptDecodedBodyBytes, 300);
+    assert.equal(result.slowestScripts.find(resource => resource.name === 'asm.chunk.js').encodedBodySize, 200);
     assert.equal(phase('assemble-and-attach').longTasksStarted, 1);
     assert.equal(phase('circuit-open-to-first-pump').longTasksStarted, 0);
     assert.equal(phase('circuit-open-to-first-pump').longTaskOverlapMs, 10);
@@ -125,6 +175,7 @@ test('production telemetry times through publication and names every pump phase'
 test('CI retains the browser performance receipt', () => {
     const workflow = readFileSync(new URL('../.github/workflows/build.yml', import.meta.url), 'utf8');
     assert.match(workflow, /node scripts\/bench-i8086-browser\.mjs/);
+    assert.match(workflow, /I8086_PERF_REPETITIONS=3/);
     assert.match(workflow, /name: i8086-browser-performance/);
-    assert.match(workflow, /path: artifacts\/i8086-performance\/report\.json/);
+    assert.match(workflow, /path: artifacts\/i8086-performance\/\*\*/);
 });

@@ -1,32 +1,50 @@
 #!/usr/bin/env node
 // Production-bundle 8086 benchmark, measured at the same pump boundary the UI
-// uses. It records desktop and phone-sized viewports; thresholds are deliberately
-// limited to catching a machine that cannot sustain one quarter of an XT, while
-// the JSON artifact carries the distributions used for performance work.
+// uses. It records repeated desktop, phone-sized and honestly CPU-throttled
+// minimum-device runs; thresholds are deliberately limited to catching a machine
+// that cannot sustain one quarter of an XT, while raw and statistical JSON
+// receipts carry the distributions used for performance work.
 import {mkdir, writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {chromium} from 'playwright';
 import {
     summarizeI8086Pump,
+    summarizeI8086Repetitions,
     summarizeI8086Timeline,
     summarizeReactProfiles
 } from './lib/i8086-performance.mjs';
 
 const url = process.env.PROOF_URL || process.env.BW_URL || 'http://localhost:8617/';
 const outDir = resolve(process.env.I8086_PERF_ARTIFACTS || 'artifacts/i8086-performance');
+const rawDir = resolve(outDir, 'raw');
+const requestedRepetitions = Number.parseInt(process.env.I8086_PERF_REPETITIONS || '3', 10);
+const repetitions = Number.isFinite(requestedRepetitions) ? Math.max(3, requestedRepetitions) : 3;
 const profiles = [
-    {name: 'desktop', viewport: {width: 1440, height: 900}, deviceScaleFactor: 1},
-    {name: 'mobile', viewport: {width: 412, height: 915}, deviceScaleFactor: 2, isMobile: true},
+    {name: 'desktop', viewport: {width: 1440, height: 900}, deviceScaleFactor: 1, cpuThrottleRate: 1},
+    {name: 'mobile', viewport: {width: 412, height: 915}, deviceScaleFactor: 2, isMobile: true,
+        hasTouch: true, cpuThrottleRate: 1},
+    // Honest minimum-device proxy: small touch viewport plus Chromium renderer
+    // CPU throttling. This does not claim to emulate RAM, core count or network.
+    {name: 'minimum-device-4x', viewport: {width: 360, height: 640}, deviceScaleFactor: 2,
+        isMobile: true, hasTouch: true, cpuThrottleRate: 4},
 ];
 const percentile = (xs, p) => xs[Math.min(xs.length - 1, Math.floor(xs.length * p))];
 
-await mkdir(outDir, {recursive: true});
+await mkdir(rawDir, {recursive: true});
 const browser = await chromium.launch({headless: true});
 const results = [];
+const summaries = [];
 try {
     for (const profile of profiles) {
-        const context = await browser.newContext(profile);
+        const profileResults = [];
+        for (let repetition = 1; repetition <= repetitions; repetition++) {
+        const {name, cpuThrottleRate, ...contextOptions} = profile;
+        const context = await browser.newContext(contextOptions);
         const page = await context.newPage();
+        let cdp = null;
+        try {
+        cdp = await context.newCDPSession(page);
+        await cdp.send('Emulation.setCPUThrottlingRate', {rate: cpuThrottleRate});
         await page.addInitScript(() => {
             localStorage.clear();
             localStorage.setItem('bw-starter-v1-complete', '1');
@@ -97,7 +115,9 @@ try {
                 kind: entry.initiatorType,
                 at: entry.startTime,
                 ms: entry.duration,
-                bytes: entry.transferSize || 0
+                transferSize: entry.transferSize || 0,
+                encodedBodySize: entry.encodedBodySize || 0,
+                decodedBodySize: entry.decodedBodySize || 0
             }))
         }));
         const steadyAt = raw.milestones.find(mark => mark.name === 'steady-window-ready')?.at ?? 0;
@@ -123,7 +143,9 @@ try {
         });
         const ratio = simMs / elapsedMs;
         const result = {
-            profile: profile.name,
+            profile: name,
+            repetition,
+            cpuThrottleRate,
             samples: samples.length,
             simulatedMs: simMs,
             elapsedMs,
@@ -143,7 +165,17 @@ try {
             userAgent: raw.userAgent,
         };
         results.push(result);
-        console.log(`${profile.name}: ${ratio.toFixed(2)}x XT, pump p50 `
+        profileResults.push(result);
+        await writeFile(resolve(rawDir, `${name}-${String(repetition).padStart(2, '0')}.json`),
+            `${JSON.stringify({
+                schema: 'brickwright/i8086-browser-performance-raw/v1',
+                url,
+                profile: {name, ...contextOptions, cpuThrottleRate},
+                repetition,
+                raw,
+                result
+            }, null, 2)}\n`);
+        console.log(`${name} #${repetition}: ${ratio.toFixed(2)}x XT, pump p50 `
             + `${result.pumpMs.p50.toFixed(2)} ms, p95 ${result.pumpMs.p95.toFixed(2)} ms, `
             + `${runtimeLongTasks.length} runtime long task(s)`);
         console.log(`  long tasks: ${steadyLongTasks.length} started during steady pump, `
@@ -159,16 +191,25 @@ try {
         const missingProfiles = ['DebugPanel', 'CircuitDesigner'].filter(id =>
             !raw.reactProfiles.some(sample => sample.id === id));
         if (missingProfiles.length) {
-            throw new Error(`${profile.name} profiling build emitted no ${missingProfiles.join(', ')} commits`);
+            throw new Error(`${name} #${repetition} profiling build emitted no ${missingProfiles.join(', ')} commits`);
         }
         if (samples.length < 150 || ratio < 0.25) {
-            throw new Error(`${profile.name} 8086 benchmark did not sustain 0.25x real time`);
+            throw new Error(`${name} #${repetition} 8086 benchmark did not sustain 0.25x real time`);
         }
-        await context.close();
+        } finally {
+            if (cdp) await cdp.detach().catch(() => {});
+            await context.close();
+        }
+        }
+        const summary = summarizeI8086Repetitions(profileResults);
+        summaries.push({profile: profile.name, cpuThrottleRate: profile.cpuThrottleRate, ...summary});
+        console.log(`${profile.name}: ${summary.realTimeRatio.median.toFixed(2)}x XT median `
+            + `[${summary.realTimeRatio.min.toFixed(2)}, ${summary.realTimeRatio.max.toFixed(2)}], `
+            + `range ${summary.realTimeRatio.range.toFixed(2)} across ${summary.repetitions} repetitions`);
     }
 } finally {
     await writeFile(resolve(outDir, 'report.json'), `${JSON.stringify({
-        schema: 'brickwright/i8086-browser-performance/v1', url, results,
+        schema: 'brickwright/i8086-browser-performance/v2', url, repetitions, results, summaries,
     }, null, 2)}\n`);
     await browser.close();
 }

@@ -807,9 +807,11 @@ Next tasks, in order:
    direction, but desktop/mobile p50 and p95 were unchanged and the deltas
    were only about 5.7/1.3 µs per sample—below 0.1 ms timer resolution. It was
    reverted pending P3's repeated, throttled evidence.
-3. Make the hosted benchmark repeat each profile, report median/spread, add a
-   CPU-throttled minimum-device case, and retain real encoded/decoded chunk
-   sizes.
+3. **Implemented; hosted proof pending.** The benchmark now runs three fresh
+   contexts each for desktop, mobile and an honestly labelled 4× renderer-CPU
+   throttle, retains every raw receipt, reports median/min/max/range, and
+   records transfer, encoded-body and decoded-body sizes. The throttled case
+   does not claim to emulate RAM, core count, network or a named phone.
 4. Instrument `BoardCanvas`/host update ownership. The outer boundary stayed
    at 15 commits, so further setter edits without this evidence are guessing.
 5. Merge the two observers of the same canvas container only after task 4
