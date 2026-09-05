@@ -131,15 +131,21 @@ test('paint and Paper ownership stays together in a non-initial lazy asset', () 
     const stats = fixture();
     stats.chunks.push(
         {id: 30, names: ['paint-reducer'], files: ['chunks/paint-reducer.js'], initial: false},
-        {id: 31, names: ['paint-editor'], files: ['chunks/paint-editor.js'], initial: false}
+        {id: 31, names: ['paint-editor'], files: ['chunks/paint-editor.js'], initial: false},
+        {id: 32, names: [], files: ['chunks/4117.js'], initial: false},
+        {id: 33, names: [], files: ['chunks/7549.js'], initial: false}
     );
     stats.assets.push(
-        {name: 'chunks/paint-reducer.js', size: 210000, chunks: [30]},
-        {name: 'chunks/paint-editor.js', size: 40000, chunks: [31]}
+        {name: 'chunks/paint-reducer.js', size: 100, chunks: [30]},
+        {name: 'chunks/paint-editor.js', size: 100, chunks: [31]},
+        {name: 'chunks/4117.js', size: 210000, chunks: [32]},
+        {name: 'chunks/7549.js', size: 40000, chunks: [33]}
     );
     stats.modules.push(
-        {name: './node_modules/@scratch/paper/dist/paper-core.js', size: 535000, chunks: [30]},
-        {name: './node_modules/scratch-paint/src/index.js', size: 105000, chunks: [31]}
+        {name: './src/lib/lazy-paint-reducer.js', size: 100, chunks: [30]},
+        {name: './src/lib/lazy-paint-editor.jsx', size: 100, chunks: [31]},
+        {name: './node_modules/@scratch/paper/dist/paper-core.js', size: 535000, chunks: [32]},
+        {name: './node_modules/scratch-paint/src/containers/paint-editor.jsx', size: 105000, chunks: [33]}
     );
     const report = summarizeWebpackOwnership(stats);
     assert.deepEqual(report.lazyPaintEditor.packages, ['@scratch/paper', 'scratch-paint']);
