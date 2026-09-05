@@ -149,7 +149,28 @@ test('no new gate-shape suspects', () => {
     const raw = execFileSync(process.execPath,
         [path.join(root, 'scripts/audit-gate-shapes.mjs'), '--json'],
         {cwd: root, encoding: 'utf8', maxBuffer: 32 * 1024 * 1024});
-    const {counts} = JSON.parse(raw);
+    const {counts, roots, scanned} = JSON.parse(raw);
+
+    // ASSERT THE SCOPE, not just the count. A baseline of 3 is a statement
+    // about the set that was walked, and until 2026-09-05 nothing checked
+    // which set that was -- so narrowing the scan to one directory, or
+    // breaking the directory walk outright, would have made this test GREENER
+    // rather than red. The number and the set it counted over have to be
+    // asserted together or the number means nothing.
+    //
+    // The scope is deliberately test/ + scripts/ and NOT the whole repo:
+    // measured, --root . adds 15 SEGMENT-MATCH hits in overlay/ and packages/,
+    // and reading them showed every one is `split('.').pop()` taking a file
+    // extension or a deliberate basename compare. `.pop()` on a split is a
+    // truncated membership test in a GATE and an ordinary extraction in
+    // source. Widening the scan would add fifteen false positives and teach
+    // everyone to ignore the tool.
+    assert.deepEqual(roots, ['test', 'scripts'],
+        'the audit scope changed. The baselines below are counts over test/ + scripts/; ' +
+        'a different scope makes them meaningless rather than merely wrong.');
+    assert.ok(scanned > 300,
+        `the audit walked only ${scanned} files. It walked 379 on 2026-09-05, and a ` +
+        'collapsed walk yields few findings, which reads as a clean repo.');
     for (const [kind, allowed] of Object.entries(BASELINE)) {
         const found = counts[kind] || 0;
         assert.ok(found <= allowed,

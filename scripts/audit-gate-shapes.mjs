@@ -46,6 +46,29 @@ const rootFlag = process.argv.indexOf('--root');
 const root = rootFlag === -1
     ? path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
     : path.resolve(process.argv[rootFlag + 1]);
+// SCOPE IS A DECISION, AND UNTIL 2026-09-05 IT WAS AN UNWRITTEN ONE.
+//
+// This tool ranges over test/ and scripts/. The goal it appears to serve --
+// "find gates that cannot fail" -- ranges over gates, which is not the same
+// set, and the difference was invisible because the summary never said which
+// set it had walked. lego-a4's census and my vendor sync failed the same way
+// on the same day; the general form is the coverage lane's:
+//
+//   A success message quantifies over some SET, and is trustworthy only when
+//   that set equals the set the GOAL cares about.
+//
+// MEASURED before writing this: --root . finds 15 more SEGMENT-MATCH hits in
+// overlay/ and packages/. I read them. They are NOT defects -- they are
+// `file.name.split('.').pop()` extracting a file extension, and a deliberate
+// basename comparison in sb3-creator-c.js. `.pop()` on a split is a truncated
+// membership test in a GATE and an ordinary extraction in source code, so the
+// rule is right and the scope is right.
+//
+// So the fix is NOT to widen the scan. Widening it would add fifteen false
+// positives and teach everyone to ignore the tool -- the vacuous widening I
+// have caught myself doing twice this week. The fix is that the OUTPUT must
+// name the set it walked, so a reader can see the scope is chosen rather than
+// assume it is total. An honest narrow report beats a dishonest wide one.
 const roots = rootFlag === -1 ? ['test', 'scripts'] : ['.'];
 const strict = process.argv.includes('--strict');
 
@@ -91,7 +114,9 @@ const blankComments = source => source
     .replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' '))
     .replace(/(^|[^:])\/\/[^\n]*/g, (m, p1) => p1 + ' '.repeat(m.length - p1.length));
 
+let scannedCount = 0;
 for (const file of roots.flatMap(r => walk(path.join(root, r)))) {
+    scannedCount++;
     const raw = readFileSync(file, 'utf8');
     rawLines = raw.split('\n');
     const text = blankComments(raw);
@@ -242,7 +267,14 @@ for (const file of roots.flatMap(r => walk(path.join(root, r)))) {
 if (process.argv.includes('--json')) {
     const counts = {};
     for (const f of findings) counts[f.kind] = (counts[f.kind] || 0) + 1;
-    console.log(JSON.stringify({total: findings.length, counts, findings}, null, 2));
+    // ROOTS AND SCANNED ARE PART OF THE RESULT, not decoration. The human
+    // output has always named the roots ("suspects across test, scripts"); the
+    // JSON did not, and the JSON is what the TEST consumes -- so the suite's
+    // assertion was scope-blind and would have kept passing if someone
+    // narrowed the scan to one directory or broke the walk entirely.
+    // A count is only meaningful next to the set it counted over.
+    console.log(JSON.stringify(
+        {total: findings.length, counts, roots, scanned: scannedCount, findings}, null, 2));
     process.exit(0);
 }
 
