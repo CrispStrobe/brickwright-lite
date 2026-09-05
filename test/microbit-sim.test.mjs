@@ -53,9 +53,10 @@ test('stage-header has conditional microbit view button', () => {
 
 test('codemirror-editor handles micropython language', () => {
     const src = readFileSync(
-        resolve(overlay, 'src/lib/codemirror-editor.jsx'), 'utf8'
+        resolve(overlay, 'src/lib/codemirror-languages.js'), 'utf8'
     );
-    assert.ok(src.includes("'micropython'"), 'micropython case not in langExtension');
+    assert.match(src, /case 'python':\s*\n\s*case 'micropython':/,
+        'micropython must share the deferred Python grammar');
 });
 
 test('about-data.js includes micropython-microbit-v2-simulator', () => {

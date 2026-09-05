@@ -1,14 +1,21 @@
 #!/usr/bin/env node
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import {dirname, resolve} from 'node:path';
-import {assertDosChunkBoundary, summarizeWebpackOwnership} from './lib/webpack-ownership.mjs';
+import {
+    assertDosChunkBoundary,
+    assertOptionalCodeMirrorGrammarBoundary,
+    summarizeWebpackOwnership
+} from './lib/webpack-ownership.mjs';
 
 const inputPath = resolve(process.argv[2] || 'artifacts/i8086-performance/webpack-stats.json');
 const outputPath = resolve(process.argv[3] || 'artifacts/i8086-performance/webpack-ownership.json');
 const stats = JSON.parse(await readFile(inputPath, 'utf8'));
 const report = summarizeWebpackOwnership(stats);
-const failures = assertDosChunkBoundary(report);
-report.dosChunk.boundaryFailures = failures;
+const dosFailures = assertDosChunkBoundary(report);
+const grammarFailures = assertOptionalCodeMirrorGrammarBoundary(report);
+const failures = [...dosFailures, ...grammarFailures];
+report.dosChunk.boundaryFailures = dosFailures;
+report.optionalCodeMirrorGrammars.boundaryFailures = grammarFailures;
 await mkdir(dirname(outputPath), {recursive: true});
 await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`);
 
@@ -22,6 +29,9 @@ for (const owner of report.initial.owners.slice(0, 15)) {
 }
 console.log(`DOS chunk: ${(report.dosChunk.bytes / 1024).toFixed(1)} KiB  ` +
     `${report.dosChunk.files.join(', ') || 'missing'}`);
+console.log(`Optional CodeMirror grammars: ${(report.optionalCodeMirrorGrammars.sourceBytes / 1024).toFixed(1)} KiB ` +
+    `source, ${(report.optionalCodeMirrorGrammars.emittedBytes / 1024).toFixed(1)} KiB emitted in ` +
+    `${report.optionalCodeMirrorGrammars.files.join(', ') || 'missing assets'}`);
 for (const failure of failures) console.error(`FAIL: ${failure}`);
 // The first hosted P6 receipt names the existing graph before a split is
 // chosen. Turn this into a ratchet only after that evidence is documented.

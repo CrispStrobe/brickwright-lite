@@ -25,6 +25,10 @@ const compilationStats = input => {
 const compilationModules = stats => stats.modules?.length ? moduleLeaves(stats.modules) :
     (stats.chunks || []).flatMap(chunk => moduleLeaves(chunk.modules, [chunk.id]));
 
+const isOptionalCodeMirrorGrammar = name =>
+    /\/node_modules\/(?:@codemirror\/lang-(?:cpp|python|javascript)|@lezer\/(?:cpp|python|javascript))\//
+        .test(stripLoaders(name));
+
 export const forbiddenDosModuleReason = name => {
     const normalized = stripLoaders(name);
     if (/(?:^|\/)(?:avr8js|avr-chips|emu8051|rp2040js?|bbc-z80|z80|mos6502|m6502|w65c02|stm32|arm-thumb|riscv|labwired)(?:[-./]|$)/i
@@ -64,6 +68,13 @@ export const summarizeWebpackOwnership = input => {
         name: stripLoaders(module.name || module.identifier),
         reason: forbiddenDosModuleReason(module.name || module.identifier)
     })).filter(module => module.reason);
+    const optionalGrammarModules = modules.filter(module =>
+        isOptionalCodeMirrorGrammar(module.name || module.identifier));
+    const optionalGrammarIds = new Set(optionalGrammarModules.flatMap(module => module.chunks || [])
+        .map(id => String(id)));
+    const optionalGrammarChunks = chunks.filter(chunk => optionalGrammarIds.has(String(chunk.id)));
+    const optionalGrammarAssets = assets.filter(asset =>
+        /\.js$/.test(asset.name) && (asset.chunks || []).some(id => optionalGrammarIds.has(String(id))));
 
     return {
         schema: 'brickwright/webpack-ownership/v1',
@@ -84,6 +95,14 @@ export const summarizeWebpackOwnership = input => {
             bytes: dosAssets.reduce((sum, asset) => sum + (Number(asset.size) || 0), 0),
             owners: sumOwners(dosModules),
             forbiddenModules
+        },
+        optionalCodeMirrorGrammars: {
+            packages: [...new Set(optionalGrammarModules.map(module =>
+                packageOwner(module.name || module.identifier)))].sort(),
+            sourceBytes: optionalGrammarModules.reduce((sum, module) => sum + (Number(module.size) || 0), 0),
+            initial: optionalGrammarChunks.some(chunk => chunk.initial),
+            files: [...new Set(optionalGrammarAssets.map(asset => asset.name))].sort(),
+            emittedBytes: optionalGrammarAssets.reduce((sum, asset) => sum + (Number(asset.size) || 0), 0)
         }
     };
 };
@@ -133,6 +152,22 @@ export const assertDosChunkBoundary = report => {
     if (report.dosChunk.forbiddenModules.length) {
         failures.push(`bw-debug-i8086 contains unrelated modules: ${report.dosChunk.forbiddenModules
             .map(module => `${module.reason}: ${module.name}`).join(', ')}`);
+    }
+    return failures;
+};
+
+export const assertOptionalCodeMirrorGrammarBoundary = report => {
+    const grammar = report.optionalCodeMirrorGrammars;
+    const failures = [];
+    const expected = ['@codemirror/lang-cpp', '@codemirror/lang-javascript', '@codemirror/lang-python'];
+    const missing = expected.filter(owner => !grammar.packages.includes(owner));
+    if (missing.length) failures.push(`optional CodeMirror grammar packages are missing: ${missing.join(', ')}`);
+    if (grammar.initial) failures.push('an optional CodeMirror grammar became initial JavaScript');
+    if (grammar.sourceBytes < 250 * 1024) {
+        failures.push(`optional CodeMirror grammar ownership fell below 250 KiB: ${grammar.sourceBytes} bytes`);
+    }
+    if (grammar.emittedBytes < 100 * 1024) {
+        failures.push(`optional CodeMirror grammar assets fell below 100 KiB: ${grammar.emittedBytes} bytes`);
     }
     return failures;
 };

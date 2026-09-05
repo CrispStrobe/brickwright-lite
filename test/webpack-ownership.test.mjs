@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
     assertDosChunkBoundary,
+    assertOptionalCodeMirrorGrammarBoundary,
     auditWebpackResourceWindow,
     summarizeWebpackOwnership
 } from '../scripts/lib/webpack-ownership.mjs';
@@ -87,4 +88,40 @@ test('the DOS boundary rejects broad registries, solvers and unrelated CPU famil
         'broad-board-or-device-registry', 'solver', 'unrelated-cpu-family'
     ]);
     assert.equal(assertDosChunkBoundary(report).length, 1);
+});
+
+test('optional CodeMirror grammar ownership is non-initial, complete and large enough to matter', () => {
+    const stats = fixture();
+    stats.chunks.push(
+        {id: 20, names: ['bw-codemirror-lang-cpp'], files: ['bw-codemirror-lang-cpp.js'], initial: false},
+        {id: 21, names: ['bw-codemirror-lang-python'], files: ['bw-codemirror-lang-python.js'], initial: false},
+        {id: 22, names: ['bw-codemirror-lang-javascript'], files: ['bw-codemirror-lang-javascript.js'], initial: false}
+    );
+    stats.assets.push(
+        {name: 'bw-codemirror-lang-cpp.js', size: 50000, chunks: [20]},
+        {name: 'bw-codemirror-lang-python.js', size: 45000, chunks: [21]},
+        {name: 'bw-codemirror-lang-javascript.js', size: 40000, chunks: [22]}
+    );
+    stats.modules.push(
+        {name: './node_modules/@codemirror/lang-cpp/dist/index.js', size: 100000, chunks: [20]},
+        {name: './node_modules/@codemirror/lang-python/dist/index.js', size: 80000, chunks: [21]},
+        {name: './node_modules/@codemirror/lang-javascript/dist/index.js', size: 80000, chunks: [22]}
+    );
+    const report = summarizeWebpackOwnership(stats);
+    assert.deepEqual(report.optionalCodeMirrorGrammars.packages, [
+        '@codemirror/lang-cpp', '@codemirror/lang-javascript', '@codemirror/lang-python'
+    ]);
+    assert.equal(report.optionalCodeMirrorGrammars.sourceBytes, 260000);
+    assert.equal(report.optionalCodeMirrorGrammars.emittedBytes, 135000);
+    assert.equal(report.optionalCodeMirrorGrammars.initial, false);
+    assert.deepEqual(assertOptionalCodeMirrorGrammarBoundary(report), []);
+});
+
+test('optional grammar boundary rejects eager, incomplete or insignificant splits', () => {
+    const report = summarizeWebpackOwnership(fixture());
+    const failures = assertOptionalCodeMirrorGrammarBoundary(report);
+    assert.equal(failures.length, 3);
+    assert.match(failures.join('\n'), /packages are missing/);
+    assert.match(failures.join('\n'), /below 250 KiB/);
+    assert.match(failures.join('\n'), /below 100 KiB/);
 });

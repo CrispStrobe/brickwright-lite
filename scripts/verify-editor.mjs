@@ -268,6 +268,60 @@ async function verify () {
             fail('ASM tab button not found');
         }
 
+        const grammarPattern = /bw-codemirror-lang-(?:cpp|python|javascript)/;
+        const asmGrammarResources = await page.evaluate(pattern =>
+            performance.getEntriesByType('resource')
+                .filter(entry => new RegExp(pattern).test(entry.name))
+                .map(entry => entry.name), grammarPattern.source);
+        if (asmGrammarResources.length === 0) {
+            pass('ASM tab did not fetch optional C, Python or JavaScript grammars');
+        } else {
+            fail(`ASM tab fetched optional grammars: ${asmGrammarResources.join(', ')}`);
+        }
+
+        // Demand each optional language after the ASM-only assertion. Besides
+        // proving the chunks still resolve, their same-origin resource timing
+        // is the hosted encoded-size receipt for the split.
+        for (const [label, chunk] of [
+            ['🧩 Pseudo', null],
+            ['🐍 Py', 'python'],
+            ['🟨 JS', 'javascript'],
+            ['🔧 C', 'cpp']
+        ]) {
+            const tab = page.locator('button', {hasText: label}).first();
+            if (await tab.count() !== 1) {
+                fail(`language tab ${label} not found`);
+                continue;
+            }
+            await tab.click();
+            await page.waitForFunction(text => {
+                const button = [...document.querySelectorAll('button')]
+                    .find(candidate => candidate.textContent.includes(text));
+                return button && button.getAttribute('aria-pressed') === 'true';
+            }, label, {timeout: 15000});
+            if (chunk) {
+                await page.waitForFunction(name => performance.getEntriesByType('resource')
+                    .some(entry => entry.name.includes(`bw-codemirror-lang-${name}`)), chunk, {timeout: 15000});
+            }
+        }
+        const grammarReceipt = await page.evaluate(pattern => {
+            const rows = performance.getEntriesByType('resource')
+                .filter(entry => new RegExp(pattern).test(entry.name))
+                .map(entry => ({name: entry.name, encodedBodySize: entry.encodedBodySize}));
+            return {
+                rows,
+                encodedBodyBytes: rows.reduce((sum, row) => sum + row.encodedBodySize, 0)
+            };
+        }, grammarPattern.source);
+        const grammarKinds = new Set(grammarReceipt.rows.map(row =>
+            row.name.match(grammarPattern)?.[0]));
+        if (grammarKinds.size === 3 && grammarReceipt.encodedBodyBytes >= 100 * 1024) {
+            pass(`optional grammars isolated in ${grammarReceipt.encodedBodyBytes} encoded bytes`);
+        } else {
+            fail(`optional grammar receipt has ${grammarKinds.size}/3 chunks and ` +
+                `${grammarReceipt.encodedBodyBytes} encoded bytes`);
+        }
+
     } catch (err) {
         fail(err.message);
     } finally {

@@ -14,7 +14,7 @@ import {
     summarizeI8086Timeline,
     summarizeReactProfiles
 } from './lib/i8086-performance.mjs';
-import {auditWebpackResourceWindow} from './lib/webpack-ownership.mjs';
+import {auditWebpackResourceWindow, summarizeWebpackOwnership} from './lib/webpack-ownership.mjs';
 
 const url = process.env.PROOF_URL || process.env.BW_URL || 'http://localhost:8617/';
 const outDir = resolve(process.env.I8086_PERF_ARTIFACTS || 'artifacts/i8086-performance');
@@ -23,6 +23,8 @@ const requestedRepetitions = Number.parseInt(process.env.I8086_PERF_REPETITIONS 
 const repetitions = Number.isFinite(requestedRepetitions) ? Math.max(3, requestedRepetitions) : 3;
 const webpackStatsPath = process.env.I8086_WEBPACK_STATS;
 const webpackStats = webpackStatsPath ? JSON.parse(await readFile(resolve(webpackStatsPath), 'utf8')) : null;
+const webpackOwnership = webpackStats ? summarizeWebpackOwnership(webpackStats) : null;
+const optionalGrammarAssets = new Set(webpackOwnership?.optionalCodeMirrorGrammars.files || []);
 const profiles = [
     {name: 'desktop', viewport: {width: 1440, height: 900}, deviceScaleFactor: 1, cpuThrottleRate: 1},
     {name: 'mobile', viewport: {width: 412, height: 915}, deviceScaleFactor: 2, isMobile: true,
@@ -274,10 +276,13 @@ try {
                 /(?:^|\/)sb3-creator\.js$/.test(asset));
             const speculativeExampleAssets = preCircuitResources.assets.filter(asset =>
                 /(?:^|\/)pseudocode-examples\.js$/.test(asset));
+            const eagerGrammarAssets = preCircuitResources.assets.filter(asset =>
+                optionalGrammarAssets.has(asset));
             console.log(`  pre-Circuit: ${(preCircuitResources.encodedBodyBytes / 1048576).toFixed(2)} MiB ` +
                 `encoded, ${eagerCircuitAssets.length} deferred circuit asset(s) and ` +
                 `${speculativeCompilerAssets.length} speculative compiler asset(s), ` +
-                `${speculativeExampleAssets.length} speculative examples asset(s) fetched early`);
+                `${speculativeExampleAssets.length} speculative examples asset(s), and ` +
+                `${eagerGrammarAssets.length} optional grammar asset(s) fetched early`);
             if (preCircuitResources.unmatchedAssets.length) {
                 throw new Error(`${name} #${repetition} pre-Circuit window fetched JavaScript absent ` +
                     `from webpack stats: ${preCircuitResources.unmatchedAssets.join(', ')}`);
@@ -293,6 +298,10 @@ try {
             if (speculativeExampleAssets.length) {
                 throw new Error(`${name} #${repetition} Code layout fetched bundled examples before ` +
                     `the no-device Tools menu opened: ${speculativeExampleAssets.join(', ')}`);
+            }
+            if (eagerGrammarAssets.length) {
+                throw new Error(`${name} #${repetition} ASM journey fetched unused CodeMirror grammars: ` +
+                    eagerGrammarAssets.join(', '));
             }
         }
         for (const [windowName, attribution] of Object.entries(result.reactAttribution)) {
