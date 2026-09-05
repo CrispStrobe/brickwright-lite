@@ -27,11 +27,11 @@ test('6502 controls and adapter serial publish bounded replay facts in call orde
         ['m6502.buttons', {mask: 5}], ['m6502.serial', {byte: 0x41}]
     ]);
     assert.ok(facts.every(fact => fact.time.domain === 'm6502-cycles'));
-    assert.equal(target.applyDebugInput(facts[0]), true);
-    assert.equal(target.applyDebugInput(facts[1]), true);
+    assert.equal(target.applyReplayInput(facts[0]), true);
+    assert.equal(target.applyReplayInput(facts[1]), true);
     assert.deepEqual(serial, [0x41, 0x41]);
     assert.equal(facts.length, 2, 'replay application must not recursively log itself');
-    assert.equal(target.applyDebugInput({producer: 'm6502.serial', payload: {byte: 'x'}}).code,
+    assert.equal(target.applyReplayInput({producer: 'm6502.serial', payload: {byte: 'x'}}).code,
         'UNSUPPORTED_REPLAY_INPUT');
 });
 
@@ -47,7 +47,7 @@ test('Spectrum buttons and keyboard matrix replay to an equivalent input state',
     target.onDebugInput(fact => facts.push(fact));
     assert.equal(target.setButtons(0x15), true);
     assert.equal(target.setKeys(['A', 'CAPS SHIFT']), true);
-    for (const fact of facts) assert.equal(replay.applyDebugInput(fact), true);
+    for (const fact of facts) assert.equal(replay.applyReplayInput(fact), true);
     assert.equal(second._kempston, first._kempston);
     assert.deepEqual(second.ula.saveState(), first.ula.saveState());
     assert.equal(replay.setKeys(Array(41).fill('A')), false, 'key payload is explicitly bounded');

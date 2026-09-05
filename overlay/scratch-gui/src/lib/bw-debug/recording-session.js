@@ -2,6 +2,21 @@ import {RECORDER_SCHEMA} from './recorder.js';
 
 const refusal = (code, reason) => ({accepted: false, code, reason});
 
+/** Bind target-owned external inputs to the lossless recorder lifecycle. */
+export function subscribeDebugTargetInputs (target, recordingSession) {
+    if (typeof target?.onDebugInput !== 'function') return null;
+    if (!recordingSession || typeof recordingSession.appendInput !== 'function' ||
+        typeof recordingSession.status !== 'function') {
+        throw new TypeError('debug target inputs require a recording session');
+    }
+    const unsubscribe = target.onDebugInput(input =>
+        !recordingSession.status().active || recordingSession.appendInput(input));
+    if (typeof unsubscribe !== 'function') {
+        throw new TypeError('onDebugInput must return an unsubscribe function');
+    }
+    return unsubscribe;
+}
+
 /** Connect complete target checkpoints to the target-neutral recorder. */
 export function createRecordingSession ({recorder, eventStream, getTarget}) {
     let active = false;

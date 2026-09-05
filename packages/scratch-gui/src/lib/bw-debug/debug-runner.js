@@ -41,7 +41,7 @@ import {
 import { parseCondition } from './condition.js';
 import { createTrace, IO_SFRS, TIMER_SFRS } from './trace.js';
 import {createDebugFoundation, subscribeDebugTargetEvents} from './debug-foundation.js';
-import {createRecordingSession} from './recording-session.js';
+import {createRecordingSession, subscribeDebugTargetInputs} from './recording-session.js';
 import {createInstructionReplayController} from './instruction-replay.js';
 import { setValueResolver } from './hover-values.js';
 import { instructionLength } from './opcodes.js';
@@ -548,10 +548,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             unsubscribeDebugInputs();
             unsubscribeDebugInputs = null;
         }
-        if (typeof target?.onDebugInput === 'function') {
-            unsubscribeDebugInputs = target.onDebugInput(input =>
-                !recordingSession.status().active || recordingSession.appendInput(input));
-        }
+        unsubscribeDebugInputs = subscribeDebugTargetInputs(target, recordingSession);
     }
 
     // Per-instruction capture is intentionally opt-in. Merely opening a bench

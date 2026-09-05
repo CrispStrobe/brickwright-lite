@@ -97,7 +97,7 @@ export function createZ80DebugTarget(adapter, opts = {}) {
       return () => inputListeners.delete(listener);
     },
 
-    applyDebugInput(input) {
+    applyReplayInput(input) {
       const payload = input?.payload;
       if (input?.producer === 'z80.buttons' && Number.isSafeInteger(payload?.mask)) {
         return typeof machine.setButtons === 'function' ? machine.setButtons(payload.mask & 0x1f) : false;

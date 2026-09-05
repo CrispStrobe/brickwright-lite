@@ -45,6 +45,8 @@ jobs:
         run: npm run vendor
       - name: Integrate overlays
         run: node scripts/integrate.mjs
+      - name: Install debugger runtime dependencies
+        run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
       - name: Focused debugger contracts and live cores
         run: |
           node --test \

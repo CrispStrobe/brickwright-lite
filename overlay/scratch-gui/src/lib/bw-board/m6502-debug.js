@@ -130,7 +130,7 @@ export function createM6502DebugTarget(adapter, opts = {}) {
       return () => inputListeners.delete(listener);
     },
 
-    applyDebugInput(input) {
+    applyReplayInput(input) {
       if (input?.producer === 'm6502.buttons' && Number.isSafeInteger(input.payload?.mask)) {
         return typeof machine.setButtons === 'function' ? machine.setButtons(input.payload.mask & 0x1f) : false;
       }

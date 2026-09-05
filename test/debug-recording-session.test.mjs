@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createDebugEventStream} from '../overlay/scratch-gui/src/lib/bw-debug/event-stream.js';
 import {createDebugRecorder} from '../overlay/scratch-gui/src/lib/bw-debug/recorder.js';
-import {createRecordingSession} from '../overlay/scratch-gui/src/lib/bw-debug/recording-session.js';
+import {
+    createRecordingSession, subscribeDebugTargetInputs
+} from '../overlay/scratch-gui/src/lib/bw-debug/recording-session.js';
 
 const fixture = () => {
     let state = 3;
@@ -89,4 +91,23 @@ test('target checkpoint and restore refusals remain refusals at the session boun
     assert.deepEqual(f.session.restore(0), {
         accepted: false, code: 'restore-failed', reason: 'topology changed'
     });
+});
+
+test('target input subscription records only while active and returns recorder refusal', () => {
+    let listener = null;
+    let active = false;
+    const seen = [];
+    const target = {onDebugInput: cb => { listener = cb; return () => { listener = null; }; }};
+    const session = {
+        status: () => ({active}),
+        appendInput: input => { seen.push(input); return {accepted: false, code: 'budget'}; }
+    };
+    const unsubscribe = subscribeDebugTargetInputs(target, session);
+    assert.equal(listener({producer: 'key'}), true);
+    assert.deepEqual(seen, []);
+    active = true;
+    assert.deepEqual(listener({producer: 'key'}), {accepted: false, code: 'budget'});
+    assert.deepEqual(seen, [{producer: 'key'}]);
+    unsubscribe();
+    assert.equal(listener, null);
 });
