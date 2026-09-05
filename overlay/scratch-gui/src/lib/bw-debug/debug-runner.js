@@ -43,6 +43,7 @@ import { createTrace, IO_SFRS, TIMER_SFRS } from './trace.js';
 import {createDebugFoundation, subscribeDebugTargetEvents} from './debug-foundation.js';
 import {createRecordingSession, subscribeDebugTargetInputs} from './recording-session.js';
 import {createInstructionReplayController} from './instruction-replay.js';
+import {createHistoricalOutputGate} from './timed-replay-io.js';
 import {createReverseContinueCoordinator} from './reverse-continue.js';
 import {createEventBreakpointDispatcher} from './event-breakpoint-dispatcher.js';
 import {createSelectedEventSeekCoordinator} from './selected-event-seek.js';
@@ -894,14 +895,17 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     }
 
     const snapshotEmitter = createDebugSnapshotEmitter({snapshot, onChange});
+    const replayOutputGate = createHistoricalOutputGate({publishState: state => onChange(state)});
 
     /** Immediate by default: every existing call is a semantic event. */
     function emit() {
+        if (replayingDebugHistory) return replayOutputGate.emit(null);
         snapshotEmitter.immediate();
     }
 
     /** Animation-frame progress only; safe to coalesce before snapshot work. */
     function emitLive() {
+        if (replayingDebugHistory) return replayOutputGate.emit(null);
         snapshotEmitter.live();
     }
 
@@ -3012,6 +3016,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             recordingSession.stop();
             if (session) session.pause();
             unschedule();
+            const outputTransaction = replayOutputGate.begin();
+            if (!outputTransaction.accepted) return outputTransaction;
             replayingDebugHistory = true;
             let result;
             try {
@@ -3022,8 +3028,13 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             }
             if (result.accepted) {
                 reverseCursor = eventCursor;
-                setStatus('paused');
+                status = {phase: 'paused', message: ''};
             }
+            // The replay is synchronous: no historical intermediate state may
+            // escape, and both success and rollback publish one complete view
+            // of the machine that is now live.
+            const synchronized = replayOutputGate.resynchronize(snapshot());
+            if (!synchronized.accepted && result.accepted) return synchronized;
             return result;
         },
         canReverseDebug: () => instructionReplay.canReverse(),
