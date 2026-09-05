@@ -16,6 +16,11 @@ test('one selected event drives navigation and time seeking', () => {
     assert.equal(timeline.older().event.seq, 4);
     assert.equal(timeline.seekTime({domain: 'cpu', ticks: 19}).event.seq, 3);
     assert.equal(timeline.newer().event.seq, 4);
+    assert.equal(timeline.seekCursor(5).event.seq, 4,
+        'a checkpoint cursor selects the event immediately before its boundary');
+    assert.equal(timeline.seekCursor(3).code, 'cursor-not-retained');
+    assert.equal(timeline.seekCursor(6).event.seq, 5,
+        'a checkpoint immediately after the latest event selects that latest event');
 });
 
 test('bounded retention moves an evicted selection and preserves gap evidence', () => {

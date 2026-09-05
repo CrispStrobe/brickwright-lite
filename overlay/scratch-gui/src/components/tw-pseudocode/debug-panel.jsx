@@ -74,7 +74,9 @@ const L10N = {
             'with no instruction of yours responsible.',
         record: 'Record', recording: 'Recording', checkpoint: 'Checkpoint', restore: 'Restore',
         recordUnsupported: 'This target cannot capture a complete deterministic checkpoint',
-        reverseHint: 'Restore and replay to the previous recorded instruction'
+        reverseHint: 'Restore and replay to the previous recorded instruction',
+        timeline: 'Timeline', timelineRefresh: 'Read events', timelineOlder: 'Older',
+        timelineNewer: 'Newer', timelineLatest: 'Latest', timelineCheckpoint: 'Last checkpoint'
     },
     de: {
         run: 'Start', pause: 'Pause', step: 'Schritt', reverseStep: 'Zurück', stop: 'Stopp',
@@ -106,7 +108,9 @@ const L10N = {
             'Peripherie bewegt, löst aus, ohne dass eine deiner Anweisungen schuld ist.',
         record: 'Aufzeichnen', recording: 'Aufzeichnung', checkpoint: 'Prüfpunkt', restore: 'Wiederherstellen',
         recordUnsupported: 'Dieses Ziel kann keinen vollständigen deterministischen Prüfpunkt erfassen',
-        reverseHint: 'Zum vorherigen aufgezeichneten Befehl zurückkehren und verifiziert abspielen'
+        reverseHint: 'Zum vorherigen aufgezeichneten Befehl zurückkehren und verifiziert abspielen',
+        timeline: 'Zeitleiste', timelineRefresh: 'Ereignisse lesen', timelineOlder: 'Älter',
+        timelineNewer: 'Neuer', timelineLatest: 'Neueste', timelineCheckpoint: 'Letzter Prüfpunkt'
     }
 };
 
@@ -125,7 +129,7 @@ class DebugPanel extends React.Component {
         // order a user works in.
         this.state = {runner: null, ui: {phase: 'idle', message: ''}, kind: 'emulator', kinds: null,
             machineConfig: null, serialInput: '', firmwareName: null,
-            recordingStatus: null, reverseStatus: null};
+            recordingStatus: null, reverseStatus: null, timelineStatus: null};
         this.onStart = this.onStart.bind(this);
         this.onPause = this.onPause.bind(this);
         this.onStep = this.onStep.bind(this);
@@ -138,6 +142,11 @@ class DebugPanel extends React.Component {
         this.onRecord = this.onRecord.bind(this);
         this.onCheckpoint = this.onCheckpoint.bind(this);
         this.onRestoreLast = this.onRestoreLast.bind(this);
+        this.onTimelineRefresh = this.onTimelineRefresh.bind(this);
+        this.onTimelineOlder = this.onTimelineOlder.bind(this);
+        this.onTimelineNewer = this.onTimelineNewer.bind(this);
+        this.onTimelineLatest = this.onTimelineLatest.bind(this);
+        this.onTimelineCheckpoint = this.onTimelineCheckpoint.bind(this);
         this.syncProjectTokens = this.syncProjectTokens.bind(this);
         this._onMachineExtracted = this._onMachineExtracted.bind(this);
         this._onMediaLoad = this._onMediaLoad.bind(this);
@@ -601,6 +610,30 @@ class DebugPanel extends React.Component {
         this.setState({recordingStatus: result.accepted === false ? result : runner.debugRecordingStatus()});
     }
 
+    onTimelineRefresh () {
+        const runner = this.state.runner;
+        if (!runner) return;
+        runner.drainDebugEvents(512);
+        this.setState({timelineStatus: null});
+    }
+
+    navigateTimeline (operation) {
+        const runner = this.state.runner;
+        if (!runner) return;
+        const result = operation(runner.debugTimeline());
+        this.setState({timelineStatus: result.accepted ? null : result});
+    }
+
+    onTimelineOlder () { this.navigateTimeline(timeline => timeline.older()); }
+    onTimelineNewer () { this.navigateTimeline(timeline => timeline.newer()); }
+    onTimelineLatest () { this.navigateTimeline(timeline => timeline.latest()); }
+    onTimelineCheckpoint () {
+        const runner = this.state.runner;
+        const latest = runner?.debugRecorder().checkpointSummary().at(-1);
+        if (!latest) return;
+        this.navigateTimeline(timeline => timeline.seekCursor(latest.eventCursor));
+    }
+
     render () {
         const {ui} = this.state;
         const {phase, message} = ui;
@@ -633,6 +666,14 @@ class DebugPanel extends React.Component {
         const canReverse = !!(reverse && reverse.accepted);
         const reverseRefusal = this.state.reverseStatus?.accepted === false ?
             this.state.reverseStatus.reason : null;
+        const timeline = this.state.runner ? this.state.runner.debugTimeline().state() : null;
+        const timelineEvent = timeline?.selectedEvent;
+        const canTimelineOlder = !!(timeline?.retained &&
+            String(timeline.selectedSeq) !== String(timeline.firstSeq));
+        const canTimelineNewer = !!(timeline?.retained &&
+            String(timeline.selectedSeq) !== String(timeline.lastSeq));
+        const timelineRefusal = this.state.timelineStatus?.accepted === false ?
+            this.state.timelineStatus.code : null;
 
         const inferredBoard = this.state.boardSource === 'inferred';
         return (
@@ -793,6 +834,36 @@ class DebugPanel extends React.Component {
                             <option value="4">{'4×'}</option>
                         </select>
                     </span>
+                </div>
+
+                <div data-debug-timeline-controls style={{display: 'flex', gap: 6,
+                    alignItems: 'center', flexWrap: 'wrap'}}>
+                    <span>{`${this.tx('timeline')}: ${timelineEvent ?
+                        `#${String(timelineEvent.seq)} ${timelineEvent.kind}${timelineEvent.phase ?
+                            `/${timelineEvent.phase}` : ''}` : '—'}`}</span>
+                    <button data-debug-timeline-refresh style={this.state.runner ? BTN : OFF}
+                        disabled={!this.state.runner} onClick={this.onTimelineRefresh}>
+                        {this.tx('timelineRefresh')}
+                    </button>
+                    <button data-debug-timeline-older style={canTimelineOlder ? BTN : OFF}
+                        disabled={!canTimelineOlder} onClick={this.onTimelineOlder}>
+                        {'← '}{this.tx('timelineOlder')}
+                    </button>
+                    <button data-debug-timeline-newer style={canTimelineNewer ? BTN : OFF}
+                        disabled={!canTimelineNewer} onClick={this.onTimelineNewer}>
+                        {this.tx('timelineNewer')}{' →'}
+                    </button>
+                    <button data-debug-timeline-latest style={timeline?.retained ? BTN : OFF}
+                        disabled={!timeline?.retained} onClick={this.onTimelineLatest}>
+                        {this.tx('timelineLatest')}
+                    </button>
+                    <button data-debug-timeline-checkpoint
+                        style={timeline?.retained && checkpoints.length ? BTN : OFF}
+                        disabled={!timeline?.retained || !checkpoints.length}
+                        onClick={this.onTimelineCheckpoint}>{this.tx('timelineCheckpoint')}</button>
+                    {timelineRefusal ? <span role="status" data-debug-timeline-refusal>
+                        {timelineRefusal}
+                    </span> : null}
                 </div>
 
                 {/* What this target cannot do, named rather than left as greyed

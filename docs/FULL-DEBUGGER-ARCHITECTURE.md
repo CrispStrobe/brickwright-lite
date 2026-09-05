@@ -436,6 +436,16 @@ index, then pauses, restores and verifies replay; refusals remain visible.
 General event-cursor navigation, fork selection, reverse continue and reverse
 cycle remain future UI work.
 
+The first event-cursor UI slice is now present: an explicit bounded drain feeds
+the runner-owned timeline, whose selected event can move older, newer, latest,
+or to the event immediately before the newest checkpoint cursor. This is
+inspection-only; selecting history never restores or executes the target, and
+the render path reads checkpoint summaries rather than snapshots. Reverse
+continue still requires a compact ledger of halt occurrences captured during
+forward arbitration. Re-evaluating retained events against current breakpoint
+definitions would be incorrect for conditions, hit counts, modulo/ignore rules,
+one-shot breakpoints and native stops, so no such shortcut is exposed.
+
 Debugger changes also have a path-filtered `debugger-focused` GitHub Actions
 workflow. It vendors and integrates the pinned sources on a fresh runner, then
 runs the debugger contracts and real-core checkpoint/event/replay tests. This

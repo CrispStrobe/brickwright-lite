@@ -64,6 +64,18 @@ export function createDebugTimeline ({capacity = 4096} = {}) {
             return selectIndex(index);
         },
 
+        /** Select the newest retained event strictly before a recorder cursor. */
+        seekCursor (cursor) {
+            const value = ordinal(cursor);
+            if (value == null) return refusal('invalid-event-cursor', {cursor});
+            let candidate = -1;
+            for (let index = 0; index < events.length; index++) {
+                if (ordinal(events[index].seq) < value) candidate = index;
+                else break;
+            }
+            return candidate < 0 ? refusal('cursor-not-retained', {cursor}) : selectIndex(candidate);
+        },
+
         seekTime ({domain, ticks}) {
             if (typeof domain !== 'string' || (typeof ticks !== 'number' && typeof ticks !== 'bigint')) {
                 return refusal('invalid-time');
