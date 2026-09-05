@@ -273,6 +273,18 @@ fails unless it touched both.
           "falsifiable": "You cannot save and reload a running program: the save does nothing, or produces a file that will not load on the same board.",
           "why": "The debug target forwards captureCheckpoint and restoreCheckpoint to the machine; without it the debugger cannot save or reload at all.",
           "contains": "captureCheckpoint"
+        },
+        {
+          "id": "z80-debug-timestamped-facts",
+          "falsifiable": "A recorded session plays back in the wrong order, or a saved checkpoint cannot be placed on the timeline against the events around it.",
+          "why": "debugTime() stamps every producer fact and every checkpoint from one clock, so replay ordering and checkpoint placement agree. Without it the facts still record and still replay -- just not necessarily in the order they happened, which is the kind of wrong that looks right until a bug depends on ordering. NAMED 2026-09-05 because the pin bump moved upstream and the derived-coverage check found it unexplained.",
+          "contains": "debugEvents\\.debugTime\\(\\)"
+        },
+        {
+          "id": "z80-debug-replay-instruction",
+          "falsifiable": "Stepping backwards one instruction silently does nothing, instead of saying why it cannot -- for example that a halted Z80 has no instruction to retire without a recorded interrupt.",
+          "why": "replayInstruction() checks checkpointSupport() and the halted state FIRST and returns a coded refusal ('unsupported-replay', 'halted-without-instruction') with the reason. The refusal is the feature: an unsupported reverse-step that returns nothing is indistinguishable from one that worked and changed nothing.",
+          "contains": "replayInstruction\\(\\)"
         }
       ]
     },
@@ -295,6 +307,18 @@ fails unless it touched both.
           "falsifiable": "You cannot save and reload a running program: the save does nothing, or produces a file that will not load on the same board.",
           "why": "Same bridge on the 6502 target: captureCheckpoint and restoreCheckpoint forwarded to the machine.",
           "contains": "captureCheckpoint"
+        },
+        {
+          "id": "m6502-debug-timestamped-facts",
+          "falsifiable": "A recorded session plays back in the wrong order, or a saved checkpoint cannot be placed on the timeline against the events around it.",
+          "why": "debugTime() stamps every producer fact and every checkpoint from one clock, so replay ordering and checkpoint placement agree. The same mechanism as the Z80 target -- named here separately because the gate is per-file and a shared explanation would let one of them be deleted while the other stayed green.",
+          "contains": "debugEvents\\.debugTime\\(\\)"
+        },
+        {
+          "id": "m6502-debug-replay-instruction",
+          "falsifiable": "Stepping backwards one instruction silently does nothing instead of saying why it cannot.",
+          "why": "replayInstruction() checks checkpointSupport() first and returns a CODED refusal with a reason. The refusal is the feature: an unsupported reverse-step that returns nothing is indistinguishable from one that worked and changed nothing.",
+          "contains": "replayInstruction\\(\\)"
         }
       ]
     },
@@ -316,7 +340,7 @@ fails unless it touched both.
     }
   },
   "lineLevelOnly": {
-    "why": "These files carry forward-ported work that adds no NEW declared identifier -- changed method bodies, extra branches, comments -- so the identifier-based coverage above cannot see them. 458 lines as of 2026-09-05. They are protected by the sync's content-derived guard, but that only runs when someone runs the sync; this inventory is what makes the test suite see them too. Recorded as a SET, not counts, so ordinary edits do not churn it. UPDATED 2026-09-05 (later): six files joined the set -- avr8js-debug, i8259, rp2040-bootrom, rp2040js-debug, w65c51, zx-ula. THE SET DOES NOT DISTINGUISH AHEAD FROM BEHIND, and these show both. Measured lite-only vs upstream-only lines: i8259 32/156 and rp2040-bootrom 56/91 are lite being BEHIND (the 8259 rotation work landed in bw-board this afternoon and the vendor is held pending a readable CI verdict); zx-ula 19/3 and avr8js-debug 5/1 look forward-ported. The ratio is a SIGNAL, not proof -- sync-bw-board.mjs says plainly that a content comparison cannot tell direction, and that is still true. What the ratio does is tell you which way to look first. Re-derive after the vendor lands.",
+    "why": "These files carry forward-ported work that adds no NEW declared identifier -- changed method bodies, extra branches, comments -- so the identifier-based coverage above cannot see them. 458 lines as of 2026-09-05. They are protected by the sync's content-derived guard, but that only runs when someone runs the sync; this inventory is what makes the test suite see them too. Recorded as a SET, not counts, so ordinary edits do not churn it. UPDATED 2026-09-05 (later): six files joined the set -- avr8js-debug, i8259, rp2040-bootrom, rp2040js-debug, w65c51, zx-ula. THE SET DOES NOT DISTINGUISH AHEAD FROM BEHIND, and these show both. Measured lite-only vs upstream-only lines: i8259 32/156 and rp2040-bootrom 56/91 are lite being BEHIND (the 8259 rotation work landed in bw-board this afternoon and the vendor is held pending a readable CI verdict); zx-ula 19/3 and avr8js-debug 5/1 look forward-ported. The ratio is a SIGNAL, not proof -- sync-bw-board.mjs says plainly that a content comparison cannot tell direction, and that is still true. What the ratio does is tell you which way to look first. Re-derive after the vendor lands. UPDATED 2026-09-05 (pin bump to 0a779af). FOUR FILES LEFT THE SET -- i8086, i8259, ne2000, rp2040-bootrom -- because the bump synced them and they now match upstream; the gate reported them as GONE, which is the direction an inventory that could only fail one way would have missed entirely. ONE JOINED: z80-adapter.js, one lite-only line, undocumented until the gate named it. Both directions fired on the same run, against the branch that caused them.",
     "files": [
       "avr8js-debug.js",
       "cortex-m0-machine.js",
@@ -325,15 +349,12 @@ fails unless it touched both.
       "emu8051-debug.js",
       "i8086-adapter.js",
       "i8086-debug.js",
-      "i8086.js",
-      "i8259.js",
       "index.js",
       "m6502-adapter.js",
-      "ne2000.js",
       "reseat-gate.js",
-      "rp2040-bootrom.js",
       "rp2040js-debug.js",
       "w65c51.js",
+      "z80-adapter.js",
       "zx-ula.js"
     ]
   }
