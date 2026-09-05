@@ -160,6 +160,15 @@ try {
             to: runnerRunningAt,
             origin: new URL(url).origin
         }) : null;
+        // The causal window above answers what selection/assembly requested.
+        // This cold journey also includes chunks fetched when opening Code;
+        // otherwise an eager bw-board barrel looks "absent" merely because it
+        // finished downloading before the device picker appeared.
+        const dosJourneyResources = webpackStats ? auditWebpackResourceWindow(webpackStats, raw.resources, {
+            from: 0,
+            to: runnerRunningAt,
+            origin: new URL(url).origin
+        }) : null;
         const startupAttribution = attributeReactCommits(
             raw.reactProfiles, raw.reactUpdateSources, {from: probeInstalledAt, to: sampleStart});
         const circuitOpenAttribution = attributeReactCommits(
@@ -189,6 +198,7 @@ try {
                 circuitOpen: circuitOpenAttribution
             },
             dosLoadResources,
+            dosJourneyResources,
             heapBytes: raw.heapBytes,
             userAgent: raw.userAgent,
         };
@@ -233,6 +243,10 @@ try {
                 throw new Error(`${name} #${repetition} DOS load fetched JavaScript absent from webpack stats: ` +
                     dosLoadResources.unmatchedAssets.join(', '));
             }
+        }
+        if (dosJourneyResources) {
+            console.log(`  cold DOS journey: ${(dosJourneyResources.encodedBodyBytes / 1048576).toFixed(2)} MiB ` +
+                `encoded, ${dosJourneyResources.forbiddenModules.length} unrelated module(s)`);
         }
         for (const [windowName, attribution] of Object.entries(result.reactAttribution)) {
             for (const [id, boundary] of Object.entries(attribution.boundaries)) {

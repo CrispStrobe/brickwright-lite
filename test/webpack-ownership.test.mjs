@@ -50,6 +50,20 @@ test('a causal resource window maps fetched assets back to nested webpack module
     assert.deepEqual(report.unmatchedAssets, []);
 });
 
+test('webpack verbose stats can carry modules on chunks instead of the compilation root', () => {
+    const stats = fixture();
+    const modules = stats.modules;
+    delete stats.modules;
+    for (const chunk of stats.chunks) {
+        chunk.modules = modules.filter(module => module.chunks.includes(chunk.id));
+    }
+    stats.children = [{name: 'HtmlWebpackCompiler', assets: [], chunks: [{id: 0, modules: []}]}];
+    const report = summarizeWebpackOwnership(stats);
+    assert.equal(report.initial.bytes, 12000);
+    assert.equal(report.dosChunk.found, true);
+    assert.deepEqual(report.dosChunk.forbiddenModules, []);
+});
+
 test('webpack ownership reports initial assets, package owners and the isolated DOS chunk', () => {
     const report = summarizeWebpackOwnership(fixture());
     assert.equal(report.initial.bytes, 12000);

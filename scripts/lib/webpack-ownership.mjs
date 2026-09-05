@@ -17,6 +17,14 @@ const moduleLeaves = (modules, inheritedChunks = []) => (modules || []).flatMap(
     return module.modules?.length ? moduleLeaves(module.modules, chunks) : [{...module, chunks}];
 });
 
+const compilationStats = input => {
+    if (input.assets?.length && input.chunks?.length) return input;
+    return (input.children || []).find(child => child.assets?.length && child.chunks?.length) || input;
+};
+
+const compilationModules = stats => stats.modules?.length ? moduleLeaves(stats.modules) :
+    (stats.chunks || []).flatMap(chunk => moduleLeaves(chunk.modules, [chunk.id]));
+
 export const forbiddenDosModuleReason = name => {
     const normalized = stripLoaders(name);
     if (/(?:^|\/)(?:avr8js|avr-chips|emu8051|rp2040js?|bbc-z80|z80|mos6502|m6502|w65c02|stm32|arm-thumb|riscv|labwired)(?:[-./]|$)/i
@@ -38,10 +46,10 @@ const sumOwners = modules => {
 };
 
 export const summarizeWebpackOwnership = input => {
-    const stats = input.children?.length === 1 ? input.children[0] : input;
+    const stats = compilationStats(input);
     const chunks = stats.chunks || [];
     const assets = stats.assets || [];
-    const modules = moduleLeaves(stats.modules);
+    const modules = compilationModules(stats);
     const initialIds = new Set(chunks.filter(chunk => chunk.initial).map(chunk => String(chunk.id)));
     const initialModules = modules.filter(module =>
         (module.chunks || []).some(id => initialIds.has(String(id))));
@@ -81,9 +89,9 @@ export const summarizeWebpackOwnership = input => {
 };
 
 export const auditWebpackResourceWindow = (input, resources, {from, to, origin}) => {
-    const stats = input.children?.length === 1 ? input.children[0] : input;
+    const stats = compilationStats(input);
     const assets = (stats.assets || []).filter(asset => /\.js$/.test(asset.name));
-    const modules = moduleLeaves(stats.modules);
+    const modules = compilationModules(stats);
     const scripts = (resources || []).filter(resource => resource.kind === 'script' &&
         resource.at >= from && resource.at < to && (!origin || resource.name.startsWith(origin)));
     const matched = [];
