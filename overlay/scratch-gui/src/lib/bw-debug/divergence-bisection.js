@@ -19,7 +19,7 @@ export function createDivergenceBisection ({captureSource, restoreSource, probe,
     }
 
     return Object.freeze({
-        async bisect ({good, bad}) {
+        async bisect ({good, bad, auditMonotonic = false}) {
             let left; let right;
             try { left = cursor(good, 'good'); right = cursor(bad, 'bad'); } catch (error) {
                 return refusal('invalid-bisection-range', error.message);
@@ -68,6 +68,25 @@ export function createDivergenceBisection ({captureSource, restoreSource, probe,
             if (!badResult.accepted) return badResult;
             if (badResult.matches) return refusal('bisection-bad-matched',
                 'the supplied bad boundary does not diverge', {probeCursor: right.eventCursor, probes});
+
+            // Binary search is sound only for prefix comparisons: once a full
+            // replay prefix differs, a longer prefix cannot match again. An
+            // optional bounded linear audit verifies that premise for custom
+            // probes; normal replay-hash probes retain logarithmic cost.
+            if (auditMonotonic) {
+                if (right.eventCursor - left.eventCursor + 1 > maxProbes - probes) {
+                    return refusal('bisection-monotonic-audit-limit',
+                        'range is too large for the configured monotonicity audit', {probes, maxProbes});
+                }
+                let mismatch = false;
+                for (let at = left.eventCursor + 1; at < right.eventCursor; at++) {
+                    const result = await inspect(at);
+                    if (!result.accepted) return result;
+                    if (!result.matches) mismatch = true;
+                    else if (mismatch) return refusal('bisection-non-monotonic',
+                        'probe matched after an earlier prefix mismatch', {probeCursor: at, probes});
+                }
+            }
 
             let lo = left.eventCursor; let hi = right.eventCursor;
             while (hi - lo > 1) {
