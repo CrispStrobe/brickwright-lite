@@ -245,6 +245,14 @@ cfgs.forEach(c => {
             type: 'filesystem',
             buildDependencies: {config: [__filename]}
         };
+        // webpack treats node_modules as immutable by default (snapshot.managedPaths):
+        // a package is assumed unchanged unless its version changes, and its files
+        // are never re-read. This project WRITES into node_modules — apply-vm-overlay
+        // and apply-paint-overlay lay our deltas over scratch-vm and scratch-paint
+        // after install — so with that default a cached build silently shipped the
+        // PREVIOUS virtual-machine.js (2026-09-05: a 40 s "build" whose bundle lacked
+        // the patch that had just been applied). Snapshot everything by content.
+        c.snapshot = Object.assign({}, c.snapshot, {managedPaths: []});
     }
     c.resolve = c.resolve || {};
     c.resolve.alias = Object.assign({}, c.resolve.alias);

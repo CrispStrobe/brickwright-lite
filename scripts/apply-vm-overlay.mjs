@@ -313,6 +313,48 @@ if (vm2.includes('setStc (stc)')) {
     process.exit(1);
 }
 
+// A builtin extension that fails to load must cost its own blocks, not the
+// project. Before 2026-09-05 a builtin COULD not fail: its code was in the
+// bundle. Now music and the LEGO family are import()ed chunks, so their
+// loadExtensionURL can reject — offline, or a cache miss on a redeployed hash —
+// and the vanilla VM has two places that put ALL its work inside a bare
+// Promise.all over those loads: installTargets (addTarget for every target is
+// in the .then, so one rejection = an EMPTY project, silently) and
+// shareBlocksToTarget. Measured by scripts/verify-lazy-extension-degradation.mjs
+// against e0bebbf43: targets 0, opcodes [], pageErrors [] — the worst shape,
+// found by bw-ci. The deserializeProject pre-load above already swallows
+// per-extension; these are the other two sites. An absent extension then
+// leaves its blocks unrenderable, which is what a missing gallery extension
+// has always done.
+vm2 = readFileSync(vmPath2, 'utf8');
+const vmInstallAnchor = `                extensionPromises.push(this.extensionManager.loadExtensionURL(extensionURL));`;
+const vmInstallPatch = `                // Brickwright: a lazy builtin's chunk can fail to arrive; that must cost
+                // its blocks, not the whole project (see apply-vm-overlay.mjs).
+                extensionPromises.push(
+                    Promise.resolve(this.extensionManager.loadExtensionURL(extensionURL)).catch(() => {}));`;
+const vmShareAnchor = `        const extensionPromises = Array.from(extensionIDs,
+            id => this.extensionManager.loadExtensionURL(id)
+        );`;
+const vmSharePatch = `        // Brickwright: same per-extension tolerance as installTargets.
+        const extensionPromises = Array.from(extensionIDs,
+            id => Promise.resolve(this.extensionManager.loadExtensionURL(id)).catch(() => {})
+        );`;
+for (const [name, anchor, patch, marker] of [
+    ['installTargets', vmInstallAnchor, vmInstallPatch, 'that must cost\n                // its blocks, not the whole project'],
+    ['shareBlocksToTarget', vmShareAnchor, vmSharePatch, 'same per-extension tolerance as installTargets']
+]) {
+    if (vm2.includes(marker)) {
+        console.log(`  virtual-machine.js ${name} extension-load tolerance already applied`);
+    } else if (vm2.includes(anchor)) {
+        vm2 = vm2.replace(anchor, patch);
+        writeFileSync(vmPath2, vm2);
+        console.log(`  patched virtual-machine.js (${name} tolerates a failed extension load)`);
+    } else {
+        console.error(`  ! virtual-machine.js ${name} extension-load anchor not found`);
+        process.exit(1);
+    }
+}
+
 // Trim locale data: editor-msgs.js is 3.9 MiB with 80 locales; brickwright-lite ships only
 // en + de. Extract those two at build-prep time so webpack aliases to a 81 KiB file instead.
 // This runs here (post-install) because node_modules/scratch-l10n is needed.
