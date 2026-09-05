@@ -488,12 +488,10 @@ jobs:
       - name: Install Playwright browser
         id: playwright
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
-        # Gate-only tool (the gates drive the built app), NOT an app dependency —
-        # and NOT worth blocking a deploy over. If chromium can't install (a
-        # CDN/infra outage, exit 100), this step fails softly and the gates below
-        # skip, so an outage can't freeze the deploy. The gates still run and
-        # block whenever chromium installs normally.
-        continue-on-error: true
+        # Gate-only tool (the gates drive the built app), NOT an app dependency.
+        # Installation is bounded and retried below, but failure remains a real
+        # deployment failure: silently skipping every browser gate would turn
+        # required acceptance evidence into a soft gate.
         # The verify scripts import the playwright package from the repo
         # root; install it ephemerally (--no-save) plus its chromium.
         run: |

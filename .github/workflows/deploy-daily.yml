@@ -55,7 +55,23 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: vercel build --prod --token="$VERCEL_TOKEN"
 
+      - name: Refuse to publish an older main tree
+        id: freshness
+        run: |
+          set -euo pipefail
+          remote_sha=$(git ls-remote origin refs/heads/main | awk '{print $1}')
+          test -n "$remote_sha"
+          local_sha=$(git rev-parse HEAD)
+          echo "checkout=$local_sha remote-main=$remote_sha"
+          if [ "$local_sha" = "$remote_sha" ]; then
+            echo "stale=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::skipping Vercel production publish because main advanced during this build"
+          fi
+
       - name: Deploy and assign production domains
+        if: steps.freshness.outputs.stale != 'true'
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"

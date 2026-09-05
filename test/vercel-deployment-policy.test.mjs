@@ -25,6 +25,10 @@ test('every Vercel production run deploys the current main checkout', () => {
     assert.match(workflow, /^\s{10}ref: main\s*$/m);
     assert.match(workflow, /vercel build --prod/);
     assert.match(workflow, /vercel deploy --prebuilt --prod/);
+    assert.match(workflow, /git ls-remote origin refs\/heads\/main/,
+        'main can advance during the build, so freshness must be checked immediately before publication');
+    assert.match(workflow, /if: steps\.freshness\.outputs\.stale != 'true'/,
+        'the production publish must consume the post-build freshness verdict');
     for (const secret of ['VERCEL_TOKEN', 'VERCEL_ORG_ID', 'VERCEL_PROJECT_ID']) {
         assert.match(workflow, new RegExp(`secrets\\.${secret}`));
     }
