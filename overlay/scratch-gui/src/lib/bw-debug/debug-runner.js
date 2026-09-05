@@ -43,6 +43,7 @@ import { createTrace, IO_SFRS, TIMER_SFRS } from './trace.js';
 import {createDebugFoundation, subscribeDebugTargetEvents} from './debug-foundation.js';
 import {createRecordingSession, subscribeDebugTargetInputs} from './recording-session.js';
 import {createInstructionReplayController} from './instruction-replay.js';
+import {createCycleReplayController} from './cycle-replay.js';
 import {createHistoricalOutputGate} from './timed-replay-io.js';
 import {createReverseContinueCoordinator} from './reverse-continue.js';
 import {createEventBreakpointDispatcher} from './event-breakpoint-dispatcher.js';
@@ -532,7 +533,32 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             normalizeTimeDomain: replayClockDomain,
             normalizeEvent: normalizeReplayEvent
         });
-        return {recorder, recordingSession: branchSession, instructionReplay: replay, haltOccurrences};
+        const cycleReplay = createCycleReplayController({
+            recorder,
+            getTarget: () => target,
+            restoreCheckpoint: checkpoint => branchSession.restore(checkpoint.eventCursor),
+            captureSourceState: currentTarget => ({target: currentTarget.captureCheckpoint(),
+                host: captureHostState()}),
+            restoreSourceState: (source, currentTarget) => {
+                currentTarget.restoreCheckpoint(source.target);
+                return commitHostRestore(prepareHostRestore(source.host));
+            },
+            subscribeEvents: listener => eventStream.onEvent(listener),
+            replayHostEvent: event => {
+                const result = replayBreakpointDispatcher.dispatch(event, {
+                    context: {event, counts: Object.fromEntries(eventBreakpointCounters)}
+                });
+                if (result.failure) throw new Error(result.failure.code);
+                if (result.outcome?.failures?.length) {
+                    throw new Error(result.outcome.failures[0].code || 'replay-host-action-failed');
+                }
+                return true;
+            },
+            normalizeTimeDomain: replayClockDomain,
+            normalizeEvent: normalizeReplayEvent
+        });
+        return {recorder, recordingSession: branchSession, instructionReplay: replay,
+            cycleReplay, haltOccurrences};
     };
     let activeBranchPayload = createBranchPayload(debugFoundation.recorder,
         debugFoundation.haltOccurrences);
@@ -543,6 +569,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     const instructionReplay = {
         canReverse: (...args) => activeBranchPayload.instructionReplay.canReverse(...args),
         reverseToEvent: (...args) => activeBranchPayload.instructionReplay.reverseToEvent(...args)
+    };
+    const cycleReplay = {
+        canReverse: (...args) => activeBranchPayload.cycleReplay.canReverse(...args),
+        reverseToCycle: (...args) => activeBranchPayload.cycleReplay.reverseToCycle(...args)
     };
     const unsubscribeRecordingEvents = eventStream.onEvent(event =>
         activeBranchPayload.recordingSession.appendBatch([event]));
@@ -3037,7 +3067,55 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             if (!synchronized.accepted && result.accepted) return synchronized;
             return result;
         },
+        reverseDebugToCycle: eventCursor => {
+            recordingSession.stop();
+            if (session) session.pause();
+            unschedule();
+            const outputTransaction = replayOutputGate.begin();
+            if (!outputTransaction.accepted) return outputTransaction;
+            replayingDebugHistory = true;
+            let result;
+            try {
+                result = cycleReplay.reverseToCycle(eventCursor);
+            } finally {
+                replayingDebugHistory = false;
+                eventBreakpointDispatcher?.clear();
+            }
+            if (result.accepted) {
+                reverseCursor = eventCursor;
+                status = {phase: 'paused', message: ''};
+            }
+            const synchronized = replayOutputGate.resynchronize(snapshot());
+            if (!synchronized.accepted && result.accepted) return synchronized;
+            return result;
+        },
         canReverseDebug: () => instructionReplay.canReverse(),
+        canReverseCycleDebug: () => cycleReplay.canReverse(),
+        reverseStepDebugCycleStatus() {
+            if (reverseHistoryRefusal) return reverseHistoryRefusal;
+            const capability = cycleReplay.canReverse();
+            if (!capability.accepted) return capability;
+            const retained = activeBranchPayload.recorder.retention();
+            const before = reverseCursor ??
+                (retained.lastEventSeq === null ? 0 : retained.lastEventSeq + 1);
+            let previous;
+            try {
+                previous = activeBranchPayload.recorder.previousCycleBoundaryCursor(before);
+            } catch (error) {
+                return {accepted: false, code: 'reverse-cycle-history-unavailable',
+                    reason: error?.message || String(error)};
+            }
+            return previous === null ? {accepted: false, code: 'no-previous-cycle',
+                reason: 'No earlier recorded cycle boundary is retained'} :
+                {accepted: true, beforeCursor: before, eventCursor: previous};
+        },
+        reverseStepDebugCycle() {
+            const state = this.reverseStepDebugCycleStatus();
+            if (!state.accepted) return state;
+            const result = this.reverseDebugToCycle(state.eventCursor);
+            if (result.accepted) reverseContinue.reset();
+            return result;
+        },
         reverseStepDebugStatus() {
             if (reverseHistoryRefusal) return reverseHistoryRefusal;
             const capability = instructionReplay.canReverse();
@@ -3345,14 +3423,16 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     }
 
     reverseContinue = createReverseContinueCoordinator({
-        canReverse: () => reverseHistoryRefusal || haltLedgerRefusal || instructionReplay.canReverse(),
+        canReverse: () => reverseHistoryRefusal || haltLedgerRefusal ||
+            (cycleReplay.canReverse().accepted ? cycleReplay.canReverse() : instructionReplay.canReverse()),
         haltOccurrences: {
             previousBeforeBoundary: cursor =>
                 activeBranchPayload.haltOccurrences.previousBeforeBoundary(cursor),
             previousByOccurrenceCursor: cursor =>
                 activeBranchPayload.haltOccurrences.previousByOccurrenceCursor(cursor)
         },
-        reverseToEvent: eventCursor => runner.reverseDebugToEvent(eventCursor)
+        reverseToEvent: eventCursor => cycleReplay.canReverse().accepted ?
+            runner.reverseDebugToCycle(eventCursor) : runner.reverseDebugToEvent(eventCursor)
     });
     eventBreakpointDispatcher = createEventBreakpointDispatcher({
         engine: {evaluate: (event, context) => debugFoundation.evaluateBreakpoints(event, context)},

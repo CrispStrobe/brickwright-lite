@@ -24,7 +24,8 @@ const defaultBoundary = event => event?.phase === 'tick';
  */
 export function createCycleReplayController ({recorder, getTarget, subscribeEvents = null,
     applyInput = null, replayHostEvent = null, normalizeEvent = defaultNormalize,
-    isCycleBoundary = defaultBoundary, normalizeTimeDomain = domain => domain}) {
+    isCycleBoundary = defaultBoundary, normalizeTimeDomain = domain => domain,
+    restoreCheckpoint = null, captureSourceState = null, restoreSourceState = null}) {
     const targetNow = () => typeof getTarget === 'function' ? getTarget() : null;
     const capability = target => {
         let provider;
@@ -36,7 +37,8 @@ export function createCycleReplayController ({recorder, getTarget, subscribeEven
                 'cycle reverse requires a recorded, resumable provider with complete checkpoints');
         }
         const recording = target.capabilities?.().recording || [];
-        if (!recording.includes('restore') || typeof target.captureCheckpoint !== 'function' ||
+        if (!recording.includes('restore') ||
+            (!captureSourceState && typeof target.captureCheckpoint !== 'function') ||
             typeof target.restoreCheckpoint !== 'function' || typeof target.replayCycle !== 'function' ||
             (!subscribeEvents && typeof target.onDebugEvent !== 'function')) {
             return refusal('unsupported-cycle-reverse',
@@ -62,15 +64,15 @@ export function createCycleReplayController ({recorder, getTarget, subscribeEven
                 const providerDomain = normalizeTimeDomain(supported.provider.timeDomain);
                 const boundaries = expected.filter(event => isCycleBoundary(event) &&
                     normalizeTimeDomain(event.time?.domain) === providerDomain);
-                if (!expected.length || !boundaries.length || expected.at(-1) !== boundaries.at(-1) ||
+                if ((expected.length && (!boundaries.length || expected.at(-1) !== boundaries.at(-1))) ||
                     boundaries.some(event => event.fidelity !== 'recorded')) {
                     return refusal('not-recorded-cycle-boundary',
                         'cycle cursor must follow a recorded target-cycle boundary', {eventCursor});
                 }
-                const inputCursor = expected.at(-1).inputCursor ?? checkpoint.inputCursor;
+                const inputCursor = expected.at(-1)?.inputCursor ?? checkpoint.inputCursor;
                 inputs = recorder.inputsFrom(checkpoint.inputCursor)
                     .filter(input => input.cursor < inputCursor);
-                source = target.captureCheckpoint();
+                source = captureSourceState ? captureSourceState(target) : target.captureCheckpoint();
             } catch (error) {
                 return refusal('cycle-reverse-range-invalid', error?.message || String(error));
             }
@@ -85,7 +87,8 @@ export function createCycleReplayController ({recorder, getTarget, subscribeEven
 
             const rollback = failure => {
                 try {
-                    const result = target.restoreCheckpoint(source);
+                    const result = restoreSourceState ? restoreSourceState(source, target) :
+                        target.restoreCheckpoint(source);
                     const error = rejected(result, 'cycle reverse rollback', true);
                     if (error) throw new Error(error);
                 } catch (error) {
@@ -98,7 +101,8 @@ export function createCycleReplayController ({recorder, getTarget, subscribeEven
             const actual = [];
             let unsubscribe;
             try {
-                const restored = target.restoreCheckpoint(checkpoint.snapshot);
+                const restored = restoreCheckpoint ? restoreCheckpoint(checkpoint, target) :
+                    target.restoreCheckpoint(checkpoint.snapshot);
                 const restoreError = rejected(restored, 'cycle checkpoint restore', true);
                 if (restoreError) return rollback({code: 'cycle-reverse-restore-failed', reason: restoreError});
                 unsubscribe = subscribeEvents ? subscribeEvents(event => actual.push(event)) :

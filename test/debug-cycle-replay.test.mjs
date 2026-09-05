@@ -58,6 +58,13 @@ test('reverse restores a mid-instruction checkpoint and verifies every real cycl
     assert.equal(f.tick(), 2, 'target remains exactly at the selected cycle boundary');
 });
 
+test('a complete mid-cycle checkpoint is itself a zero-replay destination', () => {
+    const f = fixture();
+    assert.deepEqual(f.controller.reverseToCycle(0), {accepted: true, boundary: 'cycle',
+        eventCursor: 0, checkpointId: 7, replayedCycles: 0, replayedEvents: 0});
+    assert.equal(f.tick(), 0);
+});
+
 test('divergence identifies the absolute event cursor and restores the original live state', () => {
     const f = fixture({corruptAt: 1});
     const result = f.controller.reverseToCycle(2);

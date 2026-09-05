@@ -20,8 +20,10 @@ const methodBody = (name, nextName) => {
 test('reverse continue exposes a readiness query and command over recorded halt occurrences', () => {
     const status = methodBody('reverseContinueDebugStatus', 'reverseContinueDebug()');
     assert.match(runner,
-        /canReverse: \(\) => reverseHistoryRefusal \|\| haltLedgerRefusal \|\| instructionReplay\.canReverse\(\)/,
-        'recorded history is not enough unless restore/replay and inputs are complete');
+        /canReverse: \(\) => reverseHistoryRefusal \|\| haltLedgerRefusal \|\|[\s\S]{0,140}cycleReplay\.canReverse/,
+        'recorded history is not enough unless an eligible verified replay path is complete');
+    assert.match(runner, /reverseToEvent: eventCursor => cycleReplay\.canReverse\(\)\.accepted \?/,
+        'a recorded cycle provider must continue through cycle verification, not instruction replay');
     assert.match(coordinator, /haltOccurrences\.previousBeforeBoundary\(beforeCursor\)/,
         'status must use the bounded halt-occurrence index, not scan event payloads');
     assert.match(coordinator, /['"]no-previous-breakpoint['"]/,
