@@ -47,6 +47,36 @@ test('8086 publishes a true retire boundary with exact PCs, cost, and machine cl
     assert.equal(retire.fidelity, 'recorded');
 });
 
+test('an instruction observer installed mid-instruction starts on the next boundary', () => {
+    const machine = new I8086Machine(CONFIG);
+    machine.cpu.cs = 0;
+    machine.cpu.ip = 0x100;
+    machine.mem.set([0x90, 0x90, 0x90], 0x100);
+    const events = [];
+    const read = machine.cpu.read;
+    machine.cpu.read = address => {
+        machine.hooks.onInstruction = event => events.push(event);
+        return read(address);
+    };
+
+    machine.step();
+    assert.deepEqual(events, [], 'the instruction already in flight is not half-observed');
+    const cyclesBefore = machine.cycles;
+    const cost = machine.step();
+    assert.deepEqual(events[0], {
+        pcBefore: 0x101,
+        pcAfter: 0x102,
+        cycles: cost,
+        cyclesBefore,
+        cyclesAfter: cyclesBefore + cost,
+    });
+
+    machine.cpu.read = read;
+    machine.hooks.onInstruction = null;
+    machine.step();
+    assert.equal(events.length, 1, 'an unsubscribed observer receives no later retire');
+});
+
 test('8086 records program writes and OUT values without debugger-initiated reads', () => {
     // mov al,5a; mov [0200],al; out 20h,al
     const {target, events} = fixture(Uint8Array.of(0xb0, 0x5a, 0xa2, 0x00, 0x02, 0xe6, 0x20));

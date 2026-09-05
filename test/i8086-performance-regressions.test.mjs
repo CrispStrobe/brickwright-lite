@@ -25,6 +25,23 @@ test('the 8086 runner uses its boundary step without rounding away tiny budgets'
     assert.ok(machine.cycles > 0);
 });
 
+test('the unobserved machine step never reads the debugger pc projection', () => {
+    const machine = new I8086Machine(DOSBOX8086);
+    machine.cpu.cs = 0;
+    machine.cpu.ip = 0x100;
+    machine.mem[0x100] = 0x90;           // NOP
+    let pcReads = 0;
+    const pc = Object.getOwnPropertyDescriptor(I8086.prototype, 'pc').get;
+    Object.defineProperty(machine.cpu, 'pc', {
+        configurable: true,
+        get() { pcReads++; return pc.call(this); },
+    });
+
+    machine.step();
+    assert.equal(pcReads, 0,
+        'a machine with no instruction observer paid to capture debugger PCs');
+});
+
 test('the shipped core physically fetches each prefix and opcode once', () => {
     const bytes = [0x26, 0x2e, 0x90];
     const reads = [];
