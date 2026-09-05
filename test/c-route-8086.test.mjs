@@ -171,10 +171,15 @@ test('the C tab decides the route through this module, and in one place', async 
         'here is a second local path that no gate runs');
     assert.match(src, /cRouteFor\(this\.currentDevice\(\)\) === 'local'/,
         'the button must be gated by the route function, not by a device id compared in the JSX');
-    // The C 8086 path must not have added a hosted POST anywhere. The two that
-    // exist are flashToBoard and flashStm32ViaSwd, both pseudocode-only.
-    assert.equal(src.split('stc-compiler.vercel.app/compile').length - 1, 2,
-        'the number of hosted /compile call sites changed — the 8086 C route must add none');
+    // The C 8086 path must not have added a hosted POST anywhere. Every
+    // hosted /compile in this component goes through ONE helper, and the
+    // three callers (flashToBoard, the STM32 SWD path, the Pico UF2 deploy)
+    // call it by name — so a new hosted route shows up as a fourth caller,
+    // and a second URL literal shows up as a second literal.
+    assert.equal(src.split('stc-compiler.vercel.app/compile').length - 1, 1,
+        'the hosted /compile URL must appear exactly once, inside hostedCompileC()');
+    assert.equal(src.split('await this.hostedCompileC(').length - 1, 3,
+        'the hosted compile has a new or missing caller; the 8086 C route must not be one');
     for (const key of ['runC8086', 'runC8086Title', 'runC8086Building', 'runC8086Built',
         'runC8086Refused', 'runC8086Failed', 'runC8086Empty', 'runC8086Route']) {
         assert.equal(src.split(`${key}:`).length - 1, 2, `${key} is not in both locales`);
