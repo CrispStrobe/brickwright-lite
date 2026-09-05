@@ -286,6 +286,11 @@ module by module, over half of the vendor chunk was three things no first paint 
   the project loader already await — resolves lazy ids through `_loadLazyBuiltinExtension`,
   which dedups concurrent loads. `loadExtensionIdSync` on a lazy id warns and loads async;
   nothing calls it that way (`CORE_EXTENSIONS` is empty).
+  `deserializeProject`'s pre-load of the sb3's declared extensions (the `deserPatch` in
+  `scripts/apply-vm-overlay.mjs`) is now AWAITED before the `extensionURLs` strip runs: with
+  fire-and-forget, a lazy builtin declared with its gallery URL was still "not loaded" when the
+  strip looked, and `installTargets` fetched it a second time from the URL into a sandboxed
+  worker. bw-ci flagged the same hazard independently while scoping D-FIRSTLOAD1.
 - `overlay/scratch-gui/src/lib/lazy-render-fonts.js` + a webpack alias: `scratch-render-fonts`
   resolves to a same-shaped shim; the real module is reachable only as
   `scratch-render-fonts-base64` and arrives as `chunks/render-fonts.<hash>.js`. The ordering
