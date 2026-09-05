@@ -59,3 +59,101 @@ resolved by any tool, because the tool has no way to know which of two changes
 was the intended one. The only repair is a person who understands both sides,
 and the only prevention is upstreaming local edits while they are still small
 enough to remember.
+
+---
+
+# The allow-list below is executable
+
+Updated 2026-09-05. Everything above this line is prose, and prose is what
+let this file rot for a day: it recorded a divergence accurately and then had
+no way to notice when the numbers changed. They had. It said lite was behind
+on three upstream items; all three have since been grafted, and the counts it
+quotes (165/84) are now 173/229.
+
+**A document that describes a divergence cannot detect one.** So the list
+below is not a description — `test/vendor-identity-i8086-machine.test.mjs`
+parses this JSON block and asserts it. Editing the prose changes nothing;
+editing this block changes what is enforced.
+
+The technique is one the kerotakis lane put more sharply than I had it:
+**assert an invariant BETWEEN two things, never a property OF each.** Two
+copies each passing their own suite proves both are self-consistent and says
+exactly nothing about whether they are the same, which is the only question
+here. The disease is not too few tests on either half; it is that no test
+fails unless it touched both.
+
+## What each entry means
+
+- `id` — stable name, quoted by the failure message.
+- `why` — why lite has this and upstream does not. Read it before deleting.
+- `contains` — a regex asserted to MATCH the vendored copy and NOT MATCH
+  upstream. Containment-style, not a character window: see
+  GATES-THAT-CANNOT-FAIL.md on why proximity is not governance.
+
+## What fails, and what that means
+
+- **A sync deleted lite-only work** → the entry's `contains` stops matching
+  the vendored copy. Names the `id`. This is the 173-line silent loss the
+  prose above warned about, made loud.
+- **Upstream converged** → `contains` starts matching upstream too. The entry
+  is obsolete; delete it from this block. The doc cannot go stale in this
+  direction either, because agreeing with upstream is now a failure.
+- **The two vendored copies drifted** → `overlay/` and `packages/` are
+  dual-tracked in this repo; both are checked. I created a divergence between
+  them once by not force-adding an ignored path.
+
+```json
+{
+  "upstream": {"repo": "bw-board", "path": "src/i8086-machine.js"},
+  "vendored": [
+    "overlay/scratch-gui/src/lib/bw-board/i8086-machine.js",
+    "packages/scratch-gui/src/lib/bw-board/i8086-machine.js"
+  ],
+  "liteOnly": [
+    {
+      "id": "display-revision-token",
+      "why": "Host-renderer optimisation: a monotonic token bumped on visible VRAM and CRTC writes so the renderer can skip repaints. Never upstreamed. A sync deletes it and NOTHING FAILS -- the machine constructs, the screen just repaints every frame until someone profiles.",
+      "contains": "this\\.displayRevision = 0;"
+    },
+    {
+      "id": "display-revision-bump-vram",
+      "why": "The bump must stay GOVERNED by the VRAM address test. Hoisting it out bumps on every write and destroys the optimisation while still reading as present.",
+      "contains": "if \\(addr >= 0xa0000 && addr <= 0xbffff\\) \\{?[^}]*?this\\.displayRevision = \\(this\\.displayRevision \\+ 1\\)"
+    },
+    {
+      "id": "display-revision-bump-crtc",
+      "why": "Same, governed by the CRTC port range.",
+      "contains": "if \\(port >= 0x3b0 && port <= 0x3df\\) \\{?[^}]*?this\\.displayRevision = \\(this\\.displayRevision \\+ 1\\)"
+    },
+    {
+      "id": "display-revision-bump-block",
+      "why": "Same, governed by the block-write overlap test.",
+      "contains": "if \\(base <= 0xbffff && base \\+ bytes\\.length > 0xa0000\\) \\{?[^}]*?this\\.displayRevision = \\(this\\.displayRevision \\+ 1\\)"
+    },
+    {
+      "id": "on-instruction-hook",
+      "why": "Per-instruction hook carrying pcBefore/pcAfter and the cycle delta. The debugger's single-step and the trace view are both built on it.",
+      "contains": "if \\(this\\.hooks\\.onInstruction\\) \\{?[^}]*?pcBefore"
+    },
+    {
+      "id": "checkpoint-topology-snapshot",
+      "why": "A checkpoint restored into a DIFFERENT machine topology is silent corruption -- same registers, different wiring. The snapshot makes restore refuse rather than half-work.",
+      "contains": "_snapshotTopology\\(\\)"
+    },
+    {
+      "id": "checkpoint-refuses-incomplete-state",
+      "why": "canCheckpoint() refuses rather than saving a machine whose components lack a complete state API. THIS IS THE ABSENT-HARDWARE RULE APPLIED TO SAVE STATE: a partial checkpoint restores to a plausible-looking wrong machine, which is worse than no checkpoint.",
+      "contains": "canCheckpoint\\(\\)"
+    },
+    {
+      "id": "checkpoint-component-state-api",
+      "why": "getState/saveState dual-API bridge with deep clone, so a checkpoint does not alias live device buffers.",
+      "contains": "static _cloneCheckpointValue\\(value\\)"
+    }
+  ],
+  "graftedFromUpstream": [
+    {"id": "ne2000-chip-kind", "contains": "ne2000"},
+    {"id": "port-conflict-check", "contains": "both claim"}
+  ]
+}
+```
