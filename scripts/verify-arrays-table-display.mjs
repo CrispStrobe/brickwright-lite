@@ -60,6 +60,15 @@ try {
         typeof window.__vm.runtime._primitives?.arrays_showTable === 'function',
         null, {timeout: 30000});
 
+    // The VM being ready is not the project being drawn. `__vm.runtime` exists
+    // before the stage and the default sprite have their drawables, so sampling
+    // a baseline here races the project's own load: against a fast local server
+    // the count has settled by now, against an origin over the network it has
+    // not. Measured 2026-09-05 on the deployed site — this gate read 0 and then
+    // asserted `0 -> 3`, reporting a table that had in fact drawn correctly.
+    // Wait for the project's own drawables before counting the one we add.
+    await page.waitForFunction(() => Object.values(window.__vm.renderer?._allDrawables || {})
+        .filter(Boolean).length >= 2, null, {timeout: 60000});
     const before = await skins();
     const drawablesBefore = await page.evaluate(() =>
         Object.values(window.__vm.renderer._allDrawables || {}).filter(Boolean).length);
