@@ -5,22 +5,22 @@
  * scripts/gen-hosted-targets.mjs from a stc-compiler checkout; a stale snapshot
  * is a red build. Plan task T2.
  *
- * Freshness is checked WHEN IT CAN BE: when a stc-compiler checkout is present
- * (STC_COMPILER_DIR, or the box's usual path) the snapshot is regenerated from
- * it and compared; when it is not — as in CI — the test says so rather than
- * quietly passing, and the structural checks below still run.
+ * Freshness is checked WHEN IT CAN BE: when STC_COMPILER_DIR names a
+ * stc-compiler checkout the snapshot is regenerated from it and compared; when
+ * it is unset — as in CI — the test says so rather than quietly passing, and
+ * the structural checks below still run. There is deliberately NO default path:
+ * a unit test that reads whatever happens to be checked out beside the repo on
+ * one box has a verdict that depends on that box (gate-shapes AMBIENT-BINDING).
  */
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync, readFileSync, mkdtempSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
-import {execFileSync} from 'node:child_process';
 
 import {build, checkAgainst, output} from '../scripts/gen-hosted-targets.mjs';
 
-const STC = process.env.STC_COMPILER_DIR || '/mnt/volume1/code/stc-compiler';
-const havePython = () => { try { execFileSync('python3', ['--version'], {stdio: 'ignore'}); return true; } catch { return false; } };
+const STC = process.env.STC_COMPILER_DIR || '';
 
 test('the snapshot carries the structure the conformance gate reads', () => {
     const doc = JSON.parse(readFileSync(output, 'utf8'));
@@ -35,10 +35,11 @@ test('the snapshot carries the structure the conformance gate reads', () => {
 });
 
 test('the snapshot is current against the stc-compiler checkout, when one is present', (t) => {
-    if (!existsSync(join(STC, 'app.py'))) {
-        t.diagnostic(`no stc-compiler checkout at ${STC} — freshness NOT verified (set STC_COMPILER_DIR to check)`);
+    if (!STC) {
+        t.diagnostic('STC_COMPILER_DIR unset — freshness NOT verified (point it at a stc-compiler checkout to check)');
         return;
     }
+    assert.ok(existsSync(join(STC, 'app.py')), `STC_COMPILER_DIR=${STC} has no app.py — not a stc-compiler checkout`);
     // Regenerate from the checkout and compare. If the owner has deployed a new
     // compile/assemble target since the snapshot, this fails BY the stale file,
     // and the conformance gate then names the matrix cell that is now wrong.
@@ -46,8 +47,10 @@ test('the snapshot is current against the stc-compiler checkout, when one is pre
         'hosted-targets.json is stale against the stc-compiler checkout — run scripts/gen-hosted-targets.mjs --dir <checkout>');
 });
 
-test('the generator refuses BY NAME when a target dict is gone, rather than guessing', (t) => {
-    if (!havePython()) { t.diagnostic('no python3 — the dict parse (and this refusal) cannot be exercised'); return; }
+test('the generator refuses BY NAME when a target dict is gone, rather than guessing', () => {
+    // No python3 probe and no skip: the derivation needs python3's ast module,
+    // and if the runner lacks it this test goes red naming python3 (the
+    // generator's own error), which is what a gate that cannot run should do.
     // A fake app.py missing EATER_TARGETS: the derivation must refuse, naming it.
     const dir = mkdtempSync(join(tmpdir(), 'stc-fake-'));
     writeFileSync(join(dir, 'app.py'),
