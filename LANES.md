@@ -314,6 +314,44 @@ point of failure, rather than requiring someone to measure job durations the nex
 healthy build job is now 17-19 minutes against the 30-minute ceiling, so individual steps
 can be bounded well under it. Owner's decision; b9 has put it in front of them.
 
+## OPERATIONAL — the stash stack is SHARED across every worktree (2026-09-05)
+
+**`git stash pop` in your own private worktree can pop another lane's stash.** The stash
+stack belongs to the repository, not the worktree, and a worktree is the one place that
+feels isolated and is not.
+
+Happened today, and the near-miss is instructive. lego-be, in their own worktree on their
+own branch, ran `git stash -u` on a **clean tree** — which saves nothing and prints
+nothing — then later `git stash pop`, which took the **top of the shared stack**: an entry
+belonging to a different session. It conflicted, which is the only reason anyone noticed;
+git kept the entry and said so. **Had it applied cleanly they would have silently absorbed
+another lane's uncommitted work into their branch, and possibly committed it.**
+
+**The compound trap is that `git stash -u` on a clean tree succeeds silently and pushes
+nothing**, so `stash` / `pop` is not the pairing you wrote. You get someone else's.
+
+This is worse than the shared-checkout hazard already recorded here, which at least leaves
+a visible tree: *every git command is a potentially destructive act against work you cannot
+see.* The stash version is **invisible by construction.**
+
+**Rules:**
+- **Do not `git stash` in a worktree of a shared repository.** Use `git worktree add` for a
+  scratch tree, or commit to a throwaway branch. Both are cheap and neither is shared.
+- If you must, run `git stash list` first and confirm the top entry names YOUR branch
+  before popping. The branch name in `WIP on <branch>` is the only attribution there is.
+- Push with `git stash push -m "<branch>: what"` so an entry is attributable at all.
+
+**Related, and mine:** the entry involved was `WIP on perf/lazy-extensions` from 05:39 — my
+abandoned D-FIRSTLOAD1 attempt, kept "in case" after lego-b9's better version superseded it.
+It sat on a shared stack for eleven hours as a live hazard to every other lane, and I never
+thought of it again. **Dropped, verified superseded first**: `lazyBuiltinExtensions` and
+`_bwDeserializeCleared` are both on main via `perf/boot-payload`. A second entry from
+yesterday, `WIP on probe/pseudocode-8086`, is not mine and is left alone — but whoever owns
+it should know it is on a stack anyone can pop.
+
+**Keeping a stash "just in case" is not free when the stack is shared.** If work is worth
+keeping, it is worth a branch.
+
 ## CLAIMS — work in progress
 
 | `paths-ignore` covers root `.md` only, and 41 of 47 `docs/*.md` are read by nothing | **UNCLAIMED**, measured by bw-ci 2026-09-05 | 2026-09-05 | **A prose-only edit under `docs/` costs a full build slot, and on a day when nine of twenty main builds were cancelled that is the scarcest thing in the repo.** `build.yml`'s `paths-ignore` lists ROOT files — `LANES.md`, `ROADMAP.md`, `README.md`, `PLAN.md` and so on — so `LANES.md` is free and `docs/ANYTHING.md` is not. Measured: 47 tracked `docs/*.md`, and **41 are read by no test or script** (a real read — the basename on a line with `readFile`/`join`/`resolve`, comment lines excluded). The six that ARE read are `docs/app-store-metadata.md`, `docs/EVIDENCE-CATEGORIES.md`, the `LESSON-REVIEW-WAVE-*` set and `docs/generated/*`, and those must keep triggering builds — `i8086-capability-report` asserts the generated report against source. **NOT done, and deliberately**: `paths-ignore` has no negation, so the fix is either enumerating 41 paths (brittle: a doc that later gains a reader would be silently skipped) or a gate asserting the ignore list and the read-by-nothing set agree (self-maintaining, more work). That is a CI-trigger change affecting every lane and wants an owner, not a drive-by. **CORRECTION, recorded because I asserted it twice**: I told a peer and wrote in `53a40937f` that my three prose pushes to `docs/` were "not waste, since the shape detector scans docs/". Both halves are false. `audit-gate-shapes.mjs` defaults to `roots = ['test', 'scripts']`, and nothing reads `GATES-THAT-CANNOT-FAIL.md` at all — my grep had matched the filename inside a COMMENT in `gate-shapes.test.mjs`, the third time in one day I read a mention in prose as a use. The three slots were waste. |
