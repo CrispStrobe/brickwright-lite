@@ -414,6 +414,16 @@ non-halt action, reports failures as data and issues one final halt containing
 all matching breakpoint IDs. Runner halt/action wiring and legacy migration
 remain acceptance work.
 
+The first live action path is now wired for canonical 8086 events. Memory,
+port and interrupt matches are evaluated once when observed but their entire
+plans are held until the following instruction-retire boundary; only there may
+checkpoint/capture/log/counter work run and one aggregate halt be delivered.
+This avoids mid-instruction snapshots and gives halt history a replayable
+cursor. Checkpoint actions require active deterministic recording, failures are
+kept as bounded observable data, and verified replay is explicitly bracketed
+so it cannot consume one-shot/count state or repeat actions. Other targets stay
+observer-only until they expose an equally proven non-reentrant boundary latch.
+
 ### Slice 4 — timeline workspace
 
 - event cursor and synchronized panes;

@@ -44,6 +44,7 @@ import {createDebugFoundation, subscribeDebugTargetEvents} from './debug-foundat
 import {createRecordingSession, subscribeDebugTargetInputs} from './recording-session.js';
 import {createInstructionReplayController} from './instruction-replay.js';
 import {createReverseContinueCoordinator} from './reverse-continue.js';
+import {createEventBreakpointDispatcher} from './event-breakpoint-dispatcher.js';
 import { setValueResolver } from './hover-values.js';
 import { instructionLength } from './opcodes.js';
 import {
@@ -477,6 +478,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         event => recordingSession.appendBatch([event]));
     let unsubscribeDebugEvents = null;
     let unsubscribeDebugInputs = null;
+    let replayingDebugHistory = false;
+    let eventBreakpointFailures = [];
+    let eventBreakpointLog = [];
+    const eventBreakpointCounters = new Map();
     // Cursor of the last successful UI reverse; null means the retained live end.
     let reverseCursor = null;
     // Halt occurrence is a separate order because several native stops may
@@ -549,7 +554,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             unsubscribeDebugEvents();
             unsubscribeDebugEvents = null;
         }
-        unsubscribeDebugEvents = subscribeDebugTargetEvents(target, eventStream);
+        unsubscribeDebugEvents = subscribeDebugTargetEvents(target, eventStream,
+            event => dispatchPublishedEvent(event));
         if (unsubscribeDebugInputs) {
             unsubscribeDebugInputs();
             unsubscribeDebugInputs = null;
@@ -594,6 +600,38 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 reason: error?.message || String(error)};
             return null;
         }
+    }
+
+    function recordEventBreakpointHalt(result) {
+        if (targetKind !== 'i8086' || !recordingSession.status().active || !result?.outcome?.halted) return;
+        const checkpoints = debugFoundation.recorder.checkpointSummary();
+        if (!checkpoints.length) return;
+        debugFoundation.haltOccurrences.evictBeforeCheckpoint(checkpoints[0].eventCursor);
+        try {
+            debugFoundation.haltOccurrences.append({
+                boundaryCursor: eventStream.nextSequence(),
+                triggerEventSeq: result.triggerEventSeqs?.[0] ?? null,
+                matchingIds: result.outcome.matchingIds,
+                generation: breakpointGeneration,
+                stopSide: 'after',
+                source: 'breakpoint-engine'
+            });
+        } catch (error) {
+            haltLedgerRefusal = {accepted: false, code: 'halt-history-capacity',
+                reason: error?.message || String(error)};
+        }
+    }
+
+    function dispatchPublishedEvent(event) {
+        // Only the 8086 currently proves that an interior event is followed by
+        // a replay-addressable retire boundary before the halt is delivered.
+        if (targetKind !== 'i8086' || !eventBreakpointDispatcher) return null;
+        const result = eventBreakpointDispatcher.dispatch(event, {
+            replay: replayingDebugHistory,
+            context: {event, counts: Object.fromEntries(eventBreakpointCounters)}
+        });
+        recordEventBreakpointHalt(result);
+        return result;
     }
 
     /** Log an 8086 external mutation before allowing it to reach the machine. */
@@ -2199,6 +2237,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     }
 
     let reverseContinue;
+    let eventBreakpointDispatcher;
     const runner = {
         /** Use this image instead of compiling the blocks. */
         setFirmware(fw) { userFirmware = fw || null; },
@@ -2606,8 +2645,18 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             ensureDebugEvents();
             return {queued: eventStream.size(), dropped: eventStream.dropped()};
         },
-        addEventBreakpoint: spec => { ensureDebugEvents(); return debugFoundation.addBreakpoint(spec); },
+        addEventBreakpoint: spec => {
+            ensureDebugEvents();
+            const result = debugFoundation.addBreakpoint(spec);
+            if (result.ok) breakpointGeneration++;
+            return result;
+        },
         evaluateEventBreakpoints: (event, context) => debugFoundation.evaluateBreakpoints(event, context),
+        eventBreakpointActionStatus: () => ({
+            failures: eventBreakpointFailures.map(item => ({...item})),
+            log: eventBreakpointLog.map(item => ({...item})),
+            counters: Object.fromEntries(eventBreakpointCounters)
+        }),
         debugRecorder: () => debugFoundation.recorder,
         debugTimeline: () => debugFoundation.timeline,
         startDebugRecording() {
@@ -2637,7 +2686,14 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             recordingSession.stop();
             if (session) session.pause();
             unschedule();
-            const result = instructionReplay.reverseToEvent(eventCursor);
+            replayingDebugHistory = true;
+            let result;
+            try {
+                result = instructionReplay.reverseToEvent(eventCursor);
+            } finally {
+                replayingDebugHistory = false;
+                eventBreakpointDispatcher?.clear();
+            }
             if (result.accepted) {
                 reverseCursor = eventCursor;
                 setStatus('paused');
@@ -2907,6 +2963,31 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         canReverse: () => haltLedgerRefusal || instructionReplay.canReverse(),
         haltOccurrences: debugFoundation.haltOccurrences,
         reverseToEvent: eventCursor => runner.reverseDebugToEvent(eventCursor)
+    });
+    eventBreakpointDispatcher = createEventBreakpointDispatcher({
+        engine: {evaluate: (event, context) => debugFoundation.evaluateBreakpoints(event, context)},
+        recordingSession,
+        handlers: {
+            log: (action, context) => {
+                eventBreakpointLog.push({breakpointId: action.breakpointId,
+                    eventSeq: context.event?.seq ?? null});
+                if (eventBreakpointLog.length > 256) eventBreakpointLog.shift();
+            },
+            counter: action => {
+                const name = String(action.name || action.counter || action.breakpointId);
+                const value = (eventBreakpointCounters.get(name) || 0) + (Number(action.delta) || 1);
+                eventBreakpointCounters.set(name, value);
+                return value;
+            },
+            halt: () => {
+                if (session) session.pause();
+                unschedule();
+            },
+            onActionError: failure => {
+                eventBreakpointFailures.push(failure);
+                if (eventBreakpointFailures.length > 64) eventBreakpointFailures.shift();
+            }
+        }
     });
     return runner;
 }
