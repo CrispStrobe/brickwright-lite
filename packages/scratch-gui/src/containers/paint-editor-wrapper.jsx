@@ -8,8 +8,24 @@ import {inlineSvgFonts} from 'scratch-svg-renderer';
 import {connect} from 'react-redux';
 import DynamicReducerContext from '../lib/dynamic-reducer-context';
 
-// Share the network/parse request, but install the returned reducer separately
-// into each GUI store. Rejected requests reset the promise for the retry control.
+// Split the Paper-backed reducer from the React editor so fetching, parsing and
+// installing both cannot become one activation task. Requests are shared, while
+// reducer installation remains store-local. A rejected stage resets only its
+// own promise, allowing the retry control to resume at the failed boundary.
+let paintReducerRequest = null;
+const loadPaintReducer = () => {
+    if (!paintReducerRequest) {
+        paintReducerRequest = import(
+            /* webpackChunkName: "paint-reducer" */
+            'scratch-paint/src/reducers/scratch-paint-reducer'
+        ).catch(error => {
+            paintReducerRequest = null;
+            throw error;
+        });
+    }
+    return paintReducerRequest;
+};
+
 let paintEditorRequest = null;
 const loadPaintEditor = () => {
     if (!paintEditorRequest) {
@@ -21,6 +37,10 @@ const loadPaintEditor = () => {
     }
     return paintEditorRequest;
 };
+
+// A timer queues a fresh task without charging the already-tight activation
+// budget for a whole animation frame.
+const yieldTask = () => new Promise(resolve => setTimeout(resolve, 0));
 
 class PaintEditorWrapper extends React.Component {
     constructor (props) {
@@ -45,12 +65,21 @@ class PaintEditorWrapper extends React.Component {
     loadEditor () {
         const generation = ++this.loadGeneration;
         if (this.state.loadError) this.setState({loadError: null});
-        loadPaintEditor().then(module => {
+        loadPaintReducer().then(module => {
             if (!this.mounted || generation !== this.loadGeneration) return;
             if (!this.props.installReducer) {
                 throw new Error('The paint editor requires a dynamic reducer installer');
             }
-            this.props.installReducer('scratchPaint', module.ScratchPaintReducer);
+            this.props.installReducer('scratchPaint', module.default);
+            return yieldTask();
+        }).then(() => {
+            if (!this.mounted || generation !== this.loadGeneration) return null;
+            return loadPaintEditor();
+        }).then(module => {
+            if (!module || !this.mounted || generation !== this.loadGeneration) return;
+            return yieldTask().then(() => module);
+        }).then(module => {
+            if (!module || !this.mounted || generation !== this.loadGeneration) return;
             if (this.mounted && generation === this.loadGeneration) {
                 this.setState({PaintEditor: module.default, loadError: null});
             }

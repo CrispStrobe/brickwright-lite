@@ -129,25 +129,49 @@ test('optional grammar boundary rejects eager, incomplete or insignificant split
 
 test('paint and Paper ownership stays together in a non-initial lazy asset', () => {
     const stats = fixture();
-    stats.chunks.push({id: 30, names: ['paint-editor'], files: ['chunks/paint-editor.js'], initial: false});
-    stats.assets.push({name: 'chunks/paint-editor.js', size: 250000, chunks: [30]});
+    stats.chunks.push(
+        {id: 30, names: ['paint-reducer'], files: ['chunks/paint-reducer.js'], initial: false},
+        {id: 31, names: ['paint-editor'], files: ['chunks/paint-editor.js'], initial: false}
+    );
+    stats.assets.push(
+        {name: 'chunks/paint-reducer.js', size: 210000, chunks: [30]},
+        {name: 'chunks/paint-editor.js', size: 40000, chunks: [31]}
+    );
     stats.modules.push(
         {name: './node_modules/@scratch/paper/dist/paper-core.js', size: 535000, chunks: [30]},
-        {name: './node_modules/scratch-paint/src/index.js', size: 105000, chunks: [30]}
+        {name: './node_modules/scratch-paint/src/index.js', size: 105000, chunks: [31]}
     );
     const report = summarizeWebpackOwnership(stats);
     assert.deepEqual(report.lazyPaintEditor.packages, ['@scratch/paper', 'scratch-paint']);
     assert.equal(report.lazyPaintEditor.sourceBytes, 640000);
     assert.equal(report.lazyPaintEditor.emittedBytes, 250000);
     assert.equal(report.lazyPaintEditor.initial, false);
+    assert.deepEqual(report.lazyPaintActivation.reducer.files, ['chunks/paint-reducer.js']);
+    assert.deepEqual(report.lazyPaintActivation.editor.files, ['chunks/paint-editor.js']);
     assert.deepEqual(assertLazyPaintEditorBoundary(report), []);
 });
 
 test('paint boundary rejects eager, incomplete or insignificant ownership', () => {
     const report = summarizeWebpackOwnership(fixture());
     const failures = assertLazyPaintEditorBoundary(report);
-    assert.equal(failures.length, 3);
+    assert.equal(failures.length, 5);
     assert.match(failures.join('\n'), /packages are missing/);
     assert.match(failures.join('\n'), /below 600 KiB/);
     assert.match(failures.join('\n'), /below 200 KiB/);
+    assert.match(failures.join('\n'), /paint-reducer chunk is missing/);
+    assert.match(failures.join('\n'), /paint-editor chunk is missing/);
+});
+
+test('paint boundary rejects eager or collapsed activation stages', () => {
+    const stats = fixture();
+    stats.chunks.push({id: 30, names: ['paint-reducer', 'paint-editor'], files: ['paint.js'], initial: true});
+    stats.assets.push({name: 'paint.js', size: 250000, chunks: [30]});
+    stats.modules.push(
+        {name: './node_modules/@scratch/paper/dist/paper-core.js', size: 535000, chunks: [30]},
+        {name: './node_modules/scratch-paint/src/index.js', size: 105000, chunks: [30]}
+    );
+    const failures = assertLazyPaintEditorBoundary(summarizeWebpackOwnership(stats));
+    assert.match(failures.join('\n'), /paint-reducer became an initial chunk/);
+    assert.match(failures.join('\n'), /paint-editor became an initial chunk/);
+    assert.match(failures.join('\n'), /same emitted JavaScript asset/);
 });

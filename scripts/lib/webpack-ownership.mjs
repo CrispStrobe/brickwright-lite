@@ -85,6 +85,17 @@ export const summarizeWebpackOwnership = input => {
     const lazyPaintChunks = chunks.filter(chunk => lazyPaintIds.has(String(chunk.id)));
     const lazyPaintAssets = assets.filter(asset =>
         /\.js$/.test(asset.name) && (asset.chunks || []).some(id => lazyPaintIds.has(String(id))));
+    const namedPaintStage = name => {
+        const stageChunks = chunks.filter(chunk => (chunk.names || []).includes(name));
+        const stageIds = new Set(stageChunks.map(chunk => String(chunk.id)));
+        const stageAssets = assets.filter(asset =>
+            /\.js$/.test(asset.name) && (asset.chunks || []).some(id => stageIds.has(String(id))));
+        return {
+            found: stageChunks.length > 0,
+            initial: stageChunks.some(chunk => chunk.initial),
+            files: [...new Set(stageAssets.map(asset => asset.name))].sort()
+        };
+    };
 
     return {
         schema: 'brickwright/webpack-ownership/v1',
@@ -121,6 +132,10 @@ export const summarizeWebpackOwnership = input => {
             initial: lazyPaintChunks.some(chunk => chunk.initial),
             files: [...new Set(lazyPaintAssets.map(asset => asset.name))].sort(),
             emittedBytes: lazyPaintAssets.reduce((sum, asset) => sum + (Number(asset.size) || 0), 0)
+        },
+        lazyPaintActivation: {
+            reducer: namedPaintStage('paint-reducer'),
+            editor: namedPaintStage('paint-editor')
         }
     };
 };
@@ -202,6 +217,14 @@ export const assertLazyPaintEditorBoundary = report => {
     }
     if (paint.emittedBytes < 200 * 1024) {
         failures.push(`lazy paint assets fell below 200 KiB: ${paint.emittedBytes} bytes`);
+    }
+    const activation = report.lazyPaintActivation;
+    if (!activation?.reducer?.found) failures.push('the named paint-reducer chunk is missing');
+    if (!activation?.editor?.found) failures.push('the named paint-editor chunk is missing');
+    if (activation?.reducer?.initial) failures.push('paint-reducer became an initial chunk');
+    if (activation?.editor?.initial) failures.push('paint-editor became an initial chunk');
+    if (activation?.reducer?.files?.some(file => activation.editor.files.includes(file))) {
+        failures.push('paint reducer and editor resolve to the same emitted JavaScript asset');
     }
     return failures;
 };
