@@ -16,8 +16,8 @@ import {requestAssembly, asmRouteFor, asmTargetForDevice} from '../../lib/bw-asm
 // separate files so the upstream one stays synchronizable — are 266 KiB raw
 // (51 KiB compressed) that the entry bundle carried for a picker on one tab.
 // They are fetched when this tab mounts; `examples` is empty until then and the
-// picker re-renders when they land. `loadExample` and `computeExampleCompat`
-// await the load themselves, so a click that races the fetch still works.
+// picker re-renders when they land. `loadExample` awaits the load itself, so
+// a click that races the fetch still works.
 let examples = {};
 let examplesPending = null;
 const loadExamples = () => {
@@ -878,11 +878,10 @@ class PseudocodeImporter extends React.Component {
                 }));
             }
         }
-        // If a device is already set (e.g. from a loaded project), compute
-        // example compatibility so the dropdown is filtered from the start.
+        // If a device is already set (e.g. from a loaded project), fetch the
+        // lightweight catalog metadata used to filter the device picker.
         const device = this.currentDevice();
         if (device) {
-            this.computeExampleCompat(device);
             this.loadCatalog();
         }
         // Project save/load (lib/bw-project-bundle.js). COLLECT: the autosave
@@ -1976,7 +1975,6 @@ class PseudocodeImporter extends React.Component {
         window.dispatchEvent(new CustomEvent('bw-settings-change', {
             detail: {key: 'bw-device-id', value: deviceId}
         }));
-        this.computeExampleCompat(deviceId);
     }
 
     // Real hardware, two minutes: generate MicroPython and push it to a
@@ -2564,32 +2562,6 @@ class PseudocodeImporter extends React.Component {
         } catch (e) {
             this.setState({output: `Error: ${e.message}`, running: false, status: ''});
         }
-    }
-
-    // Compute which hardware examples can retarget to the given device. Returns
-    // { [exampleKey]: { ok, reasons } }. Cached by device so render stays cheap.
-    _exampleCompatCache = {};
-    _exampleCompatDevice = null;
-    async computeExampleCompat (device) {
-        if (!device || device === this._exampleCompatDevice) return;
-        const SB3Creator = (await this.lib()).default;
-        if (!SB3Creator.retargetPseudocode) return;
-        const cache = {};
-        for (const [key, src] of Object.entries(await loadExamples())) {
-            if (!/^DEVICE\s/im.test(src)) continue; // not a hardware example
-            const exDev = (src.match(/^DEVICE\s+([\w-]+)/im) || [])[1];
-            if (exDev && exDev.toLowerCase() === device) { cache[key] = { ok: true }; continue; }
-            const result = SB3Creator.retargetPseudocode(src, device);
-            cache[key] = { ok: result.ok, reasons: result.reasons };
-        }
-        this._exampleCompatCache = cache;
-        this._exampleCompatDevice = device;
-        this.forceUpdate();
-    }
-
-    /** Inline lookup: is this example compatible with the current device? */
-    exampleCompat (key) {
-        return this._exampleCompatCache[key];
     }
 
     // Fetch examples/index.json once — the same file the Circuit tab's gallery
