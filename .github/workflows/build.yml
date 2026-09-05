@@ -480,6 +480,115 @@ jobs:
           # and the script's own stderr names any missing prerequisite.
           npm run smoke:debugger
 
+          path: |
+            wait-observations.jsonl
+            wait-report.txt
+            wait-report.json
+          if-no-files-found: warn
+
+      # `!cancelled()` because the built app is the primary DIAGNOSTIC, and the
+      # runs you most want to inspect are the ones that failed. Without it this
+      # step carries an implicit success() and is skipped after any red gate, so
+      # a failing run uploads proof artifacts for the gates that passed and NOT
+      # the app they were driving. Measured on PR #105: two gates failed, no
+      # github-pages artifact, and the only way to reproduce locally was to fix
+      # the tree and run CI again — a full queue cycle to learn what one download
+      # would have shown. Deploying is unaffected: the `deploy` job needs `build`
+      # to have succeeded, so an artifact from a red run can be downloaded and
+      # never published.
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        if: ${{ !cancelled() && steps.build_editor.outcome == 'success' }}
+        with: { path: packages/scratch-gui/build }
+
+  # THE MISMATCHED-TREE HAZARD, and why parallel builds are safe here when a
+  # previous attempt at this fix took the site down.
+  #
+  # That attempt was a per-JOB split. Artifact names are unique within a RUN, not
+  # across runs: two jobs of one run writing `github-pages`, or a deploy job
+  # resolving that name while a sibling was still uploading, publishes an
+  # index.html from one tree beside chunks from another — which is exactly what
+  # went out (index.html naming 404 chunks). Separate RUNS cannot do this to each
+  # other; each run's artifact is scoped to its own GITHUB_RUN_ID and
+  # `deploy-pages` resolves it there.
+  #
+  # So the invariant is structural, and `test/pages-deploy-ordering.test.mjs`
+  # asserts it rather than leaving it as a comment: BUILD AND UPLOAD STAY IN ONE
+  # JOB, and this job takes the artifact from its own run and never fetches one
+  # by name. Making the build groups per-commit does not touch that.
+  # The two lesson-corpus walks — lesson-numeric-contract and
+  # lesson-defect-detector — solve every bench in the catalog and were 278 s of
+  # the build job's critical path, ahead of the build and 30 browser gates that
+  # cannot start until they finish. Nothing downstream needs their output, so
+  # they run here, alongside. Their inputs are overlay/, scripts/ and test/ —
+  # they import from the overlay tree directly and need neither the vendored
+  # packages nor node_modules (checked 2026-09-05 by running them from a copy
+  # with only those three directories). A red here blocks the deploy exactly as
+
+  # SPLIT 2026-09-05: the browser gates are their own job.
+  #
+  # The build job was being killed by its own `timeout-minutes: 30`, and
+  # GitHub reports a timeout-killed job as CANCELLED, not failure. Five
+  # sessions spent a day hunting an external canceller because of that one
+  # word. Measured on the last green run: 17.1 min over 97 steps, of which the
+  # BROWSER PHASE WAS 11.5 (67%) and everything else 5.6. On a slightly slow
+  # runner the sum crossed 30 -- and `deploy` needs `build`, so nothing
+  # shipped for five hours.
+  #
+  # Raising the ceiling hides genuine hangs, which is what the watchdog exists
+  # to catch and what its author warned against tightening. Splitting gives
+  # each half its own ceiling with room, and makes a red attributable to what
+  # it ran rather than to whatever the job reached at minute 30.
+  #
+  # THE SETUP HERE IS THE MINIMAL CHAIN, not a copy of build's: the gates need
+  # the vendored tree, the overlays and a built editor, and none of build's
+  # ~15 guard steps. IDS ARE SUFFIXED `_browser` because test/gate-coverage
+  # resolves step ids FILE-WIDE while GitHub scopes them per job -- a
+  # duplicate there reads as a forward reference and marks every later
+  # condition permanently false. Satisfying that gate beats weakening it.
+  #
+  # THE PAGES ARTIFACT STAYS IN `build`: pages-deploy-ordering asserts it is
+  # uploaded once, by the job that built it, and that `deploy` never resolves
+  # an artifact by name. This job uploads nothing to Pages.
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: { node-version: 22 }
+      - name: Require green upstream evidence for the pinned 8086 engine
+        run: npm run verify:bwboard-ci
+      - name: Vendor the pinned permissive Scratch sources
+        run: npm run vendor
+      - name: Integrate the Code tab (sb3-creator)
+        run: node scripts/integrate.mjs
+      # Same static asset Vercel deploys, so the browser gate below runs against the
+      # shape users get rather than one where the heavy tier is silently missing.
+      # Non-fatal on purpose: if the release fetch fails, the engine is simply not
+      # offered — lib/labwired-engine.js already answers null instead of throwing,
+      # and the gate covers that degraded path too.
+      - name: Fetch the heavy simulation engine (labwired-wasm)
+        run: node scripts/sync-labwired-wasm.mjs || echo "labwired-wasm unavailable — the heavy tier will not be offered"
+      - name: Install
+        run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+      - name: Apply the scratch-vm overlay (built-in extensions)
+        run: node scripts/apply-vm-overlay.mjs
+      # Everything from here to `Serve the built app` is an INDEPENDENT check —
+      # guards, unit tests, the lazy-bundle inspection, the debugger smoke test.
+      # None of them produces an input the next one needs, so none of them should
+      # silence the next one. They hang off this id, the last step of the actual
+      # prerequisite chain (vendor -> integrate -> install -> overlays).
+      - name: Apply the scratch-paint overlay (extended costume designer)
+        run: node scripts/apply-paint-overlay.mjs
+      # One patch: text costumes wait for the lazy render-fonts chunk (ROADMAP §2.4).
+      - name: Apply the scratch-render overlay (lazy render fonts)
+        id: overlays_browser
+        run: node scripts/apply-render-overlay.mjs
+      - name: Build the editor
+        id: build_editor_browser
+        if: ${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}
+        run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build
+
       # Browser acceptance BEFORE the artifact leaves this job. The
       # 930000d incident shipped a wall-to-wall visual regression on
       # green unit tests — unit suites cannot see a lost theme, a
@@ -487,7 +596,7 @@ jobs:
       # BUILT APP and block the deploy when it is visibly wrong.
       - name: Install Playwright browser
         id: playwright
-        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}
         # Gate-only tool (the gates drive the built app), NOT an app dependency.
         # Installation is bounded and retried below, but failure remains a real
         # deployment failure: silently skipping every browser gate would turn
@@ -542,7 +651,7 @@ jobs:
       # failed build would otherwise hand 31 browser gates an empty directory and
       # turn one red step into 31, each burning its own navigation timeout.
       - name: Serve the built app
-        if: ${{ !cancelled() && steps.playwright.outcome == 'success' && steps.build_editor.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.playwright.outcome == 'success' && steps.build_editor_browser.outcome == 'success' }}
         id: serve
         run: |
           python3 -m http.server 8617 --directory packages/scratch-gui/build &
@@ -1109,49 +1218,7 @@ jobs:
         if: always() && steps.waits.outcome != 'skipped'
         with:
           name: wait-observations
-          path: |
-            wait-observations.jsonl
-            wait-report.txt
-            wait-report.json
-          if-no-files-found: warn
 
-      # `!cancelled()` because the built app is the primary DIAGNOSTIC, and the
-      # runs you most want to inspect are the ones that failed. Without it this
-      # step carries an implicit success() and is skipped after any red gate, so
-      # a failing run uploads proof artifacts for the gates that passed and NOT
-      # the app they were driving. Measured on PR #105: two gates failed, no
-      # github-pages artifact, and the only way to reproduce locally was to fix
-      # the tree and run CI again — a full queue cycle to learn what one download
-      # would have shown. Deploying is unaffected: the `deploy` job needs `build`
-      # to have succeeded, so an artifact from a red run can be downloaded and
-      # never published.
-      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
-        if: ${{ !cancelled() && steps.build_editor.outcome == 'success' }}
-        with: { path: packages/scratch-gui/build }
-
-  # THE MISMATCHED-TREE HAZARD, and why parallel builds are safe here when a
-  # previous attempt at this fix took the site down.
-  #
-  # That attempt was a per-JOB split. Artifact names are unique within a RUN, not
-  # across runs: two jobs of one run writing `github-pages`, or a deploy job
-  # resolving that name while a sibling was still uploading, publishes an
-  # index.html from one tree beside chunks from another — which is exactly what
-  # went out (index.html naming 404 chunks). Separate RUNS cannot do this to each
-  # other; each run's artifact is scoped to its own GITHUB_RUN_ID and
-  # `deploy-pages` resolves it there.
-  #
-  # So the invariant is structural, and `test/pages-deploy-ordering.test.mjs`
-  # asserts it rather than leaving it as a comment: BUILD AND UPLOAD STAY IN ONE
-  # JOB, and this job takes the artifact from its own run and never fetches one
-  # by name. Making the build groups per-commit does not touch that.
-  # The two lesson-corpus walks — lesson-numeric-contract and
-  # lesson-defect-detector — solve every bench in the catalog and were 278 s of
-  # the build job's critical path, ahead of the build and 30 browser gates that
-  # cannot start until they finish. Nothing downstream needs their output, so
-  # they run here, alongside. Their inputs are overlay/, scripts/ and test/ —
-  # they import from the overlay tree directly and need neither the vendored
-  # packages nor node_modules (checked 2026-09-05 by running them from a copy
-  # with only those three directories). A red here blocks the deploy exactly as
   # it did when it was a step of `build`.
   #
   # Same TAP reading as the unit-test step, for the same reason: a suite that
@@ -1177,7 +1244,7 @@ jobs:
           fi
 
   deploy:
-    needs: [build, corpus]
+    needs: [build, corpus, browser]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:

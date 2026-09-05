@@ -241,9 +241,34 @@ test('every listed gate still exists', () => {
 const buildYml = readFileSync(path.join(ROOT, '.github/workflows/build.yml'), 'utf8');
 
 /** The build job's steps, in order, each as {name, ifs, run}. */
-const buildJobSteps = text => {
+/**
+ * The steps of the job that CONTAINS THE BROWSER GATES, found by content.
+ *
+ * This resolved `^  build:$` by name until 2026-09-05, when the browser gates
+ * moved to their own job because the build was being killed by its own
+ * `timeout-minutes: 30` -- reported by GitHub as `cancelled`, which sent five
+ * sessions hunting an external canceller for a day.
+ *
+ * Keying on the job NAME made three assertions here silently describe a job
+ * that no longer holds what they assert about. They would not have failed
+ * open -- `id: serve` vanished from the named job and they went red -- but red
+ * for the wrong reason is its own cost, and the property these tests are about
+ * has always been "wherever the gates are", not "the job called build".
+ *
+ * The anchor is `id: serve`, the same one the assertions already use, so the
+ * lookup and the thing looked up cannot drift apart.
+ */
+const gateJobSteps = text => {
     const lines = text.split('\n');
-    const start = lines.findIndex(l => /^  build:$/.test(l));
+    const jobStarts = lines.map((l, i) => (/^  [a-z][a-z-]*:$/.test(l) ? i : -1)).filter(i => i >= 0);
+    const start = jobStarts.find((s, n) => {
+        const stop = jobStarts[n + 1] ?? lines.length;
+        return lines.slice(s, stop).some(l => /^\s*id:\s*serve\s*$/.test(l));
+    });
+    if (start === undefined) throw new Error(
+        'no job in build.yml declares `id: serve` — the browser gates hang off that server ' +
+        'step, so either it was renamed or the gates are gone. Refusing to reason over a ' +
+        'job chosen by name instead.');
     const end = lines.findIndex((l, i) => i > start && /^  [a-z][a-z-]*:$/.test(l));
     const body = lines.slice(start, end === -1 ? lines.length : end);
     const steps = [];
@@ -267,7 +292,7 @@ const buildJobSteps = text => {
 };
 
 test('a browser gate cannot be skipped by an unrelated gate failing before it', () => {
-    const steps = buildJobSteps(buildYml);
+    const steps = gateJobSteps(buildYml);
     const serve = steps.findIndex(s => /id:\s*serve/.test(s.lines.join('\n')));
     assert.ok(serve > 0, 'the build job has no server step to hang the gates off');
     // The anchor must be UNIQUE. It is found by searching step text, so a COMMENT naming it
@@ -358,7 +383,7 @@ test('no gate is keyed on a step id that does not exist, or that comes later', (
 });
 
 test('a step that swallows a gate failure has to say why', () => {
-    const steps = buildJobSteps(buildYml);
+    const steps = gateJobSteps(buildYml);
     const swallows = step => /\|\|\s*(?:true|:)\b/.test(step.run) ||
         /-eq\s+\d+\s*\]/.test(step.run) ||
         /continue-on-error:\s*true/.test(step.lines.join('\n'));
@@ -377,7 +402,7 @@ test('a step that swallows a gate failure has to say why', () => {
 test('the swallow list only shrinks', () => {
     // Same ratchet as KNOWN_UNWIRED: an entry that no longer swallows must be deleted, so the
     // list cannot quietly outlive the thing it excuses.
-    const steps = buildJobSteps(buildYml);
+    const steps = gateJobSteps(buildYml);
     const byName = new Map(steps.map(s => [s.name, s]));
     const stale = Object.keys(KNOWN_SWALLOWED).filter(name => {
         const step = byName.get(name);
@@ -395,7 +420,7 @@ test('the gates stay keyed on the served app, not on the playwright install', ()
     // that case AND stops 30 gates being fired at a dead server, each burning a
     // navigation timeout, when the server never came up. A gate that reverts to
     // `steps.playwright.outcome` loses the second half silently.
-    const steps = buildJobSteps(buildYml);
+    const steps = gateJobSteps(buildYml);
     const serve = steps.findIndex(s => /id:\s*serve/.test(s.lines.join('\n')));
     const misKeyed = steps
         .slice(serve + 1)
