@@ -182,6 +182,30 @@ function killStragglersIn (dir) {
 }
 
 const work = mkdtempSync(join(tmpdir(), 'clean-checkout-'));
+
+// CLEAN UP WHEN KILLED, NOT ONLY WHEN FINISHED.
+//
+// The `finally` below removes the tree on a normal exit and on a throw. It
+// does NOT run on a signal, and on this box these runs are killed routinely:
+// `timeout` sends SIGTERM, and the suite regularly outlives its cap when the
+// machine is loaded.
+//
+// FOUND BY MEASUREMENT, not by reading. `/tmp/clean-checkout-rhpM4t`, 236 MB,
+// orphaned at 11:37 with no process inside it, while the root filesystem sat
+// at 99%. One killed run costs a quarter of a gigabyte and leaves no trace of
+// which invocation made it -- the same "(deleted)"-shaped invisibility that
+// hid the vite leak, one layer up: there the processes outlived the tree,
+// here the tree outlives the run.
+//
+// `process.exit()` inside the handler is deliberate: re-raising the signal
+// after removing the handler would be tidier for exit codes, but this script
+// is a developer tool whose exit code already means "some file failed", and a
+// half-deleted temp tree is worse than an imprecise status.
+const cleanup = () => { try { rmSync(work, {recursive: true, force: true}); } catch { /* gone */ } };
+for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
+    process.on(sig, () => { killStragglersIn(work); cleanup(); process.exit(130); });
+}
+process.on('uncaughtException', (e) => { killStragglersIn(work); cleanup(); throw e; });
 try {
     // EXACTLY THE TRACKED TREE. `git archive` cannot include an untracked
     // file, which is the point: if a fixture is missing here it was missing
