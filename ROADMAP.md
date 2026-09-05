@@ -1037,13 +1037,17 @@ Next tasks, in order:
     pre-Circuit payload moved only 6,543,080 → 6,470,989 bytes: 72,091 bytes,
     below the predeclared 75 KiB floor. It was reverted rather than moving the
     threshold after measurement. Reconsider only with P14's full deferral.
-13. **Active.** Narrow synchronous `scratch-svg-renderer` consumers and load its
-    sanitizer only in the SVG-upload branch. `css-tree` plus `mdn-data` currently
-    contribute 572,453 initial source bytes. A named retryable sanitizer asset
-    must be absent from default rendering and Costume activation, strip hostile
-    SVG before storage, make no external request, survive save/reload and recover
-    from a failed chunk. Keep rendering itself synchronous.
-14. **Queued.** After an isolated baseline, demand-load the remaining List/Grid
+13. **Evaluated and rejected** (baseline `33977434631`; candidate
+    `33978075908`; narrow-leaf probes `33978936366`, `33980214089`). Upload-only
+    sanitation removed 389,434 initial emitted bytes and 389,414 pre-Circuit
+    bytes, kept 30.34x XT speed, and passed hostile-byte removal, no-external-
+    request, rendering and save/reload checks. Its working first upload was
+    84.9 ms with no long task, however, versus the same-probe eager 65.7 ms:
+    29.2% slower and above the declared 75.555 ms limit. Narrow css-tree leaves
+    removed MDN data and shrank the lazy asset to 74,324 bytes, but repeatedly
+    blocked the production browser upload path. Reverted rather than relaxing
+    either latency or correctness.
+14. **Active.** After an isolated baseline, demand-load the remaining List/Grid
     closure only for a visible list monitor while its outer geometry remains
     synchronous. Prove a 1,000-row saved list retains position, scrolls, edits,
     loads once and retries safely; enforce the 15% / 1 s / 100 ms limits.
