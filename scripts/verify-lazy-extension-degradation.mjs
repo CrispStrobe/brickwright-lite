@@ -56,8 +56,19 @@ const CHUNK_LABEL = 'chunks/ext-music.*.js';
 
 const browser = await chromium.launch({headless: true});
 const newPage = async () => {
+    // serviceWorkers: 'block' is LOAD-BEARING, not hygiene. index.ejs registers
+    // sw.js, which calls skipWaiting() on install and clients.claim() on
+    // activate, so the worker owns the client within the same page load --
+    // before the lazy ext-music chunk is ever requested. Chromium does not
+    // surface service-worker-originated requests to page.route, so the worker
+    // fetches the chunk itself and the abort below never runs: the route
+    // matches nothing and the gate reports on a chunk it never removed. A
+    // fresh context does not help, because the worker installs inside the run.
+    // Blocked for ALL THREE runs so control and abort see the same world.
+    // verify-service-worker.mjs is the gate that WANTS the worker; this one
+    // must not have it.
     const context = await browser.newContext({viewport: {width: 1280, height: 900},
-        acceptDownloads: true});
+        acceptDownloads: true, serviceWorkers: 'block'});
     const page = await context.newPage();
     await page.addInitScript(() => {
         localStorage.clear();
