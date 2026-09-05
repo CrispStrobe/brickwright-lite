@@ -837,13 +837,14 @@ Next tasks, in order:
    does not claim to emulate RAM, core count, network or a named phone. All
    nine receipts passed; median speed remained about 30.35× XT, including the
    throttled profile.
-4. **Implemented; hosted proof pending.** Benchmark-only `BoardCanvas`, host,
-   fit, resize, board-state and declaration marks now attribute both the full
-   startup and the narrower Circuit-open window. Normal sessions retain their
-   original React hierarchy and allocate no trace state. Do not begin item 5
-   until the hosted receipt names resize/fit work as material.
-5. Merge the two observers of the same canvas container only after task 4
-   identifies resize/fit work as material.
+4. **Complete (hosted run `33951019292`).** Benchmark-only `BoardCanvas`, host,
+   fit, resize, board-state and declaration marks account for 14/15
+   desktop/mobile CircuitDesigner commits. `designer:board-ready` dominates at
+   11 commits; resize/fit owns only 1–2. Normal sessions retain their original
+   React hierarchy and allocate no trace state.
+5. **Not activated.** P4 did not identify resize/fit work as material, so the
+   duplicate canvas observers stay unchanged. Reconsider only if later
+   repeated evidence crosses that dependency gate.
 6. Use CI webpack stats to attribute the approximately 9.1 MB initial chunk
    and 3.0 MB GUI script before changing split points; keep the DOS debugger
    independent of unrelated board registries.
