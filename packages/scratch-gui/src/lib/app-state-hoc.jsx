@@ -3,6 +3,8 @@ import PropTypes from 'prop-types';
 import {Provider} from 'react-redux';
 import {createStore, combineReducers, compose} from 'redux';
 import ConnectedIntlProvider from './connected-intl-provider.jsx';
+import DynamicReducerContext from './dynamic-reducer-context';
+import createReducerManager from './reducer-manager';
 
 import localesReducer, {initLocale, localesInitialState} from '../reducers/locales';
 
@@ -53,10 +55,6 @@ const AppStateHOC = function (WrappedComponent, localesOnly) {
                     initPlayer,
                     initTelemetryModal
                 } = guiRedux;
-                // Import only the reducer, not the full paint editor UI, so the
-                // heavy paint component can be lazy-loaded on first tab activation.
-                const ScratchPaintReducer = require('scratch-paint/src/reducers/scratch-paint-reducer').default;
-
                 let initializedGui = guiInitialState;
                 if (props.isFullScreen || props.isPlayerOnly) {
                     if (props.isFullScreen) {
@@ -70,8 +68,7 @@ const AppStateHOC = function (WrappedComponent, localesOnly) {
                 }
                 reducers = {
                     locales: localesReducer,
-                    scratchGui: guiReducer,
-                    scratchPaint: ScratchPaintReducer
+                    scratchGui: guiReducer
                 };
                 initialState = {
                     locales: initializedLocales,
@@ -79,12 +76,20 @@ const AppStateHOC = function (WrappedComponent, localesOnly) {
                 };
                 enhancer = composeEnhancers(guiMiddleware);
             }
-            const reducer = combineReducers(reducers);
+            this.reducerManager = createReducerManager(combineReducers, reducers);
             this.store = createStore(
-                reducer,
+                this.reducerManager.reduce,
                 initialState,
                 enhancer
             );
+            this.installReducer = (key, dynamicReducer) => {
+                if (this.reducerManager.install(key, dynamicReducer)) {
+                    // replaceReducer dispatches Redux's internal init action. The
+                    // new slice therefore exists before the waiting UI renders.
+                    this.store.replaceReducer(this.reducerManager.reduce);
+                }
+                return this.store.getState()[key];
+            };
             // Brickwright: expose the store so the native (Tauri) file-open bridge
             // can reach the VM. scratch-gui doesn't set window.vm/ReduxStore itself.
             if (typeof window !== 'undefined') {
@@ -109,11 +114,13 @@ const AppStateHOC = function (WrappedComponent, localesOnly) {
             } = this.props;
             return (
                 <Provider store={this.store}>
-                    <ConnectedIntlProvider>
-                        <WrappedComponent
-                            {...componentProps}
-                        />
-                    </ConnectedIntlProvider>
+                    <DynamicReducerContext.Provider value={this.installReducer}>
+                        <ConnectedIntlProvider>
+                            <WrappedComponent
+                                {...componentProps}
+                            />
+                        </ConnectedIntlProvider>
+                    </DynamicReducerContext.Provider>
                 </Provider>
             );
         }
