@@ -38,6 +38,50 @@ function splitComment (line) {
     return [line, null];
 }
 
+/** Lift the emitter's `_eq(a, b)` loose-equality helper back to `(a = b)`,
+ *  recursively and with balanced parentheses so nested and readPin arguments
+ *  survive. Left in place it reads back as an unknown call. */
+function liftEq (str) {
+    let out = '', i = 0;
+    while (i < str.length) {
+        if (str.startsWith('_eq(', i)) {
+            let d = 0, comma = -1, j = i + 3;
+            for (; j < str.length; j++) {
+                const c = str[j];
+                if (c === '(') d++;
+                else if (c === ')') { d--; if (d === 0) break; }
+                else if (c === ',' && d === 1 && comma === -1) comma = j;
+            }
+            if (comma !== -1 && j < str.length) {
+                out += `(${liftEq(str.slice(i + 4, comma)).trim()} = ${liftEq(str.slice(comma + 1, j)).trim()})`;
+                i = j + 1;
+                continue;
+            }
+        }
+        out += str[i++];
+    }
+    return out;
+}
+
+/** Unwrap the emitter's `_truthy(X)` boolean-coercion helper: in a condition
+ *  the coercion is implicit, so `_truthy(X)` reads back as just `X`. Balanced,
+ *  recursive, like liftEq. */
+function liftTruthy (str) {
+    let out = '', i = 0;
+    while (i < str.length) {
+        if (str.startsWith('_truthy(', i)) {
+            let d = 0, j = i + 7;
+            for (; j < str.length; j++) {
+                if (str[j] === '(') d++;
+                else if (str[j] === ')') { d--; if (d === 0) break; }
+            }
+            if (j < str.length) { out += liftTruthy(str.slice(i + 8, j)).trim(); i = j + 1; continue; }
+        }
+        out += str[i++];
+    }
+    return out;
+}
+
 export default function micropythonToPseudocode (source, opts = {}) {
     const warnings = [];
     const warn = (m) => { if (!warnings.includes(m)) warnings.push(m); };
@@ -169,6 +213,25 @@ export default function micropythonToPseudocode (source, opts = {}) {
         }
     }
 
+    // An STC program driven on a non-STC board resolves its pins through the
+    // `_stc12` driver, whose pin table the emitter now emits beside it:
+    //   _stc12_pins = json.loads("{\"led1\": {\"pin\": \"P1.0\", \"dir\": ...}}")
+    // The table carries the port/bit and polarity the board's own pins never
+    // could, so the pins are declared straight from it and `read <name>`/writes
+    // resolve to a declared pin instead of re-parsing as a variable.
+    const stcTable = text.match(/_stc\d*_pins\s*=\s*json\.loads\(\s*("(?:[^"\\]|\\.)*")\s*\)/);
+    if (stcTable) {
+        let table = null;
+        try { table = JSON.parse(JSON.parse(stcTable[1])); } catch { table = null; }
+        if (table && typeof table === 'object') {
+            for (const [name, p] of Object.entries(table)) {
+                if (!p || !p.pin) continue;
+                const dir = p.dir === 'analog' ? 'analog' : p.dir === 'output' ? 'output' : 'input';
+                put(name, p.pin, dir, !!p.low, name);
+            }
+        }
+    }
+
     // ---- the header, when the writer left one ------------------------------
     // Everything below this recovers facts from the code, which works and is
     // what a hand-written program gets. But a pin that is never parked has its
@@ -240,6 +303,24 @@ export default function micropythonToPseudocode (source, opts = {}) {
         // arithmetic detail of one board in the portable text.
         e = e.replace(/\b(\w+)\.read_u16\s*\(\s*\)\s*>>\s*6/g, (_, o) => `read ${nameOf(o) || o}`);
         e = e.replace(/\b(\w+)\.value\s*\(\s*\)/g, (_, o) => `read ${nameOf(o) || o}`);
+        // MicroPython emitted for an STC-targeted program drives the pins through
+        // the `_stc*` driver shim: a pin read is `_stc12.readPin("name")`, and the
+        // pin's dialect name is the string literal itself. Left unmapped it comes
+        // back quoted as a string; mapped, it is the same `read <name>` reporter
+        // the native boards produce.
+        e = e.replace(/\b_stc\d*\.readPin\s*\(\s*"([^"]+)"\s*\)/g, (_, name) => {
+            // An STC pin read. When the `_stc12_pins` table is present it was
+            // already turned into a `PIN <name>` declaration above, so `read
+            // <name>` binds to a real pin and round-trips. Only when the table
+            // is absent (an older emit) is the port/bit unrecoverable — then the
+            // read still lifts, but the loss of its declaration is named.
+            if (![...pins.values()].some((p) => p.name === name)) {
+                warn(`pin ${name}: read through the STC driver, but this MicroPython carries no pin table — the port/bit is not in the source, so it cannot be declared and re-parses as a variable`);
+            }
+            return `read ${name}`;
+        });
+        e = liftEq(e);
+        e = liftTruthy(e);
         e = e.replace(/\btime\.ticks_ms\s*\(\s*\)|\brunning_time\s*\(\s*\)/g, 'timer');
         e = e.replace(/\bnot\s+/g, 'not ');
         e = e.replace(/\bTrue\b/g, '1').replace(/\bFalse\b/g, '0');
@@ -260,16 +341,43 @@ export default function micropythonToPseudocode (source, opts = {}) {
     const out = [];
     const emit = (depth, s) => out.push('  '.repeat(depth) + s);
 
-    // The generated program puts the script in bw_script(); a hand-written one
-    // is usually just a `while True:` at module level. Both are one script.
+    // `print` coerces with `str(...)`, so the emitter writes `print(str(X))`.
+    // Strip ONE `str(...)` layer when it wraps the whole argument, or the wrap
+    // doubles on re-emission. `str(a) + str(b)` (a join) is not wrapped whole,
+    // and is left alone.
+    const stripOuterStr = (a) => {
+        a = a.trim();
+        if (!a.startsWith('str(') || !a.endsWith(')')) return a;
+        let d = 0;
+        for (let k = 3; k < a.length; k++) {
+            if (a[k] === '(') d++;
+            else if (a[k] === ')') { d--; if (d === 0) return k === a.length - 1 ? a.slice(4, -1).trim() : a; }
+        }
+        return a;
+    };
+
+    // The generated program puts each script in its own task function — older
+    // output named the single one `bw_script()`, current output emits one
+    // `_task_N()` per script and drives them from a `_run(...)` scheduler that
+    // is pure infrastructure. A hand-written program is usually just a
+    // `while True:` at module level. In every case the reader lifts ONE script
+    // body; the scheduler, the `_run([...])` kickoff and the `_pending`/
+    // `_receivers`/`_bw_*` runtime vars are ours, and are dropped because the
+    // body loop stops at the end of the task function (its dedent to column 0).
     let start = 0, bodyIndent = 0;
-    const fn = lines.findIndex((l) => /^def\s+bw_script\s*\(/.test(l.code));
+    const fn = lines.findIndex((l) => /^def\s+(?:bw_script|_task_0)\s*\(/.test(l.code));
     if (fn !== -1) { start = fn + 1; bodyIndent = 4; } else {
         const w = lines.findIndex((l) => /^\s*while\s+True\s*:/.test(l.code));
         if (w === -1) warn('no bw_script() and no `while True:` — nothing that looks like a script');
         start = w === -1 ? lines.length : w;
         bodyIndent = lines[start] ? lines[start].indent : 0;
     }
+    // The emitter writes one `_task_N()` per script and this reader lifts the
+    // first. When there is more than one, the others are the learner's scripts,
+    // NOT runtime — they must not be swallowed silently. Name them, and leave
+    // the program degraded for a real reason.
+    const taskCount = lines.filter((l) => /^def\s+_task_\d+\s*\(/.test(l.code)).length;
+    if (taskCount > 1) warn(`${taskCount - 1} more WHEN script(s) not lifted — this reader lifts one script per program`);
 
     // ---- module-level setup BEFORE the script: grey-block preserved ------
     // Imports of unknown modules, helper defs, setup calls — everything the
@@ -307,6 +415,18 @@ export default function micropythonToPseudocode (source, opts = {}) {
         }
     }
 
+    // The body of the loop starting at line `at` (indent `ind`) is nothing but
+    // the `yield 0` back-edge — i.e. the loop has no statements of its own.
+    const bodyIsOnlyYield0 = (at, ind) => {
+        for (let j = at + 1; j < lines.length; j++) {
+            const t = lines[j];
+            if (!t.code.trim()) continue;
+            if (t.indent <= ind) return true;             // body ended, only yields seen
+            if (!/^yield\s+0$/.test(t.code.trim())) return false;   // a real statement -> not empty
+        }
+        return true;
+    };
+
     for (let i = start; i < lines.length; i++) {
         const l = lines[i];
         if (!l.code.trim()) continue;
@@ -336,7 +456,30 @@ export default function micropythonToPseudocode (source, opts = {}) {
             emit(depth, `set _hz to ${hz}`); continue;
         }
         if (/^while\s+True\s*:$/.test(s)) { emit(depth, 'FOREVER:'); continue; }
-        if ((m = s.match(/^while\s+(.+?)\s*:$/))) { emit(depth, `REPEAT UNTIL not (${expr(m[1])}):`); continue; }
+        // `repeat N` is a counted loop: `for _ in range(int(N)):` with a
+        // `yield 0` back-edge. Lift it back; the body reads on as usual.
+        if ((m = s.match(/^for\s+_\s+in\s+range\s*\(\s*int\s*\(\s*(.+)\s*\)\s*\)\s*:$/))) {
+            emit(depth, `REPEAT ${expr(m[1])}:`); continue;
+        }
+        if ((m = s.match(/^while\s+(.+?)\s*:$/))) {
+            // `repeat until X` and `wait until X` are both emitted as
+            // `while not (X):`. Lifting `while C` as `REPEAT UNTIL not (C)` is
+            // right in general, but for the emitter's own `not (X)` it doubles
+            // the negation; strip the pair and read the UNTIL condition straight.
+            const neg = m[1].match(/^not\s*\((.+)\)$/);
+            if (neg) {
+                // A `while not (X):` whose ONLY body is the `yield 0` back-edge
+                // is a `wait until X`, not a bodyless `repeat until`; the two
+                // emit differently, so telling them apart keeps the round trip.
+                if (bodyIsOnlyYield0(i, l.indent)) {
+                    emit(depth, `wait until ${expr(neg[1])}`);
+                    while (i + 1 < lines.length && (!lines[i + 1].code.trim() || lines[i + 1].indent > l.indent)) i++;
+                    continue;
+                }
+                emit(depth, `REPEAT UNTIL ${expr(neg[1])}:`); continue;
+            }
+            emit(depth, `REPEAT UNTIL not (${expr(m[1])}):`); continue;
+        }
         if ((m = s.match(/^if\s+(.+?)\s*:$/))) { emit(depth, `IF ${expr(m[1])} THEN:`); continue; }
         if ((m = s.match(/^elif\s+(.+?)\s*:$/))) { emit(depth, `ELSE IF ${expr(m[1])} THEN:`); continue; }
         if (/^else\s*:$/.test(s)) { emit(depth, 'ELSE:'); continue; }
@@ -349,7 +492,7 @@ export default function micropythonToPseudocode (source, opts = {}) {
         if ((m = s.match(/^time\.sleep\s*\(\s*(.+?)\s*\)$/))) {
             emit(depth, `wait ${expr(m[1])} seconds`); continue;
         }
-        if ((m = s.match(/^print\s*\(\s*(.*)\s*\)$/))) { emit(depth, `print ${expr(m[1])}`); continue; }
+        if ((m = s.match(/^print\s*\(\s*(.*)\s*\)$/))) { emit(depth, `print ${expr(stripOuterStr(m[1]))}`); continue; }
 
         // A toggle is two statements on the micro:bit; the dictionary write is
         // bookkeeping and the pin write is the act, so the pair collapses.
@@ -358,6 +501,21 @@ export default function micropythonToPseudocode (source, opts = {}) {
             if (next && /\.write_digital\s*\(\s*_level\s*\[/.test(next.code)) {
                 emit(depth, `toggle ${m[1]}`); i++; continue;
             }
+        }
+
+        // STC driver writes. When a pin is not one of the board's own, the
+        // emitter routes the write through the `_stc12` driver by name; lift
+        // those back to the same verbs the decompiler emits (turn on/off, set
+        // <pin> high/low, set <pin> to <expr>, toggle).
+        if ((m = s.match(/^_stc\d*\.setPin\s*\(\s*"([^"]+)"\s*,\s*"(on|off|high|low)"\s*\)$/))) {
+            emit(depth, (m[2] === 'on' || m[2] === 'off') ? `turn ${m[2]} ${m[1]}` : `set ${m[1]} ${m[2]}`);
+            continue;
+        }
+        if ((m = s.match(/^_stc\d*\.writePin\s*\(\s*"([^"]+)"\s*,\s*(.+?)\s*\)$/))) {
+            emit(depth, `set ${m[1]} to ${expr(m[2])}`); continue;
+        }
+        if ((m = s.match(/^_stc\d*\.togglePin\s*\(\s*"([^"]+)"\s*\)$/))) {
+            emit(depth, `toggle ${m[1]}`); continue;
         }
 
         // Digital writes. A literal is on/off (through the polarity); anything
@@ -395,9 +553,41 @@ export default function micropythonToPseudocode (source, opts = {}) {
         }
         if (/^if\s+_hz\s*:$|^music\.stop\s*\(/.test(s)) continue;
 
+        // `change v by X` is emitted as `v = v + X` with the operand UNwrapped;
+        // a genuine `set v to (v + X)` keeps the reporter's parentheses (`v =
+        // (v + X)`). The bare-`+` form after `=` is therefore the change verb,
+        // and lifting it as such is both the right block and byte-exact on
+        // re-emission.
+        if ((m = s.match(/^([A-Za-z_]\w*)\s*=\s*\1\s*\+\s*(.+)$/))) {
+            emit(depth, `change ${m[1]} by ${expr(m[2])}`); continue;
+        }
         // Plain assignment.
         if ((m = s.match(/^([A-Za-z_]\w*)\s*=\s*(.+)$/)) && !/[=<>!]=/.test(m[0].slice(m[1].length))) {
             emit(depth, `set ${m[1]} to ${expr(m[2])}`); continue;
+        }
+        // A scheduler task spells `wait N seconds` as a yield of milliseconds
+        // (`yield int((N) * 1000)`); the emitter's own form, reversed here so the
+        // wait is not lost. The bare `yield 0` at a loop back-edge, and every
+        // other yield, is control flow rather than a statement and rides on to
+        // the skip below.
+        if ((m = s.match(/^yield\s+int\s*\(\s*\((.+)\)\s*\*\s*1000\s*\)$/))) {
+            emit(depth, `wait ${expr(m[1])} seconds`); continue;
+        }
+        // A `pass` the emitter left a comment on is a block it could NOT
+        // translate for this board — overwhelmingly an 8051 pin write with no
+        // micro:bit/Pico equivalent. Dropping it silently is the exact loss the
+        // coverage audit exists to end, so name it: a `#` pseudocode comment
+        // (which parse() ignores, so it is not re-emitted) plus a degraded
+        // warning. This does not round-trip and is not meant to — a named loss,
+        // not a recovered one.
+        if (s === 'pass' && l.comment) {
+            const pin = l.comment.match(/^pin\s+(.+)$/i);
+            const why = pin
+                ? `pin ${pin[1]}: no equivalent on this board; the 8051 pin block was not translated`
+                : `${l.comment}: no equivalent on this board; the block was not translated`;
+            emit(depth, `# ${why}`);
+            warn(why);
+            continue;
         }
         if (/^(yield|pass|global|return)\b/.test(s)) continue;
 
