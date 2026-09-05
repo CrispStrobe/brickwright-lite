@@ -92,7 +92,7 @@ export function createM6502DebugTarget(adapter, opts = {}) {
         recording: checkpointStatus.supported ? ['checkpoint', 'restore'] : [],
         extensions: {
           ...(checkpointStatus.supported ? {} : {checkpointRefusal: checkpointStatus.reasons}),
-          inputReplay: ['m6502.buttons', ...(rawSendSerial ? ['m6502.serial'] : [])],
+          inputReplay: ['m6502.buttons', 'm6502.nmi', ...(rawSendSerial ? ['m6502.serial'] : [])],
           inputRefusals: [
             'live board input-net changes bypass the target and disable checkpoint recording',
             'ROM/media loading is configuration, not a replayable runtime input'
@@ -141,6 +141,11 @@ export function createM6502DebugTarget(adapter, opts = {}) {
       if (input?.producer === 'm6502.serial' && Number.isSafeInteger(input.payload?.byte) && rawSendSerial) {
         return rawSendSerial(input.payload.byte & 0xff);
       }
+      if (input?.producer === 'm6502.nmi' && input.payload &&
+          typeof input.payload === 'object' && Object.keys(input.payload).length === 0) {
+        machine.nmi();
+        return true;
+      }
       return {refused: 'unsupported or malformed 6502 replay input', code: 'UNSUPPORTED_REPLAY_INPUT'};
     },
 
@@ -176,7 +181,53 @@ export function createM6502DebugTarget(adapter, opts = {}) {
       return {accepted: true, boundary: 'instruction', cycles: machine.cycles - before};
     },
 
+    /**
+     * Advance machine time to an exact recorded external-input boundary.
+     * WAI is intentionally allowed: M6502Machine.step() advances chips/time to
+     * their next declared wake horizon without inventing an instruction retire.
+     * STP and an overshooting instruction/horizon are explicit refusals; replay
+     * must roll the checkpoint back rather than apply an input late.
+     */
+    replayToInputBoundary(boundary) {
+      let requested;
+      try {
+        requested = BigInt(boundary?.ticks);
+      } catch {
+        return {accepted: false, code: 'invalid-input-boundary',
+          reason: 'recorded input boundary ticks must be an integer'};
+      }
+      const domain = String(boundary?.domain || '').replace(/-reset-\d+$/, '');
+      if (domain !== 'm6502-cycles' || requested < 0n ||
+          requested > BigInt(Number.MAX_SAFE_INTEGER)) {
+        return {accepted: false, code: 'invalid-input-boundary',
+          reason: 'recorded input boundary is outside the m6502 cycle clock'};
+      }
+      if (requested < BigInt(machine.cycles)) {
+        return {accepted: false, code: 'input-boundary-passed',
+          reason: 'machine is already past the recorded input boundary'};
+      }
+      while (BigInt(machine.cycles) < requested) {
+        if (cpu.stopped) return {accepted: false, code: 'stopped-before-input',
+          reason: 'STP cannot advance to a future input boundary; only reset can revive it'};
+        const advanced = machine.step();
+        if (!(advanced > 0)) return {accepted: false, code: 'input-boundary-stalled',
+          reason: 'machine time did not advance toward the recorded input boundary'};
+        if (BigInt(machine.cycles) > requested) {
+          return {accepted: false, code: 'input-boundary-inexact',
+            reason: 'the next exact machine boundary lies after the recorded input time'};
+        }
+      }
+      return {accepted: true, boundary: 'input', time: this.debugTime()};
+    },
+
     debugTime() { return debugEvents.debugTime(); },
+
+    /** Pulse the physical NMI input and record it before mutating the CPU. */
+    nmi() {
+      if (!publishInput('m6502.nmi', {})) return false;
+      machine.nmi();
+      return true;
+    },
 
     regs() {
       return {

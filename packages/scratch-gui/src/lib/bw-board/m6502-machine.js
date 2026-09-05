@@ -600,6 +600,14 @@ export class M6502Machine {
         return false;
     }
 
+    /** Pulse NMI as an external pin event and advance machine peripherals through its bus time. */
+    nmi() {
+        this.cpu.nmi();
+        this.cycles += 7;
+        this._advanceChips(7);
+        return true;
+    }
+
     /** One instruction (or one idle cycle when waiting); returns cycles consumed. */
     /**
      * Face-input contract: press/release the four control buttons a

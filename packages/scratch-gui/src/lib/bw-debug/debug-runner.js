@@ -43,6 +43,8 @@ import { createTrace, IO_SFRS, TIMER_SFRS } from './trace.js';
 import {createDebugFoundation, subscribeDebugTargetEvents} from './debug-foundation.js';
 import {createRecordingSession, subscribeDebugTargetInputs} from './recording-session.js';
 import {createInstructionReplayController} from './instruction-replay.js';
+import {createCycleReplayController} from './cycle-replay.js';
+import {createHistoricalOutputGate} from './timed-replay-io.js';
 import {createReverseContinueCoordinator} from './reverse-continue.js';
 import {createEventBreakpointDispatcher} from './event-breakpoint-dispatcher.js';
 import {createSelectedEventSeekCoordinator} from './selected-event-seek.js';
@@ -52,6 +54,11 @@ import {createForkRecordingStore} from './fork-recording-store.js';
 import {createBranchCursor} from './fork-history.js';
 import {createRunToCoordinator} from './run-to.js';
 import {createSelectedEventInspectionStore} from './selected-event-inspection.js';
+import {createTimingWaveform} from './timing-waveform.js';
+import {createDebuggerSessionBundle, importDebuggerSessionBundle} from './session-bundle.js';
+import {DEBUG_SESSION_SNAPSHOT_CODEC, structuredSessionSnapshotCodec} from './session-snapshot-codec.js';
+import {createDivergenceBisection} from './divergence-bisection.js';
+import {createCorrelatedDebugger} from './correlated-debug.js';
 import {negotiateCycleProvider} from './cycle-provider.js';
 import { setValueResolver } from './hover-values.js';
 import { instructionLength } from './opcodes.js';
@@ -466,6 +473,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     let unsubscribeBps = null;
     /** The execution history the drawer renders. See trace.js. */
     const debugFoundation = createDebugFoundation({eventCapacity: 4096});
+    const debugTimingWaveform = createTimingWaveform({capacity: 4096, maxLanes: 64});
     const eventStream = debugFoundation.events;
     const selectedInspectionStore = createSelectedEventInspectionStore();
     let selectedInspectionKey = null;
@@ -529,7 +537,32 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             normalizeTimeDomain: replayClockDomain,
             normalizeEvent: normalizeReplayEvent
         });
-        return {recorder, recordingSession: branchSession, instructionReplay: replay, haltOccurrences};
+        const cycleReplay = createCycleReplayController({
+            recorder,
+            getTarget: () => target,
+            restoreCheckpoint: checkpoint => branchSession.restore(checkpoint.eventCursor),
+            captureSourceState: currentTarget => ({target: currentTarget.captureCheckpoint(),
+                host: captureHostState()}),
+            restoreSourceState: (source, currentTarget) => {
+                currentTarget.restoreCheckpoint(source.target);
+                return commitHostRestore(prepareHostRestore(source.host));
+            },
+            subscribeEvents: listener => eventStream.onEvent(listener),
+            replayHostEvent: event => {
+                const result = replayBreakpointDispatcher.dispatch(event, {
+                    context: {event, counts: Object.fromEntries(eventBreakpointCounters)}
+                });
+                if (result.failure) throw new Error(result.failure.code);
+                if (result.outcome?.failures?.length) {
+                    throw new Error(result.outcome.failures[0].code || 'replay-host-action-failed');
+                }
+                return true;
+            },
+            normalizeTimeDomain: replayClockDomain,
+            normalizeEvent: normalizeReplayEvent
+        });
+        return {recorder, recordingSession: branchSession, instructionReplay: replay,
+            cycleReplay, haltOccurrences};
     };
     let activeBranchPayload = createBranchPayload(debugFoundation.recorder,
         debugFoundation.haltOccurrences);
@@ -541,6 +574,11 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         canReverse: (...args) => activeBranchPayload.instructionReplay.canReverse(...args),
         reverseToEvent: (...args) => activeBranchPayload.instructionReplay.reverseToEvent(...args)
     };
+    const cycleReplay = {
+        canReverse: (...args) => activeBranchPayload.cycleReplay.canReverse(...args),
+        reverseToCycle: (...args) => activeBranchPayload.cycleReplay.reverseToCycle(...args)
+    };
+    const sessionCodecs = Object.freeze({[DEBUG_SESSION_SNAPSHOT_CODEC]: structuredSessionSnapshotCodec});
     const unsubscribeRecordingEvents = eventStream.onEvent(event =>
         activeBranchPayload.recordingSession.appendBatch([event]));
     let unsubscribeDebugEvents = null;
@@ -552,6 +590,33 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     const eventBreakpointCounters = new Map();
     // Cursor of the last successful UI reverse; null means the retained live end.
     let reverseCursor = null;
+    let bisectionEndpoints = {good: null, bad: null};
+    let bisectionRun = {phase: 'idle', probes: 0, maxProbes: 64, result: null};
+    let bisectionGeneration = 0;
+    let correlatedDebugger = null;
+    let correlatedSelectedTarget = null;
+    let correlatedSelectedCursor = null;
+    let correlatedCheckpoint = null;
+    let correlatedStatus = null;
+    let correlatedTriggerId = 1;
+
+    const ensureCorrelatedDebugger = event => {
+        if (correlatedDebugger) return correlatedDebugger;
+        let descriptors = typeof target?.correlatedDebugTargets === 'function' ?
+            target.correlatedDebugTargets() : null;
+        if (!descriptors || !Object.keys(descriptors).length) {
+            if (!target?.captureCheckpoint || !target?.restoreCheckpoint || !event) return null;
+            descriptors = {[event.cpuId]: {
+                clockDomain: event.time.domain,
+                captureCheckpoint: () => target.captureCheckpoint(),
+                prepareRestore: snapshot => structuredClone(snapshot),
+                restoreCheckpoint: snapshot => target.restoreCheckpoint(snapshot)
+            }};
+        }
+        correlatedDebugger = createCorrelatedDebugger({targets: descriptors, capacity: 8192, maxBranches: 64});
+        correlatedSelectedTarget = Object.keys(descriptors)[0];
+        return correlatedDebugger;
+    };
     // Halt occurrence is a separate order because several native stops may
     // share one instruction boundary. It is advanced only after verified replay.
     let breakpointGeneration = 0;
@@ -614,6 +679,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             capsFor = target;
             capsOf = target.capabilities();
             cycleProviderOf = negotiateCycleProvider(target);
+            correlatedDebugger = null;
+            correlatedSelectedTarget = correlatedSelectedCursor = correlatedCheckpoint = null;
+            correlatedStatus = null;
             debugFoundation.attachCapabilities(capsOf);
             eventBreakpointDispatcher?.clear();
         }
@@ -762,6 +830,24 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     }
 
     function dispatchPublishedEvent(event) {
+        try {
+            const correlated = ensureCorrelatedDebugger(event);
+            if (correlated) {
+                const ids = correlated.view().targets.map(item => item.id);
+                const targetId = ids.includes(event.cpuId) ? event.cpuId :
+                    (ids.length === 1 ? ids[0] : null);
+                if (targetId) {
+                    const appended = correlated.append('main', {targetId, kind: event.kind,
+                        time: event.time, ...(event.cause ? {cause: event.cause} : {})});
+                    correlatedSelectedCursor = appended.event.cursor;
+                    if (appended.triggers.length) correlatedStatus = {accepted: true,
+                        message: `${appended.triggers.length} cross-CPU trigger(s) matched`};
+                }
+            }
+        } catch (error) {
+            correlatedStatus = {accepted: false, code: 'correlated-event-refused',
+                reason: error?.message || String(error)};
+        }
         // Only the 8086 currently proves that an interior event is followed by
         // a replay-addressable retire boundary before the halt is delivered.
         if (targetKind !== 'i8086' || !eventBreakpointDispatcher) return null;
@@ -892,14 +978,17 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     }
 
     const snapshotEmitter = createDebugSnapshotEmitter({snapshot, onChange});
+    const replayOutputGate = createHistoricalOutputGate({publishState: state => onChange(state)});
 
     /** Immediate by default: every existing call is a semantic event. */
     function emit() {
+        if (replayingDebugHistory) return replayOutputGate.emit(null);
         snapshotEmitter.immediate();
     }
 
     /** Animation-frame progress only; safe to coalesce before snapshot work. */
     function emitLive() {
+        if (replayingDebugHistory) return replayOutputGate.emit(null);
         snapshotEmitter.live();
     }
 
@@ -2828,6 +2917,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             ensureDebugEvents();
             const batch = eventStream.drain(max);
             debugFoundation.ingestTimeline(batch);
+            debugTimingWaveform.append(batch.filter(event => event.kind !== 'gap'));
             return batch;
         },
         debugEventStats: () => {
@@ -2878,6 +2968,300 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             return {...branch, recording: payload.recordingSession.status(),
                 checkpoints: payload.recorder.checkpointSummary()};
         }),
+        async exportDebugSession () {
+            const branches = forkRecordingStore.summaries();
+            const activeBranchId = forkRecordingStore.active().branch.branchId;
+            const recordings = branches.map(branch => {
+                const recorder = forkRecordingStore.recordingFor(branch.branchId).recording.recorder;
+                const summaries = recorder.checkpointSummary();
+                return {branchId: branch.branchId,
+                    trace: summaries.length ? recorder.eventsFrom(summaries[0].eventCursor) : [],
+                    inputs: recorder.inputsFrom(recorder.retention().inputBaseCursor),
+                    checkpoints: recorder.checkpoints().map(checkpoint => ({
+                        id: checkpoint.id, eventCursor: checkpoint.eventCursor,
+                        inputCursor: checkpoint.inputCursor, time: checkpoint.time,
+                        codec: DEBUG_SESSION_SNAPSHOT_CODEC,
+                        snapshot: {target: checkpoint.snapshot,
+                            ...(Object.hasOwn(checkpoint, 'hostSnapshot') ?
+                                {host: checkpoint.hostSnapshot} : {})}
+                    }))};
+            });
+            if (recordings.some(recording => !recording.checkpoints.length)) return {accepted: false, code: 'session-export-empty',
+                reason: 'Start recording and capture a checkpoint before exporting a session'};
+            try {
+                const bundle = await createDebuggerSessionBundle({
+                    firmware: bootMedia?.bytes || new Uint8Array(), source: '',
+                    branches: branches.map(branch => ({...branch,
+                        active: branch.branchId === activeBranchId})),
+                    recordings, codecs: sessionCodecs
+                });
+                return {accepted: true, text: JSON.stringify(bundle), filename: 'debug-session.bwdebug'};
+            } catch (error) {
+                return {accepted: false, code: error?.code || 'session-export-failed',
+                    reason: error?.message || String(error)};
+            }
+        },
+        async importDebugSession (text) {
+            if (recordingSession.status().active) return {accepted: false,
+                code: 'session-import-recording-active',
+                reason: 'Stop the active recording before importing a session'};
+            if (typeof text !== 'string' || text.length > 48 * 1024 * 1024) return {accepted: false,
+                code: 'session-import-size', reason: 'Session file exceeds the browser import limit'};
+            let bundle;
+            try { bundle = JSON.parse(text); } catch (error) {
+                return {accepted: false, code: 'session-import-json',
+                    reason: `Session file is not valid JSON (${error?.message || String(error)})`};
+            }
+            try {
+                const imported = await importDebuggerSessionBundle({bundle, codecs: sessionCodecs,
+                    commit: staged => {
+                        const payloads = new Map();
+                        for (const recording of staged.recordings) {
+                            const firstInput = recording.inputs[0]?.cursor ??
+                                recording.checkpoints[0]?.inputCursor ?? 0;
+                            const importedRecorder = createDebugRecorder({initialInputCursor: firstInput});
+                            for (const input of recording.inputs) {
+                                const appended = importedRecorder.appendInput(input);
+                                if (appended.cursor !== input.cursor) throw Object.assign(
+                                    new Error('Imported input cursors are not contiguous'),
+                                    {code: 'session-import-input-order'});
+                            }
+                            let eventIndex = 0;
+                            for (const checkpoint of recording.checkpoints) {
+                                while (eventIndex < recording.trace.length &&
+                                    recording.trace[eventIndex].seq < checkpoint.eventCursor) {
+                                    importedRecorder.appendEvent(recording.trace[eventIndex++]);
+                                }
+                                const decoded = checkpoint.snapshot;
+                                if (!decoded || !Object.hasOwn(decoded, 'target')) throw Object.assign(
+                                    new Error('Checkpoint snapshot has no target state'),
+                                    {code: 'session-import-checkpoint-invalid'});
+                                importedRecorder.createCheckpoint({schema: 1, id: checkpoint.id,
+                                    eventCursor: checkpoint.eventCursor, inputCursor: checkpoint.inputCursor,
+                                    time: checkpoint.time, snapshot: decoded.target,
+                                    ...(Object.hasOwn(decoded, 'host') ? {hostSnapshot: decoded.host} : {})});
+                            }
+                            while (eventIndex < recording.trace.length) {
+                                importedRecorder.appendEvent(recording.trace[eventIndex++]);
+                            }
+                            payloads.set(recording.branchId, createBranchPayload(importedRecorder,
+                                createHaltOccurrenceLedger()));
+                        }
+                        const branchIdOf = branch => branch.branchId ?? branch.id;
+                        const parentIdOf = branch => branch.parentBranchId ?? branch.parentId ?? null;
+                        const root = staged.branches.find(branch => parentIdOf(branch) === null);
+                        const rootId = root && branchIdOf(root);
+                        if (!root || !payloads.has(rootId)) throw Object.assign(
+                            new Error('Imported session has no root recording'),
+                            {code: 'session-import-root-missing'});
+                        const importedStore = createForkRecordingStore({rootBranchId: rootId,
+                            rootRecording: payloads.get(rootId)});
+                        for (const branch of staged.branches.filter(item => parentIdOf(item) !== null)) {
+                            const id = branchIdOf(branch); const parentId = parentIdOf(branch);
+                            const added = importedStore.fork({branchId: id, parentBranchId: parentId,
+                                forkCursor: branch.forkCursor ||
+                                    {branchId: parentId, eventCursor: branch.eventCursor},
+                                recording: payloads.get(id)});
+                            if (!added.accepted) throw Object.assign(new Error(added.reason || added.code),
+                                {code: added.code});
+                        }
+                        const wantedActive = branchIdOf(staged.branches.find(branch => branch.active) || root);
+                        const activated = importedStore.activate(wantedActive);
+                        if (!activated.accepted) throw Object.assign(new Error(activated.reason || activated.code),
+                            {code: activated.code});
+                        // Commit is deliberately the first mutation: decoding,
+                        // hashing and recorder reconstruction all completed above.
+                        activeBranchPayload = activated.recording;
+                        forkRecordingStore = importedStore;
+                        reverseCursor = null;
+                        reverseContinue.reset();
+                        selectedInspectionKey = null;
+                        selectedInspectionView = null;
+                        return {traceEvents: staged.recordings.reduce((sum, item) => sum + item.trace.length, 0),
+                            checkpoints: staged.checkpoints.length};
+                    }});
+                // Rendering is not part of the transaction: a consumer error
+                // cannot turn a committed, validated import into a false refusal.
+                try { emit(); } catch { /* the next UI refresh can recover */ }
+                return imported;
+            } catch (error) {
+                return {accepted: false, code: error?.code || 'session-import-failed',
+                    reason: error?.message || String(error)};
+            }
+        },
+        debugBisectionStatus: () => ({...bisectionRun, ...bisectionEndpoints}),
+        markDebugBisectionEndpoint (which) {
+            if (!['good', 'bad'].includes(which)) return {accepted: false,
+                code: 'invalid-bisection-endpoint', reason: 'Endpoint must be good or bad'};
+            if (bisectionRun.phase === 'running') return {accepted: false,
+                code: 'bisection-running', reason: 'Cancel the active bisection before changing endpoints'};
+            const selected = debugFoundation.timeline.state().selectedEvent;
+            if (!selected || !Number.isSafeInteger(selected.seq) || selected.seq === Number.MAX_SAFE_INTEGER) {
+                return {accepted: false, code: 'bisection-selection-missing',
+                    reason: 'Select a retained timeline event first'};
+            }
+            const cursor = createBranchCursor(forkRecordingStore.active().branch.branchId, selected.seq + 1);
+            bisectionEndpoints = {...bisectionEndpoints, [which]: cursor};
+            bisectionRun = {...bisectionRun, phase: 'idle', result: null};
+            emit();
+            return {accepted: true, cursor};
+        },
+        cancelDebugBisection () {
+            if (bisectionRun.phase !== 'running') return {accepted: false,
+                code: 'bisection-not-running', reason: 'No divergence search is running'};
+            bisectionGeneration++;
+            bisectionRun = {...bisectionRun, phase: 'cancelling'};
+            emit();
+            return {accepted: true};
+        },
+        async startDebugBisection () {
+            if (bisectionRun.phase === 'running' || bisectionRun.phase === 'cancelling') {
+                return {accepted: false, code: 'bisection-running', reason: 'A divergence search is already running'};
+            }
+            if (!bisectionEndpoints.good || !bisectionEndpoints.bad) return {accepted: false,
+                code: 'bisection-endpoints-missing', reason: 'Mark known-good and bad timeline events first'};
+            const branch = forkRecordingStore.recordingFor(bisectionEndpoints.good.branchId);
+            if (!branch.accepted || bisectionEndpoints.bad.branchId !== bisectionEndpoints.good.branchId) {
+                return {accepted: false, code: 'bisection-branch-mismatch',
+                    reason: 'Good and bad events must belong to one retained branch'};
+            }
+            const replay = branch.recording.cycleReplay;
+            const capability = replay.canReverse();
+            if (!capability.accepted) return {accepted: false, code: 'bisection-cycle-replay-required',
+                reason: 'Divergence bisection currently requires recorded resumable cycle replay'};
+            recordingSession.stop();
+            if (session) session.pause();
+            unschedule();
+            const output = replayOutputGate.begin();
+            if (!output.accepted) return output;
+            const generation = ++bisectionGeneration;
+            bisectionRun = {phase: 'running', probes: 0, maxProbes: 64, result: null};
+            emit();
+            const capture = () => ({target: target.captureCheckpoint(), host: captureHostState()});
+            const restore = source => {
+                target.restoreCheckpoint(source.target);
+                return commitHostRestore(prepareHostRestore(source.host));
+            };
+            const coordinator = createDivergenceBisection({maxProbes: 64,
+                captureSource: capture, restoreSource: restore,
+                probe: async cursor => {
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                    if (generation !== bisectionGeneration) return {accepted: false,
+                        reason: 'Divergence search cancelled'};
+                    bisectionRun = {...bisectionRun, probes: bisectionRun.probes + 1};
+                    emit();
+                    replayingDebugHistory = true;
+                    let result;
+                    try { result = replay.reverseToCycle(cursor.eventCursor); } finally {
+                        replayingDebugHistory = false;
+                        eventBreakpointDispatcher?.clear();
+                        replayBreakpointDispatcher?.clear();
+                    }
+                    if (!result.accepted && result.code !== 'REPLAY_DIVERGED') return result;
+                    return {accepted: true, matches: result.accepted, passive: true,
+                        deterministic: true, externalEffects: 0};
+                }});
+            let result;
+            try {
+                result = await coordinator.bisect(bisectionEndpoints);
+                if (generation !== bisectionGeneration) result = {accepted: false,
+                    code: 'bisection-cancelled', reason: 'Divergence search cancelled'};
+            } catch (error) {
+                result = {accepted: false, code: error?.code || 'bisection-failed',
+                    reason: error?.message || String(error)};
+            }
+            // The coordinator restored the captured source after every probe.
+            // Publish exactly one complete output view after leaving history.
+            const synchronized = replayOutputGate.resynchronize(snapshot());
+            if (!synchronized.accepted && result.accepted) result = synchronized;
+            bisectionRun = {...bisectionRun, phase: result.code === 'bisection-cancelled' ?
+                'cancelled' : 'complete', result};
+            emit();
+            return result;
+        },
+        correlatedDebugView () {
+            const raw = correlatedDebugger?.view();
+            if (!raw) return null;
+            const selectedEvent = raw.events.find(event => correlatedSelectedCursor &&
+                event.cursor.branchId === correlatedSelectedCursor.branchId &&
+                event.cursor.eventCursor === correlatedSelectedCursor.eventCursor) || null;
+            return {...raw, selectedEvent, lastCheckpoint: correlatedCheckpoint,
+                lanes: raw.targets.map(item => ({targetId: item.id, clockDomain: item.clockDomain,
+                    events: raw.events.filter(event => event.targetId === item.id)}))};
+        },
+        correlatedDebugStatus: () => correlatedStatus,
+        selectCorrelatedDebugTarget (targetId) {
+            const ids = correlatedDebugger?.view().targets.map(item => item.id) || [];
+            if (!ids.includes(targetId)) return {accepted: false, code: 'correlated-target-unknown',
+                reason: 'Selected CPU is not retained'};
+            correlatedSelectedTarget = targetId;
+            correlatedStatus = null;
+            emit();
+            return {accepted: true, targetId};
+        },
+        selectedCorrelatedDebugTarget: () => correlatedSelectedTarget,
+        selectCorrelatedDebugEvent (cursor) {
+            const view = correlatedDebugger?.view();
+            const event = view?.events.find(item => item.cursor.branchId === cursor?.branchId &&
+                item.cursor.eventCursor === cursor?.eventCursor);
+            if (!event) return {accepted: false, code: 'causal-cursor-not-retained',
+                reason: 'The correlated event is no longer retained'};
+            correlatedSelectedCursor = event.cursor;
+            correlatedSelectedTarget = event.targetId;
+            correlatedStatus = null;
+            emit();
+            return {accepted: true, cursor: event.cursor, targetId: event.targetId};
+        },
+        addCorrelatedDebugTrigger () {
+            const view = correlatedDebugger?.view();
+            const selected = view?.events.find(event => correlatedSelectedCursor &&
+                event.cursor.branchId === correlatedSelectedCursor.branchId &&
+                event.cursor.eventCursor === correlatedSelectedCursor.eventCursor);
+            const destination = view?.targets.find(item => item.id !== selected?.targetId)?.id;
+            if (!selected || !destination) return {accepted: false, code: 'cross-core-trigger-unavailable',
+                reason: 'Select an event in a session with at least two CPUs'};
+            const result = correlatedDebugger.addTrigger({id: `cross-${correlatedTriggerId++}`,
+                sourceTarget: selected.targetId, targetId: destination, kind: selected.kind});
+            correlatedStatus = result;
+            emit();
+            return result;
+        },
+        followCorrelatedDebugCause () {
+            const view = correlatedDebugger?.view();
+            const selected = view?.events.find(event => correlatedSelectedCursor &&
+                event.cursor.branchId === correlatedSelectedCursor.branchId &&
+                event.cursor.eventCursor === correlatedSelectedCursor.eventCursor);
+            const cause = selected?.cause;
+            const source = cause && view.events.find(event => event.cursor.branchId === cause.branchId &&
+                event.cursor.eventCursor === cause.eventCursor);
+            if (!source) return {accepted: false, code: 'causal-link-unavailable',
+                reason: 'The selected event has no retained causal source'};
+            correlatedSelectedCursor = source.cursor;
+            correlatedSelectedTarget = source.targetId;
+            correlatedStatus = null;
+            emit();
+            return {accepted: true, cursor: source.cursor, targetId: source.targetId};
+        },
+        async checkpointCorrelatedDebugTargets () {
+            if (!correlatedDebugger) return {accepted: false, code: 'correlated-debug-unavailable',
+                reason: 'No correlated CPU session is active'};
+            const result = await correlatedDebugger.captureCheckpoint('main');
+            if (result.accepted) correlatedCheckpoint = result.checkpoint;
+            correlatedStatus = result;
+            emit();
+            return result;
+        },
+        async restoreCorrelatedDebugTargets () {
+            if (!correlatedDebugger || !correlatedCheckpoint) return {accepted: false,
+                code: 'correlated-checkpoint-unavailable', reason: 'Capture an all-CPU checkpoint first'};
+            if (session) session.pause();
+            unschedule();
+            const result = await correlatedDebugger.restoreCheckpoint(correlatedCheckpoint);
+            correlatedStatus = result;
+            if (result.accepted) status = {phase: 'paused', message: ''};
+            emit();
+            return result;
+        },
         activeDebugBranch: () => forkRecordingStore.active().branch,
         forkDebugHistory(branchId) {
             if (reverseCursor === null) return {accepted: false, code: 'fork-cursor-unavailable',
@@ -2913,9 +3297,14 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             replayingDebugHistory = true;
             let result;
             try {
-                result = destination.recording.instructionReplay.reverseToEvent(cursor.eventCursor);
+                const destinationCycle = destination.recording.cycleReplay.canReverse().accepted;
+                result = destinationCycle ?
+                    destination.recording.cycleReplay.reverseToCycle(cursor.eventCursor) :
+                    destination.recording.instructionReplay.reverseToEvent(cursor.eventCursor);
                 if (!result.accepted) {
-                    const rollback = priorCursor === undefined ? null :
+                    const priorCycle = prior.recording.cycleReplay.canReverse().accepted;
+                    const rollback = priorCursor === undefined ? null : priorCycle ?
+                        prior.recording.cycleReplay.reverseToCycle(priorCursor) :
                         prior.recording.instructionReplay.reverseToEvent(priorCursor);
                     if (rollback && !rollback.accepted) return {accepted: false,
                         code: 'branch-switch-rollback-failed', reason: rollback.reason || rollback.code};
@@ -2935,6 +3324,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             return {...result, branch: activated.branch};
         },
         debugTimeline: () => debugFoundation.timeline,
+        debugTimingWaveform: () => debugTimingWaveform,
         selectedEventInspection() {
             const selectedEvent = debugFoundation.timeline.state().selectedEvent;
             if (!selectedEvent) return {accepted: false, code: 'inspection-selection-missing',
@@ -3008,6 +3398,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             recordingSession.stop();
             if (session) session.pause();
             unschedule();
+            const outputTransaction = replayOutputGate.begin();
+            if (!outputTransaction.accepted) return outputTransaction;
             replayingDebugHistory = true;
             let result;
             try {
@@ -3018,11 +3410,64 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             }
             if (result.accepted) {
                 reverseCursor = eventCursor;
-                setStatus('paused');
+                status = {phase: 'paused', message: ''};
             }
+            // The replay is synchronous: no historical intermediate state may
+            // escape, and both success and rollback publish one complete view
+            // of the machine that is now live.
+            const synchronized = replayOutputGate.resynchronize(snapshot());
+            if (!synchronized.accepted && result.accepted) return synchronized;
+            return result;
+        },
+        reverseDebugToCycle: eventCursor => {
+            recordingSession.stop();
+            if (session) session.pause();
+            unschedule();
+            const outputTransaction = replayOutputGate.begin();
+            if (!outputTransaction.accepted) return outputTransaction;
+            replayingDebugHistory = true;
+            let result;
+            try {
+                result = cycleReplay.reverseToCycle(eventCursor);
+            } finally {
+                replayingDebugHistory = false;
+                eventBreakpointDispatcher?.clear();
+            }
+            if (result.accepted) {
+                reverseCursor = eventCursor;
+                status = {phase: 'paused', message: ''};
+            }
+            const synchronized = replayOutputGate.resynchronize(snapshot());
+            if (!synchronized.accepted && result.accepted) return synchronized;
             return result;
         },
         canReverseDebug: () => instructionReplay.canReverse(),
+        canReverseCycleDebug: () => cycleReplay.canReverse(),
+        reverseStepDebugCycleStatus() {
+            if (reverseHistoryRefusal) return reverseHistoryRefusal;
+            const capability = cycleReplay.canReverse();
+            if (!capability.accepted) return capability;
+            const retained = activeBranchPayload.recorder.retention();
+            const before = reverseCursor ??
+                (retained.lastEventSeq === null ? 0 : retained.lastEventSeq + 1);
+            let previous;
+            try {
+                previous = activeBranchPayload.recorder.previousCycleBoundaryCursor(before);
+            } catch (error) {
+                return {accepted: false, code: 'reverse-cycle-history-unavailable',
+                    reason: error?.message || String(error)};
+            }
+            return previous === null ? {accepted: false, code: 'no-previous-cycle',
+                reason: 'No earlier recorded cycle boundary is retained'} :
+                {accepted: true, beforeCursor: before, eventCursor: previous};
+        },
+        reverseStepDebugCycle() {
+            const state = this.reverseStepDebugCycleStatus();
+            if (!state.accepted) return state;
+            const result = this.reverseDebugToCycle(state.eventCursor);
+            if (result.accepted) reverseContinue.reset();
+            return result;
+        },
         reverseStepDebugStatus() {
             if (reverseHistoryRefusal) return reverseHistoryRefusal;
             const capability = instructionReplay.canReverse();
@@ -3330,14 +3775,16 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     }
 
     reverseContinue = createReverseContinueCoordinator({
-        canReverse: () => reverseHistoryRefusal || haltLedgerRefusal || instructionReplay.canReverse(),
+        canReverse: () => reverseHistoryRefusal || haltLedgerRefusal ||
+            (cycleReplay.canReverse().accepted ? cycleReplay.canReverse() : instructionReplay.canReverse()),
         haltOccurrences: {
             previousBeforeBoundary: cursor =>
                 activeBranchPayload.haltOccurrences.previousBeforeBoundary(cursor),
             previousByOccurrenceCursor: cursor =>
                 activeBranchPayload.haltOccurrences.previousByOccurrenceCursor(cursor)
         },
-        reverseToEvent: eventCursor => runner.reverseDebugToEvent(eventCursor)
+        reverseToEvent: eventCursor => cycleReplay.canReverse().accepted ?
+            runner.reverseDebugToCycle(eventCursor) : runner.reverseDebugToEvent(eventCursor)
     });
     eventBreakpointDispatcher = createEventBreakpointDispatcher({
         engine: {evaluate: (event, context) => debugFoundation.evaluateBreakpoints(event, context)},

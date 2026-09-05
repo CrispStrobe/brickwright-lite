@@ -82,6 +82,7 @@ export async function createDebugTarget(kind, opts) {
     return createAvr8jsTarget(kind, opts);
   }
   if (kind === 'z80') {
+    const {createZ80Target} = await import('./z80-target-factory.js');
     return createZ80Target(opts);
   }
   if (kind === 'eater6502') {
@@ -274,26 +275,6 @@ async function createAvr8jsTarget(kind, opts) {
 
 // ─── 6502 breadboard computer (Eater-style) ─────────────────────────────
 
-async function createZ80Target(opts) {
-  const { board, rom, config, pc, cpm } = opts;
-  // The Z80 bench has no GPIO boundary — board is optional; when
-  // present it only receives time sync (the serial console is the
-  // observable surface, via adapter.onSerial / sendSerial).
-  const { createZ80Adapter } = await import('./z80-adapter.js');
-  const adapter = createZ80Adapter({ config, rom, romAt: opts.romAt, pc, cpm });
-  if (board) adapter.attachBoard(board);
-  else adapter.attachBoard({ advanceTo() {} });
-
-  let target = null;
-  try {
-    const mod = await import('./z80-debug.js');
-    if (mod.createZ80DebugTarget) {
-      target = mod.createZ80DebugTarget(adapter, {cpuId: opts.cpuId});
-    }
-  } catch { /* adapter-only mode */ }
-  return { target, adapter };
-}
-
 /**
  * The 8086 breadboard. Like the z80 and 6502 targets, a board is optional:
  * a machine whose only observable surface is the serial console has no pins
@@ -386,8 +367,11 @@ async function createEater6502Target(opts) {
   } catch {
     // m6502-debug.js not available — adapter-only mode
   }
-
-  return { target, adapter };
+  if (!target) return {target, adapter};
+  const {createW65C02ProviderBoundary} = await import('./w65c02-cycle-provider.js');
+  const providerBoundary = createW65C02ProviderBoundary(target);
+  const providerSelection = providerBoundary.select(opts.cycleProvider || 'fast-w65c02');
+  return {target: providerSelection.target, adapter, providerBoundary, providerSelection};
 }
 
 // ─── Pico target (RP2040 via rp2040js) ──────────────────────────────────

@@ -6,7 +6,12 @@ import {connect} from 'react-redux';
 import DebugDrawer from './debug-drawer.jsx';
 import DebugInspector from './debug-inspector.jsx';
 import DebugFrames from './debug-frames.jsx';
+import DebugTimingWaveform from './debug-timing-waveform.jsx';
+import DebugSessionTransfer from './debug-session-transfer.jsx';
+import DebugDivergenceBisection from './debug-divergence-bisection.jsx';
+import DebugCorrelatedTargets from './debug-correlated-targets.jsx';
 import {mergeTargetKinds} from '../../lib/bw-debug/target-kinds.js';
+import {reverseCycleControlStatus} from '../../lib/bw-debug/reverse-cycle-ui.js';
 
 // VDP screen — lazy-loaded, only renders when the runner has video output.
 const PortLeds = React.lazy(() =>
@@ -46,7 +51,7 @@ const VdpScreen = React.lazy(() =>
 
 const L10N = {
     en: {
-        run: 'Run', pause: 'Pause', step: 'Step', reverseStep: 'Reverse Step',
+        run: 'Run', pause: 'Pause', step: 'Step', reverseStep: 'Reverse Step', reverseCycle: 'Reverse Cycle',
         reverseContinue: 'Reverse Continue', stop: 'Stop',
         speed: 'Speed', idle: 'not running', building: 'building…', attaching: 'starting…',
         ready: 'ready', running: 'running', paused: 'paused', stepping: 'stepping…',
@@ -76,6 +81,7 @@ const L10N = {
         record: 'Record', recording: 'Recording', checkpoint: 'Checkpoint', restore: 'Restore',
         recordUnsupported: 'This target cannot capture a complete deterministic checkpoint',
         reverseHint: 'Restore and replay to the previous recorded instruction',
+        reverseCycleHint: 'Restore and verify replay to the previous recorded hardware cycle',
         reverseContinueHint: 'Restore and replay to the previous recorded breakpoint halt',
         timeline: 'Timeline', timelineRefresh: 'Read events', timelineOlder: 'Older',
         timelineNewer: 'Newer', timelineLatest: 'Latest', timelineCheckpoint: 'Last checkpoint',
@@ -85,7 +91,7 @@ const L10N = {
         actionLog: 'Log', actionCounters: 'Counters', actionEvent: 'event'
     },
     de: {
-        run: 'Start', pause: 'Pause', step: 'Schritt', reverseStep: 'Zurück',
+        run: 'Start', pause: 'Pause', step: 'Schritt', reverseStep: 'Zurück', reverseCycle: 'Takt zurück',
         reverseContinue: 'Zurück fortsetzen', stop: 'Stopp',
         speed: 'Tempo', idle: 'läuft nicht', building: 'wird gebaut…', attaching: 'startet…',
         ready: 'bereit', running: 'läuft', paused: 'angehalten', stepping: 'Schritt…',
@@ -116,6 +122,7 @@ const L10N = {
         record: 'Aufzeichnen', recording: 'Aufzeichnung', checkpoint: 'Prüfpunkt', restore: 'Wiederherstellen',
         recordUnsupported: 'Dieses Ziel kann keinen vollständigen deterministischen Prüfpunkt erfassen',
         reverseHint: 'Zum vorherigen aufgezeichneten Befehl zurückkehren und verifiziert abspielen',
+        reverseCycleHint: 'Zum vorherigen aufgezeichneten Hardwaretakt zurückkehren und verifiziert abspielen',
         reverseContinueHint: 'Zum vorherigen aufgezeichneten Haltepunkt zurückkehren und verifiziert abspielen',
         timeline: 'Zeitleiste', timelineRefresh: 'Ereignisse lesen', timelineOlder: 'Älter',
         timelineNewer: 'Neuer', timelineLatest: 'Neueste', timelineCheckpoint: 'Letzter Prüfpunkt',
@@ -141,11 +148,13 @@ class DebugPanel extends React.Component {
         // order a user works in.
         this.state = {runner: null, ui: {phase: 'idle', message: ''}, kind: 'emulator', kinds: null,
             machineConfig: null, serialInput: '', firmwareName: null,
-            recordingStatus: null, reverseStatus: null, timelineStatus: null};
+            recordingStatus: null, reverseStatus: null, timelineStatus: null,
+            sessionTransferStatus: null};
         this.onStart = this.onStart.bind(this);
         this.onPause = this.onPause.bind(this);
         this.onStep = this.onStep.bind(this);
         this.onReverseStep = this.onReverseStep.bind(this);
+        this.onReverseCycle = this.onReverseCycle.bind(this);
         this.onReverseContinue = this.onReverseContinue.bind(this);
         this.onStop = this.onStop.bind(this);
         this.onSpeed = this.onSpeed.bind(this);
@@ -161,6 +170,25 @@ class DebugPanel extends React.Component {
         this.onTimelineLatest = this.onTimelineLatest.bind(this);
         this.onTimelineCheckpoint = this.onTimelineCheckpoint.bind(this);
         this.onTimelineGoSelected = this.onTimelineGoSelected.bind(this);
+        this.onWaveformSelect = this.onWaveformSelect.bind(this);
+        this.onWaveformZoom = this.onWaveformZoom.bind(this);
+        this.onWaveformPan = this.onWaveformPan.bind(this);
+        this.onWaveformSetTrigger = this.onWaveformSetTrigger.bind(this);
+        this.onWaveformPreviousTrigger = this.onWaveformPreviousTrigger.bind(this);
+        this.onWaveformNextTrigger = this.onWaveformNextTrigger.bind(this);
+        this.onWaveformExport = this.onWaveformExport.bind(this);
+        this.onDebugSessionExport = this.onDebugSessionExport.bind(this);
+        this.onDebugSessionImport = this.onDebugSessionImport.bind(this);
+        this.onBisectionMarkGood = this.onBisectionMarkGood.bind(this);
+        this.onBisectionMarkBad = this.onBisectionMarkBad.bind(this);
+        this.onBisectionStart = this.onBisectionStart.bind(this);
+        this.onBisectionCancel = this.onBisectionCancel.bind(this);
+        this.onCorrelatedTarget = this.onCorrelatedTarget.bind(this);
+        this.onCorrelatedEvent = this.onCorrelatedEvent.bind(this);
+        this.onCorrelatedTrigger = this.onCorrelatedTrigger.bind(this);
+        this.onCorrelatedCause = this.onCorrelatedCause.bind(this);
+        this.onCorrelatedCheckpoint = this.onCorrelatedCheckpoint.bind(this);
+        this.onCorrelatedRestore = this.onCorrelatedRestore.bind(this);
         this.syncProjectTokens = this.syncProjectTokens.bind(this);
         this._onMachineExtracted = this._onMachineExtracted.bind(this);
         this._onMediaLoad = this._onMediaLoad.bind(this);
@@ -598,6 +626,13 @@ class DebugPanel extends React.Component {
         this.setState({reverseStatus: result.accepted ? null : result});
     }
 
+    onReverseCycle () {
+        const runner = this.state.runner;
+        if (!runner || typeof runner.reverseStepDebugCycle !== 'function') return;
+        const result = runner.reverseStepDebugCycle();
+        this.setState({reverseStatus: result.accepted ? null : result});
+    }
+
     onReverseContinue () {
         const runner = this.state.runner;
         if (!runner) return;
@@ -642,6 +677,7 @@ class DebugPanel extends React.Component {
         const runner = this.state.runner;
         if (!runner) return;
         const result = operation(runner.debugTimeline());
+        if (result.accepted && result.event) runner.debugTimingWaveform().selectEvent(result.event.seq);
         this.setState({timelineStatus: result.accepted ? null : result});
     }
 
@@ -661,6 +697,93 @@ class DebugPanel extends React.Component {
         const result = runner.seekSelectedDebugEvent();
         this.setState({timelineStatus: result.accepted ? null : result});
     }
+
+    onWaveformSelect (seq) {
+        const runner = this.state.runner;
+        if (!runner) return;
+        const result = runner.debugTimeline().selectEvent(seq);
+        if (result.accepted) runner.debugTimingWaveform().selectEvent(seq);
+        this.setState({timelineStatus: result.accepted ? null : result});
+    }
+
+    updateWaveform (operation) {
+        const waveform = this.state.runner?.debugTimingWaveform();
+        if (!waveform) return;
+        const result = operation(waveform);
+        if (result.accepted && result.selectedSeq !== undefined) {
+            this.state.runner.debugTimeline().selectEvent(result.selectedSeq);
+        }
+        this.setState({timelineStatus: result.accepted ? null : result});
+    }
+
+    onWaveformZoom (factor) { this.updateWaveform(waveform => waveform.zoom(factor)); }
+    onWaveformPan (delta) { this.updateWaveform(waveform => waveform.pan(delta)); }
+    onWaveformSetTrigger (lane) {
+        if (lane) this.updateWaveform(waveform => waveform.setTrigger({lane, edge: 'change'}));
+    }
+    onWaveformPreviousTrigger () { this.updateWaveform(waveform => waveform.previousTrigger()); }
+    onWaveformNextTrigger () { this.updateWaveform(waveform => waveform.nextTrigger()); }
+    onWaveformExport (format) {
+        const waveform = this.state.runner?.debugTimingWaveform();
+        if (!waveform) return;
+        try {
+            const body = format === 'vcd' ? waveform.exportVCD() : waveform.exportJSON();
+            const blob = new Blob([body], {type: format === 'vcd' ? 'text/plain' : 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url; anchor.download = `debug-timing.${format}`; anchor.click();
+            URL.revokeObjectURL(url);
+            this.setState({timelineStatus: null});
+        } catch (error) {
+            this.setState({timelineStatus: {accepted: false, code: 'waveform-export-refused',
+                reason: error?.message || String(error)}});
+        }
+    }
+
+    async onDebugSessionExport () {
+        const runner = this.state.runner;
+        if (!runner) return;
+        this.setState({sessionTransferStatus: {message: 'Preparing session…'}});
+        try {
+            const result = await runner.exportDebugSession();
+            if (!result.accepted) return this.setState({sessionTransferStatus: result});
+            const blob = new Blob([result.text], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url; anchor.download = result.filename || 'debug-session.bwdebug'; anchor.click();
+            URL.revokeObjectURL(url);
+            this.setState({sessionTransferStatus: {accepted: true, message: 'Session exported'}});
+        } catch (error) {
+            this.setState({sessionTransferStatus: {accepted: false, code: 'session-export-failed',
+                reason: error?.message || String(error)}});
+        }
+    }
+
+    async onDebugSessionImport (file) {
+        const runner = this.state.runner;
+        if (!runner) return;
+        this.setState({sessionTransferStatus: {message: 'Validating session…'}});
+        try {
+            const text = await file.text();
+            const result = await runner.importDebugSession(text);
+            this.setState({sessionTransferStatus: result.accepted ?
+                {accepted: true, message: 'Session imported'} : result});
+        } catch (error) {
+            this.setState({sessionTransferStatus: {accepted: false, code: 'session-import-failed',
+                reason: error?.message || String(error)}});
+        }
+    }
+
+    onBisectionMarkGood () { this.state.runner?.markDebugBisectionEndpoint('good'); }
+    onBisectionMarkBad () { this.state.runner?.markDebugBisectionEndpoint('bad'); }
+    onBisectionStart () { this.state.runner?.startDebugBisection(); }
+    onBisectionCancel () { this.state.runner?.cancelDebugBisection(); }
+    onCorrelatedTarget (targetId) { this.state.runner?.selectCorrelatedDebugTarget(targetId); }
+    onCorrelatedEvent (cursor) { this.state.runner?.selectCorrelatedDebugEvent(cursor); }
+    onCorrelatedTrigger () { this.state.runner?.addCorrelatedDebugTrigger(); }
+    onCorrelatedCause () { this.state.runner?.followCorrelatedDebugCause(); }
+    onCorrelatedCheckpoint () { this.state.runner?.checkpointCorrelatedDebugTargets(); }
+    onCorrelatedRestore () { this.state.runner?.restoreCorrelatedDebugTargets(); }
 
     render () {
         const {ui} = this.state;
@@ -692,6 +815,12 @@ class DebugPanel extends React.Component {
             this.state.recordingStatus.reason : null;
         const reverse = this.state.runner && this.state.runner.reverseStepDebugStatus();
         const canReverse = !!(reverse && reverse.accepted);
+        const reverseCycleRunner = this.state.runner &&
+            typeof this.state.runner.reverseStepDebugCycleStatus === 'function' ?
+            this.state.runner.reverseStepDebugCycleStatus() : null;
+        const reverseCycle = reverseCycleControlStatus({provider: ui.cycleProvider,
+            capabilities: caps, runnerStatus: reverseCycleRunner});
+        const canReverseCycle = reverseCycle.accepted;
         const reverseContinue = this.state.runner && this.state.runner.reverseContinueDebugStatus();
         const canReverseContinue = !!(reverseContinue && reverseContinue.accepted);
         const reverseRefusal = this.state.reverseStatus?.accepted === false ?
@@ -710,6 +839,8 @@ class DebugPanel extends React.Component {
             (timelineRefusalResult.reason || timelineRefusalResult.code) : null;
         const selectedInspection = timelineEvent && this.state.runner ?
             this.state.runner.selectedEventInspection() : null;
+        const timingWaveform = this.state.runner ? this.state.runner.debugTimingWaveform().view() : null;
+        const correlatedView = this.state.runner ? this.state.runner.correlatedDebugView() : null;
         // This is a bounded summary API: no event bodies, target snapshots or
         // checkpoint payloads cross the render path. Cap the visible tail too,
         // so a crowded action setup cannot grow the panel without bound.
@@ -772,6 +903,14 @@ class DebugPanel extends React.Component {
                         onClick={this.onReverseStep}
                         title={canReverse ? this.tx('reverseHint') : (reverse?.reason || this.tx('reverseHint'))}
                     >{'⏮ '}{this.tx('reverseStep')}</button>
+
+                    <button
+                        data-debug-reverse-cycle
+                        style={canReverseCycle && !busy ? BTN : OFF}
+                        disabled={!canReverseCycle || busy}
+                        onClick={this.onReverseCycle}
+                        title={canReverseCycle ? this.tx('reverseCycleHint') : reverseCycle.reason}
+                    >{'↤ '}{this.tx('reverseCycle')}</button>
 
                     <button
                         data-debug-reverse-continue
@@ -926,6 +1065,34 @@ class DebugPanel extends React.Component {
                     </span> : null}
                 </div>
 
+                {this.state.runner ? <DebugSessionTransfer
+                    disabled={running || busy}
+                    status={this.state.sessionTransferStatus}
+                    onExport={this.onDebugSessionExport}
+                    onImport={this.onDebugSessionImport}
+                /> : null}
+
+                {this.state.runner ? <DebugDivergenceBisection
+                    disabled={running || busy}
+                    status={this.state.runner.debugBisectionStatus()}
+                    onMarkGood={this.onBisectionMarkGood}
+                    onMarkBad={this.onBisectionMarkBad}
+                    onStart={this.onBisectionStart}
+                    onCancel={this.onBisectionCancel}
+                /> : null}
+
+                {correlatedView ? <DebugCorrelatedTargets
+                    view={correlatedView}
+                    selectedTarget={this.state.runner.selectedCorrelatedDebugTarget()}
+                    status={this.state.runner.correlatedDebugStatus()}
+                    onSelectTarget={this.onCorrelatedTarget}
+                    onSelectEvent={this.onCorrelatedEvent}
+                    onAddTrigger={this.onCorrelatedTrigger}
+                    onFollowCause={this.onCorrelatedCause}
+                    onCheckpoint={this.onCorrelatedCheckpoint}
+                    onRestore={this.onCorrelatedRestore}
+                /> : null}
+
                 {selectedInspection?.accepted ? (
                     <div data-debug-selected-inspection data-inspection-provenance="recorded-event"
                         style={{display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
@@ -964,6 +1131,21 @@ class DebugPanel extends React.Component {
                                 <div role="status">{'No recorded memory writes'}</div>}
                         </div>
                     </div>
+                ) : null}
+
+                {timingWaveform?.samples.length ? (
+                    <DebugTimingWaveform
+                        view={timingWaveform}
+                        selectedSeq={timeline?.selectedSeq}
+                        refusal={timelineRefusal}
+                        onSelect={this.onWaveformSelect}
+                        onZoom={this.onWaveformZoom}
+                        onPan={this.onWaveformPan}
+                        onSetTrigger={this.onWaveformSetTrigger}
+                        onPreviousTrigger={this.onWaveformPreviousTrigger}
+                        onNextTrigger={this.onWaveformNextTrigger}
+                        onExport={this.onWaveformExport}
+                    />
                 ) : null}
 
                 {hasActionStatus ? (

@@ -173,11 +173,15 @@ export function compareReplayValues (expectedValues, actualValues, {baseCursor =
 export function createDebugRecorder ({
     checkpointBudgetBytes = DEFAULT_CHECKPOINT_BUDGET,
     eventBudgetBytes = DEFAULT_EVENT_BUDGET,
-    inputBudgetBytes = DEFAULT_INPUT_BUDGET
+    inputBudgetBytes = DEFAULT_INPUT_BUDGET,
+    initialInputCursor = 0
 } = {}) {
     assertBudget(checkpointBudgetBytes, 'checkpointBudgetBytes');
     assertBudget(eventBudgetBytes, 'eventBudgetBytes');
     assertBudget(inputBudgetBytes, 'inputBudgetBytes');
+    if (!Number.isSafeInteger(initialInputCursor) || initialInputCursor < 0) {
+        throw new TypeError('initialInputCursor must be a non-negative safe integer');
+    }
 
     let inputs = [];
     let events = [];
@@ -185,9 +189,10 @@ export function createDebugRecorder ({
     // index makes Reverse Step O(log retires) without cloning event payloads or
     // touching checkpoint snapshots.
     let retireCursors = [];
+    let cycleCursors = [];
     let checkpoints = [];
-    let inputBaseCursor = 0;
-    let nextInputCursor = 0;
+    let inputBaseCursor = initialInputCursor;
+    let nextInputCursor = initialInputCursor;
     let lastEventSeq = -1;
     let nextCheckpointId = 0;
     let checkpointBytes = 0;
@@ -224,6 +229,7 @@ export function createDebugRecorder ({
             eventBytes -= discardedEvents.reduce((total, event) => total + event._bytes, 0);
             events = events.filter(event => event.seq >= anchor.eventCursor);
             retireCursors = retireCursors.filter(cursor => cursor > anchor.eventCursor);
+            cycleCursors = cycleCursors.filter(cursor => cursor > anchor.eventCursor);
             const discardedInputs = inputs.filter(input => input.cursor < anchor.inputCursor);
             inputBytes -= discardedInputs.reduce((total, input) => total + input._bytes, 0);
             inputs = inputs.filter(input => input.cursor >= anchor.inputCursor);
@@ -289,6 +295,9 @@ export function createDebugRecorder ({
             events.push(stored);
             if (value.kind === 'instruction' && value.phase === 'retire') {
                 retireCursors.push(value.seq + 1);
+            }
+            if (value.phase === 'tick' && value.fidelity === 'recorded') {
+                cycleCursors.push(value.seq + 1);
             }
             eventBytes += stored._bytes;
             lastEventSeq = event.seq;
@@ -388,6 +397,28 @@ export function createDebugRecorder ({
             return Math.max(retired, anchored);
         },
 
+        /** Previous recorded target-cycle boundary, including checkpoint anchors. */
+        previousCycleBoundaryCursor (eventCursor) {
+            const min = checkpoints.length ? checkpoints[0].eventCursor : 0;
+            assertCursor(eventCursor, 'eventCursor', min, lastEventSeq + 1);
+            let lo = 0;
+            let hi = cycleCursors.length;
+            while (lo < hi) {
+                const mid = (lo + hi) >>> 1;
+                if (cycleCursors[mid] < eventCursor) lo = mid + 1;
+                else hi = mid;
+            }
+            const tick = lo ? cycleCursors[lo - 1] : null;
+            let anchor = null;
+            for (const checkpoint of checkpoints) {
+                if (checkpoint.eventCursor < eventCursor) anchor = checkpoint.eventCursor;
+                else break;
+            }
+            if (tick === null) return anchor;
+            if (anchor === null) return tick;
+            return Math.max(tick, anchor);
+        },
+
         checkpoints: () => checkpoints.map(({_bytes, ...checkpoint}) => clone(checkpoint)),
         checkpointSummary: () => checkpoints.map(checkpoint => ({
             id: checkpoint.id,
@@ -401,6 +432,7 @@ export function createDebugRecorder ({
             inputs = [];
             events = [];
             retireCursors = [];
+            cycleCursors = [];
             checkpoints = [];
             inputBaseCursor = 0;
             nextInputCursor = 0;
