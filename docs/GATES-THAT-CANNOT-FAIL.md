@@ -80,6 +80,41 @@ columns above record is how each was *found*, which is verifiable from this
 file. Turning that into a live pass/fail column is mechanisable — that is the
 next piece of work on this document, not a claim about it.
 
+## THE GENERAL FORM, which arrived on 2026-09-05 and covers most of this file
+
+From the 8086 coverage lane, and it is the sharpest statement of the disease
+anyone has produced here:
+
+> **A success message quantifies over some SET. It is trustworthy only when
+> that set equals the set the GOAL cares about.**
+>
+> The cheap check is one question: **does the success predicate iterate over
+> the same set as the invariant it implies?** If loop-set ⊊ goal-set, the
+> green is a false statement about the goal.
+
+Every find of 2026-09-05 is an instance, and they only look like different
+bugs because the sets have different names:
+
+| the green said | it ranged over | the goal ranged over |
+| --- | --- | --- |
+| `wrote 15 files, exit 0` | files I wrote | files with local-only content |
+| a skipped test's `ok` | the file executed | the fixture was present and asserted |
+| `6 file(s), all covered` | files the list names | files carrying lite-only work |
+| `found N declarations` | lines matching the regex | names actually declared |
+| upstream `has not converged` | assertions that did not throw | a corpus that was actually read |
+
+**And the fix is the same move every time**: iterate the set the GOAL defines,
+**scanned from the tree**, never a curated list of what you happened to touch.
+A curated list can only fail in the direction it enumerates. That is precisely
+what "derive the direction from content on every run" buys — it makes
+loop-set = affected-set, so there is no gap for anything to hide in.
+
+The corollary the coverage lane drew for their own tool is the one to imitate:
+their oracle-census ranges over fixtures someone **listed**, not fixtures that
+**exist**, so a new unlisted skip is invisible to it exactly as fifteen files
+were invisible to my allow-list. Naming that about your own instrument, before
+anyone makes you, is the whole discipline.
+
 ## The absent-device rule, in its strongest form
 
 From the 8086 coverage lane, and better than the version I had been using:
