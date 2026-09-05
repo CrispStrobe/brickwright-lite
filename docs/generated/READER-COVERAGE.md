@@ -23,9 +23,9 @@ Each run of a fixture through its reader is one of three outcomes:
 
 ## Overall
 
-363 clean · 285 degraded · 15 refused (of 663; 55% clean)
+367 clean · 281 degraded · 15 refused (of 663; 55% clean)
 
-- round-trip (emit → read back): 363 clean · 283 degraded · 4 refused (of 650; 56% clean)
+- round-trip (emit → read back): 367 clean · 279 degraded · 4 refused (of 650; 56% clean)
 - native (real source fed to the reader): 0 clean · 2 degraded · 11 refused (of 13; 0% clean)
 
 ## By method, language and device family
@@ -67,8 +67,8 @@ programs are refused as foreign. The refusal reasons below say which.
 | round-trip | basic | pico | 1 clean · 2 degraded · 0 refused (of 3; 33% clean) |
 | round-trip | basic | spike | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
 | round-trip | micropython | 8051 | 29 clean · 20 degraded · 0 refused (of 49; 59% clean) |
-| round-trip | micropython | arduino | 28 clean · 39 degraded · 0 refused (of 67; 42% clean) |
-| round-trip | micropython | microbit | 1 clean · 8 degraded · 0 refused (of 9; 11% clean) |
+| round-trip | micropython | arduino | 30 clean · 37 degraded · 0 refused (of 67; 45% clean) |
+| round-trip | micropython | microbit | 3 clean · 6 degraded · 0 refused (of 9; 33% clean) |
 | round-trip | micropython | pico | 2 clean · 1 degraded · 0 refused (of 3; 67% clean) |
 | round-trip | micropython | spike | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
 | round-trip | asm | 8086 | 0 clean · 1 degraded · 4 refused (of 5; 0% clean) |
@@ -84,7 +84,6 @@ programs are refused as foreign. The refusal reasons below say which.
 | 56 | no pins found |
 | 29 | no dialect form for "…" |
 | 22 | unstructured "…" |
-| 14 | kept verbatim as a grey block: "…" |
 | 13 | dropped call in expression |
 | 11 | no pseudocode for the call "…" |
 | 6 | top-level declaration dropped (no block equivalent): struct __bw_bits2 |
@@ -116,6 +115,7 @@ programs are refused as foreign. The refusal reasons below say which.
 | 1 | 26 output pins × 20 mA = up to 520 mA at maximum pin ratings (actual current depends on se |
 | 1 | Port 2 has 7 output pins |
 | 1 | 1 more WHEN script(s) not lifted |
+| 1 | kept verbatim as a grey block: "…" |
 | 1 | kept verbatim as a grey block: "…"HELLO"…" |
 | 1 | kept verbatim as a grey block: "…"FROM PICO"…" |
 | 1 | statement dropped (not representable as a block): = ( unsigned char ) ( 0 ) |
@@ -162,7 +162,7 @@ fixture appears here so its verdict is traceable to the program that caused it.
 | round-trip | basic | 8051 | 05-counter | degraded | no dialect form for "…" |
 | round-trip | python | 8051 | 07-buzzer-siren | degraded | dropped expression statement |
 | round-trip | javascript | 8051 | 07-buzzer-siren | degraded | dropped expression statement |
-| round-trip | micropython | 8051 | 07-buzzer-siren | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | 8051 | 07-buzzer-siren | degraded | no pins found |
 | round-trip | python | 8051 | 08-led-chaser-595 | degraded | dropped expression statement |
 | round-trip | javascript | 8051 | 08-led-chaser-595 | degraded | dropped expression statement |
 | round-trip | basic | 8051 | 08-led-chaser-595 | degraded | unstructured "…" |
@@ -262,16 +262,15 @@ fixture appears here so its verdict is traceable to the program that caused it.
 | round-trip | python | arduino | arduino-02-tone-keyboard | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-02-tone-keyboard | degraded | dropped expression statement |
 | round-trip | basic | arduino | arduino-02-tone-keyboard | degraded | no dialect form for "…"; unstructured "…" |
-| round-trip | micropython | arduino | arduino-02-tone-keyboard | degraded | kept verbatim as a grey block: "…" |
 | round-trip | python | arduino | arduino-02-tone-melody | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-02-tone-melody | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-02-tone-melody | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | arduino | arduino-02-tone-melody | degraded | no pins found |
 | round-trip | python | arduino | arduino-02-tone-multiple | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-02-tone-multiple | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-02-tone-multiple | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | arduino | arduino-02-tone-multiple | degraded | no pins found |
 | round-trip | python | arduino | arduino-02-tone-pitch-follower | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-02-tone-pitch-follower | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-02-tone-pitch-follower | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | arduino | arduino-02-tone-pitch-follower | degraded | no pins found |
 | round-trip | python | arduino | arduino-03-analog-in-out-serial | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-03-analog-in-out-serial | degraded | dropped expression statement |
 | round-trip | c | arduino | arduino-03-analog-in-out-serial | degraded | no pseudocode for the call "…" |
@@ -376,11 +375,10 @@ fixture appears here so its verdict is traceable to the program that caused it.
 | round-trip | micropython | arduino | arduino-sk-p05-servo-mood | degraded | devices_setservo: no equivalent on this board; the block was not translated |
 | round-trip | python | arduino | arduino-sk-p06-light-theremin | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-sk-p06-light-theremin | degraded | dropped expression statement |
-| round-trip | micropython | arduino | arduino-sk-p06-light-theremin | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | arduino | arduino-sk-p06-light-theremin | degraded | no pins found |
 | round-trip | python | arduino | arduino-sk-p07-keyboard | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-sk-p07-keyboard | degraded | dropped expression statement |
 | round-trip | basic | arduino | arduino-sk-p07-keyboard | degraded | no dialect form for "…" |
-| round-trip | micropython | arduino | arduino-sk-p07-keyboard | degraded | kept verbatim as a grey block: "…" |
 | round-trip | basic | arduino | arduino-sk-p08-hourglass | degraded | no dialect form for "…" |
 | round-trip | basic | arduino | arduino-sk-p09-motorized-pinwheel | degraded | no dialect form for "…"; unstructured "…" |
 | round-trip | python | arduino | arduino-sk-p10-zoetrope | degraded | dropped expression statement |
@@ -421,23 +419,21 @@ fixture appears here so its verdict is traceable to the program that caused it.
 | round-trip | javascript | 8051 | disp-sevenseg | degraded | dropped expression statement |
 | round-trip | c | 8051 | disp-sevenseg | degraded | 7 output pins × 20 mA = up to 140 mA at maximum pin ratings (actual current depends on ser; Port 1 has 7 output pins |
 | round-trip | micropython | 8051 | disp-sevenseg | degraded | devices_showdigit: no equivalent on this board; the block was not translated; no pins found |
-| round-trip | micropython | microbit | mb01-display | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | microbit | mb01-display | degraded | no pins found |
 | round-trip | python | microbit | mb02-sensors | degraded | dropped call in expression |
 | round-trip | micropython | microbit | mb02-sensors | degraded | no pins found |
 | round-trip | python | microbit | mb03-pins | degraded | dropped call in expression |
 | round-trip | python | microbit | mb04-radio | degraded | dropped call in expression |
-| round-trip | micropython | microbit | mb04-radio | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | microbit | mb04-radio | degraded | no pins found |
 | round-trip | basic | microbit | mb05-faceplate-matrix | degraded | unstructured "…" |
 | round-trip | micropython | microbit | mb05-faceplate-matrix | degraded | no pins found |
 | round-trip | python | microbit | mb05-lesson | degraded | dropped call in expression |
-| round-trip | micropython | microbit | mb05-lesson | degraded | kept verbatim as a grey block: "…" |
 | round-trip | python | microbit | mb06-reaction | degraded | dropped call in expression |
-| round-trip | micropython | microbit | mb06-reaction | degraded | kept verbatim as a grey block: "…" |
 | round-trip | python | microbit | mb07-stepcounter | degraded | dropped call in expression |
-| round-trip | micropython | microbit | mb07-stepcounter | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | microbit | mb07-stepcounter | degraded | no pins found |
 | round-trip | python | microbit | mb08-thermometer | degraded | dropped call in expression |
 | round-trip | basic | microbit | mb08-thermometer | degraded | unstructured "…" |
-| round-trip | micropython | microbit | mb08-thermometer | degraded | kept verbatim as a grey block: "…"; no pins found |
+| round-trip | micropython | microbit | mb08-thermometer | degraded | no pins found |
 | round-trip | python | spike | spike01-obstacle-avoid | degraded | dropped expression statement; dropped call in expression |
 | round-trip | javascript | spike | spike01-obstacle-avoid | degraded | dropped expression statement; dropped call in expression |
 | round-trip | micropython | spike | spike01-obstacle-avoid | degraded | spikeprime_motorStart: no equivalent on this board; the block was not translated; spikeprime_motorStop: no equivalent on this board; the block was not translated; spikeprime_displayText: no equivalent on this board; the block was not translated; spikeprime_displayClear: no equivalent on this board; the block was not translated; no pins found |
