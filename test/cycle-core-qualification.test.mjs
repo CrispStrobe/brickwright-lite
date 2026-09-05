@@ -5,6 +5,7 @@ import {readFileSync} from 'node:fs';
 const manifest = JSON.parse(readFileSync(new URL('./fixtures/cycle-core-candidates.json', import.meta.url)));
 const workflow = readFileSync(new URL('../.github/workflows/cycle-core-qualification.yml', import.meta.url), 'utf8');
 const qualifier = readFileSync(new URL('../scripts/qualify-cycle-candidates.mjs', import.meta.url), 'utf8');
+const oracleGenerator = readFileSync(new URL('../scripts/generate-floooh-z80-oracle-header.mjs', import.meta.url), 'utf8');
 
 test('cycle candidates and oracles use immutable full commit pins', () => {
     for (const candidate of Object.values(manifest.candidates)) {
@@ -13,6 +14,10 @@ test('cycle candidates and oracles use immutable full commit pins', () => {
         assert.ok(workflow.includes(candidate.commit));
     }
     assert.equal(manifest.candidates.z80.sourceSha256['chips/z80.h'].length, 64);
+    for (const path of manifest.candidates.z80.oracle.vectorPaths) {
+        assert.match(manifest.candidates.z80.oracle.sourceSha256[path], /^[0-9a-f]{64}$/);
+        assert.ok(workflow.includes(path));
+    }
 });
 
 test('heavy qualification is hosted, bounded, fail-closed and retains evidence', () => {
@@ -27,6 +32,9 @@ test('heavy qualification is hosted, bounded, fail-closed and retains evidence',
     assert.match(qualifier, /non-empty recorded control activity/);
     assert.match(qualifier, /HALT and interrupt acknowledge are observable cycle boundaries/);
     assert.match(qualifier, /matches the pinned SingleStepTests retire vector/);
+    assert.match(qualifier, /consumes and passes the bounded pinned SingleStepTests corpus/);
+    assert.match(oracleGenerator, /oracle hash mismatch/);
+    assert.match(oracleGenerator, /vectorCount: vectors\.length/);
     assert.match(qualifier, /WAIT stretching and NMI entry are directly observed/);
     assert.match(qualifier, /publishes bounded cost receipts/);
     assert.match(qualifier, /JSMoo W65C02 promotion decision matches replay evidence/);

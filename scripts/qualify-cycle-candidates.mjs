@@ -53,6 +53,10 @@ if (runner) {
     check('floooh Z80 matches the pinned SingleStepTests retire vector',
         report?.oracleVector === '3E 0000' && report?.oracleTicks === 7 && report?.oracleMatch === true,
         report ? JSON.stringify(report) : 'no report');
+    check('floooh Z80 consumes and passes the bounded pinned SingleStepTests corpus',
+        Number.isSafeInteger(report?.oracleCorpusTotal) && report.oracleCorpusTotal === 32 &&
+            report.oracleCorpusPassed === report.oracleCorpusTotal && report.oracleFirstFailure === null,
+        report ? `${report.oracleCorpusPassed}/${report.oracleCorpusTotal}; first failure: ${report.oracleFirstFailure}` : 'no report');
     check('floooh Z80 WAIT stretching and NMI entry are directly observed',
         report?.waitStretched === true && report?.nmiStackWrite === true,
         report ? JSON.stringify(report) : 'no report');

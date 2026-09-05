@@ -27,6 +27,10 @@ static uint64_t service(machine_t* m) {
     return pins;
 }
 
+#ifdef Z80_ORACLE_HEADER
+#include Z80_ORACLE_HEADER
+#endif
+
 static uint64_t mix(uint64_t h, uint64_t value) {
     h ^= value;
     return h * UINT64_C(1099511628211);
@@ -164,6 +168,18 @@ int main(void) {
     }
     unsigned oracle_ticks = 0;
     const bool oracle_match = single_step_ld_a(&oracle_ticks);
+#ifdef Z80_ORACLE_HEADER
+    const char *oracle_failure = NULL;
+    const unsigned oracle_corpus_passed = run_oracle_corpus(&oracle_failure);
+    const unsigned oracle_corpus_total = Z80_ORACLE_VECTOR_COUNT;
+#else
+    const char *oracle_failure = "oracle header absent";
+    const unsigned oracle_corpus_passed = 0;
+    const unsigned oracle_corpus_total = 0;
+#endif
+    char oracle_failure_json[128];
+    if (oracle_failure) snprintf(oracle_failure_json, sizeof(oracle_failure_json), "\"%s\"", oracle_failure);
+    else strcpy(oracle_failure_json, "null");
     const bool wait_stretched = wait_stretches_one_bus_cycle();
     const bool nmi_stack_write = nmi_entry_writes_the_stack();
     machine_t benchmark;
@@ -181,14 +197,17 @@ int main(void) {
            "\"controlMask\":%u,\"haltSeen\":%s,\"interruptAcknowledgeSeen\":%s,"
            "\"waitStretched\":%s,\"nmiStackWrite\":%s,"
            "\"oracleVector\":\"3E 0000\",\"oracleTicks\":%u,\"oracleMatch\":%s,"
+           "\"oracleCorpusTotal\":%u,\"oracleCorpusPassed\":%u,\"oracleFirstFailure\":%s,"
            "\"checkpointBytes\":%llu,\"benchmarkTicks\":200000,\"benchmarkHash\":\"%016llx\","
            "\"ticksPerSecond\":%llu}\n",
         (unsigned long long)first, equal ? "true" : "false", snapshot_points,
         m.mem[0x8000], controls, halt_seen ? "true" : "false", int_ack_seen ? "true" : "false",
         wait_stretched ? "true" : "false", nmi_stack_write ? "true" : "false",
-        oracle_ticks, oracle_match ? "true" : "false", (unsigned long long)sizeof(machine_t),
+        oracle_ticks, oracle_match ? "true" : "false", oracle_corpus_total, oracle_corpus_passed,
+        oracle_failure_json, (unsigned long long)sizeof(machine_t),
         (unsigned long long)benchmark_hash, ticks_per_second);
     return equal && snapshot_points == 42 && m.mem[0x8000] == 0x2a && (controls & 15) == 15 &&
         halt_seen && int_ack_seen && wait_stretched && nmi_stack_write && oracle_match &&
+        oracle_corpus_total > 0 && oracle_corpus_passed == oracle_corpus_total &&
         ticks_per_second > 0 ? 0 : 1;
 }

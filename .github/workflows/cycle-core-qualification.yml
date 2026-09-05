@@ -11,6 +11,7 @@ on:
       - 'docs/DEBUGGER-NEXT-ROADMAP.md'
       - 'docs/CYCLE-ACCURATE-CORE-EVALUATION.md'
       - 'scripts/qualify-cycle-candidates.mjs'
+      - 'scripts/generate-floooh-z80-oracle-header.mjs'
       - 'scripts/fixtures/qualify-floooh-z80.c'
       - 'scripts/fixtures/qualify-jsmoo-w65c02.mjs'
       - 'test/fixtures/cycle-core-candidates.json'
@@ -19,6 +20,7 @@ on:
     paths:
       - '.github/workflows/cycle-core-qualification.yml'
       - 'scripts/qualify-cycle-candidates.mjs'
+      - 'scripts/generate-floooh-z80-oracle-header.mjs'
       - 'scripts/fixtures/qualify-floooh-z80.c'
       - 'scripts/fixtures/qualify-jsmoo-w65c02.mjs'
       - 'test/fixtures/cycle-core-candidates.json'
@@ -48,6 +50,18 @@ jobs:
           path: .cycle-candidates/z80
           sparse-checkout: |
             chips/z80.h
+            LICENSE
+          sparse-checkout-cone-mode: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: SingleStepTests/z80
+          ref: ebe1875d48f374bcfd4b505d8eb8ee751568b5f7
+          path: .cycle-oracles/z80
+          sparse-checkout: |
+            v1/00.json
+            v1/3e.json
+            v1/32.json
+            v1/cb 00.json
             LICENSE
           sparse-checkout-cone-mode: false
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0

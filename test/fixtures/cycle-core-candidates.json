@@ -15,7 +15,14 @@
       "oracle": {
         "repository": "SingleStepTests/z80",
         "commit": "ebe1875d48f374bcfd4b505d8eb8ee751568b5f7",
-        "license": "MIT"
+        "license": "MIT",
+        "vectorPaths": ["v1/00.json", "v1/3e.json", "v1/32.json", "v1/cb 00.json"],
+        "sourceSha256": {
+          "v1/00.json": "410958fb7f0183ec268b52f2288068722a6c9c5e738822c94b3edde1dceb5420",
+          "v1/3e.json": "c3c7e54cf91a8a5b28f3836e7f72fef4142c1aba4ccf3c61c64ac2dbf37e1e77",
+          "v1/32.json": "de9e969ae1eff73bf71bf0e08c81e9e79aa221c44362235d8ccc4ea9909180d5",
+          "v1/cb 00.json": "c82f352a5e51a77394fa1d6329bcf3dbb7c464bbda513668b7661afdddbeb808"
+        }
       }
     },
     "w65c02": {
