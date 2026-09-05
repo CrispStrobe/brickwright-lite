@@ -110,25 +110,32 @@ WHEN flag clicked:
     // CodeMirror virtualizes the document, but the learner-facing Save action
     // exports the complete current listing. Validate that artifact rather than
     // mistaking the currently rendered viewport for the whole file.
-    await page.locator('[data-testid="bw-code-actions"] summary').click();
-    const [download] = await Promise.all([
-        page.waitForEvent('download'),
-        page.locator('[data-testid="bw-save-file"]').click()
-    ]);
-    const stream = await download.createReadStream();
-    const chunks = [];
-    for await (const chunk of stream) chunks.push(chunk);
-    const linkedRows = Buffer.concat(chunks).toString('utf8');
+    const downloadListing = async () => {
+        // <details> toggles on every summary click, so open it only if it is
+        // closed — a second click on an open menu closes it and the save
+        // button is gone before the download event can fire.
+        const menu = page.locator('[data-testid="bw-code-actions"]');
+        if (!(await menu.evaluate(el => el.open))) await menu.locator('summary').click();
+        const [dl] = await Promise.all([
+            page.waitForEvent('download'),
+            page.locator('[data-testid="bw-save-file"]').click()
+        ]);
+        const stream = await dl.createReadStream();
+        const chunks = [];
+        for await (const chunk of stream) chunks.push(chunk);
+        return {name: dl.suggestedFilename(), text: Buffer.concat(chunks).toString('utf8')};
+    };
+    const firstFile = await downloadListing();
+    const linkedRows = firstFile.text;
     await writeFile(join(shots, 'listing.lst'), linkedRows);
     record('Listing mode shows source-interleaved linked addresses',
         /main\.c:\d+:/.test(linkedRows || '') && /[0-9A-Fa-f]{4,6}\s+[0-9A-Fa-f]{2}/.test(linkedRows || ''),
-        `${download.suggestedFilename()}; ${(linkedRows || '').length} chars`);
+        `${firstFile.name}; ${(linkedRows || '').length} chars`);
     record('the UI reports source mappings', /source mapping/i.test(first?.body || ''),
         (first?.body || '').match(/\d+ source mapping[^\n]*/i)?.[0] || 'missing');
 
     // A non-empty listing alone could be a stale cache hit. Change the actual
     // program, rebuild the workspace, and require a different linked artifact.
-    const firstListing = first?.text || '';
     await page.locator('button', {hasText: /Pseudo/}).first().click();
     await editor.click();
     await page.keyboard.press('Control+a');
@@ -150,11 +157,24 @@ WHEN flag clicked:
         `${blockCount} → ${changedBlocks} blocks`);
     await page.locator('[role="tab"]', {hasText: /^Code$/i}).first().click();
     await page.locator('button', {hasText: /ASM/}).first().click();
-    const second = await waitFor(() => page.locator('.cm-content').first().textContent(),
-        text => text !== firstListing && text.length > 1000, 120000);
-    record('a second source hash produces a distinct linked listing',
-        Boolean(second && second !== firstListing && second.length > 1000),
-        `${firstListing.length} → ${(second || '').length} chars`);
+    // Synchronise on the STATUS LINE, not on the viewport: the tab says
+    // "Compiling…" while the four WASM stages run and "N source mapping(s)"
+    // when the new listing is in. Then compare the two downloaded artifacts —
+    // the viewport's first screen is the same runtime prologue for any two
+    // programs, so its text is not evidence either way (it failed two of three
+    // identical runs on 2026-09-05 and passed the third, by render timing).
+    await waitFor(() => page.locator('body').first().innerText(),
+        body => /source mapping/i.test(body) && !/Compiling…|Wird kompiliert…|Regenerating…|Wird neu erzeugt…/.test(body),
+        120000);
+    const secondFile = await downloadListing();
+    await writeFile(join(shots, 'listing-second.lst'), secondFile.text);
+    const viewport = await page.locator('.cm-content').first().textContent();
+    console.log(`note: viewport shows ${(viewport || '').length} chars of a ${secondFile.text.length}-char listing`);
+    record('a second source hash produces a distinct linked listing (downloaded artifact)',
+        secondFile.text.length > 1000 && secondFile.text !== linkedRows,
+        secondFile.text === linkedRows ?
+            `IDENTICAL ${linkedRows.length}-char artifact after a changed program — the listing cache served the old build` :
+            `${linkedRows.length} → ${secondFile.text.length} chars`);
     const beforeEdit = await editor.textContent();
     await editor.click();
     await page.keyboard.insertText('MUST_NOT_ENTER_LISTING');
