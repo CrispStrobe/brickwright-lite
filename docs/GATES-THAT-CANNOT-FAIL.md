@@ -1120,3 +1120,44 @@ nobody built.
 
 Corollary for reviewers: "I rebuilt and re-ran it" is not evidence unless the
 rebuild was cold or the bundle was grepped for the change. Ask which.
+
+## EVENT-AS-STATE has flagged two things today and both were false (2026-09-05)
+
+The rule looks for a visibility/appearance assertion that stands alone — one not
+followed within 180 characters by a `click`, `fill`, `count`, `evaluate` and so
+on — on the theory that an appearance nobody acts on proves a thing arrived and
+never that it left. Both of today's hits were correct code:
+
+- `bench-i8086-browser.mjs:78` — `device.waitFor({state:'visible'})` is genuine
+  synchronisation; `device.selectOption('i8086')` uses the same locator three
+  lines below. The rule saw a `mark()` timestamp in between. Triaged by its
+  author with a marker at the site.
+- `verify-debug-run-to-inspection.mjs:85` — two `page.waitForFunction` calls on
+  `data-debug-phase`, first `'running'` then `'paused'`. **An attribute holds one
+  value at a time, so asserting `paused` is exactly the proof that `running` is
+  gone** — the thing the rule says is missing is what the next line does.
+
+Two mechanisms, and they are worth separating because only one is a tuning
+question:
+
+1. **A fixed 180-character window** decides whether an action follows. Widening
+   it is not the fix — a window searched for a construct is the shape this file
+   catalogues, and its author has said, rightly, that widening is how a detector
+   stops biting.
+2. **`waitForFunction` is not an appearance query.** `waitFor`/`toBeVisible`/
+   `count()` ask whether a thing is on the page; `waitForFunction` evaluates a
+   predicate, and a predicate over a single-valued attribute is a *transition*
+   assertion. Matching it under an appearance rule is a category error in the
+   rule, not a near-miss in the tuning.
+
+**The point is not that the detector is bad.** It found four real shapes this
+week. It is that a rule with a 100% false-positive rate on its last two hits
+trains its readers to dismiss it, and a detector nobody reads is worse than no
+detector, because its silence is mistaken for evidence. The ratchet keeps the
+count at zero, so each false positive costs an unrelated lane a red main until
+someone marks it — today that was every branch run in the fleet.
+
+Recorded rather than fixed: `audit-gate-shapes.mjs` is not this lane's tool and
+its author is unreachable. Whoever owns it should decide between narrowing the
+match and accepting that markers are the intended discharge. Both are defensible;
+silently widening the window is not.
