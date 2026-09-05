@@ -11,7 +11,6 @@ import LibraryComponent from '../components/library/library.jsx';
 import soundIcon from '../components/library-item/lib-icon--sound.svg';
 import soundIconRtl from '../components/library-item/lib-icon--sound-rtl.svg';
 
-import soundLibraryContent from '../lib/libraries/sounds.json';
 import soundTags from '../lib/libraries/sound-tags';
 
 import {connect} from 'react-redux';
@@ -34,6 +33,7 @@ class SoundLibrary extends React.PureComponent {
             'onStop',
             'setStopHandler'
         ]);
+        this.state = {content: []};
 
         /**
          * AudioEngine that will decode and play sounds for us.
@@ -53,6 +53,12 @@ class SoundLibrary extends React.PureComponent {
         this.handleStop = null;
     }
     componentDidMount () {
+        // Brickwright: the sound manifest is a lazy chunk shared with the other
+        // library modals (see lib/offline-assets.js for the numbers).
+        this.mounted = true;
+        import(/* webpackChunkName: "asset-library-index" */ '../lib/libraries/sounds.json').then(mod => {
+            if (this.mounted) this.setState({content: mod.default});
+        });
         this.audioEngine = new AudioEngine();
         // Firefox never settles decodeAudioData on a suspended context, which
         // hangs project load forever. See lib/audio-context-unblock.js.
@@ -60,6 +66,7 @@ class SoundLibrary extends React.PureComponent {
         this.playingSoundPromise = null;
     }
     componentWillUnmount () {
+        this.mounted = false;
         this.stopPlayingSound();
     }
     onStop () {
@@ -155,7 +162,7 @@ class SoundLibrary extends React.PureComponent {
     }
     render () {
         // @todo need to use this hack to avoid library using md5 for image
-        const soundLibraryThumbnailData = soundLibraryContent.map(sound => {
+        const soundLibraryThumbnailData = (this.state.content || []).map(sound => {
             const {
                 md5ext,
                 ...otherData

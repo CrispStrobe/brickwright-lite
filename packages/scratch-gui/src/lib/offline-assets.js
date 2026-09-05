@@ -5,10 +5,20 @@
 // (127.0.0.1:20112) then serves them so the library works offline. `storage.js`
 // tries that local cache first and falls back to the CDN on a miss.
 
-import costumes from './libraries/costumes.json';
-import backdrops from './libraries/backdrops.json';
-import sounds from './libraries/sounds.json';
-import sprites from './libraries/sprites.json';
+// The four library manifests are 895 KiB raw (146 KiB compressed) and were in
+// the entry bundle because this module's `isNativeApp` is imported by the menu
+// bar. They are only read when the offline-library modal opens, so they are
+// fetched then — into the same chunk the sprite/costume/backdrop/sound library
+// modals request, so a user who has opened any library already has it.
+const manifests = () => Promise.all([
+    import(/* webpackChunkName: "asset-library-index" */ './libraries/costumes.json'),
+    import(/* webpackChunkName: "asset-library-index" */ './libraries/backdrops.json'),
+    import(/* webpackChunkName: "asset-library-index" */ './libraries/sounds.json'),
+    import(/* webpackChunkName: "asset-library-index" */ './libraries/sprites.json')
+]).then(([costumes, backdrops, sounds, sprites]) => ({
+    costumes: costumes.default, backdrops: backdrops.default,
+    sounds: sounds.default, sprites: sprites.default
+}));
 
 const ASSET_HOST = 'https://assets.scratch.mit.edu';
 
@@ -26,7 +36,7 @@ const LIBRARY_PACK_URL =
 // the cached count reconciles with the hosted pack.
 const MASCOT = /^(cat|scratch cat|gobo|pico|nano|giga|tera)\b/i;
 
-const mascotMd5exts = () => {
+const mascotMd5exts = ({costumes, sprites}) => {
     const set = new Set();
     costumes.forEach(c => {
         if (MASCOT.test((c.name || '').trim()) && c.md5ext) set.add(c.md5ext);
@@ -44,8 +54,9 @@ const mascotMd5exts = () => {
 // Every unique library asset md5ext across costumes/backdrops/sounds and the
 // costumes+sounds nested in sprite entries, minus the trademarked mascots (which
 // stay on the CDN — a local cache miss falls through to it).
-const collectMd5exts = () => {
-    const exclude = mascotMd5exts();
+const collectMd5exts = async () => {
+    const {costumes, backdrops, sounds, sprites} = await manifests();
+    const exclude = mascotMd5exts({costumes, sprites});
     const set = new Set();
     const add = asset => {
         if (asset && asset.md5ext && !exclude.has(asset.md5ext)) set.add(asset.md5ext);
@@ -61,12 +72,12 @@ const collectMd5exts = () => {
 };
 
 // Total number of distinct library assets (for the UI's "x / N" display).
-export const libraryTotal = () => collectMd5exts().length;
+export const libraryTotal = async () => (await collectMd5exts()).length;
 
 // {url, name} items for the Rust `download_pack` command. `name` is the cache
 // filename the local server exposes at `/library/<name>`; `url` mirrors exactly
 // the CDN URL scratch-storage uses, so we cache byte-identical assets.
-const libraryDownloadItems = () => collectMd5exts().map(md5ext => ({
+const libraryDownloadItems = async () => (await collectMd5exts()).map(md5ext => ({
     name: md5ext,
     url: `${ASSET_HOST}/internalapi/asset/${md5ext}/get/`
 }));
@@ -117,7 +128,7 @@ export const downloadLibrary = async onProgress => {
         } catch (e) {
             return await t.core.invoke('download_pack', {
                 pack: LIBRARY_PACK,
-                items: libraryDownloadItems()
+                items: await libraryDownloadItems()
             });
         }
     } finally {

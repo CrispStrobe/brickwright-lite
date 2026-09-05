@@ -14,8 +14,10 @@ const isRemoteExtensionURL = url =>
 // TODO: move these out into a separate repository?
 // TODO: change extension spec so that library info, including extension ID, can be collected through static methods
 
+// Built-in extensions the VM instantiates synchronously. Everything here is small
+// or is what the lessons' hardware flows reach for first (stc12, circuit,
+// controller, devices), so it stays in the first load.
 const builtinExtensions = {
-    planetemaths: () => require('../extensions/crispstrobe/planetemaths'),
     arrays: () => require('../extensions/crispstrobe/arrays'),
     // The pin blocks sb3-creator has always emitted for hardware projects. Without
     // this line every one of them failed to load with "Unknown extension: stc12".
@@ -35,39 +37,70 @@ const builtinExtensions = {
     // projects load.  NeoPixel hidden on 12T, servo/motor hidden on STC89 (no PCA).
     devices: () => require('../extensions/crispstrobe/devices'),
     brickwrightTTS: () => require('../extensions/crispstrobe/text2speech'),
-    // Our own extensions, hard-bundled (permissive, offline). Kept in the gallery
-    // repo too; the bundledIds dedup removes the gallery copy from the picker.
-    legopoweredup: () => require('../extensions/crispstrobe/legopoweredup'),
-    legoboostunified: () => require('../extensions/crispstrobe/legoboostunified'),
-    wedo2unified: () => require('../extensions/crispstrobe/wedo2unified'),
-    spikeprime: () => require('../extensions/crispstrobe/spikeprime'),
-    spikeprimeble: () => require('../extensions/crispstrobe/spikeprimeble'),
-    spikeprimeBTC: () => require('../extensions/crispstrobe/spikeprimeBTC'),
-    spikeprimeBridge: () => require('../extensions/crispstrobe/spikeprimeBridge'),
-    legospikeprimeBLE: () => require('../extensions/crispstrobe/legospikeprimeBLE'),
-    ev3comprehensive: () => require('../extensions/crispstrobe/ev3comprehensive'),
-    legoev3direct: () => require('../extensions/crispstrobe/legoev3direct'),
-    ev3lms: () => require('../extensions/crispstrobe/ev3lms'),
-    legonxt: () => require('../extensions/crispstrobe/legonxt'),
-    ev3dev: () => require('../extensions/crispstrobe/ev3dev'),
-    universalgamepad: () => require('../extensions/crispstrobe/universalgamepad'),
     csp: () => require('../extensions/crispstrobe/csp'),
     // This is an example that isn't loaded with the other core blocks,
     // but serves as a reference for loading core blocks as extensions.
     coreExample: () => require('../blocks/scratch3_core_example'),
-    // These are the non-core built-in extensions.
     pen: () => require('../extensions/scratch3_pen'),
-    wedo2: () => require('../extensions/scratch3_wedo2'),
-    music: () => require('../extensions/scratch3_music'),
-    microbit: () => require('../extensions/scratch3_microbit'),
-    text2speech: () => require('../extensions/scratch3_text2speech'),
-    translate: () => require('../extensions/scratch3_translate'),
-    videoSensing: () => require('../extensions/scratch3_video_sensing'),
-    ev3: () => require('../extensions/scratch3_ev3'),
-    makeymakey: () => require('../extensions/scratch3_makeymakey'),
-    boost: () => require('../extensions/scratch3_boost'),
-    gdxfor: () => require('../extensions/scratch3_gdx_for')
+    makeymakey: () => require('../extensions/scratch3_makeymakey')
 };
+
+// Built-in extensions that are LOADED ON DEMAND. Each `import()` is its own
+// webpack chunk, so none of this code — nor the sound samples and hub drivers it
+// carries — is in the first load. Measured on the 2026-09-05 production build:
+// the music extension's 61 samples were 1.46 MB compressed of the 3.5 MB boot
+// vendor chunk, the LEGO hub drivers roughly another 0.4 MB, and none of it is
+// needed until a project or the extension library asks for it.
+//
+// `loadExtensionURL` resolves these asynchronously — the same promise the GUI's
+// extension library and the project loader already wait on. The ids are the
+// same as before; only WHEN the code arrives changed. `scripts/verify-boot-payload.mjs`
+// fails the build if any of this lands back in an eagerly-loaded script.
+//
+// Our own extensions, hard-bundled (permissive, offline). Kept in the gallery
+// repo too; the bundledIds dedup removes the gallery copy from the picker.
+// Specifiers name `index.js` explicitly: the unit suite boots this VM in Node,
+// where `import()` follows ES-module resolution even from CommonJS, and that
+// has no directory imports. webpack is indifferent.
+const lazyBuiltinExtensions = {
+    planetemaths: () => import(/* webpackChunkName: "ext-planetemaths" */ '../extensions/crispstrobe/planetemaths/index.js'),
+    legopoweredup: () => import(/* webpackChunkName: "ext-legopoweredup" */ '../extensions/crispstrobe/legopoweredup/index.js'),
+    legoboostunified: () => import(/* webpackChunkName: "ext-legoboostunified" */ '../extensions/crispstrobe/legoboostunified/index.js'),
+    wedo2unified: () => import(/* webpackChunkName: "ext-wedo2unified" */ '../extensions/crispstrobe/wedo2unified/index.js'),
+    spikeprime: () => import(/* webpackChunkName: "ext-spikeprime" */ '../extensions/crispstrobe/spikeprime/index.js'),
+    spikeprimeble: () => import(/* webpackChunkName: "ext-spikeprimeble" */ '../extensions/crispstrobe/spikeprimeble/index.js'),
+    spikeprimeBTC: () => import(/* webpackChunkName: "ext-spikeprimeBTC" */ '../extensions/crispstrobe/spikeprimeBTC/index.js'),
+    spikeprimeBridge: () => import(/* webpackChunkName: "ext-spikeprimeBridge" */ '../extensions/crispstrobe/spikeprimeBridge/index.js'),
+    legospikeprimeBLE: () => import(/* webpackChunkName: "ext-legospikeprimeBLE" */ '../extensions/crispstrobe/legospikeprimeBLE/index.js'),
+    ev3comprehensive: () => import(/* webpackChunkName: "ext-ev3comprehensive" */ '../extensions/crispstrobe/ev3comprehensive/index.js'),
+    legoev3direct: () => import(/* webpackChunkName: "ext-legoev3direct" */ '../extensions/crispstrobe/legoev3direct/index.js'),
+    ev3lms: () => import(/* webpackChunkName: "ext-ev3lms" */ '../extensions/crispstrobe/ev3lms/index.js'),
+    legonxt: () => import(/* webpackChunkName: "ext-legonxt" */ '../extensions/crispstrobe/legonxt/index.js'),
+    ev3dev: () => import(/* webpackChunkName: "ext-ev3dev" */ '../extensions/crispstrobe/ev3dev/index.js'),
+    universalgamepad: () => import(/* webpackChunkName: "ext-universalgamepad" */ '../extensions/crispstrobe/universalgamepad/index.js'),
+    // These are the non-core built-in extensions.
+    wedo2: () => import(/* webpackChunkName: "ext-wedo2" */ '../extensions/scratch3_wedo2/index.js'),
+    music: () => import(/* webpackChunkName: "ext-music" */ '../extensions/scratch3_music/index.js'),
+    microbit: () => import(/* webpackChunkName: "ext-microbit" */ '../extensions/scratch3_microbit/index.js'),
+    text2speech: () => import(/* webpackChunkName: "ext-text2speech" */ '../extensions/scratch3_text2speech/index.js'),
+    translate: () => import(/* webpackChunkName: "ext-translate" */ '../extensions/scratch3_translate/index.js'),
+    videoSensing: () => import(/* webpackChunkName: "ext-videosensing" */ '../extensions/scratch3_video_sensing/index.js'),
+    ev3: () => import(/* webpackChunkName: "ext-ev3" */ '../extensions/scratch3_ev3/index.js'),
+    boost: () => import(/* webpackChunkName: "ext-boost" */ '../extensions/scratch3_boost/index.js'),
+    gdxfor: () => import(/* webpackChunkName: "ext-gdxfor" */ '../extensions/scratch3_gdx_for/index.js')
+};
+
+const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+
+/**
+ * Unwrap whatever `import()` handed back into the extension class. Every
+ * built-in is a CommonJS module whose `module.exports` IS the class, which
+ * webpack surfaces as the namespace's `default`; an ES module with a default
+ * export lands in the same place.
+ * @param {object} mod - the namespace object from a dynamic import
+ * @returns {Function} the extension constructor
+ */
+const extensionClassFrom = mod => (mod && mod.default) || mod;
 
 /**
  * @typedef {object} ArgumentInfo - Information about an extension block argument
@@ -128,6 +161,11 @@ class ExtensionManager {
         // between two callers loading the same gallery URL concurrently.
         this.pendingPinnedLoads = new Map();
 
+        // id -> in-flight chunk load for a lazyBuiltinExtensions entry. Two
+        // callers asking for the same extension while its chunk is downloading
+        // must share one registration, not race to two.
+        this._pendingBuiltinLoads = new Map();
+
         /**
          * Map of loaded extension URLs/IDs (equivalent for built-in extensions) to service name.
          * @type {Map.<string,string>}
@@ -164,7 +202,15 @@ class ExtensionManager {
      * @param {string} extensionId - the ID of an internal extension
      */
     loadExtensionIdSync (extensionId) {
-        if (!Object.prototype.hasOwnProperty.call(builtinExtensions, extensionId)) {
+        if (hasOwn(lazyBuiltinExtensions, extensionId)) {
+            // Nothing calls this for a lazy id today (CORE_EXTENSIONS is empty);
+            // if something starts to, it gets the extension a moment later
+            // rather than never, and a warning that says why.
+            log.warn(`Extension ${extensionId} is loaded on demand; loading it asynchronously.`);
+            this._loadLazyBuiltinExtension(extensionId);
+            return;
+        }
+        if (!hasOwn(builtinExtensions, extensionId)) {
             log.warn(`Could not find extension ${extensionId} in the built in extensions.`);
             return;
         }
@@ -183,12 +229,44 @@ class ExtensionManager {
     }
 
     /**
+     * Load a built-in extension whose code lives in its own chunk.
+     * @param {string} extensionId - a key of lazyBuiltinExtensions
+     * @returns {Promise} resolved once the chunk has arrived and the extension is registered
+     * @private
+     */
+    _loadLazyBuiltinExtension (extensionId) {
+        if (this.isExtensionLoaded(extensionId)) {
+            log.warn(`Rejecting attempt to load a second extension with ID ${extensionId}`);
+            return Promise.resolve();
+        }
+        if (this._pendingBuiltinLoads.has(extensionId)) {
+            return this._pendingBuiltinLoads.get(extensionId);
+        }
+        const pending = lazyBuiltinExtensions[extensionId]().then(mod => {
+            // loadExtensionIdSync's fallback also arrives here without going
+            // through the pending map, so the registration check is repeated.
+            if (this.isExtensionLoaded(extensionId)) return;
+            const extension = extensionClassFrom(mod);
+            const extensionInstance = new extension(this.runtime);
+            const serviceName = this._registerInternalExtension(extensionInstance);
+            this._loadedExtensions.set(extensionId, serviceName);
+        });
+        const settle = () => this._pendingBuiltinLoads.delete(extensionId);
+        pending.then(settle, settle);
+        this._pendingBuiltinLoads.set(extensionId, pending);
+        return pending;
+    }
+
+    /**
      * Load an extension by URL or internal extension ID
      * @param {string} extensionURL - the URL for the extension to load OR the ID of an internal extension
      * @returns {Promise} resolved once the extension is loaded and initialized or rejected on failure
      */
     loadExtensionURL (extensionURL) {
-        if (Object.prototype.hasOwnProperty.call(builtinExtensions, extensionURL)) {
+        if (hasOwn(lazyBuiltinExtensions, extensionURL)) {
+            return this._loadLazyBuiltinExtension(extensionURL);
+        }
+        if (hasOwn(builtinExtensions, extensionURL)) {
             /** @TODO dupe handling for non-builtin extensions. See commit 670e51d33580e8a2e852b3b038bb3afc282f81b9 */
             if (this.isExtensionLoaded(extensionURL)) {
                 const message = `Rejecting attempt to load a second extension with ID ${extensionURL}`;

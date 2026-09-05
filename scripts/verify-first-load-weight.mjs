@@ -42,9 +42,17 @@ const OUT = path.resolve('artifacts/first-load-weight');
  *  against a disk number, which fails a build for being served differently.
  *
  *  Measured 2026-09-04 on a build carrying the probe fix: 14.90 MB over 26
- *  requests. 16 MB leaves headroom without hiding a regression the size of the
- *  one this gate was written for (the engine alone was 20 MB uncompressed). */
-const BUDGET_MB = 16.0;
+ *  requests. 16 MB left headroom without hiding a regression the size of the
+ *  one this gate was written for (the engine alone was 20 MB uncompressed).
+ *
+ *  Measured 2026-09-05 after the first-load campaign (ROADMAP §2.4: the music
+ *  samples, render fonts, LEGO drivers, library manifests and lesson waves
+ *  left the eager scripts, and text-encoding left the build): 9.75 MB over 24
+ *  requests. The 3.4 MB chunk the correction above called "its own question
+ *  for someone" was that question, and 62% of it is gone. 11 MB keeps the same
+ *  kind of headroom; the music samples alone coming back would be +2.0 MB
+ *  uncompressed and fail it, as would the fonts (+1.3 MB). */
+const BUDGET_MB = 11.0;
 
 let failed = 0;
 const record = (name, ok, detail = '') => {

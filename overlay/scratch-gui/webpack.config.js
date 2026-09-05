@@ -235,6 +235,17 @@ const vmSrc = path.resolve(__dirname, 'node_modules/scratch-vm/src/index.js');
 const cfgs = buildDist ? [buildConfig.get(), distConfig.get()] : [buildConfig.get()];
 cfgs.forEach(c => {
     c.devtool = false; // Brickwright: no source maps -> fits CI RAM
+    // A persistent compile cache for LOCAL builds: every build here was a cold
+    // compile at a 2.5 GiB heap (73 s on CI's runner, minutes on a shared box).
+    // Off on CI on purpose — a runner's node_modules/.cache is gone next run, so
+    // there it would only cost the write. Keyed on this file so an alias or a
+    // loader change invalidates it.
+    if (!process.env.CI) {
+        c.cache = {
+            type: 'filesystem',
+            buildDependencies: {config: [__filename]}
+        };
+    }
     c.resolve = c.resolve || {};
     c.resolve.alias = Object.assign({}, c.resolve.alias);
     // Build the VM from source (node_modules/scratch-vm/src, over which apply-vm-overlay.mjs has
@@ -249,6 +260,20 @@ cfgs.forEach(c => {
     // The full editor-msgs.js is 3.9 MiB with 80 locales; the trimmed copy is ~90 KiB.
     const trimmedMsgs = path.resolve(__dirname, 'src/generated/editor-msgs-lite.js');
     c.resolve.alias['scratch-l10n/locales/editor-msgs'] = trimmedMsgs;
+    // The seven render fonts (1.34 MiB of base64, incompressible) leave the boot
+    // chunk: scratch-svg-renderer's require('scratch-render-fonts') gets a
+    // same-shaped shim that fetches the real module — reachable only under the
+    // second alias — as its own chunk. See src/lib/lazy-render-fonts.js.
+    c.resolve.alias['scratch-render-fonts$'] = path.resolve(__dirname, 'src/lib/lazy-render-fonts.js');
+    c.resolve.alias['scratch-render-fonts-base64$'] =
+        path.resolve(__dirname, 'node_modules/scratch-render-fonts/src/index.js');
+    // `text-encoding` is a 618 KiB (201 KiB compressed) TextDecoder polyfill for
+    // browsers without one; every browser in .browserslistrc has one. Its three
+    // requirers (scratch-vm, scratch-sb1-converter, @vernier/godirect) all guard
+    // on `typeof TextDecoder === 'undefined'` before touching it, so they get the
+    // 5 KiB polyfill scratch-storage already ships, which hands back the native
+    // classes when they exist.
+    c.resolve.alias['text-encoding$'] = 'fastestsmallesttextencoderdecoder';
     // Skip babel for pre-minified blockly files — they're already compiled and 'use strict',
     // and babel deoptimising 977 KiB of minified code wastes time and memory for no benefit.
     const babelRule = (c.module.rules || []).find(r => r.loader === 'babel-loader');

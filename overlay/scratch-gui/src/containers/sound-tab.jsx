@@ -19,7 +19,6 @@ import SoundLibrary from './sound-library.jsx';
 import SoundFxGenerator from '../components/tw-soundfx/soundfx-generator.jsx';
 import soundFxIcon from '../components/tw-soundfx/icon--soundfx.svg';
 
-import soundLibraryContent from '../lib/libraries/sounds.json';
 import {handleFileUpload, soundUpload} from '../lib/file-uploader.js';
 import errorBoundaryHOC from '../lib/error-boundary-hoc.jsx';
 import DragConstants from '../lib/drag-constants';
@@ -123,15 +122,19 @@ class SoundTab extends React.Component {
     }
 
     handleSurpriseSound () {
-        const soundItem = soundLibraryContent[Math.floor(Math.random() * soundLibraryContent.length)];
-        const vmSound = {
-            format: soundItem.dataFormat,
-            md5: soundItem.md5ext,
-            rate: soundItem.rate,
-            sampleCount: soundItem.sampleCount,
-            name: soundItem.name
-        };
-        this.props.vm.addSound(vmSound).then(() => {
+        // Brickwright: the manifest is a lazy chunk shared with the library modals.
+        import(/* webpackChunkName: "asset-library-index" */ '../lib/libraries/sounds.json').then(mod => {
+            const content = mod.default;
+            const soundItem = content[Math.floor(Math.random() * content.length)];
+            const vmSound = {
+                format: soundItem.dataFormat,
+                md5: soundItem.md5ext,
+                rate: soundItem.rate,
+                sampleCount: soundItem.sampleCount,
+                name: soundItem.name
+            };
+            return this.props.vm.addSound(vmSound);
+        }).then(() => {
             this.handleNewSound();
         });
     }

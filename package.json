@@ -1,7 +1,7 @@
 {
   "name": "brickwright-lite",
   "private": true,
-  "description": "A fully-permissive (BSD-3 / Apache-2.0 / MIT) Brickwright \u2014 a contained fork of the pre-relicense Scratch stack you can bundle and ship on any app store, with blocks\u21c4code\u21c4Python/JS and LEGO extensions.",
+  "description": "A fully-permissive (BSD-3 / Apache-2.0 / MIT) Brickwright — a contained fork of the pre-relicense Scratch stack you can bundle and ship on any app store, with blocks⇄code⇄Python/JS and LEGO extensions.",
   "license": "BSD-3-Clause",
   "scripts": {
     "vendor": "node scripts/vendor.mjs",
@@ -62,7 +62,8 @@
     "test": "node --test test/*.test.mjs",
     "prove:pins": "node scripts/prove-fetch-pinning.mjs",
     "test:all": "npm run test && npm run smoke:debugger",
-    "probe:layout": "node scripts/probe-layout.mjs"
+    "probe:layout": "node scripts/probe-layout.mjs",
+    "verify:boot-payload": "node scripts/verify-boot-payload.mjs"
   },
   "engines": {
     "node": "22.x"
