@@ -42,36 +42,29 @@ const extractFileName = function (nameExt) {
  * @param {Function} onerror The function that handles any error loading the file
  */
 const handleFileUpload = function (fileInput, onload, onerror) {
-    return new Promise(resolve => {
-        const stopWithError = error => {
-            onerror(error);
-            resolve();
+    const readFile = (i, files) => {
+        if (i === files.length) {
+            // Reset the file input value now that we have everything we need
+            // so that the user can upload the same sound multiple times if
+            // they choose
+            fileInput.value = null;
+            return;
+        }
+        const file = files[i];
+        const reader = new FileReader();
+        reader.onload = () => {
+            const fileType = file.type;
+            const fileName = extractFileName(file.name);
+            // Preserve selection order when an upload path (notably the lazy
+            // SVG sanitizer) performs asynchronous work.
+            Promise.resolve().then(() =>
+                onload(reader.result, fileType, fileName, i, files.length)
+            ).then(() => readFile(i + 1, files), onerror);
         };
-        const readFile = (i, files) => {
-            if (i === files.length) {
-                // Reset the file input value now that we have everything we need
-                // so that the user can upload the same sound multiple times if
-                // they choose
-                fileInput.value = null;
-                resolve();
-                return;
-            }
-            const file = files[i];
-            const reader = new FileReader();
-            reader.onload = () => {
-                const fileType = file.type;
-                const fileName = extractFileName(file.name);
-                // Preserve selection order when an upload path (notably the lazy
-                // SVG sanitizer) performs asynchronous work.
-                Promise.resolve().then(() =>
-                    onload(reader.result, fileType, fileName, i, files.length)
-                ).then(() => readFile(i + 1, files), stopWithError);
-            };
-            reader.onerror = stopWithError;
-            reader.readAsArrayBuffer(file);
-        };
-        readFile(0, fileInput.files);
-    });
+        reader.onerror = onerror;
+        reader.readAsArrayBuffer(file);
+    };
+    readFile(0, fileInput.files);
 };
 
 /**
