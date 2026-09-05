@@ -1,0 +1,42 @@
+name: ci-cost-metrics
+
+on:
+  workflow_run:
+    workflows: ['Build (permissive base)', 'debugger-focused', 'cycle-core-qualification']
+    types: [completed]
+    branches: [main]
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: ci-metrics-${{ github.event.workflow_run.id }}
+  cancel-in-progress: false
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - name: Save completed run metadata
+        env:
+          EVENT_PATH: ${{ github.event_path }}
+        run: jq '.workflow_run' "$EVENT_PATH" > run.json
+      # One request after completion; this workflow never polls.
+      - name: Fetch completed job metadata once
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          REPOSITORY: ${{ github.repository }}
+        run: gh api "repos/$REPOSITORY/actions/runs/$RUN_ID/jobs?per_page=100" > jobs.json
+      - name: Report runner cost and first debugger verdict
+        run: node scripts/report-ci-run-metrics.mjs --run run.json --jobs jobs.json --output ci-run-metrics.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ci-run-metrics-${{ github.event.workflow_run.id }}
+          path: ci-run-metrics.json
+          retention-days: 30
