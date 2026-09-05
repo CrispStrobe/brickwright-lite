@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import {createAvr8jsAdapter} from '../overlay/scratch-gui/src/lib/bw-board/avr8js-adapter.js';
-import {createAvr8jsDebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/avr8js-debug.js';
+import {createAvr8jsAdapter} from '../packages/scratch-gui/src/lib/bw-board/avr8js-adapter.js';
+import {createAvr8jsDebugTarget} from '../packages/scratch-gui/src/lib/bw-board/avr8js-debug.js';
 import {createRp2040jsAdapter, RAM_START} from
-    '../overlay/scratch-gui/src/lib/bw-board/rp2040js-adapter.js';
-import {createRp2040jsDebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/rp2040js-debug.js';
-import {createRunToCoordinator} from '../overlay/scratch-gui/src/lib/bw-debug/run-to.js';
+    '../packages/scratch-gui/src/lib/bw-board/rp2040js-adapter.js';
+import {createRp2040jsDebugTarget} from '../packages/scratch-gui/src/lib/bw-board/rp2040js-debug.js';
+import {createRunToCoordinator} from '../packages/scratch-gui/src/lib/bw-debug/run-to.js';
 
 function settle(target) {
     for (let i = 0; i < 32 && target.state() === 'running'; i++) target.runFor(1_000_000);

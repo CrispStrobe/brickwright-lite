@@ -41,7 +41,7 @@ test('public branch views are summary-only and activation is replay-before-commi
     assert.match(source, /debugBranchSummaries: \(\) => forkRecordingStore\.summaries\(\)/);
     assert.match(source, /checkpointSummary\(\)/);
     const start = source.indexOf('activateDebugBranch(cursor)');
-    const end = source.indexOf('startDebugRecording()', start);
+    const end = source.indexOf('selectedEventInspection()', start);
     const body = source.slice(start, end);
     assert.ok(body.indexOf('instructionReplay.reverseToEvent') <
         body.indexOf('forkRecordingStore.activate(cursor.branchId)'));
