@@ -283,14 +283,25 @@ carries an implied cause it has not established.**
 - Green ticks ABOVE the kill line mean nothing. A run that dies at step 60 of ~80 has
   verified only what it reached.
 
-**Not fixed here, deliberately.** Raising `timeout-minutes` hides genuine hangs, which
-is what the deploy watchdog exists to catch and what its own comments warn against
-tightening for. The shape that fits is splitting the browser gates into a second job as
-`corpus` already is — preserving the property `corpus` has, that **a job's failure is
-attributable to what it ran** rather than to whatever it happened to reach at minute 30.
-Three lanes had branch builds in flight against `build.yml` when this was found, so
-changing it then would have made every reading ambiguous. It wants an owner and a quiet
-window.
+**WHY the ceiling was crossed — corrected 2026-09-05, and the first answer was wrong.**
+This note originally said the build had "grown past its ceiling" and proposed splitting the
+browser gates into a second job. That diagnosis was mine and it was not measured. lego-b9
+found the actual cause: **one hanging gate.** `Browser gate — SVG upload sanitizer is lazy,
+safe and retryable` (`cdd1aa38f`) was the last-running step in every 30.4-minute
+cancellation, taking `17:45:55 -> 18:05:26` in the run that settled the mechanism. Main
+reverted it at 17:31 (`d86d9477a`, which removed the step AND
+`scripts/verify-svg-sanitizer-upload.mjs`), and **the next main build ran 17.1 minutes and
+went green.**
+
+So there is ~13 minutes of headroom and no structural problem. **Do not split the job or
+raise `timeout-minutes` on the strength of this note.** A gradual-growth story and a
+single-hang story produce the same 30.4-minute reading, and only the second one is true
+here — which is the same trap as everything else in this entry: a number that fits more
+than one cause, reported as though it fitted one.
+
+A branch based before 17:31 still carries the hanging gate and will still time out. That
+is why `lane/listing-gate-artifact` was killed three times: not its change, and not the
+build's size — an inherited gate that hangs. Rebase past the revert.
 
 ## CLAIMS — work in progress
 
