@@ -443,10 +443,19 @@ The extension registry **splits** into synchronous and lazy sets.
 `.then()`, so any code that loads an extension and checks the flag in the same
 synchronous run will now see false where it used to see true.
 
-Reported alongside it, unverified by me: extension blocks may be silently
-dropped during deserialization, and `installTargets` may produce a second
-sandboxed copy. Both are worth checking against your own path rather than
-taken from this note.
+Reported alongside it: extension blocks may be silently dropped during
+deserialization, and `installTargets` may produce a second sandboxed copy.
+
+**Provenance, because it changes how much weight to give them.** These were
+verified first-hand by `brickwright-lite-ea` against lego-b9's actual branch.
+They reached this note through one relay (`lego-a4`) and I have not checked
+them myself — so they are first-hand at origin, second-hand here. Treat them
+as real findings to confirm against your own path, not as rumour and not as
+settled.
+
+That distinction is worth the sentence: an unlabelled relay is how a wrong
+number ("your branch deletes 40,584 lines") nearly reached three sessions
+today with the confidence of the person who first said it.
 
 `loadExtensionIdSync` does **not** throw — it warns and loads async, so a
 re-enabled core extension arrives a moment later rather than never.

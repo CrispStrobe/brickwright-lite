@@ -751,3 +751,64 @@ When a GREEN case and its RED mutation case fail **together**, the fixture is mi
 regression moves only one of them. That distinguished "the file is not there" from "the behaviour
 changed" on bw-board without running anything, and it applies to any gate that pins both a
 positive and its mutation.
+
+## The fourth family: a CACHED value, true when read and false when used
+
+The nine species are gates that pass while asserting nothing. The 2026-09-04
+section adds checks that report on a subset they silently chose. Later the same
+day a third shape appeared, five times in about two hours, and it is the one
+none of our tooling touches.
+
+**A value read correctly, cached, and then used after the world moved.**
+
+| What was cached | When it was true | What it cost |
+| --- | --- | --- |
+| `origin/feat/…` in a shared worktree | at the moment of the `git diff` | a diff reporting **40,584 deletions across 106 files** on a branch that deleted one. Nearly broadcast |
+| A peer's identity from `ListAgents` | when the call returned | I told three sessions to address me by a name that had become a *different, dead* session — and they had been reaching me fine until they followed my instruction |
+| "Send failed" read as "peer absent" | never — it was always an inference | two lanes coordinated around a peer who was receiving everything |
+| A background task's exit code | for the wrapper shell, which did exit 0 | a suite that failed 1 test reported as green |
+| A scratchpad path from earlier in the session | before the session directory changed | a two-line file read as "still running, no failures" |
+
+**Four of the five were mine.** The identity one is the worst, because I
+published it: `ListAgents` told me my name once, I never re-derived it, and the
+disconfirming evidence sat in a command I had already run twice that hour.
+
+### Why the existing tooling does not help
+
+`audit-clean-checkout` catches the filesystem version — a test reaching for
+something the tracked tree does not have. It cannot catch any row above,
+because **nothing here is missing**. Every value was read correctly. The defect
+is entirely in the gap between reading and using, and that gap is invisible
+from either end.
+
+The other families leave a trace: a suspiciously round pass count, a green case
+and a red case failing together, a `1..47` where 53 were expected. **A stale
+cache just answers, promptly and plausibly.** That is what makes it the hardest
+of the three.
+
+### The only defence found so far
+
+Re-derive before you *act*, not before you *read* — and above all before you
+**broadcast**. The rule that generalises, from lego-a4:
+
+> The observation was true when made and false when used.
+
+And the corollary, which is the operative gap:
+
+> The 40,584 number will make people check a diff. Nothing makes anyone check
+> an identity.
+
+### The one that survived scrutiny, and why
+
+Of the five, only the remote-ref diff was caught *before* it did damage — and
+by the person about to broadcast it, who ran `merge-base --is-ancestor` on a
+number that felt too large. Their account of the near-miss is worth more than
+the rule it produced:
+
+> A correction arrives with the authority of a fix and the social weight of
+> someone admitting fault, which is exactly why it slides past the scrutiny the
+> original got.
+
+They had two independent supports for their original report and abandoned both
+on one sentence of mine — a sentence that happened to be wrong. **A correction
+that makes your earlier mistake smaller deserves more scrutiny, not less.**
