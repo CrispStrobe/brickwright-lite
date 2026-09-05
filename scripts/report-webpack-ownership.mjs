@@ -3,6 +3,7 @@ import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import {dirname, resolve} from 'node:path';
 import {
     assertDosChunkBoundary,
+    assertLazyPaintEditorBoundary,
     assertOptionalCodeMirrorGrammarBoundary,
     summarizeWebpackOwnership
 } from './lib/webpack-ownership.mjs';
@@ -13,9 +14,11 @@ const stats = JSON.parse(await readFile(inputPath, 'utf8'));
 const report = summarizeWebpackOwnership(stats);
 const dosFailures = assertDosChunkBoundary(report);
 const grammarFailures = assertOptionalCodeMirrorGrammarBoundary(report);
-const failures = [...dosFailures, ...grammarFailures];
+const paintFailures = assertLazyPaintEditorBoundary(report);
+const failures = [...dosFailures, ...grammarFailures, ...paintFailures];
 report.dosChunk.boundaryFailures = dosFailures;
 report.optionalCodeMirrorGrammars.boundaryFailures = grammarFailures;
+report.lazyPaintEditor.boundaryFailures = paintFailures;
 await mkdir(dirname(outputPath), {recursive: true});
 await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`);
 
@@ -32,6 +35,9 @@ console.log(`DOS chunk: ${(report.dosChunk.bytes / 1024).toFixed(1)} KiB  ` +
 console.log(`Optional CodeMirror grammars: ${(report.optionalCodeMirrorGrammars.sourceBytes / 1024).toFixed(1)} KiB ` +
     `source, ${(report.optionalCodeMirrorGrammars.emittedBytes / 1024).toFixed(1)} KiB emitted in ` +
     `${report.optionalCodeMirrorGrammars.files.join(', ') || 'missing assets'}`);
+console.log(`Lazy paint editor: ${(report.lazyPaintEditor.sourceBytes / 1024).toFixed(1)} KiB source, ` +
+    `${(report.lazyPaintEditor.emittedBytes / 1024).toFixed(1)} KiB emitted in ` +
+    `${report.lazyPaintEditor.files.join(', ') || 'missing assets'}`);
 for (const failure of failures) console.error(`FAIL: ${failure}`);
 // The first hosted P6 receipt names the existing graph before a split is
 // chosen. Turn this into a ratchet only after that evidence is documented.

@@ -29,6 +29,11 @@ const isOptionalCodeMirrorGrammar = name =>
     /\/node_modules\/(?:@codemirror\/lang-(?:cpp|python|javascript)|@lezer\/(?:cpp|python|javascript))\//
         .test(stripLoaders(name));
 
+const isLazyPaintEditorModule = name => {
+    const normalized = stripLoaders(name);
+    return /\/node_modules\/(?:scratch-paint|@scratch\/paper)\//.test(normalized);
+};
+
 export const forbiddenDosModuleReason = name => {
     const normalized = stripLoaders(name);
     if (/(?:^|\/)(?:avr8js|avr-chips|emu8051|rp2040js?|bbc-z80|z80|mos6502|m6502|w65c02|stm32|arm-thumb|riscv|labwired)(?:[-./]|$)/i
@@ -75,6 +80,11 @@ export const summarizeWebpackOwnership = input => {
     const optionalGrammarChunks = chunks.filter(chunk => optionalGrammarIds.has(String(chunk.id)));
     const optionalGrammarAssets = assets.filter(asset =>
         /\.js$/.test(asset.name) && (asset.chunks || []).some(id => optionalGrammarIds.has(String(id))));
+    const lazyPaintModules = modules.filter(module => isLazyPaintEditorModule(module.name || module.identifier));
+    const lazyPaintIds = new Set(lazyPaintModules.flatMap(module => module.chunks || []).map(id => String(id)));
+    const lazyPaintChunks = chunks.filter(chunk => lazyPaintIds.has(String(chunk.id)));
+    const lazyPaintAssets = assets.filter(asset =>
+        /\.js$/.test(asset.name) && (asset.chunks || []).some(id => lazyPaintIds.has(String(id))));
 
     return {
         schema: 'brickwright/webpack-ownership/v1',
@@ -103,6 +113,13 @@ export const summarizeWebpackOwnership = input => {
             initial: optionalGrammarChunks.some(chunk => chunk.initial),
             files: [...new Set(optionalGrammarAssets.map(asset => asset.name))].sort(),
             emittedBytes: optionalGrammarAssets.reduce((sum, asset) => sum + (Number(asset.size) || 0), 0)
+        },
+        lazyPaintEditor: {
+            packages: [...new Set(lazyPaintModules.map(module => packageOwner(module.name || module.identifier)))].sort(),
+            sourceBytes: lazyPaintModules.reduce((sum, module) => sum + (Number(module.size) || 0), 0),
+            initial: lazyPaintChunks.some(chunk => chunk.initial),
+            files: [...new Set(lazyPaintAssets.map(asset => asset.name))].sort(),
+            emittedBytes: lazyPaintAssets.reduce((sum, asset) => sum + (Number(asset.size) || 0), 0)
         }
     };
 };
@@ -168,6 +185,22 @@ export const assertOptionalCodeMirrorGrammarBoundary = report => {
     }
     if (grammar.emittedBytes < 100 * 1024) {
         failures.push(`optional CodeMirror grammar assets fell below 100 KiB: ${grammar.emittedBytes} bytes`);
+    }
+    return failures;
+};
+
+export const assertLazyPaintEditorBoundary = report => {
+    const paint = report.lazyPaintEditor;
+    const failures = [];
+    const expected = ['@scratch/paper', 'scratch-paint'];
+    const missing = expected.filter(owner => !paint.packages.includes(owner));
+    if (missing.length) failures.push(`lazy paint packages are missing: ${missing.join(', ')}`);
+    if (paint.initial) failures.push('scratch-paint or @scratch/paper became initial JavaScript');
+    if (paint.sourceBytes < 600 * 1024) {
+        failures.push(`lazy paint ownership fell below 600 KiB: ${paint.sourceBytes} bytes`);
+    }
+    if (paint.emittedBytes < 200 * 1024) {
+        failures.push(`lazy paint assets fell below 200 KiB: ${paint.emittedBytes} bytes`);
     }
     return failures;
 };

@@ -713,7 +713,11 @@ jobs:
       # bitmap). Compares content hashed from asset.data, not declared ids.
       - name: Browser gate — costume artwork survives save and reload, vector and bitmap
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
-        run: PROOF_URL=http://localhost:8617/ node scripts/verify-costume-roundtrip.mjs
+        run: |
+          # 870 ms is the pre-deferral first-Costume ceiling; the gate allows
+          # at most 15% growth and independently caps desktop at one second.
+          PAINT_FIRST_COSTUME_BASELINE_MS=870 \
+            PROOF_URL=http://localhost:8617/ node scripts/verify-costume-roundtrip.mjs
       # The unit suite asserts the table SVG and the mark state as pure values.
       # It cannot see whether the RENDERER accepts that SVG: a skin that fails
       # to parse, or a drawable in a layer group the renderer lacks, throws

@@ -20,7 +20,7 @@
  * Asserting on ids here would fail for a reason that has nothing to do with
  * whether the artwork survived.
  */
-import {mkdir} from 'node:fs/promises';
+import {mkdir, writeFile} from 'node:fs/promises';
 import {mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
@@ -29,6 +29,10 @@ const url = process.env.PROOF_URL || 'http://localhost:8617/';
 const SHOTS = path.resolve('artifacts/costume-roundtrip');
 const work = mkdtempSync(path.join(tmpdir(), 'bw-costume-'));
 const saved = path.join(work, 'costume-roundtrip.sb3');
+const baselineMs = Number(process.env.PAINT_FIRST_COSTUME_BASELINE_MS || 870);
+const relativeLimitMs = baselineMs * 1.15;
+const absoluteLimitMs = 1000;
+const maxLongTaskMs = 100;
 
 let failed = 0;
 const record = (name, ok, detail = '') => {
@@ -51,6 +55,16 @@ const open = async () => {
             localStorage.clear();
             localStorage.setItem('bw-starter-v1-complete', '1');
         } catch { /* private mode */ }
+        window.__BW_PAINT_GATE__ = {longTasks: []};
+        if (typeof PerformanceObserver === 'function') {
+            try {
+                new PerformanceObserver(list => {
+                    for (const entry of list.getEntries()) {
+                        window.__BW_PAINT_GATE__.longTasks.push({at: entry.startTime, ms: entry.duration});
+                    }
+                }).observe({entryTypes: ['longtask']});
+            } catch { /* an unsupported observer reports no long tasks */ }
+        }
     });
     await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 90000});
     await page.waitForFunction(() => {
@@ -84,10 +98,26 @@ const costumes = page => page.evaluate(() => {
 });
 
 const openCostumesTab = async page => {
+    const startedAt = await page.evaluate(() => performance.now());
     await page.locator('[role="tab"]', {hasText: /Costume|Kost/}).first().click();
     // The paint editor loads as a lazy chunk, so the condition is "the canvas is
     // on screen", not "three seconds have passed".
     await page.locator('canvas:visible').last().waitFor({state: 'visible', timeout: 30000});
+    return page.evaluate(start => new Promise(resolve => requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+            const readyAt = performance.now();
+            const tasks = (window.__BW_PAINT_GATE__?.longTasks || [])
+                .filter(task => task.at >= start && task.at < readyAt);
+            const paint = window.__brickwrightStore?.getState?.()?.scratchPaint;
+            resolve({
+                startedAt: start,
+                readyAt,
+                durationMs: readyAt - start,
+                longTasks: tasks,
+                matrixBacked: paint?.viewBounds?.constructor?.name === 'Matrix' &&
+                    typeof paint.viewBounds.clone === 'function'
+            });
+        }))), startedAt);
 };
 
 const contentHash = page => page.evaluate(() => {
@@ -121,7 +151,26 @@ const drawRect = async (page, box, from, to) => {
 try {
     // ── author artwork in both paint modes ──────────────────────────────
     let page = await open();
-    await openCostumesTab(page);
+    const absentBeforeCostume = await page.evaluate(() =>
+        !Object.prototype.hasOwnProperty.call(window.__brickwrightStore.getState(), 'scratchPaint'));
+    record('paint state is absent before the Costume editor is requested', absentBeforeCostume);
+    const paintPerformance = await openCostumesTab(page);
+    const longestPaintTask = Math.max(0, ...paintPerformance.longTasks.map(task => task.ms));
+    record('the real Matrix-backed paint reducer exists before the editor renders',
+        paintPerformance.matrixBacked);
+    record('first Costume interactivity stays within its 15% and one-second ceilings',
+        paintPerformance.durationMs <= relativeLimitMs && paintPerformance.durationMs <= absoluteLimitMs,
+        `${paintPerformance.durationMs.toFixed(1)} ms; limits ${relativeLimitMs.toFixed(1)} / ${absoluteLimitMs} ms`);
+    record('first Costume activation adds no task longer than 100 ms', longestPaintTask <= maxLongTaskMs,
+        `${paintPerformance.longTasks.length} long task(s), longest ${longestPaintTask.toFixed(1)} ms`);
+    await writeFile(path.join(SHOTS, 'paint-performance.json'), `${JSON.stringify({
+        schema: 'brickwright/paint-first-costume/v1',
+        baselineMs,
+        relativeLimitMs,
+        absoluteLimitMs,
+        maxLongTaskMs,
+        ...paintPerformance
+    }, null, 2)}\n`);
     const start = await costumes(page);
     record('the paint editor opened on the shipped costumes', start.length > 0,
         start.map(c => `${c.name}:${c.fmt}`).join(', '));
