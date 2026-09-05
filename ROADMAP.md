@@ -530,7 +530,30 @@ it is right.
 
 Each task is independently shippable and none blocks the next.
 
-### 3.8 The 8086 as a FIRST-CLASS target in the GUI — LARGELY LANDED 2026-09-04
+### 3.8 The 8086 as a FIRST-CLASS target in the GUI — ON MAIN 2026-09-04
+
+**Merged to `origin/main` at `ce890fd83`.** The owner's three stated goals are
+closed: the ASM tab is finished, pseudocode → ASM → 8086 works end to end, and
+an 8086 can be **seated on a drawn board** whose extraction produces a working
+machine. Five pseudocode examples ship and are offered in the picker.
+
+**What is NOT closed, so nobody reads the above as "done":**
+
+- **The NE2000 is not reachable from here.** It landed in bw-board (`e676520`,
+  E7.3) after this tree's last vendoring, so `overlay/…/bw-board/ne2000.js`
+  does not exist yet. `npm run sync:bwboard -- --dir <bw-board checkout>` is
+  the fix — the plain form iterates a manifest that covers 26 of ~175 vendored
+  files and would silently skip it.
+- **No pseudocode verb reaches a network card**, deliberately. A learner drives
+  it from the ASM tab by writing its registers, which is the lesson for a NIC
+  in a way it is not for an LED. A `send`/`on receive` pair would need a
+  decision about what a "message" is that has not been made.
+- **Three lite UI files diverge from bw-circuit-ui and are unowned.**
+  `VdpScreen.jsx` (+85/−8, holds the 8086 keyboard path upstream has never
+  had), `BoardCanvas.jsx` (+24/−10), and `CircuitDesigner.jsx` — **19 ahead and
+  46 behind**, so that one is a reconciliation rather than an upstreaming, and
+  the sync tool's own suggestion to "upstream these patches" is wrong for it.
+  See `docs/VENDOR-DIVERGENCE-BW-CIRCUIT-UI.md`.
 
 **Status at the end of 2026-09-04.** A learner can now write pseudocode, pick
 `i8086`, press play and watch it run. What they cannot yet do is DRAW the board
