@@ -32,7 +32,8 @@ import {join} from 'node:path';
 
 import {REPO} from './helpers/bw-integrated.mjs';
 import {
-    requestAssembly, asmRouteFor, asmTargetForDevice, LOCAL_ASM_TARGETS, HOSTED_ASSEMBLER
+    requestAssembly, asmRouteFor, asmTargetForDevice, LOCAL_ASM_TARGETS, HOSTED_ASSEMBLER,
+    assembleLocal8086, AsmRouteError, ASM_DIALECTS
 } from '../overlay/scratch-gui/src/lib/bw-asm/assemble-route.js';
 
 /** A network that cannot be used without being noticed. */
@@ -167,7 +168,7 @@ test('the tab decides the route through this module, and in one place', () => {
     assert.match(src, /data-testid="bw-asm-assemble"/, 'the ▶ button is gone');
     assert.match(src, /from '\.\.\/\.\.\/lib\/bw-asm\/assemble-route\.js'/,
         'the tab no longer routes through assemble-route.js');
-    assert.match(src, /await requestAssembly\(\{source, device\}\)/,
+    assert.match(src, /out = await requestAssembly\(\{source, device, dialect: this\.state\.asmDialect\}\);/,
         'the ▶ handler must call requestAssembly with NO injected assembler — ' +
         'an override here is a second local path that no gate runs');
     assert.equal(src.split('stc-compiler.vercel.app/assemble').length - 1, 0,
@@ -248,4 +249,60 @@ test('the engine picker can express every kind the panel can select', async () =
     const twice = mergeTargetKinds(mergeTargetKinds(getTargetKinds()));
     assert.equal(twice.filter(k => k.kind === 'i8086').length, 1,
         'mergeTargetKinds is not idempotent, so the upstream fix would duplicate the entry');
+});
+
+// ---- the dialect selector (2026-09-05) ----------------------------------------
+
+const NASM_HELLO = `bits 16
+org 100h
+section .text
+start:
+    mov dx, msg
+    mov ah, 9
+    int 21h
+    mov ax, 4C00h
+    int 21h
+msg db 'hi$'
+`;
+
+test('requestAssembly threads the dialect to the local assembler and reports the one used', async () => {
+    const seen = [];
+    const assembleLocal = async (src, opts) => {
+        seen.push(opts);
+        return {bytes: new Uint8Array([0xc3]), format: 'com', dialect: opts.dialect};
+    };
+    const out = await requestAssembly({source: 'ret', device: 'i8086', dialect: 'nasm'}, {assembleLocal});
+    assert.deepEqual(seen, [{target: 'i8086', dialect: 'nasm'}]);
+    assert.equal(out.dialect, 'nasm');
+    const auto = await requestAssembly({source: 'ret', device: 'i8086'}, {assembleLocal});
+    assert.equal(seen[1].dialect, 'auto', 'no choice means auto, never a silent default to one syntax');
+    assert.equal(auto.dialect, 'auto');
+});
+
+test('a dialect choice on a one-syntax target is refused by name, not ignored', async () => {
+    await assert.rejects(
+        requestAssembly({source: 'nop', device: 'z80', dialect: 'nasm'}, {hostedFetch: forbiddenFetch}),
+        e => e instanceof AsmRouteError && /NASM dialect applies to the 8086 only; z80 has one syntax/.test(e.message));
+    await assert.rejects(assembleLocal8086('ret', {dialect: 'gas'}), /only auto, masm and nasm exist/);
+    assert.deepEqual([...ASM_DIALECTS], ['auto', 'masm', 'nasm']);
+});
+
+test('the real assembler honours the choice: NASM source assembles as nasm, is refused as masm', async () => {
+    const asNasm = await assembleLocal8086(NASM_HELLO, {dialect: 'nasm'});
+    assert.equal(asNasm.dialect, 'nasm');
+    assert.ok(asNasm.bytes.length > 8);
+    const detected = await assembleLocal8086(NASM_HELLO, {dialect: 'auto'});
+    assert.equal(detected.dialect, 'nasm', 'auto must detect what nasm wrote');
+    await assert.rejects(assembleLocal8086(NASM_HELLO, {dialect: 'masm'}), /bits|section/i);
+});
+
+test('the ASM tab offers the selector for the 8086 only, passes the choice, and names the syntax used', () => {
+    const src = readFileSync(join(REPO, 'overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx'), 'utf8');
+    assert.match(src, /data-testid="bw-asm-dialect"/);
+    assert.match(src, /asmTargetForDevice\(this\._asmDevice\(\)\) === 'i8086' && \(/, 'the selector is gated by the route function');
+    assert.match(src, /requestAssembly\(\{source, device, dialect: this\.state\.asmDialect\}\)/);
+    assert.match(src, /this\.L\.asmDialectUsed\(out\.dialect\)/, 'the status line names the dialect used');
+    for (const key of ['asmDialectLabel', 'asmDialectTitle', 'asmDialectNames', 'asmDialectUsed']) {
+        assert.equal((src.match(new RegExp(`^\\s+${key}:`, 'gm')) || []).length, 2, `${key} must exist in EN and DE`);
+    }
 });

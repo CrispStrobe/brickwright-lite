@@ -10,7 +10,9 @@ import {IMPORT_ACCEPT, isImportableArtefact} from '../../lib/bw-makecode/accept.
 // synchronous — and the module is a few KB of strings, not a chunk worth
 // splitting.
 import {asmExamplesFor} from '../../lib/bw-asm/examples.js';
-import {requestAssembly, requestCBuild, asmRouteFor, cRouteFor, asmTargetForDevice} from '../../lib/bw-asm/assemble-route.js';
+import {
+    requestAssembly, requestCBuild, asmRouteFor, cRouteFor, asmTargetForDevice, ASM_DIALECTS
+} from '../../lib/bw-asm/assemble-route.js';
 import {
     summarize as matrixSummary, explain as matrixExplain, LANGUAGES as MATRIX_LANGUAGES,
     DEVICES as MATRIX_DEVICES, cell as matrixCell
@@ -255,6 +257,10 @@ const L10N = {
         // refusal — a ca65 diagnostic and an 8086 AsmError read nothing
         // alike, and only one of the two needs the network.
         asmRouteLocal: 'in this browser', asmRouteHosted: 'by the hosted assembler',
+        asmDialectLabel: 'Dialect:',
+        asmDialectTitle: 'MASM or NASM syntax for the 8086 assembler. Auto reads the source and refuses when it sees both.',
+        asmDialectNames: {auto: 'auto (detect)', masm: 'MASM', nasm: 'NASM'},
+        asmDialectUsed: d => ` — ${d.toUpperCase()} syntax`,
         asmAssembling: r => `Assembling ${r}…`,
         asmBuiltBench: (n, r, m) => `Assembled ${n} bytes ${r} — booting the ${m} bench…`,
         asmBuiltOnly: (n, r, t) => `Assembled OK (${n} bytes, ${r}). Auto-run from ASM is wired for the 6502/Z80/8086 benches; for ${t} use the compile path.`,
@@ -429,6 +435,10 @@ const L10N = {
         asmExampleLoaded: n => `„${n}" geladen. Mit Assemblieren & Ausführen bauen.`,
         assembleAndRun: '🔩 Assemblieren & Ausführen',
         asmRouteLocal: 'in diesem Browser', asmRouteHosted: 'vom gehosteten Assembler',
+        asmDialectLabel: 'Dialekt:',
+        asmDialectTitle: 'MASM- oder NASM-Syntax für den 8086-Assembler. Auto liest die Quelle und lehnt ab, wenn beides vorkommt.',
+        asmDialectNames: {auto: 'auto (erkennen)', masm: 'MASM', nasm: 'NASM'},
+        asmDialectUsed: d => ` — ${d.toUpperCase()}-Syntax`,
         asmAssembling: r => `Assembliere ${r}…`,
         asmBuiltBench: (n, r, m) => `${n} Bytes assembliert ${r} — starte die ${m}-Werkbank…`,
         asmBuiltOnly: (n, r, t) => `Assembliert (${n} Bytes, ${r}). Auto-Start aus ASM ist für die 6502-/Z80-/8086-Werkbänke verdrahtet; für ${t} den Compile-Pfad nutzen.`,
@@ -861,6 +871,7 @@ class PseudocodeImporter extends React.Component {
             debugLevel: (() => { try { return localStorage.getItem('bw-microbit-debug-level') === 'line' ? 'line' : 'block'; } catch { return 'block'; } })(),
             // ASM tab mode: 'source' = editable author buffer, 'listing' = read-only disassembly
             asmMode: 'source',
+            asmDialect: 'auto',
             // ASM listing line map from the compile service (addr/file/line triples).
             // Future current-PC highlight will drive setHighlightedLine via this.
             asmLineMap: null,
@@ -1794,7 +1805,7 @@ class PseudocodeImporter extends React.Component {
         this.setState({busy: true, status: this.L.asmAssembling(routeName)});
         let out;
         try {
-            out = await requestAssembly({source, device});
+            out = await requestAssembly({source, device, dialect: this.state.asmDialect});
         } catch (e) {
             // 'source' is the user's program and the message names the line;
             // 'transport' is the network or a missing module and is not
@@ -1808,7 +1819,8 @@ class PseudocodeImporter extends React.Component {
         // Every give the local assembler made (an expanded 80186 shift, a
         // synthesised segment override) is recorded rather than silent, so a
         // program that assembled DIFFERENTLY from what was written says so.
-        const warn = out.warnings.length ? this.L.asmWarnings(out.warnings) : '';
+        const warn = (out.dialect ? this.L.asmDialectUsed(out.dialect) : '') +
+            (out.warnings.length ? this.L.asmWarnings(out.warnings) : '');
         const bench = BENCHES[out.target];
         if (bench) {
             // HARDWARE THE SOURCE ASKS FOR. A pseudocode program declares its
@@ -3711,6 +3723,18 @@ class PseudocodeImporter extends React.Component {
                                 <option value="listing">{this.L.asmListing}</option>
                             </select>
                         </label>
+                        {/* Dialect: an 8086 choice only. The other assemblers each read
+                            one syntax, so the selector does not appear for them. */}
+                        {this.state.asmMode === 'source' && asmTargetForDevice(this._asmDevice()) === 'i8086' && (
+                            <label style={{display: 'flex', alignItems: 'center', gap: 4}} title={this.L.asmDialectTitle}>
+                                {this.L.asmDialectLabel}
+                                <select value={this.state.asmDialect} data-testid="bw-asm-dialect"
+                                    onChange={e => this.setState({asmDialect: e.target.value})}
+                                    style={{padding: '2px 6px', borderRadius: 4, border: '1px solid #cbd5e1'}}>
+                                    {ASM_DIALECTS.map(d => <option key={d} value={d}>{this.L.asmDialectNames[d]}</option>)}
+                                </select>
+                            </label>
+                        )}
                         {this.state.asmMode === 'source' && this._asmExamples().length > 0 && (
                             <label style={{display: 'flex', alignItems: 'center', gap: 4}}>
                                 {this.L.asmExampleLabel}
