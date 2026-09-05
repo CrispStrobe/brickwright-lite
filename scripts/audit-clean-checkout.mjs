@@ -63,7 +63,7 @@
  * @module
  */
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, symlinkSync, existsSync, readdirSync, mkdirSync, statSync } from 'node:fs';
+import { mkdtempSync, rmSync, symlinkSync, existsSync, readdirSync, mkdirSync, statSync, realpathSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -104,6 +104,83 @@ function nestedNodeModules () {
     return out;
 }
 
+
+/**
+ * Run a child in ITS OWN PROCESS GROUP and reap anything it leaves behind.
+ *
+ * REPORTED 2026-09-05 by lego-b9, who found ten `vite --port 31xx` processes,
+ * 2.7 GB resident, 19 hours old, every one with a `/proc/<pid>/cwd` of
+ * "/tmp/clean-checkout-XXXXXX (deleted)". They had outlived the tree they
+ * served by most of a day and helped push the box into swap exhaustion.
+ *
+ * The mechanism is exactly this function's shape before the fix: `spawnSync`
+ * returns when the test process exits, and a dev server the test detached
+ * keeps running. The `finally` then deletes the temp directory out from under
+ * it, which is why the cwd reads "(deleted)" -- the leak is invisible in the
+ * place you would look for it, since the directory it belongs to is gone.
+ *
+ * `detached: true` puts the child at the head of a new process group, so
+ * `kill(-pid)` reaches every descendant, including ones the test deliberately
+ * detached from itself. ESRCH is the normal case (nothing survived) and is not
+ * an error.
+ */
+function runReaped (cmd, args, opts) {
+    const r = spawnSync(cmd, args, {...opts, detached: true});
+    if (r.pid) {
+        try { process.kill(-r.pid, 'SIGTERM'); }
+        catch { /* ESRCH: the group is already gone, which is the good case */ }
+    }
+    return r;
+}
+
+/**
+ * Kill anything still standing in the temp tree, by the signature lego-b9
+ * actually observed: `/proc/<pid>/cwd` pointing inside it.
+ *
+ * THE PROCESS-GROUP KILL ABOVE IS NOT ENOUGH IN THEORY: a grandchild spawned
+ * with `detached: true` -- exactly how a dev server is started -- calls setsid
+ * and leads its OWN group, so `kill(-childPid)` cannot reach it. The cwd scan
+ * keys on where a process IS rather than on how it was started, which is the
+ * property that survives detachment.
+ *
+ * THIS IS REASONED, NOT MEASURED, AND I WANT THAT ON THE RECORD. I built a
+ * harness to prove it and the harness was broken: the CONTROL arm -- a
+ * detached grandchild with no kill at all -- also failed to survive, so all
+ * three arms agreed for the same reason none of them measured anything. I only
+ * caught it by running the control, which I had not done for the first two
+ * attempts and which flatly contradicted them. A plain detached child of an
+ * interactive shell DOES survive here, so detachment works; something about
+ * the nested spawn under this session's process supervision cleans up the
+ * grandchild regardless. I did not chase it further with the box in swap.
+ *
+ * So: kill-before-delete is strictly better than delete-first whatever the
+ * outcome (deleting first is what produced the "(deleted)" cwd that made the
+ * leak invisible), and the cwd scan is the right shape for the reported
+ * signature. Whether it fully closes lego-b9's ten vite processes is UNVERIFIED.
+ * Anyone who can reproduce a surviving dev server should check it rather than
+ * trust this comment.
+ *
+ * Linux-only and best-effort: /proc may not exist, and a pid can vanish between
+ * listing and reading, both of which are fine.
+ */
+function killStragglersIn (dir) {
+    let procs;
+    try { procs = readdirSync('/proc').filter((e) => /^\d+$/.test(e)); }
+    catch { return 0; }
+    let killed = 0;
+    for (const pid of procs) {
+        if (Number(pid) === process.pid) continue;
+        let cwd;
+        try { cwd = realpathSync(join('/proc', pid, 'cwd')); }
+        catch { continue; }          // gone, or not ours to read
+        if (cwd !== dir && !cwd.startsWith(dir + '/')) continue;
+        try { process.kill(Number(pid), 'SIGTERM'); killed++; }
+        catch { /* already exited */ }
+    }
+    if (killed) console.log(`  reaped ${killed} process(es) still living in the clean tree`);
+    return killed;
+}
+
 const work = mkdtempSync(join(tmpdir(), 'clean-checkout-'));
 try {
     // EXACTLY THE TRACKED TREE. `git archive` cannot include an untracked
@@ -118,7 +195,7 @@ try {
         // .gitignore means by "populated by npm run vendor". Reported rather
         // than assumed: if the step fails, say so instead of running the suite
         // against a tree that is neither the tracked one nor CI's.
-        const r = spawnSync(process.execPath, [join(work, 'scripts/integrate.mjs')],
+        const r = runReaped(process.execPath, [join(work, 'scripts/integrate.mjs')],
             {cwd: work, stdio: 'inherit'});
         if (r.status !== 0) {
             console.error(`\nintegrate.mjs exited ${r.status} in the clean tree — ` +
@@ -150,7 +227,7 @@ try {
             console.log(`  FAIL ${rel}: the TEST FILE itself is not tracked`);
             failed++; continue;
         }
-        const r = spawnSync(process.execPath, ['--test', rel],
+        const r = runReaped(process.execPath, ['--test', rel],
             {cwd: work, encoding: 'utf8', maxBuffer: 1 << 28});
         const pass = /^# fail 0$/m.test(r.stdout || '') && r.status === 0;
         if (pass) { console.log(`  ok   ${rel}`); continue; }
@@ -168,5 +245,9 @@ try {
         process.exit(1);
     }
 } finally {
+    // KILL BEFORE DELETING. Deleting first is what produced the "(deleted)"
+    // cwd in the report: the directory is gone, so the leak is invisible in
+    // the place anyone would look for it.
+    killStragglersIn(work);
     rmSync(work, {recursive: true, force: true});
 }
