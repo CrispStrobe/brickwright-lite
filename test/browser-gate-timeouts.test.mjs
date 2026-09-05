@@ -51,10 +51,12 @@ const parseJobs = text => {
         const jt = line.match(/^    timeout-minutes:\s*(\d+)\s*(?:#.*)?$/);
         if (jt) job.timeout = Number(jt[1]);
         if (/^      - /.test(line)) {
-            step = {job: job.id, name: '', timeout: null};
+            step = {job: job.id, name: '', timeout: null, ifs: null};
             job.steps.push(step);
         }
         if (!step) continue;
+        const cond = line.match(/^        if:\s*(.*)$/);
+        if (cond) step.ifs = cond[1].trim();
         const name = line.match(/^      (?:- )?name:\s*(.*)$/);
         if (name) step.name = name[1];
         // A trailing comment carries the measured maximum the budget was derived from.
@@ -95,6 +97,28 @@ test('budgets are bounded: no single hang reaches the job ceiling, and none is t
     assert.deepEqual(under, [], `budget under ${MIN_STEP_BUDGET} min — a loaded runner makes a healthy gate flaky at that size`);
     const {timeout} = ceilingFor(yml);
     assert.ok(MAX_STEP_BUDGET < timeout - 10, `a step budget of ${MAX_STEP_BUDGET} leaves no room under the ${timeout}-minute ceiling of the job holding the gates`);
+});
+
+test('the job holding the browser gates ends with the in-job audit, so a green job cannot hide a skipped one', () => {
+    const jobs = parseJobs(yml);
+    const holder = [...jobs.values()].find(j => j.steps.some(isBrowserStep));
+    const named = holder.steps.filter(s => s.name);
+    const last = named[named.length - 1];
+    assert.equal(last.name, 'Audit — every browser gate ran',
+        `the last named step of job "${holder.id}" is "${last.name}" — scripts/audit-job-steps.mjs must run last in the job that holds the gates, or it audits a job that has not finished`);
+    assert.ok(holder.steps.filter(s => s.name === 'Audit — every browser gate ran').length === 1, 'exactly one audit step');
+    // Position without the condition is the bug being guarded against: a step
+    // without if: always() inherits success() and is skipped after any earlier
+    // failure — vanishing exactly when a run is red, which is when it matters.
+    assert.equal(last.ifs, 'always()', `the audit step's if: is ${JSON.stringify(last.ifs)}; it must be always() or it disappears from every red run`);
+});
+
+test('the invariant can fail: the audit step without if: always() is reported', () => {
+    const mutated = yml.replace(/(- name: Audit — every browser gate ran\n)\s+if: always\(\)\n/, '$1');
+    assert.notEqual(mutated, yml, 'mutation anchor did not match — the audit step or its condition moved');
+    const holder = [...parseJobs(mutated).values()].find(j => j.steps.some(isBrowserStep));
+    const audit = holder.steps.find(s => s.name === 'Audit — every browser gate ran');
+    assert.notEqual(audit.ifs, 'always()');
 });
 
 test('the invariant can fail: a browser step with its budget removed is reported by name', () => {
