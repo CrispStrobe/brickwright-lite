@@ -36,13 +36,13 @@ async function serve () {
     return {server, url: `http://127.0.0.1:${port}/`};
 }
 
-async function waitFor (read, accept, timeoutMs = 60000) {
+async function waitFor (read, accept, timeoutMs = 60000, stepMs = 250) {
     const end = Date.now() + timeoutMs;
     let last;
     do {
         try { last = await read(); } catch (error) { last = {error: String(error.message || error)}; }
         if (accept(last)) return last;
-        await new Promise(resolveWait => setTimeout(resolveWait, 250));
+        await new Promise(resolveWait => setTimeout(resolveWait, stepMs));
     } while (Date.now() < end);
     return last;
 }
@@ -163,18 +163,24 @@ WHEN flag clicked:
     // the viewport's first screen is the same runtime prologue for any two
     // programs, so its text is not evidence either way (it failed two of three
     // identical runs on 2026-09-05 and passed the third, by render timing).
-    await waitFor(() => page.locator('body').first().innerText(),
-        body => /source mapping/i.test(body) && !/Compiling…|Wird kompiliert…|Regenerating…|Wird neu erzeugt…/.test(body),
-        120000);
-    const secondFile = await downloadListing();
-    await writeFile(join(shots, 'listing-second.lst'), secondFile.text);
+    // The status line is not a synchronisation point: it still reads the FIRST
+    // compile's "49 source mapping(s)" until the second one finishes, so a wait
+    // on it passes at once and the download captures the old listing (measured,
+    // run 33983195468: an identical 37,410-char artifact). The artifact is the
+    // ground truth, so poll IT: download until it differs from the first, and
+    // let the deadline separate "slow" from "the cache served the old build".
+    const secondFile = await waitFor(async () => {
+        const dl = await downloadListing();
+        return dl.text;
+    }, text => typeof text === 'string' && text.length > 1000 && text !== linkedRows, 120000, 3000);
+    await writeFile(join(shots, 'listing-second.lst'), secondFile || '');
     const viewport = await page.locator('.cm-content').first().textContent();
-    console.log(`note: viewport shows ${(viewport || '').length} chars of a ${secondFile.text.length}-char listing`);
+    console.log(`note: viewport shows ${(viewport || '').length} chars of a ${(secondFile || '').length}-char listing`);
     record('a second source hash produces a distinct linked listing (downloaded artifact)',
-        secondFile.text.length > 1000 && secondFile.text !== linkedRows,
-        secondFile.text === linkedRows ?
-            `IDENTICAL ${linkedRows.length}-char artifact after a changed program — the listing cache served the old build` :
-            `${linkedRows.length} → ${secondFile.text.length} chars`);
+        Boolean(secondFile) && secondFile.length > 1000 && secondFile !== linkedRows,
+        secondFile === linkedRows ?
+            `IDENTICAL ${linkedRows.length}-char artifact 120 s after a changed program — the listing cache served the old build` :
+            `${linkedRows.length} → ${(secondFile || '').length} chars`);
     const beforeEdit = await editor.textContent();
     await editor.click();
     await page.keyboard.insertText('MUST_NOT_ENTER_LISTING');
