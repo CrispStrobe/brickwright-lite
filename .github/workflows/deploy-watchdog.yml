@@ -25,6 +25,15 @@
 # outcome (§2.1: an older tree standing down for a newer one), and alerting on
 # it would train everyone to ignore this watchdog.
 name: deploy-watchdog
+# CADENCE IS A REQUEST, NOT A GUARANTEE. This asks for hourly and does not
+# get it: measured 2026-09-05 over the last ten runs, the mean gap is 3.8
+# hours and the range is 2.4 to 5.4. GitHub delays and drops scheduled runs
+# on public repos under load, and this repo builds constantly. So anything
+# below that reasons about "within the hour" is reasoning about a cadence
+# this workflow does not have -- a red streak can stand for most of a
+# working day before the issue is filed. Do not tighten the thresholds to
+# compensate; that trades a slow alarm for a false one. If detection
+# latency ever matters, trigger from workflow_run instead of a schedule.
 on:
   schedule:
     - cron: '17 * * * *'
