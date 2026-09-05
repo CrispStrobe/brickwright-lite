@@ -5,13 +5,7 @@
       "repository": "floooh/chips",
       "commit": "ca7d7ddd3ba77b48685d24120cf413ea53786767",
       "license": "Zlib",
-      "decision": "reject",
-      "rejection": "bounded pinned retire corpus passes only 24 of 32 selected vectors",
-      "expectedRejection": {
-        "runnerExit": 1,
-        "oracleCorpusTotal": 32,
-        "oracleCorpusPassed": 24
-      },
+      "decision": "qualify",
       "licensePath": "LICENSE",
       "sourcePaths": ["chips/z80.h"],
       "sourceSha256": {

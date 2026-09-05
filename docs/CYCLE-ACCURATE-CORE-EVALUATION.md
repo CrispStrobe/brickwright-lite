@@ -47,6 +47,11 @@ to match. The hosted lane records this as an expected rejection, not a waiver;
 JSMoo cannot be promoted unless a reviewed wrapper serializes and restores each
 flag exactly and the complete qualification set then passes.
 
+The pinned floooh runner passes all 32 selected architectural and timing
+vectors. Its retire boundary is the busy-to-`z80_opdone()` transition in the
+overlapped next fetch; treating the oracle cycle-list length as a direct tick
+count samples prefixed register operations one transition too early.
+
 That rejection is now independently exercised against a hash-pinned,
 CI-fetched WDC65C02 v1 corpus slice: 32 vectors apiece for TSB, RMB, BBR, INC A,
 STZ, BRA, LDA and NOP (256 total). The receipt separates architectural retire

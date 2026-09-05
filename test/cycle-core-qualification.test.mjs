@@ -55,8 +55,8 @@ test('heavy qualification is hosted, bounded, fail-closed and retains evidence',
 test('candidate licenses and every admitted source are hash-pinned', () => {
     assert.equal(manifest.candidates.w65c02.license, 'MIT');
     assert.equal(manifest.candidates.w65c02.decision, 'reject');
-    assert.equal(manifest.candidates.z80.decision, 'reject');
-    assert.equal(manifest.candidates.z80.expectedRejection.oracleCorpusPassed, 24);
+    assert.equal(manifest.candidates.z80.decision, 'qualify');
+    assert.equal(manifest.candidates.z80.expectedRejection, undefined);
     assert.equal(manifest.candidates.w65c02.oracle.variant, 'wdc65c02/v1');
     assert.ok(manifest.candidates.w65c02.oracle.vectorPaths.length >= 8);
     assert.ok(manifest.candidates.w65c02.oracle.vectorsPerOpcode > 0);
