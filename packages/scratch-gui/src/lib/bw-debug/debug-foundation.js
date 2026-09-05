@@ -7,6 +7,7 @@ import {EventBreakpointEngine, executeBreakpointPlan} from './event-breakpoints.
 import {createDebugEventStream} from './event-stream.js';
 import {createDebugRecorder} from './recorder.js';
 import {createDebugTimeline} from './timeline.js';
+import {createHaltOccurrenceLedger} from './halt-occurrence-ledger.js';
 
 /** Connect a target-owned fact source to the runner-owned sequenced stream. */
 export function subscribeDebugTargetEvents (target, eventStream, onPublished = null) {
@@ -28,6 +29,7 @@ export function createDebugFoundation ({eventCapacity = 4096, conditionEvaluator
     const events = createDebugEventStream({capacity: eventCapacity});
     const recorder = createDebugRecorder();
     const timeline = createDebugTimeline({capacity: eventCapacity});
+    const haltOccurrences = createHaltOccurrenceLedger({maxOccurrences: eventCapacity});
     let capabilities = normalizeDebugCapabilities();
     let breakpoints = new EventBreakpointEngine(eventBreakpointCapabilities(capabilities), conditionEvaluator);
 
@@ -35,6 +37,7 @@ export function createDebugFoundation ({eventCapacity = 4096, conditionEvaluator
         events,
         recorder,
         timeline,
+        haltOccurrences,
         ingestTimeline: batch => timeline.append(batch),
         attachCapabilities (raw, options) {
             capabilities = normalizeDebugCapabilities(raw, options);
@@ -54,6 +57,7 @@ export function createDebugFoundation ({eventCapacity = 4096, conditionEvaluator
             events.clear();
             recorder.clear();
             timeline.clear();
+            haltOccurrences.clear();
             capabilities = normalizeDebugCapabilities();
             breakpoints = new EventBreakpointEngine(
                 eventBreakpointCapabilities(capabilities), conditionEvaluator);

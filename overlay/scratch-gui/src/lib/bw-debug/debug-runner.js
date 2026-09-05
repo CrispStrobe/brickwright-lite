@@ -478,6 +478,11 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     let unsubscribeDebugInputs = null;
     // Cursor of the last successful UI reverse; null means the retained live end.
     let reverseCursor = null;
+    // Halt occurrence is a separate order because several native stops may
+    // share one instruction boundary. It is advanced only after verified replay.
+    let reverseOccurrenceCursor = null;
+    let breakpointGeneration = 0;
+    let haltLedgerRefusal = null;
     const trace = createTrace({eventStream});
     /** The user's own variables: {name, space, addr, size}. From the symbol table. */
     let variableTable = [];
@@ -557,6 +562,38 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     // place; a timeline consumer or event breakpoint activates production.
     function ensureDebugEvents() {
         if (!unsubscribeDebugEvents) bindDebugEvents();
+    }
+
+    const breakpointIdsForHandle = handle => {
+        const ids = [];
+        for (const [blockId, candidate] of bps) if (candidate === handle) ids.push(`block:${blockId}`);
+        for (const [address, candidate] of addrBps) if (candidate === handle) ids.push(`address:${address}`);
+        for (const [key, candidate] of watchBps) if (candidate === handle) ids.push(`watch:${key}`);
+        return ids.length ? ids : [`native:${String(handle)}`];
+    };
+
+    /** Record only proven, replay-addressable forward breakpoint stops. */
+    function recordNativeHaltOccurrence(why) {
+        if (targetKind !== 'i8086' || !recordingSession.status().active || !why) return null;
+        if (!['breakpoint', 'watchpoint', 'port', 'interrupt'].includes(why.cause)) return null;
+        if (why.bp === undefined || why.bp === null) return null;
+        const checkpoints = debugFoundation.recorder.checkpointSummary();
+        if (!checkpoints.length) return null;
+        debugFoundation.haltOccurrences.evictBeforeCheckpoint(checkpoints[0].eventCursor);
+        try {
+            return debugFoundation.haltOccurrences.append({
+                boundaryCursor: eventStream.nextSequence(),
+                triggerEventSeq: null,
+                matchingIds: breakpointIdsForHandle(why.bp),
+                generation: breakpointGeneration,
+                stopSide: why.cause === 'breakpoint' ? 'before' : 'after',
+                source: 'i8086-native'
+            });
+        } catch (error) {
+            haltLedgerRefusal = {accepted: false, code: 'halt-history-capacity',
+                reason: error?.message || String(error)};
+            return null;
+        }
     }
 
     /** Log an 8086 external mutation before allowing it to reach the machine. */
@@ -1542,6 +1579,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             // paint latency without changing timer/wait semantics.
             ...(targetKind === 'i8086' ? {wallBudgetMs: 8, maxQuantumNs: 1_000_000} : {}),
             onHalt: (snapshot) => {
+                recordNativeHaltOccurrence(snapshot);
                 setStatus('paused', `PC=$${snapshot.pc.toString(16).padStart(4, '0')}`);
             },
             onRun: () => setStatus('running'),
@@ -2174,6 +2212,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         /** Build, attach, and run. The ⚑ of the debug world. */
         async start() {
             reverseCursor = null;
+            reverseOccurrenceCursor = null;
             try {
                 if (!session) {
                     // Clear it HERE and not in build(): the ROM and
@@ -2227,6 +2266,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         resume() {
             if (!session) return;
             reverseCursor = null;
+            reverseOccurrenceCursor = null;
             session.resume();
             setStatus('running');
             schedule();
@@ -2236,6 +2276,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         step(kind = 'block') {
             if (!session) return { unsupported: 'nothing is running yet' };
             reverseCursor = null;
+            reverseOccurrenceCursor = null;
             const refusal = session.step(kind);
             if (refusal) { setStatus('paused', refusal.unsupported); return refusal; }
             setStatus('stepping');
@@ -2469,6 +2510,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 if (typeof handle !== 'number') return false;
                 addrBps.set(a, handle);
             }
+            breakpointGeneration++;
             emit();
             return addrBps.has(a);
         },
@@ -2502,6 +2544,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             if (watchBps.has(key)) {
                 target.clearBreakpoint(watchBps.get(key));
                 watchBps.delete(key);
+                breakpointGeneration++;
                 emit();
                 return { removed: true, space, addr: a };
             }
@@ -2511,6 +2554,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 return { refused: (handle && handle.unsupported) || 'the engine refused it' };
             }
             watchBps.set(key, handle);
+            breakpointGeneration++;
             emit();
             return { added: true, space, addr: a, handle };
         },
@@ -2564,7 +2608,14 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         evaluateEventBreakpoints: (event, context) => debugFoundation.evaluateBreakpoints(event, context),
         debugRecorder: () => debugFoundation.recorder,
         debugTimeline: () => debugFoundation.timeline,
-        startDebugRecording() { reverseCursor = null; ensureDebugEvents(); return recordingSession.start(); },
+        startDebugRecording() {
+            reverseCursor = null;
+            reverseOccurrenceCursor = null;
+            debugFoundation.haltOccurrences.clear();
+            haltLedgerRefusal = null;
+            ensureDebugEvents();
+            return recordingSession.start();
+        },
         stopDebugRecording: () => recordingSession.stop(),
         checkpointDebugRecording: () => recordingSession.checkpoint(),
         restoreDebugCheckpoint: eventCursor => {
@@ -2610,6 +2661,31 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             const status = this.reverseStepDebugStatus();
             return status.accepted ? this.reverseDebugToEvent(status.eventCursor) : status;
         },
+        reverseContinueDebugStatus() {
+            const capability = instructionReplay.canReverse();
+            if (!capability.accepted) return capability;
+            if (haltLedgerRefusal) return haltLedgerRefusal;
+            const retained = debugFoundation.recorder.retention();
+            const before = reverseCursor ??
+                (retained.lastEventSeq === null ? 0 : retained.lastEventSeq + 1);
+            const occurrence = reverseOccurrenceCursor === null ?
+                debugFoundation.haltOccurrences.previousBeforeBoundary(before) :
+                debugFoundation.haltOccurrences.previousByOccurrenceCursor(reverseOccurrenceCursor);
+            return occurrence === null
+                ? {accepted: false, code: 'no-previous-breakpoint',
+                    reason: 'No earlier recorded breakpoint halt is retained'}
+                : {accepted: true, beforeCursor: before, eventCursor: occurrence.boundaryCursor,
+                    occurrenceCursor: occurrence.occurrenceCursor,
+                    matchingIds: occurrence.matchingIds, generation: occurrence.generation};
+        },
+        reverseContinueDebug() {
+            const status = this.reverseContinueDebugStatus();
+            if (!status.accepted) return status;
+            const result = this.reverseDebugToEvent(status.eventCursor);
+            if (result.accepted) reverseOccurrenceCursor = status.occurrenceCursor;
+            return result.accepted ? {...result, matchingIds: status.matchingIds,
+                occurrenceCursor: status.occurrenceCursor, generation: status.generation} : result;
+        },
         clearTrace() { trace.clear(); emit(); },
 
         /**
@@ -2630,6 +2706,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         stepInstruction(count = 1) {
             if (!target) return { unsupported: 'nothing is running yet' };
             reverseCursor = null;
+            reverseOccurrenceCursor = null;
             for (let i = 0; i < count; i++) {
                 const refusal = target.step('insn', 1);
                 if (refusal) return refusal;
@@ -2644,8 +2721,16 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         },
 
         /** `over` and `out`, which the target defines in terms of SP. */
-        stepOver() { reverseCursor = null; return session ? session.step('over') : { unsupported: 'not running' }; },
-        stepOut() { reverseCursor = null; return session ? session.step('out') : { unsupported: 'not running' }; },
+        stepOver() {
+            reverseCursor = null;
+            reverseOccurrenceCursor = null;
+            return session ? session.step('over') : { unsupported: 'not running' };
+        },
+        stepOut() {
+            reverseCursor = null;
+            reverseOccurrenceCursor = null;
+            return session ? session.step('out') : { unsupported: 'not running' };
+        },
 
         /**
          * The user's OWN variables, by the name they typed.
@@ -2804,10 +2889,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     function syncBreakpoints(ids) {
         if (!target) return;
         const wanted = new Set(ids);
+        let changed = false;
         for (const [blockId, handle] of [...bps]) {
             if (wanted.has(blockId)) continue;
             if (handle !== null) target.clearBreakpoint(handle);
             bps.delete(blockId);
+            changed = true;
         }
         for (const blockId of wanted) {
             if (bps.has(blockId)) continue;
@@ -2815,7 +2902,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             if (!y) continue;                      // no yield point in this build
             const handle = target.setBreakpoint({ kind: 'yield', task: y.task, state: y.state });
             bps.set(blockId, typeof handle === 'number' ? handle : null);
+            changed = true;
         }
+        if (changed) breakpointGeneration++;
     }
 
     return runner;

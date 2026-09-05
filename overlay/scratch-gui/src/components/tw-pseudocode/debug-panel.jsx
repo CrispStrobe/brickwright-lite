@@ -46,7 +46,8 @@ const VdpScreen = React.lazy(() =>
 
 const L10N = {
     en: {
-        run: 'Run', pause: 'Pause', step: 'Step', reverseStep: 'Reverse Step', stop: 'Stop',
+        run: 'Run', pause: 'Pause', step: 'Step', reverseStep: 'Reverse Step',
+        reverseContinue: 'Reverse Continue', stop: 'Stop',
         speed: 'Speed', idle: 'not running', building: 'building…', attaching: 'starting…',
         ready: 'ready', running: 'running', paused: 'paused', stepping: 'stepping…',
         error: 'error',
@@ -75,11 +76,13 @@ const L10N = {
         record: 'Record', recording: 'Recording', checkpoint: 'Checkpoint', restore: 'Restore',
         recordUnsupported: 'This target cannot capture a complete deterministic checkpoint',
         reverseHint: 'Restore and replay to the previous recorded instruction',
+        reverseContinueHint: 'Restore and replay to the previous recorded breakpoint halt',
         timeline: 'Timeline', timelineRefresh: 'Read events', timelineOlder: 'Older',
         timelineNewer: 'Newer', timelineLatest: 'Latest', timelineCheckpoint: 'Last checkpoint'
     },
     de: {
-        run: 'Start', pause: 'Pause', step: 'Schritt', reverseStep: 'Zurück', stop: 'Stopp',
+        run: 'Start', pause: 'Pause', step: 'Schritt', reverseStep: 'Zurück',
+        reverseContinue: 'Zurück fortsetzen', stop: 'Stopp',
         speed: 'Tempo', idle: 'läuft nicht', building: 'wird gebaut…', attaching: 'startet…',
         ready: 'bereit', running: 'läuft', paused: 'angehalten', stepping: 'Schritt…',
         error: 'Fehler',
@@ -109,6 +112,7 @@ const L10N = {
         record: 'Aufzeichnen', recording: 'Aufzeichnung', checkpoint: 'Prüfpunkt', restore: 'Wiederherstellen',
         recordUnsupported: 'Dieses Ziel kann keinen vollständigen deterministischen Prüfpunkt erfassen',
         reverseHint: 'Zum vorherigen aufgezeichneten Befehl zurückkehren und verifiziert abspielen',
+        reverseContinueHint: 'Zum vorherigen aufgezeichneten Haltepunkt zurückkehren und verifiziert abspielen',
         timeline: 'Zeitleiste', timelineRefresh: 'Ereignisse lesen', timelineOlder: 'Älter',
         timelineNewer: 'Neuer', timelineLatest: 'Neueste', timelineCheckpoint: 'Letzter Prüfpunkt'
     }
@@ -134,6 +138,7 @@ class DebugPanel extends React.Component {
         this.onPause = this.onPause.bind(this);
         this.onStep = this.onStep.bind(this);
         this.onReverseStep = this.onReverseStep.bind(this);
+        this.onReverseContinue = this.onReverseContinue.bind(this);
         this.onStop = this.onStop.bind(this);
         this.onSpeed = this.onSpeed.bind(this);
         this.onSerialInput = this.onSerialInput.bind(this);
@@ -583,6 +588,13 @@ class DebugPanel extends React.Component {
         const result = runner.reverseStepDebugInstruction();
         this.setState({reverseStatus: result.accepted ? null : result});
     }
+
+    onReverseContinue () {
+        const runner = this.state.runner;
+        if (!runner) return;
+        const result = runner.reverseContinueDebug();
+        this.setState({reverseStatus: result.accepted ? null : result});
+    }
     onSpeed (e) { if (this.state.runner) this.state.runner.setSpeed(Number(e.target.value)); }
 
     onRecord () {
@@ -664,6 +676,8 @@ class DebugPanel extends React.Component {
             this.state.recordingStatus.reason : null;
         const reverse = this.state.runner && this.state.runner.reverseStepDebugStatus();
         const canReverse = !!(reverse && reverse.accepted);
+        const reverseContinue = this.state.runner && this.state.runner.reverseContinueDebugStatus();
+        const canReverseContinue = !!(reverseContinue && reverseContinue.accepted);
         const reverseRefusal = this.state.reverseStatus?.accepted === false ?
             this.state.reverseStatus.reason : null;
         const timeline = this.state.runner ? this.state.runner.debugTimeline().state() : null;
@@ -726,6 +740,15 @@ class DebugPanel extends React.Component {
                         onClick={this.onReverseStep}
                         title={canReverse ? this.tx('reverseHint') : (reverse?.reason || this.tx('reverseHint'))}
                     >{'⏮ '}{this.tx('reverseStep')}</button>
+
+                    <button
+                        data-debug-reverse-continue
+                        style={canReverseContinue && !busy ? BTN : OFF}
+                        disabled={!canReverseContinue || busy}
+                        onClick={this.onReverseContinue}
+                        title={canReverseContinue ? this.tx('reverseContinueHint') :
+                            (reverseContinue?.reason || this.tx('reverseContinueHint'))}
+                    >{'◀ '}{this.tx('reverseContinue')}</button>
 
                     <button
                         style={running || paused ? {...BTN, borderColor: '#c0392b', color: '#e74c3c'} : OFF}

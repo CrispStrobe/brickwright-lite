@@ -446,6 +446,17 @@ forward arbitration. Re-evaluating retained events against current breakpoint
 definitions would be incorrect for conditions, hit counts, modulo/ignore rules,
 one-shot breakpoints and native stops, so no such shortcut is exposed.
 
+A bounded immutable halt-occurrence ledger and the first end-to-end Reverse
+Continue path are now implemented for the fully replayable 8086 composition.
+The ledger stores occurrence/boundary cursors, ordered breakpoint IDs,
+definition generation and before/after stop semantics, never event payloads or
+machine state. Native breakpoint, watchpoint, port and interrupt stops are
+recorded only while deterministic recording is active. Reverse Continue uses
+the historical decision without re-running breakpoint predicates or actions,
+then delegates to the same quiesced, verified restore-and-replay path as Reverse
+Step. Targets without a proven event boundary remain unsupported rather than
+receiving an inferred cursor.
+
 Debugger changes also have a path-filtered `debugger-focused` GitHub Actions
 workflow. It vendors and integrates the pinned sources on a fresh runner, then
 runs the debugger contracts and real-core checkpoint/event/replay tests. This
