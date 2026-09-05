@@ -26,13 +26,15 @@ test('heavy qualification is hosted, bounded, fail-closed and retains evidence',
     assert.match(workflow, /cancel-in-progress: true/);
     assert.match(workflow, /if: always\(\)/);
     assert.match(workflow, /cycle-core-qualification\/report\.json/);
-    assert.match(qualifier, /promotionReady: failed\.length === 0/);
+    assert.match(qualifier, /evaluationSucceeded:/);
+    assert.match(qualifier, /candidateResults/);
+    assert.match(qualifier, /every\(candidate => candidate\.promotionReady\)/);
     assert.match(qualifier, /snapshot replay is byte-identical/);
     assert.match(qualifier, /snapshots replay from every exercised microstep/);
     assert.match(qualifier, /non-empty recorded control activity/);
     assert.match(qualifier, /HALT and interrupt acknowledge are observable cycle boundaries/);
     assert.match(qualifier, /matches the pinned SingleStepTests retire vector/);
-    assert.match(qualifier, /consumes and passes the bounded pinned SingleStepTests corpus/);
+    assert.match(qualifier, /publishes the bounded pinned SingleStepTests corpus result/);
     assert.match(oracleGenerator, /oracle hash mismatch/);
     assert.match(oracleGenerator, /vectorCount: vectors\.length/);
     assert.match(qualifier, /WAIT stretching and NMI entry are directly observed/);
@@ -49,6 +51,8 @@ test('heavy qualification is hosted, bounded, fail-closed and retains evidence',
 test('candidate licenses and every admitted source are hash-pinned', () => {
     assert.equal(manifest.candidates.w65c02.license, 'MIT');
     assert.equal(manifest.candidates.w65c02.decision, 'reject');
+    assert.equal(manifest.candidates.z80.decision, 'reject');
+    assert.equal(manifest.candidates.z80.expectedRejection.oracleCorpusPassed, 24);
     assert.equal(manifest.candidates.w65c02.oracle.variant, 'wdc65c02/v1');
     assert.ok(manifest.candidates.w65c02.oracle.vectorPaths.length >= 8);
     assert.ok(manifest.candidates.w65c02.oracle.vectorsPerOpcode > 0);

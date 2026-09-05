@@ -3,6 +3,7 @@ import {createHash} from 'node:crypto';
 import {mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {join, resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
+import {evaluateCandidateDecision} from './lib/cycle-candidate-decision.mjs';
 
 if (!process.env.CI && process.env.BW_ALLOW_LOCAL_CYCLE_QUALIFICATION !== '1') {
     console.error('cycle-core qualification is CI-only; set BW_ALLOW_LOCAL_CYCLE_QUALIFICATION=1 explicitly');
@@ -16,6 +17,7 @@ const manifest = JSON.parse(readFileSync(new URL('../test/fixtures/cycle-core-ca
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const checks = [];
 const check = (name, ok, detail = '') => checks.push({name, ok: Boolean(ok), detail});
+const observations = {};
 
 for (const [name, candidate] of Object.entries(manifest.candidates)) {
     const checkout = join(root, name);
@@ -38,8 +40,16 @@ if (runner) {
     const result = spawnSync(runner, [], {encoding: 'utf8'});
     let report = null;
     try { report = JSON.parse(result.stdout); } catch {}
-    check('floooh Z80 native runner exits cleanly', result.status === 0,
-        result.stderr || `exit ${String(result.status)}`);
+    const candidate = manifest.candidates.z80;
+    const rejectionEvidence = {runnerExit: result.status,
+        oracleCorpusTotal: report?.oracleCorpusTotal,
+        oracleCorpusPassed: report?.oracleCorpusPassed};
+    observations.z80 = {evidenceComplete: report?.schema === 1,
+        qualifies: result.status === 0 && report?.oracleCorpusPassed === report?.oracleCorpusTotal,
+        rejectionEvidence};
+    const decision = evaluateCandidateDecision(candidate, observations.z80);
+    check('floooh Z80 runner outcome matches the declared candidate decision', decision.decisionMatched,
+        `${JSON.stringify(rejectionEvidence)}; ${decision.reason || 'qualified'}`);
     check('floooh Z80 snapshot replay is byte-identical', report?.snapshotReplay === true,
         report ? JSON.stringify(report) : result.stdout);
     check('floooh Z80 snapshots replay from every exercised microstep', report?.snapshotPoints === 42,
@@ -53,9 +63,12 @@ if (runner) {
     check('floooh Z80 matches the pinned SingleStepTests retire vector',
         report?.oracleVector === '3E 0000' && report?.oracleTicks === 7 && report?.oracleMatch === true,
         report ? JSON.stringify(report) : 'no report');
-    check('floooh Z80 consumes and passes the bounded pinned SingleStepTests corpus',
+    check('floooh Z80 publishes the bounded pinned SingleStepTests corpus result',
         Number.isSafeInteger(report?.oracleCorpusTotal) && report.oracleCorpusTotal === 32 &&
-            report.oracleCorpusPassed === report.oracleCorpusTotal && report.oracleFirstFailure === null,
+            Number.isSafeInteger(report.oracleCorpusPassed) && report.oracleCorpusPassed >= 0 &&
+            report.oracleCorpusPassed <= report.oracleCorpusTotal &&
+            (report.oracleCorpusPassed === report.oracleCorpusTotal ? report.oracleFirstFailure === null :
+                typeof report.oracleFirstFailure === 'string'),
         report ? `${report.oracleCorpusPassed}/${report.oracleCorpusTotal}; first failure: ${report.oracleFirstFailure}` : 'no report');
     check('floooh Z80 WAIT stretching and NMI entry are directly observed',
         report?.waitStretched === true && report?.nmiStackWrite === true,
@@ -65,6 +78,7 @@ if (runner) {
         Number.isSafeInteger(report?.ticksPerSecond) && report.ticksPerSecond > 0,
         report ? `${report.checkpointBytes} checkpoint bytes; ${report.ticksPerSecond} ticks/s` : 'no report');
 } else {
+    observations.z80 = {evidenceComplete: false, qualifies: false};
     check('floooh Z80 native runner supplied', false, 'Z80_QUALIFICATION_RUNNER is required');
 }
 
@@ -109,15 +123,31 @@ if (w65Runner) {
     check('JSMoo W65C02 known B-latch defect is reproduced by real oracle vectors',
         report?.corpus?.statusLatchOnly > 0 && report.corpus.failures.some(failure =>
             failure.statusOnly === true && failure.registerDiffs?.p),
-        report?.corpus ? `${report.corpus.statusLatchOnly} otherwise-matching vectors changed P.B` : 'no corpus receipt');
+    report?.corpus ? `${report.corpus.statusLatchOnly} otherwise-matching vectors changed P.B` : 'no corpus receipt');
+    observations.w65c02 = {evidenceComplete: report?.schema === 1,
+        qualifies: result.status === 0 && report?.snapshotReplay === true,
+        rejectionEvidence: {runnerExit: result.status, snapshotReplay: report?.snapshotReplay,
+            stateMismatch: report?.stateMismatch?.includes('regs.P') ? 'regs.P' : report?.stateMismatch}};
+    const decision = evaluateCandidateDecision(manifest.candidates.w65c02, observations.w65c02);
+    check('JSMoo W65C02 runner outcome matches the declared candidate decision', decision.decisionMatched,
+        `${JSON.stringify(observations.w65c02.rejectionEvidence)}; ${decision.reason || 'qualified'}`);
 } else {
+    observations.w65c02 = {evidenceComplete: false, qualifies: false};
     check('JSMoo W65C02 isolated runner supplied', false, 'W65C02_QUALIFICATION_RUNNER is required');
 }
 
 const failed = checks.filter(item => !item.ok);
+const candidateResults = Object.fromEntries(Object.entries(manifest.candidates).map(([name, candidate]) => {
+    const result = evaluateCandidateDecision(candidate, observations[name]);
+    return [name, {decision: candidate.decision, ...result}];
+}));
 const report = {schema: 1, generatedAt: new Date().toISOString(), manifest, checks,
     passed: checks.length - failed.length, failed: failed.length,
-    promotionReady: failed.length === 0 && manifest.candidates.z80.decision === 'qualify',
+    evaluationSucceeded: failed.length === 0 &&
+        Object.values(candidateResults).every(candidate => candidate.decisionMatched),
+    promotionReady: failed.length === 0 &&
+        Object.values(candidateResults).every(candidate => candidate.promotionReady),
+    candidateResults,
     candidateDecisions: Object.fromEntries(Object.entries(manifest.candidates)
         .map(([name, candidate]) => [name, candidate.decision]))};
 mkdirSync(resolve(output, '..'), {recursive: true});

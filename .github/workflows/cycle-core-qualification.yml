@@ -17,10 +17,12 @@ on:
       - 'scripts/fixtures/freestanding/string.h'
       - 'scripts/verify-cycle-candidate-browser.mjs'
       - 'scripts/lib/cycle-browser-receipt.mjs'
+      - 'scripts/lib/cycle-candidate-decision.mjs'
       - 'scripts/fixtures/qualify-jsmoo-w65c02.mjs'
       - 'test/fixtures/cycle-core-candidates.json'
       - 'test/cycle-core-qualification.test.mjs'
       - 'test/cycle-browser-receipt.test.mjs'
+      - 'test/cycle-candidate-decision.test.mjs'
   pull_request:
     paths:
       - '.github/workflows/cycle-core-qualification.yml'
@@ -31,10 +33,12 @@ on:
       - 'scripts/fixtures/freestanding/string.h'
       - 'scripts/verify-cycle-candidate-browser.mjs'
       - 'scripts/lib/cycle-browser-receipt.mjs'
+      - 'scripts/lib/cycle-candidate-decision.mjs'
       - 'scripts/fixtures/qualify-jsmoo-w65c02.mjs'
       - 'test/fixtures/cycle-core-candidates.json'
       - 'test/cycle-core-qualification.test.mjs'
       - 'test/cycle-browser-receipt.test.mjs'
+      - 'test/cycle-candidate-decision.test.mjs'
 
 permissions:
   contents: read
@@ -140,7 +144,7 @@ jobs:
         run: node scripts/verify-cycle-candidate-browser.mjs
       - name: Static qualification contracts
         if: always()
-        run: node --test test/cycle-core-qualification.test.mjs test/cycle-browser-receipt.test.mjs
+        run: node --test test/cycle-core-qualification.test.mjs test/cycle-browser-receipt.test.mjs test/cycle-candidate-decision.test.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
