@@ -2950,9 +2950,14 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             replayingDebugHistory = true;
             let result;
             try {
-                result = destination.recording.instructionReplay.reverseToEvent(cursor.eventCursor);
+                const destinationCycle = destination.recording.cycleReplay.canReverse().accepted;
+                result = destinationCycle ?
+                    destination.recording.cycleReplay.reverseToCycle(cursor.eventCursor) :
+                    destination.recording.instructionReplay.reverseToEvent(cursor.eventCursor);
                 if (!result.accepted) {
-                    const rollback = priorCursor === undefined ? null :
+                    const priorCycle = prior.recording.cycleReplay.canReverse().accepted;
+                    const rollback = priorCursor === undefined ? null : priorCycle ?
+                        prior.recording.cycleReplay.reverseToCycle(priorCursor) :
                         prior.recording.instructionReplay.reverseToEvent(priorCursor);
                     if (rollback && !rollback.accepted) return {accepted: false,
                         code: 'branch-switch-rollback-failed', reason: rollback.reason || rollback.code};

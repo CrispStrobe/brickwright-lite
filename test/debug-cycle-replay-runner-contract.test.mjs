@@ -32,4 +32,6 @@ test('runner cycle reverse shares recording, cursor, output and reverse-continue
     assert.match(runner, /reverseStepDebugCycle\(\)[\s\S]{0,300}reverseDebugToCycle/);
     assert.match(runner, /reverseToEvent: eventCursor => cycleReplay\.canReverse\(\)\.accepted \?\s*runner\.reverseDebugToCycle/,
         'reverse continue must use verified cycle replay when its provider qualifies');
+    assert.match(runner, /destination\.recording\.cycleReplay\.reverseToCycle\(cursor\.eventCursor\)/,
+        'branch activation must preserve the cycle-qualified replay boundary');
 });

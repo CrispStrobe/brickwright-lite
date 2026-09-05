@@ -5,9 +5,9 @@ import {readFileSync} from 'node:fs';
 const source = readFileSync(new URL(
     '../overlay/scratch-gui/src/lib/bw-debug/debug-runner.js', import.meta.url), 'utf8');
 
-test('runner branch payloads own stable recorder/session/replay/ledger quartets', () => {
+test('runner branch payloads own stable recorder/session/replay/ledger sets', () => {
     assert.match(source, /const createBranchPayload = \(recorder, haltOccurrences\)/);
-    assert.match(source, /return \{recorder, recordingSession: branchSession, instructionReplay: replay, haltOccurrences\}/);
+    assert.match(source, /return \{recorder, recordingSession: branchSession, instructionReplay: replay,\s*cycleReplay, haltOccurrences\}/);
     assert.match(source, /createForkRecordingStore\(\{rootRecording: activeBranchPayload\}\)/);
     assert.match(source, /createBranchPayload\(createDebugRecorder\(\), createHaltOccurrenceLedger\(\)\)/);
 });
