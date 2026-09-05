@@ -87,8 +87,13 @@ const makeSession = async () => {
 const openCostumes = async page => {
     await page.getByRole('tab', {name: /Costumes?/}).first().click();
     await page.locator('canvas[resize="true"]:visible').waitFor({state: 'visible', timeout: 30000});
-    await page.locator('input[type="file"][accept*=".svg"]').waitFor({state: 'attached', timeout: 30000});
+    await page.getByRole('tabpanel', {name: /Costumes?/}).first()
+        .locator('input[type="file"][accept*=".svg"]')
+        .waitFor({state: 'attached', timeout: 30000});
 };
+
+const costumeFileInput = page => page.getByRole('tabpanel', {name: /Costumes?/}).first()
+    .locator('input[type="file"][accept*=".svg"]');
 
 const costumeState = (page, name = 'adversarial') => page.evaluate(expected => {
     const target = window.__vm.editingTarget;
@@ -121,7 +126,7 @@ const waitForCostume = async (page, name = 'adversarial') => {
 
 const uploadAndMeasure = async (page, file) => {
     const startedAt = await page.evaluate(() => performance.now());
-    await page.locator('input[type="file"][accept*=".svg"]').setInputFiles(file);
+    await costumeFileInput(page).setInputFiles(file);
     await waitForCostume(page);
     return page.evaluate(start => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => {
         const readyAt = performance.now();
@@ -170,13 +175,16 @@ try {
     const performance = await uploadAndMeasure(page, fixture);
     receipt.successfulUpload = performance;
     let stored = await costumeState(page);
-    const uploadedTileVisible = await page.getByText('adversarial', {exact: true}).first().isVisible();
+    const uploadedTile = page.getByText('adversarial', {exact: true}).first();
+    await uploadedTile.waitFor({state: 'visible', timeout: 30000});
+    const uploadedTileVisible = await uploadedTile.isVisible();
     record('one real SVG upload requests the sanitizer chunk exactly once', sanitizerRequests.length === 1,
         sanitizerRequests.map(item => new URL(item.url).pathname).join(', ') || 'no request');
     record('the stored asset contains no script, event handler, external href, or CSS import',
         stored.found && !/<script\b/i.test(stored.text) && !/\son\w+\s*=/i.test(stored.text) &&
         !/attacker\.invalid|evil\.invalid|@import/i.test(stored.text), `${stored.byteLength || 0} sanitized bytes`);
-    record('the valid remainder is visible as a loaded vector costume', uploadedTileVisible &&
+    record('the valid rectangle remains in a visible, loaded vector costume', uploadedTileVisible &&
+        /<rect\b[^>]*class=["']safe["']/i.test(stored.text) &&
         stored.skinLoaded && stored.dataFormat === 'svg' && Array.isArray(stored.size) &&
         stored.size.every(Number.isFinite), `tile=${uploadedTileVisible}, skin=${stored.skinId}, ` +
         `size=${JSON.stringify(stored.size)}`);
@@ -193,7 +201,9 @@ try {
     await loadProject(page);
     await openCostumes(page);
     stored = await costumeState(page);
-    const reloadedTileVisible = await page.getByText('adversarial', {exact: true}).first().isVisible();
+    const reloadedTile = page.getByText('adversarial', {exact: true}).first();
+    await reloadedTile.waitFor({state: 'visible', timeout: 30000});
+    const reloadedTileVisible = await reloadedTile.isVisible();
     record('the sanitized SVG survives save and reload visibly', reloadedTileVisible &&
         stored.skinLoaded && stored.byteLength > 0,
         `tile=${reloadedTileVisible}, ${stored.byteLength || 0} bytes, skin=${stored.skinId}`);
@@ -230,7 +240,7 @@ try {
     const requestFailed = page.waitForEvent('requestfailed', {
         predicate: request => SANITIZER_CHUNK.test(request.url()), timeout: 30000
     });
-    await page.locator('input[type="file"][accept*=".svg"]').setInputFiles(fixture);
+    await costumeFileInput(page).setInputFiles(fixture);
     await requestFailed;
     // Cross a rendering turn after the script element's error event so
     // webpack's rejected chunk promise and our retry-cache reset have both
@@ -246,7 +256,7 @@ try {
         failedState.count === before && failedState.creates === 0, JSON.stringify(failedState));
 
     await context.unroute('**/*', abortSanitizerOnce);
-    await page.locator('input[type="file"][accept*=".svg"]').setInputFiles(fixture);
+    await costumeFileInput(page).setInputFiles(fixture);
     await waitForCostume(page);
     const retryState = await costumeState(page);
     record('selecting the same file retries with a new request and succeeds',
