@@ -53,6 +53,13 @@ if (runner) {
     check('floooh Z80 matches the pinned SingleStepTests retire vector',
         report?.oracleVector === '3E 0000' && report?.oracleTicks === 7 && report?.oracleMatch === true,
         report ? JSON.stringify(report) : 'no report');
+    check('floooh Z80 WAIT stretching and NMI entry are directly observed',
+        report?.waitStretched === true && report?.nmiStackWrite === true,
+        report ? JSON.stringify(report) : 'no report');
+    check('floooh Z80 publishes bounded cost receipts',
+        Number.isSafeInteger(report?.checkpointBytes) && report.checkpointBytes > 65536 &&
+        Number.isSafeInteger(report?.ticksPerSecond) && report.ticksPerSecond > 0,
+        report ? `${report.checkpointBytes} checkpoint bytes; ${report.ticksPerSecond} ticks/s` : 'no report');
 } else {
     check('floooh Z80 native runner supplied', false, 'Z80_QUALIFICATION_RUNNER is required');
 }

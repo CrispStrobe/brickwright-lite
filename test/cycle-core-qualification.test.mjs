@@ -27,6 +27,8 @@ test('heavy qualification is hosted, bounded, fail-closed and retains evidence',
     assert.match(qualifier, /non-empty recorded control activity/);
     assert.match(qualifier, /HALT and interrupt acknowledge are observable cycle boundaries/);
     assert.match(qualifier, /matches the pinned SingleStepTests retire vector/);
+    assert.match(qualifier, /WAIT stretching and NMI entry are directly observed/);
+    assert.match(qualifier, /publishes bounded cost receipts/);
     assert.match(qualifier, /JSMoo W65C02 promotion decision matches replay evidence/);
     assert.match(qualifier, /JSMoo W65C02 emits non-empty bus activity/);
 });

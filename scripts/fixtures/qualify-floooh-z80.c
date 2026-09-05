@@ -1,10 +1,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #define CHIPS_IMPL
-#define CHIPS_ASSERT(c) do { if (!(c)) return 90; } while (0)
+#define CHIPS_ASSERT(c) do { if (!(c)) abort(); } while (0)
 #include "z80.h"
 
 typedef struct {
@@ -70,6 +72,52 @@ static bool single_step_ld_a(unsigned* ticks_out) {
         m.cpu.hl2 == 63694 && m.cpu.im == 2 && !m.cpu.iff1 && !m.cpu.iff2;
 }
 
+static bool wait_stretches_one_bus_cycle(void) {
+    machine_t baseline;
+    memset(&baseline, 0, sizeof(baseline));
+    baseline.mem[0] = 0x00;
+    baseline.pins = z80_init(&baseline.cpu);
+    const uint64_t request = service(&baseline);
+    if ((request & (Z80_MREQ | Z80_RD)) != (Z80_MREQ | Z80_RD)) return false;
+    if (baseline.cpu.step != Z80_M1_T2) return false;
+    machine_t held;
+    memcpy(&held, &baseline, sizeof(held));
+    const uint16_t held_step = held.cpu.step;
+    bool state_held = true;
+    for (int i = 0; i < 3; i++) {
+        held.pins |= Z80_WAIT;
+        service(&held);
+        state_held = state_held && held.cpu.step == held_step &&
+            held.cpu.pc == baseline.cpu.pc && held.cpu.r == baseline.cpu.r;
+    }
+    held.pins &= ~Z80_WAIT;
+    for (int i = 0; i < 8; i++) {
+        service(&baseline);
+        service(&held);
+    }
+    return state_held && memcmp(&held.cpu, &baseline.cpu, sizeof(z80_t)) == 0 &&
+        (held.pins & ~Z80_WAIT) == (baseline.pins & ~Z80_WAIT) &&
+        memcmp(held.mem, baseline.mem, sizeof(held.mem)) == 0;
+}
+
+static bool nmi_entry_writes_the_stack(void) {
+    machine_t m;
+    memset(&m, 0, sizeof(m));
+    m.mem[0] = 0x00;
+    m.mem[0x0066] = 0x00;
+    m.pins = z80_init(&m.cpu);
+    m.cpu.sp = 0xfffe;
+    bool stack_write = false;
+    for (int tick = 0; tick < 64; tick++) {
+        if (tick == 8) m.pins |= Z80_NMI;
+        if (tick == 9) m.pins &= ~Z80_NMI;
+        const uint64_t pins = service(&m);
+        if ((pins & (Z80_MREQ | Z80_WR)) == (Z80_MREQ | Z80_WR) &&
+            Z80_GET_ADDR(pins) >= 0xfffc) stack_write = true;
+    }
+    return stack_write;
+}
+
 int main(void) {
     machine_t m;
     memset(&m, 0, sizeof(m));
@@ -116,13 +164,31 @@ int main(void) {
     }
     unsigned oracle_ticks = 0;
     const bool oracle_match = single_step_ld_a(&oracle_ticks);
+    const bool wait_stretched = wait_stretches_one_bus_cycle();
+    const bool nmi_stack_write = nmi_entry_writes_the_stack();
+    machine_t benchmark;
+    memset(&benchmark, 0, sizeof(benchmark));
+    benchmark.pins = z80_init(&benchmark.cpu);
+    const clock_t started = clock();
+    unsigned benchmark_controls = 0;
+    const uint64_t benchmark_hash = run(&benchmark, 200000, &benchmark_controls);
+    const clock_t ended = clock();
+    const double seconds = (double)(ended - started) / (double)CLOCKS_PER_SEC;
+    const unsigned long long ticks_per_second = seconds > 0.0
+        ? (unsigned long long)(200000.0 / seconds) : 0;
     printf("{\"schema\":1,\"ticks\":48,\"traceHash\":\"%016llx\","
            "\"snapshotReplay\":%s,\"snapshotPoints\":%u,\"memory8000\":%u,"
            "\"controlMask\":%u,\"haltSeen\":%s,\"interruptAcknowledgeSeen\":%s,"
-           "\"oracleVector\":\"3E 0000\",\"oracleTicks\":%u,\"oracleMatch\":%s}\n",
+           "\"waitStretched\":%s,\"nmiStackWrite\":%s,"
+           "\"oracleVector\":\"3E 0000\",\"oracleTicks\":%u,\"oracleMatch\":%s,"
+           "\"checkpointBytes\":%llu,\"benchmarkTicks\":200000,\"benchmarkHash\":\"%016llx\","
+           "\"ticksPerSecond\":%llu}\n",
         (unsigned long long)first, equal ? "true" : "false", snapshot_points,
         m.mem[0x8000], controls, halt_seen ? "true" : "false", int_ack_seen ? "true" : "false",
-        oracle_ticks, oracle_match ? "true" : "false");
+        wait_stretched ? "true" : "false", nmi_stack_write ? "true" : "false",
+        oracle_ticks, oracle_match ? "true" : "false", (unsigned long long)sizeof(machine_t),
+        (unsigned long long)benchmark_hash, ticks_per_second);
     return equal && snapshot_points == 42 && m.mem[0x8000] == 0x2a && (controls & 15) == 15 &&
-        halt_seen && int_ack_seen && oracle_match ? 0 : 1;
+        halt_seen && int_ack_seen && wait_stretched && nmi_stack_write && oracle_match &&
+        ticks_per_second > 0 ? 0 : 1;
 }
