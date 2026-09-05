@@ -109,7 +109,30 @@ export function buildI8086CapabilityReport() {
         ['OPL2', 'Pitch and envelope-shape target, not chip-identical timbre', 'overlay/scratch-gui/src/lib/bw-board/ym3812.js', /PITCH AND ENVELOPE SHAPE, not timbre/],
         ['Sound Blaster', 'SB 1.x/2.0 8-bit mono subset; no SB16, mixer, or ADC', 'overlay/scratch-gui/src/lib/bw-board/sb-dsp.js', /NOT a 16-bit SB16/]
     ];
-    for (const [, , file, anchor] of limitations) capture(read(file), anchor, `${file} accuracy boundary`);
+    // A missing accuracy anchor has TWO opposite causes and they want opposite
+    // responses, so they must not share a sentence. On 2026-09-05 the 8254 anchor
+    // /NO MODES 1 OR 5/ stopped matching because modes 1 and 5 had been
+    // IMPLEMENTED -- the limitation was lifted -- and the report said "evidence
+    // disappeared", which reads as a capability being lost. A reader who trusts
+    // that wording goes hunting a regression that is actually an improvement.
+    // A fixed explanation attached to a variable outcome is the defect this
+    // repository keeps finding; here it is in our own generator.
+    for (const [, , file, anchor] of limitations) {
+        const text = read(file);
+        if (anchor.test(text)) continue;
+        // A dated "added"/"implemented" line is the file saying a limit moved.
+        const lifted = text.match(/\b(?:added|implemented|modelled)\s+\d{4}-\d{2}-\d{2}/i);
+        if (lifted) {
+            throw new Error(`8086 capability boundary MOVED, not lost: ${file} no longer matches `
+                + `${anchor} and records "${lifted[0]}". A limitation was LIFTED. Update this row's `
+                + `text and re-anchor it on a limitation that is still true — a doc update, not a `
+                + `regression.`);
+        }
+        throw new Error(`8086 capability evidence disappeared: ${file} accuracy boundary. `
+            + `${anchor} no longer matches and nothing in the file records a capability being `
+            + `added, so the boundary was REMOVED rather than moved. Read the file before `
+            + `touching this row.`);
+    }
 
     const rows = devices.map(({symbol, file}) => `| ${wanted.get(symbol)} | \`${file}\` | shipped in \`I8086Machine\` |`).join('\n');
     const tests = testGroups.map(({claim, file, sites}) => `| ${claim} | \`${file}\` | ${sites} declared test site${sites === 1 ? '' : 's'} |`).join('\n');
