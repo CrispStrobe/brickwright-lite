@@ -5,10 +5,7 @@ import bindAll from 'lodash.bindall';
 import {FormattedMessage} from 'react-intl';
 
 import styles from './monitor.css';
-// Import the one widget we use instead of react-virtualized's package barrel.
-// The barrel re-exports Table, Masonry, Collection and every other widget,
-// which makes webpack retain the entire package for an ordinary empty stage.
-import List from 'react-virtualized/dist/es/List';
+import {List} from 'react-virtualized';
 
 class ListMonitorScroller extends React.Component {
     constructor (props) {

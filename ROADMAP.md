@@ -1031,13 +1031,13 @@ Next tasks, in order:
     6,543,080 pre-Circuit bytes, 356,460 below P10. First Costume is 379.7 ms
     with one 61 ms task, real Matrix state and a green vector/bitmap
     draw/save/reload round trip, passing every 449.075 ms / 1 s / 100 ms limit.
-12. **Active.** Replace the sole `react-virtualized` barrel import with its
-    direct ES `List` entry. The barrel makes 350,770 source bytes initial across
-    66 modules although list monitors use only List/Grid. Hosted ownership must
-    cap the retained initial closure at 140 KiB, exclude unused Table, Masonry,
-    Collection, MultiGrid and WindowScroller families, and keep long-list
-    scrolling and editing green. Reject below 75 KiB emitted reduction.
-13. **Queued.** Narrow synchronous `scratch-svg-renderer` consumers and load its
+12. **Evaluated and rejected (hosted run `33975427592`).** A direct ES `List`
+    entry reduced initial `react-virtualized` ownership from 350,770 to 119,874
+    source bytes and excluded all unused widget families, but the emitted
+    pre-Circuit payload moved only 6,543,080 → 6,470,989 bytes: 72,091 bytes,
+    below the predeclared 75 KiB floor. It was reverted rather than moving the
+    threshold after measurement. Reconsider only with P14's full deferral.
+13. **Active.** Narrow synchronous `scratch-svg-renderer` consumers and load its
     sanitizer only in the SVG-upload branch. `css-tree` plus `mdn-data` currently
     contribute 572,453 initial source bytes. A named retryable sanitizer asset
     must be absent from default rendering and Costume activation, strip hostile

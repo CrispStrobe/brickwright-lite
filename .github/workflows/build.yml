@@ -757,24 +757,11 @@ jobs:
       - name: Browser gate — the renderer accepts the table the arrays blocks describe
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-arrays-table-display.mjs
-      # P12 narrows react-virtualized to its List entry point. Source and bundle
-      # topology checks prove the import boundary; this proves the retained
-      # widget can still reach and mutate rows outside its initial DOM window.
-      - name: Browser gate — a 1,000-row Scratch list stays virtualized and editable
-        id: list_virtualization
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
-        run: PROOF_URL=http://localhost:8617/ node scripts/verify-list-monitor-virtualization.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always() && steps.playwright.outcome == 'success'
         with:
           name: arrays-table-display-proof
           path: artifacts/arrays-table-display/*
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.list_virtualization.outcome != 'skipped'
-        with:
-          name: list-monitor-virtualization-proof
-          path: artifacts/list-monitor-virtualization/*
-          if-no-files-found: error
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always() && steps.playwright.outcome == 'success'
         with:

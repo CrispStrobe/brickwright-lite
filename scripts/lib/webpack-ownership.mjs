@@ -34,26 +34,6 @@ const isLazyPaintEditorModule = name => {
     return /\/node_modules\/(?:scratch-paint|@scratch\/paper)\//.test(normalized);
 };
 
-const reactVirtualizedFamily = name => {
-    const normalized = stripLoaders(name);
-    const match = normalized.match(/\/node_modules\/react-virtualized\/dist\/es\/([^/]+)/);
-    return match ? match[1] : null;
-};
-
-const unusedReactVirtualizedFamilies = new Set([
-    'ArrowKeyStepper',
-    'AutoSizer',
-    'CellMeasurer',
-    'Collection',
-    'ColumnSizer',
-    'InfiniteLoader',
-    'Masonry',
-    'MultiGrid',
-    'ScrollSync',
-    'Table',
-    'WindowScroller'
-]);
-
 export const forbiddenDosModuleReason = name => {
     const normalized = stripLoaders(name);
     if (/(?:^|\/)(?:avr8js|avr-chips|emu8051|rp2040js?|bbc-z80|z80|mos6502|m6502|w65c02|stm32|arm-thumb|riscv|labwired)(?:[-./]|$)/i
@@ -105,11 +85,6 @@ export const summarizeWebpackOwnership = input => {
     const lazyPaintChunks = chunks.filter(chunk => lazyPaintIds.has(String(chunk.id)));
     const lazyPaintAssets = assets.filter(asset =>
         /\.js$/.test(asset.name) && (asset.chunks || []).some(id => lazyPaintIds.has(String(id))));
-    const initialReactVirtualizedModules = initialModules.filter(module =>
-        /\/node_modules\/react-virtualized\//.test(stripLoaders(module.name || module.identifier)));
-    const initialReactVirtualizedFamilies = [...new Set(initialReactVirtualizedModules
-        .map(module => reactVirtualizedFamily(module.name || module.identifier))
-        .filter(Boolean))].sort();
     const namedPaintStage = name => {
         const stageChunks = chunks.filter(chunk => (chunk.names || []).includes(name));
         const stageIds = new Set(stageChunks.map(chunk => String(chunk.id)));
@@ -157,13 +132,6 @@ export const summarizeWebpackOwnership = input => {
             initial: lazyPaintChunks.some(chunk => chunk.initial),
             files: [...new Set(lazyPaintAssets.map(asset => asset.name))].sort(),
             emittedBytes: lazyPaintAssets.reduce((sum, asset) => sum + (Number(asset.size) || 0), 0)
-        },
-        initialReactVirtualized: {
-            sourceBytes: initialReactVirtualizedModules.reduce((sum, module) =>
-                sum + (Number(module.size) || 0), 0),
-            families: initialReactVirtualizedFamilies,
-            unusedFamilies: initialReactVirtualizedFamilies.filter(family =>
-                unusedReactVirtualizedFamilies.has(family))
         },
         lazyPaintActivation: {
             reducer: namedPaintStage('paint-reducer'),
@@ -263,27 +231,6 @@ export const assertLazyPaintEditorBoundary = report => {
     if (activation?.editor?.initial) failures.push('paint-editor became an initial chunk');
     if (activation?.reducer?.files?.some(file => activation.editor.files.includes(file))) {
         failures.push('paint reducer and editor resolve to the same emitted JavaScript asset');
-    }
-    return failures;
-};
-
-export const assertReactVirtualizedBoundary = report => {
-    const virtualized = report.initialReactVirtualized;
-    const failures = [];
-    if (!virtualized || virtualized.sourceBytes === 0) {
-        failures.push('the initial react-virtualized List implementation is missing');
-        return failures;
-    }
-    if (!virtualized.families.includes('List')) {
-        failures.push('the initial react-virtualized List implementation is missing');
-    }
-    if (virtualized.sourceBytes > 140 * 1024) {
-        failures.push(`initial react-virtualized ownership exceeds 140 KiB: ` +
-            `${virtualized.sourceBytes} bytes`);
-    }
-    if (virtualized.unusedFamilies.length) {
-        failures.push(`initial react-virtualized contains unused widget families: ` +
-            virtualized.unusedFamilies.join(', '));
     }
     return failures;
 };
