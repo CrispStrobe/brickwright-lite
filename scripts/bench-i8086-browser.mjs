@@ -152,7 +152,11 @@ try {
             sampleEnd
         });
         const probeInstalledAt = raw.milestones.find(mark => mark.name === 'probe-installed')?.at ?? 0;
-        const circuitOpenAt = raw.milestones.find(mark => mark.name === 'circuit-open-request')?.at ?? 0;
+        const circuitOpenMilestone = raw.milestones.find(mark => mark.name === 'circuit-open-request');
+        if (!circuitOpenMilestone) {
+            throw new Error(`${name} #${repetition} lost the pre-Circuit resource boundary`);
+        }
+        const circuitOpenAt = circuitOpenMilestone.at;
         const dosLoadAt = raw.milestones.find(mark => mark.name === 'dos-load-start')?.at ?? 0;
         const runnerRunningAt = raw.milestones.find(mark => mark.name === 'runner-running')?.at ?? sampleStart;
         const dosLoadResources = webpackStats ? auditWebpackResourceWindow(webpackStats, raw.resources, {
@@ -167,6 +171,15 @@ try {
         const dosJourneyResources = webpackStats ? auditWebpackResourceWindow(webpackStats, raw.resources, {
             from: 0,
             to: runnerRunningAt,
+            origin: new URL(url).origin
+        }) : null;
+        // Product gate for the debugger-only Code-tab layout. The existing
+        // milestone is recorded immediately before the Circuit click, so this
+        // reuses the same cold journey and cannot accidentally charge the
+        // designer's intentional post-click load to the deferral verdict.
+        const preCircuitResources = webpackStats ? auditWebpackResourceWindow(webpackStats, raw.resources, {
+            from: 0,
+            to: circuitOpenAt,
             origin: new URL(url).origin
         }) : null;
         const startupAttribution = attributeReactCommits(
@@ -199,6 +212,7 @@ try {
             },
             dosLoadResources,
             dosJourneyResources,
+            preCircuitResources,
             heapBytes: raw.heapBytes,
             userAgent: raw.userAgent,
         };
@@ -206,7 +220,7 @@ try {
         profileResults.push(result);
         await writeFile(resolve(rawDir, `${name}-${String(repetition).padStart(2, '0')}.json`),
             `${JSON.stringify({
-                schema: 'brickwright/i8086-browser-performance-raw/v3',
+                schema: 'brickwright/i8086-browser-performance-raw/v4',
                 url,
                 profile: {name, ...contextOptions, cpuThrottleRate},
                 repetition,
@@ -253,6 +267,20 @@ try {
             console.log(`  cold DOS journey: ${(dosJourneyResources.encodedBodyBytes / 1048576).toFixed(2)} MiB ` +
                 `encoded, ${dosJourneyResources.forbiddenModules.length} unrelated module(s)`);
         }
+        if (preCircuitResources) {
+            const eagerCircuitAssets = preCircuitResources.assets.filter(asset =>
+                /(?:^|\/)bw-(?:board|circuit-ui)\.js$/.test(asset));
+            console.log(`  pre-Circuit: ${(preCircuitResources.encodedBodyBytes / 1048576).toFixed(2)} MiB ` +
+                `encoded, ${eagerCircuitAssets.length} deferred circuit asset(s) fetched early`);
+            if (preCircuitResources.unmatchedAssets.length) {
+                throw new Error(`${name} #${repetition} pre-Circuit window fetched JavaScript absent ` +
+                    `from webpack stats: ${preCircuitResources.unmatchedAssets.join(', ')}`);
+            }
+            if (eagerCircuitAssets.length) {
+                throw new Error(`${name} #${repetition} debugger-only Code layout fetched deferred assets ` +
+                    `before Circuit opened: ${eagerCircuitAssets.join(', ')}`);
+            }
+        }
         for (const [windowName, attribution] of Object.entries(result.reactAttribution)) {
             for (const [id, boundary] of Object.entries(attribution.boundaries)) {
                 if (boundary.attributedCommits + boundary.unattributedCommits !== boundary.commits) {
@@ -276,7 +304,7 @@ try {
     }
 } finally {
     await writeFile(resolve(outDir, 'report.json'), `${JSON.stringify({
-        schema: 'brickwright/i8086-browser-performance/v4', url, repetitions, results, summaries,
+        schema: 'brickwright/i8086-browser-performance/v5', url, repetitions, results, summaries,
     }, null, 2)}\n`);
     await browser.close();
 }

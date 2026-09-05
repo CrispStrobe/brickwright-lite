@@ -4,19 +4,11 @@ import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
 import {normalizeDeviceId, resolveExampleBench} from '../../lib/example-bench.js';
 import {advanceDebugPhase} from '../../lib/bw-debug/debug-phase-transition.js';
+import {shouldLoadCircuitDesigner} from '../../lib/bw-debug/circuit-designer-load-policy.js';
 import {getReactPerformanceProbe, profileReactSubtree} from '../../lib/bw-debug/react-perf-profiler.js';
 import {shouldRefreshDesignerDebugState} from '../../lib/bw-debug/debug-ui-refresh.js';
 import {setProjectTitle} from '../../reducers/project-title';
 import {getIsAnyCreatingNewState} from '../../reducers/project-state';
-
-// Inject the retro-bench bus extractors into the DRC so contention and
-// open-vector errors surface as warnings. This lives here (not in the
-// vendored drc.js) so the vendored file stays identical to upstream.
-import {setExtractors} from '../../lib/bw-circuit-ui/model/drc.js';
-import {extract6502Machine} from '../../lib/bw-board/m6502-extract.js';
-import {extractZ80Machine} from '../../lib/bw-board/z80-extract.js';
-import {extract8086Machine} from '../../lib/bw-board/i8086-extract.js';
-setExtractors({extract6502Machine, extractZ80Machine, extract8086Machine});
 
 const DebugPanel = React.lazy(() =>
     import(/* webpackChunkName: "bw-debug-panel" */ './debug-panel.jsx')
@@ -167,7 +159,7 @@ class CircuitTab extends React.Component {
         const detail = (e && e.detail) || {};
         if (detail.bwReplay) return;
         this._circuitFilePending = detail.action || null;
-        if (this._circuitFilePending) this.load();
+        if (this._circuitFilePending) this.load({explicit: true});
     }
 
     componentDidMount () {
@@ -515,7 +507,11 @@ class CircuitTab extends React.Component {
         // portal turns on — a dock persisted in localStorage, a tab switch, the
         // host appearing after the first render. The host is the stage column
         // while coding, so if it is going to be shown, its content has to exist.
-        if (portalNow && !this.state.Designer && !this.loading &&
+        if (shouldLoadCircuitDesigner({
+            isVisible: this.props.isVisible,
+            portalOn: portalNow,
+            debugDock: this.state.debugDock
+        }) && !this.state.Designer && !this.loading &&
             !this.state.error && !this.state.reloading) {
             this.load();
         }
@@ -733,19 +729,40 @@ class CircuitTab extends React.Component {
         }
     }
 
-    async load () {
+    async load ({explicit = false} = {}) {
         this._markReactUpdate('host:stc-load');
         this.setState({stc: this.readStc()});
         if (this.state.Designer || this.loading) return;
+        if (!shouldLoadCircuitDesigner({
+            explicit,
+            isVisible: this.props.isVisible,
+            portalOn: this._stagePortalOn(),
+            debugDock: this.state.debugDock
+        })) return;
         this.loading = true;
         try {
-            const engine = await import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/index.js');
+            const [engine, m6502, z80, i8086] = await Promise.all([
+                import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/index.js'),
+                import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/m6502-extract.js'),
+                import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/z80-extract.js'),
+                import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/i8086-extract.js')
+            ]);
+            const extract6502Machine = m6502.extract6502Machine;
+            const extractZ80Machine = z80.extractZ80Machine;
+            const extract8086Machine = i8086.extract8086Machine;
             // The device registry has no self-registration: seventeen register*
             // exports and, until 2026-08-10, zero callers outside the engine's
             // own tests — servo/555/h-bridge netlists failed as "unknown kind"
             // with their drivers sitting right there. Register at injection.
             if (typeof engine.registerAllDevices === 'function') engine.registerAllDevices();
             const ui = await import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/index.js');
+            // Inject only once the designer is genuinely needed. Keeping the
+            // DRC and retro extractors at module scope made webpack promote the
+            // board/Circuit UI graph into the cold Code-tab journey even though
+            // right/solo render only DebugPanel at that boundary.
+            if (typeof ui.setExtractors === 'function') {
+                ui.setExtractors({extract6502Machine, extractZ80Machine, extract8086Machine});
+            }
             // Kept so _applyToLiveCircuit can parse a restored bench without a
             // second import. Nothing else in this file needs the model class.
             this._Circuit = ui.Circuit || (ui.default && ui.default.Circuit) || null;
@@ -1033,7 +1050,7 @@ class CircuitTab extends React.Component {
             const example = list.find(item => item.id === journey.exampleId);
             if (!example) throw new Error(
                 `Starter example "${journey.exampleId}" is missing from examples/index.json.`);
-            if (journey.mode !== 'program-only') this.load();
+            if (journey.mode !== 'program-only') this.load({explicit: true});
             const result = journey.mode === 'program-only' ?
                 await this.loadProgramOnlyStarter(example) :
                 await this.loadExample(example, {circuitOnly: journey.mode === 'circuit-only'});
