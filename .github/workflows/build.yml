@@ -998,6 +998,20 @@ jobs:
         timeout-minutes: 3  # measured max 5 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-costume-roundtrip.mjs
+      # P14's eager baseline temporarily adds LIST_MONITOR_EAGER_BASELINE=1.
+      # It runs the same activation/behavior probe and preserves the receipt,
+      # but skips a forced chunk failure an eager build cannot produce.
+      - name: Browser gate — large list body loads on first visible monitor and retries
+        id: list_monitor_lazy
+        timeout-minutes: 3
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: timeout --signal=TERM --kill-after=10s 2m env LIST_MONITOR_EAGER_BASELINE=1 PROOF_URL=http://localhost:8617/ node scripts/verify-list-monitor-lazy.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
+        with:
+          name: list-monitor-lazy-proof
+          path: artifacts/list-monitor-lazy/*
+          if-no-files-found: error
       # The unit suite asserts the table SVG and the mark state as pure values.
       # It cannot see whether the RENDERER accepts that SVG: a skin that fails
       # to parse, or a drawable in a layer group the renderer lacks, throws
