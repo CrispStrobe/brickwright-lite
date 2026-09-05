@@ -314,6 +314,22 @@ fails unless it touched both.
         }
       ]
     }
+  },
+  "lineLevelOnly": {
+    "why": "These files carry forward-ported work that adds no NEW declared identifier -- changed method bodies, extra branches, comments -- so the identifier-based coverage above cannot see them. 458 lines as of 2026-09-05. They are protected by the sync's content-derived guard, but that only runs when someone runs the sync; this inventory is what makes the test suite see them too. Recorded as a SET, not counts, so ordinary edits do not churn it.",
+    "files": [
+      "cortex-m0-machine.js",
+      "debug-session.js",
+      "debug-target-factory.js",
+      "emu8051-debug.js",
+      "i8086-adapter.js",
+      "i8086-debug.js",
+      "i8086.js",
+      "index.js",
+      "m6502-adapter.js",
+      "ne2000.js",
+      "reseat-gate.js"
+    ]
   }
 }
 ```

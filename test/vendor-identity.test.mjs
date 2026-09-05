@@ -178,6 +178,47 @@ test('upstream has not converged on the lite-only work (needs the bw-board tree)
         '  from the tree, not read from the list, so dropping a file from the list does\n' +
         '  not drop the requirement -- only removing the work does.\n');
     t.diagnostic(`derived: ${shouldCover.length} file(s) carry lite-only work, all covered`);
+
+    // THE OTHER 458 LINES. The coverage above is identifier-based, so it sees
+    // only files that declare something new. A file whose forward-ported work
+    // is entirely in changed method bodies, extra branches or comments is
+    // INVISIBLE to it -- and eleven files are in exactly that state, including
+    // i8086-debug.js (190 lines) and emu8051-debug.js (170).
+    //
+    // They are protected by the sync's content-derived guard. But that guard
+    // only runs when someone runs the sync, and the whole lesson of this file
+    // is that "protected by something that runs elsewhere" is how the fifteen
+    // files were lost. This inventory is what makes the SUITE see them.
+    //
+    // Recorded as a SET, not counts: line counts churn on every ordinary edit
+    // and a gate that cries wolf gets deleted. Membership changes rarely and
+    // means something both ways.
+    const lineLost = (cur, next) => {
+        const incoming = new Set(next.split('\n').map(l => l.trim()));
+        return cur.split('\n').map(l => l.trim())
+            .filter(l => l && l !== '}' && l !== '};' && l !== '{' && !incoming.has(l));
+    };
+    const namedFiles = new Set(Object.keys(spec.files));
+    const actual = [];
+    for (const f of fs.readdirSync(vendorRoot).filter(x => x.endsWith('.js')).sort()) {
+        const u = path.join(srcDir, f);
+        if (!fs.existsSync(u) || namedFiles.has(f)) continue;
+        if (lineLost(fs.readFileSync(path.join(vendorRoot, f), 'utf8'),
+            fs.readFileSync(u, 'utf8')).length) actual.push(f);
+    }
+    const recorded = spec.lineLevelOnly.files;
+    const appeared = actual.filter(f => !recorded.includes(f));
+    const gone = recorded.filter(f => !actual.includes(f));
+    assert.deepEqual({appeared, gone}, {appeared: [], gone: []},
+        '\n  THE INVENTORY OF UNDOCUMENTED FORWARD-PORTED WORK HAS MOVED.\n\n' +
+        (appeared.length ? `  APPEARED (new divergence nobody has written up): ${appeared.join(', ')}\n` +
+            '    A sync now deletes work in these and no entry says what it costs. Either\n' +
+            '    give the file a named allow-list entry, or add it here if the work is\n' +
+            '    genuinely just body-level and you accept the coarse guard.\n' : '') +
+        (gone.length ? `  GONE (no longer diverged): ${gone.join(', ')}\n` +
+            '    Upstreamed, or the work was deleted. Remove it from lineLevelOnly.files --\n' +
+            '    an inventory that only fails one way becomes a graveyard of stale entries.\n' : ''));
+    t.diagnostic(`inventory: ${actual.length} file(s) with line-level-only divergence, as recorded`);
     for (const [file, cfg] of coveredFiles(spec)) {
     const found = path.join(srcDir, file);
     if (!fs.existsSync(found)) {
