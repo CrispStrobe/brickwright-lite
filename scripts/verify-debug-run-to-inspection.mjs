@@ -81,7 +81,10 @@ try {
     await page.getByTestId('bw-device-select').selectOption('z80');
     await page.getByRole('tab', {name: /Circuit/}).click();
     const panel = page.locator('[data-debug-panel]').first();
-    await panel.waitFor({state: 'visible', timeout: 30000});
+    // Synchronisation before use: the panel is clicked at Pause, [data-debug-record]
+    // and Under the hood below. The detector looks 180 chars ahead for a use verb and
+    // finds the waitForFunction block instead, which pushes that first click out of range.
+    await panel.waitFor({state: 'visible', timeout: 30000}); // gate-shapes-allow: used by the clicks below
     await page.waitForFunction(() => document.querySelector('[data-debug-panel]')
         ?.getAttribute('data-debug-phase') === 'running', null, {timeout: 30000});
 
@@ -91,7 +94,9 @@ try {
     await panel.locator('[data-debug-record]').click();
     await panel.getByRole('button', {name: /Under the hood/}).click();
     const runTo = panel.locator('[data-run-to-address]');
-    await runTo.waitFor({state: 'visible', timeout: 10000});
+    // Synchronisation before runTo.isDisabled() on the next line. `isDisabled` is not in
+    // the detector's use-verb list, so a query that IS a use reads as no use at all.
+    await runTo.waitFor({state: 'visible', timeout: 10000}); // gate-shapes-allow: used by isDisabled() below
     check('run-to is capability-gated and enabled on the attached target', !(await runTo.isDisabled()));
 
     let promptSeen = '';

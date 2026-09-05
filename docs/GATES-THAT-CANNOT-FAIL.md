@@ -1132,23 +1132,30 @@ never that it left. Both of today's hits were correct code:
   synchronisation; `device.selectOption('i8086')` uses the same locator three
   lines below. The rule saw a `mark()` timestamp in between. Triaged by its
   author with a marker at the site.
-- `verify-debug-run-to-inspection.mjs:85` — two `page.waitForFunction` calls on
-  `data-debug-phase`, first `'running'` then `'paused'`. **An attribute holds one
-  value at a time, so asserting `paused` is exactly the proof that `running` is
-  gone** — the thing the rule says is missing is what the next line does.
+- `verify-debug-run-to-inspection.mjs:84` and `:94` — both are synchronisation
+  before a genuine use, and the detector misses each for a DIFFERENT reason.
+  Line 84 waits for the debug panel, which is then clicked three times; the
+  180-character look-ahead lands in the `waitForFunction` block between them and
+  never reaches the click. Line 94 waits for the run-to control and the very next
+  line calls `runTo.isDisabled()` — but `isDisabled` is not in the use-verb list
+  (`click`, `fill`, `press`, `type`, `check`, `selectOption`, `count`, `evaluate`,
+  `textContent`, `innerText`, `screenshot`, `boundingBox`), so **a query that IS a
+  use reads as no use at all.**
 
-Two mechanisms, and they are worth separating because only one is a tuning
-question:
+Two mechanisms, and neither is a tuning question in the usual sense. The
+180-character window is a fixed window searched for a construct — the shape this
+file catalogues — and widening it is how a detector stops biting, as its author
+has said. The use-verb list is an *allowlist of what counts as using a locator*,
+and every predicate query absent from it (`isDisabled`, `isChecked`, `isEditable`,
+`getAttribute`, `inputValue`) turns a correct gate into a suspect.
 
-1. **A fixed 180-character window** decides whether an action follows. Widening
-   it is not the fix — a window searched for a construct is the shape this file
-   catalogues, and its author has said, rightly, that widening is how a detector
-   stops biting.
-2. **`waitForFunction` is not an appearance query.** `waitFor`/`toBeVisible`/
-   `count()` ask whether a thing is on the page; `waitForFunction` evaluates a
-   predicate, and a predicate over a single-valued attribute is a *transition*
-   assertion. Matching it under an appearance rule is a category error in the
-   rule, not a near-miss in the tuning.
+**A correction, because I got this wrong first.** I originally recorded the second
+case as `waitForFunction` being matched as an appearance query when it is a
+predicate. That reading was tidy and false: the flagged construct is
+`panel.waitFor({state:'visible'})` at line 84, not the `waitForFunction` at all. I
+had read the audit's line number as pointing at the code I had already decided
+was interesting. The real mechanisms are duller and more useful than the one I
+invented.
 
 **The point is not that the detector is bad.** It found four real shapes this
 week. It is that a rule with a 100% false-positive rate on its last two hits
