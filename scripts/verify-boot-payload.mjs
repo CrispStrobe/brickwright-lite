@@ -85,7 +85,12 @@ const PRESENT = [
 /** Present nowhere in the build: the polyfill is aliased away, not moved. */
 const GONE = [
     {what: 'text-encoding polyfill (encoding-indexes)', marker: '"ibm866":[',
-        why: "the text-encoding alias in overlay/scratch-gui/webpack.config.js"}
+        why: "the text-encoding alias in overlay/scratch-gui/webpack.config.js"},
+    // `IntlPolyfill` is the intl package's own global; react-intl's locale data
+    // uses `addLocaleData` without the underscore prefix, so this does not
+    // match the messages we do ship.
+    {what: 'Intl polyfill (the intl package)', marker: 'IntlPolyfill',
+        why: "overlay/scratch-gui/src/playground/index.jsx no longer imports 'intl'; every browserslist target has Intl"}
 ];
 
 const failures = [];
@@ -157,7 +162,7 @@ for (const m of GONE) {
         ...chunkFiles.map(f => ({p: join(chunksDir, f), src: readFileSync(join(chunksDir, f), 'utf8')}))]
         .filter(({src}) => has(src, m)).map(({p}) => basename(p));
     check(`${m.what} is not in the build at all`, anywhere.length === 0,
-        anywhere.length ? `${anywhere.join(', ')} — check ${m.why}` : 'no script carries the legacy encoding tables');
+        anywhere.length ? `${anywhere.join(', ')} — check ${m.why}` : `no script carries ${JSON.stringify(m.marker)}`);
 }
 
 if (failures.length) {
