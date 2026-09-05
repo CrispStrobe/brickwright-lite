@@ -237,22 +237,31 @@ for (const rel of FILES) {
     const current = await readFile(out, 'utf8').catch(() => null);
     if (current === next) { console.log(`  ok    ${path.basename(rel)}`); continue; }
     stale++;
-    // Refuse BEFORE writing, not after. `current` is what is here now and
-    // `next` is what upstream would put here; an entry that holds for the
-    // first and not the second is work this write destroys.
-    if (allowList && path.basename(rel) === allowList.file && current !== null) {
+    // ORDER MATTERS, AND I GOT IT WRONG FIRST. The coarse guard ran first and
+    // `continue`d, so the named tier never executed and its WHAT BREAKS line --
+    // the entire reason that tier exists -- never printed. A refusal that says
+    // "170 lines" tells you to stop; one that says "you save, reload, and the
+    // machine comes back subtly wrong" tells you what you are about to lose.
+    // Losing the second to a `continue` made the coarse guard strictly worse
+    // than the thing it was generalising.
+    //
+    // So: named first, for the files someone has written up. Coarse second,
+    // for everything else -- it still cannot be bypassed by an undocumented
+    // file, because a file the named tier does not cover falls straight
+    // through to it.
+    if (!check && !force && allowList && path.basename(rel) === allowList.file && current !== null) {
         const lost = allowList.entries.filter(d => {
             const re = new RegExp(d.contains);
             return re.test(current) && !re.test(next);
         });
         if (lost.length) {
             wouldDelete.push({file: path.basename(rel), lost});
-            console.log(`  REFUSED ${path.basename(rel)} (would delete ${lost.length} allow-listed divergence(s))`);
+            console.log(`  REFUSED ${path.basename(rel)} (would delete ${lost.length} named divergence(s) -- see below)`);
             continue;
         }
     }
-    // Content-derived guard, for every file. Runs before the named allow-list
-    // so the coarse protection cannot be bypassed by an undocumented file.
+
+    // Content-derived guard, for every file the named tier did not cover.
     if (!check && !force && current !== null) {
         const lost = linesLostBy(current, next);
         if (lost.length) {
@@ -263,6 +272,20 @@ for (const rel of FILES) {
     }
     if (check) console.log(`  DIFFERS ${path.basename(rel)}`);
     else { await writeFile(out, next); console.log(`  wrote ${path.basename(rel)}`); }
+}
+
+if (wouldDelete.length) {
+    console.error('\nREFUSED TO OVERWRITE forward-ported work:\n');
+    for (const {file, lost} of wouldDelete) {
+        for (const d of lost) console.error(`  ${file}: ${d.id}\n      WHAT BREAKS: ${d.falsifiable}\n      ${d.why}\n`);
+    }
+    console.error('  These are recorded in docs/VENDOR-DIVERGENCE-I8086-MACHINE.md as work');
+    console.error('  that lives here and not upstream. Upstream does not have them, so this');
+    console.error('  sync would delete them -- and the machine would still construct and no');
+    console.error('  other test would fail, which is exactly why this refuses rather than');
+    console.error('  warns. Upstream the work, or graft the upstream change by hand and');
+    console.error('  leave the entry in place. If the work is genuinely obsolete, delete its');
+    console.error('  entry from the allow-list in the same commit that drops it.');
 }
 
 if (wouldTruncate.length) {
@@ -279,23 +302,9 @@ if (wouldTruncate.length) {
     console.error('  true for files nobody has documented. If upstream genuinely supersedes');
     console.error('  this work, --force. Check the direction first: the ten differences');
     console.error('  sampled on 2026-09-04 were ALL forward-ported work, none were stale.');
-    process.exit(1);
 }
 
-if (wouldDelete.length) {
-    console.error('\nREFUSED TO OVERWRITE forward-ported work:\n');
-    for (const {file, lost} of wouldDelete) {
-        for (const d of lost) console.error(`  ${file}: ${d.id}\n      ${d.why}\n`);
-    }
-    console.error('  These are recorded in docs/VENDOR-DIVERGENCE-I8086-MACHINE.md as work');
-    console.error('  that lives here and not upstream. Upstream does not have them, so this');
-    console.error('  sync would delete them -- and the machine would still construct and no');
-    console.error('  other test would fail, which is exactly why this refuses rather than');
-    console.error('  warns. Upstream the work, or graft the upstream change by hand and');
-    console.error('  leave the entry in place. If the work is genuinely obsolete, delete its');
-    console.error('  entry from the allow-list in the same commit that drops it.');
-    process.exit(1);
-}
+if (wouldDelete.length || wouldTruncate.length) process.exit(1);
 
 // A vendored engine that quietly grew a dependency would break the bundle at build time,
 // so fail loudly here instead.

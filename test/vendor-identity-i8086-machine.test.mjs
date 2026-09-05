@@ -42,6 +42,19 @@ test('the vendor allow-list is non-empty and covers both dual-tracked copies', (
         `allow-list has ${spec.liteOnly.length} lite-only entries; expected at least 8. ` +
         'If work was legitimately upstreamed, lower this floor in the same commit that ' +
         'removes the entry -- so the shrink is a decision someone made, not a silent drift.');
+    // The kerotakis lane's rule, enforced rather than suggested: every entry
+    // must carry the one sentence a non-programmer could falsify. If nobody
+    // can write that sentence for an entry, the entry is protecting something
+    // whose loss has no observable consequence -- which is either not worth
+    // protecting or not understood, and both want finding out now rather than
+    // at the next sync.
+    for (const d of spec.liteOnly) {
+        assert.ok(d.falsifiable && d.falsifiable.length > 30,
+            `allow-list entry '${d.id}' has no 'falsifiable' sentence. Write what BREAKS ` +
+            'in terms a non-programmer could check -- not what the diff removes. ' +
+            'If you cannot, the entry may be protecting something with no observable effect.');
+    }
+
     assert.equal(spec.vendored.length, 2,
         'overlay/ and packages/ are both tracked in this repo; both must be checked. ' +
         'I created a divergence between them once by not force-adding an ignored path.');
@@ -109,10 +122,26 @@ test('upstream has not converged on the lite-only work (needs the bw-board tree)
     // layer out: the tier would report "upstream has not converged" having
     // never read upstream. scripts/audit-gate-shapes.mjs flagged the discovery
     // below as AMBIENT-BINDING and was right to -- this is the hole it meant.
+    //
+    // THE PROPERTIES BELOW ARE IDENTITY, NOT FEATURES, and that distinction was
+    // the kerotakis lane's prediction about where the next one of these hides:
+    // "something that proves the corpus by a property the corpus can lack for
+    // an unrelated reason." My first version asserted upstream contains
+    // `ne2000`. Upstream is entitled to drop the NE2000 -- that is a product
+    // decision, not a corruption -- and when it did, this check would go red
+    // for the wrong reason, someone would read the message, see it was a false
+    // alarm, and DELETE THE CHECK. A corpus proof that cries wolf is a corpus
+    // proof with a short life.
+    //
+    // So: prove the file is the module we mean, by things it cannot stop being
+    // while still being that module. A file without the class declaration and
+    // its export is not a changed i8086-machine.js; it is a different or
+    // damaged file. Features are checked separately, in graftedFromUpstream,
+    // where a legitimate removal SHOULD be visible as a decision.
     for (const [what, re] of [
-        ['the machine class', /class I8086Machine/],
-        ['the chip register table', /REGS/],
-        ['the grafted NE2000 wiring', /ne2000/]
+        ['the machine class declaration', /class I8086Machine/],
+        ['the module export of that class', /export\s+(?:default\s+)?(?:class\s+I8086Machine|\{[^}]*I8086Machine)/],
+        ['a plausible amount of source (>200 lines)', /(?:.*\n){200}/]
     ]) {
         assert.match(up, re, `upstream file at ${found} does not contain ${what}. ` +
             'Refusing to conclude anything from it: every check below is a NEGATIVE ' +

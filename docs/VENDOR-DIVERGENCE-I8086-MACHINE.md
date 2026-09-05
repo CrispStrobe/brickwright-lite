@@ -86,6 +86,15 @@ fails unless it touched both.
 
 - `id` — stable name, quoted by the failure message.
 - `why` — why lite has this and upstream does not. Read it before deleting.
+- `falsifiable` — **the one sentence a non-programmer could check.** The
+  kerotakis lane's rule, and the counter to "green to green, nobody thanks
+  you": state the defect in terms of the WORLD, not the diff. "The discount
+  was applied per-call" is unrewarding; "the bench says the volcano gets
+  warm" is a thing a person can disprove with a finger on the beaker. Same
+  change, and only one of them is a story. **If you cannot write this
+  sentence, the entry is probably ambient and you have found another gate
+  that cannot fail.** If you can, you have both the bug report and the test
+  name.
 - `contains` — a regex asserted to MATCH the vendored copy and NOT MATCH
   upstream. Containment-style, not a character window: see
   GATES-THAT-CANNOT-FAIL.md on why proximity is not governance.
@@ -112,41 +121,49 @@ fails unless it touched both.
   "liteOnly": [
     {
       "id": "display-revision-token",
+      "falsifiable": "The screen redraws on every frame even when nothing on it changed, so the fan spins up on a program that is just sitting at a prompt.",
       "why": "Host-renderer optimisation: a monotonic token bumped on visible VRAM and CRTC writes so the renderer can skip repaints. Never upstreamed. A sync deletes it and NOTHING FAILS -- the machine constructs, the screen just repaints every frame until someone profiles.",
       "contains": "this\\.displayRevision = 0;"
     },
     {
       "id": "display-revision-bump-vram",
+      "falsifiable": "Same as above: the picture is right, the machine is just working far harder than it needs to.",
       "why": "The bump must stay GOVERNED by the VRAM address test. Hoisting it out bumps on every write and destroys the optimisation while still reading as present.",
       "contains": "if \\(addr >= 0xa0000 && addr <= 0xbffff\\) \\{?[^}]*?this\\.displayRevision = \\(this\\.displayRevision \\+ 1\\)"
     },
     {
       "id": "display-revision-bump-crtc",
+      "falsifiable": "Switching video modes does not refresh the screen, or refreshes it constantly.",
       "why": "Same, governed by the CRTC port range.",
       "contains": "if \\(port >= 0x3b0 && port <= 0x3df\\) \\{?[^}]*?this\\.displayRevision = \\(this\\.displayRevision \\+ 1\\)"
     },
     {
       "id": "display-revision-bump-block",
+      "falsifiable": "Loading an image into video memory does not make it appear until something else happens to trigger a repaint.",
       "why": "Same, governed by the block-write overlap test.",
       "contains": "if \\(base <= 0xbffff && base \\+ bytes\\.length > 0xa0000\\) \\{?[^}]*?this\\.displayRevision = \\(this\\.displayRevision \\+ 1\\)"
     },
     {
       "id": "on-instruction-hook",
+      "falsifiable": "The debugger will not single-step: you press Step and nothing moves.",
       "why": "Per-instruction hook carrying pcBefore/pcAfter and the cycle delta. The debugger's single-step and the trace view are both built on it.",
       "contains": "if \\(this\\.hooks\\.onInstruction\\) \\{?[^}]*?pcBefore"
     },
     {
       "id": "checkpoint-topology-snapshot",
+      "falsifiable": "You save a program on one board, load it on a board wired differently, and it runs as nonsense instead of refusing.",
       "why": "A checkpoint restored into a DIFFERENT machine topology is silent corruption -- same registers, different wiring. The snapshot makes restore refuse rather than half-work.",
       "contains": "_snapshotTopology\\(\\)"
     },
     {
       "id": "checkpoint-refuses-incomplete-state",
+      "falsifiable": "You save, reload, and the machine comes back subtly wrong -- a sound still playing, a chip mid-transfer -- instead of telling you it could not save.",
       "why": "canCheckpoint() refuses rather than saving a machine whose components lack a complete state API. THIS IS THE ABSENT-HARDWARE RULE APPLIED TO SAVE STATE: a partial checkpoint restores to a plausible-looking wrong machine, which is worse than no checkpoint.",
       "contains": "canCheckpoint\\(\\)"
     },
     {
       "id": "checkpoint-component-state-api",
+      "falsifiable": "A saved file changes by itself after you save it, because it shares memory with the running machine.",
       "why": "getState/saveState dual-API bridge with deep clone, so a checkpoint does not alias live device buffers.",
       "contains": "static _cloneCheckpointValue\\(value\\)"
     }
