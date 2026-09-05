@@ -309,12 +309,21 @@ module by module, over half of the vendor chunk was three things no first paint 
   `extensions: ["spikeprime"]` — a lazy id — without anyone having arranged for it to.
 - `overlay/scratch-gui/src/lib/lazy-render-fonts.js` + a webpack alias: `scratch-render-fonts`
   resolves to a same-shaped shim; the real module is reachable only as
-  `scratch-render-fonts-base64` and arrives as `chunks/render-fonts.<hash>.js`. The ordering
-  guard that made the old design safe is KEPT, not replaced: the overlaid
-  `lib/font-loader-hoc.jsx` calls `loadFonts()` first and only then gathers
-  `document.fonts`, so `fontsLoaded` still means "the faces are in the document", and
-  `vm-manager-hoc` still refuses to load a project before that. A failed chunk fetch degrades
-  to fallback faces instead of a page that never loads.
+  `scratch-render-fonts-base64` and arrives as `chunks/render-fonts.<hash>.js`. First version
+  (2026-09-05 morning): `font-loader-hoc` fetched the chunk at boot and `fontsLoaded` waited for
+  it, so the bytes left the entry script but not the first load — 1.34 MB on every visit for
+  faces that only an SVG WITH TEXT uses. Second version (same day): nothing fetches them at boot.
+  The three consumers wait for them themselves, and only when the SVG in hand has a font-family:
+  scratch-render's `SVGSkin.setSVG` (patched by `scripts/apply-render-overlay.mjs`, the third
+  post-install overlay beside vm and paint) defers a text costume until the faces exist so its
+  @font-face is inlined as before; `lib/get-costume-url.js` (thumbnails) returns the plain SVG
+  uncached until then; `containers/costume-tab.jsx` loads them when the costumes tab opens for the
+  paint editor's text tool. `fontsLoaded` flips on document ready and `vm-manager-hoc` is
+  unchanged. A chunk that never arrives degrades to fallback faces, not to no costume.
+  `scripts/verify-text-costume-fonts.mjs` asserts both halves (no fetch on a fresh load; a text
+  costume rasterised with its @font-face once one is loaded), and `verify-boot-payload` asserts
+  the SVGSkin patch is actually in the bundle, since a build that skipped the apply step would
+  draw text in fallback faces and pass every other gate.
 - `text-encoding` is aliased to `fastestsmallesttextencoderdecoder` (5 KB, already shipped by
   scratch-storage, hands back the native classes). Every browser in `.browserslistrc` has
   `TextDecoder`.

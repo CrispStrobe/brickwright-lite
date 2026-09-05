@@ -105,8 +105,11 @@ jobs:
       # silence the next one. They hang off this id, the last step of the actual
       # prerequisite chain (vendor -> integrate -> install -> overlays).
       - name: Apply the scratch-paint overlay (extended costume designer)
-        id: overlays
         run: node scripts/apply-paint-overlay.mjs
+      # One patch: text costumes wait for the lazy render-fonts chunk (ROADMAP §2.4).
+      - name: Apply the scratch-render overlay (lazy render fonts)
+        id: overlays
+        run: node scripts/apply-render-overlay.mjs
 
       # --- guards: catch silent reverts before the build runs ---
       #
@@ -538,6 +541,12 @@ jobs:
       - name: Browser gate — circuit UX
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-circuit-ux.mjs
+      # ROADMAP §2.4: the render fonts are fetched by the first SVG with text,
+      # not at first paint. Both halves are asserted — no fetch on a fresh load,
+      # and a text costume rasterised WITH its @font-face once one appears.
+      - name: Browser gate — render fonts arrive with the first text costume, not before
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-text-costume-fonts.mjs
       - name: Browser gate — circuit rendering and placement
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-circuit-rendering.mjs

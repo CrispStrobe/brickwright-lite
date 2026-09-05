@@ -59,6 +59,17 @@ const LAZY = [
         // marker must be one only the waves carry. Checked below against the chunk.
         optional: true}
 ];
+/**
+ * Present in an EAGER script: the pieces whose absence would silently degrade
+ * something rather than fail it. The render-fonts shim only works if
+ * scratch-render's SVGSkin was patched to wait for it (scripts/apply-render-overlay.mjs);
+ * a build that skipped that step draws text costumes in fallback faces and
+ * looks fine to every other gate.
+ */
+const PRESENT = [
+    {what: 'SVGSkin waits for the lazy render fonts', marker: '_bwFontWait',
+        why: 'scripts/apply-render-overlay.mjs must run after npm install (build.yml, vercel-build.sh)'}
+];
 /** Present nowhere in the build: the polyfill is aliased away, not moved. */
 const GONE = [
     {what: 'text-encoding polyfill (encoding-indexes)', marker: '"ibm866":[',
@@ -123,6 +134,11 @@ for (const m of LAZY) {
     }
     check(`nothing preloads ${m.what} into the first load`, !html.includes(m.chunk),
         `index.html must not reference chunks/${m.chunk}*`);
+}
+for (const m of PRESENT) {
+    const where = eagerSources.filter(({src}) => has(src, m)).map(({p}) => basename(p));
+    check(`${m.what} is in the first load`, where.length > 0,
+        where.length ? where.join(', ') : `no eager script contains ${JSON.stringify(m.marker)} — ${m.why}`);
 }
 for (const m of GONE) {
     const anywhere = [...eagerSources.map(({p, src}) => ({p, src})),

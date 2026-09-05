@@ -85,6 +85,7 @@ cd packages/scratch-gui
 npm install --ignore-scripts --legacy-peer-deps
 node ../../scripts/apply-vm-overlay.mjs          # built-in extensions + upstream fixes
 node ../../scripts/apply-paint-overlay.mjs       # the extended costume designer
+node ../../scripts/apply-render-overlay.mjs      # text costumes wait for the lazy render fonts
 NODE_ENV=production npm run build                # -> build/
 ```
 
@@ -144,6 +145,7 @@ scripts/
   integrate.mjs        <- copy overlay/ over the vendored gui
   apply-vm-overlay.mjs <- lay the vm overlay onto node_modules/scratch-vm
   apply-paint-overlay.mjs <- the extended costume designer
+  apply-render-overlay.mjs <- SVGSkin waits for the lazy render-fonts chunk when an SVG has text
 ```
 
 `packages/` is gitignored — `vendor.mjs` repopulates and validates it.

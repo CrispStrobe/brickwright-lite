@@ -9,14 +9,18 @@
  * for their own chunk.
  *
  * The synchronous contract is honoured by answering `{}` until the chunk has
- * arrived: an SVG whose text needs a face it cannot find is rendered without
- * the @font-face and measures wrong. That is the failure the GUI already
- * guards against, which is why the guard is kept rather than replaced:
- * `font-loader-hoc.jsx` calls `loadFonts()` on mount and only dispatches
- * `fontsLoaded` once the faces are in the document, and `vm-manager-hoc.jsx`
- * does not load a project until `fontsLoaded` is true. So no costume is
- * rendered before its fonts exist — the same ordering as before, minus the
- * bytes in the boot chunk.
+ * arrived. The three places that would render text wrongly on `{}` each wait
+ * instead, and only when the SVG in hand has a font-family (most have none):
+ *   - scratch-render's SVGSkin.setSVG (patched by scripts/apply-render-overlay.mjs)
+ *     defers the skin until `loadFonts()` resolves, so a costume with text is
+ *     rasterised with its @font-face inlined, as before;
+ *   - lib/get-costume-url.js (thumbnails) returns the plain SVG uncached until
+ *     the fonts exist, then inlines and caches;
+ *   - containers/costume-tab.jsx loads them when the costumes tab opens, so the
+ *     paint editor's text tool has the faces in the document.
+ * A project with no text never fetches them. `fontsLoaded` (font-loader-hoc.jsx)
+ * therefore no longer waits for this chunk — it never needed the bytes, only
+ * the ordering, and the ordering now lives at the three consumers.
  *
  * CommonJS on purpose: font-inliner does `require('scratch-render-fonts')()`,
  * and an ES module would hand it a namespace object instead of the function.
@@ -47,14 +51,24 @@ const loadFonts = () => {
 };
 
 /**
- * The synchronous API scratch-svg-renderer expects.
- * @returns {object} the loaded fonts, or an empty map if they are still in flight
+ * The synchronous API scratch-svg-renderer expects. NO side effect: font-inliner
+ * calls this for EVERY SVG it serialises, before it has looked for a font-family,
+ * so kicking off the fetch here would pull the chunk in for the default sprite
+ * at first paint — which is exactly what happened in the first version of this
+ * file. The consumers that know they have text call loadFonts() themselves.
+ * @returns {object} the loaded fonts, or an empty map if they have not been asked for yet
  */
-const getFonts = () => {
-    if (FONTS) return FONTS;
-    loadFonts();
-    return {};
-};
+const getFonts = () => FONTS || {};
 
 getFonts.loadFonts = loadFonts;
+/** @returns {boolean} whether the faces have arrived (getFonts() is then complete) */
+getFonts.isLoaded = () => Boolean(FONTS);
+/**
+ * Does this SVG reference a font family at all? Same test scratch-gui's
+ * get-costume-url uses; `font-family="none"` is what the paint editor writes
+ * for shapes and does not count.
+ * @param {string} svgString - SVG source
+ * @returns {boolean} true if rasterising it correctly needs the faces
+ */
+getFonts.needsFonts = svgString => /font-family=(?!"none")/.test(String(svgString));
 module.exports = getFonts;

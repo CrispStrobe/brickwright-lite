@@ -6,6 +6,7 @@ import VM from 'scratch-vm';
 
 import AssetPanel from '../components/asset-panel/asset-panel.jsx';
 import PaintEditorWrapper from './paint-editor-wrapper.jsx';
+import getFonts from '../lib/lazy-render-fonts.js';
 import {connect} from 'react-redux';
 import {handleFileUpload, costumeUpload} from '../lib/file-uploader.js';
 import errorBoundaryHOC from '../lib/error-boundary-hoc.jsx';
@@ -98,6 +99,12 @@ class CostumeTab extends React.Component {
         } else {
             this.state = {selectedCostumeIndex: 0};
         }
+    }
+    componentDidMount () {
+        // The paint editor's text tool draws with the render fonts, which are a
+        // lazy chunk (lib/lazy-render-fonts.js). This tab is mounted only while
+        // it is shown, so this is the first moment they are worth having.
+        getFonts.loadFonts().catch(() => { /* fallback faces; the tool still works */ });
     }
     componentWillReceiveProps (nextProps) {
         const {
