@@ -30,16 +30,23 @@ exactly that.
 Not every board offers the same thing, and the difference is worth being
 plain about rather than discovering by clicking.
 
-**Compile targets** (`compile: true`) — STC12/8051, Pico, STM32F030.
-Blocks become C, and there is a real path to a binary through
-**stc-compiler.vercel.app**, which runs the GPL toolchains (SDCC,
-avr-gcc, ca65, sdasz80) that cannot be bundled into a permissive app.
-That server is the answer to "how can this be a compile target at all",
-and it is why `compile: false` elsewhere is rarely about licensing.
+**Compile targets** (`compile: true`) — blocks become C (or assembly), with a
+real path to a binary. Some compile in the browser (the sdcc-wasm 8051 set,
+smallerc for the 8086); the rest go to **stc-compiler.vercel.app**, which runs
+the GPL toolchains (SDCC, avr-gcc, ca65, sdasz80) that cannot be bundled into a
+permissive app. That server is why `compile: false` elsewhere is rarely about
+licensing. **The authoritative, current list — which device compiles, in which
+language, hosted or local — is the generated matrix, NOT a hand table here:**
+see [`docs/generated/LANGUAGE-DEVICE-MATRIX.md`](generated/LANGUAGE-DEVICE-MATRIX.md),
+produced by `npm run gen:matrix`. One nuance it records: **`STC89C52` compiles
+HOSTED, not in the local sdcc-wasm** — it is not in that build's `LOCAL_TARGETS`
+(its RC sibling `STC89C52RC` is), so its C goes to the server like the other
+non-local parts, until a measured local build promotes it.
 
-**Simulated boards** (`compile: false`, `emulator: <engine>`) — Arduino
-(avr8js), Arcade/PyBadge, ATtiny. Blocks drive a simulation; there is no
-build.
+**Simulated boards** (`emulator: <engine>`) — every programmable device also
+names the engine that runs it in the browser (avr8js for the Arduinos, which
+now both compile AND simulate; Arcade/PyBadge; the ATtinys). Blocks drive a
+simulation; the matrix above names the engine per device.
 
 **MicroPython boards** — micro:bit and **Calliope mini**. Blocks become
 MicroPython and run in the bundled simulator. The Calliope shares the

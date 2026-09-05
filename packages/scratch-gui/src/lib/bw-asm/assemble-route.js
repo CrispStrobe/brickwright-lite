@@ -99,6 +99,12 @@ export function asmTargetForDevice (device) {
     if (/^(i8086|8086|i8088|8088)$/.test(d)) return 'i8086';
     if (/6502|eater/.test(d)) return 'eater6502';
     if (/^(z80|zx48|zx128)$/.test(d)) return 'z80';
+    // Arduino boards are not MCU ids; /assemble knows the chip. Mirror the C
+    // tab's COMPILE_TARGET (bw-debug/shipped-images.js): uno/nano -> atmega328p,
+    // mega -> atmega2560. Without this the ASM tab posted 'arduino-uno' and the
+    // service, which knows only chip ids, could not route it.
+    if (d === 'arduino-uno' || d === 'arduino-nano') return 'atmega328p';
+    if (d === 'arduino-mega') return 'atmega2560';
     // /assemble takes 8051 and AVR device ids directly (stc*, atmega*,
     // attiny*), so an unrecognised id is passed through rather than mapped.
     return d || 'stc12c5a60s2';

@@ -226,7 +226,7 @@ test('hosted facts in the matrix match the pinned stc-compiler snapshot, through
     // the Arduino board ids pass through unmapped and the service knows only
     // MCU ids — plan task T5. This list is a sentinel: when T5 maps them, it
     // goes red and must be emptied, not widened.
-    const KNOWN_UNROUTED_ASM = ['arduino-uno', 'arduino-nano', 'arduino-mega'];
+    const KNOWN_UNROUTED_ASM = []; // T5: asmTargetForDevice now maps uno/nano -> atmega328p, mega -> atmega2560
     const unrouted = [];
     for (const d of DEVICES) {
         if (d.programmable === false) continue;
