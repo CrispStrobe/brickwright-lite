@@ -291,6 +291,22 @@ module by module, over half of the vendor chunk was three things no first paint 
   fire-and-forget, a lazy builtin declared with its gallery URL was still "not loaded" when the
   strip looked, and `installTargets` fetched it a second time from the URL into a sandboxed
   worker. bw-ci flagged the same hazard independently while scoping D-FIRSTLOAD1.
+  The same split made the vanilla VM's two other extension loads rejectable — `installTargets`
+  (every `addTarget` sits inside a bare `Promise.all` over them) and `shareBlocksToTarget` — and
+  bw-ci's `scripts/verify-lazy-extension-degradation.mjs` measured the consequence against
+  e0bebbf43: abort the music chunk and the project opens EMPTY, silently (targets 0, no page
+  error). Both sites now tolerate a failed load per extension (`apply-vm-overlay.mjs`), so a
+  missing chunk costs its own blocks, and that gate holds the contract. The gate itself had to be
+  taught two things to see anything: extension chunks are hashed by splitChunks (match by name,
+  not by `chunkFilename`), and the service worker claims the page before the lazy chunk is
+  requested, so Playwright must block it or the route never fires.
+- The local webpack cache learned the hard way that `snapshot.managedPaths` treats node_modules
+  as immutable: two cached rebuilds after `apply-vm-overlay` shipped the previous
+  `virtual-machine.js` in 40 s and looked like success. `managedPaths: []` now; a cold build is
+  the yardstick for anything that changes scratch-vm or scratch-paint under node_modules.
+- `verify-lego-spike-roundtrip.mjs` is a mutation-provable gate on the pre-load ordering, not a
+  smoke test: its fixture is generated from a `DEVICE SPIKE` program, so it carries
+  `extensions: ["spikeprime"]` — a lazy id — without anyone having arranged for it to.
 - `overlay/scratch-gui/src/lib/lazy-render-fonts.js` + a webpack alias: `scratch-render-fonts`
   resolves to a same-shaped shim; the real module is reachable only as
   `scratch-render-fonts-base64` and arrives as `chunks/render-fonts.<hash>.js`. The ordering
