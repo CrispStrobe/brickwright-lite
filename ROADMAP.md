@@ -797,8 +797,11 @@ is not the future cycle-accurate BIU/EU mode described in
 
 Next tasks, in order:
 
-1. Add the no-`onInstruction` machine-step fast path, preserving the observed
-   retire path byte-for-byte in behavior.
+1. **Evaluated and rejected (2026-09-05).** The no-`onInstruction` machine-step
+   fast path passed the full upstream matrix, but Lite `89a7e5e91` changed
+   neither desktop nor mobile p50/p95 and moved aggregate `runMs` by only
+   +0.8 ms over 182 samples (about 4.4 µs/sample, below timer resolution).
+   It was reverted; reconsider only with P3's repeated, throttled evidence.
 2. Gate interrupt arbitration on pending NMI or an active PIC line, with HLT,
    IF and simultaneous-boundary tests.
 3. Make the hosted benchmark repeat each profile, report median/spread, add a
