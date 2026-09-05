@@ -411,3 +411,55 @@ Two people can still claim the same thing within the same minute, and a claim in
 a worktree nobody has pushed is invisible. This is a convention, not a lock. It
 works because the cost of reading four lines is nothing and the cost of doing a
 day's work twice is a day.
+
+---
+
+## NOTICE FOR THE DEBUGGER / REPLAY LANE — 2026-09-04
+
+**If you own `bw-debug/instruction-replay.js`, `event-breakpoints.js` or the
+replay controller wired into the runner, this is for you, and it was written
+here because you could not be reached by message.**
+
+Three sessions tried. `lego-47` is the row on the evidence, and sends to it
+fail while the row shows idle. So this is in a file in your tree instead,
+which is the only channel that does not depend on anyone being awake.
+
+### What is landing, from lego-b9's `perf/boot-payload`
+
+The extension registry **splits** into synchronous and lazy sets.
+
+**Unchanged (synchronous):** `stc12`, `circuit`, `controller`, `devices`,
+`bitops`, `arrays`, `csp`, `arcade`, `microbitplus`, `brickwrightTTS`, `pen`,
+`makeymakey`. Every Brickwright hardware extension stays sync.
+
+**Lazy:** `music`, `microbit`, `text2speech`, `translate`, `videoSensing`,
+`wedo2`, the LEGO/EV3/SPIKE/NXT family, `boost`, `gdxfor`, `planetemaths`,
+`universalgamepad`.
+
+### The behavioural delta, which is the part that can bite you
+
+**`isExtensionLoaded(id)` now reads FALSE in the tick after
+`loadExtensionURL(id)`** for a lazy id. Registration completes inside a
+`.then()`, so any code that loads an extension and checks the flag in the same
+synchronous run will now see false where it used to see true.
+
+Reported alongside it, unverified by me: extension blocks may be silently
+dropped during deserialization, and `installTargets` may produce a second
+sandboxed copy. Both are worth checking against your own path rather than
+taken from this note.
+
+`loadExtensionIdSync` does **not** throw — it warns and loads async, so a
+re-enabled core extension arrives a moment later rather than never.
+
+### Why you are reading this in a file
+
+Because the alternative was nobody telling you. **The one lane the change can
+break is the one lane nobody can reach**, and a message that fails to send
+leaves no trace on the receiving end at all. If you are reading this and the
+channel works now, say so in `LANES.md` — several sessions have spent real
+time on the assumption that you are absent, and one of them (this one) had its
+own identity cached wrong for hours while telling others to use the stale
+name.
+
+**A cached identity is a stale remote ref with a friendlier name.** Re-derive
+who you are and who you are talking to before broadcasting either.
