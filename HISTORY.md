@@ -29,6 +29,31 @@ plan or roadmap. Detailed commit, CI and ownership evidence remains in Git and
   plausibly clear the 76,800-byte emitted floor. No runtime experiment was
   started. Reconsider only if the eager dependency disappears or ownership
   grows materially.
+- **P16a/P16b parser representations rejected.** P16a's
+  four generated validators preserved 534 validator and 122 full-parser
+  comparisons but duplicated schema functions and grew initial JavaScript from
+  4,543,936 to 4,573,012 bytes (`34049223633`, `34049943831`, reverted at
+  `72a01c3f0`). The canonical P16b shared emitter handled cyclic refs but
+  produced 315,452 raw bytes versus P16a's 284,144, so hosted runs `34050733307`
+  and `34050865216` stopped before webpack and the change was reverted at
+  `431d78a76`. An independent holder-based emitter preserved the same corpus
+  but emitted a 4,630,154-byte GUI asset, 163,018 above the declared ceiling,
+  and was discarded locally. Those results limited P16c to a structural-
+  equivalence census with a 160 KiB source stop gate.
+- **P16c structural validator census stopped before candidate generation.** A
+  deterministic cycle-aware partition found 30 generated function nodes and 18
+  exact classes, including 12 repeated pairs. Representative function bodies,
+  schemas, patterns and defaults alone total 177,151 bytes, 13,311 above the
+  163,840-byte ceiling before reference wiring or module overhead. The source
+  gate therefore rejects canonical emission; no build or hosted run is needed.
+- **Browser build-artifact reuse rejected on critical-path cost.** Four green
+  runs measured the central `build` job at 5:27–5:42 and the slow browser shard
+  at 6:43–9:35 in parallel. Each browser-local webpack build takes about 1:15;
+  serializing both shards behind `build` therefore adds at least 4:12 before
+  artifact transfer, while the current built tree is about 129 MB. Exact-byte
+  identity would improve, and two local builds would disappear, but release
+  wall time is the priority and would regress. The required light/heavy split
+  remains unchanged.
 - **Dated worktree reconciliation closed** (`217407b1d`). Recovery refs and
   cleanup evidence were completed; its temporary hold instructions are no
   longer active.

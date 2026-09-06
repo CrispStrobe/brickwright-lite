@@ -25,40 +25,37 @@ item marked with an agent name is being worked on.
 ## Next-session shortlist — reconciled 2026-09-06
 
 [PLAN.md](PLAN.md#next-session-priorities--reconciled-2026-09-06) records
-execution order. Current upstream baseline is `9f234e755`; completed and
-rejected predecessor work is in [HISTORY.md](HISTORY.md). The live work is the
-following three bounded tracks.
+execution order. Current upstream baseline is `7b6a5916b`; completed and
+rejected predecessor work is in [HISTORY.md](HISTORY.md). Two bounded tracks
+remain live.
 
-### Track 1 — precompiled scratch-parser validator (P16 experiment)
-
-**Outcome:** replace runtime AJV only if a reproducibly generated validator is
-behaviorally identical and materially smaller.
-
-**Work:** Freeze callback timing/arguments, error ordering/shape, result and SB1
-fallback contracts for both `loadProject` and `addSprite`; generate from the
-pinned schemas; differential-test valid, invalid, adversarial, legacy and full
-project-corpus inputs; mutation-test malformed project structures; measure
-ownership, emitted/encoded bytes, build time and open latency on hosted CI.
-
-**Acceptance:** exact differential parity, reproducible generator/schema
-identity and a material net initial-byte reduction with no project-open
-regression. Reject on any semantic difference or opaque provenance; never skip
-validation for bundled/default projects.
-
-**Start:** `packages/scratch-vm/src/virtual-machine.js`, the pinned
-`scratch-parser` dependency, project corpus tests, webpack ownership reporting
-and P16 in `docs/I8086-CORE-PLAN.md`. Estimated 4–8 focused hours plus hosted CI.
-
-### Track 2 — Pico simulator reset and rerun (N3c-1)
+### Track 1 — Pico simulator reset and rerun (N3c-1)
 
 **Outcome:** `machine.reset()` reboots MicroPython in rp2040js, and two different
 editor programs execute consecutively without a page reload or emulator freeze.
 
-**Work:** Reproduce the counter pinned at 2,191,927 steps; trace core, boot ROM,
-flash, VTOR, USB CDC and scheduler reset state; implement a complete reset in
-upstream `bw-board`; prove boot-reset-boot, flash deployment, raw-REPL return and
-changed GP25 output; adopt the smallest reviewed pin/file set in Lite and remove
-the source refusal only after browser proof.
+**Measured 2026-09-06:** the independent replay freezes at 2,184,488 steps
+across eight later drive budgets, with no GP25 output. A focused watchdog-force
+test is red before intervention. rp2040js deliberately delegates
+`WATCHDOG.CTRL` reset to `onWatchdogTrigger`; the adapter installs no handler.
+A prototype handler clears WFE/core state and re-enters flash boot2, producing a
+fresh MicroPython banner, but `main.py` still does not execute. Booting a fresh
+adapter from the exact post-deploy flash does execute the file and drives GP25
+high at instruction 853,283. The remaining boundary is therefore whole-SoC and
+peripheral reset state, not flash persistence, the REPL write, or boot2.
+
+**Upstream phase landed locally:** bw-board branch
+`fix/rp2040-machine-reset` commit `435599c` adds `onResetRequest` and
+`takeResetRequest()`, names the watchdog cause, stops the old SoC at the
+instruction boundary, and passes the RP2040 adapter/flash-entry tests. It does
+not claim a partial field reset is a reboot.
+
+**Work:** review and land that adapter contract, then make the runner consume
+it by constructing a replacement SoC from preserved flash and reconnecting
+GPIO/USB host bindings. Prove boot-reset-boot, flash deployment, raw-REPL return
+and changed GP25 output upstream; then update Lite's pin, switch simulator Run
+to install-and-reboot, remove the source refusal and prove two consecutive
+programs in the browser.
 
 **Acceptance:** execution advances beyond the old freeze point; two consecutive
 programs run through the real UI; stop/rerun is deterministic; absent firmware
@@ -71,35 +68,13 @@ diagnosis and adapter contract first.
 adapter, `test/pico-sim-run.test.mjs` and `test/pico-micropython-gpio.test.mjs`.
 Estimated 4–8 focused hours including upstream reconciliation.
 
-### Track 3 — browser artifact feasibility
+### Track 2 — P17 Sound-tab boundary
 
-**Outcome:** `build` produces one immutable identified web artifact and both
-required browser shards test those exact bytes.
-
-**Evidence:** four successful runs put `build` at 5:27–5:42 and the slow browser
-shard at 6:43–9:35, running in parallel. Waiting for `build` and then downloading
-its output would likely add roughly four minutes to the release verdict while
-saving two duplicate webpack builds. Exact-byte acceptance is stronger, but its
-cost must be an explicit product/CI decision.
-
-**Work:** Measure browser setup/build time, runner minutes, artifact size and
-transfer time separately; model the resulting critical path; compare the value
-of exact-byte identity with the current reproducible same-source build. Only if
-accepted, publish a SHA/pin/manifest/digest-bearing test artifact, make both
-shards verify and serve it, remove their duplicate webpack builds, and extend
-workflow-shape/mutation tests.
-
-**Acceptance:** a missing, stale or modified artifact fails by name; either
-shard still blocks deployment; the single Pages artifact producer and shard
-partition/audit remain intact; measured wall time or runner cost improves without
-raising timeouts. The decision brief must name whether wall time, runner cost or
-exact-byte identity is the priority. Keep the existing independent builds if no
-priority justifies the longer critical path.
-
-**Start:** `.github/workflows/build.yml`, `test/pages-deploy-ordering.test.mjs`,
-`test/browser-gate-shards.test.mjs`, `test/debug-browser-ci-workflow.test.mjs`
-and `scripts/lib/workflow-gates.mjs`. Estimated 1–2 hours for the decision;
-4–6 further hours plus hosted CI only if implementation is accepted.
+Use the finite Sounds activation probe added at `cb2088d0c` to attribute the
+initial-only editor, recorder, waveform, SoundFx and WAV closure. Stop below
+76,800 emitted bytes, preferring 100 KiB for this interactive path. If viable,
+use one retryable request and prove waveform edit/undo/save, record, library,
+SoundFx and project round trip inside the standard activation limits.
 
 ## 1. Costume designer & GUI layout
 
@@ -1210,7 +1185,7 @@ Next tasks, in order:
     136.9 ms against the same-probe eager 101.8 ms baseline: 34.5% slower and
     above the declared 117.07 ms ceiling. Reverted at `31a290564` rather than
     moving the threshold after measurement.
-15. **In progress.**
+15. **P15 evaluated and closed.**
     - **P15a tutorial runtime — evaluated and rejected** (baseline
       `34046270772`; candidate `34047017108`). One retryable chunk isolated
       145,612 source / 103,513 emitted bytes and reduced initial JavaScript
@@ -1240,14 +1215,22 @@ Next tasks, in order:
     definition functions. Initial emitted JavaScript grew 4,543,936 ->
     4,573,012 bytes instead of falling below the declared 4,467,136 ceiling.
     Reverted at `72a01c3f0`; no failed candidate was deployed.
-    - **P16b shared multi-root emitter — next.** Intern generated validator and
-      `$ref` function identities across all four roots in one module. Preflight
-      the resulting source closure before another hosted build; stop unless it
-      removes enough of P16a's duplicated 554,526 bytes to make the 76,800-byte
-      emitted floor plausible. Keep P16a's exact error/result/parser corpus and
-      ownership gates, add the GUI project corpus and SB1/`addSprite` VM
-      boundary checks, and predeclare a 20,480-byte encoded-script floor plus
-      the standard 115% / 1 s / 100 ms runtime limits.
+    - **P16b shared multi-root emitter — evaluated and rejected** (hosted runs
+      `34050733307`, `34050865216`). Cycle-safe late wiring and an executing
+      cyclic-schema guard worked, but identity interning could not merge the
+      structurally repeated functions AJV compiles independently for each root.
+      The 315,452-byte shared module was larger than P16a's 284,144 raw output,
+      so the predeclared source gate stopped both runs before webpack. An
+      independent holder-based emitter preserved the same 534 validator and 122
+      parser comparisons but emitted a 4,630,154-byte GUI asset, also above the
+      4,467,136 ceiling; it was discarded locally. P16c now measures structural
+      equivalence without changing emitted code.
+    - **P16c structural census — stopped at source preflight.** The cycle-aware
+      partition found 30 nodes and 18 exact classes. Representative bodies,
+      schemas, patterns and defaults total 177,151 bytes, already 13,311 above
+      the 163,840-byte ceiling before wiring overhead. No canonical emitter,
+      build or hosted run was started. P16 is closed unless a different
+      representation supplies a new measured size hypothesis.
 
 **Debugger-only circuit deferral — complete (hosted performance step
 `33962284105`).** The existing nine fresh-context receipts proved that the
