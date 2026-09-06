@@ -33,7 +33,7 @@ test('the Sounds route owns one retryable demand-loaded module', () => {
     assert.match(receiptGate, /soundTabScripts\.length !== 1/);
     assert.match(browserGate, /\[role="tab"\]\:visible/);
     assert.match(browserGate, /getAttribute\('aria-controls'\)/);
-    assert.match(browserGate, /panel\.locator\('button\[aria-label="Choose a Sound"\]'\)/);
+    assert.match(browserGate, /panel\.locator\('button\[aria-label="Choose a Sound"\]'\)\.first\(\)/);
     assert.match(browserGate, /receipt\.failure = failure/);
     assert.match(browserGate, /diagnosticError: String/);
     assert.match(browserGate, /writeFile\(path\.join\(output, 'receipt\.json'\)/);
