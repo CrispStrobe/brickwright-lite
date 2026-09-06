@@ -39,20 +39,9 @@ try {
     await page.locator('[role="tab"]', {hasText: /Sounds?/i}).first().waitFor({timeout: 60000});
     const startedAt = await page.evaluate(() => performance.now());
     await page.locator('[role="tab"]', {hasText: /Sounds?/i}).first().click();
-    const activationState = await page.waitForFunction(() => {
-        const selected = [...document.querySelectorAll('[role="tab"]')]
-            .find(tab => /sounds?/i.test(tab.textContent || '') && tab.getAttribute('aria-selected') === 'true');
-        if (!selected) return false;
-        const panel = document.getElementById(selected.getAttribute('aria-controls'));
-        if (!panel) return false;
-        const error = panel.querySelector('[data-sound-tab-load-error]');
-        if (error) return {error: error.textContent || 'Sound tab failed to load'};
-        if (panel.querySelector('[data-sound-tab-loading]') || panel.querySelectorAll('button').length < 3) {
-            return false;
-        }
-        return {ready: true};
-    }, null, {timeout: 30000}).then(handle => handle.jsonValue());
-    if (activationState.error) throw new Error(activationState.error);
+    await page.waitForFunction(() =>
+        performance.getEntriesByType('resource').some(entry => /sound-tab/i.test(entry.name)) &&
+        !document.querySelector('[data-sound-tab-loading]'), null, {timeout: 30000});
     const receipt = await page.evaluate(start => new Promise(resolve => {
         requestAnimationFrame(() => requestAnimationFrame(() => {
             const readyAt = performance.now();
@@ -64,8 +53,15 @@ try {
                 .filter(entry => entry.initiatorType === 'script' && entry.startTime >= start)
                 .map(entry => ({name: entry.name, startTime: entry.startTime,
                     responseEnd: entry.responseEnd, encodedBodySize: entry.encodedBodySize || 0}));
+            const selected = [...document.querySelectorAll('[role="tab"]')]
+                .find(tab => /sounds?/i.test(tab.textContent || '') && tab.getAttribute('aria-selected') === 'true');
+            const controlled = selected && document.getElementById(selected.getAttribute('aria-controls'));
+            const panel = controlled || [...document.querySelectorAll('[role="tabpanel"]')]
+                .find(item => item.getAttribute('aria-hidden') !== 'true' && item.offsetParent !== null);
+            const loadError = document.querySelector('[data-sound-tab-load-error]')?.textContent || null;
             resolve({startedAt: start, readyAt, durationMs: readyAt - start,
-                longTasks: (probe?.longTasks || []).filter(task => task.at >= start && task.at <= readyAt), scripts});
+                longTasks: (probe?.longTasks || []).filter(task => task.at >= start && task.at <= readyAt), scripts,
+                selected: Boolean(selected), soundButtons: panel?.querySelectorAll('button').length || 0, loadError});
         }));
     }), startedAt);
     receipt.schema = 'brickwright/sound-tab-activation/v1';
@@ -82,6 +78,11 @@ try {
     await writeFile(path.join(output, 'receipt.json'), `${JSON.stringify(receipt, null, 2)}\n`);
     console.log(JSON.stringify(receipt, null, 2));
     if (errors.length) throw new Error(errors.join(' | '));
+    if (receipt.loadError) throw new Error(receipt.loadError);
+    if (!receipt.selected || receipt.soundButtons < 3) {
+        throw new Error(`Sound tab did not render its controls: selected=${receipt.selected}, ` +
+            `buttons=${receipt.soundButtons}`);
+    }
     if (receipt.durationMs > relativeLimitMs || receipt.durationMs > absoluteLimitMs) {
         throw new Error(`Sounds tab took ${receipt.durationMs} ms; limits are ${relativeLimitMs} / ${absoluteLimitMs} ms`);
     }
