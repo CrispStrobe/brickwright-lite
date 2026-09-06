@@ -1141,15 +1141,18 @@ Next tasks, in order:
       samples had a 190.2 ms median, however, versus 151.3 ms eager: 25.7%
       slower and above the declared 173.995 ms ceiling. Reverted at
       `3d4bce5d5` rather than relaxing the limit.
-    - **P15b asset-library UI — next.** Demand-load the shared library modal UI
-      and hidden Costume, Backdrop, Sound, Sprite and Extension container bodies
-      as one boundary, about 110 KiB source after excluding tutorials. Keep P6's
-      lazy asset manifests and synchronous extension connection metadata intact.
-      Establish separate eager first-open baselines for all five routes; prove
-      hidden zero-fetch, population/selection, concurrent dedupe, cached reopen,
-      failed-request retry and stale/unmount preservation. Reject below 75 KiB
-      emitted or above the 15% / 1 s / 100 ms activation limits.
-16. **Experiment only.** Differentially test a CI-generated precompiled
+    - **P15b asset-library UI — not activated; dependency/size gate failed.**
+      Exact import review corrected the earlier estimate: the five movable
+      containers plus route-private tags/icons total only about 31,131 source
+      bytes. The roughly 46 KiB shared Library/LibraryItem chain stays initial
+      because eager Tips consumes it, while extension connection metadata stays
+      initial for Blocks, alerts and ConnectionModal. Moving Tips as a sixth
+      consumer raises the unminified ceiling only to roughly 79 KiB, repeats
+      P15a's latency-sensitive path, and serializes a UI fetch before P6's
+      existing manifest fetch. That cannot plausibly clear the declared 76,800-
+      byte emitted floor, so no runtime or hosted baseline was built. Reconsider
+      only when the eager Tips dependency disappears or ownership grows.
+16. **Next experiment.** Differentially test a CI-generated precompiled
     scratch-parser schema validator. AJV is on every project-load path, so a
     dynamic import is not an optimization. Accept only exact callback/error/
     result/SB1 parity across valid, invalid, adversarial and full-corpus inputs,
