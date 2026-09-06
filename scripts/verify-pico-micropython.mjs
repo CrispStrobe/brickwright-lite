@@ -108,6 +108,12 @@ PIN led = GP25 OUTPUT
 WHEN flag clicked:
   turn on led
 `;
+const SECOND_PROGRAM = `DEVICE PICO
+PIN led2 = GP24 OUTPUT
+
+WHEN flag clicked:
+  turn on led2
+`;
 
 const browser = await chromium.launch();
 const page = await browser.newPage({viewport: {width: 1400, height: 900}});
@@ -321,6 +327,46 @@ try {
     }
     check('the emulated GPIO moved — MicroPython ran and drove GP25 high', drove,
         JSON.stringify(obs).slice(0, 200));
+
+    // Stop, replace the editor program, and run again without reloading the
+    // page. GP24 makes the second result distinguishable from both the first
+    // program and a fresh board's default-low state.
+    await page.locator('[data-testid="bw-pico-sim-stop"]').click();
+    const stopped = await waitFor(
+        () => page.evaluate(() => !window.__vm.runtime.bwRunBoard && !window.__bwPicoSim),
+        value => value === true, 10_000);
+    check('Stop tears down the first simulator epoch', stopped === true);
+
+    await page.locator('[role="tab"]', {hasText: 'Code'}).first().click();
+    const secondCm = page.locator('.cm-content').first();
+    if (await secondCm.count()) {
+        await secondCm.click();
+        await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a');
+        await page.keyboard.press('Delete');
+        await page.keyboard.insertText(SECOND_PROGRAM);
+    } else {
+        await page.locator('textarea').first().fill(SECOND_PROGRAM, {timeout: 8000});
+    }
+    for (const label of ['To blocks', 'Import', 'Zu Blöcken']) {
+        try { await page.locator('button', {hasText: label}).first().click({timeout: 8000}); break; } catch {}
+    }
+    await page.locator('[role="tab"]', {hasText: 'Code'}).first().click();
+    await pyTab.click();
+    const secondReady = await waitFor(
+        async () => (await runBtn.isVisible().catch(() => false)) && (await runBtn.isEnabled().catch(() => false)),
+        value => value === true, 30_000);
+    check('the second ▶ Run is enabled without a page reload', secondReady === true);
+    await runBtn.click();
+    const second = await waitFor(() => page.evaluate(() => {
+        const b = window.__vm && window.__vm.runtime && window.__vm.runtime.bwRunBoard;
+        const d = window.__bwPicoSim;
+        let gp24 = null;
+        try { gp24 = b && b.readPin('GP24'); } catch { gp24 = 'err'; }
+        return {gp24, phase: d && d.phase(), resets: d && d.resetGeneration ? d.resetGeneration() : -1};
+    }), value => value && value.phase === 'running' && value.resets >= 1 && value.gp24 === 1, 180_000);
+    check('a changed second program installs, reboots, and drives GP24 high',
+        !!(second && second.phase === 'running' && second.resets >= 1 && second.gp24 === 1),
+        JSON.stringify(second).slice(0, 200));
 
     await mkdir(dirname(shot), {recursive: true});
     await page.screenshot({path: shot});
