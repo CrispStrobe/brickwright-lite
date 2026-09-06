@@ -78,6 +78,13 @@ plan or roadmap. Detailed commit, CI and ownership evidence remains in Git and
   webpack hash `30fa48f7e6bfb148c743` and those exact measurements; fixture
   mutations fail closed on package, ownership, path and size drift. No
   candidate was built.
+- **P20 Scratch 1 converter deferral rejected at the emitted-size gate**
+  (candidate `c0893500f`, hosted run `34058754836`). Attribution found all 30
+  `scratch-sb1-converter` modules in the initial shared chunk, totaling 87,364
+  source bytes. The isolated candidate moved them behind the existing
+  scratch-parser rejection path, but emitted only one 43,171-byte chunk (14,086
+  bytes gzip), 33,629 bytes below the declared 76,800-byte floor. The exact CI
+  receipt is retained and the production split was reverted before handoff.
 - **Browser build-artifact reuse rejected on critical-path cost.** Four green
   runs measured the central `build` job at 5:27–5:42 and the slow browser shard
   at 6:43–9:35 in parallel. Each browser-local webpack build takes about 1:15;
