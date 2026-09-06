@@ -326,14 +326,19 @@ try {
         await session.page.locator('[data-testid="tutorial-library-cancel"]').click();
         const response = session.page.waitForResponse(value => TUTORIAL_CHUNK.test(value.url()), {timeout: 30000});
         await route.continue();
-        await response;
+        const completedResponse = await response;
+        await completedResponse.finished();
         await twoFrames(session.page);
         const visibility = await session.page.evaluate(() => {
             const gui = window.__brickwrightStore.getState().scratchGui;
-            return {tips: gui.modals.tipsLibrary, cards: gui.cards.visible};
+            return {
+                tips: gui.modals.tipsLibrary,
+                cards: gui.cards.visible,
+                contentHydrated: gui.cards.content !== null
+            };
         });
         record('closing while the chunk is held prevents stale completion from reopening tutorial UI',
-            !visibility.tips && !visibility.cards &&
+            !visibility.tips && !visibility.cards && !visibility.contentHydrated &&
             await session.page.locator('[data-testid="tutorial-library-modal"], [data-testid="tutorial-card"]').count() === 0,
             JSON.stringify(visibility));
         receipt.staleClose = {chunkRequests: session.chunkRequests, visibility, pageErrors: session.pageErrors};

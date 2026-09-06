@@ -42,6 +42,9 @@ test('candidate branch of the same gate specifies dedupe, retry and stale-close 
     assert.match(gate, /session\.chunkRequests\.length === 2/);
     assert.match(gate, /tutorial-library-loading/);
     assert.match(gate, /tutorial-library-cancel/);
+    assert.match(gate, /completedResponse\.finished\(\)/);
+    assert.match(gate, /contentHydrated: gui\.cards\.content !== null/);
+    assert.match(gate, /!visibility\.contentHydrated/);
     assert.match(gate, /prevents stale completion from reopening tutorial UI/);
 });
 
