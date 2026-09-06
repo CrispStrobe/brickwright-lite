@@ -254,4 +254,8 @@ test('connection modal boundary rejects missing owners, eager ownership and an i
     failures = assertLazyConnectionModalBoundary(summarizeWebpackOwnership(stats));
     assert.match(failures.join('\n'), /became an initial chunk/);
     assert.match(failures.join('\n'), /owners remain initial/);
+
+    stats.assets.find(asset => asset.name === 'gui.12345678.js').size = 4274261;
+    failures = assertLazyConnectionModalBoundary(summarizeWebpackOwnership(stats));
+    assert.match(failures.join('\n'), /P18 initial JavaScript \d+ exceeds 4274260 bytes/);
 });

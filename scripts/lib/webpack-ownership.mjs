@@ -286,5 +286,10 @@ export const assertLazyConnectionModalBoundary = report => {
     if ((modal?.emittedBytes || 0) < 75 * 1024) {
         failures.push(`lazy connection-modal assets fell below 75 KiB: ${modal?.emittedBytes || 0} bytes`);
     }
+    const baselineInitialBytes = 4351060; // P18 eager run 34056846253.
+    if (report.initial.bytes > baselineInitialBytes - (75 * 1024)) {
+        failures.push(`P18 initial JavaScript ${report.initial.bytes} exceeds ` +
+            `${baselineInitialBytes - (75 * 1024)} bytes`);
+    }
     return failures;
 };
