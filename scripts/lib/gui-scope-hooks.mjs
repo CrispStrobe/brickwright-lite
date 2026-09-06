@@ -18,8 +18,11 @@
  * unchanged by design.
  *
  * VISIBLE, NOT SILENT: with BW_GUI_SCOPE_LOG=<file> every re-resolution is
- * appended as `specifier\tparentURL`, and the unit-test step prints the sorted
- * summary. The boundary is a measured list; the day it grows, someone sees it.
+ * appended as `specifier\tparentURL\ttestFile` (the test file is the one node
+ * --test handed this process), the unit-test step prints the sorted summary, and
+ * scripts/check-gui-scope.mjs fails the step when a specifier or a test is not
+ * in scripts/lib/gui-scope-allowed.json. Measured first, then declared: the
+ * boundary grows only by review.
  *
  * Registered from scripts/lib/register-gui-scope.mjs via `node --import`.
  * test/gui-scope-resolution.test.mjs proves both halves (fails without,
@@ -34,6 +37,16 @@ const guiPackageJson = path.join(repoRoot, 'packages', 'scratch-gui', 'package.j
 const guiParentURL = pathToFileURL(guiPackageJson).href;
 const guiHasDeps = existsSync(path.join(repoRoot, 'packages', 'scratch-gui', 'node_modules'));
 const logFile = process.env.BW_GUI_SCOPE_LOG || '';
+// Hooks run on their own thread, whose argv does not carry the test file; the
+// main thread (register-gui-scope.mjs) reads it from process.argv and hands it
+// over through register()'s data → initialize().
+let testLabel = '(no test file in argv)';
+export function initialize (data) {
+    if (data && data.testFile) {
+        const rel = path.relative(repoRoot, path.resolve(data.testFile)).replace(/\\/g, '/');
+        testLabel = rel.startsWith('..') ? path.resolve(data.testFile) : rel; // outside the repo: say where
+    }
+}
 
 const isBare = specifier => !/^(?:\.{1,2}\/|\/|[a-zA-Z]:[\\/]|file:|node:|data:|#)/.test(specifier);
 const NOT_FOUND = new Set(['ERR_MODULE_NOT_FOUND', 'ERR_PACKAGE_PATH_NOT_EXPORTED']);
@@ -44,9 +57,12 @@ export async function resolve (specifier, context, nextResolve) {
     } catch (err) {
         if (!guiHasDeps || !isBare(specifier) || !NOT_FOUND.has(err && err.code)) throw err;
         if (context.parentURL === guiParentURL) throw err; // already retried once
+        // node merges the override INTO the context object it handed us, so the
+        // importer has to be read before the retry or the log names the wrong file.
+        const importer = context.parentURL || '(entry)';
         const result = await nextResolve(specifier, {...context, parentURL: guiParentURL});
         if (logFile) {
-            try { appendFileSync(logFile, `${specifier}\t${context.parentURL || '(entry)'}\n`); } catch { /* the log is a courtesy, never a failure */ }
+            try { appendFileSync(logFile, `${specifier}\t${importer}\t${testLabel}\n`); } catch { /* the log is a courtesy, never a failure */ }
         }
         return result;
     }

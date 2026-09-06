@@ -1,0 +1,9 @@
+{
+  "$comment": "The GUI-scope boundary, declared. Each key is a bare specifier that scripts/lib/gui-scope-hooks.mjs re-resolves from packages/scratch-gui for a ROOT test; `tests` lists every root test that causes it (repo-relative). scripts/check-gui-scope.mjs fails the CI unit step by name on any specifier or test not here. Exact list, no wildcards — measured 2026-09-06 (run 34012073586: 2 redirects, one specifier; the two importers are overlay/scratch-gui/src/lib/bw-board/avr8js-adapter.js and avr-chips.js). Adding an entry is a review decision made in the same commit as the import.",
+  "avr8js": {
+    "tests": [
+      "test/z80-cycle-provider-integration.test.mjs"
+    ],
+    "why": "the Z80 cycle-provider test builds a debug target through debug-target-factory.js, which imports the AVR adapter and chips statically; avr8js is a GUI dependency (packages/scratch-gui/package.json), not a root one"
+  }
+}
