@@ -42,7 +42,6 @@ try {
     await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 90000});
     await page.locator('[role="tab"]', {hasText: /Sounds?/i}).first().waitFor({timeout: 60000});
     await page.waitForFunction(() => Boolean(
-        window.__vm?.editingTarget &&
         window.__brickwrightStore?.getState()?.scratchGui?.targets?.editingTarget
     ), null, {timeout: 60000});
     const startedAt = await page.evaluate(() => performance.now());
