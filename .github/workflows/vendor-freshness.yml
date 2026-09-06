@@ -280,6 +280,9 @@ jobs:
       - name: runtime extension gallery content pins
         run: node brickwright-lite/scripts/sync-gallery-pins.mjs --check
         if: always()
+      - name: bundled extension source pins
+        run: node brickwright-lite/scripts/sync-bundled-extensions.mjs --check
+        if: always()
       # Report-only: the hosted C/assembler snapshot is pinned to a stc-compiler
       # sha, but the DEPLOYED service can drift from it. This asks the live
       # /health what it actually serves and writes the diff to the job summary.

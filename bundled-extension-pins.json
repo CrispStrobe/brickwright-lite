@@ -1,0 +1,8 @@
+{
+  "CrispStrobe/legospikeprime_btc_scratchlink": {
+    "repo": "CrispStrobe/extensions",
+    "commit": "fe4f64fe3b5d7a0062401b6eda367e4f90de1c76",
+    "source": "extensions/CrispStrobe/legospikeprime_btc_scratchlink.js",
+    "overlay": "overlay/scratch-vm/src/extensions/crispstrobe/spikeprimeBTC/index.js"
+  }
+}
