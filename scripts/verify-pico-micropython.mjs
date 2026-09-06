@@ -327,6 +327,14 @@ try {
     }
     check('the emulated GPIO moved — MicroPython ran and drove GP25 high', drove,
         JSON.stringify(obs).slice(0, 200));
+    if (!drove) {
+        // Do not spend a second independent three-minute poll after the first
+        // required run has already failed. Capture the diagnosed state while
+        // it still exists, then fail within the workflow's bounded budget.
+        await mkdir(dirname(shot), {recursive: true});
+        await page.screenshot({path: shot});
+        throw new Error('the first Pico program did not drive GP25 high');
+    }
 
     // Stop, replace the editor program, and run again without reloading the
     // page. GP24 makes the second result distinguishable from both the first
