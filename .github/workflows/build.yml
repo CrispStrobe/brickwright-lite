@@ -892,7 +892,10 @@ jobs:
       - name: Browser gate — 8086 .COM / .img export (N10)
         timeout-minutes: 3  # a couple of downloads through the UI
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
-        run: PROOF_URL=http://localhost:8617/ npm run verify:i8086-export
+        # Direct `node scripts/…`, not `npm run …`: gate-coverage.test.mjs's alias
+        # regex does not accept an env prefix before `npm run`. (The npm alias
+        # verify:i8086-export stays for humans.)
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-i8086-export.mjs
 
       - name: Browser benchmark — 8086 desktop and mobile
         timeout-minutes: 8  # measured max 123 s over 5 main runs, 2026-09-05
