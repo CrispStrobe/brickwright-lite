@@ -5,9 +5,9 @@ import path from 'node:path';
 
 const url = process.env.PROOF_URL || 'http://localhost:8617/';
 const output = path.resolve('artifacts/sound-tab-activation');
-const baselineRun = 34051772854;
-const baselineMs = 205.5;
-const relativeLimitMs = 236.325;
+const baselineRun = 34055140364;
+const baselineMs = 113.6;
+const relativeLimitMs = 130.64;
 const absoluteLimitMs = 1000;
 const maxLongTaskMs = 100;
 const minimumEncodedBytes = 20480;

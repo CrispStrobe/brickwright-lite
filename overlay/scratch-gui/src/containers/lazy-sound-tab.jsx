@@ -12,6 +12,7 @@ const loadSoundTab = () => {
     }
     return soundTabRequest;
 };
+export const preloadSoundTab = loadSoundTab;
 const createLazySoundTab = () => React.lazy(loadSoundTab);
 
 class LazySoundTab extends React.Component {
