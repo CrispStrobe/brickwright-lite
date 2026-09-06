@@ -68,6 +68,10 @@ const modulesFor = compilation => compilation.modules?.length ? leaves(compilati
     (compilation.chunks || []).flatMap(chunk => leaves(chunk.modules, [chunk.id]));
 const storageMatches = compilations.flatMap(compilation => modulesFor(compilation)
     .filter(module => /\/scratch-storage\/dist\/web\/scratch-storage\.js$/.test(
+        // A webpack identifier is a LOADER CHAIN joined by '!' ("babel-loader!.../scratch-storage.js"); the
+        // final segment is the resource path, and it is then matched against the full directory suffix
+        // /scratch-storage/dist/web/scratch-storage.js, not a bare basename — the whole path still has to agree.
+        // gate-shapes-allow (the marker must sit on the line itself or the one directly above)
         normalizeName(module.name || module.identifier).split('!').at(-1)))
     .map(module => ({compilation, module})));
 if (storageMatches.length !== 1) {
