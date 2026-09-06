@@ -2882,7 +2882,14 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             return {...branch, recording: payload.recordingSession.status(),
                 checkpoints: payload.recorder.checkpointSummary()};
         }),
-        debugChipRefusals: () => chipRefusalLines(chipRefusalsOf ? chipRefusalsOf() : []),
+        // NULL AND [] MEAN DIFFERENT THINGS, and collapsing them cost a CI cycle.
+        // null: this bench has no collector, so it CANNOT report refusals.
+        // []:   it has one and nothing has been refused.
+        // Rendered identically — no block either way — but a diagnostic that
+        // cannot tell them apart sends the reader to the panel when the answer
+        // is the machine config, which is exactly what happened on run
+        // 34063599364.
+        debugChipRefusals: () => (chipRefusalsOf ? chipRefusalLines(chipRefusalsOf()) : null),
         debugHistoryAnnotations: () => historyAnnotations.list(),
         addDebugBookmark: request => historyAnnotations.addBookmark(request),
         addDebugAnnotation: request => historyAnnotations.addAnnotation(request),

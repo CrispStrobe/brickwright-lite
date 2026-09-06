@@ -173,6 +173,7 @@ try {
         await page.locator('[data-debug-chip-refusal]').first().waitFor({timeout: 40000});
     } catch (timeout) {
         const trail = await page.evaluate(() => ({
+            state: document.querySelector('[data-debug-panel]')?.getAttribute('data-debug-chip-refusal-state'),
             block: document.querySelectorAll('[data-debug-chip-refusals]').length,
             lines: document.querySelectorAll('[data-debug-chip-refusal]').length,
             phase: document.querySelector('[data-debug-panel]')?.getAttribute('data-debug-phase'),
@@ -181,13 +182,16 @@ try {
                 .flatMap(n => [...n.attributes].map(a => a.name)
                     .filter(a => a.startsWith('data-debug-'))))].sort().slice(0, 40)
         }));
-        const verdict = trail.block === 0
-            ? 'THE MODEL RETURNED NO ROWS — the program did not reach a refusal on this bench. '
-              + 'Check the config actually has the chip the program targets: the ASM route boots '
-              + 'BREADBOARD8086 (ppi1, uart1) and has no DMA controller, so a write to an '
-              + 'undecoded port refuses nothing and looks exactly like this.'
-            : 'THE MODEL RETURNED ROWS AND THE PANEL DID NOT RENDER THEM — the block is present '
-              + 'with no lines inside it, so the fault is in the render, not the collector.';
+        const verdict = trail.state === 'none'
+            ? 'THIS BENCH HAS NO REFUSAL COLLECTOR AT ALL — the attached machine exposes no '
+              + 'chipRefusals(), so no program could ever produce a line here. The gate is '
+              + 'pointed at the wrong bench, not at the wrong chip and not at a broken panel.'
+            : trail.state === 'empty'
+                ? 'THE COLLECTOR IS PRESENT AND RETURNED NOTHING — the program did not reach a '
+                  + 'refusal. Either it never executed the instruction, or this bench has no chip '
+                  + 'that refuses what it asked for.'
+                : 'THE MODEL RETURNED ROWS AND THE PANEL DID NOT RENDER THEM — the fault is in '
+                  + 'the render, not the collector.';
         throw new Error(`${verdict}\n  trail: ${JSON.stringify(trail)}\n  ${timeout.message}`);
     }
     const lines = await refusalLines();

@@ -881,7 +881,18 @@ class DebugPanel extends React.Component {
         // already gives us; a subscription would be a second source of the
         // same truth. Empty on every bench that is not the 8086, which is the
         // honest answer rather than a header over nothing.
-        const chipRefusals = this.state.runner ? this.state.runner.debugChipRefusals() : [];
+        // `?? []` because the handle returns null on a bench with no collector,
+        // which renders the same as nothing refused but is a different fact.
+        const chipRefusalsRaw = this.state.runner ? this.state.runner.debugChipRefusals() : null;
+        const chipRefusals = chipRefusalsRaw ?? [];
+        // Stated on the panel root because the two states LOOK identical — no
+        // block either way — and a reader who cannot tell them apart blames the
+        // panel when the answer is the machine config. 'none' means this bench
+        // has no collector at all; 'empty' means it has one and nothing has been
+        // refused yet. Cheap, and it is the first thing anyone debugging this
+        // will want to know.
+        const chipRefusalState = chipRefusalsRaw === null ? 'none'
+            : chipRefusals.length === 0 ? 'empty' : String(chipRefusals.length);
         const historyStatus = this.state.historyStatus;
         const selectedInspection = timelineEvent && this.state.runner ?
             this.state.runner.selectedEventInspection() : null;
@@ -899,7 +910,7 @@ class DebugPanel extends React.Component {
 
         const inferredBoard = this.state.boardSource === 'inferred';
         return (
-            <div data-debug-panel data-debug-phase={phase} style={{
+            <div data-debug-panel data-debug-phase={phase} data-debug-chip-refusal-state={chipRefusalState} style={{
                 display: 'flex', flexDirection: 'column', gap: 8, padding: 10,
                 background: '#1a1a2e', border: '1px solid #2c3e50', borderRadius: 8,
                 fontFamily: 'monospace', fontSize: 12, color: '#bdc3c7'
