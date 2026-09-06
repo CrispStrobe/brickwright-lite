@@ -1122,15 +1122,24 @@ Next tasks, in order:
     removed MDN data and shrank the lazy asset to 74,324 bytes, but repeatedly
     blocked the production browser upload path. Reverted rather than relaxing
     either latency or correctness.
-14. **Active.** After an isolated baseline, demand-load the remaining List/Grid
-    closure only for a visible list monitor while its outer geometry remains
-    synchronous. Prove a 1,000-row saved list retains position, scrolls, edits,
-    loads once and retries safely; enforce the 15% / 1 s / 100 ms limits.
-15. **Queued.** Split hidden tutorial/card/library bodies from compact synchronous
-    metadata. Preserve tutorial URL lookup, `initTutorialCard`, extension
-    connection metadata and every selection flow. Treat each independently and
-    reject a slice which saves less than 75 KiB emitted or exceeds activation
-    limits.
+14. **Evaluated and rejected** (baseline `34044706850`; candidate
+    `34045069712`). Deferring the complete List/Grid body saved 108,309 initial
+    emitted bytes (4,520,399 → 4,412,090) and moved 119,874 source bytes out of
+    the initial graph. The 1,000-row proof passed hidden zero-fetch, one-request
+    caching, 300×300 geometry, bounded rendering, scroll/edit/remove, failure
+    preservation and retry with no long task. Activation nevertheless measured
+    136.9 ms against the same-probe eager 101.8 ms baseline: 34.5% slower and
+    above the declared 117.07 ms ceiling. Reverted at `31a290564` rather than
+    moving the threshold after measurement.
+15. **Next.** Split compact synchronous tutorial/library metadata from full
+    tutorial decks and hidden card/library modal bodies; do not re-split P6's
+    already-lazy asset manifests. Establish a post-P14 ownership and first-open
+    baseline, then preserve synchronous `initTutorialCard`, deep-link lookup,
+    extension connection metadata and public APIs. Prove hidden zero-fetch,
+    concurrent-demand deduplication, deep links, Tips and every asset/extension
+    selection journey, plus rejection/stale/unmount retry without lost state.
+    Treat deck/card/modal slices independently and reject one which saves less
+    than 75 KiB emitted or exceeds the 15% / 1 s / 100 ms activation limits.
 16. **Experiment only.** Differentially test a CI-generated precompiled
     scratch-parser schema validator. AJV is on every project-load path, so a
     dynamic import is not an optimization. Accept only exact callback/error/
