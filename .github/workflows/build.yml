@@ -70,6 +70,7 @@ on:
       - 'docs/LESSON-REVIEW-WAVE-5.md'
       - 'docs/LESSON-REVIEW-WAVE-6.md'
       - 'docs/LESSON-REVIEW-WAVE-7.md'
+      - 'docs/PICO-KALUMA-BOOT.md'
       - 'docs/VENDOR-DIVERGENCE-BW-CIRCUIT-UI.md'
       - 'docs/VENDOR-DIVERGENCE-I8086-MACHINE.md'
       - 'docs/WAVE-OPEN-DEFECTS.md'
