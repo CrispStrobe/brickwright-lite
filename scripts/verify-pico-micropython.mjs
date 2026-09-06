@@ -338,6 +338,10 @@ try {
     check('Stop tears down the first simulator epoch', stopped === true);
 
     await page.locator('[role="tab"]', {hasText: 'Code'}).first().click();
+    // The first run left the language row on Python. Switch back before
+    // replacing the source; otherwise pseudocode is typed into the generated
+    // Python buffer and the second To-blocks conversion never happens.
+    await page.locator('[data-testid="bw-lang-row"] button').filter({hasText: 'Pseudo'}).first().click();
     const secondCm = page.locator('.cm-content').first();
     if (await secondCm.count()) {
         await secondCm.click();
