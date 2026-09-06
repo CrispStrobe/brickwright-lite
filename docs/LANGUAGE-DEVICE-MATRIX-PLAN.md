@@ -354,9 +354,23 @@ Remaining, in order:
       N3c (the Pico deploy button) are now plain lite work; T7 lands before N3c.
 - [x] N3b: `bootFromFlash(image)` on the rp2040js adapter, bw-board `ff744c5` (a second session;
       2/2 tests, stage-2 stub proves execution from flash base). Reaches lite with the pin bump.
-- [ ] N3c: lite wiring — the Python tab's ▶ Run for the Pico boots the pinned MicroPython UF2
-      (fetched by a `sync:` script with sha256, never committed) and drives the SAME
-      `createPicoRepl(transport)` the silicon path uses; `verify:pico-micropython` playwright.
+- [x] N3c: **DONE 2026-09-06** (delegate `8086 coverage testing materials`, audited by lego-ac, six CI
+      rounds read per step). The Python tab's ▶ Run for the Pico boots MicroPython v1.22.2 in rp2040js
+      (`scripts/sync-pico-micropython.mjs`, sha256-pinned, served from `static/pico-micropython/`, never
+      committed, census row `content-hash`) and runs the program over the SAME `createPicoRepl` and the
+      same raw-REPL handshake (`startProgramOnRepl`, shared by the node oracle and the browser seam).
+      One persistence seam: run-live (exec) in the sim, install-and-reboot (`deployMainPy`) on silicon,
+      because `machine.reset()` freezes rp2040js (finding N3c-1, bw-board's queue); a program calling it
+      is refused by name in the sim, as is a missing firmware asset. `resolveNetlist` moved to
+      `lib/bw-board/resolve-netlist.js` (one truth, two callers). Gates: `test/pico-micropython-gpio`
+      (node oracle: GP25 toggles), `verify-pico-micropython.mjs` execute + absent in the browser job, each
+      with its own timeout and a transition trail in its failure output. What the trail found, in order:
+      the gate never switched to the Python tab; the program was typed into the FRIENDLY REPL before raw
+      mode (its echo in the CDC tail was the tell); then raw mode entered but no OK — 1122 bytes left the
+      host in 5 writes and the device received only the first 64-byte packet per write
+      (`cdc.js onEndpointRead` drains one packet per poll). Fix: ≤64-byte packets, drained between,
+      Ctrl-D as its own packet; tx == rx == 1122, GP25 high (run 34022076259). The rp2040js sim engine
+      now carries `'py'` in the matrix.
 
 **N4. ARM assembly, hosted — extend the chain that exists.** Repo: stc-compiler, then lite. **stc-compiler half BUILT 2026-09-05** on branch `lane/arm-assemble-rp2040-stm32f030` (`a45ba77`, a second session): `rp2040` (cortex-m0plus, `pico-sram.ld`) and `stm32f030` (cortex-m0, `stm32f030-flash.ld`) beside `nrf52833` in the three maps the arm branch reads; router verified end to end (68 and 84 bytes of Intel HEX), 41/41 in `test_assemble.py`, each assertion mutation-proven. Awaits the owner's merge and deploy; the lite routing half (`asmTargetForDevice` mapping `pico`, `stm32f030`, `microbit`) follows the deploy.
 `ASSEMBLE_TARGETS` already routes `nrf52833` through `arm-none-eabi-gcc -x
