@@ -25,8 +25,15 @@
  */
 export async function openCodeActions (page, {timeout = 30000} = {}) {
     const menu = page.locator('[data-testid="bw-code-actions"]');
-    if (await menu.count() === 0) return false;
-    await menu.waitFor({state: 'attached', timeout});
+    try {
+        // The Code importer is asynchronous: after selecting the tab the menu
+        // may not exist yet. Locator.waitFor observes it being attached;
+        // count() was a one-shot read that raced the lazy chunk.
+        await menu.waitFor({state: 'attached', timeout});
+    } catch (error) {
+        if (await menu.count() === 0) return false;
+        throw error;
+    }
     if (await menu.evaluate(el => el.open)) return true;
     await menu.locator('summary').click({timeout});
     await page.waitForFunction(

@@ -25,6 +25,11 @@ export const validatePseudocodeActivationReceipt = receipt => {
         if (sample.failure) failures.push(`${label} ${sample.failure.stage}: ${sample.failure.message}`);
         if (!Array.isArray(sample.errors)) failures.push(`${label} page errors are invalid`);
         else if (sample.errors.length) failures.push(`${label} page errors: ${sample.errors.join(' | ')}`);
+        if (!Array.isArray(sample.consoleErrors) || sample.consoleErrors.some(error => typeof error !== 'string')) {
+            failures.push(`${label} consoleErrors are invalid`);
+        } else if (sample.consoleErrors.length) {
+            failures.push(`${label} console errors: ${sample.consoleErrors.join(' | ')}`);
+        }
         if (!sample.tab?.visible || !sample.tab?.exactName || !sample.tab?.ariaControls) {
             failures.push(`${label} did not bind the exact visible Code tab`);
         }
@@ -70,6 +75,16 @@ export const validatePseudocodeActivationReceipt = receipt => {
             failures.push(`candidate median ${receipt.medianMs} exceeds ${receipt.relativeLimitMs} ms`);
         }
         const scenarios = receipt.scenarios;
+        for (const [name, scenario] of Object.entries({
+            delay: scenarios?.delay,
+            retry: scenarios?.retry,
+            preset: scenarios?.preset,
+            autosave: scenarios?.state?.autosave,
+            bundle: scenarios?.state?.bundle,
+            circuit: scenarios?.state?.circuit
+        })) {
+            if (scenario?.failure) failures.push(`${name} scenario: ${scenario.failure}`);
+        }
         if (!scenarios?.delay?.loadingVisible || scenarios.delay.editorBeforeRelease ||
             !scenarios.delay.usable || scenarios.delay.requestCount !== 1) failures.push('held-request scenario failed');
         if (!scenarios?.retry?.errorVisible || !scenarios.retry.usable || scenarios.retry.requestCount !== 2) {

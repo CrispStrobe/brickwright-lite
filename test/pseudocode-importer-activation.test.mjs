@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {spawnSync} from 'node:child_process';
+import {mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import {validatePseudocodeActivationReceipt} from '../scripts/lib/p21-pseudocode-probe.mjs';
@@ -48,6 +51,9 @@ test('P21 eager receipt requires five bound and usable cold activations', () => 
         value => { value.samples[0].panel.id = 'wrong'; },
         value => { value.samples[0].editorKind = null; },
         value => { value.samples[0].durationMs = Number.NaN; },
+        value => { value.samples[0].consoleErrors = 'bad'; },
+        value => { value.samples[0].consoleErrors = [42]; },
+        value => { value.samples[0].consoleErrors = ['uncaught']; },
         value => { value.samples[0].longTasks = [{ms: 101}]; },
         value => { value.samples[0].pseudocodeScripts = [{name: 'pseudocode-importer.js', encodedBodySize: 1}]; },
         value => { value.medianMs = 31; }
@@ -88,5 +94,31 @@ test('P21 candidate receipt binds baseline, deferral, retry, preset and state se
         const changed = structuredClone(value);
         mutate(changed);
         assert.notDeepEqual(validatePseudocodeActivationReceipt(changed), []);
+    }
+});
+
+test('P21 browser CLI writes a terminal receipt when Playwright launch fails', () => {
+    const directory = mkdtempSync(path.join(tmpdir(), 'p21-browser-failure-'));
+    const fake = path.join(directory, 'fake-playwright.mjs');
+    writeFileSync(fake, `export const chromium = {launch: async () => { throw new Error('launch denied'); }};\n`);
+    try {
+        const result = spawnSync(process.execPath, [path.resolve(
+            import.meta.dirname, '../scripts/verify-pseudocode-importer-activation.mjs')], {
+            cwd: path.resolve(import.meta.dirname, '..'),
+            encoding: 'utf8',
+            env: {...process.env,
+                GITHUB_RUN_ID: '34060000002',
+                GITHUB_SHA: 'e'.repeat(40),
+                P21_PLAYWRIGHT_MODULE: new URL(`file://${fake}`).href,
+                P21_RECEIPT_DIR: directory}
+        });
+        assert.equal(result.status, 1);
+        const value = JSON.parse(readFileSync(path.join(directory, 'receipt.json')));
+        assert.deepEqual(value.terminal, {ok: false, stage: 'launch-browser', message: 'launch denied'});
+        assert.equal(value.run, 34060000002);
+        assert.equal(value.headSha, 'e'.repeat(40));
+        assert.deepEqual(value.samples, []);
+    } finally {
+        rmSync(directory, {recursive: true, force: true});
     }
 });

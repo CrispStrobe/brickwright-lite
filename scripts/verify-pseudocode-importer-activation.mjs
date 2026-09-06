@@ -6,7 +6,7 @@ import path from 'node:path';
 import {validatePseudocodeActivationReceipt} from './lib/p21-pseudocode-probe.mjs';
 
 const url = process.env.PROOF_URL || 'http://localhost:8617/';
-const output = path.resolve('artifacts/pseudocode-importer-activation');
+const output = path.resolve(process.env.P21_RECEIPT_DIR || 'artifacts/pseudocode-importer-activation');
 const eagerBaseline = process.env.P21_EAGER_BASELINE === '1';
 const run = Number(process.env.GITHUB_RUN_ID || 0);
 const headSha = process.env.GITHUB_SHA || '';
@@ -21,15 +21,50 @@ const baseline = {
 // one bounded 150 ms network/evaluation interval; the independent 1 s and
 // 100 ms long-task ceilings still catch a stalled or blocking first gesture.
 const relativeLimitMs = 279.2;
-await mkdir(output, {recursive: true});
 
-const {chromium} = await import('playwright');
-const browser = await chromium.launch();
-const samples = [];
+const receipt = {
+    schema: 'brickwright/p21-pseudocode-activation/v1',
+    mode: eagerBaseline ? 'eager-baseline' : 'lazy-candidate',
+    run,
+    headSha,
+    url,
+    absoluteLimitMs,
+    maxLongTaskMs,
+    samples: [],
+    medianMs: null,
+    ...(eagerBaseline ? {} : {baseline, relativeLimitMs, scenarios: null}),
+    terminal: {ok: false, stage: 'initialize', message: null}
+};
+let browser = null;
+let terminalError = null;
+let terminalStage = 'prepare-output';
+const closeWithTimeout = async (target, label) => {
+    let timer;
+    try {
+        await Promise.race([
+            target.close(),
+            new Promise((resolve, reject) => {
+                timer = setTimeout(() => reject(new Error(`timed out closing ${label}`)), 10000);
+            })
+        ]);
+    } finally {
+        clearTimeout(timer);
+    }
+};
+try {
+    await mkdir(output, {recursive: true});
+    terminalStage = 'import-playwright';
+    const playwrightModule = process.env.P21_PLAYWRIGHT_MODULE || 'playwright';
+    const {chromium} = await import(playwrightModule);
+    terminalStage = 'launch-browser';
+    browser = await chromium.launch();
 
-for (let index = 0; index < 5; index++) {
-    const context = await browser.newContext({viewport: {width: 1600, height: 1000}});
-    const page = await context.newPage();
+    for (let index = 0; index < 5; index++) {
+        let context = null;
+        terminalStage = `sample-${index + 1}-context`;
+        try {
+            context = await browser.newContext({viewport: {width: 1600, height: 1000}});
+            const page = await context.newPage();
     const errors = [];
     const consoleErrors = [];
     let stage = 'initialize';
@@ -124,9 +159,11 @@ for (let index = 0; index < 5; index++) {
             panel: {id: null, selected: false}, editorKind: null,
             diagnosticError: String(error?.message || error)};
     }
-    samples.push({...diagnostic, errors, consoleErrors, failure});
-    await context.close();
-}
+            receipt.samples.push({...diagnostic, errors, consoleErrors, failure});
+        } finally {
+            if (context) await closeWithTimeout(context, `sample ${index + 1} context`);
+        }
+    }
 
 const waitFor = async (promise, label) => {
     let timer;
@@ -140,42 +177,66 @@ const waitFor = async (promise, label) => {
 };
 
 const prepareCandidatePage = async (storage = {}) => {
-    const context = await browser.newContext({viewport: {width: 1600, height: 1000}});
-    const page = await context.newPage();
-    await page.addInitScript(values => {
-        localStorage.clear();
-        localStorage.setItem('bw-starter-v1-complete', '1');
-        for (const [key, value] of Object.entries(values)) localStorage.setItem(key, value);
-    }, storage);
-    const bind = async () => {
-        await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 90000});
-        await page.waitForFunction(() => Boolean(
-            window.__brickwrightStore?.getState()?.scratchGui?.targets?.editingTarget
-        ), null, {timeout: 60000});
-        const tab = page.locator('[role="tab"]:visible').filter({hasText: /^Code$/});
-        await tab.waitFor({timeout: 30000});
-        const panelId = await tab.getAttribute('aria-controls');
-        const panelIndex = await page.locator('[role="tabpanel"]').evaluateAll(
-            (nodes, id) => nodes.findIndex(node => node.id === id), panelId);
-        if (panelIndex < 0) throw new Error(`Code panel ${JSON.stringify(panelId)} is missing`);
-        return {tab, panel: page.locator('[role="tabpanel"]').nth(panelIndex)};
-    };
-    return {context, page, bind};
+    // Network fault scenarios must bypass the production service worker so
+    // Playwright can hold or abort the lazy script request deterministically.
+    const context = await browser.newContext({
+        viewport: {width: 1600, height: 1000},
+        serviceWorkers: 'block'
+    });
+    try {
+        const page = await context.newPage();
+        await page.addInitScript(values => {
+            localStorage.clear();
+            localStorage.setItem('bw-starter-v1-complete', '1');
+            for (const [key, value] of Object.entries(values)) localStorage.setItem(key, value);
+        }, storage);
+        const bind = async () => {
+            await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 90000});
+            await page.waitForFunction(() => Boolean(
+                window.__brickwrightStore?.getState()?.scratchGui?.targets?.editingTarget
+            ), null, {timeout: 60000});
+            const tab = page.locator('[role="tab"]:visible').filter({hasText: /^Code$/});
+            await tab.waitFor({timeout: 30000});
+            const panelId = await tab.getAttribute('aria-controls');
+            const panelIndex = await page.locator('[role="tabpanel"]').evaluateAll(
+                (nodes, id) => nodes.findIndex(node => node.id === id), panelId);
+            if (panelIndex < 0) throw new Error(`Code panel ${JSON.stringify(panelId)} is missing`);
+            return {tab, panel: page.locator('[role="tabpanel"]').nth(panelIndex)};
+        };
+        return {context, page, bind};
+    } catch (error) {
+        try {
+            await closeWithTimeout(context, 'candidate setup context');
+        } catch { /* preserve the setup error in the terminal receipt */ }
+        throw error;
+    }
 };
 
-const scenario = async (label, operation) => {
+const scenario = async (label, storage, operation) => {
+    let prepared = null;
+    let result;
+    terminalStage = `scenario-${label}`;
     try {
-        return await operation();
+        prepared = await prepareCandidatePage(storage);
+        result = await operation(prepared);
     } catch (error) {
-        return {failure: `${label}: ${String(error?.message || error)}`};
+        result = {failure: `${label}: ${String(error?.message || error)}`};
+    } finally {
+        if (prepared?.context) {
+            try {
+                await closeWithTimeout(prepared.context, `${label} context`);
+            } catch (error) {
+                result = {failure: `${label} close: ${String(error?.message || error)}`};
+            }
+        }
     }
+    return result;
 };
 
 let scenarios = null;
 if (!eagerBaseline) {
-    const delay = await scenario('delay', async () => {
-        const prepared = await prepareCandidatePage();
-        const {context, page} = prepared;
+    const delay = await scenario('delay', {}, async prepared => {
+        const {page} = prepared;
         let requestCount = 0;
         let release;
         let announce;
@@ -187,20 +248,21 @@ if (!eagerBaseline) {
             await released;
             await route.continue();
         });
-        const {tab, panel} = await prepared.bind();
-        await tab.evaluate(node => node.click());
-        await waitFor(requested, 'held pseudocode-importer request');
-        const loadingVisible = await panel.locator('[data-pseudocode-importer-loading]').isVisible();
-        const editorBeforeRelease = await panel.locator('[data-testid="bw-code-editor"]').isVisible();
-        release();
-        await panel.locator('[data-testid="bw-code-editor"]').waitFor({timeout: 30000});
-        const result = {loadingVisible, editorBeforeRelease, usable: true, requestCount};
-        await context.close();
-        return result;
+        try {
+            const {tab, panel} = await prepared.bind();
+            await tab.evaluate(node => node.click());
+            await waitFor(requested, 'held pseudocode-importer request');
+            const loadingVisible = await panel.locator('[data-pseudocode-importer-loading]').isVisible();
+            const editorBeforeRelease = await panel.locator('[data-testid="bw-code-editor"]').isVisible();
+            release();
+            await panel.locator('[data-testid="bw-code-editor"]').waitFor({timeout: 30000});
+            return {loadingVisible, editorBeforeRelease, usable: true, requestCount};
+        } finally {
+            release();
+        }
     });
-    const retry = await scenario('retry', async () => {
-        const prepared = await prepareCandidatePage();
-        const {context, page} = prepared;
+    const retry = await scenario('retry', {}, async prepared => {
+        const {page} = prepared;
         let requestCount = 0;
         await page.route(/pseudocode-importer.*\.js(?:\?|$)/, route => {
             requestCount += 1;
@@ -212,19 +274,16 @@ if (!eagerBaseline) {
         const errorVisible = await panel.locator('[data-pseudocode-importer-load-error]').isVisible();
         await panel.getByRole('button', {name: 'Retry code editor'}).click();
         await panel.locator('[data-testid="bw-code-editor"]').waitFor({timeout: 30000});
-        const result = {errorVisible, usable: true, requestCount};
-        await context.close();
-        return result;
+        return {errorVisible, usable: true, requestCount};
     });
-    const preset = await scenario('preset', async () => {
-        const layout = JSON.stringify({
-            left: {upper: 'blocks-palette', lower: null, size: 'xs'},
-            middle: {upper: 'code', lower: null, size: 'xl'},
-            right: {upper: 'stage', lower: 'sprites', size: 's'},
-            activePreset: 'code'
-        });
-        const prepared = await prepareCandidatePage({'bw-pane-layout': layout});
-        const {context, page} = prepared;
+    const presetLayout = JSON.stringify({
+        left: {upper: 'blocks-palette', lower: null, size: 'xs'},
+        middle: {upper: 'code', lower: null, size: 'xl'},
+        right: {upper: 'stage', lower: 'sprites', size: 's'},
+        activePreset: 'code'
+    });
+    const preset = await scenario('preset', {'bw-pane-layout': presetLayout}, async prepared => {
+        const {page} = prepared;
         let requestCount = 0;
         page.on('request', request => {
             if (/pseudocode-importer.*\.js(?:\?|$)/.test(request.url())) requestCount += 1;
@@ -232,63 +291,67 @@ if (!eagerBaseline) {
         await prepared.bind();
         await page.locator('[data-testid="bw-code-editor"]:visible').waitFor({timeout: 30000});
         const editorCount = await page.locator('[data-testid="bw-code-editor"]').count();
-        const result = {usable: true, editorCount, requestCount};
-        await context.close();
-        return result;
+        return {usable: true, editorCount, requestCount};
     });
-    const stateValue = async (kind, marker) => {
-        const storage = kind === 'autosave' ? {'bw-code-autosave': JSON.stringify({lang: 'pseudocode', code: marker})} : {};
-        const prepared = await prepareCandidatePage(storage);
-        const {context, page} = prepared;
-        const {tab, panel} = await prepared.bind();
-        if (kind === 'bundle') {
-            await page.evaluate(code => {
-                localStorage.setItem('bw-code-autosave', JSON.stringify({lang: 'pseudocode', code}));
-                window.dispatchEvent(new CustomEvent('bw-project-bundle-loaded', {detail: {outcome: 'loaded', version: 2}}));
-            }, marker);
-        } else if (kind === 'circuit') {
-            await page.evaluate(code => {
-                const vm = window.__brickwrightStore.getState().scratchGui.vm;
-                vm.runtime.bwPseudocodeSource = code;
-                vm.runtime.emit('PROJECT_CHANGED');
-            }, marker);
-        }
-        await tab.evaluate(node => node.click());
-        await panel.locator('[data-testid="bw-code-editor"]').waitFor({timeout: 30000});
-        await page.waitForFunction(code => {
-            const root = document.querySelector('[data-testid="bw-code-editor"]');
-            return (root?.querySelector('textarea')?.value || root?.querySelector('.cm-content')?.textContent || '').includes(code);
-        }, marker, {timeout: 10000});
-        await context.close();
-        return true;
-    };
+    const stateValue = (kind, marker) => scenario(kind,
+        kind === 'autosave' ? {'bw-code-autosave': JSON.stringify({lang: 'pseudocode', code: marker})} : {},
+        async prepared => {
+            const {page} = prepared;
+            const {tab, panel} = await prepared.bind();
+            if (kind === 'bundle') {
+                await page.evaluate(code => {
+                    localStorage.setItem('bw-code-autosave', JSON.stringify({lang: 'pseudocode', code}));
+                    window.dispatchEvent(new CustomEvent('bw-project-bundle-loaded', {detail: {outcome: 'loaded', version: 2}}));
+                }, marker);
+            } else if (kind === 'circuit') {
+                await page.evaluate(code => {
+                    const vm = window.__brickwrightStore.getState().scratchGui.vm;
+                    vm.runtime.bwPseudocodeSource = code;
+                    vm.runtime.emit('PROJECT_CHANGED');
+                }, marker);
+            }
+            await tab.evaluate(node => node.click());
+            await panel.locator('[data-testid="bw-code-editor"]').waitFor({timeout: 30000});
+            await page.waitForFunction(code => {
+                const root = document.querySelector('[data-testid="bw-code-editor"]');
+                return (root?.querySelector('textarea')?.value || root?.querySelector('.cm-content')?.textContent || '').includes(code);
+            }, marker, {timeout: 10000});
+            return true;
+        });
     scenarios = {
         delay,
         retry,
         preset,
         state: {
-            autosave: await scenario('autosave', () => stateValue('autosave', 'P21 AUTOSAVE MARKER')),
-            bundle: await scenario('bundle', () => stateValue('bundle', 'P21 BUNDLE MARKER')),
-            circuit: await scenario('circuit', () => stateValue('circuit', 'P21 CIRCUIT MARKER'))
+            autosave: await stateValue('autosave', 'P21 AUTOSAVE MARKER'),
+            bundle: await stateValue('bundle', 'P21 BUNDLE MARKER'),
+            circuit: await stateValue('circuit', 'P21 CIRCUIT MARKER')
         }
     };
 }
 
-await browser.close();
-const durations = samples.map(sample => sample.durationMs).slice().sort((a, b) => a - b);
-const receipt = {
-    schema: 'brickwright/p21-pseudocode-activation/v1',
-    mode: eagerBaseline ? 'eager-baseline' : 'lazy-candidate',
-    run,
-    headSha,
-    url,
-    absoluteLimitMs,
-    maxLongTaskMs,
-    samples,
-    medianMs: durations[2],
-    ...(eagerBaseline ? {} : {baseline, relativeLimitMs, scenarios})
-};
-await writeFile(path.join(output, 'receipt.json'), `${JSON.stringify(receipt, null, 2)}\n`);
-console.log(JSON.stringify(receipt, null, 2));
-const failures = validatePseudocodeActivationReceipt(receipt);
-if (failures.length) throw new Error(failures.join(' | '));
+    const durations = receipt.samples.map(sample => sample.durationMs).slice().sort((a, b) => a - b);
+    receipt.medianMs = durations[2] ?? null;
+    if (!eagerBaseline) receipt.scenarios = scenarios;
+    terminalStage = 'validate-receipt';
+    const failures = validatePseudocodeActivationReceipt(receipt);
+    if (failures.length) throw new Error(failures.join(' | '));
+    receipt.terminal = {ok: true, stage: 'complete', message: null};
+} catch (error) {
+    terminalError = error;
+    receipt.terminal = {ok: false, stage: terminalStage, message: String(error?.message || error)};
+} finally {
+    if (browser) {
+        try {
+            await closeWithTimeout(browser, 'browser');
+        } catch (error) {
+            if (!terminalError) {
+                terminalError = error;
+                receipt.terminal = {ok: false, stage: 'close-browser', message: String(error?.message || error)};
+            }
+        }
+    }
+    await writeFile(path.join(output, 'receipt.json'), `${JSON.stringify(receipt, null, 2)}\n`);
+    console.log(JSON.stringify(receipt, null, 2));
+}
+if (terminalError) throw terminalError;

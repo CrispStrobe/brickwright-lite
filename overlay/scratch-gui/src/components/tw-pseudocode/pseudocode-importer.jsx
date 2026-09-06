@@ -923,6 +923,10 @@ class PseudocodeImporter extends React.Component {
                 }
             };
             vm.runtime.on('PROJECT_CHANGED', this._onProjectChanged);
+            // The lazy host may have consumed the event to activate this
+            // component. Read the parked source once after binding so the
+            // handoff survives that asynchronous mount boundary.
+            this._onProjectChanged();
         }
         // Bring back whatever was in the editor when the tab was last closed.
         // Only when EVERY buffer is empty: an example loaded through the
