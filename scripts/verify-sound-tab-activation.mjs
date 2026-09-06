@@ -16,8 +16,12 @@ const {chromium} = await import('playwright');
 const browser = await chromium.launch();
 const page = await browser.newPage({viewport: {width: 1600, height: 1000}});
 const errors = [];
+const consoleErrors = [];
 page.on('pageerror', error => errors.push(error.message));
 page.on('crash', () => errors.push('renderer crashed'));
+page.on('console', message => {
+    if (message.type() === 'error') consoleErrors.push(message.text());
+});
 
 try {
     await page.addInitScript(() => {
@@ -43,7 +47,8 @@ try {
     ), null, {timeout: 60000});
     const startedAt = await page.evaluate(() => performance.now());
     await page.locator('[role="tab"]', {hasText: /Sounds?/i}).first().click();
-    await page.locator('button[aria-label="Choose a Sound"]').first().waitFor({timeout: 30000});
+    const controlsReady = await page.locator('button[aria-label="Choose a Sound"]').first()
+        .waitFor({timeout: 10000}).then(() => true, () => false);
     const receipt = await page.evaluate(start => new Promise(resolve => {
         requestAnimationFrame(() => requestAnimationFrame(() => {
             const readyAt = performance.now();
@@ -62,14 +67,22 @@ try {
                     button.getAttribute('aria-label') || ''
                 )).length;
             const loadError = document.querySelector('[data-sound-tab-load-error]')?.textContent || null;
+            const state = window.__brickwrightStore?.getState()?.scratchGui;
             resolve({startedAt: start, readyAt, durationMs: readyAt - start,
                 longTasks: (probe?.longTasks || []).filter(task => task.at >= start && task.at <= readyAt), scripts,
-                selected: Boolean(selected), soundControls, loadError});
+                selected: Boolean(selected), soundControls, loadError,
+                loading: Boolean(document.querySelector('[data-sound-tab-loading]')),
+                vmTarget: window.__vm?.editingTarget?.id || null,
+                reduxTarget: state?.targets?.editingTarget || null,
+                activeTabIndex: state?.editorTab?.activeTabIndex ?? null,
+                ariaLabels: [...document.querySelectorAll('[aria-label]')]
+                    .map(element => element.getAttribute('aria-label')).filter(Boolean)});
         }));
     }), startedAt);
     receipt.schema = 'brickwright/sound-tab-activation/v1';
     receipt.url = url;
     receipt.errors = errors;
+    receipt.consoleErrors = consoleErrors;
     receipt.soundTabScripts = receipt.scripts.filter(resource => /sound-tab/i.test(resource.name));
     receipt.baselineRun = baselineRun;
     receipt.baselineMs = baselineMs;
@@ -77,12 +90,13 @@ try {
     receipt.absoluteLimitMs = absoluteLimitMs;
     receipt.maxLongTaskMs = maxLongTaskMs;
     receipt.minimumEncodedBytes = minimumEncodedBytes;
+    receipt.controlsReady = controlsReady;
     await page.screenshot({path: path.join(output, 'sounds-tab.png'), fullPage: true});
     await writeFile(path.join(output, 'receipt.json'), `${JSON.stringify(receipt, null, 2)}\n`);
     console.log(JSON.stringify(receipt, null, 2));
     if (errors.length) throw new Error(errors.join(' | '));
     if (receipt.loadError) throw new Error(receipt.loadError);
-    if (!receipt.selected || receipt.soundControls < 3) {
+    if (!receipt.controlsReady || !receipt.selected || receipt.soundControls < 3) {
         throw new Error(`Sound tab did not render its controls: selected=${receipt.selected}, ` +
             `controls=${receipt.soundControls}`);
     }
