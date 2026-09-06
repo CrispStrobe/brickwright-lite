@@ -41,8 +41,8 @@ try {
         return selected && panel && panel.querySelectorAll('button').length >= 3 &&
             !panel.querySelector('[data-sound-tab-loading], [data-sound-tab-load-error]');
     }, null, {timeout: 30000});
-    const receipt = await page.evaluate(start => new Promise(resolve => requestAnimationFrame(() =>
-        requestAnimationFrame(() => {
+    const receipt = await page.evaluate(start => new Promise(resolve => {
+        requestAnimationFrame(() => requestAnimationFrame(() => {
             const readyAt = performance.now();
             const probe = window.__BW_SOUND_TAB_PERF__;
             for (const entry of probe?.observer?.takeRecords?.() || []) {
@@ -54,7 +54,8 @@ try {
                     responseEnd: entry.responseEnd, encodedBodySize: entry.encodedBodySize || 0}));
             resolve({startedAt: start, readyAt, durationMs: readyAt - start,
                 longTasks: (probe?.longTasks || []).filter(task => task.at >= start && task.at <= readyAt), scripts});
-        })), start));
+        }));
+    }), startedAt);
     receipt.schema = 'brickwright/sound-tab-activation/v1';
     receipt.url = url;
     receipt.errors = errors;
