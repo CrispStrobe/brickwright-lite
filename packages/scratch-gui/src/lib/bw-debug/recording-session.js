@@ -31,6 +31,7 @@ export function createRecordingSession ({
     recorder,
     eventStream,
     getTarget,
+    captureInspection = null,
     captureHostState = null,
     prepareHostRestore = null,
     commitHostRestore = null
@@ -92,12 +93,27 @@ export function createRecordingSession ({
             if (hostCaptureRefusal) return refusal('host-checkpoint-failed', hostCaptureRefusal);
         }
         const retention = recorder.retention();
+        let inspection;
+        if (captureInspection !== null) {
+            if (typeof captureInspection !== 'function') {
+                return refusal('checkpoint-inspection-failed', 'checkpoint inspection hook must be a function');
+            }
+            try {
+                inspection = captureInspection(target);
+            } catch (error) {
+                return refusal('checkpoint-inspection-failed', error?.message || String(error));
+            }
+            const inspectionRefusal = outcomeRefusal(inspection, 'checkpoint public inspection',
+                {allowUndefined: true});
+            if (inspectionRefusal) return refusal('checkpoint-inspection-failed', inspectionRefusal);
+        }
         const value = recorder.createCheckpoint({
             schema: RECORDER_SCHEMA,
             time: result.snapshot.time,
             eventCursor: eventStream.nextSequence(),
             inputCursor: retention.nextInputCursor,
             snapshot: result.snapshot,
+            ...(inspection === undefined ? {} : {inspection}),
             ...(hostAware ? {hostSnapshot} : {})
         });
         return {accepted: true, checkpoint: value};

@@ -64,7 +64,7 @@ const flatten = (value, maxFields) => {
 
 /** Bounded branch-qualified bookmarks, notes, and snapshot-free checkpoint comparisons. */
 export function createHistoryAnnotationStore ({resolveCheckpoint, maxEntries = 256,
-    maxTextBytes = 4096, maxComparisonFields = 512} = {}) {
+    maxTextBytes = 4096, maxComparisonFields = 512, initialEntries = []} = {}) {
     if (typeof resolveCheckpoint !== 'function') throw new TypeError('resolveCheckpoint is required');
     for (const [value, label] of [[maxEntries, 'maxEntries'], [maxTextBytes, 'maxTextBytes'],
         [maxComparisonFields, 'maxComparisonFields']]) {
@@ -80,6 +80,23 @@ export function createHistoryAnnotationStore ({resolveCheckpoint, maxEntries = 2
         entries.set(value.id, value);
         return Object.freeze({accepted: true, entry: value});
     };
+    if (!Array.isArray(initialEntries) || initialEntries.length > maxEntries) {
+        throw new TypeError('initialEntries must fit the annotation capacity');
+    }
+    for (const entry of initialEntries) {
+        if (!entry || !Number.isSafeInteger(entry.id) || entry.id < 1 || entries.has(entry.id) ||
+            !['bookmark', 'annotation'].includes(entry.kind)) {
+            throw new TypeError('invalid retained history annotation');
+        }
+        const cursor = normalizedCursor(entry.cursor);
+        const value = entry.kind === 'bookmark' ? immutable({id: entry.id, kind: entry.kind, cursor,
+            label: text(entry.label, 'bookmark label', maxTextBytes),
+            annotation: text(entry.annotation ?? '', 'bookmark annotation', maxTextBytes, {empty: true})}) :
+            immutable({id: entry.id, kind: entry.kind, cursor,
+                annotation: text(entry.annotation, 'annotation', maxTextBytes)});
+        entries.set(value.id, value);
+        nextId = Math.max(nextId, value.id + 1);
+    }
     return Object.freeze({
         addBookmark ({cursor, label, annotation = ''}) {
             return add('bookmark', cursor, {

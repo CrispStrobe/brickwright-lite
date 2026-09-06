@@ -12,9 +12,9 @@ const input = () => ({firmware: new Uint8Array([1, 2, 3]), source: 'LD A,1', cod
     inputs: [{cursor: 0, time: {ticks: 1, domain: 'cpu'}, producer: 'key'}],
     branches: [{id: 'main', parentId: null, eventCursor: 0}],
     checkpoints: [{id: 4, eventCursor: 0, inputCursor: 0, time: {ticks: 0, domain: 'cpu'},
-        codec: 'test', snapshot: {secret: 'opaque-machine-state'}}],
-    bookmarks: [{eventCursor: 1, label: 'loop'}],
-    annotations: [{eventCursor: 1, text: 'inspect bus'}]});
+        codec: 'test', snapshot: {secret: 'opaque-machine-state'}, inspection: {registers: {pc: 2}}}],
+    bookmarks: [{id: 1, branchId: 'main', eventCursor: 1, label: 'loop'}],
+    annotations: [{id: 2, branchId: 'main', eventCursor: 1, text: 'inspect bus'}]});
 
 test('portable bundle has versioned manifest, content hashes and opaque snapshot chunks', async () => {
     const bundle = await createDebuggerSessionBundle(input());
@@ -40,6 +40,9 @@ test('import validates everything before one destination mutation', async () => 
     assert.deepEqual([...staged.firmware], [1, 2, 3]);
     assert.equal(staged.source, 'LD A,1');
     assert.deepEqual(staged.checkpoints[0].snapshot, {secret: 'opaque-machine-state'});
+    assert.deepEqual(staged.checkpoints[0].inspection, {registers: {pc: 2}});
+    assert.deepEqual(staged.bookmarks, input().bookmarks);
+    assert.deepEqual(staged.annotations, input().annotations);
     assert.equal(staged.inputs[0].producer, 'key');
 });
 
@@ -83,7 +86,7 @@ test('branch recordings retain independent event/input cursors and checkpoint ow
         {branchId: 'fork', trace: [{seq: 0}], inputs: [{cursor: 0,
             time: {ticks: 2, domain: 'cpu'}, producer: 'irq'}], checkpoints: [{...base.checkpoints[0], id: 5}]}
     ];
-    const bundle = await createDebuggerSessionBundle({...base, recordings});
+    const bundle = await createDebuggerSessionBundle({...base, recordings, bookmarks: [], annotations: []});
     const summary = await validateDebuggerSessionBundle(bundle, {codecs});
     assert.deepEqual([summary.traceEvents, summary.inputs], [2, 2]);
     let staged;
@@ -94,4 +97,19 @@ test('branch recordings retain independent event/input cursors and checkpoint ow
     [['main', 0, 0, 'main'], ['fork', 0, 0, 'fork']]);
     assert.equal(Object.hasOwn(staged, 'trace'), false,
         'multi-branch imports cannot expose an ambiguous flattened trace');
+});
+
+test('legacy schema-1 unqualified marks normalize to the root branch with stable IDs', async () => {
+    const legacy = input();
+    legacy.bookmarks = [{eventCursor: 1, label: 'legacy'}];
+    legacy.annotations = [{eventCursor: 1, text: 'old note'}];
+    const bundle = await createDebuggerSessionBundle(legacy);
+    delete bundle.manifest.bookmarks[0].branchId;
+    delete bundle.manifest.bookmarks[0].id;
+    delete bundle.manifest.annotations[0].branchId;
+    delete bundle.manifest.annotations[0].id;
+    let staged;
+    await importDebuggerSessionBundle({bundle, codecs, commit: value => { staged = value; }});
+    assert.deepEqual(staged.bookmarks[0], {id: 1, branchId: 'main', eventCursor: 1, label: 'legacy'});
+    assert.deepEqual(staged.annotations[0], {id: 2, branchId: 'main', eventCursor: 1, text: 'old note'});
 });

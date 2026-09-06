@@ -698,6 +698,42 @@ class DebugPanel extends React.Component {
         this.setState({timelineStatus: result.accepted ? null : result});
     }
 
+    selectedHistoryCursor () {
+        const runner = this.state.runner;
+        const event = runner?.debugTimeline().state().selectedEvent;
+        const branch = runner?.debugBranchSummaries().find(item => item.active);
+        return event && branch ? {branchId: branch.branchId, eventCursor: event.seq} : null;
+    }
+
+    onAddBookmark () {
+        const cursor = this.selectedHistoryCursor();
+        if (!cursor) return;
+        const label = window.prompt('Bookmark label');
+        if (label === null) return;
+        const result = this.state.runner.addDebugBookmark({cursor, label});
+        this.setState({historyStatus: result});
+    }
+
+    onAddAnnotation () {
+        const cursor = this.selectedHistoryCursor();
+        if (!cursor) return;
+        const annotation = window.prompt('Annotation');
+        if (annotation === null) return;
+        const result = this.state.runner.addDebugAnnotation({cursor, annotation});
+        this.setState({historyStatus: result});
+    }
+
+    onCompareCheckpoints () {
+        const runner = this.state.runner;
+        if (!runner) return;
+        const branch = runner.debugBranchSummaries().find(item => item.active);
+        const checkpoints = branch?.checkpoints || [];
+        if (checkpoints.length < 2) return;
+        const cursor = checkpoint => ({branchId: branch.branchId, eventCursor: checkpoint.eventCursor});
+        this.setState({historyStatus: runner.compareDebugCheckpoints(
+            cursor(checkpoints.at(-2)), cursor(checkpoints.at(-1)))});
+    }
+
     onWaveformSelect (seq) {
         const runner = this.state.runner;
         if (!runner) return;
@@ -837,6 +873,8 @@ class DebugPanel extends React.Component {
             this.state.timelineStatus : selectedSeek?.accepted === false ? selectedSeek : null;
         const timelineRefusal = timelineRefusalResult ?
             (timelineRefusalResult.reason || timelineRefusalResult.code) : null;
+        const historyEntries = this.state.runner ? this.state.runner.debugHistoryAnnotations() : [];
+        const historyStatus = this.state.historyStatus;
         const selectedInspection = timelineEvent && this.state.runner ?
             this.state.runner.selectedEventInspection() : null;
         const timingWaveform = this.state.runner ? this.state.runner.debugTimingWaveform().view() : null;
@@ -1028,6 +1066,26 @@ class DebugPanel extends React.Component {
                             <option value="4">{'4×'}</option>
                         </select>
                     </span>
+                </div>
+
+                <div data-debug-history-annotations style={{display: 'flex', gap: 6,
+                    alignItems: 'center', flexWrap: 'wrap'}}>
+                    <button data-debug-add-bookmark style={timelineEvent ? BTN : OFF}
+                        disabled={!timelineEvent} onClick={() => this.onAddBookmark()}>{'🔖 Bookmark'}</button>
+                    <button data-debug-add-annotation style={timelineEvent ? BTN : OFF}
+                        disabled={!timelineEvent} onClick={() => this.onAddAnnotation()}>{'✎ Note'}</button>
+                    <button data-debug-compare-checkpoints style={checkpoints.length > 1 ? BTN : OFF}
+                        disabled={checkpoints.length < 2}
+                        onClick={() => this.onCompareCheckpoints()}>{'⇄ Compare checkpoints'}</button>
+                    <span data-debug-history-count>{`${historyEntries.length} saved`}</span>
+                    {historyStatus?.accepted === false ? <span role="status" data-debug-history-refusal>
+                        {historyStatus.reason || historyStatus.code}
+                    </span> : null}
+                    {historyStatus?.accepted && Object.hasOwn(historyStatus, 'identical') ?
+                        <span role="status" data-debug-checkpoint-comparison>
+                            {historyStatus.identical ? 'Checkpoints identical' :
+                                `${historyStatus.differences.length} changed fields`}
+                        </span> : null}
                 </div>
 
                 <div data-debug-timeline-controls style={{display: 'flex', gap: 6,

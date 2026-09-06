@@ -56,3 +56,13 @@ test('comparison refuses wrong checkpoint boundaries and caps reported fields', 
     assert.ok(bounded.differences.length <= 2);
     assert.equal(bounded.truncated, true);
 });
+
+test('portable entries restore IDs, branch cursors, and the next monotonic ID', () => {
+    const store = createHistoryAnnotationStore({resolveCheckpoint () {}, initialEntries: [
+        {id: 4, kind: 'bookmark', cursor: at('left', 8), label: 'loop', annotation: ''},
+        {id: 9, kind: 'annotation', cursor: at('right', 12), annotation: 'IRQ arrived'}
+    ]});
+    assert.deepEqual(store.list().map(entry => [entry.id, entry.kind, entry.cursor.branchId]),
+        [[4, 'bookmark', 'left'], [9, 'annotation', 'right']]);
+    assert.equal(store.addAnnotation({cursor: at('right', 13), annotation: 'continued'}).entry.id, 10);
+});

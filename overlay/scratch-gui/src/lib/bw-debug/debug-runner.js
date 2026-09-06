@@ -55,6 +55,7 @@ import {resolveNetlist} from '../bw-board/resolve-netlist.js';
 import {createHaltOccurrenceLedger} from './halt-occurrence-ledger.js';
 import {createForkRecordingStore} from './fork-recording-store.js';
 import {createBranchCursor} from './fork-history.js';
+import {createHistoryAnnotationStore} from './history-annotations.js';
 import {createRunToCoordinator} from './run-to.js';
 import {createSelectedEventInspectionStore} from './selected-event-inspection.js';
 import {createTimingWaveform} from './timing-waveform.js';
@@ -397,6 +398,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         };
     const createBranchPayload = (recorder, haltOccurrences) => {
         const branchSession = createRecordingSession({recorder, eventStream, getTarget: () => target,
+            captureInspection: currentTarget => ({registers:
+                typeof currentTarget.regs === 'function' ? currentTarget.regs() : {}}),
             captureHostState, prepareHostRestore, commitHostRestore});
         const replay = createInstructionReplayController({
             recorder,
@@ -446,6 +449,14 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     let activeBranchPayload = createBranchPayload(debugFoundation.recorder,
         debugFoundation.haltOccurrences);
     let forkRecordingStore = createForkRecordingStore({rootRecording: activeBranchPayload});
+    const historyStoreFor = (recordingStore, initialEntries = []) => createHistoryAnnotationStore({
+        initialEntries, resolveCheckpoint: cursor => {
+        const retained = recordingStore.recordingFor(cursor.branchId);
+        if (!retained.accepted) return null;
+        return retained.recording.recorder.checkpoints().find(checkpoint =>
+            checkpoint.eventCursor === cursor.eventCursor) || null;
+    }});
+    let historyAnnotations = historyStoreFor(forkRecordingStore);
     const recordingSession = Object.fromEntries([
         'start', 'appendBatch', 'appendInput', 'checkpoint', 'restore', 'suspend', 'resume', 'stop', 'status'
     ].map(name => [name, (...args) => activeBranchPayload.recordingSession[name](...args)]));
@@ -2847,6 +2858,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             return {...branch, recording: payload.recordingSession.status(),
                 checkpoints: payload.recorder.checkpointSummary()};
         }),
+        debugHistoryAnnotations: () => historyAnnotations.list(),
+        addDebugBookmark: request => historyAnnotations.addBookmark(request),
+        addDebugAnnotation: request => historyAnnotations.addAnnotation(request),
+        updateDebugHistoryAnnotation: (id, changes) => historyAnnotations.update(id, changes),
+        removeDebugHistoryAnnotation: id => historyAnnotations.remove(id),
+        compareDebugCheckpoints: (left, right) => historyAnnotations.compareCheckpoints(left, right),
         async exportDebugSession () {
             const branches = forkRecordingStore.summaries();
             const activeBranchId = forkRecordingStore.active().branch.branchId;
@@ -2862,7 +2879,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                         codec: DEBUG_SESSION_SNAPSHOT_CODEC,
                         snapshot: {target: checkpoint.snapshot,
                             ...(Object.hasOwn(checkpoint, 'hostSnapshot') ?
-                                {host: checkpoint.hostSnapshot} : {})}
+                                {host: checkpoint.hostSnapshot} : {})},
+                        inspection: checkpoint.inspection ?? null
                     }))};
             });
             if (recordings.some(recording => !recording.checkpoints.length)) return {accepted: false, code: 'session-export-empty',
@@ -2872,7 +2890,15 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                     firmware: bootMedia?.bytes || new Uint8Array(), source: '',
                     branches: branches.map(branch => ({...branch,
                         active: branch.branchId === activeBranchId})),
-                    recordings, codecs: sessionCodecs
+                    recordings,
+                    bookmarks: historyAnnotations.list().filter(entry => entry.kind === 'bookmark').map(entry => ({
+                        id: entry.id, branchId: entry.cursor.branchId, eventCursor: entry.cursor.eventCursor,
+                        label: entry.label, annotation: entry.annotation
+                    })),
+                    annotations: historyAnnotations.list().filter(entry => entry.kind === 'annotation').map(entry => ({
+                        id: entry.id, branchId: entry.cursor.branchId, eventCursor: entry.cursor.eventCursor,
+                        text: entry.annotation
+                    })), codecs: sessionCodecs
                 });
                 return {accepted: true, text: JSON.stringify(bundle), filename: 'debug-session.bwdebug'};
             } catch (error) {
@@ -2918,6 +2944,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                                 importedRecorder.createCheckpoint({schema: 1, id: checkpoint.id,
                                     eventCursor: checkpoint.eventCursor, inputCursor: checkpoint.inputCursor,
                                     time: checkpoint.time, snapshot: decoded.target,
+                                    inspection: checkpoint.inspection ?? null,
                                     ...(Object.hasOwn(decoded, 'host') ? {hostSnapshot: decoded.host} : {})});
                             }
                             while (eventIndex < recording.trace.length) {
@@ -2948,10 +2975,19 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                         const activated = importedStore.activate(wantedActive);
                         if (!activated.accepted) throw Object.assign(new Error(activated.reason || activated.code),
                             {code: activated.code});
+                        const importedAnnotations = historyStoreFor(importedStore, [
+                            ...staged.bookmarks.map(entry => ({id: entry.id, kind: 'bookmark',
+                                cursor: {branchId: entry.branchId, eventCursor: entry.eventCursor},
+                                label: entry.label, annotation: entry.annotation ?? ''})),
+                            ...staged.annotations.map(entry => ({id: entry.id, kind: 'annotation',
+                                cursor: {branchId: entry.branchId, eventCursor: entry.eventCursor},
+                                annotation: entry.text}))
+                        ].sort((left, right) => left.id - right.id));
                         // Commit is deliberately the first mutation: decoding,
                         // hashing and recorder reconstruction all completed above.
                         activeBranchPayload = activated.recording;
                         forkRecordingStore = importedStore;
+                        historyAnnotations = importedAnnotations;
                         reverseCursor = null;
                         reverseContinue.reset();
                         selectedInspectionKey = null;
@@ -3251,6 +3287,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 payload.haltOccurrences.clear();
             }
             forkRecordingStore = createForkRecordingStore({rootRecording: activeBranchPayload});
+            historyAnnotations = historyStoreFor(forkRecordingStore);
             nextForkBranchId = 1;
             selectedInspectionKey = null;
             selectedInspectionView = null;

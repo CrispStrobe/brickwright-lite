@@ -143,6 +143,32 @@ test('optional host state is captured separately and committed after target rest
         'host validation precedes target mutation and host commit follows it');
 });
 
+test('checkpoint capture retains a separate bounded public inspection', () => {
+    const f = fixture();
+    const session = createRecordingSession({
+        recorder: f.recorder, eventStream: f.eventStream, getTarget: () => f.target,
+        captureInspection: target => ({registers: {state: target.captureCheckpoint().state}})
+    });
+    const started = session.start();
+    assert.deepEqual(started.checkpoint.inspection, {registers: {state: 3}});
+    assert.deepEqual(f.recorder.checkpointSummary()[0], {
+        id: 0, eventCursor: 0, inputCursor: 0, time: {domain: 'cpu', ticks: 3}
+    }, 'summary stays payload-free');
+    assert.deepEqual(f.recorder.checkpoints()[0].inspection, {registers: {state: 3}});
+});
+
+test('checkpoint inspection failures are explicit and do not start recording', () => {
+    const f = fixture();
+    const session = createRecordingSession({
+        recorder: f.recorder, eventStream: f.eventStream, getTarget: () => f.target,
+        captureInspection: () => { throw new Error('register view unavailable'); }
+    });
+    assert.deepEqual(session.start(), {accepted: false, code: 'checkpoint-inspection-failed',
+        reason: 'register view unavailable'});
+    assert.equal(session.status().active, false);
+    assert.equal(f.recorder.checkpoints().length, 0);
+});
+
 test('host prepare refusal is atomic and never mutates the target', () => {
     const f = fixture();
     let restores = 0;

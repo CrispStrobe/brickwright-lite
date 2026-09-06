@@ -39,6 +39,29 @@ const limitsOf = limits => Object.freeze({...DEFAULT_BUNDLE_LIMITS, ...(limits |
 const boundedArray = (value, name, max) => {
     if (!Array.isArray(value) || value.length > max) fail('BUNDLE_LIMIT_EXCEEDED', `${name} exceeds bundle limit`);
 };
+const normalizeMarks = (bookmarks, annotations, rootId) => {
+    const combined = [...bookmarks.map(value => ({name: 'bookmarks', value})),
+        ...annotations.map(value => ({name: 'annotations', value}))];
+    const used = new Set();
+    for (const {value} of combined) {
+        if (value?.id === undefined) continue;
+        if (!Number.isSafeInteger(value.id) || value.id < 1 || used.has(value.id)) {
+            fail('INVALID_SESSION_MARK', 'session mark IDs must be unique positive integers');
+        }
+        used.add(value.id);
+    }
+    let nextId = 1;
+    const normalized = combined.map(({name, value}) => {
+        while (used.has(nextId)) nextId++;
+        const id = value?.id ?? nextId++;
+        used.add(id);
+        return {name, value: {...structuredClone(value), id, branchId: value?.branchId ?? rootId}};
+    });
+    return {
+        bookmarks: normalized.filter(item => item.name === 'bookmarks').map(item => item.value),
+        annotations: normalized.filter(item => item.name === 'annotations').map(item => item.value)
+    };
+};
 
 export async function createDebuggerSessionBundle ({firmware, source = '', trace = [], inputs = [], branches = [],
     checkpoints = [], recordings = null, bookmarks = [], annotations = [], codecs = {}, limits} = {}) {
@@ -46,6 +69,7 @@ export async function createDebuggerSessionBundle ({firmware, source = '', trace
     boundedArray(branches, 'branches', cap.branches); boundedArray(bookmarks, 'bookmarks', cap.bookmarks);
     boundedArray(annotations, 'annotations', cap.annotations);
     const rootId = branches[0]?.branchId ?? branches[0]?.id ?? 'main';
+    const marks = normalizeMarks(bookmarks, annotations, rootId);
     const sources = recordings || [{branchId: rootId, trace, inputs, checkpoints}];
     boundedArray(sources, 'recordings', cap.branches);
     const chunks = {};
@@ -75,7 +99,8 @@ export async function createDebuggerSessionBundle ({firmware, source = '', trace
             const snapshot = await add(`snapshot-${checkpointDescriptors.length}`, encoded);
             checkpointDescriptors.push({id: item.id, branchId: recording.branchId,
                 eventCursor: item.eventCursor, inputCursor: item.inputCursor,
-                time: item.time, codec: item.codec, snapshot});
+                time: item.time, codec: item.codec, snapshot,
+                inspection: structuredClone(item.inspection ?? null)});
             checkpointIds.push(item.id);
         }
         recordingDescriptors.push({branchId: recording.branchId, trace: traceRef,
@@ -83,8 +108,8 @@ export async function createDebuggerSessionBundle ({firmware, source = '', trace
     }
     const manifest = {schema: DEBUG_SESSION_BUNDLE_SCHEMA, kind: 'brickworks-debug-session',
         firmware: firmwareRef, source: sourceRef, recordings: recordingDescriptors, branches: structuredClone(branches),
-        checkpoints: checkpointDescriptors, bookmarks: structuredClone(bookmarks),
-        annotations: structuredClone(annotations), codecs: [...new Set(checkpointDescriptors.map(x => x.codec))].sort()};
+        checkpoints: checkpointDescriptors, bookmarks: marks.bookmarks,
+        annotations: marks.annotations, codecs: [...new Set(checkpointDescriptors.map(x => x.codec))].sort()};
     const total = Object.values(chunks).reduce((sum, item) => sum + unbase64(item.bytes).length, 0);
     if (total > cap.totalBytes) fail('BUNDLE_LIMIT_EXCEEDED', 'bundle exceeds total byte limit');
     return structuredClone({manifest, chunks});
@@ -134,6 +159,7 @@ export async function validateDebuggerSessionBundle (bundle, {codecs = {}, limit
         branchIds.add(id);
     }
     let traceCount = 0; let inputCount = 0;
+    const eventRanges = new Map();
     const recordingIds = new Set();
     for (const recording of manifest.recordings) {
         if (!plain(recording) || !branchIds.has(recording.branchId) || recordingIds.has(recording.branchId) ||
@@ -162,6 +188,7 @@ export async function validateDebuggerSessionBundle (bundle, {codecs = {}, limit
             lastCursor = input.cursor;
         }
         traceCount += trace.length; inputCount += inputs.length;
+        eventRanges.set(recording.branchId, {first: trace[0]?.seq ?? 0, last: trace.at(-1)?.seq ?? 0});
     }
     if (recordingIds.size !== branchIds.size) fail('INVALID_RECORDING_BRANCH', 'branch recording association is incomplete');
     const priorByBranch = new Map(); const checkpointKeys = new Set();
@@ -175,10 +202,18 @@ export async function validateDebuggerSessionBundle (bundle, {codecs = {}, limit
         const recording = manifest.recordings.find(x => x.branchId === checkpoint.branchId);
         if (!recording.checkpointIds.includes(checkpoint.id)) fail('INVALID_CHECKPOINT_ORDER', 'recording omits checkpoint association');
         checkpointKeys.add(`${checkpoint.branchId}\0${checkpoint.id}`);
+        if (encoder.encode(JSON.stringify(checkpoint.inspection)).length > cap.textBytes) {
+            fail('BUNDLE_LIMIT_EXCEEDED', 'checkpoint inspection exceeds bundle text limit');
+        }
         priorByBranch.set(checkpoint.branchId, checkpoint.eventCursor);
     }
-    for (const [name, values] of [['bookmarks', manifest.bookmarks], ['annotations', manifest.annotations]]) {
+    const marks = normalizeMarks(manifest.bookmarks, manifest.annotations,
+        manifest.branches[0]?.branchId ?? manifest.branches[0]?.id);
+    for (const [name, values] of [['bookmarks', marks.bookmarks], ['annotations', marks.annotations]]) {
         for (const value of values) if (!plain(value) || ordinal(value.eventCursor) === null ||
+            typeof value.branchId !== 'string' || !branchIds.has(value.branchId) ||
+            value.eventCursor < eventRanges.get(value.branchId).first ||
+            value.eventCursor > eventRanges.get(value.branchId).last ||
             encoder.encode(JSON.stringify(value)).length > cap.textBytes) fail('INVALID_SESSION_MARK', `invalid ${name} entry`);
     }
     return Object.freeze({accepted: true, schema: 1, traceEvents: traceCount, inputs: inputCount,
@@ -201,11 +236,13 @@ export async function importDebuggerSessionBundle ({bundle, codecs = {}, limits,
         trace: JSON.parse(decoder.decode(get(item.trace.chunk))),
         inputs: JSON.parse(decoder.decode(get(item.inputs.chunk))),
         checkpoints: checkpoints.filter(checkpoint => checkpoint.branchId === item.branchId)}));
+    const marks = normalizeMarks(bundle.manifest.bookmarks, bundle.manifest.annotations,
+        bundle.manifest.branches[0]?.branchId ?? bundle.manifest.branches[0]?.id);
     const staged = {firmware: get(bundle.manifest.firmware.chunk),
         source: decoder.decode(get(bundle.manifest.source.chunk)),
         recordings, branches: structuredClone(bundle.manifest.branches), checkpoints,
         ...(recordings.length === 1 ? {trace: recordings[0].trace, inputs: recordings[0].inputs} : {}),
-        bookmarks: structuredClone(bundle.manifest.bookmarks), annotations: structuredClone(bundle.manifest.annotations)};
+        bookmarks: marks.bookmarks, annotations: marks.annotations};
     const result = await commit(staged);
     return Object.freeze({accepted: true, summary, result});
 }

@@ -199,6 +199,31 @@ Bitte Abstürze, falsche Simulationen oder Messwerte, unzugängliche Bedieneleme
 Übersetzungsfehler, verlorenen Fortschritt, Layoutprobleme sowie Hub- und
 macOS-Version melden.
 
+## What to Test — 0.1.15 en-US
+
+This build extends the debugger's recorded-history tools. Please record a session,
+capture at least two checkpoints, select timeline events, add a bookmark and a note,
+and compare the last two checkpoints. Check that saved entries remain attached to the
+selected branch and event, and that comparison reports changed register fields without
+showing or stalling on the full machine snapshot.
+
+Please also reopen an existing project, run it offline, and report any debugger control
+that is enabled but does nothing, any missing saved history entry, or any checkpoint
+comparison that changes after repeating the same deterministic run.
+
+## What to Test — 0.1.15 de-DE
+
+Dieser Build erweitert die Werkzeuge für aufgezeichnete Debugger-Verläufe. Bitte eine
+Sitzung aufzeichnen, mindestens zwei Prüfpunkte erfassen, Timeline-Ereignisse auswählen,
+ein Lesezeichen und eine Notiz hinzufügen und die letzten beiden Prüfpunkte vergleichen.
+Gespeicherte Einträge müssen dem gewählten Zweig und Ereignis zugeordnet bleiben; der
+Vergleich soll geänderte Registerfelder melden, ohne den vollständigen Maschinenzustand
+anzuzeigen oder daran hängen zu bleiben.
+
+Bitte außerdem ein vorhandenes Projekt erneut öffnen, offline ausführen und jeden
+Debugger-Knopf melden, der aktiv ist, aber nichts bewirkt, sowie fehlende Verlaufseinträge
+oder Vergleiche, die sich bei derselben deterministischen Ausführung verändern.
+
 ## What to Test — 0.1.14 en-US
 
 Mostly an electronics-bench and compiler build. Four areas matter most:
