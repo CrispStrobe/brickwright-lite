@@ -381,7 +381,19 @@ DoD: an `.s` that toggles a GPIO assembles for `stm32f030` and runs on the
 light tier; the micro:bit ASM tab reaches `nrf52833` (today's routing is
 measured first — the map may already cover it).
 
-**N5. JavaScript native on Pico and micro:bit.** Investigation then build.
+**N5. JavaScript native on Pico and micro:bit.** Investigation then build. **INVESTIGATED 2026-09-06**
+(delegate `8086 coverage testing materials`, `docs/PICO-KALUMA-BOOT.md`, `scripts/probe-pico-kaluma.mjs`,
+UF2 sha256-pinned, census row `content-hash`): Kaluma 1.2.1 (Apache-2.0; 1.3+ dropped the RP2040) BOOTS
+behind the clean-room bootrom (CDC at instruction 946,123, REPL prompt at 1,175,086, ~0.6 s wall) and
+runs JavaScript live through the same run-live seam (one extra: its ANSI line editor emits `ESC[6n` and
+blocks until answered). The first GPIO call HANGS: `pinMode(25, OUTPUT)` busy-loops in the bootrom's
+`rom_table_lookup` from LR 0x1000463f with a null lookup result used as a base pointer — the same shape
+as MicroPython's flash-funcs gap (N3a). Licence ledger: Kaluma/JerryScript/CMSIS Apache-2.0, pico-sdk
+and littlefs BSD-3, TinyUSB MIT; a shipped UF2 would need the Apache NOTICE and attributions.
+Recommendation: buildable through the existing seam, BLOCKED on one bootrom entry; the JS·Pico cell
+does not flip until a blink is observed. Follow-up N5-1 (worker): name the ROM code and SDK function;
+then bw-board adds the entry. The micro:bit half (PXT static TypeScript) is DEFERRED: the real compiler
+is reachable only as makecode.microbit.org (network) or by vendoring PXT + CODAL + toolchain.
 Pico: Kaluma (Apache-2.0) firmware + its REPL `.load` protocol, mirroring the
 MicroPython deploy; micro:bit: PXT static TypeScript (MIT), the compiler
 MakeCode itself uses, hosted. Both silicon-first; Pico sim rides N3's boot
