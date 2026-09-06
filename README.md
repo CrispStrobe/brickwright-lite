@@ -83,7 +83,7 @@ npm run vendor                                   # fetch pinned sources into pac
 node scripts/integrate.mjs                       # overlay our delta
 cd packages/scratch-gui
 npm install --ignore-scripts --legacy-peer-deps
-node ../../scripts/apply-vm-overlay.mjs          # VM overlay + precompiled parser validators
+node ../../scripts/apply-vm-overlay.mjs          # built-in extensions + upstream fixes
 node ../../scripts/apply-paint-overlay.mjs       # the extended costume designer
 node ../../scripts/apply-render-overlay.mjs      # text costumes wait for the lazy render fonts
 NODE_ENV=production npm run build                # -> build/
