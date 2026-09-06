@@ -83,6 +83,8 @@
  * @module
  */
 
+import {noteRefusal} from './chip-ledger.js';
+
 /** Mode register bits 2-3: what a transfer cycle actually does. */
 const XFER_VERIFY = 0;   // run the counters, drive no bus cycle
 const XFER_WRITE = 1;    // WRITE TO MEMORY: device -> memory (a floppy READ)
@@ -102,6 +104,7 @@ const MODE_CASCADE = 3;
  * and ignored -- see the module header.
  */
 const CMD_DISABLE = 0x04;
+const CMD_ROTATE = 0x10;   // bit 4: rotating priority
 
 /**
  * XT page-latch decode, indexed by port & 7 (so 80h-87h).
@@ -190,6 +193,7 @@ export class I8237 {
         switch (reg) {
             case 0x08:
                 this.command = val;
+                this._noteUnmodelled(val, reg);
                 this._updateHrq();
                 break;
             case 0x09: {
@@ -264,10 +268,24 @@ export class I8237 {
     /** True while some channel wants the bus -- the HRQ output. */
     get hrq() { return this._hrq; }
 
-    /** The channel that would be served next, or null. Fixed priority. */
+    /**
+     * The four channels in CURRENT priority order, highest first.
+     *
+     * `lowestPriority` is the channel that currently holds lowest priority;
+     * service runs from the next one upward, wrapping. 3 gives the fixed
+     * default of channel 0 highest, which is what an XT programs, so the
+     * rotating machinery costs nothing until a program asks for it.
+     */
+    _priorityOrder() {
+        const out = [];
+        for (let n = 1; n <= 4; n++) out.push(this.channels[(this.lowestPriority + n) & 3]);
+        return out;
+    }
+
+    /** The channel that would be served next, or null. */
     pendingChannel() {
         if (this.command & CMD_DISABLE) return null;
-        for (const c of this.channels) {
+        for (const c of this._priorityOrder()) {
             if (!c.requesting()) continue;
             // Cascade channels request the bus for a downstream controller we
             // do not have, so they can request forever and never transfer.
@@ -331,6 +349,12 @@ export class I8237 {
             if (ch.mode === MODE_DEMAND && !ch.requesting()) break;
             if (ch.mode !== MODE_DEMAND && ch.mode !== MODE_BLOCK) break;
         }
+        // ROTATING PRIORITY (command bit 4). The channel just serviced drops to
+        // lowest priority, so a busy channel cannot starve the others. Applied
+        // after the burst rather than per cycle: the 8237 rotates when it
+        // RELEASES the bus, and a demand or block transfer holds it for the
+        // whole burst.
+        if (moved > 0 && (this.command & CMD_ROTATE)) this.lowestPriority = ch.n & 3;
         this._updateHrq();
         return moved;
     }
@@ -388,6 +412,9 @@ export class I8237 {
     // --------------------------------------------------------------- state
 
     _masterClear() {
+        // Fixed priority is channel 0 highest, which the XT programs.
+        this.lowestPriority = 3;
+        this.unmodelled = null;
         this.command = 0;
         this.status = 0;
         this.temp = 0;
@@ -395,6 +422,65 @@ export class I8237 {
         for (const c of this.channels) c.masterClear();
         this._hrq = false;
         if (this.hooks.onHrq) this.hooks.onHrq(false);
+    }
+
+    /**
+     * A COMMAND BIT THIS CHIP DOES NOT MODEL IS RECORDED, NOT SWALLOWED.
+     *
+     * Every other chip in this repository says so when a program asks for
+     * something it does not implement: the 8255 sets `modeWarning`, the 8251
+     * the same, the SB DSP counts unknown commands in an `unsupported` map,
+     * the uPD765 returns IC=invalid and names itself in `lastRefusal`. The
+     * 8237 was the one that stayed silent -- it stored these bits and behaved
+     * as though they were clear, which is indistinguishable from a chip that
+     * honoured them and had nothing to do.
+     *
+     * That is the same shape as absent hardware reading back as open-bus FFh:
+     * truthful only if someone is told. A driver that programs memory-to-
+     * memory and gets nothing has no way to learn why, and the failure
+     * surfaces as missing data somewhere else entirely.
+     *
+     * ROTATING PRIORITY IS DELIBERATELY ABSENT FROM THIS LIST -- it is
+     * modelled now (2026-09-05), so announcing it would be a lie in the other
+     * direction. The list is what remains unmodelled, and it shrinks as
+     * things are implemented.
+     *
+     * Counts rather than flags, so a driver that sets a bit once and a driver
+     * that sets it in a loop are distinguishable.
+     */
+    /**
+     * The command bits this chip stores and does not act on, by name.
+     *
+     * Deliberately NOT a list of "everything the datasheet has" -- bit 2
+     * (controller disable) and bit 4 (rotating priority) are both modelled,
+     * and naming a modelled feature here would be a false report in the
+     * opposite direction from the one this fixes.
+     */
+    static UNMODELLED_COMMAND_BITS = [
+        [0x01, 'memory-to-memory transfer',
+            'a block copy programmed through the DMA controller moves nothing and the '
+            + 'temporary register reads back zero'],
+        [0x02, 'channel-0 address hold',
+            'only meaningful with memory-to-memory, which is itself unmodelled'],
+        [0x08, 'compressed timing',
+            'transfers take the same emulated time as normal timing; nothing is faster'],
+        [0x20, 'extended write',
+            'the write strobe timing a slow device needs is not reproduced'],
+        [0x40, 'DREQ sense inversion',
+            'a device that requests by pulling DREQ LOW is never seen as requesting'],
+        [0x80, 'DACK sense inversion',
+            'a device expecting an active-high DACK is never acknowledged'],
+    ];
+
+    _noteUnmodelled(val, at) {
+        for (const [bit, feature, symptom] of I8237.UNMODELLED_COMMAND_BITS) {
+            if (!(val & bit)) continue;
+            // `at` is the port the program wrote to reach this. The debugger
+            // points at the instruction with it; a sentence cannot be clicked.
+            // The ledger keeps EVERY address the feature was refused at, not
+            // the last -- see chip-ledger.js.
+            noteRefusal(this.unmodelled ||= new Map(), feature, {symptom, at});
+        }
     }
 
     _updateHrq() {
@@ -408,6 +494,12 @@ export class I8237 {
         return {
             command: this.command, status: this.status, temp: this.temp,
             ff: this._ff, hrq: this._hrq, pageScratch: this.pageScratch,
+            // Added with rotating priority 2026-09-05. A checkpoint that omits
+            // this restores a controller whose PRIORITY ORDER is wrong while
+            // every register reads right -- the machine runs and services
+            // channels in a different order than it saved. Silent, and exactly
+            // the corruption the checkpoint refusal exists to prevent.
+            lowestPriority: this.lowestPriority,
             channels: this.channels.map((c) => c.getState()),
         };
     }
@@ -415,6 +507,11 @@ export class I8237 {
     setState(s) {
         this.command = s.command; this.status = s.status; this.temp = s.temp;
         this._ff = s.ff; this._hrq = s.hrq; this.pageScratch = s.pageScratch;
+        // `?? 3` rather than a bare assignment: a checkpoint written before
+        // rotation existed must restore to FIXED priority, not to undefined --
+        // which would make _priorityOrder index channels[NaN] and serve
+        // nothing at all.
+        this.lowestPriority = s.lowestPriority ?? 3;
         for (let i = 0; i < 4; i++) this.channels[i].setState(s.channels[i]);
     }
 }

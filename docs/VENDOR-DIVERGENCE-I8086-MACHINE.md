@@ -196,6 +196,14 @@ fails unless it touched both.
           "id": "port-conflict-check",
           "contains": "both claim"
         }
+      ],
+      "liteRemoved": [
+        {
+          "id": "cycle-estimator-not-vendored",
+          "absent": "CycleEstimator|i8088-timing",
+          "falsifiable": "The 8086 stops working completely \u2014 no machine, no screen, no blocks \u2014 because the file it now says it imports is not in this repository at all.",
+          "why": "THIS ENTRY POINTS THE OTHER WAY FROM THE NINE ABOVE. Upstream HAS this and lite deliberately does not, so there is no lite-only text for `contains` to hold; `absent` must NOT match the vendored copy. bw-board's i8086-machine.js imports CycleEstimator from ./i8088-timing.js at line 44 and uses _cycleEst nine times (9256cf7, opt-in cycle-accurate timing, ~6x). That import is present at MASTER AND AT THE CURRENT PIN, so lite did not fall behind on it \u2014 lite REMOVED it, before this allow-list existed to record the decision. Found 2026-09-06 while measuring vendor direction, having been written down nowhere for the whole time the nine entries above were being maintained. Re-adding the import means vendoring i8088-timing.js AND i8088-cycles.js, which it imports TABLES and PROVENANCE from: 983 KB of new bundle, 975 KB of it one table file, for a mode lite does not expose. That is a decision with its own owner and its own row, not something a pin move carries in silently."
+        }
       ]
     },
     "z80-machine.js": {

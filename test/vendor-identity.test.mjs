@@ -143,6 +143,61 @@ test('a sync has not deleted the lite-only work in i8086-machine.js', () => {
         '  docs/VENDOR-DIVERGENCE-I8086-MACHINE.md in the same commit.\n');
 });
 
+// THE ALLOW-LIST NOW POINTS BOTH WAYS, and until 2026-09-06 it only pointed one.
+//
+// `liteOnly` entries say "lite has this and upstream does not, so a sync would
+// DELETE it". That is nine of the ten divergences in i8086-machine.js. The tenth
+// is the inverse -- upstream has the CycleEstimator import and its nine call
+// sites, at master AND at the pin, and lite deliberately does not -- and the
+// schema had no way to say so. There was no lite-only text for `contains` to
+// hold, so the decision was recorded nowhere, for the entire time the nine were
+// being carefully maintained beside it. An allow-list that can only describe
+// additions will always be missing exactly the entries nobody can write.
+//
+// So: `liteRemoved` entries carry `absent`, a regex that must NOT match the
+// vendored copy. Same falsifiable-sentence rule as the nine, for the same reason.
+//
+// WHAT THIS HALF CANNOT SEE, stated rather than left to be discovered. A
+// `contains` entry is protected from going stale by the `converged` check below:
+// if its text arrives upstream it is no longer a divergence and the entry says
+// so. The mirror of that for `absent` is "upstream still HAS this", and no
+// offline test can check it -- there is no upstream copy here. So a liteRemoved
+// entry would keep passing if bw-board ever dropped the cycle estimator, quietly
+// protecting nothing. That staleness check belongs in sync-bw-board.mjs, which
+// holds the upstream text in both --dir and remote mode. This gate asserts the
+// absence; the sync asserts the divergence is still real.
+test('a merge has not reintroduced what lite deliberately removed', () => {
+    const spec = readAllowList();
+    const reintroduced = [];
+    let entries = 0;
+    for (const [file, cfg] of coveredFiles(spec)) {
+        for (const d of cfg.liteRemoved || []) {
+            entries++;
+            assert.ok(d.falsifiable && d.falsifiable.length > 30,
+                `liteRemoved entry '${d.id}' has no 'falsifiable' sentence. A removal needs one ` +
+                'as much as an addition: if nobody can say what breaks when it comes back, ' +
+                'nobody can say why it went.');
+            for (const p of vendoredPaths(spec, file)) {
+                if (new RegExp(d.absent).test(fs.readFileSync(p, 'utf8'))) {
+                    reintroduced.push(`${d.id} -> ${path.relative(ROOT, p)}` +
+                        `\n      what breaks: ${d.falsifiable}`);
+                }
+            }
+        }
+    }
+    // Species 1 again: iterating an empty list passes everything. Deleting the
+    // liteRemoved arrays would make this gate green rather than absent.
+    assert.ok(entries > 0,
+        'no liteRemoved entries exist, so this gate iterated nothing and proved nothing. ' +
+        'If the last one was legitimately retired, retire this assertion in the same commit.');
+    assert.deepEqual(reintroduced, [],
+        '\n  A MERGE HAS PUT BACK SOMETHING LITE REMOVED ON PURPOSE.\n' +
+        '  A three-way merge toward upstream reintroduces these by default --\n' +
+        '  they are in upstream, they are not here, so the merge adds them back\n' +
+        '  and the reason they went is in the allow-list, not in the diff.\n\n  ' +
+        reintroduced.join('\n  ') + '\n');
+});
+
 test('the two dual-tracked vendored copies have not drifted apart', t => {
     const spec = readAllowList();
     let compared = 0;
