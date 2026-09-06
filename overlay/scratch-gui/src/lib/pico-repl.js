@@ -97,9 +97,27 @@ export function createPicoRepl(transport, opts = {}) {
     await readUntil('raw REPL; CTRL-B to exit');
   }
 
+  /** Write text to the raw REPL in packets no larger than the CDC bulk OUT
+   *  endpoint (64 bytes), draining between each so the device consumes one
+   *  before the next arrives. A single large write is delivered whole in node,
+   *  but a real CDC endpoint pulls one 64-byte packet per poll — and the bundled
+   *  browser USB path takes only the first packet of a write and silently drops
+   *  the rest, truncating the program. BOTH the run-live start (execStart) and
+   *  the install-and-reboot deploy (deployMainPy, via exec) write through this,
+   *  so the sim and silicon seams share the WRITE discipline, not just the
+   *  handshake — a long .py truncates on hardware exactly as it did in the sim. */
+  async function writeChunked(text, onProgress) {
+    const MAX_PACKET = 64;
+    for (let i = 0; i < text.length; i += MAX_PACKET) {
+      await transport.write(text.slice(i, i + MAX_PACKET));
+      if (onProgress) onProgress('program-written', {bytes: Math.min(i + MAX_PACKET, text.length)});
+      if (transport.drain) await transport.drain();
+    }
+  }
+
   /** Execute code in raw REPL; returns its stdout. Throws on a traceback. */
   async function exec(code) {
-    await transport.write(code + CTRL_D);
+    await writeChunked(code + CTRL_D);
     await readUntil('OK');
     // Output ends with \x04, then the error channel, then another \x04.
     const out = await readUntil(CTRL_D);
@@ -126,20 +144,10 @@ export function createPicoRepl(transport, opts = {}) {
    *  Ctrl-D, and before the OK wait, so a stall can be localized to the exact
    *  step (the program and the Ctrl-D go as SEPARATE writes for the same reason). */
   async function execStart(code, onProgress = () => {}) {
-    // Write in packets no larger than the CDC bulk OUT endpoint (64 bytes),
-    // draining between each so the device consumes one before the next arrives.
-    // A single large write is delivered whole in node but, in the bundled
-    // browser USB path, only its first packet reaches the firmware — the rest is
-    // silently dropped, the program is truncated, and no OK ever comes. Ctrl-D
-    // goes as its own final packet after the program has drained.
-    const MAX_PACKET = 64;
-    for (let i = 0; i < code.length; i += MAX_PACKET) {
-      await transport.write(code.slice(i, i + MAX_PACKET));
-      onProgress('program-written', {bytes: Math.min(i + MAX_PACKET, code.length)});
-      if (transport.drain) await transport.drain();
-    }
-    await transport.write(CTRL_D);
-    if (transport.drain) await transport.drain();
+    // The program in 64-byte packets (writeChunked), then Ctrl-D as its own
+    // final packet after the program has drained. Same discipline as exec.
+    await writeChunked(code, onProgress);
+    await writeChunked(CTRL_D);
     onProgress('ctrld-written');
     onProgress('waiting-ok');
     await readUntil('OK');
