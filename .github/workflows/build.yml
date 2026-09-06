@@ -380,6 +380,10 @@ jobs:
           # packages/scratch-gui, by count, so growth is seen rather than hidden.
           echo "bare specifiers re-resolved from packages/scratch-gui by the unit tests:"
           if [ -s test-results/fast.gui-scope.tsv ]; then cut -f1 test-results/fast.gui-scope.tsv | sort | uniq -c | sort -rn; else echo "  (none)"; fi
+          # Measured, then DECLARED: every specifier and every test above must be in
+          # scripts/lib/gui-scope-allowed.json, or this fails by name. The boundary
+          # grows only by review.
+          node scripts/check-gui-scope.mjs --log test-results/fast.gui-scope.tsv
           # Did the run report on what it was handed? Every file
           # scripts/list-tests.mjs puts in this set must appear in the per-file
           # census with at least one test, and any `not ok` must be counted by
@@ -1273,6 +1277,7 @@ jobs:
           # No node_modules in this job, so the GUI-scope hook can redirect nothing here by design; the line proves it.
           echo "bare specifiers re-resolved from packages/scratch-gui by the corpus walks:"
           if [ -s test-results/corpus.gui-scope.tsv ]; then cut -f1 test-results/corpus.gui-scope.tsv | sort | uniq -c | sort -rn; else echo "  (none)"; fi
+          node scripts/check-gui-scope.mjs --log test-results/corpus.gui-scope.tsv
           node scripts/check-test-run.mjs --set corpus --tap /tmp/corpus.tap --census test-results/corpus.census.json
           if grep -qE '^not ok ' /tmp/corpus.tap; then
             echo "::error::TAP reports failures the summary did not count — a suite probably threw while being CONSTRUCTED."
