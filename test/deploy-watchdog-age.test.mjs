@@ -91,3 +91,17 @@ test('the workflow calls the script instead of re-deriving the age in shell', ()
     assert.ok(!/started="\$created"/.test(yml),
         'the run-creation-time fallback is back: a queued run will be aged by its queue time');
 });
+
+test('the watchdog checks out default-branch tooling before a red-streak failure can skip it', () => {
+    const yml = readFileSync(path.join(import.meta.dirname, '..',
+        '.github/workflows/deploy-watchdog.yml'), 'utf8');
+    const checkout = yml.indexOf('uses: actions/checkout@');
+    const redStreak = yml.indexOf('name: Check for a red streak');
+    const alwaysCleanup = yml.indexOf('name: Cancel stuck build runs');
+    assert.ok(checkout >= 0 && checkout < redStreak && redStreak < alwaysCleanup,
+        'checkout must happen before the fallible red-streak check and always-run cleanup');
+    assert.match(yml, /ref: \$\{\{ github\.event\.repository\.default_branch \}\}/,
+        'scheduled/manual watchdog tooling must come from the trusted default branch');
+    assert.match(yml, /persist-credentials: false/,
+        'the read-only tooling checkout must not retain repository credentials');
+});
