@@ -1489,6 +1489,152 @@ export class I8086Machine {
             (typeof c.saveState === 'function' && typeof c.loadState === 'function'));
     }
 
+    /**
+     * EVERYTHING THE CHIPS REFUSED, in one place, because until 2026-09-05
+     * nothing read any of it.
+     *
+     * Every chip here announces when a program asks for something it does not
+     * model -- the 8255 and 8251 set `modeWarning`, the uPD765 returns
+     * IC=invalid and names itself in `lastRefusal`, the SB DSP and YM3812
+     * count unknown commands, the 8237 records unmodelled command bits. All of
+     * it was correct, individually well-designed, and UNREACHABLE: a grep for
+     * any of those names across this file returned nothing, so a driver
+     * programming memory-to-memory or an 8255 handshake left a precise record
+     * in a field no consumer ever asked for.
+     *
+     * That is the week's failure with the halves swapped. Usually a check
+     * reports on something it never looked at; here the chips looked carefully
+     * and nobody read the report. An announcement with no reader is the same
+     * silence it was meant to replace, arrived at more expensively.
+     *
+     * I added the 8237's ledger an hour before writing this and gave it
+     * exactly the same unreachable shape, which is the reason to state the
+     * rule rather than the instance: A LEDGER IS ONLY WORTH THE CONSUMER THAT
+     * READS IT.
+     *
+     * Shape-driven rather than a list of chips, so a chip added later is
+     * collected without editing this: anything exposing `report()`, or any of
+     * the four field names below, is picked up. `test/chip-refusals.test.mjs`
+     * asserts every chip that HAS a ledger is reachable through here, so the
+     * next private field fails rather than joins them.
+     *
+     * @returns {Array<{name: string, kind: 'chip'|'device', refusals: object}>}
+     */
+    /**
+     * What makes a field a refusal ledger. Exported so the gate that checks
+     * every chip is reachable uses THE SAME pattern rather than a copy of it --
+     * two lists that must agree is the shape that let two ledgers go unread.
+     */
+    static LEDGER_FIELD = /refus|unsupport|unmodel|warning|invalid/i;
+
+    /** Suffixes that mark a field as a ledger's companion, not a ledger. */
+    static LEDGER_SIBLING = /(At|Symptom)$/;
+
+    chipRefusals() {
+        const rows = [];
+        // `at` is the address the program touched to trigger the refusal -- a
+        // port number, or a register offset. lego-ac's ask, and the argument
+        // is right: the debugger's line wants to point at the instruction and
+        // the P-lane table wants to join to the part's port map. A SYMPTOM
+        // SENTENCE CANNOT BE CLICKED.
+        //
+        // null when the chip does not record one. A refusal with no address is
+        // still worth reporting; inventing an address for it would not be.
+        //
+        // `ats` IS THE SET, `at` IS THE ANCHOR. A feature refused at more than
+        // one address reports all of them, first-seen; `at` is the first, and
+        // it is the first rather than the last so a row's anchor does not move
+        // under a reader while the program runs. `atsMore` is true when the
+        // per-feature cap dropped addresses, because a bounded list that does
+        // not say it is bounded reads as a complete one.
+        const push = (part, kind, feature, symptom, count, at, ats, atsMore) => {
+            const set = (ats && ats.length) ? [...ats]
+                : (at !== null && at !== undefined) ? [at] : [];
+            rows.push({part, kind, feature, symptom: symptom ?? null,
+                count: count ?? 1, at: set.length ? set[0] : null,
+                ats: set, atsMore: !!atsMore});
+        };
+
+        const sources = [
+            ...Object.entries(this.chips || {}).map(([n, c]) => ['chip', n, c]),
+            ...Object.entries(this.devices || {}).map(([n, d]) => ['device', n, d]),
+        ];
+        for (const [kind, name, part] of sources) {
+            if (!part || typeof part !== 'object') continue;
+
+            // A chip may shape its own report; ym3812 already does.
+            let reported = null;
+            if (typeof part.report === 'function') {
+                try { reported = part.report(); } catch { /* a report must not break a read */ }
+            }
+            // A FIELD READ ONCE. Both paths below reach real fields, and the
+            // name-derived scan further down would reach them AGAIN -- the
+            // first smoke of the finished vocabulary printed the YM3812's
+            // rhythm-mode refusal twice and the FDC's bad opcode twice, once
+            // through the chip's own report() and once through the field the
+            // report was built from. Two rows for one refusal is a count that
+            // quantifies over views instead of over events.
+            const consumed = new Set(['lastRefusal']);
+            for (const e of reported?.unsupported ?? []) {
+                consumed.add('unsupported');
+                push(name, kind, e.what ?? String(e), e.symptom ?? null, e.count,
+                    e.at, e.ats, e.atsMore);
+            }
+
+            if (part.lastRefusal) {
+                push(name, kind, part.lastRefusal, part.lastRefusalSymptom ?? null,
+                    part.refusals || 1, part.lastRefusalAt);
+            }
+
+            // DERIVED, NOT ENUMERATED. The first version listed the field names
+            // it knew -- modeWarning, lastRefusal, unsupported, unmodelled --
+            // and the reachability gate immediately found two ledgers it did
+            // not reach: the 8259's `initWarning` and the board's
+            // `_refusedControls`. Adding those two by name would have fixed the
+            // instances and left the class, which is how the list got short in
+            // the first place.
+            //
+            // So: any own field whose NAME says it records a refusal, holding
+            // either a Map of features or a non-empty string. A chip that
+            // invents a new name is collected the moment it exists.
+            for (const field of Object.keys(part)) {
+                if (!I8086Machine.LEDGER_FIELD.test(field)) continue;
+                if (consumed.has(field)) continue;
+                // A SIBLING IS NOT A LEDGER. `modeWarningAt` and
+                // `modeWarningSymptom` both contain a word the pattern looks
+                // for, so the scan collected each of them as a refusal of its
+                // own -- a row whose feature was the symptom sentence and
+                // whose symptom was null. The suffix is only ignored when the
+                // field it belongs to actually exists, so a chip that genuinely
+                // names a ledger `resetAt` is still collected.
+                if (I8086Machine.LEDGER_SIBLING.test(field)
+                    && part[field.replace(I8086Machine.LEDGER_SIBLING, '')] !== undefined) continue;
+                const v = part[field];
+                // A STRING LEDGER carries its address in a sibling `<field>At`,
+                // because a sentence has nowhere to put one. Convention rather
+                // than restructuring every chip: the 8255's modeWarning stays
+                // a sentence and gains modeWarningAt beside it.
+                // and its symptom in `<field>Symptom`, for the same reason:
+                // so a sentence-shaped ledger produces the same row as a Map
+                // one rather than a thinner one.
+                if (typeof v === 'string' && v) {
+                    push(name, kind, v, part[`${field}Symptom`] ?? null, 1,
+                        part[`${field}At`]);
+                    continue;
+                }
+                if (!(v instanceof Map)) continue;
+                for (const [feature, entry] of v) {
+                    // Two shapes in the wild: a bare count, and the
+                    // {count, symptom, ats, atsMore} that chip-ledger.js keeps.
+                    if (typeof entry === 'number') push(name, kind, String(feature), null, entry);
+                    else push(name, kind, String(feature), entry?.symptom ?? null,
+                        entry?.count ?? 1, entry?.at, entry?.ats, entry?.atsMore);
+                }
+            }
+        }
+        return rows;
+    }
+
     saveState() {
         if (!this.canCheckpoint()) {
             throw new Error('8086 checkpoint refused: the machine has a component without a complete state API');

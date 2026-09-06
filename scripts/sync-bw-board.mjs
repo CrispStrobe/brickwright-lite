@@ -183,7 +183,10 @@ const readVendorAllowList = async () => {
     // PER FILE NOW, not the single file whose divergence someone wrote up
     // first. That single-file version protected i8086-machine.js and watched
     // fifteen other files lose 950 lines on the run that tested it.
-    return new Map(Object.entries(spec.files).map(([f, cfg]) => [f, cfg.liteOnly]));
+    // The WHOLE cfg, not just liteOnly. `liteRemoved` entries point the other
+    // way -- upstream has something lite deliberately does not -- and the
+    // staleness check for them needs upstream's text, which only this script has.
+    return new Map(Object.entries(spec.files).map(([f, cfg]) => [f, cfg]));
 };
 const allowList = await readVendorAllowList();
 if (!allowList) {
@@ -196,6 +199,40 @@ if (!allowList) {
 }
 const wouldDelete = [];
 const wouldTruncate = [];
+/**
+ * A `liteRemoved` entry protects an ABSENCE, and an absence can go stale.
+ *
+ * test/vendor-identity.test.mjs asserts the removed text is not in the vendored
+ * copy, which is the half that catches a merge putting it back. It cannot check
+ * the other half -- that upstream STILL HAS it -- because there is no upstream
+ * tree in a unit test. If bw-board ever drops the thing lite removed, the entry
+ * keeps passing while protecting nothing, and the allow-list quietly grows a
+ * line that describes a divergence that no longer exists.
+ *
+ * This script is the one place that holds both texts, so the check belongs here.
+ * It WARNS rather than refusing: a converged removal is not a reason to stop a
+ * sync, it is a reason to delete an allow-list entry, and that is a person's
+ * edit. Silence is the only outcome that would be wrong.
+ */
+async function reportConvergedRemovals () {
+    if (!allowList) return;
+    const converged = [];
+    for (const [file, cfg] of allowList) {
+        for (const d of cfg.liteRemoved || []) {
+            let up;
+            try { up = await readSource(`src/${file}`); } catch { continue; }
+            if (!new RegExp(d.absent).test(up)) converged.push({file, id: d.id, why: d.why});
+        }
+    }
+    if (!converged.length) return;
+    console.log('\n  ALLOW-LIST ENTRIES THAT NO LONGER DESCRIBE A DIVERGENCE:');
+    for (const c of converged) {
+        console.log(`    ${c.file}: liteRemoved '${c.id}' -- upstream no longer contains it either.`);
+        console.log('      The entry still passes its gate and now protects nothing. Delete it,');
+        console.log('      or say in the entry why the absence is still worth asserting.');
+    }
+}
+
 const force = process.argv.includes('--force');
 // The pin the vendored copy came from — the third point of the comparison,
 // read before this run overwrites it.
@@ -353,7 +390,7 @@ for (const rel of FILES) {
     // file, because a file the named tier does not cover falls straight
     // through to it.
     if (!check && !force && allowList && allowList.has(path.basename(rel)) && current !== null) {
-        const lost = allowList.get(path.basename(rel)).filter(d => {
+        const lost = (allowList.get(path.basename(rel)).liteOnly || []).filter(d => {
             const re = new RegExp(d.contains);
             return re.test(current) && !re.test(next);
         });
@@ -479,6 +516,11 @@ if (!check) {
     }
     console.log(`  checked ${present.size} files: imports all resolve, no packages`);
 }
+
+// Runs in BOTH modes on purpose. --check is the freshness gate CI actually runs,
+// so a check that skipped this would leave the one automated caller blind to the
+// exact staleness it exists to notice.
+await reportConvergedRemovals();
 
 if (check && stale && !allowStale) {
     // "STALE — run the sync" WAS THE WRONG SENTENCE, and once the file list
