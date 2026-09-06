@@ -2,12 +2,25 @@
 /**
  * CI-only production-browser proof: the debugger says what a chip refused.
  *
- * The 8237 stores a memory-to-memory command bit and behaves as though it were
- * clear. From the program's side that is indistinguishable from a controller
- * that honoured the request and had nothing to copy, so a driver gets no data
- * and no reason. test/debug-chip-refusal-line.test.mjs proves the MODEL turns
+ * The 8255 accepts a mode-1 control word and runs it as mode 0. From the
+ * program's side that is indistinguishable from a port that implemented the
+ * handshake, so a driver waiting on the strobe acknowledgement waits on a bit
+ * that never moves. test/debug-chip-refusal-line.test.mjs proves the MODEL turns
  * that into a line; this proves the line reaches a real browser, through the
  * real runner, off a program the user assembled.
+ *
+ * WHY THE 8255 AND NOT THE 8237, which is the chip the unit test drives. The
+ * ASM route boots BREADBOARD8086, whose chips are `ppi1` and `uart1` — THERE IS
+ * NO DMA CONTROLLER ON THIS BENCH. The 8237 lives on PCXT8086, the config the
+ * BIOS and Machine Loader routes use. A first version of this gate wrote the
+ * memory-to-memory command to port 08h and waited forty seconds for a line that
+ * could never appear: the port decoded to nothing, so no chip refused anything,
+ * and the timeout looked like a broken panel rather than a program aimed at
+ * hardware that was not there. The gate proves the same thing either way — a
+ * real program, a real refusal, one line — and it has to use a chip the bench
+ * it runs on actually has. test/debug-chip-refusal-line.test.mjs asserts BOTH
+ * benches, so a config change that removes this chip fails in node rather than
+ * as a forty-second browser timeout.
  *
  * BOTH DIRECTIONS, AND THE ABSENT CASE RUNS FIRST on purpose. A gate that only
  * checks the line appears cannot tell a working panel from one that shows the
@@ -144,23 +157,52 @@ try {
     await snap('clean-program-no-refusal');
 
     // ---- the refusing case -------------------------------------------------
-    // Command register bit 0 is memory-to-memory: the write a DMA block-copy
-    // driver makes, and the one the 8237 stores and does not act on.
-    await assemble(' mov al, 01h\n out 08h, al\nloop0:\n jmp loop0\n');
-    await page.locator('[data-debug-chip-refusal]').first().waitFor({timeout: 40000});
+    // ppi1 sits at port 0 on this bench, so its control port is 3. A control
+    // word selecting mode 1 on group A is what a driver writes when it wants
+    // the strobed handshake; the 8255 takes it and runs as mode 0.
+    await assemble(' mov al, 0A0h\n out 03h, al\nloop0:\n jmp loop0\n');
+    // WAIT, THEN SAY WHICH HALF FAILED. A bare 40-second timeout on the line
+    // locator reports "not visible" and leaves you choosing between "the model
+    // produced no row" and "the model produced a row the panel did not render" —
+    // and the first time this gate went red, the answer was neither obvious nor
+    // the one I assumed. The block (plural attribute) renders only when the model
+    // returned at least one row, so its presence separates the two cleanly with
+    // no extra plumbing: no block means the MODEL is empty, block without lines
+    // means the RENDER dropped them.
+    try {
+        await page.locator('[data-debug-chip-refusal]').first().waitFor({timeout: 40000});
+    } catch (timeout) {
+        const trail = await page.evaluate(() => ({
+            block: document.querySelectorAll('[data-debug-chip-refusals]').length,
+            lines: document.querySelectorAll('[data-debug-chip-refusal]').length,
+            phase: document.querySelector('[data-debug-panel]')?.getAttribute('data-debug-phase'),
+            status: document.querySelector('[data-testid="bw-code-status"]')?.textContent?.slice(0, 160),
+            debugAttrs: [...new Set([...document.querySelectorAll('[data-debug-panel] *')]
+                .flatMap(n => [...n.attributes].map(a => a.name)
+                    .filter(a => a.startsWith('data-debug-'))))].sort().slice(0, 40)
+        }));
+        const verdict = trail.block === 0
+            ? 'THE MODEL RETURNED NO ROWS — the program did not reach a refusal on this bench. '
+              + 'Check the config actually has the chip the program targets: the ASM route boots '
+              + 'BREADBOARD8086 (ppi1, uart1) and has no DMA controller, so a write to an '
+              + 'undecoded port refuses nothing and looks exactly like this.'
+            : 'THE MODEL RETURNED ROWS AND THE PANEL DID NOT RENDER THEM — the block is present '
+              + 'with no lines inside it, so the fault is in the render, not the collector.';
+        throw new Error(`${verdict}\n  trail: ${JSON.stringify(trail)}\n  ${timeout.message}`);
+    }
     const lines = await refusalLines();
-    check('the block-copy request produces exactly one chip-refusal line',
+    check('the mode-1 control word produces exactly one chip-refusal line',
         lines.length === 1, JSON.stringify(lines));
     const [line] = lines;
-    check('the line names the part that refused', /^dma1:/.test(line), line);
+    check('the line names the part that refused', /^ppi1:/.test(line), line);
     check('the line carries the SYMPTOM, not only the feature',
-        /moves nothing and the temporary register reads back zero/.test(line), line);
-    check('the line carries the address the program touched', /at 08h/.test(line), line);
+        /waits on a bit that never moves/.test(line), line);
+    check('the line carries the address the program touched', /at 03h/.test(line), line);
     check('one occurrence prints no count', !/refusals/.test(line), line);
     const part = await page.locator('[data-debug-chip-refusal]').first()
         .getAttribute('data-debug-chip-refusal-part');
-    check('the line is keyed by part so a joiner can use it', part === 'dma1', String(part));
-    await snap('block-copy-refusal-line');
+    check('the line is keyed by part so a joiner can use it', part === 'ppi1', String(part));
+    await snap('mode-1-refusal-line');
 
     check('no page errors or failed requests', diagnostics.length === 0,
         diagnostics.slice(0, 4).join(' | '));
