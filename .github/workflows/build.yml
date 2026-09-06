@@ -25,26 +25,55 @@ on:
     #     claim gates read these; wave7 asserts on ttl-clock-module's text.
     #   THIRD-PARTY-NOTICES.md   TEST INPUT, and a licence one. Three tests
     #     readFileSync it and assert a dependency is named in it.
-    #   docs/**   TEST INPUT. app-store-metadata and several lesson gates read
-    #     files under it.
+    #   docs/generated/**, docs/schematic-baselines/**   TEST INPUT, read through
+    #     CONSTRUCTED paths no name census can see. Safe only because the
+    #     one-level `!docs/*.md` below never reaches a subdirectory — that depth
+    #     is load-bearing, and the test refuses a constructed TOP-LEVEL path.
     #
-    # So: only top-level prose that nothing reads. Each name below was checked
-    # with `grep -rl` across test/, scripts/ and .github/ — the hits for
-    # BLOCKED, CLAUDE and PLAN are all comments, not reads. Add to this list
-    # only after making that check, and never widen it to a glob.
+    # This is a `paths` filter (everything, minus what nothing reads) rather
+    # than `paths-ignore`, because `paths-ignore` cannot say "except". The
+    # root prose is negated by name; `docs/*.md` is negated as a whole and then
+    # every doc some NON-COMMENT line of test/, scripts/, .github/ or overlay/
+    # mentions is put back — mention, not read, so the rule errs toward
+    # building. bw-ci measured the gap on 2026-09-05: 41 of 47 docs read by
+    # nothing, each edit to one a full build slot on a day nine of twenty main
+    # builds were cancelled. The re-include list below is NOT hand-maintained:
+    # test/build-trigger-paths.test.mjs (scripts/lib/doc-triggers.mjs) computes
+    # the mentioned set from the tree and fails by name when a mentioned doc is
+    # missing here or a listed one is mentioned nowhere. Census 2026-09-06:
+    # 48 docs, 17 mentioned, 31 skip.
     #
     # A skipped run means no Pages deploy for that push. That is correct: the
     # app is byte-identical, and deploy-daily republishes regardless.
-    paths-ignore:
-      - 'BLOCKED.md'
-      - 'BUILD.md'
-      - 'CLAUDE.md'
-      - 'HANDOFF.md'
-      - 'LANES.md'
-      - 'MBIT-BUILD.md'
-      - 'PLAN.md'
-      - 'README.md'
-      - 'ROADMAP.md'
+    paths:
+      - '**'
+      - '!BLOCKED.md'
+      - '!BUILD.md'
+      - '!CLAUDE.md'
+      - '!HANDOFF.md'
+      - '!LANES.md'
+      - '!MBIT-BUILD.md'
+      - '!PLAN.md'
+      - '!README.md'
+      - '!ROADMAP.md'
+      - '!docs/*.md'
+      - 'docs/CYCLE-ACCURATE-CORE-EVALUATION.md'
+      - 'docs/DEBUGGER-NEXT-ROADMAP.md'
+      - 'docs/EXTENSION-SECURITY.md'
+      - 'docs/FETCH-PINNING.md'
+      - 'docs/FULL-DEBUGGER-ARCHITECTURE.md'
+      - 'docs/LANGUAGE-DEVICE-MATRIX-PLAN.md'
+      - 'docs/LESSON-ACHIEVABILITY-SWEEP.md'
+      - 'docs/LESSON-REVIEW-WAVE-2.md'
+      - 'docs/LESSON-REVIEW-WAVE-3.md'
+      - 'docs/LESSON-REVIEW-WAVE-4.md'
+      - 'docs/LESSON-REVIEW-WAVE-5.md'
+      - 'docs/LESSON-REVIEW-WAVE-6.md'
+      - 'docs/LESSON-REVIEW-WAVE-7.md'
+      - 'docs/VENDOR-DIVERGENCE-BW-CIRCUIT-UI.md'
+      - 'docs/VENDOR-DIVERGENCE-I8086-MACHINE.md'
+      - 'docs/WAVE-OPEN-DEFECTS.md'
+      - 'docs/app-store-metadata.md'
 permissions:
   contents: read
   pages: write
