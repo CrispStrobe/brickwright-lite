@@ -181,7 +181,6 @@ const L10N = {
         deployPicoFail: e => `Pico deploy failed: ${e}`,
         deployPicoNoPort: 'No Pico found on USB. Plug it in (a normal boot, not BOOTSEL) and try again.',
         picoSimNoFirmware: 'The Pico simulator firmware is not in this build. Run `npm run sync:picomicropython` and rebuild, then ▶ Run again.',
-        picoSimNoReset: 'This program calls machine.reset(), which the simulator does not model yet (finding N3c-1) — it would freeze here. Run it on real hardware.',
         picoSimStopped: 'Simulator stopped.',
         stop: 'Stop',
         deployPicoBootsel: 'The Pico is in BOOTSEL mode — it needs MicroPython first. Flash a MicroPython UF2 onto the RPI-RP2 volume, then deploy again.',
@@ -380,7 +379,6 @@ const L10N = {
         deployPicoFail: e => `Pico-Übertragung fehlgeschlagen: ${e}`,
         deployPicoNoPort: 'Kein Pico am USB gefunden. Anstecken (normaler Start, nicht BOOTSEL) und erneut versuchen.',
         picoSimNoFirmware: 'Die Pico-Simulator-Firmware fehlt in diesem Build. `npm run sync:picomicropython` ausführen und neu bauen, dann erneut ▶ ausführen.',
-        picoSimNoReset: 'Dieses Programm ruft machine.reset() auf, was der Simulator noch nicht abbildet (Befund N3c-1) — es würde hier einfrieren. Auf echter Hardware ausführen.',
         picoSimStopped: 'Simulator gestoppt.',
         stop: 'Stopp',
         deployPicoBootsel: 'Der Pico ist im BOOTSEL-Modus — er braucht zuerst MicroPython. Ein MicroPython-UF2 auf das RPI-RP2-Laufwerk kopieren, dann erneut übertragen.',
@@ -2757,11 +2755,9 @@ class PseudocodeImporter extends React.Component {
     }
     /**
      * Run the Pico's MicroPython program IN THE SIMULATOR. Boots the pinned
-     * firmware in rp2040js and runs the program live over createPicoRepl — the
-     * SAME program (generateMicroPython) and the SAME REPL the silicon deploy
-     * uses; only persistence differs (silicon installs-and-reboots, the sim
-     * runs live — finding N3c-1). Refuses BY NAME when the firmware asset is
-     * absent or the program calls machine.reset() (the sim cannot reboot).
+     * firmware in rp2040js and installs main.py over createPicoRepl — the SAME
+     * program, deployment protocol and reboot boundary the silicon path uses.
+     * Refuses by name only when the firmware asset is absent.
      */
     async runPicoSim () {
         const src = this.state.buffers.pseudocode || '';
@@ -2777,12 +2773,8 @@ class PseudocodeImporter extends React.Component {
                     this.L.deployPicoFail((r.reasons || []).join('; ') || 'not expressible in MicroPython')});
                 return;
             }
-            const {startPicoSimRun, programCallsReset} = await import(
+            const {startPicoSimRun} = await import(
                 /* webpackChunkName: "pico-sim-run" */ '../../lib/pico-sim-run.js');
-            if (programCallsReset(r.py)) {
-                this.setState({running: false, status: this.L.picoSimNoReset});
-                return;
-            }
             const {loadPicoFirmware} = await import('../../lib/pico-firmware.js');
             const fw = await loadPicoFirmware();
             if (!fw) {

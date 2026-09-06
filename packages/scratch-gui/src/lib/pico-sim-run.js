@@ -27,19 +27,6 @@ import {createFreshPicoEpoch, createPicoByteChannel} from './pico-sim-epoch.js';
  * @module
  */
 
-/**
- * Does the program text call machine.reset()? Pure, so it is unit-tested
- * without an emulator. The sim cannot honour a reset (N3c-1), so the Run
- * refuses these by name rather than freezing. Matches `machine.reset(` and a
- * bare `reset()` on a `machine`-bound name; conservative — a false positive
- * only refuses a program the sim would freeze on anyway.
- */
-export function programCallsReset (py) {
-    const text = String(py || '');
-    return /\bmachine\s*\.\s*reset\s*\(/.test(text)
-        || /(^|[^.\w])reset\s*\(\s*\)/.test(text) && /\bimport\s+machine\b|\bfrom\s+machine\b/.test(text);
-}
-
 const CTRL_C = '\x03';
 
 /** Pico core clock and the ADC reference — a 3.3 V, 125 MHz part. */
