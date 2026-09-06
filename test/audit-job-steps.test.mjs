@@ -145,3 +145,33 @@ test('shard: the audit refuses a workflow whose clauses are not a partition, as 
     const e = expectedForShard(yml, 'heavy');
     assert.ok(e.ok && e.mine.length >= 4 && e.others.length >= 30, `the real workflow partitions: heavy ${e.mine.length}, others ${e.others.length}`);
 });
+
+test('shard: a gate elsewhere the API has not reported yet (null conclusion) is not a double run', () => {
+    const steps = inHeavy.map(s => s.name === 'Browser gate — editor' ? {name: s.name, status: 'queued', conclusion: null} : s);
+    assert.equal(judge(steps, undefined, heavyLeg).verdict, 'ok', 'run 34015453480: three light gates read null in the heavy leg and were called a double run');
+});
+
+test('the audit re-reads while a step before it is unreported, then judges the settled read', async () => {
+    const settled = [{name: 'browser (heavy)', run_attempt: 1, steps: inHeavy}];
+    const lagging = [{name: 'browser (heavy)', run_attempt: 1, steps: inHeavy.map(s => s.name === 'Browser gate — circuit UX' ? {name: s.name, status: 'in_progress', conclusion: null} : s)}];
+    const yml = readFileSync(path.resolve(import.meta.dirname, '..', '.github', 'workflows', 'build.yml'), 'utf8');
+    let reads = 0;
+    const slept = [];
+    const s = sinks();
+    const code = await run(async () => (++reads <= 2 ? lagging : settled), {jobName: 'browser (heavy)', attempt: 1, shard: 'heavy', workflowText: yml},
+        {log: s.log, error: s.error, sleep: async ms => { slept.push(ms); }});
+    assert.equal(code, 0, s.out.errors.join('\n'));
+    assert.equal(reads, 3, 'two lagging reads, then the settled one');
+    assert.deepEqual(slept, [10000, 10000]);
+    assert.match(s.out.logs.join('\n'), /not yet reported complete/);
+});
+
+test('a step still unreported after the retries is an ABSENCE — red, never a finding', async () => {
+    const lagging = [{name: 'browser (heavy)', run_attempt: 1, steps: inHeavy.map(s => s.name === 'Browser gate — circuit UX' ? {name: s.name, status: 'in_progress', conclusion: null} : s)}];
+    const yml = readFileSync(path.resolve(import.meta.dirname, '..', '.github', 'workflows', 'build.yml'), 'utf8');
+    const s = sinks();
+    const code = await run(async () => lagging, {jobName: 'browser (heavy)', attempt: 1, shard: 'heavy', workflowText: yml}, {log: s.log, error: s.error, sleep: async () => {}});
+    assert.equal(code, 1);
+    assert.match(s.out.errors[0], /could not audit this run: 1 step\(s\) still not reported complete/);
+    assert.doesNotMatch(s.out.errors.join('\n'), /double run|skipped with no earlier failure/);
+});

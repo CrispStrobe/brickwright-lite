@@ -64,7 +64,11 @@ export const judge = (steps, selfName = 'Audit — every browser gate ran', expe
         const mine = new Set(expected.mine), elsewhere = new Set(expected.others);
         for (const s of allBrowser) {
             if (mine.has(s.name)) continue;
-            if (elsewhere.has(s.name)) { if (s.conclusion !== 'skipped') wrongShard.push(`${s.name} (${s.conclusion})`); }
+            // A double run is a step that COMPLETED with a verdict other than
+            // skipped. A null conclusion is a step the API has not reported yet
+            // (run 34015453480: the three light gates skipped just before the
+            // audit still read null when it asked) — not a run, never a finding.
+            if (elsewhere.has(s.name)) { if (s.status === 'completed' && s.conclusion && s.conclusion !== 'skipped') wrongShard.push(`${s.name} (${s.conclusion})`); }
             else unassigned.push(s.name);
         }
         browser = allBrowser.filter(s => mine.has(s.name));
@@ -133,10 +137,10 @@ const fetchJobs = async (fetchImpl = fetch) => {
  * @param {() => Promise<Array>} loadJobs - resolves to this run's jobs
  * @param {{jobName: string, attempt: number, shard?: string, workflowText?: string}} where - which job is
  *   "this job"; under a matrix, which shard this leg is and the workflow text to read the clauses from
- * @param {{log: Function, error: Function}} out - sinks
+ * @param {{log: Function, error: Function, sleep?: Function}} out - sinks (sleep injectable for the tests)
  * @returns {Promise<number>} the process exit code
  */
-export const run = async (loadJobs, {jobName, attempt, shard = null, workflowText = null}, {log, error}) => {
+export const run = async (loadJobs, {jobName, attempt, shard = null, workflowText = null}, {log, error, sleep = ms => new Promise(r => setTimeout(r, ms))}) => {
     let expected = null;
     if (shard) {
         // THE PARTITION FIRST, from this checkout's workflow: a bad assignment
@@ -159,9 +163,25 @@ export const run = async (loadJobs, {jobName, attempt, shard = null, workflowTex
         error(`::error::could not audit this run: ${err.message}. No browser gate is being reported as skipped; the run is red because it is unaudited (a check that cannot see is not a check that passed).`);
         return 1;
     }
-    const mine = jobs.filter(j => j.name === jobName && (!attempt || Number(j.run_attempt || attempt) === attempt));
+    const findMine = list => list.filter(j => j.name === jobName && (!attempt || Number(j.run_attempt || attempt) === attempt));
+    let mine = findMine(jobs);
     if (mine.length !== 1) {
         error(`::error::could not audit this run: expected exactly one job named "${jobName}", found ${mine.length} (${jobs.map(j => j.name).join(', ')}). No browser gate is being reported as skipped.`);
+        return 1;
+    }
+    // THE API LAGS THE JOB. Steps that ended moments before this one can still
+    // read status queued/in_progress with a null conclusion (measured on run
+    // 34015453480). A read with an unreported step before the audit is not a
+    // read of the job; re-ask, up to a minute, before judging anything.
+    const unreported = job => (job.steps || []).filter(s => s.name !== 'Audit — every browser gate ran' && s.status !== 'completed').map(s => s.name);
+    for (let i = 0; i < 6 && unreported(mine[0]).length; i++) {
+        log(`${unreported(mine[0]).length} step(s) not yet reported complete by the API; re-reading in 10 s`);
+        await sleep(10000);
+        try { mine = findMine(await loadJobs()); } catch { /* keep the last good read */ }
+        if (mine.length !== 1) break;
+    }
+    if (mine.length === 1 && unreported(mine[0]).length) {
+        error(`::error::could not audit this run: ${unreported(mine[0]).length} step(s) still not reported complete after a minute (${unreported(mine[0]).slice(0, 5).join('; ')}). No browser gate is being reported as skipped; the run is red because it is unaudited.`);
         return 1;
     }
     const {verdict, skipped, failedEarlier, ran, wrongShard, unassigned} = judge(mine[0].steps || [], undefined, expected);
