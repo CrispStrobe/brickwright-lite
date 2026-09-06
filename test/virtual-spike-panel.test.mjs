@@ -47,11 +47,30 @@ test('reopening and closing the dashboard releases its state subscription', () =
         assert.equal(document.activeElement.type, 'checkbox', 'the one simulation switch receives initial focus');
         assert.equal(state.listeners.size, 1);
         const enabled = document.activeElement;
+        const controls = [];
+        const visit = node => {
+            if (node?.tagName === 'SELECT' || node?.tagName === 'INPUT') controls.push(node);
+            for (const child of node?.children || []) visit(child);
+        };
+        visit(dialog);
+        assert.ok(controls.some(node => node['aria-label'] === 'Firmware profile'));
+        for (const port of 'ABCDEF') {
+            assert.ok(controls.some(node => node['aria-label'] === `Port ${port} device type`));
+            assert.ok(controls.some(node => node['aria-label'] === `Port ${port} value`));
+        }
         enabled.checked = true;
         enabled.listeners.change();
         assert.equal(state.data.simulationEnabled, true);
         dialog = openVirtualSpikePanel(state);
         assert.equal(state.listeners.size, 1);
+        const reopenedEnabled = document.activeElement;
+        let tabPrevented = false;
+        dialog.listeners.keydown({key: 'Tab', shiftKey: true,
+            preventDefault: () => { tabPrevented = true; }});
+        assert.equal(tabPrevented, true);
+        assert.equal(document.activeElement.tagName, 'BUTTON', 'reverse Tab wraps to Done');
+        dialog.listeners.keydown({key: 'Tab', shiftKey: false, preventDefault: () => {}});
+        assert.equal(document.activeElement, reopenedEnabled, 'forward Tab wraps to the simulation switch');
         let prevented = false;
         dialog.listeners.keydown({key: 'Escape', preventDefault: () => { prevented = true; }});
         assert.equal(prevented, true);

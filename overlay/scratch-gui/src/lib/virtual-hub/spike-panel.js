@@ -48,7 +48,8 @@ export const openVirtualSpikePanel = hubState => {
     enabledLabel.append(enabled, document.createTextNode('Enable virtual SPIKE simulation'));
     card.appendChild(enabledLabel);
 
-    const profile = element('select', {style: 'width:100%;padding:8px;margin-bottom:12px'});
+    const profile = element('select', {'aria-label': 'Firmware profile',
+        style: 'width:100%;padding:8px;margin-bottom:12px'});
     for (const [value, label] of [
         ['legacy-v2', 'LEGO SPIKE legacy firmware v2 — Classic'],
         ['official-v3', 'LEGO SPIKE official firmware v3 — BLE'],
@@ -95,11 +96,12 @@ export const openVirtualSpikePanel = hubState => {
 
     const grid = element('div', {style: 'display:grid;grid-template-columns:40px 140px 1fr;gap:8px;margin-top:14px'});
     for (const port of 'ABCDEF') {
-        const kind = element('select');
+        const kind = element('select', {'aria-label': `Port ${port} device type`});
         for (const name of ['none', 'motor', 'distance', 'color', 'force', 'matrix3']) {
             kind.appendChild(element('option', {value: name}, name));
         }
-        const value = element('input', {type: 'number', value: '0', min: '-1000', max: '1000'});
+        const value = element('input', {type: 'number', value: '0', min: '-1000', max: '1000',
+            'aria-label': `Port ${port} value`});
         const apply = () => applyVirtualPortInput(hubState, port, kind.value, value.value);
         kind.addEventListener('change', apply);
         value.addEventListener('input', apply);
