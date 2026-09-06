@@ -19,6 +19,38 @@ const errors = [];
 page.on('pageerror', error => errors.push(error.message));
 page.on('crash', () => errors.push('renderer crashed'));
 
+const prepareFaultPage = async faultPage => {
+    await faultPage.addInitScript(() => {
+        try {
+            localStorage.clear();
+            localStorage.setItem('bw-starter-v1-complete', '1');
+        } catch { /* private mode */ }
+    });
+    await faultPage.goto(url, {waitUntil: 'domcontentloaded', timeout: 90000});
+    await faultPage.waitForFunction(() => Boolean(
+        window.__brickwrightStore?.getState?.()?.scratchGui?.targets?.editingTarget
+    ), null, {timeout: 60000});
+    await faultPage.evaluate(() => {
+        const vm = window.__brickwrightStore.getState().scratchGui.vm;
+        window.__BW_CONNECTION_FAULT_CALLS__ = [];
+        vm.getPeripheralIsConnected = () => false;
+        vm.scanForPeripheral = extensionId => window.__BW_CONNECTION_FAULT_CALLS__.push(['scan', extensionId]);
+        vm.disconnectPeripheral = extensionId =>
+            window.__BW_CONNECTION_FAULT_CALLS__.push(['disconnect', extensionId]);
+    });
+};
+
+const openMicroBitModal = faultPage => faultPage.evaluate(() => {
+    const store = window.__brickwrightStore;
+    store.dispatch({type: 'scratch-gui/connection-modal/setId', extensionId: 'microbit'});
+    store.dispatch({type: 'scratch-gui/modals/OPEN_MODAL', modal: 'connectionModal'});
+});
+
+const waitForPromise = (promise, label) => Promise.race([
+    promise,
+    new Promise((resolve, reject) => setTimeout(() => reject(new Error(`timed out waiting for ${label}`)), 10000))
+]);
+
 try {
     await page.addInitScript(() => {
         try {
@@ -142,6 +174,63 @@ try {
     receipt.baseline = {run: baselineRun, durationMs: baselineMs};
     receipt.limits = {relativeMs: relativeLimitMs, absoluteMs: absoluteLimitMs,
         maxLongTaskMs, minimumEncodedBytes};
+
+    const retryContext = await browser.newContext({viewport: {width: 1200, height: 800}});
+    const retryPage = await retryContext.newPage();
+    let retryRequests = 0;
+    await retryPage.route(/connection-modal.*\.js(?:\?|$)/, route => {
+        retryRequests += 1;
+        if (retryRequests === 1) return route.abort('failed');
+        return route.continue();
+    });
+    await prepareFaultPage(retryPage);
+    await openMicroBitModal(retryPage);
+    await retryPage.locator('[data-connection-modal-load-error]').waitFor({timeout: 10000});
+    const retryErrorWasClosable = await retryPage.getByRole('button', {name: 'Close'}).isVisible();
+    await retryPage.getByRole('button', {name: 'Retry connection tools'}).click();
+    await retryPage.getByText('Looking for devices', {exact: true}).waitFor({timeout: 10000});
+    receipt.importRetry = await retryPage.evaluate(requests => ({
+        requests,
+        scans: window.__BW_CONNECTION_FAULT_CALLS__.filter(call => call[0] === 'scan').length
+    }), retryRequests);
+    receipt.importRetry.errorWasClosable = retryErrorWasClosable;
+    await retryContext.close();
+
+    const delayContext = await browser.newContext({viewport: {width: 1200, height: 800}});
+    const delayPage = await delayContext.newPage();
+    let releaseChunk;
+    const chunkReleased = new Promise(resolve => { releaseChunk = resolve; });
+    let announceChunk;
+    const chunkRequested = new Promise(resolve => { announceChunk = resolve; });
+    let delayedRequests = 0;
+    await delayPage.route(/connection-modal.*\.js(?:\?|$)/, async route => {
+        delayedRequests += 1;
+        announceChunk();
+        await chunkReleased;
+        await route.continue();
+    });
+    await prepareFaultPage(delayPage);
+    await openMicroBitModal(delayPage);
+    await waitForPromise(chunkRequested, 'the held Connection-modal request');
+    await delayPage.evaluate(() => window.__brickwrightStore.dispatch({
+        type: 'scratch-gui/modals/CLOSE_MODAL',
+        modal: 'connectionModal'
+    }));
+    const closedWhilePending = await delayPage.evaluate(() => ({
+        visible: window.__brickwrightStore.getState().scratchGui.modals.connectionModal,
+        dialogs: document.querySelectorAll('[role="dialog"]').length,
+        calls: window.__BW_CONNECTION_FAULT_CALLS__.slice()
+    }));
+    releaseChunk();
+    await openMicroBitModal(delayPage);
+    await delayPage.getByText('Looking for devices', {exact: true}).waitFor({timeout: 10000});
+    receipt.closeBeforeResolution = await delayPage.evaluate(({closed, requests}) => ({
+        closed,
+        requests,
+        calls: window.__BW_CONNECTION_FAULT_CALLS__.slice()
+    }), {closed: closedWhilePending, requests: delayedRequests});
+    await delayContext.close();
+
     await writeFile(path.join(output, 'receipt.json'), `${JSON.stringify(receipt, null, 2)}\n`);
     console.log(JSON.stringify(receipt, null, 2));
     if (errors.length) throw new Error(errors.join(' | '));
@@ -180,6 +269,16 @@ try {
         .filter(call => call[0] === 'scan' && call[1] === 'microbit').length;
     if (reopenedScans !== 3) {
         throw new Error(`returning from firmware update and reopening should total three scans, got ${reopenedScans}`);
+    }
+    if (!receipt.importRetry.errorWasClosable || receipt.importRetry.requests !== 2 ||
+        receipt.importRetry.scans !== 1) {
+        throw new Error('aborted Connection-modal import did not expose a closable, retryable recovery');
+    }
+    const pendingScans = receipt.closeBeforeResolution.closed.calls.filter(call => call[0] === 'scan').length;
+    const resumedScans = receipt.closeBeforeResolution.calls.filter(call => call[0] === 'scan').length;
+    if (receipt.closeBeforeResolution.closed.visible || receipt.closeBeforeResolution.closed.dialogs ||
+        pendingScans || receipt.closeBeforeResolution.requests !== 1 || resumedScans !== 1) {
+        throw new Error('closing before Connection-modal resolution left stale UI, work, or another download');
     }
 } finally {
     await browser.close();
