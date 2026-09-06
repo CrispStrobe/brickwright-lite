@@ -104,4 +104,12 @@ test('the watchdog checks out default-branch tooling before a red-streak failure
         'scheduled/manual watchdog tooling must come from the trusted default branch');
     assert.match(yml, /persist-credentials: false/,
         'the read-only tooling checkout must not retain repository credentials');
+    assert.match(yml, /permissions:\n\s+contents: read\n/,
+        'checkout needs explicit contents permission when the workflow narrows permissions');
+    assert.match(yml,
+        /build\.yml\/runs\?branch=main&status=in_progress&per_page=10/,
+        'the privileged zombie cleanup must never cancel feature-branch or pull-request builds');
+    const cleanup = yml.slice(alwaysCleanup);
+    assert.match(cleanup, /run: \|\n\s+set -euo pipefail\n/,
+        'selector or pipeline failures must fail the cleanup instead of silently succeeding');
 });
