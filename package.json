@@ -46,6 +46,8 @@
     "verify:broker-assets": "node scripts/verify-native-broker-assets.mjs",
     "sync:microbitsim": "node scripts/sync-microbit-sim.mjs",
     "sync:microbitsim:check": "node scripts/sync-microbit-sim.mjs --check",
+    "sync:picomicropython": "node scripts/sync-pico-micropython.mjs",
+    "sync:picomicropython:check": "node scripts/sync-pico-micropython.mjs --check",
     "smoke:debugger": "node scripts/smoke-debugger.mjs",
     "verify:sw": "node scripts/verify-service-worker.mjs",
     "verify:interaction": "node scripts/verify-interaction.mjs",
