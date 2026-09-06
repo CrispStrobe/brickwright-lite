@@ -22,29 +22,85 @@
  *   - if it cannot see its own job (API, permissions), FAILS — a check that
  *     cannot see is not a check that passed.
  *
+ * SHARDS (2026-09-06). The browser job is a matrix of shards, one body, each
+ * gate's `if:` naming the shard it belongs to (scripts/lib/workflow-gates.mjs
+ * reads those clauses; they are the only list). With `--shard <name>` the audit
+ * judges THIS leg against that list: a gate assigned here that ended skipped
+ * is the lie above; a gate assigned elsewhere must show skipped here — one that
+ * ran is a double run, failed by name; a gate in this job's steps with no
+ * assignment is failed by name; and the partition itself (every gate exactly
+ * one existing shard, no shard empty, companions matching) is re-checked from
+ * the checked-out build.yml, so a workflow edit that dodges the unit tests
+ * still fails inside the job. BW_JOB_NAME carries the leg's display name
+ * (`browser (heavy)`), because the API reports that and GITHUB_JOB stays
+ * `browser` for every leg.
+ *
  * `--file jobs.json` feeds it a saved jobs payload instead of the API, which is
  * how test/audit-job-steps.test.mjs proves each branch above can fire.
  */
 import {readFileSync} from 'node:fs';
+import path from 'node:path';
+import {parseJobs, partition, isBrowserStep, AUDIT_STEP} from './lib/workflow-gates.mjs';
 
-const isBrowserStep = name => /^Browser (?:gates?|benchmark) — /.test(String(name || ''));
 const RED = new Set(['failure', 'cancelled', 'timed_out']);
 
 /**
  * Judge one job's steps. Pure; exported for the tests.
  * @param {Array<{name: string, status: string, conclusion: string|null}>} steps - the job's steps in order
  * @param {string} selfName - this audit step's own name, excluded from "earlier failed"
- * @returns {{verdict: 'ok'|'skipped-in-green'|'skipped-after-red'|'no-gates', skipped: string[], failedEarlier: string[], ran: number}}
+ * @param {{shard: string, mine: string[], others: string[]}} [expected] - under a matrix: the
+ *   gates assigned to this leg and to the other legs (from the workflow's clauses)
+ * @returns {{verdict: 'ok'|'skipped-in-green'|'skipped-after-red'|'no-gates'|'ran-in-wrong-shard'|'unassigned-gate',
+ *   skipped: string[], failedEarlier: string[], ran: number, wrongShard: string[], unassigned: string[]}}
  */
-export const judge = (steps, selfName = 'Audit — every browser gate ran') => {
+export const judge = (steps, selfName = AUDIT_STEP, expected = null) => {
     const others = steps.filter(s => s.name !== selfName);
-    const browser = others.filter(s => isBrowserStep(s.name));
-    const skipped = browser.filter(s => s.conclusion === 'skipped').map(s => s.name);
+    const allBrowser = others.filter(s => isBrowserStep(s.name));
     const failedEarlier = others.filter(s => RED.has(s.conclusion)).map(s => s.name);
+    let browser = allBrowser;
+    const wrongShard = [];
+    const unassigned = [];
+    if (expected) {
+        const mine = new Set(expected.mine), elsewhere = new Set(expected.others);
+        for (const s of allBrowser) {
+            if (mine.has(s.name)) continue;
+            // A double run is a step that COMPLETED with a verdict other than
+            // skipped. A null conclusion is a step the API has not reported yet
+            // (run 34015453480: the three light gates skipped just before the
+            // audit still read null when it asked) — not a run, never a finding.
+            if (elsewhere.has(s.name)) { if (s.status === 'completed' && s.conclusion && s.conclusion !== 'skipped') wrongShard.push(`${s.name} (${s.conclusion})`); }
+            else unassigned.push(s.name);
+        }
+        browser = allBrowser.filter(s => mine.has(s.name));
+    }
+    const skipped = browser.filter(s => s.conclusion === 'skipped').map(s => s.name);
     const ran = browser.filter(s => s.conclusion === 'success').length;
-    if (browser.length === 0) return {verdict: 'no-gates', skipped, failedEarlier, ran};
-    if (skipped.length === 0) return {verdict: 'ok', skipped, failedEarlier, ran};
-    return {verdict: failedEarlier.length ? 'skipped-after-red' : 'skipped-in-green', skipped, failedEarlier, ran};
+    const base = {skipped, failedEarlier, ran, wrongShard, unassigned};
+    if (unassigned.length) return {verdict: 'unassigned-gate', ...base};
+    if (wrongShard.length) return {verdict: 'ran-in-wrong-shard', ...base};
+    if (browser.length === 0) return {verdict: 'no-gates', ...base};
+    if (skipped.length === 0) return {verdict: 'ok', ...base};
+    return {verdict: failedEarlier.length ? 'skipped-after-red' : 'skipped-in-green', ...base};
+};
+
+/**
+ * What the workflow assigns to each shard, and whether that assignment is a
+ * partition. Pure over the workflow text; exported for the tests.
+ * @returns {{ok: boolean, problems: string[], mine: string[], others: string[]}}
+ */
+export const expectedForShard = (workflowText, shard) => {
+    const p = partition(parseJobs(workflowText));
+    const problems = [];
+    if (p.shards.length === 0) problems.push('the job holding the browser gates declares no matrix shard list');
+    if (!p.shards.includes(shard)) problems.push(`this leg's shard "${shard}" is not in the matrix [${p.shards.join(', ')}]`);
+    for (const g of p.unassigned) problems.push(`gate with no shard clause (would run in every shard): ${g}`);
+    for (const g of p.multi) problems.push(`gate with more than one shard clause: ${g}`);
+    for (const g of p.unknownShard) problems.push(`gate naming a shard the matrix lacks (would never run): ${g}`);
+    for (const s of p.emptyShards) problems.push(`shard with no gates: ${s}`);
+    for (const c of p.companionMismatch) problems.push(`companion step not on its gate's shard: ${c}`);
+    const mine = p.byShard.get(shard) || [];
+    const others = [...p.byShard.entries()].filter(([s]) => s !== shard).flatMap(([, gates]) => gates);
+    return {ok: problems.length === 0, problems, mine, others};
 };
 
 /**
@@ -79,11 +135,24 @@ const fetchJobs = async (fetchImpl = fetch) => {
  * The whole judgement as a function of how the jobs are loaded, so the tests
  * can drive every exit — including the one where the API cannot be read.
  * @param {() => Promise<Array>} loadJobs - resolves to this run's jobs
- * @param {{jobName: string, attempt: number}} where - which job is "this job"
- * @param {{log: Function, error: Function}} out - sinks
+ * @param {{jobName: string, attempt: number, shard?: string, workflowText?: string}} where - which job is
+ *   "this job"; under a matrix, which shard this leg is and the workflow text to read the clauses from
+ * @param {{log: Function, error: Function, sleep?: Function}} out - sinks (sleep injectable for the tests)
  * @returns {Promise<number>} the process exit code
  */
-export const run = async (loadJobs, {jobName, attempt}, {log, error}) => {
+export const run = async (loadJobs, {jobName, attempt, shard = null, workflowText = null}, {log, error, sleep = ms => new Promise(r => setTimeout(r, ms))}) => {
+    let expected = null;
+    if (shard) {
+        // THE PARTITION FIRST, from this checkout's workflow: a bad assignment
+        // is a workflow defect and is named as one, before any step is judged.
+        const e = expectedForShard(workflowText, shard);
+        if (!e.ok) {
+            error(`::error::the browser shard assignment in build.yml is not a partition of the gates — fix the if: clauses (test/browser-gate-shards.test.mjs holds the same rule):\n  ${e.problems.join('\n  ')}`);
+            return 1;
+        }
+        expected = {shard, mine: e.mine, others: e.others};
+        log(`shard ${shard}: ${e.mine.length} gate(s) assigned here, ${e.others.length} elsewhere`);
+    }
     let jobs;
     try {
         jobs = await loadJobs();
@@ -94,13 +163,58 @@ export const run = async (loadJobs, {jobName, attempt}, {log, error}) => {
         error(`::error::could not audit this run: ${err.message}. No browser gate is being reported as skipped; the run is red because it is unaudited (a check that cannot see is not a check that passed).`);
         return 1;
     }
-    const mine = jobs.filter(j => j.name === jobName && (!attempt || Number(j.run_attempt || attempt) === attempt));
+    const findMine = list => list.filter(j => j.name === jobName && (!attempt || Number(j.run_attempt || attempt) === attempt));
+    let mine = findMine(jobs);
     if (mine.length !== 1) {
         error(`::error::could not audit this run: expected exactly one job named "${jobName}", found ${mine.length} (${jobs.map(j => j.name).join(', ')}). No browser gate is being reported as skipped.`);
         return 1;
     }
-    const {verdict, skipped, failedEarlier, ran} = judge(mine[0].steps || []);
+    // THE API LAGS THE JOB. Steps that ended moments before this one can still
+    // read status queued/in_progress with a null conclusion (measured on run
+    // 34015453480). A read with an unreported step before the audit is not a
+    // read of the job; re-ask, up to a minute, before judging anything.
+    //
+    // THIS LOOP IS THE GUARD ON THE PRIMARY CHECK, NOT A COURTESY TO A SLOW
+    // API (lego-be). A gate assigned HERE that really skipped, still reading
+    // null when we ask, is not === 'skipped' and would pass check (1) — a
+    // false green over exactly the lie the audit exists to catch, and one that
+    // never announces itself (the null-elsewhere case announced itself as a
+    // red). Exhausting the retries into an ABSENCE is what turns "could not
+    // see whether a gate skipped" into red instead of silence. Do not shorten
+    // it, and do not narrow it to this leg's own steps: a null step assigned
+    // elsewhere must trigger the re-read too, or check (2) under-reports.
+    //
+    // Only steps BEFORE the audit count: the API lists the post-job steps
+    // (Post Run actions/…, Complete job) after it, and those are queued for
+    // as long as the audit runs — waiting on them would exhaust every time.
+    const unreported = job => {
+        const steps = job.steps || [];
+        // AUDIT_STEP, not a literal: a renamed step would otherwise count the
+        // audit's OWN in_progress step as unreported, exhaust the loop, and turn
+        // every run into an absence — permanently, sixty seconds a leg (lego-be).
+        const me = steps.findIndex(s => s.name === AUDIT_STEP);
+        return (me >= 0 ? steps.slice(0, me) : steps).filter(s => s.status !== 'completed').map(s => s.name);
+    };
+    for (let i = 0; i < 6 && unreported(mine[0]).length; i++) {
+        log(`${unreported(mine[0]).length} step(s) not yet reported complete by the API; re-reading in 10 s`);
+        await sleep(10000);
+        try { mine = findMine(await loadJobs()); } catch { /* keep the last good read */ }
+        if (mine.length !== 1) break;
+    }
+    if (mine.length === 1 && unreported(mine[0]).length) {
+        error(`::error::could not audit this run: ${unreported(mine[0]).length} step(s) still not reported complete after a minute (${unreported(mine[0]).slice(0, 5).join('; ')}). No browser gate is being reported as skipped; the run is red because it is unaudited.`);
+        return 1;
+    }
+    const {verdict, skipped, failedEarlier, ran, wrongShard, unassigned} = judge(mine[0].steps || [], undefined, expected);
     log(`browser gates that ran: ${ran}; skipped: ${skipped.length}; earlier red steps: ${failedEarlier.length}`);
+    if (verdict === 'unassigned-gate') {
+        error(`::error::browser gate(s) in this job with no shard assignment in build.yml — they ran in every shard, or in none:\n  ${unassigned.join('\n  ')}`);
+        return 1;
+    }
+    if (verdict === 'ran-in-wrong-shard') {
+        error(`::error::browser gate(s) assigned to another shard ran in this one (${shard}) — a double run, and upload-artifact refuses the second artifact of a name:\n  ${wrongShard.join('\n  ')}`);
+        return 1;
+    }
     if (verdict === 'no-gates') {
         error('::error::could not audit this run: this job holds no Browser gate steps — the audit is in the wrong job, or the gates moved without it.');
         return 1;
@@ -127,6 +241,14 @@ if (isMain) {
     const loadJobs = fileArg >= 0
         ? async () => JSON.parse(readFileSync(process.argv[fileArg + 1], 'utf8')).jobs
         : fetchJobs;
-    run(loadJobs, {jobName: process.env.GITHUB_JOB || 'build', attempt: Number(process.env.GITHUB_RUN_ATTEMPT || 0)},
-        {log: console.log, error: console.error}).then(code => process.exit(code));
+    const shardArg = process.argv.indexOf('--shard');
+    const shard = shardArg >= 0 ? process.argv[shardArg + 1] : null;
+    const wfArg = process.argv.indexOf('--workflow');
+    const workflowFile = wfArg >= 0 ? process.argv[wfArg + 1] : path.join(path.dirname(new URL(import.meta.url).pathname), '..', '.github', 'workflows', 'build.yml');
+    run(loadJobs, {
+        jobName: process.env.BW_JOB_NAME || process.env.GITHUB_JOB || 'build',
+        attempt: Number(process.env.GITHUB_RUN_ATTEMPT || 0),
+        shard,
+        workflowText: shard ? readFileSync(workflowFile, 'utf8') : null
+    }, {log: console.log, error: console.error}).then(code => process.exit(code));
 }
