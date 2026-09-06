@@ -109,9 +109,29 @@ export function createPicoRepl(transport, opts = {}) {
     return out.slice(0, -1);
   }
 
+  /** Wake the REPL and wait for its friendly prompt. Entering raw mode BEFORE
+   *  the REPL loop is running drops the Ctrl-A, and the program then lands in a
+   *  friendly REPL that ECHOES a multi-line def and runs nothing — no error, so
+   *  it looks like it ran. Waiting for the prompt first is what prevents that. */
+  async function waitForPrompt() {
+    await transport.write('\r\n');
+    await readUntil('>>> ');
+  }
+
+  /** Start code in raw REPL and wait only for the OK that acknowledges it was
+   *  accepted — NOT for completion. A live/forever program (a blink) never sends
+   *  the trailing \x04, so exec() would hang; this is how a run-live program is
+   *  started and left running while its GPIO drives the board. */
+  async function execStart(code) {
+    await transport.write(code + CTRL_D);
+    await readUntil('OK');
+  }
+
   return {
     enterRaw,
     exec,
+    waitForPrompt,
+    execStart,
 
     /** The whole deployment: write main.py, verify the byte count, reboot
      *  so the stored program runs standalone. */
@@ -142,6 +162,37 @@ export function createPicoRepl(transport, opts = {}) {
       return written;
     },
   };
+}
+
+/**
+ * Start a program LIVE over the raw REPL — the ONE handshake the browser sim
+ * seam and the node oracle both call, so they cannot diverge (the divergence
+ * that cost a CI round: the seam exec'd into a friendly REPL, which echoed a
+ * multi-line def and ran nothing, while the oracle entered raw mode first).
+ *
+ * The sequence, and every step matters: wake the REPL and wait for its prompt
+ * (so raw mode is entered against a running REPL, not mid-boot), enter raw mode
+ * and wait for its ack, send the program and wait for the OK that acknowledges
+ * it. Only after the OK is the program actually running. Each wait is bounded by
+ * `opts.timeoutMs`; a step that does not ack throws, so a silent no-run cannot
+ * masquerade as "running". Returns the raw-REPL handle, so the caller can start
+ * further statements (execStart) or interrupt with Ctrl-C.
+ *
+ * The DRIVING is the transport's job: `transport.read()` steps the emulator in
+ * the node oracle and awaits the rAF pump's bytes in the browser — this code is
+ * identical across both.
+ *
+ * @param {import('./pico-repl.js').Transport} transport
+ * @param {string} py
+ * @param {{timeoutMs?: number}} [opts]
+ * @returns {Promise<ReturnType<typeof createPicoRepl>>}
+ */
+export async function startProgramOnRepl(transport, py, opts = {}) {
+  const repl = createPicoRepl(transport, opts);
+  await repl.waitForPrompt();
+  await repl.enterRaw();
+  await repl.execStart(py);
+  return repl;
 }
 
 /** A Python bytes literal for arbitrary text, UTF-8 encoded. */

@@ -55,7 +55,9 @@ function mockBoard () {
     };
 }
 
-/** Boot MicroPython with a board attached and knock the REPL awake. */
+/** Boot MicroPython with a board attached, up to USB enumeration. The REPL
+ *  handshake (prompt/raw/OK) is startProgramOnRepl's job — the SAME one the
+ *  browser seam uses — so it is not duplicated here. */
 async function bootWithBoard () {
     const {image} = parseUF2(await ensureFirmware({offline: true, quiet: true}));
     const m = await createPicoMachine(image, {entry: 'flash'});
@@ -63,33 +65,37 @@ async function bootWithBoard () {
     m.adapter.attachBoard(board);
     assert.equal(m.run(() => m.state.usbConnected, 3_000_000), 'done',
         `USB never enumerated — stopped at PC 0x${m.core.PC.toString(16)}`);
-    m.run(null, 200_000);
-    await m.transport.write('\r\n');
-    assert.equal(m.run(() => m.state.usb.includes('>>> '), 3_000_000), 'done',
-        'no ">>> " prompt after a newline');
     return {m, board};
 }
 
 test('a MicroPython program that drives GP25 toggles the simulated pin', {skip: SKIP}, async () => {
     const {m, board} = await bootWithBoard();
-    const {createPicoRepl} = await import(
+    // The SHARED handshake, byte-for-byte what the browser sim seam runs: wait
+    // for the prompt, enter RAW mode, send, wait for OK. If the seam ever
+    // diverges from this again, the friendly-REPL echo bug (a multi-line def
+    // typed into a friendly REPL runs nothing) comes back — and this oracle
+    // catches it, because it drives the identical code.
+    const {startProgramOnRepl} = await import(
         pathToFileURL(join(INTEGRATED, 'src/lib/pico-repl.js')).href);
-    const repl = createPicoRepl(m.transport, {timeoutMs: 600_000});
-    await repl.enterRaw();
 
     const gp25 = () => board.edges.filter(e => e.name === 'GP25');
     assert.ok(!gp25().some(e => e.high), 'GP25 was already driven high before the program ran');
 
-    // Drive it high — the run primitive the sim uses.
-    await repl.exec('from machine import Pin\nled = Pin(25, Pin.OUT)\nled.on()');
-    m.run(null, 200_000);
+    const repl = await startProgramOnRepl(m.transport,
+        'from machine import Pin\nled = Pin(25, Pin.OUT)\nled.on()', {timeoutMs: 600_000});
+    // execStart returns at the OK ack, BEFORE the statement runs; drive until the
+    // pin moves (in the browser the rAF pump does this continuously). The
+    // condition-drive is what makes the oracle robust to how many instructions
+    // led.on() takes after the ack.
+    m.run(() => gp25().some(e => e.high), 3_000_000);
     assert.ok(gp25().some(e => e.mode === 'pushpull' && e.high),
         `led.on() did not drive GP25 high — GP25 edges: ${JSON.stringify(gp25())}`);
 
     // And low again: proves a real toggle observed on the board, not a stuck
-    // default. This is the exact edge the on-screen LED reads via ledBrightness.
-    await repl.exec('led.off()');
-    m.run(null, 200_000);
+    // default. The raw REPL stays entered, so a further statement is execStart —
+    // no re-handshake — the exact primitive the seam would use for a next line.
+    await repl.execStart('led.off()');
+    m.run(() => { const e = gp25().at(-1); return e && !e.high; }, 3_000_000);
     const last = gp25().at(-1);
     assert.ok(last && last.mode === 'pushpull' && !last.high,
         `led.off() did not drive GP25 low — last GP25 edge: ${JSON.stringify(last)}`);
