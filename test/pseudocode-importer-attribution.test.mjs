@@ -123,7 +123,7 @@ test('P21 rejects missing, duplicate and eager chunk ownership', () => {
         './src/lib/bw-asm/examples-i8086.js',
         './src/lib/bw-asm/examples.js',
         './src/lib/bw-matrix/capabilities.js',
-        './src/lib/bw-matrix/device-labels.js',
+        './src/lib/device-labels.js',
         './src/components/tw-pseudocode/brick-robot.svg'
     ]) {
         const initialPayload = fixture();
