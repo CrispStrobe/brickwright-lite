@@ -630,6 +630,13 @@ jobs:
       - name: Apply the scratch-render overlay (lazy render fonts)
         id: overlays_browser
         run: node scripts/apply-render-overlay.mjs
+      # The Pico simulator firmware (650 KB, sha256-pinned, never committed) is
+      # fetched into static/ so webpack serves it. TOLERATED ABSENT by name: if
+      # the fetch fails (network), the execute gate below SKIPS and the absent
+      # gate still runs — the same contract labwired-wasm has.
+      - name: Fetch the Pico MicroPython firmware for the sim gate (tolerated absent)
+        if: ${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}
+        run: npm run sync:picomicropython || echo "pico firmware sync failed — the execute gate will skip; the absent gate still runs"
       - name: Build the editor
         id: build_editor_browser
         if: ${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}
@@ -1206,6 +1213,23 @@ jobs:
         timeout-minutes: 4  # measured max 18 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-microbit.mjs
+
+      # Pico ▶ Run in the simulator (N3c): boot MicroPython in rp2040js, run the
+      # program live over createPicoRepl, and insist the emulated GPIO lit the
+      # LED — judged by the run board's ledBrightness, not the viewport. Skips
+      # by name if the firmware fetch above did not land.
+      - name: Browser gate — Pico MicroPython simulator Run lights the LED (N3c)
+        timeout-minutes: 3  # boot ~0.9-2.6 s node on this VPS; browser slower, gate polls to 60 s
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        run: PROOF_URL=http://localhost:8617/ npm run verify:pico-micropython
+      # The other half: with the firmware WITHHELD (its own server 404s it), the
+      # Run must refuse BY NAME — a Run button with nothing behind it is the
+      # failure this proves against. No PROOF_URL: withholding needs its own
+      # server, so it gates on the build, not the shared serve.
+      - name: Browser gate — Pico ▶ Run refuses by name with no firmware (N3c)
+        timeout-minutes: 3  # its own server (port 8123); boot attempt + refuse
+        if: ${{ !cancelled() && steps.build_editor_browser.outcome == 'success' }}
+        run: npm run verify:pico-micropython-absent
 
       - name: Browser gate — micro:bit debugger, block and line stepping
         timeout-minutes: 4  # measured max 18 s over 5 main runs, 2026-09-05
