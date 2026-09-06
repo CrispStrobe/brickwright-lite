@@ -22,6 +22,85 @@ item marked with an agent name is being worked on.
 
 ---
 
+## Next-session shortlist — reconciled 2026-09-06
+
+[PLAN.md](PLAN.md#next-session-priorities--reconciled-2026-09-06) records
+execution order. Current upstream baseline is `9f234e755`; completed and
+rejected predecessor work is in [HISTORY.md](HISTORY.md). The live work is the
+following three bounded tracks.
+
+### Track 1 — precompiled scratch-parser validator (P16 experiment)
+
+**Outcome:** replace runtime AJV only if a reproducibly generated validator is
+behaviorally identical and materially smaller.
+
+**Work:** Freeze callback timing/arguments, error ordering/shape, result and SB1
+fallback contracts for both `loadProject` and `addSprite`; generate from the
+pinned schemas; differential-test valid, invalid, adversarial, legacy and full
+project-corpus inputs; mutation-test malformed project structures; measure
+ownership, emitted/encoded bytes, build time and open latency on hosted CI.
+
+**Acceptance:** exact differential parity, reproducible generator/schema
+identity and a material net initial-byte reduction with no project-open
+regression. Reject on any semantic difference or opaque provenance; never skip
+validation for bundled/default projects.
+
+**Start:** `packages/scratch-vm/src/virtual-machine.js`, the pinned
+`scratch-parser` dependency, project corpus tests, webpack ownership reporting
+and P16 in `docs/I8086-CORE-PLAN.md`. Estimated 4–8 focused hours plus hosted CI.
+
+### Track 2 — Pico simulator reset and rerun (N3c-1)
+
+**Outcome:** `machine.reset()` reboots MicroPython in rp2040js, and two different
+editor programs execute consecutively without a page reload or emulator freeze.
+
+**Work:** Reproduce the counter pinned at 2,191,927 steps; trace core, boot ROM,
+flash, VTOR, USB CDC and scheduler reset state; implement a complete reset in
+upstream `bw-board`; prove boot-reset-boot, flash deployment, raw-REPL return and
+changed GP25 output; adopt the smallest reviewed pin/file set in Lite and remove
+the source refusal only after browser proof.
+
+**Acceptance:** execution advances beyond the old freeze point; two consecutive
+programs run through the real UI; stop/rerun is deterministic; absent firmware
+still refuses clearly; existing 64-byte CDC and physical-deployment tests remain
+green. If correct reset requires an unbounded core replacement, land the upstream
+diagnosis and adapter contract first.
+
+**Start:** `docs/PICO-SIM-RUN-FINDINGS.md`, `docs/PICO-MICROPYTHON-BOOT.md`,
+`overlay/scratch-gui/src/lib/pico-sim-run.js`, the pinned `bw-board` RP2040
+adapter, `test/pico-sim-run.test.mjs` and `test/pico-micropython-gpio.test.mjs`.
+Estimated 4–8 focused hours including upstream reconciliation.
+
+### Track 3 — browser artifact feasibility
+
+**Outcome:** `build` produces one immutable identified web artifact and both
+required browser shards test those exact bytes.
+
+**Evidence:** four successful runs put `build` at 5:27–5:42 and the slow browser
+shard at 6:43–9:35, running in parallel. Waiting for `build` and then downloading
+its output would likely add roughly four minutes to the release verdict while
+saving two duplicate webpack builds. Exact-byte acceptance is stronger, but its
+cost must be an explicit product/CI decision.
+
+**Work:** Measure browser setup/build time, runner minutes, artifact size and
+transfer time separately; model the resulting critical path; compare the value
+of exact-byte identity with the current reproducible same-source build. Only if
+accepted, publish a SHA/pin/manifest/digest-bearing test artifact, make both
+shards verify and serve it, remove their duplicate webpack builds, and extend
+workflow-shape/mutation tests.
+
+**Acceptance:** a missing, stale or modified artifact fails by name; either
+shard still blocks deployment; the single Pages artifact producer and shard
+partition/audit remain intact; measured wall time or runner cost improves without
+raising timeouts. The decision brief must name whether wall time, runner cost or
+exact-byte identity is the priority. Keep the existing independent builds if no
+priority justifies the longer critical path.
+
+**Start:** `.github/workflows/build.yml`, `test/pages-deploy-ordering.test.mjs`,
+`test/browser-gate-shards.test.mjs`, `test/debug-browser-ci-workflow.test.mjs`
+and `scripts/lib/workflow-gates.mjs`. Estimated 1–2 hours for the decision;
+4–6 further hours plus hosted CI only if implementation is accepted.
+
 ## 1. Costume designer & GUI layout
 
 ### 1.1 Collapsed stage column is a clipped stage, not a strip — RESOLVED (`pane-strip.jsx`)

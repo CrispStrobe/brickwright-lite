@@ -11,8 +11,32 @@ It uses upstream Scratch components where they are useful, alongside Brickwright
 own editor, code model, circuit engine, device runtimes, and native shell.
 
 This document turns the product review into an ordered implementation plan.
-`ROADMAP.md` remains the detailed engineering backlog and historical record; this
-file defines the user outcomes, sequencing, and release gates.
+`ROADMAP.md` remains the detailed engineering backlog; `HISTORY.md` records
+completed and rejected work. This file defines outcomes, sequencing and release
+gates.
+
+## Next-session priorities — reconciled 2026-09-06
+
+The current shortlist was reconciled with `main` at `9f234e755`. Completed and
+rejected predecessor work is recorded in `HISTORY.md`.
+
+The next three bounded tracks are:
+
+| Track | Outcome | Estimated focused work |
+|---|---|---|
+| 1 — precompiled parser-validator experiment | Differentially test generated validators against AJV and accept only exact behavior plus a material payload reduction. | 4–8 hours plus hosted CI |
+| 2 — Pico reset and rerun | Make `machine.reset()` reboot rp2040js and prove two consecutive editor programs execute. | 4–8 hours including upstream reconciliation |
+| 3 — browser artifact feasibility | Decide from timing and identity evidence whether exact build-artifact reuse justifies serializing browser behind `build`. | 1–2 hours; implementation only if accepted |
+
+Tracks 1 and 2 can proceed independently. Track 1 is the next in-repository
+experiment already selected by the performance plan. Track 2 can proceed
+upstream in `bw-board`. Track 3 starts as a decision brief: recent successful
+runs put `build` at 5:27–5:42 and the slow browser shard at 6:43–9:35 in
+parallel, so an artifact dependency likely worsens wall time even if it saves
+runner minutes and proves byte identity.
+
+Keep full Technic simulation, wholesale cycle-core replacement, broad language
+expansion and framework migration in their existing longer-term plans.
 
 ## How this plan is executed
 

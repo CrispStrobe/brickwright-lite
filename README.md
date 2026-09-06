@@ -148,7 +148,24 @@ scripts/
   apply-render-overlay.mjs <- SVGSkin waits for the lazy render-fonts chunk when an SVG has text
 ```
 
-`packages/` is gitignored — `vendor.mjs` repopulates and validates it.
+`packages/` has ignore rules, but many files there are already tracked in Git.
+For files present in both the GUI overlay and the tracked GUI tree, edit the
+overlay and refresh the tracked mirror with `node scripts/integrate.mjs` in the
+same change. The overlay/package equality test checks committed copies.
+`vendor.mjs` populates packages whose `package.json` is absent; its cache check
+does not verify every existing file against the pinned upstream contents.
+
+The main runtime layers are `sb3-creator` for representation conversion,
+local or hosted compiler routes for executable images, `bw-circuit-ui` for
+circuit construction, `bw-board` for machines and debug adapters, and
+`bw-debug` for recording, inspection and replay. The language/device matrix
+describes supported paths. Project saves carry Scratch content plus Brickwright
+Code, Circuit and Controller state in an `.sb3` sidecar. Tauri supplies native
+file, serial and ScratchLink transports around the web application.
+
+[PLAN.md](PLAN.md) records the current sequence; [ROADMAP.md](ROADMAP.md)
+contains the scoped session tracks and engineering backlog. Check
+[LANES.md](LANES.md) before claiming implementation.
 
 ## Development and tests
 

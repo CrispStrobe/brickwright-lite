@@ -274,7 +274,7 @@ Lite only, unclaimed. T5 reconciled the picker's device facts against the
 table by parsing the JSX of a 4,100-line component (the conformance test's
 `pickerCompile`/`pickerEmulator` sentinels) — a gate over text, which is the
 species the gate-shapes audit exists to retire. The owner's Codex assessment
-(`docs/SESSION-ROADMAP-2026-09-05.md`, track D, 2026-09-05) reached the same
+([`HISTORY.md`](../HISTORY.md), completed device-picker item, 2026-09-05) reached the same
 item independently. DoD:
 - [ ] `pseudocode-importer.jsx` imports `DEVICES` (and the picker groups derive
       from `DEVICE_GROUPS`); no device fact is spelled twice.
