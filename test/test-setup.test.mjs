@@ -81,3 +81,13 @@ test('runtime dependency lookup never borrows an ancestor dependency', t => {
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /Missing integrated runtime file/);
 });
+
+test('CI runs the bounded source verdict before generated-tree work', () => {
+    const workflow = readFileSync(path.join(repo, '.github/workflows/build.yml'), 'utf8');
+    const install = workflow.indexOf('name: Install source-test dependencies');
+    const source = workflow.indexOf('name: Run bounded source-only tests');
+    const vendor = workflow.indexOf('name: Vendor the pinned permissive Scratch sources');
+    assert.ok(install >= 0 && install < source && source < vendor,
+        'source tests must run after their root install and before vendor/integrate spend');
+    assert.match(workflow.slice(source, vendor), /run: npm run test:source/);
+});
