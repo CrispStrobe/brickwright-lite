@@ -16,6 +16,130 @@ export function summarizeSpread(values) {
     return {median, min: sorted[0], max: sorted.at(-1), range: sorted.at(-1) - sorted[0]};
 }
 
+/** Bind a benchmark receipt to the exact hosted workflow invocation and Git
+ * commit which produced it. Callers pass the independently observed expected
+ * identity when auditing a downloaded raw or aggregate receipt. */
+export function validateI8086ReceiptIdentity(receipt, expected = receipt?.evidence) {
+    const issues = [];
+    const actual = receipt?.evidence || {};
+    if (!Number.isSafeInteger(actual.runId) || actual.runId <= 0) {
+        issues.push('invalid GitHub run id');
+    }
+    if (!/^[0-9a-f]{40}$/.test(String(actual.headSha || ''))) {
+        issues.push('invalid GitHub head SHA');
+    }
+    if (!expected || actual.runId !== expected.runId) issues.push('GitHub run id mismatch');
+    if (!expected || actual.headSha !== expected.headSha) issues.push('GitHub head SHA mismatch');
+    return issues;
+}
+
+/** Validate and summarize the simulated time advanced by each production UI
+ * pump. Invalid rows remain visible in `issues` instead of disappearing from
+ * the receipt, and a large guest-time leap is reported as an overshoot rather
+ * than being mistaken for emulator throughput. */
+export function summarizeI8086SimulatedPump(samples, limitMs = 50) {
+    const list = Array.isArray(samples) ? samples : [];
+    const issues = [];
+    const values = [];
+    const overshoots = [];
+    let previousAt = null;
+
+    if (!list.length) issues.push('no steady pump samples');
+    if (!Number.isFinite(limitMs) || limitMs <= 0) issues.push('invalid simulated-time limit');
+    for (let index = 0; index < list.length; index++) {
+        const sample = list[index] || {};
+        const at = Number(sample.at);
+        const wallMs = Number(sample.wallMs);
+        const simNs = Number(sample.simNs);
+        if (!Number.isFinite(at) || at < 0) issues.push(`sample ${index} has invalid timestamp`);
+        else if (previousAt !== null && at < previousAt) issues.push(`sample ${index} timestamp went backwards`);
+        if (Number.isFinite(at)) previousAt = at;
+        if (!Number.isFinite(wallMs) || wallMs <= 0) issues.push(`sample ${index} has invalid wall time`);
+        if (!Number.isFinite(simNs) || simNs <= 0) {
+            issues.push(`sample ${index} has invalid simulated time`);
+            continue;
+        }
+        const simulatedMs = simNs / 1e6;
+        values.push(simulatedMs);
+        if (Number.isFinite(limitMs) && limitMs > 0 && simulatedMs > limitMs) {
+            overshoots.push({index, at, simulatedMs});
+        }
+    }
+
+    return {
+        p50: percentile(values, 0.50),
+        p95: percentile(values, 0.95),
+        max: values.length ? Math.max(...values) : null,
+        limitMs,
+        overshootCount: overshoots.length,
+        overshoots,
+        issues,
+        valid: issues.length === 0 && overshoots.length === 0
+    };
+}
+
+/** Fail-closed integrity checks for the CPU-bound hosted workload receipt. */
+export function validateI8086WorkloadIntegrity(result, {
+    workloadId,
+    sourceSha256,
+    heartbeatOffset,
+    maximumSimulatedMsPerPump,
+    minimumSamples
+} = {}) {
+    const issues = [];
+    const workload = result?.workload || {};
+    const uint32 = value => Number.isInteger(value) && value >= 0 && value <= 0xffffffff;
+    if (!workloadId || workload.id !== workloadId) issues.push('wrong workload id');
+    if (!/^[0-9a-f]{64}$/.test(String(sourceSha256 || '')) ||
+        workload.sourceSha256 !== sourceSha256) issues.push('wrong workload source hash');
+    if (!Number.isInteger(heartbeatOffset) || workload.heartbeatOffset !== heartbeatOffset) {
+        issues.push('wrong heartbeat offset');
+    }
+    const expectedAddress = Number.isInteger(workload.heartbeatSegment) &&
+        workload.heartbeatSegment >= 0 && workload.heartbeatSegment <= 0xffff &&
+        Number.isInteger(heartbeatOffset) ?
+        (((workload.heartbeatSegment & 0xffff) << 4) + heartbeatOffset) & 0xfffff : null;
+    if (!Number.isInteger(workload.heartbeatAddress) || workload.heartbeatAddress < 0 ||
+        workload.heartbeatAddress > 0xfffff || workload.heartbeatAddress !== expectedAddress) {
+        issues.push('invalid heartbeat address');
+    }
+    if (!uint32(workload.heartbeatBefore) || !uint32(workload.heartbeatAfter) ||
+        !uint32(workload.heartbeatDelta)) {
+        issues.push('invalid heartbeat value');
+    } else {
+        const expectedDelta = (workload.heartbeatAfter - workload.heartbeatBefore) >>> 0;
+        if (workload.heartbeatDelta !== expectedDelta) issues.push('heartbeat delta mismatch');
+        if (workload.heartbeatDelta === 0) issues.push('heartbeat made no progress');
+        if (workload.heartbeatDelta >= 0x80000000) issues.push('heartbeat progress is wrap-ambiguous');
+    }
+    if (!Number.isFinite(workload.cyclesBefore) || !Number.isFinite(workload.cyclesAfter) ||
+        !Number.isFinite(workload.cycleDelta) || workload.cycleDelta <= 0 ||
+        workload.cyclesAfter - workload.cyclesBefore !== workload.cycleDelta) {
+        issues.push('CPU cycles did not make consistent progress');
+    }
+    const simulated = result?.simulatedMsPerPump;
+    if (!simulated || simulated.valid !== true || !Array.isArray(simulated.issues) ||
+        !Array.isArray(simulated.overshoots) || simulated.issues.length ||
+        simulated.overshootCount !== simulated.overshoots.length || simulated.overshootCount !== 0 ||
+        simulated.limitMs !== maximumSimulatedMsPerPump ||
+        ![simulated.p50, simulated.p95, simulated.max].every(value =>
+            Number.isFinite(value) && value > 0 && value <= maximumSimulatedMsPerPump)) {
+        issues.push('invalid simulated pump summary');
+    }
+    if (![result?.simulatedMs, result?.elapsedMs, result?.realTimeRatio].every(value =>
+        Number.isFinite(value) && value > 0)) issues.push('invalid throughput measurement');
+    else {
+        const expectedRatio = result.simulatedMs / result.elapsedMs;
+        const tolerance = 1e-12 * Math.max(1, Math.abs(expectedRatio));
+        if (Math.abs(result.realTimeRatio - expectedRatio) > tolerance) {
+            issues.push('throughput ratio mismatch');
+        }
+    }
+    if (!Number.isInteger(minimumSamples) || !Number.isInteger(result?.samples) ||
+        result.samples < minimumSamples) issues.push('insufficient executed pump samples');
+    return issues;
+}
+
 /** Cross-run summary. Every detailed run remains in report.results and in its
  * raw receipt; this compact view makes comparisons statistical and reviewable. */
 export function summarizeI8086Repetitions(runs) {
@@ -77,6 +201,16 @@ export function summarizeI8086Repetitions(runs) {
             p50: metric(run => run.pumpMs?.p50),
             p95: metric(run => run.pumpMs?.p95),
             max: metric(run => run.pumpMs?.max)
+        },
+        workload: {
+            heartbeatDelta: metric(run => run.workload?.heartbeatDelta),
+            cycleDelta: metric(run => run.workload?.cycleDelta)
+        },
+        simulatedMsPerPump: {
+            p50: metric(run => run.simulatedMsPerPump?.p50),
+            p95: metric(run => run.simulatedMsPerPump?.p95),
+            max: metric(run => run.simulatedMsPerPump?.max),
+            overshootCount: metric(run => run.simulatedMsPerPump?.overshootCount)
         },
         pumpBreakdown: {
             totalWallMs: metric(run => run.pumpBreakdown?.totalWallMs),

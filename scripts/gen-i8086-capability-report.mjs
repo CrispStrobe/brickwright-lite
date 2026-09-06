@@ -49,9 +49,15 @@ export function buildI8086CapabilityReport() {
         'upstream evidence precedes vendoring');
     capture(browserGate, /the 8086 journey made no hosted compiler request/,
         'offline 8086 browser journey');
-    const [minimumSamples, minimumRatio] = capture(browserBench,
-        /samples\.length < (\d+) \|\| ratio < ([\d.]+)/,
-        'browser performance acceptance floor');
+    const [workloadId] = capture(browserBench, /const workloadId = '([^']+)'/,
+        'browser CPU-bound workload identity');
+    const [maximumPumpMs] = capture(browserBench,
+        /const maximumSimulatedMsPerPump = (\d+)/,
+        'browser simulated-time pump limit');
+    const [minimumSamples] = capture(browserBench, /minimumSamples: (\d+)/,
+        'browser performance sample floor');
+    const [minimumRatio] = capture(browserBench, /if \(ratio < ([\d.]+)\)/,
+        'browser performance ratio floor');
     capture(browserBench, /pumpBreakdown: summarizeI8086Pump\(samples\)/,
         'browser pump phase breakdown');
     capture(browserBench, /setupTimeline: timeline/,
@@ -194,7 +200,7 @@ The vector totals above are declarations carried by the pinned, byte-verified en
 
 The upstream-CI verifier fails closed on missing, partial, wrong-SHA or unreachable GitHub evidence and runs before \`npm run vendor\`. It checks named successful steps inside all four required jobs, rather than accepting a workflow's overall badge.
 
-The production-browser gate exercises local assembly with the hosted compiler blocked, DOS-bench startup, CGA pixels, keyboard input and the 8255 face. The companion desktop/mobile benchmark retains a JSON receipt, splits pump time into emulator execution, board advancement and debug/UI publication, and attributes long tasks and script resources across named setup, attach, first-render and steady-pump windows. It rejects fewer than **${minimumSamples}** useful pump samples or less than **${minimumRatio}x XT real time**. Those are regression floors, not claims that every device matches one benchmark runner.
+The production-browser gate exercises local assembly with the hosted compiler blocked, DOS-bench startup, CGA pixels, keyboard input and the 8255 face. The companion desktop/mobile benchmark runs the service-free \`${workloadId}\` workload, requiring both CPU-cycle and DS-relative memory-heartbeat progress so sleeping or doing no work cannot count as throughput. Its raw and aggregate JSON receipts bind the positive GitHub run ID and full head SHA, split pump time into emulator execution, board advancement and debug/UI publication, and attribute long tasks and script resources across named setup, attach, first-render and steady-pump windows. It rejects fewer than **${minimumSamples}** useful pump samples, any pump advancing more than **${maximumPumpMs} ms** of simulated time, or less than **${minimumRatio}x XT real time**. Those are regression floors, not claims that every device matches one benchmark runner.
 
 The shipped 8086 runner also bounds one browser callback to **${wallBudgetMs} ms**, with a maximum simulated-time quantum of **${Number(maxQuantumNs.replaceAll('_', '')).toLocaleString('en-US')} ns**, carrying debt forward. Progress-only debug snapshots are built at most every **${snapshotMs} ms**; semantic transitions and failures remain immediate.
 
