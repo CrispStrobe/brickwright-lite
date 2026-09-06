@@ -39,15 +39,14 @@ const isScratchParserSchema = name =>
         .test(stripLoaders(name));
 
 const isGeneratedScratchParserValidator = name =>
-    /\/node_modules\/scratch-parser\/lib\/validate-(?:sb[23])-(?:project|sprite)\.js$/
+    /\/node_modules\/scratch-parser\/lib\/validate-precompiled\.js$/
         .test(stripLoaders(name));
 
 const isScratchParserCompilerModule = name => {
     const normalized = stripLoaders(name);
-    if (!/\/node_modules\/scratch-parser\/node_modules\//.test(normalized)) return false;
-    if (/\/ajv\/lib\/compile\/(?:equal|ucs2length)\.js$/.test(normalized)) return false;
-    if (/\/fast-deep-equal\/index\.js$/.test(normalized)) return false;
-    return /\/node_modules\/(?:ajv|uri-js|json-schema-traverse|fast-json-stable-stringify)\//
+    if (/\/node_modules\/scratch-parser\/node_modules\/ajv\/lib\/compile\/(?:equal|ucs2length)\.js$/
+        .test(normalized)) return false;
+    return /\/node_modules\/(?:scratch-parser\/node_modules\/)?(?:ajv|uri-js|json-schema-traverse|fast-json-stable-stringify|fast-deep-equal)\//
         .test(normalized);
 };
 
@@ -279,8 +278,8 @@ export const assertScratchParserPrecompile = report => {
     if (parser.schemaModules.length) {
         failures.push(`scratch-parser still bundles runtime schemas: ${parser.schemaModules.join(', ')}`);
     }
-    if (parser.generatedModules.length !== 4) {
-        failures.push(`expected four generated scratch-parser validators, found ${parser.generatedModules.length}`);
+    if (parser.generatedModules.length !== 1) {
+        failures.push(`expected one shared scratch-parser validator module, found ${parser.generatedModules.length}`);
     }
     if (report.initial.bytes > baselineInitialBytes - minimumSavingBytes) {
         failures.push(`P16 initial JavaScript ${report.initial.bytes} exceeds ` +

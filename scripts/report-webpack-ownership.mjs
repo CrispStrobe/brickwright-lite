@@ -41,7 +41,7 @@ console.log(`Optional CodeMirror grammars: ${(report.optionalCodeMirrorGrammars.
 console.log(`Lazy paint editor: ${(report.lazyPaintEditor.sourceBytes / 1024).toFixed(1)} KiB source, ` +
     `${(report.lazyPaintEditor.emittedBytes / 1024).toFixed(1)} KiB emitted in ` +
     `${report.lazyPaintEditor.files.join(', ') || 'missing assets'}`);
-console.log(`Scratch parser: ${report.scratchParserPrecompile.generatedModules.length} generated validators, ` +
+console.log(`Scratch parser: ${report.scratchParserPrecompile.generatedModules.length} shared validator module, ` +
     `${report.scratchParserPrecompile.compilerModules.length} compiler modules, ` +
     `${report.scratchParserPrecompile.schemaModules.length} runtime schemas`);
 for (const failure of failures) console.error(`FAIL: ${failure}`);

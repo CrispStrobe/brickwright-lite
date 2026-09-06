@@ -8,6 +8,7 @@ test('P16 precompiles the pinned scratch-parser schemas before webpack', () => {
     const integrate = read('scripts/integrate.mjs');
     const apply = read('scripts/apply-vm-overlay.mjs');
     const generator = read('scripts/precompile-scratch-parser.mjs');
+    const emitter = read('scripts/lib/ajv6-standalone.mjs');
     const verifier = read('scripts/verify-scratch-parser-precompile.mjs');
     const workflow = read('.github/workflows/build.yml');
 
@@ -18,8 +19,11 @@ test('P16 precompiles the pinned scratch-parser schemas before webpack', () => {
     assert.equal((generator.match(/[a-f0-9]{64}/g) || []).length, 7,
         'stock validator plus all six schemas must be hash-pinned');
     assert.match(generator, /new Ajv\(\{sourceCode: true\}\)/);
-    assert.match(generator, /packAjv6/);
+    assert.match(generator, /packAjv6Multi/);
+    assert.match(generator, /180000-byte P16b preflight/);
+    assert.match(emitter, /\.slice\(1\)/, 'AJV refVal[0] is the validator itself');
     assert.match(generator, /validationError: 'Could not parse as a valid SB2 or SB3 project\.'/);
     assert.match(verifier, /eager\.args !== candidate\.args/);
+    assert.match(verifier, /mismatchDetailsTruncated/);
     assert.match(workflow, /Prove precompiled scratch-parser parity/);
 });

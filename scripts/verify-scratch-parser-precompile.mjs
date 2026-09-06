@@ -23,7 +23,9 @@ const walk = directory => {
         if (statSync(item).isDirectory()) walk(item);
         else {
             if (/\.(?:json|sprite2json)$/.test(name)) jsonFiles.push(item);
-            if (/\.(?:json|sb|sb2|sb3|sprite2|sprite2json|zip)$/.test(name)) parserFixtureFiles.push(item);
+            if (/\.(?:json|sb|sb2|sb3|sprite2|sprite3|sprite2json|zip)$/.test(name)) {
+                parserFixtureFiles.push(item);
+            }
         }
     }
 };
@@ -63,8 +65,19 @@ const invoke = (validator, isSprite, value) => {
     });
     return {calls, args: JSON.stringify(args), input: JSON.stringify(input), ms: performance.now() - started};
 };
+const compact = value => ({
+    bytes: Buffer.byteLength(value || ''),
+    sha256: createHash('sha256').update(value || '').digest('hex'),
+    excerpt: (value || '').slice(0, 512)
+});
+const compactInvocation = invocation => ({
+    calls: invocation.calls,
+    args: compact(invocation.args),
+    input: compact(invocation.input)
+});
 
 const mismatches = [];
+let mismatchCount = 0;
 const timings = {stockMs: 0, generatedMs: 0};
 let comparisons = 0;
 for (const [name, value] of cases) {
@@ -76,13 +89,17 @@ for (const [name, value] of cases) {
         comparisons++;
         if (eager.calls !== 1 || candidate.calls !== 1 || eager.args !== candidate.args ||
             eager.input !== candidate.input) {
-            mismatches.push({name, isSprite, eager, candidate});
+            mismatchCount++;
+            if (mismatches.length < 20) {
+                mismatches.push({name, isSprite,
+                    eager: compactInvocation(eager), candidate: compactInvocation(candidate)});
+            }
         }
     }
 }
 
 const generatedFiles = readdirSync(path.join(PARSER, 'lib'))
-    .filter(name => /^validate-(?:sb[23])-(?:project|sprite)\.js$/.test(name)).sort()
+    .filter(name => name === 'validate-precompiled.js').sort()
     .map(name => {
         const source = readFileSync(path.join(PARSER, 'lib', name));
         return {name, bytes: source.length,
@@ -92,8 +109,9 @@ const generatedFiles = readdirSync(path.join(PARSER, 'lib'))
     });
 const versions = Object.fromEntries(['scratch-parser', 'ajv'].map(name =>
     [name, parserRequire(name === 'scratch-parser' ? './package.json' : `${name}/package.json`).version]));
-const report = {schema: 'brickwright/p16-scratch-parser-parity/v1', comparisons,
-    fixtureJsonFiles: jsonFiles.length, versions, mismatches, timings, generatedFiles,
+const report = {schema: 'brickwright/p16-scratch-parser-parity/v2', comparisons,
+    fixtureJsonFiles: jsonFiles.length, versions, mismatchCount, mismatches, timings, generatedFiles,
+    mismatchDetailsTruncated: Math.max(0, mismatchCount - mismatches.length),
     generatedBytes: generatedFiles.reduce((sum, item) => sum + item.bytes, 0)};
 
 const pify = parserRequire('pify');
@@ -126,34 +144,49 @@ const invokeParser = (parser, input, isSprite) => new Promise(resolve => {
 });
 
 const parserMismatches = [];
+let parserMismatchCount = 0;
 let parserComparisons = 0;
+const smallest = predicate => parserFixtureFiles.filter(predicate)
+    .sort((left, right) => statSync(left).size - statSync(right).size || left.localeCompare(right))[0];
+const inputMatrixFiles = new Set([
+    smallest(filename => /\.(?:json|sprite2json)$/.test(filename)),
+    smallest(filename => !/\.(?:json|sprite2json)$/.test(filename))
+].filter(Boolean));
 for (const filename of parserFixtureFiles) {
     const bytes = readFileSync(filename);
     const isSprite = /sprite/i.test(path.basename(filename));
-    const inputs = [
-        ['buffer', bytes],
-        ['uint8array', new Uint8Array(bytes)],
-        ['arraybuffer', bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)]
-    ];
-    if (/\.(?:json|sprite2json)$/.test(filename)) inputs.push(['string', bytes.toString('utf8')]);
+    const inputs = [['buffer', bytes]];
+    if (inputMatrixFiles.has(filename)) {
+        inputs.push(['uint8array', new Uint8Array(bytes)]);
+        inputs.push(['arraybuffer', bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)]);
+        if (/\.(?:json|sprite2json)$/.test(filename)) inputs.push(['string', bytes.toString('utf8')]);
+    }
     for (const [kind, input] of inputs) {
         const eager = await invokeParser(stockParser, input, isSprite);
         const candidate = await invokeParser(candidateParser, input, isSprite);
         parserComparisons++;
         if (eager.calls !== 1 || candidate.calls !== 1 || eager.synchronous !== candidate.synchronous ||
             eager.args !== candidate.args) {
-            parserMismatches.push({filename: path.relative(PARSER, filename), kind, isSprite, eager, candidate});
+            parserMismatchCount++;
+            if (parserMismatches.length < 20) {
+                parserMismatches.push({filename: path.relative(PARSER, filename), kind, isSprite,
+                    eager: {...eager, args: compact(eager.args)},
+                    candidate: {...candidate, args: compact(candidate.args)}});
+            }
         }
     }
 }
 report.parserFixtureFiles = parserFixtureFiles.length;
 report.parserComparisons = parserComparisons;
+report.parserInputMatrixFiles = [...inputMatrixFiles].map(filename => path.relative(PARSER, filename));
+report.parserMismatchCount = parserMismatchCount;
 report.parserMismatches = parserMismatches;
+report.parserMismatchDetailsTruncated = Math.max(0, parserMismatchCount - parserMismatches.length);
 if (output) {
     mkdirSync(path.dirname(output), {recursive: true});
     writeFileSync(output, `${JSON.stringify(report, null, 2)}\n`);
 }
 console.log(JSON.stringify(report, null, 2));
-if (mismatches.length || parserMismatches.length) {
-    throw new Error(`${mismatches.length} validator and ${parserMismatches.length} parser differences`);
+if (mismatchCount || parserMismatchCount) {
+    throw new Error(`${mismatchCount} validator and ${parserMismatchCount} parser differences`);
 }

@@ -92,20 +92,18 @@ test('the DOS boundary rejects broad registries, solvers and unrelated CPU famil
     assert.equal(assertDosChunkBoundary(report).length, 1);
 });
 
-test('scratch-parser ownership accepts four generated validators and rejects its runtime compiler', () => {
+test('scratch-parser ownership accepts one shared validator module and rejects its runtime compiler', () => {
     const stats = fixture();
-    for (const name of ['sb2-project', 'sb3-project', 'sb2-sprite', 'sb3-sprite']) {
-        stats.modules.push({
-            name: `./node_modules/scratch-parser/lib/validate-${name}.js`,
-            size: 1000,
-            chunks: [1]
-        });
-    }
+    stats.modules.push({
+        name: './node_modules/scratch-parser/lib/validate-precompiled.js',
+        size: 1000,
+        chunks: [1]
+    });
     let report = summarizeWebpackOwnership(stats);
     assert.deepEqual(assertScratchParserPrecompile(report), []);
 
     stats.modules.push({
-        name: './node_modules/scratch-parser/node_modules/ajv/lib/compile/index.js',
+        name: './node_modules/uri-js/dist/es5/uri.all.js',
         size: 5000,
         chunks: [1]
     });
@@ -113,6 +111,27 @@ test('scratch-parser ownership accepts four generated validators and rejects its
     assert.match(assertScratchParserPrecompile(report)[0], /runtime compiler/);
 
     stats.modules.pop();
+    for (const name of [
+        './node_modules/fast-json-stable-stringify/index.js',
+        './node_modules/fast-deep-equal/index.js',
+        './node_modules/scratch-parser/node_modules/json-schema-traverse/index.js',
+        './node_modules/scratch-parser/node_modules/ajv/lib/refs/json-schema-draft-07.json'
+    ]) {
+        stats.modules.push({name, size: 1, chunks: [1]});
+        report = summarizeWebpackOwnership(stats);
+        assert.match(assertScratchParserPrecompile(report)[0], /runtime compiler/, name);
+        stats.modules.pop();
+    }
+    for (const helper of ['equal', 'ucs2length']) {
+        stats.modules.push({
+            name: `./node_modules/scratch-parser/node_modules/ajv/lib/compile/${helper}.js`,
+            size: 1,
+            chunks: [1]
+        });
+        report = summarizeWebpackOwnership(stats);
+        assert.deepEqual(assertScratchParserPrecompile(report), [], helper);
+        stats.modules.pop();
+    }
     stats.assets[0].size = 4543936;
     report = summarizeWebpackOwnership(stats);
     assert.match(assertScratchParserPrecompile(report).join('\n'), /initial JavaScript/);

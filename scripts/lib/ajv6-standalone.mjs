@@ -9,22 +9,20 @@
 const escapeQuotes = value => value.replace(/'|\\/g, '\\$&')
     .replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\f/g, '\\f').replace(/\t/g, '\\t');
 
-const generateValidate = state => {
-    const {validate} = state;
-    let output = `var ${state.funcName} = (function() { `;
+const generateValidate = (validate, funcName, identities) => {
+    let output = `var ${funcName} = (function() { `;
     for (const [index, pattern] of (validate.source.patterns || []).entries()) {
         output += `var pattern${index} = new RegExp('${escapeQuotes(pattern)}'); `;
     }
     for (const [index, value] of (validate.source.defaults || []).entries()) {
         output += `var default${index} = ${JSON.stringify(value)}; `;
     }
-    if (state.refVals.at(-1) !== validate.refVal) {
-        state.refVals.push(validate.refVal);
+    if ((validate.refVal || []).length) {
         output += 'var refVal = []; ';
         for (let index = 1; index < (validate.refVal || []).length; index++) {
             const reference = validate.refVal[index];
             if (typeof reference === 'function') {
-                output += generateValidate({...state, validate: reference, funcName: `refVal${index}`});
+                output += `var refVal${index} = ${identities.get(reference)}; `;
             } else if (reference && typeof reference === 'object') {
                 output += `var refVal${index} = ${JSON.stringify(reference)}; `;
             }
@@ -33,16 +31,36 @@ const generateValidate = state => {
     }
     const functionCode = validate.toString().replace(/^function\s*\(/, 'function validate(');
     output += `return ${functionCode};})();`;
-    output += `${state.funcName}.schema = ${JSON.stringify(validate.schema)};`;
-    output += `${state.funcName}.errors = null;`;
+    output += `${funcName}.schema = ${JSON.stringify(validate.schema)};`;
+    output += `${funcName}.errors = null;`;
     return output;
 };
 
-export const packAjv6 = validate => {
-    if (!validate?.source?.code) throw new Error('AJV validator is missing sourceCode output');
-    let code = generateValidate({validate, funcName: 'validate', refVals: []}) +
-        'module.exports = validate;';
-    if (/RULES/.test(code) || /formats(?:\.|\[)/.test(code) || validate.$async) {
+export const packAjv6Multi = entries => {
+    const identities = new Map();
+    const emitted = new Set();
+    const visiting = new Set();
+    const ordered = [];
+    const visit = validate => {
+        if (!validate?.source?.code) throw new Error('AJV validator is missing sourceCode output');
+        if (!identities.has(validate)) identities.set(validate, `validate${identities.size}`);
+        if (emitted.has(validate)) return;
+        if (visiting.has(validate)) throw new Error('recursive AJV references are not supported');
+        visiting.add(validate);
+        for (const reference of (validate.refVal || []).slice(1)) {
+            if (typeof reference === 'function') visit(reference);
+        }
+        visiting.delete(validate);
+        emitted.add(validate);
+        ordered.push(validate);
+    };
+    for (const {validate} of entries) visit(validate);
+    let code = ordered.map(validate =>
+        generateValidate(validate, identities.get(validate), identities)).join('');
+    code += `module.exports = {${entries.map(({name, validate}) =>
+        `${JSON.stringify(name)}:${identities.get(validate)}`).join(',')}};`;
+    if (/RULES/.test(code) || /formats(?:\.|\[)/.test(code) ||
+        entries.some(({validate}) => validate.$async)) {
         throw new Error('schema needs an unsupported ajv-pack runtime helper');
     }
     let preamble = "'use strict';";
