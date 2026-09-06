@@ -5,7 +5,7 @@ import {resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = '../overlay/scratch-gui/src/lib/virtual-hub/';
-const {default: HubState} = await import(resolve(here, `${root}spike-hub-state.js`));
+const {default: HubState, SPIKE_FIRMWARE_TARGETS} = await import(resolve(here, `${root}spike-hub-state.js`));
 const {applyVirtualPortInput, openVirtualSpikePanel, closeVirtualSpikePanel} =
     await import(resolve(here, `${root}spike-panel.js`));
 
@@ -20,6 +20,9 @@ test('dashboard inputs update the shared neutral state', () => {
     state.setFirmwareTarget('legacy-v2');
     assert.equal(state.data.firmwareTarget, 'legacy-v2');
     assert.equal(state.data.simulationEnabled, false);
+    state.setFirmwareTarget('pybricks');
+    assert.equal(state.data.firmwareTarget, 'pybricks');
+    assert.match(SPIKE_FIRMWARE_TARGETS.pybricks.summary, /transport is not implemented/);
 });
 
 test('reopening and closing the dashboard releases its state subscription', () => {

@@ -140,6 +140,16 @@ A typical SPIKE driving base compiles to ~5 bodies and ~6 constraints.
 
 Green flag / stop plug into the same start-stop bus the circuit sim uses.
 
+### SPIKE Prime firmware targets
+
+The Virtual SPIKE Prime panel distinguishes four firmware identities. LEGO
+legacy v2 exposes the simulated Classic RFCOMM/Scratch Link path; LEGO official
+v3 exposes the LEGO-v3-compatible BLE path; Brickwright exposes both compatibility
+adapters. Pybricks is an explicit hardware-image/reference target so it can be
+selected and rendered without being mistaken for either LEGO generation.
+Brickwright does not yet implement the Pybricks BLE service or protocol, so the
+Pybricks target deliberately advertises neither of the existing virtual transports.
+
 ---
 
 ## 3. Lanes and tasks

@@ -33,6 +33,8 @@ test('firmware target controls which transport is advertised', () => {
     assert.equal(new VirtualSpikePrimePeripheral({hubState: state}).services.length, 1);
     assert.equal(state.data.simulationEnabled, false,
         'choosing a profile does not implicitly opt into simulation');
+    state.setFirmwareTarget('pybricks');
+    assert.equal(new VirtualSpikePrimePeripheral({hubState: state}).services.length, 0);
 });
 
 test('profile switches atomically stop motors and disconnect incompatible transports', () => {

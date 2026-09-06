@@ -2,7 +2,7 @@
 // Framing is shared with Brickwright SPIKE Firmware's independently authored
 // protocol/js/spike-codec.js and its Apache-2.0 conformance fixtures.
 import {registerVirtualPeripheral} from './web-bluetooth-shim.js';
-import VirtualSpikeHubState from './spike-hub-state.js';
+import VirtualSpikeHubState, {spikeFirmwareTarget} from './spike-hub-state.js';
 
 export const SPIKE_SERVICE = '0000fd02-0000-1000-8000-00805f9b34fb';
 export const SPIKE_RX = '0000fd02-0001-1000-8000-00805f9b34fb';
@@ -94,6 +94,7 @@ export class VirtualSpikePrimePeripheral {
         if (hubState.data.firmwareTarget === 'legacy-v2') this.services = [];
         this.hubState = hubState;
         this.state = hubState.data;
+        this._syncServices();
         this._unsubscribe = null;
         this._unregisterTransport = null;
         this._frame = [];
@@ -101,7 +102,8 @@ export class VirtualSpikePrimePeripheral {
     }
 
     connect () {
-        if (!this.state.simulationEnabled || this.state.firmwareTarget === 'legacy-v2') {
+        this._syncServices();
+        if (!this.state.simulationEnabled || !spikeFirmwareTarget(this.state.firmwareTarget).legoBle) {
             throw new Error('virtual SPIKE BLE is not enabled for this firmware profile');
         }
         this.state.connected = true;

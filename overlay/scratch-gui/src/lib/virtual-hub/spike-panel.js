@@ -50,11 +50,9 @@ export const openVirtualSpikePanel = hubState => {
 
     const profile = element('select', {'aria-label': 'Firmware profile',
         style: 'width:100%;padding:8px;margin-bottom:12px'});
-    for (const [value, label] of [
-        ['legacy-v2', 'LEGO SPIKE legacy firmware v2 — Classic'],
-        ['official-v3', 'LEGO SPIKE official firmware v3 — BLE'],
-        ['brickwright', 'Brickwright firmware — Classic + BLE compatibility']
-    ]) profile.appendChild(element('option', {value}, label));
+    for (const [value, target] of Object.entries(SPIKE_FIRMWARE_TARGETS)) {
+        profile.appendChild(element('option', {value}, `${target.label} — ${target.summary}`));
+    }
     profile.value = hubState.data.firmwareTarget;
     profile.addEventListener('change', () => hubState.setFirmwareTarget(profile.value));
     card.appendChild(profile);
