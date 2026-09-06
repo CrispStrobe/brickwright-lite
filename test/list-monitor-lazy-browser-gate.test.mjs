@@ -19,6 +19,7 @@ test('large-list gate preserves the same baseline/candidate activation probe', (
     assert.match(gate, /\.monitor-overlay \.ReactVirtualized__List/);
     assert.doesNotMatch(gate, /getByText\(LIST_NAME/);
     assert.match(gate, /forced chunk failure skipped/);
+    assert.match(gate, /LIST_MONITOR_BASELINE_MS \|\| 101\.8/);
     assert.match(gate, /acceptedBaselineMs \* 1\.15/);
     assert.match(gate, /const absoluteLimitMs = 1000/);
     assert.match(gate, /const maxLongTaskMs = 100/);
@@ -48,5 +49,7 @@ test('candidate proof requires owned lazy-state selectors and the complete behav
 test('CI runs the list-monitor proof and retains its failure receipt', () => {
     assert.match(workflow, /node scripts\/verify-list-monitor-lazy\.mjs/);
     assert.match(workflow, /timeout --signal=TERM --kill-after=10s 2m/);
+    const command = workflow.match(/run: ([^\n]*verify-list-monitor-lazy\.mjs)/)?.[1] || '';
+    assert.doesNotMatch(command, /LIST_MONITOR_EAGER_BASELINE/);
     assert.match(workflow, /name: list-monitor-lazy-proof[\s\S]*path: artifacts\/list-monitor-lazy\/\*/);
 });

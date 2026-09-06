@@ -998,14 +998,14 @@ jobs:
         timeout-minutes: 3  # measured max 5 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-costume-roundtrip.mjs
-      # P14's eager baseline temporarily adds LIST_MONITOR_EAGER_BASELINE=1.
-      # It runs the same activation/behavior probe and preserves the receipt,
-      # but skips a forced chunk failure an eager build cannot produce.
+      # P14 compares first-visible activation with the 101.8 ms eager baseline
+      # from current-main run 34044706850, then proves the lazy request, cache,
+      # failure/retry, geometry and 1,000-row behavior seams.
       - name: Browser gate — large list body loads on first visible monitor and retries
         id: list_monitor_lazy
         timeout-minutes: 3
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
-        run: timeout --signal=TERM --kill-after=10s 2m env LIST_MONITOR_EAGER_BASELINE=1 PROOF_URL=http://localhost:8617/ node scripts/verify-list-monitor-lazy.mjs
+        run: timeout --signal=TERM --kill-after=10s 2m env PROOF_URL=http://localhost:8617/ node scripts/verify-list-monitor-lazy.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:

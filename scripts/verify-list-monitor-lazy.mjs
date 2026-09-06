@@ -6,6 +6,10 @@
  * against the eager implementation. It intentionally records the missing
  * named chunk as a red boundary, but skips the impossible forced-fetch failure
  * rather than waiting for a request that cannot exist.
+ *
+ * The default activation baseline is the eager current-main measurement from
+ * hosted run 34044706850. An environment override remains available for a
+ * deliberate re-baseline without weakening the checked-in candidate budget.
  */
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import {writeFileSync} from 'node:fs';
@@ -17,7 +21,7 @@ const requireFromGui = createRequire(new URL('../packages/scratch-gui/package.js
 const JSZip = requireFromGui('jszip');
 const url = process.env.PROOF_URL || 'http://localhost:8617/';
 const eagerBaseline = process.env.LIST_MONITOR_EAGER_BASELINE === '1';
-const acceptedBaselineMs = Number(process.env.LIST_MONITOR_BASELINE_MS || 0);
+const acceptedBaselineMs = Number(process.env.LIST_MONITOR_BASELINE_MS || 101.8);
 const relativeLimitMs = acceptedBaselineMs ? acceptedBaselineMs * 1.15 : null;
 const absoluteLimitMs = 1000;
 const maxLongTaskMs = 100;
