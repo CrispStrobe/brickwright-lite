@@ -1245,7 +1245,7 @@ jobs:
       # LED — judged by the run board's ledBrightness, not the viewport. Skips
       # by name if the firmware fetch above did not land.
       - name: Browser gate — Pico MicroPython simulator Run lights the LED (N3c)
-        timeout-minutes: 3  # boot ~0.9-2.6 s node on this VPS; browser slower, gate polls to 60 s
+        timeout-minutes: 6  # 180 s GPIO poll (headless boot is far slower than node) + ~60 s setup + margin
         if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
         run: PROOF_URL=http://localhost:8617/ npm run verify:pico-micropython
       # The other half: with the firmware WITHHELD (its own server 404s it), the
