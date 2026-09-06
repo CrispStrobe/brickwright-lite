@@ -25,11 +25,12 @@
  * three (8051, avr, arm) — its flag lives in the shared `procedures_call` case,
  * which is NOT credited because that case is not dedicated to one verb.
  *
- * SEVEN COLUMNS FROM FIVE FAMILIES. profiles.js stores the five emitter
- * families. The doc renders seven: rp2040 is derived per cell as "≡ arm" (one
- * emitter branch; Pico vs STM32 is a later flag, not a branch), and i8086 is a
- * full column of "refuses" (STC_PARTS.i8086 hits refuse-by-name and emits no C).
- * rp2040 and i8086 cells are never stored.
+ * SEVEN COLUMNS FROM SIX FAMILIES. profiles.js stores the six emitter families
+ * (i8086 joined when pin, through the 8255, got its first branch). The doc
+ * renders seven: the extra one is rp2040, derived per cell as "≡ arm" (one
+ * emitter branch; Pico vs STM32 is a later flag, not a branch) and never stored.
+ * i8086 IS stored and measured — '✓' where it has a branch (pin), '—' (refuses
+ * by name) everywhere else, which is the honest gap map its column exists to show.
  *
  * Usage:
  *   node scripts/gen-part-profiles.mjs           # write the doc
@@ -140,7 +141,7 @@ export function deriveVerbFamilies (src) {
     // Every hardware verb the emitter names appears (8051-only if no other signal).
     for (const v of new Set(usesOf(src))) if (!CONTROL.has(v)) fams[v] ??= new Set(['8051']);
 
-    const ORDER = ['8051', 'avr', '6502', 'z80', 'arm'];
+    const ORDER = ['8051', 'avr', '6502', 'z80', 'arm', 'i8086'];
     const out = {};
     for (const v of Object.keys(fams)) out[v] = [...fams[v]].sort((a, b) => ORDER.indexOf(a) - ORDER.indexOf(b));
     return out;
@@ -153,7 +154,10 @@ const COLS = ['8051', 'avr', 'rp2040', 'arm', '6502', 'z80', 'i8086'];
 
 /** A verb's cell for a rendered column, from the stored five-family set. */
 function cell (fams, col) {
-    if (col === 'i8086') return '—';            // no emitter branch; refuses by name
+    // i8086 is a measured family now: '✓' where it has an emitter branch (pin,
+    // through the 8255), '—' (refuses by name) everywhere else — a gap the
+    // emitter states out loud, distinct from a '·' never-attempted cell.
+    if (col === 'i8086') return fams.includes('i8086') ? '✓' : '—';
     if (col === 'rp2040') return fams.includes('arm') ? '≡arm' : '·';   // derived, not stored
     return fams.includes(col) ? '✓' : '·';
 }
@@ -185,16 +189,17 @@ export function buildPartProfiles () {
     w('');
     w(`Every peripheral part bw-board knows, and whether a learner can program it from the Code tab. `
         + `Of **${total}** rendered verb×family cells, **${impl}** are implemented and **${gaps}** are gaps — `
-        + `**${i8086Gaps}** of them the whole i8086 column, which has no emitter branch at all. `
+        + `**${i8086Gaps}** of them the i8086 column, where only \`pin\` (through the 8255) has a branch. `
         + `Those gaps are the P-lane's next lanes. This file is generated from `
         + `\`lib/bw-parts/profiles.js\` and the sb3-creator emitter; see `
         + `\`scripts/gen-part-profiles.mjs\` for the attribution rule.`);
     w('');
     w('## Verb × family');
     w('');
-    w('The five stored families are the emitter\'s own `this._core` branch strings. `rp2040` is '
-        + 'rendered `≡arm` (one emitter branch; Pico vs STM32 is a later flag); `i8086` refuses by '
-        + 'name (no emitter branch). 8051 is the base STC12 dialect.');
+    w('The six stored families are the emitter\'s own `this._core` branch strings. `rp2040` is '
+        + 'rendered `≡arm` (one emitter branch; Pico vs STM32 is a later flag) and is not stored. '
+        + '`i8086` IS measured: `✓` where it has a branch (pin, through the 8255), `—` (refuses by '
+        + 'name) everywhere else. 8051 is the base STC12 dialect.');
     w('');
     w(`| verb | ${COLS.join(' | ')} |`);
     w(`|---|${COLS.map(() => '---').join('|')}|`);
