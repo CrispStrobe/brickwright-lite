@@ -560,7 +560,21 @@ proof.
 
 ### Lane P — peripherals (part profiles), summarised; full detail in its own plan
 
-**P1.** One part-profile registry (bus, pin roles, verbs, host families) with a
+**Measured 2026-09-06 (P1):** of **147** rendered verb × family cells, **55** are implemented and **92** are
+gaps, **21** of them the whole i8086 column (the C emitter has no i8086 branch at all); the emitter stores
+FIVE families (`8051 avr arm 6502 z80`; rp2040 renders `≡ arm`, one branch) and a branch that warns or
+emits a "no <thing> on this machine" stub is a gap, not a cell (servo/motor/pwm/tone lose their 6502/z80
+columns to that rule). 253 part rows: 219 registered device models + 31 built-in kinds + 3 documented but
+never registered I2C sensors (ads1115, pcf8591, apds9960); about 20 are programmable from the Code tab, the
+rest carry a category reason (passive, instrument, host, dip-surface, analog-only, mechanical, logic,
+bus-peripheral — the last is the next lane). `docs/generated/PART-PROFILES.md`.
+
+**P1. DONE 2026-09-06** (delegate `8086 coverage testing materials`, audited by lego-ac): `lib/bw-parts/profiles.js`
+(the table), `scripts/gen-part-profiles.mjs` (derives verb × family from the emitter's own `this._core`
+branches, attribution rule in the header, refusal branches excluded), `test/bw-parts-conformance.test.mjs`
+(every device model has a profile or a named refusal; verbs both ways; stored matrix == emitter branches;
+doc current — each mutation-proved). The chipRefusals() join is declared PARTIAL (clean literals only for
+i8237 and ym3812). Originally: one part-profile registry (bus, pin roles, verbs, host families) with a
 gate: every part that has a `bw-board` device model has a profile or an
 explicit `programmable: false` reason. **P2.** Split C drivers into a
 part-specific protocol layer over a family-specific bus layer; the emitter
