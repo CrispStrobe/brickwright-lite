@@ -374,6 +374,12 @@ jobs:
           # `not ok` must be counted by the summary (header of the script). It
           # runs before the grep below so a red suite still exercises it.
           node scripts/check-test-run.mjs --set fast --tap /tmp/unit.tap --census test-results/fast.census.json
+          # The GUI-scope resolve hook (scripts/lib/gui-scope-hooks.mjs) is the
+          # boundary between root tests and GUI dependencies, and it must stay a
+          # MEASURED list: every bare specifier it re-resolved from
+          # packages/scratch-gui, by count, so growth is seen rather than hidden.
+          echo "bare specifiers re-resolved from packages/scratch-gui by the unit tests:"
+          if [ -s test-results/fast.gui-scope.tsv ]; then cut -f1 test-results/fast.gui-scope.tsv | sort | uniq -c | sort -rn; else echo "  (none)"; fi
           # A SUITE THAT CANNOT BE CONSTRUCTED CURRENTLY READS AS A SUITE THAT
           # PASSED, and that is not a hypothesis — it happened in run
           # 32779945069 on this branch. `test/wait-census.test.mjs` calls a
@@ -1253,6 +1259,9 @@ jobs:
           mkdir -p test-results
           npm run test:corpus 2>&1 | tee /tmp/corpus.tap
           node scripts/check-test-run.mjs --set corpus --tap /tmp/corpus.tap --census test-results/corpus.census.json
+          # No node_modules in this job, so the GUI-scope hook can redirect nothing here by design; the line proves it.
+          echo "bare specifiers re-resolved from packages/scratch-gui by the corpus walks:"
+          if [ -s test-results/corpus.gui-scope.tsv ]; then cut -f1 test-results/corpus.gui-scope.tsv | sort | uniq -c | sort -rn; else echo "  (none)"; fi
           if grep -qE '^not ok ' /tmp/corpus.tap; then
             echo "::error::TAP reports failures the summary did not count — a suite probably threw while being CONSTRUCTED."
             grep -E '^not ok ' /tmp/corpus.tap | head -20
