@@ -82,9 +82,9 @@ export const partition = jobs => {
     if (!job) return out;
     for (const s of job.shards) out.byShard.set(s, []);
     let current = null;   // the shard of the gate whose companions follow
-    let afterServe = false;
+    let afterServe = false; // companions are owned from the FIRST gate on, serve or no serve
     for (const step of job.steps) {
-        if (step.name === SERVE_STEP) { afterServe = true; current = null; continue; }
+        if (step.name === SERVE_STEP) { current = null; continue; }
         if (step.name === AUDIT_STEP) break;
         const shards = shardsOf(step);
         if (isBrowserStep(step.name)) {
@@ -93,6 +93,7 @@ export const partition = jobs => {
             else if (!job.shards.includes(shards[0])) out.unknownShard.push(`${step.name} (${shards[0]})`);
             else out.byShard.get(shards[0]).push(step.name);
             current = shards[0] || null;
+            afterServe = true; // (the pre-serve native-broker gate owns its companions too — lego-be)
             continue;
         }
         // A named non-gate step with its own clause (the Measure step) owns its

@@ -80,6 +80,35 @@ test('the audit is the last step, always(), told its leg\'s display name and sha
     }
 });
 
+test('the naming convention the whole apparatus rests on is itself asserted: every step that starts "Browser" is a gate by the em-dash pattern', () => {
+    // A gate can leave every check here in two ways nothing else can see:
+    // deleted from the body, or renamed out of /^Browser (gates?|benchmark) — /
+    // (a hyphen, an en-dash) — after which partition() takes it for a companion
+    // and, if it carries the clause of the gate above, accepts it silently. The
+    // deletion half is stated, not fixed (an orphan check would need a curated
+    // list of scripts that belong to other workflows — a second list, which the
+    // matrix form exists to avoid). The rename half is closed here.
+    const lookalikes = job.steps.filter(s => /^Browser\b/.test(s.name) && !isBrowserStep(s.name)).map(s => `line ${s.line}: ${s.name}`);
+    assert.deepEqual(lookalikes, [], 'step(s) named like a gate but outside the gate pattern — not audited, not budgeted, not partitioned:\n  ' + lookalikes.join('\n  '));
+    assert.equal(isBrowserStep('Browser gate - hyphen'), false);
+    assert.equal(isBrowserStep('Browser gate – en dash'), false);
+    assert.equal(isBrowserStep('Browser gate — em dash'), true);
+});
+
+test('a companion of the PRE-serve gate is checked too (synthetic workflow)', () => {
+    const mini = [
+        'jobs:', '  browser:', '    strategy:', '      matrix:', '        shard: [a, b]', '    steps:',
+        '      - name: Browser gate — before serve', "        if: ${{ matrix.shard == 'a' }}",
+        '      - uses: actions/upload-artifact@x', '        if: always()',
+        '      - name: Serve the built app', '      - name: Browser gate — after', "        if: ${{ matrix.shard == 'b' }}",
+        '      - name: Audit — every browser gate ran', '        if: always()', ''
+    ].join('\n');
+    const p = partition(parseJobs(mini));
+    assert.deepEqual(p.unassigned, []);
+    assert.equal(p.companionMismatch.length, 1, JSON.stringify(p.companionMismatch));
+    assert.match(p.companionMismatch[0], /after a a gate carries \[no clause\]/);
+});
+
 test('the invariants can fail, each by name (mutation)', () => {
     const gateName = 'Browser gate — circuit UX';
     const at = yml.indexOf(`- name: ${gateName}\n`);
