@@ -152,6 +152,14 @@ export function createTimingWaveform ({capacity = 4096, maxLanes = 64} = {}) {
                 samples: shown.map(row => ({seq: row.seq, time: clone(row.time), cpuId: row.cpuId,
                     provenance: row.provenance, values: Object.fromEntries(row.samples.map(x => [x.lane, x.value]))}))});
         },
+        clear () {
+            rows = [];
+            selectedSeq = null;
+            range = null;
+            trigger = null;
+            dropped = 0;
+            return api.view();
+        },
         exportJSON () { return JSON.stringify(canonical(api.view())); },
         exportVCD () {
             const view = api.view(); const ids = view.lanes.map((_, i) => String.fromCharCode(33 + i));

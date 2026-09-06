@@ -60,4 +60,9 @@ test('runner stages and validates an import completely before its one history co
     assert.match(body, /text\.length > 48 \* 1024 \* 1024/);
     assert.doesNotMatch(body.slice(0, commit), /target\.restoreCheckpoint/,
         'validation and staging must not mutate the live target');
+    const committed = body.slice(commit);
+    assert.match(committed, /debugFoundation\.timeline\.clear\(\)/,
+        'a committed import must not retain a selection from the prior timeline');
+    assert.match(committed, /debugTimingWaveform\.clear\(\)/,
+        'a committed import must not retain waveform selection or samples from the prior session');
 });

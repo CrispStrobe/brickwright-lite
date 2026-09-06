@@ -62,3 +62,12 @@ test('memory facts supply address/data lanes without inventing recorded provenan
     assert.deepEqual(view.samples[0].values, {address: 0x1234, data: 0xab});
     assert.match(model.exportJSON(), /"seq":"0x1"/);
 });
+
+test('clear drops samples, selection, range, trigger, and retention count for a new session', () => {
+    const model = createTimingWaveform({capacity: 2});
+    model.append([event(1, {rd: 0}), event(2, {rd: 1})]);
+    model.setTrigger({lane: 'rd', edge: 'rising'});
+    model.selectEvent(2);
+    assert.deepEqual(model.clear(), {schema: 1, capacity: 2, maxLanes: 64, dropped: 0,
+        selectedSeq: null, range: null, trigger: null, lanes: [], samples: []});
+});

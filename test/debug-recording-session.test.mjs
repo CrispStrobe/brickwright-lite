@@ -169,6 +169,29 @@ test('checkpoint inspection failures are explicit and do not start recording', (
     assert.equal(f.recorder.checkpoints().length, 0);
 });
 
+test('a failed replacement start preserves the prior recording and bounds inspection before storage', () => {
+    const f = fixture();
+    let inspection = {registers: {pc: 3}};
+    const session = createRecordingSession({recorder: f.recorder, eventStream: f.eventStream,
+        getTarget: () => f.target, captureInspection: () => inspection, maxInspectionBytes: 32,
+        maxInspectionFields: 4, maxInspectionDepth: 3});
+    assert.equal(session.start().accepted, true);
+    const event = f.eventStream.publish(fact(4));
+    session.appendBatch([event]);
+    session.stop();
+    const prior = f.recorder.eventsFrom(0);
+    inspection = {registers: {a: 1, b: 2, c: 3, d: 4}};
+    const refused = session.start();
+    assert.equal(refused.code, 'checkpoint-inspection-failed');
+    assert.deepEqual(f.recorder.eventsFrom(0), prior,
+        'preflight refusal must not clear the prior recording epoch');
+    assert.equal(f.recorder.checkpoints().length, 1);
+    inspection = {registers: {uncloneable: () => 1}};
+    assert.equal(session.start().code, 'checkpoint-failed');
+    assert.deepEqual(f.recorder.eventsFrom(0), prior,
+        'root construction must finish before replacing retained history');
+});
+
 test('host prepare refusal is atomic and never mutates the target', () => {
     const f = fixture();
     let restores = 0;

@@ -2988,6 +2988,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                         activeBranchPayload = activated.recording;
                         forkRecordingStore = importedStore;
                         historyAnnotations = importedAnnotations;
+                        debugFoundation.timeline.clear();
+                        debugTimingWaveform.clear();
                         reverseCursor = null;
                         reverseContinue.reset();
                         selectedInspectionKey = null;

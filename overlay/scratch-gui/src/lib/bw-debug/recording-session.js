@@ -10,6 +10,32 @@ const outcomeRefusal = (value, label, {allowUndefined = false} = {}) => {
     }
     return null;
 };
+const inspectionBounds = (value, {maxBytes, maxFields, maxDepth}) => {
+    const encoder = new TextEncoder();
+    const active = new Set();
+    let bytes = 0;
+    let fields = 0;
+    const visit = (item, depth) => {
+        if (depth > maxDepth) throw new RangeError(`checkpoint inspection exceeds depth ${maxDepth}`);
+        if (item && typeof item === 'object') {
+            if (active.has(item)) throw new TypeError('checkpoint inspection must not contain cycles');
+            active.add(item);
+            const keys = ArrayBuffer.isView(item) || item instanceof ArrayBuffer ? [] : Object.keys(item);
+            fields += keys.length || 1;
+            if (fields > maxFields) throw new RangeError(`checkpoint inspection exceeds ${maxFields} fields`);
+            if (ArrayBuffer.isView(item) || item instanceof ArrayBuffer) bytes += item.byteLength;
+            else for (const key of keys) {
+                bytes += encoder.encode(key).byteLength;
+                visit(item[key], depth + 1);
+            }
+            active.delete(item);
+        } else {
+            bytes += encoder.encode(JSON.stringify(item) ?? String(item)).byteLength;
+        }
+        if (bytes > maxBytes) throw new RangeError(`checkpoint inspection exceeds ${maxBytes} bytes`);
+    };
+    visit(value, 0);
+};
 
 /** Bind target-owned external inputs to the lossless recorder lifecycle. */
 export function subscribeDebugTargetInputs (target, recordingSession) {
@@ -32,10 +58,17 @@ export function createRecordingSession ({
     eventStream,
     getTarget,
     captureInspection = null,
+    maxInspectionBytes = 64 * 1024,
+    maxInspectionFields = 512,
+    maxInspectionDepth = 8,
     captureHostState = null,
     prepareHostRestore = null,
     commitHostRestore = null
 }) {
+    for (const [value, label] of [[maxInspectionBytes, 'maxInspectionBytes'],
+        [maxInspectionFields, 'maxInspectionFields'], [maxInspectionDepth, 'maxInspectionDepth']]) {
+        if (!Number.isSafeInteger(value) || value < 1) throw new RangeError(`${label} must be positive`);
+    }
     const hostHooks = [captureHostState, prepareHostRestore, commitHostRestore];
     const hostAware = hostHooks.every(hook => typeof hook === 'function');
     if (!hostAware && hostHooks.some(hook => hook !== null && hook !== undefined)) {
@@ -106,6 +139,14 @@ export function createRecordingSession ({
             const inspectionRefusal = outcomeRefusal(inspection, 'checkpoint public inspection',
                 {allowUndefined: true});
             if (inspectionRefusal) return refusal('checkpoint-inspection-failed', inspectionRefusal);
+            if (inspection !== undefined) {
+                try {
+                    inspectionBounds(inspection, {maxBytes: maxInspectionBytes,
+                        maxFields: maxInspectionFields, maxDepth: maxInspectionDepth});
+                } catch (error) {
+                    return refusal('checkpoint-inspection-failed', error?.message || String(error));
+                }
+            }
         }
         const value = recorder.createCheckpoint({
             schema: RECORDER_SCHEMA,
@@ -124,9 +165,39 @@ export function createRecordingSession ({
             if (active) return refusal('recording-active', 'recording is already active');
             if (suspension) return refusal('recording-suspended',
                 'recording is suspended and must be resumed or stopped before starting');
-            recorder.clear();
             failure = null;
-            const result = checkpoint();
+            const target = targetNow();
+            const captured = capture(target);
+            if (!captured.accepted) return captured;
+            let inspection;
+            if (captureInspection !== null) {
+                try {
+                    inspection = captureInspection(target);
+                    const rejected = outcomeRefusal(inspection, 'checkpoint public inspection', {allowUndefined: true});
+                    if (rejected) return refusal('checkpoint-inspection-failed', rejected);
+                    if (inspection !== undefined) inspectionBounds(inspection, {maxBytes: maxInspectionBytes,
+                        maxFields: maxInspectionFields, maxDepth: maxInspectionDepth});
+                } catch (error) {
+                    return refusal('checkpoint-inspection-failed', error?.message || String(error));
+                }
+            }
+            let hostSnapshot;
+            if (hostAware) {
+                try { hostSnapshot = captureHostState(); } catch (error) {
+                    return refusal('host-checkpoint-failed', error?.message || String(error));
+                }
+                const rejected = outcomeRefusal(hostSnapshot, 'host checkpoint capture');
+                if (rejected) return refusal('host-checkpoint-failed', rejected);
+            }
+            let value;
+            try {
+                value = recorder.resetWithCheckpoint({schema: RECORDER_SCHEMA, time: captured.snapshot.time,
+                    eventCursor: eventStream.nextSequence(), inputCursor: 0, snapshot: captured.snapshot,
+                    ...(inspection === undefined ? {} : {inspection}), ...(hostAware ? {hostSnapshot} : {})});
+            } catch (error) {
+                return refusal('checkpoint-failed', error?.message || String(error));
+            }
+            const result = {accepted: true, checkpoint: value};
             if (!result.accepted) return result;
             active = true;
             return result;

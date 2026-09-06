@@ -331,6 +331,24 @@ export function createDebugRecorder ({
             return clone(value);
         },
 
+        /** Validate and construct a new root before replacing retained history. */
+        resetWithCheckpoint (checkpoint) {
+            assertSchema(checkpoint, 'Checkpoint');
+            if (!Object.hasOwn(checkpoint, 'snapshot') || !checkpoint.time || typeof checkpoint.time !== 'object') {
+                fail('INVALID_CHECKPOINT', 'Checkpoint requires a target-owned snapshot and simulation time');
+            }
+            assertCursor(checkpoint.eventCursor, 'eventCursor', 0, Number.MAX_SAFE_INTEGER);
+            if (checkpoint.inputCursor !== 0) fail('INVALID_CURSOR', 'root checkpoint inputCursor must be zero');
+            const value = clone({...checkpoint, id: checkpoint.id ?? 0});
+            const stored = {...value, _bytes: utf8Bytes(value)};
+            inputs = []; events = []; retireCursors = []; cycleCursors = [];
+            checkpoints = [stored]; inputBaseCursor = 0; nextInputCursor = 0;
+            lastEventSeq = checkpoint.eventCursor - 1; nextCheckpointId = value.id + 1;
+            checkpointBytes = stored._bytes; eventBytes = 0; inputBytes = 0;
+            evictedCheckpoints = 0; lastInputTime.clear();
+            return clone(value);
+        },
+
         /** Most recent retained checkpoint at or before an event cursor. */
         findCheckpoint (eventCursor) {
             const min = checkpoints.length ? checkpoints[0].eventCursor : 0;

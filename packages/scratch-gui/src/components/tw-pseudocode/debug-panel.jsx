@@ -702,7 +702,9 @@ class DebugPanel extends React.Component {
         const runner = this.state.runner;
         const event = runner?.debugTimeline().state().selectedEvent;
         const branch = runner?.debugBranchSummaries().find(item => item.active);
-        return event && branch ? {branchId: branch.branchId, eventCursor: event.seq} : null;
+        const boundary = event && runner.debugTimeline().selectedBoundaryCursor();
+        return boundary?.accepted && branch ?
+            {branchId: branch.branchId, eventCursor: boundary.boundaryCursor} : null;
     }
 
     onAddBookmark () {

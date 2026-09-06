@@ -41,4 +41,7 @@ test('debugger panel wires selected-event bookmarks, notes, and checkpoint compa
     assert.match(panel, /addDebugAnnotation\(\{cursor, annotation\}\)/);
     assert.match(panel, /compareDebugCheckpoints\(/);
     assert.match(panel, /data-debug-checkpoint-comparison/);
+    assert.match(panel, /debugTimeline\(\)\.selectedBoundaryCursor\(\)/,
+        'saved marks must use the same after-event boundary cursor as replay and inspection');
+    assert.doesNotMatch(panel, /eventCursor: event\.seq\b/);
 });
