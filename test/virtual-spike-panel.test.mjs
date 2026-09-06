@@ -24,25 +24,41 @@ test('dashboard inputs update the shared neutral state', () => {
 
 test('reopening and closing the dashboard releases its state subscription', () => {
     class Node {
-        constructor () { this.children = []; this.style = {}; this.parentNode = null; }
+        constructor (tag = '') { this.tagName = tag.toUpperCase(); this.children = []; this.style = {};
+            this.parentNode = null; this.listeners = {}; }
         setAttribute (key, value) { this[key] = value; }
-        addEventListener () {}
+        addEventListener (type, listener) { this.listeners[type] = listener; }
+        focus () { globalThis.document.activeElement = this; }
         appendChild (child) { child.parentNode = this; this.children.push(child); return child; }
         append (...children) { for (const child of children) this.appendChild(child); }
         removeChild (child) { this.children = this.children.filter(item => item !== child); child.parentNode = null; }
     }
-    const body = new Node();
+    const body = new Node('body');
+    const priorFocus = new Node('button');
     const priorDocument = globalThis.document;
-    globalThis.document = {body, createElement: () => new Node(), createTextNode: text => ({text, parentNode: null})};
+    globalThis.document = {body, activeElement: priorFocus, createElement: tag => new Node(tag),
+        createTextNode: text => ({text, parentNode: null})};
     try {
         const state = new HubState();
-        openVirtualSpikePanel(state);
+        let dialog = openVirtualSpikePanel(state);
+        assert.equal(dialog.role, 'dialog');
+        assert.equal(dialog['aria-modal'], 'true');
+        assert.equal(dialog['aria-label'], 'Virtual SPIKE Prime controls');
+        assert.equal(document.activeElement.type, 'checkbox', 'the one simulation switch receives initial focus');
         assert.equal(state.listeners.size, 1);
-        openVirtualSpikePanel(state);
+        const enabled = document.activeElement;
+        enabled.checked = true;
+        enabled.listeners.change();
+        assert.equal(state.data.simulationEnabled, true);
+        dialog = openVirtualSpikePanel(state);
         assert.equal(state.listeners.size, 1);
-        closeVirtualSpikePanel();
+        let prevented = false;
+        dialog.listeners.keydown({key: 'Escape', preventDefault: () => { prevented = true; }});
+        assert.equal(prevented, true);
+        assert.equal(body.children.length, 0);
         closeVirtualSpikePanel();
         assert.equal(state.listeners.size, 0);
+        assert.equal(document.activeElement, priorFocus);
     } finally {
         globalThis.document = priorDocument;
     }

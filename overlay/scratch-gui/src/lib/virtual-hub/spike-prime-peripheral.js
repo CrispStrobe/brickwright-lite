@@ -128,6 +128,10 @@ export class VirtualSpikePrimePeripheral {
         for (const byte of bytes) {
             if (byte === 1) this._frame = [byte];
             else this._frame.push(byte);
+            if (this._frame.length > 4096) {
+                this._frame = [];
+                throw new Error('SPIKE frame too large');
+            }
             if (byte === END) {
                 try {
                     const payload = unpackSpikeFrame(Uint8Array.from(this._frame));
@@ -137,10 +141,6 @@ export class VirtualSpikePrimePeripheral {
                     this._frame = [];
                     throw error;
                 }
-            }
-            if (this._frame.length > 4096) {
-                this._frame = [];
-                throw new Error('SPIKE frame too large');
             }
         }
     }
@@ -302,14 +302,17 @@ export class VirtualSpikePrimePeripheral {
 export const registerVirtualSpikePrime = options => {
     const hubState = options?.hubState || new VirtualSpikeHubState();
     let lastPeripheral = null;
+    const peripherals = new Set();
     const removeFactory = registerVirtualPeripheral(() => {
         if (!hubState.data.simulationEnabled || hubState.data.firmwareTarget === 'legacy-v2') return null;
         lastPeripheral = new VirtualSpikePrimePeripheral({...options, hubState});
+        peripherals.add(lastPeripheral);
         return lastPeripheral;
     });
     const unregister = () => {
         removeFactory();
-        lastPeripheral?.dispose();
+        for (const peripheral of peripherals) peripheral.dispose();
+        peripherals.clear();
         lastPeripheral = null;
     };
     return {unregister, get peripheral () { return lastPeripheral; }};

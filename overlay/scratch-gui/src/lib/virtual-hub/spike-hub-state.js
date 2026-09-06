@@ -43,7 +43,6 @@ export default class VirtualSpikeHubState {
         const next = enabled === true;
         if (this.data.simulationEnabled === next) return;
         this.data.simulationEnabled = next;
-        globalThis.__brickwrightUseVirtualSpike = next;
         this._stopAllSilent();
         if (!next) this._disconnectWhere(() => true);
         this.changed();

@@ -36,11 +36,15 @@ const loadBundledExtension = async () => {
     return extension;
 };
 
+let realCalls = 0;
+let lastRealOptions = null;
+
 test('disabled SPIKE simulation leaves the real Bluetooth delegate unchanged', async () => {
     clearVirtualPeripheralsForTest();
     const expected = {id: 'real-spike'};
-    let calls = 0;
-    navigator.bluetooth = {requestDevice: async options => { calls++; return {...expected, options}; }};
+    navigator.bluetooth = {requestDevice: async options => {
+        realCalls++; lastRealOptions = options; return {...expected, options};
+    }};
     const state = new HubState();
     const registration = registerVirtualSpikePrime({hubState: state});
     install();
@@ -48,9 +52,47 @@ test('disabled SPIKE simulation leaves the real Bluetooth delegate unchanged', a
     const selected = await navigator.bluetooth.requestDevice(options);
     assert.equal(selected.id, expected.id);
     assert.equal(selected.options, options);
-    assert.equal(calls, 1);
+    assert.equal(realCalls, 1);
     assert.equal(registration.peripheral, null);
     registration.unregister();
+});
+
+test('unsupported Web Bluetooth filter semantics delegate without offering virtual SPIKE', async () => {
+    clearVirtualPeripheralsForTest();
+    const state = new HubState();
+    state.setSimulationEnabled(true);
+    const registration = registerVirtualSpikePrime({hubState: state});
+    globalThis.__brickwrightChooseVirtualBluetooth = () => assert.fail('virtual chooser must not run');
+    const unsupported = [
+        {filters: [{services: ['0000fd02-0000-1000-8000-00805f9b34fb'], manufacturerData: [{companyIdentifier: 1}]}]},
+        {filters: [{services: ['0000fd02-0000-1000-8000-00805f9b34fb'], serviceData: [{service: 'battery_service'}]}]},
+        {filters: [{services: ['0000fd02-0000-1000-8000-00805f9b34fb']}], exclusionFilters: [{namePrefix: 'x'}]}
+    ];
+    for (const options of unsupported) {
+        const before = realCalls;
+        const selected = await navigator.bluetooth.requestDevice(options);
+        assert.equal(selected.id, 'real-spike');
+        assert.equal(realCalls, before + 1);
+        assert.equal(lastRealOptions, options);
+        assert.equal(registration.peripheral, null);
+    }
+    registration.unregister();
+});
+
+test('registration teardown disposes every SPIKE peripheral created across selections', async () => {
+    clearVirtualPeripheralsForTest();
+    const state = new HubState(); state.setSimulationEnabled(true);
+    const registration = registerVirtualSpikePrime({hubState: state});
+    globalThis.__brickwrightChooseVirtualBluetooth = candidates => candidates[0];
+    const options = {filters: [{services: ['0000fd02-0000-1000-8000-00805f9b34fb']}]};
+    await navigator.bluetooth.requestDevice(options);
+    const first = registration.peripheral; let firstDisposed = 0;
+    const firstDispose = first.dispose.bind(first); first.dispose = () => { firstDisposed++; firstDispose(); };
+    await navigator.bluetooth.requestDevice(options);
+    const second = registration.peripheral; let secondDisposed = 0;
+    const secondDispose = second.dispose.bind(second); second.dispose = () => { secondDisposed++; secondDispose(); };
+    registration.unregister();
+    assert.deepEqual([firstDisposed, secondDisposed], [1, 1]);
 });
 
 test('bundled direct BLE extension runs through the virtual hub and reconnects', async t => {

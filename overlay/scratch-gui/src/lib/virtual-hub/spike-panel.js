@@ -24,12 +24,16 @@ export const applyVirtualPortInput = (hubState, port, kind, value) => {
 export const closeVirtualSpikePanel = () => {
     if (panel?.unsubscribe) panel.unsubscribe();
     if (panel?.node?.parentNode) panel.node.parentNode.removeChild(panel.node);
+    panel?.previousFocus?.focus?.();
     panel = null;
 };
 
 export const openVirtualSpikePanel = hubState => {
     closeVirtualSpikePanel();
-    const shade = element('div', {style: 'position:fixed;inset:0;z-index:2147483500;background:rgba(12,16,22,.72);' +
+    const previousFocus = document.activeElement;
+    const shade = element('div', {role: 'dialog', 'aria-modal': 'true',
+        'aria-label': 'Virtual SPIKE Prime controls', tabindex: '-1',
+        style: 'position:fixed;inset:0;z-index:2147483500;background:rgba(12,16,22,.72);' +
         'display:flex;align-items:center;justify-content:center;padding:16px;font:14px system-ui'});
     const card = element('div', {style: 'background:#fff;color:#18212b;border-radius:14px;width:min(680px,100%);' +
         'max-height:90vh;overflow:auto;padding:18px;box-shadow:0 18px 48px #0008'});
@@ -51,18 +55,8 @@ export const openVirtualSpikePanel = hubState => {
         ['brickwright', 'Brickwright firmware — Classic + BLE compatibility']
     ]) profile.appendChild(element('option', {value}, label));
     profile.value = hubState.data.firmwareTarget;
-    profile.addEventListener('change', () => {
-        hubState.setFirmwareTarget(profile.value);
-        classic.checked = profile.value !== 'official-v3';
-    });
+    profile.addEventListener('change', () => hubState.setFirmwareTarget(profile.value));
     card.appendChild(profile);
-
-    const classic = element('input', {type: 'checkbox'});
-    classic.checked = globalThis.__brickwrightUseVirtualSpike === true;
-    classic.addEventListener('change', () => { globalThis.__brickwrightUseVirtualSpike = classic.checked; });
-    const classicLabel = element('label', {style: 'display:flex;gap:8px;margin-bottom:12px'});
-    classicLabel.append(classic, document.createTextNode('Enable virtual Classic Scratch Link'));
-    card.appendChild(classicLabel);
 
     const battery = element('input', {type: 'range', min: '0', max: '100', value: String(hubState.data.battery)});
     const batteryLabel = element('label', {style: 'display:grid;grid-template-columns:110px 1fr 42px;gap:8px'});
@@ -70,6 +64,7 @@ export const openVirtualSpikePanel = hubState => {
     battery.addEventListener('input', () => { hubState.setBattery(battery.value); batteryValue.textContent = `${battery.value}%`; });
     batteryLabel.append(element('span', {}, 'Battery'), battery, batteryValue);
     card.appendChild(batteryLabel);
+    const focusable = [enabled, profile, battery];
 
     const brick = element('div', {style: 'margin-top:14px;padding:14px;border-radius:18px;background:#7654c6;' +
         'box-shadow:inset 0 -5px 0 #54379d;color:white'});
@@ -108,6 +103,7 @@ export const openVirtualSpikePanel = hubState => {
         const apply = () => applyVirtualPortInput(hubState, port, kind.value, value.value);
         kind.addEventListener('change', apply);
         value.addEventListener('input', apply);
+        focusable.push(kind, value);
         grid.append(element('strong', {}, port), kind, value);
     }
     card.appendChild(grid);
@@ -116,6 +112,7 @@ export const openVirtualSpikePanel = hubState => {
     for (const axis of ['yaw', 'pitch', 'roll']) {
         const input = element('input', {type: 'number', value: String(hubState.data.imu[axis])});
         input.addEventListener('input', () => hubState.setImu({[axis]: Number(input.value)}));
+        focusable.push(input);
         const label = element('label', {style: 'display:flex;flex-direction:column;gap:4px'}, axis);
         label.appendChild(input);
         imu.appendChild(label);
@@ -123,10 +120,20 @@ export const openVirtualSpikePanel = hubState => {
     card.appendChild(imu);
     const close = element('button', {style: 'margin-top:16px;padding:9px 18px'}, 'Done');
     close.addEventListener('click', () => { unsubscribe(); closeVirtualSpikePanel(); });
+    focusable.push(close);
     card.appendChild(close);
     shade.appendChild(card);
     document.body.appendChild(shade);
-    panel = {node: shade, unsubscribe};
+    shade.addEventListener('keydown', event => {
+        if (event.key === 'Escape') { event.preventDefault(); closeVirtualSpikePanel(); return; }
+        if (event.key !== 'Tab') return;
+        const at = focusable.indexOf(document.activeElement);
+        const next = event.shiftKey ? (at <= 0 ? focusable.length - 1 : at - 1) :
+            (at < 0 || at === focusable.length - 1 ? 0 : at + 1);
+        event.preventDefault(); focusable[next].focus();
+    });
+    panel = {node: shade, unsubscribe, previousFocus};
+    enabled.focus();
     return shade;
 };
 

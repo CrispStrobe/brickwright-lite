@@ -63,3 +63,11 @@ test('emits signed, correctly sized device records', () => {
     assert.equal(message[distanceOffset], 0x0d);
     assert.equal(new DataView(message.buffer, message.byteOffset + distanceOffset).getInt16(2, true), -1);
 });
+
+test('rejects an oversized complete BLE frame before decoding and recovers', () => {
+    const hub = new VirtualSpikePrimePeripheral();
+    assert.throws(() => hub.onWrite(SPIKE_RX, Uint8Array.from([...Array(4096).fill(4), 2])),
+        /frame too large/);
+    assert.equal(hub._frame.length, 0);
+    hub.onWrite(SPIKE_RX, packSpikeFrame(Uint8Array.of(0)));
+});

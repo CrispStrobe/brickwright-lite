@@ -218,6 +218,10 @@ const chooseVirtual = async (candidates, hasReal) => {
             'Choose Cancel to open the real Bluetooth device picker.')) return candidates[0];
     return null;
 };
+const hasUnsupportedVirtualFilters = options => !!(options?.exclusionFilters?.length ||
+    (options?.filters || []).some(filter => filter?.manufacturerData !== undefined ||
+        filter?.serviceData !== undefined));
+const dispose = peripheral => peripheral && typeof peripheral.dispose === 'function' && peripheral.dispose();
 
 /**
  * Wrap the currently installed Web Bluetooth object. Safe to call repeatedly.
@@ -235,15 +239,27 @@ export default function installVirtualWebBluetooth () {
         __brickwrightVirtualShim: {value: true},
         requestDevice: {
             value: async options => {
-                const candidates = [...factories].map(factory => factory()).filter(Boolean)
-                    .filter(p => matches(p, options || {}));
+                if (hasUnsupportedVirtualFilters(options)) {
+                    if (realRequest) return realRequest(options);
+                    const error = new Error('No Bluetooth devices matched the requested filters.');
+                    error.name = 'NotFoundError';
+                    throw error;
+                }
+                const created = [...factories].map(factory => factory()).filter(Boolean);
+                const candidates = created.filter(p => matches(p, options || {}));
+                for (const peripheral of created) if (!candidates.includes(peripheral)) dispose(peripheral);
                 if (candidates.length === 0) {
                     if (realRequest) return realRequest(options);
                     const error = new Error('No Bluetooth devices matched the requested filters.');
                     error.name = 'NotFoundError';
                     throw error;
                 }
-                const selected = await chooseVirtual(candidates, !!realRequest);
+                let selected;
+                try { selected = await chooseVirtual(candidates, !!realRequest); } catch (error) {
+                    for (const candidate of candidates) dispose(candidate);
+                    throw error;
+                }
+                for (const candidate of candidates) if (candidate !== selected) dispose(candidate);
                 if (selected) return new VirtualDevice(selected);
                 if (realRequest) return realRequest(options);
                 const error = new Error('User cancelled the requestDevice() chooser.');
