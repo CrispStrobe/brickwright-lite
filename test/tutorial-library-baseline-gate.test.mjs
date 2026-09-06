@@ -16,6 +16,10 @@ test('tutorial baseline gate preserves five cold same-probe samples and both dee
     assert.match(gate, /absoluteLimitMs = 1000/);
     assert.match(gate, /maxLongTaskMs = 100/);
     assert.match(gate, /PerformanceObserver/);
+    assert.match(gate, /acceptedBaselineMs = 151\.3/);
+    assert.match(gate, /acceptedBaselineRun = 34046270772/);
+    assert.match(gate, /3be9424d11a9d9f5eb33a2143ca0fea461f88528/);
+    assert.doesNotMatch(gate, /process\.env\.TUTORIAL_LIBRARY_BASELINE/);
     assert.match(gate, /finally \{/);
     assert.match(gate, /process\.once\('SIGTERM'/);
     assert.match(gate, /if \(image\.complete\) return image\.naturalWidth > 0/);
@@ -41,7 +45,7 @@ test('candidate branch of the same gate specifies dedupe, retry and stale-close 
     assert.match(gate, /prevents stale completion from reopening tutorial UI/);
 });
 
-test('workflow runs the bounded baseline on light and always preserves its artifact', () => {
+test('workflow runs the bounded candidate on light and always preserves its artifact', () => {
     const start = workflow.indexOf('- name: Browser gate — tutorial decks and cards load on demand and retry');
     assert.ok(start > 0, 'tutorial gate step exists');
     const block = workflow.slice(start, workflow.indexOf('\n      - name:', start + 10));
@@ -49,7 +53,7 @@ test('workflow runs the bounded baseline on light and always preserves its artif
     assert.match(block, /timeout-minutes: 3/);
     assert.match(block, /matrix\.shard == 'light'/);
     assert.match(block, /timeout --signal=TERM --kill-after=10s 2m/);
-    assert.match(block, /TUTORIAL_LIBRARY_EAGER_BASELINE=1/);
+    assert.doesNotMatch(block, /TUTORIAL_LIBRARY_EAGER_BASELINE/);
     assert.match(block, /verify-tutorial-library-lazy\.mjs/);
     assert.match(block, /if: always\(\) && steps\.tutorial_library_lazy\.outcome != 'skipped' && matrix\.shard == 'light'/);
     assert.match(block, /name: tutorial-library-lazy-proof/);

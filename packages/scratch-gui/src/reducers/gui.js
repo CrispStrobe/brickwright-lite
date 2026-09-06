@@ -31,8 +31,6 @@ import workspaceMetricsReducer, {workspaceMetricsInitialState} from './workspace
 import paneLayoutReducer from './pane-layout';
 import throttle from 'redux-throttle';
 
-import decks from '../lib/libraries/decks/index.jsx';
-
 const guiMiddleware = compose(applyMiddleware(throttle(300, {leading: true, trailing: true})));
 
 const guiInitialState = {
@@ -113,7 +111,9 @@ const initTutorialCard = function (currentState, deckId) {
         {
             cards: {
                 visible: true,
-                content: decks,
+                // Full deck content is hydrated synchronously with the
+                // demand-loaded tutorial renderer before that renderer mounts.
+                content: currentState.cards && currentState.cards.content || null,
                 activeDeckId: deckId,
                 expanded: true,
                 step: 0,

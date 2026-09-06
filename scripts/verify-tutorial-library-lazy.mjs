@@ -15,12 +15,11 @@ import {chromium} from 'playwright';
 
 const url = process.env.PROOF_URL || 'http://localhost:8617/';
 const eagerBaseline = process.env.TUTORIAL_LIBRARY_EAGER_BASELINE === '1';
-// The candidate commit replaces null with the accepted five-sample eager
-// median and records its run/SHA beside it. It is deliberately not overridable
-// from CI: a changed acceptance limit must be reviewable source.
-const acceptedBaselineMs = null;
-const acceptedBaselineRun = null;
-const acceptedBaselineSha = null;
+// Five cold eager activations from hosted run 34046270772. This is deliberately
+// not overridable from CI: a changed acceptance limit must be reviewable source.
+const acceptedBaselineMs = 151.3;
+const acceptedBaselineRun = 34046270772;
+const acceptedBaselineSha = '3be9424d11a9d9f5eb33a2143ca0fea461f88528';
 const relativeLimitMs = acceptedBaselineMs === null ? null : acceptedBaselineMs * 1.15;
 const absoluteLimitMs = 1000;
 const maxLongTaskMs = 100;

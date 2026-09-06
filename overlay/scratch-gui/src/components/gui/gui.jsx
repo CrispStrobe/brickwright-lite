@@ -51,8 +51,7 @@ import Watermark from '../../containers/watermark.jsx';
 
 import Backpack from '../../containers/backpack.jsx';
 import WebGlModal from '../../containers/webgl-modal.jsx';
-import TipsLibrary from '../../containers/tips-library.jsx';
-import Cards from '../../containers/cards.jsx';
+import TutorialLibraryLoader from './tutorial-library-loader.jsx';
 import Alerts from '../../containers/alerts.jsx';
 import DragLayer from '../../containers/drag-layer.jsx';
 import ConnectionModal from '../../containers/connection-modal.jsx';
@@ -575,10 +574,10 @@ const GUIComponent = props => {
                     </React.Suspense>
                 ) : null}
                 {tipsLibraryVisible ? (
-                    <TipsLibrary />
+                    <TutorialLibraryLoader mode="tips" />
                 ) : null}
                 {cardsVisible ? (
-                    <Cards />
+                    <TutorialLibraryLoader mode="cards" />
                 ) : null}
                 {alertsVisible ? (
                     <Alerts className={styles.alertsContainer} />

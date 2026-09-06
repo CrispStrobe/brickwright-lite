@@ -45,11 +45,14 @@ test('the eager UI exposes product-owned tutorial journey selectors', () => {
     assert.match(cards, /data-tutorial-step=\{step\}/);
 });
 
-test('the baseline selector change does not implement the P15 split', () => {
+test('the GUI activates the P15 tutorial boundary only on visible demand', () => {
     const gui = read('packages/scratch-gui/src/components/gui/gui.jsx');
     const cardsReducer = read('packages/scratch-gui/src/reducers/cards.js');
-    assert.match(gui, /import TipsLibrary from/);
-    assert.match(gui, /import Cards from/);
-    assert.match(cardsReducer, /import decks from/);
-    assert.doesNotMatch(gui, /webpackChunkName:\s*["']tutorial-library/);
+    const loader = read('packages/scratch-gui/src/components/gui/tutorial-library-loader.jsx');
+    assert.doesNotMatch(gui, /import TipsLibrary from/);
+    assert.doesNotMatch(gui, /import Cards from/);
+    assert.match(gui, /tipsLibraryVisible \? \([\s\S]*<TutorialLibraryLoader mode="tips"/);
+    assert.match(gui, /cardsVisible \? \([\s\S]*<TutorialLibraryLoader mode="cards"/);
+    assert.doesNotMatch(cardsReducer, /import decks from/);
+    assert.match(loader, /webpackChunkName:\s*["']tutorial-library/);
 });
