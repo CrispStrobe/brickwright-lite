@@ -71,7 +71,7 @@ try {
                 longTasks: (probe?.longTasks || []).filter(task => task.at >= start && task.at <= readyAt), scripts,
                 selected: Boolean(selected), soundControls, loadError,
                 loading: Boolean(document.querySelector('[data-sound-tab-loading]')),
-                vmTarget: window.__vm?.editingTarget?.id || null,
+                vmTarget: state?.vm?.editingTarget?.id || null,
                 reduxTarget: state?.targets?.editingTarget || null,
                 activeTabIndex: state?.editorTab?.activeTabIndex ?? null,
                 ariaLabels: [...document.querySelectorAll('[aria-label]')]
