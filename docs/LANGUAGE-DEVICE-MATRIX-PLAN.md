@@ -587,6 +587,30 @@ library whitelist (`LiquidCrystal`, `Adafruit_SSD1306` → verbs) with named
 refusals. **P5.** One silicon wire-truth bench per family *(manual, recorded)*.
 Each gets its own LANES row when claimed.
 
+**P6 (2026-09-06, unclaimed).** The browser gate for the debugger's chip-refusal
+line drives the ROM route, once the Machine Loader exposes ROM boot media through
+a named control. **The program is already written and proved**: the 8255 mode-1
+control word from `test/debug-chip-refusal-line.test.mjs` (`mov al, 0A0h` /
+`out 03h, al`), which produces exactly one row on BREADBOARD8086, where `ppi1`
+sits at port 0.
+
+*Why it is not done.* `chipRefusals()` has consumers and NO REACHABLE PRODUCER IN
+THE UI. Measured 2026-09-06: the ASM tab always returns `profile: 'dos'`
+(`assemble-route.js:347` and `:402` — a .COM loaded as a ROM at F0000 executes
+nothing), so it boots the DOS bench, which has no chips and no collector at all;
+and the no-media route boots the XT BIOS on PCXT8086, whose only refusal is
+`pic1`'s — present for FOUR STEPS out of 1,579,840 while the 8259 init sequence
+is incomplete, then correctly cleared. A four-step window inside a 1.58 M-step
+boot is a race, not a check. The third branch, boot media with `slotId: 'rom'`
+and no profile, takes BREADBOARD8086 and would work; which control produces it is
+the debugger lane's question.
+
+Until then `scripts/verify-debug-chip-refusal-line.mjs` proves the RENDER — the
+panel's `data-debug-chip-refusal-state` follows the handle, `'none'` on a bench
+with no collector — and says so in its header. That is a stated reduction, not a
+gate quietly proving less than its name suggests. The feature itself is proved in
+the unit test: eight assertions, six mutations red.
+
 **Vocabulary source (2026-09-05):** bw-board `I8086Machine.chipRefusals()` (`bfd8b44`, lego-be)
 returns `{part, kind, feature, symptom, count}` rows — one per feature a program asked a chip
 for that the model does not implement, with a program-visible symptom sentence ("a block copy
