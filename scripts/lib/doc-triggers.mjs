@@ -44,11 +44,13 @@ export const listDocs = root => readdirSync(path.join(root, 'docs')).filter(f =>
 export const censusDocMentions = root => {
     const docs = listDocs(root);
     const mentions = new Map();
+    const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const NAMED = new RegExp('(?:docs/|[\'"`])(' + docs.map(esc).join('|') + ')');
     const files = SCAN_ROOTS.filter(r => existsSync(path.join(root, r))).flatMap(r => walk(path.join(root, r)));
     for (const f of files) {
         const rel = path.relative(root, f).replace(/\\/g, '/');
         readFileSync(f, 'utf8').split('\n').forEach((line, i) => {
-            if (COMMENT_LINE.test(line.trim())) return;
+            if (!NAMED.test(line) || COMMENT_LINE.test(line.trim())) return;
             for (const d of docs) {
                 if (line.includes(`docs/${d}`) || line.includes(`'${d}`) || line.includes(`"${d}`) || line.includes('`' + d)) {
                     if (!mentions.has(d)) mentions.set(d, []);
@@ -58,6 +60,37 @@ export const censusDocMentions = root => {
         });
     }
     return mentions;
+};
+
+/**
+ * The one shape a name census cannot see: a TOP-LEVEL doc read through a path
+ * built from a variable — `join(root, 'docs', name)`, `\`docs/${name}\``,
+ * `'docs/' + name`. No line names the doc, so the census says "mentioned
+ * nowhere, skip" while a test reads it every run. Constructed paths INTO A
+ * SUBDIRECTORY (docs/generated/…, docs/schematic-baselines/<file>) are fine:
+ * the one-level `!docs/*.md` never reaches them, so they keep triggering —
+ * the glob's depth is doing load-bearing work there, not the census.
+ * @returns {string[]} "file:line: text" for every constructed top-level path
+ */
+// The detector and its test are the only files allowed to spell the shapes.
+const SELF = new Set(['scripts/lib/doc-triggers.mjs', 'test/build-trigger-paths.test.mjs']);
+export const constructedTopLevelDocPaths = root => {
+    const out = [];
+    const files = SCAN_ROOTS.filter(r => existsSync(path.join(root, r))).flatMap(r => walk(path.join(root, r)))
+        .filter(f => !SELF.has(path.relative(root, f).replace(/\\/g, '/')));
+    const SHAPES = [
+        /['"`]docs['"`]\s*,\s*(?!['"`])[A-Za-z_$]/,   // join('docs', variable)
+        /`docs\/\$\{/,                                   // `docs/${variable}`
+        /['"]docs\/['"]\s*\+/                             // 'docs/' + variable
+    ];
+    for (const f of files) {
+        const rel = path.relative(root, f).replace(/\\/g, '/');
+        readFileSync(f, 'utf8').split('\n').forEach((line, i) => {
+            if (COMMENT_LINE.test(line.trim())) return;
+            if (SHAPES.some(re => re.test(line))) out.push(`${rel}:${i + 1}: ${line.trim()}`);
+        });
+    }
+    return out;
 };
 
 /**

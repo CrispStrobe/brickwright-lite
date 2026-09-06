@@ -9,9 +9,10 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync, mkdtempSync, mkdirSync, writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
 import path from 'node:path';
-import {censusDocMentions, listDocs, parsePushPaths, reincludedDocs, judge} from '../scripts/lib/doc-triggers.mjs';
+import {censusDocMentions, constructedTopLevelDocPaths, listDocs, parsePushPaths, reincludedDocs, judge} from '../scripts/lib/doc-triggers.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const yml = readFileSync(path.join(ROOT, '.github', 'workflows', 'build.yml'), 'utf8');
@@ -36,10 +37,36 @@ test('every doc some non-comment line of code mentions is re-included; every re-
     const reincluded = reincludedDocs(entries);
     const {missing, stale} = judge(mentioned, reincluded);
     assert.deepEqual(missing, [], 'docs code mentions that a push would NOT build for — add each to the push paths in build.yml:\n' +
-        missing.map(d => `  docs/${d}  <- ${mentions.get(d).slice(0, 3).join(', ')}`).join('\n'));
+        missing.map(d => `  ${d}  <- ${mentions.get(d).slice(0, 3).join(', ')}`).join('\n'));
     assert.deepEqual(stale, [], 'docs re-included in build.yml that nothing in code mentions any more — remove them:\n' +
-        stale.map(d => `  docs/${d}`).join('\n'));
+        stale.map(d => `  ${d}`).join('\n'));
     assert.ok(listDocs(ROOT).length > reincluded.length, 'if every doc is re-included the negation buys nothing');
+});
+
+test('no top-level doc is read through a path built from a variable — the one shape the census cannot see', () => {
+    // bw-ci's question when reviewing the rule. docs/generated/… and
+    // docs/schematic-baselines/<file> ARE read through constructed paths and
+    // that is safe only because the one-level `!docs/*.md` never reaches a
+    // subdirectory — the glob's depth is load-bearing there. A variable-named
+    // doc at the TOP level would be "mentioned nowhere, skip" while a test read
+    // it every run; name it on a line, or move it under a subdirectory.
+    const hits = constructedTopLevelDocPaths(ROOT);
+    assert.deepEqual(hits, [], 'constructed top-level docs/ path(s):\n  ' + hits.join('\n  '));
+    // and the detector sees each shape (mutation):
+    const dir = mkdtempSync(path.join(tmpdir(), 'doc-trig-'));
+    mkdirSync(path.join(dir, 'docs'));
+    writeFileSync(path.join(dir, 'docs', 'X.md'), '');
+    mkdirSync(path.join(dir, 'test'));
+    writeFileSync(path.join(dir, 'test', 'a.test.mjs'), [
+        "const a = readFileSync(join(root, 'docs', name));",
+        'const b = readFileSync(`docs/${name}`);',
+        "const c = readFileSync('docs/' + name);",
+        "const ok1 = readFileSync(join(root, 'docs', 'generated', name));",
+        "const ok2 = readFileSync(`docs/schematic-baselines/${name}`);",
+        "// const commented = readFileSync('docs/' + name);"
+    ].join('\n'));
+    const found = constructedTopLevelDocPaths(dir);
+    assert.deepEqual(found.map(h => h.split(':')[1]), ['1', '2', '3'], found.join('\n'));
 });
 
 test('the verdict is by name, both directions (mutation)', () => {

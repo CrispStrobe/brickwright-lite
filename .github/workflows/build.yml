@@ -25,8 +25,10 @@ on:
     #     claim gates read these; wave7 asserts on ttl-clock-module's text.
     #   THIRD-PARTY-NOTICES.md   TEST INPUT, and a licence one. Three tests
     #     readFileSync it and assert a dependency is named in it.
-    #   docs/generated/**   TEST INPUT. The generated reports are asserted
-    #     against source; a one-level `docs/*.md` glob does not reach them.
+    #   docs/generated/**, docs/schematic-baselines/**   TEST INPUT, read through
+    #     CONSTRUCTED paths no name census can see. Safe only because the
+    #     one-level `!docs/*.md` below never reaches a subdirectory — that depth
+    #     is load-bearing, and the test refuses a constructed TOP-LEVEL path.
     #
     # This is a `paths` filter (everything, minus what nothing reads) rather
     # than `paths-ignore`, because `paths-ignore` cannot say "except". The
