@@ -66,6 +66,15 @@ plan or roadmap. Detailed commit, CI and ownership evidence remains in Git and
   observing both reset generations and USB enumerations without a page reload.
   Missing firmware still refuses clearly, while learner `machine.reset()` is
   no longer blocked by source inspection.
+- **P19 scratch-storage fetch-worker deferral rejected at attribution.** Current
+  webpack stats place scratch-storage's single 280,064-byte prebundled browser
+  module entirely in the initial shared chunk, but most of that module is the
+  storage API and direct fetch path which startup still needs. The complete
+  worker-side upper bound is only 32,773 raw bytes: the escaped inline worker,
+  `FetchWorkerTool`, `InlineWorker`, and even the entire `ProxyTool`. That is
+  44,027 bytes below the 76,800-byte emitted floor. The package's nominal
+  22,345-byte fallback worker is referenced by URL but is not emitted into the
+  app, so there is no second shipped copy to recover. No candidate was built.
 - **Browser build-artifact reuse rejected on critical-path cost.** Four green
   runs measured the central `build` job at 5:27–5:42 and the slow browser shard
   at 6:43–9:35 in parallel. Each browser-local webpack build takes about 1:15;
