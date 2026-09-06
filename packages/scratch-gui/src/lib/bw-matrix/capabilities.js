@@ -331,7 +331,14 @@ export const DEVICES = Object.freeze([
     dev('i8086', 'Intel 8086 (DOS bench)', '8086', 'i8086', {
         pickerCompile: false,
         pickerEmulator: 'i8086',
-        sim: [eng('i8086', ['com', 'bin'], {tier: '2a', needs: ['8086-vectors']})],
+        sim: [eng('i8086', ['com', 'bin'], {
+            tier: '2a',
+            // 8086-vectors is standing (bw-board CI grinds all 646,000 per push). elks-image is
+            // recorded: a third-party OS written against real PC/XT hardware boots on this board
+            // and mounts its root filesystem (bw-board 824d301, 8064729) — independent-source
+            // agreement about the BOARD, not just the CPU — but GPL-2 keeps it out of CI.
+            needs: ['8086-vectors', 'elks-image']
+        })],
         silicon: [tx('com-export', ['com'], null, {...OPEN_DECLARED, task: 'N10'})]
     }),
     // Moved here from DEVICE_GROUPS in pseudocode-importer.jsx (T7): the picker is derived

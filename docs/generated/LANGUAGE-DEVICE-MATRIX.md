@@ -46,7 +46,7 @@ question from whether the row agrees with the code.
 | stm32f030 | STM32 (ARM) | stm32 | stm32f0 [bin,hex] · tier 2a · needs labwired-wasm (absent) | stm32-uart-bootloader-webserial [bin,hex]<br>cmsis-dap-swd-webusb [bin] |  |
 | eater6502 | 6502 | w65c02 | eater6502 [hex,bin,bas] · tier 2a · needs 65c02-vectors (standing) | eeprom-programmer-webserial [hex,bin] |  |
 | z80 | Z80 | z80 | z80 [hex,bin,bas] · tier 2a · needs z80-vectors (standing) | eeprom-programmer-webserial [hex,bin] |  |
-| i8086 | 8086 | i8086 | i8086 [com,bin] · tier 2a · needs 8086-vectors (standing) | com-export [com] (open: N10) |  |
+| i8086 | 8086 | i8086 | i8086 [com,bin] · tier 2a · needs 8086-vectors (standing), elks-image (recorded) | com-export [com] (open: N10) |  |
 | microbit | MicroPython | microbit | microbit-sim [py] · tier 2a | hex-append-download [py]<br>daplink-webusb [hex] (open: N9) |  |
 | calliopemini | MicroPython | microbit | microbit-sim [py] · tier 2a | hex-append-download [py]<br>daplink-webusb [hex] (open: N9) |  |
 | arcade | Arcade & SAMD51 | samd51 | arcade [ts] · tier 3 | circuitpython-copy [py] (open)<br>uf2-bootsel-download [uf2] (open: L4) |  |
@@ -145,6 +145,7 @@ The last column is bw-board's description AS AUTHORED: a stable string, not a re
 | 65c02-vectors | oracle | standing | test/w65c02.test.mjs<br>test/w65c02-disasm.test.mjs<br>scripts/grind-w65c02.mjs | SingleStepTests 65x02, WDC variant — ~10k vectors per opcode including cycle counts. |
 | emu8051 | oracle | standing | test/emu8051-idle-fastforward.test.mjs<br>test/brightness-emu8051.test.js<br>test/emu8051-debug.test.js | A second 8051 implementation (MIT sibling repo), built to WASM. |
 | labwired-wasm | oracle | absent | test/labwired-adapter.test.mjs<br>test/labwired-roundtrip.test.mjs<br>test/pad-drive-parity.test.mjs | The labwired engine as WASM — the differential oracle for the labwired bridge. |
+| elks-image | fixture | recorded | test/i8086-elks-boot.test.mjs | An ELKS 1. |
 | retro-corpus-8086 | fixture | recorded | test/oracle-nasm.test.mjs | Four real DOS assembly programs (Snake, typing-balloon, Maze Runner, retro-dos-graphics) that the NASM oracle assembles with both nasm and src/i8086-asm. |
 | nasm | oracle | standing | test/oracle-nasm.test.mjs | NASM (BSD-2), an independent assembler. |
 
