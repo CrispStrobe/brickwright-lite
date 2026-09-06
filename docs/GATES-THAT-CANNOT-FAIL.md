@@ -1168,3 +1168,116 @@ Recorded rather than fixed: `audit-gate-shapes.mjs` is not this lane's tool and
 its author is unreachable. Whoever owns it should decide between narrowing the
 match and accepting that markers are the intended discharge. Both are defensible;
 silently widening the window is not.
+
+## Twenty-first species: ONE THING, COUNTED ONCE PER VIEW (2026-09-06, lego-be)
+
+The general form in this file has always pointed one way: a success message
+quantifies over some SET, and if loop-set ⊊ goal-set the green is a false
+statement about the goal. Everything catalogued so far is that inequality, or
+its documented reversal into a false red.
+
+This is the other inequality, and it does not produce a false green at all.
+
+`I8086Machine.chipRefusals()` collects each chip's ledger of things the model
+refuses to do. It reaches a ledger two ways: a chip may shape its own
+`report()`, and a name-derived scan picks up any field whose name says it
+records a refusal. The YM3812 does both — it has a `report()`, and that report
+is built from a field called `unsupported`.
+
+So the first smoke of the finished collector printed the YM3812's rhythm-mode
+refusal twice, and the uPD765's bad opcode twice.
+
+**Every count on every row was correct.** `count: 1` was true. The feature name
+was true. The symptom was true. The address was true. What was doubled was the
+number of ROWS — the collector had enumerated *representations of the ledger*
+where it meant to enumerate *events in it*.
+
+This is worth its own entry because of how it fails to look wrong:
+
+- A false green is a claim you can check and find untrue. Here every claim
+  checks out. There is no line to disagree with.
+- The error is only visible in the CARDINALITY of the result, which is exactly
+  the thing a reader does not verify — you read the rows, not the row count.
+- It gets worse with better instrumentation. Adding a second path to a ledger
+  is normally an improvement; here each added path multiplies the world.
+- Downstream it is silent. A consumer joining these rows to a port map gets two
+  identical hits and renders two identical lines, which reads as "this happened
+  twice" — a plausible fact, and false.
+
+**The tell** is the same question as always, asked about the collector rather
+than the loop: *what is the set, and is it a set of things or a set of ways of
+looking at things?* A collector that reaches one datum by two routes is
+enumerating routes.
+
+**The fix that was not the fix.** Deduplicating the output rows by
+`(part, feature)` would have made the symptom go away and left the cause: the
+collector would still be walking both routes, and the next ledger reachable
+three ways would present as `count` inflation rather than duplicate rows. The
+actual fix is that the explicit paths now mark the field they consumed, so each
+ledger is read once and there is nothing to deduplicate.
+
+**A companion instance from the same day, one level down.** `YM3812.setState`
+rebuilds derived operator state by replaying all 256 registers through `_poke`
+— and `_poke` also refuses. So a save/restore added a refusal for every
+unsupported bit that happened to be set, and `count` said "the program asked N
+times" when the program had asked once and been restored N−1 times. Same shape:
+the count quantified over *executions of the write path* rather than over
+*requests the program made*. Anyone joining to that number would have been
+reading restore traffic and calling it demand.
+
+Gated in bw-board `test/chip-refusals.test.mjs` ("one refusal is one row,
+however many views of the ledger exist") and mutation-proved: removing the
+consumed-field mark turns it red.
+
+## Twenty-second species: A RULE THAT MATCHES ITS OWN OUTPUT (2026-09-06, lego-be)
+
+This file already records a detector that was an instance of what it hunts.
+This is its sibling and not the same thing: that detector matched *code like its
+own*. This one matched *its own output*.
+
+The same collector finds ledgers by name — any own field whose name says it
+records a refusal, `/refus|unsupport|unmodel|warning|invalid/i`. Deriving rather
+than enumerating was itself a fix: the first version listed the four field names
+it knew, and the reachability gate immediately found two ledgers it did not
+reach. Adding those two by name would have fixed the instances and left the
+class.
+
+Then the ledgers gained companion fields, so a sentence-shaped warning could
+carry a symptom and an address the way a Map-shaped one does: `modeWarning`
+beside `modeWarningAt` and `modeWarningSymptom`.
+
+`modeWarningSymptom` contains "warning". `lastRefusalSymptom` contains "refus".
+
+So the scan collected each *explanation it had just emitted* as a new refusal —
+producing rows whose `feature` was another row's `symptom`, and whose own
+`symptom` was null. The output of the rule became input to the rule.
+
+**Why this is not just "the regex was too loose."** The regex is right. It is
+supposed to match anything whose name says "refusal", and `modeWarningSymptom`
+IS named for a refusal — it is the refusal's symptom. Tightening the pattern
+until it stopped matching would have broken the property that made deriving
+worth doing: that a chip inventing a new ledger name is collected the moment it
+exists. The rule did not need to be narrower. It needed to be able to tell a
+SUBJECT from a COMPANION, which is a distinction about role, not about naming.
+
+**The general shape.** Any rule that both (a) matches on a property of a name,
+and (b) produces artefacts that inherit that name, will eventually consume its
+own output. It applies well beyond this collector: a linter that writes a
+suppression comment matching its own trigger pattern; a migration that renames
+files by a rule and then re-scans the directory; a cache keyed by a hash of
+something that includes the cache. The loop closes at whatever moment output
+first lands where input is read.
+
+**The fix, and the limit kept deliberately.** Fields ending `At`/`Symptom` are
+skipped — *but only when the field they belong to actually exists*. A chip whose
+ledger is genuinely named `refusalAt` is still collected, because the suffix is
+evidence of a companion only when there is something to be a companion to. That
+distinction is gated in both directions, so neither half can rot.
+
+The honest limit rides along with it: collection is by name, so a ledger called
+`notes` or `caveats` is unreachable and always will be. There is a test
+asserting exactly that — the limit is stated where it would otherwise be
+discovered.
+
+Gated in bw-board `test/chip-refusals.test.mjs` ("a ledger sibling is not itself
+collected as a ledger"), including the counter-case, and mutation-proved.
