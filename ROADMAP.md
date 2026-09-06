@@ -1131,15 +1131,24 @@ Next tasks, in order:
     136.9 ms against the same-probe eager 101.8 ms baseline: 34.5% slower and
     above the declared 117.07 ms ceiling. Reverted at `31a290564` rather than
     moving the threshold after measurement.
-15. **Next.** Split compact synchronous tutorial/library metadata from full
-    tutorial decks and hidden card/library modal bodies; do not re-split P6's
-    already-lazy asset manifests. Establish a post-P14 ownership and first-open
-    baseline, then preserve synchronous `initTutorialCard`, deep-link lookup,
-    extension connection metadata and public APIs. Prove hidden zero-fetch,
-    concurrent-demand deduplication, deep links, Tips and every asset/extension
-    selection journey, plus rejection/stale/unmount retry without lost state.
-    Treat deck/card/modal slices independently and reject one which saves less
-    than 75 KiB emitted or exceeds the 15% / 1 s / 100 ms activation limits.
+15. **In progress.**
+    - **P15a tutorial runtime — evaluated and rejected** (baseline
+      `34046270772`; candidate `34047017108`). One retryable chunk isolated
+      145,612 source / 103,513 emitted bytes and reduced initial JavaScript
+      4,521,229 → 4,425,177 (96,052 bytes). Hidden zero-fetch, 29-deck content,
+      both deep links, navigation, dedupe, failure/retry and stale-close without
+      hidden Redux hydration all passed with no long task. Five cold first-open
+      samples had a 190.2 ms median, however, versus 151.3 ms eager: 25.7%
+      slower and above the declared 173.995 ms ceiling. Reverted at
+      `3d4bce5d5` rather than relaxing the limit.
+    - **P15b asset-library UI — next.** Demand-load the shared library modal UI
+      and hidden Costume, Backdrop, Sound, Sprite and Extension container bodies
+      as one boundary, about 110 KiB source after excluding tutorials. Keep P6's
+      lazy asset manifests and synchronous extension connection metadata intact.
+      Establish separate eager first-open baselines for all five routes; prove
+      hidden zero-fetch, population/selection, concurrent dedupe, cached reopen,
+      failed-request retry and stale/unmount preservation. Reject below 75 KiB
+      emitted or above the 15% / 1 s / 100 ms activation limits.
 16. **Experiment only.** Differentially test a CI-generated precompiled
     scratch-parser schema validator. AJV is on every project-load path, so a
     dynamic import is not an optimization. Accept only exact callback/error/
