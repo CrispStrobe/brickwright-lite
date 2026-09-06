@@ -205,7 +205,10 @@ try {
     receipt.limits = {relativeMs: relativeLimitMs, absoluteMs: absoluteLimitMs,
         maxLongTaskMs, minimumEncodedBytes};
 
-    const retryContext = await browser.newContext({viewport: {width: 1200, height: 800}});
+    const retryContext = await browser.newContext({
+        viewport: {width: 1200, height: 800},
+        serviceWorkers: 'block'
+    });
     const retryPage = await retryContext.newPage();
     let retryRequests = 0;
     await retryPage.route(/connection-modal.*\.js(?:\?|$)/, route => {
@@ -226,7 +229,10 @@ try {
     receipt.importRetry.errorWasClosable = retryErrorWasClosable;
     await retryContext.close();
 
-    const delayContext = await browser.newContext({viewport: {width: 1200, height: 800}});
+    const delayContext = await browser.newContext({
+        viewport: {width: 1200, height: 800},
+        serviceWorkers: 'block'
+    });
     const delayPage = await delayContext.newPage();
     let releaseChunk;
     const chunkReleased = new Promise(resolve => { releaseChunk = resolve; });
@@ -314,6 +320,15 @@ try {
         receipt.closeBeforeResolution.requests !== 1 || resumedScans !== 1) {
         throw new Error('closing before Connection-modal resolution left stale UI, work, or another download');
     }
+} catch (error) {
+    await writeFile(path.join(output, 'failure.json'), `${JSON.stringify({
+        schema: 'brickwright/connection-modal-activation-failure/v1',
+        message: error.message,
+        stack: error.stack,
+        errors
+    }, null, 2)}\n`);
+    await page.screenshot({path: path.join(output, 'failure.png'), fullPage: true}).catch(() => {});
+    throw error;
 } finally {
     await browser.close();
 }

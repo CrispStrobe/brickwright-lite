@@ -85,15 +85,22 @@ export const summarizeWebpackOwnership = input => {
     const lazyPaintChunks = chunks.filter(chunk => lazyPaintIds.has(String(chunk.id)));
     const lazyPaintAssets = assets.filter(asset =>
         /\.js$/.test(asset.name) && (asset.chunks || []).some(id => lazyPaintIds.has(String(id))));
-    const namedStage = name => {
-        const stageChunks = chunks.filter(chunk => (chunk.names || []).includes(name));
-        const stageIds = new Set(stageChunks.map(chunk => String(chunk.id)));
+    const namedStage = (name, includeSiblings = false) => {
+        const namedChunks = chunks.filter(chunk => (chunk.names || []).includes(name));
+        const stageIds = new Set(namedChunks.map(chunk => String(chunk.id)));
+        if (includeSiblings) {
+            for (const siblingId of namedChunks.flatMap(chunk => chunk.siblings || [])) {
+                const sibling = chunks.find(chunk => String(chunk.id) === String(siblingId));
+                if (sibling && !sibling.initial) stageIds.add(String(sibling.id));
+            }
+        }
+        const stageChunks = chunks.filter(chunk => stageIds.has(String(chunk.id)));
         const stageAssets = assets.filter(asset =>
             /\.js$/.test(asset.name) && (asset.chunks || []).some(id => stageIds.has(String(id))));
         const stageModules = modules.filter(module =>
             (module.chunks || []).some(id => stageIds.has(String(id))));
         return {
-            found: stageChunks.length > 0,
+            found: namedChunks.length > 0,
             initial: stageChunks.some(chunk => chunk.initial),
             files: [...new Set(stageAssets.map(asset => asset.name))].sort(),
             sourceBytes: stageModules.reduce((sum, module) => sum + (Number(module.size) || 0), 0),
@@ -143,7 +150,10 @@ export const summarizeWebpackOwnership = input => {
             editor: namedStage('paint-editor')
         },
         lazySoundTab: namedStage('sound-tab'),
-        lazyConnectionModal: namedStage('connection-modal')
+        // Webpack may extract vendor modules into an unnamed sibling which is
+        // fetched by the same import(). Attribute the complete activation
+        // group, not only the chunk carrying the deterministic route name.
+        lazyConnectionModal: namedStage('connection-modal', true)
     };
 };
 

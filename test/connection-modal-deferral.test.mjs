@@ -33,4 +33,7 @@ test('the connection modal owns one retryable demand-loaded route', () => {
     assert.match(browserGate, /firmware failure\/retry did not retain transient WebUSB activation/);
     assert.match(browserGate, /Retry connection tools/);
     assert.match(browserGate, /closing before Connection-modal resolution left stale UI/);
+    assert.equal((browserGate.match(/serviceWorkers: 'block'/g) || []).length, 2,
+        'fault injection must bypass the production service worker in both isolated contexts');
+    assert.match(browserGate, /connection-modal-activation-failure\/v1/);
 });

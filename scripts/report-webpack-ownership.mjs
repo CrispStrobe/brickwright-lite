@@ -48,7 +48,7 @@ console.log(`Lazy paint editor: ${(report.lazyPaintEditor.sourceBytes / 1024).to
 console.log(`Lazy Sound tab: ${(report.lazySoundTab.sourceBytes / 1024).toFixed(1)} KiB source, ` +
     `${(report.lazySoundTab.emittedBytes / 1024).toFixed(1)} KiB emitted in ` +
     `${report.lazySoundTab.files.join(', ') || 'missing assets'}`);
-console.log(`Lazy connection modal: ${(report.lazyConnectionModal.sourceBytes / 1024).toFixed(1)} KiB source, ` +
+console.log(`Lazy connection modal group: ${(report.lazyConnectionModal.sourceBytes / 1024).toFixed(1)} KiB source, ` +
     `${(report.lazyConnectionModal.emittedBytes / 1024).toFixed(1)} KiB emitted in ` +
     `${report.lazyConnectionModal.files.join(', ') || 'missing assets'}`);
 for (const failure of failures) console.error(`FAIL: ${failure}`);

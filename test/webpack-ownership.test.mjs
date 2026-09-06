@@ -215,17 +215,29 @@ test('sound tab boundary rejects a missing, eager or insignificant split', () =>
 
 test('connection modal ownership includes its hardware updater and stays non-initial', () => {
     const stats = fixture();
-    stats.chunks.push({id: 50, names: ['connection-modal'], files: ['chunks/connection-modal.js'], initial: false});
-    stats.assets.push({name: 'chunks/connection-modal.js', size: 76800, chunks: [50]});
+    stats.chunks.push(
+        {id: 50, names: ['connection-modal'], files: ['chunks/connection-modal.js'], initial: false,
+            siblings: [51]},
+        {id: 51, names: [], files: ['chunks/modal-vendors.js'], initial: false, siblings: [50]}
+    );
+    stats.assets.push(
+        {name: 'chunks/connection-modal.js', size: 40000, chunks: [50]},
+        {name: 'chunks/modal-vendors.js', size: 36800, chunks: [51]}
+    );
     stats.modules.push(
         {name: './src/components/connection-modal/connection-modal.jsx', size: 76000, chunks: [50]},
         {name: './src/lib/microbit-update.js', size: 7000, chunks: [50]},
-        {name: './node_modules/dapjs/dist/dap.umd.js', size: 39000, chunks: [50]},
-        {name: './node_modules/@microbit/microbit-universal-hex/esm/index.js', size: 36000, chunks: [50]}
+        {name: './node_modules/dapjs/dist/dap.umd.js', size: 39000, chunks: [51]},
+        {name: './node_modules/@microbit/microbit-universal-hex/esm/index.js', size: 36000, chunks: [51]}
     );
     const report = summarizeWebpackOwnership(stats);
     assert.equal(report.lazyConnectionModal.initial, false);
     assert.equal(report.lazyConnectionModal.sourceBytes, 158000);
+    assert.equal(report.lazyConnectionModal.emittedBytes, 76800);
+    assert.deepEqual(report.lazyConnectionModal.files, [
+        'chunks/connection-modal.js',
+        'chunks/modal-vendors.js'
+    ]);
     assert.deepEqual(report.lazyConnectionModal.owners.map(({owner}) => owner), [
         'app:components/connection-modal',
         'dapjs',
