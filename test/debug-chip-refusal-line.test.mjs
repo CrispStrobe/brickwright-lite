@@ -26,7 +26,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {resolve, dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {I8086Machine, PCXT8086} from '../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js';
+import {I8086Machine, PCXT8086, BREADBOARD8086}
+    from '../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js';
 import {assembleRaw} from '../overlay/scratch-gui/src/lib/bw-board/i8086-asm.js';
 import {chipRefusalLines, chipRefusalLine, formatAnchor, formatCount}
     from '../overlay/scratch-gui/src/lib/bw-debug/chip-refusal-lines.js';
@@ -51,8 +52,8 @@ const code = (text) => text
     .split('\n').map(l => l.replace(/(^|[^:])\/\/.*$/, '$1')).join('\n');
 
 /** Run a short program in the vendored machine and return it. */
-function ran (source) {
-    const m = new I8086Machine(PCXT8086);
+function ran (source, config = PCXT8086) {
+    const m = new I8086Machine(config);
     m.mem.set(assembleRaw(`${source}\n hlt\n`, 0), 0x0600);
     Object.assign(m.cpu, {cs: 0, ip: 0x0600, ss: 0, sp: 0x7000, ds: 0, es: 0, halted: false});
     let steps = 0;
@@ -82,6 +83,38 @@ test('a program that asks the 8237 for a block copy produces exactly one line', 
     assert.doesNotMatch(line.text, /refusals/,
         'one occurrence must not print a count — "1 refusals" is noise that makes a real count '
         + 'harder to notice');
+});
+
+test('the ASM bench refuses through the chip it actually has', () => {
+    // THE BROWSER GATE'S PROGRAM, ASSERTED IN NODE. scripts/verify-debug-chip-refusal-line.mjs
+    // drives the ASM route, which boots BREADBOARD8086 — `ppi1` and `uart1`, and
+    // NO DMA CONTROLLER. The 8237 the test above uses lives on PCXT8086, the
+    // config the BIOS and Machine Loader routes build.
+    //
+    // The first version of that browser gate wrote the memory-to-memory command
+    // to port 08h and waited forty seconds for a line that could never appear:
+    // the port decoded to nothing, nothing refused anything, and the timeout read
+    // as a broken panel rather than as a program aimed at absent hardware. This
+    // assertion is here so the next config change fails in a two-second node run
+    // instead of a forty-second browser one.
+    const chips = Object.keys(new I8086Machine(BREADBOARD8086).chips);
+    assert.deepEqual(chips.sort(), ['ppi1', 'uart1'],
+        `the ASM bench's chips changed to ${chips.join(', ')} — the browser gate's program targets `
+        + "ppi1's control port and must be retargeted with them");
+    // ppi1 is at port 0, so its control port is 3. A0h selects mode 1 on group A:
+    // what a driver writes wanting the strobed handshake, which the 8255 accepts
+    // and runs as mode 0.
+    const lines = chipRefusalLines(ran(' mov al, 0A0h\n out 03h, al', BREADBOARD8086).chipRefusals());
+    assert.equal(lines.length, 1, `expected one line, got ${JSON.stringify(lines)}`);
+    assert.equal(lines[0].part, 'ppi1');
+    assert.match(lines[0].text, /waits on a bit that never moves/,
+        'the symptom must say what the PROGRAM sees — a status bit that never moves — not merely '
+        + 'that a mode is unmodelled');
+    assert.match(lines[0].text, /at 03h/, 'the control port the mode word arrived on');
+    // And the clean program the browser gate runs first must stay clean here too.
+    assert.deepEqual(chipRefusalLines(ran(' mov al, 00h\n mov bl, al', BREADBOARD8086).chipRefusals()), [],
+        "the browser gate's absent case produces a line on this bench, so its first assertion "
+        + 'would be proving nothing');
 });
 
 test('a machine that has refused nothing produces no line at all', () => {
