@@ -17,11 +17,19 @@
  *     REFUSE BY NAME, not present a button with nothing behind it. That is the
  *     failure this half exists for.
  *
- *  BOOT BUDGET (sets the wait, and the CI step's timeout-minutes). MicroPython
- *  reaches its REPL in ~1.3M emulated instructions — measured ~0.9–2.6 s wall
- *  in node on this shared VPS (17 parallel sessions), 2026-09-06; the browser
- *  emulator is slower, so the observe poll runs to 60 s. JUDGED BY THE EMULATED
- *  GPIO — the run board's ledBrightness — never by viewport pixels.
+ *  BOOT BUDGET. The node figure (~1.3M instructions, ~0.9–2.6 s wall on this
+ *  VPS) is NOT the gate's basis: the emulator is far slower under headless
+ *  Chromium on a CI runner, and that number is not yet measured — this gate's
+ *  transition trail (phase/enumeration/frames/simMs at each step, dumped on a
+ *  red run) is what measures it. Run 34016744671 showed the sim START (board
+ *  published, status "starting the Pico simulator…") but GP25 not reach HIGH
+ *  inside 60 s, with failed=null — i.e. it neither finished nor refused. So the
+ *  poll is bounded at 180 s (the step's 3-minute budget), and the trail says
+ *  whether USB enumerated and the REPL banner arrived (slow boot) or not (CDC
+ *  never came up in the browser build). If a run shows the browser boot exceeds
+ *  what a gate should wait, the sim Run likely needs a progress state rather
+ *  than a longer wait — a call to make from the measured number, not guessed.
+ *  JUDGED BY THE EMULATED GPIO — the run board's readPin('GP25') — never pixels.
  *
  *  Skips (exit 0) rather than fails when a precondition is genuinely absent: no
  *  local build, or the firmware was never synced. A missing optional artifact
@@ -265,15 +273,52 @@ try {
         const body = document.body.innerText.slice(0, 3000);
         const m = /not expressible|deploy failed|not in this build/i.test(body)
             ? (body.match(/[^\n]*(?:failed|not )[^\n]*/i) || [''])[0].slice(0, 120) : null;
-        return {board: !!b, gp25, litLeds, failed: m};
+        const status = (document.querySelector('[data-testid="bw-code-status"]') || {}).textContent || '';
+        // The module's read-only diagnostic hook: enumerated?, REPL banner?, how
+        // far the emulator advanced — this is what tells a slow boot from a CDC
+        // that never came up.
+        const d = window.__bwPicoSim || null;
+        const diag = d ? {phase: d.phase(), usbConnected: d.usbConnected(), replReady: d.replReady(),
+            frames: d.frames(), simMs: d.simMs(), usbTail: d.usbTail(), lastError: d.lastError()} : null;
+        return {board: !!b, gp25, litLeds, failed: m, status, diag};
     });
+    // Record every transition (status/phase/enumeration change) with elapsed ms,
+    // so a red run shows the sequence and where it stalled — never a fixed sleep.
+    const t0 = Date.now();
+    const transitions = [];
+    let lastKey = '';
+    const readAndRecord = async () => {
+        const o = await readRun();
+        const g = o.diag || {};
+        const key = `${o.status}|${g.phase || '-'}|${g.usbConnected}|${g.replReady}`;
+        if (key !== lastKey) { lastKey = key; transitions.push({ms: Date.now() - t0, ...o, ...g}); }
+        return o;
+    };
     const droveOK = o => o && (o.failed || o.gp25 === 1 || o.litLeds > 0);
-    const obs = await waitFor(readRun, droveOK, 60000);
+    // Poll to the step's 3-minute budget, not 60 s: the headless-Chromium boot is
+    // far slower than node's (see the header). A compile refusal ends it early.
+    const obs = await waitFor(readAndRecord, droveOK, 180_000);
     if (obs && obs.failed) { skip = `the program did not reach the emulator: ${obs.failed}`; throw new Error('SKIP'); }
-    const trail = JSON.stringify(obs).slice(0, 200);
-    check('a run board was published (vm.runtime.bwRunBoard)', !!(obs && obs.board), trail || '(no board)');
-    check('the emulated GPIO moved — MicroPython ran and drove GP25 high',
-        !!(obs && (obs.gp25 === 1 || obs.litLeds > 0)), trail);
+    const drove = !!(obs && (obs.gp25 === 1 || obs.litLeds > 0));
+    check('a run board was published (vm.runtime.bwRunBoard)', !!(obs && obs.board),
+        JSON.stringify(obs).slice(0, 200));
+    if (!drove) {
+        // The whole point of this round: say WHICH candidate. Dump the trail and
+        // the final CDC/board state so the next dispatch answers slow-boot vs
+        // never-enumerated without another guess.
+        console.log('  transition trail (ms | status | phase | usb | repl | frames | simMs):');
+        for (const t of transitions) {
+            console.log(`    ${t.ms} | ${t.status} | ${t.phase || '-'} | usb=${t.usbConnected} | `
+                + `repl=${t.replReady} | frames=${t.frames} | simMs=${t.simMs}`);
+        }
+        const g = (obs && obs.diag) || {};
+        console.log(`  final: phase=${g.phase} usbConnected=${g.usbConnected} replReady=${g.replReady} `
+            + `frames=${g.frames} simMs=${g.simMs} gp25=${obs && obs.gp25}`);
+        console.log(`  usbTail=${JSON.stringify(g.usbTail || null)}`);
+        console.log(`  lastError=${g.lastError || null}`);
+    }
+    check('the emulated GPIO moved — MicroPython ran and drove GP25 high', drove,
+        JSON.stringify(obs).slice(0, 200));
 
     await mkdir(dirname(shot), {recursive: true});
     await page.screenshot({path: shot});

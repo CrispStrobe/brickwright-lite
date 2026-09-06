@@ -107,12 +107,31 @@ export async function startPicoSimRun ({image, vm, stc, py, onStatus, onError}) 
     let usbConnected = false;
     cdc.onDeviceConnected = () => { usbConnected = true; };
     let pending = '';
+    let usb = '';                         // every CDC byte, kept for diagnostics
     let waiters = [];
     const wake = () => { const w = waiters; waiters = []; for (const r of w) r(); };
     cdc.onSerialData = (buf) => {
-        for (const b of buf) pending += String.fromCharCode(b);
+        for (const b of buf) { const ch = String.fromCharCode(b); pending += ch; usb += ch; }
         wake();
     };
+
+    // Read-only observability for the browser gate — it reads this to tell a
+    // slow headless boot ("USB enumerated, REPL banner not yet") from a CDC that
+    // never enumerated in the browser build. Changes NO run behavior.
+    let frames = 0;
+    let phase = 'booting';
+    let lastError = null;
+    if (typeof window !== 'undefined') {
+        window.__bwPicoSim = {
+            usbConnected: () => usbConnected,
+            usbTail: () => usb.slice(-240),
+            frames: () => frames,
+            simMs: () => { try { return Math.round(adapter.rp2040.clock.nanos / 1e6); } catch { return -1; } },
+            replReady: () => usb.includes('>>> ') || usb.includes('raw REPL'),
+            phase: () => phase,
+            lastError: () => lastError
+        };
+    }
     const transport = {
         async write (text) {
             for (const ch of text) cdc.sendSerialByte(ch.charCodeAt(0) & 0xff);
@@ -142,8 +161,11 @@ export async function startPicoSimRun ({image, vm, stc, py, onStatus, onError}) 
         if (stopped) return;
         try {
             adapter.advanceNs(SLICE_NS);
+            frames++;
         } catch (e) {
-            status(`the Pico simulator stopped: ${e && e.message ? e.message : e}`);
+            phase = 'error';
+            lastError = e && e.message ? e.message : String(e);
+            status(`the Pico simulator stopped: ${lastError}`);
             return;                       // a faulted core: stop pumping
         }
         // Any read waiting on bytes the CPU just produced is woken by
@@ -156,8 +178,15 @@ export async function startPicoSimRun ({image, vm, stc, py, onStatus, onError}) 
     // MicroPython drops stdout until CDC reports DTR, so a knock before then is
     // simply lost (the probe learned this the hard way).
     status('booting MicroPython…');
-    await waitFor(() => usbConnected, () => stopped, 20_000);
+    try {
+        await waitFor(() => usbConnected, () => stopped, 20_000);
+    } catch (e) {
+        phase = 'error';
+        lastError = e && e.message ? e.message : String(e);
+        throw e;
+    }
     if (stopped) { return {stop: teardown}; }
+    phase = 'enumerated';
 
     // Live run over the shared createPicoRepl. exec() is FIRED, not awaited to
     // completion: a forever loop keeps it pending while the pump runs the
@@ -165,9 +194,12 @@ export async function startPicoSimRun ({image, vm, stc, py, onStatus, onError}) 
     // error settles it — a rejection is a runtime traceback for the user.
     const repl = createPicoRepl(transport, {timeoutMs: 30_000});
     status('running');
+    phase = 'running';
     repl.exec(py).then(
-        () => { /* a terminating program finished; leave the board as it left it */ },
+        () => { phase = 'finished'; },
         (err) => {
+            phase = 'error';
+            lastError = err && err.message ? err.message : String(err);
             if (!stopped && onError) onError(err instanceof Error ? err : new Error(String(err)));
         }
     );
@@ -185,6 +217,7 @@ export async function startPicoSimRun ({image, vm, stc, py, onStatus, onError}) 
             delete vm.runtime.bwRunBoard;
             if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-board-ready'));
         }
+        if (typeof window !== 'undefined' && window.__bwPicoSim) { try { delete window.__bwPicoSim; } catch { /* */ } }
     }
 
     return {stop: teardown};
