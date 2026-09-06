@@ -82,7 +82,7 @@ export const attributePseudocodeImporter = input => {
     if (!importerChunkIds.length || importerChunkIds.some(id => !groupIds.includes(id))) {
         throw new Error('pseudocode-importer source module is not exclusive to the candidate group');
     }
-    const deferredPayload = /(?:^|\/)src\/(?:components\/tw-pseudocode\/pseudocode-importer\.jsx|lib\/bw-asm\/examples(?:-i8086)?\.js|lib\/bw-matrix\/(?:capabilities|device-labels)\.js)$/;
+    const deferredPayload = /(?:^|\/)src\/(?:components\/tw-pseudocode\/(?:pseudocode-importer\.jsx|brick-robot\.svg)|lib\/bw-asm\/examples(?:-i8086)?\.js|lib\/bw-matrix\/(?:capabilities|device-labels)\.js)$/;
     for (const module of allModules) {
         const name = stripLoaders(module.name || module.identifier);
         if (deferredPayload.test(name) && (module.chunks || []).some(id => initialIds.has(String(id)))) {

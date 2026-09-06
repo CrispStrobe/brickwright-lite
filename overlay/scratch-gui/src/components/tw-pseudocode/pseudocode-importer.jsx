@@ -910,28 +910,33 @@ class PseudocodeImporter extends React.Component {
         // loadExampleProgram stores the source on vm.runtime.bwPseudocodeSource
         // and emits PROJECT_CHANGED; we read it here so the Code tab fills.
         const vm = this.props.vm;
+        let consumedParkedSource = false;
         if (vm && vm.runtime) {
             this._onProjectChanged = () => {
                 const src = vm.runtime.bwPseudocodeSource;
-                if (src && src !== this.state.buffers.pseudocode) {
-                    this._publishControlsFor(src);
-                    this.setState(s => ({
-                        lang: 'pseudocode',
-                        buffers: {...s.buffers, pseudocode: src}
-                    }));
+                if (src) {
+                    if (src !== this.state.buffers.pseudocode) {
+                        this._publishControlsFor(src);
+                        this.setState(s => ({
+                            lang: 'pseudocode',
+                            buffers: {...s.buffers, pseudocode: src}
+                        }));
+                    }
                     delete vm.runtime.bwPseudocodeSource;
+                    return true;
                 }
+                return false;
             };
             vm.runtime.on('PROJECT_CHANGED', this._onProjectChanged);
             // The lazy host may have consumed the event to activate this
             // component. Read the parked source once after binding so the
             // handoff survives that asynchronous mount boundary.
-            this._onProjectChanged();
+            consumedParkedSource = this._onProjectChanged();
         }
         // Bring back whatever was in the editor when the tab was last closed.
         // Only when EVERY buffer is empty: an example loaded through the
         // Circuit tab (above) or a restored project must win over the autosave.
-        if (!Object.values(this.state.buffers).some(b => b && b.trim())) {
+        if (!consumedParkedSource && !Object.values(this.state.buffers).some(b => b && b.trim())) {
             const saved = this.readAutosave();
             if (saved) {
                 this._publishControlsFor(saved.code);

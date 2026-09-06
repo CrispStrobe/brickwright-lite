@@ -70,6 +70,7 @@ test('P21 candidate receipt binds baseline, deferral, retry, preset and state se
     value.mode = 'lazy-candidate';
     value.baseline = {run: 34061190255, headSha: 'b'.repeat(40), medianMs: 129.2};
     value.relativeLimitMs = 279.2;
+    value.terminal = {ok: true, stage: 'complete', message: null};
     value.samples = value.samples.map(item => ({...item, beforePseudocodeScripts: [],
         pseudocodeScripts: [{name: 'pseudocode-importer.js', encodedBodySize: 60000}]}));
     value.scenarios = {
@@ -82,6 +83,10 @@ test('P21 candidate receipt binds baseline, deferral, retry, preset and state se
     const mutations = [
         receipt => { receipt.baseline.run = 0; },
         receipt => { receipt.relativeLimitMs = 0; },
+        receipt => { delete receipt.terminal; },
+        receipt => { receipt.terminal.ok = false; },
+        receipt => { receipt.terminal.stage = 'validate-receipt'; },
+        receipt => { receipt.terminal.message = 'failed'; },
         receipt => { receipt.samples[0].beforePseudocodeScripts.push({name: 'early.js'}); },
         receipt => { receipt.samples[0].pseudocodeScripts = []; },
         receipt => { receipt.medianMs = 280; receipt.samples[2].durationMs = 280; },

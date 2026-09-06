@@ -15,6 +15,8 @@ export const validatePseudocodeActivationReceipt = receipt => {
             !/^[0-9a-f]{40}$/.test(receipt.baseline?.headSha || '') ||
             !finite(receipt.baseline?.medianMs, {positive: true})) failures.push('candidate baseline identity is invalid');
         if (!finite(receipt.relativeLimitMs, {positive: true})) failures.push('relativeLimitMs is invalid');
+        if (receipt.terminal?.ok !== true || receipt.terminal?.stage !== 'complete' ||
+            receipt.terminal?.message !== null) failures.push('candidate terminal receipt is invalid');
     }
     if (!Array.isArray(receipt.samples) || receipt.samples.length !== 5) {
         failures.push(`expected five cold samples, got ${receipt.samples?.length ?? 'invalid'}`);

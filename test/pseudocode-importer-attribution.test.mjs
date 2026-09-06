@@ -35,6 +35,11 @@ test('P21 has one retryable background-safe Code importer boundary', () => {
     const bindProjectChanged = importer.indexOf("vm.runtime.on('PROJECT_CHANGED', this._onProjectChanged);");
     const replayProjectChanged = importer.indexOf('this._onProjectChanged();', bindProjectChanged);
     assert.ok(bindProjectChanged >= 0 && replayProjectChanged > bindProjectChanged);
+    const circuitPrecedence = source => /let consumedParkedSource = false/.test(source) &&
+        /consumedParkedSource = this\._onProjectChanged\(\)/.test(source) &&
+        /if \(!consumedParkedSource && !Object\.values\(this\.state\.buffers\)/.test(source);
+    assert.equal(circuitPrecedence(importer), true);
+    assert.equal(circuitPrecedence(importer.replace('!consumedParkedSource && ', '')), false);
     assert.match(importer, /data-testid="bw-code-editor"/);
 });
 
@@ -118,7 +123,8 @@ test('P21 rejects missing, duplicate and eager chunk ownership', () => {
         './src/lib/bw-asm/examples-i8086.js',
         './src/lib/bw-asm/examples.js',
         './src/lib/bw-matrix/capabilities.js',
-        './src/lib/bw-matrix/device-labels.js'
+        './src/lib/bw-matrix/device-labels.js',
+        './src/components/tw-pseudocode/brick-robot.svg'
     ]) {
         const initialPayload = fixture();
         initialPayload.modules.push({name, size: 10, chunks: [1]});

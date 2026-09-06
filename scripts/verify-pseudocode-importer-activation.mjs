@@ -294,7 +294,8 @@ if (!eagerBaseline) {
         return {usable: true, editorCount, requestCount};
     });
     const stateValue = (kind, marker) => scenario(kind,
-        kind === 'autosave' ? {'bw-code-autosave': JSON.stringify({lang: 'pseudocode', code: marker})} : {},
+        kind === 'autosave' ? {'bw-code-autosave': JSON.stringify({lang: 'pseudocode', code: marker})} :
+            kind === 'circuit' ? {'bw-code-autosave': JSON.stringify({lang: 'python', code: 'P21 STALE AUTOSAVE'})} : {},
         async prepared => {
             const {page} = prepared;
             const {tab, panel} = await prepared.bind();
@@ -316,6 +317,17 @@ if (!eagerBaseline) {
                 const root = document.querySelector('[data-testid="bw-code-editor"]');
                 return (root?.querySelector('textarea')?.value || root?.querySelector('.cm-content')?.textContent || '').includes(code);
             }, marker, {timeout: 10000});
+            if (kind === 'circuit') {
+                const collision = await panel.locator('[data-testid="bw-code-editor"]').evaluate(root => ({
+                    text: root.querySelector('textarea')?.value || root.querySelector('.cm-content')?.textContent || '',
+                    pseudocodeActive: [...root.querySelectorAll('[data-testid="bw-lang-row"] button')]
+                        .some(button => button.getAttribute('aria-pressed') === 'true' &&
+                            /Pseudo/.test(button.textContent || ''))
+                }));
+                if (collision.text.includes('P21 STALE AUTOSAVE') || !collision.pseudocodeActive) {
+                    throw new Error(`stale autosave won Circuit collision: ${JSON.stringify(collision)}`);
+                }
+            }
             return true;
         });
     scenarios = {
@@ -333,10 +345,10 @@ if (!eagerBaseline) {
     const durations = receipt.samples.map(sample => sample.durationMs).slice().sort((a, b) => a - b);
     receipt.medianMs = durations[2] ?? null;
     if (!eagerBaseline) receipt.scenarios = scenarios;
+    receipt.terminal = {ok: true, stage: 'complete', message: null};
     terminalStage = 'validate-receipt';
     const failures = validatePseudocodeActivationReceipt(receipt);
     if (failures.length) throw new Error(failures.join(' | '));
-    receipt.terminal = {ok: true, stage: 'complete', message: null};
 } catch (error) {
     terminalError = error;
     receipt.terminal = {ok: false, stage: terminalStage, message: String(error?.message || error)};
