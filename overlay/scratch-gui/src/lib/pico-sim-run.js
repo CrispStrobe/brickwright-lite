@@ -154,6 +154,7 @@ export async function startPicoSimRun ({image, vm, stc, py, onStatus, onError}) 
     let phase = 'booting';
     let subPhase = 'init';
     let lastError = null;
+    let pumpError = null;
     let txBytes = 0;
     let txWrites = 0;
     let txDone = 0;
@@ -224,7 +225,8 @@ export async function startPicoSimRun ({image, vm, stc, py, onStatus, onError}) 
         } catch (e) {
             phase = 'error';
             lastError = e && e.message ? e.message : String(e);
-            channel.fail(e instanceof Error ? e : new Error(lastError));
+            pumpError = e instanceof Error ? e : new Error(lastError);
+            channel.fail(pumpError);
             status(`the Pico simulator stopped: ${lastError}`);
             return;                       // a faulted core: stop pumping
         }
@@ -239,10 +241,11 @@ export async function startPicoSimRun ({image, vm, stc, py, onStatus, onError}) 
     // simply lost (the probe learned this the hard way).
     status('booting MicroPython…');
     try {
-        await waitFor(() => usbConnected, () => stopped, 20_000);
+        await waitFor(() => usbConnected, () => stopped, 20_000, () => pumpError);
     } catch (e) {
         phase = 'error';
         lastError = e && e.message ? e.message : String(e);
+        teardown();
         throw e;
     }
     if (stopped) { return {stop: teardown}; }
@@ -256,16 +259,16 @@ export async function startPicoSimRun ({image, vm, stc, py, onStatus, onError}) 
         subPhase = 'installing-main.py';
         await createPicoRepl(transport, {timeoutMs: 60_000}).deployMainPy(py);
         subPhase = 'waiting-for-reset';
-        await waitFor(() => resetGeneration > beforeReset, () => stopped, 20_000);
+        await waitFor(() => resetGeneration > beforeReset, () => stopped, 20_000, () => pumpError);
         subPhase = 'waiting-for-reboot';
-        await waitFor(() => usbConnected, () => stopped, 20_000);
+        await waitFor(() => usbConnected, () => stopped, 20_000, () => pumpError);
     } catch (e) {
         phase = 'error';
         lastError = e && e.message ? e.message : String(e);
-        if (!stopped && onError) {
-            onError(new Error(`the Pico simulator did not install and reboot the program: ${lastError}`));
-        }
-        return {stop: teardown};
+        const failure = new Error(`the Pico simulator did not install and reboot the program: ${lastError}`);
+        if (onError) onError(failure);
+        teardown();
+        throw failure;
     }
     if (stopped) { return {stop: teardown}; }
     phase = 'running';
@@ -294,10 +297,12 @@ export async function startPicoSimRun ({image, vm, stc, py, onStatus, onError}) 
  * Resolve when `cond()` is true or `abort()` is, polling on macrotasks so the
  * rAF pump keeps running between checks. Rejects on timeout.
  */
-function waitFor (cond, abort, timeoutMs) {
+export function waitFor (cond, abort, timeoutMs, failure) {
     return new Promise((resolve, reject) => {
         const deadline = Date.now() + timeoutMs;
         const tick = () => {
+            const error = failure && failure();
+            if (error) return reject(error);
             if (abort && abort()) return resolve();
             if (cond()) return resolve();
             if (Date.now() > deadline) {

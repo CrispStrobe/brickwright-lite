@@ -9,7 +9,7 @@
  */
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {programCallsReset} from '../overlay/scratch-gui/src/lib/pico-sim-run.js';
+import {programCallsReset, waitFor} from '../overlay/scratch-gui/src/lib/pico-sim-run.js';
 
 test('programCallsReset flags a machine.reset() the sim cannot honour', () => {
     assert.equal(programCallsReset('import machine\nmachine.reset()'), true);
@@ -28,4 +28,9 @@ test('programCallsReset tolerates empty / non-string input', () => {
     assert.equal(programCallsReset(''), false);
     assert.equal(programCallsReset(null), false);
     assert.equal(programCallsReset(undefined), false);
+});
+
+test('waitFor surfaces a terminal replacement failure without waiting for timeout', async () => {
+    const failure = new Error('fresh USB epoch failed');
+    await assert.rejects(waitFor(() => false, () => false, 60_000, () => failure), failure);
 });
