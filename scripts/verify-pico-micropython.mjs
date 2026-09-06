@@ -278,7 +278,8 @@ try {
         // far the emulator advanced — this is what tells a slow boot from a CDC
         // that never came up.
         const d = window.__bwPicoSim || null;
-        const diag = d ? {phase: d.phase(), usbConnected: d.usbConnected(), replReady: d.replReady(),
+        const diag = d ? {phase: d.phase(), subPhase: d.subPhase ? d.subPhase() : '-',
+            usbConnected: d.usbConnected(), replReady: d.replReady(), tx: d.tx ? d.tx() : '-',
             frames: d.frames(), simMs: d.simMs(), usbTail: d.usbTail(), lastError: d.lastError()} : null;
         return {board: !!b, gp25, litLeds, failed: m, status, diag};
     });
@@ -290,7 +291,7 @@ try {
     const readAndRecord = async () => {
         const o = await readRun();
         const g = o.diag || {};
-        const key = `${o.status}|${g.phase || '-'}|${g.usbConnected}|${g.replReady}`;
+        const key = `${o.status}|${g.phase || '-'}|${g.subPhase || '-'}|${g.usbConnected}|${g.replReady}|${g.tx || '-'}`;
         if (key !== lastKey) { lastKey = key; transitions.push({ms: Date.now() - t0, ...o, ...g}); }
         return o;
     };
@@ -306,14 +307,14 @@ try {
         // The whole point of this round: say WHICH candidate. Dump the trail and
         // the final CDC/board state so the next dispatch answers slow-boot vs
         // never-enumerated without another guess.
-        console.log('  transition trail (ms | status | phase | usb | repl | frames | simMs):');
+        console.log('  transition trail (ms | status | phase | subPhase | usb | repl | tx | frames | simMs):');
         for (const t of transitions) {
-            console.log(`    ${t.ms} | ${t.status} | ${t.phase || '-'} | usb=${t.usbConnected} | `
-                + `repl=${t.replReady} | frames=${t.frames} | simMs=${t.simMs}`);
+            console.log(`    ${t.ms} | ${t.status} | ${t.phase || '-'} | ${t.subPhase || '-'} | `
+                + `usb=${t.usbConnected} | repl=${t.replReady} | ${t.tx || '-'} | frames=${t.frames} | simMs=${t.simMs}`);
         }
         const g = (obs && obs.diag) || {};
-        console.log(`  final: phase=${g.phase} usbConnected=${g.usbConnected} replReady=${g.replReady} `
-            + `frames=${g.frames} simMs=${g.simMs} gp25=${obs && obs.gp25}`);
+        console.log(`  final: phase=${g.phase} subPhase=${g.subPhase} usbConnected=${g.usbConnected} `
+            + `replReady=${g.replReady} tx=(${g.tx}) frames=${g.frames} simMs=${g.simMs} gp25=${obs && obs.gp25}`);
         console.log(`  usbTail=${JSON.stringify(g.usbTail || null)}`);
         console.log(`  lastError=${g.lastError || null}`);
     }

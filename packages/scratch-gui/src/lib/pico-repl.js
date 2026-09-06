@@ -121,9 +121,16 @@ export function createPicoRepl(transport, opts = {}) {
   /** Start code in raw REPL and wait only for the OK that acknowledges it was
    *  accepted — NOT for completion. A live/forever program (a blink) never sends
    *  the trailing \x04, so exec() would hang; this is how a run-live program is
-   *  started and left running while its GPIO drives the board. */
-  async function execStart(code) {
-    await transport.write(code + CTRL_D);
+   *  started and left running while its GPIO drives the board. `onProgress` is a
+   *  diagnostic seam: it fires after the program bytes are written, after the
+   *  Ctrl-D, and before the OK wait, so a stall can be localized to the exact
+   *  step (the program and the Ctrl-D go as SEPARATE writes for the same reason). */
+  async function execStart(code, onProgress = () => {}) {
+    await transport.write(code);
+    onProgress('program-written', {bytes: code.length});
+    await transport.write(CTRL_D);
+    onProgress('ctrld-written');
+    onProgress('waiting-ok');
     await readUntil('OK');
   }
 
@@ -188,10 +195,15 @@ export function createPicoRepl(transport, opts = {}) {
  * @returns {Promise<ReturnType<typeof createPicoRepl>>}
  */
 export async function startProgramOnRepl(transport, py, opts = {}) {
+  const onProgress = opts.onProgress || (() => {});
   const repl = createPicoRepl(transport, opts);
+  onProgress('waking');
   await repl.waitForPrompt();
+  onProgress('prompt-seen');
   await repl.enterRaw();
-  await repl.execStart(py);
+  onProgress('raw-ack');
+  await repl.execStart(py, onProgress);
+  onProgress('ok');
   return repl;
 }
 
