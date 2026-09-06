@@ -4,25 +4,20 @@ import {createFreshPicoEpoch, createPicoByteChannel} from './pico-sim-epoch.js';
  * Run a MicroPython program on the Pico IN THE SIMULATOR (N3c).
  *
  * The Pico ▶ Run boots the pinned MicroPython firmware in rp2040js and runs the
- * program over the SAME createPicoRepl the silicon deploy uses — the seam that
- * differs is PERSISTENCE, not sim-vs-silicon: silicon INSTALLS AND REBOOTS
- * (deployMainPy: write main.py + machine.reset()), the sim RUNS LIVE (exec).
- * The sim cannot install-and-reboot because machine.reset() does not reboot the
- * emulator yet — a measured bw-board adapter gap, finding N3c-1 in
- * docs/PICO-SIM-RUN-FINDINGS.md. So a program whose text calls machine.reset()
- * is refused BY NAME rather than silently frozen.
+ * program over the SAME createPicoRepl deployment the silicon path uses:
+ * write main.py, trigger machine.reset(), preserve flash, and boot a fresh SoC.
+ * Every later watchdog reset repeats that whole-controller replacement; the
+ * external circuit board is the only live host object retained between epochs.
  *
  * DRIVE MODEL. One driver: a requestAnimationFrame pump advances the emulator
  * each frame (adapter.advanceNs, which also pushes board time and fires the
  * GPIO→board→ledBrightness chain). The createPicoRepl transport does NOT drive
  * the CPU itself — its reads await bytes the pump produces — so there is no
- * double-stepping race. `repl.exec(py)` is fired but NOT awaited to completion:
- * a `while True:` blink never returns, yet it runs (the pump advances it, its
- * GPIO reaches the board); Stop sends Ctrl-C and cancels the pump. A program
- * that ends, or one with a syntax error, settles exec early — a rejection is
- * surfaced through onError. Sleeps are cheap: MicroPython's time.sleep parks
- * the core in WFE and advanceNs fast-forwards the clock to the next alarm
- * instead of executing idle instructions.
+ * double-stepping race. Deployment returns when its reset is queued; the Run
+ * waits for a replacement epoch and USB enumeration before reporting running.
+ * Stop sends Ctrl-C and cancels the pump. Sleeps are cheap: MicroPython's
+ * time.sleep parks the core in WFE and advanceNs fast-forwards the clock to the
+ * next alarm instead of executing idle instructions.
  *
  * The boot cost is the emulator's: MicroPython v1.22.2 reaches its REPL in
  * ~1.3M instructions (~1–2.6 s wall on a shared box, measured 2026-09-06); the
@@ -57,9 +52,8 @@ const VCC = 3.3;
 const SLICE_NS = 8_000_000; // 8 ms of sim time per frame
 
 /**
- * Boot MicroPython and run `py` live, driving `board`'s GPIO. The caller has
- * already refused absence (image null) and machine.reset() (programCallsReset)
- * by name; this is the happy path plus runtime errors.
+ * Boot MicroPython, install `py`, and reboot it as main.py while driving the
+ * board's GPIO. The caller has already refused an absent firmware image.
  *
  * @param {object}   opts
  * @param {Uint8Array} opts.image  flat flash image (loadPicoFirmware().image)
