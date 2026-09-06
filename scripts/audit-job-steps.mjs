@@ -173,7 +173,25 @@ export const run = async (loadJobs, {jobName, attempt, shard = null, workflowTex
     // read status queued/in_progress with a null conclusion (measured on run
     // 34015453480). A read with an unreported step before the audit is not a
     // read of the job; re-ask, up to a minute, before judging anything.
-    const unreported = job => (job.steps || []).filter(s => s.name !== 'Audit — every browser gate ran' && s.status !== 'completed').map(s => s.name);
+    //
+    // THIS LOOP IS THE GUARD ON THE PRIMARY CHECK, NOT A COURTESY TO A SLOW
+    // API (lego-be). A gate assigned HERE that really skipped, still reading
+    // null when we ask, is not === 'skipped' and would pass check (1) — a
+    // false green over exactly the lie the audit exists to catch, and one that
+    // never announces itself (the null-elsewhere case announced itself as a
+    // red). Exhausting the retries into an ABSENCE is what turns "could not
+    // see whether a gate skipped" into red instead of silence. Do not shorten
+    // it, and do not narrow it to this leg's own steps: a null step assigned
+    // elsewhere must trigger the re-read too, or check (2) under-reports.
+    //
+    // Only steps BEFORE the audit count: the API lists the post-job steps
+    // (Post Run actions/…, Complete job) after it, and those are queued for
+    // as long as the audit runs — waiting on them would exhaust every time.
+    const unreported = job => {
+        const steps = job.steps || [];
+        const me = steps.findIndex(s => s.name === 'Audit — every browser gate ran');
+        return (me >= 0 ? steps.slice(0, me) : steps).filter(s => s.status !== 'completed').map(s => s.name);
+    };
     for (let i = 0; i < 6 && unreported(mine[0]).length; i++) {
         log(`${unreported(mine[0]).length} step(s) not yet reported complete by the API; re-reading in 10 s`);
         await sleep(10000);

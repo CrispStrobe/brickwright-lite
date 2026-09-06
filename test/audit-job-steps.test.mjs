@@ -175,3 +175,26 @@ test('a step still unreported after the retries is an ABSENCE — red, never a f
     assert.match(s.out.errors[0], /could not audit this run: 1 step\(s\) still not reported complete/);
     assert.doesNotMatch(s.out.errors.join('\n'), /double run|skipped with no earlier failure/);
 });
+
+test('the re-read waits only on steps BEFORE the audit: the post-job steps the API lists after it are always queued while it runs', async () => {
+    const withPost = [{name: 'browser (heavy)', run_attempt: 1, steps: [...inHeavy,
+        {name: 'Post Run actions/setup-node@x', status: 'queued', conclusion: null},
+        {name: 'Complete job', status: 'queued', conclusion: null}]}];
+    const yml = readFileSync(path.resolve(import.meta.dirname, '..', '.github', 'workflows', 'build.yml'), 'utf8');
+    const slept = [];
+    const s = sinks();
+    const code = await run(async () => withPost, {jobName: 'browser (heavy)', attempt: 1, shard: 'heavy', workflowText: yml}, {log: s.log, error: s.error, sleep: async ms => { slept.push(ms); }});
+    assert.equal(code, 0, s.out.errors.join('\n'));
+    assert.deepEqual(slept, [], 'queued post-job steps must not trigger a single re-read');
+});
+
+test('a null step assigned ELSEWHERE triggers the re-read too (the loop is not narrowed to this leg)', async () => {
+    const yml = readFileSync(path.resolve(import.meta.dirname, '..', '.github', 'workflows', 'build.yml'), 'utf8');
+    const lagging = [{name: 'browser (heavy)', run_attempt: 1, steps: inHeavy.map(s => s.name === 'Browser gate — editor' ? {name: s.name, status: 'queued', conclusion: null} : s)}];
+    const settled = [{name: 'browser (heavy)', run_attempt: 1, steps: inHeavy}];
+    let reads = 0;
+    const s = sinks();
+    const code = await run(async () => (++reads === 1 ? lagging : settled), {jobName: 'browser (heavy)', attempt: 1, shard: 'heavy', workflowText: yml}, {log: s.log, error: s.error, sleep: async () => {}});
+    assert.equal(code, 0);
+    assert.equal(reads, 2);
+});
