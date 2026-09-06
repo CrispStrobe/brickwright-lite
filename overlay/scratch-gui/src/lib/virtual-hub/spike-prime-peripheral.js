@@ -2,7 +2,7 @@
 // Framing is shared with Brickwright SPIKE Firmware's independently authored
 // protocol/js/spike-codec.js and its Apache-2.0 conformance fixtures.
 import {registerVirtualPeripheral} from './web-bluetooth-shim.js';
-import VirtualSpikeHubState from './spike-hub-state.js';
+import VirtualSpikeHubState, {spikeFirmwareTarget} from './spike-hub-state.js';
 
 export const SPIKE_SERVICE = '0000fd02-0000-1000-8000-00805f9b34fb';
 export const SPIKE_RX = '0000fd02-0001-1000-8000-00805f9b34fb';
@@ -84,19 +84,26 @@ export class VirtualSpikePrimePeripheral {
         hubState = new VirtualSpikeHubState()} = {}) {
         this.id = id;
         this.name = name;
-        this.services = [{
+        this._legoServices = [{
             uuid: SPIKE_SERVICE,
             characteristics: [
                 {uuid: SPIKE_RX, properties: {write: true, writeWithoutResponse: true}},
                 {uuid: SPIKE_TX, properties: {notify: true}}
             ]
         }];
-        if (hubState.data.firmwareTarget === 'legacy-v2') this.services = [];
         this.hubState = hubState;
         this.state = hubState.data;
-        this.hubState.subscribe(() => this.emitDeviceNotification());
+        this._syncServices();
+        this.hubState.subscribe(() => {
+            this._syncServices();
+            this.emitDeviceNotification();
+        });
         this._frame = [];
         this._sink = null;
+    }
+
+    _syncServices () {
+        this.services = spikeFirmwareTarget(this.hubState.data.firmwareTarget).legoBle ? this._legoServices : [];
     }
 
     connect () {

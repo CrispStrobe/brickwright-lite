@@ -1,4 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
+export const SPIKE_FIRMWARE_TARGETS = Object.freeze({
+    'legacy-v2': Object.freeze({label: 'LEGO SPIKE legacy firmware v2', classic: true, legoBle: false,
+        summary: 'Classic RFCOMM through Scratch Link'}),
+    'official-v3': Object.freeze({label: 'LEGO SPIKE official firmware v3', classic: false, legoBle: true,
+        summary: 'LEGO SPIKE BLE protocol'}),
+    brickwright: Object.freeze({label: 'Brickwright firmware', classic: true, legoBle: true,
+        summary: 'Brickwright Classic and LEGO-v3-compatible BLE adapters'}),
+    pybricks: Object.freeze({label: 'Pybricks firmware', classic: false, legoBle: false,
+        summary: 'hardware image/reference target; Pybricks BLE transport is not implemented'})
+});
+
+export const spikeFirmwareTarget = target => {
+    const profile = SPIKE_FIRMWARE_TARGETS[target];
+    if (!profile) throw new TypeError('unknown SPIKE firmware target');
+    return profile;
+};
+
 const makeData = () => ({
     connected: false, notificationIntervalMs: null, battery: 100,
     firmwareTarget: 'official-v3',
@@ -21,10 +38,10 @@ export default class VirtualSpikeHubState {
     changed () { for (const listener of this.listeners) listener(this.data); }
     setBattery (value) { this.data.battery = Math.max(0, Math.min(100, Math.round(Number(value) || 0))); this.changed(); }
     setFirmwareTarget (target) {
-        if (!['legacy-v2', 'official-v3', 'brickwright'].includes(target)) throw new TypeError('unknown SPIKE firmware target');
+        const profile = spikeFirmwareTarget(target);
         this.stopAll();
         this.data.firmwareTarget = target;
-        globalThis.__brickwrightUseVirtualSpike = target !== 'official-v3';
+        globalThis.__brickwrightUseVirtualSpike = profile.classic;
         this.changed();
     }
     setImu (value) { Object.assign(this.data.imu, value); this.changed(); }

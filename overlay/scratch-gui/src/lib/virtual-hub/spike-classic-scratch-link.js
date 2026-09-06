@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import VirtualSpikeHubState from './spike-hub-state.js';
+import VirtualSpikeHubState, {spikeFirmwareTarget} from './spike-hub-state.js';
 
 const isClassicScratchLink = url => /:(20110|20111)\//.test(String(url)) && /\/bt\b|\/scratch\/bt/.test(String(url));
 const encodeBase64 = bytes => {
@@ -179,7 +179,7 @@ export default function installVirtualSpikeClassicScratchLink (hubState = new Vi
     const NativeWebSocket = window.WebSocket;
     const Wrapped = function WebSocket (url, protocols) {
         if (globalThis.__brickwrightUseVirtualSpike === true &&
-            hubState.data.firmwareTarget !== 'official-v3' && isClassicScratchLink(url)) {
+            spikeFirmwareTarget(hubState.data.firmwareTarget).classic && isClassicScratchLink(url)) {
             return new VirtualSpikeClassicSocket(url, {hubState});
         }
         return protocols === undefined ? new NativeWebSocket(url) : new NativeWebSocket(url, protocols);

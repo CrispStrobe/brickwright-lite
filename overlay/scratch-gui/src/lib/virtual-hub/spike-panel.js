@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import {SPIKE_FIRMWARE_TARGETS, spikeFirmwareTarget} from './spike-hub-state.js';
 let panel = null;
 
 const element = (tag, attributes = {}, text = '') => {
@@ -37,15 +38,20 @@ export const openVirtualSpikePanel = hubState => {
         'One simulated hub shared by modern BLE and Classic Scratch Link. Disconnect always stops its motors.'));
 
     const profile = element('select', {style: 'width:100%;padding:8px;margin-bottom:12px'});
-    for (const [value, label] of [
-        ['legacy-v2', 'LEGO SPIKE legacy firmware v2 — Classic'],
-        ['official-v3', 'LEGO SPIKE official firmware v3 — BLE'],
-        ['brickwright', 'Brickwright firmware — Classic + BLE compatibility']
-    ]) profile.appendChild(element('option', {value}, label));
+    for (const [value, target] of Object.entries(SPIKE_FIRMWARE_TARGETS)) {
+        profile.appendChild(element('option', {value}, `${target.label} — ${target.summary}`));
+    }
     profile.value = hubState.data.firmwareTarget;
+    const profileStatus = element('p', {style: 'margin:-6px 0 12px;color:#596675'});
+    const updateProfileControls = () => {
+        const target = spikeFirmwareTarget(profile.value);
+        classic.checked = target.classic;
+        classic.disabled = !target.classic;
+        profileStatus.textContent = target.summary;
+    };
     profile.addEventListener('change', () => {
         hubState.setFirmwareTarget(profile.value);
-        classic.checked = profile.value !== 'official-v3';
+        updateProfileControls();
     });
     card.appendChild(profile);
 
@@ -55,6 +61,8 @@ export const openVirtualSpikePanel = hubState => {
     const classicLabel = element('label', {style: 'display:flex;gap:8px;margin-bottom:12px'});
     classicLabel.append(classic, document.createTextNode('Enable virtual Classic Scratch Link'));
     card.appendChild(classicLabel);
+    card.appendChild(profileStatus);
+    updateProfileControls();
 
     const battery = element('input', {type: 'range', min: '0', max: '100', value: String(hubState.data.battery)});
     const batteryLabel = element('label', {style: 'display:grid;grid-template-columns:110px 1fr 42px;gap:8px'});
