@@ -113,6 +113,12 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with: { node-version: 22 }
       - name: Require green upstream evidence for the pinned 8086 engine
+        # Authenticated: verify-bw-board-ci.mjs reads GH_TOKEN. Without it every runner
+        # shares GitHub's anonymous per-IP limit and this step dies with HTTP 403 on a
+        # busy night (2026-09-06, twice in one hour), which paints a rate limit and a red
+        # bw-board the same colour.
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: npm run verify:bwboard-ci
       - name: Install source-test dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
@@ -636,6 +642,12 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with: { node-version: 22 }
       - name: Require green upstream evidence for the pinned 8086 engine
+        # Authenticated: verify-bw-board-ci.mjs reads GH_TOKEN. Without it every runner
+        # shares GitHub's anonymous per-IP limit and this step dies with HTTP 403 on a
+        # busy night (2026-09-06, twice in one hour), which paints a rate limit and a red
+        # bw-board the same colour.
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: npm run verify:bwboard-ci
       - name: Vendor the pinned permissive Scratch sources
         run: npm run vendor
