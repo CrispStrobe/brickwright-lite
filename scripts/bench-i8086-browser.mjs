@@ -4,6 +4,7 @@
 // minimum-device runs; thresholds are deliberately limited to catching a machine
 // that cannot sustain one quarter of an XT, while raw and statistical JSON
 // receipts carry the distributions used for performance work.
+import {createHash} from 'node:crypto';
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {chromium} from 'playwright';
@@ -11,8 +12,10 @@ import {
     attributeReactCommits,
     summarizeI8086Pump,
     summarizeI8086Repetitions,
+    summarizeI8086SimulatedPump,
     summarizeI8086Timeline,
-    summarizeReactProfiles
+    summarizeReactProfiles,
+    validateI8086WorkloadIntegrity
 } from './lib/i8086-performance.mjs';
 import {auditWebpackResourceWindow, summarizeWebpackOwnership} from './lib/webpack-ownership.mjs';
 
@@ -21,6 +24,47 @@ const outDir = resolve(process.env.I8086_PERF_ARTIFACTS || 'artifacts/i8086-perf
 const rawDir = resolve(outDir, 'raw');
 const requestedRepetitions = Number.parseInt(process.env.I8086_PERF_REPETITIONS || '3', 10);
 const repetitions = Number.isFinite(requestedRepetitions) ? Math.max(3, requestedRepetitions) : 3;
+const workloadId = 'i8086-cpu-bound-v1';
+const heartbeatOffset = 0x110;
+const maximumSimulatedMsPerPump = 50;
+const workloadSource = `; BW-I8086-CPU-BOUND-V1
+    ORG 100H
+
+    JMP START
+
+    ORG 110H
+HEARTBEAT DD 0
+
+    ORG 120H
+START:
+    PUSH CS
+    POP DS
+
+    MOV AX, 1
+    MOV BX, 3
+    MOV SI, 0200H
+    MOV WORD PTR [HEARTBEAT], 0
+    MOV WORD PTR [HEARTBEAT + 2], 0
+
+MAIN:
+    MOV CX, 1024
+INNER_LOOP:
+    ADD AX, BX
+    XOR AX, 5A5AH
+    MOV [SI], AX
+    INC SI
+    INC SI
+    CMP SI, 0300H
+    JB IN_RANGE
+    MOV SI, 0200H
+
+IN_RANGE:
+    LOOP INNER_LOOP
+    ADD WORD PTR [HEARTBEAT], 1
+    ADC WORD PTR [HEARTBEAT + 2], 0
+    JMP MAIN
+`;
+const workloadSourceSha256 = createHash('sha256').update(workloadSource).digest('hex');
 const webpackStatsPath = process.env.I8086_WEBPACK_STATS;
 const webpackStats = webpackStatsPath ? JSON.parse(await readFile(resolve(webpackStatsPath), 'utf8')) : null;
 const webpackOwnership = webpackStats ? summarizeWebpackOwnership(webpackStats) : null;
@@ -83,15 +127,32 @@ try {
         await page.waitForLoadState('networkidle', {timeout: 20000}).catch(() => {});
         await mark('dos-load-start');
         await device.selectOption('i8086');
+        await page.waitForFunction(() =>
+            document.querySelector('[data-testid="bw-device-select"]')?.value === 'i8086',
+        null, {timeout: 15000});
         await mark('i8086-selected');
         // The minimum-width language row overlaps sibling controls visually;
         // dispatch the enabled production control just as the assemble step
         // below does. Setup interaction is outside the measured window.
         await page.getByTestId('bw-lang-row').getByRole('button', {name: /ASM/}).click({force: true});
-        const examples = page.getByTestId('bw-asm-examples');
-        await examples.waitFor({state: 'visible', timeout: 15000});
+        await page.getByTestId('bw-asm-examples').waitFor({state: 'visible', timeout: 15000});
+        const dialect = page.getByTestId('bw-asm-dialect');
+        await dialect.waitFor({state: 'visible', timeout: 15000});
+        await dialect.selectOption('masm');
         await mark('asm-ready');
-        await examples.selectOption('pins');
+        const editor = page.locator('.cm-content:visible').first();
+        await editor.waitFor({state: 'visible', timeout: 15000});
+        await editor.click();
+        await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a');
+        await page.keyboard.press('Backspace');
+        await page.keyboard.insertText(workloadSource);
+        await page.waitForFunction(marker => [...document.querySelectorAll('.cm-content')].some(node =>
+            node.getClientRects().length > 0 && (node.textContent || '').includes(marker)),
+        'BW-I8086-CPU-BOUND-V1', {timeout: 15000});
+        await page.waitForFunction(() => {
+            const button = document.querySelector('[data-testid="bw-asm-assemble"]');
+            return button && !button.disabled;
+        }, null, {timeout: 15000});
         await mark('example-ready');
         // On the phone layout the example picker can overlap this control.
         // Setup is not the subject of this benchmark; dispatch the enabled
@@ -114,10 +175,31 @@ try {
         await page.evaluate(() => new Promise(resolve =>
             requestAnimationFrame(() => requestAnimationFrame(resolve))));
         await mark('steady-window-ready');
+        const readHeartbeat = offset => page.evaluate(heartbeatOffsetValue => {
+            const target = window.__benchTarget;
+            if (!target || typeof target.regs !== 'function' || typeof target.readMem !== 'function') {
+                throw new Error('the production runner exposed no readable benchmark target');
+            }
+            const registers = target.regs();
+            if (!Number.isInteger(registers?.ds)) throw new Error('the 8086 target exposed no integer DS');
+            if (registers.ds !== registers.cs) throw new Error('the CPU-bound COM lost its explicit DS=CS');
+            if (typeof target.state !== 'function' || target.state() !== 'running') {
+                throw new Error('the benchmark target is not running');
+            }
+            const address = (((registers.ds & 0xffff) << 4) + heartbeatOffsetValue) & 0xfffff;
+            const bytes = target.readMem('mem', address, 4);
+            if (!(bytes instanceof Uint8Array) || bytes.length !== 4) {
+                throw new Error('the 8086 heartbeat read did not return four memory bytes');
+            }
+            const value = (bytes[0] | (bytes[1] << 8) | (bytes[2] << 16) | (bytes[3] << 24)) >>> 0;
+            return {ds: registers.ds & 0xffff, address, value, cycles: Number(registers.cycles)};
+        }, offset);
+        const heartbeatBefore = await readHeartbeat(heartbeatOffset);
         const steadyBaseline = await page.evaluate(() => window.__BW_I8086_PERF__?.samples?.length || 0);
         await page.waitForFunction(baseline =>
             window.__BW_I8086_PERF__?.samples?.length >= baseline + 180,
         steadyBaseline, {timeout: 30000, polling: 'raf'});
+        const heartbeatAfter = await readHeartbeat(heartbeatOffset);
         const raw = await page.evaluate(() => ({
             ...window.__BW_I8086_PERF__,
             heapBytes: performance.memory?.usedJSHeapSize ?? null,
@@ -133,8 +215,10 @@ try {
                 decodedBodySize: entry.decodedBodySize || 0
             }))
         }));
-        const steadyAt = raw.milestones.find(mark => mark.name === 'steady-window-ready')?.at ?? 0;
-        const samples = raw.samples.filter(s => s.simNs > 0 && s.at >= steadyAt);
+        const steadySamples = raw.samples.slice(steadyBaseline);
+        const simulatedMsPerPump = summarizeI8086SimulatedPump(
+            steadySamples, maximumSimulatedMsPerPump);
+        const samples = steadySamples.filter(s => Number.isFinite(Number(s.simNs)) && Number(s.simNs) > 0);
         const pump = samples.map(s => s.wallMs).sort((a, b) => a - b);
         const simMs = samples.reduce((n, s) => n + s.simNs / 1e6, 0);
         const sampleStart = samples[0].at;
@@ -190,6 +274,8 @@ try {
         const circuitOpenAttribution = attributeReactCommits(
             raw.reactProfiles, raw.reactUpdateSources, {from: circuitOpenAt, to: sampleStart});
         const ratio = simMs / elapsedMs;
+        const heartbeatDelta = (heartbeatAfter.value - heartbeatBefore.value) >>> 0;
+        const cycleDelta = heartbeatAfter.cycles - heartbeatBefore.cycles;
         const result = {
             profile: name,
             repetition,
@@ -198,6 +284,19 @@ try {
             simulatedMs: simMs,
             elapsedMs,
             realTimeRatio: ratio,
+            workload: {
+                id: workloadId,
+                sourceSha256: workloadSourceSha256,
+                heartbeatOffset,
+                heartbeatAddress: heartbeatBefore.address,
+                heartbeatBefore: heartbeatBefore.value,
+                heartbeatAfter: heartbeatAfter.value,
+                heartbeatDelta,
+                cyclesBefore: heartbeatBefore.cycles,
+                cyclesAfter: heartbeatAfter.cycles,
+                cycleDelta
+            },
+            simulatedMsPerPump,
             pumpMs: {p50: percentile(pump, 0.50), p95: percentile(pump, 0.95), max: pump.at(-1)},
             pumpBreakdown: summarizeI8086Pump(samples),
             longTasks: runtimeLongTasks,
@@ -223,7 +322,7 @@ try {
         profileResults.push(result);
         await writeFile(resolve(rawDir, `${name}-${String(repetition).padStart(2, '0')}.json`),
             `${JSON.stringify({
-                schema: 'brickwright/i8086-browser-performance-raw/v4',
+                schema: 'brickwright/i8086-browser-performance-raw/v5',
                 url,
                 profile: {name, ...contextOptions, cpuThrottleRate},
                 repetition,
@@ -233,6 +332,8 @@ try {
         console.log(`${name} #${repetition}: ${ratio.toFixed(2)}x XT, pump p50 `
             + `${result.pumpMs.p50.toFixed(2)} ms, p95 ${result.pumpMs.p95.toFixed(2)} ms, `
             + `${runtimeLongTasks.length} runtime long task(s)`);
+        console.log(`  workload: ${heartbeatDelta} completed heartbeat iteration(s), simulated pump p95 `
+            + `${simulatedMsPerPump.p95?.toFixed(2)} ms, ${simulatedMsPerPump.overshootCount} overshoot(s)`);
         console.log(`  long tasks: ${steadyLongTasks.length} started during steady pump, `
             + `${timeline.boundaryCrossingLongTasks.length} crossed into it from setup`);
         console.log(`  setup ownership: ${timeline.phases
@@ -318,7 +419,21 @@ try {
                 }
             }
         }
-        if (samples.length < 150 || ratio < 0.25) {
+        const integrityIssues = validateI8086WorkloadIntegrity(result, {
+            workloadId,
+            sourceSha256: workloadSourceSha256,
+            heartbeatOffset,
+            maximumSimulatedMsPerPump,
+            minimumSamples: 150
+        });
+        if (heartbeatBefore.address !== heartbeatAfter.address) {
+            integrityIssues.push('heartbeat address changed during the steady window');
+        }
+        if (integrityIssues.length) {
+            throw new Error(`${name} #${repetition} invalid CPU-bound workload receipt: `
+                + integrityIssues.join('; '));
+        }
+        if (ratio < 0.25) {
             throw new Error(`${name} #${repetition} 8086 benchmark did not sustain 0.25x real time`);
         }
         } finally {
@@ -334,7 +449,7 @@ try {
     }
 } finally {
     await writeFile(resolve(outDir, 'report.json'), `${JSON.stringify({
-        schema: 'brickwright/i8086-browser-performance/v5', url, repetitions, results, summaries,
+        schema: 'brickwright/i8086-browser-performance/v6', url, repetitions, results, summaries,
     }, null, 2)}\n`);
     await browser.close();
 }

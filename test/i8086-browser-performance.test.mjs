@@ -5,26 +5,39 @@ import {
     attributeReactCommits,
     summarizeI8086Pump,
     summarizeI8086Repetitions,
+    summarizeI8086SimulatedPump,
     summarizeSpread,
     summarizeI8086Timeline,
-    summarizeReactProfiles
+    summarizeReactProfiles,
+    validateI8086WorkloadIntegrity
 } from '../scripts/lib/i8086-performance.mjs';
 
 test('the production 8086 benchmark covers desktop and mobile pump health', () => {
     const script = readFileSync(new URL('../scripts/bench-i8086-browser.mjs', import.meta.url), 'utf8');
     for (const fact of [
         "name: 'desktop'", "name: 'mobile'", "name: 'minimum-device-4x'", '__BW_I8086_PERF__',
-        "selectOption('i8086')", "selectOption('pins')", 'realTimeRatio',
+        "selectOption('i8086')", 'i8086-cpu-bound-v1', 'BW-I8086-CPU-BOUND-V1',
+        "locator('.cm-content:visible')", 'workloadSourceSha256', 'heartbeatDelta',
+        'heartbeatAddress', 'cycleDelta', "selectOption('masm')", 'simulatedMsPerPump',
+        'maximumSimulatedMsPerPump = 50',
+        'validateI8086WorkloadIntegrity', 'realTimeRatio',
         'pumpMs', 'pumpBreakdown', 'setupTimeline', 'steadyLongTasks',
         'milestones', 'resources', 'longTasks', 'reactProfiles', 'heapBytes', "ratio < 0.25",
         'encodedBodySize', 'decodedBodySize', 'newCDPSession', 'reactUpdateSources',
-        "'Emulation.setCPUThrottlingRate'", 'browser-performance-raw/v4',
-        'browser-performance/v5', 'summarizeI8086Repetitions', 'cpuThrottleRate: 4',
+        "'Emulation.setCPUThrottlingRate'", 'browser-performance-raw/v5',
+        'browser-performance/v6', 'summarizeI8086Repetitions', 'cpuThrottleRate: 4',
         'dos-load-start', 'dosLoadResources', 'dosJourneyResources', 'preCircuitResources',
         'eagerCircuitAssets', 'speculativeExampleAssets', 'pseudocode-examples\\.js',
         'eagerGrammarAssets', 'optionalCodeMirrorGrammars', 'eagerPaintAssets',
         'lazyPaintEditor', 'I8086_WEBPACK_STATS',
     ]) assert.ok(script.includes(fact), `benchmark lost ${fact}`);
+    assert.doesNotMatch(script, /selectOption\(['"]pins['"]\)/,
+        'a synthetic DOS wait cannot stand in for CPU throughput');
+    const workload = script.match(/const workloadSource = `([\s\S]*?)`;/)?.[1] || '';
+    assert.match(workload, /PUSH CS\s+POP DS/);
+    assert.match(workload, /HEARTBEAT DD 0/);
+    assert.doesNotMatch(workload, /\b(?:INT|HLT|WAIT)\b/i,
+        'the CPU-bound workload must not advance through a service, halt or wait');
     assert.match(script, /Math\.max\(3, requestedRepetitions\)/,
         'the statistical gate must not accept fewer than three repetitions');
     assert.match(script, /getByRole\('button', \{name: \/ASM\/\}\)\.click\(\{force: true\}\)/,
@@ -32,7 +45,7 @@ test('the production 8086 benchmark covers desktop and mobile pump health', () =
     const repetitionLoop = script.indexOf('for (let repetition = 1; repetition <= repetitions; repetition++)');
     const freshContext = script.indexOf('browser.newContext(contextOptions)', repetitionLoop);
     const rawReceipt = script.indexOf('writeFile(resolve(rawDir', freshContext);
-    const perRunFloor = script.indexOf('samples.length < 150 || ratio < 0.25', rawReceipt);
+    const perRunFloor = script.indexOf('ratio < 0.25', rawReceipt);
     const closeContext = script.indexOf('await context.close()', perRunFloor);
     assert.ok(repetitionLoop >= 0 && repetitionLoop < freshContext && freshContext < rawReceipt &&
         rawReceipt < perRunFloor && perRunFloor < closeContext,
@@ -46,6 +59,9 @@ test('repeated receipts report a true median and full observed spread', () => {
         realTimeRatio: ratio,
         elapsedMs: 100 + index,
         pumpMs: {p50: ratio, p95: ratio + 1, max: ratio + 2},
+        workload: {heartbeatDelta: ratio * 100, cycleDelta: ratio * 1000},
+        simulatedMsPerPump: {p50: ratio + 10, p95: ratio + 11, max: ratio + 12,
+            overshootCount: 0},
         pumpBreakdown: {totalWallMs: ratio * 10, phases: {
             runMs: {totalMs: ratio, percentOfPump: 50},
             boardMs: {totalMs: 0, percentOfPump: 0},
@@ -63,8 +79,106 @@ test('repeated receipts report a true median and full observed spread', () => {
     const summary = summarizeI8086Repetitions(runs);
     assert.equal(summary.repetitions, 3);
     assert.deepEqual(summary.realTimeRatio, {median: 2, min: 1, max: 3, range: 2});
+    assert.deepEqual(summary.workload.heartbeatDelta, {median: 200, min: 100, max: 300, range: 200});
+    assert.deepEqual(summary.workload.cycleDelta, {median: 2000, min: 1000, max: 3000, range: 2000});
+    assert.equal(summary.simulatedMsPerPump.p95.median, 13);
+    assert.deepEqual(summary.simulatedMsPerPump.overshootCount,
+        {median: 0, min: 0, max: 0, range: 0});
     assert.equal(summary.setupPhases['circuit-open-to-first-pump'].scriptEncodedBodyBytes.median, 100);
     assert.equal(summary.startupReact.CircuitDesigner.commits.median, 11);
+});
+
+test('simulated pump integrity exposes overshoots and malformed samples', () => {
+    const healthy = summarizeI8086SimulatedPump([
+        {at: 10, wallMs: 1, simNs: 16e6},
+        {at: 20, wallMs: 2, simNs: 17e6},
+        {at: 30, wallMs: 1.5, simNs: 15e6}
+    ]);
+    assert.deepEqual(healthy, {
+        p50: 16,
+        p95: 17,
+        max: 17,
+        limitMs: 50,
+        overshootCount: 0,
+        overshoots: [],
+        issues: [],
+        valid: true
+    });
+    const leap = summarizeI8086SimulatedPump([
+        {at: 10, wallMs: 1, simNs: 16e6},
+        {at: 20, wallMs: 1, simNs: 250e6}
+    ]);
+    assert.equal(leap.valid, false);
+    assert.equal(leap.overshootCount, 1);
+    assert.deepEqual(leap.overshoots, [{index: 1, at: 20, simulatedMs: 250}]);
+    for (const samples of [
+        [],
+        [{at: 1, wallMs: 1, simNs: Number.NaN}],
+        [{at: 2, wallMs: 1, simNs: 1e6}, {at: 1, wallMs: 1, simNs: 1e6}],
+        [{at: 1, wallMs: 0, simNs: 1e6}],
+        [{at: 1, wallMs: 1, simNs: 0}]
+    ]) assert.equal(summarizeI8086SimulatedPump(samples).valid, false);
+});
+
+test('CPU-bound workload integrity fails closed on bypassed or mutated evidence', () => {
+    const sourceSha256 = 'a'.repeat(64);
+    const result = {
+        workload: {
+            id: 'i8086-cpu-bound-v1',
+            sourceSha256,
+            heartbeatOffset: 0x110,
+            heartbeatAddress: 0x12300,
+            heartbeatBefore: 10,
+            heartbeatAfter: 30,
+            heartbeatDelta: 20,
+            cyclesBefore: 1000,
+            cyclesAfter: 2000,
+            cycleDelta: 1000
+        },
+        simulatedMsPerPump: {
+            p50: 16,
+            p95: 17,
+            max: 18,
+            limitMs: 50,
+            valid: true,
+            issues: [],
+            overshootCount: 0,
+            overshoots: []
+        },
+        simulatedMs: 3000,
+        elapsedMs: 3100,
+        realTimeRatio: 3000 / 3100,
+        samples: 180
+    };
+    const validate = value => validateI8086WorkloadIntegrity(value, {
+        workloadId: 'i8086-cpu-bound-v1',
+        sourceSha256,
+        heartbeatOffset: 0x110,
+        maximumSimulatedMsPerPump: 50,
+        minimumSamples: 150
+    });
+    assert.deepEqual(validate(result), []);
+    const mutations = [
+        value => { value.workload.id = 'pins'; },
+        value => { value.workload.sourceSha256 = 'b'.repeat(64); },
+        value => { value.workload.heartbeatOffset++; },
+        value => { value.workload.heartbeatAddress = 0x100000; },
+        value => { value.workload.heartbeatAfter = value.workload.heartbeatBefore; value.workload.heartbeatDelta = 0; },
+        value => { value.workload.heartbeatAfter++; },
+        value => { value.workload.heartbeatDelta++; },
+        value => { value.workload.cycleDelta = 0; },
+        value => { value.workload.cyclesAfter++; },
+        value => { value.simulatedMsPerPump.valid = false; },
+        value => { value.simulatedMsPerPump.overshootCount = 1; },
+        value => { value.simulatedMsPerPump.limitMs = 250; },
+        value => { value.realTimeRatio = Number.NaN; },
+        value => { value.samples = 149; }
+    ];
+    for (const mutate of mutations) {
+        const value = structuredClone(result);
+        mutate(value);
+        assert.notDeepEqual(validate(value), []);
+    }
 });
 
 test('the receipt reports React commit counts and actual durations by subtree', () => {
