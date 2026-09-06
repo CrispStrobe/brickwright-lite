@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import test from 'node:test';
 
 import {validatePseudocodeActivationReceipt} from '../scripts/lib/p21-pseudocode-probe.mjs';
@@ -27,6 +28,15 @@ const receipt = () => ({
     medianMs: 30
 });
 
+test('the exact hosted P21 eager receipt remains valid', () => {
+    const hosted = JSON.parse(readFileSync(new URL(
+        './fixtures/p21-pseudocode-eager-receipt.json', import.meta.url)));
+    assert.deepEqual(validatePseudocodeActivationReceipt(hosted), []);
+    assert.equal(hosted.run, 34061190255);
+    assert.equal(hosted.headSha, '513237241a68dd374a7e3040a2f73cab4e89c347');
+    assert.equal(Math.round(hosted.medianMs * 10) / 10, 129.2);
+});
+
 test('P21 eager receipt requires five bound and usable cold activations', () => {
     assert.deepEqual(validatePseudocodeActivationReceipt(receipt()), []);
     const mutations = [
@@ -46,5 +56,37 @@ test('P21 eager receipt requires five bound and usable cold activations', () => 
         const value = receipt();
         mutate(value);
         assert.notDeepEqual(validatePseudocodeActivationReceipt(value), []);
+    }
+});
+
+test('P21 candidate receipt binds baseline, deferral, retry, preset and state seams', () => {
+    const value = receipt();
+    value.mode = 'lazy-candidate';
+    value.baseline = {run: 34061190255, headSha: 'b'.repeat(40), medianMs: 129.2};
+    value.relativeLimitMs = 279.2;
+    value.samples = value.samples.map(item => ({...item, beforePseudocodeScripts: [],
+        pseudocodeScripts: [{name: 'pseudocode-importer.js', encodedBodySize: 60000}]}));
+    value.scenarios = {
+        delay: {loadingVisible: true, editorBeforeRelease: false, usable: true, requestCount: 1},
+        retry: {errorVisible: true, usable: true, requestCount: 2},
+        preset: {usable: true, editorCount: 1, requestCount: 1},
+        state: {autosave: true, bundle: true, circuit: true}
+    };
+    assert.deepEqual(validatePseudocodeActivationReceipt(value), []);
+    const mutations = [
+        receipt => { receipt.baseline.run = 0; },
+        receipt => { receipt.relativeLimitMs = 0; },
+        receipt => { receipt.samples[0].beforePseudocodeScripts.push({name: 'early.js'}); },
+        receipt => { receipt.samples[0].pseudocodeScripts = []; },
+        receipt => { receipt.medianMs = 280; receipt.samples[2].durationMs = 280; },
+        receipt => { receipt.scenarios.delay.loadingVisible = false; },
+        receipt => { receipt.scenarios.retry.requestCount = 1; },
+        receipt => { receipt.scenarios.preset.editorCount = 2; },
+        receipt => { receipt.scenarios.state.bundle = false; }
+    ];
+    for (const mutate of mutations) {
+        const changed = structuredClone(value);
+        mutate(changed);
+        assert.notDeepEqual(validatePseudocodeActivationReceipt(changed), []);
     }
 });

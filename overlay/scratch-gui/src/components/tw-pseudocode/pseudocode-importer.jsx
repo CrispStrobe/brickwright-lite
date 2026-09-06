@@ -1019,6 +1019,14 @@ class PseudocodeImporter extends React.Component {
             }
         };
         window.addEventListener('bw-project-bundle-loaded', this._onBundleLoaded);
+        // A lazy host can observe a bundle event before this module finishes
+        // loading. Replay only that captured detail here; events after mount
+        // reach the ordinary listener above exactly once.
+        if (this.props.pendingBundleDetail) {
+            this._onBundleLoaded({detail: this.props.pendingBundleDetail});
+            this.props.onPendingBundleHandled();
+        }
+        this.props.onReady();
     }
 
     /**
@@ -3677,7 +3685,7 @@ class PseudocodeImporter extends React.Component {
         const max = this.state.maximized;
         const csel = {...sel, padding: '4px 8px', fontSize: 12}; // compact select
         return (
-            <div style={wrap}>
+            <div style={wrap} data-testid="bw-code-editor">
                 {/* ── Single merged row: language tabs (left) + compact controls (right) ── */}
                 <div style={{display: 'flex', gap: 2, marginBottom: -1, alignItems: 'flex-end', flexWrap: 'nowrap', flexShrink: 0}}
                     data-testid="bw-lang-row">
@@ -4363,13 +4371,19 @@ PseudocodeImporter.propTypes = {
     // example sources; see the comment above CMEditor. Defaults to visible so a
     // host that does not manage tabs gets the full editor.
     isVisible: PropTypes.bool,
+    pendingBundleDetail: PropTypes.shape({}),
+    onPendingBundleHandled: PropTypes.func,
+    onReady: PropTypes.func,
     // Injected by connect() with no mapDispatchToProps. Declared so the refusal
     // alert is not a silent prop-types warning in development.
     dispatch: PropTypes.func
 };
 
 PseudocodeImporter.defaultProps = {
-    isVisible: true
+    isVisible: true,
+    pendingBundleDetail: null,
+    onPendingBundleHandled: () => {},
+    onReady: () => {}
 };
 
 export default connect(state => ({
