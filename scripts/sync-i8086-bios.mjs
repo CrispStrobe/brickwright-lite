@@ -307,9 +307,22 @@ function writeManifest ({sourceSha, romSha, bytes, entry, segment, assemblerSha,
         source: {
             repo: 'bw-board',
             path: SOURCE_IN_BW_BOARD,
+            // The sha whose bios.asm was assembled. In --write that is the
+            // checkout's HEAD, which is usually a commit that did not touch the
+            // ROM at all -- so its subject line describes something else
+            // entirely, and a reader would take it for the change that produced
+            // these bytes. `lastTouchedBy` is the commit that actually moved the
+            // source, and it is the one worth reading.
             sha: sourceSha,
-            subject: git(dir, ['log', '-1', '--format=%s', sourceSha]),
-            date: git(dir, ['log', '-1', '--format=%ad', '--date=short', sourceSha])
+            date: git(dir, ['log', '-1', '--format=%ad', '--date=short', sourceSha]),
+            lastTouchedBy: (() => {
+                const c = git(dir, ['log', '-1', '--format=%H', sourceSha, '--', SOURCE_IN_BW_BOARD]);
+                return c ? {
+                    sha: c,
+                    subject: git(dir, ['log', '-1', '--format=%s', c]),
+                    date: git(dir, ['log', '-1', '--format=%ad', '--date=short', c])
+                } : null;
+            })()
         },
         assembler: {
             path: 'overlay/scratch-gui/src/lib/bw-board/i8086-asm.js',

@@ -39,13 +39,18 @@ const MANIFEST = join(repo, 'overlay/scratch-gui/static/roms/i8086-bios.provenan
 const ASSEMBLER = join(repo, 'overlay/scratch-gui/src/lib/bw-board/i8086-asm.js');
 const PINS = join(repo, 'vendor-pins.json');
 
-// The ROM is deliberately behind the pin by this many bios.asm commits, as of
-// the manifest written 2026-09-06. It is asserted EXACTLY, not as "some number
-// >= 0", because the failure this catches is somebody re-running --record after
-// the pin moved: pinAtBuild would be updated, ancestry would still hold, and the
-// gap would have grown by four commits with nothing to show for it. When the ROM
-// is finally rebuilt at the pin this becomes 0 and changes in the same commit.
-const BEHIND_PIN_BY = 7;
+// The ROM is behind the pin by this many bios.asm commits. It is asserted
+// EXACTLY, not as "some number >= 0", because the failure it catches is somebody
+// re-running --record after the pin moved: pinAtBuild would be updated, ancestry
+// would still hold, and the gap would have grown with nothing to show for it.
+//
+// It was 7 for one day. The ROM landed on 2026-09-04 built from bw-board 5584c3f,
+// the first BIOS commit, and by the time anything measured it the pin had moved
+// seven bios.asm commits further on -- the whole uPD765 floppy stack and CGA
+// graphics modes 4/5/6. It is 0 now because the pin move rebuilt it, which is the
+// number this constant should read whenever a pin move has been finished rather
+// than merely done.
+const BEHIND_PIN_BY = 0;
 
 const sha256 = (buf) => createHash('sha256').update(buf).digest('hex');
 
