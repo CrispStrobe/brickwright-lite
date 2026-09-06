@@ -1391,6 +1391,22 @@ vendor `rom/bios.asm` (text, same licence as the assembler that is already
 vendored) and let CI assemble it and compare — then the manifest's source sha is a
 claim CI re-derives rather than one it trusts.
 
+**CLOSED for lite, 2026-09-06.** `rom/bios.asm` is now vendored as
+`static/roms/i8086-bios.asm` (MIT, `-text` in `.gitattributes` so no runner's
+autocrlf moves its digest), synced by `scripts/sync-i8086-bios.mjs --record` at
+the pin and recorded in the manifest with its own `sha256`.
+`test/i8086-bios-source-provenance.test.mjs` runs offline on every CI leg: it
+re-derives the source and assembler sha256s from disk against the manifest
+(so a one-byte change to either reddens THAT input by name), then assembles the
+vendored source with lite's own `i8086-asm.js` via exactly
+`assemble(source, {format: 'com'})` into a temporary buffer — never back into
+`static/roms`, the trap above — and asserts byte-equality with the committed
+`.bin`, naming both inputs and their hashes on a mismatch. verifyRom is not
+re-implemented; equality with the `.bin` the boot test runs inherits it. The
+`BW_BOARD_DIR` live ancestry check in `test/i8086-bios-provenance.test.mjs`
+stays as the online complement. Mutation-proven both ways (source byte → red
+naming the source; assembler byte → red naming the assembler).
+
 **The trap in front of the fix**, because someone will walk into it: a test that
 writes into the artefact directory to check the artefact directory passes on its
 second run no matter what. It overwrites the evidence with the thing it was supposed
