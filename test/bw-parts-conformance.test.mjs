@@ -123,17 +123,17 @@ test('(3) the stored verb×family matrix is exactly what the emitter branches sa
     // the anchors that fix the attribution rule
     assert.deepEqual(derived.shiftOut, ['8051', 'avr', '6502', 'arm'],
         'shift_out must be implemented for four families (8051, avr, 6502, arm — not z80)');
-    assert.deepEqual(derived.pin, ['8051', 'avr', '6502', 'z80', 'arm'],
-        'the pin primitives must be implemented for all five families');
+    assert.deepEqual(derived.pin, ['8051', 'avr', '6502', 'z80', 'arm', 'i8086'],
+        'the pin primitives must be implemented for all six families — i8086 through the 8255');
     assert.deepEqual(derived.adc, ['8051', 'avr', 'arm'],
         'adc must be three families (8051, avr, arm): its flag is in the shared procedures_call '
         + 'case, which is NOT credited because that case is not dedicated to one verb');
     // 8051 is the base dialect: present for every verb
     for (const v of VERBS) assert.ok(VERB_FAMILIES[v].includes('8051'), `verb "${v}" is missing the 8051 base dialect`);
-    // only the five emitter families are stored (rp2040/i8086 are doc-render)
+    // only the emitter families are stored (rp2040 is the one doc-render column)
     const allowed = new Set(Object.values(FAMILY));
     for (const v of VERBS) for (const f of VERB_FAMILIES[v]) {
-        assert.ok(allowed.has(f), `verb "${v}" stores family "${f}", which is not one of the five emitter families`);
+        assert.ok(allowed.has(f), `verb "${v}" stores family "${f}", which is not one of the emitter families`);
     }
 });
 

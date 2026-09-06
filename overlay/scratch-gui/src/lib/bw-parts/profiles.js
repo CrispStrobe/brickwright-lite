@@ -9,12 +9,13 @@
  * (VERB_FAMILIES) is the one thing MEASURED from the emitter rather than typed:
  * scripts/gen-part-profiles.mjs re-derives it from sb3-creator.js and the gate
  * asserts this table matches, so removing an emitter branch reddens a cell. The
- * five families here (avr, arm, 6502, z80, 8051) are the emitter's own branch
- * strings; the generated doc renders SEVEN columns from them — rp2040 is derived
- * as "≡ arm" (one emitter branch; Pico vs STM32 is a later flag, not a branch)
- * and i8086 is a full column of "refuses by name (no emitter branch)". Those two
- * are a rendering, never stored (see gen-part-profiles.mjs's header for the
- * attribution rule).
+ * six families here (avr, arm, 6502, z80, 8051, i8086) are the emitter's own
+ * branch strings; the generated doc renders SEVEN columns from them — rp2040 is
+ * derived as "≡ arm" (one emitter branch; Pico vs STM32 is a later flag, not a
+ * branch) and is the only rendering-only column, never stored. i8086 IS stored:
+ * it joined as a measured family when pin (through the 8255) got its first
+ * branch, and refuses by name everywhere else (see gen-part-profiles.mjs's
+ * header for the attribution rule).
  *
  * PART IDs are bw-board device-model `kind` strings (registeredKinds()), plus
  * the core BUILTIN_KINDS a learner most often places (led, button…), plus the
@@ -36,11 +37,13 @@ export const BUS = Object.freeze({
 /**
  * The emitter's host-CPU families — its own `this._core` branch strings.
  * 8051 is the base STC12 dialect (implemented for every emitting verb); the
- * other four are specializations. rp2040 and i8086 are NOT here: rp2040 shares
- * arm's branch, i8086 has none. Both are doc-render only.
+ * others are specializations. i8086 joined as a measured family when its first
+ * verb (pin, through the 8255) got an emitter branch — its cells are refuse
+ * everywhere else. rp2040 is NOT here: it shares arm's branch and is rendered
+ * `≡arm` in the doc, never stored.
  */
 export const FAMILY = Object.freeze({
-    STC8051: '8051', AVR: 'avr', W6502: '6502', Z80: 'z80', ARM: 'arm'
+    STC8051: '8051', AVR: 'avr', W6502: '6502', Z80: 'z80', ARM: 'arm', I8086: 'i8086'
 });
 
 /** Sections a part id belongs to — how bw-board knows it. */
@@ -89,7 +92,7 @@ export const VERBS = Object.freeze([
  * the gate pass.
  */
 export const VERB_FAMILIES = Object.freeze({
-    pin: ['8051', 'avr', '6502', 'z80', 'arm'],
+    pin: ['8051', 'avr', '6502', 'z80', 'arm', 'i8086'],
     adc: ['8051', 'avr', 'arm'],
     pwm: ['8051', 'avr', 'arm'],
     tone: ['8051', 'avr', 'arm'],

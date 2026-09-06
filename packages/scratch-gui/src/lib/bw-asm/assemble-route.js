@@ -224,6 +224,49 @@ const C_STARTUP = [
 ].join('\n') + '\n';
 
 /**
+ * Port I/O primitives for compiled C. SmallerC has no inline asm and no port
+ * intrinsic, so a C program that must reach an I/O-mapped peripheral — the 8255
+ * PPI the 8086 boards drive their pins through — declares these `extern` and
+ * CALLS them. Their bodies are the SAME idiom pseudocode-8086.js emits inline
+ * for the ASM route (`MOV DX, port` / `OUT DX, AL` / `IN AL, DX`), so a reader
+ * of both routes sees one thing.
+ *
+ * The contract is cdecl, matching SmallerC's 16-bit output: arguments are
+ * 16-bit words pushed right to left (so the first argument sits at [bp+4]), the
+ * caller cleans the stack, and a result comes back in AX. This is the API the
+ * C tab's 8086 note documents.
+ *
+ * `bw_outb(port, value)` — write `value` (low byte) to I/O `port`.
+ * `bw_inb(port)`         — read a byte from I/O `port`, zero-extended.
+ *
+ * Injected by compileC8086 ONLY when the compiled body references the symbol
+ * (see below), so every program that does no port I/O is byte-for-byte
+ * unchanged.
+ */
+const PORT_IO_HELPERS = {
+    bw_outb: [
+        '_bw_outb:',            // void bw_outb(unsigned port, unsigned value)
+        '    push bp',
+        '    mov bp, sp',
+        '    mov dx, [bp+4]',   // port  (first arg, pushed last)
+        '    mov ax, [bp+6]',   // value (second arg)
+        '    out dx, al',       // same idiom as pseudocode-8086.js: OUT DX, AL
+        '    pop bp',
+        '    ret'
+    ].join('\n') + '\n',
+    bw_inb: [
+        '_bw_inb:',             // unsigned bw_inb(unsigned port)  -> AX
+        '    push bp',
+        '    mov bp, sp',
+        '    mov dx, [bp+4]',   // port
+        '    in al, dx',        // same idiom as pseudocode-8086.js: IN AL, DX
+        '    xor ah, ah',       // zero-extend the byte to a 16-bit unsigned
+        '    pop bp',
+        '    ret'
+    ].join('\n') + '\n'
+};
+
+/**
  * C -> 8086 image, entirely in the browser: SmallerC (BSD-2, compiled to
  * WASM) emits NASM `bits 16`, and our own assembler turns that into a .COM.
  *
@@ -253,7 +296,23 @@ export async function compileC8086 (cSource, seams = {}) {
     // The compiler's own `bits 16` is dropped because the startup carries one;
     // two would be a duplicate directive rather than a harmless repeat.
     const body = out.asm.replace(/^\s*bits\s+16\s*$/im, '');
-    const asm = C_STARTUP + body;
+
+    // Conditional port-I/O injection: if the compiled body CALLS one of the
+    // port helpers (it will have emitted `call _bw_outb` and an `extern` for
+    // it), define the helper in this same image and strip the extern (the
+    // symbol is now local). Only referenced helpers are added, so a program
+    // that does no port I/O assembles to exactly what it did before.
+    let helpers = '';
+    let cleaned = body;
+    for (const [sym, asmDef] of Object.entries(PORT_IO_HELPERS)) {
+        // Inject the body ONLY when the helper is actually CALLED, so a program
+        // that does no port I/O is unchanged. Strip the `extern` whenever it is
+        // present — a call needs it gone (the symbol is now local), and a bare
+        // declaration with no call would otherwise leave a dangling external.
+        if (new RegExp(`\\bcall\\s+_${sym}\\b`).test(body)) helpers += asmDef;
+        cleaned = cleaned.replace(new RegExp(`^\\s*extern\\s+_${sym}\\s*$`, 'im'), '');
+    }
+    const asm = C_STARTUP + helpers + cleaned;
 
     const assemble = assembleLocal || (async (src) => {
         const mod = await import(/* webpackChunkName: "i8086-asm" */ '../bw-board/i8086-asm.js');
