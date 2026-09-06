@@ -38,9 +38,11 @@ owner trees remained untouched while their value was reconstructed on the review
 platform base. Coherent distance/IMU snapshots (`a5c1b95..e8650ca`) and bounded,
 generation-safe Classic timed motors (`a13d717..2edc928`) are now on firmware
 `main`, each after independent review, focused gates, private source CI, and a full
-containerized ARM/NuttX build. Finite sound (`5bbfadb`, hardened by `7e905f7`) is
-preserved on `integration/finite-sound-20260906`: independent concurrency review
-and exact-tip source CI pass, but the real ARM image reports 98,448 bytes of
-userspace static RAM against the reviewed 98,304-byte ceiling. It is deliberately
-not promoted; changing that budget or trading another retained buffer is a future
-resource-design decision. The original dirty owner worktrees remain preserved.
+containerized ARM/NuttX build. Finite sound, reconstructed and concurrency-hardened
+as `1c3d617..8b1e73a`, is also on firmware `main`. Its first real ARM image exposed
+a 144-byte RAM overrun; right-sizing the Modern transmit scratch to the codec's
+exact public bound and fixing the matching maximum receive boundary
+(`4a01dbd..9debfd8`) reduced the final image to 98,096/98,304 bytes without heap
+state or a policy increase. Independent review, maximum-frame tests, source CI,
+and the full ARM/NuttX build pass. The original dirty owner worktrees remain
+preserved.
