@@ -410,7 +410,7 @@ blink for it; the matrix cell reads `native · silicon only`.
 BASIC-52 on the 8052-class STC parts and a permissively licensed Tiny BASIC on
 the ATmega328P. Measure RAM/ROM fit and licence; decide.
 
-**N9. micro:bit flashing over WebUSB (DAPLink).**
+**N9. micro:bit flashing over WebUSB (DAPLink). DONE 2026-09-06** (delegate `8086 coverage testing materials`, audited by lego-ac): `flashDaplinkMicrobit` in `lib/flasher.js` reuses the CMSIS-DAP + SWD transport `flashSwdStm32` uses, halts the core, reads FICR.INFO.PART and refuses any part but the nRF52833 by name, then drives the NVMC (READY 0x4001E400, CONFIG 0x4001E504, ERASEPAGE 0x4001E508, 4 KiB pages; Product Specification §4.4/§4.8 cited in the header, no vendor library); `test/microbit-daplink-flash.test.mjs` replays the DAP protocol on a mock USBDevice and asserts the exact halt/erase/program/reset sequence (a bent register is red). The "⚡ flash the micro:bit" button (`bw-microbit-flash-webusb`) appears only when `navigator.usb` exists, asks for the board before the file, and refuses by name; `daplink-webusb` ships for the micro:bit only (the Calliope mini is a different SoC the flasher refuses), tier 3, **declared on hardware, measured on a mock DAP** — no board in the fleet. `verify-microbit-flash.mjs` (light shard) proves the present-and-refusing and absent cases by the status text. Run 34027908454: both browser legs green.
 `flashSwdStm32` already speaks CMSIS-DAP over WebUSB; the micro:bit's
 interface chip is DAPLink. Add the nRF52833 flash algorithm and a button
 beside "⬇ .hex for the board".
