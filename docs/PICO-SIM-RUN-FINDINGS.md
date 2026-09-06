@@ -9,8 +9,9 @@ individually.
 
 ## N3c-1 — `machine.reset()` does not reboot rp2040js (bw-board adapter gap)
 
-**Owner: bw-board** (`src/rp2040js-adapter.js` / rp2040js reset modelling).
-Surfaced by lite N3c; lite works around it (see Impact) but cannot fix it.
+**Resolved 2026-09-06.** bw-board `435599c` exposes a reset request at the
+watchdog instruction boundary; Lite consumes it by replacing the complete SoC
+and USB CDC epoch while preserving flash and the external board.
 
 **Claim.** In bw-board's rp2040js adapter, a MicroPython `machine.reset()` does
 not reboot the emulated core. Execution stalls instead of re-running boot stage
@@ -36,22 +37,25 @@ adapter to record pin edges.
   `publishPin → board.setPin` chain. So the boot, the REPL, the transport and
   the GPIO→board wiring are all sound; only the reset-reboot is missing.
 
-**Impact on a learner.** A learner's own program that calls `machine.reset()`
-would freeze the simulator in exactly this way — no output, no error, no LED.
-Until the adapter models the reset, lite's Pico ▶ Run:
+**Historical learner impact.** A learner's own program that called
+`machine.reset()` froze the simulator in exactly this way — no output, no
+error, no LED. Before the repair, Lite's Pico ▶ Run:
 
-1. uses **run-live** (`exec`) rather than **install-and-reboot** (`deployMainPy`)
+1. used **run-live** (`exec`) rather than **install-and-reboot** (`deployMainPy`)
    for the simulator — the one seam that differs between sim and silicon, named
    for the thing that actually differs (persistence), not for sim-vs-silicon;
    the Pico's silicon path keeps install-and-reboot, which a real Pico honours.
-2. **refuses by name** when the program text calls `machine.reset()`, with the
+2. **refused by name** when the program text called `machine.reset()`, with the
    sentence "the simulator does not model machine.reset() yet (bw-board finding
    N3c-1); it would freeze here — run it on real hardware", rather than silently
    swallowing the reset and hanging.
 
-**Close-out.** When bw-board models the RP2040 reset (boot2 re-runs and the
-stored/last program restarts), the sim can use install-and-reboot too, the
-refusal is removed, and the run-live / install-and-reboot seam collapses to one
-path. Re-run the probe measurement above: `deployMainPy` should then advance the
-step counter past 2,191,927 and drive GP25, and lite's
-`test/pico-micropython-gpio.test.mjs` can gain the install-and-reboot case.
+**Close-out evidence.** The simulator now uses `deployMainPy`, observes the
+watchdog request, terminates the old epoch, boots a fresh adapter from the exact
+post-deploy flash, reconnects USB, and permits `machine.reset()` in learner
+programs. Unit tests prove flash/board preservation, stale-byte disposal,
+pending and future transport-read rejection after terminal faults, and prompt
+failure propagation. The hosted browser gate runs GP25-high, stops, switches
+back to Pseudocode, runs a different GP24-high program, and observes the second
+reset generation and USB enumeration without reloading the page. Missing
+firmware continues to refuse by name.

@@ -17,21 +17,19 @@ gates.
 
 ## Next-session priorities — reconciled 2026-09-06
 
-The current shortlist was reconciled with `main` at `69f099432`. Completed and
+The current shortlist was reconciled with `main` at `238769010`. Completed and
 rejected predecessor work is recorded in `HISTORY.md`.
 
-The next two bounded tracks are:
+The next bounded track is:
 
 | Track | Outcome | Estimated focused work |
 |---|---|---|
-| 1 — Pico reset and rerun | Complete the rp2040js watchdog reset boundary, then prove two consecutive editor programs execute. | 4–8 hours including upstream reconciliation |
-| 2 — P18 Connection-modal attribution | Measure the exact initial-only closure and proceed only if the modal can move at least 76,800 emitted bytes. | 2–4 hours before any candidate |
+| P18 Connection-modal attribution | Measure the exact initial-only closure and proceed only if the modal can move at least 76,800 emitted bytes. | 2–4 hours before any candidate |
 
-P16a–P16c and the browser-artifact decision are closed in `HISTORY.md`. Pico
-reset has a red-before-fix reproduction and a confirmed
-watchdog trigger. Upstream branch `fix/rp2040-machine-reset` carries the
-reviewable reset-request contract at `435599c`; a complete reboot must consume
-it by reconstructing the SoC and reconnecting host bindings. P17 is complete:
+P16a–P17, the browser-artifact decision, and Pico reset/rerun are closed in
+`HISTORY.md`. bw-board `435599c` exposes the watchdog reset request and Lite
+performs a whole-SoC/USB epoch replacement from preserved flash; focused tests
+and the hosted two-program browser proof cover the former freeze. P17 is complete:
 the Sound route is demand-loaded, initializes audio safely after a late import,
 and prewarms on user intent; hosted run `34055549914` is green. P18 starts with
 ownership attribution, not implementation.

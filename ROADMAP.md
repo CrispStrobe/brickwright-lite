@@ -25,11 +25,11 @@ item marked with an agent name is being worked on.
 ## Next-session shortlist — reconciled 2026-09-06
 
 [PLAN.md](PLAN.md#next-session-priorities--reconciled-2026-09-06) records
-execution order. Current upstream baseline is `69f099432`; completed and
-rejected predecessor work is in [HISTORY.md](HISTORY.md). Two bounded tracks
-remain live.
+execution order. Current upstream baseline is `238769010`; completed and
+rejected predecessor work is in [HISTORY.md](HISTORY.md). One bounded track
+remains live.
 
-### Track 1 — Pico simulator reset and rerun (N3c-1)
+### Track 1 — Pico simulator reset and rerun (N3c-1) — COMPLETE
 
 **Outcome:** `machine.reset()` reboots MicroPython in rp2040js, and two different
 editor programs execute consecutively without a page reload or emulator freeze.
@@ -44,29 +44,28 @@ adapter from the exact post-deploy flash does execute the file and drives GP25
 high at instruction 853,283. The remaining boundary is therefore whole-SoC and
 peripheral reset state, not flash persistence, the REPL write, or boot2.
 
-**Upstream phase landed locally:** bw-board branch
-`fix/rp2040-machine-reset` commit `435599c` adds `onResetRequest` and
+**Landed upstream:** bw-board commit `435599c` adds `onResetRequest` and
 `takeResetRequest()`, names the watchdog cause, stops the old SoC at the
 instruction boundary, and passes the RP2040 adapter/flash-entry tests. It does
 not claim a partial field reset is a reboot.
 
-**Work:** review and land that adapter contract, then make the runner consume
-it by constructing a replacement SoC from preserved flash and reconnecting
-GPIO/USB host bindings. Prove boot-reset-boot, flash deployment, raw-REPL return
-and changed GP25 output upstream; then update Lite's pin, switch simulator Run
-to install-and-reboot, remove the source refusal and prove two consecutive
-programs in the browser.
+**Delivered:** Lite pins that adapter contract and consumes each request by
+constructing a replacement SoC from preserved flash, reconnecting GPIO and a
+fresh USB CDC epoch, and rejecting stale/pending transport reads. Simulator Run
+uses install-and-reboot, the obsolete source refusal is gone, and the browser
+gate proves two different programs and GPIO outputs consecutively without a
+page reload.
 
-**Acceptance:** execution advances beyond the old freeze point; two consecutive
+**Acceptance met:** execution advances beyond the old freeze point; two consecutive
 programs run through the real UI; stop/rerun is deterministic; absent firmware
 still refuses clearly; existing 64-byte CDC and physical-deployment tests remain
-green. If correct reset requires an unbounded core replacement, land the upstream
-diagnosis and adapter contract first.
+green. The completed implementation uses the diagnosed whole-SoC replacement
+boundary rather than claiming a partial core clear is a reboot.
 
 **Start:** `docs/PICO-SIM-RUN-FINDINGS.md`, `docs/PICO-MICROPYTHON-BOOT.md`,
 `overlay/scratch-gui/src/lib/pico-sim-run.js`, the pinned `bw-board` RP2040
 adapter, `test/pico-sim-run.test.mjs` and `test/pico-micropython-gpio.test.mjs`.
-Estimated 4–8 focused hours including upstream reconciliation.
+Focused unit and hosted browser evidence completed 2026-09-06.
 
 ### Track 2 — P18 Connection-modal attribution
 

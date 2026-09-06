@@ -56,6 +56,16 @@ plan or roadmap. Detailed commit, CI and ownership evidence remains in Git and
   121.6–136.4 ms) from a 113.6 ms baseline, the 1 s absolute ceiling and the
   100 ms long-task ceiling. Build, corpus, both browser shards, deploy and
   deployed-GUI verification were green.
+- **Pico simulator reset and rerun completed** (bw-board `435599c`; Lite Track
+  1 series). The adapter exposes watchdog reset intent without pretending a
+  partial core clear is a reboot. Lite replaces the complete RP2040 and USB CDC
+  epoch from preserved flash, retains the external board, rejects stale and
+  terminal transport reads, and uses the same install-and-reboot deployment
+  path as silicon. Focused tests cover epoch ownership and failures; the hosted
+  browser gate runs different GP25-high and GP24-high programs consecutively,
+  observing both reset generations and USB enumerations without a page reload.
+  Missing firmware still refuses clearly, while learner `machine.reset()` is
+  no longer blocked by source inspection.
 - **Browser build-artifact reuse rejected on critical-path cost.** Four green
   runs measured the central `build` job at 5:27–5:42 and the slow browser shard
   at 6:43–9:35 in parallel. Each browser-local webpack build takes about 1:15;
