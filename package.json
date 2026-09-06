@@ -31,6 +31,8 @@
     "sync:labwiredwasm:check": "node scripts/sync-labwired-wasm.mjs --check",
     "sync:gallery-pins": "node scripts/sync-gallery-pins.mjs",
     "sync:gallery-pins:check": "node scripts/sync-gallery-pins.mjs --check",
+    "sync:bundled-extensions": "node scripts/sync-bundled-extensions.mjs",
+    "sync:bundled-extensions:check": "node scripts/sync-bundled-extensions.mjs --check",
     "package:broker-proof-pins": "node scripts/package-native-broker-proof-pins.mjs",
     "package:broker-proof-pins:check": "node scripts/package-native-broker-proof-pins.mjs --check",
     "package:broker-assets": "node scripts/package-native-broker-assets.mjs",

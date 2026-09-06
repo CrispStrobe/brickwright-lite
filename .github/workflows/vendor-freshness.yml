@@ -130,3 +130,6 @@ jobs:
       - name: runtime extension gallery content pins
         run: node brickwright-lite/scripts/sync-gallery-pins.mjs --check
         if: always()
+      - name: bundled extension source pins
+        run: node brickwright-lite/scripts/sync-bundled-extensions.mjs --check
+        if: always()
