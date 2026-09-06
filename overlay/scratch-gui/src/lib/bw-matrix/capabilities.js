@@ -33,6 +33,8 @@
  * @module
  */
 
+import {CENSUS_ROWS} from './census-snapshot.js';
+
 export const SCHEMA_VERSION = 2;
 
 export const EVIDENCE = Object.freeze({CHECKED: 'checked', DECLARED: 'declared'});
@@ -342,12 +344,13 @@ export const DEVICES = Object.freeze([
             needs: ['8086-vectors', 'elks-image']
         })],
         silicon: [tx('export', ['com', 'img'], null, {
-            task: 'N10', tier: '2c',
-            note: 'export, not a flash transport: the assembled .COM (org 100h, the assembler\'s '
-               + 'exact bytes) and a bootable 1.44M floppy .img whose boot sector installs a minimal '
-               + 'INT 21h over the BIOS and loads the .COM at CS:0100 — carry it to real hardware or '
-               + 'another emulator. Boots in lite\'s own vendored 8086 + committed BIOS '
-               + '(test/i8086-export.test.mjs); a second, INDEPENDENT emulator is declared, not measured.'
+            task: 'N10',
+            tier: '2c',
+            note: 'export, not a flash transport: the assembled .COM (org 100h, the assembler\'s ' +
+                'exact bytes) and a bootable 1.44M floppy .img whose boot sector installs a minimal ' +
+                'INT 21h over the BIOS and loads the .COM at CS:0100 — carry it to real hardware or ' +
+                'another emulator. Boots in lite\'s own vendored 8086 + committed BIOS ' +
+                '(test/i8086-export.test.mjs); a second, INDEPENDENT emulator is declared, not measured.'
         })]
     }),
     // Moved here from DEVICE_GROUPS in pseudocode-importer.jsx (T7): the picker is derived
@@ -372,12 +375,14 @@ export const DEVICES = Object.freeze([
                 // Direct WebUSB flashing targets the nRF52833 (micro:bit V2); the
                 // flasher reads FICR.INFO.PART and refuses any other silicon by
                 // name, so the Calliope mini — a different SoC — does not claim it.
-                ...(id === 'microbit'
-                    ? [tx('daplink-webusb', ['hex'], null, {
-                        tier: '3', task: 'N9',
-                        note: 'CMSIS-DAP over WebUSB into the nRF52833 NVMC; declared on hardware, measured on a mock DAP that captures the exact erase/program sequence — micro:bit V2 only'
-                    })]
-                    : [])
+                ...(id === 'microbit' ?
+                    [tx('daplink-webusb', ['hex'], null, {
+                        tier: '3',
+                        task: 'N9',
+                        note: 'CMSIS-DAP over WebUSB into the nRF52833 NVMC; declared on hardware, measured on a ' +
+                            'mock DAP that captures the exact erase/program sequence — micro:bit V2 only'
+                    })] :
+                    [])
             ]
         })
     ),
@@ -778,6 +783,14 @@ const T = {
         unknown: 'no entry for this language and device',
         local: 'in the browser',
         hosted: 'hosted compiler',
+        tier: 'tier',
+        standing: 'standing in bw-board CI',
+        recorded: 'recorded once',
+        absent: 'oracle absent',
+        reachability: 'service, reachability only',
+        unknown_oracle: 'no census row',
+        declared: 'declared, not checked',
+        simulator: 'simulator:',
         none: 'runs the language itself'
     },
     de: {
@@ -795,6 +808,14 @@ const T = {
         unknown: 'kein Eintrag für diese Sprache und dieses Gerät',
         local: 'im Browser',
         hosted: 'gehosteter Compiler',
+        tier: 'Stufe',
+        standing: 'in der bw-board-CI laufend',
+        recorded: 'einmal gemessen',
+        absent: 'Orakel fehlt',
+        reachability: 'Dienst, nur Erreichbarkeit',
+        unknown_oracle: 'keine Zensus-Zeile',
+        declared: 'deklariert, nicht geprüft',
+        simulator: 'Simulator:',
         none: 'führt die Sprache selbst aus'
     }
 };
@@ -829,6 +850,38 @@ const labelOf = function (id) {
  * @param {string} [locale] 'en' or 'de'
  * @returns {string} the sentence
  */
+/**
+ * How an oracle named in `needs` stands in bw-board's census at the pinned sha
+ * (T6/T8): 'standing' — bw-board's CI runs it on every push; 'recorded' —
+ * present where the census was read, measured once; 'absent' — not even that;
+ * 'reachability' — a service row, never probed; 'unknown' — no census row (the
+ * conformance gate refuses that in CI, so a user should never see it).
+ * @param {string} id census row id
+ * @returns {string} the status word key
+ */
+export const oracleStatus = function (id) {
+    const r = CENSUS_ROWS.find(x => x.id === id);
+    if (!r) return 'unknown';
+    if (r.kind === 'service') return r.ciAvailable ? 'standing' : 'reachability';
+    if (r.ciAvailable) return 'standing';
+    return r.present ? 'recorded' : 'absent';
+};
+
+/**
+ * The verification clause for a shipped fact: its tier, then each oracle it
+ * rests on with its census status, then "declared" when the fact was read from
+ * a table rather than checked against code. Empty for a fact with no tier.
+ * @param {object} t locale strings
+ * @param {object} f a native/engine/transport fact
+ * @returns {string} e.g. " · tier 2a (emu8051: standing)"
+ */
+const verificationClause = function (t, f) {
+    if (!f || !f.tier) return '';
+    const needs = (f.needs || []).map(id => `${id}: ${t[oracleStatus(id)] || oracleStatus(id)}`);
+    const declared = f.evidence === EVIDENCE.DECLARED ? ` · ${t.declared}` : '';
+    return ` · ${t.tier} ${f.tier}${needs.length ? ` (${needs.join(', ')})` : ''}${declared}`;
+};
+
 export const explain = function (langId, deviceId, locale = 'en') {
     const t = T[locale] || T.en;
     const c = cell(langId, deviceId);
@@ -839,7 +892,7 @@ export const explain = function (langId, deviceId, locale = 'en') {
         parts.push(`${t.nativeNo} (${r[locale] || r.en || c.native.reason})`);
     } else if (c.native.status === STATUS.SHIPPED) {
         const where = t[c.native.where] || c.native.where;
-        parts.push(`${t.native} (${c.native.toolchain}, ${where}) · ${reachWord(t, c.native)}`);
+        parts.push(`${t.native} (${c.native.toolchain}, ${where}) · ${reachWord(t, c.native)}${verificationClause(t, c.native)}`);
     } else {
         const task = c.native.task ? ` · ${t.task} ${c.native.task}` : '';
         parts.push(`${t.native} (${c.native.toolchain}): ${t.open}${task}`);
@@ -853,6 +906,8 @@ export const explain = function (langId, deviceId, locale = 'en') {
     for (const l of c.lowered.filter(x => x.status === STATUS.OPEN)) {
         parts.push(`${t.lowered} ${t.via} ${labelOf(l.via)}: ${t.open} · ${t.task} ${l.task}`);
     }
+    const sims = (c.device.sim || []).filter(e => e.status === STATUS.SHIPPED && e.tier);
+    if (sims.length) parts.push(`${t.simulator} ${sims.map(e => `${e.engine}${verificationClause(t, e)}`).join('; ')}`);
     return `${c.language.label} ${t.on} ${c.device.label}: ${parts.join(' · ')}`;
 };
 
