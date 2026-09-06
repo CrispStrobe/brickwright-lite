@@ -15,6 +15,8 @@
     "gen:8086-report:check": "node scripts/gen-i8086-capability-report.mjs --check",
     "gen:matrix": "node scripts/gen-language-device-matrix.mjs",
     "gen:matrix:check": "node scripts/gen-language-device-matrix.mjs --check",
+    "gen:part-profiles": "node scripts/gen-part-profiles.mjs",
+    "gen:part-profiles:check": "node scripts/gen-part-profiles.mjs --check",
     "gen:reader-coverage": "node scripts/gen-reader-coverage.mjs",
     "gen:reader-coverage:check": "node scripts/gen-reader-coverage.mjs --check",
     "gen:hosted-targets": "node scripts/gen-hosted-targets.mjs",
