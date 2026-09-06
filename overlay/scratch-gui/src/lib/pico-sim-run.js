@@ -95,11 +95,6 @@ export async function startPicoSimRun ({image, vm, stc, py, onStatus, onError}) 
     const board = new BoardImpl(VCC);
     board.setNetlist(netlist.parts, netlist.nets);
     board.setPower(true);
-    // Publish the RUN board so the canvas binds to what the emulator drives,
-    // and announce the epoch — exactly as attachRp2040js does.
-    if (vm && vm.runtime) vm.runtime.bwRunBoard = board;
-    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-board-ready'));
-
     let adapter = null;
     let cdc = null;
     let usbConnected = false;
@@ -146,6 +141,10 @@ export async function startPicoSimRun ({image, vm, stc, py, onStatus, onError}) 
     const adapterOptions = {clockHz: CLOCK_HZ, vcc: VCC};
     adapter = createFreshPicoEpoch({image, board, createAdapter: createRp2040jsAdapter, adapterOptions});
     bindUsbEpoch();
+    // Publish only after the complete initial controller/USB epoch exists. A
+    // constructor failure must not leave a dead run board on the canvas.
+    if (vm && vm.runtime) vm.runtime.bwRunBoard = board;
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-board-ready'));
 
     // Read-only observability for the browser gate — it reads this to localize a
     // stall: which handshake sub-phase, how many host→device bytes have left, and
