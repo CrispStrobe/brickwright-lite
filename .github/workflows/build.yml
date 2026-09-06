@@ -954,6 +954,12 @@ jobs:
                 --json ../../artifacts/i8086-performance/webpack-stats.json
           )
           I8086_ENFORCE_WEBPACK_BOUNDARY=1 node scripts/report-webpack-ownership.mjs
+          node scripts/verify-p21-pseudocode-emitted.mjs \
+            artifacts/i8086-performance/webpack-stats.json \
+            --build-dir packages/scratch-gui/build-profile \
+            --run "$GITHUB_RUN_ID" --head "$GITHUB_SHA" \
+            --base abcd014e1182809d95177546d8930231d8ec8289 \
+            --write-receipt artifacts/i8086-performance/p21-pseudocode-attribution.json
           python3 -m http.server 8618 --directory packages/scratch-gui/build-profile &
           profile_server=$!
           for i in $(seq 1 30); do curl -sf http://localhost:8618/ >/dev/null && break; sleep 1; done
@@ -1014,10 +1020,10 @@ jobs:
           name: sound-tab-activation
           path: artifacts/sound-tab-activation/*
           if-no-files-found: error
-      - name: Browser baseline — five cold Code-tab activations for P21
+      - name: Browser gate — P21 Code importer activation, retry and state
         timeout-minutes: 3
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
-        run: P21_EAGER_BASELINE=1 PROOF_URL=http://localhost:8617/ node scripts/verify-pseudocode-importer-activation.mjs
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-pseudocode-importer-activation.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:

@@ -6,7 +6,6 @@ import {defineMessages, FormattedMessage, injectIntl, intlShape} from 'react-int
 import {connect} from 'react-redux';
 import MediaQuery from 'react-responsive';
 import {Tab, Tabs, TabList, TabPanel} from 'react-tabs';
-import PseudocodeImporter from '../tw-pseudocode/pseudocode-importer.jsx';
 import CircuitTab from '../tw-pseudocode/circuit-tab.jsx';
 const MicrobitSimPane = React.lazy(() =>
     import(/* webpackChunkName: "bw-microbit-sim" */ '../tw-pseudocode/microbit-sim-pane.jsx')
@@ -30,6 +29,9 @@ import Blocks from '../../containers/blocks.jsx';
 import CostumeTab from '../../containers/costume-tab.jsx';
 import TargetPane from '../../containers/target-pane.jsx';
 import LazySoundTab, {preloadSoundTab} from '../../containers/lazy-sound-tab.jsx';
+import LazyPseudocodeImporter, {
+    preloadPseudocodeImporter
+} from '../../containers/lazy-pseudocode-importer.jsx';
 import StageWrapper from '../../containers/stage-wrapper.jsx';
 import Loader from '../loader/loader.jsx';
 import Box from '../box/box.jsx';
@@ -657,7 +659,11 @@ const GUIComponent = props => {
                             >
                                 <TabList className={tabClassNames.tabList}>
                                     <ChromeToggle className={chromeStyles.chromeToggle} />
-                                    <Tab className={tabClassNames.tab}>
+                                    <Tab
+                                        className={tabClassNames.tab}
+                                        onFocus={preloadPseudocodeImporter}
+                                        onMouseEnter={preloadPseudocodeImporter}
+                                    >
                                         <img
                                             draggable={false}
                                             src={codeIcon}
@@ -722,7 +728,7 @@ const GUIComponent = props => {
                                         /* Content swap: the code preset puts the pseudocode editor
                                            in the first (blocks) tab panel. The blocks workspace
                                            stays mounted in TabPanel index 3 so it is not destroyed. */
-                                        <PseudocodeImporter isVisible={activeTabIndex === 0} />
+                                        <LazyPseudocodeImporter isVisible={activeTabIndex === 0} vm={vm} />
                                     ) : (
                                         <React.Fragment>
                                             <Box className={styles.blocksWrapper}>
@@ -765,7 +771,12 @@ const GUIComponent = props => {
                                     {soundsTabVisible ? <LazySoundTab vm={vm} /> : null}
                                 </TabPanel>
                                 <TabPanel className={tabClassNames.tabPanel}>
-                                    <PseudocodeImporter isVisible={activeTabIndex === CODE_TAB_INDEX} />
+                                    {middleContent !== 'code' ? (
+                                        <LazyPseudocodeImporter
+                                            isVisible={activeTabIndex === CODE_TAB_INDEX}
+                                            vm={vm}
+                                        />
+                                    ) : null}
                                 </TabPanel>
                                 <TabPanel className={tabClassNames.tabPanel}>
                                     <CircuitTab />
