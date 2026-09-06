@@ -23,7 +23,36 @@ overlay/package parity, static workflow contracts and short smoke tests.
 | 9 | multi-CPU correlated debugging | one branch-qualified timeline across named clock domains; cross-core triggers; interrupt/message causality; no numeric timestamp comparison across uncorrelated domains | complete — named CPU lanes/native clocks, explicit global causal order and source links, cross-core triggers, numeric cross-domain refusal, bounded UI and atomic all-CPU/shared-device checkpoint rollback |
 | 10 | production browser CI optimization | preserve deploy-order and fail-closed guarantees; front-load relevant gates; shard only with one authoritative build artifact; measure runner minutes and time-to-first-debugger-verdict | complete — dependency-free 3-minute gates precede installs/checkouts, failed native qualification skips Chromium, caches are lock-keyed, browser acceptance is hard, stale deploys refuse, and completed runs emit bounded non-polling cost/latency receipts |
 | 11 | reconcile and archive remaining worktrees | inventory dirt, reachability and unique commits; integrate reviewed work only; tag/archive superseded branches without deleting unowned changes | complete — 40-tree audit, one owned dirty tree quarantined, patch-equivalence/supersession reviewed, 12 clean tips archived to dated GitHub recovery refs, no unowned checkout removed |
-| 12 | restore a fully green remote `main` baseline | classify every terminal failure as product, gate or infrastructure; repair in-scope failures; rerun authoritative workflows; record exact green run IDs | planned |
+| 12 | restore a fully green remote `main` baseline | classify every terminal failure as product, gate or infrastructure; repair in-scope failures; rerun authoritative workflows; record exact green run IDs | complete — corrected head `c048dd417`: Build 34045564002, debugger-focused 34045563994, vendor freshness 34045563962, CI metrics 34046141760 and manual deploy-watchdog 34046185923 green; Tauri 34045105806 green on the native-version parent; focused affected tests 51/51 and broader debugger/live-core tests 410/410 |
+
+## Remote-main reconciliation — 2026-09-06
+
+The debugger series was rebased onto release `0.1.15` and the intervening mainline
+work before each push. Main evolved substantially during this delivery: browser CI
+was split into audited shards, Node/dependency preflight was tightened, the 8086 BIOS
+became reproducibly derived from vendored source, Pico MicroPython and Kaluma paths
+were investigated, micro:bit WebUSB flashing and 8086 COM/floppy export landed, and
+large-list activation experiments were measured and then rejected when their hosted
+latency gate regressed. The debugger changes retain those decisions rather than
+reinstating superseded list work.
+
+The first `0.1.15` Build exposed a partial native version bump and an annotation module
+which existed only behind unit tests. The repair aligns the Cargo version, connects
+branch-qualified bookmarks/notes/checkpoint comparison to the runner and panel, and
+round-trips those public records through bounded schema-v1-compatible session bundles.
+A post-integration audit then caught and repaired canonical-cursor, failed-start
+atomicity, legacy-session, inspection-budget and stale-selection defects before the
+step could be declared complete.
+
+The scheduled watchdog failure was a separate workflow defect: its deliberate red-
+streak failure skipped checkout while an `always()` cleanup still invoked a repository
+script. Checkout now precedes fallible work, reads trusted default-branch code with no
+persisted credentials, cancellation is restricted to `main`, and pipeline failures
+remain visible. The corrected head passed Build `34045564002`, debugger-focused
+`34045563994`, vendor freshness `34045563962`, CI metrics `34046141760`, and the
+manually dispatched deploy-watchdog `34046185923`. Tauri run `34045105806` passed on
+the parent which contains the native version repair; no subsequent commit touched the
+native application.
 
 ## Non-negotiable contracts
 
