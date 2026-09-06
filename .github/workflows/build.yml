@@ -1246,7 +1246,7 @@ jobs:
       # by name if the firmware fetch above did not land.
       - name: Browser gate — Pico MicroPython simulator Run lights the LED (N3c)
         timeout-minutes: 6  # 180 s GPIO poll (headless boot is far slower than node) + ~60 s setup + margin
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ npm run verify:pico-micropython
       # The other half: with the firmware WITHHELD (its own server 404s it), the
       # Run must refuse BY NAME — a Run button with nothing behind it is the
@@ -1254,7 +1254,7 @@ jobs:
       # server, so it gates on the build, not the shared serve.
       - name: Browser gate — Pico ▶ Run refuses by name with no firmware (N3c)
         timeout-minutes: 3  # its own server (port 8123); boot attempt + refuse
-        if: ${{ !cancelled() && steps.build_editor_browser.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.build_editor_browser.outcome == 'success' && matrix.shard == 'light' }}
         run: npm run verify:pico-micropython-absent
 
       - name: Browser gate — micro:bit debugger, block and line stepping

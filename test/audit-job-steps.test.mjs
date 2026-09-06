@@ -92,6 +92,18 @@ import {expectedForShard} from '../scripts/audit-job-steps.mjs';
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
 
+// A SYNTHETIC workflow with the same shape as build.yml's browser job. The
+// real one is test/browser-gate-shards.test.mjs's business: judging it here
+// too meant a gate added without a clause produced seven reds for one cause
+// (main f80a4abe2, the two Pico gates), and a set-equality read for the worker.
+const SYNTH_YML = [
+    'jobs:', '  browser:', '    name: browser (${{ matrix.shard }})', '    strategy:', '      fail-fast: false', '      matrix:', '        shard: [heavy, light]', '    steps:',
+    '      - name: Install', '      - name: Serve the built app', '        id: serve',
+    '      - name: Browser gate — circuit UX', "        if: ${{ steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+    '      - name: Browser gate — editor', "        if: ${{ steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+    '      - name: Browser benchmark — 8086 desktop and mobile', "        if: ${{ steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}",
+    '      - name: Audit — every browser gate ran', '        if: always()', ''
+].join('\n');
 const heavyLeg = {shard: 'heavy', mine: ['Browser benchmark — 8086 desktop and mobile'], others: ['Browser gate — circuit UX', 'Browser gate — editor']};
 const inHeavy = base.map(s => isGate(s.name) && !heavyLeg.mine.includes(s.name) ? step(s.name, 'skipped') : s);
 
@@ -125,7 +137,7 @@ test('shard: a gate in the job that no clause assigns is failed by name, before 
 
 test('shard: the leg is found by its DISPLAY name, and a leg named only by GITHUB_JOB is an absence, not a finding', async () => {
     const jobs = [{name: 'browser (heavy)', run_attempt: 1, steps: inHeavy}, {name: 'browser (light)', run_attempt: 1, steps: base}];
-    const yml = readFileSync(path.resolve(import.meta.dirname, '..', '.github', 'workflows', 'build.yml'), 'utf8');
+    const yml = SYNTH_YML;
     let s = sinks();
     let code = await run(async () => jobs, {jobName: 'browser', attempt: 1, shard: 'heavy', workflowText: yml}, {log: s.log, error: s.error});
     assert.equal(code, 1);
@@ -134,8 +146,8 @@ test('shard: the leg is found by its DISPLAY name, and a leg named only by GITHU
 });
 
 test('shard: the audit refuses a workflow whose clauses are not a partition, as a workflow defect, before judging any step', async () => {
-    const yml = readFileSync(path.resolve(import.meta.dirname, '..', '.github', 'workflows', 'build.yml'), 'utf8');
-    const broken = yml.replace(/(- name: Browser gate — circuit UX\n(?:.*\n){0,3}?\s+if: [^\n]*?) && matrix\.shard == '[a-z]+'/, '$1');
+    const yml = SYNTH_YML;
+    const broken = yml.replace(" && matrix.shard == 'light' }}", ' }}'); // circuit UX loses its clause
     assert.notEqual(broken, yml, 'mutation anchor');
     const s = sinks();
     const code = await run(async () => { throw new Error('must not be reached'); }, {jobName: 'browser (heavy)', attempt: 1, shard: 'heavy', workflowText: broken}, {log: s.log, error: s.error});
@@ -143,7 +155,7 @@ test('shard: the audit refuses a workflow whose clauses are not a partition, as 
     assert.match(s.out.errors[0], /not a partition of the gates/);
     assert.match(s.out.errors[0], /no shard clause.*Browser gate — circuit UX/);
     const e = expectedForShard(yml, 'heavy');
-    assert.ok(e.ok && e.mine.length >= 4 && e.others.length >= 30, `the real workflow partitions: heavy ${e.mine.length}, others ${e.others.length}`);
+    assert.ok(e.ok && e.mine.length === 1 && e.others.length === 2, `the synthetic workflow partitions: heavy ${e.mine.length}, others ${e.others.length}`);
 });
 
 test('shard: a gate elsewhere the API has not reported yet (null conclusion) is not a double run', () => {
@@ -154,7 +166,7 @@ test('shard: a gate elsewhere the API has not reported yet (null conclusion) is 
 test('the audit re-reads while a step before it is unreported, then judges the settled read', async () => {
     const settled = [{name: 'browser (heavy)', run_attempt: 1, steps: inHeavy}];
     const lagging = [{name: 'browser (heavy)', run_attempt: 1, steps: inHeavy.map(s => s.name === 'Browser gate — circuit UX' ? {name: s.name, status: 'in_progress', conclusion: null} : s)}];
-    const yml = readFileSync(path.resolve(import.meta.dirname, '..', '.github', 'workflows', 'build.yml'), 'utf8');
+    const yml = SYNTH_YML;
     let reads = 0;
     const slept = [];
     const s = sinks();
@@ -168,7 +180,7 @@ test('the audit re-reads while a step before it is unreported, then judges the s
 
 test('a step still unreported after the retries is an ABSENCE — red, never a finding', async () => {
     const lagging = [{name: 'browser (heavy)', run_attempt: 1, steps: inHeavy.map(s => s.name === 'Browser gate — circuit UX' ? {name: s.name, status: 'in_progress', conclusion: null} : s)}];
-    const yml = readFileSync(path.resolve(import.meta.dirname, '..', '.github', 'workflows', 'build.yml'), 'utf8');
+    const yml = SYNTH_YML;
     const s = sinks();
     const code = await run(async () => lagging, {jobName: 'browser (heavy)', attempt: 1, shard: 'heavy', workflowText: yml}, {log: s.log, error: s.error, sleep: async () => {}});
     assert.equal(code, 1);
@@ -180,7 +192,7 @@ test('the re-read waits only on steps BEFORE the audit: the post-job steps the A
     const withPost = [{name: 'browser (heavy)', run_attempt: 1, steps: [...inHeavy,
         {name: 'Post Run actions/setup-node@x', status: 'queued', conclusion: null},
         {name: 'Complete job', status: 'queued', conclusion: null}]}];
-    const yml = readFileSync(path.resolve(import.meta.dirname, '..', '.github', 'workflows', 'build.yml'), 'utf8');
+    const yml = SYNTH_YML;
     const slept = [];
     const s = sinks();
     const code = await run(async () => withPost, {jobName: 'browser (heavy)', attempt: 1, shard: 'heavy', workflowText: yml}, {log: s.log, error: s.error, sleep: async ms => { slept.push(ms); }});
@@ -189,7 +201,7 @@ test('the re-read waits only on steps BEFORE the audit: the post-job steps the A
 });
 
 test('a null step assigned ELSEWHERE triggers the re-read too (the loop is not narrowed to this leg)', async () => {
-    const yml = readFileSync(path.resolve(import.meta.dirname, '..', '.github', 'workflows', 'build.yml'), 'utf8');
+    const yml = SYNTH_YML;
     const lagging = [{name: 'browser (heavy)', run_attempt: 1, steps: inHeavy.map(s => s.name === 'Browser gate — editor' ? {name: s.name, status: 'queued', conclusion: null} : s)}];
     const settled = [{name: 'browser (heavy)', run_attempt: 1, steps: inHeavy}];
     let reads = 0;
