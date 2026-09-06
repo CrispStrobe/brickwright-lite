@@ -8,8 +8,6 @@ import ListMonitorScroller from './list-monitor-scroller.jsx';
 const ListMonitor = ({draggable, label, width, height, value, onResizeMouseDown, onAdd, ...rowProps}) => (
     <div
         className={styles.listMonitor}
-        data-list-monitor-label={label}
-        data-testid="list-monitor-shell"
         style={{
             width: `${width}px`,
             height: `${height}px`
@@ -18,7 +16,7 @@ const ListMonitor = ({draggable, label, width, height, value, onResizeMouseDown,
         <div className={styles.listHeader}>
             {label}
         </div>
-        <div className={styles.listBody} data-testid="list-monitor-viewport">
+        <div className={styles.listBody}>
             <ListMonitorScroller
                 draggable={draggable}
                 height={height}

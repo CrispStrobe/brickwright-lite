@@ -3,7 +3,6 @@ import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import {dirname, resolve} from 'node:path';
 import {
     assertDosChunkBoundary,
-    assertLazyListMonitorBoundary,
     assertLazyPaintEditorBoundary,
     assertOptionalCodeMirrorGrammarBoundary,
     summarizeWebpackOwnership
@@ -16,12 +15,10 @@ const report = summarizeWebpackOwnership(stats);
 const dosFailures = assertDosChunkBoundary(report);
 const grammarFailures = assertOptionalCodeMirrorGrammarBoundary(report);
 const paintFailures = assertLazyPaintEditorBoundary(report);
-const listFailures = assertLazyListMonitorBoundary(report);
-const failures = [...dosFailures, ...grammarFailures, ...paintFailures, ...listFailures];
+const failures = [...dosFailures, ...grammarFailures, ...paintFailures];
 report.dosChunk.boundaryFailures = dosFailures;
 report.optionalCodeMirrorGrammars.boundaryFailures = grammarFailures;
 report.lazyPaintEditor.boundaryFailures = paintFailures;
-report.lazyListMonitor.boundaryFailures = listFailures;
 await mkdir(dirname(outputPath), {recursive: true});
 await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`);
 
@@ -41,9 +38,6 @@ console.log(`Optional CodeMirror grammars: ${(report.optionalCodeMirrorGrammars.
 console.log(`Lazy paint editor: ${(report.lazyPaintEditor.sourceBytes / 1024).toFixed(1)} KiB source, ` +
     `${(report.lazyPaintEditor.emittedBytes / 1024).toFixed(1)} KiB emitted in ` +
     `${report.lazyPaintEditor.files.join(', ') || 'missing assets'}`);
-console.log(`Lazy list monitor: ${(report.lazyListMonitor.sourceBytes / 1024).toFixed(1)} KiB source, ` +
-    `${(report.lazyListMonitor.emittedBytes / 1024).toFixed(1)} KiB emitted; ` +
-    `${report.lazyListMonitor.initialReductionBytes} initial bytes removed from P11`);
 for (const failure of failures) console.error(`FAIL: ${failure}`);
 // The first hosted P6 receipt names the existing graph before a split is
 // chosen. Turn this into a ratchet only after that evidence is documented.

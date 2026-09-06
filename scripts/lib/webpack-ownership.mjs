@@ -34,22 +34,6 @@ const isLazyPaintEditorModule = name => {
     return /\/node_modules\/(?:scratch-paint|@scratch\/paper)\//.test(normalized);
 };
 
-const reactVirtualizedFamily = name => {
-    const normalized = stripLoaders(name);
-    const match = normalized.match(/\/node_modules\/react-virtualized\/dist\/es\/([^/]+)/);
-    return match ? match[1] : null;
-};
-
-const unusedReactVirtualizedFamilies = new Set([
-    'ArrowKeyStepper', 'AutoSizer', 'CellMeasurer', 'Collection', 'ColumnSizer',
-    'InfiniteLoader', 'Masonry', 'MultiGrid', 'ScrollSync', 'Table', 'WindowScroller'
-]);
-
-// Current eager tree after the startup-polyfill removal, measured on
-// origin/main 77f2c283d by hosted run 34031369902. P14 must earn its own
-// reduction rather than inheriting the 32,124-byte improvement since P11.
-export const P14_EAGER_BASELINE_INITIAL_JAVASCRIPT_BYTES = 4520399;
-
 export const forbiddenDosModuleReason = name => {
     const normalized = stripLoaders(name);
     if (/(?:^|\/)(?:avr8js|avr-chips|emu8051|rp2040js?|bbc-z80|z80|mos6502|m6502|w65c02|stm32|arm-thumb|riscv|labwired)(?:[-./]|$)/i
@@ -101,20 +85,6 @@ export const summarizeWebpackOwnership = input => {
     const lazyPaintChunks = chunks.filter(chunk => lazyPaintIds.has(String(chunk.id)));
     const lazyPaintAssets = assets.filter(asset =>
         /\.js$/.test(asset.name) && (asset.chunks || []).some(id => lazyPaintIds.has(String(id))));
-    const reactVirtualizedModules = modules.filter(module =>
-        /\/node_modules\/react-virtualized\//.test(stripLoaders(module.name || module.identifier)));
-    const reactVirtualizedIds = new Set(reactVirtualizedModules.flatMap(module => module.chunks || [])
-        .map(id => String(id)));
-    const reactVirtualizedAssets = assets.filter(asset => /\.js$/.test(asset.name) &&
-        (asset.chunks || []).some(id => reactVirtualizedIds.has(String(id))));
-    const reactVirtualizedFamilies = [...new Set(reactVirtualizedModules
-        .map(module => reactVirtualizedFamily(module.name || module.identifier)).filter(Boolean))].sort();
-    const listBodyChunks = chunks.filter(chunk => (chunk.names || []).includes('list-monitor-body'));
-    const listBodyIds = new Set(listBodyChunks.map(chunk => String(chunk.id)));
-    const listBodyAssets = assets.filter(asset => /\.js$/.test(asset.name) &&
-        (asset.chunks || []).some(id => listBodyIds.has(String(id))));
-    const listBodyModules = modules.filter(module =>
-        (module.chunks || []).some(id => listBodyIds.has(String(id))));
     const namedPaintStage = name => {
         const stageChunks = chunks.filter(chunk => (chunk.names || []).includes(name));
         const stageIds = new Set(stageChunks.map(chunk => String(chunk.id)));
@@ -166,24 +136,6 @@ export const summarizeWebpackOwnership = input => {
         lazyPaintActivation: {
             reducer: namedPaintStage('paint-reducer'),
             editor: namedPaintStage('paint-editor')
-        },
-        lazyListMonitor: {
-            namedChunk: {
-                found: listBodyChunks.length > 0,
-                initial: listBodyChunks.some(chunk => chunk.initial),
-                files: [...new Set(listBodyAssets.map(asset => asset.name))].sort(),
-                ownsBody: listBodyModules.some(module =>
-                    /\/list-monitor-scroller-body\.jsx$/.test(stripLoaders(module.name || module.identifier)))
-            },
-            sourceBytes: reactVirtualizedModules.reduce((sum, module) => sum + (Number(module.size) || 0), 0),
-            initial: reactVirtualizedModules.some(module =>
-                (module.chunks || []).some(id => initialIds.has(String(id)))),
-            families: reactVirtualizedFamilies,
-            unusedFamilies: reactVirtualizedFamilies.filter(family => unusedReactVirtualizedFamilies.has(family)),
-            files: [...new Set(reactVirtualizedAssets.map(asset => asset.name))].sort(),
-            emittedBytes: reactVirtualizedAssets.reduce((sum, asset) => sum + (Number(asset.size) || 0), 0),
-            initialReductionBytes: P14_EAGER_BASELINE_INITIAL_JAVASCRIPT_BYTES -
-                initialAssets.reduce((sum, asset) => sum + (Number(asset.size) || 0), 0)
         }
     };
 };
@@ -279,37 +231,6 @@ export const assertLazyPaintEditorBoundary = report => {
     if (activation?.editor?.initial) failures.push('paint-editor became an initial chunk');
     if (activation?.reducer?.files?.some(file => activation.editor.files.includes(file))) {
         failures.push('paint reducer and editor resolve to the same emitted JavaScript asset');
-    }
-    return failures;
-};
-
-export const assertLazyListMonitorBoundary = report => {
-    const list = report.lazyListMonitor;
-    const failures = [];
-    if (!list?.namedChunk?.found) failures.push('the named list-monitor-body chunk is missing');
-    if (list?.namedChunk?.initial) failures.push('list-monitor-body became an initial chunk');
-    if (list?.namedChunk?.found && !list.namedChunk.files.length) {
-        failures.push('the named list-monitor-body chunk emitted no JavaScript asset');
-    }
-    if (list?.namedChunk?.found && !list.namedChunk.ownsBody) {
-        failures.push('list-monitor-body does not own the scrolling body module');
-    }
-    if (list?.initial) failures.push('react-virtualized became initial JavaScript');
-    for (const family of ['List', 'Grid']) {
-        if (!list?.families?.includes(family)) failures.push(`react-virtualized ${family} is missing`);
-    }
-    if ((list?.sourceBytes || 0) < 110 * 1024) {
-        failures.push(`react-virtualized List/Grid closure fell below 110 KiB: ${list?.sourceBytes || 0} bytes`);
-    }
-    if ((list?.sourceBytes || 0) > 140 * 1024) {
-        failures.push(`react-virtualized List/Grid closure exceeds 140 KiB: ${list.sourceBytes} bytes`);
-    }
-    if (list?.unusedFamilies?.length) {
-        failures.push(`react-virtualized contains unused widget families: ${list.unusedFamilies.join(', ')}`);
-    }
-    if ((list?.initialReductionBytes || 0) < 75 * 1024) {
-        failures.push(`initial JavaScript reduction from the P14 eager baseline fell below 75 KiB: ` +
-            `${list?.initialReductionBytes || 0} bytes`);
     }
     return failures;
 };

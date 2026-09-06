@@ -1,111 +1,122 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import classNames from 'classnames';
 import bindAll from 'lodash.bindall';
 import {FormattedMessage} from 'react-intl';
 
-let bodyRequest = null;
-const loadBody = () => {
-    if (!bodyRequest) {
-        bodyRequest = import(
-            /* webpackChunkName: "list-monitor-body" */
-            './list-monitor-scroller-body.jsx'
-        ).catch(error => {
-            bodyRequest = null;
-            throw error;
-        });
-    }
-    return bodyRequest;
-};
+import styles from './monitor.css';
+import {List} from 'react-virtualized';
 
 class ListMonitorScroller extends React.Component {
     constructor (props) {
         super(props);
-        bindAll(this, ['checkVisibility', 'handleIntersection', 'load', 'setHost']);
-        this.state = {Body: null, loadError: null};
-        this.mounted = false;
-        this.loadGeneration = 0;
+        bindAll(this, [
+            'rowRenderer',
+            'noRowsRenderer',
+            'handleEventFactory'
+        ]);
     }
-    componentDidMount () {
-        this.mounted = true;
-        if (typeof window.IntersectionObserver === 'function') {
-            this.visibilityObserver = new window.IntersectionObserver(this.handleIntersection);
-            this.visibilityObserver.observe(this.host);
-        } else {
-            window.addEventListener('resize', this.checkVisibility);
-            if (typeof window.MutationObserver === 'function') {
-                this.visibilityMutations = new window.MutationObserver(this.checkVisibility);
-                this.visibilityMutations.observe(document.body, {attributes: true, subtree: true});
-            }
-            this.checkVisibility();
-        }
+    handleEventFactory (index) {
+        return () => this.props.onActivate(index);
     }
-    componentWillUnmount () {
-        this.mounted = false;
-        this.loadGeneration++;
-        this.stopWatching();
+    noRowsRenderer () {
+        return (
+            <div className={classNames(styles.listRow, styles.listEmpty)}>
+                <FormattedMessage
+                    defaultMessage="(empty)"
+                    description="Text shown on a list monitor when a list is empty"
+                    id="gui.monitor.listMonitor.empty"
+                />
+            </div>
+        );
     }
-    setHost (host) {
-        this.host = host;
-    }
-    stopWatching () {
-        if (this.visibilityObserver) this.visibilityObserver.disconnect();
-        if (this.visibilityMutations) this.visibilityMutations.disconnect();
-        window.removeEventListener('resize', this.checkVisibility);
-    }
-    checkVisibility () {
-        if (!this.mounted || !this.host || !this.host.getClientRects().length) return;
-        const rect = this.host.getBoundingClientRect();
-        if (rect.width <= 0 || rect.height <= 0) return;
-        this.stopWatching();
-        this.load();
-    }
-    handleIntersection (entries) {
-        if (!this.mounted || !entries.some(entry => entry.isIntersecting &&
-            entry.intersectionRect.width > 0 && entry.intersectionRect.height > 0)) return;
-        this.stopWatching();
-        this.load();
-    }
-    load () {
-        if (!this.mounted) return;
-        const generation = ++this.loadGeneration;
-        if (this.state.loadError) this.setState({loadError: null});
-        loadBody().then(module => {
-            if (!this.mounted || generation !== this.loadGeneration) return;
-            this.setState({Body: module.default, loadError: null});
-        }).catch(error => {
-            if (this.mounted && generation === this.loadGeneration) this.setState({loadError: error});
-        });
+    rowRenderer ({index, key, style}) {
+        return (
+            <div
+                className={styles.listRow}
+                key={key}
+                style={style}
+            >
+                <div className={styles.listIndex}>{index + 1 /* one indexed */}</div>
+                <div
+                    className={styles.listValue}
+                    dataIndex={index}
+                    style={{
+                        background: this.props.categoryColor.background,
+                        color: this.props.categoryColor.text
+                    }}
+                    onClick={this.props.draggable ? this.handleEventFactory(index) : null}
+                >
+                    {this.props.draggable && this.props.activeIndex === index ? (
+                        <div className={styles.inputWrapper}>
+                            <input
+                                autoFocus
+                                autoComplete={false}
+                                className={classNames(styles.listInput, 'no-drag')}
+                                spellCheck={false}
+                                style={{color: this.props.categoryColor.text}}
+                                type="text"
+                                value={this.props.activeValue}
+                                onBlur={this.props.onDeactivate}
+                                onChange={this.props.onInput}
+                                onFocus={this.props.onFocus}
+                                onKeyDown={this.props.onKeyPress} // key down to get ahead of blur
+                            />
+                            <div
+                                className={styles.removeButton}
+                                onMouseDown={this.props.onRemove} // mousedown to get ahead of blur
+                            >
+                                {'✖︎'}
+                            </div>
+                        </div>
+
+                    ) : (
+                        <div className={styles.valueInner}>{this.props.values[index]}</div>
+                    )}
+                </div>
+            </div>
+        );
     }
     render () {
-        const {height, width} = this.props;
-        const size = {height: Math.max(0, height - 44), width};
-        const Body = this.state.Body;
+        const {height, values, width, activeIndex, activeValue} = this.props;
+        // Keep the active index in view if defined, else must be undefined for List component
+        const scrollToIndex = activeIndex === null ? undefined : activeIndex; /* eslint-disable-line no-undefined */
         return (
-            <div data-testid="list-monitor-body-host" ref={this.setHost} style={size}>
-                {Body ? <Body {...this.props} /> : this.state.loadError ? (
-                    <button
-                        className="no-drag"
-                        data-testid="list-monitor-body-retry"
-                        type="button"
-                        onClick={this.load}
-                    >
-                        <FormattedMessage
-                            defaultMessage="Retry list"
-                            description="Button to retry loading a list monitor"
-                            id="gui.monitor.listMonitor.retry"
-                        />
-                    </button>
-                ) : (
-                    <div data-testid="list-monitor-body-loading" style={size} />
-                )}
-            </div>
+            <List
+                activeIndex={activeIndex}
+                activeValue={activeValue}
+                height={(height) - 44 /* Header/footer size, approx */}
+                noRowsRenderer={this.noRowsRenderer}
+                rowCount={values.length}
+                rowHeight={24 /* Row size is same for all rows */}
+                rowRenderer={this.rowRenderer}
+                scrollToIndex={scrollToIndex} /* eslint-disable-line no-undefined */
+                values={values}
+                width={width}
+            />
         );
     }
 }
 
 ListMonitorScroller.propTypes = {
+    activeIndex: PropTypes.number,
+    activeValue: PropTypes.string,
+    categoryColor: PropTypes.shape({
+        background: PropTypes.string.isRequired,
+        text: PropTypes.string.isRequired
+    }).isRequired,
+    draggable: PropTypes.bool,
     height: PropTypes.number,
+    onActivate: PropTypes.func,
+    onDeactivate: PropTypes.func,
+    onFocus: PropTypes.func,
+    onInput: PropTypes.func,
+    onKeyPress: PropTypes.func,
+    onRemove: PropTypes.func,
+    values: PropTypes.arrayOf(PropTypes.oneOfType([
+        PropTypes.string,
+        PropTypes.number
+    ])),
     width: PropTypes.number
 };
-
 export default ListMonitorScroller;
