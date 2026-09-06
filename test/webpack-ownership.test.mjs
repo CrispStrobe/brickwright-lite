@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
     assertDosChunkBoundary,
     assertLazyPaintEditorBoundary,
+    assertLazySoundTabBoundary,
     assertOptionalCodeMirrorGrammarBoundary,
     auditWebpackResourceWindow,
     summarizeWebpackOwnership
@@ -180,4 +181,33 @@ test('paint boundary rejects eager or collapsed activation stages', () => {
     assert.match(failures.join('\n'), /paint-reducer became an initial chunk/);
     assert.match(failures.join('\n'), /paint-editor became an initial chunk/);
     assert.match(failures.join('\n'), /same emitted JavaScript asset/);
+});
+
+test('sound tab ownership stays significant and non-initial', () => {
+    const stats = fixture();
+    stats.chunks.push({id: 40, names: ['sound-tab'], files: ['chunks/sound-tab.js'], initial: false});
+    stats.assets[0].size = 4458136;
+    stats.assets.push({name: 'chunks/sound-tab.js', size: 76800, chunks: [40]});
+    stats.modules.push({name: './src/containers/sound-tab.jsx', size: 154000, chunks: [40]});
+    const report = summarizeWebpackOwnership(stats);
+    assert.equal(report.lazySoundTab.initial, false);
+    assert.equal(report.lazySoundTab.sourceBytes, 154000);
+    assert.equal(report.lazySoundTab.emittedBytes, 76800);
+    assert.deepEqual(assertLazySoundTabBoundary(report), []);
+});
+
+test('sound tab boundary rejects a missing, eager or insignificant split', () => {
+    let failures = assertLazySoundTabBoundary(summarizeWebpackOwnership(fixture()));
+    assert.match(failures.join('\n'), /chunk is missing/);
+    assert.match(failures.join('\n'), /below 150 KiB/);
+    assert.match(failures.join('\n'), /below 75 KiB/);
+
+    const stats = fixture();
+    stats.assets[0].size = 4543936;
+    stats.chunks.push({id: 40, names: ['sound-tab'], files: ['sound.js'], initial: true});
+    stats.assets.push({name: 'sound.js', size: 76800, chunks: [40]});
+    stats.modules.push({name: './src/containers/sound-tab.jsx', size: 154000, chunks: [40]});
+    failures = assertLazySoundTabBoundary(summarizeWebpackOwnership(stats));
+    assert.match(failures.join('\n'), /became an initial chunk/);
+    assert.match(failures.join('\n'), /initial JavaScript/);
 });

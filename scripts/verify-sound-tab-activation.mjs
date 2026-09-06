@@ -5,6 +5,12 @@ import path from 'node:path';
 
 const url = process.env.PROOF_URL || 'http://localhost:8617/';
 const output = path.resolve('artifacts/sound-tab-activation');
+const baselineRun = 34051772854;
+const baselineMs = 205.5;
+const relativeLimitMs = 236.325;
+const absoluteLimitMs = 1000;
+const maxLongTaskMs = 100;
+const minimumEncodedBytes = 20480;
 await mkdir(output, {recursive: true});
 const {chromium} = await import('playwright');
 const browser = await chromium.launch();
@@ -60,10 +66,30 @@ try {
     receipt.url = url;
     receipt.errors = errors;
     receipt.soundTabScripts = receipt.scripts.filter(resource => /sound-tab/i.test(resource.name));
+    receipt.baselineRun = baselineRun;
+    receipt.baselineMs = baselineMs;
+    receipt.relativeLimitMs = relativeLimitMs;
+    receipt.absoluteLimitMs = absoluteLimitMs;
+    receipt.maxLongTaskMs = maxLongTaskMs;
+    receipt.minimumEncodedBytes = minimumEncodedBytes;
     await page.screenshot({path: path.join(output, 'sounds-tab.png'), fullPage: true});
     await writeFile(path.join(output, 'receipt.json'), `${JSON.stringify(receipt, null, 2)}\n`);
     console.log(JSON.stringify(receipt, null, 2));
     if (errors.length) throw new Error(errors.join(' | '));
+    if (receipt.durationMs > relativeLimitMs || receipt.durationMs > absoluteLimitMs) {
+        throw new Error(`Sounds tab took ${receipt.durationMs} ms; limits are ${relativeLimitMs} / ${absoluteLimitMs} ms`);
+    }
+    const longestTask = Math.max(0, ...receipt.longTasks.map(task => task.ms));
+    if (longestTask > maxLongTaskMs) {
+        throw new Error(`Sounds tab added a ${longestTask} ms long task; limit is ${maxLongTaskMs} ms`);
+    }
+    if (receipt.soundTabScripts.length !== 1) {
+        throw new Error(`expected one named sound-tab script, got ${receipt.soundTabScripts.length}`);
+    }
+    if (receipt.soundTabScripts[0].encodedBodySize < minimumEncodedBytes) {
+        throw new Error(`sound-tab moved only ${receipt.soundTabScripts[0].encodedBodySize} encoded bytes; ` +
+            `minimum is ${minimumEncodedBytes}`);
+    }
 } finally {
     await browser.close();
 }

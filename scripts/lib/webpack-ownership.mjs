@@ -85,15 +85,19 @@ export const summarizeWebpackOwnership = input => {
     const lazyPaintChunks = chunks.filter(chunk => lazyPaintIds.has(String(chunk.id)));
     const lazyPaintAssets = assets.filter(asset =>
         /\.js$/.test(asset.name) && (asset.chunks || []).some(id => lazyPaintIds.has(String(id))));
-    const namedPaintStage = name => {
+    const namedStage = name => {
         const stageChunks = chunks.filter(chunk => (chunk.names || []).includes(name));
         const stageIds = new Set(stageChunks.map(chunk => String(chunk.id)));
         const stageAssets = assets.filter(asset =>
             /\.js$/.test(asset.name) && (asset.chunks || []).some(id => stageIds.has(String(id))));
+        const stageModules = modules.filter(module =>
+            (module.chunks || []).some(id => stageIds.has(String(id))));
         return {
             found: stageChunks.length > 0,
             initial: stageChunks.some(chunk => chunk.initial),
-            files: [...new Set(stageAssets.map(asset => asset.name))].sort()
+            files: [...new Set(stageAssets.map(asset => asset.name))].sort(),
+            sourceBytes: stageModules.reduce((sum, module) => sum + (Number(module.size) || 0), 0),
+            emittedBytes: stageAssets.reduce((sum, asset) => sum + (Number(asset.size) || 0), 0)
         };
     };
 
@@ -134,9 +138,10 @@ export const summarizeWebpackOwnership = input => {
             emittedBytes: lazyPaintAssets.reduce((sum, asset) => sum + (Number(asset.size) || 0), 0)
         },
         lazyPaintActivation: {
-            reducer: namedPaintStage('paint-reducer'),
-            editor: namedPaintStage('paint-editor')
-        }
+            reducer: namedStage('paint-reducer'),
+            editor: namedStage('paint-editor')
+        },
+        lazySoundTab: namedStage('sound-tab')
     };
 };
 
@@ -231,6 +236,26 @@ export const assertLazyPaintEditorBoundary = report => {
     if (activation?.editor?.initial) failures.push('paint-editor became an initial chunk');
     if (activation?.reducer?.files?.some(file => activation.editor.files.includes(file))) {
         failures.push('paint reducer and editor resolve to the same emitted JavaScript asset');
+    }
+    return failures;
+};
+
+export const assertLazySoundTabBoundary = report => {
+    const sound = report.lazySoundTab;
+    const failures = [];
+    if (!sound?.found) failures.push('the named sound-tab chunk is missing');
+    if (sound?.initial) failures.push('sound-tab became an initial chunk');
+    if (sound?.found && !sound.files.length) failures.push('sound-tab emitted no JavaScript asset');
+    if ((sound?.sourceBytes || 0) < 150 * 1024) {
+        failures.push(`lazy sound-tab ownership fell below 150 KiB: ${sound?.sourceBytes || 0} bytes`);
+    }
+    if ((sound?.emittedBytes || 0) < 75 * 1024) {
+        failures.push(`lazy sound-tab assets fell below 75 KiB: ${sound?.emittedBytes || 0} bytes`);
+    }
+    const baselineInitialBytes = 4543936; // P17 baseline run 34049223633.
+    if (report.initial.bytes > baselineInitialBytes - (75 * 1024)) {
+        failures.push(`P17 initial JavaScript ${report.initial.bytes} exceeds ` +
+            `${baselineInitialBytes - (75 * 1024)} bytes`);
     }
     return failures;
 };
