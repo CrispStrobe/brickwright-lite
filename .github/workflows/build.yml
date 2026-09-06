@@ -584,6 +584,32 @@ jobs:
   # gave the job TWO `steps:` keys, which PyYAML silently accepts and Actions
   # rejects with a run that has no jobs at all.
   browser:
+    # TWO SHARDS OF ONE BODY. The gates below took 13–15 min in series (two
+    # dispatch runs, 2026-09-06: labwired heavy tier 140 s, 8086 benchmark 107 s,
+    # no-engine-artifact 46 s, AVR offline bench 34 s, debugger recording 30 s,
+    # then ~250 s of everything else) while build took 5.5 and corpus 2.2, so
+    # the run's verdict waited on this job by ~8 min. Each shard installs,
+    # builds and serves for itself (~120 s of runner time, not wall time) and
+    # runs the gates whose `if:` names it: `matrix.shard == 'heavy'` on the five
+    # long ones, `'light'` on the rest. THAT CLAUSE IS THE SHARD LIST — there is
+    # no second list to keep in agreement; test/browser-gate-shards.test.mjs and
+    # the audit step both parse these lines and fail by name on a gate with no
+    # clause (would run in every shard, and upload-artifact v4 refuses the second
+    # artifact of a name), two clauses, a clause naming a shard the matrix lacks
+    # (would never run, and stay green), an empty shard, or a companion step
+    # (upload, follow-up) whose clause differs from its gate's.
+    #
+    # fail-fast is OFF on purpose: the shards are independent, and a red heavy
+    # cancelling light would (a) report light as `cancelled` — the very signal
+    # this fleet misread for a day when the job was hitting its own ceiling —
+    # and (b) leave light's gates neither run nor cleanly skipped for the audit.
+    # The Measure step (workflow_dispatch only, ~90 s) is on light; on a manual
+    # run that is instrumentation, not a regression in the light shard's time.
+    name: browser (${{ matrix.shard }})
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [heavy, light]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # Job-level permissions REPLACE the workflow's for this job, so the two it
@@ -674,7 +700,7 @@ jobs:
       # measurement in the commit message; never to make a hang pass.
       - name: Browser gate — native broker packaged assets
         timeout-minutes: 3  # measured max 2 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.playwright.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.playwright.outcome == 'success' && matrix.shard == 'light' }}
         run: node scripts/verify-native-broker-assets.mjs
       # Every browser gate below hangs off THIS step's outcome, not
       # playwright's, and each carries `!cancelled()` so a red gate no longer
@@ -705,17 +731,17 @@ jobs:
       # dozens of serial gates.
       - name: Browser gate — the debugger-only pane and its round trip
         timeout-minutes: 4  # measured max 14 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: node scripts/verify-debugger-solo.mjs
 
       - name: Browser gate — debugger recording, reverse and fork history
         timeout-minutes: 4  # measured max 35 s over 5 main runs, 2026-09-05
         id: debug_history
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: PROOF_URL=http://localhost:8617/ npm run verify:debug-history
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.debug_history.outcome != 'skipped'
+        if: always() && steps.debug_history.outcome != 'skipped' && matrix.shard == 'heavy'
         with:
           name: debugger-history-browser-proof
           path: artifacts/debug-history-browser/*
@@ -724,11 +750,11 @@ jobs:
       - name: Browser gate — debugger run-to and synchronized inspection
         timeout-minutes: 3  # measured max 3 s over 5 main runs, 2026-09-05
         id: debug_inspection
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ npm run verify:debug-inspection
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.debug_inspection.outcome != 'skipped'
+        if: always() && steps.debug_inspection.outcome != 'skipped' && matrix.shard == 'light'
         with:
           name: debugger-inspection-browser-proof
           path: artifacts/debug-run-to-inspection/*
@@ -742,22 +768,22 @@ jobs:
       # than passing quietly for years the way the white-screen path did.
       - name: Browser gate — service worker failure modes
         timeout-minutes: 4  # measured max 25 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: node scripts/verify-service-worker.mjs
       - name: Browser gate — circuit UX
         timeout-minutes: 4  # measured max 21 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-circuit-ux.mjs
       # ROADMAP §2.4: the render fonts are fetched by the first SVG with text,
       # not at first paint. Both halves are asserted — no fetch on a fresh load,
       # and a text costume rasterised WITH its @font-face once one appears.
       - name: Browser gate — render fonts arrive with the first text costume, not before
         timeout-minutes: 3  # measured max 4 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-text-costume-fonts.mjs
       - name: Browser gate — circuit rendering and placement
         timeout-minutes: 3  # measured max 6 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-circuit-rendering.mjs
 
       # Physical product proof for the 74C922 gallery bench. This deliberately
@@ -766,11 +792,11 @@ jobs:
       # non-interactive face can all pass the model's isolated unit tests.
       - name: Browser gate — physical 74C922 keypad encoder
         timeout-minutes: 3  # measured max 3 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-74c922-keypad.mjs
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.playwright.outcome == 'success'
+        if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: 74c922-keypad-browser-proof
           path: artifacts/74c922-keypad/
@@ -795,7 +821,7 @@ jobs:
       # largest consumers and offers a fix.
       - name: Browser gate — the DRC can sum chip current
         timeout-minutes: 3  # measured max 2 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-drc-current.mjs
 
       # Same reasoning as the labwired and debugger shots below: a screenshot
@@ -803,33 +829,33 @@ jobs:
       # at, and "the deployed DRC sums current" is a claim someone will want to
       # check by eye rather than by trusting a green tick.
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.playwright.outcome == 'success'
+        if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: drc-current-screenshots
           path: artifacts/drc-current-*.png
           if-no-files-found: warn
       - name: Browser gate — view buttons
         timeout-minutes: 4  # measured max 16 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-view-buttons.mjs
       - name: Browser gate — editor
         timeout-minutes: 4  # measured max 19 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-editor.mjs
       - name: Browser gate — unpinned extension sandbox
         timeout-minutes: 3  # measured max 1 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-extension-sandbox.mjs
       - name: Browser gate — game gallery and hardware examples
         timeout-minutes: 3  # measured max 4 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-example-selector.mjs
       - name: Browser gate — both BASIC profiles execute on real machines
         timeout-minutes: 3  # measured max 3 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-basic-run.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.playwright.outcome == 'success'
+        if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: basic-run-proof
           path: artifacts/basic-run/*
@@ -841,10 +867,10 @@ jobs:
       # faces. One browser and two unchanged examples cover that whole seam.
       - name: Browser gate — 8086 local assembly, CGA, keyboard and 8255
         timeout-minutes: 3  # measured max 5 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-i8086-browser.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.playwright.outcome == 'success'
+        if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: i8086-production-browser-proof
           path: artifacts/i8086-browser/*
@@ -852,7 +878,7 @@ jobs:
 
       - name: Browser benchmark — 8086 desktop and mobile
         timeout-minutes: 8  # measured max 123 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: |
           # React's ordinary production renderer removes Profiler timings.
           # Build a separate minified profiling artifact so the deployable
@@ -895,7 +921,7 @@ jobs:
             PROOF_URL=http://localhost:8618/ node scripts/bench-i8086-browser.mjs
           gzip -9 artifacts/i8086-performance/webpack-stats.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.playwright.outcome == 'success'
+        if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'heavy'
         with:
           name: i8086-browser-performance
           path: artifacts/i8086-performance/**
@@ -903,7 +929,7 @@ jobs:
 
       - name: Browser gate — declared extension capability broker
         timeout-minutes: 3  # measured max 3 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: |
           mkdir -p artifacts/capability-broker
           PROOF_URL=http://localhost:8617/ \
@@ -911,22 +937,22 @@ jobs:
             FAILURE_JSON=artifacts/capability-broker/failure.json \
             node scripts/verify-capability-broker.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.playwright.outcome == 'success'
+        if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: capability-broker-proof
           path: artifacts/capability-broker/*
           if-no-files-found: error
       - name: Browser gate — first-run chooser and guided journeys
         timeout-minutes: 3  # measured max 8 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-starter-journeys.mjs
       - name: Browser gate — LEGO SPIKE archive and Code-tab round trip
         timeout-minutes: 3  # measured max 3 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-lego-spike-roundtrip.mjs
       - name: Browser gate — four-surface project save, reopen and vanilla replacement
         timeout-minutes: 3  # measured max 6 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-project-bundle-integrity.mjs
       # The costume half of the same question. The gate above proves the four
       # Brickwright surfaces round-trip; nothing proved the ARTWORK did, and the
@@ -935,7 +961,7 @@ jobs:
       # bitmap). Compares content hashed from asset.data, not declared ids.
       - name: Browser gate — costume artwork survives save/reload and records first-open performance
         timeout-minutes: 3  # measured max 5 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-costume-roundtrip.mjs
       # The unit suite asserts the table SVG and the mark state as pure values.
       # It cannot see whether the RENDERER accepts that SVG: a skin that fails
@@ -946,15 +972,15 @@ jobs:
       # backing store and a working stage screenshots identically to a broken one.
       - name: Browser gate — the renderer accepts the table the arrays blocks describe
         timeout-minutes: 3  # measured max 2 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-arrays-table-display.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.playwright.outcome == 'success'
+        if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: arrays-table-display-proof
           path: artifacts/arrays-table-display/*
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.playwright.outcome == 'success'
+        if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: costume-roundtrip-proof
           path: artifacts/costume-roundtrip/*
@@ -969,42 +995,42 @@ jobs:
       # actually fired rather than trusting a route pattern to keep matching.
       - name: Browser gate — a missing extension chunk costs its blocks, not the project
         timeout-minutes: 3  # measured max 4 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-lazy-extension-degradation.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.playwright.outcome == 'success'
+        if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: lazy-degradation-proof
           path: artifacts/lazy-extension-degradation/*
           if-no-files-found: warn
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.playwright.outcome == 'success'
+        if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: project-bundle-integrity-proof
           path: artifacts/project-bundle-integrity/*
           if-no-files-found: error
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.playwright.outcome == 'success'
+        if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: lego-spike-roundtrip-proof
           path: artifacts/lego-spike-roundtrip/*
           if-no-files-found: error
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.playwright.outcome == 'success'
+        if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: starter-journey-screenshots
           path: artifacts/starter-journeys/*.png
           if-no-files-found: warn
       - name: Browser gates — About, intro, interaction, and schematic rendering
         timeout-minutes: 4  # measured max 18 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: |
           PROOF_URL=http://localhost:8617/ node scripts/verify-about-dialog.mjs
           PROOF_URL=http://localhost:8617/ node scripts/verify-intro.mjs
           PROOF_URL=http://localhost:8617/ node scripts/verify-interaction.mjs
           PROOF_URL=http://localhost:8617/ node scripts/verify-schematic.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.playwright.outcome == 'success'
+        if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: rehabilitated-browser-gate-artifacts
           path: |
@@ -1014,7 +1040,7 @@ jobs:
           if-no-files-found: warn
       - name: Browser gates — Code chrome, Controller, faceplates, and Instruments
         timeout-minutes: 4  # measured max 19 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: |
           PROOF_URL=http://localhost:8617/ node scripts/verify-chrome-sweep.mjs
           PROOF_URL=http://localhost:8617/ node scripts/verify-controller-panel.mjs
@@ -1022,7 +1048,7 @@ jobs:
           PROOF_URL=http://localhost:8617/ node scripts/verify-instruments-scroll.mjs
           PROOF_URL=http://localhost:8617/ node scripts/verify-circuit-export-completeness.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.playwright.outcome == 'success'
+        if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: chrome-controller-faceplate-instruments-artifacts
           path: |
@@ -1033,7 +1059,7 @@ jobs:
           if-no-files-found: warn
       - name: Browser gate — Aurora-65 keyboard, OLED and VGA workstation
         timeout-minutes: 3  # measured max 8 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-aurora65-workstation.mjs
       # The debugger dock has now regressed to a blank pane twice, and the
       # serial console was output-only for as long as it existed. Both are
@@ -1041,7 +1067,7 @@ jobs:
       # requested, the other a machine that could not be answered.
       - name: Browser gate — debugger dock and serial input
         timeout-minutes: 4  # measured max 28 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-debug-dock.mjs
       # The language x device matrix: the badge beside the device picker and
       # the "What runs where" panel both read lib/bw-matrix/capabilities.js,
@@ -1049,7 +1075,7 @@ jobs:
       # Unit tests hold the table to source; this holds the GUI to the table.
       - name: Browser gate — language x device matrix badge and panel
         timeout-minutes: 3  # measured max 2 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-matrix-ui.mjs
 
       # The heavy simulation tier. Everything else about it — the adapter, the
@@ -1068,17 +1094,17 @@ jobs:
       # the 20 MB engine before anyone asks. It did, on every first load.
       - name: Browser gate — the heavy engine is not downloaded on first load
         timeout-minutes: 3  # measured max 3 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-first-load-weight.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.playwright.outcome == 'success'
+        if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: first-load-weight
           path: artifacts/first-load-weight/*
           if-no-files-found: warn
       - name: Browser gate — the labwired heavy tier actually executes
         timeout-minutes: 8  # measured max 165 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: node scripts/verify-labwired-engine.mjs
 
       # The OTHER branch of the same honesty rule, and the one production
@@ -1089,7 +1115,7 @@ jobs:
       # build would leave open whether the two builds differed elsewhere.
       - name: Browser gate — with no engine artifact, the tier is not offered
         timeout-minutes: 4  # measured max 47 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: node scripts/verify-labwired-engine.mjs --absent
 
       # Both gates above screenshot what they saw, and a screenshot that only
@@ -1098,7 +1124,7 @@ jobs:
       # run, without a local production build — which on a shared box is a
       # 2.4 GiB memory race that is not always winnable.
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.playwright.outcome == 'success'
+        if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'heavy'
         with:
           name: labwired-tier-screenshots
           path: artifacts/labwired-*.png
@@ -1111,7 +1137,7 @@ jobs:
       # source-linked scheduler state, and halt on a real write watchpoint.
       - name: Browser gate — offline 8051 compile and debugger evidence
         timeout-minutes: 3  # measured max 5 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-debug-frames-watch.mjs
 
       # Listing mode shares the compiler but not the consumer path above. This
@@ -1119,18 +1145,18 @@ jobs:
       # and aborts hosted compiler POSTs before they leave Chromium.
       - name: Browser gate — offline linked 8051 assembly listings
         timeout-minutes: 8  # measured max 124 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-local-asm-listing.mjs
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.playwright.outcome == 'success'
+        if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: offline-8051-debug-proof
           path: artifacts/debug-proof/*
           if-no-files-found: error
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.playwright.outcome == 'success'
+        if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: offline-8051-listing-proof
           path: artifacts/local-asm-listing/*
@@ -1146,11 +1172,11 @@ jobs:
       # honestly instead of stepping through firmware nobody compiled.
       - name: Browser gate — an AVR lesson bench starts offline on its shipped image
         timeout-minutes: 4  # measured max 35 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-offline-lesson-image.mjs
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.playwright.outcome == 'success'
+        if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'heavy'
         with:
           name: offline-lesson-image-proof
           path: artifacts/offline-lesson-image/*
@@ -1160,7 +1186,7 @@ jobs:
       # labwired journeys, keeping the earlier product sweep's peak memory flat.
       - name: Browser gate — promoted pinned extension worker
         timeout-minutes: 3  # measured max 2 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: |
           mkdir -p artifacts/pinned-worker
           PROOF_URL=http://localhost:8617/ \
@@ -1168,7 +1194,7 @@ jobs:
             FAILURE_JSON=artifacts/pinned-worker/failure.json \
             node scripts/verify-pinned-worker.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.playwright.outcome == 'success'
+        if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
           name: pinned-worker-proof
           path: artifacts/pinned-worker/*
@@ -1180,7 +1206,7 @@ jobs:
       # four gates that still passed while nothing ran it.
       - name: Browser gate — the native Web Bluetooth shim
         timeout-minutes: 3  # measured max 2 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: node scripts/verify-bluetooth.mjs
 
       # The MakeCode importer lives behind a dynamic import(), so a webpack
@@ -1188,7 +1214,7 @@ jobs:
       # and the routing from the Open button is JSX that nothing else runs.
       - name: Browser gate — MakeCode import
         timeout-minutes: 3  # measured max 3 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-makecode.mjs
 
       # Both of these were on the KNOWN_UNWIRED list as FAILING, and both
@@ -1200,12 +1226,12 @@ jobs:
       # importer, so they belong next to the gate above.
       - name: Browser gate — micro:bit MicroPython tab and simulator
         timeout-minutes: 4  # measured max 18 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-microbit.mjs
 
       - name: Browser gate — micro:bit debugger, block and line stepping
         timeout-minutes: 4  # measured max 18 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-microbit-debug-toggle.mjs
       # The Arduboy console is the only thing in the app that RUNS a
       # compiled binary rather than translating source, so "the unit tests
@@ -1214,7 +1240,7 @@ jobs:
       # one frame and a freeze is exactly what a stalled boot looks like.
       - name: Browser gate — Arduboy console runs a compiled game
         timeout-minutes: 3  # measured max 4 s over 5 main runs, 2026-09-05
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-arduboy.mjs
       # MEASURE the browser waits, on a runner instead of a developer box.
       #
@@ -1242,7 +1268,7 @@ jobs:
       # keeps that observation instead of discarding the run that produced it.
       - name: Measure — time every browser wait (manual runs only)
         id: waits
-        if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && steps.serve.outcome == 'success' }}
+        if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: |
           for g in verify-circuit-ux verify-circuit-rendering verify-view-buttons \
                    verify-editor verify-debug-dock; do
@@ -1257,7 +1283,7 @@ jobs:
           node scripts/aggregate-timeouts.mjs --observed wait-observations.jsonl --json > wait-report.json
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.waits.outcome != 'skipped'
+        if: always() && steps.waits.outcome != 'skipped' && matrix.shard == 'light'
         with:
           name: wait-observations
           path: |
@@ -1280,7 +1306,13 @@ jobs:
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node scripts/audit-job-steps.mjs
+          # The API reports the matrix leg's DISPLAY name, not GITHUB_JOB.
+          BW_JOB_NAME: browser (${{ matrix.shard }})
+        # Per shard: the gates whose clause names this shard must have run, the
+        # others must show skipped HERE (one that ran is a double run), and the
+        # partition itself is re-checked from this checkout's build.yml so a
+        # workflow edit that dodges the unit tests still fails inside the job.
+        run: node scripts/audit-job-steps.mjs --shard ${{ matrix.shard }}
 
   corpus:
     runs-on: ubuntu-latest

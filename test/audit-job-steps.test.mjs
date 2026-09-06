@@ -85,3 +85,63 @@ test('the job cannot be found: red as an absence, not as a finding', async () =>
     assert.equal(code, 1);
     assert.match(out.errors[0], /could not audit this run: expected exactly one job/);
 });
+
+// ---- Under a matrix of shards (2026-09-06) ----------------------------------
+
+import {expectedForShard} from '../scripts/audit-job-steps.mjs';
+import {readFileSync} from 'node:fs';
+import path from 'node:path';
+
+const heavyLeg = {shard: 'heavy', mine: ['Browser benchmark — 8086 desktop and mobile'], others: ['Browser gate — circuit UX', 'Browser gate — editor']};
+const inHeavy = base.map(s => isGate(s.name) && !heavyLeg.mine.includes(s.name) ? step(s.name, 'skipped') : s);
+
+test('shard: gates assigned elsewhere show skipped here and that is ok; the count is this leg\'s count', () => {
+    const v = judge(inHeavy, undefined, heavyLeg);
+    assert.equal(v.verdict, 'ok');
+    assert.equal(v.ran, 1);
+    assert.deepEqual(v.skipped, []);
+});
+
+test('shard: a gate assigned HERE that ended skipped is still the lie, named', () => {
+    const steps = inHeavy.map(s => s.name === heavyLeg.mine[0] ? step(s.name, 'skipped') : s);
+    const v = judge(steps, undefined, heavyLeg);
+    assert.equal(v.verdict, 'skipped-in-green');
+    assert.deepEqual(v.skipped, heavyLeg.mine);
+});
+
+test('shard: a gate assigned elsewhere that RAN here is a double run, failed by name', () => {
+    const steps = inHeavy.map(s => s.name === 'Browser gate — editor' ? step(s.name, 'success') : s);
+    const v = judge(steps, undefined, heavyLeg);
+    assert.equal(v.verdict, 'ran-in-wrong-shard');
+    assert.deepEqual(v.wrongShard, ['Browser gate — editor (success)']);
+});
+
+test('shard: a gate in the job that no clause assigns is failed by name, before anything else', () => {
+    const steps = [...inHeavy, step('Browser gate — brand new, no clause', 'success')];
+    const v = judge(steps, undefined, heavyLeg);
+    assert.equal(v.verdict, 'unassigned-gate');
+    assert.deepEqual(v.unassigned, ['Browser gate — brand new, no clause']);
+});
+
+test('shard: the leg is found by its DISPLAY name, and a leg named only by GITHUB_JOB is an absence, not a finding', async () => {
+    const jobs = [{name: 'browser (heavy)', run_attempt: 1, steps: inHeavy}, {name: 'browser (light)', run_attempt: 1, steps: base}];
+    const yml = readFileSync(path.resolve(import.meta.dirname, '..', '.github', 'workflows', 'build.yml'), 'utf8');
+    let s = sinks();
+    let code = await run(async () => jobs, {jobName: 'browser', attempt: 1, shard: 'heavy', workflowText: yml}, {log: s.log, error: s.error});
+    assert.equal(code, 1);
+    assert.match(s.out.errors[0], /could not audit this run: expected exactly one job named "browser", found 0/);
+    assert.doesNotMatch(s.out.errors.join('\n'), /skipped with no earlier failure/);
+});
+
+test('shard: the audit refuses a workflow whose clauses are not a partition, as a workflow defect, before judging any step', async () => {
+    const yml = readFileSync(path.resolve(import.meta.dirname, '..', '.github', 'workflows', 'build.yml'), 'utf8');
+    const broken = yml.replace(/(- name: Browser gate — circuit UX\n(?:.*\n){0,3}?\s+if: [^\n]*?) && matrix\.shard == '[a-z]+'/, '$1');
+    assert.notEqual(broken, yml, 'mutation anchor');
+    const s = sinks();
+    const code = await run(async () => { throw new Error('must not be reached'); }, {jobName: 'browser (heavy)', attempt: 1, shard: 'heavy', workflowText: broken}, {log: s.log, error: s.error});
+    assert.equal(code, 1);
+    assert.match(s.out.errors[0], /not a partition of the gates/);
+    assert.match(s.out.errors[0], /no shard clause.*Browser gate — circuit UX/);
+    const e = expectedForShard(yml, 'heavy');
+    assert.ok(e.ok && e.mine.length >= 4 && e.others.length >= 30, `the real workflow partitions: heavy ${e.mine.length}, others ${e.others.length}`);
+});

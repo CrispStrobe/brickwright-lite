@@ -26,51 +26,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
+import {parseJobs, isBrowserStep} from '../scripts/lib/workflow-gates.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const yml = readFileSync(process.env.BW_BUILD_YML || path.join(ROOT, '.github/workflows/build.yml'), 'utf8');
 
-/** Every job as {id, timeout, steps: [{job, name, timeout}]}, from the `jobs:` block. */
-const parseJobs = text => {
-    const lines = text.split('\n');
-    const jobsAt = lines.findIndex(l => l === 'jobs:');
-    assert.ok(jobsAt >= 0, 'build.yml has no top-level jobs: block — the parse is wrong, not the file');
-    const jobs = new Map();
-    let job = null;
-    let step = null;
-    for (const line of lines.slice(jobsAt + 1)) {
-        if (/^\S/.test(line) && line.trim() !== '') break; // left the jobs block
-        const j = line.match(/^  ([a-z][a-z-]*):$/);
-        if (j) {
-            job = {id: j[1], timeout: null, steps: []};
-            jobs.set(j[1], job);
-            step = null;
-            continue;
-        }
-        if (!job) continue;
-        const jt = line.match(/^    timeout-minutes:\s*(\d+)\s*(?:#.*)?$/);
-        if (jt) job.timeout = Number(jt[1]);
-        if (/^      - /.test(line)) {
-            step = {job: job.id, name: '', timeout: null, ifs: null};
-            job.steps.push(step);
-        }
-        if (!step) continue;
-        const cond = line.match(/^        if:\s*(.*)$/);
-        if (cond) step.ifs = cond[1].trim();
-        const name = line.match(/^      (?:- )?name:\s*(.*)$/);
-        if (name) step.name = name[1];
-        // A trailing comment carries the measured maximum the budget was derived from.
-        const t = line.match(/^        timeout-minutes:\s*(\d+)\s*(?:#.*)?$/);
-        if (t) step.timeout = Number(t[1]);
-    }
-    return jobs;
-};
-
-const isBrowserStep = step => /^Browser (?:gates?|benchmark) — /.test(step.name);
-const browserSteps = text => [...parseJobs(text).values()].flatMap(j => j.steps).filter(isBrowserStep);
+// The parser lives in scripts/lib/workflow-gates.mjs so the in-job audit and
+// test/browser-gate-shards.test.mjs read the same lines this test does.
+const browserSteps = text => [...parseJobs(text).values()].flatMap(j => j.steps).filter(s => isBrowserStep(s.name));
 /** The jobs that hold browser steps, and the one ceiling that bounds them if there is exactly one. */
 const ceilingFor = text => {
-    const holders = [...parseJobs(text).values()].filter(j => j.steps.some(isBrowserStep));
+    const holders = [...parseJobs(text).values()].filter(j => j.steps.some(s => isBrowserStep(s.name)));
     return {holders: holders.map(j => j.id), timeout: holders.length === 1 ? holders[0].timeout : null};
 };
 const MAX_STEP_BUDGET = 8;
@@ -80,7 +46,9 @@ test('the parse found the browser steps it is about to reason over', () => {
     const steps = browserSteps(yml);
     assert.ok(steps.length >= 30, `only ${steps.length} browser steps parsed — build.yml carries ~40; the parse is wrong before anything is concluded`);
     const {holders, timeout} = ceilingFor(yml);
-    assert.equal(holders.length, 1, `browser steps are spread over jobs ${holders.join(', ')} — one job must hold them so one ceiling bounds them`);
+    // One BODY holds them (it is a matrix of shards since 2026-09-06 — still one
+    // ceiling, one set of steps; test/browser-gate-shards.test.mjs holds the partition).
+    assert.equal(holders.length, 1, `browser steps are spread over jobs ${holders.join(', ')} — one job body must hold them so one ceiling bounds them`);
     assert.ok(timeout >= 20, `the job holding the browser steps (${holders[0]}) has no timeout-minutes of its own (${timeout})`);
 });
 
@@ -101,7 +69,7 @@ test('budgets are bounded: no single hang reaches the job ceiling, and none is t
 
 test('the job holding the browser gates ends with the in-job audit, so a green job cannot hide a skipped one', () => {
     const jobs = parseJobs(yml);
-    const holder = [...jobs.values()].find(j => j.steps.some(isBrowserStep));
+    const holder = [...jobs.values()].find(j => j.steps.some(s => isBrowserStep(s.name)));
     const named = holder.steps.filter(s => s.name);
     const last = named[named.length - 1];
     assert.equal(last.name, 'Audit — every browser gate ran',
@@ -116,7 +84,7 @@ test('the job holding the browser gates ends with the in-job audit, so a green j
 test('the invariant can fail: the audit step without if: always() is reported', () => {
     const mutated = yml.replace(/(- name: Audit — every browser gate ran\n)\s+if: always\(\)\n/, '$1');
     assert.notEqual(mutated, yml, 'mutation anchor did not match — the audit step or its condition moved');
-    const holder = [...parseJobs(mutated).values()].find(j => j.steps.some(isBrowserStep));
+    const holder = [...parseJobs(mutated).values()].find(j => j.steps.some(s => isBrowserStep(s.name)));
     const audit = holder.steps.find(s => s.name === 'Audit — every browser gate ran');
     assert.notEqual(audit.ifs, 'always()');
 });
