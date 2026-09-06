@@ -39,14 +39,20 @@ try {
     await page.locator('[role="tab"]', {hasText: /Sounds?/i}).first().waitFor({timeout: 60000});
     const startedAt = await page.evaluate(() => performance.now());
     await page.locator('[role="tab"]', {hasText: /Sounds?/i}).first().click();
-    await page.waitForFunction(() => {
+    const activationState = await page.waitForFunction(() => {
         const selected = [...document.querySelectorAll('[role="tab"]')]
             .find(tab => /sounds?/i.test(tab.textContent || '') && tab.getAttribute('aria-selected') === 'true');
-        const panel = [...document.querySelectorAll('[role="tabpanel"]')]
-            .find(item => item.getAttribute('aria-hidden') !== 'true' && item.offsetParent !== null);
-        return selected && panel && panel.querySelectorAll('button').length >= 3 &&
-            !panel.querySelector('[data-sound-tab-loading], [data-sound-tab-load-error]');
-    }, null, {timeout: 30000});
+        if (!selected) return false;
+        const panel = document.getElementById(selected.getAttribute('aria-controls'));
+        if (!panel) return false;
+        const error = panel.querySelector('[data-sound-tab-load-error]');
+        if (error) return {error: error.textContent || 'Sound tab failed to load'};
+        if (panel.querySelector('[data-sound-tab-loading]') || panel.querySelectorAll('button').length < 3) {
+            return false;
+        }
+        return {ready: true};
+    }, null, {timeout: 30000}).then(handle => handle.jsonValue());
+    if (activationState.error) throw new Error(activationState.error);
     const receipt = await page.evaluate(start => new Promise(resolve => {
         requestAnimationFrame(() => requestAnimationFrame(() => {
             const readyAt = performance.now();

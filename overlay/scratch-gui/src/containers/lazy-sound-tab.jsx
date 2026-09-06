@@ -31,6 +31,7 @@ class LazySoundTab extends React.Component {
         if (this.state.error) {
             return (
                 <div data-sound-tab-load-error>
+                    <span>{String(this.state.error.message || this.state.error)}</span>
                     <button type="button" onClick={this.handleRetry}>Retry sound editor</button>
                 </div>
             );
