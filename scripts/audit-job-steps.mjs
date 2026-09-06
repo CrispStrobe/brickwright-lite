@@ -40,7 +40,7 @@
  */
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
-import {parseJobs, partition, isBrowserStep} from './lib/workflow-gates.mjs';
+import {parseJobs, partition, isBrowserStep, AUDIT_STEP} from './lib/workflow-gates.mjs';
 
 const RED = new Set(['failure', 'cancelled', 'timed_out']);
 
@@ -53,7 +53,7 @@ const RED = new Set(['failure', 'cancelled', 'timed_out']);
  * @returns {{verdict: 'ok'|'skipped-in-green'|'skipped-after-red'|'no-gates'|'ran-in-wrong-shard'|'unassigned-gate',
  *   skipped: string[], failedEarlier: string[], ran: number, wrongShard: string[], unassigned: string[]}}
  */
-export const judge = (steps, selfName = 'Audit — every browser gate ran', expected = null) => {
+export const judge = (steps, selfName = AUDIT_STEP, expected = null) => {
     const others = steps.filter(s => s.name !== selfName);
     const allBrowser = others.filter(s => isBrowserStep(s.name));
     const failedEarlier = others.filter(s => RED.has(s.conclusion)).map(s => s.name);
@@ -189,7 +189,10 @@ export const run = async (loadJobs, {jobName, attempt, shard = null, workflowTex
     // as long as the audit runs — waiting on them would exhaust every time.
     const unreported = job => {
         const steps = job.steps || [];
-        const me = steps.findIndex(s => s.name === 'Audit — every browser gate ran');
+        // AUDIT_STEP, not a literal: a renamed step would otherwise count the
+        // audit's OWN in_progress step as unreported, exhaust the loop, and turn
+        // every run into an absence — permanently, sixty seconds a leg (lego-be).
+        const me = steps.findIndex(s => s.name === AUDIT_STEP);
         return (me >= 0 ? steps.slice(0, me) : steps).filter(s => s.status !== 'completed').map(s => s.name);
     };
     for (let i = 0; i < 6 && unreported(mine[0]).length; i++) {
