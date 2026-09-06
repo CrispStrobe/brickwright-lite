@@ -46,10 +46,19 @@ const openMicroBitModal = faultPage => faultPage.evaluate(() => {
     store.dispatch({type: 'scratch-gui/modals/OPEN_MODAL', modal: 'connectionModal'});
 });
 
-const waitForPromise = (promise, label) => Promise.race([
-    promise,
-    new Promise((resolve, reject) => setTimeout(() => reject(new Error(`timed out waiting for ${label}`)), 10000))
-]);
+const waitForPromise = async (promise, label) => {
+    let timer;
+    try {
+        return await Promise.race([
+            promise,
+            new Promise((resolve, reject) => {
+                timer = setTimeout(() => reject(new Error(`timed out waiting for ${label}`)), 10000);
+            })
+        ]);
+    } finally {
+        clearTimeout(timer);
+    }
+};
 
 try {
     await page.addInitScript(() => {
