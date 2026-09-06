@@ -7,8 +7,11 @@
   "source": {
     "repo": "bw-board",
     "path": "rom/bios.asm",
-    "sha": "9a770c8b2c948a020b3c0da7ce6510020afbc796",
-    "date": "2026-09-06",
+    "vendoredAs": "i8086-bios.asm",
+    "license": "MIT",
+    "sha256": "688c5fbdfcaccdbee3b940f6c4d0c48d834b8c58caaef10b004cdc8cf5b97721",
+    "sha": "8064729ca39f710c89effdfe0b1d0086aadf1778",
+    "date": "2026-09-05",
     "lastTouchedBy": {
       "sha": "8064729ca39f710c89effdfe0b1d0086aadf1778",
       "subject": "BIOS: the diskette parameter table now describes the disk that is in the drive",

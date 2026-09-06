@@ -61,8 +61,17 @@ const repo = resolve(here, '..');
 export const ASSEMBLER = join(repo, 'overlay/scratch-gui/src/lib/bw-board/i8086-asm.js');
 export const ROM = join(repo, 'overlay/scratch-gui/static/roms/i8086-bios.bin');
 export const MANIFEST = join(repo, 'overlay/scratch-gui/static/roms/i8086-bios.provenance.json');
+// The ROM's source, vendored as text beside the binary so CI can re-derive the
+// ROM offline (test/i8086-bios-source-provenance.test.mjs) instead of only when
+// a bw-board checkout is present. Its sha256 is recorded in the manifest and
+// `.gitattributes` marks it `-text` so no runner's autocrlf can move that digest.
+export const VENDORED_SOURCE = join(repo, 'overlay/scratch-gui/static/roms/i8086-bios.asm');
 export const PINS = join(repo, 'vendor-pins.json');
 export const SOURCE_IN_BW_BOARD = 'rom/bios.asm';
+// bw-board's LICENSE is MIT ("Copyright (c) 2026 CrispStrobe") — the same
+// licence as the assembler already vendored from it, recorded so the vendored
+// source's terms travel with it in the manifest.
+export const SOURCE_LICENSE = 'MIT';
 
 // The ROM occupies the whole F000 segment: F0000h-FFFFFh. Not a size chosen
 // for comfort -- the reset fetch is at FFFF0h and the image has to reach it.
@@ -240,7 +249,8 @@ async function main (argv) {
     console.log(`  pin        ${pin.slice(0, 7)} (vendor-pins.json)`);
 
     if (mode === 'check' || mode === 'write') {
-        const built = await assembleBios(readSourceAt(dir, null));
+        const sourceText = readSourceAt(dir, null);
+        const built = await assembleBios(sourceText);
         const builtSha = sha256(built.bytes);
         console.log(`  built      ${builtSha}  from the working tree at ${SOURCE_IN_BW_BOARD}`);
         console.log(`  reset      FFFF:0000 -> ${hex(built.segment)}:${hex(built.entry)}  (jmp far, verified)`);
@@ -251,9 +261,9 @@ async function main (argv) {
             return 1;
         }
         writeFileSync(ROM, built.bytes);
-        writeManifest({sourceSha: headSha, romSha: builtSha, bytes: built.bytes.length,
+        writeManifest({sourceSha: headSha, sourceText, romSha: builtSha, bytes: built.bytes.length,
             entry: built.entry, segment: built.segment, assemblerSha, pin, dir});
-        console.log('\nROM and manifest written.');
+        console.log(`\nROM, vendored source and manifest written.`);
         return 0;
     }
 
@@ -283,15 +293,26 @@ async function main (argv) {
     }
     if (mode === 'identify') { console.log('\nIdentified. Nothing written (--record writes the manifest).'); return 0; }
 
-    writeManifest({sourceSha: found.sha, romSha: committedSha, bytes: committed.length,
+    // The source that reproduces the committed ROM is the identified commit's,
+    // NOT necessarily the pin's (they can differ by `behindPinBy`); vendor that
+    // one, so the offline gate re-derives the bytes that actually shipped.
+    const sourceText = readSourceAt(dir, found.sha);
+    writeManifest({sourceSha: found.sha, sourceText, romSha: committedSha, bytes: committed.length,
         entry: found.built.entry, segment: found.built.segment, assemblerSha, pin, dir,
         behindPinBy: behind.length});
-    console.log(`\nManifest written: ${MANIFEST}`);
+    console.log(`\nManifest and vendored source written: ${MANIFEST}`);
+    console.log(`Vendored source: ${VENDORED_SOURCE}`);
     console.log('The ROM was not touched.');
     return 0;
 }
 
-function writeManifest ({sourceSha, romSha, bytes, entry, segment, assemblerSha, pin, dir, behindPinBy = 0}) {
+function writeManifest ({sourceSha, sourceText, romSha, bytes, entry, segment, assemblerSha, pin, dir, behindPinBy = 0}) {
+    // Vendor the source text beside the ROM and hash exactly the bytes written,
+    // so the manifest's source.sha256 is what the offline gate re-derives from
+    // disk. (.gitattributes marks the file -text; no runner rewrites it.)
+    const sourceBuf = Buffer.from(sourceText, 'utf8');
+    writeFileSync(VENDORED_SOURCE, sourceBuf);
+    const sourceSha256 = sha256(sourceBuf);
     // pinAtBuild is the load-bearing field. The gate has no network and no
     // bw-board checkout, so it cannot re-run the ancestry test; what it CAN do
     // is notice that the pin has moved since this manifest was written, which
@@ -307,6 +328,14 @@ function writeManifest ({sourceSha, romSha, bytes, entry, segment, assemblerSha,
         source: {
             repo: 'bw-board',
             path: SOURCE_IN_BW_BOARD,
+            // The source is vendored as text beside the ROM so CI can re-derive
+            // the binary offline. `sha256` is of the vendored bytes on disk and
+            // is what test/i8086-bios-source-provenance.test.mjs re-derives; the
+            // git `sha` below is the bw-board commit it came from (not
+            // re-derivable without a checkout). `license` travels with it.
+            vendoredAs: 'i8086-bios.asm',
+            license: SOURCE_LICENSE,
+            sha256: sourceSha256,
             // The sha whose bios.asm was assembled. In --write that is the
             // checkout's HEAD, which is usually a commit that did not touch the
             // ROM at all -- so its subject line describes something else
