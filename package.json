@@ -69,6 +69,7 @@
     "verify:extension-sandbox": "node scripts/verify-extension-sandbox.mjs",
     "verify:pinned-worker": "node scripts/verify-pinned-worker.mjs",
     "verify:makecode": "node scripts/verify-makecode.mjs",
+    "verify:i8086-export": "node scripts/verify-i8086-export.mjs",
     "verify:labwired": "node scripts/verify-labwired-engine.mjs",
     "verify:labwired-absent": "node scripts/verify-labwired-engine.mjs --absent",
     "verify:pico-micropython": "node scripts/verify-pico-micropython.mjs",
