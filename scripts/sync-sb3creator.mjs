@@ -212,7 +212,11 @@ const pinAlreadyMoved = async () => {
         return stdout.trim() === OLD_PIN.trim();
     } catch { return false; }
 };
-if (await pinAlreadyMoved()) {
+// Not in --check mode: a check writes nothing, so the ordering hazard does not
+// apply -- and the nightly freshness workflow checks out upstream AT the pin,
+// where "HEAD == pin" is the healthy state, not a moved pin (found on the
+// first nightly run after this guard landed: both vendor steps exited 2).
+if (!check && await pinAlreadyMoved()) {
     console.error('\n  PIN ALREADY MOVED: vendor-pins.json records the sha this run is syncing');
     console.error(`  FROM (${OLD_PIN.slice(0, 9)}), so the guard's three-way base is the incoming`);
     console.error('  file and every upstream edit will read as lite-only work being deleted.');
