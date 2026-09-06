@@ -970,7 +970,9 @@ jobs:
           cleanup_profile_build() {
             ci_status=$?
             if [ -n "$profile_server" ]; then
-              kill "$profile_server" 2>/dev/null || true
+              if ! kill "$profile_server" 2>/dev/null; then
+                ci_status=1
+              fi
             fi
             rm -rf packages/scratch-gui/build
             if ! mv packages/scratch-gui/build-production-ci packages/scratch-gui/build; then
