@@ -117,14 +117,17 @@ const componentBytes = {
     inlineWorkerRuntime: bytes('node_modules/worker-loader/dist/workers/InlineWorker.js'),
     entireProxyTool: bytes('src/ProxyTool.js')
 };
-const movableRawUpperBoundBytes = Object.values(componentBytes).reduce((sum, value) => sum + value, 0);
-const emittedFloorBytes = 75 * 1024;
 const fallbackAssets = compilation.assets.filter(asset => {
     const name = normalizeName(asset.name);
     return path.posix.basename(name) === workerName || name.endsWith(`/${workerName}`);
 });
 if (fallbackAssets.length > 1) throw new Error(`expected at most one fallback asset, found ${fallbackAssets.length}`);
-if (fallbackAssets.length) positiveSize(fallbackAssets[0].size, `fallback asset ${fallbackAssets[0].name}`);
+if (fallbackAssets.length) {
+    componentBytes.emittedFallbackAsset = positiveSize(
+        fallbackAssets[0].size, `fallback asset ${fallbackAssets[0].name}`);
+}
+const movableRawUpperBoundBytes = Object.values(componentBytes).reduce((sum, value) => sum + value, 0);
+const emittedFloorBytes = 75 * 1024;
 const fallbackFileBytes = bytes(`dist/web/${workerName}`);
 const decodedInlineWorkerBytes = positiveSize(Buffer.byteLength(decodedWorker), 'decoded inline worker');
 const fallbackEmitted = fallbackAssets.length === 1;

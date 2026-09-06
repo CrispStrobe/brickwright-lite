@@ -11,7 +11,7 @@ const WORKER = 'f6240eab828e6d415177.worker.js';
 const MODULE = '/fixture/node_modules/scratch-storage/dist/web/scratch-storage.js';
 const PIN = '6285d012425f3de521aad5a849f31f52721d096c';
 
-const fixture = ({movable = 100, nested = false, fallbackName, moduleSize = 280064,
+const fixture = ({movable = 100, nested = false, fallbackName, fallbackSize = 6, moduleSize = 280064,
     moduleCount = 1, moduleChunks = ['main'], rawStatsTransform} = {}) => {
     const root = mkdtempSync(path.join(tmpdir(), 'p19-storage-'));
     const put = (relative, value) => {
@@ -36,7 +36,7 @@ const fixture = ({movable = 100, nested = false, fallbackName, moduleSize = 2800
     }));
     const compilation = {
         hash: 'fixture-webpack-hash',
-        assets: [{name: 'main.js', size: 1}, ...(fallbackName ? [{name: fallbackName, size: 6}] : [])],
+        assets: [{name: 'main.js', size: 1}, ...(fallbackName ? [{name: fallbackName, size: fallbackSize}] : [])],
         chunks: [
             {id: 'main', initial: true},
             {id: 'async', initial: false}
@@ -177,6 +177,25 @@ test('76,799 bytes stops and 76,800 bytes permits a candidate', () => {
             assert.equal(result.status, status, result.stderr);
             const report = JSON.parse(result.stdout);
             assert.equal(report.worker.movableRawUpperBoundBytes, movable);
+            assert.equal(report.plausible, plausible);
+        } finally {
+            clean(subject);
+        }
+    }
+});
+
+test('the 76,800-byte boundary includes an emitted fallback asset', () => {
+    for (const [movable, status, total, plausible] of [
+        [76793, 2, 76799, false],
+        [76794, 0, 76800, true]
+    ]) {
+        const subject = fixture({movable, fallbackName: `assets/${WORKER}`, fallbackSize: 6});
+        try {
+            const result = run(subject);
+            assert.equal(result.status, status, result.stderr);
+            const report = JSON.parse(result.stdout);
+            assert.equal(report.worker.componentBytes.emittedFallbackAsset, 6);
+            assert.equal(report.worker.movableRawUpperBoundBytes, total);
             assert.equal(report.plausible, plausible);
         } finally {
             clean(subject);
