@@ -33,6 +33,8 @@ test('the Sounds route owns one retryable demand-loaded module', () => {
     assert.match(receiptGate, /soundTabScripts\.length !== 1/);
     assert.match(browserGate, /\[role="tab"\]\:visible/);
     assert.match(browserGate, /getAttribute\('aria-controls'\)/);
+    assert.doesNotMatch(browserGate, /querySelector\(`\[role="tab"\]\[aria-controls=/,
+        'a DOM id must not be interpolated into a CSS selector');
     assert.match(browserGate, /panel\.locator\('button\[aria-label="Choose a Sound"\]'\)\.first\(\)/);
     assert.match(browserGate, /receipt\.failure = failure/);
     assert.match(browserGate, /diagnosticError: String/);

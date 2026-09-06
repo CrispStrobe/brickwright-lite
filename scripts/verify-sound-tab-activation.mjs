@@ -94,7 +94,8 @@ try {
                 .filter(entry => entry.initiatorType === 'script' && (start === null || entry.startTime >= start))
                 .map(entry => ({name: entry.name, startTime: entry.startTime,
                     responseEnd: entry.responseEnd, encodedBodySize: entry.encodedBodySize || 0}));
-            const tabNode = panelId ? document.querySelector(`[role="tab"][aria-controls="${panelId}"]`) : null;
+            const tabNode = panelId ? [...document.querySelectorAll('[role="tab"]')]
+                .find(node => node.getAttribute('aria-controls') === panelId) : null;
             const panelNode = panelId ? document.getElementById(panelId) : null;
             const soundControls = [...(panelNode?.querySelectorAll('button[aria-label]') || [])]
                 .filter(button => /^(Choose a Sound|Upload Sound|Surprise|Record|Generate)$/.test(
