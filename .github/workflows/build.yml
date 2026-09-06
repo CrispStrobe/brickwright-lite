@@ -998,7 +998,7 @@ jobs:
             artifacts/i8086-performance/webpack-stats.json \
             --build-dir packages/scratch-gui/build-profile \
             --run "$GITHUB_RUN_ID" --head "$GITHUB_SHA" \
-            --base abcd014e1182809d95177546d8930231d8ec8289 \
+            --base 182d00dbe30d69cb0e3ee8bdb4d46ef48c558b43 \
             --write-receipt artifacts/i8086-performance/p21-pseudocode-attribution.json
           python3 -m http.server 8618 --directory packages/scratch-gui/build-profile &
           profile_server=$!
