@@ -17,7 +17,7 @@ gates.
 
 ## Next-session priorities — reconciled 2026-09-06
 
-The current shortlist was reconciled with `main` at `238769010`. Completed and
+The current shortlist was reconciled with `main` at `913e4afc3`. Completed and
 rejected predecessor work is recorded in `HISTORY.md`.
 
 The next bounded track is:

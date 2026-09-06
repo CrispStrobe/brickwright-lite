@@ -25,7 +25,7 @@ item marked with an agent name is being worked on.
 ## Next-session shortlist — reconciled 2026-09-06
 
 [PLAN.md](PLAN.md#next-session-priorities--reconciled-2026-09-06) records
-execution order. Current upstream baseline is `238769010`; completed and
+execution order. Current upstream baseline is `913e4afc3`; completed and
 rejected predecessor work is in [HISTORY.md](HISTORY.md). One bounded track
 remains live.
 
