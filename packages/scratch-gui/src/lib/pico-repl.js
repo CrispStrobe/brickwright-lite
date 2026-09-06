@@ -126,9 +126,20 @@ export function createPicoRepl(transport, opts = {}) {
    *  Ctrl-D, and before the OK wait, so a stall can be localized to the exact
    *  step (the program and the Ctrl-D go as SEPARATE writes for the same reason). */
   async function execStart(code, onProgress = () => {}) {
-    await transport.write(code);
-    onProgress('program-written', {bytes: code.length});
+    // Write in packets no larger than the CDC bulk OUT endpoint (64 bytes),
+    // draining between each so the device consumes one before the next arrives.
+    // A single large write is delivered whole in node but, in the bundled
+    // browser USB path, only its first packet reaches the firmware — the rest is
+    // silently dropped, the program is truncated, and no OK ever comes. Ctrl-D
+    // goes as its own final packet after the program has drained.
+    const MAX_PACKET = 64;
+    for (let i = 0; i < code.length; i += MAX_PACKET) {
+      await transport.write(code.slice(i, i + MAX_PACKET));
+      onProgress('program-written', {bytes: Math.min(i + MAX_PACKET, code.length)});
+      if (transport.drain) await transport.drain();
+    }
     await transport.write(CTRL_D);
+    if (transport.drain) await transport.drain();
     onProgress('ctrld-written');
     onProgress('waiting-ok');
     await readUntil('OK');
