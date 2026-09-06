@@ -2,6 +2,7 @@ import StartAudioContext from 'startaudiocontext';
 import bowser from 'bowser';
 
 let AUDIO_CONTEXT;
+let initAudioContext;
 
 if (!bowser.msie) {
     /**
@@ -11,11 +12,14 @@ if (!bowser.msie) {
         typeof document.ontouchstart === 'undefined' ?
             'mousedown' :
             'touchstart';
-    const initAudioContext = () => {
+    initAudioContext = () => {
         document.removeEventListener(event, initAudioContext);
-        AUDIO_CONTEXT = new (window.AudioContext ||
-            window.webkitAudioContext)();
-        StartAudioContext(AUDIO_CONTEXT);
+        if (!AUDIO_CONTEXT) {
+            AUDIO_CONTEXT = new (window.AudioContext ||
+                window.webkitAudioContext)();
+            StartAudioContext(AUDIO_CONTEXT);
+        }
+        return AUDIO_CONTEXT;
     };
     document.addEventListener(event, initAudioContext);
 }
@@ -25,5 +29,11 @@ if (!bowser.msie) {
  * @return {AudioContext} The singleton AudioContext
  */
 export default function () {
+    // A demand-loaded caller can import this module after the gesture which
+    // would normally initialize the singleton. Initialize on that first use;
+    // the browser can create a suspended context even when activation expired.
+    if (!AUDIO_CONTEXT && initAudioContext) {
+        return initAudioContext();
+    }
     return AUDIO_CONTEXT;
 }

@@ -7,6 +7,7 @@ const read = filename => readFileSync(new URL(`../${filename}`, import.meta.url)
 test('the Sounds route owns one retryable demand-loaded module', () => {
     const gui = read('overlay/scratch-gui/src/components/gui/gui.jsx');
     const wrapper = read('overlay/scratch-gui/src/containers/lazy-sound-tab.jsx');
+    const sharedAudio = read('packages/scratch-gui/src/lib/audio/shared-audio-context.js');
     const browserGate = read('scripts/verify-sound-tab-activation.mjs');
 
     assert.doesNotMatch(gui, /import SoundTab from/);
@@ -17,6 +18,9 @@ test('the Sounds route owns one retryable demand-loaded module', () => {
     assert.match(wrapper, /getDerivedStateFromError/);
     assert.match(wrapper, /Retry sound editor/);
     assert.match(wrapper, /data-sound-tab-loading/);
+    assert.match(sharedAudio,
+        /if \(!AUDIO_CONTEXT && initAudioContext\) \{\s*return initAudioContext\(\);/,
+        'a module loaded after the opening gesture must initialize audio on first use');
     assert.match(browserGate, /baselineRun = 34051772854/);
     assert.match(browserGate, /relativeLimitMs = 236\.325/);
     assert.match(browserGate, /maxLongTaskMs = 100/);
