@@ -288,6 +288,18 @@ item independently. DoD:
 - [ ] Overlay + tracked `packages/` mirror together; browser gate run read per
       step. Land D before N3c (both touch the picker), per the Codex sequencing.
 
+**T8. The GUI shows the verification story, not only the doc. DONE 2026-09-06** (lego-ac).
+D3 says GUI and docs derive from one table; until today the generated doc rendered tier and each
+oracle's census status (T6) while the panel's sentence (`explain()`) stopped at native/lowered and
+reach. Now `scripts/gen-bw-board-census.mjs` also emits `lib/bw-matrix/census-snapshot.js` (the join
+fields only — id, kind, present, ciAvailable — never `via`, which is a path on the reading box; gated
+identical to the JSON and to its tracked mirror), and `explain()` appends `· tier 2a (emu8051: standing
+in bw-board CI)` to a shipped native fact, `· declared, not checked` when evidence is declared, and a
+`simulator: <engine> · tier …` clause for the device's shipped engines, in both locales. Gate:
+`test/bw-board-census.test.mjs` (module parity, the sentences) and `verify-matrix-ui.mjs` reads the
+clause off the C × STC12 cell's title. The five status words: standing (bw-board's CI runs it),
+recorded once, oracle absent, service reachability only, no census row (refused in CI by T6).
+
 ### Lane N — native halves to add
 
 **N1. Z80 C via SDCC `-mz80`.** Repo: stc-compiler, then lite. **BUILT 2026-09-05** on stc-compiler branch `lane/z80-c-target` (`6e40fb6e`, delegate, audited by lego-ac: 21 new tests, 432 repo tests green, ten mutation proofs). The vendored SDCC 4.0.0 already had the z80 port; what was missing was `share/sdcc/lib/z80` (crt0 + z80.lib), now vendored from the same .deb the fetch script uses. Map: ROM $0000–$7FFF, RAM $8000–$FFFF from `examples/z80-pd-bench/EXPECTED.md`; `--code-loc 0x0200 --data-loc 0x8000`; stock crt0 (jp init at $0000, SP at $0000 so the first push lands at $FFFE). Also fixed: `stages.py` dropped every exported `GR` symbol (affects 8051 too). **Awaiting merge and deploy by the owner** — the hosted snapshot and the lite `compile: true` flip follow the deploy, not the branch. Lite half of the DoD (bench boot proof: `$0000 == 0xC3`, `latch1.Q0` toggles) is open.

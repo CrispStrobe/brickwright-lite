@@ -17,7 +17,9 @@ import {existsSync, readFileSync, mkdtempSync, writeFileSync, mkdirSync} from 'n
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 
-import {checkAgainst, output, STABLE_FIELDS, requireSnapshotFlag} from '../scripts/gen-bw-board-census.mjs';
+import {checkAgainst, output, STABLE_FIELDS, requireSnapshotFlag, renderModule, moduleOutput, moduleMirror} from '../scripts/gen-bw-board-census.mjs';
+import {CENSUS_ROWS, CENSUS_SHA} from '../overlay/scratch-gui/src/lib/bw-matrix/census-snapshot.js';
+import {explain, oracleStatus} from '../overlay/scratch-gui/src/lib/bw-matrix/capabilities.js';
 import {DEVICES, CELLS} from '../overlay/scratch-gui/src/lib/bw-matrix/capabilities.js';
 
 const doc = JSON.parse(readFileSync(output, 'utf8'));
@@ -109,4 +111,24 @@ test('a census script without --snapshot is refused BY NAME, not run into an emp
     assert.throws(() => requireSnapshotFlag(join(dir, 'scripts/oracle-census.mjs')), /no scripts\/oracle-census\.mjs/, 'a tree with no census at all');
     writeFileSync(join(dir, 'scripts/oracle-census.mjs'), '// an older census: prints a table, cannot write a snapshot\n');
     assert.throws(() => requireSnapshotFlag(join(dir, 'scripts/oracle-census.mjs')), /no --snapshot flag.*a9fea52/, 'a pre-a9fea52 census');
+});
+
+test('the GUI snapshot module is exactly what the generator renders from the JSON, in overlay and tracked mirror (T8)', () => {
+    const want = renderModule(doc);
+    assert.equal(readFileSync(moduleOutput, 'utf8'), want, 'census-snapshot.js is stale against bw-board-census.json — run: npm run gen:census -- --dir <bw-board>');
+    assert.equal(readFileSync(moduleMirror, 'utf8'), want, 'the tracked packages/ mirror of census-snapshot.js differs from the overlay');
+    assert.equal(CENSUS_SHA, doc.source.sha, 'the module names the same bw-board sha as the snapshot');
+    assert.equal(CENSUS_ROWS.length, doc.rows.length, 'the module carries one row per census row');
+    for (const r of CENSUS_ROWS) assert.ok(!('via' in r), `${r.id}: the GUI module must not carry the reading box's paths`);
+});
+
+test('explain() shows the tier and each oracle\'s census status, so the GUI and the doc read the same truth (T8)', () => {
+    const en = explain('c', 'stc12c5a60s2', 'en');
+    assert.match(en, /tier 2a \(emu8051: standing in bw-board CI\)/, en);
+    const asm = explain('asm', 'i8086', 'en');
+    assert.match(asm, /simulator: i8086 · tier 2a \(8086-vectors: standing in bw-board CI, elks-image: recorded once\)/, asm);
+    assert.equal(oracleStatus('avr-compile-service'), 'reachability', 'a service row is reachability, never present');
+    assert.equal(oracleStatus('no-such-oracle'), 'unknown');
+    const de = explain('c', 'stc12c5a60s2', 'de');
+    assert.match(de, /Stufe 2a \(emu8051: in der bw-board-CI laufend\)/, de);
 });
