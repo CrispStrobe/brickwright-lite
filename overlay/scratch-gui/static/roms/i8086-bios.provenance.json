@@ -1,0 +1,21 @@
+{
+  "_": "Written by scripts/sync-i8086-bios.mjs. Gated by test/i8086-bios-provenance.test.mjs. Do not hand-edit.",
+  "rom": "i8086-bios.bin",
+  "sha256": "e944c193264f8dff768f9f7e8ed1e9835a5a784b4667e10bc1e4e3d4ea3a67e3",
+  "bytes": 65536,
+  "resetVector": "F000h:005Ch",
+  "source": {
+    "repo": "bw-board",
+    "path": "rom/bios.asm",
+    "sha": "5584c3f2bd445b6485917d96364c10e3c9dad79c",
+    "subject": "A BIOS ROM of our own, assembled by our own assembler",
+    "date": "2026-09-03"
+  },
+  "assembler": {
+    "path": "overlay/scratch-gui/src/lib/bw-board/i8086-asm.js",
+    "sha256": "3270c33885fbb6524ceaa727a1600570fe974e0bb4bc3488d1ecda894fdb0841"
+  },
+  "pinAtBuild": "88bbdcf7846fa6f51be4ae9beca2d65a9e4c9f0e",
+  "ancestorOfPinAtBuild": true,
+  "behindPinBy": 7
+}

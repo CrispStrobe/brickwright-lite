@@ -82,8 +82,10 @@ which has to be rebuilt from the new `bios.asm` and vendored by a different path
 `bfd8b44` touches `i8086-machine.js` and `i8237.js`.
 
 ```
---only i8237.js --only i8255.js
+--only i8237.js,i8255.js
 ```
+
+`--only` takes ONE comma-separated argument, not a repeated flag — `scripts/sync-bw-board.mjs:223` reads `argv[onlyIdx + 1]` and splits on commas, so `--only a.js --only b.js` silently narrows to `a.js` and drops the rest of the list on the floor. It does not error.
 
 `i8237.js` is the half of `bfd8b44` a `src/` sync can carry. `i8255.js` is not
 required by either named commit; it is included because it is **BEHIND** and free
