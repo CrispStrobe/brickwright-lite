@@ -26,7 +26,7 @@
 
 import {readFile, writeFile} from 'node:fs/promises';
 import { guardSource } from './lib-source-guard.mjs';
-import { resolveRef, recordPin, localSha } from './lib-pin.mjs';
+import { resolveRef, recordPin, localSha, baseForFile } from './lib-pin.mjs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 const execFileP = promisify(execFile);
@@ -218,13 +218,20 @@ const pinAlreadyMoved = async () => {
         return stdout.trim() === OLD_PIN.trim();
     } catch { return false; }
 };
-if (await pinAlreadyMoved()) {
-    console.error('\n  PIN ALREADY MOVED: vendor-pins.json records the sha this run is syncing');
-    console.error(`  FROM (${OLD_PIN.slice(0, 9)}), so the guard's three-way base is the incoming`);
-    console.error('  file and every upstream edit will read as lite-only work being deleted.');
-    console.error('  Restore the PREVIOUS pin and re-run; this script records the new one itself.');
-    process.exit(2);
-}
+// PER-FILE, BY CONTENT. See sync-bw-board.mjs for the argument: a pin is a
+// claim about a SET, a base is a question about a FILE, and a scoped bump
+// makes the two disagree. `baseForFile` finds the commit the vendored copy
+// actually came from by walking that file's own history; the recorded pin is
+// used only when no commit holds that content, which is the only case where
+// the ordering hazard can still bite.
+const WALK_FROM = srcDir ? await localSha(srcDir).catch(() => null) : null;
+
+const baseFor = async (rel, current) => {
+    const found = await baseForFile(srcDir, WALK_FROM, rel, current);
+    if (found) return {text: found.text, sha: found.sha, byContent: true};
+    const text = await atOldPin(rel);
+    return text === null ? null : {text, sha: OLD_PIN, byContent: false};
+};
 
 let stale = 0;
 for (const [remote, dest] of FILES) {
@@ -238,7 +245,18 @@ for (const [remote, dest] of FILES) {
     if (check) {
         console.log(`  STALE ${path.basename(dest)}  (differs from sb3-creator@${REF})`);
     } else {
-        const base = force ? null : await atOldPin(remote);
+        const resolved = force ? null : await baseFor(remote, current);
+        if (resolved !== null && !resolved.byContent && await pinAlreadyMoved()) {
+            console.error(`\n  PIN ALREADY MOVED, and ${path.basename(dest)} has no content base.`);
+            console.error(`  No commit reachable from ${(WALK_FROM || '').slice(0, 9)} along this file's history`);
+            console.error('  holds the vendored copy byte for byte, so the base falls back to the');
+            console.error(`  recorded pin (${OLD_PIN.slice(0, 9)}) -- the sha this run is syncing FROM, so the`);
+            console.error('  base would be the INCOMING file and every upstream edit would read as');
+            console.error('  lite-only work being deleted. Restore the PREVIOUS pin and re-run;');
+            console.error('  this script records the new one itself.');
+            process.exit(2);
+        }
+        const base = resolved === null ? null : resolved.text;
         if (!force && base === null && current !== null && !warnedFallback) {
             warnedFallback = true;
             console.error('  NOTE: the old pinned version is not readable here, so the guard is');

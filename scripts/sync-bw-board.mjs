@@ -13,7 +13,7 @@
 
 import {readFile, writeFile, mkdir, readdir} from 'node:fs/promises';
 import { guardSource } from './lib-source-guard.mjs';
-import { resolveRef, recordPin, localSha, listTree } from './lib-pin.mjs';
+import { resolveRef, recordPin, localSha, listTree, baseForFile } from './lib-pin.mjs';
 import {fileURLToPath} from 'node:url';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -350,13 +350,33 @@ const pinAlreadyMoved = async () => {
         return stdout.trim() === OLD_PIN.trim();
     } catch { return false; }
 };
-if (await pinAlreadyMoved()) {
-    console.error('\n  PIN ALREADY MOVED: vendor-pins.json records the sha this run is syncing');
-    console.error(`  FROM (${OLD_PIN.slice(0, 9)}), so the guard's three-way base is the incoming`);
-    console.error('  file and every upstream edit will read as lite-only work being deleted.');
-    console.error('  Restore the PREVIOUS pin and re-run; this script records the new one itself.');
-    process.exit(2);
-}
+// PER-FILE, BY CONTENT, because a pin is a claim about a SET and a base is a
+// question about a FILE.
+//
+// `baseForFile` walks that file's own history back from the pin and returns
+// the newest commit whose blob IS the vendored copy. That is the commit the
+// copy came from, whatever the pin says -- so a scoped `--only` bump, which
+// advances the pin while leaving twenty-two files at the previous sha, no
+// longer makes every one of them unsyncable. brickwright-lite-ea hit that and
+// had to hand-edit the pin backwards to recover, which is precisely the hand
+// edit the ordering guard exists to prevent.
+//
+// It returns null for a file carrying lite-only edits: that content was never
+// upstream's, so no upstream commit is its base. Only THEN does the recorded
+// pin get used, and only then can the ordering hazard bite -- so that is the
+// only case where the guard still fires, and it now names the file.
+// The walk starts at the upstream checkout's HEAD -- the sha this run is
+// syncing TO -- because every commit the vendored copy could have come from is
+// reachable from it. In remote mode there is no checkout to walk, so
+// `baseForFile` returns null at once and the recorded pin is used as before.
+const WALK_FROM = srcDir ? await localSha(srcDir).catch(() => null) : null;
+
+const baseFor = async (rel, current) => {
+    const found = await baseForFile(srcDir, WALK_FROM, rel, current);
+    if (found) return {text: found.text, sha: found.sha, byContent: true};
+    const text = await atOldPin(rel);
+    return text === null ? null : {text, sha: OLD_PIN, byContent: false};
+};
 
 await mkdir(dest, {recursive: true});
 let stale = 0;
@@ -403,7 +423,18 @@ for (const rel of FILES) {
 
     // Content-derived guard, for every file the named tier did not cover.
     if (!check && !force && current !== null) {
-        const base = await atOldPin(rel);
+        const resolved = await baseFor(rel, current);
+        const base = resolved === null ? null : resolved.text;
+        if (resolved !== null && !resolved.byContent && await pinAlreadyMoved()) {
+            console.error(`\n  PIN ALREADY MOVED, and ${path.basename(rel)} has no content base.`);
+            console.error(`  No commit reachable from ${(WALK_FROM || '').slice(0, 9)} along this file's history`);
+            console.error('  holds the vendored copy byte for byte, so the base falls back to the');
+            console.error(`  recorded pin (${OLD_PIN.slice(0, 9)}) -- which is the sha this run is syncing FROM, so`);
+            console.error('  the base would be the INCOMING file and every upstream edit would read');
+            console.error('  as lite-only work being deleted. Restore the PREVIOUS pin and re-run;');
+            console.error('  this script records the new one itself.');
+            process.exit(2);
+        }
         if (base === null && !warnedFallback) {
             warnedFallback = true;
             console.error('  NOTE: the old pinned version is not readable here, so the guard is');
