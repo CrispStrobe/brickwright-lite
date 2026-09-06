@@ -1,4 +1,4 @@
-const stripLoaders = name => String(name || '').split('!').at(-1).split('?')[0].replace(/\\/g, '/');
+const stripLoaders = name => String(name || '').replace(/^.*!/, '').replace(/\?.*$/, '').replace(/\\/g, '/');
 const normalizeAsset = name => String(name || '').split(/[?#]/, 1)[0].replace(/\\/g, '/').replace(/^\.\//, '');
 const suffixMatch = (left, right) => {
     const a = normalizeAsset(left);
@@ -66,17 +66,28 @@ export const attributePseudocodeImporter = input => {
         for (const file of files) uniqueMatch(emittedAssets.map(asset => ({name: asset.name})), file,
             `pseudocode-importer chunk ${chunk.id} file`);
     }
-    const modules = compilationModules(stats).filter(module =>
-        (module.chunks || []).some(id => groupIds.includes(String(id))));
-    const importerModules = modules.filter(module =>
+    const allModules = compilationModules(stats);
+    const modules = allModules.filter(module => {
+        const ids = (module.chunks || []).map(String);
+        return ids.length && ids.every(id => groupIds.includes(id));
+    });
+    const importerModules = allModules.filter(module =>
         /(?:^|\/)src\/components\/tw-pseudocode\/pseudocode-importer\.jsx$/.test(
             stripLoaders(module.name || module.identifier)));
     if (importerModules.length !== 1) {
         throw new Error(`expected one pseudocode-importer source module, found ${importerModules.length}`);
     }
     const initialIds = new Set(chunks.filter(chunk => chunk.initial).map(chunk => String(chunk.id)));
-    if ((importerModules[0].chunks || []).some(id => initialIds.has(String(id)))) {
-        throw new Error('pseudocode-importer source module remains initial');
+    const importerChunkIds = (importerModules[0].chunks || []).map(String);
+    if (!importerChunkIds.length || importerChunkIds.some(id => !groupIds.includes(id))) {
+        throw new Error('pseudocode-importer source module is not exclusive to the candidate group');
+    }
+    const deferredPayload = /(?:^|\/)src\/(?:components\/tw-pseudocode\/pseudocode-importer\.jsx|lib\/bw-asm\/examples(?:-i8086)?\.js|lib\/bw-matrix\/(?:capabilities|device-labels)\.js)$/;
+    for (const module of allModules) {
+        const name = stripLoaders(module.name || module.identifier);
+        if (deferredPayload.test(name) && (module.chunks || []).some(id => initialIds.has(String(id)))) {
+            throw new Error(`pseudocode-importer static payload remains initial: ${name}`);
+        }
     }
     const sourceModules = modules.map(module => ({
         name: stripLoaders(module.name || module.identifier),
