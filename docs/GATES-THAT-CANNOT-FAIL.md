@@ -1430,3 +1430,62 @@ not have this. `rom/bios.bin` is gitignored and untracked, so there is no shippe
 binary to go stale — consumers build from `rom/bios.asm` and the tests execute what
 they just built. Not shipping the artefact is the fix; the guard above is what you
 need when you must ship it.
+
+## Twenty-fifth species: THE CORPUS THAT COLLAPSED INSIDE A NAMESPACE (2026-09-06, lego-be, framed by brickwright-lite-ea)
+
+A gate asserted that CHIP-REFUSALS.md lists every chip whose refusal can be
+retracted. Three parts retract; the document names them as three lines. The
+check was:
+
+    assert.ok(section.includes(field), `${file}'s ${field} is not listed`)
+
+Delete one of the three lines from the document and the check still passed.
+
+`i8251` and `i8255` BOTH call their ledger `modeWarning`. So the loop ran over
+three parts, and the membership test ran over the set of distinct FIELD NAMES,
+which is two. Removing the usart line left the ppi line — a different part,
+identical field name — satisfying the check on the usart's behalf.
+
+This is species 1, and it is worth its own entry because of WHERE the collapse
+hides. The catalogued instances lose their corpus visibly: an empty file list,
+a glob that matched nothing, a loop that ran zero times. Here the corpus is not
+empty and the loop runs the right number of times. What shrank is the set the
+ASSERTION distinguishes, and it shrank because two members of a seven-element
+set share a name in a namespace the test never looked at. Nothing about the
+code says three became two. The word `field` says it, and only if you happen to
+know that two chips chose the same one.
+
+ea's sentence, which is the one to keep: *a gate whose corpus silently
+collapsed from seven parts to five distinct names — species 1 with the collapse
+hidden inside a namespace rather than in an empty list.*
+
+**The general shape.** Any membership test whose key is an ATTRIBUTE of the
+subject rather than the subject's IDENTITY will silently merge subjects that
+share the attribute. It is invisible in review because the code reads
+correctly: `includes(field)` is exactly what you meant, and it is wrong only
+because `field` is not unique across the loop. The tell is the mismatch between
+what the loop iterates (parts) and what the assertion tests (names) — and that
+mismatch is one word long.
+
+**The fix is keying by identity**: the assertion now requires a line that starts
+with the part's own label AND contains the field, so `usart 8251.modeWarning`
+cannot be satisfied by `ppi 8255.modeWarning`.
+
+**How it was found, which is the transferable part.** Not by reading. Three
+mutations were written for the new gate and run; two went red and one did not.
+The one that did not is this. Reading the assertion after the fact, it still
+looks right — the author had to go and check whether two chips really do share
+a field name before believing the mutation rather than the code.
+
+A gate whose mutation passes is not a weak gate. It is a gate that does not
+test what its name says, and the only routine way to discover that is to break
+the thing it claims to protect and watch it stay green.
+
+**Context.** The gate exists because brickwright-lite-ea found that
+`chipRefusals()` answers "what is refused NOW" for three parts (retracted
+ledgers: 8259, 8251, 8255) and "what was EVER refused" for four (permanent
+ledgers: 8237, YM3812, SB DSP, uPD765), with nothing in the row saying which —
+measured on a real boot where the pic1 refusal lives from step 1,513 to 1,517
+of 1,579,840. Two semantics wearing one shape; documented per part in
+CHIP-REFUSALS.md and gated against the source. That gate is the one that had
+this defect in it.
