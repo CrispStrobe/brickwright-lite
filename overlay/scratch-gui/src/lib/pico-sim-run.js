@@ -106,6 +106,24 @@ export async function startPicoSimRun ({image, vm, stc, py, onStatus, onError}) 
     const cdc = new USBCDC(adapter.rp2040.usbCtrl);
     let usbConnected = false;
     cdc.onDeviceConnected = () => { usbConnected = true; };
+
+    // Device-side RX counter: tx counts bytes the HOST queued; this counts bytes
+    // the FIRMWARE actually pulled from that queue (the OUT-endpoint read drains
+    // the CDC txFIFO). rx << tx names a host→device delivery loss; rx == tx with
+    // no OK names the firmware's handling. Wraps the handler and calls through —
+    // read-only. Guarded, so an rp2040js internal rename degrades to rx=-1.
+    let rxBytes = 0;
+    try {
+        const usbCtrl = adapter.rp2040.usbCtrl;
+        const origRead = usbCtrl.onEndpointRead;
+        usbCtrl.onEndpointRead = (endpoint, size) => {
+            const before = (cdc.txFIFO && typeof cdc.txFIFO.itemCount === 'number') ? cdc.txFIFO.itemCount : 0;
+            if (origRead) origRead(endpoint, size);
+            if (endpoint === cdc.outEndpoint && cdc.txFIFO) {
+                rxBytes += Math.max(0, before - cdc.txFIFO.itemCount);
+            }
+        };
+    } catch { rxBytes = -1; }
     let pending = '';
     let usb = '';                         // every CDC byte, kept for diagnostics
     let waiters = [];
@@ -135,6 +153,7 @@ export async function startPicoSimRun ({image, vm, stc, py, onStatus, onError}) 
             phase: () => phase,
             subPhase: () => subPhase,
             tx: () => `bytes=${txBytes} writes=${txWrites} done=${txDone}`,
+            rx: () => rxBytes,
             lastError: () => lastError
         };
     }
@@ -149,6 +168,17 @@ export async function startPicoSimRun ({image, vm, stc, py, onStatus, onError}) 
             const out = pending;
             pending = '';
             return out;
+        },
+        // Let the pump run one frame so the device drains the packet just written
+        // before the next arrives — a condition wait on the frame counter, not a
+        // fixed sleep. The node oracle's transport has no drain and does not need
+        // one; the chunking still exercises there.
+        drain () {
+            return new Promise(resolve => {
+                const start = frames;
+                const t = () => (frames > start || stopped ? resolve() : setTimeout(t, 4));
+                t();
+            });
         }
     };
 
