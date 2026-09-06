@@ -777,6 +777,29 @@ jobs:
           path: artifacts/debug-history-browser/*
           if-no-files-found: error
 
+      - name: Browser gate — the debugger says what a chip refused
+        # NOT MEASURED YET, unlike its neighbours: this gate is new, so the
+        # number is a first estimate rather than a reading over five main runs.
+        # It does two full assemble-and-boot cycles of the 8086 bench. Replace
+        # this with a measured max once the timing job has seen it.
+        timeout-minutes: 6
+        id: chip_refusal_line
+        # DIRECT `node`, NOT `npm run`. test/gate-coverage.test.mjs's
+        # aliasInvokes requires `npm run <alias>` at the start of the line or
+        # after ; & |, so an env prefix in front of an alias does NOT read as
+        # invoking the gate, while runInvokesGate accepts the same prefix for
+        # this form. Found by lego-ac 2026-09-06; using the form that counts
+        # rather than adding a gate that reads as unwired.
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-debug-chip-refusal-line.mjs
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.chip_refusal_line.outcome != 'skipped' && matrix.shard == 'heavy'
+        with:
+          name: debugger-chip-refusal-line-proof
+          path: artifacts/debug-chip-refusal-line/*
+          if-no-files-found: error
+
       - name: Browser gate — debugger run-to and synchronized inspection
         timeout-minutes: 3  # measured max 3 s over 5 main runs, 2026-09-05
         id: debug_inspection
