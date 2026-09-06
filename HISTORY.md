@@ -46,6 +46,15 @@ plan or roadmap. Detailed commit, CI and ownership evidence remains in Git and
   schemas, patterns and defaults alone total 177,151 bytes, 13,311 above the
   163,840-byte ceiling before reference wiring or module overhead. The source
   gate therefore rejects canonical emission; no build or hosted run is needed.
+- **P17 Sound-tab deferral completed** (`b112681f7` through `783465884`, final
+  hosted run `34055549914`). The first two browser attempts showed a blank panel
+  because the demand-loaded audio singleton registered its gesture listener
+  after the click which loaded it. First-use initialization restored the panel;
+  the retained route then prewarms on focus or hover. The final gate passed one
+  retryable non-initial chunk above 20,480 encoded bytes, usable controls, a
+  130.64 ms relative ceiling from a 113.6 ms baseline, the 1 s absolute ceiling
+  and the 100 ms long-task ceiling. Build, corpus, both browser shards, deploy
+  and deployed-GUI verification were green.
 - **Browser build-artifact reuse rejected on critical-path cost.** Four green
   runs measured the central `build` job at 5:27–5:42 and the slow browser shard
   at 6:43–9:35 in parallel. Each browser-local webpack build takes about 1:15;

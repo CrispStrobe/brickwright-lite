@@ -25,7 +25,7 @@ item marked with an agent name is being worked on.
 ## Next-session shortlist — reconciled 2026-09-06
 
 [PLAN.md](PLAN.md#next-session-priorities--reconciled-2026-09-06) records
-execution order. Current upstream baseline is `7b6a5916b`; completed and
+execution order. Current upstream baseline is `69f099432`; completed and
 rejected predecessor work is in [HISTORY.md](HISTORY.md). Two bounded tracks
 remain live.
 
@@ -68,13 +68,14 @@ diagnosis and adapter contract first.
 adapter, `test/pico-sim-run.test.mjs` and `test/pico-micropython-gpio.test.mjs`.
 Estimated 4–8 focused hours including upstream reconciliation.
 
-### Track 2 — P17 Sound-tab boundary
+### Track 2 — P18 Connection-modal attribution
 
-Use the finite Sounds activation probe added at `cb2088d0c` to attribute the
-initial-only editor, recorder, waveform, SoundFx and WAV closure. Stop below
-76,800 emitted bytes, preferring 100 KiB for this interactive path. If viable,
-use one retryable request and prove waveform edit/undo/save, record, library,
-SoundFx and project round trip inside the standard activation limits.
+Measure the exact initial-only closure of the Connection modal body, DAP.js,
+universal-hex and micro:bit update helpers. Extension metadata and the native
+Bluetooth shim have eager consumers and must not be claimed. Stop before a
+candidate unless the exclusive emitted closure exceeds 76,800 bytes. If it
+does, bound scanning/connect/cancel/error/retry, firmware update and rapid
+close/reopen activation before changing production code.
 
 ## 1. Costume designer & GUI layout
 
