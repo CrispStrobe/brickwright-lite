@@ -74,7 +74,10 @@ plan or roadmap. Detailed commit, CI and ownership evidence remains in Git and
   `FetchWorkerTool`, `InlineWorker`, and even the entire `ProxyTool`. That is
   44,027 bytes below the 76,800-byte emitted floor. The package's nominal
   22,345-byte fallback worker is referenced by URL but is not emitted into the
-  app, so there is no second shipped copy to recover. No candidate was built.
+  app, so there is no second shipped copy to recover. A checked receipt pins
+  webpack hash `30fa48f7e6bfb148c743` and those exact measurements; fixture
+  mutations fail closed on package, ownership, path and size drift. No
+  candidate was built.
 - **Browser build-artifact reuse rejected on critical-path cost.** Four green
   runs measured the central `build` job at 5:27–5:42 and the slow browser shard
   at 6:43–9:35 in parallel. Each browser-local webpack build takes about 1:15;

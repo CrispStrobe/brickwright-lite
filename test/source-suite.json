@@ -14,6 +14,7 @@
   "retarget.test.mjs",
   "rp2040-debug.test.mjs",
   "sb3-creator-motion-target.test.mjs",
+  "scratch-storage-worker-attribution.test.mjs",
   "sound-tab-deferral.test.mjs",
   "test-setup.test.mjs",
   "vector-art-registration.test.mjs"

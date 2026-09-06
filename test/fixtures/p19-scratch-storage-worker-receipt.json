@@ -1,0 +1,16 @@
+{
+  "schema": "brickwright/p19-scratch-storage-worker-attribution/v1",
+  "package": {
+    "version": "2.3.284",
+    "repositorySha": "6285d012425f3de521aad5a849f31f52721d096c"
+  },
+  "webpackHash": "30fa48f7e6bfb148c743",
+  "browserBundleSha256": "8acb2dc99708d342c88c33f4e897db6e7299c9dda468e6a34b74cb9e90990cef",
+  "storageModuleSourceBytes": 280064,
+  "movableRawUpperBoundBytes": 32773,
+  "decodedInlineWorkerBytes": 22345,
+  "fallbackFileBytes": 22345,
+  "fallbackEmitted": false,
+  "emittedFloorBytes": 76800,
+  "plausible": false
+}
