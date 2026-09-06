@@ -4,7 +4,6 @@ import {
     assertDosChunkBoundary,
     assertLazyPaintEditorBoundary,
     assertOptionalCodeMirrorGrammarBoundary,
-    assertTutorialLibraryBoundary,
     auditWebpackResourceWindow,
     summarizeWebpackOwnership
 } from '../scripts/lib/webpack-ownership.mjs';
@@ -181,87 +180,4 @@ test('paint boundary rejects eager or collapsed activation stages', () => {
     assert.match(failures.join('\n'), /paint-reducer became an initial chunk/);
     assert.match(failures.join('\n'), /paint-editor became an initial chunk/);
     assert.match(failures.join('\n'), /same emitted JavaScript asset/);
-});
-
-const addTutorialLibrarySplit = stats => {
-    stats.assets[0].size = 4430000;
-    stats.assets[1].size = 0;
-    stats.chunks.push({
-        id: 40,
-        names: ['tutorial-library'],
-        files: ['chunks/tutorial-library.js'],
-        initial: false
-    });
-    stats.assets.push(
-        {name: 'chunks/tutorial-library.js', size: 90000, chunks: [40]},
-        // A stats asset may be repeated for multiple owners/chunk views. Count the
-        // emitted file once, not once per module classified into the closure.
-        {name: 'chunks/tutorial-library.js', size: 90000, chunks: [40]}
-    );
-    stats.modules.push(
-        {name: './src/lib/libraries/decks/metadata.js', size: 3000, chunks: [1]},
-        {name: './src/lib/libraries/decks/index.jsx', size: 30000, chunks: [40]},
-        {name: './src/lib/libraries/decks/en-steps.js', size: 22000, chunks: [40]},
-        {name: './src/lib/libraries/decks/translate-image.js', size: 3000, chunks: [40]},
-        {name: './src/lib/libraries/decks/translate-video.js', size: 9000, chunks: [40]},
-        {name: './src/lib/libraries/tutorial-tags.js', size: 2000, chunks: [40]},
-        {name: './src/components/cards/cards.jsx', size: 16000, chunks: [40]},
-        {name: './src/containers/cards.jsx', size: 5000, chunks: [40]},
-        {name: './src/containers/tips-library.jsx', size: 7000, chunks: [40]},
-        {name: './src/components/library/library.jsx', size: 12000, chunks: [1]},
-        {name: './src/lib/libraries/extensions/index.jsx', size: 8000, chunks: [1]},
-        {name: './src/lib/libraries/sprites.json', size: 6000, chunks: [1]}
-    );
-    return stats;
-};
-
-test('tutorial ownership isolates full decks and Cards/Tips while compact metadata stays initial', () => {
-    const report = summarizeWebpackOwnership(addTutorialLibrarySplit(fixture()));
-    assert.equal(report.tutorialLibrary.namedChunks, 1);
-    assert.equal(report.tutorialLibrary.initial, false);
-    assert.equal(report.tutorialLibrary.sourceBytes, 94000);
-    assert.equal(report.tutorialLibrary.emittedBytes, 90000, 'an emitted asset is counted exactly once');
-    assert.equal(report.tutorialLibrary.initialBytes, 4430000);
-    assert.equal(report.tutorialLibrary.initialReductionBytes, 91229);
-    assert.equal(report.tutorialLibrary.bodyModules.length, 8);
-    assert.deepEqual(report.tutorialLibrary.missingBodyModules, []);
-    assert.deepEqual(report.tutorialLibrary.bodyInInitial, []);
-    assert.deepEqual(report.tutorialLibrary.bodyOutsideNamedChunk, []);
-    assert.deepEqual(report.tutorialLibrary.metadataOutsideInitial, []);
-    assert.deepEqual(report.tutorialLibrary.forbiddenModules, []);
-    assert.deepEqual(assertTutorialLibraryBoundary(report), []);
-});
-
-test('tutorial boundary rejects eager bodies, lazy metadata and shared graph contamination', () => {
-    const stats = addTutorialLibrarySplit(fixture());
-    stats.modules.find(module => /decks\/index/.test(module.name)).chunks.push(1);
-    stats.modules.find(module => /decks\/metadata/.test(module.name)).chunks = [40];
-    stats.modules.find(module => /components\/library\/library/.test(module.name)).chunks = [40];
-    stats.modules.find(module => /extensions\/index/.test(module.name)).chunks = [40];
-    stats.modules.find(module => /sprites\.json/.test(module.name)).chunks = [40];
-    const report = summarizeWebpackOwnership(stats);
-    const failures = assertTutorialLibraryBoundary(report).join('\n');
-    assert.match(failures, /bodies became initial/);
-    assert.match(failures, /metadata is not initial/);
-    assert.match(failures, /generic-library-ui/);
-    assert.match(failures, /extension-registry/);
-    assert.match(failures, /p6-asset-manifest/);
-    assert.match(failures, /compact-deck-metadata/);
-});
-
-test('tutorial boundary enforces one named chunk and a 75 KiB emitted initial reduction', () => {
-    const stats = addTutorialLibrarySplit(fixture());
-    stats.assets[0].size = 4450000;
-    stats.chunks.push({id: 41, names: ['tutorial-library'], files: ['chunks/tutorial-library-2.js'], initial: false});
-    const failures = assertTutorialLibraryBoundary(summarizeWebpackOwnership(stats)).join('\n');
-    assert.match(failures, /expected exactly one named tutorial-library chunk; found 2/);
-    assert.match(failures, /reduced initial JavaScript by less than 75 KiB/);
-});
-
-test('tutorial boundary requires every exact deck and Cards/Tips body module', () => {
-    const stats = addTutorialLibrarySplit(fixture());
-    stats.modules = stats.modules.filter(module => !/tutorial-tags/.test(module.name));
-    const failures = assertTutorialLibraryBoundary(summarizeWebpackOwnership(stats)).join('\n');
-    assert.match(failures, /body modules are missing/);
-    assert.match(failures, /\/src\/lib\/libraries\/tutorial-tags\.js/);
 });

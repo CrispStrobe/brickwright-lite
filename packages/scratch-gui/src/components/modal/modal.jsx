@@ -24,7 +24,6 @@ const ModalComponent = props => (
         onRequestClose={props.onRequestClose}
     >
         <Box
-            data-testid={props.dataTestId}
             dir={props.isRtl ? 'rtl' : 'ltr'}
             direction="column"
             grow={1}
@@ -102,7 +101,6 @@ ModalComponent.propTypes = {
         PropTypes.string,
         PropTypes.object
     ]).isRequired,
-    dataTestId: PropTypes.string,
     fullScreen: PropTypes.bool,
     headerClassName: PropTypes.string,
     headerImage: PropTypes.string,

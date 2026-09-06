@@ -3,7 +3,7 @@
  * Utility function to detect tutorial id from query paramenter on the URL.
  */
 
-import {URL_ID_TO_DECK_ID} from './libraries/decks/metadata';
+import tutorials from './libraries/decks/index.jsx';
 import analytics from './analytics';
 
 /**
@@ -14,14 +14,17 @@ import analytics from './analytics';
  * was not found.
  */
 const getDeckIdFromUrlId = urlId => {
-    if (!Object.prototype.hasOwnProperty.call(URL_ID_TO_DECK_ID, urlId)) return null;
-    const deckId = URL_ID_TO_DECK_ID[urlId];
-    analytics.event({
-        category: 'how-to',
-        action: 'load from url',
-        label: `${deckId}`
-    });
-    return deckId;
+    for (const deckId in tutorials) {
+        if (tutorials[deckId].urlId === urlId) {
+            analytics.event({
+                category: 'how-to',
+                action: 'load from url',
+                label: `${deckId}`
+            });
+            return deckId;
+        }
+    }
+    return null;
 };
 
 /**

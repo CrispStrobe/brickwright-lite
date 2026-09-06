@@ -89,7 +89,6 @@ class TipsLibrary extends React.PureComponent {
             <LibraryComponent
                 filterable
                 data={decksLibraryThumbnailData}
-                dataTestId="tutorial-library-modal"
                 id="tipsLibrary"
                 tags={tutorialTags}
                 title={this.props.intl.formatMessage(messages.tipsLibraryTitle)}

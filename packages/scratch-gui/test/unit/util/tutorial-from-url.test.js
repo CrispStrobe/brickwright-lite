@@ -2,10 +2,10 @@ jest.mock('../../../src/lib/analytics.js', () => ({
     event: () => {}
 }));
 
-jest.mock('../../../src/lib/libraries/decks/metadata.js', () => ({
-    URL_ID_TO_DECK_ID: {
-        one: 'foo'
-    }
+jest.mock('../../../src/lib/libraries/decks/index.jsx', () => ({
+    noUrlId: {},
+    foo: {urlId: 'one'},
+    noUrlIdSandwich: {}
 }));
 
 import queryString from 'query-string';
@@ -33,11 +33,6 @@ test('returns null if no query param', () => {
 
 test('returns null if unrecognized template', () => {
     const queryParams = queryString.parse('?tutorial=asdf');
-    expect(detectTutorialId(queryParams)).toBe(null);
-});
-
-test('does not treat object prototype names as tutorials', () => {
-    const queryParams = queryString.parse('?tutorial=toString');
     expect(detectTutorialId(queryParams)).toBe(null);
 });
 

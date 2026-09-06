@@ -10,7 +10,7 @@ import Divider from '../divider/divider.jsx';
 import Filter from '../filter/filter.jsx';
 import TagButton from '../../containers/tag-button.jsx';
 import Spinner from '../spinner/spinner.jsx';
-import {CATEGORIES} from '../../lib/libraries/decks/metadata';
+import {CATEGORIES} from '../../../src/lib/libraries/decks/index.jsx';
 
 import styles from './library.css';
 
@@ -202,7 +202,6 @@ class LibraryComponent extends React.Component {
             iconRawURL={data.rawURL}
             icons={data.costumes}
             id={key}
-            libraryItemId={data.id}
             insetIconURL={data.insetIconURL}
             internetConnectionRequired={data.internetConnectionRequired}
             isPlaying={this.state.playingItem === key}
@@ -247,7 +246,6 @@ class LibraryComponent extends React.Component {
             <Modal
                 fullScreen
                 contentLabel={this.props.title}
-                dataTestId={this.props.dataTestId}
                 id={this.props.id}
                 onRequestClose={this.handleClose}
             >
@@ -323,7 +321,6 @@ LibraryComponent.propTypes = {
         })
         /* eslint-enable react/no-unused-prop-types, lines-around-comment */
     ),
-    dataTestId: PropTypes.string,
     filterable: PropTypes.bool,
     withCategories: PropTypes.bool,
     id: PropTypes.string.isRequired,

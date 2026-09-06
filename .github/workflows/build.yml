@@ -981,20 +981,6 @@ jobs:
         timeout-minutes: 3  # measured max 8 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-starter-journeys.mjs
-      # P15 compares five cold first-opens with the 151.3 ms eager median from
-      # run 34046270772, then proves deep links, dedupe, failure/retry and stale
-      # close behavior at the tutorial-library activation boundary.
-      - name: Browser gate — tutorial decks and cards load on demand and retry
-        id: tutorial_library_lazy
-        timeout-minutes: 3
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
-        run: timeout --signal=TERM --kill-after=10s 2m env PROOF_URL=http://localhost:8617/ node scripts/verify-tutorial-library-lazy.mjs
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.tutorial_library_lazy.outcome != 'skipped' && matrix.shard == 'light'
-        with:
-          name: tutorial-library-lazy-proof
-          path: artifacts/tutorial-library-lazy/*
-          if-no-files-found: error
       - name: Browser gate — LEGO SPIKE archive and Code-tab round trip
         timeout-minutes: 3  # measured max 3 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}

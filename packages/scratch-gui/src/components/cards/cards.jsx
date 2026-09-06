@@ -22,7 +22,6 @@ const CardHeader = ({onCloseCards, onShrinkExpandCards, onShowAll, totalSteps, s
     <div className={expanded ? styles.headerButtons : classNames(styles.headerButtons, styles.headerButtonsHidden)}>
         <div
             className={styles.allButton}
-            data-testid="tutorial-card-show-all"
             onClick={onShowAll}
         >
             <img
@@ -70,7 +69,6 @@ const CardHeader = ({onCloseCards, onShrinkExpandCards, onShowAll, totalSteps, s
             </div>
             <div
                 className={styles.removeButton}
-                data-testid="tutorial-card-close"
                 onClick={onCloseCards}
             >
                 <img
@@ -136,7 +134,6 @@ class VideoStep extends React.Component {
             <div className={styles.stepVideo}>
                 <div
                     className={`wistia_embed wistia_async_${this.props.video}`}
-                    data-testid="tutorial-card-video"
                     id="video-div"
                     style={{height: `257px`, width: `466px`}}
                 >
@@ -160,7 +157,6 @@ const ImageStep = ({title, image}) => (
         <div className={styles.stepImageContainer}>
             <img
                 className={styles.stepImage}
-                data-testid="tutorial-card-image"
                 draggable={false}
                 key={image} /* Use src as key to prevent hanging around on slow connections */
                 src={image}
@@ -181,7 +177,6 @@ const NextPrevButtons = ({isRtl, onNextStep, onPrevStep, expanded}) => (
                 <div className={expanded ? (isRtl ? styles.leftCard : styles.rightCard) : styles.hidden} />
                 <div
                     className={expanded ? (isRtl ? styles.leftButton : styles.rightButton) : styles.hidden}
-                    data-testid="tutorial-card-next"
                     onClick={onNextStep}
                 >
                     <img
@@ -196,7 +191,6 @@ const NextPrevButtons = ({isRtl, onNextStep, onPrevStep, expanded}) => (
                 <div className={expanded ? (isRtl ? styles.rightCard : styles.leftCard) : styles.hidden} />
                 <div
                     className={expanded ? (isRtl ? styles.rightButton : styles.leftButton) : styles.hidden}
-                    data-testid="tutorial-card-prev"
                     onClick={onPrevStep}
                 >
                     <img
@@ -332,9 +326,6 @@ const Cards = props => {
         // Custom overlay to act as the bounding parent for the draggable, using values from above
         <div
             className={styles.cardContainerOverlay}
-            data-testid="tutorial-card"
-            data-tutorial-deck-id={activeDeckId}
-            data-tutorial-step={step}
             style={{
                 width: `${window.innerWidth + (2 * cardHorizontalDragOffset)}px`,
                 height: `${window.innerHeight - menuBarHeight + cardVerticalDragOffset}px`,
@@ -360,10 +351,7 @@ const Cards = props => {
                             onShowAll={onShowAll}
                             onShrinkExpandCards={onShrinkExpandCards}
                         />
-                        <div
-                            className={expanded ? styles.stepBody : styles.hidden}
-                            data-testid="tutorial-card-body"
-                        >
+                        <div className={expanded ? styles.stepBody : styles.hidden}>
                             {steps[step].deckIds ? (
                                 <PreviewsStep
                                     content={content}

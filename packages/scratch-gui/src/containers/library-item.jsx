@@ -120,7 +120,6 @@ class LibraryItem extends React.PureComponent {
                 iconURL={iconURL}
                 icons={this.props.icons}
                 id={this.props.id}
-                libraryItemId={this.props.libraryItemId}
                 insetIconURL={this.props.insetIconURL}
                 internetConnectionRequired={this.props.internetConnectionRequired}
                 isPlaying={this.props.isPlaying}
@@ -162,7 +161,6 @@ LibraryItem.propTypes = {
     insetIconURL: PropTypes.string,
     internetConnectionRequired: PropTypes.bool,
     isPlaying: PropTypes.bool,
-    libraryItemId: PropTypes.string,
     name: PropTypes.oneOfType([
         PropTypes.string,
         PropTypes.node
