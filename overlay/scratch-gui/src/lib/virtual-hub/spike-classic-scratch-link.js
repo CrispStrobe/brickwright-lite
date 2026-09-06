@@ -1,14 +1,26 @@
 // SPDX-License-Identifier: Apache-2.0
 import VirtualSpikeHubState from './spike-hub-state.js';
 
-const isClassicScratchLink = url => /:(20110|20111)\//.test(String(url)) && /\/bt\b|\/scratch\/bt/.test(String(url));
+export const CLASSIC_MESSAGE_MAX_BYTES = 64 * 1024;
+export const CLASSIC_INPUT_MAX_BYTES = 4096;
+const isClassicScratchLink = value => {
+    let url;
+    try { url = new URL(String(value)); } catch (_) { return false; }
+    const loopback = ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname);
+    return loopback && ['ws:', 'wss:'].includes(url.protocol) && ['20110', '20111'].includes(url.port) &&
+        (/^\/bt(?:\/|$)/.test(url.pathname) || /^\/scratch\/bt(?:\/|$)/.test(url.pathname));
+};
 const encodeBase64 = bytes => {
     let binary = '';
     for (const byte of bytes) binary += String.fromCharCode(byte);
     return btoa(binary);
 };
 const decodeBase64 = text => {
+    if (typeof text !== 'string' || text.length > Math.ceil(CLASSIC_MESSAGE_MAX_BYTES / 3) * 4) {
+        throw new RangeError('virtual Classic message is too large');
+    }
     const binary = atob(text);
+    if (binary.length > CLASSIC_MESSAGE_MAX_BYTES) throw new RangeError('virtual Classic message is too large');
     return Uint8Array.from(binary, character => character.charCodeAt(0));
 };
 
@@ -24,6 +36,7 @@ export class VirtualSpikeClassicSocket {
         this._input = '';
         this.hubState = hubState;
         this.state = hubState.data;
+        this._unregisterTransport = this.hubState.registerTransport('classic', () => this.close(false));
         queueMicrotask(() => {
             if (this.readyState !== 0) return;
             this.readyState = 1;
@@ -93,7 +106,12 @@ export class VirtualSpikeClassicSocket {
         }
         const text = new TextDecoder().decode(decodeBase64(params.message));
         if (text.includes('\x03')) this._input = '';
-        this._input += text.replaceAll('\x03', '');
+        const next = this._input + text.replaceAll('\x03', '');
+        if (new TextEncoder().encode(next).length > CLASSIC_INPUT_MAX_BYTES) {
+            this._input = '';
+            throw new RangeError('virtual Classic command buffer is too large');
+        }
+        this._input = next;
         const records = this._input.split(/\r\n|\r|\n/);
         this._input = records.pop();
         for (const record of records) {
@@ -164,11 +182,12 @@ export class VirtualSpikeClassicSocket {
         this._sendRfcomm(`${JSON.stringify({m: 0, p: payload})}\r\n`);
     }
 
-    close () {
+    close (stop = true) {
         if (this.readyState === 3) return;
         this.readyState = 3;
+        if (this._unregisterTransport) { this._unregisterTransport(); this._unregisterTransport = null; }
         this.state.connected = false;
-        this.hubState.stopAll();
+        if (stop) this.hubState.stopAll();
         this._emit('close', {code: 1000, wasClean: true});
     }
 }
@@ -178,7 +197,7 @@ export default function installVirtualSpikeClassicScratchLink (hubState = new Vi
     if (window.WebSocket.__brickwrightVirtualSpikeClassic) return 'already installed';
     const NativeWebSocket = window.WebSocket;
     const Wrapped = function WebSocket (url, protocols) {
-        if (globalThis.__brickwrightUseVirtualSpike === true &&
+        if (hubState.data.simulationEnabled &&
             hubState.data.firmwareTarget !== 'official-v3' && isClassicScratchLink(url)) {
             return new VirtualSpikeClassicSocket(url, {hubState});
         }

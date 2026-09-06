@@ -10,6 +10,7 @@ const {VirtualSpikePrimePeripheral, SPIKE_RX, packSpikeFrame, unpackSpikeFrame} 
 
 test('answers fragmented info and notification requests', () => {
     const hub = new VirtualSpikePrimePeripheral();
+    hub.hubState.setSimulationEnabled(true);
     const notifications = [];
     hub.setNotificationSink((uuid, bytes) => notifications.push({uuid, bytes}));
     hub.connect();
@@ -45,8 +46,10 @@ test('maps JSON motor tunnels and safely retains the Python subset', () => {
 
 test('emits signed, correctly sized device records', () => {
     const hub = new VirtualSpikePrimePeripheral();
+    hub.hubState.setSimulationEnabled(true);
     const messages = [];
     hub.setNotificationSink((_uuid, bytes) => messages.push(unpackSpikeFrame(bytes)));
+    hub.connect();
     hub.onWrite(SPIKE_RX, packSpikeFrame(Uint8Array.of(0x28, 100, 0)));
     hub.setPort('A', 'motor', {speed: -25, position: -123456});
     hub.setPort('B', 'distance', {distance: -1});

@@ -22,7 +22,8 @@ export const applyVirtualPortInput = (hubState, port, kind, value) => {
 };
 
 export const closeVirtualSpikePanel = () => {
-    if (panel && panel.parentNode) panel.parentNode.removeChild(panel);
+    if (panel?.unsubscribe) panel.unsubscribe();
+    if (panel?.node?.parentNode) panel.node.parentNode.removeChild(panel.node);
     panel = null;
 };
 
@@ -35,6 +36,13 @@ export const openVirtualSpikePanel = hubState => {
     card.appendChild(element('h2', {style: 'margin:0 0 6px'}, 'Virtual SPIKE Prime'));
     card.appendChild(element('p', {style: 'margin:0 0 14px;color:#596675'},
         'One simulated hub shared by modern BLE and Classic Scratch Link. Disconnect always stops its motors.'));
+
+    const enabled = element('input', {type: 'checkbox'});
+    enabled.checked = hubState.data.simulationEnabled;
+    enabled.addEventListener('change', () => hubState.setSimulationEnabled(enabled.checked));
+    const enabledLabel = element('label', {style: 'display:flex;gap:8px;margin-bottom:12px'});
+    enabledLabel.append(enabled, document.createTextNode('Enable virtual SPIKE simulation'));
+    card.appendChild(enabledLabel);
 
     const profile = element('select', {style: 'width:100%;padding:8px;margin-bottom:12px'});
     for (const [value, label] of [
@@ -118,7 +126,7 @@ export const openVirtualSpikePanel = hubState => {
     card.appendChild(close);
     shade.appendChild(card);
     document.body.appendChild(shade);
-    panel = shade;
+    panel = {node: shade, unsubscribe};
     return shade;
 };
 

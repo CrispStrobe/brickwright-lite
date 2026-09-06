@@ -145,6 +145,13 @@ const SettingsMenu = ({canChangeLanguage, canChangeTheme, isRtl, onRequestClose,
                             id="gui.menuBar.scratchLinkTransport"
                         />
                     </MenuItem>
+                    <MenuItem onClick={() => { emit('bw-open-virtual-spike'); onRequestClose(); }}>
+                        <FormattedMessage
+                            defaultMessage="Virtual SPIKE Prime…"
+                            description="Settings action that opens the virtual LEGO SPIKE Prime controls"
+                            id="gui.menuBar.virtualSpikePrime"
+                        />
+                    </MenuItem>
                     <MenuItem onClick={() => { emit('bw-open-ble-diagnostics'); onRequestClose(); }}>
                         <FormattedMessage
                             defaultMessage="Connection diagnostics…"

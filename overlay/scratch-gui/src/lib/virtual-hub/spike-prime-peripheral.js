@@ -94,20 +94,30 @@ export class VirtualSpikePrimePeripheral {
         if (hubState.data.firmwareTarget === 'legacy-v2') this.services = [];
         this.hubState = hubState;
         this.state = hubState.data;
-        this.hubState.subscribe(() => this.emitDeviceNotification());
+        this._unsubscribe = null;
+        this._unregisterTransport = null;
         this._frame = [];
         this._sink = null;
     }
 
     connect () {
+        if (!this.state.simulationEnabled || this.state.firmwareTarget === 'legacy-v2') {
+            throw new Error('virtual SPIKE BLE is not enabled for this firmware profile');
+        }
         this.state.connected = true;
+        this._unsubscribe ||= this.hubState.subscribe(() => this.emitDeviceNotification());
+        this._unregisterTransport ||= this.hubState.registerTransport('ble', () => this.disconnect(false));
     }
 
-    disconnect () {
+    disconnect (stop = true) {
+        if (this._unsubscribe) { this._unsubscribe(); this._unsubscribe = null; }
+        if (this._unregisterTransport) { this._unregisterTransport(); this._unregisterTransport = null; }
         this.state.connected = false;
-        this.hubState.stopAll();
+        if (stop) this.hubState.stopAll();
         this._frame = [];
     }
+
+    dispose () { this.disconnect(); this._sink = null; }
 
     setNotificationSink (sink) {
         this._sink = sink;
@@ -290,10 +300,17 @@ export class VirtualSpikePrimePeripheral {
 }
 
 export const registerVirtualSpikePrime = options => {
+    const hubState = options?.hubState || new VirtualSpikeHubState();
     let lastPeripheral = null;
-    const unregister = registerVirtualPeripheral(() => {
-        lastPeripheral = new VirtualSpikePrimePeripheral(options);
+    const removeFactory = registerVirtualPeripheral(() => {
+        if (!hubState.data.simulationEnabled || hubState.data.firmwareTarget === 'legacy-v2') return null;
+        lastPeripheral = new VirtualSpikePrimePeripheral({...options, hubState});
         return lastPeripheral;
     });
+    const unregister = () => {
+        removeFactory();
+        lastPeripheral?.dispose();
+        lastPeripheral = null;
+    };
     return {unregister, get peripheral () { return lastPeripheral; }};
 };

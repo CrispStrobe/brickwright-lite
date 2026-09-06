@@ -235,7 +235,8 @@ export default function installVirtualWebBluetooth () {
         __brickwrightVirtualShim: {value: true},
         requestDevice: {
             value: async options => {
-                const candidates = [...factories].map(factory => factory()).filter(p => matches(p, options || {}));
+                const candidates = [...factories].map(factory => factory()).filter(Boolean)
+                    .filter(p => matches(p, options || {}));
                 if (candidates.length === 0) {
                     if (realRequest) return realRequest(options);
                     const error = new Error('No Bluetooth devices matched the requested filters.');

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 const makeData = () => ({
-    connected: false, notificationIntervalMs: null, battery: 100,
+    connected: false, simulationEnabled: false, notificationIntervalMs: null, battery: 100,
     firmwareTarget: 'official-v3',
     display: Array(25).fill(0),
     motors: Array.from({length: 6}, () => ({speed: 0, position: 0})),
@@ -16,15 +16,36 @@ const indexOf = port => {
     return index;
 };
 export default class VirtualSpikeHubState {
-    constructor () { this.data = makeData(); this.listeners = new Set(); }
+    constructor () { this.data = makeData(); this.listeners = new Set(); this.transports = new Set(); }
     subscribe (listener) { this.listeners.add(listener); return () => this.listeners.delete(listener); }
+    registerTransport (kind, disconnect) {
+        if (!['ble', 'classic'].includes(kind) || typeof disconnect !== 'function') {
+            throw new TypeError('virtual SPIKE transport registration is invalid');
+        }
+        const entry = {kind, disconnect};
+        this.transports.add(entry);
+        return () => this.transports.delete(entry);
+    }
+    _disconnectWhere (predicate) {
+        for (const entry of [...this.transports]) if (predicate(entry.kind)) entry.disconnect();
+    }
     changed () { for (const listener of this.listeners) listener(this.data); }
     setBattery (value) { this.data.battery = Math.max(0, Math.min(100, Math.round(Number(value) || 0))); this.changed(); }
     setFirmwareTarget (target) {
         if (!['legacy-v2', 'official-v3', 'brickwright'].includes(target)) throw new TypeError('unknown SPIKE firmware target');
-        this.stopAll();
         this.data.firmwareTarget = target;
-        globalThis.__brickwrightUseVirtualSpike = target !== 'official-v3';
+        this._stopAllSilent();
+        this._disconnectWhere(kind => (target === 'legacy-v2' && kind === 'ble') ||
+            (target === 'official-v3' && kind === 'classic'));
+        this.changed();
+    }
+    setSimulationEnabled (enabled) {
+        const next = enabled === true;
+        if (this.data.simulationEnabled === next) return;
+        this.data.simulationEnabled = next;
+        globalThis.__brickwrightUseVirtualSpike = next;
+        this._stopAllSilent();
+        if (!next) this._disconnectWhere(() => true);
         this.changed();
     }
     setImu (value) { Object.assign(this.data.imu, value); this.changed(); }
@@ -51,9 +72,10 @@ export default class VirtualSpikeHubState {
         this.changed();
     }
     setDisplay (pixels) { this.data.display = Array.from(pixels).slice(0, 25); while (this.data.display.length < 25) this.data.display.push(0); this.changed(); }
-    stopAll () { this.data.motors.forEach((motor, index) => {
+    _stopAllSilent () { this.data.motors.forEach((motor, index) => {
         motor.speed = 0;
         if ([48, 49].includes(this.data.classicPorts[index][0])) this.data.classicPorts[index][1][0] = 0;
-    }); this.changed(); }
+    }); }
+    stopAll () { this._stopAllSilent(); this.changed(); }
     snapshot () { return JSON.parse(JSON.stringify(this.data)); }
 }

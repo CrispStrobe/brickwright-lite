@@ -36,10 +36,28 @@ const loadBundledExtension = async () => {
     return extension;
 };
 
+test('disabled SPIKE simulation leaves the real Bluetooth delegate unchanged', async () => {
+    clearVirtualPeripheralsForTest();
+    const expected = {id: 'real-spike'};
+    let calls = 0;
+    navigator.bluetooth = {requestDevice: async options => { calls++; return {...expected, options}; }};
+    const state = new HubState();
+    const registration = registerVirtualSpikePrime({hubState: state});
+    install();
+    const options = {filters: [{services: ['0000fd02-0000-1000-8000-00805f9b34fb']}]};
+    const selected = await navigator.bluetooth.requestDevice(options);
+    assert.equal(selected.id, expected.id);
+    assert.equal(selected.options, options);
+    assert.equal(calls, 1);
+    assert.equal(registration.peripheral, null);
+    registration.unregister();
+});
+
 test('bundled direct BLE extension runs through the virtual hub and reconnects', async t => {
     t.after(() => { globalThis.setInterval = realSetInterval; });
     clearVirtualPeripheralsForTest();
     const state = new HubState();
+    state.setSimulationEnabled(true);
     const registration = registerVirtualSpikePrime({hubState: state});
     globalThis.__brickwrightChooseVirtualBluetooth = candidates => candidates[0];
     install();
@@ -61,6 +79,7 @@ test('bundled direct BLE extension runs through the virtual hub and reconnects',
 test('virtual GATT rejects malformed frames and accepts the next valid frame', async () => {
     clearVirtualPeripheralsForTest();
     const state = new HubState();
+    state.setSimulationEnabled(true);
     const registration = registerVirtualSpikePrime({hubState: state});
     const hub = registration.peripheral;
     // Instantiate the registered factory by selecting it.

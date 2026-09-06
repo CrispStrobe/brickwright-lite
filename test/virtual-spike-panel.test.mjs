@@ -6,7 +6,8 @@ import {fileURLToPath} from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = '../overlay/scratch-gui/src/lib/virtual-hub/';
 const {default: HubState} = await import(resolve(here, `${root}spike-hub-state.js`));
-const {applyVirtualPortInput} = await import(resolve(here, `${root}spike-panel.js`));
+const {applyVirtualPortInput, openVirtualSpikePanel, closeVirtualSpikePanel} =
+    await import(resolve(here, `${root}spike-panel.js`));
 
 test('dashboard inputs update the shared neutral state', () => {
     const state = new HubState();
@@ -18,5 +19,31 @@ test('dashboard inputs update the shared neutral state', () => {
     assert.equal(state.data.sensors[2].pressed, true);
     state.setFirmwareTarget('legacy-v2');
     assert.equal(state.data.firmwareTarget, 'legacy-v2');
-    assert.equal(globalThis.__brickwrightUseVirtualSpike, true);
+    assert.equal(state.data.simulationEnabled, false);
+});
+
+test('reopening and closing the dashboard releases its state subscription', () => {
+    class Node {
+        constructor () { this.children = []; this.style = {}; this.parentNode = null; }
+        setAttribute (key, value) { this[key] = value; }
+        addEventListener () {}
+        appendChild (child) { child.parentNode = this; this.children.push(child); return child; }
+        append (...children) { for (const child of children) this.appendChild(child); }
+        removeChild (child) { this.children = this.children.filter(item => item !== child); child.parentNode = null; }
+    }
+    const body = new Node();
+    const priorDocument = globalThis.document;
+    globalThis.document = {body, createElement: () => new Node(), createTextNode: text => ({text, parentNode: null})};
+    try {
+        const state = new HubState();
+        openVirtualSpikePanel(state);
+        assert.equal(state.listeners.size, 1);
+        openVirtualSpikePanel(state);
+        assert.equal(state.listeners.size, 1);
+        closeVirtualSpikePanel();
+        closeVirtualSpikePanel();
+        assert.equal(state.listeners.size, 0);
+    } finally {
+        globalThis.document = priorDocument;
+    }
 });

@@ -65,7 +65,7 @@ export default appTarget => {
     const virtualSpikeState = new VirtualSpikeHubState();
     const virtualSpikeBle = registerVirtualSpikePrime({hubState: virtualSpikeState});
     window.__brickwrightVirtualSpike = {
-        enable: value => { window.__brickwrightUseVirtualSpike = value !== false; },
+        enable: value => virtualSpikeState.setSimulationEnabled(value !== false),
         setPort: (...args) => virtualSpikeState.setPort(...args),
         setBattery: value => virtualSpikeState.setBattery(value),
         setImu: value => virtualSpikeState.setImu(value),

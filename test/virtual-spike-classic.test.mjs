@@ -9,7 +9,8 @@ if (!globalThis.atob) globalThis.atob = value => Buffer.from(value, 'base64').to
 
 const here = dirname(fileURLToPath(import.meta.url));
 const modulePath = resolve(here, '../overlay/scratch-gui/src/lib/virtual-hub/spike-classic-scratch-link.js');
-const {VirtualSpikeClassicSocket} = await import(modulePath);
+const {VirtualSpikeClassicSocket, isClassicScratchLink,
+    CLASSIC_MESSAGE_MAX_BYTES, CLASSIC_INPUT_MAX_BYTES} = await import(modulePath);
 const wait = () => new Promise(resolvePromise => queueMicrotask(resolvePromise));
 
 test('implements Scratch Link discovery, connect, and base64 RFCOMM', async () => {
@@ -45,4 +46,26 @@ test('translates bounded motor REPL and stops motors on close', async () => {
     assert.deepEqual(socket.state.classicPorts[2], [48, [-50, 0, 0, -50]]);
     socket.close();
     assert.equal(socket.state.classicPorts[2][1][0], 0);
+});
+
+test('only strict loopback Scratch Link websocket URLs are intercepted', () => {
+    assert.equal(isClassicScratchLink('ws://127.0.0.1:20111/scratch/bt'), true);
+    assert.equal(isClassicScratchLink('ws://localhost:20110/bt'), true);
+    assert.equal(isClassicScratchLink('ws://[::1]:20111/scratch/bt'), true);
+    assert.equal(isClassicScratchLink('ws://example.com:20111/scratch/bt'), false);
+    assert.equal(isClassicScratchLink('https://127.0.0.1:20111/scratch/bt'), false);
+    assert.equal(isClassicScratchLink('ws://127.0.0.1:20111/not-bt'), false);
+});
+
+test('Classic input and base64 payloads are bounded and recover after partial overflow', async () => {
+    const socket = new VirtualSpikeClassicSocket('ws://127.0.0.1:20111/scratch/bt');
+    await wait();
+    const send = bytes => socket.send(JSON.stringify({method: 'send', params: {encoding: 'base64',
+        message: Buffer.from(bytes).toString('base64')}}));
+    assert.throws(() => send('x'.repeat(CLASSIC_INPUT_MAX_BYTES + 1)), /buffer is too large/);
+    assert.equal(socket._input, '');
+    assert.throws(() => send(Buffer.alloc(CLASSIC_MESSAGE_MAX_BYTES + 1)), /message is too large/);
+    send('hub.port.A.motor.pwm(12)\r\n');
+    assert.equal(socket.state.motors[0].speed, 12);
+    socket.close();
 });
