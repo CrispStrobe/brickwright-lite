@@ -1403,6 +1403,12 @@ fail naming BOTH the artefact and the generator that no longer produces it.
 never that the generator is correct. A wrong generator faithfully reproduced still
 passes.
 
+**When the artefact is a function of N vendored inputs** (lite's BIOS: `rom/bios.asm`
+AND `i8086-asm.js`), the guard proves correspondence but not WHICH input broke it, and
+the failure message is the only place that distinction can live: name every input and
+its vendored sha, because partial re-vendoring is exactly the failure to catch, and a
+bare "bytes differ" sends the reader to the wrong file (lego-a4).
+
 **Counter-instance**, because it names the structural cure: bw-board's own BIOS does
 not have this. `rom/bios.bin` is gitignored and untracked, so there is no shipped
 binary to go stale — consumers build from `rom/bios.asm` and the tests execute what
