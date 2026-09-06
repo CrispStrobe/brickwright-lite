@@ -383,6 +383,68 @@ every gate carries hand-tuned `if:` conditions. Left as a decision, not a defaul
 
 ---
 
+### 2.5 A verdict per step, and boundaries that are declared — LANDED 2026-09-06
+
+Five CI changes from the same day, one motive: a run should say WHICH step went wrong, and every
+implicit rule the runner was living by should be written down where a test can hold it.
+
+- **Per-gate timeouts.** The day's "cancelled" runs were the build job's own 30-minute
+  `timeout-minutes` firing on a hanging SVG-sanitizer gate — the job vanished with no step
+  named. Every browser gate now carries its own `timeout-minutes` (3/4/8, each with the measured
+  max over five main runs beside it), `test/browser-gate-timeouts.test.mjs` holds the shape
+  job-agnostically (lego-be split the gates into a `browser` job the same afternoon), and
+  `scripts/audit-job-steps.mjs` runs last in that job with `if: always()` and reads the job's own
+  steps back through the API: skipped-in-green, skipped-after-red, or no gates at all are each a
+  different sentence, and "could not audit this run" is worded as absence, not as a finding.
+- **The test steps print their readings on red too.** `npm run test:fast | tee` swallowed the
+  runner's status behind `tee`'s; the steps now capture `PIPESTATUS[0]`, print the census and the
+  redirect summary whatever the verdict, and `exit "$rc"` last.
+- **Source-test boundary, measured then declared.** A root test that imports an overlay module
+  imports GUI code from outside the GUI's resolution scope; `avr8js` resolved on this VPS only
+  through a stray `wt/node_modules` two directories up, and failed on a clean runner.
+  `scripts/lib/gui-scope-hooks.mjs` (a `module.register` resolve hook every `node --test` script
+  installs) retries a failed BARE specifier from `packages/scratch-gui/package.json` and nothing
+  else; every redirect is logged with its importer and its test file. Then
+  `scripts/lib/gui-scope-allowed.json` declares the exact set — today `avr8js` for
+  `test/z80-cycle-provider-integration.test.mjs`, two redirects, measured both in CI and on this box
+  with the stray tree blocked — and `scripts/check-gui-scope.mjs` fails the unit step by name on a
+  specifier or a test not in it. The mutation proof imports `jszip` from a tmpdir through the real
+  hook: it PASSES (which is why the list must exist) and the checker fails it. Two things the
+  measuring taught: node merges a hook's `nextResolve` override INTO the context object it handed
+  you (read the importer before retrying, or the log names the wrong file), and the hooks thread
+  has no argv (the test file travels as `register()` data). Landed by lego-ac.
+- **Node floor preflight.** This box runs Node 20; the repo needs 22 (`fs.globSync`,
+  `import.meta.dirname`, the runner's per-file reporters). `scripts/check-node.mjs` runs first in
+  `npm test`, `test:fast` and `test:corpus`: below `engines.node` (now `>=22`) it prints one
+  sentence naming both versions and the install hint and exits 2 before any test; at or above it
+  prints nothing. Single-file `node --test test/x.test.mjs` is deliberately not gated — the fleet
+  uses those here. Landed by lego-ac.
+- **docs/ pushes skip the build unless code reads the doc.** `paths-ignore` cannot say
+  "except", so the push trigger became `paths`: everything, minus the nine root prose files, minus
+  `docs/*.md`, plus every doc some non-comment line of test/, scripts/, .github/ or overlay/
+  mentions (17 of 48 today; the four a name-grep also finds are comment-only). The re-include list
+  is computed by `scripts/lib/doc-triggers.mjs` and held by `test/build-trigger-paths.test.mjs`,
+  which fails by name in both directions. bw-ci measured the gap and, rightly, refused to
+  enumerate 41 skips by hand.
+
+- **The browser job runs as two shards of one body.** In series the 41 gates took 13–15 min while
+  build took 5.5 and corpus 2.2, so the verdict waited ~8 min on them. One `browser` body under
+  `strategy.matrix.shard: [heavy, light]` (`fail-fast: false`, explicit `name: browser (shard)`);
+  each gate and each companion step carries one `matrix.shard == '…'` clause in its own `if:`, and
+  that clause is the only list. `scripts/lib/workflow-gates.mjs` parses it for both
+  `test/browser-gate-shards.test.mjs` (a partition: every gate exactly one existing shard, none
+  empty, companions on their gate's shard, the pre-serve native-broker gate in place, every
+  "Browser…" step inside the gate pattern) and `scripts/audit-job-steps.mjs --shard`, which
+  re-checks the partition from the checked-out workflow inside the job and then judges the leg: a
+  gate assigned elsewhere must show skipped here, one that ran is a double run. The leg is found by
+  its display name (`BW_JOB_NAME`), because `GITHUB_JOB` stays `browser` for every leg. Open and
+  stated: a gate deleted from the body is invisible to all of it, as before. lego-be reviewed the
+  partition half specifically.
+
+**Rule that came out of it:** a redirect, a skip, a timeout, a re-include — anything the runner
+does implicitly — gets a log line first and a declared list second, and the list is compared to
+the measurement on every build. A count that only grows is not a gate.
+
 ## 3. Hardware / debugger surfaces
 
 ### 3.1 Debugger surface — LARGELY RESOLVED (2026-08-21 tranche), verify before reopening
