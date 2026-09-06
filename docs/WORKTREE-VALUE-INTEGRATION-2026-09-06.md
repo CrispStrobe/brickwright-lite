@@ -53,3 +53,13 @@ coherent, non-destructive latest-value path. It proves drain ordering and
 invalidation across disable/re-enable, RFCOMM disconnect, and deinit/reinit, and
 the gate is part of private CI. Independent review, source CI, and the full
 ARM/NuttX build pass before promotion to firmware `main`.
+
+The follow-on binding-race gate (`d6091c0`) deterministically pauses the real
+`LEGOSENSOR_GET_LATEST` control path after its per-port copy and races it with
+both lower-port displacement and unbind. It proves that generation
+revalidation returns `-EAGAIN` without mutating the caller buffer, that retry
+selects the newly bound port, that snapshots remain non-consuming, and that an
+unbound retry returns `-ENODEV`. The synchronization seam and its host shims are
+test-only; production preprocessing removes the hook. The ASan/UBSan host gate,
+independent review, private CI, protected ARM/NuttX build, resource-budget gate,
+and Bluetooth cross-compilation all passed before promotion to firmware `main`.
