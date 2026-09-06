@@ -777,12 +777,17 @@ jobs:
           path: artifacts/debug-history-browser/*
           if-no-files-found: error
 
-      - name: Browser gate — the debugger says what a chip refused
-        # NOT MEASURED YET, unlike its neighbours: this gate is new, so the
-        # number is a first estimate rather than a reading over five main runs.
-        # It does two full assemble-and-boot cycles of the 8086 bench. Replace
-        # this with a measured max once the timing job has seen it.
-        timeout-minutes: 6
+      - name: Browser gate — the panel's chip-refusal state follows the handle
+        # PROVES THE RENDER, NOT THE USER JOURNEY, and the gate's header says so
+        # in full: no route a user can reach today produces a durable chip
+        # refusal (the ASM tab boots a chipless DOS bench; the BIOS route's only
+        # refusal is pic1's four-step 8259-init window). The feature itself is
+        # proved in test/debug-chip-refusal-line.test.mjs. Promote this step when
+        # the Machine Loader exposes ROM boot media — lane P.
+        #
+        # NOT MEASURED YET, unlike its neighbours: new gate, one assemble-and-boot
+        # cycle. Replace with a measured max once the timing job has seen it.
+        timeout-minutes: 4
         id: chip_refusal_line
         # DIRECT `node`, NOT `npm run`. test/gate-coverage.test.mjs's
         # aliasInvokes requires `npm run <alias>` at the start of the line or
