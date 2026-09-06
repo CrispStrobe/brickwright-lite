@@ -391,8 +391,13 @@ blocks until answered). The first GPIO call HANGS: `pinMode(25, OUTPUT)` busy-lo
 as MicroPython's flash-funcs gap (N3a). Licence ledger: Kaluma/JerryScript/CMSIS Apache-2.0, pico-sdk
 and littlefs BSD-3, TinyUSB MIT; a shipped UF2 would need the Apache NOTICE and attributions.
 Recommendation: buildable through the existing seam, BLOCKED on one bootrom entry; the JS·Pico cell
-does not flip until a blink is observed. Follow-up N5-1 (worker): name the ROM code and SDK function;
-then bw-board adds the entry. The micro:bit half (PXT static TypeScript) is DEFERRED: the real compiler
+does not flip until a blink is observed. **N5-1 (2026-09-06):** the ROM code is `'SF'` (0x4653), the bootrom's single-precision SOFT-FLOAT
+table (RP2040 datasheet §2.8.3.1.2, a data-table lookup), which the clean-room bootrom leaves EMPTY by
+construction because MicroPython never uses it; Kaluma routes JS Numbers through pico_float, caches a
+null-derived operator pointer and calls it via `blx r3` at 0x10020760. Independent proof without a
+disassembler: `2.5+1.0` evaluates to 0 in the REPL while integer arithmetic is right. So the bw-board
+task is not a stub: a real soft-float jump table (clean-room, at least the operators Kaluma's number
+path uses), DoD `probe-pico-kaluma.mjs --eval` shows 3.5 and `--blink` drives GP25. The micro:bit half (PXT static TypeScript) is DEFERRED: the real compiler
 is reachable only as makecode.microbit.org (network) or by vendoring PXT + CODAL + toolchain.
 Pico: Kaluma (Apache-2.0) firmware + its REPL `.load` protocol, mirroring the
 MicroPython deploy; micro:bit: PXT static TypeScript (MIT), the compiler
