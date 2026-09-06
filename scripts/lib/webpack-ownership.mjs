@@ -97,7 +97,8 @@ export const summarizeWebpackOwnership = input => {
             initial: stageChunks.some(chunk => chunk.initial),
             files: [...new Set(stageAssets.map(asset => asset.name))].sort(),
             sourceBytes: stageModules.reduce((sum, module) => sum + (Number(module.size) || 0), 0),
-            emittedBytes: stageAssets.reduce((sum, asset) => sum + (Number(asset.size) || 0), 0)
+            emittedBytes: stageAssets.reduce((sum, asset) => sum + (Number(asset.size) || 0), 0),
+            owners: sumOwners(stageModules)
         };
     };
 
@@ -141,7 +142,8 @@ export const summarizeWebpackOwnership = input => {
             reducer: namedStage('paint-reducer'),
             editor: namedStage('paint-editor')
         },
-        lazySoundTab: namedStage('sound-tab')
+        lazySoundTab: namedStage('sound-tab'),
+        lazyConnectionModal: namedStage('connection-modal')
     };
 };
 
@@ -256,6 +258,33 @@ export const assertLazySoundTabBoundary = report => {
     if (report.initial.bytes > baselineInitialBytes - (75 * 1024)) {
         failures.push(`P17 initial JavaScript ${report.initial.bytes} exceeds ` +
             `${baselineInitialBytes - (75 * 1024)} bytes`);
+    }
+    return failures;
+};
+
+export const assertLazyConnectionModalBoundary = report => {
+    const modal = report.lazyConnectionModal;
+    const failures = [];
+    const expectedOwners = [
+        '@microbit/microbit-universal-hex',
+        'app:components/connection-modal',
+        'app:lib/microbit-update.js',
+        'dapjs'
+    ];
+    const modalOwners = new Set((modal?.owners || []).map(({owner}) => owner));
+    const initialOwners = new Set((report.initial?.owners || []).map(({owner}) => owner));
+    const missing = expectedOwners.filter(owner => !modalOwners.has(owner));
+    const eager = expectedOwners.filter(owner => initialOwners.has(owner));
+    if (!modal?.found) failures.push('the named connection-modal chunk is missing');
+    if (modal?.initial) failures.push('connection-modal became an initial chunk');
+    if (modal?.found && !modal.files.length) failures.push('connection-modal emitted no JavaScript asset');
+    if (missing.length) failures.push(`connection-modal owners are missing: ${missing.join(', ')}`);
+    if (eager.length) failures.push(`connection-modal owners remain initial: ${eager.join(', ')}`);
+    if ((modal?.sourceBytes || 0) < 150 * 1024) {
+        failures.push(`lazy connection-modal ownership fell below 150 KiB: ${modal?.sourceBytes || 0} bytes`);
+    }
+    if ((modal?.emittedBytes || 0) < 75 * 1024) {
+        failures.push(`lazy connection-modal assets fell below 75 KiB: ${modal?.emittedBytes || 0} bytes`);
     }
     return failures;
 };

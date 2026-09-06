@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
     assertDosChunkBoundary,
+    assertLazyConnectionModalBoundary,
     assertLazyPaintEditorBoundary,
     assertLazySoundTabBoundary,
     assertOptionalCodeMirrorGrammarBoundary,
@@ -210,4 +211,47 @@ test('sound tab boundary rejects a missing, eager or insignificant split', () =>
     failures = assertLazySoundTabBoundary(summarizeWebpackOwnership(stats));
     assert.match(failures.join('\n'), /became an initial chunk/);
     assert.match(failures.join('\n'), /initial JavaScript/);
+});
+
+test('connection modal ownership includes its hardware updater and stays non-initial', () => {
+    const stats = fixture();
+    stats.chunks.push({id: 50, names: ['connection-modal'], files: ['chunks/connection-modal.js'], initial: false});
+    stats.assets.push({name: 'chunks/connection-modal.js', size: 76800, chunks: [50]});
+    stats.modules.push(
+        {name: './src/components/connection-modal/connection-modal.jsx', size: 76000, chunks: [50]},
+        {name: './src/lib/microbit-update.js', size: 7000, chunks: [50]},
+        {name: './node_modules/dapjs/dist/dap.umd.js', size: 39000, chunks: [50]},
+        {name: './node_modules/@microbit/microbit-universal-hex/esm/index.js', size: 36000, chunks: [50]}
+    );
+    const report = summarizeWebpackOwnership(stats);
+    assert.equal(report.lazyConnectionModal.initial, false);
+    assert.equal(report.lazyConnectionModal.sourceBytes, 158000);
+    assert.deepEqual(report.lazyConnectionModal.owners.map(({owner}) => owner), [
+        'app:components/connection-modal',
+        'dapjs',
+        '@microbit/microbit-universal-hex',
+        'app:lib/microbit-update.js'
+    ]);
+    assert.deepEqual(assertLazyConnectionModalBoundary(report), []);
+});
+
+test('connection modal boundary rejects missing owners, eager ownership and an insignificant split', () => {
+    let failures = assertLazyConnectionModalBoundary(summarizeWebpackOwnership(fixture()));
+    assert.match(failures.join('\n'), /chunk is missing/);
+    assert.match(failures.join('\n'), /owners are missing/);
+    assert.match(failures.join('\n'), /below 150 KiB/);
+    assert.match(failures.join('\n'), /below 75 KiB/);
+
+    const stats = fixture();
+    stats.chunks.push({id: 50, names: ['connection-modal'], files: ['connection-modal.js'], initial: true});
+    stats.assets.push({name: 'connection-modal.js', size: 76800, chunks: [50]});
+    stats.modules.push(
+        {name: './src/components/connection-modal/connection-modal.jsx', size: 76000, chunks: [50]},
+        {name: './src/lib/microbit-update.js', size: 7000, chunks: [50]},
+        {name: './node_modules/dapjs/dist/dap.umd.js', size: 39000, chunks: [50]},
+        {name: './node_modules/@microbit/microbit-universal-hex/esm/index.js', size: 36000, chunks: [50]}
+    );
+    failures = assertLazyConnectionModalBoundary(summarizeWebpackOwnership(stats));
+    assert.match(failures.join('\n'), /became an initial chunk/);
+    assert.match(failures.join('\n'), /owners remain initial/);
 });

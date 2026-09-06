@@ -4,6 +4,7 @@
   "bw-matrix-schema.test.mjs",
   "bw-matrix-conformance.test.mjs",
   "bw-matrix-doc.test.mjs",
+  "connection-modal-deferral.test.mjs",
   "i8086-absent-hardware.test.mjs",
   "i8086-pseudocode-examples.test.mjs",
   "lego-spike-roundtrip.test.mjs",

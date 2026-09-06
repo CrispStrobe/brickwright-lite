@@ -55,7 +55,7 @@ import TipsLibrary from '../../containers/tips-library.jsx';
 import Cards from '../../containers/cards.jsx';
 import Alerts from '../../containers/alerts.jsx';
 import DragLayer from '../../containers/drag-layer.jsx';
-import ConnectionModal from '../../containers/connection-modal.jsx';
+import LazyConnectionModal from '../../containers/lazy-connection-modal.jsx';
 import TelemetryModal from '../telemetry-modal/telemetry-modal.jsx';
 
 import layout, {STAGE_SIZE_MODES} from '../../lib/layout-constants';
@@ -584,7 +584,7 @@ const GUIComponent = props => {
                     <Alerts className={styles.alertsContainer} />
                 ) : null}
                 {connectionModalVisible ? (
-                    <ConnectionModal
+                    <LazyConnectionModal
                         vm={vm}
                     />
                 ) : null}

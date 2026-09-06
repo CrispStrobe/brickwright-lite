@@ -1,9 +1,15 @@
 #!/usr/bin/env node
-/** Measure first usable Connection-modal UI; the eager run establishes P18's baseline. */
+/** Measure first usable Connection-modal UI against P18's accepted eager baseline. */
 import {mkdir, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 
 const url = process.env.PROOF_URL || 'http://localhost:8617/';
+const baselineRun = 34056846253;
+const baselineMs = 92.1;
+const relativeLimitMs = 105.92;
+const absoluteLimitMs = 1000;
+const maxLongTaskMs = 100;
+const minimumEncodedBytes = 20480;
 const output = path.resolve('artifacts/connection-modal-activation');
 await mkdir(output, {recursive: true});
 const {chromium} = await import('playwright');
@@ -93,12 +99,37 @@ try {
         dialogs: document.querySelectorAll('[role="dialog"]').length,
         calls: window.__BW_CONNECTION_MODAL_PERF__.calls.slice()
     }));
+    await page.evaluate(() => window.__brickwrightStore.dispatch({
+        type: 'scratch-gui/modals/OPEN_MODAL',
+        modal: 'connectionModal'
+    }));
+    await page.getByText('Looking for devices', {exact: true}).waitFor({timeout: 10000});
+    await page.getByRole('button', {name: 'Refresh'}).waitFor({timeout: 10000});
+    receipt.afterReopen = await page.evaluate(() => ({
+        connectionModalScripts: performance.getEntriesByType('resource')
+            .filter(entry => entry.initiatorType === 'script' && /connection-modal/i.test(entry.name))
+            .map(entry => ({name: entry.name, encodedBodySize: entry.encodedBodySize || 0})),
+        calls: window.__BW_CONNECTION_MODAL_PERF__.calls.slice()
+    }));
+    await page.getByRole('button', {name: 'Close'}).click();
+    receipt.baseline = {run: baselineRun, durationMs: baselineMs};
+    receipt.limits = {relativeMs: relativeLimitMs, absoluteMs: absoluteLimitMs,
+        maxLongTaskMs, minimumEncodedBytes};
     await writeFile(path.join(output, 'receipt.json'), `${JSON.stringify(receipt, null, 2)}\n`);
     console.log(JSON.stringify(receipt, null, 2));
     if (errors.length) throw new Error(errors.join(' | '));
-    if (beforeRequests !== 0 || receipt.connectionModalScripts.length !== 0) {
-        throw new Error('the eager baseline unexpectedly fetched a Connection-modal chunk');
+    if (beforeRequests !== 0 || receipt.connectionModalScripts.length !== 1) {
+        throw new Error('the lazy modal must be absent at startup and fetch exactly one named chunk on first open');
     }
+    if (receipt.connectionModalScripts[0].encodedBodySize < minimumEncodedBytes) {
+        throw new Error(`Connection-modal chunk was only ${receipt.connectionModalScripts[0].encodedBodySize} encoded bytes`);
+    }
+    if (receipt.durationMs > relativeLimitMs || receipt.durationMs > absoluteLimitMs) {
+        throw new Error(`Connection modal took ${receipt.durationMs.toFixed(2)} ms; limits are ` +
+            `${relativeLimitMs} ms relative and ${absoluteLimitMs} ms absolute`);
+    }
+    const slowTasks = receipt.longTasks.filter(task => task.ms > maxLongTaskMs);
+    if (slowTasks.length) throw new Error(`Connection-modal activation had ${slowTasks.length} long task(s)`);
     if (receipt.extensionId !== 'microbit' || !receipt.modalVisible || receipt.dialogs !== 1 ||
         !receipt.looking || !receipt.refresh) {
         throw new Error('Connection modal did not reach usable scanning UI');
@@ -110,6 +141,12 @@ try {
     if (receipt.afterClose.modalVisible || receipt.afterClose.dialogs || disconnects !== 1) {
         throw new Error('closing the Connection modal did not disconnect and unmount it');
     }
+    if (receipt.afterReopen.connectionModalScripts.length !== 1) {
+        throw new Error('reopening the Connection modal downloaded its module again');
+    }
+    const reopenedScans = receipt.afterReopen.calls
+        .filter(call => call[0] === 'scan' && call[1] === 'microbit').length;
+    if (reopenedScans !== 2) throw new Error(`reopen should start a second scan, got ${reopenedScans} total`);
 } finally {
     await browser.close();
 }
