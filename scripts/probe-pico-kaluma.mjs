@@ -166,12 +166,20 @@ async function main () {
 
     if (args.eval && />/.test(state.usb)) {
         // Prove the run-live seam carries JavaScript: answer the DSR, then a
-        // pure-compute expression must come back evaluated.
+        // pure-compute INTEGER expression must come back evaluated.
         console.log('');
-        const r1 = await evalLine(m, '1+1');
-        const got2 = /(^|[^0-9])2([^0-9]|$)/.test(r1.replace(/\x1b\[[0-9;]*m/g, ''));
-        console.log(`--eval: 1+1  ->  ${got2 ? 'REPL answered 2 (live JS works)' : 'no answer'}`);
-        console.log('  reply:', JSON.stringify(r1.replace(/\x1b/g, 'ESC')).slice(0, 90));
+        const clean = s => s.replace(/\x1b\[[0-9;]*m/g, '').replace(/\x1b./g, '').replace(/[\r\n]+/g, ' ');
+        const r1 = clean(await evalLine(m, '1+1'));
+        const got2 = /1\+1\s+2\b/.test(r1);
+        console.log(`--eval: 1+1     -> ${got2 ? 'REPL answered 2 (live integer JS works)' : `unexpected: ${r1.slice(0, 40)}`}`);
+        // The SAME REPL, a FLOAT expression: it answers 0, not 3.5, because the
+        // RP2040 ROM soft-float table ('SF') this clean-room bootrom does not
+        // provide came back null. This is the N5-1 root cause, visible without
+        // the disassembler — and the reason pinMode (which converts its numeric
+        // arg through that broken soft-float) hangs. See docs/PICO-KALUMA-BOOT.md §2.
+        const rf = clean(await evalLine(m, '2.5+1.0'));
+        const zero = /2\.5\+1\.0\s+0\b/.test(rf);
+        console.log(`--eval: 2.5+1.0 -> ${zero ? 'REPL answered 0, not 3.5 — ROM soft-float is broken (null SF table)' : rf.slice(0, 40)}`);
     }
 
     if (args.blink) {

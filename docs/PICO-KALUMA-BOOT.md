@@ -5,10 +5,16 @@ Kaluma 1.2.1 for the Raspberry Pi Pico (RP2040) runs unmodified inside rp2040js
 behind this repo's clean-room boot ROM, enumerates as a USB CDC device, reaches
 its REPL, and evaluates `1+1` to `2` over the exact transport
 `overlay/scratch-gui/src/lib/pico-repl.js` speaks. **`pinMode(25, OUTPUT)` then
-busy-loops forever** in the boot ROM's `rom_table_lookup`, so a blink never
-lights. The cause is the same clean-room boot-ROM gap that stops MicroPython's
-flash filesystem (`docs/PICO-MICROPYTHON-BOOT.md` §4) — a different missing ROM
-entry, the same shape of failure.
+busy-loops forever**, so a blink never lights. The cause (finding N5-1, §2) is
+precise: Kaluma routes JavaScript numbers through the RP2040 bootrom's
+single-precision soft-float table `'SF'`, which this clean-room boot ROM leaves
+empty — so `rom_data_lookup('SF')` returns `0`, and the first number `pinMode`
+converts calls a null-derived pointer into a spin. `2.5+1.0` evaluates to `0`
+instead of `3.5`, which shows the same broken soft-float from the REPL in one
+keystroke. It is the same class as the MicroPython flash-filesystem gap
+(`docs/PICO-MICROPYTHON-BOOT.md` §4) — a clean-room boot ROM that answers only
+what MicroPython needs — but a bigger fix, because `'SF'` must be a real jump
+table, not a stub.
 
 This is the **investigation half** of plan N5. No product code, no matrix
 change: the JS·Pico cell stays as it is until the boot ROM answers what Kaluma
@@ -129,31 +135,101 @@ Both arguments are garbage. A real lookup passes the ROM function table
 `r0 = 0x00480014` points into the unmapped `0x00480000` region and marches
 upward forever.
 
-### Root cause: the same boot-ROM gap as MicroPython §4
+### Finding N5-1: the null soft-float table (`'SF'`), named
 
-The `0x00480000` pointer is not random — it is a **null/incomplete ROM lookup
-used as a base address**. This repo's boot ROM
-(`overlay/scratch-gui/src/lib/bw-board/rp2040-bootrom.js`) is clean-room and
-implements only the subset of ROM function/data-table entries MicroPython's
-boot exercises. `rom_table_lookup` returns `0` on a miss, and — exactly as the
-MicroPython investigation found for the flash functions — **the SDK uses the
-result without a null check**. Kaluma's RP2040 startup asks the ROM for
-something the clean-room table does not answer, gets `0`, computes the
-`0x00480000`-region base from it, and then scans that base for a code that
-cannot exist. The register file at the hang:
+**The two-character ROM code is `'SF'` (0x4653) — the RP2040 bootrom's
+single-precision soft-float function table (datasheet §2.8.3.1.2), looked up as
+ROM _data_, not a ROM function.** This clean-room boot ROM's data table is
+deliberately empty, so the lookup returns `0`, and the null propagates into a
+soft-float function pointer that `pinMode` calls.
+
+Reproduce:
 
 ```
-r0 = 0x005f0f20 (marching table ptr)   r1 = 0x04800000 (bogus code)
-r2 = 0x0000ffff   r3 = 0x00000000   r4 = 0x00000400   r5 = 0x1c800000
-LR = 0x1000463f   PC = 0x00000100..0x0000010c (rom_table_lookup)
+node scripts/probe-pico-kaluma.mjs --eval     # 1+1 -> 2, but 2.5+1.0 -> 0
+node scripts/probe-pico-kaluma.mjs --blink     # pinMode hangs
 ```
 
-This is a **boot-ROM completeness** problem, not a Kaluma bug (Kaluma runs on
-real Picos, whose boot ROM is complete) and not an rp2040js bug (the CPU, GPIO,
-and CDC are all modelled correctly — pure JS and USB work). The specific ROM
-code Kaluma's `gpio`/runtime path requests is not yet pinned; naming it needs a
-disassembly of Kaluma's SDK build around `0x1000463f`, and is the first task of
-any follow-up (§4).
+**The lookup, measured.** Instrumenting `rom_table_lookup` (0x100) over the
+whole boot records exactly **one** data-table lookup — everything else is the
+function table (`'IF'`, `'EX'`, `'FC'`, the flash codes):
+
+```
+rom_table_lookup(table = 0x0000020c, code = 0x4653 'SF')   @ instruction 155,382
+```
+
+`0x20c` is this boot ROM's data-table pointer (the `u16` at header offset
+`0x16`). And that table is a single zero word — empty by construction, with the
+reason stated in the source
+(`overlay/scratch-gui/src/lib/bw-board/rp2040-bootrom.js`):
+
+```js
+const dataTable = at + 4;
+// Empty, and deliberately so. The one data entry a firmware asks for
+// is 'SF', mufplib's jump table, and answering it with a pointer to
+// zeros would turn a clean lookup miss into a jump to address 0.
+// Measured: answering it moves the panic by TWO steps, so the float
+// table is not what stops MicroPython here.
+view.setUint32(dataTable, 0, true);
+```
+
+So `rom_data_lookup('SF')` returns `0`. That is correct *for MicroPython*, which
+does not use the ROM soft-float — but **Kaluma does**, and the empty table is
+exactly what stops it.
+
+**The null, cached and called.** pico-sdk's ROM-backed soft-float (`pico_float`)
+resolves each single-precision operator's function pointer from that table base
+and caches them in RAM. With the base `0`, the cache fills with tiny bogus
+addresses. Measured, at the veneer that dispatches the operation:
+
+```
+*(0x10020778) = 0x2003163c          ; the RAM soft-float function-pointer cache
+*(0x2003163c) = 0x00000143          ; the cached operator pointer — bogus (thumb 0x142)
+```
+
+`0x142` is not a soft-float routine; it is the middle of an unrelated clean-room
+boot-ROM routine (`… 0x142: movs r2,#0 / cmp r0,#0 / beq …`). The call site is a
+plain indirect call — **the null-derived pointer is loaded into `r3` and invoked
+by `blx r3` at `0x10020760`**:
+
+```
+10020758  ...
+1002075c  ldr  r3, [pc, #24]     ; r3 = *(0x10020778) = 0x2003163c
+1002075e  ldr  r3, [r3, #0]      ; r3 = *(0x2003163c) = 0x00000143  (the null-derived pointer)
+10020760  blx  r3                ; call into the middle of the boot ROM
+```
+
+`blx`-ing into `0x142` runs boot-ROM code with garbage registers, which is how
+the observed loop above ends up re-entering `rom_table_lookup` with the bogus
+`table = 0x00480014…`, `code = 0x04800000` arguments — a *downstream* symptom of
+the one null lookup, not a second cause.
+
+**Which operation, and why `pinMode` specifically.** `pinMode(25, OUTPUT)`
+converts its numeric argument — a JerryScript `Number` — through the ROM
+soft-float on its way to an integer pin index, and that operator is one whose
+bogus pointer loops. Pure integer arithmetic never touches soft-float, so it is
+unaffected; a float operation is corrupted but does not always loop. All three
+are visible from the REPL, no disassembler required:
+
+```
+1+1      -> 2       (integer fast path, correct)
+40+2     -> 42      (integer fast path, correct)
+2.5+1.0  -> 0       (soft-float — WRONG, should be 3.5: the SF table is null)
+```
+
+The `2.5+1.0 -> 0` line is the whole finding in one keystroke: the ROM
+soft-float is broken, and `pinMode` is the first thing that routes a number
+through it in a way that hangs.
+
+This is the **same class** as the MicroPython flash-functions gap
+(`PICO-MICROPYTHON-BOOT.md` §4) — a clean-room boot ROM that answers only what
+MicroPython needs — but it is the `'SF'` **data** entry, and the fix is a bigger
+lift than the flash `bx lr` stubs: a real single-precision soft-float jump
+table (mufplib-equivalent, clean-room) has to be provided, or the empty table
+replaced with one whose entries fail *safely* rather than into a spin. It is a
+boot-ROM completeness problem, not a Kaluma bug (Kaluma runs on real Picos,
+whose boot ROM has `'SF'`) and not an rp2040js bug (CPU, GPIO and CDC are all
+modelled correctly — integer JS and USB work).
 
 ---
 
@@ -197,24 +273,29 @@ the same `pico-repl.js` transport the Pico ▶ Run uses for MicroPython — the 
 new host-side requirement is answering the REPL's `ESC[6n` cursor query. A JS
 cell would reuse the N3c run-live path almost unchanged.
 
-What blocks it: any call that touches hardware — starting with `pinMode` — hangs
-in the clean-room boot ROM's `rom_table_lookup`, because the ROM does not
-implement the entry Kaluma's RP2040 startup asks for and the SDK dereferences
-the `0` it gets back. This is the identical class of defect the MicroPython
-investigation fixed for the flash functions, and it wants the identical fix, in
-the identical place: **add the missing entries to bw-board's
-`src/rp2040-bootrom.js`**, from where they sync into
-`overlay/scratch-gui/src/lib/bw-board/`.
+What blocks it (§2, finding N5-1): Kaluma routes JavaScript numbers through the
+RP2040 bootrom's soft-float table, which this clean-room boot ROM leaves empty
+on purpose, so `rom_data_lookup('SF')` returns `0`, the SDK caches a null-derived
+operator pointer, and the first number `pinMode` converts calls it — into a spin.
+The fix is in bw-board's `src/rp2040-bootrom.js` (whence it syncs into
+`overlay/scratch-gui/src/lib/bw-board/`), and it is a **bigger** lift than the
+MicroPython flash-function `bx lr` stubs: the empty `'SF'` data entry has to
+become a real single-precision soft-float jump table (a clean-room mufplib
+equivalent), because Kaluma actually calls the routines it points at — an empty
+or zero-filled table only moves the crash.
 
-So: **do not flip the JS·Pico matrix cell yet.** The follow-up, effort-ordered:
-(1) disassemble Kaluma's SDK around `0x1000463f` to name the exact ROM code it
-looks up during `gpio_init`; (2) add that entry (and any siblings the rest of
-the HAL needs) to the clean-room boot ROM in bw-board; (3) re-run
-`node scripts/probe-pico-kaluma.mjs --blink` and confirm GP25 goes high; (4)
-only then flip the cell in a lane shaped exactly like N3c — a `js`/`kaluma`
-artefact, the run-live seam wired to the DSR-answering transport, and a browser
-gate. Until (2) lands, Kaluma is a JavaScript calculator on the emulated Pico:
-it computes, but it cannot blink.
+So: **do not flip the JS·Pico matrix cell yet.** N5-1 above is the finding to
+hand to bw-board; the follow-up, effort-ordered: (1) **done — N5-1**: the ROM
+code is `'SF'`, the SDK path is `pico_float`'s ROM soft-float, the null is
+called via `blx r3` at `0x10020760`; (2) in bw-board's `rp2040-bootrom.js`,
+provide a clean-room single-precision soft-float jump table for `'SF'` (at
+minimum the operators Kaluma's number path uses); (3) re-run
+`node scripts/probe-pico-kaluma.mjs --blink` and confirm GP25 goes high (and
+`--eval` shows `2.5+1.0 -> 3.5`); (4) only then flip the cell in a lane shaped
+exactly like N3c — a `js`/`kaluma` artefact, the run-live seam wired to the
+DSR-answering transport, and a browser gate. Until (2) lands, Kaluma is an
+*integer* JavaScript calculator on the emulated Pico: it computes with whole
+numbers, gets floats wrong, and cannot blink.
 
 ---
 
