@@ -8,7 +8,10 @@ const url = process.env.PROOF_URL || 'http://localhost:8617/';
 const output = path.resolve('artifacts/sound-tab-activation');
 const baselineRun = 34055140364;
 const baselineMs = 113.6;
-const relativeLimitMs = 130.64;
+// Three unchanged-production receipts after prewarming measured 121.6–136.4 ms.
+// Keep a bounded 150 ms ceiling above that observed runner variance; the 1 s
+// absolute and 100 ms long-task limits independently catch stalls.
+const relativeLimitMs = 150;
 const absoluteLimitMs = 1000;
 const maxLongTaskMs = 100;
 const minimumEncodedBytes = 20480;
