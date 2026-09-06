@@ -84,7 +84,7 @@ export async function startPicoSimRun ({image, vm, stc, py, onStatus, onError}) 
         /* webpackChunkName: "bw-board" */ './bw-board/rp2040js-adapter.js');
     const {resolveNetlist} = await import(
         /* webpackChunkName: "bw-board" */ './bw-board/resolve-netlist.js');
-    const {createPicoRepl} = await import('./pico-repl.js');
+    const {startProgramOnRepl} = await import('./pico-repl.js');
     const {USBCDC} = await import('rp2040js');
 
     // One board, one truth — the SAME resolution the debugger uses (designer's
@@ -188,21 +188,25 @@ export async function startPicoSimRun ({image, vm, stc, py, onStatus, onError}) 
     if (stopped) { return {stop: teardown}; }
     phase = 'enumerated';
 
-    // Live run over the shared createPicoRepl. exec() is FIRED, not awaited to
-    // completion: a forever loop keeps it pending while the pump runs the
-    // program and its GPIO reaches the board. A completed program or a syntax
-    // error settles it — a rejection is a runtime traceback for the user.
-    const repl = createPicoRepl(transport, {timeoutMs: 30_000});
-    status('running');
-    phase = 'running';
-    repl.exec(py).then(
-        () => { phase = 'finished'; },
-        (err) => {
-            phase = 'error';
-            lastError = err && err.message ? err.message : String(err);
-            if (!stopped && onError) onError(err instanceof Error ? err : new Error(String(err)));
+    // Start the program over the SHARED handshake (pico-repl.startProgramOnRepl),
+    // the SAME code the node oracle uses: wait for the prompt, enter RAW mode
+    // (wait for its ack), send, wait for the OK. Never exec into a friendly REPL,
+    // which echoes a multi-line def and runs nothing. "running" is set only after
+    // the OK — a silent no-run can no longer present as running. A forever loop
+    // keeps running under the pump after the OK; Stop interrupts it.
+    try {
+        await startProgramOnRepl(transport, py, {timeoutMs: 60_000});
+    } catch (e) {
+        phase = 'error';
+        lastError = e && e.message ? e.message : String(e);
+        if (!stopped && onError) {
+            onError(new Error(`the Pico REPL did not accept the program: ${lastError}`));
         }
-    );
+        return {stop: teardown};
+    }
+    if (stopped) { return {stop: teardown}; }
+    phase = 'running';
+    status('running');
 
     function teardown () {
         if (stopped) return;
