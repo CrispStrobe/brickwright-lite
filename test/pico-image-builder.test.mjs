@@ -17,6 +17,9 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync} from 'node:fs';
 import {parseUF2, ensureFirmware, FIRMWARE, CACHED_UF2} from '../scripts/probe-pico-micropython.mjs';
+import {
+    parseUF2 as browserParseUF2, PICO_UF2_FILE, FLASH_BASE as BROWSER_FLASH_BASE
+} from '../overlay/scratch-gui/src/lib/pico-firmware.js';
 
 const FLASH_BASE = 0x10000000;
 
@@ -85,6 +88,25 @@ test('a block with bad magic is rejected, not silently skipped', () => {
     new DataView(uf2.buffer).setUint32(0, 0xdeadbeef, true); // corrupt magicStart0
     assert.throws(() => parseUF2(uf2), /bad magic/,
         'a corrupt block was assembled into the image instead of throwing');
+});
+
+// The browser loader (pico-firmware.js) carries its OWN parseUF2 and filename
+// because it must not import the node-only probe. The sha256 pin lives once, in
+// the probe; only the name and the parser are duplicated, so those are pinned
+// equal here — a divergence in either is a real bug the drift guard catches.
+test('the browser firmware module agrees with the probe (single source, no drift)', () => {
+    assert.equal(PICO_UF2_FILE, FIRMWARE.file,
+        'the browser firmware filename drifted from the probe\'s pin');
+    assert.equal(BROWSER_FLASH_BASE, FLASH_BASE, 'the browser FLASH_BASE drifted');
+    const uf2 = synthUF2([
+        {addr: FLASH_BASE, size: 256, fill: 0xaa},
+        {addr: FLASH_BASE + 512, size: 256, fill: 0xbb}
+    ]);
+    const a = parseUF2(uf2);
+    const b = browserParseUF2(uf2);
+    assert.equal(b.base, a.base, 'the two parsers disagree on the image base');
+    assert.equal(b.image.length, a.image.length, 'the two parsers disagree on the image length');
+    assert.deepEqual([...b.image], [...a.image], 'the two parsers produced different images');
 });
 
 const SKIP = !existsSync(CACHED_UF2)

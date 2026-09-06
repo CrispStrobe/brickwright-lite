@@ -21,14 +21,28 @@
  * sha256 pin, not the (versioned) URL, is what decides what ships, so a moved
  * or replaced artefact fails closed.
  *
+ * It also SERVES the firmware to the browser, the labwired-wasm way: the
+ * verified bytes are written under `packages/scratch-gui/static/`, which
+ * .gitignore covers (so never committed) and webpack copies wholesale. The
+ * browser's src/lib/pico-firmware.js fetches `static/pico-micropython/<file>`
+ * and the Pico ▶ Run refuses by name when it is absent — a build that never ran
+ * this sync simply does not offer the sim Run, and still builds.
+ *
  * Usage:
- *   npm run sync:picomicropython          # fetch into artifacts/ if absent, verify sha256
+ *   npm run sync:picomicropython          # fetch (verify sha256) + serve under static/
  *   npm run sync:picomicropython:check    # verify the cached copy matches the pin; never fetch
  */
 import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {ensureFirmware, FIRMWARE, CACHED_UF2} from './probe-pico-micropython.mjs';
 
 const check = process.argv.includes('--check');
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+/** Served asset root — the labwired-wasm destination shape. gitignored. */
+const STATIC_DIR = path.join(ROOT, 'packages', 'scratch-gui', 'static', 'pico-micropython');
+const STATIC_UF2 = path.join(STATIC_DIR, FIRMWARE.file);
 
 async function main () {
     if (check) {
@@ -50,6 +64,12 @@ async function main () {
     const bytes = await ensureFirmware({quiet: false});
     console.log(`[sync:picomicropython] ${FIRMWARE.file} present (${bytes.length} bytes), ` +
         `sha256 ${FIRMWARE.sha256}`);
+    // Serve it: copy the VERIFIED bytes under the static root (gitignored). The
+    // browser trusts the served asset because this step wrote only what
+    // ensureFirmware already hashed against the pin.
+    fs.mkdirSync(STATIC_DIR, {recursive: true});
+    fs.copyFileSync(CACHED_UF2, STATIC_UF2);
+    console.log(`[sync:picomicropython] served ${path.relative(ROOT, STATIC_UF2)} for the browser`);
 }
 
 main().catch(err => {
