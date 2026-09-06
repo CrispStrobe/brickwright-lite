@@ -91,6 +91,7 @@ export const ARTEFACTS = Object.freeze([
     'py', // MicroPython / CircuitPython source
     'bas', // BASIC text typed into a ROM interpreter
     'com', // DOS .COM program
+    'img', // bootable 1.44M floppy image (a .COM wrapped in a boot sector)
     'ts' // MakeCode (PXT) TypeScript, compiled hosted
 ]);
 
@@ -340,7 +341,14 @@ export const DEVICES = Object.freeze([
             // agreement about the BOARD, not just the CPU — but GPL-2 keeps it out of CI.
             needs: ['8086-vectors', 'elks-image']
         })],
-        silicon: [tx('com-export', ['com'], null, {...OPEN_DECLARED, task: 'N10'})]
+        silicon: [tx('export', ['com', 'img'], null, {
+            task: 'N10', tier: '2c',
+            note: 'export, not a flash transport: the assembled .COM (org 100h, the assembler\'s '
+               + 'exact bytes) and a bootable 1.44M floppy .img whose boot sector installs a minimal '
+               + 'INT 21h over the BIOS and loads the .COM at CS:0100 — carry it to real hardware or '
+               + 'another emulator. Boots in lite\'s own vendored 8086 + committed BIOS '
+               + '(test/i8086-export.test.mjs); a second, INDEPENDENT emulator is declared, not measured.'
+        })]
     }),
     // Moved here from DEVICE_GROUPS in pseudocode-importer.jsx (T7): the picker is derived
     // from this table now, so the reason two ids share one path belongs beside them.

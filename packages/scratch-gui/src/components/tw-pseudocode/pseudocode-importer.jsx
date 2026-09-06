@@ -255,6 +255,12 @@ const L10N = {
         // button's whole claim is the second one.
         run8086: '▶ Run on 8086',
         run8086Title: 'Turn these blocks into 8086 assembly in this browser and run it on the DOS bench — no network, no toolchain.',
+        export8086Com: '⬇ .COM',
+        export8086ComTitle: 'Download the assembled .COM — the exact assembler bytes (org 100h), to run under DOS or another 8086 emulator.',
+        export8086Img: '⬇ .img',
+        export8086ImgTitle: 'Download a bootable 1.44 MB floppy image that boots this program on real PC/XT hardware or another emulator.',
+        export8086ComDone: n => `Saved the .COM (${n} bytes).`,
+        export8086ImgDone: n => `Saved the bootable floppy image (${n} bytes).`,
         run8086Building: 'Lowering the blocks to 8086 assembly…',
         run8086Built: (n, b) => `Built ${n} bytes from ${b} block(s) in this browser — booting the 8086 DOS bench…`,
         run8086Refused: m => `The 8086 back end refused this program: ${m}`,
@@ -431,6 +437,12 @@ const L10N = {
         asmWriteFirst: 'Schreibe zuerst Assembler-Quellcode.',
         run8086: '▶ Auf 8086 ausführen',
         run8086Title: 'Diese Blöcke in diesem Browser in 8086-Assembler übersetzen und auf der DOS-Werkbank ausführen — ohne Netz, ohne Toolchain.',
+        export8086Com: '⬇ .COM',
+        export8086ComTitle: 'Die assemblierte .COM herunterladen — die exakten Assembler-Bytes (org 100h), zum Ausführen unter DOS oder einem anderen 8086-Emulator.',
+        export8086Img: '⬇ .img',
+        export8086ImgTitle: 'Ein bootfähiges 1,44-MB-Diskettenabbild herunterladen, das dieses Programm auf echter PC/XT-Hardware oder einem anderen Emulator startet.',
+        export8086ComDone: n => `.COM gespeichert (${n} Bytes).`,
+        export8086ImgDone: n => `Bootfähiges Diskettenabbild gespeichert (${n} Bytes).`,
         run8086Building: 'Übersetze die Blöcke in 8086-Assembler…',
         run8086Built: (n, b) => `${n} Bytes aus ${b} Block/Blöcken in diesem Browser erzeugt — starte die 8086-DOS-Werkbank…`,
         run8086Refused: m => `Das 8086-Backend hat dieses Programm abgelehnt: ${m}`,
@@ -1888,6 +1900,48 @@ class PseudocodeImporter extends React.Component {
             buffers: {...st.buffers, asm: out.asm},
             status: this.L.run8086Built(out.bytes.length, blocks) + warn
         }));
+    }
+
+    /**
+     * Export the 8086 program beside ▶ Run: the assembled `.COM` (the
+     * assembler's exact org-100h bytes) or a bootable 1.44M floppy `.img` that
+     * boots the .COM on real PC/XT hardware or another emulator. silicon:
+     * export only — not a flash transport (N10).
+     */
+    async exportI8086 (kind) {
+        const src = this.state.buffers.pseudocode || '';
+        if (!src.trim()) { this.setState({status: this.L.run8086Empty}); return; }
+        this.setState({busy: true, status: ''});
+        try {
+            const SB3Creator = (await this.lib()).default;
+            const creator = new SB3Creator();
+            creator.parse(src);
+            const mod = await import(
+                /* webpackChunkName: "bw-pc8086" */ '../../lib/bw-asm/pseudocode-8086.js');
+            const out = await mod.buildPseudocode8086(
+                {project: creator.project, source: src, parseWarnings: creator.warnings});
+            const {comFilename, imgFilename, buildFloppyImage} = await import(
+                /* webpackChunkName: "bw-pc8086" */ '../../lib/bw-asm/i8086-floppy.js');
+            const name = this._programName();
+            if (kind === 'img') {
+                const img = buildFloppyImage(out.bytes);
+                this._download(imgFilename(name), img, 'application/octet-stream');
+                this.setState({busy: false, status: this.L.export8086ImgDone(img.length)});
+            } else {
+                this._download(comFilename(name), out.bytes, 'application/octet-stream');
+                this.setState({busy: false, status: this.L.export8086ComDone(out.bytes.length)});
+            }
+        } catch (e) {
+            this.setState({busy: false, status: e && e.name === 'Pseudocode8086Error'
+                ? this.L.run8086Refused(e.message)
+                : this.L.run8086Failed(e && e.message ? e.message : String(e))});
+        }
+    }
+
+    /** The download basename: the project title if we have one, else 'program'. */
+    _programName () {
+        const t = (this.props && this.props.projectTitle) || '';
+        return String(t).trim() || 'program';
     }
 
     /**
@@ -4061,6 +4115,24 @@ class PseudocodeImporter extends React.Component {
                                 style={{...btn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
                                 {this.L.run8086}
                             </button>
+                        ) : null}
+                    {/* Export beside ▶ Run: the assembled .COM and a bootable
+                        floppy .img, to carry off the bench to real hardware or
+                        another emulator (N10). silicon: export only. */}
+                    {this.state.lang === 'pseudocode'
+                     && asmTargetForDevice(this.currentDevice()) === 'i8086' ? (
+                            <React.Fragment>
+                                <button onClick={() => this.exportI8086('com')} disabled={this.state.busy}
+                                    data-testid="bw-export-8086-com" title={this.L.export8086ComTitle}
+                                    style={{...btn, background: '#e2e8f0', color: '#334155'}}>
+                                    {this.L.export8086Com}
+                                </button>
+                                <button onClick={() => this.exportI8086('img')} disabled={this.state.busy}
+                                    data-testid="bw-export-8086-img" title={this.L.export8086ImgTitle}
+                                    style={{...btn, background: '#e2e8f0', color: '#334155'}}>
+                                    {this.L.export8086Img}
+                                </button>
+                            </React.Fragment>
                         ) : null}
                     {/* The C tab's ▶, and it is the same shape as the one
                         above: build for the selected device and start it. It

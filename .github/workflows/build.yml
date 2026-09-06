@@ -886,6 +886,13 @@ jobs:
           name: i8086-production-browser-proof
           path: artifacts/i8086-browser/*
           if-no-files-found: error
+      # N10: the Code tab exports the assembled .COM and a bootable .img.
+      # Judged by the DOWNLOADED artefact — a different program yields a
+      # different .COM, and the .img carries the exact .COM from LBA 1.
+      - name: Browser gate — 8086 .COM / .img export (N10)
+        timeout-minutes: 3  # a couple of downloads through the UI
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ npm run verify:i8086-export
 
       - name: Browser benchmark — 8086 desktop and mobile
         timeout-minutes: 8  # measured max 123 s over 5 main runs, 2026-09-05
