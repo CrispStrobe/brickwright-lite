@@ -56,6 +56,7 @@ import {createHaltOccurrenceLedger} from './halt-occurrence-ledger.js';
 import {createForkRecordingStore} from './fork-recording-store.js';
 import {createBranchCursor} from './fork-history.js';
 import {createHistoryAnnotationStore} from './history-annotations.js';
+import {chipRefusalLines} from './chip-refusal-lines.js';
 import {createRunToCoordinator} from './run-to.js';
 import {createSelectedEventInspectionStore} from './selected-event-inspection.js';
 import {createTimingWaveform} from './timing-waveform.js';
@@ -531,6 +532,20 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
      * that moves nothing. Dropping the ledger on the floor — which is what this
      * runner did until now — is the failure the ledger exists to prevent.
      */
+    /**
+     * The attached machine's refusal collector, or null when it has none.
+     *
+     * A FUNCTION AND NOT A SNAPSHOT. Refusals accumulate while the program runs
+     * — the 8237 records a bit the first time a driver sets it and counts every
+     * time after — so a list captured at attach would show an empty bench
+     * forever. The panel asks at render, which is also what makes "on each new
+     * refusal during a run" free rather than a subscription.
+     *
+     * Only i8086 has one today. z80 and 6502 machines do not, and the null is
+     * the honest answer for them: no rows, rather than an empty list that reads
+     * as "this bench refused nothing".
+     */
+    let chipRefusalsOf = null;
     let engineNotes = [];
     /**
      * Where the image the session is running came from, when that is not "the
@@ -1736,6 +1751,15 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         target = result.target;
         const adapter = result.adapter || result;
 
+        // THE ONLY PATH FROM THE PANEL TO A CHIP, and deliberately the collector
+        // rather than the chips. chipRefusals() finds any field whose NAME says
+        // it records a refusal, so a chip added to the board later reaches the
+        // panel with no edit here or there. Reaching into adapter.machine.chips
+        // would work today and would quietly stop being the whole story.
+        chipRefusalsOf = typeof adapter.machine?.chipRefusals === 'function'
+            ? () => adapter.machine.chipRefusals()
+            : null;
+
         if (adapter.onSerial) {
             // LINE-buffer the byte stream: one array entry per byte rendered
             // "B\nB\nC\n…" in the console. CR is display noise; LF ends a line.
@@ -2858,6 +2882,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             return {...branch, recording: payload.recordingSession.status(),
                 checkpoints: payload.recorder.checkpointSummary()};
         }),
+        debugChipRefusals: () => chipRefusalLines(chipRefusalsOf ? chipRefusalsOf() : []),
         debugHistoryAnnotations: () => historyAnnotations.list(),
         addDebugBookmark: request => historyAnnotations.addBookmark(request),
         addDebugAnnotation: request => historyAnnotations.addAnnotation(request),

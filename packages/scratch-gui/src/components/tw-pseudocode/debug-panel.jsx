@@ -876,6 +876,12 @@ class DebugPanel extends React.Component {
         const timelineRefusal = timelineRefusalResult ?
             (timelineRefusalResult.reason || timelineRefusalResult.code) : null;
         const historyEntries = this.state.runner ? this.state.runner.debugHistoryAnnotations() : [];
+        // Asked at render rather than subscribed to. Refusals accumulate while
+        // the program runs, so "on each new refusal" is what re-rendering
+        // already gives us; a subscription would be a second source of the
+        // same truth. Empty on every bench that is not the 8086, which is the
+        // honest answer rather than a header over nothing.
+        const chipRefusals = this.state.runner ? this.state.runner.debugChipRefusals() : [];
         const historyStatus = this.state.historyStatus;
         const selectedInspection = timelineEvent && this.state.runner ?
             this.state.runner.selectedEventInspection() : null;
@@ -1069,6 +1075,16 @@ class DebugPanel extends React.Component {
                         </select>
                     </span>
                 </div>
+
+                {chipRefusals.length > 0 ? <div data-debug-chip-refusals
+                    style={{display: 'flex', flexDirection: 'column', gap: 2, margin: '6px 0'}}>
+                    {/* One line per collector row. The block is absent, not empty,
+                        when nothing was refused: a heading over no rows tells a
+                        learner the bench has a problem it does not have. */}
+                    {chipRefusals.map(r => <div key={r.key} role="status"
+                        data-debug-chip-refusal data-debug-chip-refusal-part={r.part}
+                        style={{color: '#92400e', fontSize: 12}}>{r.text}</div>)}
+                </div> : null}
 
                 <div data-debug-history-annotations style={{display: 'flex', gap: 6,
                     alignItems: 'center', flexWrap: 'wrap'}}>

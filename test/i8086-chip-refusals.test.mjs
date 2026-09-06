@@ -24,22 +24,18 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 //
-// THE ONE THING WRONG WITH THIS FILE, recorded rather than left to be found.
-// The row shape below is RESTATED here, and bw-board states it too, in
-// CHIP-REFUSALS.md. That is a second list which has to agree with a first --
-// the exact shape the collector's own comments warn about, and the shape that
-// let two ledgers go unread in the first place. It is right today and it will
-// drift.
-//
-// lego-be closed it upstream the same day, after this was pointed out: bw-board
-// 92d4e00 exports `ROW_FIELDS` from src/chip-ledger.js, the file lite already
-// vendors, so this gate can IMPORT the contract instead of repeating it. Lite
-// pins 9a770c8, one commit earlier, which does not have it. Not re-pinning for
-// this alone -- 9a770c8 is complete and correct and a bump costs a full
-// re-verification -- but the next bw-board bump should replace the literal list
-// in this file with that import, and this comment is here so that is a deletion
-// rather than a discovery.
+// THE ROW SHAPE IS IMPORTED, NOT RESTATED, and that took a round trip worth
+// recording. This file first carried a literal list of the row's fields, and
+// bw-board's CHIP-REFUSALS.md carried the same list in prose — a second list
+// that has to agree with a first, which is the shape the collector's own
+// comments argue against. lego-be closed it upstream the same day it was
+// pointed out, exporting ROW_FIELDS from src/chip-ledger.js, the file lite
+// already vendors, with the rule worth keeping: a doc is the right place to
+// EXPLAIN a contract and the wrong place to be its only machine-readable copy.
+// Lite pinned past it at 435599c and the literal list is gone. Three readers,
+// one list.
 import {I8086Machine, PCXT8086} from '../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js';
+import {ROW_FIELDS} from '../overlay/scratch-gui/src/lib/bw-board/chip-ledger.js';
 
 const machine = () => new I8086Machine(PCXT8086);
 
@@ -83,6 +79,11 @@ test('programming the 8237 for memory-to-memory reaches the machine, with its ad
     assert.deepEqual(r.ats, [0x08], 'the address set carries the port, not just the first hit');
     assert.equal(r.atsMore, false, 'one write cannot overflow an eight-entry address cap');
     assert.equal(r.at, r.ats[0], '`at` must be the first of `ats`, not a separate reading');
+    // Against the IMPORTED contract, so a field added or renamed upstream is
+    // caught here rather than being quietly absent from a list nobody updated.
+    assert.deepEqual(Object.keys(r).sort(), [...ROW_FIELDS].sort(),
+        'the collector row and bw-board\'s exported ROW_FIELDS disagree — one moved without '
+        + 'the other, which is exactly the drift the export exists to make impossible');
 });
 
 test('the collector is DERIVED from the field name, so a new ledger joins without an edit', () => {
