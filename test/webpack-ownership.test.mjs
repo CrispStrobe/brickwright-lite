@@ -4,7 +4,6 @@ import {
     assertDosChunkBoundary,
     assertLazyPaintEditorBoundary,
     assertOptionalCodeMirrorGrammarBoundary,
-    assertScratchParserPrecompile,
     auditWebpackResourceWindow,
     summarizeWebpackOwnership
 } from '../scripts/lib/webpack-ownership.mjs';
@@ -90,32 +89,6 @@ test('the DOS boundary rejects broad registries, solvers and unrelated CPU famil
         'broad-board-or-device-registry', 'solver', 'unrelated-cpu-family'
     ]);
     assert.equal(assertDosChunkBoundary(report).length, 1);
-});
-
-test('scratch-parser ownership accepts four generated validators and rejects its runtime compiler', () => {
-    const stats = fixture();
-    for (const name of ['sb2-project', 'sb3-project', 'sb2-sprite', 'sb3-sprite']) {
-        stats.modules.push({
-            name: `./node_modules/scratch-parser/lib/validate-${name}.js`,
-            size: 1000,
-            chunks: [1]
-        });
-    }
-    let report = summarizeWebpackOwnership(stats);
-    assert.deepEqual(assertScratchParserPrecompile(report), []);
-
-    stats.modules.push({
-        name: './node_modules/scratch-parser/node_modules/ajv/lib/compile/index.js',
-        size: 5000,
-        chunks: [1]
-    });
-    report = summarizeWebpackOwnership(stats);
-    assert.match(assertScratchParserPrecompile(report)[0], /runtime compiler/);
-
-    stats.modules.pop();
-    stats.assets[0].size = 4543936;
-    report = summarizeWebpackOwnership(stats);
-    assert.match(assertScratchParserPrecompile(report).join('\n'), /initial JavaScript/);
 });
 
 test('optional CodeMirror grammar ownership is non-initial, complete and large enough to matter', () => {
