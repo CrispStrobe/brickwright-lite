@@ -134,7 +134,10 @@ test('reach is computed from the device, not stored: a transport lights up every
     const pico = cell('python', 'pico');
     assert.equal(pico.kind, 'both');
     assert.equal(pico.native.silicon, true, 'the raw REPL accepts .py');
-    assert.equal(pico.native.sim, false, 'rp2040js does not run MicroPython yet (N3)');
+    // N3c landed: rp2040js runs MicroPython in the sim — the Pico ▶ Run boots it
+    // and drives the program's GPIO live over createPicoRepl. (This assertion
+    // pinned the pre-N3c "sim = false" state; it moves with the capability.)
+    assert.equal(pico.native.sim, true, 'rp2040js runs MicroPython in the sim (N3c)');
     const c6502 = cell('basic', 'eater6502');
     assert.equal(c6502.native.sim, true);
     assert.equal(c6502.native.silicon, false, 'no serial-typing transport to real hardware');

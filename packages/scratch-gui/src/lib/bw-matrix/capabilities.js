@@ -257,11 +257,12 @@ export const DEVICES = Object.freeze([
     dev('pico', 'Raspberry Pi Pico', 'Raspberry Pi', 'rp2040', {
         pickerCompile: true,
         pickerEmulator: 'rp2040js',
-        // 'py' is deliberately absent: MicroPython boots to a REPL in rp2040js
-        // (measured 2026-09-05, docs/PICO-MICROPYTHON-BOOT.md) but the flash
-        // filesystem needs five bootrom entries that live upstream in bw-board,
-        // so deployMainPy cannot land a program yet. Plan tasks N3a-c.
-        sim: [eng('rp2040js', ['hex', 'bin', 'uf2'])],
+        // 'py' runs in the sim (N3c): MicroPython boots in rp2040js and the Pico
+        // ▶ Run drives the program LIVE over createPicoRepl (repl.exec), so its
+        // GPIO reaches the board. It does NOT install-and-reboot in the sim —
+        // machine.reset() does not reboot the emulator yet (finding N3c-1,
+        // docs/PICO-SIM-RUN-FINDINGS.md); that half stays silicon-only below.
+        sim: [eng('rp2040js', ['hex', 'bin', 'uf2', 'py'])],
         silicon: [
             tx('micropython-raw-repl', ['py'], 'micropython'),
             tx('uf2-bootsel-download', ['uf2'], null, {
