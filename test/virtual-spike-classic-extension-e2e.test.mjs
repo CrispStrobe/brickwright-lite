@@ -7,13 +7,6 @@ import {fileURLToPath} from 'node:url';
 
 if (!globalThis.btoa) globalThis.btoa = value => Buffer.from(value, 'binary').toString('base64');
 if (!globalThis.atob) globalThis.atob = value => Buffer.from(value, 'base64').toString('binary');
-globalThis.window = globalThis;
-globalThis.navigator = {language: 'en', languages: ['en']};
-globalThis.document = {documentElement: {lang: 'en'}};
-globalThis.localStorage = {getItem: () => null};
-globalThis.addEventListener = () => {};
-const realInterval = globalThis.setInterval;
-globalThis.setInterval = () => 0;
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = '../overlay/scratch-gui/src/lib/virtual-hub/';
@@ -39,7 +32,25 @@ class ScratchLinkSocketAdapter {
 }
 
 test('bundled Classic extension uses corrected base64 RFCOMM end to end', async t => {
-    t.after(() => { globalThis.setInterval = realInterval; });
+    const globals = {
+        window: globalThis,
+        navigator: {language: 'en', languages: ['en']},
+        document: {documentElement: {lang: 'en'}},
+        localStorage: {getItem: () => null},
+        addEventListener: () => {},
+        setInterval: () => 0
+    };
+    const prior = new Map(Object.keys(globals).map(key =>
+        [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
+    for (const [key, value] of Object.entries(globals)) {
+        Object.defineProperty(globalThis, key, {configurable: true, writable: true, value});
+    }
+    t.after(() => {
+        for (const [key, descriptor] of prior) {
+            if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+            else delete globalThis[key];
+        }
+    });
     const hubState = new HubState();
     let adapter;
     const runtime = {
