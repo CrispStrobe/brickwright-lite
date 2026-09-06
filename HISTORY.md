@@ -56,6 +56,16 @@ plan or roadmap. Detailed commit, CI and ownership evidence remains in Git and
   121.6–136.4 ms) from a 113.6 ms baseline, the 1 s absolute ceiling and the
   100 ms long-task ceiling. Build, corpus, both browser shards, deploy and
   deployed-GUI verification were green.
+- **P18 Connection-modal deferral rejected** (eager baseline `34056846253`;
+  candidate `34059625658`, head `60a4b9bb3`). The candidate reduced initial
+  JavaScript from 4,351,060 to 4,224,748 bytes, but its deterministic named
+  asset was 75,446 bytes: 1,354 below the fixed 76,800-byte floor. The complete
+  webpack named chunk group was 128,139 bytes because DAP.js and universal-hex
+  were extracted into a 52,693-byte unnamed sibling; this fact is retained in
+  the receipt but did not redefine the named-asset gate. The normal modal
+  reached scanning UI, while aborted-import recovery failed to show its retry
+  state. The lazy wrapper, GUI changes and candidate browser workflow were
+  discarded; production remains eager.
 - **Pico simulator reset and rerun completed** (bw-board `435599c`; Lite Track
   1 series). The adapter exposes watchdog reset intent without pretending a
   partial core clear is a reboot. Lite replaces the complete RP2040 and USB CDC

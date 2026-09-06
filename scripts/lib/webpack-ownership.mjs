@@ -25,6 +25,69 @@ const compilationStats = input => {
 const compilationModules = stats => stats.modules?.length ? moduleLeaves(stats.modules) :
     (stats.chunks || []).flatMap(chunk => moduleLeaves(chunk.modules, [chunk.id]));
 
+export const attributeNamedWebpackChunk = (input, name) => {
+    const stats = compilationStats(input);
+    const chunks = stats.chunks || [];
+    const matches = chunks.filter(chunk => (chunk.names || []).includes(name));
+    if (matches.length !== 1) throw new Error(`expected one ${name} chunk, found ${matches.length}`);
+    const chunk = matches[0];
+    const id = String(chunk.id);
+    const assets = (stats.assets || []).filter(asset =>
+        /\.js$/.test(asset.name) && (asset.chunks || []).some(assetId => String(assetId) === id));
+    if (assets.length !== 1) throw new Error(`expected one ${name} JavaScript asset, found ${assets.length}`);
+    const modules = compilationModules(stats).filter(module =>
+        (module.chunks || []).some(moduleId => String(moduleId) === id));
+    return {
+        name,
+        chunkId: chunk.id,
+        initial: Boolean(chunk.initial),
+        asset: {name: assets[0].name, bytes: Number(assets[0].size)},
+        sourceBytes: modules.reduce((sum, module) => sum + (Number(module.size) || 0), 0),
+        owners: sumOwners(modules)
+    };
+};
+
+export const attributeNamedWebpackChunkGroup = (input, name) => {
+    const stats = compilationStats(input);
+    const group = stats.namedChunkGroups?.[name];
+    if (!group) throw new Error(`named chunk group ${name} is missing`);
+    const groupIds = (group.chunks || []).map(String);
+    if (!groupIds.length || new Set(groupIds).size !== groupIds.length) {
+        throw new Error(`named chunk group ${name} has missing or duplicate chunks`);
+    }
+    const chunkById = new Map((stats.chunks || []).map(chunk => [String(chunk.id), chunk]));
+    const missingIds = groupIds.filter(id => !chunkById.has(id));
+    if (missingIds.length) throw new Error(`named chunk group ${name} references missing chunks: ${missingIds}`);
+    const eagerIds = groupIds.filter(id => chunkById.get(id).initial);
+    if (eagerIds.length) throw new Error(`named chunk group ${name} contains initial chunks: ${eagerIds}`);
+    const assets = group.assets || [];
+    if (!assets.length || new Set(assets.map(asset => asset.name)).size !== assets.length) {
+        throw new Error(`named chunk group ${name} has missing or duplicate assets`);
+    }
+    const compilationAssets = new Map((stats.assets || []).map(asset => [asset.name, asset]));
+    const expectedNames = [...new Set((stats.assets || []).filter(asset =>
+        /\.js$/.test(asset.name) && (asset.chunks || []).some(id => groupIds.includes(String(id))))
+        .map(asset => asset.name))].sort();
+    const actualNames = assets.filter(asset => /\.js$/.test(asset.name)).map(asset => asset.name).sort();
+    if (JSON.stringify(actualNames) !== JSON.stringify(expectedNames)) {
+        throw new Error(`named chunk group ${name} assets do not match its chunks`);
+    }
+    const emittedAssets = assets.filter(asset => /\.js$/.test(asset.name)).map(asset => {
+        const compilationAsset = compilationAssets.get(asset.name);
+        const size = Number(asset.size);
+        if (!compilationAsset || !Number.isFinite(size) || size <= 0 || Number(compilationAsset.size) !== size) {
+            throw new Error(`named chunk group ${name} asset ${asset.name} has invalid or mismatched size`);
+        }
+        return {name: asset.name, bytes: size};
+    });
+    return {
+        name,
+        chunks: (group.chunks || []).slice(),
+        assets: emittedAssets,
+        emittedBytes: emittedAssets.reduce((sum, asset) => sum + asset.bytes, 0)
+    };
+};
+
 const isOptionalCodeMirrorGrammar = name =>
     /\/node_modules\/(?:@codemirror\/lang-(?:cpp|python|javascript)|@lezer\/(?:cpp|python|javascript))\//
         .test(stripLoaders(name));

@@ -67,14 +67,16 @@ boundary rather than claiming a partial core clear is a reboot.
 adapter, `test/pico-sim-run.test.mjs` and `test/pico-micropython-gpio.test.mjs`.
 Focused unit and hosted browser evidence completed 2026-09-06.
 
-### Track 2 — P18 Connection-modal attribution
+### Track 2 — P18 Connection-modal attribution — REJECTED
 
-Measure the exact initial-only closure of the Connection modal body, DAP.js,
-universal-hex and micro:bit update helpers. Extension metadata and the native
-Bluetooth shim have eager consumers and must not be claimed. Stop before a
-candidate unless the exclusive emitted closure exceeds 76,800 bytes. If it
-does, bound scanning/connect/cancel/error/retry, firmware update and rapid
-close/reopen activation before changing production code.
+Hosted run `34059625658` measured webpack hash `056e6af76a94b16e972a`.
+The deterministic `chunks/connection-modal.js` asset was 75,446 emitted bytes,
+1,354 below the fixed 76,800-byte floor. Webpack's complete named chunk group
+also contained a 52,693-byte unnamed vendor asset, but the agreed gate bound
+the named route asset and was not redefined after seeing the result. The
+candidate's aborted-request journey independently timed out before its visible
+retry state. Production remains eager; the candidate workflow and browser gate
+were removed. The evidence-only receipt preserves both asset and group facts.
 
 ## 1. Costume designer & GUI layout
 

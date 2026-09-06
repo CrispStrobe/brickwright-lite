@@ -17,22 +17,28 @@ gates.
 
 ## Next-session priorities — reconciled 2026-09-06
 
-The current shortlist was reconciled with `main` at `913e4afc3`. Completed and
+The current shortlist was reconciled with `main` at `7a5dcb989`. Completed and
 rejected predecessor work is recorded in `HISTORY.md`.
 
-The next bounded track is:
+The last bounded payload tracks are:
 
 | Track | Outcome | Estimated focused work |
 |---|---|---|
-| P18 Connection-modal attribution | Measure the exact initial-only closure and proceed only if the modal can move at least 76,800 emitted bytes. | 2–4 hours before any candidate |
+| P18 Connection-modal deferral | Rejected: the named asset missed the fixed emitted-size floor and retry behavior failed. | Closed; evidence retained |
+| P19 scratch-storage worker deferral | Rejected at attribution: the worker-only closure was below the emitted-size floor. | Closed; no candidate built |
+| P20 Scratch 1 converter deferral | Rejected: the isolated emitted chunk was below the fixed floor. | Closed; production reverted |
 
 P16a–P17, the browser-artifact decision, and Pico reset/rerun are closed in
 `HISTORY.md`. bw-board `435599c` exposes the watchdog reset request and Lite
 performs a whole-SoC/USB epoch replacement from preserved flash; focused tests
 and the hosted two-program browser proof cover the former freeze. P17 is complete:
 the Sound route is demand-loaded, initializes audio safely after a late import,
-and prewarms on user intent; hosted run `34055549914` is green. P18 starts with
-ownership attribution, not implementation.
+and prewarms on user intent; hosted run `34055549914` is green. P18 is rejected:
+run `34059625658` emitted a 75,446-byte named `connection-modal` asset, 1,354
+bytes below the fixed floor, and its aborted-import recovery did not reach the
+required retry UI. The eager production path is retained. P19 and P20 also
+stopped at their fixed size gates; the next optimization must begin with a new
+measured hypothesis rather than reviving one of these rejected splits.
 
 Keep full Technic simulation, wholesale cycle-core replacement, broad language
 expansion and framework migration in their existing longer-term plans.

@@ -1014,16 +1014,6 @@ jobs:
           name: sound-tab-activation
           path: artifacts/sound-tab-activation/*
           if-no-files-found: error
-      - name: Browser gate — first Connection-modal scanning UI
-        timeout-minutes: 3
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
-        run: PROOF_URL=http://localhost:8617/ node scripts/verify-connection-modal-activation.mjs
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
-        with:
-          name: connection-modal-activation
-          path: artifacts/connection-modal-activation/*
-          if-no-files-found: error
       # The unit suite asserts the table SVG and the mark state as pure values.
       # It cannot see whether the RENDERER accepts that SVG: a skin that fails
       # to parse, or a drawable in a layer group the renderer lacks, throws
