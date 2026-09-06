@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import test from 'node:test';
+import {packAjv6Multi} from '../scripts/lib/ajv6-standalone.mjs';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
@@ -22,8 +23,30 @@ test('P16 precompiles the pinned scratch-parser schemas before webpack', () => {
     assert.match(generator, /packAjv6Multi/);
     assert.match(generator, /180000-byte P16b preflight/);
     assert.match(emitter, /\.slice\(1\)/, 'AJV refVal[0] is the validator itself');
+    assert.match(emitter, /visiting\.has\(validate\)\) return/, 'cycles must resolve after emission');
+    assert.match(emitter, /refVal\[\$1\]/, 'generated direct references must use late-wired arrays');
     assert.match(generator, /validationError: 'Could not parse as a valid SB2 or SB3 project\.'/);
     assert.match(verifier, /eager\.args !== candidate\.args/);
     assert.match(verifier, /mismatchDetailsTruncated/);
     assert.match(workflow, /Prove precompiled scratch-parser parity/);
+});
+
+test('the P16 emitter late-wires cyclic AJV validator references', () => {
+    const even = Function('return function (value) { return value === 0 || refVal1(value - 1); }')();
+    const odd = Function('return function (value) { return value !== 0 && refVal1(value - 1); }')();
+    for (const validate of [even, odd]) {
+        validate.source = {code: 'synthetic'};
+        validate.schema = {};
+    }
+    even.refVal = [even, odd];
+    odd.refVal = [odd, even];
+    const code = packAjv6Multi([{name: 'even', validate: even}, {name: 'odd', validate: odd}]);
+    const module = {exports: {}};
+    Function('module', 'require', code)(module, request => {
+        throw new Error(`unexpected helper ${request}`);
+    });
+    assert.equal(module.exports.even(4), true);
+    assert.equal(module.exports.even(3), false);
+    assert.equal(module.exports.odd(3), true);
+    assert.equal(module.exports.odd(4), false);
 });

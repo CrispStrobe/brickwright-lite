@@ -18,18 +18,13 @@ const generateValidate = (validate, funcName, identities) => {
         output += `var default${index} = ${JSON.stringify(value)}; `;
     }
     if ((validate.refVal || []).length) {
-        output += 'var refVal = []; ';
-        for (let index = 1; index < (validate.refVal || []).length; index++) {
-            const reference = validate.refVal[index];
-            if (typeof reference === 'function') {
-                output += `var refVal${index} = ${identities.get(reference)}; `;
-            } else if (reference && typeof reference === 'object') {
-                output += `var refVal${index} = ${JSON.stringify(reference)}; `;
-            }
-            output += `refVal[${index}] = refVal${index}; `;
-        }
+        output += `var refVal = refs${identities.get(validate).slice('validate'.length)}; `;
     }
-    const functionCode = validate.toString().replace(/^function\s*\(/, 'function validate(');
+    // AJV emits direct refValN identifiers. Use the shared array instead so
+    // cyclic and forward references can be wired after every function exists.
+    const functionCode = validate.toString()
+        .replace(/^function\s*\(/, 'function validate(')
+        .replace(/\brefVal(\d+)\b/g, 'refVal[$1]');
     output += `return ${functionCode};})();`;
     output += `${funcName}.schema = ${JSON.stringify(validate.schema)};`;
     output += `${funcName}.errors = null;`;
@@ -45,7 +40,7 @@ export const packAjv6Multi = entries => {
         if (!validate?.source?.code) throw new Error('AJV validator is missing sourceCode output');
         if (!identities.has(validate)) identities.set(validate, `validate${identities.size}`);
         if (emitted.has(validate)) return;
-        if (visiting.has(validate)) throw new Error('recursive AJV references are not supported');
+        if (visiting.has(validate)) return;
         visiting.add(validate);
         for (const reference of (validate.refVal || []).slice(1)) {
             if (typeof reference === 'function') visit(reference);
@@ -55,8 +50,21 @@ export const packAjv6Multi = entries => {
         ordered.push(validate);
     };
     for (const {validate} of entries) visit(validate);
-    let code = ordered.map(validate =>
+    let code = ordered.filter(validate => (validate.refVal || []).length)
+        .map(validate => `var refs${identities.get(validate).slice('validate'.length)} = [];`).join('');
+    code += ordered.map(validate =>
         generateValidate(validate, identities.get(validate), identities)).join('');
+    for (const validate of ordered) {
+        const refsName = `refs${identities.get(validate).slice('validate'.length)}`;
+        for (let index = 1; index < (validate.refVal || []).length; index++) {
+            const reference = validate.refVal[index];
+            if (typeof reference === 'function') {
+                code += `${refsName}[${index}]=${identities.get(reference)};`;
+            } else if (reference && typeof reference === 'object') {
+                code += `${refsName}[${index}]=${JSON.stringify(reference)};`;
+            }
+        }
+    }
     code += `module.exports = {${entries.map(({name, validate}) =>
         `${JSON.stringify(name)}:${identities.get(validate)}`).join(',')}};`;
     if (/RULES/.test(code) || /formats(?:\.|\[)/.test(code) ||
