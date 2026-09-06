@@ -93,8 +93,11 @@ async function openToMicropythonBar (present) {
     }, present);
 
     await page.goto(APP, {waitUntil: PROOF_URL ? 'domcontentloaded' : 'networkidle', timeout: 60000});
-    await page.waitForSelector('[role="tab"], text=/Pseudocode|Code/i', {timeout: 60000});
-    await page.locator('text=/Pseudocode|Code/i').first().click();
+    // Reach the Code tab exactly as the Pico gate does — the tab role plus a
+    // hasText OPTION, never a `text=` engine wedged into a CSS comma list
+    // (Playwright rejects that as a CSS parse error before the page is driven).
+    await page.waitForSelector('[role="tab"]', {timeout: 60000});
+    await page.locator('[role="tab"]', {hasText: 'Code'}).first().click();
 
     const deviceSelect = page.locator('select[title*="Target device"]').first();
     await waitFor(() => deviceSelect.count(), c => c > 0, 60000);
@@ -109,7 +112,7 @@ async function openToMicropythonBar (present) {
 
     // Switching to the micro:bit tab is what flips lang → micropython and reveals
     // the bar the flash button lives in.
-    const microbitTab = page.locator('button:has-text("micro:bit")').first();
+    const microbitTab = page.locator('button', {hasText: 'micro:bit'}).first();
     await waitFor(() => microbitTab.count(), c => c > 0, 60000);
     await microbitTab.click();
     const bar = page.locator('[data-testid="bw-micropython-bar"]').first();
