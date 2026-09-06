@@ -40,6 +40,8 @@ test('the Sounds route owns one retryable demand-loaded module', () => {
     assert.match(browserGate, /diagnosticError: String/);
     assert.match(browserGate, /writeFile\(path\.join\(output, 'receipt\.json'\)/);
     assert.match(browserGate, /receipt\.causalEncodedBytes = receipt\.scripts\.reduce/);
+    assert.equal((browserGate.match(/requestAnimationFrame\(\(\) => requestAnimationFrame/g) || []).length, 1,
+        'receipt collection must own the one two-frame settle; a second wait inflates measured latency');
 });
 
 const validReceipt = () => ({

@@ -75,8 +75,6 @@ try {
     // arrow with the same accessible name. Either proves this exact panel is
     // interactive; bind the first within the already unique controlled panel.
     await panel.locator('button[aria-label="Choose a Sound"]').first().waitFor({timeout: 30000});
-    stage = 'settle';
-    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 } catch (error) {
     failure = {stage, message: String(error?.message || error)};
 } finally {
