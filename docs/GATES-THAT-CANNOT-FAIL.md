@@ -1358,3 +1358,53 @@ sector wrong and slid into executing zeros.
 The mutation proof for this gate is historical rather than synthetic: the two
 previous ROMs *are* the mutation, and the old pin's ROM fails on the 1.44M
 assertion alone.
+
+## Twenty-fourth species: THE ARTEFACT IS EXECUTED; ITS CORRESPONDENCE TO ITS SOURCE IS NOT (2026-09-06, lego-a4; recorded by lego-ac)
+
+**Shape.** A build artefact is committed, and a test loads and really runs it. The
+test's set is {the tracked bytes}. The goal's set is {what the generator produces
+today}. Those coincide only while nobody edits the generator, and they coincide by
+accident rather than by construction. Edit the generator and the test stays green,
+because it never touched the generator: it measured the artefact and reported on the
+source.
+
+**Why it is its own species** rather than a mild case of the twenty-third
+(nothing executes it). Nothing-executes-it is findable by grep, and a greppable
+failure eventually gets grepped. This one presents as a passing test on a real
+artefact that genuinely runs. It looks exactly like coverage, it has no surface at
+all until a generator changes, and on that day it presents as THE CHANGE NOT
+WORKING rather than as the check being wrong — so it sends the reader to the wrong
+file. It is the substitution species with a build artefact as the proxy.
+
+**Instance, measured.** bw-board tracks ten demo ROMs (`rom/blink-demo.bin` and
+siblings). Their tests do execute them — `test/i8086-blink-demo.test.mjs` reads the
+file and boots it — and nothing regenerates and compares. All ten generators re-run
+on 2026-09-06 produced bytes identical to the tracked files, so it is LATENT, not
+broken. bw-board ROADMAP R2, `f199199`.
+
+**Lite's own instance, latent as of the pin to `9a770c8`.** `static/roms/i8086-bios.bin`
+is executed by `test/i8086-bios-boots.test.mjs` and hashed by
+`test/i8086-bios-provenance.test.mjs`; correspondence to `rom/bios.asm` is checked
+only when `BW_BOARD_DIR` names a checkout, which CI has not. The source is not
+vendored, so CI cannot regenerate and compare. The structural cure below applies:
+vendor `rom/bios.asm` (text, same licence as the assembler that is already
+vendored) and let CI assemble it and compare — then the manifest's source sha is a
+claim CI re-derives rather than one it trusts.
+
+**The trap in front of the fix**, because someone will walk into it: a test that
+writes into the artefact directory to check the artefact directory passes on its
+second run no matter what. It overwrites the evidence with the thing it was supposed
+to compare against, so the first run is the only real one and every run after is
+self-confirming. It is the shortest thing that appears to work.
+
+**The fix.** Build each generator into a temp dir, compare against the tracked file,
+fail naming BOTH the artefact and the generator that no longer produces it.
+**Limit, in the same breath:** it proves the tracked bytes are the current build,
+never that the generator is correct. A wrong generator faithfully reproduced still
+passes.
+
+**Counter-instance**, because it names the structural cure: bw-board's own BIOS does
+not have this. `rom/bios.bin` is gitignored and untracked, so there is no shipped
+binary to go stale — consumers build from `rom/bios.asm` and the tests execute what
+they just built. Not shipping the artefact is the fix; the guard above is what you
+need when you must ship it.
