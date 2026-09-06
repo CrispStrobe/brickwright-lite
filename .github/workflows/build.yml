@@ -114,6 +114,8 @@ jobs:
         with: { node-version: 22 }
       - name: Require green upstream evidence for the pinned 8086 engine
         run: npm run verify:bwboard-ci
+      - name: Install source-test dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Vendor the pinned permissive Scratch sources
         run: npm run vendor
       - name: Integrate the Code tab (sb3-creator)

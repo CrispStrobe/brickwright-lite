@@ -87,12 +87,15 @@
     "test:corpus": "node scripts/check-node.mjs && BW_GUI_SCOPE_LOG=test-results/corpus.gui-scope.tsv node --test --import ./scripts/lib/register-gui-scope.mjs --test-reporter=tap --test-reporter-destination=stdout --test-reporter=./scripts/lib/test-census-reporter.mjs --test-reporter-destination=test-results/corpus.census.json $(node scripts/list-tests.mjs corpus)",
     "verify:text-costume-fonts": "node scripts/verify-text-costume-fonts.mjs",
     "check:test-run": "node scripts/check-test-run.mjs",
+    "check:setup": "node scripts/check-test-setup.mjs",
+    "test:source": "node scripts/test-source.mjs",
     "audit:clean": "node scripts/audit-clean-checkout.mjs --integrate"
   },
   "engines": {
     "node": ">=22"
   },
   "devDependencies": {
+    "jszip": "3.10.1",
     "playwright": "^1.62.1"
   }
 }

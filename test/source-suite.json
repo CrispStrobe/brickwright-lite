@@ -1,0 +1,19 @@
+[
+  "asm-assemble-route.test.mjs",
+  "board-pin-markers.test.mjs",
+  "bw-matrix-schema.test.mjs",
+  "bw-matrix-conformance.test.mjs",
+  "bw-matrix-doc.test.mjs",
+  "i8086-absent-hardware.test.mjs",
+  "i8086-pseudocode-examples.test.mjs",
+  "lego-spike-roundtrip.test.mjs",
+  "project-bundle-archive.test.mjs",
+  "project-bundle-integrity.test.mjs",
+  "project-bundle-roundtrip.test.mjs",
+  "pseudocode-8086-pins.test.mjs",
+  "retarget.test.mjs",
+  "rp2040-debug.test.mjs",
+  "sb3-creator-motion-target.test.mjs",
+  "test-setup.test.mjs",
+  "vector-art-registration.test.mjs"
+]

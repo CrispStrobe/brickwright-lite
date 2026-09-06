@@ -25,7 +25,7 @@ import assert from 'node:assert/strict';
 import {existsSync} from 'node:fs';
 import {join} from 'node:path';
 
-import {INTEGRATED} from './helpers/bw-integrated.mjs';
+import {INTEGRATED, importIntegrated} from './helpers/bw-integrated.mjs';
 import {
     buildBootrom, BOOTROM_SIZE, ROM_FUNC
 } from '../overlay/scratch-gui/src/lib/bw-board/rp2040-bootrom.js';
@@ -198,8 +198,7 @@ test('reverse32 reverses bit order', {skip: SKIP}, async () => {
  * is the ROM the core reads, through the emulator's own bus.
  */
 test('the adapter installs the ROM where the core reads it', {skip: SKIP}, async () => {
-    const {createRp2040jsAdapter} = await import(
-        '../packages/scratch-gui/src/lib/bw-board/rp2040js-adapter.js');
+    const {createRp2040jsAdapter} = await importIntegrated('src/lib/bw-board/rp2040js-adapter.js');
     const {rp2040} = createRp2040jsAdapter();
     const rom = buildBootrom();
     const view = new DataView(rom.buffer);

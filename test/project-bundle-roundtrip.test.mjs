@@ -19,12 +19,8 @@
  */
 import {test, describe} from 'node:test';
 import assert from 'node:assert/strict';
-import {createRequire} from 'node:module';
+import JSZip from 'jszip';
 
-// jszip is a scratch-gui dependency, not a lite-root one; resolve it from there
-// the way the app does rather than assuming a hoisted copy.
-const require = createRequire(import.meta.url);
-const JSZip = require('../packages/scratch-gui/node_modules/jszip');
 
 const BUNDLE_PATH = 'brickwright/state.json';
 
@@ -130,7 +126,7 @@ describe('save-what-you-see and the widgets key (2026-08-25)', () => {
         global.CustomEvent = class { constructor(type) { this.type = type; } };
         try {
             const {attachBrickwrightState} =
-                await import('../packages/scratch-gui/src/lib/bw-project-bundle.js');
+                await import('../overlay/scratch-gui/src/lib/bw-project-bundle.js');
             const blob = {
                 arrayBuffer: async () => (await makeSb3()).buffer
             };
@@ -169,7 +165,7 @@ describe('save-what-you-see and the widgets key (2026-08-25)', () => {
 
     test('bw-ctl-widgets is on the bundle allowlist', async () => {
         const {isContentKey} =
-            await import('../packages/scratch-gui/src/lib/bw-project-bundle.js');
+            await import('../overlay/scratch-gui/src/lib/bw-project-bundle.js');
         assert.equal(isContentKey('bw-ctl-widgets'), true);
         assert.equal(isContentKey('bw-theme'), false, 'preferences stay personal');
     });

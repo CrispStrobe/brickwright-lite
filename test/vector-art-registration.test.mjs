@@ -28,7 +28,7 @@ import {fileURLToPath} from 'node:url';
 
 // Deliberately NOT importing sb3-creator.js — this file must never register anything
 // itself, or it becomes the third false green.
-import SB3Creator from '../packages/scratch-gui/src/lib/sb3-creator-register-art.js';
+import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator-register-art.js';
 import games from '../overlay/scratch-gui/src/lib/sb3-creator-game-examples.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');

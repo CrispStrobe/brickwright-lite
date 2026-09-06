@@ -150,6 +150,22 @@ scripts/
 
 `packages/` is gitignored — `vendor.mjs` repopulates and validates it.
 
+## Development and tests
+
+Install the root dependencies with Node 22 or newer, then run the bounded
+source-only suite without preparing the generated GUI tree:
+
+```bash
+npm ci --ignore-scripts --no-audit --no-fund
+npm run check:setup
+npm run test:source
+```
+
+Tests that exercise the assembled GUI still require `vendor`, `integrate`, the
+GUI dependency install, and the VM/paint/render overlay steps. Use
+`npm run check:setup -- --integrated` to verify that runtime before those tests.
+`BW_INTEGRATED_ROOT` may explicitly select a prepared external GUI checkout.
+
 ## Simulator and oracle policy
 
 The browser and shipped app use only permissive execution paths. External

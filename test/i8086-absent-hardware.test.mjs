@@ -78,7 +78,7 @@ import assert from 'node:assert/strict';
 
 const L = new URL('../overlay/scratch-gui/src/lib/', import.meta.url);
 const SB3Creator = (await import(
-    new URL('../packages/scratch-gui/src/lib/sb3-creator.js', import.meta.url).href)).default;
+    new URL('../overlay/scratch-gui/src/lib/sb3-creator.js', import.meta.url).href)).default;
 const {buildPseudocode8086} = await import(new URL('bw-asm/pseudocode-8086.js', L).href);
 const {createI8086DosBench} = await import(new URL('bw-debug/i8086-dos-bench.js', L).href);
 

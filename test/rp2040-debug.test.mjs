@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 test('Pico target accepts raw code breakpoints and yield breakpoints with symbols', async () => {
     // rp2040js-debug.js exports createRp2040jsDebugTarget
     const {createRp2040jsDebugTarget} = await import(
-        '../packages/scratch-gui/src/lib/bw-board/rp2040js-debug.js');
+        '../overlay/scratch-gui/src/lib/bw-board/rp2040js-debug.js');
 
     // Minimal adapter stub matching createRp2040jsAdapter's shape.
     // The debug target destructures { rp2040, core } from the adapter.

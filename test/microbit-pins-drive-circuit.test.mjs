@@ -21,6 +21,7 @@
 
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {importIntegrated} from './helpers/bw-integrated.mjs';
 
 import {loadExtensionClass, stubRuntime} from './helpers/bw-extensions.mjs';
 
@@ -158,9 +159,9 @@ test('a micro:bit block lights a real LED through the real solver', async () => 
     // calls the right method and nothing else. This builds the circuit a
     // learner would draw — micro:bit P0, 220R, red LED, ground — hands it
     // to the actual MNA solver, and drives it from the BLOCK.
-    const B = '../packages/scratch-gui/src/lib/bw-board';
-    const {BoardImpl} = await import(`${B}/index.js`);
-    const {registerAllDevices} = await import(`${B}/register-all.js`);
+    const B = 'src/lib/bw-board';
+    const {BoardImpl} = await importIntegrated(`${B}/index.js`);
+    const {registerAllDevices} = await importIntegrated(`${B}/register-all.js`);
     registerAllDevices();
 
     const board = new BoardImpl(3.3);

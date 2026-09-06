@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 
-import SB3Creator from '../packages/scratch-gui/src/lib/sb3-creator.js';
+import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 
 test('retargetPseudocode rewrites STC blink to Pico with GP25', () => {
     const src = `DEVICE STC12C5A60S2

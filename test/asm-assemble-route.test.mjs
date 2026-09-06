@@ -221,7 +221,7 @@ test('the engine picker can express every kind the panel can select', async () =
     // selection tables, calls bw-board's ACTUAL list, and runs the SAME
     // merge function the panel calls.
     const {getTargetKinds} = await import(
-        '../packages/scratch-gui/src/lib/bw-board/debug-target-factory.js');
+        '../overlay/scratch-gui/src/lib/bw-board/target-kinds.js');
     const {mergeTargetKinds} = await import(
         '../overlay/scratch-gui/src/lib/bw-debug/target-kinds.js');
     const src = readFileSync(

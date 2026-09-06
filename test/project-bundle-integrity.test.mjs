@@ -1,6 +1,6 @@
 import {describe, test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createRequire} from 'node:module';
+import JSZip from 'jszip';
 import {
     parseBundleDocument,
     replaceProjectState,
@@ -12,8 +12,6 @@ import {
     BUNDLE_VERSION
 } from '../overlay/scratch-gui/src/lib/bw-project-bundle.js';
 
-const require = createRequire(import.meta.url);
-const JSZip = require('../packages/scratch-gui/node_modules/jszip');
 
 const code = {lang: 'pseudocode', code: 'DEVICE SPIKE\nWHEN flag clicked:\n  stop motor A'};
 const circuit = {version: 1, parts: [{id: 'r1', kind: 'resistor'}], wires: []};
@@ -157,7 +155,7 @@ describe('real archive extraction applies the classified outcome', () => {
         global.localStorage = storage;
         try {
             const {extractBrickwrightState} =
-                await import('../packages/scratch-gui/src/lib/bw-project-bundle.js');
+                await import('../overlay/scratch-gui/src/lib/bw-project-bundle.js');
             const bytes = await archive();
             const result = await extractBrickwrightState(
                 bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
@@ -177,7 +175,7 @@ describe('real archive extraction applies the classified outcome', () => {
             global.localStorage = storage;
             try {
                 const {extractBrickwrightState} =
-                    await import('../packages/scratch-gui/src/lib/bw-project-bundle.js');
+                    await import('../overlay/scratch-gui/src/lib/bw-project-bundle.js');
                 const bytes = await archive(sidecar);
                 const result = await extractBrickwrightState(
                     bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
@@ -194,7 +192,7 @@ describe('real archive extraction applies the classified outcome', () => {
         global.localStorage = storage;
         global.window = {dispatchEvent: () => {}};
         try {
-            const module = await import('../packages/scratch-gui/src/lib/bw-project-bundle.js');
+            const module = await import('../overlay/scratch-gui/src/lib/bw-project-bundle.js');
             const inputDocument = {format: BUNDLE_FORMAT, version: 2, vendor: {name: 'future-tool'},
                 state: {code, analysis: {opaque: [1, 2, 3]}}};
             const input = await archive(JSON.stringify(inputDocument));
@@ -221,7 +219,7 @@ describe('real archive extraction applies the classified outcome', () => {
         global.localStorage = storage;
         global.window = {dispatchEvent: () => {}};
         try {
-            const module = await import('../packages/scratch-gui/src/lib/bw-project-bundle.js');
+            const module = await import('../overlay/scratch-gui/src/lib/bw-project-bundle.js');
             const future = {format: BUNDLE_FORMAT, version: 7, state: {quantum: {program: 'q'}}};
             const input = await archive(JSON.stringify(future));
             const loaded = await module.extractBrickwrightState(

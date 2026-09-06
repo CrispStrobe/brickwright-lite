@@ -1,11 +1,9 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createRequire} from 'node:module';
+import JSZip from 'jszip';
 import {ControllerPanel} from '../overlay/scratch-gui/src/lib/bw-board/controller.js';
 
-const require = createRequire(import.meta.url);
-const JSZip = require('../packages/scratch-gui/node_modules/jszip');
-const module = await import('../packages/scratch-gui/src/lib/bw-project-bundle.js');
+const module = await import('../overlay/scratch-gui/src/lib/bw-project-bundle.js');
 
 const storage = initial => {
     const values = new Map(Object.entries(initial));

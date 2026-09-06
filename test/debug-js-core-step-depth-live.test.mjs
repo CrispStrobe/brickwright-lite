@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {importIntegrated} from './helpers/bw-integrated.mjs';
 
-import {createAvr8jsAdapter} from '../packages/scratch-gui/src/lib/bw-board/avr8js-adapter.js';
-import {createAvr8jsDebugTarget} from '../packages/scratch-gui/src/lib/bw-board/avr8js-debug.js';
-import {createRp2040jsAdapter, RAM_START} from
-    '../packages/scratch-gui/src/lib/bw-board/rp2040js-adapter.js';
-import {createRp2040jsDebugTarget} from '../packages/scratch-gui/src/lib/bw-board/rp2040js-debug.js';
-import {createRunToCoordinator} from '../packages/scratch-gui/src/lib/bw-debug/run-to.js';
+const {createAvr8jsAdapter} = await importIntegrated('src/lib/bw-board/avr8js-adapter.js');
+const {createAvr8jsDebugTarget} = await importIntegrated('src/lib/bw-board/avr8js-debug.js');
+const {createRp2040jsAdapter, RAM_START} = await importIntegrated('src/lib/bw-board/rp2040js-adapter.js');
+const {createRp2040jsDebugTarget} = await importIntegrated('src/lib/bw-board/rp2040js-debug.js');
+const {createRunToCoordinator} = await importIntegrated('src/lib/bw-debug/run-to.js');
 
 function settle(target) {
     for (let i = 0; i < 32 && target.state() === 'running'; i++) target.runFor(1_000_000);

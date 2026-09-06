@@ -2,10 +2,10 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
-import SB3Creator from '../packages/scratch-gui/src/lib/sb3-creator.js';
-import vectorArt from '../packages/scratch-gui/src/lib/sb3-creator-vector-art.js';
+import {importIntegrated} from './helpers/bw-integrated.mjs';
+const {default: vectorArt} = await importIntegrated('src/lib/sb3-creator-vector-art.js');
 import games from '../overlay/scratch-gui/src/lib/sb3-creator-game-examples.js';
-import {VM, clearStrayTimers, runProgram, quitStrandedVMs} from './helpers/bw-vm.mjs';
+import {SB3Creator, VM, clearStrayTimers, runProgram, quitStrandedVMs} from './helpers/bw-vm.mjs';
 
 const EXPECTED = [
     'g2048',

@@ -1,11 +1,9 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {createRequire} from 'node:module';
+import JSZip from 'jszip';
 import {readFileSync} from 'node:fs';
-import SB3Creator from '../packages/scratch-gui/src/lib/sb3-creator.js';
+import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 
-const requireFromGui = createRequire(new URL('../packages/scratch-gui/package.json', import.meta.url));
-const JSZip = requireFromGui('jszip');
 
 const PROGRAM = `DEVICE SPIKE
 

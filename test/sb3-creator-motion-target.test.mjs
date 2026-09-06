@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 
-import SB3Creator from '../packages/scratch-gui/src/lib/sb3-creator.js';
+import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 
 test('device pseudocode import produces blocks on a target', () => {
     const creator = new SB3Creator();
