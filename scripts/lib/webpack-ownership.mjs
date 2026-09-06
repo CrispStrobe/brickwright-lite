@@ -34,6 +34,23 @@ const isLazyPaintEditorModule = name => {
     return /\/node_modules\/(?:scratch-paint|@scratch\/paper)\//.test(normalized);
 };
 
+const isScratchParserSchema = name =>
+    /\/node_modules\/scratch-parser\/lib\/(?:sb[23]_(?:schema|definitions)|sprite[23]_schema)\.json$/
+        .test(stripLoaders(name));
+
+const isGeneratedScratchParserValidator = name =>
+    /\/node_modules\/scratch-parser\/lib\/validate-(?:sb[23])-(?:project|sprite)\.js$/
+        .test(stripLoaders(name));
+
+const isScratchParserCompilerModule = name => {
+    const normalized = stripLoaders(name);
+    if (!/\/node_modules\/scratch-parser\/node_modules\//.test(normalized)) return false;
+    if (/\/ajv\/lib\/compile\/(?:equal|ucs2length)\.js$/.test(normalized)) return false;
+    if (/\/fast-deep-equal\/index\.js$/.test(normalized)) return false;
+    return /\/node_modules\/(?:ajv|uri-js|json-schema-traverse|fast-json-stable-stringify)\//
+        .test(normalized);
+};
+
 export const forbiddenDosModuleReason = name => {
     const normalized = stripLoaders(name);
     if (/(?:^|\/)(?:avr8js|avr-chips|emu8051|rp2040js?|bbc-z80|z80|mos6502|m6502|w65c02|stm32|arm-thumb|riscv|labwired)(?:[-./]|$)/i
@@ -85,6 +102,12 @@ export const summarizeWebpackOwnership = input => {
     const lazyPaintChunks = chunks.filter(chunk => lazyPaintIds.has(String(chunk.id)));
     const lazyPaintAssets = assets.filter(asset =>
         /\.js$/.test(asset.name) && (asset.chunks || []).some(id => lazyPaintIds.has(String(id))));
+    const parserCompilerModules = initialModules.filter(module =>
+        isScratchParserCompilerModule(module.name || module.identifier));
+    const parserSchemaModules = initialModules.filter(module =>
+        isScratchParserSchema(module.name || module.identifier));
+    const parserGeneratedModules = initialModules.filter(module =>
+        isGeneratedScratchParserValidator(module.name || module.identifier));
     const namedPaintStage = name => {
         const stageChunks = chunks.filter(chunk => (chunk.names || []).includes(name));
         const stageIds = new Set(stageChunks.map(chunk => String(chunk.id)));
@@ -136,6 +159,16 @@ export const summarizeWebpackOwnership = input => {
         lazyPaintActivation: {
             reducer: namedPaintStage('paint-reducer'),
             editor: namedPaintStage('paint-editor')
+        },
+        scratchParserPrecompile: {
+            compilerModules: parserCompilerModules.map(module =>
+                stripLoaders(module.name || module.identifier)).sort(),
+            schemaModules: parserSchemaModules.map(module =>
+                stripLoaders(module.name || module.identifier)).sort(),
+            generatedModules: parserGeneratedModules.map(module => ({
+                name: stripLoaders(module.name || module.identifier),
+                bytes: Number(module.size) || 0
+            })).sort((a, b) => a.name.localeCompare(b.name))
         }
     };
 };
@@ -231,6 +264,27 @@ export const assertLazyPaintEditorBoundary = report => {
     if (activation?.editor?.initial) failures.push('paint-editor became an initial chunk');
     if (activation?.reducer?.files?.some(file => activation.editor.files.includes(file))) {
         failures.push('paint reducer and editor resolve to the same emitted JavaScript asset');
+    }
+    return failures;
+};
+
+export const assertScratchParserPrecompile = report => {
+    const parser = report.scratchParserPrecompile;
+    const failures = [];
+    const baselineInitialBytes = 4543936; // P16 baseline run 34049223633.
+    const minimumSavingBytes = 76800;
+    if (parser.compilerModules.length) {
+        failures.push(`scratch-parser still bundles runtime compiler modules: ${parser.compilerModules.join(', ')}`);
+    }
+    if (parser.schemaModules.length) {
+        failures.push(`scratch-parser still bundles runtime schemas: ${parser.schemaModules.join(', ')}`);
+    }
+    if (parser.generatedModules.length !== 4) {
+        failures.push(`expected four generated scratch-parser validators, found ${parser.generatedModules.length}`);
+    }
+    if (report.initial.bytes > baselineInitialBytes - minimumSavingBytes) {
+        failures.push(`P16 initial JavaScript ${report.initial.bytes} exceeds ` +
+            `${baselineInitialBytes - minimumSavingBytes} (baseline ${baselineInitialBytes} minus ${minimumSavingBytes})`);
     }
     return failures;
 };

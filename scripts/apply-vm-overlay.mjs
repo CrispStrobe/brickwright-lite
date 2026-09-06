@@ -8,6 +8,7 @@
 // scratch-gui/node_modules; we then overlay our src changes in place. overlay/scratch-vm/ is the
 // editable source of truth — edit there and rebuild.
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {execFileSync} from 'node:child_process';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
@@ -21,6 +22,14 @@ if (!existsSync(DEST)) {
 }
 cpSync(SRC, DEST, { recursive: true });
 console.log('  applied scratch-vm overlay onto node_modules/scratch-vm (built-in extensions)');
+
+// P16: scratch-parser compiles four fixed JSON schemas in the browser on first
+// use, pulling the whole AJV compiler into initial JS. Generate those exact AJV
+// 6 validators now; the script pins package versions and every schema byte.
+execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'precompile-scratch-parser.mjs')], {
+    cwd: ROOT,
+    stdio: 'inherit'
+});
 
 // Upstream one-line bugfix (too small to justify carrying the whole 3000-line runtime.js as an
 // overlay): the base VM builds the extension palette category as `<category name="${name}" ...>`

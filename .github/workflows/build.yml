@@ -135,6 +135,15 @@ jobs:
         run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
       - name: Apply the scratch-vm overlay (built-in extensions)
         run: node scripts/apply-vm-overlay.mjs
+      - name: Prove precompiled scratch-parser parity
+        id: p16_parity
+        run: node scripts/verify-scratch-parser-precompile.mjs --json artifacts/p16-scratch-parser/parity.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ always() && steps.p16_parity.outcome != 'skipped' }}
+        with:
+          name: p16-scratch-parser
+          path: artifacts/p16-scratch-parser/**
+          if-no-files-found: error
       # Everything from here to `Serve the built app` is an INDEPENDENT check —
       # guards, unit tests, the lazy-bundle inspection, the debugger smoke test.
       # None of them produces an input the next one needs, so none of them should

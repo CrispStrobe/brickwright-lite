@@ -36,6 +36,32 @@ notices cannot be generated from a lockfile and are recorded by hand. BSD-3
 clause 2 requires the copyright notice to be reproduced in materials
 distributed with a binary — this section is that reproduction.
 
+### ajv-pack standalone-emitter subset -- MIT
+
+`scripts/lib/ajv6-standalone.mjs` adapts the small code-emission core of
+ajv-pack 0.3.1 so the build can precompile scratch-parser's fixed schemas
+without fetching an unpinned generator or shipping AJV's compiler.
+
+- Copyright (c) 2016 Evgeny Poberezkin.
+- MIT License; source: https://github.com/ajv-validator/ajv-pack/tree/5d5a792dcc9cd942b73fdd3bbcaf3926e46248c8
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions: the above copyright
+notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
 ### scratch-link (Swift) -- BSD-3-Clause
 
 The Scratch Foundation's own Scratch Link BLE session, carried so the app can
