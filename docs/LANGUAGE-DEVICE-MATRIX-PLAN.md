@@ -359,9 +359,11 @@ Remaining, in order:
       (`scripts/sync-pico-micropython.mjs`, sha256-pinned, served from `static/pico-micropython/`, never
       committed, census row `content-hash`) and runs the program over the SAME `createPicoRepl` and the
       same raw-REPL handshake (`startProgramOnRepl`, shared by the node oracle and the browser seam).
-      One persistence seam: run-live (exec) in the sim, install-and-reboot (`deployMainPy`) on silicon,
-      because `machine.reset()` freezes rp2040js (finding N3c-1, bw-board's queue); a program calling it
-      is refused by name in the sim, as is a missing firmware asset. `resolveNetlist` moved to
+      The persistence seam (run-live in the sim because `machine.reset()` froze rp2040js, N3c-1) lasted
+      one day: the owner closed N3c-1 on 2026-09-06 (bw-board `435599c` adds `onResetRequest` at the
+      watchdog boundary; lite pins there and replaces the whole SoC per reset epoch, `pico-sim-epoch.js`),
+      so the sim Run uses `deployMainPy` again like silicon, the reset refusal is gone, and a program
+      may call `machine.reset()`; a missing firmware asset is still refused by name. `resolveNetlist` moved to
       `lib/bw-board/resolve-netlist.js` (one truth, two callers). Gates: `test/pico-micropython-gpio`
       (node oracle: GP25 toggles), `verify-pico-micropython.mjs` execute + absent in the browser job, each
       with its own timeout and a transition trail in its failure output. What the trail found, in order:
