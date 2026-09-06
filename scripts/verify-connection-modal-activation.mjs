@@ -98,6 +98,8 @@ try {
             return false;
         };
         vm.scanForPeripheral = extensionId => probe.calls.push(['scan', extensionId]);
+        vm.connectPeripheral = (extensionId, peripheralId) =>
+            probe.calls.push(['connect', extensionId, peripheralId]);
         vm.disconnectPeripheral = extensionId => probe.calls.push(['disconnect', extensionId]);
         const start = performance.now();
         store.dispatch({type: 'scratch-gui/connection-modal/setId', extensionId: 'microbit'});
@@ -140,6 +142,24 @@ try {
     receipt.beforeRequests = beforeRequests;
     receipt.connectionModalScripts = receipt.scripts.filter(resource => /connection-modal/i.test(resource.name));
     await page.screenshot({path: path.join(output, 'connection-modal.png'), fullPage: true});
+    await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.emit('PERIPHERAL_LIST_UPDATE', {
+        ci: {peripheralId: 'ci-device', name: 'CI micro:bit', rssi: -42}
+    }));
+    await page.getByText('CI micro:bit', {exact: true}).waitFor({timeout: 10000});
+    await page.getByRole('button', {name: 'Connect'}).click();
+    await page.getByRole('button', {name: 'Connecting...'}).waitFor({timeout: 10000});
+    await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.emit('PERIPHERAL_CONNECTED'));
+    await page.getByText('Connected', {exact: true}).waitFor({timeout: 10000});
+    await page.getByRole('button', {name: 'Disconnect'}).click();
+    await page.getByText('Connected', {exact: true}).waitFor({state: 'hidden', timeout: 10000});
+    await page.evaluate(() => window.__brickwrightStore.dispatch({
+        type: 'scratch-gui/modals/OPEN_MODAL',
+        modal: 'connectionModal'
+    }));
+    await page.getByText('Looking for devices', {exact: true}).waitFor({timeout: 10000});
+    await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.emit('PERIPHERAL_REQUEST_ERROR'));
+    await page.getByRole('button', {name: 'Try again'}).click();
+    await page.getByText('Looking for devices', {exact: true}).waitFor({timeout: 10000});
     await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.emit('PERIPHERAL_SCAN_TIMEOUT'));
     await page.getByRole('button', {name: 'Update my Device'}).click();
     await page.getByRole('button', {name: 'Do Update'}).click();
@@ -147,7 +167,8 @@ try {
     await page.getByRole('button', {name: 'Try Again'}).click();
     await page.getByText('Update successful!', {exact: true}).waitFor({timeout: 10000});
     receipt.updateFlow = await page.evaluate(() => ({
-        usbCalls: window.__BW_CONNECTION_MODAL_PERF__.usbCalls.slice()
+        usbCalls: window.__BW_CONNECTION_MODAL_PERF__.usbCalls.slice(),
+        calls: window.__BW_CONNECTION_MODAL_PERF__.calls.slice()
     }));
     await page.getByRole('button', {name: 'Go Back'}).click();
     await page.getByText('Looking for devices', {exact: true}).waitFor({timeout: 10000});
@@ -255,11 +276,14 @@ try {
         receipt.updateFlow.usbCalls.map(call => call.outcome).join(',') !== 'failure,success') {
         throw new Error('firmware failure/retry did not retain transient WebUSB activation');
     }
+    const connects = receipt.updateFlow.calls.filter(call =>
+        call[0] === 'connect' && call[1] === 'microbit' && call[2] === 'ci-device').length;
+    if (connects !== 1) throw new Error(`expected one deterministic micro:bit connection, got ${connects}`);
     const scans = receipt.calls.filter(call => call[0] === 'scan' && call[1] === 'microbit').length;
     if (scans !== 1) throw new Error(`expected one micro:bit scan, got ${scans}`);
     const disconnects = receipt.afterClose.calls
         .filter(call => call[0] === 'disconnect' && call[1] === 'microbit').length;
-    if (receipt.afterClose.modalVisible || receipt.afterClose.dialogs || disconnects !== 1) {
+    if (receipt.afterClose.modalVisible || receipt.afterClose.dialogs || disconnects !== 2) {
         throw new Error('closing the Connection modal did not disconnect and unmount it');
     }
     if (receipt.afterReopen.connectionModalScripts.length !== 1) {
@@ -267,8 +291,8 @@ try {
     }
     const reopenedScans = receipt.afterReopen.calls
         .filter(call => call[0] === 'scan' && call[1] === 'microbit').length;
-    if (reopenedScans !== 3) {
-        throw new Error(`returning from firmware update and reopening should total three scans, got ${reopenedScans}`);
+    if (reopenedScans !== 5) {
+        throw new Error(`the complete connection journey and reopening should total five scans, got ${reopenedScans}`);
     }
     if (!receipt.importRetry.errorWasClosable || receipt.importRetry.requests !== 2 ||
         receipt.importRetry.scans !== 1) {
@@ -277,7 +301,8 @@ try {
     const pendingScans = receipt.closeBeforeResolution.closed.calls.filter(call => call[0] === 'scan').length;
     const resumedScans = receipt.closeBeforeResolution.calls.filter(call => call[0] === 'scan').length;
     if (receipt.closeBeforeResolution.closed.visible || receipt.closeBeforeResolution.closed.dialogs ||
-        pendingScans || receipt.closeBeforeResolution.requests !== 1 || resumedScans !== 1) {
+        pendingScans || receipt.closeBeforeResolution.closed.calls.length ||
+        receipt.closeBeforeResolution.requests !== 1 || resumedScans !== 1) {
         throw new Error('closing before Connection-modal resolution left stale UI, work, or another download');
     }
 } finally {
