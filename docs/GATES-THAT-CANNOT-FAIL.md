@@ -1281,3 +1281,80 @@ discovered.
 
 Gated in bw-board `test/chip-refusals.test.mjs` ("a ledger sibling is not itself
 collected as a ledger"), including the counter-case, and mutation-proved.
+
+## Twenty-third species: THE ARTEFACT NO GATE EVER RAN (2026-09-06, brickwright-lite-ea)
+
+`overlay/scratch-gui/static/roms/i8086-bios.bin` is 64K of committed binary. The
+8086 fetches its first instruction from inside it. For two days it could not read
+a disk at all — every `INT 13h` returned AH=20h, controller failure — and every
+gate in this repository was green the entire time.
+
+Not one of them was wrong. That is the species.
+
+**What the gates actually said.** Three files referenced the ROM.
+`rom-paths-exist.test.mjs` checked the *string* `static/roms/i8086-bios.bin`
+against the filesystem, and the file was there. `i8086-browser-gate.test.mjs`
+looked like the end-to-end gate and is a **source-text** gate: it greps
+`verify-i8086-browser.mjs` for evidence strings and never starts a browser.
+`debug-runner.js` fetches the ROM on the no-media fallback, a path its own
+comment calls *"a path only a user takes"*, because the tests build a machine
+directly and the Machine Loader always supplies media. Every one of those
+assertions was true. None of them executed a single byte of the file.
+
+**How it got stale.** The ROM was built from bw-board `5584c3f`, the first BIOS
+commit. `sync-bw-board.mjs` copies `src/`, and the ROM's source is `rom/bios.asm`,
+so the sync never touched it and never mentioned it. The pin moved seven
+`bios.asm` commits further on — the entire uPD765 floppy stack, all the CGA
+graphics modes — and the binary stayed where it was. Nothing was configured
+wrongly. **The artefact was simply outside every mechanism**, and being outside
+looks exactly like being fine.
+
+**Why review could not see it either.** A 64K binary is not diffable. "It has
+always been like that" and "somebody replaced it" render identically in a diff.
+For a built artefact, the usual second line of defence is not merely weaker than
+for source — it is absent.
+
+**Distinguish this from species 19** (WHERE CODE LIVES IS NOT WHETHER IT RUNS).
+That one is about code that is reachable but never reached. This one is about an
+artefact that no gate was ever *pointed at* — there was no skipped test, no dead
+branch, no unmet precondition to find. The absence had no location. That is what
+makes it invisible to every technique that works by examining what the gates do:
+you have to notice what they never mention.
+
+**The fix is two gates, and neither is the other.**
+`test/i8086-bios-provenance.test.mjs` proves *origin*: the committed bytes hash to
+a manifest naming the bw-board sha they were assembled from, by the assembler this
+tree vendors, with `pinAtBuild` compared against the live pin so the recorded
+ancestry answer expires the moment its question changes.
+`test/i8086-bios-boots.test.mjs` proves the bytes *work*: it boots the ROM in
+lite's own vendored machine, and asserts the diskette parameter table's EOT byte
+tracks the medium — 9 on a 360K disk, 18 on a 1.44M one.
+
+A hash can never say the second thing. Provenance without execution is a chain of
+custody for a package nobody opened.
+
+**The generalisation.** Every repository has artefacts that arrive by a different
+route than its source: built images, generated binaries, vendored blobs, pinned
+lockfiles, trained weights. Ask of each one, separately from asking whether it is
+correct: *what would go red if this file were replaced with the version from two
+months ago?* If the answer is nothing, the artefact is outside the mechanism, and
+its correctness is currently a matter of memory.
+
+**The measurement, because the species is easier to believe with numbers.** Three
+ROMs, one gate file, lite's vendored machine:
+
+| `bios.asm` at | `INT 13h` read | EOT 360K | EOT 1.44M |
+|---|---|---|---|
+| `5584c3f` — what shipped | **fails, AH=20h** | 9 | 9 |
+| `88bbdcf78` — the old pin | ok | 9 | **9** |
+| `9a770c8` — after the bump | ok | 9 | 18 |
+
+The middle row is the one worth staring at. The driver works and returns CF
+clear, AH=00 — and tells a 1.44M disk that its tracks end at sector 9, so the
+controller switches heads mid-read and hands back head 1's sector 1 while
+reporting success. Correct-looking, wrong data. ELKS loaded with every second
+sector wrong and slid into executing zeros.
+
+The mutation proof for this gate is historical rather than synthetic: the two
+previous ROMs *are* the mutation, and the old pin's ROM fails on the 1.44M
+assertion alone.
