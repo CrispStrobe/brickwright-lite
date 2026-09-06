@@ -897,6 +897,19 @@ jobs:
         # verify:i8086-export stays for humans.)
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-i8086-export.mjs
 
+      # N9: the "flash the micro:bit" button is wired into the Code tab, appears
+      # only where WebUSB exists, and refuses BY NAME on the status line when no
+      # probe is granted. The exact NVMC erase/program sequence is the unit
+      # test's job (test/microbit-daplink-flash.test.mjs, against a mock DAP);
+      # CI has no real board to flash.
+      - name: Browser gate — micro:bit WebUSB flash button (N9)
+        timeout-minutes: 3  # two page loads + the device-select journey
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        # Direct `node scripts/…`, not `npm run …`: gate-coverage.test.mjs's alias
+        # regex does not accept an env prefix before `npm run`. (The npm alias
+        # verify:microbit-flash stays for humans.)
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-microbit-flash.mjs
+
       - name: Browser benchmark — 8086 desktop and mobile
         timeout-minutes: 8  # measured max 123 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}

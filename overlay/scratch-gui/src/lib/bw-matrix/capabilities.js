@@ -369,7 +369,15 @@ export const DEVICES = Object.freeze([
                     tier: '2b',
                     note: 'uflash format: runtime + script, drag onto the board; our reader accepts our writer'
                 }),
-                tx('daplink-webusb', ['hex'], null, {...OPEN_DECLARED, task: 'N9'})
+                // Direct WebUSB flashing targets the nRF52833 (micro:bit V2); the
+                // flasher reads FICR.INFO.PART and refuses any other silicon by
+                // name, so the Calliope mini — a different SoC — does not claim it.
+                ...(id === 'microbit'
+                    ? [tx('daplink-webusb', ['hex'], null, {
+                        tier: '3', task: 'N9',
+                        note: 'CMSIS-DAP over WebUSB into the nRF52833 NVMC; declared on hardware, measured on a mock DAP that captures the exact erase/program sequence — micro:bit V2 only'
+                    })]
+                    : [])
             ]
         })
     ),

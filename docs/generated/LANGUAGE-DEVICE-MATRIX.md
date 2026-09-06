@@ -47,8 +47,8 @@ question from whether the row agrees with the code.
 | eater6502 | 6502 | w65c02 | eater6502 [hex,bin,bas] · tier 2a · needs 65c02-vectors (standing) | eeprom-programmer-webserial [hex,bin] |  |
 | z80 | Z80 | z80 | z80 [hex,bin,bas] · tier 2a · needs z80-vectors (standing) | eeprom-programmer-webserial [hex,bin] |  |
 | i8086 | 8086 | i8086 | i8086 [com,bin] · tier 2a · needs 8086-vectors (standing), elks-image (recorded) | export [com,img] |  |
-| microbit | MicroPython | microbit | microbit-sim [py] · tier 2a | hex-append-download [py]<br>daplink-webusb [hex] (open: N9) |  |
-| calliopemini | MicroPython | microbit | microbit-sim [py] · tier 2a | hex-append-download [py]<br>daplink-webusb [hex] (open: N9) |  |
+| microbit | MicroPython | microbit | microbit-sim [py] · tier 2a | hex-append-download [py]<br>daplink-webusb [hex] |  |
+| calliopemini | MicroPython | microbit | microbit-sim [py] · tier 2a | hex-append-download [py] |  |
 | arcade | Arcade & SAMD51 | samd51 | arcade [ts] · tier 3 | circuitpython-copy [py] (open)<br>uf2-bootsel-download [uf2] (open: L4) |  |
 | pybadge | Arcade & SAMD51 | samd51 | arcade [ts] · tier 3 | circuitpython-copy [py] (open)<br>uf2-bootsel-download [uf2] (open: L4) |  |
 | pybadge-lc | Arcade & SAMD51 | samd51 | arcade [ts] · tier 3 | circuitpython-copy [py] (open)<br>uf2-bootsel-download [uf2] (open: L4) |  |

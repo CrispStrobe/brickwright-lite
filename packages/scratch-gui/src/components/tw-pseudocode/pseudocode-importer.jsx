@@ -110,6 +110,12 @@ const L10N = {
         microbitNeedFirmware: 'Pick a MicroPython .hex once (from python.microbit.org, or the one that came with the board) — it is kept for this session.',
         microbitFirmwareBad: f => `${f} is not an Intel HEX file.`,
         microbitHexReady: f => `${f} saved. Copy it onto the MICROBIT drive.`,
+        microbitFlash: '⚡ flash the micro:bit',
+        microbitFlashTitle: 'Program the board directly over WebUSB (micro:bit V2 only) — no drag-and-drop.',
+        microbitFlashPrep: 'Building the .hex to flash…',
+        microbitFlashPick: 'Pick your micro:bit in the browser prompt…',
+        microbitFlashing: 'Flashing the micro:bit — leave it plugged in…',
+        microbitFlashDone: n => `Flashed ${n} bytes. The micro:bit has reset and is running your program.`,
         arduboyRunning: f => `Running ${f} on the Arduboy console. Arrow keys move, Z is A, X is B.`,
         mcPython: (f, n) => `${f} carried a MicroPython program (${n}) — loaded, and the simulator can run it.`,
         mcMicrobit: (f, n) => `Imported "${n}" from ${f} — MakeCode micro:bit, translated to blocks.`,
@@ -303,6 +309,12 @@ const L10N = {
         microbitNeedFirmware: 'Einmal eine MicroPython-.hex wählen (von python.microbit.org oder die vom Board) — sie bleibt für diese Sitzung gespeichert.',
         microbitFirmwareBad: f => `${f} ist keine Intel-HEX-Datei.`,
         microbitHexReady: f => `${f} gespeichert. Auf das MICROBIT-Laufwerk kopieren.`,
+        microbitFlash: '⚡ micro:bit flashen',
+        microbitFlashTitle: 'Das Board direkt über WebUSB programmieren (nur micro:bit V2) — kein Ziehen und Ablegen.',
+        microbitFlashPrep: 'Die .hex zum Flashen wird erstellt…',
+        microbitFlashPick: 'micro:bit in der Browser-Abfrage auswählen…',
+        microbitFlashing: 'micro:bit wird geflasht — eingesteckt lassen…',
+        microbitFlashDone: n => `${n} Bytes geflasht. Der micro:bit wurde zurückgesetzt und führt dein Programm aus.`,
         arduboyRunning: f => `${f} läuft auf der Arduboy-Konsole. Pfeiltasten bewegen, Z ist A, X ist B.`,
         mcPython: (f, n) => `${f} enthielt ein MicroPython-Programm (${n}) — geladen, der Simulator kann es ausführen.`,
         mcMicrobit: (f, n) => `„${n}" aus ${f} importiert — MakeCode micro:bit, in Blöcke übersetzt.`,
@@ -881,6 +893,7 @@ class PseudocodeImporter extends React.Component {
         this.deployPicoUf2 = this.deployPicoUf2.bind(this);
         this.flashToBoard = this.flashToBoard.bind(this);
         this.flashStm32ViaSwd = this.flashStm32ViaSwd.bind(this);
+        this.flashMicrobitViaSwd = this.flashMicrobitViaSwd.bind(this);
         this.runPseudocodeOn8086 = this.runPseudocodeOn8086.bind(this);
         this.runCOn8086 = this.runCOn8086.bind(this);
         this.openCodeFile = this.openCodeFile.bind(this);
@@ -1238,6 +1251,52 @@ class PseudocodeImporter extends React.Component {
             this.setState({status: this.L.microbitHexReady(name)});
         } catch (e) {
             this.setState({status: this.L.mcFailed('hex', (e && e.message) || String(e))});
+        }
+    }
+
+    /**
+     * ⬇ flash the micro:bit — write the program straight to the micro:bit V2's
+     * nRF52833 over CMSIS-DAP / WebUSB (N9), the same open probe path
+     * flashStm32ViaSwd takes for the STM32. Beside the .hex download; the button
+     * shows only where WebUSB exists, and the handler refuses by name when no
+     * probe is granted.
+     */
+    async flashMicrobitViaSwd () {
+        const script = this.state.buffers.micropython || '';
+        if (!script.trim()) { this.setState({status: this.L.mcExportEmpty}); return; }
+        if (typeof navigator === 'undefined' || !navigator.usb) {
+            this.setState({status: this.L.flashNoWebUsb});
+            return;
+        }
+        // Ask for the board first: there is no point prompting for a 600 KB
+        // firmware file if no probe is ever granted. A cancelled/empty picker
+        // rejects here and is reported by name, exactly as the WebSerial ports
+        // are — this is the path the browser gate drives (it grants nothing).
+        let device;
+        try {
+            this.setState({status: this.L.microbitFlashPick});
+            device = await navigator.usb.requestDevice({filters: [{vendorId: 0x0d28}]});
+        } catch (e) {
+            this.setState({status: this.L.flashNoPort});
+            return;
+        }
+        let firmware = this._microbitFirmwareHex;
+        if (!firmware) {
+            firmware = await this._askForFirmware();
+            if (!firmware) return;                 // cancelled; status already set
+            this._microbitFirmwareHex = firmware;
+        }
+        this.setState({busy: true, status: this.L.microbitFlashPrep});
+        try {
+            const {appendScript} = await import(
+                /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/micropython-hex.js');
+            const hex = appendScript(firmware, script);
+            const flasher = await import(/* webpackChunkName: "bw-flasher" */ '../../lib/flasher.js');
+            this.setState({status: this.L.microbitFlashing});
+            const done = await flasher.flashDaplinkMicrobit(device, hex, {log: () => {}});
+            this.setState({busy: false, status: this.L.microbitFlashDone(done.bytes)});
+        } catch (e) {
+            this.setState({busy: false, status: this.L.flashFail(e && e.message ? e.message : String(e))});
         }
     }
 
@@ -3923,6 +3982,21 @@ class PseudocodeImporter extends React.Component {
                             data-testid="bw-microbit-download-hex">
                             {this.L.downloadHex}
                         </button>
+                        {/* Flash straight to the board over WebUSB (N9) —
+                            shown only where WebUSB exists; the handler refuses
+                            by name when no probe is granted. */}
+                        {typeof navigator !== 'undefined' && navigator.usb ? (
+                            <button type="button"
+                                onClick={this.flashMicrobitViaSwd}
+                                disabled={this.state.busy || !this.state.buffers.micropython.trim() || /^# ===/.test(this.state.buffers.micropython)}
+                                title={this.L.microbitFlashTitle}
+                                style={{padding: '4px 12px', borderRadius: 6, border: '1px solid #0ea5e9',
+                                    cursor: 'pointer', fontWeight: 600, fontSize: 12,
+                                    background: '#f0f9ff', color: '#0369a1'}}
+                                data-testid="bw-microbit-flash-webusb">
+                                {this.L.microbitFlash}
+                            </button>
+                        ) : null}
                     </div>
                 )}
                 {this.state.revealed ? (
