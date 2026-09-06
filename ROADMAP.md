@@ -1152,11 +1152,23 @@ Next tasks, in order:
       existing manifest fetch. That cannot plausibly clear the declared 76,800-
       byte emitted floor, so no runtime or hosted baseline was built. Reconsider
       only when the eager Tips dependency disappears or ownership grows.
-16. **Next experiment.** Differentially test a CI-generated precompiled
-    scratch-parser schema validator. AJV is on every project-load path, so a
-    dynamic import is not an optimization. Accept only exact callback/error/
-    result/SB1 parity across valid, invalid, adversarial and full-corpus inputs,
-    plus a material net initial and encoded-byte reduction.
+16. **P16a evaluated and rejected** (baseline `34049223633`; candidate
+    `34049943831`). Four separately packed AJV 6 validators produced zero
+    differences across 534 validator and 122 full-parser comparisons; normal
+    build, corpus and light-browser jobs were green, and webpack proved zero
+    compiler/schema modules. The generated closure was 554,526 source bytes,
+    however, because project and sprite roots duplicated their SB2/SB3
+    definition functions. Initial emitted JavaScript grew 4,543,936 ->
+    4,573,012 bytes instead of falling below the declared 4,467,136 ceiling.
+    Reverted at `72a01c3f0`; no failed candidate was deployed.
+    - **P16b shared multi-root emitter — next.** Intern generated validator and
+      `$ref` function identities across all four roots in one module. Preflight
+      the resulting source closure before another hosted build; stop unless it
+      removes enough of P16a's duplicated 554,526 bytes to make the 76,800-byte
+      emitted floor plausible. Keep P16a's exact error/result/parser corpus and
+      ownership gates, add the GUI project corpus and SB1/`addSprite` VM
+      boundary checks, and predeclare a 20,480-byte encoded-script floor plus
+      the standard 115% / 1 s / 100 ms runtime limits.
 
 **Debugger-only circuit deferral — complete (hosted performance step
 `33962284105`).** The existing nine fresh-context receipts proved that the
