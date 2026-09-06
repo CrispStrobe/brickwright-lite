@@ -25,7 +25,23 @@ try {
             localStorage.clear();
             localStorage.setItem('bw-starter-v1-complete', '1');
         } catch { /* private mode */ }
-        const probe = window.__BW_CONNECTION_MODAL_PERF__ = {longTasks: [], calls: []};
+        const probe = window.__BW_CONNECTION_MODAL_PERF__ = {
+            longTasks: [],
+            calls: [],
+            usbCalls: [],
+            usbOutcomes: ['failure', 'success']
+        };
+        Object.defineProperty(navigator, 'usb', {
+            configurable: true,
+            value: {
+                requestDevice: () => {
+                    const outcome = probe.usbOutcomes.shift() || 'success';
+                    probe.usbCalls.push({active: navigator.userActivation?.isActive === true, outcome});
+                    if (outcome === 'failure') return Promise.reject(new Error('CI update failure'));
+                    return Promise.resolve(undefined);
+                }
+            }
+        });
         try {
             probe.observer = new PerformanceObserver(list => {
                 for (const entry of list.getEntries()) {
@@ -92,6 +108,17 @@ try {
     receipt.beforeRequests = beforeRequests;
     receipt.connectionModalScripts = receipt.scripts.filter(resource => /connection-modal/i.test(resource.name));
     await page.screenshot({path: path.join(output, 'connection-modal.png'), fullPage: true});
+    await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.emit('PERIPHERAL_SCAN_TIMEOUT'));
+    await page.getByRole('button', {name: 'Update my Device'}).click();
+    await page.getByRole('button', {name: 'Do Update'}).click();
+    await page.getByText('Update failed.', {exact: true}).waitFor({timeout: 10000});
+    await page.getByRole('button', {name: 'Try Again'}).click();
+    await page.getByText('Update successful!', {exact: true}).waitFor({timeout: 10000});
+    receipt.updateFlow = await page.evaluate(() => ({
+        usbCalls: window.__BW_CONNECTION_MODAL_PERF__.usbCalls.slice()
+    }));
+    await page.getByRole('button', {name: 'Go Back'}).click();
+    await page.getByText('Looking for devices', {exact: true}).waitFor({timeout: 10000});
     await page.getByRole('button', {name: 'Close'}).click();
     await page.getByText('Looking for devices', {exact: true}).waitFor({state: 'hidden', timeout: 10000});
     receipt.afterClose = await page.evaluate(() => ({
@@ -134,6 +161,11 @@ try {
         !receipt.looking || !receipt.refresh) {
         throw new Error('Connection modal did not reach usable scanning UI');
     }
+    if (receipt.updateFlow.usbCalls.length !== 2 ||
+        receipt.updateFlow.usbCalls.some(call => !call.active) ||
+        receipt.updateFlow.usbCalls.map(call => call.outcome).join(',') !== 'failure,success') {
+        throw new Error('firmware failure/retry did not retain transient WebUSB activation');
+    }
     const scans = receipt.calls.filter(call => call[0] === 'scan' && call[1] === 'microbit').length;
     if (scans !== 1) throw new Error(`expected one micro:bit scan, got ${scans}`);
     const disconnects = receipt.afterClose.calls
@@ -146,7 +178,9 @@ try {
     }
     const reopenedScans = receipt.afterReopen.calls
         .filter(call => call[0] === 'scan' && call[1] === 'microbit').length;
-    if (reopenedScans !== 2) throw new Error(`reopen should start a second scan, got ${reopenedScans} total`);
+    if (reopenedScans !== 3) {
+        throw new Error(`returning from firmware update and reopening should total three scans, got ${reopenedScans}`);
+    }
 } finally {
     await browser.close();
 }

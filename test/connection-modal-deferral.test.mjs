@@ -29,4 +29,6 @@ test('the connection modal owns one retryable demand-loaded route', () => {
     assert.match(browserGate, /maxLongTaskMs = 100/);
     assert.match(browserGate, /connectionModalScripts\.length !== 1/);
     assert.match(browserGate, /reopening the Connection modal downloaded its module again/);
+    assert.match(browserGate, /navigator\.userActivation\?\.isActive === true/);
+    assert.match(browserGate, /firmware failure\/retry did not retain transient WebUSB activation/);
 });
