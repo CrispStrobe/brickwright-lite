@@ -416,7 +416,7 @@ interface chip is DAPLink. Add the nRF52833 flash algorithm and a button
 beside "⬇ .hex for the board".
 DoD: mock-DAP unit test of the algorithm; real-board flash *(manual, recorded)*.
 
-**N10. 8086 artefact export.**
+**N10. 8086 artefact export. DONE 2026-09-06** (delegate `8086 coverage testing materials`, audited by lego-ac): the Code tab exports the assembled `.COM` (the assembler's exact bytes) and a bootable 1.44M `.img` whose boot sector loads it at CS:0100 and installs a ~200-byte INT 21h stub for the four DOS functions the back end emits (`lib/bw-asm/i8086-floppy.js`); `test/i8086-export.test.mjs` boots the image in lite's vendored machine with the shipped BIOS and reads the program's output off the CGA (a zeroed boot sector is red); the second-emulator check is DECLARED by name (`$V86_DIR`, no box has v86); the i8086 device carries `tx('export', ['com','img'])`, tier 2c; `verify-i8086-export.mjs` (light shard) judges the downloaded artefacts. Run 34025910042: both browser legs green.
 `.COM` and a bootable floppy image (`.img`) download for real hardware or
 other emulators; not a flash transport, an export. The matrix cell reads
 `silicon: export only`.
