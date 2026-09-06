@@ -115,12 +115,16 @@ export async function startPicoSimRun ({image, vm, stc, py, onStatus, onError}) 
         wake();
     };
 
-    // Read-only observability for the browser gate — it reads this to tell a
-    // slow headless boot ("USB enumerated, REPL banner not yet") from a CDC that
-    // never enumerated in the browser build. Changes NO run behavior.
+    // Read-only observability for the browser gate — it reads this to localize a
+    // stall: which handshake sub-phase, how many host→device bytes have left, and
+    // whether the writes resolved. Changes NO run behavior.
     let frames = 0;
     let phase = 'booting';
+    let subPhase = 'init';
     let lastError = null;
+    let txBytes = 0;
+    let txWrites = 0;
+    let txDone = 0;
     if (typeof window !== 'undefined') {
         window.__bwPicoSim = {
             usbConnected: () => usbConnected,
@@ -129,12 +133,16 @@ export async function startPicoSimRun ({image, vm, stc, py, onStatus, onError}) 
             simMs: () => { try { return Math.round(adapter.rp2040.clock.nanos / 1e6); } catch { return -1; } },
             replReady: () => usb.includes('>>> ') || usb.includes('raw REPL'),
             phase: () => phase,
+            subPhase: () => subPhase,
+            tx: () => `bytes=${txBytes} writes=${txWrites} done=${txDone}`,
             lastError: () => lastError
         };
     }
     const transport = {
         async write (text) {
-            for (const ch of text) cdc.sendSerialByte(ch.charCodeAt(0) & 0xff);
+            txWrites++;
+            for (const ch of text) { cdc.sendSerialByte(ch.charCodeAt(0) & 0xff); txBytes++; }
+            txDone++;
         },
         async read () {
             if (!pending) await new Promise((resolve) => waiters.push(resolve));
@@ -195,7 +203,10 @@ export async function startPicoSimRun ({image, vm, stc, py, onStatus, onError}) 
     // the OK — a silent no-run can no longer present as running. A forever loop
     // keeps running under the pump after the OK; Stop interrupts it.
     try {
-        await startProgramOnRepl(transport, py, {timeoutMs: 60_000});
+        await startProgramOnRepl(transport, py, {
+            timeoutMs: 60_000,
+            onProgress: (p, info) => { subPhase = info && info.bytes ? `${p}(${info.bytes}b)` : p; }
+        });
     } catch (e) {
         phase = 'error';
         lastError = e && e.message ? e.message : String(e);
