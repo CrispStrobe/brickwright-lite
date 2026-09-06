@@ -46,3 +46,10 @@ exact public bound and fixing the matching maximum receive boundary
 state or a policy increase. Independent review, maximum-frame tests, source CI,
 and the full ARM/NuttX build pass. The original dirty owner worktrees remain
 preserved.
+
+The post-promotion test pass (`1b602b7..8defd78`) removes a zero-length codec
+test's undefined null comparison and directly exercises the real IMU sampler's
+coherent, non-destructive latest-value path. It proves drain ordering and
+invalidation across disable/re-enable, RFCOMM disconnect, and deinit/reinit, and
+the gate is part of private CI. Independent review, source CI, and the full
+ARM/NuttX build pass before promotion to firmware `main`.
