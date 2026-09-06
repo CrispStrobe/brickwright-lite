@@ -12,6 +12,7 @@
   "project-bundle-integrity.test.mjs",
   "project-bundle-roundtrip.test.mjs",
   "pseudocode-8086-pins.test.mjs",
+  "pseudocode-importer-activation.test.mjs",
   "retarget.test.mjs",
   "rp2040-debug.test.mjs",
   "sb3-creator-motion-target.test.mjs",

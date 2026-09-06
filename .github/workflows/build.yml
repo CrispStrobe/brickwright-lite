@@ -1014,6 +1014,16 @@ jobs:
           name: sound-tab-activation
           path: artifacts/sound-tab-activation/*
           if-no-files-found: error
+      - name: Browser baseline — five cold Code-tab activations for P21
+        timeout-minutes: 3
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: P21_EAGER_BASELINE=1 PROOF_URL=http://localhost:8617/ node scripts/verify-pseudocode-importer-activation.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
+        with:
+          name: pseudocode-importer-activation
+          path: artifacts/pseudocode-importer-activation/*
+          if-no-files-found: error
       # The unit suite asserts the table SVG and the mark state as pure values.
       # It cannot see whether the RENDERER accepts that SVG: a skin that fails
       # to parse, or a drawable in a layer group the renderer lacks, throws
