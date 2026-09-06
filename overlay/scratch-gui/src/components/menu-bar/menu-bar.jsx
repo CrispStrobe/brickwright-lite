@@ -466,6 +466,7 @@ class MenuBar extends React.Component {
                                 className={classNames(styles.menuBarItem, styles.hoverable, {
                                     [styles.active]: this.props.fileMenuOpen
                                 })}
+                                data-testid="file-menu-toggle"
                                 onMouseUp={this.props.onClickFile}
                             >
                                 <img src={fileIcon} />
@@ -498,7 +499,9 @@ class MenuBar extends React.Component {
                                             this.props.onOpenTipLibrary();
                                             this.props.onRequestCloseFile();
                                         }}>
-                                            <FormattedMessage defaultMessage="Scratch tutorials" id="gui.menuBar.tutorialsFile" />
+                                            <span data-testid="tutorial-library-open">
+                                                <FormattedMessage defaultMessage="Scratch tutorials" id="gui.menuBar.tutorialsFile" />
+                                            </span>
                                         </MenuItem>
                                     </MenuSection>
                                     <MenuSection>

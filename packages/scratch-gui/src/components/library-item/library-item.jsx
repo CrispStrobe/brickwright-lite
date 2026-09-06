@@ -29,6 +29,8 @@ class LibraryItemComponent extends React.PureComponent {
                     this.props.extensionId ? styles.libraryItemExtension : null,
                     this.props.hidden ? styles.hidden : null
                 )}
+                data-library-item-id={this.props.libraryItemId}
+                data-testid="library-item"
                 onClick={this.props.onClick}
             >
                 <div
@@ -122,6 +124,8 @@ class LibraryItemComponent extends React.PureComponent {
                         [styles.hidden]: this.props.hidden
                     }
                 )}
+                data-library-item-id={this.props.libraryItemId}
+                data-testid="library-item"
                 role="button"
                 tabIndex="0"
                 onBlur={this.props.onBlur}
@@ -174,6 +178,7 @@ LibraryItemComponent.propTypes = {
     insetIconURL: PropTypes.string,
     internetConnectionRequired: PropTypes.bool,
     isPlaying: PropTypes.bool,
+    libraryItemId: PropTypes.string,
     name: PropTypes.oneOfType([
         PropTypes.string,
         PropTypes.node
