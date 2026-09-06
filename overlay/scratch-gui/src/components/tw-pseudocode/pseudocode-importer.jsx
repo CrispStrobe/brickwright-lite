@@ -174,6 +174,10 @@ const L10N = {
         deployPicoSaved: 'This browser cannot talk to USB serial (Chrome or Edge can). Saved main.py instead — copy it to the Pico with Thonny, or `bw flash` from the sb3-creator CLI.',
         deployPicoFail: e => `Pico deploy failed: ${e}`,
         deployPicoNoPort: 'No Pico found on USB. Plug it in (a normal boot, not BOOTSEL) and try again.',
+        picoSimNoFirmware: 'The Pico simulator firmware is not in this build. Run `npm run sync:picomicropython` and rebuild, then ▶ Run again.',
+        picoSimNoReset: 'This program calls machine.reset(), which the simulator does not model yet (finding N3c-1) — it would freeze here. Run it on real hardware.',
+        picoSimStopped: 'Simulator stopped.',
+        stop: 'Stop',
         deployPicoBootsel: 'The Pico is in BOOTSEL mode — it needs MicroPython first. Flash a MicroPython UF2 onto the RPI-RP2 volume, then deploy again.',
         deployPicoNoC: 'Write or import C in the C tab first, then deploy.',
         deployPicoUf2Done: 'firmware.uf2 downloaded. Hold BOOTSEL, plug the Pico into USB (it mounts as the RPI-RP2 drive), and drag firmware.uf2 onto it — it flashes and reboots into your program.',
@@ -357,6 +361,10 @@ const L10N = {
         deployPicoSaved: 'Dieser Browser kann kein USB-Serial (Chrome oder Edge können es). main.py wurde stattdessen gespeichert — mit Thonny auf den Pico kopieren, oder `bw flash` aus der sb3-creator-CLI.',
         deployPicoFail: e => `Pico-Übertragung fehlgeschlagen: ${e}`,
         deployPicoNoPort: 'Kein Pico am USB gefunden. Anstecken (normaler Start, nicht BOOTSEL) und erneut versuchen.',
+        picoSimNoFirmware: 'Die Pico-Simulator-Firmware fehlt in diesem Build. `npm run sync:picomicropython` ausführen und neu bauen, dann erneut ▶ ausführen.',
+        picoSimNoReset: 'Dieses Programm ruft machine.reset() auf, was der Simulator noch nicht abbildet (Befund N3c-1) — es würde hier einfrieren. Auf echter Hardware ausführen.',
+        picoSimStopped: 'Simulator gestoppt.',
+        stop: 'Stopp',
         deployPicoBootsel: 'Der Pico ist im BOOTSEL-Modus — er braucht zuerst MicroPython. Ein MicroPython-UF2 auf das RPI-RP2-Laufwerk kopieren, dann erneut übertragen.',
         deployPicoNoC: 'Zuerst C im C-Tab schreiben oder importieren, dann übertragen.',
         deployPicoUf2Done: 'firmware.uf2 heruntergeladen. BOOTSEL gedrückt halten, den Pico per USB anstecken (er erscheint als Laufwerk RPI-RP2) und firmware.uf2 darauf ziehen — er flasht und startet in dein Programm.',
@@ -820,7 +828,7 @@ class PseudocodeImporter extends React.Component {
             basicProfile: 'bbc', basicLineNumbers: true,
             uploads: [], status: '', conversionReport: null, reportExpanded: false, busy: false, showRef: false, showInfo: false, showMatrix: false,
             showRepresentation: true,
-            showArt: false, output: null, running: false,
+            showArt: false, output: null, running: false, picoSimRunning: false,
             // Hardware-extension codegen options (see reference/runtime-drivers.md): the emitted
             // driver (shim / remote / on-brick), plus async/await and event-hat switches.
             driverMode: 'shim', asyncMode: false, eventsMode: false,
@@ -2590,8 +2598,14 @@ class PseudocodeImporter extends React.Component {
     // guard. Everything else runs in a Web Worker with a hard timeout — a runaway
     // loop is killed cleanly instead of freezing the tab.
     async run () {
-        const code = this.activeCode();
         const lang = this.state.lang;
+        // Pico + Python: run in the SIMULATOR — boot MicroPython in rp2040js and
+        // run the program live over the same createPicoRepl the silicon deploy
+        // uses (N3c), instead of the in-page Skulpt console below.
+        if ((lang === 'python' || lang === 'micropython') && this.currentDevice() === 'pico') {
+            return this.runPicoSim();
+        }
+        const code = this.activeCode();
         const buf = [];
         this.setState({output: '', running: true, status: ''});
         const TIMEOUT = 4000;
@@ -2628,6 +2642,68 @@ class PseudocodeImporter extends React.Component {
             finish(String(e.message || e));
         }
     }
+    /**
+     * Run the Pico's MicroPython program IN THE SIMULATOR. Boots the pinned
+     * firmware in rp2040js and runs the program live over createPicoRepl — the
+     * SAME program (generateMicroPython) and the SAME REPL the silicon deploy
+     * uses; only persistence differs (silicon installs-and-reboots, the sim
+     * runs live — finding N3c-1). Refuses BY NAME when the firmware asset is
+     * absent or the program calls machine.reset() (the sim cannot reboot).
+     */
+    async runPicoSim () {
+        const src = this.state.buffers.pseudocode || '';
+        if (!src.trim()) return;
+        this.setState({output: '', running: true, picoSimRunning: false, status: ''});
+        try {
+            const SB3Creator = (await this.lib()).default;
+            const creator = new SB3Creator();
+            creator.parse(src);
+            const r = creator.generateMicroPython();
+            if (!r.ok) {
+                this.setState({running: false, status:
+                    this.L.deployPicoFail((r.reasons || []).join('; ') || 'not expressible in MicroPython')});
+                return;
+            }
+            const {startPicoSimRun, programCallsReset} = await import(
+                /* webpackChunkName: "pico-sim-run" */ '../../lib/pico-sim-run.js');
+            if (programCallsReset(r.py)) {
+                this.setState({running: false, status: this.L.picoSimNoReset});
+                return;
+            }
+            const {loadPicoFirmware} = await import('../../lib/pico-firmware.js');
+            const fw = await loadPicoFirmware();
+            if (!fw) {
+                this.setState({running: false, status: this.L.picoSimNoFirmware});
+                return;
+            }
+            const handle = await startPicoSimRun({
+                image: fw.image,
+                vm: this.props.vm,
+                stc: this.currentStc(),
+                py: r.py,
+                onStatus: s => this.setState({status: s}),
+                onError: e => this.setState({status:
+                    this.L.deployPicoFail(e && e.message ? e.message : String(e))})
+            });
+            this._picoSimStop = handle.stop;
+            this.setState({picoSimRunning: true});
+        } catch (e) {
+            this._picoSimStop = null;
+            this.setState({running: false, picoSimRunning: false, status:
+                this.L.deployPicoFail(e && e.message ? e.message : String(e))});
+        }
+    }
+
+    /** Stop a live Pico simulator run: interrupt the program and tear the run
+     *  down (the RUN board dies with it, the canvas rebinds to the designer). */
+    stopPicoSim () {
+        if (this._picoSimStop) {
+            try { this._picoSimStop(); } catch { /* teardown must not throw at the user */ }
+            this._picoSimStop = null;
+        }
+        this.setState({running: false, picoSimRunning: false, status: this.L.picoSimStopped});
+    }
+
     // Flash the micro:bit simulator with the current MicroPython code.
     // Activates the simulator pane (stage-header dock='microbit') and posts
     // the code via the CustomEvent bus; the MicrobitSimPane picks it up.
@@ -4034,6 +4110,12 @@ class PseudocodeImporter extends React.Component {
                         <button onClick={this.run} disabled={this.state.running}
                             style={{...btn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
                             ▶ {this.L.run} {this.state.lang === 'python' ? 'Python' : 'JavaScript'}
+                        </button>
+                    ) : null}
+                    {this.state.picoSimRunning ? (
+                        <button onClick={() => this.stopPicoSim()} data-testid="bw-pico-sim-stop"
+                            style={{...btn, background: 'linear-gradient(135deg,#fa5252,#e03131)'}}>
+                            ■ {this.L.stop}
                         </button>
                     ) : null}
                     {this.state.lang === 'basic' && this.activeCode().trim() ? (
