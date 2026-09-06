@@ -587,6 +587,44 @@ library whitelist (`LiquidCrystal`, `Adafruit_SSD1306` → verbs) with named
 refusals. **P5.** One silicon wire-truth bench per family *(manual, recorded)*.
 Each gets its own LANES row when claimed.
 
+**P6 (2026-09-06, unclaimed).** The browser gate for the debugger's chip-refusal
+line drives the ROM route, once the Machine Loader exposes ROM boot media through
+a named control. **The program is already written and proved**: the 8255 mode-1
+control word from `test/debug-chip-refusal-line.test.mjs` (`mov al, 0A0h` /
+`out 03h, al`), which produces exactly one row on BREADBOARD8086, where `ppi1`
+sits at port 0.
+
+*Why it is not done.* `chipRefusals()` has consumers and NO REACHABLE PRODUCER IN
+THE UI. Measured 2026-09-06: the ASM tab always returns `profile: 'dos'`
+(`assemble-route.js:347` and `:402` — a .COM loaded as a ROM at F0000 executes
+nothing), so it boots the DOS bench, which has no chips and no collector at all;
+and the no-media route boots the XT BIOS on PCXT8086, whose only refusal is
+`pic1`'s — present for FOUR STEPS out of 1,579,840 while the 8259 init sequence
+is incomplete, then correctly cleared. A four-step window inside a 1.58 M-step
+boot is a race, not a check. The third branch, boot media with `slotId: 'rom'`
+and no profile, takes BREADBOARD8086 and would work; which control produces it is
+the debugger lane's question.
+
+*Why the ROM route would work where the BIOS route cannot,* which is sharper than
+"the window is narrow" (lego-be, 2026-09-06, measured after this finding): refusal
+ledgers come in two kinds wearing one shape. **Retracted** ones return to null
+when the condition passes — `8259.initWarning` when the ICW sequence completes,
+`8251.modeWarning` on a later async mode word, `8255.modeWarning` on a mode-0
+control word. **Permanent** ones are only ever added to — the 8237's `unmodelled`
+Map, the YM3812 and SB DSP `unsupported` maps, the uPD765's `lastRefusal`. So
+`chipRefusals()` answers "what is refused NOW", and for four of seven parts that
+happens to also answer "what was ever refused". POST only ever triggers the
+retracting kind, which is why booting the BIOS leaves nothing to see; the 8255
+program above triggers a retracting one too, but nothing on that bench retracts it,
+and an 8237 program on a bench that has one would leave a permanent row. Either
+works for P6. Neither works through a poll on the BIOS route.
+
+Until then `scripts/verify-debug-chip-refusal-line.mjs` proves the RENDER — the
+panel's `data-debug-chip-refusal-state` follows the handle, `'none'` on a bench
+with no collector — and says so in its header. That is a stated reduction, not a
+gate quietly proving less than its name suggests. The feature itself is proved in
+the unit test: eight assertions, six mutations red.
+
 **Vocabulary source (2026-09-05):** bw-board `I8086Machine.chipRefusals()` (`bfd8b44`, lego-be)
 returns `{part, kind, feature, symptom, count}` rows — one per feature a program asked a chip
 for that the model does not implement, with a program-visible symptom sentence ("a block copy
