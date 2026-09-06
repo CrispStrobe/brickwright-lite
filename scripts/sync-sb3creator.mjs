@@ -206,17 +206,19 @@ let warnedFallback = false;
 // The script records the new pin itself at the end. Nothing should set it
 // beforehand.
 const pinAlreadyMoved = async () => {
+    // Never under --check: a check writes nothing, so the ordering hazard cannot
+    // apply, and the nightly freshness workflow checks out each upstream AT the
+    // pin, where HEAD == pin is the healthy state, not a moved pin (the first
+    // nightly after this guard landed exited 2 on both vendor steps). Inside the
+    // guard, not at the call site, so the next caller cannot forget it.
+    if (check) return false;
     if (!srcDir || !OLD_PIN) return false;
     try {
         const {stdout} = await execFileP('git', ['-C', srcDir, 'rev-parse', 'HEAD']);
         return stdout.trim() === OLD_PIN.trim();
     } catch { return false; }
 };
-// Not in --check mode: a check writes nothing, so the ordering hazard does not
-// apply -- and the nightly freshness workflow checks out upstream AT the pin,
-// where "HEAD == pin" is the healthy state, not a moved pin (found on the
-// first nightly run after this guard landed: both vendor steps exited 2).
-if (!check && await pinAlreadyMoved()) {
+if (await pinAlreadyMoved()) {
     console.error('\n  PIN ALREADY MOVED: vendor-pins.json records the sha this run is syncing');
     console.error(`  FROM (${OLD_PIN.slice(0, 9)}), so the guard's three-way base is the incoming`);
     console.error('  file and every upstream edit will read as lite-only work being deleted.');
