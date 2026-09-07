@@ -102,6 +102,13 @@ try {
     await page.getByTestId('bw-matrix-toggle').click();
     const panel = page.getByTestId('bw-matrix-panel');
     await panel.waitFor({state: 'visible', timeout: 15000});
+    const pickerDeviceSet = [...new Set(await device.locator('option').evaluateAll(options =>
+        options.map(option => option.value).filter(Boolean)))].sort();
+    const panelDeviceSet = [...new Set(((await panel.getAttribute('data-device-ids')) || '')
+        .split(' ').filter(Boolean))].sort();
+    check('picker and panel expose the same device set',
+        JSON.stringify(pickerDeviceSet) === JSON.stringify(panelDeviceSet),
+        `picker=${pickerDeviceSet.join(',')} panel=${panelDeviceSet.join(',')}`);
     const rows = await panel.locator('tbody tr').count();
     const cols = await panel.locator('thead th').count() - 1;
     check('one row per language', rows === 7, `${rows}`);

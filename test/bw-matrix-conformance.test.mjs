@@ -21,7 +21,8 @@ import {join} from 'node:path';
 import {REPO} from './helpers/bw-integrated.mjs';
 import {asmTargetForDevice} from '../overlay/scratch-gui/src/lib/bw-asm/assemble-route.js';
 import {
-    DEVICES, LANGUAGES, CELLS, STATUS, EVIDENCE, deviceById, isNativeNull, cell, DEVICE_GROUP_CORE} from '../overlay/scratch-gui/src/lib/bw-matrix/capabilities.js';
+    DEVICES, DEVICE_GROUPS, deviceGroupsFor, LANGUAGES, CELLS, STATUS, EVIDENCE, deviceById, isNativeNull, cell,
+    DEVICE_GROUP_CORE} from '../overlay/scratch-gui/src/lib/bw-matrix/capabilities.js';
 
 
 /** The text between a `{` at `open` and its matching `}`, by counting. */
@@ -44,25 +45,41 @@ const factory = src('lib/bw-board/debug-target-factory.js');
 const hosted = JSON.parse(readFileSync(join(REPO, 'docs/generated/hosted-targets.json'), 'utf8'));
 
 // ---- the picker is DERIVED, not reconciled -----------------------------------
-//
-// This block used to slice `pseudocode-importer.jsx` between
-// `const DEVICE_GROUPS = [` and the next `\n];`, regex-parse the devices back
-// out, and assert they equalled DEVICES. Two truths and a text window over
-// source holding them together. The picker now builds its groups FROM DEVICES,
-// so equality is not something to check — it is the only thing that can happen.
-// What is worth checking is that it stays that way, and that the one new place
-// the two could diverge is closed.
 
-test('the picker derives its devices from the matrix and carries no list of its own', () => {
-    assert.ok(!/const DEVICE_GROUPS = \[\s*\n\s*\{/.test(importer),
-        'pseudocode-importer.jsx has a literal DEVICE_GROUPS array again — the picker has re-grown ' +
-        'its own device list, and the matrix is back to being a mirror it can drift from');
-    assert.match(importer, /import \{DEVICES, DEVICE_GROUP_CORE\} from '\.\.\/\.\.\/lib\/bw-matrix\/capabilities\.js'/,
-        'the picker no longer imports the capability table');
-    const hardcoded = DEVICES.map(d => d.id).filter(id => importer.includes(`id: '${id}'`));
-    assert.deepEqual(hardcoded, [],
-        `device id(s) written literally into the picker: ${hardcoded.join(', ')} — a device removed ` +
-        'from the matrix would still be offered');
+const pickerRows = groups => groups.flatMap(group => group.devices.map(device => ({
+    ...device,
+    group: group.label,
+    core: group.core
+})));
+const expectedPickerRows = devices => devices.map(device => ({
+    id: device.id,
+    label: device.label,
+    compile: Boolean(device.pickerCompile),
+    emulator: device.pickerEmulator ?? null,
+    group: device.group,
+    core: DEVICE_GROUP_CORE[device.group]
+}));
+const assertPickerRendersDevices = (groups, devices) => {
+    const actual = pickerRows(groups);
+    const actualIds = new Set(actual.map(device => device.id));
+    const expectedIds = new Set(devices.map(device => device.id));
+    const missing = [...expectedIds].filter(id => !actualIds.has(id));
+    const extra = [...actualIds].filter(id => !expectedIds.has(id));
+    if (missing.length) assert.fail(`picker missing device(s): ${missing.join(', ')}`);
+    if (extra.length) assert.fail(`picker has extra device(s): ${extra.join(', ')}`);
+    assert.deepEqual(actual, expectedPickerRows(devices),
+        'picker order, grouping, core, or rendered device fields differ from DEVICES');
+};
+
+test('the picker renders exactly DEVICES in capability-table order', () => {
+    assertPickerRendersDevices(DEVICE_GROUPS, DEVICES);
+});
+
+test('the picker contract names a device removed from its table input', () => {
+    const removed = 'samd51';
+    const mutatedGroups = deviceGroupsFor(DEVICES.filter(device => device.id !== removed));
+    assert.throws(() => assertPickerRendersDevices(mutatedGroups, DEVICES),
+        {message: `picker missing device(s): ${removed}`});
 });
 
 test('every matrix group has a core, and every core belongs to a group', () => {
