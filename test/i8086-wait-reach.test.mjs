@@ -54,6 +54,7 @@ const expectedEmitted = [
     'avr05-button-led',
     'blinkenrocket-pendant',
     'eater6502-blink',
+    'i8086-blink',
     'mega01-blink',
     'mega03-port-current',
     'nano01-blink',
@@ -64,8 +65,8 @@ const expectedEmitted = [
 const namesOf = rows => rows.map(row => row.split(': ')[0]);
 const auditReach = (receipt, {compiled}) => {
     const s = receipt.summary;
-    assert.equal(s.programs, 280);
-    assert.equal(s.waitLiteralPrograms, 120);
+    assert.equal(s.programs, 281);
+    assert.equal(s.waitLiteralPrograms, 121);
     assert.equal(s.waitComputedPrograms, 2);
     assert.equal(s.waitLiteralRefused, 0);
     assert.equal(s.waitComputedRefused, 1);
@@ -89,8 +90,9 @@ const auditReach = (receipt, {compiled}) => {
     assert.equal(receipt.loweringRefused.every(row => row.includes(': ') && !row.endsWith(': ?')), true);
     assert.equal(receipt.printRefused.every(row => row.includes(': ') && !row.endsWith(': ?')), true);
     assert.equal(receipt.choke.every(row => row.includes(': ') && !row.endsWith(': ?')), true);
-    assert.equal(s.emits, 46,
-        'c879 removes two unsafe timer fallbacks from N2c\'s historical 44, then N2d adds four prints');
+    assert.equal(s.emits, 47,
+        'c879 removes two unsafe timer fallbacks from N2c\'s historical 44, then N2d adds four prints, '
+        + 'then P7 adds the i8086-blink gallery example (a wait-literal blink that lowers to C)');
     if (compiled) {
         assert.equal(s.compiled, s.emits,
             `every emitted program must compile through SmallerC: ${JSON.stringify(receipt.compileFailed)}`);
@@ -103,7 +105,7 @@ const auditReach = (receipt, {compiled}) => {
     'every gallery program must land in exactly one outcome bucket');
 };
 
-test('the 280-program gallery records the wait/print gains and every emitted program compiles',
+test('the 281-program gallery records the wait/print gains and every emitted program compiles',
     {timeout: 300000}, async t => {
         const {stdout} = await execFileP(process.execPath, [
             '--import', guiScopeHook,

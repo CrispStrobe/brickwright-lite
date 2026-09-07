@@ -40,6 +40,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {existsSync, readFileSync, readdirSync} from 'node:fs';
 import path from 'node:path';
+// The emitter's OWN pad mapping, imported not recopied. See INDIRECT_PAD_RESOLVERS.
+import {ppiPadTerminal} from '../overlay/scratch-gui/src/lib/bw-asm/pseudocode-8086.js';
 
 const root = path.resolve(import.meta.dirname, '..');
 const cui = path.join(root, 'overlay/scratch-gui/src/lib/bw-circuit-ui');
@@ -78,6 +80,28 @@ const PAD_ALIASES = [
     {part: '74hc374', from: /^out([0-7])$/, to: m => `q${m[1]}`},
 ];
 
+/**
+ * A device whose declared pads live on a SUPPORT CHIP under different terminal
+ * names than the program writes. Every other device in the corpus is direct:
+ * an STC's terminal literally IS "p2.0", the 6502's IS "pb0", so the flat
+ * name-match above is right by construction. The 8086 is the first that is not
+ * — the pads are on a separate 8255, and a blink written for an 8051 keeps its
+ * `PIN led = P2.0` when it reseats onto the 8086, where that pad is the 8255's
+ * `pb0`.
+ *
+ * `resolve` is the EMITTER'S OWN mapping (pseudocode-8086.js's ppiPadTerminal),
+ * imported rather than recopied, so this gate cannot pass while disagreeing with
+ * what actually runs, nor go stale the day the emitter's rule changes. `part`
+ * names the chip the resolved terminal must be wired ON, the way PAD_ALIASES
+ * pins the '374 — a terminal of that name elsewhere in the circuit does not
+ * count. A resolver returning null for a pad it cannot place (P0 has no 8255
+ * home, a bit past 7 is off the port) makes the gate FLAG that pad, never
+ * excuse it: an indirect device with an unmappable declared pad is a real miss.
+ */
+const INDIRECT_PAD_RESOLVERS = {
+    i8086: {part: 'i8255', resolve: ppiPadTerminal},
+};
+
 /** Every terminal name a declared pad could legitimately be wired as. */
 const padResolves = (row, pad) => {
     if (row.wired.has(pad)) return true;
@@ -87,6 +111,12 @@ const padResolves = (row, pad) => {
         // The aliased terminal must be wired ON THAT PART, not merely present
         // somewhere in the circuit under the same name.
         if (row.wiredOn?.get(a.part)?.has(a.to(m))) return true;
+    }
+    const indirect = INDIRECT_PAD_RESOLVERS[row.device];
+    if (indirect) {
+        const term = indirect.resolve(pad);
+        if (term == null) return false;   // unmappable pad -> flagged, not waved through
+        return row.wiredOn?.get(indirect.part)?.has(term) === true;
     }
     return false;
 };
@@ -153,6 +183,10 @@ const KNOWN_UNCONNECTED = new Map([]);
 const declaredPins = (src) => [...src.matchAll(/^\s*PIN\s+([A-Za-z0-9_]+)\s*=\s*([A-Za-z0-9._]+)\s+([A-Z]+)/gm)]
     .map((m) => ({name: m[1], pad: m[2], mode: m[3]}));
 
+/** The DEVICE the program dispatches on — the same token the emitter reads, so
+ *  an indirect-pad resolver keys on what actually runs. */
+const declaredDevice = (src) => (src.match(/^\s*DEVICE\s+(\S+)/m) || [])[1];
+
 let ENGINE = null;
 async function engine () {
     if (ENGINE) return ENGINE;
@@ -190,10 +224,12 @@ async function survey () {
         const progRel = e.files?.program;
         const circRel = e.files?.circuit;
         const progPath = progRel && path.join(EXAMPLES, progRel);
-        const pins = progPath && existsSync(progPath)
-            ? declaredPins(readFileSync(progPath, 'utf8')) : [];
+        const progSrc = progPath && existsSync(progPath) ? readFileSync(progPath, 'utf8') : null;
+        const pins = progSrc ? declaredPins(progSrc) : [];
+        const device = progSrc ? declaredDevice(progSrc) : undefined;
         const deviceOnly = e.deviceOnly === true || e.authored === 'microbit' || e.authored === 'spike';
-        const row = {id: e.id, pins, deviceOnly, hasCircuit: !!(circRel && existsSync(path.join(EXAMPLES, circRel)))};
+        const row = {id: e.id, pins, device, deviceOnly,
+            hasCircuit: !!(circRel && existsSync(path.join(EXAMPLES, circRel)))};
         rows.push(row);
         if (!row.hasCircuit) continue;
         let c;
@@ -476,6 +512,33 @@ test('CANARY: rails are excluded, and excluding them is what makes the pad test 
         'rail names must be recognised');
     assert.ok(!isRail('d2') && !isRail('p1.0') && !isRail('gp25') && !isRail('pa0'),
         'signal pads must NOT be treated as rails — that would empty the pad set and pass vacuously');
+});
+
+test('CANARY: an indirect-pad device resolves through the emitter, and an unmappable pad is flagged', () => {
+    // The 8086 is the corpus's first device whose declared pad (P2.0, an 8051
+    // port name kept across the reseat) is NOT the physical terminal (pb0, on
+    // the 8255). The gate must map through the emitter's rule, and must FLAG —
+    // never excuse — a pad the rule cannot place, or it becomes a gate that
+    // silently waves 8086 pins through.
+    assert.equal(ppiPadTerminal('P2.0'), 'pb0', 'P2 is 8255 port B');
+    assert.equal(ppiPadTerminal('P1.3'), 'pa3');
+    assert.equal(ppiPadTerminal('P3.0'), 'pc0');
+    assert.equal(ppiPadTerminal('P0.0'), null, 'P0 has no 8255 home');
+    assert.equal(ppiPadTerminal('P2.8'), null, 'a bit past 7 is off the port');
+    const row = {device: 'i8086', wired: new Set(['pb0']),
+        wiredOn: new Map([['i8255', new Set(['pb0'])]])};
+    assert.equal(padResolves(row, 'p2.0'), true, 'a wired 8255 port-B pad resolves');
+    assert.equal(padResolves(row, 'p2.1'), false, 'an 8255 pad that is NOT wired must not resolve');
+    assert.equal(padResolves(row, 'p0.0'), false, 'an unmappable pad is flagged, not waved through');
+    // A terminal of the resolved name on the WRONG chip does not count.
+    const wrongChip = {device: 'i8086', wired: new Set(['pb0']),
+        wiredOn: new Map([['resistor', new Set(['pb0'])]])};
+    assert.equal(padResolves(wrongChip, 'p2.0'), false, 'pb0 must be wired on the 8255, not merely present');
+    // And the live example carries exactly this shape.
+    const blink = ROWS.find((r) => r.id === 'i8086-blink');
+    assert.ok(blink && blink.device === 'i8086', 'i8086-blink must be surveyed as an i8086 example');
+    assert.deepEqual(blink.pins.map((p) => p.pad), ['P2.0'], 'i8086-blink declares P2.0');
+    assert.ok(padResolves(blink, 'p2.0'), 'i8086-blink P2.0 must resolve to a wired 8255 terminal');
 });
 
 test('CANARY: the ratchets are live, not decorative', () => {

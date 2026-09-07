@@ -213,11 +213,24 @@ try {
     // entry, so it is offered), open the catalog it serves, click i8086-blink, and
     // prove it loads as the 8086 blink program driving a pin through the 8255.
     await device.selectOption('i8086');
-    const i8086Item = page.locator('[data-testid="bw-catalog-item"][title="i8086-blink"]');
-    if (await i8086Item.count() === 0) {
-        const toggle = page.locator('[data-testid="bw-catalog-toggle"]');
-        if (await toggle.count() === 1) await toggle.click();
+    // Open the catalog DETERMINISTICALLY. The panel may already be open from the
+    // traffic-light flow above, and the toggle is a toggle — so keying "open it"
+    // on a count of catalog items races the catalogue's re-fetch for the newly
+    // selected device (zero items for a beat) and then CLICKS THE TOGGLE SHUT on
+    // an already-open panel. That is the light-shard timeout: a fast local
+    // harness wins the race and never toggles, CI loses it and closes the
+    // catalog. The search box exists ONLY while the panel is open (it appears
+    // with the items after the click above, never before), so it is the honest
+    // open-signal; click to open only when it is absent.
+    const i8086Search = page.locator('[data-testid="bw-catalog-search"]');
+    if (await i8086Search.count() === 0) {
+        await page.locator('[data-testid="bw-catalog-toggle"]').click();
+        await i8086Search.waitFor({timeout: 10000});
     }
+    // The arduino flow left "traffic light" in the filter; without clearing it
+    // the i8086 example is filtered out of the list and never appears.
+    await i8086Search.fill('');
+    const i8086Item = page.locator('[data-testid="bw-catalog-item"][title="i8086-blink"]');
     await i8086Item.first().waitFor({timeout: 15000});
     check('the i8086 catalog offers the i8086-blink example', await i8086Item.count() >= 1,
         `${await i8086Item.count()} matching item(s)`);

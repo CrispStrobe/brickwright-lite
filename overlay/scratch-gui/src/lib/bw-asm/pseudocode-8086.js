@@ -314,6 +314,33 @@ const ADC_EOC = 0x308;
 const PPI_BASE = 0x60;
 const PPI_CTRL = 0x63;
 
+/**
+ * THE 8051 PORT NAMES ARE THE 8255's PORTS. P1/P2/P3 map to A/B/C — the mapping
+ * that lets a pin program reseat onto an 8086 unchanged (pinAddr rests on it,
+ * and the TONE/keypad refusals quote it). Exported as one frozen object so the
+ * one place that states the rule is the one place a bench check consults; a
+ * private copy in a test is a rule that can drift from the emitter silently.
+ */
+export const PPI_PORT_LETTER = Object.freeze({1: 'A', 2: 'B', 3: 'C'});
+
+/**
+ * A declared 8051-style pad, as the 8255 output terminal a board wires it to:
+ * `P2.0` is port B bit 0, which the i8255 part carries as the terminal `pb0`
+ * (src/parts-data/i8255.json: pa0-pa7, pb0-pb7, pc0-pc7). Returns null for a pad
+ * with no 8255 home — P0 (the 8051's multiplexed bus, no fourth port), a bit
+ * past 7, or a malformed name — so a caller can FAIL LOUDLY on an unmappable pad
+ * rather than wave it through. Case-insensitive; the terminal is lowercase, as
+ * the parts data and the extractors write it.
+ */
+export function ppiPadTerminal (pad) {
+    const m = /^p([0-3])\.([0-9]+)$/i.exec(String(pad).trim());
+    if (!m) return null;
+    const letter = PPI_PORT_LETTER[Number(m[1])];
+    const bit = Number(m[2]);
+    if (!letter || bit > 7) return null;
+    return `p${letter.toLowerCase()}${bit}`;
+}
+
 const I32_MIN = -2147483648;
 const I32_MAX = 2147483647;
 
@@ -748,7 +775,7 @@ class Emitter {
             refuse(`"${name}" is used as a pin but no PIN line declares it`,
                 'undeclared pin', opcode);
         }
-        const PORT = { 1: 'A', 2: 'B', 3: 'C' }[pin.port];
+        const PORT = PPI_PORT_LETTER[pin.port];
         if (!PORT) {
             refuse(`PIN ${name} is on P${pin.port}, and an 8255 has three ports: `
                 + 'P1, P2 and P3 map to A, B and C. P0 on an 8051 is the multiplexed '
