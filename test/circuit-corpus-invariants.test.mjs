@@ -32,6 +32,116 @@ const endpoint = (wire, side) => {
     return {part: raw, terminal: wire[`${side}Terminal`]};
 };
 
+const connectivityGroups = collections => {
+    const parent = new Map();
+    const find = key => {
+        if (!parent.has(key)) parent.set(key, key);
+        let root = key;
+        while (parent.get(root) !== root) root = parent.get(root);
+        while (parent.get(key) !== key) {
+            const next = parent.get(key);
+            parent.set(key, root);
+            key = next;
+        }
+        return root;
+    };
+    const join = (a, b) => {
+        const ar = find(a);
+        const br = find(b);
+        if (ar !== br) parent.set(br, ar);
+    };
+    for (const keys of collections) {
+        if (!keys.length) continue;
+        find(keys[0]);
+        for (let i = 1; i < keys.length; i++) join(keys[0], keys[i]);
+    }
+    const groups = new Map();
+    for (const key of parent.keys()) {
+        const root = find(key);
+        if (!groups.has(root)) groups.set(root, []);
+        groups.get(root).push(key);
+    }
+    return [...groups.values()].map(group => group.sort());
+};
+
+const compareCanonicalConnectivity = circuit => {
+    const spellings = new Map(circuit.parts.map(part => [part.id,
+        new Map((part.terminals || []).map(terminal => [String(terminal).toLowerCase(), terminal]))]));
+    const key = end => {
+        if (end.board) return `@bb:${end.board}:${end.hole}`;
+        const terminal = spellings.get(end.part)?.get(String(end.terminal).toLowerCase()) ?? end.terminal;
+        return `${end.part}:${terminal}`;
+    };
+    const stripOf = (breadboard, hole) => {
+        const rail = ['t+', 't-', 'b+', 'b-'].find(name => hole.startsWith(name));
+        if (rail) {
+            const column = Number(hole.slice(rail.length));
+            if (!breadboard.splitRails) return `rail-${rail}`;
+            return `rail-${rail}-${column <= Math.floor(breadboard.cols / 2) ? 'L' : 'R'}`;
+        }
+        const row = hole[0];
+        const column = hole.slice(1);
+        return `${'abcde'.includes(row) ? 'col-t' : 'col-b'}${column}`;
+    };
+    const intentKey = end => end.board
+        ? `@bb:${end.board}:${stripOf(circuit.breadboards.get(end.board), end.hole)}`
+        : key(end);
+    const wireGroups = new Map();
+    for (const wire of circuit.wires) {
+        if (!wireGroups.has(wire.netId)) wireGroups.set(wire.netId, []);
+        wireGroups.get(wire.netId).push(intentKey(wire.from), intentKey(wire.to));
+    }
+    const expectedCollections = [...wireGroups.values()];
+
+    for (const [boardId, breadboard] of circuit.breadboards) {
+        for (const part of circuit.parts) {
+            if (part.seat?.boardId !== boardId) continue;
+            for (const [terminal, hole] of Object.entries(part.seat.leadMap)) {
+                expectedCollections.push([
+                    key({part: part.id, terminal}),
+                    `@bb:${boardId}:${stripOf(breadboard, hole)}`
+                ]);
+            }
+        }
+        for (const jumper of breadboard.wires.values()) expectedCollections.push([
+            `@bb:${boardId}:${stripOf(breadboard, jumper.a)}`,
+            `@bb:${boardId}:${stripOf(breadboard, jumper.b)}`
+        ]);
+    }
+
+    const real = group => group.filter(item => !item.startsWith('@bb:'));
+    const expected = connectivityGroups(expectedCollections).map(real).filter(group => group.length);
+    const actual = connectivityGroups((circuit.resolvedNets || []).map(net => net.terminals.map(key)))
+        .map(real).filter(group => group.length);
+    const membership = groups => new Map(groups.flatMap(group => group.map(item => [item, group.join('|')])));
+    const expectedByTerminal = membership(expected);
+    const actualByTerminal = membership(actual);
+    const failures = [];
+    for (const terminal of new Set([...expectedByTerminal.keys(), ...actualByTerminal.keys()])) {
+        const wanted = expectedByTerminal.get(terminal);
+        const got = actualByTerminal.get(terminal);
+        if (wanted !== got) failures.push(`${terminal}: expected {${wanted || ''}}, resolved {${got || ''}}`);
+    }
+    return failures;
+};
+
+test('the connectivity oracle detects missing and invented canonical joins', () => {
+    const parts = [
+        {id: 'a', terminals: ['x']}, {id: 'b', terminals: ['x']}, {id: 'c', terminals: ['x']}
+    ];
+    const wires = [{from: {part: 'a', terminal: 'x'}, to: {part: 'b', terminal: 'x'}}];
+    const base = {parts, wires, breadboards: new Map()};
+    assert.deepEqual(compareCanonicalConnectivity({...base, resolvedNets: [
+        {terminals: [{part: 'a', terminal: 'x'}, {part: 'b', terminal: 'x'}]}
+    ]}), []);
+    assert.match(compareCanonicalConnectivity({...base, resolvedNets: [
+        {terminals: [{part: 'a', terminal: 'x'}]}, {terminals: [{part: 'b', terminal: 'x'}]}
+    ]})[0], /expected .*a:x\|b:x.*resolved/);
+    assert.match(compareCanonicalConnectivity({...base, resolvedNets: [
+        {terminals: [{part: 'a', terminal: 'x'}, {part: 'b', terminal: 'x'}, {part: 'c', terminal: 'x'}]}
+    ]})[0], /resolved .*c:x/);
+});
+
 test('every shipped circuit resolves every wire endpoint into a real electrical net', async () => {
     assert.ok(existsSync(path.join(cui, 'model/circuit.js')));
     const {setEngine} = await import(path.join(cui, 'engine.js'));
@@ -87,6 +197,9 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
         if (circuit.netlistError != null) {
             failures.push(`${rel}: engine rejected circuit (${circuit.netlistError})`);
             continue;
+        }
+        for (const mismatch of compareCanonicalConnectivity(circuit)) {
+            failures.push(`${rel}: canonical connectivity differs: ${mismatch}`);
         }
         const parts = circuit.board?.parts || [];
         const nets = circuit.board?.nets || [];
