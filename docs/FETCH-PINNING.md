@@ -149,6 +149,19 @@ is the md5 of the content.
 
 ---
 
+### Graph-only clones — waived, and not holes (2026-09-07)
+
+Two rows in the census are `waived` for a reason that is the opposite of the library pack's:
+they fetch NO content that ships. The emu8051-stc bare blobless clone in build.yml exists to
+answer whether the WASM pin is a descendant of the crash-fix floor, and the three bare blobless
+clones of bw-board, sb3-creator and bw-circuit-ui (added with plan T9, `test/pin-move-chain
+.test.mjs`) exist to answer whether a 40-hex string in the tree is a commit of theirs other than
+the current pin. Both endpoints of every such question are full shas already; the clone holds
+the graph that relates them. A stale clone can only make the gate know less — a brand-new
+upstream commit not yet seen — never change what ships, and there is no ref to pin because the
+whole history is the argument. The census test names the waived set exactly (three rows now:
+these two and the pack) so a fourth cannot join quietly.
+
 ## 5. What now catches the next one
 
 `test/fetch-pinning.test.mjs`, 9 subtests, run by `npm test`. It is a **census**, not a pattern
