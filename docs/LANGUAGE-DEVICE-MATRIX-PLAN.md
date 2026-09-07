@@ -364,6 +364,15 @@ firmware, the new nightly — dispatched once to give it a reading). Rule: `gen-
 docs/generated/ci-step-census.json; `judgeSteps` reddens a workflow with no run, a step in the file at the readings' sha
 but in no run, a step or job that appeared and ran in none, unless a dated line under LANES "Steps that run elsewhere"
 says where its condition holds; test/ci-step-census.test.mjs proves the shapes by mutation.
+**T15. Every relative interactivity limit inside a browser gate is derived, never typed. BUILT 2026-09-07** (lego-b9;
+lego-ac's ask after two red main runs on timing literals in one day). MEASURED from the gates' own receipts over 26 main
+runs: the Sounds tab's typed 150 ms sat 1.1× above a p95 of 135.7 on a runner with a 5 % spread; the Costume ceiling sat at
+its p95 and had been quarantined; P21's 279.2 had 1.84× headroom that was typed, not measured. The distinction: a
+relative ceiling is a claim about the runner and is derived — `gen-timing-limits.mjs` writes ceil(p95 of the last 20 green
+readings × 1.5) into each gate from docs/generated/browser-timing-readings.json — while the 1000 ms stall detectors, the
+100 ms long-task ceilings and the 8086's simulated-pump budget are claims about the code, stay typed, and are recorded
+beside the derived ones. Sounds 150 → 203, Costume 449.075 → 674 (un-quarantined), P21 279.2 → 228;
+test/browser-timing-limits.test.mjs holds the literals to the readings and proves the mutations.
 
 **T13. The CI skip census: every skipped test points at the one place it executes. BUILT 2026-09-07** (lego-b9;
 lego-ac's ask). MEASURED from CI's own TAP over the last 20 green main runs: 21 tests skipped in the unit step (corpus job
