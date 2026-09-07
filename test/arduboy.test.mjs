@@ -18,15 +18,15 @@ import assert from 'node:assert/strict';
 import {readFileSync, existsSync} from 'node:fs';
 import {join} from 'node:path';
 
-import {INTEGRATED, REPO} from './helpers/bw-integrated.mjs';
+import {SOURCE, INTEGRATED, REPO} from './helpers/bw-integrated.mjs';
 
-const CHIPS = join(INTEGRATED, 'src', 'lib', 'bw-board', 'avr-chips.js');
+const CHIPS = join(SOURCE, 'src', 'lib', 'bw-board', 'avr-chips.js');
 const canRun = existsSync(CHIPS) &&
     existsSync(join(INTEGRATED, 'node_modules', 'avr8js'));
 const SKIP = canRun ? false : 'needs the integrated tree and avr8js';
 
 const arduboy = canRun ?
-    await import(join(INTEGRATED, 'src', 'lib', 'bw-arduboy', 'index.js')) : {};
+    await import(join(SOURCE, 'src', 'lib', 'bw-arduboy', 'index.js')) : {};
 const GAME = join(REPO, 'test', 'fixtures', 'arduboy', 'rysk.hex');
 const hex = () => readFileSync(GAME, 'utf8');
 
@@ -57,7 +57,7 @@ test('the vector table matches the one the games were built against', {skip: SKI
     // A wrong vector fires every interrupt into the middle of the wrong
     // handler, and the failure looks like anything at all. The game's own
     // binary is the reference: its used vectors must land where we say.
-    const {parseIntelHex} = await import(join(INTEGRATED, 'src', 'lib', 'bw-board', 'intel-hex.js'));
+    const {parseIntelHex} = await import(join(SOURCE, 'src', 'lib', 'bw-board', 'intel-hex.js'));
     const program = parseIntelHex(hex(), 0x8000);
     const target = word => program[word + 1];
     const counts = new Map();
@@ -97,9 +97,9 @@ test('it holds 60 frames a second, which is what the game asks for', {skip: SKIP
 test('without the PLL bit the same game never runs at all', {skip: SKIP}, async () => {
     // The regression this whole thing turns on. Built by hand rather than
     // through createArduboy, because createArduboy's job IS setting it.
-    const {parseIntelHex} = await import(join(INTEGRATED, 'src', 'lib', 'bw-board', 'intel-hex.js'));
+    const {parseIntelHex} = await import(join(SOURCE, 'src', 'lib', 'bw-board', 'intel-hex.js'));
     const {createAvr8jsAdapter} = await import(
-        join(INTEGRATED, 'src', 'lib', 'bw-board', 'avr8js-adapter.js'));
+        join(SOURCE, 'src', 'lib', 'bw-board', 'avr8js-adapter.js'));
     const program = parseIntelHex(hex(), 0x8000);
     const adapter = createAvr8jsAdapter({chip: 'atmega32u4', program});
     adapter.attachBoard({readPin: () => 1, setPin: () => {}, advanceTo: () => {}});
@@ -159,7 +159,7 @@ test('an AVR hex is told apart from a MakeCode one', {skip: SKIP}, async () => {
 
 test('the importer routes a compiled game to the console, not the translator',
     {skip: SKIP}, async () => {
-    const {importArtefact} = await import(join(INTEGRATED, 'src', 'lib', 'bw-makecode', 'index.js'));
+    const {importArtefact} = await import(join(SOURCE, 'src', 'lib', 'bw-makecode', 'index.js'));
     const result = await importArtefact(new Uint8Array(readFileSync(GAME)), {name: 'rysk.hex'});
     assert.equal(result.kind, 'avr-hex');
     assert.equal(result.project.target, 'arduboy');

@@ -26,7 +26,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
 import {boot, load, terminalVolts, EXAMPLES, fmt} from '../scripts/lesson-bench.mjs';
-import {INTEGRATED} from './helpers/bw-integrated.mjs';
+import {SOURCE} from './helpers/bw-integrated.mjs';
 
 const REPO = path.resolve(import.meta.dirname, '..');
 const GUI = path.join(REPO, 'overlay/scratch-gui/src');
@@ -56,8 +56,8 @@ const {extract6502Machine} = await import(path.join(BWB, 'm6502-extract.js'));
 const {extractZ80Machine} = await import(path.join(BWB, 'z80-extract.js'));
 const {createM6502Adapter} = await import(path.join(BWB, 'm6502-adapter.js'));
 const {createM6502DebugTarget} = await import(path.join(BWB, 'm6502-debug.js'));
-const SB3Creator = (await import(path.join(INTEGRATED, 'src/lib/sb3-creator.js'))).default;
-const {interpretTrace} = await import(path.join(INTEGRATED, 'src/lib/trace-oracle.js'));
+const SB3Creator = (await import(path.join(SOURCE, 'src/lib/sb3-creator.js'))).default;
+const {interpretTrace} = await import(path.join(SOURCE, 'src/lib/trace-oracle.js'));
 
 test('instrument: Wave 7 still has the ten lessons this gate measures', () => {
     assert.equal(WAVE.wave, 'machines-7');

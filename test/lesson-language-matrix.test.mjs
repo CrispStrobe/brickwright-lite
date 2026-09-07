@@ -17,28 +17,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync, existsSync} from 'node:fs';
 import path from 'node:path';
-import {INTEGRATED, REPO} from './helpers/bw-integrated.mjs';
+import {SOURCE, REPO} from './helpers/bw-integrated.mjs';
 
 const EX = path.join(REPO, 'overlay/scratch-gui/examples');
 const WAVE = path.join(REPO, 'overlay/scratch-gui/src/components/gui/lesson-waves/languages-3.json');
 
-// ── Instrument check: the compiler under test is lite's own ─────────────────
-//
-// The compiler has to be imported from the integrated tree (it is the only place
-// its dependencies resolve), which is a second checkout and therefore a second
-// everything. Comparing bytes is what makes the result attributable to THIS
-// repo rather than to whatever another session has in flight.
-const overlayCompiler = readFileSync(path.join(REPO, 'overlay/scratch-gui/src/lib/sb3-creator.js'));
-const integratedCompiler = readFileSync(path.join(INTEGRATED, 'src/lib/sb3-creator.js'));
-
-test('instrument: the integrated compiler is byte-identical to the overlay copy', () => {
-    assert.ok(overlayCompiler.equals(integratedCompiler),
-        `the integrated sb3-creator differs from overlay/ (${integratedCompiler.length} vs ` +
-        `${overlayCompiler.length} bytes). Run \`node scripts/integrate.mjs\`; until then any ` +
-        `language-matrix result belongs to a tree this repo does not own.`);
-});
-
-const SB3Creator = (await import(path.join(INTEGRATED, 'src/lib/sb3-creator.js'))).default;
+const SB3Creator = (await import(path.join(SOURCE, 'src/lib/sb3-creator.js'))).default;
 const index = (() => {
     const raw = JSON.parse(readFileSync(path.join(EX, 'index.json'), 'utf8'));
     return new Map((Array.isArray(raw) ? raw : raw.examples).map(e => [e.id, e]));

@@ -23,12 +23,12 @@ import assert from 'node:assert/strict';
 import {readFileSync, existsSync} from 'node:fs';
 import {join} from 'node:path';
 
-import {INTEGRATED, REPO} from './helpers/bw-integrated.mjs';
+import {SOURCE, INTEGRATED, REPO} from './helpers/bw-integrated.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {unpackMakeCodeSource} from '../overlay/scratch-gui/src/lib/bw-makecode/embedded-source.js';
 
 const CAN_RUN = existsSync(join(INTEGRATED, 'node_modules', 'scratch-vm', 'src', 'index.js')) &&
-    existsSync(join(INTEGRATED, 'src', 'lib', 'sb3-creator.js'));
+    existsSync(join(SOURCE, 'src', 'lib', 'sb3-creator.js'));
 const {runProgram} = CAN_RUN ? await import('./helpers/bw-vm.mjs') : {};
 
 const projectOf = async name => (await unpackMakeCodeSource(

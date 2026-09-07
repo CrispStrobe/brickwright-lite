@@ -9,9 +9,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {mkdtempSync, writeFileSync, readFileSync, existsSync} from 'node:fs';
+import {mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
+import {balancedFrom} from './helpers/js-scope.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const HOOK = path.join(ROOT, 'scripts', 'lib', 'register-gui-scope.mjs');
@@ -33,6 +34,22 @@ test('with the hook, the same import resolves from packages/scratch-gui, and the
     assert.match(logged, /^avr8js\t/m, 'the re-resolution must be recorded, not hidden');
 });
 
+test('BW_INTEGRATED_ROOT explicitly relocates only the GUI dependency scope', () => {
+    const gui = mkdtempSync(path.join(tmpdir(), 'gui-scope-external-'));
+    const module = path.join(gui, 'node_modules', 'scope-probe');
+    mkdirSync(module, {recursive: true});
+    writeFileSync(path.join(gui, 'package.json'), '{}');
+    writeFileSync(path.join(module, 'package.json'), '{"type":"module","exports":"./index.js"}');
+    writeFileSync(path.join(module, 'index.js'), 'export const value = 42;');
+    const r = spawnSync(process.execPath,
+        ['--import', HOOK, '--input-type=module', '-e',
+            "import('scope-probe').then(m => console.log('resolved:' + m.value))"],
+        {cwd: mkdtempSync(path.join(tmpdir(), 'gui-scope-cwd-')), encoding: 'utf8',
+            env: {...process.env, BW_INTEGRATED_ROOT: gui}});
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    assert.match(r.stdout, /^resolved:42$/m);
+});
+
 test('the hook never widens to relative specifiers', {skip: !guiHasDeps && 'no GUI node_modules here'}, () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'gui-scope-rel-'));
     writeFileSync(path.join(dir, 'probe.mjs'), "import('./does-not-exist.js').then(() => console.log('resolved')).catch(e => console.log('failed:' + e.code));");
@@ -48,6 +65,81 @@ test('every unit-test invocation carries the hook', () => {
     }
 });
 
+const codeMask = source => {
+    const out = source.split('');
+    let quote = null;
+    for (let i = 0; i < source.length; i++) {
+        const ch = source[i];
+        if (quote) {
+            if (ch !== '\n') out[i] = ' ';
+            if (ch === '\\') {
+                if (source[i + 1] !== '\n') out[++i] = ' ';
+            } else if (ch === quote) quote = null;
+            continue;
+        }
+        if (ch === '"' || ch === "'" || ch === '`') {
+            quote = ch;
+            out[i] = ' ';
+            continue;
+        }
+        if (ch === '/' && source[i + 1] === '/') {
+            const end = source.indexOf('\n', i);
+            const stop = end < 0 ? source.length : end;
+            for (let j = i; j < stop; j++) out[j] = ' ';
+            i = stop - 1;
+        } else if (ch === '/' && source[i + 1] === '*') {
+            const end = source.indexOf('*/', i + 2);
+            assert.notEqual(end, -1, 'test source has an unterminated block comment');
+            for (let j = i; j < end + 2; j++) if (out[j] !== '\n') out[j] = ' ';
+            i = end + 1;
+        }
+    }
+    return out.join('');
+};
+
+const generatedSourceImports = source => {
+    const code = codeMask(source);
+    const findings = [];
+    const legacyHelper = ['import', 'Integrated'].join('');
+    if (new RegExp(`\\b${legacyHelper}\\b`).test(code)) findings.push(`${legacyHelper} helper`);
+    for (const match of code.matchAll(/\bimport\s*\(/g)) {
+        const call = balancedFrom(source, match.index, '(', ')', 'dynamic import');
+        if (/\bINTEGRATED\b/.test(call) || /packages[\\/]scratch-gui[\\/]/.test(call)) {
+            findings.push(call.replace(/\s+/g, ' ').slice(0, 120));
+        }
+    }
+    for (const match of code.matchAll(/\bimport\b(?!\s*\()/g)) {
+        const line = source.slice(match.index, source.indexOf('\n', match.index) < 0 ?
+            source.length : source.indexOf('\n', match.index));
+        const specifier = /(?:\bfrom\s*)?(['"])([^'"]+)\1/.exec(line);
+        if (specifier && /packages[\\/]scratch-gui[\\/]/.test(specifier[2])) {
+            findings.push((/\bfrom\s*(['"])([^'"]+)\1/.exec(line) || specifier)[0]);
+        }
+    }
+    return findings;
+};
+
+test('root tests import owned GUI source and use the hook for GUI dependencies', () => {
+    assert.deepEqual(generatedSourceImports("await import(path.join(INTEGRATED, 'src/lib/a.js'));"),
+        ["(path.join(INTEGRATED, 'src/lib/a.js'))"]);
+    assert.deepEqual(generatedSourceImports("import x from '../packages/scratch-gui/src/x.js';"),
+        ["from '../packages/scratch-gui/src/x.js'"]);
+    const legacyHelper = ['import', 'Integrated'].join('');
+    assert.deepEqual(generatedSourceImports(`await ${legacyHelper}('src/lib/a.js');`),
+        [`${legacyHelper} helper`]);
+    assert.deepEqual(generatedSourceImports(
+        "// await import(path.join(INTEGRATED, 'src/lib/a.js'));\nread('packages/scratch-gui/src/a.js');"), []);
+
+    const offenders = [];
+    for (const name of readdirSync(path.join(ROOT, 'test')).filter(name => name.endsWith('.test.mjs'))) {
+        for (const finding of generatedSourceImports(readFileSync(path.join(ROOT, 'test', name), 'utf8'))) {
+            offenders.push(`${name}: ${finding}`);
+        }
+    }
+    assert.deepEqual(offenders, [],
+        `root tests execute generated packages/ source instead of owned overlay source:\n${offenders.join('\n')}`);
+});
+
 // ---- Measured, then DECLARED: the allow-list and its checker -----------------
 
 import {ALLOWED_PATH, parseLog, judge} from '../scripts/check-gui-scope.mjs';
@@ -60,7 +152,9 @@ test('the allow-list is exact: bare specifiers that are GUI dependencies, each w
     assert.ok(entries.length > 0, 'the list must declare what CI measured, not be empty');
     for (const [specifier, entry] of entries) {
         assert.doesNotMatch(specifier, /[*?]/, `no wildcards: "${specifier}"`);
-        assert.ok(GUI_PKG.dependencies[specifier] || GUI_PKG.devDependencies?.[specifier],
+        const packageName = specifier.startsWith('@') ? specifier.split('/').slice(0, 2).join('/') :
+            specifier.split('/')[0];
+        assert.ok(GUI_PKG.dependencies[packageName] || GUI_PKG.devDependencies?.[packageName],
             `"${specifier}" is declared but is not a dependency of packages/scratch-gui — the hook could never redirect it`);
         assert.ok(Array.isArray(entry.tests) && entry.tests.length > 0, `"${specifier}" must name the root test(s) that need it`);
         for (const t of entry.tests) {

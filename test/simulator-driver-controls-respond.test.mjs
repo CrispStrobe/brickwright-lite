@@ -46,7 +46,7 @@
  *
  * WHICH ENGINE THIS TESTS.
  * The one lite VENDORS (`overlay/scratch-gui/src/lib/{bw-circuit-ui,bw-board}`)
- * plus the INTEGRATED compiler, which together are what the browser runs. It
+ * plus the owned overlay compiler, which together are what the browser runs. It
  * needs no sibling checkout and therefore cannot skip in CI — which matters
  * here more than usual, because the upstream twin of this gate cannot run on a
  * box whose bw-board checkout has no `avr8js`.
@@ -61,7 +61,6 @@ import {balancedFrom} from './helpers/js-scope.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const OV = path.join(root, 'overlay/scratch-gui/src/lib');
-const INTEGRATED = path.join(root, 'packages/scratch-gui');
 const EXAMPLES = path.join(root, 'overlay/scratch-gui/examples');
 
 /**
@@ -91,16 +90,7 @@ function exampleIndex () {
     return [...list].sort((a, b) => a.id.localeCompare(b.id));
 }
 
-const overlayCompiler = readFileSync(path.join(OV, 'sb3-creator.js'));
-const integratedCompiler = readFileSync(path.join(INTEGRATED, 'src/lib/sb3-creator.js'));
-test('instrument: the integrated compiler is byte-identical to the overlay copy', () => {
-    assert.ok(overlayCompiler.equals(integratedCompiler),
-        `the integrated sb3-creator differs from overlay/ (${integratedCompiler.length} vs ` +
-        `${overlayCompiler.length} bytes). Run \`node scripts/integrate.mjs\`; until then every ` +
-        'number in this file belongs to a tree this repo does not own.');
-});
-
-const SB3Creator = (await import(path.join(INTEGRATED, 'src/lib/sb3-creator.js'))).default;
+const SB3Creator = (await import(path.join(OV, 'sb3-creator.js'))).default;
 
 let _circuitMod = null;
 async function boot () {

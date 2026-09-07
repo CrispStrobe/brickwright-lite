@@ -1,9 +1,34 @@
 {
-  "$comment": "The GUI-scope boundary, declared. Each key is a bare specifier that scripts/lib/gui-scope-hooks.mjs re-resolves from packages/scratch-gui for a ROOT test; `tests` lists every root test that causes it (repo-relative). scripts/check-gui-scope.mjs fails the CI unit step by name on any specifier or test not here. Exact list, no wildcards — measured 2026-09-06 (run 34012073586: 2 redirects, one specifier; the two importers are overlay/scratch-gui/src/lib/bw-board/avr8js-adapter.js and avr-chips.js). Adding an entry is a review decision made in the same commit as the import.",
+  "$comment": "The GUI-scope boundary, declared. Each key is a bare specifier that scripts/lib/gui-scope-hooks.mjs re-resolves from packages/scratch-gui for a ROOT test; `tests` lists every root test that causes it (repo-relative). scripts/check-gui-scope.mjs fails the CI unit step by name on any specifier or test not here. Exact list, no wildcards. The original boundary was measured 2026-09-06 in run 34012073586; Track A adds the named tests whose owned overlay imports cross the same dependency boundary. Adding an entry is a review decision made in the same commit as the import.",
   "avr8js": {
     "tests": [
+      "test/arduboy.test.mjs",
+      "test/debug-js-core-step-depth-live.test.mjs",
+      "test/microbit-pins-drive-circuit.test.mjs",
+      "test/shipped-lesson-images.test.mjs",
       "test/z80-cycle-provider-integration.test.mjs"
     ],
-    "why": "the Z80 cycle-provider test builds a debug target through debug-target-factory.js, which imports the AVR adapter and chips statically; avr8js is a GUI dependency (packages/scratch-gui/package.json), not a root one"
+    "why": "owned board/Arduboy sources import the AVR adapter, debug target or chip table; avr8js belongs to the GUI package rather than the root test package"
+  },
+  "rp2040js": {
+    "tests": [
+      "test/debug-js-core-step-depth-live.test.mjs",
+      "test/microbit-pins-drive-circuit.test.mjs",
+      "test/rp2040-bootrom.test.mjs",
+      "test/rp2040-image.test.mjs",
+      "test/shipped-lesson-images.test.mjs"
+    ],
+    "why": "owned RP2040 adapter/debug sources execute the GUI package's rp2040js core"
+  },
+  "scratch-vm/src/index.js": {
+    "tests": [
+      "test/example-vm-execution.test.mjs",
+      "test/lesson-panel-claims-wave4.test.mjs",
+      "test/makecode-arcade-runs.test.mjs",
+      "test/makecode-microbit-runs.test.mjs",
+      "test/pseudocode-game-examples.test.mjs",
+      "test/shipped-lesson-images.test.mjs"
+    ],
+    "why": "VM integration tests need the patched Scratch VM source entry that the GUI webpack build consumes, not the package's unpatched dist bundle"
   }
 }

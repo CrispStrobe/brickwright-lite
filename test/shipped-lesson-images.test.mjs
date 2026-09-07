@@ -62,34 +62,20 @@ import {readFileSync, existsSync, readdirSync} from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 
-import {INTEGRATED, REPO} from './helpers/bw-integrated.mjs';
+import {SOURCE, REPO} from './helpers/bw-integrated.mjs';
 
 const OVERLAY = path.join(REPO, 'overlay/scratch-gui');
 const IMAGES = path.join(OVERLAY, 'static/lesson-images');
 const EXAMPLES = path.join(OVERLAY, 'examples');
-const BW_BOARD = path.join(INTEGRATED, 'src/lib/bw-board');
+const BW_BOARD = path.join(SOURCE, 'src/lib/bw-board');
 
 const sha256 = s => createHash('sha256').update(s, 'utf8').digest('hex');
 const manifest = JSON.parse(readFileSync(path.join(IMAGES, 'manifest.json'), 'utf8'));
 
-// ── Instrument check: the module under test is the one lite ships ──────────
-//
-// Everything below imports from `packages/` (the only tree where scratch-vm
-// resolves) while the manifest and the corpus are read from `overlay/` (the
-// tree git owns). Comparing the two copies byte-for-byte is what makes a result
-// here attributable to THIS repo rather than to whatever another agent session
-// has in flight in the integrated tree.
-test('instrument: the integrated shipped-images module matches the overlay copy', () => {
-    const a = readFileSync(path.join(OVERLAY, 'src/lib/bw-debug/shipped-images.js'));
-    const b = readFileSync(path.join(INTEGRATED, 'src/lib/bw-debug/shipped-images.js'));
-    assert.ok(a.equals(b), `the integrated shipped-images.js differs from overlay/ ` +
-        `(${b.length} vs ${a.length} bytes). Run \`node scripts/integrate.mjs\`.`);
-});
-
 const {surveyLessonExamples, generateDebugC} =
     await import(pathToFileURL(path.join(REPO, 'scripts/build-lesson-images.mjs')).href);
 const shipped = await import(
-    pathToFileURL(path.join(INTEGRATED, 'src/lib/bw-debug/shipped-images.js')).href);
+    pathToFileURL(path.join(SOURCE, 'src/lib/bw-debug/shipped-images.js')).href);
 
 /**
  * In-memory mutation seam — see the header.
@@ -111,10 +97,9 @@ function programOf (entry) {
 // ── 1. The premise: the browser's C is the build script's C ────────────────
 
 test('the emitter gives the SAME C through a scratch-vm round trip as it does direct', async () => {
-    const VM = (await import(
-        pathToFileURL(path.join(INTEGRATED, 'node_modules/scratch-vm/src/index.js')).href)).default;
+    const VM = (await import('scratch-vm/src/index.js')).default;
     const SB3Creator = (await import(
-        pathToFileURL(path.join(INTEGRATED, 'src/lib/sb3-creator.js')).href)).default;
+        pathToFileURL(path.join(SOURCE, 'src/lib/sb3-creator.js')).href)).default;
 
     // Two families, so a divergence that only shows on one core cannot hide.
     for (const exampleId of ['nano03-two-tasks', 'pico02-pot-print']) {

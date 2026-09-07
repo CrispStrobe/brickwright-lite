@@ -27,7 +27,7 @@ import {existsSync} from 'node:fs';
 import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 
-import {INTEGRATED} from './helpers/bw-integrated.mjs';
+import {SOURCE, INTEGRATED} from './helpers/bw-integrated.mjs';
 import {
     ensureFirmware, parseUF2, createPicoMachine, CACHED_UF2, FIRMWARE
 } from '../scripts/probe-pico-micropython.mjs';
@@ -76,7 +76,7 @@ test('a MicroPython program that drives GP25 toggles the simulated pin', {skip: 
     // typed into a friendly REPL runs nothing) comes back — and this oracle
     // catches it, because it drives the identical code.
     const {startProgramOnRepl} = await import(
-        pathToFileURL(join(INTEGRATED, 'src/lib/pico-repl.js')).href);
+        pathToFileURL(join(SOURCE, 'src/lib/pico-repl.js')).href);
 
     const gp25 = () => board.edges.filter(e => e.name === 'GP25');
     assert.ok(!gp25().some(e => e.high), 'GP25 was already driven high before the program ran');
