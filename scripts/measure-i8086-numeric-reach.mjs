@@ -11,8 +11,9 @@
 // the result is parsed and run through generateC. Each lands in one bucket:
 //   retarget  the retargeter refused the program (no hardware declarations, a
 //             part the 8051 pool lacks) — never reaches the emitter
-//   choke     the verb choke refused it ("This program also uses: …") — a verb
-//             with no i8086 C branch; the numeric model is not reached
+//   choke     a named still-unimplemented feature ("This program also uses")
+//   print     the structured numeric-print provenance refusal owns the result
+//   lowering  the structured complete-operand lowering refusal owns the result
 //   int16     the numeric model refused it: a literal outside -32768..32767,
 //             named in the refusal
 //   wait      N2c refused a computed wait, or a literal outside 0..65535 ms,
@@ -79,7 +80,8 @@ if (doCompile) {
 }
 
 const entries = (await readdir(dir, {withFileTypes: true})).filter(d => d.isDirectory()).map(d => d.name).sort();
-const out = {examples: dir, programs: 0, retarget: [], host: [], choke: [], int16: [],
+const out = {examples: dir, programs: 0, retarget: [], host: [], choke: [],
+    printRefused: [], loweringRefused: [], int16: [],
     waitLiteralPrograms: [], waitComputedPrograms: [], waitLiteralRefused: [], waitComputedRefused: [],
     long: [], emits: [], compiled: [], compileFailed: [], parseFailed: []};
 for (const name of entries) {
@@ -87,15 +89,16 @@ for (const name of entries) {
     try { src = await readFile(join(dir, name, 'program.bw'), 'utf8'); } catch { continue; }
     out.programs++;
     let code;
+    let creator;
     try {
         const r = SB3Creator.retargetPseudocode(src, 'stc12c5a60s2');
         if (r && r.ok === false) { out.retarget.push(`${name}: ${(r.reasons || ['?'])[0]}`.slice(0, 140)); continue; }
         const retargeted = asText(r).replace(/^DEVICE .*$/m, 'DEVICE i8086');
-        const c = new SB3Creator();
-        c.parse(retargeted);
+        creator = new SB3Creator();
+        creator.parse(retargeted);
         let hasLiteralWait = false;
         let hasComputedWait = false;
-        for (const target of c.project.targets || []) {
+        for (const target of creator.project.targets || []) {
             for (const block of Object.values(target.blocks || {})) {
                 if (block.opcode !== 'control_wait') continue;
                 const inner = block.inputs && block.inputs.DURATION && block.inputs.DURATION[1];
@@ -105,25 +108,38 @@ for (const name of entries) {
         }
         if (hasLiteralWait) out.waitLiteralPrograms.push(name);
         if (hasComputedWait) out.waitComputedPrograms.push(name);
-        const g = c.generateC();
+        const g = creator.generateC();
         code = typeof g === 'string' ? g : g.code;
     } catch (e) {
         out.parseFailed.push(`${name}: ${String(e.message || e).split('\n')[0].slice(0, 120)}`);
         continue;
     }
     if (/^\s*\/\* No C emitted for DEVICE/.test(code)) {
-        if (/wait helper accepts/.test(code)) {
-            if (/computes a wait duration/.test(code)) out.waitComputedRefused.push(name);
+        if ((creator._cPrintRefused || []).length) {
+            out.printRefused.push(`${name}: ${creator._cPrintRefused.join(', ')}`);
+            continue;
+        }
+        if ((creator._cLoweringRefused || []).length) {
+            out.loweringRefused.push(`${name}: ${creator._cLoweringRefused.join(', ')}`);
+            continue;
+        }
+        const implemented = new Set(['shiftOut', 'delay', 'printNumber']);
+        const used = Object.keys(creator._cUses || {})
+            .filter(key => creator._cUses[key] && !implemented.has(key)).sort();
+        if (used.length) {
+            out.choke.push(`${name}: ${used.join(', ')}`);
+            continue;
+        }
+        if (creator._cWaitComputed || (creator._cWaitRefused || []).length) {
+            if (creator._cWaitComputed) out.waitComputedRefused.push(name);
             else out.waitLiteralRefused.push(name);
             continue;
         }
-        const m = /This program has: ([^.]+)\./.exec(code);
-        if (m) out.int16.push(`${name}: ${m[1]}`);
-        else {
-            const v = /This program also uses: ([^.]+)\./.exec(code);
-            out.choke.push(`${name}: ${v ? v[1] : '?'}`);
+        if ((creator._cI16Refused || []).length) {
+            out.int16.push(`${name}: ${creator._cI16Refused.join(', ')}`);
+            continue;
         }
-        continue;
+        throw new Error(`${name}: emitter refused without a structured i8086 reason`);
     }
     if (/^\s*\/\*[^\n]*blocks → C \(host\)/.test(code)) { out.host.push(name); continue; }
     if (/\blong\b/.test(code.replace(/\/\*[\s\S]*?\*\//g, ''))) { out.long.push(name); continue; }
@@ -138,15 +154,19 @@ for (const name of entries) {
         }
     }
 }
-// "pastChoke" means the verb choke no longer owns the terminal outcome. It
-// includes later semantic refusals (int16 and N2c wait), not only emitted C.
-const stores = out.int16.length + out.waitLiteralRefused.length + out.waitComputedRefused.length + out.emits.length;
+// "pastChoke" means the remaining-feature choke no longer owns the terminal
+// outcome. It includes structured print/lowering/int16/wait refusals, not only
+// emitted C.
+const stores = out.printRefused.length + out.loweringRefused.length + out.int16.length
+    + out.waitLiteralRefused.length + out.waitComputedRefused.length + out.emits.length;
 out.emitter = sb3Url.pathname.split('/').pop();
 out.summary = {
     programs: out.programs,
     retargetRefused: out.retarget.length,
     pastChoke: stores,
     choke: out.choke.length,
+    printRefused: out.printRefused.length,
+    loweringRefused: out.loweringRefused.length,
     hostC: out.host.length,
     waitLiteralPrograms: out.waitLiteralPrograms.length,
     waitComputedPrograms: out.waitComputedPrograms.length,

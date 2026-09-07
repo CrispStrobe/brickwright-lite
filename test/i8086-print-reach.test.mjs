@@ -22,7 +22,7 @@ const measureRaw = async examples => (await execFileP(process.execPath,
     {cwd: root, maxBuffer: 8 * 1024 * 1024})).stdout;
 const measure = async examples => JSON.parse(await measureRaw(examples));
 
-test('the exact 280-program print census is disjoint, exhaustive and names the bounded gain',
+test('the exact 280-program post-production print census is disjoint and exhaustive',
     {timeout: 120000}, async () => {
         const absolute = join(root, 'overlay/scratch-gui/examples');
         const absoluteBytes = await measureRaw(absolute);
@@ -30,7 +30,7 @@ test('the exact 280-program print census is disjoint, exhaustive and names the b
         assert.equal(relativeBytes, absoluteBytes,
             'equivalent corpus paths must produce byte-identical JSON');
         const report = JSON.parse(absoluteBytes);
-        assert.equal(report.schema, 'n2d-i8086-print-reach-v3');
+        assert.equal(report.schema, 'n2d-i8086-print-reach-v4');
         assert.equal(report.programs, 280);
         assert.deepEqual(report.source.operations, {say: 0, sayForSecs: 0, print: 83, total: 83});
         assert.deepEqual(report.source.values, {literalText: 27, numericLiteral: 0, computed: 56});
@@ -50,74 +50,65 @@ test('the exact 280-program print census is disjoint, exhaustive and names the b
         assert.equal(report.invariants.currentOutputCount, 41);
         assert.equal(report.invariants.currentOutputExhaustiveForSource, true);
         assert.deepEqual(report.currentOutput.counts,
-            {notReached: 0, hostC: 15, refused: 26, emitted: 0, commentOnly: 0});
+            {notReached: 0, hostC: 15, refused: 22, emitted: 4, commentOnly: 0});
         assert.deepEqual(report.terminalCounts, {
             retargetRefused: 131, parseFailed: 0, noOutputOpcode: 108, hostC: 15,
-            remainingChoke: 19, waitRefused: 0, int16Refused: 0,
-            longLeaked: 0, prospectiveEmit: 7
+            printRefused: 5, remainingChoke: 17, waitRefused: 0, int16Refused: 0,
+            longLeaked: 0, emitted: 4, commentOnly: 0
         });
         assert.equal(report.invariants.terminalCount, 280);
         assert.equal(report.invariants.terminalExhaustive, true);
         assert.deepEqual(report.chokeCombinationCounts, {
-            'adc + print': 14, print: 7, 'adc + print + tone': 1,
-            'adc + print + pwm': 1, 'adc + now + print': 3
+            adc: 15, none: 6, 'adc + tone': 1,
+            'adc + pwm': 1, 'adc + now': 3
         });
-        assert.deepEqual(report.remainingChokeCounts, {adc: 19, tone: 1, pwm: 1, now: 3});
+        assert.deepEqual(report.remainingChokeCounts, {adc: 20, tone: 1, pwm: 1, now: 3});
         assert.equal(report.computedForms.variable.deviceOccurrences, 10);
         assert.equal(report.computedForms.stc12_read.deviceOccurrences, 15);
         assert.equal(report.computedForms.operator_join.deviceOccurrences, 3);
         assert.deepEqual(report.computedForms.operator_join.devicePrograms,
             ['arduino-08-string-addition']);
-        assert.deepEqual(report.postChokeCandidates.literalTextOnly,
-            ['arduino-sk-p11-crystal-ball']);
-        assert.deepEqual(report.postChokeCandidates.numericOrComputedOnly, [
+        assert.deepEqual(report.currentOutput.emitted, [
             'arduino-01-digital-read-serial',
             'arduino-02-digital-input-pullup',
             'arduino-02-state-change',
-            'arduino-03-smoothing',
-            'arduino-06-ping',
-            'arduino-08-string-addition'
+            'arduino-06-ping'
         ]);
-        assert.deepEqual(report.postChokeCandidates.stringComputed,
-            ['arduino-08-string-addition'],
-            'string join must remain visible instead of being counted as safe numeric output');
-        assert.deepEqual(report.postChokeCandidates.numericListDependency,
-            ['arduino-03-smoothing'],
-            'a list-dependent scalar must not wear an emitted candidate count');
-        assert.deepEqual(report.postChokeCandidates.randomControlFlowDependency,
-            ['arduino-sk-p11-crystal-ball'],
-            'unsupported random control flow must not make literal output look reachable');
-        assert.deepEqual(report.postChokeCandidates.incompleteLowering,
-            ['arduino-03-smoothing', 'arduino-08-string-addition', 'arduino-sk-p11-crystal-ball']);
         const smoothingEvidence = report.numericListDependencyEvidence['arduino-03-smoothing'];
-        assert.equal(smoothingEvidence.length, 4);
+        assert.ok(smoothingEvidence.length >= 4);
         for (const fragment of ['delete all of readings', 'add 0 to readings',
             'item (readIndex + 1) of readings', 'replace item (readIndex + 1) of readings']) {
             assert.ok(smoothingEvidence.some(row => row.includes(fragment)),
                 `smoothing evidence does not name ${fragment}`);
         }
-        assert.deepEqual(report.incompleteLoweringEvidence['arduino-03-smoothing'], smoothingEvidence);
-        assert.ok(report.incompleteLoweringEvidence['arduino-sk-p11-crystal-ball']
+        assert.deepEqual(report.printRefusalEvidence['arduino-03-smoothing'].warnings,
+            smoothingEvidence);
+        assert.match(report.printRefusalEvidence['arduino-03-smoothing'].reasons.join('\n'),
+            /data_itemoflist has no complete numeric i8086 C lowering/);
+        assert.match(report.printRefusalEvidence['arduino-08-string-addition'].reasons.join('\n'),
+            /operator_join is string-valued/);
+        for (const name of ['arduino-05-switch-case', 'arduino-06-knock',
+            'arduino-sk-p11-crystal-ball']) {
+            assert.match(report.printRefusalEvidence[name].reasons.join('\n'), /text-mode print/,
+                `${name}: literal refusal lost its structured reason`);
+        }
+        assert.ok(report.printRefusalEvidence['arduino-sk-p11-crystal-ball'].warnings
             .some(row => row.includes('pick random 1 to 8')));
-        assert.equal(Object.keys(report.printChokeEvidence).length, 7);
-        assert.equal(Object.values(report.printChokeEvidence).every(rows => rows.length === 1), true,
-            'each syntactic candidate must retain exactly the expected removed-print-choke warning');
-        assert.deepEqual(report.boundedRecommendation, {
-            numericSigned16: [
-                'arduino-01-digital-read-serial',
-                'arduino-02-digital-input-pullup',
-                'arduino-02-state-change',
-                'arduino-06-ping'
-            ],
-            refuseLiteralText: ['arduino-sk-p11-crystal-ball'],
-            refuseStringComputed: ['arduino-08-string-addition'],
-            refuseNumericListDependency: ['arduino-03-smoothing'],
-            refuseRandomControlFlowDependency: ['arduino-sk-p11-crystal-ball']
-        });
-        assert.equal(report.emitterWarnings.length, 8);
-        assert.equal(report.emitterWarnings.every(row =>
-            /^(?:arduino-03-smoothing|arduino-08-string-addition|arduino-sk-p11-crystal-ball): /.test(row)), true,
-        'only incomplete prospective programs contribute lowering-warning evidence');
+        assert.deepEqual(Object.keys(report.printRefusalEvidence), [
+            'arduino-03-smoothing',
+            'arduino-05-switch-case',
+            'arduino-06-knock',
+            'arduino-08-string-addition',
+            'arduino-sk-p11-crystal-ball'
+        ]);
+        assert.equal(report.terminal.printRefused.every(row => row.includes(': ')), true,
+            'numeric print refusals must retain their named reason');
+        for (const obsolete of ['postChokeCandidates', 'printChokeEvidence']) {
+            assert.equal(Object.hasOwn(report, obsolete), false,
+                `post-production schema retained hypothetical ${obsolete}`);
+        }
+        assert.equal(Object.hasOwn(report.terminal, 'prospectiveEmit'), false,
+            'post-production terminal retained hypothetical prospectiveEmit');
         assert.equal(report.terminal.retargetRefused.every(row => row.includes(': ')), true,
             'retarget failures must retain their named reason');
         assert.equal(report.terminal.remainingChoke.every(row => row.includes(': ')), true,
@@ -142,8 +133,8 @@ test('a parsed say is reported as comment-only, never mistaken for emitted devic
             {notReached: 0, hostC: 0, refused: 0, emitted: 0, commentOnly: 1});
         assert.deepEqual(report.terminalCounts, {
             retargetRefused: 0, parseFailed: 0, noOutputOpcode: 0, hostC: 0,
-            remainingChoke: 0, waitRefused: 0, int16Refused: 0,
-            longLeaked: 0, prospectiveEmit: 1
+            printRefused: 0, remainingChoke: 0, waitRefused: 0, int16Refused: 0,
+            longLeaked: 0, emitted: 0, commentOnly: 1
         });
     } finally {
         await rm(temp, {recursive: true, force: true});

@@ -480,7 +480,7 @@ The admitted contract is deliberately narrow and executable: a literal single-sc
 word-sized argument can wrap. A computed/reporter wait also refuses by name — `(pause * 1000)` would overflow
 as signed int before an unsigned cast, so a comment asking the caller to stay in range was rejected during
 audit. Multi-script timing remains refused through the existing `now` choke and is a separate scheduler lane.
-The exact 280-program pass now finds **44 emit (up from 5, +39)**, 73 retain another verb choke, 31 are HOST C,
+At N2c's exact `2a0280e` pin, the 280-program pass reported **44 emit (up from 5, +39)**, 73 retain another verb choke, 31 are HOST C,
 131 are retarget-refused, and one computed wait reaches this new named refusal; 120 programs contain a literal
 wait and two contain a computed one. Thus the old “104 need only delay” shorthand was false: 104 choke reasons
 mentioned delay, but many of those programs also require another unimplemented verb. The first hosted Node 22
@@ -489,32 +489,34 @@ become reachable only because `wait` no longer choked them, exposing the old i80
 non-lvalue token (`BW_I8255:led1`). The bounded upstream repair XORs the mapped 8255 shadow and writes it through
 `bw_outb`; exact C covers ports A/B/C, four non-i8086 byte goldens prevent cross-family drift, removing the branch
 leaks the invalid token again, and upstream exact-head CI is green. The Lite consumer now compares complete
-C-vs-ASM 8255 state after one and two active-low toggles. Final acceptance still requires the unchanged corpus gate to
-emit **and compile all 44** on hosted Node 22. Separately, the wait differential compares the added 50 ms in
+C-vs-ASM 8255 state after one and two active-low toggles. That historical pin did emit and compile 44/44 on
+hosted Node 22. The later `c8791ee` complete-lowering defence proved two of those were false compiles:
+`arduino-02-blink-without-delay` and `arduino-02-debounce` used timer-derived operands emitted as commented zero.
+Current honest pre-print reach is therefore **42**, not 44; the old receipt remains labeled with its exact pin
+rather than rewritten. Separately, the wait differential compares the added 50 ms in
 emulated cycles (not PIT ticks); removing the DOS interrupt or helper is mutation-proven red.
 
-**N2d. Narrow 8086 C text output. MEASURED 2026-09-07; production deliberately not started.** The
-deterministic parse/generate census (`scripts/measure-i8086-print-reach.mjs`) keeps source occurrence,
-parsed opcode, current emitted output and the hypothetical post-`print` terminal outcome separate. Across
+**N2d. Narrow 8086 C numeric output. CANDIDATE 2026-09-07.** The deterministic post-production v4 census
+(`scripts/measure-i8086-print-reach.mjs`) keeps source occurrence, parsed opcode and current emitted output
+separate. Across
 the exact 280-program gallery it finds **83 output operations in 41 programs**: 27 literal-text operations
 in 17 programs and 56 numeric/computed operations in 38 programs, with 14 programs in both groups. All are
-`print`; the corpus has zero `say` and zero `say for seconds`. Of the 41 programs, 15 are HOST C and 26 are
-currently refused by the i8086 `print` choke; none currently emits or merely comments device output.
+`print`; the corpus has zero `say` and zero `say for seconds`. Current disposition is 15 HOST C, 22 refused,
+**four emitted**, and zero comment-only. Five unsafe print values are structurally named: smoothing's
+numeric-list provenance, string-addition's `operator_join`, three text-mode programs including crystal-ball,
+whose branches also depend on warned `pick random`. Seventeen terminally retain another feature choke; the
+overlap remains ADC 20, `now` 3, tone 1 and PWM 1. There is no hypothetical removed-print-choke field left.
 
-Removing only that choke would not make 26 programs work. Nineteen still have another named choke
-(ADC 19, `now` 3, tone 1, PWM 1), leaving **seven syntactic candidates**: one literal-only program and six
-numeric/computed programs. Three of the seven syntactic candidates are false successes. `arduino-08-string-addition` supplies
-`operator_join`, which device C would lower to `0 /* ... */`. `arduino-03-smoothing` prints a scalar whose
-provenance crosses numeric list reads and writes; device C emits its delete/add/replace operations as comments
-and its item reads as `0 /* item ... */`. The only literal candidate, `arduino-sk-p11-crystal-ball`, selects each
-printed branch through `pick random`, which device C warns and lowers to zero. A candidate admitted through a
-lowering that warns is a false success wearing the count's clothes. The bounded implementation is therefore
-genuinely numeric signed-16 output only, while literal text, string, numeric-list and random/control-flow
-dependencies refuse by name. That buys **four honest numeric candidates**, taking reach from 44 to 48. Keep `say for seconds` refused:
-it has no corpus evidence and couples output with scheduler semantics. Later acceptance must preserve DOS
-terminal behavior (signed decimal followed by CRLF), compare C with ASM over their shared signed-16 range,
-keep the known C-16/ASM-32 width disagreement explicit, prove the numeric helper absent when unused, and require
-all four newly reached programs to compile on hosted Node 22.
+Upstream admits signed-16 numeric print only and refuses literal text, string, unknown and list-derived values
+by name. Lite injects `bw_print_num(int)` only when called; its cdecl adapter prints sign and decimal digits
+through DOS `INT 21h/AH=02h`, then explicit CRLF. The DOS differential compares complete C/ASM `screenText`
+arrays for all four gallery gains and -32768/-1/0/32767, with an independent `1` oracle for every gallery row
+and state-change retaining semantic `!=`. Initializer `INT16_MIN`, missing-helper, commented-zero and CRLF
+mutations are red; unused code contains no helper. The broad census now has structural terminal buckets:
+131 retarget refusals, 31 HOST C, 61 remaining feature chokes, five print refusals, five complete-lowering
+refusals, one computed-wait refusal and **46 emitted**. The safety correction is N2c **44 → 42**, then N2d
+**42 → 46**; all 46 must compile on hosted Node 22. `say for seconds` remains refused because it has no corpus
+evidence and couples output with scheduler semantics.
 
 **N2e. Bounded numeric lists on the 8086 C route. UNCLAIMED.** `arduino-03-smoothing` is the first measured
 candidate. This is not a print-helper patch: it needs prefix-safe per-list declarations and storage, a proved

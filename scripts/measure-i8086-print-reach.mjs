@@ -3,9 +3,9 @@
 //
 // This deliberately measures three different facts. A source line is not proof
 // that parsing made a block; a block is not proof that DEVICE C emitted output;
-// and removing `print` from the i8086 choke is not proof that another choke does
-// not still own the program. Keeping those layers separate prevents a comment-
-// only `say` from being counted as working output.
+// and an implemented print helper is not proof that another choke does not still
+// own the program. Keeping those layers separate prevents a comment-only `say`
+// from being counted as working output.
 //
 //   node scripts/measure-i8086-print-reach.mjs --examples <dir>
 //
@@ -14,8 +14,7 @@
 import {readdir, readFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {
-    printDependsOnNumericList,
-    printDependsOnRandomControlFlow
+    printDependsOnNumericList
 } from './lib/i8086-print-reach.mjs';
 
 const argv = process.argv.slice(2);
@@ -120,20 +119,15 @@ const addCounts = (into, from) => {
 };
 const terminal = {
     retargetRefused: [], parseFailed: [], noOutputOpcode: [], hostC: [],
-    remainingChoke: [], waitRefused: [], int16Refused: [], longLeaked: [], prospectiveEmit: []
+    printRefused: [], remainingChoke: [], waitRefused: [], int16Refused: [], longLeaked: [],
+    emitted: [], commentOnly: []
 };
 const currentOutput = {notReached: [], hostC: [], refused: [], emitted: [], commentOnly: []};
 const remainingChokeOverlap = {};
 const chokeCombinations = {};
 const computedFormRows = {};
-const postChokeCandidates = {
-    literalTextOnly: [], numericOrComputedOnly: [], mixed: [], stringComputed: [],
-    numericListDependency: [], randomControlFlowDependency: [], incompleteLowering: []
-};
 const numericListDependencyEvidence = {};
-const incompleteLoweringEvidence = {};
-const printChokeEvidence = {};
-const emitterWarnings = [];
+const printRefusalEvidence = {};
 const source = {operations: emptyOps(), values: emptyValues(), programBuckets: emptyKinds()};
 const opcode = {operations: emptyOps(), values: emptyValues(), programBuckets: emptyKinds()};
 
@@ -188,8 +182,7 @@ for (const name of entries) {
         cWarnings = (creator._cWarnings || []).map(warning => typeof warning === 'string' ? warning
             : String((warning && (warning.message || warning.text)) || JSON.stringify(warning)));
         // Parser warnings and device-C lowering warnings are intentionally
-        // different channels. The latter are judged below only for programs
-        // that would become newly reachable after removing the print choke.
+        // different channels. The latter are retained as refusal evidence.
     } catch (error) {
         terminal.parseFailed.push(`${name}: ${String(error.message || error).split('\n')[0]}`.slice(0, 180));
         if (sf.operations.total) currentOutput.notReached.push(name);
@@ -215,13 +208,10 @@ for (const name of entries) {
         computedFormRows[form].devicePrograms.add(name);
     }
 
-    const implemented = new Set(['shiftOut', 'delay', 'print']);
-    const currentlyImplemented = new Set(['shiftOut', 'delay']);
+    const implemented = new Set(['shiftOut', 'delay', 'printNumber']);
     const remaining = Object.keys(creator._cUses || {})
         .filter(key => creator._cUses[key] && !implemented.has(key)).sort();
-    const currentChokes = Object.keys(creator._cUses || {})
-        .filter(key => creator._cUses[key] && !currentlyImplemented.has(key)).sort();
-    const combination = currentChokes.length ? currentChokes.join(' + ') : 'none';
+    const combination = remaining.length ? remaining.join(' + ') : 'none';
     if (!chokeCombinations[combination]) chokeCombinations[combination] = [];
     chokeCombinations[combination].push(name);
     for (const reason of remaining) {
@@ -231,8 +221,18 @@ for (const name of entries) {
 
     const refused = /^\s*\/\* No C emitted for DEVICE/.test(code);
     if (refused) currentOutput.refused.push(name);
-    else if (creator._cUses && creator._cUses.print) currentOutput.emitted.push(name);
+    else if (creator._cUses && creator._cUses.printNumber) currentOutput.emitted.push(name);
     else currentOutput.commentOnly.push(name);
+
+    if (printDependsOnNumericList(creator.project)) {
+        numericListDependencyEvidence[name] = [...cWarnings];
+    }
+    if ((creator._cPrintRefused || []).length) {
+        const reasons = [...creator._cPrintRefused];
+        terminal.printRefused.push(`${name}: ${reasons.join(', ')}`);
+        printRefusalEvidence[name] = {reasons, warnings: [...cWarnings]};
+        continue;
+    }
 
     if (remaining.length) {
         terminal.remainingChoke.push(`${name}: ${remaining.join(', ')}`);
@@ -252,32 +252,8 @@ for (const name of entries) {
         terminal.longLeaked.push(name);
         continue;
     }
-    terminal.prospectiveEmit.push(name);
-    // The measurement asks what happens if and only if the current print
-    // choke is removed. Preserve that expected warning separately; every
-    // other device-C warning is an incomplete lowering and disqualifies the
-    // prospective program from the honest gain.
-    const printChokeWarnings = cWarnings.filter(warning =>
-        /^the i8086 C back end emits 8255 pin I\/O only for now — print is not emitted for this board;/.test(warning));
-    const loweringWarnings = cWarnings.filter(warning => !printChokeWarnings.includes(warning));
-    printChokeEvidence[name] = printChokeWarnings;
-    const kinds = [...new Set(of.kinds)];
-    const candidateBucket = kinds.length > 1 ? 'mixed'
-        : kinds[0] === 'literalText' ? 'literalTextOnly' : 'numericOrComputedOnly';
-    postChokeCandidates[candidateBucket].push(name);
-    if (of.computedForms.includes('operator_join')) postChokeCandidates.stringComputed.push(name);
-    if (printDependsOnNumericList(creator.project)) {
-        postChokeCandidates.numericListDependency.push(name);
-        numericListDependencyEvidence[name] = [...loweringWarnings];
-    }
-    if (printDependsOnRandomControlFlow(creator.project)) {
-        postChokeCandidates.randomControlFlowDependency.push(name);
-    }
-    if (loweringWarnings.length) {
-        postChokeCandidates.incompleteLowering.push(name);
-        incompleteLoweringEvidence[name] = [...loweringWarnings];
-        for (const warning of loweringWarnings) emitterWarnings.push(`${name}: ${warning}`.slice(0, 240));
-    }
+    if (creator._cUses && creator._cUses.printNumber) terminal.emitted.push(name);
+    else terminal.commentOnly.push(name);
 }
 
 for (const group of [source.programBuckets, opcode.programBuckets, currentOutput]) {
@@ -285,22 +261,12 @@ for (const group of [source.programBuckets, opcode.programBuckets, currentOutput
 }
 for (const names of Object.values(remainingChokeOverlap)) names.sort();
 for (const names of Object.values(chokeCombinations)) names.sort();
-for (const names of Object.values(postChokeCandidates)) names.sort();
 const countMap = object => Object.fromEntries(Object.entries(object).map(([key, value]) => [key, value.length]));
 const terminalCount = Object.values(terminal).reduce((sum, names) => sum + names.length, 0);
 const currentOutputCount = Object.values(currentOutput).reduce((sum, names) => sum + names.length, 0);
 const sourceOutputPrograms = programs - source.programBuckets.none.length;
-const boundedRecommendation = {
-    numericSigned16: postChokeCandidates.numericOrComputedOnly
-        .filter(name => !postChokeCandidates.stringComputed.includes(name) &&
-            !postChokeCandidates.incompleteLowering.includes(name)),
-    refuseLiteralText: [...postChokeCandidates.literalTextOnly],
-    refuseStringComputed: [...postChokeCandidates.stringComputed],
-    refuseNumericListDependency: [...postChokeCandidates.numericListDependency],
-    refuseRandomControlFlowDependency: [...postChokeCandidates.randomControlFlowDependency]
-};
 const report = {
-    schema: 'n2d-i8086-print-reach-v3', programs,
+    schema: 'n2d-i8086-print-reach-v4', programs,
     source: {...source, programCounts: countMap(source.programBuckets)},
     opcode: {...opcode, programCounts: countMap(opcode.programBuckets)},
     currentOutput: {...currentOutput, counts: countMap(currentOutput)},
@@ -319,12 +285,8 @@ const report = {
             deviceOccurrences: row.deviceOccurrences,
             devicePrograms: [...row.devicePrograms].sort()
         }])),
-    postChokeCandidates: {...postChokeCandidates, counts: countMap(postChokeCandidates)},
-    boundedRecommendation,
     numericListDependencyEvidence,
-    incompleteLoweringEvidence,
-    printChokeEvidence,
-    emitterWarnings: emitterWarnings.sort(),
+    printRefusalEvidence,
     invariants: {
         terminalCount,
         terminalExhaustive: terminalCount === programs,
