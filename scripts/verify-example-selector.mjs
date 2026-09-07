@@ -233,11 +233,29 @@ try {
     await page.waitForFunction(() =>
         document.querySelector('[data-testid="bw-device-select"]')?.value === 'i8086',
     null, {timeout: 15000});
+    // The catalog lives BEHIND the ⋯ actions menu (same as the arduino leg above,
+    // which opens it before touching the toggle). Without this the toggle renders
+    // but is not actionable — the menu that contains it is closed.
+    await openCodeActions(page);
     // With a chip selected the "Load example…" catalog toggle appears; the search
     // box exists only while the panel is open, so it is the honest open-signal.
+    const i8086Toggle = page.locator('[data-testid="bw-catalog-toggle"]');
     const i8086Search = page.locator('[data-testid="bw-catalog-search"]');
     if (await i8086Search.count() === 0) {
-        await page.locator('[data-testid="bw-catalog-toggle"]').click();
+        await i8086Toggle.waitFor({timeout: 10000});
+        try {
+            await i8086Toggle.click({timeout: 10000});
+        } catch (clickErr) {
+            // Name the interceptor rather than force through it: ask the page what
+            // element actually sits at the toggle's centre. If it is the toggle or
+            // a descendant, the problem is stability, not an overlay.
+            const atPoint = await i8086Toggle.evaluate(el => {
+                const r = el.getBoundingClientRect();
+                const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+                return hit ? `${hit.tagName}.${hit.className} testid=${hit.getAttribute('data-testid')}` : 'null';
+            }).catch(() => 'evaluate failed');
+            throw new Error(`catalog toggle not actionable; elementFromPoint=${atPoint}; ${clickErr.message}`);
+        }
         await i8086Search.waitFor({timeout: 10000});
     }
     const i8086Item = page.locator('[data-testid="bw-catalog-item"][title="i8086-blink"]');
