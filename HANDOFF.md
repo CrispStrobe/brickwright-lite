@@ -32,6 +32,9 @@ evidence.
 - Real-silicon flashing is outside simulator tasks unless separately and
   explicitly authorized.
 - Unsupported behavior must be reported, not silently approximated.
+- The Renode state socket is host-only and loopback-only. UI policy explicitly
+  creates and connects it; browser modules never import `node:net` and no
+  import may auto-connect.
 
 ## Required handoff payload
 
