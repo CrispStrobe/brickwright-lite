@@ -126,13 +126,47 @@ const scanFiles = () => execSync('git ls-files', {cwd: ROOT, maxBuffer: 1 << 28}
     .filter((f) => path.extname(f) !== '.md')
     .filter((f) => !VENDORED.some((r) => r.test(f)));
 
-/** [{file, kind, text}] over the scanned tree, comments stripped. */
-const scanHits = (files) => {
+/**
+ * Extensions whose contents this walk is MEANT to scan. Used only to decide
+ * which skips are worth reporting -- the walk itself still reads everything,
+ * because a fetch site could appear in a file type nobody anticipated.
+ */
+const TEXT_EXT = new Set(['.js', '.mjs', '.cjs', '.jsx', '.ts', '.tsx', '.json',
+    '.yml', '.yaml', '.sh', '.css', '.html', '.svg']);
+
+/**
+ * [{file, kind, text}] over the scanned tree, comments stripped.
+ *
+ * REPORTS WHAT IT SKIPPED, because a scanner's silence is not evidence. Two
+ * guards below drop files: one for anything unreadable, one for anything
+ * holding a NUL. Until 2026-09-07 both were bare `continue`s, and that is not
+ * a small thing: test/pin-move-chain.test.mjs has the same NUL guard and it
+ * silently skipped test/fetch-pinning.test.mjs -- THIS FILE -- for as long as
+ * this file held a NUL, hiding a stale pin sha inside a file that gate exists
+ * to scan. It reported clean the whole time. A file the tooling calls binary
+ * is a file your gates do not read, and nothing in the run says so.
+ *
+ * SURPRISING SKIPS ONLY. The naive remedy -- name every skipped file -- prints
+ * about ninety PNG and .bin names here on every run, because `scanFiles`
+ * filters .md and the vendored trees but not by extension. A count over the
+ * wrong set is a different question, not a smaller answer. So: name the
+ * skipped files this walk was MEANT to read, and count the rest.
+ *
+ * FOR THIS WALK THAT NAMED SET IS CURRENTLY EMPTY, and the reason is worth
+ * recording rather than discovering later: the three NUL-bearing source files
+ * in this repo all live under `overlay/scratch-gui/src/lib/bw-board/` and
+ * `.../bw-circuit-ui/`, which VENDORED already excludes before the NUL guard
+ * is reached. So this walk skips 93 binaries and no source. If a NUL ever
+ * appears in a file this walk was meant to read, the line names it.
+ */
+const scanHits = (files, onSkip) => {
     const hits = [];
+    const skipped = {unreadable: [], nul: []};
     for (const f of files) {
         let text;
-        try { text = readFileSync(path.join(ROOT, f), 'utf8'); } catch { continue; }
-        if (text.indexOf('\0') !== -1) continue;
+        try { text = readFileSync(path.join(ROOT, f), 'utf8'); }
+        catch { skipped.unreadable.push(f); continue; }
+        if (text.indexOf('\0') !== -1) { skipped.nul.push(f); continue; }
         const body = stripComments(text, f);
         for (const [kind, re, only] of DETECTORS) {
             if (only && !only.test(f)) continue;
@@ -141,7 +175,23 @@ const scanHits = (files) => {
             }
         }
     }
+    if (onSkip) onSkip(skipped);
     return hits;
+};
+
+/** One line per skip class, naming only the files the walk meant to read. */
+const describeSkips = ({unreadable, nul}) => {
+    const lines = [];
+    for (const [what, list] of [['unreadable', unreadable], ['holding a NUL', nul]]) {
+        if (!list.length) continue;
+        const surprising = list.filter((f) => TEXT_EXT.has(path.extname(f)));
+        const rest = list.length - surprising.length;
+        lines.push(surprising.length
+            ? `skipped ${surprising.length} source file(s) ${what}: ${surprising.join(', ')}`
+              + (rest ? ` (and ${rest} non-source file(s))` : '')
+            : `skipped ${rest} non-source file(s) ${what}`);
+    }
+    return lines;
 };
 
 // ─── the declared census ──────────────────────────────────────────────────────
@@ -402,7 +452,29 @@ const show = (h) => `${h.file}  [${h.kind}]  ${h.text}`;
 
 describe('fetch pinning: every fetch that decides what ships names an immutable object', () => {
     const files = scanFiles();
-    const hits = scanHits(files);
+    let skipNotes = [];
+    const hits = scanHits(files, (s) => { skipNotes = describeSkips(s); });
+
+    test('the walk says what it did not scan', (t) => {
+        // A scanner that reports only what it FOUND is a scanner whose silence
+        // you cannot read. These notes make the skipped set visible on every
+        // run, so nobody has to discover it the way it was discovered here --
+        // by a NUL byte hiding a stale pin from pin-move-chain's identical
+        // guard, in this very file, while both gates reported clean.
+        //
+        // NOT AN ASSERTION ON THE COUNT. Binaries are legitimately skipped and
+        // their number changes with every icon anyone adds; pinning it would be
+        // a gate that fails for being right. What is asserted is that the walk
+        // ANSWERS the question at all.
+        for (const line of skipNotes) t.diagnostic(line);
+        assert.ok(Array.isArray(skipNotes),
+            'the walk no longer reports its skips -- the instrument went quiet');
+        // `/source file/` also matches "non-source file(s)" -- a predicate that
+        // matched more than it meant, in the commit adding a report about
+        // predicates that skip more than they say. Anchored on the count now.
+        const sourceSkips = skipNotes.filter((l) => /skipped \d+ source file/.test(l));
+        for (const l of sourceSkips) t.diagnostic(`OPEN DEFECT: ${l}`);
+    });
 
     test('the detectors still fire (instrument before subject)', () => {
         // If a regex is edited into uselessness, every assertion below reports a
