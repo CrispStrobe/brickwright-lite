@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// N2d measurement: the exact gallery reach of an i8086 C text-output boundary.
+// N2d measurement: the exact gallery reach of an i8086 C numeric-output boundary.
 //
 // This deliberately measures three different facts. A source line is not proof
 // that parsing made a block; a block is not proof that DEVICE C emitted output;
@@ -13,6 +13,10 @@
 // gate on GitHub CI, not this tiny development VPS.
 import {readdir, readFile} from 'node:fs/promises';
 import {join} from 'node:path';
+import {
+    printDependsOnNumericList,
+    printDependsOnRandomControlFlow
+} from './lib/i8086-print-reach.mjs';
 
 const argv = process.argv.slice(2);
 const dirIdx = argv.indexOf('--examples');
@@ -111,52 +115,6 @@ const opcodeFacts = project => {
     return {operations, values, kinds, computedForms};
 };
 
-// Follow the value that reaches each print through scalar writes. A list item
-// is not an honest numeric candidate until device C implements the list read
-// and the writes feeding it; today those paths are comment/zero fallbacks.
-const printDependsOnNumericList = project => {
-    const targets = project.targets || [];
-    const walkInput = (input, blocks, seen) => {
-        const inner = Array.isArray(input) ? input[1] : null;
-        if (Array.isArray(inner)) {
-            if (inner[0] === 13) return true;
-            if (inner[0] !== 12) return false;
-            const name = String(inner[1]);
-            const id = inner[2] == null ? null : String(inner[2]);
-            const token = `variable:${id || name}`;
-            if (seen.has(token)) return false;
-            const nextSeen = new Set(seen).add(token);
-            for (const target of targets) {
-                for (const block of Object.values(target.blocks || {})) {
-                    if (block.opcode !== 'data_setvariableto' && block.opcode !== 'data_changevariableby') continue;
-                    const field = block.fields && block.fields.VARIABLE;
-                    const fieldName = field && String(field[0]);
-                    const fieldId = field && field[1] != null ? String(field[1]) : null;
-                    const matches = id && fieldId ? id === fieldId : name === fieldName;
-                    if (matches && walkInput(block.inputs && block.inputs.VALUE, target.blocks || {}, nextSeen)) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-        if (typeof inner !== 'string' || !blocks[inner] || seen.has(inner)) return false;
-        const block = blocks[inner];
-        if (block.opcode === 'data_itemoflist') return true;
-        const nextSeen = new Set(seen).add(inner);
-        return Object.values(block.inputs || {}).some(child => walkInput(child, blocks, nextSeen));
-    };
-    for (const target of targets) {
-        const blocks = target.blocks || {};
-        for (const block of Object.values(blocks)) {
-            if (block.opcode === 'stc12_print' && walkInput(block.inputs && block.inputs.VALUE, blocks, new Set())) {
-                return true;
-            }
-        }
-    }
-    return false;
-};
-
 const addCounts = (into, from) => {
     for (const key of Object.keys(into)) into[key] += from[key];
 };
@@ -169,9 +127,12 @@ const remainingChokeOverlap = {};
 const chokeCombinations = {};
 const computedFormRows = {};
 const postChokeCandidates = {
-    literalTextOnly: [], numericOrComputedOnly: [], mixed: [], stringComputed: [], numericListDependency: []
+    literalTextOnly: [], numericOrComputedOnly: [], mixed: [], stringComputed: [],
+    numericListDependency: [], randomControlFlowDependency: [], incompleteLowering: []
 };
 const numericListDependencyEvidence = {};
+const incompleteLoweringEvidence = {};
+const printChokeEvidence = {};
 const emitterWarnings = [];
 const source = {operations: emptyOps(), values: emptyValues(), programBuckets: emptyKinds()};
 const opcode = {operations: emptyOps(), values: emptyValues(), programBuckets: emptyKinds()};
@@ -210,7 +171,6 @@ for (const name of entries) {
     let cWarnings = [];
     try {
         creator.parse(retargeted);
-        const parseWarningCount = (creator.warnings || []).length;
         of = opcodeFacts(creator.project);
         addCounts(opcode.operations, of.operations);
         addCounts(opcode.values, of.values);
@@ -227,11 +187,9 @@ for (const name of entries) {
         code = typeof generated === 'string' ? generated : generated.code;
         cWarnings = (creator._cWarnings || []).map(warning => typeof warning === 'string' ? warning
             : String((warning && (warning.message || warning.text)) || JSON.stringify(warning)));
-        const warningText = warning => typeof warning === 'string' ? warning
-            : String((warning && (warning.message || warning.text)) || JSON.stringify(warning));
-        for (const warning of (creator.warnings || []).slice(parseWarningCount)) {
-            emitterWarnings.push(`${name}: ${warningText(warning)}`.slice(0, 240));
-        }
+        // Parser warnings and device-C lowering warnings are intentionally
+        // different channels. The latter are judged below only for programs
+        // that would become newly reachable after removing the print choke.
     } catch (error) {
         terminal.parseFailed.push(`${name}: ${String(error.message || error).split('\n')[0]}`.slice(0, 180));
         if (sf.operations.total) currentOutput.notReached.push(name);
@@ -295,6 +253,14 @@ for (const name of entries) {
         continue;
     }
     terminal.prospectiveEmit.push(name);
+    // The measurement asks what happens if and only if the current print
+    // choke is removed. Preserve that expected warning separately; every
+    // other device-C warning is an incomplete lowering and disqualifies the
+    // prospective program from the honest gain.
+    const printChokeWarnings = cWarnings.filter(warning =>
+        /^the i8086 C back end emits 8255 pin I\/O only for now — print is not emitted for this board;/.test(warning));
+    const loweringWarnings = cWarnings.filter(warning => !printChokeWarnings.includes(warning));
+    printChokeEvidence[name] = printChokeWarnings;
     const kinds = [...new Set(of.kinds)];
     const candidateBucket = kinds.length > 1 ? 'mixed'
         : kinds[0] === 'literalText' ? 'literalTextOnly' : 'numericOrComputedOnly';
@@ -302,8 +268,15 @@ for (const name of entries) {
     if (of.computedForms.includes('operator_join')) postChokeCandidates.stringComputed.push(name);
     if (printDependsOnNumericList(creator.project)) {
         postChokeCandidates.numericListDependency.push(name);
-        numericListDependencyEvidence[name] = cWarnings.filter(warning =>
-            /(?:delete all|add .* to|replace item|item .* of) readings/.test(warning));
+        numericListDependencyEvidence[name] = [...loweringWarnings];
+    }
+    if (printDependsOnRandomControlFlow(creator.project)) {
+        postChokeCandidates.randomControlFlowDependency.push(name);
+    }
+    if (loweringWarnings.length) {
+        postChokeCandidates.incompleteLowering.push(name);
+        incompleteLoweringEvidence[name] = [...loweringWarnings];
+        for (const warning of loweringWarnings) emitterWarnings.push(`${name}: ${warning}`.slice(0, 240));
     }
 }
 
@@ -318,15 +291,16 @@ const terminalCount = Object.values(terminal).reduce((sum, names) => sum + names
 const currentOutputCount = Object.values(currentOutput).reduce((sum, names) => sum + names.length, 0);
 const sourceOutputPrograms = programs - source.programBuckets.none.length;
 const boundedRecommendation = {
-    literalText: [...postChokeCandidates.literalTextOnly],
     numericSigned16: postChokeCandidates.numericOrComputedOnly
         .filter(name => !postChokeCandidates.stringComputed.includes(name) &&
-            !postChokeCandidates.numericListDependency.includes(name)),
+            !postChokeCandidates.incompleteLowering.includes(name)),
+    refuseLiteralText: [...postChokeCandidates.literalTextOnly],
     refuseStringComputed: [...postChokeCandidates.stringComputed],
-    refuseNumericListDependency: [...postChokeCandidates.numericListDependency]
+    refuseNumericListDependency: [...postChokeCandidates.numericListDependency],
+    refuseRandomControlFlowDependency: [...postChokeCandidates.randomControlFlowDependency]
 };
 const report = {
-    schema: 'n2d-i8086-print-reach-v2', programs,
+    schema: 'n2d-i8086-print-reach-v3', programs,
     source: {...source, programCounts: countMap(source.programBuckets)},
     opcode: {...opcode, programCounts: countMap(opcode.programBuckets)},
     currentOutput: {...currentOutput, counts: countMap(currentOutput)},
@@ -348,6 +322,8 @@ const report = {
     postChokeCandidates: {...postChokeCandidates, counts: countMap(postChokeCandidates)},
     boundedRecommendation,
     numericListDependencyEvidence,
+    incompleteLoweringEvidence,
+    printChokeEvidence,
     emitterWarnings: emitterWarnings.sort(),
     invariants: {
         terminalCount,
