@@ -70,7 +70,7 @@ const build = file => {
     try {
         board = new BoardImpl(5);
         board.setNetlist(parts, nets);
-    } catch (e) { return {error: e.message.slice(0, 60)}; }
+    } catch (e) { return {error: e.message.replace(/\s+/g, ' ').slice(0, 120)}; }
 
     const mcu = circuit.parts.find(p => !PASSIVE.has(p.kind));
     const mcuId = mcu && mcu.id;
@@ -118,22 +118,47 @@ const wiringOf = (board, pin, ledId) => {
 const rows = [];
 const unmeasured = [];
 const inconclusive = [];
+// EVERY SKIP IS COUNTED. A reporter that walks a corpus and quietly drops what it
+// cannot handle reports on a set nobody can name, and a shrinking denominator is
+// the only evidence it leaves — which is exactly how the undecidable bucket below
+// was found. So each reason to skip increments a tally that is printed.
+const skipped = new Map();
+const skip = reason => { skipped.set(reason, (skipped.get(reason) || 0) + 1); };
 for (const id of readdirSync(EX).sort()) {
     const dir = path.join(EX, id);
     const prog = path.join(dir, 'program.bw');
-    if (!existsSync(prog)) continue;
+    if (!existsSync(prog)) { skip('example ships no program.bw'); continue; }
     const src = readFileSync(prog, 'utf8');
     const authoredDevice = ((src.match(/^DEVICE\s+([\w-]+)/im) || [])[1] || '')
         .toLowerCase().replace(/_/g, '-');
-    if (!/^\s*PIN\s+\w+\s*=\s*\S+\s+OUTPUT/im.test(src)) continue;
-    for (const f of readdirSync(dir)) {
-        const m = /^circuit\.([\w.-]+)\.json$/.exec(f);
-        if (!m) continue;
+    if (!/^\s*PIN\s+\w+\s*=\s*\S+\s+OUTPUT/im.test(src)) {
+        skip('program declares no OUTPUT pin'); continue;
+    }
+    // Filtered rather than skipped inside the loop: a directory holds intros,
+    // EXPECTED.md and flat variants, and "not a per-device circuit" is not a
+    // finding about the corpus. Selecting the set first says so in the code.
+    const benches = readdirSync(dir)
+        .map(f => ({file: f, m: /^circuit\.([\w.-]+)\.json$/.exec(f)}))
+        .filter(x => x.m);
+    for (const {file: f, m} of benches) {
         const device = m[1];
         const decls = declsFor(src, device, authoredDevice);
-        if (!decls || !decls.length) continue;
+        if (!decls || !decls.length) {
+            // An honest retarget refusal: the app cannot offer this device either.
+            skip('retarget refused, so this bench is not reachable in the app'); continue;
+        }
         const built = build(path.join(dir, f));
-        if (!built || built.error || !built.leds || !built.leds.length) continue;
+        if (!built || built.error) {
+            // One line, not the engine's multi-line complaint: the tally is a
+            // census of REASONS and a wrapped message splits one reason into many.
+            // These are a limit of THIS harness, not a finding about the corpus —
+            // it rebuilds a netlist from the file, and a seated board part whose
+            // terminals come from a sidecar this script does not load is rejected.
+            const why = String((built && built.error) || 'unreadable').replace(/\s+/g, ' ').trim();
+            skip(`bench would not build in this harness: ${/unknown te/.test(why) ? 'a part has terminals this script did not register' : why.slice(0, 40)}`);
+            continue;
+        }
+        if (!built.leds || !built.leds.length) { skip('bench carries no LED at all'); continue; }
         for (const decl of decls) {
             // MATCHED BY NET, NOT BY NAME. Matching `LED_<declared name>` assumed a
             // naming convention the corpus does not keep: 312 led parts sat on
@@ -169,6 +194,10 @@ for (const id of readdirSync(EX).sort()) {
 }
 
 const bad = rows.filter(r => !r.agrees);
+const skipTotal = [...skipped.values()].reduce((a, b) => a + b, 0);
+console.log(`(example, device) pairs skipped before any pin was read: ${skipTotal}`);
+for (const [k, v] of [...skipped].sort((a, b) => b[1] - a[1])) console.log(`   ${String(v).padStart(5)}  ${k}`);
+console.log('');
 console.log(`declared output pins reached: ${rows.length + unmeasured.length + inconclusive.length}`);
 console.log(`   with a discrete LED this census can drive: ${rows.length}`);
 console.log(`   no discrete LED on the pin (7-seg, banks, matrices, shift outputs): ${unmeasured.length}`);
