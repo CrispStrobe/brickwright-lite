@@ -6,7 +6,7 @@ import {execFile} from 'node:child_process';
 import {mkdtemp, readFile, rm, symlink, writeFile} from 'node:fs/promises';
 import {createRequire} from 'node:module';
 import {tmpdir} from 'node:os';
-import {basename, join} from 'node:path';
+import {basename, isAbsolute, join, resolve} from 'node:path';
 import {promisify} from 'node:util';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 
@@ -128,9 +128,16 @@ test('commented-zero mutation cannot put either timer program back into honest r
         const mutantFile = join(temp, 'sb3-creator.mjs');
         const source = await readFile(sourceFile, 'utf8');
         const anchor = 'if (!this._cLoweringRefused.includes(shown)) this._cLoweringRefused.push(shown);';
-        const guiPackage = join(root, 'packages/scratch-gui/package.json');
+        const guiRoot = process.env.BW_INTEGRATED_ROOT ?
+            resolve(process.env.BW_INTEGRATED_ROOT) : join(root, 'packages/scratch-gui');
+        const guiPackage = join(guiRoot, 'package.json');
         const guiRequire = createRequire(pathToFileURL(guiPackage));
-        const jszip = pathToFileURL(guiRequire.resolve('jszip')).href;
+        const jszipEntry = guiRequire.resolve('jszip');
+        const jszip = pathToFileURL(jszipEntry).href;
+        assert.equal(isAbsolute(jszipEntry), true,
+            'isolated mutant JSZip entry must resolve to an absolute path');
+        assert.equal(new URL(jszip).protocol, 'file:',
+            'isolated mutant JSZip entry must be an absolute file URL');
         const jszipAnchor = "import JSZip from 'jszip';";
         const importBound = source.replace(jszipAnchor,
             `import JSZip from ${JSON.stringify(jszip)};`);
