@@ -8,11 +8,11 @@ names do not make their opcodes, firmware APIs, or protocols interchangeable.
 | Layer | Input/output | Owner |
 |---|---|---|
 | Scratch extension | blocks and transport calls | this repository's owned overlays |
-| Code conversion | extension opcodes ↔ Brickwright dialect | pinned \`sb3-creator\` producer |
+| Code conversion | extension opcodes ↔ Brickwright dialect | pinned `sb3-creator` producer |
 | On-hub generation | dialect/project → hub-specific program | pinned extension transpilers |
 | Transport | program commands ↔ real or virtual hub | BLE, Classic, or bridge adapter |
 | Firmware execution | unchanged image ↔ modeled hardware | Renode integration |
-| Observable brick | motors, sensors, display, power, IMU | neutral \`HubState\` contract |
+| Observable brick | motors, sensors, display, power, IMU | neutral `HubState` contract |
 
 A result at one layer proves nothing about another unless an integration gate
 crosses both boundaries.
@@ -30,7 +30,7 @@ distributed application.
 
 ## Block/code expansion contract
 
-For each extension ID, generate a census directly from \`getInfo()\` containing:
+For each extension ID, generate a census directly from `getInfo()` containing:
 
 - opcode and block kind;
 - arguments, defaults, and menu domains;
@@ -51,7 +51,7 @@ connected or accepted a command.
 
 Real and virtual transports implement the same lifecycle:
 
-\`idle → permission → discovery → connecting → connected → disconnecting → idle\`
+`idle → permission → discovery → connecting → connected → disconnecting → idle`
 
 Cancellation, denial, incompatible firmware, timeout, remote disconnect, and
 adapter loss are named terminal events. Reconnect creates a new session and

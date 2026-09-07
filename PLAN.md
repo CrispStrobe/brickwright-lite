@@ -6,10 +6,11 @@ only when prior evidence matters.
 
 ## Product boundary
 
-Brickwright is a permissively licensed visual computing workbench for circuits,
-firmware, debugging, guided lessons, and LEGO hubs. The browser and native app
-must share project formats and observable device state. An unavailable feature
-must be refused explicitly; silent fallback is a defect.
+Brickwright is a visual computing workbench for circuits, firmware, debugging,
+guided lessons, and LEGO hubs. The browser and native app must share project
+formats and observable device state. Licensing is governed by
+[LICENSE](LICENSE) and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). An
+unavailable feature must be refused explicitly; silent fallback is a defect.
 
 The repository owns overlays and integration code. `packages/` is a generated,
 validated mirror of pinned upstream sources. Never repair an upstream-owned
