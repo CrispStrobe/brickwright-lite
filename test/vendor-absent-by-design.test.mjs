@@ -117,8 +117,20 @@ test('an unscoped sync writes nothing new and refuses both by name', (t) => {
         .filter((f) => statSync(join(VENDORED, f)).isFile())
         .map((f) => [f, readFileSync(join(VENDORED, f), 'utf8')]));
     // THE PIN FILE IS PART OF THE SNAPSHOT, because the run below is allowed to
-    // move the pin -- see --pin. Restored in the `finally`, byte-compared at the
-    // end: this proof must not leave a moved pin behind.
+    // move the pin -- see --pin. Restored before any assertion, byte-compared at
+    // the end: this proof must not leave a moved pin behind.
+    //
+    // THE REMAINING WINDOW, and why there is no sixth check here for it. If the
+    // PROCESS dies between the sync and the restore -- not far-fetched on a box
+    // where sessions get OOM-killed -- the pin stays moved. lego-be asked for a
+    // top-of-test guard against a previous crashed run. MEASURED instead of
+    // added (2026-09-07): with vendor-pins.json moved to the tip by hand, four
+    // gates in this same `test:fast` set already go red by name --
+    // bw-board-census ("the snapshot describes bw-board 5547d4351 but
+    // vendor-pins.json pins d8d606598 -- regenerate"), pin-move-chain,
+    // i8086-bios-provenance and circuit-preset-roms-resolve. A fifth copy here
+    // would be one more thing to keep in step with the pin, and worse messages.
+    // What the next reader needs is the pointer, which is this comment.
     const pinsBefore = readFileSync(PINS, 'utf8');
     let out = '';
     try {
