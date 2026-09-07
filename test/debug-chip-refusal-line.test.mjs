@@ -29,6 +29,7 @@ import {fileURLToPath} from 'node:url';
 import {I8086Machine, PCXT8086, BREADBOARD8086}
     from '../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js';
 import {assembleRaw} from '../overlay/scratch-gui/src/lib/bw-board/i8086-asm.js';
+import {createI8086DosBench} from '../overlay/scratch-gui/src/lib/bw-debug/i8086-dos-bench.js';
 import {chipRefusalLines, chipRefusalLine, formatAnchor, formatCount}
     from '../overlay/scratch-gui/src/lib/bw-debug/chip-refusal-lines.js';
 import {ROW_FIELDS} from '../overlay/scratch-gui/src/lib/bw-board/chip-ledger.js';
@@ -89,10 +90,14 @@ test('a program that asks the 8237 for a block copy produces exactly one line', 
         + 'harder to notice');
 });
 
-test('the ASM bench refuses through the chip it actually has', () => {
-    // THE BROWSER GATE'S PROGRAM, ASSERTED IN NODE. scripts/verify-debug-chip-refusal-line.mjs
-    // drives the ASM route, which boots BREADBOARD8086 — `ppi1` and `uart1`, and
-    // NO DMA CONTROLLER. The 8237 the test above uses lives on PCXT8086, the
+test('the breadboard bench refuses through its 8255, based at port 0', () => {
+    // BREADBOARD8086 IS NOT THE ASM BENCH, and this test's original name said it
+    // was — the mistake that cost two CI runs, left here corrected rather than
+    // quietly renamed. This config is what a ROM loaded through the Machine
+    // Loader's file input gets; the ASM tab gets the DOS bench, pinned above.
+    // Its 8255 is based at 0, so the control register is port 03h — the same
+    // number the DOS bench reports for a chip at 60h, which is the offset-versus-
+    // port confusion raised upstream. The 8237 the test above uses lives on PCXT8086, the
     // config the BIOS and Machine Loader routes build.
     //
     // The first version of that browser gate wrote the memory-to-memory command
@@ -120,6 +125,46 @@ test('the ASM bench refuses through the chip it actually has', () => {
     assert.deepEqual(chipRefusalLines(ran(' mov al, 00h\n mov bl, al', BREADBOARD8086).chipRefusals()), [],
         "the browser gate's absent case produces a line on this bench, so its first assertion "
         + 'would be proving nothing');
+});
+
+test('the DOS bench the ASM tab boots has chips, and its 8255 is at 60h', async () => {
+    // THE ASSERTION THAT WOULD HAVE SAVED TWO CI RUNS. The browser gate drives
+    // the Code tab, which always sends profile 'dos', so the bench it gets is
+    // this one. I twice wrote a program aimed at a port this bench does not
+    // decode — the 8237 at 08h, then the 8255 control register at 03h — read
+    // the resulting silence as "this bench has no chips", and found a header
+    // comment saying exactly that. The comment describes the bench's ORIGINAL
+    // shape; the caller merges declared chips now and the base config carries
+    // three. A source comment agreeing with a mis-aimed probe is the shape this
+    // repo catalogues, and I reached it by reading where probing was quicker.
+    //
+    // So the bench's chip set and its 8255's BASE are pinned here, in node, at
+    // two seconds, rather than discovered from a forty-second browser timeout.
+    const bench = await createI8086DosBench({
+        bytes: assembleRaw(' mov al, 0A0h\n out 63h, al\nhere:\n jmp here\n', 0x100),
+        format: 'com'});
+    const m = bench.machine || bench.target?.machine;
+    assert.ok(m, 'the DOS bench exposes no machine, so nothing below can be read');
+    assert.deepEqual(Object.keys(m.chips).sort(), ['pit1', 'ppi1', 'spk'],
+        `the DOS bench's chips changed to ${Object.keys(m.chips).join(', ')} — the browser gate's `
+        + 'program targets ppi1 and must be retargeted with them');
+
+    let steps = 0;
+    while (steps < 50_000 && !m.cpu.halted && !m.chipRefusals().length) { m.step(); steps++; }
+    const lines = chipRefusalLines(m.chipRefusals());
+    assert.equal(lines.length, 1, `expected one line, got ${JSON.stringify(lines)}`);
+    assert.equal(lines[0].part, 'ppi1');
+    assert.match(lines[0].text, /waits on a bit that never moves/);
+    // 03h AND NOT 63h, and the difference is the finding. The 8255 records the
+    // control register's OFFSET WITHIN THE CHIP (3), not the ISA port it was
+    // reached through (63h here, 03h only on a breadboard based at zero). The
+    // row calls that space 'port'. So the same chip on two boards reports the
+    // same number for two different things — raised with lego-be as an upstream
+    // item. Pinned to what the row ACTUALLY says, so this gate tracks the
+    // shipped contract rather than what the wording suggests.
+    assert.match(lines[0].text, /port 03h/,
+        'the row reports the register OFFSET, not the bus port. If this ever reads 63h the '
+        + 'upstream fix landed and the browser gate\'s assertion moves with it.');
 });
 
 test('a machine that has refused nothing produces no line at all', () => {

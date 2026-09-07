@@ -1,43 +1,41 @@
 #!/usr/bin/env node
 /**
- * CI-only production-browser proof: the panel's refusal state follows the handle.
+ * CI-only production-browser proof: a program's chip refusal reaches the panel.
  *
- * THIS GATE IS A REDUCTION, AND SAYING SO IS THE POINT. It proves the RENDER —
- * that the panel reads debugChipRefusals() and draws what it returns — and it
- * does NOT prove the user journey, because there is no user journey to prove.
- * Measured 2026-09-06: no route a user can reach today produces a durable chip
- * refusal. The ASM tab always returns profile 'dos' (assemble-route.js:347 and
- * :402 — a .COM loaded as a ROM at F0000 executes nothing), so it boots the DOS
- * bench, which has no chips and no collector at all. The no-media route boots
- * the XT BIOS on PCXT8086, which does have chips, and its only refusal is
- * pic1's — present for FOUR STEPS out of 1,579,840 while the 8259 init sequence
- * is incomplete, then correctly cleared. Four steps inside a 1.58 M-step boot is
- * not observable from a browser; a gate that tried would be a race wearing a
- * check. And the narrowness is not the real reason: refusal ledgers come in two
- * kinds wearing one shape (lego-be, measured 2026-09-06). Retracted ones return
- * to null when the condition passes — the 8259's, 8251's and 8255's. Permanent
- * ones are only added to — the 8237's, the OPL's, the SB DSP's, the uPD765's.
- * POST only ever triggers the retracting kind, so the BIOS route has nothing to
- * show a poll no matter how patiently it waits.
+ * The 8255 accepts a mode-1 control word and runs it as mode 0. From the
+ * program's side that is indistinguishable from a port that implemented the
+ * handshake, so a driver waiting on the strobe acknowledgement waits on a status
+ * bit that never moves. This drives that from the Code tab, through the real
+ * runner, and reads the line off the panel.
  *
- * So chipRefusals() has consumers and no reachable producer in the UI yet. The
- * ROM-format boot-media route (BREADBOARD8086, ppi1 at port 0) would give one,
- * and the 8255 mode-1 program in test/debug-chip-refusal-line.test.mjs is the
- * program for it — it needs a named control in the Machine Loader first, which
- * is the debugger lane's question. Recorded as a plan item under lane P.
+ * THIS FILE PREVIOUSLY CLAIMED THE OPPOSITE, and the retraction belongs here
+ * rather than in a commit nobody re-reads. It said no route a user can reach
+ * produces a durable refusal, because the ASM tab boots "a chipless DOS bench".
+ * That was wrong, and it was wrong because of my program, not the bench.
  *
- * WHAT IS PROVED HERE, then. The panel exposes data-debug-chip-refusal-state on
- * its root, which is 'none' when the attached machine has no collector, 'empty'
- * when it has one that found nothing, and the row count otherwise. On the ASM
- * bench that value must be 'none' and no block may render. That is a real
- * assertion about real wiring: it fails if the panel stops reading the handle,
- * if the handle stops distinguishing the two, or if the block renders when the
- * model is empty. It does not, and does not claim to, prove a row reaching the
- * screen.
+ * The DOS bench carries ppi1, pit1 and spk, with the 8255 based at 60h — so its
+ * control register is port 63h. My first gate wrote the 8237 command to port 08h
+ * and my second wrote the 8255 mode word to port 03h, which is the control
+ * register of an 8255 based at ZERO: BREADBOARD8086's layout, the one the unit
+ * test uses. Both writes decoded to nothing on the bench that was running. I read
+ * "no rows" as "no chips", and the bench's own header comment — "a different
+ * machine, no chips, INT 21h behind a trap page" — agreed with me. It describes
+ * the bench's original shape; the caller merges declared chips now and the base
+ * config carries three.
  *
- * THE POSITIVE PATH IS PROVED IN test/debug-chip-refusal-line.test.mjs — eight
- * assertions, six mutations red, against the vendored machine. That file is the
- * proof of the feature; this one is the proof of the wire.
+ * A source comment confirming a wrong measurement is the shape this repo has
+ * spent the week cataloguing. I reached it by reading instead of probing, in the
+ * file where a probe was two minutes' work.
+ *
+ * WHAT REMAINS TRUE from that investigation: the no-media route boots the XT
+ * BIOS whose only refusal is pic1's, present for four steps out of 1,579,840
+ * while the 8259 init sequence is incomplete and then correctly cleared. That is
+ * measured and unaffected. What was wrong was concluding from it that no route
+ * works.
+ *
+ * THE DRIVE MIRRORS verify-i8086-browser.mjs — select i8086, the ASM tab, type,
+ * Assemble — rather than inventing a path. The absent case runs FIRST so the
+ * block's appearance is evidence about the program rather than about the page.
  */
 import {createServer} from 'node:http';
 import {existsSync} from 'node:fs';
@@ -152,35 +150,74 @@ try {
         await page.getByRole('tab', {name: /Circuit/}).click();
         await page.locator('[data-debug-panel]:visible').first().waitFor({timeout: 40000});
     };
+    const panelState = () => page.locator('[data-debug-panel]').first()
+        .getAttribute('data-debug-chip-refusal-state');
     const refusalLines = () => page.evaluate(() =>
         [...document.querySelectorAll('[data-debug-chip-refusal]')].map(n => n.textContent.trim()));
 
-    // ---- the ASM bench: a collector that is not there ----------------------
-    // profile 'dos' on both assemble-route paths, so this is the DOS bench: no
-    // chips, no collector. 'none' is the honest report and is DIFFERENT from
-    // 'empty' — one says this machine cannot report refusals, the other says it
-    // has nothing to report. They look identical on screen, which is why the
-    // panel states which.
-    await assemble(' mov al, 0A0h\n out 03h, al\nloop0:\n jmp loop0\n');
-    const state = await page.locator('[data-debug-panel]').first()
-        .getAttribute('data-debug-chip-refusal-state');
-    check('the panel states the refusal state of the attached bench', state !== null,
-        'data-debug-chip-refusal-state is absent, so the panel is not reading the handle at all');
-    check('the ASM bench reports no collector rather than an empty one', state === 'none',
-        `state was ${JSON.stringify(state)} — if this is 'empty' the DOS bench has gained a `
-        + "collector and this gate can be promoted to drive a real refusal; if it is a number, "
-        + 'a refusal became reachable and the reduction in this header is out of date');
-    const blocks = await page.locator('[data-debug-chip-refusals]').count();
-    check('no block renders when the model has nothing', blocks === 0, `found ${blocks}`);
+    // ---- the absent case, first ------------------------------------------
+    // A program that asks for nothing the model declines. If a block rendered
+    // here, every check below would be worthless.
+    await assemble(' mov al, 00h\n mov bl, al\nhere:\n jmp here\n');
+    const cleanState = await panelState();
+    check('a program that refuses nothing leaves the collector empty',
+        cleanState === 'empty', `state was ${JSON.stringify(cleanState)}`);
+    const cleanBlocks = await page.locator('[data-debug-chip-refusals]').count();
+    check('and no block renders', cleanBlocks === 0, `found ${cleanBlocks}`);
+    await snap('clean-program-no-refusal');
+
+    // ---- the refusing case -------------------------------------------------
+    // The DOS bench bases its 8255 at 60h, so the control register is 63h. A0h
+    // selects mode 1 on group A: what a driver writes wanting the strobed
+    // handshake, which the 8255 takes and runs as mode 0. Port 63h and not 03h —
+    // 03h is the same register on a breadboard based at zero, and writing it
+    // here decodes to nothing, which is how the first two versions of this gate
+    // spent two CI runs proving the panel was broken when it was not.
+    await assemble(' mov al, 0A0h\n out 63h, al\nhere:\n jmp here\n');
+    try {
+        await page.locator('[data-debug-chip-refusal]').first().waitFor({timeout: 40000});
+    } catch (timeout) {
+        const trail = await page.evaluate(() => ({
+            state: document.querySelector('[data-debug-panel]')?.getAttribute('data-debug-chip-refusal-state'),
+            blocks: document.querySelectorAll('[data-debug-chip-refusals]').length,
+            lines: document.querySelectorAll('[data-debug-chip-refusal]').length,
+            phase: document.querySelector('[data-debug-panel]')?.getAttribute('data-debug-phase'),
+            status: document.querySelector('[data-testid="bw-code-status"]')?.textContent?.slice(0, 160)
+        }));
+        const verdict = trail.state === 'none'
+            ? 'THIS BENCH HAS NO COLLECTOR — the attached machine exposes no chipRefusals(), so '
+              + 'no program could produce a line here. Wrong bench, not a wrong chip.'
+            : trail.state === 'empty'
+                ? 'THE COLLECTOR IS PRESENT AND FOUND NOTHING — the program did not reach a '
+                  + 'refusal. Check the PORT against the bench: this bench bases its 8255 at 60h '
+                  + '(control 63h); BREADBOARD8086 bases it at 0 (control 03h). A write to an '
+                  + 'undecoded port refuses nothing and looks exactly like a broken panel.'
+                : 'THE MODEL RETURNED ROWS AND THE PANEL DID NOT RENDER THEM — the fault is the '
+                  + 'render, not the collector.';
+        throw new Error(`${verdict}\n  trail: ${JSON.stringify(trail)}\n  ${timeout.message}`);
+    }
     const lines = await refusalLines();
-    check('and no lines', lines.length === 0, JSON.stringify(lines));
-    await snap('asm-bench-no-collector');
+    check('the mode-1 control word produces exactly one chip-refusal line',
+        lines.length === 1, JSON.stringify(lines));
+    const [line] = lines;
+    check('the line names the part that refused', /^ppi1:/.test(line), line);
+    check('the line carries the SYMPTOM, not only the feature',
+        /waits on a bit that never moves/.test(line), line);
+    check('the line carries the address, in the space the row declares',
+        /port 03h/.test(line), line);
+    check('one occurrence prints no count', !/refusals/.test(line), line);
+    const part = await page.locator('[data-debug-chip-refusal]').first()
+        .getAttribute('data-debug-chip-refusal-part');
+    check('the line is keyed by part so a joiner can use it', part === 'ppi1', String(part));
+    const state = await panelState();
+    check('the panel state reports the row count once there is one', state === '1', String(state));
+    await snap('mode-1-refusal-line');
 
     check('no page errors or failed requests', diagnostics.length === 0,
         diagnostics.slice(0, 4).join(' | '));
     await writeFile(join(artifacts, 'result.json'),
-        JSON.stringify({url, state, blocks, lines, checks, diagnostics}, null, 2));
-    console.log(`\nChip-refusal render wiring: ${checks.filter(c => c.ok).length}/${checks.length} checks passed.`);
+        JSON.stringify({url, cleanState, lines, checks, diagnostics}, null, 2));
+    console.log(`\nChip-refusal line: ${checks.filter(c => c.ok).length}/${checks.length} checks passed.`);
 } catch (error) {
     if (page) await page.screenshot({path: join(artifacts, 'failure.png'), fullPage: true}).catch(() => {});
     await writeFile(join(artifacts, 'failure.txt'),
