@@ -30,6 +30,24 @@ jobs:
         with: { node-version: 22 }
       - name: Install source-test dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
+      # The differential spawns scripts/oracle-differential.mjs, which imports the
+      # GUI's bw-board sources (packages/scratch-gui/src/lib/bw-board/…) and their
+      # dependencies (avr8js). The first by-hand run (34136651066, 2026-09-07) was
+      # red for exactly that — ERR_MODULE_NOT_FOUND avr8js — because this job ran
+      # only the root install. The prerequisite chain is the build job's, verbatim:
+      # vendor -> integrate -> install -> overlays.
+      - name: Vendor the pinned permissive Scratch sources
+        run: npm run vendor
+      - name: Integrate the Code tab (sb3-creator)
+        run: node scripts/integrate.mjs
+      - name: Install
+        run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+      - name: Apply the scratch-vm overlay (built-in extensions)
+        run: node scripts/apply-vm-overlay.mjs
+      - name: Apply the scratch-paint overlay (extended costume designer)
+        run: node scripts/apply-paint-overlay.mjs
+      - name: Apply the scratch-render overlay (lazy render fonts)
+        run: node scripts/apply-render-overlay.mjs
       - name: Run the corpus differential against the hosted service
         # Six pairs at up to 60 s each is six minutes; twenty is the margin for
         # a slow service, well under the job ceiling so a hang is named here.
