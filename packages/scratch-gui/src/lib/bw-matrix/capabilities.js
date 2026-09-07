@@ -637,7 +637,9 @@ export const CELLS = Object.freeze({
             native: shipped('com', 'SmallerC (WASM) + i8086-asm.js', 'local', {
                 note: 'no libc; float does not link (soft-float helper); numbers are a 16-bit int '
                     + '(-32768..32767) — a literal outside it is refused by name, run-time overflow wraps '
-                    + 'at 16 bits, while the ASM route keeps 32 (N2b)'
+                    + 'at 16 bits, while the ASM route keeps 32 (N2b); a literal single-script wait uses '
+                    + 'the same INT 15h/86h DOS machine-time service as ASM, with a 65535 ms ceiling; '
+                    + 'computed waits refuse rather than overflow (N2c)'
             }),
             lowered: [via('c')]
         },

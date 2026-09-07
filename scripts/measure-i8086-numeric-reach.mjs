@@ -15,6 +15,8 @@
 //             with no i8086 C branch; the numeric model is not reached
 //   int16     the numeric model refused it: a literal outside -32768..32767,
 //             named in the refusal
+//   wait      N2c refused a computed wait, or a literal outside 0..65535 ms,
+//             before its unsigned word argument could wrap
 //   host      generateC emitted HOST C (no hardware declarations survived the
 //             retarget — string, micro:bit and SPIKE programs): a desktop
 //             program, never 8086 code; the route refuses it by name
@@ -77,7 +79,9 @@ if (doCompile) {
 }
 
 const entries = (await readdir(dir, {withFileTypes: true})).filter(d => d.isDirectory()).map(d => d.name).sort();
-const out = {examples: dir, programs: 0, retarget: [], host: [], choke: [], int16: [], long: [], emits: [], compiled: [], compileFailed: [], parseFailed: []};
+const out = {examples: dir, programs: 0, retarget: [], host: [], choke: [], int16: [],
+    waitLiteralPrograms: [], waitComputedPrograms: [], waitLiteralRefused: [], waitComputedRefused: [],
+    long: [], emits: [], compiled: [], compileFailed: [], parseFailed: []};
 for (const name of entries) {
     let src;
     try { src = await readFile(join(dir, name, 'program.bw'), 'utf8'); } catch { continue; }
@@ -89,6 +93,18 @@ for (const name of entries) {
         const retargeted = asText(r).replace(/^DEVICE .*$/m, 'DEVICE i8086');
         const c = new SB3Creator();
         c.parse(retargeted);
+        let hasLiteralWait = false;
+        let hasComputedWait = false;
+        for (const target of c.project.targets || []) {
+            for (const block of Object.values(target.blocks || {})) {
+                if (block.opcode !== 'control_wait') continue;
+                const inner = block.inputs && block.inputs.DURATION && block.inputs.DURATION[1];
+                if (Array.isArray(inner) && inner[0] !== 12 && inner[0] !== 13) hasLiteralWait = true;
+                else hasComputedWait = true;
+            }
+        }
+        if (hasLiteralWait) out.waitLiteralPrograms.push(name);
+        if (hasComputedWait) out.waitComputedPrograms.push(name);
         const g = c.generateC();
         code = typeof g === 'string' ? g : g.code;
     } catch (e) {
@@ -96,6 +112,11 @@ for (const name of entries) {
         continue;
     }
     if (/^\s*\/\* No C emitted for DEVICE/.test(code)) {
+        if (/wait helper accepts/.test(code)) {
+            if (/computes a wait duration/.test(code)) out.waitComputedRefused.push(name);
+            else out.waitLiteralRefused.push(name);
+            continue;
+        }
         const m = /This program has: ([^.]+)\./.exec(code);
         if (m) out.int16.push(`${name}: ${m[1]}`);
         else {
@@ -117,7 +138,9 @@ for (const name of entries) {
         }
     }
 }
-const stores = out.int16.length + out.emits.length;
+// "pastChoke" means the verb choke no longer owns the terminal outcome. It
+// includes later semantic refusals (int16 and N2c wait), not only emitted C.
+const stores = out.int16.length + out.waitLiteralRefused.length + out.waitComputedRefused.length + out.emits.length;
 out.emitter = sb3Url.pathname.split('/').pop();
 out.summary = {
     programs: out.programs,
@@ -125,6 +148,10 @@ out.summary = {
     pastChoke: stores,
     choke: out.choke.length,
     hostC: out.host.length,
+    waitLiteralPrograms: out.waitLiteralPrograms.length,
+    waitComputedPrograms: out.waitComputedPrograms.length,
+    waitLiteralRefused: out.waitLiteralRefused.length,
+    waitComputedRefused: out.waitComputedRefused.length,
     int16Refused: out.int16.length,
     longLeaked: out.long.length,
     emits: out.emits.length,

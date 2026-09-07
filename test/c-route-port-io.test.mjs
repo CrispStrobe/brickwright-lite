@@ -53,6 +53,8 @@ const bench = () => import(new URL('bw-debug/i8086-dos-bench.js', L).href);
 
 const OUT_PROGRAM = 'extern void bw_outb(unsigned port, unsigned val);\n'
     + 'int main(void){ bw_outb(0x63u, 0x80u); bw_outb(0x60u, 0x01u); return 0; }';
+const WAIT_PROGRAM = 'extern void bw_delay_ms(unsigned ms);\n'
+    + 'int main(void){ bw_delay_ms(50u); return 0; }';
 
 test('bw_outb is injected, and the program drives the 8255, when the body calls it', {timeout: 60000}, async () => {
     const {compileC8086} = await route();
@@ -71,8 +73,41 @@ test('bw_outb is injected, and the program drives the 8255, when the body calls 
 test('no helper is injected when the body does not call one', {timeout: 60000}, async () => {
     const {compileC8086} = await route();
     const built = await compileC8086('int main(void){ int x = 2 + 2; return x; }', {compileC: nodeCompileC});
-    assert.doesNotMatch(built.asm, /_bw_outb:|_bw_inb:/,
-        'a port-I/O helper was injected into a program that does no port I/O — the injection is not conditional');
+    assert.doesNotMatch(built.asm, /_bw_outb:|_bw_inb:|_bw_delay_ms:/,
+        'a machine helper was injected into a program that calls none — the injection is not conditional');
+});
+
+test('bw_delay_ms is conditionally injected and advances exact DOS machine time without a CPU loop',
+    {timeout: 60000}, async () => {
+        const {compileC8086} = await route();
+        const built = await compileC8086(WAIT_PROGRAM, {compileC: nodeCompileC});
+        assert.match(built.asm, /^_bw_delay_ms:$/m);
+        assert.doesNotMatch(built.asm, /extern\s+_bw_delay_ms/);
+        assert.match(built.asm, /mov ah, 86h\s+int 15h/,
+            'the helper must use the same DOS wait service as the ASM route');
+        assert.doesNotMatch(built.asm, /\bloop\b|\bjnz\b/,
+            'the helper grew a CPU-burning calibrated loop');
+
+        const {createI8086DosBench} = await bench();
+        const b = await createI8086DosBench({bytes: built.bytes, format: built.format, variant: '80186'});
+        const before = b.machine.cycles;
+        let n = 0;
+        while (n < 20_000 && !b.terminated) { b.step(); n++; }
+        assert.equal(b.terminated, true, 'the wait program did not return through DOS');
+        assert.ok(b.machine.cycles - before >= 250_000,
+            `50 ms at 5 MHz must advance at least 250000 cycles; got ${b.machine.cycles - before}`);
+        assert.ok(n < 100, `the DOS proxy should finish in tens of instructions, not burn CPU (${n} steps)`);
+    });
+
+test('a bw_delay_ms call without injection fails at assembly by symbol name', {timeout: 60000}, async () => {
+    const compiled = await nodeCompileC(WAIT_PROGRAM, {target: 'i8086'});
+    const body = compiled.asm.replace(/^\s*bits\s+16\s*$/im, '');
+    const {assemble} = await asmMod();
+    assert.throws(
+        () => assemble('bits 16\norg 100h\nsection .text\n    call _main\n    mov ah, 4Ch\n    int 21h\n' + body,
+            {variant: '80186', setcc: true}),
+        /_bw_delay_ms/,
+        'the mutation (called but not injected) must fail by the unresolved helper name');
 });
 
 test('a reference with the helper NOT injected fails at ASSEMBLY, by name', {timeout: 60000}, async () => {
