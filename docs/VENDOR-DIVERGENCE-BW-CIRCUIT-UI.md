@@ -65,3 +65,81 @@ The 8086 DIP drawings and palette registry landed anyway (`d93a13479`):
 loses nothing — upstream lists 267 parts, lite 260, and **nothing in lite is
 absent upstream**. Data files were safe to take; the three components were not,
 which is exactly the distinction the refusal is protecting.
+
+---
+
+# A SECOND DIVERGENCE, 2026-09-08
+
+Measured against `bw-circuit-ui@23b9d93` (master, after PR 11), from lite at
+`2c75b8fcc`. The September divergence above is resolved and this is a new one, so
+the two must not be read as the same incident.
+
+`node scripts/sync-bw-circuit-ui.mjs --dir <clone> --pin` refuses, naming five
+files:
+
+```
+  local components/BoardCanvas.jsx
+  local components/CircuitDesigner.jsx
+  local components/ExamplesBrowser.jsx
+  local hooks/useBoard.js
+  local interaction/transform.js
+```
+
+## THE LIST IS NOT A LIST OF PROBLEMS. Three of the five need nothing.
+
+Diffed file by file against `23b9d93` rather than trusted:
+
+| file | lite-only | upstream-only | verdict |
+|---|---|---|---|
+| `components/BoardCanvas.jsx` | 0 | 0 | **identical to upstream today** |
+| `hooks/useBoard.js` | 0 | 0 | **identical to upstream today** |
+| `interaction/transform.js` | 0 | 0 | **identical to upstream today** |
+| `components/CircuitDesigner.jsx` | 13 | 23 | two-way, and both directions legible |
+| `components/ExamplesBrowser.jsx` | 37 | 150 | two-way, large, unread |
+
+**The script compares against the LAST SYNC BASELINE, not against current
+upstream.** So a file that diverged and has since converged still appears on the
+refusal list. Three of the five had already converged. Anyone acting on that list
+without re-measuring would reconcile three files that need nothing, and would
+conclude the divergence is nearly twice its real size.
+
+That is worth stating plainly because five gates lean on this script: a refusal
+list is evidence that something *was* different at some point, not that it *is*
+different now. **Re-measure before reconciling.** It is the same species of fault
+as an instrument answering a question nobody asked — the comparison is sound, and
+its operands are not the ones the reader assumes.
+
+## `CircuitDesigner.jsx` — reduced to one direction, 2026-09-08
+
+Both directions were legible, unlike September's:
+
+- **23 upstream-only lines**: the demo-pin-script fix (`bw-circuit-ui@dce2975`,
+  merged as `23b9d93`). The designer's placeholder animation now stands down when
+  a project declares pins, instead of blinking every output pin from one shared
+  value on top of a running program.
+- **13 lite-only lines**: two `data-testid` attributes on the machine-media
+  controls and their comment, for the i8086 boot-media gate.
+
+They do not conflict. The lite-only half was upstreamed
+(`fix/machine-media-test-hooks`, `02596e5`), which leaves this file **behind
+only** — a state a plain sync resolves. Measured after that change: the remaining
+"lite-only" lines are the two lines the demo-blink fix itself supersedes, not a
+divergence.
+
+## `components/ExamplesBrowser.jsx` — SCHEDULED, not tonight
+
+37 lite-only lines and **150 upstream-only**. Neither side has been read. This is
+the one that still blocks the sync, and it is the reason lite cannot re-pin
+`bw-circuit-ui` today, which in turn blocks the dual-blink browser gate from
+going green.
+
+A blocked lane with a named blocker is a healthier state than a landed lane with
+an improvised reconciliation underneath it. Whoever takes it should read both
+directions, as the September note says, and should expect the 150 to contain work
+lite has been missing rather than noise.
+
+## Still not `--overwrite-local`
+
+Unchanged from September and for the same reason. The flag turns a loud stop into
+a silent loss, and the previous time this shape appeared it would have deleted an
+8086 keyboard path upstream has never had.
