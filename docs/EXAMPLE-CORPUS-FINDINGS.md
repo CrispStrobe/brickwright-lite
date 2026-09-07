@@ -297,8 +297,42 @@ decided. Coverage went from 449 decidable of 764 to 792 of 847.
 other people will trust has to be made to fail on purpose: inverting every LED in
 one example must flip its rows, flipping a declaration must flip agreement without
 touching the bench, a bench that cannot load must be COUNTED rather than
-disappearing, and removing the retarget must collapse the readings. The first of
-those was itself wrong twice — reversing an LED alone reverse-biases a diode and
-swapping the rails alone does the same from the other side, so each was a
-physically correct answer to the wrong question and each reported MISSED until
-both were applied together.
+disappearing, and removing the retarget must collapse the readings.
+
+**Two of the four reported MISSED on their first run, and both times the MUTATION
+was wrong rather than the census.** This is the trap specific to mutation testing:
+a mutation that fails to break the thing looks exactly like a check that fails to
+catch it, and the output is identical.
+
+- Reversing an LED alone reverse-biases a diode, so it never lights at either
+  level and the row becomes undecidable rather than flipped. Swapping the supply
+  rails alone does the same from the other side. Each was a physically correct
+  answer to the wrong question, and only both together turn an active-high bench
+  into an active-low one — verified on `01-blink`'s Uno bench.
+- The retarget mutation asserted that removing the step would bring back the 217
+  phantom disagreements. That is what the PREVIOUS instrument did, because it
+  matched LEDs by name and so still produced rows. This one drives the pin the
+  declaration names, and an authored `P1.0` does not exist on an Uno, so the rows
+  do not become wrong — they cease to exist. The mutation had been written against
+  a memory of an instrument that no longer existed, and it would have failed for a
+  reason that had nothing to do with the code under test.
+
+### The repair direction, and one question that is not ours
+
+**The transform follows the declaration, not the other way round.** The retarget's
+rewrites are individually correct, and stopping them would make the program
+electrically wrong rather than merely disagreeing with its picture: a learner on an
+Uno would read a declaration that misdescribes their own chip, which is wrong on
+its own terms rather than wrong against something else. The transform is the
+incomplete half — it preserves topology while the declaration moves under it, and
+the bench exists to illustrate the program. It also needs no new judgement at
+repair time, because the declaration already states which level lights the LED, so
+the transform has a fact to follow rather than a rule to invent.
+
+**Open question for the owner, which does not block the repair.** For
+`06-active-low-high`, `32-source-vs-sink` and `46-port-overcurrent`, whose subject
+IS the sinking asymmetry, retargeting them at all is questionable. An example that
+exists to teach an 8051 quirk, retargeted to a part without that quirk, has had its
+lesson removed rather than translated, and a correctly wired bench does not restore
+it. Fixing the transform makes them consistent; it does not make them teach
+anything on those targets.
