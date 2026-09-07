@@ -2252,9 +2252,9 @@ SPRITE Shield:
     show
     FOREVER:
       IF key left arrow pressed? THEN:
-        change angle by -4
+        change angle by -14
       IF key right arrow pressed? THEN:
-        change angle by 4
+        change angle by 14
       go to x: ((sin of angle) * 145) y: ((cos of angle) * 145)
       point in direction (angle + 90)
       wait 0.02 seconds
