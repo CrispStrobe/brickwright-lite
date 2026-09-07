@@ -13,13 +13,19 @@ const execFileP = promisify(execFile);
 const root = fileURLToPath(new URL('../', import.meta.url));
 const hook = join(root, 'scripts/lib/register-gui-scope.mjs');
 const script = join(root, 'scripts/measure-i8086-print-reach.mjs');
-const measure = async examples => JSON.parse((await execFileP(process.execPath,
+const measureRaw = async examples => (await execFileP(process.execPath,
     ['--import', hook, script, '--examples', examples],
-    {cwd: root, maxBuffer: 8 * 1024 * 1024})).stdout);
+    {cwd: root, maxBuffer: 8 * 1024 * 1024})).stdout;
+const measure = async examples => JSON.parse(await measureRaw(examples));
 
 test('the exact 280-program print census is disjoint, exhaustive and names the bounded gain',
     {timeout: 120000}, async () => {
-        const report = await measure(join(root, 'overlay/scratch-gui/examples'));
+        const absolute = join(root, 'overlay/scratch-gui/examples');
+        const absoluteBytes = await measureRaw(absolute);
+        const relativeBytes = await measureRaw('overlay/scratch-gui/examples');
+        assert.equal(relativeBytes, absoluteBytes,
+            'equivalent corpus paths must produce byte-identical JSON');
+        const report = JSON.parse(absoluteBytes);
         assert.equal(report.schema, 'n2d-i8086-print-reach-v1');
         assert.equal(report.programs, 280);
         assert.deepEqual(report.source.operations, {say: 0, sayForSecs: 0, print: 83, total: 83});
@@ -82,6 +88,8 @@ test('the exact 280-program print census is disjoint, exhaustive and names the b
             ],
             refuseStringComputed: ['arduino-08-string-addition']
         });
+        assert.deepEqual(report.emitterWarnings, [],
+            'a newly reachable output warning must not be credited as an emitter candidate');
         assert.equal(report.terminal.retargetRefused.every(row => row.includes(': ')), true,
             'retarget failures must retain their named reason');
         assert.equal(report.terminal.remainingChoke.every(row => row.includes(': ')), true,
