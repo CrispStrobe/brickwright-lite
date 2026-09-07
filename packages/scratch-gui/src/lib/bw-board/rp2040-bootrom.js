@@ -121,6 +121,66 @@ function emit (view, offset, halfwords) {
 }
 
 /**
+ * The same, but resolving branch LABELS instead of counted offsets.
+ *
+ * WHY IT EXISTS, and the file's own header already answers it: "the first
+ * version of memcpy here copied correct bytes and never terminated — a branch
+ * offset counted from the wrong place landed inside the loop body and took the
+ * count to -1." That was twelve instructions. The float routines below are
+ * five to ten times longer with branches that cross each other, and counting
+ * those by hand is a bug generator, not a discipline.
+ *
+ * An item is either a literal halfword, or ['label', name] to mark a spot, or
+ * [cond, name] to branch to one. Two passes: place, then encode.
+ *
+ *   B<cond> T1   1101 cccc iiiiiiii   ±256 bytes
+ *   B       T2   11100 iiiiiiiiiii    ±2048 bytes
+ *
+ * Both count from the address of the instruction PLUS FOUR, because the ARM
+ * pipeline reads PC two halfwords ahead. Out of range THROWS rather than
+ * truncating: a branch that silently wraps is the failure this replaces.
+ */
+const COND = {
+    beq: 0, bne: 1, bcs: 2, bcc: 3, bmi: 4, bpl: 5, bvs: 6, bvc: 7,
+    bhi: 8, bls: 9, bge: 10, blt: 11, bgt: 12, ble: 13,
+    bhs: 2, blo: 3,             // the unsigned spellings of bcs and bcc
+};
+
+function asm (view, start, items) {
+    const labels = new Map();
+    let at = start;
+    for (const it of items) {
+        if (Array.isArray(it) && it[0] === 'label') { labels.set(it[1], at); continue; }
+        at += 2;
+    }
+    const end = at;
+    at = start;
+    for (const it of items) {
+        if (Array.isArray(it) && it[0] === 'label') continue;
+        if (Array.isArray(it)) {
+            const [kind, name] = it;
+            if (!labels.has(name)) throw new Error(`asm: branch to unknown label '${name}'`);
+            const delta = labels.get(name) - (at + 4);
+            if (delta & 1) throw new Error(`asm: misaligned branch to '${name}'`);
+            const imm = delta >> 1;
+            if (kind === 'b') {
+                if (imm < -1024 || imm > 1023) throw new Error(`asm: b '${name}' out of range (${delta} bytes)`);
+                view.setUint16(at, 0xe000 | (imm & 0x7ff), true);
+            } else {
+                const c = COND[kind];
+                if (c === undefined) throw new Error(`asm: unknown branch '${kind}'`);
+                if (imm < -128 || imm > 127) throw new Error(`asm: ${kind} '${name}' out of range (${delta} bytes)`);
+                view.setUint16(at, 0xd000 | (c << 8) | (imm & 0xff), true);
+            }
+        } else {
+            view.setUint16(at, it, true);
+        }
+        at += 2;
+    }
+    return end;
+}
+
+/**
  * Build the ROM image.
  *
  * Layout follows the datasheet's fixed offsets exactly, because the SDK
@@ -320,6 +380,570 @@ export function buildBootrom () {
         0xbd10              // .done: pop {r4, pc}
     ]);
 
+    // ── fadd(r0 = a, r1 = b) → r0 = a + b, and fsub via a sign flip ────
+    //
+    // SF table indices 0 and 1. IEEE-754 single precision, round to nearest
+    // with ties to even. Infinities, NaNs and signed zeros are handled;
+    // SUBNORMALS ARE FLUSHED TO ZERO, which is a DECLARED DEVIATION and is
+    // asserted as such in the tests rather than left to be discovered.
+    //
+    // THE LARGER MAGNITUDE IS SWAPPED INTO a FIRST. That single step pays for
+    // itself twice: the result's sign is then always a's, and the subtraction
+    // can never go negative, so there is no second normalisation path to get
+    // wrong.
+    //
+    // Three guard bits are carried below the significand. Everything shifted
+    // out during alignment is folded into the lowest as a sticky bit, which is
+    // what makes the tie case exact: a tie is guard set with nothing under it,
+    // and it rounds up only when the significand's low bit is already 1.
+    const fadd = pc;
+    pc = asm(view, pc, [
+        0xb5f0, // push {r4-r7, lr}
+        0x0042, // lsls r2, r0, #1         ; |a|, sign shifted out
+        0x004b, // lsls r3, r1, #1         ; |b|
+        0x429a, // cmp  r2, r3
+        ['bhs', 'fa_noswap'],
+        0x0002, // movs r2, r0
+        0x0008, // movs r0, r1
+        0x0011, // movs r1, r2            ; swap: |a| >= |b| from here on
+        ['label', 'fa_noswap'],
+        0x0dc2, // lsrs r2, r0, #23
+        0x0016, // movs r6, r2
+        0x0a36, // lsrs r6, r6, #8        ; r6 = result sign (a is the larger)
+        0x27ff, // movs r7, #255
+        0x403a, // ands r2, r7            ; r2 = exponent of a
+        0x0243, // lsls r3, r0, #9
+        0x0a5b, // lsrs r3, r3, #9        ; r3 = mantissa of a
+        0x0dcc, // lsrs r4, r1, #23
+        0x0027, // movs r7, r4
+        0x0a3f, // lsrs r7, r7, #8        ; sign of b
+        0x0624, // lsls r4, r4, #24
+        0x0e24, // lsrs r4, r4, #24       ; r4 = exponent of b
+        0x024d, // lsls r5, r1, #9
+        0x0a6d, // lsrs r5, r5, #9        ; r5 = mantissa of b
+        0x4077, // eors r7, r6            ; r7 = 1 when the signs differ
+        0x2aff, // cmp  r2, #255          ; a is the larger, so it is Inf/NaN first
+        ['bne', 'fa_finite'],
+        0x2b00, // cmp  r3, #0
+        ['bne', 'fa_nan'],                      // a is NaN
+        0x2cff, // cmp  r4, #255
+        ['bne', 'fa_ret_a'],                    // Inf + finite = Inf
+        0x2d00, // cmp  r5, #0
+        ['bne', 'fa_nan'],                      // Inf + NaN
+        0x2f00, // cmp  r7, #0
+        ['bne', 'fa_nan'],                      // Inf + -Inf is undefined
+        ['label', 'fa_ret_a'],
+        0xbdf0, // pop  {r4-r7, pc}
+        ['label', 'fa_nan'],
+        0x20ff, // movs r0, #255
+        0x05c0, // lsls r0, r0, #23
+        0x2101, // movs r1, #1
+        0x0589, // lsls r1, r1, #22
+        0x4308, // orrs r0, r1            ; 7FC00000h, a quiet NaN
+        0xbdf0, // pop  {r4-r7, pc}
+        ['label', 'fa_finite'],
+        0x2c00, // cmp  r4, #0
+        ['bne', 'fa_b_norm'],
+        0x2500, // movs r5, #0            ; b subnormal or zero -> zero
+        ['label', 'fa_b_norm'],
+        0x2a00, // cmp  r2, #0
+        ['bne', 'fa_a_norm'],
+        // Both operands are zero (|a| >= |b| and a's exponent is 0). Build the
+        // answer rather than returning `a`: a FLUSHED SUBNORMAL still has its
+        // original bit pattern in r0, and handing that back would contradict
+        // the flush-to-zero this routine declares.
+        0x2f00, // cmp  r7, #0
+        ['bne', 'fa_zero_plus'],                // opposite signs: (+0)+(-0) = +0
+        0x2000, // movs r0, #0
+        0x07f6, // lsls r6, r6, #31
+        0x4330, // orrs r0, r6            ; same-signed zeros keep that sign
+        0xbdf0, // pop  {r4-r7, pc}
+        ['label', 'fa_zero_plus'],
+        0x2000, // movs r0, #0
+        0xbdf0, // pop  {r4-r7, pc}
+        ['label', 'fa_a_norm'],
+        0x2c00, // cmp  r4, #0
+        ['beq', 'fa_ret_a'],                    // a + 0 = a
+        0x2101, // movs r1, #1
+        0x05c9, // lsls r1, r1, #23
+        0x430b, // orrs r3, r1            ; restore the implicit 1
+        0x430d, // orrs r5, r1
+        0x00db, // lsls r3, r3, #3
+        0x00ed, // lsls r5, r5, #3
+        0x1b14, // subs r4, r2, r4        ; r4 = exponent difference >= 0
+        0x2c00, // cmp  r4, #0
+        ['beq', 'fa_aligned'],
+        0x2c1b, // cmp  r4, #27
+        ['blt', 'fa_shift'],
+        0x2d00, // cmp  r5, #0
+        ['beq', 'fa_aligned'],
+        0x2501, // movs r5, #1            ; ...but it is not nothing
+        ['b', 'fa_aligned'],
+        ['label', 'fa_shift'],
+        0x0029, // movs r1, r5
+        0x2020, // movs r0, #32
+        0x1b00, // subs r0, r0, r4
+        0x4081, // lsls r1, r0            ; the bits about to be lost
+        0x40e5, // lsrs r5, r4
+        0x2900, // cmp  r1, #0
+        ['beq', 'fa_aligned'],
+        0x2001, // movs r0, #1
+        0x4305, // orrs r5, r0            ; fold them into a sticky bit
+        ['label', 'fa_aligned'],
+        0x2f00, // cmp  r7, #0
+        ['bne', 'fa_sub'],
+        0x195b, // adds r3, r3, r5
+        0x0ed9, // lsrs r1, r3, #27       ; did it carry past bit 26?
+        0x2900, // cmp  r1, #0
+        ['beq', 'fa_round'],
+        0x0019, // movs r1, r3
+        0x2001, // movs r0, #1
+        0x4001, // ands r1, r0            ; keep the bit we are about to drop
+        0x085b, // lsrs r3, r3, #1
+        0x430b, // orrs r3, r1            ; as sticky
+        0x3201, // adds r2, #1
+        ['b', 'fa_round'],
+        ['label', 'fa_sub'],
+        0x1b5b, // subs r3, r3, r5        ; |a| >= |b|, so this cannot go negative
+        0x2b00, // cmp  r3, #0
+        ['bne', 'fa_norm'],
+        0x2000, // movs r0, #0            ; exact cancellation is +0
+        0xbdf0, // pop  {r4-r7, pc}
+        ['label', 'fa_norm'],
+        0x0e99, // lsrs r1, r3, #26
+        0x2900, // cmp  r1, #0
+        ['bne', 'fa_round'],
+        0x2a01, // cmp  r2, #1
+        ['bls', 'fa_zero'],                     // would go subnormal: flushed
+        0x005b, // lsls r3, r3, #1
+        0x3a01, // subs r2, #1
+        ['b', 'fa_norm'],
+        ['label', 'fa_zero'],
+        0x2000, // movs r0, #0
+        0x07f6, // lsls r6, r6, #31
+        0x4330, // orrs r0, r6            ; a signed zero
+        0xbdf0, // pop  {r4-r7, pc}
+        ['label', 'fa_round'],
+        0x0019, // movs r1, r3
+        0x2004, // movs r0, #4
+        0x4001, // ands r1, r0            ; the guard bit
+        0x2900, // cmp  r1, #0
+        ['beq', 'fa_pack'],
+        0x0019, // movs r1, r3
+        0x2003, // movs r0, #3
+        0x4001, // ands r1, r0            ; anything below the guard
+        0x2900, // cmp  r1, #0
+        ['bne', 'fa_up'],
+        0x0019, // movs r1, r3
+        0x2008, // movs r0, #8
+        0x4001, // ands r1, r0            ; an exact tie: round to even
+        0x2900, // cmp  r1, #0
+        ['beq', 'fa_pack'],
+        ['label', 'fa_up'],
+        0x2008, // movs r0, #8
+        0x181b, // adds r3, r3, r0
+        0x0ed9, // lsrs r1, r3, #27       ; rounding can carry out of the top
+        0x2900, // cmp  r1, #0
+        ['beq', 'fa_pack'],
+        0x085b, // lsrs r3, r3, #1
+        0x3201, // adds r2, #1
+        ['label', 'fa_pack'],
+        0x2aff, // cmp  r2, #255
+        ['blt', 'fa_ok'],
+        0x20ff, // movs r0, #255          ; overflowed to infinity
+        0x05c0, // lsls r0, r0, #23
+        0x07f6, // lsls r6, r6, #31
+        0x4330, // orrs r0, r6
+        0xbdf0, // pop  {r4-r7, pc}
+        ['label', 'fa_ok'],
+        0x08db, // lsrs r3, r3, #3        ; drop the guard bits
+        0x025b, // lsls r3, r3, #9
+        0x0a5b, // lsrs r3, r3, #9        ; drop the implicit 1
+        0x05d2, // lsls r2, r2, #23
+        0x0018, // movs r0, r3
+        0x4310, // orrs r0, r2
+        0x07f6, // lsls r6, r6, #31
+        0x4330, // orrs r0, r6
+        0xbdf0, // pop  {r4-r7, pc}
+    ]);
+
+    // fsub(a, b) = fadd(a, -b). Flipping b's sign bit is the whole of it, and
+    // it is correct for every case fadd handles: -(-0) is +0, -(Inf) is -Inf,
+    // and a NaN with its sign flipped is still a NaN.
+    const fsub = pc;
+    pc = asm(view, pc, [
+        0xb500,                     // push {lr}
+        0x2201,                     // movs r2, #1
+        0x07d2,                     // lsls r2, r2, #31
+        0x4051,                     // eors r1, r2            ; b = -b
+        0xf000, 0xf800,             // bl fadd  (offset patched below)
+        0xbd00                      // pop  {pc}
+    ]);
+    {
+        // The BL is the only 32-bit instruction in this ROM, so it is patched
+        // rather than encoded by asm(): S:J1:J2 sign extension for a ±16 MB
+        // range, of which we use a few hundred bytes.
+        const site = pc - 6;                    // address of the first halfword
+        const delta = fadd - (site + 4);
+        const imm11 = (delta >> 1) & 0x7ff;
+        const imm10 = (delta >> 12) & 0x3ff;
+        const sBit = delta < 0 ? 1 : 0;
+        view.setUint16(site, 0xf000 | (sBit << 10) | imm10, true);
+        view.setUint16(site + 2, 0xf800 | (1 << 14) | (1 << 13) | imm11, true);
+    }
+
+    // ── int2float(r0 = int32) → r0 = float32 bits ──────────────────────
+    //
+    // SF table index 11. Round-to-nearest-even, which is the only rounding
+    // mode single-precision C arithmetic uses and the one JavaScript's
+    // Math.fround implements, so the two are comparable on every input.
+    //
+    // Every int32 is exactly representable up to 2^24; above that the low
+    // bits have to go somewhere and the tie case is the whole difficulty.
+    // 16,777,217 rounds DOWN to 16,777,216 because that mantissa is even,
+    // and 16,777,219 rounds UP to 16,777,220 for the same reason.
+    //
+    // INT_MIN is not special-cased and does not need to be: negating
+    // 80000000h gives 80000000h back, and read as a MAGNITUDE that is
+    // exactly 2^31, which is what the sign bit then makes negative.
+    const int2float = pc;
+    pc = asm(view, pc, [
+        0xb510,                     // push {r4, lr}
+        0x2800,                     // cmp  r0, #0
+        ['bne', 'i2f_nz'],
+        0xbd10,                     // pop  {r4, pc}          ; +0.0
+        ['label', 'i2f_nz'],
+        0x2100,                     // movs r1, #0            ; sign
+        0x2800,                     // cmp  r0, #0
+        ['bge', 'i2f_pos'],
+        0x2101,                     // movs r1, #1
+        0x4240,                     // rsbs r0, r0, #0        ; magnitude
+        ['label', 'i2f_pos'],
+        0x2200,                     // movs r2, #0            ; shift count
+        ['label', 'i2f_norm'],
+        0x0003,                     // movs r3, r0            ; N = bit 31
+        ['bmi', 'i2f_normed'],
+        0x0040,                     // lsls r0, r0, #1
+        0x3201,                     // adds r2, #1
+        ['b', 'i2f_norm'],
+        ['label', 'i2f_normed'],
+        // exp = 127 + (31 - count) = 158 - count
+        0x239e,                     // movs r3, #158
+        0x1a9b,                     // subs r3, r3, r2        ; r3 = exponent
+        0x0002,                     // movs r2, r0
+        0x0612,                     // lsls r2, r2, #24       ; r2 = the 8 dropped bits, left-aligned
+        0x0a00,                     // lsrs r0, r0, #8        ; r0 = 1.xxx in 24 bits
+        0x2a00,                     // cmp  r2, #0
+        ['beq', 'i2f_pack'],        // nothing below → exact
+        0x0014,                     // movs r4, r2            ; N = guard bit
+        ['bpl', 'i2f_pack'],        // guard clear → round down
+        0x0054,                     // lsls r4, r2, #1        ; sticky = anything under the guard
+        ['bne', 'i2f_up'],
+        0x0004,                     // movs r4, r0            ; exact tie: round to EVEN
+        0x07e4,                     // lsls r4, r4, #31       ; Z = (lsb == 0)
+        ['beq', 'i2f_pack'],        // already even → stay
+        ['label', 'i2f_up'],
+        0x3001,                     // adds r0, #1
+        0x0e04,                     // lsrs r4, r0, #24       ; did it carry out of the 24 bits?
+        ['beq', 'i2f_pack'],
+        0x0840,                     // lsrs r0, r0, #1
+        0x3301,                     // adds r3, #1            ; ...and the exponent absorbs it
+        ['label', 'i2f_pack'],
+        0x0240,                     // lsls r0, r0, #9
+        0x0a40,                     // lsrs r0, r0, #9        ; drop the implicit 1
+        0x05db,                     // lsls r3, r3, #23
+        0x4318,                     // orrs r0, r3
+        0x07c9,                     // lsls r1, r1, #31
+        0x4308,                     // orrs r0, r1
+        0xbd10                      // pop  {r4, pc}
+    ]);
+
+    // ── fmul(r0 = a, r1 = b) → r0 = a * b ──────────────────────────────
+    //
+    // SF table index 2. The difficulty is not the floating point, it is that
+    // this core's multiply is 32x32 KEEPING ONLY THE LOW 32 BITS, and two
+    // 24-bit significands make a 48-bit product. So it is done in 12-bit
+    // halves — four partial products reassembled with an explicit carry,
+    // because there is no wire between the two halves either:
+    //
+    //   a*b = (ah*bh)<<24 + (ah*bl + al*bh)<<12 + al*bl
+    //
+    // The middle term reaches 2^25, so shifting it left by 12 overflows 32
+    // bits: its low half goes into the bottom word and its top five bits into
+    // the high one, with ADCS carrying between them. The zero that ADCS adds
+    // is loaded BEFORE the ADDS that sets the carry, because MOVS would clear
+    // it again.
+    //
+    // A product of two values in [1,2) lands in [1,4), so the leading bit is
+    // at 47 or at 46 and there are exactly two normalisation cases.
+    const fmul = pc;
+    pc = asm(view, pc, [
+        0xb5f0, // push {r4-r7, lr}
+        0x0002, // movs r2, r0
+        0x404a, // eors r2, r1
+        0x0fd7, // lsrs r7, r2, #31       ; r7 = sign = sa XOR sb
+        0x0042, // lsls r2, r0, #1
+        0x0e12, // lsrs r2, r2, #24       ; r2 = exponent of a
+        0x0243, // lsls r3, r0, #9
+        0x0a5b, // lsrs r3, r3, #9        ; r3 = mantissa of a
+        0x004c, // lsls r4, r1, #1
+        0x0e24, // lsrs r4, r4, #24       ; r4 = exponent of b
+        0x024d, // lsls r5, r1, #9
+        0x0a6d, // lsrs r5, r5, #9        ; r5 = mantissa of b
+        0x2aff, // cmp  r2, #255
+        ['bne', 'fm_b_chk'],
+        0x2b00, // cmp  r3, #0
+        ['bne', 'fm_nan'],                      // a is NaN
+        0x2cff, // cmp  r4, #255
+        ['bne', 'fm_a_inf_bfin'],
+        0x2d00, // cmp  r5, #0
+        ['bne', 'fm_nan'],                      // Inf * NaN
+        ['b', 'fm_inf'],                        // Inf * Inf
+        ['label', 'fm_a_inf_bfin'],
+        0x2c00, // cmp  r4, #0
+        ['bne', 'fm_inf'],                      // Inf * finite
+        ['b', 'fm_nan'],                        // Inf * 0
+        ['label', 'fm_b_chk'],
+        0x2cff, // cmp  r4, #255
+        ['bne', 'fm_finite'],
+        0x2d00, // cmp  r5, #0
+        ['bne', 'fm_nan'],                      // b is NaN
+        0x2a00, // cmp  r2, #0
+        ['bne', 'fm_inf'],
+        0x2b00, // cmp  r3, #0
+        ['beq', 'fm_nan'],                      // 0 * Inf
+        ['label', 'fm_inf'],
+        0x20ff, // movs r0, #255
+        0x05c0, // lsls r0, r0, #23
+        ['b', 'fm_signit'],
+        ['label', 'fm_nan'],
+        0x20ff, // movs r0, #255
+        0x05c0, // lsls r0, r0, #23
+        0x2101, // movs r1, #1
+        0x0589, // lsls r1, r1, #22
+        0x4308, // orrs r0, r1            ; 7FC00000h
+        0xbdf0, // pop  {r4-r7, pc}       ; a NaN keeps no sign here
+        ['label', 'fm_zero'],
+        0x2000, // movs r0, #0
+        ['label', 'fm_signit'],
+        0x07ff, // lsls r7, r7, #31
+        0x4338, // orrs r0, r7
+        0xbdf0, // pop  {r4-r7, pc}
+        ['label', 'fm_finite'],
+        0x2a00, // cmp  r2, #0
+        ['beq', 'fm_zero'],                     // a is zero or subnormal
+        0x2c00, // cmp  r4, #0
+        ['beq', 'fm_zero'],                     // b is zero or subnormal
+        0x1916, // adds r6, r2, r4
+        0x3e7f, // subs r6, #127          ; r6 = ea + eb - 127
+        0x2001, // movs r0, #1
+        0x05c0, // lsls r0, r0, #23
+        0x4303, // orrs r3, r0            ; a = 1.ma, 24 bits
+        0x4305, // orrs r5, r0            ; b = 1.mb
+        0x20ff, // movs r0, #255
+        0x0100, // lsls r0, r0, #4
+        0x300f, // adds r0, #15           ; r0 = 0FFFh
+        0x001a, // movs r2, r3
+        0x4002, // ands r2, r0            ; r2 = al
+        0x0b1b, // lsrs r3, r3, #12       ; r3 = ah
+        0x002c, // movs r4, r5
+        0x4004, // ands r4, r0            ; r4 = bl
+        0x0b2d, // lsrs r5, r5, #12       ; r5 = bh
+        0x0010, // movs r0, r2
+        0x4360, // muls r0, r4            ; r0 = al*bl
+        0x0019, // movs r1, r3
+        0x4369, // muls r1, r5            ; r1 = ah*bh
+        0x436a, // muls r2, r5            ; r2 = al*bh
+        0x4363, // muls r3, r4            ; r3 = ah*bl
+        0x18d2, // adds r2, r2, r3        ; r2 = the middle term, < 2^25
+        0x2500, // movs r5, #0            ; zeroed before any ADDS, which sets C
+        0x0013, // movs r3, r2
+        0x031b, // lsls r3, r3, #12       ; M << 12, low half
+        0x0014, // movs r4, r2
+        0x0d24, // lsrs r4, r4, #20       ; M >> 20, the part above bit 31
+        0x18c0, // adds r0, r0, r3        ; lo += M<<12
+        0x416c, // adcs r4, r5            ; ...carrying into M>>20
+        0x000b, // movs r3, r1
+        0x061b, // lsls r3, r3, #24       ; A << 24, low half
+        0x0a09, // lsrs r1, r1, #8        ; A >> 8, the part above bit 31
+        0x18c0, // adds r0, r0, r3        ; lo += A<<24
+        0x4169, // adcs r1, r5            ; ...carrying into A>>8
+        0x1909, // adds r1, r1, r4        ; r1 = the high 16 bits of the product
+        0x0bca, // lsrs r2, r1, #15       ; bit 47 of the product
+        0x2a00, // cmp  r2, #0
+        ['beq', 'fm_lead46'],
+        0x000a, // movs r2, r1
+        0x0212, // lsls r2, r2, #8
+        0x0003, // movs r3, r0
+        0x0e1b, // lsrs r3, r3, #24
+        0x431a, // orrs r2, r3            ; r2 = 24-bit significand
+        0x0003, // movs r3, r0
+        0x021b, // lsls r3, r3, #8        ; guard in bit 31, sticky below
+        0x3601, // adds r6, #1            ; ...and the exponent grows by one
+        ['b', 'fm_round'],
+        ['label', 'fm_lead46'],
+        0x000a, // movs r2, r1
+        0x0252, // lsls r2, r2, #9
+        0x0003, // movs r3, r0
+        0x0ddb, // lsrs r3, r3, #23
+        0x431a, // orrs r2, r3            ; r2 = 24-bit significand
+        0x0003, // movs r3, r0
+        0x025b, // lsls r3, r3, #9        ; guard in bit 31, sticky below
+        ['label', 'fm_round'],
+        0x2b00, // cmp  r3, #0
+        ['beq', 'fm_pack'],                     // nothing below the significand
+        0x001c, // movs r4, r3            ; N = the guard bit
+        ['bpl', 'fm_pack'],                     // guard clear: round down
+        0x005c, // lsls r4, r3, #1        ; anything under the guard is sticky
+        ['bne', 'fm_up'],
+        0x0014, // movs r4, r2
+        0x07e4, // lsls r4, r4, #31       ; an exact tie: round to even
+        ['beq', 'fm_pack'],
+        ['label', 'fm_up'],
+        0x3201, // adds r2, #1
+        0x0e14, // lsrs r4, r2, #24       ; did it carry out of 24 bits?
+        0x2c00, // cmp  r4, #0
+        ['beq', 'fm_pack'],
+        0x0852, // lsrs r2, r2, #1
+        0x3601, // adds r6, #1
+        ['label', 'fm_pack'],
+        0x2eff, // cmp  r6, #255
+        ['blt', 'fm_inrange'],
+        ['b', 'fm_inf'],                        // overflowed to infinity
+        ['label', 'fm_inrange'],
+        0x2e00, // cmp  r6, #0
+        ['ble', 'fm_zero'],                     // underflowed: flushed to zero
+        0x0252, // lsls r2, r2, #9
+        0x0a52, // lsrs r2, r2, #9        ; drop the implicit 1
+        0x05f6, // lsls r6, r6, #23
+        0x0010, // movs r0, r2
+        0x4330, // orrs r0, r6
+        ['b', 'fm_signit'],
+    ]);
+
+    // ── fdiv(r0 = a, r1 = b) → r0 = a / b ──────────────────────────────
+    //
+    // SF table index 3. This core has no divide instruction, so the quotient
+    // is produced one bit at a time: shift, compare, subtract if it fits —
+    // long division, and the loop below is that and nothing else.
+    //
+    // The numerator is doubled once first if it is smaller than the
+    // denominator, so the quotient always lands in [1, 2) and there is one
+    // normalisation case instead of two. Twenty-five bits are produced: 24
+    // for the significand and one guard bit. THE FINAL REMAINDER IS THE
+    // STICKY BIT — non-zero means the division did not terminate, which is
+    // exactly what breaks a tie.
+    const fdiv = pc;
+    pc = asm(view, pc, [
+        0xb5f0, // push {r4-r7, lr}
+        0x0002, // movs r2, r0
+        0x404a, // eors r2, r1
+        0x0fd7, // lsrs r7, r2, #31       ; sign = sa XOR sb
+        0x0042, // lsls r2, r0, #1
+        0x0e12, // lsrs r2, r2, #24       ; r2 = ea
+        0x0243, // lsls r3, r0, #9
+        0x0a5b, // lsrs r3, r3, #9        ; r3 = ma
+        0x004c, // lsls r4, r1, #1
+        0x0e24, // lsrs r4, r4, #24       ; r4 = eb
+        0x024d, // lsls r5, r1, #9
+        0x0a6d, // lsrs r5, r5, #9        ; r5 = mb
+        0x2aff, // cmp  r2, #255
+        ['bne', 'fd_b_chk'],
+        0x2b00, // cmp  r3, #0
+        ['bne', 'fd_nan'],                      // a is NaN
+        0x2cff, // cmp  r4, #255
+        ['beq', 'fd_nan'],                      // Inf / Inf, or Inf / NaN
+        ['b', 'fd_inf'],                        // Inf / finite
+        ['label', 'fd_b_chk'],
+        0x2cff, // cmp  r4, #255
+        ['bne', 'fd_finite'],
+        0x2d00, // cmp  r5, #0
+        ['bne', 'fd_nan'],                      // b is NaN
+        ['b', 'fd_zero'],                       // finite / Inf
+        ['label', 'fd_inf'],
+        0x20ff, // movs r0, #255
+        0x05c0, // lsls r0, r0, #23
+        ['b', 'fd_signit'],
+        ['label', 'fd_nan'],
+        0x20ff, // movs r0, #255
+        0x05c0, // lsls r0, r0, #23
+        0x2101, // movs r1, #1
+        0x0589, // lsls r1, r1, #22
+        0x4308, // orrs r0, r1
+        0xbdf0, // pop  {r4-r7, pc}
+        ['label', 'fd_zero'],
+        0x2000, // movs r0, #0
+        ['label', 'fd_signit'],
+        0x07ff, // lsls r7, r7, #31
+        0x4338, // orrs r0, r7
+        0xbdf0, // pop  {r4-r7, pc}
+        ['label', 'fd_finite'],
+        0x2c00, // cmp  r4, #0
+        ['bne', 'fd_bnz'],
+        0x2a00, // cmp  r2, #0
+        ['beq', 'fd_nan'],                      // 0 / 0
+        ['b', 'fd_inf'],                        // x / 0
+        ['label', 'fd_bnz'],
+        0x2a00, // cmp  r2, #0
+        ['beq', 'fd_zero'],                     // 0 / x
+        0x1b16, // subs r6, r2, r4
+        0x367f, // adds r6, #127          ; r6 = ea - eb + 127
+        0x2001, // movs r0, #1
+        0x05c0, // lsls r0, r0, #23
+        0x4303, // orrs r3, r0            ; numerator   = 1.ma
+        0x4305, // orrs r5, r0            ; denominator = 1.mb
+        0x42ab, // cmp  r3, r5
+        ['bhs', 'fd_ready'],
+        0x005b, // lsls r3, r3, #1        ; ma < mb: one doubling makes it so
+        0x3e01, // subs r6, #1
+        ['label', 'fd_ready'],
+        0x2100, // movs r1, #0            ; quotient
+        0x2219, // movs r2, #25           ; bits to produce
+        ['label', 'fd_loop'],
+        0x0049, // lsls r1, r1, #1
+        0x42ab, // cmp  r3, r5
+        ['blo', 'fd_nobit'],
+        0x1b5b, // subs r3, r3, r5        ; it fits: take it
+        0x3101, // adds r1, #1
+        ['label', 'fd_nobit'],
+        0x005b, // lsls r3, r3, #1        ; bring down the next place
+        0x3a01, // subs r2, #1
+        0x2a00, // cmp  r2, #0
+        ['bne', 'fd_loop'],
+        0x000a, // movs r2, r1
+        0x0852, // lsrs r2, r2, #1        ; r2 = 24-bit significand
+        0x2401, // movs r4, #1
+        0x400c, // ands r4, r1            ; r4 = the guard bit
+        ['label', 'fd_round'],
+        0x2c00, // cmp  r4, #0
+        ['beq', 'fd_pack'],                     // guard clear: round down
+        0x2b00, // cmp  r3, #0
+        ['bne', 'fd_up'],                       // a remainder is sticky: round up
+        0x0014, // movs r4, r2
+        0x07e4, // lsls r4, r4, #31       ; an exact tie: round to even
+        ['beq', 'fd_pack'],
+        ['label', 'fd_up'],
+        0x3201, // adds r2, #1
+        0x0e14, // lsrs r4, r2, #24
+        0x2c00, // cmp  r4, #0
+        ['beq', 'fd_pack'],
+        0x0852, // lsrs r2, r2, #1
+        0x3601, // adds r6, #1
+        ['label', 'fd_pack'],
+        0x2eff, // cmp  r6, #255
+        ['blt', 'fd_inrange'],
+        ['b', 'fd_inf'],
+        ['label', 'fd_inrange'],
+        0x2e00, // cmp  r6, #0
+        ['ble', 'fd_zero'],                     // underflow: flushed
+        0x0252, // lsls r2, r2, #9
+        0x0a52, // lsrs r2, r2, #9
+        0x05f6, // lsls r6, r6, #23
+        0x0010, // movs r0, r2
+        0x4330, // orrs r0, r6
+        ['b', 'fd_signit'],
+    ]);
+
     // ── the single-precision soft-float stub ───────────────────────────
     //
     // EVERY 'SF' ENTRY POINTS HERE, AND NONE OF THEM COMPUTES ANYTHING.
@@ -426,6 +1050,14 @@ export function buildBootrom () {
     for (let i = 0; i < SF_TABLE_ENTRIES; i++) {
         view.setUint32(sfTable + i * 4, thumb(sfUnimplemented), true);
     }
+    // Implemented so far. Each one that lands here must also be taken out of
+    // the named-stop test in test/rp2040-bootrom.test.mjs, which asserts the
+    // UNimplemented ones still return the quiet NaN.
+    view.setUint32(sfTable + 0 * 4, thumb(fadd), true);
+    view.setUint32(sfTable + 1 * 4, thumb(fsub), true);
+    view.setUint32(sfTable + 2 * 4, thumb(fmul), true);
+    view.setUint32(sfTable + 3 * 4, thumb(fdiv), true);
+    view.setUint32(sfTable + 11 * 4, thumb(int2float), true);
 
     const dataTable = sfTable + SF_TABLE_ENTRIES * 4;
     view.setUint16(dataTable, ROM_DATA.SOFT_FLOAT, true);
