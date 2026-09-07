@@ -8,10 +8,12 @@ import {fileURLToPath} from 'node:url';
 
 const execFileP = promisify(execFile);
 const root = fileURLToPath(new URL('../', import.meta.url));
+const guiScopeHook = fileURLToPath(new URL('../scripts/lib/register-gui-scope.mjs', import.meta.url));
 
 test('the 280-program gallery records the literal-wait gain and every emitted program compiles',
     {timeout: 300000}, async () => {
         const {stdout} = await execFileP(process.execPath, [
+            '--import', guiScopeHook,
             'scripts/measure-i8086-numeric-reach.mjs',
             '--examples', 'overlay/scratch-gui/examples',
             '--compile'
