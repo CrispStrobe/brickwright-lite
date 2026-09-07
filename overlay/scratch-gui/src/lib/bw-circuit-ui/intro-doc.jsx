@@ -128,32 +128,3 @@ export function renderInline(text) {
   }
   return parts;
 }
-
-const CATEGORY_LABELS = {
-  basics: 'Basics',
-  analog: 'Analog',
-  digital: 'Digital',
-  motors: 'Motors & Actuators',
-  'pure-circuit': 'Pure circuits',
-};
-
-const CATEGORY_COLORS = {
-  basics: '#2ecc71',
-  analog: '#f39c12',
-  digital: '#9b59b6',
-  motors: '#e74c3c',
-  'pure-circuit': '#16a085',
-};
-
-const DIFFICULTY_LABELS = ['', 'Beginner', 'Intermediate', 'Advanced'];
-const DIFFICULTY_COLORS = ['#64748b', '#22c55e', '#f59e0b', '#f97316'];
-const PART_LABELS = {mcu: 'MCU', 'no-mcu': 'No MCU'};
-const TARGET_LABELS = {
-  'no-mcu': 'No MCU',
-  generic: 'Any MCU',
-  stc12: 'STC12',
-  stc89: 'STC89',
-  avr: 'AVR / Arduino',
-  'arduino-nano': 'Arduino Nano',
-  rp2040: 'RP2040 / Pico',
-};

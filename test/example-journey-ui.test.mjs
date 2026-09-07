@@ -38,6 +38,12 @@ const code = text => text
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
     .split('\n').map(l => l.replace(/(^|[^:])\/\/.*$/, '$1')).join('\n');
 
+/** Code with comments AND string literals removed — 'STC12' is a value, not a name. */
+const bare = text => code(text)
+    .replace(/'(?:[^'\\]|\\.)*'/g, "''")
+    .replace(/"(?:[^"\\]|\\.)*"/g, '""')
+    .replace(/`(?:[^`\\]|\\.)*`/g, '``');
+
 test('the comment stripper strips, and only comments', () => {
     // Pinned both ways: a stripper that returns the text unchanged puts every
     // assertion below back on comments, and one that strips too much makes them
@@ -129,4 +135,49 @@ test('U1-3: the (i) is mounted beside the title field and is absent without an e
     assert.match(button, /examples\/\$\{example\.id\}\/intro/,
         'the intro path no longer keys on the example id, which is the directory convention the '
         + 'catalogue uses');
+});
+
+test('nothing an edited file uses went missing when code moved between files', () => {
+    // THE ASSERTION THAT WOULD HAVE SAVED A CI RUN, added after it did not exist.
+    //
+    // Extracting the intro renderer took CATEGORY_COLORS and DIFFICULTY_LABELS
+    // with it — catalogue concerns that happened to sit inside the line span I
+    // moved. ExamplesBrowser kept using them, so it referenced two undefined
+    // identifiers. Webpack COMPILED IT ANYWAY (a bare identifier is only a
+    // ReferenceError at run time), so the build was green and the browser gates
+    // failed in a heap with no obvious cause.
+    //
+    // An extraction by SPAN cannot know what it took; only a check of what the
+    // file still needs can. This walks every SCREAMING_CASE constant a file
+    // mentions and requires it to be defined or imported there.
+    const files = [
+        'lib/bw-circuit-ui/components/ExamplesBrowser.jsx',
+        'lib/bw-circuit-ui/intro-doc.jsx',
+        'components/menu-bar/example-intro-button.jsx'
+    ];
+    const missing = [];
+    for (const rel of files) {
+        const src = bare(read(rel));
+        const used = new Set(src.match(/\b[A-Z][A-Z0-9_]{3,}\b/g) || []);
+        // Import names collected ONCE, linearly. A per-name regex across the
+        // whole file backtracks catastrophically on a 700-line component — the
+        // first version of this check hung the suite rather than failing it,
+        // which is its own small lesson about gates.
+        const imported = new Set(
+            // `[^'"]*` and not `+`: string literals are blanked to '' before this
+            // runs, so a module path is empty by the time the matcher sees it.
+            // Requiring one character made every import invisible and reported
+            // four correctly-imported names as missing.
+            (src.match(/^import\s+[\s\S]*?from\s+['"][^'"]*['"]/gm) || [])
+                .flatMap(line => line.match(/\b[A-Z][A-Z0-9_]{3,}\b/g) || []));
+        for (const name of used) {
+            const defined = new RegExp(`(export )?(const|let|function|class)\\s+${name}\\b`).test(src);
+            // Globals and DOM/JS builtins are not this file's to define.
+            const builtin = /^(NaN|Infinity|JSON|Math|Object|Array|String|Number|Boolean|Promise|Map|Set|RegExp|Error|URL|URLSearchParams|Intl|Symbol|Reflect|Proxy|WeakMap|WeakSet|Date|BigInt|TRUE|FALSE|NULL)$/.test(name);
+            if (!defined && !imported.has(name) && !builtin) missing.push(`${rel}: ${name}`);
+        }
+    }
+    assert.deepEqual(missing, [],
+        'these files reference constants they neither define nor import — webpack compiles that '
+        + 'and the browser throws ReferenceError at render:\n  ' + missing.join('\n  '));
 });
