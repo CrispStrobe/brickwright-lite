@@ -1923,3 +1923,52 @@ invisible because it is true — the list does mention the doc. The tell is a
 direction of the test that has never been red: fire it once, on purpose, with
 an entry nothing else names.
 
+
+## Thirty-first species: A GATE WHOSE PRECONDITION A LATER GUARD CONSUMED (2026-09-07, lego-b9; lego-be's proof, lego-b9's guard)
+
+Two correct things, written weeks apart by two hands, whose COMPOSITION cannot
+run. Neither is wrong. Nothing in either file is stale. The gate reports a
+failure that names the wrong subject, or — the case here — never reports at
+all, because it was skipped in every run and nobody had a reason to look.
+
+**The incident.** `test/vendor-absent-by-design.test.mjs` (lego-be) proves that
+an UNSCOPED `sync-bw-board.mjs --dir <tree>` refuses the two absent-by-design
+files by name instead of creating them. It needs upstream's default-branch TIP,
+because the sync refuses a source BEHIND that tip before it reaches the check —
+a precondition the proof knows about and skips by name for. Nothing in CI set
+`BW_BOARD_HEAD_DIR`, so it had executed in none of 20 green main runs (plan T13
+recorded that; plan T13c added the clone that supplies it).
+
+The first run in which it ever executed (34145330880) went red on
+`i8088-cycles.js was not refused by name` — reading as a broken refusal. The
+refusal was fine. In between, plan T9b had added `scripts/lib-pin.mjs`: a file
+sync never moves the pin, and a sync from a tree at any other sha WOULD move it,
+so the run died with `PinMoveRefused` several steps before the check. A second
+precondition, of exactly the kind the proof already handled once, added after
+the proof was written, by someone who could not have seen the collision —
+because the proof was skipped in every run they could have seen.
+
+**Why it is its own species and not just a stale test.** A stale test refers to
+something that changed. Here nothing either file refers to changed: the sync
+still refuses by name, the guard still refuses pin moves, and both tests pass in
+isolation. What changed is the ORDER of refusals on a path only one of them
+walks. The composition had no owner, and no run exercised it. In CI the tip is
+the pin only in the minutes after a bump, so the collision was not an edge case
+either — it was the ordinary case, invisible for want of a single execution.
+
+**The tell, and it is cheap:** a gate that is skipped in every run has no
+evidence that its preconditions are still satisfiable — only that they were the
+day it was written. `# SKIP` says something about THIS run; it says nothing
+about whether the gate can run at all. Any repo that lets checks skip should be
+able to answer, from its own logs, *which gates have never executed here* —
+plan T13's census does that, and this species is what it found on the first one
+it un-skipped.
+
+**The fix, and the shape of it.** The proof now passes `--pin` — the lever that
+permits the move — because pin discipline is `test/pin-only-moves-with-flag
+.test.mjs`'s subject and per-file refusal is this one's; it snapshots and
+restores `vendor-pins.json` beside the vendored files BEFORE any assertion, so a
+failing assertion cannot leave a moved pin for the next hand to commit;
+it byte-compares the pin at the end; and it asserts BY NAME that the pin guard
+did not refuse this run, so the next guard to land ahead of it says so in one
+line instead of costing another diagnosis. Mutation-proved by dropping `--pin`.
