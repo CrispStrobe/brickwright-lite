@@ -127,17 +127,26 @@ async function open8086Machine (page, url) {
 }
 
 async function driveTimerdemo (browser, url, {missing = false} = {}) {
-    const page = await browser.newPage({viewport: {width: 1600, height: 1100}});
+    // A new context keeps the mutation independent of the successful page's
+    // HTTP cache. Blocking service workers is required for the 404 route to be
+    // the request owner; Playwright page routes cannot intercept a request a
+    // service worker answers first.
+    const context = await browser.newContext({serviceWorkers: 'block'});
+    const page = await context.newPage({viewport: {width: 1600, height: 1100}});
     const diagnostics = [];
+    let mutationIntercepts = 0;
     page.on('pageerror', error => diagnostics.push(`pageerror: ${error.stack || error.message}`));
     page.on('console', message => {
         if (message.type() === 'error') diagnostics.push(`console.error: ${message.text()}`);
     });
     if (missing) {
-        await page.route(`**/static/roms/${timerRom}`, route => route.fulfill({
-            status: 404,
-            body: 'missing by P6a mutation'
-        }));
+        await page.route(requestUrl => {
+            try { return new URL(requestUrl).pathname.endsWith(`/static/roms/${timerRom}`); }
+            catch { return false; }
+        }, route => {
+            mutationIntercepts++;
+            return route.fulfill({status: 404, body: 'missing by P6a mutation'});
+        });
     }
     try {
         const states = await open8086Machine(page, url);
@@ -163,7 +172,8 @@ async function driveTimerdemo (browser, url, {missing = false} = {}) {
             panelState: document.querySelector('[data-debug-panel]')
                 ?.getAttribute('data-debug-chip-refusal-state') || null
         }), 'timerdemo');
-        return {status: response.status(), ...observed, states, diagnostics, page};
+        return {status: response.status(), ...observed, states, diagnostics,
+            mutationIntercepts, context, page};
     } catch (error) {
         error.page = page;
         error.diagnostics = diagnostics;
@@ -210,7 +220,7 @@ async function main () {
         };
         console.log(`PASS: timerdemo reached the debugger — ${JSON.stringify(receipt.green)}`);
         await green.page.screenshot({path: join(artifacts, 'timerdemo-loaded.png'), fullPage: true});
-        await green.page.close();
+        await green.context.close();
 
         const mutation = await driveTimerdemo(browser, url, {missing: true});
         lastPage = mutation.page;
@@ -223,10 +233,14 @@ async function main () {
         if (mutation.event !== null) {
             throw new Error(`404 timerdemo dispatched media: ${JSON.stringify(mutation.event)}`);
         }
-        receipt.mutation = {status: mutation.status, event: mutation.event, red: mutationError.message};
+        if (mutation.mutationIntercepts !== 1) {
+            throw new Error(`timerdemo 404 control intercepted ${mutation.mutationIntercepts} requests, expected 1`);
+        }
+        receipt.mutation = {status: mutation.status, event: mutation.event,
+            intercepts: mutation.mutationIntercepts, red: mutationError.message};
         console.log(`PASS: mutation fired — ${mutationError.message}`);
         await mutation.page.screenshot({path: join(artifacts, 'timerdemo-404.png'), fullPage: true});
-        await mutation.page.close();
+        await mutation.context.close();
 
         await writeFile(join(artifacts, 'receipt.json'), JSON.stringify(receipt, null, 2));
     } catch (error) {
