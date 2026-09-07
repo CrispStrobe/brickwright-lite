@@ -14,7 +14,7 @@ import * as path from 'node:path';
 import {tmpdir} from 'node:os';
 import {fileSystemStore} from '../overlay/scratch-gui/src/lib/sdcc-wasm/toolchain-store.js';
 import {
-    primeToolchainCache, inspectToolchain, removeToolchain,
+    primeToolchainCache, inspectToolchain, removeToolchain, measureToolchain,
     TOOLCHAIN_FILES, GPL_TOOLCHAIN_ORIGIN as ORIGIN
 } from '../overlay/scratch-gui/src/lib/sdcc-wasm/toolchain-source.js';
 
@@ -198,4 +198,47 @@ test('an unknown verb fails rather than doing something plausible', async () => 
     const {code, stderr} = await cli('instal');
     assert.equal(code, 2);
     assert.match(stderr, /usage: bw-toolchain/);
+});
+
+// ---- weighted progress ----------------------------------------------------
+test('progress is weighted by bytes, and never exceeds its own total', async () => {
+    // One file is a third of the transfer, so nine equal steps would sit still
+    // through it and read as frozen. These sizes are shaped like the real ones.
+    const SIZES = {
+        'cc1.js': 21672, 'cc1.wasm': 393701, 'sdcc.js': 41216, 'sdcc.wasm': 452349,
+        'sdas8051.js': 36144, 'sdas8051.wasm': 53193, 'sdld.js': 35928,
+        'sdld.wasm': 56521, 'runtime.json': 607272
+    };
+    const headFetch = async (url, init) => {
+        const name = url.slice(url.lastIndexOf('/') + 1);
+        if (init && init.method === 'HEAD') {
+            return {ok: true, status: 200, headers: {get: k =>
+                (k === 'content-length' ? String(SIZES[name]) : null)}};
+        }
+        return new Response('x'.repeat(4), {status: 200});
+    };
+    const {sizes, total} = await measureToolchain(ORIGIN, {fetch: headFetch});
+    assert.equal(total, Object.values(SIZES).reduce((a, b) => a + b, 0));
+
+    const {store} = await newStore();
+    const seen = [];
+    await primeToolchainCache(ORIGIN, {
+        store, fetch: headFetch, sizes, totalBytes: total,
+        onProgress: e => { if (e.state !== 'fetching') seen.push(e); }
+    });
+
+    // THE BUG THIS PINS: the first version summed store.bytes() (what landed on
+    // disk, uncompressed) against a total of Content-Length (the compressed
+    // transfer), and reported "2.8 MiB of 1.6 MiB". Numerator and denominator
+    // must come from ONE source.
+    for (const e of seen) {
+        assert.ok(e.bytesDone <= e.totalBytes,
+            `progress exceeded its own total: ${e.bytesDone} of ${e.totalBytes} at ${e.name}`);
+    }
+    assert.equal(seen.at(-1).bytesDone, total, 'progress must finish at exactly the total');
+
+    // And the steps are UNEQUAL — that is the whole point of weighting.
+    const steps = seen.map((e, i) => e.bytesDone - (i ? seen[i - 1].bytesDone : 0));
+    assert.ok(Math.max(...steps) > Math.min(...steps) * 5,
+        'weighted steps should differ markedly; equal steps would stall on the big file');
 });
