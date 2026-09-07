@@ -94,24 +94,49 @@ API rather than the clock — at about 14:10 UTC. Measured over the twelve main 
 | 12:00 – 15:47 | 12 | **none** — every run finished before the next was created |
 | 16:32 – 16:53 | 3 | three open at once; the oldest queued **64 minutes and never started** |
 
-The second window is not D failing. It is the allocation stall of §1 recurring, and the check that
-says so is the one part 1 used: **at 17:00, with three main runs queued, nothing of ours was
-running anywhere** — all eleven workflows polled, zero jobs in progress. The runners were not ours
-to wait for.
+The second window is not D failing — but the reason I first gave for that was measured wrongly,
+and the correction changes the recommendation, so both are here.
 
-**What that exposes in D, and it is worth one sentence in the rule.** D's trigger is an event that
-may never arrive. During a stall the previous run does not start, so a rule phrased as "wait until
-it starts" has no defined behaviour precisely when the queue is at its worst — the landing agent
-either waits indefinitely or lands anyway, undeclared. And the measurement says the second is
-free: with nothing of ours running, an extra queued main run displaces nothing of ours; it joins
-GitHub's queue behind GitHub's own backlog.
+**THE MISREADING, because it is reusable.** I polled every workflow with
+`gh run list --json status` and found no run with `status: "in_progress"`, and wrote that nothing
+of ours was running. That is not what run-level status means. A run whose jobs are partly running
+and partly queued still reads `queued`, so the field answers "has everything started?" and not
+"is anything running?". brickwright-lite-ea caught it, having made the same misread an hour
+earlier; the job-level numbers below are the answer to the question I thought I had asked.
+
+| run | job | started (UTC) | finished |
+|---|---|---|---|
+| 34143734197 | build | 16:34 | 16:40 |
+| 34143734197 | browser (light) | 16:37 | 16:45 |
+| 34143734197 | browser (heavy) | 16:44 | 16:52 |
+| 34144728171 | build | 16:47 | 16:54 |
+| 34144728171 | browser (light) | 16:51 | 16:59 |
+| 34145311914 | build | 16:54 | 17:01 |
+| 34145311914 | corpus | 17:38 | 17:41 |
+
+Our jobs ran continuously from 16:34 to 17:01 and again at 17:38, including one that was running
+during the very poll that reported nothing running. **This is contention, not a stop:** four runs
+and sixteen-plus jobs against GitHub-hosted runners serving a couple at a time, with 20–40 minutes
+between a job being created and being picked up. The `needs:`-gated tails (`deploy`, `verify-gui`)
+and one run's two browser shards are what remained queued at the hour.
+
+**What survives the correction, and what does not.** The stacking is real: three main runs open at
+once, the oldest showing 64 minutes at the run level. So is the gap in D's wording — its trigger is
+"the previous main run has **started**", an event that during heavy contention may be 20–40 minutes
+away, so a rule phrased that way has no defined behaviour exactly when the queue is worst, and the
+landing agent either waits without saying so or lands without saying so.
+
+What does **not** survive is the argument I first gave for landing anyway. I claimed it was free
+because nothing of ours was running. Our jobs were running, and an extra main run's five jobs join
+a genuinely contended queue and do displace our own. The fallback is still worth having — an
+undeclared wait is the thing D was adopted to remove — but it is a *bounded cost*, not a free one.
 
 **Proposed wording, for the owner:** *land when the previous main run has started, or when it has
 been queued longer than 15 minutes without starting — and say which in the landing note.* Today's
 main queue waits were median 8.5 and p90 27.7 minutes, so a 15-minute fallback fires on roughly the
-worst quarter of landings and never on an ordinary one. The point is not the number; it is that
-"we landed into a stall, knowingly" is a fact the ledger should carry, and an undeclared wait is
-the one thing D was adopted to remove.
+worst quarter of landings and never on an ordinary one. The cost of the fallback firing is five
+more jobs in a contended queue; the cost of not having it is a landing agent blocked on an event
+that may be half an hour away, with no record of which it chose.
 
 **One more reading, for free.** This section is a `docs/*.md` file that no non-comment line of code
 names, so landing it starts no build at all — the read-not-mention waiver of lane C, working as
