@@ -219,3 +219,80 @@ against a green tree, confirmed red, and restored byte-for-byte.
 - **`getInfo()` is runtime-dependent.** `stc12` gates its port and matrix blocks
   on `runtime.stc`, so a probe against an empty runtime under-reports. Every
   probe is given the declarations the example itself produces.
+
+## LED polarity: the shipped benches disagree with the programs they run
+
+Measured 2026-09-07 against `e3a1f960e` by `scripts/led-polarity-census.mjs`. It
+is not a gate. It reports, because gating on it today would paint the corpus red
+without repairing anything, and the repair is a lane of its own.
+
+**The finding.** A program declares `PIN led1 = ... OUTPUT ACTIVE LOW`, which
+means "on" writes a 0. The circuit the example ships for a given device decides
+whether a 0 actually lights the LED. For the AUTHORED device they agree. For most
+of the generated per-device benches they do not, so `turn on led1` makes the LED
+go dark and `turn off led1` lights it.
+
+The census asks the solver rather than reading the wires: it drives each declared
+output pin low, reads the LED, drives it high, reads again, and compares which
+level lit it against what the program declared. A bench can reach its rails
+through a breadboard column, a seat or a jumper, and the solver already resolves
+all three.
+
+| | count |
+| --- | --- |
+| declared-output LEDs with a bench to measure | 394 |
+| agreeing with their program | 164 |
+| **inverted** | **230** |
+
+Per device, inverted over measured:
+
+| device | inverted / measured | distinct examples |
+| --- | --- | --- |
+| `stc12c5a60s2` | 0 / 38 | — |
+| `stc89c52rc` | 7 / 30 | 1 |
+| `stc15f2k60s2` | 8 / 40 | 2 |
+| `attiny85` | 21 / 25 | 15 |
+| `attiny88` | 21 / 29 | 15 |
+| `stm32f030` | 28 / 35 | 20 |
+| `arduino-uno` | 29 / 39 | 21 |
+| `arduino-mega` | 29 / 40 | 21 |
+| `arduino-nano` | 29 / 40 | 21 |
+| `atmega168p` | 29 / 40 | 21 |
+| `pico` | 29 / 38 | 21 |
+
+Ten of the eleven device families are affected, not four. `stc12c5a60s2` is clean
+because it is the device the corpus is AUTHORED for; every bench for it was
+written by hand or reviewed. The two other 8051 parts are not clean, which rules
+out "the 8051 is fine and the ports are broken" as the shape of this.
+
+Both directions occur, and they are different mistakes:
+
+| disagreement | count | where |
+| --- | --- | --- |
+| declared active-low, wired active-high | 215 | every non-authored family |
+| declared active-high, wired active-low | 15 | `50-7seg-chase` on `stc15f2k60s2` and `stc89c52rc`, `53-servo-sweep` on `stc15f2k60s2` |
+
+**Worked example, checked by hand.** `01-blink` declares `PIN led1 = P1.0 OUTPUT
+ACTIVE LOW`. Its authored bench wires `VCC → R_led1 → LED_led1.anode`, then
+`LED_led1.cathode → MCU.P1.0`: the pin sinks, and a 0 lights it. Its Uno bench
+wires `uno1.d13 → R_led1 → LED_led1.anode`, then `GND → LED_led1.cathode`: the
+pin sources, and a 0 puts it out.
+
+**Where it is NOT.** Both netlist inferrers in the tree branch on `pin.activeLow`
+correctly today, and were asked directly rather than read:
+`lib/bw-board/infer-netlist.js` and `lib/bw-circuit-ui/model/infer-seated.js` both
+produce `LED.cathode → pin` for an active-low declaration, on 8051, Uno and Pico
+alike. So whatever produced the shipped bench files either predates that branch
+or lost the flag on the way. Identifying that producer is the first step of the
+repair, not an assumption to start from — and note that the shipped benches seat a
+real board part (`uno1`, kind `arduino_uno`) where `inferNetlist` emits a generic
+`MCU`, so they did not come from it.
+
+**Why it went unseen.** It does not break what an example LOOKS like it is doing.
+Every affected example still blinks; the pair in a two-LED example still
+alternates. Only WHICH LED is lit is wrong, and nothing in the corpus asserted
+that. It surfaced while measuring a different defect entirely (the pin blocks not
+reaching the circuit at all), and the test written for that defect asserts
+complementarity rather than which LED is lit, precisely so that it fails for its
+own reason and not this one. That is recorded in
+`test/stc12-pins-reach-the-circuit.test.mjs`.
