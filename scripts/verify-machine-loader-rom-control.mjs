@@ -106,12 +106,18 @@ async function open8086Machine (page, url) {
     const chooserPromise = page.waitForEvent('filechooser', {timeout: 30000});
     await page.getByText(/Open circuit/, {exact: false}).click();
     await (await chooserPromise).setFiles(fixture);
-    await page.locator('[data-build-machine]').waitFor({state: 'visible', timeout: 30000});
+    await page.waitForFunction(() =>
+        document.querySelector('[data-build-machine]') && !window.__bwMachineExtracted,
+    null, {timeout: 30000});
     const beforeBuild = await page.evaluate(() => window.__bwMachineExtracted ? 'bench' : 'no-bench');
     if (beforeBuild !== 'no-bench') throw new Error(`expected no bench before Build Machine, got ${beforeBuild}`);
     await page.locator('[data-build-machine]').getByRole('button', {name: /Build Machine/}).click();
-    await page.getByTestId('bw-machine-preset-timerdemo').waitFor({state: 'visible', timeout: 30000});
-    await page.locator('[data-debug-panel]').first().waitFor({state: 'visible', timeout: 30000});
+    await page.waitForFunction(() => {
+        const panel = document.querySelector('[data-debug-panel]');
+        return window.__bwMachineExtracted &&
+            document.querySelector('[data-testid="bw-machine-preset-timerdemo"]') &&
+            panel?.getAttribute('data-debug-chip-refusal-state') === 'none';
+    }, null, {timeout: 30000});
     const beforeMedia = await page.locator('[data-debug-panel]').first()
         .getAttribute('data-debug-chip-refusal-state');
     if (beforeMedia !== 'none') {
