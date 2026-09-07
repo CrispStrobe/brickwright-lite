@@ -1,5 +1,8 @@
 # Brickwright history
 
+- Added the neutral brick-state runtime connector with bounded command
+  correlation and deterministic disconnect/reconnect generation handling.
+
 This is a compact ledger of durable capabilities and decisions. Git remains the
 source for commit-level detail. Current tasks belong in [PLAN.md](PLAN.md).
 
