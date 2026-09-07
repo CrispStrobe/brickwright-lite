@@ -332,7 +332,8 @@ ea's literal NUL the staleness gate said CLEAN while a former bw-board pin (a301
 sat on one of its code lines — lego-be proved it both ways by putting the byte back. MEASURED on main: 56
 files under test/ and scripts/ walk a tree; the content-based file skips (NUL, missing file, parse failure,
 unreadable) and their skipped sets today — pin-move-chain: 4 files, hiding exactly that one pin; fetch-pinning's
-own NUL skip: 3 vendored files, hiding nothing; simulator-driver-controls: 57 examples without a declared
+own NUL skip: 93 non-source files and 0 source files (the vendored trees are excluded before the read —
+lego-be's correction of their own first count of 3), hiding nothing; simulator-driver-controls: 57 examples without a declared
 program/circuit, 0 missing, parse failures unknown until reported; aggregate-timeouts: 0 unparsable;
 no-dead-overlay-modules: 0 unmirrored; wave-open-defects: examples without a controller (role). Rule: a walk
 REPORTS what it skipped, by count and reason, in its own output; `SILENT-SKIP` in audit-gate-shapes names a
