@@ -115,9 +115,72 @@ jobs:
       - name: circuit designer tree
         run: node brickwright-lite/scripts/sync-bw-circuit-ui.mjs --check --dir bw-circuit-ui --allow-stale
         if: always()
-      - name: board engine tree
+      # THE INTEGRITY CLAIM, and it is the one this workflow's own header makes:
+      # "does the vendored tree match vendor-pins.json?". Until 2026-09-07 that
+      # question was asked of sync-bw-board.mjs --check, which cannot answer it.
+      #
+      # MEASURED, because the number is the argument: the last 40 runs of this
+      # workflow on main -- thirteen hours -- are 40 failures and no successes,
+      # and it was structural in two independent ways. Its exit condition is
+      # `wouldDelete || wouldTruncate || absentRefused`, and absentRefused is
+      # populated only for files the manifest declares absentByDesign; two exist
+      # and upstream has both, so that list is non-empty on every run forever.
+      # And both real guards are gated behind `!check`, so under the very flag
+      # this step passes, neither wouldDelete nor wouldTruncate can EVER be
+      # populated -- verified by halving upstream's board.js and watching --check
+      # report DIFFERS and exit 1 for the unrelated reason. A gate that cannot
+      # pass and a gate that cannot fail, in one script, on one flag.
+      #
+      # Worse than useless: the alarms it could not raise are exactly the ones
+      # for a sync about to delete lite-only work, which is the accident that
+      # lost fifteen files, and they sat behind a permanent red nobody read.
+      #
+      # So the verdict now comes from the gate that already owns this fact.
+      # test/vendor-identity.test.mjs asserts BYTE equality against upstream at
+      # the pin and admits a difference only where the manifest names it. One
+      # authority; this workflow is a mirror of it rather than a second opinion.
+      #
+      # EXIT SEMANTICS, stated here so nobody has to reverse-engineer them from a
+      # `!check` again: this step fails if and only if a vendored file differs
+      # from upstream at the recorded pin and no manifest entry declares it, or a
+      # lite-authored file appears in a vendored root undeclared. Declared
+      # divergence is the healthy state and is silent.
+      - name: board engine tree matches the pin
+        if: always()
+        run: |
+          set -euo pipefail
+          pins=brickwright-lite/vendor-pins.json
+          [ -f "$pins" ] || pins=lego/brickwright-lite/vendor-pins.json
+          pin=$(jq -r '.["bw-board"] // empty' "$pins")
+          case "$pin" in
+            [0-9a-f]*) [ ${#pin} -eq 40 ] || { echo "::error::bw-board pin is not a 40-hex sha: $pin"; exit 1; } ;;
+            *) echo "::error::no bw-board pin in $pins"; exit 1 ;;
+          esac
+          # RE-READ HEAD RATHER THAN TRUST THE CHECKOUT. The step above falls back
+          # to HEAD with a ::warning:: when a pin is not fetchable, and a warning
+          # is not a stop. This gate means "the tree AT THE PIN"; run against the
+          # tip instead and it reports upstream's ordinary progress as undeclared
+          # divergence -- lego-b9 measured exactly that against a peer's branch,
+          # where the same file went red naming board.js and rp2040-bootrom.js and
+          # green at the pin minutes later. Refuse rather than judge from the
+          # wrong tree.
+          head=$(git -C bw-board rev-parse HEAD)
+          if [ "$head" != "$pin" ]; then
+            echo "::error::bw-board is at $head but vendor-pins.json says $pin -- the pinned checkout did not land, so this gate would judge the wrong tree"
+            exit 1
+          fi
+          cd brickwright-lite
+          BW_BOARD_DIR="$GITHUB_WORKSPACE/bw-board" node --test test/vendor-identity.test.mjs
+
+      # KEPT, AND DELIBERATELY NON-FATAL. Its per-file ok/DIFFERS listing is
+      # genuinely useful reading when something is wrong, and its REFUSED lines
+      # explain WHAT BREAKS for each declared divergence. But its exit code
+      # carries no information for the reasons above, so it must not decide
+      # anything. Informational, not a verdict.
+      - name: board engine tree (listing only, not a verdict)
         run: node brickwright-lite/scripts/sync-bw-board.mjs --check --dir bw-board --allow-stale
         if: always()
+        continue-on-error: true
       - name: sb3-creator transpiler
         run: node brickwright-lite/scripts/sync-sb3creator.mjs --check --dir sb3-creator --allow-stale
         if: always()
