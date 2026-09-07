@@ -114,7 +114,11 @@ const MEASURE = () => {
     const parent = canvas.parentElement ? canvas.parentElement.getBoundingClientRect() : null;
     const state = window.__brickwrightStore?.getState?.()?.scratchGui ?? {};
     return {
-        intended: {w: canvas.width, h: canvas.height},
+        // The canvas's width/height ATTRIBUTES are the renderer's DRAWING
+        // BUFFER, not "what the app intended". Calling them intent was a
+        // mislabel that produced a WRONG SCALE verdict for a layout that is
+        // in fact correct — see the header.
+        drawingBuffer: {w: canvas.width, h: canvas.height},
         box: {x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height)},
         offsetInParent: parent
             ? {dx: Math.round(r.x - parent.x), dy: Math.round(r.y - parent.y)}
@@ -352,7 +356,7 @@ async function run () {
         const all = [before, afterLoad, afterRedraw, afterViewport, afterFullscreen];
         await writeFile(join(artifacts, 'measurements.json'), JSON.stringify(all, null, 2));
         for (const m of all) {
-            console.log(`  ${m.name.padEnd(28)} intended ${m.intended.w}x${m.intended.h}  ` +
+            console.log(`  ${m.name.padEnd(28)} buffer ${m.drawingBuffer.w}x${m.drawingBuffer.h}  ` +
                 `box ${m.box.w}x${m.box.h} @${m.box.x},${m.box.y}  content ${m.content}`);
         }
 
@@ -368,10 +372,22 @@ async function run () {
             verdict = 'STALE CONTENT';
             why = 'a repaint at unchanged geometry changed the picture, so the box was right and '
                 + 'the drawing was old. The absent ResizeObserver on the stage is the shape of the fix.';
-        } else if (afterLoad.intended.w !== afterLoad.box.w || afterLoad.intended.h !== afterLoad.box.h) {
+        } else if (afterLoad.drawingBuffer.w === 0 || afterLoad.drawingBuffer.h === 0) {
+            // A FOURTH CASE, which the original three did not contain. Measured
+            // 2026-09-07: the laid-out box is correct at 480x360 and
+            // stageSizeMode is 'large' throughout, so nothing is mis-scaled —
+            // the renderer's DRAWING BUFFER is simply never sized. A canvas
+            // with a 0x0 buffer draws nothing however right its CSS box is.
+            verdict = 'DRAWING BUFFER NEVER SIZED';
+            why = `the laid-out box is ${afterLoad.box.w}x${afterLoad.box.h} and correct, and the `
+                + `renderer's buffer is ${afterLoad.drawingBuffer.w}x${afterLoad.drawingBuffer.h}. `
+                + 'Neither a synthetic resize event nor a real viewport change set it; only '
+                + `fullscreen did (${afterFullscreen.drawingBuffer.w}x${afterFullscreen.drawingBuffer.h}). `
+                + 'This is NOT wrong scale: the layout is right and the buffer is absent.';
+        } else if (afterLoad.drawingBuffer.w !== afterLoad.box.w || afterLoad.drawingBuffer.h !== afterLoad.box.h) {
             verdict = 'WRONG SCALE';
-            why = `the app intended ${afterLoad.intended.w}x${afterLoad.intended.h} and layout produced `
-                + `${afterLoad.box.w}x${afterLoad.box.h}`;
+            why = `the renderer's buffer is ${afterLoad.drawingBuffer.w}x${afterLoad.drawingBuffer.h} `
+                + `and layout produced ${afterLoad.box.w}x${afterLoad.box.h}`;
         } else if (afterLoad.offsetInParent && (afterLoad.offsetInParent.dx !== 0 || afterLoad.offsetInParent.dy !== 0) &&
                    afterFullscreen.offsetInParent &&
                    (afterFullscreen.offsetInParent.dx !== afterLoad.offsetInParent.dx ||
