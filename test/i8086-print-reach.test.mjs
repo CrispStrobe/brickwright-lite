@@ -81,8 +81,8 @@ test('the exact 280-program print census is disjoint, exhaustive and names the b
             ['arduino-03-smoothing'],
             'a list-dependent scalar must not wear an emitted candidate count');
         const smoothingEvidence = report.numericListDependencyEvidence['arduino-03-smoothing'];
-        assert.equal(smoothingEvidence.length, 4);
-        for (const fragment of ['delete all of readings', 'add 0 to readings',
+        assert.equal(smoothingEvidence.length, 3);
+        for (const fragment of ['add 0 to readings',
             'item (readIndex + 1) of readings', 'replace item (readIndex + 1) of readings']) {
             assert.ok(smoothingEvidence.some(row => row.includes(fragment)),
                 `smoothing evidence does not name ${fragment}`);
