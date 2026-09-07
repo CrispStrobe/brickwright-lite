@@ -72,3 +72,77 @@ test('the route is gated on the SETTING, not on the capability', () => {
     assert.equal(/loadToolchain\(document\.baseURI\)/.test(compiler), false,
         'the toolchain must not be loaded from the app origin — that is what bundled it');
 });
+
+// ---- the cache primitives, with fakes -----------------------------------
+// These are what make "opt in once, then work offline" true rather than
+// aspirational, so they are asserted here instead of only in a browser.
+import {primeToolchainCache, cachedResolver, TOOLCHAIN_CACHE, GPL_TOOLCHAIN_ORIGIN as ORIGIN}
+    from '../overlay/scratch-gui/src/lib/sdcc-wasm/toolchain-source.js';
+
+const fakeCaches = () => {
+    const stores = new Map();
+    const wrappers = new Map();
+    return {
+        stores,
+        // One wrapper per name. The first version returned a NEW object per
+        // open(), so the test that patched `.match` patched an instance the
+        // code under test never saw, and the assertion measured nothing.
+        open: async name => {
+            if (!stores.has(name)) stores.set(name, new Map());
+            const store = stores.get(name);
+            if (!wrappers.has(name)) {
+                wrappers.set(name, {
+                    match: async url => store.get(url) || undefined,
+                    put: async (url, response) => store.set(url, response)
+                });
+            }
+            return wrappers.get(name);
+        }
+    };
+};
+const fakeResponse = body => ({
+    ok: true, status: 200,
+    clone () { return this; },
+    async blob () { return {body}; }
+});
+
+test('priming fetches every file the loader will ask for, once', async () => {
+    const caches_ = fakeCaches();
+    const asked = [];
+    const fetch_ = async url => { asked.push(url); return fakeResponse(url); };
+    const stored = await primeToolchainCache(ORIGIN, {caches: caches_, fetch: fetch_});
+    assert.equal(stored.length, TOOLCHAIN_FILES.length);
+    assert.equal(asked.length, TOOLCHAIN_FILES.length, 'one fetch per file');
+    for (const url of asked) assert.ok(url.startsWith(ORIGIN), `${url} left the GPL origin`);
+
+    // Second prime must hit the cache, not the network — otherwise "kept on
+    // their device" costs a download every session.
+    asked.length = 0;
+    await primeToolchainCache(ORIGIN, {caches: caches_, fetch: fetch_});
+    assert.deepEqual(asked, [], 'a primed cache re-fetched');
+});
+
+test('priming reports a bad response instead of caching it', async () => {
+    const caches_ = fakeCaches();
+    const fetch_ = async () => ({ok: false, status: 404, clone () { return this; }});
+    await assert.rejects(
+        () => primeToolchainCache(ORIGIN, {caches: caches_, fetch: fetch_}),
+        /404/, 'a 404 must not be cached as if it were the toolchain');
+});
+
+test('the resolver serves blob URLs from cache and falls back per file', async () => {
+    const caches_ = fakeCaches();
+    const fetch_ = async url => fakeResponse(url);
+    await primeToolchainCache(ORIGIN, {caches: caches_, fetch: fetch_});
+    // Drop one file, so the cache is PARTIAL — the state a cancelled prime
+    // leaves behind. Removed from the store itself, not by patching the
+    // wrapper, so the code under test sees the same absence a browser would.
+    caches_.stores.get(TOOLCHAIN_CACHE).delete(`${ORIGIN}static/sdcc-wasm/sdld.wasm`);
+
+    let made = 0;
+    const URL_ = {createObjectURL: () => `blob:fake-${++made}`};
+    const resolve = await cachedResolver(ORIGIN, {caches: caches_, URL: URL_});
+    assert.match(resolve('sdcc.wasm'), /^blob:/, 'a cached file comes from the cache');
+    assert.equal(resolve('sdld.wasm'), `${ORIGIN}static/sdcc-wasm/sdld.wasm`,
+        'a missing file degrades to the origin rather than to broken');
+});
