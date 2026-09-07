@@ -619,6 +619,49 @@ anchors the parse to rp2040js instead of running it. Candidates to COST, not to 
 SmallerC (not present); chibicc or tcc ARM targets. DoD: the same P3 differential with the C side executed on
 rp2040js.
 
+**COSTED 2026-09-07** (worker; measured on the box, not built — N11 stays OPEN). The wall every small-compiler
+candidate hits is the target: the RP2040 is a dual **Cortex-M0+, ARMv6-M, Thumb-ONLY** core (no A32/ARM mode),
+so a candidate must emit ARMv6-M Thumb or it faults on the first instruction. And the DoD is a NODE/CI ORACLE
+context — the P3 differential is a node test — not the shipped browser button, which splits the question into
+two independent doors. The boot/exec half is already DONE and reused: `scripts/probe-pico-micropython.mjs`'s
+`parseUF2` + `createPicoMachine` boot and step ARM Thumb (from N3/N3d). What every door still needs beyond a
+compiler is (B) freestanding link glue — a Cortex-M vector table (initial SP + reset→main), a linker script
+placing `.text` at flash `0x10000000`, producing an ELF/UF2 rp2040js loads; the P3 pin program needs no libc,
+only the SIO/IO_BANK0 MMIO writes the differential already anchors.
+
+**DOOR 1 — a real ARM compiler as a CI-side ORACLE (cheapest, reaches the DoD).** MEASURED ON THIS BOX:
+`arm-none-eabi-gcc -Os -ffreestanding -nostdlib -mcpu=cortex-m0plus -mthumb` compiles a GP25 SIO stub to pure
+ARMv6-M Thumb (16-bit `movs/ldr/lsls/str/b.n` only, all M0-legal), storing to exactly `0xd0000024` (OE_SET),
+`0xd0000014` (OUT_SET), `0xd0000018` (OUT_CLR) — the SAME addresses the P3 anchor reads from rp2040js — with no
+external assembler (gcc's integrated pipeline). `clang --target=thumbv6m-none-eabi` compiles the same stub too.
+Licence: gcc is GPL and REFUSED for adoption, but the differential is an oracle, and by the reasoning ROADMAP
+§3.8.2b already states for ia16-gcc ("a GPL compiler does not affect the binaries it emits") it is licence-clean
+here; `clang` (Apache-2.0 w/ LLVM exception) is permissive and could later ship. Remaining cost: only (B) above
+plus wiring into the differential with a by-name skip when the toolchain is absent (like the firmware skip).
+Modest — days, not a compiler-writing project.
+
+**DOOR 2 — clang/LLVM compiled to WASM, for the SHIPPED in-browser button (correct but heavy).** The ONLY
+toolchain that emits correct Cortex-M0 Thumb AND runs in the browser, with an integrated assembler + lld (no
+external `as`/`ld`). Apache-2.0, vendorable. Cost: a clang+lld WASM build is ~15–40 MB — an order of magnitude
+past SmallerC's ~0.5 MB or sdcc-wasm's few MB, paid as a lazy chunk only by someone compiling Pico C. "Local,
+but not small." Independent of the differential.
+
+**NON-DOORS (measured out, so the plan's first candidates are answered).** *SmallerC*: has NO ARM back end at
+all — the vendored dist is `smlrc`/`smlrpp` (x86 `cgx86.c`; its backends are x86/MIPS/TR3200). A "Thumb-1 back
+end" is a from-scratch code generator PLUS a Thumb assembler (`i8086-asm.js` is x86-only) — a research project,
+not wiring; BSD-2 licence is fine, the effort is the problem. *tcc*: its ARM back end emits A32 (ARMv4/v5), NOT
+Thumb, nothing for ARMv6-M — Cortex-M0+ cannot execute A32, so it faults; LGPL-2.1 (oracle-OK, awkward to bundle
+as WASM). Out without a new Thumb back end, same wall as SmallerC. *sdcc* (this repo's 8051 local compiler,
+confirmed `-mmcs51` only): targets 8-bit MCUs, no ARM Cortex-M. *chibicc* (x86-64, shells to `as`/`ld`) and
+*cproc+QBE* (x86-64/aarch64/riscv64, no 32-bit ARMv6-M): out.
+
+**Verdict (measured, NOT picked): the DoD is reachable CHEAPLY via Door 1** — the compiler half is proven on the
+box and licence-clean as an oracle, the exec harness exists, only the freestanding glue + wiring remain. The
+shipped local button (Door 2) is the expensive, separate goal. Every small-local-compiler candidate is out
+because the RP2040 is Thumb-only ARMv6-M and none of them target it. Follow-on when claimed: build Door 1's glue,
+compile the pin program, and run it on rp2040js so the P3 differential EXECUTES the C side (a wrong emitter
+address then faults or mismatches at runtime, not just against the anchor).
+
 ### Lane L — lowered halves to add or complete
 
 **L1. ASM reader with named refusals.** Owner: lego-ac. **v1 LANDED 2026-09-05** (`ea305f40f`) (`lib/bw-asm/asm-8086-to-pseudocode.js`, `test/asm-8086-to-pseudocode.test.mjs`): the emitter's own shapes for the 8086 — the DX:AX stack-machine expression stream, the three comparison templates, and/or/not, set/change/say/print/wait/wait until/repeat/repeat until/if/if-else/forever/stop — read back and re-lower to byte-identical assembly over a five-program corpus; hand-written assembly (every fixture in `examples-i8086.js`) refused as foreign, the scheduler form refused with its script count, pins/ports/displays/tone/PWM/keypad/broadcast/say-for-secs refused by feature name; census (after the scheduler form and the pin family landed on the same branch) 29 lifted / 1 refused / 10 unprobed of 40 anchors, and the lifted set may only grow. Pins and ports read back with declarations synthesised from their use; ACTIVE LOW is not recoverable from the bytes and is warned about (the bytes are identical either way); an INPUT nothing reads is a named refusal because the 8255 control word could not be re-derived. The scheduler form reads back one WHEN per task. The ASM tab's To blocks is wired for the 8086 in source mode. Four mutations proven red. Not yet: keypad, displays, tone, PWM, broadcast, say-for-secs. **Re-scoped:** the 8051 half of L1 is not needed — the only 8051 assembly Brickwright produces is a compiler listing of C that the C tab already reads back; hand-written 8051 assembly is foreign by the same rule as hand-written 8086 assembly.
