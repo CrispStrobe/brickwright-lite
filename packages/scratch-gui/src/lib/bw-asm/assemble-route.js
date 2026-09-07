@@ -224,12 +224,10 @@ const C_STARTUP = [
 ].join('\n') + '\n';
 
 /**
- * Port I/O primitives for compiled C. SmallerC has no inline asm and no port
- * intrinsic, so a C program that must reach an I/O-mapped peripheral — the 8255
- * PPI the 8086 boards drive their pins through — declares these `extern` and
- * CALLS them. Their bodies are the SAME idiom pseudocode-8086.js emits inline
- * for the ASM route (`MOV DX, port` / `OUT DX, AL` / `IN AL, DX`), so a reader
- * of both routes sees one thing.
+ * Machine-service primitives for compiled C. SmallerC has no inline asm, so a
+ * C program declares these `extern` and CALLS them. Their bodies use the SAME
+ * idioms pseudocode-8086.js emits for the ASM route: OUT/IN for the 8255 and
+ * INT 15h/AH=86h for a single-script wait.
  *
  * The contract is cdecl, matching SmallerC's 16-bit output: arguments are
  * 16-bit words pushed right to left (so the first argument sits at [bp+4]), the
@@ -238,12 +236,14 @@ const C_STARTUP = [
  *
  * `bw_outb(port, value)` — write `value` (low byte) to I/O `port`.
  * `bw_inb(port)`         — read a byte from I/O `port`, zero-extended.
+ * `bw_delay_ms(ms)`      — wait through BIOS INT 15h/86h; the DOS bench
+ *                          advances exact machine time for that service.
  *
  * Injected by compileC8086 ONLY when the compiled body references the symbol
- * (see below), so every program that does no port I/O is byte-for-byte
- * unchanged.
+ * (see below), so every program that calls none of these helpers is
+ * byte-for-byte unchanged.
  */
-const PORT_IO_HELPERS = {
+const C_ROUTE_HELPERS = {
     bw_outb: [
         '_bw_outb:',            // void bw_outb(unsigned port, unsigned value)
         '    push bp',
@@ -261,6 +261,22 @@ const PORT_IO_HELPERS = {
         '    mov dx, [bp+4]',   // port
         '    in al, dx',        // same idiom as pseudocode-8086.js: IN AL, DX
         '    xor ah, ah',       // zero-extend the byte to a 16-bit unsigned
+        '    pop bp',
+        '    ret'
+    ].join('\n') + '\n',
+    bw_delay_ms: [
+        '_bw_delay_ms:',         // void bw_delay_ms(unsigned ms)
+        '    push bp',
+        '    mov bp, sp',
+        '    push bx',           // cdecl: BX is callee-saved
+        '    mov ax, [bp+4]',    // unsigned milliseconds (0..65535)
+        '    mov bx, 03E8h',     // 1000 microseconds per millisecond
+        '    mul bx',            // DX:AX = ms * 1000 (fits in 32 bits)
+        '    mov cx, dx',
+        '    mov dx, ax',
+        '    mov ah, 86h',
+        '    int 15h',           // same blocking DOS-proxy door as the ASM route
+        '    pop bx',
         '    pop bp',
         '    ret'
     ].join('\n') + '\n'
@@ -369,14 +385,14 @@ export async function compileC8086 (cSource, seams = {}) {
     // two would be a duplicate directive rather than a harmless repeat.
     const body = out.asm.replace(/^\s*bits\s+16\s*$/im, '');
 
-    // Conditional port-I/O injection: if the compiled body CALLS one of the
-    // port helpers (it will have emitted `call _bw_outb` and an `extern` for
-    // it), define the helper in this same image and strip the extern (the
-    // symbol is now local). Only referenced helpers are added, so a program
-    // that does no port I/O assembles to exactly what it did before.
+    // Conditional machine-helper injection: if the compiled body CALLS one of
+    // the helpers (it will have emitted `call _bw_outb`, `call _bw_delay_ms`,
+    // etc. and an `extern` for it), define the helper in this same image and
+    // strip the extern. Only referenced helpers are added, so an unrelated
+    // program assembles to exactly what it did before.
     let helpers = '';
     let cleaned = body;
-    for (const [sym, asmDef] of Object.entries(PORT_IO_HELPERS)) {
+    for (const [sym, asmDef] of Object.entries(C_ROUTE_HELPERS)) {
         // Inject the body ONLY when the helper is actually CALLED, so a program
         // that does no port I/O is unchanged. Strip the `extern` whenever it is
         // present — a call needs it gone (the symbol is now local), and a bare

@@ -401,9 +401,29 @@ the verb choke (delay 104, adc 41, print 26, devices 20, oled 9, pwm 8, tone 7, 
 king, N2c below), 31 become HOST C (string, micro:bit and SPIKE programs), **5 emit and compile with SmallerC,
 up from 3** (gained: arduino-02-blink-without-delay, arduino-02-debounce — both store a number), **0 refused by
 the int-16 model**: no gallery program stores a literal past 16 bits. The worker's 8-of-33 / 177-of-300 figures
-were over a property-based corpus and stand as the reach as the choke lifts. **N2c (unclaimed, Opus):** `wait`
-on the 8086 C route — 104 of 113 choked programs need only a delay; the ASM route has BW_DELAY over the PIT, the
-C branch needs the same loop through `bw_inb(0x40)` or a calibrated busy-wait; differential on the bench.
+were over a property-based corpus and stand as the reach as the choke lifts.
+
+**N2c. Literal `wait` on the single-script 8086 C route. CANDIDATE 2026-09-07** (bwcx; upstream
+replacement `42f5d92`, exact-head CI `34101801113`). Measurement corrected both premises in the old task.
+Single-script ASM does **not** use the PIT: `pseudocode-8086.js` emits `INT 15h/AH=86h` with `CX:DX`
+microseconds, and the DOS bench advances exact machine time without spending one instruction per elapsed
+cycle. The bench PIT is unwired from an IRQ and is fed at the 5 MHz CPU rate, so treating it as the PC's
+1.193182 MHz PIT would make every duration **4.19× wrong**; a calibrated busy loop would instead burn the
+host CPU this roadmap is reducing. The C route therefore declares `bw_delay_ms(unsigned ms)` and
+`compileC8086` injects a cdecl adapter only when SmallerC actually calls it: 16×16 `MUL` converts
+milliseconds to `CX:DX`, then the adapter enters the same `INT 15h/86h` service as ASM.
+
+The admitted contract is deliberately narrow and executable: a literal single-script wait from **0 through
+65535 ms** emits; a negative, non-finite or longer literal refuses the whole program by name before its
+word-sized argument can wrap. A computed/reporter wait also refuses by name — `(pause * 1000)` would overflow
+as signed int before an unsigned cast, so a comment asking the caller to stay in range was rejected during
+audit. Multi-script timing remains refused through the existing `now` choke and is a separate scheduler lane.
+The exact 280-program pass now finds **44 emit (up from 5, +39)**, 73 retain another verb choke, 31 are HOST C,
+131 are retarget-refused, and one computed wait reaches this new named refusal; 120 programs contain a literal
+wait and two contain a computed one. Thus the old “104 need only delay” shorthand was false: 104 choke reasons
+mentioned delay, but many of those programs also require another unimplemented verb. Hosted acceptance compiles
+all 44, and the C-vs-ASM differential compares the added 50 ms in emulated cycles (not PIT ticks); removing the
+DOS interrupt or helper is mutation-proven red.
 
 **N3. MicroPython on the Pico, in the simulator.** **MEASURED 2026-09-05, premise inverted**
 (delegate, verified independently by lego-ac): MicroPython v1.22.2 **boots to a working REPL**
