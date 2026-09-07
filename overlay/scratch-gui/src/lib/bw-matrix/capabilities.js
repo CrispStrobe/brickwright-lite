@@ -627,16 +627,17 @@ export const CELLS = Object.freeze({
         javascript: {native: no('no-port', 'no JavaScript engine for the 8086'), lowered: [via('asm'), via('c')]},
         // SmallerC (WASM) emits NASM; the local assembler's NASM front end reads
         // it: 5 of 5 corpus programs, measured by test/smallerc-to-i8086-asm.
-        // `float` and `long` are the two named edges — and `long` is the bigger
-        // one (N2b): generateC types EVERY Scratch number as `static long`, and
-        // the tiny (.COM) model has none, so any program that STORES A NUMBER is
-        // refused before the compiler (test/i8086-c-long-ceiling). Only pin and
-        // shift-register programs (no stored number) compile today.
+        // `float` is one named edge. The other was `long` (N2b): the tiny (.COM)
+        // model has no 32-bit type, so since 2026-09-07 generateC types an 8086
+        // number as a 16-bit int and REFUSES a literal outside -32768..32767 by
+        // name (test/i8086-c-long-ceiling). The ASM route keeps 32 bits; the two
+        // agree on every value that fits 16 and the differential names the rest
+        // (test/numeric-i8086-differential).
         c: {
             native: shipped('com', 'SmallerC (WASM) + i8086-asm.js', 'local', {
-                note: 'no libc; float does not link (soft-float helper); long has no tiny-model type, '
-                    + 'so any program with a number variable is refused by name until N2b (int-16 or a '
-                    + 'long-capable build) — pin and shift-register programs still compile'
+                note: 'no libc; float does not link (soft-float helper); numbers are a 16-bit int '
+                    + '(-32768..32767) — a literal outside it is refused by name, run-time overflow wraps '
+                    + 'at 16 bits, while the ASM route keeps 32 (N2b)'
             }),
             lowered: [via('c')]
         },

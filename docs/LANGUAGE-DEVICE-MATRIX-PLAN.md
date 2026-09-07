@@ -360,6 +360,32 @@ acceptance test is the existing differential — the ASM lowering (`pseudocode-8
 model) and the C route must agree on the bench for every admitted program, and a width disagreement is a
 finding to name, not to paper over.
 
+**Step 2 DONE 2026-09-07 (lego-ac), route (b) as measured.** Upstream sb3-creator `365bf18` (+ `5d17288`, a
+gate-integrity waiver that had been red since 62b96b7): generateC gets a per-core scalar type — `cIntType()`,
+`int` on i8086, `long` everywhere else — for variables and the task-mode REPEAT statics; a literal or initial
+value outside **-32768..32767** REFUSES the whole program by name (the literal and the range in the sentence,
+never wrapped: `cI16Check` collects, generateC refuses); the emitted header states the width AND that run-time
+overflow wraps at 16 bits. Goldens captured from the emitter BEFORE the change for 8051/avr/arm/6502 prove no
+other family moved a byte (`test/i8086-int16-model`). Lite pin 414e8ef → 5d17288; the route carries the
+emitter's own refusal sentence through by name (`emitterRefusal`: a verb without an i8086 branch or a number
+past 16 bits used to reach the learner as "the compiler produced no assembly"), refuses HOST C by name (a
+program with no PIN/PART line gets a desktop program from generateC whatever its DEVICE line says), and keeps
+`cUsesLong` as defence in depth. **Acceptance, the differential** (`test/numeric-i8086-differential`): C and ASM
+leave identical 8255 state for a numeric program that fits 16 bits (arithmetic, comparison, REPEAT, division);
+a literal past 16 bits is REFUSED by C and ADMITTED by ASM; run-time overflow (30000 + 5000) lights DIFFERENT
+pins — C wraps to -30536, ASM holds 35000 — asserted BY VALUE so widening either side is noticed. **The width
+disagreement is named, not papered over:** the two routes have two contracts, 16-bit int and 32-bit pairs, both
+stated at their source. **Reach, measured over the 280 gallery programs** (`scripts/measure-i8086-numeric-reach.mjs
+--examples <sb3-creator>/examples --compile`, retargeting through the 8051 pin pool because the retargeter has no
+i8086 entry): 131 refused by the retargeter (no hardware declarations, or a part the pool lacks), 113 refused by
+the verb choke (delay 104, adc 41, print 26, devices 20, oled 9, pwm 8, tone 7, now 6 — `wait` is the choke
+king, N2c below), 31 become HOST C (string, micro:bit and SPIKE programs), **5 emit and compile with SmallerC,
+up from 3** (gained: arduino-02-blink-without-delay, arduino-02-debounce — both store a number), **0 refused by
+the int-16 model**: no gallery program stores a literal past 16 bits. The worker's 8-of-33 / 177-of-300 figures
+were over a property-based corpus and stand as the reach as the choke lifts. **N2c (unclaimed, Opus):** `wait`
+on the 8086 C route — 104 of 113 choked programs need only a delay; the ASM route has BW_DELAY over the PIT, the
+C branch needs the same loop through `bw_inb(0x40)` or a calibrated busy-wait; differential on the bench.
+
 **N3. MicroPython on the Pico, in the simulator.** **MEASURED 2026-09-05, premise inverted**
 (delegate, verified independently by lego-ac): MicroPython v1.22.2 **boots to a working REPL**
 in rp2040js with the clean-room bootrom — `print(1+1)` answers `2` over the raw-REPL protocol

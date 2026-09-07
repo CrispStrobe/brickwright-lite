@@ -293,6 +293,25 @@ const PORT_IO_HELPERS = {
  * variables, so they emit no `long`. This detector keys on the emitted `long`
  * type, not on the pseudocode, so it fires on real stored numbers only.
  */
+/**
+ * The emitter's whole-program refusal, if `cSource` is one: generateC returns a
+ * comment-only source starting "No C emitted for DEVICE …" whose body says why.
+ * Returns that body as one sentence (comment furniture stripped), else null.
+ */
+export const emitterRefusal = (src) => {
+    const m = /^\s*\/\*\s*No C emitted for DEVICE\s+(\S+)\.\s*\n([\s\S]*?)\*\//.exec(src);
+    if (!m) return null;
+    const body = m[2].split('\n')
+        .map(l => l.replace(/^\s*\*\s?/, '').trim())
+        .filter(Boolean)
+        .join(' ')
+        .replace(/\s+/g, ' ');
+    return `the emitter produced no C for ${m[1]}: ${body}`;
+};
+
+/** generateC's host-C header: "blocks → C (host)" — a desktop program, not device C. */
+export const isHostC = (src) => /^\s*\/\*[^\n]*blocks → C \(host\)/.test(src);
+
 export const cUsesLong = (src) => /\blong\b/.test(src
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
     .replace(/\/\/[^\n]*/g, ' ')
@@ -304,13 +323,37 @@ export async function compileC8086 (cSource, seams = {}) {
     const compile = compileC || (await import(
         /* webpackChunkName: "smallerc" */ '../smallerc-wasm/compiler.js')).compile;
 
-    // Refuse a numeric-variable program by name before the compiler chokes on
-    // `long`. Pin and shift-register programs (no stored number) fall through.
+    // generateC refuses a program it will not emit for this board with a
+    // comment-only source ("No C emitted for DEVICE I8086" — a verb with no
+    // i8086 branch, or a number outside the 16-bit model, N2b). Compiling that
+    // yields no assembly and a message about the compiler; the emitter's own
+    // sentence is the learner-actionable one, so carry it through by name.
+    const refused = emitterRefusal(cSource);
+    if (refused) {
+        throw new AsmRouteError(refused, {route: 'local', target: 'i8086', reason: 'source'});
+    }
+
+    // A program with no hardware declarations gets HOST C from generateC (a
+    // desktop program over libc: snprintf, clock_gettime, long long) whatever
+    // its DEVICE line says. That is not 8086 code and never will be; say so
+    // rather than let the `long` guard below blame the emitter.
+    if (isHostC(cSource)) {
+        throw new AsmRouteError(
+            'this program declares no pins or parts, so the C tab shows HOST C (a desktop program '
+            + 'over libc), which the 8086 route does not compile. Add a PIN or PART line to get '
+            + 'device C for the 8086.',
+            {route: 'local', target: 'i8086', reason: 'source'});
+    }
+
+    // Defence in depth for the numeric model: since N2b the emitter types 8086
+    // numbers as 16-bit `int` and no `long` should reach here. If one does (a
+    // helper the emitter grew without an i8086 branch), refuse by name rather
+    // than let SmallerC's raw "Unexpected token long" through.
     if (cUsesLong(cSource)) {
         throw new AsmRouteError(
-            'this program uses a number variable, and the 8086 C route cannot compile numbers yet: '
-            + 'SmallerC’s tiny (.COM) model has no 32-bit long, which is how every Scratch number '
-            + 'is typed. Pin and shift-register programs (which store no number) do compile. Tracked as N2b.',
+            'this C uses `long`, and SmallerC’s tiny (.COM) model has no 32-bit type: the 8086 '
+            + 'numeric model is a 16-bit int (N2b). The emitter should not have produced this; '
+            + 'the line that did is the finding.',
             {route: 'local', target: 'i8086', reason: 'source'});
     }
 
