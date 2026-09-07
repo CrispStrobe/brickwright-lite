@@ -3,7 +3,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {execFile} from 'node:child_process';
-import {readFile, rm, writeFile} from 'node:fs/promises';
+import {mkdtemp, readFile, rm, symlink, writeFile} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {basename, join} from 'node:path';
 import {promisify} from 'node:util';
 import {fileURLToPath} from 'node:url';
 
@@ -119,20 +121,27 @@ test('the 280-program gallery records the wait/print gains and every emitted pro
 
 test('commented-zero mutation cannot put either timer program back into honest reach',
     {timeout: 120000}, async () => {
-        const sourceFile = fileURLToPath(new URL('../overlay/scratch-gui/src/lib/sb3-creator.js', import.meta.url));
-        const mutantName = `.n2d-commented-zero-mutant-${process.pid}.mjs`;
-        const mutantFile = fileURLToPath(new URL(mutantName, new URL('../overlay/scratch-gui/src/lib/', import.meta.url)));
+        const sourceDir = fileURLToPath(new URL('../overlay/scratch-gui/src/lib/', import.meta.url));
+        const sourceFile = join(sourceDir, 'sb3-creator.js');
+        const temp = await mkdtemp(join(tmpdir(), 'n2d-commented-zero-mutant-'));
+        const mutantFile = join(temp, 'sb3-creator.mjs');
         const source = await readFile(sourceFile, 'utf8');
         const anchor = 'if (!this._cLoweringRefused.includes(shown)) this._cLoweringRefused.push(shown);';
         const mutant = source.replace(anchor, 'if (!this._cLoweringRefused.includes(shown)) void shown;');
         assert.notEqual(mutant, source, 'commented-zero mutation anchor moved');
         try {
+            for (const dependency of [
+                'sb3-creator-runtime.js',
+                'sb3-creator-scratchruntime.js',
+                'sb3-creator-chostruntime.js',
+                'cubeDirections.js'
+            ]) await symlink(join(sourceDir, dependency), join(temp, basename(dependency)));
             await writeFile(mutantFile, mutant);
             const {stdout} = await execFileP(process.execPath, [
                 '--import', guiScopeHook,
                 'scripts/measure-i8086-numeric-reach.mjs',
                 '--examples', 'overlay/scratch-gui/examples',
-                '--sb3', mutantName
+                '--sb3', mutantFile
             ], {cwd: root, maxBuffer: 8 * 1024 * 1024});
             const receipt = JSON.parse(stdout);
             assert.ok(receipt.emits.includes('arduino-02-blink-without-delay') ||
@@ -141,6 +150,6 @@ test('commented-zero mutation cannot put either timer program back into honest r
             assert.throws(() => auditReach(receipt, {compiled: false}),
                 /safety-correct emitted set changed/);
         } finally {
-            await rm(mutantFile, {force: true});
+            await rm(temp, {recursive: true, force: true});
         }
     });
