@@ -173,12 +173,31 @@ async function run () {
     if (!url) ({server, url} = await serveBuild());
     const browser = await chromium.launch({headless: true});
     const page = await browser.newPage({viewport: {width: 1600, height: 1050}});
+    /**
+     * A content signature, WHEN ONE CAN BE TAKEN.
+     *
+     * An element screenshot needs a visible element, and the stage canvas has
+     * measured 0x0 at every step so far — so Playwright waited 30 s for it to
+     * become "stable" and threw. That is the SAME mistake as the non-zero size
+     * filter this harness already had to remove: an instrument that only works
+     * on the healthy state cannot report on the sick one. lego-ac's rule —
+     * filter by what a thing IS, never by whether it LOOKS WELL — applies to
+     * how a thing is measured as much as to how it is found.
+     *
+     * So a failed capture is DATA, not an error: the geometry is still
+     * recorded, and the verdict below says plainly that the stale-content
+     * hypothesis could not be tested rather than quietly skipping it.
+     */
     const shot = async (name) => {
         const el = await page.$('[data-bw-stage-canvas]');
         if (!el) return null;
-        const buf = await el.screenshot();
-        await writeFile(join(artifacts, `${name}.png`), buf);
-        return createHash('sha256').update(buf).digest('hex').slice(0, 16);
+        try {
+            const buf = await el.screenshot({timeout: 5000});
+            await writeFile(join(artifacts, `${name}.png`), buf);
+            return createHash('sha256').update(buf).digest('hex').slice(0, 16);
+        } catch {
+            return null;                    // not visible: nothing to hash, and that is a reading
+        }
     };
     const snap = async (name) => {
         const ok = await page.evaluate(MARK_STAGE_CANVAS);
@@ -339,7 +358,13 @@ async function run () {
 
         // ---- the verdict, as one named line ---------------------------------
         let verdict = null, why = '';
-        if (afterRedraw.content !== afterLoad.content && sameBox(afterRedraw, afterLoad)) {
+        const contentTestable = afterLoad.content !== null && afterRedraw.content !== null;
+        if (!contentTestable) {
+            console.log('\nNOTE: no content signature could be taken — the stage canvas is not');
+            console.log('  visible, so STALE CONTENT could not be tested this run. The geometry');
+            console.log('  below is still a reading, and a 0x0 canvas is itself a finding.');
+        }
+        if (contentTestable && afterRedraw.content !== afterLoad.content && sameBox(afterRedraw, afterLoad)) {
             verdict = 'STALE CONTENT';
             why = 'a repaint at unchanged geometry changed the picture, so the box was right and '
                 + 'the drawing was old. The absent ResizeObserver on the stage is the shape of the fix.';
