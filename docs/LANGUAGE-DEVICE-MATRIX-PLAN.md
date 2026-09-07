@@ -560,8 +560,8 @@ proof.
 
 ### Lane P — peripherals (part profiles), summarised; full detail in its own plan
 
-**Measured 2026-09-06 (P1), 2026-09-07 (P1a):** of **147** rendered verb × family cells, **56** are implemented and **91** are
-gaps, **20** of them the i8086 column (only `pin` has an i8086 branch; the emitter refuses the rest by name); the emitter stores
+**Measured 2026-09-06 (P1), 2026-09-07 (P1a, P2):** of **147** rendered verb × family cells, **57** are implemented and **90** are
+gaps, **19** of them the i8086 column (`pin` and `shiftOut` have i8086 branches; the emitter refuses the rest by name); the emitter stores
 FIVE families (`8051 avr arm 6502 z80`; rp2040 renders `≡ arm`, one branch) and a branch that warns or
 emits a "no <thing> on this machine" stub is a gap, not a cell (servo/motor/pwm/tone lose their 6502/z80
 columns to that rule). 253 part rows: 219 registered device models + 31 built-in kinds + 3 documented but
@@ -592,7 +592,16 @@ i8237 and ym3812). Originally: one part-profile registry (bus, pin roles, verbs,
 gate: every part that has a `bw-board` device model has a profile or an
 explicit `programmable: false` reason. **P2.** Split C drivers into a
 part-specific protocol layer over a family-specific bus layer; the emitter
-half-does this already (`shift_out` has four family variants). **P3.**
+half-does this already (`shift_out` has four family variants). **MEASURED AND PROVED 2026-09-07**
+(delegate `8086 coverage testing materials`, audited by lego-ac; upstream sb3-creator `0a05c9c`,
+`docs/DRIVER-PROTOCOL-BUS.md`): 79–117 duplicated protocol lines across families today by two counting
+methods (motor 40, tone 27, servo 23, shiftOut 17, adc 10). Proof: `shift_out` is now ONE protocol body over
+per-family bus primitives, emitted C byte-identical for avr/6502/arm/8051 (a golden test pins the
+pre-refactor bytes), and the i8086 bus added on top makes shiftOut the second cell of the 8086 column —
+**57 of 147**; lite proves it against the 74HC595 protocol on the bench (waveform, MSB-first
+reconstruction) since the ASM bench has no 595 part. Remaining P2 work: motor, tone, servo, adc through the
+same shape, each with its golden test. Finding on the way: a byte-sized C parameter makes SmallerC emit
+MOVZX (80386), which the 8086 assembler rejects, so scalars widen to `unsigned` (C tab note, both locales). **P3.**
 MicroPython protocol drivers for the same part set, proven by differential
 test: emit C and MicroPython for one program, run both against the simulated
 part, compare state; implement the `text_line_0` assert kind, which unblocks
