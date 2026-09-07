@@ -45,7 +45,7 @@ cross-checked by a test that reads the real source:
 
 | fact in the table | checked against |
 | --- | --- |
-| device ids, groups, `compile`, `emulator` | `DEVICE_GROUPS` in `pseudocode-importer.jsx` |
+| device ids, groups, `compile`, `emulator` | `DEVICE_GROUPS`, derived beside `DEVICES`; exact transform + rendered UI contracts |
 | silicon transport per device | `flashFamily()` and the `flasher.js` exports |
 | local vs hosted assembler | `LOCAL_ASM_TARGETS` in `bw-asm/assemble-route.js` |
 | local vs hosted C compiler | `LOCAL_TARGETS` in `sdcc-wasm/compiler.js` and `smallerc-wasm/compiler.js` |
@@ -269,24 +269,28 @@ now says so instead of showing an unqualified 2a. Refresh on every bw-board pin 
 test verify freshness locally. Contract notes kept: `kind: service` rows are reachability,
 never probed; the `via` "(under /tmp: …)" suffix is shown verbatim.
 
-**T7. The Code-tab picker is GENERATED from `bw-matrix/capabilities.js`.**
-Lite only, unclaimed. T5 reconciled the picker's device facts against the
+**T7. The Code-tab picker is GENERATED from `bw-matrix/capabilities.js`. DONE 2026-09-07** (sim2cx, lego-ac audit/landing).
+Lite only. T5 reconciled the picker's device facts against the
 table by parsing the JSX of a 4,100-line component (the conformance test's
 `pickerCompile`/`pickerEmulator` sentinels) — a gate over text, which is the
 species the gate-shapes audit exists to retire. The owner's Codex assessment
 ([`HISTORY.md`](../HISTORY.md), completed device-picker item, 2026-09-05) reached the same
-item independently. DoD:
-- [ ] `pseudocode-importer.jsx` imports `DEVICES` (and the picker groups derive
+item independently. The first production derivation landed in `eae510a33`; the
+2026-09-07 completion moved that transform beside `DEVICES`, deleted the remaining
+JSX-reading picker sentinel, and made both the unit mutation and rendered UI compare
+the actual sets. DoD:
+- [x] `pseudocode-importer.jsx` imports `DEVICES` (and the picker groups derive
       from `DEVICE_GROUPS`); no device fact is spelled twice.
-- [ ] The `pickerCompile`/`pickerEmulator` sentinels and every JSX-parsing
+- [x] The `pickerCompile`/`pickerEmulator` sentinels and every picker JSX-parsing
       assertion in `test/bw-matrix-conformance.test.mjs` are DELETED, replaced
       by a test that the picker renders exactly `DEVICES` (mutation: remove a
       device from the table → the picker loses it → the test says which).
-- [ ] The badge, the "What runs where" panel and the picker cannot disagree by
+- [x] The badge, the "What runs where" panel and the picker cannot disagree by
       construction; `verify-matrix-ui.mjs` gains one check that the picker's
       option set equals the panel's device set.
-- [ ] Overlay + tracked `packages/` mirror together; browser gate run read per
-      step. Land D before N3c (both touch the picker), per the Codex sequencing.
+- [x] Overlay + tracked `packages/` mirror together; browser gate run read per
+      step. N3c and N2c landed before this completion lane; their picker and C/8086
+      behavior was preserved on the exact-main replay.
 
 **T8. The GUI shows the verification story, not only the doc. DONE 2026-09-06** (lego-ac).
 D3 says GUI and docs derive from one table; until today the generated doc rendered tier and each

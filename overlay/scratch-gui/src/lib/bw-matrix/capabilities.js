@@ -177,10 +177,9 @@ const ARCADE = 'Arcade & SAMD51';
 const avr8 = {pickerCompile: true, pickerEmulator: 'avr8js', sim: [eng('avr8js', ['hex'])]};
 
 /**
- * Devices, in the order and with the ids of DEVICE_GROUPS in
- * pseudocode-importer.jsx. `pickerCompile` / `pickerEmulator` mirror that
- * list's flags and exist only so the conformance test can hold the two in
- * agreement; the truth about what compiles is in the cells.
+ * Devices in Code-tab picker order. `pickerCompile` / `pickerEmulator` describe
+ * that surface; DEVICE_GROUPS is generated from these rows below. The truth
+ * about what compiles is in the cells.
  */
 /**
  * The runtime device CORE for each picker group.
@@ -409,6 +408,36 @@ export const DEVICES = Object.freeze([
         silicon: [tx('circuitpython-copy', ['py'], null, OPEN_DECLARED)]
     })
 ]);
+
+/**
+ * Build the Code-tab picker's ordered groups from capability rows. Keeping
+ * this transform beside DEVICES lets tests mutate the input table without
+ * parsing the component that renders it.
+ *
+ * @param {Array<object>} devices capability rows in picker order
+ * @returns {Array<object>} picker groups in first-seen group order
+ */
+export const deviceGroupsFor = function (devices) {
+    const byGroup = new Map();
+    const groups = [];
+    for (const device of devices) {
+        let group = byGroup.get(device.group);
+        if (!group) {
+            group = {label: device.group, core: DEVICE_GROUP_CORE[device.group], devices: []};
+            byGroup.set(device.group, group);
+            groups.push(group);
+        }
+        group.devices.push({
+            id: device.id,
+            label: device.label,
+            compile: Boolean(device.pickerCompile),
+            emulator: device.pickerEmulator ?? null
+        });
+    }
+    return groups;
+};
+
+export const DEVICE_GROUPS = Object.freeze(deviceGroupsFor(DEVICES));
 
 // ---- cells, by family ------------------------------------------------------
 
