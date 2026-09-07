@@ -2106,3 +2106,80 @@ either party expected. The version of this that goes wrong is building the gate,
 watching it red, and adding exemptions until it is green: same destination,
 except the exemptions are now load-bearing and nobody remembers which were
 principled.
+
+## Thirty-fourth species: A GATE THAT MUTATES WHAT ANOTHER GATE MEASURES (2026-09-07, lego-be; negatives that made it findable by brickwright-lite-ea, framing by lego-ac)
+
+Not a gate that cannot fail. A gate that makes a DIFFERENT gate fail, for a
+reason neither of them contains. **One test writes to a path another test
+reads, and the runner runs them at the same time.** The reader then measures a
+state nobody put in a file and nobody meant to assert, and reports it in its own
+vocabulary -- which is the vocabulary of a real defect.
+
+**The signature, and it is the reason this costs so much to find.** The failure
+NAMES REAL FILES. It CANNOT BE REPRODUCED. It CLEARS BY ITSELF on the next run
+with nothing changed. Every one of those reads as noise, and the third one is
+what usually ends the investigation: a red that went green is a red most people
+stop looking at.
+
+**The incident.** `test/vendor-absent-by-design.test.mjs` proves that an
+unscoped `sync-bw-board.mjs` refuses two files by name. To do that it ran the
+real sync against the LIVE worktree and put the files back afterwards. An
+unscoped sync UPDATES vendored files that exist -- at this pin, exactly one:
+`board.js`. `node --test` runs four files in parallel. So
+`test/vendor-identity.test.mjs`, which walks that same directory comparing it to
+upstream, could read `board.js` mid-sync and report
+
+    APPEARED (new divergence nobody has written up): board.js
+
+naming precisely the file the other test had just written.
+
+**THE WINDOW WAS 69% OF THE RUN**, which is the measurement that turned this
+from a plausible story into the answer. Two files racing did not reproduce it in
+three attempts, so the window was measured directly instead -- poll the blob
+hash of `board.js` from a concurrent process for the duration of the test:
+
+    live-tree version : differed from the committed blob in 355 of 518 polls
+    sandboxed version : 0 of 1006
+
+A reader that touches that file while this test runs is MORE LIKELY THAN NOT to
+see the wrong content. What made it look rare was not the window; it was that
+only one other test reads that path and the two have to overlap.
+
+**Why every correct investigation missed it.** Three negatives were established,
+each by measurement and each true: the pin did not move across the flip, the
+lite tree did not move, and the reader does not consult the moving tip. Same
+declared inputs, red then green. The conclusion drawn was "a third input exists
+that nobody has enumerated" -- and the trap is that it is NOT AN INPUT. It is
+what another process was doing to the filesystem at that instant. Ruling out
+inputs one at a time is the right method and it cannot reach a cause that never
+appears in the input list. **When every input is proved identical and the result
+still varies, stop enumerating inputs and start enumerating WRITERS.**
+
+**Restoring does not fix it, and believing it does is the actual error.** The
+old code was careful: it snapshotted the files, restored them before any
+assertion, and byte-compared the pin at the end. All of that closes the window
+at the END. The window is the whole problem. A test that writes to a path any
+other test reads is not isolated no matter how faithfully it cleans up.
+
+**The fix is to not write there.** The sync now runs in a throwaway `git
+worktree` at HEAD -- a few hundred milliseconds, shares the object store, and
+carries everything the script needs. The live tree is never written at all,
+which is strictly stronger than being put back, and it closes a hazard the file
+had already documented as unclosable: a crash between sync and restore could
+leave a moved pin, and there is no moved pin in that worktree now. The final
+assertion changed to match. It used to say *the pin was put back*; it now says
+*the live tree and the live pin were never touched*, and it is mutation-proved
+by pointing the sync back at the live repo.
+
+**Deriving the whole set, not just the instance.** Two sweeps: every test that
+writes, removes or renames a file and never mentions a temp directory (none but
+this one), and every test that EXECUTES a repo script, since a script writes
+wherever it likes regardless of how careful its caller is. The second found
+`ci-skip-census.test.mjs` reaching `gen-ci-skips.mjs` -- but it IMPORTS the
+module rather than running it, and the write is guarded by an `isMain` check, so
+it never fires. That is the shape to look for next time: not the test's own
+writes, but the writes of whatever it invokes.
+
+**The general form, and it is one line:** a suite that runs files in parallel has
+no isolation the tests do not give it, so the question is never "does this test
+clean up" but **"does this test write anywhere another test reads."**
