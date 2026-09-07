@@ -224,7 +224,8 @@ against a green tree, confirmed red, and restored byte-for-byte.
 
 Measured 2026-09-07 against `e3a1f960e` by `scripts/led-polarity-census.mjs`. It
 is not a gate. It reports, because gating on it today would paint the corpus red
-without repairing anything, and the repair is a lane of its own.
+without repairing anything, and the repair is a lane of its own. When that lane
+lands, this census becomes the gate, and it ratchets downward only.
 
 **The finding.** A program declares `PIN led1 = ... OUTPUT ACTIVE LOW`, which
 means "on" writes a 0. The circuit the example ships for a given device decides
@@ -260,10 +261,23 @@ Per device, inverted over measured:
 | `atmega168p` | 29 / 40 | 21 |
 | `pico` | 29 / 38 | 21 |
 
-Ten of the eleven device families are affected, not four. `stc12c5a60s2` is clean
-because it is the device the corpus is AUTHORED for; every bench for it was
-written by hand or reviewed. The two other 8051 parts are not clean, which rules
-out "the 8051 is fine and the ports are broken" as the shape of this.
+Ten of the eleven device families are affected. `stc12c5a60s2` is clean because it
+is the device the corpus is AUTHORED for; every bench for it was written by hand
+or reviewed. The two other 8051 parts are not clean, which rules out "the 8051 is
+fine and the ports are broken" as the shape of this.
+
+Eleven is the right denominator, and it is smaller than the fourteen devices the
+index names. `microbit` and `spike` are device-only — the DEVICE is the board, so
+they ship no circuit — and `i8086` is a machine bench with no declared-pin LEDs.
+Eleven families ship a bench this census can measure, and ten of them are wrong.
+
+**This is not cosmetic, and the corpus is the reason.** These are teaching
+examples. The entire lesson of an ACTIVE LOW pin is which state lights the LED:
+that the pin sinks 20 mA and sources about 230 µA, so writing a 0 is what turns
+it on. On ten of the eleven families that ship a bench, the wrong light comes on,
+which teaches the learner the opposite of the thing the declaration exists to
+teach. An example that blinks convincingly while contradicting its own program is
+worse for a learner than one that does not run.
 
 Both directions occur, and they are different mistakes:
 
@@ -283,10 +297,16 @@ correctly today, and were asked directly rather than read:
 `lib/bw-board/infer-netlist.js` and `lib/bw-circuit-ui/model/infer-seated.js` both
 produce `LED.cathode → pin` for an active-low declaration, on 8051, Uno and Pico
 alike. So whatever produced the shipped bench files either predates that branch
-or lost the flag on the way. Identifying that producer is the first step of the
-repair, not an assumption to start from — and note that the shipped benches seat a
-real board part (`uno1`, kind `arduino_uno`) where `inferNetlist` emits a generic
-`MCU`, so they did not come from it.
+or lost the flag on the way. Identifying that producer is the FIRST DELIVERABLE of
+the repair, not an assumption to start from — and note that the shipped benches
+seat a real board part (`uno1`, kind `arduino_uno`) where `inferNetlist` emits a
+generic `MCU`, so they did not come from it.
+
+Rewriting 230 bench files without knowing what produced them buys nothing: the
+next regeneration reproduces them. If the answer turns out to be that they were
+hand-authored, or came from a tool that no longer exists, that is a good answer
+and it changes the repair from "fix the generator" to "fix the data and add a
+gate that keeps it fixed".
 
 **Why it went unseen.** It does not break what an example LOOKS like it is doing.
 Every affected example still blinks; the pair in a two-LED example still
