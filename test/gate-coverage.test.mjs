@@ -116,22 +116,125 @@ const workflowRuns = workflowTexts.flatMap(workflowRunScalars);
 // the argument for having both.
 const testSources = readdirSync(path.join(ROOT, 'test'))
     .filter(f => f.endsWith('.test.mjs') && f !== 'gate-coverage.test.mjs')
-    .map(f => readFileSync(path.join(ROOT, 'test', f), 'utf8')
-        .replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, ''));
+    .map(f => ({file: f, text: readFileSync(path.join(ROOT, 'test', f), 'utf8')
+        .replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '')}));
 // npm-script ALIASES count as invocations. build.yml reaches the debugger smoke test through
 // `npm run smoke:debugger`, which `runInvokesGate` — looking for a literal `node scripts/<gate>` —
 // could not see. That blind spot manufactured a false orphan. A gate that cannot fail reports
 // green when it should be red; this is the MIRROR, an inventory reporting orphaned when the thing
 // is running, and it wastes the reader on work already done.
 const packageScripts = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8')).scripts || {};
-const aliasInvokes = (run, gate) => Object.entries(packageScripts)
+const aliasInvokes = (run, gate, scripts = packageScripts) => Object.entries(scripts)
     .filter(([, body]) => runInvokesGate(body, gate))
     .some(([alias]) => new RegExp(
-        `(?:^|[;&|]\\s*)\\s*npm\\s+run\\s+${shellQuote(alias)}(?=\\s|$)`, 'm').test(run));
+        // THE SAME ENV-PREFIX CLAUSE runInvokesGate has carried all along, and its
+        // absence here was a real asymmetry: `PROOF_URL=… node scripts/x.mjs`
+        // counted and `PROOF_URL=… npm run verify:x` did not, though they run the
+        // same gate. Two browser gates and one hardware gate were reported as
+        // wired only because a TEST happened to name them, and two more lanes
+        // wrote the direct `node` form specifically to dodge this — which is a
+        // check shaping the code around it rather than measuring it.
+        //
+        // The WRAPPER clause comes with it, for the same reason and by the same
+        // argument: `timeout 600 npm run verify:x` runs the gate exactly as
+        // `timeout 600 node scripts/x.mjs` does, and the whitelist is what keeps
+        // `echo npm run verify:x` from counting. Two spellings of one fact had
+        // two different rules; now they have one.
+        `(?:^|[;&|]\\s*)\\s*(?:[A-Za-z_][A-Za-z0-9_]*=(?:"[^"]*"|'[^']*'|[^\\s]+)\\s+)*` +
+        `(?:${WRAPPERS}\\s+)*` +
+        `npm\\s+run\\s+${shellQuote(alias)}(?=\\s|$)`, 'm').test(run));
 
-const gateIsWired = gate => workflowRuns.some(run =>
-    runInvokesGate(run, gate) || aliasInvokes(run, gate)) ||
-    testSources.some(source => source.includes(gate));
+/**
+ * TWO FACTS, NOT ONE, and collapsing them is what let three gates read as wired
+ * while nothing ran them.
+ *
+ * The old rule was `run by a workflow OR the string appears in some test`. The
+ * second half is not a claim that anything RUNS the gate — a test that asserts
+ * build.yml mentions a script names that script, and so did the gate. Reported
+ * together, "exercised by something" quietly included "written down somewhere".
+ *
+ * So: RUN BY A WORKFLOW is a `run:` scalar that invokes it, directly or through
+ * an npm alias. EXERCISED BY A TEST is a test that SPAWNS it — the gate's path
+ * appearing in the same statement as a child-process call. Anything else is a
+ * MENTION, which is worth reporting and is not coverage.
+ *
+ * Statement-bounded rather than a character window: the source is split on `;`
+ * and a statement must contain both the spawn and the path. A fixed-width window
+ * around the name is the shape audit-gate-shapes flags, and it would be wrong
+ * here for the same reason it is wrong there — the distance between a call and
+ * its argument is not bounded by a number.
+ */
+const SPAWNERS = /\b(?:execFileSync|execSync|spawnSync|execFile|spawn|fork)\s*\(/;
+const runByWorkflow = gate => workflowRuns.some(run =>
+    runInvokesGate(run, gate) || aliasInvokes(run, gate));
+/**
+ * IMPORTING A GATE EXERCISES IT, and leaving that out was my first cut's error.
+ * `test/oracle-trace.test.mjs` imports compareTraces, normalizeTrace,
+ * parseUcsimTrace and parseVcd straight from `scripts/oracle-trace.mjs` and
+ * drives them — no child process anywhere. A spawn-only rule called that gate an
+ * orphan, which is the same false-orphan this file was widened to stop making,
+ * arriving from the opposite side.
+ */
+const importsGate = (text, gate) =>
+    new RegExp(`from\\s*['"][^'"]*scripts/${shellQuote(gate)}['"]`).test(text) ||
+    new RegExp(`import\\s*\\(\\s*['"][^'"]*scripts/${shellQuote(gate)}['"]`).test(text);
+/**
+ * A test REFERENCES a gate as a program when it builds a path to it, not when it
+ * merely names it.
+ *
+ * The literal `scripts/<gate>` is the easy half. The half that caught me is that
+ * neither test in this repo writes it: both do
+ * `join(here, '..', 'scripts', 'oracle-differential.mjs')` and pass the binding
+ * to execFileSync several lines later. A rule keyed on the literal, or on the
+ * spawn and the name sharing a statement, calls those orphans — which is the
+ * false orphan this file exists to stop producing, arriving by a third route.
+ * lego-b9 hit the same shape in the docs trigger the same day: a constructed
+ * path is invisible to anything looking for a written-out one.
+ *
+ * A bare occurrence of the name — a string in an assertion about build.yml, a
+ * key in a fixture — is a MENTION, and stays one.
+ */
+const referencesGatePath = (text, gate) => {
+    const name = shellQuote(gate);
+    if (new RegExp(`['"\`][^'"\`]*scripts/${name}`).test(text)) return true;
+    return text.split(';').some(statement =>
+        /\b(?:join|resolve)\s*\(/.test(statement) &&
+        new RegExp(`['"]scripts['"][\\s\\S]*?['"]${name}['"]`).test(statement));
+};
+const exercisedIn = ({text}, gate) =>
+    importsGate(text, gate) || (referencesGatePath(text, gate) && SPAWNERS.test(text));
+
+/**
+ * The classification, as a pure function, so the RULE can be exercised on
+ * fixtures rather than only on this repo's current state.
+ *
+ * Without this the important regression is invisible: restoring the old
+ * `sources.some(s => s.includes(gate))` makes the inventory MORE permissive, so
+ * every real gate still passes and no test goes red. A rule that can only be
+ * checked against a tree that already satisfies it cannot catch its own
+ * loosening — which is the failure mode this whole file is about, one level up.
+ *
+ * @returns {'workflow'|'test'|'mention'|'none'}
+ */
+const classifyGate = (gate, {runs, sources, scripts}) => {
+    if (runs.some(run => runInvokesGate(run, gate) || aliasInvokes(run, gate, scripts))) return 'workflow';
+    if (sources.some(source => exercisedIn(source, gate))) return 'test';
+    if (sources.some(({text}) => text.includes(gate))) return 'mention';
+    return 'none';
+};
+const world = {runs: workflowRuns, sources: testSources, scripts: packageScripts};
+const gateIsWired = gate => ['workflow', 'test'].includes(classifyGate(gate, world));
+
+/** What is actually known about a gate, in the words the failure message uses. */
+const coverageOf = gate => {
+    switch (classifyGate(gate, world)) {
+    case 'workflow': return 'run by a workflow';
+    case 'test': return `exercised by test/${testSources.find(x => exercisedIn(x, gate)).file}`;
+    case 'mention': return `NAMED in test/${testSources.find(({text}) => text.includes(gate)).file}` +
+        ' but never executed there, and run by no workflow';
+    default: return 'run by nothing and named by nothing';
+    }
+};
 
 // Every script that renders a VERDICT, not only those named `verify-`. This file's own opening
 // line is "a browser gate that CI never runs decays into decoration" — which was true of
@@ -171,10 +274,17 @@ test('a wrapper runs a gate; a mention of one does not', () => {
 test('every browser gate is either run by CI or knowingly listed as not', () => {
     const unwired = gates.filter(g => !gateIsWired(g));
     const undeclared = unwired.filter(g => !(g in KNOWN_UNWIRED));
+    // NAME WHICH FACT EACH ONE HAS. "Not wired" is three different situations
+    // and they want three different actions: a gate NAMED in a test needs
+    // wiring or listing; one named nowhere at all may be dead. Reporting them
+    // identically sent readers to look for a workflow step that was never the
+    // problem.
     assert.deepEqual(undeclared, [],
-        `these gates are run by nothing and are not in KNOWN_UNWIRED: ${undeclared.join(', ')}. ` +
-        'Wire them into .github/workflows/build.yml, or add them to that list with their state. ' +
-        'A gate nothing runs stops working and nobody finds out — 13 of 17 already had.');
+        'these gates are run by nothing and are not in KNOWN_UNWIRED:\n  ' +
+        undeclared.map(g => `${g} — ${coverageOf(g)}`).join('\n  ') +
+        '\nWire them into .github/workflows/build.yml, or add them to that list with their ' +
+        'state. A gate nothing runs stops working and nobody finds out — 13 of 17 already had. ' +
+        'A gate a test only NAMES is in that category: naming is not running.');
 });
 
 test('the unwired list only shrinks — entries that are now wired must be removed', () => {
@@ -208,6 +318,104 @@ test('only executable run commands count as wired browser gates', () => {
         assert.ok(workflowRunScalars(yaml).some(run => runInvokesGate(run, gate)),
             `an executable run command must wire a gate: ${yaml}`);
     }
+});
+
+test('an npm alias counts however the run line reaches it', () => {
+    // THE DEFECT THIS CLOSES. runInvokesGate has always accepted an env prefix;
+    // aliasInvokes did not. So `PROOF_URL=… node scripts/x.mjs` counted and
+    // `PROOF_URL=… npm run verify:x` did not, though they run the same gate
+    // through the same CI step. The consequence was not a red gate — it was
+    // WORSE: three gates read as covered because a test happened to name them,
+    // and two lanes wrote the direct `node` form specifically to satisfy this
+    // check. A check the code is shaped around has stopped measuring anything.
+    const gate = 'verify-example.mjs';
+    const scripts = {'verify:example': `node scripts/${gate}`};
+    for (const run of [
+        'npm run verify:example',
+        'PROOF_URL=http://localhost:8617/ npm run verify:example',
+        'CI=1 PROOF_URL=http://x/ npm run verify:example',
+        'set -e; npm run verify:example',
+        'BW_PORT=8617 timeout 600 npm run verify:example'
+    ]) assert.ok(aliasInvokes(run, gate, scripts), `should count as running the gate: ${run}`);
+
+    for (const run of [
+        'echo npm run verify:example',
+        'echo "then npm run verify:example"',
+        'npm run verify:example-other'
+    ]) assert.equal(aliasInvokes(run, gate, scripts), false, `must NOT count: ${run}`);
+});
+
+test('naming a gate is not running it, and a path to one is not a mention', () => {
+    // The two facts, at the level where they are decided. A gate a test only
+    // NAMES was previously indistinguishable from one a workflow runs, and the
+    // three that reached this state did so honestly — nobody wired anything
+    // wrong, the rule simply counted a string.
+    const gate = 'verify-example.mjs';
+
+    // Mentions. None of these runs anything.
+    for (const text of [
+        `assert.match(workflow, /verify-example\\.mjs/);`,
+        `const NAMES = ['verify-example.mjs', 'verify-other.mjs'];`,
+        `assert.ok(buildYml.includes('verify-example.mjs'));`
+    ]) {
+        assert.equal(referencesGatePath(text, gate), false, `a mention must not read as a path: ${text}`);
+        assert.equal(importsGate(text, gate), false, `a mention must not read as an import: ${text}`);
+    }
+
+    // Real references. Both shapes this repo actually uses.
+    assert.ok(importsGate(`import {x} from '../scripts/${gate}';`, gate),
+        'a test that imports the gate and drives its functions exercises it — oracle-trace does '
+        + 'exactly this, with no child process anywhere');
+    assert.ok(referencesGatePath(`const S = 'scripts/${gate}';`, gate));
+    assert.ok(referencesGatePath(`const S = join(here, '..', 'scripts', '${gate}');`, gate),
+        'the constructed path is the shape BOTH real callers use; a rule that cannot see it calls '
+        + 'them orphans, which is the false orphan this file exists to stop producing');
+    assert.ok(referencesGatePath(`const S = resolve(ROOT, 'scripts', '${gate}');`, gate));
+});
+
+test('a gate named only in a comment counts as nothing', () => {
+    // Comments are stripped before any of this runs, so the check below is about
+    // the STRIPPER still working — the same trap as a source gate reading its own
+    // documentation, which this repo has now hit three times in two days.
+    const stripped = `const x = 1;\n`
+        .concat(`\n`)
+        .concat(`const y = 2;\n`);
+    const withComment = `// see scripts/verify-example.mjs for the browser journey\n`
+        .concat(`/* also scripts/verify-example.mjs */\n`)
+        .concat(`const x = 1;\n`);
+    const strip = t => t.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    assert.ok(!strip(withComment).includes('verify-example.mjs'),
+        'a gate named only in a comment must vanish before classification — otherwise the file '
+        + 'that documents an orphan makes it look exercised');
+    assert.ok(strip(withComment).includes('const x = 1'), 'the stripper must not eat the code');
+    assert.ok(strip(stripped).includes('const y = 2'));
+});
+
+test('the rule reports two facts and does not confuse them', () => {
+    // Exercised on FIXTURES, because the regression that matters makes the rule
+    // MORE permissive: restore `sources.some(s => s.includes(gate))` and every
+    // real gate still passes, so nothing in this repo goes red. The loosening is
+    // only visible against a world built to show it.
+    const gate = 'verify-example.mjs';
+    const scripts = {'verify:example': `node scripts/${gate}`};
+    const mentionOnly = [{file: 'a.test.mjs', text: `assert.ok(yml.includes('${gate}'));`}];
+    const exercises = [{file: 'b.test.mjs',
+        text: `const S = join(here, '..', 'scripts', '${gate}'); execFileSync(node, [S]);`}];
+
+    assert.equal(classifyGate(gate, {runs: [`node scripts/${gate}`], sources: [], scripts}), 'workflow');
+    assert.equal(classifyGate(gate, {runs: ['PROOF_URL=x npm run verify:example'], sources: [], scripts}),
+        'workflow', 'an env-prefixed alias is a workflow run, which is the whole point of this lane');
+    assert.equal(classifyGate(gate, {runs: [], sources: exercises, scripts}), 'test');
+    assert.equal(classifyGate(gate, {runs: [], sources: mentionOnly, scripts}), 'mention',
+        'a gate a test merely NAMES must classify as a mention. If this reads "test", the two '
+        + 'facts have been collapsed again and the inventory is counting strings.');
+    assert.equal(classifyGate(gate, {runs: [], sources: [], scripts}), 'none');
+
+    // And the consequence, which is what the inventory acts on.
+    const wired = w => ['workflow', 'test'].includes(classifyGate(gate, w));
+    assert.equal(wired({runs: [], sources: mentionOnly, scripts}), false,
+        'a mention must not make a gate count as wired');
+    assert.equal(wired({runs: [], sources: exercises, scripts}), true);
 });
 
 test('every listed gate still exists', () => {
