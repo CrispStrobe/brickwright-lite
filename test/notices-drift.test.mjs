@@ -55,7 +55,11 @@ test('the census found the shipping set it is about to judge (floors per source)
     assert.ok(owner, 'the repo owner could not be read from the git remote; the own-code exemption is off and the findings below are the stricter set');
 });
 
-test('everything that ships and carries a licence is named in THIRD-PARTY-NOTICES.md with its licence and holder', () => {
+test('everything that ships and carries a licence is named in THIRD-PARTY-NOTICES.md with its licence and holder', t => {
+    // the skipped half, reported: packages whose licence/holder could not be read (no node_modules
+    // here) are judged by name only — a weaker check, and it says so rather than passing quietly
+    const unread = items.filter(i => i.kind === 'npm' && !i.licence).map(i => i.name);
+    t.diagnostic(unread.length ? `${unread.length} npm package(s) judged by NAME ONLY (package.json not installed here): ${unread.join(', ')}` : 'every lite-added package judged with its installed licence and holder');
     const findings = judge({notices: NOTICES, owner, items});
     assert.deepEqual(findings, [], 'shipped, licence-bearing, and not (correctly) in the notices:\n  ' + findings.join('\n  '));
 });

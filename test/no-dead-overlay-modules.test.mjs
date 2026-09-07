@@ -293,7 +293,7 @@ test('every overlay module is imported by something', {
     for (const f of walk(overlaySrc)) {
         const rel = relative(overlaySrc, f).split('\\').join('/');
         const built = join(builtSrc, rel);
-        if (!existsSync(built)) continue;            // overlay-only, not integrated
+        if (!existsSync(built)) { notIntegrated.push(rel); continue; } // overlay-only, not integrated — reported, not silent
         const name = basename(f);
         if (referenced.has(name) || referenced.has(name.replace(/\.(js|jsx)$/, ''))) continue;
         if (ALLOWED.has(rel)) continue;

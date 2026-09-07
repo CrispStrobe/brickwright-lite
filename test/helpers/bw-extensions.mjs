@@ -63,13 +63,17 @@ function loadAdapter () {
  * `// ID: <id>` header or, failing that, the `id:` field of its getInfo
  * literal. Static because construction is not safe (see the file header).
  */
+/** Extension directories with no index.js: skipped by bundledExtensionIds, and SAID so here. */
+export const extensionDirsWithoutEntry = [];
 export function bundledExtensionIds () {
     const ids = new Map();
+    extensionDirsWithoutEntry.length = 0;
     for (const name of readdirSync(OVERLAY_EXT)) {
         const dir = path.join(OVERLAY_EXT, name);
-        if (!statSync(dir).isDirectory()) continue;
+        if (!statSync(dir).isDirectory()) continue; // a file beside the extension dirs is not an extension (role)
         const entry = path.join(dir, 'index.js');
-        if (!existsSync(entry)) continue;
+        // ABSENCE, reported: a directory that is not an extension is a fact the caller can print
+        if (!existsSync(entry)) { extensionDirsWithoutEntry.push(name); continue; }
         const source = readFileSync(entry, 'utf8');
         const header = source.match(/^\s*\/\/\s*ID:\s*([\w.-]+)\s*$/m);
         const field = source.match(/\bid:\s*["']([\w.-]+)["']/);

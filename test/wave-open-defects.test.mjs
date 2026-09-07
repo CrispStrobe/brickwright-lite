@@ -129,9 +129,10 @@ test('D1 FIXED: circuit-ready arms a checkpoint rather than completing it', () =
 test('D5 FIXED: every shipped layout with an operable control opens in play mode', () => {
     const INPUTS = new Set(['button', 'slider', 'joystick', 'dpad', 'dial', 'keypad', 'keyboard']);
     const dead = [];
+    let noController = 0; // examples without a controller.json: reported below, not a silent skip
     for (const dir of readdirSync(EX, {withFileTypes: true}).filter(d => d.isDirectory())) {
         const file = path.join(EX, dir.name, 'controller.json');
-        if (!existsSync(file)) continue;
+        if (!existsSync(file)) { noController++; continue; }
         const data = JSON.parse(readFileSync(file, 'utf8'));
         if (!(data.widgets || []).some(w => INPUTS.has(w.type))) continue;
         if (data.mode !== 'play') dead.push(dir.name);

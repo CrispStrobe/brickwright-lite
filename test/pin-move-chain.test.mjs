@@ -173,16 +173,26 @@ test('the previous-pin half can see history: the pins file has more than one com
     assert.ok(previous.size >= 1, `history holds ${count} commits of vendor-pins.json but no previous pin value parsed — the parser stopped matching, not the file`);
 });
 
-test('no tracked file outside a history role carries a vendored-repo sha other than the current pins', () => {
+test('no tracked file outside a history role carries a vendored-repo sha other than the current pins', t => {
+    // THE SKIPPED SET IS REPORTED, NOT SILENT. This walk once had
+    // `if (text.includes(NUL)) continue;` — and for as long as fetch-pinning.test.mjs
+    // held a literal NUL, the gate reported CLEAN while an old bw-board pin sat on
+    // one of its code lines (lego-be's proof, 2026-09-07). A file with a NUL is text
+    // here and is judged like any other; the only files not judged are the ones
+    // outside a code role, and the count and reason are printed on every run.
     const findings = [];
+    const skipped = {role: 0, unreadable: []};
+    const all = git(ROOT, 'ls-files', '-z').split('\0').filter(Boolean);
     let scanned = 0;
-    for (const file of trackedCodeFiles()) {
+    for (const file of all) {
+        if (roleOf(file) !== 'code') { skipped.role++; continue; }
         let text;
-        try { text = readFileSync(path.join(ROOT, file), 'utf8'); } catch { continue; }
-        if (text.includes('\0')) continue;
+        try { text = readFileSync(path.join(ROOT, file), 'utf8'); } catch (e) { skipped.unreadable.push(`${file} (${e.code || e.message})`); continue; }
         scanned++;
         findings.push(...judgeFile(file, text, known));
     }
+    t.diagnostic(`judged ${scanned} files; skipped ${skipped.role} by role (ledgers, docs prose, packages/) and ${skipped.unreadable.length} unreadable${skipped.unreadable.length ? ': ' + skipped.unreadable.join(', ') : ''}`);
+    assert.deepEqual(skipped.unreadable, [], 'tracked files this gate could not read — it cannot say they are clean');
     assert.ok(scanned > 1000, `only ${scanned} files scanned — the walk collapsed`);
     assert.deepEqual(findings, [],
         `stale vendored-repo sha(s) in a file that must carry the CURRENT pin — regenerate the document (or, if the sha is a citation, the file's role is wrong: see the header):\n  ${formatFindings(findings)}`);

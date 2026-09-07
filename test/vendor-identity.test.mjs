@@ -291,9 +291,10 @@ test('upstream has not converged on the lite-only work (needs the bw-board tree)
     });
     const vendorRoot = path.join(ROOT, spec.vendoredRoots[0]);
     const shouldCover = [];
+    const liteOnly = []; // vendored files upstream does not have at this pin — reported, not a silent skip
     for (const f of fs.readdirSync(vendorRoot).filter(x => x.endsWith('.js')).sort()) {
         const u = path.join(srcDir, f);
-        if (!fs.existsSync(u)) continue;
+        if (!fs.existsSync(u)) { liteOnly.push(f); continue; }
         const L = declaredIn(fs.readFileSync(path.join(vendorRoot, f), 'utf8'));
         const U = declaredIn(fs.readFileSync(u, 'utf8'));
         const upAll = new Set([...U.methods, ...U.fields]);
@@ -309,7 +310,7 @@ test('upstream has not converged on the lite-only work (needs the bw-board tree)
         '  to the allow-list with a falsifiable sentence per entry. This set is SCANNED\n' +
         '  from the tree, not read from the list, so dropping a file from the list does\n' +
         '  not drop the requirement -- only removing the work does.\n');
-    t.diagnostic(`derived: ${shouldCover.length} file(s) carry lite-only work, all covered`);
+    t.diagnostic(`derived: ${shouldCover.length} file(s) carry lite-only work, all covered; ${liteOnly.length} vendored file(s) upstream does not have at this pin, not compared${liteOnly.length ? ': ' + liteOnly.join(', ') : ''}`);
 
     // THE OTHER 458 LINES. The coverage above is identifier-based, so it sees
     // only files that declare something new. A file whose forward-ported work
@@ -332,9 +333,10 @@ test('upstream has not converged on the lite-only work (needs the bw-board tree)
     };
     const namedFiles = new Set(Object.keys(spec.files));
     const actual = [];
+    const notCompared = []; // upstream lacks the file, or the allow-list names it — reported below
     for (const f of fs.readdirSync(vendorRoot).filter(x => x.endsWith('.js')).sort()) {
         const u = path.join(srcDir, f);
-        if (!fs.existsSync(u) || namedFiles.has(f)) continue;
+        if (!fs.existsSync(u) || namedFiles.has(f)) { notCompared.push(f); continue; }
         if (lineLost(fs.readFileSync(path.join(vendorRoot, f), 'utf8'),
             fs.readFileSync(u, 'utf8')).length) actual.push(f);
     }
@@ -350,7 +352,7 @@ test('upstream has not converged on the lite-only work (needs the bw-board tree)
         (gone.length ? `  GONE (no longer diverged): ${gone.join(', ')}\n` +
             '    Upstreamed, or the work was deleted. Remove it from lineLevelOnly.files --\n' +
             '    an inventory that only fails one way becomes a graveyard of stale entries.\n' : ''));
-    t.diagnostic(`inventory: ${actual.length} file(s) with line-level-only divergence, as recorded`);
+    t.diagnostic(`inventory: ${actual.length} file(s) with line-level-only divergence, as recorded; ${notCompared.length} not compared (upstream lacks the file, or the allow-list names it)`);
     for (const [file, cfg] of coveredFiles(spec)) {
     const found = path.join(srcDir, file);
     if (!fs.existsSync(found)) {
