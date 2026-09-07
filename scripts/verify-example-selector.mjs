@@ -212,24 +212,34 @@ try {
     // load menu. Select the chip in the SAME picker (it is a DEVICES/DEVICE_GROUP
     // entry, so it is offered), open the catalog it serves, click i8086-blink, and
     // prove it loads as the 8086 blink program driving a pin through the 8255.
+    // Reaching i8086 needs NOTHING loaded. The picker RETARGETS the loaded
+    // program, and 14-traffic-light (loaded above) has no i8086 bench, so
+    // selecting i8086 with it loaded is a refused retarget: currentDevice()
+    // stays stm32f030, the catalog serves that device, and the i8086 example is
+    // never listed — exactly the "clicking an item while stm32f030 is selected
+    // is itself a refused retarget" the micro:bit note above spells out. A fresh
+    // navigation re-runs the init script (localStorage cleared), returning the
+    // editor to no-chip mode, so selecting the device is enough to commit it.
+    await page.goto(url, {waitUntil: 'networkidle', timeout: 60000});
+    await page.waitForSelector('[role="tab"]', {timeout: 60000});
+    await page.waitForFunction(() => {
+        const vm = window.__brickwrightStore?.getState?.()?.scratchGui?.vm;
+        if (vm?.runtime) { window.__vm = vm; return true; }
+        return false;
+    }, null, {timeout: 60000});
+    await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    await device.waitFor({timeout: 10000});
     await device.selectOption('i8086');
-    // Open the catalog DETERMINISTICALLY. The panel may already be open from the
-    // traffic-light flow above, and the toggle is a toggle — so keying "open it"
-    // on a count of catalog items races the catalogue's re-fetch for the newly
-    // selected device (zero items for a beat) and then CLICKS THE TOGGLE SHUT on
-    // an already-open panel. That is the light-shard timeout: a fast local
-    // harness wins the race and never toggles, CI loses it and closes the
-    // catalog. The search box exists ONLY while the panel is open (it appears
-    // with the items after the click above, never before), so it is the honest
-    // open-signal; click to open only when it is absent.
+    await page.waitForFunction(() =>
+        document.querySelector('[data-testid="bw-device-select"]')?.value === 'i8086',
+    null, {timeout: 15000});
+    // With a chip selected the "Load example…" catalog toggle appears; the search
+    // box exists only while the panel is open, so it is the honest open-signal.
     const i8086Search = page.locator('[data-testid="bw-catalog-search"]');
     if (await i8086Search.count() === 0) {
         await page.locator('[data-testid="bw-catalog-toggle"]').click();
         await i8086Search.waitFor({timeout: 10000});
     }
-    // The arduino flow left "traffic light" in the filter; without clearing it
-    // the i8086 example is filtered out of the list and never appears.
-    await i8086Search.fill('');
     const i8086Item = page.locator('[data-testid="bw-catalog-item"][title="i8086-blink"]');
     await i8086Item.first().waitFor({timeout: 15000});
     check('the i8086 catalog offers the i8086-blink example', await i8086Item.count() >= 1,
