@@ -178,11 +178,10 @@ try {
     check('it opens a panel carrying the example', panel.length > 10, panel.slice(0, 120));
     await snap('example-intro-open');
 
-    // Close it AND WAIT FOR IT TO BE GONE. An open panel sits over the controls
-    // the next journey clicks. That is what actually failed in 34144783395: the
-    // locator resolved to the right button and then spent 56 polls on "visible,
-    // enabled and stable". The selector was never the problem, so swapping it
-    // fixed nothing; the missing step was this wait.
+    // Close it deterministically rather than leaving a panel up for the next
+    // journey. NOTE: an earlier version of this comment claimed this was the
+    // cause of J2's timeout. It was not — see openCatalog below. Kept because
+    // waiting for a thing you just dismissed is right regardless.
     await intro.click();
     await page.getByTestId('bw-example-intro-panel')
         .waitFor({state: 'hidden', timeout: 20000});
@@ -217,7 +216,24 @@ try {
     // regression reported as a Playwright stall. And a stale list satisfied the
     // early return, so a count taken before the re-render passed by comparing a
     // list against itself. aria-expanded is the control's own state.
+    // THE TOGGLE LIVES INSIDE THE OVERFLOW MENU, and three commits' worth of
+    // theories missed it because none of them looked at the page. The failure
+    // screenshot from 34149657712 shows the toolbar ending in "⋯ ⊞" with no
+    // "Load example…" button at all: renderCatalogControl is called from inside
+    // renderActionMenu (pseudocode-importer.jsx:3563), a <details> that is shut
+    // until clicked. So the button is in the DOM, resolves by test id, and is
+    // honestly NOT VISIBLE — which is what Playwright said all along, while I
+    // read it first as a bad selector and then as a panel covering it.
+    const actions = page.locator('[data-testid="bw-code-actions"]');
+    const openActions = async () => {
+        if (await actions.evaluate(el => el.open)) return;
+        await actions.locator('summary').click();
+        await page.waitForFunction(() =>
+            document.querySelector('[data-testid="bw-code-actions"]')?.open === true,
+        null, {timeout: 15000});
+    };
     const openCatalog = async () => {
+        await openActions();
         if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
         await catalogPanel.waitFor({state: 'visible', timeout: 30000});
     };
@@ -229,13 +245,19 @@ try {
         !/Ben\u00f6tigt:|Needs:/.test(document.body.textContent || ''));
     check('no example is labelled with a device requirement', noNeeds);
 
-    await device.selectOption('stc89c52rc');
+    // AN ACCEPTED DEVICE, DELIBERATELY. The first version changed to stc89c52rc
+    // here — the very device J1 needs REFUSED. A refused change never happens,
+    // so the panel never re-stamped and the wait below timed out; worse, had it
+    // used the old event-as-state wait it would have gone GREEN, "proving" the
+    // catalogue does not narrow when the device had not changed at all. J2's
+    // claim needs a device that really takes; J1 owns the refusal.
+    await device.selectOption('arduino-uno');
     await openCatalog();
     // Wait on the LIST's own re-render, not on the <select>'s value. The value is
     // the EVENT that should cause the change; the panel's data-device is the
     // CHANGED STATE. Waiting on the former is event-as-state and let a stale list
     // be counted.
-    await page.locator('[data-testid="bw-catalog-panel"][data-device="stc89c52rc"]')
+    await page.locator('[data-testid="bw-catalog-panel"][data-device="arduino-uno"]')
         .waitFor({state: 'visible', timeout: 20000});
     const after = await countItems();
     check('changing the device does not narrow the catalogue', after === before,
@@ -243,11 +265,16 @@ try {
     await snap('catalogue-unnarrowed');
 
     // ---- J1: the device pick must refuse, not leave a stale board -----------
-    // stc89 has no bench for this example, so setDevice must say so by name.
-    const status = await page.evaluate(() => {
+    // stc89 has no bench for this example, so setDevice must say so BY NAME.
+    // This is the journey that proves the U1-1 fix: the refusal already existed
+    // in setDevice and was unreachable from a gallery load, because only the
+    // importer's own catalogue recorded which example was open.
+    await device.selectOption('stc89c52rc');
+    const status = await page.waitForFunction(() => {
         const el = document.querySelector('[data-testid="bw-code-status"]');
-        return (el && el.textContent) || '';
-    });
+        const text = (el && el.textContent) || '';
+        return /cannot retarget|not available|Cannot/i.test(text) ? text : false;
+    }, null, {timeout: 20000}).then(handle => handle.jsonValue()).catch(() => '');
     check('choosing a device the example has no circuit for is REFUSED by name',
         /cannot retarget|not available|Cannot/i.test(status), JSON.stringify(status.slice(0, 200)));
     await snap('device-refusal');
