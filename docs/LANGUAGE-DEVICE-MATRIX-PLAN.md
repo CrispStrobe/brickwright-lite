@@ -1150,7 +1150,24 @@ blinks one of them (`PIN led = P2.0`) — the intro explains that `P2.1`–`P2.7
 the rest of the 8255 port and how to drive all eight. Verified: the program
 compiles to 8086 machine code, the circuit extracts as an 8086 machine with the
 8255, and the example-execution gate RUNS it and asserts the LED toggles (a
-broken program reddens it, "0 events, computed nothing observable"). A browser
+broken program reddens it, "0 events, computed nothing observable"). The ROM's
+chip select is PROVABLY bound, not merely assumed from a green run:
+`test/i8086-blink-rom-select.test.mjs` asserts `extract8086Machine` decodes the
+28c256 as a `rom` region at 0xE0000–0xFFFFF only because its select is driven, and
+a mutation that drops the `rom86.ceb` wire reddens by name ("rom86.ceb is undriven
+— a floating chip select is not a decode"). This matters because the two memory
+chips carry DIFFERENT select pins by design — the 62256 SRAM's is `csb`, the
+28c256 EEPROM's is `ceb` (bw-board's bus-memory model and all three extractors say
+so) — so "normalising" them to one name points a wire at a pin the silicon does
+not have, and a single ROM still fetches unselected, which a run-only gate cannot
+catch (the exact shape the extraction assertion exists to close). NEW DIVERGENCE
+worth its own line: a reseat fixture is bw-board-valid but NOT gallery-netlist-
+valid as-is, because the two models disagree about whether a part's inline
+`terminals` array may EXCEED the part definition — bw-board tolerates the union
+`[csb, ceb, …]` on both chips, the gallery netlist rejects the spurious pin. The
+next gallery example built off a reseat fixture will hit this; the fix is to trim
+each chip's inline terminals to its own silicon (drop `ceb` from the 62256, `csb`
+from the 28c256), leaving the wires untouched. A browser
 gate (`verify-example-selector.mjs`) selects i8086 in the device picker — it is a
 real `DEVICES`/`DEVICE_GROUP` entry, so it is offered — opens the catalog it
 serves, clicks `i8086-blink`, and proves it loads the 8086 program and runs on the
