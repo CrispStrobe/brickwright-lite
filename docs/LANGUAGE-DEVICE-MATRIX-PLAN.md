@@ -343,7 +343,7 @@ DoD:
 - [ ] §4.6's exclusion of `smallerc-wasm/compiler.js` is removed because it
       now has a caller; `no-dead-overlay-modules` stays green.
 
-**N2b. The 8086 C route cannot compile a numeric variable. OPEN 2026-09-07** (found on P2's adc attempt).
+**N2b. The 8086 C route cannot compile a numeric variable. DONE 2026-09-07 (step 2 landed 3d84eef62; the 16-bit model is the contract, N2c carries `wait`)** (found on P2's adc attempt).
 SmallerC's tiny model (.COM) has no `long`, and generateC types EVERY Scratch number as `static long`, so
 `set myvar to 5` fails at the compiler with "Unexpected token long": no i8086 C program that stores a value
 compiles today; pin and shiftOut passed only because they use no numeric variable. The C × 8086 cell
