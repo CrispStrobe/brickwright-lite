@@ -9,9 +9,9 @@ const fixture = seq => ({schemaVersion: 1, type: 'snapshot', seq, clockNs: seq *
     imu: {acceleration: {x: 0, y: 0, z: 1}, angularVelocity: {x: 0, y: 0, z: 0}},
     audio: {active: false}, storage: {ready: true}, bluetooth: {state: 'off', transport: 'none'}});
 class Transport {
-    constructor () { this.sent = []; }
+    constructor () { this.sent = []; this.closeCalls = 0; }
     onData (callback) { this.data = callback; } onClose (callback) { this.closed = callback; }
-    send (line) { this.sent.push(line); } close () {} emit (value) { this.data(`${JSON.stringify(value)}\n`); }
+    send (line) { this.sent.push(line); } close () { this.closeCalls += 1; } emit (value) { this.data(`${JSON.stringify(value)}\n`); }
 }
 test('publishes plain state without Renode objects', () => {
     const states = []; const transport = new Transport();
@@ -38,4 +38,36 @@ test('reconnect ignores stale transport data and advances generation', async () 
     const pending = connector.command('queued'); connector.disconnect(); await assert.rejects(pending, /disconnected/);
     connector.connect(); transports[0].emit(fixture(0)); assert.equal(connector.snapshot().neutral, null);
     transports[1].emit(fixture(0)); assert.equal(connector.snapshot().neutral.seq, 0); assert.equal(lifecycle.at(-1).generation, 2);
+});
+
+test('malformed, oversized and unknown-result input disconnects without escaping', async () => {
+    for (const emit of [
+        transport => transport.data('{bad json}\n'),
+        transport => transport.data('x'.repeat(256 * 1024 + 1)),
+        transport => transport.emit({schemaVersion: 1, type: 'result', requestId: 'absent', accepted: true})
+    ]) {
+        const transport = new Transport(); const lifecycle = [];
+        const connector = new Connector({createTransport: () => transport, onLifecycle: x => lifecycle.push(x)}).connect();
+        const pending = connector.command('queued');
+        assert.doesNotThrow(() => emit(transport));
+        await assert.rejects(pending, /disconnected/);
+        assert.deepEqual(lifecycle.slice(-2).map(x => x.phase), ['protocol-error', 'disconnected']);
+        assert.equal(connector.transport, null);
+    }
+});
+
+test('connect failure removes the state subscription', () => {
+    const lifecycle = [];
+    const connector = new Connector({createTransport: () => { throw new Error('unavailable'); },
+        onLifecycle: x => lifecycle.push(x)});
+    assert.throws(() => connector.connect(), /unavailable/);
+    assert.equal(connector.unsubscribe, null);
+    assert.equal(connector.transport, null);
+    assert.equal(lifecycle.at(-1).phase, 'connect-error');
+
+    const partial = new Transport(); partial.onClose = () => { throw new Error('registration failed'); };
+    const registration = new Connector({createTransport: () => partial});
+    assert.throws(() => registration.connect(), /registration failed/);
+    assert.equal(registration.unsubscribe, null);
+    assert.equal(partial.closeCalls, 1);
 });

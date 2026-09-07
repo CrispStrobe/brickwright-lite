@@ -24,3 +24,6 @@ adapter and virtual hub state internally. UI code receives only neutral state
 snapshots. Commands use generation-qualified request IDs and a bounded pending
 map. Disconnect rejects outstanding work; reconnect starts a fresh adapter and
 stale transport callbacks cannot mutate the current state.
+Malformed, oversized, or uncorrelated input produces a `protocol-error`
+lifecycle event, rejects pending commands, and disconnects without allowing an
+exception to escape the transport callback.

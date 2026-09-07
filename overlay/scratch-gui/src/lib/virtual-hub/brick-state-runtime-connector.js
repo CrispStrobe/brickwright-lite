@@ -18,13 +18,24 @@ export default class BrickStateRuntimeConnector {
         this.adapter = new RenodeBrickStateAdapter(this.state, {onGap: this.onGap});
         this.unsubscribe = this.state.subscribe(() => this.onState(this.state.snapshot()));
         const generation = this.generation;
-        const transport = this.createTransport();
-        this.transport = transport;
-        transport.onData(chunk => {
-            if (this.transport !== transport || generation !== this.generation) return;
-            for (const message of this.adapter.feed(chunk)) this._handleMessage(message);
-        });
-        transport.onClose(() => { if (this.transport === transport) this._disconnect('transport-closed'); });
+        let transport;
+        try {
+            transport = this.createTransport();
+            this.transport = transport;
+            transport.onData(chunk => {
+                if (this.transport !== transport || generation !== this.generation) return;
+                try { for (const message of this.adapter.feed(chunk)) this._handleMessage(message); }
+                catch (_) { this._protocolFailure(transport); }
+            });
+            transport.onClose(() => { if (this.transport === transport) this._disconnect('transport-closed'); });
+        } catch (error) {
+            this.transport = null;
+            if (this.unsubscribe) this.unsubscribe();
+            this.unsubscribe = null;
+            if (transport) try { transport.close(); } catch (_) { /* incomplete transport */ }
+            this.onLifecycle({phase: 'connect-error', generation});
+            throw error;
+        }
         this.onLifecycle({phase: 'connected', generation});
         return this;
     }
@@ -60,5 +71,10 @@ export default class BrickStateRuntimeConnector {
         for (const {reject} of this.pending.values()) reject(new Error('connector disconnected'));
         this.pending.clear();
         this.onLifecycle({phase: 'disconnected', generation: this.generation, reason});
+    }
+    _protocolFailure (transport) {
+        this.onLifecycle({phase: 'protocol-error', generation: this.generation});
+        this._disconnect('protocol-error');
+        try { transport.close(); } catch (_) { /* already disconnected */ }
     }
 }
