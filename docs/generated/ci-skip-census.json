@@ -1,8 +1,16 @@
 {
- "generatedAt": "2026-09-07T14:46:40.136Z",
+ "generatedAt": "2026-09-07T16:47:51.530Z",
  "repo": "CrispStrobe/brickwright-lite",
  "branch": "main",
  "runs": [
+  {
+   "run": 34136062706,
+   "sha": "b3648ffc7"
+  },
+  {
+   "run": 34132414269,
+   "sha": "dc2d6fa3b"
+  },
   {
    "run": 34131667316,
    "sha": "fd32820a3"
@@ -74,14 +82,6 @@
   {
    "run": 34103619336,
    "sha": "50838bc9c"
-  },
-  {
-   "run": 34102511627,
-   "sha": "37d337935"
-  },
-  {
-   "run": 34101768263,
-   "sha": "67fcc8cc7"
   }
  ],
  "jobs": [
@@ -117,8 +117,19 @@
    "reason": "set BW_BOARD_DIR to re-verify against real history",
    "file": "test/i8086-bios-provenance.test.mjs",
    "existed": 20,
-   "skipped": 5,
-   "executed": 15,
+   "skipped": 3,
+   "executed": 17,
+   "reasonLive": true,
+   "class": "b"
+  },
+  {
+   "job": "build",
+   "name": "P3: C and MicroPython drive the same GPIO — BOTH EXECUTED on rp2040js (N11a)",
+   "reason": "needs RPI_PICO-20240222-v1.22.2.uf2 — run `npm run sync:picomicropython` once to fetch it (650 KB, sha256-pinned, gitignored)",
+   "file": "test/p3-pin-c-mpy-differential.test.mjs",
+   "existed": 2,
+   "skipped": 1,
+   "executed": 1,
    "reasonLive": true,
    "class": "b"
   },
@@ -127,22 +138,22 @@
    "name": "P3: C and MicroPython drive the same GPIO direction and latch, per pin",
    "reason": "needs RPI_PICO-20240222-v1.22.2.uf2 — run `npm run sync:picomicropython` once to fetch it (650 KB, sha256-pinned, gitignored)",
    "file": "test/p3-pin-c-mpy-differential.test.mjs",
-   "existed": 19,
+   "existed": 20,
    "skipped": 19,
-   "executed": 0,
+   "executed": 1,
    "reasonLive": true,
-   "class": "a"
+   "class": "b"
   },
   {
    "job": "build",
    "name": "P3: the emitter's Pico GPIO addresses match what rp2040js decodes (anchor)",
    "reason": "needs RPI_PICO-20240222-v1.22.2.uf2 — run `npm run sync:picomicropython` once to fetch it (650 KB, sha256-pinned, gitignored)",
    "file": "test/p3-pin-c-mpy-differential.test.mjs",
-   "existed": 19,
+   "existed": 20,
    "skipped": 19,
-   "executed": 0,
+   "executed": 1,
    "reasonLive": true,
-   "class": "a"
+   "class": "b"
   },
   {
    "job": "build",
@@ -150,10 +161,10 @@
    "reason": "needs RPI_PICO-20240222-v1.22.2.uf2 — run `npm run sync:picomicropython` (650 KB, sha256-pinned, gitignored)",
    "file": "test/pico-image-builder.test.mjs",
    "existed": 20,
-   "skipped": 20,
-   "executed": 0,
+   "skipped": 19,
+   "executed": 1,
    "reasonLive": true,
-   "class": "a"
+   "class": "b"
   },
   {
    "job": "build",
@@ -161,10 +172,10 @@
    "reason": "needs RPI_PICO-20240222-v1.22.2.uf2 — run `node scripts/probe-pico-micropython.mjs` once to fetch it into artifacts/ (650 KB, sha256-pinned, gitignored)",
    "file": "test/pico-micropython-boot.test.mjs",
    "existed": 20,
-   "skipped": 20,
-   "executed": 0,
+   "skipped": 19,
+   "executed": 1,
    "reasonLive": true,
-   "class": "a"
+   "class": "b"
   },
   {
    "job": "build",
@@ -172,10 +183,10 @@
    "reason": "needs RPI_PICO-20240222-v1.22.2.uf2 — run `node scripts/probe-pico-micropython.mjs` once to fetch it into artifacts/ (650 KB, sha256-pinned, gitignored)",
    "file": "test/pico-micropython-boot.test.mjs",
    "existed": 20,
-   "skipped": 20,
-   "executed": 0,
+   "skipped": 19,
+   "executed": 1,
    "reasonLive": true,
-   "class": "a"
+   "class": "b"
   },
   {
    "job": "build",
@@ -183,10 +194,10 @@
    "reason": "needs RPI_PICO-20240222-v1.22.2.uf2 — run `node scripts/probe-pico-micropython.mjs` once to fetch it into artifacts/ (650 KB, sha256-pinned, gitignored)",
    "file": "test/pico-micropython-boot.test.mjs",
    "existed": 20,
-   "skipped": 20,
-   "executed": 0,
+   "skipped": 19,
+   "executed": 1,
    "reasonLive": true,
-   "class": "a"
+   "class": "b"
   },
   {
    "job": "build",
@@ -194,10 +205,10 @@
    "reason": "needs RPI_PICO-20240222-v1.22.2.uf2 — run `node scripts/probe-pico-micropython.mjs` once to fetch it into artifacts/ (650 KB, sha256-pinned, gitignored)",
    "file": "test/pico-micropython-boot.test.mjs",
    "existed": 20,
-   "skipped": 20,
-   "executed": 0,
+   "skipped": 19,
+   "executed": 1,
    "reasonLive": true,
-   "class": "a"
+   "class": "b"
   },
   {
    "job": "build",
@@ -205,52 +216,52 @@
    "reason": "needs RPI_PICO-20240222-v1.22.2.uf2 — run `npm run sync:picomicropython` once to fetch it (650 KB, sha256-pinned, gitignored)",
    "file": "test/pico-micropython-gpio.test.mjs",
    "existed": 20,
-   "skipped": 20,
-   "executed": 0,
+   "skipped": 19,
+   "executed": 1,
    "reasonLive": true,
-   "class": "a"
+   "class": "b"
   },
   {
    "job": "build",
    "name": "N3d mutation: with drain() removed, the same program times out waiting for OK",
    "reason": "needs RPI_PICO-20240222-v1.22.2.uf2 — run `npm run sync:picomicropython` once to fetch it (650 KB, sha256-pinned, gitignored)",
    "file": "test/pico-sim-transport-drain.test.mjs",
-   "existed": 19,
+   "existed": 20,
    "skipped": 19,
-   "executed": 0,
+   "executed": 1,
    "reasonLive": true,
-   "class": "a"
+   "class": "b"
   },
   {
    "job": "build",
    "name": "N3d: a program past one buffer runs live through the node oracle (drain carries it)",
    "reason": "needs RPI_PICO-20240222-v1.22.2.uf2 — run `npm run sync:picomicropython` once to fetch it (650 KB, sha256-pinned, gitignored)",
    "file": "test/pico-sim-transport-drain.test.mjs",
-   "existed": 19,
+   "existed": 20,
    "skipped": 19,
-   "executed": 0,
+   "executed": 1,
    "reasonLive": true,
-   "class": "a"
+   "class": "b"
   },
   {
    "job": "build",
    "name": "N3d: the node transport drops CDC bytes past TX_FIFO_SIZE, and drain() clears the buffer",
    "reason": "needs RPI_PICO-20240222-v1.22.2.uf2 — run `npm run sync:picomicropython` once to fetch it (650 KB, sha256-pinned, gitignored)",
    "file": "test/pico-sim-transport-drain.test.mjs",
-   "existed": 19,
+   "existed": 20,
    "skipped": 19,
-   "executed": 0,
+   "executed": 1,
    "reasonLive": true,
-   "class": "a"
+   "class": "b"
   },
   {
    "job": "build",
    "name": "sync-bw-board.mjs --only mna.js --dir <checkout at another sha> refuses by name and leaves vendor-pins.json byte-identical",
    "reason": "BW_BOARD_DIR unset",
    "file": "test/pin-only-moves-with-flag.test.mjs",
-   "existed": 18,
+   "existed": 20,
    "skipped": 3,
-   "executed": 15,
+   "executed": 17,
    "reasonLive": true,
    "class": "b"
   },
@@ -259,8 +270,8 @@
    "name": "sync-bw-circuit-ui.mjs --dir <checkout at another sha> refuses by name and leaves vendor-pins.json byte-identical",
    "reason": "BW_CIRCUIT_UI_DIR unset",
    "file": "test/pin-only-moves-with-flag.test.mjs",
-   "existed": 18,
-   "skipped": 18,
+   "existed": 20,
+   "skipped": 20,
    "executed": 0,
    "reasonLive": true,
    "class": "a"
@@ -270,8 +281,8 @@
    "name": "sync-examples.mjs --dir <checkout at another sha> refuses by name and leaves vendor-pins.json byte-identical",
    "reason": "SB3_CREATOR_DIR unset",
    "file": "test/pin-only-moves-with-flag.test.mjs",
-   "existed": 18,
-   "skipped": 18,
+   "existed": 20,
+   "skipped": 20,
    "executed": 0,
    "reasonLive": true,
    "class": "a"
@@ -281,8 +292,8 @@
    "name": "sync-flasher.mjs --dir <checkout at another sha> refuses by name and leaves vendor-pins.json byte-identical",
    "reason": "STC_COMPILER_DIR unset",
    "file": "test/pin-only-moves-with-flag.test.mjs",
-   "existed": 18,
-   "skipped": 18,
+   "existed": 20,
+   "skipped": 20,
    "executed": 0,
    "reasonLive": true,
    "class": "a"
@@ -292,8 +303,8 @@
    "name": "sync-sb3creator.mjs --dir <checkout at another sha> refuses by name and leaves vendor-pins.json byte-identical",
    "reason": "SB3_CREATOR_DIR unset",
    "file": "test/pin-only-moves-with-flag.test.mjs",
-   "existed": 18,
-   "skipped": 18,
+   "existed": 20,
+   "skipped": 20,
    "executed": 0,
    "reasonLive": true,
    "class": "a"
@@ -315,8 +326,8 @@
    "reason": "upstream tree not on disk -- cross-tree invariant NOT verified",
    "file": "test/vendor-identity.test.mjs",
    "existed": 20,
-   "skipped": 5,
-   "executed": 15,
+   "skipped": 3,
+   "executed": 17,
    "reasonLive": true,
    "class": "b"
   }
