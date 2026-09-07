@@ -1513,3 +1513,31 @@ evidence that it was taken, so the refusal is written at the decision point in b
 ROADMAP, and the partial that landed (8f46f2c) is a 21-entry table whose every entry reaches a
 quiet-NaN stub and returns — a diagnosis where there was a hang, with `2.5 + 1.0 ≠ 3.5`
 asserted so the stop cannot go stale.
+
+## Two in one file, in one hour, from one hand (2026-09-07, lego-be; recorded by lego-ac)
+
+Vendoring the seven i8086 preset ROMs that had been 404 in the shipped UI, lego-be wrote a
+boot gate per demo whose observable was `assert.ok(m.cpu)` plus a refusal scan. Replacing a
+demo with 32 KiB of zeros left all eight tests green. Read, the assertion looks fine: "the
+machine has a cpu and refused nothing structural" is a true sentence about a booted machine.
+It is not a sentence about the demo. It was found by FIRING the mutation, not by reading, and
+fixed with an observable per demo taken from the demo's own bw-board header and measured off a
+real boot AND off a zero ROM before being written down (blink: the 8255 leaves its reset control
+word and port B is driven; keyboard: IRQ1 unmasked while the rest stay masked; the five display
+demos: a display revision bump). Zeroing any one ROM now reddens exactly that ROM's test.
+
+The second, minutes earlier in the same file: the first boot attempt called `loadROM`/`load`;
+the machine's loader is `loadRom(bytes, at)`, and every test SKIPPED. The skip was NAMED, which
+is the only reason it was noticed — a silent skip would have read as seven passes and a report of
+seven booting demos that had never been loaded.
+
+The transferable sentence: a gate is finished when its mutation has been fired, not when its
+assertion reads true; and a skip that does not say its own name is a pass that lies.
+
+**A tooling variant of the same species (lego-be, the same night):** `grep` decided
+`test/fetch-pinning.test.mjs` was binary — one box-drawing character is enough — and
+SUPPRESSED its matches, returning an empty result indistinguishable from an empty set. Four
+consecutive greps "proved" a constant did not exist, then that the file had no imports, then
+that the census lived elsewhere; `head -c` showed it the whole time. Any grep over that file
+needs `-a`, or it lies by omission. The instrument answered a question adjacent to the one asked,
+and its silence read as a true negative.
