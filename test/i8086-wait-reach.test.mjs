@@ -20,18 +20,19 @@ test('the 280-program gallery records the literal-wait gain and every emitted pr
         ], {cwd: root, maxBuffer: 8 * 1024 * 1024});
         const receipt = JSON.parse(stdout);
         const s = receipt.summary;
+        console.log(`N2c reach: ${JSON.stringify(s)}; compile failures: ${JSON.stringify(receipt.compileFailed)}`);
         assert.equal(s.programs, 280);
         assert.equal(s.waitLiteralPrograms, 120);
         assert.equal(s.waitComputedPrograms, 2);
         assert.equal(s.waitLiteralRefused, 0);
         assert.equal(s.waitComputedRefused, 1);
         assert.equal(s.emits, 44, 'literal wait should lift the emitted count from the N2b baseline of 5');
-        assert.equal(s.compiled, s.emits, 'every emitted program must compile through SmallerC');
+        assert.equal(s.compiled, s.emits,
+            `every emitted program must compile through SmallerC: ${JSON.stringify(receipt.compileFailed)}`);
         assert.equal(s.compileFailed, 0);
         assert.equal(s.longLeaked, 0);
         assert.equal(s.parseFailed, 0);
         assert.equal(s.retargetRefused + s.choke + s.hostC + s.int16Refused
             + s.waitLiteralRefused + s.waitComputedRefused + s.emits, s.programs,
         'every gallery program must land in exactly one outcome bucket');
-        console.log(`N2c reach: ${JSON.stringify(s)}`);
     });
