@@ -121,8 +121,9 @@ test('(3) the stored verb×family matrix is exactly what the emitter branches sa
         + 'or removed from an emitter verb; run `npm run gen:part-profiles` and review the diff — '
         + 'do not hand-edit the table to silence this.');
     // the anchors that fix the attribution rule
-    assert.deepEqual(derived.shiftOut, ['8051', 'avr', '6502', 'arm'],
-        'shift_out must be implemented for four families (8051, avr, 6502, arm — not z80)');
+    assert.deepEqual(derived.shiftOut, ['8051', 'avr', '6502', 'arm', 'i8086'],
+        'shift_out must be implemented for five families (8051, avr, 6502, arm, and i8086 '
+        + 'through the 8255 — not z80); its i8086 branch is P2\'s protocol/bus proof');
     assert.deepEqual(derived.pin, ['8051', 'avr', '6502', 'z80', 'arm', 'i8086'],
         'the pin primitives must be implemented for all six families — i8086 through the 8255');
     assert.deepEqual(derived.adc, ['8051', 'avr', 'arm'],
