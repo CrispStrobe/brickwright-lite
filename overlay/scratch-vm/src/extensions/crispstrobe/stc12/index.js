@@ -53,6 +53,58 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
     return runtime._stc12Pins;
   }
 
+  // THE PIN BAG IS NOT THE CIRCUIT. board(runtime) above is this extension's
+  // own key/value state, keyed by the DECLARED NAME ("led1"); the simulated
+  // circuit is a separate object the host attaches at runtime.circuitBoard, and
+  // it is keyed by the PHYSICAL PIN ("P1.0"). Writing only the bag is why the
+  // 12-dual-blink example rendered wrong: measured on the live page, the blocks
+  // ran, the bag held led1:1 led2:0 correctly complementary, runtime.circuitBoard
+  // was attached and was the very object the renderer reads — and it never heard
+  // a single write, so CircuitDesigner fell back to its canned demo blink, which
+  // drives every output pin from ONE shared value. Two LEDs wired to alternate
+  // therefore lit together. Any example whose circuit is not just one LED showed
+  // a plausible animation that was not its program.
+  //
+  // Header spelling, and why it is not hardcoded to the 8051: this mirrors
+  // pinName in lib/bw-board/infer-netlist.js, which is what BUILT the netlist the
+  // board is holding. 8051 pins carry port/bit and are spelled P1.0; Arduino and
+  // Pico pins carry a 'where' and are spelled D13 or GP15. Matching that one
+  // function is what makes this work on every family rather than on the 8051.
+  // Concatenated, not a template literal. This whole extension is carried
+  // inside a template literal in the wrapper above, so a backtick or a dollar
+  // brace anywhere in here -- comments included -- is read by THAT literal and
+  // the file stops parsing. Measured the hard way while writing this.
+  const pinName = (p) =>
+    p && p.where ? String(p.where) : "P" + (p && p.port) + "." + (p && p.bit);
+
+  // Best-effort: a project can run with no circuit attached, and did so for
+  // years. A missing board is not an error, but a missing board is also not a
+  // reason to drop the write silently on a board that IS there — hence the
+  // return value, which the caller uses for nothing today and a test uses to
+  // tell "no circuit" from "circuit ignored".
+  function driveCircuit(runtime, decl, level) {
+    const b = runtime && runtime.circuitBoard;
+    if (!b || typeof b.setPin !== "function" || !decl) return false;
+    // The mode the emitted simulator driver uses for the same declaration, so
+    // the blocks path and the compiled path put the pin in the same state.
+    const mode =
+      decl.direction === "output"
+        ? "pushpull"
+        : decl.direction === "analog"
+          ? "input"
+          : decl.activeLow
+            ? "input-pullup"
+            : "input-pulldown";
+    try {
+      b.setPin(pinName(decl), mode, level !== 0);
+      return true;
+    } catch {
+      // The board is rebuilt whenever the circuit is edited; a write landing
+      // mid-rebuild must not take the running program down with it.
+      return false;
+    }
+  }
+
   class STC12 {
     constructor(runtime) {
       this.runtime = runtime;
@@ -457,15 +509,28 @@ module.exports = makeExt(`// Name: STC12 / 8051 pins
               ? 1
               : 0;
       board(this.runtime)[args.PIN] = level;
+      driveCircuit(this.runtime, pin, level);
     }
 
     toggle(args) {
       const b = board(this.runtime);
-      b[args.PIN] = b[args.PIN] ? 0 : 1;
+      const level = b[args.PIN] ? 0 : 1;
+      b[args.PIN] = level;
+      driveCircuit(
+        this.runtime,
+        decls(this.runtime).find((p) => p.name === args.PIN),
+        level,
+      );
     }
 
     writepin(args) {
-      board(this.runtime)[args.PIN] = Number(args.VALUE) ? 1 : 0;
+      const level = Number(args.VALUE) ? 1 : 0;
+      board(this.runtime)[args.PIN] = level;
+      driveCircuit(
+        this.runtime,
+        decls(this.runtime).find((p) => p.name === args.PIN),
+        level,
+      );
     }
 
     read(args) {

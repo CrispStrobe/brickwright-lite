@@ -2,9 +2,9 @@
 /**
  * "Two LEDs alternating" must show BOTH LEDs, in their own phases.
  *
- * The owner reported 12-dual-blink showing only one LED ever on. Five layers
- * were eliminated by running them headlessly before this gate was written, and
- * that is why it is aimed where it is rather than being a fishing trip:
+ * The owner reported 12-dual-blink showing one LED. Five layers were eliminated
+ * by running them headlessly before this gate was written, and that is why it is
+ * aimed where it is rather than being a fishing trip:
  *
  *   - the example data: program.bw alternates P1.0 and P1.1, both ACTIVE LOW,
  *     and the circuit wires both symmetrically;
@@ -14,16 +14,40 @@
  *   - the driver's pin table: both pins, both ACTIVE LOW;
  *   - the renderer's lookup: `ledBrightness?.(id)` per part.
  *
- * What is left is the LIVE path, and there is a previous instance of this exact
- * symptom recorded in CircuitDesigner.jsx: "the rendered LED still asked the
- * idle internal board and read 0. One board, one truth applies to READS as much
- * as writes."
+ * WHAT THE LIVE PAGE THEN SHOWED, MEASURED. Both pins ARE written and both LEDs
+ * DO light — in unison. Over an 8.5 s window P1.0 and P1.1 received the identical
+ * level at the identical moment, every time, and both LEDs read 0.1449 together.
+ * The stack behind those writes is CircuitDesigner's own loop, which drives every
+ * pin it classified as an output with one shared on/off value. So the circuit
+ * view is not running the example's program at all; it is playing a canned blink
+ * that happens to look correct for any example with exactly one LED.
  *
- * SO THIS GATE SEPARATES TWO CAUSES THAT LOOK IDENTICAL ON SCREEN:
- *   (a) led2 is never DRIVEN — the program or driver only writes one pin; or
- *   (b) led2 is driven, but on a board the renderer is not READING.
- * It samples both the pin writes and the rendered brightness, so a failure says
- * which. A gate that only asserted "one LED changes" would pass on both.
+ * THE DECISIVE ASSERTION IS THEREFORE AT THE PIN LAYER, not the pixel layer. Two
+ * LEDs lighting together and two LEDs alternating are both "both LEDs work" to a
+ * brightness check sampled at the wrong instant. Only "the two pins never hold
+ * the same level at the same time" separates the program from the canned blink,
+ * and that is what fails today.
+ *
+ * The rendered brightness is still sampled, because the pin layer alone cannot
+ * tell a pin driven onto a board nobody reads from a pin driven correctly.
+ *
+ * WHAT THE FIRST RUN OF THIS GATE TAUGHT (run 34163626035, all five checks red).
+ * Opening an example with a program calls confirm() — it replaces the project and
+ * undo cannot recover that. Playwright DISMISSES an unhandled dialog, so
+ * loadExample returned {ok: false, cancelled: true} and nothing ran. Every check
+ * after it then reported on a page where the example had never loaded: "led2 is
+ * NEVER DRIVEN" was a true statement about a program that was never opened, and
+ * it named the wrong half of the codebase.
+ *
+ * Three consequences, all of them here:
+ *   - the drive mirrors the green example-journey gate INCLUDING its dialog
+ *     handler. That gate's own comment says mirroring means the navigation too,
+ *     and this gate had copied the clever part and not the boring one;
+ *   - a failed precondition ABORTS. A check cannot describe a page that never
+ *     reached the state it is about, so it must not be allowed to try;
+ *   - null and 0 are different findings. null is a part the renderer could not
+ *     find at all; 0 is a part it found and read as unlit. The first sends you to
+ *     the wiring, the second to the program. Reporting them alike costs a day.
  */
 import {createServer} from 'node:http';
 import {readFile} from 'node:fs/promises';
@@ -59,23 +83,44 @@ await new Promise(done => server.listen(port, done));
 const url = process.env.PROOF_URL || `http://localhost:${port}/`;
 const browser = await chromium.launch();
 const page = await browser.newPage({viewport: {width: 1400, height: 900}});
+const diagnostics = [];
+// Opening an example asks before replacing the project. An unhandled dialog is
+// DISMISSED by Playwright, which is a "no" — that is what made every check in the
+// first run of this gate describe a page the example had never loaded into.
+page.on('dialog', dialog => dialog.accept());
+page.on('pageerror', error => diagnostics.push(`pageerror: ${error.message}`));
+page.on('console', message => {
+    if (message.type() === 'error') diagnostics.push(`console.error: ${message.text()}`);
+});
+
 const failures = [];
 const check = (name, ok, detail = '') => {
     console.log(`${ok ? 'PASS' : 'FAIL'}: ${name}${detail ? ` — ${detail}` : ''}`);
     if (!ok) failures.push(`${name}${detail ? `: ${detail}` : ''}`);
+};
+// A precondition whose failure makes every later check a statement about the
+// wrong page. It stops the run rather than producing more confident sentences
+// about a state that was never reached.
+const gate = (name, ok, detail = '') => {
+    // A gate's detail explains a FAILURE, so it is not printed on a pass — a
+    // green line reading "no green flag matched" is worse than no line at all.
+    check(name, ok, ok ? '' : detail);
+    if (!ok) throw new Error(`${name}${detail ? `: ${detail}` : ''}` +
+        (diagnostics.length ? ` | page said: ${diagnostics.slice(0, 3).join(' ; ')}` : ''));
 };
 
 try {
     await page.addInitScript(() => {
         localStorage.clear();
         localStorage.setItem('bw-starter-v1-complete', '1');
+        localStorage.setItem('bw-right-pane-hidden', '0');
         sessionStorage.clear();
     });
     await page.goto(url, {waitUntil: 'networkidle', timeout: Math.min(90_000, budgetMs / 3)});
     await page.waitForSelector('[role="tab"]', {timeout: 60_000});
+    // The Circuit tab must be MOUNTED before the fiber walk can find it.
     await page.getByRole('tab', {name: /circuit/i}).click();
 
-    // The Circuit tab, found the way the green example-journey gate finds it.
     await page.waitForFunction(() => {
         const gui = document.querySelector('[class*="gui_body"]') || document.querySelector('[class*="gui"]');
         const key = gui && Object.keys(gui).find(k => k.startsWith('__reactFiber') || k.startsWith('__reactInternalInstance'));
@@ -93,94 +138,126 @@ try {
         }
         return false;
     }, null, {timeout: 40_000});
-    check('the dual-blink example is published in the gallery', true);
+    gate('the dual-blink example is published in the gallery', true);
 
     const loaded = await page.evaluate(async () => {
         const tab = window.__bwTab;
         return tab.loadExample(tab.state.examples.find(e => e.id === '12-dual-blink'));
     });
-    check('the gallery loads it', loaded && loaded.ok !== false, (loaded && loaded.error) || '');
+    gate('the gallery loads it', loaded && loaded.ok !== false,
+        // `cancelled` is a different finding from an error and has to say so: it
+        // means the confirm was answered no, which is the harness, not the app.
+        (loaded && loaded.cancelled) ? 'the open-example confirm was dismissed, so nothing loaded'
+            : (loaded && loaded.error) || (loaded ? '' : 'loadExample returned nothing'));
 
-    // WHICH BOARD IS BEING WRITTEN, AND WHICH IS BEING READ. Recorded separately
-    // on purpose: the two causes this gate exists to tell apart differ precisely
-    // here. Every setPin is logged with the board object it landed on, so a pin
-    // driven onto a board the renderer never reads is visible as itself.
+    // WHICH BOARD IS WRITTEN AND WHICH IS READ. The tab publishes two objects:
+    // __circuit is the model and __board is the solver under it, and the model
+    // DELEGATES — a write appears on both. That is a chain, not a split, so the
+    // gate records the innermost board (which is also the one the renderer reads)
+    // and does not mistake one write travelling through two objects for two
+    // boards disagreeing.
+    await page.waitForFunction(() => !!(window.__board && typeof window.__board.setPin === 'function'),
+        null, {timeout: 30_000}).catch(() => {});
+    gate('the board the renderer reads is published', await page.evaluate(
+        () => !!(window.__board && typeof window.__board.ledBrightness === 'function')),
+    'window.__board is absent or has no ledBrightness, so nothing on this page can be read');
+
     await page.evaluate(() => {
         window.__bwPinWrites = [];
-        const seen = new Set();
-        const arm = board => {
-            if (!board || seen.has(board) || typeof board.setPin !== 'function') return;
-            seen.add(board);
-            const original = board.setPin.bind(board);
-            board.setPin = (pin, mode, drive) => {
-                window.__bwPinWrites.push({pin, drive, at: Date.now(), board: board.__bwId});
-                return original(pin, mode, drive);
-            };
-        };
-        window.__bwArmBoards = arm;
-        // Tag and wrap every board reachable from the tab, and keep tagging: the
-        // running program attaches its own.
-        let n = 0;
-        const walk = () => {
-            for (const candidate of [window.bwBoard, window.__bwTab && window.__bwTab.board,
-                window.__bwTab && window.__bwTab.state && window.__bwTab.state.board]) {
-                if (candidate && !candidate.__bwId) candidate.__bwId = `board${++n}`;
-                arm(candidate);
-            }
-        };
-        walk();
-        window.__bwWalk = setInterval(walk, 100);
-    });
-
-    await page.getByRole('button', {name: /simulate|run|▶/i}).first().click().catch(() => {});
-    await page.waitForTimeout(2500);   // two 500 ms phases plus slack
-
-    const sample = await page.evaluate(() => {
-        const tab = window.__bwTab;
-        const board = window.bwBoard || (tab && tab.board);
-        const read = id => {
-            try { return board && board.ledBrightness ? board.ledBrightness(id) : null; } catch { return null; }
-        };
-        return {
-            writes: window.__bwPinWrites || [],
-            led1: read('LED_led1'),
-            led2: read('LED_led2'),
-            boards: [...new Set((window.__bwPinWrites || []).map(w => w.board))]
+        const board = window.__board;
+        const original = board.setPin.bind(board);
+        board.setPin = (pin, mode, drive) => {
+            window.__bwPinWrites.push({pin, drive: !!drive, mode, at: Date.now()});
+            return original(pin, mode, drive);
         };
     });
 
-    const p10 = sample.writes.filter(w => w.pin === 'P1.0');
-    const p11 = sample.writes.filter(w => w.pin === 'P1.1');
-    // (a) Is led2 driven at all?
-    check('both pins are written by the running program', p10.length > 0 && p11.length > 0,
+    // The green flag, located the way the green verify-circuit-ux gate locates
+    // it. Finding it is a PRECONDITION: the previous version swallowed a missed
+    // click with .catch(() => {}) and then reported on a program never started.
+    const greenFlag = page.locator(
+        'img[title="Go"]:visible, [aria-label*="Green Flag" i]:visible, [title*="green flag" i]:visible');
+    gate('the run control is on the page', await greenFlag.count() > 0,
+        'no green flag matched, so this gate cannot start anything');
+    await greenFlag.last().click({force: true});
+
+    // Long enough to cross several 500 ms phases of the example.
+    await page.waitForTimeout(3000);
+
+    const writes = await page.evaluate(() => window.__bwPinWrites || []);
+    gate('the running program writes pins at all', writes.length > 0,
+        'no setPin reached the board after the run started');
+
+    const p10 = writes.filter(w => w.pin === 'P1.0');
+    const p11 = writes.filter(w => w.pin === 'P1.1');
+    check('both declared pins are written', p10.length > 0 && p11.length > 0,
         `P1.0 ${p10.length} write(s), P1.1 ${p11.length} write(s)` +
         (p11.length === 0 ? ' — led2 is NEVER DRIVEN: the defect is above the board, in the program or the driver' : ''));
-    // (b) Are the writes landing on the board the renderer reads?
-    check('every pin write lands on one board', sample.boards.length <= 1,
-        sample.boards.length > 1
-            ? `writes split across ${sample.boards.length} boards (${sample.boards.join(', ')}) — ` +
-              'led2 may be driven on a board nobody is reading'
-            : `one board (${sample.boards[0] || 'none tagged'})`);
 
-    // The complementary assertion the owner's symptom needs: one on, one off, and
-    // then the reverse. Sampling twice, half a phase apart.
-    const phase = async () => await page.evaluate(() => {
-        const board = window.bwBoard || (window.__bwTab && window.__bwTab.board);
-        const read = id => { try { return board.ledBrightness(id); } catch { return null; } };
-        return {a: read('LED_led1'), b: read('LED_led2')};
-    });
-    const first = await phase();
-    await page.waitForTimeout(520);
-    const second = await phase();
-    const lit = v => typeof v === 'number' && v > 0.01;
-    check('the two LEDs are complementary in one phase', lit(first.a) !== lit(first.b),
-        `led1 ${first.a}, led2 ${first.b}`);
-    check('and they swap in the next phase', lit(second.a) !== lit(second.b) && lit(first.a) !== lit(second.a),
-        `led1 ${first.a}→${second.a}, led2 ${first.b}→${second.b}` +
-        (lit(first.a) === lit(second.a) ? ' — the pair never swapped' : ''));
-    check('led2 is lit in at least one sampled phase', lit(first.b) || lit(second.b),
-        `led2 ${first.b} then ${second.b}` +
-        (p11.length > 0 ? ' — but P1.1 WAS written, so the write is not reaching the read' : ''));
+    // THE DECISIVE CHECK. Two LEDs lighting together and two LEDs alternating
+    // both look like "both LEDs work" to a brightness sample taken at one
+    // instant. The pins cannot be misread the same way: an alternating program
+    // never holds both at the same level, and a blink that drives every output
+    // pin from one shared value never holds them at different ones.
+    const level = new Map();
+    let together = 0;
+    let opposed = 0;
+    for (const w of writes) {
+        level.set(w.pin, w.drive);
+        if (level.has('P1.0') && level.has('P1.1')) {
+            if (level.get('P1.0') === level.get('P1.1')) together++; else opposed++;
+        }
+    }
+    check('the two pins are driven to OPPOSITE levels, as an alternating program does', opposed > 0,
+        `${opposed} write(s) left the pair opposed, ${together} left them identical` +
+        (opposed === 0
+            ? ' — the pins are always at the SAME level, so this is not the example running: ' +
+              'CircuitDesigner drives every pin it classified as an output from one shared on/off value'
+            : ''));
+
+    // NULL IS NOT ZERO. null means ledBrightness could not answer for that id at
+    // all — no such part, or no board to ask; 0 means it found the part and read
+    // it as unlit. The first is a naming or wiring fault, the second is the
+    // reported defect. Folding them into one word sends the reader to the wrong
+    // layer, which is what happened here.
+    // SAMPLED ACROSS A WHOLE PERIOD, NOT AT TWO INSTANTS. Two snapshots half a
+    // second apart can both land in the same phase and then say "never lit",
+    // which invites the conclusion that a write is not reaching the read when in
+    // truth the sampler blinked at the wrong moment. Sampling a span and
+    // reporting what was SEEN in it cannot make that mistake.
+    const frames = [];
+    for (let i = 0; i < 20; i++) {
+        frames.push(await page.evaluate(() => {
+            const board = window.__board;
+            const read = id => { try { return board.ledBrightness(id); } catch { return null; } };
+            return {a: read('LED_led1'), b: read('LED_led2')};
+        }));
+        await page.waitForTimeout(120);
+    }
+    const known = v => typeof v === 'number';
+    const lit = v => known(v) && v > 0.01;
+    const say = v => (v === null || v === undefined ? 'NOT FOUND' : String(v));
+    const unreadable = [...new Set(frames.flatMap(f =>
+        [...(known(f.a) ? [] : ['led1']), ...(known(f.b) ? [] : ['led2'])]))];
+    gate('the renderer can read both LEDs', unreadable.length === 0,
+        `no brightness for ${unreadable.join(' and ')} — the part id is wrong or there is no ` +
+        'board to ask, which is not the same as the LED being dark');
+
+    const litA = frames.filter(f => lit(f.a)).length;
+    const litB = frames.filter(f => lit(f.b)).length;
+    const alone = frames.filter(f => lit(f.a) !== lit(f.b)).length;
+    const both = frames.filter(f => lit(f.a) && lit(f.b)).length;
+    const trace = frames.map(f => `${lit(f.a) ? '1' : '.'}${lit(f.b) ? '2' : '.'}`).join(' ');
+    check('led1 is lit somewhere in the sampled span', litA > 0,
+        `${litA} of ${frames.length} frames — ${trace}`);
+    check('led2 is lit somewhere in the sampled span', litB > 0,
+        `${litB} of ${frames.length} frames` +
+        (litB === 0 && p11.length > 0 ? ' — but P1.1 WAS written, so the write is not reaching the read' : ''));
+    check('there is a moment where exactly ONE of them is lit', alone > 0,
+        `${alone} frame(s) with one lit, ${both} with both lit together — ${trace}` +
+        (alone === 0 && both > 0
+            ? ' — they only ever light TOGETHER, which is the unison blink and not the example'
+            : ''));
 
     console.log(`\nDual blink: ${failures.length ? `${failures.length} failure(s)` : 'both LEDs alternate'}`);
 } finally {
