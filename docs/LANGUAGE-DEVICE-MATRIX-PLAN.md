@@ -478,6 +478,29 @@ other emulators; not a flash transport, an export. The matrix cell reads
 DoD: the exported `.COM` runs under a second emulator the developer has
 (oracle-style, not shipped).
 
+**N3d. The Pico sim transport's write is unfaithful — a large program overflows the device CDC RX buffer. OPEN
+2026-09-07** (found on P3 part 1). A physical Pico drains its USB-CDC RX buffer by EXECUTING while the host
+writes; the simulated device only executes when something calls `transport.read` (`createPicoMachine`,
+`scripts/probe-pico-micropython.mjs`), so the sim transport's WRITE does not drain — a ~1.8 KB generated
+program overflows before it can be consumed. Measured: a 47-line generated pin program enters raw mode
+(raw-ack), writes in 18 chunks, sends Ctrl-D, then the OK-wait TIMES OUT — the device returns the friendly
+prompt and GP25 never leaves its boot default. So the shipped "Run on the simulated Pico" (N3c) very likely
+fails SILENTLY on any generated program past one buffer, and the N3c gate passed only because its program fits
+one. Order (worker): (1) measure the shipped path — run the N3c browser gate's own drive with a real
+gallery-sized program and record whether it fails as predicted; (2) fix in the SIM TRANSPORT (lite-side, not
+vendored): write pumps the machine until the RX buffer has drained, the way silicon does, drain observable in
+the test; `pico-repl.js` untouched unless measurement shows the protocol itself is the gap; (3) the N3c gate
+gains a program that exceeds one buffer; (4) mutation: remove the pump, show the gate red naming the timeout;
+(5) N3d closed with the threshold measured before/after, LANES row. Raw-paste mode upstream (the `pico-repl.js`
+protocol) is the follow-on only if (2) is not enough.
+
+**N11. A local rp2040 C compiler in the browser. OPEN 2026-09-07, unclaimed, owner-level** (found on P3 part 1).
+So the P3 differential's C side is EXECUTED, not parsed. Today `LOCAL_C_TARGETS = {i8086}` (only SmallerC is
+local); the Pico C route is `hosted`, unusable in a CI differential — which is why P3 part 1 parses the C and
+anchors the parse to rp2040js instead of running it. Candidates to COST, not to pick: a Thumb-1 back end for
+SmallerC (not present); chibicc or tcc ARM targets. DoD: the same P3 differential with the C side executed on
+rp2040js.
+
 ### Lane L — lowered halves to add or complete
 
 **L1. ASM reader with named refusals.** Owner: lego-ac. **v1 LANDED 2026-09-05** (`ea305f40f`) (`lib/bw-asm/asm-8086-to-pseudocode.js`, `test/asm-8086-to-pseudocode.test.mjs`): the emitter's own shapes for the 8086 — the DX:AX stack-machine expression stream, the three comparison templates, and/or/not, set/change/say/print/wait/wait until/repeat/repeat until/if/if-else/forever/stop — read back and re-lower to byte-identical assembly over a five-program corpus; hand-written assembly (every fixture in `examples-i8086.js`) refused as foreign, the scheduler form refused with its script count, pins/ports/displays/tone/PWM/keypad/broadcast/say-for-secs refused by feature name; census (after the scheduler form and the pin family landed on the same branch) 29 lifted / 1 refused / 10 unprobed of 40 anchors, and the lifted set may only grow. Pins and ports read back with declarations synthesised from their use; ACTIVE LOW is not recoverable from the bytes and is warned about (the bytes are identical either way); an INPUT nothing reads is a named refusal because the 8255 control word could not be re-derived. The scheduler form reads back one WHEN per task. The ASM tab's To blocks is wired for the 8086 in source mode. Four mutations proven red. Not yet: keypad, displays, tone, PWM, broadcast, say-for-secs. **Re-scoped:** the 8051 half of L1 is not needed — the only 8051 assembly Brickwright produces is a compiler listing of C that the C tab already reads back; hand-written 8051 assembly is foreign by the same rule as hand-written 8086 assembly.
@@ -646,7 +669,22 @@ about the GENERATOR (`generateMicroPython`), so the measurement is generator par
 part-coverage over profiles.js's part ids, plus the `text_line_0` skipped-assertion count from the
 assert-physics / example-corpus harness; start with the 8255 pin path on the Pico simulator, where the run-live
 seam and the GPIO oracle exist. Hold the reader/generator distinction: a rushed premise here is the class of
-error P2 and N2b spent their time catching (tone stubs, sprite x/y, the long ceiling). **P4.** Reader-side
+error P2 and N2b spent their time catching (tone stubs, sprite x/y, the long ceiling). **Measurement landed
+2026-09-07** (worker, upstream `docs/MICROPYTHON-DRIVER-COVERAGE.md`): MicroPython (Pico) drives only
+pin/pwm/tone/keypad/oled/print — a device verb with no `case` falls to `pass # <opcode>` or `degrade`→0; the
+protocol parts P2 split in C (shiftOut, motor, servo) and the bused displays are C-only, so they are P3's
+targets. `text_line_0` is unhandled in assert-physics (only `display:`/`interface:`), so 4 text assertions in 3
+examples (disp-oled ×2, disp-mono-lcd, disp-lcd) skip. **Part 1 landed 2026-09-07** (worker,
+`test/p3-pin-c-mpy-differential`): the C-vs-MicroPython PIN differential on the Pico sim. The MicroPython side
+is EXECUTED on rp2040js — the emitter's driver lines (`Pin`/`.value`, lifted verbatim from
+generateMicroPython) run live, observed at the board boundary (setPin: direction + latch); the FULL generated
+program does NOT run live (it overflows the sim device — see N3d), so DRIVER LINES RUN and the full-program
+live run pends N3d. The C side is PARSED, not executed, until a local rp2040 C toolchain (N11), so its
+addresses are ANCHORED: every SIO/IO_BANK0 address the emitter names is asserted equal to what rp2040js's own
+SIO peripheral decodes (SIO_START + sio.js offsets, read from rp2040js). GP25 output — both drive it high then
+low; GP14 input — both configure it as an input. Mutation fired BOTH routes (a mask flipped in the C emitter
+output; `Pin(25`→`Pin(24` in the MicroPython) — each reddened naming the pin. The harness is reused as each
+C-only part gains its MicroPython driver. **P4.** Reader-side
 library whitelist (`LiquidCrystal`, `Adafruit_SSD1306` → verbs) with named
 refusals. **P5.** One silicon wire-truth bench per family *(manual, recorded)*.
 Each gets its own LANES row when claimed.
