@@ -356,6 +356,15 @@ census scans `.github/`, so the re-include list's own entries were mentions and 
 mention; a name between escaped backticks is reported (`outputOnlyMentions`), not counted; the stale probe is a doc chosen
 at run time. Re-includes 18 → 15. An edit to this file alone now starts no run.
 
+**T14. The CI step census: every workflow step and job runs somewhere the readings can see. BUILT 2026-09-07**
+(lego-b9; lego-ac's ask; T13 one level up). MEASURED from the jobs API over 247 runs of all ten workflows, 169 steps: 0 ran in
+no run they appeared in; 26 sometimes — 17 skipped once behind a failed build job, the rest trigger/tag/matrix/outcome
+conditions by design; the only steps in the file but in no run were younger than the readings (ARM toolchain, Pico
+firmware, the new nightly — dispatched once to give it a reading). Rule: `gen-ci-steps.mjs --fetch` writes
+docs/generated/ci-step-census.json; `judgeSteps` reddens a workflow with no run, a step in the file at the readings' sha
+but in no run, a step or job that appeared and ran in none, unless a dated line under LANES "Steps that run elsewhere"
+says where its condition holds; test/ci-step-census.test.mjs proves the shapes by mutation.
+
 **T13. The CI skip census: every skipped test points at the one place it executes. BUILT 2026-09-07** (lego-b9;
 lego-ac's ask). MEASURED from CI's own TAP over the last 20 green main runs: 21 tests skipped in the unit step (corpus job
 0); 18 had never executed in any run they existed in — twelve for the Pico firmware the same workflow fetches one job over,

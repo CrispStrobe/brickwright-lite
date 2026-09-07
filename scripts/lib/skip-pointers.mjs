@@ -104,3 +104,45 @@ export const expiredTemporary = (pointers, tests) => pointers
         return ran.length ? [`LANES.md:${p.line} ${base}: TEMPORARY pointer but "${ran[0].name}" executed in CI in ${ran[0].executed} of ${ran[0].existed} run(s) — remove the line`] : [];
     });
 
+// ---- steps (plan T14): the same rule one level up ------------------------------------------
+export const STEP_HEADING = '## Steps that run elsewhere';
+const STEP_POINTER = /^- (\S+\.ya?ml) :: (.+?) :: (.+)$/;
+
+/** `- <workflow>.yml :: <step or job name> :: <where the condition holds> <date>` lines under STEP_HEADING. */
+export const parseStepPointers = text => {
+    const lines = text.split('\n');
+    const at = lines.indexOf(STEP_HEADING);
+    if (at < 0) return [];
+    const out = [];
+    for (let i = at + 1; i < lines.length; i++) {
+        if (/^## /.test(lines[i])) break;
+        const m = lines[i].match(STEP_POINTER);
+        if (!m) continue;
+        const d = m[3].match(DATE);
+        out.push({workflow: m[1], name: m[2], where: m[3], date: d ? d[1] : null, line: i + 1});
+    }
+    return out;
+};
+
+/**
+ * Pure verdict over the step readings (docs/generated/ci-step-census.json):
+ *   - a workflow in the tree with no completed run is "a workflow nobody runs";
+ *   - a step in the file at the readings' sha that appears in no run is "a step in no run";
+ *   - a step or job that appeared and ran in NO run needs a pointer, else "a step nobody runs";
+ *   - a pointer without a date is red.
+ * A workflow or step younger than the readings' sha is the caller's to report, not judge.
+ */
+export const judgeSteps = (readings, pointers) => {
+    const out = [];
+    for (const p of pointers) if (!p.date) out.push(`LANES.md:${p.line} ${p.workflow} :: ${p.name} — a pointer without a date is a claim nobody can check`);
+    const pointed = (wf, name) => pointers.some(p => p.workflow === wf && p.name === name);
+    for (const wf of readings.workflowsInTree || []) {
+        const w = readings.workflows[wf];
+        if (!w || w.runs === 0) { if (!pointed(wf, '*')) out.push(`${wf}: no completed run in the readings — a workflow nobody runs; dispatch it once, or point at where it runs under "${STEP_HEADING}" (name '*')`); continue; }
+        for (const name of w.inFileInNoRun) if (!pointed(wf, name)) out.push(`${wf} :: "${name}": in the file at ${readings.headSha} but in none of ${w.runs} run(s) — a step in no run`);
+        for (const [name, s] of Object.entries(w.steps)) if (s.class === 'never' && !pointed(wf, name)) out.push(`${wf} :: "${name}": appeared in ${s.existed} run(s) and ran in none — a step nobody runs; point at where its condition holds (clause: ${s.clause || 'none'})`);
+        for (const [name, j] of Object.entries(w.jobs)) if (j.class === 'never' && !pointed(wf, name)) out.push(`${wf} :: job "${name}": appeared in ${j.existed} run(s) and ran in none — a job nobody runs`);
+    }
+    return out;
+};
+
