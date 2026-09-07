@@ -988,7 +988,7 @@ provides the web-component renderings of electronic parts (LED, resistor,
 buzzer, etc.) used in the circuit designer. The elements are imported as
 `@wokwi/elements` via `overlay/scratch-gui/src/lib/bw-circuit-ui/wokwi-wrappers/`.
 
-- **Licence:** MIT
+- **Licence:** MIT — Copyright (c) 2020-2025 Uri Shaked
 - **Source:** https://github.com/wokwi/wokwi-elements
 - **Usage:** runtime web components for part visualisation in the circuit
   designer canvas. No source code from wokwi-elements is modified; the
