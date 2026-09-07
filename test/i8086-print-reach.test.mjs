@@ -26,7 +26,7 @@ test('the exact 280-program print census is disjoint, exhaustive and names the b
         assert.equal(relativeBytes, absoluteBytes,
             'equivalent corpus paths must produce byte-identical JSON');
         const report = JSON.parse(absoluteBytes);
-        assert.equal(report.schema, 'n2d-i8086-print-reach-v1');
+        assert.equal(report.schema, 'n2d-i8086-print-reach-v2');
         assert.equal(report.programs, 280);
         assert.deepEqual(report.source.operations, {say: 0, sayForSecs: 0, print: 83, total: 83});
         assert.deepEqual(report.source.values, {literalText: 27, numericLiteral: 0, computed: 56});
@@ -77,16 +77,26 @@ test('the exact 280-program print census is disjoint, exhaustive and names the b
         assert.deepEqual(report.postChokeCandidates.stringComputed,
             ['arduino-08-string-addition'],
             'string join must remain visible instead of being counted as safe numeric output');
+        assert.deepEqual(report.postChokeCandidates.numericListDependency,
+            ['arduino-03-smoothing'],
+            'a list-dependent scalar must not wear an emitted candidate count');
+        const smoothingEvidence = report.numericListDependencyEvidence['arduino-03-smoothing'];
+        assert.equal(smoothingEvidence.length, 4);
+        for (const fragment of ['delete all of readings', 'add 0 to readings',
+            'item (readIndex + 1) of readings', 'replace item (readIndex + 1) of readings']) {
+            assert.ok(smoothingEvidence.some(row => row.includes(fragment)),
+                `smoothing evidence does not name ${fragment}`);
+        }
         assert.deepEqual(report.boundedRecommendation, {
             literalText: ['arduino-sk-p11-crystal-ball'],
             numericSigned16: [
                 'arduino-01-digital-read-serial',
                 'arduino-02-digital-input-pullup',
                 'arduino-02-state-change',
-                'arduino-03-smoothing',
                 'arduino-06-ping'
             ],
-            refuseStringComputed: ['arduino-08-string-addition']
+            refuseStringComputed: ['arduino-08-string-addition'],
+            refuseNumericListDependency: ['arduino-03-smoothing']
         });
         assert.deepEqual(report.emitterWarnings, [],
             'a newly reachable output warning must not be credited as an emitter candidate');
