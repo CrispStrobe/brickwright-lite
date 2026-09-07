@@ -177,17 +177,46 @@ async function run () {
         // size that is not the drag layer — and AMBIGUITY IS REPORTED RATHER
         // THAN RESOLVED: if there is not exactly one, this says so and stops
         // instead of taking the first and hoping.
+        // Prefer the canvas that lives inside the stage's own subtree. CSS
+        // module names keep their readable prefix in this build, which is how
+        // the other gates find `[class*="gui_body"]`.
         const marked = await page.waitForFunction(() => {
-            const all = [...document.querySelectorAll('canvas')];
-            const real = all.filter(c =>
+            const inStage = [...document.querySelectorAll('[class*="stage"] canvas')];
+            const pool = inStage.length ? inStage : [...document.querySelectorAll('canvas')];
+            const real = pool.filter(c =>
                 !/drag/i.test(c.className || '') && c.width > 0 && c.height > 0);
             if (real.length !== 1) return false;
             real[0].setAttribute('data-bw-stage-canvas', '1');
             return true;
-        }, null, {timeout: 60000}).catch(() => null);
-        check('exactly one stage canvas can be identified', !!marked,
-            marked ? '' : 'zero or several canvases matched — the harness will not guess which is the stage');
-        if (!marked) throw new Error('cannot identify the stage canvas; refusing to measure the wrong element');
+        }, null, {timeout: 45000}).catch(() => null);
+
+        // WHEN IT CANNOT, SAY WHAT IT SAW. The previous run failed with
+        // "zero or several canvases matched" and nothing else, which is a
+        // refusal without evidence — right to stop, useless to act on. Every
+        // candidate is written to the artifact directory before throwing, so
+        // the next reader gets the DOM's answer instead of another guess.
+        if (!marked) {
+            const seen = await page.evaluate(() => [...document.querySelectorAll('canvas')].map(c => {
+                const r = c.getBoundingClientRect();
+                return {
+                    className: String(c.className || ''),
+                    attr: {w: c.width, h: c.height},
+                    box: {w: Math.round(r.width), h: Math.round(r.height)},
+                    parent: String(c.parentElement && c.parentElement.className || ''),
+                    inStageSubtree: !!c.closest('[class*="stage"]')
+                };
+            }));
+            await writeFile(join(artifacts, 'canvas-candidates.json'), JSON.stringify(seen, null, 2));
+            console.log(`  canvases found: ${seen.length}`);
+            for (const c of seen) {
+                console.log(`    class=${c.className || '(none)'} attr=${c.attr.w}x${c.attr.h} ` +
+                    `box=${c.box.w}x${c.box.h} inStage=${c.inStageSubtree} parent=${c.parent || '(none)'}`);
+            }
+            check('exactly one stage canvas can be identified', false,
+                `${seen.length} canvas element(s); none uniquely identifiable as the stage — candidates written to ${artifacts}`);
+            throw new Error('cannot identify the stage canvas; refusing to measure the wrong element');
+        }
+        check('exactly one stage canvas can be identified', true);
 
         // The Code Editor's own example loader, reached the way the green
         // gates reach the circuit tab's. The importer is told apart from the
