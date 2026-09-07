@@ -17,10 +17,13 @@ const baseline = {
     headSha: '513237241a68dd374a7e3040a2f73cab4e89c347',
     medianMs: 129.2
 };
-// The eager five-sample range was 124–153 ms. Permit the observed median plus
-// one bounded 150 ms network/evaluation interval; the independent 1 s and
-// 100 ms long-task ceilings still catch a stalled or blocking first gesture.
-const relativeLimitMs = 279.2;
+// The relative limit is DERIVED (plan T15): ceil(p95 of the last 20 green main
+// readings × 1.5), written by scripts/gen-timing-limits.mjs. The typed 279.2 it
+// replaced ("observed median plus one 150 ms interval") had 1.84× headroom
+// over the measured p95 — typed, not measured — so the derived number is
+// tighter and still 40 % above the largest median ever recorded. The 1 s
+// absolute and the 100 ms long-task ceiling (claims about the code) stay typed.
+const relativeLimitMs = 228; // derived: p95 151.9 ms × 1.5 → 228 ms over 20 green runs to 34132414269; max 163.3 ms in run 34127563907 (gen-timing-limits.mjs)
 
 const receipt = {
     schema: 'brickwright/p21-pseudocode-activation/v1',

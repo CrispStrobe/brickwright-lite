@@ -86,7 +86,7 @@ test('the paint module is requested once, installed before render and retryable 
     assert.match(browserGate, /paint reducer and editor arrive as ordered activation resources/);
     assert.match(browserGate, /baselineMs = 390\.5/);
     assert.match(browserGate, /baselineRun = 33967333844/);
-    assert.match(browserGate, /relativeLimitMs = 449\.075/);
+    assert.match(browserGate, /relativeLimitMs = \d+; \/\/ derived: p95 [\d.]+ ms × 1\.5 → \d+ ms over \d+ green runs/);
     assert.match(browserGate, /absoluteLimitMs = 1000/);
     assert.match(browserGate, /maxLongTaskMs = 100/);
     assert.match(browserGate, /paint-performance\.json/);

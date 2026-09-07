@@ -33,16 +33,15 @@ const saved = path.join(work, 'costume-roundtrip.sb3');
 const baselineRun = 33967333844;
 const baselineMs = 390.5;
 const baselineLongTasksMs = [50, 55];
-const relativeLimitMs = 449.075; // Accepted baseline + 15%.
-// QUARANTINED BY NAME, 2026-09-06 (lego-b9, at lego-ac's ask). Measured over the
-// last 10 completed main runs: 3 failures, every one on THIS relative ceiling —
-// 454.0, 456.3, 464.8 ms (and 471.2 on a branch) against 449.1 — i.e. 1–5% over a
-// 15% margin, on a shared runner whose noise is larger than that. The wait is
-// not at fault: these are real interactivity readings. A ratchet that fails a
-// third of healthy runs is one people learn to ignore, so until the owner
-// chooses the headroom (the baseline+15% was theirs), the relative reading is
-// RECORDED, not judged; the absolute one-second ceiling still fails the gate.
-const relativeCeilingIsAdvisory = true;
+const relativeLimitMs = 674; // derived: p95 449.0 ms × 1.5 → 674 ms over 20 green runs to 34132414269; max 452.2 ms in run 34102511627 (gen-timing-limits.mjs)
+// Was QUARANTINED 2026-09-06 (lego-b9): the typed baseline+15 % ceiling (449.075)
+// sat exactly AT the runner's p95 (449.0 over 20 green runs) and failed a third
+// of healthy runs. Un-quarantined 2026-09-07 (plan T15): the ceiling above is now
+// DERIVED — ceil(p95 of the last 20 green readings × 1.5) — by
+// scripts/gen-timing-limits.mjs, so the number is the runner's, measured, and
+// the reading is judged again. The 1 s absolute (a stall) and the 100 ms
+// long-task ceiling (a claim about the code) stay typed.
+const relativeCeilingIsAdvisory = false;
 const absoluteLimitMs = 1000;
 const maxLongTaskMs = 100;
 

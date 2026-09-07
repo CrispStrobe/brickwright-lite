@@ -8,10 +8,16 @@ const url = process.env.PROOF_URL || 'http://localhost:8617/';
 const output = path.resolve('artifacts/sound-tab-activation');
 const baselineRun = 34055140364;
 const baselineMs = 113.6;
-// Three unchanged-production receipts after prewarming measured 121.6–136.4 ms.
-// Keep a bounded 150 ms ceiling above that observed runner variance; the 1 s
-// absolute and 100 ms long-task limits independently catch stalls.
-const relativeLimitMs = 150;
+// The relative limit is DERIVED (plan T15): ceil(p95 of the last 20 green main
+// readings × 1.5), written by scripts/gen-timing-limits.mjs from
+// docs/generated/browser-timing-readings.json and held there by
+// test/browser-timing-limits.test.mjs. The typed 150 it replaced sat 1.1× above
+// a p95 of 135 on a runner whose own spread is 5 % — two red main runs in one
+// day (155.4 ms) were the runner, not the code. The p95 over the last runs IS
+// the runner's speed; 1.5× catches a 50 % regression and never fires on the
+// spread. The 1 s absolute (a stall) and the 100 ms long-task ceiling (input
+// blocked — a claim about the code, not the runner) stay typed.
+const relativeLimitMs = 203; // derived: p95 135.0 ms × 1.5 → 203 ms over 20 green runs to 34132414269; max 135.0 ms in run 34128478139 (gen-timing-limits.mjs)
 const absoluteLimitMs = 1000;
 const maxLongTaskMs = 100;
 const minimumEncodedBytes = 20480;
