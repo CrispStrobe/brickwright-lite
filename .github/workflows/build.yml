@@ -886,7 +886,7 @@ jobs:
       # 14–50 s tier → 4; everything under 10 s → 3. Raise one only with a new
       # measurement in the commit message; never to make a hang pass.
       - name: Browser gate — native broker packaged assets
-        timeout-minutes: 3  # derived: p95 2 s × 3 → 3 min over 20 green runs to 34143734197; max 4 s in run 34070714079 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 2 s × 3 → 3 min over 20 green runs to 34163360973; max 4 s in run 34070714079 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.playwright.outcome == 'success' && matrix.shard == 'light' }}
         run: node scripts/verify-native-broker-assets.mjs
       # Every browser gate below hangs off THIS step's outcome, not
@@ -917,12 +917,12 @@ jobs:
       # now report before the unrelated product journeys rather than after
       # dozens of serial gates.
       - name: Browser gate — the debugger-only pane and its round trip
-        timeout-minutes: 3  # derived: p95 14 s × 3 → 3 min over 20 green runs to 34143734197; max 14 s in run 34119648099 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 12 s × 3 → 3 min over 20 green runs to 34163360973; max 14 s in run 34119648099 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: BW_STEP_BUDGET_MIN=3 node scripts/verify-debugger-solo.mjs
 
       - name: Browser gate — debugger recording, reverse and fork history
-        timeout-minutes: 3  # derived: p95 43 s × 3 → 3 min over 20 green runs to 34143734197; max 44 s in run 34102279913 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 43 s × 3 → 3 min over 20 green runs to 34163360973; max 44 s in run 34102279913 (gen-gate-budgets.mjs)
         id: debug_history
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: PROOF_URL=http://localhost:8617/ npm run verify:debug-history
@@ -940,7 +940,7 @@ jobs:
         # leaves no stale board. LIGHT shard: it loads one example and never
         # boots an 8086. The budget below is the generator's, not a guess of
         # mine; it says PROVISIONAL until five green runs exist.
-        timeout-minutes: 5  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        timeout-minutes: 5  # PROVISIONAL — 4 reading(s), fewer than 5; derived once 5 green runs exist; max 4 s in run 34158856927 (gen-gate-budgets.mjs)
         id: example_journey
         # Direct `node`, not `npm run`: gate-coverage's aliasInvokes accepts an
         # env prefix only for this form (lego-ac, 2026-09-06).
@@ -988,7 +988,7 @@ jobs:
         #
         # NOT MEASURED YET, unlike its neighbours: new gate, one assemble-and-boot
         # cycle. Replace with a measured max once the timing job has seen it.
-        timeout-minutes: 3  # derived: p95 4 s × 3 → 3 min over 20 green runs to 34143734197; max 4 s in run 34119648099 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 4 s × 3 → 3 min over 20 green runs to 34163360973; max 4 s in run 34119648099 (gen-gate-budgets.mjs)
         id: chip_refusal_line
         # DIRECT `node`, NOT `npm run`. test/gate-coverage.test.mjs's
         # aliasInvokes requires `npm run <alias>` at the start of the line or
@@ -1007,7 +1007,7 @@ jobs:
           if-no-files-found: error
 
       - name: Browser gate — Machine Loader preset reaches the debugger
-        timeout-minutes: 3  # derived: p95 6 s × 3 → 3 min over 17 green runs to 34143734197; max 6 s in run 34118997841 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 6 s × 3 → 3 min over 20 green runs to 34163360973; max 6 s in run 34118997841 (gen-gate-budgets.mjs)
         id: machine_loader_rom
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-machine-loader-rom-control.mjs
@@ -1020,7 +1020,7 @@ jobs:
           if-no-files-found: error
 
       - name: Browser gate — debugger run-to and synchronized inspection
-        timeout-minutes: 3  # derived: p95 4 s × 3 → 3 min over 20 green runs to 34143734197; max 4 s in run 34115247607 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 4 s × 3 → 3 min over 20 green runs to 34163360973; max 4 s in run 34115247607 (gen-gate-budgets.mjs)
         id: debug_inspection
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ npm run verify:debug-inspection
@@ -1039,22 +1039,22 @@ jobs:
       # itself on every run, so a scenario that stops biting says so here rather
       # than passing quietly for years the way the white-screen path did.
       - name: Browser gate — service worker failure modes
-        timeout-minutes: 3  # derived: p95 25 s × 3 → 3 min over 20 green runs to 34143734197; max 26 s in run 34112210638 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 25 s × 3 → 3 min over 20 green runs to 34163360973; max 26 s in run 34112210638 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: node scripts/verify-service-worker.mjs
       - name: Browser gate — circuit UX
-        timeout-minutes: 3  # derived: p95 21 s × 3 → 3 min over 20 green runs to 34143734197; max 22 s in run 34050397009 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 21 s × 3 → 3 min over 20 green runs to 34163360973; max 22 s in run 34050397009 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-circuit-ux.mjs
       # ROADMAP §2.4: the render fonts are fetched by the first SVG with text,
       # not at first paint. Both halves are asserted — no fetch on a fresh load,
       # and a text costume rasterised WITH its @font-face once one appears.
       - name: Browser gate — render fonts arrive with the first text costume, not before
-        timeout-minutes: 3  # derived: p95 4 s × 3 → 3 min over 20 green runs to 34143734197; max 4 s in run 34118997841 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 4 s × 3 → 3 min over 20 green runs to 34163360973; max 4 s in run 34118997841 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-text-costume-fonts.mjs
       - name: Browser gate — circuit rendering and placement
-        timeout-minutes: 3  # derived: p95 6 s × 3 → 3 min over 20 green runs to 34143734197; max 6 s in run 34119648099 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 6 s × 3 → 3 min over 20 green runs to 34163360973; max 6 s in run 34119648099 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-circuit-rendering.mjs
 
@@ -1063,7 +1063,7 @@ jobs:
       # the rendered LEDs: a dead X/Y wire, swapped code bit, stale example, or
       # non-interactive face can all pass the model's isolated unit tests.
       - name: Browser gate — physical 74C922 keypad encoder
-        timeout-minutes: 3  # derived: p95 4 s × 3 → 3 min over 20 green runs to 34143734197; max 4 s in run 34118997841 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 4 s × 3 → 3 min over 20 green runs to 34163360973; max 4 s in run 34118997841 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-74c922-keypad.mjs
 
@@ -1092,7 +1092,7 @@ jobs:
       # sentence ("Total circuit current is …") — the warning that names the
       # largest consumers and offers a fix.
       - name: Browser gate — the DRC can sum chip current
-        timeout-minutes: 3  # derived: p95 3 s × 3 → 3 min over 20 green runs to 34143734197; max 3 s in run 34119648099 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 3 s × 3 → 3 min over 20 green runs to 34163360973; max 3 s in run 34119648099 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-drc-current.mjs
 
@@ -1107,23 +1107,23 @@ jobs:
           path: artifacts/drc-current-*.png
           if-no-files-found: warn
       - name: Browser gate — view buttons
-        timeout-minutes: 3  # derived: p95 16 s × 3 → 3 min over 20 green runs to 34143734197; max 16 s in run 34098323626 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 16 s × 3 → 3 min over 20 green runs to 34163360973; max 16 s in run 34098323626 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-view-buttons.mjs
       - name: Browser gate — editor
-        timeout-minutes: 3  # derived: p95 19 s × 3 → 3 min over 20 green runs to 34143734197; max 20 s in run 34113154528 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 19 s × 3 → 3 min over 20 green runs to 34163360973; max 20 s in run 34113154528 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-editor.mjs
       - name: Browser gate — unpinned extension sandbox
-        timeout-minutes: 3  # derived: p95 2 s × 3 → 3 min over 20 green runs to 34143734197; max 2 s in run 34117114146 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 2 s × 3 → 3 min over 20 green runs to 34163360973; max 2 s in run 34117114146 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-extension-sandbox.mjs
       - name: Browser gate — game gallery and hardware examples
-        timeout-minutes: 3  # derived: p95 4 s × 3 → 3 min over 20 green runs to 34143734197; max 4 s in run 34119648099 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 4 s × 3 → 3 min over 20 green runs to 34163360973; max 4 s in run 34119648099 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-example-selector.mjs
       - name: Browser gate — both BASIC profiles execute on real machines
-        timeout-minutes: 3  # derived: p95 3 s × 3 → 3 min over 20 green runs to 34143734197; max 3 s in run 34117114146 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 3 s × 3 → 3 min over 20 green runs to 34163360973; max 3 s in run 34117114146 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-basic-run.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -1138,7 +1138,7 @@ jobs:
       # local assembler chunk, paints CGA, accepts a key, or refreshes the 8255
       # faces. One browser and two unchanged examples cover that whole seam.
       - name: Browser gate — 8086 local assembly, CGA, keyboard and 8255
-        timeout-minutes: 3  # derived: p95 5 s × 3 → 3 min over 20 green runs to 34143734197; max 5 s in run 34119648099 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 5 s × 3 → 3 min over 20 green runs to 34163360973; max 5 s in run 34119648099 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-i8086-browser.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -1151,7 +1151,7 @@ jobs:
       # Judged by the DOWNLOADED artefact — a different program yields a
       # different .COM, and the .img carries the exact .COM from LBA 1.
       - name: Browser gate — 8086 .COM / .img export (N10)
-        timeout-minutes: 3  # derived: p95 3 s × 3 → 3 min over 20 green runs to 34143734197; max 3 s in run 34118997841 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 3 s × 3 → 3 min over 20 green runs to 34163360973; max 3 s in run 34118997841 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         # Direct `node scripts/…`, not `npm run …`: gate-coverage.test.mjs's alias
         # regex does not accept an env prefix before `npm run`. (The npm alias
@@ -1166,7 +1166,7 @@ jobs:
       # test's job (test/microbit-daplink-flash.test.mjs, against a mock DAP);
       # CI has no real board to flash.
       - name: Browser gate — micro:bit WebUSB flash button (N9)
-        timeout-minutes: 3  # derived: p95 4 s × 3 → 3 min over 20 green runs to 34143734197; max 5 s in run 34097534401 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 4 s × 3 → 3 min over 20 green runs to 34163360973; max 5 s in run 34097534401 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         # Direct `node scripts/…`, not `npm run …`: gate-coverage.test.mjs's alias
         # regex does not accept an env prefix before `npm run`. (The npm alias
@@ -1174,7 +1174,7 @@ jobs:
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-microbit-flash.mjs
 
       - name: Browser benchmark — 8086 desktop and mobile
-        timeout-minutes: 7  # derived: p95 134 s × 3 → 7 min over 20 green runs to 34143734197; max 136 s in run 34106774962 (gen-gate-budgets.mjs)
+        timeout-minutes: 7  # derived: p95 131 s × 3 → 7 min over 20 green runs to 34163360973; max 136 s in run 34106774962 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: |
           # React's ordinary production renderer removes Profiler timings.
@@ -1233,7 +1233,7 @@ jobs:
           if-no-files-found: error
 
       - name: Browser gate — declared extension capability broker
-        timeout-minutes: 3  # derived: p95 3 s × 3 → 3 min over 20 green runs to 34143734197; max 3 s in run 34117114146 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 3 s × 3 → 3 min over 20 green runs to 34163360973; max 3 s in run 34117114146 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: |
           mkdir -p artifacts/capability-broker
@@ -1248,15 +1248,15 @@ jobs:
           path: artifacts/capability-broker/*
           if-no-files-found: error
       - name: Browser gate — first-run chooser and guided journeys
-        timeout-minutes: 3  # derived: p95 8 s × 3 → 3 min over 20 green runs to 34143734197; max 9 s in run 34060543504 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 8 s × 3 → 3 min over 20 green runs to 34163360973; max 9 s in run 34060543504 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-starter-journeys.mjs
       - name: Browser gate — LEGO SPIKE archive and Code-tab round trip
-        timeout-minutes: 3  # derived: p95 3 s × 3 → 3 min over 20 green runs to 34143734197; max 3 s in run 34118997841 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 3 s × 3 → 3 min over 20 green runs to 34163360973; max 3 s in run 34118997841 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-lego-spike-roundtrip.mjs
       - name: Browser gate — four-surface project save, reopen and vanilla replacement
-        timeout-minutes: 3  # derived: p95 7 s × 3 → 3 min over 20 green runs to 34143734197; max 7 s in run 34111028136 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 7 s × 3 → 3 min over 20 green runs to 34163360973; max 7 s in run 34111028136 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-project-bundle-integrity.mjs
       # The costume half of the same question. The gate above proves the four
@@ -1265,11 +1265,11 @@ jobs:
       # with its own asset pipeline (paper.js for vector, a canvas re-encode for
       # bitmap). Compares content hashed from asset.data, not declared ids.
       - name: Browser gate — costume artwork survives save/reload and records first-open performance
-        timeout-minutes: 3  # derived: p95 5 s × 3 → 3 min over 20 green runs to 34143734197; max 5 s in run 34119648099 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 5 s × 3 → 3 min over 20 green runs to 34163360973; max 5 s in run 34119648099 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-costume-roundtrip.mjs
       - name: Browser gate — first Sounds-tab interactivity
-        timeout-minutes: 3  # derived: p95 2 s × 3 → 3 min over 20 green runs to 34143734197; max 2 s in run 34118997841 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 2 s × 3 → 3 min over 20 green runs to 34163360973; max 2 s in run 34118997841 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-sound-tab-activation.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -1279,7 +1279,7 @@ jobs:
           path: artifacts/sound-tab-activation/*
           if-no-files-found: error
       - name: Browser gate — P21 Code importer activation, retry and state
-        timeout-minutes: 3  # derived: p95 12 s × 3 → 3 min over 20 green runs to 34143734197; max 13 s in run 34097534401 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 12 s × 3 → 3 min over 20 green runs to 34163360973; max 13 s in run 34097534401 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-pseudocode-importer-activation.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -1296,7 +1296,7 @@ jobs:
       # rather than pixels, because headless keeps the stage canvas at a 0x0
       # backing store and a working stage screenshots identically to a broken one.
       - name: Browser gate — the renderer accepts the table the arrays blocks describe
-        timeout-minutes: 3  # derived: p95 2 s × 3 → 3 min over 20 green runs to 34143734197; max 2 s in run 34118997841 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 2 s × 3 → 3 min over 20 green runs to 34163360973; max 2 s in run 34118997841 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-arrays-table-display.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -1319,7 +1319,7 @@ jobs:
       # the chunk -- so this gate removes it on purpose, and asserts the abort
       # actually fired rather than trusting a route pattern to keep matching.
       - name: Browser gate — a missing extension chunk costs its blocks, not the project
-        timeout-minutes: 3  # derived: p95 4 s × 3 → 3 min over 20 green runs to 34143734197; max 5 s in run 34102511627 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 4 s × 3 → 3 min over 20 green runs to 34163360973; max 5 s in run 34102511627 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-lazy-extension-degradation.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -1347,7 +1347,7 @@ jobs:
           path: artifacts/starter-journeys/*.png
           if-no-files-found: warn
       - name: Browser gates — About, intro, interaction, and schematic rendering
-        timeout-minutes: 3  # derived: p95 18 s × 3 → 3 min over 20 green runs to 34143734197; max 19 s in run 34113154528 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 18 s × 3 → 3 min over 20 green runs to 34163360973; max 19 s in run 34113154528 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: |
           PROOF_URL=http://localhost:8617/ node scripts/verify-about-dialog.mjs
@@ -1364,7 +1364,7 @@ jobs:
             artifacts/schematic-production/*.png
           if-no-files-found: warn
       - name: Browser gates — Code chrome, Controller, faceplates, and Instruments
-        timeout-minutes: 3  # derived: p95 21 s × 3 → 3 min over 20 green runs to 34143734197; max 22 s in run 34052109431 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 21 s × 3 → 3 min over 20 green runs to 34163360973; max 22 s in run 34052109431 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: |
           PROOF_URL=http://localhost:8617/ node scripts/verify-chrome-sweep.mjs
@@ -1383,7 +1383,7 @@ jobs:
             artifacts/verify-instruments-scroll-*
           if-no-files-found: warn
       - name: Browser gate — Aurora-65 keyboard, OLED and VGA workstation
-        timeout-minutes: 3  # derived: p95 9 s × 3 → 3 min over 20 green runs to 34143734197; max 9 s in run 34118997841 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 9 s × 3 → 3 min over 20 green runs to 34163360973; max 9 s in run 34118997841 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-aurora65-workstation.mjs
       # The debugger dock has now regressed to a blank pane twice, and the
@@ -1391,7 +1391,7 @@ jobs:
       # invisible to every unit suite: one is a chunk that was never
       # requested, the other a machine that could not be answered.
       - name: Browser gate — debugger dock and serial input
-        timeout-minutes: 3  # derived: p95 28 s × 3 → 3 min over 20 green runs to 34143734197; max 29 s in run 34057759296 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 28 s × 3 → 3 min over 20 green runs to 34163360973; max 29 s in run 34057759296 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-debug-dock.mjs
       # The language x device matrix: the badge beside the device picker and
@@ -1399,7 +1399,7 @@ jobs:
       # the table docs/generated/LANGUAGE-DEVICE-MATRIX.md is generated from.
       # Unit tests hold the table to source; this holds the GUI to the table.
       - name: Browser gate — language x device matrix badge and panel
-        timeout-minutes: 3  # derived: p95 2 s × 3 → 3 min over 20 green runs to 34143734197; max 2 s in run 34119648099 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 2 s × 3 → 3 min over 20 green runs to 34163360973; max 2 s in run 34119648099 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-matrix-ui.mjs
 
@@ -1418,7 +1418,7 @@ jobs:
       # the entry bundle (true throughout); this asserts the app does not FETCH
       # the 20 MB engine before anyone asks. It did, on every first load.
       - name: Browser gate — the heavy engine is not downloaded on first load
-        timeout-minutes: 3  # derived: p95 2 s × 3 → 3 min over 20 green runs to 34143734197; max 3 s in run 34112210638 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 2 s × 3 → 3 min over 20 green runs to 34163360973; max 3 s in run 34112210638 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-first-load-weight.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -1428,7 +1428,7 @@ jobs:
           path: artifacts/first-load-weight/*
           if-no-files-found: warn
       - name: Browser gate — the labwired heavy tier actually executes
-        timeout-minutes: 8  # CAPPED: p95 166 s × 3 → 9 min exceeds the cap of 8; budget is the cap, 2.9× p95 — the one gate with no headroom above, a slower runner reds it first; over 20 green runs to 34143734197; max 168 s in run 34067968927 (gen-gate-budgets.mjs)
+        timeout-minutes: 8  # CAPPED: p95 164 s × 3 → 9 min exceeds the cap of 8; budget is the cap, 2.9× p95 — the one gate with no headroom above, a slower runner reds it first; over 20 green runs to 34163360973; max 168 s in run 34067968927 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: BW_STEP_BUDGET_MIN=8 node scripts/verify-labwired-engine.mjs
 
@@ -1439,7 +1439,7 @@ jobs:
       # by the gate's own server — proving it against a second, artifact-less
       # build would leave open whether the two builds differed elsewhere.
       - name: Browser gate — with no engine artifact, the tier is not offered
-        timeout-minutes: 3  # derived: p95 47 s × 3 → 3 min over 20 green runs to 34143734197; max 47 s in run 34119648099 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 45 s × 3 → 3 min over 20 green runs to 34163360973; max 47 s in run 34119648099 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: BW_STEP_BUDGET_MIN=3 node scripts/verify-labwired-engine.mjs --absent
 
@@ -1461,7 +1461,7 @@ jobs:
       # Chromium, then proves the local image can attach, cycle-step, expose
       # source-linked scheduler state, and halt on a real write watchpoint.
       - name: Browser gate — offline 8051 compile and debugger evidence
-        timeout-minutes: 3  # derived: p95 6 s × 3 → 3 min over 20 green runs to 34143734197; max 6 s in run 34117114146 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 6 s × 3 → 3 min over 20 green runs to 34163360973; max 6 s in run 34117114146 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-debug-frames-watch.mjs
 
@@ -1469,7 +1469,7 @@ jobs:
       # proof changes the source, exports two distinct linked .rst listings,
       # and aborts hosted compiler POSTs before they leave Chromium.
       - name: Browser gate — offline linked 8051 assembly listings
-        timeout-minutes: 3  # derived: p95 4 s × 3 → 3 min over 20 green runs to 34143734197; max 7 s in run 34101768263 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 4 s × 3 → 3 min over 20 green runs to 34163360973; max 7 s in run 34101768263 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-local-asm-listing.mjs
 
@@ -1496,7 +1496,7 @@ jobs:
       # stop matching, the build goes for the hosted compiler, and the run fails
       # honestly instead of stepping through firmware nobody compiled.
       - name: Browser gate — an AVR lesson bench starts offline on its shipped image
-        timeout-minutes: 3  # derived: p95 35 s × 3 → 3 min over 20 green runs to 34143734197; max 39 s in run 34140066506 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 35 s × 3 → 3 min over 20 green runs to 34163360973; max 39 s in run 34140066506 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-offline-lesson-image.mjs
 
@@ -1510,7 +1510,7 @@ jobs:
       # Run this short, independently green extension proof after the two heavy
       # labwired journeys, keeping the earlier product sweep's peak memory flat.
       - name: Browser gate — promoted pinned extension worker
-        timeout-minutes: 3  # derived: p95 2 s × 3 → 3 min over 20 green runs to 34143734197; max 2 s in run 34119648099 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 2 s × 3 → 3 min over 20 green runs to 34163360973; max 2 s in run 34119648099 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: |
           mkdir -p artifacts/pinned-worker
@@ -1530,7 +1530,7 @@ jobs:
       # worst possible time for it to regress unnoticed — and it was one of the
       # four gates that still passed while nothing ran it.
       - name: Browser gate — the native Web Bluetooth shim
-        timeout-minutes: 3  # derived: p95 2 s × 3 → 3 min over 20 green runs to 34143734197; max 3 s in run 34131143343 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 2 s × 3 → 3 min over 20 green runs to 34163360973; max 3 s in run 34131143343 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: node scripts/verify-bluetooth.mjs
 
@@ -1538,7 +1538,7 @@ jobs:
       # misconfiguration would show up in a browser and in no unit test —
       # and the routing from the Open button is JSX that nothing else runs.
       - name: Browser gate — MakeCode import
-        timeout-minutes: 3  # derived: p95 3 s × 3 → 3 min over 20 green runs to 34143734197; max 8 s in run 34074046052 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 3 s × 3 → 3 min over 20 green runs to 34163360973; max 8 s in run 34074046052 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-makecode.mjs
 
@@ -1550,7 +1550,7 @@ jobs:
       # The MicroPython tab and the simulator are the far end of the MakeCode
       # importer, so they belong next to the gate above.
       - name: Browser gate — micro:bit MicroPython tab and simulator
-        timeout-minutes: 3  # derived: p95 18 s × 3 → 3 min over 20 green runs to 34143734197; max 18 s in run 34119648099 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 18 s × 3 → 3 min over 20 green runs to 34163360973; max 18 s in run 34119648099 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-microbit.mjs
 
@@ -1559,7 +1559,7 @@ jobs:
       # LED — judged by the run board's ledBrightness, not the viewport. Skips
       # by name if the firmware fetch above did not land.
       - name: Browser gate — Pico MicroPython simulator Run lights the LED (N3c)
-        timeout-minutes: 3  # derived: p95 11 s × 3 → 3 min over 20 green runs to 34143734197; max 12 s in run 34108111864 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 11 s × 3 → 3 min over 20 green runs to 34163360973; max 12 s in run 34108111864 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: BW_STEP_BUDGET_MIN=3 PROOF_URL=http://localhost:8617/ npm run verify:pico-micropython
       # The other half: with the firmware WITHHELD (its own server 404s it), the
@@ -1567,12 +1567,12 @@ jobs:
       # failure this proves against. No PROOF_URL: withholding needs its own
       # server, so it gates on the build, not the shared serve.
       - name: Browser gate — Pico ▶ Run refuses by name with no firmware (N3c)
-        timeout-minutes: 3  # derived: p95 4 s × 3 → 3 min over 20 green runs to 34143734197; max 4 s in run 34117114146 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 3 s × 3 → 3 min over 20 green runs to 34163360973; max 4 s in run 34117114146 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.build_editor_browser.outcome == 'success' && matrix.shard == 'light' }}
         run: BW_STEP_BUDGET_MIN=3 npm run verify:pico-micropython-absent
 
       - name: Browser gate — micro:bit debugger, block and line stepping
-        timeout-minutes: 3  # derived: p95 18 s × 3 → 3 min over 20 green runs to 34143734197; max 18 s in run 34119648099 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 18 s × 3 → 3 min over 20 green runs to 34163360973; max 18 s in run 34119648099 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-microbit-debug-toggle.mjs
       # The Arduboy console is the only thing in the app that RUNS a
@@ -1581,7 +1581,7 @@ jobs:
       # reads pixels back off the canvas, and checks they keep changing —
       # one frame and a freeze is exactly what a stalled boot looks like.
       - name: Browser gate — Arduboy console runs a compiled game
-        timeout-minutes: 3  # derived: p95 4 s × 3 → 3 min over 20 green runs to 34143734197; max 5 s in run 34065043370 (gen-gate-budgets.mjs)
+        timeout-minutes: 3  # derived: p95 4 s × 3 → 3 min over 20 green runs to 34163360973; max 5 s in run 34065043370 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-arduboy.mjs
       # MEASURE the browser waits, on a runner instead of a developer box.
