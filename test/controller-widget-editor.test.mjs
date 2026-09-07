@@ -1,0 +1,137 @@
+/**
+ * THE WIDGET EDITOR'S REMOVE CONTROL, ITS BOX, AND THE BINDING TOGGLE.
+ *
+ * Four defects the owner reported from using the app, three of which turned out
+ * to share machinery.
+ *
+ * THE REMOVE BUTTON NEVER FIRED. Not a missing handler: the wiring was complete
+ * and correct all along -- onRemove -> _removeWidget -> panel.removeWidget,
+ * which deletes and emits. It was dead because the widget card's own wrapper
+ * takes POINTER CAPTURE in beginDrag, so pointerdown on the button delivered
+ * pointerup to the wrapper and no click was ever synthesised. A button present,
+ * styled, wired, and unpressable.
+ *
+ * The file already knew the remedy: the inspector panel carries
+ * `onPointerDown={e => e.stopPropagation()}` for exactly this reason. So this
+ * was a known hazard applied to one control and not another, which is why the
+ * source assertion below is about the GUARD rather than about the click -- a
+ * DOM-level click test would prove today's markup, while the guard is the thing
+ * that must not be dropped by the next person who edits this card.
+ *
+ * THE BOX CHANGED SIZE BETWEEN MODES, for content-sized widgets only. The
+ * wrapper takes `width: L.w || undefined`, so a widget with an explicit size was
+ * never affected -- 59 of the 88 widgets in the shipped controller examples
+ * carry one. The other 29 do not, and for those an edit-only row in normal flow
+ * made the card taller in Edit than in Play, so a panel arranged in one mode
+ * shifted in the other. The parity test below therefore uses a CONTENT-SIZED
+ * widget on purpose: an explicitly sized one passes trivially and proves
+ * nothing.
+ *
+ * THE BINDING LINE HAD NO TOGGLE, and that half is NOT in this file. The flag is
+ * panel-level and therefore lives in the serialised shape, which belongs to
+ * bw-board rather than to lite: it landed there as `hideBindings` with its own
+ * round-trip gate, and reaches lite with the next pin bump. The control is
+ * deliberately not wired here in the meantime -- a toolbar checkbox calling a
+ * method the vendored copy does not yet have would be a control that throws when
+ * pressed, which is this branch's own defect reintroduced one control over.
+ */
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join, dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { ControllerPanel } from '../overlay/scratch-gui/src/lib/bw-board/controller.js';
+
+const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const VIEW = join(repo, 'overlay', 'scratch-gui', 'src', 'components',
+    'tw-pseudocode', 'controller-panel-view.jsx');
+
+test('the remove control guards against the card that swallowed its click', () => {
+    // The defect was pointer capture, so the assertion is about the guard that
+    // defeats it. Written as "the remove button carries stopPropagation on
+    // pointerdown", not "a click removes a widget": the second passes on a
+    // button nobody can reach.
+    const src = readFileSync(VIEW, 'utf8');
+    const i = src.indexOf("data-testid={'bw-ctl-remove-'");
+    assert.ok(i > 0, 'the remove control is gone or renamed');
+
+    // The guard must be on the control itself. Search the JSX element, which
+    // ends at the closing brace of its style object plus the tag.
+    const el = src.slice(src.lastIndexOf('<button', i), src.indexOf('</button>', i));
+    assert.match(el, /onPointerDown=\{e => e\.stopPropagation\(\)\}/,
+        'the remove control lost its stopPropagation guard -- the card takes pointer '
+        + 'capture in beginDrag, so without this the button cannot be clicked at all');
+    assert.match(el, /onClick=\{onRemove\}/, 'the remove control is not wired');
+});
+
+test('the remove control is out of flow, so the box is identical in both modes', () => {
+    // position:absolute is what makes the corner placement AND the size parity
+    // one change instead of two. A relatively positioned control in the card's
+    // flow would satisfy "top right" visually and still change the height.
+    const src = readFileSync(VIEW, 'utf8');
+    const i = src.indexOf("data-testid={'bw-ctl-remove-'");
+    const el = src.slice(src.lastIndexOf('<button', i), src.indexOf('</button>', i));
+    assert.match(el, /position:\s*'absolute'/,
+        'the remove control is back in normal flow -- a content-sized widget will be '
+        + 'taller in Edit than in Play again');
+    assert.match(el, /top:\s*\d/, 'not anchored to the top');
+    assert.match(el, /right:\s*\d/, 'not anchored to the right');
+});
+
+test('a CONTENT-SIZED widget is the one that proves parity, and the shipped set has some', () => {
+    // The measurement that corrected the brief, kept as a gate so the claim
+    // cannot rot: if every shipped widget gained an explicit size, the parity
+    // test above would still pass and would be proving nothing about anything
+    // real. This fails if that day comes, and says why.
+    const dir = join(repo, 'overlay', 'scratch-gui', 'static');
+    let total = 0, contentSized = 0;
+    const walk = (d) => {
+        for (const e of readdirSync(d, { withFileTypes: true })) {
+            const p = join(d, e.name);
+            if (e.isDirectory()) { walk(p); continue; }
+            if (e.name !== 'controller.json') continue;
+            let data;
+            try { data = JSON.parse(readFileSync(p, 'utf8')); } catch { continue; }
+            for (const w of data.widgets ?? []) {
+                total++;
+                const L = w.layout ?? {};
+                if (!L.w && !L.h) contentSized++;
+            }
+        }
+    };
+    try { walk(dir); } catch { /* the static tree is optional in some checkouts */ }
+    if (total === 0) return;                  // nothing shipped here to speak about
+    assert.ok(contentSized > 0,
+        `all ${total} shipped widgets now carry an explicit size, so the parity test above `
+        + 'no longer exercises the case it was written for -- re-anchor it');
+});
+
+test('removing a widget removes it, and the panel still serialises', () => {
+    // The owner cannot lose a panel to this. 13 catalogue examples ship a
+    // controller.json, so a removal that leaves the saved shape invalid would
+    // damage real work rather than a scratch file.
+    const p = new ControllerPanel();
+    p.addWidget('a', 'button', {}, { x: 10, y: 10 });
+    p.addWidget('b', 'slider', {}, { x: 20, y: 20 });
+
+    const events = [];
+    p.addListener((kind, detail) => events.push([kind, detail?.name]));
+    p.removeWidget('a');
+
+    assert.equal(p.getWidget('a'), null, 'the widget is still there');
+    assert.ok(p.getWidget('b'), 'the wrong widget was removed');
+    assert.deepEqual(events.filter(([k]) => k === 'remove'), [['remove', 'a']],
+        'removal did not emit exactly one remove event for the right widget');
+
+    const back = ControllerPanel.fromJSON(JSON.parse(JSON.stringify(p.toJSON())));
+    assert.equal(back.getWidget('a'), null, 'the removed widget came back through the round trip');
+    assert.ok(back.getWidget('b'), 'the surviving widget did not survive the round trip');
+});
+
+test('removing a widget that is not there is refused, not silently ignored', () => {
+    const p = new ControllerPanel();
+    p.addWidget('a', 'button', {}, {});
+    assert.throws(() => p.removeWidget('nope'), /not found/,
+        'a removal that quietly does nothing is how a dead control looks from the outside');
+});

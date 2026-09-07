@@ -11,6 +11,7 @@ const L10N = {
         dpad: 'D-Pad', dial: 'Dial',
         bindPart: 'Bind to part…', bindProgram: 'Program only',
         unbind: 'Unbind', remove: 'Remove',
+        hideBindings: 'Hide binding targets',
         namePlaceholder: 'name',
         noWidgets: 'No widgets yet. Click "+ Add Widget" to begin.',
         x: 'X', y: 'Y',
@@ -28,6 +29,7 @@ const L10N = {
         dpad: 'Steuerkreuz', dial: 'Drehregler',
         bindPart: 'An Bauteil binden…', bindProgram: 'Nur Programm',
         unbind: 'Lösen', remove: 'Entfernen',
+        hideBindings: 'Bindungsziele ausblenden',
         namePlaceholder: 'Name',
         noWidgets: 'Noch keine Widgets. Klicke auf „+ Widget hinzufügen".',
         x: 'X', y: 'Y',
@@ -1301,20 +1303,53 @@ function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart }) {
             )}
 
             {mode === 'edit' && (
-                <div style={{ display: 'flex', gap: 4, fontSize: 11 }}>
-                    <button
-                        onClick={onRemove}
-                        style={{
-                            background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5',
-                            borderRadius: 4, padding: '2px 8px', cursor: 'pointer', fontSize: 11
-                        }}
-                    >
-                        {t('remove')}
-                    </button>
-                </div>
+                // THE REMOVE CONTROL. Three defects were in the eleven lines this
+                // replaces, and two of them share one cause.
+                //
+                // IT NEVER FIRED. The wiring was always complete -- onRemove ->
+                // _removeWidget -> panel.removeWidget, which deletes and emits --
+                // but the card's wrapper takes POINTER CAPTURE in beginDrag, so
+                // pointerdown on the button sent pointerup to the wrapper and no
+                // click was ever synthesised. A button that is present, styled and
+                // wired, and cannot be pressed. `stopPropagation` on pointerdown is
+                // the fix, and this file already knew it: the inspector panel has
+                // carried exactly that guard for the same reason. A known hazard,
+                // applied to one control and not the other.
+                //
+                // IT CHANGED THE WIDGET'S SIZE. It sat in normal flow in an
+                // edit-only row, so a content-sized widget was taller in Edit than
+                // in Play and a panel arranged in one mode shifted in the other.
+                // 29 of the 88 widgets in the shipped controller examples are
+                // content-sized; the other 59 carry an explicit w/h and never
+                // showed it. `position: absolute` contributes nothing to flow, so
+                // the corner placement the owner asked for is also the size fix.
+                <button
+                    onClick={onRemove}
+                    onPointerDown={e => e.stopPropagation()}
+                    data-testid={'bw-ctl-remove-' + widget.name}
+                    title={t('remove')}
+                    aria-label={t('remove')}
+                    style={{
+                        position: 'absolute', top: 2, right: 2, zIndex: 20,
+                        width: 18, height: 18, lineHeight: '16px', padding: 0,
+                        background: '#fee2e2', color: '#dc2626',
+                        border: '1px solid #fca5a5', borderRadius: 4,
+                        cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                    }}
+                >
+                    ×
+                </button>
             )}
 
-            <div style={{ fontSize: 10, color: '#94a3b8' }}>
+            {/* The hide toggle for this line is panel-level and lives in
+                bw-board's ControllerPanel (hideBindings, added there because the
+                serialised shape is that project's). It reaches lite with the next
+                pin bump; the control is deliberately NOT wired here yet, because
+                a toolbar checkbox calling a method the vendored copy does not
+                have is a control that throws when pressed -- which is the defect
+                this branch exists to fix, reintroduced one control over. */}
+            <div data-testid={'bw-ctl-binding-' + widget.name}
+                style={{ fontSize: 10, color: '#94a3b8' }}>
                 {bindingLabel}
             </div>
         </div>
