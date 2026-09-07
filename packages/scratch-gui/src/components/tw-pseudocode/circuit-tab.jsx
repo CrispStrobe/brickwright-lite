@@ -8,7 +8,6 @@ import {shouldLoadCircuitDesigner} from '../../lib/bw-debug/circuit-designer-loa
 import {getReactPerformanceProbe, profileReactSubtree} from '../../lib/bw-debug/react-perf-profiler.js';
 import {shouldRefreshDesignerDebugState} from '../../lib/bw-debug/debug-ui-refresh.js';
 import {setProjectTitle} from '../../reducers/project-title';
-import {noCircuitMessage} from '../../lib/example-device-only.js';
 import {getIsAnyCreatingNewState} from '../../reducers/project-state';
 
 const DebugPanel = React.lazy(() =>
@@ -1314,14 +1313,10 @@ class CircuitTab extends React.Component {
         const benchOverride = (opts && opts.bench) || null;
         const path = ex && ex.files && ex.files.circuit;
         if (!path) {
-            // A micro:bit or SPIKE example ships no circuit because the DEVICE is
-            // the board. Saying "lists no circuit file" for that is a fault report
-            // about a correct state, and a lesson sends learners straight into it.
-            // The predicate is shared with test/declared-pins-wired.test.mjs so the
-            // surface and the gate cannot drift apart about what device-only means.
-            const {deviceOnly, message} = noCircuitMessage(ex);
-            this.setState({examplesError: message});
-            return {ok: false, error: message, deviceOnly};
+            const error = `"${(ex && ex.id) || 'that example'}" lists no circuit file, so there is ` +
+                'nothing to place on the board.';
+            this.setState({examplesError: error});
+            return {ok: false, error};
         }
         // An example with a program replaces the project, which undo cannot
         // recover — so ask, once, and say what is at stake. A circuit-only
