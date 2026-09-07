@@ -51,7 +51,7 @@ document is measuring a different tree than you are.
 | `m6502-adapter.js` | **AHEAD** | — | — | 7776/7487 |
 | `m6502-debug.js` | **AHEAD** | debugger lane | allow-list | 18594/11874 |
 | `m6502-machine.js` | **AHEAD** | — | allow-list | 42180/38415 |
-| `reseat-gate.js` | **AHEAD** | — | — | 8112/10481 |
+| `reseat-gate.js` | ~~AHEAD~~ **BEHIND** (corrected 2026-09-07) | `2b334c02f` | `20f0d45` | 8112/10481 → synced |
 | `rp2040js-debug.js` | **AHEAD** | debugger lane | — | 17898/17601 |
 | `w65c51.js` | **AHEAD** | — | — | 6463/6461 |
 | `z80-adapter.js` | **AHEAD** | — | — | 11358/11256 |
@@ -169,12 +169,31 @@ implement, and four of the seven are considerably larger in lite than upstream
 *Falsifiable: same test — pin equals master for all seven, so there is nothing
 upstream to gain by syncing them.*
 
-**`reseat-gate.js` — AHEAD, and the one row I would not act on without a reader.**
-It is *smaller* in lite (8,112 vs 10,481 bytes) while classified AHEAD. That is
-consistent with a deliberate trim, and also with a truncation nobody noticed.
+**`reseat-gate.js` — ~~AHEAD~~ BEHIND. Read on 2026-09-07; the classification was
+wrong and the reader found a third possibility.**
 
-*Falsifiable: diff it. If the missing 2.4 KB is upstream work lite never had, the
-classification is right and the label "AHEAD" is still misleading.*
+The row said AHEAD, smaller in lite (8,112 vs 10,481 bytes), and asked for a
+reader on the grounds that a deliberate trim and an unnoticed truncation look
+identical from outside. Both true. Neither is the answer.
+
+Lite's copy is **byte-identical to upstream at `2b334c02f`** — a pristine older
+upstream version, found by content-addressing it against upstream's history for
+the commit whose blob IS this file, then confirmed by direct diff. It is not
+trimmed and not truncated: it is BEHIND by exactly one commit, `20f0d45`
+(2026-09-05), "reseat-gate: add the behavioural (rate) gate — the RED case shape
+can't see". The whole 2,369-byte gap is that one commit.
+
+**SIZE HAS NO DIRECTION.** A file smaller than upstream is behind or trimmed with
+equal likelihood, and only content-addressing the copy against upstream's history
+tells you which. The original note was right that a trim and a truncation are
+indistinguishable from outside; the third case is indistinguishable too, and it
+was the actual one.
+
+*Synced forward in the same commit as this correction.* Nothing in lite used what
+was missing (`meanTimeMs` and `opts.timing`: zero references; the one caller of
+`reseatGate` passes two arguments and the new parameter is optional), so taking it
+is additive and brings a gate lite did not have: shape alone cannot see a reseat
+that lights the right LEDs at the wrong SPEED.
 
 ## The two MISSING files
 
