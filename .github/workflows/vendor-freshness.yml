@@ -112,9 +112,54 @@ jobs:
 
       # Each check exits non-zero on drift; run ALL of them even after a
       # failure so one report names every stale tree, then fail once.
-      - name: circuit designer tree
+      # SAME MOVE AS THE BOARD-ENGINE STEP BELOW, and for a sharper reason: this
+      # one had been telling the truth for thirteen hours and nobody could hear
+      # it, because it sat in a workflow that could not pass. It reported
+      #
+      #     STALE components/CircuitDesigner.jsx
+      #     STALE components/ExamplesBrowser.jsx
+      #
+      # and both were real. What it could not say is whether either was DECLARED,
+      # because until 2026-09-07 bw-circuit-ui had no machine-readable manifest --
+      # its divergence document was prose, and the prose was wrong in every row:
+      # two files it listed as diverging had since been upstreamed and were
+      # byte-identical, the one it described as diverging BOTH WAYS was purely
+      # lite-ahead, and the largest divergence in the tree was not mentioned at
+      # all. A stale count cannot distinguish "someone's deliberate work" from
+      # "a sync that half-finished"; only a manifest can, and now there is one.
+      #
+      # EXIT SEMANTICS: fails if and only if a vendored bw-circuit-ui file differs
+      # from upstream at the recorded pin and no manifest entry declares it, or a
+      # lite-authored file appears in that root undeclared. 673 files, 668
+      # byte-identical, 2 declared-divergent, 3 lite-authored as of 2026-09-07.
+      - name: circuit designer tree matches the pin
+        if: always()
+        run: |
+          set -euo pipefail
+          pins=brickwright-lite/vendor-pins.json
+          [ -f "$pins" ] || pins=lego/brickwright-lite/vendor-pins.json
+          pin=$(jq -r '.["bw-circuit-ui"] // empty' "$pins")
+          case "$pin" in
+            [0-9a-f]*) [ ${#pin} -eq 40 ] || { echo "::error::bw-circuit-ui pin is not a 40-hex sha: $pin"; exit 1; } ;;
+            *) echo "::error::no bw-circuit-ui pin in $pins"; exit 1 ;;
+          esac
+          # Re-read HEAD rather than trust the checkout -- see the board-engine
+          # step for why a ::warning:: fallback is not a stop.
+          head=$(git -C bw-circuit-ui rev-parse HEAD)
+          if [ "$head" != "$pin" ]; then
+            echo "::error::bw-circuit-ui is at $head but vendor-pins.json says $pin -- the pinned checkout did not land, so this gate would judge the wrong tree"
+            exit 1
+          fi
+          cd brickwright-lite
+          BW_CIRCUIT_UI_DIR="$GITHUB_WORKSPACE/bw-circuit-ui" node --test test/vendor-identity.test.mjs
+
+      # Kept for its per-file STALE listing, which is the fastest way to see WHICH
+      # files moved. Not a verdict: it has no notion of the manifest, so it
+      # reports declared divergence and undeclared divergence identically.
+      - name: circuit designer tree (listing only, not a verdict)
         run: node brickwright-lite/scripts/sync-bw-circuit-ui.mjs --check --dir bw-circuit-ui --allow-stale
         if: always()
+        continue-on-error: true
       # THE INTEGRITY CLAIM, and it is the one this workflow's own header makes:
       # "does the vendored tree match vendor-pins.json?". Until 2026-09-07 that
       # question was asked of sync-bw-board.mjs --check, which cannot answer it.

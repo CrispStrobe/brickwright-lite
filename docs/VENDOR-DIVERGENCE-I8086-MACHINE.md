@@ -201,8 +201,8 @@ fails unless it touched both.
         {
           "id": "cycle-estimator-not-vendored",
           "absent": "CycleEstimator|i8088-timing",
-          "falsifiable": "The 8086 stops working completely \u2014 no machine, no screen, no blocks \u2014 because the file it now says it imports is not in this repository at all.",
-          "why": "THIS ENTRY POINTS THE OTHER WAY FROM THE NINE ABOVE. Upstream HAS this and lite deliberately does not, so there is no lite-only text for `contains` to hold; `absent` must NOT match the vendored copy. bw-board's i8086-machine.js imports CycleEstimator from ./i8088-timing.js at line 44 and uses _cycleEst nine times (9256cf7, opt-in cycle-accurate timing, ~6x). That import is present at MASTER AND AT THE CURRENT PIN, so lite did not fall behind on it \u2014 lite REMOVED it, before this allow-list existed to record the decision. Found 2026-09-06 while measuring vendor direction, having been written down nowhere for the whole time the nine entries above were being maintained. Re-adding the import means vendoring i8088-timing.js AND i8088-cycles.js, which it imports TABLES and PROVENANCE from: 983 KB of new bundle, 975 KB of it one table file, for a mode lite does not expose. That is a decision with its own owner and its own row, not something a pin move carries in silently."
+          "falsifiable": "The 8086 stops working completely — no machine, no screen, no blocks — because the file it now says it imports is not in this repository at all.",
+          "why": "THIS ENTRY POINTS THE OTHER WAY FROM THE NINE ABOVE. Upstream HAS this and lite deliberately does not, so there is no lite-only text for `contains` to hold; `absent` must NOT match the vendored copy. bw-board's i8086-machine.js imports CycleEstimator from ./i8088-timing.js at line 44 and uses _cycleEst nine times (9256cf7, opt-in cycle-accurate timing, ~6x). That import is present at MASTER AND AT THE CURRENT PIN, so lite did not fall behind on it — lite REMOVED it, before this allow-list existed to record the decision. Found 2026-09-06 while measuring vendor direction, having been written down nowhere for the whole time the nine entries above were being maintained. Re-adding the import means vendoring i8088-timing.js AND i8088-cycles.js, which it imports TABLES and PROVENANCE from: 983 KB of new bundle, 975 KB of it one table file, for a mode lite does not expose. That is a decision with its own owner and its own row, not something a pin move carries in silently."
         }
       ]
     },
@@ -428,6 +428,10 @@ fails unless it touched both.
       },
       "resolve-netlist.js": {
         "reason": "THE ONE WITH NO REASON TO BE HERE, and it is recorded rather than moved because moving it is a change to running code and this entry is not. NOTHING in the vendored root imports it: both consumers are lite's own -- bw-debug/debug-runner.js and pico-sim-run.js -- and upstream has no counterpart. It was extracted from debug-runner.js in 41d5f0cbb so the bare-metal debug path and the MicroPython Run resolve the board the same way, and it landed in the vendored directory rather than beside either caller. It is load-bearing (the phantom-inferred-bench rejection, owner reports 2026-08-16/17), which is exactly why it should not be sitting where a sync operates. MOVING IT TO bw-debug/ IS A SEPARATE LANE; this entry exists so that decision is asked rather than forgotten.",
+        "importedBy": []
+      },
+      "LICENSE": {
+        "reason": "Upstream's licence text, carried with the vendored copy so the terms travel with the code rather than living only in a manifest. Upstream keeps it at the repository root, not under src/, so it has no counterpart at the path this comparison walks. Attribution, not code. Declared 2026-09-07 when the gate's walk became recursive and every-extension: it had been invisible while the walk filtered `.js`, along with the 55 files of the devices/ subtree, all of which proved byte-identical.",
         "importedBy": []
       }
     }
