@@ -43,6 +43,10 @@ source for commit-level detail. Current tasks belong in [PLAN.md](PLAN.md).
 - Firmware and TI controller binaries are not distributed. Public tests use
   synthetic fixtures; unchanged proprietary or mixed-license images are local
   developer inputs.
+- A versioned, bounded NDJSON adapter now validates immutable Renode snapshots,
+  rejects replay and unannounced gaps, and maps the complete neutral state into
+  `VirtualSpikeHubState`. Its fixtures are pinned byte-for-byte to the Renode
+  producer contract.
 
 ## Operational lessons retained as rules
 

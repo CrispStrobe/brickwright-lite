@@ -27,17 +27,15 @@ same transport-neutral brick state consumed by the dashboard.
 
 Required sequence:
 
-1. Import the Renode snapshot protocol through a narrow adapter; do not expose
-   Renode types to Scratch extensions or React components.
-2. Model one motor and one sensor through attach, identify, command, feedback,
+1. Model one motor and one sensor through attach, identify, command, feedback,
    detach, reconnect, timeout, and malformed-frame paths.
-3. Publish display, buttons, battery, power, IMU, audio, storage, and Bluetooth
+2. Publish display, buttons, battery, power, IMU, audio, storage, and Bluetooth
    state through the same immutable snapshot contract.
-4. Cover Classic RFCOMM and BLE GAP/GATT/ATT through a transport-neutral HCI
+3. Cover Classic RFCOMM and BLE GAP/GATT/ATT through a transport-neutral HCI
    controller service with deterministic time and injectable failures.
-5. Prove each firmware target with boot milestones and observable assertions,
+4. Prove each firmware target with boot milestones and observable assertions,
    not instruction-count progress alone.
-6. Add SPIKE Essential only through its distinct board map; never run an
+5. Add SPIKE Essential only through its distinct board map; never run an
    Essential image on the Prime machine definition.
 
 Acceptance gates:

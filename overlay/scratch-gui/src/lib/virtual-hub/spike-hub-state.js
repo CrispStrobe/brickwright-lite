@@ -6,8 +6,14 @@ export const SPIKE_FIRMWARE_TARGETS = Object.freeze({
         summary: 'LEGO SPIKE BLE protocol'}),
     brickwright: Object.freeze({label: 'Brickwright firmware', classic: true, legoBle: true,
         summary: 'Brickwright Classic and LEGO-v3-compatible BLE adapters'}),
+    'spike-nx': Object.freeze({label: 'spike-nx firmware', classic: true, legoBle: false,
+        summary: 'Original NuttX-based SPIKE firmware'}),
     pybricks: Object.freeze({label: 'Pybricks firmware', classic: false, legoBle: false,
-        summary: 'hardware image/reference target; Pybricks BLE transport is not implemented'})
+        summary: 'hardware image/reference target; Pybricks BLE transport is not implemented'}),
+    'official-essential': Object.freeze({label: 'LEGO SPIKE Essential firmware', classic: false, legoBle: true,
+        summary: 'Official Essential board and BLE protocol'}),
+    'pybricks-essential': Object.freeze({label: 'Pybricks for SPIKE Essential', classic: false, legoBle: false,
+        summary: 'Pybricks on the distinct Essential board'})
 });
 
 export const spikeFirmwareTarget = target => {
@@ -25,7 +31,8 @@ const makeData = () => ({
     classicPorts: Array.from({length: 6}, () => [0, []]),
     imu: {faceUp: 0, yaw: 0, pitch: 0, roll: 0,
         acceleration: {x: 0, y: 0, z: 1000}, angularVelocity: {x: 0, y: 0, z: 0}},
-    buttons: {left: false, center: false, right: false}, lastCommand: null, lastPython: null
+    buttons: {left: false, center: false, right: false}, lastCommand: null, lastPython: null,
+    neutral: null
 });
 const indexOf = port => {
     const index = typeof port === 'string' ? 'ABCDEF'.indexOf(port.toUpperCase()) : Number(port);
@@ -68,6 +75,11 @@ export default class VirtualSpikeHubState {
         this.changed();
     }
     setDisplay (pixels) { this.data.display = Array.from(pixels).slice(0, 25); while (this.data.display.length < 25) this.data.display.push(0); this.changed(); }
+    applyNeutralMetadata (metadata) {
+        this.data.neutral = JSON.parse(JSON.stringify(metadata));
+        this.data.buttons = {...this.data.buttons, ...metadata.buttons};
+        this.changed();
+    }
     stopAll () { this.data.motors.forEach((motor, index) => {
         motor.speed = 0;
         if ([48, 49].includes(this.data.classicPorts[index][0])) this.data.classicPorts[index][1][0] = 0;
