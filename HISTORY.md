@@ -6,7 +6,8 @@ plan or roadmap. Detailed commit, CI and ownership evidence remains in Git and
 
 ## 2026-09-07
 
-- **Track A source authority completed.** Root tests now import owned GUI
+- **Track A source authority completed** (`60ecb4d89`, hosted run
+  `34087062528`). Root tests now import owned GUI
   modules from `overlay/scratch-gui`; the registered GUI-scope hook supplies
   bare dependencies from a prepared GUI package. A mutation-tested census
   rejects executable imports from generated `packages/scratch-gui/src`, while
