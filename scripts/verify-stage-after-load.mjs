@@ -256,6 +256,23 @@ async function run () {
         }
         check('exactly one stage canvas can be identified', true);
 
+        // THE CODE EDITOR MUST BE MOUNTED FIRST. The default pane preset is
+        // 'blocks', where the middle column shows the blocks canvas and the
+        // pseudocode importer is not in the tree at all — so the walk below
+        // searched for a component that could not be there and timed out after
+        // 40 s. The owner's report is specifically about the CODE EDITOR, so
+        // the preset is part of the reproduction rather than setup noise.
+        await page.evaluate(() => {
+            const store = window.__brickwrightStore;
+            if (store) store.dispatch({type: 'scratch-gui/pane-layout/APPLY_PRESET', preset: 'code'});
+        });
+        await settle();
+        // Write something to the artifact directory NOW. Every failure so far
+        // has stopped before the measurements were written, so the upload step
+        // failed too and the one place a human could look was empty.
+        await writeFile(join(artifacts, 'progress.json'), JSON.stringify(
+            {reached: 'code preset applied, looking for the importer', example: EXAMPLE}, null, 2));
+
         // The Code Editor's own example loader, reached the way the green
         // gates reach the circuit tab's. The importer is told apart from the
         // circuit tab by `bundledExamplesStatus`, which only it has.
