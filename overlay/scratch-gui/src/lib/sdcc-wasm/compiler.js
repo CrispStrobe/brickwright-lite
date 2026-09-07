@@ -75,6 +75,27 @@ const IS_NODE = typeof process === 'object' && typeof process?.versions?.node ==
  * lets scripts/smoke-debugger.mjs drive the real `compile()` entry point
  * rather than a hand-built toolchain of its own.
  */
+/**
+ * The runtime pack, read the way the glue beside it is already read.
+ *
+ * `importGlue` has had a Node branch since it was written, because `import()` of
+ * a file path is not the same thing in Node as in a browser. `fetch` has the
+ * same split and did not have the branch: Node's fetch rejects `file://`
+ * outright, so every Node caller had to stub a fetch that could read a file —
+ * the smoke harness does exactly that. That made the Node path work only for
+ * callers who knew the trick, which the command line did not, and the symptom
+ * was "fetch failed" with nothing naming a file.
+ */
+async function readRuntimePack (url) {
+    if (!IS_NODE || !url.startsWith('file:')) return fetch(url);
+    const [{readFile}, {fileURLToPath}] = await Promise.all([
+        import(/* webpackIgnore: true */ 'node:fs/promises'),
+        import(/* webpackIgnore: true */ 'node:url')
+    ]);
+    const text = await readFile(fileURLToPath(url), 'utf8');
+    return {ok: true, status: 200, json: async () => JSON.parse(text)};
+}
+
 async function importGlue (url) {
     if (!IS_NODE) return import(/* webpackIgnore: true */ url);
     const [{readFile}, {createRequire}, {dirname}, {fileURLToPath}] = await Promise.all([
@@ -105,7 +126,7 @@ async function loadToolchain (base, resolveOverride = null) {
             importGlue(resolve('sdcc.js')),
             importGlue(resolve('sdas8051.js')),
             importGlue(resolve('sdld.js')),
-            fetch(resolve('runtime.json'))
+            readRuntimePack(resolve('runtime.json'))
         ]);
         if (!response.ok) throw new Error(`runtime.json returned ${response.status}`);
         const packed = await response.json();

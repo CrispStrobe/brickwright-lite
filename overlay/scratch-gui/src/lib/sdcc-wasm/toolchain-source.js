@@ -126,27 +126,98 @@ export function localToolchainEnabled (win = typeof window === 'undefined' ? und
     return getToolchainMode(store) !== 'online';
 }
 
+import {cacheStorageStore} from './toolchain-store.js';
+
 const fileUrl = (base, name) => new URL(`static/sdcc-wasm/${name}`, base).href;
+
+/** The store to use when a caller did not bring one: the browser's. */
+const defaultStore = deps => {
+    if (deps.store) return deps.store;
+    const caches_ = deps.caches || (typeof caches === 'undefined' ? null : caches);
+    return caches_ ? cacheStorageStore(caches_, TOOLCHAIN_CACHE) : null;
+};
+
+const aborted = () => {
+    const error = new Error('the toolchain download was cancelled');
+    error.name = 'AbortError';
+    return error;
+};
 
 /**
  * Fill the cache from the GPL origin. Returns the names actually stored, so a
  * caller can report what it got rather than assuming all of them.
  */
 export async function primeToolchainCache (base = GPL_TOOLCHAIN_ORIGIN, deps = {}) {
-    const caches_ = deps.caches || (typeof caches === 'undefined' ? null : caches);
     const fetch_ = deps.fetch || (typeof fetch === 'undefined' ? null : fetch);
-    if (!caches_ || !fetch_) throw new Error('Cache Storage or fetch is unavailable');
-    const cache = await caches_.open(TOOLCHAIN_CACHE);
+    const store = defaultStore(deps);
+    if (!store || !fetch_) throw new Error('no toolchain store or no fetch is available');
+    const {signal, onProgress = () => {}} = deps;
+    const total = TOOLCHAIN_FILES.length;
     const stored = [];
-    for (const name of TOOLCHAIN_FILES) {
+
+    for (let index = 0; index < total; index++) {
+        const name = TOOLCHAIN_FILES[index];
+        // Checked BEFORE each file rather than only at the top, so a cancel
+        // lands within one file instead of at the end of the run.
+        if (signal && signal.aborted) throw aborted();
         const url = fileUrl(base, name);
-        if (await cache.match(url)) { stored.push(name); continue; }
-        const response = await fetch_(url);
-        if (!response.ok) throw new Error(`${name} returned ${response.status} from ${base}`);
-        await cache.put(url, response.clone());
+
+        // RESUME IS JUST THIS. A file already in the store is not fetched again,
+        // so a cancelled download continues from where it stopped rather than
+        // starting over — and the store's `has` refuses a zero-byte file, so a
+        // write interrupted between open and rename is not mistaken for one.
+        if (await store.has(url)) {
+            stored.push(name);
+            onProgress({name, index, total, state: 'present', done: stored.length});
+            continue;
+        }
+        onProgress({name, index, total, state: 'fetching', done: stored.length});
+        const response = await fetch_(url, signal ? {signal} : undefined);
+        if (!response.ok) {
+            throw new Error(`${name} returned ${response.status} from ${base}`);
+        }
+        // Re-checked after the await: a cancel that arrives mid-flight must not
+        // be recorded as a completed file.
+        if (signal && signal.aborted) throw aborted();
+        await store.put(url, typeof response.clone === 'function' ? response.clone() : response);
         stored.push(name);
+        onProgress({name, index, total, state: 'stored', done: stored.length});
     }
     return stored;
+}
+
+/**
+ * What is present, WITHOUT touching the network — so a settings dialog can
+ * render installed state while offline, which is exactly when a user most wants
+ * to know whether they can compile.
+ */
+export async function inspectToolchain (base = GPL_TOOLCHAIN_ORIGIN, deps = {}) {
+    const store = defaultStore(deps);
+    if (!store) return {complete: false, present: [], missing: TOOLCHAIN_FILES.slice(), bytes: 0};
+    const present = [];
+    const missing = [];
+    let bytes = 0;
+    for (const name of TOOLCHAIN_FILES) {
+        const url = fileUrl(base, name);
+        if (await store.has(url)) {
+            present.push(name);
+            if (store.bytes) bytes += await store.bytes(url);
+        } else {
+            missing.push(name);
+        }
+    }
+    return {complete: missing.length === 0, present, missing, bytes, kind: store.kind};
+}
+
+/** Remove it again and free the space. Reports what it actually removed. */
+export async function removeToolchain (base = GPL_TOOLCHAIN_ORIGIN, deps = {}) {
+    const store = defaultStore(deps);
+    if (!store) return [];
+    const removed = [];
+    for (const name of TOOLCHAIN_FILES) {
+        if (await store.remove(fileUrl(base, name))) removed.push(name);
+    }
+    return removed;
 }
 
 /**
