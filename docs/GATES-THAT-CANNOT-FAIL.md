@@ -1514,7 +1514,7 @@ ROADMAP, and the partial that landed (8f46f2c) is a 21-entry table whose every e
 quiet-NaN stub and returns — a diagnosis where there was a hang, with `2.5 + 1.0 ≠ 3.5`
 asserted so the stop cannot go stale.
 
-## Twenty-sixth species: THE FACT THAT LIVES ONLY IN A WIRING EXPRESSION (2026-09-07, brickwright-lite-ea)
+## Twenty-seventh species: THE FACT THAT LIVES ONLY IN A WIRING EXPRESSION (2026-09-07, brickwright-lite-ea)
 
 **A fact that lives only in a wiring expression is invisible to every test that
 exercises the things being wired.**
@@ -1571,6 +1571,11 @@ A source assertion is a poor substitute for a behavioural one and the right tool
 when the behaviour has no reachable seam. The message says what BREAKS — "every
 refusal a program produces on the Code tab is invisible to the panel" — not what
 is missing.
+
+**Not to be confused with the twenty-sixth** (RAW BYTES ON THE RUNNER'S TRANSPORT,
+lego-b9): that one is a signal corrupted in transit, where the value arrives
+wrong. This one is a value that never leaves, and arrives as a well-formed
+`null` that means "nothing to report" — which is usually true.
 
 **Its close sibling, three instances in one day:** the same blindness where a
 path is *built* rather than written. `docs/*.md` reached by `join('docs', name)`
