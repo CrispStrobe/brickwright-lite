@@ -21,6 +21,16 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {existsSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
+import {quietConsole} from './quiet-console.mjs';
+
+// Everything loaded through here — the Scratch VM, its extensions, the
+// integrated GUI — logs on load and on run (the VM alone wrote 597 KB in one
+// corpus walk). A test child's console output is RAW on the runner's stdout
+// pipe and is the "Unable to deserialize cloned data" flake (docs/GATES-THAT-
+// CANNOT-FAIL.md, species 26), so the console is captured once, here, for
+// every test that loads through this helper. A test that wants the lines has
+// them on `consoleCapture.lines`; a test that wants to PRINT uses t.diagnostic().
+export const consoleCapture = quietConsole();
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const REPO = path.join(here, '..', '..');

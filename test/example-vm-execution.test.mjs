@@ -601,7 +601,7 @@ test('ratchet: every KNOWN_NO_BLOCKS entry still reproduces', () => {
     assert.deepEqual(stale, [], `these examples now compile blocks — remove them from KNOWN_NO_BLOCKS`);
 });
 
-test('coverage: the gate states what it did and did not execute', () => {
+test('coverage: the gate states what it did and did not execute', t => {
     const runnable = withProgram.length - report.placeholders.length;
     const lines = [
         '',
@@ -649,7 +649,8 @@ test('coverage: the gate states what it did and did not execute', () => {
     lines.push(`the ${report.placeholders.length} placeholder programs, which are asserted empty, ` +
         'not executed.');
     lines.push('');
-    console.log(lines.join('\n'));
+    // The report is evidence, not decoration — and it is FRAMED (t.diagnostic), never raw stdout.
+    t.diagnostic(lines.join('\n'));
 
     // The report is evidence, not decoration. Two floors, because the interesting
     // failure is not "a test went red" but "the corpus quietly stopped being run":
