@@ -125,6 +125,11 @@ const MEASURE = () => {
             : null,
         stageSizeMode: state.stageSize?.stageSize ?? null,
         isFullScreen: !!state.mode?.isFullScreen,
+        // isStarted is one of the props shouldComponentUpdate gates on, so it
+        // is recorded to prove the step 4b poke LANDED. Without it, "the
+        // buffer did not change" cannot be told apart from "the prop never
+        // changed", and the experiment decides nothing either way.
+        isStarted: !!state.vmStatus?.started,
         dpr: window.devicePixelRatio
     };
 };
@@ -391,12 +396,22 @@ async function run () {
         // green flag, so this pokes that one instead. Buffer non-zero here means
         // the gate is the mechanism and fullscreen was incidental; still zero
         // means the reading is wrong and fullscreen does something else.
-        await page.evaluate(() => {
+        const poke = await page.evaluate(() => {
             const vm = window.__bwImporter && window.__bwImporter.props && window.__bwImporter.props.vm;
-            if (vm && typeof vm.greenFlag === 'function') vm.greenFlag();
+            if (!vm || typeof vm.greenFlag !== 'function') return {ran: false, why: 'no vm.greenFlag reachable'};
+            vm.greenFlag();
+            return {ran: true};
         });
         await settle();
         const afterGreenFlag = await snap('3b-after-green-flag');
+        // THE EXPERIMENT ONLY DECIDES ANYTHING IF THE POKE LANDED. The first
+        // version called greenFlag inside an `if` that silently did nothing
+        // when the handle was missing, so a 0x0 buffer afterwards could have
+        // meant "a gated prop changed and resize still did not run" or "no
+        // prop ever changed" — opposite conclusions from identical output.
+        const started = afterGreenFlag.isStarted && !afterViewport.isStarted;
+        check('the green-flag poke actually changed a gated prop (isStarted)', started,
+            poke.ran ? `isStarted ${afterViewport.isStarted} -> ${afterGreenFlag.isStarted}` : poke.why);
 
         // STEP 5 — the control: real fullscreen, which is what the owner did.
         await page.evaluate(() => {
@@ -451,6 +466,12 @@ async function run () {
         }
 
         const gatedPropSized = afterGreenFlag.drawingBuffer.w > 0;
+        if (!started) {
+            console.log('\nWHAT SIZES THE BUFFER: UNDECIDED — the green-flag poke did not change');
+            console.log('  isStarted, so this run says nothing about whether a gated prop would');
+            console.log('  have sized the buffer. Not evidence for the gate theory, and not');
+            console.log('  evidence against it.');
+        } else
         console.log(`\nWHAT SIZES THE BUFFER: a gated prop change (isStarted, via the green flag) ` +
             `${gatedPropSized ? 'DID' : 'did NOT'} size it (${afterGreenFlag.drawingBuffer.w}x${afterGreenFlag.drawingBuffer.h}).`);
         console.log(gatedPropSized
