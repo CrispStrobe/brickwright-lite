@@ -49,7 +49,7 @@ import {fileURLToPath, pathToFileURL} from 'node:url';
 import test from 'node:test';
 
 import {compileWithToolchain} from '../overlay/scratch-gui/src/lib/sdcc-wasm/compiler.js';
-import {INTEGRATED, REPO} from './helpers/bw-integrated.mjs';
+import {SOURCE, REPO} from './helpers/bw-integrated.mjs';
 
 const distUrl = new URL('../overlay/scratch-gui/src/lib/sdcc-wasm/dist/', import.meta.url);
 const require = createRequire(import.meta.url);
@@ -141,7 +141,7 @@ test('a REAL generated 8051 program — scheduler, tasks and idle block — comp
         // Generated here rather than pasted in, so this tracks the transpiler.
         // 76-multimeter is the example that carries two cooperative tasks, and
         // therefore the idle fast-forward; a single-script program does not.
-        const SB3Creator = (await import(join(INTEGRATED, 'src/lib/sb3-creator.js'))).default;
+        const SB3Creator = (await import(join(SOURCE, 'src/lib/sb3-creator.js'))).default;
         const program = await readFile(
             join(REPO, 'overlay/scratch-gui/examples/76-multimeter/program.bw'), 'utf8');
         const creator = new SB3Creator();

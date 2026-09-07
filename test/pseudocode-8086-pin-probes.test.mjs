@@ -20,10 +20,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import {INTEGRATED} from './helpers/bw-integrated.mjs';
+import {SOURCE} from './helpers/bw-integrated.mjs';
 
 const L = new URL('../overlay/scratch-gui/src/lib/', import.meta.url);
-const SB3Creator = (await import(path.join(INTEGRATED, 'src/lib/sb3-creator.js'))).default;
+const SB3Creator = (await import(path.join(SOURCE, 'src/lib/sb3-creator.js'))).default;
 const {buildPseudocode8086} = await import(new URL('bw-asm/pseudocode-8086.js', L).href);
 const {createI8086DosBench} = await import(new URL('bw-debug/i8086-dos-bench.js', L).href);
 

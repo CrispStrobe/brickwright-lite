@@ -44,42 +44,26 @@ test('source setup needs no GUI; a partial tracked GUI is insufficient for integ
     assert.match(errors.join('\n'), /vendor, integrate, GUI install, overlays/);
 });
 
-test('runtime helper refuses missing and stale sources even with an explicit external GUI', t => {
+test('source helper always imports this checkout even with an explicit external GUI', t => {
     const {root, put} = fixture(t);
     put('test/helpers/bw-integrated.mjs', readFileSync(path.join(repo, 'test/helpers/bw-integrated.mjs')));
     put('overlay/scratch-gui/src/lib/probe.mjs', 'export const value = 42;');
     put('external/package.json');
     put('external/src/lib/probe.mjs', 'export const value = 41;');
-    put('probe.mjs', "import {importIntegrated} from './test/helpers/bw-integrated.mjs';\n" +
-        "console.log((await importIntegrated('src/lib/probe.mjs')).value);\n");
+    put('probe.mjs', "import {importSource} from './test/helpers/bw-integrated.mjs';\n" +
+        "console.log((await importSource('src/lib/probe.mjs')).value);\n");
     const probe = env => spawnSync(process.execPath, ['probe.mjs'], {
         cwd: root, encoding: 'utf8', env: {...process.env, BW_INTEGRATED_ROOT: '', ...env}
     });
-    const missing = probe({});
-    assert.notEqual(missing.status, 0);
-    assert.match(missing.stderr, /Missing integrated runtime file/);
-    const stale = probe({BW_INTEGRATED_ROOT: path.join(root, 'external')});
-    assert.notEqual(stale.status, 0);
-    assert.match(stale.stderr, /differs from this checkout's overlay/);
-    put('external/src/lib/probe.mjs', 'export const value = 42;');
     const good = probe({BW_INTEGRATED_ROOT: path.join(root, 'external')});
     assert.equal(good.status, 0, good.stderr);
     assert.match(good.stdout, /42/);
     assert.match(good.stderr, /BW_INTEGRATED_ROOT/);
-});
-
-test('runtime dependency lookup never borrows an ancestor dependency', t => {
-    const {root, put} = fixture(t);
-    put('test/helpers/bw-integrated.mjs', readFileSync(path.join(repo, 'test/helpers/bw-integrated.mjs')));
-    put('packages/scratch-gui/package.json');
-    put('node_modules/probe/package.json', '{"main":"index.cjs"}');
-    put('node_modules/probe/index.cjs', 'module.exports = 42;');
-    put('probe.mjs', "import {requireIntegrated} from './test/helpers/bw-integrated.mjs'; requireIntegrated('probe');");
-    const result = spawnSync(process.execPath, ['probe.mjs'], {
-        cwd: root, encoding: 'utf8', env: {...process.env, BW_INTEGRATED_ROOT: ''}
-    });
-    assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /Missing integrated runtime file/);
+    put('probe.mjs', "import {importSource} from './test/helpers/bw-integrated.mjs';\n" +
+        "await importSource('src/lib/missing.mjs');\n");
+    const missing = probe({BW_INTEGRATED_ROOT: path.join(root, 'external')});
+    assert.notEqual(missing.status, 0);
+    assert.match(missing.stderr, /Missing owned GUI source file/);
 });
 
 test('CI runs the bounded source verdict before generated-tree work', () => {

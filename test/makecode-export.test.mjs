@@ -20,7 +20,7 @@ import assert from 'node:assert/strict';
 import {readFileSync, existsSync, readdirSync} from 'node:fs';
 import {join} from 'node:path';
 
-import {INTEGRATED, REPO} from './helpers/bw-integrated.mjs';
+import {SOURCE, REPO} from './helpers/bw-integrated.mjs';
 import {
     exportToMakeCode,
     projectToMakeCodeTs,
@@ -29,7 +29,7 @@ import {
 import {microbitToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/microbit-translate.js';
 import {unpackMakeCodeSource, describeProject} from '../overlay/scratch-gui/src/lib/bw-makecode/embedded-source.js';
 
-const COMPILER = join(INTEGRATED, 'src', 'lib', 'sb3-creator.js');
+const COMPILER = join(SOURCE, 'src', 'lib', 'sb3-creator.js');
 const canCompile = existsSync(COMPILER);
 const SB3Creator = canCompile ? (await import(COMPILER)).default : null;
 

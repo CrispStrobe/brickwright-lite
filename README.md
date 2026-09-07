@@ -178,10 +178,14 @@ npm run check:setup
 npm run test:source
 ```
 
-Tests that exercise the assembled GUI still require `vendor`, `integrate`, the
-GUI dependency install, and the VM/paint/render overlay steps. Use
-`npm run check:setup -- --integrated` to verify that runtime before those tests.
-`BW_INTEGRATED_ROOT` may explicitly select a prepared external GUI checkout.
+Root tests import owned GUI modules from `overlay/scratch-gui`; generated
+`packages/scratch-gui/src` is not a test input. The registered GUI-scope hook
+resolves bare GUI dependencies from the prepared GUI package. Tests that need
+those dependencies or assembled build artifacts still require `vendor`,
+`integrate`, the GUI dependency install, and the VM/paint/render overlay steps.
+Use `npm run check:setup -- --integrated` to verify that runtime before those
+tests. `BW_INTEGRATED_ROOT` may explicitly select a prepared external dependency
+and build root, but it does not replace the source under test.
 
 ## Simulator and oracle policy
 

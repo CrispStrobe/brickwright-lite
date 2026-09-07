@@ -1,29 +1,30 @@
 /**
- * Where the INTEGRATED tree lives — `packages/scratch-gui`, produced by
- * `scripts/integrate.mjs`, GUI dependency installation and the VM/paint/render
- * overlay steps. Some generated files are historically also tracked in Git.
+ * The two GUI roots used by tests have different authority:
  *
- * Runtime integration tests load the compiler, VM and live emulator adapters
- * from here so they exercise the assembled application and its dependencies.
- * Source-only tests import overlay/ directly and use root development deps.
+ * - SOURCE is the owned `overlay/scratch-gui` tree in this checkout.
+ * - INTEGRATED is `packages/scratch-gui`, used only as the GUI dependency
+ *   scope and for build artifacts produced by integration.
  *
- * `BW_INTEGRATED_ROOT` overrides the location so the gates can run from a git
- * worktree with an intentionally external prepared GUI. No sibling checkout
- * is discovered automatically. Using the override is announced on stderr, because
- * reading a second checkout's tree is exactly how three false readings were
- * produced here on 2026-08-20 — a second checkout is a second registry, a second
- * everything. The gates' own instrument checks compare the overlay's compiler
- * against the integrated copy byte-for-byte, so a divergence between the two
- * trees fails loudly instead of being measured.
+ * Root tests load owned modules from SOURCE. The resolve hook registered by
+ * every root test command supplies their bare GUI dependencies from
+ * INTEGRATED. Loading source from the generated packages tree made a stale
+ * integration copy look authoritative and made source tests depend on a
+ * build-preparation step unrelated to the behavior under test.
+ *
+ * `BW_INTEGRATED_ROOT` overrides only the dependency/build root so a worktree
+ * may deliberately use an external prepared GUI. No sibling checkout is
+ * discovered automatically, and owned module imports still come from SOURCE.
+ * The override is announced because a second dependency registry can change a
+ * result even though it cannot replace the source being tested.
  */
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {existsSync, readFileSync} from 'node:fs';
-import {createRequire} from 'node:module';
+import {existsSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const REPO = path.join(here, '..', '..');
+export const SOURCE = path.join(REPO, 'overlay', 'scratch-gui');
 
 export const INTEGRATED = process.env.BW_INTEGRATED_ROOT
     ? path.resolve(process.env.BW_INTEGRATED_ROOT)
@@ -35,28 +36,15 @@ if (process.env.BW_INTEGRATED_ROOT) {
         `not from this checkout. The corpus is still read from ${REPO}/overlay.\n`);
 }
 
-const setupHint = 'Prepare the GUI using README.md#development-and-tests, ' +
-    'then run npm run check:setup -- --integrated.';
-
-/** Explicit runtime import; an existing tracked mirror is not setup evidence. */
-export function integratedFile (relativePath) {
-    const file = path.join(INTEGRATED, relativePath);
-    if (!existsSync(path.join(INTEGRATED, 'package.json')) || !existsSync(file)) {
-        throw new Error(`Missing integrated runtime file: ${file}. ${setupHint}`);
-    }
-    const owned = path.join(REPO, 'overlay', 'scratch-gui', relativePath);
-    if (existsSync(owned) && !readFileSync(owned).equals(readFileSync(file))) {
-        throw new Error(`Integrated runtime differs from this checkout's overlay: ${file}. ${setupHint}`);
+/** An owned GUI module. Generated packages/ source is never an import input. */
+export function sourceFile (relativePath) {
+    const file = path.join(SOURCE, relativePath);
+    if (!existsSync(file)) {
+        throw new Error(`Missing owned GUI source file: ${file}.`);
     }
     return file;
 }
 
-export function importIntegrated (relativePath) {
-    return import(pathToFileURL(integratedFile(relativePath)).href);
-}
-
-/** Do not let Node resolve a missing GUI dependency from an ancestor checkout. */
-export function requireIntegrated (packageName) {
-    integratedFile(`node_modules/${packageName}/package.json`);
-    return createRequire(path.join(INTEGRATED, 'package.json'))(packageName);
+export function importSource (relativePath) {
+    return import(pathToFileURL(sourceFile(relativePath)).href);
 }

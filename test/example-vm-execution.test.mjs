@@ -63,7 +63,6 @@ import {REPO, INTEGRATED} from './helpers/bw-integrated.mjs';
 // not a pass". The previous draft of this gate called `process.exit(0)` here,
 // which reported the file as passing with zero assertions run.
 const missingInputs = [
-    [path.join(INTEGRATED, 'src', 'lib', 'sb3-creator.js'), 'run `node scripts/integrate.mjs`'],
     [path.join(INTEGRATED, 'node_modules', 'scratch-vm', 'src', 'index.js'),
         'run `cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps`']
 ].filter(([file]) => !existsSync(file));

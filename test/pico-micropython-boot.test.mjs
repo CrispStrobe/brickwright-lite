@@ -26,7 +26,7 @@ import {existsSync} from 'node:fs';
 import {join} from 'node:path';
 import {pathToFileURL} from 'node:url';
 
-import {INTEGRATED} from './helpers/bw-integrated.mjs';
+import {SOURCE, INTEGRATED} from './helpers/bw-integrated.mjs';
 import {
     ensureFirmware, parseUF2, createPicoMachine, CACHED_UF2, FIRMWARE
 } from '../scripts/probe-pico-micropython.mjs';
@@ -81,7 +81,7 @@ test('MicroPython enumerates as a USB CDC device and gives a REPL prompt', {skip
 test('the raw REPL protocol in pico-repl.js drives the emulated device', {skip: SKIP}, async () => {
     const {m} = await bootOnce();
     const {createPicoRepl} = await import(
-        pathToFileURL(join(INTEGRATED, 'src/lib/pico-repl.js')).href);
+        pathToFileURL(join(SOURCE, 'src/lib/pico-repl.js')).href);
     // The transport's reads drive the CPU, so there is no wall clock to wait
     // on; the timeout only has to outlast the emulator, not the device.
     const repl = createPicoRepl(m.transport, {timeoutMs: 600_000});
@@ -107,7 +107,7 @@ test('the raw REPL protocol in pico-repl.js drives the emulated device', {skip: 
 test('the flash ROM functions decide whether the filesystem works', {skip: SKIP}, async () => {
     const {m} = await bootOnce();
     const {createPicoRepl} = await import(
-        pathToFileURL(join(INTEGRATED, 'src/lib/pico-repl.js')).href);
+        pathToFileURL(join(SOURCE, 'src/lib/pico-repl.js')).href);
     const repl = createPicoRepl(m.transport, {timeoutMs: 600_000});
     await repl.enterRaw();
 

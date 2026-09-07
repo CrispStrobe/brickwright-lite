@@ -4,6 +4,16 @@ Completed and rejected work moves here when it no longer belongs in the active
 plan or roadmap. Detailed commit, CI and ownership evidence remains in Git and
 `LANES.md`.
 
+## 2026-09-07
+
+- **Track A source authority completed.** Root tests now import owned GUI
+  modules from `overlay/scratch-gui`; the registered GUI-scope hook supplies
+  bare dependencies from a prepared GUI package. A mutation-tested census
+  rejects executable imports from generated `packages/scratch-gui/src`, while
+  preserving intentional read-only mirror and artifact checks. An explicit
+  `BW_INTEGRATED_ROOT` relocates dependency and build scope only, so it cannot
+  silently replace the source under test.
+
 ## 2026-09-06
 
 - **Source-test boundary completed** (`f17a8f4e8`, `fbfa7936f`). The bounded

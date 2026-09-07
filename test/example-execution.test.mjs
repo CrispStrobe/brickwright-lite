@@ -24,12 +24,12 @@ import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const { REPO: root, INTEGRATED } = await import('./helpers/bw-integrated.mjs');
+const {SOURCE, REPO: root} = await import('./helpers/bw-integrated.mjs');
 
-// The compiler and the referee come from the integrated tree, the only place
-// their dependencies resolve; BW_INTEGRATED_ROOT relocates it for worktrees.
-const SB3Creator = (await import(join(INTEGRATED, 'src', 'lib', 'sb3-creator.js'))).default;
-const { interpretTrace } = await import(join(INTEGRATED, 'src', 'lib', 'trace-oracle.js'));
+// The compiler and referee come from this checkout's owned overlay. Their bare
+// GUI dependencies resolve through register-gui-scope.mjs.
+const SB3Creator = (await import(join(SOURCE, 'src', 'lib', 'sb3-creator.js'))).default;
+const { interpretTrace } = await import(join(SOURCE, 'src', 'lib', 'trace-oracle.js'));
 
 // The corpus is read from overlay/, the source of truth in git, not from the
 // integrated copy under packages/. packages/ is vendored and gitignored, so a

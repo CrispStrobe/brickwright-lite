@@ -18,15 +18,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
-import { INTEGRATED, REPO } from './helpers/bw-integrated.mjs';
+import {SOURCE, REPO} from './helpers/bw-integrated.mjs';
 
-const SB3Creator = (await import(path.join(INTEGRATED, 'src/lib/sb3-creator.js'))).default;
-const { buildPseudocode8086 } = await import(path.join(INTEGRATED, 'src/lib/bw-asm/pseudocode-8086.js'));
-const { extract8086Machine } = await import(path.join(INTEGRATED, 'src/lib/bw-board/i8086-extract.js'));
-const { I8086Machine } = await import(path.join(INTEGRATED, 'src/lib/bw-board/i8086-machine.js'));
-const { extract6502Machine } = await import(path.join(INTEGRATED, 'src/lib/bw-board/m6502-extract.js'));
-const { M6502Machine } = await import(path.join(INTEGRATED, 'src/lib/bw-board/m6502-machine.js'));
-const { reseatGate } = await import(path.join(INTEGRATED, 'src/lib/bw-board/reseat-gate.js'));
+const SB3Creator = (await import(path.join(SOURCE, 'src/lib/sb3-creator.js'))).default;
+const { buildPseudocode8086 } = await import(path.join(SOURCE, 'src/lib/bw-asm/pseudocode-8086.js'));
+const { extract8086Machine } = await import(path.join(SOURCE, 'src/lib/bw-board/i8086-extract.js'));
+const { I8086Machine } = await import(path.join(SOURCE, 'src/lib/bw-board/i8086-machine.js'));
+const { extract6502Machine } = await import(path.join(SOURCE, 'src/lib/bw-board/m6502-extract.js'));
+const { M6502Machine } = await import(path.join(SOURCE, 'src/lib/bw-board/m6502-machine.js'));
+const { reseatGate } = await import(path.join(SOURCE, 'src/lib/bw-board/reseat-gate.js'));
 
 const FIX = path.join(REPO, 'test/fixtures/reseat');
 const GALLERY = JSON.parse(readFileSync(path.join(FIX, 'e4-via-blink.json'), 'utf8'));

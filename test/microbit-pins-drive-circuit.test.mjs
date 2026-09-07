@@ -21,7 +21,7 @@
 
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {importIntegrated} from './helpers/bw-integrated.mjs';
+import {importSource} from './helpers/bw-integrated.mjs';
 
 import {loadExtensionClass, stubRuntime} from './helpers/bw-extensions.mjs';
 
@@ -160,8 +160,8 @@ test('a micro:bit block lights a real LED through the real solver', async () => 
     // learner would draw — micro:bit P0, 220R, red LED, ground — hands it
     // to the actual MNA solver, and drives it from the BLOCK.
     const B = 'src/lib/bw-board';
-    const {BoardImpl} = await importIntegrated(`${B}/index.js`);
-    const {registerAllDevices} = await importIntegrated(`${B}/register-all.js`);
+    const {BoardImpl} = await importSource(`${B}/index.js`);
+    const {registerAllDevices} = await importSource(`${B}/register-all.js`);
     registerAllDevices();
 
     const board = new BoardImpl(3.3);

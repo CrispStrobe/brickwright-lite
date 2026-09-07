@@ -16,14 +16,12 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 
-import {INTEGRATED} from './helpers/bw-integrated.mjs';
+import {SOURCE, REPO} from './helpers/bw-integrated.mjs';
 import {emitI8086Asm, SUPPORTED} from '../overlay/scratch-gui/src/lib/bw-asm/pseudocode-8086.js';
 import asm8086ToPseudocode, {renderExpr} from '../overlay/scratch-gui/src/lib/bw-asm/asm-8086-to-pseudocode.js';
 import I8086_ASM_EXAMPLES from '../overlay/scratch-gui/src/lib/bw-asm/examples-i8086.js';
 import {readFileSync} from 'node:fs';
-import {REPO} from './helpers/bw-integrated.mjs';
-
-const SB3Creator = (await import(path.join(INTEGRATED, 'src/lib/sb3-creator.js'))).default;
+const SB3Creator = (await import(path.join(SOURCE, 'src/lib/sb3-creator.js'))).default;
 
 const lower = source => {
     const creator = new SB3Creator();

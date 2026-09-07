@@ -34,30 +34,13 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
 
-import {REPO, INTEGRATED} from './helpers/bw-integrated.mjs';
+import {SOURCE, REPO} from './helpers/bw-integrated.mjs';
 import {
     buildPseudocode8086, emitI8086Asm, SUPPORTED, Pseudocode8086Error, boolishTruthTest
 } from '../overlay/scratch-gui/src/lib/bw-asm/pseudocode-8086.js';
 import {createI8086DosBench} from '../overlay/scratch-gui/src/lib/bw-debug/i8086-dos-bench.js';
 
-// ── Instrument check ────────────────────────────────────────────────────
-//
-// The pseudocode PARSER has to come from the integrated tree — it is the
-// only place `jszip` resolves — and that is a second checkout, therefore a
-// second everything. Comparing bytes is what makes a result here
-// attributable to this repo. The back end under test is imported from
-// `overlay/`, which is the source of truth in git.
-const overlayCompiler = readFileSync(path.join(REPO, 'overlay/scratch-gui/src/lib/sb3-creator.js'));
-const integratedCompiler = readFileSync(path.join(INTEGRATED, 'src/lib/sb3-creator.js'));
-
-test('instrument: the integrated pseudocode parser is byte-identical to overlay/', () => {
-    assert.ok(overlayCompiler.equals(integratedCompiler),
-        `the integrated sb3-creator differs from overlay/ (${integratedCompiler.length} vs ` +
-        `${overlayCompiler.length} bytes). Run \`node scripts/integrate.mjs\`; until then ` +
-        `any result here belongs to a tree this repo does not own.`);
-});
-
-const SB3Creator = (await import(path.join(INTEGRATED, 'src/lib/sb3-creator.js'))).default;
+const SB3Creator = (await import(path.join(SOURCE, 'src/lib/sb3-creator.js'))).default;
 
 /** A network that cannot be used without being noticed. */
 const forbiddenFetch = () => {

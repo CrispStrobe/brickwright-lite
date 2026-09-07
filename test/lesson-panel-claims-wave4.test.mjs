@@ -33,7 +33,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync, existsSync} from 'node:fs';
 import path from 'node:path';
-import {REPO, INTEGRATED} from './helpers/bw-integrated.mjs';
+import {SOURCE, REPO} from './helpers/bw-integrated.mjs';
 import {balancedAfter} from './helpers/js-scope.mjs';
 
 const EX = path.join(REPO, 'overlay/scratch-gui/examples');
@@ -57,21 +57,6 @@ const index = (() => {
     return new Map((Array.isArray(raw) ? raw : raw.examples).map(e => [e.id, e]));
 })();
 
-// ── Instrument checks, before any measurement ──────────────────────────────
-//
-// The compiler and the VM are imported from the integrated tree, the only place
-// their dependencies resolve — a second checkout, therefore a second everything.
-// Comparing bytes is what makes a result attributable to THIS repo.
-const overlayCompiler = readFileSync(path.join(GUI, 'lib/sb3-creator.js'));
-const integratedCompiler = readFileSync(path.join(INTEGRATED, 'src/lib/sb3-creator.js'));
-
-test('instrument: the integrated compiler is byte-identical to the overlay copy', () => {
-    assert.ok(overlayCompiler.equals(integratedCompiler),
-        `the integrated sb3-creator differs from overlay/ (${integratedCompiler.length} vs ` +
-        `${overlayCompiler.length} bytes). Run \`node scripts/integrate.mjs\`; until then every ` +
-        'number in this file belongs to a tree this repo does not own.');
-});
-
 test('instrument: Wave 4 still has the eight lessons this gate measures', () => {
     assert.equal(wave.wave, 'interactive-4');
     assert.deepEqual(wave.lessons.map(l => l.id).sort(), [
@@ -86,9 +71,9 @@ test('instrument: Wave 4 still has the eight lessons this gate measures', () => 
     ]);
 });
 
-const SB3Creator = (await import(path.join(INTEGRATED, 'src/lib/sb3-creator.js'))).default;
-const VM = (await import(path.join(INTEGRATED, 'node_modules/scratch-vm/src/index.js'))).default;
-const {interpretTrace} = await import(path.join(INTEGRATED, 'src/lib/trace-oracle.js'));
+const SB3Creator = (await import(path.join(SOURCE, 'src/lib/sb3-creator.js'))).default;
+const VM = (await import('scratch-vm/src/index.js')).default;
+const {interpretTrace} = await import(path.join(SOURCE, 'src/lib/trace-oracle.js'));
 const {ControllerPanel} = await import(path.join(GUI, 'lib/bw-board/controller.js'));
 const {bindPanelToVariables} = await import(path.join(GUI, 'lib/bw-board/controller-binding.js'));
 
