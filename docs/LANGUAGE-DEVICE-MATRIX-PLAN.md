@@ -336,6 +336,21 @@ DoD:
 - [ ] §4.6's exclusion of `smallerc-wasm/compiler.js` is removed because it
       now has a caller; `no-dead-overlay-modules` stays green.
 
+**N2b. The 8086 C route cannot compile a numeric variable. OPEN 2026-09-07** (found on P2's adc attempt).
+SmallerC's tiny model (.COM) has no `long`, and generateC types EVERY Scratch number as `static long`, so
+`set myvar to 5` fails at the compiler with "Unexpected token long": no i8086 C program that stores a value
+compiles today; pin and shiftOut passed only because they use no numeric variable. The C × 8086 cell
+over-claims until this is named. Order (worker): (1) a lite test proving the failure by name; the route
+REFUSES before the compiler with a learner-actionable sentence; the cell note names the edge and this id;
+the corpus count of programs excluded on i8086. (2) The fix chosen by measurement between a SmallerC model
+or flag that provides a 32-bit long in a .COM and an i8086-specific numeric model in the emitter (int-16
+with the range stated, or an emulated two-word long), each costed by the corpus pass count it buys; then
+built upstream with golden tests for every other family. Two constraints: a number that does not fit the
+chosen model is REFUSED at compile time by name, never wrapped silently (the silent-tone species); and the
+acceptance test is the existing differential — the ASM lowering (`pseudocode-8086.js` has its own numeric
+model) and the C route must agree on the bench for every admitted program, and a width disagreement is a
+finding to name, not to paper over.
+
 **N3. MicroPython on the Pico, in the simulator.** **MEASURED 2026-09-05, premise inverted**
 (delegate, verified independently by lego-ac): MicroPython v1.22.2 **boots to a working REPL**
 in rp2040js with the clean-room bootrom — `print(1+1)` answers `2` over the raw-REPL protocol
@@ -606,8 +621,11 @@ implements it; its 8051 branch is a "not yet implemented" stub and its arm branc
 third clause (bracket-matched, fixture-tested) that also overrides the 8051 base dialect where a verb's own
 8051 branch is a stub — tone becomes avr-only, and the parts matrix corrects **57 → 54 of 147** (tone loses
 8051, arm and the rp2040≡arm mirror). Product finding: `set <buzzer> to N hz` compiles to a SILENT no-op on
-the STC12 and Pico today — a named 8051 gap now in the matrix row and the C tab's 8051 note. Remaining P2:
-`adc` (the last real multi-family candidate). Finding on the way: a byte-sized C parameter makes SmallerC
+the STC12 and Pico today — a named 8051 gap now in the matrix row and the C tab's 8051 note. **P2 CLOSED 2026-09-07** (sb3-creator `e2e3f96`,
+`docs/DRIVER-PROTOCOL-BUS.md` § "P2 closed"): split where the protocol was real — shiftOut, motor, servo —
+removing 111 strict / 93 classified duplicated lines (126 → 15 strict across the multi-variant verbs);
+adc's five bodies are different silicon sharing only a signature, measured-not-split; its i8086 driver
+was written and reverted because of N2b below. Finding on the way: a byte-sized C parameter makes SmallerC
 emit MOVZX (80386), which the 8086 assembler rejects, so scalars widen to `unsigned` (C tab note, both
 locales). **P3.**
 MicroPython protocol drivers for the same part set, proven by differential
