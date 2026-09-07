@@ -709,6 +709,27 @@ because the RP2040 is Thumb-only ARMv6-M and none of them target it. Follow-on w
 compile the pin program, and run it on rp2040js so the P3 differential EXECUTES the C side (a wrong emitter
 address then faults or mismatches at runtime, not just against the anchor).
 
+**N11a. Door 1 built — the P3 differential's C side is now EXECUTED. DONE 2026-09-07** (worker). generateC's
+Pico output turned out to be ALREADY freestanding — its own header says "Freestanding Cortex-M0+: no SDK, no
+headers", it reaches the hardware through raw `BW_MMIO` macros, and it is written for this emulator ("this build
+runs without a bootrom, so do it here"; "the emulator fast-forwards the sleep"). So the glue is small
+(`scripts/build-pico-c-image.mjs`): an INITIAL boot vector (SP + reset→a shim that zeroes .bss and calls the
+emitted `main`) and a linker script placing `.text`/`.rodata` in flash at 0x10000000 (the boot vector at
+0x10000100 = the harness's VECTOR_TABLE) and `.bss` in SRAM; arm-none-eabi-gcc compiles, objcopy flattens, and
+the result is packed as an RP2040 UF2 that the EXISTING boot harness's `parseUF2` decodes and `createPicoMachine`
+runs with `entry: 'vector'` — which jumps straight at the boot vector, so the clean-room bootrom is never touched
+(a freestanding pin program makes no ROM calls, dodging the Kaluma `rom_table_lookup` wall). It is an ORACLE for
+the emitted C's GPIO logic, not a silicon stage-2 boot claim. The P3 differential (`test/p3-pin-c-mpy-differential`)
+now runs BOTH routes at the same board boundary: GP25 output high→low and GP14 input, identical between the
+compiled C and the live MicroPython. A mutation — flip the GP25 SIO output mask to GP24 in the emitted C — makes
+the compiled program stop driving GP25, and the runtime differential reddens naming GP25 (proven, C-only so it
+needs no firmware). Toolchain: the box's arm-none-eabi-gcc locally; in CI the sha-pinned ARM GNU 13.2.rel1
+(`scripts/sync-arm-toolchain.mjs`, content-hash — verified byte-for-byte before extract, `--version` asserted
+after, declared in `test/fetch-pinning.test.mjs`, cached by sha, own 8-min timeout), fetched only in the job that
+runs the differential; the executed-C legs SKIP BY NAME when no toolchain is present, and the static anchor still
+runs everywhere, so the C side is never left with no gate. **N11 (the SHIPPED in-browser button = Door 2,
+clang→WASM ~15–40 MB) stays OPEN** — N11a is the CI-differential oracle, not the offline compiler.
+
 ### Lane L — lowered halves to add or complete
 
 **L1. ASM reader with named refusals.** Owner: lego-ac. **v1 LANDED 2026-09-05** (`ea305f40f`) (`lib/bw-asm/asm-8086-to-pseudocode.js`, `test/asm-8086-to-pseudocode.test.mjs`): the emitter's own shapes for the 8086 — the DX:AX stack-machine expression stream, the three comparison templates, and/or/not, set/change/say/print/wait/wait until/repeat/repeat until/if/if-else/forever/stop — read back and re-lower to byte-identical assembly over a five-program corpus; hand-written assembly (every fixture in `examples-i8086.js`) refused as foreign, the scheduler form refused with its script count, pins/ports/displays/tone/PWM/keypad/broadcast/say-for-secs refused by feature name; census (after the scheduler form and the pin family landed on the same branch) 29 lifted / 1 refused / 10 unprobed of 40 anchors, and the lifted set may only grow. Pins and ports read back with declarations synthesised from their use; ACTIVE LOW is not recoverable from the bytes and is warned about (the bytes are identical either way); an INPUT nothing reads is a named refusal because the 8255 control word could not be re-derived. The scheduler form reads back one WHEN per task. The ASM tab's To blocks is wired for the 8086 in source mode. Four mutations proven red. Not yet: keypad, displays, tone, PWM, broadcast, say-for-secs. **Re-scoped:** the 8051 half of L1 is not needed — the only 8051 assembly Brickwright produces is a compiler listing of C that the C tab already reads back; hand-written 8051 assembly is foreign by the same rule as hand-written 8086 assembly.
