@@ -203,8 +203,15 @@ try {
     check('the line names the part that refused', /^ppi1:/.test(line), line);
     check('the line carries the SYMPTOM, not only the feature',
         /waits on a bit that never moves/.test(line), line);
+    // The gate can only see rendered text, so it pins the number; the unit test
+    // carries the assertion that survives a contract move (rendered address ==
+    // the collector's row). This number is the VENDORED CONTRACT'S and moves
+    // with the pin: 03h until bw-board 2e7143af7, 63h after, because the DOS
+    // bench bases its 8255 at 60h and `at` became the bus port rather than the
+    // register offset.
     check('the line carries the address, in the space the row declares',
-        /port 03h/.test(line), line);
+        /port 63h/.test(line),
+        `${line} — if this says 03h the vendored pin predates 2e7143af7`);
     check('one occurrence prints no count', !/refusals/.test(line), line);
     const part = await page.locator('[data-debug-chip-refusal]').first()
         .getAttribute('data-debug-chip-refusal-part');

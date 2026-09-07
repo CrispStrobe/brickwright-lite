@@ -119,6 +119,10 @@ test('the breadboard bench refuses through its 8255, based at port 0', () => {
     assert.match(lines[0].text, /waits on a bit that never moves/,
         'the symptom must say what the PROGRAM sees — a status bit that never moves — not merely '
         + 'that a mode is unmodelled');
+    // 03h HERE IS CORRECT AND STAYS CORRECT: this board bases its 8255 at 0, so
+    // the control register IS port 03h. The DOS bench's 63h and this 03h are the
+    // same register on two boards, which is what bw-board 2e7143af7 made
+    // expressible — before it, both said 03h and only this one was honest.
     assert.match(lines[0].text, /port 03h/,
         'the control port the mode word arrived on, and now SAID to be a port');
     // And the clean program the browser gate runs first must stay clean here too.
@@ -162,9 +166,37 @@ test('the DOS bench the ASM tab boots has chips, and its 8255 is at 60h', async 
     // same number for two different things — raised with lego-be as an upstream
     // item. Pinned to what the row ACTUALLY says, so this gate tracks the
     // shipped contract rather than what the wording suggests.
-    assert.match(lines[0].text, /port 03h/,
-        'the row reports the register OFFSET, not the bus port. If this ever reads 63h the '
-        + 'upstream fix landed and the browser gate\'s assertion moves with it.');
+    // TWO ASSERTIONS, ANSWERING DIFFERENT QUESTIONS, and neither substitutes for
+    // the other. A faithful renderer showing a wrong number passes the first; a
+    // correct number badly rendered passes the second.
+    //
+    // FIRST: the renderer is faithful to the ledger, whatever the ledger says.
+    // True before bw-board 2e7143af7 and after it, so it cannot go stale — which
+    // the number below can, and did.
+    const [row] = m.chipRefusals();
+    const hex = (n) => `${n.toString(16).toUpperCase().padStart(2, '0')}h`;
+    assert.match(lines[0].text, new RegExp(`port ${hex(row.at)}`),
+        `the panel drew an address the collector did not report: row.at=${hex(row.at)}, `
+        + `line=${JSON.stringify(lines[0].text)}`);
+
+    // SECOND: the ledger currently says the right thing FOR THIS BOARD. This
+    // number is the vendored contract's and MOVES WHEN THE PIN MOVES — it read
+    // 03h until bw-board 2e7143af7, which made `at` the bus port rather than the
+    // register offset, so a chip based at 60h now reports 63h and the same chip
+    // on a breadboard based at 0 still reports 03h. Two different true things
+    // where before both said 03h and only one board was honest.
+    //
+    // THE MARKER THAT USED TO BE HERE DID ITS JOB, and is replaced rather than
+    // removed. It read "if this ever reads 63h the upstream fix landed and the
+    // browser gate's assertion moves with it" — and when lego-be measured the
+    // rebased pin, that sentence came back verbatim as the failure message
+    // instead of "expected /port 03h/ to match". The reason written INTO the
+    // assertion told the story; the assertion alone would have told a puzzle.
+    assert.match(lines[0].text, /port 63h/,
+        'the DOS bench bases its 8255 at 60h, so its control register is port 63h. If this reads '
+        + '03h the vendored bw-board pin predates 2e7143af7 and this gate is ahead of it; if it '
+        + 'reads something else again, the contract moved and both this and the browser gate '
+        + 'follow it.');
 });
 
 test('a machine that has refused nothing produces no line at all', () => {
