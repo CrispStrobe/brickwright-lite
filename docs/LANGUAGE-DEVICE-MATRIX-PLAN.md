@@ -188,7 +188,9 @@ the build when the snapshot is stale against the checkout. The table's hosted
 facts are checked against the snapshot, so a newly-deployed compile/assemble
 target turns the conformance gate red by name. A nightly workflow step that
 diffs the snapshot against the LIVE service's `/health` target lists (which N1
-taught it reports) is the still-to-do half.
+taught it reports) is the still-to-do half. **The T2 nightly workflow exists since 2026-09-07:
+`.github/workflows/nightly-corpus-differential.yml` (T13 put the corpus differential there, its only
+execution); the `/health` snapshot diff belongs in that same workflow when it is built — one nightly, not two.**
 DoD:
 - [ ] The three contradictions in §2 are red on the first run (that is the
       proof the gate bites), then fixed by T5 and green.
@@ -353,6 +355,18 @@ census scans `.github/`, so the re-include list's own entries were mentions and 
 (GATES thirtieth species); two docs whose readers had left were still listed. Rule: a workflow's trigger entry is not a
 mention; a name between escaped backticks is reported (`outputOnlyMentions`), not counted; the stale probe is a doc chosen
 at run time. Re-includes 18 → 15. An edit to this file alone now starts no run.
+
+**T13. The CI skip census: every skipped test points at the one place it executes. BUILT 2026-09-07** (lego-b9;
+lego-ac's ask). MEASURED from CI's own TAP over the last 20 green main runs: 21 tests skipped in the unit step (corpus job
+0); 18 had never executed in any run they existed in — twelve for the Pico firmware the same workflow fetches one job over,
+four for sibling checkouts only a box has, one for BW_BOARD_HEAD_DIR (set nowhere), one for CORPUS_DIFFERENTIAL (set
+nowhere), one for a corpus at an absolute box path; three environment-dependent on BW_BOARD_DIR; five files recorded nowhere
+as ever having run. Fixed first: the build job fetches the firmware before the unit step (sha-cached, tolerated absent by
+name); RETRO_CORPUS_8086_DIR replaces the absolute path; corpus-differential runs nightly in its own workflow. Rule: the
+census reporter records each file's skips with reason; check-test-run holds every skip to a pointer in LANES ("Skips that
+execute elsewhere": file + verbatim reason → dated box run or a workflow that names the file) and cross-checks the TAP's
+`# SKIP` count; `gen-ci-skips.mjs --fetch` writes docs/generated/ci-skip-census.json; test/ci-skip-census.test.mjs holds
+readings to pointers and proves the mutations.
 
 **T12. Every browser gate's budget is derived from measurement, never typed. BUILT 2026-09-07** (lego-b9;
 lego-ac's ask). The per-step `timeout-minutes` of 2026-09-05 were "~3× each step's maximum over the last five

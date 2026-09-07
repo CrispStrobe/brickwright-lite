@@ -1,0 +1,324 @@
+{
+ "generatedAt": "2026-09-07T14:46:40.136Z",
+ "repo": "CrispStrobe/brickwright-lite",
+ "branch": "main",
+ "runs": [
+  {
+   "run": 34131667316,
+   "sha": "fd32820a3"
+  },
+  {
+   "run": 34131143343,
+   "sha": "396dc9d11"
+  },
+  {
+   "run": 34128478139,
+   "sha": "cfe10b5c7"
+  },
+  {
+   "run": 34127563907,
+   "sha": "88ec1cd05"
+  },
+  {
+   "run": 34126007655,
+   "sha": "9d98aa9eb"
+  },
+  {
+   "run": 34125145315,
+   "sha": "e9564e30e"
+  },
+  {
+   "run": 34119648099,
+   "sha": "9d8e54319"
+  },
+  {
+   "run": 34118997841,
+   "sha": "ac15b8295"
+  },
+  {
+   "run": 34117114146,
+   "sha": "c60f827b9"
+  },
+  {
+   "run": 34113154528,
+   "sha": "e42b6bebb"
+  },
+  {
+   "run": 34112210638,
+   "sha": "39688b024"
+  },
+  {
+   "run": 34111628699,
+   "sha": "491007b3e"
+  },
+  {
+   "run": 34111028136,
+   "sha": "256be3925"
+  },
+  {
+   "run": 34108111864,
+   "sha": "dc9e44951"
+  },
+  {
+   "run": 34106774962,
+   "sha": "3ecb72b7c"
+  },
+  {
+   "run": 34105342861,
+   "sha": "45fe94bb7"
+  },
+  {
+   "run": 34104646467,
+   "sha": "dd78117c4"
+  },
+  {
+   "run": 34103619336,
+   "sha": "50838bc9c"
+  },
+  {
+   "run": 34102511627,
+   "sha": "37d337935"
+  },
+  {
+   "run": 34101768263,
+   "sha": "67fcc8cc7"
+  }
+ ],
+ "jobs": [
+  "build",
+  "corpus"
+ ],
+ "tests": [
+  {
+   "job": "build",
+   "name": "corpus differential: rotating sample agrees",
+   "reason": "CORPUS_DIFFERENTIAL not set",
+   "file": "test/corpus-differential.test.mjs",
+   "existed": 20,
+   "skipped": 20,
+   "executed": 0,
+   "reasonLive": true,
+   "class": "a"
+  },
+  {
+   "job": "build",
+   "name": "the shipped text is the upstream file, byte for byte",
+   "reason": "no corpus checkout at /mnt/volume1/code/retro-corpus-8086/8086-ASSEMBLY-LANGUAGE-PROGRAMS/Source Code — set I8086_CORPUS to verify provenance",
+   "file": "test/i8086-asm-examples.test.mjs",
+   "existed": 20,
+   "skipped": 20,
+   "executed": 0,
+   "reasonLive": false,
+   "class": "a"
+  },
+  {
+   "job": "build",
+   "name": "the ancestry claim is re-checked live when a bw-board checkout is available",
+   "reason": "set BW_BOARD_DIR to re-verify against real history",
+   "file": "test/i8086-bios-provenance.test.mjs",
+   "existed": 20,
+   "skipped": 5,
+   "executed": 15,
+   "reasonLive": true,
+   "class": "b"
+  },
+  {
+   "job": "build",
+   "name": "P3: C and MicroPython drive the same GPIO direction and latch, per pin",
+   "reason": "needs RPI_PICO-20240222-v1.22.2.uf2 — run `npm run sync:picomicropython` once to fetch it (650 KB, sha256-pinned, gitignored)",
+   "file": "test/p3-pin-c-mpy-differential.test.mjs",
+   "existed": 19,
+   "skipped": 19,
+   "executed": 0,
+   "reasonLive": true,
+   "class": "a"
+  },
+  {
+   "job": "build",
+   "name": "P3: the emitter's Pico GPIO addresses match what rp2040js decodes (anchor)",
+   "reason": "needs RPI_PICO-20240222-v1.22.2.uf2 — run `npm run sync:picomicropython` once to fetch it (650 KB, sha256-pinned, gitignored)",
+   "file": "test/p3-pin-c-mpy-differential.test.mjs",
+   "existed": 19,
+   "skipped": 19,
+   "executed": 0,
+   "reasonLive": true,
+   "class": "a"
+  },
+  {
+   "job": "build",
+   "name": "the real firmware parses to a flash image based at 0x10000000",
+   "reason": "needs RPI_PICO-20240222-v1.22.2.uf2 — run `npm run sync:picomicropython` (650 KB, sha256-pinned, gitignored)",
+   "file": "test/pico-image-builder.test.mjs",
+   "existed": 20,
+   "skipped": 20,
+   "executed": 0,
+   "reasonLive": true,
+   "class": "a"
+  },
+  {
+   "job": "build",
+   "name": "entering past boot stage 2 reproduces the vector-table hard_assert",
+   "reason": "needs RPI_PICO-20240222-v1.22.2.uf2 — run `node scripts/probe-pico-micropython.mjs` once to fetch it into artifacts/ (650 KB, sha256-pinned, gitignored)",
+   "file": "test/pico-micropython-boot.test.mjs",
+   "existed": 20,
+   "skipped": 20,
+   "executed": 0,
+   "reasonLive": true,
+   "class": "a"
+  },
+  {
+   "job": "build",
+   "name": "MicroPython enumerates as a USB CDC device and gives a REPL prompt",
+   "reason": "needs RPI_PICO-20240222-v1.22.2.uf2 — run `node scripts/probe-pico-micropython.mjs` once to fetch it into artifacts/ (650 KB, sha256-pinned, gitignored)",
+   "file": "test/pico-micropython-boot.test.mjs",
+   "existed": 20,
+   "skipped": 20,
+   "executed": 0,
+   "reasonLive": true,
+   "class": "a"
+  },
+  {
+   "job": "build",
+   "name": "the flash ROM functions decide whether the filesystem works",
+   "reason": "needs RPI_PICO-20240222-v1.22.2.uf2 — run `node scripts/probe-pico-micropython.mjs` once to fetch it into artifacts/ (650 KB, sha256-pinned, gitignored)",
+   "file": "test/pico-micropython-boot.test.mjs",
+   "existed": 20,
+   "skipped": 20,
+   "executed": 0,
+   "reasonLive": true,
+   "class": "a"
+  },
+  {
+   "job": "build",
+   "name": "the raw REPL protocol in pico-repl.js drives the emulated device",
+   "reason": "needs RPI_PICO-20240222-v1.22.2.uf2 — run `node scripts/probe-pico-micropython.mjs` once to fetch it into artifacts/ (650 KB, sha256-pinned, gitignored)",
+   "file": "test/pico-micropython-boot.test.mjs",
+   "existed": 20,
+   "skipped": 20,
+   "executed": 0,
+   "reasonLive": true,
+   "class": "a"
+  },
+  {
+   "job": "build",
+   "name": "a MicroPython program that drives GP25 toggles the simulated pin",
+   "reason": "needs RPI_PICO-20240222-v1.22.2.uf2 — run `npm run sync:picomicropython` once to fetch it (650 KB, sha256-pinned, gitignored)",
+   "file": "test/pico-micropython-gpio.test.mjs",
+   "existed": 20,
+   "skipped": 20,
+   "executed": 0,
+   "reasonLive": true,
+   "class": "a"
+  },
+  {
+   "job": "build",
+   "name": "N3d mutation: with drain() removed, the same program times out waiting for OK",
+   "reason": "needs RPI_PICO-20240222-v1.22.2.uf2 — run `npm run sync:picomicropython` once to fetch it (650 KB, sha256-pinned, gitignored)",
+   "file": "test/pico-sim-transport-drain.test.mjs",
+   "existed": 19,
+   "skipped": 19,
+   "executed": 0,
+   "reasonLive": true,
+   "class": "a"
+  },
+  {
+   "job": "build",
+   "name": "N3d: a program past one buffer runs live through the node oracle (drain carries it)",
+   "reason": "needs RPI_PICO-20240222-v1.22.2.uf2 — run `npm run sync:picomicropython` once to fetch it (650 KB, sha256-pinned, gitignored)",
+   "file": "test/pico-sim-transport-drain.test.mjs",
+   "existed": 19,
+   "skipped": 19,
+   "executed": 0,
+   "reasonLive": true,
+   "class": "a"
+  },
+  {
+   "job": "build",
+   "name": "N3d: the node transport drops CDC bytes past TX_FIFO_SIZE, and drain() clears the buffer",
+   "reason": "needs RPI_PICO-20240222-v1.22.2.uf2 — run `npm run sync:picomicropython` once to fetch it (650 KB, sha256-pinned, gitignored)",
+   "file": "test/pico-sim-transport-drain.test.mjs",
+   "existed": 19,
+   "skipped": 19,
+   "executed": 0,
+   "reasonLive": true,
+   "class": "a"
+  },
+  {
+   "job": "build",
+   "name": "sync-bw-board.mjs --only mna.js --dir <checkout at another sha> refuses by name and leaves vendor-pins.json byte-identical",
+   "reason": "BW_BOARD_DIR unset",
+   "file": "test/pin-only-moves-with-flag.test.mjs",
+   "existed": 18,
+   "skipped": 3,
+   "executed": 15,
+   "reasonLive": true,
+   "class": "b"
+  },
+  {
+   "job": "build",
+   "name": "sync-bw-circuit-ui.mjs --dir <checkout at another sha> refuses by name and leaves vendor-pins.json byte-identical",
+   "reason": "BW_CIRCUIT_UI_DIR unset",
+   "file": "test/pin-only-moves-with-flag.test.mjs",
+   "existed": 18,
+   "skipped": 18,
+   "executed": 0,
+   "reasonLive": true,
+   "class": "a"
+  },
+  {
+   "job": "build",
+   "name": "sync-examples.mjs --dir <checkout at another sha> refuses by name and leaves vendor-pins.json byte-identical",
+   "reason": "SB3_CREATOR_DIR unset",
+   "file": "test/pin-only-moves-with-flag.test.mjs",
+   "existed": 18,
+   "skipped": 18,
+   "executed": 0,
+   "reasonLive": true,
+   "class": "a"
+  },
+  {
+   "job": "build",
+   "name": "sync-flasher.mjs --dir <checkout at another sha> refuses by name and leaves vendor-pins.json byte-identical",
+   "reason": "STC_COMPILER_DIR unset",
+   "file": "test/pin-only-moves-with-flag.test.mjs",
+   "existed": 18,
+   "skipped": 18,
+   "executed": 0,
+   "reasonLive": true,
+   "class": "a"
+  },
+  {
+   "job": "build",
+   "name": "sync-sb3creator.mjs --dir <checkout at another sha> refuses by name and leaves vendor-pins.json byte-identical",
+   "reason": "SB3_CREATOR_DIR unset",
+   "file": "test/pin-only-moves-with-flag.test.mjs",
+   "existed": 18,
+   "skipped": 18,
+   "executed": 0,
+   "reasonLive": true,
+   "class": "a"
+  },
+  {
+   "job": "build",
+   "name": "an unscoped sync writes nothing new and refuses both by name",
+   "reason": "BW_BOARD_DIR unset -- the unscoped-sync refusal is NOT verified here",
+   "file": "test/vendor-absent-by-design.test.mjs",
+   "existed": 20,
+   "skipped": 20,
+   "executed": 0,
+   "reasonLive": false,
+   "class": "a"
+  },
+  {
+   "job": "build",
+   "name": "upstream has not converged on the lite-only work (needs the bw-board tree)",
+   "reason": "upstream tree not on disk -- cross-tree invariant NOT verified",
+   "file": "test/vendor-identity.test.mjs",
+   "existed": 20,
+   "skipped": 5,
+   "executed": 15,
+   "reasonLive": true,
+   "class": "b"
+  }
+ ]
+}

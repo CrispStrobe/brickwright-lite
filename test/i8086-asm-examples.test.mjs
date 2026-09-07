@@ -28,7 +28,7 @@
  *
  * PROVENANCE IS CHECKED WHEN IT CAN BE. These are MIT files carried verbatim
  * from a corpus that is not in this repo. When a checkout is present
- * (I8086_CORPUS, or the box's usual clone path) the shipped text is compared
+ * (RETRO_CORPUS_8086_DIR) the shipped text is compared
  * against the upstream file; when it is not, the gate says so instead of
  * quietly passing. Either way the attribution fields and the in-source
  * header are required, because those are the terms.
@@ -50,8 +50,12 @@ const forbiddenFetch = () => {
     throw new Error('an 8086 example escaped to the hosted assembler');
 };
 
-const CORPUS = process.env.I8086_CORPUS ||
-    '/mnt/volume1/code/retro-corpus-8086/8086-ASSEMBLY-LANGUAGE-PROGRAMS/Source Code';
+// The upstream corpus is a checkout on whoever's box runs this; it is named by
+// RETRO_CORPUS_8086_DIR (the "Source Code" directory) and never by a path here —
+// a default absolute path binds the test to one machine and reads as "no corpus"
+// everywhere else (gate-shapes AMBIENT-BINDING; plan T13). Unset → skip by
+// name; set → the assertions run, and a wrong path is red, not a skip.
+const CORPUS = process.env.RETRO_CORPUS_8086_DIR;
 
 test('the 8086 has examples, and they are the ones this file knows about', () => {
     assert.ok(I8086_EXAMPLES.length >= 5,
@@ -107,8 +111,8 @@ test('every example carries the attribution it ships under', () => {
 });
 
 test('the shipped text is the upstream file, byte for byte', {
-    skip: existsSync(CORPUS) ? false :
-        `no corpus checkout at ${CORPUS} — set I8086_CORPUS to verify provenance`
+    skip: CORPUS ? false :
+        'RETRO_CORPUS_8086_DIR unset — the shipped 8086 examples are not verified against the upstream corpus here'
 }, () => {
     for (const ex of I8086_EXAMPLES) {
         const path = join(CORPUS, ex.file);

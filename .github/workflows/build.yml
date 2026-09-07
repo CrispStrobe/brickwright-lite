@@ -494,6 +494,28 @@ jobs:
           BIN_DIR=$(grep -oE '^BIN_DIR=.*' /tmp/arm.out | tail -1 | cut -d= -f2)
           if [ -n "$BIN_DIR" ]; then echo "$BIN_DIR" >> "$GITHUB_PATH"; fi
 
+      # The Pico MicroPython firmware (650 KB, sha256-pinned, gitignored) gates
+      # TWELVE unit tests — pico-micropython-boot, pico-sim-transport-drain,
+      # p3-pin-c-mpy-differential, pico-image-builder, pico-micropython-gpio —
+      # and until 2026-09-07 this job never fetched it, so none of the twelve
+      # had executed in any of 20 green main runs, while the browser job below
+      # fetched the same file for its sim gate (plan T13). Cached by the sha256
+      # alone, like the ARM toolchain; tolerated absent BY NAME: on a fetch
+      # failure the twelve skip with their reason, and every skip in this job
+      # must point at where it executes (check-test-run, LANES.md).
+      - name: Restore the sha-pinned Pico MicroPython firmware from cache
+        id: pico_cache
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: artifacts/pico-micropython
+          # FIRMWARE.sha256 in scripts/probe-pico-micropython.mjs; new bytes are a new key.
+          key: pico-micropython-e92c2a253d2d4830d56cd6aebae1bbc6c913f413122dabba3cc2de74b984bba9
+      - name: Fetch the sha-pinned Pico MicroPython firmware for the unit tests (tolerated absent)
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        timeout-minutes: 3
+        run: npm run sync:picomicropython || echo "::warning::pico firmware sync failed — the twelve firmware-gated unit tests will skip by name"
+
       - name: Run unit tests
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         run: |

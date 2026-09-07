@@ -1,0 +1,46 @@
+name: Nightly corpus differential
+
+# The corpus differential (test/corpus-differential.test.mjs) compares the
+# emitter against the hosted compile service over a rotating six-pair sample
+# of the lesson gallery. It needs the network and ~30–60 s a pair, so the unit
+# step never runs it: CORPUS_DIFFERENTIAL was set nowhere, and the test had
+# executed in none of 20 green main runs and was recorded nowhere (plan T13,
+# 2026-09-07). This workflow is the one place it executes; LANES.md's
+# "Skips that execute elsewhere" points here, and check-test-run holds the
+# pointer to a workflow that names the test file.
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-corpus-differential
+  cancel-in-progress: false
+
+jobs:
+  corpus-differential:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: { node-version: 22 }
+      - name: Install source-test dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Run the corpus differential against the hosted service
+        # Six pairs at up to 60 s each is six minutes; twenty is the margin for
+        # a slow service, well under the job ceiling so a hang is named here.
+        timeout-minutes: 20
+        env:
+          CORPUS_DIFFERENTIAL: '1'
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap --test-reporter-destination=stdout test/corpus-differential.test.mjs | tee /tmp/corpus-differential.tap
+          # The one test this workflow exists for must have EXECUTED, not skipped.
+          if grep -qE '# SKIP' /tmp/corpus-differential.tap; then
+            echo "::error::corpus differential was skipped in the workflow that is its only execution"
+            exit 1
+          fi
