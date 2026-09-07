@@ -4269,7 +4269,13 @@ class PseudocodeImporter extends React.Component {
                             {this.L.runBasic}
                         </button>
                     ) : null}
-                    {this.state.lang === 'c' ? <span style={{fontSize: 13, color: '#64748b'}}>{this.L.cNote}</span> : null}
+                    {this.state.lang === 'c' ? (
+                        <button type="button" onClick={() => this.setState(s => ({showCInfo: !s.showCInfo}))}
+                            style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 18, height: 18,
+                                padding: 0, border: 'none', borderRadius: '50%', background: this.state.showCInfo ? '#4c97ff' : '#e2e8f0',
+                                color: this.state.showCInfo ? '#fff' : '#475569', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'serif'}}
+                            title={this.L.cNote.slice(0, 60)} data-testid="bw-c-info-toggle">i</button>
+                    ) : null}
                     {this.state.lang === 'basic' ? (
                         <button type="button" onClick={() => this.setState(s => ({showBasicInfo: !s.showBasicInfo}))}
                             style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 18, height: 18,
@@ -4342,6 +4348,22 @@ class PseudocodeImporter extends React.Component {
                         borderRadius: 8, fontSize: 13, color: '#334155', marginTop: 4, flexShrink: 0}}
                         data-testid="bw-asm-info-panel">
                         {this.L.asmNote}
+                    </div>
+                )}
+                {/* The C note is a paragraph, not a phrase: 700 characters naming the
+                    silent-tone gap, the 8086 port-I/O primitives and the MOVZX trap. It
+                    used to render as a bare inline span in this toolbar row, which is
+                    the "too small and does not wrap" the owner reported. It now uses the
+                    same (i) panel BASIC and ASM already had, and wraps long tokens
+                    (bw_outb(port, value), stc-compiler.vercel.app) instead of pushing
+                    the row sideways. */}
+                {this.state.lang === 'c' && this.state.showCInfo && (
+                    <div style={{padding: '10px 14px', background: '#eff6ff', border: '1px solid #bfdbfe',
+                        borderRadius: 8, fontSize: 13, lineHeight: 1.5, color: '#334155', marginTop: 4,
+                        flexShrink: 0, maxWidth: 'min(880px, 94vw)', whiteSpace: 'pre-wrap',
+                        overflowWrap: 'anywhere'}}
+                        data-testid="bw-c-info-panel">
+                        {this.L.cNote}
                     </div>
                 )}
                 {/* VDU terminal for BBC BASIC — renders DRAW/MOVE/PLOT graphics */}
