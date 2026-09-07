@@ -33,6 +33,7 @@ const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const DOC = join(repo, 'docs', 'VENDOR-DIVERGENCE-I8086-MACHINE.md');
 const SYNC = join(repo, 'scripts', 'sync-bw-board.mjs');
 const VENDORED = join(repo, 'overlay', 'scratch-gui', 'src', 'lib', 'bw-board');
+const PINS = join(repo, 'vendor-pins.json');
 
 const spec = () => JSON.parse(readFileSync(DOC, 'utf8').match(/```json\n([\s\S]*?)\n```/)[1]);
 
@@ -115,9 +116,29 @@ test('an unscoped sync writes nothing new and refuses both by name', (t) => {
     const snapshot = new Map([...before]
         .filter((f) => statSync(join(VENDORED, f)).isFile())
         .map((f) => [f, readFileSync(join(VENDORED, f), 'utf8')]));
+    // THE PIN FILE IS PART OF THE SNAPSHOT, because the run below is allowed to
+    // move the pin -- see --pin. Restored in the `finally`, byte-compared at the
+    // end: this proof must not leave a moved pin behind.
+    const pinsBefore = readFileSync(PINS, 'utf8');
     let out = '';
     try {
-        out = execFileSync('node', [SYNC, '--dir', dir], { encoding: 'utf8', cwd: repo });
+        // --pin, AND WHY. A SECOND guard fires before the absent-by-design check,
+        // the same way the BEHIND one does: an unscoped sync from a tree at any
+        // other sha would move the bw-board pin, and scripts/lib-pin.mjs (plan
+        // T9b) refuses a pin move unless --pin is on the command line. Measured
+        // the first time this proof ever executed in CI (run 34145330880,
+        // 2026-09-07, once build.yml began cloning the default-branch tip for
+        // it): "PinMoveRefused: refusing to move the bw-board pin 5547d4351 ->
+        // d8d606598", and the proof failed "i8088-cycles.js was not refused by
+        // name" -- reading as a broken guard when the guard had never run. In CI
+        // the tip is the pin only in the minutes after a bump, so that is the
+        // ORDINARY case here, not an edge one.
+        //
+        // --pin is the right lever rather than a skip: this proof is about the
+        // per-file refusal, and pin discipline is test/pin-only-moves-with-flag
+        // .test.mjs's subject. The move lands in this worktree's vendor-pins.json
+        // and is restored below.
+        out = execFileSync('node', [SYNC, '--dir', dir, '--pin'], { encoding: 'utf8', cwd: repo });
     } catch (e) {
         out = `${e.stdout || ''}${e.stderr || ''}`;   // refusals exit non-zero, by design
     }
@@ -134,28 +155,33 @@ test('an unscoped sync writes nothing new and refuses both by name', (t) => {
             + 'Pull that checkout.');
         return;
     }
+    // The tree (vendored files AND the pin) goes back before anything is
+    // asserted: a failing assertion must not leave the worktree dirty, which is
+    // how a moved pin could be committed by the next hand that touches it.
+    const restore = () => {
+        for (const [file, text] of snapshot) {
+            if (readFileSync(join(VENDORED, file), 'utf8') !== text) writeFileSync(join(VENDORED, file), text);
+        }
+        if (readFileSync(PINS, 'utf8') !== pinsBefore) writeFileSync(PINS, pinsBefore);
+    };
+    const after = readdirSync(VENDORED).filter((f) => !before.has(f));
+    restore();
+    assert.doesNotMatch(out, /PinMoveRefused|A file sync never moves the pin/,
+        'the pin guard refused this run before the absent-by-design check -- --pin is missing '
+        + 'from the invocation above, or lib-pin now refuses it for another reason');
     for (const f of ['i8088-cycles.js', 'i8088-timing.js']) {
         assert.match(out, new RegExp(`REFUSED ${f.replace('.', '\\.')} \\(absent by design`),
             `${f} was not refused by name`);
     }
-    const after = readdirSync(VENDORED).filter((f) => !before.has(f));
-    // THE RUN MUTATES THE TREE and this test must not leave it dirty. An
-    // unscoped sync legitimately UPDATES files that exist -- that is its job --
-    // and this test only asserts about ones it CREATES. Leaving the updates
-    // behind means the next command sees a dirty worktree it did not make, and
-    // in the worst case someone commits it.
-    //
-    // RESTORED FROM A SNAPSHOT, NOT BY `git checkout`. The first version shelled
-    // out to git, and the shape audit was right to flag it: AMBIENT-BINDING,
+    assert.equal(readFileSync(PINS, 'utf8'), pinsBefore, 'the pin was not put back');
+    // (The restore above runs BEFORE the assertions, and covers both the vendored
+    // files and the pin. An unscoped sync legitimately UPDATES files that exist --
+    // that is its job -- and this test only asserts about ones it CREATES.
+    // RESTORED FROM A SNAPSHOT, NOT BY `git checkout`: the first version shelled
+    // out to git and the shape audit was right to flag it as AMBIENT-BINDING,
     // "'git' resolved from PATH -- the gate may be exercising a tool the build
-    // does not ship". A marker would have declared the dependency; taking the
-    // snapshot removes it, which is the better answer to a rule that says fix
-    // the shape rather than raise the baseline.
-    for (const [file, text] of snapshot) {
-        if (readFileSync(join(VENDORED, file), 'utf8') !== text) {
-            writeFileSync(join(VENDORED, file), text);
-        }
-    }
+    // does not ship". Taking the snapshot removes the dependency rather than
+    // declaring it.)
     assert.deepEqual(after, [],
         `an unscoped sync created ${after.join(', ')} -- the whole point of this entry kind`);
 });
