@@ -222,9 +222,12 @@ against a green tree, confirmed red, and restored byte-for-byte.
 
 ## LED polarity: the retarget drops ACTIVE LOW exactly where it is the lesson
 
-Measured 2026-09-07 against `e3a1f960e` by `scripts/led-polarity-census.mjs`. It
-reports and does not gate. When the repair lands it becomes the gate, and it
-ratchets downward only.
+Measured 2026-09-07 against `e3a1f960e` by `scripts/led-polarity-census.mjs`, and
+re-measured UNCHANGED after the vendor pin bump at `fec0a9edf` moved `bw-board` to
+`2c568ca`. Re-running it across a pin move is not ceremony: the census asks a
+solver for its answers, so a change to the engine under it could move every number
+here without a line of the corpus changing. It reports and does not gate. When the
+repair lands it becomes the gate, and it ratchets downward only.
 
 > **52 inverted, in 4 examples — out of 764 declared output pins, of which only
 > 449 can be decided at all.** Both halves belong in the same breath. 139 pins
