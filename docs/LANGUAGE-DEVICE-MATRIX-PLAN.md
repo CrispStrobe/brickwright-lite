@@ -941,6 +941,65 @@ simply never chooses it.** Reported rather than decided, per the brief: the fix
 is either a part hint in the PIN line (`ANALOG LDR`) or name-based inference, and
 those differ in kind — a hint is a declaration the author controls, inference is
 a guess the generator makes from an identifier. The owner decides.
+**U1-4 measured, and the brief's number does not survive contact (2026-09-07).**
+The dispatched brief said 29 pins in 25 examples are drawn as a part their own
+name contradicts, including buzzers and motors drawn as LEDs. Scanning all
+**1,722 vendored bench files** (2,504 seated parts carrying a `declName`), the
+real figure is **20 contradictions in 2 examples**, and every one is the same
+defect: `ldr` drawn as `potentiometer`, in `03-night-light` and
+`16-ldr-bargraph`.
+
+The output-side claims are NOT true of the shipped benches, and this is the
+useful part: `09-relay-clicker` seats a real `relay` with an NPN and a flyback
+diode, `10-motor-speed` a real `dc_motor` with the same, `60-retro-console` a
+real `buzzer`. Those examples have authored circuits and are correct. The
+direction-only rule the brief describes is real, but it is
+`model/infer-seated.js`, the RUNTIME FALLBACK, which draws only when no authored
+bench exists for the chosen device — so it governs LEARNER-WRITTEN programs, not
+the gallery. That is where fixing it pays, and it is a different argument from
+the one the brief makes.
+
+A first pass at this measurement reported 32, calling twelve `piezo` parts
+defects because it applied a `piezo -> buzzer` synonym without first checking
+whether the part already WAS what the name said. Agreement is not a
+contradiction; the rule now checks derivation before synonyms.
+
+**Both halves are owned upstream, so the fix cannot land here.**
+`model/infer-seated.js` is in bw-circuit-ui's vendor manifest (670 entries) and
+the benches are synced from sb3-creator. `sync-bw-circuit-ui.mjs` refuses to
+sync when a vendored file carries local edits and says why — those patches
+belong upstream first — and `sync-examples.mjs --check` exits non-zero on drift.
+Editing either here would redden the vendor gates or re-stage the 930000d
+incident, where a sync discarded weeks of unupstreamed lite-local work. Neither
+upstream is checked out on this host; both are pinned by sha
+(`bw-circuit-ui@a879732`, `sb3-creator@5d17288`).
+
+**What lite owns and now does:** `scripts/lib/declared-part-kind.mjs` says what a
+declared name asserts — derived first (a name token that IS a footprint kind
+wins outright, so the rule grows as upstream adds kinds), then a small stated
+synonym table, and `null` when the name asserts nothing, so the generator's
+default stands. `sensor` and `heater` deliberately assert nothing: a bare
+"sensor" names no part, and there is no heater footprint, so guessing would
+invent a circuit — the brief's own fourth condition.
+`test/seated-part-matches-declared-name.test.mjs` holds the corpus at exactly 20
+and reddens **in both directions**: a new contradiction fails by name and file,
+and an upstream FIX fails too ("recorded 10, found 9"), so a repair cannot land
+silently and the number cannot rot back. Both mutations fired live against real
+benches, not only in-test.
+
+**The upstream fix is written and pushed (2026-09-07).**
+`bw-circuit-ui@909c9b3` on `lane/declared-part-kind`: `src/model/declared-part-kind.js`
+carries the same derivation, and `infer-seated.js` consults it before the
+direction-only branch. Only two-terminal resistive sensors (ldr, ntc,
+photodiode) and the buzzer are wired from a name — a motor or relay coil needs
+a transistor and a flyback diode, which is what the authored benches draw, and
+synthesising a driver from an identifier would be inventing electrical
+behaviour, so those keep the LED default and a test pins that as a decision.
+85 upstream tests pass; both mutations were fired live. When lego-ac promotes it
+and the lite pin bumps, `test/seated-part-matches-declared-name.test.mjs` will
+fail with "recorded 10, found 9" — that is the intended signal, and whoever
+lowers the number does it in the pin-bump commit with the sha in the message.
+
 
 ### Lane P — peripherals (part profiles), summarised; full detail in its own plan
 
