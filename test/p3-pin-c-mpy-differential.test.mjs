@@ -19,14 +19,14 @@
  * of ours), so a wrong address in the emitter reddens instead of matching a
  * regex.
  *
- * WHAT IS RUN ON THE MICROPYTHON SIDE. The emitter's PIN-DRIVER lines
- * (`Pin(n, ...)` and `.value(...)`), extracted verbatim from generateMicroPython's
- * output — not a hand-written snippet. The FULL generated program is NOT run
- * live: it overflows the simulated device's USB-CDC RX buffer, because the sim
- * transport's write does not drain the buffer the way silicon does (silicon
- * executes while the host writes; the sim executes only on read). That is a real
- * defect in the sim transport, filed as N3d; here the driver lines run (they fit
- * one buffer) and the full-program live run pends N3d.
+ * WHAT IS RUN ON THE MICROPYTHON SIDE. The FULL generated program — the exact
+ * `.py` generateMicroPython emits, scheduler and green-flag handler and all,
+ * self-started on the sim. It is ~1.2 KB, past the device's 512-byte USB-CDC RX
+ * buffer, and runs live because N3d gave the node-oracle transport a `drain()`:
+ * `writeChunked` now pumps the emulated device between packets so it consumes the
+ * buffer the way silicon does (silicon executes while the host writes). Before
+ * N3d the full program overflowed the buffer and only the extracted pin-driver
+ * lines could run; that caveat is closed — see `test/pico-sim-transport-drain.test.mjs`.
  *
  * Skips BY NAME (loud, exact command) without the integrated tree + firmware —
  * `BW_INTEGRATED_ROOT` overrides the dependency root; no sibling path is
@@ -126,37 +126,26 @@ function mockBoard () {
         advanceTo () {}, readPin () { return 0; }, readAnalog () { return 0; }};
 }
 
-/** The emitter's pin driver, lifted verbatim from generateMicroPython's output:
- *  every `_pin_* = Pin(...)` setup and every `_pin_*.value(...)` / `... =
- *  _pin_*.value()` op, in order, dedented to module level. These are the lines
- *  that touch a pin — the scheduler wrapper does not — and they fit one CDC
- *  buffer, so they run where the full program (N3d) cannot yet. If the generator
- *  stops emitting `Pin`/`.value`, this lifts nothing and the run drives no pin,
- *  reddening the differential — it cannot silently pass on an empty driver. */
-function driverLines (py) {
-    const lines = [];
-    for (const raw of py.split('\n')) {
-        const l = raw.trim();
-        if (/^_pin_\w+ = Pin\(/.test(l)) lines.push(l);
-        else if (/^_pin_\w+\.value\(/.test(l) || /^\w+ = _pin_\w+\.value\(\)/.test(l)) lines.push(l);
-    }
-    assert.ok(lines.some(l => l.includes('Pin(')), 'no Pin driver lifted from generateMicroPython output');
-    return 'from machine import Pin\n' + lines.join('\n');
-}
-
+/** Run the WHOLE generated program on the sim — the exact `.py`, not a lifted
+ *  subset. Past N3d the node-oracle transport drains between packets, so a
+ *  program larger than one CDC buffer (this one is ~1.2 KB) reaches the device;
+ *  its green-flag handler self-starts (`_run([...])` at the tail) and drives the
+ *  pins. If the program overflowed (the pre-N3d defect) the OK-wait in
+ *  startProgramOnRepl would throw, so a silent no-run cannot pass here. */
 async function runMicroPython (py) {
-    const snippet = driverLines(py);
     const {image} = parseUF2(await ensureFirmware({offline: true, quiet: true}));
     const m = await createPicoMachine(image, {entry: 'flash'});
     const board = mockBoard();
     m.adapter.attachBoard(board);
     assert.equal(m.run(() => m.state.usbConnected, 3_000_000), 'done', 'USB never enumerated');
     const {startProgramOnRepl} = await import(pathToFileURL(join(SOURCE, 'src/lib/pico-repl.js')).href);
-    await startProgramOnRepl(m.transport, snippet, {timeoutMs: 600_000});
-    // Drive until the driver has toggled GP25 both ways (last op is value(0)),
-    // the observable end of the driver's run.
+    await startProgramOnRepl(m.transport, py, {timeoutMs: 600_000});
+    // Drive until the handler has toggled GP25 both ways (ends low), the
+    // observable end of the pin work.
     const g25 = () => board.edges.filter(e => e.name === 'GP25');
-    m.run(() => g25().some(e => e.high) && g25().at(-1) && !g25().at(-1).high, 6_000_000);
+    assert.equal(
+        m.run(() => g25().some(e => e.high) && g25().at(-1) && !g25().at(-1).high, 8_000_000),
+        'done', `the program did not drive GP25 high-then-low — edges ${JSON.stringify(g25())}`);
     return board.edges;
 }
 
