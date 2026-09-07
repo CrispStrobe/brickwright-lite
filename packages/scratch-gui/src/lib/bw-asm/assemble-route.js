@@ -280,10 +280,39 @@ const PORT_IO_HELPERS = {
  * @param {string} cSource
  * @param {{compileC?: Function, assembleLocal?: Function}} [seams]
  */
+/**
+ * SmallerC's tiny (.COM) model has NO `long`, but generateC types every Scratch
+ * number as `static long`. So a program that stores a number reaches the
+ * compiler and fails with a raw "Unexpected token long" from deep inside it.
+ * Detect it here and refuse with a sentence a learner can act on, BEFORE the
+ * compiler runs (N2b). Comments, strings and chars are stripped first so a
+ * comment that merely mentions "long" does not trip it.
+ *
+ * TRAP the sweep must not fall into: a numeric VARIABLE emits `long`, but
+ * `set x to 5` does NOT — `x`/`y` are sprite COORDINATES (motion blocks), not
+ * variables, so they emit no `long`. This detector keys on the emitted `long`
+ * type, not on the pseudocode, so it fires on real stored numbers only.
+ */
+export const cUsesLong = (src) => /\blong\b/.test(src
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/\/\/[^\n]*/g, ' ')
+    .replace(/"(?:[^"\\]|\\.)*"/g, ' ')
+    .replace(/'(?:[^'\\]|\\.)*'/g, ' '));
+
 export async function compileC8086 (cSource, seams = {}) {
     const {compileC, assembleLocal} = seams;
     const compile = compileC || (await import(
         /* webpackChunkName: "smallerc" */ '../smallerc-wasm/compiler.js')).compile;
+
+    // Refuse a numeric-variable program by name before the compiler chokes on
+    // `long`. Pin and shift-register programs (no stored number) fall through.
+    if (cUsesLong(cSource)) {
+        throw new AsmRouteError(
+            'this program uses a number variable, and the 8086 C route cannot compile numbers yet: '
+            + 'SmallerC’s tiny (.COM) model has no 32-bit long, which is how every Scratch number '
+            + 'is typed. Pin and shift-register programs (which store no number) do compile. Tracked as N2b.',
+            {route: 'local', target: 'i8086', reason: 'source'});
+    }
 
     const out = await compile(cSource, {target: 'i8086'});
     if (!out || typeof out.asm !== 'string' || !out.asm.trim()) {

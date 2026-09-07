@@ -627,10 +627,16 @@ export const CELLS = Object.freeze({
         javascript: {native: no('no-port', 'no JavaScript engine for the 8086'), lowered: [via('asm'), via('c')]},
         // SmallerC (WASM) emits NASM; the local assembler's NASM front end reads
         // it: 5 of 5 corpus programs, measured by test/smallerc-to-i8086-asm.
-        // `float` and `long` are the two named edges.
+        // `float` and `long` are the two named edges — and `long` is the bigger
+        // one (N2b): generateC types EVERY Scratch number as `static long`, and
+        // the tiny (.COM) model has none, so any program that STORES A NUMBER is
+        // refused before the compiler (test/i8086-c-long-ceiling). Only pin and
+        // shift-register programs (no stored number) compile today.
         c: {
             native: shipped('com', 'SmallerC (WASM) + i8086-asm.js', 'local', {
-                note: 'no libc; float does not link (soft-float helper), long is refused by smlrc (-seg16)'
+                note: 'no libc; float does not link (soft-float helper); long has no tiny-model type, '
+                    + 'so any program with a number variable is refused by name until N2b (int-16 or a '
+                    + 'long-capable build) — pin and shift-register programs still compile'
             }),
             lowered: [via('c')]
         },

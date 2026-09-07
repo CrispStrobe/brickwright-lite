@@ -342,7 +342,7 @@ SmallerC's tiny model (.COM) has no `long`, and generateC types EVERY Scratch nu
 compiles today; pin and shiftOut passed only because they use no numeric variable. The C × 8086 cell
 over-claims until this is named. Order (worker): (1) a lite test proving the failure by name; the route
 REFUSES before the compiler with a learner-actionable sentence; the cell note names the edge and this id;
-the corpus count of programs excluded on i8086. (2) The fix chosen by measurement between a SmallerC model
+the corpus count of programs excluded on i8086. **Exclusion rule, exact:** a program is blocked on i8086 iff generateC emits `static long` for it, which it does for any STORED number — pin and shift-register programs, which store none, compile (`repeat N` and `repeat until <cond>` too: their counter/condition store no long). **Step 1 landed 2026-09-07** (worker): `test/i8086-c-long-ceiling` pins SmallerC's "Unexpected token long" and the route's by-name refusal (`cUsesLong`, before the compiler); the C×8086 note in `capabilities.js` names the edge and N2b. **TODO (finishes step 1):** run the property-based corpus retargeted to i8086 and record the blocked fraction — the rule makes it a mechanical `static long` grep. (2) The fix chosen by measurement between a SmallerC model
 or flag that provides a 32-bit long in a .COM and an i8086-specific numeric model in the emitter (int-16
 with the range stated, or an emulated two-word long), each costed by the corpus pass count it buys; then
 built upstream with golden tests for every other family. Two constraints: a number that does not fit the
