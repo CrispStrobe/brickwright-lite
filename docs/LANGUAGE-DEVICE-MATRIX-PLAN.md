@@ -344,6 +344,50 @@ REPORTS what it skipped, by count and reason, in its own output; `SILENT-SKIP` i
 guarded continue in a file walk with no report beside it; the walks above now report, and pin-move-chain
 judges NUL files like any other.
 
+**C. A doc's name printed as markdown is not a read; the trigger list may not vouch for itself. BUILT 2026-09-07**
+(lego-b9; option C of docs/CI-QUEUE-2026-09-07-MAIN.md, lego-ac's ask). This plan was in build.yml's push re-include list
+because two generators (`gen-reader-coverage.mjs:171`, `gen-language-device-matrix.mjs:97`) print its name between escaped
+backticks inside a template literal — provenance in a report, not a path handed to a read — and doc-triggers counted any
+non-comment mention. Five main runs on 2026-09-07 verified plan-only edits (127 runner-min). Found while measuring: the
+census scans `.github/`, so the re-include list's own entries were mentions and the test's stale direction could never fire
+(GATES thirtieth species); two docs whose readers had left were still listed. Rule: a workflow's trigger entry is not a
+mention; a name between escaped backticks is reported (`outputOnlyMentions`), not counted; the stale probe is a doc chosen
+at run time. Re-includes 18 → 15. An edit to this file alone now starts no run.
+
+**T12. Every browser gate's budget is derived from measurement, never typed. BUILT 2026-09-07** (lego-b9;
+lego-ac's ask). The per-step `timeout-minutes` of 2026-09-05 were "~3× each step's maximum over the last five
+main runs, floor 3, cap 8", written once by hand with the measurement in a trailing comment; a gate added
+since carried "4 # new gate; replace with hosted measurements after five runs" and one carried a bare "4".
+MEASURED before any budget changed — the last 20 green readings of each of the 49 gate steps across 70
+non-cancelled main runs (newest 34126007655, `gh api …/runs/<id>/jobs`, per-step `started_at`→`completed_at`):
+31 literals agree with the derivation, **18 sit above it, 0 below**, none provisional. The finding: the
+8-minute budgets on "offline linked 8051 assembly listings" (p95 6 s, max 7 s over 70 runs — the 124 s the
+2026-09-05 comment cited appears in no run the API still serves, so its run id is unknown) and "Pico
+MicroPython simulator Run lights the LED" (p95 11 s, max 12 s; the feared second 180 s poll has not
+happened in 20 runs) derive 3; fifteen 4-minute budgets over 14–47 s gates derive 3; the 8086 benchmark
+(p95 135 s) derives 7. One correction to what was first reported: the labwired heavy tier's p95 of 166 s
+derives ceil(166×3/60) = **9, above the cap of 8** — it was called "exactly 8" from a clamped number. It is
+written as the cap with the word CAPPED, the raw derivation, the effective headroom (2.9× p95) and the
+sentence that it is the one gate with no headroom above, so a slower runner reds it first. Rule:
+`scripts/gen-gate-budgets.mjs` states the derivation once — budget = ceil(p95(last 20 green) × 3 / 60),
+floor 3, cap 8, PROVISIONAL with the count below 5 readings — and writes every gate's literal, its comment
+("derived: p95 Ns × 3 → N min over N green runs to <run id>; max Ns in run <id>") and its
+`BW_STEP_BUDGET_MIN` hand-off; `--fetch` regenerates `docs/generated/browser-gate-readings.json` (never
+hand-edited: run ids per reading, each step's all-time max with its run, carried forward when the run ages
+out of the scan, so lowering a budget keeps the memory of why it was high); `--check` is the CI form.
+`test/browser-gate-budgets.test.mjs` reddens by name when a literal disagrees with its derivation, when a
+gate has no readings entry or an entry names a gate that is gone (the pin-move-chain shape: stale by name,
+regenerate), when a provisional or capped budget's comment does not say so, and proves the mutations: one
+literal edited → red naming the step; the hand-off edited → red naming it; a gate removed from the readings
+→ red naming it.
+
+**CI-2. Main's own queue, priced. PROPOSAL 2026-09-07** (lego-b9; lego-ac's ask; owner decides). docs/CI-QUEUE-2026-09-07-MAIN.md:
+42 main runs today, wait median 8.5 / p90 27.7 / max 68.6 min; 16 superseded before start (437 runner-min), 31 before end
+(640 runner-min after supersession); 55 % of branch queue time was spent behind a superseded main job (part 1: 10 %). Four
+options with today's numbers and their evidence cost: cancel-queued-not-started (437 min, one wrong-named red a day),
+cancelling group on main (640 min, 31 of 42 verdicts), read-not-mention waiver for docs only printed by generators (127 min,
+five plan-only runs, no verdicts), land one at a time (free). No policy changed by this entry.
+
 ### Lane N — native halves to add
 
 **N1. Z80 C via SDCC `-mz80`.** Repo: stc-compiler, then lite. **BUILT 2026-09-05** on stc-compiler branch `lane/z80-c-target` (`6e40fb6e`, delegate, audited by lego-ac: 21 new tests, 432 repo tests green, ten mutation proofs). The vendored SDCC 4.0.0 already had the z80 port; what was missing was `share/sdcc/lib/z80` (crt0 + z80.lib), now vendored from the same .deb the fetch script uses. Map: ROM $0000–$7FFF, RAM $8000–$FFFF from `examples/z80-pd-bench/EXPECTED.md`; `--code-loc 0x0200 --data-loc 0x8000`; stock crt0 (jp init at $0000, SP at $0000 so the first push lands at $FFFE). Also fixed: `stages.py` dropped every exported `GR` symbol (affects 8051 too). **Awaiting merge and deploy by the owner** — the hosted snapshot and the lite `compile: true` flip follow the deploy, not the branch. Lite half of the DoD (bench boot proof: `$0000 == 0xC3`, `latch1.Q0` toggles) is open.
@@ -674,6 +718,31 @@ shipped local button (Door 2) is the expensive, separate goal. Every small-local
 because the RP2040 is Thumb-only ARMv6-M and none of them target it. Follow-on when claimed: build Door 1's glue,
 compile the pin program, and run it on rp2040js so the P3 differential EXECUTES the C side (a wrong emitter
 address then faults or mismatches at runtime, not just against the anchor).
+
+**N11a. Door 1 built — the P3 differential's C side is now EXECUTED. DONE 2026-09-07** (worker). generateC's
+Pico output turned out to be ALREADY freestanding — its own header says "Freestanding Cortex-M0+: no SDK, no
+headers", it reaches the hardware through raw `BW_MMIO` macros, and it is written for this emulator ("this build
+runs without a bootrom, so do it here"; "the emulator fast-forwards the sleep"). So the glue is small
+(`scripts/build-pico-c-image.mjs`): an INITIAL boot vector (SP + reset→a shim that zeroes .bss and calls the
+emitted `main`) and a linker script placing `.text`/`.rodata` in flash at 0x10000000 (the boot vector at
+0x10000100 = the harness's VECTOR_TABLE) and `.bss` in SRAM; arm-none-eabi-gcc compiles, objcopy flattens, and
+the result is packed as an RP2040 UF2 that the EXISTING boot harness's `parseUF2` decodes and `createPicoMachine`
+runs with `entry: 'vector'` — which jumps straight at the boot vector, so the clean-room bootrom is never touched
+(a freestanding pin program makes no ROM calls, dodging the Kaluma `rom_table_lookup` wall). It is an ORACLE for
+the emitted C's GPIO logic, not a silicon stage-2 boot claim. The P3 differential (`test/p3-pin-c-mpy-differential`)
+now runs BOTH routes at the same board boundary: GP25 output high→low and GP14 input, identical between the
+compiled C and the live MicroPython. A mutation — flip the GP25 SIO output mask to GP24 in the emitted C — makes
+the compiled program stop driving GP25, and the runtime differential reddens naming GP25. THE CI SPLIT, stated
+plainly: CI executes the C and fires the mutation; the two-runtime C-vs-MicroPython comparison needs the
+firmware, which the build job does not carry — a deliberate scope edge, not a skipped gate. Toolchain: the box's
+arm-none-eabi-gcc locally; in CI the sha-pinned ARM GNU 13.2.rel1
+(`scripts/sync-arm-toolchain.mjs`, content-hash — verified byte-for-byte before extract, `--version` asserted
+after, declared in `test/fetch-pinning.test.mjs`, cached by sha, own 8-min timeout — measured in CI at 29 s cold
+(cache miss: fetch + sha256 + xz extract of 171 MB) and ~4 s warm (cache-hit restore), well inside the budget),
+fetched only in the job that
+runs the differential; the executed-C legs SKIP BY NAME when no toolchain is present, and the static anchor still
+runs everywhere, so the C side is never left with no gate. **N11 (the SHIPPED in-browser button = Door 2,
+clang→WASM ~15–40 MB) stays OPEN** — N11a is the CI-differential oracle, not the offline compiler.
 
 ### Lane L — lowered halves to add or complete
 

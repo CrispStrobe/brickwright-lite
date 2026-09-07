@@ -14,6 +14,19 @@
  * `docs/generated/**` is not matched by the one-level `!docs/*.md` and keeps
  * triggering; the generated reports are asserted against source.
  *
+ * Two lines that name a doc are NOT mentions (2026-09-07, lane C of
+ * docs/CI-QUEUE-2026-09-07-MAIN.md):
+ *   - a workflow's own trigger entry (`- 'docs/X.md'` under `paths:`). Until
+ *     2026-09-07 the census counted build.yml's re-include list as mentions of
+ *     the docs it listed, so the "stale" direction of the test could never
+ *     fire — the list vouched for itself (docs/GATES-THAT-CANNOT-FAIL.md,
+ *     thirtieth species). Two docs whose readers had left stayed re-included.
+ *   - a name printed as markdown inside a template literal — the doc's name
+ *     between ESCAPED backticks (`\\`docs/X.md\\``), which is a generator writing
+ *     its own provenance into a report, not a path handed to a read. Five main
+ *     runs on 2026-09-07 verified plan-only edits because two generators name
+ *     the plan this way. `outputOnlyMentions` lists such lines.
+ *
  * test/build-trigger-paths.test.mjs holds the two sets together: a mentioned
  * doc missing from the re-includes fails by name (someone added a reader
  * without the trigger), and a re-included doc mentioned nowhere fails by name
@@ -27,6 +40,10 @@ import path from 'node:path';
 export const SCAN_ROOTS = ['test', 'scripts', '.github', 'overlay'];
 export const SCAN_FILES = /\.(mjs|cjs|js|jsx|ts|yml|yaml|sh|json|html)$/;
 const COMMENT_LINE = /^(\/\/|\*|\/\*|#(?!!)|<!--|-->)/;
+/** A workflow trigger's own path entry — the list may not vouch for itself. */
+export const TRIGGER_ENTRY = /^\s+- '!?docs\/[^']+'\s*(?:#.*)?$/;
+/** A doc name between escaped backticks is markdown a generator prints, not a path. */
+const PRINTED_AS_MARKDOWN = /\\`[^`]*\\`/g;
 
 const walk = dir => readdirSync(dir, {withFileTypes: true}).flatMap(e => {
     const p = path.join(dir, e.name);
@@ -49,8 +66,12 @@ export const censusDocMentions = root => {
     const files = SCAN_ROOTS.filter(r => existsSync(path.join(root, r))).flatMap(r => walk(path.join(root, r)));
     for (const f of files) {
         const rel = path.relative(root, f).replace(/\\/g, '/');
-        readFileSync(f, 'utf8').split('\n').forEach((line, i) => {
-            if (!NAMED.test(line) || COMMENT_LINE.test(line.trim())) return;
+        const isWorkflow = /\.ya?ml$/.test(f);
+        readFileSync(f, 'utf8').split('\n').forEach((raw, i) => {
+            if (COMMENT_LINE.test(raw.trim())) return;
+            if (isWorkflow && TRIGGER_ENTRY.test(raw)) return;
+            const line = raw.replace(PRINTED_AS_MARKDOWN, '');
+            if (!NAMED.test(line)) return;
             for (const d of docs) {
                 if (line.includes(`docs/${d}`) || line.includes(`'${d}`) || line.includes(`"${d}`) || line.includes('`' + d)) {
                     if (!mentions.has(d)) mentions.set(d, []);
@@ -60,6 +81,27 @@ export const censusDocMentions = root => {
         });
     }
     return mentions;
+};
+
+/**
+ * Lines that name a doc ONLY as markdown inside a template literal (escaped
+ * backticks) — a generator printing provenance. Reported, not counted.
+ * @returns {string[]} "file:line: text"
+ */
+export const outputOnlyMentions = root => {
+    const docs = listDocs(root);
+    const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const NAMED = new RegExp('(?:docs/|[\'"`])(' + docs.map(esc).join('|') + ')');
+    const out = [];
+    const files = SCAN_ROOTS.filter(r => existsSync(path.join(root, r))).flatMap(r => walk(path.join(root, r)));
+    for (const f of files) {
+        const rel = path.relative(root, f).replace(/\\/g, '/');
+        readFileSync(f, 'utf8').split('\n').forEach((raw, i) => {
+            if (COMMENT_LINE.test(raw.trim()) || !NAMED.test(raw)) return;
+            if (!NAMED.test(raw.replace(PRINTED_AS_MARKDOWN, ''))) out.push(`${rel}:${i + 1}: ${raw.trim()}`);
+        });
+    }
+    return out;
 };
 
 /**

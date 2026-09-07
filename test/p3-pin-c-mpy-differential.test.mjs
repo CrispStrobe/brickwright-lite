@@ -8,16 +8,20 @@
  * before any new driver is written, then is reused as each C-only part
  * (shiftOut/motor/servo, per the P2 template) gains its MicroPython driver.
  *
- * WHAT IS EXECUTED AND WHAT IS PARSED. The MicroPython side is EXECUTED on
- * rp2040js (the sim's live run) and observed at the board boundary
- * (`board.setPin(name, mode, high)` — mode = direction, high = latch). The C
- * side is PARSED, not executed, until a local rp2040 C toolchain exists
- * (LOCAL_C_TARGETS = {i8086}; the Pico C route is hosted, unusable in a CI
- * differential — filed as N11). A parsed side is a MODEL, so it is ANCHORED to
- * the runtime: every SIO / IO_BANK0 address the C names is asserted equal to the
- * address rp2040js's own SIO peripheral decodes (read from rp2040js, not a table
- * of ours), so a wrong address in the emitter reddens instead of matching a
- * regex.
+ * WHAT IS EXECUTED. BOTH sides now run on rp2040js and are observed at the same
+ * board boundary (`board.setPin(name, mode, high)` — mode = direction, high =
+ * latch). The MicroPython side is the sim's live raw-REPL run. The C side is
+ * generateC's Pico output COMPILED by arm-none-eabi-gcc into a Cortex-M0+ image
+ * and run through the same boot harness (N11a / Door 1 — the emitted C is
+ * freestanding, only `<stdint.h>` + raw MMIO; see scripts/build-pico-c-image.mjs
+ * and scripts/sync-arm-toolchain.mjs). So a wrong emitter mask shows up as the
+ * WRONG PIN MOVING at runtime, not a mismatched regex — the mutation test proves
+ * exactly that. The executed-C legs SKIP BY NAME without arm-none-eabi-gcc.
+ *
+ * The STATIC anchor is kept as well: every SIO / IO_BANK0 address the C names is
+ * asserted equal to the address rp2040js's own SIO peripheral decodes (read from
+ * rp2040js, not a table of ours). It needs no toolchain, so it runs everywhere
+ * and the C side is never left with no gate at all.
  *
  * WHAT IS RUN ON THE MICROPYTHON SIDE. The FULL generated program — the exact
  * `.py` generateMicroPython emits, scheduler and green-flag handler and all,
@@ -41,13 +45,28 @@ import {pathToFileURL} from 'node:url';
 import {SOURCE, INTEGRATED} from './helpers/bw-integrated.mjs';
 import {ensureFirmware, parseUF2, createPicoMachine, CACHED_UF2, FIRMWARE}
     from '../scripts/probe-pico-micropython.mjs';
+import {buildPicoCImage} from '../scripts/build-pico-c-image.mjs';
+import {armGccPath} from '../scripts/sync-arm-toolchain.mjs';
 
-const SKIP = !existsSync(join(INTEGRATED, 'node_modules', 'rp2040js'))
+const NO_TREE = !existsSync(join(INTEGRATED, 'node_modules', 'rp2040js'))
     ? 'needs rp2040js from the integrated tree (npm run integrate, then npm install in packages/scratch-gui)'
-    : !existsSync(CACHED_UF2)
-        ? `needs ${FIRMWARE.file} — run \`npm run sync:picomicropython\` once to fetch it (650 KB, sha256-pinned, gitignored)`
-        : false;
-if (SKIP) process.stderr.write(`[bw gate] p3-pin-c-mpy-differential: SKIPPING — ${SKIP}\n`);
+    : false;
+const NO_FIRMWARE = !existsSync(CACHED_UF2)
+    ? `needs ${FIRMWARE.file} — run \`npm run sync:picomicropython\` once to fetch it (650 KB, sha256-pinned, gitignored)`
+    : false;
+const NO_ARM = !armGccPath()
+    ? 'needs arm-none-eabi-gcc for the EXECUTED C side (box gcc, or the CI-fetched sha-pinned 13.2.rel1 — scripts/sync-arm-toolchain.mjs)'
+    : false;
+
+// The MicroPython side needs the sim firmware; the anchor/parse tests need only
+// the tree. The EXECUTED-C side (N11a) needs arm-none-eabi-gcc but NOT firmware,
+// so its COMPILE+RUN+mutation gate runs in CI on the tree+toolchain alone (the
+// firmware is browser-job-only) — the executed C is never left with no CI gate.
+const SKIP = NO_TREE || NO_FIRMWARE;                 // MicroPython legs (anchor's peer + differential)
+const SKIP_C = SKIP || NO_ARM;                       // executed differential: C vs MicroPython
+const SKIP_C_ONLY = NO_TREE || NO_ARM;               // executed C alone (no MicroPython): compile+run+mutation
+if (SKIP) process.stderr.write(`[bw gate] p3-pin-c-mpy-differential: MicroPython legs SKIPPING — ${SKIP}\n`);
+if (SKIP_C_ONLY) process.stderr.write(`[bw gate] p3-pin-c-mpy-differential: executed-C legs SKIPPING — ${SKIP_C_ONLY}\n`);
 
 // The one program, emitted twice. GP25 (onboard LED) is an OUTPUT toggled
 // on then off; GP14 is an INPUT the program reads — so both routes configure a
@@ -159,6 +178,24 @@ function mpyState (edges, gp) {
         finalLatch: direction === 'output' ? es.at(-1).high : null};
 }
 
+// ---- the C side, EXECUTED (N11a) --------------------------------------------
+/** Compile generateC's Pico output with arm-none-eabi-gcc, pack it as a UF2, and
+ *  run it on rp2040js through the SAME boot harness the MicroPython firmware uses
+ *  (parseUF2 → createPicoMachine). `entry: 'vector'` jumps at the image's boot
+ *  vector, so the clean-room bootrom is never touched (a freestanding pin program
+ *  makes no ROM calls) — an oracle for the emitted C's GPIO logic. Drives until
+ *  GP`watch` has toggled both ways; the caller reads the board edges. */
+async function runC (cSource, watch = 25) {
+    const {uf2} = buildPicoCImage(cSource, {gcc: armGccPath()});
+    const {image} = parseUF2(uf2);
+    const m = await createPicoMachine(image, {entry: 'vector'});
+    const board = mockBoard();
+    m.adapter.attachBoard(board);
+    const g = () => board.edges.filter(e => e.name === `GP${watch}`);
+    m.run(() => g().some(e => e.high) && g().at(-1) && !g().at(-1).high, 4_000_000);
+    return board.edges;
+}
+
 // ---- the tests --------------------------------------------------------------
 
 test('P3: the emitter\'s Pico GPIO addresses match what rp2040js decodes (anchor)',
@@ -204,4 +241,53 @@ test('P3: C and MicroPython drive the same GPIO direction and latch, per pin',
         assert.equal(cState(cPins[14]).direction, 'input', 'GP14 (btn) should be an input in the C intent');
         assert.equal(mpyState(edges, 14).direction, 'input',
             `GP14 (btn): MicroPython did not configure it as an input — edges ${JSON.stringify(edges.filter(e => e.name === 'GP14'))}`);
+    });
+
+test('P3: C and MicroPython drive the same GPIO — BOTH EXECUTED on rp2040js (N11a)',
+    {skip: SKIP_C}, async () => {
+        const SB = await sb3();
+        const cc = new SB(); cc.parse(PROGRAM);
+        const cEdges = await runC(cc.generateC());          // compiled + run, not parsed
+
+        const mc = new SB(); mc.parse(PROGRAM);
+        const mp = mc.generateMicroPython();
+        assert.ok(mp.ok && mp.py, `generateMicroPython refused: ${JSON.stringify(mp.reasons)}`);
+        const mpyEdges = await runMicroPython(mp.py);
+
+        // Both routes now RUN at the same board boundary, so N11 closes: a wrong
+        // emitter mask shows up as the wrong pin MOVING, not a mismatched regex.
+        assert.deepEqual(mpyState(cEdges, 25), mpyState(mpyEdges, 25),
+            `GP25 (led): compiled-C runtime disagrees with MicroPython runtime — `
+            + `C ${JSON.stringify(mpyState(cEdges, 25))}, MP ${JSON.stringify(mpyState(mpyEdges, 25))}`);
+        assert.equal(mpyState(cEdges, 25).direction, 'output', 'GP25 should be a driven output when the C runs');
+        assert.equal(mpyState(cEdges, 25).wentHigh, true, 'GP25 should be driven high when the C runs');
+        assert.equal(mpyState(cEdges, 25).finalLatch, false, 'GP25 should end low when the C runs');
+
+        assert.deepEqual(mpyState(cEdges, 14), mpyState(mpyEdges, 14),
+            `GP14 (btn): compiled-C runtime disagrees with MicroPython runtime — `
+            + `C ${JSON.stringify(mpyState(cEdges, 14))}, MP ${JSON.stringify(mpyState(mpyEdges, 14))}`);
+        assert.equal(mpyState(cEdges, 14).direction, 'input', 'GP14 should be an input when the C runs');
+    });
+
+test('P3 mutation: a flipped output mask in the emitted C stops driving GP25 — the runtime differential reddens (N11a)',
+    {skip: SKIP_C_ONLY}, async () => {
+        const SB = await sb3();
+        const c = new SB(); c.parse(PROGRAM);
+        const src = c.generateC();
+        // Exactly a wrong emitter: flip the GP25 SIO output mask to GP24. The
+        // OE/OUT bits now drive bit 24 while the funcsel still routes GP25, so GP25
+        // never leaves its reset default — the RUNTIME differential must catch what
+        // a parse of still-matching regexes could not.
+        const mutated = src.replace(/\(1UL << 25\)/g, '(1UL << 24)');
+        assert.notEqual(mutated, src, 'the mask substitution changed nothing — the emitter shape moved, update this mutation');
+
+        const healthy = mpyState(await runC(src, 25), 25);       // GP25 driven high→low
+        const broken = mpyState(await runC(mutated, 25), 25);    // GP25 no longer driven
+
+        assert.equal(healthy.direction, 'output', 'sanity: the unmutated C drives GP25 as an output');
+        assert.notDeepEqual(broken, healthy,
+            `the flipped mask left GP25's runtime state identical to the healthy program — the executed `
+            + `differential would not catch it: ${JSON.stringify(broken)}`);
+        assert.notEqual(broken.direction, 'output',
+            `GP25 is still a driven output after the mask flip: ${JSON.stringify(broken)}`);
     });

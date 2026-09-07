@@ -1883,3 +1883,43 @@ parse failure, a path pattern, a binary sniff) is a set the gate silently does n
 instance of the twenty-eighth species one level down: a census that cannot see a FILE. The fixture is
 now `'deadbeef'.repeat(5)`: a value that only needs to be 40 hex characters must not be a value that
 means something elsewhere.
+
+## Thirtieth species: THE LIST THAT VOUCHED FOR ITSELF (2026-09-07, lego-b9)
+
+A gate that holds a hand-written list equal to a computed set has two directions:
+*missing* (the set has something the list lacks) and *stale* (the list has
+something the set lacks). **If the census that computes the set scans the list
+itself, the stale direction can never fire** — every entry on the list is, by
+being on the list, "mentioned" once.
+
+**The incident.** `test/build-trigger-paths.test.mjs` holds build.yml's push
+`paths` re-includes equal to "every `docs/*.md` some non-comment line of code
+mentions". The census scans `test/`, `scripts/`, `overlay/` and `.github/` —
+and build.yml lives in `.github/`. Its own line `- 'docs/X.md'` is a
+non-comment line mentioning `docs/X.md`. So a doc re-included on 2026-09-06
+because a reader named it stayed re-included after the reader left: the list
+was its only remaining mention, and the test's stale direction said nothing.
+Fired live before the fix: add `- 'docs/CI-QUEUE-2026-09-07.md'` (a doc no
+code names) to the list — 5/5 green. Two docs were found this way
+(`DEBUGGER-NEXT-ROADMAP.md`, `FULL-DEBUGGER-ARCHITECTURE.md`: their only
+"mentions" were trigger entries in three workflows), and a third,
+`LANGUAGE-DEVICE-MATRIX-PLAN.md`, was held by two generators that print its
+name as markdown inside a template literal — a provenance line in a report,
+which the census read as a mention. That one cost five main runs in a day
+(docs/CI-QUEUE-2026-09-07-MAIN.md §3).
+
+**The fix** (`scripts/lib/doc-triggers.mjs`): a workflow's own trigger entry
+is not a mention; a doc name between escaped backticks is markdown being
+printed, not a path being read, and is reported (`outputOnlyMentions`) rather
+than counted. The test's probe for the stale direction is chosen at run time
+(any doc nothing mentions) — a literal name in the test would itself have been a
+mention, and it was, on the first attempt.
+
+**The generalisation.** Whenever a gate compares a list to a census, ask what
+the census scans, and whether the list is inside it. A paths filter, an
+allowlist, a baseline file, a re-include list, a LANES ledger: each is a file of
+names, and a name census that walks the tree will find it. The self-mention is
+invisible because it is true — the list does mention the doc. The tell is a
+direction of the test that has never been red: fire it once, on purpose, with
+an entry nothing else names.
+
