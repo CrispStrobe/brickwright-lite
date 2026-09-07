@@ -220,122 +220,85 @@ against a green tree, confirmed red, and restored byte-for-byte.
   on `runtime.stc`, so a probe against an empty runtime under-reports. Every
   probe is given the declarations the example itself produces.
 
-## LED polarity: the retarget drops ACTIVE LOW exactly where it is the lesson
+## LED polarity: the retarget changes the declaration and the bench never follows
 
-Measured 2026-09-07 against `e3a1f960e` by `scripts/led-polarity-census.mjs`, and
-re-measured UNCHANGED after the vendor pin bump at `fec0a9edf` moved `bw-board` to
-`2c568ca`. Re-running it across a pin move is not ceremony: the census asks a
-solver for its answers, so a change to the engine under it could move every number
-here without a line of the corpus changing. It reports and does not gate. When the
-repair lands it becomes the gate, and it ratchets downward only.
+Measured 2026-09-07 against `f17f5c22e` by `scripts/led-polarity-census.mjs`,
+which reports nothing until four mutations have been seen to fail. It is not a
+gate yet; it becomes one when the defect below is repaired, and then it ratchets
+downward only.
 
-> **52 inverted, in 4 examples — out of 764 declared output pins, of which only
-> 449 can be decided at all.** Both halves belong in the same breath. 139 pins
-> carry no discrete LED and 176 carry one that answers neither way, so the finding
-> covers 59% of the population and says nothing about the rest.
+> **174 inverted of 792 decidable readings, in 21 examples.** 847 declared-pin
+> readings were attempted and 55 could not be decided. Every bench in the corpus
+> loaded.
 
-### Three wrong versions of this section, and what each got wrong
+### One defect with two faces
 
-Kept rather than replaced, because every one of them was a claim that outran what
-had been checked, and the next person to census this corpus will reach for the
-same shortcuts.
+Retargeting an example to another device REWRITES the pin's polarity clause, in
+both directions, and the bench transform never follows it. Measured, not inferred:
 
-| said | wrong because |
-| --- | --- |
-| 230 inverted, ten of eleven families | Compared each bench against the AUTHORED declaration. The app retargets the program through `SB3Creator.retargetPseudocode` before loading that device's bench, and the generator uses the same function; dropping `ACTIVE LOW` when an 8051 quasi-bidirectional pin becomes an AVR push-pull one is DELIBERATE. Bench and program agree, so 217 rows were an artefact of the question. |
-| 13 inverted, 3 examples | Matched an LED to a pin by NAME, expecting `LED_<declared name>`. The corpus does not keep that convention: 312 `led` parts sat on declared output pins under other ids and were written off as unmeasurable. The LED's pin is already TRACED from the wires, so the match is now electrical. |
-| 597, then 588, pins reached | Silently dropped every LED whose drive test answered neither way. The reached total then SHRANK when the matching improved, which is how the bucket was found. Undecidable readings are now counted and printed. |
+| direction | what the retarget does | rows | examples |
+| --- | --- | --- | --- |
+| 8051-authored → push-pull target | DROPS `ACTIVE LOW` | 72 | `06-active-low-high`, `32-source-vs-sink`, `46-port-overcurrent` |
+| Arduino-authored → 8051 target | ADDS `ACTIVE LOW` | 102 | 18, mostly the `arduino-*` ports |
+
+Both rewrites are individually defensible. A quasi-bidirectional 8051 pin sinks
+20 mA and sources about 230 µA, so an LED belongs on the sinking side there and
+not on an AVR push-pull pin. Confirmed at the source: `PIN led = D13 OUTPUT`
+retargets to `PIN led = P1.0 OUTPUT ACTIVE LOW`, and `PIN led1 = P1.0 OUTPUT
+ACTIVE LOW` retargets to `PIN led1 = D13 OUTPUT`.
+
+The benches do not move with them. An example that ships an authored `circuit.json`
+gets its per-device benches from `scripts/lib/authored-transform.mjs`, which
+re-wires the authored circuit onto the target's part and PRESERVES its topology.
+So the program says one polarity and the circuit keeps the other, and the learner
+sees the wrong LED lit.
+
+The three examples in the first row are the ones this costs most: all three exist
+to teach sinking — an active-low LED beside a plain one, a pin sinking beside a
+pin sourcing, and eight LEDs sinking from one port. The clause is dropped exactly
+where the clause is the lesson.
 
 ### What the census can and cannot decide
 
 | | count |
 | --- | --- |
-| declared output pins reached | 764 |
-| **decidable** — a discrete LED on the pin that lights at one level and not the other | **449** |
-| no discrete LED on the pin: 7-seg digits, banks, matrices, shift outputs | 139 |
-| an LED that answered neither way: 173 dark at both levels, 3 lit at both | 176 |
-| decidable and agreeing with the program beside them | 397 |
-| **inverted** | **52, in 4 examples** |
+| declared-pin readings attempted | 847 |
+| **decidable** | **792** |
+| undecided: no LED changed when the pin was driven | 55 |
+| decidable and agreeing with the program beside them | 618 |
+| **inverted** | **174** |
 
-Before any of that, 476 (example, device) pairs are skipped without a pin being
-read, and the census prints why: 189 programs declare no `OUTPUT` pin, 187 benches
-carry no LED, 35 examples ship no `program.bw`, and **65 benches will not build in
-this harness at all** — it rebuilds a netlist from the file, and a seated board
-part whose terminals come from a sidecar the script does not register is rejected.
-Those 65 are a limit of the instrument, not a fact about the corpus, and they are
-the first thing to fix when extending coverage.
+Not reached at all, and why: 224 examples (189 declare no `OUTPUT` pin, 35 ship no
+`program.bw`) and 219 benches (no LED on the bench). **No bench failed to load**,
+which is the headline change from the previous instrument.
 
-The 176 are not a residue to wave at. A multiplexed digit needs a second pin held,
-an LED behind a transistor does not respond to the pin directly, and an unpowered
-rail lights nothing — the census cannot tell those apart from a genuine fault, so
-it says so instead of guessing. **A repair validated by an instrument that decides
-59% of the population is not validated**, which is why extending coverage is a
-prerequisite of the repair below and not a follow-up to it.
+### The instrument, and the four wrong numbers before it
 
-The instrument itself is sound and was chosen deliberately: it asks the SOLVER to
-light each LED — drive the pin low, read it, drive it high, read again — rather
-than pattern-matching a topology. A bench reaches its rails through breadboard
-columns, seats and jumpers, and the solver already resolves all three. Every fault
-above was in the comparison or the bookkeeping, not the measurement. Method is not
-evidence: a procedure makes a wrong answer more persuasive without making it more
-true.
+An earlier version of this census reported 230, then 13, then 52. All three were
+accurate about what they measured and wrong about what they claimed, and each was
+more convincing than the last because the method around it improved. The faults,
+kept because the next person to census this corpus will reach for the same
+shortcuts:
 
-### Defect 1 — the retarget drops ACTIVE LOW where it is the entire subject
+| said | wrong because |
+| --- | --- |
+| 230 inverted | Compared each bench against the AUTHORED declaration. The app retargets before loading the bench, so bench and program agreed and 217 rows were an artefact of the question. |
+| 13 inverted | Matched an LED to a pin by NAME, expecting `LED_<declared name>`. 312 `led` parts sat on declared pins under other ids and were written off as unmeasurable. |
+| 52 inverted, 597 then 588 reached | Silently dropped readings that answered neither way. The reached total SHRANK when the matching improved, which is the only trace a silent drop leaves. |
+| all of the above | Rebuilt the netlist by hand instead of calling `Circuit.fromJSON`. It refused 65 of 947 benches, and for hours those read as a fact about the corpus. |
 
-Forty-nine rows, three examples:
+The instrument now loads every bench the way the designer does, takes the pin from
+the declaration rather than guessing a naming convention, finds the LED by asking
+which one responds rather than tracing wires, and scopes its skip counters so an
+example that declares no output pin is not summed with a reading that could not be
+decided. Coverage went from 449 decidable of 764 to 792 of 847.
 
-| example | pins | devices | what the example is FOR |
-| --- | --- | --- | --- |
-| `06-active-low-high` | `led_low` | `arduino-uno`, `arduino-nano`, `arduino-mega`, `atmega168p`, `attiny85` | showing an active-low LED beside a plain one |
-| `32-source-vs-sink` | `led_sink` | the same five | showing a pin sinking beside a pin sourcing |
-| `46-port-overcurrent` | `led0`–`led7` | those four AVRs and `pico` | what happens when eight LEDs SINK from one port |
-
-All three teach the sinking behaviour, and the clause is dropped in all three. That
-is the finding, not a coincidence of three unrelated benches: `ACTIVE LOW` survives
-retargeting to another 8051 and is dropped for a push-pull target, which is right
-for `01-blink`, where active-low is a quirk of the chip, and wrong for an example
-whose subject IS the quirk.
-
-The benches keep the sinking wiring because all three ship an authored
-`circuit.json` and go through `scripts/lib/authored-transform.mjs`, which preserves
-topology. The program loses the clause because it goes through
-`retargetPseudocode`. The two producers run a few lines apart in the same
-generator and disagree.
-
-**A candidate rule, measured and then withdrawn.** "Preserve the clause when a
-program declares BOTH an `ACTIVE LOW` and a plain `OUTPUT` pin, because the
-contrast is then deliberate" separates `01-blink` from `06` and `32` cleanly. It
-does not select only those: six examples declare mixed polarity, also
-`09-relay-clicker`, `60-retro-console`, `61-console-pong` and `76-multimeter`. And
-it does not select `46-port-overcurrent` at all, whose eight pins are uniformly
-active-low. So it is wrong in both directions, and it was withdrawn before anyone
-built it.
-
-### Defect 2 — an authored bench is inverted
-
-Three rows, one example, all three 8051 parts including the authored one:
-
-| example | pin | devices |
-| --- | --- | --- |
-| `arduino-sk-p15-hacking-buttons` | `opto` | `stc12c5a60s2`, `stc15f2k60s2`, `stc89c52rc` |
-
-No retarget is involved for `stc12c5a60s2` — that is the device the example is
-authored for, and retargeting to the other two 8051 parts preserves the clause.
-The declaration says `ACTIVE LOW` and the bench sources. A straight data defect in
-one circuit and its transforms, not a generator rule.
-
-### The producer, named
-
-`CrispStrobe/sb3-creator`, `scripts/gen-device-benches.mjs`, with two paths:
-
-- an example WITH an authored `circuit.json` goes through
-  `scripts/lib/authored-transform.mjs`, which re-wires the authored circuit onto
-  the target's part and preserves its topology;
-- an example without one goes through `inferNetlist`, which branches on
-  `pin.activeLow` and builds the wiring the declaration asks for.
-
-Both netlist inferrers were asked directly rather than read:
-`lib/bw-board/infer-netlist.js` and `lib/bw-circuit-ui/model/infer-seated.js` each
-produce `LED.cathode → pin` for an active-low declaration, on 8051, Uno and Pico
-alike. Neither is wrong. The disagreement is between the transform, which keeps the
-wiring, and the retarget, which changes the declaration.
+**Four mutations must fail before it prints a number**, because an instrument
+other people will trust has to be made to fail on purpose: inverting every LED in
+one example must flip its rows, flipping a declaration must flip agreement without
+touching the bench, a bench that cannot load must be COUNTED rather than
+disappearing, and removing the retarget must collapse the readings. The first of
+those was itself wrong twice — reversing an LED alone reverse-biases a diode and
+swapping the rails alone does the same from the other side, so each was a
+physically correct answer to the wrong question and each reported MISSED until
+both were applied together.
