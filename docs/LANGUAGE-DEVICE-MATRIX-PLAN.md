@@ -344,6 +344,33 @@ REPORTS what it skipped, by count and reason, in its own output; `SILENT-SKIP` i
 guarded continue in a file walk with no report beside it; the walks above now report, and pin-move-chain
 judges NUL files like any other.
 
+**T12. Every browser gate's budget is derived from measurement, never typed. BUILT 2026-09-07** (lego-b9;
+lego-ac's ask). The per-step `timeout-minutes` of 2026-09-05 were "~3× each step's maximum over the last five
+main runs, floor 3, cap 8", written once by hand with the measurement in a trailing comment; a gate added
+since carried "4 # new gate; replace with hosted measurements after five runs" and one carried a bare "4".
+MEASURED before any budget changed — the last 20 green readings of each of the 49 gate steps across 70
+non-cancelled main runs (newest 34126007655, `gh api …/runs/<id>/jobs`, per-step `started_at`→`completed_at`):
+31 literals agree with the derivation, **18 sit above it, 0 below**, none provisional. The finding: the
+8-minute budgets on "offline linked 8051 assembly listings" (p95 6 s, max 7 s over 70 runs — the 124 s the
+2026-09-05 comment cited appears in no run the API still serves, so its run id is unknown) and "Pico
+MicroPython simulator Run lights the LED" (p95 11 s, max 12 s; the feared second 180 s poll has not
+happened in 20 runs) derive 3; fifteen 4-minute budgets over 14–47 s gates derive 3; the 8086 benchmark
+(p95 135 s) derives 7. One correction to what was first reported: the labwired heavy tier's p95 of 166 s
+derives ceil(166×3/60) = **9, above the cap of 8** — it was called "exactly 8" from a clamped number. It is
+written as the cap with the word CAPPED, the raw derivation, the effective headroom (2.9× p95) and the
+sentence that it is the one gate with no headroom above, so a slower runner reds it first. Rule:
+`scripts/gen-gate-budgets.mjs` states the derivation once — budget = ceil(p95(last 20 green) × 3 / 60),
+floor 3, cap 8, PROVISIONAL with the count below 5 readings — and writes every gate's literal, its comment
+("derived: p95 Ns × 3 → N min over N green runs to <run id>; max Ns in run <id>") and its
+`BW_STEP_BUDGET_MIN` hand-off; `--fetch` regenerates `docs/generated/browser-gate-readings.json` (never
+hand-edited: run ids per reading, each step's all-time max with its run, carried forward when the run ages
+out of the scan, so lowering a budget keeps the memory of why it was high); `--check` is the CI form.
+`test/browser-gate-budgets.test.mjs` reddens by name when a literal disagrees with its derivation, when a
+gate has no readings entry or an entry names a gate that is gone (the pin-move-chain shape: stale by name,
+regenerate), when a provisional or capped budget's comment does not say so, and proves the mutations: one
+literal edited → red naming the step; the hand-off edited → red naming it; a gate removed from the readings
+→ red naming it.
+
 ### Lane N — native halves to add
 
 **N1. Z80 C via SDCC `-mz80`.** Repo: stc-compiler, then lite. **BUILT 2026-09-05** on stc-compiler branch `lane/z80-c-target` (`6e40fb6e`, delegate, audited by lego-ac: 21 new tests, 432 repo tests green, ten mutation proofs). The vendored SDCC 4.0.0 already had the z80 port; what was missing was `share/sdcc/lib/z80` (crt0 + z80.lib), now vendored from the same .deb the fetch script uses. Map: ROM $0000–$7FFF, RAM $8000–$FFFF from `examples/z80-pd-bench/EXPECTED.md`; `--code-loc 0x0200 --data-loc 0x8000`; stock crt0 (jp init at $0000, SP at $0000 so the first push lands at $FFFE). Also fixed: `stages.py` dropped every exported `GR` symbol (affects 8051 too). **Awaiting merge and deploy by the owner** — the hosted snapshot and the lite `compile: true` flip follow the deploy, not the branch. Lite half of the DoD (bench boot proof: `$0000 == 0xC3`, `latch1.Q0` toggles) is open.

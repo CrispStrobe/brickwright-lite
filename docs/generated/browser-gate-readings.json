@@ -1,0 +1,5373 @@
+{
+ "generatedAt": "2026-09-07T13:13:52.592Z",
+ "repo": "CrispStrobe/brickwright-lite",
+ "branch": "main",
+ "newestRun": 34126007655,
+ "runsScanned": 70,
+ "keepPerStep": 20,
+ "factor": 3,
+ "floor": 3,
+ "cap": 8,
+ "minReadings": 5,
+ "steps": {
+  "Browser gate — native broker packaged assets": {
+   "n": 20,
+   "p95": 2,
+   "max": {
+    "seconds": 4,
+    "run": 34070714079,
+    "sha": "4f914e3f1"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 1
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 1
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 1
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 1
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 1
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 1
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 1
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 2
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 1
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 2
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 2
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 1
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 1
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 1
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 0
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 2
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 1
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 3
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 1
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 1
+    }
+   ]
+  },
+  "Browser gate — the debugger-only pane and its round trip": {
+   "n": 20,
+   "p95": 14,
+   "max": {
+    "seconds": 14,
+    "run": 34119648099,
+    "sha": "9d8e54319"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 14
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 14
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 14
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 13
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 13
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 14
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 14
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 13
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 13
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 14
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 14
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 13
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 13
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 14
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 13
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 14
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 13
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 13
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 14
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 14
+    }
+   ]
+  },
+  "Browser gate — debugger recording, reverse and fork history": {
+   "n": 20,
+   "p95": 43,
+   "max": {
+    "seconds": 44,
+    "run": 34102279913,
+    "sha": "f2ced1fa1"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 35
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 41
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 43
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 30
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 41
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 42
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 42
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 34
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 27
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 31
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 37
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 43
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 42
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 35
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 28
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 27
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 44
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 27
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 42
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 31
+    }
+   ]
+  },
+  "Browser gate — a program's chip refusal reaches the debug panel": {
+   "n": 16,
+   "p95": 4,
+   "max": {
+    "seconds": 4,
+    "run": 34119648099,
+    "sha": "9d8e54319"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 4
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 4
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 3
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 3
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 4
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 4
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 4
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 4
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 3
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 3
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 4
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 4
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 3
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 3
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 3
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 3
+    }
+   ]
+  },
+  "Browser gate — Machine Loader preset reaches the debugger": {
+   "n": 8,
+   "p95": 6,
+   "max": {
+    "seconds": 6,
+    "run": 34118997841,
+    "sha": "ac15b8295"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 5
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 6
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 5
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 4
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 5
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 5
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 6
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 5
+    }
+   ]
+  },
+  "Browser gate — debugger run-to and synchronized inspection": {
+   "n": 20,
+   "p95": 4,
+   "max": {
+    "seconds": 4,
+    "run": 34115247607,
+    "sha": "851ff42b8"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 3
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 3
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 3
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 4
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 4
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 3
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 3
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 4
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 2
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 3
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 3
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 3
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 2
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 3
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 3
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 3
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 3
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 3
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 2
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 3
+    }
+   ]
+  },
+  "Browser gate — service worker failure modes": {
+   "n": 20,
+   "p95": 25,
+   "max": {
+    "seconds": 26,
+    "run": 34112210638,
+    "sha": "39688b024"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 25
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 24
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 25
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 25
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 25
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 25
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 25
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 26
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 24
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 24
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 25
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 24
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 24
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 25
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 25
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 25
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 25
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 25
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 24
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 25
+    }
+   ]
+  },
+  "Browser gate — circuit UX": {
+   "n": 20,
+   "p95": 21,
+   "max": {
+    "seconds": 22,
+    "run": 34050397009,
+    "sha": "72a01c3f0"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 21
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 21
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 21
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 21
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 21
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 21
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 20
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 20
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 19
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 21
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 21
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 19
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 20
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 20
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 20
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 21
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 19
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 20
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 20
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 21
+    }
+   ]
+  },
+  "Browser gate — render fonts arrive with the first text costume, not before": {
+   "n": 20,
+   "p95": 4,
+   "max": {
+    "seconds": 4,
+    "run": 34118997841,
+    "sha": "ac15b8295"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 3
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 4
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 4
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 4
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 3
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 3
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 4
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 3
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 3
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 3
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 3
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 3
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 2
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 3
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 3
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 4
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 3
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 3
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 3
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 4
+    }
+   ]
+  },
+  "Browser gate — circuit rendering and placement": {
+   "n": 20,
+   "p95": 6,
+   "max": {
+    "seconds": 6,
+    "run": 34119648099,
+    "sha": "9d8e54319"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 6
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 5
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 6
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 5
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 6
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 6
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 5
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 6
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 5
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 6
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 6
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 5
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 5
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 6
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 6
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 5
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 5
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 5
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 5
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 5
+    }
+   ]
+  },
+  "Browser gate — physical 74C922 keypad encoder": {
+   "n": 20,
+   "p95": 4,
+   "max": {
+    "seconds": 4,
+    "run": 34118997841,
+    "sha": "ac15b8295"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 3
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 4
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 3
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 4
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 3
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 3
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 4
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 3
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 3
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 4
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 4
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 3
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 3
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 4
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 3
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 4
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 3
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 3
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 3
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 3
+    }
+   ]
+  },
+  "Browser gate — the DRC can sum chip current": {
+   "n": 20,
+   "p95": 3,
+   "max": {
+    "seconds": 3,
+    "run": 34119648099,
+    "sha": "9d8e54319"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 3
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 3
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 2
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 2
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 3
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 2
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 3
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 3
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 2
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 3
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 2
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 2
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 1
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 3
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 3
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 3
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 2
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 2
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 2
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 2
+    }
+   ]
+  },
+  "Browser gate — view buttons": {
+   "n": 20,
+   "p95": 15,
+   "max": {
+    "seconds": 16,
+    "run": 34098323626,
+    "sha": "ef376fd66"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 15
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 15
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 15
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 15
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 15
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 15
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 15
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 15
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 14
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 15
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 15
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 15
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 15
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 15
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 15
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 15
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 15
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 15
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 14
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 16
+    }
+   ]
+  },
+  "Browser gate — editor": {
+   "n": 20,
+   "p95": 19,
+   "max": {
+    "seconds": 20,
+    "run": 34113154528,
+    "sha": "e42b6bebb"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 19
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 19
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 19
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 19
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 19
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 19
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 20
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 19
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 19
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 19
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 19
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 18
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 19
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 19
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 19
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 19
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 18
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 18
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 19
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 18
+    }
+   ]
+  },
+  "Browser gate — unpinned extension sandbox": {
+   "n": 20,
+   "p95": 2,
+   "max": {
+    "seconds": 2,
+    "run": 34117114146,
+    "sha": "c60f827b9"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 1
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 1
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 2
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 2
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 1
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 1
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 1
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 1
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 1
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 1
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 2
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 2
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 1
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 1
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 2
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 2
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 2
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 2
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 1
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 2
+    }
+   ]
+  },
+  "Browser gate — game gallery and hardware examples": {
+   "n": 20,
+   "p95": 4,
+   "max": {
+    "seconds": 4,
+    "run": 34119648099,
+    "sha": "9d8e54319"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 4
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 4
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 4
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 3
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 4
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 4
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 4
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 4
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 3
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 4
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 4
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 3
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 3
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 4
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 3
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 4
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 3
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 3
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 3
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 4
+    }
+   ]
+  },
+  "Browser gate — both BASIC profiles execute on real machines": {
+   "n": 20,
+   "p95": 3,
+   "max": {
+    "seconds": 3,
+    "run": 34117114146,
+    "sha": "c60f827b9"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 2
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 2
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 3
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 3
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 3
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 2
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 3
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 2
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 3
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 2
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 3
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 2
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 2
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 2
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 3
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 2
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 2
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 2
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 3
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 2
+    }
+   ]
+  },
+  "Browser gate — 8086 local assembly, CGA, keyboard and 8255": {
+   "n": 20,
+   "p95": 5,
+   "max": {
+    "seconds": 5,
+    "run": 34119648099,
+    "sha": "9d8e54319"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 5
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 5
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 4
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 4
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 4
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 4
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 4
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 4
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 4
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 5
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 4
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 3
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 4
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 4
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 4
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 4
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 4
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 4
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 4
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 4
+    }
+   ]
+  },
+  "Browser gate — 8086 .COM / .img export (N10)": {
+   "n": 20,
+   "p95": 3,
+   "max": {
+    "seconds": 3,
+    "run": 34118997841,
+    "sha": "ac15b8295"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 2
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 3
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 2
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 2
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 3
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 2
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 2
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 2
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 1
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 2
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 2
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 2
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 2
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 2
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 3
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 2
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 2
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 2
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 3
+    },
+    {
+     "run": 34093588436,
+     "sha": "119d509b3",
+     "seconds": 2
+    }
+   ]
+  },
+  "Browser gate — micro:bit WebUSB flash button (N9)": {
+   "n": 20,
+   "p95": 4,
+   "max": {
+    "seconds": 5,
+    "run": 34097534401,
+    "sha": "920e5ff14"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 4
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 4
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 4
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 4
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 3
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 4
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 4
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 4
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 4
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 4
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 4
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 3
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 4
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 4
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 4
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 4
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 3
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 3
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 3
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 4
+    }
+   ]
+  },
+  "Browser benchmark — 8086 desktop and mobile": {
+   "n": 20,
+   "p95": 135,
+   "max": {
+    "seconds": 136,
+    "run": 34106774962,
+    "sha": "3ecb72b7c"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 128
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 127
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 129
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 101
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 122
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 135
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 130
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 122
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 102
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 100
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 134
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 136
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 126
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 124
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 104
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 97
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 131
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 95
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 129
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 107
+    }
+   ]
+  },
+  "Browser gate — declared extension capability broker": {
+   "n": 20,
+   "p95": 3,
+   "max": {
+    "seconds": 3,
+    "run": 34117114146,
+    "sha": "c60f827b9"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 2
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 2
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 3
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 2
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 3
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 2
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 2
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 3
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 2
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 3
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 3
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 2
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 2
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 2
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 2
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 3
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 1
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 2
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 2
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 2
+    }
+   ]
+  },
+  "Browser gate — first-run chooser and guided journeys": {
+   "n": 20,
+   "p95": 8,
+   "max": {
+    "seconds": 9,
+    "run": 34060543504,
+    "sha": "7a5dcb989"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 8
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 7
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 8
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 8
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 7
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 8
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 8
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 8
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 6
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 8
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 8
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 6
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 6
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 8
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 8
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 8
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 7
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 6
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 6
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 8
+    }
+   ]
+  },
+  "Browser gate — LEGO SPIKE archive and Code-tab round trip": {
+   "n": 20,
+   "p95": 3,
+   "max": {
+    "seconds": 3,
+    "run": 34118997841,
+    "sha": "ac15b8295"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 2
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 3
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 3
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 3
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 3
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 2
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 2
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 2
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 3
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 2
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 3
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 2
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 2
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 2
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 2
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 2
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 2
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 3
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 2
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 2
+    }
+   ]
+  },
+  "Browser gate — four-surface project save, reopen and vanilla replacement": {
+   "n": 20,
+   "p95": 7,
+   "max": {
+    "seconds": 7,
+    "run": 34111028136,
+    "sha": "256be3925"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 6
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 6
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 6
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 6
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 6
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 6
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 6
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 6
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 4
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 7
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 6
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 5
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 5
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 6
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 6
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 7
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 5
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 5
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 6
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 6
+    }
+   ]
+  },
+  "Browser gate — costume artwork survives save/reload and records first-open performance": {
+   "n": 20,
+   "p95": 5,
+   "max": {
+    "seconds": 5,
+    "run": 34119648099,
+    "sha": "9d8e54319"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 5
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 4
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 5
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 4
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 4
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 4
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 5
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 5
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 4
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 4
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 4
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 4
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 3
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 5
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 5
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 4
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 4
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 3
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 3
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 4
+    }
+   ]
+  },
+  "Browser gate — first Sounds-tab interactivity": {
+   "n": 20,
+   "p95": 2,
+   "max": {
+    "seconds": 2,
+    "run": 34118997841,
+    "sha": "ac15b8295"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 1
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 2
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 2
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 2
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 2
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 2
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 2
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 1
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 2
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 2
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 2
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 1
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 2
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 1
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 1
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 2
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 1
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 2
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 2
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 2
+    }
+   ]
+  },
+  "Browser gate — P21 Code importer activation, retry and state": {
+   "n": 20,
+   "p95": 12,
+   "max": {
+    "seconds": 13,
+    "run": 34097534401,
+    "sha": "920e5ff14"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 11
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 11
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 12
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 11
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 11
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 11
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 12
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 12
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 10
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 11
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 11
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 9
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 8
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 11
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 11
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 12
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 10
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 10
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 10
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 12
+    }
+   ]
+  },
+  "Browser gate — the renderer accepts the table the arrays blocks describe": {
+   "n": 20,
+   "p95": 2,
+   "max": {
+    "seconds": 2,
+    "run": 34118997841,
+    "sha": "ac15b8295"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 1
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 2
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 2
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 2
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 1
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 1
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 2
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 2
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 1
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 1
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 1
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 1
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 1
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 2
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 2
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 2
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 1
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 1
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 2
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 1
+    }
+   ]
+  },
+  "Browser gate — a missing extension chunk costs its blocks, not the project": {
+   "n": 20,
+   "p95": 4,
+   "max": {
+    "seconds": 5,
+    "run": 34102511627,
+    "sha": "37d337935"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 4
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 4
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 4
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 4
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 4
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 4
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 4
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 4
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 3
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 4
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 4
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 3
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 3
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 4
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 4
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 5
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 4
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 3
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 3
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 4
+    }
+   ]
+  },
+  "Browser gates — About, intro, interaction, and schematic rendering": {
+   "n": 20,
+   "p95": 19,
+   "max": {
+    "seconds": 19,
+    "run": 34113154528,
+    "sha": "e42b6bebb"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 18
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 18
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 18
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 18
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 18
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 18
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 19
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 18
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 16
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 18
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 18
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 16
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 16
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 18
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 18
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 19
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 16
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 16
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 17
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 19
+    }
+   ]
+  },
+  "Browser gates — Code chrome, Controller, faceplates, and Instruments": {
+   "n": 20,
+   "p95": 21,
+   "max": {
+    "seconds": 22,
+    "run": 34052109431,
+    "sha": "b112681f7"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 15
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 19
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 19
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 18
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 15
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 18
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 19
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 20
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 14
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 21
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 21
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 12
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 12
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 18
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 18
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 18
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 14
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 12
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 13
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 19
+    }
+   ]
+  },
+  "Browser gate — Aurora-65 keyboard, OLED and VGA workstation": {
+   "n": 20,
+   "p95": 9,
+   "max": {
+    "seconds": 9,
+    "run": 34118997841,
+    "sha": "ac15b8295"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 8
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 9
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 9
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 9
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 8
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 8
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 9
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 8
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 7
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 9
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 8
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 6
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 6
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 8
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 9
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 8
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 6
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 7
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 7
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 8
+    }
+   ]
+  },
+  "Browser gate — debugger dock and serial input": {
+   "n": 20,
+   "p95": 28,
+   "max": {
+    "seconds": 29,
+    "run": 34057759296,
+    "sha": "3ebb8482f"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 28
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 27
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 28
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 28
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 28
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 28
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 28
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 28
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 27
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 28
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 28
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 27
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 27
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 28
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 28
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 28
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 27
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 27
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 27
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 28
+    }
+   ]
+  },
+  "Browser gate — language x device matrix badge and panel": {
+   "n": 20,
+   "p95": 2,
+   "max": {
+    "seconds": 2,
+    "run": 34119648099,
+    "sha": "9d8e54319"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 2
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 2
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 2
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 2
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 2
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 2
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 2
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 1
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 1
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 2
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 2
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 2
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 1
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 2
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 2
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 2
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 1
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 1
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 2
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 2
+    }
+   ]
+  },
+  "Browser gate — the heavy engine is not downloaded on first load": {
+   "n": 20,
+   "p95": 2,
+   "max": {
+    "seconds": 3,
+    "run": 34112210638,
+    "sha": "39688b024"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 2
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 2
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 2
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 2
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 2
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 2
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 2
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 3
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 2
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 2
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 2
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 1
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 2
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 2
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 2
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 2
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 2
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 2
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 2
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 2
+    }
+   ]
+  },
+  "Browser gate — the labwired heavy tier actually executes": {
+   "n": 20,
+   "p95": 166,
+   "max": {
+    "seconds": 168,
+    "run": 34067968927,
+    "sha": "68a726c35"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 150
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 167
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 158
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 133
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 160
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 166
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 150
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 150
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 127
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 103
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 151
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 161
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 159
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 150
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 122
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 100
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 160
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 119
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 164
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 121
+    }
+   ]
+  },
+  "Browser gate — with no engine artifact, the tier is not offered": {
+   "n": 20,
+   "p95": 47,
+   "max": {
+    "seconds": 47,
+    "run": 34119648099,
+    "sha": "9d8e54319"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 47
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 47
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 47
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 46
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 47
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 47
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 46
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 47
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 47
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 47
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 47
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 47
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 47
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 46
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 46
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 47
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 47
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 46
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 47
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 46
+    }
+   ]
+  },
+  "Browser gate — offline 8051 compile and debugger evidence": {
+   "n": 20,
+   "p95": 6,
+   "max": {
+    "seconds": 6,
+    "run": 34117114146,
+    "sha": "c60f827b9"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 5
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 5
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 6
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 5
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 5
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 6
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 5
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 5
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 5
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 5
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 5
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 5
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 4
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 6
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 5
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 5
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 4
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 4
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 4
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 5
+    }
+   ]
+  },
+  "Browser gate — offline linked 8051 assembly listings": {
+   "n": 20,
+   "p95": 6,
+   "max": {
+    "seconds": 7,
+    "run": 34101768263,
+    "sha": "67fcc8cc7"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 4
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 4
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 4
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 4
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 3
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 3
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 4
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 4
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 3
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 4
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 4
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 6
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 3
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 3
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 4
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 4
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 6
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 7
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 4
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 4
+    }
+   ]
+  },
+  "Browser gate — an AVR lesson bench starts offline on its shipped image": {
+   "n": 20,
+   "p95": 35,
+   "max": {
+    "seconds": 35,
+    "run": 34119648099,
+    "sha": "9d8e54319"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 35
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 35
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 34
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 35
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 35
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 34
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 34
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 34
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 34
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 34
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 35
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 35
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 34
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 35
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 34
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 34
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 34
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 34
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 35
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 35
+    }
+   ]
+  },
+  "Browser gate — promoted pinned extension worker": {
+   "n": 20,
+   "p95": 2,
+   "max": {
+    "seconds": 2,
+    "run": 34119648099,
+    "sha": "9d8e54319"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 2
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 1
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 2
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 1
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 2
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 1
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 2
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 2
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 1
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 2
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 1
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 1
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 1
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 1
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 2
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 2
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 1
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 1
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 1
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 1
+    }
+   ]
+  },
+  "Browser gate — the native Web Bluetooth shim": {
+   "n": 20,
+   "p95": 2,
+   "max": {
+    "seconds": 2,
+    "run": 34119648099,
+    "sha": "9d8e54319"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 2
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 2
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 2
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 2
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 2
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 2
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 2
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 1
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 2
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 2
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 2
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 2
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 2
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 2
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 2
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 2
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 1
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 2
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 2
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 2
+    }
+   ]
+  },
+  "Browser gate — MakeCode import": {
+   "n": 20,
+   "p95": 3,
+   "max": {
+    "seconds": 8,
+    "run": 34074046052,
+    "sha": "c3b30a587"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 2
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 3
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 3
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 3
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 2
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 3
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 3
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 3
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 2
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 3
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 3
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 2
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 2
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 2
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 3
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 3
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 3
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 2
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 2
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 3
+    }
+   ]
+  },
+  "Browser gate — micro:bit MicroPython tab and simulator": {
+   "n": 20,
+   "p95": 18,
+   "max": {
+    "seconds": 18,
+    "run": 34119648099,
+    "sha": "9d8e54319"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 18
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 17
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 17
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 17
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 17
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 17
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 17
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 18
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 17
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 17
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 17
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 17
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 17
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 18
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 17
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 17
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 16
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 17
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 17
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 17
+    }
+   ]
+  },
+  "Browser gate — Pico MicroPython simulator Run lights the LED (N3c)": {
+   "n": 20,
+   "p95": 11,
+   "max": {
+    "seconds": 12,
+    "run": 34108111864,
+    "sha": "dc9e44951"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 10
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 11
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 11
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 11
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 11
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 11
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 10
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 10
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 10
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 12
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 9
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 9
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 10
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 11
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 11
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 10
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 10
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 10
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 10
+    },
+    {
+     "run": 34097534401,
+     "sha": "920e5ff14",
+     "seconds": 10
+    }
+   ]
+  },
+  "Browser gate — Pico ▶ Run refuses by name with no firmware (N3c)": {
+   "n": 20,
+   "p95": 4,
+   "max": {
+    "seconds": 4,
+    "run": 34117114146,
+    "sha": "c60f827b9"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 3
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 3
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 4
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 3
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 3
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 3
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 3
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 3
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 2
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 4
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 3
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 3
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 3
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 3
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 3
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 3
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 3
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 3
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 3
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 4
+    }
+   ]
+  },
+  "Browser gate — micro:bit debugger, block and line stepping": {
+   "n": 20,
+   "p95": 18,
+   "max": {
+    "seconds": 18,
+    "run": 34119648099,
+    "sha": "9d8e54319"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 18
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 17
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 17
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 18
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 17
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 17
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 18
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 18
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 18
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 17
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 18
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 17
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 17
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 18
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 18
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 18
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 17
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 17
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 17
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 17
+    }
+   ]
+  },
+  "Browser gate — Arduboy console runs a compiled game": {
+   "n": 20,
+   "p95": 4,
+   "max": {
+    "seconds": 5,
+    "run": 34065043370,
+    "sha": "182d00dbe"
+   },
+   "readings": [
+    {
+     "run": 34119648099,
+     "sha": "9d8e54319",
+     "seconds": 4
+    },
+    {
+     "run": 34118997841,
+     "sha": "ac15b8295",
+     "seconds": 4
+    },
+    {
+     "run": 34117114146,
+     "sha": "c60f827b9",
+     "seconds": 4
+    },
+    {
+     "run": 34115247607,
+     "sha": "851ff42b8",
+     "seconds": 3
+    },
+    {
+     "run": 34114583082,
+     "sha": "5ac83c663",
+     "seconds": 4
+    },
+    {
+     "run": 34114426126,
+     "sha": "3d5676c3a",
+     "seconds": 4
+    },
+    {
+     "run": 34113154528,
+     "sha": "e42b6bebb",
+     "seconds": 4
+    },
+    {
+     "run": 34112210638,
+     "sha": "39688b024",
+     "seconds": 4
+    },
+    {
+     "run": 34111628699,
+     "sha": "491007b3e",
+     "seconds": 3
+    },
+    {
+     "run": 34111028136,
+     "sha": "256be3925",
+     "seconds": 4
+    },
+    {
+     "run": 34108111864,
+     "sha": "dc9e44951",
+     "seconds": 3
+    },
+    {
+     "run": 34106774962,
+     "sha": "3ecb72b7c",
+     "seconds": 4
+    },
+    {
+     "run": 34105342861,
+     "sha": "45fe94bb7",
+     "seconds": 3
+    },
+    {
+     "run": 34104646467,
+     "sha": "dd78117c4",
+     "seconds": 3
+    },
+    {
+     "run": 34103619336,
+     "sha": "50838bc9c",
+     "seconds": 4
+    },
+    {
+     "run": 34102511627,
+     "sha": "37d337935",
+     "seconds": 3
+    },
+    {
+     "run": 34102279913,
+     "sha": "f2ced1fa1",
+     "seconds": 3
+    },
+    {
+     "run": 34101768263,
+     "sha": "67fcc8cc7",
+     "seconds": 3
+    },
+    {
+     "run": 34099997406,
+     "sha": "e6037bc84",
+     "seconds": 3
+    },
+    {
+     "run": 34098323626,
+     "sha": "ef376fd66",
+     "seconds": 4
+    }
+   ]
+  }
+ }
+}
