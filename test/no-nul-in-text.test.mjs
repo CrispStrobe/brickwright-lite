@@ -65,7 +65,6 @@ export const KNOWN = [
     {file: 'packages/scratch-gui/src/lib/bw-board/board.js', nuls: 4, pin: 'bw-board d5850e69', why: 'the integrated mirror of the file above'},
     {file: 'overlay/scratch-gui/src/lib/bw-circuit-ui/importers/easyeda-pro-pcb.js', nuls: 2, pin: 'bw-circuit-ui a8797322', why: 'composite key at line 305; identical to upstream at the pin — fix in bw-circuit-ui, re-vendor'},
     {file: 'overlay/scratch-gui/src/lib/bw-circuit-ui/model/board-lift.js', nuls: 1, pin: 'bw-circuit-ui a8797322', why: 'composite key at line 106; identical to upstream at the pin — fix in bw-circuit-ui, re-vendor'},
-    {file: 'test/fetch-pinning.test.mjs', nuls: 1, pin: 'lite', why: "the binary-detection check's own literal NUL at line 135; lego-be's one character"}
 ];
 
 /** Every NUL in a buffer, as {offset, line, context}. Pure. */

@@ -1868,3 +1868,18 @@ not bad luck — it is what a plain replace hides.
 
 **The check to make of any such tool:** *what does it do when it matches
 nothing?* If the answer is "succeeds", the next silent no-op is already written.
+
+**The fourth face, and the worst one (lego-be, ea; 2026-09-07):** the first three faces of the NUL
+in `test/fetch-pinning.test.mjs` — grep withholding matches, git refusing to line-merge, diffs
+unreadable — each cost a diagnosis but announced itself as confusion. This one announced itself as
+GREEN. T9's stale-pin census (`pin-move-chain.test.mjs`) skips any file containing a NUL, so for as
+long as the byte was there the gate reported clean while an old bw-board pin (`a301937d9`, a fixture
+value that happened to be a real former pin) sat at line 618 of a file the gate exists to scan. Proved
+both ways on the same tree: NUL put back → 7 pass; NUL removed → red naming the sha (lego-be); and from
+the other side, main + the one-character fix only, pin untouched → the same red (ea, four measurements).
+The sentence that generalises past NULs: a file the tooling calls binary is a file your gates do not
+read, and nothing in the run says so — any file-skip predicate inside a scanner (a NUL, a size cap, a
+parse failure, a path pattern, a binary sniff) is a set the gate silently does not quantify over. An
+instance of the twenty-eighth species one level down: a census that cannot see a FILE. The fixture is
+now `'deadbeef'.repeat(5)`: a value that only needs to be 40 hex characters must not be a value that
+means something elsewhere.
