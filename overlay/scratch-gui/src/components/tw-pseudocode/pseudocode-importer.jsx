@@ -3439,6 +3439,7 @@ class PseudocodeImporter extends React.Component {
                     onClick={() => { this.loadCatalog(); this.setState(s => ({showCatalog: !s.showCatalog})); }}
                     style={{...csel, cursor: 'pointer', border: '1px solid #cbd5e1',
                         background: open ? '#e2e8f0' : '#f1f5f9'}}
+                    aria-expanded={open}
                     title={this.L.loadCatalogTitle} data-testid="bw-catalog-toggle">
                     {this.L.loadExample}
                 </button>
@@ -3447,7 +3448,8 @@ class PseudocodeImporter extends React.Component {
                         width: 340, maxHeight: 380, display: 'flex', flexDirection: 'column',
                         background: '#fff', border: '1px solid #cbd5e1', borderRadius: 8,
                         boxShadow: '0 8px 24px rgba(15,23,42,.18)', textAlign: 'left'}}
-                        data-testid="bw-catalog-panel">
+                        data-testid="bw-catalog-panel"
+                        data-device={this.currentDevice() || ''}>
                         <input type="search" value={this.state.exampleFilter} autoFocus
                             onChange={e => this.setState({exampleFilter: e.target.value})}
                             placeholder={this.L.searchExamples}

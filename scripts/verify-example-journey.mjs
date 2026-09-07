@@ -141,6 +141,9 @@ try {
     }, null, {timeout: 40000});
     check('the night-light example is published in the gallery', !!found);
 
+    const titleNow = () => page.evaluate(() =>
+        window.__brickwrightStore?.getState?.()?.scratchGui?.projectTitle ?? null);
+    const titleBeforeLoad = await titleNow();
     const loaded = await page.evaluate(async () => {
         const tab = window.__bwUiCircuitTab;
         const ex = tab.state.examples.find(e => e.id === '03-night-light');
@@ -150,6 +153,20 @@ try {
         (loaded && loaded.error) || '');
 
     // ---- J3: the (i) beside the project name --------------------------------
+    // U1-3's claim is NOT that the project name survives an example load. The
+    // measurement note records the opposite: loading an example DELIBERATELY
+    // overwrites it (circuit-tab.jsx publishes pendingExampleTitle through
+    // onSetProjectTitle), and the (i) exists BECAUSE that same field is
+    // user-editable — so the title alone can no longer say WHICH example is
+    // loaded. "Capture the title before and assert it after" would therefore
+    // prove the inverse of the documented behaviour; what has to be proved is
+    // that the overwrite happens AND that the (i) outlives a rename.
+    const titleAfterLoad = await titleNow();
+    check('loading the example overwrites the user-editable project name',
+        typeof titleAfterLoad === 'string' && titleAfterLoad.trim().length > 0 &&
+        titleAfterLoad !== titleBeforeLoad,
+        `${JSON.stringify(titleBeforeLoad)} -> ${JSON.stringify(titleAfterLoad)}`);
+
     const intro = page.getByTestId('bw-example-intro');
     await intro.waitFor({timeout: 30000});
     const introFor = await intro.getAttribute('data-example-id');
@@ -160,37 +177,66 @@ try {
     const panel = (await page.getByTestId('bw-example-intro-panel').textContent() || '').trim();
     check('it opens a panel carrying the example', panel.length > 10, panel.slice(0, 120));
     await snap('example-intro-open');
+
+    // Close it AND WAIT FOR IT TO BE GONE. An open panel sits over the controls
+    // the next journey clicks. That is what actually failed in 34144783395: the
+    // locator resolved to the right button and then spent 56 polls on "visible,
+    // enabled and stable". The selector was never the problem, so swapping it
+    // fixed nothing; the missing step was this wait.
     await intro.click();
+    await page.getByTestId('bw-example-intro-panel')
+        .waitFor({state: 'hidden', timeout: 20000});
+
+    // The reason the affordance exists: the learner renames the project, and the
+    // (i) must still say which example this is. This is the ONLY check that
+    // distinguishes the (i) from the title it sits beside.
+    const titleField = page.locator('input[class*="title-field"]').first();
+    await titleField.waitFor({state: 'visible', timeout: 20000});
+    await titleField.fill('My own project name');
+    await titleField.press('Enter');
+    await page.waitForFunction(() => window.__brickwrightStore?.getState?.()
+        ?.scratchGui?.projectTitle === 'My own project name', null, {timeout: 20000});
+    const introAfterRename = await page.getByTestId('bw-example-intro')
+        .getAttribute('data-example-id');
+    check('the (i) still names the example after the learner renames the project',
+        introAfterRename === '03-night-light', String(introAfterRename));
 
     // ---- J2: the catalogue does not narrow with the device ------------------
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
     const device = page.getByTestId('bw-device-select');
     await device.waitFor({state: 'visible', timeout: 20000});
+    const toggle = page.getByTestId('bw-catalog-toggle');
+    const catalogPanel = page.locator('[data-testid="bw-catalog-panel"]');
     const countItems = () => page.locator('[data-testid="bw-catalog-item"]').count();
-    // `bw-catalog-toggle` is the control's own id, not a label match. The first
-    // version of this gate used getByText(/Load example/i) — an INVENTED
-    // selector, which the brief warned against and which cost a CI run: it
-    // matched something that never became stable and spent 30 s retrying.
-    // It is also a TOGGLE, so clicking it blind closes a catalogue that is
-    // already open; this opens only when no item is showing.
+
+    // OPEN STATE IS READ FROM THE CONTROL, NOT INFERRED FROM ITS CONTENTS.
+    // Returning early on "an item is showing" broke in both directions. An
+    // EMPTY-but-open catalogue — exactly the U1-2 regression this gate exists to
+    // catch — looked shut, so the helper clicked the toggle, CLOSED the
+    // catalogue, and waited 30 s for an item that could never arrive: the
+    // regression reported as a Playwright stall. And a stale list satisfied the
+    // early return, so a count taken before the re-render passed by comparing a
+    // list against itself. aria-expanded is the control's own state.
     const openCatalog = async () => {
-        if (await page.locator('[data-testid="bw-catalog-item"]').count()) return;
-        await page.getByTestId('bw-catalog-toggle').click();
-        await page.locator('[data-testid="bw-catalog-item"]').first()
-            .waitFor({timeout: 30000});
+        if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
+        await catalogPanel.waitFor({state: 'visible', timeout: 30000});
     };
     await openCatalog();
     const before = await countItems();
+    // Named here, so an empty catalogue fails as an empty catalogue.
     check('the catalogue lists examples at all', before > 0, `saw ${before}`);
     const noNeeds = await page.evaluate(() =>
-        !/Benötigt:|Needs:/.test(document.body.textContent || ''));
+        !/Ben\u00f6tigt:|Needs:/.test(document.body.textContent || ''));
     check('no example is labelled with a device requirement', noNeeds);
 
     await device.selectOption('stc89c52rc');
-    await page.waitForFunction(() =>
-        document.querySelector('[data-testid="bw-device-select"]')?.value === 'stc89c52rc',
-    null, {timeout: 20000});
     await openCatalog();
+    // Wait on the LIST's own re-render, not on the <select>'s value. The value is
+    // the EVENT that should cause the change; the panel's data-device is the
+    // CHANGED STATE. Waiting on the former is event-as-state and let a stale list
+    // be counted.
+    await page.locator('[data-testid="bw-catalog-panel"][data-device="stc89c52rc"]')
+        .waitFor({state: 'visible', timeout: 20000});
     const after = await countItems();
     check('changing the device does not narrow the catalogue', after === before,
         `${before} before, ${after} after`);
@@ -205,6 +251,48 @@ try {
     check('choosing a device the example has no circuit for is REFUSED by name',
         /cannot retarget|not available|Cannot/i.test(status), JSON.stringify(status.slice(0, 200)));
     await snap('device-refusal');
+
+    // ---- J4: the OTHER half of the U1-1 fix ---------------------------------
+    // The fix publishes `bw-example-loaded` and ALSO reads window.__bwActiveExample
+    // on mount, because the importer may not exist yet when the event fires.
+    // Everything above exercises only the second path: LazyPseudocodeImporter
+    // renders null until `activated`, and on the Circuit tab it is not activated,
+    // so its componentDidMount runs strictly AFTER the gallery load — the
+    // listener is registered too late to hear it. With the Code tab now visited
+    // the importer IS mounted, so loading a second example here is the only
+    // thing in this gate that can exercise the LISTENER. Without J4 half the fix
+    // ships unproven and would keep passing if the listener were deleted.
+    const second = await page.evaluate(async () => {
+        const tab = window.__bwUiCircuitTab;
+        const ex = (tab.state.examples || []).find(e => e.id !== '03-night-light');
+        if (!ex) return null;
+        await tab.loadExample(ex);
+        return ex.id;
+    });
+    if (second) {
+        const seen = await page.waitForFunction(want => {
+            const gui = document.querySelector('[class*="gui_body"]') || document.querySelector('[class*="gui"]');
+            const key = gui && Object.keys(gui).find(k =>
+                k.startsWith('__reactFiber') || k.startsWith('__reactInternalInstance'));
+            if (!key) return false;
+            const queue = [gui[key]];
+            for (let i = 0; i < 8000 && queue.length; i++) {
+                const fiber = queue.shift();
+                const node = fiber && fiber.stateNode;
+                if (node && typeof node.setDevice === 'function' && node.state && node.state.buffers) {
+                    return (node._lastCatalogExample && node._lastCatalogExample.id) === want;
+                }
+                if (fiber && fiber.child) queue.push(fiber.child);
+                if (fiber && fiber.sibling) queue.push(fiber.sibling);
+            }
+            return false;
+        }, second, {timeout: 30000}).then(() => true).catch(() => false);
+        check('a gallery load reaches an ALREADY-MOUNTED importer through the event',
+            seen, `expected ${second}`);
+    } else {
+        check('a second example exists to prove the event path', false,
+            'the gallery published only one example');
+    }
 
     check('no page errors or failed requests', diagnostics.length === 0,
         diagnostics.slice(0, 4).join(' | '));
