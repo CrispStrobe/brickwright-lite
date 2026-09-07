@@ -1015,7 +1015,9 @@ jobs:
         # Direct `node scripts/…`, not `npm run …`: gate-coverage.test.mjs's alias
         # regex does not accept an env prefix before `npm run`. (The npm alias
         # verify:i8086-export stays for humans.)
-        run: PROOF_URL=http://localhost:8617/ node scripts/verify-i8086-export.mjs
+        # BW_STEP_BUDGET_MIN mirrors timeout-minutes above (test/browser-gate-timeouts asserts they agree);
+        # the gate takes its editor and typing waits from it, not from a literal.
+        run: BW_STEP_BUDGET_MIN=3 PROOF_URL=http://localhost:8617/ node scripts/verify-i8086-export.mjs
 
       # N9: the "flash the micro:bit" button is wired into the Code tab, appears
       # only where WebUSB exists, and refuses BY NAME on the status line when no
