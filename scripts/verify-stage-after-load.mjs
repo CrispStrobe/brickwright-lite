@@ -396,22 +396,26 @@ async function run () {
         // green flag, so this pokes that one instead. Buffer non-zero here means
         // the gate is the mechanism and fullscreen was incidental; still zero
         // means the reading is wrong and fullscreen does something else.
+        // The green flag was the wrong prop to poke: isStarted was ALREADY true
+        // before it, so the flag could not flip anything and the run was
+        // undecided for a reason that had nothing to do with the theory.
+        // stageSize is also gated and is provably changeable — large to small.
         const poke = await page.evaluate(() => {
-            const vm = window.__bwImporter && window.__bwImporter.props && window.__bwImporter.props.vm;
-            if (!vm || typeof vm.greenFlag !== 'function') return {ran: false, why: 'no vm.greenFlag reachable'};
-            vm.greenFlag();
+            const store = window.__brickwrightStore;
+            if (!store) return {ran: false, why: 'no store'};
+            store.dispatch({type: 'scratch-gui/StageSize/SET_STAGE_SIZE', stageSize: 'small'});
             return {ran: true};
         });
         await settle();
-        const afterGreenFlag = await snap('3b-after-green-flag');
+        const afterGreenFlag = await snap('3b-after-stage-size-change');
         // THE EXPERIMENT ONLY DECIDES ANYTHING IF THE POKE LANDED. The first
         // version called greenFlag inside an `if` that silently did nothing
         // when the handle was missing, so a 0x0 buffer afterwards could have
         // meant "a gated prop changed and resize still did not run" or "no
         // prop ever changed" — opposite conclusions from identical output.
-        const started = afterGreenFlag.isStarted && !afterViewport.isStarted;
-        check('the green-flag poke actually changed a gated prop (isStarted)', started,
-            poke.ran ? `isStarted ${afterViewport.isStarted} -> ${afterGreenFlag.isStarted}` : poke.why);
+        const started = afterGreenFlag.stageSizeMode !== afterViewport.stageSizeMode;
+        check('the poke actually changed a gated prop (stageSize)', started,
+            poke.ran ? `stageSize ${afterViewport.stageSizeMode} -> ${afterGreenFlag.stageSizeMode}` : poke.why);
 
         // STEP 5 — the control: real fullscreen, which is what the owner did.
         await page.evaluate(() => {
@@ -465,20 +469,27 @@ async function run () {
                 + 'parent after load and somewhere else after fullscreen, at the same size';
         }
 
+        // ONE BRANCH, NOT A DANGLING ELSE. The previous version printed the
+        // UNDECIDED block AND the decided conclusion in the same run, because
+        // the `else` bound to only the first of two console.logs. Contradictory
+        // prose over a correct measurement — the very failure this file keeps
+        // finding, this time in its own reporting.
         const gatedPropSized = afterGreenFlag.drawingBuffer.w > 0;
         if (!started) {
-            console.log('\nWHAT SIZES THE BUFFER: UNDECIDED — the green-flag poke did not change');
-            console.log('  isStarted, so this run says nothing about whether a gated prop would');
-            console.log('  have sized the buffer. Not evidence for the gate theory, and not');
-            console.log('  evidence against it.');
-        } else
-        console.log(`\nWHAT SIZES THE BUFFER: a gated prop change (isStarted, via the green flag) ` +
-            `${gatedPropSized ? 'DID' : 'did NOT'} size it (${afterGreenFlag.drawingBuffer.w}x${afterGreenFlag.drawingBuffer.h}).`);
-        console.log(gatedPropSized
-            ? '  So fullscreen is not special: renderer.resize runs from componentDidUpdate, and\n'
-              + '  ANY gated prop change reaches it. Nothing on the load path changes one.'
-            : '  So the componentDidUpdate reading does not explain it, and whatever fullscreen\n'
-              + '  does is something else. Do not build on the gate theory.');
+            console.log('\nWHAT SIZES THE BUFFER: UNDECIDED — the poke did not change a gated');
+            console.log('  prop, so this run says nothing about whether one would size the');
+            console.log('  buffer. Not evidence for the gate theory, and not against it.');
+        } else if (gatedPropSized) {
+            console.log(`\nWHAT SIZES THE BUFFER: a gated prop change DID size it ` +
+                `(${afterGreenFlag.drawingBuffer.w}x${afterGreenFlag.drawingBuffer.h}).`);
+            console.log('  So fullscreen is not special: renderer.resize runs from');
+            console.log('  componentDidUpdate and any gated prop reaches it. Nothing on the');
+            console.log('  load path changes one, which is the defect.');
+        } else {
+            console.log('\nWHAT SIZES THE BUFFER: a gated prop change did NOT size it.');
+            console.log('  The componentDidUpdate reading does not explain it, and whatever');
+            console.log('  fullscreen does is something else. Do not build on the gate theory.');
+        }
 
         if (verdict) {
             console.log(`\nVERDICT: ${verdict}\n  ${why}`);
