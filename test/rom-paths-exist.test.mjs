@@ -12,6 +12,25 @@
 // correct — it fetches a URL and throws on failure, exactly as intended. What
 // was wrong was a STRING, and the only thing that can check a string against
 // the filesystem is a check that reads both.
+//
+// WIDENED 2026-09-07 (lego-ac, from ea's P6 measurement): the first version
+// matched only the literal `static/roms/NAME`, and the Machine Loader builds
+// `static/roms/${p.rom}` from a PRESET LIST — seven i8086 presets pointed at
+// ROMs that were never vendored, the shipped UI 404ed on each, and the gate
+// written for exactly that failure could not see them because no line spelled
+// the name beside the prefix. The census now also reads:
+//   - template literals  `static/roms/${expr}`
+//   - concatenation      'static/roms/' + expr
+//   - path joins         join(..., 'static', 'roms', expr) / join('static/roms', expr)
+// and resolves the variable half through the LIST that feeds it: every
+// `rom: 'NAME'` (or "rom": "NAME") property in the SAME FILE is taken as a name
+// the constructed path can produce. That is the load-bearing depth of what
+// this file can see: a name that arrives from a prop, a JSON fixture, another
+// module or a runtime string is out of reach, so a constructed path in a file
+// with NO rom: entries is refused by name rather than passed as "nothing found".
+// The same limit is stated, not solved: a ROM name assembled from parts
+// ('i8086-' + kind + '-demo.bin') is invisible here.
+
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
@@ -32,28 +51,89 @@ function walk(dir, out = []) {
     return out;
 }
 
-// `static/roms/NAME` in a string literal, however the URL is later built.
-const REF = /['"`]static\/roms\/([A-Za-z0-9_.\-]+)['"`]/g;
+// Shape 1: `static/roms/NAME` in a string literal (optionally /static/roms or ./static/roms).
+const REF = /['"`](?:\.?\/)?static\/roms\/([A-Za-z0-9_.\-]+)['"`]/g;
+// Shape 2: a constructed path — the variable half is resolved through the file's rom: list.
+const CONSTRUCTED = [
+    /`(?:\.?\/)?static\/roms\/\$\{([^}]+)\}/g,                          // `static/roms/${p.rom}`
+    /['"](?:\.?\/)?static\/roms\/['"]\s*\+\s*([A-Za-z_$][\w$.]*)/g,       // 'static/roms/' + name
+    /join\([^)]*?['"]static['"]\s*,\s*['"]roms['"]\s*,\s*([^)'"]+)\)/g,     // join(x, 'static', 'roms', name)
+    /join\([^)]*?['"]static\/roms['"]\s*,\s*([^)'"]+)\)/g                  // join('static/roms', name)
+];
+// The list a constructed path draws from: `rom: 'NAME'` / "rom": "NAME" properties.
+const LIST_ENTRY = /\b["']?rom["']?\s*:\s*['"]([A-Za-z0-9_.\-]+)['"]/g;
+const isComment = line => /^\s*(\/\/|\*|\/\*)/.test(line);
 
-test('every static/roms file referenced in the overlay exists', () => {
+/**
+ * Every ROM name a source text can fetch, by shape. Pure; exported for the
+ * mutation tests below.
+ * @returns {{literal: string[], constructed: {line: number, expr: string}[], listNames: string[]}}
+ */
+export function censusRomRefs (text) {
+    const literal = [], constructed = [], listNames = [];
+    text.split('\n').forEach((line, i) => {
+        if (isComment(line)) return;
+        for (const m of line.matchAll(REF)) literal.push(m[1]);
+        for (const re of CONSTRUCTED) for (const m of line.matchAll(re)) constructed.push({line: i + 1, expr: m[1].trim()});
+        for (const m of line.matchAll(LIST_ENTRY)) listNames.push(m[1]);
+    });
+    return {literal, constructed, listNames};
+}
+
+/** The names a file can fetch, and the constructed paths whose source it cannot see. */
+export function resolveRomNames (text) {
+    const {literal, constructed, listNames} = censusRomRefs(text);
+    const names = new Set(literal);
+    const unresolvable = [];
+    if (constructed.length) {
+        if (listNames.length === 0) unresolvable.push(...constructed);
+        else for (const n of listNames) names.add(n);
+    }
+    return {names: [...names], unresolvable, constructed: constructed.length, listNames: listNames.length};
+}
+
+test('every static/roms file the overlay can fetch — literal or built from a preset list — exists', () => {
     const missing = [];
     const seen = new Set();
+    const blind = [];
+    let constructedSeen = 0;
     for (const file of walk(overlaySrc)) {
         const text = readFileSync(file, 'utf8');
-        for (const m of text.matchAll(REF)) {
-            const name = m[1];
+        const {names, unresolvable, constructed} = resolveRomNames(text);
+        constructedSeen += constructed;
+        for (const u of unresolvable) blind.push(`${relative(repo, file)}:${u.line} builds static/roms/${'$'}{${u.expr}} and no rom: entry in that file says what it can be`);
+        for (const name of names) {
             seen.add(name);
-            if (!existsSync(join(romDir, name))) {
-                missing.push(`${relative(repo, file)} fetches static/roms/${name}`);
-            }
+            if (!existsSync(join(romDir, name))) missing.push(`${relative(repo, file)} fetches static/roms/${name}`);
         }
     }
     assert.ok(seen.size > 0,
         'the scan found no static/roms references at all, which means the pattern '
         + 'stopped matching rather than that everything is fine — a green result '
         + 'from a scan that reads nothing is the failure this file is about');
+    assert.ok(constructedSeen > 0,
+        'the scan found no CONSTRUCTED static/roms path — the Machine Loader builds one from its '
+        + 'preset list; if that moved, the widened half of this census is reading nothing');
+    assert.deepEqual(blind, [],
+        'constructed static/roms path(s) whose name source this census cannot see — name the ROMs '
+        + 'in a rom: list in the same file, or the 404 is invisible again:\n  ' + blind.join('\n  '));
     assert.deepEqual(missing, [],
         'these paths 404 at runtime, and only for the user:\n  ' + missing.join('\n  '));
+});
+
+test('the widened census can fail, each shape by name (mutation)', () => {
+    const tpl = "const presets = [{ id: 'a', rom: 'present.bin' }, { id: 'b', rom: 'absent.bin' }];\nconst url = new URL(`static/roms/${p.rom}`, base);";
+    assert.deepEqual(resolveRomNames(tpl).names.sort(), ['absent.bin', 'present.bin'], 'a template path resolves through the rom: list');
+    const concat = "const u = 'static/roms/' + name; const list = [{rom: 'x.bin'}];";
+    assert.deepEqual(resolveRomNames(concat).names, ['x.bin']);
+    const joined = "const p = join(root, 'static', 'roms', file); const l = { \"rom\": \"y.rom\" };";
+    assert.deepEqual(resolveRomNames(joined).names, ['y.rom']);
+    const blind = "const url = `static/roms/${props.rom}`;";
+    assert.equal(resolveRomNames(blind).unresolvable.length, 1, 'a constructed path with no list in the file is refused, not passed');
+    const comment = "// const url = `static/roms/${p.rom}`; rom: 'ghost.bin'";
+    assert.deepEqual(resolveRomNames(comment), {names: [], unresolvable: [], constructed: 0, listNames: 0}, 'comment lines never count');
+    const literalSlash = "fetch('/static/roms/z.bin')";
+    assert.deepEqual(resolveRomNames(literalSlash).names, ['z.bin']);
 });
 
 test('the four 8086 ROMs are present and are the size their load address assumes', () => {
