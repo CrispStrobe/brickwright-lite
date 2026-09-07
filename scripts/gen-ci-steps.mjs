@@ -126,6 +126,12 @@ if (isMain) {
         const workflows = census(runs, yamlAtSha);
         const body = {generatedAt: new Date().toISOString(), repo, headSha: newestMain.sha, newestMainRun: newestMain.run, runs: runs.map(r => ({run: r.run, workflow: r.workflow, branch: r.branch, sha: r.sha})), workflowsInTree: wfs, workflows};
         writeFileSync(READINGS, JSON.stringify(body, null, 1) + '\n');
+        // `--fetch` REWRITES A TRACKED FILE. It reads like a read-only flag and is
+        // not one: brickwright-lite-ea ran it inside a lane worktree on 2026-09-07,
+        // `git add -A` swept 143 lines of readings into an unrelated source commit,
+        // and the rebase conflict that followed cost a diagnosis. So the file is
+        // named on stdout every time, with what to do about it.
+        console.log(`::notice::${path.relative(ROOT, READINGS)} was REWRITTEN by --fetch. It is tracked: commit it on its own, or \`git checkout\` it before committing unrelated work — never sweep it in with \`git add -A\`.`);
         const all = Object.values(workflows).flatMap(w => Object.values(w.steps));
         console.log(`ci-step-census: ${runs.length} runs, ${wfs.length} workflows, ${all.length} steps — never ${all.filter(s => s.class === 'never').length}, sometimes ${all.filter(s => s.class === 'sometimes').length}, always ${all.filter(s => s.class === 'always').length}; in file at ${newestMain.sha} but in no run: ${Object.values(workflows).reduce((a, w) => a + w.inFileInNoRun.length, 0)}`);
     }
