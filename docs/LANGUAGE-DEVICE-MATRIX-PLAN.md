@@ -770,21 +770,26 @@ whose only refusal is `pic1`'s, present for four steps out of 1,579,840 while th
 unaffected. What was wrong was concluding from that one route that no route
 works.
 
-**P6a (2026-09-07, unclaimed).** A browser gate reaches the Machine Loader.
+**P6a (2026-09-07 — CLOSED).** A browser gate reaches the Machine Loader.
 
-**No green gate reaches it at all today**, and that is how seven of its fifteen
-presets came to fetch ROMs that 404 without anyone noticing. The two controls now
-carry stable ids — `bw-machine-load-file` on the file input and
-`bw-machine-preset-<id>` on each preset button — so the drive is possible; what is
-missing is a way for a gate to get an 8086 ONTO THE CIRCUIT BOARD, because the
-loader renders only when machine extraction returns a kind, and extraction needs a
-part with `kind: 'i8086'` on the board (`bw-circuit-ui/model/machine-extract.js:34`).
-No shipped example board carries one, and no proof places parts.
+The stop reason was real and narrower than the proposed fixes: all 311 gallery
+entries were measured (285 carry circuits), and none contains an 8086/8088;
+the palette has no such part either, and `reseatOnto8086` has no UI caller. But
+the existing learner path already accepts a circuit file. The gate opens the
+Circuit tab, drives File > Open circuit, and uploads the existing complete
+`e4-reseated-8086.json` fixture. Build Machine then exposes the landed
+`bw-machine-preset-timerdemo` control without a product-source change.
 
-So this wants either an 8086 example board, or a gate-drivable way to place a part —
-both larger than adding an id, which is why the ids landed alone. The smallest
-useful leg once that exists: click `bw-machine-preset-timerdemo` (the one i8086
-preset whose ROM resolves today) and assert the media-load reaches the debugger.
+`scripts/verify-machine-loader-rom-control.mjs` clicks that preset and requires
+its exact ROM/profile event to cross `bw-machine-media-load` into debug-panel's
+`_onMediaLoad`: the panel must expose a collector state other than `none` after
+the runner starts. A fresh-page mutation returns HTTP 404 for the exact timerdemo
+ROM; the same success verdict must turn red with `timerdemo preset fetch failed:
+HTTP 404`, the visible loader note must name the missing ROM, and no media event
+may be dispatched. The gate proves selection, fetch, dispatch, debugger receipt,
+and fail-closed reporting. It does not claim that the timer demo's pixels or
+interrupt timing are correct; those remain the individual machine-profile gates'
+job.
 
 **Vocabulary source (2026-09-05):** bw-board `I8086Machine.chipRefusals()` (`bfd8b44`, lego-be)
 returns `{part, kind, feature, symptom, count}` rows — one per feature a program asked a chip

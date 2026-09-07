@@ -110,7 +110,10 @@ async function driveTimerdemo (browser, url, {missing = false} = {}) {
         if (message.type() === 'error') diagnostics.push(`console.error: ${message.text()}`);
     });
     if (missing) {
-        await page.route(`**/static/roms/${timerRom}`, route => route.fulfill({status: 404, body: 'missing by P6a mutation'}));
+        await page.route(`**/static/roms/${timerRom}`, route => route.fulfill({
+            status: 404,
+            body: 'missing by P6a mutation'
+        }));
     }
     try {
         await open8086Machine(page, url);
@@ -146,7 +149,8 @@ async function driveTimerdemo (browser, url, {missing = false} = {}) {
 
 async function main () {
     if (!process.env.CI && process.env.BW_ALLOW_LOCAL_BROWSER_PROOF !== '1') {
-        throw new Error('This resource-intensive browser proof is CI-only; set BW_ALLOW_LOCAL_BROWSER_PROOF=1 explicitly');
+        throw new Error(
+            'This resource-intensive browser proof is CI-only; set BW_ALLOW_LOCAL_BROWSER_PROOF=1 explicitly');
     }
     await mkdir(artifacts, {recursive: true});
     let server;
@@ -172,9 +176,12 @@ async function main () {
         let mutationError = null;
         try { requireTimerdemoDelivery(mutation); } catch (error) { mutationError = error; }
         if (!mutationError || !/timerdemo preset fetch failed: HTTP 404/.test(mutationError.message)) {
-            throw new Error(`missing-ROM mutation did not redden the gate by preset/status: ${mutationError?.message || 'gate stayed green'}`);
+            throw new Error('missing-ROM mutation did not redden the gate by preset/status: '
+                + (mutationError?.message || 'gate stayed green'));
         }
-        if (mutation.event !== null) throw new Error(`404 timerdemo dispatched media: ${JSON.stringify(mutation.event)}`);
+        if (mutation.event !== null) {
+            throw new Error(`404 timerdemo dispatched media: ${JSON.stringify(mutation.event)}`);
+        }
         receipt.mutation = {status: mutation.status, event: mutation.event, red: mutationError.message};
         console.log(`PASS: mutation fired — ${mutationError.message}`);
         await mutation.page.screenshot({path: join(artifacts, 'timerdemo-404.png'), fullPage: true});
