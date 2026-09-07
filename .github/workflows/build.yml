@@ -458,6 +458,33 @@ jobs:
           echo "BW_BOARD_DIR=/tmp/bw-board" >> "$GITHUB_ENV"
           echo "bw-board at the pin ${PIN:0:9}"
 
+      # The absent-by-design proof (test/vendor-absent-by-design.test.mjs, lego-be)
+      # needs a DIFFERENT tree: bw-board's default-branch TIP, because
+      # sync-bw-board refuses any source BEHIND the default branch before it
+      # reaches the check the proof is about — at the pin it exits "BEHIND origin
+      # default" and the proof never runs. Until 2026-09-07 nothing in CI set
+      # BW_BOARD_HEAD_DIR and the proof had executed in none of 20 green runs
+      # (plan T13, class a). This is a GRAPH fetch of a moving ref, the
+      # emu8051/vendor-history class in test/fetch-pinning.test.mjs, not a pin:
+      # the tip IS the argument, the sha it resolved to is printed here, and the
+      # proof's own guard re-fetches origin and skips by name if master moved
+      # while the job ran. Nothing fetched is written into the tree the proof
+      # does not restore from its snapshot. Tolerated absent by name.
+      - name: Fetch bw-board's default-branch tip for the absent-by-design proof (tolerated absent)
+        id: bwboard_head
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          HEAD_DIR="$RUNNER_TEMP/bw-board-head"
+          if git clone --quiet --filter=blob:none https://github.com/CrispStrobe/bw-board.git "$HEAD_DIR"; then
+            TIP=$(git -C "$HEAD_DIR" rev-parse HEAD)
+            BRANCH=$(git -C "$HEAD_DIR" rev-parse --abbrev-ref HEAD)
+            echo "BW_BOARD_HEAD_DIR=$HEAD_DIR" >> "$GITHUB_ENV"
+            echo "bw-board default branch '$BRANCH' tip ${TIP:0:9} at $(date -u +%Y-%m-%dT%H:%M:%SZ) — the proof's BEHIND guard compares it to origin at proof time"
+          else
+            echo "::warning::bw-board tip clone failed — the absent-by-design proof will skip by name (BW_BOARD_HEAD_DIR unset)"
+          fi
+
       # The EXECUTED C side of the P3 differential (plan N11a) compiles generateC's
       # Pico output with arm-none-eabi-gcc. The runner has none, so the sha-pinned
       # ARM GNU toolchain (13.2.rel1) is fetched here — content-pinned in
