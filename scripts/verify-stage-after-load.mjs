@@ -225,6 +225,30 @@ async function run () {
     }));
 
     try {
+        // HOW A USER ACTUALLY ARRIVES IN THE CODE EDITOR, which turns out to
+        // matter more than it looks. Nothing in either tree dispatches a
+        // pane-layout action — no component calls applyPreset, setPaneSize or
+        // setSlotContent — so the only routes into the 'code' layout are the
+        // persisted `bw-pane-layout` key and a direct store dispatch.
+        //
+        // The first version of this harness dispatched AFTER mount, and that
+        // is a real difference rather than a convenience: the layout changed
+        // under a stage that had already mounted. Seeding localStorage BEFORE
+        // navigation means the stage mounts into the code layout, which is the
+        // state a returning user is in. If the drawing buffer is sized here and
+        // not there, the 0x0 was mine; if it is 0x0 both ways, the defect does
+        // not depend on how the layout was reached.
+        const LAYOUT_VIA = process.env.STAGE_AFTER_LOAD_VIA || 'storage';
+        if (LAYOUT_VIA === 'storage') {
+            await page.addInitScript(() => {
+                localStorage.setItem('bw-pane-layout', JSON.stringify({
+                    left: {upper: 'blocks-palette', lower: null, size: 'xs'},
+                    middle: {upper: 'code', lower: null, size: 'xl'},
+                    right: {upper: 'stage', lower: 'sprites', size: 's'},
+                    activePreset: 'code'
+                }));
+            });
+        }
         await page.goto(url, {waitUntil: 'networkidle', timeout: 90000});
 
         // WHICH CANVAS. The stage is not `document.querySelector('canvas')`:
@@ -285,11 +309,17 @@ async function run () {
         // searched for a component that could not be there and timed out after
         // 40 s. The owner's report is specifically about the CODE EDITOR, so
         // the preset is part of the reproduction rather than setup noise.
-        await page.evaluate(() => {
-            const store = window.__brickwrightStore;
-            if (store) store.dispatch({type: 'scratch-gui/pane-layout/APPLY_PRESET', preset: 'code'});
-        });
+        if (LAYOUT_VIA !== 'storage') {
+            await page.evaluate(() => {
+                const store = window.__brickwrightStore;
+                if (store) store.dispatch({type: 'scratch-gui/pane-layout/APPLY_PRESET', preset: 'code'});
+            });
+        }
         await settle();
+        const layout = await page.evaluate(() =>
+            window.__brickwrightStore?.getState?.()?.scratchGui?.paneLayout?.middle?.upper ?? null);
+        check(`the Code Editor is the middle pane (reached via ${LAYOUT_VIA})`, layout === 'code',
+            `middle.upper = ${layout}`);
         // Write something to the artifact directory NOW. Every failure so far
         // has stopped before the measurements were written, so the upload step
         // failed too and the one place a human could look was empty.
