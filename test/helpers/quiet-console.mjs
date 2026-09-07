@@ -13,10 +13,15 @@
  * Node 22 (main run 34092576969). The writer is the extension's console;
  * the fix is to give it a console that keeps the lines.
  *
+ * Only the STDOUT-bound methods are captured by default (log, info, debug).
+ * warn and error go to stderr, which the runner forwards on a separate pipe
+ * that carries no frames — a warning there cannot corrupt anything, and the
+ * helpers' own announcements (BW_INTEGRATED_ROOT …) must stay visible.
+ *
  * Usage: `const quiet = quietConsole(); … t.after(quiet.restore);` — captured
  * lines are on `quiet.lines` for an assertion that wants them.
  */
-export function quietConsole (methods = ['log', 'info', 'warn', 'error', 'debug']) {
+export function quietConsole (methods = ['log', 'info', 'debug']) {
     const lines = [];
     const prior = new Map(methods.map(m => [m, console[m]]));
     for (const m of methods) console[m] = (...args) => { lines.push([m, ...args]); };

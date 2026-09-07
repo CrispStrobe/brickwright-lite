@@ -21,16 +21,30 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {existsSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
-import {quietConsole} from './quiet-console.mjs';
 
 // Everything loaded through here — the Scratch VM, its extensions, the
 // integrated GUI — logs on load and on run (the VM alone wrote 597 KB in one
 // corpus walk). A test child's console output is RAW on the runner's stdout
 // pipe and is the "Unable to deserialize cloned data" flake (docs/GATES-THAT-
-// CANNOT-FAIL.md, species 26), so the console is captured once, here, for
-// every test that loads through this helper. A test that wants the lines has
-// them on `consoleCapture.lines`; a test that wants to PRINT uses t.diagnostic().
-export const consoleCapture = quietConsole();
+// CANNOT-FAIL.md, species 26), so the stdout-bound console methods are
+// captured once, here, for every test that loads through this helper — ONLY
+// when this process IS a test child (the runner's NODE_TEST_CONTEXT is set AND
+// the entry file is a *.test.mjs; a probe script spawned by a test inherits
+// the variable but not the entry): a plain `node probe.mjs` that imports this
+// helper keeps its console, and test-setup.test copies this file
+// alone into a fixture, so the capture is inlined rather than imported (the
+// same shape as test/helpers/quiet-console.mjs). warn/error are left alone:
+// stderr is a separate pipe with no frames, and the announcement below must
+// stay visible. A test that wants the lines has `consoleCapture.lines`; a
+// test that wants to PRINT uses t.diagnostic().
+export const consoleCapture = (() => {
+    const lines = [];
+    const isTestChild = Boolean(process.env.NODE_TEST_CONTEXT) && /\.test\.m?js$/.test(String(process.argv[1] || '').replace(/\\/g, '/'));
+    if (!isTestChild) return {lines, restore () {}};
+    const prior = new Map(['log', 'info', 'debug'].map(m => [m, console[m]]));
+    for (const m of prior.keys()) console[m] = (...args) => { lines.push([m, ...args]); };
+    return {lines, restore () { for (const [m, fn] of prior) console[m] = fn; }};
+})();
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const REPO = path.join(here, '..', '..');
