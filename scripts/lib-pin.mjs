@@ -180,8 +180,17 @@ export async function assertPinMoveAllowed (name, sha, {pinsFile = PINS_FILE, ex
     if (!FULL_SHA.test(sha || '')) throw new Error(`refusing to pin ${name} to ${JSON.stringify(sha)} — not a 40-hex sha`);
     const pins = await readFile(pinsFile, 'utf8').then(JSON.parse).catch(() => ({}));
     const old = pins[name];
-    if (!old || old === sha) return {moves: false, old};
+    if (old === sha) return {moves: false, old};
     if (explicit) return {moves: true, old};
+    // No pin recorded: creating one IS a pin move (from "nothing vouches for
+    // this tree" to "this sha does"), and it used to happen silently on a
+    // first --dir run. Fail closed; a bootstrap passes --pin like any bump.
+    if (!old) {
+        throw new PinMoveRefused(
+            `refusing to record a first ${name} pin (${sha}) without --pin: no pin exists yet, and creating one is a `
+            + 'pin move. Re-run with --pin to record it deliberately. '
+            + (stage === 'before' ? 'Nothing was written.' : 'The files were synced; the pin was NOT recorded.'));
+    }
     throw new PinMoveRefused(
         `refusing to move the ${name} pin ${old.slice(0, 9)} -> ${sha.slice(0, 9)} (${old} -> ${sha}). `
         + `A file sync never moves the pin${scoped ? ' — and this is a scoped --only run, whose other vendored files stay at the old pin' : ''}; `

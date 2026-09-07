@@ -19,7 +19,7 @@
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { resolveRef, recordPin, assertPinMoveAllowed } from './lib-pin.mjs';
+import { resolveRef, recordPin, assertPinMoveAllowed, localSha } from './lib-pin.mjs';
 import path from 'node:path';
 
 const REPO = 'CrispStrobe/stc-compiler';
@@ -31,9 +31,17 @@ const check = process.argv.includes('--check');
 const dirIdx = process.argv.indexOf('--dir');
 const srcDir = dirIdx !== -1 ? process.argv[dirIdx + 1] : null;
 
+// The source sha is derived on BOTH paths. A --dir run used to leave `sha`
+// null, so the pin preflight and recordPin were skipped: a changed local
+// checkout wrote flasher.js without --pin, and `--pin --dir` could not advance
+// the pin at all (root audit of T9b, 2026-09-07). Now --dir reads the
+// checkout's HEAD like every other local sync, and the same guard applies.
 let sha = null;
 async function source () {
-    if (srcDir) return readFile(path.join(srcDir, REL), 'utf8');
+    if (srcDir) {
+        sha = await localSha(srcDir);
+        return readFile(path.join(srcDir, REL), 'utf8');
+    }
     sha = (await resolveRef(REPO, REF)).sha;
     const res = await fetch(`https://raw.githubusercontent.com/${REPO}/${sha}/${REL}`);
     if (!res.ok) throw new Error(`fetch ${REL} @ ${sha}: HTTP ${res.status}`);
@@ -47,7 +55,7 @@ const BANNER = '// VENDORED from CrispStrobe/stc-compiler docs/flash.js — do N
 
 const next = BANNER + (await source());
 // Before anything is written: a sync that would move the pin needs --pin (lib-pin.mjs).
-if (!check && sha) await assertPinMoveAllowed('stc-compiler-flasher', sha);
+if (!check) await assertPinMoveAllowed('stc-compiler-flasher', sha);
 const current = await readFile(dest, 'utf8').catch(() => null);
 
 if (current === next) {
@@ -61,7 +69,7 @@ if (current === next) {
     console.log('  wrote flasher.js');
 }
 
-if (!check && sha) recordPin('stc-compiler-flasher', sha);
+if (!check) await recordPin('stc-compiler-flasher', sha);
 console.log(srcDir
     ? `synced from ${REPO} docs/flash.js (local checkout ${srcDir})`
     : `synced from ${REPO}@${sha} docs/flash.js`);
