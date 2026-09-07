@@ -132,6 +132,70 @@ test('an unscoped sync writes nothing new and refuses both by name', (t) => {
     // would be one more thing to keep in step with the pin, and worse messages.
     // What the next reader needs is the pointer, which is this comment.
     const pinsBefore = readFileSync(PINS, 'utf8');
+
+    // A THIRD PRECONDITION, and this one fires on EVERY PIN LEG. Two are
+    // already handled above -- the pin-move guard (--pin) and a source tree
+    // that has fallen BEHIND. This is the opposite of behind: the recorded pin
+    // is the SAME SHA as the source tree, and then sync-bw-board refuses with
+    //
+    //   PIN ALREADY MOVED, and avr8js-debug.js has no content base.
+    //   No commit reachable from <sha> along this file's history holds the
+    //   vendored copy byte for byte, so the base falls back to the recorded pin
+    //   -- which is the sha this run is syncing FROM, so the base would be the
+    //   INCOMING file and every upstream edit would read as lite-only work
+    //   being deleted.
+    //
+    // That refusal is CORRECT: with base == source there is no way to tell an
+    // upstream change from a lite deletion, and the sync says so rather than
+    // guessing. But it lands several steps before the absent-by-design check,
+    // so the proof failed "i8088-cycles.js was not refused by name" -- the third
+    // time in two days that this assertion has reported a broken refusal when
+    // the refusal never ran (run 34164869199, pin leg to 2c568ca).
+    //
+    // AND IT IS NOT AN EDGE CASE. A pin leg bumps to upstream's tip; CI clones
+    // upstream's tip for BW_BOARD_HEAD_DIR; so on every pin leg, pin == source
+    // by construction. It also catches main for the window after a bump lands,
+    // until upstream moves on. The leg above went green on a re-run only because
+    // bw-board merged PR #2 in between -- luck, not a fix.
+    //
+    // So: give the sync a real base. The refusal names the remedy itself
+    // ("Restore the PREVIOUS pin and re-run; this script records the new one
+    // itself"), and lite's own history of vendor-pins.json is where the previous
+    // pin lives. Rewound only when the two shas are equal, restored with
+    // everything else below, and byte-compared at the end like the rest.
+    const gitOut = (args, cwd) => {
+        try { return execFileSync('git', args, { encoding: 'utf8', cwd }).trim(); }
+        catch { return null; }
+    };
+    const recordedPin = JSON.parse(pinsBefore)['bw-board'];
+    const sourceSha = gitOut(['rev-parse', 'HEAD'], dir);
+    if (sourceSha && recordedPin === sourceSha) {
+        // The most recent DIFFERENT value this file has recorded for bw-board.
+        // Read from git rather than from a hardcoded fallback: a constant here
+        // would be a fifth thing to keep in step with the pin.
+        const shas = (gitOut(['log', '--format=%H', '--', 'vendor-pins.json'], repo) || '')
+            .split('\n').filter(Boolean);
+        let previous = null;
+        for (const sha of shas) {
+            const blob = gitOut(['show', `${sha}:vendor-pins.json`], repo);
+            if (!blob) continue;
+            let value;
+            try { value = JSON.parse(blob)['bw-board']; } catch { continue; }
+            if (value && value !== recordedPin) { previous = value; break; }
+        }
+        if (!previous) {
+            // Reported, not passed. Every recorded pin is the source sha, so
+            // there is no base to sync from and this proof cannot run.
+            t.diagnostic(`SKIPPED, NOT PASSED: the pin (${recordedPin.slice(0, 9)}) is the source `
+                + 'tree\'s own sha and no earlier bw-board pin exists in this history, so the '
+                + 'sync has no content base.');
+            t.skip('pin == source sha and no previous pin to rewind to -- the per-file refusal '
+                + 'is NOT verified here');
+            return;
+        }
+        writeFileSync(PINS, pinsBefore.replace(recordedPin, previous));
+    }
+
     let out = '';
     try {
         // --pin, AND WHY. A SECOND guard fires before the absent-by-design check,
@@ -181,6 +245,11 @@ test('an unscoped sync writes nothing new and refuses both by name', (t) => {
     assert.doesNotMatch(out, /PinMoveRefused|A file sync never moves the pin/,
         'the pin guard refused this run before the absent-by-design check -- --pin is missing '
         + 'from the invocation above, or lib-pin now refuses it for another reason');
+    assert.doesNotMatch(out, /PIN ALREADY MOVED|has no content base/,
+        'the sync refused for want of a content base before reaching the absent-by-design '
+        + 'check -- the pin is the source tree\'s own sha and the rewind above did not take. '
+        + 'Named here rather than left to be re-diagnosed: this assertion has now reported a '
+        + 'broken refusal three times when the refusal simply never ran.');
     for (const f of ['i8088-cycles.js', 'i8088-timing.js']) {
         assert.match(out, new RegExp(`REFUSED ${f.replace('.', '\\.')} \\(absent by design`),
             `${f} was not refused by name`);
