@@ -24,7 +24,8 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync, statSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -108,14 +109,69 @@ test('an unscoped sync writes nothing new and refuses both by name', (t) => {
             : 'BW_BOARD_HEAD_DIR unset -- the unscoped-sync refusal is NOT verified here');
         return;
     }
-    const before = new Set(readdirSync(VENDORED));
+    // THE SYNC MUST NOT WRITE INTO THE TREE THE OTHER GATES ARE READING.
+    //
+    // An unscoped sync UPDATES vendored files that exist -- board.js, measured
+    // -- and this proof used to run it against the live worktree and put the
+    // files back afterwards. `node --test` runs four files in parallel on this
+    // box, so for the width of that window another test reading the same
+    // directory sees upstream's newer content in lite's tree. vendor-identity
+    // is exactly such a reader, and what it reports is "APPEARED (new
+    // divergence nobody has written up): board.js" -- naming, precisely, the
+    // files this sync touched.
+    //
+    // MEASURED, and it explains two separate mysteries with one cause. On the
+    // 2c568ca leg vendor-identity went red on the run AFTER the content-base
+    // fix and not the run before, because before the fix the sync refused
+    // instantly and wrote nothing; the fix let it run, and the writes began. And
+    // on main the same assertion had fired naming board.js and controller.js,
+    // with the named symbols nowhere to be found in lite's tree afterwards --
+    // because by the time anyone looked, the restore had already happened. A
+    // failure that names real files, cannot be reproduced, and clears by itself
+    // is what a race looks like from the outside.
+    //
+    // THE WINDOW IS NOT NARROW, which is why this shows up at all. Polled from
+    // a concurrent process while this test ran: board.js in the live tree
+    // differed from its committed blob for 355 of 518 samples -- SIXTY-NINE
+    // PERCENT of the test's runtime. Sandboxed, 0 of 1006. A reader that
+    // touches board.js while this test is running is more likely than not to
+    // see upstream's copy, and across a 2400-test suite whose scheduling varies
+    // run to run, that is exactly a check that is red on one run and green on
+    // the next with every declared input identical.
+    //
+    // So the sync gets its own checkout. A throwaway git worktree at HEAD costs
+    // a few hundred milliseconds, shares the object store, and has everything
+    // the script needs (it imports only node builtins and scripts/lib-*). The
+    // live tree is then never written at all, which is a stronger property than
+    // being put back -- and it closes the window this file already documented
+    // as unclosable: a crash between sync and restore can no longer leave a
+    // moved pin, because the moved pin was never in this worktree.
+    const sandbox = mkdtempSync(join(tmpdir(), 'bw-absent-'));
+    const tree = join(sandbox, 'repo');
+    execFileSync('git', ['worktree', 'add', '--detach', '--quiet', tree, 'HEAD'], { cwd: repo });
+    const SYNC_S = join(tree, 'scripts', 'sync-bw-board.mjs');
+    const VENDORED_S = join(tree, 'overlay', 'scratch-gui', 'src', 'lib', 'bw-board');
+    const PINS_S = join(tree, 'vendor-pins.json');
+    const cleanup = () => {
+        try { execFileSync('git', ['worktree', 'remove', '--force', tree], { cwd: repo }); } catch { /* removed below anyway */ }
+        try { rmSync(sandbox, { recursive: true, force: true }); } catch { /* best effort */ }
+    };
+
+    // The LIVE tree, so the end of this test can assert it was never touched --
+    // which is the invariant now, rather than "it was put back".
+    const liveBefore = new Map(readdirSync(VENDORED)
+        .filter((f) => statSync(join(VENDORED, f)).isFile())
+        .map((f) => [f, readFileSync(join(VENDORED, f), 'utf8')]));
+    const livePinsBefore = readFileSync(PINS, 'utf8');
+
+    const before = new Set(readdirSync(VENDORED_S));
     // Contents before the run, so the tree can be put back without git.
     // FILES ONLY: this directory has subdirectories (devices/), and readdirSync
     // returns those too -- reading one throws EISDIR, which is how the first
     // version of this snapshot failed.
     const snapshot = new Map([...before]
-        .filter((f) => statSync(join(VENDORED, f)).isFile())
-        .map((f) => [f, readFileSync(join(VENDORED, f), 'utf8')]));
+        .filter((f) => statSync(join(VENDORED_S, f)).isFile())
+        .map((f) => [f, readFileSync(join(VENDORED_S, f), 'utf8')]));
     // THE PIN FILE IS PART OF THE SNAPSHOT, because the run below is allowed to
     // move the pin -- see --pin. Restored before any assertion, byte-compared at
     // the end: this proof must not leave a moved pin behind.
@@ -131,7 +187,72 @@ test('an unscoped sync writes nothing new and refuses both by name', (t) => {
     // i8086-bios-provenance and circuit-preset-roms-resolve. A fifth copy here
     // would be one more thing to keep in step with the pin, and worse messages.
     // What the next reader needs is the pointer, which is this comment.
-    const pinsBefore = readFileSync(PINS, 'utf8');
+    const pinsBefore = readFileSync(PINS_S, 'utf8');
+
+    // A THIRD PRECONDITION, and this one fires on EVERY PIN LEG. Two are
+    // already handled above -- the pin-move guard (--pin) and a source tree
+    // that has fallen BEHIND. This is the opposite of behind: the recorded pin
+    // is the SAME SHA as the source tree, and then sync-bw-board refuses with
+    //
+    //   PIN ALREADY MOVED, and avr8js-debug.js has no content base.
+    //   No commit reachable from <sha> along this file's history holds the
+    //   vendored copy byte for byte, so the base falls back to the recorded pin
+    //   -- which is the sha this run is syncing FROM, so the base would be the
+    //   INCOMING file and every upstream edit would read as lite-only work
+    //   being deleted.
+    //
+    // That refusal is CORRECT: with base == source there is no way to tell an
+    // upstream change from a lite deletion, and the sync says so rather than
+    // guessing. But it lands several steps before the absent-by-design check,
+    // so the proof failed "i8088-cycles.js was not refused by name" -- the third
+    // time in two days that this assertion has reported a broken refusal when
+    // the refusal never ran (run 34164869199, pin leg to 2c568ca).
+    //
+    // AND IT IS NOT AN EDGE CASE. A pin leg bumps to upstream's tip; CI clones
+    // upstream's tip for BW_BOARD_HEAD_DIR; so on every pin leg, pin == source
+    // by construction. It also catches main for the window after a bump lands,
+    // until upstream moves on. The leg above went green on a re-run only because
+    // bw-board merged PR #2 in between -- luck, not a fix.
+    //
+    // So: give the sync a real base. The refusal names the remedy itself
+    // ("Restore the PREVIOUS pin and re-run; this script records the new one
+    // itself"), and lite's own history of vendor-pins.json is where the previous
+    // pin lives. Rewound only when the two shas are equal, restored with
+    // everything else below, and byte-compared at the end like the rest.
+    const gitOut = (args, cwd) => {
+        try { return execFileSync('git', args, { encoding: 'utf8', cwd }).trim(); }
+        catch { return null; }
+    };
+    const recordedPin = JSON.parse(pinsBefore)['bw-board'];
+    const sourceSha = gitOut(['rev-parse', 'HEAD'], dir);
+    if (sourceSha && recordedPin === sourceSha) {
+        // The most recent DIFFERENT value this file has recorded for bw-board.
+        // Read from git rather than from a hardcoded fallback: a constant here
+        // would be a fifth thing to keep in step with the pin.
+        const shas = (gitOut(['log', '--format=%H', '--', 'vendor-pins.json'], tree) || '')
+            .split('\n').filter(Boolean);
+        let previous = null;
+        for (const sha of shas) {
+            const blob = gitOut(['show', `${sha}:vendor-pins.json`], tree);
+            if (!blob) continue;
+            let value;
+            try { value = JSON.parse(blob)['bw-board']; } catch { continue; }
+            if (value && value !== recordedPin) { previous = value; break; }
+        }
+        if (!previous) {
+            cleanup();
+            // Reported, not passed. Every recorded pin is the source sha, so
+            // there is no base to sync from and this proof cannot run.
+            t.diagnostic(`SKIPPED, NOT PASSED: the pin (${recordedPin.slice(0, 9)}) is the source `
+                + 'tree\'s own sha and no earlier bw-board pin exists in this history, so the '
+                + 'sync has no content base.');
+            t.skip('pin == source sha and no previous pin to rewind to -- the per-file refusal '
+                + 'is NOT verified here');
+            return;
+        }
+        writeFileSync(PINS_S, pinsBefore.replace(recordedPin, previous));
+    }
+
     let out = '';
     try {
         // --pin, AND WHY. A SECOND guard fires before the absent-by-design check,
@@ -150,7 +271,7 @@ test('an unscoped sync writes nothing new and refuses both by name', (t) => {
         // per-file refusal, and pin discipline is test/pin-only-moves-with-flag
         // .test.mjs's subject. The move lands in this worktree's vendor-pins.json
         // and is restored below.
-        out = execFileSync('node', [SYNC, '--dir', dir, '--pin'], { encoding: 'utf8', cwd: repo });
+        out = execFileSync('node', [SYNC_S, '--dir', dir, '--pin'], { encoding: 'utf8', cwd: tree });
     } catch (e) {
         out = `${e.stdout || ''}${e.stderr || ''}`;   // refusals exit non-zero, by design
     }
@@ -162,6 +283,7 @@ test('an unscoped sync writes nothing new and refuses both by name', (t) => {
     // being broken when the guard never ran. It cost me a diagnosis; it should
     // not cost the next reader one.
     if (/BEHIND origin default/.test(out)) {
+        cleanup();
         t.skip('BW_BOARD_HEAD_DIR is behind bw-board\'s default branch, so the sync refused it '
             + 'before reaching the absent-by-design check -- the refusal is NOT verified here. '
             + 'Pull that checkout.');
@@ -172,20 +294,35 @@ test('an unscoped sync writes nothing new and refuses both by name', (t) => {
     // how a moved pin could be committed by the next hand that touches it.
     const restore = () => {
         for (const [file, text] of snapshot) {
-            if (readFileSync(join(VENDORED, file), 'utf8') !== text) writeFileSync(join(VENDORED, file), text);
+            if (readFileSync(join(VENDORED_S, file), 'utf8') !== text) writeFileSync(join(VENDORED_S, file), text);
         }
-        if (readFileSync(PINS, 'utf8') !== pinsBefore) writeFileSync(PINS, pinsBefore);
+        if (readFileSync(PINS_S, 'utf8') !== pinsBefore) writeFileSync(PINS_S, pinsBefore);
     };
-    const after = readdirSync(VENDORED).filter((f) => !before.has(f));
+    const after = readdirSync(VENDORED_S).filter((f) => !before.has(f));
     restore();
+    cleanup();
     assert.doesNotMatch(out, /PinMoveRefused|A file sync never moves the pin/,
         'the pin guard refused this run before the absent-by-design check -- --pin is missing '
         + 'from the invocation above, or lib-pin now refuses it for another reason');
+    assert.doesNotMatch(out, /PIN ALREADY MOVED|has no content base/,
+        'the sync refused for want of a content base before reaching the absent-by-design '
+        + 'check -- the pin is the source tree\'s own sha and the rewind above did not take. '
+        + 'Named here rather than left to be re-diagnosed: this assertion has now reported a '
+        + 'broken refusal three times when the refusal simply never ran.');
     for (const f of ['i8088-cycles.js', 'i8088-timing.js']) {
         assert.match(out, new RegExp(`REFUSED ${f.replace('.', '\\.')} \\(absent by design`),
             `${f} was not refused by name`);
     }
-    assert.equal(readFileSync(PINS, 'utf8'), pinsBefore, 'the pin was not put back');
+    // THE LIVE TREE WAS NEVER TOUCHED. Stronger than "it was put back", and
+    // falsifiable: point the sync back at `repo` and this reds. It is the
+    // assertion that keeps the parallel readers safe.
+    for (const [file, text] of liveBefore) {
+        assert.equal(readFileSync(join(VENDORED, file), 'utf8'), text,
+            `${file} in the LIVE vendored tree was written by this test -- the sync must run in `
+            + 'the sandbox worktree, or every gate reading this directory in parallel can see '
+            + 'upstream content in lite\'s tree and report a divergence that is not there');
+    }
+    assert.equal(readFileSync(PINS, 'utf8'), livePinsBefore, 'the LIVE pin was moved by this test');
     // (The restore above runs BEFORE the assertions, and covers both the vendored
     // files and the pin. An unscoped sync legitimately UPDATES files that exist --
     // that is its job -- and this test only asserts about ones it CREATES.

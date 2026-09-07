@@ -34,7 +34,60 @@ const BASELINE = {
     // test's opinion of git instead of git's behaviour, and absence FAILS
     // CLOSED (execFileSync throws ENOENT, rig() does not catch, every test in
     // the file goes red). Verified, not assumed. Unpinned: git's version.
-    'AMBIENT-BINDING': 3,
+    // 3 -> 4 on 2026-09-07 (lego-be, pin leg to 2c568ca). The fourth is `git` from
+    // PATH in test/vendor-absent-by-design.test.mjs, and it is there because the
+    // absent-by-design proof now has to know TWO shas it cannot get any other
+    // way: the source tree's own HEAD, and the previous bw-board pin out of
+    // lite's history of vendor-pins.json. A pin leg makes the recorded pin equal
+    // to the source sha by construction, and the sync then refuses for want of a
+    // content base -- so without git this proof cannot run on the branches where
+    // it matters most. A hardcoded previous pin was the alternative and is worse:
+    // a fifth constant to keep in step with the pin.
+    //
+    // ABSENCE FAILS CLOSED, MEASURED RATHER THAN ASSUMED. Run with git removed
+    // from PATH, both conditions go RED and neither passes: with pin == source
+    // the rewind cannot happen and the sync refuses; with pin behind source the
+    // sync itself cannot run. What absence does cost is the MESSAGE -- it reverts
+    // to the old misleading 'i8088-cycles.js was not refused by name', because
+    // with no git there is no sync output for the named assertion to read. So the
+    // guard is honest about pass/fail and unhelpful about why, which is the right
+    // way round and is stated here rather than discovered later.
+    //
+    // Unpinned, same as the three below: git's version.
+    // 4 -> 6 on 2026-09-07, same lane, once the proof moved into a sandbox
+    // worktree. CI counted six where this comment had claimed four, and the
+    // right response is to NAME EACH ONE rather than raise the number to match
+    // -- which is the whole reason the fourth was triaged individually. All six
+    // are `git` from PATH; three are vendor-source-guard's, below. The three
+    // here are:
+    //
+    //   :151  `git worktree add` -- creates the throwaway checkout the sync
+    //         writes into. NOT wrapped: if git is absent or the add fails,
+    //         execFileSync throws, the test errors, and the run is red. Fails
+    //         closed by construction.
+    //   :156  `git worktree remove` -- cleanup, deliberately swallowed, because
+    //         a cleanup failure must not mask the result the test just
+    //         measured. The directory is removed with rmSync regardless, so the
+    //         worst case is a stale admin record. MEASURED after ~10 runs:
+    //         zero stale `bw-absent` entries in `git worktree list`, so no
+    //         prune call is warranted; adding one to be safe would be code
+    //         nothing has been shown to need.
+    //   :223  the two shas the rewind needs -- the source tree's HEAD and the
+    //         previous bw-board pin out of lite's own history of
+    //         vendor-pins.json. Absence returns null, which either changes
+    //         nothing (no rewind was needed) or reds on the named content-base
+    //         assertion. Never a false pass.
+    //
+    // ABSENCE FAILS CLOSED THROUGHOUT, MEASURED NOT ASSUMED: with git removed
+    // from PATH both conditions go red and neither passes. What absence costs
+    // is the MESSAGE -- it reverts to the old misleading 'i8088-cycles.js was
+    // not refused by name', because with no git there is no sync output for the
+    // named assertion to read. The guard is honest about pass/fail and
+    // unhelpful about why, which is the right way round and is stated here
+    // rather than left to be rediscovered.
+    //
+    // Unpinned, same as the three below: git's version.
+    'AMBIENT-BINDING': 6,
     // 12 -> 0 on 2026-09-02. The rule now ignores an appearance that is immediately followed by
     // a click/fill/count/evaluate — synchronisation before the real assertion, and the correct
     // way to write a browser gate. The five that survived that narrowing were each triaged at

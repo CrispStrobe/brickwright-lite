@@ -27,7 +27,7 @@ import {homedir} from 'node:os';
 import {pathToFileURL} from 'node:url';
 import {fileSystemStore} from '../overlay/scratch-gui/src/lib/sdcc-wasm/toolchain-store.js';
 import {
-    primeToolchainCache, inspectToolchain, removeToolchain,
+    primeToolchainCache, inspectToolchain, removeToolchain, measureToolchain,
     GPL_TOOLCHAIN_ORIGIN, TOOLCHAIN_FILES
 } from '../overlay/scratch-gui/src/lib/sdcc-wasm/toolchain-source.js';
 
@@ -99,21 +99,33 @@ async function install () {
     };
     process.on('SIGINT', onSigint);
 
-    const started = Date.now;  // referenced only for shape; timing is not asserted
-    void started;
+    // Weighted, because one file is half the download. Nine equal steps would
+    // stall on runtime.json (3.3 of 6.4 MB) and read as frozen.
+    let sizes = null;
+    let totalBytes = 0;
+    try {
+        ({sizes, total: totalBytes} = await measureToolchain(ORIGIN, {fetch}));
+    } catch {
+        // A HEAD that fails is not a reason not to download; the bar just loses
+        // its denominator and reports files instead of a percentage.
+        sizes = null;
+    }
+
     try {
         const stored = await primeToolchainCache(ORIGIN, {
-            store,
+            store, sizes, totalBytes,
             signal: controller.signal,
             fetch: async (url, init) => {
                 const response = await fetch(url, init);
                 if (++fetched === cancelAfter) controller.abort();
                 return response;
             },
-            onProgress: ({name, index, total, state}) => {
+            onProgress: ({name, index, total, state, bytesDone, totalBytes: all}) => {
+                if (state === 'fetching') return;
                 const n = String(index + 1).padStart(2);
-                if (state === 'present') console.log(`  [${n}/${total}] ${name} — already here`);
-                if (state === 'stored') console.log(`  [${n}/${total}] ${name} — done`);
+                const share = all ? ` · ${mib(bytesDone)} of ${mib(all)}` : '';
+                const what = state === 'present' ? 'already here' : 'done';
+                console.log(`  [${n}/${total}] ${name} — ${what}${share}`);
             }
         });
         const report = await inspectToolchain(ORIGIN, {store});

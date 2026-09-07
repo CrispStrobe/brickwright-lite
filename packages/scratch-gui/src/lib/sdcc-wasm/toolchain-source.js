@@ -147,13 +147,73 @@ const aborted = () => {
  * Fill the cache from the GPL origin. Returns the names actually stored, so a
  * caller can report what it got rather than assuming all of them.
  */
+/**
+ * What the download will cost, WITHOUT downloading it.
+ *
+ * Measured from the live origin on 2026-09-07: runtime.json is 3,286,732 bytes
+ * of a 6,737,737 total — ONE FILE IS 49% OF THE DOWNLOAD, and sdcc.wasm is
+ * another 27%. Nine equal steps would advance briskly through four small files
+ * and then sit motionless for half the total time, which is not an imprecise
+ * bar but one that looks frozen exactly when a user most needs telling it is
+ * not. Weighting the steps by bytes fixes that and needs no streaming.
+ *
+ * Sizes are read from the origin rather than kept as a constant here: a
+ * hardcoded manifest is a second place stating a fact the origin already
+ * states, and it drifts silently the first time the toolchain is rebuilt.
+ *
+ * THESE ARE TRANSFER BYTES, NOT DISK BYTES, and the difference is a factor of
+ * four. GitHub Pages compresses, and a fetch that advertises gzip gets a
+ * Content-Length describing the COMPRESSED stream: 1,697,996 over the wire for
+ * 6,737,737 on disk. Measuring with `curl -I`, which sends no Accept-Encoding,
+ * returns the uncompressed figure and looks like the same number until you
+ * divide one by the other — which is exactly what the first version of the bar
+ * did, and it reported "2.8 MiB of 1.6 MiB". A progress bar must take its
+ * numerator and denominator from ONE of these, never one of each. It is the
+ * transfer figure, because transfer is what the user is waiting for.
+ * `inspectToolchain` reports the disk figure, and calls it space.
+ *
+ * IF YOU EVER ADD BYTE-LEVEL PROGRESS BY READING THE STREAM, READ THIS FIRST.
+ * A ReadableStream from a gzip response yields DECOMPRESSED bytes, while this
+ * denominator is the COMPRESSED length. Counting one against the other gives a
+ * bar that runs to roughly four hundred percent — the same mistake as the one
+ * this comment exists to record, one layer deeper and harder to see, because
+ * both numbers would then be "bytes we counted ourselves". If a trustworthy
+ * denominator cannot be had, per-file weighting is more honest than a
+ * percentage computed from two different units.
+ *
+ * Measured 2026-09-07, both ways, and reconciled with lego-ac to the byte:
+ *   runtime.json  607,272 on the wire / 3,286,732 stored — 81% compression,
+ *     because it is base64 inside JSON. 36% of the transfer, 49% of the disk.
+ *   sdcc.wasm     452,349 / 1,830,464 — 27% either way.
+ *   TOTAL       1,697,996 / 6,737,737.
+ * The two largest files are 62% of the wire, so weighting still matters; but
+ * "half the download" was true of disk and false of transfer.
+ */
+export async function measureToolchain (base = GPL_TOOLCHAIN_ORIGIN, deps = {}) {
+    const fetch_ = deps.fetch || (typeof fetch === 'undefined' ? null : fetch);
+    if (!fetch_) throw new Error('no fetch is available');
+    const sizes = {};
+    let total = 0;
+    for (const name of TOOLCHAIN_FILES) {
+        const response = await fetch_(fileUrl(base, name), {method: 'HEAD'});
+        const length = Number(response.headers && response.headers.get
+            ? response.headers.get('content-length') : 0) || 0;
+        sizes[name] = length;
+        total += length;
+    }
+    return {sizes, total};
+}
+
 export async function primeToolchainCache (base = GPL_TOOLCHAIN_ORIGIN, deps = {}) {
     const fetch_ = deps.fetch || (typeof fetch === 'undefined' ? null : fetch);
     const store = defaultStore(deps);
     if (!store || !fetch_) throw new Error('no toolchain store or no fetch is available');
-    const {signal, onProgress = () => {}} = deps;
+    const {signal, onProgress = () => {}, sizes = null, totalBytes = 0} = deps;
     const total = TOOLCHAIN_FILES.length;
     const stored = [];
+    // Completed BYTES, not completed files. See measureToolchain for why.
+    let bytesDone = 0;
+    const sizeOf = name => (sizes && sizes[name]) || 0;
 
     for (let index = 0; index < total; index++) {
         const name = TOOLCHAIN_FILES[index];
@@ -168,10 +228,16 @@ export async function primeToolchainCache (base = GPL_TOOLCHAIN_ORIGIN, deps = {
         // write interrupted between open and rename is not mistaken for one.
         if (await store.has(url)) {
             stored.push(name);
-            onProgress({name, index, total, state: 'present', done: stored.length});
+            // Advertised transfer size, NOT store.bytes(): the denominator is a
+            // sum of transfer sizes, and mixing the two made the bar exceed its
+            // own total. One source for both ends of the fraction.
+            bytesDone += sizeOf(name);
+            onProgress({name, index, total, state: 'present',
+                done: stored.length, bytes: sizeOf(name), bytesDone, totalBytes});
             continue;
         }
-        onProgress({name, index, total, state: 'fetching', done: stored.length});
+        onProgress({name, index, total, state: 'fetching',
+            done: stored.length, bytes: sizeOf(name), bytesDone, totalBytes});
         const response = await fetch_(url, signal ? {signal} : undefined);
         if (!response.ok) {
             throw new Error(`${name} returned ${response.status} from ${base}`);
@@ -181,7 +247,9 @@ export async function primeToolchainCache (base = GPL_TOOLCHAIN_ORIGIN, deps = {
         if (signal && signal.aborted) throw aborted();
         await store.put(url, typeof response.clone === 'function' ? response.clone() : response);
         stored.push(name);
-        onProgress({name, index, total, state: 'stored', done: stored.length});
+        bytesDone += sizeOf(name);
+        onProgress({name, index, total, state: 'stored',
+            done: stored.length, bytes: sizeOf(name), bytesDone, totalBytes});
     }
     return stored;
 }
