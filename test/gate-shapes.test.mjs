@@ -54,7 +54,40 @@ const BASELINE = {
     // way round and is stated here rather than discovered later.
     //
     // Unpinned, same as the three below: git's version.
-    'AMBIENT-BINDING': 4,
+    // 4 -> 6 on 2026-09-07, same lane, once the proof moved into a sandbox
+    // worktree. CI counted six where this comment had claimed four, and the
+    // right response is to NAME EACH ONE rather than raise the number to match
+    // -- which is the whole reason the fourth was triaged individually. All six
+    // are `git` from PATH; three are vendor-source-guard's, below. The three
+    // here are:
+    //
+    //   :151  `git worktree add` -- creates the throwaway checkout the sync
+    //         writes into. NOT wrapped: if git is absent or the add fails,
+    //         execFileSync throws, the test errors, and the run is red. Fails
+    //         closed by construction.
+    //   :156  `git worktree remove` -- cleanup, deliberately swallowed, because
+    //         a cleanup failure must not mask the result the test just
+    //         measured. The directory is removed with rmSync regardless, so the
+    //         worst case is a stale admin record. MEASURED after ~10 runs:
+    //         zero stale `bw-absent` entries in `git worktree list`, so no
+    //         prune call is warranted; adding one to be safe would be code
+    //         nothing has been shown to need.
+    //   :223  the two shas the rewind needs -- the source tree's HEAD and the
+    //         previous bw-board pin out of lite's own history of
+    //         vendor-pins.json. Absence returns null, which either changes
+    //         nothing (no rewind was needed) or reds on the named content-base
+    //         assertion. Never a false pass.
+    //
+    // ABSENCE FAILS CLOSED THROUGHOUT, MEASURED NOT ASSUMED: with git removed
+    // from PATH both conditions go red and neither passes. What absence costs
+    // is the MESSAGE -- it reverts to the old misleading 'i8088-cycles.js was
+    // not refused by name', because with no git there is no sync output for the
+    // named assertion to read. The guard is honest about pass/fail and
+    // unhelpful about why, which is the right way round and is stated here
+    // rather than left to be rediscovered.
+    //
+    // Unpinned, same as the three below: git's version.
+    'AMBIENT-BINDING': 6,
     // 12 -> 0 on 2026-09-02. The rule now ignores an appearance that is immediately followed by
     // a click/fill/count/evaluate — synchronisation before the real assertion, and the correct
     // way to write a browser gate. The five that survived that narrowing were each triaged at
