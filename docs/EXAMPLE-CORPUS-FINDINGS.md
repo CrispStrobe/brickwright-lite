@@ -220,99 +220,93 @@ against a green tree, confirmed red, and restored byte-for-byte.
   on `runtime.stc`, so a probe against an empty runtime under-reports. Every
   probe is given the declarations the example itself produces.
 
-## LED polarity: the shipped benches disagree with the programs they run
+## LED polarity: two places where the bench contradicts the program it runs
 
 Measured 2026-09-07 against `e3a1f960e` by `scripts/led-polarity-census.mjs`. It
-is not a gate. It reports, because gating on it today would paint the corpus red
-without repairing anything, and the repair is a lane of its own. When that lane
-lands, this census becomes the gate, and it ratchets downward only.
+reports and does not gate. When the repair lands it becomes the gate, and it
+ratchets downward only.
 
-**The finding.** A program declares `PIN led1 = ... OUTPUT ACTIVE LOW`, which
-means "on" writes a 0. The circuit the example ships for a given device decides
-whether a 0 actually lights the LED. For the AUTHORED device they agree. For most
-of the generated per-device benches they do not, so `turn on led1` makes the LED
-go dark and `turn off led1` lights it.
+**A first version of this section said 230 of 394, across ten of eleven device
+families. That number was wrong and it is recorded here rather than quietly
+replaced.** It compared each generated bench against the AUTHORED declaration.
+The app does not do that: picking a device retargets the program through
+`SB3Creator.retargetPseudocode` before loading that device's bench
+(`circuit-tab.jsx` `loadExampleProgram`), and the bench generator retargets
+through the same function. Retargeting an 8051 `ACTIVE LOW` pin to a `d13` on an
+Uno DELIBERATELY drops the clause, because the sink asymmetry that forces
+active-low on a quasi-bidirectional 8051 pin does not exist on an AVR push-pull
+one. So bench and program agree, and 217 of those rows were an artefact of asking
+the wrong question. The census now retargets per device and compares the pair a
+learner actually sees.
 
-The census asks the solver rather than reading the wires: it drives each declared
-output pin low, reads the LED, drives it high, reads again, and compares which
-level lit it against what the program declared. A bench can reach its rails
-through a breadboard column, a seat or a jumper, and the solver already resolves
-all three.
+**The corrected finding.**
 
 | | count |
 | --- | --- |
 | declared-output LEDs with a bench to measure | 394 |
-| agreeing with their program | 164 |
-| **inverted** | **230** |
+| agreeing with the program that runs beside them | 381 |
+| **inverted** | **13, in 3 examples** |
 
-Per device, inverted over measured:
+The census asks the solver rather than reading the wires: drive each declared
+output pin low, read the LED, drive it high, read again, compare the level that
+lit it against the declaration. A bench reaches its rails through breadboard
+columns, seats and jumpers, and the solver already resolves all three; a topology
+pattern-match would have to re-implement them.
 
-| device | inverted / measured | distinct examples |
+### Defect 1 — the retarget drops ACTIVE LOW where it is the entire subject
+
+Ten rows, two examples, five AVR devices each:
+
+| example | pin | devices |
 | --- | --- | --- |
-| `stc12c5a60s2` | 0 / 38 | — |
-| `stc89c52rc` | 7 / 30 | 1 |
-| `stc15f2k60s2` | 8 / 40 | 2 |
-| `attiny85` | 21 / 25 | 15 |
-| `attiny88` | 21 / 29 | 15 |
-| `stm32f030` | 28 / 35 | 20 |
-| `arduino-uno` | 29 / 39 | 21 |
-| `arduino-mega` | 29 / 40 | 21 |
-| `arduino-nano` | 29 / 40 | 21 |
-| `atmega168p` | 29 / 40 | 21 |
-| `pico` | 29 / 38 | 21 |
+| `06-active-low-high` | `led_low` | `arduino-uno`, `arduino-nano`, `arduino-mega`, `atmega168p`, `attiny85` |
+| `32-source-vs-sink` | `led_sink` | the same five |
 
-Ten of the eleven device families are affected. `stc12c5a60s2` is clean because it
-is the device the corpus is AUTHORED for; every bench for it was written by hand
-or reviewed. The two other 8051 parts are not clean, which rules out "the 8051 is
-fine and the ports are broken" as the shape of this.
+Both examples declare two LEDs on purpose, one `OUTPUT ACTIVE LOW` and one plain
+`OUTPUT`, and exist to teach the difference. Both ship an authored circuit, so
+their per-device benches come from `transformAuthored`, which preserves the
+authored topology — the sinking LED stays wired to sink. The program beside it
+comes from `retargetPseudocode`, which drops the clause. The two producers
+disagree, and they disagree in the one place where a learner is being shown that
+the clause matters: on those five devices `led_low` and `led_sink` light when the
+lesson says they are off.
 
-Eleven is the right denominator, and it is smaller than the fourteen devices the
-index names. `microbit` and `spike` are device-only — the DEVICE is the board, so
-they ship no circuit — and `i8086` is a machine bench with no declared-pin LEDs.
-Eleven families ship a bench this census can measure, and ten of them are wrong.
+Dropping the clause is right for `01-blink`, where an active-low 8051 wiring is a
+quirk of the chip. It is wrong for an example whose subject IS the quirk. The
+repair has to distinguish those, not pick one globally.
 
-**This is not cosmetic, and the corpus is the reason.** These are teaching
-examples. The entire lesson of an ACTIVE LOW pin is which state lights the LED:
-that the pin sinks 20 mA and sources about 230 µA, so writing a 0 is what turns
-it on. On ten of the eleven families that ship a bench, the wrong light comes on,
-which teaches the learner the opposite of the thing the declaration exists to
-teach. An example that blinks convincingly while contradicting its own program is
-worse for a learner than one that does not run.
+### Defect 2 — an authored bench is inverted
 
-Both directions occur, and they are different mistakes:
+Three rows, one example, all three 8051 parts including the authored one:
 
-| disagreement | count | where |
+| example | pin | devices |
 | --- | --- | --- |
-| declared active-low, wired active-high | 215 | every non-authored family |
-| declared active-high, wired active-low | 15 | `50-7seg-chase` on `stc15f2k60s2` and `stc89c52rc`, `53-servo-sweep` on `stc15f2k60s2` |
+| `arduino-sk-p15-hacking-buttons` | `opto` | `stc12c5a60s2`, `stc15f2k60s2`, `stc89c52rc` |
 
-**Worked example, checked by hand.** `01-blink` declares `PIN led1 = P1.0 OUTPUT
-ACTIVE LOW`. Its authored bench wires `VCC → R_led1 → LED_led1.anode`, then
-`LED_led1.cathode → MCU.P1.0`: the pin sinks, and a 0 lights it. Its Uno bench
-wires `uno1.d13 → R_led1 → LED_led1.anode`, then `GND → LED_led1.cathode`: the
-pin sources, and a 0 puts it out.
+No retarget is involved for `stc12c5a60s2` — that is the device the example is
+authored for, and retargeting to the other two 8051 parts preserves the clause.
+The declaration says `ACTIVE LOW` and the bench sources. This is a straight data
+defect in one authored circuit and its transforms, not a generator rule.
 
-**Where it is NOT.** Both netlist inferrers in the tree branch on `pin.activeLow`
-correctly today, and were asked directly rather than read:
-`lib/bw-board/infer-netlist.js` and `lib/bw-circuit-ui/model/infer-seated.js` both
+### The producer, named
+
+`CrispStrobe/sb3-creator`, `scripts/gen-device-benches.mjs`. It has two paths and
+the distinction is what defect 1 turns on:
+
+- an example WITH an authored `circuit.json` goes through
+  `scripts/lib/authored-transform.mjs`, which re-wires the authored circuit onto
+  the target's part and preserves its topology;
+- an example without one goes through `inferNetlist`, which branches on
+  `pin.activeLow` and builds the wiring the declaration asks for.
+
+Both netlist inferrers were asked directly rather than read:
+`lib/bw-board/infer-netlist.js` and `lib/bw-circuit-ui/model/infer-seated.js` each
 produce `LED.cathode → pin` for an active-low declaration, on 8051, Uno and Pico
-alike. So whatever produced the shipped bench files either predates that branch
-or lost the flag on the way. Identifying that producer is the FIRST DELIVERABLE of
-the repair, not an assumption to start from — and note that the shipped benches
-seat a real board part (`uno1`, kind `arduino_uno`) where `inferNetlist` emits a
-generic `MCU`, so they did not come from it.
+alike. Neither is wrong. The disagreement is between the transform, which keeps
+the wiring, and the retarget, which changes the declaration.
 
-Rewriting 230 bench files without knowing what produced them buys nothing: the
-next regeneration reproduces them. If the answer turns out to be that they were
-hand-authored, or came from a tool that no longer exists, that is a good answer
-and it changes the repair from "fix the generator" to "fix the data and add a
-gate that keeps it fixed".
-
-**Why it went unseen.** It does not break what an example LOOKS like it is doing.
-Every affected example still blinks; the pair in a two-LED example still
-alternates. Only WHICH LED is lit is wrong, and nothing in the corpus asserted
-that. It surfaced while measuring a different defect entirely (the pin blocks not
-reaching the circuit at all), and the test written for that defect asserts
-complementarity rather than which LED is lit, precisely so that it fails for its
-own reason and not this one. That is recorded in
-`test/stc12-pins-reach-the-circuit.test.mjs`.
+**Why it is not cosmetic.** These are teaching examples, and both examples in
+defect 1 are the ones whose entire lesson is which state lights the LED: that a
+quasi-bidirectional pin sinks 20 mA and sources about 230 µA, so writing a 0 turns
+it on. The corpus is small here and the placement is unlucky — of all the examples
+to invert, these are the two where the inversion IS the subject.

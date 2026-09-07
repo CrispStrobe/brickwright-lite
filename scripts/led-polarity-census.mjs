@@ -28,7 +28,29 @@ const EX = path.join(ROOT, 'overlay/scratch-gui/examples');
 const {BoardImpl} = await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-board/board.js'));
 const {registerAllDevices} = await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-board/register-all.js'));
 const {terminalsForKind} = await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-circuit-ui/model/circuit.js'));
+const SB3Creator = (await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/sb3-creator.js'))).default;
 registerAllDevices();
+
+// THE DECLARATION TO COMPARE AGAINST IS THE RETARGETED ONE, NOT THE AUTHORED ONE.
+// Picking a device in the app retargets the program through this very function
+// before loading that device's bench (circuit-tab.jsx loadExampleProgram), and
+// the bench generator retargets through it too. So the pair a learner actually
+// sees is (retargeted program, generated bench). Comparing the AUTHORED
+// declaration against a generated bench measures a mismatch that never reaches
+// anyone: retargeting an 8051 ACTIVE LOW pin to a d13 on an Uno deliberately
+// drops the clause, because the sink asymmetry that forces active-low on a
+// quasi-bidirectional 8051 pin does not exist on an AVR push-pull one.
+const declsFor = (src, device, authoredDevice) => {
+    let text = src;
+    if (device && authoredDevice && device !== authoredDevice && SB3Creator.retargetPseudocode) {
+        let r = null;
+        try { r = SB3Creator.retargetPseudocode(src, device); } catch { return null; }
+        if (!r || !r.ok) return null;          // an honest refusal, not a bench to judge
+        text = r.pseudocode ?? r.src ?? src;
+    }
+    return [...text.matchAll(/^\s*PIN\s+(\w+)\s*=\s*(\S+)\s+OUTPUT\s*(ACTIVE\s+(LOW|HIGH))?/gim)]
+        .map(m => ({name: m[1], declared: m[4] ? `active-${m[4].toLowerCase()}` : 'active-high'}));
+};
 
 const PASSIVE = new Set(['breadboard', 'vcc', 'gnd', 'resistor', 'led', 'capacitor', 'wire',
     'diode', 'inductor', 'switch', 'button', 'potentiometer', 'battery']);
@@ -99,14 +121,15 @@ for (const id of readdirSync(EX).sort()) {
     const prog = path.join(dir, 'program.bw');
     if (!existsSync(prog)) continue;
     const src = readFileSync(prog, 'utf8');
-    // PIN <name> = <pin> OUTPUT [ACTIVE LOW|ACTIVE HIGH]
-    const decls = [...src.matchAll(/^\s*PIN\s+(\w+)\s*=\s*(\S+)\s+OUTPUT\s*(ACTIVE\s+(LOW|HIGH))?/gim)]
-        .map(m => ({name: m[1], declared: m[4] ? `active-${m[4].toLowerCase()}` : 'active-high'}));
-    if (!decls.length) continue;
+    const authoredDevice = ((src.match(/^DEVICE\s+([\w-]+)/im) || [])[1] || '')
+        .toLowerCase().replace(/_/g, '-');
+    if (!/^\s*PIN\s+\w+\s*=\s*\S+\s+OUTPUT/im.test(src)) continue;
     for (const f of readdirSync(dir)) {
         const m = /^circuit\.([\w.-]+)\.json$/.exec(f);
         if (!m) continue;
         const device = m[1];
+        const decls = declsFor(src, device, authoredDevice);
+        if (!decls || !decls.length) continue;
         const built = build(path.join(dir, f));
         if (!built || built.error || !built.leds || !built.leds.length) continue;
         for (const decl of decls) {
@@ -148,7 +171,8 @@ for (const r of bad) {
     dirs.set(k, (dirs.get(k) || 0) + 1);
 }
 for (const [k, v] of dirs) console.log(`  ${k}: ${v}`);
-console.log('\nfirst 12 inverted rows:');
+console.log('\nJSONROWS ' + JSON.stringify(bad));
+console.log('\nevery inverted row:');
 for (const r of bad.slice(0, 12)) {
     console.log(`  ${r.id.padEnd(26)} ${r.device.padEnd(16)} ${r.pin.padEnd(8)} declared ${r.declared}, wired ${r.wired}`);
 }
