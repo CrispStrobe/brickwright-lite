@@ -238,6 +238,8 @@ const C_STARTUP = [
  * `bw_inb(port)`         — read a byte from I/O `port`, zero-extended.
  * `bw_delay_ms(ms)`      — wait through BIOS INT 15h/86h; the DOS bench
  *                          advances exact machine time for that service.
+ * `bw_print_num(n)`      — print one signed-16 decimal through DOS character
+ *                          output, followed by CR then LF.
  *
  * Injected by compileC8086 ONLY when the compiled body references the symbol
  * (see below), so every program that calls none of these helpers is
@@ -276,6 +278,49 @@ const C_ROUTE_HELPERS = {
         '    mov dx, ax',
         '    mov ah, 86h',
         '    int 15h',           // same blocking DOS-proxy door as the ASM route
+        '    pop bx',
+        '    pop bp',
+        '    ret'
+    ].join('\n') + '\n',
+    bw_print_num: [
+        '_bw_print_num:',        // void bw_print_num(int n)
+        '    push bp',
+        '    mov bp, sp',
+        '    push bx',           // cdecl: BX is callee-saved
+        '    push cx',
+        '    push dx',
+        '    mov ax, [bp+4]',    // signed 16-bit argument
+        '    or ax, ax',
+        '    jns BW_CPN_MAG',
+        '    mov dl, 2Dh',       // '-'
+        '    mov ah, 02h',
+        '    int 21h',           // same DOS character-output door as BW_PRINTN
+        '    mov ax, [bp+4]',    // AH was consumed by the DOS call
+        '    neg ax',            // unsigned magnitude; 8000h safely stays 8000h
+        'BW_CPN_MAG:',
+        '    xor cx, cx',
+        '    mov bx, 10',
+        'BW_CPN_DIV:',
+        '    xor dx, dx',
+        '    div bx',
+        '    push dx',           // remainder; reverse the digit order
+        '    inc cx',
+        '    or ax, ax',
+        '    jnz BW_CPN_DIV',
+        'BW_CPN_DIGIT:',
+        '    pop dx',
+        '    add dl, 30h',       // '0'
+        '    mov ah, 02h',
+        '    int 21h',
+        '    loop BW_CPN_DIGIT',
+        '    mov dl, 0Dh',
+        '    mov ah, 02h',
+        '    int 21h',
+        '    mov dl, 0Ah',
+        '    mov ah, 02h',
+        '    int 21h',
+        '    pop dx',
+        '    pop cx',
         '    pop bx',
         '    pop bp',
         '    ret'
@@ -387,6 +432,7 @@ export async function compileC8086 (cSource, seams = {}) {
 
     // Conditional machine-helper injection: if the compiled body CALLS one of
     // the helpers (it will have emitted `call _bw_outb`, `call _bw_delay_ms`,
+    // `call _bw_print_num`,
     // etc. and an `extern` for it), define the helper in this same image and
     // strip the extern. Only referenced helpers are added, so an unrelated
     // program assembles to exactly what it did before.
