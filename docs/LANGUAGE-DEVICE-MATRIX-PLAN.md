@@ -560,7 +560,7 @@ proof.
 
 ### Lane P — peripherals (part profiles), summarised; full detail in its own plan
 
-**Measured 2026-09-06 (P1), 2026-09-07 (P1a, P2):** of **147** rendered verb × family cells, **57** are implemented and **90** are
+**Measured 2026-09-06 (P1), 2026-09-07 (P1a, P2; tone corrected to avr-only → 54):** of **147** rendered verb × family cells, **54** are implemented and **93** are
 gaps, **19** of them the i8086 column (`pin` and `shiftOut` have i8086 branches; the emitter refuses the rest by name); the emitter stores
 FIVE families (`8051 avr arm 6502 z80`; rp2040 renders `≡ arm`, one branch) and a branch that warns or
 emits a "no <thing> on this machine" stub is a gap, not a cell (servo/motor/pwm/tone lose their 6502/z80
