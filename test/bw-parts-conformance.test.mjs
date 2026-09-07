@@ -113,6 +113,8 @@ test('(2) profile verbs and emitter verbs agree in both directions', () => {
 
 test('(3) the stored verb×family matrix is exactly what the emitter branches say', t => {
     const derived = deriveVerbFamilies(readFileSync(EMITTER, 'utf8'));
+    assert.equal(derived.printNumber, undefined,
+        'numeric output is a language/runtime utility, not a physical-part verb');
     // both directions, per verb, so removing an emitter branch reddens its cell
     assert.deepEqual(
         Object.fromEntries(VERBS.map((v) => [v, VERB_FAMILIES[v]])),

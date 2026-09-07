@@ -64,7 +64,12 @@ const output = path.join(root, 'docs/generated/PART-PROFILES.md');
 const rel = (p) => path.relative(root, p);
 
 const FAMS = Object.values(FAMILY);   // ['8051','avr','6502','z80','arm']
-const CONTROL = new Set(['delay', 'blockDelay', 'blockingDelay', 'now', 'print', 'table', 'devices']);
+// Utility/output flags are not physical-part verbs. Keep both historical
+// `print` and the bounded numeric helper's `printNumber` here: adding either to
+// a part profile would invent a bus capability merely to satisfy the census.
+const CONTROL = new Set([
+    'delay', 'blockDelay', 'blockingDelay', 'now', 'print', 'printNumber', 'table', 'devices'
+]);
 // A branch that warns or emits a "no <thing> on this machine" stub is a refusal,
 // not an implementation.
 const REFUSE = /cWarn\(|\/\* no |not modelled|no such|unsupported/;

@@ -4,10 +4,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {execFile} from 'node:child_process';
 import {mkdtemp, readFile, rm, symlink, writeFile} from 'node:fs/promises';
+import {createRequire} from 'node:module';
 import {tmpdir} from 'node:os';
 import {basename, join} from 'node:path';
 import {promisify} from 'node:util';
-import {fileURLToPath} from 'node:url';
+import {fileURLToPath, pathToFileURL} from 'node:url';
 
 const execFileP = promisify(execFile);
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -127,8 +128,18 @@ test('commented-zero mutation cannot put either timer program back into honest r
         const mutantFile = join(temp, 'sb3-creator.mjs');
         const source = await readFile(sourceFile, 'utf8');
         const anchor = 'if (!this._cLoweringRefused.includes(shown)) this._cLoweringRefused.push(shown);';
-        const mutant = source.replace(anchor, 'if (!this._cLoweringRefused.includes(shown)) void shown;');
+        const guiPackage = join(root, 'packages/scratch-gui/package.json');
+        const guiRequire = createRequire(pathToFileURL(guiPackage));
+        const jszip = pathToFileURL(guiRequire.resolve('jszip')).href;
+        const jszipAnchor = "import JSZip from 'jszip';";
+        const importBound = source.replace(jszipAnchor,
+            `import JSZip from ${JSON.stringify(jszip)};`);
+        assert.notEqual(importBound, source, 'isolated mutant JSZip import anchor moved');
+        const mutant = importBound
+            .replace(anchor, 'if (!this._cLoweringRefused.includes(shown)) void shown;');
         assert.notEqual(mutant, source, 'commented-zero mutation anchor moved');
+        assert.doesNotMatch(mutant, /from ['"]jszip['"]/,
+            'isolated mutant retained a bare GUI dependency outside test attribution');
         try {
             for (const dependency of [
                 'sb3-creator-runtime.js',
