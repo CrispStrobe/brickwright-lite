@@ -108,7 +108,15 @@ try {
         localStorage.setItem('bw-debug-dock', 'right');
         sessionStorage.clear();
     });
-    await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 90000});
+    await page.goto(url, {waitUntil: 'networkidle', timeout: 90000});
+    await page.waitForSelector('[role="tab"]', {timeout: 60000});
+    // THE CIRCUIT TAB MUST BE MOUNTED BEFORE THE WALK FINDS IT. The first
+    // version of this gate copied verify-aurora65-workstation's fiber walk and
+    // not the three lines above it, so the walk searched a tree the gallery was
+    // not in and timed out after 40 s with no hint that the component simply
+    // was not there. Mirroring a green gate's drive means the navigation too,
+    // not only the clever part.
+    await page.getByRole('tab', {name: /circuit/i}).click();
 
     // The circuit tab's own gallery loader, found the way a green gate finds it.
     const found = await page.waitForFunction(() => {
