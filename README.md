@@ -86,11 +86,12 @@ targets distinct:
 - Brickwright's NuttX firmware with its supported compatibility transports.
 
 The dashboard renders the hub, ports, attached motors and sensors, battery,
-IMU, and display state. Its current browser implementation is deterministic
-protocol simulation; it does not yet mean that Renode is executing behind
-every UI control. The active roadmap connects the audited Renode snapshots to
-this same state contract so unchanged firmware, protocol adapters, and the GUI
-observe one brick state.
+IMU, and display state. A bounded, versioned NDJSON adapter now maps immutable
+Renode snapshots into that state without exposing emulator types to React or
+Scratch. Browser-only protocol simulation remains available; selecting a
+firmware target does not by itself start Renode or prove firmware execution.
+The contract and pinned canonical fixtures are documented in
+[contracts/brick-state](contracts/brick-state/README.md).
 
 Run the focused virtual-hub checks with:
 
@@ -100,6 +101,7 @@ node --test test/virtual-spike-panel.test.mjs \
   test/virtual-spike-classic.test.mjs \
   test/virtual-spike-prime.test.mjs \
   test/spike-codec-fixtures.test.mjs
+node --test test/renode-state-adapter.test.mjs
 ```
 
 No official LEGO, Pybricks, or TI firmware is bundled in Brickwright.
