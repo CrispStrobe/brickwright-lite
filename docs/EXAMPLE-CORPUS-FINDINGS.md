@@ -226,6 +226,12 @@ Measured 2026-09-07 against `e3a1f960e` by `scripts/led-polarity-census.mjs`. It
 reports and does not gate. When the repair lands it becomes the gate, and it
 ratchets downward only.
 
+> **13 inverted, in 3 examples — and 203 of 597 declared output pins this census
+> cannot see at all.** Both halves belong in the same breath. The finding is a
+> FLOOR over discrete LEDs, not a total, and the blind spot is where a repair rule
+> that fitted the visible cases would have done its damage. Every number below
+> arrives with the size of what produced it and the size of what it missed.
+
 **A first version of this section said 230 of 394, across ten of eleven device
 families. That number was wrong and it is recorded here rather than quietly
 replaced.** It compared each generated bench against the AUTHORED declaration.
@@ -256,6 +262,14 @@ matrices and shift-register outputs are all `OUTPUT` and none of them is a
 discrete LED. Whether their polarity agrees is unmeasured, and saying so is the
 point — the previous version of this section reported a confident number without
 saying what it could not see.
+
+A repair validated by an instrument that cannot reach two thirds of the population
+is not validated. That is why coverage is a prerequisite below and not a
+follow-up, and it is the one structural defence that would have caught all three
+of the wrong claims made while producing this section: an unmeasured
+extrapolation, a confident number from the wrong comparison, and a rule fitted to
+the visible cases. Method is not evidence. A procedure makes a wrong answer more
+persuasive without making it more true.
 
 The census asks the solver rather than reading the wires: drive each declared
 output pin low, read the LED, drive it high, read again, compare the level that
