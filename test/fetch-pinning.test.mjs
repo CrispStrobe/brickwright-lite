@@ -615,7 +615,12 @@ describe('lib-pin: the mechanism the `resolved-var` class depends on', () => {
                 /not a 40-hex sha/);
             assert.equal(readFileSync(file, 'utf8'), '{}\n',
                 'recordPin rejected the value and then wrote it anyway');
-            const good = 'a301937d9912a66aa4a7cdae403e39a337ac9eb2';
+            // SYNTHETIC, NOT A REAL SHA. This was 'a301937d99...', which happens
+            // to be the bw-board pin lite carried until 49ae080a8 -- so T9's
+            // pin-move gate reads it as a stale pin in a file that must carry the
+            // current one. A fixture that only needs to be 40 hex characters must
+            // not be a value that means something elsewhere.
+            const good = 'deadbeef'.repeat(5);
             await recordPin('bw-board', good, {pinsFile: file, log: quiet});
             assert.equal(JSON.parse(readFileSync(file, 'utf8'))['bw-board'], good);
         } finally {
