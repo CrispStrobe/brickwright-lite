@@ -1021,15 +1021,30 @@ repository is BSD-3-Clause (see LICENSE at the repo root).
 
 ## SDCC (Small Device C Compiler) — GPL-2-or-later
 
-**NOT BUNDLED. Fetched on request from its own GPL origin:**
-https://github.com/CrispStrobe/sdcc-wasm — served at
-https://crispstrobe.github.io/sdcc-wasm/ , where the COPYING text, the written
-offer of corresponding source, the build provenance and the SHA-256 of each
-binary live with the binaries they describe.
+**NOT COPIED INTO THE BUILD, AND NOT IN THE PACKAGED APP. Still present in
+this repository's source tree while the removal completes.**
 
-**What changed, and why (2026-09-07).** Until now these binaries were tracked in
-this repository and `webpack.config.js` copied them into `static/sdcc-wasm/` in
-the build output. `apps/tauri/src-tauri/tauri.conf.json` bundles that build
+Read that literally, because the two halves have different dates. As of
+`dd603a5a4` no SDCC byte is copied into `packages/scratch-gui/build`, so none
+reaches the `.app` that `tauri.conf.json` assembles, and a CI guard fails the
+build if any reappears. But 202 files under
+`overlay/scratch-gui/src/lib/sdcc-wasm/dist/` (and their tracked mirror) are
+STILL IN THIS REPOSITORY, pending removal once the fetch route is proven in a
+browser. Until that lands, this repository still distributes SDCC as source-tree
+content, and the aggregation reasoning further down still applies to it. A
+notice that claimed otherwise would understate what is shipped, which is a worse
+error than the overstatement it replaced.
+
+**The GPL home of these binaries:** https://github.com/CrispStrobe/sdcc-wasm —
+the COPYING text, the written offer of corresponding source, the build
+provenance and the SHA-256 of each binary live there with the binaries they
+describe. Use that GitHub URL, not the Pages root: the artifacts are served from
+`https://crispstrobe.github.io/sdcc-wasm/static/sdcc-wasm/<file>`, and the site
+root itself returns 404, so a human sent there lands on an error instead of the
+licence and the offer.
+
+**What changed, and why (2026-09-07).** `webpack.config.js` copied these
+binaries into `static/sdcc-wasm/` in the build output. `apps/tauri/src-tauri/tauri.conf.json` bundles that build
 directory wholesale, so the shipping Mac build carried **101 GPL files, 8.7 MB**,
 inside a BSD-3-Clause application — measured in CI's own build artifact on
 2026-09-07, four weeks after they were added in `305893119`. The copy rule is
