@@ -420,6 +420,42 @@ jobs:
           done
           echo "BW_VENDOR_HISTORY_DIR=$RUNNER_TEMP/vendor-history" >> "$GITHUB_ENV"
 
+      # THE PIN-READER TESTS HAVE NEVER RUN IN CI, and that is how a stale
+      # inventory shipped. Four tests need a bw-board tree AT THE PIN --
+      # bw-board-census, vendor-identity, and the two i8086-bios provenance
+      # gates -- and each of them skips BY NAME when BW_BOARD_DIR is unset. The
+      # skips were honest and nobody was reading them, so vendor-identity's
+      # convergence inventory went stale through a pin bump and was still
+      # claiming "APPEARED rp2040-bootrom.js" when the file had converged.
+      #
+      # No workflow in this repo provided that tree. I checked every file under
+      # .github/workflows before adding one rather than assuming the census step
+      # had it: there is no census step in CI at all.
+      #
+      # Blobless and AT THE PIN SHA, following the emu8051-stc precedent above:
+      # a clone pinned to an exact sha is the pinned class, and --filter=blob:none
+      # fetches only the objects the checkout needs.
+      - name: Fetch the pinned bw-board tree for the pin-reader tests
+        id: bwboard_tree
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        run: |
+          set -o pipefail
+          PIN=$(node -e "console.log(require('./vendor-pins.json')['bw-board'])")
+          case "$PIN" in
+            [0-9a-f]*) [ ${#PIN} -eq 40 ] || { echo "::error::bw-board pin is not a 40-char sha: $PIN"; exit 1; } ;;
+            *) echo "::error::bw-board pin is not a sha: $PIN"; exit 1 ;;
+          esac
+          git clone --filter=blob:none --no-checkout \
+            https://github.com/CrispStrobe/bw-board.git /tmp/bw-board
+          git -C /tmp/bw-board checkout -q "$PIN"
+          # The tree must BE the pin, not merely near it -- a checkout that
+          # silently landed elsewhere would make every reader below assert
+          # against the wrong tree and still look green.
+          GOT=$(git -C /tmp/bw-board rev-parse HEAD)
+          [ "$GOT" = "$PIN" ] || { echo "::error::bw-board tree is at $GOT, pin is $PIN"; exit 1; }
+          echo "BW_BOARD_DIR=/tmp/bw-board" >> "$GITHUB_ENV"
+          echo "bw-board at the pin ${PIN:0:9}"
+
       - name: Run unit tests
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         run: |
