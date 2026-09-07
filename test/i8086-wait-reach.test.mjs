@@ -11,7 +11,7 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const guiScopeHook = fileURLToPath(new URL('../scripts/lib/register-gui-scope.mjs', import.meta.url));
 
 test('the 280-program gallery records the literal-wait gain and every emitted program compiles',
-    {timeout: 300000}, async () => {
+    {timeout: 300000}, async t => {
         const {stdout} = await execFileP(process.execPath, [
             '--import', guiScopeHook,
             'scripts/measure-i8086-numeric-reach.mjs',
@@ -20,7 +20,7 @@ test('the 280-program gallery records the literal-wait gain and every emitted pr
         ], {cwd: root, maxBuffer: 8 * 1024 * 1024});
         const receipt = JSON.parse(stdout);
         const s = receipt.summary;
-        console.log(`N2c reach: ${JSON.stringify(s)}; compile failures: ${JSON.stringify(receipt.compileFailed)}`);
+        t.diagnostic(`N2c reach: ${JSON.stringify(s)}; compile failures: ${JSON.stringify(receipt.compileFailed)}`);
         assert.equal(s.programs, 280);
         assert.equal(s.waitLiteralPrograms, 120);
         assert.equal(s.waitComputedPrograms, 2);
