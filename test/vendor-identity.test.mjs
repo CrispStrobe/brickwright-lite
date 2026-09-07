@@ -261,6 +261,29 @@ test('upstream has not converged on the lite-only work (needs the bw-board tree)
     const srcDir = candidates.map(d => path.join(d, 'src'))
         .filter(d => fs.existsSync(d))
         .filter(d => process.env.BW_BOARD_DIR ? true : outsideTmp(d))[0];
+    // A SIBLING CHECKOUT IS A DIRECTORY, NOT A COMMIT — and this comparison is
+    // only meaningful against the tree AT THE PIN. The /tmp rule above closed
+    // binding to the wrong REPOSITORY; this closes binding to the right
+    // repository at the wrong COMMIT, which the corpus check cannot see because
+    // the files are all there and all plausible.
+    //
+    // MEASURED 2026-09-07 (lego-b9): on the VPS both fallbacks resolve to
+    // checkouts a peer left on a feature branch (`../../bw-board` at 2e7143a
+    // `vocab-lego-be`, `../bw-board` at 5f79057 `fab-cuiB-board`), neither the
+    // pin nor upstream's tip. Against those this test went RED with "APPEARED
+    // (new divergence nobody has written up): board.js, rp2040-bootrom.js".
+    // Against a clone AT THE PIN, in the same worktree, minutes apart: 5/5, no
+    // divergence. The red was a report about a peer's branch, wearing this
+    // gate's name.
+    //
+    // So the sibling still gets to SPEAK — the divergence list is real
+    // information for whoever has that tree — but it may not JUDGE. Only
+    // BW_BOARD_DIR, which by the fleet's convention means the tree at the pin
+    // (test/vendor-absent-by-design.test.mjs states it, and CI's
+    // "Fetch the pinned bw-board tree" step re-reads HEAD to prove it), decides
+    // this gate. Recorded, not judged: the same answer the Costume interactivity
+    // ceiling got when its number turned out to be about the runner.
+    const pinned = Boolean(process.env.BW_BOARD_DIR);
     if (!srcDir) {
         // Not an assertion failure -- upstream genuinely is not here. But it is
         // reported, and it is NOT counted as the invariant having been checked.
@@ -303,6 +326,18 @@ test('upstream has not converged on the lite-only work (needs the bw-board tree)
         if (only.length) shouldCover.push(`${f} (${only.join(', ')})`);
     }
     const uncovered = shouldCover.filter(x => !spec.files[x.split(' ')[0]]);
+    if (!pinned) {
+        // The tree is of unknown provenance (see the note above). Report what it
+        // says, name what it would take to judge, and skip -- a divergence
+        // measured against an arbitrary branch is not a divergence.
+        t.diagnostic(`sibling tree ${srcDir}: ${shouldCover.length} file(s) carry lite-only work, ` +
+            `${uncovered.length} not covered by the allow-list${uncovered.length ? ` (${uncovered.join('; ')})` : ''}; ` +
+            `${liteOnly.length} vendored file(s) it does not have${liteOnly.length ? ': ' + liteOnly.join(', ') : ''}`);
+        t.skip('a sibling bw-board checkout was found but its COMMIT is unknown, and this ' +
+            'invariant is only meaningful against the tree at the pin -- set BW_BOARD_DIR to a ' +
+            'bw-board checkout at the sha in vendor-pins.json to judge it (CI does)');
+        return;
+    }
     assert.deepEqual(uncovered, [],
         '\n  FILES WITH LITE-ONLY WORK THAT THE ALLOW-LIST DOES NOT COVER:\n    ' +
         uncovered.join('\n    ') +
