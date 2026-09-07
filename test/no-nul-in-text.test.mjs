@@ -27,6 +27,14 @@
  * re-vendored, or the test edited), the entry is red as stale and must be
  * removed — a ratchet cannot outlive the defect it names.
  *
+ * Two sentences from lego-be, who read the first sweep: git samples roughly
+ * the first 8 KB to decide binary, so the same defect was visible to git in
+ * one file and invisible in the other — sweep by BYTE, never by symptom. And:
+ * a count over the wrong set is a different question, not a smaller answer
+ * (the sweep's 1,759 hits are mostly PNGs; the answer is the five). One from
+ * the measuring: in zsh, quote every `<ref>:<path>` — `$P:src/board.js`
+ * is a history modifier, and git will happily show a different object.
+ *
  * Red names the file, the line, the byte offset and the surrounding text.
  * This file itself spells the byte only as an escape.
  */
