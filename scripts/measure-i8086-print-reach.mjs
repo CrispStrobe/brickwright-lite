@@ -267,7 +267,7 @@ const boundedRecommendation = {
     refuseStringComputed: [...postChokeCandidates.stringComputed]
 };
 const report = {
-    schema: 'n2d-i8086-print-reach-v1', examples, programs,
+    schema: 'n2d-i8086-print-reach-v1', programs,
     source: {...source, programCounts: countMap(source.programBuckets)},
     opcode: {...opcode, programCounts: countMap(opcode.programBuckets)},
     currentOutput: {...currentOutput, counts: countMap(currentOutput)},
