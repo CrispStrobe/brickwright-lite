@@ -33,7 +33,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync, existsSync} from 'node:fs';
 import path from 'node:path';
-import {SOURCE, REPO} from './helpers/bw-integrated.mjs';
+import {SOURCE, REPO, importGuiDependency} from './helpers/bw-integrated.mjs';
 import {balancedAfter} from './helpers/js-scope.mjs';
 
 const EX = path.join(REPO, 'overlay/scratch-gui/examples');
@@ -72,7 +72,7 @@ test('instrument: Wave 4 still has the eight lessons this gate measures', () => 
 });
 
 const SB3Creator = (await import(path.join(SOURCE, 'src/lib/sb3-creator.js'))).default;
-const VM = (await import('scratch-vm/src/index.js')).default;
+const VM = (await importGuiDependency('scratch-vm/src/index.js')).default;
 const {interpretTrace} = await import(path.join(SOURCE, 'src/lib/trace-oracle.js'));
 const {ControllerPanel} = await import(path.join(GUI, 'lib/bw-board/controller.js'));
 const {bindPanelToVariables} = await import(path.join(GUI, 'lib/bw-board/controller-binding.js'));

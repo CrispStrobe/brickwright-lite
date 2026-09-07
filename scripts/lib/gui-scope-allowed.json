@@ -13,22 +13,10 @@
   "rp2040js": {
     "tests": [
       "test/debug-js-core-step-depth-live.test.mjs",
-      "test/microbit-pins-drive-circuit.test.mjs",
       "test/rp2040-bootrom.test.mjs",
       "test/rp2040-image.test.mjs",
       "test/shipped-lesson-images.test.mjs"
     ],
     "why": "owned RP2040 adapter/debug sources execute the GUI package's rp2040js core"
-  },
-  "scratch-vm/src/index.js": {
-    "tests": [
-      "test/example-vm-execution.test.mjs",
-      "test/lesson-panel-claims-wave4.test.mjs",
-      "test/makecode-arcade-runs.test.mjs",
-      "test/makecode-microbit-runs.test.mjs",
-      "test/pseudocode-game-examples.test.mjs",
-      "test/shipped-lesson-images.test.mjs"
-    ],
-    "why": "VM integration tests need the patched Scratch VM source entry that the GUI webpack build consumes, not the package's unpatched dist bundle"
   }
 }

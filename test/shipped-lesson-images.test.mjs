@@ -62,7 +62,7 @@ import {readFileSync, existsSync, readdirSync} from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 
-import {SOURCE, REPO} from './helpers/bw-integrated.mjs';
+import {SOURCE, REPO, importGuiDependency} from './helpers/bw-integrated.mjs';
 
 const OVERLAY = path.join(REPO, 'overlay/scratch-gui');
 const IMAGES = path.join(OVERLAY, 'static/lesson-images');
@@ -97,7 +97,7 @@ function programOf (entry) {
 // ── 1. The premise: the browser's C is the build script's C ────────────────
 
 test('the emitter gives the SAME C through a scratch-vm round trip as it does direct', async () => {
-    const VM = (await import('scratch-vm/src/index.js')).default;
+    const VM = (await importGuiDependency('scratch-vm/src/index.js')).default;
     const SB3Creator = (await import(
         pathToFileURL(path.join(SOURCE, 'src/lib/sb3-creator.js')).href)).default;
 

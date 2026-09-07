@@ -91,6 +91,7 @@ function exampleIndex () {
 }
 
 const SB3Creator = (await import(path.join(OV, 'sb3-creator.js'))).default;
+const overlayCompiler = readFileSync(path.join(OV, 'sb3-creator.js'));
 
 let _circuitMod = null;
 async function boot () {
