@@ -34,7 +34,27 @@ const BASELINE = {
     // test's opinion of git instead of git's behaviour, and absence FAILS
     // CLOSED (execFileSync throws ENOENT, rig() does not catch, every test in
     // the file goes red). Verified, not assumed. Unpinned: git's version.
-    'AMBIENT-BINDING': 3,
+    // 3 -> 4 on 2026-09-07 (lego-be, pin leg to 2c568ca). The fourth is `git` from
+    // PATH in test/vendor-absent-by-design.test.mjs, and it is there because the
+    // absent-by-design proof now has to know TWO shas it cannot get any other
+    // way: the source tree's own HEAD, and the previous bw-board pin out of
+    // lite's history of vendor-pins.json. A pin leg makes the recorded pin equal
+    // to the source sha by construction, and the sync then refuses for want of a
+    // content base -- so without git this proof cannot run on the branches where
+    // it matters most. A hardcoded previous pin was the alternative and is worse:
+    // a fifth constant to keep in step with the pin.
+    //
+    // ABSENCE FAILS CLOSED, MEASURED RATHER THAN ASSUMED. Run with git removed
+    // from PATH, both conditions go RED and neither passes: with pin == source
+    // the rewind cannot happen and the sync refuses; with pin behind source the
+    // sync itself cannot run. What absence does cost is the MESSAGE -- it reverts
+    // to the old misleading 'i8088-cycles.js was not refused by name', because
+    // with no git there is no sync output for the named assertion to read. So the
+    // guard is honest about pass/fail and unhelpful about why, which is the right
+    // way round and is stated here rather than discovered later.
+    //
+    // Unpinned, same as the three below: git's version.
+    'AMBIENT-BINDING': 4,
     // 12 -> 0 on 2026-09-02. The rule now ignores an appearance that is immediately followed by
     // a click/fill/count/evaluate — synchronisation before the real assertion, and the correct
     // way to write a browser gate. The five that survived that narrowing were each triaged at
