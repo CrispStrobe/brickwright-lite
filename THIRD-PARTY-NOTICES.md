@@ -136,6 +136,156 @@ in your own work isn't bound by whichever repo it happens to sit in:
   `i8086-timer-demo.bin`, `lcd-hello.bin`, `z80-mirror.bin` -- (c) CrispStrobe,
   demo ROMs assembled from the owner's own sources (bw-board's `rom/` and the
   bw-circuit-ui presets) and vendor-forwarded on 2026-08-17; no third-party code.
+- `overlay/scratch-gui/src/lib/virtual-hub/spike-prime-peripheral.js`,
+  `spike-classic-scratch-link.js`, `spike-hub-state.js` and `spike-panel.js` --
+  (c) CrispStrobe, and deliberately **Apache-2.0** rather than this repository's
+  BSD-3-Clause: each carries `SPDX-License-Identifier: Apache-2.0` on line 1, and
+  `spike-prime-peripheral.js` line 2 records why -- its framing is shared with
+  Brickwright SPIKE Firmware's independently authored `protocol/js/spike-codec.js`
+  and that repository's Apache-2.0 conformance fixtures. Keeping the two sides
+  under one licence is what lets the framing and the fixtures move between the
+  repositories. They are not mis-tagged, and `web-bluetooth-shim.js` beside them
+  carries no SPDX line because it is ordinary BSD-3-Clause repository code.
+
+## Fonts shipped in the editor build (scratch-render-fonts 1.0.129)
+
+Seven typefaces are compiled into the bundle as base64 `@font-face` data by
+`packages/scratch-gui/node_modules/scratch-render-fonts/src/index.js`, one per
+Scratch font menu entry. Each is recorded below from its own `name` table
+(copyright is name ID 0, licence ID 13, licence URL ID 14), not from the
+package's bundled `OFL.txt`: that file's copyright line names "Londrina", a face
+this package does not ship, so it identifies the licence but not the works.
+
+Five are under the SIL Open Font License 1.1, and OFL clause 2 requires the
+copyright notice and the licence to travel with them:
+
+- **Noto Sans Medium** (menu "Sans Serif") -- Copyright 2015 Google Inc. All
+  Rights Reserved. -- SIL OFL 1.1 -- http://scripts.sil.org/OFL
+- **Source Serif Pro Regular** (menu "Serif") -- Copyright 2014, 2015, 2016
+  Adobe Systems Incorporated (http://www.adobe.com/), with Reserved Font Name
+  'Source'. -- SIL OFL 1.1 -- http://scripts.sil.org/OFL
+- **Handlee** (menu "Handwriting") -- Copyright (c) 2011, Admix Designs
+  (http://www.admixdesigns.com/) with Reserved Font Name Handlee. -- SIL OFL 1.1
+- **Knewave** (menu "Marker") -- Copyright (c) 2011 by Tyler Finck. All rights
+  reserved. -- SIL OFL 1.1 (the face records the licence as "OFL"; the full text
+  is reproduced below)
+- **Griffy** (menu "Curly") -- Copyright (c) 2012 by Font Diner, Inc DBA
+  Neapolitan (diner@fontdiner.com) with Reseved Font Name "Griffy" -- SIL OFL 1.1
+  -- http://scripts.sil.org/OFL
+
+The remaining two are NOT under the OFL, and are recorded here as they describe
+themselves:
+
+- **Grand9K Pixel** (menu "Pixel") -- (c) 2009-2013 Grand Chaos Productions.
+  Some Rights Reserved. -- **Creative Commons Attribution-ShareAlike 3.0**,
+  http://creativecommons.org/licenses/by-sa/3.0/. The face carries no name-table
+  licence description, only that URL. CC BY-SA 3.0 is a share-alike licence and
+  is not one of the licences this bundle otherwise ships under; it applies to the
+  font file, which is distributed unmodified.
+- **ScratchFont** (`Scratch.ttf`, menu "Scratch") -- "By Jakob Fischer aka
+  PizzaDude *Distribute freely*", version field
+  `http://hjem.get2net.dk/jfischer/`. **The face carries no licence
+  identifier and no licence URL.** "Distribute freely" is the whole of the
+  permission granted, in the copyright record itself. It is recorded here as
+  found; nothing in this repository asserts a licence for it.
+
+The `LICENSE.txt` in that package is Apache-2.0 and covers the package's own
+JavaScript, not the typefaces.
+
+### SIL Open Font License, Version 1.1
+
+Reproduced as clause 2 requires, from
+`packages/scratch-gui/node_modules/scratch-render-fonts/OFL.txt`; the copyright
+line there names a face this package does not ship, so the notices above carry
+each shipped face's own copyright instead.
+
+```
+SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
+-----------------------------------------------------------
+
+PREAMBLE
+The goals of the Open Font License (OFL) are to stimulate worldwide
+development of collaborative font projects, to support the font creation
+efforts of academic and linguistic communities, and to provide a free and
+open framework in which fonts may be shared and improved in partnership
+with others.
+
+The OFL allows the licensed fonts to be used, studied, modified and
+redistributed freely as long as they are not sold by themselves. The
+fonts, including any derivative works, can be bundled, embedded, 
+redistributed and/or sold with any software provided that any reserved
+names are not used by derivative works. The fonts and derivatives,
+however, cannot be released under any other type of license. The
+requirement for fonts to remain under this license does not apply
+to any document created using the fonts or their derivatives.
+
+DEFINITIONS
+"Font Software" refers to the set of files released by the Copyright
+Holder(s) under this license and clearly marked as such. This may
+include source files, build scripts and documentation.
+
+"Reserved Font Name" refers to any names specified as such after the
+copyright statement(s).
+
+"Original Version" refers to the collection of Font Software components as
+distributed by the Copyright Holder(s).
+
+"Modified Version" refers to any derivative made by adding to, deleting,
+or substituting -- in part or in whole -- any of the components of the
+Original Version, by changing formats or by porting the Font Software to a
+new environment.
+
+"Author" refers to any designer, engineer, programmer, technical
+writer or other person who contributed to the Font Software.
+
+PERMISSION & CONDITIONS
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of the Font Software, to use, study, copy, merge, embed, modify,
+redistribute, and sell modified and unmodified copies of the Font
+Software, subject to the following conditions:
+
+1) Neither the Font Software nor any of its individual components,
+in Original or Modified Versions, may be sold by itself.
+
+2) Original or Modified Versions of the Font Software may be bundled,
+redistributed and/or sold with any software, provided that each copy
+contains the above copyright notice and this license. These can be
+included either as stand-alone text files, human-readable headers or
+in the appropriate machine-readable metadata fields within text or
+binary files as long as those fields can be easily viewed by the user.
+
+3) No Modified Version of the Font Software may use the Reserved Font
+Name(s) unless explicit written permission is granted by the corresponding
+Copyright Holder. This restriction only applies to the primary font name as
+presented to the users.
+
+4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font
+Software shall not be used to promote, endorse or advertise any
+Modified Version, except to acknowledge the contribution(s) of the
+Copyright Holder(s) and the Author(s) or with their explicit written
+permission.
+
+5) The Font Software, modified or unmodified, in part or in whole,
+must be distributed entirely under this license, and must not be
+distributed under any other license. The requirement for fonts to
+remain under this license does not apply to any document created
+using the Font Software.
+
+TERMINATION
+This license becomes null and void if any of the above conditions are
+not met.
+
+DISCLAIMER
+THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
+OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
+DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
+OTHER DEALINGS IN THE FONT SOFTWARE.
+```
 
 ## Retro-video design references
 
