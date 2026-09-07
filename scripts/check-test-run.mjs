@@ -29,7 +29,7 @@
  * The list of files comes from the same module the npm scripts use, so the
  * runner and its auditor cannot disagree about what was supposed to run.
  *
- *   node scripts/check-test-run.mjs --set fast --tap /tmp/unit.tap --census test-results/fast.census.json
+ *   node scripts/check-test-run.mjs --set fast --tap /tmp/unit.tap --census test-results/fast.census.json [--max-stdout-bytes N]
  */
 import {existsSync, readFileSync} from 'node:fs';
 import path from 'node:path';
@@ -88,6 +88,23 @@ if (!args.census) {
                 ...empty.map(f => `${f}: 0 tests — constructed nothing`)].join('; ') || `${byBase.size} files, all with tests`);
         check('nothing ran that the set does not list', unexpected.length === 0,
             unexpected.length ? unexpected.join(', ') : 'no strays');
+        // RAW BYTES ON THE RUNNER'S TRANSPORT (2026-09-07). Under node --test a
+        // child's console output goes raw to fd 1, the pipe the runner's own
+        // v8 frames use; the parent resyncs by scanning for the next header,
+        // and a burst of raw text moves the chunk boundaries until one lands
+        // inside a header and the file dies with "Unable to deserialize cloned
+        // data" at 1:1. The virtual-SPIKE e2e files did this twice in CI (their
+        // bundled extension logged ~1.7 KB on load); measured 11 failures in 81
+        // runs on Node 20 before the writer was silenced. So: the writers are
+        // NAMED here on every run, and above the budget the step is red — a
+        // test that needs to print goes through t.diagnostic(), which is framed.
+        const writers = Object.entries(census.files).filter(([, c]) => (c.stdoutBytes || 0) > 0)
+            .sort((x, y) => y[1].stdoutBytes - x[1].stdoutBytes);
+        const budget = Number(args['max-stdout-bytes'] ?? 0);
+        const over = writers.filter(([, c]) => c.stdoutBytes > budget);
+        check(`no file wrote more than ${budget} raw byte(s) to the runner's stdout pipe`, over.length === 0,
+            over.length ? over.map(([f, c]) => `${path.basename(f)} wrote ${c.stdoutBytes} B raw — route it through t.diagnostic() or capture the console (test/helpers/quiet-console.mjs); raw bytes on the transport are the deserialize flake`).join('; ')
+                : (writers.length ? `${writers.length} file(s) wrote raw stdout within budget: ${writers.map(([f, c]) => `${path.basename(f)} ${c.stdoutBytes} B`).join(', ')}` : 'no raw stdout from any file'));
         const censusFailed = Object.values(census.files).reduce((a, c) => a + c.failed, 0);
         check('the census and the summary agree on whether anything failed',
             (censusFailed > 0) === (counted > 0),

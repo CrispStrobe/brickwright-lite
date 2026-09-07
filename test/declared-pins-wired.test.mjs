@@ -250,14 +250,17 @@ const ROWS = await survey();
  * that matches nothing makes every downstream assertion pass vacuously and looks
  * exactly like success.
  */
-test('INSTRUMENT: the corpus walk actually derived something', () => {
+// Report lines go through t.diagnostic(): a child's console.log is RAW on the runner's stdout pipe
+// and is the deserialize flake (docs/GATES-THAT-CANNOT-FAIL.md, species 26).
+test('INSTRUMENT: the corpus walk actually derived something', t => {
+    const report = (...a) => t.diagnostic(a.join(' '));
     const withPins = ROWS.filter((r) => r.pins.length);
     const withCircuit = ROWS.filter((r) => r.hasCircuit);
     const resolved = ROWS.filter((r) => r.wired && r.wired.size > 0);
     const failed = ROWS.filter((r) => r.loadError);
-    console.log(`\nTier 2.1 survey: ${ROWS.length} index entries, ${withPins.length} declare pins, `
+    report(`\nTier 2.1 survey: ${ROWS.length} index entries, ${withPins.length} declare pins, `
         + `${withCircuit.length} have a circuit, ${resolved.length} resolved a non-empty netlist`);
-    for (const r of failed.slice(0, 10)) console.log(`  load failed: ${r.id} — ${r.loadError}`);
+    for (const r of failed.slice(0, 10)) report(`  load failed: ${r.id} — ${r.loadError}`);
     assert.equal(failed.length, 0, `${failed.length} circuit(s) failed to load`);
 
     // Thresholds are PROPORTIONS of counts taken in this same run, not fixed
@@ -320,7 +323,8 @@ test('an example with no circuit is a deviceOnly board, not a missing circuit', 
     assert.deepEqual(offenders, [], `${offenders.length} example(s) promise hardware with no circuit to wire it into`);
 });
 
-test('every declared pin is wired to something', () => {
+test('every declared pin is wired to something', t => {
+    const report = (...a) => t.diagnostic(a.join(' '));
     const found = [];
     for (const r of ROWS) {
         if (!r.hasCircuit || !r.wired) continue;
@@ -332,14 +336,15 @@ test('every declared pin is wired to something', () => {
     }
     const unexpected = found.filter((f) => !KNOWN_UNWIRED.has(f.id));
     const fixed = [...KNOWN_UNWIRED.keys()].filter((id) => !found.some((f) => f.id === id));
-    console.log(`declared-but-unwired: ${found.length} example(s), ${KNOWN_UNWIRED.size} ratcheted`);
-    for (const f of unexpected) console.log(`  NEW  ${f.id}: ${f.detail}`);
+    report(`declared-but-unwired: ${found.length} example(s), ${KNOWN_UNWIRED.size} ratcheted`);
+    for (const f of unexpected) report(`  NEW  ${f.id}: ${f.detail}`);
     assert.deepEqual(unexpected.map((f) => f.id), [],
         `${unexpected.length} example(s) declare a pin wired to nothing`);
     assert.deepEqual(fixed, [], `ratchet entr(ies) no longer reproduce — delete them: ${fixed.join(', ')}`);
 });
 
-test('every affordance part is wired to something', () => {
+test('every affordance part is wired to something', t => {
+    const report = (...a) => t.diagnostic(a.join(' '));
     const found = [];
     for (const r of ROWS) {
         if (!r.hasCircuit || !r.parts) continue;
@@ -351,12 +356,13 @@ test('every affordance part is wired to something', () => {
     }
     const unexpected = found.filter((k) => !KNOWN_UNCONNECTED.has(k));
     const fixed = [...KNOWN_UNCONNECTED.keys()].filter((k) => !found.includes(k));
-    for (const f of unexpected) console.log(`  NEW unconnected affordance: ${f}`);
+    for (const f of unexpected) report(`  NEW unconnected affordance: ${f}`);
     assert.deepEqual(unexpected, [], `${unexpected.length} affordance part(s) carry no wires at all`);
     assert.deepEqual(fixed, [], `ratchet entr(ies) no longer reproduce — delete them: ${fixed.join(', ')}`);
 });
 
-test('every affordance on a pad is read or driven by the program', () => {
+test('every affordance on a pad is read or driven by the program', t => {
+    const report = (...a) => t.diagnostic(a.join(' '));
     const found = [];
     for (const r of ROWS) {
         if (!r.hasCircuit || !r.parts || !r.declaredPads.size) continue;
@@ -375,8 +381,8 @@ test('every affordance on a pad is read or driven by the program', () => {
     }
     const unexpected = found.filter((f) => !KNOWN_UNREAD.has(f.key));
     const fixed = [...KNOWN_UNREAD.keys()].filter((k) => !found.some((f) => f.key === k));
-    console.log(`affordance-not-read: ${found.length}, ${KNOWN_UNREAD.size} ratcheted`);
-    for (const f of unexpected) console.log(`  NEW  ${f.key}: ${f.detail}`);
+    report(`affordance-not-read: ${found.length}, ${KNOWN_UNREAD.size} ratcheted`);
+    for (const f of unexpected) report(`  NEW  ${f.key}: ${f.detail}`);
     assert.deepEqual(unexpected.map((f) => f.key), [],
         `${unexpected.length} affordance(s) sit on a pad no program reads`);
     assert.deepEqual(fixed, [], `ratchet entr(ies) no longer reproduce — delete them: ${fixed.join(', ')}`);
@@ -424,7 +430,8 @@ const KNOWN_KIND_MISMATCH = new Map([
     ['16-ldr-bargraph:ldr', 'declares an LDR on P1.7; circuit carries POT_ldr, a potentiometer'],
 ]);
 
-test('a declared name matches the kind of part on its pad', () => {
+test('a declared name matches the kind of part on its pad', t => {
+    const report = (...a) => t.diagnostic(a.join(' '));
     const found = [];
     for (const r of ROWS) {
         if (!r.hasCircuit || !r.parts || !r.padsOf) continue;
@@ -449,8 +456,8 @@ test('a declared name matches the kind of part on its pad', () => {
     }
     const unexpected = found.filter((f) => !KNOWN_KIND_MISMATCH.has(f.key));
     const fixed = [...KNOWN_KIND_MISMATCH.keys()].filter((k) => !found.some((f) => f.key === k));
-    console.log(`name-vs-kind mismatches: ${found.length}, ${KNOWN_KIND_MISMATCH.size} ratcheted`);
-    for (const f of found) console.log(`  ${KNOWN_KIND_MISMATCH.has(f.key) ? 'known' : 'NEW  '} ${f.key}: ${f.detail}`);
+    report(`name-vs-kind mismatches: ${found.length}, ${KNOWN_KIND_MISMATCH.size} ratcheted`);
+    for (const f of found) report(`  ${KNOWN_KIND_MISMATCH.has(f.key) ? 'known' : 'NEW  '} ${f.key}: ${f.detail}`);
     assert.deepEqual(unexpected.map((f) => f.key), [],
         `${unexpected.length} declared name(s) do not match the part on their pad`);
     assert.deepEqual(fixed, [], `ratchet entr(ies) no longer reproduce — delete them: ${fixed.join(', ')}`);

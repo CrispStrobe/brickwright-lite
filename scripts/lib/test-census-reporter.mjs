@@ -8,7 +8,15 @@
  * test, leaves no trace except a smaller total. This reporter keys every
  * test:pass / test:fail event on `event.data.file` and writes
  *
- *   {"files": {"<path>": {"tests": n, "passed": n, "failed": n}}, "events": n}
+ *   {"files": {"<path>": {"tests": n, "passed": n, "failed": n, "stdoutBytes": n}}, "events": n}
+ *
+ * stdoutBytes (2026-09-07): bytes a file's child wrote RAW to fd 1 — console
+ * output from the test or from code it loaded. Under node --test that fd is
+ * the runner's own transport (v8-serialized frames); raw bytes on it move the
+ * pipe's chunk boundaries and, when one lands inside a frame header, the
+ * parent fails the file with "Unable to deserialize cloned data" at 1:1. The
+ * virtual-SPIKE e2e tests did this twice in CI; scripts/check-test-run.mjs
+ * reports the writers so the next one is named, not called a flake.
  *
  * to its --test-reporter-destination. scripts/check-test-run.mjs compares that
  * against scripts/list-tests.mjs. Used alongside the tap reporter, never
@@ -21,8 +29,12 @@
 export default async function* testCensusReporter (source) {
     const files = {};
     let events = 0;
-    const bucket = file => (files[file] ||= {tests: 0, passed: 0, failed: 0});
+    const bucket = file => (files[file] ||= {tests: 0, passed: 0, failed: 0, stdoutBytes: 0});
     for await (const event of source) {
+        if (event.type === 'test:stdout') {
+            bucket(event.data.file || '(unknown)').stdoutBytes += Buffer.byteLength(String(event.data.message || ''));
+            continue;
+        }
         if (event.type !== 'test:pass' && event.type !== 'test:fail') continue;
         events++;
         const file = event.data.file || '(unknown)';

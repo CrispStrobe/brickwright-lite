@@ -111,7 +111,7 @@ test('(2) profile verbs and emitter verbs agree in both directions', () => {
         + 'verb is genuinely unreachable from any part:\n  ' + dead.join('\n  '));
 });
 
-test('(3) the stored verb×family matrix is exactly what the emitter branches say', () => {
+test('(3) the stored verb×family matrix is exactly what the emitter branches say', t => {
     const derived = deriveVerbFamilies(readFileSync(EMITTER, 'utf8'));
     // both directions, per verb, so removing an emitter branch reddens its cell
     assert.deepEqual(
@@ -137,7 +137,8 @@ test('(3) the stored verb×family matrix is exactly what the emitter branches sa
     // exception set is DERIVED, not listed, so the day someone implements 8051
     // <verb> for real it drops out and this anchor tightens with no edit here.
     const stub8051 = stubbed8051(readFileSync(EMITTER, 'utf8'));
-    console.log(`8051 base-dialect exceptions (stubbed 8051 branch): ${[...stub8051].sort().join(', ') || '(none)'}`);
+    // t.diagnostic, not console.log: raw stdout is the deserialize flake (GATES species 26).
+    t.diagnostic(`8051 base-dialect exceptions (stubbed 8051 branch): ${[...stub8051].sort().join(', ') || '(none)'}`);
     for (const v of VERBS) {
         if (stub8051.has(v)) {
             assert.ok(!VERB_FAMILIES[v].includes('8051'),

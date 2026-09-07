@@ -133,7 +133,10 @@ async function through (asm) {
 }
 
 test('every C program the SmallerC suite compiles also ASSEMBLES, unwrapped',
-    {timeout: 180000}, async () => {
+    {timeout: 180000}, async t => {
+        // Report lines go through t.diagnostic(): a child's console.log is RAW on the runner's
+        // stdout pipe and is the deserialize flake (docs/GATES-THAT-CANNOT-FAIL.md, species 26).
+        const report = (...a) => t.diagnostic(a.join(' '));
         const {compileWithToolchain} = await compiler();
         const {detectDialect} = await asmMod();
         const tc = await toolchain();
@@ -155,16 +158,16 @@ test('every C program the SmallerC suite compiles also ASSEMBLES, unwrapped',
         const passed = rows.filter(r => r.ok).length;
         // PRINTED, not merely asserted. A number that only exists inside an
         // assertion is a number nobody reads until it is wrong.
-        console.log(`\nSmallerC -> i8086-asm.js NASM front end: ${passed} of ${rows.length} assemble`);
+        report(`\nSmallerC -> i8086-asm.js NASM front end: ${passed} of ${rows.length} assemble`);
         for (const r of rows) {
-            console.log(r.ok ?
+            report(r.ok ?
                 `  OK    ${r.name} — ${r.bytes} bytes, ${r.format}, dialect ${r.dialect}, ` +
                     `${r.warnings} warning(s)` :
                 `  FAIL  ${r.name} — ${r.why}`);
         }
-        console.log(`  excluded (do not compile, on purpose): ${EXCLUDED.length}`);
-        for (const [what, why] of EXCLUDED) console.log(`    - ${what}: ${why}`);
-        console.log('');
+        report(`  excluded (do not compile, on purpose): ${EXCLUDED.length}`);
+        for (const [what, why] of EXCLUDED) report(`    - ${what}: ${why}`);
+        report('');
 
         const failures = rows.filter(r => !r.ok);
         assert.deepEqual(failures.map(r => `${r.name} — ${r.why}`), [],
@@ -239,7 +242,8 @@ test('a stage that fails does not take the HOST process down with it', async () 
 });
 
 test('the two constructs that DO NOT survive the pipeline, named and counted',
-    {timeout: 120000}, async () => {
+    {timeout: 120000}, async t => {
+        const report = (...a) => t.diagnostic(a.join(' '));
         // Measured 2026-09-05 by widening the corpus beyond the SmallerC
         // fixtures. Everything else tried — string literals, pointer walks,
         // structs, switch, .bss arrays, unsigned div/mod, recursion, static
@@ -274,6 +278,6 @@ test('the two constructs that DO NOT survive the pipeline, named and counted',
         assert.match(lng.error, /Unexpected token long/,
             'and the compiler must name the token; this never reaches the assembler');
 
-        console.log('\nRefused, by name: 2 — float (assembler: unresolvable EXTERN ___fixsfsi), ' +
+        report('\nRefused, by name: 2 — float (assembler: unresolvable EXTERN ___fixsfsi), ' +
             'long (compiler: Unexpected token long)\n');
     });

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {quietConsole} from './helpers/quiet-console.mjs';
 import {readFile} from 'node:fs/promises';
 import {resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -9,6 +10,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '../overlay/scratch-gui/src/lib/virtual-hub');
 Object.defineProperty(globalThis, 'navigator', {value: {}, configurable: true});
 globalThis.window = globalThis;
+// The bundled extension logs ~1.7 KB on load and connect; none of it may reach fd 1 (helpers/quiet-console.mjs).
+quietConsole();
 globalThis.addEventListener = () => {};
 globalThis.localStorage = {getItem: () => null};
 globalThis.document = {documentElement: {lang: 'en'}};

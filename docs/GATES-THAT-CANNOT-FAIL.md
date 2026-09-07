@@ -1490,6 +1490,46 @@ of 1,579,840. Two semantics wearing one shape; documented per part in
 CHIP-REFUSALS.md and gated against the source. That gate is the one that had
 this defect in it.
 
+## Twenty-sixth species: RAW BYTES ON THE RUNNER'S TRANSPORT (2026-09-07, lego-b9)
+
+**The shape.** `node --test` runs each file in a child and reads the child's stdout as a
+stream of v8-serialized frames (`ff 0f`, a big-endian length, a payload). A `console.log`
+in that child — the test's own, or from any code it loads — is written RAW to the same fd.
+The parent tolerates that by scanning for the next frame header and calling everything
+before it "stdout"; so a test that prints works, every time, until a burst of raw text moves
+the pipe's chunk boundaries and one lands inside a two-byte header. Then the parent resyncs
+on the payload's own bytes, reads a length from a double, and the FILE fails as
+`uncaughtException: Unable to deserialize cloned data due to invalid or unsupported
+version` at line 1:1 — a message that names no test, no line and no writer, and reads as a
+runner bug.
+
+**The instance.** `test/virtual-spike-extension-e2e` and `-classic-`: both evaluate the
+bundled SPIKE extension with `Function('Scratch', source)`, and the bundle logs ~1.7 KB of
+emoji-prefixed lines on load and connect ("🤖 [SPIKE] Extension loading…"). Captured with
+`NODE_TEST_CONTEXT=child-v8 node file > raw.bin` and parsed frame by frame: 777 and 1,664
+foreign bytes, every run, on Node 20 and 22 alike. Failure rate before the fix: 11 of 81 runs
+of the e2e file on Node 20; twice in CI on Node 22 (main run 34092576969, and a branch run of
+lego-be's). Called "known flake" once already.
+
+**Why a gate cannot see it by looking at the test.** The writer is not in the test file; it
+is in code the test loads, and it is a legitimate `console.log` in a browser extension. A
+grep for `console.log` in `test/` finds nothing. The only place the bytes are visible is the
+transport itself.
+
+**What holds it now.** `scripts/lib/test-census-reporter.mjs` counts `test:stdout` bytes per
+file (the parent's own accounting of what it took for raw text), `scripts/check-test-run.mjs`
+names every writer on every run and is red above `--max-stdout-bytes` (0 in build.yml), and
+the two tests capture the extension's console through `test/helpers/quiet-console.mjs`
+(0 foreign bytes after; 0 failures in 100 runs on Node 22). The limit, stated: this sees
+what the parent counted as stdout, which is the same scan that fails — a chunk that lands
+inside a header is counted as a failure, not as bytes. The census is the budget; the failure
+message is the tripwire; neither is "flaky".
+
+**The rule.** A test child's stdout is not a log. A test that needs to print uses
+`t.diagnostic()` (framed); code a test loads that prints gets a captured console; and a
+`deserialize cloned data` failure is a WRITER to find (capture the raw stream and parse it),
+never a re-run.
+
 ## Two instances from bw-board, 2026-09-07 (lego-a4; recorded by lego-ac)
 
 **The twenty-fourth species now has its limit written by its own author.** bw-board's

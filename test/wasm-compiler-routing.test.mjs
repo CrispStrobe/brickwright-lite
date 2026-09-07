@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import {quietConsole} from './helpers/quiet-console.mjs';
+// intercept.js logs its routing decisions; those lines must not reach the runner's stdout
+// pipe raw (docs/GATES-THAT-CANNOT-FAIL.md, species 26).
+quietConsole();
 
 import {createCompilerFetch} from '../overlay/scratch-gui/src/lib/sdcc-wasm/intercept.js';
 

@@ -455,7 +455,7 @@ jobs:
           # census with at least one test, and any `not ok` must be counted by
           # the summary (header of the script). On a red run this still names a
           # file that vanished or failed to construct, beside the real failure.
-          node scripts/check-test-run.mjs --set fast --tap /tmp/unit.tap --census test-results/fast.census.json
+          node scripts/check-test-run.mjs --set fast --tap /tmp/unit.tap --census test-results/fast.census.json --max-stdout-bytes 0
           # A SUITE THAT CANNOT BE CONSTRUCTED CURRENTLY READS AS A SUITE THAT
           # PASSED, and that is not a hypothesis — it happened in run
           # 32779945069 on this branch. `test/wait-census.test.mjs` calls a
@@ -1485,7 +1485,7 @@ jobs:
           echo "bare specifiers re-resolved from packages/scratch-gui by the corpus walks:"
           if [ -s test-results/corpus.gui-scope.tsv ]; then cut -f1 test-results/corpus.gui-scope.tsv | sort | uniq -c | sort -rn; else echo "  (none)"; fi
           node scripts/check-gui-scope.mjs --log test-results/corpus.gui-scope.tsv
-          node scripts/check-test-run.mjs --set corpus --tap /tmp/corpus.tap --census test-results/corpus.census.json
+          node scripts/check-test-run.mjs --set corpus --tap /tmp/corpus.tap --census test-results/corpus.census.json --max-stdout-bytes 0
           if grep -qE '^not ok ' /tmp/corpus.tap; then
             echo "::error::TAP reports failures the summary did not count — a suite probably threw while being CONSTRUCTED."
             grep -E '^not ok ' /tmp/corpus.tap | head -20

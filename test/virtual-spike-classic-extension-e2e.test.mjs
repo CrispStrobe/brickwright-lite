@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {quietConsole} from './helpers/quiet-console.mjs';
 import {readFile} from 'node:fs/promises';
 import {resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -32,6 +33,9 @@ class ScratchLinkSocketAdapter {
 }
 
 test('bundled Classic extension uses corrected base64 RFCOMM end to end', async t => {
+    // The bundle logs on load and on connect; those lines must not reach fd 1 (see helpers/quiet-console.mjs).
+    const quiet = quietConsole();
+    t.after(quiet.restore);
     const globals = {
         window: globalThis,
         navigator: {language: 'en', languages: ['en']},
