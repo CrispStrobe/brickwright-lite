@@ -7,6 +7,7 @@ import {fileURLToPath} from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const liveNames = ['PLAN.md', 'ROADMAP.md', 'LANES.md', 'HANDOFF.md', 'BLOCKED.md'];
 const requiredNames = [...liveNames, 'BUILD.md', 'MBIT-BUILD.md', 'HISTORY.md'];
+const architectureNames = ['docs/SIM-LAB-PLAN.md', 'docs/LEGO-ARCHITECTURE.md'];
 const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 
 test('steering documents exist and remain concise', () => {
@@ -57,5 +58,14 @@ test('current plans do not resurrect retired steering structures', () => {
         'campaign: circuit parity'
     ]) {
         assert.equal(body.includes(phrase), false, 'retired steering phrase: ' + phrase);
+    }
+});
+
+test('architecture Markdown uses real code delimiters', () => {
+    const escapedBacktick = String.fromCharCode(92, 96);
+    for (const name of architectureNames) {
+        const body = read(name);
+        assert.equal(body.includes(escapedBacktick), false,
+            name + ' contains an escaped backtick that will render as text');
     }
 });

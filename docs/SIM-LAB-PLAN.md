@@ -35,10 +35,10 @@ and fidelity limitations.
 
 ## State contract
 
-\`HubState\` is plain immutable data plus ordered events. It contains no
+`HubState` is plain immutable data plus ordered events. It contains no
 protocol bytes, React objects, Renode types, or physics-engine objects.
 
-\`\`\`text
+```text
 HubState
   schemaVersion, seq, clockNs
   target { id, board, transport, imageSha256, capabilities, limitations }
@@ -55,11 +55,11 @@ HubState
     sensor { kind, values, valid }
   }
   bluetooth { controller, linkState, peers, services, lastError }
-\`\`\`
+```
 
 Required invariants:
 
-1. \`seq\` increases for every mutation; \`clockNs\` never decreases.
+1. `seq` increases for every mutation; `clockNs` never decreases.
 2. Snapshots are immutable and schema-versioned.
 3. Attach/detach, authority changes, commands, feedback, and faults are events.
 4. Integers wider than JavaScript's safe range serialize as canonical
@@ -68,14 +68,14 @@ Required invariants:
 6. Producers report dropped events and insert an explicit gap.
 7. Serialize/restore followed by the same inputs yields the same event hash.
 
-Sensor authority is \`dashboard\`, \`physics\`, or \`firmware\`. Exactly one
+Sensor authority is `dashboard`, `physics`, or `firmware`. Exactly one
 authority writes a value. Starting physics transfers relevant sensors to
-\`physics\` and disables dashboard controls; stopping returns them to
-\`dashboard\`.
+`physics` and disables dashboard controls; stopping returns them to
+`dashboard`.
 
 ## Adapter boundaries
 
-\`\`\`text
+```text
 Scratch extension ── BLE/Classic bytes ─┐
                                        ├─ protocol adapter ─┐
 unchanged firmware ── Renode devices ───┘                    │
@@ -83,18 +83,18 @@ unchanged firmware ── Renode devices ───┘                    │
                                                     HubState/event bus
                                                        │           │
                                                    dashboard   physics bridge
-\`\`\`
+```
 
 The virtual Web Bluetooth implementation exposes only the Web Bluetooth shape
-used by the extensions. A \`VirtualPeripheral\` supplies advertised identity,
-service UUIDs, \`onWrite(uuid, bytes)\`, and ordered notifications. With no
+used by the extensions. A `VirtualPeripheral` supplies advertised identity,
+service UUIDs, `onWrite(uuid, bytes)`, and ordered notifications. With no
 virtual peripheral registered, existing real-device behavior is unchanged.
 
 The Renode adapter consumes versioned newline-delimited JSON snapshots and
 commands. Transport framing is owned by the adapter; decoded state is the only
-object visible above it. Every command carries \`schemaVersion\`, \`requestId\`,
-\`targetId\`, and an optional expected sequence. Every response echoes the ID
-and returns \`ok\`, a state delta, or a structured error.
+object visible above it. Every command carries `schemaVersion`, `requestId`,
+`targetId`, and an optional expected sequence. Every response echoes the ID
+and returns `ok`, a state delta, or a structured error.
 
 The Bluetooth controller service sits below firmware HCI and above simulated
 peers. Its transport-neutral interface covers:
@@ -113,7 +113,7 @@ patch accept a local user-supplied file and produce no public artifact.
 
 Each port model implements:
 
-\`\`\`text
+```text
 attach(descriptor)
 detach()
 receive(bytes, clockNs)
@@ -121,7 +121,7 @@ advanceTo(clockNs)
 snapshot()
 restore(snapshot)
 injectFault(kind, parameters)
-\`\`\`
+```
 
 The first reference set is one tacho motor and one UART sensor. It models
 attachment and identification, UART-mode negotiation, format selection, input
@@ -144,7 +144,7 @@ fault injection. The minimum interactive set is:
 - speaker/audio DMA with observable sample frames.
 
 Tests assert firmware-visible registers or transactions and resulting
-\`HubState\`; instruction progress alone cannot pass.
+`HubState`; instruction progress alone cannot pass.
 
 ## Technic mechanism lab decisions
 
@@ -152,7 +152,7 @@ These decisions remain fixed unless a measured gate forces reconsideration:
 
 - Jolt Physics (MIT) in a worker at fixed 120 Hz; Rapier is the fallback only
   if the iOS size/memory gate rejects Jolt.
-- three.js and \`LDrawLoader\` (MIT) for rendering.
+- three.js and `LDrawLoader` (MIT) for rendering.
 - a curated, hash-pinned LDraw subset under CC-BY-2.0 with attribution.
 - project-authored connectivity metadata; never copy proprietary BrickLink
   Studio or unclear-license LDCad connectivity data.
@@ -169,11 +169,11 @@ creates constraints only for real motion. It infers axle hinges, motorized
 hinges, sliders, parallel/bevel gear pairs, racks, and worms from validated
 metadata. The engine worker receives a versioned engine-neutral scene and emits
 bounded-rate pose/joint snapshots. The bridge maps motor commands to joints and
-joint/sensor results back to \`HubState\`.
+joint/sensor results back to `HubState`.
 
 ## Remaining delivery slices
 
-1. Renode-to-\`HubState\` adapter and one motor/sensor scenario.
+1. Renode-to-`HubState` adapter and one motor/sensor scenario.
 2. Deterministic Classic/BLE HCI controller service.
 3. Full LPF2 reference motor and UART sensor.
 4. Display, IMU, buttons, power, audio, and storage fidelity.
