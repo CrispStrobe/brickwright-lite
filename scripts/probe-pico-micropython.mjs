@@ -279,6 +279,26 @@ export async function createPicoMachine (image, opts = {}) {
         async write (text) {
             for (const ch of text) cdc.sendSerialByte(ch.charCodeAt(0) & 0xff);
         },
+        /**
+         * Pump the machine until the device has consumed every byte written into
+         * the CDC host→device FIFO (`cdc.txFIFO`, capacity `TX_FIFO_SIZE` = 512).
+         * `writeChunked` (pico-repl.js) calls this between 64-byte packets IFF the
+         * transport implements it. Without it, bytes pushed past the 512-byte
+         * txFIFO are SILENTLY DROPPED — `FIFO.push` has an `if (used < length)`
+         * guard and no overflow signal — so any program larger than one buffer
+         * truncates and the raw-REPL OK-wait times out with the program never run.
+         *
+         * Silicon drains as the device EXECUTES while the host writes; here there
+         * is no wall clock, so a drain STEPS THE CPU — the same "reads drive the
+         * machine" trick `read` uses, applied to the write direction (the device
+         * pulls txFIFO bytes in `onEndpointRead` each time it polls its OUT
+         * endpoint, which only happens as instructions run). The browser transport
+         * (pico-sim-run.js) yields one rAF frame here for the same reason; the node
+         * oracle had no drain, which is the N3d defect this closes.
+         */
+        async drain () {
+            run(() => cdc.txFIFO.empty, opts.drainBudget ?? 3_000_000);
+        },
         async read () {
             if (!pending) run(() => pending.length > 0, opts.readBudget ?? 3_000_000);
             const out = pending;

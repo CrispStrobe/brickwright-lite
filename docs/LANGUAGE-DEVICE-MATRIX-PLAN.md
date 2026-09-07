@@ -478,21 +478,29 @@ other emulators; not a flash transport, an export. The matrix cell reads
 DoD: the exported `.COM` runs under a second emulator the developer has
 (oracle-style, not shipped).
 
-**N3d. The Pico sim transport's write is unfaithful — a large program overflows the device CDC RX buffer. OPEN
-2026-09-07** (found on P3 part 1). A physical Pico drains its USB-CDC RX buffer by EXECUTING while the host
-writes; the simulated device only executes when something calls `transport.read` (`createPicoMachine`,
-`scripts/probe-pico-micropython.mjs`), so the sim transport's WRITE does not drain — a ~1.8 KB generated
-program overflows before it can be consumed. Measured: a 47-line generated pin program enters raw mode
-(raw-ack), writes in 18 chunks, sends Ctrl-D, then the OK-wait TIMES OUT — the device returns the friendly
-prompt and GP25 never leaves its boot default. So the shipped "Run on the simulated Pico" (N3c) very likely
-fails SILENTLY on any generated program past one buffer, and the N3c gate passed only because its program fits
-one. Order (worker): (1) measure the shipped path — run the N3c browser gate's own drive with a real
-gallery-sized program and record whether it fails as predicted; (2) fix in the SIM TRANSPORT (lite-side, not
-vendored): write pumps the machine until the RX buffer has drained, the way silicon does, drain observable in
-the test; `pico-repl.js` untouched unless measurement shows the protocol itself is the gap; (3) the N3c gate
-gains a program that exceeds one buffer; (4) mutation: remove the pump, show the gate red naming the timeout;
-(5) N3d closed with the threshold measured before/after, LANES row. Raw-paste mode upstream (the `pico-repl.js`
-protocol) is the follow-on only if (2) is not enough.
+**N3d. The Pico sim's NODE-ORACLE transport did not drain the device CDC RX buffer — a large program truncated
+in silence. CLOSED 2026-09-07** (found on P3 part 1). A physical Pico empties its USB-CDC host→device FIFO by
+EXECUTING while the host writes; the emulated device only advances when something drives it. `pico-repl.js`'s
+`writeChunked` drains between 64-byte packets IFF the transport implements `drain()` — and only ONE of the two
+transports did: the shipped BROWSER transport (`pico-sim-run.js`) has `drain()` (it yields an rAF frame so the
+pump consumes the packet); the node ORACLE transport (`scripts/probe-pico-micropython.mjs`, a test/probe seam,
+NOT shipped) did not. Without a drain every packet piles into the 512-byte `txFIFO` with no stepping between,
+and past 512 `FIFO.push` DROPS SILENTLY (an `if (used < length)` guard, no signal), so the raw-REPL never sees
+the whole program and its OK never arrives.
+
+The earlier sentence here — "the shipped N3c very likely fails silently on any program past one buffer" — was a
+PREDICTION, and measurement REFUTED it. Running a ~1.2 KB generated program through both seams showed the
+shipped browser path drains and runs it fine; only the node oracle, which lacked `drain()`, timed out. So the
+defect was in the oracle, not the shipped browser N3c, and the fix is one method on the node transport with
+`pico-repl.js` and every shipped file untouched — the refutation, not the original prediction, is the finding.
+Done (worker, `scripts/probe-pico-micropython.mjs` + `test/pico-sim-transport-drain.test.mjs`): (1) measured —
+the node oracle failed on 1235 B and the txFIFO caps at exactly `TX_FIFO_SIZE` = 512 (overshoot dropped without
+a signal); (2) `drain()` added to the node transport — it pumps the machine until `txFIFO` is empty (the drain
+observable in the test), the threshold read from rp2040js's own `TX_FIFO_SIZE`; (3) a >buffer program now runs
+live through the node oracle, green ONLY with the drain, and P3's differential runs the FULL `.py` on the same
+branch; (4) mutation: hide `drain()` (exactly the pre-fix transport) and the same program times out naming the
+OK-wait. Raw-paste mode upstream (the `pico-repl.js` protocol) is a follow-on only if a future program outgrows
+the chunked-drain path.
 
 **N11. A local rp2040 C compiler in the browser. OPEN 2026-09-07, unclaimed, owner-level** (found on P3 part 1).
 So the P3 differential's C side is EXECUTED, not parsed. Today `LOCAL_C_TARGETS = {i8086}` (only SmallerC is
@@ -676,10 +684,10 @@ protocol parts P2 split in C (shiftOut, motor, servo) and the bused displays are
 targets. `text_line_0` is unhandled in assert-physics (only `display:`/`interface:`), so 4 text assertions in 3
 examples (disp-oled ×2, disp-mono-lcd, disp-lcd) skip. **Part 1 landed 2026-09-07** (worker,
 `test/p3-pin-c-mpy-differential`): the C-vs-MicroPython PIN differential on the Pico sim. The MicroPython side
-is EXECUTED on rp2040js — the emitter's driver lines (`Pin`/`.value`, lifted verbatim from
-generateMicroPython) run live, observed at the board boundary (setPin: direction + latch); the FULL generated
-program does NOT run live (it overflows the sim device — see N3d), so DRIVER LINES RUN and the full-program
-live run pends N3d. The C side is PARSED, not executed, until a local rp2040 C toolchain (N11), so its
+is EXECUTED on rp2040js — the FULL generated program (~1.2 KB, scheduler and self-starting green-flag handler
+and all) runs live, observed at the board boundary (setPin: direction + latch). It first ran only the extracted
+driver lines because the full program overflowed the sim device; N3d closed on the SAME branch (the node-oracle
+transport now drains), so the caveat is gone and the whole `.py` runs. The C side is PARSED, not executed, until a local rp2040 C toolchain (N11), so its
 addresses are ANCHORED: every SIO/IO_BANK0 address the emitter names is asserted equal to what rp2040js's own
 SIO peripheral decodes (SIO_START + sio.js offsets, read from rp2040js). GP25 output — both drive it high then
 low; GP14 input — both configure it as an input. Mutation fired BOTH routes (a mask flipped in the C emitter
