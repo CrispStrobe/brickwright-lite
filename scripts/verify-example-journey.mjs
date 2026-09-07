@@ -236,6 +236,15 @@ try {
         await openActions();
         if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
         await catalogPanel.waitFor({state: 'visible', timeout: 30000});
+        // THE CATALOGUE FETCHES WHEN IT OPENS. Waiting only for the panel
+        // counted zero examples in CI while the identical code saw 163 against
+        // the same build locally — a local disk read finishes before the count
+        // and a hosted one does not. This waits for the panel's own loaded
+        // state, and deliberately NOT for items > 0: that would mask the
+        // empty-catalogue regression this gate exists to catch, turning the
+        // U1-2 defect into a green run.
+        await page.locator('[data-testid="bw-catalog-panel"][data-catalog="ready"]')
+            .waitFor({state: 'visible', timeout: 30000});
     };
     await openCatalog();
     const before = await countItems();

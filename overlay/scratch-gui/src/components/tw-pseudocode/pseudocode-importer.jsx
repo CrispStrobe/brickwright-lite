@@ -3449,7 +3449,11 @@ class PseudocodeImporter extends React.Component {
                         background: '#fff', border: '1px solid #cbd5e1', borderRadius: 8,
                         boxShadow: '0 8px 24px rgba(15,23,42,.18)', textAlign: 'left'}}
                         data-testid="bw-catalog-panel"
-                        data-device={this.currentDevice() || ''}>
+                        data-device={this.currentDevice() || ''}
+                        // loading vs ready vs error, so a reader can tell an
+                        // empty catalogue from one that has not arrived yet.
+                        data-catalog={this.state.catalogError ? 'error'
+                            : this.state.catalog ? 'ready' : 'loading'}>
                         <input type="search" value={this.state.exampleFilter} autoFocus
                             onChange={e => this.setState({exampleFilter: e.target.value})}
                             placeholder={this.L.searchExamples}
