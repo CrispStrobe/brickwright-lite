@@ -49,7 +49,7 @@ const declsFor = (src, device, authoredDevice) => {
         text = r.pseudocode ?? r.src ?? src;
     }
     return [...text.matchAll(/^\s*PIN\s+(\w+)\s*=\s*(\S+)\s+OUTPUT\s*(ACTIVE\s+(LOW|HIGH))?/gim)]
-        .map(m => ({name: m[1], declared: m[4] ? `active-${m[4].toLowerCase()}` : 'active-high'}));
+        .map(m => ({name: m[1], header: m[2], declared: m[4] ? `active-${m[4].toLowerCase()}` : 'active-high'}));
 };
 
 const PASSIVE = new Set(['breadboard', 'vcc', 'gnd', 'resistor', 'led', 'capacitor', 'wire',
@@ -117,6 +117,7 @@ const wiringOf = (board, pin, ledId) => {
 
 const rows = [];
 const unmeasured = [];
+const inconclusive = [];
 for (const id of readdirSync(EX).sort()) {
     const dir = path.join(EX, id);
     const prog = path.join(dir, 'program.bw');
@@ -134,7 +135,15 @@ for (const id of readdirSync(EX).sort()) {
         const built = build(path.join(dir, f));
         if (!built || built.error || !built.leds || !built.leds.length) continue;
         for (const decl of decls) {
-            const led = built.leds.find(l => l.id === `LED_${decl.name}` || l.id === decl.name);
+            // MATCHED BY NET, NOT BY NAME. Matching `LED_<declared name>` assumed a
+            // naming convention the corpus does not keep: 312 led parts sat on
+            // declared output pins under other ids and were counted as
+            // unmeasurable. The LED's pin is TRACED from the wires above, so this
+            // asks the electrical question — which LED is on this pin — rather than
+            // a lexical one.
+            const want = String(decl.header || '').toLowerCase();
+            const led = built.leds.find(l => l.pin && String(l.pin).toLowerCase() === want) ||
+                built.leds.find(l => l.id === `LED_${decl.name}` || l.id === decl.name);
             // COVERAGE, COUNTED RATHER THAN ASSUMED. A declared output pin is only
             // measurable here if the bench carries a discrete `led` part named for
             // it. Seven-segment digits, LED banks, matrices and shift-register
@@ -143,7 +152,16 @@ for (const id of readdirSync(EX).sort()) {
             // everything a program can light.
             if (!led || !led.pin) { unmeasured.push({id, device, pin: decl.name}); continue; }
             const wired = wiringOf(built.board, led.pin, led.id);
-            if (!wired || wired === 'never-lit' || wired === 'always-lit') continue;
+            // A THIRD BUCKET, COUNTED. An LED that stays dark at both levels, or lit
+            // at both, answers neither way — a shared anode, a transistor between it
+            // and the pin, an unpowered rail. Dropping these silently made the
+            // reached total shrink when the matching improved, which is how they
+            // were found. Anything the instrument cannot decide is reported, not
+            // discarded.
+            if (!wired || wired === 'never-lit' || wired === 'always-lit') {
+                inconclusive.push({id, device, pin: decl.name, why: wired || 'no reading'});
+                continue;
+            }
             rows.push({id, device, pin: decl.name, declared: decl.declared, wired,
                 agrees: wired === decl.declared});
         }
@@ -151,9 +169,13 @@ for (const id of readdirSync(EX).sort()) {
 }
 
 const bad = rows.filter(r => !r.agrees);
-console.log(`declared output pins reached: ${rows.length + unmeasured.length}`);
+console.log(`declared output pins reached: ${rows.length + unmeasured.length + inconclusive.length}`);
 console.log(`   with a discrete LED this census can drive: ${rows.length}`);
-console.log(`   NOT measurable (7-seg digits, banks, matrices, shift outputs): ${unmeasured.length}`);
+console.log(`   no discrete LED on the pin (7-seg, banks, matrices, shift outputs): ${unmeasured.length}`);
+console.log(`   an LED that answered neither way (both levels dark, or both lit): ${inconclusive.length}`);
+const whys = new Map();
+for (const r of inconclusive) whys.set(r.why, (whys.get(r.why) || 0) + 1);
+for (const [k, v] of whys) console.log(`      ${k}: ${v}`);
 console.log(`declared-output LEDs measured across the corpus: ${rows.length}`);
 console.log(`   agreeing: ${rows.length - bad.length}`);
 console.log(`   INVERTED: ${bad.length}`);
