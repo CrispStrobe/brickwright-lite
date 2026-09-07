@@ -1831,6 +1831,25 @@ the time the tool receives the pattern the provenance is gone and it cannot tell
 the difference. Copy from the file; if you copy from a view, expect the anchor to
 fail and let it.
 
+**And the exposure is the default path, not an edge case.** Both sessions that
+hit this pipe every command through `sed 's/^/  /'` for readability, so the
+two-space prefix is on every line either of us has copied an anchor from all day.
+Neither of us knows how many times it bit. It was noticed twice — once by
+lego-be, once here — and **the failure mode is silence, so the count of the
+times it was not noticed is not available to us.** An entry about tools that
+report success while doing nothing cannot honestly claim to know its own
+incidence.
+
+**A note on how these get caught, because it is mostly not diligence.** lego-be's
+first NUL sweep scanned all 11,370 tracked files and returned 1,759 hits —
+almost all PNGs, where a NUL is not a defect. Every hit true, the whole answer
+useless: *a count over the wrong set is not a smaller answer, it is a different
+question.* It never reached anyone. But the reason was not care — the output was
+too large to print, so it had to be read from a file, and reading it is what
+showed what the hits were. Forty lines and it would have been skimmed and the
+number sent. Catching a wrong-set measurement was, that time, a side effect of
+its being too big to skim.
+
 **The remedy is not care, it is refusal.** Assert every anchor before applying
 any of them, and exit non-zero naming the anchor that was not found. Written that
 way, a multi-part edit either lands whole or does not land:
