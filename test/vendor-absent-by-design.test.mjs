@@ -83,12 +83,28 @@ test('the refusal is checked before the line-level guards, and --force does not 
 });
 
 test('an unscoped sync writes nothing new and refuses both by name', (t) => {
-    // THE FUNCTIONAL PROOF. Gated on BW_BOARD_DIR and skipped BY NAME when it
-    // is unset: a test that defaults to a sibling checkout path binds to one
-    // box, and a skip that says nothing reads as a pass.
-    const dir = process.env.BW_BOARD_DIR; // gate-shapes-allow: named skip below
+    // THE FUNCTIONAL PROOF, and it needs a DIFFERENT TREE than every other
+    // BW_BOARD_DIR reader.
+    //
+    // `BW_BOARD_DIR` means the tree AT THE PIN -- that is what the census, the
+    // two provenance tests and vendor-identity all want. This one cannot use
+    // it: sync-bw-board refuses a source BEHIND the default branch before it
+    // ever reaches the absent-by-design check, so at the pin this test fails
+    // for a reason that has nothing to do with what it asserts. Measured, not
+    // assumed: at d5850e6 it exits with "BEHIND origin default 8f46f2c".
+    //
+    // So it reads its own variable, and when only the pin tree is offered it
+    // SKIPS BY NAME SAYING WHICH SHA IT NEEDED. A skip that does not say what
+    // it wanted is how a check stays unrun for weeks -- vendor-identity's
+    // inventory went stale behind exactly that.
+    const dir = process.env.BW_BOARD_HEAD_DIR; // gate-shapes-allow: named skip below
     if (!dir) {
-        t.skip('BW_BOARD_DIR unset -- the unscoped-sync refusal is NOT verified here');
+        t.skip(process.env.BW_BOARD_DIR
+            ? 'BW_BOARD_HEAD_DIR unset -- BW_BOARD_DIR is the tree AT THE PIN and the sync '
+              + 'refuses a source behind the default branch, so the unscoped-sync refusal is '
+              + 'NOT verified here; point BW_BOARD_HEAD_DIR at a bw-board checkout on the '
+              + 'default branch'
+            : 'BW_BOARD_HEAD_DIR unset -- the unscoped-sync refusal is NOT verified here');
         return;
     }
     const before = new Set(readdirSync(VENDORED));
@@ -98,11 +114,31 @@ test('an unscoped sync writes nothing new and refuses both by name', (t) => {
     } catch (e) {
         out = `${e.stdout || ''}${e.stderr || ''}`;   // refusals exit non-zero, by design
     }
+    // A TREE THAT HAS SINCE FALLEN BEHIND IS NOT A FAILING GUARD. "head" is a
+    // moving target: point this at a checkout that was the tip an hour ago and
+    // the sync refuses it for being behind the default branch, long before it
+    // reaches the absent-by-design check. Without this branch the test fails
+    // with "i8088-cycles.js was not refused by name", which reads as the guard
+    // being broken when the guard never ran. It cost me a diagnosis; it should
+    // not cost the next reader one.
+    if (/BEHIND origin default/.test(out)) {
+        t.skip('BW_BOARD_HEAD_DIR is behind bw-board\'s default branch, so the sync refused it '
+            + 'before reaching the absent-by-design check -- the refusal is NOT verified here. '
+            + 'Pull that checkout.');
+        return;
+    }
     for (const f of ['i8088-cycles.js', 'i8088-timing.js']) {
         assert.match(out, new RegExp(`REFUSED ${f.replace('.', '\\.')} \\(absent by design`),
             `${f} was not refused by name`);
     }
     const after = readdirSync(VENDORED).filter((f) => !before.has(f));
+    // THE RUN MUTATES THE TREE and this test must not leave it dirty. An
+    // unscoped sync legitimately UPDATES files that exist -- that is its job --
+    // and this test only asserts about ones it CREATES. Leaving the updates
+    // behind means the next command sees a dirty worktree it did not make, and
+    // in the worst case someone commits it.
+    try { execFileSync('git', ['checkout', '--', 'overlay/scratch-gui/src/lib/bw-board/'], { cwd: repo }); }
+    catch { /* a tree that will not restore is the caller's to notice, not this test's to hide */ }
     assert.deepEqual(after, [],
         `an unscoped sync created ${after.join(', ')} -- the whole point of this entry kind`);
 });

@@ -377,12 +377,12 @@ fails unless it touched both.
       "i8086-debug.js",
       "index.js",
       "m6502-adapter.js",
-      "reseat-gate.js",
       "rp2040js-debug.js",
       "w65c51.js",
       "z80-adapter.js",
       "zx-ula.js"
-    ]
+    ],
+    "note": "Files that diverge only line-by-line and have no named allow-list entry. Recorded as a SET, not counts. reseat-gate.js left this inventory on 2026-09-07: it was not forward-ported work at all, it was lite BEHIND by one upstream commit (20f0d45), and syncing it forward made it identical. Corrected in VENDOR-DIRECTION-2026-09-06.md -- size has no direction."
   },
   "absentByDesign": {
     "i8088-cycles.js": {
