@@ -384,7 +384,9 @@ name); RETRO_CORPUS_8086_DIR replaces the absolute path; corpus-differential run
 census reporter records each file's skips with reason; check-test-run holds every skip to a pointer in LANES ("Skips that
 execute elsewhere": file + verbatim reason → dated box run or a workflow that names the file) and cross-checks the TAP's
 `# SKIP` count; `gen-ci-skips.mjs --fetch` writes docs/generated/ci-skip-census.json; test/ci-skip-census.test.mjs holds
-readings to pointers and proves the mutations.
+readings to pointers and proves the mutations. **T13c (2026-09-07):** the last class-a skip with a fix — the build job
+clones bw-board's default-branch tip beside the pin (BW_BOARD_HEAD_DIR, a graph fetch of a moving ref, waived in the fetch
+census, tolerated absent by name), so lego-be's absent-by-design proof executes in CI; its pointer is the step.
 
 **T12. Every browser gate's budget is derived from measurement, never typed. BUILT 2026-09-07** (lego-b9;
 lego-ac's ask). The per-step `timeout-minutes` of 2026-09-05 were "~3× each step's maximum over the last five
