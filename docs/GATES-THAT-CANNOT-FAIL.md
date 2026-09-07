@@ -1541,7 +1541,8 @@ consecutive greps "proved" a constant did not exist, then that the file had no i
 that the census lived elsewhere; `head -c` showed it the whole time. Any grep over that file
 needs `-a`, or it lies by omission. The instrument answered a question adjacent to the one asked,
 and its silence read as a true negative.
-## Twenty-sixth species: THE FACT THAT LIVES ONLY IN A WIRING EXPRESSION (2026-09-07, brickwright-lite-ea)
+
+## Twenty-seventh species: THE FACT THAT LIVES ONLY IN A WIRING EXPRESSION (2026-09-07, brickwright-lite-ea)
 
 **A fact that lives only in a wiring expression is invisible to every test that
 exercises the things being wired.**
@@ -1598,6 +1599,11 @@ A source assertion is a poor substitute for a behavioural one and the right tool
 when the behaviour has no reachable seam. The message says what BREAKS — "every
 refusal a program produces on the Code tab is invisible to the panel" — not what
 is missing.
+
+**Not to be confused with the twenty-sixth** (RAW BYTES ON THE RUNNER'S TRANSPORT,
+lego-b9): that one is a signal corrupted in transit, where the value arrives
+wrong. This one is a value that never leaves, and arrives as a well-formed
+`null` that means "nothing to report" — which is usually true.
 
 **Its close sibling, three instances in one day:** the same blindness where a
 path is *built* rather than written. `docs/*.md` reached by `join('docs', name)`
