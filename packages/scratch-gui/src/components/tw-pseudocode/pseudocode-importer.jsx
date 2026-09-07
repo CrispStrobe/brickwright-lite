@@ -103,7 +103,6 @@ const L10N = {
         catalogEmpty: 'No catalog examples for this device.',
         catalogNoMatch: 'No examples match that search.',
         catalogUnavailable: e => `Example catalog unavailable (${e})`,
-        catalogNeeds: devs => `Needs: ${devs}`,
         infoTitle: 'Click for info', infoAria: 'About the Code tab',
         matrixTitle: 'What runs where: every language on every chip, native or lowered, simulator or silicon',
         matrixAria: 'Show the language and device matrix',
@@ -301,7 +300,6 @@ const L10N = {
         catalogEmpty: 'Keine Katalog-Beispiele für dieses Gerät.',
         catalogNoMatch: 'Keine Beispiele passen zur Suche.',
         catalogUnavailable: e => `Beispiel-Katalog nicht verfügbar (${e})`,
-        catalogNeeds: devs => `Benötigt: ${devs}`,
         infoTitle: 'Für Infos klicken', infoAria: 'Über den Code-Tab',
         matrixTitle: 'Was läuft wo: jede Sprache auf jedem Chip, nativ oder übersetzt, Simulator oder Hardware',
         matrixAria: 'Sprach- und Geräte-Matrix anzeigen',
@@ -927,6 +925,26 @@ class PseudocodeImporter extends React.Component {
             this.writeAutosave();
         };
         window.addEventListener('bw-project-bundle-collect', this._onBundleCollect);
+
+        // AN EXAMPLE LOADED FROM THE CIRCUIT TAB'S BROWSER IS STILL AN EXAMPLE.
+        // setDevice below already resolves the matching bench and refuses a
+        // device the example has no circuit for — but it reads
+        // `this._lastCatalogExample`, which only loadCatalogExample sets. So the
+        // Examples browser's path left it null and a later device pick skipped
+        // the check entirely, retargeting the program while the authored board
+        // stayed put. Recording it here makes ONE correct implementation serve
+        // both paths rather than growing a second one beside it.
+        this._onExampleLoaded = event => {
+            const detail = event && event.detail;
+            if (detail && detail.id) this._lastCatalogExample = detail;
+        };
+        window.addEventListener('bw-example-loaded', this._onExampleLoaded);
+        // A browser load can land before this component mounts (the Circuit tab
+        // is the entry point for a journey). The publisher stashes the last one,
+        // so replay it rather than starting blind.
+        if (typeof window !== 'undefined' && window.__bwActiveExample) {
+            this._lastCatalogExample = window.__bwActiveExample;
+        }
         this._onBundleLoaded = event => {
             // A REFUSED sidecar is the case that PRESERVES what was already
             // here, so readAutosave() succeeds precisely when the refusal
@@ -1598,6 +1616,7 @@ class PseudocodeImporter extends React.Component {
             vm.runtime.removeListener('PROJECT_CHANGED', this._onProjectChanged);
         }
         window.removeEventListener('bw-project-bundle-collect', this._onBundleCollect);
+        window.removeEventListener('bw-example-loaded', this._onExampleLoaded);
         window.removeEventListener('bw-project-bundle-loaded', this._onBundleLoaded);
         // A pending debounce would otherwise lose the last edits on unmount.
         if (this._autosaveTimer) {
@@ -2956,7 +2975,16 @@ class PseudocodeImporter extends React.Component {
             const devices = ex.devices || (ex.device ? [ex.device] : []);
             const compatible = devices.length === 0 || devices.some(d => this._normDevice(d) === dev);
             return { ...ex, devices, _compatible: compatible };
-        }).filter(ex => ex._compatible);
+        });
+        // NO `.filter(ex => ex._compatible)` — REMOVED 2026-09-07. The catalogue
+        // is browsed BEFORE the chip is chosen, so filtering by the currently
+        // selected device hid most of it from a learner who had not yet made the
+        // choice being filtered on (owner report). It also made this file's own
+        // "Needs:" annotation unreachable: with the filter in place every row
+        // had _compatible true, so the label below never rendered and the sort
+        // comment described an ordering that could not occur. Each row already
+        // carries a chip per device in `ex.devices`; that is the pick, at the
+        // moment it is actionable.
     }
 
     // Load a catalog example's program.bw into the pseudocode editor. If the
@@ -3435,10 +3463,6 @@ class PseudocodeImporter extends React.Component {
                                 <div style={{padding: '6px 8px', fontSize: 12, color: '#64748b'}}>
                                     {this.L.catalogLoading}
                                 </div>
-                            ) : list.every(ex => ex._compatible === false) ? (
-                                <div style={{padding: '6px 8px', fontSize: 12, color: '#64748b'}}>
-                                    {this.L.catalogEmpty}
-                                </div>
                             ) : rows.length === 0 ? (
                                 <div style={{padding: '6px 8px', fontSize: 12, color: '#64748b'}}>
                                     {this.L.catalogNoMatch}
@@ -3446,10 +3470,11 @@ class PseudocodeImporter extends React.Component {
                             ) : rows.map(ex => {
                                 const t = ex.title || {};
                                 const title = (locale === 'de' ? t.de : t.en) || t.en || ex.id;
-                                const compat = ex._compatible !== false;
-                                const needsLabel = !compat && (ex.devices || []).length > 0
-                                    ? this.L.catalogNeeds((ex.devices || []).map(d => DEVICE_CHIP_LABELS[d] || d).join(', '))
-                                    : null;
+                                // Every example is shown and none is greyed: the device is
+                                // picked after the example, so annotating against the current
+                                // one warns about a decision the learner has not taken. The
+                                // device chips below carry `ex.devices` and are the pick.
+                                const compat = true;
                                 return (
                                     <button key={ex.id} type="button"
                                         onClick={() => this.loadCatalogExample(ex)}
@@ -3462,10 +3487,6 @@ class PseudocodeImporter extends React.Component {
                                         title={ex.id} data-testid="bw-catalog-item">
                                         {title}
                                         <span style={{marginLeft: 6, fontSize: 11, color: '#94a3b8'}}>{ex.id}</span>
-                                        {needsLabel && (
-                                            <span style={{display: 'block', fontSize: 10, fontStyle: 'italic',
-                                                color: '#b45309', marginTop: 1}}>{needsLabel}</span>
-                                        )}
                                         {(ex.devices || []).length > 1 ? (
                                             <span style={{display: 'block', marginTop: 2}}>
                                                 {(ex.devices || []).map(d => {

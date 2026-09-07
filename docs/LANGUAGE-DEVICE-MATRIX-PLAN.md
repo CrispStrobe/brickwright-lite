@@ -884,6 +884,64 @@ biggest bucket), helper/import ordering, and multi-WHEN scripts (the reader lift
 one and names the rest). `READER-COVERAGE.md` regenerates on the pin bump as the
 proof.
 
+### Lane U — the example journey, from owner-reported defects (2026-09-07)
+
+Four defects reported by the owner. **Measured on `b3648ffc7` before any of them
+was touched**, because two were described in terms that turned out not to match
+the code, and one of my own first readings was wrong.
+
+**U1-1. An STC89 pick renders an STC12 board.** `resolveExampleBench`
+(`lib/example-bench.js:9`) is NOT the culprit: given a target with no matching
+bench it returns an explicit `error`, and every caller stops on it
+(`circuit-tab.jsx:1320`, `pseudocode-importer.jsx:2165` and `:3003`). So the
+refusal path is sound. The stale board comes from the OTHER order: load the
+example first — the authored `files.circuit` is seated — then pick the device in
+the Code tab. The program retargets there; **nothing re-resolves the bench**, so
+the authored board stays under a program that is no longer its own. The comment
+at `circuit-tab.jsx:1200` records the intent — "the example's device wins;
+retargeting stays available afterwards in the Code tab" — and the second half is
+what leaves the board behind. `examples/03-night-light` has benches for
+stc12/stc15/arduino*/pico/stm32 and none for stc89, which is why that pairing
+shows it.
+
+**U1-2. The catalog annotates by a device chosen later.** `deviceCompatReason`
+(`ExamplesBrowser.jsx:591`, used at `:430`) and `catalogNeeds`
+(`pseudocode-importer.jsx:3451`, "Benötigt: …" / "Needs: …") both key on the
+CURRENT device. The owner's point is an ordering one: the device is chosen after
+the example, so a pre-selected device must not narrow or annotate the catalog.
+
+**U1-3. An (i) beside the project name — and the anchor already exists.** My
+first measurement said no anchor existed because nothing in `circuit-tab.jsx` or
+`CircuitDesigner.jsx` shows an example title. That was the wrong place to look:
+**loading an example overwrites the PROJECT NAME**, the user-editable field in
+the top row centre (`circuit-tab.jsx:475` publishes `pendingExampleTitle` through
+`onSetProjectTitle` once the create transition settles; the field is
+`ProjectTitleInput`, `menu-bar.jsx:700`). So the example's name is already there,
+in a field the user can also edit — which is exactly why an affordance next to it
+needs to say WHICH example, not merely that one is loaded.
+
+Two things already exist and must be reused rather than rebuilt: an (i) button
+for the loaded example inside `ExamplesBrowser` (`:319`, state `lastLoaded` at
+`:203`, showing title/desc/category), and a full markdown intro renderer with
+frontmatter parsing and localised strings (`:24`–`:80`, "About this example" /
+"Über dieses Beispiel", `noIntro` fallback), fetching `examples/<dir>/intro.md`.
+The gap is that `lastLoaded` is local React state in the catalog panel, so the
+menu bar cannot see it. There is a precedent for the signal: `bw-example-bench`
+with `window.__bwExampleBench` (`pseudocode-importer.jsx:2188`, `:3086`,
+consumed at `circuit-tab.jsx:421`).
+
+**U1-4. The night-light seats a Poti where the program declares a sensor.**
+`model/infer-seated.js:151` — `if (dir === 'analog')` seats a `potentiometer`
+unconditionally, for EVERY analog pin, with no reference to what the pin is
+called or for. `program.bw` declares `PIN ldr = P1.3 ANALOG`. An `ldr` part is
+fully supported and seatable today: footprint (`footprints.js:147`), terminals
+(`circuit.js:1236`), reseat list (`reseat.js:33`), BOM label "Photoresistor
+(LDR)" (`bom.js:70`). **So the generator can already seat the right part and
+simply never chooses it.** Reported rather than decided, per the brief: the fix
+is either a part hint in the PIN line (`ANALOG LDR`) or name-based inference, and
+those differ in kind — a hint is a declaration the author controls, inference is
+a guess the generator makes from an identifier. The owner decides.
+
 ### Lane P — peripherals (part profiles), summarised; full detail in its own plan
 
 **Measured 2026-09-06 (P1), 2026-09-07 (P1a, P2; tone corrected to avr-only → 54):** of **147** rendered verb × family cells, **54** are implemented and **93** are

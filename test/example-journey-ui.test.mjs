@@ -1,0 +1,132 @@
+// The example journey: browse, pick a device, see which example you are in.
+//
+// Three owner-reported defects (Lane U in docs/LANGUAGE-DEVICE-MATRIX-PLAN.md),
+// and each one is about a fact reaching the place it is needed.
+//
+//   U1-1  Picking a device AFTER loading an example left the authored board
+//         under a retargeted program. The Code tab already resolves the matching
+//         bench and refuses a device the example has no circuit for — but only
+//         `if (this._lastCatalogExample)`, which only the importer's own
+//         catalogue path ever set. The Examples browser's path left it null, so
+//         the check was skipped entirely.
+//   U1-2  The catalogue narrowed and annotated by the CURRENTLY selected device,
+//         which is chosen after the example. The importer's copy did not merely
+//         annotate — it FILTERED, which also made its own "Needs:" label
+//         unreachable and its sort comment describe an impossible ordering.
+//   U1-3  Loading an example overwrites the PROJECT NAME, and nothing said which
+//         example that name came from.
+//
+// ASSERTED ON SOURCE, because this repo's tests read .jsx as text — no test
+// imports a component. So these are structural claims, and the browser gate
+// (scripts/verify-example-journey.mjs) is where the behaviour is proved. Said
+// plainly rather than implied: this file cannot tell you the UI works.
+//
+// COMMENTS ARE STRIPPED FIRST. Every forbidden token below now appears in a
+// comment explaining why it is forbidden — the fix for U1-2 is documented in the
+// file it changed. A rule matching the plain text of what it forbids goes red on
+// its own explanation, which this repo has hit three times in two days.
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {resolve, dirname, join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+
+const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const gui = join(repo, 'overlay/scratch-gui/src');
+const read = p => readFileSync(join(gui, p), 'utf8');
+const code = text => text
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .split('\n').map(l => l.replace(/(^|[^:])\/\/.*$/, '$1')).join('\n');
+
+test('the comment stripper strips, and only comments', () => {
+    // Pinned both ways: a stripper that returns the text unchanged puts every
+    // assertion below back on comments, and one that strips too much makes them
+    // pass on absent code.
+    assert.equal(code('a(); // deviceCompat here\nb();').includes('deviceCompat'), false);
+    assert.equal(code('/* catalogNeeds */ keep();').includes('catalogNeeds'), false);
+    assert.equal(code("const u = 'https://x/y'; // c").includes('https://x/y'), true);
+    assert.equal(code('const a = 1;').includes('const a = 1'), true);
+});
+
+test('U1-2: the catalogue does not narrow or label by the pre-selected device', () => {
+    const browser = code(read('lib/bw-circuit-ui/components/ExamplesBrowser.jsx'));
+    assert.ok(browser.length > 2000, 'the catalogue source did not load; every check below is vacuous');
+    assert.ok(!/deviceCompat\s*\(/.test(browser),
+        'ExamplesBrowser calls deviceCompat again. The device is chosen AFTER the example, so a '
+        + 'card greyed against the current chip warns about a decision the learner has not taken.');
+    assert.ok(!/deviceCompatReason/.test(browser),
+        'the "Needs: …" card annotation is back');
+
+    const importer = code(read('components/tw-pseudocode/pseudocode-importer.jsx'));
+    assert.ok(importer.length > 2000, 'the importer source did not load');
+    assert.ok(!/\.filter\(\s*ex\s*=>\s*ex\._compatible\s*\)/.test(importer),
+        'catalogForDevice filters incompatible examples out again. That HIDES most of the '
+        + 'catalogue from a learner browsing before they have chosen a chip — and it also made '
+        + 'this file\'s own "Needs:" label unreachable, so the softening never rendered.');
+    assert.ok(!/catalogNeeds/.test(importer),
+        'the "Benötigt: …" row annotation is back');
+    // The replacement must be present, not merely the old thing absent: the
+    // device chips are where the pick actually happens.
+    assert.match(importer, /data-testid="bw-catalog-device"/,
+        'the per-device chips are gone, so nothing offers the example\'s devices at all');
+});
+
+test('U1-1: the active example reaches the Code tab from BOTH load paths', () => {
+    const circuitTab = code(read('components/tw-pseudocode/circuit-tab.jsx'));
+    assert.match(circuitTab, /new CustomEvent\('bw-example-loaded'/,
+        'circuit-tab no longer publishes which example was loaded, so a device picked afterwards '
+        + 'skips the bench check and leaves the authored board under a retargeted program');
+    assert.match(circuitTab, /window\.__bwActiveExample\s*=/,
+        'the last-loaded example is not stashed, so a consumer mounting later starts blind');
+
+    const importer = code(read('components/tw-pseudocode/pseudocode-importer.jsx'));
+    assert.match(importer, /addEventListener\('bw-example-loaded'/,
+        'the importer does not listen, so the Examples browser path still leaves it blind');
+    assert.match(importer, /removeEventListener\('bw-example-loaded'/,
+        'the listener is never removed; a remounted importer would accumulate handlers');
+    assert.match(importer, /_lastCatalogExample = detail/,
+        'the event is heard but not recorded, so setDevice still sees null');
+    // The check it feeds must still be there — this fix is worthless if the
+    // refusal it enables was removed.
+    assert.match(importer, /resolveExampleBench\(ex, deviceId, sourceDevice\)/,
+        'setDevice no longer resolves the bench, so nothing refuses a device the example has no '
+        + 'circuit for — which is the behaviour this whole lane exists to reach');
+});
+
+test('U1-3: one intro renderer, imported by both readers', () => {
+    const shared = code(read('lib/bw-circuit-ui/intro-doc.jsx'));
+    for (const sym of ['parseIntro', 'renderMarkdown', 'INTRO_L10N']) {
+        assert.ok(new RegExp(`export (const|function) ${sym}\\b`).test(shared),
+            `intro-doc does not export ${sym}`);
+    }
+    const browser = code(read('lib/bw-circuit-ui/components/ExamplesBrowser.jsx'));
+    const button = code(read('components/menu-bar/example-intro-button.jsx'));
+    for (const [name, src] of [['ExamplesBrowser', browser], ['example-intro-button', button]]) {
+        assert.match(src, /from '\.\.?\/(\.\.\/lib\/bw-circuit-ui\/)?intro-doc\.jsx'/,
+            `${name} does not import the shared intro module`);
+        assert.ok(!/function (parseIntro|renderMarkdown)\b/.test(src),
+            `${name} defines its own ${'parseIntro/renderMarkdown'} again. Two renderers for one `
+            + 'markdown file is two things to keep in agreement, which is the defect shape this '
+            + 'repo has spent the week cataloguing.');
+    }
+});
+
+test('U1-3: the (i) is mounted beside the title field and is absent without an example', () => {
+    const menu = code(read('components/menu-bar/menu-bar.jsx'));
+    assert.match(menu, /<ExampleIntroButton/, 'the button is not mounted in the menu bar');
+    // Beside the title field specifically — the name shown there IS the
+    // example's, which is the whole reason the affordance belongs at that spot.
+    const near = menu.slice(menu.indexOf('<ProjectTitleInput'), menu.indexOf('<ProjectTitleInput') + 700);
+    assert.match(near, /<ExampleIntroButton/,
+        'the button is mounted somewhere else; it must sit with the project name it explains');
+
+    const button = code(read('components/menu-bar/example-intro-button.jsx'));
+    assert.match(button, /if \(!example\) return null;/,
+        'the button renders even with no example loaded. An affordance that is usually inert '
+        + 'teaches people to ignore it; absence is the honest state for a project that is not '
+        + 'an example.');
+    assert.match(button, /data-testid="bw-example-intro"/, 'no stable handle for the browser gate');
+    assert.match(button, /examples\/\$\{example\.id\}\/intro/,
+        'the intro path no longer keys on the example id, which is the directory convention the '
+        + 'catalogue uses');
+});

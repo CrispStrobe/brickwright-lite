@@ -22,6 +22,7 @@ import {MenuItem, MenuSection} from '../menu/menu.jsx';
 import OfflineLibraryModal from '../offline-library/offline-library-modal.jsx';
 import {isNativeApp} from '../../lib/offline-assets.js';
 import ProjectTitleInput from './project-title-input.jsx';
+import ExampleIntroButton from './example-intro-button.jsx';
 import AuthorInfo from './author-info.jsx';
 import AccountNav from '../../containers/account-nav.jsx';
 import LoginDropdown from './login-dropdown.jsx';
@@ -700,6 +701,10 @@ class MenuBar extends React.Component {
                                 <ProjectTitleInput
                                     className={classNames(styles.titleFieldGrowable)}
                                 />
+                                {/* The name in this field is the EXAMPLE's when one is
+                                    loaded; the (i) says which, and opens its intro. It
+                                    renders nothing otherwise. */}
+                                <ExampleIntroButton locale={this.props.locale} />
                             </MenuBarItemTooltip>
                         </div>
                     ) : ((this.props.authorUsername && this.props.authorUsername !== this.props.username) ? (

@@ -924,6 +924,25 @@ jobs:
           path: artifacts/debug-history-browser/*
           if-no-files-found: error
 
+      - name: Browser gate — the example journey (Lane U)
+        # NOT MEASURED YET: new gate. One session, three journeys — the (i)
+        # beside the project name, the catalogue not narrowing with the device,
+        # and the device refusal that leaves no stale board. LIGHT shard: it
+        # loads one example and never boots an 8086.
+        timeout-minutes: 5
+        id: example_journey
+        # Direct `node`, not `npm run`: gate-coverage's aliasInvokes accepts an
+        # env prefix only for this form (lego-ac, 2026-09-06).
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-example-journey.mjs
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.example_journey.outcome != 'skipped' && matrix.shard == 'light'
+        with:
+          name: example-journey-proof
+          path: artifacts/example-journey/*
+          if-no-files-found: error
+
       - name: Browser gate — a program's chip refusal reaches the debug panel
         # PROVES THE WHOLE JOURNEY as of 2026-09-07. The earlier version of this
         # comment said no user route could produce a refusal and that the ASM tab

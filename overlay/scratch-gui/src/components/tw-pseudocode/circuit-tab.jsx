@@ -598,6 +598,32 @@ class CircuitTab extends React.Component {
             (titles && (titles[locale] || titles.en || titles.de)) || example.id;
         if (this.props.isProjectCreating) this.setState({pendingExampleTitle: title});
         else if (this.props.onSetProjectTitle) this.props.onSetProjectTitle(title);
+
+        // WHICH example is active, published for everyone who needs to know.
+        //
+        // Two defects came from nobody being told. (1) The Code tab's setDevice
+        // already resolves the matching bench and REFUSES a device the example
+        // has no circuit for — but only `if (this._lastCatalogExample)`, which
+        // the importer sets solely on its own catalogue path. An example loaded
+        // from THIS browser left that null, so picking a device afterwards
+        // retargeted the program with no bench check at all and the authored
+        // board stayed under it: an STC89 program on an STC12 board (owner,
+        // 2026-09-07). (2) The project name is overwritten with the example's
+        // title, and nothing said which example that name came from.
+        //
+        // The event carries what both consumers need: `id` doubles as the
+        // intro's directory (examples/<id>/intro.md), and devices/benches/files
+        // are what resolveExampleBench reads.
+        if (typeof window !== 'undefined' && example && example.id) {
+            const detail = {
+                id: example.id, title,
+                devices: example.devices, benches: example.benches,
+                files: example.files, authored: example.authored,
+                kind: example.kind, category: example.category
+            };
+            window.__bwActiveExample = detail;
+            window.dispatchEvent(new CustomEvent('bw-example-loaded', {detail}));
+        }
     }
 
     handleProjectStart () {
