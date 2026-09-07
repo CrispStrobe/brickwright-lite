@@ -865,6 +865,19 @@ jobs:
           path: artifacts/debug-chip-refusal-line/*
           if-no-files-found: error
 
+      - name: Browser gate — Machine Loader preset reaches the debugger
+        timeout-minutes: 4  # new gate; replace with hosted measurements after five runs
+        id: machine_loader_rom
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-machine-loader-rom-control.mjs
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.machine_loader_rom.outcome != 'skipped' && matrix.shard == 'heavy'
+        with:
+          name: machine-loader-rom-control-proof
+          path: artifacts/machine-loader-rom-control/*
+          if-no-files-found: error
+
       - name: Browser gate — debugger run-to and synchronized inspection
         timeout-minutes: 3  # measured max 3 s over 5 main runs, 2026-09-05
         id: debug_inspection
