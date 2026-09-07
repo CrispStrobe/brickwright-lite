@@ -275,7 +275,7 @@
     "d5",
     "d6",
     "d7",
-    "csb",
+    "ceb",
     "oeb",
     "web",
     "vcc",
@@ -740,7 +740,7 @@
    "from": "decm",
    "fromTerminal": "y7b",
    "to": "rom86",
-   "toTerminal": "csb"
+   "toTerminal": "ceb"
   },
   {
    "from": "cpu86",
