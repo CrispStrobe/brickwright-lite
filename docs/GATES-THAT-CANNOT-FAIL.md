@@ -1605,11 +1605,99 @@ lego-b9): that one is a signal corrupted in transit, where the value arrives
 wrong. This one is a value that never leaves, and arrives as a well-formed
 `null` that means "nothing to report" — which is usually true.
 
-**Its close sibling, three instances in one day:** the same blindness where a
-path is *built* rather than written. `docs/*.md` reached by `join('docs', name)`
-(lego-b9's trigger census), gate scripts spawned through
-`join(here, '..', 'scripts', gate)` (`gate-coverage.test.mjs`, twice in one
-sitting), and preset ROMs fetched as `static/roms/${p.rom}` — which defeated
-`rom-paths-exist.test.mjs`, *the gate written for exactly that failure*, and hid
-seven dead presets. Same root: **a census by literal cannot see a value that is
-assembled.** This species is that one applied to capabilities instead of paths.
+**Its close sibling is the twenty-eighth species**, A CENSUS BY LITERAL CANNOT
+SEE AN ASSEMBLED VALUE — three instances in one day, including the one that
+blinded `rom-paths-exist.test.mjs`, the gate written for exactly that failure.
+Same root, different remedy: a path census is widened to recognise construction,
+while a capability is handed over explicitly rather than discovered by traversal.
+Keeping them apart is deliberate; merging them buries the second fix.
+
+## Twenty-eighth species: A CENSUS BY LITERAL CANNOT SEE AN ASSEMBLED VALUE (2026-09-07, lego-b9's detector, recurrence named by brickwright-lite-ea)
+
+`test/rom-paths-exist.test.mjs` exists because `debug-runner.js` fetched
+`bios8086.bin`, a filename that had never existed, and 404ed on every run for
+weeks with nothing noticing. Its comment is unusually direct about what it is
+for: *"what was wrong here was a STRING, and the only thing that can check a
+string against the filesystem is a check that reads both."*
+
+On 2026-09-07 it was hiding seven of the same defect.
+
+The Machine Loader's presets name fifteen ROMs. Eight resolve. Seven are not in
+`static/roms` at all — `i8086-cga-gfx-demo.bin`, `i8086-vga-demo.bin`,
+`i8086-hercules-demo.bin`, `i8086-ega-demo.bin`, `i8086-keyboard-demo.bin`,
+`i8086-desk-demo.bin`, `i8086-blink-demo.bin`. Seven visible, clickable buttons
+that 404. (Counted twice, independently, by lego-be and by me.) The gate could
+not see one of them, because the loader fetches
+
+```js
+const url = new URL(`static/roms/${p.rom}`, document.baseURI).href;   // :1784
+```
+
+and the gate looks for
+
+```js
+const REF = /['"`]static\/roms\/([A-Za-z0-9_.\-]+)['"`]/g;            // :36
+```
+
+A literal. **The path is assembled at runtime, so there is no literal to find,
+so the census walks the overlay, matches nothing in that file, and reports
+success about the paths it did find.**
+
+**The failure is silent in the safe-looking direction.** A census that misses
+entries does not error — it returns a shorter list and passes. Every property it
+asserts about what it found is true. Nothing distinguishes "I checked fifteen and
+all fifteen exist" from "I checked eight and all eight exist" except a number
+nobody is comparing to anything. This is species 1 with the collapse hidden in a
+regex rather than in an empty corpus, and it is worse than an empty corpus,
+because an empty one is at least suspicious.
+
+**Three instances in one day, in three unrelated files.**
+
+1. **Docs read by construction.** `docs/*.md` reached through
+   `join('docs', name)` were invisible to the trigger census, so a build could be
+   skipped for a doc that a test actually reads. lego-b9 built the fix —
+   `constructedTopLevelDocPaths` (`scripts/lib/doc-triggers.mjs:77`) — which finds
+   `join('docs', variable)`, `` `docs/${…}` `` and `'docs/' + …` on non-comment
+   lines, and fails by name. Gated in both directions on a fixture carrying all
+   three shapes plus a commented one.
+
+2. **Gate scripts spawned through a built path.** `test/gate-coverage.test.mjs`
+   classifies a gate as exercised if a test spawns it. Neither real caller writes
+   `scripts/<gate>`: `corpus-differential.test.mjs:21` and
+   `sb1-converter-deferral.test.mjs:10` both do
+   `join(…, 'scripts', '<gate>.mjs')` and pass the binding to `execFileSync`
+   several lines later. Two successive rules — the literal, then the literal in
+   the spawning statement — each called both of them orphans, in the file whose
+   entire purpose is to avoid manufacturing false orphans. Fixed by
+   `referencesGatePath` (`:197`), which recognises the construction.
+
+3. **Preset ROMs**, above — the instance to lead with, because the blinded gate
+   was the one written for this exact failure.
+
+**Why it recurs.** Every one of these was written by someone who knew that a name
+in a comment must not count, and solved that by keying on a quoted literal. The
+literal is what makes the check strict. It is also what makes it blind, and the
+two properties are the same property. You cannot loosen it toward "any mention"
+without readmitting the comments; you have to teach it the *shapes of
+construction* instead, which is a longer list and never provably complete.
+
+**What to do, in order.**
+
+- **Ask of every by-name census: what does the code do that I am matching on?**
+  If any caller builds the value, the census is already short.
+- **Recognise construction explicitly** — `join(a, b, 'name')`, template
+  literals, concatenation — statement-bounded, never through a fixed-width
+  window around the name (that is its own species).
+- **Enumerate from the producing structure, not from the consuming string.**
+  The preset list is a literal array in the source; every entry's `rom` is a
+  literal even though the URL is not. A census that walked the presets and
+  checked each ROM would have found all seven on the day the first one broke —
+  and needs no regex over fetch sites at all. Where the producer is enumerable,
+  enumerate it and stop guessing at the consumer.
+- **Fail by name in both directions**, as lego-b9's does: a constructed path the
+  census cannot resolve is a finding, not something to skip.
+
+**Its sibling is species 27**, THE FACT THAT LIVES ONLY IN A WIRING EXPRESSION —
+the same blindness applied to capabilities instead of paths, and the remedies
+differ enough to keep them apart. A path census widens to see construction; a
+capability is handed over explicitly rather than discovered by traversal.
