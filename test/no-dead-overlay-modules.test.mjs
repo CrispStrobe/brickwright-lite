@@ -37,8 +37,9 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { readdirSync, statSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { resolve, dirname, relative, join, extname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -283,22 +284,43 @@ test('the integrated tree is current', {
         `how a real fix nearly got deleted as dead code.`);
 });
 
+/**
+ * The walk, pure over its two roots: every overlay module is either dead
+ * (imported by nothing, not allowed), or skipped because packages/ has no
+ * counterpart — and the skipped set is RETURNED, never dropped. Until
+ * 2026-09-07 the `notIntegrated` push below named an array declared nowhere:
+ * on the integrated tree every module has a counterpart, so the branch never
+ * ran and CI never saw the ReferenceError — the reporting path of a scanner
+ * that reports had itself never run (brickwright-lite-ea found it in a
+ * worktree with a partial packages/). The mutation test below reaches it.
+ */
+function scanOverlay (overlayRoot, builtRoot, referenced, allowed = ALLOWED) {
+    const dead = [];
+    const notIntegrated = [];
+    for (const f of walk(overlayRoot)) {
+        const rel = relative(overlayRoot, f).split('\\').join('/');
+        const built = join(builtRoot, rel);
+        if (!existsSync(built)) { notIntegrated.push(rel); continue; } // overlay-only, not integrated — reported below
+        const name = basename(f);
+        if (referenced.has(name) || referenced.has(name.replace(/\.(js|jsx)$/, ''))) continue;
+        if (allowed.has(rel)) continue;
+        dead.push(rel);
+    }
+    return { dead, notIntegrated };
+}
+
 test('every overlay module is imported by something', {
     skip: existsSync(builtSrc) ? false :
         'packages/scratch-gui not integrated — run `npm run integrate` first'
-}, () => {
+}, (t) => {
     const referenced = referencedBasenames();
 
-    const dead = [];
-    for (const f of walk(overlaySrc)) {
-        const rel = relative(overlaySrc, f).split('\\').join('/');
-        const built = join(builtSrc, rel);
-        if (!existsSync(built)) { notIntegrated.push(rel); continue; } // overlay-only, not integrated — reported, not silent
-        const name = basename(f);
-        if (referenced.has(name) || referenced.has(name.replace(/\.(js|jsx)$/, ''))) continue;
-        if (ALLOWED.has(rel)) continue;
-        dead.push(rel);
-    }
+    const { dead, notIntegrated } = scanOverlay(overlaySrc, builtSrc, referenced);
+    // The skipped set, by count and name (T11: a walk reports what it skipped).
+    // Non-empty here means `npm run integrate` is behind the overlay, and every
+    // module named was NOT judged for deadness.
+    t.diagnostic(`overlay modules with no packages/ counterpart (not judged): ${notIntegrated.length}` +
+        (notIntegrated.length ? ` — ${notIntegrated.join(', ')}` : ''));
 
     const unexpected = dead.filter((d) => !KNOWN_DEAD.has(d));
     assert.deepEqual(unexpected, [],
@@ -311,6 +333,25 @@ test('every overlay module is imported by something', {
     const stillDead = [...KNOWN_DEAD.keys()].filter((k) => dead.includes(k));
     assert.ok(stillDead.length <= KNOWN_DEAD.size,
         'KNOWN_DEAD grew — it is a ratchet, not a parking space');
+});
+
+test('mutation: the not-integrated branch runs and names the module (a throwaway overlay with no counterpart)', () => {
+    // The branch the integrated tree never takes. Two roots in a temp dir: the
+    // overlay holds two modules, the built tree holds one of them; the other
+    // must come back BY NAME in notIntegrated, not vanish and not throw.
+    const dir = mkdtempSync(join(tmpdir(), 'dead-overlay-'));
+    mkdirSync(join(dir, 'overlay', 'lib'), { recursive: true });
+    mkdirSync(join(dir, 'built', 'lib'), { recursive: true });
+    writeFileSync(join(dir, 'overlay', 'lib', 'wired.js'), 'export const a = 1;\n');
+    writeFileSync(join(dir, 'built', 'lib', 'wired.js'), 'export const a = 1;\n');
+    writeFileSync(join(dir, 'overlay', 'lib', 'orphan-no-counterpart.js'), 'export const b = 2;\n');
+    const { dead, notIntegrated } = scanOverlay(join(dir, 'overlay'), join(dir, 'built'), new Set(['wired.js']), new Map());
+    assert.deepEqual(notIntegrated, ['lib/orphan-no-counterpart.js'], 'the module with no counterpart is reported by name');
+    assert.deepEqual(dead, [], 'a module nothing references but with no counterpart is NOT judged dead — it was not scanned');
+    // and a module with a counterpart that nothing references IS dead:
+    writeFileSync(join(dir, 'overlay', 'lib', 'unused.js'), 'export const c = 3;\n');
+    writeFileSync(join(dir, 'built', 'lib', 'unused.js'), 'export const c = 3;\n');
+    assert.deepEqual(scanOverlay(join(dir, 'overlay'), join(dir, 'built'), new Set(['wired.js']), new Map()).dead, ['lib/unused.js']);
 });
 
 test('KNOWN_DEAD entries are still dead, and get removed when they are not', {
