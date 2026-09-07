@@ -300,7 +300,7 @@ in bw-board CI)` to a shipped native fact, `· declared, not checked` when evide
 clause off the C × STC12 cell's title. The five status words: standing (bw-board's CI runs it),
 recorded once, oracle absent, service reachability only, no census row (refused in CI by T6).
 
-**T9. The pin-move chain enumerates itself. OPEN 2026-09-07** (lego-be's finding while moving bw-board to
+**T9. The pin-move chain enumerates itself. BUILT 2026-09-07** (lego-b9, `test/pin-move-chain.test.mjs`; measured on main 119d509b3 before landing: 17 non-current vendored-repo shas in 6 files, every one in a history role — LANES.md 10, docs prose 6, the ROM provenance's `lastTouchedBy` field 1 — and ZERO in a file that must carry the pin; all four regenerated documents at d5850e6. Previous-pin half from `git log -p vendor-pins.json` (372 values), refused by name on a shallow checkout; repo-history half from `BW_*_DIR` checkouts or `BW_VENDOR_HISTORY_DIR` bare clones, which build.yml now makes in ~1 s each. Fired live: the previous bw-board pin planted in the capability report → red naming file, line, sha, "the bw-board pin until lite 65abaf2ee (2026-09-07)". Limit stated in the header: a sha assembled from parts is out of a by-name scan's reach.) Original finding: (lego-be's finding while moving bw-board to
 cbe310d): a pin bump must regenerate FOUR documents (census snapshot, matrix doc, ROM provenance, the 8086
 capability report) and the fourth was found by CI, not by the checklist. Gate: no tracked file may contain a
 full 40-hex sha of a bw-board or sb3-creator commit other than the current pins, except files that are HISTORY by

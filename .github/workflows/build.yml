@@ -400,6 +400,26 @@ jobs:
           node scripts/verify-lego-hub-faces.mjs
           node scripts/verify-retro-console.mjs
 
+      # test/pin-move-chain.test.mjs (plan T9) needs two histories the default
+      # checkout does not have: this repo's own, for every value vendor-pins.json
+      # ever held (depth-1 sees one commit and the half would pass on an empty
+      # set — the test refuses that by name), and the vendored repos', so a sha of
+      # theirs that was never a pin is caught too. Both without blobs: the
+      # unshallow measured 3.2 s on a CI-shaped clone, each bare clone ~1 s.
+      - name: Vendored-repo history for the pin-move gate
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        run: |
+          if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+            git fetch --quiet --unshallow --filter=blob:none origin
+          fi
+          echo "vendor-pins.json history: $(git rev-list --count HEAD -- vendor-pins.json) commits"
+          mkdir -p "$RUNNER_TEMP/vendor-history"
+          for repo in bw-board sb3-creator bw-circuit-ui; do
+            git clone --quiet --bare --filter=blob:none "https://github.com/CrispStrobe/$repo.git" "$RUNNER_TEMP/vendor-history/$repo.git"
+            echo "$repo: $(git --git-dir="$RUNNER_TEMP/vendor-history/$repo.git" rev-list --all | wc -l) commits"
+          done
+          echo "BW_VENDOR_HISTORY_DIR=$RUNNER_TEMP/vendor-history" >> "$GITHUB_ENV"
+
       - name: Run unit tests
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         run: |
