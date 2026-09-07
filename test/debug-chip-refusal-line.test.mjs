@@ -221,6 +221,19 @@ test('the panel reaches refusals only through debugChipRefusals', () => {
         'the runner no longer captures the collector by name');
     assert.ok(!/adapter\.machine\.chips\b/.test(runner),
         'the runner reaches into machine.chips for refusals; the collector is the only supported path');
+    // EVERY BENCH MUST HAND ITS COLLECTOR OVER, and one of them cannot do it
+    // through the adapter. The DOS bench — which is what the Code tab boots, so
+    // it is the bench most programs actually run on — passes `adapter: {}` on
+    // purpose, so a runner that looks only at adapter.machine reports "no
+    // collector" for it. It did, for a day, while that bench had three chips and
+    // a working ledger. The wiring is asserted here because it is invisible from
+    // the model's side and cost a CI run to find.
+    assert.match(runner, /chipRefusals: \(\) => bench\.machine\.chipRefusals\(\)/,
+        'the DOS bench no longer hands its collector to wireMachineBench, so every refusal a '
+        + 'program produces on the Code tab is invisible to the panel');
+    assert.match(runner, /typeof result\.chipRefusals === 'function' \? result\.chipRefusals/,
+        'wireMachineBench no longer prefers an explicitly passed collector, so the DOS bench '
+        + 'has no way to supply one');
 });
 
 test('the row shape is the imported contract, not a list retyped here', () => {
