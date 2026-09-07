@@ -86,3 +86,21 @@ export const skipsFromCensus = census => Object.entries(census.files || {}).flat
 
 /** `# SKIP` lines in a TAP text, for the cross-check against the census. */
 export const tapSkips = tap => tap.split('\n').map(l => l.match(/^\s*(?:not )?ok \d+ - (.*?) # SKIP ?(.*)$/)).filter(Boolean).map(m => ({name: m[1], reason: m[2] || '(no reason)'}));
+
+/**
+ * A pointer marked TEMPORARY vouches for a skip that is about to move into CI
+ * (the firmware fetch of 2026-09-07). It expires the moment the readings show
+ * the test EXECUTED in CI, or show no such skip at all — a ratchet, so the
+ * ledger cannot keep a claim past its use. Pure over the readings' tests.
+ * @returns {string[]} expired pointers, by line
+ */
+export const expiredTemporary = (pointers, tests) => pointers
+    .filter(p => /\bTEMPORARY\b/.test(p.where))
+    .flatMap(p => {
+        const base = path.basename(p.file);
+        const same = tests.filter(t => path.basename(t.file) === base && t.reason === p.reason);
+        if (!same.length) return [`LANES.md:${p.line} ${base}: TEMPORARY pointer but the readings show no such skip any more — remove the line`];
+        const ran = same.filter(t => t.executed > 0);
+        return ran.length ? [`LANES.md:${p.line} ${base}: TEMPORARY pointer but "${ran[0].name}" executed in CI in ${ran[0].executed} of ${ran[0].existed} run(s) — remove the line`] : [];
+    });
+

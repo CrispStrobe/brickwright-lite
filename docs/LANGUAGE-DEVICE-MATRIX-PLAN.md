@@ -188,7 +188,9 @@ the build when the snapshot is stale against the checkout. The table's hosted
 facts are checked against the snapshot, so a newly-deployed compile/assemble
 target turns the conformance gate red by name. A nightly workflow step that
 diffs the snapshot against the LIVE service's `/health` target lists (which N1
-taught it reports) is the still-to-do half.
+taught it reports) is the still-to-do half. **The T2 nightly workflow exists since 2026-09-07:
+`.github/workflows/nightly-corpus-differential.yml` (T13 put the corpus differential there, its only
+execution); the `/health` snapshot diff belongs in that same workflow when it is built — one nightly, not two.**
 DoD:
 - [ ] The three contradictions in §2 are red on the first run (that is the
       proof the gate bites), then fixed by T5 and green.

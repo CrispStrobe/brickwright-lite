@@ -19,7 +19,7 @@ import {readFileSync, mkdtempSync, writeFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
-import {parsePointers, judgeSkips, skipsFromCensus, tapSkips, HEADING} from '../scripts/lib/skip-pointers.mjs';
+import {parsePointers, judgeSkips, skipsFromCensus, tapSkips, expiredTemporary, HEADING} from '../scripts/lib/skip-pointers.mjs';
 import {census, classify, fileFor, reasonLive, READINGS} from '../scripts/gen-ci-skips.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -45,6 +45,23 @@ test('every skipped test in the readings points at where it executes; pointers a
     assert.deepEqual(v.deadWorkflow, [], v.deadWorkflow.join('\n'));
     assert.deepEqual(v.moved, [], 'reason(s) edited without the pointer moving:\n  ' + v.moved.join('\n  '));
     assert.deepEqual(v.unpointed, [], 'gate(s) nobody runs:\n  ' + v.unpointed.join('\n  '));
+});
+
+test('a TEMPORARY pointer expires by the readings: once its test has executed in CI, the line is red (ratchet)', () => {
+    const expired = expiredTemporary(pointers, readings.tests);
+    assert.deepEqual(expired, [], 'TEMPORARY pointer(s) whose test now executes in CI — remove them:\n  ' + expired.join('\n  '));
+    // mutation: the same pointers against readings where one temporary test ran once
+    const tmp = pointers.find(p => /\bTEMPORARY\b/.test(p.where));
+    if (tmp) {
+        const ran = readings.tests.map(t => path.basename(t.file) === path.basename(tmp.file) && t.reason === tmp.reason ? {...t, executed: 1} : t);
+        assert.match(expiredTemporary(pointers, ran)[0], /TEMPORARY pointer but ".*" executed in CI in 1 of \d+ run\(s\) — remove the line/);
+        const gone = readings.tests.filter(t => !(path.basename(t.file) === path.basename(tmp.file) && t.reason === tmp.reason));
+        assert.match(expiredTemporary(pointers, gone)[0], /no such skip any more — remove the line/);
+    }
+    const synthetic = parsePointers(`${HEADING}\n- test/x.test.mjs :: X unset :: box 2026-09-07 someone — TEMPORARY until CI fetches X\n- test/y.test.mjs :: Y unset :: box 2026-09-07 someone\n`);
+    assert.deepEqual(expiredTemporary(synthetic, [{file: 'test/x.test.mjs', name: 'a', reason: 'X unset', existed: 5, skipped: 5, executed: 0}]), []);
+    assert.equal(expiredTemporary(synthetic, [{file: 'test/x.test.mjs', name: 'a', reason: 'X unset', existed: 5, skipped: 4, executed: 1}]).length, 1);
+    assert.equal(expiredTemporary(synthetic, [{file: 'test/y.test.mjs', name: 'b', reason: 'Y unset', existed: 5, skipped: 0, executed: 5}]).length, 1, 'x has no reading at all → expired; y is not temporary → nothing');
 });
 
 test('mutation: the five shapes that must redden', () => {
