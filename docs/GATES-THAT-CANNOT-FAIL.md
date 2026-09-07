@@ -2145,6 +2145,18 @@ A reader that touches that file while this test runs is MORE LIKELY THAN NOT to
 see the wrong content. What made it look rare was not the window; it was that
 only one other test reads that path and the two have to overlap.
 
+**IT IS ATTRIBUTED TO THE INNOCENT BRANCH, and that is half the cost.** The
+red lands on whatever else happened to be running, so every victim opens the
+same investigation from the same false premise: *what does my change have to do
+with vendored board files?* The honest answer is nothing, and reaching it takes
+minutes each time. Three sessions did exactly that in one evening. Sighted on
+main, on the pin leg that legitimately moves the pin -- and, most clearly, on a
+branch carrying a ONE-NUMBER BALANCE CHANGE TO A GAME EXAMPLE, which failed
+`upstream has not converged on the lite-only work` and could not possibly be
+related to it. That third sighting is the one to keep: when the accused branch's
+content is obviously unrelated to what the assertion names, the assertion is not
+talking about the branch at all.
+
 **Why every correct investigation missed it.** Three negatives were established,
 each by measurement and each true: the pin did not move across the flip, the
 lite tree did not move, and the reader does not consult the moving tip. Same
