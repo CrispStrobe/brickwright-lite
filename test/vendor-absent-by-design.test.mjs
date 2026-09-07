@@ -24,7 +24,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -108,6 +108,13 @@ test('an unscoped sync writes nothing new and refuses both by name', (t) => {
         return;
     }
     const before = new Set(readdirSync(VENDORED));
+    // Contents before the run, so the tree can be put back without git.
+    // FILES ONLY: this directory has subdirectories (devices/), and readdirSync
+    // returns those too -- reading one throws EISDIR, which is how the first
+    // version of this snapshot failed.
+    const snapshot = new Map([...before]
+        .filter((f) => statSync(join(VENDORED, f)).isFile())
+        .map((f) => [f, readFileSync(join(VENDORED, f), 'utf8')]));
     let out = '';
     try {
         out = execFileSync('node', [SYNC, '--dir', dir], { encoding: 'utf8', cwd: repo });
@@ -137,8 +144,18 @@ test('an unscoped sync writes nothing new and refuses both by name', (t) => {
     // and this test only asserts about ones it CREATES. Leaving the updates
     // behind means the next command sees a dirty worktree it did not make, and
     // in the worst case someone commits it.
-    try { execFileSync('git', ['checkout', '--', 'overlay/scratch-gui/src/lib/bw-board/'], { cwd: repo }); }
-    catch { /* a tree that will not restore is the caller's to notice, not this test's to hide */ }
+    //
+    // RESTORED FROM A SNAPSHOT, NOT BY `git checkout`. The first version shelled
+    // out to git, and the shape audit was right to flag it: AMBIENT-BINDING,
+    // "'git' resolved from PATH -- the gate may be exercising a tool the build
+    // does not ship". A marker would have declared the dependency; taking the
+    // snapshot removes it, which is the better answer to a rule that says fix
+    // the shape rather than raise the baseline.
+    for (const [file, text] of snapshot) {
+        if (readFileSync(join(VENDORED, file), 'utf8') !== text) {
+            writeFileSync(join(VENDORED, file), text);
+        }
+    }
     assert.deepEqual(after, [],
         `an unscoped sync created ${after.join(', ')} -- the whole point of this entry kind`);
 });
