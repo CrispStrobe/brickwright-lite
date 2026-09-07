@@ -37,8 +37,17 @@ export function requireTimerdemoDelivery ({status, event, panelState}) {
     if (event.kind !== 'i8086' || event.slotId !== 'rom' || !(event.byteLength > 0)) {
         throw new Error(`timerdemo media has wrong machine/slot/bytes: ${JSON.stringify(event)}`);
     }
-    if (panelState === 'none' || panelState === null) {
-        throw new Error(`timerdemo media did not reach an attached debugger collector: ${panelState}`);
+    if (panelState !== 'empty') {
+        const kind = panelState === 'none' || panelState === null ? 'no collector' : `${panelState} refusal rows`;
+        throw new Error(`timerdemo media did not reach an empty debugger collector: ${kind}`);
+    }
+    return true;
+}
+
+export function require8086OnBoard (circuit) {
+    const kinds = new Set(['i8086', '8086', 'i8088', '8088']);
+    if (!(circuit?.parts || []).some(part => kinds.has(part.kind))) {
+        throw new Error('no 8086 on the board: Machine Loader cannot render');
     }
     return true;
 }
@@ -98,8 +107,17 @@ async function open8086Machine (page, url) {
     await page.getByText(/Open circuit/, {exact: false}).click();
     await (await chooserPromise).setFiles(fixture);
     await page.locator('[data-build-machine]').waitFor({state: 'visible', timeout: 30000});
+    const beforeBuild = await page.evaluate(() => window.__bwMachineExtracted ? 'bench' : 'no-bench');
+    if (beforeBuild !== 'no-bench') throw new Error(`expected no bench before Build Machine, got ${beforeBuild}`);
     await page.locator('[data-build-machine]').getByRole('button', {name: /Build Machine/}).click();
     await page.getByTestId('bw-machine-preset-timerdemo').waitFor({state: 'visible', timeout: 30000});
+    await page.locator('[data-debug-panel]').first().waitFor({state: 'visible', timeout: 30000});
+    const beforeMedia = await page.locator('[data-debug-panel]').first()
+        .getAttribute('data-debug-chip-refusal-state');
+    if (beforeMedia !== 'none') {
+        throw new Error(`expected extracted bench with no collector before media, got ${beforeMedia}`);
+    }
+    return {beforeBuild, beforeMedia};
 }
 
 async function driveTimerdemo (browser, url, {missing = false} = {}) {
@@ -116,7 +134,7 @@ async function driveTimerdemo (browser, url, {missing = false} = {}) {
         }));
     }
     try {
-        await open8086Machine(page, url);
+        const states = await open8086Machine(page, url);
         const responsePromise = page.waitForResponse(response =>
             new URL(response.url()).pathname.endsWith(`/static/roms/${timerRom}`), {timeout: 30000});
         await page.getByTestId('bw-machine-preset-timerdemo').click();
@@ -139,7 +157,7 @@ async function driveTimerdemo (browser, url, {missing = false} = {}) {
             panelState: document.querySelector('[data-debug-panel]')
                 ?.getAttribute('data-debug-chip-refusal-state') || null
         }), 'timerdemo');
-        return {status: response.status(), ...observed, diagnostics, page};
+        return {status: response.status(), ...observed, states, diagnostics, page};
     } catch (error) {
         error.page = page;
         error.diagnostics = diagnostics;
@@ -163,10 +181,27 @@ async function main () {
         const {chromium} = await import('playwright');
         browser = await chromium.launch({headless: true});
 
+        const circuit = JSON.parse(await readFile(fixture, 'utf8'));
+        require8086OnBoard(circuit);
+        const withoutCpu = structuredClone(circuit);
+        withoutCpu.parts = withoutCpu.parts.filter(part =>
+            !new Set(['i8086', '8086', 'i8088', '8088']).has(part.kind));
+        let noCpuError = null;
+        try { require8086OnBoard(withoutCpu); } catch (error) { noCpuError = error; }
+        if (!noCpuError || !/no 8086 on the board/.test(noCpuError.message)) {
+            throw new Error(`CPU-removal mutation stayed green: ${noCpuError?.message || 'no error'}`);
+        }
+        receipt.cpuMutation = {red: noCpuError.message};
+        console.log(`PASS: mutation fired — ${noCpuError.message}`);
+
         const green = await driveTimerdemo(browser, url);
         lastPage = green.page;
         requireTimerdemoDelivery(green);
-        receipt.green = {status: green.status, event: green.event, panelState: green.panelState};
+        receipt.green = {
+            status: green.status,
+            states: {...green.states, afterMedia: green.panelState},
+            event: green.event
+        };
         console.log(`PASS: timerdemo reached the debugger — ${JSON.stringify(receipt.green)}`);
         await green.page.screenshot({path: join(artifacts, 'timerdemo-loaded.png'), fullPage: true});
         await green.page.close();
@@ -190,7 +225,10 @@ async function main () {
         await writeFile(join(artifacts, 'receipt.json'), JSON.stringify(receipt, null, 2));
     } catch (error) {
         if (lastPage) await lastPage.screenshot({path: join(artifacts, 'failure.png'), fullPage: true}).catch(() => {});
-        await writeFile(join(artifacts, 'failure.txt'), `${error.stack || error}\n`).catch(() => {});
+        await writeFile(join(artifacts, 'failure.json'), JSON.stringify({
+            error: error.stack || String(error),
+            receipt
+        }, null, 2)).catch(() => {});
         throw error;
     } finally {
         if (browser) await browser.close();
