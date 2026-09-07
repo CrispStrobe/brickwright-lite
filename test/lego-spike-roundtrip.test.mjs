@@ -23,13 +23,13 @@ const projectFrom = async bytes => JSON.parse(await (await JSZip.loadAsync(bytes
 test('vendored SPIKE compiler emits a canonical executable round-trip artifact', async () => {
     // The pin is asserted so a vendor bump cannot pass this file by accident:
     // whoever moves it re-reads the assertions below against the new compiler.
-    // 4134b86 -> eb5b286 -> fdd9d7d -> b27da5a -> 73ac0b1 -> c20e434 -> 7952b31 -> ea30b80 -> 0a05c9c -> 414e8ef -> 365bf18 -> 5d17288 -> 42f5d92 -> 2a0280e -> d0b9e78 (N2d: strict numeric-only i8086 C print; no SPIKE emitter change) (N2c: the i8086 toggle repair needed by two newly reachable wait programs; no SPIKE emitter change) (N2c: literal 8086 C waits; no SPIKE emitter change) (N2b step 2: i8086 numbers are a 16-bit int with refuse-by-name; goldens prove no other family moved a byte; no SPIKE emitter change) (P2 cont.: motor and servo each split into one protocol over per-family bus, byte-identical; no SPIKE emitter change) (0a05c9c P2: shift_out as one protocol over per-family bus, i8086 bus added) (2026-09-06: i8086 pins through the 8255 in generateC; the 64-byte raw-REPL write chunking moved upstream) on 2026-09-05: reader fixes (bitwise/shift,
+    // 4134b86 -> eb5b286 -> fdd9d7d -> b27da5a -> 73ac0b1 -> c20e434 -> 7952b31 -> ea30b80 -> 0a05c9c -> 414e8ef -> 365bf18 -> 5d17288 -> 42f5d92 -> 2a0280e -> d0b9e78 -> 01ed06a (N2d: SmallerC-safe i8086 minimum-int spelling; no SPIKE emitter change) (N2d: strict numeric-only i8086 C print; no SPIKE emitter change) (N2c: the i8086 toggle repair needed by two newly reachable wait programs; no SPIKE emitter change) (N2c: literal 8086 C waits; no SPIKE emitter change) (N2b step 2: i8086 numbers are a 16-bit int with refuse-by-name; goldens prove no other family moved a byte; no SPIKE emitter change) (P2 cont.: motor and servo each split into one protocol over per-family bus, byte-identical; no SPIKE emitter change) (0a05c9c P2: shift_out as one protocol over per-family bus, i8086 bus added) (2026-09-06: i8086 pins through the 8255 in generateC; the 64-byte raw-REPL write chunking moved upstream) on 2026-09-05: reader fixes (bitwise/shift,
     // MicroPython runtime skip, body fidelity, condition lift, loops) and one
     // emitter change (the STC driver is emitted for micro:bit/Pico targets so
     // STC pins resolve). Nothing in the SPIKE emitter changed; the artifact
     // assertions below were re-run at each pin.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'd0b9e78d27f772d81ba95a0ce60f558f6f5092bd');
+        '01ed06a22d68a115b4d7c57ffb5c75ad42da046f');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
