@@ -29,6 +29,10 @@
  *   node scripts/sync-i8086-demo-roms.mjs --dir <bw-board> --write    # vendor + record
  */
 
+// WHAT THIS SHIPS, for THIRD-PARTY-NOTICES.md: test/notices-drift.test.mjs reads this
+// declaration (strict JSON) from every sync script that places an artifact under static/,
+// and fails by name when the notices do not carry the name, licence and holder.
+export const NOTICE = {"name":"bw-board ROMs","licence":"MIT","holder":"CrispStrobe"};
 import { readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';

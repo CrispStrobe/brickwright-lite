@@ -127,6 +127,15 @@ in your own work isn't bound by whichever repo it happens to sit in:
 - `overlay/scratch-gui/static/images/brick-robot.svg` -- (c) CrispStrobe,
   original artwork (not derived from Scratch's CC-BY-SA library or any
   third party).
+- `overlay/scratch-gui/src/lib/flasher.js` -- (c) CrispStrobe, vendored from
+  CrispStrobe/stc-compiler (docs/flash.js, MIT) by `scripts/sync-flasher.mjs`.
+- `overlay/scratch-gui/static/roms/i8086-bios.bin` and the nine `i8086-*-demo.bin`
+  ROMs with a `*.provenance.json` beside them -- (c) CrispStrobe, built from
+  CrispStrobe/bw-board (MIT) at the pinned sha the manifest names.
+- `overlay/scratch-gui/static/roms/i8086-cga-demo.bin`, `i8086-serial-monitor.bin`,
+  `i8086-timer-demo.bin`, `lcd-hello.bin`, `z80-mirror.bin` -- (c) CrispStrobe,
+  demo ROMs assembled from the owner's own sources (bw-board's `rom/` and the
+  bw-circuit-ui presets) and vendor-forwarded on 2026-08-17; no third-party code.
 
 ## Retro-video design references
 
@@ -984,6 +993,65 @@ buzzer, etc.) used in the circuit designer. The elements are imported as
 - **Usage:** runtime web components for part visualisation in the circuit
   designer canvas. No source code from wokwi-elements is modified; the
   components are consumed as published npm packages.
+
+## jszip — MIT (dual-licensed MIT or GPL-3.0-or-later; taken under MIT)
+
+**JSZip** (https://stuk.github.io/jszip/) reads and writes the `.sb3` project archives.
+Copyright (c) 2009-2016 Stuart Knightley, David Duponchel, Franz Buchinger, António Afonso.
+
+- **Version:** 3.10.1 (`packages/scratch-gui/package.json`, added by `scripts/integrate.mjs`)
+- **Licence:** MIT (JSZip is dual-licensed MIT or GPL-3.0-or-later; this repo takes it under MIT)
+- **Source:** https://github.com/Stuk/jszip
+- **Usage:** in the bundle — project save/load and the project-bundle archive.
+
+## skulpt — MIT
+
+**Skulpt** (https://skulpt.org/) runs the Code tab's Python programs in the browser.
+Copyright (c) 2009-2010 Scott Graham; Copyright (c) 2010-2013 Brad Miller and the Skulpt
+contributors.
+
+- **Version:** 1.2.0 (added by `scripts/integrate.mjs`)
+- **Licence:** MIT
+- **Source:** https://github.com/skulpt/skulpt
+- **Usage:** lazy-loaded for the Code tab's Run.
+
+## lit and @lit/react — BSD-3-Clause
+
+**Lit** (https://lit.dev/) is the web-component runtime the wokwi-elements parts render with;
+**@lit/react** wraps them for React. Copyright (c) 2017-2025 Google LLC.
+
+- **Versions:** lit 3.3.3, @lit/react 1.0.8 (added by `scripts/integrate.mjs`)
+- **Licence:** BSD-3-Clause — the copyright notice, conditions and disclaimer are reproduced
+  by the packages' own LICENSE files, shipped in the bundle's source map and named here.
+- **Source:** https://github.com/lit/lit
+- **Usage:** circuit part visualisation (the wokwi-elements host).
+
+## emu8051 — MIT
+
+**emu8051** (https://github.com/jarikomppa/emu8051) is the 8051 core behind the STC12
+simulation, compiled to WebAssembly. Copyright (c) 2006 Jari Komppa. The STC12 model
+layered on it is (c) CrispStrobe (CrispStrobe/emu8051-stc); the binary also carries
+Emscripten's runtime glue (MIT / University of Illinois).
+
+- **Location in this repo:** `overlay/scratch-gui/src/lib/emu8051/` (`emu8051.js`, `emu8051.wasm`),
+  synced by `scripts/sync-emu8051-wasm.mjs` with a per-file SHA-256 check against the
+  upstream BUILD-INFO.
+- **Licence:** MIT
+- **Usage:** the 8051 debugger and the offline STC12 compile-and-run path.
+
+## MicroPython for RP2040 (Raspberry Pi Pico firmware) — MIT
+
+**MicroPython** (https://micropython.org/) — the RP2040 port's UF2 firmware — boots the
+simulated Pico's Python programs. Copyright (c) 2013-2025 Damien P. George and
+MicroPython contributors.
+
+- **What ships:** the versioned UF2 named in `overlay/scratch-gui/src/lib/bw-board/rp2040-bootrom.js`,
+  fetched at build time by `scripts/sync-pico-micropython.mjs`, verified against its
+  SHA-256, written under `packages/scratch-gui/static/pico-micropython/` (gitignored) and
+  copied into the app by webpack — so it is served, never committed.
+- **Licence:** MIT
+- **Source:** https://github.com/micropython/micropython
+- **Usage:** the Pico ▶ Run simulator (plan N3c).
 
 ## BBC BASIC interpreter attribution — zlib
 

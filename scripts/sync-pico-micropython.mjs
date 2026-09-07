@@ -32,6 +32,10 @@
  *   npm run sync:picomicropython          # fetch (verify sha256) + serve under static/
  *   npm run sync:picomicropython:check    # verify the cached copy matches the pin; never fetch
  */
+// WHAT THIS SHIPS, for THIRD-PARTY-NOTICES.md: test/notices-drift.test.mjs reads this
+// declaration (strict JSON) from every sync script that places an artifact under static/,
+// and fails by name when the notices do not carry the name, licence and holder.
+export const NOTICE = {"name":"MicroPython","licence":"MIT","holder":"Damien P. George and MicroPython contributors"};
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
