@@ -37,10 +37,12 @@ desktop. Message surface: BT = `discover`/`connect`/`send` + `didReceiveMessage`
 
 | Transport | Hardware | Backend | Status |
 |-----------|----------|---------|--------|
-| **BLE** | SPIKE FW3.x, Essential, Boost, Powered-Up, WeDo, Technic, DUPLO, Mario | `tauri-plugin-blec` (btleplug) — all 5 platforms | plugin wired; bridge to WS TODO |
-| **BTC/SPP** (Win/Linux/Android) | EV3, legacy-FW SPIKE 2.x | `bluetooth-rust` (WinRT / BlueZ-bluer / Android JNI, SPP UUID `00001101-…`) | TODO |
-| **BTC/SPP** (macOS) | EV3, legacy SPIKE 2.x | `objc2` → `IOBluetoothRFCOMMChannel` shim | TODO (only real gap) |
-| **BTC/SPP** (iOS) | EV3 (MFi only) | port existing `BTSession.swift` (ExternalAccessory) into a Tauri iOS plugin | parity with current app; Apple-gated regardless |
+| **BLE** | SPIKE FW3.x, Essential, Boost, Powered-Up, WeDo, Technic, DUPLO, Mario | `tauri-plugin-blec`/btleplug plus the local ScratchLink bridge | Implemented; hardware permission and radio behavior still require per-platform integration runs |
+| **BTC/SPP — Windows** | EV3, legacy-FW SPIKE 2.x | WinRT RFCOMM | Implemented for already-paired devices |
+| **BTC/SPP — Linux** | EV3, legacy-FW SPIKE 2.x | BlueZ through `bluer` | Implemented |
+| **BTC/SPP — Android** | EV3, legacy-FW SPIKE 2.x | `android.bluetooth` through JNI | Implemented for bonded devices; real-device runtime validation remains |
+| **BTC/SPP — macOS** | EV3, legacy-FW SPIKE 2.x | Objective-C `IOBluetoothRFCOMMChannel` shim | Implemented |
+| **BTC/SPP — iOS** | MFi-authorized EV3 accessories | ExternalAccessory Objective-C shim | Implemented, subject to Apple's MFi and prior-pairing restrictions |
 
 Only **EV3** and **legacy-firmware (2.x) SPIKE Prime / Robot Inventor** need BTC;
 everything modern is BLE.
@@ -62,8 +64,9 @@ The frontend is the prebuilt web bundle; rebuild it from the repo root
 ## Testing
 
 **Automated (no hardware) — `cargo test` under `apps/tauri/src-tauri`, also run in CI (`.github/workflows/tauri.yml`):**
-- *Unit* — the BLE codec/parse helpers: `parse_uuid` (full UUID, 16-bit short as hex/`0x`/number, invalid), `decode_message` (base64 / default / missing / bad encoding), `build_scan_filter`.
-- *Integration* — spins the ScratchLink WS server on an ephemeral port and drives real JSON-RPC over a socket: `ping`→42, BT-skeleton ack, BLE-without-adapter → graceful JSON-RPC error (no panic), unknown method → error.
+- *Unit* — BLE parsing, filtering, authorization, blocklist, encoding and session-state behavior.
+- *Integration* — drives the ScratchLink WebSocket and in-process native bridge, including request/reply correlation, lifecycle cleanup, malformed requests, and unavailable-adapter errors.
+- *Parity gates* — verify the BLE method surface and each platform-specific Classic backend against the shared ScratchLink contract.
 - CI also runs `cargo clippy -- -D warnings`.
 
 **Live, no LEGO hub:**
