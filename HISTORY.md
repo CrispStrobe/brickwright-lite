@@ -50,6 +50,11 @@ source for commit-level detail. Current tasks belong in [PLAN.md](PLAN.md).
   rejects replay and unannounced gaps, and maps the complete neutral state into
   `VirtualSpikeHubState`. Its fixtures are pinned byte-for-byte to the Renode
   producer contract.
+- The neutral state connector now has an opt-in host-only loopback TCP factory.
+  Fragmented snapshots, correlated command results, explicit reconnect, and
+  bounded write backpressure pass through the production connector in an
+  end-to-end source-only test; no browser bundle or automatic connection is
+  introduced.
 
 ## Operational lessons retained as rules
 

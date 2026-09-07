@@ -27,3 +27,10 @@ stale transport callbacks cannot mutate the current state.
 Malformed, oversized, or uncorrelated input produces a `protocol-error`
 lifecycle event, rejects pending commands, and disconnects without allowing an
 exception to escape the transport callback.
+
+The host-only `scripts/lib/renode-state-runtime.mjs` supplies the concrete
+loopback TCP transport factory and a disconnected runtime constructor. It is
+not browser code and must not enter a web bundle. Numeric loopback address,
+port, and buffered-byte limits fail closed. Application policy must explicitly
+start the Renode process, construct this runtime, call `connect()`, and decide
+whether and when to reconnect; importing the module opens no connection.
