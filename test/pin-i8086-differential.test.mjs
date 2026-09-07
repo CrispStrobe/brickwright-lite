@@ -145,20 +145,19 @@ test('the emitted i8086 C names the 8255 data port and the control word, once ea
     assert.ok(/bw_port_a \|= 0x1u/.test(C), 'the set-pin does not read-modify-write the port A shadow byte');
 });
 
-test('a non-pin verb on i8086 refuses the whole program by name', {timeout: 60000}, async () => {
+test('an unsupported hardware verb on i8086 refuses the whole program by name', {timeout: 60000}, async () => {
     const SB3 = (await sb3()).default;
     const c = new SB3();
     c.parse([
         'DEVICE i8086',
-        'PIN led = P1.0 OUTPUT',
+        'PIN pot = P1.3 ANALOG',
         'WHEN flag clicked:',
-        '  turn on led',
-        '  wait 1 seconds',
-        '  turn off led'
+        '  set level to (read pot)'
     ].join('\n'));
     const out = c.generateC();
     const C = typeof out === 'string' ? out : out.code;
     assert.match(C, /No C emitted for DEVICE I8086/,
-        'a program using a non-pin verb (wait) on i8086 must refuse, not emit 8051 code for it');
+        'a program using unsupported ADC on i8086 must refuse, not emit 8051 code for it');
+    assert.match(C, /This program also uses: adc/, 'the refusal should name ADC as the missing hardware verb');
     assert.match(C, /PIN I\/O only/i, 'the refusal should say the i8086 back end is pin-only for now');
 });
