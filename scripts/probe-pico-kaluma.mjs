@@ -173,13 +173,27 @@ async function main () {
         const got2 = /1\+1\s+2\b/.test(r1);
         console.log(`--eval: 1+1     -> ${got2 ? 'REPL answered 2 (live integer JS works)' : `unexpected: ${r1.slice(0, 40)}`}`);
         // The SAME REPL, a FLOAT expression: it answers 0, not 3.5, because the
-        // RP2040 ROM soft-float table ('SF') this clean-room bootrom does not
-        // provide came back null. This is the N5-1 root cause, visible without
+        // RP2040 ROM soft-float table ('SF') this clean-room bootrom did not
+        // provide came back null WHEN THIS WAS WRITTEN; bw-board 8f46f2c has
+        // since added a 21-entry table, so that is history, not a live claim. This is the N5-1 root cause, visible without
         // the disassembler — and the reason pinMode (which converts its numeric
         // arg through that broken soft-float) hangs. See docs/PICO-KALUMA-BOOT.md §2.
+        // REPORT WHAT WAS OBSERVED, NOT A CAUSE. This line used to print
+        // "ROM soft-float is broken (null SF table)" whenever the answer was 0
+        // -- a FIXED STRING, not a detection. It never read the table. When
+        // bw-board 8f46f2c added a real 21-entry SF table the message went on
+        // naming a null one, so the probe confidently reported a cause that had
+        // stopped being true, at the moment someone was investigating that very
+        // table.
+        //
+        // And it argued AGAINST the evidence: every SF entry at 2e7143a is a
+        // stub returning NaN unconditionally, so a table that was REACHED could
+        // not answer 0. The zero is evidence the table is not reached at all --
+        // which the old message talked over. An instrument that volunteers a
+        // diagnosis is one that can be wrong about it.
         const rf = clean(await evalLine(m, '2.5+1.0'));
         const zero = /2\.5\+1\.0\s+0\b/.test(rf);
-        console.log(`--eval: 2.5+1.0 -> ${zero ? 'REPL answered 0, not 3.5 — ROM soft-float is broken (null SF table)' : rf.slice(0, 40)}`);
+        console.log(`--eval: 2.5+1.0 -> ${zero ? 'REPL answered 0, not 3.5 (float arithmetic is wrong; this probe does not say why)' : rf.slice(0, 40)}`);
     }
 
     if (args.blink) {
