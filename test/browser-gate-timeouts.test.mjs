@@ -27,6 +27,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
 import {parseJobs, isBrowserStep} from '../scripts/lib/workflow-gates.mjs';
+import {CAP, FLOOR} from '../scripts/gen-gate-budgets.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const yml = readFileSync(process.env.BW_BUILD_YML || path.join(ROOT, '.github/workflows/build.yml'), 'utf8');
@@ -39,8 +40,12 @@ const ceilingFor = text => {
     const holders = [...parseJobs(text).values()].filter(j => j.steps.some(s => isBrowserStep(s.name)));
     return {holders: holders.map(j => j.id), timeout: holders.length === 1 ? holders[0].timeout : null};
 };
-const MAX_STEP_BUDGET = 8;
-const MIN_STEP_BUDGET = 3;
+// The bounds are the generator's own cap and floor (plan T12): stated once in
+// scripts/gen-gate-budgets.mjs, read here, and asserted against the readings
+// file by test/browser-gate-budgets.test.mjs — so the cap rule cannot be two
+// numbers that drift apart in silence.
+const MAX_STEP_BUDGET = CAP;
+const MIN_STEP_BUDGET = FLOOR;
 
 test('the parse found the browser steps it is about to reason over', () => {
     const steps = browserSteps(yml);
@@ -61,7 +66,7 @@ test('budgets are bounded: no single hang reaches the job ceiling, and none is t
     const steps = browserSteps(yml).filter(s => s.timeout !== null);
     const over = steps.filter(s => s.timeout > MAX_STEP_BUDGET).map(s => `${s.name} (${s.timeout})`);
     const under = steps.filter(s => s.timeout < MIN_STEP_BUDGET).map(s => `${s.name} (${s.timeout})`);
-    assert.deepEqual(over, [], `budget above ${MAX_STEP_BUDGET} min — the measured maximum of any gate is under 3 min; a bigger budget is a hang waiting to become a cancelled run`);
+    assert.deepEqual(over, [], `budget above ${MAX_STEP_BUDGET} min — the generator's cap (scripts/gen-gate-budgets.mjs); a bigger budget is a hang waiting to become a cancelled run, and a gate that derives above the cap is written as the cap and called CAPPED`);
     assert.deepEqual(under, [], `budget under ${MIN_STEP_BUDGET} min — a loaded runner makes a healthy gate flaky at that size`);
     const {timeout} = ceilingFor(yml);
     assert.ok(MAX_STEP_BUDGET < timeout - 10, `a step budget of ${MAX_STEP_BUDGET} leaves no room under the ${timeout}-minute ceiling of the job holding the gates`);

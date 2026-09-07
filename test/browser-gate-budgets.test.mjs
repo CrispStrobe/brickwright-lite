@@ -61,6 +61,13 @@ test('every gate\'s timeout-minutes is its derivation, and the comment beside it
     }
 });
 
+test('mutation: a readings file built under a different cap or floor is red naming the number', () => {
+    for (const [k, v] of [['cap', CAP + 1], ['floor', FLOOR - 1], ['factor', FACTOR + 1], ['minReadings', MIN_READINGS + 1]]) {
+        const other = {...readings, [k]: v};
+        assert.throws(() => assert.deepEqual({factor: other.factor, floor: other.floor, cap: other.cap, minReadings: other.minReadings}, {factor: FACTOR, floor: FLOOR, cap: CAP, minReadings: MIN_READINGS}), new RegExp(`${k}: ${v}`), `${k} moved in the readings file alone must be red naming ${k}`);
+    }
+});
+
 test('the derivation (mutation): factor, floor, cap, provisional, over-cap', () => {
     const entry = (n, secs) => ({readings: Array.from({length: n}, (_, i) => ({run: 1, seconds: secs(i)})), max: {seconds: 99, run: 7, sha: 'abc'}});
     const rs = n => entry(n, i => 10 + i);
