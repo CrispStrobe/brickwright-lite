@@ -404,7 +404,7 @@ the int-16 model**: no gallery program stores a literal past 16 bits. The worker
 were over a property-based corpus and stand as the reach as the choke lifts.
 
 **N2c. Literal `wait` on the single-script 8086 C route. CANDIDATE 2026-09-07** (bwcx; upstream
-replacement `42f5d92`, exact-head CI `34101801113`). Measurement corrected both premises in the old task.
+promoted through `2a0280e`, exact-head CI `34111516415`). Measurement corrected both premises in the old task.
 Single-script ASM does **not** use the PIT: `pseudocode-8086.js` emits `INT 15h/AH=86h` with `CX:DX`
 microseconds, and the DOS bench advances exact machine time without spending one instruction per elapsed
 cycle. The bench PIT is unwired from an IRQ and is fed at the 5 MHz CPU rate, so treating it as the PC's
@@ -421,9 +421,15 @@ audit. Multi-script timing remains refused through the existing `now` choke and 
 The exact 280-program pass now finds **44 emit (up from 5, +39)**, 73 retain another verb choke, 31 are HOST C,
 131 are retarget-refused, and one computed wait reaches this new named refusal; 120 programs contain a literal
 wait and two contain a computed one. Thus the old “104 need only delay” shorthand was false: 104 choke reasons
-mentioned delay, but many of those programs also require another unimplemented verb. Hosted acceptance compiles
-all 44, and the C-vs-ASM differential compares the added 50 ms in emulated cycles (not PIT ticks); removing the
-DOS interrupt or helper is mutation-proven red.
+mentioned delay, but many of those programs also require another unimplemented verb. The first hosted Node 22
+consumer run compiled **42 of 44** and named the two failures: `11-toggle-button` and `26-debounce`. Both had
+become reachable only because `wait` no longer choked them, exposing the old i8086 toggle fallback's deliberate
+non-lvalue token (`BW_I8255:led1`). The bounded upstream repair XORs the mapped 8255 shadow and writes it through
+`bw_outb`; exact C covers ports A/B/C, four non-i8086 byte goldens prevent cross-family drift, removing the branch
+leaks the invalid token again, and upstream exact-head CI is green. The Lite consumer now compares complete
+C-vs-ASM 8255 state after one and two active-low toggles. Final acceptance still requires the unchanged corpus gate to
+emit **and compile all 44** on hosted Node 22. Separately, the wait differential compares the added 50 ms in
+emulated cycles (not PIT ticks); removing the DOS interrupt or helper is mutation-proven red.
 
 **N3. MicroPython on the Pico, in the simulator.** **MEASURED 2026-09-05, premise inverted**
 (delegate, verified independently by lego-ac): MicroPython v1.22.2 **boots to a working REPL**

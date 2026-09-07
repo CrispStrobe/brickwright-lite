@@ -109,6 +109,40 @@ test('C and ASM leave identical 8255 state for the same i8086 pins', {timeout: 1
     assert.equal(c.c.value & 0x20, 0x20, 'P3.5 (port C bit 5) should be HIGH');
 });
 
+test('one and two active-low toggles leave the same persistent 8255 latch on C and ASM routes',
+    {timeout: 120000}, async () => {
+        const oneSource = [
+            'DEVICE i8086',
+            'PIN led = P1.0 OUTPUT ACTIVE LOW',
+            'WHEN flag clicked:',
+            '  toggle led'
+        ].join('\n');
+        const twoSource = `${oneSource}\n  toggle led`;
+
+        // Compile serially: SmallerC's cached WASM factories are stateful, just
+        // as they are in the browser. Execution can then run independently.
+        const one = await bothRoutes(oneSource);
+        const two = await bothRoutes(twoSource);
+        assert.match(one.cSource, /bw_port_a \^= 0x1u; bw_outb\(0x60u, bw_port_a\);/,
+            'the C route did not lower toggle through its persistent 8255 shadow');
+
+        const [oneAsm, oneC, twoAsm, twoC] = await Promise.all([
+            ppiAfter(one.asmBuilt.bytes, one.asmBuilt.format, one.asmBuilt.chips),
+            ppiAfter(one.cBuilt.bytes, one.cBuilt.format, one.cBuilt.chips),
+            ppiAfter(two.asmBuilt.bytes, two.asmBuilt.format, two.asmBuilt.chips),
+            ppiAfter(two.cBuilt.bytes, two.cBuilt.format, two.cBuilt.chips)
+        ]);
+        assert.deepEqual(oneC, oneAsm, 'C and ASM disagree after one active-low toggle');
+        assert.deepEqual(twoC, twoAsm, 'C and ASM disagree after two active-low toggles');
+        // Programming the 8255 mode word clears its output latches. ACTIVE LOW
+        // changes the meaning of the level, not what XOR does to that physical
+        // latch: one toggle sets the bit and the second must clear it again.
+        assert.equal(oneC.a.value & 0x01, 0x01,
+            'one toggle from the reset-low 8255 latch should set the physical bit');
+        assert.equal(twoC.a.value & 0x01, 0x00,
+            'two toggles should clear the same persistent physical latch bit');
+    });
+
 test('an input pin makes both routes program the same 8255 direction', {timeout: 120000}, async () => {
     // P3.0 INPUT -> port C lower nibble input: control word 0x81, so port C dir
     // is not all-output. Both routes must agree on the direction byte too.
