@@ -431,6 +431,27 @@ C-vs-ASM 8255 state after one and two active-low toggles. Final acceptance still
 emit **and compile all 44** on hosted Node 22. Separately, the wait differential compares the added 50 ms in
 emulated cycles (not PIT ticks); removing the DOS interrupt or helper is mutation-proven red.
 
+**N2d. Narrow 8086 C text output. MEASURED 2026-09-07; production deliberately not started.** The
+deterministic parse/generate census (`scripts/measure-i8086-print-reach.mjs`) keeps source occurrence,
+parsed opcode, current emitted output and the hypothetical post-`print` terminal outcome separate. Across
+the exact 280-program gallery it finds **83 output operations in 41 programs**: 27 literal-text operations
+in 17 programs and 56 numeric/computed operations in 38 programs, with 14 programs in both groups. All are
+`print`; the corpus has zero `say` and zero `say for seconds`. Of the 41 programs, 15 are HOST C and 26 are
+currently refused by the i8086 `print` choke; none currently emits or merely comments device output.
+
+Removing only that choke would not make 26 programs work. Nineteen still have another named choke
+(ADC 19, `now` 3, tone 1, PWM 1), leaving **seven prospective emitters**: one literal-only program and six
+numeric/computed programs. One of those six, `arduino-08-string-addition`, supplies `operator_join`; current
+device-C reporter lowering would turn that string expression into `0 /* ... */`, so admitting it as numeric
+would be a false success. The bounded implementation recommendation is therefore literal text plus genuinely
+numeric signed-16 output, with string-valued reporters refused by name. That buys **six honest candidates**
+(one literal, five numeric) rather than one for a literal-only implementation, while conditional helper
+injection keeps the numeric converter out of programs that do not call it. Keep `say for seconds` refused:
+it has no corpus evidence and couples output with scheduler semantics. Later acceptance must preserve DOS
+terminal behavior (character output so `$` is ordinary data, then CRLF), compare C with ASM over their shared
+signed-16 range, keep the known C-16/ASM-32 width disagreement explicit, prove text and numeric helpers absent
+when unused, and require all six newly reached programs to compile on hosted Node 22.
+
 **N3. MicroPython on the Pico, in the simulator.** **MEASURED 2026-09-05, premise inverted**
 (delegate, verified independently by lego-ac): MicroPython v1.22.2 **boots to a working REPL**
 in rp2040js with the clean-room bootrom — `print(1+1)` answers `2` over the raw-REPL protocol
