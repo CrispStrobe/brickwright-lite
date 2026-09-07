@@ -1021,12 +1021,31 @@ repository is BSD-3-Clause (see LICENSE at the repo root).
 
 ## SDCC (Small Device C Compiler) — GPL-2-or-later
 
-**Location in this repo:** `overlay/scratch-gui/src/lib/sdcc-wasm/dist/`
+**NOT BUNDLED. Fetched on request from its own GPL origin:**
+https://github.com/CrispStrobe/sdcc-wasm — served at
+https://crispstrobe.github.io/sdcc-wasm/ , where the COPYING text, the written
+offer of corresponding source, the build provenance and the SHA-256 of each
+binary live with the binaries they describe.
 
-This directory contains SDCC 4.5.0 compiled to WebAssembly (Emscripten),
-distributed under **GPL-2.0-or-later**. It is a separate program invoked
-at the user's request to compile C source to Intel HEX for the 8051/mcs51
-target — it is NOT linked into the BSD-3 editor code.
+**What changed, and why (2026-09-07).** Until now these binaries were tracked in
+this repository and `webpack.config.js` copied them into `static/sdcc-wasm/` in
+the build output. `apps/tauri/src-tauri/tauri.conf.json` bundles that build
+directory wholesale, so the shipping Mac build carried **101 GPL files, 8.7 MB**,
+inside a BSD-3-Clause application — measured in CI's own build artifact on
+2026-09-07, four weeks after they were added in `305893119`. The copy rule is
+gone, `scripts/verify-no-gpl-in-build.mjs` fails the build if any GPL payload
+reappears in the output, and a CI step runs it against the real build.
+
+SDCC 4.5.0, compiled to WebAssembly (Emscripten), is distributed under
+**GPL-2.0-or-later**. It is a separate program invoked at the user's request to
+compile C source to Intel HEX for the 8051/mcs51 target — it is NOT linked into
+the BSD-3 editor code, and it is no longer distributed with it.
+
+**How it reaches a user.** The default is `online`: nothing is downloaded and
+the hosted compiler serves the request, as it already does for every target this
+bundle cannot link. A user who wants offline compiling opts in, and the
+toolchain is then fetched from the GPL origin above and kept in Cache Storage on
+their own device. See `overlay/scratch-gui/src/lib/sdcc-wasm/toolchain-source.js`.
 
 - **Version:** 4.5.0 (mcs51 port only)
 - **Licence:** GPL-2.0-or-later
@@ -1047,8 +1066,13 @@ in `stc12.h` lines 22-27, `8051.h` and others):
 > Public License. This exception does not however invalidate any other reasons
 > why the executable file might be covered by the GNU General Public License."
 
-**Source citation:** `include/mcs51/stc12.h` lines 22-27 in the bundled copy
-(`overlay/scratch-gui/src/lib/sdcc-wasm/dist/include/mcs51/stc12.h`).
+**Source citation:** `include/mcs51/stc12.h` lines 22-27, in the GPL
+distribution at https://crispstrobe.github.io/sdcc-wasm/static/sdcc-wasm/include/mcs51/stc12.h
+
+Note what this exception does and does not do: it covers the OUTPUT a user
+compiles, not redistribution of the compiler. It was never a licence to ship
+these binaries inside a BSD-3 app, and it is not the reason the arrangement
+above is correct — separation is.
 
 This means a user's compiled `.hex` output does NOT carry GPL obligations.
 The compiler itself (sdcc, sdas8051, sdld) is GPL-2+, but the exception
@@ -1056,11 +1080,15 @@ covers the headers and runtime libraries that user code links against.
 
 ### Licence boundary
 
-Everything under `overlay/scratch-gui/src/lib/sdcc-wasm/dist/` is GPL-2+
-upstream material (SDCC). Everything else in this repository is BSD-3-Clause
-(see LICENSE at the repo root). The SDCC binaries are a separate, independently
-invokable program distributed alongside the BSD-3 editor; their presence does
-not change the licence of the editor code.
+SDCC is GPL-2+ upstream material and now lives in a GPL-2.0-or-later
+repository of its own. Everything in THIS repository is BSD-3-Clause (see
+LICENSE at the repo root), and no GPL byte is copied into the build output or
+into the packaged application. The compiler is a separate, independently
+invokable program that a user may choose to download; it is not distributed
+with the editor.
+
+SDCC is the only GPL component. Every other third party named in this file is
+permissive or public domain — checked heading by heading on 2026-09-07.
 
 ## CodeMirror 6 — MIT
 

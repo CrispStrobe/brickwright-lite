@@ -4,9 +4,15 @@
  *
  * A supported request never silently falls back after a local failure: that
  * would turn offline/debug failures into surprising network traffic.
+ *
+ * Since 2026-09-07 the local path is OPT-IN. SDCC is GPL-2+ and no longer ships
+ * inside this BSD-3 app, so unless the user has asked for the local toolchain
+ * this never claims the request and the hosted compiler — which every other
+ * target already uses — serves it.
  */
 
 import {compile, localTargetSupported} from './compiler.js';
+import {localToolchainEnabled} from './toolchain-source.js';
 
 let installed = false;
 
@@ -18,7 +24,16 @@ export function createCompilerFetch (originalFetch, compileLocal = compile) {
         if (url && url.includes('/compile') && init?.method === 'POST') {
             try {
                 const body = JSON.parse(init.body);
-                if (body.language === 'c' && body.code && localTargetSupported(body.target)) {
+                // TWO DIFFERENT FACTS, deliberately not merged.
+                // `localTargetSupported` is a CAPABILITY — this bundle knows how
+                // to link that part — and stays true whatever the user chose.
+                // `localToolchainEnabled` is the user's SETTING, false by
+                // default because the toolchain is GPL and no longer ships in
+                // this app. Folding the setting into the capability would make a
+                // five-target allowlist lie about what it can do, and would
+                // redden the pipeline test that asserts exactly that.
+                if (body.language === 'c' && body.code &&
+                    localToolchainEnabled() && localTargetSupported(body.target)) {
                     console.log('[sdcc-wasm] compiling supported 8051 target locally');
                     return compileLocal(body.code, {
                         target: body.target,

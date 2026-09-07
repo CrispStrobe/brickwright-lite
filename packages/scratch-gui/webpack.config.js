@@ -127,13 +127,16 @@ const baseConfig = new ScratchWebpackConfigBuilder(
                 from: 'src/lib/emu8051/emu8051.wasm',
                 to: 'static/emu8051.wasm'
             },
-            {
-                // SDCC 4.5.0 as WASM — lazy-loaded on the first supported
-                // 8051 compile. Other processor families stay hosted.
-                from: 'src/lib/sdcc-wasm/dist',
-                to: 'static/sdcc-wasm',
-                noErrorOnMissing: true
-            },
+            // SDCC IS NOT COPIED HERE, AND MUST NOT BE.
+            // It is GPL-2.0-or-later; this app is BSD-3-Clause, and
+            // tauri.conf.json bundles this build directory wholesale, so a copy
+            // rule here put 8.7 MB of GPL binaries inside the shipping .app
+            // (measured 2026-09-07 in CI's own github-pages artifact: 101 files
+            // under static/sdcc-wasm). The toolchain now lives in its own GPL
+            // repository and is fetched only when a user opts in:
+            //   https://github.com/CrispStrobe/sdcc-wasm
+            // `scripts/verify-no-gpl-in-build.mjs` fails the build if it ever
+            // comes back. See src/lib/sdcc-wasm/toolchain-source.js.
             {
                 // SmallerC as WASM — C to 16-bit NASM for the 8086, offline.
                 // Only smlrc and smlrpp are here; headers.js is imported

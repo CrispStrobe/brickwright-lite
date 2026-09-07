@@ -629,6 +629,16 @@ jobs:
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build
 
+      # LICENCE COMPLIANCE, and the gate that did not exist on 2026-08-10.
+      # SDCC is GPL-2.0-or-later; this app is BSD-3-Clause, and tauri.conf.json
+      # bundles packages/scratch-gui/build wholesale, so a webpack copy rule put
+      # 101 GPL files (8.7 MB) inside the shipping Mac build for four weeks with
+      # nothing looking. Like the lazy-loading guard below this asks about a REAL
+      # build, so it cannot be a unit test: `npm test` runs before the build.
+      - name: Guard — no GPL payload reaches the build output
+        if: ${{ !cancelled() && steps.build_editor.outcome == 'success' }}
+        run: node scripts/verify-no-gpl-in-build.mjs packages/scratch-gui/build
+
       # The heavy tier is 20 MB and MUST stay out of the first load. That is a
       # question about a real build, so it cannot be a unit test — `npm test`
       # above runs before the build and would skip on every CI run. Two

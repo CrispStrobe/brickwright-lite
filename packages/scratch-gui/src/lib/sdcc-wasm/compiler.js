@@ -1,6 +1,20 @@
 /** SDCC 4.5.0 mcs51 toolchain in four single-threaded WASM stages. */
 import {addCLineRecords, buildSymbolTable} from './symtab.js';
 
+import {GPL_TOOLCHAIN_ORIGIN, getToolchainMode, cachedResolver} from './toolchain-source.js';
+
+/**
+ * Where to load the toolchain from.
+ *
+ * `dev` keeps the old in-build path for a web build that still copies the
+ * files. Every other mode reads the GPL origin, because these binaries are not
+ * in this app any more — see toolchain-source.js for why.
+ */
+async function toolchainSource () {
+    if (getToolchainMode() === 'dev') return [document.baseURI, null];
+    return [GPL_TOOLCHAIN_ORIGIN, await cachedResolver(GPL_TOOLCHAIN_ORIGIN)];
+}
+
 const LOCAL_TARGETS = Object.freeze({
     stc12c5a60s2: {iram: 0x100, xram: 0x400, code: 0xf000},
     stc12c5a16s2: {iram: 0x100, xram: 0x400, code: 0x4000},
@@ -54,10 +68,14 @@ async function importGlue (url) {
     return module.exports;
 }
 
-async function loadToolchain (base) {
+async function loadToolchain (base, resolveOverride = null) {
     if (loaded) return loaded;
     loaded = (async () => {
-        const resolve = name => new URL(`static/sdcc-wasm/${name}`, base).href;
+        // The resolver may hand back blob: URLs from Cache Storage, which is the
+        // only way the glue survives offline — `import()` does not consult the
+        // cache, so a patched fetch would cache the .wasm and still reach for
+        // the network for the .js.
+        const resolve = resolveOverride || (name => new URL(`static/sdcc-wasm/${name}`, base).href);
         const [cc1, sdcc, sdas, sdld, response] = await Promise.all([
             importGlue(resolve('cc1.js')),
             importGlue(resolve('sdcc.js')),
@@ -292,7 +310,7 @@ export async function compileWithToolchain (code, {target = 'stc12c5a60s2', symb
 
 export async function compile (code, options = {}) {
     try {
-        const toolchain = await loadToolchain(document.baseURI);
+        const toolchain = await loadToolchain(...(await toolchainSource()));
         return await compileWithToolchain(code, options, toolchain);
     } catch (e) {
         return {success: false, error: `local WASM compilation failed: ${e.message}`};
