@@ -86,11 +86,11 @@ programs are refused as foreign. The refusal reasons below say which.
 | fixtures | construct kept as a placeholder |
 | --- | --- |
 | 142 | dropped expression statement |
-| 57 | no pins found |
+| 56 | no pins found |
 | 29 | no dialect form for "…" |
 | 22 | unstructured "…" |
 | 13 | dropped call in expression |
-| 11 | no pseudocode for the call "…" |
+| 12 | no pseudocode for the call "…" |
 | 6 | top-level declaration dropped (no block equivalent): struct __bw_bits2 |
 | 5 | devices_lcdclear: no equivalent on this board; the block was not translated |
 | 5 | devices_lcdprint: no equivalent on this board; the block was not translated |
@@ -101,7 +101,6 @@ programs are refused as foreign. The refusal reasons below say which.
 | 3 | devices_setservo: no equivalent on this board; the block was not translated |
 | 3 | Port 1 has 7 output pins |
 | 3 | top-level declaration dropped (no block equivalent): typedef void ( * bw_vec_t ) ( void … |
-| 3 | no clock #define found |
 | 2 | 8 output pins × 20 mA = up to 160 mA at maximum pin ratings (actual current depends on ser |
 | 2 | 7 output pins × 20 mA = up to 140 mA at maximum pin ratings (actual current depends on ser |
 | 2 | Port 2 has 8 output pins |
@@ -111,6 +110,7 @@ programs are refused as foreign. The refusal reasons below say which.
 | 2 | procedure call with arguments not lifted yet: "…" |
 | 2 | stc12_seg_shownum: no equivalent on this board; the block was not translated |
 | 2 | top-level declaration dropped (no block equivalent): static int _servo_angle [ 2 ] |
+| 2 | no clock #define found |
 | 1 | stc12_setpart: no equivalent on this board; the block was not translated |
 | 1 | Port 1 has 8 output pins |
 | 1 | Port 0 has 7 output pins |
@@ -137,8 +137,6 @@ programs are refused as foreign. The refusal reasons below say which.
 | 1 | devices_setpixel: no equivalent on this board; the block was not translated |
 | 1 | devices_setneopixel: no equivalent on this board; the block was not translated |
 | 1 | devices_showdigit: no equivalent on this board; the block was not translated |
-| 1 | no register header found |
-| 1 | no main() and no @bw script markers |
 | 1 | spikeprime_motorStart: no equivalent on this board; the block was not translated |
 | 1 | spikeprime_motorStop: no equivalent on this board; the block was not translated |
 | 1 | spikeprime_displayText: no equivalent on this board; the block was not translated |
@@ -427,7 +425,7 @@ fixture appears here so its verdict is traceable to the program that caused it.
 | round-trip | javascript | 8051 | disp-sevenseg | degraded | dropped expression statement |
 | round-trip | c | 8051 | disp-sevenseg | degraded | 7 output pins × 20 mA = up to 140 mA at maximum pin ratings (actual current depends on ser; Port 1 has 7 output pins |
 | round-trip | micropython | 8051 | disp-sevenseg | degraded | devices_showdigit: no equivalent on this board; the block was not translated; no pins found |
-| round-trip | c | i8086 | i8086-blink | degraded | no register header found; no clock #define found; no pins found; no main() and no @bw script markers |
+| round-trip | c | i8086 | i8086-blink | degraded | no pseudocode for the call "…" |
 | round-trip | micropython | microbit | mb01-display | degraded | no pins found |
 | round-trip | python | microbit | mb02-sensors | degraded | dropped call in expression |
 | round-trip | micropython | microbit | mb02-sensors | degraded | no pins found |
