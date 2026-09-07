@@ -459,24 +459,29 @@ currently refused by the i8086 `print` choke; none currently emits or merely com
 
 Removing only that choke would not make 26 programs work. Nineteen still have another named choke
 (ADC 19, `now` 3, tone 1, PWM 1), leaving **seven syntactic candidates**: one literal-only program and six
-numeric/computed programs. Two of those six are false successes. `arduino-08-string-addition` supplies
+numeric/computed programs. Three of the seven syntactic candidates are false successes. `arduino-08-string-addition` supplies
 `operator_join`, which device C would lower to `0 /* ... */`. `arduino-03-smoothing` prints a scalar whose
 provenance crosses numeric list reads and writes; device C emits its delete/add/replace operations as comments
-and its item reads as `0 /* item ... */`. A candidate admitted through a lowering that warns is a false success
-wearing the count's clothes. The bounded implementation is therefore literal text plus genuinely numeric
-signed-16 output with complete transitive lowering, while string and numeric-list dependencies refuse by name.
-That buys **five honest candidates** (one literal, four numeric), taking reach from 44 to 49, while conditional helper
-injection keeps the numeric converter out of programs that do not call it. Keep `say for seconds` refused:
+and its item reads as `0 /* item ... */`. The only literal candidate, `arduino-sk-p11-crystal-ball`, selects each
+printed branch through `pick random`, which device C warns and lowers to zero. A candidate admitted through a
+lowering that warns is a false success wearing the count's clothes. The bounded implementation is therefore
+genuinely numeric signed-16 output only, while literal text, string, numeric-list and random/control-flow
+dependencies refuse by name. That buys **four honest numeric candidates**, taking reach from 44 to 48. Keep `say for seconds` refused:
 it has no corpus evidence and couples output with scheduler semantics. Later acceptance must preserve DOS
-terminal behavior (character output so `$` is ordinary data, then CRLF), compare C with ASM over their shared
-signed-16 range, keep the known C-16/ASM-32 width disagreement explicit, prove text and numeric helpers absent
-when unused, and require all five newly reached programs to compile on hosted Node 22.
+terminal behavior (signed decimal followed by CRLF), compare C with ASM over their shared signed-16 range,
+keep the known C-16/ASM-32 width disagreement explicit, prove the numeric helper absent when unused, and require
+all four newly reached programs to compile on hosted Node 22.
 
 **N2e. Bounded numeric lists on the 8086 C route. UNCLAIMED.** `arduino-03-smoothing` is the first measured
 candidate. This is not a print-helper patch: it needs prefix-safe per-list declarations and storage, a proved
 capacity/memory ceiling, numeric initial/write provenance, delete/add/replace/item semantics with Scratch's
 one-based bounds, SmallerC compilation, `.COM` size/stack evidence, live C-vs-ASM behavior, and unchanged
 other-family goldens. No silent saturation, dropped write, or commented-zero read may count as support.
+
+**N2f. Random-dependent literal output on the 8086 C route. UNCLAIMED.** Literal DOS output by itself has zero
+honest corpus reach: the crystal-ball candidate routes every print through control flow fed by unsupported
+`pick random`. A future lane must define bounded random semantics and prove its branch/output differential before
+adding the text helper; warned zero is not a random implementation.
 
 **N3. MicroPython on the Pico, in the simulator.** **MEASURED 2026-09-05, premise inverted**
 (delegate, verified independently by lego-ac): MicroPython v1.22.2 **boots to a working REPL**

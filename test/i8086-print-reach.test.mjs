@@ -8,6 +8,10 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {promisify} from 'node:util';
 import {fileURLToPath} from 'node:url';
+import {
+    printDependsOnNumericList,
+    printDependsOnRandomControlFlow
+} from '../scripts/lib/i8086-print-reach.mjs';
 
 const execFileP = promisify(execFile);
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -26,7 +30,7 @@ test('the exact 280-program print census is disjoint, exhaustive and names the b
         assert.equal(relativeBytes, absoluteBytes,
             'equivalent corpus paths must produce byte-identical JSON');
         const report = JSON.parse(absoluteBytes);
-        assert.equal(report.schema, 'n2d-i8086-print-reach-v2');
+        assert.equal(report.schema, 'n2d-i8086-print-reach-v3');
         assert.equal(report.programs, 280);
         assert.deepEqual(report.source.operations, {say: 0, sayForSecs: 0, print: 83, total: 83});
         assert.deepEqual(report.source.values, {literalText: 27, numericLiteral: 0, computed: 56});
@@ -80,26 +84,40 @@ test('the exact 280-program print census is disjoint, exhaustive and names the b
         assert.deepEqual(report.postChokeCandidates.numericListDependency,
             ['arduino-03-smoothing'],
             'a list-dependent scalar must not wear an emitted candidate count');
+        assert.deepEqual(report.postChokeCandidates.randomControlFlowDependency,
+            ['arduino-sk-p11-crystal-ball'],
+            'unsupported random control flow must not make literal output look reachable');
+        assert.deepEqual(report.postChokeCandidates.incompleteLowering,
+            ['arduino-03-smoothing', 'arduino-08-string-addition', 'arduino-sk-p11-crystal-ball']);
         const smoothingEvidence = report.numericListDependencyEvidence['arduino-03-smoothing'];
-        assert.equal(smoothingEvidence.length, 3);
-        for (const fragment of ['add 0 to readings',
+        assert.equal(smoothingEvidence.length, 4);
+        for (const fragment of ['delete all of readings', 'add 0 to readings',
             'item (readIndex + 1) of readings', 'replace item (readIndex + 1) of readings']) {
             assert.ok(smoothingEvidence.some(row => row.includes(fragment)),
                 `smoothing evidence does not name ${fragment}`);
         }
+        assert.deepEqual(report.incompleteLoweringEvidence['arduino-03-smoothing'], smoothingEvidence);
+        assert.ok(report.incompleteLoweringEvidence['arduino-sk-p11-crystal-ball']
+            .some(row => row.includes('pick random 1 to 8')));
+        assert.equal(Object.keys(report.printChokeEvidence).length, 7);
+        assert.equal(Object.values(report.printChokeEvidence).every(rows => rows.length === 1), true,
+            'each syntactic candidate must retain exactly the expected removed-print-choke warning');
         assert.deepEqual(report.boundedRecommendation, {
-            literalText: ['arduino-sk-p11-crystal-ball'],
             numericSigned16: [
                 'arduino-01-digital-read-serial',
                 'arduino-02-digital-input-pullup',
                 'arduino-02-state-change',
                 'arduino-06-ping'
             ],
+            refuseLiteralText: ['arduino-sk-p11-crystal-ball'],
             refuseStringComputed: ['arduino-08-string-addition'],
-            refuseNumericListDependency: ['arduino-03-smoothing']
+            refuseNumericListDependency: ['arduino-03-smoothing'],
+            refuseRandomControlFlowDependency: ['arduino-sk-p11-crystal-ball']
         });
-        assert.deepEqual(report.emitterWarnings, [],
-            'a newly reachable output warning must not be credited as an emitter candidate');
+        assert.equal(report.emitterWarnings.length, 8);
+        assert.equal(report.emitterWarnings.every(row =>
+            /^(?:arduino-03-smoothing|arduino-08-string-addition|arduino-sk-p11-crystal-ball): /.test(row)), true,
+        'only incomplete prospective programs contribute lowering-warning evidence');
         assert.equal(report.terminal.retargetRefused.every(row => row.includes(': ')), true,
             'retarget failures must retain their named reason');
         assert.equal(report.terminal.remainingChoke.every(row => row.includes(': ')), true,
@@ -130,4 +148,60 @@ test('a parsed say is reported as comment-only, never mistaken for emitted devic
     } finally {
         await rm(temp, {recursive: true, force: true});
     }
+});
+
+const valueVariable = (name, id) => [3, [12, name, id]];
+const valueBlock = id => [3, id];
+const fieldVariable = (name, id) => [name, id];
+const projectWith = blocks => ({targets: [{blocks}]});
+
+test('numeric-list dependency follows direct and transitive print inputs but ignores non-feeding lists', () => {
+    const direct = projectWith({
+        print: {opcode: 'stc12_print', inputs: {VALUE: valueBlock('item')}},
+        item: {opcode: 'data_itemoflist', inputs: {INDEX: [1, [4, 1]]}}
+    });
+    assert.equal(printDependsOnNumericList(direct), true, 'direct list reporter was missed');
+
+    const transitive = projectWith({
+        print: {opcode: 'stc12_print', inputs: {VALUE: valueVariable('out', 'out-id')}},
+        setOut: {
+            opcode: 'data_setvariableto', fields: {VARIABLE: fieldVariable('out', 'out-id')},
+            inputs: {VALUE: valueVariable('middle', 'middle-id')}
+        },
+        setMiddle: {
+            opcode: 'data_setvariableto', fields: {VARIABLE: fieldVariable('middle', 'middle-id')},
+            inputs: {VALUE: valueBlock('item')}
+        },
+        item: {opcode: 'data_itemoflist', inputs: {INDEX: [1, [4, 1]]}}
+    });
+    assert.equal(printDependsOnNumericList(transitive), true, 'transitive scalar provenance was missed');
+
+    const nonFeeding = projectWith({
+        print: {opcode: 'stc12_print', inputs: {VALUE: valueVariable('out', 'out-id')}},
+        setOut: {
+            opcode: 'data_setvariableto', fields: {VARIABLE: fieldVariable('out', 'out-id')},
+            inputs: {VALUE: [1, [4, 7]]}
+        },
+        unrelated: {opcode: 'data_itemoflist', inputs: {INDEX: [1, [4, 1]]}}
+    });
+    assert.equal(printDependsOnNumericList(nonFeeding), false, 'an unrelated list poisoned print reach');
+});
+
+test('random control-flow dependency follows a printed branch through scalar provenance', () => {
+    const project = projectWith({
+        setRoll: {
+            opcode: 'data_setvariableto', fields: {VARIABLE: fieldVariable('roll', 'roll-id')},
+            inputs: {VALUE: valueBlock('random')}
+        },
+        random: {opcode: 'operator_random', inputs: {FROM: [1, [4, 1]], TO: [1, [4, 8]]}},
+        equals: {
+            opcode: 'operator_equals',
+            inputs: {OPERAND1: valueVariable('roll', 'roll-id'), OPERAND2: [1, [4, 1]]}
+        },
+        branch: {
+            opcode: 'control_if', inputs: {CONDITION: valueBlock('equals'), SUBSTACK: valueBlock('print')}
+        },
+        print: {opcode: 'stc12_print', parent: 'branch', inputs: {VALUE: [1, [10, 'yes']]}}
+    });
+    assert.equal(printDependsOnRandomControlFlow(project), true);
 });
