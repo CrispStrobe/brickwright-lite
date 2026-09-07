@@ -90,12 +90,12 @@ async function waitFor (read, accept, timeoutMs = 60000, stepMs = 250) {
 async function typeProgram (text) {
     const cm = page.locator('.cm-content').first();
     const editorWait = shareOfBudget(1 / 3, 60_000);
-    try {
-        await cm.waitFor({state: 'visible', timeout: editorWait});
-    } catch {
+    // synchronisation before the click on the next line, not an appearance assertion (the
+    // typed text is asserted IN the editor below); a miss is renamed to the finding it is
+    await cm.waitFor({state: 'visible', timeout: editorWait}).catch(() => { // gate-shapes-allow: synchronization before the click and the typed-text check below; the miss is renamed, not swallowed
         throw new Error(`the Code editor (.cm-content) did not mount within ${editorWait} ms — `
             + `the lazy CodeMirror chunk never arrived, or the selector moved; nothing was typed`);
-    }
+    });
     await cm.click();
     await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a');
     await page.keyboard.press('Delete');
