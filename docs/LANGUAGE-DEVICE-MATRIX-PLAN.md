@@ -560,14 +560,28 @@ proof.
 
 ### Lane P — peripherals (part profiles), summarised; full detail in its own plan
 
-**Measured 2026-09-06 (P1):** of **147** rendered verb × family cells, **55** are implemented and **92** are
-gaps, **21** of them the whole i8086 column (the C emitter has no i8086 branch at all); the emitter stores
+**Measured 2026-09-06 (P1), 2026-09-07 (P1a):** of **147** rendered verb × family cells, **56** are implemented and **91** are
+gaps, **20** of them the i8086 column (only `pin` has an i8086 branch; the emitter refuses the rest by name); the emitter stores
 FIVE families (`8051 avr arm 6502 z80`; rp2040 renders `≡ arm`, one branch) and a branch that warns or
 emits a "no <thing> on this machine" stub is a gap, not a cell (servo/motor/pwm/tone lose their 6502/z80
 columns to that rule). 253 part rows: 219 registered device models + 31 built-in kinds + 3 documented but
 never registered I2C sensors (ads1115, pcf8591, apds9960); about 20 are programmable from the Code tab, the
 rest carry a category reason (passive, instrument, host, dip-surface, analog-only, mechanical, logic,
 bus-peripheral — the last is the next lane). `docs/generated/PART-PROFILES.md`.
+
+**P1a. `pin` on i8086 — the first cell of the 8086 column. DONE 2026-09-07** (delegate `8086 coverage
+testing materials`, audited by lego-ac). generateC gains `this._core === 'i8086'` branches for cSetPin /
+cPinRead through the 8255 on the DOS bench (A/B/C at 60h–62h, control 63h, control word 80h | direction
+bits, one shadow byte per port, read-modify-write then OUT — the exact discipline of `pseudocode-8086.js`),
+and a post-emission choke point refuses every OTHER verb on i8086 by name, so the gap map stays honest:
+**56 of 147**, 20 gaps in the i8086 column. Pure C cannot reach an I/O-mapped port (SmallerC has no inline
+asm), so `compileC8086` injects `bw_outb(port, value)` / `bw_inb(port)` — declared in the C tab's note and
+N2's edge list with their cdecl contract — ONLY when the body references them (a reference without the
+injection fails at assembly by name). Differential test: the C route and the ASM lowering of the same
+pseudocode run on the bench and agree on every 8255 latch value AND direction. The emitter branches were
+first written into lite's vendored `sb3-creator.js`, then moved to their home: sb3-creator `7952b3152`
+(with `i8086-cgen.test.mjs`); the same move for N3c's raw-REPL 64-byte chunking, `ea30b80c`; lite pinned
+there, both vendored files byte-identical to upstream, 0 lite-only lines.
 
 **P1. DONE 2026-09-06** (delegate `8086 coverage testing materials`, audited by lego-ac): `lib/bw-parts/profiles.js`
 (the table), `scripts/gen-part-profiles.mjs` (derives verb × family from the emitter's own `this._core`
