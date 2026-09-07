@@ -16,6 +16,10 @@
 //   --check      verify without writing.
 //   --ref <r>    a branch/tag/sha of CrispStrobe/emu8051-stc (default: the pinned commit).
 
+// WHAT THIS SHIPS, for THIRD-PARTY-NOTICES.md: test/notices-drift.test.mjs reads this
+// declaration (strict JSON) from every sync script that places an artifact under static/,
+// and fails by name when the notices do not carry the name, licence and holder.
+export const NOTICE = {"name":"emu8051","licence":"MIT","holder":"Jari Komppa"};
 import {readFile, writeFile, mkdir} from 'node:fs/promises';
 import {resolveRef, fetchRetry} from './lib-pin.mjs';
 import {createHash} from 'node:crypto';

@@ -49,6 +49,10 @@
 // trust: if no reachable commit reproduces the committed bytes, it refuses and
 // says so, because "we do not know where this came from" is a finding and not
 // a thing to paper over with a plausible sha.
+// WHAT THIS SHIPS, for THIRD-PARTY-NOTICES.md: test/notices-drift.test.mjs reads this
+// declaration (strict JSON) from every sync script that places an artifact under static/,
+// and fails by name when the notices do not carry the name, licence and holder.
+export const NOTICE = {"name":"bw-board ROMs","licence":"MIT","holder":"CrispStrobe"};
 import {readFileSync, writeFileSync, existsSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';

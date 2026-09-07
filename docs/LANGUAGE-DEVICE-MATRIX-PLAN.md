@@ -314,6 +314,18 @@ writes — every sync that records a pin pre-checks (derived, not listed: five s
 had typed), `recordPin` is the backstop, `vendor-forward` passes `--pin`, `--check` is unaffected. Gate:
 `test/pin-only-moves-with-flag.test.mjs`, with a live half against env-var checkouts in a throwaway worktree.
 
+**T10. THIRD-PARTY-NOTICES drift. BUILT 2026-09-07** (lego-b9; the owner-visible item from 2026-09-05,
+never measured until now). MEASURED on main 45fe94bb7 before the gate: the shipping set derived four ways
+(14 npm deps integrate.mjs adds beyond upstream scratch-gui@7a72429, 3 pinned vendored trees + 1 VENDORED
+file, 16 ROMs with their manifests, 3 .wasm toolchains + 6 static-placing syncs) against the notices: FIVE
+shipped third-party things unnamed — jszip (MIT or GPL-3.0, taken under MIT), skulpt (MIT), lit + @lit/react
+(BSD-3-Clause, Google), emu8051 (MIT, Jari Komppa), MicroPython for RP2040 (MIT, fetched into static/ at
+build time) — 0 wrong licence strings, 0 stale paths; own code unlisted (BIOS + demo ROMs from bw-board,
+flasher.js from stc-compiler, three older demo ROMs) now listed as own. Two questions to the owner, not
+gated: the SPDX Apache-2.0 tags on the owner's own virtual-hub files; the SIL-OFL faces from upstream's
+scratch-render-fonts. Gate: `scripts/lib/notices-census.mjs` + `test/notices-drift.test.mjs` derive the
+set (every static-placing sync now declares `export const NOTICE`), red by name, mutations per source.
+
 ### Lane N — native halves to add
 
 **N1. Z80 C via SDCC `-mz80`.** Repo: stc-compiler, then lite. **BUILT 2026-09-05** on stc-compiler branch `lane/z80-c-target` (`6e40fb6e`, delegate, audited by lego-ac: 21 new tests, 432 repo tests green, ten mutation proofs). The vendored SDCC 4.0.0 already had the z80 port; what was missing was `share/sdcc/lib/z80` (crt0 + z80.lib), now vendored from the same .deb the fetch script uses. Map: ROM $0000–$7FFF, RAM $8000–$FFFF from `examples/z80-pd-bench/EXPECTED.md`; `--code-loc 0x0200 --data-loc 0x8000`; stock crt0 (jp init at $0000, SP at $0000 so the first push lands at $FFFE). Also fixed: `stages.py` dropped every exported `GR` symbol (affects 8051 too). **Awaiting merge and deploy by the owner** — the hosted snapshot and the lite `compile: true` flip follow the deploy, not the branch. Lite half of the DoD (bench boot proof: `$0000 == 0xC3`, `latch1.Q0` toggles) is open.

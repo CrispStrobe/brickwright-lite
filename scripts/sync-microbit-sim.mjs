@@ -20,6 +20,10 @@
 //   --dir <path>   copy from a local build directory (default: overlay already has them)
 //   --check        verify the files exist without modifying (CI)
 
+// WHAT THIS SHIPS, for THIRD-PARTY-NOTICES.md: test/notices-drift.test.mjs reads this
+// declaration (strict JSON) from every sync script that places an artifact under static/,
+// and fails by name when the notices do not carry the name, licence and holder.
+export const NOTICE = {"name":"micropython-microbit-v2-simulator","licence":"MIT","holder":"Micro:bit Educational Foundation"};
 import {readFile, writeFile, mkdir, copyFile} from 'node:fs/promises';
 import {existsSync} from 'node:fs';
 import {createHash} from 'node:crypto';
