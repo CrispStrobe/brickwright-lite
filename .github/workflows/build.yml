@@ -99,11 +99,15 @@ permissions:
 # previous attempt took the live site down: CrispStrobe/bw-pages-concurrency-proof.
 # Baseline burst of 5 pushes -> 2 verdicts, 3 runs with zero jobs. Candidate
 # burst of 5 -> 5 build verdicts, 0 starved. See RESULTS.md there for run ids.
+# Concurrency. main: one group per COMMIT, never cancelled (the push side must be
+# keyed on github.sha — test/pages-deploy-ordering.test.mjs records the 62 zero-job
+# cancellations that keying on the ref cost). PRs collapse to the latest push. Any
+# OTHER ref (a lane branch, dispatched by hand): one group per BRANCH, cancelled by
+# the next dispatch — docs/CI-QUEUE-2026-09-07.md measured 16 branch runs
+# hand-cancelled a mean 1.7 min after supersession having burned 36 runner-minutes.
 concurrency:
-  group: pages-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || github.sha }}
-  # A newer commit makes an older PR build obsolete, so PRs still collapse to
-  # the latest push. Main gets one group per commit and is never cancelled.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.ref == 'refs/heads/main' && format('pages-{0}', github.sha) || (github.event.pull_request.number && format('pages-pr-{0}', github.event.pull_request.number) || format('branch-{0}', github.ref_name)) }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 jobs:
   build:
     runs-on: ubuntu-latest
