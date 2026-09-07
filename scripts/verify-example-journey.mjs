@@ -167,9 +167,17 @@ try {
     const device = page.getByTestId('bw-device-select');
     await device.waitFor({state: 'visible', timeout: 20000});
     const countItems = () => page.locator('[data-testid="bw-catalog-item"]').count();
+    // `bw-catalog-toggle` is the control's own id, not a label match. The first
+    // version of this gate used getByText(/Load example/i) — an INVENTED
+    // selector, which the brief warned against and which cost a CI run: it
+    // matched something that never became stable and spent 30 s retrying.
+    // It is also a TOGGLE, so clicking it blind closes a catalogue that is
+    // already open; this opens only when no item is showing.
     const openCatalog = async () => {
-        const btn = page.getByText(/Load example/i).first();
-        if (await btn.count()) await btn.click();
+        if (await page.locator('[data-testid="bw-catalog-item"]').count()) return;
+        await page.getByTestId('bw-catalog-toggle').click();
+        await page.locator('[data-testid="bw-catalog-item"]').first()
+            .waitFor({timeout: 30000});
     };
     await openCatalog();
     const before = await countItems();
