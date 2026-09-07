@@ -291,3 +291,86 @@ test('P3 mutation: a flipped output mask in the emitted C stops driving GP25 —
         assert.notEqual(broken.direction, 'output',
             `GP25 is still a driven output after the mask flip: ${JSON.stringify(broken)}`);
     });
+
+// ---- P3 part 2: the shiftOut (74HC595) differential --------------------------
+// A second part on the same harness. `set <part> to <byte>` bit-bangs a 74HC595
+// over data/clock/latch; both routes now drive those three pins (executed C via
+// shift_out, executed MicroPython via _shift_out rendered from the SAME protocol
+// — upstream sb3-creator a40a60d). The assertion is the PART's LATCHED BYTE, not
+// the pins alone: a 595 model reconstructs it from the pin edges, so a wrong bit
+// or a wrong clock/latch order shows up as a wrong byte.
+const SHIFTOUT_PROGRAM = [
+    'DEVICE PICO',
+    'PART sr = 74HC595 data GP2 clock GP3 latch GP4',
+    'WHEN flag clicked:',
+    '  set sr to 170',   // 0b10101010 — alternating bits, so MSB order matters
+].join('\n');
+
+// The 74HC595: sample DATA (GP2) on each CLOCK (GP3) rising edge, MSB-first; a
+// LATCH (GP4) rising edge copies the shift register to the output byte.
+function latchedByte (edges) {
+    let data = 0, pc = 0, pl = 0, sr = 0, latched = null;
+    for (const e of edges) {
+        const h = e.high ? 1 : 0;
+        if (e.name === 'GP2') data = h;
+        else if (e.name === 'GP3') { if (h === 1 && pc === 0) sr = ((sr << 1) | data) & 0xff; pc = h; }
+        else if (e.name === 'GP4') { if (h === 1 && pl === 0) latched = sr; pl = h; }
+    }
+    return latched;
+}
+
+async function runShiftOutC (cSource) {
+    const {uf2} = buildPicoCImage(cSource, {gcc: armGccPath()});
+    const {image} = parseUF2(uf2);
+    const m = await createPicoMachine(image, {entry: 'vector'});
+    const board = mockBoard();
+    m.adapter.attachBoard(board);
+    m.run(() => board.edges.some(e => e.name === 'GP4' && e.high), 4_000_000);
+    return board.edges;
+}
+
+async function runShiftOutMpy (py) {
+    const {image} = parseUF2(await ensureFirmware({offline: true, quiet: true}));
+    const m = await createPicoMachine(image, {entry: 'flash'});
+    const board = mockBoard();
+    m.adapter.attachBoard(board);
+    assert.equal(m.run(() => m.state.usbConnected, 3_000_000), 'done', 'USB never enumerated');
+    const {startProgramOnRepl} = await import(pathToFileURL(join(SOURCE, 'src/lib/pico-repl.js')).href);
+    await startProgramOnRepl(m.transport, py, {timeoutMs: 600_000});
+    m.run(() => board.edges.some(e => e.name === 'GP4' && e.high), 8_000_000);
+    return board.edges;
+}
+
+test('P3 part 2: C and MicroPython shift the SAME byte into the 74HC595 — both EXECUTED',
+    {skip: SKIP_C}, async () => {
+        const SB = await sb3();
+        const cc = new SB(); cc.parse(SHIFTOUT_PROGRAM);
+        const cByte = latchedByte(await runShiftOutC(cc.generateC()));
+
+        const mc = new SB(); mc.parse(SHIFTOUT_PROGRAM);
+        const mp = mc.generateMicroPython();
+        assert.ok(mp.ok && mp.py, `generateMicroPython refused: ${JSON.stringify(mp.reasons)}`);
+        const mByte = latchedByte(await runShiftOutMpy(mp.py));
+
+        assert.equal(cByte, 170, `executed C latched ${cByte}, expected 170`);
+        assert.equal(mByte, 170, `executed MicroPython latched ${mByte}, expected 170`);
+        assert.equal(cByte, mByte, `the two routes latched different bytes — C ${cByte}, MicroPython ${mByte}`);
+    });
+
+test('P3 part 2 mutation: a flipped bit in the C route changes the latched byte — the byte-level differential reddens naming C',
+    {skip: SKIP_C_ONLY}, async () => {
+        const SB = await sb3();
+        const c = new SB(); c.parse(SHIFTOUT_PROGRAM);
+        const src = c.generateC();
+        // Flip bit 0 of the shifted value in the C route only: 170 -> 171. The C
+        // then latches 171 — a one-bit disagreement the byte-level differential
+        // must catch (executed C alone, so this runs in CI without firmware).
+        const mutated = src.replace('(unsigned char)(170)', '(unsigned char)(171)');
+        assert.notEqual(mutated, src, 'the value substitution changed nothing — the emitter shape moved, update this mutation');
+
+        const healthy = latchedByte(await runShiftOutC(src));
+        const broken = latchedByte(await runShiftOutC(mutated));
+        assert.equal(healthy, 170, `sanity: the unmutated C route latches 170, got ${healthy}`);
+        assert.equal(broken, 171, `the flipped-bit C route should latch 171, got ${broken}`);
+        assert.notEqual(broken, healthy, 'the byte-level differential did not see the flipped bit');
+    });

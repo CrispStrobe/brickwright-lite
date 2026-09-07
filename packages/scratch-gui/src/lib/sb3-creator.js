@@ -1336,7 +1336,7 @@ class SB3Creator {
                 }
                 if (op === '<' && s[i + 1] === '=') continue;
                 if (op === '>' && s[i + 1] === '=') continue;
-                if (op === '=' && (s[i - 1] === '<' || s[i - 1] === '>' || s[i + 1] === '=')) continue;
+                if (op === '=' && (s[i - 1] === '<' || s[i - 1] === '>' || s[i - 1] === '!' || s[i + 1] === '=')) continue;
                 if (!s.slice(0, i).trim() || !s.slice(i + op.length).trim()) continue;
                 best = { index: i, op };
             }
@@ -1449,7 +1449,7 @@ class SB3Creator {
         // `<`, `>` and `=`), so `set flag to (val > 5)` lands here and is
         // emitted as the constant string "val > 5" — `flag = 0 /* val > 5 */;`
         // in C. Measured 2026-08-29, no warning anywhere.
-        if (!/^".*"$/.test(s) && this.splitBinary(s, ['<=', '>=', '<', '>', '='])) {
+        if (!/^".*"$/.test(s) && this.splitBinary(s, ['!=', '<=', '>=', '<', '>', '='])) {
             this.warn(this._lineIndex,
                 `"${s}" is a COMPARISON used where a value is expected, and it is emitted as `
                 + 'the literal text rather than evaluated. Comparisons belong in a condition '
@@ -2320,9 +2320,20 @@ class SB3Creator {
         return null;
     }
 
+    // The 74HC595 PROTOCOL, written ONCE and shared by every backend — the C
+    // families (over _cShiftOutBus) and now generateMicroPython's Pico path (over
+    // _mpyShiftOutBus). MSB-first: latch low, then per bit {clock low, present the
+    // bit on DATA, shift, clock high}, then latch high. Each backend supplies only
+    // the bus that RENDERS these tokens; the SEQUENCE is not hand-typed a second
+    // time. `bits` is the loop count; `pre`/`post` bracket the loop.
+    _shiftOutProtocol() {
+        return {bits: 8, pre: 'latchLow', loop: ['clockLow', 'driveBit', 'shift', 'clockHigh'], post: 'latchHigh'};
+    }
+
     _cShiftOutHelper(core) {
         const bus = this._cShiftOutBus(core);
         if (!bus) return [];
+        const proto = this._shiftOutProtocol();
         const cm = (stmt, comment) => stmt + ' '.repeat(bus.commentCol - stmt.length) + comment;
         // The register families compute the bit once, then SET or CLR the pin;
         // a family whose bus spells out its own drive lines (the 8051) overrides.
@@ -2332,20 +2343,68 @@ class SB3Creator {
             '        if (bit) ' + bus.dataDrive.set + ';',
             '        else     ' + bus.dataDrive.clr + ';',
         ];
+        const render = (tok) => {
+            switch (tok) {
+            case 'latchLow':  return [cm(bus.latchLow,  '/* latch low */')];
+            case 'clockLow':  return [cm(bus.clockLow,  '/* clock low */')];
+            case 'driveBit':  return data;
+            case 'shift':     return ['        value <<= 1;'];
+            case 'clockHigh': return [cm(bus.clockHigh, '/* clock high — shift */')];
+            case 'latchHigh': return [cm(bus.latchHigh, '/* latch high — output */')];
+            default: return [];
+            }
+        };
         return [
             '/* 74HC595 shift-out: MSB first, rising-edge clock, latch pulse. */',
             ...bus.signature,
             '{',
             '    ' + bus.ctr + ' i;',
-            cm(bus.latchLow,  '/* latch low */'),
-            '    for (i = 0; i < 8; i++) {',
-            cm(bus.clockLow,  '/* clock low */'),
-            ...data,
-            '        value <<= 1;',
-            cm(bus.clockHigh, '/* clock high — shift */'),
+            ...render(proto.pre),
+            `    for (i = 0; i < ${proto.bits}; i++) {`,
+            ...proto.loop.flatMap(render),
             '    }',
-            cm(bus.latchHigh, '/* latch high — output */'),
+            ...render(proto.post),
             '}', '',
+        ];
+    }
+
+    // The MicroPython (Pico) shift-out driver, rendered from the SAME
+    // _shiftOutProtocol() the C helper uses — the sequence is not typed a second
+    // time; only the bus differs (machine.Pin .value() instead of SIO registers).
+    // Pins come in as machine.Pin objects; value is masked to a byte each shift so
+    // the MSB test matches C's uint8_t `value <<= 1`.
+    _mpyShiftOutHelper() {
+        const proto = this._shiftOutProtocol();
+        const bus = {
+            latchLow:  '    latch.value(0)',
+            clockLow:  '        clock.value(0)',
+            clockHigh: '        clock.value(1)',
+            latchHigh: '    latch.value(1)',
+            driveBit: [
+                '        bit = 1 if (value & 0x80) else 0',
+                '        if active_low: bit ^= 1',
+                '        data.value(bit)',
+            ],
+            shift: '        value = (value << 1) & 0xff',
+        };
+        const render = (tok) => {
+            switch (tok) {
+            case 'latchLow':  return [bus.latchLow];
+            case 'clockLow':  return [bus.clockLow];
+            case 'driveBit':  return bus.driveBit;
+            case 'shift':     return [bus.shift];
+            case 'clockHigh': return [bus.clockHigh];
+            case 'latchHigh': return [bus.latchHigh];
+            default: return [];
+            }
+        };
+        return [
+            'def _shift_out(data, clock, latch, active_low, value):',
+            '    # 74HC595 shift-out: MSB first, rising-edge clock, latch pulse.',
+            ...render(proto.pre),
+            `    for _ in range(${proto.bits}):`,
+            ...proto.loop.flatMap(render),
+            ...render(proto.post),
         ];
     }
 
@@ -3522,7 +3581,16 @@ class SB3Creator {
             return push('arrays_contains', { NAME: [1, [10, mm[1]]], VALUE: this.parseValue(mm[2], context) });
         }
 
-        // Comparisons. Scratch 3.0 has no native <= / >=, so build them from not().
+        // Comparisons. Scratch 3.0 has no native != / <= / >=, so build them
+        // from not(). `!=` must be claimed before bare `=`; splitBinary also
+        // refuses to let `=` consume the second token as a defensive invariant.
+        if ((sp = this.splitBinary(s, ['!=']))) {
+            const eq = push('operator_equals', {
+                OPERAND1: this.parseValue(sp.left, context),
+                OPERAND2: this.parseValue(sp.right, context)
+            });
+            return push('operator_not', { OPERAND: [2, eq] });
+        }
         if ((sp = this.splitBinary(s, ['<=']))) {
             const gt = push('operator_gt', { OPERAND1: this.parseValue(sp.left, context), OPERAND2: this.parseValue(sp.right, context) });
             return push('operator_not', { OPERAND: [2, gt] });
@@ -7684,15 +7752,210 @@ class SB3Creator {
         return { isString: false, code: this.cVal(input, blocks) };
     }
 
+    /** Fail closed before an i8086 numeric print reaches cRep. Scratch's
+     *  reporter sockets are dynamically typed, while SmallerC's helper takes
+     *  one signed 16-bit int. In particular, operator_join used to fall
+     *  through cRep as a commented zero, making a string program look emitted.
+     *  The allow-list is the set of reporters this C back end actually lowers
+     *  as numbers; nested inputs are checked too, so `1 + join(...)` cannot
+     *  smuggle a string through an arithmetic parent. */
+    cI8086NumericPrint(input, blocks, seen = new Set(), allowedSelf = null) {
+        const inner = Array.isArray(input) ? input[1] : null;
+        if (Array.isArray(inner)) {
+            const type = inner[0];
+            if (type === 12) return this.cI8086NumericVariable(inner, seen, allowedSelf);
+            if (type >= 4 && type <= 8 && Number.isFinite(Number(inner[1]))) return {ok: true};
+            if (type === 10 && String(inner[1]).trim() !== '' && Number.isFinite(Number(inner[1]))) {
+                return {ok: true};
+            }
+            return {ok: false, reason: type === 13 ? 'a list value' : 'a non-numeric literal'};
+        }
+        if (typeof inner !== 'string' || !blocks[inner]) {
+            return {ok: false, reason: 'an unknown reporter'};
+        }
+        if (seen.has(inner)) return {ok: false, reason: 'a cyclic reporter'};
+        const block = blocks[inner];
+        if (block.opcode === 'operator_mathop') {
+            const op = String(block.fields && block.fields.OPERATOR &&
+                block.fields.OPERATOR[0] || '').toLowerCase();
+            if (!new Set(['floor', 'ceiling', 'round', 'abs']).has(op)) {
+                return {ok: false, reason: `${op || 'unknown'} of has no numeric C lowering`};
+            }
+        }
+        if (block.opcode === 'data_itemoflist') {
+            const listResult = this.cI8086NumericList(block.fields && block.fields.LIST, seen, allowedSelf);
+            if (!listResult.ok) return listResult;
+            const indexResult = this.cI8086NumericPrint(block.inputs && block.inputs.INDEX, blocks,
+                new Set(seen).add(inner), allowedSelf);
+            if (!indexResult.ok) return indexResult;
+            return this.cI8086CompleteLowering(block, blocks);
+        }
+        if (!SB3Creator.C_I8086_NUMERIC_PRINT_REPORTERS.has(block.opcode)) {
+            return {ok: false, reason: `${block.opcode} is string-valued or has no numeric C lowering`};
+        }
+        const nextSeen = new Set(seen).add(inner);
+        for (const child of Object.values(block.inputs || {})) {
+            const result = this.cI8086NumericPrint(child, blocks, nextSeen, allowedSelf);
+            if (!result.ok) return result;
+        }
+        // Keep the classifier tied to the actual lowerer. A positive opcode
+        // classification is insufficient if cRep falls back to a commented
+        // zero or leaks an architecture-specific token into 8086 C.
+        return this.cI8086CompleteLowering(block, blocks);
+    }
+
+    cI8086CompleteLowering(block, blocks) {
+        const lowered = this.cRep(block, blocks);
+        if (/\/\*|\bP[0-3]\b|\bBW_[A-Z0-9_]+:/.test(lowered)) {
+            return {ok: false, reason: `${block.opcode} has no complete numeric i8086 C lowering`};
+        }
+        return {ok: true};
+    }
+
+    /** Lists are dynamically typed in Scratch but numeric arrays in the C
+     *  back end. Prove every initial item and every value-producing mutation
+     *  numeric before a list item contributes to a printed scalar. */
+    cI8086NumericList(field, seen, allowedSelf = null) {
+        const name = field ? String(field[0]) : '';
+        const id = field && field[1] != null ? String(field[1]) : null;
+        const token = `list:${id || name}`;
+        if (seen.has(token)) {
+            return token === allowedSelf ? {ok: true} :
+                {ok: false, reason: `list "${name}" has cyclic value provenance`};
+        }
+        const nextSeen = new Set(seen).add(token);
+        let initial;
+        let found = false;
+        let ambiguous = false;
+        const writes = [];
+        for (const target of (this.project && this.project.targets) || []) {
+            for (const [listId, value] of Object.entries(target.lists || {})) {
+                if (this.cI8086IdentityMatches(id, name, listId, value[0])) {
+                    if (found) ambiguous = true;
+                    initial = value[1];
+                    found = true;
+                }
+            }
+            for (const block of Object.values(target.blocks || {})) {
+                const listField = block.fields && block.fields.LIST;
+                const listId = listField && listField[1] != null ? String(listField[1]) : null;
+                const listName = listField && String(listField[0]);
+                const inputName = block.opcode === 'data_replaceitemoflist' ? 'ITEM' :
+                    (block.opcode === 'data_addtolist' || block.opcode === 'data_insertatlist' ? 'ITEM' : null);
+                if (inputName && this.cI8086IdentityMatches(id, name, listId, listName)) {
+                    writes.push({input: block.inputs && block.inputs[inputName], blocks: target.blocks,
+                        kind: block.opcode});
+                }
+            }
+        }
+        if (ambiguous) return {ok: false, reason: `list "${name}" has ambiguous identity`};
+        if (!found || !Array.isArray(initial)) {
+            return {ok: false, reason: `list "${name}" has unknown value provenance`};
+        }
+        for (const value of initial) {
+            if (String(value).trim() === '' || !Number.isFinite(Number(value))) {
+                return {ok: false, reason: `list "${name}" has a non-numeric initial item`};
+            }
+        }
+        for (const write of writes) {
+            const result = this.cI8086NumericPrint(write.input, write.blocks, nextSeen, token);
+            if (!result.ok) {
+                return {ok: false, reason: `list "${name}" has a non-numeric ${write.kind}: ${result.reason}`};
+            }
+        }
+        return {ok: true};
+    }
+
+    /** IDs are authoritative when both sides carry one. If either side is a
+     *  legacy shape without an ID, the same name must conservatively match;
+     *  ignoring that write can turn a dropped string assignment into zero. */
+    cI8086IdentityMatches(id, name, candidateId, candidateName) {
+        const otherId = candidateId === undefined || candidateId === null ? null : String(candidateId);
+        if (id && otherId) return id === otherId;
+        return name === String(candidateName);
+    }
+
+    /** A printed Scratch scalar is numeric only when its initial value and
+     *  every write in every target/script are numeric. The scan is deliberately
+     *  independent of statement order: a string assignment after the print, or
+     *  in a second script, is still a possible run-time value. Variable ids are
+     *  authoritative; the name fallback covers hand-built/legacy projects.
+     *
+     *  `set x to ...` is parsed as Scratch motion's x assignment. If the same
+     *  loaded project also has a scalar called x, treat that ambiguous write as
+     *  provenance too; otherwise the source `set x to "abc"; print x` silently
+     *  drops the write and prints the scalar's default zero. */
+    cI8086NumericVariable(inner, seen, allowedSelf = null) {
+        const name = String(inner[1]);
+        const id = inner[2] === undefined || inner[2] === null ? null : String(inner[2]);
+        const token = `variable:${id || name}`;
+        if (seen.has(token)) {
+            return token === allowedSelf ? {ok: true} :
+                {ok: false, reason: `variable "${name}" has cyclic value provenance`};
+        }
+        const nextSeen = new Set(seen).add(token);
+        let initial;
+        let found = false;
+        let ambiguous = false;
+        const writes = [];
+        for (const target of (this.project && this.project.targets) || []) {
+            for (const [variableId, value] of Object.entries(target.variables || {})) {
+                if (this.cI8086IdentityMatches(id, name, variableId, value[0])) {
+                    if (found) ambiguous = true;
+                    initial = value[1];
+                    found = true;
+                }
+            }
+            for (const block of Object.values(target.blocks || {})) {
+                const field = block.fields && block.fields.VARIABLE;
+                const fieldId = field && field[1] != null ? String(field[1]) : null;
+                const fieldName = field && String(field[0]);
+                if ((block.opcode === 'data_setvariableto' || block.opcode === 'data_changevariableby') &&
+                    this.cI8086IdentityMatches(id, name, fieldId, fieldName)) {
+                    writes.push({input: block.inputs && block.inputs.VALUE, blocks: target.blocks,
+                        kind: block.opcode === 'data_setvariableto' ? 'set' : 'change'});
+                }
+                const ambiguous = (name === 'x' && block.opcode === 'motion_setx') ||
+                    (name === 'y' && block.opcode === 'motion_sety');
+                if (ambiguous) {
+                    writes.push({input: block.inputs && block.inputs[name.toUpperCase()],
+                        blocks: target.blocks, kind: `set ${name}`});
+                }
+            }
+        }
+        const n = Number(initial);
+        if (ambiguous) return {ok: false, reason: `variable "${name}" has ambiguous identity`};
+        if (!found || String(initial).trim() === '' || !Number.isFinite(n)) {
+            return {ok: false, reason: `variable "${name}" has a non-numeric initial value`};
+        }
+        for (const write of writes) {
+            // A numeric update may read its own prior value. Keep only this
+            // one back-edge open; A -> B -> A remains a refused cycle.
+            const result = this.cI8086NumericPrint(write.input, write.blocks, nextSeen, token);
+            if (!result.ok) {
+                return {ok: false, reason: `variable "${name}" has a non-numeric ${write.kind}: ${result.reason}`};
+            }
+        }
+        return {ok: true};
+    }
+
     cNum(value) {
         const n = Number(value);
         if (!Number.isFinite(n)) return `0 /* ${this.cComment(value)} */`;
-        return String(this.cI16Check(Math.trunc(n)));
+        const checked = this.cI16Check(Math.trunc(n));
+        // SmallerC parses the positive token before unary minus, so `-32768`
+        // is rejected as a too-large signed-16 constant. This equivalent
+        // spelling keeps every token in range while preserving INT16_MIN.
+        if (this._core === 'i8086' && checked === SB3Creator.I16_MIN) return '(-32767 - 1)';
+        return String(checked);
     }
 
     cInit(value) {
         const n = Number(value);
-        return Number.isFinite(n) ? String(this.cI16Check(Math.trunc(n))) : '0';
+        if (!Number.isFinite(n)) return '0';
+        const checked = this.cI16Check(Math.trunc(n));
+        if (this._core === 'i8086' && checked === SB3Creator.I16_MIN) return '(-32767 - 1)';
+        return String(checked);
     }
 
     // ---- The i8086 numeric model (N2b) -----------------------------------------
@@ -7713,6 +7976,14 @@ class SB3Creator {
     static I16_MIN = -32768;
     static I16_MAX = 32767;
     static I8086_WAIT_MAX_MS = 65535;
+    static C_I8086_NUMERIC_PRINT_REPORTERS = new Set([
+        'operator_add', 'operator_subtract', 'operator_multiply', 'operator_divide', 'operator_mod',
+        'operator_round', 'operator_mathop',
+        'planetemaths_add', 'planetemaths_substract', 'planetemaths_multiply',
+        'planetemaths_divide', 'planetemaths_oppose', 'planetemaths_pourcent',
+        'bitops_and', 'bitops_or', 'bitops_xor', 'bitops_shl', 'bitops_shr', 'bitops_not',
+        'stc12_read'
+    ]);
 
     /** The C scalar type a Scratch number gets on the current core. */
     cIntType() {
@@ -7731,13 +8002,29 @@ class SB3Creator {
     cVal(input, blocks) {
         if (!Array.isArray(input)) return '0';
         const inner = input[1];
+        let lowered;
         if (Array.isArray(inner)) {
             const [type, a] = inner;
-            if (type === 12) return this.cRef(a);
-            if (type === 13) { this.cWarn('lists have no C equivalent — emitted as 0'); return '0'; }
-            return this.cNum(a);
+            if (type === 12) lowered = this.cRef(a);
+            else if (type === 13) {
+                this.cWarn('lists have no C equivalent — emitted as 0');
+                lowered = '0';
+            } else lowered = this.cNum(a);
+        } else {
+            lowered = this.cRep(blocks[inner], blocks);
         }
-        return this.cRep(blocks[inner], blocks);
+        // A commented zero is diagnostic text, not a numeric value. On i8086
+        // it used to enter comparisons as a plausible constant and compile a
+        // different condition with no refusal (`a != b` became
+        // `0 /* a ! */ == b`). Derive this backstop from the actual lowering,
+        // so the next unsupported reporter is covered without an opcode list.
+        if (this._core === 'i8086' && /\/\*/.test(lowered)) {
+            const shown = String(this.dval(input, blocks) || lowered)
+                .replace(/^"|"$/g, '');
+            if (!this._cLoweringRefused) this._cLoweringRefused = [];
+            if (!this._cLoweringRefused.includes(shown)) this._cLoweringRefused.push(shown);
+        }
+        return lowered;
     }
 
     // ---- AVR (Arduino Nano/Uno) pin plumbing --------------------------------
@@ -8192,6 +8479,10 @@ class SB3Creator {
                     if (!this._cWaitRefused) this._cWaitRefused = [];
                     const shown = String(inner[1]);
                     if (!this._cWaitRefused.includes(shown)) this._cWaitRefused.push(shown);
+                    // The refusal above owns a non-finite literal. Do not send
+                    // it through cVal as well, where its diagnostic commented
+                    // zero would obscure the more specific duration error.
+                    if (!Number.isFinite(n)) return '0';
                 }
                 if (Number.isFinite(n)) return String(ms);
             }
@@ -8441,13 +8732,42 @@ class SB3Creator {
                 return line(`shift_out(P${data.port}_${data.bit}, P${clock.port}_${clock.bit}, P${latch.port}_${latch.bit}, ${al}, ${val});`);
             }
             case 'stc12_print': {
-                this._cUses.print = true;
                 const mode = f('MODE');
+                if (this._core === 'i8086') {
+                    if (mode === 'text') {
+                        if (!this._cPrintRefused) this._cPrintRefused = [];
+                        const reason = 'text-mode print is outside the numeric-only i8086 C print boundary';
+                        if (!this._cPrintRefused.includes(reason)) this._cPrintRefused.push(reason);
+                        return line(`/* print refused: ${reason} */`);
+                    }
+                    const numeric = this.cI8086NumericPrint(b.inputs.VALUE, blocks);
+                    if (!numeric.ok) {
+                        if (!this._cPrintRefused) this._cPrintRefused = [];
+                        if (!this._cPrintRefused.includes(numeric.reason)) {
+                            this._cPrintRefused.push(numeric.reason);
+                        }
+                        return line(`/* print refused: ${this.cComment(numeric.reason)} */`);
+                    }
+                    this._cUses.printNumber = true;
+                    return line(`bw_print_num(${v('VALUE')});`);
+                }
+                this._cUses.print = true;
                 if (mode === 'text') {
                     const text = this.dval(b.inputs.VALUE, blocks).replace(/^"|"$/g, '');
                     return line(`bw_print("${this.cComment(text)}");`);
                 }
                 return line(`bw_print_num(${v('VALUE')});`);
+            }
+            case 'looks_sayforsecs': {
+                if (this._core === 'i8086') {
+                    if (!this._cPrintRefused) this._cPrintRefused = [];
+                    const reason = 'say for seconds is stage speech, not DOS terminal output';
+                    if (!this._cPrintRefused.includes(reason)) this._cPrintRefused.push(reason);
+                    return line(`/* ${reason} */`);
+                }
+                const text = (this.decompileStackBlock(b, blocks, 0)[0] || b.opcode).trim();
+                this.cWarn(`no C equivalent for "${text}" — emitted as a comment`);
+                return line(`/* ${this.cComment(text)} */`);
             }
             // LED cube commands — manipulate the working frame, then hold to play.
             case 'ledcube_setvoxel': {
@@ -9655,6 +9975,27 @@ class SB3Creator {
                 case 'devices_oledprint':
                     if (isPico) { uses.oled = true; return [`${pad}_oled_print(${v('TEXT')})`]; }
                     break;
+                // 74HC595 shift-out (plan P3 part 2): the Pico MicroPython driver,
+                // bit-banging data/clock/latch through machine.Pin from the SAME
+                // _shiftOutProtocol() the C helper renders — the gap the measurement
+                // named (stc12_setpart was a silent degrade on Pico). The three Pin
+                // objects are installed in the header (uses.shiftOutParts); a
+                // non-Pico target or a non-595 part falls through to the degrade.
+                case 'stc12_setpart': {
+                    if (!isPico) break;
+                    const partName = f('PART');
+                    const partCfg = this.project && this.project.stc
+                        && (this.project.stc.parts || []).find((p) => p.name.toLowerCase() === String(partName).toLowerCase());
+                    if (!partCfg || partCfg.type !== '74hc595') break;
+                    const dg = this.armHw(partCfg.data), cg = this.armHw(partCfg.clock), lg = this.armHw(partCfg.latch);
+                    if (!dg || !cg || !lg) { degrade(`${partName} has a PART pin that is not a Pico GP pin`); break; }
+                    uses.shiftOut = true;
+                    if (!uses.shiftOutParts) uses.shiftOutParts = new Map();
+                    uses.shiftOutParts.set(partCfg.name, {data: dg.gpio, clock: cg.gpio, latch: lg.gpio});
+                    const al = partCfg.activeLow ? 'True' : 'False';
+                    const px = `_pin_${partCfg.name}`;
+                    return [`${pad}_shift_out(${px}_data, ${px}_clock, ${px}_latch, ${al}, int(${v('VALUE')}))`];
+                }
                 default: {
                     // The Arrays & Vectors commands lower through the same
                     // reversible-op table the reporters already use, so the
@@ -10099,6 +10440,18 @@ class SB3Creator {
                 } else {
                     header.push(`${p.expr} = Pin(${p.gpio}, Pin.OUT)`);
                 }
+            }
+            // 74HC595 parts (plan P3 part 2): the three bus pins as outputs, then
+            // the shared-protocol driver once. Emitted only when a `set <part> to`
+            // actually ran (uses.shiftOutParts), so an unused declaration costs
+            // nothing — the same rule the declared pins above follow.
+            if (uses.shiftOutParts) {
+                for (const [name, gp] of uses.shiftOutParts) {
+                    header.push(`_pin_${name}_data = Pin(${gp.data}, Pin.OUT)`,
+                        `_pin_${name}_clock = Pin(${gp.clock}, Pin.OUT)`,
+                        `_pin_${name}_latch = Pin(${gp.latch}, Pin.OUT)`);
+                }
+                header.push('', ...this._mpyShiftOutHelper());
             }
             if (uses.oled) {
                 const sdaPin = [...pinMap.entries()].find(([n]) => n.toLowerCase() === 'sda');
@@ -11027,6 +11380,7 @@ class SB3Creator {
         this._cWarnings = [];
         this._cI16Refused = [];
         this._cWaitRefused = [];
+        this._cLoweringRefused = [];
         this._cWaitComputed = false;
         this._cUses = { adc: false, delay: false, blockDelay: false, now: false };
         this._emitComments = !(opts && opts.comments === false);
@@ -11769,6 +12123,10 @@ class SB3Creator {
                     '/* INT 15h/86h receives this unsigned millisecond argument through the C route.',
                     ' * Literal waits above 65535 ms refuse by name; computed waits are not emitted. */',
                     'extern void bw_delay_ms(unsigned ms);'
+                ] : []),
+                ...(this._cUses.printNumber ? [
+                    '/* DOS terminal signed-16 decimal, then CRLF. */',
+                    'extern void bw_print_num(int n);'
                 ] : []),
                 'static unsigned char bw_port_a = 0;   /* shadow of 8255 port A output latch */',
                 'static unsigned char bw_port_b = 0;   /* shadow of port B */',
@@ -14612,8 +14970,35 @@ class SB3Creator {
         if (this._core === 'i8086') {
             // Verbs with a real i8086 C branch are NOT a reason to refuse. As
             // each verb gains its 8086 bus, add it here (P2: shiftOut).
-            const I8086_IMPLEMENTED = new Set(['shiftOut', 'delay']);
+            const I8086_IMPLEMENTED = new Set(['shiftOut', 'delay', 'printNumber']);
             const used = Object.keys(this._cUses).filter((k) => this._cUses[k] && !I8086_IMPLEMENTED.has(k));
+            // Report an unsafe print value before the broader feature choke.
+            // A second script may both poison the value provenance and use a
+            // still-unimplemented verb; the type-safety refusal is the cause
+            // that must remain visible rather than being masked by `used`.
+            if (this._cPrintRefused && this._cPrintRefused.length) {
+                const list = this._cPrintRefused.join(', ');
+                this.cWarn(`the 8086 C print helper accepts a signed-16 numeric expression; `
+                    + `${list} cannot use the numeric helper, so no C is emitted`);
+                return `/* No C emitted for DEVICE ${String(device || 'i8086').toUpperCase()}.\n`
+                    + ' *\n'
+                    + ' * The 8086 C print boundary accepts a signed-16 number.\n'
+                    + ` * This program supplies: ${list}.\n`
+                    + ' * String-valued and unknown reporters are refused instead of printing zero.\n'
+                    + ' */\n';
+            }
+            if (this._cLoweringRefused && this._cLoweringRefused.length) {
+                const list = this._cLoweringRefused.join(', ');
+                this.cWarn(`the 8086 C route cannot lower the numeric or comparison operand(s) `
+                    + `${list} completely; a commented zero is diagnostic text, not a value, so no C is emitted`);
+                return `/* No C emitted for DEVICE ${String(device || 'i8086').toUpperCase()}.\n`
+                    + ' *\n'
+                    + ' * The 8086 C back end requires every numeric and comparison operand to have\n'
+                    + ' * a complete lowering. A commented zero would silently change the program.\n'
+                    + ` * This program supplies: ${list}.\n`
+                    + ' * Nothing is emitted instead of compiling the wrong condition.\n'
+                    + ' */\n';
+            }
             if (used.length) {
                 this.cWarn(`the i8086 C back end emits 8255 pin I/O only for now — `
                     + `${used.join(', ')} ${used.length > 1 ? 'are' : 'is'} not emitted for this board; `
