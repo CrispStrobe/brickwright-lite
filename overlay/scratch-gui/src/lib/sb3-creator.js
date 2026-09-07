@@ -555,6 +555,21 @@ class SB3Creator {
     // The host supplies `bwBoard`; with none attached the driver stays neutral, so the program
     // still runs standalone.
     stc12SimulatorDriver(lang, pins) {
+        // TONE IS SILENT ON THIS TARGET, AND THE PROGRAM MUST SAY SO.
+        // `set <buzzer> to N hz` emits `_board().setTone(...)`, and no board in
+        // this repository defines setTone — the board offers buzzerTone(), a
+        // READER that measures a square wave the circuit already carries. So a
+        // TONE pin on the 8051 (and on the Pico) produces nothing: the JS driver
+        // below guards on `b.setTone` and skips, the Python one would raise, and
+        // the compiled-C path emits tone_set only when the core is AVR. The
+        // silence was documented in a help panel a user has to open; it belongs
+        // where the silence happens.
+        if (pins.some(p => p.direction === 'tone')) {
+            this.warnings.push(
+                'This program drives a TONE pin, and tone has no driver on the 8051 or the Pico: ' +
+                'it is SILENT here, with no error. Only the Arduino/AVR build makes sound. ' +
+                'The pin still toggles nothing — nothing is broken in your program.');
+        }
         const table = {};
         for (const p of pins) {
             // 8051 pins are spelled P<port>.<bit>; board-class devices
@@ -620,7 +635,11 @@ class SB3Creator {
                 '        if p and _board(): _board().setPwm(p["pin"], int(value))',
                 '    def setTone(self, name, value):',
                 '        p = self._p(name)',
-                '        if p and _board(): _board().setTone(p["pin"], int(value))',
+                // Guarded like the JS driver below. Unguarded this raised
+                // AttributeError on a board with no setTone, so the same program
+                // was silent in one language and a crash in the other.
+                '        b = _board()',
+                '        if p and b and hasattr(b, "setTone"): b.setTone(p["pin"], int(value))',
                 '    def setPort(self, name, value): pass  # TODO: whole-port sim',
                 '    def readPort(self, name): return 0  # TODO: whole-port sim',
                 '    def setPart(self, name, value): pass  # TODO: shift-register sim',
