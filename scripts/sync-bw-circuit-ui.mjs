@@ -11,10 +11,13 @@
 //
 //   --check      exit non-zero (without writing) if stale, for CI.
 //   --dir <path> read from a local checkout instead of over HTTP.
+//   --pin        record the source sha in vendor-pins.json. A FILE SYNC NEVER MOVES THE
+//                PIN; a pin moves only with --pin, and a sync that would move it without
+//                --pin is a refusal that prints old and new sha, before anything is written.
 
 import {readFile, writeFile, mkdir, readdir, unlink} from 'node:fs/promises';
 import { guardSource } from './lib-source-guard.mjs';
-import { recordPin, localSha } from './lib-pin.mjs';
+import { recordPin, localSha, assertPinMoveAllowed } from './lib-pin.mjs';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 
@@ -23,6 +26,8 @@ const dest = path.join(here, '..', 'overlay', 'scratch-gui', 'src', 'lib', 'bw-c
 const check = process.argv.includes('--check');
 const dirIdx = process.argv.indexOf('--dir');
 const srcDir = dirIdx !== -1 ? process.argv[dirIdx + 1] : null;
+// Before anything is written: a sync that would move the pin needs --pin (lib-pin.mjs).
+if (!check && srcDir) await assertPinMoveAllowed('bw-circuit-ui', await localSha(srcDir));
 if (dirIdx !== -1 && srcDir) guardSource(srcDir);
 if (!srcDir) { console.error('needs --dir <bw-circuit-ui checkout> for now'); process.exit(2); }
 

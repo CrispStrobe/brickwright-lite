@@ -10,10 +10,13 @@
 //
 //   --check      exit non-zero (without writing) if a vendored file is stale, for CI.
 //   --dir <path> read from a local bw-board checkout instead of over HTTP.
+//   --pin        record the source sha in vendor-pins.json. A FILE SYNC NEVER MOVES THE
+//                PIN; a pin moves only with --pin, and a sync that would move it without
+//                --pin is a refusal that prints old and new sha, before anything is written.
 
 import {readFile, writeFile, mkdir, readdir} from 'node:fs/promises';
 import { guardSource } from './lib-source-guard.mjs';
-import { resolveRef, recordPin, localSha, listTree, baseForFile } from './lib-pin.mjs';
+import { resolveRef, recordPin, localSha, listTree, baseForFile, assertPinMoveAllowed } from './lib-pin.mjs';
 import {fileURLToPath} from 'node:url';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -89,6 +92,8 @@ const listSrc = async () => {
 // silently. Resolution failing is now a failed sync (lib-pin.mjs throws).
 let remoteSha = null;
 if (!srcDir) remoteSha = (await resolveRef(REPO, REF)).sha;
+// Before anything is written: a sync that would move the pin needs --pin (lib-pin.mjs).
+if (!check) await assertPinMoveAllowed('bw-board', srcDir ? await localSha(srcDir) : remoteSha);
 const RAW = `https://raw.githubusercontent.com/${REPO}/${remoteSha}`;
 
 /**

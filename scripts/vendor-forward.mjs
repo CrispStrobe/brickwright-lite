@@ -83,11 +83,12 @@ try {
     }
 
     // All syncs from the SAME clone set.
-    sh(`node scripts/sync-bw-circuit-ui.mjs --dir ${clones['bw-circuit-ui']}`);
+    // --pin: this tool exists to move the pins; a bare sync refuses to (lib-pin.mjs).
+    sh(`node scripts/sync-bw-circuit-ui.mjs --dir ${clones['bw-circuit-ui']} --pin`);
     sh(`node scripts/sync-parts-data.mjs --dir ${clones['bw-circuit-ui']}`);
-    sh(`node scripts/sync-bw-board.mjs --dir ${clones['bw-board']}`);
-    sh(`node scripts/sync-sb3creator.mjs --dir ${clones['sb3-creator']}`);
-    sh(`node scripts/sync-examples.mjs --dir ${clones['sb3-creator']}`);
+    sh(`node scripts/sync-bw-board.mjs --dir ${clones['bw-board']} --pin`);
+    sh(`node scripts/sync-sb3creator.mjs --dir ${clones['sb3-creator']} --pin`);
+    sh(`node scripts/sync-examples.mjs --dir ${clones['sb3-creator']} --pin`);
 
     if (out('git status --porcelain -- overlay vendor-pins.json') === '') {
         console.log('nothing to forward — vendored trees already match upstream.');

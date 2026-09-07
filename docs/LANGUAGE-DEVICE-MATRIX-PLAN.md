@@ -307,6 +307,13 @@ full 40-hex sha of a bw-board or sb3-creator commit other than the current pins,
 role (LANES, HISTORY, plan and docs prose, test comments); red names the file and the stale sha. Derive the
 document set from the gate, do not keep a list of it. Owner-level: it touches every vendor lane.
 
+**T9b. A file sync never moves the pin. BUILT 2026-09-07** (lego-b9; the catch is lego-be's: a scoped
+`sync-bw-board.mjs --only <file> --dir <tip>` rewrote vendor-pins.json to the tip inside a one-file sync
+commit). `scripts/lib-pin.mjs` refuses a pin move without `--pin`, naming old and new sha, before any sync
+writes — every sync that records a pin pre-checks (derived, not listed: five scripts, one more than anyone
+had typed), `recordPin` is the backstop, `vendor-forward` passes `--pin`, `--check` is unaffected. Gate:
+`test/pin-only-moves-with-flag.test.mjs`, with a live half against env-var checkouts in a throwaway worktree.
+
 ### Lane N — native halves to add
 
 **N1. Z80 C via SDCC `-mz80`.** Repo: stc-compiler, then lite. **BUILT 2026-09-05** on stc-compiler branch `lane/z80-c-target` (`6e40fb6e`, delegate, audited by lego-ac: 21 new tests, 432 repo tests green, ten mutation proofs). The vendored SDCC 4.0.0 already had the z80 port; what was missing was `share/sdcc/lib/z80` (crt0 + z80.lib), now vendored from the same .deb the fetch script uses. Map: ROM $0000–$7FFF, RAM $8000–$FFFF from `examples/z80-pd-bench/EXPECTED.md`; `--code-loc 0x0200 --data-loc 0x8000`; stock crt0 (jp init at $0000, SP at $0000 so the first push lands at $FFFE). Also fixed: `stages.py` dropped every exported `GR` symbol (affects 8051 too). **Awaiting merge and deploy by the owner** — the hosted snapshot and the lite `compile: true` flip follow the deploy, not the branch. Lite half of the DoD (bench boot proof: `$0000 == 0xC3`, `latch1.Q0` toggles) is open.

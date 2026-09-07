@@ -11,6 +11,9 @@
 //
 //   --check      exit non-zero (without writing) if vendored files are stale.
 //   --dir <path> read from a local sb3-creator checkout instead of over HTTP.
+//   --pin        record the source sha in vendor-pins.json. A FILE SYNC NEVER MOVES THE
+//                PIN; a pin moves only with --pin, and a sync that would move it without
+//                --pin is a refusal that prints old and new sha, before anything is written.
 //
 // Override the HTTP source with SB3CREATOR_REF (branch/tag/sha), default "main".
 //
@@ -19,7 +22,7 @@
 // vendor.
 
 import {readFile, writeFile, mkdir, readdir, rm, stat} from 'node:fs/promises';
-import { resolveRef, recordPin, localSha } from './lib-pin.mjs';
+import { resolveRef, recordPin, localSha, assertPinMoveAllowed } from './lib-pin.mjs';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 
@@ -37,6 +40,8 @@ const srcDir = dirIdx !== -1 ? process.argv[dirIdx + 1] : null;
 // files across many minutes, so a branch-addressed run can straddle a push and
 // vendor two different commits into one tree. A sha cannot. See lib-pin.mjs.
 const remoteSha = srcDir ? null : (await resolveRef(REPO, REF)).sha;
+// Before anything is written: a sync that would move the pin needs --pin (lib-pin.mjs).
+if (!check) await assertPinMoveAllowed('sb3-creator', srcDir ? await localSha(srcDir) : remoteSha);
 const RAW = `https://raw.githubusercontent.com/${REPO}/${remoteSha}`;
 
 // ── helpers ──────────────────────────────────────────────────────────────────

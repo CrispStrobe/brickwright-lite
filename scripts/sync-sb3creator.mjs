@@ -13,6 +13,9 @@
 //                for CI drift detection.
 //   --dir <path> read the source files from a local sb3-creator checkout instead of
 //                fetching over HTTP (deterministic; no CDN lag).
+//   --pin        record the source sha in vendor-pins.json. A FILE SYNC NEVER MOVES THE
+//                PIN; a pin moves only with --pin, and a sync that would move it without
+//                --pin is a refusal that prints old and new sha, before anything is written.
 //
 // Override the HTTP source with SB3CREATOR_REF (branch/tag/sha), default "main".
 //
@@ -26,7 +29,7 @@
 
 import {readFile, writeFile} from 'node:fs/promises';
 import { guardSource } from './lib-source-guard.mjs';
-import { resolveRef, recordPin, localSha, baseForFile } from './lib-pin.mjs';
+import { resolveRef, recordPin, localSha, baseForFile, assertPinMoveAllowed } from './lib-pin.mjs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 const execFileP = promisify(execFile);
@@ -48,6 +51,8 @@ if (dirIdx !== -1 && srcDir) guardSource(srcDir);
 
 // Resolve BEFORE the first content fetch, so nothing is ever read by name.
 const remoteSha = srcDir ? null : (await resolveRef(REPO, REF)).sha;
+// Before anything is written: a sync that would move the pin needs --pin (lib-pin.mjs).
+if (!check) await assertPinMoveAllowed('sb3-creator', srcDir ? await localSha(srcDir) : remoteSha);
 
 // The pin the vendored copy currently came from — the third point of the
 // three-way comparison below. Read from vendor-pins.json BEFORE this run

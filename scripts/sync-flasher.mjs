@@ -10,13 +10,16 @@
 //
 //   --check      exit non-zero (without writing) if the vendored copy is stale.
 //   --dir <path> read from a local stc-compiler checkout (default: over HTTP).
+//   --pin        record the source sha in vendor-pins.json. A FILE SYNC NEVER MOVES THE
+//                PIN; a pin moves only with --pin, and a sync that would move it without
+//                --pin is a refusal that prints old and new sha, before anything is written.
 //
 // Same contract as the other sync-*.mjs: pinned by sha, self-heals a
 // partial cache, records the pin.
 
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { resolveRef, recordPin } from './lib-pin.mjs';
+import { resolveRef, recordPin, assertPinMoveAllowed } from './lib-pin.mjs';
 import path from 'node:path';
 
 const REPO = 'CrispStrobe/stc-compiler';
@@ -43,6 +46,8 @@ const BANNER = '// VENDORED from CrispStrobe/stc-compiler docs/flash.js — do N
     + '// Change it there (it has the mock-bootloader tests), then `npm run sync:flasher`.\n';
 
 const next = BANNER + (await source());
+// Before anything is written: a sync that would move the pin needs --pin (lib-pin.mjs).
+if (!check && sha) await assertPinMoveAllowed('stc-compiler-flasher', sha);
 const current = await readFile(dest, 'utf8').catch(() => null);
 
 if (current === next) {

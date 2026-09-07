@@ -157,10 +157,43 @@ export async function resolveRef (repo, ref) {
  * fact the pin records — leaving it unwritten there is how a correct tree keeps
  * a stale pin.
  */
-export async function recordPin (name, sha, {pinsFile = PINS_FILE, log = console.log} = {}) {
+export const wantsPin = (argv = process.argv) => argv.includes('--pin');
+export const isScoped = (argv = process.argv) => argv.includes('--only');
+
+export class PinMoveRefused extends Error {}
+
+/**
+ * A FILE SYNC NEVER MOVES THE PIN; A PIN MOVES ONLY WITH --pin.
+ *
+ * 2026-09-07 (lego-be): `sync-bw-board.mjs --only <file> --dir <tip>` rewrote
+ * vendor-pins.json to the tip — a stealth pin bump riding inside a one-file
+ * sync commit, caught only by reading `git status` before committing. Every
+ * other vendored file was still at the old pin, so the pin now lied about all
+ * of them. There was no flag to say "do not"; now there is a flag to say "do".
+ *
+ * Called by every sync BEFORE it writes (so a refusal leaves the tree as it
+ * was) and again by recordPin as the backstop. Unchanged pin: nothing to
+ * decide. Moving pin without --pin: a refusal naming old and new sha.
+ * @returns {Promise<{moves: boolean, old: string|undefined}>}
+ */
+export async function assertPinMoveAllowed (name, sha, {pinsFile = PINS_FILE, explicit = wantsPin(), scoped = isScoped(), stage = 'before'} = {}) {
+    if (!FULL_SHA.test(sha || '')) throw new Error(`refusing to pin ${name} to ${JSON.stringify(sha)} — not a 40-hex sha`);
+    const pins = await readFile(pinsFile, 'utf8').then(JSON.parse).catch(() => ({}));
+    const old = pins[name];
+    if (!old || old === sha) return {moves: false, old};
+    if (explicit) return {moves: true, old};
+    throw new PinMoveRefused(
+        `refusing to move the ${name} pin ${old.slice(0, 9)} -> ${sha.slice(0, 9)} (${old} -> ${sha}). `
+        + `A file sync never moves the pin${scoped ? ' — and this is a scoped --only run, whose other vendored files stay at the old pin' : ''}; `
+        + `a pin moves only with --pin. Re-run with --pin if the whole vendored ${name} tree is meant to advance to ${sha.slice(0, 9)}. `
+        + (stage === 'before' ? 'Nothing was written.' : 'The files were synced from it; the pin was NOT recorded.'));
+}
+
+export async function recordPin (name, sha, {pinsFile = PINS_FILE, log = console.log, explicit = wantsPin(), scoped = isScoped()} = {}) {
     if (!FULL_SHA.test(sha || '')) {
         throw new Error(`refusing to pin ${name} to ${JSON.stringify(sha)} — not a 40-hex sha`);
     }
+    await assertPinMoveAllowed(name, sha, {pinsFile, explicit, scoped, stage: 'after'});
     const pins = await readFile(pinsFile, 'utf8').then(JSON.parse).catch(() => ({}));
     if (pins[name] === sha) { log(`  pin unchanged: ${name}@${sha}`); return sha; }
     pins[name] = sha;
