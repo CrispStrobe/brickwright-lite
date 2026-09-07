@@ -1,13 +1,16 @@
-// N2b — the 8086 C route cannot compile a numeric variable, named honestly.
-//
-// SmallerC's tiny (.COM) model has no `long`, but generateC types every Scratch
-// number as `static long`. So a program that stores a number ("set counter to
-// 5") reaches the compiler and dies on a raw "Unexpected token long". This test
-// pins three things: (1) the compiler really does fail by that name on the C
-// generateC emits; (2) the C route now REFUSES before the compiler with a
-// learner-actionable sentence; (3) a pin/shift-register program — which stores
-// no number — is NOT refused. When N2b's fix lands (int-16 or a long-capable
-// SmallerC), this file is where the exclusion is re-measured.
+// N2b — the 8086 C route's numeric model: a 16-bit int, stated and refused by
+// name. (Step 1 of this file pinned the ceiling: generateC typed every Scratch
+// number `static long`, SmallerC's tiny (.COM) model has no `long`, so no
+// program that stored a number compiled. Step 2 moved the emitter upstream to
+// a per-core scalar type — `int` on i8086 — with a literal outside
+// -32768..32767 refusing the whole program by name.) This file now pins:
+// (1) SmallerC still fails by name on `long`, so the ceiling is real and the
+// route's defence-in-depth guard has something to guard; (2) a numeric program
+// COMPILES AND BUILDS through the route; (3) a literal past 16 bits is refused
+// BEFORE the compiler with the emitter's own sentence, naming the literal and
+// the range; (4) the emitter refusal for an unimplemented verb reaches the
+// learner by name too, not as "the compiler produced no assembly". The reach
+// over the gallery is measured by scripts/measure-i8086-numeric-reach.mjs.
 //
 // TRAP, written here so the next reader does not re-fall into it: a numeric
 // VARIABLE emits `long`, but `set x to 5` does NOT — `x`/`y` are sprite
@@ -56,46 +59,81 @@ const cFor = async (src) => { const SB = (await sb3()).default; const c = new SB
 const NUMERIC = 'DEVICE i8086\nPIN led = P1.0 OUTPUT\nWHEN flag clicked:\n  set counter to 5\n  turn on led';
 const PIN_ONLY = 'DEVICE i8086\nPIN led = P1.0 OUTPUT\nWHEN flag clicked:\n  turn on led\n  turn off led';
 
-test('generateC types a numeric variable as `static long` (the thing SmallerC cannot take)', async () => {
-    const c = await cFor(NUMERIC);
-    assert.match(c, /static long counter = 0;/, 'a stored number must be emitted as long');
-    // the sprite-coordinate trap: x/y are motion, not variables -> no long
-    const withXY = await cFor('DEVICE i8086\nPIN led = P1.0 OUTPUT\nWHEN flag clicked:\n  set x to 5\n  turn on led');
-    assert.doesNotMatch(withXY, /static long/, '`set x to 5` is a sprite coordinate, not a variable — no long');
-});
-
-test('SmallerC itself fails by name on the emitted `long`', async () => {
-    const out = await nodeCompileC(await cFor(NUMERIC), {target: 'i8086'});
-    assert.equal(out.success, false, 'SmallerC must reject the long-typed program');
+test('SmallerC itself still fails by name on `long` — the ceiling the int-16 model exists for', async () => {
+    const out = await nodeCompileC('static long counter = 0;\nint main(void) { counter = 5; return 0; }', {target: 'i8086'});
+    assert.equal(out.success, false, 'SmallerC -seg16 must reject long');
     assert.match(out.error || '', /Unexpected token long/, 'the failure is specifically on `long`');
 });
 
-test('the C route REFUSES a numeric-variable program before the compiler, by name', async () => {
+test('generateC types an i8086 numeric variable as `static int`, and no `long` reaches the C', async () => {
+    const c = await cFor(NUMERIC);
+    assert.match(c, /static int counter = 0;/, 'a stored number is a 16-bit int on this core');
+    assert.doesNotMatch(c, /\blong\b/, 'no long token may reach SmallerC');
+    assert.match(c, /-32768\.\.32767/, 'the emitted header states the range');
+    // the sprite-coordinate trap: x/y are motion, not variables -> no variable at all
+    const withXY = await cFor('DEVICE i8086\nPIN led = P1.0 OUTPUT\nWHEN flag clicked:\n  set x to 5\n  turn on led');
+    assert.doesNotMatch(withXY, /static (int|long) x/, '`set x to 5` is a sprite coordinate, not a variable');
+});
+
+test('a numeric-variable program now COMPILES AND BUILDS through the route', {timeout: 120000}, async () => {
+    const {compileC8086} = await route();
+    const built = await compileC8086(await cFor(NUMERIC), {compileC: nodeCompileC});
+    assert.ok(built.bytes && built.bytes.length, 'the numeric program must build to an image');
+});
+
+test('a literal past 16 bits is refused BEFORE the compiler, by name, with the range', async () => {
     const {compileC8086, AsmRouteError} = await route();
-    // A seam that throws if the compiler is ever reached — the refusal must be
-    // BEFORE it, so this never runs.
     const neverCompile = () => { throw new Error('the compiler must not be reached'); };
-    const numericC = await cFor(NUMERIC);
+    const big = await cFor(NUMERIC.replace('set counter to 5', 'set counter to 40000'));
+    assert.match(big, /^\/\* No C emitted for DEVICE I8086/, 'precondition: the emitter refused');
     await assert.rejects(
-        () => compileC8086(numericC, {compileC: neverCompile}),
+        () => compileC8086(big, {compileC: neverCompile}),
         (e) => {
             assert.ok(e instanceof AsmRouteError, 'refusal is an AsmRouteError');
-            assert.match(e.message, /number variable/, 'names the cause a learner can act on');
-            assert.match(e.message, /no 32-bit long|has no .*long/i, 'names the SmallerC long limit');
+            assert.equal(e.reason, 'source');
+            assert.match(e.message, /40000/, 'names the literal');
+            assert.match(e.message, /-32768 to 32767/, 'names the range');
+            assert.match(e.message, /16-bit int/, 'names the model');
             assert.match(e.message, /N2b/, 'points at the tracking id');
             return true;
         });
 });
 
-test('cUsesLong keys on the emitted long, not the pseudocode', async () => {
-    const {cUsesLong} = await route();
-    assert.equal(cUsesLong(await cFor(NUMERIC)), true);
-    assert.equal(cUsesLong(await cFor(PIN_ONLY)), false, 'a pin-only program has no long');
-    // a comment that merely says "long" must not trip it
-    assert.equal(cUsesLong('/* this takes a long time */\nint main(void){ return 0; }'), false);
+test('an unimplemented verb\'s emitter refusal reaches the learner by name, not as "no assembly"', async () => {
+    const {compileC8086, AsmRouteError} = await route();
+    const neverCompile = () => { throw new Error('the compiler must not be reached'); };
+    const withPrint = await cFor('DEVICE i8086\nPIN led = P1.0 OUTPUT\nWHEN flag clicked:\n  print 5\n  turn on led');
+    assert.match(withPrint, /No C emitted/, 'precondition: print has no i8086 C branch yet');
+    await assert.rejects(() => compileC8086(withPrint, {compileC: neverCompile}), (e) => {
+        assert.ok(e instanceof AsmRouteError);
+        assert.match(e.message, /This program also uses: print/, 'names the verb');
+        assert.doesNotMatch(e.message, /produced no assembly/);
+        return true;
+    });
 });
 
-test('a pin-only i8086 program is NOT refused (the route still compiles + assembles it)', async () => {
+test('a program with no hardware gets HOST C, and the route says so by name (31 of 280 gallery programs)', async () => {
+    const {compileC8086, AsmRouteError, isHostC} = await route();
+    const hostC = await cFor('WHEN flag clicked:\n  set counter to 5\n  say counter');
+    assert.ok(isHostC(hostC), 'precondition: no PIN/PART line means host C');
+    const neverCompile = () => { throw new Error('the compiler must not be reached'); };
+    await assert.rejects(() => compileC8086(hostC, {compileC: neverCompile}), (e) => {
+        assert.ok(e instanceof AsmRouteError);
+        assert.match(e.message, /HOST C/); assert.match(e.message, /Add a PIN or PART line/);
+        return true;
+    });
+    assert.equal(isHostC(await cFor(PIN_ONLY)), false, 'device C is not host C');
+});
+
+test('cUsesLong stays as defence in depth: keys on an emitted long, not on a comment', async () => {
+    const {cUsesLong, emitterRefusal} = await route();
+    assert.equal(cUsesLong(await cFor(NUMERIC)), false, 'the int-16 emitter produces no long');
+    assert.equal(cUsesLong('static long x;\nint main(void){ return 0; }'), true);
+    assert.equal(cUsesLong('/* this takes a long time */\nint main(void){ return 0; }'), false);
+    assert.equal(emitterRefusal('int main(void){ return 0; }'), null, 'ordinary C is not a refusal');
+});
+
+test('a pin-only i8086 program still builds (the model changed nothing for it)', {timeout: 120000}, async () => {
     const {compileC8086} = await route();
     const built = await compileC8086(await cFor(PIN_ONLY), {compileC: nodeCompileC});
     assert.ok(built.bytes && built.bytes.length, 'a pin program must still build to an image');
