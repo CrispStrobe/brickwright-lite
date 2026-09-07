@@ -8,7 +8,15 @@
  * test, leaves no trace except a smaller total. This reporter keys every
  * test:pass / test:fail event on `event.data.file` and writes
  *
- *   {"files": {"<path>": {"tests": n, "passed": n, "failed": n, "stdoutBytes": n}}, "events": n}
+ *   {"files": {"<path>": {"tests": n, "passed": n, "failed": n, "stdoutBytes": n,
+ *                          "skipped": [{"name": "...", "reason": "..."}]}}, "events": n}
+ *
+ * skipped (2026-09-07, plan T13): every test the file SKIPPED, with the reason
+ * the test gave (`{skip: 'why'}`, `t.skip('why')`; a bare `skip: true` is
+ * recorded as "(no reason)"). The TAP shows `# SKIP why` with no file; this is
+ * the only place a skip is tied to the file that owns it, and
+ * scripts/check-test-run.mjs holds every skip in CI to a pointer at the one
+ * place the test does execute (LANES.md, "Skips that execute elsewhere").
  *
  * stdoutBytes (2026-09-07): bytes a file's child wrote RAW to fd 1 — console
  * output from the test or from code it loaded. Under node --test that fd is
@@ -29,7 +37,7 @@
 export default async function* testCensusReporter (source) {
     const files = {};
     let events = 0;
-    const bucket = file => (files[file] ||= {tests: 0, passed: 0, failed: 0, stdoutBytes: 0});
+    const bucket = file => (files[file] ||= {tests: 0, passed: 0, failed: 0, stdoutBytes: 0, skipped: []});
     for await (const event of source) {
         if (event.type === 'test:stdout') {
             bucket(event.data.file || '(unknown)').stdoutBytes += Buffer.byteLength(String(event.data.message || ''));
@@ -41,6 +49,7 @@ export default async function* testCensusReporter (source) {
         const b = bucket(file);
         b.tests++;
         if (event.type === 'test:pass') b.passed++; else b.failed++;
+        if (event.data.skip) b.skipped.push({name: event.data.name, reason: typeof event.data.skip === 'string' ? event.data.skip : '(no reason)'});
     }
     yield `${JSON.stringify({files, events}, null, 1)}\n`;
 }

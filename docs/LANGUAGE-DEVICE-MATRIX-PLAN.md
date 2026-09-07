@@ -354,6 +354,18 @@ census scans `.github/`, so the re-include list's own entries were mentions and 
 mention; a name between escaped backticks is reported (`outputOnlyMentions`), not counted; the stale probe is a doc chosen
 at run time. Re-includes 18 → 15. An edit to this file alone now starts no run.
 
+**T13. The CI skip census: every skipped test points at the one place it executes. BUILT 2026-09-07** (lego-b9;
+lego-ac's ask). MEASURED from CI's own TAP over the last 20 green main runs: 21 tests skipped in the unit step (corpus job
+0); 18 had never executed in any run they existed in — twelve for the Pico firmware the same workflow fetches one job over,
+four for sibling checkouts only a box has, one for BW_BOARD_HEAD_DIR (set nowhere), one for CORPUS_DIFFERENTIAL (set
+nowhere), one for a corpus at an absolute box path; three environment-dependent on BW_BOARD_DIR; five files recorded nowhere
+as ever having run. Fixed first: the build job fetches the firmware before the unit step (sha-cached, tolerated absent by
+name); RETRO_CORPUS_8086_DIR replaces the absolute path; corpus-differential runs nightly in its own workflow. Rule: the
+census reporter records each file's skips with reason; check-test-run holds every skip to a pointer in LANES ("Skips that
+execute elsewhere": file + verbatim reason → dated box run or a workflow that names the file) and cross-checks the TAP's
+`# SKIP` count; `gen-ci-skips.mjs --fetch` writes docs/generated/ci-skip-census.json; test/ci-skip-census.test.mjs holds
+readings to pointers and proves the mutations.
+
 **T12. Every browser gate's budget is derived from measurement, never typed. BUILT 2026-09-07** (lego-b9;
 lego-ac's ask). The per-step `timeout-minutes` of 2026-09-05 were "~3× each step's maximum over the last five
 main runs, floor 3, cap 8", written once by hand with the measurement in a trailing comment; a gate added
