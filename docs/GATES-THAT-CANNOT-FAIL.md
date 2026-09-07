@@ -1752,3 +1752,100 @@ silence, the unreadable review diff, the marker-less conflict) follows from that
 transferable sentence, lego-be's: reading a file out of a feature worktree is reading a SNAPSHOT;
 `git show origin/main:<path>` after a fetch is the only thing that answers "what ships" — and ea's:
 a claim about another lane's file is a claim about a tree, and the tree must be named.
+
+## Twenty-ninth species: THE EDIT THAT MATCHED NOTHING AND SAID IT WORKED (2026-09-07, lego-be's incident, written up by brickwright-lite-ea)
+
+A gate that cannot fail reports green about code it never checked. This is the
+same silence one layer earlier, in the tool that writes the code: **a
+find-and-replace whose pattern matches nothing applies no change and reports
+success.** Nothing is red. Nothing is missing from the output. The file is simply
+not what you think it is.
+
+**The generalisation first, because it is the whole thing:** any tool that
+locates by pattern and acts on what it finds — an editor, a codemod, a migration,
+a `sed` in CI, a config templater — answers *"I did what you asked"* and *"I found
+nothing to do"* with the same exit code, unless someone makes it not.
+
+**The incident** (`test/vendor-absent-by-design.test.mjs`, lego-be, landed as
+`594d5dde5`; the pre-landing sha `d46e151fc` was rebased away, and citing it
+here would have named a commit main does not have). A test restoring a vendored tree without shelling out to `git`
+gained two new uses in one change: `writeFileSync` for the restore loop,
+`statSync` for the directory filter that keeps `readdirSync` from handing a
+subdirectory to `readFileSync`. Two separate patches added them to the import.
+
+**Both matched strings that were not in the file. Both applied to nothing. Both
+reported success.** The import stayed as it had been across the two preceding
+commits:
+
+```js
+import { readFileSync, readdirSync } from 'node:fs';
+```
+
+**IT COMPOSES, AND THAT IS THE SPECIES.** The run failed with `statSync is not
+defined` — not because that gap was unrelated, but because it was the one the
+runtime reached first. The author fixed that import, re-ran, and hit the second
+silence; the tree came back dirty, and only then did reading the file replace
+patching it.
+
+So the appearance of *"a new, unrelated problem"* was itself produced by the
+second instance of the same failure. One silent no-op is a bug you find. Two
+silent no-ops in one change disguise each other: the first is hidden by the
+second's symptom, and the second looks like the consequence of having fixed the
+first. **Each hidden edit dresses the next as something else.**
+
+The final import, once the file was read rather than patched:
+
+```js
+import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs';
+```
+
+**Why it costs a diagnosis and not a retry.** An edit that fails loudly costs a
+retry. This one sends you to look at the snapshot logic — reasonable, wrong, and
+twenty minutes — because the observable symptom belongs to a different symbol
+than the change you believe you just made.
+
+**Its relatives, and the distinction is the useful part.**
+
+- Species 28 is a **census** that cannot see an assembled value: it reads, finds
+  fewer things than exist, and passes.
+- This is a **mutation** that cannot find its target: it writes, changes
+  nothing, and passes.
+
+Reading and writing, same silence, opposite directions. Both are the tool
+standing exactly where a false green would stand, which is why neither is caught
+by the thing the tool was operating on.
+
+**ONE STEP FURTHER BACK: THE PATTERN CAME FROM A VIEW OF THE FILE.** lego-be's
+first probe patch anchored on text copied out of `sed 's/^/  /'` output — with
+the two-space display prefix carried along. The replace could only ever be a
+no-op. The same root produced at least one of the three anchor misses in the
+8255 change: an assertion copied out of a terminal rendering rather than out of
+the file, where a message ran longer than the visible fragment.
+
+This is worth naming separately because the remedy differs. Refusing on a missing
+anchor catches it — but only after the fact. What prevents it is knowing that **a
+pattern copied from a rendering of a file is not a pattern from the file**:
+terminal output with an indent prefix, a diff hunk with its `+`/`-` column, a
+code block in a message that reflowed, a truncated line in a search result. By
+the time the tool receives the pattern the provenance is gone and it cannot tell
+the difference. Copy from the file; if you copy from a view, expect the anchor to
+fail and let it.
+
+**The remedy is not care, it is refusal.** Assert every anchor before applying
+any of them, and exit non-zero naming the anchor that was not found. Written that
+way, a multi-part edit either lands whole or does not land:
+
+```python
+if old not in s:
+    sys.exit('ANCHOR MISSING — the tree is not what this patch was written against')
+```
+
+Adopted here the same day, in the two-file change for the 8255 `at` fix, and it
+**refused three times on one edit**: an assertion that was two lines rather than
+one, then a message longer than the copied fragment, then a guard catching two
+anchors that would have collided. A plain string replace would have applied part
+of that change and reported success three times over. Three misses in one edit is
+not bad luck — it is what a plain replace hides.
+
+**The check to make of any such tool:** *what does it do when it matches
+nothing?* If the answer is "succeeds", the next silent no-op is already written.
