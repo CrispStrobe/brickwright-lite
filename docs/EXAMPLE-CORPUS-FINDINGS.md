@@ -254,6 +254,14 @@ same shortcuts.
 | decidable and agreeing with the program beside them | 397 |
 | **inverted** | **52, in 4 examples** |
 
+Before any of that, 476 (example, device) pairs are skipped without a pin being
+read, and the census prints why: 189 programs declare no `OUTPUT` pin, 187 benches
+carry no LED, 35 examples ship no `program.bw`, and **65 benches will not build in
+this harness at all** — it rebuilds a netlist from the file, and a seated board
+part whose terminals come from a sidecar the script does not register is rejected.
+Those 65 are a limit of the instrument, not a fact about the corpus, and they are
+the first thing to fix when extending coverage.
+
 The 176 are not a residue to wave at. A multiplexed digit needs a second pin held,
 an LED behind a transistor does not respond to the pin directly, and an unpowered
 rail lights nothing — the census cannot tell those apart from a genuine fault, so
