@@ -84,6 +84,39 @@ waiver is testable; then A only if the owner accepts that the first red run afte
 name the wrong commit once a day. Not B: today's 55 % is real, but it is the same trade part 1
 declined at 10 %, and the fleet's bisects lean on the per-commit verdict.
 
+## 5. How option D read on the evening it was adopted (17:00 UTC, same day)
+
+lego-ac adopted D — *land the next lane when the previous main run has **started***, read from the
+API rather than the clock — at about 14:10 UTC. Measured over the twelve main runs from 12:00:
+
+| window (UTC) | main runs created | stacking |
+|---|---|---|
+| 12:00 – 15:47 | 12 | **none** — every run finished before the next was created |
+| 16:32 – 16:53 | 3 | three open at once; the oldest queued **64 minutes and never started** |
+
+The second window is not D failing. It is the allocation stall of §1 recurring, and the check that
+says so is the one part 1 used: **at 17:00, with three main runs queued, nothing of ours was
+running anywhere** — all eleven workflows polled, zero jobs in progress. The runners were not ours
+to wait for.
+
+**What that exposes in D, and it is worth one sentence in the rule.** D's trigger is an event that
+may never arrive. During a stall the previous run does not start, so a rule phrased as "wait until
+it starts" has no defined behaviour precisely when the queue is at its worst — the landing agent
+either waits indefinitely or lands anyway, undeclared. And the measurement says the second is
+free: with nothing of ours running, an extra queued main run displaces nothing of ours; it joins
+GitHub's queue behind GitHub's own backlog.
+
+**Proposed wording, for the owner:** *land when the previous main run has started, or when it has
+been queued longer than 15 minutes without starting — and say which in the landing note.* Today's
+main queue waits were median 8.5 and p90 27.7 minutes, so a 15-minute fallback fires on roughly the
+worst quarter of landings and never on an ordinary one. The point is not the number; it is that
+"we landed into a stall, knowingly" is a fact the ledger should carry, and an undeclared wait is
+the one thing D was adopted to remove.
+
+**One more reading, for free.** This section is a `docs/*.md` file that no non-comment line of code
+names, so landing it starts no build at all — the read-not-mention waiver of lane C, working as
+intended on the first document written after it.
+
 ## Appendix A: every main run today
 
 wait = created → first job started; "newer" = main runs created after this one and before it
