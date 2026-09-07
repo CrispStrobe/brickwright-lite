@@ -108,7 +108,7 @@ const check = (what, ok, detail = '') => {
  * questions and only together separate a bad computation from a bad layout.
  */
 const MEASURE = () => {
-    const canvas = document.querySelector('canvas');
+    const canvas = document.querySelector('[data-bw-stage-canvas]');
     if (!canvas) return null;
     const r = canvas.getBoundingClientRect();
     const parent = canvas.parentElement ? canvas.parentElement.getBoundingClientRect() : null;
@@ -139,7 +139,7 @@ async function run () {
     const browser = await chromium.launch({headless: true});
     const page = await browser.newPage({viewport: {width: 1600, height: 1050}});
     const shot = async (name) => {
-        const el = await page.$('canvas');
+        const el = await page.$('[data-bw-stage-canvas]');
         if (!el) return null;
         const buf = await el.screenshot();
         await writeFile(join(artifacts, `${name}.png`), buf);
@@ -164,7 +164,30 @@ async function run () {
 
     try {
         await page.goto(url, {waitUntil: 'networkidle', timeout: 90000});
-        await page.waitForSelector('canvas', {timeout: 60000});
+
+        // WHICH CANVAS. The stage is not `document.querySelector('canvas')`:
+        // stage.jsx also renders a 0x0 dragging-sprite canvas, and it comes
+        // first in the DOM. The first version of this harness waited for that
+        // one, never saw it become visible, and timed out after 60 s — which
+        // was the good outcome. Had it measured that element instead, a 0x0
+        // box against a non-zero intent would have produced a confident and
+        // entirely wrong WRONG SCALE.
+        //
+        // So the candidate is chosen by what it IS — a canvas with a real
+        // size that is not the drag layer — and AMBIGUITY IS REPORTED RATHER
+        // THAN RESOLVED: if there is not exactly one, this says so and stops
+        // instead of taking the first and hoping.
+        const marked = await page.waitForFunction(() => {
+            const all = [...document.querySelectorAll('canvas')];
+            const real = all.filter(c =>
+                !/drag/i.test(c.className || '') && c.width > 0 && c.height > 0);
+            if (real.length !== 1) return false;
+            real[0].setAttribute('data-bw-stage-canvas', '1');
+            return true;
+        }, null, {timeout: 60000}).catch(() => null);
+        check('exactly one stage canvas can be identified', !!marked,
+            marked ? '' : 'zero or several canvases matched — the harness will not guess which is the stage');
+        if (!marked) throw new Error('cannot identify the stage canvas; refusing to measure the wrong element');
 
         // The Code Editor's own example loader, reached the way the green
         // gates reach the circuit tab's. The importer is told apart from the
