@@ -2028,3 +2028,13 @@ the difference.
 correctly, and the fixture was eight lines of obvious code. Nothing about a
 `Map` in a closure looks like a place where identity goes wrong. The failure is
 invisible at the point of reading and visible only at the point of breaking.
+
+**The same discipline, one level up.** Hours earlier in the same lane, a local
+browser harness — CI's own build artifact served from disk — passed a gate 15/15
+while CI reported `saw 0`, because the catalogue fetches when it opens and a
+local disk read lands before the count where a hosted one does not. Same class
+of mistake in a different fixture: a stand-in that is not the thing, trusted
+because it was green. A double that never diverges from its subject and a
+harness that never runs slower than production are the same wish, and neither is
+free. The rule that catches both is the one above — make the stand-in fail on
+purpose before believing it when it passes.

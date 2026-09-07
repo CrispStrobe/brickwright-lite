@@ -1039,10 +1039,13 @@ overstatement it replaced.
 **The GPL home of these binaries:** https://github.com/CrispStrobe/sdcc-wasm —
 the COPYING text, the written offer of corresponding source, the build
 provenance and the SHA-256 of each binary live there with the binaries they
-describe. Use that GitHub URL, not the Pages root: the artifacts are served from
-`https://crispstrobe.github.io/sdcc-wasm/static/sdcc-wasm/<file>`, and the site
-root itself returns 404, so a human sent there lands on an error instead of the
-licence and the offer.
+describe. The artifacts are served from
+`https://crispstrobe.github.io/sdcc-wasm/static/sdcc-wasm/<file>`; the site root
+and `COPYING` serve too. (For a few hours on 2026-09-07 the root returned 404
+while only the artifact paths served, which mattered because the GPL-2 section 3
+offer points a human at that page — lego-b9 caught it and it is fixed. Prefer
+the GitHub URL anyway: it is where the offer can be acted on, since the offer
+says to open an issue there.)
 
 **What changed, and why (2026-09-07).** `webpack.config.js` copied these
 binaries into `static/sdcc-wasm/` in the build output. `apps/tauri/src-tauri/tauri.conf.json` bundles that build
