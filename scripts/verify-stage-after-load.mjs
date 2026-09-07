@@ -147,6 +147,21 @@ async function run () {
     };
     const snap = async (name) => ({name, ...(await page.evaluate(MEASURE)), content: await shot(name)});
 
+    /**
+     * Wait for TWO PAINTED FRAMES, not for a number of milliseconds.
+     *
+     * A fixed sleep is a guess about how long the app needs and it costs
+     * exactly what it was given, every run, forever — which is why this repo
+     * counts them and only lets the total shrink (test/wait-census.test.mjs).
+     * It is also the wrong instrument here specifically: this harness EXISTS
+     * to decide whether a repaint happened, and a sleep long enough to be safe
+     * would hide the very timing it is measuring. Two rAFs is the condition
+     * itself — the browser has painted — and costs only what it costs.
+     */
+    const settle = () => page.evaluate(() => new Promise(resolve => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve(true)));
+    }));
+
     try {
         await page.goto(url, {waitUntil: 'networkidle', timeout: 90000});
         await page.waitForSelector('canvas', {timeout: 60000});
@@ -182,20 +197,22 @@ async function run () {
             try { await window.__bwImporter.loadExample(key); return {ok: true}; } catch (e) { return {ok: false, error: String(e)}; }
         }, EXAMPLE);
         check(`the pure-Scratch example '${EXAMPLE}' loads`, loaded.ok, loaded.error || '');
-        await page.waitForTimeout(1500);           // let the load settle, not a fix
+        // loadExample already awaited the VM's load, so the only thing left to
+        // wait for is paint.
+        await settle();
         const afterLoad = await snap('1-after-load');
 
         // STEP 2 — redraw at UNCHANGED geometry. Only a repaint changes.
         await page.evaluate(() => window.dispatchEvent(new Event('resize')));
-        await page.waitForTimeout(500);
+        await settle();
         const afterRedraw = await snap('2-after-redraw-same-size');
 
         // STEP 3 — the size fullscreen would give, WITHOUT fullscreen.
         const vp = page.viewportSize();
         await page.setViewportSize({width: vp.width, height: vp.height - 1});
-        await page.waitForTimeout(300);
+        await settle();
         await page.setViewportSize(vp);
-        await page.waitForTimeout(500);
+        await settle();
         const afterViewport = await snap('3-after-viewport-nudge');
 
         // STEP 5 — the control: real fullscreen, which is what the owner did.
@@ -203,7 +220,7 @@ async function run () {
             const store = window.__brickwrightStore;
             if (store) store.dispatch({type: 'scratch-gui/mode/SET_FULL_SCREEN', isFullScreen: true});
         });
-        await page.waitForTimeout(1200);
+        await settle();
         const afterFullscreen = await snap('4-after-fullscreen');
 
         const all = [before, afterLoad, afterRedraw, afterViewport, afterFullscreen];
