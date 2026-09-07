@@ -723,43 +723,49 @@ library whitelist (`LiquidCrystal`, `Adafruit_SSD1306` → verbs) with named
 refusals. **P5.** One silicon wire-truth bench per family *(manual, recorded)*.
 Each gets its own LANES row when claimed.
 
-**P6 (2026-09-06, unclaimed).** The browser gate for the debugger's chip-refusal
-line drives the ROM route, once the Machine Loader exposes ROM boot media through
-a named control. **The program is already written and proved**: the 8255 mode-1
-control word from `test/debug-chip-refusal-line.test.mjs` (`mov al, 0A0h` /
-`out 03h, al`), which produces exactly one row on BREADBOARD8086, where `ppi1`
-sits at port 0.
+**P6 (2026-09-06 — RETRACTED AND CLOSED 2026-09-07).** The browser gate for the
+debugger's chip-refusal line drives the Code tab and asserts the one row. Done;
+no Machine Loader work was needed.
 
-*Why it is not done.* `chipRefusals()` has consumers and NO REACHABLE PRODUCER IN
-THE UI. Measured 2026-09-06: the ASM tab always returns `profile: 'dos'`
-(`assemble-route.js:347` and `:402` — a .COM loaded as a ROM at F0000 executes
-nothing), so it boots the DOS bench, which has no chips and no collector at all;
-and the no-media route boots the XT BIOS on PCXT8086, whose only refusal is
-`pic1`'s — present for FOUR STEPS out of 1,579,840 while the 8259 init sequence
-is incomplete, then correctly cleared. A four-step window inside a 1.58 M-step
-boot is a race, not a check. The third branch, boot media with `slotId: 'rom'`
-and no profile, takes BREADBOARD8086 and would work; which control produces it is
-the debugger lane's question.
+*What this item originally claimed, and why it was wrong.* It said
+`chipRefusals()` had consumers and NO REACHABLE PRODUCER in the UI, because the
+ASM tab boots "a chipless DOS bench". **That was wrong.** The DOS bench carries
+`ppi1`, `pit1` and `spk`, with its 8255 based at 60h — so its control register is
+port **63h**. The gate that failed had written the 8255 mode word to port **03h**,
+which is that register on a breadboard based at **zero** (BREADBOARD8086, the
+config the unit test uses). The write decoded to nothing, the panel correctly
+showed no line, and I read "no rows" as "no chips".
 
-*Why the ROM route would work where the BIOS route cannot,* which is sharper than
-"the window is narrow" (lego-be, 2026-09-06, measured after this finding): refusal
-ledgers come in two kinds wearing one shape. **Retracted** ones return to null
-when the condition passes — `8259.initWarning` when the ICW sequence completes,
-`8251.modeWarning` on a later async mode word, `8255.modeWarning` on a mode-0
-control word. **Permanent** ones are only ever added to — the 8237's `unmodelled`
-Map, the YM3812 and SB DSP `unsupported` maps, the uPD765's `lastRefusal`. So
-`chipRefusals()` answers "what is refused NOW", and for four of seven parts that
-happens to also answer "what was ever refused". POST only ever triggers the
-retracting kind, which is why booting the BIOS leaves nothing to see; the 8255
-program above triggers a retracting one too, but nothing on that bench retracts it,
-and an 8237 program on a bench that has one would leave a permanent row. Either
-works for P6. Neither works through a poll on the BIOS route.
+*The shape of the error, which is the part worth keeping.* The bench's own header
+comment reads "a different machine, no chips, INT 21h behind a trap page" — it
+describes the bench's ORIGINAL shape, and the caller merges declared chips now.
+A source comment agreed with a mis-aimed probe, and I reached the wrong
+conclusion by reading where probing was two minutes' work. Both ports are named
+above so the next reader cannot re-fall into it, and the DOS bench's chip set and
+its 8255's base are now pinned in `test/debug-chip-refusal-line.test.mjs` — in
+node, at two seconds, rather than as a forty-second browser timeout.
 
-Until then `scripts/verify-debug-chip-refusal-line.mjs` proves the RENDER — the
-panel's `data-debug-chip-refusal-state` follows the handle, `'none'` on a bench
-with no collector — and says so in its header. That is a stated reduction, not a
-gate quietly proving less than its name suggests. The feature itself is proved in
-the unit test: eight assertions, six mutations red.
+*What survived the retraction.* The no-media route really does boot the XT BIOS
+whose only refusal is `pic1`'s, present for four steps out of 1,579,840 while the
+8259 init sequence is incomplete and then correctly cleared — measured, and
+unaffected. What was wrong was concluding from that one route that no route
+works.
+
+**P6a (2026-09-07, unclaimed).** A browser gate reaches the Machine Loader.
+
+**No green gate reaches it at all today**, and that is how seven of its fifteen
+presets came to fetch ROMs that 404 without anyone noticing. The two controls now
+carry stable ids — `bw-machine-load-file` on the file input and
+`bw-machine-preset-<id>` on each preset button — so the drive is possible; what is
+missing is a way for a gate to get an 8086 ONTO THE CIRCUIT BOARD, because the
+loader renders only when machine extraction returns a kind, and extraction needs a
+part with `kind: 'i8086'` on the board (`bw-circuit-ui/model/machine-extract.js:34`).
+No shipped example board carries one, and no proof places parts.
+
+So this wants either an 8086 example board, or a gate-drivable way to place a part —
+both larger than adding an id, which is why the ids landed alone. The smallest
+useful leg once that exists: click `bw-machine-preset-timerdemo` (the one i8086
+preset whose ROM resolves today) and assert the media-load reaches the debugger.
 
 **Vocabulary source (2026-09-05):** bw-board `I8086Machine.chipRefusals()` (`bfd8b44`, lego-be)
 returns `{part, kind, feature, symptom, count}` rows — one per feature a program asked a chip
