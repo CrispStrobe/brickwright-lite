@@ -633,7 +633,13 @@ locales). **P3.**
 MicroPython protocol drivers for the same part set, proven by differential
 test: emit C and MicroPython for one program, run both against the simulated
 part, compare state; implement the `text_line_0` assert kind, which unblocks
-the skipped display assertions in the example corpus. **P4.** Reader-side
+the skipped display assertions in the example corpus. **Starting facts (2026-09-07, worker, measurement not
+begun):** `sb3-creator-micropython.js` is the READER (MicroPython → blocks); the driver inventory is a question
+about the GENERATOR (`generateMicroPython`), so the measurement is generator part-coverage versus generateC
+part-coverage over profiles.js's part ids, plus the `text_line_0` skipped-assertion count from the
+assert-physics / example-corpus harness; start with the 8255 pin path on the Pico simulator, where the run-live
+seam and the GPIO oracle exist. Hold the reader/generator distinction: a rushed premise here is the class of
+error P2 and N2b spent their time catching (tone stubs, sprite x/y, the long ceiling). **P4.** Reader-side
 library whitelist (`LiquidCrystal`, `Adafruit_SSD1306` → verbs) with named
 refusals. **P5.** One silicon wire-truth bench per family *(manual, recorded)*.
 Each gets its own LANES row when claimed.
