@@ -25,7 +25,7 @@ item marked with an agent name is being worked on.
 ## Next-session shortlist — reconciled 2026-09-07
 
 [PLAN.md](PLAN.md#next-session-priorities--reconciled-2026-09-07) records the
-execution order. The reconciled baseline is `ef376fd66`; [HISTORY.md](HISTORY.md)
+execution order. The reconciled baseline is `e6037bc84`; [HISTORY.md](HISTORY.md)
 holds completed and rejected work, and [LANES.md](LANES.md) controls live
 ownership.
 
@@ -48,9 +48,10 @@ less-than-1.0x or greater-than-8-ms-p95 threshold.
 Track A is complete at `60ecb4d89`, with all four jobs green in run
 `34087062528` and 2,821 tests passing. N2b is complete through `3d84eef62`: its
 8086 C contract is 16-bit `int`, while ASM keeps 32-bit pairs, and the
-difference is asserted by value. CI and vendor hardening through `ef376fd66`
+difference is asserted by value. CI and vendor hardening through `e6037bc84`
 includes per-branch concurrency, the `d5850e6` bw-board pin, absent-by-design
-vendor protection and the reseat-gate synchronization.
+vendor protection, the reseat-gate synchronization, and all seven formerly
+missing preset ROMs with provenance and observable boot gates.
 
 ### Track 1 — N2c: `wait` on the 8086 C route
 
@@ -92,11 +93,12 @@ reader support, select one uncovered driver family, and prove its emitted
 behavior against the C route or a device-level oracle. Keep skipped physics
 assertions visible in the receipt.
 
-### Track 4 — owned pin, ROM and CI follow-ups
+### Track 4 — owned pin and CI follow-ups
 
-T9/T9b, the seven constructed preset-ROM paths, N3d, P6/P6a, N11 and the next
-bw-board pin are already coordinated lanes. A sync cannot move a pin without
-`--pin`, and upstream CI on that exact SHA must be green before Lite tests it.
+T9/T9b, N3d, P6/P6a, N11 and the next bw-board pin are already coordinated
+lanes. The seven constructed preset-ROM paths are complete at `30897d5c7` /
+`e6037bc84`. A sync cannot move a pin without `--pin`, and upstream CI on that
+exact SHA must be green before Lite tests it.
 The DOS bench's 8255 is reachable at port 60h; the earlier 03h probe does not
 show that chip refusals lack a UI producer. The browser Pico transport already
 drains packets; N3d concerns the Node oracle. These corrections stay attached

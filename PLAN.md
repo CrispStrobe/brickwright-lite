@@ -17,7 +17,7 @@ gates.
 
 ## Next-session priorities — reconciled 2026-09-07
 
-This shortlist is reconciled with `main` at `ef376fd66`. `HISTORY.md` holds the
+This shortlist is reconciled with `main` at `e6037bc84`. `HISTORY.md` holds the
 completed and rejected work; `LANES.md` is the live ownership authority.
 
 The payload sequence is closed. Its fixed gates and receipts remain binding:
@@ -32,10 +32,12 @@ The payload sequence is closed. Its fixed gates and receipts remain binding:
 | Track A GUI test source authority | Completed at `60ecb4d89`; hosted run `34087062528` passed all four jobs with 2,821 tests passing. Root tests use owned overlay sources while the prepared GUI supplies dependency and build scope. |
 | N2b 8086 C numeric model | Completed through `3d84eef62`. C uses a stated 16-bit `int` and refuses literals outside -32768..32767; ASM retains 32-bit pairs. The value-level differential keeps that width disagreement explicit. |
 
-Subsequent CI and vendor work through `ef376fd66` added per-branch concurrency,
+Subsequent CI and vendor work through `e6037bc84` added per-branch concurrency,
 advanced the bw-board pin chain through `d5850e6`, protected absent-by-design
-vendor files, and synchronized the reseat gate. A pin sync now requires `--pin`,
-and upstream CI on the pinned SHA is a prerequisite for a Lite pin run.
+vendor files, synchronized the reseat gate, and shipped all seven previously
+missing i8086 preset ROMs with provenance and observable boot gates. A pin sync
+now requires `--pin`, and upstream CI on the pinned SHA is a prerequisite for a
+Lite pin run.
 
 The next work is correctness work with one claim per bounded session:
 
@@ -44,7 +46,7 @@ The next work is correctness work with one claim per bounded session:
 | 1 | N2c: `wait` on the 8086 C route | Claimed by bwcx on `lane/n2c-i8086-c-wait`. Measure PIT-backed and calibrated-loop choices against ASM `BW_DELAY`; implement upstream, prove other targets byte-stable, vendor through the pin chain, and require a mutation-proved C/ASM PIT-tick differential on the DOS bench. Re-run the 280-program reach measurement. |
 | 2 | Milestone 0 circuit-variant electrical equivalence | Selection remains coordinator-controlled. Claim one exact circuit family or invariant; acceptance must compare the electrical state the solver produces, beyond render legibility. |
 | 3 | P3 MicroPython protocol-driver coverage | Part 1 is owned by worker. Later sessions start from its generator-versus-reader measurement and claim one remaining driver family with a differential oracle. |
-| 4 | Pin, ROM and CI follow-ups | T9/T9b, seven preset-ROM paths, N3d, P6/P6a and the bw-board pin chain are already owned. Their next commits stay in those lanes; later work begins only after a released claim identifies a remaining boundary. |
+| 4 | Pin and CI follow-ups | T9/T9b, N3d, P6/P6a and the bw-board pin chain are already owned. The seven preset-ROM paths are complete at `30897d5c7` / `e6037bc84`. Remaining commits stay in their existing lanes; later work begins only after a released claim identifies a boundary. |
 
 Two corrected premises remain explicit. The DOS bench can produce chip refusals:
 its 8255 is at port 60h, while the earlier probe used 03h. The shipped browser
