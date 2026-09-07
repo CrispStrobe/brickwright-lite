@@ -27,10 +27,10 @@ import {fileURLToPath} from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DOC = path.join(ROOT, 'docs/VENDOR-DIVERGENCE-I8086-MACHINE.md');
 
-const readAllowList = () => {
-    const md = fs.readFileSync(DOC, 'utf8');
+const readAllowList = (doc = DOC) => {
+    const md = fs.readFileSync(doc, 'utf8');
     const m = md.match(/```json\n([\s\S]*?)\n```/);
-    assert.ok(m, `${path.relative(ROOT, DOC)} has no \`\`\`json allow-list block -- ` +
+    assert.ok(m, `${path.relative(ROOT, doc)} has no \`\`\`json allow-list block -- ` +
         'the test consults that block, so removing it would silently disable this gate');
     return JSON.parse(m[1]);
 };
@@ -230,11 +230,11 @@ test('the two dual-tracked vendored copies have not drifted apart', t => {
 // about a sibling checkout being a DIRECTORY, not a COMMIT. Factored out rather
 // than copied: two resolutions of "which upstream" would be two answers, and the
 // one that is wrong would be the one nobody re-read.
-const pinnedSrcDir = () => {
+const pinnedSrcDir = (envVar = 'BW_BOARD_DIR', repo = 'bw-board') => {
     const candidates = [
-        process.env.BW_BOARD_DIR, // gate-shapes-allow: judged only when this is set, see below
-        path.resolve(ROOT, '../../bw-board'),
-        path.resolve(ROOT, '../bw-board')
+        process.env[envVar], // gate-shapes-allow: judged only when this is set, see below
+        path.resolve(ROOT, `../../${repo}`),
+        path.resolve(ROOT, `../${repo}`)
     ].filter(Boolean);
     const TMP = fs.realpathSync(os.tmpdir());
     const outsideTmp = (d) => {
@@ -242,11 +242,55 @@ const pinnedSrcDir = () => {
     };
     const dir = candidates.map(d => path.join(d, 'src'))
         .filter(d => fs.existsSync(d))
-        .filter(d => process.env.BW_BOARD_DIR ? true : outsideTmp(d))[0];
-    return {dir, pinned: Boolean(process.env.BW_BOARD_DIR), candidates};
+        .filter(d => process.env[envVar] ? true : outsideTmp(d))[0];
+    return {dir, pinned: Boolean(process.env[envVar]), candidates};
 };
 
-test('no vendored file diverges from upstream at the pin without being declared', t => {
+// ONE IMPLEMENTATION OF THE BYTE-IDENTITY CLAIM, TWO CORPORA. bw-board and
+// bw-circuit-ui are different trees with different manifests and the same
+// question, so this is a parameter, not a second copy: a duplicated claim goes
+// stale on its own schedule and the pair disagree with nobody noticing, which is
+// the failure this whole file exists to prevent.
+//
+// RECURSIVE, AND EVERY EXTENSION. The first version walked one directory and
+// filtered `.js`, which silently excluded bw-board's `devices/` subtree -- 55
+// files that no gate compared. Measured before widening: those 55 are all
+// byte-identical and the walk adds exactly one undeclared name, LICENSE, now
+// declared. bw-circuit-ui is .jsx, .json and .svg and nested throughout, so a
+// basename-and-.js walk would have seen almost none of it.
+const walkFiles = (root) => {
+    const out = [];
+    const rec = (dir, prefix) => {
+        for (const e of fs.readdirSync(dir, {withFileTypes: true}).sort((a, b) => a.name < b.name ? -1 : 1)) {
+            const rel = prefix ? `${prefix}/${e.name}` : e.name;
+            if (e.isDirectory()) rec(path.join(dir, e.name), rel);
+            else if (e.isFile()) out.push(rel);
+        }
+    };
+    rec(root, '');
+    return out;
+};
+
+const classify = (spec, srcDir) => {
+    const vendorRoot = path.join(ROOT, spec.vendoredRoots[0]);
+    const declared = new Set([...Object.keys(spec.files || {}), ...(spec.lineLevelOnly?.files ?? [])]);
+    const liteAuthored = spec.liteAuthored?.files ?? {};
+    const identical = [], diverged = [], undeclared = [], liteOnly = [];
+    for (const f of walkFiles(vendorRoot)) {
+        const u = path.join(srcDir, f);
+        if (!fs.existsSync(u)) { liteOnly.push(f); continue; }
+        if (fs.readFileSync(path.join(vendorRoot, f)).equals(fs.readFileSync(u))) identical.push(f);
+        else if (declared.has(f)) diverged.push(f);
+        else undeclared.push(f);
+    }
+    return {identical, diverged, undeclared, liteOnly, liteAuthored};
+};
+
+// Registered once per upstream. Everything that differs between them is an
+// argument; the question, the assertions and their wording are shared, so a
+// future fix lands in one place for both trees.
+const declaresEveryDivergence = (label, {doc, env, repo, floor}) =>
+    test(`no vendored ${label} file diverges from upstream at the pin without being declared`, t => {
     // WHY THIS IS NOT THE TWO INVENTORIES ABOVE, and why it lives in this file
     // rather than in one of its own.
     //
@@ -278,35 +322,20 @@ test('no vendored file diverges from upstream at the pin without being declared'
     // A pin move is a PROXY for convergence. This asks the thing itself: after
     // the commit, IS the content what the recorded pin says it is? Same move as
     // baseForFile -- ask what the content is, not what the commit did.
-    const {dir: srcDir, pinned, candidates} = pinnedSrcDir();
+    const {dir: srcDir, pinned, candidates} = pinnedSrcDir(env, repo);
     if (!srcDir) {
         t.diagnostic(`SKIPPED, NOT PASSED: upstream not found. Looked in: ${candidates.join(', ')}.`);
         t.skip('upstream tree not on disk -- byte-identity against the pin NOT verified');
         return;
     }
 
-    const spec = readAllowList();
-    const vendorRoot = path.join(ROOT, spec.vendoredRoots[0]);
-    const declared = new Set([...Object.keys(spec.files), ...spec.lineLevelOnly.files]);
-    const liteAuthored = spec.liteAuthored?.files ?? {};
-
-    const identical = [], diverged = [], undeclared = [], liteOnly = [];
-    for (const f of fs.readdirSync(vendorRoot).filter(x => x.endsWith('.js')).sort()) {
-        const u = path.join(srcDir, f);
-        if (!fs.existsSync(u)) { liteOnly.push(f); continue; }
-        if (fs.readFileSync(path.join(vendorRoot, f)).equals(fs.readFileSync(u))) {
-            identical.push(f);
-        } else if (declared.has(f)) {
-            diverged.push(f);
-        } else {
-            undeclared.push(f);
-        }
-    }
+    const spec = readAllowList(doc);
+    const {identical, diverged, undeclared, liteOnly, liteAuthored} = classify(spec, srcDir);
 
     // Species 1: a corpus of nothing satisfies every assertion below. 133 files
     // as of 2026-09-07; the floor is deliberately far under it, because this
     // guards against an EMPTY read, not against the tree changing size.
-    assert.ok(identical.length + diverged.length > 50,
+    assert.ok(identical.length + diverged.length > floor,
         `only ${identical.length + diverged.length} vendored file(s) were compared against ` +
         `${srcDir} -- that is not this tree, and every assertion below would pass on it`);
 
@@ -317,8 +346,8 @@ test('no vendored file diverges from upstream at the pin without being declared'
         t.diagnostic(`sibling tree ${srcDir}: ${identical.length} identical, ${diverged.length} ` +
             `declared-divergent, ${undeclared.length} undeclared` +
             `${undeclared.length ? ` (${undeclared.join(', ')})` : ''}, ${liteOnly.length} lite-only`);
-        t.skip('a sibling bw-board checkout was found but its COMMIT is unknown -- set ' +
-            'BW_BOARD_DIR to a checkout at the sha in vendor-pins.json to judge it (CI does)');
+        t.skip(`a sibling ${repo} checkout was found but its COMMIT is unknown -- set ` +
+            `${env} to a checkout at the sha in vendor-pins.json to judge it (CI does)`);
         return;
     }
 
@@ -363,6 +392,23 @@ test('no vendored file diverges from upstream at the pin without being declared'
     t.diagnostic(`byte-identity vs ${path.basename(path.dirname(srcDir))} at the pin: ` +
         `${identical.length} identical, ${diverged.length} declared-divergent ` +
         `(${diverged.join(', ')}), ${liteOnly.length} lite-authored and declared`);
+    });
+
+// bw-board: 162 identical / 19 declared / 8 lite-authored as of 2026-09-07.
+declaresEveryDivergence('bw-board', {doc: DOC, env: 'BW_BOARD_DIR', repo: 'bw-board', floor: 50});
+
+// bw-circuit-ui: 673 files, 668 identical / 2 declared / 3 lite-authored. The
+// LARGEST vendored tree in the repository and, until 2026-09-07, the one with no
+// machine-readable manifest at all -- its divergence document was prose, and the
+// prose was wrong in every row: two files it listed as diverging had been
+// upstreamed and were byte-identical, the one it described as diverging BOTH
+// WAYS was purely lite-ahead, and the largest divergence in the tree was not
+// mentioned. Found because vendor-freshness's circuit-designer step had been
+// reporting two STALE files for thirteen hours inside a workflow everyone had
+// learned to ignore.
+declaresEveryDivergence('bw-circuit-ui', {
+    doc: path.join(ROOT, 'docs/VENDOR-DIVERGENCE-BW-CIRCUIT-UI.md'),
+    env: 'BW_CIRCUIT_UI_DIR', repo: 'bw-circuit-ui', floor: 400,
 });
 
 test('upstream has not converged on the lite-only work (needs the bw-board tree)', t => {

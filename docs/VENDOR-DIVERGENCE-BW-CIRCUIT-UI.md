@@ -66,6 +66,50 @@ loses nothing — upstream lists 267 parts, lite 260, and **nothing in lite is
 absent upstream**. Data files were safe to take; the three components were not,
 which is exactly the distinction the refusal is protecting.
 
+## The machine-readable part
+
+Everything above is prose and prose goes stale -- see `why` below for how
+badly, measured. The block is what `test/vendor-identity.test.mjs` reads.
+
+```json
+{
+  "upstreamRepo": "bw-circuit-ui",
+  "vendoredRoots": [
+    "overlay/scratch-gui/src/lib/bw-circuit-ui",
+    "packages/scratch-gui/src/lib/bw-circuit-ui"
+  ],
+  "why": "THE PROSE BELOW WAS WRONG IN EVERY ROW BY THE TIME ANYONE READ IT, which is the same failure docs/VENDOR-DIVERGENCE-I8086-MACHINE.md records about its own earlier prose version: a document that DESCRIBES a divergence has no way to notice when one changes. Measured 2026-09-07 against upstream at the pin: VdpScreen.jsx and BoardCanvas.jsx, both listed below as diverging, are now BYTE-IDENTICAL -- they were upstreamed and the table was never updated. CircuitDesigner.jsx is described as diverging BOTH WAYS with lite behind on 46 lines; it is 11 lite-only lines and ZERO upstream-only, so lite is purely ahead and the paragraph warning that 'taking either side wholesale loses something' no longer describes it. And ExamplesBrowser.jsx, the largest divergence in the tree, is not mentioned at all. This block is what the gate reads, so from now on the document and the tree cannot disagree without something going red.",
+  "measured": "2026-09-07, overlay root, against bw-circuit-ui at the pin: 673 vendored files, 668 byte-identical, 2 divergent (below), 3 lite-authored (below). The vendored copy is in the state this file claims.",
+  "files": {},
+  "lineLevelOnly": {
+    "why": "Two files differ from upstream at the pin and both differences are deliberate. components/CircuitDesigner.jsx: 11 lite-only lines, 0 upstream-only -- `data-testid` handles on the machine-preset controls and the arbitrary-ROM input, added because that input was 'the only named way to put an arbitrary ROM image on the bench, and until now it had no handle a gate could take'. Purely additive and a good upstream candidate: test handles help upstream too. components/ExamplesBrowser.jsx: 27 lite-only lines and 115 upstream-only, and THE 115 ARE NOT LOST WORK -- lite extracted the intro document's parser, renderer and labels into intro-doc.jsx so the catalogue and the top bar's (i) cannot drift apart, and the browser now imports INTRO_L10N, LEVEL_LABELS, LEVEL_COLORS, parseIntro and renderMarkdown from there. Verified: all five symbols are exported by that file. So the upstream-only count is the inlined original that lite replaced with an import, which is exactly why a line count has no direction and must never be read as one.",
+    "files": [
+      "components/CircuitDesigner.jsx",
+      "components/ExamplesBrowser.jsx"
+    ]
+  },
+  "liteAuthored": {
+    "why": "Files lite has that upstream does not, inside a vendored root -- the same inventory docs/VENDOR-DIVERGENCE-I8086-MACHINE.md keeps for bw-board, and for the same reason: upstream has no copy to restore them from and no upstream review ever sees them. Each reason must say why the file lives in a vendored directory rather than beside lite's own code.",
+    "ratchet": "Removal is free. An addition costs a reason in the same commit, and the gate refuses any lite-authored file not listed, so adding the file without the reason cannot go green.",
+    "files": {
+      "intro-doc.jsx": {
+        "reason": "The extraction target for ExamplesBrowser.jsx's 115 upstream-only lines. It lives in the vendored root because the vendored component imports it by relative path ('../intro-doc.jsx'), and the whole point of the extraction was that the catalogue and the top bar's (i) share ONE parser -- two copies would be two truths.",
+        "importedBy": [
+          "components/ExamplesBrowser.jsx"
+        ]
+      },
+      "LICENSE": {
+        "reason": "Upstream's licence text, carried with the vendored copy so the terms travel with the code rather than living only in a manifest. Upstream keeps it at the repository root, not under src/, so it has no counterpart at the path this comparison walks. Attribution, not code.",
+        "importedBy": []
+      },
+      ".vendor-manifest.json": {
+        "reason": "Written by sync-bw-circuit-ui.mjs to record what it copied. It is generated INTO the vendored root by the sync itself, so it is lite-authored by construction and can never have an upstream counterpart.",
+        "importedBy": []
+      }
+    }
+  }
+}
+```
 ---
 
 # A SECOND DIVERGENCE, 2026-09-08
