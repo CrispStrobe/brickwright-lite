@@ -41,6 +41,14 @@ const BASELINE = {
     // their site: in every one, absence FAILS. What none of them assert is DISAPPEARANCE, which
     // is a different property; where a contract includes it (a dialog that must close) it still
     // needs writing.
+    // Added 2026-09-07 (lego-b9, from lego-be's proof that T9's NUL skip hid a former pin): a
+    // guarded continue/return directly inside a loop over a file walk, with no report within
+    // reach. Measured 3 on arrival; one was a name-only extension filter (a role skip, exempt by
+    // the rule's own text). The two that remain are BOTH in test/fetch-pinning.test.mjs (:134 a
+    // catch-on-read, :135 the NUL skip) — lego-be's file, in flight for its own one-character fix,
+    // asked to report its skipped set in that landing, at which point this goes to 0. The rule
+    // is new, so this number is a measured starting point, not a raised baseline.
+    'SILENT-SKIP': 2,
     'EVENT-AS-STATE': 0,
     // Added 2026-09-02, from triaging EVENT-AS-STATE: an awaited precondition inside a try whose
     // catch is empty or comment-only. Four instances, all bounded by a downstream hard assertion
@@ -76,6 +84,19 @@ const scan = source => {
     rmSync(dir, {recursive: true, force: true});
     return JSON.parse(raw).findings.map(f => f.kind);
 };
+
+test('a guarded skip inside a file walk with no report beside it is caught; a reported one, a name-only one and a nested line loop are not', () => {
+    // gate-shapes-allow: the fixtures ARE the shape
+    assert.deepEqual(scan("for (const f of readdirSync(d)) {\n    if (!existsSync(f)) continue;\n}\n"), ['SILENT-SKIP']);
+    // gate-shapes-allow: the fixture IS the shape
+    assert.deepEqual(scan("for (const f of walk(root)) {\n    let t; try { t = readFileSync(f, 'utf8'); } catch { continue; }\n}\n"), ['SILENT-SKIP']);
+    assert.deepEqual(scan("for (const f of readdirSync(d)) {\n    if (!existsSync(f)) { skipped.push(f); continue; }\n}\n"), [], 'a skip that reports itself is not silent');
+    assert.deepEqual(scan("for (const f of readdirSync(d)) {\n    if (!f.endsWith('.js')) continue;\n}\n"), [], 'a predicate on the name alone is a role skip');
+    assert.deepEqual(scan("for (const f of readdirSync(d)) {\n    for (const line of lines) { if (isComment(line)) continue; }\n}\n"), [], 'a nested loop over lines is not a file skip');
+    assert.deepEqual(scan("for (const row of rows) {\n    if (!row.ok) continue;\n}\n"), [], 'a loop over rows is not a file walk');
+    const marked = "for (const f of readdirSync(d)) {\n    if (!existsSync(f)) continue; // gate-shapes-allow: the missing case is asserted below\n}\n";
+    assert.deepEqual(scan(marked), [], 'the marker is honoured');
+});
 
 test('a window whose result reaches a predicate is still caught', () => {
     assert.deepEqual(scan("assert.match(body.slice(0, 600), /guard/);"), ['WINDOWED-SEARCH']);  // gate-shapes-allow: the fixture IS the shape
@@ -124,7 +145,7 @@ test('an appearance used to synchronise is not an appearance assertion', () => {
     assert.deepEqual(scan("await panel.waitFor({state: 'visible'});\nreport('done');"), ['EVENT-AS-STATE']);
 });
 
-test('every rule still fires — all six, from one fixture', () => {
+test('every rule still fires — all seven, from one fixture', () => {
     const kinds = new Set(scan([
         "assert.match(body.slice(0, 600), /guard/);",          // gate-shapes-allow
         // gate-shapes-allow
@@ -137,9 +158,11 @@ test('every rule still fires — all six, from one fixture', () => {
         // gate-shapes-allow
         "try { await el.waitFor({state: 'visible'}); } catch { }",
         // gate-shapes-allow
-        "await panel.waitFor({state: 'visible'});\nreport('done');"
+        "await panel.waitFor({state: 'visible'});\nreport('done');",
+        // gate-shapes-allow
+        "for (const f of readdirSync(d)) {\n    if (!existsSync(f)) continue;\n}"
     ].join('\n')));
-    assert.deepEqual([...kinds].sort(), ['AMBIENT-BINDING', 'EVENT-AS-STATE', 'SEGMENT-MATCH',
+    assert.deepEqual([...kinds].sort(), ['AMBIENT-BINDING', 'EVENT-AS-STATE', 'SEGMENT-MATCH', 'SILENT-SKIP',
         'SWALLOWED-PRECONDITION', 'TRUNCATED-CAPTURE', 'WINDOWED-SEARCH'],
         'a rule that fires on nothing is indistinguishable from a rule that is correct, and ' +
         'every baseline in this file is now zero');

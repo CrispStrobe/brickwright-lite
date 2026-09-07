@@ -104,10 +104,14 @@ export const judge = (files, known = KNOWN) => {
 // gate-shapes-allow
 const tracked = () => execFileSync('git', ['-C', ROOT, 'ls-files', '-z'], {encoding: 'utf8', maxBuffer: 64 << 20}).split(NUL).filter(Boolean);
 
-test('every tracked file outside a binary role is free of NUL bytes, except the KNOWN four with their pins', () => {
+test('every tracked file outside a binary role is free of NUL bytes, except the KNOWN four with their pins', t => {
     const files = [];
-    for (const f of tracked()) { const p = path.join(ROOT, f); let st; try { st = statSync(p); } catch { continue; } if (st.isFile() && st.size > 0) files.push({file: f, buf: readFileSync(p)}); }
+    const unreadable = [];
+    for (const f of tracked()) { const p = path.join(ROOT, f); let st; try { st = statSync(p); } catch (e) { unreadable.push(`${f} (${e.code})`); continue; } if (st.isFile() && st.size > 0) files.push({file: f, buf: readFileSync(p)}); }
     const {findings, stale, scanned} = judge(files);
+    // the skipped set, reported: binaries by role, and anything the walk could not stat
+    t.diagnostic(`scanned ${scanned} text files; skipped ${files.length - scanned} binary by role; ${unreadable.length} unreadable${unreadable.length ? ': ' + unreadable.join(', ') : ''}`);
+    assert.deepEqual(unreadable, [], 'tracked files this gate could not read');
     assert.ok(scanned > 9000, `only ${scanned} text files scanned — 9,616 on 2026-09-07; the walk collapsed`);
     assert.deepEqual(stale, [], 'KNOWN entries whose NUL is gone — remove them:\n  ' + stale.join('\n  '));
     assert.deepEqual(findings, [], 'literal NUL byte(s) in tracked text:\n  ' + findings.join('\n  '));

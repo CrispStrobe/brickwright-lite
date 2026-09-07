@@ -87,6 +87,7 @@ const numeric = (n) => n && n.type === 'Literal' && typeof n.value === 'number' 
 export function census () {
     const bounds = [];
     const sleeps = [];
+    const unparsed = []; // files acorn could not parse: reported, never silently skipped
     let parsed = 0;
     for (const abs of DIRS.flatMap(jsFiles)) {
         const rel = relative(ROOT, abs);
@@ -94,7 +95,7 @@ export function census () {
         let ast;
         try {
             ast = acorn.parse(src, {ecmaVersion: 'latest', sourceType: 'module', locations: true});
-        } catch { continue; }
+        } catch (e) { unparsed.push(`${rel} (${String(e.message).slice(0, 60)})`); continue; } // reported below, never silent
         parsed++;
         walk.simple(ast, {
             Property (node) {
@@ -119,7 +120,7 @@ export function census () {
         throw new Error(`only ${parsed} files parsed under ${DIRS.join(', ')} — the scan is broken, `
             + 'and every count it produces would be a clean sweep over nothing.');
     }
-    return {parsed, bounds, sleeps};
+    return {parsed, unparsed, bounds, sleeps};
 }
 
 /**
@@ -201,7 +202,7 @@ const sum = (rows) => rows.reduce((a, r) => a + r.value, 0);
 
 if (!obsPath) {
     if (asJson) { console.log(JSON.stringify({census: c, ci: [...CI_GATES]}, null, 1)); process.exit(0); }
-    console.log(`parsed ${c.parsed} files under ${DIRS.join('/ ')}\n`);
+    console.log(`parsed ${c.parsed} files under ${DIRS.join('/ ')}${c.unparsed.length ? `; ${c.unparsed.length} NOT parsed (skipped, and this line is the only place that says so): ${c.unparsed.join(', ')}` : '; 0 unparsable'}\n`);
     console.log('                       bounds (`timeout: N`)   fixed sleeps (`waitForTimeout(N)`)');
     const row = (label, b, s) => console.log(
         `  ${label.padEnd(20)} ${String(b.length).padStart(5)}                  ${String(s.length).padStart(5)}`

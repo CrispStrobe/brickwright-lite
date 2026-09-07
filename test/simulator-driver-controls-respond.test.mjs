@@ -168,23 +168,27 @@ async function sweep (rail) {
     let benches = 0;
     let pins = 0;
 
+    // THE SKIPPED SET IS REPORTED (gate-shapes SILENT-SKIP, 2026-09-07): an example this
+    // census does not reach is named with its reason, so a parse failure or a missing file
+    // cannot shrink the census without a line saying so.
+    const skipped = {noFiles: 0, missing: [], parseFailed: [], codegenFailed: [], noPinTable: []};
     for (const entry of exampleIndex()) {
         const id = entry.id;
-        if (!entry.files?.program || !entry.files?.circuit) continue;
+        if (!entry.files?.program || !entry.files?.circuit) { skipped.noFiles++; continue; }
         const prog = path.join(EXAMPLES, entry.files.program);
         const circ = path.join(EXAMPLES, entry.files.circuit);
-        if (!existsSync(prog) || !existsSync(circ)) continue;
+        if (!existsSync(prog) || !existsSync(circ)) { skipped.missing.push(id); continue; }
         let creator;
         try {
             creator = new SB3Creator();
             creator.parse(readFileSync(prog, 'utf8'));
-        } catch { continue; }
+        } catch (e) { skipped.parseFailed.push(`${id} (${String(e.message || e).slice(0, 60)})`); continue; }
         const stc = creator.project?.stc;
         if (!stc?.pins?.some(p => p.direction === 'input')) continue;
         let js;
-        try { js = creator.generateJavaScript(undefined, {driver: 'simulator'}); } catch { continue; }
+        try { js = creator.generateJavaScript(undefined, {driver: 'simulator'}); } catch (e) { skipped.codegenFailed.push(`${id} (${String(e.message || e).slice(0, 60)})`); continue; }
         const table = js.match(/const _stc12_pins = (\{.*?\});/s);
-        if (!table) continue;
+        if (!table) { skipped.noPinTable.push(id); continue; }
         const pinTable = JSON.parse(table[1]);
         const {mode, arm} = driverArming(js);
         const data = JSON.parse(readFileSync(circ, 'utf8'));
@@ -230,7 +234,7 @@ async function sweep (rail) {
             if (before === !!board.readPin(p.pin)) dead.push(`${id}:${name}`);
         }
     }
-    return {benches, pins, dead};
+    return {benches, pins, dead, skipped};
 }
 
 /** The rule the driver actually emits, extracted rather than assumed. */
@@ -249,8 +253,11 @@ test('the driver arms a quasi pin at its own rail, not at zero', () => {
         'the reading again. Arming with a flat `false` left 22 of 67 wired controls dead.');
 });
 
-test('every wired control moves the pin its program reads', async () => {
-    const {benches, pins, dead} = await sweep('shipped');
+test('every wired control moves the pin its program reads', async t => {
+    const {benches, pins, dead, skipped} = await sweep('shipped');
+    // the skipped set, reported: what this census did not reach, and why
+    t.diagnostic(`skipped ${skipped.noFiles} example(s) with no program/circuit declared, ${skipped.missing.length} with files missing on disk${skipped.missing.length ? ' (' + skipped.missing.join(', ') + ')' : ''}, ${skipped.parseFailed.length} whose program did not parse${skipped.parseFailed.length ? ': ' + skipped.parseFailed.join('; ') : ''}, ${skipped.codegenFailed.length} whose codegen threw${skipped.codegenFailed.length ? ': ' + skipped.codegenFailed.join('; ') : ''}, ${skipped.noPinTable.length} with no pin table`);
+    assert.deepEqual(skipped.missing, [], 'examples whose declared program or circuit file is missing on disk');
 
     // Denominators, so a shrinking population cannot look like a repair.
     assert.ok(benches >= 33, `${benches} benches swept (expected at least 33)`);

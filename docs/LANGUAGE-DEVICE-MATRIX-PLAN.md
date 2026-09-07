@@ -326,6 +326,19 @@ gated: the SPDX Apache-2.0 tags on the owner's own virtual-hub files; the SIL-OF
 scratch-render-fonts. Gate: `scripts/lib/notices-census.mjs` + `test/notices-drift.test.mjs` derive the
 set (every static-placing sync now declares `export const NOTICE`), red by name, mutations per source.
 
+**T11. A scanner's skipped set is reported, never silent. BUILT 2026-09-07** (lego-b9; lego-be's proof,
+ea's byte). T9's pin-move-chain skipped any file holding a NUL, so for as long as fetch-pinning.test.mjs held
+ea's literal NUL the staleness gate said CLEAN while a former bw-board pin (a301937d9, replaced 2026-08-24)
+sat on one of its code lines — lego-be proved it both ways by putting the byte back. MEASURED on main: 56
+files under test/ and scripts/ walk a tree; the content-based file skips (NUL, missing file, parse failure,
+unreadable) and their skipped sets today — pin-move-chain: 4 files, hiding exactly that one pin; fetch-pinning's
+own NUL skip: 3 vendored files, hiding nothing; simulator-driver-controls: 57 examples without a declared
+program/circuit, 0 missing, parse failures unknown until reported; aggregate-timeouts: 0 unparsable;
+no-dead-overlay-modules: 0 unmirrored; wave-open-defects: examples without a controller (role). Rule: a walk
+REPORTS what it skipped, by count and reason, in its own output; `SILENT-SKIP` in audit-gate-shapes names a
+guarded continue in a file walk with no report beside it; the walks above now report, and pin-move-chain
+judges NUL files like any other.
+
 ### Lane N — native halves to add
 
 **N1. Z80 C via SDCC `-mz80`.** Repo: stc-compiler, then lite. **BUILT 2026-09-05** on stc-compiler branch `lane/z80-c-target` (`6e40fb6e`, delegate, audited by lego-ac: 21 new tests, 432 repo tests green, ten mutation proofs). The vendored SDCC 4.0.0 already had the z80 port; what was missing was `share/sdcc/lib/z80` (crt0 + z80.lib), now vendored from the same .deb the fetch script uses. Map: ROM $0000–$7FFF, RAM $8000–$FFFF from `examples/z80-pd-bench/EXPECTED.md`; `--code-loc 0x0200 --data-loc 0x8000`; stock crt0 (jp init at $0000, SP at $0000 so the first push lands at $FFFE). Also fixed: `stages.py` dropped every exported `GR` symbol (affects 8051 too). **Awaiting merge and deploy by the owner** — the hosted snapshot and the lite `compile: true` flip follow the deploy, not the branch. Lite half of the DoD (bench boot proof: `$0000 == 0xC3`, `latch1.Q0` toggles) is open.

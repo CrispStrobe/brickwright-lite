@@ -27,6 +27,19 @@
  *                       comment-only. The gate neither fails nor skips: it CONTINUES, and every
  *                       later assertion runs against a state that was never established.
  *
+ *   SILENT-SKIP         A `continue` or `return` guarded by a condition or a `catch`, directly in
+ *                       the body of a loop over a FILE WALK (readdirSync, git ls-files, walk(),
+ *                       glob), with nothing within reach that reports it (a diagnostic, a
+ *                       counter, a push to a skipped list, a console line). A predicate on the
+ *                       NAME alone (extension, basename) is a role skip and is not this rule's
+ *                       business; a skip on content or on the filesystem's answer is, and the
+ *                       two are told apart: unreadable (NUL, size, parse) wants its skipped set
+ *                       REPORTED; absent (existsSync) wants "was it supposed to be there?"
+ *                       ASSERTED, because absence is usually the finding (lego-be). The set is a
+ *                       set the gate does not quantify over, and nothing in the run says so:
+ *                       T9's `if (text.includes(NUL)) continue;` reported CLEAN for as long as
+ *                       one file held a NUL, while a former pin sat inside it (lego-be, 2026-09-07).
+ *
  *   EVENT-AS-STATE      A visibility/appearance assertion (`waitFor`, `toBeVisible`, a `count()`
  *                       compared against a positive number) in a file that never asserts the
  *                       same thing is ABSENT. Appearance is a transition; most of these defects
@@ -120,6 +133,9 @@ for (const file of roots.flatMap(r => walk(path.join(root, r)))) {
     const raw = readFileSync(file, 'utf8');
     rawLines = raw.split('\n');
     const text = blankComments(raw);
+
+    // SILENT-SKIP: see silentSkips() below the loop.
+    for (const s of silentSkips(text)) note(file, s.line, 'SILENT-SKIP', s.detail);
 
     // TRUNCATED-CAPTURE: a lazy any-char capture that ends on a bracket/brace/paren which can
     // also occur INSIDE the region being captured.
@@ -286,6 +302,74 @@ for (const file of roots.flatMap(r => walk(path.join(root, r)))) {
         }
     }
 }
+
+/**
+ * SILENT-SKIP. A loop whose iterable is a FILE WALK — readdirSync(...), git ls-files, walk(...),
+ * globSync/glob, or a name ending in Files/files — and, DIRECTLY in its body (brace depth 1, so a
+ * nested loop over lines is not this rule's business), a guarded `continue` / `return` —
+ * `if (...) continue;`, `} catch { continue; }`, `catch (e) { return null; }` — with no report
+ * within two lines either side: `diagnostic(`, `console.`, `.push(`, `++`, `+= 1`, `skipped`,
+ * `unreadable`, `problems`, `note(`, `log(`, `warn(`. A skip that increments a counter or pushes
+ * a name is a skip the run will report; a bare one is a set the gate silently does not cover.
+ */
+function silentSkips (text) {
+    const out = [];
+    const WALK = /readdirSync|readdir\(|ls-files|\bwalk\s*\(|globSync|\bglob\(|[Ff]iles\b|tracked\(|Index\(\)|Dirs?\(\)/;
+    const REPORTED = /diagnostic\(|console\.|\.push\(|\+\+|\+= ?1|skipped|unreadable|problems|\bnote\(|\blog\(|warn\(|missing\.|stale\.|failed\./;
+    // A predicate on the NAME alone (extension, basename, path pattern) is a ROLE skip: the
+    // text states which files the gate ranges over. The class this rule is about is a skip on
+    // CONTENT or on the filesystem's answer — a read, a parse, a size, a NUL, an existsSync —
+    // which drops a file the gate exists to scan for a reason the run never states.
+    // ROLE: the condition names only name-shaped things (extension, basename, a directory
+    // test on the dirent, an allow/skip list, an --only scope) and nothing content-shaped.
+    const ROLE_WORDS = /endsWith|startsWith|extname|basename|isDirectory\(\)|isFile\(\)|node_modules|\.has\(|\.test\(|\bonly\b|SKIP|ALLOWED|IGNORE|KEEP|EXCLUDE|startsWith\('\.'\)/;
+    const CONTENT_WORDS = /readFile|parse|\bsize\b|byteLength|\\0|\\x00|indexOf\(0|existsSync|statSync\([^)]*\)\.size|ENOENT|catch/;
+    const NAME_ONLY = line => ROLE_WORDS.test(line) && !CONTENT_WORDS.test(line);
+    // The for-header is PAREN-MATCHED, not regex-captured: `for (const f of walk(root)) {` has a
+    // parenthesis inside its iterable, and a `[^)]*` capture stops at it — which is how the
+    // first version of this rule fired on `for (const f of files)` and never on the walk itself.
+    const headRe = /\bfor\s*(?:await\s*)?\(/g;
+    for (const h of text.matchAll(headRe)) {
+        let depth = 0, k = h.index + h[0].length - 1, headEnd = -1;
+        for (; k < text.length; k++) { if (text[k] === '(') depth++; else if (text[k] === ')') { depth--; if (depth === 0) { headEnd = k; break; } } }
+        if (headEnd < 0) continue;
+        const head = text.slice(h.index + h[0].length, headEnd);
+        const ofAt = head.search(/\bof\s/);
+        if (ofAt < 0 || !WALK.test(head.slice(ofAt))) continue;
+        const braceAt = text.slice(headEnd + 1).search(/\S/);
+        if (braceAt < 0 || text[headEnd + 1 + braceAt] !== '{') continue;
+        const open = headEnd + 1 + braceAt;
+        depth = 0; let close = -1;
+        for (let j = open; j < text.length; j++) { if (text[j] === '{') depth++; else if (text[j] === '}') { depth--; if (depth === 0) { close = j; break; } } }
+        if (close < 0) continue;
+        const body = text.slice(open + 1, close);
+        const bodyStartLine = lineOf(text, open + 1);
+        // depth-1 statements only: a nested loop over lines is not this rule's business
+        let d = 0;
+        const lines = body.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const startDepth = d;
+            for (const ch of line) { if (ch === '{') d++; else if (ch === '}') d--; }
+            if (startDepth !== 0 && !(startDepth === 1 && /^\s*\}\s*catch/.test(line))) continue;
+            const skip = /^\s*if\s*\(.*\)\s*(?:\{\s*)?(?:continue|return\b[^;]*);/.test(line) || /catch\s*(?:\([^)]*\))?\s*\{[^}]*\b(?:continue|return\b[^;]*);/.test(line);
+            if (!skip || NAME_ONLY(line)) continue;
+            const window = lines.slice(Math.max(0, i - 2), i + 3).join('\n');
+            if (REPORTED.test(window)) continue;
+            // ABSENT is a different animal from UNREADABLE (lego-be): a NUL, a size cap or a
+            // catch-on-parse mean "I could not read this" and want the skipped set reported;
+            // an existsSync/statSync miss means "this is not there", which is often the
+            // finding itself and wants "was it supposed to be there?" asserted instead.
+            const absent = /existsSync|statSync|ENOENT/.test(line);
+            out.push({line: bodyStartLine + i, detail: absent
+                ? `skip on ABSENCE inside a file walk, unreported — was it supposed to be there? assert or report: ${line.trim().slice(0, 60)}`
+                : `skip on unreadable content inside a file walk, unreported — report the skipped set: ${line.trim().slice(0, 60)}`});
+        }
+    }
+    return out;
+}
+
+// (SILENT-SKIP is detected per file inside the main loop above; see silentSkips.)
 
 if (process.argv.includes('--json')) {
     const counts = {};
