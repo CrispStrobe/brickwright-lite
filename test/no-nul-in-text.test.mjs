@@ -61,8 +61,6 @@ export const isBinaryByRole = file => BINARY_EXT.has((file.match(/\.([^./]+)$/) 
 
 /** Files carrying a NUL that upstream must fix (or lego-be's one character); each expires when its NUL is gone. */
 export const KNOWN = [
-    {file: 'overlay/scratch-gui/src/lib/bw-board/board.js', nuls: 4, pin: 'bw-board d5850e69', why: 'composite Map keys at lines 289/295/325/1777; byte-identical to upstream at the pin — fix in bw-board, re-vendor'},
-    {file: 'packages/scratch-gui/src/lib/bw-board/board.js', nuls: 4, pin: 'bw-board d5850e69', why: 'the integrated mirror of the file above'},
     {file: 'overlay/scratch-gui/src/lib/bw-circuit-ui/importers/easyeda-pro-pcb.js', nuls: 2, pin: 'bw-circuit-ui a8797322', why: 'composite key at line 305; identical to upstream at the pin — fix in bw-circuit-ui, re-vendor'},
     {file: 'overlay/scratch-gui/src/lib/bw-circuit-ui/model/board-lift.js', nuls: 1, pin: 'bw-circuit-ui a8797322', why: 'composite key at line 106; identical to upstream at the pin — fix in bw-circuit-ui, re-vendor'},
 ];
@@ -136,7 +134,7 @@ test('mutation: a KNOWN entry whose NUL is gone is stale, and one whose count mo
     assert.equal(r.findings.length, 1); assert.match(r.findings[0], /^b\.js: KNOWN says 1 NUL\(s\), the file has 2/);
 });
 
-test('the live tree: KNOWN today is exactly the five measured files, each still carrying its NUL, and this file carries none', () => {
+test('the live tree: KNOWN today is exactly the files that still carry a NUL, and this file carries none', () => {
     for (const k of KNOWN) {
         const hits = nulsIn(readFileSync(path.join(ROOT, k.file)));
         assert.equal(hits.length, k.nuls, `${k.file}: ${hits.length} NUL(s) today, KNOWN says ${k.nuls}`);
