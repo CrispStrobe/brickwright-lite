@@ -54,7 +54,13 @@ export const BINARY_BY_ROLE = {
     firmware: ['bin', 'rom', 'com', 'uf2', 'elf'],
     wasm: ['wasm'],
     archive: ['zip', 'sb3', 'sb2', 'sprite3', 'sprite2', 'gz', 'tgz'],
-    object: ['lib', 'o', 'a']
+    object: ['lib', 'o', 'a'],
+    // Typefaces. A font is binary by role in the same way a ROM is: the bytes
+    // ARE the artefact. Added 2026-09-07 with the vendored replacement for the
+    // CC BY-SA pixel face (overlay/scratch-gui/src/lib/render-fonts/), which
+    // this gate caught on its first CI run — correctly, since nothing had told
+    // it fonts existed here.
+    font: ['ttf', 'otf', 'woff', 'woff2', 'eot']
 };
 const BINARY_EXT = new Set(Object.values(BINARY_BY_ROLE).flat());
 export const isBinaryByRole = file => BINARY_EXT.has((file.match(/\.([^./]+)$/) || [, ''])[1].toLowerCase());
@@ -102,7 +108,11 @@ export const judge = (files, known = KNOWN) => {
 // gate-shapes-allow
 const tracked = () => execFileSync('git', ['-C', ROOT, 'ls-files', '-z'], {encoding: 'utf8', maxBuffer: 64 << 20}).split(NUL).filter(Boolean);
 
-test('every tracked file outside a binary role is free of NUL bytes, except the KNOWN four with their pins', t => {
+// The count comes from the list, not from a number typed in the name. It read
+// "the KNOWN four" while KNOWN held two: the entries expire as their NULs are
+// fixed upstream, and a name that restates a count goes stale the first time
+// one does.
+test(`every tracked file outside a binary role is free of NUL bytes, except the ${KNOWN.length} KNOWN with their pins`, t => {
     const files = [];
     const unreadable = [];
     for (const f of tracked()) { const p = path.join(ROOT, f); let st; try { st = statSync(p); } catch (e) { unreadable.push(`${f} (${e.code})`); continue; } if (st.isFile() && st.size > 0) files.push({file: f, buf: readFileSync(p)}); }
