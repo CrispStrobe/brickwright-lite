@@ -384,6 +384,54 @@ fails unless it touched both.
     ],
     "note": "Files that diverge only line-by-line and have no named allow-list entry. Recorded as a SET, not counts. reseat-gate.js left this inventory on 2026-09-07: it was not forward-ported work at all, it was lite BEHIND by one upstream commit (20f0d45), and syncing it forward made it identical. Corrected in VENDOR-DIRECTION-2026-09-06.md -- size has no direction."
   },
+  "liteAuthored": {
+    "why": "THE MIRROR IMAGE OF absentByDesign BELOW. That list records files upstream has and lite deliberately does not; this one records files LITE has and upstream does not -- lite-authored source living inside a vendored root. Seven as of 2026-09-07, found while measuring a proposed vendored-path gate. They were not invisible: test/vendor-identity.test.mjs has printed them since lego-b9 added the liteOnly and notCompared collectors this morning. But printed is not asserted, and nothing said which of the seven were deliberate. A lite-authored file in a vendored directory is one careless sync from being clobbered and has no upstream to restore it from, so each one is now a decision recorded once rather than an accident nobody has examined. THE REASON MUST SAY WHY IT LIVES HERE RATHER THAN BESIDE LITE'S OWN CODE -- six of the seven are reached by relative import from a vendored sibling that itself carries a declared divergence, which is a real constraint; resolve-netlist.js is not, and its entry says so.",
+    "ratchet": "Entries may be REMOVED freely -- a file that moves out or lands upstream should leave. An entry may only be ADDED together with its reason in the same commit, and the gate refuses any lite-authored file that is not listed, so adding the file without the reason cannot go green.",
+    "files": {
+      "instruction-debug-events.js": {
+        "reason": "Imported by m6502-debug.js and z80-debug.js, both of which have NAMED allow-list entries above. Those two are vendored files carrying declared lite-only work, and that work is what imports this module by relative path -- so it lives here because its callers do, and it exists at all because their divergence does.",
+        "importedBy": [
+          "m6502-debug.js",
+          "z80-debug.js"
+        ]
+      },
+      "machine-checkpoint.js": {
+        "reason": "Same shape: imported by z80-machine.js and m6502-machine.js, both NAMED entries. The checkpoint schema is the lite-only save/restore work in those two files factored out of them.",
+        "importedBy": [
+          "z80-machine.js",
+          "m6502-machine.js"
+        ]
+      },
+      "w65c02-cycle-provider.js": {
+        "reason": "Imported by debug-target-factory.js, a lineLevelOnly entry. Holds the JSMOO W65C02 REJECTION -- a qualification verdict with its candidate and oracle commits. Deliberately a refusal record rather than an engine: it is the evidence for not adopting one, so it belongs beside the factory that would otherwise reach for it.",
+        "importedBy": [
+          "debug-target-factory.js"
+        ]
+      },
+      "z80-target-factory.js": {
+        "reason": "Imported by debug-target-factory.js, a lineLevelOnly entry. Selects fast or cycle Z80 execution, and dynamically imports the cycle path so the optional core is never pulled into the bundle by the fast one.",
+        "importedBy": [
+          "debug-target-factory.js"
+        ]
+      },
+      "z80-cycle-debug.js": {
+        "reason": "Second order: imported by z80-target-factory.js, which is itself lite-authored and here for the reason above. No upstream file references it.",
+        "importedBy": [
+          "z80-target-factory.js"
+        ]
+      },
+      "floooh-z80-cycle-provider.js": {
+        "reason": "Third order: imported only by z80-cycle-debug.js. The optional product boundary for the qualified floooh/chips Z80 engine -- third-party source and WASM deliberately NOT bundled, a caller must supply a loader for a reviewed wrapper. That refusal is the point of the file and is why it is source rather than a dependency.",
+        "importedBy": [
+          "z80-cycle-debug.js"
+        ]
+      },
+      "resolve-netlist.js": {
+        "reason": "THE ONE WITH NO REASON TO BE HERE, and it is recorded rather than moved because moving it is a change to running code and this entry is not. NOTHING in the vendored root imports it: both consumers are lite's own -- bw-debug/debug-runner.js and pico-sim-run.js -- and upstream has no counterpart. It was extracted from debug-runner.js in 41d5f0cbb so the bare-metal debug path and the MicroPython Run resolve the board the same way, and it landed in the vendored directory rather than beside either caller. It is load-bearing (the phantom-inferred-bench rejection, owner reports 2026-08-16/17), which is exactly why it should not be sitting where a sync operates. MOVING IT TO bw-debug/ IS A SEPARATE LANE; this entry exists so that decision is asked rather than forgotten.",
+        "importedBy": []
+      }
+    }
+  },
   "absentByDesign": {
     "i8088-cycles.js": {
       "falsifiable": "The editor bundle grows by roughly 983 KB, 975 KB of it one cycle table, for a timing mode lite does not expose in any UI.",
