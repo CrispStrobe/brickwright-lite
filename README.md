@@ -74,6 +74,36 @@ and Bluetooth Classic** without a browser or a separate install.
 - Offline asset library, camera + microphone, native `.sb3` save/load/share,
   file associations and deep links.
 
+### LEGO SPIKE firmware simulation
+
+Brickwright includes a virtual SPIKE dashboard with one shared, neutral hub
+state for BLE and Bluetooth Classic adapters. The firmware selector keeps these
+targets distinct:
+
+- LEGO SPIKE legacy v2 using Classic RFCOMM;
+- LEGO SPIKE official v3 using the LEGO BLE protocol;
+- Pybricks as an explicit image/reference target;
+- Brickwright's NuttX firmware with its supported compatibility transports.
+
+The dashboard renders the hub, ports, attached motors and sensors, battery,
+IMU, and display state. Its current browser implementation is deterministic
+protocol simulation; it does not yet mean that Renode is executing behind
+every UI control. The active roadmap connects the audited Renode snapshots to
+this same state contract so unchanged firmware, protocol adapters, and the GUI
+observe one brick state.
+
+Run the focused virtual-hub checks with:
+
+```bash
+node --test test/virtual-spike-panel.test.mjs \
+  test/virtual-spike-shared-state.test.mjs \
+  test/virtual-spike-classic.test.mjs \
+  test/virtual-spike-prime.test.mjs \
+  test/spike-codec-fixtures.test.mjs
+```
+
+No official LEGO, Pybricks, or TI firmware is bundled in Brickwright.
+
 ## Quick start
 
 **Web build:**
