@@ -47,6 +47,8 @@ export const TOOLCHAIN_FILES = Object.freeze([
     'runtime.json'
 ]);
 
+const IS_NODE = typeof process === 'object' && typeof process?.versions?.node === 'string';
+
 export function getToolchainMode (storage) {
     const store = storage || (typeof localStorage === 'undefined' ? null : localStorage);
     let raw = null;
@@ -55,7 +57,18 @@ export function getToolchainMode (storage) {
     } catch {
         raw = null; // private mode, or storage refused — the default is the safe one
     }
-    return raw === 'local' || raw === 'dev' ? raw : 'online';
+    if (raw === 'local' || raw === 'dev' || raw === 'online') return raw;
+
+    // THE DEFAULT'S DOMAIN. `online` is the right answer in a BROWSER, where the
+    // question this whole module answers is what we are allowed to SHIP. Under
+    // Node — the smoke harness, the integration suites — there is no bundle, no
+    // user and no store, and the toolchain on disk is the entire point. A single
+    // default that only knew about the browser sent a disk-backed harness at a
+    // network origin (CI run 34160645833). Note the condition: NO storage at
+    // all. A Node caller that supplies a storage is asking to be treated as a
+    // browser and gets the browser default.
+    if (!store && IS_NODE) return 'local';
+    return 'online';
 }
 
 export function setToolchainMode (mode, storage) {
@@ -67,9 +80,50 @@ export function setToolchainMode (mode, storage) {
     return value;
 }
 
-/** True only when this bundle is allowed to compile in-page at all. */
-export function localToolchainEnabled (storage) {
-    return getToolchainMode(storage) !== 'online';
+/**
+ * THE SINGLE PREDICATE. Is this bundle allowed to compile in-page right now?
+ *
+ * Until 2026-09-07 two settings governed this, with opposite defaults and
+ * different keys, neither aware of the other: `bwLocalCompiler='off'` /
+ * `?localCompiler=off` (an opt-OUT, default ON, in debug-runner.js) and
+ * `bw-sdcc-toolchain='local'` (an opt-IN, default OFF, here). The result was a
+ * SILENT FALLBACK through a second door — debug-runner saw no opt-out, so it
+ * installed the intercept and announced nothing; the intercept then declined
+ * the request because the toolchain was off, and the compile went to the
+ * network without the status line saying so. That is the exact thing
+ * intercept.js's header forbids.
+ *
+ * Order of precedence, and the first rule is the one that matters:
+ *   1. AN EXPLICIT REQUEST WINS OVER ANY DEFAULT. Someone who typed
+ *      `?localCompiler=off` asked for something; a default arriving underneath
+ *      them later must not overturn it. Defaults change, requests do not.
+ *      `?localCompiler=on` is its mirror, and is the route out for a learner
+ *      stuck offline before the settings dialog exists.
+ *   2. A persisted `bwLocalCompiler='off'` is the same request, made to stick.
+ *   3. Otherwise the toolchain mode: `local` or `dev` enable it.
+ *   4. Otherwise the domain default — see getToolchainMode.
+ *
+ * Takes the window rather than reaching for it, so the rule is testable without
+ * a browser. That is the D-EMU-BP2 lesson debug-runner.js already records, and
+ * ignoring it is how CI run 34160645833 went red: a routing decision reachable
+ * only through a live session cannot be tested, and a routing decision is
+ * precisely the thing that must be.
+ */
+export function localToolchainEnabled (win = typeof window === 'undefined' ? undefined : window) {
+    const store = win && win.localStorage ? win.localStorage : undefined;
+    try {
+        const search = (win && win.location && win.location.search) || '';
+        const asked = new URLSearchParams(search).get('localCompiler');
+        if (asked !== null && asked !== '') {
+            if (/^(off|0|false|no)$/i.test(asked)) return false;
+            if (/^(on|1|true|yes)$/i.test(asked)) return true;
+        }
+        if (store && store.getItem('bwLocalCompiler') === 'off') return false;
+    } catch {
+        // No location, no storage, private browsing. Not a request either way;
+        // fall through to the mode and its domain default.
+    }
+    return getToolchainMode(store) !== 'online';
 }
 
 const fileUrl = (base, name) => new URL(`static/sdcc-wasm/${name}`, base).href;

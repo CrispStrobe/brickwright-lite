@@ -10,8 +10,32 @@ import {GPL_TOOLCHAIN_ORIGIN, getToolchainMode, cachedResolver} from './toolchai
  * files. Every other mode reads the GPL origin, because these binaries are not
  * in this app any more — see toolchain-source.js for why.
  */
+const documentBase = () =>
+    (typeof document === 'undefined' ? null : (document.baseURI || null));
+
 async function toolchainSource () {
-    if (getToolchainMode() === 'dev') return [document.baseURI, null];
+    if (getToolchainMode() === 'dev') return [documentBase(), null];
+
+    // THE DEFAULT'S DOMAIN. `online` is the right answer in a BROWSER, where the
+    // question is what we are allowed to SHIP to a user. Under Node there is no
+    // bundle, no user and no store, and the harness stages the toolchain on disk
+    // and points document.baseURI at it (scripts/smoke-debugger.mjs symlinks
+    // static/sdcc-wasm -> src/lib/sdcc-wasm/dist). Resolving `online` there sent
+    // a disk-backed harness at a network origin; CI caught it on run
+    // 34160645833 as a red debugger smoke. One value whose correct answer
+    // differs by domain, resolved in one place that only knew about one domain
+    // — the same shape as the two competing compiler settings.
+    if (IS_NODE) {
+        const base = documentBase();
+        if (!base) {
+            throw new Error(
+                'SDCC toolchain: running under Node with no document.baseURI, so there ' +
+                'is no staged build to load from. A Node caller must stage the toolchain ' +
+                'and set document.baseURI (see scripts/smoke-debugger.mjs); this path ' +
+                'deliberately does NOT reach the network.');
+        }
+        return [base, null];
+    }
     return [GPL_TOOLCHAIN_ORIGIN, await cachedResolver(GPL_TOOLCHAIN_ORIGIN)];
 }
 

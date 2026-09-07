@@ -88,17 +88,33 @@ test('the rule is CONSULTED, and it guards the install — in both trees', () =>
         const src = readFileSync(file, 'utf8');
         const guarded = scopeAfter(src, 'if (LOCAL_8051_TARGETS.has(compileTarget)) {');
 
-        assert.match(guarded, /if \(localCompilerOptedOut\(\)\)/,
-            `${tree}: the compile path must ask before installing the in-page compiler`);
+        // UPDATED 2026-09-07 — deliberately, to pin the NEW invariant with the
+        // same literalness, not to relax it. The routing used to ask
+        // `localCompilerOptedOut()` alone; SDCC became opt-in when it stopped
+        // shipping inside this BSD-3 app, and two predicates with opposite
+        // defaults produced a silent fallback to the network. One predicate
+        // decides now, and an explicit off still wins inside it.
+        assert.match(guarded, /if \(localToolchainEnabled\(\)\)/,
+            `${tree}: the compile path must ask the ONE predicate before installing`);
+        assert.match(guarded, /localCompilerOptedOut\(\)/,
+            `${tree}: an explicit off must still be distinguishable — it earns its own message`);
         assert.match(guarded, /installWasmCompilerRouting\(setStatus\)/,
-            `${tree}: the default path must still install it`);
+            `${tree}: the enabled path must still install it`);
         assert.match(guarded, /setStatus\([^)]*'building'[\s\S]*?off by request/,
             `${tree}: opting out must SAY so — the header's objection is to a silent fallback`);
 
-        // The install must sit in the else, after the opt-out returns false.
-        const optOutAt = guarded.indexOf('localCompilerOptedOut()');
+        // THE STATE THAT DID NOT EXIST BEFORE: off by default, not by request.
+        // It must announce the route AND the way back, or an offline learner
+        // gets a failure with no explanation and no exit.
+        assert.match(guarded, /not installed[\s\S]*?compiler service/,
+            `${tree}: the default-off path must name the route it took`);
+        assert.match(guarded, /\?localCompiler=on/,
+            `${tree}: and must name the way back — a regression with no exit is a bug`);
+
+        // The predicate must be consulted BEFORE the install, not after it.
+        const askedAt = guarded.indexOf('localToolchainEnabled()');
         const installAt = guarded.indexOf('installWasmCompilerRouting(setStatus)');
-        assert.ok(optOutAt !== -1 && installAt !== -1 && optOutAt < installAt,
-            `${tree}: the opt-out has to be consulted BEFORE the install, not after it`);
+        assert.ok(askedAt !== -1 && installAt !== -1 && askedAt < installAt,
+            `${tree}: the rule has to be consulted BEFORE the install, not after it`);
     }
 });

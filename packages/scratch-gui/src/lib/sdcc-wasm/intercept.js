@@ -16,7 +16,8 @@ import {localToolchainEnabled} from './toolchain-source.js';
 
 let installed = false;
 
-export function createCompilerFetch (originalFetch, compileLocal = compile) {
+export function createCompilerFetch (originalFetch, compileLocal = compile,
+    toolchainEnabled = localToolchainEnabled) {
     return function patchedFetch (input, init) {
         const url = typeof input === 'string' ? input : input?.url;
 
@@ -32,8 +33,17 @@ export function createCompilerFetch (originalFetch, compileLocal = compile) {
                 // this app. Folding the setting into the capability would make a
                 // five-target allowlist lie about what it can do, and would
                 // redden the pipeline test that asserts exactly that.
+                //
+                // INJECTED, not reached for. The predicate reads localStorage,
+                // which does not exist in the test runner, so a version that
+                // called it directly made every routing test read "online" and
+                // take the hosted path — which is exactly how CI caught this on
+                // run 34160645833. It is the same lesson debug-runner.js records
+                // for localCompilerOptedOut: a predicate that can only be
+                // reached through a live session cannot be tested, and a routing
+                // decision is precisely the thing that must be.
                 if (body.language === 'c' && body.code &&
-                    localToolchainEnabled() && localTargetSupported(body.target)) {
+                    toolchainEnabled() && localTargetSupported(body.target)) {
                     console.log('[sdcc-wasm] compiling supported 8051 target locally');
                     return compileLocal(body.code, {
                         target: body.target,

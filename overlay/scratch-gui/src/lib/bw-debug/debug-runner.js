@@ -71,6 +71,7 @@ import {
     LOCAL_8051_TARGETS, compileTargetFor, compileFormatFor,
     shippedImageFor, provenanceSentence
 } from './shipped-images.js';
+import { localToolchainEnabled } from '../sdcc-wasm/toolchain-source.js';
 
 /**
  * How many suppressed breakpoint hits one frame will absorb before yielding to
@@ -216,8 +217,17 @@ export function compileCachePut (key, out) {
 /**
  * Has the user explicitly asked NOT to use the in-page 8051 compiler?
  *
+ * SUPERSEDED AS A ROUTING DECISION, 2026-09-07. Kept because an explicit `off`
+ * is still a request that must win, but the routing now asks
+ * `localToolchainEnabled` (sdcc-wasm/toolchain-source.js), which folds this in.
+ * Two predicates with opposite defaults produced a SILENT FALLBACK: this one
+ * said "not opted out", so the routing installed the intercept and announced
+ * nothing; the intercept then declined the request because the toolchain was off
+ * by the other setting, and the compile reached the network in silence — the one
+ * thing this mechanism exists to prevent.
+ *
  * The escape hatch D-SMOKE1(3) named and did not build. `LOCAL_TARGETS` in
- * `sdcc-wasm/compiler.js` is a frozen allowlist of five STC parts with no flag,
+ * `sdcc-wasm/compiler.js` is a frozen allowlist of five STC parts which until 2026-09-07 had no flag,
  * so for exactly those five a broken or half-cached toolchain could not be
  * bypassed AT ALL: the local compile fails, and `intercept.js`'s header
  * forbids falling back on its own — rightly, because a local failure quietly
@@ -1038,13 +1048,25 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             // families deliberately retain the hosted fetch below and never need
             // the WASM chunk.
             if (LOCAL_8051_TARGETS.has(compileTarget)) {
-                if (localCompilerOptedOut()) {
-                    // Said out loud, because the header's objection is to a
-                    // SILENT fallback, not to this one.
+                // ONE PREDICATE, and the announcement is about WHAT HAPPENED rather
+                // than which key was read. Three states where there were two: asked
+                // off, on and available, or off by default because the toolchain is
+                // not part of this app any more.
+                if (localToolchainEnabled()) {
+                    await installWasmCompilerRouting(setStatus);
+                } else if (localCompilerOptedOut()) {
+                    // Said out loud, because the header's objection is to a SILENT
+                    // fallback, not to this one.
                     setStatus('building',
                         'in-page 8051 compiler off by request — using the compiler service');
                 } else {
-                    await installWasmCompilerRouting(setStatus);
+                    // The 2026-09-07 default. SDCC is GPL-2+ and no longer ships inside
+                    // this BSD-3 app, so the in-page compiler is opt-in. Name the route
+                    // AND the way back: without both this is a failure with no
+                    // explanation and no exit.
+                    setStatus('building',
+                        'in-page 8051 compiler not installed — using the compiler service. ' +
+                        'Add ?localCompiler=on to compile offline.');
                 }
             }
             // The compile is a pure function of (code, target, format), and the
@@ -1081,12 +1103,22 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                     //
                     // Deliberately branched on the family rather than written
                     // once: an 8051 target only reaches here when its in-page
-                    // router is not answering, and telling that user to "use an
-                    // 8051 device" would be nonsense.
+                    // router is not answering — AN INVARIANT THAT STOPPED BEING
+                    // TRUE on 2026-09-07, when the in-page compiler became
+                    // opt-in. An 8051 target now arrives here routinely with the
+                    // compiler never asked, which is why the branch below splits
+                    // again on whether it was enabled.
                     const reason = e && e.message ? e.message : String(e);
                     throw new Error(LOCAL_8051_TARGETS.has(compileTarget)
-                        ? `the in-page ${compileTarget} compiler did not answer and the ` +
-                          `service at ${compilerUrl} could not be reached either (${reason})`
+                        ? (localToolchainEnabled()
+                            ? `the in-page ${compileTarget} compiler did not answer and the ` +
+                              `service at ${compilerUrl} could not be reached either (${reason})`
+                            : `${compileTarget} programs CAN compile in this page, but the ` +
+                              `in-page compiler is not installed, so this build needed the ` +
+                              `service at ${compilerUrl}, which could not be reached ` +
+                              `(${reason}). That compiler is GPL-licensed and is downloaded ` +
+                              `only when you ask for it. Add ?localCompiler=on to the URL to ` +
+                              `install it and build with no connection.`)
                         : `${compileTarget} programs are built by the compiler service at ` +
                           `${compilerUrl}, which could not be reached (${reason}). Its ` +
                           `compiler cannot run in a browser, so it is not in the page. Some ` +
@@ -1094,7 +1126,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                           `start with no connection — but an edited program is not one of ` +
                           `them, because nobody has compiled it yet. Undo back to the lesson's ` +
                           `own program to run offline again, reconnect to build this one, or ` +
-                          `switch to an 8051 device, whose compiler does run in the page.`
+                          `switch to an 8051 device, whose compiler CAN run in the page — ` +
+                          `add ?localCompiler=on to install it, since it is not shipped ` +
+                          `with the app.`
                     );
                 }
                 out = await res.json();

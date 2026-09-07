@@ -36,14 +36,18 @@ test('both configs are checked, so the overlay cannot drift from the mirror', ()
         'a future edit re-adds the rule with nothing to read');
 });
 
+const winWith = (storage, search = '') => ({location: {search}, localStorage: storage});
+
 test('the default is online: no GPL is fetched unless a user asks', () => {
     const store = new Map();
     const fake = {getItem: k => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, v)};
     assert.equal(getToolchainMode(fake), 'online');
-    assert.equal(localToolchainEnabled(fake), false);
+    // The predicate takes a WINDOW, not a storage — it has to read the URL too,
+    // and it must be reachable without a browser.
+    assert.equal(localToolchainEnabled(winWith(fake)), false);
     setToolchainMode('local', fake);
     assert.equal(getToolchainMode(fake), 'local');
-    assert.equal(localToolchainEnabled(fake), true);
+    assert.equal(localToolchainEnabled(winWith(fake)), true);
     setToolchainMode('nonsense', fake);
     assert.equal(getToolchainMode(fake), 'online', 'an unknown value falls back to the safe default');
 });
@@ -66,8 +70,12 @@ test('the toolchain origin is the GPL repository, not this app', () => {
 
 test('the route is gated on the SETTING, not on the capability', () => {
     const intercept = read('overlay/scratch-gui/src/lib/sdcc-wasm/intercept.js');
-    assert.match(intercept, /localToolchainEnabled\(\)\s*&&\s*localTargetSupported\(/,
+    assert.match(intercept, /toolchainEnabled\(\)\s*&&\s*localTargetSupported\(/,
         'intercept must consult the user setting before claiming a compile');
+    assert.match(intercept, /toolchainEnabled = localToolchainEnabled/,
+        'the predicate must be INJECTED with the real one as its default — a routing ' +
+        'decision reachable only through a live session cannot be tested, which is how ' +
+        'run 34160645833 went red');
     const compiler = read('overlay/scratch-gui/src/lib/sdcc-wasm/compiler.js');
     assert.equal(/loadToolchain\(document\.baseURI\)/.test(compiler), false,
         'the toolchain must not be loaded from the app origin — that is what bundled it');
@@ -145,4 +153,35 @@ test('the resolver serves blob URLs from cache and falls back per file', async (
     assert.match(resolve('sdcc.wasm'), /^blob:/, 'a cached file comes from the cache');
     assert.equal(resolve('sdld.wasm'), `${ORIGIN}static/sdcc-wasm/sdld.wasm`,
         'a missing file degrades to the origin rather than to broken');
+});
+
+// ---- the unification ----------------------------------------------------
+// One predicate now decides the route. Two settings with opposite defaults, each
+// unaware of the other, produced a silent fallback to the network; these pin the
+// precedence that replaced them.
+test('an explicit request beats any default, in both directions', () => {
+    const off = {getItem: k => (k === 'bwLocalCompiler' ? 'off' : null)};
+    const on = {getItem: k => (k === 'bw-sdcc-toolchain' ? 'local' : null)};
+    // A default arriving later must not overturn a request already made.
+    assert.equal(localToolchainEnabled(winWith(off)), false, 'stored off is a request');
+    assert.equal(localToolchainEnabled(winWith(on, '?localCompiler=off')), false,
+        '?localCompiler=off beats a stored opt-in');
+    // The mirror, which is the route out for a learner stuck offline before any
+    // settings dialog exists.
+    assert.equal(localToolchainEnabled(winWith(off, '?localCompiler=on')), true,
+        '?localCompiler=on beats a stored off');
+    assert.equal(localToolchainEnabled(winWith(null, '?localCompiler=on')), true,
+        'and works with no storage at all');
+    // Present-but-unset is not a request.
+    assert.equal(localToolchainEnabled(winWith(off, '?localCompiler=')), false);
+});
+
+test('under Node with no storage the local toolchain is the honest answer', () => {
+    // `online` answers "what may we SHIP", a question that does not exist in a
+    // harness with no bundle and no user. Sending the disk-backed smoke test at
+    // a network origin is how CI run 34160645833 went red.
+    assert.equal(getToolchainMode(null), 'local');
+    assert.equal(localToolchainEnabled(undefined), true);
+    // But a Node caller that supplies a storage is asking for browser rules.
+    assert.equal(getToolchainMode({getItem: () => null}), 'online');
 });

@@ -240,7 +240,23 @@ const main = async () => {
         if (console_.length > 40) console_.shift();
     });
 
-    await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 90000});
+    // OPT IN TO THE IN-PAGE COMPILER, EXPLICITLY, because as of 2026-09-07 it is
+    // no longer installed by default: SDCC is GPL-2.0-or-later and stopped
+    // shipping inside this BSD-3 app, so it is fetched only when a user asks.
+    //
+    // This is NOT the gate being relaxed to accommodate the change it was built
+    // to catch — that would be the worst thing to do here, and D2 below is
+    // unchanged, word for word. What changed is the world the assertion is made
+    // about: "the 8051 build made exactly zero hosted compiler requests" was a
+    // statement about the default and is now a statement about a user who opted
+    // in. The capability is identical; reaching it takes one parameter.
+    //
+    // `?localCompiler=on` is the URL half of localToolchainEnabled, and it is
+    // load-bearing rather than a convenience: it is how this gate — and a
+    // learner stuck offline — reaches the toolchain before any settings dialog
+    // exists.
+    const optedInUrl = `${url}${url.includes('?') ? '&' : '?'}localCompiler=on`;
+    await page.goto(optedInUrl, {waitUntil: 'domcontentloaded', timeout: 90000});
 
     // SELF-PROOF, before anything is claimed from a zero.
     //
@@ -484,6 +500,8 @@ WHEN flag clicked:
     record('a debug session attached', attached,
         attached ? 'phase=running'
             : `last phase=${running}${crashed ? ' — THE RENDERER CRASHED' : ''}`);
+    // Unchanged assertion, now behind the opt-in above. A user who asks for the
+    // in-page compiler still gets a build that touches no network.
     record('D2: the 8051 build made exactly zero hosted compiler requests',
         hostedCompilerRequests.length === 0,
         hostedCompilerRequests.length ? hostedCompilerRequests.join(' | ') : '0 POST /compile requests');
