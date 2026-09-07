@@ -371,6 +371,13 @@ regenerate), when a provisional or capped budget's comment does not say so, and 
 literal edited → red naming the step; the hand-off edited → red naming it; a gate removed from the readings
 → red naming it.
 
+**CI-2. Main's own queue, priced. PROPOSAL 2026-09-07** (lego-b9; lego-ac's ask; owner decides). docs/CI-QUEUE-2026-09-07-MAIN.md:
+42 main runs today, wait median 8.5 / p90 27.7 / max 68.6 min; 16 superseded before start (437 runner-min), 31 before end
+(640 runner-min after supersession); 55 % of branch queue time was spent behind a superseded main job (part 1: 10 %). Four
+options with today's numbers and their evidence cost: cancel-queued-not-started (437 min, one wrong-named red a day),
+cancelling group on main (640 min, 31 of 42 verdicts), read-not-mention waiver for docs only printed by generators (127 min,
+five plan-only runs, no verdicts), land one at a time (free). No policy changed by this entry.
+
 ### Lane N — native halves to add
 
 **N1. Z80 C via SDCC `-mz80`.** Repo: stc-compiler, then lite. **BUILT 2026-09-05** on stc-compiler branch `lane/z80-c-target` (`6e40fb6e`, delegate, audited by lego-ac: 21 new tests, 432 repo tests green, ten mutation proofs). The vendored SDCC 4.0.0 already had the z80 port; what was missing was `share/sdcc/lib/z80` (crt0 + z80.lib), now vendored from the same .deb the fetch script uses. Map: ROM $0000–$7FFF, RAM $8000–$FFFF from `examples/z80-pd-bench/EXPECTED.md`; `--code-loc 0x0200 --data-loc 0x8000`; stock crt0 (jp init at $0000, SP at $0000 so the first push lands at $FFFE). Also fixed: `stages.py` dropped every exported `GR` symbol (affects 8051 too). **Awaiting merge and deploy by the owner** — the hosted snapshot and the lite `compile: true` flip follow the deploy, not the branch. Lite half of the DoD (bench boot proof: `$0000 == 0xC3`, `latch1.Q0` toggles) is open.
