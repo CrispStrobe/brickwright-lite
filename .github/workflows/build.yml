@@ -801,13 +801,13 @@ jobs:
           path: artifacts/debug-history-browser/*
           if-no-files-found: error
 
-      - name: Browser gate — the panel's chip-refusal state follows the handle
-        # PROVES THE RENDER, NOT THE USER JOURNEY, and the gate's header says so
-        # in full: no route a user can reach today produces a durable chip
-        # refusal (the ASM tab boots a chipless DOS bench; the BIOS route's only
-        # refusal is pic1's four-step 8259-init window). The feature itself is
-        # proved in test/debug-chip-refusal-line.test.mjs. Promote this step when
-        # the Machine Loader exposes ROM boot media — lane P.
+      - name: Browser gate — a program's chip refusal reaches the debug panel
+        # PROVES THE WHOLE JOURNEY as of 2026-09-07. The earlier version of this
+        # comment said no user route could produce a refusal and that the ASM tab
+        # boots a chipless DOS bench; both were wrong. That bench has ppi1, pit1
+        # and spk, its 8255 based at 60h, and the failing gate was writing to
+        # port 03h — the same register on a breadboard based at zero. Retracted
+        # in the gate header, plan P6 and the LANES row.
         #
         # NOT MEASURED YET, unlike its neighbours: new gate, one assemble-and-boot
         # cycle. Replace with a measured max once the timing job has seen it.

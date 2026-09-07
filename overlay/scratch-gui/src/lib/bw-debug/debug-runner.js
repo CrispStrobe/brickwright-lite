@@ -1756,9 +1756,18 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // it records a refusal, so a chip added to the board later reaches the
         // panel with no edit here or there. Reaching into adapter.machine.chips
         // would work today and would quietly stop being the whole story.
-        chipRefusalsOf = typeof adapter.machine?.chipRefusals === 'function'
-            ? () => adapter.machine.chipRefusals()
-            : null;
+        // AN EXPLICIT COLLECTOR WINS OVER THE ADAPTER'S MACHINE, because one
+        // bench has no adapter on purpose. The DOS bench passes `adapter: {}` —
+        // deliberately, so wireMachineBench cannot offer a loadRom that writes
+        // into the wrong place — and its machine is reachable only on the bench
+        // object. Looking solely at adapter.machine therefore reported "this
+        // bench has no collector" for the one bench most programs actually run
+        // on, while it had three chips and a working ledger the whole time.
+        // Found by the panel's own state attribute reading 'none' in CI.
+        chipRefusalsOf = typeof result.chipRefusals === 'function' ? result.chipRefusals
+            : typeof adapter.machine?.chipRefusals === 'function'
+                ? () => adapter.machine.chipRefusals()
+                : null;
 
         if (adapter.onSerial) {
             // LINE-buffer the byte stream: one array entry per byte rendered
@@ -2121,7 +2130,11 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             // an empty one rather than the bench object is deliberate —
             // wireMachineBench would otherwise offer a `loadRom` that writes
             // into a machine whose program is already resident.
-            wireMachineBench({target: bench.target, adapter: {}}, createDebugSession);
+            wireMachineBench({target: bench.target, adapter: {},
+                // The one thing from the bench object that IS safe to hand over:
+                // a read-only view of what its chips refused. Not the machine,
+                // for the reason above.
+                chipRefusals: () => bench.machine.chipRefusals()}, createDebugSession);
             // TYPING INTO A DOS PROGRAM. wireMachineBench installs a
             // sendSerial that calls adapter.sendSerial, and this bench has no
             // adapter — so without this override the console accepts what a
