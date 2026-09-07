@@ -125,6 +125,41 @@ const MEASURE = () => {
     };
 };
 
+/**
+ * Mark the stage's canvas, by IDENTITY rather than by size.
+ *
+ * MEASURED IN CI, 2026-09-07 — the DOM holds exactly two canvases and BOTH are
+ * 0x0 at this point:
+ *
+ *   class=(none)                        attr 0x0  inStage=true   <- the renderer's
+ *   class=stage_dragging-sprite_eMctD   attr 0x0  inStage=true   <- the drag layer
+ *
+ * The previous version required a non-zero size and so matched neither, and
+ * refused. That filter was wrong twice over: it encoded an assumption about
+ * WHEN the canvas is sized, and 0x0 may be the very defect under
+ * investigation. An instrument must not refuse to measure the symptom.
+ *
+ * The renderer's canvas carries NO class — it is inserted as a domElement —
+ * so it is identified as the canvas inside the stage subtree that is not the
+ * drag layer. Exactly one such element exists.
+ *
+ * RE-MARKED BEFORE EVERY MEASUREMENT, not once at the start: if the load path
+ * ever replaced the element, a mark applied at mount would go missing at
+ * precisely the moment the bug occurs, and zero matches would be read as a
+ * broken harness rather than as a replaced canvas (lego-ac).
+ */
+const MARK_STAGE_CANVAS = () => {
+    for (const c of document.querySelectorAll('[data-bw-stage-canvas]')) {
+        c.removeAttribute('data-bw-stage-canvas');
+    }
+    const inStage = [...document.querySelectorAll('[class*="stage"] canvas')];
+    const pool = inStage.length ? inStage : [...document.querySelectorAll('canvas')];
+    const real = pool.filter(c => !/drag/i.test(c.className || ''));
+    if (real.length !== 1) return false;
+    real[0].setAttribute('data-bw-stage-canvas', '1');
+    return true;
+};
+
 const sameBox = (a, b) => a && b && a.box.w === b.box.w && a.box.h === b.box.h &&
     a.box.x === b.box.x && a.box.y === b.box.y;
 
@@ -145,7 +180,11 @@ async function run () {
         await writeFile(join(artifacts, `${name}.png`), buf);
         return createHash('sha256').update(buf).digest('hex').slice(0, 16);
     };
-    const snap = async (name) => ({name, ...(await page.evaluate(MEASURE)), content: await shot(name)});
+    const snap = async (name) => {
+        const ok = await page.evaluate(MARK_STAGE_CANVAS);
+        if (!ok) throw new Error(`the stage canvas could not be identified at '${name}' — it may have been replaced`);
+        return {name, ...(await page.evaluate(MEASURE)), content: await shot(name)};
+    };
 
     /**
      * Wait for TWO PAINTED FRAMES, not for a number of milliseconds.
@@ -180,15 +219,8 @@ async function run () {
         // Prefer the canvas that lives inside the stage's own subtree. CSS
         // module names keep their readable prefix in this build, which is how
         // the other gates find `[class*="gui_body"]`.
-        const marked = await page.waitForFunction(() => {
-            const inStage = [...document.querySelectorAll('[class*="stage"] canvas')];
-            const pool = inStage.length ? inStage : [...document.querySelectorAll('canvas')];
-            const real = pool.filter(c =>
-                !/drag/i.test(c.className || '') && c.width > 0 && c.height > 0);
-            if (real.length !== 1) return false;
-            real[0].setAttribute('data-bw-stage-canvas', '1');
-            return true;
-        }, null, {timeout: 45000}).catch(() => null);
+        const marked = await page.waitForFunction(MARK_STAGE_CANVAS, null, {timeout: 45000})
+            .catch(() => null);
 
         // WHEN IT CANNOT, SAY WHAT IT SAW. The previous run failed with
         // "zero or several canvases matched" and nothing else, which is a
@@ -212,8 +244,14 @@ async function run () {
                 console.log(`    class=${c.className || '(none)'} attr=${c.attr.w}x${c.attr.h} ` +
                     `box=${c.box.w}x${c.box.h} inStage=${c.inStageSubtree} parent=${c.parent || '(none)'}`);
             }
+            // ZERO and SEVERAL are opposite causes and cost a cycle each if
+            // conflated: zero means the identification missed the element,
+            // several means it matched more than the stage (lego-ac).
+            const matched = seen.filter(c => c.inStageSubtree && !/drag/i.test(c.className)).length;
             check('exactly one stage canvas can be identified', false,
-                `${seen.length} canvas element(s); none uniquely identifiable as the stage — candidates written to ${artifacts}`);
+                matched === 0
+                    ? `ZERO matched: no canvas in a stage subtree that is not the drag layer, out of ${seen.length} on the page — candidates in ${artifacts}`
+                    : `SEVERAL matched (${matched}): more than one canvas answers to the stage — candidates in ${artifacts}`);
             throw new Error('cannot identify the stage canvas; refusing to measure the wrong element');
         }
         check('exactly one stage canvas can be identified', true);
