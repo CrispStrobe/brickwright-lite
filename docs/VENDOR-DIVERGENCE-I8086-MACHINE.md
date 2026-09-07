@@ -383,6 +383,18 @@ fails unless it touched both.
       "z80-adapter.js",
       "zx-ula.js"
     ]
+  },
+  "absentByDesign": {
+    "i8088-cycles.js": {
+      "falsifiable": "The editor bundle grows by roughly 983 KB, 975 KB of it one cycle table, for a timing mode lite does not expose in any UI.",
+      "why": "Lite REMOVED the opt-in cycle-accurate timing path (upstream 9256cf7's CycleEstimator) before the allow-list existed to record it -- brickwright-lite-ea's tenth divergence, found by measuring direction per file and in no document until 2026-09-06. Upstream imports it from i8086-machine.js; lite has zero references to any of it. A sync CREATES this file because there is no local copy to compare, so no line-level entry can protect it.",
+      "sinceUpstream": "9256cf7"
+    },
+    "i8088-timing.js": {
+      "falsifiable": "Same: the file lite does not have pulls in i8088-cycles.js, so taking either takes both.",
+      "why": "The other half of the removed CycleEstimator path. i8088-timing.js is what i8086-machine.js imports; it in turn pulls i8088-cycles.js. Absent by the same decision and for the same reason.",
+      "sinceUpstream": "9256cf7"
+    }
   }
 }
 ```
@@ -448,3 +460,27 @@ Every assertion in `vendor-identity.test.mjs` is about text. It can tell you
 saves anything. The behavioural gates are elsewhere, and this file is not a
 substitute for them — a point worth making because a green identity gate
 feels like more assurance than it is.
+
+## `absentByDesign`: a file lite deliberately does not have
+
+The three kinds above -- `liteOnly`, `graftedFromUpstream`, `liteRemoved` -- all
+describe a file that EXISTS in lite, and all match on line content. That is why
+none of them saw `i8088-cycles.js`.
+
+On 2026-09-07, syncing the pin for a licence-string change, an unscoped run
+refused six files by name and then **created two more that lite had deliberately
+removed**. No guard fired, and none could have: with no local copy there are no
+lines to compare, so a line-level rule has nothing to match. The absence was the
+decision, and the allow-list had no way to say so.
+
+An `absentByDesign` entry is a claim about a FILE rather than about lines in one.
+The sync consults it where it would create a file that is not there, and refuses
+by name with the reason -- the same shape as the other kinds, one level up.
+`--force` does not lift it: a force overwrites work you have decided to lose, and
+here there is nothing to lose, because creating the file IS the mistake.
+
+**The rule this leaves, worth stating because it is otherwise nowhere: scoped by
+default, unscoped only to look, never to commit unread.** An unscoped sync is the
+right tool for seeing what the whole vendor set would do. It is not the tool for a
+pin bump, and the two writes above were caught only because someone read the run's
+output before committing it -- which is not a mechanism.

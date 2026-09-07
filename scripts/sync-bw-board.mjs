@@ -188,6 +188,29 @@ const readVendorAllowList = async () => {
     // staleness check for them needs upstream's text, which only this script has.
     return new Map(Object.entries(spec.files).map(([f, cfg]) => [f, cfg]));
 };
+
+/**
+ * Files lite deliberately does NOT have.
+ *
+ * The three kinds in the allow-list proper all describe a file that EXISTS here
+ * and all match on line content, which is why none of them saw i8088-cycles.js:
+ * with no local copy there are no lines to compare. On 2026-09-07 an unscoped
+ * sync refused six files by name and then CREATED two that lite had removed on
+ * purpose -- the CycleEstimator path, ~983 KB of bundle for a mode lite does not
+ * expose. An entry here is a claim about a FILE, checked where the sync would
+ * create one that is not there.
+ */
+const readAbsentByDesign = async () => {
+    const md = await readFile(
+        path.join(here, '..', 'docs', 'VENDOR-DIVERGENCE-I8086-MACHINE.md'), 'utf8').catch(() => null);
+    if (md === null) return null;
+    const m = md.match(/```json\n([\s\S]*?)\n```/);
+    if (!m) return null;
+    // `?? {}` not `?? null`: an allow-list that parses and declares nothing
+    // absent is a real state, and must not read as "the list is missing".
+    try { return new Map(Object.entries(JSON.parse(m[1]).absentByDesign ?? {})); } catch { return null; }
+};
+const absentByDesign = await readAbsentByDesign();
 const allowList = await readVendorAllowList();
 if (!allowList) {
     // Species 1: an empty guard is indistinguishable from a satisfied one. If
@@ -378,6 +401,7 @@ const baseFor = async (rel, current) => {
     return text === null ? null : {text, sha: OLD_PIN, byContent: false};
 };
 
+const absentRefused = [];
 await mkdir(dest, {recursive: true});
 let stale = 0;
 for (const rel of FILES) {
@@ -395,6 +419,17 @@ for (const rel of FILES) {
         continue;
     }
     const current = await readFile(out, 'utf8').catch(() => null);
+    // ABSENT BY DESIGN, checked before anything else touches this file. It is
+    // the only guard that CAN fire here: every other one compares lines, and a
+    // file that is not present has none. `--force` deliberately does not lift
+    // it -- a force overwrites work you decided to lose, and here there is
+    // nothing to lose, because creating the file IS the mistake.
+    if (current === null && absentByDesign?.has(path.basename(rel))) {
+        const e = absentByDesign.get(path.basename(rel));
+        absentRefused.push({file: path.basename(rel), why: e.why, falsifiable: e.falsifiable});
+        console.log(`  REFUSED ${path.basename(rel)} (absent by design -- see below)`);
+        continue;
+    }
     if (current === next) { console.log(`  ok    ${path.basename(rel)}`); continue; }
     stale++;
     // ORDER MATTERS, AND I GOT IT WRONG FIRST. The coarse guard ran first and
@@ -489,7 +524,20 @@ if (wouldTruncate.length) {
     console.error('  sampled on 2026-09-04 were ALL forward-ported work, none were stale.');
 }
 
-if (wouldDelete.length || wouldTruncate.length) process.exit(1);
+if (absentRefused.length) {
+    console.error('\nREFUSED TO CREATE files lite deliberately does not have:\n');
+    for (const {file, why, falsifiable} of absentRefused) {
+        console.error(`  ${file}\n      WHAT BREAKS: ${falsifiable}\n      ${why}\n`);
+    }
+    console.error('  These are `absentByDesign` in docs/VENDOR-DIVERGENCE-I8086-MACHINE.md.');
+    console.error('  Every other guard here compares LINES, and a file that is not present has');
+    console.error('  none -- so before this entry kind existed an unscoped sync created them');
+    console.error('  silently and no gate noticed. If the decision has changed, delete the entry');
+    console.error('  in the same commit that takes the file, and say what now uses it.');
+    console.error('\n  SCOPED BY DEFAULT, unscoped only to LOOK, never to commit unread.');
+}
+
+if (wouldDelete.length || wouldTruncate.length || absentRefused.length) process.exit(1);
 
 // A vendored engine that quietly grew a dependency would break the bundle at build time,
 // so fail loudly here instead.
