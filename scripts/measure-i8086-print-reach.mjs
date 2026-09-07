@@ -111,6 +111,52 @@ const opcodeFacts = project => {
     return {operations, values, kinds, computedForms};
 };
 
+// Follow the value that reaches each print through scalar writes. A list item
+// is not an honest numeric candidate until device C implements the list read
+// and the writes feeding it; today those paths are comment/zero fallbacks.
+const printDependsOnNumericList = project => {
+    const targets = project.targets || [];
+    const walkInput = (input, blocks, seen) => {
+        const inner = Array.isArray(input) ? input[1] : null;
+        if (Array.isArray(inner)) {
+            if (inner[0] === 13) return true;
+            if (inner[0] !== 12) return false;
+            const name = String(inner[1]);
+            const id = inner[2] == null ? null : String(inner[2]);
+            const token = `variable:${id || name}`;
+            if (seen.has(token)) return false;
+            const nextSeen = new Set(seen).add(token);
+            for (const target of targets) {
+                for (const block of Object.values(target.blocks || {})) {
+                    if (block.opcode !== 'data_setvariableto' && block.opcode !== 'data_changevariableby') continue;
+                    const field = block.fields && block.fields.VARIABLE;
+                    const fieldName = field && String(field[0]);
+                    const fieldId = field && field[1] != null ? String(field[1]) : null;
+                    const matches = id && fieldId ? id === fieldId : name === fieldName;
+                    if (matches && walkInput(block.inputs && block.inputs.VALUE, target.blocks || {}, nextSeen)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+        if (typeof inner !== 'string' || !blocks[inner] || seen.has(inner)) return false;
+        const block = blocks[inner];
+        if (block.opcode === 'data_itemoflist') return true;
+        const nextSeen = new Set(seen).add(inner);
+        return Object.values(block.inputs || {}).some(child => walkInput(child, blocks, nextSeen));
+    };
+    for (const target of targets) {
+        const blocks = target.blocks || {};
+        for (const block of Object.values(blocks)) {
+            if (block.opcode === 'stc12_print' && walkInput(block.inputs && block.inputs.VALUE, blocks, new Set())) {
+                return true;
+            }
+        }
+    }
+    return false;
+};
+
 const addCounts = (into, from) => {
     for (const key of Object.keys(into)) into[key] += from[key];
 };
@@ -122,7 +168,10 @@ const currentOutput = {notReached: [], hostC: [], refused: [], emitted: [], comm
 const remainingChokeOverlap = {};
 const chokeCombinations = {};
 const computedFormRows = {};
-const postChokeCandidates = {literalTextOnly: [], numericOrComputedOnly: [], mixed: [], stringComputed: []};
+const postChokeCandidates = {
+    literalTextOnly: [], numericOrComputedOnly: [], mixed: [], stringComputed: [], numericListDependency: []
+};
+const numericListDependencyEvidence = {};
 const emitterWarnings = [];
 const source = {operations: emptyOps(), values: emptyValues(), programBuckets: emptyKinds()};
 const opcode = {operations: emptyOps(), values: emptyValues(), programBuckets: emptyKinds()};
@@ -158,6 +207,7 @@ for (const name of entries) {
     const creator = new SB3Creator();
     let code;
     let of;
+    let cWarnings = [];
     try {
         creator.parse(retargeted);
         const parseWarningCount = (creator.warnings || []).length;
@@ -175,6 +225,8 @@ for (const name of entries) {
         }
         const generated = creator.generateC();
         code = typeof generated === 'string' ? generated : generated.code;
+        cWarnings = (creator._cWarnings || []).map(warning => typeof warning === 'string' ? warning
+            : String((warning && (warning.message || warning.text)) || JSON.stringify(warning)));
         const warningText = warning => typeof warning === 'string' ? warning
             : String((warning && (warning.message || warning.text)) || JSON.stringify(warning));
         for (const warning of (creator.warnings || []).slice(parseWarningCount)) {
@@ -248,6 +300,11 @@ for (const name of entries) {
         : kinds[0] === 'literalText' ? 'literalTextOnly' : 'numericOrComputedOnly';
     postChokeCandidates[candidateBucket].push(name);
     if (of.computedForms.includes('operator_join')) postChokeCandidates.stringComputed.push(name);
+    if (printDependsOnNumericList(creator.project)) {
+        postChokeCandidates.numericListDependency.push(name);
+        numericListDependencyEvidence[name] = cWarnings.filter(warning =>
+            /(?:delete all|add .* to|replace item|item .* of) readings/.test(warning));
+    }
 }
 
 for (const group of [source.programBuckets, opcode.programBuckets, currentOutput]) {
@@ -263,11 +320,13 @@ const sourceOutputPrograms = programs - source.programBuckets.none.length;
 const boundedRecommendation = {
     literalText: [...postChokeCandidates.literalTextOnly],
     numericSigned16: postChokeCandidates.numericOrComputedOnly
-        .filter(name => !postChokeCandidates.stringComputed.includes(name)),
-    refuseStringComputed: [...postChokeCandidates.stringComputed]
+        .filter(name => !postChokeCandidates.stringComputed.includes(name) &&
+            !postChokeCandidates.numericListDependency.includes(name)),
+    refuseStringComputed: [...postChokeCandidates.stringComputed],
+    refuseNumericListDependency: [...postChokeCandidates.numericListDependency]
 };
 const report = {
-    schema: 'n2d-i8086-print-reach-v1', programs,
+    schema: 'n2d-i8086-print-reach-v2', programs,
     source: {...source, programCounts: countMap(source.programBuckets)},
     opcode: {...opcode, programCounts: countMap(opcode.programBuckets)},
     currentOutput: {...currentOutput, counts: countMap(currentOutput)},
@@ -288,6 +347,7 @@ const report = {
         }])),
     postChokeCandidates: {...postChokeCandidates, counts: countMap(postChokeCandidates)},
     boundedRecommendation,
+    numericListDependencyEvidence,
     emitterWarnings: emitterWarnings.sort(),
     invariants: {
         terminalCount,
