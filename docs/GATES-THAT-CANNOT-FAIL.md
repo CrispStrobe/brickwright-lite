@@ -2039,6 +2039,7 @@ harness that never runs slower than production are the same wish, and neither is
 free. The rule that catches both is the one above — make the stand-in fail on
 purpose before believing it when it passes.
 
+
 ## Thirty-third species: THE PROXY EVENT STANDING IN FOR THE STATE (2026-09-07, lego-be; rule proposed by lego-ac, measured before building)
 
 Every species so far is a gate whose SET is wrong. This one is a gate whose set
@@ -2195,6 +2196,71 @@ writes, but the writes of whatever it invokes.
 **The general form, and it is one line:** a suite that runs files in parallel has
 no isolation the tests do not give it, so the question is never "does this test
 clean up" but **"does this test write anywhere another test reads."**
+
+## Thirty-fifth species: A DIMENSION NOBODY WROTE A GATE FOR (2026-09-07, brickwright-lite-ea; framing by lego-ac)
+
+Not a gate that could not fail. Not a fixture that lied. **A question no gate
+was ever asked**, in a repository whose own licence contradicted the commit
+subject announcing the answer.
+
+Every entry above this one describes a gate behaving wrongly. This one is about
+the gaps between gates, and it is harder to see for exactly that reason: there
+is nothing to read. A wrong gate can be found by reading it. A missing one can
+only be found by asking what dimension the suite does not cover, and a suite
+that is green in every dimension it covers offers no prompt to ask.
+
+**The incident.** On 2026-08-10, commit `305893119` added the SDCC compiler as
+WebAssembly. Its subject line said `add SDCC WASM binaries + headers (4.7 MiB,
+GPL-2+)`. `webpack.config.js` copied `src/lib/sdcc-wasm/dist` to
+`static/sdcc-wasm`, and `apps/tauri/src-tauri/tauri.conf.json` sets
+`frontendDist` to that build directory and bundles it wholesale. So the shipping
+Mac TestFlight build carried **101 files, 8.7 MB of GPL-2.0-or-later binaries,
+inside a BSD-3-Clause application** — measured on 2026-09-07 in CI's own
+github-pages artifact, four weeks later.
+
+**Nothing caught it for four weeks because nothing looked.** Every check that
+ran asked whether the code WORKED. The build was green, the tests passed, the
+browser gates rendered, the first-load-weight guard measured the bundle and was
+satisfied. Not one of them asked what we were allowed to SHIP. The bundling was
+not hidden: it was announced in its own commit subject, with the licence in the
+subject, in a repository whose LICENSE file says BSD-3-Clause. Every fact needed
+was in plain sight and in version control, and none of it was in a gate.
+
+**The tell is the absence of a red.** There is no failing test to notice, no
+flaky gate, no skipped suite — the census in `docs/generated/ci-skip-census.json`
+would not have shown it, because nothing was skipped. The only symptom is a
+category of question the suite has never asked, and the only way to find it is
+to enumerate categories rather than tests: does anything check what we ship, as
+opposed to whether it runs? What we are licensed to distribute? What leaves the
+device? What a user is told before an irreversible action?
+
+**The fix, and why it inspects output rather than config**
+(`scripts/verify-no-gpl-in-build.mjs`): it walks the BUILD OUTPUT, because the
+webpack rule is only one of the ways a file can arrive. A stray commit under
+`static/`, a plugin, a future copy rule, or a dependency that vendors its own
+binaries would all be invisible to a source-level assertion and all equally
+fatal. Fired against the real pre-fix artifact it reports
+`static/sdcc-wasm/ — 101 file(s)` and exits 1; against the same tree cleaned it
+passes; against a build with `sdcc.wasm` moved to `static/vendor/` it still
+catches it by filename; and a missing build exits 2 rather than passing
+vacuously on an empty walk.
+
+**The generalisation, which is the expensive part.** For each dimension your
+project has obligations in, ask what gate asserts it. Licence and
+redistribution. Data leaving the device. Credentials in artifacts. Accessibility.
+Binary size against a store limit. Each is a question a suite can be entirely
+green without ever asking, and each fails silently until someone outside the
+project asks it instead — which for a licence means a person who is entitled to
+the source, and for shipped data means a user.
+
+**A practical corollary, learned the same night.** The consumers of an invariant
+are NOT discoverable by searching for its name. Four separate places depended on
+the in-page compiler being on by default; all four were found by CI going red,
+none by grep — a routing test, a debugger smoke harness, a browser gate, and a
+test that read the refusal message through a fixed-width window. If you are
+about to change a default, the search that finds who depends on it is running
+the suite, not reading it.
+
 
 ## Thirty-sixth species: CHECKING ONE MECHANISM AND CONCLUDING ABOUT ALL OF THEM (2026-09-08, lego-ac and lego-be, one instance each)
 
