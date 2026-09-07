@@ -102,11 +102,21 @@ test('a literal past 16 bits is refused BEFORE the compiler, by name, with the r
 test('an unimplemented verb\'s emitter refusal reaches the learner by name, not as "no assembly"', async () => {
     const {compileC8086, AsmRouteError} = await route();
     const neverCompile = () => { throw new Error('the compiler must not be reached'); };
-    const withPrint = await cFor('DEVICE i8086\nPIN led = P1.0 OUTPUT\nWHEN flag clicked:\n  print 5\n  turn on led');
-    assert.match(withPrint, /No C emitted/, 'precondition: print has no i8086 C branch yet');
-    await assert.rejects(() => compileC8086(withPrint, {compileC: neverCompile}), (e) => {
+    const withAdc = await cFor([
+        'DEVICE i8086',
+        'PIN led = P1.0 OUTPUT',
+        'PIN pot = P1.1 ANALOG',
+        'WHEN flag clicked:',
+        '  set counter to read pot',
+        '  turn on led'
+    ].join('\n'));
+    assert.match(withAdc, /No C emitted/, 'precondition: ADC has no i8086 C branch yet');
+    assert.match(withAdc, /This program also uses: adc/,
+        'the structured emitter refusal must name ADC before routing');
+    await assert.rejects(() => compileC8086(withAdc, {compileC: neverCompile}), (e) => {
         assert.ok(e instanceof AsmRouteError);
-        assert.match(e.message, /This program also uses: print/, 'names the verb');
+        assert.equal(e.reason, 'source');
+        assert.match(e.message, /This program also uses: adc/, 'names the verb');
         assert.doesNotMatch(e.message, /produced no assembly/);
         return true;
     });
