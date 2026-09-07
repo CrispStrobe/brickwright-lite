@@ -225,6 +225,146 @@ test('the two dual-tracked vendored copies have not drifted apart', t => {
 // what the doc says it has, NOT that upstream still lacks it. This tier is the
 // one that reaches the other side. When the upstream tree is not on disk it does
 // NOT pass quietly: a check reports on what it FOUND, never on what exists.
+// THE PINNED TREE, resolved the same way the converged-work test below resolves
+// it and for the same reasons -- see the long note there about /tmp symlinks and
+// about a sibling checkout being a DIRECTORY, not a COMMIT. Factored out rather
+// than copied: two resolutions of "which upstream" would be two answers, and the
+// one that is wrong would be the one nobody re-read.
+const pinnedSrcDir = () => {
+    const candidates = [
+        process.env.BW_BOARD_DIR, // gate-shapes-allow: judged only when this is set, see below
+        path.resolve(ROOT, '../../bw-board'),
+        path.resolve(ROOT, '../bw-board')
+    ].filter(Boolean);
+    const TMP = fs.realpathSync(os.tmpdir());
+    const outsideTmp = (d) => {
+        try { return !fs.realpathSync(d).startsWith(TMP); } catch { return false; }
+    };
+    const dir = candidates.map(d => path.join(d, 'src'))
+        .filter(d => fs.existsSync(d))
+        .filter(d => process.env.BW_BOARD_DIR ? true : outsideTmp(d))[0];
+    return {dir, pinned: Boolean(process.env.BW_BOARD_DIR), candidates};
+};
+
+test('no vendored file diverges from upstream at the pin without being declared', t => {
+    // WHY THIS IS NOT THE TWO INVENTORIES ABOVE, and why it lives in this file
+    // rather than in one of its own.
+    //
+    // The coverage check is IDENTIFIER-based: it sees a file only if lite
+    // declares a name upstream does not have. The lineLevelOnly inventory is
+    // LINE-based and ONE-DIRECTIONAL -- `lineLost(lite, upstream)` collects
+    // lines lite has that upstream lacks, so a file where lite is merely BEHIND
+    // upstream is invisible to it. reseat-gate.js was exactly that on
+    // 2026-09-06, and it took a hand measurement to find. This asserts the
+    // strongest available form, BYTE EQUALITY, and admits a difference only
+    // when the manifest names it.
+    //
+    // It is here, in the file that already walks this tree and resolves this
+    // pin, ON PURPOSE. A separate gate answering "does this file match upstream
+    // at the pin" would be a SECOND CLAIM about a fact this file already
+    // computes, and the two would go stale on different days. The rule this
+    // repo applies to documents applies to gates: one authority, mirrors that
+    // must agree with it.
+    //
+    // WHAT WAS REJECTED, because the measurement is the interesting part. The
+    // first proposal was: refuse any commit that touches a vendored path unless
+    // it also MOVES that upstream's pin. Run over the last 400 commits on main,
+    // 29 touch a vendored path and that rule refuses 10 of them -- including
+    // e33087191, a legitimate forward-sync that copies upstream content in at a
+    // pin already correct, so there is nothing for it to move. One of the ten
+    // was a real defect. A gate at one-in-ten precision does not survive; it
+    // grows an --allow flag inside a week and then it is decoration.
+    //
+    // A pin move is a PROXY for convergence. This asks the thing itself: after
+    // the commit, IS the content what the recorded pin says it is? Same move as
+    // baseForFile -- ask what the content is, not what the commit did.
+    const {dir: srcDir, pinned, candidates} = pinnedSrcDir();
+    if (!srcDir) {
+        t.diagnostic(`SKIPPED, NOT PASSED: upstream not found. Looked in: ${candidates.join(', ')}.`);
+        t.skip('upstream tree not on disk -- byte-identity against the pin NOT verified');
+        return;
+    }
+
+    const spec = readAllowList();
+    const vendorRoot = path.join(ROOT, spec.vendoredRoots[0]);
+    const declared = new Set([...Object.keys(spec.files), ...spec.lineLevelOnly.files]);
+    const liteAuthored = spec.liteAuthored?.files ?? {};
+
+    const identical = [], diverged = [], undeclared = [], liteOnly = [];
+    for (const f of fs.readdirSync(vendorRoot).filter(x => x.endsWith('.js')).sort()) {
+        const u = path.join(srcDir, f);
+        if (!fs.existsSync(u)) { liteOnly.push(f); continue; }
+        if (fs.readFileSync(path.join(vendorRoot, f)).equals(fs.readFileSync(u))) {
+            identical.push(f);
+        } else if (declared.has(f)) {
+            diverged.push(f);
+        } else {
+            undeclared.push(f);
+        }
+    }
+
+    // Species 1: a corpus of nothing satisfies every assertion below. 133 files
+    // as of 2026-09-07; the floor is deliberately far under it, because this
+    // guards against an EMPTY read, not against the tree changing size.
+    assert.ok(identical.length + diverged.length > 50,
+        `only ${identical.length + diverged.length} vendored file(s) were compared against ` +
+        `${srcDir} -- that is not this tree, and every assertion below would pass on it`);
+
+    if (!pinned) {
+        // Same ruling as the test below: the sibling may SPEAK, it may not
+        // JUDGE. A byte difference against an unknown commit is a report about
+        // someone's feature branch, not a divergence.
+        t.diagnostic(`sibling tree ${srcDir}: ${identical.length} identical, ${diverged.length} ` +
+            `declared-divergent, ${undeclared.length} undeclared` +
+            `${undeclared.length ? ` (${undeclared.join(', ')})` : ''}, ${liteOnly.length} lite-only`);
+        t.skip('a sibling bw-board checkout was found but its COMMIT is unknown -- set ' +
+            'BW_BOARD_DIR to a checkout at the sha in vendor-pins.json to judge it (CI does)');
+        return;
+    }
+
+    assert.deepEqual(undeclared, [],
+        '\n  VENDORED FILES THAT DIFFER FROM UPSTREAM AT THE PIN AND ARE DECLARED NOWHERE:\n    ' +
+        undeclared.join('\n    ') +
+        '\n\n  The pin says these files ARE upstream at that sha. They are not. Either the\n' +
+        '  change belongs upstream (send it there and re-pin, which is the rule for\n' +
+        '  vendored files), or lite means to keep it -- in which case give it a named\n' +
+        '  entry in docs/VENDOR-DIVERGENCE-I8086-MACHINE.md, or add it to lineLevelOnly\n' +
+        '  if the difference is only body-level. What is not available is silence: an\n' +
+        '  undeclared difference is deleted by the next sync with nothing to say what it\n' +
+        '  cost.\n');
+
+    // CASE FOUR, and it is an INVENTORY, not a refusal of the file's existence.
+    // These are lite-authored files living inside a vendored root -- the mirror
+    // image of absentByDesign. Making their mere presence a failure would red
+    // main over seven files whose intent nobody had established; requiring each
+    // to be DECLARED turns them into seven decisions made once. Ratchets the
+    // same way the rest of this manifest does: removal is free, addition costs
+    // a reason in the same commit.
+    const undeclaredLiteOnly = liteOnly.filter(f => !liteAuthored[f]);
+    assert.deepEqual(undeclaredLiteOnly, [],
+        '\n  LITE-AUTHORED FILES INSIDE THE VENDORED ROOT, DECLARED NOWHERE:\n    ' +
+        undeclaredLiteOnly.join('\n    ') +
+        '\n\n  Upstream has no such file, so nothing restores these if a sync removes them\n' +
+        '  and no upstream review ever sees them. Add each to liteAuthored.files with a\n' +
+        '  reason that says WHY IT LIVES IN A VENDORED DIRECTORY rather than beside the\n' +
+        "  code that calls it -- \"a vendored sibling imports it by relative path\" is a\n" +
+        '  reason; "it was convenient" is the thing this list exists to surface.\n');
+
+    // And the other direction, or the list becomes a graveyard: every declared
+    // entry must still BE a lite-authored file here. One that landed upstream,
+    // or moved out of this directory, has to leave the list.
+    const stale = Object.keys(liteAuthored).filter(f => !liteOnly.includes(f));
+    assert.deepEqual(stale, [],
+        '\n  liteAuthored ENTRIES THAT NO LONGER DESCRIBE ANYTHING:\n    ' + stale.join('\n    ') +
+        '\n\n  The file moved out of the vendored root, or upstream now has it. Either way\n' +
+        '  the entry is stale -- remove it. An inventory that can only fail one way\n' +
+        '  accumulates exemptions nobody can retire.\n');
+
+    t.diagnostic(`byte-identity vs ${path.basename(path.dirname(srcDir))} at the pin: ` +
+        `${identical.length} identical, ${diverged.length} declared-divergent ` +
+        `(${diverged.join(', ')}), ${liteOnly.length} lite-authored and declared`);
+});
+
 test('upstream has not converged on the lite-only work (needs the bw-board tree)', t => {
     const spec = readAllowList();
     // gate-shapes-allow: the ambient part is WHICH directory, and a wrong answer
