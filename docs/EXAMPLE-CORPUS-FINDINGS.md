@@ -243,9 +243,19 @@ learner actually sees.
 
 | | count |
 | --- | --- |
-| declared-output LEDs with a bench to measure | 394 |
-| agreeing with the program that runs beside them | 381 |
+| declared output pins reached | 597 |
+| of those, carrying a discrete LED this census can drive | 394 |
+| **not measurable** — 7-seg digits, LED banks, matrices, shift outputs | **203** |
+| measurable and agreeing with the program beside them | 381 |
 | **inverted** | **13, in 3 examples** |
+
+**13 is a FLOOR over discrete LEDs, not a total.** A declared output pin is only
+measurable here if its bench carries an `led` part named for it. Two hundred and
+three declared output pins are not that: seven-segment digit commons, LED banks,
+matrices and shift-register outputs are all `OUTPUT` and none of them is a
+discrete LED. Whether their polarity agrees is unmeasured, and saying so is the
+point — the previous version of this section reported a confident number without
+saying what it could not see.
 
 The census asks the solver rather than reading the wires: drive each declared
 output pin low, read the LED, drive it high, read again, compare the level that
@@ -274,6 +284,17 @@ lesson says they are off.
 Dropping the clause is right for `01-blink`, where an active-low 8051 wiring is a
 quirk of the chip. It is wrong for an example whose subject IS the quirk. The
 repair has to distinguish those, not pick one globally.
+
+**A candidate rule, measured and then rejected as stated.** "Preserve the clause
+when a program declares BOTH an `ACTIVE LOW` and a plain `OUTPUT` pin, because the
+contrast is then deliberate" separates `01-blink` from these two cleanly. It does
+not select only these two: six examples declare mixed polarity — also
+`09-relay-clicker`, `60-retro-console`, `61-console-pong` and `76-multimeter`. The
+four extra ones are mostly seven-segment digit commons and a buzzer, which is
+exactly the population this census cannot see. So the rule cannot be adopted on
+today's evidence: it would change four more examples whose current state is
+UNMEASURED. **Extending the census past discrete LEDs is a prerequisite of the
+repair, not a follow-up to it.**
 
 ### Defect 2 — an authored bench is inverted
 

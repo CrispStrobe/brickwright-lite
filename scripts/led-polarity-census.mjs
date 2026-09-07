@@ -116,6 +116,7 @@ const wiringOf = (board, pin, ledId) => {
 };
 
 const rows = [];
+const unmeasured = [];
 for (const id of readdirSync(EX).sort()) {
     const dir = path.join(EX, id);
     const prog = path.join(dir, 'program.bw');
@@ -134,7 +135,13 @@ for (const id of readdirSync(EX).sort()) {
         if (!built || built.error || !built.leds || !built.leds.length) continue;
         for (const decl of decls) {
             const led = built.leds.find(l => l.id === `LED_${decl.name}` || l.id === decl.name);
-            if (!led || !led.pin) continue;
+            // COVERAGE, COUNTED RATHER THAN ASSUMED. A declared output pin is only
+            // measurable here if the bench carries a discrete `led` part named for
+            // it. Seven-segment digits, LED banks, matrices and shift-register
+            // outputs are all declared OUTPUT and none of them are that, so the
+            // inverted count below is a FLOOR over discrete LEDs, not a total over
+            // everything a program can light.
+            if (!led || !led.pin) { unmeasured.push({id, device, pin: decl.name}); continue; }
             const wired = wiringOf(built.board, led.pin, led.id);
             if (!wired || wired === 'never-lit' || wired === 'always-lit') continue;
             rows.push({id, device, pin: decl.name, declared: decl.declared, wired,
@@ -144,6 +151,9 @@ for (const id of readdirSync(EX).sort()) {
 }
 
 const bad = rows.filter(r => !r.agrees);
+console.log(`declared output pins reached: ${rows.length + unmeasured.length}`);
+console.log(`   with a discrete LED this census can drive: ${rows.length}`);
+console.log(`   NOT measurable (7-seg digits, banks, matrices, shift outputs): ${unmeasured.length}`);
 console.log(`declared-output LEDs measured across the corpus: ${rows.length}`);
 console.log(`   agreeing: ${rows.length - bad.length}`);
 console.log(`   INVERTED: ${bad.length}`);
