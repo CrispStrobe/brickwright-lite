@@ -722,10 +722,14 @@ runs with `entry: 'vector'` — which jumps straight at the boot vector, so the 
 the emitted C's GPIO logic, not a silicon stage-2 boot claim. The P3 differential (`test/p3-pin-c-mpy-differential`)
 now runs BOTH routes at the same board boundary: GP25 output high→low and GP14 input, identical between the
 compiled C and the live MicroPython. A mutation — flip the GP25 SIO output mask to GP24 in the emitted C — makes
-the compiled program stop driving GP25, and the runtime differential reddens naming GP25 (proven, C-only so it
-needs no firmware). Toolchain: the box's arm-none-eabi-gcc locally; in CI the sha-pinned ARM GNU 13.2.rel1
+the compiled program stop driving GP25, and the runtime differential reddens naming GP25. THE CI SPLIT, stated
+plainly: CI executes the C and fires the mutation; the two-runtime C-vs-MicroPython comparison needs the
+firmware, which the build job does not carry — a deliberate scope edge, not a skipped gate. Toolchain: the box's
+arm-none-eabi-gcc locally; in CI the sha-pinned ARM GNU 13.2.rel1
 (`scripts/sync-arm-toolchain.mjs`, content-hash — verified byte-for-byte before extract, `--version` asserted
-after, declared in `test/fetch-pinning.test.mjs`, cached by sha, own 8-min timeout), fetched only in the job that
+after, declared in `test/fetch-pinning.test.mjs`, cached by sha, own 8-min timeout — measured in CI at 29 s cold
+(cache miss: fetch + sha256 + xz extract of 171 MB) and ~4 s warm (cache-hit restore), well inside the budget),
+fetched only in the job that
 runs the differential; the executed-C legs SKIP BY NAME when no toolchain is present, and the static anchor still
 runs everywhere, so the C side is never left with no gate. **N11 (the SHIPPED in-browser button = Door 2,
 clang→WASM ~15–40 MB) stays OPEN** — N11a is the CI-differential oracle, not the offline compiler.
