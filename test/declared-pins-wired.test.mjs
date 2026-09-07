@@ -182,6 +182,9 @@ async function engine () {
 }
 
 /** Everything the corpus walk derives, computed once. */
+const {isDeviceOnlyExample, noCircuitMessage} = await import(
+    path.join(root, 'overlay/scratch-gui/src/lib/example-device-only.js'));
+
 async function survey () {
     const {Circuit, resetIds} = await engine();
     const index = JSON.parse(readFileSync(path.join(EXAMPLES, 'index.json'), 'utf8'));
@@ -192,7 +195,7 @@ async function survey () {
         const progPath = progRel && path.join(EXAMPLES, progRel);
         const pins = progPath && existsSync(progPath)
             ? declaredPins(readFileSync(progPath, 'utf8')) : [];
-        const deviceOnly = e.deviceOnly === true || e.authored === 'microbit' || e.authored === 'spike';
+        const deviceOnly = isDeviceOnlyExample(e);
         const row = {id: e.id, pins, deviceOnly, hasCircuit: !!(circRel && existsSync(path.join(EXAMPLES, circRel)))};
         rows.push(row);
         if (!row.hasCircuit) continue;
