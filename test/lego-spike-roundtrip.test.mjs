@@ -23,13 +23,13 @@ const projectFrom = async bytes => JSON.parse(await (await JSZip.loadAsync(bytes
 test('vendored SPIKE compiler emits a canonical executable round-trip artifact', async () => {
     // The pin is asserted so a vendor bump cannot pass this file by accident:
     // whoever moves it re-reads the assertions below against the new compiler.
-    // 4134b86 -> eb5b286 -> fdd9d7d -> b27da5a -> 73ac0b1 -> c20e434 -> 7952b31 -> ea30b80 -> 0a05c9c (P2: shift_out as one protocol over per-family bus, i8086 bus added) (2026-09-06: i8086 pins through the 8255 in generateC; the 64-byte raw-REPL write chunking moved upstream) on 2026-09-05: reader fixes (bitwise/shift,
+    // 4134b86 -> eb5b286 -> fdd9d7d -> b27da5a -> 73ac0b1 -> c20e434 -> 7952b31 -> ea30b80 -> 0a05c9c -> 414e8ef (P2 cont.: motor and servo each split into one protocol over per-family bus, byte-identical; no SPIKE emitter change) (0a05c9c P2: shift_out as one protocol over per-family bus, i8086 bus added) (2026-09-06: i8086 pins through the 8255 in generateC; the 64-byte raw-REPL write chunking moved upstream) on 2026-09-05: reader fixes (bitwise/shift,
     // MicroPython runtime skip, body fidelity, condition lift, loops) and one
     // emitter change (the STC driver is emitted for micro:bit/Pico targets so
     // STC pins resolve). Nothing in the SPIKE emitter changed; the artifact
     // assertions below were re-run at each pin.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '0a05c9ce25b55602f77a4f1259fd65946e69bf0a');
+        '414e8ef2d217ce7d74816e3fbbba06a1a5529551');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

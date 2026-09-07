@@ -2349,6 +2349,264 @@ class SB3Creator {
         ];
     }
 
+    // ---- DC motor (L293D H-bridge): one PROTOCOL body over per-family BUS.
+    //
+    // Every family's motor driver is the SAME four functions: speed (clamp
+    // 0..100, store, hand the duty to the family's PWM), a speed getter, dir
+    // (store, then a switch over forward/reverse/brake/coast driving IN1/IN2),
+    // and a dir getter. The two getters are byte-identical across families and
+    // the speed/dir skeletons differ only in the BUS — which PWM pin carries
+    // speed, and how the two direction pins are set up and driven. Before this
+    // split the whole driver was hand-copied four times (arm, avr-mega, avr,
+    // 8051). The emitted C is byte-for-byte the same (test/motor-golden.test.mjs).
+    //
+    // No i8086 variant: motor needs a PWM source and an H-bridge, and the 8086
+    // back end has neither a pwm_set primitive nor a bench part to prove one, so
+    // motor stays a gap in the 8086 column (measured, not promised).
+    //
+    // _cMotorBus(core) returns { header, preamble, pwmSet, dirComment, dirSetup,
+    // cases } — full emitted lines except pwmSet (the protocol adds its indent).
+    _cMotorBus(core) {
+        if (core === 'arm') {
+            return {
+                header: ['/* DC motor driver: GP18 (PWM slice 1A) carries speed at 1 kHz;',
+                    ' * direction is GP19 (IN1) and GP20 (IN2) into an L293D-style',
+                    ' * H-bridge — the 8051 build\'s P3.4/P3.5 convention in Pico',
+                    ' * spelling. The servo\'s slice 0 (GP16/GP17) is untouched. */'],
+                preamble: [],
+                pwmSet: 'pwm_set(18, (unsigned int)speed);   /* GP18 = slice 1 A */',
+                dirComment: ['/* Direction: 0=forward 1=reverse 2=brake 3=coast */'],
+                dirSetup: ['    BW_IOBANK0_CTRL(19) = 5u;',
+                    '    BW_IOBANK0_CTRL(20) = 5u;',
+                    '    BW_SIO_GPIO_OE_SET = (1UL << 19) | (1UL << 20);'],
+                cases: ['    case 0: BW_SIO_GPIO_OUT_SET = (1UL << 19); BW_SIO_GPIO_OUT_CLR = (1UL << 20); break;',
+                    '    case 1: BW_SIO_GPIO_OUT_CLR = (1UL << 19); BW_SIO_GPIO_OUT_SET = (1UL << 20); break;',
+                    '    case 2: BW_SIO_GPIO_OUT_SET = (1UL << 19) | (1UL << 20); break;',
+                    '    default: BW_SIO_GPIO_OUT_CLR = (1UL << 19) | (1UL << 20); break;'],
+            };
+        }
+        if (core === 'avr-mega') {
+            return {
+                header: ['/* DC motor driver, Mega routing: OC2B (D9/PH6) carries speed PWM',
+                    ' * at 977 Hz; direction is D7 (PH4, IN1) and D8 (PH5, IN2) into',
+                    ' * an L293D-style H-bridge. */'],
+                preamble: [],
+                pwmSet: 'pwm_set(9, (unsigned int)speed);   /* OC2B = D9 on the Mega */',
+                dirComment: ['/* Direction: 0=forward 1=reverse 2=brake 3=coast. D7=PH4, D8=PH5. */'],
+                dirSetup: ['    DDRH |= (1 << 4) | (1 << 5);'],
+                cases: ['    case 0: PORTH |= (1 << 4);  PORTH &= (uint8_t)~(1 << 5); break;',
+                    '    case 1: PORTH &= (uint8_t)~(1 << 4); PORTH |= (1 << 5); break;',
+                    '    case 2: PORTH |= (1 << 4) | (1 << 5); break;',
+                    '    default: PORTH &= (uint8_t)~((1 << 4) | (1 << 5)); break;'],
+            };
+        }
+        if (core === 'avr') {
+            return {
+                header: ['/* DC motor driver: OC2B (D3) carries speed PWM at 977 Hz;',
+                    ' * direction is D7 (IN1) and D8 (IN2) into an L293D-style',
+                    ' * H-bridge — the 8051 build\'s P3.4/P3.5 convention in Arduino',
+                    ' * spelling. Timer 2 is shared with dimmers; the servo\'s',
+                    ' * Timer 1 is untouched. */'],
+                preamble: [],
+                pwmSet: 'pwm_set(3, (unsigned int)speed);   /* OC2B = D3 */',
+                dirComment: ['/* Direction: 0=forward 1=reverse 2=brake 3=coast.',
+                    ' * D7 = PD7 (IN1), D8 = PB0 (IN2). */'],
+                dirSetup: ['    DDRD |= (1 << 7);', '    DDRB |= (1 << 0);'],
+                cases: ['    case 0: PORTD |= (1 << 7);  PORTB &= (uint8_t)~(1 << 0); break;',
+                    '    case 1: PORTD &= (uint8_t)~(1 << 7); PORTB |= (1 << 0); break;',
+                    '    case 2: PORTD |= (1 << 7);  PORTB |= (1 << 0); break;',
+                    '    default: PORTD &= (uint8_t)~(1 << 7); PORTB &= (uint8_t)~(1 << 0); break;'],
+            };
+        }
+        // 8051 (the base dialect): PCA module 1 PWM, bit-addressable IN1/IN2.
+        return {
+            header: ['/* DC motor driver: PCA module 1 (CCP1, P1.4) in 8-bit PWM mode. */',
+                '/* No ISR needed — the hardware toggles the pin autonomously. */',
+                '/* Direction: P3.4 (IN1) and P3.5 (IN2) for L293D H-bridge. */'],
+            preamble: ['#define MOTOR_IN1  P3_4', '#define MOTOR_IN2  P3_5'],
+            pwmSet: 'pwm_set(1, (unsigned int)speed);   /* PCA module 1 (CCP1/P1.4) */',
+            dirComment: ['/* Direction: 0=forward 1=reverse 2=brake 3=coast */'],
+            dirSetup: [],
+            cases: ['        case 0: MOTOR_IN1 = 1; MOTOR_IN2 = 0; break;  /* forward */',
+                '        case 1: MOTOR_IN1 = 0; MOTOR_IN2 = 1; break;  /* reverse */',
+                '        case 2: MOTOR_IN1 = 1; MOTOR_IN2 = 1; break;  /* brake */',
+                '        default: MOTOR_IN1 = 0; MOTOR_IN2 = 0; break; /* coast */'],
+        };
+    }
+
+    _cMotorHelper(core) {
+        const bus = this._cMotorBus(core);
+        return [
+            ...bus.header,
+            ...bus.preamble,
+            'static int _motor_speed;',
+            'static int _motor_dir;',
+            '',
+            'static void bw_motor_speed(int motor, int speed)',
+            '{',
+            '    (void)motor;',
+            '    if (speed < 0) speed = 0;',
+            '    if (speed > 100) speed = 100;',
+            '    _motor_speed = speed;',
+            '    ' + bus.pwmSet,
+            '}',
+            '',
+            'static int bw_motor_get_speed(int motor) { (void)motor; return _motor_speed; }',
+            '',
+            ...bus.dirComment,
+            'static void bw_motor_dir(int motor, int dir)',
+            '{',
+            '    (void)motor;',
+            '    _motor_dir = dir;',
+            ...bus.dirSetup,
+            '    switch (dir) {',
+            ...bus.cases,
+            '    }',
+            '}',
+            '',
+            'static int bw_motor_get_dir(int motor) { (void)motor; return _motor_dir; }',
+            '',
+        ];
+    }
+
+    // ---- Servo (50 Hz PWM): one PROTOCOL body over per-family BUS.
+    //
+    // Every family's servo driver is bw_servo_set (bounds/clamp/store, then hand
+    // the pulse to the family's PWM) + bw_servo_get. The protocol shared by all
+    // four is the set wrapper and the angle clamp; the getter is shared across
+    // the three array-based families (arm/avr/avr-Mega). The BUS is the header,
+    // the state declarations, the pulse maths + PWM writes, and — on the 8051,
+    // whose PCA has no hardware PWM — the compare/match ISR that toggles the pin.
+    // avr and avr-Mega share ONE bus body (identical Timer 1 code); only their
+    // header routing comment differs — the single largest piece of the
+    // duplication this removes. Byte-identical (test/servo-golden.test.mjs).
+    //
+    // No i8086 variant: like motor, servo needs a PWM/compare source the 8086
+    // back end does not expose, so it stays a measured gap in the 8086 column.
+    _avrServoBus(header) {
+        // avr and avr-Mega: Timer 1 mode 14, OCR1A/OCR1B — byte-identical bodies.
+        return {
+            header,
+            decls: ['static int _servo_angle[2];'],
+            setLocals: ['    unsigned int us;'],
+            bounds: ['    if (servo < 1 || servo > 2) return;'],
+            store: ['    _servo_angle[servo - 1] = angle;'],
+            pwmBody: ['    us = (unsigned int)(500u + (unsigned long)angle * 2000u / 180u);',
+                '    if (servo == 1) { TCCR1A |= (1 << COM1A1); OCR1A = us * 2u; }',
+                '    else            { TCCR1A |= (1 << COM1B1); OCR1B = us * 2u; }'],
+            getFn: ['static int bw_servo_get(int servo)',
+                '{ return (servo >= 1 && servo <= 2) ? _servo_angle[servo - 1] : 0; }'],
+            isr: [],
+        };
+    }
+
+    _cServoBus(core) {
+        if (core === 'arm') {
+            return {
+                header: ['/* Servo driver: PWM slice 0 at 50 Hz — servo 1 = GP16 (channel A),',
+                    ' * servo 2 = GP17 (channel B). TOP 19999 at the 1 MHz slice clock is',
+                    ' * a 20 ms frame, and CC is then the pulse width in MICROSECONDS',
+                    ' * directly (500-2500). Slice 0 belongs to the servos: dimming on',
+                    ' * GP16/GP17 in the same program would retune their frame. */'],
+                decls: ['static int _servo_angle[2];'],
+                setLocals: ['    uint32_t gpio, us;'],
+                bounds: ['    if (servo < 1 || servo > 2) return;'],
+                store: ['    _servo_angle[servo - 1] = angle;'],
+                pwmBody: ['    gpio = 15u + (uint32_t)servo;            /* 1 -> GP16, 2 -> GP17 */',
+                    '    us = 500u + (uint32_t)angle * 2000u / 180u;',
+                    '    BW_IOBANK0_CTRL(gpio) = 4u;              /* funcsel PWM */',
+                    '    BW_PWM_DIV(0) = 125u << 4;               /* 1 MHz slice clock */',
+                    '    BW_PWM_TOP(0) = 19999u;                  /* 20 ms frame */',
+                    '    if (gpio & 1u) BW_PWM_CC(0) = (BW_PWM_CC(0) & 0xFFFFu) | (us << 16);',
+                    '    else BW_PWM_CC(0) = (BW_PWM_CC(0) & 0xFFFF0000u) | us;',
+                    '    BW_PWM_CSR(0) = 1u;'],
+                getFn: ['static int bw_servo_get(int servo)',
+                    '{ return (servo >= 1 && servo <= 2) ? _servo_angle[servo - 1] : 0; }'],
+                isr: [],
+            };
+        }
+        if (core === 'avr-mega') {
+            return this._avrServoBus(['/* Servo driver: Timer 1 in mode 14 (fast PWM, ICR1 TOP) at 50 Hz —',
+                ' * Mega routing: servo 1 = D11 (OC1A/PB5), servo 2 = D12 (OC1B/PB6).',
+                ' * Prescaler 8 gives 0.5 µs ticks: ICR1 = 39999 is 20 ms and',
+                ' * OCR1x = 2 × pulse-µs. Timer 1 belongs to the servos here. */']);
+        }
+        if (core === 'avr') {
+            return this._avrServoBus(['/* Servo driver: Timer 1 in mode 14 (fast PWM, ICR1 TOP) at 50 Hz —',
+                ' * servo 1 = D9 (OC1A), servo 2 = D10 (OC1B). Prescaler 8 gives',
+                ' * 0.5 µs ticks: ICR1 = 39999 is 20 ms and OCR1x = 2 × pulse-µs.',
+                ' * Timer 1 belongs to the servos in this program (bw_setup put it',
+                ' * in mode 14, not the dimmer\'s 8-bit mode). */']);
+        }
+        // 8051: PCA module 0, 16-bit compare/match, software ISR toggles the pin.
+        return {
+            header: ['/* Servo driver: PCA module 0 in 16-bit compare/match mode (50 Hz). */',
+                '/* Pin: P1.3 (CCP0). Note: P1.3 is also the ADC example pin — a */',
+                '/* project using both servo and ADC on P1.3 would conflict. CCP1 on */',
+                '/* P1.4 is available as an alternative. */',
+                '/* FOSC/12 clock: 20 ms = FOSC_HZ/12/50 counts. Pulse: 500-2500 µs. */'],
+            decls: ['#define SERVO_PERIOD  ((unsigned int)(FOSC_HZ / 12UL / 50UL))',
+                '#define SERVO_MIN_US  500',
+                '#define SERVO_MAX_US  2500',
+                'static unsigned int _servo_pulse;   /* pulse width in timer counts */',
+                'static unsigned int _servo_phase;   /* 0 = rising edge, 1 = falling */',
+                'static int _servo_angle;'],
+            setLocals: ['    unsigned long us;'],
+            bounds: ['    (void)servo;'],
+            store: ['    _servo_angle = angle;'],
+            pwmBody: ['    us = SERVO_MIN_US + (unsigned long)angle * (SERVO_MAX_US - SERVO_MIN_US) / 180;',
+                '    _servo_pulse = (unsigned int)(us * (FOSC_HZ / 12UL) / 1000000UL);'],
+            getFn: ['static int bw_servo_get(int servo) { (void)servo; return _servo_angle; }'],
+            isr: ['/* PCA ISR: toggles the servo pin at the pulse edges. */',
+                '/* Module 0 match flag (CCF0) fires twice per period: */',
+                '/*   phase 0: set pin HIGH, schedule falling edge at +_servo_pulse */',
+                '/*   phase 1: set pin LOW,  schedule rising edge at +(PERIOD-pulse) */',
+                'void bw_pca_isr(void) __interrupt(7)',
+                '{',
+                '    unsigned int next;',
+                '    if (!(CCON & 0x01)) return;  /* not CCF0 */',
+                '    CCON &= ~0x01;               /* clear CCF0 */',
+                '    if (_servo_phase == 0) {',
+                '        P1_3 = 1;                /* pulse start */',
+                '        next = ((unsigned int)CCAP0H << 8) | CCAP0L;',
+                '        next += _servo_pulse;',
+                '        CCAP0L = (unsigned char)(next & 0xFF);',
+                '        CCAP0H = (unsigned char)(next >> 8);',
+                '        _servo_phase = 1;',
+                '    } else {',
+                '        P1_3 = 0;                /* pulse end */',
+                '        next = ((unsigned int)CCAP0H << 8) | CCAP0L;',
+                '        next += SERVO_PERIOD - _servo_pulse;',
+                '        CCAP0L = (unsigned char)(next & 0xFF);',
+                '        CCAP0H = (unsigned char)(next >> 8);',
+                '        _servo_phase = 0;',
+                '    }',
+                '}'],
+        };
+    }
+
+    _cServoHelper(core) {
+        const bus = this._cServoBus(core);
+        return [
+            ...bus.header,
+            ...bus.decls,
+            '',
+            'static void bw_servo_set(int servo, int angle)',
+            '{',
+            ...bus.setLocals,
+            ...bus.bounds,
+            '    if (angle < 0) angle = 0;',
+            '    if (angle > 180) angle = 180;',
+            ...bus.store,
+            ...bus.pwmBody,
+            '}',
+            '',
+            ...bus.getFn,
+            ...(bus.isr.length ? ['', ...bus.isr] : []),
+            '',
+        ];
+    }
+
     // The drawing verbs for each screen: plain frame-buffer writes the ISR
     // scans. Emitted AFTER bw_now, BEFORE the tables (matching the reference).
     _cMatrixHelpers() {
@@ -12573,139 +12831,17 @@ class SB3Creator {
             const rstub = (sig, marker) => `${sig} { /* BW_STUB: ${marker} */ return 0; }`;
             // Servo: a real driver per core when _cUses.servo is set,
             // otherwise fall back to the stub.
+            // Servo driver (protocol/bus split, P2): one servo body over the
+            // per-family bus (_cServoHelper/_cServoBus). Byte-identical to the
+            // four hand-written variants — test/servo-golden.test.mjs.
             if (this._cUses.servo && this._core === 'arm') {
-                out.push(
-                    '/* Servo driver: PWM slice 0 at 50 Hz — servo 1 = GP16 (channel A),',
-                    ' * servo 2 = GP17 (channel B). TOP 19999 at the 1 MHz slice clock is',
-                    ' * a 20 ms frame, and CC is then the pulse width in MICROSECONDS',
-                    ' * directly (500-2500). Slice 0 belongs to the servos: dimming on',
-                    ' * GP16/GP17 in the same program would retune their frame. */',
-                    'static int _servo_angle[2];',
-                    '',
-                    'static void bw_servo_set(int servo, int angle)',
-                    '{',
-                    '    uint32_t gpio, us;',
-                    '    if (servo < 1 || servo > 2) return;',
-                    '    if (angle < 0) angle = 0;',
-                    '    if (angle > 180) angle = 180;',
-                    '    _servo_angle[servo - 1] = angle;',
-                    '    gpio = 15u + (uint32_t)servo;            /* 1 -> GP16, 2 -> GP17 */',
-                    '    us = 500u + (uint32_t)angle * 2000u / 180u;',
-                    '    BW_IOBANK0_CTRL(gpio) = 4u;              /* funcsel PWM */',
-                    '    BW_PWM_DIV(0) = 125u << 4;               /* 1 MHz slice clock */',
-                    '    BW_PWM_TOP(0) = 19999u;                  /* 20 ms frame */',
-                    '    if (gpio & 1u) BW_PWM_CC(0) = (BW_PWM_CC(0) & 0xFFFFu) | (us << 16);',
-                    '    else BW_PWM_CC(0) = (BW_PWM_CC(0) & 0xFFFF0000u) | us;',
-                    '    BW_PWM_CSR(0) = 1u;',
-                    '}',
-                    '',
-                    'static int bw_servo_get(int servo)',
-                    '{ return (servo >= 1 && servo <= 2) ? _servo_angle[servo - 1] : 0; }',
-                    '');
+                out.push(...this._cServoHelper('arm'));
             } else if (this._cUses.servo && this._core === 'avr' && this._cMega) {
-                out.push(
-                    '/* Servo driver: Timer 1 in mode 14 (fast PWM, ICR1 TOP) at 50 Hz —',
-                    ' * Mega routing: servo 1 = D11 (OC1A/PB5), servo 2 = D12 (OC1B/PB6).',
-                    ' * Prescaler 8 gives 0.5 µs ticks: ICR1 = 39999 is 20 ms and',
-                    ' * OCR1x = 2 × pulse-µs. Timer 1 belongs to the servos here. */',
-                    'static int _servo_angle[2];',
-                    '',
-                    'static void bw_servo_set(int servo, int angle)',
-                    '{',
-                    '    unsigned int us;',
-                    '    if (servo < 1 || servo > 2) return;',
-                    '    if (angle < 0) angle = 0;',
-                    '    if (angle > 180) angle = 180;',
-                    '    _servo_angle[servo - 1] = angle;',
-                    '    us = (unsigned int)(500u + (unsigned long)angle * 2000u / 180u);',
-                    '    if (servo == 1) { TCCR1A |= (1 << COM1A1); OCR1A = us * 2u; }',
-                    '    else            { TCCR1A |= (1 << COM1B1); OCR1B = us * 2u; }',
-                    '}',
-                    '',
-                    'static int bw_servo_get(int servo)',
-                    '{ return (servo >= 1 && servo <= 2) ? _servo_angle[servo - 1] : 0; }',
-                    '');
+                out.push(...this._cServoHelper('avr-mega'));
             } else if (this._cUses.servo && this._core === 'avr') {
-                out.push(
-                    '/* Servo driver: Timer 1 in mode 14 (fast PWM, ICR1 TOP) at 50 Hz —',
-                    ' * servo 1 = D9 (OC1A), servo 2 = D10 (OC1B). Prescaler 8 gives',
-                    ' * 0.5 µs ticks: ICR1 = 39999 is 20 ms and OCR1x = 2 × pulse-µs.',
-                    ' * Timer 1 belongs to the servos in this program (bw_setup put it',
-                    ' * in mode 14, not the dimmer\'s 8-bit mode). */',
-                    'static int _servo_angle[2];',
-                    '',
-                    'static void bw_servo_set(int servo, int angle)',
-                    '{',
-                    '    unsigned int us;',
-                    '    if (servo < 1 || servo > 2) return;',
-                    '    if (angle < 0) angle = 0;',
-                    '    if (angle > 180) angle = 180;',
-                    '    _servo_angle[servo - 1] = angle;',
-                    '    us = (unsigned int)(500u + (unsigned long)angle * 2000u / 180u);',
-                    '    if (servo == 1) { TCCR1A |= (1 << COM1A1); OCR1A = us * 2u; }',
-                    '    else            { TCCR1A |= (1 << COM1B1); OCR1B = us * 2u; }',
-                    '}',
-                    '',
-                    'static int bw_servo_get(int servo)',
-                    '{ return (servo >= 1 && servo <= 2) ? _servo_angle[servo - 1] : 0; }',
-                    '');
+                out.push(...this._cServoHelper('avr'));
             } else if (this._cUses.servo) {
-                // PCA module 0 on P1.3, 16-bit software-timer mode.
-                // At FOSC/12 (921.6 kHz for 11.0592 MHz), 20 ms = 18432 counts.
-                // Pulse: 500 µs (0°) = 461 counts, 2500 µs (180°) = 2304 counts.
-                // The ISR toggles the pin: high at frame start, low at the pulse end.
-                out.push(
-                    '/* Servo driver: PCA module 0 in 16-bit compare/match mode (50 Hz). */',
-                    '/* Pin: P1.3 (CCP0). Note: P1.3 is also the ADC example pin — a */',
-                    '/* project using both servo and ADC on P1.3 would conflict. CCP1 on */',
-                    '/* P1.4 is available as an alternative. */',
-                    '/* FOSC/12 clock: 20 ms = FOSC_HZ/12/50 counts. Pulse: 500-2500 µs. */',
-                    '#define SERVO_PERIOD  ((unsigned int)(FOSC_HZ / 12UL / 50UL))',
-                    '#define SERVO_MIN_US  500',
-                    '#define SERVO_MAX_US  2500',
-                    'static unsigned int _servo_pulse;   /* pulse width in timer counts */',
-                    'static unsigned int _servo_phase;   /* 0 = rising edge, 1 = falling */',
-                    'static int _servo_angle;',
-                    '',
-                    'static void bw_servo_set(int servo, int angle)',
-                    '{',
-                    '    unsigned long us;',
-                    '    (void)servo;',
-                    '    if (angle < 0) angle = 0;',
-                    '    if (angle > 180) angle = 180;',
-                    '    _servo_angle = angle;',
-                    '    us = SERVO_MIN_US + (unsigned long)angle * (SERVO_MAX_US - SERVO_MIN_US) / 180;',
-                    '    _servo_pulse = (unsigned int)(us * (FOSC_HZ / 12UL) / 1000000UL);',
-                    '}',
-                    '',
-                    'static int bw_servo_get(int servo) { (void)servo; return _servo_angle; }',
-                    '',
-                    '/* PCA ISR: toggles the servo pin at the pulse edges. */',
-                    '/* Module 0 match flag (CCF0) fires twice per period: */',
-                    '/*   phase 0: set pin HIGH, schedule falling edge at +_servo_pulse */',
-                    '/*   phase 1: set pin LOW,  schedule rising edge at +(PERIOD-pulse) */',
-                    'void bw_pca_isr(void) __interrupt(7)',
-                    '{',
-                    '    unsigned int next;',
-                    '    if (!(CCON & 0x01)) return;  /* not CCF0 */',
-                    '    CCON &= ~0x01;               /* clear CCF0 */',
-                    '    if (_servo_phase == 0) {',
-                    '        P1_3 = 1;                /* pulse start */',
-                    '        next = ((unsigned int)CCAP0H << 8) | CCAP0L;',
-                    '        next += _servo_pulse;',
-                    '        CCAP0L = (unsigned char)(next & 0xFF);',
-                    '        CCAP0H = (unsigned char)(next >> 8);',
-                    '        _servo_phase = 1;',
-                    '    } else {',
-                    '        P1_3 = 0;                /* pulse end */',
-                    '        next = ((unsigned int)CCAP0H << 8) | CCAP0L;',
-                    '        next += SERVO_PERIOD - _servo_pulse;',
-                    '        CCAP0L = (unsigned char)(next & 0xFF);',
-                    '        CCAP0H = (unsigned char)(next >> 8);',
-                    '        _servo_phase = 0;',
-                    '    }',
-                    '}',
-                    '');
+                out.push(...this._cServoHelper('8051'));
             } else {
                 out.push(
                     stub('static void bw_servo_set(int servo, int angle)', 'devices_setservo'),
@@ -12718,154 +12854,17 @@ class SB3Creator {
             // port 3 pins on every STC12 dev board.
             //   forward: IN1=1, IN2=0    reverse: IN1=0, IN2=1
             //   brake:   IN1=1, IN2=1    coast:   IN1=0, IN2=0
+            // Protocol/bus split (P2, motor): one motor driver body over the
+            // per-family bus (_cMotorHelper/_cMotorBus). Byte-identical to the
+            // four hand-written variants — test/motor-golden.test.mjs.
             if (this._cUses.motor && this._core === 'arm') {
-                out.push(
-                    '/* DC motor driver: GP18 (PWM slice 1A) carries speed at 1 kHz;',
-                    ' * direction is GP19 (IN1) and GP20 (IN2) into an L293D-style',
-                    ' * H-bridge — the 8051 build\'s P3.4/P3.5 convention in Pico',
-                    ' * spelling. The servo\'s slice 0 (GP16/GP17) is untouched. */',
-                    'static int _motor_speed;',
-                    'static int _motor_dir;',
-                    '',
-                    'static void bw_motor_speed(int motor, int speed)',
-                    '{',
-                    '    (void)motor;',
-                    '    if (speed < 0) speed = 0;',
-                    '    if (speed > 100) speed = 100;',
-                    '    _motor_speed = speed;',
-                    '    pwm_set(18, (unsigned int)speed);   /* GP18 = slice 1 A */',
-                    '}',
-                    '',
-                    'static int bw_motor_get_speed(int motor) { (void)motor; return _motor_speed; }',
-                    '',
-                    '/* Direction: 0=forward 1=reverse 2=brake 3=coast */',
-                    'static void bw_motor_dir(int motor, int dir)',
-                    '{',
-                    '    (void)motor;',
-                    '    _motor_dir = dir;',
-                    '    BW_IOBANK0_CTRL(19) = 5u;',
-                    '    BW_IOBANK0_CTRL(20) = 5u;',
-                    '    BW_SIO_GPIO_OE_SET = (1UL << 19) | (1UL << 20);',
-                    '    switch (dir) {',
-                    '    case 0: BW_SIO_GPIO_OUT_SET = (1UL << 19); BW_SIO_GPIO_OUT_CLR = (1UL << 20); break;',
-                    '    case 1: BW_SIO_GPIO_OUT_CLR = (1UL << 19); BW_SIO_GPIO_OUT_SET = (1UL << 20); break;',
-                    '    case 2: BW_SIO_GPIO_OUT_SET = (1UL << 19) | (1UL << 20); break;',
-                    '    default: BW_SIO_GPIO_OUT_CLR = (1UL << 19) | (1UL << 20); break;',
-                    '    }',
-                    '}',
-                    '',
-                    'static int bw_motor_get_dir(int motor) { (void)motor; return _motor_dir; }',
-                    '');
+                out.push(...this._cMotorHelper('arm'));
             } else if (this._cUses.motor && this._core === 'avr' && this._cMega) {
-                out.push(
-                    '/* DC motor driver, Mega routing: OC2B (D9/PH6) carries speed PWM',
-                    ' * at 977 Hz; direction is D7 (PH4, IN1) and D8 (PH5, IN2) into',
-                    ' * an L293D-style H-bridge. */',
-                    'static int _motor_speed;',
-                    'static int _motor_dir;',
-                    '',
-                    'static void bw_motor_speed(int motor, int speed)',
-                    '{',
-                    '    (void)motor;',
-                    '    if (speed < 0) speed = 0;',
-                    '    if (speed > 100) speed = 100;',
-                    '    _motor_speed = speed;',
-                    '    pwm_set(9, (unsigned int)speed);   /* OC2B = D9 on the Mega */',
-                    '}',
-                    '',
-                    'static int bw_motor_get_speed(int motor) { (void)motor; return _motor_speed; }',
-                    '',
-                    '/* Direction: 0=forward 1=reverse 2=brake 3=coast. D7=PH4, D8=PH5. */',
-                    'static void bw_motor_dir(int motor, int dir)',
-                    '{',
-                    '    (void)motor;',
-                    '    _motor_dir = dir;',
-                    '    DDRH |= (1 << 4) | (1 << 5);',
-                    '    switch (dir) {',
-                    '    case 0: PORTH |= (1 << 4);  PORTH &= (uint8_t)~(1 << 5); break;',
-                    '    case 1: PORTH &= (uint8_t)~(1 << 4); PORTH |= (1 << 5); break;',
-                    '    case 2: PORTH |= (1 << 4) | (1 << 5); break;',
-                    '    default: PORTH &= (uint8_t)~((1 << 4) | (1 << 5)); break;',
-                    '    }',
-                    '}',
-                    '',
-                    'static int bw_motor_get_dir(int motor) { (void)motor; return _motor_dir; }',
-                    '');
+                out.push(...this._cMotorHelper('avr-mega'));
             } else if (this._cUses.motor && this._core === 'avr') {
-                out.push(
-                    '/* DC motor driver: OC2B (D3) carries speed PWM at 977 Hz;',
-                    ' * direction is D7 (IN1) and D8 (IN2) into an L293D-style',
-                    ' * H-bridge — the 8051 build\'s P3.4/P3.5 convention in Arduino',
-                    ' * spelling. Timer 2 is shared with dimmers; the servo\'s',
-                    ' * Timer 1 is untouched. */',
-                    'static int _motor_speed;',
-                    'static int _motor_dir;',
-                    '',
-                    'static void bw_motor_speed(int motor, int speed)',
-                    '{',
-                    '    (void)motor;',
-                    '    if (speed < 0) speed = 0;',
-                    '    if (speed > 100) speed = 100;',
-                    '    _motor_speed = speed;',
-                    '    pwm_set(3, (unsigned int)speed);   /* OC2B = D3 */',
-                    '}',
-                    '',
-                    'static int bw_motor_get_speed(int motor) { (void)motor; return _motor_speed; }',
-                    '',
-                    '/* Direction: 0=forward 1=reverse 2=brake 3=coast.',
-                    ' * D7 = PD7 (IN1), D8 = PB0 (IN2). */',
-                    'static void bw_motor_dir(int motor, int dir)',
-                    '{',
-                    '    (void)motor;',
-                    '    _motor_dir = dir;',
-                    '    DDRD |= (1 << 7);',
-                    '    DDRB |= (1 << 0);',
-                    '    switch (dir) {',
-                    '    case 0: PORTD |= (1 << 7);  PORTB &= (uint8_t)~(1 << 0); break;',
-                    '    case 1: PORTD &= (uint8_t)~(1 << 7); PORTB |= (1 << 0); break;',
-                    '    case 2: PORTD |= (1 << 7);  PORTB |= (1 << 0); break;',
-                    '    default: PORTD &= (uint8_t)~(1 << 7); PORTB &= (uint8_t)~(1 << 0); break;',
-                    '    }',
-                    '}',
-                    '',
-                    'static int bw_motor_get_dir(int motor) { (void)motor; return _motor_dir; }',
-                    '');
+                out.push(...this._cMotorHelper('avr'));
             } else if (this._cUses.motor) {
-                out.push(
-                    '/* DC motor driver: PCA module 1 (CCP1, P1.4) in 8-bit PWM mode. */',
-                    '/* No ISR needed — the hardware toggles the pin autonomously. */',
-                    '/* Direction: P3.4 (IN1) and P3.5 (IN2) for L293D H-bridge. */',
-                    '#define MOTOR_IN1  P3_4',
-                    '#define MOTOR_IN2  P3_5',
-                    'static int _motor_speed;',
-                    'static int _motor_dir;',
-                    '',
-                    'static void bw_motor_speed(int motor, int speed)',
-                    '{',
-                    '    (void)motor;',
-                    '    if (speed < 0) speed = 0;',
-                    '    if (speed > 100) speed = 100;',
-                    '    _motor_speed = speed;',
-                    '    pwm_set(1, (unsigned int)speed);   /* PCA module 1 (CCP1/P1.4) */',
-                    '}',
-                    '',
-                    'static int bw_motor_get_speed(int motor) { (void)motor; return _motor_speed; }',
-                    '',
-                    '/* Direction: 0=forward 1=reverse 2=brake 3=coast */',
-                    'static void bw_motor_dir(int motor, int dir)',
-                    '{',
-                    '    (void)motor;',
-                    '    _motor_dir = dir;',
-                    '    switch (dir) {',
-                    '        case 0: MOTOR_IN1 = 1; MOTOR_IN2 = 0; break;  /* forward */',
-                    '        case 1: MOTOR_IN1 = 0; MOTOR_IN2 = 1; break;  /* reverse */',
-                    '        case 2: MOTOR_IN1 = 1; MOTOR_IN2 = 1; break;  /* brake */',
-                    '        default: MOTOR_IN1 = 0; MOTOR_IN2 = 0; break; /* coast */',
-                    '    }',
-                    '}',
-                    '',
-                    'static int bw_motor_get_dir(int motor) { (void)motor; return _motor_dir; }',
-                    '');
+                out.push(...this._cMotorHelper('8051'));
             } else {
                 out.push(
                     stub('static void bw_motor_speed(int motor, int speed)', 'devices_setmotor'),

@@ -17,14 +17,27 @@
  *   primitives (cSetPin, cPinRead) are one synthetic verb `pin`. A branch that
  *   REFUSES the family — it warns (`cWarn`) or emits a "no <thing> on this
  *   machine" stub instead of driving hardware — is NOT an implementation: it is
- *   a gap. (This is why servo/motor/pwm/tone are three families and not four or
- *   five: their 6502/z80 branches say the VIA has no compare unit, out loud.)
+ *   a gap. (This is why servo/motor/pwm are the families they are and not one
+ *   more: their 6502/z80 branches say the VIA has no compare unit, out loud.)
+ *
+ *   THIRD CLAUSE — a NO-OP is a refusal even without a marker. A branch whose
+ *   emitted driver function does nothing (its only statements are `(void)param`
+ *   casts, or the body is empty) drives no hardware, so it is a gap. A real
+ *   minimal body — a getter `{ (void)motor; return _motor_speed; }` — returns a
+ *   value and is NOT a stub. This clause also OVERRIDES the 8051 base-dialect
+ *   default: a verb whose only explicit `_core === '8051'` branch is a no-op is
+ *   not implemented on the 8051 (today: `tone` — an 8051 `tone_set` stub that
+ *   says "not yet implemented" in its own comment; and its arm branch is a
+ *   `(void)freq` no-op too, so tone is avr-only). Collision-check / pin-setup
+ *   blocks that co-gate a verb with a core but emit no `static` driver function
+ *   are ignored — they name the verb without implementing OR refusing it.
  *
  * Anchors that fix the rule (the gate asserts these): shift_out is implemented
  * for five families (8051, avr, 6502, arm, and i8086 through the 8255 — not
  * z80; the i8086 branch is P2's protocol/bus proof); pin for all six; adc for
  * three (8051, avr, arm) — its flag lives in the shared `procedures_call` case,
- * which is NOT credited because that case is not dedicated to one verb.
+ * which is NOT credited because that case is not dedicated to one verb; tone is
+ * avr-only (its 8051 and arm branches are no-op stubs — the third clause).
  *
  * SEVEN COLUMNS FROM SIX FAMILIES. profiles.js stores the six emitter families
  * (i8086 joined when pin, through the 8255, got its first branch). The doc
@@ -56,6 +69,86 @@ const CONTROL = new Set(['delay', 'blockDelay', 'blockingDelay', 'now', 'print',
 // not an implementation.
 const REFUSE = /cWarn\(|\/\* no |not modelled|no such|unsupported/;
 const usesOf = (s) => [...s.matchAll(/this\._cUses\.([a-zA-Z]+)/g)].map((m) => m[1]);
+
+/**
+ * The third clause of the refusal rule: a NO-OP body drives no hardware, so it
+ * is a refusal even when it carries no `cWarn`/"no <thing>" marker. Reconstruct
+ * the emitted C from the branch's string/template literals, bracket-match the
+ * function body, strip comments, and classify it a stub iff its only statements
+ * are `(void)param` casts (or the body is empty). A real minimal body — a getter
+ * like `{ (void)motor; return _motor_speed; }` — has a value-returning statement
+ * and is NOT a stub. Bracket-matched, never a fixed window (gate-shapes).
+ */
+export const noOp = (cons) => {
+    const lits = [...cons.matchAll(/'((?:[^'\\]|\\.)*)'|`((?:[^`\\]|\\.)*)`/g)].map((m) => m[1] ?? m[2]);
+    if (!lits.length) return false;
+    const c = lits.join('\n');
+    const open = c.indexOf('{');
+    if (open < 0) return false;                      // no function body here
+    let depth = 0, close = -1;
+    for (let i = open; i < c.length; i++) {
+        if (c[i] === '{') depth++;
+        else if (c[i] === '}') { depth--; if (depth === 0) { close = i; break; } }
+    }
+    if (close < 0) return false;
+    const body = c.slice(open + 1, close).replace(/\/\*[\s\S]*?\*\//g, ' ');
+    const stmts = body.split(';').map((s) => s.trim()).filter(Boolean);
+    return stmts.length > 0 && stmts.every((s) => /^\(void\)\w+$/.test(s));
+};
+
+/** The consequent a `this._core === 'F'` guards, from `startIdx` in `src`: the
+ *  `{ … }` block (brace-matched) or the single statement (to `;`). Bounded by
+ *  the code's own delimiters, never a fixed window (gate-shapes). */
+const consequentFrom = (src, startIdx) => {
+    let i = startIdx, depth = 0;
+    for (; i < src.length; i++) {
+        const c = src[i];
+        if (c === '(') depth++;
+        else if (c === ')') { if (depth === 0) { i++; break; } depth--; }
+    }
+    while (i < src.length && /\s/.test(src[i])) i++;
+    if (src[i] === '{') {
+        let d = 0;
+        for (let j = i; j < src.length; j++) {
+            if (src[j] === '{') d++;
+            else if (src[j] === '}') { d--; if (d === 0) return src.slice(i, j + 1); }
+        }
+        return src.slice(i);
+    }
+    let j = i;
+    while (j < src.length && src[j] !== ';') j++;
+    return src.slice(i, j + 1);
+};
+
+/**
+ * Verbs whose ONLY explicit `this._core === '8051'` branch is a refusal (a stub
+ * or a no-op): the 8051 base-dialect default does NOT hold for them. Derived
+ * from the emitter, never a hand-kept list — so the day someone implements the
+ * verb on the 8051 for real, the verb drops out of this set on its own and the
+ * base-dialect anchor tightens with no edit. Today its only member is `tone`
+ * (an 8051 `tone_set` stub that says "not yet implemented" in its own comment).
+ */
+export function stubbed8051 (src) {
+    // Only a branch that EMITS the verb's driver function counts — a co-gated
+    // collision check or pin-setup block (`_core === '8051' && _cUses.motor &&
+    // !chip.pca`) names the verb but drives nothing, and must not be read as
+    // its implementation. A driver branch's emitted C carries a `static <type>
+    // <name>(` signature.
+    const emitsFn = (cons) => {
+        const lits = [...cons.matchAll(/'((?:[^'\\]|\\.)*)'|`((?:[^`\\]|\\.)*)`/g)].map((m) => m[1] ?? m[2]);
+        return lits.some((l) => /^\s*static\s+[\w ]+\s+\w+\s*\(/.test(l) || /\bstatic\s+[\w ]+\s+\w+\s*\([^)]*\)\s*\{/.test(l));
+    };
+    const real = new Set(), stub = new Set();
+    const re = /this\._cUses\.(\w+)\s*&&\s*this\._core === '8051'|this\._core === '8051'\s*&&\s*this\._cUses\.(\w+)/g;
+    for (const m of src.matchAll(re)) {
+        const v = m[1] ?? m[2];
+        if (CONTROL.has(v)) continue;
+        const cons = consequentFrom(src, m.index);
+        if (!emitsFn(cons)) continue;                 // collision/setup block, not a driver
+        (noOp(cons) ? stub : real).add(v);
+    }
+    return new Set([...stub].filter((v) => !real.has(v)));
+}
 
 /**
  * Re-derive verb → five-family set from the emitter TEXT, by the attribution
@@ -95,7 +188,8 @@ export function deriveVerbFamilies (src) {
         const out = new Set();
         for (const m of text.matchAll(/this\._core === '([a-z0-9]+)'/g)) {
             if (!FAMS.includes(m[1])) continue;
-            if (REFUSE.test(consequentAt(base + m.index))) continue;
+            const cons = consequentAt(base + m.index);
+            if (REFUSE.test(cons) || noOp(cons)) continue;
             out.add(m[1]);
         }
         return out;
@@ -141,6 +235,11 @@ export function deriveVerbFamilies (src) {
 
     // Every hardware verb the emitter names appears (8051-only if no other signal).
     for (const v of new Set(usesOf(src))) if (!CONTROL.has(v)) fams[v] ??= new Set(['8051']);
+
+    // 8051 override: the base-dialect default is an assertion the emitter can
+    // contradict. A verb whose only 8051 branch is a stub is NOT implemented on
+    // the 8051, so drop the default there (today: tone). See stubbed8051().
+    for (const v of stubbed8051(src)) fams[v]?.delete('8051');
 
     const ORDER = ['8051', 'avr', '6502', 'z80', 'arm', 'i8086'];
     const out = {};

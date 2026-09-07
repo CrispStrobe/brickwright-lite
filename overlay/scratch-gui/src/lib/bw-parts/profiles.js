@@ -95,7 +95,7 @@ export const VERB_FAMILIES = Object.freeze({
     pin: ['8051', 'avr', '6502', 'z80', 'arm', 'i8086'],
     adc: ['8051', 'avr', 'arm'],
     pwm: ['8051', 'avr', 'arm'],
-    tone: ['8051', 'avr', 'arm'],
+    tone: ['avr'],
     shiftOut: ['8051', 'avr', '6502', 'arm', 'i8086'],
     servo: ['8051', 'avr', 'arm'],
     motor: ['8051', 'avr', 'arm'],

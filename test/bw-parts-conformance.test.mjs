@@ -27,7 +27,7 @@ import {
 } from '../overlay/scratch-gui/src/lib/bw-parts/profiles.js';
 import {registerAllDevices} from '../overlay/scratch-gui/src/lib/bw-board/register-all.js';
 import {registeredKinds} from '../overlay/scratch-gui/src/lib/bw-board/devices.js';
-import {deriveVerbFamilies, buildPartProfiles, checkPartProfiles} from '../scripts/gen-part-profiles.mjs';
+import {deriveVerbFamilies, buildPartProfiles, checkPartProfiles, stubbed8051} from '../scripts/gen-part-profiles.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '..');
@@ -129,8 +129,23 @@ test('(3) the stored verb×family matrix is exactly what the emitter branches sa
     assert.deepEqual(derived.adc, ['8051', 'avr', 'arm'],
         'adc must be three families (8051, avr, arm): its flag is in the shared procedures_call '
         + 'case, which is NOT credited because that case is not dedicated to one verb');
-    // 8051 is the base dialect: present for every verb
-    for (const v of VERBS) assert.ok(VERB_FAMILIES[v].includes('8051'), `verb "${v}" is missing the 8051 base dialect`);
+    assert.deepEqual(derived.tone, ['avr'],
+        'tone is avr-only: its 8051 branch is a "not yet implemented" stub and its arm branch a '
+        + '(void)freq no-op — both refusals by the no-op rule — and 6502 refuses by name');
+    // 8051 is the base dialect: present for every verb UNLESS the emitter's own
+    // 8051 branch for that verb is a stub (classified by the no-op rule). The
+    // exception set is DERIVED, not listed, so the day someone implements 8051
+    // <verb> for real it drops out and this anchor tightens with no edit here.
+    const stub8051 = stubbed8051(readFileSync(EMITTER, 'utf8'));
+    console.log(`8051 base-dialect exceptions (stubbed 8051 branch): ${[...stub8051].sort().join(', ') || '(none)'}`);
+    for (const v of VERBS) {
+        if (stub8051.has(v)) {
+            assert.ok(!VERB_FAMILIES[v].includes('8051'),
+                `verb "${v}" has a stub 8051 branch (no-op rule), so it must NOT claim the 8051 base dialect`);
+        } else {
+            assert.ok(VERB_FAMILIES[v].includes('8051'), `verb "${v}" is missing the 8051 base dialect`);
+        }
+    }
     // only the emitter families are stored (rp2040 is the one doc-render column)
     const allowed = new Set(Object.values(FAMILY));
     for (const v of VERBS) for (const f of VERB_FAMILIES[v]) {

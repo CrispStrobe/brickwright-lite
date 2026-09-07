@@ -593,15 +593,23 @@ gate: every part that has a `bw-board` device model has a profile or an
 explicit `programmable: false` reason. **P2.** Split C drivers into a
 part-specific protocol layer over a family-specific bus layer; the emitter
 half-does this already (`shift_out` has four family variants). **MEASURED AND PROVED 2026-09-07**
-(delegate `8086 coverage testing materials`, audited by lego-ac; upstream sb3-creator `0a05c9c`,
-`docs/DRIVER-PROTOCOL-BUS.md`): 79–117 duplicated protocol lines across families today by two counting
-methods (motor 40, tone 27, servo 23, shiftOut 17, adc 10). Proof: `shift_out` is now ONE protocol body over
-per-family bus primitives, emitted C byte-identical for avr/6502/arm/8051 (a golden test pins the
-pre-refactor bytes), and the i8086 bus added on top makes shiftOut the second cell of the 8086 column —
-**57 of 147**; lite proves it against the 74HC595 protocol on the bench (waveform, MSB-first
-reconstruction) since the ASM bench has no 595 part. Remaining P2 work: motor, tone, servo, adc through the
-same shape, each with its golden test. Finding on the way: a byte-sized C parameter makes SmallerC emit
-MOVZX (80386), which the 8086 assembler rejects, so scalars widen to `unsigned` (C tab note, both locales). **P3.**
+(delegate `8086 coverage testing materials`, audited by lego-ac; upstream sb3-creator `414e8ef`,
+`docs/DRIVER-PROTOCOL-BUS.md`): ~80–103 duplicated protocol lines across families by two counting methods
+(motor 46, servo 30, shiftOut 17, adc 10; tone excluded — see below). Done verb by verb, each one protocol
+body over per-family bus, emitted C byte-identical (a golden test pins the pre-refactor bytes): `shift_out`
+(+ an i8086 bus, the second 8086 cell), `motor` and `servo` (no i8086 cell — no PWM/H-bridge primitive nor a
+bench part; motor is net −17 lines, servo net +16 and earns its place by the 30 duplicated copies, not golf).
+lite proves shiftOut against the 74HC595 protocol on the bench (waveform, MSB-first reconstruction) since the
+ASM bench has no 595 part. **`tone` is NOT a split candidate** and was the lane's sharpest finding: only avr
+implements it; its 8051 branch is a "not yet implemented" stub and its arm branch a `(void)freq` no-op, and
+`deriveVerbFamilies` was crediting both as cells. A no-op is a refusal, so the attribution rule gained a
+third clause (bracket-matched, fixture-tested) that also overrides the 8051 base dialect where a verb's own
+8051 branch is a stub — tone becomes avr-only, and the parts matrix corrects **57 → 54 of 147** (tone loses
+8051, arm and the rp2040≡arm mirror). Product finding: `set <buzzer> to N hz` compiles to a SILENT no-op on
+the STC12 and Pico today — a named 8051 gap now in the matrix row and the C tab's 8051 note. Remaining P2:
+`adc` (the last real multi-family candidate). Finding on the way: a byte-sized C parameter makes SmallerC
+emit MOVZX (80386), which the 8086 assembler rejects, so scalars widen to `unsigned` (C tab note, both
+locales). **P3.**
 MicroPython protocol drivers for the same part set, proven by differential
 test: emit C and MicroPython for one program, run both against the simulated
 part, compare state; implement the `text_line_0` assert kind, which unblocks
