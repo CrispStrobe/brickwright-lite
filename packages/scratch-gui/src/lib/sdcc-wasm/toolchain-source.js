@@ -171,6 +171,23 @@ const aborted = () => {
  * numerator and denominator from ONE of these, never one of each. It is the
  * transfer figure, because transfer is what the user is waiting for.
  * `inspectToolchain` reports the disk figure, and calls it space.
+ *
+ * IF YOU EVER ADD BYTE-LEVEL PROGRESS BY READING THE STREAM, READ THIS FIRST.
+ * A ReadableStream from a gzip response yields DECOMPRESSED bytes, while this
+ * denominator is the COMPRESSED length. Counting one against the other gives a
+ * bar that runs to roughly four hundred percent — the same mistake as the one
+ * this comment exists to record, one layer deeper and harder to see, because
+ * both numbers would then be "bytes we counted ourselves". If a trustworthy
+ * denominator cannot be had, per-file weighting is more honest than a
+ * percentage computed from two different units.
+ *
+ * Measured 2026-09-07, both ways, and reconciled with lego-ac to the byte:
+ *   runtime.json  607,272 on the wire / 3,286,732 stored — 81% compression,
+ *     because it is base64 inside JSON. 36% of the transfer, 49% of the disk.
+ *   sdcc.wasm     452,349 / 1,830,464 — 27% either way.
+ *   TOTAL       1,697,996 / 6,737,737.
+ * The two largest files are 62% of the wire, so weighting still matters; but
+ * "half the download" was true of disk and false of transfer.
  */
 export async function measureToolchain (base = GPL_TOOLCHAIN_ORIGIN, deps = {}) {
     const fetch_ = deps.fetch || (typeof fetch === 'undefined' ? null : fetch);
