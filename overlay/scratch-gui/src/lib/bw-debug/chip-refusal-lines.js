@@ -38,9 +38,16 @@ const addr = (n) => `${n.toString(16).toUpperCase().padStart(n > 0xff ? 4 : 2, '
  * 8237 is a port, and both arrive here as a bare number. Writing "port" would be
  * wrong for the OPL; keeping a part-to-space table on this side would be a
  * second list that has to agree with bw-board's chips, which is the shape this
- * file's own header argues against. So it says `at 08h` and claims only what the
- * row proves. Raised with lego-be as a contract request; if the row gains the
- * space, this function is where it lands.
+ * file's own header argues against. So it said `at 08h` and claimed only what
+ * the row proved. Raised with lego-be as a contract request.
+ *
+ * THE ROW GAINED IT (bw-board fad7a3d, `space`: 'port' | 'register') and this
+ * is where it landed, as the comment above said it would. The chip declares it
+ * where the refusal is WRITTEN -- the writing end knows, the reading end does
+ * not -- so nothing here infers anything: an unknown or absent space falls back
+ * to the bare `at`, which is what this function said before and is still true.
+ * Seven of the eight chips read 'port'; the YM3812 reads 'register', and it is
+ * the reason the field exists at all.
  *
  * `ats` IS THE SET AND `count` IS THE TOTAL, and they are rendered separately on
  * purpose. The ledger's first version kept a single `at` that a later address
@@ -53,16 +60,24 @@ const addr = (n) => `${n.toString(16).toUpperCase().padStart(n > 0xff ? 4 : 2, '
  * that does not say so reads as complete, and a debugger that shows you eight
  * ports when the program touched thirty is lying by omission.
  */
+/** The word the row's `space` earns, or the bare `at` when it names none. */
+function anchorWord (row) {
+    return row.space === 'port' ? 'port'
+        : row.space === 'register' ? 'register'
+            : 'at';
+}
+
 export function formatAnchor (row) {
+    const word = anchorWord(row);
     const ats = Array.isArray(row.ats) ? row.ats.filter((n) => Number.isInteger(n)) : [];
     if (!ats.length) {
         // null means "no anchor, render the sentence alone" — never 0. Inventing
         // an address points the debugger at somewhere the program never touched,
         // which is worse than pointing nowhere.
-        return Number.isInteger(row.at) ? `at ${addr(row.at)}` : null;
+        return Number.isInteger(row.at) ? `${word} ${addr(row.at)}` : null;
     }
     const list = ats.map(addr).join(', ');
-    return `at ${list}${row.atsMore ? ' and more' : ''}`;
+    return `${word} ${list}${row.atsMore ? ' and more' : ''}`;
 }
 
 /** `3 refusals`, or null when it happened once and the number adds nothing. */
