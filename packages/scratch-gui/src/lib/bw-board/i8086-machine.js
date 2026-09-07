@@ -1547,24 +1547,38 @@ export class I8086Machine {
         // under a reader while the program runs. `atsMore` is true when the
         // per-feature cap dropped addresses, because a bounded list that does
         // not say it is bounded reads as a complete one.
+        // `at` IS THE BUS PORT, `atOffset` IS THE CHIP-RELATIVE ONE.
         //
-        // `space` says what `at` is an address IN -- 'port' or 'register'.
-        // Without it a consumer holding a bare integer cannot tell "port 08h"
-        // from "register 08h", and the only alternative is a part-to-space
-        // table on the reading side: a second list that must agree with these
-        // chips. 'port' is the default because it is true of every chip but
-        // the YM3812, which says so at its own call site.
+        // A chip records the offset it was written at -- the 8255's control
+        // register is 3 -- because `write(reg, val)` never sees a base. That
+        // made `at: 3, space: 'port'` TRUE on a breadboard (PPI at 0x00) and
+        // FALSE on a PC/XT (PPI at 0x60, so the bus port is 0x63): same row,
+        // two meanings, and right on the board where being right teaches the
+        // wrong rule.
         //
-        // GRAFTED BY HAND, not synced: this file carries nine named
-        // forward-ports (display revision tokens, the on-instruction hook, the
-        // checkpoint bridges) that upstream does not have, so sync-bw-board
-        // refuses it by name and is right to.
+        // The chip cannot fix this without carrying the board's decode. THIS
+        // layer knows it -- `this.config` names each chip's base -- so the
+        // resolution belongs here, and `atOffset` keeps the number that joins
+        // to the part's own register map.
+        const baseOf = (name) => {
+            const c = (this.config?.chips || []).find((x) => x.name === name);
+            return typeof c?.at === 'number' ? c.at : null;
+        };
         const push = (part, kind, feature, symptom, count, at, ats, atsMore, space) => {
             const set = (ats && ats.length) ? [...ats]
                 : (at !== null && at !== undefined) ? [at] : [];
+            const wantPort = (space ?? 'port') === 'port';
+            const base = wantPort ? baseOf(part) : null;
+            // A base this layer cannot resolve is NOT quietly treated as zero.
+            // Zero is a real base, so defaulting to it would emit a number that
+            // looks like a port and is not -- the exact defect being fixed. The
+            // row says 'register' instead and reports what the chip knew.
+            const resolved = (wantPort && base !== null) ? set.map((n) => n + base) : set;
             rows.push({part, kind, feature, symptom: symptom ?? null,
-                count: count ?? 1, at: set.length ? set[0] : null,
-                ats: set, atsMore: !!atsMore, space: space ?? 'port'});
+                count: count ?? 1, at: resolved.length ? resolved[0] : null,
+                ats: resolved, atsMore: !!atsMore,
+                space: wantPort ? (base === null ? 'register' : 'port') : (space ?? 'port'),
+                atOffset: set.length ? set[0] : null});
         };
 
         const sources = [
