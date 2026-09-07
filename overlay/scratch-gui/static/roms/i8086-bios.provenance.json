@@ -1,28 +1,28 @@
 {
   "_": "Written by scripts/sync-i8086-bios.mjs. Gated by test/i8086-bios-provenance.test.mjs. Do not hand-edit.",
   "rom": "i8086-bios.bin",
-  "sha256": "8cd85678df54b0047d353c78515f800172ded706cba21516398fa378cf73160d",
+  "sha256": "6f9f5463afa5c30ce25263c0430f741cbb0274e98b00c675ef04c9edfee0aa34",
   "bytes": 65536,
-  "resetVector": "F000h:005Ch",
+  "resetVector": "F000h:005Ah",
   "source": {
     "repo": "bw-board",
     "path": "rom/bios.asm",
     "vendoredAs": "i8086-bios.asm",
     "license": "MIT",
-    "sha256": "688c5fbdfcaccdbee3b940f6c4d0c48d834b8c58caaef10b004cdc8cf5b97721",
-    "sha": "8064729ca39f710c89effdfe0b1d0086aadf1778",
-    "date": "2026-09-05",
+    "sha256": "cb3fa6422f7cae8d27ae91069d5189285ab43b418979a99212a89a8c5eee31d2",
+    "sha": "d5850e695b3d49fe0526f6da87c76772bcc14d42",
+    "date": "2026-09-07",
     "lastTouchedBy": {
-      "sha": "8064729ca39f710c89effdfe0b1d0086aadf1778",
-      "subject": "BIOS: the diskette parameter table now describes the disk that is in the drive",
-      "date": "2026-09-05"
+      "sha": "7b8d14041617695e1fc6cf89e62b62a0d7dbe3f4",
+      "subject": "BIOS: the ROM said BSD-3 about itself and this repo is MIT (D2); the tier stays an XT (D1)",
+      "date": "2026-09-07"
     }
   },
   "assembler": {
     "path": "overlay/scratch-gui/src/lib/bw-board/i8086-asm.js",
     "sha256": "3270c33885fbb6524ceaa727a1600570fe974e0bb4bc3488d1ecda894fdb0841"
   },
-  "pinAtBuild": "cbe310db7cc705ce4c50951ff2ca96011f35571a",
+  "pinAtBuild": "d5850e695b3d49fe0526f6da87c76772bcc14d42",
   "ancestorOfPinAtBuild": true,
   "behindPinBy": 0
 }
