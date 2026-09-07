@@ -23,13 +23,13 @@
  * what ships and `src` is what this measures.
  */
 import path from 'node:path';
-import {REPO, INTEGRATED, importSource} from './bw-integrated.mjs';
+import {REPO, INTEGRATED, importSource, importGuiDependency} from './bw-integrated.mjs';
 import {bundledExtensionIds, loadExtensionClass, probeExtension, stubRuntime} from './bw-extensions.mjs';
 
 export {REPO, INTEGRATED};
 
 export const SB3Creator = (await importSource('src/lib/sb3-creator.js')).default;
-export const VM = (await import('scratch-vm/src/index.js')).default;
+export const VM = (await importGuiDependency('scratch-vm/src/index.js')).default;
 
 const EXTENSION_IDS = bundledExtensionIds();
 const classCache = new Map();

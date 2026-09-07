@@ -50,14 +50,16 @@ test('source helper always imports this checkout even with an explicit external 
     put('overlay/scratch-gui/src/lib/probe.mjs', 'export const value = 42;');
     put('external/package.json');
     put('external/src/lib/probe.mjs', 'export const value = 41;');
-    put('probe.mjs', "import {importSource} from './test/helpers/bw-integrated.mjs';\n" +
-        "console.log((await importSource('src/lib/probe.mjs')).value);\n");
+    put('external/node_modules/scratch-vm/src/probe.mjs', 'export const value = 43;');
+    put('probe.mjs', "import {importSource, importGuiDependency} from './test/helpers/bw-integrated.mjs';\n" +
+        "console.log((await importSource('src/lib/probe.mjs')).value, " +
+        "(await importGuiDependency('scratch-vm/src/probe.mjs')).value);\n");
     const probe = env => spawnSync(process.execPath, ['probe.mjs'], {
         cwd: root, encoding: 'utf8', env: {...process.env, BW_INTEGRATED_ROOT: '', ...env}
     });
     const good = probe({BW_INTEGRATED_ROOT: path.join(root, 'external')});
     assert.equal(good.status, 0, good.stderr);
-    assert.match(good.stdout, /42/);
+    assert.match(good.stdout, /42 43/);
     assert.match(good.stderr, /BW_INTEGRATED_ROOT/);
     put('probe.mjs', "import {importSource} from './test/helpers/bw-integrated.mjs';\n" +
         "await importSource('src/lib/missing.mjs');\n");

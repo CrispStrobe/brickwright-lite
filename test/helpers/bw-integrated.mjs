@@ -48,3 +48,20 @@ export function sourceFile (relativePath) {
 export function importSource (relativePath) {
     return import(pathToFileURL(sourceFile(relativePath)).href);
 }
+
+/**
+ * A file inside the prepared GUI dependency registry. Some patched dependency
+ * source entries are intentionally absent from package exports, so tests name
+ * that file explicitly instead of asking Node to reinterpret package exports.
+ */
+export function guiDependencyFile (relativePath) {
+    const file = path.join(INTEGRATED, 'node_modules', relativePath);
+    if (!existsSync(file)) {
+        throw new Error(`Missing prepared GUI dependency file: ${file}.`);
+    }
+    return file;
+}
+
+export function importGuiDependency (relativePath) {
+    return import(pathToFileURL(guiDependencyFile(relativePath)).href);
+}
