@@ -2038,3 +2038,71 @@ because it was green. A double that never diverges from its subject and a
 harness that never runs slower than production are the same wish, and neither is
 free. The rule that catches both is the one above — make the stand-in fail on
 purpose before believing it when it passes.
+
+## Thirty-third species: THE PROXY EVENT STANDING IN FOR THE STATE (2026-09-07, lego-be; rule proposed by lego-ac, measured before building)
+
+Every species so far is a gate whose SET is wrong. This one is a gate whose set
+is right and whose QUESTION is a stand-in. **The check observes an event that
+usually accompanies the state it cares about, instead of observing the state.**
+It then inherits every case where the two come apart -- and they come apart in
+both directions, so the gate over-refuses correct work AND can miss the defect,
+with no way to tell which from its output.
+
+**The incident, and it was caught before it shipped.** A vendored file carries a
+promise: the recorded pin says this content IS upstream at that sha. Nothing
+checked it. The proposed gate was *a commit touching a vendored path is refused
+unless it also MOVES that upstream's pin* -- which reads as obviously right,
+because a legitimate re-vendor does move the pin.
+
+It was measured against 400 commits of real history before a line was written.
+29 touch a vendored path; the rule refuses **10 of them**. One is a genuine
+defect. The other nine are correct commits, including a forward-sync that copies
+upstream content in at a pin that was ALREADY correct -- so there is nothing for
+it to move, and the gate fires on the very operation vendoring exists for.
+
+**Why the arithmetic is fatal rather than annoying.** One-in-ten precision does
+not survive contact with the people it refuses. It does not get fixed; it gets
+an `--allow-vendored-edit` flag inside a week, and a gate with an escape hatch
+that nine in ten users must reach for is decoration with a CI cost. The species
+is not "the rule was too strict". It is that **a proxy's false-positive rate is
+a property of the proxy, not of the code**, so no amount of care in the codebase
+reduces it.
+
+**The tell.** Ask what the success predicate literally observes, then ask what
+the invariant is ABOUT. Here: it observes *did this commit modify
+vendor-pins.json*; the invariant is about *whether a file's content equals
+upstream's*. Those are different sentences. Whenever the predicate names an
+ACTION (a commit moved something, a script ran, a step was invoked) and the
+invariant names a STATE (the content is X, the set equals Y), you are looking at
+a proxy, and the only question left is how often they diverge.
+
+Proxies are seductive because they are cheap to compute and usually right.
+Species 28's census-by-literal is one (does the source TEXT contain the value,
+standing in for does the runtime USE it). So is any check that greps for a
+function call instead of measuring its effect.
+
+**The fix is always the same shape: ask the thing itself.** After the commit,
+does the file's content equal upstream at the pin this commit records? That is
+the same move as `baseForFile` -- walk to what the content IS rather than
+reasoning from what the commit DID -- and it separated all 29 commits cleanly
+where the proxy could not. It is more expensive: it needs upstream's tree at the
+pin on disk, which is why the proxy is tempting. Pay it.
+
+**Two things the measurement produced that the proxy could never have.** First,
+a FOURTH case the pin-move framing had no room for: seven lite-authored files
+living inside a vendored root -- present in neither "matches upstream" nor
+"declared divergence", because upstream has no such file to compare against.
+Asking about content forces every file into a category and makes the leftovers
+visible; asking about commits never enumerates files at all. Second, one of
+those seven turned out to have no reason to be there -- nothing in the vendored
+root imports it, both consumers are lite's own. That is a real finding, and it
+came from having to write a reason per file rather than from any assertion.
+
+**The corollary, and it is the general form of "measure first".** A gate is a
+CLAIM ABOUT HISTORY. Run it over history before writing it. Ten minutes of
+`git log` answered a design question that would otherwise have been settled by
+argument, and the answer -- reject the rule, keep the goal -- was not the one
+either party expected. The version of this that goes wrong is building the gate,
+watching it red, and adding exemptions until it is green: same destination,
+except the exemptions are now load-bearing and nobody remembers which were
+principled.
