@@ -80,12 +80,22 @@ class ExampleIntroButton extends React.Component {
                 {open ? (
                     <div
                         data-testid="bw-example-intro-panel"
-                        style={{position: 'absolute', top: 26, left: 0, zIndex: 1000, width: 420,
-                            maxHeight: 420, overflowY: 'auto', padding: 12, borderRadius: 6,
-                            background: '#fff', color: palette.text, fontSize: 12, lineHeight: 1.45,
-                            border: `1px solid ${palette.border}`, boxShadow: '0 6px 24px rgba(0,0,0,.18)'}}
+                        /* The catalogue renders this same content well and this did not:
+                           420px wide, 12px type, anchored under a button in the menu bar,
+                           with no wrapping rule — so an intro of any length ran off its own
+                           edge. These are the catalogue's numbers (ExamplesBrowser.jsx's
+                           intro dialog): min(880px, 94vw), 90vh, 17px heading, and long
+                           tokens broken rather than allowed to widen the box. Both render
+                           through the same renderMarkdown from intro-doc.jsx, so this is a
+                           container change, not a second implementation of the panel. */
+                        style={{position: 'absolute', top: 26, left: 0, zIndex: 1000,
+                            width: 'min(880px, 94vw)', maxHeight: '90vh', overflowY: 'auto',
+                            padding: '18px 22px 16px', borderRadius: 10,
+                            background: '#fff', color: palette.text, fontSize: 13.5, lineHeight: 1.55,
+                            overflowWrap: 'anywhere',
+                            border: `1px solid ${palette.border}`, boxShadow: '0 24px 64px rgba(0,0,0,.32)'}}
                     >
-                        <div style={{fontWeight: 700, marginBottom: 6, color: palette.heading}}>
+                        <div style={{fontWeight: 750, fontSize: 17, marginBottom: 10, color: palette.heading}}>
                             {example.title || example.id}
                         </div>
                         {intro === null ? <div style={{color: palette.muted}}>{t.loading}</div>
