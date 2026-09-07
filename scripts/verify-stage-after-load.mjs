@@ -375,6 +375,29 @@ async function run () {
         await settle();
         const afterViewport = await snap('3-after-viewport-nudge');
 
+        // STEP 4b — IS FULLSCREEN SPECIAL, OR IS ANY GATED PROP ENOUGH?
+        //
+        // Read in packages/scratch-gui/src/containers/stage.jsx:
+        //   componentDidMount   attaches events and updateRect, and NEVER
+        //                       calls renderer.resize
+        //   componentDidUpdate  is the ONLY caller of renderer.resize
+        //   shouldComponentUpdate gates it on stageSize, isColorPicking,
+        //                       colorInfo, isFullScreen, question,
+        //                       micIndicator, isStarted — and on NOTHING about
+        //                       the container's actual size
+        //
+        // If that reading is right, the buffer is sized by ANY change to one of
+        // those props and not by fullscreen as such. isStarted flips on the
+        // green flag, so this pokes that one instead. Buffer non-zero here means
+        // the gate is the mechanism and fullscreen was incidental; still zero
+        // means the reading is wrong and fullscreen does something else.
+        await page.evaluate(() => {
+            const vm = window.__bwImporter && window.__bwImporter.props && window.__bwImporter.props.vm;
+            if (vm && typeof vm.greenFlag === 'function') vm.greenFlag();
+        });
+        await settle();
+        const afterGreenFlag = await snap('3b-after-green-flag');
+
         // STEP 5 — the control: real fullscreen, which is what the owner did.
         await page.evaluate(() => {
             const store = window.__brickwrightStore;
@@ -383,7 +406,7 @@ async function run () {
         await settle();
         const afterFullscreen = await snap('4-after-fullscreen');
 
-        const all = [before, afterLoad, afterRedraw, afterViewport, afterFullscreen];
+        const all = [before, afterLoad, afterRedraw, afterViewport, afterGreenFlag, afterFullscreen];
         await writeFile(join(artifacts, 'measurements.json'), JSON.stringify(all, null, 2));
         for (const m of all) {
             console.log(`  ${m.name.padEnd(28)} buffer ${m.drawingBuffer.w}x${m.drawingBuffer.h}  ` +
@@ -426,6 +449,15 @@ async function run () {
             why = `the canvas sat at +${afterLoad.offsetInParent.dx},+${afterLoad.offsetInParent.dy} in its `
                 + 'parent after load and somewhere else after fullscreen, at the same size';
         }
+
+        const gatedPropSized = afterGreenFlag.drawingBuffer.w > 0;
+        console.log(`\nWHAT SIZES THE BUFFER: a gated prop change (isStarted, via the green flag) ` +
+            `${gatedPropSized ? 'DID' : 'did NOT'} size it (${afterGreenFlag.drawingBuffer.w}x${afterGreenFlag.drawingBuffer.h}).`);
+        console.log(gatedPropSized
+            ? '  So fullscreen is not special: renderer.resize runs from componentDidUpdate, and\n'
+              + '  ANY gated prop change reaches it. Nothing on the load path changes one.'
+            : '  So the componentDidUpdate reading does not explain it, and whatever fullscreen\n'
+              + '  does is something else. Do not build on the gate theory.');
 
         if (verdict) {
             console.log(`\nVERDICT: ${verdict}\n  ${why}`);
