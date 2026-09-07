@@ -1513,3 +1513,70 @@ evidence that it was taken, so the refusal is written at the decision point in b
 ROADMAP, and the partial that landed (8f46f2c) is a 21-entry table whose every entry reaches a
 quiet-NaN stub and returns — a diagnosis where there was a hang, with `2.5 + 1.0 ≠ 3.5`
 asserted so the stop cannot go stale.
+
+## Twenty-sixth species: THE FACT THAT LIVES ONLY IN A WIRING EXPRESSION (2026-09-07, brickwright-lite-ea)
+
+**A fact that lives only in a wiring expression is invisible to every test that
+exercises the things being wired.**
+
+The debugger's chip-refusal line had eight unit assertions and six proved
+mutations. The collector worked. The line formatted. The panel read the handle.
+The DOS bench produced the row in node in two milliseconds. Every one of those
+was true while the feature was completely dead for the bench most programs
+actually run on.
+
+What was broken was one expression:
+
+```js
+chipRefusalsOf = typeof adapter.machine?.chipRefusals === 'function' ? … : null;
+```
+
+The DOS bench passes `adapter: {}` **on purpose** — its own comment says why, so
+that `wireMachineBench` cannot offer a `loadRom` writing into the wrong place —
+and its machine is reachable only on the bench object. So the runner concluded
+"this machine cannot report refusals" about a bench carrying `ppi1`, `pit1` and
+`spk` with a working ledger.
+
+**Why the tests could not see it.** Each side was tested against a *constructed*
+example: the model against rows built in the test, the bench against a machine
+built in the test. The wiring is the one thing neither can construct — the runner
+is not instantiable in Node — so it was the one thing nothing asserted. A gate
+per component plus a gate per contract still leaves the joins uncovered, and the
+joins are where a null lives.
+
+**The tell.** It is not a wrong value; it is a *plausible absence*. `null` from
+that expression rendered exactly like a bench with nothing to report, which is
+the honest state for most benches most of the time. Absence is the hardest defect
+to notice precisely because it is usually correct.
+
+**What made it findable.** The panel published its own state — `'none'` when
+there is no collector, `'empty'` when there is one that found nothing — and the
+browser gate read it. Collapsed into one "no rows", three separate causes had
+looked identical across three CI runs. Separated, the third named itself in one
+word. *A diagnostic that distinguishes kinds of absence is worth more than one
+that reports absence accurately.*
+
+**The fix, and the shape to copy.** Hand the capability over explicitly rather
+than discovering it by traversal — `chipRefusals: () => bench.machine.chipRefusals()`,
+a read-only view and nothing else, preserving the reason the adapter is empty —
+and then **assert the wiring by name**, in both directions, because it is
+invisible from either side:
+
+```js
+assert.match(runner, /chipRefusals: \(\) => bench\.machine\.chipRefusals\(\)/, …)
+assert.match(runner, /typeof result\.chipRefusals === 'function'/, …)
+```
+
+A source assertion is a poor substitute for a behavioural one and the right tool
+when the behaviour has no reachable seam. The message says what BREAKS — "every
+refusal a program produces on the Code tab is invisible to the panel" — not what
+is missing.
+
+**Its close sibling, three instances in one day:** the same blindness where a
+path is *built* rather than written. `docs/*.md` reached by `join('docs', name)`
+(lego-b9's trigger census), gate scripts spawned through
+`join(here, '..', 'scripts', gate)` (`gate-coverage.test.mjs`, twice in one
+sitting), and preset ROMs fetched as `static/roms/${p.rom}` — which defeated
+`rom-paths-exist.test.mjs`, *the gate written for exactly that failure*, and hid
+seven dead presets. Same root: **a census by literal cannot see a value that is
+assembled.** This species is that one applied to capabilities instead of paths.
