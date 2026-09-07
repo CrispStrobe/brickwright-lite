@@ -954,6 +954,30 @@ jobs:
           path: artifacts/example-journey/*
           if-no-files-found: error
 
+      - name: Browser gate — what is wrong with the stage after a load
+        # The owner reported that loading a pure-Scratch example leaves the
+        # stage wrong until fullscreen is entered. That sentence fits three
+        # different defects — wrong scale, wrong offset, stale content — and
+        # comparing before-fullscreen with after-fullscreen conflates all three,
+        # because fullscreen changes all of them at once. This drives probes
+        # between them that each change exactly one thing, and prints ONE named
+        # verdict. "None of the three fired" is a first-class outcome with its
+        # own message, so the gate cannot fall through into the nearest guess.
+        # LIGHT shard: it loads one example and never boots an 8086.
+        timeout-minutes: 5  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        id: stage_after_load
+        # Direct `node`, not `npm run`: gate-coverage's aliasInvokes accepts an
+        # env prefix only for this form (lego-ac, 2026-09-06).
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-stage-after-load.mjs
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.stage_after_load.outcome != 'skipped' && matrix.shard == 'light'
+        with:
+          name: stage-after-load-proof
+          path: artifacts/stage-after-load/*
+          if-no-files-found: error
+
       - name: Browser gate — a program's chip refusal reaches the debug panel
         # PROVES THE WHOLE JOURNEY as of 2026-09-07. The earlier version of this
         # comment said no user route could produce a refusal and that the ASM tab
