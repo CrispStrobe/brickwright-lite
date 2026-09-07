@@ -589,7 +589,20 @@ test('the offline refusal on an edited AVR/ARM program says what a learner needs
         path.join(OVERLAY, 'src/lib/bw-debug/debug-runner.js'), 'utf8');
     const start = src.indexOf('THE HONEST RESIDUE OF D2');
     assert.ok(start > 0, 'the hosted compile no longer catches its own network failure');
-    const block = src.slice(start, start + 2200);
+    // BRACE-MATCHED, NOT A FIXED WINDOW. This read `src.slice(start, start + 2200)`
+    // until 2026-09-07, when the refusal grew a branch and the last phrase moved
+    // to offset 2652 — the test failed for the length of the message rather than
+    // for anything it said. A window measured in characters asserts the line wrap;
+    // the catch block is the thing this test is actually about, so bound it by its
+    // own braces and let it be any length.
+    const block = (() => {
+        let depth = 0;
+        for (let i = src.lastIndexOf('{', start); i < src.length; i++) {
+            if (src[i] === '{') depth++;
+            else if (src[i] === '}' && --depth === 0) return src.slice(start, i + 1);
+        }
+        assert.fail('the catch block around the refusal is unbalanced');
+    })();
     for (const [what, re] of [
         ['what was attempted', /built by the compiler service at/],
         ['why it is not in the page', /cannot run in a browser/],
@@ -606,6 +619,17 @@ test('the offline refusal on an edited AVR/ARM program says what a learner needs
     assert.match(block, /LOCAL_8051_TARGETS\.has\(compileTarget\)/,
         'the refusal is not branched on the family, so a supported 8051 target whose ' +
         'in-page router failed would be told to switch to an 8051 device');
+
+    // THE THIRD STATE, added 2026-09-07 when the in-page compiler became opt-in
+    // because SDCC stopped shipping inside this BSD-3 app. Both branches of this
+    // refusal were FALSE for a few hours: the 8051 one said the in-page compiler
+    // "did not answer" when the setting meant it was never asked, and the advice
+    // above sent a stranded learner to a family that would fail the same way.
+    assert.match(block, /localToolchainEnabled\(\)/,
+        'the 8051 branch must distinguish "not installed" from "installed and silent", ' +
+        'or it tells a learner their compiler failed when it was never consulted');
+    assert.match(block, /\?localCompiler=on/,
+        'the refusal must name the way back — advice that leads nowhere is worse than none');
 });
 
 test('the panel renders the provenance sentence, and not as a warning', () => {
