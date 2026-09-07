@@ -132,7 +132,16 @@ a genuinely contended queue and do displace our own. The fallback is still worth
 undeclared wait is the thing D was adopted to remove — but it is a *bounded cost*, not a free one.
 
 **Proposed wording, for the owner:** *land when the previous main run has started, or when it has
-been queued longer than 15 minutes without starting — and say which in the landing note.* Today's
+been queued longer than 15 minutes without starting — and say which in the landing note. Read
+"has started" from that run's **jobs** (`/actions/runs/<id>/jobs`, any job's `started_at`), never
+from run-level `status`, which reads `queued` until everything has started.*
+
+That last clause is operational, not pedantic: it is the misreading above, and by the evening of
+2026-09-07 three sessions had made it independently — lego-b9 in this document, lego-ac in its own
+landing gate, and brickwright-lite-ea an hour before either, who caught it. A landing agent using
+run-level `status` to decide whether the previous run has started will wait for a run that has been
+running for twenty minutes, and will read a run whose only remaining job is a `needs:`-gated tail as
+though nothing had happened at all. Today's
 main queue waits were median 8.5 and p90 27.7 minutes, so a 15-minute fallback fires on roughly the
 worst quarter of landings and never on an ordinary one. The cost of the fallback firing is five
 more jobs in a contended queue; the cost of not having it is a landing agent blocked on an event
