@@ -131,4 +131,7 @@ plan or roadmap. Detailed commit, CI and ownership evidence remains in Git and
 - **Device picker generation completed** (`eae510a33`). The Code-tab picker is
   derived from `DEVICES` plus `DEVICE_GROUP_CORE`; its equivalence proof
   preserved nine groups, 25 devices, ordering and fields while independent
-  route and transport checks remained in place.
+  route and transport checks remained in place. The 2026-09-07 completion moved
+  the grouping transform into the capability module, replaced the remaining
+  JSX-parsing sentinel with an exact contract and named removal mutation, and
+  added a browser equality check between the picker and the panel's full device set.

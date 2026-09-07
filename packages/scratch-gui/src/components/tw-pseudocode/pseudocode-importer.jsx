@@ -3,7 +3,6 @@ import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
 import {closeAlertWithId, showStandardAlert} from '../../reducers/alerts';
 import {DEVICE_CHIP_LABELS} from '../../lib/device-labels.js';
-import {DEVICES, DEVICE_GROUP_CORE} from '../../lib/bw-matrix/capabilities.js';
 import {normalizeDeviceId, resolveExampleBench} from '../../lib/example-bench.js';
 import brickRobot from './brick-robot.svg';
 import {IMPORT_ACCEPT, isImportableArtefact} from '../../lib/bw-makecode/accept.js';
@@ -16,7 +15,7 @@ import {
 } from '../../lib/bw-asm/assemble-route.js';
 import {
     summarize as matrixSummary, explain as matrixExplain, LANGUAGES as MATRIX_LANGUAGES,
-    DEVICES as MATRIX_DEVICES, cell as matrixCell
+    DEVICES, DEVICE_GROUPS, cell as matrixCell
 } from '../../lib/bw-matrix/capabilities.js';
 
 // The example sources — upstream's and the locally-authored games, kept in
@@ -49,44 +48,6 @@ const loadExamples = () => {
     }
     return examplesPending;
 };
-
-// Device groups for the device selector, DERIVED from the capability table.
-//
-// This list used to be written out here, device by device, and reconciled against
-// `DEVICES` by a test that sliced this file between `const DEVICE_GROUPS = [` and
-// the next `\n];` and regex-parsed the entries back out. Two truths and a text
-// window over source to keep them equal: the picker could gain a device the matrix
-// did not have, or keep one the matrix dropped, and only a regex stood in the way.
-//
-// Now there is one truth. `group` and `family` in `capabilities.js` give the group
-// label and its core; `pickerCompile` and `pickerEmulator` give the two flags this
-// dropdown reads. A device removed from the table cannot appear here, and one added
-// there appears here in the table's order, without anyone editing this file.
-//
-// The names `pickerCompile`/`pickerEmulator` are kept deliberately rather than
-// shortened: they describe exactly one surface — what this dropdown offers — and a
-// bare `compile` would read as a claim about the device rather than about the Code
-// tab. What changed is that they are the SOURCE now, not a mirror; capabilities.js
-// says so where they are defined.
-const DEVICE_GROUPS = (() => {
-    const byGroup = new Map();
-    const groups = [];
-    for (const d of DEVICES) {
-        let g = byGroup.get(d.group);
-        if (!g) {
-            g = {label: d.group, core: DEVICE_GROUP_CORE[d.group], devices: []};
-            byGroup.set(d.group, g);
-            groups.push(g);
-        }
-        g.devices.push({
-            id: d.id,
-            label: d.label,
-            compile: Boolean(d.pickerCompile),
-            emulator: d.pickerEmulator ?? null
-        });
-    }
-    return groups;
-})();
 
 const DEVICE_BY_ID = {};
 for (const g of DEVICE_GROUPS) for (const d of g.devices) DEVICE_BY_ID[d.id] = { ...d, core: g.core, group: g.label };
@@ -3621,12 +3582,12 @@ class PseudocodeImporter extends React.Component {
         const locale = pickLocale(this.props.locale);
         const current = this.currentDevice();
         const cols = [];
-        for (const d of MATRIX_DEVICES) {
+        for (const d of DEVICES) {
             if (d.programmable === false) continue;
             if (!cols.some(c => c.family === d.family)) cols.push(d);
         }
         if (current && !cols.some(c => c.id === current)) {
-            const cur = MATRIX_DEVICES.find(d => d.id === current);
+            const cur = DEVICES.find(d => d.id === current);
             if (cur && cur.programmable !== false) {
                 const i = cols.findIndex(c => c.family === cur.family);
                 cols.splice(i + 1, 0, cur);
@@ -3635,6 +3596,7 @@ class PseudocodeImporter extends React.Component {
         const cellStyle = {padding: '3px 6px', border: '1px solid #cbd5e1', fontSize: 11, whiteSpace: 'nowrap'};
         return (
             <div data-testid="bw-matrix-panel"
+                data-device-ids={DEVICES.map(d => d.id).join(' ')}
                 style={{padding: '8px 12px', background: '#eff6ff', border: '1px solid #bfdbfe',
                     borderRadius: '0 0 8px 8px', fontSize: 12, color: '#334155', flexShrink: 0, overflowX: 'auto'}}>
                 <div style={{fontWeight: 'bold', marginBottom: 4, color: '#1e3a8a'}}>{this.L.matrixHeading}</div>
