@@ -144,20 +144,12 @@ CI does this for all platforms: `.github/workflows/release.yml` (desktop) and
 
 ## Roadmap
 
-- [x] Permissive base pinned and verified (BSD-3 / Apache-2.0 / MIT).
-- [x] Code tab — blocks / pseudocode / Python / JS.
-- [x] SoundFX creator; German i18n.
-- [x] 23 built-in + 150 gallery extensions.
-- [x] Tauri native app for all five platforms.
-- [x] Native ScratchLink — BLE + Bluetooth Classic + WiFi bridge.
-- [x] Native save/load/share, offline library, camera + microphone.
-- [x] Circuit Designer: breadboards, schematic, DRC, autosave, undo/redo.
-- [x] 8051/AVR/RP2040/6502/Z80 instruction-level emulation and debugging.
-- [ ] Hardware-verify each LEGO transport against real hardware (macOS BLE done).
-- [ ] Complete Arduino Uno/Nano peripheral fidelity and source-level debugger.
-- [ ] RP2040/MicroPython compilation path for Pico.
-- [ ] Schematic symbol coverage beyond the generated projection.
-- [x] Signed macOS and iOS builds uploaded to App Store Connect/TestFlight.
+Current development connects unchanged SPIKE firmware execution to the virtual
+hub dashboard, expands LEGO block/code coverage, hardens native capability
+isolation, and improves emulator and circuit fidelity. See the ordered
+[roadmap](ROADMAP.md), scoped [execution plan](PLAN.md), and concise
+[history](HISTORY.md). External prerequisites are listed separately in
+[BLOCKED.md](BLOCKED.md).
 
 ## How it's built: vendor + overlay
 
