@@ -952,7 +952,17 @@ addresses are ANCHORED: every SIO/IO_BANK0 address the emitter names is asserted
 SIO peripheral decodes (SIO_START + sio.js offsets, read from rp2040js). GP25 output — both drive it high then
 low; GP14 input — both configure it as an input. Mutation fired BOTH routes (a mask flipped in the C emitter
 output; `Pin(25`→`Pin(24` in the MicroPython) — each reddened naming the pin. The harness is reused as each
-C-only part gains its MicroPython driver. **P4.** Reader-side
+C-only part gains its MicroPython driver. **Part 2 landed 2026-09-07** (worker, sb3-creator `a40a60d`): the
+first C-only part — shiftOut (74HC595) — gains its Pico MicroPython driver, and the differential is EXTENDED to
+it. UPSTREAM the verb `stc12_setpart` had DEGRADED silently on the Pico (a warning, `pass # stc12_setpart`); it
+now emits `_shift_out` rendered from the SAME `_shiftOutProtocol()` the C helper renders — P2's per-family bus,
+now a `machine.Pin` bus, no second hand-typed protocol; the C shift_out goldens stay byte-identical and a
+same-order test reddens if either route's sequence diverges. In lite the P3 differential runs BOTH routes
+EXECUTED on rp2040js (the C side executed since N11a/Door 1) and asserts the PART's LATCHED BYTE, not the pins
+alone: a 74HC595 model reconstructs the byte from the data/clock/latch edges — executed C and executed
+MicroPython both latch 170. Mutation: flip bit 0 of the C value (170→171) and the latched byte changes,
+reddening the byte-level differential (C-only, so it runs in CI without firmware). The part-1 anchor and the
+executed pin differential are unchanged. **P4.** Reader-side
 library whitelist (`LiquidCrystal`, `Adafruit_SSD1306` → verbs) with named
 refusals. **P5.** One silicon wire-truth bench per family *(manual, recorded)*.
 Each gets its own LANES row when claimed.
