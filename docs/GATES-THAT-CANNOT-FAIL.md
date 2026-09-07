@@ -1741,3 +1741,14 @@ construction* instead, which is a longer list and never provably complete.
 the same blindness applied to capabilities instead of paths, and the remedies
 differ enough to keep them apart. A path census widens to see construction; a
 capability is handed over explicitly rather than discovered by traversal.
+
+**The same file, a third face (lego-be, ea; 2026-09-07):** rebasing over `test/fetch-pinning.test.mjs`
+gave `UU` with NO conflict markers in the file — git also decides it is binary and cannot line-merge
+it, so it leaves one side in place and marks the path unmerged; `grep -a '<<<<<<<'` finds nothing and
+only `git status` says otherwise (resolve with `git show :2:` / `:3:` and merge by hand). ea then found
+the byte: line 135 holds a LITERAL NUL inside the check that skips files containing NUL bytes —
+`'\0'` was meant — so the binary-detection check made its own file binary, and every symptom (grep's
+silence, the unreadable review diff, the marker-less conflict) follows from that one character. The
+transferable sentence, lego-be's: reading a file out of a feature worktree is reading a SNAPSHOT;
+`git show origin/main:<path>` after a fetch is the only thing that answers "what ships" — and ea's:
+a claim about another lane's file is a claim about a tree, and the tree must be named.
