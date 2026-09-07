@@ -27,8 +27,7 @@ test('the Sounds route owns one retryable demand-loaded module', () => {
         /if \(!AUDIO_CONTEXT && initAudioContext\) \{\s*return initAudioContext\(\);/,
         'a module loaded after the opening gesture must initialize audio on first use');
     assert.match(browserGate, /baselineRun = 34055140364/);
-    assert.match(browserGate, /relativeLimitMs = 150/);
-    assert.match(browserGate, /121\.6–136\.4 ms/);
+    assert.match(browserGate, /relativeLimitMs = \d+; \/\/ derived: p95 [\d.]+ ms × 1\.5 → \d+ ms over \d+ green runs/, 'the relative limit is derived, never typed (T15)');
     assert.match(browserGate, /maxLongTaskMs = 100/);
     assert.match(browserGate, /minimumEncodedBytes = 20480/);
     assert.match(receiptGate, /soundTabScripts\.length !== 1/);

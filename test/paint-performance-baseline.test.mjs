@@ -14,7 +14,8 @@ test('costume roundtrip ratchets the accepted first-open performance receipt', (
     assert.match(gate, /baselineMs = 390\.5/);
     assert.match(gate, /baselineRun = 33967333844/);
     assert.match(gate, /baselineLongTasksMs = \[50, 55\]/);
-    assert.match(gate, /relativeLimitMs = 449\.075/);
+    assert.match(gate, /relativeLimitMs = \d+; \/\/ derived: p95 [\d.]+ ms × 1\.5 → \d+ ms over \d+ green runs/);
+    assert.match(gate, /relativeCeilingIsAdvisory = false/, 'the derived ceiling is judged, not advisory (T15)');
     assert.match(gate, /absoluteLimitMs = 1000/);
     assert.match(gate, /maxLongTaskMs = 100/);
     assert.doesNotMatch(gate, /PAINT_FIRST_COSTUME_BASELINE_MS/,
