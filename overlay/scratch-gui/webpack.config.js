@@ -273,8 +273,15 @@ cfgs.forEach(c => {
     // same-shaped shim that fetches the real module — reachable only under the
     // second alias — as its own chunk. See src/lib/lazy-render-fonts.js.
     c.resolve.alias['scratch-render-fonts$'] = path.resolve(__dirname, 'src/lib/lazy-render-fonts.js');
+    // OUR FORK of the font table, not the package's. Two of the seven faces
+    // upstream ships cannot be redistributed on this bundle's terms (Grand9K
+    // Pixel is CC BY-SA 3.0; Scratch.ttf carries no licence at all), and the
+    // package has no `license` field. src/lib/render-fonts/index.js keeps all
+    // seven KEYS — a saved project stores the family name, so a key that
+    // disappears strips the style from existing work — and requires the five
+    // OFL faces straight from the package.
     c.resolve.alias['scratch-render-fonts-base64$'] =
-        path.resolve(__dirname, 'node_modules/scratch-render-fonts/src/index.js');
+        path.resolve(__dirname, 'src/lib/render-fonts/index.js');
     // `text-encoding` is a 618 KiB (201 KiB compressed) TextDecoder polyfill for
     // browsers without one; every browser in .browserslistrc has one. Its three
     // requirers (scratch-vm, scratch-sb1-converter, @vernier/godirect) all guard
