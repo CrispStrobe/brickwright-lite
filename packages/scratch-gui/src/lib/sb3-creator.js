@@ -7684,6 +7684,193 @@ class SB3Creator {
         return { isString: false, code: this.cVal(input, blocks) };
     }
 
+    /** Fail closed before an i8086 numeric print reaches cRep. Scratch's
+     *  reporter sockets are dynamically typed, while SmallerC's helper takes
+     *  one signed 16-bit int. In particular, operator_join used to fall
+     *  through cRep as a commented zero, making a string program look emitted.
+     *  The allow-list is the set of reporters this C back end actually lowers
+     *  as numbers; nested inputs are checked too, so `1 + join(...)` cannot
+     *  smuggle a string through an arithmetic parent. */
+    cI8086NumericPrint(input, blocks, seen = new Set(), allowedSelf = null) {
+        const inner = Array.isArray(input) ? input[1] : null;
+        if (Array.isArray(inner)) {
+            const type = inner[0];
+            if (type === 12) return this.cI8086NumericVariable(inner, seen, allowedSelf);
+            if (type >= 4 && type <= 8 && Number.isFinite(Number(inner[1]))) return {ok: true};
+            if (type === 10 && String(inner[1]).trim() !== '' && Number.isFinite(Number(inner[1]))) {
+                return {ok: true};
+            }
+            return {ok: false, reason: type === 13 ? 'a list value' : 'a non-numeric literal'};
+        }
+        if (typeof inner !== 'string' || !blocks[inner]) {
+            return {ok: false, reason: 'an unknown reporter'};
+        }
+        if (seen.has(inner)) return {ok: false, reason: 'a cyclic reporter'};
+        const block = blocks[inner];
+        if (block.opcode === 'operator_mathop') {
+            const op = String(block.fields && block.fields.OPERATOR &&
+                block.fields.OPERATOR[0] || '').toLowerCase();
+            if (!new Set(['floor', 'ceiling', 'round', 'abs']).has(op)) {
+                return {ok: false, reason: `${op || 'unknown'} of has no numeric C lowering`};
+            }
+        }
+        if (block.opcode === 'data_itemoflist') {
+            const listResult = this.cI8086NumericList(block.fields && block.fields.LIST, seen, allowedSelf);
+            if (!listResult.ok) return listResult;
+            const indexResult = this.cI8086NumericPrint(block.inputs && block.inputs.INDEX, blocks,
+                new Set(seen).add(inner), allowedSelf);
+            if (!indexResult.ok) return indexResult;
+            return this.cI8086CompleteLowering(block, blocks);
+        }
+        if (!SB3Creator.C_I8086_NUMERIC_PRINT_REPORTERS.has(block.opcode)) {
+            return {ok: false, reason: `${block.opcode} is string-valued or has no numeric C lowering`};
+        }
+        const nextSeen = new Set(seen).add(inner);
+        for (const child of Object.values(block.inputs || {})) {
+            const result = this.cI8086NumericPrint(child, blocks, nextSeen, allowedSelf);
+            if (!result.ok) return result;
+        }
+        // Keep the classifier tied to the actual lowerer. A positive opcode
+        // classification is insufficient if cRep falls back to a commented
+        // zero or leaks an architecture-specific token into 8086 C.
+        return this.cI8086CompleteLowering(block, blocks);
+    }
+
+    cI8086CompleteLowering(block, blocks) {
+        const lowered = this.cRep(block, blocks);
+        if (/\/\*|\bP[0-3]\b|\bBW_[A-Z0-9_]+:/.test(lowered)) {
+            return {ok: false, reason: `${block.opcode} has no complete numeric i8086 C lowering`};
+        }
+        return {ok: true};
+    }
+
+    /** Lists are dynamically typed in Scratch but numeric arrays in the C
+     *  back end. Prove every initial item and every value-producing mutation
+     *  numeric before a list item contributes to a printed scalar. */
+    cI8086NumericList(field, seen, allowedSelf = null) {
+        const name = field ? String(field[0]) : '';
+        const id = field && field[1] != null ? String(field[1]) : null;
+        const token = `list:${id || name}`;
+        if (seen.has(token)) {
+            return token === allowedSelf ? {ok: true} :
+                {ok: false, reason: `list "${name}" has cyclic value provenance`};
+        }
+        const nextSeen = new Set(seen).add(token);
+        let initial;
+        let found = false;
+        let ambiguous = false;
+        const writes = [];
+        for (const target of (this.project && this.project.targets) || []) {
+            for (const [listId, value] of Object.entries(target.lists || {})) {
+                if (this.cI8086IdentityMatches(id, name, listId, value[0])) {
+                    if (found) ambiguous = true;
+                    initial = value[1];
+                    found = true;
+                }
+            }
+            for (const block of Object.values(target.blocks || {})) {
+                const listField = block.fields && block.fields.LIST;
+                const listId = listField && listField[1] != null ? String(listField[1]) : null;
+                const listName = listField && String(listField[0]);
+                const inputName = block.opcode === 'data_replaceitemoflist' ? 'ITEM' :
+                    (block.opcode === 'data_addtolist' || block.opcode === 'data_insertatlist' ? 'ITEM' : null);
+                if (inputName && this.cI8086IdentityMatches(id, name, listId, listName)) {
+                    writes.push({input: block.inputs && block.inputs[inputName], blocks: target.blocks,
+                        kind: block.opcode});
+                }
+            }
+        }
+        if (ambiguous) return {ok: false, reason: `list "${name}" has ambiguous identity`};
+        if (!found || !Array.isArray(initial)) {
+            return {ok: false, reason: `list "${name}" has unknown value provenance`};
+        }
+        for (const value of initial) {
+            if (String(value).trim() === '' || !Number.isFinite(Number(value))) {
+                return {ok: false, reason: `list "${name}" has a non-numeric initial item`};
+            }
+        }
+        for (const write of writes) {
+            const result = this.cI8086NumericPrint(write.input, write.blocks, nextSeen, token);
+            if (!result.ok) {
+                return {ok: false, reason: `list "${name}" has a non-numeric ${write.kind}: ${result.reason}`};
+            }
+        }
+        return {ok: true};
+    }
+
+    /** IDs are authoritative when both sides carry one. If either side is a
+     *  legacy shape without an ID, the same name must conservatively match;
+     *  ignoring that write can turn a dropped string assignment into zero. */
+    cI8086IdentityMatches(id, name, candidateId, candidateName) {
+        const otherId = candidateId === undefined || candidateId === null ? null : String(candidateId);
+        if (id && otherId) return id === otherId;
+        return name === String(candidateName);
+    }
+
+    /** A printed Scratch scalar is numeric only when its initial value and
+     *  every write in every target/script are numeric. The scan is deliberately
+     *  independent of statement order: a string assignment after the print, or
+     *  in a second script, is still a possible run-time value. Variable ids are
+     *  authoritative; the name fallback covers hand-built/legacy projects.
+     *
+     *  `set x to ...` is parsed as Scratch motion's x assignment. If the same
+     *  loaded project also has a scalar called x, treat that ambiguous write as
+     *  provenance too; otherwise the source `set x to "abc"; print x` silently
+     *  drops the write and prints the scalar's default zero. */
+    cI8086NumericVariable(inner, seen, allowedSelf = null) {
+        const name = String(inner[1]);
+        const id = inner[2] === undefined || inner[2] === null ? null : String(inner[2]);
+        const token = `variable:${id || name}`;
+        if (seen.has(token)) {
+            return token === allowedSelf ? {ok: true} :
+                {ok: false, reason: `variable "${name}" has cyclic value provenance`};
+        }
+        const nextSeen = new Set(seen).add(token);
+        let initial;
+        let found = false;
+        let ambiguous = false;
+        const writes = [];
+        for (const target of (this.project && this.project.targets) || []) {
+            for (const [variableId, value] of Object.entries(target.variables || {})) {
+                if (this.cI8086IdentityMatches(id, name, variableId, value[0])) {
+                    if (found) ambiguous = true;
+                    initial = value[1];
+                    found = true;
+                }
+            }
+            for (const block of Object.values(target.blocks || {})) {
+                const field = block.fields && block.fields.VARIABLE;
+                const fieldId = field && field[1] != null ? String(field[1]) : null;
+                const fieldName = field && String(field[0]);
+                if ((block.opcode === 'data_setvariableto' || block.opcode === 'data_changevariableby') &&
+                    this.cI8086IdentityMatches(id, name, fieldId, fieldName)) {
+                    writes.push({input: block.inputs && block.inputs.VALUE, blocks: target.blocks,
+                        kind: block.opcode === 'data_setvariableto' ? 'set' : 'change'});
+                }
+                const ambiguous = (name === 'x' && block.opcode === 'motion_setx') ||
+                    (name === 'y' && block.opcode === 'motion_sety');
+                if (ambiguous) {
+                    writes.push({input: block.inputs && block.inputs[name.toUpperCase()],
+                        blocks: target.blocks, kind: `set ${name}`});
+                }
+            }
+        }
+        const n = Number(initial);
+        if (ambiguous) return {ok: false, reason: `variable "${name}" has ambiguous identity`};
+        if (!found || String(initial).trim() === '' || !Number.isFinite(n)) {
+            return {ok: false, reason: `variable "${name}" has a non-numeric initial value`};
+        }
+        for (const write of writes) {
+            // A numeric update may read its own prior value. Keep only this
+            // one back-edge open; A -> B -> A remains a refused cycle.
+            const result = this.cI8086NumericPrint(write.input, write.blocks, nextSeen, token);
+            if (!result.ok) {
+                return {ok: false, reason: `variable "${name}" has a non-numeric ${write.kind}: ${result.reason}`};
+            }
+        }
+        return {ok: true};
+    }
+
     cNum(value) {
         const n = Number(value);
         if (!Number.isFinite(n)) return `0 /* ${this.cComment(value)} */`;
@@ -7713,6 +7900,14 @@ class SB3Creator {
     static I16_MIN = -32768;
     static I16_MAX = 32767;
     static I8086_WAIT_MAX_MS = 65535;
+    static C_I8086_NUMERIC_PRINT_REPORTERS = new Set([
+        'operator_add', 'operator_subtract', 'operator_multiply', 'operator_divide', 'operator_mod',
+        'operator_round', 'operator_mathop',
+        'planetemaths_add', 'planetemaths_substract', 'planetemaths_multiply',
+        'planetemaths_divide', 'planetemaths_oppose', 'planetemaths_pourcent',
+        'bitops_and', 'bitops_or', 'bitops_xor', 'bitops_shl', 'bitops_shr', 'bitops_not',
+        'stc12_read'
+    ]);
 
     /** The C scalar type a Scratch number gets on the current core. */
     cIntType() {
@@ -8441,13 +8636,42 @@ class SB3Creator {
                 return line(`shift_out(P${data.port}_${data.bit}, P${clock.port}_${clock.bit}, P${latch.port}_${latch.bit}, ${al}, ${val});`);
             }
             case 'stc12_print': {
-                this._cUses.print = true;
                 const mode = f('MODE');
+                if (this._core === 'i8086') {
+                    if (mode === 'text') {
+                        if (!this._cPrintRefused) this._cPrintRefused = [];
+                        const reason = 'text-mode print is outside the numeric-only i8086 C print boundary';
+                        if (!this._cPrintRefused.includes(reason)) this._cPrintRefused.push(reason);
+                        return line(`/* print refused: ${reason} */`);
+                    }
+                    const numeric = this.cI8086NumericPrint(b.inputs.VALUE, blocks);
+                    if (!numeric.ok) {
+                        if (!this._cPrintRefused) this._cPrintRefused = [];
+                        if (!this._cPrintRefused.includes(numeric.reason)) {
+                            this._cPrintRefused.push(numeric.reason);
+                        }
+                        return line(`/* print refused: ${this.cComment(numeric.reason)} */`);
+                    }
+                    this._cUses.printNumber = true;
+                    return line(`bw_print_num(${v('VALUE')});`);
+                }
+                this._cUses.print = true;
                 if (mode === 'text') {
                     const text = this.dval(b.inputs.VALUE, blocks).replace(/^"|"$/g, '');
                     return line(`bw_print("${this.cComment(text)}");`);
                 }
                 return line(`bw_print_num(${v('VALUE')});`);
+            }
+            case 'looks_sayforsecs': {
+                if (this._core === 'i8086') {
+                    if (!this._cPrintRefused) this._cPrintRefused = [];
+                    const reason = 'say for seconds is stage speech, not DOS terminal output';
+                    if (!this._cPrintRefused.includes(reason)) this._cPrintRefused.push(reason);
+                    return line(`/* ${reason} */`);
+                }
+                const text = (this.decompileStackBlock(b, blocks, 0)[0] || b.opcode).trim();
+                this.cWarn(`no C equivalent for "${text}" — emitted as a comment`);
+                return line(`/* ${this.cComment(text)} */`);
             }
             // LED cube commands — manipulate the working frame, then hold to play.
             case 'ledcube_setvoxel': {
@@ -11770,6 +11994,10 @@ class SB3Creator {
                     ' * Literal waits above 65535 ms refuse by name; computed waits are not emitted. */',
                     'extern void bw_delay_ms(unsigned ms);'
                 ] : []),
+                ...(this._cUses.printNumber ? [
+                    '/* DOS terminal signed-16 decimal, then CRLF. */',
+                    'extern void bw_print_num(int n);'
+                ] : []),
                 'static unsigned char bw_port_a = 0;   /* shadow of 8255 port A output latch */',
                 'static unsigned char bw_port_b = 0;   /* shadow of port B */',
                 'static unsigned char bw_port_c = 0;   /* shadow of port C */',
@@ -14612,8 +14840,23 @@ class SB3Creator {
         if (this._core === 'i8086') {
             // Verbs with a real i8086 C branch are NOT a reason to refuse. As
             // each verb gains its 8086 bus, add it here (P2: shiftOut).
-            const I8086_IMPLEMENTED = new Set(['shiftOut', 'delay']);
+            const I8086_IMPLEMENTED = new Set(['shiftOut', 'delay', 'printNumber']);
             const used = Object.keys(this._cUses).filter((k) => this._cUses[k] && !I8086_IMPLEMENTED.has(k));
+            // Report an unsafe print value before the broader feature choke.
+            // A second script may both poison the value provenance and use a
+            // still-unimplemented verb; the type-safety refusal is the cause
+            // that must remain visible rather than being masked by `used`.
+            if (this._cPrintRefused && this._cPrintRefused.length) {
+                const list = this._cPrintRefused.join(', ');
+                this.cWarn(`the 8086 C print helper accepts a signed-16 numeric expression; `
+                    + `${list} cannot use the numeric helper, so no C is emitted`);
+                return `/* No C emitted for DEVICE ${String(device || 'i8086').toUpperCase()}.\n`
+                    + ' *\n'
+                    + ' * The 8086 C print boundary accepts a signed-16 number.\n'
+                    + ` * This program supplies: ${list}.\n`
+                    + ' * String-valued and unknown reporters are refused instead of printing zero.\n'
+                    + ' */\n';
+            }
             if (used.length) {
                 this.cWarn(`the i8086 C back end emits 8255 pin I/O only for now — `
                     + `${used.join(', ')} ${used.length > 1 ? 'are' : 'is'} not emitted for this board; `
