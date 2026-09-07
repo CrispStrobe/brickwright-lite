@@ -300,6 +300,13 @@ in bw-board CI)` to a shipped native fact, `· declared, not checked` when evide
 clause off the C × STC12 cell's title. The five status words: standing (bw-board's CI runs it),
 recorded once, oracle absent, service reachability only, no census row (refused in CI by T6).
 
+**T9. The pin-move chain enumerates itself. OPEN 2026-09-07** (lego-be's finding while moving bw-board to
+cbe310d): a pin bump must regenerate FOUR documents (census snapshot, matrix doc, ROM provenance, the 8086
+capability report) and the fourth was found by CI, not by the checklist. Gate: no tracked file may contain a
+full 40-hex sha of a bw-board or sb3-creator commit other than the current pins, except files that are HISTORY by
+role (LANES, HISTORY, plan and docs prose, test comments); red names the file and the stale sha. Derive the
+document set from the gate, do not keep a list of it. Owner-level: it touches every vendor lane.
+
 ### Lane N — native halves to add
 
 **N1. Z80 C via SDCC `-mz80`.** Repo: stc-compiler, then lite. **BUILT 2026-09-05** on stc-compiler branch `lane/z80-c-target` (`6e40fb6e`, delegate, audited by lego-ac: 21 new tests, 432 repo tests green, ten mutation proofs). The vendored SDCC 4.0.0 already had the z80 port; what was missing was `share/sdcc/lib/z80` (crt0 + z80.lib), now vendored from the same .deb the fetch script uses. Map: ROM $0000–$7FFF, RAM $8000–$FFFF from `examples/z80-pd-bench/EXPECTED.md`; `--code-loc 0x0200 --data-loc 0x8000`; stock crt0 (jp init at $0000, SP at $0000 so the first push lands at $FFFE). Also fixed: `stages.py` dropped every exported `GR` symbol (affects 8051 too). **Awaiting merge and deploy by the owner** — the hosted snapshot and the lite `compile: true` flip follow the deploy, not the branch. Lite half of the DoD (bench boot proof: `$0000 == 0xC3`, `latch1.Q0` toggles) is open.
