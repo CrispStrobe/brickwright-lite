@@ -94,10 +94,37 @@ const MUTATIONS = [
         expect: 'red'
     },
     {
-        layer: 'gate coverage: a wrapper-invoked gate still counts as run',
+        // TWO SITES SINCE 2026-09-07, and the harness found that itself rather
+        // than silently mutating the first match: the anchor stopped being
+        // unique the moment aliasInvokes gained the same wrapper clause
+        // runInvokesGate already had. Proved separately because they ARE
+        // separate enforcement — one lets a wrapped `node scripts/x.mjs`
+        // count, the other a wrapped `npm run verify:x`, and either can rot
+        // without the other. Each anchor now carries the line that follows it,
+        // which is what makes it unique.
+        layer: 'gate coverage: a wrapper-invoked gate counts (direct node)',
         file: 'test/gate-coverage.test.mjs',
-        find: "    `(?:${WRAPPERS}\\\\s+)*` +",
-        with: '    `` +',
+        find: "    `(?:${WRAPPERS}\\\\s+)*` +\n    `node",
+        with: '    `` +\n    `node',
+        suite: 'test/gate-coverage.test.mjs',
+        expect: 'red'
+    },
+    {
+        layer: 'gate coverage: a wrapper-invoked gate counts (npm alias)',
+        file: 'test/gate-coverage.test.mjs',
+        find: "        `(?:${WRAPPERS}\\\\s+)*` +\n        `npm",
+        with: '        `` +\n        `npm',
+        suite: 'test/gate-coverage.test.mjs',
+        expect: 'red'
+    },
+    {
+        // The other half of this lane. A mention is not coverage, and the
+        // regression that matters is a LOOSENING: restore the substring rule
+        // and every real gate still passes, so only a fixture catches it.
+        layer: 'gate coverage: a gate a test only NAMES is not exercised',
+        file: 'test/gate-coverage.test.mjs',
+        find: "    if (sources.some(source => exercisedIn(source, gate))) return 'test';",
+        with: "    if (sources.some(({text}) => text.includes(gate))) return 'test';",
         suite: 'test/gate-coverage.test.mjs',
         expect: 'red'
     },
