@@ -456,6 +456,42 @@ jobs:
           echo "BW_BOARD_DIR=/tmp/bw-board" >> "$GITHUB_ENV"
           echo "bw-board at the pin ${PIN:0:9}"
 
+      # The EXECUTED C side of the P3 differential (plan N11a) compiles generateC's
+      # Pico output with arm-none-eabi-gcc. The runner has none, so the sha-pinned
+      # ARM GNU toolchain (13.2.rel1) is fetched here — content-pinned in
+      # scripts/sync-arm-toolchain.mjs (verified before extract, --version asserted
+      # after), declared in test/fetch-pinning.test.mjs. This is the ONLY job that
+      # runs that differential (test:fast), so it is fetched only here; the build
+      # job is not sharded, so there is no shard clause to add.
+      - name: Restore the sha-pinned ARM toolchain from cache
+        id: arm_cache
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: artifacts/arm-toolchain
+          # Keyed on the sha256 ALONE (ARM_TOOLCHAIN.sha256): a URL change with no
+          # byte change never re-downloads, and new bytes are a new key.
+          key: arm-toolchain-6cd1bbc1d9ae57312bcd169ae283153a9572bd6a8e4eeae2fedfbc33b115fdbb
+
+      - name: Fetch the sha-pinned ARM toolchain for the executed-C differential (tolerated absent)
+        id: arm_toolchain
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        # Measured: 171 MB cold-downloads ~6 s @ ~30 MB/s from a box (2026-09-07);
+        # 8 min is wide margin for a slow-network runner plus xz extraction.
+        timeout-minutes: 8
+        run: |
+          set -o pipefail
+          # sync-arm-toolchain.mjs uses a preinstalled arm-none-eabi-gcc if present,
+          # else fetches+verifies+extracts the pinned 13.2.rel1 (a cache hit skips
+          # the download). Tolerated absent by name: a transient ARM CDN failure
+          # makes the executed-C tests SKIP, like the firmware step, never redden.
+          if ! node scripts/sync-arm-toolchain.mjs | tee /tmp/arm.out; then
+            echo "::warning::ARM toolchain fetch/verify failed — the executed-C differential will skip by name"
+            exit 0
+          fi
+          BIN_DIR=$(grep -oE '^BIN_DIR=.*' /tmp/arm.out | tail -1 | cut -d= -f2)
+          if [ -n "$BIN_DIR" ]; then echo "$BIN_DIR" >> "$GITHUB_PATH"; fi
+
       - name: Run unit tests
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         run: |

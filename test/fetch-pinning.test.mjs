@@ -95,6 +95,11 @@ const DETECTORS = [
     // would sweep clean over it — the exact "fetch site nobody thought of" this
     // census exists to catch. Detected here so it must be classed, not silent.
     ['micropython', /micropython\.org\/[^\s'"`)\\]+/g],
+    // The ARM GNU toolchain (N11a) is fetched from developer.arm.com, not a
+    // GitHub CDN, so — like the micropython.org row above — the GitHub detectors
+    // would sweep clean over a 171 MB download. Detected here so it must be
+    // classed, not silent.
+    ['arm', /developer\.arm\.com\/[^\s'"`)\\]+/g],
     ['git', /git\s+(?:clone|ls-remote)\s[^\n]*/g],
     // `uses:` is a GitHub Actions keyword, so it is matched ONLY in workflow
     // files and only at the head of a step. An unanchored `/uses:/` reads
@@ -434,6 +439,24 @@ const CENSUS = [
            + 'probe-pico-micropython row and sync-labwired-wasm. Deliberately NOT in REMOTE_SYNCS '
            + 'below: resolveRef resolves a git BRANCH to a sha and there is no branch here — the '
            + 'version tag IS the name, and the hash is the gate.'
+    },
+    {
+        file: 'scripts/sync-arm-toolchain.mjs',
+        kind: 'arm',
+        text: 'developer.arm.com/-/media/Files/downloads/gnu/13.2.rel1/binrel/arm-gnu-toolchain-13.2.rel1-x86_64-arm-none-eabi.tar.xz',
+        class: 'content-hash',
+        why: 'The ARM GNU embedded toolchain (arm-none-eabi-gcc 13.2.rel1) that compiles generateC\'s '
+           + 'Pico output for the EXECUTED C side of the P3 differential (plan N11a). 171 MB, so it is '
+           + 'fetched by exact versioned URL and NEVER committed (it lands in gitignored artifacts/). '
+           + 'ARM\'s /downloads/gnu/13.2.rel1/ path names a version, effectively immutable by ARM\'s '
+           + 'convention — but the sha256, NOT the URL, is what decides: ensureArmToolchain() verifies '
+           + 'the download byte-for-byte against ARM_TOOLCHAIN.sha256 BEFORE it extracts, and refuses to '
+           + 'unpack on a mismatch, so a moved or replaced artefact fails closed. The pinned version '
+           + 'matches the box\'s own arm-none-eabi-gcc, and after extraction the toolchain\'s --version is '
+           + 'asserted to contain the pinned string. Same discipline as the probe-pico-micropython UF2 '
+           + 'and sync-labwired-wasm. Deliberately NOT in REMOTE_SYNCS below: there is no git branch to '
+           + 'resolve — the version literal IS the immutable name, the hash is the gate. Only CI fetches '
+           + 'it; locally the box gcc is used and the executed-C leg skips by name when neither is present.'
     }
 ];
 
@@ -491,6 +514,7 @@ describe('fetch pinning: every fetch that decides what ships names an immutable 
             `${H}git` + 'hub.com/o/r/archive/main.tar.gz',
             `git clone ${H}git` + 'hub.com/o/r /tmp/r',
             `${H}micropython.` + 'org/resources/firmware/RPI_PICO.uf2',
+            `${H}developer.` + 'arm.com/-/media/Files/downloads/gnu/x/binrel/arm-gnu-toolchain.tar.xz',
             'uses: actions/checkout@' + 'v4'
         ].join('\n');
         const fired = new Set();
