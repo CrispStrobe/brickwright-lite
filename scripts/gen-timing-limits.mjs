@@ -107,6 +107,12 @@ if (isMain) {
         try { previous = JSON.parse(readFileSync(READINGS, 'utf8')); } catch (e) { if (e.code !== 'ENOENT') throw e; }
         const r = fetchReadings(previous);
         writeFileSync(READINGS, JSON.stringify(r, null, 1) + '\n');
+        // `--fetch` REWRITES A TRACKED FILE. It reads like a read-only flag and is
+        // not one: brickwright-lite-ea ran it inside a lane worktree on 2026-09-07,
+        // `git add -A` swept 143 lines of readings into an unrelated source commit,
+        // and the rebase conflict that followed cost a diagnosis. So the file is
+        // named on stdout every time, with what to do about it.
+        console.log(`::notice::${path.relative(ROOT, READINGS)} was REWRITTEN by --fetch. It is tracked: commit it on its own, or \`git checkout\` it before committing unrelated work — never sweep it in with \`git add -A\`.`);
         for (const [id, e] of Object.entries(r.metrics)) console.log(`  ${id}: ${e.readings.length} reading(s), p95 ${e.p95 && e.p95.toFixed(1)} ms, max ${e.max && e.max.ms.toFixed(1)} ms (run ${e.max && e.max.run})`);
         console.log(`readings written to ${path.relative(ROOT, READINGS)} (newest run ${r.newestRun})`);
     }

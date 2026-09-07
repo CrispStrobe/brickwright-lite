@@ -162,6 +162,12 @@ if (isMain) {
         const {repo, runs, logs} = fetchLogs();
         const tests = census(logs, testFiles);
         writeFileSync(READINGS, JSON.stringify({generatedAt: new Date().toISOString(), repo, branch: 'main', runs, jobs: [...JOBS], tests}, null, 1) + '\n');
+        // `--fetch` REWRITES A TRACKED FILE. It reads like a read-only flag and is
+        // not one: brickwright-lite-ea ran it inside a lane worktree on 2026-09-07,
+        // `git add -A` swept 143 lines of readings into an unrelated source commit,
+        // and the rebase conflict that followed cost a diagnosis. So the file is
+        // named on stdout every time, with what to do about it.
+        console.log(`::notice::${path.relative(ROOT, READINGS)} was REWRITTEN by --fetch. It is tracked: commit it on its own, or \`git checkout\` it before committing unrelated work — never sweep it in with \`git add -A\`.`);
         console.log(`ci-skip-census: ${tests.length} skipped test(s) over ${runs.length} green runs — class a ${tests.filter(t => t.class === 'a').length}, b ${tests.filter(t => t.class === 'b').length}, c ${tests.filter(t => t.class === 'c').length}; written to ${path.relative(ROOT, READINGS)}`);
     }
     const readings = JSON.parse(readFileSync(READINGS, 'utf8'));
