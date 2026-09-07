@@ -1972,3 +1972,59 @@ failing assertion cannot leave a moved pin for the next hand to commit;
 it byte-compares the pin at the end; and it asserts BY NAME that the pin guard
 did not refuse this run, so the next guard to land ahead of it says so in one
 line instead of costing another diagnosis. Mutation-proved by dropping `--pin`.
+
+## Thirty-second species: A DOUBLE WHOSE ACCESSOR MINTS A NEW OBJECT (2026-09-07, brickwright-lite-ea; shape named by lego-b9)
+
+The first species whose failure lives in the TEST'S OWN FIXTURES rather than in
+the code, the gate, or the gate's reachability. **A test double whose accessor
+returns a fresh object each call gives the test and the subject two different
+objects with the same name.** The test then arranges the world on its copy,
+the subject reads its own, and the assertion passes having measured nothing.
+
+Note carefully what this is NOT. It is not "the gate cannot fail" — this gate
+CAN fail, and does, for other reasons. It cannot fail for THE REASON IT CLAIMS.
+It is not species 31 either: no precondition was consumed and nothing was
+skipped. The divergence is one of IDENTITY, not reachability, and that is why it
+needs its own entry.
+
+**The incident.** `test/gpl-toolchain-not-bundled.test.mjs` asserts that a
+PARTLY filled toolchain cache — the state a cancelled download leaves — degrades
+to the origin per file instead of to broken. The fake Cache Storage was:
+
+```js
+open: async name => {
+    if (!stores.has(name)) stores.set(name, new Map());
+    const store = stores.get(name);
+    return {match: async url => store.get(url), put: async (u, r) => store.set(u, r)};
+}
+```
+
+Every `open()` builds a new wrapper. The test simulated the missing file by
+patching `.match` on `await caches_.open(TOOLCHAIN_CACHE)`; `cachedResolver`
+then called `open()` itself and got a DIFFERENT wrapper with the original
+`.match`. The cache was never partial from the subject's side. The test passed,
+and would have passed with the per-file fallback deleted — which is the whole
+behaviour it exists to prove.
+
+**The fix.** Memoise the wrapper per name, and simulate absence by deleting from
+the underlying store rather than by patching the accessor's return value — the
+absence a browser actually presents, reached the way the subject reaches it.
+
+**The tell, which generalises well past caches.** Any double whose accessor
+MINTS state will do this: `open()`, `getConnection()`, `createClient()`,
+`session()`, `getInstance()`, a React context provider re-created per render, a
+module mock re-instantiated per import. The symptom is always the same and is
+easy to miss because it is a PASS: the test stays green when you break the thing
+it is about.
+
+**The check, and it is cheap.** Before trusting a double-based pass, run the
+test against the BROKEN double — here, the un-memoised fake — and require it to
+FAIL. A double-based test that has never been seen red proves only that it
+compiles. This entry exists because that check was run: the pass was correct
+afterwards and worthless before, and nothing else in the suite would have told
+the difference.
+
+**Why it was nearly missed.** The suite around it was green, the assertion read
+correctly, and the fixture was eight lines of obvious code. Nothing about a
+`Map` in a closure looks like a place where identity goes wrong. The failure is
+invisible at the point of reading and visible only at the point of breaking.
