@@ -1023,6 +1023,27 @@ measurement found 0 of 285 example circuits with any 8086/8088 spelling, no
 8086/8088 palette entry, and no UI caller of `reseatOnto8086`. A learner can
 reach Machine Loader only by opening a prepared JSON circuit today. P6a proves
 the loader after that file boundary; it does not close this product route.
+**CLOSED 2026-09-07** (worker) with a first-class gallery example, `i8086-blink`:
+a standalone `kind:"program"` entry (devices `["i8086"]`, authored `i8086`) whose
+circuit is `test/fixtures/reseat/e4-reseated-8086.json` adapted to the gallery
+shape (an 8086 + an 8255 PPI + eight LEDs on port B), and whose `program.bw`
+blinks one of them (`PIN led = P2.0`) — the intro explains that `P2.1`–`P2.7` are
+the rest of the 8255 port and how to drive all eight. Verified: the program
+compiles to 8086 machine code, the circuit extracts as an 8086 machine with the
+8255, and the example-execution gate RUNS it and asserts the LED toggles (a
+broken program reddens it, "0 events, computed nothing observable"). A browser
+gate (`verify-example-selector.mjs`) selects i8086 in the device picker — it is a
+real `DEVICES`/`DEVICE_GROUP` entry, so it is offered — opens the catalog it
+serves, clicks `i8086-blink`, and proves it loads the 8086 program and runs on the
+live runtime. The PALETTE half (an i8086/i8255 entry for hand-placement) is a
+SEPARATE change: `PartPalette.jsx` is VENDORED from bw-circuit-ui, so those two
+`Chips`-section entries go UPSTREAM there (the part data and the capabilities
+device already exist upstream; only the palette list omits them) and ride a later
+pin bump — not a lite fork. Follow-on P7b: 8086 examples WITH widgets (a VGA one
+over `i8086-vga-demo.bin` and a keyboard one over `i8086-keyboard-demo.bin`, each
+with a `files.controller` carrying `simplevga`/`keyboard` widgets), modelled on
+`eater6502-blink` (the ROM-example shape) and `aurora65-workstation` (the widget
+shape).
 
 **Vocabulary source (2026-09-05):** bw-board `I8086Machine.chipRefusals()` (`bfd8b44`, lego-be)
 returns `{part, kind, feature, symptom, count}` rows — one per feature a program asked a chip
