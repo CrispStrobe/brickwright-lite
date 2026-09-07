@@ -207,6 +207,41 @@ try {
     // MicroPython, not a breadboard. So there is nothing to retarget TO
     // micro:bit, and the tab is reached by opening such an example directly.
 
+    // P7: the i8086 gallery example. Before this the gallery had ZERO i8086
+    // entries — the 8086 was reachable only by hand from the Circuit Designer's
+    // load menu. Select the chip in the SAME picker (it is a DEVICES/DEVICE_GROUP
+    // entry, so it is offered), open the catalog it serves, click i8086-blink, and
+    // prove it loads as the 8086 blink program driving a pin through the 8255.
+    await device.selectOption('i8086');
+    const i8086Item = page.locator('[data-testid="bw-catalog-item"][title="i8086-blink"]');
+    if (await i8086Item.count() === 0) {
+        const toggle = page.locator('[data-testid="bw-catalog-toggle"]');
+        if (await toggle.count() === 1) await toggle.click();
+    }
+    await i8086Item.first().waitFor({timeout: 15000});
+    check('the i8086 catalog offers the i8086-blink example', await i8086Item.count() >= 1,
+        `${await i8086Item.count()} matching item(s)`);
+    await i8086Item.first().click();
+    await page.waitForFunction(() => {
+        const t = document.querySelector('.cm-content')?.textContent || '';
+        return /DEVICE\s+i8086/i.test(t) && /P2\.0/.test(t);
+    }, null, {timeout: 10000});
+    const i8086Source = await page.locator('.cm-content').textContent();
+    check('i8086-blink loads as an 8086 program driving a pin through the 8255',
+        /DEVICE\s+i8086/i.test(i8086Source || '') && /P2\.0/.test(i8086Source || '')
+        && /WHEN flag clicked/i.test(i8086Source || ''), (i8086Source || '').slice(0, 90));
+    // And it RUNS: the device select follows the loaded example to i8086, and the
+    // live runtime carries the compiled program (the same __vm the game journey
+    // uses above), so this is a real execution, not just an editor load.
+    check('opening i8086-blink sets the device to i8086',
+        await page.locator('[data-testid="bw-device-select"]').inputValue() === 'i8086',
+        await page.locator('[data-testid="bw-device-select"]').inputValue());
+    const i8086Ran = await page.waitForFunction(() => {
+        const rt = window.__vm?.runtime;
+        return Boolean(rt && (rt.targets || []).length > 0);
+    }, null, {timeout: 15000}).then(() => true).catch(() => false);
+    check('i8086-blink runs on the live runtime', i8086Ran);
+
 } catch (error) {
     check('example-selector browser journey completes', false, String(error).slice(0, 300));
 } finally {
