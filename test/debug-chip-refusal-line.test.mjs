@@ -77,7 +77,11 @@ test('a program that asks the 8237 for a block copy produces exactly one line', 
         'the line carries the SYMPTOM — what the program gets instead — not only the feature. '
         + 'A line naming the gap without naming the effect tells a learner what they are looking '
         + 'at and nothing about what it did to their code.');
-    assert.match(line.text, /at 08h/,
+    // WAS /at 08h/. The row now carries `space`, so the end-to-end line says
+    // the stronger true thing. Tightened rather than loosened: an assertion
+    // that still passed on "at 08h" would no longer be testing what the line
+    // now claims.
+    assert.match(line.text, /port 08h/,
         'the line carries the address the program touched. A symptom sentence cannot be clicked; '
         + 'the debugger points at the instruction with this.');
     assert.doesNotMatch(line.text, /refusals/,
@@ -110,7 +114,8 @@ test('the ASM bench refuses through the chip it actually has', () => {
     assert.match(lines[0].text, /waits on a bit that never moves/,
         'the symptom must say what the PROGRAM sees — a status bit that never moves — not merely '
         + 'that a mode is unmodelled');
-    assert.match(lines[0].text, /at 03h/, 'the control port the mode word arrived on');
+    assert.match(lines[0].text, /port 03h/,
+        'the control port the mode word arrived on, and now SAID to be a port');
     // And the clean program the browser gate runs first must stay clean here too.
     assert.deepEqual(chipRefusalLines(ran(' mov al, 00h\n mov bl, al', BREADBOARD8086).chipRefusals()), [],
         "the browser gate's absent case produces a line on this bench, so its first assertion "
@@ -218,4 +223,54 @@ test('a row with nothing sayable is dropped rather than rendered blank', () => {
     assert.deepEqual(chipRefusalLines([{part: 'dma1', kind: 'chip', feature: null, symptom: null,
         count: 1, at: null, ats: [], atsMore: false}]), []);
     assert.equal(chipRefusalLine({part: '', symptom: 'x'}), null);
+});
+
+test('the anchor names the space it is an address in, both kinds', () => {
+    // The contract request this file's header raised, answered upstream at
+    // bw-board fad7a3d and landed here.
+    //
+    // "at 08h" was true and weak: an 8237 port and an OPL register both reach
+    // this function as a bare integer, so the line could not say which it held
+    // without a part-to-space table on this side -- a second list that has to
+    // agree with bw-board's chips, which is the shape this file argues against.
+    // The chip declares it where the refusal is WRITTEN. The writing end knows;
+    // the reading end does not.
+    const base = {part: 'p', kind: 'chip', feature: 'f', symptom: 's', count: 1,
+        at: 0x08, ats: [0x08], atsMore: false};
+
+    assert.equal(formatAnchor({...base, space: 'port'}), 'port 08h');
+    assert.equal(formatAnchor({...base, at: 0xbd, ats: [0xbd], space: 'register'}), 'register BDh',
+        'the YM3812 reports the OPL register index, not the ISA port -- its port '
+        + 'pair is two wide and joins to nothing, and it is why this field exists');
+
+    // The set and the truncation flag survive the new word.
+    assert.equal(formatAnchor({...base, ats: [0x08, 0x0b], space: 'port'}), 'port 08h, 0Bh');
+    assert.equal(formatAnchor({...base, ats: [0x08, 0x0b], atsMore: true, space: 'port'}),
+        'port 08h, 0Bh and more');
+
+    // NOTHING IS INFERRED. A row from a chip that declares no space, or one
+    // this renderer does not know, keeps the weaker word it can prove. That is
+    // the same rule as the null anchor: say less rather than guess.
+    assert.equal(formatAnchor(base), 'at 08h', 'no space declared: the bare anchor');
+    assert.equal(formatAnchor({...base, space: 'somewhere-else'}), 'at 08h',
+        'an unknown space is not passed through as a word -- a consumer reading '
+        + '"somewhere-else 08h" would trust a label this renderer cannot vouch for');
+    assert.equal(formatAnchor({...base, at: null, ats: [], space: 'port'}), null,
+        'and a space with no address is still no anchor');
+});
+
+test('a full line reads the way a learner would say it', () => {
+    const port = chipRefusalLine({part: 'dma1', kind: 'chip',
+        feature: 'memory-to-memory transfer',
+        symptom: 'a block copy moves nothing and the temporary register reads back zero',
+        count: 1, at: 0x08, ats: [0x08], atsMore: false, space: 'port'});
+    assert.match(port.text, /port 08h/);
+    assert.doesNotMatch(port.text, /\bat 08h/,
+        'the stronger word replaces the weaker one rather than joining it');
+
+    const reg = chipRefusalLine({part: 'opl', kind: 'chip',
+        feature: 'rhythm mode (BDh bit 5)',
+        symptom: 'the five percussion voices are silent and channels 6-8 keep playing',
+        count: 1, at: 0xbd, ats: [0xbd], atsMore: false, space: 'register'});
+    assert.match(reg.text, /register BDh/);
 });
