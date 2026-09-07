@@ -18,3 +18,9 @@ Version 1 accepts only these board/firmware pairs: `spike-prime` with
 `brickwright-nuttx`; and `spike-essential` with `lego-essential` or
 `pybricks-essential`. The board-qualified identity remains authoritative in
 neutral state and each firmware has a distinct selector profile.
+
+`BrickStateRuntimeConnector` owns transport lifecycle and constructs its
+adapter and virtual hub state internally. UI code receives only neutral state
+snapshots. Commands use generation-qualified request IDs and a bounded pending
+map. Disconnect rejects outstanding work; reconnect starts a fresh adapter and
+stale transport callbacks cannot mutate the current state.
