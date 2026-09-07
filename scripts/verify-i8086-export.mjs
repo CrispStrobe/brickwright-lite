@@ -30,6 +30,7 @@ const port = 8129;
 const types = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
     '.png': 'image/png', '.json': 'application/json', '.wasm': 'application/wasm'};
 
+import {shareOfBudget} from './lib/gate-budget.mjs';
 const PROOF_URL = process.env.PROOF_URL || null;
 if (!PROOF_URL && !existsSync(build)) {
     console.log('SKIP — verify-i8086-export: no local build (packages/scratch-gui/build). Pass PROOF_URL to drive a deployed app.');
@@ -74,17 +75,35 @@ async function waitFor (read, accept, timeoutMs = 60000, stepMs = 250) {
     return last;
 }
 
-/** Type a program into the Code (pseudocode) editor, replacing what is there. */
+/**
+ * Type a program into the Code (pseudocode) editor, replacing what is there.
+ *
+ * WAITS FOR THE EDITOR, the way the green drive (verify-i8086-browser.mjs) does, and
+ * takes its time from the step's budget. The first version asked `.cm-content`.count()
+ * ONCE and, finding none because the CodeMirror chunk had not mounted yet, fell back to
+ * filling a `textarea` that the mounting editor had just replaced — with a literal 8 s
+ * budget written on a quiet runner. Red twice on 2026-09-07 with the fleet eight deep
+ * (runs 34098309971 and 34113154528), "waiting for locator('textarea').first()", while
+ * every other gate in the job stayed green. There is no textarea fallback now: the app
+ * ships CodeMirror, and an editor that never mounts is a finding with that name.
+ */
 async function typeProgram (text) {
     const cm = page.locator('.cm-content').first();
-    if (await cm.count()) {
-        await cm.click();
-        await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a');
-        await page.keyboard.press('Delete');
-        await page.keyboard.insertText(text);
-    } else {
-        await page.locator('textarea').first().fill(text, {timeout: 8000});
+    const editorWait = shareOfBudget(1 / 3, 60_000);
+    try {
+        await cm.waitFor({state: 'visible', timeout: editorWait});
+    } catch {
+        throw new Error(`the Code editor (.cm-content) did not mount within ${editorWait} ms — `
+            + `the lazy CodeMirror chunk never arrived, or the selector moved; nothing was typed`);
     }
+    await cm.click();
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a');
+    await page.keyboard.press('Delete');
+    await page.keyboard.insertText(text);
+    // The typed text is IN the editor before anything downstream is asked of it.
+    const firstLine = text.split('\n').find(l => l.trim()) || '';
+    await page.waitForFunction(needle => (document.querySelector('.cm-content')?.textContent || '').includes(needle),
+        firstLine.trim().slice(0, 40), {timeout: shareOfBudget(1 / 6, 20_000)});
     // The export button appears once the DEVICE line reads as an 8086.
     await waitFor(() => page.locator('[data-testid="bw-export-8086-com"]').isVisible().catch(() => false),
         v => v === true, 30000);

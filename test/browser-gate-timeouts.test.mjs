@@ -67,6 +67,42 @@ test('budgets are bounded: no single hang reaches the job ceiling, and none is t
     assert.ok(MAX_STEP_BUDGET < timeout - 10, `a step budget of ${MAX_STEP_BUDGET} leaves no room under the ${timeout}-minute ceiling of the job holding the gates`);
 });
 
+test('a step that hands its budget to its gate (BW_STEP_BUDGET_MIN) hands the same number it has', () => {
+    // scripts/lib/gate-budget.mjs: a gate takes its waits from the step's budget, not from
+    // a literal. The number travels on the run line beside timeout-minutes, so the two can
+    // drift; this holds them equal for EVERY step that sets it (derived, not listed).
+    const lines = yml.split('\n');
+    const findings = [];
+    let seen = 0;
+    lines.forEach((line, i) => {
+        const m = line.match(/BW_STEP_BUDGET_MIN=(\d+)/);
+        if (!m) return;
+        seen++;
+        // walk up to the step's timeout-minutes within the same step
+        let budget = null;
+        for (let k = i; k >= 0 && k > i - 30; k--) {
+            const tm = lines[k].match(/^\s+timeout-minutes:\s*(\d+)/);
+            if (tm) { budget = Number(tm[1]); break; }
+            if (/^\s+- name:/.test(lines[k]) && k < i - 1 && budget === null && /^\s+- name:/.test(lines[k]) && lines.slice(k, i).some(l => /timeout-minutes/.test(l))) break;
+        }
+        if (budget === null) findings.push(`line ${i + 1}: BW_STEP_BUDGET_MIN=${m[1]} on a step with no timeout-minutes`);
+        else if (Number(m[1]) !== budget) findings.push(`line ${i + 1}: BW_STEP_BUDGET_MIN=${m[1]} but the step's timeout-minutes is ${budget}`);
+    });
+    assert.ok(seen >= 1, 'no step hands its budget to a gate — the export gate did on 2026-09-07; the pattern moved or was dropped');
+    assert.deepEqual(findings, [], 'a gate would wait against a number that is not its step\'s:\n  ' + findings.join('\n  '));
+});
+
+test('the invariant can fail: a budget that disagrees with its step is reported by name', () => {
+    const mutated = yml.replace('BW_STEP_BUDGET_MIN=3', 'BW_STEP_BUDGET_MIN=9');
+    assert.notEqual(mutated, yml);
+    const lines = mutated.split('\n');
+    const i = lines.findIndex(l => /BW_STEP_BUDGET_MIN=9/.test(l));
+    let budget = null;
+    for (let k = i; k >= 0 && k > i - 30; k--) { const tm = lines[k].match(/^\s+timeout-minutes:\s*(\d+)/); if (tm) { budget = Number(tm[1]); break; } }
+    assert.equal(budget, 3);
+    assert.notEqual(budget, 9);
+});
+
 test('the job holding the browser gates ends with the in-job audit, so a green job cannot hide a skipped one', () => {
     const jobs = parseJobs(yml);
     const holder = [...jobs.values()].find(j => j.steps.some(s => isBrowserStep(s.name)));
