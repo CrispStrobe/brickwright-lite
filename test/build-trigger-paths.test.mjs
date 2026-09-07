@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import {readFileSync, mkdtempSync, mkdirSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
-import {censusDocMentions, constructedTopLevelDocPaths, listDocs, parsePushPaths, reincludedDocs, judge} from '../scripts/lib/doc-triggers.mjs';
+import {censusDocMentions, constructedTopLevelDocPaths, outputOnlyMentions, listDocs, parsePushPaths, reincludedDocs, judge} from '../scripts/lib/doc-triggers.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const yml = readFileSync(path.join(ROOT, '.github', 'workflows', 'build.yml'), 'utf8');
@@ -67,6 +67,40 @@ test('no top-level doc is read through a path built from a variable — the one 
     ].join('\n'));
     const found = constructedTopLevelDocPaths(dir);
     assert.deepEqual(found.map(h => h.split(':')[1]), ['1', '2', '3'], found.join('\n'));
+});
+
+test('the trigger list cannot vouch for itself, and a name printed as markdown is not a read (mutation)', t => {
+    // Until 2026-09-07 the census counted build.yml's own re-include entries as
+    // mentions, so "stale" could never fire: re-including a doc nothing reads
+    // stayed green (fired live on docs/CI-QUEUE-2026-09-07.md). Now the real
+    // list plus one unmentioned doc is red naming it:
+    // The probe is any doc nothing mentions, chosen at run time — a literal
+    // name here would itself be a mention and the census would count it.
+    const mentioned = [...censusDocMentions(ROOT).keys()];
+    const probe = listDocs(ROOT).find(d => !mentioned.includes(d));
+    assert.ok(probe, 'no unmentioned doc exists to probe with — the negation buys nothing');
+    const mutated = yml.replace("      - '!docs/*.md'\n", `      - '!docs/*.md'\n      - 'docs/${probe}'\n`);
+    assert.notEqual(mutated, yml, 'mutation anchor');
+    assert.deepEqual(judge(mentioned, reincludedDocs(parsePushPaths(mutated).entries)).stale, [probe]);
+    // and the two exclusions, each shape on its own line in a throwaway tree:
+    const dir = mkdtempSync(path.join(tmpdir(), 'doc-trig-'));
+    mkdirSync(path.join(dir, 'docs'));
+    for (const d of ['X.md', 'Y.md', 'Z.md']) writeFileSync(path.join(dir, 'docs', d), '');
+    mkdirSync(path.join(dir, '.github', 'workflows'), {recursive: true});
+    writeFileSync(path.join(dir, '.github', 'workflows', 'w.yml'), "on:\n  push:\n    paths:\n      - '**'\n      - '!docs/*.md'\n      - 'docs/X.md'\n      - 'docs/Z.md'  # trailing\njobs:\n  a:\n    steps:\n      - run: cat docs/Z.md\n");
+    mkdirSync(path.join(dir, 'scripts'));
+    writeFileSync(path.join(dir, 'scripts', 'g.mjs'), [
+        'const md = `> stale? see \\`docs/X.md\\`, task L3.`;',     // printed as markdown: not a mention
+        "const y = readFileSync('docs/Y.md', 'utf8');",              // a read: a mention
+        'const both = `\\`docs/X.md\\`` + readFileSync(`docs/X.md`);'  // printed AND read on one line: the read counts
+    ].join('\n'));
+    const m = censusDocMentions(dir);
+    assert.deepEqual([...m.keys()].sort(), ['X.md', 'Y.md', 'Z.md']);
+    assert.deepEqual(m.get('X.md'), ['scripts/g.mjs:3'], 'the markdown line does not count; the trigger entry does not count; the read does');
+    assert.deepEqual(m.get('Z.md'), ['.github/workflows/w.yml:11'], 'a workflow READING a doc in a run: line still counts; its own trigger entry does not');
+    assert.deepEqual(outputOnlyMentions(dir).map(h => h.split(':').slice(0, 2).join(':')), ['scripts/g.mjs:1']);
+    const live = outputOnlyMentions(ROOT);
+    t.diagnostic(`output-only mentions in this tree (reported, not counted): ${live.length}` + live.map(h => `\n  ${h}`).join(''));
 });
 
 test('the verdict is by name, both directions (mutation)', () => {

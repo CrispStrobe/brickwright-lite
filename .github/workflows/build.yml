@@ -40,8 +40,13 @@ on:
     # builds were cancelled. The re-include list below is NOT hand-maintained:
     # test/build-trigger-paths.test.mjs (scripts/lib/doc-triggers.mjs) computes
     # the mentioned set from the tree and fails by name when a mentioned doc is
-    # missing here or a listed one is mentioned nowhere. Census 2026-09-06:
-    # 48 docs, 17 mentioned, 31 skip.
+    # missing here or a listed one is mentioned nowhere. Two lines that name a
+    # doc do not count: a workflow's own trigger entry (until 2026-09-07 this
+    # list vouched for itself and "stale" could never fire — two docs whose
+    # readers had left stayed here), and a name printed as markdown inside a
+    # generator's template literal (two generators name the plan that way;
+    # five main runs on 2026-09-07 verified plan-only edits). Census
+    # 2026-09-07: 15 mentioned; the rest of docs/*.md skip.
     #
     # A skipped run means no Pages deploy for that push. That is correct: the
     # app is byte-identical, and deploy-daily republishes regardless.
@@ -58,11 +63,8 @@ on:
       - '!ROADMAP.md'
       - '!docs/*.md'
       - 'docs/CYCLE-ACCURATE-CORE-EVALUATION.md'
-      - 'docs/DEBUGGER-NEXT-ROADMAP.md'
       - 'docs/EXTENSION-SECURITY.md'
       - 'docs/FETCH-PINNING.md'
-      - 'docs/FULL-DEBUGGER-ARCHITECTURE.md'
-      - 'docs/LANGUAGE-DEVICE-MATRIX-PLAN.md'
       - 'docs/LESSON-ACHIEVABILITY-SWEEP.md'
       - 'docs/LESSON-REVIEW-WAVE-2.md'
       - 'docs/LESSON-REVIEW-WAVE-3.md'

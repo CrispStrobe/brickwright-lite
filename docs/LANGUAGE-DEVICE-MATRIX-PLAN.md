@@ -344,6 +344,16 @@ REPORTS what it skipped, by count and reason, in its own output; `SILENT-SKIP` i
 guarded continue in a file walk with no report beside it; the walks above now report, and pin-move-chain
 judges NUL files like any other.
 
+**C. A doc's name printed as markdown is not a read; the trigger list may not vouch for itself. BUILT 2026-09-07**
+(lego-b9; option C of docs/CI-QUEUE-2026-09-07-MAIN.md, lego-ac's ask). This plan was in build.yml's push re-include list
+because two generators (`gen-reader-coverage.mjs:171`, `gen-language-device-matrix.mjs:97`) print its name between escaped
+backticks inside a template literal — provenance in a report, not a path handed to a read — and doc-triggers counted any
+non-comment mention. Five main runs on 2026-09-07 verified plan-only edits (127 runner-min). Found while measuring: the
+census scans `.github/`, so the re-include list's own entries were mentions and the test's stale direction could never fire
+(GATES thirtieth species); two docs whose readers had left were still listed. Rule: a workflow's trigger entry is not a
+mention; a name between escaped backticks is reported (`outputOnlyMentions`), not counted; the stale probe is a doc chosen
+at run time. Re-includes 18 → 15. An edit to this file alone now starts no run.
+
 **T12. Every browser gate's budget is derived from measurement, never typed. BUILT 2026-09-07** (lego-b9;
 lego-ac's ask). The per-step `timeout-minutes` of 2026-09-05 were "~3× each step's maximum over the last five
 main runs, floor 3, cap 8", written once by hand with the measurement in a trailing comment; a gate added
