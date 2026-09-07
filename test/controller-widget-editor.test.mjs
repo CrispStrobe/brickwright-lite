@@ -27,13 +27,17 @@
  * widget on purpose: an explicitly sized one passes trivially and proves
  * nothing.
  *
- * THE BINDING LINE HAD NO TOGGLE, and that half is NOT in this file. The flag is
- * panel-level and therefore lives in the serialised shape, which belongs to
- * bw-board rather than to lite: it landed there as `hideBindings` with its own
- * round-trip gate, and reaches lite with the next pin bump. The control is
- * deliberately not wired here in the meantime -- a toolbar checkbox calling a
- * method the vendored copy does not yet have would be a control that throws when
- * pressed, which is this branch's own defect reintroduced one control over.
+ * THE BINDING LINE HAD NO TOGGLE. The flag itself is panel-level and lives in
+ * the serialised shape, which belongs to bw-board: it landed there as
+ * `hideBindings`, with its own round-trip gate written against that panel's
+ * history of losing `mode` from toJSON for a year. It arrived here with the pin
+ * bump, and the control is wired as of that commit -- until then it was
+ * deliberately absent, because a checkbox calling a method the vendored copy
+ * did not have would have been a control that throws when pressed.
+ *
+ * What is asserted HERE is the wiring: the view reads the flag, hides the line,
+ * and the control reaches the panel. The serialised behaviour is upstream's and
+ * is gated there.
  */
 
 import { test } from 'node:test';
@@ -134,4 +138,32 @@ test('removing a widget that is not there is refused, not silently ignored', () 
     p.addWidget('a', 'button', {}, {});
     assert.throws(() => p.removeWidget('nope'), /not found/,
         'a removal that quietly does nothing is how a dead control looks from the outside');
+});
+
+test('the view reads the panel flag, and the control can reach the panel', () => {
+    // The wiring half. The flag's own behaviour -- default, emit, round trip --
+    // is bw-board's and is gated there; duplicating it here would be a second
+    // claim about the same fact, going stale on its own schedule.
+    const src = readFileSync(VIEW, 'utf8');
+    assert.match(src, /hideBindings=\{panel\.hideBindings\}/,
+        'the card is not told whether to hide the line');
+    assert.match(src, /\{!hideBindings && \(/,
+        'the card ignores the flag it is given');
+    assert.match(src, /panel\.setHideBindings\(e\.target\.checked\)/,
+        'the toolbar control cannot reach the panel');
+    assert.match(src, /data-testid="bw-ctl-hide-bindings"/, 'the control is unnamed');
+});
+
+test('the flag the view depends on actually exists in the vendored copy', () => {
+    // THE REASON THIS TEST EXISTS. The control was held back one landing because
+    // `setHideBindings` lived upstream and the vendored copy did not have it yet;
+    // wiring it early would have shipped a button that throws when pressed. This
+    // fails loudly if a future pin ever moves BACKWARD past the field, which
+    // would otherwise present as a dead control -- the exact defect this whole
+    // lane began with.
+    const p = new ControllerPanel();
+    assert.equal(typeof p.setHideBindings, 'function',
+        'the vendored ControllerPanel has no setHideBindings -- the pin predates it, '
+        + 'and the toolbar control will throw when pressed');
+    assert.equal(p.hideBindings, false, 'and its default must be showing');
 });

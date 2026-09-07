@@ -1055,7 +1055,7 @@ function SimpleVgaWidget({widget}) {
 
 // ─── Widget card (edit mode wrapper) ──────────────────────────────────────
 
-function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart }) {
+function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart, hideBindings }) {
     const typeLabels = {
         joystick: t('joystick'), button: t('button'), slider: t('slider'),
         dpad: t('dpad'), dial: t('dial'), gauge: 'Gauge', matrix: 'Matrix', sevenseg: '7-Seg',
@@ -1341,17 +1341,18 @@ function WidgetCard({ widget, mode, panel, onInput, onRemove, onBindPart }) {
                 </button>
             )}
 
-            {/* The hide toggle for this line is panel-level and lives in
-                bw-board's ControllerPanel (hideBindings, added there because the
-                serialised shape is that project's). It reaches lite with the next
-                pin bump; the control is deliberately NOT wired here yet, because
-                a toolbar checkbox calling a method the vendored copy does not
-                have is a control that throws when pressed -- which is the defect
-                this branch exists to fix, reintroduced one control over. */}
-            <div data-testid={'bw-ctl-binding-' + widget.name}
-                style={{ fontSize: 10, color: '#94a3b8' }}>
-                {bindingLabel}
-            </div>
+            {/* Hidden by the panel-level hideBindings flag, which lives in
+                bw-board's ControllerPanel because the serialised shape is that
+                project's. It arrived with the pin bump this commit performs; the
+                control was deliberately unwired until then, since a checkbox
+                calling a method the vendored copy did not have would have been a
+                control that throws when pressed. */}
+            {!hideBindings && (
+                <div data-testid={'bw-ctl-binding-' + widget.name}
+                    style={{ fontSize: 10, color: '#94a3b8' }}>
+                    {bindingLabel}
+                </div>
+            )}
         </div>
     );
 }
@@ -1668,6 +1669,24 @@ class ControllerPanelView extends React.Component {
                             {'\u229e ' + (this.state.snap ? this.state.grid + 'px' : 'free')}
                         </button>
                     )}
+                    {/* Hide the binding line on every card. PANEL-LEVEL, and it sits
+                        in the toolbar rather than the per-widget inspector for that
+                        reason: the per-widget flags describe one card's own face,
+                        while a binding line is the same information on all of them.
+                        Edit mode only -- there is nothing to change in Play -- but
+                        the setting persists either way, because it is serialised
+                        upstream. */}
+                    {mode === 'edit' && (
+                        <label data-testid="bw-ctl-hide-bindings"
+                            style={{ display: 'flex', alignItems: 'center', gap: 5,
+                                fontSize: 12, color: '#475569', cursor: 'pointer' }}>
+                            <input type="checkbox"
+                                checked={!!panel.hideBindings}
+                                onChange={e => { panel.setHideBindings(e.target.checked); this.forceUpdate(); }} />
+                            {t('hideBindings')}
+                        </label>
+                    )}
+
                     {/* Add widget (edit mode only) */}
                     {mode === 'edit' && (
                         <div style={{ position: 'relative' }}>
@@ -1743,6 +1762,7 @@ class ControllerPanelView extends React.Component {
                                 panel={panel}
                                 onInput={(name, x, y) => this._handleJoystickInput(name, x, y)}
                                 onRemove={() => { this._removeWidget(w.name); this.setState({ selected: null }); }}
+                                hideBindings={panel.hideBindings}
                             />
                         </PositionedWidget>
                     ))}
