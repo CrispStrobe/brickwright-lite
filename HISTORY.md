@@ -6,6 +6,12 @@ plan or roadmap. Detailed commit, CI and ownership evidence remains in Git and
 
 ## 2026-09-07
 
+- **N2c reach receipt corrected by the later fail-closed numeric lowerer.** The
+  exact N2c pin genuinely reported and compiled 44 programs, but `c8791ee`
+  proved two were false successes: blink-without-delay and debounce compiled
+  timer-derived operands as commented zero. Current pre-print reach is 42; the
+  historical 44 stays labeled by its pin. N2d then adds four honest numeric
+  print programs for a safety-correct current total of 46.
 - **Track A source authority completed** (`60ecb4d89`, hosted run
   `34087062528`). Root tests now import owned GUI
   modules from `overlay/scratch-gui`; the registered GUI-scope hook supplies
