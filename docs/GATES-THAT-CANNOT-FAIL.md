@@ -1489,3 +1489,27 @@ measured on a real boot where the pic1 refusal lives from step 1,513 to 1,517
 of 1,579,840. Two semantics wearing one shape; documented per part in
 CHIP-REFUSALS.md and gated against the source. That gate is the one that had
 this defect in it.
+
+## Two instances from bw-board, 2026-09-07 (lego-a4; recorded by lego-ac)
+
+**The twenty-fourth species now has its limit written by its own author.** bw-board's
+`test/rom-demos-match-generators` rebuilds each of the ten demo generators into a throwaway
+directory and compares bytes; `--out` was added to every builder precisely so the gate cannot
+regenerate into `rom/` and overwrite its own evidence, and an eleventh test catches a demo
+added without a line in the list. Reach verified by perturbing one opcode: red at byte 9,
+naming both files. The limit, in the test header rather than left implicit: it proves the
+tracked bytes are the CURRENT build, never that the generator is correct — a wrong generator
+faithfully reproduced still passes. That is the species closing exactly as far as it can and
+saying where it stops.
+
+**An instance of LANES 13 refused before it was built.** The 'SF' soft-float table (N5-1)
+needs IEEE-754 add, multiply and divide in Thumb-1 on a core with no FPU, no divide and no
+CLZ, each checked against an oracle at the rounding edge. rp2040js exposes `onBreak`, so the
+operators COULD be implemented in the host and called out through a breakpoint — far less
+work, and much worse: the DoD's test is agreement with JavaScript's `Math`, and a JavaScript
+implementation tested against JavaScript's `Math` measures itself. It would pass completely and
+prove nothing. This is the one place we have hit where taking the shortcut also destroys the
+evidence that it was taken, so the refusal is written at the decision point in bw-board's
+ROADMAP, and the partial that landed (8f46f2c) is a 21-entry table whose every entry reaches a
+quiet-NaN stub and returns — a diagnosis where there was a hang, with `2.5 + 1.0 ≠ 3.5`
+asserted so the stop cannot go stale.
