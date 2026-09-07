@@ -160,6 +160,8 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
     // 1198 -> 1199 on 2026-08-27: pc118-eight-bit-machine, which arrived with
     // the sb3-creator gallery sync to 4c714d3 — one circuit.json, and the only
     // new example in that sync.
+    // 1200 -> 1201 on 2026-09-07: i8086-blink, the first gallery circuit for the
+    // 8086 (an 8086 + 8255 PPI + eight LEDs, adapted from the reseat fixture) — P7.
     // 1199 -> 1200 on 2026-08-30: logic-74c922-keypad adds the physical
     // matrix-keypad-to-encoder circuit used by the product browser gate.
     // 1170 -> 1171 on 2026-08-26: aurora65-workstation, the complete
@@ -175,7 +177,7 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
     // This is a floor on COVERAGE, not a claim about corpus size — it exists so a
     // glob that silently stops matching cannot report zero failures. It moves
     // only when the corpus does, and the commit that moves it says which example.
-    assert.equal(files.length, 1200, 'the gate must cover the complete vendored corpus');
+    assert.equal(files.length, 1201, 'the gate must cover the complete vendored corpus');
     assert.deepEqual(failures, []);
 });
 
@@ -300,8 +302,10 @@ test('every selectable example × MCU combination resolves to an overlap-free be
 
     assert.deepEqual(failures, []);
     assert.deepEqual({authored, retargeted, total: authored + retargeted}, {
-        authored: 115,
+        // 115 -> 116 (total 1018 -> 1019) on 2026-09-07: i8086-blink, one authored
+        // i8086 bench, no retargets (single-device example) — P7.
+        authored: 116,
         retargeted: 903,
-        total: 1018
+        total: 1019
     });
 });
