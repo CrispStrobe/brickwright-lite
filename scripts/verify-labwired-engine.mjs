@@ -19,6 +19,7 @@ import {existsSync} from 'node:fs';
 import {extname, join, normalize, resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
+import {typeIntoEditor} from './lib/type-into-editor.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const build = join(root, 'packages', 'scratch-gui', 'build');
@@ -165,17 +166,8 @@ try {
     // Seed the program: typing alone declares nothing — "To blocks" is what
     // parses it onto the runtime and sets the device.
     await page.locator('[role="tab"]', {hasText: 'Code'}).first().click();
-    await page.waitForTimeout(2500);
-    // The editor is CodeMirror 6; it is only a textarea while the chunk loads.
-    const cm = page.locator('.cm-content').first();
-    if (await cm.count()) {
-        await cm.click();
-        await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a');
-        await page.keyboard.press('Delete');
-        await page.keyboard.insertText(PROGRAM);
-    } else {
-        await page.locator('textarea').first().fill(PROGRAM, {timeout: 8000});
-    }
+    // Wait for the CodeMirror editor, type, assert the text is in it (scripts/lib/type-into-editor.mjs).
+    await typeIntoEditor(page, PROGRAM);
     await page.waitForTimeout(600);
     for (const label of ['To blocks', 'Import', 'Zu Blöcken']) {
         try { await page.locator('button', {hasText: label}).first().click({timeout: 2500}); break; } catch {}

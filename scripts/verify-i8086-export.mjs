@@ -30,7 +30,7 @@ const port = 8129;
 const types = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
     '.png': 'image/png', '.json': 'application/json', '.wasm': 'application/wasm'};
 
-import {shareOfBudget} from './lib/gate-budget.mjs';
+import {typeIntoEditor} from './lib/type-into-editor.mjs';
 const PROOF_URL = process.env.PROOF_URL || null;
 if (!PROOF_URL && !existsSync(build)) {
     console.log('SKIP — verify-i8086-export: no local build (packages/scratch-gui/build). Pass PROOF_URL to drive a deployed app.');
@@ -88,22 +88,7 @@ async function waitFor (read, accept, timeoutMs = 60000, stepMs = 250) {
  * ships CodeMirror, and an editor that never mounts is a finding with that name.
  */
 async function typeProgram (text) {
-    const cm = page.locator('.cm-content').first();
-    const editorWait = shareOfBudget(1 / 3, 60_000);
-    // synchronisation before the click on the next line, not an appearance assertion (the
-    // typed text is asserted IN the editor below); a miss is renamed to the finding it is
-    await cm.waitFor({state: 'visible', timeout: editorWait}).catch(() => { // gate-shapes-allow: synchronization before the click and the typed-text check below; the miss is renamed, not swallowed
-        throw new Error(`the Code editor (.cm-content) did not mount within ${editorWait} ms — `
-            + `the lazy CodeMirror chunk never arrived, or the selector moved; nothing was typed`);
-    });
-    await cm.click();
-    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a');
-    await page.keyboard.press('Delete');
-    await page.keyboard.insertText(text);
-    // The typed text is IN the editor before anything downstream is asked of it.
-    const firstLine = text.split('\n').find(l => l.trim()) || '';
-    await page.waitForFunction(needle => (document.querySelector('.cm-content')?.textContent || '').includes(needle),
-        firstLine.trim().slice(0, 40), {timeout: shareOfBudget(1 / 6, 20_000)});
+    await typeIntoEditor(page, text);
     // The export button appears once the DEVICE line reads as an 8086.
     await waitFor(() => page.locator('[data-testid="bw-export-8086-com"]').isVisible().catch(() => false),
         v => v === true, 30000);

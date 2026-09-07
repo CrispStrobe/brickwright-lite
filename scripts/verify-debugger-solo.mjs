@@ -9,6 +9,7 @@ import {existsSync} from 'node:fs';
 import {extname, join, normalize, resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
+import {typeIntoEditor} from './lib/type-into-editor.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const build = join(root, 'packages', 'scratch-gui', 'build');
@@ -70,20 +71,10 @@ try {
     // Code tab, then back to Blocks so the portal is active.
     const codeTab = page.locator('[role="tab"]', {hasText: 'Code'}).first();
     await codeTab.click();
-    await page.waitForTimeout(2500);
-    // The editor is CodeMirror 6; it is only a textarea while the chunk loads,
-    // which is why waiting for one timed out rather than typing into it.
-    const cm = page.locator('.cm-content').first();
-    const type = async text => {
-        if (await cm.count()) {
-            await cm.click();
-            await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a');
-            await page.keyboard.press('Delete');
-            await page.keyboard.insertText(text);
-        } else {
-            await page.locator('textarea').first().fill(text, {timeout: 8000});
-        }
-    };
+    // The editor is CodeMirror 6 behind a lazy chunk: wait for it, type, assert the text
+    // is in it — the green drive's shape, from scripts/lib/type-into-editor.mjs (2026-09-07;
+    // the old textarea fallback with a literal 8 s went red on main under load).
+    const type = text => typeIntoEditor(page, text);
     await type(`DEVICE STC12C5A60S2
 CLOCK 11059200
 PIN led1 = P1.0 OUTPUT ACTIVE LOW

@@ -41,6 +41,7 @@ import {existsSync} from 'node:fs';
 import {extname, join, normalize, resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
+import {typeIntoEditor} from './lib/type-into-editor.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const build = join(root, 'packages', 'scratch-gui', 'build');
@@ -164,20 +165,11 @@ try {
     // line's device); then pick the Pico in the dropdown so bwDeviceId is 'pico'.
     // Every step waits on the thing it needs, never on the clock.
     await page.locator('[role="tab"]', {hasText: 'Code'}).first().click();
-    // The editor is CodeMirror once its chunk loads; a textarea before that.
-    const editorReady = await waitFor(
-        () => page.locator('.cm-content, textarea').first().isVisible().catch(() => false),
-        v => v === true, 60000);
-    check('the Code editor became visible', editorReady === true);
-    const cm = page.locator('.cm-content').first();
-    if (await cm.count()) {
-        await cm.click();
-        await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a');
-        await page.keyboard.press('Delete');
-        await page.keyboard.insertText(PROGRAM);
-    } else {
-        await page.locator('textarea').first().fill(PROGRAM, {timeout: 8000});
-    }
+    // Wait for the CodeMirror editor, type, assert the text is in it (scripts/lib/type-into-editor.mjs);
+    // an editor that never mounts throws with that sentence — the old `.cm-content, textarea`
+    // wait accepted the placeholder and the fallback filled a textarea the editor had replaced.
+    await typeIntoEditor(page, PROGRAM);
+    check('the Code editor mounted and holds the program', true);
     for (const label of ['To blocks', 'Import', 'Zu Blöcken']) {
         try { await page.locator('button', {hasText: label}).first().click({timeout: 8000}); break; } catch {}
     }
@@ -350,15 +342,7 @@ try {
     // replacing the source; otherwise pseudocode is typed into the generated
     // Python buffer and the second To-blocks conversion never happens.
     await page.locator('[data-testid="bw-lang-row"] button').filter({hasText: 'Pseudo'}).first().click();
-    const secondCm = page.locator('.cm-content').first();
-    if (await secondCm.count()) {
-        await secondCm.click();
-        await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a');
-        await page.keyboard.press('Delete');
-        await page.keyboard.insertText(SECOND_PROGRAM);
-    } else {
-        await page.locator('textarea').first().fill(SECOND_PROGRAM, {timeout: 8000});
-    }
+    await typeIntoEditor(page, SECOND_PROGRAM);
     for (const label of ['To blocks', 'Import', 'Zu Blöcken']) {
         try { await page.locator('button', {hasText: label}).first().click({timeout: 8000}); break; } catch {}
     }

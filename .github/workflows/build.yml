@@ -822,7 +822,7 @@ jobs:
       - name: Browser gate — the debugger-only pane and its round trip
         timeout-minutes: 4  # measured max 14 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
-        run: node scripts/verify-debugger-solo.mjs
+        run: BW_STEP_BUDGET_MIN=4 node scripts/verify-debugger-solo.mjs
 
       - name: Browser gate — debugger recording, reverse and fork history
         timeout-minutes: 4  # measured max 35 s over 5 main runs, 2026-09-05
@@ -1289,7 +1289,7 @@ jobs:
       - name: Browser gate — the labwired heavy tier actually executes
         timeout-minutes: 8  # measured max 165 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
-        run: node scripts/verify-labwired-engine.mjs
+        run: BW_STEP_BUDGET_MIN=8 node scripts/verify-labwired-engine.mjs
 
       # The OTHER branch of the same honesty rule, and the one production
       # actually ships when the release fetch above fails: the engine is absent,
@@ -1300,7 +1300,7 @@ jobs:
       - name: Browser gate — with no engine artifact, the tier is not offered
         timeout-minutes: 4  # measured max 47 s over 5 main runs, 2026-09-05
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
-        run: node scripts/verify-labwired-engine.mjs --absent
+        run: BW_STEP_BUDGET_MIN=4 node scripts/verify-labwired-engine.mjs --absent
 
       # Both gates above screenshot what they saw, and a screenshot that only
       # ever exists inside a runner is a screenshot nobody can look at. Keeping
@@ -1420,7 +1420,7 @@ jobs:
       - name: Browser gate — Pico MicroPython simulator Run lights the LED (N3c)
         timeout-minutes: 8  # second 180 s poll runs only after the first required proof passes
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
-        run: PROOF_URL=http://localhost:8617/ npm run verify:pico-micropython
+        run: BW_STEP_BUDGET_MIN=8 PROOF_URL=http://localhost:8617/ npm run verify:pico-micropython
       # The other half: with the firmware WITHHELD (its own server 404s it), the
       # Run must refuse BY NAME — a Run button with nothing behind it is the
       # failure this proves against. No PROOF_URL: withholding needs its own
@@ -1428,7 +1428,7 @@ jobs:
       - name: Browser gate — Pico ▶ Run refuses by name with no firmware (N3c)
         timeout-minutes: 3  # its own server (port 8123); boot attempt + refuse
         if: ${{ !cancelled() && steps.build_editor_browser.outcome == 'success' && matrix.shard == 'light' }}
-        run: npm run verify:pico-micropython-absent
+        run: BW_STEP_BUDGET_MIN=3 npm run verify:pico-micropython-absent
 
       - name: Browser gate — micro:bit debugger, block and line stepping
         timeout-minutes: 4  # measured max 18 s over 5 main runs, 2026-09-05
