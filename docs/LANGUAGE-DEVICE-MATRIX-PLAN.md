@@ -782,14 +782,23 @@ Circuit tab, drives File > Open circuit, and uploads the existing complete
 
 `scripts/verify-machine-loader-rom-control.mjs` clicks that preset and requires
 its exact ROM/profile event to cross `bw-machine-media-load` into debug-panel's
-`_onMediaLoad`: the panel must expose a collector state other than `none` after
-the runner starts. A fresh-page mutation returns HTTP 404 for the exact timerdemo
-ROM; the same success verdict must turn red with `timerdemo preset fetch failed:
-HTTP 404`, the visible loader note must name the missing ROM, and no media event
-may be dispatched. The gate proves selection, fetch, dispatch, debugger receipt,
-and fail-closed reporting. It does not claim that the timer demo's pixels or
-interrupt timing are correct; those remain the individual machine-profile gates'
-job.
+`_onMediaLoad`. It records all three states: no bench before Build Machine, a
+bench with no collector before media, and an attached collector with no rows
+(`empty`) after the runner starts. A fresh-page mutation returns HTTP 404 for
+the exact timerdemo ROM; the same success verdict must turn red with `timerdemo
+preset fetch failed: HTTP 404`, the visible loader note must name the missing
+ROM, and no media event may be dispatched. A second mutation removes the i8086
+from a fixture copy and must turn red with `no 8086 on the board`. The gate
+proves selection, fetch, dispatch, debugger receipt, and fail-closed reporting.
+It does not claim that the timer demo's pixels or interrupt timing are correct;
+those remain the individual machine-profile gates' job.
+
+**P7 (2026-09-07, unclaimed — owner-visible reachability gap).** Make an 8086
+placeable through the UI, either as a palette part or a shipped example. The P6a
+measurement found 0 of 285 example circuits with any 8086/8088 spelling, no
+8086/8088 palette entry, and no UI caller of `reseatOnto8086`. A learner can
+reach Machine Loader only by opening a prepared JSON circuit today. P6a proves
+the loader after that file boundary; it does not close this product route.
 
 **Vocabulary source (2026-09-05):** bw-board `I8086Machine.chipRefusals()` (`bfd8b44`, lego-be)
 returns `{part, kind, feature, symptom, count}` rows — one per feature a program asked a chip

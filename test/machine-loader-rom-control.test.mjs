@@ -4,7 +4,10 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import {readFileSync} from 'node:fs';
 import {SOURCE, REPO} from './helpers/bw-integrated.mjs';
-import {requireTimerdemoDelivery} from '../scripts/verify-machine-loader-rom-control.mjs';
+import {
+    require8086OnBoard,
+    requireTimerdemoDelivery
+} from '../scripts/verify-machine-loader-rom-control.mjs';
 
 const fixture = JSON.parse(readFileSync(path.join(REPO, 'test/fixtures/reseat/e4-reseated-8086.json'), 'utf8'));
 const {extract8086Machine} = await import(path.join(SOURCE, 'src/lib/bw-board/i8086-extract.js'));
@@ -14,11 +17,13 @@ test('the uploaded fixture is a complete extractable 8086 machine', () => {
     assert.equal(result.ok, true, (result.reasons || []).join('; '));
     assert.ok(fixture.parts.some(part => part.kind === 'i8086'), 'fixture lost the CPU that exposes Machine Loader');
     assert.ok(result.chips.some(chip => chip.kind === 'ppi'), 'fixture lost its programmable 8255');
+    assert.equal(require8086OnBoard(fixture), true);
 
     const withoutCpu = structuredClone(fixture);
     withoutCpu.parts = withoutCpu.parts.filter(part => part.kind !== 'i8086');
     assert.equal(extract8086Machine(withoutCpu).ok, false,
         'mutation without the CPU still extracted, so the fixture no longer proves the loader precondition');
+    assert.throws(() => require8086OnBoard(withoutCpu), /no 8086 on the board/);
 });
 
 test('the real File menu route and timerdemo dispatch seam remain connected', () => {
@@ -48,5 +53,5 @@ test('the shared success verdict fails closed and names the missing preset', () 
     assert.throws(() => requireTimerdemoDelivery({...good, status: 404, event: null}),
         /timerdemo preset fetch failed: HTTP 404/);
     assert.throws(() => requireTimerdemoDelivery({...good, panelState: 'none'}),
-        /did not reach an attached debugger collector: none/);
+        /did not reach an empty debugger collector: no collector/);
 });
