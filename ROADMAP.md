@@ -22,61 +22,85 @@ item marked with an agent name is being worked on.
 
 ---
 
-## Next-session shortlist — reconciled 2026-09-06
+## Next-session shortlist — reconciled 2026-09-07
 
-[PLAN.md](PLAN.md#next-session-priorities--reconciled-2026-09-06) records
-execution order. Current upstream baseline is `913e4afc3`; completed and
-rejected predecessor work is in [HISTORY.md](HISTORY.md). One bounded track
-remains live.
+[PLAN.md](PLAN.md#next-session-priorities--reconciled-2026-09-07) records the
+execution order. The reconciled baseline is `ef376fd66`; [HISTORY.md](HISTORY.md)
+holds completed and rejected work, and [LANES.md](LANES.md) controls live
+ownership.
 
-### Track 1 — Pico simulator reset and rerun (N3c-1) — COMPLETE
+### Closed sequence carried forward as evidence
 
-**Outcome:** `machine.reset()` reboots MicroPython in rp2040js, and two different
-editor programs execute consecutively without a page reload or emulator freeze.
+P18, P19 and P20 all stopped at the same fixed 76,800-byte emitted-size floor.
+Their respective measured bounds were 75,446 named bytes, 32,773 attributable
+bytes and 43,171 emitted bytes / 14,086 gzip. P18 also failed its retry journey;
+P19 built no candidate; P20 was reverted. These routes require new attribution
+evidence before reconsideration.
 
-**Measured 2026-09-06:** the independent replay freezes at 2,184,488 steps
-across eight later drive budgets, with no GP25 output. A focused watchdog-force
-test is red before intervention. rp2040js deliberately delegates
-`WATCHDOG.CTRL` reset to `onWatchdogTrigger`; the adapter installs no handler.
-A prototype handler clears WFE/core state and re-enters flash boot2, producing a
-fresh MicroPython banner, but `main.py` still does not execute. Booting a fresh
-adapter from the exact post-deploy flash does execute the file and drives GP25
-high at instruction 853,283. The remaining boundary is therefore whole-SoC and
-peripheral reset state, not flash persistence, the REPL write, or boot2.
+P21's lazy PseudocodeImporter route is complete in the promoted series ending
+`68a726c35`. P22's real CPU-bound 8086 benchmark is complete at `da4d30b0c`:
+hosted medians were 2.0190x desktop, 2.0192x mobile and 2.0220x under 4x throttle,
+with a 7 ms throttled pump p95 and a 22.3172 ms maximum pump. The prior roughly
+30x result measured guest-time jumps from `INT 15h AH=86h`; it is superseded.
+Worker/JIT/batching activate only after three repeat runs cross the retained
+less-than-1.0x or greater-than-8-ms-p95 threshold.
 
-**Landed upstream:** bw-board commit `435599c` adds `onResetRequest` and
-`takeResetRequest()`, names the watchdog cause, stops the old SoC at the
-instruction boundary, and passes the RP2040 adapter/flash-entry tests. It does
-not claim a partial field reset is a reboot.
+Track A is complete at `60ecb4d89`, with all four jobs green in run
+`34087062528` and 2,821 tests passing. N2b is complete through `3d84eef62`: its
+8086 C contract is 16-bit `int`, while ASM keeps 32-bit pairs, and the
+difference is asserted by value. CI and vendor hardening through `ef376fd66`
+includes per-branch concurrency, the `d5850e6` bw-board pin, absent-by-design
+vendor protection and the reseat-gate synchronization.
 
-**Delivered:** Lite pins that adapter contract and consumes each request by
-constructing a replacement SoC from preserved flash, reconnecting GPIO and a
-fresh USB CDC epoch, and rejecting stale/pending transport reads. Simulator Run
-uses install-and-reboot, the obsolete source refusal is gone, and the browser
-gate proves two different programs and GPIO outputs consecutively without a
-page reload.
+### Track 1 — N2c: `wait` on the 8086 C route
 
-**Acceptance met:** execution advances beyond the old freeze point; two consecutive
-programs run through the real UI; stop/rerun is deterministic; absent firmware
-still refuses clearly; existing 64-byte CDC and physical-deployment tests remain
-green. The completed implementation uses the diagnosed whole-SoC replacement
-boundary rather than claiming a partial core clear is a reboot.
+**Owner:** bwcx on `lane/n2c-i8086-c-wait`, claimed at `c06cfd1c`. The current
+reach measurement compiles 5 of 280 gallery programs, with 113 stopped by the
+verb choke and 104 of those needing `delay`.
 
-**Start:** `docs/PICO-SIM-RUN-FINDINGS.md`, `docs/PICO-MICROPYTHON-BOOT.md`,
-`overlay/scratch-gui/src/lib/pico-sim-run.js`, the pinned `bw-board` RP2040
-adapter, `test/pico-sim-run.test.mjs` and `test/pico-micropython-gpio.test.mjs`.
-Focused unit and hosted browser evidence completed 2026-09-06.
+**Start:** compare the ASM route's PIT-backed `BW_DELAY` with a C implementation
+using `bw_inb(0x40)` / `bw_inb(0x43)` and with a calibrated loop on the real DOS
+bench. Record the measurement and choose the closer semantic match. SmallerC's
+`-seg16` model has no `long`, and port I/O stays behind `bw_inb` / `bw_outb`.
 
-### Track 2 — P18 Connection-modal attribution — REJECTED
+**Acceptance:** the emitter change lands upstream with goldens proving no other
+family moved a byte. Lite vendors the exact green upstream pin using scoped sync
+with `--pin`, mirror and reader-coverage gates. C and ASM must agree on elapsed
+PIT ticks for the same wait within a stated tolerance; changing the loop constant
+must make the differential fail by name. Re-run
+`measure-i8086-numeric-reach.mjs --compile` and record the resulting corpus count.
+The hosted Lite workflow supplies the final verdict.
 
-Hosted run `34059625658` measured webpack hash `056e6af76a94b16e972a`.
-The deterministic `chunks/connection-modal.js` asset was 75,446 emitted bytes,
-1,354 below the fixed 76,800-byte floor. Webpack's complete named chunk group
-also contained a 52,693-byte unnamed vendor asset, but the agreed gate bound
-the named route asset and was not redefined after seeing the result. The
-candidate's aborted-request journey independently timed out before its visible
-retry state. Production remains eager; the candidate workflow and browser gate
-were removed. The evidence-only receipt preserves both asset and group facts.
+### Track 2 — Milestone 0 circuit-variant electrical equivalence
+
+**Owner:** coordinator selects the precise family or invariant before a claim.
+The existing 1,034-variant schematic gates establish mechanical legibility.
+
+**Acceptance:** the bounded family is executed through the real solver and a
+mutation that changes connectivity, polarity or an electrically meaningful
+part parameter fails by name. The result must state which circuit variants the
+oracle covers and which remain outside its boundary.
+
+### Track 3 — P3 MicroPython protocol-driver coverage
+
+**Owner:** worker owns part 1. A later claim begins only after that lane releases
+its result. The starting seam is the 8255 pin path on the Pico simulator, where
+the run-live path and GPIO oracle already exist.
+
+**Acceptance:** measure generator coverage over profile part IDs separately from
+reader support, select one uncovered driver family, and prove its emitted
+behavior against the C route or a device-level oracle. Keep skipped physics
+assertions visible in the receipt.
+
+### Track 4 — owned pin, ROM and CI follow-ups
+
+T9/T9b, the seven constructed preset-ROM paths, N3d, P6/P6a, N11 and the next
+bw-board pin are already coordinated lanes. A sync cannot move a pin without
+`--pin`, and upstream CI on that exact SHA must be green before Lite tests it.
+The DOS bench's 8255 is reachable at port 60h; the earlier 03h probe does not
+show that chip refusals lack a UI producer. The browser Pico transport already
+drains packets; N3d concerns the Node oracle. These corrections stay attached
+to their open work rather than becoming new duplicate lanes.
 
 ## 1. Costume designer & GUI layout
 

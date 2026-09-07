@@ -15,30 +15,41 @@ This document turns the product review into an ordered implementation plan.
 completed and rejected work. This file defines outcomes, sequencing and release
 gates.
 
-## Next-session priorities — reconciled 2026-09-06
+## Next-session priorities — reconciled 2026-09-07
 
-The current shortlist was reconciled with `main` at `7a5dcb989`. Completed and
-rejected predecessor work is recorded in `HISTORY.md`.
+This shortlist is reconciled with `main` at `ef376fd66`. `HISTORY.md` holds the
+completed and rejected work; `LANES.md` is the live ownership authority.
 
-The last bounded payload tracks are:
+The payload sequence is closed. Its fixed gates and receipts remain binding:
 
-| Track | Outcome | Estimated focused work |
+| Track | Verdict and retained evidence |
+|---|---|
+| P18 Connection-modal deferral | Rejected. Run `34059625658` emitted a 75,446-byte named asset, 1,354 bytes below the 76,800-byte floor; retry UI also failed. Production remains eager. |
+| P19 scratch-storage worker deferral | Rejected at attribution. The conservative worker closure was 32,773 bytes, 44,027 below the floor; no candidate was built. |
+| P20 Scratch 1 converter deferral | Rejected. Run `34058754836` emitted 43,171 bytes / 14,086 gzip, below the floor; production was reverted. |
+| P21 PseudocodeImporter deferral | Completed in the promoted series ending `68a726c35`; activation and exact-receipt gates cover the lazy route. |
+| P22 8086 benchmark integrity | Completed at `da4d30b0c`. The CPU-bound benchmark measures about 2.02x on desktop, mobile and 4x-throttled profiles; 4x pump p95 is 7 ms and every pump is at most 22.3172 ms. Worker/JIT/batching stay deferred until three repeat runs measure either less than 1.0x or more than 8 ms pump p95. |
+| Track A GUI test source authority | Completed at `60ecb4d89`; hosted run `34087062528` passed all four jobs with 2,821 tests passing. Root tests use owned overlay sources while the prepared GUI supplies dependency and build scope. |
+| N2b 8086 C numeric model | Completed through `3d84eef62`. C uses a stated 16-bit `int` and refuses literals outside -32768..32767; ASM retains 32-bit pairs. The value-level differential keeps that width disagreement explicit. |
+
+Subsequent CI and vendor work through `ef376fd66` added per-branch concurrency,
+advanced the bw-board pin chain through `d5850e6`, protected absent-by-design
+vendor files, and synchronized the reseat gate. A pin sync now requires `--pin`,
+and upstream CI on the pinned SHA is a prerequisite for a Lite pin run.
+
+The next work is correctness work with one claim per bounded session:
+
+| Order | Bounded track | Ownership and acceptance boundary |
 |---|---|---|
-| P18 Connection-modal deferral | Rejected: the named asset missed the fixed emitted-size floor and retry behavior failed. | Closed; evidence retained |
-| P19 scratch-storage worker deferral | Rejected at attribution: the worker-only closure was below the emitted-size floor. | Closed; no candidate built |
-| P20 Scratch 1 converter deferral | Rejected: the isolated emitted chunk was below the fixed floor. | Closed; production reverted |
+| 1 | N2c: `wait` on the 8086 C route | Claimed by bwcx on `lane/n2c-i8086-c-wait`. Measure PIT-backed and calibrated-loop choices against ASM `BW_DELAY`; implement upstream, prove other targets byte-stable, vendor through the pin chain, and require a mutation-proved C/ASM PIT-tick differential on the DOS bench. Re-run the 280-program reach measurement. |
+| 2 | Milestone 0 circuit-variant electrical equivalence | Selection remains coordinator-controlled. Claim one exact circuit family or invariant; acceptance must compare the electrical state the solver produces, beyond render legibility. |
+| 3 | P3 MicroPython protocol-driver coverage | Part 1 is owned by worker. Later sessions start from its generator-versus-reader measurement and claim one remaining driver family with a differential oracle. |
+| 4 | Pin, ROM and CI follow-ups | T9/T9b, seven preset-ROM paths, N3d, P6/P6a and the bw-board pin chain are already owned. Their next commits stay in those lanes; later work begins only after a released claim identifies a remaining boundary. |
 
-P16a–P17, the browser-artifact decision, and Pico reset/rerun are closed in
-`HISTORY.md`. bw-board `435599c` exposes the watchdog reset request and Lite
-performs a whole-SoC/USB epoch replacement from preserved flash; focused tests
-and the hosted two-program browser proof cover the former freeze. P17 is complete:
-the Sound route is demand-loaded, initializes audio safely after a late import,
-and prewarms on user intent; hosted run `34055549914` is green. P18 is rejected:
-run `34059625658` emitted a 75,446-byte named `connection-modal` asset, 1,354
-bytes below the fixed floor, and its aborted-import recovery did not reach the
-required retry UI. The eager production path is retained. P19 and P20 also
-stopped at their fixed size gates; the next optimization must begin with a new
-measured hypothesis rather than reviving one of these rejected splits.
+Two corrected premises remain explicit. The DOS bench can produce chip refusals:
+its 8255 is at port 60h, while the earlier probe used 03h. The shipped browser
+Pico transport drains between packets; the missing `drain()` affects only the
+Node oracle tracked as N3d. Do not revive P18–P20 without new attribution evidence.
 
 Keep full Technic simulation, wholesale cycle-core replacement, broad language
 expansion and framework migration in their existing longer-term plans.
