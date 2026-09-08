@@ -5,13 +5,14 @@ import {createServer} from 'node:http';
 import {readFile, mkdir, writeFile} from 'node:fs/promises';
 import {resolve, sep} from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
 import {chromium} from 'playwright';
 
 const root = resolve('.');
 const baseline = resolve(process.env.I8086_BASELINE || '.');
 const output = resolve(process.env.I8086_PROFILE_OUTPUT || 'artifacts/i8086-execution');
 const repetitions = 5;
-const cycles = 5_000_000;
+const cycles = 25_000_000;
 const blockMode = process.env.I8086_BLOCK_MODE || 'none';
 if (!['none','decoded','wasm','ram'].includes(blockMode)) throw new Error('Invalid block mode');
 const blockOnly = blockMode === 'decoded' || blockMode === 'wasm';
@@ -33,7 +34,8 @@ const server = createServer(async (req, res) => {
         if (!parts.join('/')) { res.setHeader('Content-Type', 'text/html'); res.end('<!doctype html><title>8086 profile</title>'); return; }
         // Use the candidate harness unchanged for both source trees.
         const isHarness = ['scripts/lib/i8086-execution-workload.mjs',
-            'scripts/lib/i8086-block-experiment.mjs', 'scripts/lib/i8086-ram-experiment.mjs'].includes(parts.join('/'));
+            'scripts/lib/i8086-block-experiment.mjs', 'scripts/lib/i8086-ram-experiment.mjs',
+            'scripts/lib/i8086-corpus-workload.mjs'].includes(parts.join('/'));
         const sourceRoot = isHarness ? root : roots[kind];
         let path = resolve(sourceRoot, ...parts);
         if (!path.startsWith(sourceRoot + sep)) { res.writeHead(403).end(); return; }
@@ -48,6 +50,7 @@ const browser = await chromium.launch({headless: true});
 const rows = [];
 const profiles = [];
 const comparisons = [];
+const corpus = [];
 let complete = false;
 try {
     for (const rate of [1, 4]) {
@@ -118,10 +121,40 @@ try {
             }
         }
     }
+    if (process.env.I8086_CORPUS_ROOT && blockMode === 'none') {
+        const directory = resolve(process.env.I8086_CORPUS_ROOT);
+        identity.corpus = {sha: sha(directory)};
+        for (const name of ['bubble_sort.asm','insertion_sort.asm','heap_sort.asm']) {
+            const source = await readFile(resolve(directory, 'Source Code/Sorting', name), 'utf8');
+            const sourceHash = createHash('sha256').update(source).digest('hex');
+            for (const rate of [1,4]) for (let repetition = 0; repetition < repetitions; repetition++) {
+                let reference;
+                for (const kind of repetition % 2 ? ['candidate','baseline'] : ['baseline','candidate']) {
+                    const context = await browser.newContext();
+                    try {
+                        const page = await context.newPage();
+                        const cdp = await context.newCDPSession(page);
+                        await cdp.send('Emulation.setCPUThrottlingRate', {rate});
+                        await page.goto(`http://127.0.0.1:${server.address().port}/${kind}/`);
+                        const result = await page.evaluate(async ({kind,source,name}) => {
+                            const {setupCorpus} = await import(`/${kind}/scripts/lib/i8086-corpus-workload.mjs`);
+                            const workload = setupCorpus(source,name);
+                            workload.run(10);
+                            return workload.run(100);
+                        }, {kind,source,name});
+                        const {wallMs,programsPerSecond,...state} = result;
+                        if (reference && JSON.stringify(state) !== JSON.stringify(reference)) throw new Error(`Corpus state mismatch: ${name}`);
+                        reference = state;
+                        corpus.push({kind,rate,repetition,name,sourceHash,...result});
+                    } finally { await context.close(); }
+                }
+            }
+        }
+    }
     complete = true;
 } finally {
     await writeFile(resolve(output, 'results.json'), JSON.stringify({identity, complete,
-        repetitions, cycles, comparisons, rows, profiles}, null, 2));
+        repetitions, cycles, comparisons, rows, profiles, corpus}, null, 2));
     const lines = ['# 8086 engine comparison', '',
         `Baseline: ${identity.baseline}. Candidate: ${identity.candidate}. Complete: ${complete}.`, '',
         'Source-module throughput with UI pacing removed. Ranges overlap unless marked separated; a median change alone is not a verdict.', '',

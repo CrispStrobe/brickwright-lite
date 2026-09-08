@@ -30,6 +30,12 @@ jobs:
           ref: e00d8776652e787688b72437109cec8c0641c31a
           path: candidate-engine
       - run: npm ci --ignore-scripts
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: Amey-Thakur/8086-ASSEMBLY-LANGUAGE-PROGRAMS
+          ref: aa8f32aee87c68db1fb9b1f6005b494884df8935
+          path: corpus
+          sparse-checkout: Source Code/Sorting
       - run: node --experimental-default-type=module --test test/i8086-execution-workload.test.mjs
       - run: npx playwright install --with-deps chromium
       - run: node scripts/profile-i8086-execution.mjs
@@ -38,6 +44,7 @@ jobs:
           I8086_ENGINE_ROOT: candidate-engine
           I8086_ENGINE_FILES: i8086.js
           I8086_BLOCK_MODE: ${{ inputs.block-mode || 'none' }}
+          I8086_CORPUS_ROOT: corpus
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:

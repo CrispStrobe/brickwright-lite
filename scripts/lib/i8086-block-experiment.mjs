@@ -8,12 +8,13 @@ const uleb = value => { const out = []; do { const b = value & 127; value >>>= 7
 const sleb = value => { const out = []; for (;;) { const b = value & 127; value >>= 7; const done = (value === 0 && !(b & 64)) || (value === -1 && (b & 64)); out.push(b | (done ? 0 : 128)); if (done) return out; } };
 const str = value => [value.length, ...[...value].map(c => c.charCodeAt(0))];
 const section = (id, data) => [id, ...uleb(data.length), ...data];
-const get = i => [0x20, i], set = i => [0x21, i], imm = v => [0x41, ...sleb(v)];
+const get = i => [0x20, i + 1], set = i => [0x21, i + 1], imm = v => [0x41, ...sleb(v)];
 
-function compile(ops, memory) {
+function compile(ops, memory, countedLoop) {
     const body = [1, 13, 0x7f]; // thirteen i32 locals, including a/b/result/raw
     const emit = (...parts) => body.push(...parts.flat());
     for (let i = 0; i < 9; i++) emit(imm(i * 4), [0x28, 2, 0], set(i));
+    emit([0x03,0x40]); // repeat without returning to JS between iterations
     for (const op of ops) {
         if (op.kind === 'nop') continue;
         if (op.kind === 'mov') { emit(op.src < 0 ? imm(op.value) : get(op.src), set(op.dst)); continue; }
@@ -38,10 +39,12 @@ function compile(ops, memory) {
         emit(get(11), imm(255), [0x71,0x69], imm(1), [0x71], imm(1), [0x73], imm(2), [0x74,0x72], set(8)); // PF
         if (op.kind !== 'cmp') emit(get(11), set(op.dst));
     }
+    if (countedLoop) emit(get(1), imm(1), [0x6b], set(1));
+    emit([0x20,0], imm(1), [0x6b,0x22,0,0x0d,0,0x0b]);
     for (let i = 0; i < 9; i++) emit(imm(i * 4), get(i), [0x36, 2, 0]);
     emit([0x0b]);
     const bytes = new Uint8Array([0,97,115,109,1,0,0,0,
-        ...section(1, [1,0x60,0,0]),
+        ...section(1, [1,0x60,1,0x7f,0]),
         ...section(2, [1,...str('env'),...str('memory'),2,0,1]),
         ...section(3, [1,0]), ...section(7, [1,...str('run'),0,0]),
         ...section(10, [1,...uleb(body.length),...body])]);
@@ -72,7 +75,12 @@ function decode(cpu, mem) {
         for (let i = 0; i < length; i++) bytes.push(byte(offset + i));
         ops.push({kind,dst,src,value,modrm}); offset += length; cycles += cost;
     }
-    return {ops, bytes, end: offset & 65535, cycles, hits: 0, compiled: null};
+    const displacement = byte(offset + 1) << 24 >> 24;
+    const countedLoop = offset + 2 <= 65536 && byte(offset) === 0xe2 &&
+        ((offset + 2 + displacement) & 65535) === start &&
+        !ops.some(op => op.dst === 1 && op.kind !== 'cmp' && op.kind !== 'nop');
+    if (countedLoop) bytes.push(byte(offset),byte(offset + 1));
+    return {ops, bytes, start, end: offset & 65535, cycles, countedLoop, hits: 0, compiled: null};
 }
 
 export function createRegisterBlockExperiment(cpu, mem, mode = 'decoded') {
@@ -80,12 +88,12 @@ export function createRegisterBlockExperiment(cpu, mem, mode = 'decoded') {
     const read = cpu.read, write = cpu.write, cache = new Map();
     const memory = mode === 'wasm' ? new WebAssembly.Memory({initial: 1}) : null;
     const regs = memory ? new Int32Array(memory.buffer, 0, 9) : null;
-    const stats = {blocks: 0, instructions: 0, fallbackInstructions: 0, compilations: 0, compileMs: 0, invalidations: 0};
+    const stats = {blocks: 0, instructions: 0, fallbackInstructions: 0, compilations: 0, compileMs: 0, invalidations: 0, loopIterations: 0};
     const fallback = () => { stats.fallbackInstructions++; cpu.step(); };
     return {stats, runUntil(deadline) {
         while (cpu.cycles < deadline) {
             if (cpu.busTrace !== null || (cpu.flags & 0x100) || cpu.intShadow || cpu.halted || cpu.read !== read || cpu.write !== write) { fallback(); continue; }
-            const key = `${cpu.cs}:${cpu.ip}`, address = ((cpu.cs << 4) + cpu.ip) & 0xfffff;
+            const key = cpu.cs << 16 | cpu.ip, address = ((cpu.cs << 4) + cpu.ip) & 0xfffff;
             let block = cache.get(key);
             if (block && !block.bytes.every((b, i) => b === mem[(address + i) & 0xfffff])) {
                 stats.invalidations++; cache.delete(key); block = null;
@@ -96,12 +104,16 @@ export function createRegisterBlockExperiment(cpu, mem, mode = 'decoded') {
             }
             if (block.ops.length < 2 || cpu.cycles + block.cycles > deadline) { fallback(); continue; }
             if (mode === 'wasm' && ++block.hits === 16) {
-                const before = performance.now(); block.compiled = compile(block.ops, memory);
+                const before = performance.now(); block.compiled = compile(block.ops, memory, block.countedLoop);
                 stats.compileMs += performance.now() - before; stats.compilations++;
             }
-            if (block.compiled) {
+            const iterations = block.countedLoop ? Math.max(0,
+                Math.min(cpu.cx - 1, Math.floor((deadline - cpu.cycles) / (block.cycles + 17)))) : 1;
+            const inWasm = block.compiled && iterations > 0;
+            const looped = inWasm && block.countedLoop;
+            if (inWasm) {
                 for (let i = 0; i < 9; i++) regs[i] = cpu[names[i]];
-                block.compiled();
+                block.compiled(iterations);
                 for (let i = 0; i < 9; i++) cpu[names[i]] = regs[i];
             } else for (const op of block.ops) {
                 const a = cpu[names[op.dst]], b = op.src < 0 ? op.value : cpu[names[op.src]];
@@ -115,9 +127,11 @@ export function createRegisterBlockExperiment(cpu, mem, mode = 'decoded') {
             for (const op of block.ops) if (op.modrm !== null) {
                 cpu.mod = 3; cpu.reg = (op.modrm >> 3) & 7; cpu.rm = op.modrm & 7; cpu.ea = 0; cpu.eaSeg = 0;
             }
-            cpu.ip = block.end; cpu.cycles += block.cycles;
-            cpu._seg = -1; cpu._rep = 0; cpu._fsOpcodeSeen = false; cpu._tookBranch = false; cpu.intShadow = 0;
-            stats.blocks++; stats.instructions += block.ops.length;
+            cpu.ip = looped ? block.start : block.end;
+            cpu.cycles += looped ? iterations * (block.cycles + 17) : block.cycles;
+            cpu._seg = -1; cpu._rep = 0; cpu._fsOpcodeSeen = false; cpu._tookBranch = !!looped; cpu.intShadow = 0;
+            stats.blocks++; stats.instructions += looped ? iterations * (block.ops.length + 1) : block.ops.length;
+            if (looped) stats.loopIterations += iterations;
         }
     }};
 }
