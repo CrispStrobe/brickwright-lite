@@ -125,14 +125,15 @@ declared source forks: 18 in `bw-board`, one in `bw-circuit-ui`, and one in
 copies and generated manifests belong downstream by construction and are not
 upstream source candidates.
 
-**Current measured state:** Lite `2bb7ad8b0` pins `sb3-creator@9173ca75`; its
-`i8086_counter` fork is upstream, the normalized delta is 0/0, and the stale
-declaration is retired. Nineteen source forks remain: 18 `bw-board`, one
-`bw-circuit-ui`, zero `sb3-creator`.
+**Current measured state:** `sb3-creator`'s `i8086_counter` fork and
+`bw-circuit-ui`'s `ExamplesBrowser`/`intro-doc` extraction are upstream. The
+guarded CUI sync at `e18dad586` measures 674/674 source files byte-identical
+and rejects either retired declaration if it returns. Eighteen source forks
+remain, all in `bw-board`; `bw-circuit-ui` and `sb3-creator` are at zero.
 
 **Execution order:** first make cross-repository CI clones immutable, beginning
-with the already claimed bw-circuit-ui lane. Then retire the two singleton forks
-as separate upstream changes. Finally converge `bw-board` by its measured
+with the already claimed bw-circuit-ui lane. The two singleton forks were
+retired as separate upstream changes. Converge `bw-board` next by its measured
 dependency graph: one coupled ten-file unit and eight independent files. The
 `lineLevelOnly` inventory flag and trimmed-line counts locate differences but do
 not establish safe review boundaries. Each slice must preserve complete
