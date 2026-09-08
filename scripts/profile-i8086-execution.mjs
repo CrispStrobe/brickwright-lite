@@ -15,7 +15,7 @@ const cycles = 5_000_000;
 const roots = {baseline, candidate: root};
 const engineRoot = process.env.I8086_ENGINE_ROOT ? resolve(process.env.I8086_ENGINE_ROOT) : null;
 const engineFiles = (process.env.I8086_ENGINE_FILES || '').split(',').filter(Boolean);
-if (engineFiles.some(file => !/^i8086(?:-[a-z]+)?\.js$/.test(file)) || (engineFiles.length && !engineRoot)) {
+if (engineFiles.some(file => !/^(?:i8086(?:-[a-z]+)?|i8254)\.js$/.test(file)) || (engineFiles.length && !engineRoot)) {
     throw new Error('Invalid engine overlay');
 }
 const sha = directory => execFileSync('git', ['rev-parse', 'HEAD'], {cwd: directory, encoding: 'utf8'}).trim();
@@ -42,6 +42,8 @@ await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const browser = await chromium.launch({headless: true});
 const rows = [];
 const profiles = [];
+const comparisons = [];
+let complete = false;
 try {
     for (const rate of [1, 4]) {
         for (const workload of ['mixed', 'words', 'strings']) {
@@ -79,6 +81,7 @@ try {
                             const total = [...counts.values()].reduce((a, b) => a + b, 0);
                             profiles.push({kind, workload, layer, file, self: profile.nodes.map(node => ({
                                 function: node.callFrame.functionName, url: node.callFrame.url,
+                                line: node.callFrame.lineNumber + 1,
                                 percent: 100 * (counts.get(node.id) || 0) / total,
                             })).filter(node => node.percent > 0).sort((a, b) => b.percent - a.percent).slice(0, 25)});
                         }
@@ -98,12 +101,27 @@ try {
                     const values = group.filter(row => row.kind === kind).map(row => row.wallMs).sort((a, b) => a - b);
                     return {min: values[0], median: values[2], max: values[4]};
                 };
-                console.log(JSON.stringify({rate, workload, layer, baseline: spread('baseline'), candidate: spread('candidate')}));
+                const before = spread('baseline');
+                const after = spread('candidate');
+                const comparison = {rate, workload, layer, baseline: before, candidate: after,
+                    throughputChangePercent: 100 * (before.median / after.median - 1),
+                    rangesSeparated: after.max < before.min || before.max < after.min};
+                comparisons.push(comparison);
+                console.log(JSON.stringify(comparison));
             }
         }
     }
+    complete = true;
 } finally {
-    await writeFile(resolve(output, 'results.json'), JSON.stringify({identity, repetitions, cycles, rows, profiles}, null, 2));
+    await writeFile(resolve(output, 'results.json'), JSON.stringify({identity, complete,
+        repetitions, cycles, comparisons, rows, profiles}, null, 2));
+    const lines = ['# 8086 engine comparison', '',
+        `Baseline: ${identity.baseline}. Candidate: ${identity.candidate}. Complete: ${complete}.`, '',
+        'Source-module throughput with UI pacing removed. Ranges overlap unless marked separated; a median change alone is not a verdict.', '',
+        '| CPU throttle | Workload | Layer | Baseline median ms | Candidate median ms | Throughput change | Ranges separated |',
+        '| --- | --- | --- | ---: | ---: | ---: | --- |',
+        ...comparisons.map(c => `| ${c.rate}x | ${c.workload} | ${c.layer} | ${c.baseline.median.toFixed(2)} | ${c.candidate.median.toFixed(2)} | ${c.throughputChangePercent.toFixed(1)}% | ${c.rangesSeparated} |`)];
+    await writeFile(resolve(output, 'summary.md'), lines.join('\n') + '\n');
     await browser.close();
     await new Promise(resolve => server.close(resolve));
 }

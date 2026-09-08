@@ -47,6 +47,11 @@ peripheral configuration had an unprogrammed PIT, also corrected subsequently.
 * Word access: only activate after attributing a material memory cost.
   A fast path must preserve segment and physical wrap, MMIO side effects,
   ROM protection, write watches, traces and display invalidation.
+* Allocation-free string callbacks: rejected. Upstream `b6edb18` passed CI
+  `34197965819`, but Chromium run `34198035385` slowed the bare string core
+  from 4.4 to 4.7 ms normally and 19.1 to 22.0 ms at 4x throttle. Debugger
+  and peripheral results did not improve consistently across profiles.
+  Reverted upstream in `cc84a67`; never vendored into Lite.
 * DOS timer listener caching: direct memory access and bulk/state restore
   make cache invalidation part of correctness. Moving the deadline check
   alone cannot remove steady-state lookups in an unhooked program: the last
@@ -55,6 +60,14 @@ peripheral configuration had an unprogrammed PIT, also corrected subsequently.
 * Peripheral batching: the PIT's `nextWake()` reports device ticks while
   `advanceMs()` consumes milliseconds. A safe scheduler must convert units
   and preserve fractional phase, I/O observations and interrupt boundaries.
+  Instead, evaluate arithmetic countdown within `Counter.advance()` only
+  when the entire call finishes before an edge. The programmed-PIT mixed
+  profile attributed 39.3% of samples to `_advanceChips` and 12.4% to PIT
+  `_tick`. This candidate retains the original loop for edge-crossing calls,
+  BCD, unsupported mode values and fractional requests. Differential tests
+  compare all modes and both bases against individual `_tick` transitions,
+  including callback snapshots, interleaved gates/latches/restores and
+  callback-driven reloads. No new scheduler, time conversion or cached state.
 * Workers, dynamic translation and lazy flags remain conditional on the
   resulting profiles. They introduce independent behavior and validation
   requirements; they are not prerequisites for a smaller interpreter change.

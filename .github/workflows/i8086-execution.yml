@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: CrispStrobe/bw-board
-          ref: b6edb18af48af69b5ecc6a7d1e066b5bd4af30ad
+          ref: 42c6316aac92dbc4e90a111c7089fba612c7b615
           path: candidate-engine
       - uses: actions/setup-node@v4
         with:
@@ -30,7 +30,7 @@ jobs:
         env:
           I8086_BASELINE: baseline
           I8086_ENGINE_ROOT: candidate-engine
-          I8086_ENGINE_FILES: i8086.js
+          I8086_ENGINE_FILES: i8254.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:
