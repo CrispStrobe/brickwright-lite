@@ -6,6 +6,30 @@ plan or roadmap. Detailed commit, CI and ownership evidence remains in Git and
 
 ## 2026-09-08
 
+- **Compiler recovery now follows routed lesson URLs and SIM mode cannot open
+  part properties** (bw-circuit-ui upstream `59c4dce8b92f6f0cc8dea5b7be051530b6d779f9`,
+  upstream run `34242742198`; Lite `37f41c6da8b4926337076b4f5be1e472090102dd`,
+  exact-head run `34246477283`, all four jobs green). The local-compiler choice
+  reads the query inside a hash-routed lesson, including the empty page-query
+  edge, and keeps an explicit page query authoritative. Hosted compilation and
+  Settings download use separate origins, so recovery text now points to Menu →
+  Settings → C Compiler → Build in this page → Download compiler. A central
+  BoardCanvas edit policy blocks every property-opening path in SIM, hides its
+  adjust control, clears stale editors on SIM entry, and guards dialog render.
+- **One seated STC12 buzzer gained a real electrical-equivalence oracle**
+  (`cd26a7e9e590cec3d5c32c593ad22c161493db2c`, exact-head run `34230601507`,
+  all four jobs green). The inferred active-high fallback and an independently
+  assembled reference both solve to 0/4 V and 0/40 mA at LOW/HIGH, with DC and
+  200/1000/4000 Hz tone behavior checked. LED substitution, an opened ground
+  jumper, and the production-source buzzer-to-LED mutation fail by name. Other
+  polarities, MCUs, authored benches, and corpus surfaces remain outside it.
+- **The vendor-convergence census became a finite roadmap:** 20 declared source
+  forks (18 `bw-board`, one `bw-circuit-ui`, one `sb3-creator`) and 11
+  downstream-created placements at `37f41c6da`. The `bw-board` dependency graph
+  is one coupled ten-file unit plus eight independent files. Licence copies,
+  generated manifests, sync artefacts, and Lite-only helpers are classified by
+  ownership instead of being copied upstream blindly.
+
 - **The GPL SDCC payload left the BSD-3 repository and became an explicit toolchain**
   (`0b79a6f23`, following CLI `fa87c0d7e` and manager `0dec905c3`). The 202
   tracked compiler files were removed and ignored. CI may fetch the compiler
