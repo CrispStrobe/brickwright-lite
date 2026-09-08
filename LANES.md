@@ -755,6 +755,7 @@ executed in 20 green main runs, five files recorded nowhere.
 - test/pin-only-moves-with-flag.test.mjs :: BW_BOARD_DIR unset :: workflow .github/workflows/build.yml step 'Fetch the pinned bw-board tree for the pin-reader tests' sets BW_BOARD_DIR; executed in 14 of 17 green runs to 2026-09-07
 - test/pin-only-moves-with-flag.test.mjs :: BW_CIRCUIT_UI_DIR unset :: box lego-vps (BW_CIRCUIT_UI_DIR=/mnt/volume1/code/bw-circuit-ui) 2026-09-07 lego-b9 — LANES row T9b, 8/8
 - test/pin-only-moves-with-flag.test.mjs :: SB3_CREATOR_DIR unset :: box lego-vps (SB3_CREATOR_DIR=/mnt/volume1/code/sb3-creator) 2026-09-07 lego-b9 — LANES row T9b, 8/8
+- test/vendor-sb3creator-deltas.test.mjs :: SB3_CREATOR_DIR unset -- the sb3-creator delta set is NOT verified here :: workflow .github/workflows/vendor-freshness.yml step 'sb3-creator deltas are the declared ones' sets SB3_CREATOR_DIR to the checkout it has already pinned, added 2026-09-08. It runs there rather than in build.yml for the same reason the bw-circuit-ui corpus does: vendor-freshness already checks out all three upstreams at their pins, and build.yml supplies no sb3-creator tree, so a second clone on every push and PR would duplicate a check that runs on every push to main and nightly.
 - test/pin-only-moves-with-flag.test.mjs :: STC_COMPILER_DIR unset :: box lego-vps (STC_COMPILER_DIR=/mnt/volume1/code/stc-compiler) 2026-09-07 lego-b9 — LANES row T9b, 8/8
 
 ## Steps that run elsewhere
