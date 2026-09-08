@@ -98,6 +98,15 @@ export const census = (runs, yamlAtSha) => {
     return workflows;
 };
 
+// A workflow introduced on a branch does not exist at the newest main run.
+// Read its own newest completed run instead of feeding an empty file to the
+// parser. Prefer main evidence when this workflow has any.
+export const workflowSource = (runs, workflow, fallback) => {
+    const own = runs.filter(run => run.workflow === workflow)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return own.find(run => run.branch === 'main') || own[0] || fallback;
+};
+
 const fetchAll = () => {
     const repo = gh(['repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner']).trim();
     const wfs = readdirSync(path.join(ROOT, '.github/workflows')).filter(f => f.endsWith('.yml'));
@@ -112,18 +121,25 @@ const fetchAll = () => {
             runs.push({run: r.databaseId, workflow: wf, branch: r.headBranch, sha: r.headSha.slice(0, 9), createdAt: r.createdAt, jobs});
         }
     }
-    // the YAML at the newest main run's sha, per workflow (a step younger than that is not judged)
+    // Bind each declaration to a run that actually contained that workflow.
     const newestMain = runs.filter(r => r.branch === 'main').sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)[0];
     const yamlAtSha = {};
-    for (const wf of wfs) { try { yamlAtSha[wf] = execFileSync('git', ['show', `${newestMain.sha}:.github/workflows/${wf}`], {cwd: ROOT, encoding: 'utf8'}); } catch { yamlAtSha[wf] = ''; } }
-    return {repo, runs, newestMain, yamlAtSha, wfs};
+    const sourceShas = {};
+    for (const wf of wfs) {
+        const source = workflowSource(runs, wf, newestMain);
+        if (!source) throw new Error(`No completed run can supply ${wf}`);
+        sourceShas[wf] = source.sha;
+        yamlAtSha[wf] = execFileSync('git', ['show', `${source.sha}:.github/workflows/${wf}`], {cwd: ROOT, encoding: 'utf8'});
+    }
+    return {repo, runs, newestMain, yamlAtSha, sourceShas, wfs};
 };
 
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
     if (process.argv.includes('--fetch')) {
-        const {repo, runs, newestMain, yamlAtSha, wfs} = fetchAll();
+        const {repo, runs, newestMain, yamlAtSha, sourceShas, wfs} = fetchAll();
         const workflows = census(runs, yamlAtSha);
+        for (const wf of wfs) workflows[wf].sourceSha = sourceShas[wf];
         const body = {generatedAt: new Date().toISOString(), repo, headSha: newestMain.sha, newestMainRun: newestMain.run, runs: runs.map(r => ({run: r.run, workflow: r.workflow, branch: r.branch, sha: r.sha})), workflowsInTree: wfs, workflows};
         writeFileSync(READINGS, JSON.stringify(body, null, 1) + '\n');
         // `--fetch` REWRITES A TRACKED FILE. It reads like a read-only flag and is
@@ -133,7 +149,7 @@ if (isMain) {
         // named on stdout every time, with what to do about it.
         console.log(`::notice::${path.relative(ROOT, READINGS)} was REWRITTEN by --fetch. It is tracked: commit it on its own, or \`git checkout\` it before committing unrelated work — never sweep it in with \`git add -A\`.`);
         const all = Object.values(workflows).flatMap(w => Object.values(w.steps));
-        console.log(`ci-step-census: ${runs.length} runs, ${wfs.length} workflows, ${all.length} steps — never ${all.filter(s => s.class === 'never').length}, sometimes ${all.filter(s => s.class === 'sometimes').length}, always ${all.filter(s => s.class === 'always').length}; in file at ${newestMain.sha} but in no run: ${Object.values(workflows).reduce((a, w) => a + w.inFileInNoRun.length, 0)}`);
+        console.log(`ci-step-census: ${runs.length} runs, ${wfs.length} workflows, ${all.length} steps — never ${all.filter(s => s.class === 'never').length}, sometimes ${all.filter(s => s.class === 'sometimes').length}, always ${all.filter(s => s.class === 'always').length}; in workflow files at their recorded sourceShas but in no run: ${Object.values(workflows).reduce((a, w) => a + w.inFileInNoRun.length, 0)}`);
     }
     const readings = JSON.parse(readFileSync(READINGS, 'utf8'));
     const pointers = parseStepPointers(readFileSync(path.join(ROOT, 'LANES.md'), 'utf8'));

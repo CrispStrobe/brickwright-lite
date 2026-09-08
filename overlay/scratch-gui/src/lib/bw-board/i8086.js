@@ -906,6 +906,40 @@ export class I8086 {
         return iters;
     }
 
+    // Dedicated loops give the host optimizer a fixed call target without
+    // changing byte accesses, live register reads or REP interrupt points.
+    _repeatMovs(w) {
+        if (!this._rep) { this._movs(w); return 1; }
+        let iters = 0;
+        while (this.cx !== 0) {
+            this._movs(w);
+            iters++;
+            this.cx = (this.cx - 1) & 0xffff;
+            if (this.cx !== 0 && this.canTakeInterrupt() && this.intPending()) {
+                this.ip = this._repIp & 0xffff;
+                this.repInterrupted = (this.repInterrupted || 0) + 1;
+                return iters;
+            }
+        }
+        return iters;
+    }
+
+    _repeatStos(w) {
+        if (!this._rep) { this._stos(w); return 1; }
+        let iters = 0;
+        while (this.cx !== 0) {
+            this._stos(w);
+            iters++;
+            this.cx = (this.cx - 1) & 0xffff;
+            if (this.cx !== 0 && this.canTakeInterrupt() && this.intPending()) {
+                this.ip = this._repIp & 0xffff;
+                this.repInterrupted = (this.repInterrupted || 0) + 1;
+                return iters;
+            }
+        }
+        return iters;
+    }
+
     /**
      * Cycles for a string instruction that ran `iters` times.
      *
@@ -1174,6 +1208,20 @@ export class I8086 {
             // and when the byte turns out not to be a prefix it IS the opcode
             // and is used as such. Every byte reaches `read()` exactly once.
             const b = this.read(I8086.phys(this.cs, this.ip)) & 0xff;
+            // Segment prefixes are 26/2E/36/3E; LOCK/REP and their alias
+            // occupy F0-F3. Two masked tests keep ordinary opcodes out of
+            // the prefix dispatch without changing a single bus fetch.
+            if ((b & 0xe7) !== 0x26 && (b & 0xfc) !== 0xf0) {
+                if (this.busTrace !== null) {
+                    this.busTrace.push(this._fsOpcodeSeen ? 5 : 0, I8086.phys(this.cs, this.ip));
+                    this._fsOpcodeSeen = true;
+                    this._seqIp = (this.ip + 1) & 0xffff;
+                    this._seqCs = this.cs;
+                }
+                this.ip = (this.ip + 1) & 0xffff;
+                op = b;
+                break;
+            }
             // Not a closure per instruction: allocating one on every step is
             // measurable in a loop this hot, and the trace is off by default.
             const eaten = this.busTrace === null ? NOOP : () => this.busTrace.push(0, I8086.phys(this.cs, this.ip));
@@ -1190,22 +1238,9 @@ export class I8086 {
                 this._repIp = this.ip;
                 this.ip = (this.ip + 1) & 0xffff; n += 2;
                 this._rep = b;
-            } else if (b === 0xf0 || b === 0xf1) {
+            } else {
                 eaten();
                 this.ip = (this.ip + 1) & 0xffff; n += 2;   // LOCK, and its alias
-            } else {
-                // NOT A PREFIX: this byte is the opcode, already read above.
-                // Do exactly what _fetch8Traced would have done -- minus the
-                // second read, which was the defect.
-                if (this.busTrace !== null) {
-                    this.busTrace.push(this._fsOpcodeSeen ? 5 : 0, I8086.phys(this.cs, this.ip));
-                    this._fsOpcodeSeen = true;
-                    this._seqIp = (this.ip + 1) & 0xffff;
-                    this._seqCs = this.cs;
-                }
-                this.ip = (this.ip + 1) & 0xffff;
-                op = b;
-                break;
             }
         }
 
@@ -1394,11 +1429,11 @@ export class I8086 {
             case 0xa1: { const a = this._fetch16(); this.ax = this._rd16(this._srcSeg(), a); return 10; }
             case 0xa2: { const a = this._fetch16(); this._wr8(this._srcSeg(), a, this.al); return 10; }
             case 0xa3: { const a = this._fetch16(); this._wr16(this._srcSeg(), a, this.ax); return 10; }
-            case 0xa4: case 0xa5: return this._repCost(this._repeat(() => this._movs(op & 1), false), 18, 17);
+            case 0xa4: case 0xa5: return this._repCost(this._repeatMovs(op & 1), 18, 17);
             case 0xa6: case 0xa7: return this._repCost(this._repeat(() => this._cmps(op & 1), true), 22, 22);
             case 0xa8: this._logic(this.al & this._fetch8(), 0); return 4;
             case 0xa9: this._logic(this.ax & this._fetch16(), 1); return 4;
-            case 0xaa: case 0xab: return this._repCost(this._repeat(() => this._stos(op & 1), false), 11, 10);
+            case 0xaa: case 0xab: return this._repCost(this._repeatStos(op & 1), 11, 10);
             case 0xac: case 0xad: return this._repCost(this._repeat(() => this._lods(op & 1), false), 12, 13);
             case 0xae: case 0xaf: return this._repCost(this._repeat(() => this._scas(op & 1), true), 15, 15);
 

@@ -19,6 +19,7 @@ import {
     validateI8086WorkloadIntegrity
 } from './lib/i8086-performance.mjs';
 import {auditWebpackResourceWindow, summarizeWebpackOwnership} from './lib/webpack-ownership.mjs';
+import {measureUnpacedTarget} from './lib/i8086-unpaced-target.mjs';
 
 const url = process.env.PROOF_URL || process.env.BW_URL || 'http://localhost:8617/';
 const outDir = resolve(process.env.I8086_PERF_ARTIFACTS || 'artifacts/i8086-performance');
@@ -285,7 +286,11 @@ try {
         const ratio = simMs / elapsedMs;
         const heartbeatDelta = (heartbeatAfter.value - heartbeatBefore.value) >>> 0;
         const cycleDelta = heartbeatAfter.cycles - heartbeatBefore.cycles;
+        // A separate synchronous phase on the actual webpack target. Do not
+        // mix these samples with paced UI latency or startup attribution.
+        const unpacedTarget = await page.evaluate(measureUnpacedTarget, {});
         const result = {
+            unpacedTarget,
             profile: name,
             repetition,
             cpuThrottleRate,

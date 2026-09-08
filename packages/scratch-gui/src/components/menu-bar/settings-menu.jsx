@@ -7,6 +7,7 @@ import locales from 'scratch-l10n';
 
 import MenuBarMenu from './menu-bar-menu.jsx';
 import BwAbout from './bw-about.jsx';
+import I8086Lab from './i8086-lab.jsx';
 import {MenuItem, MenuSection, Submenu} from '../menu/menu.jsx';
 import menuBarStyles from './menu-bar.css';
 import styles from './settings-menu.css';
@@ -176,9 +177,13 @@ const SettingsMenu = ({canChangeLanguage, canChangeTheme, isRtl, onRequestClose,
                     <MenuItem onClick={() => { emit('bw-open-about'); onRequestClose(); }}>
                         About Brickwright…
                     </MenuItem>
+                    <MenuItem onClick={() => { emit('bw-open-i8086-lab'); onRequestClose(); }}>
+                        8086 execution diagnostics…
+                    </MenuItem>
                 </MenuSection>
             </MenuBarMenu>
             <BwAbout hideTrigger />
+            <I8086Lab />
         </div>
     );
 };

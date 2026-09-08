@@ -19,7 +19,18 @@ import assert from 'node:assert/strict';
 import {readFileSync, readdirSync} from 'node:fs';
 import path from 'node:path';
 import {parseStepPointers, judgeSteps, STEP_HEADING} from '../scripts/lib/skip-pointers.mjs';
-import {census, yamlSteps, why, READINGS} from '../scripts/gen-ci-steps.mjs';
+import {census, yamlSteps, why, workflowSource, READINGS} from '../scripts/gen-ci-steps.mjs';
+
+test('a new workflow sources its own branch run until main has actually run it', () => {
+    const main = {workflow: 'old.yml', branch: 'main', sha: 'main', createdAt: '2026-09-08'};
+    const branch = {workflow: 'new.yml', branch: 'feature', sha: 'branch', createdAt: '2026-09-07'};
+    assert.equal(workflowSource([main, branch], 'new.yml', main), branch);
+    const older = {...branch, sha: 'older', createdAt: '2026-09-06'};
+    assert.equal(workflowSource([older, branch, main], 'new.yml', main), branch);
+    const promoted = {...older, branch: 'main', sha: 'promoted'};
+    assert.equal(workflowSource([branch, promoted, main], 'new.yml', main), promoted);
+    assert.equal(workflowSource([main], 'unrun.yml', main), main);
+});
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const readings = JSON.parse(readFileSync(READINGS, 'utf8'));
@@ -61,6 +72,8 @@ test('mutation: the four shapes that must redden, and a dated pointer that clear
     assert.match(judgeSteps(never, undated)[0], /a pointer without a date is a claim nobody can check/);
     const inNoRun = structuredClone(base); inNoRun.workflows['a.yml'].inFileInNoRun = ['three']; inNoRun.workflows['a.yml'].stepsInFile.push('three');
     assert.match(judgeSteps(inNoRun, [])[0], /a\.yml :: "three": in the file at abc123456 but in none of 5 run\(s\) — a step in no run/);
+    inNoRun.workflows['a.yml'].sourceSha = 'branch123';
+    assert.match(judgeSteps(inNoRun, [])[0], /in the file at branch123/);
     const noRuns = structuredClone(base); noRuns.workflows['b.yml'].runs = 0;
     assert.match(judgeSteps(noRuns, [])[0], /b\.yml: no completed run in the readings — a workflow nobody runs/);
     assert.deepEqual(judgeSteps(noRuns, parseStepPointers(`${STEP_HEADING}\n- b.yml :: * :: runs on tags only, last 2026-09-01\n`)), []);
