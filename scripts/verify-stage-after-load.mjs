@@ -417,6 +417,34 @@ async function run () {
         check('the poke actually changed a gated prop (stageSize)', started,
             poke.ran ? `stageSize ${afterViewport.stageSizeMode} -> ${afterGreenFlag.stageSizeMode}` : poke.why);
 
+        // STEP 3c — CAN A BOX CHANGE WITH NO GATED PROP LEAVE A STALE BUFFER?
+        //
+        // This decides whether the repair needs an observer or only a resize at
+        // mount, and it is a real question rather than a hypothetical one:
+        // setPaneSize IS dispatched by gui.jsx, so users can resize panes, and
+        // pane size is NOT in shouldComponentUpdate's list. If the box moves
+        // and the buffer does not follow, the stage is stale after every drag
+        // of the divider and an observer is justified BY EVIDENCE. If the
+        // buffer keeps up, adding one would be a mechanism in a container we do
+        // not own, guarding a case that cannot occur.
+        //
+        // Run at a point where the buffer is known non-zero, so a stale reading
+        // is unambiguous rather than the pre-existing zero.
+        const paneResized = await page.evaluate(() => {
+            const store = window.__brickwrightStore;
+            if (!store) return {ran: false, why: 'no store'};
+            store.dispatch({type: 'scratch-gui/pane-layout/SET_PANE_SIZE', column: 'right', size: 'l'});
+            return {ran: true};
+        });
+        await settle();
+        const afterPaneResize = await snap('3c-after-pane-resize');
+        const boxMoved = afterPaneResize.box.w !== afterGreenFlag.box.w ||
+            afterPaneResize.box.h !== afterGreenFlag.box.h;
+        check('resizing a pane actually moved the stage box', boxMoved,
+            paneResized.ran
+                ? `box ${afterGreenFlag.box.w}x${afterGreenFlag.box.h} -> ${afterPaneResize.box.w}x${afterPaneResize.box.h}`
+                : paneResized.why);
+
         // STEP 5 — the control: real fullscreen, which is what the owner did.
         await page.evaluate(() => {
             const store = window.__brickwrightStore;
@@ -425,7 +453,7 @@ async function run () {
         await settle();
         const afterFullscreen = await snap('4-after-fullscreen');
 
-        const all = [before, afterLoad, afterRedraw, afterViewport, afterGreenFlag, afterFullscreen];
+        const all = [before, afterLoad, afterRedraw, afterViewport, afterGreenFlag, afterPaneResize, afterFullscreen];
         await writeFile(join(artifacts, 'measurements.json'), JSON.stringify(all, null, 2));
         for (const m of all) {
             console.log(`  ${m.name.padEnd(28)} buffer ${m.drawingBuffer.w}x${m.drawingBuffer.h}  ` +
@@ -489,6 +517,25 @@ async function run () {
             console.log('\nWHAT SIZES THE BUFFER: a gated prop change did NOT size it.');
             console.log('  The componentDidUpdate reading does not explain it, and whatever');
             console.log('  fullscreen does is something else. Do not build on the gate theory.');
+        }
+
+        // Reported whether or not it changes the verdict: it decides the SHAPE
+        // of the repair, which is a separate question from naming the defect.
+        if (!boxMoved) {
+            console.log('\nDOES A PANE RESIZE LEAVE A STALE BUFFER: UNDECIDED — the box did not');
+            console.log('  move, so nothing was tested. Not evidence either way.');
+        } else if (afterPaneResize.drawingBuffer.w === afterGreenFlag.drawingBuffer.w &&
+                   afterPaneResize.drawingBuffer.h === afterGreenFlag.drawingBuffer.h) {
+            console.log(`\nDOES A PANE RESIZE LEAVE A STALE BUFFER: YES. The box moved to ` +
+                `${afterPaneResize.box.w}x${afterPaneResize.box.h} and the buffer stayed at ` +
+                `${afterPaneResize.drawingBuffer.w}x${afterPaneResize.drawingBuffer.h}.`);
+            console.log('  A resize at mount alone would not cover this. An observer is');
+            console.log('  justified by evidence, not by caution.');
+        } else {
+            console.log(`\nDOES A PANE RESIZE LEAVE A STALE BUFFER: NO. The buffer followed the ` +
+                `box to ${afterPaneResize.drawingBuffer.w}x${afterPaneResize.drawingBuffer.h}.`);
+            console.log('  So a resize at mount is the whole repair, and adding an observer to a');
+            console.log('  container we do not own would guard a case that cannot occur.');
         }
 
         if (verdict) {
