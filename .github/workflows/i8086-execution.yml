@@ -13,12 +13,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
-          ref: 1d849ee9bc03565cba16e3012ca4fa0629df5b44
+          ref: 729d496fe25f28b102a7107b8013571226e401dc
           path: baseline
       - uses: actions/checkout@v4
         with:
           repository: CrispStrobe/bw-board
-          ref: f2c89fc32c2ac747d8c073c742f68153ee0d1cc1
+          ref: b6edb18af48af69b5ecc6a7d1e066b5bd4af30ad
           path: candidate-engine
       - uses: actions/setup-node@v4
         with:
