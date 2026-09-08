@@ -235,14 +235,26 @@ still hits — this is the intended behavior, not a stale region.
 
 The owner's camera arrived correct.
 
-## OPEN: spec-update 006 (stale hobby_gearmotor refs) — bw-circuit-ui's fix
+## RESOLVED: spec-update 006 (stale hobby_gearmotor refs)
 
 bw-parts `006-stale-gearmotor-refs.md`: 5 code references to the old slug
 `hobby_gearmotor` survive in bw-circuit-ui after the sidecar resync. DRC,
 wire router, circuit model, and thumbnail renderer still match the old name.
-lite carries the same stale refs via the vendor — fixing them here would be
-overwritten by the next sync. bw-circuit-ui must fix upstream, then we
-re-vendor.
+The runtime references were corrected upstream and guarded across DRC arrays
+and Sets, the wire router, circuit model and thumbnail renderer by five
+one-at-a-time mutations. Promoted bw-circuit-ui `9cb48df02f0cc54e057598ce76e097bfc6906329`
+also pins its reviewed example corpus to sb3-creator
+`1d7e6c69247eecf5d28343799ce3971599073e1b`; its 32 schematic baselines were
+atomically restamped after the six retired 46-port-overcurrent variants were
+replaced with reviewed dense drawings. Hosted upstream CI `34245969165` is the
+promotion receipt.
+
+Lite already carried the corrected runtime vendor. The remaining old JSON/SVG
+pair existed only in the ignored-but-partially-tracked package tree: no index,
+source, overlay file or example referenced it, while the canonical
+`gearmotor.json` and `gearmotor.svg` pair exists in both overlay and package
+trees. The unreachable old pair is now deleted, with a focused absence,
+non-reference and canonical-presence gate.
 
 ### Spec-update convention
 
