@@ -2,18 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
-const sources = [
-    '../overlay/scratch-gui/src/lib/bw-debug/debug-runner.js',
-    '../packages/scratch-gui/src/lib/bw-debug/debug-runner.js'
-].map(path => readFileSync(new URL(path, import.meta.url), 'utf8'));
-const benchSources = [
-    '../overlay/scratch-gui/src/lib/bw-debug/i8086-dos-bench.js',
-    '../packages/scratch-gui/src/lib/bw-debug/i8086-dos-bench.js'
-].map(path => readFileSync(new URL(path, import.meta.url), 'utf8'));
-const panelSources = [
-    '../overlay/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx',
-    '../packages/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx'
-].map(path => readFileSync(new URL(path, import.meta.url), 'utf8'));
+const source = path => readFileSync(new URL(path, import.meta.url), 'utf8');
+const sources = [source('../overlay/scratch-gui/src/lib/bw-debug/debug-runner.js')];
+const benchSources = [source('../overlay/scratch-gui/src/lib/bw-debug/i8086-dos-bench.js')];
+const panelSources = [source('../overlay/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx')];
 
 test('the assembled DOS path does not eagerly load the bw-board barrel', () => {
     for (const source of sources) {

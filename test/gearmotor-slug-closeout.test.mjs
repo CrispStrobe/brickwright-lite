@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync, readdirSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
 import path from 'node:path';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-const ROOTS = ['overlay/scratch-gui/src/lib/bw-circuit-ui',
-    'packages/scratch-gui/src/lib/bw-circuit-ui'];
+const ROOTS = ['overlay/scratch-gui/src/lib/bw-circuit-ui'];
+const GENERATED_ROOT = 'packages/scratch-gui/src/lib/bw-circuit-ui';
 const OLD = 'hobby_gearmotor';
 
 const walk = dir => readdirSync(dir, {withFileTypes: true}).flatMap(entry => {
@@ -41,6 +42,10 @@ test('retired gearmotor slug is absent and canonical pair remains reachable', ()
         assert.match(readFileSync(index, 'utf8'), /from ['"]\.\/gearmotor\.json['"]/,
             `canonical gearmotor is not imported by ${path.relative(ROOT, index)}`);
     }
+    const generatedTracked = execFileSync('git', ['ls-files', `${GENERATED_ROOT}/parts-data/`],
+        {encoding: 'utf8'}).split('\n').filter(Boolean);
+    assert.equal(generatedTracked.some(file => file.includes(OLD)), false,
+        `${OLD} survives as a force-added generated package asset`);
 });
 
 test('gearmotor closeout rejects old asset, stale reference and missing canonical mutations', () => {
@@ -54,6 +59,6 @@ test('gearmotor closeout rejects old asset, stale reference and missing canonica
     assert.throws(() => validateCloseout({...good,
         contents: new Map([['runtime.js', `case '${OLD}':`]])}), /still reference/);
     const missing = new Set(baseFiles);
-    missing.delete(`${ROOTS[1]}/parts-data/gearmotor.svg`);
+    missing.delete(`${ROOTS[0]}/parts-data/gearmotor.svg`);
     assert.throws(() => validateCloseout({...good, files: missing}), /canonical gearmotor\.svg missing/);
 });

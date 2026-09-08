@@ -14,7 +14,6 @@ import {readFileSync} from 'node:fs';
 
 const read = p => readFileSync(p, 'utf8');
 const MANAGER = 'overlay/scratch-gui/src/lib/toolchain-manager.js';
-const MIRROR = 'packages/scratch-gui/src/lib/toolchain-manager.js';
 const MENU = 'overlay/scratch-gui/src/components/menu-bar/settings-menu.jsx';
 const BOOT = 'overlay/scratch-gui/src/playground/render-gui.jsx';
 
@@ -77,9 +76,4 @@ test('closing the window does not cancel a download', () => {
     const close = src.slice(src.indexOf('export const closePanel'), src.indexOf('export const openPanel'));
     assert.equal(/abort\(\)/.test(close), false,
         'closing a dialog is not a decision about the download; a half-finished one resumes anyway');
-});
-
-test('the overlay and its tracked mirror agree', () => {
-    assert.equal(read(MANAGER), read(MIRROR),
-        'integrate.mjs copies overlay -> packages; a fix to one only survives until the next integrate');
 });
