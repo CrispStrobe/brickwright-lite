@@ -1,5 +1,9 @@
 # The 8086 tier — core plan and status
 
+For the separate, planned wireable 80286 target, see the
+[circuit-first plan](I80286-CIRCUIT-PLAN.md). Its proposed capabilities are not
+part of the shipped 8086 status below.
+
 Started 2026-09-03. The retro tier gains a third CPU beside the W65C02 and the
 Z80, built the same way and verified to the same standard.
 
