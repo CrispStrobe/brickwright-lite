@@ -6,6 +6,13 @@ plan or roadmap. Detailed commit, CI and ownership evidence remains in Git and
 
 ## 2026-09-08
 
+- **The debugger-history browser proof no longer races a program that pauses
+  itself** (Lite `4218ebb1e9f9c1d3d29ee0971b9e4a596189eacd`; Build
+  `34266508832`, all four executing jobs green; debugger-focused
+  `34266511938` green). The proof now reads the phase and dispatches Pause in
+  one browser event-loop action: an already-paused program is accepted, while
+  a running program is paused through the real control. Deterministic unit
+  cases cover both paths and refuse a disabled control in any other phase.
 - **The active-low lesson split reached Lite through the guarded sb3 corpus
   pin** (content commit `c593574367179132aa193d7f5a4477c0299e3ab3`, shipped
   pin `9173ca756a72e5be81578a084c4c783ebc5c267d`). Lessons 06,

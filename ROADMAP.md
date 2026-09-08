@@ -125,6 +125,11 @@ declared source forks: 18 in `bw-board`, one in `bw-circuit-ui`, and one in
 copies and generated manifests belong downstream by construction and are not
 upstream source candidates.
 
+**Current measured state:** Lite `2bb7ad8b0` pins `sb3-creator@9173ca75`; its
+`i8086_counter` fork is upstream, the normalized delta is 0/0, and the stale
+declaration is retired. Nineteen source forks remain: 18 `bw-board`, one
+`bw-circuit-ui`, zero `sb3-creator`.
+
 **Execution order:** first make cross-repository CI clones immutable, beginning
 with the already claimed bw-circuit-ui lane. Then retire the two singleton forks
 as separate upstream changes. Finally converge `bw-board` by its measured
@@ -977,13 +982,11 @@ keystrokes and each arrival is already an event); and the display's scan
 "lives in the Timer-0 ISR" (it lives in a task now). Worth re-reading every
 refusal whenever a capability lands.
 
-**STILL OPEN, and it is the one thing between here and the owner's goal:** the
-8086 cannot be SEATED on a drawn board in lite. Every piece exists upstream —
-bw-board master registers `i8086`/`i8088`/`i8255`/`i8254`/`i8253` DIPs, and
-bw-circuit-ui master carries the parts and the reseat substitution — but lite's
-vendored copies are behind, and the sync tool's hand-written manifest covers 26
-of 120 vendored files with the whole 8086 tier outside it. Assigned; needs
-`sync-bw-board.mjs --dir` plus the parts-data sidecars.
+**CLOSED:** the 8086 can be seated on a drawn board in Lite. The palette offers
+the Intel 8086 and 8255 PPI, the registered sidecars carry their DIP geometry,
+and the circuit tier contains the subsystem reseat transform and an executable
+6502-to-8086 equivalence gate. The older text here predated the guarded
+bw-circuit-ui sync and must not be used to schedule another palette lane.
 
 Three steps, in dependency order, each with what already exists under it.
 
@@ -1019,13 +1022,10 @@ the ASM tab, not in `ALL_ASM_EXAMPLES`, not in the local-assembly gate. Fixed;
 the gate now pins our ids by name, because `length >= 5` passed on upstream's
 six alone and said nothing about ours.
 
-**STILL OPEN: no 8086 part in the circuit palette**, which is why the device
-sits in the Code tab's picker labelled "assembly only" rather than arriving
-from a drawn board. The coverage lane found the deeper half of this on
-2026-09-04 — there is no `i8255` schematic part either (no DIP in
-`retro-dips.js`, no registry entry, no sidecar), so an 8086/8255 GPIO board has
-never been drawable. They own that; the pinout and the active-HIGH RESET trap
-are in the thread.
+**CLOSED:** the circuit palette offers `i8086` and `i8255`, with registered
+parts-data sidecars and explicit simulation capability labels. The active-HIGH
+RESET and no-native-GPIO constraints remain part of the circuit contract, not
+missing palette work.
 
 #### 3.8.2 Pseudocode → ASM → 8086 — LANDED 2026-09-04
 
@@ -1167,7 +1167,7 @@ emit 32-bit arithmetic as register pairs, or refuse the narrowing by name in
 the shape `i8086-asm.js` already uses for unsupported directives. `ia16-gcc`
 gets this right for free, which is a genuine argument for door 1 beyond speed.
 
-#### 3.8.3 Circuit examples that RESEAT onto an 8086 — MEDIUM, and it is the point
+#### 3.8.3 Circuit examples that RESEAT onto an 8086 — LANDED
 
 The owner's framing: an example currently drawn around a Nano, a Pico, a 6502
 or an STC should be reseatable onto an 8086 in place. That is the thing that
@@ -1185,6 +1185,14 @@ that rewrites the netlist rather than the schematic image; and a gate that the
 reseated example still extracts to a machine that runs. **The gate is the
 deliverable** — a reseat that produces a board which extracts but does not run
 is the failure this tier keeps finding in other forms.
+
+That deliverable is present. `model/reseat.js` infers and lifts the active CPU
+subsystem, preserves the external net identity, and drops in an executable
+8086/8255 subsystem. `test/reseat-gate-generated-8086.test.mjs` compiles the
+8086 side from pseudocode and compares its eight-LED walk with the 6502
+baseline; `test/pseudocode-8086-reseat.test.mjs` separately holds every shipped
+STC example to RUNS or a named refusal. What remains is product content such as
+the P7b VGA/keyboard examples, not the subsystem transform.
 
 #### 3.8.4 8086 performance follow-up — ORDERED 2026-09-05
 
