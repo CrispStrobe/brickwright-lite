@@ -116,6 +116,28 @@ class Stage extends React.Component {
         this.mountSizeFrame = requestAnimationFrame(() => {
             this.mountSizeFrame = requestAnimationFrame(() => this.sizeBufferToBox('first-frame'));
         });
+        // AND WHEN THE BOX FIRST GAINS A SIZE, which is later than either of
+        // the above and is the whole of the defect.
+        //
+        // I ARGUED AGAINST THIS OBSERVER AND THE EVIDENCE OVERTURNED ME. The
+        // argument was that every size change comes through a gated prop, so
+        // an observer would guard a case that cannot occur — and that is true
+        // of every change AFTER the stage has a size. It is not true of the
+        // first one. Measured: the box is 0x0 at mount, still 0x0 a frame
+        // later (data-bw-sized recorded `first-frame:0x0`), and only becomes
+        // 480x360 once a project has loaded. That 0 -> 480 transition is
+        // driven by no gated prop, so nothing in the update path sees it.
+        if (typeof ResizeObserver === 'function') {
+            this.boxObserver = new ResizeObserver(() => {
+                const r = this.canvas.getBoundingClientRect();
+                if (r.width > 0 && r.height > 0 &&
+                    (Math.round(r.width) !== this.renderer.canvas.width ||
+                     Math.round(r.height) !== this.renderer.canvas.height)) {
+                    this.sizeBufferToBox('observed');
+                }
+            });
+            this.boxObserver.observe(this.canvas);
+        }
         this.props.vm.runtime.addListener('QUESTION', this.questionListener);
     }
     /**
@@ -153,6 +175,7 @@ class Stage extends React.Component {
     }
     componentWillUnmount () {
         if (this.mountSizeFrame) cancelAnimationFrame(this.mountSizeFrame);
+        if (this.boxObserver) this.boxObserver.disconnect();
         this.detachMouseEvents(this.canvas);
         this.detachRectEvents();
         this.stopColorPickingLoop();
