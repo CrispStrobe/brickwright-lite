@@ -19,7 +19,7 @@ const blockOnly = blockMode === 'decoded' || blockMode === 'wasm';
 const roots = {baseline, candidate: root};
 const engineRoot = process.env.I8086_ENGINE_ROOT ? resolve(process.env.I8086_ENGINE_ROOT) : null;
 const engineFiles = blockMode === 'none' ? (process.env.I8086_ENGINE_FILES || '').split(',').filter(Boolean) : [];
-if (engineFiles.some(file => !/^(?:i8086(?:-[a-z]+)?|i8254)\.js$/.test(file)) || (engineFiles.length && !engineRoot)) {
+if (engineFiles.some(file => !/^(?:i8086(?:-[a-z]+)*|i8254)\.js$/.test(file)) || (engineFiles.length && !engineRoot)) {
     throw new Error('Invalid engine overlay');
 }
 const sha = directory => execFileSync('git', ['rev-parse', 'HEAD'], {cwd: directory, encoding: 'utf8'}).trim();

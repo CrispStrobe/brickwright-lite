@@ -36,6 +36,7 @@
  * @module
  */
 import { I8086 } from './i8086.js';
+import { installI8086RamWordAccess } from './i8086-ram-words.js';
 import { I8255 } from './i8255.js';
 import { NS16C550 } from './ns16c550.js';
 import { MC6850 } from './mc6850.js';
@@ -808,6 +809,7 @@ export class I8086Machine {
         // NOT from its shared _interrupt(n) funnel, which the hardware path also
         // uses and which would then double-fire against 'irq'/'nmi'.
         this.cpu.onInterrupt = (ev) => { if (this.hooks.onInterrupt) this.hooks.onInterrupt(ev); };
+        if (config.fastWords !== false) installI8086RamWordAccess(this);
     }
 
     /**
@@ -1149,20 +1151,20 @@ export class I8086Machine {
      */
     _wakeHorizon() {
         let h = Infinity;
-        for (const c of Object.values(this.chips)) {
-            if (!c || !c.advance) continue;
-            if (typeof c.nextWake !== 'function') return 1;
-            h = Math.min(h, c.nextWake());
-        }
-        if (this.devices) {
-            for (const d of Object.values(this.devices)) {
-                if (!d || !d.advance) continue;
-                if (typeof d.nextWake !== 'function') return 1;
-                h = Math.min(h, d.nextWake());
-            }
+        const list = this._advList !== null ? this._advList : this._buildAdvanceList();
+        for (let i = 0; i < list.length; i += 2) {
+            const device = list[i];
+            const inMs = list[i + 1] === 1;
+            const method = inMs ? device.nextWakeMs : device.nextWake;
+            if (typeof method !== 'function') return 1;
+            const wait = method.call(device) * (inMs ? this.clockHz / 1000 : 1);
+            if (!(wait >= 0)) return 1;
+            h = Math.min(h, wait);
         }
         if (!Number.isFinite(h)) h = Math.round(this.clockHz / 1000);   // re-check once per millisecond
-        return Math.max(1, Math.min(h, Math.round(this.clockHz / 1000)));
+        // Round toward the event, never across it. The next machine cycle
+        // resolves a fractional horizon at instruction granularity.
+        return Math.max(1, Math.min(Math.floor(h), Math.round(this.clockHz / 1000)));
     }
 
     /**
