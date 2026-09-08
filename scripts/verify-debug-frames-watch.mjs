@@ -266,9 +266,8 @@ const main = async () => {
     // in. The capability is identical; reaching it takes one parameter.
     //
     // `?localCompiler=on` is the URL half of localToolchainEnabled, and it is
-    // load-bearing rather than a convenience: it is how this gate — and a
-    // learner stuck offline — reaches the toolchain before any settings dialog
-    // exists.
+    // load-bearing rather than a convenience: it is how this gate reaches the
+    // same toolchain mode without driving the persistent Settings control.
     //
     // BW_DEFAULT_ROUTE=1 runs this SAME drive without the opt-in, to prove the
     // other half of the contract: that a learner who has not asked for the
@@ -576,8 +575,8 @@ WHEN flag clicked:
             /not installed/.test(said) && /(compiler service|service at)/.test(said),
             quote(/not installed/, 'no "not installed" anywhere in the panel or trace'));
         record('default: and named the way back',
-            /\?localCompiler=on/.test(said),
-            quote(/\?localCompiler=on/, 'no ?localCompiler=on offered — a regression with no exit is a bug'));
+            /Settings/.test(said) && /C Compiler/.test(said) && /Download compiler/.test(said),
+            quote(/C Compiler/, 'the working Settings → C Compiler → Download compiler route was not offered'));
 
         // STOP HERE. Everything below drives a live session — stepping, frames,
         // watchpoints — and presupposes a build that completed. In this mode

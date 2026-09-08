@@ -628,8 +628,8 @@ test('the offline refusal on an edited AVR/ARM program says what a learner needs
     assert.match(block, /localToolchainEnabled\(\)/,
         'the 8051 branch must distinguish "not installed" from "installed and silent", ' +
         'or it tells a learner their compiler failed when it was never consulted');
-    assert.match(block, /\?localCompiler=on/,
-        'the refusal must name the way back — advice that leads nowhere is worse than none');
+    assert.match(block, /Settings[\s\S]*?C Compiler[\s\S]*?Download compiler/,
+        'the refusal must name the working settings route back');
 });
 
 test('the panel renders the provenance sentence, and not as a warning', () => {

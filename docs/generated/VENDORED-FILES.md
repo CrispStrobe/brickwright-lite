@@ -211,9 +211,9 @@ Pinned at `4c6ab1a7289db121284a2c0e98435598bd3ef24c`. Manifest: `docs/VENDOR-DIV
 
 ## bw-circuit-ui
 
-Pinned at `c276c0dbfdc26fa858e22e7642217411c2398fa9`. Manifest: `docs/VENDOR-DIVERGENCE-BW-CIRCUIT-UI.md`.
+Pinned at `59c4dce8b92f6f0cc8dea5b7be051530b6d779f9`. Manifest: `docs/VENDOR-DIVERGENCE-BW-CIRCUIT-UI.md`.
 
-675 tracked file(s): 671 plain, 1 declared-divergent, 3 lite-authored.
+676 tracked file(s): 672 plain, 1 declared-divergent, 3 lite-authored.
 
 - `.vendor-manifest.json` `[lite]`
 - `LICENSE` `[lite]`
@@ -279,6 +279,7 @@ Pinned at `c276c0dbfdc26fa858e22e7642217411c2398fa9`. Manifest: `docs/VENDOR-DIV
 - `importers/zip.js`
 - `index.js`
 - `interaction/breadboard-snap.js`
+- `interaction/edit-policy.js`
 - `interaction/hittest.js`
 - `interaction/machine.js`
 - `interaction/seat-geometry.js`
