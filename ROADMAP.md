@@ -35,20 +35,42 @@ landing audit.
 **Owner:** unclaimed until the coordinator releases it after this documentation
 reconciliation lands.
 
-**Measured start:** N2e leaves the broad safe reach at 46 programs. The first
-known candidate is `arduino-sk-p11-crystal-ball`; its printed branch depends on
-`pick random`, which currently warns and lowers to zero. Literal output alone
-therefore adds no honest reach.
+**Measured start:** N2e leaves the broad numeric/print reach at 46 programs. A
+separate complete compile-backed corpus census emits 78 today. The first known
+candidate is `arduino-sk-p11-crystal-ball`; the complete random-plus-literal-
+output lane can add exactly one program for 79, while literal output alone adds
+zero. Its printed branch depends on `pick random`, which currently warns and
+lowers to zero. A second precondition is currently false: minimal `print "Yes"`
+refuses as text mode but returns an empty structured refusal list, even though
+the header prose narrates the reason.
 
-**Acceptance:** define a bounded deterministic random contract that fits the
-8086 `.COM` model; compare branch choice and printed output with an independent
-oracle; mutate the random result or branch mapping and require a named failure.
-Other targets must remain byte-stable. Vendor the exact green upstream pin,
-update both mirrors and pin readers, and re-run the compile-backed reach census.
-A warning, commented zero, or incomplete lowering is a refusal rather than a
-compiled result.
+**Acceptance:** define and document a bounded deterministic random contract that
+fits the 8086 `.COM` model; a real entropy source cannot support the required
+repeatable differential. Compare branch choice and printed output with an
+independent oracle; mutate the random result or branch mapping and require a
+named failure. Repair and mutation-prove structured text-mode refusal attribution
+before trusting the census. Other targets must remain byte-stable. Vendor the
+exact green upstream pin, update both mirrors and pin readers, and re-run the
+compile-backed reach census at exactly 79. A warning, commented zero, or
+incomplete lowering is a refusal rather than a compiled result.
 
-### Track 2 — retire one declared `bw-board` divergence
+### Track 2 — keep history-only edits out of the heavy workflow
+
+**Owner:** unclaimed; schedule after N2f. This is a workflow path-filter and gate
+change, not part of the current documentation repair.
+
+**Measured start:** `.github/workflows/build.yml` excludes the other ledger
+Markdown paths but omits `HISTORY.md`. A history-only edit therefore launches
+the full vendor, build, and Playwright workflow even though no executable file
+consumes it.
+
+**Acceptance:** add the missing history path exclusion beside its peers and a
+fixture-driven trigger test proving a `HISTORY.md`-only diff does not launch the
+heavy workflow. The same test must prove executable changes and governed docs
+that are actual build inputs still trigger it; mutation-removing the exclusion
+must fail by name.
+
+### Track 3 — retire one declared `bw-board` divergence
 
 **Owner:** coordinator selects one small file after N2f lands.
 
@@ -67,7 +89,7 @@ reject the obsolete declaration, overlay and package mirrors must agree, and a
 behavioral or mutation proof must fail when the protected behavior is removed.
 No bulk sync and no second file in the same session.
 
-### Track 3 — Milestone 0 circuit-variant electrical equivalence
+### Track 4 — Milestone 0 circuit-variant electrical equivalence
 
 **Owner:** coordinator selects one precise family or invariant.
 
