@@ -156,12 +156,9 @@ const KNOWN_DEAD = new Map([
     // blocker was "a tab design change, not a wiring change" — so the change was
     // designed and argued for in that module's header rather than smuggled in
     // here, and one tab now has two assemble routes on purpose.
-    ['lib/bw-board/i8086-emu8086.js', {roadmap: '4.4',
-        reason: 'Vendored; the emu8086 dialect adapter. Its consumer is bw-board\'s '
-            + 'corpus harness (scripts/run-i8086-corpus.mjs), which lite does not '
-            + 'ship — it exists to run the 525-file teaching corpus against the '
-            + 'core, not to serve the app. Arrives with the sync, which copies the '
-            + 'full src/ tree.'}],
+    // i8086-emu8086.js removed 2026-09-08: the completed-program performance
+    // corpus now imports it from scripts/lib/i8086-corpus-workload.mjs.
+    // This is a real benchmark consumer, not a new editor runtime route.
     ['lib/bw-board/i8088-biu.js', {roadmap: '4.4',
         reason: 'Vendored; the experimental 8088 bus-timing predictor is exercised by '
             + 'bw-board\'s cycle-model corpus, not by lite\'s instruction-stepped app.'}],

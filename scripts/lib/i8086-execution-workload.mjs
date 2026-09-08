@@ -68,7 +68,7 @@ export function setup(layer, workload = 'mixed', options = {}) {
         END`;
     const program = assemble(source, {format: 'com'});
     if (program.errors?.length || !program.bytes?.length) throw new Error(JSON.stringify(program.errors));
-    const machine = new I8086Machine({...DOSBOX8086, chips: layer === 'peripherals' ? [
+    const machine = new I8086Machine({...DOSBOX8086, fastWords: layer !== 'core', chips: layer === 'peripherals' ? [
         {kind: 'pic', name: 'pic1', at: 0x20},
         {kind: 'pit', name: 'pit1', at: 0x40, irq: 0},
         {kind: 'ppi', name: 'ppi1', at: 0x60},
@@ -86,9 +86,8 @@ export function setup(layer, workload = 'mixed', options = {}) {
     }
     const cpu = machine.cpu;
     if (layer === 'core') {
-        // A bare-core measurement excludes machine-installed word shortcuts.
-        // Replacing byte callbacks alone would instead measure their fallback.
-        delete cpu._rd16; delete cpu._wr16;
+        // Constructor opt-out preserves the core's normal object shape.
+        // Deleting installed methods would force V8 dictionary properties.
         cpu.read = address => machine.mem[address];
         cpu.write = (address, value) => { machine.mem[address] = value; };
     }

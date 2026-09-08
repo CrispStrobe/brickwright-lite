@@ -86,5 +86,29 @@ Three pinned third-party sorting programs add completed-program measurements
 (reset/load/execution included, assembly excluded), checking exit, output and
 memory state. These do not replace the larger correctness corpus.
 
-Final combined source comparison and production webpack/browser CI are pending.
+Production runtime revision: `911d09104d7bace67ff592e8f944e85e8fd66e40`.
+The 8086 benchmark in full build `34220310752` passed. Across 15 unpaced samples
+per profile (five within each of three browser repetitions), median RT ratios
+were desktop **26.95×** (25.84–27.32), mobile viewport **27.17×** (26.95–27.32),
+and 4× CPU-throttled **6.51×** (5.55–6.68). The paced UI medians stayed at
+2.02×/2.02×/2.02×. Mobile viewport is not a measurement on physical mobile
+hardware. Unpaced timing excludes rendering and setup; this is a workload
+measurement, not a claim that every 8086 program runs at the same rate.
+
+First combined comparison `34220298875` preserved state and improved normal
+word DOS/debugger/peripherals 6.3–9.9%, and string machine/DOS/debugger/peripherals
+62.4–86.9%, with separated ranges; mixed cases overlapped. Completed sorting
+program ranges all overlapped (heap-sort median +16.1% normal/+7.5% throttled).
+Its bare-core rows are INVALID for CPU performance: the harness deleted the
+machine-installed word methods, converting the CPU to V8 dictionary properties.
+The constructor opt-out now avoids that mutation; a V8 `HasFastProperties`
+diagnostic confirmed default and opt-out are fast, deletion is not. A corrected
+full comparison is required before reporting bare-core rates.
+
+Full build `34220310752` found two integration metadata failures (3031 pass,
+2 fail, 8 named skips): the new corpus makes the emu8086 adapter no longer dead,
+and the generated tracked-file inventory omitted the new word helper because
+it was generated before that file was committed. Removed the stale dead-code
+exception and regenerated the inventory after tracking. Focused tests confirm
+both corrections; full application CI and corrected comparison are rerunning.
 No default-branch merge or deployment has been performed.

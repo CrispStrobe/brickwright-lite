@@ -16,7 +16,7 @@ a sync cannot restore them, and they carry the same warning in their own header.
 
 Pinned at `6b7761d210698c8f392e28ce85d02c5d94ee676f`. Manifest: `docs/VENDOR-DIVERGENCE-I8086-MACHINE.md`.
 
-189 tracked file(s): 162 plain, 19 declared-divergent, 8 lite-authored.
+190 tracked file(s): 163 plain, 19 declared-divergent, 8 lite-authored.
 
 - `LICENSE` `[lite]`
 - `ac.js`
@@ -123,6 +123,7 @@ Pinned at `6b7761d210698c8f392e28ce85d02c5d94ee676f`. Manifest: `docs/VENDOR-DIV
 - `i8086-emu8086.js`
 - `i8086-extract.js`
 - `i8086-machine.js` `[declared]`
+- `i8086-ram-words.js`
 - `i8086.js`
 - `i8088-biu.js`
 - `i8237.js`
