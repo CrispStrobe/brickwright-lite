@@ -110,5 +110,34 @@ Full build `34220310752` found two integration metadata failures (3031 pass,
 and the generated tracked-file inventory omitted the new word helper because
 it was generated before that file was committed. Removed the stale dead-code
 exception and regenerated the inventory after tracking. Focused tests confirm
-both corrections; full application CI and corrected comparison are rerunning.
+both corrections. Rerun `34221225525` passes all **3033** executed unit tests
+with **8 explicitly accounted-for skips**, and its editor build is green.
+The repeated production benchmark measures **22.73×** desktop, **22.83×**
+mobile viewport and **5.45×** at 4× throttle (15 samples/profile); pacing
+still yields about 2.02×. This repeat on another CI runner illustrates why
+the 27× result above is not a hardware-independent guarantee.
+
+Corrected comparison
+[34221210990](https://github.com/CrispStrobe/brickwright-lite/actions/runs/34221210990)
+is green at `79c401df76e1a7cc13f336f7a54cb20196058660`, with unchanged production
+code from `911d09104` and no bare-core regression. Final normal-speed string
+machine/DOS/debugger/peripherals gains are **113.2% / 48.1% / 78.9% / 34.2%**;
+4× throttled gains are **80.3% / 69.1% / 58.3% / 55.8%**, all separated ranges.
+Throttled word DOS/debugger improve **10.6% / 9.1%**, also separated. Other
+word and all mixed cases overlap. All sorting-program ranges overlap; their
+median changes do not establish a repeatable application-wide gain.
+
+Mixed-workload candidate source-module RT medians were bare core **79.6×**,
+debugger **41.2×**, peripherals **27.9×**, or **18.6× / 10.3× / 6.9×** with
+4× throttling. These source-harness measurements are distinct from the webpack
+production target above. Comparing absolute rates between separate CI hosts
+would confound host variation with code changes; the alternating same-run
+baseline/candidate comparisons are the optimization evidence.
 No default-branch merge or deployment has been performed.
+
+Final application
+[CI 34221225525](https://github.com/CrispStrobe/brickwright-lite/actions/runs/34221225525)
+is **green** at `79c401df76e1a7cc13f336f7a54cb20196058660`: build, corpus,
+light browser and heavy browser suites. Deployment and deployed-site checks
+were intentionally skipped for this feature-branch run. Final ledger/report
+edits do not alter the verified runtime or benchmark harness.
