@@ -2,25 +2,24 @@
 
 ## Circuit
 
-8 LEDs on Port 1 (P1.0–P1.7), all active-low with 470 Ω resistors.
-VCC → 470 Ω → LED → MCU pin, for each of the 8 pins.
+8 LEDs on Port 1 (P1.0–P1.7), all active-low with 140 Ω resistors.
+VCC → 140 Ω → LED → MCU pin, for each of the 8 pins.
+This is deliberately an STC12C5A60S2-only lesson: its aggregate Port 1
+sink-current limit is the subject, so retargeting it to unrelated GPIO ports
+or source-driven LED conventions would teach a different electrical claim.
 
 ## The lesson
 
-Each pin individually is within spec: (5.0 − 2.0) / 470 ≈ 6.4 mA,
-well under the 20 mA per-pin maximum. But 8 × 6.4 = **51.2 mA from
-Port 1 alone** — nearly half the chip's total budget of ~120 mA
-(STC12C5A60S2 datasheet §4.6).
+The pinned engine models the pin's output resistance as part of the current
+path. With 140 Ω external resistors it solves about 17.143 mA per branch and
+137.143 mA across all eight: 14.3% below the 20 mA per-pin maximum and 14.3%
+above the chip's approximately 120 mA I/O budget (STC12C5A60S2 datasheet
+§4.6). These are model-fixture values, not a substitute for a hardware design
+calculation against the actual chip and LED tolerances.
 
-With smaller resistors the problem becomes critical:
-- 330 Ω: 8 × 9.1 = 72.7 mA — 60% of chip budget from ONE port
-- 220 Ω: 8 × 13.6 = 109.1 mA — nearly the ENTIRE chip budget
-- 100 Ω: 8 × 30.0 = 240 mA — DOUBLE the chip's total capacity
-
-The failure mode is insidious: nothing burns out immediately. The port
-voltage sags, every LED dims together, and if the supply is marginal
-the chip browns out and resets — which a beginner reads as "my program
-has a bug" and debugs for an hour in software.
+An absolute-maximum violation is a design error even if a simulator continues
+to solve the circuit. On hardware it can cause voltage sag, resets, overheating,
+or permanent damage. Use larger resistors or an external driver.
 
 ## STC12C5A60S2 current limits (datasheet §4.6)
 
@@ -35,16 +34,15 @@ has a bug" and debugs for an hour in software.
 
 | all 8 on | per-LED current | total Port 1 | % of chip budget |
 |---|---|---|---|
-| 470 Ω | 6.4 mA | 51.2 mA | 43% |
+| 140 Ω | about 17.143 mA | about 137.143 mA total | about 114.3% |
 
-All 8 LEDs light simultaneously, each dimmer than a single LED would be
-(due to voltage sag at the port level). A good simulator should show
-this sag, or at minimum warn when aggregate current approaches the limit.
+All 8 LEDs light simultaneously. The model-backed gate checks the actual
+branch currents: each stays below 20 mA and their sum exceeds 120 mA.
 
 ## What this verifies
 
 1. 8 LEDs on one port all light (individually within spec)
-2. The aggregate current (51.2 mA) is stated and checkable
+2. The aggregate current exceeds the chip budget while every branch remains below its pin limit
 3. **No circuit-time DRC warning exists yet** (as of 2026-08-10). `cToPseudocode`
    warns on pin declarations when reading C; the circuit designer does not warn.
    `bw-board` owns the DRC path; this example is the fixture for when it ships.

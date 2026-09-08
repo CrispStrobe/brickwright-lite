@@ -94,8 +94,11 @@ browser heavy.
 
 **Measured start:** mechanical schematic checks cover the shipped variants, and
 the polarity census now measures its two distinct surfaces separately: seated
-benches are 792 decidable / 0 inverted; flat circuits are 714 / 0. Those numbers
-establish LED orientation, not general solver equivalence.
+benches were 792 decidable / 0 inverted; flat circuits were 714 / 0. At the
+later `c593574` corpus pin they are 691 / 0 and 625 / 0 respectively: three
+architecture-specific lessons retired dishonest retargeted variants and the
+portable logical-state lesson added eleven honest rows. These numbers establish
+LED orientation, not general solver equivalence.
 
 **Acceptance:** execute the selected variants through the real solver and
 compare an electrically meaningful state such as terminal voltage/current,

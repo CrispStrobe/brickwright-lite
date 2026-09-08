@@ -268,6 +268,22 @@ different files, and an example may ship a twin for one device and not another:
 | `circuit.<device>.json` | 792 | 0 |
 | `circuit-flat.<device>.json` | 714 | 0 |
 
+Those are the historical post-repair denominators at the `6bda3b3` pin, not
+permanent corpus constants. Re-measured at sb3-creator `c593574` with Lite
+`4540cef3c`, after the three architecture-specific lessons stopped advertising
+retargeted benches and lesson 56 added eleven honest cross-family benches:
+
+| surface | attempted | not decided | decidable | inverted |
+| --- | ---: | ---: | ---: | ---: |
+| `circuit.<device>.json` | 745 | 54 | 691 | 0 |
+| `circuit-flat.<device>.json` | 674 | 49 | 625 | 0 |
+
+All four instrument mutations were caught independently on both surfaces. The
+drop is expected: lessons 06 and 32 each removed ten two-output seated variants
+and nine flat variants; lesson 46 removed nine eight-output seated variants and
+eight flat variants; lesson 56 adds eleven one-output rows to each surface.
+This is why the measurement counts declared-pin readings rather than files.
+
 Extending the census was not a one-line change, and the reason is worth keeping.
 The `invertLeds` mutation was a **no-op on every flat twin**, so the census
 correctly reported MISSED and refused to publish — the right refusal for the
