@@ -17,14 +17,16 @@ gates.
 
 ## Next-session priorities — reconciled 2026-09-08
 
-This shortlist is reconciled with `main` at `c77563dbf`. Completed and rejected
-work, including the payload sequence and N2b–N2f, is recorded in `HISTORY.md`;
+This shortlist is reconciled with `main` at `62c7a00c4`. Completed and rejected
+work, including the payload sequence, N2b–N2f, and compiler/SIM recovery, is recorded in `HISTORY.md`;
 `LANES.md` remains the live ownership authority.
 
 The current base includes the separately downloaded GPL SDCC toolchain and its
 CLI/UI manager, the complete i8086 example/emitter re-sync, corrected LED
 polarity on both circuit surfaces, an audible TONE path, and bounded 8086 C
-numeric lists, deterministic signed-16 random selection, and literal DOS output.
+numeric lists, deterministic signed-16 random selection, literal DOS output,
+hash-routed local-compiler recovery, complete SIM-mode property exclusion, and
+removal of the unreachable legacy `hobby_gearmotor` package assets.
 Pin changes remain chains: sync the exact green upstream SHA,
 update every dual-tracked mirror, and re-derive every artifact that stamps the
 pin. A green behavior probe does not make stale provenance acceptable.
@@ -33,8 +35,15 @@ The next work stays serialized, with one bounded claim per session:
 
 | Order | Bounded track | Ownership and acceptance boundary |
 |---|---|---|
-| 1 | Retire one declared `bw-board` divergence | Coordinator selects one small file. Re-measure against the current `6145e8a` pin, read both sides, upstream or deliberately retire the Lite delta, then require the executable manifest to reject the old declaration. The current inventory has 19 declared `bw-board` files; trimmed-line counts locate work but do not establish which side is correct. |
-| 2 | Milestone 0 circuit-variant electrical equivalence | Coordinator selects one exact circuit family or invariant. Execute both relevant surfaces through the real solver, assert the electrical state, and mutation-prove a meaningful connectivity, polarity, or part-value change. State the covered and uncovered variants in the receipt. |
+| 1 | Make every cross-repo CI input immutable | Finish the claimed bw-circuit-ui clone-pin lane, then census the other upstream repositories by clone site. A new clone must fail the derived gate until it receives one full 40-character reviewed SHA; corpus-derived pins remain the authority where they already bind sources to baselines. |
+| 2 | Retire the two singleton source forks upstream | Upstream `bw-circuit-ui`'s `ExamplesBrowser`/`intro-doc` extraction as one consumer-preserving change, then upstream `sb3-creator`'s `i8086_counter`. After each green upstream promotion, re-pin and sync Lite exactly and make the executable divergence inventory reject the retired entry. |
+| 3 | Retire the 18-file `bw-board` fork by dependency-complete units | The measured graph has one coupled ten-file unit and eight independent files; file size and `lineLevelOnly` status do not define review boundaries. Move complete producer/consumer contracts together, treat sync artefacts in the sync layer, relocate Lite-owned helpers that do not belong upstream, and re-pin only after each upstream and downstream gate chain is green. |
+
+The zero-divergence census is exact at this baseline: 20 declared source forks
+(18 `bw-board`, one `bw-circuit-ui`, one `sb3-creator`) and 11 downstream-created
+placements. Licence copies and generated manifests remain downstream by
+construction; eliminating divergence does not mean copying those artefacts into
+an upstream `src/` tree.
 
 One product decision remains with the owner: `06-active-low-high`,
 `32-source-vs-sink`, and `46-port-overcurrent` are now wired correctly after
