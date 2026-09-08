@@ -76,28 +76,18 @@ part verbs; `c77563dbf` classifies them as language/runtime controls and asserts
 they are non-hardware. A warning, commented zero, or incomplete lowering
 remains a refusal rather than a compiled result.
 
-### Track 2 — retire one declared `bw-board` divergence
+### Track 2 — retire one declared `bw-board` divergence — DONE
 
-**Owner:** coordinator selects one small file.
-
-**Measured start:** the current generated inventory marks 19 `bw-board` files
-`[declared]`. Earlier inspection at pin `2c568ca` found three small Lite-ahead
-adapters (`i8086-adapter.js`, two trimmed lines; `m6502-adapter.js`, four;
-`z80-adapter.js`, one), while sixteen files differed in both trees. The current
-pin is `6145e8a`, so those figures are a reading shortlist and must be re-derived
-before choosing a candidate. Trimmed-line set differences have no semantic
-direction; they do not say which implementation is newer or correct.
-
-**Acceptance:** read both versions of one selected file, state the behavior the
-Lite delta protects, move it upstream or remove it deliberately, and update the
-pin through the guarded sync chain. The executable divergence manifest must
-reject the obsolete declaration, overlay and package mirrors must agree, and a
-behavioral or mutation proof must fail when the protected behavior is removed.
-No bulk sync and no second file in the same session.
+`w65c51.js` was the one independently self-contained candidate. Upstream
+`b195fa04e` normalizes the snapshot IRQ field to a boolean; its round-trip test
+fails on the old `0`-then-`false` shape and covers asserted IRQ plus a
+non-boolean restore mutation. Lite pinned that exact revision at `85df242cb`;
+exact-head hosted run `34228430502` was fully green. The executable manifest now
+counts 18 declarations and rejects restoring the retired entry.
 
 ### Track 3 — Milestone 0 circuit-variant electrical equivalence
 
-**Owner:** coordinator selects one precise family or invariant.
+**Owner:** Codex on `lane/m0-stc12-buzzer-equivalence`; root audits and lands.
 
 **Measured start:** mechanical schematic checks cover the shipped variants, and
 the polarity census now measures its two distinct surfaces separately: seated
@@ -109,6 +99,17 @@ compare an electrically meaningful state such as terminal voltage/current,
 logic level, or time-dependent transition. A mutation to connectivity,
 polarity, or a meaningful part value must fail by name. The receipt must state
 the exact variant denominator and the surfaces that remain outside the oracle.
+
+**Bounded candidate:** exactly the active-high seated fallback generated for
+`DEVICE STC12C5A60S2` and `PIN buzzer1 = P1.0 OUTPUT`, compared with an
+independently assembled buzzer on the same chassis. LOW/HIGH terminal voltage,
+branch current and DC active tone come from the real solver; 200, 1000 and
+4000 Hz exercise the time-dependent behavior. The solved HIGH is 4 V / 40 mA,
+not an idealized 5 V / 50 mA: the board models a 25-ohm push-pull source feeding
+the buzzer's 100 ohms. An LED at the same seat, an opened ground jumper, and a
+non-no-op production-source buzzer-to-LED mutation each fail by name. Active-low
+wiring, other MCU surfaces, authored benches and the rest of the corpus remain
+outside this oracle.
 
 ### Owner decision — sinking-asymmetry lesson eligibility
 
