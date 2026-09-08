@@ -8,6 +8,11 @@ import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {chromium} from 'playwright';
 
+if (process.env.I8086_BLOCK_MODE === 'devices') {
+    await import('./profile-i8086-devices.mjs');
+    process.exit(0);
+}
+
 const root = resolve('.');
 const baseline = resolve(process.env.I8086_BASELINE || '.');
 const output = resolve(process.env.I8086_PROFILE_OUTPUT || 'artifacts/i8086-execution');

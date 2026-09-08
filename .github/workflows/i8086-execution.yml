@@ -1,14 +1,14 @@
 name: 8086 execution profile
 on:
   push:
-    branches: ['perf/i8086-execution']
+    branches: ['perf/i8086-execution', 'perf/i8086-device-advance']
   workflow_dispatch:
     inputs:
       block-mode:
         description: Benchmark-only block executor
         type: choice
         default: none
-        options: [none, decoded, wasm, ram, pit]
+        options: [none, decoded, wasm, ram, pit, devices]
 permissions:
   contents: read
 jobs:
@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          ref: abc4634dad85b570ea64b979fcb67d32194c3fd3
+          ref: 5ed83a313f5e497f6d5f6dcf0384dc205c9d9511
           path: baseline
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
