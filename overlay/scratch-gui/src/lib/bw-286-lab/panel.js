@@ -14,9 +14,9 @@ export function openHarrisLab () {
     };
     add('h2', 'Experimental 286 board lab');
     add('p', 'Isolated fixed-profile board, not your project. Limited real-mode instruction subset; no general 286, protected mode, interrupts, hardware timing or live snapshots. Saved JSON is a construction recipe, not running state.');
-    let runtime, session, busy = false, closed = false, running = false, generation = 0;
+    let runtime, session, savedDraft = null, closeDraft = null, busy = false, closed = false, running = false, generation = 0;
     const close = () => {
-        closed = true; generation++; running = false; session?.cancel(); dialog.close(); dialog.remove();
+        closed = true; generation++; running = false; closeDraft?.(); session?.cancel(); dialog.close(); dialog.remove();
     };
     button('Close board lab', close);
     dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
@@ -43,18 +43,26 @@ export function openHarrisLab () {
         pause.disabled = !running;
         state.textContent = session ? JSON.stringify(session.inspect(), null, 2) : 'No board loaded.';
     };
-    const guard = action => {
+    const guard = async action => {
         if (busy || closed) return;
-        try { action(); } catch (error) { status.textContent = `Refused: ${error.message}`; }
+        try { await action(); } catch (error) { status.textContent = `Refused: ${error.message}`; }
         update();
     };
     const requireSession = () => { if (!session) throw new Error('Load a board first.'); return session; };
     const replace = recipe => {
         // Validate and initialize replacement before discarding the prior board.
         const next = runtime.load(recipe); next.initialize();
-        session?.cancel(); session = next; status.textContent = 'Fresh board initialized; paused before reset instruction.';
+        session?.cancel(); session = next; savedDraft = null; status.textContent = 'Fresh board initialized; paused before reset instruction.';
     };
     operation('Load owned loop demo', () => replace(runtime.demo()));
+    operation('Edit board draft', async () => {
+        const recipe = requireSession().exportConfiguration(); busy = true; update();
+        try {
+            const {openDraftPanel} = await import(/* webpackChunkName: "bw-286-draft" */ './draft-panel.js');
+            if (closed) return;
+            closeDraft = openDraftPanel(recipe, (next, draft) => { replace(next); savedDraft = draft; update(); }, savedDraft);
+        } finally { busy = false; update(); }
+    });
     operation('Load recipe JSON', () => {
         if (json.value.length > 2000000) throw new Error('Recipe limit is 2 MB.');
         replace(json.value);

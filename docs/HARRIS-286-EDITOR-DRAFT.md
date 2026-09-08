@@ -51,6 +51,21 @@ unsupported mutations and a removed-power-wire execution fault. Combined with
 the application lab tests: nine tests, zero failures or skips.
 Including the existing 8086 diagnostics suite: 15/15 pass, zero skips.
 
-Remaining: an actual visual editor surface and explicit draft file routing. No
+The lab now opens a visual draft dialog with a logical block overview, part X/Y
+positioning, exact endpoint selectors, staged wire removal/reconnection and draft
+JSON import/export. Applying constructs and initializes a fresh board before
+replacing the current session; an invalid draft leaves the previous board intact.
+Close discards unapplied changes; successfully applied layout is retained when
+reopening the draft. Connections are drawn between block centers with exact pin
+names in the wire selector, **not physical package-pin or breadboard geometry**.
+
+Remaining: production Circuit Editor integration and richer routing/placement. No
 new CPU package symbol, palette entry, production solver model or arbitrary
 80286 board support is claimed by this conversion layer.
+
+Visual follow-up verification: the isolated Chromium gate passed positioning,
+draft import/export, discard versus applied layout persistence, electrical
+failure preserving the old board, reconnection and fresh guest execution. No
+new full-app acceptance is inferred from that isolated test. Policy, lab/draft,
+DOS readiness and existing diagnostics tests passed 39/39 across two local runs;
+the pin audit included all three repositories' histories, with no skips.

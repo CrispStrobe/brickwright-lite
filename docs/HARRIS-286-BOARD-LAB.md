@@ -29,6 +29,10 @@ No protected mode, interrupt handling, cycle-accurate instruction timing or gene
   currently shows offsets `0280h–028Fh`; the loop's sum appears at `ram0[0288h]`
   as `0a` (physical RAM address `0510h`, low byte). Inspections do not issue guest
   reads. Register/history state is shown after each operation or run stop.
+- **Edit board draft** opens a separate logical block view. Position parts with
+  X/Y controls, remove/connect named terminals, and import/export draft JSON with
+  layout. Apply reconstructs a fresh board; failed validation preserves the prior
+  session. Closing discards unapplied edits. This is not physical package routing.
 
 The backend remains fixed. There are no live snapshots, memory/register writes,
 hot backend switches, editor rewiring while running or project save integration.
@@ -67,11 +71,15 @@ The initial milestone did not run a full application build or full CI.
 Follow-up hosted run `34266037150` targets exact acceptance commit `8030218da`;
 both browser-shard editor builds succeeded and the light shard's experimental
 286 lab gate passed through the real Settings menu. The corpus job also passed.
-Other jobs were still running at this handoff: this is not an all-green full-CI
-receipt. The subsequent editor-draft bridge commit `895ae3b91` has local targeted
+Final result of that run: both browser shards and corpus succeeded, but the unit
+job failed four assertions in the browser-budget and pin-move policy gates. The
+follow-up regenerates budget metadata and declares the independent experimental
+revision field, retaining blob verification and mutation checks. This is not an
+all-green full-CI receipt. The editor-draft bridge commit `895ae3b91` has local targeted
 coverage, not coverage from that earlier-SHA hosted run.
 No deployment or hardware verification is part of this work.
 
-The [editor draft bridge](HARRIS-286-EDITOR-DRAFT.md) now defines strict part,
-layout and topology conversion; the visual editor surface is still pending.
+The [editor draft bridge](HARRIS-286-EDITOR-DRAFT.md) defines strict part,
+layout and topology conversion and now has a separate visual draft surface.
 This lab must not silently load an ordinary project circuit as its fixed profile.
+For execution priorities, see [DOS readiness](HARRIS-286-DOS-READINESS.md).

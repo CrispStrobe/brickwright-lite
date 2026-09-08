@@ -30,7 +30,10 @@ try {
     page.on('pageerror', error => errors.push(error.message));
     page.on('request', req => requests.push(req.url()));
     await page.goto(production || `http://127.0.0.1:${server.address().port}/`, {waitUntil: 'domcontentloaded', timeout: 60000});
-    const click = name => page.getByRole('button', {name, exact: true}).click();
+    const click = async name => {
+        await page.getByRole('button', {name, exact: true}).click();
+        if (name === 'Edit board draft') await page.getByTestId('harris-draft').waitFor({state: 'visible'});
+    };
     const state = () => page.getByTestId('harris-state').textContent().then(JSON.parse);
     const open = async () => {
         if (!production) return click('Open lab');
@@ -62,6 +65,39 @@ try {
     const text = await page.getByRole('textbox', {name: 'Board recipe JSON'}).inputValue();
     const doc = JSON.parse(text); assert.equal(doc.format, 'bw-experimental-circuit');
     assert.equal(doc.snapshot, undefined);
+    await click('Edit board draft');
+    assert.equal(await page.locator('[data-testid="harris-draft"] rect[data-part]').count(), 12);
+    assert.equal(await page.locator('[data-testid="harris-draft"] line[data-wire]').count(), doc.wires.length);
+    await page.getByLabel('Part X', {exact: true}).fill('555'); await click('Move part');
+    assert.equal(await page.locator('rect[data-part="cpu"]').getAttribute('x'), '555');
+    await click('Export draft JSON');
+    const staged = JSON.parse(await page.getByLabel('Editor draft JSON', {exact: true}).inputValue());
+    assert.equal(staged.circuit.parts[0].x, 555);
+    await click('Close draft'); assert.equal((await state()).retired, 47);
+    await click('Edit board draft');
+    assert.equal(await page.locator('rect[data-part="cpu"]').getAttribute('x'), '0', 'close discards staging');
+    await page.getByLabel('Editor draft JSON', {exact: true}).fill(JSON.stringify(staged));
+    await click('Import draft JSON');
+    const power = staged.circuit.wires.find(w => w.to.part === 'rom0' && w.to.terminal === 'vcc');
+    await page.getByLabel('Wire to inspect or remove', {exact: true}).selectOption(power.id);
+    await click('Remove wire'); await click('Apply draft to fresh board');
+    assert.match(await page.getByTestId('draft-status').textContent(), /Refused/);
+    assert.equal((await state()).retired, 47, 'bad electrical draft preserves prior board');
+    await page.getByLabel('From part', {exact: true}).selectOption('inputs');
+    await page.getByLabel('From terminal', {exact: true}).selectOption('vcc');
+    await page.getByLabel('To part', {exact: true}).selectOption('rom0');
+    // Changing a part refreshes both pin lists; select pins after both parts.
+    await page.getByLabel('From terminal', {exact: true}).selectOption('vcc');
+    await page.getByLabel('To terminal', {exact: true}).selectOption('vcc');
+    await click('Connect terminals'); await click('Apply draft to fresh board');
+    assert.equal(await page.getByTestId('harris-draft').count(), 0);
+    assert.equal((await state()).retired, 0);
+    await click('Edit board draft');
+    assert.equal(await page.locator('rect[data-part="cpu"]').getAttribute('x'), '555', 'applied layout survives reopening');
+    await click('Close draft');
+    await click('Run up to 4096 clocks');
+    await page.getByTestId('harris-status').filter({hasText: 'halted'}).waitFor();
+    assert.equal((await state()).retired, 47);
     const downloadPromise = page.waitForEvent('download'); await click('Download recipe');
     assert.equal((await downloadPromise).suggestedFilename(), 'experimental-286.circuit.json');
     const bad = {...doc, backend: 'v86'};
@@ -82,7 +118,7 @@ try {
     assert.equal(await page.getByTestId('harris-state').textContent(), 'No board loaded.');
     await click('Close board lab');
     assert.deepEqual(errors, []);
-    console.log(`PASS: ${production ? 'built application Settings entry and' : 'isolated'} 286 browser panel — enable gate, execution, breakpoints, inspection, JSON/file import/export, rejection, pause, close and fresh reopen`);
+    console.log(`PASS: ${production ? 'built application Settings entry and' : 'isolated'} 286 browser panel — execution, debugger, visual layout, wire removal/reconnection, staged apply/refusal, import/export and lifecycle`);
 } finally {
     await browser?.close(); if (!production) await new Promise(done => server.close(done));
 }
