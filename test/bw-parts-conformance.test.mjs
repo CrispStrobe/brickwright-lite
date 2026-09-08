@@ -117,6 +117,10 @@ test('(3) the stored verb×family matrix is exactly what the emitter branches sa
         'numeric output is a language/runtime utility, not a physical-part verb');
     assert.equal(derived.numericLists, undefined,
         'numeric lists are a language/runtime utility, not a physical-part verb');
+    assert.equal(derived.printText, undefined,
+        'literal output is a language/runtime utility, not a physical-part verb');
+    assert.equal(derived.random, undefined,
+        'random selection is a language/runtime utility, not a physical-part verb');
     // both directions, per verb, so removing an emitter branch reddens its cell
     assert.deepEqual(
         Object.fromEntries(VERBS.map((v) => [v, VERB_FAMILIES[v]])),
