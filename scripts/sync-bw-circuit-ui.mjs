@@ -59,9 +59,39 @@ if (!check) {
     const manifest = await readFile(manifestPath, 'utf8').then(JSON.parse).catch(() => null);
     if (manifest) {
         const diverged = [];
+        const converged = [];
         for (const [rel, hash] of Object.entries(manifest)) {
             const cur = await readFile(path.join(dest, rel), 'utf8').catch(() => null);
-            if (cur !== null && sha(cur) !== hash) diverged.push(rel);
+            if (cur === null || sha(cur) === hash) continue;
+            // THE MANIFEST HASH IS A RECORD; THE INCOMING FILE IS THE THING.
+            //
+            // A vendored file that ALREADY EQUALS what this sync is about to
+            // write cannot be carrying a local edit the write would destroy,
+            // whatever the record says. Comparing only against the manifest
+            // asks "did the last sync write this content?" when the question
+            // is "would this sync lose anything?" -- a proxy standing in for
+            // the state, which is species 33 of GATES-THAT-CANNOT-FAIL.
+            //
+            // AND IT HAD DEADLOCKED THE RE-VENDOR. Measured 2026-09-08: five
+            // manifest hashes were stale, and THREE of the five files --
+            // BoardCanvas.jsx, hooks/useBoard.js, interaction/transform.js --
+            // were byte-identical to upstream at both the pin and the tip, so
+            // they carried no local edit at all. Their patches had been
+            // upstreamed exactly as this document's step 2 instructs, which
+            // converged the files; but the manifest is only rewritten by a
+            // SUCCESSFUL sync, and the sync refused because the manifest was
+            // stale. The remedy the refusal prescribes was the thing that
+            // caused it, and the lane had been stuck behind that since.
+            const incoming = await readFile(path.join(srcDir, 'src', rel), 'utf8').catch(() => null);
+            if (incoming !== null && cur === incoming) { converged.push(rel); continue; }
+            diverged.push(rel);
+        }
+        // Reported, never silent: a file cleared here means the manifest is out
+        // of date about it, and this run is what brings the record back in step.
+        if (converged.length) {
+            console.log(`  ${converged.length} file(s) match the incoming copy exactly, so the stale ` +
+                'manifest entry is the only thing that differed -- these are NOT local edits:');
+            for (const f of converged) console.log(`    converged ${f}`);
         }
         if (diverged.length && !overwriteLocal) {
             console.error(`REFUSING to sync: ${diverged.length} vendored file(s) carry LOCAL edits not present at the last sync:`);
