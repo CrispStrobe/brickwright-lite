@@ -120,7 +120,12 @@ test(`every tracked file outside a binary role is free of NUL bytes, except the 
     // the skipped set, reported: binaries by role, and anything the walk could not stat
     t.diagnostic(`scanned ${scanned} text files; skipped ${files.length - scanned} binary by role; ${unreadable.length} unreadable${unreadable.length ? ': ' + unreadable.join(', ') : ''}`);
     assert.deepEqual(unreadable, [], 'tracked files this gate could not read');
-    assert.ok(scanned > 9000, `only ${scanned} text files scanned — 9,616 on 2026-09-07; the walk collapsed`);
+    // 9,519 on the parent commit. This lane deliberately untracked 1,529
+    // generated gallery copies; 1,528 were non-empty text and the remaining
+    // file was empty, so the same complete walk now measures 7,991. Keep a
+    // floor close to that measured population: intentional deletion changes
+    // the number, but a collapsed git walk must still fail closed.
+    assert.ok(scanned > 7900, `only ${scanned} text files scanned — 7,991 after removing 1,528 non-empty generated gallery copies; the walk collapsed`);
     assert.deepEqual(stale, [], 'KNOWN entries whose NUL is gone — remove them:\n  ' + stale.join('\n  '));
     assert.deepEqual(findings, [], 'literal NUL byte(s) in tracked text:\n  ' + findings.join('\n  '));
 });
