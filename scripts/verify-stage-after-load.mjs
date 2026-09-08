@@ -438,11 +438,20 @@ async function run () {
         });
         await settle();
         const afterPaneResize = await snap('3c-after-pane-resize');
-        const boxMoved = afterPaneResize.box.w !== afterGreenFlag.box.w ||
+        // SIZE and POSITION are different questions here. A stale BUFFER can
+        // only come from a SIZE change the renderer did not follow; moving the
+        // stage sideways cannot strand it. The first version asserted "the box
+        // moved" meaning size, saw the size hold, and reported UNDECIDED — when
+        // the size holding IS the answer.
+        const sizeChanged = afterPaneResize.box.w !== afterGreenFlag.box.w ||
             afterPaneResize.box.h !== afterGreenFlag.box.h;
-        check('resizing a pane actually moved the stage box', boxMoved,
+        const movedAtAll = sizeChanged ||
+            afterPaneResize.box.x !== afterGreenFlag.box.x ||
+            afterPaneResize.box.y !== afterGreenFlag.box.y;
+        check('resizing a pane reaches the stage at all', movedAtAll,
             paneResized.ran
-                ? `box ${afterGreenFlag.box.w}x${afterGreenFlag.box.h} -> ${afterPaneResize.box.w}x${afterPaneResize.box.h}`
+                ? `box ${afterGreenFlag.box.w}x${afterGreenFlag.box.h} @${afterGreenFlag.box.x} -> `
+                  + `${afterPaneResize.box.w}x${afterPaneResize.box.h} @${afterPaneResize.box.x}`
                 : paneResized.why);
 
         // STEP 5 — the control: real fullscreen, which is what the owner did.
@@ -521,9 +530,18 @@ async function run () {
 
         // Reported whether or not it changes the verdict: it decides the SHAPE
         // of the repair, which is a separate question from naming the defect.
-        if (!boxMoved) {
-            console.log('\nDOES A PANE RESIZE LEAVE A STALE BUFFER: UNDECIDED — the box did not');
-            console.log('  move, so nothing was tested. Not evidence either way.');
+        if (!movedAtAll) {
+            console.log('\nDOES A PANE RESIZE LEAVE A STALE BUFFER: UNDECIDED — the pane change');
+            console.log('  did not reach the stage at all, so nothing was tested.');
+        } else if (!sizeChanged) {
+            console.log(`\nDOES A PANE RESIZE LEAVE A STALE BUFFER: NO, AND IT CANNOT. The pane`);
+            console.log(`  change moved the stage sideways (x ${afterGreenFlag.box.x} -> ${afterPaneResize.box.x})`);
+            console.log(`  and left its SIZE at ${afterPaneResize.box.w}x${afterPaneResize.box.h}. The stage's size is`);
+            console.log('  getStageDimensions(stageSize, isFullScreen) — a pure function of two');
+            console.log('  GATED props — so every size change already triggers the update path.');
+            console.log('  A stale buffer needs a size change the renderer did not follow, and a');
+            console.log('  pane resize cannot produce one. The observer is NOT justified: a');
+            console.log('  resize at mount is the whole repair.');
         } else if (afterPaneResize.drawingBuffer.w === afterGreenFlag.drawingBuffer.w &&
                    afterPaneResize.drawingBuffer.h === afterGreenFlag.drawingBuffer.h) {
             console.log(`\nDOES A PANE RESIZE LEAVE A STALE BUFFER: YES. The box moved to ` +
@@ -538,7 +556,23 @@ async function run () {
             console.log('  container we do not own would guard a case that cannot occur.');
         }
 
-        if (verdict) {
+        // THE GATE'S PRIMARY ASSERTION, now that the defect is understood: after
+        // loading an example the renderer's buffer must match the laid-out box.
+        // This file was built to FIND a defect, and a finder inverts once the
+        // defect is fixed — it would have gone red for "none of my hypotheses
+        // fired" on the very run that proved the repair. So the assertion is
+        // the correct behaviour, and the verdict machinery below is diagnosis
+        // for when it fails.
+        const sizedOnLoad = afterLoad.drawingBuffer.w === afterLoad.box.w &&
+            afterLoad.drawingBuffer.h === afterLoad.box.h && afterLoad.box.w > 0;
+        check('the drawing buffer matches the stage box after a load', sizedOnLoad,
+            `buffer ${afterLoad.drawingBuffer.w}x${afterLoad.drawingBuffer.h}, `
+            + `box ${afterLoad.box.w}x${afterLoad.box.h}`);
+
+        if (sizedOnLoad) {
+            console.log('\nThe stage is correct after a load: the buffer was sized where the');
+            console.log('  canvas was created, so nothing had to be poked to make it draw.');
+        } else if (verdict) {
             console.log(`\nVERDICT: ${verdict}\n  ${why}`);
             check(`the defect is named: ${verdict}`, true, why);
         } else {
