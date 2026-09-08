@@ -39,6 +39,18 @@ export const assertRefusalBucketCoverage = (discovered, reported) => {
     if (missing.length) throw new Error(`refusal bucket(s) omitted by the census: ${missing.join(', ')}`);
 };
 
+export const finalizeRefusalInventory = (source, runtime, enumerated) => {
+    assertRefusalBucketCoverage(source, enumerated);
+    assertRefusalBucketCoverage(source, runtime);
+    assertRefusalBucketCoverage(runtime, enumerated);
+    return {
+        source: [...source],
+        runtime: [...runtime],
+        union: [...new Set([...source, ...runtime])].sort(),
+        enumerated: [...enumerated]
+    };
+};
+
 // Candidate contract only; no emitter calls this function. The full-period
 // 16-bit LCG is deterministic from reset. Rejection sampling, rather than `%`
 // alone, keeps every inclusive integer in the normalised range equally likely.
@@ -82,8 +94,8 @@ export const neutraliseParsedBlockers = (project, {literal = false, random = fal
         for (const [id, block] of Object.entries(target.blocks || {})) {
             if (literal && block.opcode === 'stc12_print') {
                 const inner = block.inputs && block.inputs.VALUE && block.inputs.VALUE[1];
-                if (Array.isArray(inner) && inner[0] === 10 &&
-                    (String(inner[1]).trim() === '' || !Number.isFinite(Number(inner[1])))) {
+                const mode = block.fields && block.fields.MODE && block.fields.MODE[0];
+                if (mode === 'text' && Array.isArray(inner) && inner[0] === 10) {
                     block.inputs.VALUE = [1, [4, 0]];
                     block.fields.MODE = ['number', null];
                     changed.literalPrintBlockIds.push(id);
@@ -262,9 +274,8 @@ export async function measureN2f ({examples, compile = false} = {}) {
         row.result.runtimeRefusalBuckets || []))].sort();
     const reportedBuckets = [...new Set(Object.values(raw).flat().flatMap(row =>
         Object.keys(row.result.refusals || {})))].sort();
-    assertRefusalBucketCoverage(refusalBuckets, reportedBuckets);
-    assertRefusalBucketCoverage(refusalBuckets, runtimeBuckets);
-    assertRefusalBucketCoverage(runtimeBuckets, reportedBuckets);
+    const refusalInventory = finalizeRefusalInventory(
+        refusalBuckets, runtimeBuckets, reportedBuckets);
 
     const baselineGenerated = new Set([
         ...reportVariants.baseline.generatedHost,
@@ -289,12 +300,7 @@ export async function measureN2f ({examples, compile = false} = {}) {
     const report = {
         schema: 'n2f-i8086-random-literal-reach-v1',
         emitter: 'overlay/scratch-gui/src/lib/sb3-creator.js',
-        refusalBuckets: {
-            source: refusalBuckets,
-            runtime: runtimeBuckets,
-            union: [...new Set([...refusalBuckets, ...runtimeBuckets])].sort(),
-            enumerated: reportedBuckets
-        },
+        refusalBuckets: refusalInventory,
         variants: reportVariants,
         delta: {
             literalOnly: added(literalGenerated, baselineGenerated),

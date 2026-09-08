@@ -45,8 +45,10 @@ single neutralisation adds a program. Both expose exactly
 `arduino-sk-p11-crystal-ball`, for prospective device reach 47→48 and mixed
 generation 78→79. `arduino-05-switch-case` and `arduino-06-knock` fall through
 literal output to the existing ADC/8255 wall. Crystal-ball falls through literal
-output to `pick random`, which is refused rather than lowered to a commented
-zero. Minimal `print "Yes"` already records the named reason in
+output to `pick random`: `cRep` produces its diagnostic commented zero, `cVal`
+records that incomplete lowering in `_cLoweringRefused`, and the whole program
+is then refused rather than compiled with the zero. Minimal `print "Yes"`
+already records the named reason in
 `_cPrintRefused`; the old probe's fixed bucket list omitted it. The measurement
 now discovers refusal buckets from emitter source and runtime state and fails on
 an omitted or malformed future bucket.

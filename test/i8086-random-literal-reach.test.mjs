@@ -10,6 +10,7 @@ import {
     discoverCRefusalBuckets,
     discoverRuntimeRefusalBuckets,
     enumerateRuntimeRefusals,
+    finalizeRefusalInventory,
     measureN2f,
     n2fRandomInt16
 } from '../scripts/measure-i8086-random-literal-reach.mjs';
@@ -57,6 +58,14 @@ test('N2f blocker neutralisation proves device 47 -> 48 and mixed generation 78 
     {timeout: 120000}, async () => {
         const report = await measureN2f({examples});
         assert.equal(report.schema, 'n2f-i8086-random-literal-reach-v1');
+        const refusalBuckets = ['_cI16Refused', '_cListRefused', '_cLoweringRefused',
+            '_cPrintRefused', '_cWaitRefused'];
+        assert.deepEqual(report.refusalBuckets, {
+            source: refusalBuckets,
+            runtime: refusalBuckets,
+            union: refusalBuckets,
+            enumerated: refusalBuckets
+        });
         assert.deepEqual(report.variants.baseline.counts, {
             programs: 281, retargetRefused: 131, parsed: 150, parseFailed: 0,
             refused: 72, generatedHost: 31, generatedDevice: 47, generatedTotal: 78
@@ -84,6 +93,10 @@ test('N2f blocker neutralisation proves device 47 -> 48 and mixed generation 78 
             const row = report.literalFallthrough[name];
             assert.equal(row.outcome, 'refused');
             assert.ok(row.activeUses.includes('adc'), `${name} did not fall through to the 8255-only wall`);
+            assert.equal(Object.values(row.refusals).every(reasons => reasons.length === 0), true,
+                `${name} retained an earlier structured refusal after literal neutralisation`);
+            assert.match(row.header, /This program also uses: adc\./,
+                `${name} did not terminate at the ADC feature wall`);
         }
         const crystal = report.literalFallthrough['arduino-sk-p11-crystal-ball'];
         assert.equal(crystal.outcome, 'refused');
@@ -113,6 +126,14 @@ test('the refusal census derives every bucket from production source and an omit
         const futureReport = enumerateRuntimeRefusals(futureRuntime, discovered);
         assert.ok(futureReport.names.includes('_cFutureRefused'),
             'a future runtime refusal bucket did not enter the report');
+        assert.deepEqual(finalizeRefusalInventory(future, future, futureReport.names), {
+            source: future,
+            runtime: future,
+            union: future,
+            enumerated: future
+        });
+        assert.throws(() => finalizeRefusalInventory(future, future, discovered),
+            /_cFutureRefused/, 'the live report finalizer accepted an omitted future bucket');
         assert.throws(() => enumerateRuntimeRefusals({_cFutureRefused: 'not an array'}, discovered),
             /_cFutureRefused must be undefined or an array/,
             'a malformed future bucket was silently treated as empty');
@@ -145,6 +166,8 @@ test('candidate deterministic integer RNG is inclusive, repeatable and normalise
         return {values, state};
     };
     const forward = draw(N2F_RNG_SEED, 1, 8, 32);
+    assert.deepEqual(forward.values.slice(0, 16),
+        [3, 4, 1, 2, 7, 8, 5, 6, 3, 4, 1, 2, 7, 8, 5, 6]);
     assert.deepEqual(draw(N2F_RNG_SEED, 1, 8, 32), forward, 'same seed changed trace');
     assert.deepEqual(draw(N2F_RNG_SEED, 8, 1, 32), forward, 'reversed bounds changed trace');
     assert.equal(forward.values.every(value => value >= 1 && value <= 8), true);
@@ -154,16 +177,21 @@ test('candidate deterministic integer RNG is inclusive, repeatable and normalise
     assert.deepEqual(equal, {value: -32768, state: 13658, draws: 1});
     assert.deepEqual(n2fRandomInt16(N2F_RNG_SEED, 32767, 32767),
         {value: 32767, state: 13658, draws: 1});
-    const full = draw(N2F_RNG_SEED, -32768, 32767, 128);
-    assert.equal(full.values.every(value => value >= -32768 && value <= 32767), true);
-    assert.deepEqual(draw(N2F_RNG_SEED, 32767, -32768, 128), full);
+    assert.deepEqual(n2fRandomInt16(N2F_RNG_SEED, -32768, 32767),
+        {value: -19110, state: 13658, draws: 1});
+    assert.deepEqual(n2fRandomInt16(N2F_RNG_SEED, 32767, -32768),
+        {value: -19110, state: 13658, draws: 1});
     assert.deepEqual(n2fRandomInt16(33870, -2, 2),
         {value: 0, state: 54212, draws: 2},
         'rejection no longer consumes and advances through a second draw');
-    for (const bounds of [[-1, 0], [0, 1], [-32768, -32767], [32766, 32767]]) {
-        const result = n2fRandomInt16(N2F_RNG_SEED, ...bounds);
-        assert.equal(result.value >= bounds[0] && result.value <= bounds[1], true);
-    }
+    assert.deepEqual(n2fRandomInt16(N2F_RNG_SEED, -32768, -32767),
+        {value: -32768, state: 13658, draws: 1});
+    assert.deepEqual(n2fRandomInt16(N2F_RNG_SEED, 32766, 32767),
+        {value: 32766, state: 13658, draws: 1});
+    assert.deepEqual(n2fRandomInt16(N2F_RNG_SEED, -1, 0),
+        {value: -1, state: 13658, draws: 1});
+    assert.deepEqual(n2fRandomInt16(N2F_RNG_SEED, 0, 1),
+        {value: 0, state: 13658, draws: 1});
     assert.throws(() => n2fRandomInt16(0, -32769, 0), /signed 16 bits/);
     assert.throws(() => n2fRandomInt16(0, 0, 32768), /signed 16 bits/);
     assert.throws(() => n2fRandomInt16(0, 0.5, 1), /integer/);
