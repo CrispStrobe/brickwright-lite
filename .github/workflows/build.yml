@@ -75,6 +75,7 @@ on:
       - 'docs/PICO-KALUMA-BOOT.md'
       - 'docs/VENDOR-DIVERGENCE-BW-CIRCUIT-UI.md'
       - 'docs/VENDOR-DIVERGENCE-I8086-MACHINE.md'
+      - 'docs/VENDOR-DIVERGENCE-SB3-CREATOR.md'
       - 'docs/WAVE-OPEN-DEFECTS.md'
       - 'docs/app-store-metadata.md'
 permissions:
