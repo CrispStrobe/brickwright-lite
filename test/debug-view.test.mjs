@@ -90,3 +90,18 @@ test('the Code entry point requests the owner; it does not construct debugger st
     assert.doesNotMatch(importer, /createDebugRunner|<DebugPanel|createPortal|debugState\s*[:=]/);
     assert.doesNotMatch(helper, /createDebugRunner\s*\(|<DebugPanel|ReactDOM|connect\s*\(/);
 });
+
+test('the hosted Code-entry proof selects the real DebugPanel marker', () => {
+    const panel = readFileSync(new URL(
+        '../overlay/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx', import.meta.url), 'utf8');
+    const browser = readFileSync(new URL(
+        '../scripts/verify-debug-dock.mjs', import.meta.url), 'utf8');
+    assert.match(panel, /<div data-debug-panel data-debug-phase=\{phase\}/,
+        'DebugPanel must publish the marker and phase consumed by the hosted proof');
+    assert.match(browser, /host\.querySelector\('\[data-debug-panel\]'\)/);
+    assert.match(browser, /host\.querySelectorAll\('\[data-debug-panel\]'\)\.length/,
+        'the single-panel assertion must count real panels inside the persistent host');
+    assert.match(browser, /\[data-debug-panel\] \[data-debug-run\]:visible/);
+    assert.doesNotMatch(browser, /\[data-debugger-panel\]/,
+        'the CircuitDesigner wrapper is absent from the solo Code view');
+});

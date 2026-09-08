@@ -119,12 +119,12 @@ const hostState = page => page.evaluate(() => {
 
 const debugIdentity = page => page.evaluate(() => {
     const host = document.querySelector('[data-bw-debug-host]');
-    const panel = host && host.querySelector('[data-debugger-panel]');
+    const panel = host && host.querySelector('[data-debug-panel]');
     if (host && !host.dataset.discoveryIdentity) host.dataset.discoveryIdentity = 'code-entry-host';
     if (panel && !panel.dataset.discoveryIdentity) panel.dataset.discoveryIdentity = 'code-entry-panel';
     return {
         hosts: document.querySelectorAll('[data-bw-debug-host]').length,
-        panels: document.querySelectorAll('[data-debugger-panel]').length,
+        panels: host ? host.querySelectorAll('[data-debug-panel]').length : 0,
         hostIdentity: host && host.dataset.discoveryIdentity,
         panelIdentity: panel && panel.dataset.discoveryIdentity
     };
@@ -192,9 +192,9 @@ try {
     check('mcu bench: while coding, dock "right" is the PANEL, not a squeezed designer',
         mcuRight.soloPane && !mcuRight.looksLikeDesigner,
         `soloPane=${mcuRight.soloPane} designer=${mcuRight.looksLikeDesigner}`);
-    await page.locator('[data-debugger-panel] [data-debug-run]:visible').click();
+    await page.locator('[data-debug-panel] [data-debug-run]:visible').click();
     await page.waitForFunction(() =>
-        document.querySelector('[data-debugger-panel]')?.dataset.debugPhase === 'running',
+        document.querySelector('[data-debug-panel]')?.dataset.debugPhase === 'running',
     null, {timeout: 20000});
     const identityBefore = await debugIdentity(page);
     check('Code entry has exactly one debugger host and panel',
@@ -215,7 +215,7 @@ try {
         identityAfter.hostIdentity === 'code-entry-host' &&
         identityAfter.panelIdentity === 'code-entry-panel', JSON.stringify(identityAfter));
     check('dock round trip preserves the running debugger session',
-        await page.locator('[data-debugger-panel]').getAttribute('data-debug-phase') === 'running');
+        await page.locator('[data-debug-panel]').getAttribute('data-debug-phase') === 'running');
     await page.close();
 
     // ── 3 + 4: machine-class. Z80 bench, BBC BASIC, dock right, then talk
