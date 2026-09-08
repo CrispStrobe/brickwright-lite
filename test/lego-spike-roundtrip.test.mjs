@@ -56,8 +56,12 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> 5a0d559 on 2026-09-08: N2f adds deterministic bounded random and
     // direct-literal output to the i8086 C route. The SPIKE emitter is
     // unchanged; this artifact is re-run here rather than inferred from scope.
+    // -> 33ab265 on 2026-09-08: 8051 debug builds make their scheduler state
+    // and deadline volatile so SDCC must give the debugger linked RAM symbols;
+    // release 8051 output and every other target retain their prior policy.
+    // The SPIKE artifact below was re-run and remains byte-for-byte unchanged.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '5a0d5592be4c7586864babc1e72015aa819cd128');
+        '33ab265f8b3a9c78e0397deede7050f0e3af4a7e');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
