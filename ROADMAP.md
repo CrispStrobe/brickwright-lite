@@ -25,7 +25,7 @@ item marked with an agent name is being worked on.
 ## Next-session shortlist — reconciled 2026-09-08
 
 [PLAN.md](PLAN.md#next-session-priorities--reconciled-2026-09-08) defines the
-execution order. The exact baseline is `c77563dbf`; [HISTORY.md](HISTORY.md)
+execution order. The exact baseline is `37f41c6da`; [HISTORY.md](HISTORY.md)
 holds completed and rejected work, and [LANES.md](LANES.md) controls live
 ownership. Do not start a later track while an earlier track is owned or under
 landing audit.
@@ -86,9 +86,11 @@ that exact revision at `85df242cb`;
 exact-head hosted run `34228430502` was fully green. The executable manifest now
 counts 18 declarations and rejects restoring the retired entry.
 
-### Track 3 — Milestone 0 circuit-variant electrical equivalence
+### Track 3 — Milestone 0 circuit-variant electrical equivalence — DONE
 
-**Owner:** Codex on `lane/m0-stc12-buzzer-equivalence`; root audits and lands.
+**Completed:** Lite exact `cd26a7e9e590cec3d5c32c593ad22c161493db2c`;
+exact-head hosted run `34230601507` green in build, corpus, browser light, and
+browser heavy.
 
 **Measured start:** mechanical schematic checks cover the shipped variants, and
 the polarity census now measures its two distinct surfaces separately: seated
@@ -111,6 +113,25 @@ the buzzer's 100 ohms. An LED at the same seat, an opened ground jumper, and a
 non-no-op production-source buzzer-to-LED mutation each fail by name. Active-low
 wiring, other MCU surfaces, authored benches and the rest of the corpus remain
 outside this oracle.
+
+### Track 4 — converge vendored sources without losing downstream behavior
+
+**Measured start:** at Lite `37f41c6da`, the executable inventories contain 20
+declared source forks: 18 in `bw-board`, one in `bw-circuit-ui`, and one in
+`sb3-creator`. They also contain 11 downstream-created placements. Licence
+copies and generated manifests belong downstream by construction and are not
+upstream source candidates.
+
+**Execution order:** first make cross-repository CI clones immutable, beginning
+with the already claimed bw-circuit-ui lane. Then retire the two singleton forks
+as separate upstream changes. Finally converge `bw-board` by its measured
+dependency graph: one coupled ten-file unit and eight independent files. The
+`lineLevelOnly` inventory flag and trimmed-line counts locate differences but do
+not establish safe review boundaries. Each slice must preserve complete
+producer/consumer contracts, pass upstream CI, re-pin and sync Lite exactly,
+and make the executable divergence inventory reject the retired declaration.
+Lite-owned helpers with no upstream consumer move beside their Lite consumers;
+sync artefacts remain in the sync layer.
 
 ### Owner decision — sinking-asymmetry lesson eligibility
 
