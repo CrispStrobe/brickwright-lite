@@ -248,11 +248,12 @@ function sweepStimulus(pins, adc) {
 }
 
 async function corpusMode(count, offset) {
-  // The vendored gallery can lag the source-of-truth (the computed
-  // 'devices' lists landed in sb3-creator after lite's last example
-  // vendoring); EXAMPLES_DIR points at a fresh checkout when needed.
+  // `overlay/` is the tracked source of truth. Production builds recreate the
+  // ignored packages tree from it; reading packages here made force-added,
+  // deleted mirrors capable of changing a source-checkout oracle run.
+  // EXAMPLES_DIR still points at a fresh upstream checkout when needed.
   const root = process.env.EXAMPLES_DIR ||
-    join(dirname(fileURLToPath(import.meta.url)), '..', 'packages', 'scratch-gui', 'examples');
+    join(dirname(fileURLToPath(import.meta.url)), '..', 'overlay', 'scratch-gui', 'examples');
   const index = JSON.parse(readFileSync(join(root, 'index.json'), 'utf8'));
   const entries = (Array.isArray(index) ? index : index.examples || [])
     .filter((e) => e.files && e.files.program && Array.isArray(e.devices));
@@ -389,7 +390,7 @@ async function corpusMode(count, offset) {
  */
 async function explainMode(exId, devName) {
   const root = process.env.EXAMPLES_DIR ||
-    join(dirname(fileURLToPath(import.meta.url)), '..', 'packages', 'scratch-gui', 'examples');
+    join(dirname(fileURLToPath(import.meta.url)), '..', 'overlay', 'scratch-gui', 'examples');
   const index = JSON.parse(readFileSync(join(root, 'index.json'), 'utf8'));
   const entries = (Array.isArray(index) ? index : index.examples || []);
   const e = entries.find((x) => x.id === exId);
