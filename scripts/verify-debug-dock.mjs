@@ -193,9 +193,27 @@ try {
         mcuRight.soloPane && !mcuRight.looksLikeDesigner,
         `soloPane=${mcuRight.soloPane} designer=${mcuRight.looksLikeDesigner}`);
     await page.locator('[data-debug-panel] [data-debug-run]:visible').click();
-    await page.waitForFunction(() =>
-        document.querySelector('[data-debug-panel]')?.dataset.debugPhase === 'running',
-    null, {timeout: 20000});
+    let startWaitError = null;
+    try {
+        await page.waitForFunction(() => {
+            const phase = document.querySelector('[data-debug-panel]')?.dataset.debugPhase;
+            return phase === 'running' || phase === 'error';
+        }, null, {timeout: 60000});
+    } catch (error) {
+        startWaitError = error?.message || String(error);
+    }
+    const startState = await page.evaluate(() => {
+        const panel = document.querySelector('[data-debug-panel]');
+        const status = panel?.querySelector('strong');
+        return {
+            phase: panel?.dataset.debugPhase || null,
+            status: status?.textContent?.trim() || null,
+            message: status?.nextElementSibling?.textContent?.trim() || null,
+            runDisabled: panel?.querySelector('[data-debug-run]')?.disabled ?? null
+        };
+    });
+    check('Code entry builds and reaches the running phase', startState.phase === 'running',
+        JSON.stringify({...startState, waitError: startWaitError}));
     const identityBefore = await debugIdentity(page);
     check('Code entry has exactly one debugger host and panel',
         identityBefore.hosts === 1 && identityBefore.panels === 1,

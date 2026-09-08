@@ -102,6 +102,16 @@ test('the hosted Code-entry proof selects the real DebugPanel marker', () => {
     assert.match(browser, /host\.querySelectorAll\('\[data-debug-panel\]'\)\.length/,
         'the single-panel assertion must count real panels inside the persistent host');
     assert.match(browser, /\[data-debug-panel\] \[data-debug-run\]:visible/);
+    assert.match(browser, /phase === 'running' \|\| phase === 'error'/,
+        'the hosted proof must stop early on a terminal build error');
+    assert.match(browser, /\{timeout: 60000\}/,
+        'hosted compilation gets a bounded minute before the proof diagnoses it');
+    assert.match(browser, /phase: panel\?\.dataset\.debugPhase \|\| null/);
+    assert.match(browser, /status: status\?\.textContent\?\.trim\(\) \|\| null/);
+    assert.match(browser, /message: status\?\.nextElementSibling\?\.textContent\?\.trim\(\) \|\| null/);
+    assert.match(browser, /runDisabled: panel\?\.querySelector\('\[data-debug-run\]'\)\?\.disabled \?\? null/);
+    assert.match(browser, /startState\.phase === 'running'/,
+        'diagnostic capture must not weaken the required running outcome');
     assert.doesNotMatch(browser, /\[data-debugger-panel\]/,
         'the CircuitDesigner wrapper is absent from the solo Code view');
 });
