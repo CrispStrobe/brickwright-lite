@@ -79,9 +79,10 @@ remains a refusal rather than a compiled result.
 ### Track 2 — retire one declared `bw-board` divergence — DONE
 
 `w65c51.js` was the one independently self-contained candidate. Upstream
-`b195fa04e` normalizes the snapshot IRQ field to a boolean; its round-trip test
-fails on the old `0`-then-`false` shape and covers asserted IRQ plus a
-non-boolean restore mutation. Lite pinned that exact revision at `85df242cb`;
+`b195fa04e` normalizes the snapshot IRQ field to a boolean; its serialization-
+boundary test covers reset IRQ as `false`, asserted receiver IRQ as `true`, and
+an injected numeric backing value (`_irq = 1`) normalized to `true`. Lite pinned
+that exact revision at `85df242cb`;
 exact-head hosted run `34228430502` was fully green. The executable manifest now
 counts 18 declarations and rejects restoring the retired entry.
 
