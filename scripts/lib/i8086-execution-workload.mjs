@@ -92,7 +92,8 @@ export function setup(layer, workload = 'mixed', options = {}) {
     const target = layer === 'debugger' ? createI8086DebugTarget({machine, step: () => dos.step()}) : null;
     if (options.ramWords) installRamWordExperiment(machine);
     if (options.blockMode && layer !== 'core') throw new Error('Block experiment requires the owned flat-RAM core');
-    const block = options.blockMode ? createRegisterBlockExperiment(cpu, machine.mem, options.blockMode) : null;
+    const block = options.blockMode ? createRegisterBlockExperiment(cpu, machine.mem, options.blockMode,
+        {loopOnly: options.blockMode === 'wasm'}) : null;
     const scheduler = options.pitSchedule ? createPitSchedulingExperiment(machine) : null;
     target?.run();
     const step = layer === 'core' ? () => { machine.cycles += cpu.step(); } :

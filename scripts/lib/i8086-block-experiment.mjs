@@ -83,7 +83,7 @@ function decode(cpu, mem) {
     return {ops, bytes, start, end: offset & 65535, cycles, countedLoop, hits: 0, compiled: null};
 }
 
-export function createRegisterBlockExperiment(cpu, mem, mode = 'decoded') {
+export function createRegisterBlockExperiment(cpu, mem, mode = 'decoded', {loopOnly = false} = {}) {
     if (!['decoded','wasm'].includes(mode)) throw new Error('Unknown block experiment mode');
     const read = cpu.read, write = cpu.write, cache = new Map();
     const memory = mode === 'wasm' ? new WebAssembly.Memory({initial: 1}) : null;
@@ -93,6 +93,13 @@ export function createRegisterBlockExperiment(cpu, mem, mode = 'decoded') {
     return {stats, runUntil(deadline) {
         while (cpu.cycles < deadline) {
             if (cpu.busTrace !== null || (cpu.flags & 0x100) || cpu.intShadow || cpu.halted || cpu.read !== read || cpu.write !== write) { fallback(); continue; }
+            if (loopOnly) {
+                // Discover hot loops at an actually taken LOOP backedge. Do
+                // not look up/validate a block before every ordinary opcode.
+                const previous = ((cpu.cs << 4) + cpu.ip) & 0xfffff;
+                fallback();
+                if (cpu.cycles >= deadline || !cpu._tookBranch || mem[previous] !== 0xe2) continue;
+            }
             const key = cpu.cs << 16 | cpu.ip, address = ((cpu.cs << 4) + cpu.ip) & 0xfffff;
             let block = cache.get(key);
             if (block && !block.bytes.every((b, i) => b === mem[(address + i) & 0xfffff])) {
@@ -102,6 +109,7 @@ export function createRegisterBlockExperiment(cpu, mem, mode = 'decoded') {
                 if (cache.size >= 512) cache.clear();
                 block = decode(cpu, mem); cache.set(key, block);
             }
+            if (loopOnly && !block.countedLoop) continue;
             if (block.ops.length < 2 || cpu.cycles + block.cycles > deadline) { fallback(); continue; }
             if (mode === 'wasm' && ++block.hits === 16) {
                 const before = performance.now(); block.compiled = compile(block.ops, memory, block.countedLoop);

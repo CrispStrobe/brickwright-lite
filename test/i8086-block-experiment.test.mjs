@@ -15,7 +15,7 @@ test('Wasm counted loops remain inside the cycle budget and materialize identica
     // MOV CX,500; INC AX; XOR AX,1234h; INC DX; LOOP inner; JMP start.
     const program = [0xb9,0xf4,1,0x40,0x35,0x34,0x12,0x42,0xe2,0xf9,0xeb,0xf4];
     const a = fixture(program), b = fixture(program);
-    const engine = createRegisterBlockExperiment(b.cpu,b.mem,'wasm');
+    const engine = createRegisterBlockExperiment(b.cpu,b.mem,'wasm',{loopOnly:true});
     for (const deadline of [10000,10001,10003,12345,50000,100000]) {
         while (a.cpu.cycles < deadline) a.cpu.step();
         engine.runUntil(deadline);
