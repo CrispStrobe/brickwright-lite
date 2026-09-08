@@ -283,7 +283,7 @@ const classify = (spec, srcDir) => {
         else if (declared.has(f)) diverged.push(f);
         else undeclared.push(f);
     }
-    return {identical, diverged, undeclared, liteOnly, liteAuthored};
+    return {identical, diverged, undeclared, liteOnly, liteAuthored, declared};
 };
 
 // Registered once per upstream. Everything that differs between them is an
@@ -330,7 +330,7 @@ const declaresEveryDivergence = (label, {doc, env, repo, floor}) =>
     }
 
     const spec = readAllowList(doc);
-    const {identical, diverged, undeclared, liteOnly, liteAuthored} = classify(spec, srcDir);
+    const {identical, diverged, undeclared, liteOnly, liteAuthored, declared} = classify(spec, srcDir);
 
     // Species 1: a corpus of nothing satisfies every assertion below. 133 files
     // as of 2026-09-07; the floor is deliberately far under it, because this
@@ -361,6 +361,19 @@ const declaresEveryDivergence = (label, {doc, env, repo, floor}) =>
         '  if the difference is only body-level. What is not available is silence: an\n' +
         '  undeclared difference is deleted by the next sync with nothing to say what it\n' +
         '  cost.\n');
+
+    // The reverse direction is just as load-bearing. A declaration is an
+    // exemption from byte identity; if the file has converged, that exemption
+    // must leave with it. Without this assertion, restoring a retired
+    // lineLevelOnly entry passes while the diagnostic still reports zero
+    // divergence -- exactly the graveyard shape this inventory forbids for
+    // liteAuthored entries below.
+    const staleDeclared = [...declared].filter(f => !diverged.includes(f));
+    assert.deepEqual(staleDeclared, [],
+        '\n  DECLARED VENDOR DIVERGENCES THAT NO LONGER DIVERGE:\n    ' +
+        staleDeclared.join('\n    ') +
+        '\n\n  Upstream now holds the same bytes. Remove the stale declaration; keeping it\n' +
+        '  would let a later local fork reuse an exemption whose reason has expired.\n');
 
     // CASE FOUR, and it is an INVENTORY, not a refusal of the file's existence.
     // These are lite-authored files living inside a vendored root -- the mirror
@@ -397,7 +410,8 @@ const declaresEveryDivergence = (label, {doc, env, repo, floor}) =>
 // bw-board: 162 identical / 19 declared / 8 lite-authored as of 2026-09-07.
 declaresEveryDivergence('bw-board', {doc: DOC, env: 'BW_BOARD_DIR', repo: 'bw-board', floor: 50});
 
-// bw-circuit-ui: 673 files, 668 identical / 2 declared / 3 lite-authored. The
+// bw-circuit-ui: 676 tracked files, 674 upstream-identical / 0 declared /
+// 2 lite-authored at e18dad586. The
 // LARGEST vendored tree in the repository and, until 2026-09-07, the one with no
 // machine-readable manifest at all -- its divergence document was prose, and the
 // prose was wrong in every row: two files it listed as diverging had been

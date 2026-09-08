@@ -66,6 +66,7 @@
  "interaction/machine.js": "d6ebf0971bf729538e688a8f3c651477b83e2119",
  "interaction/seat-geometry.js": "e067dc6d700a656363f5478ed4b75db4d171f543",
  "interaction/transform.js": "d0143b7e449a0ca52fbe54b205186d9b8b6d581e",
+ "intro-doc.jsx": "335581af345780fc729216fd77b4436f633ee9df",
  "model/board-geometry.js": "7df7a896aeaae587bffc132278072e3ef51af330",
  "model/board-lift.js": "dd60eef0ee32cf23517c8e8004291106ae280d1b",
  "model/board-pairing.js": "a46a12430a8a680565c53d214055c329a36e0b28",

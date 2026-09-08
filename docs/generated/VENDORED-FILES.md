@@ -211,9 +211,9 @@ Pinned at `b1e351ef507e77136e92aaae1ba71747a38300e4`. Manifest: `docs/VENDOR-DIV
 
 ## bw-circuit-ui
 
-Pinned at `59c4dce8b92f6f0cc8dea5b7be051530b6d779f9`. Manifest: `docs/VENDOR-DIVERGENCE-BW-CIRCUIT-UI.md`.
+Pinned at `e18dad586ec54a759f7db5e4072c2d7e45420087`. Manifest: `docs/VENDOR-DIVERGENCE-BW-CIRCUIT-UI.md`.
 
-676 tracked file(s): 672 plain, 1 declared-divergent, 3 lite-authored.
+676 tracked file(s): 674 plain, 0 declared-divergent, 2 lite-authored.
 
 - `.vendor-manifest.json` `[lite]`
 - `LICENSE` `[lite]`
@@ -230,7 +230,7 @@ Pinned at `59c4dce8b92f6f0cc8dea5b7be051530b6d779f9`. Manifest: `docs/VENDOR-DIV
 - `components/DebugStatus.jsx`
 - `components/DrcOverlay.jsx`
 - `components/DrcPanel.jsx`
-- `components/ExamplesBrowser.jsx` `[declared]`
+- `components/ExamplesBrowser.jsx`
 - `components/FramebufferFace.jsx`
 - `components/InferPanel.jsx`
 - `components/InlineEditor.jsx`
@@ -284,7 +284,7 @@ Pinned at `59c4dce8b92f6f0cc8dea5b7be051530b6d779f9`. Manifest: `docs/VENDOR-DIV
 - `interaction/machine.js`
 - `interaction/seat-geometry.js`
 - `interaction/transform.js`
-- `intro-doc.jsx` `[lite]`
+- `intro-doc.jsx`
 - `model/board-geometry.js`
 - `model/board-lift.js`
 - `model/board-pairing.js`

@@ -79,24 +79,16 @@ badly, measured. The block is what `test/vendor-identity.test.mjs` reads.
     "packages/scratch-gui/src/lib/bw-circuit-ui"
   ],
   "why": "THE PROSE BELOW WAS WRONG IN EVERY ROW BY THE TIME ANYONE READ IT, which is the same failure docs/VENDOR-DIVERGENCE-I8086-MACHINE.md records about its own earlier prose version: a document that DESCRIBES a divergence has no way to notice when one changes. Measured 2026-09-07 against upstream at the pin: VdpScreen.jsx and BoardCanvas.jsx, both listed below as diverging, are now BYTE-IDENTICAL -- they were upstreamed and the table was never updated. CircuitDesigner.jsx is described as diverging BOTH WAYS with lite behind on 46 lines; it is 11 lite-only lines and ZERO upstream-only, so lite is purely ahead and the paragraph warning that 'taking either side wholesale loses something' no longer describes it. And ExamplesBrowser.jsx, the largest divergence in the tree, is not mentioned at all. This block is what the gate reads, so from now on the document and the tree cannot disagree without something going red.",
-  "measured": "2026-09-07, overlay root, against bw-circuit-ui at the pin: 673 vendored files, 668 byte-identical, 2 divergent (below), 3 lite-authored (below). The vendored copy is in the state this file claims.",
+  "measured": "2026-09-08, overlay root, against bw-circuit-ui@e18dad586: all upstream src files are byte-identical, 0 divergent, 2 lite-authored (below). ExamplesBrowser.jsx and intro-doc.jsx converged upstream in PR 18; the latter is now an ordinary vendored file.",
   "files": {},
   "lineLevelOnly": {
-    "why": "CircuitDesigner.jsx LEFT THIS LIST on 2026-09-08 and the way it left is the point. It was declared as 11 lite-only lines against the pin -- `data-testid` handles on the machine-preset controls and the arbitrary-ROM input. Those handles went UPSTREAM as bw-circuit-ui pull request 12, so against the new pin the file is behind-only: its two remaining lite-only lines are `if (mcu) {` and an effect's dependency array, the OLD form of a condition upstream replaced with `demoBlinkApplies` in the demo-blink-yields-to-a-program fix. Taking upstream's copy loses nothing and gains that fix, so the entry was removed and the sync took the file. THAT IS THE RATCHET WORKING: a divergence retired rather than documented forever, and the gate now refuses the entry if anyone re-adds it while the file matches. What remains is components/ExamplesBrowser.jsx: 27 lite-only lines and 115 upstream-only, and the 115 ARE NOT LOST WORK -- lite extracted the intro document's parser, renderer and labels into intro-doc.jsx so the catalogue and the top bar's (i) cannot drift apart, and the browser imports INTRO_L10N, LEVEL_LABELS, LEVEL_COLORS, parseIntro and renderMarkdown from there. Verified: all five symbols are exported by that file. Upstream has not touched ExamplesBrowser.jsx between the two pins, so keeping lite's copy drops nothing -- which is exactly the condition the sync now checks before keeping any declared divergence.",
-    "files": [
-      "components/ExamplesBrowser.jsx"
-    ]
+    "why": "No line-level divergence remains. CircuitDesigner.jsx left after its test handles were upstreamed in PR 12. ExamplesBrowser.jsx left after PR 18 upstreamed the shared intro-document extraction and the owner-requested confirm-dialog device-selection behaviour. The sync now copies both it and intro-doc.jsx from upstream without a keep rule.",
+    "files": []
   },
   "liteAuthored": {
     "why": "Files lite has that upstream does not, inside a vendored root -- the same inventory docs/VENDOR-DIVERGENCE-I8086-MACHINE.md keeps for bw-board, and for the same reason: upstream has no copy to restore them from and no upstream review ever sees them. Each reason must say why the file lives in a vendored directory rather than beside lite's own code.",
     "ratchet": "Removal is free. An addition costs a reason in the same commit, and the gate refuses any lite-authored file not listed, so adding the file without the reason cannot go green.",
     "files": {
-      "intro-doc.jsx": {
-        "reason": "The extraction target for ExamplesBrowser.jsx's 115 upstream-only lines. It lives in the vendored root because the vendored component imports it by relative path ('../intro-doc.jsx'), and the whole point of the extraction was that the catalogue and the top bar's (i) share ONE parser -- two copies would be two truths.",
-        "importedBy": [
-          "components/ExamplesBrowser.jsx"
-        ]
-      },
       "LICENSE": {
         "reason": "Upstream's licence text, carried with the vendored copy so the terms travel with the code rather than living only in a manifest. Upstream keeps it at the repository root, not under src/, so it has no counterpart at the path this comparison walks. Attribution, not code.",
         "importedBy": []
