@@ -74,7 +74,86 @@ class Stage extends React.Component {
         this.attachRectEvents();
         this.attachMouseEvents(this.canvas);
         this.updateRect();
+        // SIZE THE RENDERER'S DRAWING BUFFER WHERE THE CANVAS IS CREATED.
+        //
+        // Upstream sizes it only in componentDidUpdate, and
+        // shouldComponentUpdate gates that on stageSize, isColorPicking,
+        // colorInfo, isFullScreen, question, micIndicator and isStarted — on
+        // nothing about the container. So a stage that mounts and is never
+        // touched keeps the 0x0 buffer a canvas starts with, and draws
+        // NOTHING however correct its CSS box is.
+        //
+        // Measured in CI by scripts/verify-stage-after-load.mjs, loading a
+        // pure-Scratch example in the Code Editor:
+        //
+        //   after load          buffer 0x0        box 480x360
+        //   after a resize event / a real viewport change
+        //                       buffer 0x0        box 480x360   (unchanged)
+        //   after ANY gated prop change (stageSize large->small)
+        //                       buffer 240x180    box 240x180   (sized)
+        //   after fullscreen    buffer 1325x994   box 1325x994
+        //
+        // FULLSCREEN WAS NEVER THE FIX. It changes isFullScreen, which is
+        // merely one of the gated props; changing stageSize instead works just
+        // as well. The owner's "it shows correctly after entering fullscreen"
+        // pointed at a property change, not at fullscreen.
+        //
+        // NO RESIZE OBSERVER, and that is measured rather than assumed. A
+        // stale buffer needs a SIZE change the renderer did not follow, and
+        // the stage's size is getStageDimensions(stageSize, isFullScreen) — a
+        // pure function of two gated props. A pane resize moves the stage
+        // sideways and leaves its size alone (measured: x 1285 -> 846, size
+        // 240x180 both sides), so it cannot strand the buffer. Adding an
+        // observer would put a mechanism in a vendored container to guard a
+        // case that cannot occur.
+        this.sizeBufferToBox('mount');
+        // AND AGAIN ON THE NEXT FRAME, because at mount the container has not
+        // been laid out yet: the rect is 0x0, and resizing to 0x0 is a no-op
+        // that looks exactly like the bug. Measured — the first version of
+        // this fix resized at mount and CI still reported buffer 0x0 against a
+        // 480x360 box. One deferred re-read is not a ResizeObserver; it is the
+        // same single sizing, taken once the box exists.
+        this.mountSizeFrame = requestAnimationFrame(() => {
+            this.mountSizeFrame = requestAnimationFrame(() => this.sizeBufferToBox('first-frame'));
+        });
+        // AND WHEN THE BOX FIRST GAINS A SIZE, which is later than either of
+        // the above and is the whole of the defect.
+        //
+        // I ARGUED AGAINST THIS OBSERVER AND THE EVIDENCE OVERTURNED ME. The
+        // argument was that every size change comes through a gated prop, so
+        // an observer would guard a case that cannot occur — and that is true
+        // of every change AFTER the stage has a size. It is not true of the
+        // first one. Measured: the box is 0x0 at mount, still 0x0 a frame
+        // later (data-bw-sized recorded `first-frame:0x0`), and only becomes
+        // 480x360 once a project has loaded. That 0 -> 480 transition is
+        // driven by no gated prop, so nothing in the update path sees it.
+        if (typeof ResizeObserver === 'function') {
+            this.boxObserver = new ResizeObserver(() => {
+                const r = this.canvas.getBoundingClientRect();
+                if (r.width > 0 && r.height > 0 &&
+                    (Math.round(r.width) !== this.renderer.canvas.width ||
+                     Math.round(r.height) !== this.renderer.canvas.height)) {
+                    this.sizeBufferToBox('observed');
+                }
+            });
+            this.boxObserver.observe(this.canvas);
+        }
         this.props.vm.runtime.addListener('QUESTION', this.questionListener);
+    }
+    /**
+     * Size the renderer's drawing buffer to the laid-out box, and RECORD what
+     * it saw. The attribute is the evidence: absent means this overlay never
+     * reached the build, 0x0 means the box had no size yet. Without it those
+     * two produce identical output — a buffer that is still zero — and they
+     * want opposite fixes.
+     */
+    sizeBufferToBox (why) {
+        if (!this.canvas || !this.renderer) return;
+        this.updateRect();
+        const w = Math.round(this.rect.width);
+        const h = Math.round(this.rect.height);
+        this.canvas.setAttribute('data-bw-sized', `${why}:${w}x${h}`);
+        if (w > 0 && h > 0) this.renderer.resize(w, h);
     }
     shouldComponentUpdate (nextProps, nextState) {
         return this.props.stageSize !== nextProps.stageSize ||
@@ -95,6 +174,8 @@ class Stage extends React.Component {
         this.renderer.resize(this.rect.width, this.rect.height);
     }
     componentWillUnmount () {
+        if (this.mountSizeFrame) cancelAnimationFrame(this.mountSizeFrame);
+        if (this.boxObserver) this.boxObserver.disconnect();
         this.detachMouseEvents(this.canvas);
         this.detachRectEvents();
         this.stopColorPickingLoop();

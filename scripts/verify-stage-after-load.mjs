@@ -544,8 +544,12 @@ async function run () {
             console.log('  getStageDimensions(stageSize, isFullScreen) — a pure function of two');
             console.log('  GATED props — so every size change already triggers the update path.');
             console.log('  A stale buffer needs a size change the renderer did not follow, and a');
-            console.log('  pane resize cannot produce one. The observer is NOT justified: a');
-            console.log('  resize at mount is the whole repair.');
+            console.log('  pane resize cannot produce one.');
+            console.log('  NOTE: this rules out an observer for STEADY-STATE changes only. The');
+            console.log('  first 0 -> N transition is driven by no gated prop either, and that');
+            console.log('  one DOES need watching — measured, after this text first claimed');
+            console.log('  otherwise. A rule about how a thing behaves once it works does not');
+            console.log('  automatically hold for how it starts working.');
         } else if (afterPaneResize.drawingBuffer.w === afterGreenFlag.drawingBuffer.w &&
                    afterPaneResize.drawingBuffer.h === afterGreenFlag.drawingBuffer.h) {
             console.log(`\nDOES A PANE RESIZE LEAVE A STALE BUFFER: YES. The box moved to ` +
@@ -574,8 +578,8 @@ async function run () {
             + `box ${afterLoad.box.w}x${afterLoad.box.h}`);
 
         if (sizedOnLoad) {
-            console.log('\nThe stage is correct after a load: the buffer was sized where the');
-            console.log('  canvas was created, so nothing had to be poked to make it draw.');
+            console.log('\nThe stage is correct after a load: the buffer matches the box with');
+            console.log(`  nothing poked (sized by: ${afterLoad.sizedMarker ?? 'unknown'}).`);
         } else if (verdict) {
             console.log(`\nVERDICT: ${verdict}\n  ${why}`);
             check(`the defect is named: ${verdict}`, true, why);
