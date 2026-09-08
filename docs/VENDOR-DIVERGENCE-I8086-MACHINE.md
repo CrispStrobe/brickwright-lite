@@ -378,7 +378,6 @@ fails unless it touched both.
       "index.js",
       "m6502-adapter.js",
       "rp2040js-debug.js",
-      "w65c51.js",
       "z80-adapter.js",
       "zx-ula.js"
     ],
