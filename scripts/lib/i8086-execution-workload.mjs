@@ -7,6 +7,7 @@ import {assemble} from '../../overlay/scratch-gui/src/lib/bw-board/i8086-asm.js'
 import {createRegisterBlockExperiment} from './i8086-block-experiment.mjs';
 import {installRamWordExperiment} from './i8086-ram-experiment.mjs';
 import {createPitSchedulingExperiment} from './i8086-pit-scheduling-experiment.mjs';
+import {installDeviceCandidate} from './i8086-device-candidates.mjs';
 
 const bodies = {
     registers: `ADD AX, BX
@@ -44,6 +45,7 @@ const bodies = {
 };
 
 export function setup(layer, workload = 'mixed', options = {}) {
+    installDeviceCandidate(options.deviceCandidate || 'none');
     if (!bodies[workload]) throw new Error(`Unknown workload ${workload}`);
     if (!['core', 'machine', 'dos', 'debugger', 'peripherals'].includes(layer)) {
         throw new Error(`Unknown layer ${layer}`);
