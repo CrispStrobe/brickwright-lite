@@ -972,7 +972,8 @@ belong upstream first — and `sync-examples.mjs --check` exits non-zero on drif
 Editing either here would redden the vendor gates or re-stage the 930000d
 incident, where a sync discarded weeks of unupstreamed lite-local work. Neither
 upstream is checked out on this host; both are pinned by sha
-(`bw-circuit-ui@a879732`, `sb3-creator@5d17288`).
+by the shas in `vendor-pins.json`, which is the authority -- these were quoted inline here and
+both had gone stale (the sb3-creator one by several bumps) because nothing gates a sha in prose.
 
 **What lite owns and now does:** `scripts/lib/declared-part-kind.mjs` says what a
 declared name asserts — derived first (a name token that IS a footprint kind
