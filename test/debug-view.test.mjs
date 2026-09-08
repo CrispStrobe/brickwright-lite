@@ -107,8 +107,10 @@ test('the hosted Code-entry proof selects the real DebugPanel marker', () => {
     assert.match(browser, /\{timeout: 60000\}/,
         'hosted compilation gets a bounded minute before the proof diagnoses it');
     assert.match(browser, /phase: panel\?\.dataset\.debugPhase \|\| null/);
-    assert.match(browser, /status: status\?\.textContent\?\.trim\(\) \|\| null/);
-    assert.match(browser, /message: status\?\.nextElementSibling\?\.textContent\?\.trim\(\) \|\| null/);
+    assert.match(browser, /panelText: panel\?\.innerText\?\.trim\(\)\.slice\(0, 4000\) \|\| null/,
+        'failure evidence must report bounded visible panel text without guessing at nested status markup');
+    assert.doesNotMatch(browser, /panel\?\.querySelector\('strong'\)/,
+        'nested debugger tools also contain strong elements and are not the phase status');
     assert.match(browser, /runDisabled: panel\?\.querySelector\('\[data-debug-run\]'\)\?\.disabled \?\? null/);
     assert.match(browser, /startState\.phase === 'running'/,
         'diagnostic capture must not weaken the required running outcome');

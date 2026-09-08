@@ -204,11 +204,9 @@ try {
     }
     const startState = await page.evaluate(() => {
         const panel = document.querySelector('[data-debug-panel]');
-        const status = panel?.querySelector('strong');
         return {
             phase: panel?.dataset.debugPhase || null,
-            status: status?.textContent?.trim() || null,
-            message: status?.nextElementSibling?.textContent?.trim() || null,
+            panelText: panel?.innerText?.trim().slice(0, 4000) || null,
             runDisabled: panel?.querySelector('[data-debug-run]')?.disabled ?? null
         };
     });
