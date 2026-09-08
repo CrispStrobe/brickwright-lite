@@ -103,6 +103,35 @@ test('real rp2040js step-out also returns from a leaf function with unchanged SP
     assert.equal(target.regs().sp, calleeSp, 'leaf return does not need a fabricated stack change');
 });
 
+test('real rp2040js step-out follows a stacked caller after a nested call replaced LR', () => {
+    // This deliberately proves the other half of the upstream union. Both
+    // signals are heuristics: an unrelated branch may reach LR and SP may rise
+    // inside a function. The target prefers that possible early stop to never
+    // stopping at all, and the limitation remains visible beside the proof.
+    const adapter = createRp2040jsAdapter();
+    const {rp2040, core} = adapter;
+    const base = RAM_START;
+    const caller = base + 0x04;
+    const continuation = base + 0x16;
+    const sp = base + 0x8000;
+
+    rp2040.writeUint16(caller, 0xe7fe); // caller: B .
+    rp2040.writeUint16(continuation, 0x2002); // MOVS R0,#2
+    rp2040.writeUint16(continuation + 2, 0xbd00); // POP {PC}
+    rp2040.writeUint32(sp, caller | 1); // caller LR saved before nested BL
+    core.PC = continuation | 1;
+    core.LR = continuation | 1; // nested BL's local continuation, not caller
+    core.SP = sp;
+
+    const target = createRp2040jsDebugTarget(adapter);
+    assert.equal(target.step('out'), undefined);
+    assert.equal(target.runFor(1_000), 'halted',
+        'the heuristic union may stop early, but must not exhaust forever');
+    assert.equal(target.regs().pc, caller,
+        'the stacked caller wins after nested BL replaced LR');
+    assert.equal(target.regs().sp, sp + 4);
+});
+
 test('rp2040js advertises its exact aligned address range and runs to a before boundary', () => {
     const {target} = rp2040Fixture();
     assert.deepEqual(target.capabilities().runTo, [{kind: 'address', space: 'code',
