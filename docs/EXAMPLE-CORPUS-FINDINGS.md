@@ -269,9 +269,11 @@ different files, and an example may ship a twin for one device and not another:
 | `circuit-flat.<device>.json` | 714 | 0 |
 
 Those are the historical post-repair denominators at the `6bda3b3` pin, not
-permanent corpus constants. Re-measured at sb3-creator `c593574` with Lite
-`4540cef3c`, after the three architecture-specific lessons stopped advertising
-retargeted benches and lesson 56 added eleven honest cross-family benches:
+permanent corpus constants. Re-measured at sb3-creator `c593574` with the exact
+engine pair Lite `4540cef3c` ships — bw-board `bc0ae45ef899fafacbdbd22afded42784a4aeebd`
+and bw-circuit-ui `59c4dce8b92f6f0cc8dea5b7be051530b6d779f9` — after the three
+architecture-specific lessons stopped advertising retargeted benches and
+lesson 56 added eleven honest cross-family benches:
 
 | surface | attempted | not decided | decidable | inverted |
 | --- | ---: | ---: | ---: | ---: |
