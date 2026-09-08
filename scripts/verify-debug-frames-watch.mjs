@@ -255,7 +255,17 @@ const main = async () => {
     // load-bearing rather than a convenience: it is how this gate — and a
     // learner stuck offline — reaches the toolchain before any settings dialog
     // exists.
-    const optedInUrl = `${url}${url.includes('?') ? '&' : '?'}localCompiler=on`;
+    //
+    // BW_DEFAULT_ROUTE=1 runs this SAME drive without the opt-in, to prove the
+    // other half of the contract: that a learner who has not asked for the
+    // toolchain reaches the hosted compiler AND IS TOLD SO. Two contracts, one
+    // drive — duplicating five hundred lines of project-load-and-Run to assert
+    // the opposite outcome would be two gates that drift apart, and the drive is
+    // not the thing that differs between them.
+    const defaultRoute = process.env.BW_DEFAULT_ROUTE === '1';
+    const optedInUrl = defaultRoute
+        ? url
+        : `${url}${url.includes('?') ? '&' : '?'}localCompiler=on`;
     await page.goto(optedInUrl, {waitUntil: 'domcontentloaded', timeout: 90000});
 
     // SELF-PROOF, before anything is claimed from a zero.
@@ -500,11 +510,29 @@ WHEN flag clicked:
     record('a debug session attached', attached,
         attached ? 'phase=running'
             : `last phase=${running}${crashed ? ' — THE RENDERER CRASHED' : ''}`);
-    // Unchanged assertion, now behind the opt-in above. A user who asks for the
-    // in-page compiler still gets a build that touches no network.
-    record('D2: the 8051 build made exactly zero hosted compiler requests',
-        hostedCompilerRequests.length === 0,
-        hostedCompilerRequests.length ? hostedCompilerRequests.join(' | ') : '0 POST /compile requests');
+    if (defaultRoute) {
+        // THE DEFAULT DIRECTION, which until now was asserted only in unit tests.
+        // SDCC is GPL-2+ and no longer ships in this app, so with no opt-in the
+        // build MUST reach the service — and the app must say so. A silent
+        // hosted round trip is the thing intercept.js's header forbids, and it
+        // is what I reintroduced through a second setting before the
+        // unification; this is the check that would have caught it.
+        record('default: the 8051 build DID reach the hosted compiler',
+            hostedCompilerRequests.length > 0,
+            hostedCompilerRequests.length ? hostedCompilerRequests.join(' | ') : 'no POST /compile');
+        const said = trace.join(' | ');
+        record('default: and the app said which route it took',
+            /not installed/.test(said) && /compiler service/.test(said), said.slice(0, 200));
+        record('default: and named the way back',
+            /\?localCompiler=on/.test(said),
+            'a regression with no exit is a bug, not a trade');
+    } else {
+        // Unchanged assertion, behind the opt-in above. A user who asks for the
+        // in-page compiler still gets a build that touches no network.
+        record('D2: the 8051 build made exactly zero hosted compiler requests',
+            hostedCompilerRequests.length === 0,
+            hostedCompilerRequests.length ? hostedCompilerRequests.join(' | ') : '0 POST /compile requests');
+    }
     if (!attached) {
         console.log(`panel trace:\n  ${trace.join('\n  ')}`);
         if (console_.length) console.log(`console:\n  ${console_.join('\n  ')}`);
