@@ -166,8 +166,8 @@ test('candidate deterministic integer RNG is inclusive, repeatable and normalise
     };
     const forward = draw(N2F_RNG_SEED, 1, 8, 32);
     assert.deepEqual(forward, {
-        values: [3, 4, 1, 2, 7, 8, 5, 6, 3, 4, 1, 2, 7, 8, 5, 6,
-            3, 4, 1, 2, 7, 8, 5, 6, 3, 4, 1, 2, 7, 8, 5, 6],
+        values: [2, 4, 4, 4, 1, 2, 5, 7, 5, 1, 6, 1, 5, 4, 7, 3,
+            4, 6, 5, 5, 8, 5, 5, 3, 8, 3, 1, 2, 4, 2, 8, 1],
         state: 7325
     });
     assert.deepEqual(draw(N2F_RNG_SEED, 1, 8, 32), forward, 'same seed changed trace');
@@ -183,8 +183,8 @@ test('candidate deterministic integer RNG is inclusive, repeatable and normalise
         {value: -19110, state: 13658, draws: 1});
     assert.deepEqual(n2fRandomInt16(N2F_RNG_SEED, 32767, -32768),
         {value: -19110, state: 13658, draws: 1});
-    assert.deepEqual(n2fRandomInt16(33870, -2, 2),
-        {value: 0, state: 54212, draws: 2},
+    assert.deepEqual(n2fRandomInt16(3915, -2, 2),
+        {value: -1, state: 13849, draws: 2},
         'rejection no longer consumes and advances through a second draw');
     assert.deepEqual(n2fRandomInt16(N2F_RNG_SEED, -32768, -32767),
         {value: -32768, state: 13658, draws: 1});
@@ -212,4 +212,10 @@ test('hosted CI compile-backs every prospective DEVICE C body', {skip: !process.
         assert.deepEqual(report.compile.randomAndLiteral.failed, []);
         assert.equal(report.compile.uniqueDeviceBodies, 45,
             'deduplicated compile cache changed from the 45 emitted device-C bodies');
+        assert.deepEqual(report.compile.bodyDelta, {
+            baselineDistinct: 44,
+            completeDistinct: 45,
+            addedPrograms: ['arduino-sk-p11-crystal-ball'],
+            removedPrograms: []
+        }, 'the complete variant no longer adds exactly the crystal-ball device-C body');
     });

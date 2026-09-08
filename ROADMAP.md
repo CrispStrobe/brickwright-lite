@@ -56,12 +56,15 @@ structured inventory and the terminal `activeUses` feature gate; empty refusal
 buckets do not mean a program emitted.
 
 **Acceptance:** the measured candidate contract is a fixed-seed 16-bit LCG with
-inclusive, normalised signed-16 bounds, rejection sampling, and one consumed draw
-for equal bounds. Treat that as a proposal until production and an independent
+inclusive, normalised signed-16 bounds, multiply-high rejection sampling (not
+low-word modulo), explicit full-span mapping, and one consumed draw for equal
+bounds. Treat that as a proposal until production and an independent
 oracle agree on the same state transitions. Compare branch choice and printed
 output through SmallerC → `.COM` → the DOS bench; mutate the random result or
 branch mapping and require a named failure. Other targets must remain
-byte-stable. Vendor the exact green upstream pin, update both mirrors and pin
+byte-stable. Before freezing the emitter contract, prove whether SmallerC can
+express the required 16×16→32 multiply; otherwise use a narrow assembly helper
+that reads the high product word. Vendor the exact green upstream pin, update both mirrors and pin
 readers, and re-run the device compile census at exactly 48 while labelling the
 31 HOST-C programs separately. The current prospective set is 48 named device
 programs but 45 unique emitted C bodies; report both instead of treating a

@@ -52,8 +52,9 @@ export const finalizeRefusalInventory = (source, runtime, enumerated) => {
 };
 
 // Candidate contract only; no emitter calls this function. The full-period
-// 16-bit LCG is deterministic from reset. Rejection sampling, rather than `%`
-// alone, keeps every inclusive integer in the normalised range equally likely.
+// 16-bit LCG is deterministic from reset. Multiply-high rejection sampling
+// keeps every inclusive integer in the normalised range equally likely without
+// exposing the LCG's short low-bit periods at power-of-two spans.
 // Equal bounds still consume one draw, so changing a bound from equal to a
 // range cannot shift every later draw by an undocumented amount.
 export const N2F_RNG_SEED = 0x4d3d;
@@ -70,14 +71,20 @@ export const n2fRandomInt16 = (state, from, to) => {
     const advance = value => (Math.imul(value, 25173) + 13849) & 0xffff;
     if (low === high) return {value: low, state: advance(state), draws: 1};
     const span = high - low + 1;
-    const limit = 0x10000 - (0x10000 % span);
+    if (span === 0x10000) {
+        const next = advance(state);
+        return {value: low + next, state: next, draws: 1};
+    }
+    const threshold = (0x10000 - span) % span;
     let next = state;
     let draws = 0;
+    let product;
     do {
         next = advance(next);
         draws++;
-    } while (next >= limit);
-    return {value: low + (next % span), state: next, draws};
+        product = next * span;
+    } while ((product & 0xffff) < threshold);
+    return {value: low + Math.floor(product / 0x10000), state: next, draws};
 };
 
 const asText = result => {
@@ -339,6 +346,25 @@ export async function measureN2f ({examples, compile = false} = {}) {
             report.compile[variant] = {compiled, failed};
         }
         report.compile.uniqueDeviceBodies = cache.size;
+        const bodyMap = variant => {
+            const bodies = new Map();
+            for (const row of raw[variant].filter(item => item.result.outcome === 'deviceC')) {
+                const names = bodies.get(row.result.code) || [];
+                names.push(row.name);
+                bodies.set(row.result.code, names);
+            }
+            return bodies;
+        };
+        const baselineBodies = bodyMap('baseline');
+        const completeBodies = bodyMap('randomAndLiteral');
+        report.compile.bodyDelta = {
+            baselineDistinct: baselineBodies.size,
+            completeDistinct: completeBodies.size,
+            addedPrograms: [...completeBodies]
+                .filter(([body]) => !baselineBodies.has(body)).flatMap(([, names]) => names).sort(),
+            removedPrograms: [...baselineBodies]
+                .filter(([body]) => !completeBodies.has(body)).flatMap(([, names]) => names).sort()
+        };
     }
     return report;
 }
