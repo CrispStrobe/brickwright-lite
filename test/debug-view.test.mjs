@@ -114,10 +114,19 @@ test('the hosted Code-entry proof selects the real DebugPanel marker', () => {
     assert.match(browser, /runDisabled: panel\?\.querySelector\('\[data-debug-run\]'\)\?\.disabled \?\? null/);
     assert.match(browser, /startState\.phase === 'running'/,
         'diagnostic capture must not weaken the required running outcome');
-    assert.match(browser, /createHash\('sha256'\).*body\?\.code/,
+    assert.match(browser, /createHash\('sha256'\)\.update\(code\)/,
         'compile evidence hashes the generated C instead of logging its source');
-    assert.match(browser, /taskDeclarations:.*match\(/s,
-        'the bounded evidence names the scheduler storage declarations sent to the service');
+    assert.match(browser, /liveControlWaits === 1/,
+        'the hosted journey proves To blocks retained the authored wait in the live VM');
+    assert.match(browser, /block\.opcode === 'control_wait'/,
+        'the live-project evidence counts the real Scratch wait opcode');
+    assert.match(browser, /taskStorageLines: code\.split\('\\n'\)/,
+        'bounded evidence captures every task storage declaration and reference line');
+    assert.match(browser, /bw_task0_\(\?:state\|until\)/,
+        'storage evidence covers state and deadline regardless of type or qualifier');
+    assert.match(browser, /yieldCount: yieldLines\.length/);
+    assert.match(browser, /yieldKinds: yieldLines\.slice\(0, 16\)/,
+        'bounded evidence reports the generated yield-map shape without logging source');
     assert.match(browser, /symbolsError: body\?\.symbols_error \|\| null/);
     assert.match(browser, /new URL\('\/health', compileUrl\)/,
         'a failure records the deployed service version from the same browser region');

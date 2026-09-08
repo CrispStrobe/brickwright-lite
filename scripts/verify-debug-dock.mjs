@@ -183,6 +183,16 @@ try {
     await page.keyboard.type('DEVICE STC12C5A60S2\nCLOCK 11059200\nPIN led1 = P1.0 OUTPUT ACTIVE LOW\n\nWHEN flag clicked:\n  FOREVER:\n    toggle led1\n    wait 0.15 seconds\n', {delay: 5});
     await page.locator('button', {hasText: 'To blocks'}).first().click({force: true});
     await page.waitForTimeout(1500);
+    const liveControlWaits = await page.evaluate(() => {
+        const store = window.__brickwrightStore;
+        const vm = store?.getState?.()?.scratchGui?.vm;
+        if (!vm?.toJSON) return null;
+        const project = JSON.parse(vm.toJSON());
+        return project.targets.reduce((count, target) => count + Object.values(target.blocks || {})
+            .filter(block => block.opcode === 'control_wait').length, 0);
+    });
+    check('To blocks preserves the authored wait in the live VM', liveControlWaits === 1,
+        `control_wait count=${liveControlWaits}`);
     await page.locator('[role="tab"]', {hasText: 'Blocks'}).first().click();
     await page.waitForTimeout(2500);
 
@@ -198,13 +208,19 @@ try {
     page.on('request', request => {
         if (!request.url().endsWith('/compile') || request.method() !== 'POST') return;
         const body = request.postDataJSON();
+        const code = String(body?.code || '');
+        const yieldLines = code.split('\n').filter(line => line.includes('@bw yield '));
         compileRequest = {url: request.url(), body};
         compileEvidence.push({
             request: {
-                codeSha256: createHash('sha256').update(String(body?.code || '')).digest('hex'),
-                codeBytes: Buffer.byteLength(String(body?.code || '')),
-                taskDeclarations: (String(body?.code || '').match(
-                    /static (?:volatile )?unsigned int bw_task\d+_(?:state|until);/g) || []).slice(0, 8),
+                codeSha256: createHash('sha256').update(code).digest('hex'),
+                codeBytes: Buffer.byteLength(code),
+                taskStorageLines: code.split('\n')
+                    .filter(line => /bw_task0_(?:state|until)/.test(line))
+                    .slice(0, 16).map(line => line.trim().slice(0, 300)),
+                yieldCount: yieldLines.length,
+                yieldKinds: yieldLines.slice(0, 16)
+                    .map(line => line.trim().split(/\s+/).at(-1)),
                 target: body?.target || null,
                 format: body?.format || null,
                 symbols: body?.symbols ?? null,
