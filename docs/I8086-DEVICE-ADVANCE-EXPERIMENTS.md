@@ -157,3 +157,67 @@ method replacement and callback-time attachment. Halt horizons are compared
 too. The separate 10,000-step clock-conversion test pins exact fractional state
 and method-getter behavior. These are explicit tested contracts, not a claim
 that arbitrary external extensions or untested hardware behavior are proven.
+
+### Follow-up measurements
+
+The first two candidates were measured at `1e228805e`, the null-first refinement
+at `866bfba2c`, always against application `5ed83a313f5e497f6d5f6dcf0384dc205c9d9511`.
+All reported runs completed with matching state. These are retained experiments,
+not new defaults. Throughput changes in isolated three-active-counter tests:
+
+| Variant | Normal Chromium | 4× throttle | Important qualification |
+| --- | ---: | ---: | --- |
+| `pit-inline` | +5.1% | +7.1% | Normal idle/one-active PIT regress 4–5% |
+| `pit-mode3` | +13.8% | +7.0% | Idle PIT regresses 10–17%; normal PIT+CGA −4.4% |
+| `pit-mode3-null` | +19.2% | +11.3% | Idle still regresses; throttled one-active PIT −5.4% |
+
+The three-active-counter improvements and the listed regressions have separated
+five-sample ranges.
+Null-first did not remove the measured idle regression, despite avoiding the
+nested fallback call; do not equate fewer source-level calls with faster V8 code.
+
+Microbenchmark receipts: [inline 34249768328](https://github.com/CrispStrobe/brickwright-lite/actions/runs/34249768328),
+[mode-3 34249770970](https://github.com/CrispStrobe/brickwright-lite/actions/runs/34249770970),
+[null-first 34250231791](https://github.com/CrispStrobe/brickwright-lite/actions/runs/34250231791).
+
+Full-workload [inline 34249773454](https://github.com/CrispStrobe/brickwright-lite/actions/runs/34249773454)
+and [mode-3 34249776666](https://github.com/CrispStrobe/brickwright-lite/actions/runs/34249776666)
+each passed 300 execution observations and 60 completed sorting-program
+observations. On the primary mixed peripheral workload, inline measured +0.6%
+normal / −3.9% throttled; mode-3 measured −1.5% / +0.5%. Every one of those
+ranges overlaps. Mode-3 also regressed the normal string/peripheral workload
+2.8% with separated ranges. Neither is a convincing overall speedup.
+
+The refinement's [full run 34250235052](https://github.com/CrispStrobe/brickwright-lite/actions/runs/34250235052)
+also passed all 300 execution and 60 completed-program observations. Mixed
+peripheral throughput changed +0.4% normal / +0.3% throttled; all six peripheral
+workload comparisons have overlapping ranges. Thus its 19% isolated gain is
+not an established emulator-wide improvement. It stays retained, default-off.
+
+The repaired conversion-cache [run 34250621617](https://github.com/CrispStrobe/brickwright-lite/actions/runs/34250621617)
+at `866bfba2c` completed its Chromium state comparisons. PIT+CGA throughput
+still regressed 10.6% under throttling with separated ranges. Repairing correctness
+does not imply improved performance; this path also stays default-off.
+
+The follow-up engine tests at `dedfbc8` passed full
+[CI 34249782632](https://github.com/CrispStrobe/bw-board/actions/runs/34249782632).
+Locally, all 15 focused device/workload tests and all seven retained block/RAM
+experiment tests passed at application `866bfba2c`. No engine source, application
+runtime, vendor pin, GUI setting or production default was changed in this
+follow-up. Only the unsafe deferred scheduler's executable body was removed;
+its Git history and refusal/negative fixtures preserve the finding.
+
+The latest ordinary `none` control also passed in
+[34250215227](https://github.com/CrispStrobe/brickwright-lite/actions/runs/34250215227),
+confirming the same full workload/corpus state checks with experiments disabled.
+
+Application [CI 34250238219](https://github.com/CrispStrobe/brickwright-lite/actions/runs/34250238219)
+at `866bfba2c` passed build/unit tests, corpus and the heavy-browser suite.
+The light-browser job is **not green**: attempt 1 failed finalizing two artifact
+uploads with intermediary HTTP 403, and a same-code failed-job retry (attempt 2)
+failed finalizing `rehabilitated-browser-gate-artifacts` with the same HTTP 403.
+No browser test step failed in the retry; its timing and executed-gate audits
+passed. This is a recorded upload-infrastructure limitation, not an emulator
+test failure, and is not hidden by weakening checks or claiming full CI green.
+No merge or deployment was performed. Closing commits only record receipts and
+release the research lane; the tested code remains `866bfba2c`.
