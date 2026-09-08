@@ -106,8 +106,32 @@ class Stage extends React.Component {
         // 240x180 both sides), so it cannot strand the buffer. Adding an
         // observer would put a mechanism in a vendored container to guard a
         // case that cannot occur.
-        this.renderer.resize(this.rect.width, this.rect.height);
+        this.sizeBufferToBox('mount');
+        // AND AGAIN ON THE NEXT FRAME, because at mount the container has not
+        // been laid out yet: the rect is 0x0, and resizing to 0x0 is a no-op
+        // that looks exactly like the bug. Measured — the first version of
+        // this fix resized at mount and CI still reported buffer 0x0 against a
+        // 480x360 box. One deferred re-read is not a ResizeObserver; it is the
+        // same single sizing, taken once the box exists.
+        this.mountSizeFrame = requestAnimationFrame(() => {
+            this.mountSizeFrame = requestAnimationFrame(() => this.sizeBufferToBox('first-frame'));
+        });
         this.props.vm.runtime.addListener('QUESTION', this.questionListener);
+    }
+    /**
+     * Size the renderer's drawing buffer to the laid-out box, and RECORD what
+     * it saw. The attribute is the evidence: absent means this overlay never
+     * reached the build, 0x0 means the box had no size yet. Without it those
+     * two produce identical output — a buffer that is still zero — and they
+     * want opposite fixes.
+     */
+    sizeBufferToBox (why) {
+        if (!this.canvas || !this.renderer) return;
+        this.updateRect();
+        const w = Math.round(this.rect.width);
+        const h = Math.round(this.rect.height);
+        this.canvas.setAttribute('data-bw-sized', `${why}:${w}x${h}`);
+        if (w > 0 && h > 0) this.renderer.resize(w, h);
     }
     shouldComponentUpdate (nextProps, nextState) {
         return this.props.stageSize !== nextProps.stageSize ||
@@ -128,6 +152,7 @@ class Stage extends React.Component {
         this.renderer.resize(this.rect.width, this.rect.height);
     }
     componentWillUnmount () {
+        if (this.mountSizeFrame) cancelAnimationFrame(this.mountSizeFrame);
         this.detachMouseEvents(this.canvas);
         this.detachRectEvents();
         this.stopColorPickingLoop();
