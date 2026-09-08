@@ -179,7 +179,7 @@ try {
     await cm.click();
     await page.keyboard.press('Control+a');
     await page.keyboard.press('Backspace');
-    await page.keyboard.type('DEVICE STC12C5A60S2\nCLOCK 11059200\nPIN led1 = P1.0 OUTPUT ACTIVE LOW\n\nWHEN flag clicked:\nFOREVER:\ntoggle led1\nwait 0.15 seconds\n', {delay: 5});
+    await page.keyboard.type('DEVICE STC12C5A60S2\nCLOCK 11059200\nPIN led1 = P1.0 OUTPUT ACTIVE LOW\n\nWHEN flag clicked:\n  FOREVER:\n    toggle led1\n    wait 0.15 seconds\n', {delay: 5});
     await page.locator('button', {hasText: 'To blocks'}).first().click({force: true});
     await page.waitForTimeout(1500);
     await page.locator('[role="tab"]', {hasText: 'Blocks'}).first().click();
@@ -206,7 +206,7 @@ try {
         const panel = document.querySelector('[data-debug-panel]');
         return {
             phase: panel?.dataset.debugPhase || null,
-            panelText: panel?.innerText?.trim().slice(0, 4000) || null,
+            panelTextTail: panel?.innerText?.trim().slice(-4000) || null,
             runDisabled: panel?.querySelector('[data-debug-run]')?.disabled ?? null
         };
     });

@@ -107,13 +107,15 @@ test('the hosted Code-entry proof selects the real DebugPanel marker', () => {
     assert.match(browser, /\{timeout: 60000\}/,
         'hosted compilation gets a bounded minute before the proof diagnoses it');
     assert.match(browser, /phase: panel\?\.dataset\.debugPhase \|\| null/);
-    assert.match(browser, /panelText: panel\?\.innerText\?\.trim\(\)\.slice\(0, 4000\) \|\| null/,
-        'failure evidence must report bounded visible panel text without guessing at nested status markup');
+    assert.match(browser, /panelTextTail: panel\?\.innerText\?\.trim\(\)\.slice\(-4000\) \|\| null/,
+        'failure evidence must report the bounded visible panel tail containing the bottom status row');
     assert.doesNotMatch(browser, /panel\?\.querySelector\('strong'\)/,
         'nested debugger tools also contain strong elements and are not the phase status');
     assert.match(browser, /runDisabled: panel\?\.querySelector\('\[data-debug-run\]'\)\?\.disabled \?\? null/);
     assert.match(browser, /startState\.phase === 'running'/,
         'diagnostic capture must not weaken the required running outcome');
+    assert.match(browser, /WHEN flag clicked:\\n  FOREVER:\\n    toggle led1\\n    wait 0\.15 seconds/,
+        'the Code-entry fixture must preserve the indentation required by the proven parser journey');
     assert.doesNotMatch(browser, /\[data-debugger-panel\]/,
         'the CircuitDesigner wrapper is absent from the solo Code view');
 });
