@@ -63,6 +63,19 @@ export default function I8086Lab () {
             REP optimizations and correctness fixes remain enabled.</p>
         <p role="status">{storageNote}</p>
         <h3>Experimental benchmark sandbox</h3>
+        <button disabled={busy} onClick={async () => {
+            const controller = new AbortController();
+            active.current = controller; setBusy(true);
+            try {
+                const {openHarrisLab} = await import(/* webpackChunkName: "bw-286-lab" */ '../../lib/bw-286-lab/panel.js');
+                if (controller.signal.aborted || active.current !== controller) return;
+                close(); openHarrisLab();
+            } catch (error) {
+                if (active.current === controller) setStatus(`286 lab unavailable: ${error.message}`);
+            } finally {
+                if (active.current === controller) { active.current = null; setBusy(false); }
+            }
+        }}>Open experimental 286 board lab</button>
         <p>Bundled programs only, with separate CPU and RAM. This does not run or modify your project.
             Decoded blocks and Wasm are not supported project backends: no devices, interrupts or debugger integration.
             Timer batching is not offered because it changes observable counter state.</p>

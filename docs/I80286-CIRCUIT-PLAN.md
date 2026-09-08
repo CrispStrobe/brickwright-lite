@@ -1,18 +1,20 @@
 # 80286 Circuit Editor: circuit-first plan
 
-Date: 2026-09-08. Status: initial foundation implemented; 286 not yet delivered.
+Date: 2026-09-08. Status: limited wired CPU and isolated application lab;
+general 286/editor component not yet delivered.
 
-Implementation update: the paired `bw-board` branch `feat/x86-backend-lab`
-now contains an isolated initial M1 prototype at engine commit `90467ee`:
-four-state digital nets, explicit
-byte-bank wiring, a synthetic bus master, delayed completion and fault tests.
-See its `docs/I80286-CIRCUIT-FOUNDATION.md` for reproduction and limitations.
-This is not a CPU, hardware bus sequencer or editor-integrated 286 part. M0
-datasheet sign-off and the remaining M1 gates are still open; M2 has not begun.
-No engine pin or production default changed in Lite.
-Verification: 20 new engine tests pass; the targeted regression run including
-existing electrical memory and 8086 extractor/machine tests passed 56/56 with
-no skips. This is not a full engine CI or browser-integration result.
+Implementation update: the paired engine now executes an owned loop ROM through
+the ideal digital nets, Harris phase sequencer, external controller/latch and
+existing RAM/ROM models. Engine `14f2538` adds saved fixed-profile recipes and a
+bounded debugger session (117 targeted engine tests passed). Lite packages an
+exact, separate experimental copy and exposes an explicitly enabled lab through
+Settings → 8086 execution diagnostics → Open experimental 286 board lab.
+See [lab usage and verification](HARRIS-286-BOARD-LAB.md).
+
+This is partial M2 work, not a complete 286, arbitrary editor part placement,
+full controller timing or protected mode. The production engine pin and project
+CPU defaults remain unchanged. The lab's browser component test does not stand
+in for a full application build, CI, hardware traces or general CPU conformance.
 
 ## Decision
 

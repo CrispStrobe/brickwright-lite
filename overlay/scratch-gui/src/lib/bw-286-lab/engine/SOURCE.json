@@ -1,0 +1,52 @@
+{
+  "repository": "https://github.com/CrispStrobe/bw-board",
+  "revision": "14f253877e006673f5eea6745853ee28e360fca9",
+  "license": "MIT",
+  "scope": "Isolated experimental copy; not the production bw-board pin",
+  "files": [
+    {
+      "file": "devices.js",
+      "gitBlob": "340f975574e57dafde74502738cf053a26658021"
+    },
+    {
+      "file": "devices/bus-memory.js",
+      "gitBlob": "75ccf092e427ad5d3c921f85217cdeeb04f93237"
+    },
+    {
+      "file": "experimental/digital-circuit.js",
+      "gitBlob": "52d527ee3f4c81c2d13a9a1b2bae701d26bfde28"
+    },
+    {
+      "file": "experimental/harris-80c286-contract.js",
+      "gitBlob": "fc0d5f486fbd12b0099319962423d5105ba2d1a4"
+    },
+    {
+      "file": "experimental/harris-80c286-bus.js",
+      "gitBlob": "7a0bb0ca7dc2768e5fa70e4d2cece901a5e456d9"
+    },
+    {
+      "file": "experimental/latched-memory-components.js",
+      "gitBlob": "92e234ec9111262b9e5bf3ce67250dc4d9075008"
+    },
+    {
+      "file": "experimental/harris-80c286-memory-board.js",
+      "gitBlob": "7e18493111c9d2925bf589f92d341f4fc7258db5"
+    },
+    {
+      "file": "experimental/harris-80c286-boot-cpu.js",
+      "gitBlob": "64895318134abdce0928254dcedbf39546e266e4"
+    },
+    {
+      "file": "experimental/harris-boot-rom.js",
+      "gitBlob": "dac3b093a139d6419f5e400e331de4342764c612"
+    },
+    {
+      "file": "experimental/harris-circuit-session.js",
+      "gitBlob": "ce381eafc8cde5dcef594abc08bfd9d140e685cc"
+    },
+    {
+      "file": "LICENSE",
+      "gitBlob": "64556deb596b2bf990bd248108a0dce64eeb88bd"
+    }
+  ]
+}
