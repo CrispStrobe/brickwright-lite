@@ -56,6 +56,8 @@
  * @returns {Promise<{machine: object, dos: object, target: object,
  *                    screenText: () => string[], report: () => object}>}
  */
+import {withI8086MemoryPreference} from '../bw-i8086-preferences.js';
+
 export async function createI8086DosBench (opts) {
     const {bytes, format, keys, onChar, onExit, variant, chips} = opts;
     if (!bytes || !bytes.length) throw new Error('the DOS bench was handed an empty image');
@@ -127,7 +129,7 @@ export async function createI8086DosBench (opts) {
             (c) => !chips.some((x) => x.name === c.name));
         cfg = {...base, chips: [...merged, ...chips]};
     }
-    const machine = new I8086Machine(cfg);
+    const machine = new I8086Machine(withI8086MemoryPreference(cfg));
     // The hub holds CHIPS, and they do not exist until the machine is built.
     for (const c of (chips || [])) {
         if (c._joinHub && machine.chips[c.name]) c._joinHub.cards.push(machine.chips[c.name]);

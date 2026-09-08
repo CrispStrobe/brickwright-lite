@@ -33,7 +33,8 @@ const server = createServer(async (req, res) => {
         if (!roots[kind]) { res.writeHead(404).end(); return; }
         if (!parts.join('/')) { res.setHeader('Content-Type', 'text/html'); res.end('<!doctype html><title>8086 profile</title>'); return; }
         // Use the candidate harness unchanged for both source trees.
-        const isHarness = ['scripts/lib/i8086-execution-workload.mjs',
+        const isHarness = ['overlay/scratch-gui/src/lib/bw-i8086-lab/register-block-experiment.js',
+            'scripts/lib/i8086-execution-workload.mjs',
             'scripts/lib/i8086-block-experiment.mjs', 'scripts/lib/i8086-ram-experiment.mjs',
             'scripts/lib/i8086-corpus-workload.mjs', 'scripts/lib/i8086-pit-scheduling-experiment.mjs'].includes(parts.join('/'));
         const sourceRoot = isHarness ? root : roots[kind];

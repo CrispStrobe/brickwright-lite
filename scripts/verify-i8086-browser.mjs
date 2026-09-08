@@ -228,6 +228,44 @@ try {
     null, {timeout: 5000, polling: 'raf'});
     record('closing 8255 PC0 makes the program drive PA0..PA3 high', true);
 
+    // Open the real Settings surface. The lab must not replace or mutate the
+    // paused project target while its private CPUs execute bundled programs.
+    const projectState = await page.evaluate(() => {
+        const target = window.__benchTarget;
+        if (!target) throw new Error('No real project target to protect');
+        target.halt(); window.__labProjectTarget = target;
+        return JSON.stringify({regs: target.regs(), time: String(target.timeNs()),
+            mem: Array.from(target.readMem('mem', 0, 256))});
+    });
+    await page.getByText('Settings', {exact: true}).click();
+    await page.getByText('8086 execution diagnostics…', {exact: true}).click();
+    const lab = page.getByTestId('i8086-lab');
+    await lab.waitFor({state: 'visible'});
+    await page.getByTestId('i8086-memory-mode').selectOption('reference');
+    record('reference byte preference persists without selecting an experimental backend',
+        await page.evaluate(() => localStorage.getItem('bw-i8086-memory')) === 'reference');
+    await page.getByTestId('i8086-lab-run').click();
+    await page.waitForFunction(() => document.querySelector('[data-testid="i8086-lab-status"]')?.textContent
+        .startsWith('Complete —'), null, {timeout: 60000});
+    const rows = await page.getByTestId('i8086-lab-results').locator('tbody tr').allTextContents();
+    record('bundled benchmark actually compares JS, decoded and Wasm with matching states',
+        rows.length === 3 && rows.every(row => /matched/.test(row)) && rows.some(row => /wasm/.test(row)), rows.join(' | '));
+    record('sandbox leaves the project target, registers, time and RAM unchanged', await page.evaluate(before => {
+        const target = window.__benchTarget;
+        return target === window.__labProjectTarget && before === JSON.stringify({regs: target.regs(),
+            time: String(target.timeNs()), mem: Array.from(target.readMem('mem', 0, 256))});
+    }, projectState));
+    await page.screenshot({path: join(artifacts, 'execution-diagnostics.png'), fullPage: true});
+    await page.getByTestId('i8086-lab-run').click();
+    await page.getByTestId('i8086-lab-cancel').click();
+    await page.waitForFunction(() => /cancelled/.test(document.querySelector('[data-testid="i8086-lab-status"]')?.textContent || ''),
+        null, {timeout: 15000});
+    record('benchmark cancellation returns control without an accepted result', true);
+    await page.getByTestId('i8086-memory-mode').selectOption('optimized');
+    await page.keyboard.press('Escape');
+    await lab.waitFor({state: 'hidden'});
+    record('Escape closes the diagnostics dialog', true);
+
     record('the 8086 journey made no hosted compiler request', hostedCompilerRequests.length === 0,
         hostedCompilerRequests.join(' | '));
     record('the browser raised no uncaught page error',

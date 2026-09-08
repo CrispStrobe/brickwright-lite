@@ -1,5 +1,33 @@
 # 8086 fastpaths, phase 2
 
+## GUI diagnostics and promotion follow-up
+
+The promotion branch reconciles current main with the verified fastpaths,
+retaining upstream tone and W65C51 changes at engine `4c6ab1a7289db121284a2c0e98435598bd3ef24c`.
+Engine CI `34235227257` is green. Application integration and GUI CI follow.
+
+Settings → **8086 execution diagnostics…** provides:
+
+* **Optimized / Reference byte access** for newly constructed 8086/80186
+  project targets. Rebuild or reattach to apply. This diagnostic switch disables
+  only guarded RAM word access; it neither changes a live machine nor rolls
+  back REP optimizations or correctness fixes. Storage failures fall back to a
+  tab-local preference and are reported.
+* An isolated, lazy-loaded **JS / decoded / Wasm comparison** using three
+  bundled bare-CPU programs, private RAM, bounded execution slices, cancellation,
+  warmup and three alternating-order samples. Registers, cycles and RAM hashes
+  must match or the result is rejected. UI shows timing ranges, RT, compilation
+  and fallback counts. This is a logical isolation boundary, not a security
+  sandbox for untrusted code: user code and device attachments are not accepted.
+
+No experimental backend is selectable for project execution. Timer batching
+remains excluded. The executor previously kept in `scripts/lib/` is now shared
+with the lazy GUI benchmark to avoid testing one copy and displaying another.
+Historical statements below about prototypes not being imported by production
+refer to normal project execution; the explicit diagnostic panel now loads the
+decoded/Wasm prototype on demand. Synthetic best-case gains remain distinct
+from general emulator performance.
+
 Baseline Lite: `abc4634dad85b570ea64b979fcb67d32194c3fd3`.
 Baseline engine: `492e6782ee92f1ad351d64afcf16cfc224a5d508`.
 Work is on Lite `perf/i8086-execution` and engine `fable/i8086-fastpaths`.

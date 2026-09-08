@@ -19,6 +19,7 @@
  */
 
 import { I8086Machine, BREADBOARD8086 } from './i8086-machine.js';
+import {withI8086MemoryPreference} from '../bw-i8086-preferences.js';
 
 /**
  * @param {object} [opts]
@@ -27,7 +28,7 @@ import { I8086Machine, BREADBOARD8086 } from './i8086-machine.js';
  * @param {number} [opts.romAt] - ROM load address (default: first rom region)
  */
 export function createI8086Adapter(opts = {}) {
-    const config = opts.config ?? BREADBOARD8086;
+    const config = withI8086MemoryPreference(opts.config ?? BREADBOARD8086);
 
     let board = null;
     let serialListener = null;
