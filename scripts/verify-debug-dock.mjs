@@ -24,6 +24,7 @@ import {readFile} from 'node:fs/promises';
 import {existsSync} from 'node:fs';
 import {extname, join, normalize, resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {createHash} from 'node:crypto';
 import {chromium} from 'playwright';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -192,6 +193,43 @@ try {
     check('mcu bench: while coding, dock "right" is the PANEL, not a squeezed designer',
         mcuRight.soloPane && !mcuRight.looksLikeDesigner,
         `soloPane=${mcuRight.soloPane} designer=${mcuRight.looksLikeDesigner}`);
+    const compileEvidence = [];
+    let compileRequest = null;
+    page.on('request', request => {
+        if (!request.url().endsWith('/compile') || request.method() !== 'POST') return;
+        const body = request.postDataJSON();
+        compileRequest = {url: request.url(), body};
+        compileEvidence.push({
+            request: {
+                codeSha256: createHash('sha256').update(String(body?.code || '')).digest('hex'),
+                codeBytes: Buffer.byteLength(String(body?.code || '')),
+                taskDeclarations: (String(body?.code || '').match(
+                    /static (?:volatile )?unsigned int bw_task\d+_(?:state|until);/g) || []).slice(0, 8),
+                target: body?.target || null,
+                format: body?.format || null,
+                symbols: body?.symbols ?? null,
+                options: Array.isArray(body?.options) ? body.options.slice(0, 20) : null
+            },
+            response: null
+        });
+    });
+    page.on('response', async response => {
+        if (!response.url().endsWith('/compile') || response.request().method() !== 'POST') return;
+        const row = [...compileEvidence].reverse().find(item => item.response === null);
+        if (!row) return;
+        let body = null;
+        try { body = await response.json(); } catch { /* the status and headers still diagnose it */ }
+        const headers = await response.allHeaders();
+        row.response = {
+            status: response.status(),
+            headers: Object.fromEntries(['x-vercel-id', 'x-vercel-cache', 'server', 'date']
+                .filter(name => headers[name]).map(name => [name, headers[name]])),
+            success: body?.success ?? null,
+            symbolsPresent: !!body?.symbols,
+            symbolsError: body?.symbols_error || null,
+            error: body?.error || null
+        };
+    });
     await page.locator('[data-debug-panel] [data-debug-run]:visible').click();
     let startWaitError = null;
     try {
@@ -210,8 +248,45 @@ try {
             runDisabled: panel?.querySelector('[data-debug-run]')?.disabled ?? null
         };
     });
+    await waitFor(async () => compileEvidence[0]?.response || null, value => value !== null, 5000);
+    let serviceComparison = null;
+    if (startState.phase !== 'running' && compileRequest) {
+        serviceComparison = await page.evaluate(async ({url: compileUrl, body}) => {
+            const summarize = async response => {
+                let payload = null;
+                try { payload = await response.json(); } catch { /* status and headers remain useful */ }
+                return {
+                    status: response.status,
+                    route: response.headers.get('x-vercel-id'),
+                    cache: response.headers.get('x-vercel-cache'),
+                    success: payload?.success ?? null,
+                    symbolsPresent: !!payload?.symbols,
+                    symbolsError: payload?.symbols_error || null,
+                    error: payload?.error || null,
+                    version: payload?.version || null,
+                    sdcc: payload?.sdcc || null
+                };
+            };
+            let retry;
+            try {
+                const response = await fetch(compileUrl, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)
+                });
+                retry = await summarize(response);
+            } catch (error) {
+                retry = {fetchError: error?.message || String(error)};
+            }
+            let health;
+            try {
+                health = await summarize(await fetch(new URL('/health', compileUrl)));
+            } catch (error) {
+                health = {fetchError: error?.message || String(error)};
+            }
+            return {retry, health};
+        }, compileRequest);
+    }
     check('Code entry builds and reaches the running phase', startState.phase === 'running',
-        JSON.stringify({...startState, waitError: startWaitError}));
+        JSON.stringify({...startState, waitError: startWaitError, compileEvidence, serviceComparison}));
     const identityBefore = await debugIdentity(page);
     check('Code entry has exactly one debugger host and panel',
         identityBefore.hosts === 1 && identityBefore.panels === 1,

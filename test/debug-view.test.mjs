@@ -114,6 +114,18 @@ test('the hosted Code-entry proof selects the real DebugPanel marker', () => {
     assert.match(browser, /runDisabled: panel\?\.querySelector\('\[data-debug-run\]'\)\?\.disabled \?\? null/);
     assert.match(browser, /startState\.phase === 'running'/,
         'diagnostic capture must not weaken the required running outcome');
+    assert.match(browser, /createHash\('sha256'\).*body\?\.code/,
+        'compile evidence hashes the generated C instead of logging its source');
+    assert.match(browser, /taskDeclarations:.*match\(/s,
+        'the bounded evidence names the scheduler storage declarations sent to the service');
+    assert.match(browser, /symbolsError: body\?\.symbols_error \|\| null/);
+    assert.match(browser, /new URL\('\/health', compileUrl\)/,
+        'a failure records the deployed service version from the same browser region');
+    assert.match(browser, /version: payload\?\.version \|\| null/);
+    assert.match(browser, /sdcc: payload\?\.sdcc \|\| null/);
+    assert.match(browser, /if \(startState\.phase !== 'running' && compileRequest\)/,
+        'only a failed original request is repeated for comparison');
+    assert.match(browser, /serviceComparison/);
     assert.match(browser, /WHEN flag clicked:\\n  FOREVER:\\n    toggle led1\\n    wait 0\.15 seconds/,
         'the Code-entry fixture must preserve the indentation required by the proven parser journey');
     assert.doesNotMatch(browser, /\[data-debugger-panel\]/,
