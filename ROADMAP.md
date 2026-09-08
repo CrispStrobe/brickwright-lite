@@ -25,7 +25,7 @@ item marked with an agent name is being worked on.
 ## Next-session shortlist — reconciled 2026-09-08
 
 [PLAN.md](PLAN.md#next-session-priorities--reconciled-2026-09-08) defines the
-execution order. The exact baseline is `37f41c6da`; [HISTORY.md](HISTORY.md)
+execution order. The exact baseline is `62c7a00c4`; [HISTORY.md](HISTORY.md)
 holds completed and rejected work, and [LANES.md](LANES.md) controls live
 ownership. Do not start a later track while an earlier track is owned or under
 landing audit.

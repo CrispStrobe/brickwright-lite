@@ -29,6 +29,14 @@ plan or roadmap. Detailed commit, CI and ownership evidence remains in Git and
   is one coupled ten-file unit plus eight independent files. Licence copies,
   generated manifests, sync artefacts, and Lite-only helpers are classified by
   ownership instead of being copied upstream blindly.
+- **The unreachable legacy `hobby_gearmotor` package assets were retired**
+  (Lite change `d21b67752480ccb17941fbb5d4c253ffb98535b2`, main
+  `62c7a00c4960c48966d2ebf725ee4398b46463d5`; exact-head run `34246973382`
+  green). The corrected runtime slug had already arrived from bw-circuit-ui
+  `9cb48df02f0cc54e057598ce76e097bfc6906329`, upstream run `34245969165`.
+  Lite deleted only the old ignored-but-partially-tracked JSON/SVG pair and now
+  checks its absence, absence of stale references, and presence of the canonical
+  `gearmotor` pair.
 
 - **The GPL SDCC payload left the BSD-3 repository and became an explicit toolchain**
   (`0b79a6f23`, following CLI `fa87c0d7e` and manager `0dec905c3`). The 202

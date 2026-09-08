@@ -17,7 +17,7 @@ gates.
 
 ## Next-session priorities — reconciled 2026-09-08
 
-This shortlist is reconciled with `main` at `37f41c6da`. Completed and rejected
+This shortlist is reconciled with `main` at `62c7a00c4`. Completed and rejected
 work, including the payload sequence, N2b–N2f, and compiler/SIM recovery, is recorded in `HISTORY.md`;
 `LANES.md` remains the live ownership authority.
 
@@ -25,7 +25,8 @@ The current base includes the separately downloaded GPL SDCC toolchain and its
 CLI/UI manager, the complete i8086 example/emitter re-sync, corrected LED
 polarity on both circuit surfaces, an audible TONE path, and bounded 8086 C
 numeric lists, deterministic signed-16 random selection, literal DOS output,
-hash-routed local-compiler recovery, and complete SIM-mode property exclusion.
+hash-routed local-compiler recovery, complete SIM-mode property exclusion, and
+removal of the unreachable legacy `hobby_gearmotor` package assets.
 Pin changes remain chains: sync the exact green upstream SHA,
 update every dual-tracked mirror, and re-derive every artifact that stamps the
 pin. A green behavior probe does not make stale provenance acceptable.
