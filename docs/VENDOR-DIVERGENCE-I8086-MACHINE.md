@@ -357,6 +357,18 @@ fails unless it touched both.
           "falsifiable": "Reverse-stepping to a recorded input lands somewhere else, or accepts a malformed boundary and runs to an arbitrary point instead of saying the boundary was invalid.",
           "why": "replayToInputBoundary() parses the boundary as a BigInt inside a try and returns a CODED refusal ('invalid-input-boundary') rather than throwing or coercing. A NaN tick count that is silently accepted replays to the wrong place and reports success.",
           "contains": "replayToInputBoundary\\(boundary\\)"
+        },
+        {
+          "id": "m6502-debug-event-retire-boundary",
+          "falsifiable": "A RAM or memory-mapped device event halts the 6502 in the middle of its instruction, before the architectural PC and device state reach a replayable boundary.",
+          "why": "The target explicitly advertises the observed instruction-retire boundary which its instruction-atomic producer publishes after ordered memory access facts. Runner admission depends on this capability instead of a CPU-name exception.",
+          "contains": "eventBreakpointBoundary: 'instruction-retire'"
+        },
+        {
+          "id": "m6502-debug-memory-event-space",
+          "falsifiable": "The 6502 publishes memory events which the breakpoint compiler refuses, or conditions destructively read a memory-mapped VIA while deciding whether to halt.",
+          "why": "The mem capability connects published memory facts to the target-neutral predicate engine while passiveRead false preserves the truth that RAM and MMIO occupy one address space.",
+          "contains": "spaces: \\{mem: \\{read: true, write: true, passiveRead: false\\}\\}"
         }
       ]
     },

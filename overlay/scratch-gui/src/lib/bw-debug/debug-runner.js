@@ -98,6 +98,26 @@ export function dispatchEventBreakpointAtBoundary ({capabilities, dispatcher, ev
     return dispatcher.dispatch(event, options);
 }
 
+/** A replay halt ledger is truthful only for a target that both names the
+ * replay-addressable retire boundary and can checkpoint/restore that history. */
+export function canRecordEventBreakpointHalt (capabilities) {
+    return capabilities?.extensions?.eventBreakpointBoundary === 'instruction-retire' &&
+        Array.isArray(capabilities.recording) &&
+        capabilities.recording.includes('checkpoint') && capabilities.recording.includes('restore');
+}
+
+export function eventBreakpointHaltOccurrence ({capabilities, result, boundaryCursor, generation}) {
+    if (!canRecordEventBreakpointHalt(capabilities) || !result?.outcome?.halted) return null;
+    return {
+        boundaryCursor,
+        triggerEventSeq: result.triggerEventSeqs?.[0] ?? null,
+        matchingIds: result.outcome.matchingIds,
+        generation,
+        stopSide: 'after',
+        source: 'breakpoint-engine'
+    };
+}
+
 /**
  * Put the rate limit BEFORE snapshot construction.
  *
@@ -735,19 +755,15 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     }
 
     function recordEventBreakpointHalt(result) {
-        if (targetKind !== 'i8086' || !recordingSession.status().active || !result?.outcome?.halted) return;
+        if (!recordingSession.status().active) return;
         const checkpoints = activeBranchPayload.recorder.checkpointSummary();
         if (!checkpoints.length) return;
+        const occurrence = eventBreakpointHaltOccurrence({capabilities: capsNow(), result,
+            boundaryCursor: eventStream.nextSequence(), generation: breakpointGeneration});
+        if (!occurrence) return;
         activeBranchPayload.haltOccurrences.evictBeforeCheckpoint(checkpoints[0].eventCursor);
         try {
-            activeBranchPayload.haltOccurrences.append({
-                boundaryCursor: eventStream.nextSequence(),
-                triggerEventSeq: result.triggerEventSeqs?.[0] ?? null,
-                matchingIds: result.outcome.matchingIds,
-                generation: breakpointGeneration,
-                stopSide: 'after',
-                source: 'breakpoint-engine'
-            });
+            activeBranchPayload.haltOccurrences.append(occurrence);
         } catch (error) {
             haltLedgerRefusal = {accepted: false, code: 'halt-history-capacity',
                 reason: error?.message || String(error)};

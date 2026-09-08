@@ -583,6 +583,18 @@ the instruction completes. The proof runs `LD A,$2a; OUT ($10),A; LD ($2000),A`,
 Z80 immediate-port address `$2a10`, exact retire PCs, and replay suppression. It does not claim
 cycle placement or add a target-name exception.
 
+### 6502 RAM/MMIO event-breakpoint parity — candidate 2026-09-08
+
+The existing instruction-atomic 6502 producer now has the same explicit
+`eventBreakpointBoundary: 'instruction-retire'` admission contract. A real
+W65C02 program writes both RAM and a VIA mapped at `$6000`; each reconstructed
+access is observed before its recorded retire and any halt is delivered at the
+post-instruction PC. The shared `mem` space is deliberately non-passive because
+RAM and MMIO cannot be distinguished by the capability descriptor. Replay does
+not repeat actions or consume one-shot state. Halt-history admission additionally
+requires checkpoint and restore capabilities plus an existing checkpoint; no
+CPU-name exception was added and no cycle-level fidelity is claimed.
+
 ### Code-tab debugger discoverability — candidate 2026-09-08
 
 The full Circuit `DebugPanel` already survives Code/Circuit and dock changes through one

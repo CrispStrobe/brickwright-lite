@@ -88,9 +88,13 @@ export function createM6502DebugTarget(adapter, opts = {}) {
         timeFreezes: true,
         consumes: [],
         events: ['instruction', 'memory'],
+        spaces: {mem: {read: true, write: true, passiveRead: false}},
         fidelity: {instruction: 'recorded', memory: 'reconstructed', cycle: 'unsupported'},
         recording: checkpointStatus.supported ? ['checkpoint', 'restore'] : [],
         extensions: {
+          // Memory facts are published before the same machine.step() publishes
+          // its recorded retire, so the runner may defer their actions safely.
+          eventBreakpointBoundary: 'instruction-retire',
           ...(checkpointStatus.supported ? {} : {checkpointRefusal: checkpointStatus.reasons}),
           inputReplay: ['m6502.buttons', 'm6502.nmi', ...(rawSendSerial ? ['m6502.serial'] : [])],
           inputRefusals: [
