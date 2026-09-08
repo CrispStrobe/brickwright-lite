@@ -15,47 +15,37 @@ This document turns the product review into an ordered implementation plan.
 completed and rejected work. This file defines outcomes, sequencing and release
 gates.
 
-## Next-session priorities — reconciled 2026-09-07
+## Next-session priorities — reconciled 2026-09-08
 
-This shortlist is reconciled with `main` at `e6037bc84`. `HISTORY.md` holds the
-completed and rejected work; `LANES.md` is the live ownership authority.
+This shortlist is reconciled with `main` at `dec11a41f`. Completed and rejected
+work, including the payload sequence and N2b–N2e, is recorded in `HISTORY.md`;
+`LANES.md` remains the live ownership authority.
 
-The payload sequence is closed. Its fixed gates and receipts remain binding:
+The current base includes the separately downloaded GPL SDCC toolchain and its
+CLI/UI manager, the complete i8086 example/emitter re-sync, corrected LED
+polarity on both circuit surfaces, an audible TONE path, and bounded 8086 C
+numeric lists. Pin changes remain chains: sync the exact green upstream SHA,
+update every dual-tracked mirror, and re-derive every artifact that stamps the
+pin. A green behavior probe does not make stale provenance acceptable.
 
-| Track | Verdict and retained evidence |
-|---|---|
-| P18 Connection-modal deferral | Rejected. Run `34059625658` emitted a 75,446-byte named asset, 1,354 bytes below the 76,800-byte floor; retry UI also failed. Production remains eager. |
-| P19 scratch-storage worker deferral | Rejected at attribution. The conservative worker closure was 32,773 bytes, 44,027 below the floor; no candidate was built. |
-| P20 Scratch 1 converter deferral | Rejected. Run `34058754836` emitted 43,171 bytes / 14,086 gzip, below the floor; production was reverted. |
-| P21 PseudocodeImporter deferral | Completed in the promoted series ending `68a726c35`; activation and exact-receipt gates cover the lazy route. |
-| P22 8086 benchmark integrity | Completed at `da4d30b0c`. The CPU-bound benchmark measures about 2.02x on desktop, mobile and 4x-throttled profiles; 4x pump p95 is 7 ms and every pump is at most 22.3172 ms. Worker/JIT/batching stay deferred until three repeat runs measure either less than 1.0x or more than 8 ms pump p95. |
-| Track A GUI test source authority | Completed at `60ecb4d89`; hosted run `34087062528` passed all four jobs with 2,821 tests passing. Root tests use owned overlay sources while the prepared GUI supplies dependency and build scope. |
-| N2b 8086 C numeric model | Completed through `3d84eef62`. C uses a stated 16-bit `int` and refuses literals outside -32768..32767; ASM retains 32-bit pairs. The value-level differential keeps that width disagreement explicit. |
-
-Subsequent CI and vendor work through `e6037bc84` added per-branch concurrency,
-advanced the bw-board pin chain through `d5850e6`, protected absent-by-design
-vendor files, synchronized the reseat gate, and shipped all seven previously
-missing i8086 preset ROMs with provenance and observable boot gates. A pin sync
-now requires `--pin`, and upstream CI on the pinned SHA is a prerequisite for a
-Lite pin run.
-
-The next work is correctness work with one claim per bounded session:
+The next work stays serialized, with one bounded claim per session:
 
 | Order | Bounded track | Ownership and acceptance boundary |
 |---|---|---|
-| 1 | N2c: `wait` on the 8086 C route | Claimed by bwcx on `lane/n2c-i8086-c-wait`. Measure PIT-backed and calibrated-loop choices against ASM `BW_DELAY`; implement upstream, prove other targets byte-stable, vendor through the pin chain, and require a mutation-proved C/ASM PIT-tick differential on the DOS bench. Re-run the 280-program reach measurement. |
-| 2 | Milestone 0 circuit-variant electrical equivalence | Selection remains coordinator-controlled. Claim one exact circuit family or invariant; acceptance must compare the electrical state the solver produces, beyond render legibility. |
-| 3 | P3 MicroPython protocol-driver coverage | Part 1 is owned by worker. Later sessions start from its generator-versus-reader measurement and claim one remaining driver family with a differential oracle. |
-| 3b | LED polarity: the retarget rewrites the declaration and the bench never follows | **LANDED upstream and pinned here.** Fixed in `CrispStrobe/sb3-creator` and promoted to its main as `6bda3b35d0f05044b33934e908ed5beb068ed83d` (hosted run `34195871896`, 7415 tests, 0 fail, 335 skipped — the skip count is identical to the previous main, so no gate went quiet). Lite pins it here. **Acceptance met and re-derived independently:** the census reads 792 decidable / **0 inverted**, against 792 decidable / 174 inverted before — the DENOMINATOR IS UNCHANGED, so zero was not reached by making readings undecidable, which is the only way this number could have been faked. **The count is 19 examples, not the 21 this row carried.** `21` was never a second measurement: the two faces below hold 3 examples and 18, and `3 + 18` double-counts `06-active-low-high` and `32-source-vs-sink`, each of which drops the clause on push-pull targets and gains it on the 8051s. `docs/EXAMPLE-CORPUS-FINDINGS.md` keeps `21` beside `19` with the double-count named, per its own convention. **The direction settled as planned** — the transform follows the retargeted declaration — implemented as a shared fail-closed pin parser used by both bench generation and the device-list dry run, so a missing polarity proof REFUSES the device instead of emitting a polarity-unchecked bench; the three refusal paths (absent pin metadata, a shared interior branch, a missing `vcc`/`gnd` rail) are each proved by their own mutation. **One thing this cost us, recorded because it will recur:** correcting 69 `circuit.<dev>.json` benches left their 66 board-free `circuit-flat.<dev>.json` twins carrying the old wiring, and the census could not see it because it selects files by the name `circuit.<dev>.json`. Hosted CI caught it on the `flat-variants` pair; the twins were re-derived at the pinned engines (963 pairs, dry run then `regenerated=0`). **Still open, and NOT closed by this row:** (a) the census cannot yet measure the flat surface at all — its `invertLeds` mutation swaps the `vcc`/`gnd` PARTS, which is a no-op on board-free circuits that reach their rails through the board's own `VCC`/`GND` terminals, and it correctly refuses to report rather than publish a number, so a flat-capable census needs a rail mutation that rewrites those wire terminals; (b) the owner question below. **Open question for the owner, unchanged and now sharper:** `06-active-low-high`, `32-source-vs-sink` and `46-port-overcurrent` exist to teach the sinking asymmetry. They are now wired correctly on every target and still teach nothing on a target without that asymmetry — a correctly wired bench does not restore a lesson that retargeting removed. Retargeting them at all is the question, not their wiring. |
-| 4 | Pin and CI follow-ups | T9/T9b, N3d, P6/P6a and the bw-board pin chain are already owned. The seven preset-ROM paths are complete at `30897d5c7` / `e6037bc84`. Remaining commits stay in their existing lanes; later work begins only after a released claim identifies a boundary. |
+| 1 | N2f: bounded random semantics for 8086 C | Coordinator assigns after this documentation lane lands. Begin with `arduino-sk-p11-crystal-ball`, define deterministic bounded semantics for `pick random`, and prove the resulting branch/output trace against an independent oracle. Re-run the reach census without counting warning-to-zero lowering as success. |
+| 2 | Retire one declared `bw-board` divergence | Coordinator selects one small file only after N2f. Re-measure against the current `6145e8a` pin, read both sides, upstream or deliberately retire the Lite delta, then require the executable manifest to reject the old declaration. The current inventory has 19 declared `bw-board` files; trimmed-line counts locate work but do not establish which side is correct. |
+| 3 | Milestone 0 circuit-variant electrical equivalence | Coordinator selects one exact circuit family or invariant. Execute both relevant surfaces through the real solver, assert the electrical state, and mutation-prove a meaningful connectivity, polarity, or part-value change. State the covered and uncovered variants in the receipt. |
 
-Two corrected premises remain explicit. The DOS bench can produce chip refusals:
-its 8255 is at port 60h, while the earlier probe used 03h. The shipped browser
-Pico transport drains between packets; the missing `drain()` affects only the
-Node oracle tracked as N3d. Do not revive P18–P20 without new attribution evidence.
+One product decision remains with the owner: `06-active-low-high`,
+`32-source-vs-sink`, and `46-port-overcurrent` are now wired correctly after
+retargeting, but targets without sinking asymmetry cannot teach that lesson.
+Decide whether those targets should remain eligible before opening a content
+edit.
 
-Keep full Technic simulation, wholesale cycle-core replacement, broad language
-expansion and framework migration in their existing longer-term plans.
+Do not revive P18–P20 without new attribution evidence. Their fixed 76,800-byte
+stop gate and rejected measurements remain in `HISTORY.md`. Keep full Technic
+simulation, wholesale cycle-core replacement, broad language expansion, and
+framework migration in their longer-term plans.
 
 ## How this plan is executed
 

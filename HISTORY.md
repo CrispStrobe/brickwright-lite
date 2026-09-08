@@ -4,6 +4,44 @@ Completed and rejected work moves here when it no longer belongs in the active
 plan or roadmap. Detailed commit, CI and ownership evidence remains in Git and
 `LANES.md`.
 
+## 2026-09-08
+
+- **The GPL SDCC payload left the BSD-3 repository and became an explicit toolchain**
+  (`0b79a6f23`, following CLI `fa87c0d7e` and manager `0dec905c3`). The 202
+  tracked compiler files were removed and ignored. CI may fetch the compiler
+  from its own origin; Node consumers either run it or skip by name when the
+  optional download is absent. The CLI exercises online and local compilation,
+  cancellation and resume; the Settings manager exposes mode, byte-weighted
+  progress, removal, licence, and source information.
+- **The i8086 example and emitter were re-synchronized through their shared pin**
+  (`a9b09429b`, main later `1d849ee9b`). The single `sb3-creator` pin governs
+  both gallery examples and emitted source, so every example sync must audit
+  emitter changes and re-derive its reach evidence.
+- **LED polarity was corrected and pinned** (`f568d875a`, hosted run
+  `34197832516`). The historical defect affected 174 of 792 decidable readings
+  across 19 distinct examples; the corrected seated census is 792 agreeing / 0
+  inverted with the denominator unchanged. The earlier “21 examples” added a
+  3-example and an 18-example group that overlap in two examples.
+- **TONE became audible and the polarity oracle gained the flat surface**
+  (`9d55123eb`, hosted run `34200535237`, `bw-board` pin `6145e8a`). All 25
+  shipped TONE readings reach a buzzer. The two separately mutation-proved LED
+  surfaces read 792/0 inverted for seated benches and 714/0 for flat circuits.
+  Moving the board pin also required regenerating seven artifacts that stamped
+  the old SHA even though the ROM binaries were byte-identical; provenance is
+  part of a pin move, not an optional afterthought.
+- **N2e bounded numeric lists landed on the 8086 C route** (upstream
+  `8c17dfa898f80a875e2a4bf044144564f8a4cebc`; Lite `dec11a41f`, hosted run
+  `34206351591`; upstream exact/main runs `34200030761`/`34200529033`). Lists
+  hold at most 32 signed-16 values and the route permits 15 lists / 990 bytes of
+  static list state. The 15×32 proof emits a 1,618-byte `.COM` with 63,662 bytes
+  of segment space remaining. Independent array rows cover add, insert,
+  replace, delete, delete-all, item and length, including invalid-index
+  no-op/zero behavior; zero-based reads and silent overflow each make the gate
+  fail. Generated data and length identifiers are allocated independently, and
+  length has one numeric-provenance authority. The only 281-program list
+  candidate is `arduino-03-smoothing`; it remains ADC-choked, so lists add zero
+  corpus reach and the honest broad total remains 46.
+
 ## 2026-09-07
 
 - **N2c reach receipt corrected by the later fail-closed numeric lowerer.** The

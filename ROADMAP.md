@@ -22,87 +22,73 @@ item marked with an agent name is being worked on.
 
 ---
 
-## Next-session shortlist — reconciled 2026-09-07
+## Next-session shortlist — reconciled 2026-09-08
 
-[PLAN.md](PLAN.md#next-session-priorities--reconciled-2026-09-07) records the
-execution order. The reconciled baseline is `e6037bc84`; [HISTORY.md](HISTORY.md)
+[PLAN.md](PLAN.md#next-session-priorities--reconciled-2026-09-08) defines the
+execution order. The exact baseline is `dec11a41f`; [HISTORY.md](HISTORY.md)
 holds completed and rejected work, and [LANES.md](LANES.md) controls live
-ownership.
+ownership. Do not start a later track while an earlier track is owned or under
+landing audit.
 
-### Closed sequence carried forward as evidence
+### Track 1 — N2f: random-dependent output on the 8086 C route
 
-P18, P19 and P20 all stopped at the same fixed 76,800-byte emitted-size floor.
-Their respective measured bounds were 75,446 named bytes, 32,773 attributable
-bytes and 43,171 emitted bytes / 14,086 gzip. P18 also failed its retry journey;
-P19 built no candidate; P20 was reverted. These routes require new attribution
-evidence before reconsideration.
+**Owner:** unclaimed until the coordinator releases it after this documentation
+reconciliation lands.
 
-P21's lazy PseudocodeImporter route is complete in the promoted series ending
-`68a726c35`. P22's real CPU-bound 8086 benchmark is complete at `da4d30b0c`:
-hosted medians were 2.0190x desktop, 2.0192x mobile and 2.0220x under 4x throttle,
-with a 7 ms throttled pump p95 and a 22.3172 ms maximum pump. The prior roughly
-30x result measured guest-time jumps from `INT 15h AH=86h`; it is superseded.
-Worker/JIT/batching activate only after three repeat runs cross the retained
-less-than-1.0x or greater-than-8-ms-p95 threshold.
+**Measured start:** N2e leaves the broad safe reach at 46 programs. The first
+known candidate is `arduino-sk-p11-crystal-ball`; its printed branch depends on
+`pick random`, which currently warns and lowers to zero. Literal output alone
+therefore adds no honest reach.
 
-Track A is complete at `60ecb4d89`, with all four jobs green in run
-`34087062528` and 2,821 tests passing. N2b is complete through `3d84eef62`: its
-8086 C contract is 16-bit `int`, while ASM keeps 32-bit pairs, and the
-difference is asserted by value. CI and vendor hardening through `e6037bc84`
-includes per-branch concurrency, the `d5850e6` bw-board pin, absent-by-design
-vendor protection, the reseat-gate synchronization, and all seven formerly
-missing preset ROMs with provenance and observable boot gates.
+**Acceptance:** define a bounded deterministic random contract that fits the
+8086 `.COM` model; compare branch choice and printed output with an independent
+oracle; mutate the random result or branch mapping and require a named failure.
+Other targets must remain byte-stable. Vendor the exact green upstream pin,
+update both mirrors and pin readers, and re-run the compile-backed reach census.
+A warning, commented zero, or incomplete lowering is a refusal rather than a
+compiled result.
 
-### Track 1 — N2c: `wait` on the 8086 C route
+### Track 2 — retire one declared `bw-board` divergence
 
-**Owner:** bwcx on `lane/n2c-i8086-c-wait`, claimed at `c06cfd1c`. The current
-reach measurement compiles 5 of 280 gallery programs, with 113 stopped by the
-verb choke and 104 of those needing `delay`.
+**Owner:** coordinator selects one small file after N2f lands.
 
-**Start:** compare the ASM route's PIT-backed `BW_DELAY` with a C implementation
-using `bw_inb(0x40)` / `bw_inb(0x43)` and with a calibrated loop on the real DOS
-bench. Record the measurement and choose the closer semantic match. SmallerC's
-`-seg16` model has no `long`, and port I/O stays behind `bw_inb` / `bw_outb`.
+**Measured start:** the current generated inventory marks 19 `bw-board` files
+`[declared]`. Earlier inspection at pin `2c568ca` found three small Lite-ahead
+adapters (`i8086-adapter.js`, two trimmed lines; `m6502-adapter.js`, four;
+`z80-adapter.js`, one), while sixteen files differed in both trees. The current
+pin is `6145e8a`, so those figures are a reading shortlist and must be re-derived
+before choosing a candidate. Trimmed-line set differences have no semantic
+direction; they do not say which implementation is newer or correct.
 
-**Acceptance:** the emitter change lands upstream with goldens proving no other
-family moved a byte. Lite vendors the exact green upstream pin using scoped sync
-with `--pin`, mirror and reader-coverage gates. C and ASM must agree on elapsed
-PIT ticks for the same wait within a stated tolerance; changing the loop constant
-must make the differential fail by name. Re-run
-`measure-i8086-numeric-reach.mjs --compile` and record the resulting corpus count.
-The hosted Lite workflow supplies the final verdict.
+**Acceptance:** read both versions of one selected file, state the behavior the
+Lite delta protects, move it upstream or remove it deliberately, and update the
+pin through the guarded sync chain. The executable divergence manifest must
+reject the obsolete declaration, overlay and package mirrors must agree, and a
+behavioral or mutation proof must fail when the protected behavior is removed.
+No bulk sync and no second file in the same session.
 
-### Track 2 — Milestone 0 circuit-variant electrical equivalence
+### Track 3 — Milestone 0 circuit-variant electrical equivalence
 
-**Owner:** coordinator selects the precise family or invariant before a claim.
-The existing 1,034-variant schematic gates establish mechanical legibility.
+**Owner:** coordinator selects one precise family or invariant.
 
-**Acceptance:** the bounded family is executed through the real solver and a
-mutation that changes connectivity, polarity or an electrically meaningful
-part parameter fails by name. The result must state which circuit variants the
-oracle covers and which remain outside its boundary.
+**Measured start:** mechanical schematic checks cover the shipped variants, and
+the polarity census now measures its two distinct surfaces separately: seated
+benches are 792 decidable / 0 inverted; flat circuits are 714 / 0. Those numbers
+establish LED orientation, not general solver equivalence.
 
-### Track 3 — P3 MicroPython protocol-driver coverage
+**Acceptance:** execute the selected variants through the real solver and
+compare an electrically meaningful state such as terminal voltage/current,
+logic level, or time-dependent transition. A mutation to connectivity,
+polarity, or a meaningful part value must fail by name. The receipt must state
+the exact variant denominator and the surfaces that remain outside the oracle.
 
-**Owner:** worker owns part 1. A later claim begins only after that lane releases
-its result. The starting seam is the 8255 pin path on the Pico simulator, where
-the run-live path and GPIO oracle already exist.
+### Owner decision — sinking-asymmetry lesson eligibility
 
-**Acceptance:** measure generator coverage over profile part IDs separately from
-reader support, select one uncovered driver family, and prove its emitted
-behavior against the C route or a device-level oracle. Keep skipped physics
-assertions visible in the receipt.
-
-### Track 4 — owned pin and CI follow-ups
-
-T9/T9b, N3d, P6/P6a, N11 and the next bw-board pin are already coordinated
-lanes. The seven constructed preset-ROM paths are complete at `30897d5c7` /
-`e6037bc84`. A sync cannot move a pin without `--pin`, and upstream CI on that
-exact SHA must be green before Lite tests it.
-The DOS bench's 8255 is reachable at port 60h; the earlier 03h probe does not
-show that chip refusals lack a UI producer. The browser Pico transport already
-drains packets; N3d concerns the Node oracle. These corrections stay attached
-to their open work rather than becoming new duplicate lanes.
+`06-active-low-high`, `32-source-vs-sink`, and `46-port-overcurrent` are wired
+correctly on every generated target. A push-pull target still cannot demonstrate
+the sinking asymmetry those lessons teach. Decide whether to exclude such
+targets, change the lesson claim, or retain the present retargeting before a
+content lane edits them.
 
 ## 1. Costume designer & GUI layout
 
