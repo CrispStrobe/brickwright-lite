@@ -3,6 +3,12 @@ on:
   push:
     branches: ['perf/i8086-execution']
   workflow_dispatch:
+    inputs:
+      block-mode:
+        description: Benchmark-only block executor
+        type: choice
+        default: none
+        options: [none, decoded, wasm]
 permissions:
   contents: read
 jobs:
@@ -31,6 +37,7 @@ jobs:
           I8086_BASELINE: baseline
           I8086_ENGINE_ROOT: candidate-engine
           I8086_ENGINE_FILES: i8086.js
+          I8086_BLOCK_MODE: ${{ inputs.block-mode || 'none' }}
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:

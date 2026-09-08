@@ -12,14 +12,17 @@ const baseline = resolve(process.env.I8086_BASELINE || '.');
 const output = resolve(process.env.I8086_PROFILE_OUTPUT || 'artifacts/i8086-execution');
 const repetitions = 5;
 const cycles = 5_000_000;
+const blockMode = process.env.I8086_BLOCK_MODE || 'none';
+if (!['none','decoded','wasm'].includes(blockMode)) throw new Error('Invalid block mode');
 const roots = {baseline, candidate: root};
 const engineRoot = process.env.I8086_ENGINE_ROOT ? resolve(process.env.I8086_ENGINE_ROOT) : null;
-const engineFiles = (process.env.I8086_ENGINE_FILES || '').split(',').filter(Boolean);
+const engineFiles = blockMode === 'none' ? (process.env.I8086_ENGINE_FILES || '').split(',').filter(Boolean) : [];
 if (engineFiles.some(file => !/^(?:i8086(?:-[a-z]+)?|i8254)\.js$/.test(file)) || (engineFiles.length && !engineRoot)) {
     throw new Error('Invalid engine overlay');
 }
 const sha = directory => execFileSync('git', ['rev-parse', 'HEAD'], {cwd: directory, encoding: 'utf8'}).trim();
 const identity = {baseline: sha(baseline), candidate: sha(root), runId: process.env.GITHUB_RUN_ID || null};
+identity.blockMode = blockMode;
 if (engineRoot) identity.engine = {sha: sha(engineRoot), files: engineFiles};
 await mkdir(output, {recursive: true});
 const server = createServer(async (req, res) => {
@@ -28,7 +31,8 @@ const server = createServer(async (req, res) => {
         if (!roots[kind]) { res.writeHead(404).end(); return; }
         if (!parts.join('/')) { res.setHeader('Content-Type', 'text/html'); res.end('<!doctype html><title>8086 profile</title>'); return; }
         // Use the candidate harness unchanged for both source trees.
-        const isHarness = parts.join('/') === 'scripts/lib/i8086-execution-workload.mjs';
+        const isHarness = ['scripts/lib/i8086-execution-workload.mjs',
+            'scripts/lib/i8086-block-experiment.mjs'].includes(parts.join('/'));
         const sourceRoot = isHarness ? root : roots[kind];
         let path = resolve(sourceRoot, ...parts);
         if (!path.startsWith(sourceRoot + sep)) { res.writeHead(403).end(); return; }
@@ -46,8 +50,8 @@ const comparisons = [];
 let complete = false;
 try {
     for (const rate of [1, 4]) {
-        for (const workload of ['mixed', 'words', 'strings']) {
-            for (const layer of ['core', 'machine', 'dos', 'debugger', 'peripherals']) {
+        for (const workload of blockMode === 'none' ? ['mixed', 'words', 'strings'] : ['mixed','words','strings','registers']) {
+            for (const layer of blockMode === 'none' ? ['core', 'machine', 'dos', 'debugger', 'peripherals'] : ['core']) {
                 for (let repetition = 0; repetition < repetitions; repetition++) {
                     for (const kind of repetition % 2 ? ['candidate', 'baseline'] : ['baseline', 'candidate']) {
                         const context = await browser.newContext();
@@ -55,16 +59,17 @@ try {
                         const cdp = await context.newCDPSession(page);
                         await cdp.send('Emulation.setCPUThrottlingRate', {rate});
                         await page.goto(`http://127.0.0.1:${server.address().port}/${kind}/`);
-                        const warmup = await page.evaluate(async ({kind, layer, workload, cycles}) => {
+                        const warmup = await page.evaluate(async ({kind, layer, workload, cycles, blockMode}) => {
                             const {setup} = await import(`/${kind}/scripts/lib/i8086-execution-workload.mjs`);
-                            window.bench = setup(layer, workload);
+                            window.bench = setup(layer, workload,
+                                kind === 'candidate' && blockMode !== 'none' ? {blockMode} : {});
                             return window.bench.run(cycles); // warm-up excluded from timing
-                        }, {kind, layer, workload, cycles});
+                        }, {kind, layer, workload, cycles, blockMode});
                         const result = await page.evaluate(cycles => window.bench.run(cycles), cycles);
                         if (!(result.wallMs > 0 && result.heartbeat > warmup.heartbeat && result.cycles >= cycles)) {
                             throw new Error(`No executed progress: ${JSON.stringify(result)}`);
                         }
-                        rows.push({kind, rate, workload, layer, repetition, ...result});
+                        rows.push({kind, rate, workload, layer, repetition, warmupWallMs: warmup.wallMs, ...result});
                         if (repetition === 0 && rate === 1) {
                             await cdp.send('Profiler.enable');
                             await cdp.send('Profiler.setSamplingInterval', {interval: 100});

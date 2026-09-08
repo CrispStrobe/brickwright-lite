@@ -4,8 +4,21 @@ import {I8086Machine} from '../../overlay/scratch-gui/src/lib/bw-board/i8086-mac
 import {createDos8086, DOSBOX8086} from '../../overlay/scratch-gui/src/lib/bw-board/i8086-dos.js';
 import {createI8086DebugTarget} from '../../overlay/scratch-gui/src/lib/bw-board/i8086-debug.js';
 import {assemble} from '../../overlay/scratch-gui/src/lib/bw-board/i8086-asm.js';
+import {createRegisterBlockExperiment} from './i8086-block-experiment.mjs';
 
 const bodies = {
+    registers: `ADD AX, BX
+        XOR AX, 5A5AH
+        INC BX
+        INC DX
+        ADD AX, DX
+        DEC BX
+        XOR DX, AX
+        INC AX
+        ADD BX, AX
+        XOR AX, DX
+        DEC DX
+        INC BX`,
     mixed: `ADD AX, BX
         XOR AX, 5A5AH
         MOV [SI], AX
@@ -28,7 +41,7 @@ const bodies = {
         POP CX`,
 };
 
-export function setup(layer, workload = 'mixed') {
+export function setup(layer, workload = 'mixed', options = {}) {
     if (!bodies[workload]) throw new Error(`Unknown workload ${workload}`);
     if (!['core', 'machine', 'dos', 'debugger', 'peripherals'].includes(layer)) {
         throw new Error(`Unknown layer ${layer}`);
@@ -75,6 +88,8 @@ export function setup(layer, workload = 'mixed') {
         cpu.write = (address, value) => { machine.mem[address] = value; };
     }
     const target = layer === 'debugger' ? createI8086DebugTarget({machine, step: () => dos.step()}) : null;
+    if (options.blockMode && layer !== 'core') throw new Error('Block experiment requires the owned flat-RAM core');
+    const block = options.blockMode ? createRegisterBlockExperiment(cpu, machine.mem, options.blockMode) : null;
     target?.run();
     const step = layer === 'core' ? () => { machine.cycles += cpu.step(); } :
         layer === 'dos' ? () => dos.step() : () => machine.step();
@@ -82,7 +97,11 @@ export function setup(layer, workload = 'mixed') {
         run(cycles, snapshot = true) {
             const before = machine.cycles;
             const started = performance.now();
-            if (target) {
+            if (block) {
+                const cpuBefore = cpu.cycles;
+                block.runUntil(cpuBefore + cycles);
+                machine.cycles += cpu.cycles - cpuBefore;
+            } else if (target) {
                 if (target.runFor(cycles * 1e9 / machine.clockHz) !== 'budget') throw new Error('Unexpected halt');
             } else {
                 const deadline = before + cycles;
@@ -99,7 +118,8 @@ export function setup(layer, workload = 'mixed') {
             for (let i = 0; i < machine.mem.length; i++) memoryHash = Math.imul(memoryHash ^ machine.mem[i], 16777619);
             return {wallMs, cycles: machine.cycles - before, totalCycles: machine.cycles,
                 realTimeRatio: (machine.cycles - before) * 1000 / machine.clockHz / wallMs,
-                heartbeat, registers, memoryHash: memoryHash >>> 0};
+                heartbeat, registers, memoryHash: memoryHash >>> 0,
+                ...(block ? {blockStats: {...block.stats}} : {})};
         }
     };
 }
