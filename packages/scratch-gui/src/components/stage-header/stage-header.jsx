@@ -10,6 +10,7 @@ import ToggleButtons from '../toggle-buttons/toggle-buttons.jsx';
 import Controls from '../../containers/controls.jsx';
 import {getStageDimensions} from '../../lib/screen-utils';
 import {STAGE_SIZE_MODES} from '../../lib/layout-constants';
+import {setCircuitView} from '../../lib/bw-debug/debug-view.js';
 
 import fullScreenIcon from './icon--fullscreen.svg';
 import largeStageIcon from './icon--large-stage.svg';
@@ -87,22 +88,6 @@ const messages = defineMessages({
         id: 'gui.stageHeader.scratchStage'
     }
 });
-
-const setCircuitView = ({fullWidth, dock}) => {
-    const values = {
-        'bw-hide-stage': fullWidth ? '1' : '0',
-        'bw-right-pane-hidden': '0',
-        'bw-debug-dock': dock,
-        'bw-stage-circuit': fullWidth ? '1' : '0',
-        'bw-circuit-theme': 'light'
-    };
-    try {
-        Object.entries(values).forEach(([key, value]) => localStorage.setItem(key, value));
-    } catch { /* private browsing: the live events still work */ }
-    Object.entries(values).forEach(([key, value]) => {
-        window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key, value}}));
-    });
-};
 
 // The dock value alone names the view while the circuit owns the pane:
 // 'off' → bare circuit, 'solo' → debugger-only pane, anything else → the

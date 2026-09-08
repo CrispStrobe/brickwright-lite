@@ -17,6 +17,7 @@ import {
     summarize as matrixSummary, explain as matrixExplain, LANGUAGES as MATRIX_LANGUAGES,
     DEVICES, DEVICE_GROUPS, cell as matrixCell
 } from '../../lib/bw-matrix/capabilities.js';
+import {showCircuitDebugger} from '../../lib/bw-debug/debug-view.js';
 
 // The example sources — upstream's and the locally-authored games, kept in
 // separate files so the upstream one stays synchronizable — are 266 KiB raw
@@ -3726,6 +3727,15 @@ class PseudocodeImporter extends React.Component {
                                 color: this.state.showMatrix ? '#fff' : '#475569', fontSize: 11, fontWeight: 700,
                                 cursor: 'pointer', alignSelf: 'center'}}>
                             ⊞⊟
+                        </button>
+                        <button type="button" onClick={() => showCircuitDebugger()}
+                            aria-label={pickLocale(this.props.locale) === 'de' ? 'Debugger öffnen' : 'Open debugger'}
+                            title={pickLocale(this.props.locale) === 'de' ? 'Debugger im rechten Bereich öffnen' : 'Open debugger in the right pane'}
+                            data-testid="bw-open-circuit-debugger"
+                            style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: 20,
+                                padding: '0 7px', border: 'none', borderRadius: 10, background: '#e2e8f0',
+                                color: '#475569', fontSize: 11, fontWeight: 700, cursor: 'pointer', alignSelf: 'center'}}>
+                            {'🐞 Debugger'}
                         </button>
                         <select value={this.currentDevice() || ''} onChange={e => this.setDevice(e.target.value)}
                             style={{...csel, alignSelf: 'center'}} title={this.L.deviceTitle}

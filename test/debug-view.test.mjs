@@ -32,6 +32,22 @@ const harness = ({storageFailure = false} = {}) => {
     };
 };
 
+const pairedSource = relative => [
+    readFileSync(new URL(`../overlay/scratch-gui/src/${relative}`, import.meta.url)),
+    readFileSync(new URL(`../packages/scratch-gui/src/${relative}`, import.meta.url))
+];
+
+test('all three debugger-discoverability sources are byte-identical in both tracked trees', () => {
+    for (const relative of [
+        'components/stage-header/stage-header.jsx',
+        'components/tw-pseudocode/pseudocode-importer.jsx',
+        'lib/bw-debug/debug-view.js'
+    ]) {
+        const [overlay, packaged] = pairedSource(relative);
+        assert.equal(Buffer.compare(overlay, packaged), 0, `${relative} mirror differs`);
+    }
+});
+
 test('showCircuitDebugger publishes the complete existing right-pane transaction', () => {
     const h = harness();
     showCircuitDebugger(h.options);
