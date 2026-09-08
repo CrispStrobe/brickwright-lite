@@ -16,6 +16,8 @@ export const trackedPackageExamples = files => files.filter(
 );
 
 test('no gallery example is tracked under the generated packages tree', () => {
+    // git is the authority under test: absence or failure throws before an
+    // empty set can pass. gate-shapes-allow
     const tracked = execFileSync('git', ['ls-files'], {encoding: 'utf8'})
         .split('\n').filter(Boolean);
     assert.deepEqual(trackedPackageExamples(tracked), [],

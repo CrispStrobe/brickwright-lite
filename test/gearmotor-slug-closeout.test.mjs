@@ -42,6 +42,8 @@ test('retired gearmotor slug is absent and canonical pair remains reachable', ()
         assert.match(readFileSync(index, 'utf8'), /from ['"]\.\/gearmotor\.json['"]/,
             `canonical gearmotor is not imported by ${path.relative(ROOT, index)}`);
     }
+    // git is the authority under test; absence throws, so this cannot turn an
+    // unknown generated-tree state into a pass. gate-shapes-allow
     const generatedTracked = execFileSync('git', ['ls-files', `${GENERATED_ROOT}/parts-data/`],
         {encoding: 'utf8'}).split('\n').filter(Boolean);
     assert.equal(generatedTracked.some(file => file.includes(OLD)), false,
