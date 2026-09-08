@@ -166,8 +166,11 @@ test('candidate deterministic integer RNG is inclusive, repeatable and normalise
         return {values, state};
     };
     const forward = draw(N2F_RNG_SEED, 1, 8, 32);
-    assert.deepEqual(forward.values.slice(0, 16),
-        [3, 4, 1, 2, 7, 8, 5, 6, 3, 4, 1, 2, 7, 8, 5, 6]);
+    assert.deepEqual(forward, {
+        values: [3, 4, 1, 2, 7, 8, 5, 6, 3, 4, 1, 2, 7, 8, 5, 6,
+            3, 4, 1, 2, 7, 8, 5, 6, 3, 4, 1, 2, 7, 8, 5, 6],
+        state: 7325
+    });
     assert.deepEqual(draw(N2F_RNG_SEED, 1, 8, 32), forward, 'same seed changed trace');
     assert.deepEqual(draw(N2F_RNG_SEED, 8, 1, 32), forward, 'reversed bounds changed trace');
     assert.equal(forward.values.every(value => value >= 1 && value <= 8), true);

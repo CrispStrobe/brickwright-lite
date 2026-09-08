@@ -51,7 +51,9 @@ is then refused rather than compiled with the zero. Minimal `print "Yes"`
 already records the named reason in
 `_cPrintRefused`; the old probe's fixed bucket list omitted it. The measurement
 now discovers refusal buckets from emitter source and runtime state and fails on
-an omitted or malformed future bucket.
+an omitted or malformed future bucket. Complete attribution reads both that
+structured inventory and the terminal `activeUses` feature gate; empty refusal
+buckets do not mean a program emitted.
 
 **Acceptance:** the measured candidate contract is a fixed-seed 16-bit LCG with
 inclusive, normalised signed-16 bounds, rejection sampling, and one consumed draw
