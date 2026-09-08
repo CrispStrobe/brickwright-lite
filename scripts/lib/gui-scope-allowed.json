@@ -3,6 +3,7 @@
   "avr8js": {
     "tests": [
       "test/arduboy.test.mjs",
+      "test/avr-debug-live-event-breakpoint.test.mjs",
       "test/debug-js-core-step-depth-live.test.mjs",
       "test/microbit-pins-drive-circuit.test.mjs",
       "test/shipped-lesson-images.test.mjs",
