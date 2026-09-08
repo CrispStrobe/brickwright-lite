@@ -57,6 +57,14 @@ try {
     await click('Run up to 4096 clocks');
     await page.getByTestId('harris-status').filter({hasText: 'halted'}).waitFor();
     assert.equal((await state()).retired, 47);
+    await click('Load Paterson FAT12 routines');
+    assert.match(await page.getByTestId('harris-status').textContent(), /routine test, not DOS/);
+    await click('Run up to 4096 clocks');
+    await page.getByTestId('harris-status').filter({hasText:'halted'}).waitFor();
+    assert.equal((await state()).registers.di, 0xabc);
+    await click('Load owned loop demo');
+    await click('Run up to 4096 clocks');
+    await page.getByTestId('harris-status').filter({hasText:'halted'}).waitFor();
     await click('Inspect bank');
     assert.match(await page.getByTestId('harris-inspection').textContent(), /01 02 03 04 00 00 00 00 0a/);
     await click('Inspect net');

@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/CrispStrobe/bw-board",
-  "revision": "14f253877e006673f5eea6745853ee28e360fca9",
+  "revision": "f2eeb5964bc1285a6c8f3b1c297d2998833cc56f",
   "license": "MIT",
   "scope": "Isolated experimental copy; not the production bw-board pin",
   "files": [
@@ -34,7 +34,7 @@
     },
     {
       "file": "experimental/harris-80c286-boot-cpu.js",
-      "gitBlob": "64895318134abdce0928254dcedbf39546e266e4"
+      "gitBlob": "a2226dbb2060760dd466dad42ad35c34b9d00de2"
     },
     {
       "file": "experimental/harris-boot-rom.js",

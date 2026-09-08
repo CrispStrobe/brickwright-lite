@@ -55,6 +55,10 @@ export function openHarrisLab () {
         session?.cancel(); session = next; savedDraft = null; status.textContent = 'Fresh board initialized; paused before reset instruction.';
     };
     operation('Load owned loop demo', () => replace(runtime.demo()));
+    operation('Load Paterson FAT12 routines', () => {
+        replace(runtime.paterson());
+        status.textContent = 'MIT Paterson CHKDSK PACK/UNPACK routine test, not DOS. Run to halt: DI should be 0ABC. Sources/licence: guests/paterson-fat12/.';
+    });
     operation('Edit board draft', async () => {
         const recipe = requireSession().exportConfiguration(); busy = true; update();
         try {

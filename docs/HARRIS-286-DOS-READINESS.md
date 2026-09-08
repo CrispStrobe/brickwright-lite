@@ -23,14 +23,16 @@ These two tests passed; they are not a claim of general DOS compatibility.
 
 ## New wireable 286 path
 
-The current boot CPU executes word MOV/ADD/CMP, register INC/DEC, selected jumps
-and loops, NOP/CLI and a model-level HLT. It lacks byte operations, general ALU
-groups, stack operations, calls/returns, segment loads, interrupt dispatch/return,
+The current boot CPU executes byte/word MOV, ADD/SUB/CMP/AND/OR/XOR and TEST,
+register INC/DEC, short conditional jumps and loops, segment loads/overrides,
+word stack operations, near calls/returns and single-bit SHL/SHR, NOP/CLI and a
+model-level HLT. It lacks ADC/SBB, general shifts/rotates, interrupt dispatch/return,
 string instructions and much else. Its board currently supplies 64 KiB RAM,
 64 KiB ROM, ideal control/latching and memory transactions. There is no working
 console/disk system or DOS loader/kernel on this path.
 
-The 47-instruction ROM proves real instruction fetch and wired RAM access. It
+The owned loop ROM and preserved Paterson FAT12 routines prove instruction fetch
+and wired RAM access. This
 does not measure a percentage of DOS compatibility. Visual editing adds topology
 authoring and diagnosis, not missing instruction or operating-system behavior.
 
@@ -52,8 +54,9 @@ display, keyboard, timer and storage hardware behavior in addition to DOS calls.
 
 ## Recommended next execution work
 
-After this bounded visual-editing milestone, prioritize byte operations and
-stack/call/segment support, then software interrupts and I/O, before adding more
+Byte operations and initial stack/call/segment support have now landed with
+Paterson PACK/UNPACK acceptance. Prioritize remaining real-mode operations,
+software interrupts and I/O before adding more
 editor polish or acceleration. Keep all these operations resumable through the
 wired bus; existing synchronous CPU coverage is a reference, not proof that a
 new resumable implementation is correct.

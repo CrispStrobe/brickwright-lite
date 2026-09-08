@@ -41,7 +41,7 @@ hot backend switches, editor rewiring while running or project save integration.
 
 `overlay/scratch-gui/src/lib/bw-286-lab/engine/SOURCE.json` pins an isolated,
 unmodified ten-module subset from `CrispStrobe/bw-board` at
-`14f253877e006673f5eea6745853ee28e360fca9`, plus its MIT license. Git blob hashes
+`f2eeb5964bc1285a6c8f3b1c297d2998833cc56f`, plus its MIT license. Git blob hashes
 are checked by the application unit test. Its device registry is separate from
 the production engine. `vendor-pins.json` and normal vendor sync are unaffected.
 Update this copy only from a reviewed engine commit, with new provenance and tests;

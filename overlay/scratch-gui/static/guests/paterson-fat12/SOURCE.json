@@ -1,0 +1,24 @@
+{
+  "repository": "https://github.com/DOS-History/Paterson-Listings",
+  "commit": "acbfced8a2d9828c6cd2c8ca8f12b35d0572d60b",
+  "license": "MIT",
+  "upstreamPath": "3_source_code/PC-DOS_1.00_dev/CHKDSK_1981-06-15.ASM",
+  "localPath": "original-chkdsk.asm",
+  "sha256": "d387729a82de1bb782a79b31523ab22a6df1978fe4061bb4caaced173a7cf9a8",
+  "licenseSha256": "b5179f780ec212a434efcc989a2295a140deb0bdb17182d2bf9c5f6f1f1a01c4",
+  "normalization": "CRLF to LF, append one LF; source otherwise unchanged, including CP/M EOF",
+  "scope": "Original source with explicitly translated executable FAT12 routine excerpts; not a whole CHKDSK or DOS boot acceptance",
+  "engineRevision": "f2eeb5964bc1285a6c8f3b1c297d2998833cc56f",
+  "generated": [
+    {
+      "path": "paterson-fat12.asm",
+      "sha256": "2f86b56a24e9a485b719a05d49590ebd99570d65f82b5b0d47bb712833225e93"
+    },
+    {
+      "path": "paterson-fat12.board.json",
+      "sha256": "a4ee07ae069bb63907967d8e36593b1d331c911d73265239a436e617ca04c11f"
+    }
+  ],
+  "runtimeBytesSha256": "af884c954f0928a6622d3da8c69becf3c034c7473cfd068a95428ff51e834b1a",
+  "acceptance": "PACK/UNPACK routine only; DI=0xABC, CHGCLS at 0000:0500 is 1; no DOS/kernel boot"
+}
