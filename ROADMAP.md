@@ -32,44 +32,51 @@ landing audit.
 
 ### Track 1 — N2f: random-dependent output on the 8086 C route
 
-**Owner:** measurement/evidence completed at `e15c2cb8a`; production remains
-unclaimed.
+**Owner:** sim2cx owns the Lite production candidate at `4eef2bd76`; root audit
+accepted its mechanics and local evidence, with exact-head hosted CI still
+required before landing.
 
 **Measured start:** N2e leaves the broad numeric/print reach at 46 programs.
-Across the complete corpus, 47 programs currently generate device C that the
+Across the pre-production corpus, 47 programs generated device C that the
 hosted gate sends to SmallerC; another 31 generate HOST C and are deliberately
 outside `compileC8086`. The often-quoted 78 is therefore a mixed generation
 total, not a compile-backed i8086 reach. Parsed-block-graph neutralisation forms
 a four-way lattice: baseline, literal-only, random-only, and both. Neither
 single neutralisation adds a program. Both expose exactly
-`arduino-sk-p11-crystal-ball`, for prospective device reach 47→48 and mixed
-generation 78→79. `arduino-05-switch-case` and `arduino-06-knock` fall through
-literal output to the existing ADC/8255 wall. Crystal-ball falls through literal
-output to `pick random`: `cRep` produces its diagnostic commented zero, `cVal`
-records that incomplete lowering in `_cLoweringRefused`, and the whole program
-is then refused rather than compiled with the zero. Minimal `print "Yes"`
-already records the named reason in
-`_cPrintRefused`; the old probe's fixed bucket list omitted it. The measurement
-now discovers refusal buckets from emitter source and runtime state and fails on
-an omitted or malformed future bucket. Complete attribution reads both that
+`arduino-sk-p11-crystal-ball`, for the then-prospective device reach 47→48 and
+mixed generation 78→79. That paragraph is the historical measurement which
+selected N2f; the production candidate now reaches 48 device C and 79 mixed
+programs without neutralisation. `arduino-05-switch-case` and
+`arduino-06-knock` fall through released literal output to their existing
+ADC/8255 wall. Crystal-ball now lowers both direct literal output and
+`pick random`; dynamic text remains a named fail-closed boundary. The census
+discovers refusal buckets from emitter source and runtime state and fails on an
+omitted or malformed future bucket. Complete attribution reads both that
 structured inventory and the terminal `activeUses` feature gate; empty refusal
 buckets do not mean a program emitted.
 
-**Acceptance:** the measured candidate contract is a fixed-seed 16-bit LCG with
-inclusive, normalised signed-16 bounds, multiply-high rejection sampling (not
-low-word modulo), explicit full-span mapping, and one consumed draw for equal
-bounds. Treat that as a proposal until production and an independent
-oracle agree on the same state transitions. Compare branch choice and printed
-output through SmallerC → `.COM` → the DOS bench; mutate the random result or
-branch mapping and require a named failure. Other targets must remain
-byte-stable. Before freezing the emitter contract, prove whether SmallerC can
-express the required 16×16→32 multiply; otherwise use a narrow assembly helper
-that reads the high product word. Vendor the exact green upstream pin, update both mirrors and pin
-readers, and re-run the device compile census at exactly 48 while labelling the
-31 HOST-C programs separately. The current prospective set is 48 named device
-programs but 45 unique emitted C bodies; report both instead of treating a
-deduplicated compiler cache as a program count. A warning, commented zero, or incomplete
-lowering is a refusal rather than a compiled result.
+**Candidate and pending acceptance:** upstream production is promoted at exact
+`5a0d5592b` and the Lite candidate vendors that pin into both exact mirrors. The
+emitter uses a fixed-seed 16-bit LCG with inclusive, normalised signed-16 bounds,
+explicit equal/full-span handling, and multiply-high rejection sampling. The
+Lite assembly route supplies conditional `bw_random` and `bw_print` helpers;
+the former reads the 16×16 product high word and the latter writes a direct
+zero-terminated literal through DOS character output with CR/LF. The real
+retargeted crystal-ball differential compiles through SmallerC to a `.COM`,
+runs on the 80186 DOS bench, and compares branch choices and text with an
+independent oracle. Low-word modulo, branch/text swapping, and missing-helper
+mutations are present and must all fire in hosted CI. Boundary vectors cover a
+rejection-consuming span, equal and reversed bounds, the full signed span, and
+a negative range.
+
+The candidate census is 48 named device programs and 31 HOST-C programs. Each
+of the four lattice variants owes 48 compile successes. Body accounting stays
+separate: each baseline/complete set has 45 distinct bodies (44 shared plus its
+crystal-ball body), while the cache across all four variants has 48 unique
+bodies; the baseline-to-complete set delta replaces exactly crystal-ball's
+body. Exact-head hosted build/runtime evidence is still pending, so this track
+is a candidate rather than DONE. A warning, commented zero, or incomplete
+lowering remains a refusal rather than a compiled result.
 
 ### Track 2 — retire one declared `bw-board` divergence
 
