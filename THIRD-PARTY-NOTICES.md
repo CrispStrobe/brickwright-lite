@@ -935,8 +935,8 @@ MPL-2.0. Files outside that directory are unaffected and remain BSD-3-Clause.
 **Location in this repo:** `overlay/scratch-gui/src/lib/bw-board/`
 
 The isolated experimental 286 lab also includes an unmodified subset at
-`overlay/scratch-gui/src/lib/bw-286-lab/engine/`, revision
-`14f253877e006673f5eea6745853ee28e360fca9`. Its `SOURCE.json` records exact Git
+`overlay/scratch-gui/src/lib/bw-286-lab/engine/`. Its independent
+`SOURCE.json` records the exact revision and Git
 blob identities and its `LICENSE` retains the full MIT notice. This separate
 experimental source receipt does not change the production `bw-board` pin.
 

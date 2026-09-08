@@ -9,7 +9,9 @@ import {getDevice as productionDevice} from '../overlay/scratch-gui/src/lib/bw-b
 const base = new URL('../overlay/scratch-gui/src/lib/bw-286-lab/', import.meta.url);
 test('experimental source copy matches exact upstream Git blobs including license', async () => {
     const source = JSON.parse(await readFile(new URL('engine/SOURCE.json', base)));
-    assert.equal(source.revision, '14f253877e006673f5eea6745853ee28e360fca9');
+    assert.match(source.revision, /^[a-f0-9]{40}$/);
+    assert.equal(source.repository, 'https://github.com/CrispStrobe/bw-board');
+    assert.equal(source.scope, 'Isolated experimental copy; not the production bw-board pin');
     assert.equal(source.files.length, 11);
     for (const {file, gitBlob} of source.files) {
         const bytes = await readFile(new URL(`engine/${file}`, base));

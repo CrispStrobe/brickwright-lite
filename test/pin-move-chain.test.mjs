@@ -60,6 +60,10 @@ const PINS = path.join(ROOT, 'vendor-pins.json');
 const REPOS = ['bw-board', 'sb3-creator', 'bw-circuit-ui'];
 const ENV_DIR = {'bw-board': 'BW_BOARD_DIR', 'sb3-creator': 'SB3_CREATOR_DIR', 'bw-circuit-ui': 'BW_CIRCUIT_UI_DIR'};
 const PROVENANCE = 'overlay/scratch-gui/static/roms/i8086-bios.provenance.json';
+// Independently pinned experimental copy, checked against its listed Git blobs
+// by harris-board-lab.test.mjs. Only the revision FIELD has this role; this
+// does not exempt experimental code or let it carry stale production pins.
+const EXPERIMENT_SOURCE = 'overlay/scratch-gui/src/lib/bw-286-lab/engine/SOURCE.json';
 const HEX40 = /\b[0-9a-f]{40}\b/g;
 
 // `git` from PATH: the same AMBIENT-BINDING shape i8086-bios-provenance keeps
@@ -104,6 +108,15 @@ export const judgeFile = (file, text, known) => {
     const role = roleOf(file);
     if (role !== 'code') return [];
     let body = text;
+    if (file === EXPERIMENT_SOURCE) {
+        try {
+            const source = JSON.parse(text);
+            if (source.repository === 'https://github.com/CrispStrobe/bw-board' &&
+                source.scope === 'Isolated experimental copy; not the production bw-board pin') {
+                body = body.replace(/("revision"\s*:\s*")[a-f0-9]{40}("\s*[,}])/, '$1<independent-experimental-revision>$2');
+            }
+        } catch { /* malformed manifest is judged as text */ }
+    }
     if (file === PROVENANCE) {
         // the one history FIELD, exempt by role (see header); everything else in the manifest must be the pin
         try { const m = JSON.parse(text); if (m.source && m.source.lastTouchedBy && m.source.lastTouchedBy.sha) body = text.split(m.source.lastTouchedBy.sha).join('<lastTouchedBy>'); } catch { /* judged as text */ }
@@ -207,6 +220,18 @@ test('the repo-history half ran, or says by name that it could not', t => {
 });
 
 // ---- fire it on purpose ----------------------------------------------------
+
+test('independent experimental revision is field-scoped; stale production references still fail', () => {
+    const [sha] = [...previous.entries()][0];
+    const source = JSON.parse(readFileSync(path.join(ROOT, EXPERIMENT_SOURCE), 'utf8'));
+    source.revision = sha;
+    assert.deepEqual(judgeFile(EXPERIMENT_SOURCE, JSON.stringify(source), known), []);
+    source.productionPin = sha;
+    assert.equal(judgeFile(EXPERIMENT_SOURCE, JSON.stringify(source), known).length, 1);
+    assert.equal(judgeFile('test/example.test.mjs', `const pin = '${sha}';`, known).length, 1);
+    delete source.productionPin; source.scope = 'production';
+    assert.equal(judgeFile(EXPERIMENT_SOURCE, JSON.stringify(source), known).length, 1);
+});
 
 test('a previous pin planted in a generated document is red, naming the file, the sha and which pin it was', () => {
     const [sha, meta] = [...previous.entries()][0];
