@@ -1,4 +1,4 @@
-// N2d's hosted corpus receipt. Forty-six SmallerC compilations are deliberate
+// N2d's hosted corpus receipt. Forty-seven SmallerC compilations are deliberate
 // CI work: this test belongs on GitHub's runner, not the tiny development VPS.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -81,7 +81,6 @@ const auditReach = (receipt, {compiled}) => {
         'arduino-02-debounce'
     ]);
     assert.deepEqual(namesOf(receipt.printRefused), [
-        'arduino-03-smoothing',
         'arduino-05-switch-case',
         'arduino-06-knock',
         'arduino-08-string-addition',
@@ -90,6 +89,11 @@ const auditReach = (receipt, {compiled}) => {
     assert.equal(receipt.loweringRefused.every(row => row.includes(': ') && !row.endsWith(': ?')), true);
     assert.equal(receipt.printRefused.every(row => row.includes(': ') && !row.endsWith(': ?')), true);
     assert.equal(receipt.choke.every(row => row.includes(': ') && !row.endsWith(': ?')), true);
+    assert.equal(receipt.choke.find(row => row.startsWith('arduino-03-smoothing: ')),
+        'arduino-03-smoothing: adc',
+        'N2e list lowering is implemented; ADC remains smoothing\'s sole terminal choke');
+    assert.equal(receipt.choke.some(row => /(?:^|, )numericLists(?:,|$)/.test(row.split(': ')[1] || '')), false,
+        'an implemented numeric-list feature must never be reported as unsupported');
     assert.equal(s.emits, 47,
         'c879 removes two unsafe timer fallbacks from N2c\'s historical 44, then N2d adds four prints, '
         + 'then P7 adds the i8086-blink gallery example (a wait-literal blink that lowers to C)');

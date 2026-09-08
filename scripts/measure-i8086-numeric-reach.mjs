@@ -123,7 +123,11 @@ for (const name of entries) {
             out.loweringRefused.push(`${name}: ${creator._cLoweringRefused.join(', ')}`);
             continue;
         }
-        const implemented = new Set(['shiftOut', 'delay', 'printNumber']);
+        // Keep this attribution aligned with generateC's I8086_IMPLEMENTED choke.
+        // N2e makes list lowering real even when another feature (ADC in smoothing)
+        // still refuses the whole program; reporting numericLists here would claim
+        // both "implemented" and "unsupported" for the same exact emitter.
+        const implemented = new Set(['shiftOut', 'delay', 'printNumber', 'numericLists']);
         const used = Object.keys(creator._cUses || {})
             .filter(key => creator._cUses[key] && !implemented.has(key)).sort();
         if (used.length) {
