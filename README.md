@@ -77,21 +77,22 @@ and Bluetooth Classic** without a browser or a separate install.
 ### LEGO SPIKE firmware simulation
 
 Brickwright includes a virtual SPIKE dashboard with one shared, neutral hub
-state for BLE and Bluetooth Classic adapters. The firmware selector keeps these
-targets distinct:
+state for BLE and Bluetooth Classic adapters. Its compatibility-profile
+selector keeps these protocol behaviors distinct:
 
-- LEGO SPIKE legacy v2 using Classic RFCOMM;
-- LEGO SPIKE official v3 using the LEGO BLE protocol;
-- Pybricks as an explicit image/reference target;
-- Brickwright's NuttX firmware with its supported compatibility transports.
+- SPIKE v2-compatible Classic RFCOMM;
+- SPIKE v3-compatible LEGO BLE framing;
+- unavailable Pybricks profiles, shown explicitly rather than emulated;
+- Brickwright's dual-mode compatibility adapters.
 
 The dashboard renders the hub, ports, attached motors and sensors, battery,
 IMU, and display state. A bounded, versioned NDJSON adapter now maps immutable
 Renode snapshots into that state without exposing emulator types to React or
 Scratch. Browser-only protocol simulation remains available; selecting a
-firmware target does not by itself start Renode or prove firmware execution.
+profile never downloads or executes firmware and does not start Renode.
 The contract and pinned canonical fixtures are documented in
-[contracts/brick-state](contracts/brick-state/README.md).
+[contracts/brick-state](contracts/brick-state/README.md). Third-party images
+are governed by the [local-input policy](docs/SPIKE-FIRMWARE-INPUT-POLICY.md).
 
 Run the focused virtual-hub checks with:
 

@@ -38,8 +38,8 @@ source for commit-level detail. Current tasks belong in [PLAN.md](PLAN.md).
 - The repository contains permissively licensed LEGO-family extensions and
   distinct adapters for BLE, Bluetooth Classic, and bridge transports.
 - A deterministic virtual SPIKE dashboard shares neutral hub state across
-  protocol adapters and distinguishes LEGO v2, LEGO v3, Pybricks, and
-  Brickwright firmware targets.
+  protocol adapters. Its compatibility profiles explicitly state that browser
+  simulation neither downloads nor executes third-party firmware.
 - The measured SPIKE authoring slice produces a real `.sb3`, reverses through
   the code representation, and executes representative motor, sensor, display,
   and stop operations.

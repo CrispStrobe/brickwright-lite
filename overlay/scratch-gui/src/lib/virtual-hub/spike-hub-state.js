@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 export const SPIKE_FIRMWARE_TARGETS = Object.freeze({
-    'legacy-v2': Object.freeze({label: 'LEGO SPIKE legacy firmware v2', classic: true, legoBle: false,
-        summary: 'Classic RFCOMM through Scratch Link'}),
-    'official-v3': Object.freeze({label: 'LEGO SPIKE official firmware v3', classic: false, legoBle: true,
-        summary: 'LEGO SPIKE BLE protocol'}),
-    brickwright: Object.freeze({label: 'Brickwright firmware', classic: true, legoBle: true,
-        summary: 'Brickwright Classic and LEGO-v3-compatible BLE adapters'}),
-    'spike-nx': Object.freeze({label: 'spike-nx firmware', classic: true, legoBle: false,
-        summary: 'Original NuttX-based SPIKE firmware'}),
-    pybricks: Object.freeze({label: 'Pybricks firmware', classic: false, legoBle: false,
-        summary: 'hardware image/reference target; Pybricks BLE transport is not implemented'}),
-    'official-essential': Object.freeze({label: 'LEGO SPIKE Essential firmware', classic: false, legoBle: true,
-        summary: 'Official Essential board and BLE protocol'}),
-    'pybricks-essential': Object.freeze({label: 'Pybricks for SPIKE Essential', classic: false, legoBle: false,
-        summary: 'Pybricks on the distinct Essential board'})
+    'legacy-v2': Object.freeze({label: 'SPIKE v2 Classic compatibility', classic: true, legoBle: false,
+        summary: 'Protocol model: Classic RFCOMM through Scratch Link'}),
+    'official-v3': Object.freeze({label: 'SPIKE v3 BLE compatibility', classic: false, legoBle: true,
+        summary: 'Protocol model: LEGO-compatible SPIKE BLE framing'}),
+    brickwright: Object.freeze({label: 'Brickwright dual-mode compatibility', classic: true, legoBle: true,
+        summary: 'Protocol model: Brickwright Classic and LEGO-compatible BLE adapters'}),
+    'spike-nx': Object.freeze({label: 'spike-nx Classic compatibility', classic: true, legoBle: false,
+        summary: 'Protocol model only; no spike-nx firmware is loaded'}),
+    pybricks: Object.freeze({label: 'Pybricks compatibility (unavailable)', classic: false, legoBle: false,
+        summary: 'No Pybricks firmware is loaded; its BLE transport is not implemented'}),
+    'official-essential': Object.freeze({label: 'SPIKE Essential BLE compatibility', classic: false, legoBle: true,
+        summary: 'Protocol model for the distinct Essential board'}),
+    'pybricks-essential': Object.freeze({label: 'Pybricks Essential compatibility (unavailable)', classic: false,
+        legoBle: false, summary: 'No Pybricks firmware is loaded; its transport is not implemented'})
 });
 
 export const spikeFirmwareTarget = target => {
