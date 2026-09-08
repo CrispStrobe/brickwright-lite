@@ -131,7 +131,9 @@ async function runRows (built, count, limit = 500_000) {
         bench.step();
         steps++;
         const rows = bench.screenText().filter(Boolean);
-        if (rows.length >= count) {
+        // A row is complete once the next row has begun, or the program has
+        // terminated after its final CR/LF. Row count alone sees partial text.
+        if (rows.length > count || (bench.terminated && rows.length >= count)) {
             return {rows: rows.filter((_, index) => index < count), steps,
                 cycles: bench.machine.cycles, bytes: built.bytes.length};
         }
