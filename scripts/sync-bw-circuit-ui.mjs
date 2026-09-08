@@ -55,11 +55,39 @@ import { createHash } from 'node:crypto';
 const manifestPath = path.join(dest, '.vendor-manifest.json');
 const sha = (s) => createHash('sha1').update(s).digest('hex');
 const overwriteLocal = process.argv.includes('--overwrite-local');
+
+// WHAT THE DIVERGENCE DOCUMENT DECLARES, read rather than re-derived.
+//
+// Until 2026-09-08 this script refused to sync at all while ANY vendored file
+// differed from the last sync's record -- so ONE intentional divergence blocked
+// every future sync of the whole tree, permanently. That is why this tree sat 23
+// commits behind: not because anyone decided to hold it back, but because the
+// safety had no way to say "this one, on purpose".
+//
+// The document now has a machine-readable block naming exactly which files
+// deliberately differ, so the safety can be per-file instead of all-or-nothing.
+// It is READ here rather than duplicated: a second list would go stale on its
+// own schedule and disagree with the gate that reads the first one.
+const DIVERGENCE_DOC = path.join(here, '..', 'docs', 'VENDOR-DIVERGENCE-BW-CIRCUIT-UI.md');
+const divergenceSpec = await readFile(DIVERGENCE_DOC, 'utf8').then(md => {
+    const m = md.match(/```json\n([\s\S]*?)\n```/);
+    return m ? JSON.parse(m[1]) : {};
+}).catch(() => ({}));
+const declaredDivergent = new Set([
+    ...Object.keys(divergenceSpec.files || {}),
+    ...(divergenceSpec.lineLevelOnly?.files ?? [])
+]);
+// Files lite AUTHORED inside this vendored root. Upstream has no counterpart, so
+// the delete pass below -- which removes anything not in the source tree -- would
+// take them, and nothing would restore them.
+const declaredLiteAuthored = new Set(Object.keys(divergenceSpec.liteAuthored?.files ?? {}));
 if (!check) {
     const manifest = await readFile(manifestPath, 'utf8').then(JSON.parse).catch(() => null);
     if (manifest) {
         const diverged = [];
         const converged = [];
+        const declaredKept = [];
+        const declaredMoved = [];
         for (const [rel, hash] of Object.entries(manifest)) {
             const cur = await readFile(path.join(dest, rel), 'utf8').catch(() => null);
             if (cur === null || sha(cur) === hash) continue;
@@ -84,6 +112,18 @@ if (!check) {
             // caused it, and the lane had been stuck behind that since.
             const incoming = await readFile(path.join(srcDir, 'src', rel), 'utf8').catch(() => null);
             if (incoming !== null && cur === incoming) { converged.push(rel); continue; }
+            if (declaredDivergent.has(rel)) {
+                // A DECLARED DIVERGENCE IS NOT A SURPRISE, but it is only safe to
+                // keep while UPSTREAM HAS NOT MOVED THE FILE. The manifest hash is
+                // the content the last sync wrote, which IS upstream's content at
+                // that time -- so incoming === that hash means upstream has not
+                // touched it since, and keeping lite's version loses nothing.
+                // If it differs, upstream has done work that keeping the file
+                // would silently drop, and silence is the thing this refusal is
+                // for. Signal derived from data already on disk; no extra tree.
+                (sha(incoming ?? '') === hash ? declaredKept : declaredMoved).push(rel);
+                continue;
+            }
             diverged.push(rel);
         }
         // Reported, never silent: a file cleared here means the manifest is out
@@ -92,6 +132,22 @@ if (!check) {
             console.log(`  ${converged.length} file(s) match the incoming copy exactly, so the stale ` +
                 'manifest entry is the only thing that differed -- these are NOT local edits:');
             for (const f of converged) console.log(`    converged ${f}`);
+        }
+        if (declaredKept.length) {
+            console.log(`  ${declaredKept.length} declared divergence(s) kept -- upstream has not ` +
+                'touched these since the last sync, so nothing is lost by keeping lite\'s copy:');
+            for (const f of declaredKept) console.log(`    kept ${f} (declared in ${path.relative(path.join(here, '..'), DIVERGENCE_DOC)})`);
+        }
+        if (declaredMoved.length && !overwriteLocal) {
+            console.error(`REFUSING to sync: ${declaredMoved.length} DECLARED divergence(s) have moved upstream:`);
+            for (const f of declaredMoved) console.error(`  moved ${f}`);
+            console.error('\nThese files are declared as deliberate divergences, so this sync would');
+            console.error('normally keep them -- but upstream has changed them since the last sync,');
+            console.error('and keeping them would silently drop that work. Reconcile each: take');
+            console.error("upstream's version if lite's edit is superseded (then REMOVE the entry from");
+            console.error('the divergence document, which is what makes this sync take the file), or');
+            console.error('port upstream\'s change into lite\'s copy by hand and re-run.');
+            process.exit(3);
         }
         if (diverged.length && !overwriteLocal) {
             console.error(`REFUSING to sync: ${diverged.length} vendored file(s) carry LOCAL edits not present at the last sync:`);
@@ -123,6 +179,15 @@ for (const rel of files) {
     const next = await readFile(path.join(srcDir, 'src', rel), 'utf8');
     const current = await readFile(out, 'utf8').catch(() => null);
     if (current === next) { console.log(`  ok    ${rel}`); written[rel] = sha(next); continue; }
+    // A declared divergence is kept, and the manifest records WHAT IS ON DISK
+    // rather than what upstream holds. Recording the incoming hash for a file we
+    // did not write is how the manifest goes stale about a file, which is the
+    // deadlock this script was in until this morning.
+    if (!check && declaredDivergent.has(rel) && current !== null) {
+        console.log(`  kept  ${rel} (declared divergence)`);
+        written[rel] = sha(current);
+        continue;
+    }
     stale++;
     if (check) { console.log(`  STALE ${rel}`); continue; }
     await mkdir(path.dirname(out), {recursive: true});
@@ -140,7 +205,26 @@ if (!check) {
     // The manifest is generated into the destination and therefore has no
     // upstream counterpart. Keep it so the next sync can detect Lite-local
     // edits instead of silently losing its baseline after every successful run.
-    const KEEP = new Set(['LICENSE', '.vendor-manifest.json']);
+    // KEEP WAS A HARDCODED PAIR AND IT DELETED A LOAD-BEARING FILE.
+    //
+    // It listed LICENSE and .vendor-manifest.json -- two of the THREE files lite
+    // authors inside this root. The third, intro-doc.jsx, was not on it, so the
+    // first sync that ever got this far removed it. Measured 2026-09-08, and only
+    // seen because it happened: components/ExamplesBrowser.jsx imports
+    // '../intro-doc.jsx' for INTRO_L10N, LEVEL_LABELS, LEVEL_COLORS, parseIntro
+    // and renderMarkdown, so the delete left an import pointing at nothing.
+    //
+    // It had never fired before because the refusal above stopped every sync of
+    // this tree, so unblocking the sync is what exposed it -- a hazard that had
+    // been sitting behind a permanent stop.
+    //
+    // The list is now DERIVED from the same document that declares them, so the
+    // inventory and the protection cannot disagree: adding a lite-authored file
+    // without declaring it means the gate refuses it, and declaring it means this
+    // pass keeps it. The two hardcoded names stay as a FLOOR for the case where
+    // the document cannot be read at all -- losing the manifest would destroy the
+    // baseline the local-edit detection depends on.
+    const KEEP = new Set(['LICENSE', '.vendor-manifest.json', ...declaredLiteAuthored]);
     async function walkDest (rel = '') {
         const out = [];
         for (const e of await readdir(path.join(dest, rel), {withFileTypes: true})) {
