@@ -6,6 +6,7 @@ import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import {dirname, extname, join, normalize, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
+import {clickPauseUnlessPaused} from './lib/debug-browser-controls.mjs';
 
 if (!process.env.CI && process.env.BW_ALLOW_LOCAL_BROWSER_PROOF !== '1') {
     throw new Error('This resource-intensive browser proof is CI-only; set BW_ALLOW_LOCAL_BROWSER_PROOF=1 explicitly');
@@ -151,8 +152,11 @@ try {
     await run.click();
     await page.waitForFunction(() => /Recording/.test(
         document.querySelector('[data-debug-record]')?.textContent || ''), null, {timeout: 15000});
-    await pause.click();
-    check('forward execution after reverse creates an active child recording', true);
+    const forkPausePath = await pause.evaluate(clickPauseUnlessPaused);
+    await page.waitForFunction(() => document.querySelector('[data-debug-panel]')
+        ?.getAttribute('data-debug-phase') === 'paused', null, {timeout: 15000});
+    check('forward execution after reverse creates an active child recording', true,
+        `pause path=${forkPausePath}`);
     await snap('forked');
     await panel.locator('[data-debug-record]').click();
     check('browser emitted no console, page, or request failure', diagnostics.length === 0,

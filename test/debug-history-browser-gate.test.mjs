@@ -11,7 +11,8 @@ test('CI-only browser gate proves record, checkpoint, reverse and automatic fork
         'process.env.CI', 'BW_ALLOW_LOCAL_BROWSER_PROOF', 'data-debug-record',
         'data-debug-checkpoint', 'data-debug-restore', 'data-debug-reverse-step', 'data-debug-run',
         "snap('checkpoint')", "snap('reversed')", "snap('forked')",
-        'active child recording', 'report.json', 'diagnostics.length === 0'
+        'active child recording', 'clickPauseUnlessPaused', 'pause path=',
+        'report.json', 'diagnostics.length === 0'
     ]) assert.ok(script.includes(evidence), `missing browser proof evidence: ${evidence}`);
     assert.doesNotMatch(script, /waitForTimeout|setTimeout/,
         'the CI journey must poll observable state, never sleep a guessed duration');
