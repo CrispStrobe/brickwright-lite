@@ -10,17 +10,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          ref: 729d496fe25f28b102a7107b8013571226e401dc
+          ref: 1d849ee9bc03565cba16e3012ca4fa0629df5b44
           path: baseline
-      - uses: actions/checkout@v4
-        with:
-          repository: CrispStrobe/bw-board
-          ref: 42c6316aac92dbc4e90a111c7089fba612c7b615
-          path: candidate-engine
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
       - run: npm ci --ignore-scripts
@@ -29,9 +24,7 @@ jobs:
       - run: node scripts/profile-i8086-execution.mjs
         env:
           I8086_BASELINE: baseline
-          I8086_ENGINE_ROOT: candidate-engine
-          I8086_ENGINE_FILES: i8254.js
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: i8086-execution

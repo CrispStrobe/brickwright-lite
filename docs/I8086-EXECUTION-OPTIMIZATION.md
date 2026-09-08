@@ -60,7 +60,7 @@ peripheral configuration had an unprogrammed PIT, also corrected subsequently.
 * Peripheral batching: the PIT's `nextWake()` reports device ticks while
   `advanceMs()` consumes milliseconds. A safe scheduler must convert units
   and preserve fractional phase, I/O observations and interrupt boundaries.
-  Instead, evaluate arithmetic countdown within `Counter.advance()` only
+  Accepted: arithmetic countdown within `Counter.advance()` only
   when the entire call finishes before an edge. The programmed-PIT mixed
   profile attributed 39.3% of samples to `_advanceChips` and 12.4% to PIT
   `_tick`. This candidate retains the original loop for edge-crossing calls,
@@ -68,6 +68,25 @@ peripheral configuration had an unprogrammed PIT, also corrected subsequently.
   compare all modes and both bases against individual `_tick` transitions,
   including callback snapshots, interleaved gates/latches/restores and
   callback-driven reloads. No new scheduler, time conversion or cached state.
+  Isolated Chromium run `34198634470` compared this change against prefix-only:
+  peripheral mixed workload 41.1 to 39.0 ms (5.4% throughput gain), word/stack
+  31.7 to 28.4 ms (11.6%), and strings 16.3 to 11.0 ms (48.2%). At 4x
+  throttle, word/stack improved 10.3% and strings 59.2%. Those ranges did
+  not overlap; the throttled mixed result had overlapping outliers and is
+  not credited. These gains apply to the programmed-PIT benchmark, not
+  every emulator workload. Architectural states matched throughout.
 * Workers, dynamic translation and lazy flags remain conditional on the
   resulting profiles. They introduce independent behavior and validation
   requirements; they are not prerequisites for a smaller interpreter change.
+
+## Final engine integration
+
+The two accepted changes are isolated on `bw-board` branch
+`fable/i8086-optimized`, revision `492e6782ee92f1ad351d64afcf16cfc224a5d508`,
+based directly on Lite's original source pin. No unrelated upstream board
+changes are included. Upstream run `34198916054` passed unit tests, all
+646,000 8086 vectors, 80186/V20 vectors and the 525-program corpus.
+Lite vendors only the changed CPU and PIT sources, with regenerated pin,
+ROM provenance (unchanged ROM bytes), census and capability metadata.
+The execution workflow's final comparison uses the actual vendored candidate
+against the original Lite revision, without experimental source overlays.
