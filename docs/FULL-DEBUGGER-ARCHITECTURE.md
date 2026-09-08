@@ -93,6 +93,13 @@ needs hosted bus-trace, mid-instruction snapshot, hook and browser-cost receipts
 The existing fast cores remain the default and continue to label aggregate
 timing as predicted rather than recorded cycle evidence.
 
+Two choices remain owner decisions, not implementation backlog that may be inferred from the
+completed retire-boundary work. First, 8051 checkpoint/reverse stays refused until a versioned ABI
+can capture the complete in-flight core, timer/interrupt, UART, program-time and input-latch state.
+Second, the W65C02 instruction-atomic event path does not choose a cycle provider: adopting JSMoo
+or another provider still requires explicit owner selection and the hosted bus-trace,
+mid-instruction snapshot, hook and browser-cost receipts named above.
+
 ## Outcome
 
 A learner must be able to stop on the event that matters, inspect why it

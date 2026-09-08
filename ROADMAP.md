@@ -566,15 +566,17 @@ the measurement on every build. A count that only grows is not a gate.
 
 ## 3. Hardware / debugger surfaces
 
-### AVR device event breakpoints — candidate 2026-09-08
+### AVR device event breakpoints — LANDED 2026-09-08
 
 The pinned AVR target now publishes reconstructed TWI/SPI device facts and recorded instruction
 retires, and explicitly advertises `eventBreakpointBoundary: 'instruction-retire'`. The runner
 admits event-breakpoint dispatch from that capability rather than an i8086 kind exception; device
 matches join memory/port/interrupt as interior facts and halt only at the following retire. This
 does not add cycle stepping, recording, checkpoints, reverse execution, or replay support to AVR.
+Upstream producer `bc0ae45`; Lite integration `4540cef3`; focused receipt
+`34254732092`, final Build `34255736047`.
 
-### Z80 port/memory event-breakpoint parity — candidate 2026-09-08
+### Z80 port/memory event-breakpoint parity — LANDED 2026-09-08
 
 The instruction-atomic Z80 producer already emitted real ordered port and memory accesses followed
 by a recorded retire. Its target now advertises that existing boundary explicitly, so the same
@@ -582,8 +584,9 @@ capability-owned runner path used by AVR and 8086 can defer a matching access an
 the instruction completes. The proof runs `LD A,$2a; OUT ($10),A; LD ($2000),A`, checks the full
 Z80 immediate-port address `$2a10`, exact retire PCs, and replay suppression. It does not claim
 cycle placement or add a target-name exception.
+Landed as `e64f24f5`; Build `34257773471`.
 
-### 6502 RAM/MMIO event-breakpoint parity — candidate 2026-09-08
+### 6502 RAM/MMIO event-breakpoint parity — LANDED 2026-09-08
 
 The existing instruction-atomic 6502 producer now has the same explicit
 `eventBreakpointBoundary: 'instruction-retire'` admission contract. A real
@@ -594,8 +597,9 @@ RAM and MMIO cannot be distinguished by the capability descriptor. Replay does
 not repeat actions or consume one-shot state. Halt-history admission additionally
 requires checkpoint and restore capabilities plus an existing checkpoint; no
 CPU-name exception was added and no cycle-level fidelity is claimed.
+Landed as `bd58c196`; Build `34259750895`.
 
-### Code-tab debugger discoverability — candidate 2026-09-08
+### Code-tab debugger discoverability — LANDED 2026-09-08
 
 The full Circuit `DebugPanel` already survives Code/Circuit and dock changes through one
 persistent host owned by `CircuitTab`; creating another panel in the Code editor would create a
@@ -605,6 +609,17 @@ opening the existing right pane without adding panel, runner, portal or Redux st
 pin the complete setting/event transaction and ownership boundary; the existing hosted debugger-
 dock journey now enters through Code, reopens a hidden pane, asserts exactly one host and panel,
 and proves their identity and running phase survive a dock round trip.
+Landed as `a6d5e31c`; Build `34252014184`.
+
+### Debugger architecture decisions still pending owner
+
+- **8051 checkpoint ABI:** the current WASM ABI cannot capture in-flight CPU microstate,
+  timers/interrupts, UART queues, program time and input latches. Keep checkpoint/reverse refused
+  until the owner chooses and versions a complete ABI; do not infer completeness from RAM/SFR dumps.
+- **W65C02 cycle provider:** the instruction-atomic target now has safe retire-boundary event
+  breakpoints, but that does not select or ship a cycle core. JSMoo remains an evaluated candidate;
+  provider choice still needs owner approval plus hosted bus-trace, mid-instruction snapshot, hook
+  and browser-cost receipts.
 
 ### 3.1 Debugger surface — LARGELY RESOLVED (2026-08-21 tranche), verify before reopening
 `debug-panel.jsx` exists and the 2026-08-21 regression pass landed dock controls, right-dock
