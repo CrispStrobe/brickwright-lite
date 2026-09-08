@@ -207,7 +207,6 @@ export function createI8086DebugTarget(adapter, opts = {}) {
 
     let runState = 'halted';
     let pendingStep = null;
-    let runConfiguration = 0;
     const haltListeners = [];
     const breakpoints = new Map();
     /** Linear address -> symbol name, or null. See setSymbols(). */
@@ -267,7 +266,6 @@ export function createI8086DebugTarget(adapter, opts = {}) {
      * gave up rather than what it was about to.
      */
     const syncEventHooks = () => {
-        runConfiguration++;
         machine.hooks.onPortAccess = (portWatches.size || debugEventListener || originalPortHook)
             ? (ev) => {
                 if (originalPortHook) originalPortHook(ev);
@@ -708,7 +706,6 @@ export function createI8086DebugTarget(adapter, opts = {}) {
         },
 
         setBreakpoint(spec) {
-            runConfiguration++;
             if (spec.kind === 'write') {
                 if (spec.addr == null) return { unsupported: 'addr required' };
                 const id = nextBpId++;
@@ -785,7 +782,6 @@ export function createI8086DebugTarget(adapter, opts = {}) {
         },
 
         clearBreakpoint(id) {
-            runConfiguration++;
             if (portWatches.delete(id) || intWatches.delete(id)) { syncEventHooks(); return; }
             breakpoints.delete(id);
             if (writeWatches.delete(id)) syncWriteTrap();
@@ -846,27 +842,6 @@ export function createI8086DebugTarget(adapter, opts = {}) {
             // positive budget must execute one whole instruction, just as the
             // strict floating-point time comparison did.
             const deadlineCycles = machine.cycles + budgetNs * machine.clockHz / 1e9;
-            // Select once per slice. Re-entrant service/device callbacks can
-            // change debugger configuration; the epoch exits before another
-            // instruction. Observer-bearing runs keep the reference loop.
-            if (opts.fastRun !== false && !pendingStep && !breakpoints.size &&
-                !writeWatches.size && !portWatches.size && !intWatches.size &&
-                !debugEventListener && !eventHit && !watchHit &&
-                !originalPortHook && !originalInterruptHook && !machine.hooks.onInstruction) {
-                const configuration = runConfiguration;
-                while (machine.cycles < deadlineCycles && configuration === runConfiguration) {
-                    lastRetiredPcBefore = null;
-                    executeStep();
-                }
-                // The same post-retirement checks as the reference path are
-                // necessary when a callback installed a watch during a step.
-                if (eventHit) { const hit = eventHit; eventHit = null; halt(hit); return 'halted'; }
-                if (watchHit) { const hit = watchHit; watchHit = null; halt({cause: 'watchpoint', ...hit}); return 'halted'; }
-                if (configuration !== runConfiguration) {
-                    if (pendingStep?.kind === 'insn') pendingStep.remaining--;
-                    if (pendingStep?.kind === 'over' && lastRetiredPcBefore === pendingStep.pc0) pendingStep.entered = true;
-                }
-            }
             while (machine.cycles < deadlineCycles) {
                 // The overwhelmingly common run has no code breakpoint. Do
                 // not construct/advance a Map iterator for every instruction
