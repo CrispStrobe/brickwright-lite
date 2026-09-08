@@ -23,9 +23,9 @@ Each run of a fixture through its reader is one of three outcomes:
 
 ## Overall
 
-370 clean · 283 degraded · 15 refused (of 668; 55% clean)
+366 clean · 282 degraded · 15 refused (of 663; 55% clean)
 
-- round-trip (emit → read back): 370 clean · 281 degraded · 4 refused (of 655; 56% clean)
+- round-trip (emit → read back): 366 clean · 280 degraded · 4 refused (of 650; 56% clean)
 - native (real source fed to the reader): 0 clean · 2 degraded · 11 refused (of 13; 0% clean)
 
 ## By method, language and device family
@@ -48,31 +48,26 @@ programs are refused as foreign. The refusal reasons below say which.
 | --- | --- | --- | --- |
 | round-trip | python | 8051 | 33 clean · 16 degraded · 0 refused (of 49; 67% clean) |
 | round-trip | python | arduino | 15 clean · 52 degraded · 0 refused (of 67; 22% clean) |
-| round-trip | python | i8086 | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
 | round-trip | python | microbit | 2 clean · 7 degraded · 0 refused (of 9; 22% clean) |
 | round-trip | python | pico | 0 clean · 3 degraded · 0 refused (of 3; 0% clean) |
 | round-trip | python | spike | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
 | round-trip | javascript | 8051 | 33 clean · 16 degraded · 0 refused (of 49; 67% clean) |
 | round-trip | javascript | arduino | 15 clean · 52 degraded · 0 refused (of 67; 22% clean) |
-| round-trip | javascript | i8086 | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
 | round-trip | javascript | microbit | 9 clean · 0 degraded · 0 refused (of 9; 100% clean) |
 | round-trip | javascript | pico | 0 clean · 3 degraded · 0 refused (of 3; 0% clean) |
 | round-trip | javascript | spike | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
 | round-trip | c | 8051 | 42 clean · 7 degraded · 0 refused (of 49; 86% clean) |
 | round-trip | c | arduino | 52 clean · 15 degraded · 0 refused (of 67; 78% clean) |
-| round-trip | c | i8086 | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
 | round-trip | c | microbit | 9 clean · 0 degraded · 0 refused (of 9; 100% clean) |
 | round-trip | c | pico | 0 clean · 3 degraded · 0 refused (of 3; 0% clean) |
 | round-trip | c | spike | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
 | round-trip | basic | 8051 | 33 clean · 16 degraded · 0 refused (of 49; 67% clean) |
 | round-trip | basic | arduino | 50 clean · 17 degraded · 0 refused (of 67; 75% clean) |
-| round-trip | basic | i8086 | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
 | round-trip | basic | microbit | 7 clean · 2 degraded · 0 refused (of 9; 78% clean) |
 | round-trip | basic | pico | 1 clean · 2 degraded · 0 refused (of 3; 33% clean) |
 | round-trip | basic | spike | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
 | round-trip | micropython | 8051 | 29 clean · 20 degraded · 0 refused (of 49; 59% clean) |
 | round-trip | micropython | arduino | 30 clean · 37 degraded · 0 refused (of 67; 45% clean) |
-| round-trip | micropython | i8086 | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
 | round-trip | micropython | microbit | 3 clean · 6 degraded · 0 refused (of 9; 33% clean) |
 | round-trip | micropython | pico | 1 clean · 2 degraded · 0 refused (of 3; 33% clean) |
 | round-trip | micropython | spike | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
@@ -90,7 +85,7 @@ programs are refused as foreign. The refusal reasons below say which.
 | 29 | no dialect form for "…" |
 | 22 | unstructured "…" |
 | 13 | dropped call in expression |
-| 12 | no pseudocode for the call "…" |
+| 11 | no pseudocode for the call "…" |
 | 6 | top-level declaration dropped (no block equivalent): struct __bw_bits2 |
 | 5 | devices_lcdclear: no equivalent on this board; the block was not translated |
 | 5 | devices_lcdprint: no equivalent on this board; the block was not translated |
@@ -425,7 +420,6 @@ fixture appears here so its verdict is traceable to the program that caused it.
 | round-trip | javascript | 8051 | disp-sevenseg | degraded | dropped expression statement |
 | round-trip | c | 8051 | disp-sevenseg | degraded | 7 output pins × 20 mA = up to 140 mA at maximum pin ratings (actual current depends on ser; Port 1 has 7 output pins |
 | round-trip | micropython | 8051 | disp-sevenseg | degraded | devices_showdigit: no equivalent on this board; the block was not translated; no pins found |
-| round-trip | c | i8086 | i8086-blink | degraded | no pseudocode for the call "…" |
 | round-trip | micropython | microbit | mb01-display | degraded | no pins found |
 | round-trip | python | microbit | mb02-sensors | degraded | dropped call in expression |
 | round-trip | micropython | microbit | mb02-sensors | degraded | no pins found |
@@ -470,7 +464,7 @@ corpus this repository pins, with its licence recorded here.
 
 | source | languages | origin | licence |
 | --- | --- | --- | --- |
-| program.bw corpus | python, javascript, c, basic, micropython | overlay/scratch-gui/examples — 130 device-tagged programs, round-tripped (parse → emit → read back). Emitter gaps not fed to a reader: python 0, javascript 0, c 0, basic 0, micropython 0 | BSD-3 (repo); Arduino-port programs CC0 |
+| program.bw corpus | python, javascript, c, basic, micropython | overlay/scratch-gui/examples — 129 device-tagged programs, round-tripped (parse → emit → read back). Emitter gaps not fed to a reader: python 0, javascript 0, c 0, basic 0, micropython 0 | BSD-3 (repo); Arduino-port programs CC0 |
 | examples-i8086.js | asm | overlay/scratch-gui/src/lib/bw-asm/examples-i8086.js — 11 MASM programs (6 Amey Thakur, 5 ours), fed native | MIT (Amey Thakur set) / BSD-3 (ours) |
 | oracle C fixtures | c | test/fixtures/oracle/{stc12-blink,atmega328p-blink}.c — real device C, fed native to the pin-inferring reader | BSD-3 (repo) |
 | Amey Thakur external corpus (not folded in) | asm | /mnt/volume1/code/retro-corpus-8086 (525 .asm, env I8086_CORPUS) — a larger asm input, deliberately excluded from committed figures so CI stays reproducible | MIT |

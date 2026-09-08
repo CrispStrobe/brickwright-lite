@@ -28,8 +28,12 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // emitter change (the STC driver is emitted for micro:bit/Pico targets so
     // STC pins resolve). Nothing in the SPIKE emitter changed; the artifact
     // assertions below were re-run at each pin.
+    // -> 0a0e82e on 2026-09-08: the i8086-blink gallery example vendored, and
+    // sb3-creator's tone work (setTone/tone_set, emitted AVR-only) rode the shared
+    // pin. Neither touches the SPIKE emitter; this artifact is byte-identical and
+    // was re-run at the new pin.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'a40a60d34622fcccf1c6f101e8d1d76278c76f7f');
+        '0a0e82e8df7cb699b22e7c2bf4b6285e47e9ca70');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

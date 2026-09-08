@@ -20,7 +20,7 @@ import {SOURCE, REPO} from './helpers/bw-integrated.mjs';
 
 const {extract8086Machine} = await import(path.join(SOURCE, 'src/lib/bw-board/i8086-extract.js'));
 const CIRCUIT = JSON.parse(readFileSync(
-    path.join(REPO, 'overlay/scratch-gui/examples/i8086-blink/circuit.i8086.json'), 'utf8'));
+    path.join(REPO, 'overlay/scratch-gui/examples/i8086-blink/circuit.json'), 'utf8'));
 
 const romRegion = cfg => (cfg.regions || []).find(r => r.kind === 'rom');
 const ramRegion = cfg => (cfg.regions || []).find(r => r.kind === 'ram');
