@@ -36,7 +36,7 @@ test('both configs are checked, so the overlay cannot drift from the mirror', ()
         'a future edit re-adds the rule with nothing to read');
 });
 
-const winWith = (storage, search = '') => ({location: {search}, localStorage: storage});
+const winWith = (storage, search = '', hash = '') => ({location: {search, hash}, localStorage: storage});
 
 test('the default is online: no GPL is fetched unless a user asks', () => {
     const store = new Map();
@@ -174,6 +174,18 @@ test('an explicit request beats any default, in both directions', () => {
         'and works with no storage at all');
     // Present-but-unset is not a request.
     assert.equal(localToolchainEnabled(winWith(off, '?localCompiler=')), false);
+});
+
+test('hash-routed lesson URLs carry the explicit compiler request', () => {
+    const off = {getItem: k => (k === 'bwLocalCompiler' ? 'off' : null)};
+    const on = {getItem: k => (k === 'bw-sdcc-toolchain' ? 'local' : null)};
+    assert.equal(localToolchainEnabled(winWith(off, '', '#/lesson?localCompiler=on')), true,
+        'adding the documented flag after a lesson hash enables the local toolchain');
+    assert.equal(localToolchainEnabled(winWith(on, '', '#/lesson?localCompiler=off')), false,
+        'the hash route is symmetric');
+    assert.equal(localToolchainEnabled(
+        winWith(null, '?localCompiler=off', '#/lesson?localCompiler=on')), false,
+    'the page query wins when both URL regions contain the setting');
 });
 
 test('under Node with no storage the local toolchain is the honest answer', () => {

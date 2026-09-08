@@ -81,6 +81,33 @@ export function setToolchainMode (mode, storage) {
 }
 
 /**
+ * Read the explicit compiler request from either kind of application URL.
+ *
+ * Scratch projects and lessons are hash-routed. A user following advice from
+ * inside a lesson will naturally append the setting to the URL they can see,
+ * producing `#/lesson?...&localCompiler=on`. `location.search` cannot see that
+ * query. Prefer the real page query when it contains the key, then inspect the
+ * hash query; this keeps ordinary links stable and makes the visible recovery
+ * instruction work on routed lesson URLs too.
+ */
+export function localCompilerRequest (win = typeof window === 'undefined' ? undefined : window) {
+    try {
+        if (!win || !win.location) return null;
+        const search = win.location.search || '';
+        const pageParams = new URLSearchParams(search);
+        if (pageParams.has('localCompiler')) return pageParams.get('localCompiler');
+
+        const hash = win.location.hash || '';
+        const queryAt = hash.indexOf('?');
+        if (queryAt === -1) return null;
+        const hashParams = new URLSearchParams(hash.slice(queryAt + 1));
+        return hashParams.has('localCompiler') ? hashParams.get('localCompiler') : null;
+    } catch {
+        return null;
+    }
+}
+
+/**
  * THE SINGLE PREDICATE. Is this bundle allowed to compile in-page right now?
  *
  * Until 2026-09-07 two settings governed this, with opposite defaults and
@@ -97,8 +124,8 @@ export function setToolchainMode (mode, storage) {
  *   1. AN EXPLICIT REQUEST WINS OVER ANY DEFAULT. Someone who typed
  *      `?localCompiler=off` asked for something; a default arriving underneath
  *      them later must not overturn it. Defaults change, requests do not.
- *      `?localCompiler=on` is its mirror, and is the route out for a learner
- *      stuck offline before the settings dialog exists.
+ *      `?localCompiler=on` is its mirror and a direct-link alternative to the
+ *      persistent setting in Menu → Settings → C Compiler.
  *   2. A persisted `bwLocalCompiler='off'` is the same request, made to stick.
  *   3. Otherwise the toolchain mode: `local` or `dev` enable it.
  *   4. Otherwise the domain default — see getToolchainMode.
@@ -112,8 +139,7 @@ export function setToolchainMode (mode, storage) {
 export function localToolchainEnabled (win = typeof window === 'undefined' ? undefined : window) {
     const store = win && win.localStorage ? win.localStorage : undefined;
     try {
-        const search = (win && win.location && win.location.search) || '';
-        const asked = new URLSearchParams(search).get('localCompiler');
+        const asked = localCompilerRequest(win);
         if (asked !== null && asked !== '') {
             if (/^(off|0|false|no)$/i.test(asked)) return false;
             if (/^(on|1|true|yes)$/i.test(asked)) return true;

@@ -71,7 +71,7 @@ import {
     LOCAL_8051_TARGETS, compileTargetFor, compileFormatFor,
     shippedImageFor, provenanceSentence
 } from './shipped-images.js';
-import { localToolchainEnabled } from '../sdcc-wasm/toolchain-source.js';
+import { localCompilerRequest, localToolchainEnabled } from '../sdcc-wasm/toolchain-source.js';
 
 /**
  * How many suppressed breakpoint hits one frame will absorb before yielding to
@@ -250,8 +250,7 @@ export function compileCachePut (key, out) {
 export function localCompilerOptedOut (win = typeof window === 'undefined' ? undefined : window) {
     if (!win) return false;
     try {
-        const search = (win.location && win.location.search) || '';
-        const asked = new URLSearchParams(search).get('localCompiler');
+        const asked = localCompilerRequest(win);
         if (asked !== null) return /^(off|0|false|no)$/i.test(asked);
         return Boolean(win.localStorage) &&
             win.localStorage.getItem('bwLocalCompiler') === 'off';
@@ -1066,7 +1065,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                     // explanation and no exit.
                     setStatus('building',
                         'in-page 8051 compiler not installed — using the compiler service. ' +
-                        'Add ?localCompiler=on to compile offline.');
+                        'To compile offline, open Menu → Settings → C Compiler, choose ' +
+                        'Build in this page, then Download compiler.');
                 }
             }
             // The compile is a pure function of (code, target, format), and the
@@ -1117,8 +1117,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                               `in-page compiler is not installed, so this build needed the ` +
                               `service at ${compilerUrl}, which could not be reached ` +
                               `(${reason}). That compiler is GPL-licensed and is downloaded ` +
-                              `only when you ask for it. Add ?localCompiler=on to the URL to ` +
-                              `install it and build with no connection.`)
+                              `only when you ask for it. Open Menu → Settings → C Compiler, ` +
+                              `choose Build in this page, then Download compiler and retry.`)
                         : `${compileTarget} programs are built by the compiler service at ` +
                           `${compilerUrl}, which could not be reached (${reason}). Its ` +
                           `compiler cannot run in a browser, so it is not in the page. Some ` +
@@ -1127,8 +1127,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                           `them, because nobody has compiled it yet. Undo back to the lesson's ` +
                           `own program to run offline again, reconnect to build this one, or ` +
                           `switch to an 8051 device, whose compiler CAN run in the page — ` +
-                          `add ?localCompiler=on to install it, since it is not shipped ` +
-                          `with the app.`
+                          `open Menu → Settings → C Compiler, choose Build in this page, then ` +
+                          `Download compiler, since it is not shipped with the app.`
                     );
                 }
                 out = await res.json();
