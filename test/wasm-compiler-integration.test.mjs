@@ -7,6 +7,7 @@ import {fileURLToPath, pathToFileURL} from 'node:url';
 import test from 'node:test';
 
 import {compileWithToolchain, listingFromRst} from '../overlay/scratch-gui/src/lib/sdcc-wasm/compiler.js';
+import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 
 const distUrl = new URL('../overlay/scratch-gui/src/lib/sdcc-wasm/dist/', import.meta.url);
 
@@ -135,3 +136,42 @@ void main(void) { for (;;) { bw_task0(); } }`;
     assert.ok(result.symbols.variables?.some(variable => variable.c === 'count' && !variable.unlocated),
         `count is absent from ${JSON.stringify(result.symbols)}`);
 });
+
+const singleTaskDebugSource = () => {
+    const creator = new SB3Creator();
+    creator.parse(`DEVICE STC12C5A60S2
+CLOCK 11059200
+PIN led1 = P1.0 OUTPUT ACTIVE LOW
+
+WHEN flag clicked:
+  FOREVER:
+    toggle led1
+    wait 0.15 seconds
+`);
+    assert.deepEqual(creator.warnings, []);
+    return creator.generateC(undefined, {debug: true});
+};
+
+test('a parsed single-task 8051 debug build requests stable scheduler storage', () => {
+    const source = singleTaskDebugSource();
+    assert.match(source, /static volatile unsigned int bw_task0_state;/);
+    assert.match(source, /static volatile unsigned int bw_task0_until;/);
+});
+
+test('a parsed single-task 8051 debug build keeps scheduler words in the linked symbols',
+    {skip: skipIfAbsent, timeout: 30000}, async () => {
+        const source = singleTaskDebugSource();
+        const result = await compileWithToolchain(source, {
+            target: 'stc12c5a60s2', symbols: true
+        }, await toolchain());
+        assert.equal(result.success, true, result.error);
+        assert.equal(result.symbols_error, null);
+        const task = result.symbols?.scheduler?.tasks?.find(row => row.name === 'bw_task0');
+        assert.ok(task, `bw_task0 is absent from ${JSON.stringify(result.symbols)}`);
+        assert.equal(task.state.space, 'iram');
+        assert.equal(task.state.size, 2);
+        assert.equal(task.until.space, 'iram');
+        assert.equal(task.until.size, 2);
+        assert.equal(Number.isInteger(task.state.addr), true);
+        assert.equal(Number.isInteger(task.until.addr), true);
+    });
