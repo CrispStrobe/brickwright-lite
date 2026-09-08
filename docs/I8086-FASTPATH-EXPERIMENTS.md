@@ -158,6 +158,15 @@ mobile viewport and **5.45×** at 4× throttle (15 samples/profile); pacing
 still yields about 2.02×. This repeat on another CI runner illustrates why
 the 27× result above is not a hardware-independent guarantee.
 
+Ownership correction (2026-09-08): “tracking” above initially meant only the
+overlay copy. That was incomplete: the already-tracked package
+`i8086-machine.js` imports `i8086-ram-words.js`, while a clean checkout had no
+tracked package-side helper and depended on `integrate.mjs` creating it. The
+helper already exists byte-for-byte at the recorded bw-board pin (`4c6ab1a`),
+so it is ordinary upstream-owned vendored source, not a lite-authored
+exception. Both overlay and package copies are now tracked; a focused ownership
+gate rejects a missing pair, mismatched bytes, or a future `liteAuthored` claim.
+
 Corrected comparison
 [34221210990](https://github.com/CrispStrobe/brickwright-lite/actions/runs/34221210990)
 is green at `79c401df76e1a7cc13f336f7a54cb20196058660`, with unchanged production

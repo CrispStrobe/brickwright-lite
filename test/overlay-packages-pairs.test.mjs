@@ -15,6 +15,8 @@
 import {execFileSync} from 'node:child_process';
 import assert from 'node:assert';
 import test from 'node:test';
+import fs from 'node:fs';
+import path from 'node:path';
 
 // AMBIENT-BINDING, triaged 2026-09-02 and KEPT. `git` from PATH is the one ambient tool whose
 // identity is not in question here: the gate asks git for THIS repository's own tracked blobs,
@@ -48,4 +50,47 @@ test('overlay/packages dual-tracked pairs are identical at HEAD', () => {
         `the tracked packages mirror from overlay in this commit, or un-track ` +
         `the packages copy.`
     );
+});
+
+const RAM_WORDS = 'src/lib/bw-board/i8086-ram-words.js';
+
+const assertUpstreamOwnedPair = ({overlay, packages, liteAuthored}) => {
+    assert.ok(overlay.has(RAM_WORDS), `${RAM_WORDS} is missing from the tracked overlay`);
+    assert.ok(packages.has(RAM_WORDS), `${RAM_WORDS} is imported by the tracked i8086-machine.js ` +
+        'but missing from the tracked packages mirror; a clean checkout must not depend on integrate ' +
+        'creating an upstream-owned module');
+    assert.equal(packages.get(RAM_WORDS), overlay.get(RAM_WORDS),
+        `${RAM_WORDS} differs between its tracked overlay and packages copies`);
+    assert.equal(liteAuthored.has(path.basename(RAM_WORDS)), false,
+        `${path.basename(RAM_WORDS)} exists at the recorded bw-board pin and must not be claimed as lite-authored`);
+};
+
+test('the upstream-owned i8086 RAM helper is a tracked package pair', () => {
+    const blobs = tree => new Map(git('ls-files', '-s', `${tree}/`).split('\n')
+        .filter(Boolean)
+        .map(line => {
+            const [meta, file] = line.split('\t');
+            return [file.slice(tree.length + 1), meta.split(' ')[1]];
+        }));
+    const md = fs.readFileSync('docs/VENDOR-DIVERGENCE-I8086-MACHINE.md', 'utf8');
+    const manifest = JSON.parse(md.match(/```json\n([\s\S]*?)\n```/)[1]);
+    assertUpstreamOwnedPair({
+        overlay: blobs('overlay/scratch-gui'),
+        packages: blobs('packages/scratch-gui'),
+        liteAuthored: new Set(Object.keys(manifest.liteAuthored.files))
+    });
+});
+
+test('i8086 RAM ownership contract rejects missing, mismatched and authored mutations', () => {
+    const good = {
+        overlay: new Map([[RAM_WORDS, 'same']]),
+        packages: new Map([[RAM_WORDS, 'same']]),
+        liteAuthored: new Set()
+    };
+    assert.doesNotThrow(() => assertUpstreamOwnedPair(good));
+    assert.throws(() => assertUpstreamOwnedPair({...good, packages: new Map()}), /missing from the tracked packages/);
+    assert.throws(() => assertUpstreamOwnedPair({...good,
+        packages: new Map([[RAM_WORDS, 'different']])}), /differs between/);
+    assert.throws(() => assertUpstreamOwnedPair({...good,
+        liteAuthored: new Set([path.basename(RAM_WORDS)])}), /must not be claimed as lite-authored/);
 });
