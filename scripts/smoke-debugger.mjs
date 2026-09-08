@@ -37,11 +37,26 @@ const SDCC_DIST = path.join(LITE, 'lib/sdcc-wasm/dist');
 // gate-shapes-allow: overridable with STC_COMPILER, and its absence exits 2 below.
 const STCC = process.env.STC_COMPILER || path.resolve(repo, '../../stc-compiler');
 
+// THE TOOLCHAIN IS NOT IN THIS REPOSITORY ANY MORE and is checked separately
+// below, because its absence is not the same kind of problem as the others.
+// SDCC is GPL-2.0-or-later and lite is BSD-3-Clause, so since 2026-09-08 it is
+// fetched from github.com/CrispStrobe/sdcc-wasm rather than committed here. A
+// missing integrated tree or webpack build means the caller skipped a step and
+// should be stopped; a missing toolchain means a download did not happen, which
+// must not fail a run about the debugger.
 for (const [what, where] of [['the integrated tree (npm run integrate)', LITE],
     ['a webpack build (static/emu8051.wasm)', path.join(BUILD, 'static/emu8051.wasm')],
-    ['the in-tree SDCC WASM toolchain', path.join(SDCC_DIST, 'sdcc.js')],
     ['stc-compiler (set STC_COMPILER)', path.join(STCC, 'stc_disasm.py')]]) {
     if (!existsSync(where)) { console.error(`smoke-debugger: missing ${what}: ${where}`); process.exit(2); }
+}
+if (!existsSync(path.join(SDCC_DIST, 'sdcc.js'))) {
+    // Named, so a reader of the log knows exactly what did not run and why —
+    // rather than a green line that quietly proved nothing.
+    console.log('smoke-debugger: SKIPPED — the GPL SDCC toolchain is not present at ' +
+        `${SDCC_DIST}. It is no longer tracked in this repository (GPL-2.0-or-later in a ` +
+        'BSD-3-Clause tree); CI fetches it from https://crispstrobe.github.io/sdcc-wasm/ ' +
+        'and that fetch is tolerated absent. Nothing was smoke-tested.');
+    process.exit(0);
 }
 // A runnable native `sdcc` is deliberately NOT checked here.
 //

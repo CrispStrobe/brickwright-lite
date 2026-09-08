@@ -1021,20 +1021,21 @@ repository is BSD-3-Clause (see LICENSE at the repo root).
 
 ## SDCC (Small Device C Compiler) — GPL-2-or-later
 
-**NOT COPIED INTO THE BUILD, AND NOT IN THE PACKAGED APP. Still present in
-this repository's source tree while the removal completes.**
+**NOT IN THIS REPOSITORY, NOT IN THE BUILD, AND NOT IN THE PACKAGED APP.**
 
-Read that literally, because the two halves have different dates. As of
-`dd603a5a4` no SDCC byte is copied into `packages/scratch-gui/build`, so none
-reaches the `.app` that `tauri.conf.json` assembles, and a CI guard fails the
-build if any reappears. But **101 files under
-`overlay/scratch-gui/src/lib/sdcc-wasm/dist/` and 101 in their tracked mirror
-under `packages/` — 202 in total** are STILL IN THIS REPOSITORY, pending removal
-once the fetch route is proven in a browser. Until that lands, anyone who clones
-or downloads this repository still receives SDCC under GPL-2.0-or-later; the
-Licence boundary section below states both halves. A notice that claimed
-otherwise would understate what is distributed, which is a worse error than the
-overstatement it replaced.
+Both halves are now true, and they were not always. As of `dd603a5a4` no SDCC
+byte is copied into `packages/scratch-gui/build`, so none reaches the `.app`
+that `tauri.conf.json` assembles, and a CI guard fails the build if any
+reappears. As of 2026-09-08 the **202 files** that remained in the source tree —
+101 under `overlay/scratch-gui/src/lib/sdcc-wasm/dist/` and 101 in their tracked
+mirror — are removed from version control and gitignored, so a clone of this
+repository receives no SDCC at all.
+
+The removal waited for the fetch route to be proved in a browser rather than
+argued: the opt-in run now records every toolchain request and asserts all nine
+files came from the GPL origin (`9/9 from https://crispstrobe.github.io/sdcc-wasm/`).
+The Node gates that read that directory have CI fetch it, and skip BY NAME when
+that fetch is unavailable — a missing download is not a broken compiler.
 
 **The GPL home of these binaries:** https://github.com/CrispStrobe/sdcc-wasm —
 the COPYING text, the written offer of corresponding source, the build
@@ -1105,15 +1106,11 @@ Two different statements, because they have different dates.
 the packaged application as of `dd603a5a4`, and
 `scripts/verify-no-gpl-in-build.mjs` fails the build if any reappears.
 
-**The source tree:** 101 files under
-`overlay/scratch-gui/src/lib/sdcc-wasm/dist/` and 101 in their tracked mirror
-under `packages/` are still here, so anyone who clones or downloads this
-repository still receives SDCC under GPL-2.0-or-later. They are upstream
-material, unmodified, and **everything else** in this repository is BSD-3-Clause
-(see `LICENSE` at the root). File-level separation is what makes that lawful for
-as long as it lasts: the GPL files sit in their own directory under their own
-licence and nothing links against them. When the untracking lands, this
-paragraph loses its second half and the repository contains no SDCC code at all.
+**The source tree:** as of 2026-09-08 it carries no SDCC at all. The 202 files
+that used to sit under `overlay/scratch-gui/src/lib/sdcc-wasm/dist/` and its
+tracked mirror are removed from version control and gitignored, so a clone
+receives none of them. **Everything** in this repository is BSD-3-Clause (see
+`LICENSE` at the root).
 
 **Why this is a separate work, not a repackaging.** The compiler lives in a
 different repository, under its own licence, with its own written offer of

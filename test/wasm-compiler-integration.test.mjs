@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {existsSync} from 'node:fs';
 import {readFile} from 'node:fs/promises';
 import {createRequire} from 'node:module';
 import {dirname} from 'node:path';
@@ -8,6 +9,19 @@ import test from 'node:test';
 import {compileWithToolchain, listingFromRst} from '../overlay/scratch-gui/src/lib/sdcc-wasm/compiler.js';
 
 const distUrl = new URL('../overlay/scratch-gui/src/lib/sdcc-wasm/dist/', import.meta.url);
+
+// THE TOOLCHAIN IS NO LONGER TRACKED IN THIS REPOSITORY. SDCC is
+// GPL-2.0-or-later and this repo is BSD-3-Clause, so as of 2026-09-08 the
+// binaries live at github.com/CrispStrobe/sdcc-wasm and CI fetches them into
+// `dist/` before this runs. When that fetch is unavailable these tests SKIP BY
+// NAME rather than fail: a missing dependency is not a broken compiler, and a
+// red build here would blame unrelated work for a network hiccup. A skip is
+// loud in the TAP and cannot be mistaken for a pass.
+const TOOLCHAIN_PRESENT = existsSync(fileURLToPath(new URL('sdcc.js', distUrl)));
+const skipIfAbsent = TOOLCHAIN_PRESENT
+    ? false
+    : 'the GPL SDCC toolchain is not present (not tracked here; fetched from its own origin)';
+
 const require = createRequire(import.meta.url);
 const decodeBase64 = text => Uint8Array.from(Buffer.from(text, 'base64'));
 
@@ -34,7 +48,7 @@ async function toolchain () {
     };
 }
 
-test('four isolated WASM stages produce linked Intel HEX', {timeout: 30000}, async () => {
+test('four isolated WASM stages produce linked Intel HEX', {skip: skipIfAbsent, timeout: 30000}, async () => {
     const result = await compileWithToolchain([
         '#include <stc12.h>',
         'void main(void) {',
@@ -50,7 +64,7 @@ test('four isolated WASM stages produce linked Intel HEX', {timeout: 30000}, asy
     assert.ok(result.bytes > 100, `unexpectedly small output: ${result.bytes}`);
 });
 
-test('listing mode returns SDCC relocated addresses and source mappings', {timeout: 30000}, async () => {
+test('listing mode returns SDCC relocated addresses and source mappings', {skip: skipIfAbsent, timeout: 30000}, async () => {
     const result = await compileWithToolchain([
         '#include <stc12.h>',
         'void main(void) {',
@@ -70,7 +84,7 @@ test('listing mode returns SDCC relocated addresses and source mappings', {timeo
     assert.equal(result.disassembly, result.listing.asm, 'the compatibility field is the same artifact');
 });
 
-test('ordinary compilation does not carry the optional listing payload', {timeout: 30000}, async () => {
+test('ordinary compilation does not carry the optional listing payload', {skip: skipIfAbsent, timeout: 30000}, async () => {
     const result = await compileWithToolchain('void main(void) { for (;;) {} }',
         {target: 'stc12c5a60s2'}, await toolchain());
     assert.equal(result.success, true, result.error);
@@ -78,7 +92,7 @@ test('ordinary compilation does not carry the optional listing payload', {timeou
     assert.equal(Object.hasOwn(result, 'disassembly'), false);
 });
 
-test('listing parser rejects artifacts that cannot map source to machine addresses', () => {
+test('listing parser rejects artifacts that cannot map source to machine addresses', {skip: skipIfAbsent}, () => {
     assert.throws(() => listingFromRst(''), /empty relocated listing/);
     assert.throws(() => listingFromRst('0000 02 00 08 ljmp 0008'), /no source\/address mappings/);
     const listing = listingFromRst([
@@ -88,7 +102,7 @@ test('listing parser rejects artifacts that cannot map source to machine address
     assert.deepEqual(listing.lineMap, [{addr: 10, file: 'main.c', line: 7}]);
 });
 
-test('debug build transfers ADB data through assembler and linker', {timeout: 30000}, async () => {
+test('debug build transfers ADB data through assembler and linker', {skip: skipIfAbsent, timeout: 30000}, async () => {
     const source = `/* @bw-begin
  * @bw yield bw_task0 0 block%2Fhat hat
  * @bw yield bw_task0 1 block%2Floop loop

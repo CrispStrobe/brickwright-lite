@@ -42,6 +42,7 @@
  * first time.
  */
 import assert from 'node:assert/strict';
+import {existsSync} from 'node:fs';
 import {readFile} from 'node:fs/promises';
 import {createRequire} from 'node:module';
 import {dirname, join} from 'node:path';
@@ -52,6 +53,19 @@ import {compileWithToolchain} from '../overlay/scratch-gui/src/lib/sdcc-wasm/com
 import {SOURCE, REPO} from './helpers/bw-integrated.mjs';
 
 const distUrl = new URL('../overlay/scratch-gui/src/lib/sdcc-wasm/dist/', import.meta.url);
+
+// THE TOOLCHAIN IS NO LONGER TRACKED IN THIS REPOSITORY. SDCC is
+// GPL-2.0-or-later and this repo is BSD-3-Clause, so as of 2026-09-08 the
+// binaries live at github.com/CrispStrobe/sdcc-wasm and CI fetches them into
+// `dist/` before this runs. When that fetch is unavailable these tests SKIP BY
+// NAME rather than fail: a missing dependency is not a broken compiler, and a
+// red build here would blame unrelated work for a network hiccup. A skip is
+// loud in the TAP and cannot be mistaken for a pass.
+const TOOLCHAIN_PRESENT = existsSync(fileURLToPath(new URL('sdcc.js', distUrl)));
+const skipIfAbsent = TOOLCHAIN_PRESENT
+    ? false
+    : 'the GPL SDCC toolchain is not present (not tracked here; fetched from its own origin)';
+
 const require = createRequire(import.meta.url);
 const decodeBase64 = text => Uint8Array.from(Buffer.from(text, 'base64'));
 
@@ -101,7 +115,7 @@ void main(void) {
 const isIntelHex = hex => /^:[0-9A-Fa-f]{8}/.test(hex.trim()) && /:00000001FF/i.test(hex);
 
 test('the vendored SDCC compiles the idle fast-forward generateC emits',
-    {timeout: 120000}, async () => {
+    {skip: skipIfAbsent, timeout: 120000}, async () => {
         const result = await compileWithToolchain(IDLE_SHAPE, {target: 'stc12c5a60s2', symbols: true},
             await toolchain());
 
@@ -120,7 +134,7 @@ test('the vendored SDCC compiles the idle fast-forward generateC emits',
     });
 
 test('a refused program still comes back with the compiler\'s own words, not just a missing file',
-    {timeout: 120000}, async () => {
+    {skip: skipIfAbsent, timeout: 120000}, async () => {
         const result = await compileWithToolchain(REAL_ERROR, {target: 'stc12c5a60s2', symbols: true},
             await toolchain());
 
@@ -137,7 +151,7 @@ test('a refused program still comes back with the compiler\'s own words, not jus
     });
 
 test('a REAL generated 8051 program — scheduler, tasks and idle block — compiles to a hex',
-    {timeout: 180000}, async () => {
+    {skip: skipIfAbsent, timeout: 180000}, async () => {
         // Generated here rather than pasted in, so this tracks the transpiler.
         // 76-multimeter is the example that carries two cooperative tasks, and
         // therefore the idle fast-forward; a single-script program does not.

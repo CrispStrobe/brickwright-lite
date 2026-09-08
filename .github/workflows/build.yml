@@ -544,6 +544,41 @@ jobs:
         timeout-minutes: 3
         run: npm run sync:picomicropython || echo "::warning::pico firmware sync failed — the twelve firmware-gated unit tests will skip by name"
 
+      # THE GPL TOOLCHAIN, FETCHED RATHER THAN TRACKED.
+      # SDCC is GPL-2.0-or-later and this repository is BSD-3-Clause, so as of
+      # 2026-09-08 the binaries are no longer committed here — they live at
+      # https://github.com/CrispStrobe/sdcc-wasm and the app downloads them only
+      # when a user opts in. Four Node consumers still READ that directory
+      # (smoke-debugger, the two wasm-compiler suites, pack-sdcc-runtime), so CI
+      # fetches it here.
+      #
+      # TOLERATED ABSENT, deliberately. A network fetch in a previously hermetic
+      # job must not turn a github.io hiccup into a red build on unrelated work:
+      # the consumers skip BY NAME when the directory is missing, which is loud
+      # in the TAP and cannot be mistaken for a pass.
+      - name: Fetch the GPL SDCC toolchain for the Node consumers (tolerated absent)
+        id: sdcc_toolchain
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          ORIGIN=https://crispstrobe.github.io/sdcc-wasm/static/sdcc-wasm
+          DEST=overlay/scratch-gui/src/lib/sdcc-wasm/dist
+          mkdir -p "$DEST/include/mcs51" "$DEST/lib/small"
+          ok=1
+          for f in cc1.js cc1.wasm sdcc.js sdcc.wasm sdas8051.js sdas8051.wasm \
+                   sdld.js sdld.wasm runtime.json; do
+            curl -fsS --max-time 120 -o "$DEST/$f" "$ORIGIN/$f" || { ok=0; break; }
+          done
+          if [ "$ok" = "1" ]; then
+            cp -r "$DEST" packages/scratch-gui/src/lib/sdcc-wasm/dist 2>/dev/null || true
+            echo "SDCC toolchain fetched from the GPL origin ($(du -sh "$DEST" | cut -f1))"
+          else
+            echo "::warning::GPL toolchain not fetched — the SDCC Node gates will skip by name"
+            rm -rf "$DEST"
+            exit 1
+          fi
+
       - name: Run unit tests
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         run: |
