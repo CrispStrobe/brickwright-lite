@@ -59,7 +59,7 @@ export function setup(layer, workload = 'mixed') {
         {kind: 'ppi', name: 'ppi1', at: 0x60},
         {kind: 'cga', name: 'cga1', at: 0x3d0},
     ] : []});
-    const dos = createDos8086(machine);
+    const dos = createDos8086(machine).install();
     dos.loadCom(program.bytes);
     const cpu = machine.cpu;
     if (layer === 'core') {
