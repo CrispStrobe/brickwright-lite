@@ -143,3 +143,37 @@ lite has been missing rather than noise.
 Unchanged from September and for the same reason. The flag turns a loud stop into
 a silent loss, and the previous time this shape appeared it would have deleted an
 8086 keyboard path upstream has never had.
+
+---
+
+# A LINE COUNT CANNOT TELL "AHEAD" FROM "SUPERSEDED"
+
+Measured twice on 2026-09-08, in two different repositories, hours apart. Both
+times a file read as a two-way divergence and was one-way once the lines were
+READ instead of counted. This note exists because the counts in the tables above
+are the first thing anyone looks at, and on their own they cannot make the
+judgement the reader will make from them.
+
+| file | counted | actually |
+|---|---|---|
+| `bw-circuit-ui` `components/CircuitDesigner.jsx` | 13 ahead, 23 behind | after the lite-ahead half was upstreamed, the 2 remaining "ahead" lines were `if (mcu) {` and the effect's dependency array — the exact lines the incoming fix replaces |
+| `bw-board` `src/board.js` | 11 ahead, 73 behind | the 11 are the inner loop of the old buzzer-edge recorder, which upstream now expresses as an extracted `_buzzerOnPin`. Upstream has `_buzzerOnPin` 4 times and `setTone` 3; lite has neither, 0 times |
+
+In both cases the "lite-only" lines are the OLD form of code the upstream change
+rewrote. A diff cannot see that, because a rewritten function is textually a
+deletion and an addition, and the deletion counts as lite-ahead.
+
+**Why it matters more than a wrong number.** "Ahead" means someone must reconcile
+by hand before a sync can run. "Superseded" means a plain sync is correct and
+loses nothing. Those are a scheduled task and a no-op, and the count reads
+identically for both. A file that looks blocked can turn out to be unblocked by
+nobody doing anything except looking at it.
+
+**How to read these tables.** Treat the lite-only count as an upper bound on the
+work, never as the work. Before scheduling a reconciliation, read the lite-only
+lines and ask whether the upstream change rewrote that same region. If it did,
+the file is behind-only and belongs in a pin leg rather than on someone's desk.
+
+Same family as the refusal-list note above: a number standing in for a judgement
+it cannot make. There the count was of files that had already converged; here it
+is of lines that were never ahead.
