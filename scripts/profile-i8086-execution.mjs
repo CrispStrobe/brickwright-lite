@@ -13,7 +13,8 @@ const output = resolve(process.env.I8086_PROFILE_OUTPUT || 'artifacts/i8086-exec
 const repetitions = 5;
 const cycles = 5_000_000;
 const blockMode = process.env.I8086_BLOCK_MODE || 'none';
-if (!['none','decoded','wasm'].includes(blockMode)) throw new Error('Invalid block mode');
+if (!['none','decoded','wasm','ram'].includes(blockMode)) throw new Error('Invalid block mode');
+const blockOnly = blockMode === 'decoded' || blockMode === 'wasm';
 const roots = {baseline, candidate: root};
 const engineRoot = process.env.I8086_ENGINE_ROOT ? resolve(process.env.I8086_ENGINE_ROOT) : null;
 const engineFiles = blockMode === 'none' ? (process.env.I8086_ENGINE_FILES || '').split(',').filter(Boolean) : [];
@@ -32,7 +33,7 @@ const server = createServer(async (req, res) => {
         if (!parts.join('/')) { res.setHeader('Content-Type', 'text/html'); res.end('<!doctype html><title>8086 profile</title>'); return; }
         // Use the candidate harness unchanged for both source trees.
         const isHarness = ['scripts/lib/i8086-execution-workload.mjs',
-            'scripts/lib/i8086-block-experiment.mjs'].includes(parts.join('/'));
+            'scripts/lib/i8086-block-experiment.mjs', 'scripts/lib/i8086-ram-experiment.mjs'].includes(parts.join('/'));
         const sourceRoot = isHarness ? root : roots[kind];
         let path = resolve(sourceRoot, ...parts);
         if (!path.startsWith(sourceRoot + sep)) { res.writeHead(403).end(); return; }
@@ -50,8 +51,8 @@ const comparisons = [];
 let complete = false;
 try {
     for (const rate of [1, 4]) {
-        for (const workload of blockMode === 'none' ? ['mixed', 'words', 'strings'] : ['mixed','words','strings','registers']) {
-            for (const layer of blockMode === 'none' ? ['core', 'machine', 'dos', 'debugger', 'peripherals'] : ['core']) {
+        for (const workload of blockOnly ? ['mixed','words','strings','registers'] : ['mixed', 'words', 'strings']) {
+            for (const layer of blockOnly ? ['core'] : ['core', 'machine', 'dos', 'debugger', 'peripherals']) {
                 for (let repetition = 0; repetition < repetitions; repetition++) {
                     for (const kind of repetition % 2 ? ['candidate', 'baseline'] : ['baseline', 'candidate']) {
                         const context = await browser.newContext();
@@ -62,7 +63,8 @@ try {
                         const warmup = await page.evaluate(async ({kind, layer, workload, cycles, blockMode}) => {
                             const {setup} = await import(`/${kind}/scripts/lib/i8086-execution-workload.mjs`);
                             window.bench = setup(layer, workload,
-                                kind === 'candidate' && blockMode !== 'none' ? {blockMode} : {});
+                                kind !== 'candidate' || blockMode === 'none' ? {} :
+                                    blockMode === 'ram' ? {ramWords: true} : {blockMode});
                             return window.bench.run(cycles); // warm-up excluded from timing
                         }, {kind, layer, workload, cycles, blockMode});
                         const result = await page.evaluate(cycles => window.bench.run(cycles), cycles);

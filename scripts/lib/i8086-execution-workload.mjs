@@ -5,6 +5,7 @@ import {createDos8086, DOSBOX8086} from '../../overlay/scratch-gui/src/lib/bw-bo
 import {createI8086DebugTarget} from '../../overlay/scratch-gui/src/lib/bw-board/i8086-debug.js';
 import {assemble} from '../../overlay/scratch-gui/src/lib/bw-board/i8086-asm.js';
 import {createRegisterBlockExperiment} from './i8086-block-experiment.mjs';
+import {installRamWordExperiment} from './i8086-ram-experiment.mjs';
 
 const bodies = {
     registers: `ADD AX, BX
@@ -88,6 +89,7 @@ export function setup(layer, workload = 'mixed', options = {}) {
         cpu.write = (address, value) => { machine.mem[address] = value; };
     }
     const target = layer === 'debugger' ? createI8086DebugTarget({machine, step: () => dos.step()}) : null;
+    if (options.ramWords) installRamWordExperiment(machine);
     if (options.blockMode && layer !== 'core') throw new Error('Block experiment requires the owned flat-RAM core');
     const block = options.blockMode ? createRegisterBlockExperiment(cpu, machine.mem, options.blockMode) : null;
     target?.run();

@@ -8,7 +8,7 @@ on:
         description: Benchmark-only block executor
         type: choice
         default: none
-        options: [none, decoded, wasm]
+        options: [none, decoded, wasm, ram]
 permissions:
   contents: read
 jobs:
