@@ -84,8 +84,17 @@ jobs:
       - name: Install debugger runtime dependencies
         run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
       - name: Focused debugger contracts and live cores
+        # --import registers the GUI dependency-scope resolve hook. Every root
+        # test command in package.json carries it (`test`, `test:fast`,
+        # `test:corpus`) and this step did not, so a test that loads an owned
+        # module from overlay/ and lets it import a bare GUI dependency failed
+        # with ERR_MODULE_NOT_FOUND: overlay/ resolves upward to the repo root,
+        # where the GUI dependencies are not installed — they live under
+        # packages/scratch-gui, which is exactly what the hook redirects to.
+        # This workflow had never once passed; it fires only on paths under
+        # bw-board and friends, and the first push that matched was 2026-09-07.
         run: |
-          node --test \
+          node --test --import ./scripts/lib/register-gui-scope.mjs \
             test/debug-*.test.mjs \
             test/classic-machine-checkpoint.test.mjs \
             test/classic-debug-events.test.mjs \
