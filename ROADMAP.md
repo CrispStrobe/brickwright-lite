@@ -54,23 +54,7 @@ exact green upstream pin, update both mirrors and pin readers, and re-run the
 compile-backed reach census at exactly 79. A warning, commented zero, or
 incomplete lowering is a refusal rather than a compiled result.
 
-### Track 2 — keep history-only edits out of the heavy workflow
-
-**Owner:** unclaimed; schedule after N2f. This is a workflow path-filter and gate
-change, not part of the current documentation repair.
-
-**Measured start:** `.github/workflows/build.yml` excludes the other ledger
-Markdown paths but omits `HISTORY.md`. A history-only edit therefore launches
-the full vendor, build, and Playwright workflow even though no executable file
-consumes it.
-
-**Acceptance:** add the missing history path exclusion beside its peers and a
-fixture-driven trigger test proving a `HISTORY.md`-only diff does not launch the
-heavy workflow. The same test must prove executable changes and governed docs
-that are actual build inputs still trigger it; mutation-removing the exclusion
-must fail by name.
-
-### Track 3 — retire one declared `bw-board` divergence
+### Track 2 — retire one declared `bw-board` divergence
 
 **Owner:** coordinator selects one small file after N2f lands.
 
@@ -89,7 +73,7 @@ reject the obsolete declaration, overlay and package mirrors must agree, and a
 behavioral or mutation proof must fail when the protected behavior is removed.
 No bulk sync and no second file in the same session.
 
-### Track 4 — Milestone 0 circuit-variant electrical equivalence
+### Track 3 — Milestone 0 circuit-variant electrical equivalence
 
 **Owner:** coordinator selects one precise family or invariant.
 

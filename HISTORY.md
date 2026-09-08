@@ -43,6 +43,11 @@ plan or roadmap. Detailed commit, CI and ownership evidence remains in Git and
   Moving the board pin also required regenerating seven artifacts that stamped
   the old SHA even though the ROM binaries were byte-identical; provenance is
   part of a pin move, not an optional afterthought.
+- **History-only changes no longer launch the heavy Build workflow**
+  (`e1765b83c`, hosted run `34210227378`). `HISTORY.md` is excluded beside the
+  other ledger-only root documents. A named mutation-proved trigger test keeps
+  history-only changes out while executable source, the governed root notice,
+  and re-included documentation inputs still start the workflow.
 - **N2e bounded numeric lists landed on the 8086 C route** (upstream
   `8c17dfa898f80a875e2a4bf044144564f8a4cebc`; Lite `dec11a41f`, hosted run
   `34206351591`; upstream exact/main runs `34200030761`/`34200529033`). Lists
