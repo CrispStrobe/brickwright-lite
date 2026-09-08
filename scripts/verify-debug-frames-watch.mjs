@@ -507,9 +507,20 @@ WHEN flag clicked:
     // failed in two seconds into a two-minute timeout.
     const running = await waitFor(phaseAndMessage, p => p === 'running' || p === 'error', 120000);
     const attached = running === 'running';
-    record('a debug session attached', attached,
-        attached ? 'phase=running'
-            : `last phase=${running}${crashed ? ' — THE RENDERER CRASHED' : ''}`);
+    if (!defaultRoute) {
+        record('a debug session attached', attached,
+            attached ? 'phase=running'
+                : `last phase=${running}${crashed ? ' — THE RENDERER CRASHED' : ''}`);
+    } else {
+        // NOT attaching is the CORRECT outcome here, and asserting the opposite
+        // was my first mistake in this mode: the run below blocks every hosted
+        // /compile so the offline claim cannot be faked, and with no opt-in the
+        // build needs exactly that request. So it must fail, and it must fail
+        // for a reason the app names. A session that DID attach would mean the
+        // toolchain ran without being asked for — the compliance defect itself.
+        record('default: no session attached, because the build needed a network this gate blocks',
+            !attached, `phase=${running}`);
+    }
     if (defaultRoute) {
         // THE DEFAULT DIRECTION, which until now was asserted only in unit tests.
         // SDCC is GPL-2+ and no longer ships in this app, so with no opt-in the
@@ -543,6 +554,19 @@ WHEN flag clicked:
         record('default: and named the way back',
             /\?localCompiler=on/.test(said),
             'a regression with no exit is a bug, not a trade');
+
+        // STOP HERE. Everything below drives a live session — stepping, frames,
+        // watchpoints — and presupposes a build that completed. In this mode
+        // there deliberately is none, so continuing would assert the opt-in
+        // contract against a run that was never meant to satisfy it. The three
+        // records above ARE this mode's contract.
+        await shoot('default-route-hosted.png');
+        await browser.close();
+        if (server) server.close();
+        const dfFailed = results.filter(r => !r.ok);
+        console.log(`\n${results.length - dfFailed.length}/${results.length} checks passed`);
+        console.log(`screenshots: ${SHOTS}`);
+        process.exit(dfFailed.length ? 1 : 0);
     } else {
         // Unchanged assertion, behind the opt-in above. A user who asks for the
         // in-page compiler still gets a build that touches no network.
