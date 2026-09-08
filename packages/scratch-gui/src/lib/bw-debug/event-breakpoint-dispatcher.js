@@ -8,7 +8,7 @@
 import {executeBreakpointPlan} from './event-breakpoints.js';
 import {normalizeDebugEvent} from './event-stream.js';
 
-const DEFERRED_KINDS = new Set(['memory', 'port', 'interrupt']);
+const DEFERRED_KINDS = new Set(['memory', 'port', 'interrupt', 'device']);
 
 export function createEventBreakpointDispatcher ({engine, handlers = {}, recordingSession = null,
     maxPendingPlans = 1024, suppressedActions = []} = {}) {

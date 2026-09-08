@@ -88,6 +88,17 @@ const SKIP_BUDGET = 20000;
 export const DEBUG_LIVE_SNAPSHOT_MS = 250;
 
 /**
+ * Admit interior event breakpoints only when the producer names the safe
+ * boundary that follows them. Event kinds alone do not prove a halt point.
+ */
+export function dispatchEventBreakpointAtBoundary ({capabilities, dispatcher, event, options}) {
+    if (!dispatcher || capabilities?.extensions?.eventBreakpointBoundary !== 'instruction-retire') {
+        return null;
+    }
+    return dispatcher.dispatch(event, options);
+}
+
+/**
  * Put the rate limit BEFORE snapshot construction.
  *
  * The circuit tab already declines most 60 Hz React updates, but doing that
@@ -762,20 +773,22 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             correlatedStatus = {accepted: false, code: 'correlated-event-refused',
                 reason: error?.message || String(error)};
         }
-        // Only the 8086 currently proves that an interior event is followed by
-        // a replay-addressable retire boundary before the halt is delivered.
-        if (targetKind !== 'i8086' || !eventBreakpointDispatcher) return null;
+        // Event kinds do not imply a safe halt point. The target must explicitly
+        // promise that interior facts are followed by an instruction retire.
+        if (!eventBreakpointDispatcher) return null;
         const failuresBefore = eventBreakpointFailures.length;
         let result;
         try {
-            result = eventBreakpointDispatcher.dispatch(event, {
+            result = dispatchEventBreakpointAtBoundary({capabilities: capsNow(),
+                dispatcher: eventBreakpointDispatcher, event, options: {
                 replay: replayingDebugHistory,
                 context: {event, counts: Object.fromEntries(eventBreakpointCounters)}
-            });
+            }});
         } catch (error) {
             result = {failure: {code: 'event-breakpoint-dispatch-failed',
                 message: error?.message || String(error)}};
         }
+        if (!result) return null;
         if (result.failure) {
             eventBreakpointFailures.push(result.failure);
             if (eventBreakpointFailures.length > 64) eventBreakpointFailures.shift();

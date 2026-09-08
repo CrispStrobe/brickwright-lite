@@ -138,6 +138,7 @@ test('runner wires only published live events and brackets verified replay suppr
         '../overlay/scratch-gui/src/lib/bw-debug/debug-runner.js', import.meta.url), 'utf8');
     assert.match(runner, /createEventBreakpointDispatcher/);
     assert.match(runner, /subscribeDebugTargetEvents\(target, eventStream,\s*event => dispatchPublishedEvent\(event\)/);
-    assert.match(runner, /eventBreakpointDispatcher\.dispatch\(event/);
+    assert.match(runner, /dispatchEventBreakpointAtBoundary\(\{capabilities: capsNow\(\)/);
+    assert.doesNotMatch(runner, /targetKind !== 'i8086' \|\| !eventBreakpointDispatcher/);
     assert.match(runner, /replayingDebugHistory = true[\s\S]*instructionReplay\.reverseToEvent\(eventCursor\)[\s\S]*replayingDebugHistory = false/);
 });

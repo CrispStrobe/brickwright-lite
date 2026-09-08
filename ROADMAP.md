@@ -566,6 +566,14 @@ the measurement on every build. A count that only grows is not a gate.
 
 ## 3. Hardware / debugger surfaces
 
+### AVR device event breakpoints — candidate 2026-09-08
+
+The pinned AVR target now publishes reconstructed TWI/SPI device facts and recorded instruction
+retires, and explicitly advertises `eventBreakpointBoundary: 'instruction-retire'`. The runner
+admits event-breakpoint dispatch from that capability rather than an i8086 kind exception; device
+matches join memory/port/interrupt as interior facts and halt only at the following retire. This
+does not add cycle stepping, recording, checkpoints, reverse execution, or replay support to AVR.
+
 ### Code-tab debugger discoverability — candidate 2026-09-08
 
 The full Circuit `DebugPanel` already survives Code/Circuit and dock changes through one

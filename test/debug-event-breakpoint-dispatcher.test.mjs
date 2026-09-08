@@ -184,7 +184,7 @@ test('checkpoint arbitration captures actions declared after the checkpoint', ()
     assert.deepEqual(result.outcome.results.map(item => item.actionType), ['counter', 'checkpoint']);
 });
 
-test('signal/device/scheduler decisions execute immediately without flushing queued plans', () => {
+test('signal/scheduler stay immediate while device joins other retire-deferred decisions', () => {
     const calls = [];
     const engine = {evaluate: canonical => ({
         matchingIds: [canonical.kind], halt: true,
@@ -199,8 +199,11 @@ test('signal/device/scheduler decisions execute immediately without flushing que
         [6, 'device', {device: {id: 'uart'}}],
         [7, 'scheduler', {scheduler: {event: 'switch'}}]
     ]) dispatcher.dispatch(event({seq, kind, phase: undefined, ...details}));
-    assert.deepEqual(calls, ['signal', 'device', 'scheduler']);
-    assert.equal(dispatcher.pending().plans, 1);
+    assert.deepEqual(calls, ['signal', 'scheduler']);
+    assert.equal(dispatcher.pending().plans, 2);
+    dispatcher.dispatch(event({seq: 8}));
+    assert.deepEqual(calls, ['signal', 'scheduler', 'interrupt,device,instruction']);
+    assert.equal(dispatcher.pending().plans, 0);
 });
 
 test('replay clears deferred plans and bounded overflow is structured and side-effect free', () => {
