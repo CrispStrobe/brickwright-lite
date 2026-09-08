@@ -121,6 +121,9 @@ helper, CGA position cache and exact conversion cache. New `pit-inline` moves
 the ordinary countdown decision into the chip's millisecond advancement loop,
 while respecting custom counter methods. New `pit-mode3` puts the active binary
 square-wave case first and falls back to the original counter method otherwise.
+The additional `pit-mode3-null` variant returns immediately for unprogrammed
+counters before that wrapper, addressing the measured idle-path overhead while
+retaining the first mode-3 variant for comparison.
 Neither defers state across calls. All are default-off and isolated from project
 execution: `installDeviceCandidate('none')` changes no prototype, unknown names
 fail, repeated installation is idempotent, and switching variants requires a
@@ -129,6 +132,7 @@ fresh process/browser realm. No runtime GUI toggle or default behavior changes.
 Explicit workflow gates are `devices-pit-inline` and `devices-pit-mode3` for
 isolated costs; `full-pit-inline` and `full-pit-mode3` exercise all execution
 layers and completed sorting programs. The older `devices-*` gates remain.
+The refinement uses `devices-pit-mode3-null` / `full-pit-mode3-null`.
 Use the `8086 execution profile` workflow on `perf/i8086-device-advance`.
 
 Repairs/removals, distinguished from mere slowness:
@@ -145,7 +149,7 @@ Repairs/removals, distinguished from mere slowness:
 - Decoded/Wasm register-block sandbox paths are unchanged and remain bounded,
   opt-in research, not unrestricted machine backends.
 
-`test/i8086-device-candidates.test.mjs` starts a fresh realm for each of the six
+`test/i8086-device-candidates.test.mjs` starts a fresh realm for each of the seven
 variants. Each compares 4,000 instruction boundaries and callback traces with
 an independent per-tick counter oracle and original machine traversal, across
 modes 0..7, binary/BCD, both changing clocks, gates, snapshots, CRTC geometry,

@@ -19,7 +19,7 @@ const output = resolve(process.env.I8086_PROFILE_OUTPUT || 'artifacts/i8086-exec
 const repetitions = 5;
 const cycles = 25_000_000;
 const blockMode = process.env.I8086_BLOCK_MODE || 'none';
-if (!['none','decoded','wasm','ram','full-pit-inline','full-pit-mode3'].includes(blockMode)) throw new Error('Invalid or removed block mode');
+if (!['none','decoded','wasm','ram','full-pit-inline','full-pit-mode3','full-pit-mode3-null'].includes(blockMode)) throw new Error('Invalid or removed block mode');
 const deviceCandidate = blockMode.startsWith('full-') ? blockMode.slice(5) : null;
 const blockOnly = blockMode === 'decoded' || blockMode === 'wasm';
 const roots = {baseline, candidate: root};

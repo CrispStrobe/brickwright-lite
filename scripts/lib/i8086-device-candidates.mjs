@@ -3,7 +3,7 @@ import {I8254} from '../../overlay/scratch-gui/src/lib/bw-board/i8254.js';
 import {CGACard} from '../../overlay/scratch-gui/src/lib/bw-board/cga-card.js';
 import {I8086Machine} from '../../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js';
 // One opt-in per isolated process/browser realm. Never stack prototype patches.
-export const deviceCandidateNames = ['none','pit-index','pit-cold','cga-cache','pit-clock','pit-inline','pit-mode3'];
+export const deviceCandidateNames = ['none','pit-index','pit-cold','cga-cache','pit-clock','pit-inline','pit-mode3','pit-mode3-null'];
 let installed = 'none';
 export function installDeviceCandidate(variant) {
     if (!deviceCandidateNames.includes(variant)) throw new Error('Unknown device candidate');
@@ -25,6 +25,19 @@ export function installDeviceCandidate(variant) {
                 if(!c.bcd && c.mode<=5 && c.ce>decrement+edge) c.ce-=decrement;
                 else c.advance(whole);
             }
+        };
+        return;
+    }
+    if (variant === 'pit-mode3-null') {
+        const counter=Object.getPrototypeOf(new I8254().counters[0]), advance=counter.advance;
+        counter.advance=function(ticks) {
+            // Avoid entering a second method for unprogrammed counters.
+            if(this.nullCount)return;
+            if(this.mode===3 && !this.bcd && this.gate &&
+                Number.isInteger(ticks) && ticks>0 && this.ce>ticks*2) {
+                this.ce-=ticks*2;return;
+            }
+            return advance.call(this,ticks);
         };
         return;
     }
