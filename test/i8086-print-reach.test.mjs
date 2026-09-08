@@ -22,7 +22,7 @@ const measureRaw = async examples => (await execFileP(process.execPath,
     {cwd: root, maxBuffer: 8 * 1024 * 1024})).stdout;
 const measure = async examples => JSON.parse(await measureRaw(examples));
 
-test('the exact 281-program post-production print census is disjoint and exhaustive',
+test('the exact 282-program post-production print census is disjoint and exhaustive',
     {timeout: 120000}, async () => {
         const absolute = join(root, 'overlay/scratch-gui/examples');
         const absoluteBytes = await measureRaw(absolute);
@@ -31,11 +31,13 @@ test('the exact 281-program post-production print census is disjoint and exhaust
             'equivalent corpus paths must produce byte-identical JSON');
         const report = JSON.parse(absoluteBytes);
         assert.equal(report.schema, 'n2f-i8086-print-reach-v5');
-        assert.equal(report.programs, 281);
+        // c593574 adds lesson 56's program.bw. It has no output opcode, so it
+        // grows only the exhaustive corpus/opcode denominators and no print bucket.
+        assert.equal(report.programs, 282);
         assert.deepEqual(report.source.operations, {say: 0, sayForSecs: 0, print: 83, total: 83});
         assert.deepEqual(report.source.values, {literalText: 27, numericLiteral: 0, computed: 56});
         assert.deepEqual(report.source.programCounts,
-            {literalText: 3, numericLiteral: 0, computed: 24, mixed: 14, none: 240});
+            {literalText: 3, numericLiteral: 0, computed: 24, mixed: 14, none: 241});
         assert.deepEqual(report.opcode.operations, report.source.operations,
             'retarget/parse changed the output-opcode inventory');
         assert.deepEqual(report.opcode.values, report.source.values,
@@ -43,8 +45,8 @@ test('the exact 281-program post-production print census is disjoint and exhaust
         assert.equal(report.invariants.sourceLiteralTextPrograms, 17);
         assert.equal(report.invariants.sourceNumericOrComputedPrograms, 38);
         assert.equal(report.invariants.sourceOutputPrograms, 41);
-        assert.equal(report.invariants.sourceProgramCount, 281);
-        assert.equal(report.invariants.opcodeProgramCount, 150);
+        assert.equal(report.invariants.sourceProgramCount, 282);
+        assert.equal(report.invariants.opcodeProgramCount, 151);
         assert.equal(report.invariants.sourceProgramExhaustive, true);
         assert.equal(report.invariants.opcodeProgramExhaustive, true);
         assert.equal(report.invariants.currentOutputCount, 41);
@@ -52,11 +54,11 @@ test('the exact 281-program post-production print census is disjoint and exhaust
         assert.deepEqual(report.currentOutput.counts,
             {notReached: 0, hostC: 15, refused: 21, emitted: 5, commentOnly: 0});
         assert.deepEqual(report.terminalCounts, {
-            retargetRefused: 131, parseFailed: 0, noOutputOpcode: 109, hostC: 15,
+            retargetRefused: 131, parseFailed: 0, noOutputOpcode: 110, hostC: 15,
             printRefused: 1, remainingChoke: 20, waitRefused: 0, int16Refused: 0,
             longLeaked: 0, emitted: 5, commentOnly: 0
         });
-        assert.equal(report.invariants.terminalCount, 281);
+        assert.equal(report.invariants.terminalCount, 282);
         assert.equal(report.invariants.terminalExhaustive, true);
         assert.deepEqual(report.chokeCombinationCounts, {
             adc: 15, none: 6, 'adc + tone': 1,

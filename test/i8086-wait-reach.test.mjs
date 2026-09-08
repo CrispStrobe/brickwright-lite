@@ -36,6 +36,7 @@ const expectedEmitted = [
     '33-inductive-no-flyback',
     '46-port-overcurrent',
     '50-7seg-chase',
+    '56-logical-on-pin-level',
     '60-retro-console',
     'arduino-01-blink',
     'arduino-01-digital-read-serial',
@@ -66,8 +67,10 @@ const expectedEmitted = [
 const namesOf = rows => rows.map(row => row.split(': ')[0]);
 const auditReach = (receipt, {compiled}) => {
     const s = receipt.summary;
-    assert.equal(s.programs, 281);
-    assert.equal(s.waitLiteralPrograms, 121);
+    // c593574 adds lesson 56's numeric-only STC12 program. Its two literal
+    // waits make it one new emitted/compiled program and one new wait program.
+    assert.equal(s.programs, 282);
+    assert.equal(s.waitLiteralPrograms, 122);
     assert.equal(s.waitComputedPrograms, 2);
     assert.equal(s.waitLiteralRefused, 0);
     assert.equal(s.waitComputedRefused, 1);
@@ -92,9 +95,9 @@ const auditReach = (receipt, {compiled}) => {
         'N2e list lowering is implemented; ADC remains smoothing\'s sole terminal choke');
     assert.equal(receipt.choke.some(row => /(?:^|, )numericLists(?:,|$)/.test(row.split(': ')[1] || '')), false,
         'an implemented numeric-list feature must never be reported as unsupported');
-    assert.equal(s.emits, 48,
+    assert.equal(s.emits, 49,
         'c879 removes two unsafe timer fallbacks from N2c\'s historical 44, then N2d adds four prints, '
-        + 'P7 adds i8086-blink, and N2f adds crystal-ball');
+        + 'P7 adds i8086-blink, N2f adds crystal-ball, and c593574 adds lesson 56');
     if (compiled) {
         assert.equal(s.compiled, s.emits,
             `every emitted program must compile through SmallerC: ${JSON.stringify(receipt.compileFailed)}`);
@@ -107,7 +110,7 @@ const auditReach = (receipt, {compiled}) => {
     'every gallery program must land in exactly one outcome bucket');
 };
 
-test('the 281-program gallery records the wait/print gains and every emitted program compiles',
+test('the 282-program gallery records the wait/print gains and every emitted program compiles',
     {timeout: 300000}, async t => {
         const {stdout} = await execFileP(process.execPath, [
             '--import', guiScopeHook,

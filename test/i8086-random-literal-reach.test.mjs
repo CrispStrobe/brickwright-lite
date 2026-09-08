@@ -54,7 +54,7 @@ const integerRandomEdges = [{
     inputName: 'VALUE'
 }];
 
-test('N2f production holds device 48 and mixed generation 79 without neutralisation',
+test('N2f production holds device 49 and mixed generation 80 without neutralisation',
     {timeout: 120000}, async () => {
         const report = await measureN2f({examples});
         assert.equal(report.schema, 'n2f-i8086-random-literal-reach-v1');
@@ -66,16 +66,19 @@ test('N2f production holds device 48 and mixed generation 79 without neutralisat
             union: refusalBuckets,
             enumerated: refusalBuckets
         });
+        // c593574 adds lesson 56's numeric-only STC12 program. It parses and
+        // generates device C in every lattice variant, so each corresponding
+        // denominator grows by exactly one while the refusal sets stay fixed.
         assert.deepEqual(report.variants.baseline.counts, {
-            programs: 281, retargetRefused: 131, parsed: 150, parseFailed: 0,
-            refused: 71, generatedHost: 31, generatedDevice: 48, generatedTotal: 79
+            programs: 282, retargetRefused: 131, parsed: 151, parseFailed: 0,
+            refused: 71, generatedHost: 31, generatedDevice: 49, generatedTotal: 80
         });
-        assert.equal(report.variants.literalOnly.counts.generatedTotal, 79);
+        assert.equal(report.variants.literalOnly.counts.generatedTotal, 80);
         assert.deepEqual(report.delta.literalOnly, [], 'literal neutralisation changed production reach');
-        assert.equal(report.variants.randomOnly.counts.generatedTotal, 79);
+        assert.equal(report.variants.randomOnly.counts.generatedTotal, 80);
         assert.deepEqual(report.delta.randomOnly, [], 'random neutralisation changed production reach');
-        assert.equal(report.variants.randomAndLiteral.counts.generatedTotal, 79);
-        assert.equal(report.variants.randomAndLiteral.counts.generatedDevice, 48);
+        assert.equal(report.variants.randomAndLiteral.counts.generatedTotal, 80);
+        assert.equal(report.variants.randomAndLiteral.counts.generatedDevice, 49);
         assert.deepEqual(report.delta.randomAndLiteral, [],
             'combined neutralisation changed production reach');
         assert.deepEqual(report.transforms.randomAndLiteral.integerRandomEdges, integerRandomEdges,
@@ -204,19 +207,21 @@ test('candidate deterministic integer RNG is inclusive, repeatable and normalise
 test('hosted CI compile-backs every production DEVICE C body', {skip: !process.env.CI, timeout: 300000},
     async () => {
         const report = await measureN2f({examples, compile: true});
-        assert.equal(report.compile.baseline.compiled.length, 48);
+        // Lesson 56 is the one new distinct device body at c593574; hosted CI
+        // compiles it in all four variants along with the prior 48.
+        assert.equal(report.compile.baseline.compiled.length, 49);
         assert.deepEqual(report.compile.baseline.failed, []);
-        assert.equal(report.compile.literalOnly.compiled.length, 48);
+        assert.equal(report.compile.literalOnly.compiled.length, 49);
         assert.deepEqual(report.compile.literalOnly.failed, []);
-        assert.equal(report.compile.randomOnly.compiled.length, 48);
+        assert.equal(report.compile.randomOnly.compiled.length, 49);
         assert.deepEqual(report.compile.randomOnly.failed, []);
-        assert.equal(report.compile.randomAndLiteral.compiled.length, 48);
+        assert.equal(report.compile.randomAndLiteral.compiled.length, 49);
         assert.deepEqual(report.compile.randomAndLiteral.failed, []);
-        assert.equal(report.compile.uniqueDeviceBodies, 48,
-            'four crystal-ball variants no longer add to the 44 shared device-C bodies');
+        assert.equal(report.compile.uniqueDeviceBodies, 49,
+            'lesson 56 adds one body; four crystal-ball variants still share one device-C body');
         assert.deepEqual(report.compile.bodyDelta, {
-            baselineDistinct: 45,
-            completeDistinct: 45,
+            baselineDistinct: 46,
+            completeDistinct: 46,
             addedPrograms: ['arduino-sk-p11-crystal-ball'],
             removedPrograms: ['arduino-sk-p11-crystal-ball']
         }, 'neutralising both released features did not replace exactly the crystal-ball body');
