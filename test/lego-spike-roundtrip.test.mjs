@@ -32,8 +32,17 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // sb3-creator's tone work (setTone/tone_set, emitted AVR-only) rode the shared
     // pin. Neither touches the SPIKE emitter; this artifact is byte-identical and
     // was re-run at the new pin.
+    // -> 6bda3b3 on 2026-09-08: the LED-polarity correction. This bump is the
+    // rare one that carries NO emitter risk at all, and that is measured rather
+    // than assumed: `git diff --name-only 0a0e82e 6bda3b3 -- src/` is EMPTY, so
+    // every vendored `src/lib/sb3-creator*.js` file is byte-identical across it
+    // and the sync reports `ok` for all of them. What moves is 135
+    // `examples/**/circuit*.json` (69 benches re-wired to their target's output
+    // polarity plus their 66 board-free twins), three generator scripts and one
+    // manifest, none of which this file reads. The artifact assertions below
+    // were re-run at the new pin regardless.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '0a0e82e8df7cb699b22e7c2bf4b6285e47e9ca70');
+        '6bda3b35d0f05044b33934e908ed5beb068ed83d');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
