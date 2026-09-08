@@ -53,7 +53,7 @@ test('the exact 281-program post-production print census is disjoint and exhaust
             {notReached: 0, hostC: 15, refused: 22, emitted: 4, commentOnly: 0});
         assert.deepEqual(report.terminalCounts, {
             retargetRefused: 131, parseFailed: 0, noOutputOpcode: 109, hostC: 15,
-            printRefused: 5, remainingChoke: 17, waitRefused: 0, int16Refused: 0,
+            printRefused: 4, remainingChoke: 18, waitRefused: 0, int16Refused: 0,
             longLeaked: 0, emitted: 4, commentOnly: 0
         });
         assert.equal(report.invariants.terminalCount, 281);
@@ -75,16 +75,16 @@ test('the exact 281-program post-production print census is disjoint and exhaust
             'arduino-06-ping'
         ]);
         const smoothingEvidence = report.numericListDependencyEvidence['arduino-03-smoothing'];
-        assert.ok(smoothingEvidence.length >= 4);
-        for (const fragment of ['delete all of readings', 'add 0 to readings',
-            'item (readIndex + 1) of readings', 'replace item (readIndex + 1) of readings']) {
-            assert.ok(smoothingEvidence.some(row => row.includes(fragment)),
-                `smoothing evidence does not name ${fragment}`);
-        }
-        assert.deepEqual(report.printRefusalEvidence['arduino-03-smoothing'].warnings,
-            smoothingEvidence);
-        assert.match(report.printRefusalEvidence['arduino-03-smoothing'].reasons.join('\n'),
-            /data_itemoflist has no complete numeric i8086 C lowering/);
+        assert.ok(smoothingEvidence.some(row => /ADC/.test(row)),
+            'smoothing must retain its named post-N2e ADC choke');
+        assert.equal(smoothingEvidence.some(row => /list.*not emitted|data_itemoflist/.test(row)), false,
+            'N2e list lowering must not remain in smoothing refusal evidence');
+        assert.equal(Object.hasOwn(report.printRefusalEvidence, 'arduino-03-smoothing'), false,
+            'N2e list lowering crossed, so smoothing must no longer be a print refusal');
+        assert.ok(report.terminal.remainingChoke.includes('arduino-03-smoothing: adc'),
+            'N2e must move smoothing only to its honest remaining ADC choke');
+        assert.equal(report.terminal.remainingChoke.some(row => /numericLists/.test(row)), false,
+            'the reach classifier contradicts the emitter by calling N2e list lowering unsupported');
         assert.match(report.printRefusalEvidence['arduino-08-string-addition'].reasons.join('\n'),
             /operator_join is string-valued/);
         for (const name of ['arduino-05-switch-case', 'arduino-06-knock',
@@ -95,7 +95,6 @@ test('the exact 281-program post-production print census is disjoint and exhaust
         assert.ok(report.printRefusalEvidence['arduino-sk-p11-crystal-ball'].warnings
             .some(row => row.includes('pick random 1 to 8')));
         assert.deepEqual(Object.keys(report.printRefusalEvidence), [
-            'arduino-03-smoothing',
             'arduino-05-switch-case',
             'arduino-06-knock',
             'arduino-08-string-addition',

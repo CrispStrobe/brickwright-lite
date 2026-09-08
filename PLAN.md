@@ -1503,3 +1503,26 @@ the system is already saturated. `BW_MAX_LOAD_PER_CPU` can tune the threshold;
   legibility, the voltage overlay, three-pane lessons, dock-preserved execution,
   green-flag/SIM start, and the retro-machine serial workflow, and is
   `WAITING_FOR_REVIEW` in the public group.
+
+## N2e — bounded numeric lists on the 8086 C route (2026-09-08)
+
+The Lite pin now follows upstream `sb3-creator` `8c17dfa898f80a875e2a4bf044144564f8a4cebc`,
+whose exact-head and promoted-main CI runs are green. The route admits numeric Scratch lists only under an
+explicit fixed-memory contract: signed-16 elements, 32 items per list, at most 15 lists (990 bytes of static
+state), checked one-based indices, zero for invalid reads, and no-op invalid delete/insert/replace. Full-list
+add/insert traps rather than silently dropping data. Every initial value and value-producing write must pass
+the conservative numeric-provenance proof; ambiguous identity or storage refuses the whole C output.
+
+The downstream acceptance executes the emitted C through SmallerC and the 80186 assembler, then runs the
+actual `.COM` on the DOS bench. Its visible rows equal an independent JavaScript array model across delete
+all, add, insert, replace, delete, item and length. A zero-based-read mutation changes those rows. A silent
+dropped-write mutation terminates and prints forbidden length `32`, while the real full-list write remains in
+the overflow trap and prints nothing. The ceiling fixture compiles all 15×32 values into a 1,618-byte image,
+leaving 63,662 bytes above the load image in the 64 KiB `.COM` segment before stack use.
+
+Reach is unchanged, by measurement rather than expectation. Among 281 upstream programs only
+`arduino-03-smoothing` declares/uses a list (delete-all 1, add 1, item 2, replace 1); numeric-list lowering
+crosses, but unsupported ADC still refuses the program. The existing numeric-print census remains four
+direct emitted programs and broad reach 46. N2e is therefore a semantics prerequisite, not a claimed reach
+increase. The ASM route remains deliberately list-free; duplicating production logic merely to construct an
+oracle would weaken the evidence.

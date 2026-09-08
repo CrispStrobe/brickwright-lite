@@ -41,8 +41,11 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // polarity plus their 66 board-free twins), three generator scripts and one
     // manifest, none of which this file reads. The artifact assertions below
     // were re-run at the new pin regardless.
+    // -> 8c17dfa on 2026-09-08: N2e adds bounded numeric lists only to the
+    // i8086 C route. The SPIKE emitter is unchanged; this artifact is re-run
+    // here rather than inferred from that scope statement.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '6bda3b35d0f05044b33934e908ed5beb068ed83d');
+        '8c17dfa898f80a875e2a4bf044144564f8a4cebc');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
