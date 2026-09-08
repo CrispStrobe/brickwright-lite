@@ -682,6 +682,62 @@ All specified in `CLAUDE.md`; not repeated here.
   oracle. The MIT `cemeyer/avr-emu` and `Gregwar/avrel` projects are optional
   CPU/reference cross-checks only, not board runtimes.
 
+#### M68K — Motorola 68000, SBC first — PLANNED, UNCLAIMED
+
+The project can support a 68000 cleanly, but the name is a scope trap. The first
+machine is **not** an Amiga, Macintosh, or Mega Drive. It is a small serial SBC:
+MC68000 + ROM + RAM + memory-mapped MC6850, with the existing latch/buffer parts
+available for a visible output/input exercise. The surrounding machine, serial,
+debug-session, media and checkpoint seams already exist; the CPU and its honest
+24-bit bus semantics are the new work.
+
+Execute as separately reviewable lanes, in order:
+
+1. **M68K0 — core and evidence decision.** Inventory usable implementations,
+   licences and redistribution constraints before choosing own code, adapted
+   code, or optional WASM. Name the independent instruction/exception vector
+   corpus and prove its loader with one passing and one deliberately corrupted
+   vector. No picker entry and no production dependency in this lane.
+2. **M68K1 — MC68000 core only.** Implement the original 68000 contract, not an
+   unnamed mixture of 68000/68010/68020: D0–D7, A0–A7, PC, SR, USP/SSP,
+   supervisor/user transitions, reset and exception vectors, traps, interrupt
+   levels 1–7, STOP, and big-endian byte/word/long accesses. The external
+   address bus is 24-bit while data/address registers remain 32-bit. Odd word or
+   long accesses must take the address-error path rather than being rounded or
+   accepted. Each opcode family needs vector receipts and a mutation that
+   changes architectural state or timing and turns the gate red.
+3. **M68K2 — composable serial SBC.** Add a machine config with 24-bit decoded
+   ROM/RAM regions and an MC6850 on the correct upper or lower byte lane. Reuse
+   the existing MC6850 behavior; add only the bus-width/byte-enable bridge it
+   actually needs. Boot a source-built ROM through the reset SSP/PC pair, print
+   through the ACIA, and drive/read a latch/buffer fixture. Mutations cover
+   endianness, byte lane, ROM write protection, reset vectors, and interrupt
+   delivery.
+4. **M68K3 — neutral debugger and checkpoint contract.** Add an adapter/target,
+   target metadata, disassembly/register views, run/pause/step, memory access,
+   breakpoints, interrupt/event attribution, capabilities, and versioned state
+   save/restore. The acceptance proof drives the common debug runner; the shared
+   GUI must not branch on `m68000`. Default execution absent new options must
+   retain the existing one-instruction-step behavior.
+5. **M68K4 — program route and teaching bench.** Ship a minimal assembler/ROM
+   route with source and a reproducibility check before offering the target in a
+   picker. Add one serial hello, one LED/input program and one exception lesson;
+   each runs on the extracted machine, not a hand-built test double. C support
+   is not a prerequisite for the first honest target.
+6. **M68K5 — optional downloadable compiler and performance tiers.** Measure a
+   browser-capable m68k compiler before selecting it. If viable, deliver it as a
+   separately downloaded, full-SHA/content-hash-pinned, cached WASM artefact,
+   following the SDCC manager's visible download/progress/offline-refusal shape;
+   keep it out of the initial bundle and never hide its failure behind a hosted
+   fallback. Keep instruction-level wall-budgeted execution as the default.
+   Exact CPU/bus-cycle deadlines are a later user-selectable machine mode only
+   after edge-sequence tests distinguish it from instruction stepping.
+
+Explicit non-goals for M68K0–M68K5: 68010/020 instructions, MMU/FPU, floppy or
+disk controllers, a commercial ROM, and any named home computer/console custom
+chipset. Those are dependency-complete follow-ons, not acceptance shortcuts for
+the SBC.
+
 ### 3.5 Circuits engine & interchange campaign — SCOPED 2026-08-23, upstream-first
 
 The full engine/format survey (2026-08-23) produced fully-scoped work items in the

@@ -56,6 +56,39 @@ stop gate and rejected measurements remain in `HISTORY.md`. Keep full Technic
 simulation, wholesale cycle-core replacement, broad language expansion, and
 framework migration in their longer-term plans.
 
+### Future machine breadth — Motorola 68000 SBC (planned, unclaimed)
+
+The next retro CPU family, when Milestone 0 and the current vendor-convergence
+sequence release capacity, should be a **plain MC68000 serial SBC**. The first
+product boundary is deliberately smaller than an Amiga, Macintosh, or Mega
+Drive: a 68000 CPU, ROM, RAM, a memory-mapped MC6850 console, and optionally the
+existing latch/buffer parts for LEDs and switches. That is enough to teach the
+architecture and exercise the machine/debugger contracts without pretending
+that a famous computer's custom chipset has been emulated.
+
+The outcome is accepted only when all of these are true:
+
+- the 68000 core is independently vector-tested across every implemented opcode
+  family, exception entry/return, interrupt level, privilege transition,
+  big-endian byte/word/long access, and odd-address fault; mutations prove the
+  gates can fail;
+- a composable 24-bit-address machine preserves byte-lane selection for 8-bit
+  peripherals and boots a reviewable ROM through the real reset vectors;
+- the neutral debug target exposes D0–D7, A0–A7, PC, SR, USP/SSP, memory,
+  breakpoints, run/step, capabilities, and checkpoint refusal/support without a
+  68000 special case in the shared UI;
+- the default scheduler remains instruction-level and wall-budgeted. Exact
+  bus-cycle execution is a later opt-in machine mode, never a relabelled
+  instruction step;
+- the first assembly/ROM path is local and reproducible. A C compiler may later
+  be a separately downloaded, content-pinned and cached WASM toolchain—like the
+  SDCC delivery shape—so it adds nothing to initial payload and never silently
+  falls back after a local failure.
+
+Commercial-system targets are separate future projects with their own complete
+producer/consumer boundaries: video, audio, DMA, storage, controllers and ROM
+provenance. The CPU/SBC milestone must not claim any of them.
+
 ## How this plan is executed
 
 Work proceeds in the numbered order below. A milestone is complete only when its
