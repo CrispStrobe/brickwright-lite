@@ -25,62 +25,60 @@ item marked with an agent name is being worked on.
 ## Next-session shortlist — reconciled 2026-09-08
 
 [PLAN.md](PLAN.md#next-session-priorities--reconciled-2026-09-08) defines the
-execution order. The exact baseline is `c64cca4be`; [HISTORY.md](HISTORY.md)
+execution order. The exact baseline is `c77563dbf`; [HISTORY.md](HISTORY.md)
 holds completed and rejected work, and [LANES.md](LANES.md) controls live
 ownership. Do not start a later track while an earlier track is owned or under
 landing audit.
 
-### Track 1 — N2f: random-dependent output on the 8086 C route
+### Track 1 — N2f: random-dependent output on the 8086 C route — DONE
 
-**Owner:** sim2cx owns the Lite production candidate at `4eef2bd76`; root audit
-accepted its mechanics and local evidence, with exact-head hosted CI still
-required before landing.
+**Completed:** upstream exact `5a0d5592be4c7586864babc1e72015aa819cd128`;
+Lite exact `c77563dbf5e2336c7da90a8993d98415705a60d8`; exact-head hosted run
+`34224675820` green in build, corpus, browser light, and browser heavy.
 
-**Measured start:** N2e leaves the broad numeric/print reach at 46 programs.
+**Measured start:** N2e left the broad numeric/print reach at 46 programs.
 Across the pre-production corpus, 47 programs generated device C that the
-hosted gate sends to SmallerC; another 31 generate HOST C and are deliberately
-outside `compileC8086`. The often-quoted 78 is therefore a mixed generation
-total, not a compile-backed i8086 reach. Parsed-block-graph neutralisation forms
+hosted gate sent to SmallerC; another 31 generated HOST C and were deliberately
+outside `compileC8086`. The often-quoted 78 was therefore a mixed generation
+total, not a compile-backed i8086 reach. Parsed-block-graph neutralisation formed
 a four-way lattice: baseline, literal-only, random-only, and both. Neither
-single neutralisation adds a program. Both expose exactly
-`arduino-sk-p11-crystal-ball`, for the then-prospective device reach 47→48 and
-mixed generation 78→79. That paragraph is the historical measurement which
-selected N2f; the production candidate now reaches 48 device C and 79 mixed
-programs without neutralisation. `arduino-05-switch-case` and
-`arduino-06-knock` fall through released literal output to their existing
-ADC/8255 wall. Crystal-ball now lowers both direct literal output and
-`pick random`; dynamic text remains a named fail-closed boundary. The census
-discovers refusal buckets from emitter source and runtime state and fails on an
-omitted or malformed future bucket. Complete attribution reads both that
-structured inventory and the terminal `activeUses` feature gate; empty refusal
-buckets do not mean a program emitted.
+single neutralisation added a program. Both exposed exactly
+`arduino-sk-p11-crystal-ball`, for device reach 47→48 and mixed generation
+78→79. Production now reaches 48 device C and 79 mixed programs without
+neutralisation. `arduino-05-switch-case` and `arduino-06-knock` pass literal
+output and stop at their existing ADC/8255 wall. Dynamic text remains a named
+fail-closed boundary. Refusal discovery reads emitter source and runtime state;
+complete attribution checks both that structured inventory and terminal
+`activeUses`, so an empty refusal bucket cannot masquerade as emitted code.
 
-**Candidate and pending acceptance:** upstream production is promoted at exact
-`5a0d5592b` and the Lite candidate vendors that pin into both exact mirrors. The
-emitter uses a fixed-seed 16-bit LCG with inclusive, normalised signed-16 bounds,
-explicit equal/full-span handling, and multiply-high rejection sampling. The
-Lite assembly route supplies conditional `bw_random` and `bw_print` helpers;
+**Delivered acceptance:** the exact promoted emitter is vendored into both
+mirrors. It uses a fixed-seed 16-bit LCG with inclusive, normalised signed-16
+bounds, explicit equal/full-span handling, and multiply-high rejection
+sampling. The assembly route conditionally supplies `bw_random` and `bw_print`;
 the former reads the 16×16 product high word and the latter writes a direct
 zero-terminated literal through DOS character output with CR/LF. The real
 retargeted crystal-ball differential compiles through SmallerC to a `.COM`,
 runs on the 80186 DOS bench, and compares branch choices and text with an
-independent oracle. Low-word modulo, branch/text swapping, and missing-helper
-mutations are present and must all fire in hosted CI. Boundary vectors cover a
-rejection-consuming span, equal and reversed bounds, the full signed span, and
-a negative range.
+independent oracle.
 
-The candidate census is 48 named device programs and 31 HOST-C programs. Each
-of the four lattice variants owes 48 compile successes. Body accounting stays
-separate: each baseline/complete set has 45 distinct bodies (44 shared plus its
-crystal-ball body), while the cache across all four variants has 48 unique
-bodies; the baseline-to-complete set delta replaces exactly crystal-ball's
-body. Exact-head hosted build/runtime evidence is still pending, so this track
-is a candidate rather than DONE. A warning, commented zero, or incomplete
-lowering remains a refusal rather than a compiled result.
+The production census is 48 named device programs and 31 HOST-C programs. Each
+of the four lattice variants records 48 compile successes. Each complete set
+has 45 distinct bodies (44 shared plus its crystal-ball body); the cache across
+all four variants has 48 unique bodies, and the baseline-to-complete delta
+replaces exactly crystal-ball's body. The real trace emitted `Most likely, Ask
+again, Ask again, Ask again, Yes, Most likely, Without a doubt, No` for rolls
+`2,4,4,4,1,2,5,7` in 1,745 steps / 44,020,502 cycles / 500 bytes. The boundary
+trace emitted `225,7,4,-25002,-1` for draws `2,1,1,1,1` in 482 steps / 6,403
+cycles / 264 bytes. Low-word modulo, branch/text mapping, missing-helper,
+zero-based-read, and silent-overflow mutations all fail by name. The first
+hosted run also caught `printText` and `random` being classified as physical
+part verbs; `c77563dbf` classifies them as language/runtime controls and asserts
+they are non-hardware. A warning, commented zero, or incomplete lowering
+remains a refusal rather than a compiled result.
 
 ### Track 2 — retire one declared `bw-board` divergence
 
-**Owner:** coordinator selects one small file after N2f lands.
+**Owner:** coordinator selects one small file.
 
 **Measured start:** the current generated inventory marks 19 `bw-board` files
 `[declared]`. Earlier inspection at pin `2c568ca` found three small Lite-ahead

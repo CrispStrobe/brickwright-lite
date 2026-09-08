@@ -17,14 +17,15 @@ gates.
 
 ## Next-session priorities — reconciled 2026-09-08
 
-This shortlist is reconciled with `main` at `0c5b1b398`. Completed and rejected
-work, including the payload sequence and N2b–N2e, is recorded in `HISTORY.md`;
+This shortlist is reconciled with `main` at `c77563dbf`. Completed and rejected
+work, including the payload sequence and N2b–N2f, is recorded in `HISTORY.md`;
 `LANES.md` remains the live ownership authority.
 
 The current base includes the separately downloaded GPL SDCC toolchain and its
 CLI/UI manager, the complete i8086 example/emitter re-sync, corrected LED
 polarity on both circuit surfaces, an audible TONE path, and bounded 8086 C
-numeric lists. Pin changes remain chains: sync the exact green upstream SHA,
+numeric lists, deterministic signed-16 random selection, and literal DOS output.
+Pin changes remain chains: sync the exact green upstream SHA,
 update every dual-tracked mirror, and re-derive every artifact that stamps the
 pin. A green behavior probe does not make stale provenance acceptable.
 
@@ -32,9 +33,8 @@ The next work stays serialized, with one bounded claim per session:
 
 | Order | Bounded track | Ownership and acceptance boundary |
 |---|---|---|
-| 1 | N2f: bounded random semantics for 8086 C | Measurement isolates `arduino-sk-p11-crystal-ball`: the honest device-C baseline is 47 programs, plus 31 host-only generated programs; 78 is a mixed generation total, not an i8086 compile result. Parsed-graph neutralisation proves random alone and literal output alone add zero, while both together expose exactly one prospective device program (47→48; mixed 78→79). The emitter already records minimal `print "Yes"` in `_cPrintRefused`; the old census omitted that fifth bucket. Production remains unclaimed: implement a documented deterministic inclusive signed-16 `pick random` contract, then prove its branch and DOS screen trace against an independent oracle. |
-| 2 | Retire one declared `bw-board` divergence | Coordinator selects one small file only after N2f. Re-measure against the current `6145e8a` pin, read both sides, upstream or deliberately retire the Lite delta, then require the executable manifest to reject the old declaration. The current inventory has 19 declared `bw-board` files; trimmed-line counts locate work but do not establish which side is correct. |
-| 3 | Milestone 0 circuit-variant electrical equivalence | Coordinator selects one exact circuit family or invariant. Execute both relevant surfaces through the real solver, assert the electrical state, and mutation-prove a meaningful connectivity, polarity, or part-value change. State the covered and uncovered variants in the receipt. |
+| 1 | Retire one declared `bw-board` divergence | Coordinator selects one small file. Re-measure against the current `6145e8a` pin, read both sides, upstream or deliberately retire the Lite delta, then require the executable manifest to reject the old declaration. The current inventory has 19 declared `bw-board` files; trimmed-line counts locate work but do not establish which side is correct. |
+| 2 | Milestone 0 circuit-variant electrical equivalence | Coordinator selects one exact circuit family or invariant. Execute both relevant surfaces through the real solver, assert the electrical state, and mutation-prove a meaningful connectivity, polarity, or part-value change. State the covered and uncovered variants in the receipt. |
 
 One product decision remains with the owner: `06-active-low-high`,
 `32-source-vs-sink`, and `46-port-overcurrent` are now wired correctly after

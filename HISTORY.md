@@ -73,9 +73,25 @@ plan or roadmap. Detailed commit, CI and ownership evidence remains in Git and
   A source-plus-runtime inventory and future-bucket mutation now guard the
   census. The proposed RNG contract is a fixed-seed 16-bit LCG with inclusive
   signed-16 bounds and multiply-high rejection; low-word modulo was rejected
-  because `pick random 1 to 8` then repeats every eight draws. Production N2f
-  remains open and must first prove its 16×16→32 seam, then execute the emitted
-  SmallerC `.COM` through the DOS screen oracle.
+  because `pick random 1 to 8` then repeats every eight draws.
+- **N2f production landed with deterministic random and literal DOS output**
+  (upstream `5a0d5592be4c7586864babc1e72015aa819cd128`; Lite
+  `c77563dbf5e2336c7da90a8993d98415705a60d8`; exact-head run
+  `34224675820`, all four jobs green). The guarded sync carries the exact
+  emitter through both mirrors. Consumer helpers implement inclusive signed-16
+  normal, reversed, equal, and full-span bounds with fixed seed `0x4d3d` and
+  unbiased 16×16 multiply-high rejection; direct zero-terminated literals use
+  DOS character output with CR/LF. All four lattice variants compile 48 device
+  programs, alongside 31 HOST-C programs; body accounting is 45 per complete
+  set and 48 unique bodies across the lattice. The real crystal-ball trace
+  produced rows `Most likely, Ask again, Ask again, Ask again, Yes, Most likely,
+  Without a doubt, No` from rolls `2,4,4,4,1,2,5,7` (1,745 steps,
+  44,020,502 cycles, 500 bytes). Boundary rows `225,7,4,-25002,-1` came from
+  draws `2,1,1,1,1` (482 steps, 6,403 cycles, 264 bytes). Mapping, helper,
+  zero-based-read, and overflow mutations all fired. The first hosted run found
+  that the profile generator treated `printText` and `random` as physical-part
+  verbs; the landed fix classifies both as language/runtime controls and pins
+  their non-hardware status in conformance tests.
 
 ## 2026-09-07
 
