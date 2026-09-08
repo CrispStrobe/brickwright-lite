@@ -1184,6 +1184,11 @@ jobs:
           name: i8086-production-browser-proof
           path: artifacts/i8086-browser/*
           if-no-files-found: error
+      - name: Browser gate — experimental 286 board lab
+        timeout-minutes: 3
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-harris-board-lab.mjs
+
       # N10: the Code tab exports the assembled .COM and a bootable .img.
       # Judged by the DOWNLOADED artefact — a different program yields a
       # different .COM, and the .img carries the exact .COM from LBA 1.

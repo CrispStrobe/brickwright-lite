@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Isolated browser component gate, NOT a full application/webpack acceptance.
+// PROOF_URL tests the real Settings entry in a built app; otherwise isolated modules.
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
 import {readFile} from 'node:fs/promises';
@@ -19,22 +19,33 @@ const server = createServer(async (req, res) => {
         res.setHeader('content-type', 'text/javascript'); res.end(await readFile(file));
     } catch { res.writeHead(404); res.end(); }
 });
-await new Promise(done => server.listen(0, '127.0.0.1', done));
+const production = process.env.PROOF_URL;
+if (!production) await new Promise(done => server.listen(0, '127.0.0.1', done));
 let browser;
 try {
     browser = await chromium.launch({headless: true});
     const page = await browser.newPage(); page.setDefaultTimeout(30000);
+    if (production) await page.addInitScript(() => localStorage.setItem('bw-starter-v1-complete', '1'));
     const errors = [], requests = [];
     page.on('pageerror', error => errors.push(error.message));
     page.on('request', req => requests.push(req.url()));
-    await page.goto(`http://127.0.0.1:${server.address().port}/`);
+    await page.goto(production || `http://127.0.0.1:${server.address().port}/`, {waitUntil: 'domcontentloaded', timeout: 60000});
     const click = name => page.getByRole('button', {name, exact: true}).click();
     const state = () => page.getByTestId('harris-state').textContent().then(JSON.parse);
-    await click('Open lab');
+    const open = async () => {
+        if (!production) return click('Open lab');
+        await page.getByText('Settings', {exact: true}).waitFor({timeout: 60000});
+        await page.getByText('Settings', {exact: true}).click();
+        await page.getByText('8086 execution diagnostics…', {exact: true}).click();
+        await click('Open experimental 286 board lab');
+    };
+    await open();
     assert.equal(await page.getByRole('button', {name: 'Load owned loop demo', exact: true}).isDisabled(), true);
-    assert.equal(requests.some(url => /runtime.js|\/engine\//.test(url)), false, 'engine stays unloaded before enable');
+    const engineRequested = () => requests.some(url => production ? /bw-286-engine/.test(url) : /runtime.js|\/engine\//.test(url));
+    assert.equal(engineRequested(), false, 'engine stays unloaded before enable');
     await click('Enable experimental board lab');
     await click('Load owned loop demo');
+    assert.equal(engineRequested(), true, 'engine-request detector must also see the positive case');
     assert.equal((await state()).retired, 0);
     await click('Set breakpoint');
     await click('Run up to 4096 clocks');
@@ -66,12 +77,12 @@ try {
     assert.equal((await state()).status, 'running');
     await click('Run up to 4096 clocks'); await click('Close board lab');
     assert.equal(await page.getByTestId('harris-lab').count(), 0);
-    await click('Open lab');
+    await open();
     assert.equal(await page.getByRole('button', {name: 'Load owned loop demo', exact: true}).isDisabled(), true);
     assert.equal(await page.getByTestId('harris-state').textContent(), 'No board loaded.');
     await click('Close board lab');
     assert.deepEqual(errors, []);
-    console.log('PASS: isolated 286 browser panel — enable gate, execution, breakpoints, inspection, JSON/file import/export, rejection, pause, close and fresh reopen');
+    console.log(`PASS: ${production ? 'built application Settings entry and' : 'isolated'} 286 browser panel — enable gate, execution, breakpoints, inspection, JSON/file import/export, rejection, pause, close and fresh reopen`);
 } finally {
-    await browser?.close(); await new Promise(done => server.close(done));
+    await browser?.close(); if (!production) await new Promise(done => server.close(done));
 }
