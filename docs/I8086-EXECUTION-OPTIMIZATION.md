@@ -56,7 +56,8 @@ peripheral configuration had an unprogrammed PIT, also corrected subsequently.
   make cache invalidation part of correctness. Moving the deadline check
   alone cannot remove steady-state lookups in an unhooked program: the last
   delivered tick remains zero, so the deadline stays overdue. Dedicated
-  tests now pin late-hook, masking, unhooking and timer-owner behavior.
+  experiment-branch tests checked late-hook, masking, unhooking and timer-owner
+  behavior; no DOS timer source change is included in the final engine pin.
 * Peripheral batching: the PIT's `nextWake()` reports device ticks while
   `advanceMs()` consumes milliseconds. A safe scheduler must convert units
   and preserve fractional phase, I/O observations and interrupt boundaries.
@@ -90,3 +91,40 @@ Lite vendors only the changed CPU and PIT sources, with regenerated pin,
 ROM provenance (unchanged ROM bytes), census and capability metadata.
 The execution workflow's final comparison uses the actual vendored candidate
 against the original Lite revision, without experimental source overlays.
+
+Final combined Chromium run [34199861670](https://github.com/CrispStrobe/brickwright-lite/actions/runs/34199861670)
+compared Lite `f76e32abef43f85bd4d2c94c8aab4104b374de67` against
+`1d849ee9bc03565cba16e3012ca4fa0629df5b44`. All 300 timing observations
+completed with matching compared architectural states. Selected results
+whose five-observation ranges separated:
+
+| Workload / layer | Normal throughput gain | 4x-throttled throughput gain |
+| --- | ---: | ---: |
+| Mixed / peripherals | 16.2% | 20.7% |
+| Word-stack / peripherals | 20.8% | 27.1% |
+| REP strings / peripherals | 50.9% | 54.0% |
+| Word-stack / core | 12.6% | 12.8% |
+
+Normal mixed-core throughput improved 15.4%; throttled mixed-debugger and
+word-debugger improved 7.6% and 10.6%. Other observations include overlapping
+ranges and regressions: normal string-debugger median rose from 7.0 to 9.3 ms
+with overlapping ranges, while throttled string-debugger was effectively
+flat (50.4 to 51.2 ms, also overlapping). No general string-core or
+universal debugger speedup is claimed. Raw medians, ranges and CPU profiles
+are in the run's `i8086-execution` artifact. These percentages measure engine
+headroom with UI pacing removed; they do not increase the emulated clock.
+
+The production browser artifact from run `34199861677` retains approximately
+2x real-time pacing across desktop, mobile and 4x-throttled minimum-device
+profiles. Median p95 runner-pump costs across three repetitions were 1.6,
+1.7 and 6.3 ms respectively. The separate source-module comparison above
+measures headroom; this production run verifies the existing UI budgets.
+The build's bounded unit set reported 3,022 passing tests, eight documented
+skips and no failures (3,030 total).
+
+Full production workflow [34199861677](https://github.com/CrispStrobe/brickwright-lite/actions/runs/34199861677)
+finished green for build, lesson corpus, and both light/heavy browser suites
+at runtime integration revision `f76e32abe`. Deploy and deployed-GUI verification
+were intentionally skipped by the branch workflow's conditions. The final
+follow-up only records this evidence and releases the lane claim; no default
+branch was changed and nothing was deployed.
