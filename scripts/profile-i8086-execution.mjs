@@ -13,8 +13,14 @@ const output = resolve(process.env.I8086_PROFILE_OUTPUT || 'artifacts/i8086-exec
 const repetitions = 5;
 const cycles = 5_000_000;
 const roots = {baseline, candidate: root};
+const engineRoot = process.env.I8086_ENGINE_ROOT ? resolve(process.env.I8086_ENGINE_ROOT) : null;
+const engineFiles = (process.env.I8086_ENGINE_FILES || '').split(',').filter(Boolean);
+if (engineFiles.some(file => !/^i8086(?:-[a-z]+)?\.js$/.test(file)) || (engineFiles.length && !engineRoot)) {
+    throw new Error('Invalid engine overlay');
+}
 const sha = directory => execFileSync('git', ['rev-parse', 'HEAD'], {cwd: directory, encoding: 'utf8'}).trim();
 const identity = {baseline: sha(baseline), candidate: sha(root), runId: process.env.GITHUB_RUN_ID || null};
+if (engineRoot) identity.engine = {sha: sha(engineRoot), files: engineFiles};
 await mkdir(output, {recursive: true});
 const server = createServer(async (req, res) => {
     try {
@@ -24,8 +30,10 @@ const server = createServer(async (req, res) => {
         // Use the candidate harness unchanged for both source trees.
         const isHarness = parts.join('/') === 'scripts/lib/i8086-execution-workload.mjs';
         const sourceRoot = isHarness ? root : roots[kind];
-        const path = resolve(sourceRoot, ...parts);
+        let path = resolve(sourceRoot, ...parts);
         if (!path.startsWith(sourceRoot + sep)) { res.writeHead(403).end(); return; }
+        if (kind === 'candidate' && parts.slice(0, -1).join('/') === 'overlay/scratch-gui/src/lib/bw-board' &&
+            engineFiles.includes(parts.at(-1))) path = resolve(engineRoot, 'src', parts.at(-1));
         res.setHeader('Content-Type', 'text/javascript');
         res.end(await readFile(path));
     } catch { res.writeHead(404).end(); }
@@ -59,7 +67,7 @@ try {
                             await cdp.send('Profiler.enable');
                             await cdp.send('Profiler.setSamplingInterval', {interval: 100});
                             await cdp.send('Profiler.start');
-                            await page.evaluate(cycles => window.bench.run(cycles), cycles * 4);
+                            await page.evaluate(cycles => window.bench.run(cycles, false), cycles * 20);
                             const {profile} = await cdp.send('Profiler.stop');
                             const file = `${kind}-${workload}-${layer}.cpuprofile`;
                             await writeFile(resolve(output, file), JSON.stringify(profile));

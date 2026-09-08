@@ -15,14 +15,22 @@ jobs:
         with:
           ref: 1d849ee9bc03565cba16e3012ca4fa0629df5b44
           path: baseline
+      - uses: actions/checkout@v4
+        with:
+          repository: CrispStrobe/bw-board
+          ref: f2c89fc32c2ac747d8c073c742f68153ee0d1cc1
+          path: candidate-engine
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - run: npm ci --ignore-scripts
+      - run: node --experimental-default-type=module --test test/i8086-execution-workload.test.mjs
       - run: npx playwright install --with-deps chromium
       - run: node scripts/profile-i8086-execution.mjs
         env:
           I8086_BASELINE: baseline
+          I8086_ENGINE_ROOT: candidate-engine
+          I8086_ENGINE_FILES: i8086.js
       - uses: actions/upload-artifact@v4
         if: always()
         with:

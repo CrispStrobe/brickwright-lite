@@ -61,6 +61,14 @@ export function setup(layer, workload = 'mixed') {
     ] : []});
     const dos = createDos8086(machine).install();
     dos.loadCom(program.bytes);
+    if (layer === 'peripherals') {
+        // Run a real counter while keeping this service-free program's CPU
+        // state comparable to the other layers. IRQ delivery has separate tests.
+        machine._out(0x21, 0xff);
+        machine._out(0x43, 0x36);
+        machine._out(0x40, 0);
+        machine._out(0x40, 0);
+    }
     const cpu = machine.cpu;
     if (layer === 'core') {
         cpu.read = address => machine.mem[address];
@@ -71,7 +79,7 @@ export function setup(layer, workload = 'mixed') {
     const step = layer === 'core' ? () => { machine.cycles += cpu.step(); } :
         layer === 'dos' ? () => dos.step() : () => machine.step();
     return {
-        run(cycles) {
+        run(cycles, snapshot = true) {
             const before = machine.cycles;
             const started = performance.now();
             if (target) {
@@ -81,6 +89,7 @@ export function setup(layer, workload = 'mixed') {
                 while (machine.cycles < deadline) step();
             }
             const wallMs = performance.now() - started;
+            if (!snapshot) return {wallMs, cycles: machine.cycles - before};
             const address = (cpu.ds << 4) + 0x110;
             const heartbeat = (machine.mem[address] | machine.mem[address + 1] << 8 |
                 machine.mem[address + 2] << 16 | machine.mem[address + 3] << 24) >>> 0;
