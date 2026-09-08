@@ -37,3 +37,9 @@ CLAUDE.md
 
 # node --test per-file census output (scripts/check-test-run.mjs reads it; never an input)
 /test-results/
+
+# SDCC is GPL-2.0-or-later and this repository is BSD-3-Clause. The compiler
+# is fetched from https://github.com/CrispStrobe/sdcc-wasm when a user opts in,
+# and by CI for the Node gates. It must never be committed here again.
+overlay/scratch-gui/src/lib/sdcc-wasm/dist/
+packages/scratch-gui/src/lib/sdcc-wasm/dist/

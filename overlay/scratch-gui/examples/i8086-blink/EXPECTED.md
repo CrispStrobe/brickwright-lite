@@ -2,7 +2,7 @@
 
 ## Circuit
 
-An Intel 8086 CPU and an 8255 PPI on the bus; eight LEDs (each through a 1 kΩ resistor) on the 8255's port B, `P2.0`–`P2.7`. Circuit provenance: `test/fixtures/reseat/e4-reseated-8086.json`, adapted to the gallery shape.
+An Intel 8086 CPU and an 8255 PPI on the bus; eight LEDs (each through a 220 Ω resistor) on the 8255's port B, `P2.0`–`P2.7`. Circuit provenance: bw-circuit-ui's `gallery/reseat/e4-reseated-8086.json`, adapted to the gallery shape.
 
 ## Program
 

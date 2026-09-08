@@ -227,9 +227,22 @@ which reports nothing until four mutations have been seen to fail. It is not a
 gate yet; it becomes one when the defect below is repaired, and then it ratchets
 downward only.
 
-> **174 inverted of 792 decidable readings, in 21 examples.** 847 declared-pin
+> **174 inverted of 792 decidable readings, in 19 examples.** 847 declared-pin
 > readings were attempted and 55 could not be decided. Every bench in the corpus
 > loaded.
+
+**`21` was the earlier figure here and it was wrong — not a second measurement,
+just an addition.** The two rows of the table below hold 3 examples and 18, and
+`3 + 18` double-counts **`06-active-low-high`** and **`32-source-vs-sink`**, each
+of which shows one polarity face on push-pull targets (8 rows apiece) and the
+opposite face on the 8051s (2 rows apiece). `46-port-overcurrent` appears in the
+first row only. The union of the two rows is **19**, derived by grouping every
+inverted row the census printed rather than by summing the group sizes. The row
+counts (72, 102, 174) were never affected.
+
+Re-run on 2026-09-08 against lite `1d849ee9b` the census reads 846 attempted and
+54 not reached for the same 792 decidable — one row moved out of the undecidable
+bucket since `f17f5c22e`. The 792 and the 174 are unchanged.
 
 ### One defect with two faces
 
@@ -238,8 +251,9 @@ both directions, and the bench transform never follows it. Measured, not inferre
 
 | direction | what the retarget does | rows | examples |
 | --- | --- | --- | --- |
-| 8051-authored → push-pull target | DROPS `ACTIVE LOW` | 72 | `06-active-low-high`, `32-source-vs-sink`, `46-port-overcurrent` |
-| Arduino-authored → 8051 target | ADDS `ACTIVE LOW` | 102 | 18, mostly the `arduino-*` ports |
+| 8051-authored → push-pull target | DROPS `ACTIVE LOW` | 72 | 3: `06-active-low-high`, `32-source-vs-sink`, `46-port-overcurrent` |
+| Arduino-authored → 8051 target | ADDS `ACTIVE LOW` | 102 | 18, mostly the `arduino-*` ports — including 2 from the row above |
+| **union** | | **174** | **19** |
 
 Both rewrites are individually defensible. A quasi-bidirectional 8051 pin sinks
 20 mA and sources about 230 µA, so an LED belongs on the sinking side there and
