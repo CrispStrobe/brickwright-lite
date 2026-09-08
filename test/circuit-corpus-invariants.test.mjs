@@ -302,10 +302,13 @@ test('every selectable example × MCU combination resolves to an overlap-free be
 
     assert.deepEqual(failures, []);
     assert.deepEqual({authored, retargeted, total: authored + retargeted}, {
-        // 115 -> 116 (total 1018 -> 1019) on 2026-09-07: i8086-blink, one authored
-        // i8086 bench, no retargets (single-device example) — P7.
-        authored: 116,
+        // 116 -> 115 (total 1019 -> 1018) on 2026-09-08: i8086-blink was authored
+        // in lite with an authored:i8086 field during P7, but is now VENDORED from
+        // sb3-creator in the canonical single-device shape (no authored, no
+        // benches, circuit.json), so it contributes to neither count. The P7-era
+        // bump is reverted by the re-sync, not lost.
+        authored: 115,
         retargeted: 903,
-        total: 1019
+        total: 1018
     });
 });
