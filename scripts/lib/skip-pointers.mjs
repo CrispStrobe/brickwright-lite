@@ -139,10 +139,9 @@ export const judgeSteps = (readings, pointers) => {
     for (const wf of readings.workflowsInTree || []) {
         const w = readings.workflows[wf];
         if (!w || w.runs === 0) { if (!pointed(wf, '*')) out.push(`${wf}: no completed run in the readings — a workflow nobody runs; dispatch it once, or point at where it runs under "${STEP_HEADING}" (name '*')`); continue; }
-        for (const name of w.inFileInNoRun) if (!pointed(wf, name)) out.push(`${wf} :: "${name}": in the file at ${readings.headSha} but in none of ${w.runs} run(s) — a step in no run`);
+        for (const name of w.inFileInNoRun) if (!pointed(wf, name)) out.push(`${wf} :: "${name}": in the file at ${w.sourceSha || readings.headSha} but in none of ${w.runs} run(s) — a step in no run`);
         for (const [name, s] of Object.entries(w.steps)) if (s.class === 'never' && !pointed(wf, name)) out.push(`${wf} :: "${name}": appeared in ${s.existed} run(s) and ran in none — a step nobody runs; point at where its condition holds (clause: ${s.clause || 'none'})`);
         for (const [name, j] of Object.entries(w.jobs)) if (j.class === 'never' && !pointed(wf, name)) out.push(`${wf} :: job "${name}": appeared in ${j.existed} run(s) and ran in none — a job nobody runs`);
     }
     return out;
 };
-
