@@ -160,6 +160,10 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
     // 1198 -> 1199 on 2026-08-27: pc118-eight-bit-machine, which arrived with
     // the sb3-creator gallery sync to 4c714d3 — one circuit.json, and the only
     // new example in that sync.
+    // 1201 -> 1183 on 2026-09-08: the active-low lesson split removes 29
+    // circuit.<device>.json files from architecture-specific lessons 06, 32
+    // and 46, then adds 11 for portable lesson 56. The flat twins are outside
+    // this glob and are measured separately by led-polarity-census.mjs.
     // 1200 -> 1201 on 2026-09-07: i8086-blink, the first gallery circuit for the
     // 8086 (an 8086 + 8255 PPI + eight LEDs, adapted from the reseat fixture) — P7.
     // 1199 -> 1200 on 2026-08-30: logic-74c922-keypad adds the physical
@@ -177,7 +181,7 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
     // This is a floor on COVERAGE, not a claim about corpus size — it exists so a
     // glob that silently stops matching cannot report zero failures. It moves
     // only when the corpus does, and the commit that moves it says which example.
-    assert.equal(files.length, 1201, 'the gate must cover the complete vendored corpus');
+    assert.equal(files.length, 1183, 'the gate must cover the complete vendored corpus');
     assert.deepEqual(failures, []);
 });
 
@@ -302,13 +306,17 @@ test('every selectable example × MCU combination resolves to an overlap-free be
 
     assert.deepEqual(failures, []);
     assert.deepEqual({authored, retargeted, total: authored + retargeted}, {
+        // 115/903 -> 116/884 on 2026-09-08: lessons 06, 32 and 46 stop
+        // advertising retargets whose target lacks the sinking asymmetry being
+        // taught; portable lesson 56 adds one authored and ten retargeted
+        // combinations. Net: +1 authored, -19 retargeted.
         // 116 -> 115 (total 1019 -> 1018) on 2026-09-08: i8086-blink was authored
         // in lite with an authored:i8086 field during P7, but is now VENDORED from
         // sb3-creator in the canonical single-device shape (no authored, no
         // benches, circuit.json), so it contributes to neither count. The P7-era
         // bump is reverted by the re-sync, not lost.
-        authored: 115,
-        retargeted: 903,
-        total: 1018
+        authored: 116,
+        retargeted: 884,
+        total: 1000
     });
 });

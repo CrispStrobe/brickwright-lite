@@ -45,11 +45,11 @@ placements. Licence copies and generated manifests remain downstream by
 construction; eliminating divergence does not mean copying those artefacts into
 an upstream `src/` tree.
 
-One product decision remains with the owner: `06-active-low-high`,
-`32-source-vs-sink`, and `46-port-overcurrent` are now wired correctly after
-retargeting, but targets without sinking asymmetry cannot teach that lesson.
-Decide whether those targets should remain eligible before opening a content
-edit.
+The active-low eligibility decision is closed upstream at `c593574`.
+`06-active-low-high`, `32-source-vs-sink`, and `46-port-overcurrent` now stay on
+their STC12 architecture instead of advertising targets without the sinking
+asymmetry they teach. The separate `56-logical-on-pin-level` lesson carries the
+portable cross-family comparison with eleven device benches.
 
 Do not revive P18–P20 without new attribution evidence. Their fixed 76,800-byte
 stop gate and rejected measurements remain in `HISTORY.md`. Keep full Technic
