@@ -269,6 +269,7 @@ try {
     await page.keyboard.press('Escape');
     await lab.waitFor({state: 'hidden'});
     record('Escape closes the diagnostics dialog', true);
+    record('closed sandbox leaves no hidden dialog controls in the document', await lab.count() === 0);
 
     record('the 8086 journey made no hosted compiler request', hostedCompilerRequests.length === 0,
         hostedCompilerRequests.join(' | '));

@@ -20,8 +20,10 @@ export default function I8086Lab () {
         return () => { window.removeEventListener('bw-open-i8086-lab', show); active.current?.abort(); };
     }, []);
     useEffect(() => {
-        if (open && !dialog.current.open) dialog.current.showModal();
-        if (!open && dialog.current.open) dialog.current.close();
+        const node = dialog.current;
+        if (!node) return undefined;
+        if (open && !node.open) node.showModal();
+        return () => { if (node.open) node.close(); };
     }, [open]);
     const run = async () => {
         const controller = new AbortController();
@@ -38,6 +40,8 @@ export default function I8086Lab () {
             if (active.current === controller) { active.current = null; setBusy(false); }
         }
     };
+    // Closed diagnostics leave no hidden buttons for other panels or probes.
+    if (!open) return null;
     return createPortal(<dialog ref={dialog} className={styles.dialog} aria-labelledby="i8086-lab-title"
         data-testid="i8086-lab" onMouseUp={event => event.stopPropagation()}
         onCancel={event => { event.preventDefault(); close(); }}>
