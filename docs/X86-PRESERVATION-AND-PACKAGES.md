@@ -24,11 +24,28 @@ corresponding-source/notices workflow; a download URL alone is not that workflow
 For freeware/shareware, preserve exact distribution terms before deciding
 whether the original archive may be mirrored, repackaged or modified.
 
+User follow-up: **do not rehost shareware game archives in public repositories**.
+Use an external private/local corpus for approved internal tests. Private repo
+visibility is not itself a copying or redistribution permission. Keep original
+archives, exact versions, acquisition source, terms and internal review records
+together; public source/builds contain neither these archives nor private saves.
+The engine's `scripts/check-private-guest.mjs` now verifies an external-only
+manifest, hashes of archive and terms, and a recorded internal review. It does
+not extract, execute, download or upload anything. No private repository was
+created and no game archive was acquired during this follow-up.
+See bw-board `docs/PRIVATE-DOS-FIXTURES.md` for the manifest and private CI policy.
+
 ## Did we run SingleStepTests/80286?
 
-**No verified full run.** The current engine branch has no 80286 vector runner,
-CI invocation or receipt. Its previous 8086 and 80186/V20 results are not 286
-results. The new wired 286 routine/differential tests do not change that answer.
+**Now: full inventory diagnostic, not a full pass.** The paired engine branch
+has traversed all 326 files / 1,478,000 vectors at suite revision
+`37c73caf53dcd22d3dd369ff09305d13d117a4fe`: 675,501 matching states, no completed
+state mismatches, 802,496 unsupported and three revoked. Of those unsupported,
+42,341 exception/interrupt cases were refused before execution. The runner
+exited 1. See bw-board `docs/SST286-RUNNER.md` and `docs/SST286-BASELINE.json`.
+This uses the boot subset's real decoder with test-only 16 MiB semantic memory,
+not the latched board. No timing/protected-mode acceptance, new full CI gate,
+application vendor change or game compatibility is implied.
 
 The [upstream suite](https://github.com/SingleStepTests/80286), MIT, currently
 describes version 1.1.0: 326 real-mode instruction forms, nearly 1.5 million
@@ -37,7 +54,7 @@ N80C286-12. Unreal/protected directories are described as future work. Tests
 assume 16 MiB writable memory, no wait states, and do not exercise IF/TF.
 Prefetch is flushed before instruction execution, not tested as a general queue.
 
-Future runner requirements:
+Runner contract and remaining requirements:
 
 1. Pin suite revision and `revocation_list.txt`; exclude revoked tests by hash
    and count/report them separately.
