@@ -8,7 +8,7 @@ on:
         description: Benchmark-only block executor
         type: choice
         default: none
-        options: [none, decoded, wasm, ram, pit, devices, devices-pit-index, devices-pit-cold, devices-cga-cache]
+        options: [none, decoded, wasm, ram, pit, devices, devices-pit-index, devices-pit-cold, devices-cga-cache, devices-pit-clock]
 permissions:
   contents: read
 jobs:
