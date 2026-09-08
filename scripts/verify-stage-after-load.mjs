@@ -130,6 +130,10 @@ const MEASURE = () => {
         // buffer did not change" cannot be told apart from "the prop never
         // changed", and the experiment decides nothing either way.
         isStarted: !!state.vmStatus?.started,
+        // Written by the overlay's own sizing step. Absent = this overlay
+        // never reached the build; present with 0x0 = the box had no size when
+        // it looked. Same output otherwise, opposite fixes.
+        sizedMarker: canvas.getAttribute('data-bw-sized'),
         dpr: window.devicePixelRatio
     };
 };
@@ -465,7 +469,7 @@ async function run () {
         const all = [before, afterLoad, afterRedraw, afterViewport, afterGreenFlag, afterPaneResize, afterFullscreen];
         await writeFile(join(artifacts, 'measurements.json'), JSON.stringify(all, null, 2));
         for (const m of all) {
-            console.log(`  ${m.name.padEnd(28)} buffer ${m.drawingBuffer.w}x${m.drawingBuffer.h}  ` +
+            console.log(`  ${m.name.padEnd(28)} sized=${m.sizedMarker ?? 'ABSENT'}  buffer ${m.drawingBuffer.w}x${m.drawingBuffer.h}  ` +
                 `box ${m.box.w}x${m.box.h} @${m.box.x},${m.box.y}  content ${m.content}`);
         }
 
