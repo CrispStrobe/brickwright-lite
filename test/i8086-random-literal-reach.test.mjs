@@ -109,7 +109,6 @@ test('the refusal census derives every bucket from production source and an omit
     async () => {
         const source = await readFile(emitterFile, 'utf8');
         const discovered = discoverCRefusalBuckets(source);
-        assert.ok(discovered.length >= 5, 'the source-derived refusal inventory unexpectedly shrank');
         for (const required of ['_cI16Refused', '_cPrintRefused', '_cLoweringRefused',
             '_cListRefused', '_cWaitRefused']) {
             assert.ok(discovered.includes(required), `${required} was not discovered from the emitter`);
