@@ -17,6 +17,20 @@ plan or roadmap. Detailed commit, CI and ownership evidence remains in Git and
   (`a9b09429b`, main later `1d849ee9b`). The single `sb3-creator` pin governs
   both gallery examples and emitted source, so every example sync must audit
   emitter changes and re-derive its reach evidence.
+- **N2b established the 8086 C numeric model** (`3d84eef62`). C uses
+  signed 16-bit `int` and refuses literals or initial values outside
+  -32768..32767 by name; other C targets stayed byte-stable. The differential
+  asserts the intentional width disagreement by value: C wraps 35000 to -30536
+  while the ASM route retains its 32-bit pair.
+- **P21 completed the lazy PseudocodeImporter route** (promoted series ending
+  `68a726c35`). Activation, retry/state, and exact emitted-receipt gates cover
+  the demand-loaded importer rather than inferring the split from source shape.
+- **P22 replaced the invalid 8086 speed claim with a CPU-bound benchmark**
+  (`da4d30b0c`). Hosted medians were 2.0190x desktop, 2.0192x mobile, and
+  2.0220x under 4x throttle; throttled pump p95 was 7 ms and the maximum pump
+  was 22.3172 ms. The earlier roughly 30x result measured guest-time jumps from
+  `INT 15h AH=86h` and is superseded. Worker/JIT/batching remain deferred until
+  three repeat runs measure either below 1.0x or above 8 ms pump p95.
 - **LED polarity was corrected and pinned** (`f568d875a`, hosted run
   `34197832516`). The historical defect affected 174 of 792 decidable readings
   across 19 distinct examples; the corrected seated census is 792 agreeing / 0
