@@ -86,8 +86,13 @@ const BASELINE = {
     // unhelpful about why, which is the right way round and is stated here
     // rather than left to be rediscovered.
     //
-    // Unpinned, same as the three below: git's version.
-    'AMBIENT-BINDING': 6,
+    // Unpinned, same as the three below: git's version. Raised 6 -> 9 on
+    // 2026-09-08: no-tracked-package-examples adds three `git`-from-PATH
+    // sites because Git's index is the subject of that gate. They match the
+    // six pre-existing sites in vendor-absent-by-design and
+    // vendor-source-guard; a missing Git still throws rather than passing an
+    // empty census, and the fixture fires the cwd-rooting guard deliberately.
+    'AMBIENT-BINDING': 9,
     // 12 -> 0 on 2026-09-02. The rule now ignores an appearance that is immediately followed by
     // a click/fill/count/evaluate — synchronisation before the real assertion, and the correct
     // way to write a browser gate. The five that survived that narrowing were each triaged at

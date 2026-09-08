@@ -23,6 +23,7 @@ export const trackedPackageExamples = files => files.filter(
 export const listTrackedPackageExamples = (repoRoot = ROOT) => {
     // Pin the command to the repository root: Git resolves a relative pathspec
     // from cwd, so an unpinned call made from test/ returns an empty success.
+    // Git is deliberately the tracked-file authority under test.
     const tracked = execFileSync('git',
         ['ls-files', 'packages/scratch-gui/examples/'],
         {cwd: repoRoot, encoding: 'utf8'}).split('\n').filter(Boolean);
@@ -52,7 +53,9 @@ test('the Git census remains rooted when its caller starts in a subdirectory', (
         mkdirSync(path.join(repo, path.dirname(tracked)), {recursive: true});
         mkdirSync(nested);
         writeFileSync(path.join(repo, tracked), 'demo\n');
+        // The fixture needs a real index; Git is the authority this test fires.
         execFileSync('git', ['init', '-q'], {cwd: repo});
+        // Force-add reproduces the exact historical ownership mistake.
         execFileSync('git', ['add', '-f', '--', tracked], {cwd: repo});
         process.chdir(nested);
         assert.deepEqual(listTrackedPackageExamples(repo), [tracked]);
