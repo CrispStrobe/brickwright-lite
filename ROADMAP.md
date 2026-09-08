@@ -574,6 +574,15 @@ admits event-breakpoint dispatch from that capability rather than an i8086 kind 
 matches join memory/port/interrupt as interior facts and halt only at the following retire. This
 does not add cycle stepping, recording, checkpoints, reverse execution, or replay support to AVR.
 
+### Z80 port/memory event-breakpoint parity — candidate 2026-09-08
+
+The instruction-atomic Z80 producer already emitted real ordered port and memory accesses followed
+by a recorded retire. Its target now advertises that existing boundary explicitly, so the same
+capability-owned runner path used by AVR and 8086 can defer a matching access and halt only after
+the instruction completes. The proof runs `LD A,$2a; OUT ($10),A; LD ($2000),A`, checks the full
+Z80 immediate-port address `$2a10`, exact retire PCs, and replay suppression. It does not claim
+cycle placement or add a target-name exception.
+
 ### Code-tab debugger discoverability — candidate 2026-09-08
 
 The full Circuit `DebugPanel` already survives Code/Circuit and dock changes through one

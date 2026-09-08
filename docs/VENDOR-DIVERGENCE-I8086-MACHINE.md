@@ -299,6 +299,18 @@ fails unless it touched both.
           "falsifiable": "Stepping backwards one instruction silently does nothing, instead of saying why it cannot -- for example that a halted Z80 has no instruction to retire without a recorded interrupt.",
           "why": "replayInstruction() checks checkpointSupport() and the halted state FIRST and returns a coded refusal ('unsupported-replay', 'halted-without-instruction') with the reason. The refusal is the feature: an unsupported reverse-step that returns nothing is indistinguishable from one that worked and changed nothing.",
           "contains": "replayInstruction\\(\\)"
+        },
+        {
+          "id": "z80-debug-event-retire-boundary",
+          "falsifiable": "A port or memory event halts the Z80 in the middle of its instruction, before the architectural PC and memory state reach a replayable boundary.",
+          "why": "The target explicitly advertises the observed instruction-retire boundary which its instruction-atomic producer publishes after ordered access facts. Runner admission depends on this claim instead of a Z80 name check.",
+          "contains": "eventBreakpointBoundary: 'instruction-retire'"
+        },
+        {
+          "id": "z80-debug-memory-event-space",
+          "falsifiable": "The Z80 publishes memory events which the breakpoint compiler refuses because the target declares no matching address space.",
+          "why": "The mem capability connects the already-published memory facts and passive debugger read surface to the target-neutral event predicate engine.",
+          "contains": "spaces: \\{mem: \\{read: true, write: true, passiveRead: true\\}\\}"
         }
       ]
     },

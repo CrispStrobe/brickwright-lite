@@ -5,7 +5,13 @@ import {readFileSync} from 'node:fs';
 import {EventBreakpointEngine} from '../overlay/scratch-gui/src/lib/bw-debug/event-breakpoints.js';
 import {I8086Machine, BLINK8086} from '../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js';
 import {createI8086DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/i8086-debug.js';
+import {createZ80Adapter} from '../overlay/scratch-gui/src/lib/bw-board/z80-adapter.js';
+import {createZ80DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/z80-debug.js';
 import {createDebugEventStream} from '../overlay/scratch-gui/src/lib/bw-debug/event-stream.js';
+import {eventBreakpointCapabilities, normalizeDebugCapabilities} from
+    '../overlay/scratch-gui/src/lib/bw-debug/debug-capabilities.js';
+import {dispatchEventBreakpointAtBoundary} from
+    '../overlay/scratch-gui/src/lib/bw-debug/debug-runner.js';
 
 const loadDispatcher = async () => {
     const module = await import('../overlay/scratch-gui/src/lib/bw-debug/event-breakpoint-dispatcher.js');
@@ -131,6 +137,55 @@ test('real 8086 port and memory matches halt only on their following retires', a
     assert.deepEqual(halts.map(item => item.cause.matchingIds), [['port'], ['memory']]);
     assert.equal(halts[1].pc, 0x107, 'memory halt is delivered after MOV retires');
     assert.deepEqual(order.slice(-3), ['memory', 'instruction', 'halt']);
+});
+
+test('real Z80 port and memory plans halt after the following retire and replay stays inert', async () => {
+    const create = await loadDispatcher();
+    const adapter = createZ80Adapter({config: {clockHz: 4_000_000,
+        regions: [{kind: 'ram', start: 0, end: 0xffff}], ports: []}});
+    adapter.attachBoard({advanceTo() {}});
+    const target = createZ80DebugTarget(adapter, {cpuId: 'cpu-z'});
+    const capabilities = normalizeDebugCapabilities(target.capabilities(), {target: 'z80'});
+    assert.equal(capabilities.extensions.eventBreakpointBoundary, 'instruction-retire');
+    adapter.machine.mem.set([0x3e, 0x2a, 0xd3, 0x10, 0x32, 0x00, 0x20], 0);
+
+    const engine = new EventBreakpointEngine(eventBreakpointCapabilities(capabilities));
+    assert.equal(engine.add({id: 'port', kind: 'port', port: 0x2a10, oneShot: true,
+        actions: [{type: 'counter', counter: 'hits'}, {type: 'log'}, {type: 'halt'}]}).ok, true);
+    assert.equal(engine.add({id: 'memory', kind: 'memory', space: 'mem', address: 0x2000,
+        direction: 'write'}).ok, true);
+    const calls = [];
+    let counter = 0;
+    const dispatcher = create({engine, recordingSession: {status: () => ({active: false})}, handlers: {
+        counter: () => { counter++; calls.push('counter'); },
+        log: () => calls.push('log'),
+        halt: cause => calls.push(`halt:${cause.matchingIds.join(',')}@${adapter.machine.cpu.pc}`)
+    }});
+    const facts = [];
+    const stream = createDebugEventStream();
+    stream.onEvent(event => {
+        facts.push(event);
+        dispatchEventBreakpointAtBoundary({capabilities, dispatcher, event,
+            options: {context: {event, counts: {hits: counter}}}});
+    });
+    target.onDebugEvent(fact => stream.publish(fact));
+
+    adapter.machine.step();
+    adapter.machine.step();
+    assert.deepEqual(calls, ['counter', 'log', 'halt:port@4']);
+    adapter.machine.step();
+    assert.deepEqual(calls, ['counter', 'log', 'halt:port@4', 'halt:memory@7']);
+
+    const liveCalls = [...calls];
+    for (const event of facts) {
+        dispatchEventBreakpointAtBoundary({capabilities, dispatcher, event,
+            options: {replay: true, context: {event, counts: {hits: counter}}}});
+    }
+    assert.deepEqual(calls, liveCalls, 'replay repeats no counter, log, or halt action');
+    assert.equal(counter, 1);
+    assert.equal(engine.list().find(item => item.id === 'port').enabled, false,
+        'only the forward hit consumes the one-shot breakpoint');
+    assert.equal(dispatcher.pending().plans, 0, 'replay leaves no deferred double-fire');
 });
 
 test('runner wires only published live events and brackets verified replay suppression', () => {

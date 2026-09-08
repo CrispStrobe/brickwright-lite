@@ -66,7 +66,7 @@ test('6502 retire metadata keeps pre-execution bytes when code overwrites itself
   assert.equal(adapter.machine.mem[0x0200], 0xea);
 });
 
-test('Z80 publishes real IN/OUT evidence without claiming cycle placement', () => {
+test('Z80 publishes real port and memory accesses before their following retires', () => {
   const adapter = createZ80Adapter({config: {
     clockHz: 4_000_000,
     regions: [{kind: 'ram', start: 0, end: 0xffff}],
@@ -79,7 +79,7 @@ test('Z80 publishes real IN/OUT evidence without claiming cycle placement', () =
   adapter.machine.mem.set([
     0x3e, 0x2a,       // LD A,$2a
     0xd3, 0x10,       // OUT ($10),A -- full port $2a10
-    0xdb, 0x11        // IN A,($11) -- full port $2a11, open bus $ff
+    0x32, 0x00, 0x20  // LD ($2000),A
   ], 0);
 
   target.step('insn', 3);
@@ -87,20 +87,33 @@ test('Z80 publishes real IN/OUT evidence without claiming cycle placement', () =
 
   const retires = events.filter(event => event.kind === 'instruction');
   assert.deepEqual(retires.map(event => [event.pcBefore, event.pcAfter]), [
-    [0, 2], [2, 4], [4, 6]
+    [0, 2], [2, 4], [4, 7]
   ]);
-  assert.deepEqual(retires.map(event => event.time.ticks), [7n, 18n, 29n]);
+  assert.deepEqual(retires.map(event => event.time.ticks), [7n, 18n, 31n]);
   assert.ok(retires.every(event => event.cpuId === 'cpu-z' && event.fidelity === 'recorded'));
   assert.deepEqual(retires[0].instruction.bytes, [0x3e, 0x2a]);
   assert.equal(retires[0].registersAfter.a, 0x2a);
   assert.deepEqual(retires[0].changes.registers.a, {before: 0, after: 0x2a});
   assert.deepEqual(events.filter(event => event.kind === 'port').map(event => event.port), [
-    {address: 0x2a10, direction: 'write', value: 0x2a},
-    {address: 0x2a11, direction: 'read', value: 0xff}
+    {address: 0x2a10, direction: 'write', value: 0x2a}
   ]);
+  const memoryWrite = events.find(event => event.kind === 'memory' &&
+    event.memory.direction === 'write' && event.memory.address === 0x2000);
+  const portWrite = events.find(event => event.kind === 'port');
+  assert.equal(memoryWrite.memory.value, 0x2a);
+  assert.equal(adapter.machine.mem[0x2000], 0x2a);
+  for (const [access, pcAfter] of [[portWrite, 4], [memoryWrite, 7]]) {
+    const index = events.indexOf(access);
+    const following = events[index + 1];
+    assert.equal(following.kind, 'instruction', 'the access is adjacent to its following retire');
+    assert.equal(following.phase, 'retire');
+    assert.equal(following.pcAfter, pcAfter);
+    assert.ok(access.time.ticks <= following.time.ticks);
+  }
   assert.ok(events.filter(event => event.kind === 'port')
     .every(event => event.fidelity === 'reconstructed'));
   assert.deepEqual(target.capabilities().events, ['instruction', 'memory', 'port']);
+  assert.equal(target.capabilities().extensions.eventBreakpointBoundary, 'instruction-retire');
   assert.equal(target.capabilities().steps.includes('cycle'), false);
 });
 

@@ -83,9 +83,13 @@ export function createZ80DebugTarget(adapter, opts = {}) {
         runTo: [{kind: 'address', space: 'code', addressMin: 0, addressMax: 0xffff,
           stopSides: ['before'], installation: 'sync'}],
         consumes: [], events: ['instruction', 'memory', 'port'],
+        spaces: {mem: {read: true, write: true, passiveRead: true}},
         fidelity: {instruction: 'recorded', memory: 'reconstructed', port: 'reconstructed', cycle: 'unsupported'},
         recording: checkpointStatus.supported ? ['checkpoint', 'restore'] : [],
         extensions: {
+          // Access facts are published before the same machine.step() publishes
+          // its recorded retire, so the runner may defer their actions safely.
+          eventBreakpointBoundary: 'instruction-retire',
           ...(checkpointStatus.supported ? {} : {checkpointRefusal: checkpointStatus.reasons}),
           inputReplay: ['z80.buttons', 'z80.keys', ...(rawSendSerial ? ['z80.serial'] : [])],
           inputRefusals: [
