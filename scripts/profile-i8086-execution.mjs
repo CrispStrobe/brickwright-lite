@@ -45,13 +45,13 @@ try {
                         const cdp = await context.newCDPSession(page);
                         await cdp.send('Emulation.setCPUThrottlingRate', {rate});
                         await page.goto(`http://127.0.0.1:${server.address().port}/${kind}/`);
-                        await page.evaluate(async ({kind, layer, workload, cycles}) => {
+                        const warmup = await page.evaluate(async ({kind, layer, workload, cycles}) => {
                             const {setup} = await import(`/${kind}/scripts/lib/i8086-execution-workload.mjs`);
                             window.bench = setup(layer, workload);
-                            window.bench.run(cycles); // warm-up excluded from timing
+                            return window.bench.run(cycles); // warm-up excluded from timing
                         }, {kind, layer, workload, cycles});
                         const result = await page.evaluate(cycles => window.bench.run(cycles), cycles);
-                        if (!(result.wallMs > 0 && result.heartbeat > 0 && result.cycles >= cycles)) {
+                        if (!(result.wallMs > 0 && result.heartbeat > warmup.heartbeat && result.cycles >= cycles)) {
                             throw new Error(`No executed progress: ${JSON.stringify(result)}`);
                         }
                         rows.push({kind, rate, workload, layer, repetition, ...result});
