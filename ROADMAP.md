@@ -691,13 +691,35 @@ available for a visible output/input exercise. The surrounding machine, serial,
 debug-session, media and checkpoint seams already exist; the CPU and its honest
 24-bit bus semantics are the new work.
 
+Evaluated upstream inputs (2026-09-08; re-pin their exact heads when a lane is
+claimed, never float on a branch name):
+
+| Input | What it can contribute | Scoped disposition |
+| --- | --- | --- |
+| [`dirkwhoffmann/Moira`](https://github.com/dirkwhoffmann/Moira) | MIT C++20 68000/010/020 CPU core; WebAssembly-compatible; precise pre-access synchronization for 68000/010, address-error option, disassembler and a host callback boundary | **Preferred M68K0 runtime spike.** Build only the `Moira/` core in GitHub CI and fetch the resulting full-SHA/content-hash-pinned WASM on demand. Do not vendor the 300+ MB repository or inherit `Cputester`/its Musashi and GNU-binutils licences. Selection waits for compressed-size, cold-load, heap, throughput, precise-mode callback-cost and deterministic-state receipts. Configure and expose only MC68000 in M68K1. |
+| [`SingleStepTests/ProcessorTests`](https://github.com/SingleStepTests/ProcessorTests) and its [`SingleStepTests/680x0`](https://github.com/SingleStepTests/680x0) successor | Large language-neutral single-instruction vectors with initial/final CPU and memory state plus bus activity | **Preferred independent correctness oracle, legally blocked today.** Use the split 680x0 repository rather than the archived multi-CPU monorepo, but neither repository declares a licence at the audited heads. Until an explicit licence or permission exists, do not vendor, cache, redistribute, or add an automatic fetch. Build the loader and corruption mutation from small project-authored fixtures; then pin the licensed corpus by commit and test a bounded deterministic shard per push plus the full set on scheduled CI. |
+| [`74hc595/68k-nano`](https://github.com/74hc595/68k-nano) | BSD-3-Clause real 68HC000 SBC: 12 MHz CPU, 1 MB RAM, 64 KB ROM, NS16C550 UART, schematic, vasm sources, serial loader, trap API and trace-bit debugger | **Machine-level reference and later compatibility fixture.** After the minimal MC6850 SBC works, add a separately named profile that boots its source-built ROM far enough to prove reset SSP/PC, big-endian byte lanes, NS16C550 output and level-1 autovector behavior. CompactFlash, RTC, FAT16, mirrored/forbidden decode regions and the full shell are separate opt-in follow-ons, not M68K2 acceptance. Preserve BSD notices for any reused source or binary. |
+| [`AmiBlitz3`](https://github.com/AmiBlitz/AmiBlitz3) | Actively maintained 68K BASIC compiler, IDE, debugger, examples and Amiga libraries | **Not an M68K5/SBC toolchain.** The IDE requires AmigaOS 2.x and a 68020; generated programs and runtime libraries target the Amiga environment, and bundled libraries/tools have component-specific licences despite the repository-level Apache-2.0 file. Do not ship its IDE, binaries or libraries. Re-evaluate only after a separately scoped Amiga machine exists, for source/compiler compatibility with a per-component provenance audit. |
+
+Those facts were audited at Moira `426e4a37957d`, AmiBlitz3 `5dd815f880d7`,
+archived ProcessorTests `bb11756436da`, split 680x0 `e0d5ece96702`, and 68k-nano
+`87066cffcea6`. These are evidence anchors, not dependency pins; a claiming lane
+must re-read the then-current trees and record the exact commits it actually uses.
+
 Execute as separately reviewable lanes, in order:
 
-1. **M68K0 — core and evidence decision.** Inventory usable implementations,
-   licences and redistribution constraints before choosing own code, adapted
-   code, or optional WASM. Name the independent instruction/exception vector
-   corpus and prove its loader with one passing and one deliberately corrupted
-   vector. No picker entry and no production dependency in this lane.
+1. **M68K0 — Moira/evidence feasibility, no product entry.** In GitHub CI,
+   compile the MIT Moira core to a separately downloadable WASM artefact with a
+   minimal C ABI for reset, execute, memory callbacks, registers, interrupts,
+   disassembly and deterministic state. Pin source SHA, build recipe, toolchain
+   image and output hash; measure raw/gzipped bytes, cold fetch/instantiate,
+   steady instruction throughput, heap, normal-mode callback cost and
+   precise-timing callback cost. A mutation must substitute the wrong artefact
+   hash and fail closed. In parallel, implement a SingleStepTests-shaped loader
+   using project-authored fixtures: one passes and corrupting final registers,
+   memory, cycles or a bus edge fails by name. Production selection stops until
+   a licensed independent corpus can run. No picker entry, bundled payload or
+   production dependency in this lane.
 2. **M68K1 — MC68000 core only.** Implement the original 68000 contract, not an
    unnamed mixture of 68000/68010/68020: D0–D7, A0–A7, PC, SR, USP/SSP,
    supervisor/user transitions, reset and exception vectors, traps, interrupt
@@ -713,6 +735,13 @@ Execute as separately reviewable lanes, in order:
    through the ACIA, and drive/read a latch/buffer fixture. Mutations cover
    endianness, byte lane, ROM write protection, reset vectors, and interrupt
    delivery.
+   - **M68K2b — 68k-nano reference profile, after M68K2.** Reuse the existing
+     NS16C550 model and the BSD board's source-built ROM to prove reset and
+     serial output against a real schematic/software pair. Model only the
+     address regions and interrupt behavior the bounded boot proof reaches.
+     CF/IDE, RTC/SPI, FAT16, aliased selects and the full monitor/debugger remain
+     separately measured candidates; an absent device must read/refuse honestly,
+     never be replaced by a success stub.
 4. **M68K3 — neutral debugger and checkpoint contract.** Add an adapter/target,
    target metadata, disassembly/register views, run/pause/step, memory access,
    breakpoints, interrupt/event attribution, capabilities, and versioned state
@@ -732,6 +761,9 @@ Execute as separately reviewable lanes, in order:
    fallback. Keep instruction-level wall-budgeted execution as the default.
    Exact CPU/bus-cycle deadlines are a later user-selectable machine mode only
    after edge-sequence tests distinguish it from instruction stepping.
+   AmiBlitz3 is explicitly excluded from this lane: an Amiga-hosted IDE and
+   Amiga-runtime output do not satisfy the standalone, browser-downloadable SBC
+   compiler boundary.
 
 Explicit non-goals for M68K0–M68K5: 68010/020 instructions, MMU/FPU, floppy or
 disk controllers, a commercial ROM, and any named home computer/console custom
