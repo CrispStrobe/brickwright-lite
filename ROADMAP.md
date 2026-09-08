@@ -32,8 +32,8 @@ landing audit.
 
 ### Track 1 — N2f: random-dependent output on the 8086 C route
 
-**Owner:** measurement/evidence is claimed on
-`lane/n2f-i8086-c-random-literal-measure`; production remains unclaimed.
+**Owner:** measurement/evidence completed at `e15c2cb8a`; production remains
+unclaimed.
 
 **Measured start:** N2e leaves the broad numeric/print reach at 46 programs.
 Across the complete corpus, 47 programs currently generate device C that the

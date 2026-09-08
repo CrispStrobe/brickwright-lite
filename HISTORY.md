@@ -60,6 +60,22 @@ plan or roadmap. Detailed commit, CI and ownership evidence remains in Git and
   length has one numeric-provenance authority. The only 281-program list
   candidate is `arduino-03-smoothing`; it remains ADC-choked, so lists add zero
   corpus reach and the honest broad total remains 46.
+- **N2f measured the bounded random-plus-literal opportunity without changing
+  production** (`e15c2cb8a`, hosted run `34217092106`). The honest i8086
+  device-C baseline is 47 named programs, not the mixed 78 total: 31 further
+  programs generate HOST C and never enter `compileC8086`. Four parsed-graph
+  variants show literal-only and random-only add zero; together they expose
+  exactly `arduino-sk-p11-crystal-ball` (device 47→48, mixed 78→79). The 48
+  prospective device programs comprise 45 distinct C bodies, with the sole new
+  baseline-to-complete body belonging to crystal-ball, and all compile in
+  hosted CI. The old “empty text refusal” finding was an evidence bug:
+  `_cPrintRefused` already names it, while the probe omitted that fifth bucket.
+  A source-plus-runtime inventory and future-bucket mutation now guard the
+  census. The proposed RNG contract is a fixed-seed 16-bit LCG with inclusive
+  signed-16 bounds and multiply-high rejection; low-word modulo was rejected
+  because `pick random 1 to 8` then repeats every eight draws. Production N2f
+  remains open and must first prove its 16×16→32 seam, then execute the emitted
+  SmallerC `.COM` through the DOS screen oracle.
 
 ## 2026-09-07
 
