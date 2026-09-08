@@ -4,7 +4,18 @@
 
 The promotion branch reconciles current main with the verified fastpaths,
 retaining upstream tone and W65C51 changes at engine `4c6ab1a7289db121284a2c0e98435598bd3ef24c`.
-Engine CI `34235227257` is green. Application integration and GUI CI follow.
+Engine CI `34235227257` is green. The reconciled comparison `34236231622`
+passes state checks with no separated performance regressions. First GUI CI
+`34236244217` passed the new lab checks, build and corpus but found the Bluetooth
+panel's probe selecting the lab's hidden Close button. Revision `c05b6be37` unmounts
+closed dialogs; rerun `34237479071` passes all 18 8086 browser checks, including
+the new assertion that no closed sandbox controls remain in the document.
+
+Final combined [application CI](https://github.com/CrispStrobe/brickwright-lite/actions/runs/34237479071)
+is GREEN at `c05b6be37`: build, corpus, light and heavy browser suites, including
+the Bluetooth check. This verified runtime is being fast-forward promoted to
+main with a ledger/report-only handoff; the default engine branch receives the
+reconciled history too. The normal main workflow handles deployment.
 
 Settings → **8086 execution diagnostics…** provides:
 
@@ -27,6 +38,8 @@ Historical statements below about prototypes not being imported by production
 refer to normal project execution; the explicit diagnostic panel now loads the
 decoded/Wasm prototype on demand. Synthetic best-case gains remain distinct
 from general emulator performance.
+
+## Phase 2 benchmark record (before promotion)
 
 Baseline Lite: `abc4634dad85b570ea64b979fcb67d32194c3fd3`.
 Baseline engine: `492e6782ee92f1ad351d64afcf16cfc224a5d508`.
