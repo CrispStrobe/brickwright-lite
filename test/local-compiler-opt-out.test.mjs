@@ -67,6 +67,9 @@ test('a compiler request after the lesson hash is honored', () => {
     assert.equal(localCompilerOptedOut(
         win('?localCompiler=off', null, '#/lesson?localCompiler=on')), true,
     'an explicit page query takes precedence over the hash query');
+    assert.equal(localCompilerOptedOut(
+        win('?localCompiler=', 'off', '#/lesson?localCompiler=on')), false,
+    'an empty page placeholder must not swallow a real routed request');
 });
 
 test('the stored preference works when the URL says nothing', () => {

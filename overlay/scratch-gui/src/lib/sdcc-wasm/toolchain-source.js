@@ -95,13 +95,17 @@ export function localCompilerRequest (win = typeof window === 'undefined' ? unde
         if (!win || !win.location) return null;
         const search = win.location.search || '';
         const pageParams = new URLSearchParams(search);
-        if (pageParams.has('localCompiler')) return pageParams.get('localCompiler');
+        const pageHasRequest = pageParams.has('localCompiler');
+        const pageRequest = pageHasRequest ? pageParams.get('localCompiler') : null;
+        // Present-but-empty has always meant "unset" to the route predicate.
+        // Do not let that placeholder hide a real request in a routed lesson.
+        if (pageRequest !== null && pageRequest !== '') return pageRequest;
 
         const hash = win.location.hash || '';
         const queryAt = hash.indexOf('?');
-        if (queryAt === -1) return null;
+        if (queryAt === -1) return pageRequest;
         const hashParams = new URLSearchParams(hash.slice(queryAt + 1));
-        return hashParams.has('localCompiler') ? hashParams.get('localCompiler') : null;
+        return hashParams.has('localCompiler') ? hashParams.get('localCompiler') : pageRequest;
     } catch {
         return null;
     }

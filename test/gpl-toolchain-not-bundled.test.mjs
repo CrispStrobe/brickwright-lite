@@ -186,6 +186,9 @@ test('hash-routed lesson URLs carry the explicit compiler request', () => {
     assert.equal(localToolchainEnabled(
         winWith(null, '?localCompiler=off', '#/lesson?localCompiler=on')), false,
     'the page query wins when both URL regions contain the setting');
+    assert.equal(localToolchainEnabled(
+        winWith(off, '?localCompiler=', '#/lesson?localCompiler=on')), true,
+    'an empty page placeholder cannot swallow the routed opt-in');
 });
 
 test('under Node with no storage the local toolchain is the honest answer', () => {
