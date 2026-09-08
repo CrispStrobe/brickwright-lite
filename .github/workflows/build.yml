@@ -56,6 +56,7 @@ on:
       - '!BUILD.md'
       - '!CLAUDE.md'
       - '!HANDOFF.md'
+      - '!HISTORY.md'
       - '!LANES.md'
       - '!MBIT-BUILD.md'
       - '!PLAN.md'

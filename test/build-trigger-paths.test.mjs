@@ -18,10 +18,27 @@ const ROOT = path.resolve(import.meta.dirname, '..');
 const yml = readFileSync(path.join(ROOT, '.github', 'workflows', 'build.yml'), 'utf8');
 const {entries, hasPathsIgnore} = parsePushPaths(yml);
 
+const pushWouldBuild = (file, paths = entries) => {
+    let included = false;
+    for (const entry of paths) {
+        const negated = entry.startsWith('!');
+        const pattern = negated ? entry.slice(1) : entry;
+        const matches = pattern === '**' || pattern === file ||
+            (pattern === 'docs/*.md' && /^docs\/[^/]+\.md$/.test(file));
+        if (matches) included = !negated;
+    }
+    return included;
+};
+
+const assertHistoryOnlySkipped = paths => {
+    assert.equal(pushWouldBuild('HISTORY.md', paths), false,
+        'HISTORY.md-only pushes are ledger updates and must skip Build');
+};
+
 test('the push trigger is a paths filter: everything first, then negations, then the docs put back', () => {
     assert.equal(hasPathsIgnore, false, 'paths and paths-ignore cannot coexist on one trigger; GitHub rejects the workflow');
     assert.equal(entries[0], '**', 'the first entry must include everything, or every later negation is meaningless');
-    for (const root of ['BLOCKED.md', 'BUILD.md', 'CLAUDE.md', 'HANDOFF.md', 'LANES.md', 'MBIT-BUILD.md', 'PLAN.md', 'README.md', 'ROADMAP.md']) {
+    for (const root of ['BLOCKED.md', 'BUILD.md', 'CLAUDE.md', 'HANDOFF.md', 'HISTORY.md', 'LANES.md', 'MBIT-BUILD.md', 'PLAN.md', 'README.md', 'ROADMAP.md']) {
         assert.ok(entries.includes(`!${root}`), `${root} is root prose nothing reads and must stay negated`);
     }
     const cut = entries.indexOf('!docs/*.md');
@@ -29,6 +46,19 @@ test('the push trigger is a paths filter: everything first, then negations, then
     for (const e of entries.slice(cut + 1)) assert.match(e, /^docs\/[^/]+\.md$/, `after the docs negation only re-includes belong: "${e}"`);
     assert.ok(!entries.some(e => e === '!docs/**' || e === '!docs/generated/**'), 'docs/generated is test input (generated reports asserted against source) and must keep triggering');
     assert.ok(!entries.some(e => /^!.*\.(js|mjs|jsx|json|yml|html)$/.test(e)), 'no code path is ever negated');
+});
+
+test('HISTORY-only skips by name while executable and governed build inputs still trigger (mutation)', () => {
+    assertHistoryOnlySkipped(entries);
+    assert.equal(pushWouldBuild('scripts/integrate.mjs'), true, 'executable source must trigger Build');
+    assert.equal(pushWouldBuild('THIRD-PARTY-NOTICES.md'), true, 'the governed root build-input document must trigger Build');
+    assert.equal(pushWouldBuild('docs/CYCLE-ACCURATE-CORE-EVALUATION.md'), true,
+        'a governed docs build input must be re-included and trigger Build');
+
+    const mutated = entries.filter(entry => entry !== '!HISTORY.md');
+    assert.equal(mutated.length, entries.length - 1, 'mutation removed the exact HISTORY.md exclusion');
+    assert.throws(() => assertHistoryOnlySkipped(mutated), /HISTORY\.md-only pushes/,
+        'removing the exact exclusion must redden this gate by name');
 });
 
 test('every doc some non-comment line of code mentions is re-included; every re-include is mentioned', () => {

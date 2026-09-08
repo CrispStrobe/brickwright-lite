@@ -4,6 +4,95 @@ Completed and rejected work moves here when it no longer belongs in the active
 plan or roadmap. Detailed commit, CI and ownership evidence remains in Git and
 `LANES.md`.
 
+## 2026-09-08
+
+- **The GPL SDCC payload left the BSD-3 repository and became an explicit toolchain**
+  (`0b79a6f23`, following CLI `fa87c0d7e` and manager `0dec905c3`). The 202
+  tracked compiler files were removed and ignored. CI may fetch the compiler
+  from its own origin; Node consumers either run it or skip by name when the
+  optional download is absent. The CLI exercises online and local compilation,
+  cancellation and resume; the Settings manager exposes mode, byte-weighted
+  progress, removal, licence, and source information.
+- **The i8086 example and emitter were re-synchronized through their shared pin**
+  (`a9b09429b`, main later `1d849ee9b`). The single `sb3-creator` pin governs
+  both gallery examples and emitted source, so every example sync must audit
+  emitter changes and re-derive its reach evidence.
+- **N2b established the 8086 C numeric model** (`3d84eef62`). C uses
+  signed 16-bit `int` and refuses literals or initial values outside
+  -32768..32767 by name; other C targets stayed byte-stable. The differential
+  asserts the intentional width disagreement by value: C wraps 35000 to -30536
+  while the ASM route retains its 32-bit pair.
+- **P21 completed the lazy PseudocodeImporter route** (promoted series ending
+  `68a726c35`). Activation, retry/state, and exact emitted-receipt gates cover
+  the demand-loaded importer rather than inferring the split from source shape.
+- **P22 replaced the invalid 8086 speed claim with a CPU-bound benchmark**
+  (`da4d30b0c`). Hosted medians were 2.0190x desktop, 2.0192x mobile, and
+  2.0220x under 4x throttle; throttled pump p95 was 7 ms and the maximum pump
+  was 22.3172 ms. The earlier roughly 30x result measured guest-time jumps from
+  `INT 15h AH=86h` and is superseded. Worker/JIT/batching remain deferred until
+  three repeat runs measure either below 1.0x or above 8 ms pump p95.
+- **LED polarity was corrected and pinned** (`f568d875a`, hosted run
+  `34197832516`). The historical defect affected 174 of 792 decidable readings
+  across 19 distinct examples; the corrected seated census is 792 agreeing / 0
+  inverted with the denominator unchanged. The earlier “21 examples” added a
+  3-example and an 18-example group that overlap in two examples.
+- **TONE became audible and the polarity oracle gained the flat surface**
+  (`9d55123eb`, hosted run `34200535237`, `bw-board` pin `6145e8a`). All 25
+  shipped TONE readings reach a buzzer. The two separately mutation-proved LED
+  surfaces read 792/0 inverted for seated benches and 714/0 for flat circuits.
+  Moving the board pin also required regenerating seven artifacts that stamped
+  the old SHA even though the ROM binaries were byte-identical; provenance is
+  part of a pin move, not an optional afterthought.
+- **History-only changes no longer launch the heavy Build workflow**
+  (`e1765b83c`, hosted run `34210227378`). `HISTORY.md` is excluded beside the
+  other ledger-only root documents. A named mutation-proved trigger test keeps
+  history-only changes out while executable source, the governed root notice,
+  and re-included documentation inputs still start the workflow.
+- **N2e bounded numeric lists landed on the 8086 C route** (upstream
+  `8c17dfa898f80a875e2a4bf044144564f8a4cebc`; Lite `dec11a41f`, hosted run
+  `34206351591`; upstream exact/main runs `34200030761`/`34200529033`). Lists
+  hold at most 32 signed-16 values and the route permits 15 lists / 990 bytes of
+  static list state. The 15×32 proof emits a 1,618-byte `.COM` with 63,662 bytes
+  of segment space remaining. Independent array rows cover add, insert,
+  replace, delete, delete-all, item and length, including invalid-index
+  no-op/zero behavior; zero-based reads and silent overflow each make the gate
+  fail. Generated data and length identifiers are allocated independently, and
+  length has one numeric-provenance authority. The only 281-program list
+  candidate is `arduino-03-smoothing`; it remains ADC-choked, so lists add zero
+  corpus reach and the honest broad total remains 46.
+- **N2f measured the bounded random-plus-literal opportunity without changing
+  production** (`e15c2cb8a`, hosted run `34217092106`). The honest i8086
+  device-C baseline is 47 named programs, not the mixed 78 total: 31 further
+  programs generate HOST C and never enter `compileC8086`. Four parsed-graph
+  variants show literal-only and random-only add zero; together they expose
+  exactly `arduino-sk-p11-crystal-ball` (device 47→48, mixed 78→79). The 48
+  prospective device programs comprise 45 distinct C bodies, with the sole new
+  baseline-to-complete body belonging to crystal-ball, and all compile in
+  hosted CI. The old “empty text refusal” finding was an evidence bug:
+  `_cPrintRefused` already names it, while the probe omitted that fifth bucket.
+  A source-plus-runtime inventory and future-bucket mutation now guard the
+  census. The proposed RNG contract is a fixed-seed 16-bit LCG with inclusive
+  signed-16 bounds and multiply-high rejection; low-word modulo was rejected
+  because `pick random 1 to 8` then repeats every eight draws.
+- **N2f production landed with deterministic random and literal DOS output**
+  (upstream `5a0d5592be4c7586864babc1e72015aa819cd128`; Lite
+  `c77563dbf5e2336c7da90a8993d98415705a60d8`; exact-head run
+  `34224675820`, all four jobs green). The guarded sync carries the exact
+  emitter through both mirrors. Consumer helpers implement inclusive signed-16
+  normal, reversed, equal, and full-span bounds with fixed seed `0x4d3d` and
+  unbiased 16×16 multiply-high rejection; direct zero-terminated literals use
+  DOS character output with CR/LF. All four lattice variants compile 48 device
+  programs, alongside 31 HOST-C programs; body accounting is 45 per complete
+  set and 48 unique bodies across the lattice. The real crystal-ball trace
+  produced rows `Most likely, Ask again, Ask again, Ask again, Yes, Most likely,
+  Without a doubt, No` from rolls `2,4,4,4,1,2,5,7` (1,745 steps,
+  44,020,502 cycles, 500 bytes). Boundary rows `225,7,4,-25002,-1` came from
+  draws `2,1,1,1,1` (482 steps, 6,403 cycles, 264 bytes). Mapping, helper,
+  zero-based-read, and overflow mutations all fired. The first hosted run found
+  that the profile generator treated `printText` and `random` as physical-part
+  verbs; the landed fix classifies both as language/runtime controls and pins
+  their non-hardware status in conformance tests.
+
 ## 2026-09-07
 
 - **N2c reach receipt corrected by the later fail-closed numeric lowerer.** The

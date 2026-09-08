@@ -32,8 +32,32 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // sb3-creator's tone work (setTone/tone_set, emitted AVR-only) rode the shared
     // pin. Neither touches the SPIKE emitter; this artifact is byte-identical and
     // was re-run at the new pin.
+    // -> 6bda3b3 on 2026-09-08: the LED-polarity correction. This bump is the
+    // rare one that carries NO emitter risk at all, and that is measured rather
+    // than assumed: `git diff --name-only 0a0e82e 6bda3b3 -- src/` is EMPTY, so
+    // every vendored `src/lib/sb3-creator*.js` file is byte-identical across it
+    // and the sync reports `ok` for all of them. What moves is 135
+    // `examples/**/circuit*.json` (69 benches re-wired to their target's output
+    // polarity plus their 66 board-free twins), three generator scripts and one
+    // manifest, none of which this file reads. The artifact assertions below
+    // were re-run at the new pin regardless.
+    // -> 8c17dfa on 2026-09-08: N2e adds bounded numeric lists only to the
+    // i8086 C route. The SPIKE emitter is unchanged; this artifact is re-run
+    // here rather than inferred from that scope statement.
+    // -> e3ecc205e on 2026-09-08: P3 part 3 adds servo and DC-motor MicroPython
+    // drivers for the Pico (upstream PR #11). MEASURED, not assumed: the range
+    // `8c17dfa..e3ecc205e` touches ONE source file and ZERO examples, so this is
+    // the rare pin bump with no gallery churn — no re-sync, no polarity or
+    // flat-twin re-derivation. The servo/motor formula and clamp are rendered
+    // from one shared body with the C arm, and the MicroPython arm is asserted
+    // to within one `duty_u16` LSB of it rather than bit-exact, because the two
+    // APIs have different resolutions over the 20 ms frame. Nothing in the SPIKE
+    // emitter changed; the artifact assertions below were re-run at the new pin.
+    // -> 5a0d559 on 2026-09-08: N2f adds deterministic bounded random and
+    // direct-literal output to the i8086 C route. The SPIKE emitter is
+    // unchanged; this artifact is re-run here rather than inferred from scope.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '0a0e82e8df7cb699b22e7c2bf4b6285e47e9ca70');
+        '5a0d5592be4c7586864babc1e72015aa819cd128');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

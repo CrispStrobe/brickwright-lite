@@ -2537,6 +2537,7 @@ class SB3Creator {
 
     _cMotorHelper(core) {
         const bus = this._cMotorBus(core);
+        const p = this._motorProtocol();   // the clamp is shared with the MicroPython driver
         return [
             ...bus.header,
             ...bus.preamble,
@@ -2546,8 +2547,8 @@ class SB3Creator {
             'static void bw_motor_speed(int motor, int speed)',
             '{',
             '    (void)motor;',
-            '    if (speed < 0) speed = 0;',
-            '    if (speed > 100) speed = 100;',
+            '    if (speed < ' + p.speedMin + ') speed = ' + p.speedMin + ';',
+            '    if (speed > ' + p.speedMax + ') speed = ' + p.speedMax + ';',
             '    _motor_speed = speed;',
             '    ' + bus.pwmSet,
             '}',
@@ -2603,6 +2604,7 @@ class SB3Creator {
 
     _cServoBus(core) {
         if (core === 'arm') {
+            const p = this._servoProtocol();   // shared with the MicroPython servo driver
             return {
                 header: ['/* Servo driver: PWM slice 0 at 50 Hz — servo 1 = GP16 (channel A),',
                     ' * servo 2 = GP17 (channel B). TOP 19999 at the 1 MHz slice clock is',
@@ -2614,7 +2616,7 @@ class SB3Creator {
                 bounds: ['    if (servo < 1 || servo > 2) return;'],
                 store: ['    _servo_angle[servo - 1] = angle;'],
                 pwmBody: ['    gpio = 15u + (uint32_t)servo;            /* 1 -> GP16, 2 -> GP17 */',
-                    '    us = 500u + (uint32_t)angle * 2000u / 180u;',
+                    '    us = ' + p.usMin + 'u + (uint32_t)angle * ' + p.usSpan + 'u / ' + p.angleMax + 'u;',
                     '    BW_IOBANK0_CTRL(gpio) = 4u;              /* funcsel PWM */',
                     '    BW_PWM_DIV(0) = 125u << 4;               /* 1 MHz slice clock */',
                     '    BW_PWM_TOP(0) = 19999u;                  /* 20 ms frame */',
@@ -2688,6 +2690,7 @@ class SB3Creator {
 
     _cServoHelper(core) {
         const bus = this._cServoBus(core);
+        const p = this._servoProtocol();   // the clamp is shared with the MicroPython driver
         return [
             ...bus.header,
             ...bus.decls,
@@ -2696,8 +2699,8 @@ class SB3Creator {
             '{',
             ...bus.setLocals,
             ...bus.bounds,
-            '    if (angle < 0) angle = 0;',
-            '    if (angle > 180) angle = 180;',
+            '    if (angle < ' + p.angleMin + ') angle = ' + p.angleMin + ';',
+            '    if (angle > ' + p.angleMax + ') angle = ' + p.angleMax + ';',
             ...bus.store,
             ...bus.pwmBody,
             '}',
@@ -2705,6 +2708,67 @@ class SB3Creator {
             ...bus.getFn,
             ...(bus.isr.length ? ['', ...bus.isr] : []),
             '',
+        ];
+    }
+
+    // ---- PWM protocol (plan P3 part 3): the numeric contract the C helpers and
+    // the MicroPython (Pico) drivers BOTH realise, so the pulse maths and the
+    // clamp are not hand-typed twice. The C bus writes the pulse in its family's
+    // native units; the Pico writes machine.PWM.duty_u16 derived from the SAME
+    // formula. test/servo-micropython.test.mjs and test/motor-micropython.test.mjs
+    // bound the difference to one duty_u16 LSB (frame/65536), proving it is
+    // quantisation and nothing else — not a second, hand-typed formula.
+    _servoProtocol() {
+        // 50 Hz frame (20000 µs). angle angleMin..angleMax -> pulse usMin..usMax µs.
+        // us = usMin + angle * usSpan / angleMax, integer division (matches C).
+        return {frameUs: 20000, usMin: 500, usMax: 2500, usSpan: 2000, angleMin: 0, angleMax: 180, u16: 65536};
+    }
+
+    _motorProtocol() {
+        // speed clamp speedMin..speedMax -> duty = speed/speedMax of full scale.
+        // Full scale is the max duty_u16 (65535) so 100 % maps to the top code.
+        return {speedMin: 0, speedMax: 100, u16Full: 65535};
+    }
+
+    // The MicroPython (Pico) servo driver, rendered from the SAME _servoProtocol()
+    // the C arm bus renders. machine.PWM at 50 Hz; the pulse is written as duty_u16
+    // over the 20 ms frame. The pin selection (servo 1 = GP16, 2 = GP17) is the
+    // per-platform BUS in the header, not this shared body.
+    _mpyServoHelper() {
+        const p = this._servoProtocol();
+        return [
+            'def _servo_set(servo, angle):',
+            '    # 50 Hz frame; angle 0-180 deg over a ' + p.usMin + '-' + p.usMax + ' us pulse.',
+            '    pwm = _servos.get(servo)',
+            '    if pwm is None: return',
+            '    if angle < 0: angle = 0',
+            '    if angle > ' + p.angleMax + ': angle = ' + p.angleMax,
+            '    us = ' + p.usMin + ' + angle * ' + p.usSpan + ' // ' + p.angleMax,
+            '    pwm.duty_u16((us * ' + p.u16 + ') // ' + p.frameUs + ')',
+        ];
+    }
+
+    // The MicroPython (Pico) motor driver, from _motorProtocol(). Speed 0..100 is
+    // clamped and written as duty_u16 at 1 kHz; direction drives IN1/IN2 of an
+    // L293D-style H-bridge with the same 0=fwd 1=rev 2=brake 3=coast convention as
+    // the C bus. Pins (GP18 speed, GP19/GP20 direction) are the header's bus.
+    _mpyMotorHelper() {
+        const p = this._motorProtocol();
+        return [
+            'def _motor_speed(speed):',
+            '    if speed < 0: speed = 0',
+            '    if speed > ' + p.speedMax + ': speed = ' + p.speedMax,
+            '    _motor_pwm.duty_u16((speed * ' + p.u16Full + ') // ' + p.speedMax + ')',
+            'def _motor_dir(d):',
+            '    # 0=forward 1=reverse 2=brake 3=coast',
+            '    if d == 0:',
+            '        _motor_in1.value(1); _motor_in2.value(0)',
+            '    elif d == 1:',
+            '        _motor_in1.value(0); _motor_in2.value(1)',
+            '    elif d == 2:',
+            '        _motor_in1.value(1); _motor_in2.value(1)',
+            '    else:',
+            '        _motor_in1.value(0); _motor_in2.value(0)',
         ];
     }
 
@@ -7728,10 +7792,45 @@ class SB3Creator {
         return final;
     }
 
+    // Claim a fresh identifier with the requested spelling even when that
+    // spelling was already memoized for a Scratch-visible name. Internal
+    // generated objects (list backing state, hats) have a distinct identity;
+    // reusing cName's string key would incorrectly alias them to that object.
+    cFresh(base) {
+        let id = sanitizeIdent(base) || 'generated';
+        if (SB3Creator.C_RESERVED.has(id)) id += '_';
+        const used = new Set(this._cNames ? this._cNames.values() : []);
+        let final = id, n = 2;
+        while (used.has(final)) final = id + '_' + n++;
+        if (!this._cNames) this._cNames = new Map();
+        this._cNames.set(Symbol(base), final);
+        return final;
+    }
+
     // Prefix-aware variable reference (sprite locals are `s<idx>_`-prefixed, as in Python/JS).
     cRef(name) {
         if (this._curLocals && this._curLocals.has(name)) return this.cName(this._curPrefix + name);
         return this.cName(name);
+    }
+
+    /** The fixed-storage identity for an i8086 numeric list. Scratch list IDs
+     *  are authoritative; the scoped-name fallback is only for legacy graphs
+     *  without IDs. Allocating these through cName keeps a scalar called
+     *  `readings_data` from colliding with the list's backing array. */
+    cI8086ListRef(field) {
+        const name = field ? String(field[0]) : '';
+        const id = field && field[1] != null ? String(field[1]) : null;
+        const scoped = `${this._curPrefix || ''}:${name}`;
+        const ref = (id && this._cI8086ListNames && this._cI8086ListNames.get(`id:${id}`)) ||
+            (this._cI8086ListNames && this._cI8086ListNames.get(`name:${scoped}`));
+        if (ref) return ref;
+        if (!this._cListRefused) this._cListRefused = [];
+        const reason = `list "${name}" has no unambiguous scoped C storage`;
+        if (!this._cListRefused.includes(reason)) this._cListRefused.push(reason);
+        return {
+            data: this.cName(`bw_list_missing_${scoped}_data`),
+            len: this.cName(`bw_list_missing_${scoped}_len`)
+        };
     }
 
     // Make arbitrary text safe to drop inside a /* ... */ comment.
@@ -7824,12 +7923,16 @@ class SB3Creator {
                 return {ok: false, reason: `${op || 'unknown'} of has no numeric C lowering`};
             }
         }
-        if (block.opcode === 'data_itemoflist') {
+        // List reporters are their own authority: unlike generic numeric
+        // reporters they must also prove the referenced list's provenance.
+        if (block.opcode === 'data_itemoflist' || block.opcode === 'data_lengthoflist') {
             const listResult = this.cI8086NumericList(block.fields && block.fields.LIST, seen, allowedSelf);
             if (!listResult.ok) return listResult;
-            const indexResult = this.cI8086NumericPrint(block.inputs && block.inputs.INDEX, blocks,
-                new Set(seen).add(inner), allowedSelf);
-            if (!indexResult.ok) return indexResult;
+            if (block.opcode === 'data_itemoflist') {
+                const indexResult = this.cI8086NumericPrint(block.inputs && block.inputs.INDEX, blocks,
+                    new Set(seen).add(inner), allowedSelf);
+                if (!indexResult.ok) return indexResult;
+            }
             return this.cI8086CompleteLowering(block, blocks);
         }
         if (!SB3Creator.C_I8086_NUMERIC_PRINT_REPORTERS.has(block.opcode)) {
@@ -8020,6 +8123,7 @@ class SB3Creator {
     static I8086_WAIT_MAX_MS = 65535;
     static C_I8086_NUMERIC_PRINT_REPORTERS = new Set([
         'operator_add', 'operator_subtract', 'operator_multiply', 'operator_divide', 'operator_mod',
+        'operator_random',
         'operator_round', 'operator_mathop',
         'planetemaths_add', 'planetemaths_substract', 'planetemaths_multiply',
         'planetemaths_divide', 'planetemaths_oppose', 'planetemaths_pourcent',
@@ -8392,6 +8496,19 @@ class SB3Creator {
             case 'bitops_shl': return `(${v('NUM1')} << ${v('NUM2')})`;
             case 'bitops_shr': return `(${v('NUM1')} >> ${v('NUM2')})`;
             case 'bitops_not': return `(~${v('NUM')})`;
+            case 'operator_random': {
+                if (this._core === 'i8086') {
+                    // N2f: the consumer supplies a narrow cdecl helper whose
+                    // 16x16 MUL high word implements unbiased multiply-high
+                    // rejection. SmallerC's tiny model has no 32-bit integer
+                    // type, so spelling the product here would truncate it.
+                    this._cUses.random = true;
+                    return `bw_random(${v('FROM')}, ${v('TO')})`;
+                }
+                const text = this.drep(b, blocks) || b.opcode;
+                this.cWarn(`no C equivalent for "${text}" — emitted as 0`);
+                return `0 /* ${this.cComment(text)} */`;
+            }
             case 'operator_round': return v('NUM');       // integer arithmetic already
             case 'operator_mathop': {
                 // Same reasoning as round: every scalar here is a long, so
@@ -8407,6 +8524,25 @@ class SB3Creator {
             }
             case 'planetemaths_oppose': return `(0 - ${v('NUM1')})`;
             case 'planetemaths_pourcent': return `(${v('NUM1')} / 100)`;
+            case 'data_itemoflist': {
+                if (this._core === 'i8086') {
+                    this._cUses.numericLists = true;
+                    const list = this.cI8086ListRef(b.fields && b.fields.LIST);
+                    return `bw_list_item(${list.data}, ${list.len}, ${v('INDEX')})`;
+                }
+                const text = this.drep(b, blocks) || b.opcode;
+                this.cWarn(`no C equivalent for "${text}" — emitted as 0`);
+                return `0 /* ${this.cComment(text)} */`;
+            }
+            case 'data_lengthoflist': {
+                if (this._core === 'i8086') {
+                    this._cUses.numericLists = true;
+                    return `(int)${this.cI8086ListRef(b.fields && b.fields.LIST).len}`;
+                }
+                const text = this.drep(b, blocks) || b.opcode;
+                this.cWarn(`no C equivalent for "${text}" — emitted as 0`);
+                return `0 /* ${this.cComment(text)} */`;
+            }
             case 'stc12_read': return this.cPinRead(f('PIN'));
             case 'stc12_readport': {
                 const portCfg = this.project && this.project.stc && (this.project.stc.ports || []).find((p) => p.name.toLowerCase() === f('PORT').toLowerCase());
@@ -8777,8 +8913,13 @@ class SB3Creator {
                 const mode = f('MODE');
                 if (this._core === 'i8086') {
                     if (mode === 'text') {
+                        const inner = b.inputs && b.inputs.VALUE && b.inputs.VALUE[1];
+                        if (Array.isArray(inner) && inner[0] === 10) {
+                            this._cUses.printText = true;
+                            return line(`bw_print(${this.cCString(inner[1])});`);
+                        }
                         if (!this._cPrintRefused) this._cPrintRefused = [];
-                        const reason = 'text-mode print is outside the numeric-only i8086 C print boundary';
+                        const reason = 'text-mode print requires direct literal text on the i8086 C route';
                         if (!this._cPrintRefused.includes(reason)) this._cPrintRefused.push(reason);
                         return line(`/* print refused: ${reason} */`);
                     }
@@ -8977,6 +9118,33 @@ class SB3Creator {
             case 'devices_oledcursor': { this._cUses.devices = true; this._cUses.oled = true; return line(`bw_oled_cursor(${v('DISPLAY')}, ${v('ROW')}, ${v('COL')});`); }
             case 'procedures_call': return line(this.cProcCall(b, blocks));
             default: {
+                if (this._core === 'i8086') {
+                    if (b.opcode === 'data_addtolist') {
+                        this._cUses.numericLists = true;
+                        const list = this.cI8086ListRef(b.fields && b.fields.LIST);
+                        return line(`bw_list_add(${list.data}, &${list.len}, ${v('ITEM')});`);
+                    }
+                    if (b.opcode === 'data_deleteoflist') {
+                        this._cUses.numericLists = true;
+                        const list = this.cI8086ListRef(b.fields && b.fields.LIST);
+                        return line(`bw_list_delete(${list.data}, &${list.len}, ${v('INDEX')});`);
+                    }
+                    if (b.opcode === 'data_deletealloflist') {
+                        this._cUses.numericLists = true;
+                        const list = this.cI8086ListRef(b.fields && b.fields.LIST);
+                        return line(`${list.len} = 0;`);
+                    }
+                    if (b.opcode === 'data_insertatlist') {
+                        this._cUses.numericLists = true;
+                        const list = this.cI8086ListRef(b.fields && b.fields.LIST);
+                        return line(`bw_list_insert(${list.data}, &${list.len}, ${v('INDEX')}, ${v('ITEM')});`);
+                    }
+                    if (b.opcode === 'data_replaceitemoflist') {
+                        this._cUses.numericLists = true;
+                        const list = this.cI8086ListRef(b.fields && b.fields.LIST);
+                        return line(`bw_list_replace(${list.data}, ${list.len}, ${v('INDEX')}, ${v('ITEM')});`);
+                    }
+                }
                 const text = (this.decompileStackBlock(b, blocks, 0)[0] || b.opcode).trim();
                 this.cWarn(`no C equivalent for "${text}" — emitted as a comment`);
                 return line(`/* ${this.cComment(text)} */`);
@@ -9125,14 +9293,7 @@ class SB3Creator {
     // Unique C identifier for a function (two `when flag clicked` hats in one
     // sprite would otherwise collide, exactly as pyFreshName guards against).
     hcFresh(base) {
-        let id = sanitizeIdent(base) || 'f';
-        if (SB3Creator.C_RESERVED.has(id)) id += '_';
-        const used = new Set(this._cNames ? this._cNames.values() : []);
-        let final = id, n = 2;
-        while (used.has(final)) final = id + '_' + n++;
-        if (!this._cNames) this._cNames = new Map();
-        this._cNames.set(Symbol(base), final);
-        return final;
+        return this.cFresh(base);
     }
 
     hcVal(input, blocks) {
@@ -10038,6 +10199,26 @@ class SB3Creator {
                     const px = `_pin_${partCfg.name}`;
                     return [`${pad}_shift_out(${px}_data, ${px}_clock, ${px}_latch, ${al}, int(${v('VALUE')}))`];
                 }
+                // P3 part 3: servo + DC motor on the Pico. The pulse maths and the
+                // clamp are the shared _servoProtocol()/_motorProtocol() the C
+                // helpers also render; the pins (servo 1=GP16, 2=GP17; motor speed
+                // GP18, dir GP19/GP20) are set up once in the header.
+                case 'devices_setservo': {
+                    if (!isPico) break;
+                    uses.servo = true;
+                    return [`${pad}_servo_set(int(${v('SERVO')}), int(${v('ANGLE')}))`];
+                }
+                case 'devices_setmotor': {
+                    if (!isPico) break;
+                    uses.motor = true;
+                    return [`${pad}_motor_speed(int(${v('SPEED')}))`];
+                }
+                case 'devices_setdirection': {
+                    if (!isPico) break;
+                    uses.motor = true;
+                    const d = ({ forward: 0, reverse: 1, brake: 2, coast: 3 })[f('DIR')] || 0;
+                    return [`${pad}_motor_dir(${d})`];
+                }
                 default: {
                     // The Arrays & Vectors commands lower through the same
                     // reversible-op table the reporters already use, so the
@@ -10205,7 +10386,7 @@ class SB3Creator {
 
         const header = isPico
             ? ['# generated for Raspberry Pi Pico (MicroPython)',
-                'from machine import Pin, I2C',
+                'from machine import Pin, I2C' + ((uses.servo || uses.motor) ? ', PWM' : ''),
                 'import time',
                 '',
                 '# The shared scheduler speaks micro:bit; two shims make the',
@@ -10494,6 +10675,19 @@ class SB3Creator {
                         `_pin_${name}_latch = Pin(${gp.latch}, Pin.OUT)`);
                 }
                 header.push('', ...this._mpyShiftOutHelper());
+            }
+            // P3 part 3: servo (GP16/GP17 at 50 Hz) and DC motor (GP18 speed at
+            // 1 kHz, GP19/GP20 direction) — the objects once, then the shared-
+            // protocol driver, emitted only when a servo/motor verb actually ran.
+            if (uses.servo) {
+                header.push('', '_servos = {1: PWM(Pin(16), freq=50), 2: PWM(Pin(17), freq=50)}',
+                    ...this._mpyServoHelper());
+            }
+            if (uses.motor) {
+                header.push('', '_motor_pwm = PWM(Pin(18), freq=1000)',
+                    '_motor_in1 = Pin(19, Pin.OUT)',
+                    '_motor_in2 = Pin(20, Pin.OUT)',
+                    ...this._mpyMotorHelper());
             }
             if (uses.oled) {
                 const sdaPin = [...pinMap.entries()].find(([n]) => n.toLowerCase() === 'sda');
@@ -11421,6 +11615,8 @@ class SB3Creator {
         this._cCounter = 0;
         this._cWarnings = [];
         this._cI16Refused = [];
+        this._cListRefused = [];
+        this._cI8086ListNames = new Map();
         this._cWaitRefused = [];
         this._cLoweringRefused = [];
         this._cWaitComputed = false;
@@ -11544,6 +11740,49 @@ class SB3Creator {
                 markVars.push(`var ${this.cName(pfx + entry[0])} ${this.pyStr(entry[0])} sprite ${this.pyStr(t.name)}`);
             }
         });
+
+        // N2e: only the i8086 route gains bounded numeric lists. Each list owns
+        // 32 signed words plus one length word (66 bytes); at most fifteen fit
+        // inside the explicit 990-byte list-state budget. The .COM compiler and
+        // hosted size gate still measure the complete code+data image. Overflow
+        // traps instead of dropping a write, while ordinary out-of-range Scratch
+        // indices remain a checked no-op (or numeric zero for a reporter).
+        if (this._core === 'i8086') {
+            const lists = [];
+            const register = (target, idx) => {
+                const prefix = target.isStage ? '' : spritePrefix(idx);
+                for (const [id, entry] of Object.entries(target.lists || {})) {
+                    const name = String(entry[0]);
+                    const initial = Array.isArray(entry[1]) ? entry[1] : [];
+                    const base = `bw_list_${prefix}${name}`;
+                    const ref = {
+                        data: this.cFresh(`${base}_data`),
+                        len: this.cFresh(`${base}_len`)
+                    };
+                    this._cI8086ListNames.set(`id:${id}`, ref);
+                    this._cI8086ListNames.set(`name:${prefix}:${name}`, ref);
+                    lists.push({id, name, initial, ref, prefix});
+                }
+            };
+            if (stage) register(stage, -1);
+            sections.forEach((target, idx) => { if (!target.isStage) register(target, idx); });
+            if (lists.length > 15) {
+                this._cListRefused.push(`${lists.length} lists need ${lists.length * 66} bytes; the i8086 C list-state ceiling is 990 bytes (15 lists)`);
+            }
+            for (const list of lists) {
+                if (list.initial.length > 32) {
+                    this._cListRefused.push(`list "${list.name}" starts with ${list.initial.length} items; the i8086 C capacity is 32`);
+                }
+                const numeric = this.cI8086NumericList([list.name, list.id], new Set());
+                if (!numeric.ok && !this._cListRefused.includes(numeric.reason)) {
+                    this._cListRefused.push(numeric.reason);
+                }
+                for (const value of list.initial) this.cI16Check(Math.trunc(Number(value)));
+                const init = list.initial.length ? list.initial.map(value => this.cInit(value)).join(', ') : '0';
+                stateDecls.push(`static int ${list.ref.data}[32] = { ${init} };`);
+                stateDecls.push(`static unsigned ${list.ref.len} = ${Math.min(list.initial.length, 32)}u;`);
+            }
+        }
 
         // Pass 3 — walk the scripts.
         const procProtos = [], procDefs = [], taskDefs = [];
@@ -12169,6 +12408,55 @@ class SB3Creator {
                 ...(this._cUses.printNumber ? [
                     '/* DOS terminal signed-16 decimal, then CRLF. */',
                     'extern void bw_print_num(int n);'
+                ] : []),
+                ...(this._cUses.printText ? [
+                    '/* Route-specific declaration: host C defines the same bw_print name',
+                    ' * statically; the i8086 consumer supplies this conditional helper. */',
+                    '/* DOS terminal direct literal text, then CRLF. */',
+                    'extern void bw_print(const char *text);'
+                ] : []),
+                ...(this._cUses.random ? [
+                    '/* Deterministic signed-16 inclusive random; fixed seed 0x4d3d.',
+                    ' * The consumer implements unbiased multiply-high rejection with 16x16 MUL. */',
+                    'extern int bw_random(int from, int to);'
+                ] : []),
+                ...(this._cUses.numericLists ? [
+                    '/* N2e numeric lists: 32 signed words per list. An invalid one-based',
+                    ' * index is a checked no-op (or zero when read), matching Scratch numeric',
+                    ' * coercion. Capacity overflow traps instead of dropping a write. */',
+                    '#define BW_LIST_CAPACITY 32u',
+                    'static void bw_list_overflow(void) { for (;;) ; }',
+                    'static int bw_list_item(int *data, unsigned len, int index)',
+                    '{',
+                    '    if (index < 1 || (unsigned)index > len) return 0;',
+                    '    return data[(unsigned)index - 1u];',
+                    '}',
+                    'static void bw_list_add(int *data, unsigned *len, int value)',
+                    '{',
+                    '    if (*len >= BW_LIST_CAPACITY) bw_list_overflow();',
+                    '    data[*len] = value; *len = *len + 1u;',
+                    '}',
+                    'static void bw_list_delete(int *data, unsigned *len, int index)',
+                    '{',
+                    '    unsigned i;',
+                    '    if (index < 1 || (unsigned)index > *len) return;',
+                    '    for (i = (unsigned)index; i < *len; ++i) data[i - 1u] = data[i];',
+                    '    *len = *len - 1u;',
+                    '}',
+                    'static void bw_list_insert(int *data, unsigned *len, int index, int value)',
+                    '{',
+                    '    unsigned i;',
+                    '    if (index < 1 || (unsigned)index > *len + 1u) return;',
+                    '    if (*len >= BW_LIST_CAPACITY) bw_list_overflow();',
+                    '    i = *len; while (i >= (unsigned)index) { data[i] = data[i - 1u]; --i; }',
+                    '    data[(unsigned)index - 1u] = value; *len = *len + 1u;',
+                    '}',
+                    'static void bw_list_replace(int *data, unsigned len, int index, int value)',
+                    '{',
+                    '    if (index < 1 || (unsigned)index > len) return;',
+                    '    data[(unsigned)index - 1u] = value;',
+                    '}',
+                    ''
                 ] : []),
                 'static unsigned char bw_port_a = 0;   /* shadow of 8255 port A output latch */',
                 'static unsigned char bw_port_b = 0;   /* shadow of port B */',
@@ -15012,8 +15300,20 @@ class SB3Creator {
         if (this._core === 'i8086') {
             // Verbs with a real i8086 C branch are NOT a reason to refuse. As
             // each verb gains its 8086 bus, add it here (P2: shiftOut).
-            const I8086_IMPLEMENTED = new Set(['shiftOut', 'delay', 'printNumber']);
+            const I8086_IMPLEMENTED = new Set([
+                'shiftOut', 'delay', 'printNumber', 'printText', 'numericLists', 'random'
+            ]);
             const used = Object.keys(this._cUses).filter((k) => this._cUses[k] && !I8086_IMPLEMENTED.has(k));
+            if (this._cListRefused && this._cListRefused.length) {
+                const list = this._cListRefused.join(', ');
+                this.cWarn(`the 8086 C route supports bounded signed-16 numeric lists only; ${list}; no C is emitted`);
+                return `/* No C emitted for DEVICE ${String(device || 'i8086').toUpperCase()}.\n`
+                    + ' *\n'
+                    + ' * The 8086 C list boundary is 32 signed-16 items per list and 990 bytes total.\n'
+                    + ` * This program supplies: ${list}.\n`
+                    + ' * Invalid indices are checked; overflow and non-numeric values are refused.\n'
+                    + ' */\n';
+            }
             // Report an unsafe print value before the broader feature choke.
             // A second script may both poison the value provenance and use a
             // still-unimplemented verb; the type-safety refusal is the cause

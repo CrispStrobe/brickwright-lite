@@ -65,10 +65,12 @@ const rel = (p) => path.relative(root, p);
 
 const FAMS = Object.values(FAMILY);   // ['8051','avr','6502','z80','arm']
 // Utility/output flags are not physical-part verbs. Keep both historical
-// `print` and the bounded numeric helper's `printNumber` here: adding either to
-// a part profile would invent a bus capability merely to satisfy the census.
+// `print`, the bounded helpers' `printNumber`/`printText`, and the
+// language-level `numericLists`/`random` markers here: adding any of them to a
+// part profile would invent a bus capability merely to satisfy the census.
 const CONTROL = new Set([
-    'delay', 'blockDelay', 'blockingDelay', 'now', 'print', 'printNumber', 'table', 'devices'
+    'delay', 'blockDelay', 'blockingDelay', 'now', 'print', 'printNumber', 'printText',
+    'numericLists', 'random', 'table', 'devices'
 ]);
 // A branch that warns or emits a "no <thing> on this machine" stub is a refusal,
 // not an implementation.

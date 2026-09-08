@@ -15,47 +15,37 @@ This document turns the product review into an ordered implementation plan.
 completed and rejected work. This file defines outcomes, sequencing and release
 gates.
 
-## Next-session priorities — reconciled 2026-09-07
+## Next-session priorities — reconciled 2026-09-08
 
-This shortlist is reconciled with `main` at `e6037bc84`. `HISTORY.md` holds the
-completed and rejected work; `LANES.md` is the live ownership authority.
+This shortlist is reconciled with `main` at `c77563dbf`. Completed and rejected
+work, including the payload sequence and N2b–N2f, is recorded in `HISTORY.md`;
+`LANES.md` remains the live ownership authority.
 
-The payload sequence is closed. Its fixed gates and receipts remain binding:
+The current base includes the separately downloaded GPL SDCC toolchain and its
+CLI/UI manager, the complete i8086 example/emitter re-sync, corrected LED
+polarity on both circuit surfaces, an audible TONE path, and bounded 8086 C
+numeric lists, deterministic signed-16 random selection, and literal DOS output.
+Pin changes remain chains: sync the exact green upstream SHA,
+update every dual-tracked mirror, and re-derive every artifact that stamps the
+pin. A green behavior probe does not make stale provenance acceptable.
 
-| Track | Verdict and retained evidence |
-|---|---|
-| P18 Connection-modal deferral | Rejected. Run `34059625658` emitted a 75,446-byte named asset, 1,354 bytes below the 76,800-byte floor; retry UI also failed. Production remains eager. |
-| P19 scratch-storage worker deferral | Rejected at attribution. The conservative worker closure was 32,773 bytes, 44,027 below the floor; no candidate was built. |
-| P20 Scratch 1 converter deferral | Rejected. Run `34058754836` emitted 43,171 bytes / 14,086 gzip, below the floor; production was reverted. |
-| P21 PseudocodeImporter deferral | Completed in the promoted series ending `68a726c35`; activation and exact-receipt gates cover the lazy route. |
-| P22 8086 benchmark integrity | Completed at `da4d30b0c`. The CPU-bound benchmark measures about 2.02x on desktop, mobile and 4x-throttled profiles; 4x pump p95 is 7 ms and every pump is at most 22.3172 ms. Worker/JIT/batching stay deferred until three repeat runs measure either less than 1.0x or more than 8 ms pump p95. |
-| Track A GUI test source authority | Completed at `60ecb4d89`; hosted run `34087062528` passed all four jobs with 2,821 tests passing. Root tests use owned overlay sources while the prepared GUI supplies dependency and build scope. |
-| N2b 8086 C numeric model | Completed through `3d84eef62`. C uses a stated 16-bit `int` and refuses literals outside -32768..32767; ASM retains 32-bit pairs. The value-level differential keeps that width disagreement explicit. |
-
-Subsequent CI and vendor work through `e6037bc84` added per-branch concurrency,
-advanced the bw-board pin chain through `d5850e6`, protected absent-by-design
-vendor files, synchronized the reseat gate, and shipped all seven previously
-missing i8086 preset ROMs with provenance and observable boot gates. A pin sync
-now requires `--pin`, and upstream CI on the pinned SHA is a prerequisite for a
-Lite pin run.
-
-The next work is correctness work with one claim per bounded session:
+The next work stays serialized, with one bounded claim per session:
 
 | Order | Bounded track | Ownership and acceptance boundary |
 |---|---|---|
-| 1 | N2c: `wait` on the 8086 C route | Claimed by bwcx on `lane/n2c-i8086-c-wait`. Measure PIT-backed and calibrated-loop choices against ASM `BW_DELAY`; implement upstream, prove other targets byte-stable, vendor through the pin chain, and require a mutation-proved C/ASM PIT-tick differential on the DOS bench. Re-run the 280-program reach measurement. |
-| 2 | Milestone 0 circuit-variant electrical equivalence | Selection remains coordinator-controlled. Claim one exact circuit family or invariant; acceptance must compare the electrical state the solver produces, beyond render legibility. |
-| 3 | P3 MicroPython protocol-driver coverage | Part 1 is owned by worker. Later sessions start from its generator-versus-reader measurement and claim one remaining driver family with a differential oracle. |
-| 3b | LED polarity: the retarget rewrites the declaration and the bench never follows | Unclaimed. 174 of 792 decidable readings are inverted across 21 examples, measured against `f17f5c22e` by `scripts/led-polarity-census.mjs`, which refuses to print a number until four mutations have been seen to fail. ONE defect with two faces, both measured at the source: retargeting an 8051-authored example to a push-pull target DROPS `ACTIVE LOW` (72 rows in `06-active-low-high`, `32-source-vs-sink`, `46-port-overcurrent` — the three examples whose whole subject is sinking), and retargeting an Arduino-authored example to an 8051 ADDS it (102 rows in 18 examples). Both rewrites are individually right; the benches come from `scripts/lib/authored-transform.mjs`, which preserves the authored topology and does not move with them. Producer: `CrispStrobe/sb3-creator` `scripts/gen-device-benches.mjs`; both netlist inferrers were asked directly and neither is wrong. **Direction settled: the transform follows the declaration**, because the retarget's rewrites are individually correct and stopping them would leave a learner on an Uno reading a declaration that misdescribes their own chip — wrong on its own terms rather than wrong against something else — and because the declaration already states which level lights the LED, so the transform has a fact to follow rather than a rule to invent. **Open question for the owner, not blocking:** for the three examples whose subject IS the sinking asymmetry, retargeting them at all is questionable — an example that teaches an 8051 quirk, retargeted to a part without that quirk, has had its lesson removed rather than translated, and a correctly wired bench does not restore it. Acceptance: the transform follows the retargeted declaration, and the census re-run at the new sha reads zero — it then becomes a gate and ratchets downward only. **`docs/EXAMPLE-CORPUS-FINDINGS.md` keeps the four earlier wrong numbers (230, 13, 52, and the 65 unloadable benches) with what each got wrong; read that before re-measuring anything here.** |
-| 4 | Pin and CI follow-ups | T9/T9b, N3d, P6/P6a and the bw-board pin chain are already owned. The seven preset-ROM paths are complete at `30897d5c7` / `e6037bc84`. Remaining commits stay in their existing lanes; later work begins only after a released claim identifies a boundary. |
+| 1 | Retire one declared `bw-board` divergence | Coordinator selects one small file. Re-measure against the current `6145e8a` pin, read both sides, upstream or deliberately retire the Lite delta, then require the executable manifest to reject the old declaration. The current inventory has 19 declared `bw-board` files; trimmed-line counts locate work but do not establish which side is correct. |
+| 2 | Milestone 0 circuit-variant electrical equivalence | Coordinator selects one exact circuit family or invariant. Execute both relevant surfaces through the real solver, assert the electrical state, and mutation-prove a meaningful connectivity, polarity, or part-value change. State the covered and uncovered variants in the receipt. |
 
-Two corrected premises remain explicit. The DOS bench can produce chip refusals:
-its 8255 is at port 60h, while the earlier probe used 03h. The shipped browser
-Pico transport drains between packets; the missing `drain()` affects only the
-Node oracle tracked as N3d. Do not revive P18–P20 without new attribution evidence.
+One product decision remains with the owner: `06-active-low-high`,
+`32-source-vs-sink`, and `46-port-overcurrent` are now wired correctly after
+retargeting, but targets without sinking asymmetry cannot teach that lesson.
+Decide whether those targets should remain eligible before opening a content
+edit.
 
-Keep full Technic simulation, wholesale cycle-core replacement, broad language
-expansion and framework migration in their existing longer-term plans.
+Do not revive P18–P20 without new attribution evidence. Their fixed 76,800-byte
+stop gate and rejected measurements remain in `HISTORY.md`. Keep full Technic
+simulation, wholesale cycle-core replacement, broad language expansion, and
+framework migration in their longer-term plans.
 
 ## How this plan is executed
 
@@ -1503,3 +1493,26 @@ the system is already saturated. `BW_MAX_LOAD_PER_CPU` can tune the threshold;
   legibility, the voltage overlay, three-pane lessons, dock-preserved execution,
   green-flag/SIM start, and the retro-machine serial workflow, and is
   `WAITING_FOR_REVIEW` in the public group.
+
+## N2e — bounded numeric lists on the 8086 C route (2026-09-08)
+
+This lane moved the Lite pin to upstream `sb3-creator` `8c17dfa898f80a875e2a4bf044144564f8a4cebc`,
+whose exact-head and promoted-main CI runs are green. The route admits numeric Scratch lists only under an
+explicit fixed-memory contract: signed-16 elements, 32 items per list, at most 15 lists (990 bytes of static
+state), checked one-based indices, zero for invalid reads, and no-op invalid delete/insert/replace. Full-list
+add/insert traps rather than silently dropping data. Every initial value and value-producing write must pass
+the conservative numeric-provenance proof; ambiguous identity or storage refuses the whole C output.
+
+The downstream acceptance executes the emitted C through SmallerC and the 80186 assembler, then runs the
+actual `.COM` on the DOS bench. Its visible rows equal an independent JavaScript array model across delete
+all, add, insert, replace, delete, item and length. A zero-based-read mutation changes those rows. A silent
+dropped-write mutation terminates and prints forbidden length `32`, while the real full-list write remains in
+the overflow trap and prints nothing. The ceiling fixture compiles all 15×32 values into a 1,618-byte image,
+leaving 63,662 bytes above the load image in the 64 KiB `.COM` segment before stack use.
+
+Reach is unchanged, by measurement rather than expectation. Among 281 upstream programs only
+`arduino-03-smoothing` declares/uses a list (delete-all 1, add 1, item 2, replace 1); numeric-list lowering
+crosses, but unsupported ADC still refuses the program. The existing numeric-print census remains four
+direct emitted programs and broad reach 46. N2e is therefore a semantics prerequisite, not a claimed reach
+increase. The ASM route remains deliberately list-free; duplicating production logic merely to construct an
+oracle would weaken the evidence.

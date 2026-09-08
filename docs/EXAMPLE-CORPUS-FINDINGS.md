@@ -227,9 +227,67 @@ which reports nothing until four mutations have been seen to fail. It is not a
 gate yet; it becomes one when the defect below is repaired, and then it ratchets
 downward only.
 
-> **174 inverted of 792 decidable readings, in 21 examples.** 847 declared-pin
+> **174 inverted of 792 decidable readings, in 19 examples.** 847 declared-pin
 > readings were attempted and 55 could not be decided. Every bench in the corpus
 > loaded.
+
+**`21` was the earlier figure here and it was wrong — not a second measurement,
+just an addition.** The two rows of the table below hold 3 examples and 18, and
+`3 + 18` double-counts **`06-active-low-high`** and **`32-source-vs-sink`**, each
+of which shows one polarity face on push-pull targets (8 rows apiece) and the
+opposite face on the 8051s (2 rows apiece). `46-port-overcurrent` appears in the
+first row only. The union of the two rows is **19**, derived by grouping every
+inverted row the census printed rather than by summing the group sizes. The row
+counts (72, 102, 174) were never affected.
+
+Re-run on 2026-09-08 against lite `1d849ee9b` the census reads 846 attempted and
+54 not reached for the same 792 decidable — one row moved out of the undecidable
+bucket since `f17f5c22e`. The 792 and the 174 are unchanged.
+
+### The denominator was total over one of two families
+
+**Repaired 2026-09-08; both surfaces now read 0 inverted.** The fix is upstream at
+sb3-creator `6bda3b3` and pinned here.
+
+The repair itself exposed a defect in this instrument, and it is the more
+durable finding. An example ships its per-device bench as
+`circuit.<device>.json` AND a board-free twin as `circuit-flat.<device>.json`,
+and the app renders whichever the lesson asks for. This census selected files
+with `/^circuit\.([\w.-]+)\.json$/`, so **its denominator was defined by
+spelling**, and it was total over one of the two families. When 69 benches were
+re-wired to their target's polarity, the census read 0 inverted and was right
+about everything it could see — while 66 flat twins still carried the old
+wiring. Upstream CI's flat-twin gate caught them; this census could not have.
+
+Both surfaces are measured now, each with its own mutation proof, and the two
+numbers are neither summed nor compared for equality — they answer about
+different files, and an example may ship a twin for one device and not another:
+
+| surface | decidable | inverted |
+| --- | --- | --- |
+| `circuit.<device>.json` | 792 | 0 |
+| `circuit-flat.<device>.json` | 714 | 0 |
+
+Extending the census was not a one-line change, and the reason is worth keeping.
+The `invertLeds` mutation was a **no-op on every flat twin**, so the census
+correctly reported MISSED and refused to publish — the right refusal for the
+wrong reason: the instrument was at fault, not the surface. Three separate
+causes, each sufficient on its own:
+
+- **Wire dialect.** A seated bench writes `{from: 'led1', fromTerminal:
+  'anode'}`; a flat twin writes `{from: {part: 'LED_led1', terminal: 'anode'}}`.
+  The mutation tested `ledIds.has(w.from)`, false for an object, so no LED
+  terminal was ever flipped there.
+- **Case.** The rail rename looked the terminal up in `{vcc, gnd}` as written. A
+  rail PART spells its terminal `vcc`; a board spells its own `VCC`/`GND`.
+- **Spelling.** `arduino_uno` calls its positive rail `5v`, not `vcc`. Renaming
+  its `gnd` to `vcc` would name a terminal the part does not have, so the
+  circuit would fail to LOAD rather than invert — and a mutation that breaks a
+  bench looks identical to one that flips it in a MISSED/caught line.
+
+Fired on purpose: reverting one flat twin to its pre-fix content makes the flat
+surface report `INVERTED: 1`, named by example, device and pin. Before this
+change that same revert was invisible.
 
 ### One defect with two faces
 
@@ -238,8 +296,9 @@ both directions, and the bench transform never follows it. Measured, not inferre
 
 | direction | what the retarget does | rows | examples |
 | --- | --- | --- | --- |
-| 8051-authored → push-pull target | DROPS `ACTIVE LOW` | 72 | `06-active-low-high`, `32-source-vs-sink`, `46-port-overcurrent` |
-| Arduino-authored → 8051 target | ADDS `ACTIVE LOW` | 102 | 18, mostly the `arduino-*` ports |
+| 8051-authored → push-pull target | DROPS `ACTIVE LOW` | 72 | 3: `06-active-low-high`, `32-source-vs-sink`, `46-port-overcurrent` |
+| Arduino-authored → 8051 target | ADDS `ACTIVE LOW` | 102 | 18, mostly the `arduino-*` ports — including 2 from the row above |
+| **union** | | **174** | **19** |
 
 Both rewrites are individually defensible. A quasi-bidirectional 8051 pin sinks
 20 mA and sources about 230 µA, so an LED belongs on the sinking side there and
