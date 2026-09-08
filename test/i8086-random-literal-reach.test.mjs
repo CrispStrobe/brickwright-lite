@@ -54,7 +54,7 @@ const integerRandomEdges = [{
     inputName: 'VALUE'
 }];
 
-test('N2f blocker neutralisation proves device 47 -> 48 and mixed generation 78 -> 79',
+test('N2f production holds device 48 and mixed generation 79 without neutralisation',
     {timeout: 120000}, async () => {
         const report = await measureN2f({examples});
         assert.equal(report.schema, 'n2f-i8086-random-literal-reach-v1');
@@ -68,15 +68,16 @@ test('N2f blocker neutralisation proves device 47 -> 48 and mixed generation 78 
         });
         assert.deepEqual(report.variants.baseline.counts, {
             programs: 281, retargetRefused: 131, parsed: 150, parseFailed: 0,
-            refused: 72, generatedHost: 31, generatedDevice: 47, generatedTotal: 78
+            refused: 71, generatedHost: 31, generatedDevice: 48, generatedTotal: 79
         });
-        assert.equal(report.variants.literalOnly.counts.generatedTotal, 78);
-        assert.deepEqual(report.delta.literalOnly, [], 'literal output alone gained a program');
-        assert.equal(report.variants.randomOnly.counts.generatedTotal, 78);
-        assert.deepEqual(report.delta.randomOnly, [], 'random alone gained a program');
+        assert.equal(report.variants.literalOnly.counts.generatedTotal, 79);
+        assert.deepEqual(report.delta.literalOnly, [], 'literal neutralisation changed production reach');
+        assert.equal(report.variants.randomOnly.counts.generatedTotal, 79);
+        assert.deepEqual(report.delta.randomOnly, [], 'random neutralisation changed production reach');
         assert.equal(report.variants.randomAndLiteral.counts.generatedTotal, 79);
         assert.equal(report.variants.randomAndLiteral.counts.generatedDevice, 48);
-        assert.deepEqual(report.delta.randomAndLiteral, ['arduino-sk-p11-crystal-ball']);
+        assert.deepEqual(report.delta.randomAndLiteral, [],
+            'combined neutralisation changed production reach');
         assert.deepEqual(report.transforms.randomAndLiteral.integerRandomEdges, integerRandomEdges,
             'the parsed random candidate edge changed');
         assert.deepEqual(report.transforms.randomAndLiteral.literalPrintBlocks, literalPrintBlocks,
@@ -99,9 +100,10 @@ test('N2f blocker neutralisation proves device 47 -> 48 and mixed generation 78 
                 `${name} did not terminate at the ADC feature wall`);
         }
         const crystal = report.literalFallthrough['arduino-sk-p11-crystal-ball'];
-        assert.equal(crystal.outcome, 'refused');
-        assert.ok(crystal.refusals._cLoweringRefused.some(reason => reason.includes('pick random 1 to 8')),
-            'literal neutralisation did not expose crystal-ball random lowering');
+        assert.equal(crystal.outcome, 'deviceC');
+        assert.equal(Object.values(crystal.refusals).every(reasons => reasons.length === 0), true);
+        assert.ok(crystal.activeUses.includes('random'),
+            'literal neutralisation lost the released crystal-ball random lowering');
         assert.equal(report.compile.status, 'deferred-to-hosted-ci');
     });
 
@@ -146,11 +148,11 @@ test('the refusal census derives every bucket from production source and an omit
             '  print "Yes"'
         ].join('\n');
         const result = analyzeProgram(SB3Creator, minimal, discovered);
-        assert.equal(result.outcome, 'refused');
+        assert.equal(result.outcome, 'deviceC');
         assert.deepEqual(discoverRuntimeRefusalBuckets(Object.assign({},
             Object.fromEntries(discovered.map(name => [name, []])))), discovered);
-        assert.deepEqual(result.refusals._cPrintRefused,
-            ['text-mode print is outside the numeric-only i8086 C print boundary']);
+        assert.deepEqual(result.refusals._cPrintRefused, []);
+        assert.ok(result.activeUses.includes('printText'));
     });
 
 test('candidate deterministic integer RNG is inclusive, repeatable and normalises reversed bounds', () => {
@@ -199,23 +201,23 @@ test('candidate deterministic integer RNG is inclusive, repeatable and normalise
     assert.throws(() => n2fRandomInt16(0, 0.5, 1), /integer/);
 });
 
-test('hosted CI compile-backs every prospective DEVICE C body', {skip: !process.env.CI, timeout: 300000},
+test('hosted CI compile-backs every production DEVICE C body', {skip: !process.env.CI, timeout: 300000},
     async () => {
         const report = await measureN2f({examples, compile: true});
-        assert.equal(report.compile.baseline.compiled.length, 47);
+        assert.equal(report.compile.baseline.compiled.length, 48);
         assert.deepEqual(report.compile.baseline.failed, []);
-        assert.equal(report.compile.literalOnly.compiled.length, 47);
+        assert.equal(report.compile.literalOnly.compiled.length, 48);
         assert.deepEqual(report.compile.literalOnly.failed, []);
-        assert.equal(report.compile.randomOnly.compiled.length, 47);
+        assert.equal(report.compile.randomOnly.compiled.length, 48);
         assert.deepEqual(report.compile.randomOnly.failed, []);
         assert.equal(report.compile.randomAndLiteral.compiled.length, 48);
         assert.deepEqual(report.compile.randomAndLiteral.failed, []);
-        assert.equal(report.compile.uniqueDeviceBodies, 45,
-            'deduplicated compile cache changed from the 45 emitted device-C bodies');
+        assert.equal(report.compile.uniqueDeviceBodies, 48,
+            'four crystal-ball variants no longer add to the 44 shared device-C bodies');
         assert.deepEqual(report.compile.bodyDelta, {
-            baselineDistinct: 44,
+            baselineDistinct: 45,
             completeDistinct: 45,
             addedPrograms: ['arduino-sk-p11-crystal-ball'],
-            removedPrograms: []
-        }, 'the complete variant no longer adds exactly the crystal-ball device-C body');
+            removedPrograms: ['arduino-sk-p11-crystal-ball']
+        }, 'neutralising both released features did not replace exactly the crystal-ball body');
     });

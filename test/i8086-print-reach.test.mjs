@@ -30,7 +30,7 @@ test('the exact 281-program post-production print census is disjoint and exhaust
         assert.equal(relativeBytes, absoluteBytes,
             'equivalent corpus paths must produce byte-identical JSON');
         const report = JSON.parse(absoluteBytes);
-        assert.equal(report.schema, 'n2d-i8086-print-reach-v4');
+        assert.equal(report.schema, 'n2f-i8086-print-reach-v5');
         assert.equal(report.programs, 281);
         assert.deepEqual(report.source.operations, {say: 0, sayForSecs: 0, print: 83, total: 83});
         assert.deepEqual(report.source.values, {literalText: 27, numericLiteral: 0, computed: 56});
@@ -50,11 +50,11 @@ test('the exact 281-program post-production print census is disjoint and exhaust
         assert.equal(report.invariants.currentOutputCount, 41);
         assert.equal(report.invariants.currentOutputExhaustiveForSource, true);
         assert.deepEqual(report.currentOutput.counts,
-            {notReached: 0, hostC: 15, refused: 22, emitted: 4, commentOnly: 0});
+            {notReached: 0, hostC: 15, refused: 21, emitted: 5, commentOnly: 0});
         assert.deepEqual(report.terminalCounts, {
             retargetRefused: 131, parseFailed: 0, noOutputOpcode: 109, hostC: 15,
-            printRefused: 4, remainingChoke: 18, waitRefused: 0, int16Refused: 0,
-            longLeaked: 0, emitted: 4, commentOnly: 0
+            printRefused: 1, remainingChoke: 20, waitRefused: 0, int16Refused: 0,
+            longLeaked: 0, emitted: 5, commentOnly: 0
         });
         assert.equal(report.invariants.terminalCount, 281);
         assert.equal(report.invariants.terminalExhaustive, true);
@@ -72,7 +72,8 @@ test('the exact 281-program post-production print census is disjoint and exhaust
             'arduino-01-digital-read-serial',
             'arduino-02-digital-input-pullup',
             'arduino-02-state-change',
-            'arduino-06-ping'
+            'arduino-06-ping',
+            'arduino-sk-p11-crystal-ball'
         ]);
         const smoothingEvidence = report.numericListDependencyEvidence['arduino-03-smoothing'];
         assert.ok(smoothingEvidence.some(row => /ADC/.test(row)),
@@ -87,19 +88,15 @@ test('the exact 281-program post-production print census is disjoint and exhaust
             'the reach classifier contradicts the emitter by calling N2e list lowering unsupported');
         assert.match(report.printRefusalEvidence['arduino-08-string-addition'].reasons.join('\n'),
             /operator_join is string-valued/);
-        for (const name of ['arduino-05-switch-case', 'arduino-06-knock',
-            'arduino-sk-p11-crystal-ball']) {
-            assert.match(report.printRefusalEvidence[name].reasons.join('\n'), /text-mode print/,
-                `${name}: literal refusal lost its structured reason`);
+        for (const name of ['arduino-05-switch-case', 'arduino-06-knock']) {
+            assert.equal(Object.hasOwn(report.printRefusalEvidence, name), false,
+                `${name}: released literal output remained a print refusal instead of its ADC choke`);
         }
-        assert.ok(report.printRefusalEvidence['arduino-sk-p11-crystal-ball'].warnings
-            .some(row => row.includes('pick random 1 to 8')));
         assert.deepEqual(Object.keys(report.printRefusalEvidence), [
-            'arduino-05-switch-case',
-            'arduino-06-knock',
-            'arduino-08-string-addition',
-            'arduino-sk-p11-crystal-ball'
+            'arduino-08-string-addition'
         ]);
+        assert.ok(report.terminal.emitted.includes('arduino-sk-p11-crystal-ball'),
+            'N2f crystal-ball did not reach emitted terminal output');
         assert.equal(report.terminal.printRefused.every(row => row.includes(': ')), true,
             'numeric print refusals must retain their named reason');
         for (const obsolete of ['postChokeCandidates', 'printChokeEvidence']) {

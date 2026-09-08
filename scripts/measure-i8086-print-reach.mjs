@@ -209,10 +209,13 @@ for (const name of entries) {
     }
 
     // Keep this attribution aligned with generateC's I8086_IMPLEMENTED choke.
-    // N2e makes list lowering real even when another feature (ADC in smoothing)
-    // still refuses the whole program; reporting numericLists here would claim
-    // both "implemented" and "unsupported" for the same exact emitter.
-    const implemented = new Set(['shiftOut', 'delay', 'printNumber', 'numericLists']);
+    // N2e/N2f make list, direct-text and random lowering real even when another
+    // feature (ADC in smoothing/switch-case/knock) still refuses the whole
+    // program. Reporting those uses here would claim both "implemented" and
+    // "unsupported" for the same exact emitter.
+    const implemented = new Set([
+        'shiftOut', 'delay', 'printNumber', 'printText', 'numericLists', 'random'
+    ]);
     const remaining = Object.keys(creator._cUses || {})
         .filter(key => creator._cUses[key] && !implemented.has(key)).sort();
     const combination = remaining.length ? remaining.join(' + ') : 'none';
@@ -225,7 +228,9 @@ for (const name of entries) {
 
     const refused = /^\s*\/\* No C emitted for DEVICE/.test(code);
     if (refused) currentOutput.refused.push(name);
-    else if (creator._cUses && creator._cUses.printNumber) currentOutput.emitted.push(name);
+    else if (creator._cUses && (creator._cUses.printNumber || creator._cUses.printText)) {
+        currentOutput.emitted.push(name);
+    }
     else currentOutput.commentOnly.push(name);
 
     if (printDependsOnNumericList(creator.project)) {
@@ -256,7 +261,9 @@ for (const name of entries) {
         terminal.longLeaked.push(name);
         continue;
     }
-    if (creator._cUses && creator._cUses.printNumber) terminal.emitted.push(name);
+    if (creator._cUses && (creator._cUses.printNumber || creator._cUses.printText)) {
+        terminal.emitted.push(name);
+    }
     else terminal.commentOnly.push(name);
 }
 
@@ -270,7 +277,7 @@ const terminalCount = Object.values(terminal).reduce((sum, names) => sum + names
 const currentOutputCount = Object.values(currentOutput).reduce((sum, names) => sum + names.length, 0);
 const sourceOutputPrograms = programs - source.programBuckets.none.length;
 const report = {
-    schema: 'n2d-i8086-print-reach-v4', programs,
+    schema: 'n2f-i8086-print-reach-v5', programs,
     source: {...source, programCounts: countMap(source.programBuckets)},
     opcode: {...opcode, programCounts: countMap(opcode.programBuckets)},
     currentOutput: {...currentOutput, counts: countMap(currentOutput)},

@@ -44,7 +44,6 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> 8c17dfa on 2026-09-08: N2e adds bounded numeric lists only to the
     // i8086 C route. The SPIKE emitter is unchanged; this artifact is re-run
     // here rather than inferred from that scope statement.
-    assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
     // -> e3ecc205e on 2026-09-08: P3 part 3 adds servo and DC-motor MicroPython
     // drivers for the Pico (upstream PR #11). MEASURED, not assumed: the range
     // `8c17dfa..e3ecc205e` touches ONE source file and ZERO examples, so this is
@@ -54,7 +53,11 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // to within one `duty_u16` LSB of it rather than bit-exact, because the two
     // APIs have different resolutions over the 20 ms frame. Nothing in the SPIKE
     // emitter changed; the artifact assertions below were re-run at the new pin.
-        'e3ecc205eaae66e56d05b1dc054222ffbc2b2bba');
+    // -> 5a0d559 on 2026-09-08: N2f adds deterministic bounded random and
+    // direct-literal output to the i8086 C route. The SPIKE emitter is
+    // unchanged; this artifact is re-run here rather than inferred from scope.
+    assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
+        '5a0d5592be4c7586864babc1e72015aa819cd128');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

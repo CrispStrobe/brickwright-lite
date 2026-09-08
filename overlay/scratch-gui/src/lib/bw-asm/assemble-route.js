@@ -240,6 +240,11 @@ const C_STARTUP = [
  *                          advances exact machine time for that service.
  * `bw_print_num(n)`      — print one signed-16 decimal through DOS character
  *                          output, followed by CR then LF.
+ * `bw_print(text)`       — print a zero-terminated direct literal through the
+ *                          same DOS character-output door, then CR/LF.
+ * `bw_random(from, to)`  — deterministic inclusive signed-16 random with
+ *                          reversed/equal/full-span bounds and unbiased
+ *                          16x16 multiply-high rejection.
  *
  * Injected by compileC8086 ONLY when the compiled body references the symbol
  * (see below), so every program that calls none of these helpers is
@@ -324,6 +329,83 @@ const C_ROUTE_HELPERS = {
         '    pop bx',
         '    pop bp',
         '    ret'
+    ].join('\n') + '\n',
+    bw_print: [
+        '_bw_print:',            // void bw_print(const char *text)
+        '    push bp',
+        '    mov bp, sp',
+        '    push si',           // cdecl: SI is callee-saved
+        '    push dx',
+        '    mov si, [bp+4]',    // zero-terminated literal in the .COM image
+        'BW_CPT_CHAR:',
+        '    lodsb',
+        '    or al, al',
+        '    jz BW_CPT_CRLF',
+        '    mov dl, al',
+        '    mov ah, 02h',
+        '    int 21h',
+        '    jmp BW_CPT_CHAR',
+        'BW_CPT_CRLF:',
+        '    mov dl, 0Dh',
+        '    mov ah, 02h',
+        '    int 21h',
+        '    mov dl, 0Ah',
+        '    mov ah, 02h',
+        '    int 21h',
+        '    pop dx',
+        '    pop si',
+        '    pop bp',
+        '    ret'
+    ].join('\n') + '\n',
+    bw_random: [
+        '_bw_random:',           // int bw_random(int from, int to) -> AX
+        '    push bp',
+        '    mov bp, sp',
+        '    push bx',           // cdecl: BX, SI and DI are callee-saved
+        '    push si',
+        '    push di',
+        '    mov ax, [bp+4]',    // signed lower candidate
+        '    mov dx, [bp+6]',    // signed upper candidate
+        '    cmp ax, dx',
+        '    jle BW_CR_ORDERED',
+        '    xchg ax, dx',       // Scratch accepts reversed bounds
+        'BW_CR_ORDERED:',
+        '    mov si, ax',        // normalized signed minimum
+        '    mov bx, dx',
+        '    sub bx, ax',
+        '    inc bx',            // inclusive unsigned span; zero means 65536
+        '    jz BW_CR_FULL',
+        '    mov ax, bx',
+        '    neg ax',            // 2^16 - span in one 16-bit word
+        '    xor dx, dx',
+        '    div bx',            // DX = (2^16 - span) % span, rejection floor
+        '    mov di, dx',
+        'BW_CR_RETRY:',
+        '    mov ax, [_bw_random_state]',
+        '    mov cx, 25173',
+        '    mul cx',            // low word advances the full-period 16-bit LCG
+        '    add ax, 13849',
+        '    mov [_bw_random_state], ax',
+        '    mul bx',            // DX:AX = random16 * span
+        '    cmp ax, di',         // reject the biased low interval
+        '    jb BW_CR_RETRY',
+        '    mov ax, dx',         // multiply-high is the unbiased offset
+        '    jmp BW_CR_RESULT',
+        'BW_CR_FULL:',
+        '    mov ax, [_bw_random_state]',
+        '    mov cx, 25173',
+        '    mul cx',
+        '    add ax, 13849',
+        '    mov [_bw_random_state], ax',
+        'BW_CR_RESULT:',
+        '    add ax, si',         // map the unsigned offset onto signed minimum
+        '    pop di',
+        '    pop si',
+        '    pop bx',
+        '    pop bp',
+        '    ret',
+        '_bw_random_state:',
+        '    dw 04D3Dh'          // fixed, reviewed seed
     ].join('\n') + '\n'
 };
 
@@ -432,7 +514,7 @@ export async function compileC8086 (cSource, seams = {}) {
 
     // Conditional machine-helper injection: if the compiled body CALLS one of
     // the helpers (it will have emitted `call _bw_outb`, `call _bw_delay_ms`,
-    // `call _bw_print_num`,
+    // `call _bw_print_num`, `call _bw_print`, `call _bw_random`,
     // etc. and an `extern` for it), define the helper in this same image and
     // strip the extern. Only referenced helpers are added, so an unrelated
     // program assembles to exactly what it did before.
