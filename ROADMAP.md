@@ -119,7 +119,7 @@ outside this oracle.
 
 ### Track 4 — converge vendored sources without losing downstream behavior
 
-**Measured start:** at Lite `37f41c6da`, the executable inventories contain 20
+**Measured start:** at Lite `37f41c6da`, the executable inventories contained 20
 declared source forks: 18 in `bw-board`, one in `bw-circuit-ui`, and one in
 `sb3-creator`. They also contain 11 downstream-created placements. Licence
 copies and generated manifests belong downstream by construction and are not
@@ -128,8 +128,9 @@ upstream source candidates.
 **Current measured state:** `sb3-creator`'s `i8086_counter` fork and
 `bw-circuit-ui`'s `ExamplesBrowser`/`intro-doc` extraction are upstream. The
 guarded CUI sync at `e18dad586` measures 674/674 source files byte-identical
-and rejects either retired declaration if it returns. Eighteen source forks
-remain, all in `bw-board`; `bw-circuit-ui` and `sb3-creator` are at zero.
+and rejects either retired declaration if it returns. The AVR debug convergence
+at `f917c1f12` retired one board entry too: 17 source forks remain, all in
+`bw-board`; `bw-circuit-ui` and `sb3-creator` are at zero.
 
 **Execution order:** first make cross-repository CI clones immutable, beginning
 with the already claimed bw-circuit-ui lane. The two singleton forks were
