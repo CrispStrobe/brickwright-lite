@@ -520,9 +520,26 @@ WHEN flag clicked:
         record('default: the 8051 build DID reach the hosted compiler',
             hostedCompilerRequests.length > 0,
             hostedCompilerRequests.length ? hostedCompilerRequests.join(' | ') : 'no POST /compile');
-        const said = trace.join(' | ');
+        // READ THE PANEL, NOT THE TRACE. `trace` stores each line as
+        // `phase — panelText().slice(0, 110)`, and 110 characters of this panel
+        // is the button bar: "▶ Run ⏸ Pause ⏭ Step …". The status sits past it,
+        // so asserting against the trace tested the truncation, not the message
+        // — the third time tonight a window measured in CHARACTERS has decided
+        // a result (see shipped-lesson-images' 2200-char slice, and species 32's
+        // note on stand-ins). The trace is for humans reading a failure; the
+        // assertion reads the panel itself.
+        // TWO MESSAGES CAN BE SHOWING, and which one depends on how far the
+        // build got. The status line during the attempt reads "in-page 8051
+        // compiler not installed — using the compiler service"; the refusal
+        // after the blocked request reads "the in-page compiler is not
+        // installed, so this build needed the service at …". Requiring a phrase
+        // only one of them uses would fail on WORDING rather than on behaviour,
+        // so assert what both must carry: that it is not installed, and which
+        // service the build therefore needed.
+        const said = `${trace.join(' | ')} | ${await panelText()}`;
         record('default: and the app said which route it took',
-            /not installed/.test(said) && /compiler service/.test(said), said.slice(0, 200));
+            /not installed/.test(said) && /(compiler service|service at)/.test(said),
+            said.replace(/\s+/g, ' ').slice(-300));
         record('default: and named the way back',
             /\?localCompiler=on/.test(said),
             'a regression with no exit is a bug, not a trade');
