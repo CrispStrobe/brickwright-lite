@@ -27,8 +27,8 @@ const {localCompilerOptedOut} = await import(
     path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-debug/debug-runner.js'));
 
 /** A window stub: only the two surfaces the rule is allowed to read. */
-const win = (search = '', stored = null) => ({
-    location: {search},
+const win = (search = '', stored = null, hash = '') => ({
+    location: {search, hash},
     localStorage: {getItem: k => (k === 'bwLocalCompiler' ? stored : null)}
 });
 
@@ -57,6 +57,19 @@ test('?localCompiler=on forces the in-page compiler back on, overriding storage'
         'the URL is the more immediate statement of intent and must win');
     assert.equal(localCompilerOptedOut(win('?localCompiler=', 'off')), false,
         'an EMPTY value is present-but-unset: it must not read as "off"');
+});
+
+test('a compiler request after the lesson hash is honored', () => {
+    assert.equal(localCompilerOptedOut(win('', 'off', '#/lesson?localCompiler=on')), false,
+        'the visible lesson URL must be a working recovery route');
+    assert.equal(localCompilerOptedOut(win('', null, '#/lesson?localCompiler=off')), true,
+        'the hash-routed setting must work in both directions');
+    assert.equal(localCompilerOptedOut(
+        win('?localCompiler=off', null, '#/lesson?localCompiler=on')), true,
+    'an explicit page query takes precedence over the hash query');
+    assert.equal(localCompilerOptedOut(
+        win('?localCompiler=', 'off', '#/lesson?localCompiler=on')), false,
+    'an empty page placeholder must not swallow a real routed request');
 });
 
 test('the stored preference works when the URL says nothing', () => {
@@ -108,8 +121,8 @@ test('the rule is CONSULTED, and it guards the install — in both trees', () =>
         // gets a failure with no explanation and no exit.
         assert.match(guarded, /not installed[\s\S]*?compiler service/,
             `${tree}: the default-off path must name the route it took`);
-        assert.match(guarded, /\?localCompiler=on/,
-            `${tree}: and must name the way back — a regression with no exit is a bug`);
+        assert.match(guarded, /Settings[\s\S]*?C Compiler[\s\S]*?Download compiler/,
+            `${tree}: and must name the working settings route back`);
 
         // The predicate must be consulted BEFORE the install, not after it.
         const askedAt = guarded.indexOf('localToolchainEnabled()');
