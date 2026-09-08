@@ -7,15 +7,16 @@ import {chromium} from 'playwright';
 
 const root = resolve('.'), baseline = resolve(process.env.I8086_BASELINE || '.');
 const output = resolve('artifacts/i8086-execution');
+const variant = (process.env.I8086_BLOCK_MODE || 'devices').replace(/^devices-?/, '') || 'none';
 const sha = cwd => execFileSync('git',['rev-parse','HEAD'],{cwd,encoding:'utf8'}).trim();
-const identity = {baseline:sha(baseline),candidate:sha(root),runId:process.env.GITHUB_RUN_ID};
+const identity = {baseline:sha(baseline),candidate:sha(root),runId:process.env.GITHUB_RUN_ID,variant};
 const roots = {baseline, candidate:root};
 const server = createServer(async (req,res) => {
     try {
         const [,kind,...parts] = new URL(req.url,'http://localhost').pathname.split('/');
         if (!roots[kind]) { res.writeHead(404).end(); return; }
         if (!parts.join('/')) { res.end('<!doctype html><title>Device cost</title>'); return; }
-        const from = parts.join('/') === 'scripts/lib/i8086-device-workload.mjs' ? root : roots[kind];
+        const from = ['scripts/lib/i8086-device-workload.mjs','scripts/lib/i8086-device-candidates.mjs'].includes(parts.join('/')) ? root : roots[kind];
         const path = resolve(from,...parts);
         if (!path.startsWith(from+sep)) throw new Error('Path escape');
         res.setHeader('Content-Type','text/javascript'); res.end(await readFile(path));
@@ -35,10 +36,10 @@ try {
                 const page = await context.newPage(), cdp = await context.newCDPSession(page);
                 await cdp.send('Emulation.setCPUThrottlingRate',{rate});
                 await page.goto(`http://127.0.0.1:${server.address().port}/${kind}/`);
-                const result = await page.evaluate(async ({kind,name}) => {
+                const result = await page.evaluate(async ({kind,name,variant}) => {
                     const {setupDevices} = await import(`/${kind}/scripts/lib/i8086-device-workload.mjs`);
-                    const bench = setupDevices(name); bench.run(); return bench.run();
-                },{kind,name});
+                    const bench = setupDevices(name, kind === 'candidate' ? variant : 'none'); bench.run(); return bench.run();
+                },{kind,name,variant});
                 const state = JSON.stringify(result.state);
                 if (reference && reference !== state) throw new Error(`Device state/callback mismatch: ${name}`);
                 reference = state;

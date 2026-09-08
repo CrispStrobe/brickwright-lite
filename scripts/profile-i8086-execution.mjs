@@ -8,7 +8,7 @@ import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {chromium} from 'playwright';
 
-if (process.env.I8086_BLOCK_MODE === 'devices') {
+if (process.env.I8086_BLOCK_MODE?.startsWith('devices')) {
     await import('./profile-i8086-devices.mjs');
     process.exit(0);
 }

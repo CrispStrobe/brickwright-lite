@@ -1,10 +1,12 @@
 import {I8086Machine} from '../../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js';
 import {DOSBOX8086} from '../../overlay/scratch-gui/src/lib/bw-board/i8086-dos.js';
+import {installDeviceCandidate} from './i8086-device-candidates.mjs';
 
 export const deviceCases = ['dispatch', 'pit-idle', 'pit-active', 'pit-three', 'cga', 'pit-cga'];
 const instructionCycles = [4,8,12,16,25,10,17,3];
-export function setupDevices(name) {
+export function setupDevices(name, variant = 'none') {
     if (!deviceCases.includes(name)) throw new Error('Unknown device workload');
+    installDeviceCandidate(variant);
     const hasPit = name.startsWith('pit');
     const chips = [];
     if (hasPit) chips.push({kind:'pit', name:'pit1', at:0x40});
