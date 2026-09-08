@@ -547,13 +547,23 @@ WHEN flag clicked:
         // only one of them uses would fail on WORDING rather than on behaviour,
         // so assert what both must carry: that it is not installed, and which
         // service the build therefore needed.
-        const said = `${trace.join(' | ')} | ${await panelText()}`;
+        const said = `${trace.join(' | ')} | ${await panelText()}`.replace(/\s+/g, ' ');
+        // PRINT THE MATCH, NOT A SLICE OF THE HAYSTACK. The first green run
+        // reported this check as PASS with a detail showing the tail of the
+        // panel — "POSITION … Nothing to show yet" — which does not contain the
+        // phrase the check is about. The assertion was right and its evidence
+        // was unreadable, which is how a reader ends up trusting a check they
+        // cannot verify. Quote the sentence that matched.
+        const quote = (re, fallback) => {
+            const at = said.search(re);
+            return at === -1 ? fallback : said.slice(Math.max(0, at - 60), at + 140);
+        };
         record('default: and the app said which route it took',
             /not installed/.test(said) && /(compiler service|service at)/.test(said),
-            said.replace(/\s+/g, ' ').slice(-300));
+            quote(/not installed/, 'no "not installed" anywhere in the panel or trace'));
         record('default: and named the way back',
             /\?localCompiler=on/.test(said),
-            'a regression with no exit is a bug, not a trade');
+            quote(/\?localCompiler=on/, 'no ?localCompiler=on offered — a regression with no exit is a bug'));
 
         // STOP HERE. Everything below drives a live session — stepping, frames,
         // watchpoints — and presupposes a build that completed. In this mode
