@@ -90,6 +90,19 @@ control, or `devices-pit-index`, `devices-pit-cold`, `devices-cga-cache`, or
 runs full CPU/machine/runner layers and completed sorting programs against the
 promoted baseline. No rejected candidate was promoted to that acceptance stage.
 
+The full unchanged-runtime control at application `0b0e3de7a` passed in
+[run 34246553782](https://github.com/CrispStrobe/brickwright-lite/actions/runs/34246553782):
+300 workload observations across 30 comparisons, plus 60 completed-program
+observations. This validates the profiling harness, not a new speedup.
+The engine contract/tests at `4f72ff4` passed full
+[CI 34246446550](https://github.com/CrispStrobe/bw-board/actions/runs/34246446550),
+including units, CPU vectors and the program corpus.
+Application `0b0e3de7a` also passed
+[CI 34246564642](https://github.com/CrispStrobe/brickwright-lite/actions/runs/34246564642):
+build/unit tests, corpus and both browser suites. Deployment was skipped.
+The closing commits only record these receipts and release the research lanes;
+neither branch was merged or deployed in this pass.
+
 The next useful investigation is the PIT counter's common active countdown
 path and its call/guard costs in a full mixed workload. Any revised candidate
 must first pass the per-tick oracle and instruction-observability contract,
