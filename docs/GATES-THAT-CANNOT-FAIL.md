@@ -2195,3 +2195,53 @@ writes, but the writes of whatever it invokes.
 **The general form, and it is one line:** a suite that runs files in parallel has
 no isolation the tests do not give it, so the question is never "does this test
 clean up" but **"does this test write anywhere another test reads."**
+
+## Thirty-sixth species: CHECKING ONE MECHANISM AND CONCLUDING ABOUT ALL OF THEM (2026-09-08, lego-ac and lego-be, one instance each)
+
+A negative result that is CORRECT, about a check that was RUN PROPERLY, and
+still wrong — because the thing it looked in is one of several ways for the
+answer to be yes. **"It is not in X, so it is not a Y"**, where X is one route
+to being a Y and nobody established it was the only one.
+
+Numbered separately from species 33 on purpose. Thirty-three is a PROXY: the
+predicate observes an event standing in for a state, and the two come apart.
+Here the predicate is exact and the SCOPE is assumed. Nothing about the check is
+wrong; what is wrong is the sentence built on top of it.
+
+**Two instances in one night, in opposite directions.**
+
+*A manifest is not the only way to be vendored.* An example gallery was not
+listed in any vendor manifest, and the conclusion drawn was that it was not
+vendored. It is vendored — by a sync script, `sync-examples.mjs`, which copies
+it from upstream and has its own `--check`. The manifest is one mechanism;
+scripts are another. The cost was a real divergence being attributed to the
+wrong lane.
+
+*A grep count is not a diagnosis.* `!check &&` appears twice each in three sync
+scripts, and the shape it produced in one of them — guards unreachable under the
+flag CI passes, so the exit code was decided by a list that is non-empty by
+construction — looked like it must generalise. It does not. Measured by RUNNING
+each `--check` against the correct upstream tree at the pin on a healthy
+repository and reading the exit code: two of six cannot pass, three genuinely
+pass, one fails for a real and fixable reason. A count would have said six.
+Reading the conditions would have said six too, since all six call
+`process.exit(1)`.
+
+**The tell, and it is a sentence shape rather than a code shape.** Whenever a
+conclusion has the form *not in X, therefore not a Y*, ask what else makes
+something a Y. If the answer needs a moment's thought, the conclusion is not
+established yet. The dangerous version reads as thorough: a real check was run,
+it returned a real answer, and the leap happens in the summary.
+
+**The remedy is to enumerate the mechanisms, not to widen the check.** For the
+vendored question that means: a manifest, a sync script, a generated mirror, a
+committed copy — four ways in, and a file that is not in the first is still
+vendored if any of the other three take it. For the `--check` question it means
+one measurement per script, because the scripts are the mechanisms and there is
+no property shared by all of them worth asserting.
+
+**A corollary about negatives, which the same night produced twice.** Three
+correct negatives about a red-then-green gate all pointed away from its cause
+(species 34), and they were still what made the cause findable, because they
+closed a family. A negative is worth exactly the scope it establishes. The
+failure here is not producing negatives; it is spending one outside its range.
