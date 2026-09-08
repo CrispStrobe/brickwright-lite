@@ -40,6 +40,9 @@ export const openVirtualSpikePanel = hubState => {
     card.appendChild(element('h2', {style: 'margin:0 0 6px'}, 'Virtual SPIKE Prime'));
     card.appendChild(element('p', {style: 'margin:0 0 14px;color:#596675'},
         'One simulated hub shared by modern BLE and Classic Scratch Link. Disconnect always stops its motors.'));
+    card.appendChild(element('p', {style: 'margin:0 0 14px;padding:10px;border-radius:8px;background:#fff4ce;' +
+        'color:#5d4700;border:1px solid #e0c45c'},
+    'Protocol simulation only. No LEGO, Pybricks, spike-nx, or TI firmware is downloaded or executed.'));
 
     const enabled = element('input', {type: 'checkbox'});
     enabled.checked = hubState.data.simulationEnabled;
