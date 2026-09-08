@@ -8,6 +8,7 @@ import HashParserHOC from '../lib/hash-parser-hoc.jsx';
 import log from '../lib/log.js';
 import initBleDiagnostics from '../lib/ble-diagnostics.js';
 import initCapabilityDiagnostics from '../lib/capability-diagnostics.js';
+import initToolchainManager from '../lib/toolchain-manager.js';
 import initScratchLinkTransport from '../lib/scratchlink-transport.js';
 import installNativeWebBluetooth from '../lib/native-web-bluetooth.js';
 import installVirtualWebBluetooth from '../lib/virtual-hub/web-bluetooth-shim.js';
@@ -50,6 +51,7 @@ export default appTarget => {
     initBleDiagnostics();
     initCapabilityDiagnostics();
 
+    initToolchainManager();
     // The Scratch Link carrier chooser (Settings › How Scratch Link connects…).
     // Registered early so the preference is readable before anything dials.
     initScratchLinkTransport();
