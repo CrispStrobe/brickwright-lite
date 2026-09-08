@@ -210,6 +210,6 @@ test('hosted CI compile-backs every prospective DEVICE C body', {skip: !process.
         assert.deepEqual(report.compile.randomOnly.failed, []);
         assert.equal(report.compile.randomAndLiteral.compiled.length, 48);
         assert.deepEqual(report.compile.randomAndLiteral.failed, []);
-        assert.equal(report.compile.uniqueDeviceBodies, 48,
-            'compile cache no longer matches the 47 baseline plus exactly one candidate');
+        assert.equal(report.compile.uniqueDeviceBodies, 45,
+            'deduplicated compile cache changed from the 45 emitted device-C bodies');
     });

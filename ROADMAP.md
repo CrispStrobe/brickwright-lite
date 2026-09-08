@@ -63,7 +63,9 @@ output through SmallerC → `.COM` → the DOS bench; mutate the random result o
 branch mapping and require a named failure. Other targets must remain
 byte-stable. Vendor the exact green upstream pin, update both mirrors and pin
 readers, and re-run the device compile census at exactly 48 while labelling the
-31 HOST-C programs separately. A warning, commented zero, or incomplete
+31 HOST-C programs separately. The current prospective set is 48 named device
+programs but 45 unique emitted C bodies; report both instead of treating a
+deduplicated compiler cache as a program count. A warning, commented zero, or incomplete
 lowering is a refusal rather than a compiled result.
 
 ### Track 2 — retire one declared `bw-board` divergence
