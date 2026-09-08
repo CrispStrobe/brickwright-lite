@@ -6,7 +6,7 @@ import {installRamWordExperiment} from '../scripts/lib/i8086-ram-experiment.mjs'
 test('guarded word access preserves wrap, ROM/open bus, video and installed observers', () => {
     for (const trace of [false,true]) for (const watched of [false,true]) {
         const pair = [false,true].map(fast => {
-            const machine = new I8086Machine({clockHz: 5e6, chips: [], regions: [
+            const machine = new I8086Machine({clockHz: 5e6, chips: [], fastWords: false, regions: [
                 {kind:'ram',start:0,end:0xbffff}, {kind:'rom',start:0xf0000,end:0xfffff}]});
             const events = [];
             if (fast) installRamWordExperiment(machine);

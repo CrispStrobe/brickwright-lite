@@ -86,6 +86,9 @@ export function setup(layer, workload = 'mixed', options = {}) {
     }
     const cpu = machine.cpu;
     if (layer === 'core') {
+        // A bare-core measurement excludes machine-installed word shortcuts.
+        // Replacing byte callbacks alone would instead measure their fallback.
+        delete cpu._rd16; delete cpu._wr16;
         cpu.read = address => machine.mem[address];
         cpu.write = (address, value) => { machine.mem[address] = value; };
     }

@@ -3,10 +3,15 @@
 // This is why this experiment is not automatically installed in production.
 export function createPitSchedulingExperiment(machine) {
     const list = machine._buildAdvanceList();
-    if (list.length !== 2 || list[1] !== 1 || !list[0].counters || list[0].counters.length !== 3) {
-        throw new Error('PIT scheduling experiment requires exactly one advancing PIT');
+    const pits = [], cards = [];
+    for (let i = 0; i < list.length; i += 2) {
+        const device = list[i];
+        if (list[i + 1] === 1 && device.counters?.length === 3) pits.push(device);
+        else if (list[i + 1] === 0 && device.constructor.name === 'CGACard') cards.push(device);
+        else throw new Error('PIT scheduling experiment refuses an unknown advancing device');
     }
-    const pit = list[0];
+    if (pits.length !== 1) throw new Error('PIT scheduling experiment requires one PIT');
+    const pit = pits[0];
     const stats = {deferredCalls:0,flushes:0};
     return {stats, run(fn) {
         let pending = 0;
@@ -39,6 +44,9 @@ export function createPitSchedulingExperiment(machine) {
         };
         for (const name of ['read','write','getState','setState']) barrier(pit,name);
         for (const counter of pit.counters) for (const name of ['setGate','read','writeData','writeControl','latchCount','latchStatus','getState','setState']) barrier(counter,name);
+        // CGA still advances at every instruction. Only its observation
+        // callback needs to materialize PIT time before entering host code.
+        for (const card of cards) barrier(card.hooks,'onVSync');
         for (const name of ['_in','_out','_serviceInterrupts','saveState']) barrier(machine,name);
         // Interrupt polling must not flush every instruction when no IRQ/NMI
         // is pending. Restore that particular wrapper with a conditional one.
