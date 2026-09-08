@@ -226,6 +226,48 @@ jobs:
         run: node brickwright-lite/scripts/sync-bw-board.mjs --check --dir bw-board --allow-stale
         if: always()
         continue-on-error: true
+      # THE TRANSPILER'S CHECK IS SOUND AND ITS ALLOWANCE IS NOT. Unlike the two
+      # steps above, sync-sb3creator.mjs --check EXITS 0 on a healthy tree and
+      # genuinely verifies its own transform: it flattens src/utils/<name>.js to
+      # src/lib/sb3-creator-<name>.js and rewrites the relative imports, and
+      # thirteen of the fourteen mapped files match after that rewrite. Byte
+      # identity against upstream would be the WRONG question here and would go
+      # red on the sync doing exactly what it is for -- which is why this tree
+      # is not a third corpus of test/vendor-identity.test.mjs.
+      #
+      # What it cannot say is which deltas are intended. `--allow-stale`, passed
+      # below, makes staleness non-fatal outright, so the permitted set is a
+      # COUNT: unbounded, unnamed and unreasoned. It prints "1 intentional
+      # downstream file delta(s) allowed" -- and a sync that half-finished and
+      # left five would print the same sentence with a 5 in it, the message
+      # itself calling the accident intentional.
+      #
+      # EXIT SEMANTICS: fails if and only if the set of files the sync reports
+      # STALE differs from the set declared in
+      # docs/VENDOR-DIVERGENCE-SB3-CREATOR.md -- in EITHER direction, so a delta
+      # that converges must leave the list rather than sit there forever.
+      - name: sb3-creator deltas are the declared ones
+        if: always()
+        run: |
+          set -euo pipefail
+          pins=brickwright-lite/vendor-pins.json
+          [ -f "$pins" ] || pins=lego/brickwright-lite/vendor-pins.json
+          pin=$(jq -r '.["sb3-creator"] // empty' "$pins")
+          case "$pin" in
+            [0-9a-f]*) [ ${#pin} -eq 40 ] || { echo "::error::sb3-creator pin is not a 40-hex sha: $pin"; exit 1; } ;;
+            *) echo "::error::no sb3-creator pin in $pins"; exit 1 ;;
+          esac
+          # Re-read HEAD rather than trust the checkout -- see the board-engine
+          # step for why a ::warning:: fallback is not a stop.
+          head=$(git -C sb3-creator rev-parse HEAD)
+          if [ "$head" != "$pin" ]; then
+            echo "::error::sb3-creator is at $head but vendor-pins.json says $pin -- the pinned checkout did not land, so this gate would judge the wrong tree"
+            exit 1
+          fi
+          cd brickwright-lite
+          SB3_CREATOR_DIR="$GITHUB_WORKSPACE/sb3-creator" node --test test/vendor-sb3creator-deltas.test.mjs
+
+      # Kept: it is the thing that verifies the transform, and it passes.
       - name: sb3-creator transpiler
         run: node brickwright-lite/scripts/sync-sb3creator.mjs --check --dir sb3-creator --allow-stale
         if: always()
