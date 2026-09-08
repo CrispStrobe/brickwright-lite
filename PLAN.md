@@ -89,6 +89,33 @@ Commercial-system targets are separate future projects with their own complete
 producer/consumer boundaries: video, audio, DMA, storage, controllers and ROM
 provenance. The CPU/SBC milestone must not claim any of them.
 
+Four concrete upstreams now narrow that plan. The MIT-licensed
+[`dirkwhoffmann/Moira`](https://github.com/dirkwhoffmann/Moira) core is the
+preferred **runtime spike**, because it already separates the CPU from its host,
+supports WebAssembly, exposes precise 68000 memory-access timing, address errors
+and disassembly, and does not require importing an Amiga machine. It is not yet
+the selected production core: GitHub CI must first build only the core as a
+full-SHA/content-hash-pinned downloadable WASM, measure compressed bytes, cold
+load, memory, throughput and callback overhead, and prove the neutral target and
+checkpoint ABI. The large tester/application tree is outside that licence and
+delivery decision.
+
+[`SingleStepTests/680x0`](https://github.com/SingleStepTests/680x0), the split
+successor to the archived ProcessorTests monorepo, is the preferred independent
+instruction-state and bus-activity oracle. It currently has no repository
+licence file, however, so its absence is a hard provenance stop: do not vendor,
+cache, redistribute or silently download the vectors until an explicit licence
+or maintainer permission covers that use. A pinned loader may be developed
+against synthetic fixtures meanwhile. The BSD-3-Clause
+[`74hc595/68k-nano`](https://github.com/74hc595/68k-nano) schematic, memory map,
+ROM, serial programs and debugger are a strong real-machine reference after the
+minimal MC6850 machine boots; first prove only reset and NS16C550 serial output,
+then treat CompactFlash, RTC, FAT16 and its intentional decode aliases as named
+follow-ons. [`AmiBlitz3`](https://github.com/AmiBlitz/AmiBlitz3) is not an SBC
+compiler candidate: its IDE requires AmigaOS and a 68020, its output and runtime
+are Amiga-oriented, and bundled components carry separate licences. Reconsider
+it only inside a later, dependency-complete Amiga compatibility project.
+
 ## How this plan is executed
 
 Work proceeds in the numbered order below. A milestone is complete only when its
