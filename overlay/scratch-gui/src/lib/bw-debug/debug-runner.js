@@ -352,6 +352,40 @@ export function selectDebugTargetKind(device, requested = 'emulator') {
 }
 
 /**
+ * Apply one write-watchpoint toggle without changing the target's address.
+ *
+ * The runner owns only the host-input shape. Each engine owns the bounds of
+ * its write address space and returns its own refusal sentence. Keeping those
+ * decisions separate lets a 20-bit target accept 0x1f000 without teaching the
+ * browser about one particular CPU's memory map.
+ *
+ * @param {object} options toggle inputs
+ * @param {object} options.target active debug target
+ * @param {Map<string, number>} options.watchBps accepted watchpoint handles
+ * @param {string} options.space target memory-space name
+ * @param {number} options.addr address supplied by the UI
+ * @returns {object} added, removed, or refused result
+ */
+export function toggleTargetWriteWatchpoint ({target, watchBps, space, addr}) {
+    if (!Number.isSafeInteger(addr) || addr < 0) {
+        return {refused: 'write watchpoint address must be a non-negative safe integer'};
+    }
+    const key = `${space}:${addr}`;
+    if (watchBps.has(key)) {
+        target.clearBreakpoint(watchBps.get(key));
+        watchBps.delete(key);
+        return {removed: true, space, addr};
+    }
+    const handle = target.setBreakpoint({kind: 'write', space, addr});
+    if (typeof handle !== 'number') {
+        // The target's own sentence, not a paraphrase of it.
+        return {refused: (handle && handle.unsupported) || 'the engine refused it'};
+    }
+    watchBps.set(key, handle);
+    return {added: true, space, addr, handle};
+}
+
+/**
  * @param {object} [opts.machineConfig] wired-extractor {regions, chips} from
  *   Build Machine (bw-machine-extracted) — threads into createDebugTarget
  *   so the bench boots the machine the user wired, not a hardcoded preset.
@@ -2848,24 +2882,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                     'this engine has no write watchpoints. Read the value between blocks ' +
                     'instead — and call that sampling, because it is.' };
             }
-            const a = addr & 0xFFFF;
-            const key = `${space}:${a}`;
-            if (watchBps.has(key)) {
-                target.clearBreakpoint(watchBps.get(key));
-                watchBps.delete(key);
+            const result = toggleTargetWriteWatchpoint({target, watchBps, space, addr});
+            if (result.added || result.removed) {
                 breakpointGeneration++;
                 emit();
-                return { removed: true, space, addr: a };
             }
-            const handle = target.setBreakpoint({ kind: 'write', space, addr: a });
-            if (typeof handle !== 'number') {
-                // The target's own sentence, not a paraphrase of it.
-                return { refused: (handle && handle.unsupported) || 'the engine refused it' };
-            }
-            watchBps.set(key, handle);
-            breakpointGeneration++;
-            emit();
-            return { added: true, space, addr: a, handle };
+            return result;
         },
 
         /**
