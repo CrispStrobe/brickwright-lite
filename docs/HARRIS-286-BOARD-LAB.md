@@ -55,13 +55,19 @@ Local results on 2026-09-08:
   47-instruction execution, bank/net inspection, JSON and file import, export and
   download, rejected backend preservation, pause, close and fresh disabled reopen.
 
-The browser script serves the actual lab modules in a small standalone harness.
-It does **not** test the surrounding React Settings dialog or a webpack build.
+Without `PROOF_URL`, the browser script serves the actual lab modules in a small
+standalone harness; that mode does **not** test React Settings or a webpack build.
+With `PROOF_URL`, it clicks the real Settings → diagnostics → 286 lab entry in
+the served application and verifies that the named engine chunk is fetched only
+after Enable. The build workflow now runs this mode in the light browser shard.
 For a separately installed Playwright, `PLAYWRIGHT_MODULE` may name its absolute
 ES module entry. Local unit verification used Node 20's
 `--experimental-default-type=module`; the application declares Node >=22.
-No full application build, full CI, deployment or hardware verification was run.
+The initial milestone did not run a full application build or full CI.
+Follow-up hosted run `34266037150` targets exact acceptance commit `8030218da`;
+its result must be checked independently, not inferred from the local panel pass.
+No deployment or hardware verification is part of this work.
 
-Next: full application-build acceptance and Circuit Editor part/topology mapping,
-including layout metadata and explicit rejection of unsupported editor devices.
+The [editor draft bridge](HARRIS-286-EDITOR-DRAFT.md) now defines strict part,
+layout and topology conversion; the visual editor surface is still pending.
 This lab must not silently load an ordinary project circuit as its fixed profile.

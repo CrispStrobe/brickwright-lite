@@ -1,7 +1,13 @@
 # 80286 circuit architecture and acceptance tests
 
-Status: proposed implementation contract, 2026-09-08. No new runtime is shipped.
+Status: staged implementation contract, 2026-09-08. The isolated application lab
+implements a limited wired CPU subset; the broader architecture below is still
+a requirements inventory, not a claim of complete support.
 Parent: [circuit-first plan](I80286-CIRCUIT-PLAN.md).
+
+Current application bridge: [experimental editor draft](HARRIS-286-EDITOR-DRAFT.md).
+It converts fixed-profile parts and wire endpoint formats without registering
+production editor devices or substituting a whole-PC emulator.
 
 ## Separation of responsibilities
 
