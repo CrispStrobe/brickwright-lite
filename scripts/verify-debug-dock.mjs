@@ -26,6 +26,7 @@ import {extname, join, normalize, resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createHash} from 'node:crypto';
 import {chromium} from 'playwright';
+import {typeIntoEditor} from './lib/type-into-editor.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const build = join(root, 'packages', 'scratch-gui', 'build');
@@ -176,11 +177,7 @@ try {
     check('no-pins coding: the shell says why it is empty', freshRight.noCodeHint || freshRight.hasDebugger,
         `noCodeHint=${freshRight.noCodeHint}`);
     await setDock(page, 'top');
-    const cm = page.locator('.cm-content').first();
-    await cm.click();
-    await page.keyboard.press('Control+a');
-    await page.keyboard.press('Backspace');
-    await page.keyboard.type('DEVICE STC12C5A60S2\nCLOCK 11059200\nPIN led1 = P1.0 OUTPUT ACTIVE LOW\n\nWHEN flag clicked:\n  FOREVER:\n    toggle led1\n    wait 0.15 seconds\n', {delay: 5});
+    await typeIntoEditor(page, 'DEVICE STC12C5A60S2\nCLOCK 11059200\nPIN led1 = P1.0 OUTPUT ACTIVE LOW\n\nWHEN flag clicked:\n  FOREVER:\n    toggle led1\n    wait 0.15 seconds\n');
     await page.locator('button', {hasText: 'To blocks'}).first().click({force: true});
     await page.waitForTimeout(1500);
     const liveControlWaits = await page.evaluate(() => {

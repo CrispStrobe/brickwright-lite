@@ -118,6 +118,11 @@ test('the hosted Code-entry proof selects the real DebugPanel marker', () => {
         'compile evidence hashes the generated C instead of logging its source');
     assert.match(browser, /liveControlWaits === 1/,
         'the hosted journey proves To blocks retained the authored wait in the live VM');
+    assert.match(browser, /import \{typeIntoEditor\} from '\.\/lib\/type-into-editor\.mjs'/);
+    assert.match(browser, /await typeIntoEditor\(page, 'DEVICE STC12C5A60S2/,
+        'the journey waits for CodeMirror state before asking To blocks to consume it');
+    assert.doesNotMatch(browser, /page\.keyboard\.type\(/,
+        'the unsynchronised browser typing path must not return');
     assert.match(browser, /block\.opcode === 'control_wait'/,
         'the live-project evidence counts the real Scratch wait opcode');
     assert.match(browser, /taskStorageLines: code\.split\('\\n'\)/,
