@@ -10,7 +10,10 @@ export function getI8086MemoryMode () {
 export function setI8086MemoryMode (mode) {
     if (!['optimized', 'reference'].includes(mode)) throw new Error('Unknown 8086 memory mode');
     sessionMode = mode;
-    try { globalThis.localStorage?.setItem(I8086_MEMORY_KEY, mode); return true; }
+    try {
+        if (!globalThis.localStorage) return false;
+        globalThis.localStorage.setItem(I8086_MEMORY_KEY, mode); return true;
+    }
     catch { return false; }
 }
 export function withI8086MemoryPreference (config) {

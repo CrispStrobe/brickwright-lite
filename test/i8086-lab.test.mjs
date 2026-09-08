@@ -61,3 +61,11 @@ test('reference preference affects new DOS and board machines, never existing ta
         else delete globalThis.localStorage;
     }
 });
+
+test('sandbox rejects a Wasm backend that claims execution without computing', async () => {
+    const Instance = WebAssembly.Instance;
+    try {
+        WebAssembly.Instance = class { constructor () { this.exports = {run: () => {}}; } };
+        await assert.rejects(compareSandbox({cycles: 100000}), /Correctness mismatch: wasm/);
+    } finally { WebAssembly.Instance = Instance; }
+});

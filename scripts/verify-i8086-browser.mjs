@@ -250,6 +250,10 @@ try {
     const rows = await page.getByTestId('i8086-lab-results').locator('tbody tr').allTextContents();
     record('bundled benchmark actually compares JS, decoded and Wasm with matching states',
         rows.length === 3 && rows.every(row => /matched/.test(row)) && rows.some(row => /wasm/.test(row)), rows.join(' | '));
+    const executionCounts = JSON.parse(await page.getByTestId('i8086-lab-results').locator('pre').textContent());
+    record('sandbox Wasm result contains real compiled-loop execution, not only fallback',
+        executionCounts.find(row => row.mode === 'wasm')?.samples.every(sample =>
+            sample.compilations > 0 && sample.loopIterations > 0));
     record('sandbox leaves the project target, registers, time and RAM unchanged', await page.evaluate(before => {
         const target = window.__benchTarget;
         return target === window.__labProjectTarget && before === JSON.stringify({regs: target.regs(),
