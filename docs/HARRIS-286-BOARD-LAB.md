@@ -65,7 +65,11 @@ ES module entry. Local unit verification used Node 20's
 `--experimental-default-type=module`; the application declares Node >=22.
 The initial milestone did not run a full application build or full CI.
 Follow-up hosted run `34266037150` targets exact acceptance commit `8030218da`;
-its result must be checked independently, not inferred from the local panel pass.
+both browser-shard editor builds succeeded and the light shard's experimental
+286 lab gate passed through the real Settings menu. The corpus job also passed.
+Other jobs were still running at this handoff: this is not an all-green full-CI
+receipt. The subsequent editor-draft bridge commit `895ae3b91` has local targeted
+coverage, not coverage from that earlier-SHA hosted run.
 No deployment or hardware verification is part of this work.
 
 The [editor draft bridge](HARRIS-286-EDITOR-DRAFT.md) now defines strict part,
