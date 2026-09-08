@@ -17,7 +17,7 @@ gates.
 
 ## Next-session priorities — reconciled 2026-09-08
 
-This shortlist is reconciled with `main` at `c64cca4be`. Completed and rejected
+This shortlist is reconciled with `main` at `0c5b1b398`. Completed and rejected
 work, including the payload sequence and N2b–N2e, is recorded in `HISTORY.md`;
 `LANES.md` remains the live ownership authority.
 
@@ -1496,7 +1496,7 @@ the system is already saturated. `BW_MAX_LOAD_PER_CPU` can tune the threshold;
 
 ## N2e — bounded numeric lists on the 8086 C route (2026-09-08)
 
-The Lite pin now follows upstream `sb3-creator` `8c17dfa898f80a875e2a4bf044144564f8a4cebc`,
+This lane moved the Lite pin to upstream `sb3-creator` `8c17dfa898f80a875e2a4bf044144564f8a4cebc`,
 whose exact-head and promoted-main CI runs are green. The route admits numeric Scratch lists only under an
 explicit fixed-memory contract: signed-16 elements, 32 items per list, at most 15 lists (990 bytes of static
 state), checked one-based indices, zero for invalid reads, and no-op invalid delete/insert/replace. Full-list
