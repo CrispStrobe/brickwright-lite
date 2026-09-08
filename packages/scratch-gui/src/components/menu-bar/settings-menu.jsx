@@ -166,6 +166,13 @@ const SettingsMenu = ({canChangeLanguage, canChangeTheme, isRtl, onRequestClose,
                             id="gui.menuBar.capabilityDiagnostics"
                         />
                     </MenuItem>
+                    <MenuItem onClick={() => { emit('bw-open-toolchain-manager'); onRequestClose(); }}>
+                        <FormattedMessage
+                            defaultMessage="C compiler for 8051 boards…"
+                            description="Settings item opening the SDCC toolchain download manager"
+                            id="gui.menuBar.toolchainManager"
+                        />
+                    </MenuItem>
                     <MenuItem onClick={() => { emit('bw-open-about'); onRequestClose(); }}>
                         About Brickwright…
                     </MenuItem>
