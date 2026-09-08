@@ -83,3 +83,7 @@ The [editor draft bridge](HARRIS-286-EDITOR-DRAFT.md) defines strict part,
 layout and topology conversion and now has a separate visual draft surface.
 This lab must not silently load an ordinary project circuit as its fixed profile.
 For execution priorities, see [DOS readiness](HARRIS-286-DOS-READINESS.md).
+
+Visual-editing follow-up: hosted run `34268635533` was queued at source commit
+`5e74286bc` after the local browser pass and policy repairs. Its result is pending,
+not an all-green CI receipt.
