@@ -9,18 +9,30 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
+import {mkdirSync, mkdtempSync, rmSync, writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+
+const ROOT = fileURLToPath(new URL('../', import.meta.url));
 
 export const trackedPackageExamples = files => files.filter(
     file => file.startsWith('packages/scratch-gui/examples/')
 );
 
+export const listTrackedPackageExamples = (repoRoot = ROOT) => {
+    // Pin the command to the repository root: Git resolves a relative pathspec
+    // from cwd, so an unpinned call made from test/ returns an empty success.
+    const tracked = execFileSync('git',
+        ['ls-files', 'packages/scratch-gui/examples/'],
+        {cwd: repoRoot, encoding: 'utf8'}).split('\n').filter(Boolean);
+    return trackedPackageExamples(tracked);
+};
+
 test('no gallery example is tracked under the generated packages tree', () => {
     // Git is the authority under test. A missing or failing executable throws;
     // it cannot be mistaken for an empty successful census. gate-shapes-allow
-    const tracked = execFileSync('git',
-        ['ls-files', 'packages/scratch-gui/examples/'], {encoding: 'utf8'})
-        .split('\n').filter(Boolean);
-    assert.deepEqual(trackedPackageExamples(tracked), [],
+    assert.deepEqual(listTrackedPackageExamples(), [],
         'packages/scratch-gui/examples is generated; untrack these files');
 });
 
@@ -29,4 +41,23 @@ test('the generated-gallery gate detects a force-added path by name', () => {
         'overlay/scratch-gui/examples/demo/program.bw',
         'packages/scratch-gui/examples/demo/program.bw'
     ]), ['packages/scratch-gui/examples/demo/program.bw']);
+});
+
+test('the Git census remains rooted when its caller starts in a subdirectory', () => {
+    const repo = mkdtempSync(path.join(tmpdir(), 'bw-package-examples-gate-'));
+    const nested = path.join(repo, 'test');
+    const tracked = 'packages/scratch-gui/examples/demo/program.bw';
+    const prior = process.cwd();
+    try {
+        mkdirSync(path.join(repo, path.dirname(tracked)), {recursive: true});
+        mkdirSync(nested);
+        writeFileSync(path.join(repo, tracked), 'demo\n');
+        execFileSync('git', ['init', '-q'], {cwd: repo});
+        execFileSync('git', ['add', '-f', '--', tracked], {cwd: repo});
+        process.chdir(nested);
+        assert.deepEqual(listTrackedPackageExamples(repo), [tracked]);
+    } finally {
+        process.chdir(prior);
+        rmSync(repo, {recursive: true, force: true});
+    }
 });
