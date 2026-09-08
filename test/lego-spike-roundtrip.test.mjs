@@ -45,7 +45,16 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // i8086 C route. The SPIKE emitter is unchanged; this artifact is re-run
     // here rather than inferred from that scope statement.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '8c17dfa898f80a875e2a4bf044144564f8a4cebc');
+    // -> e3ecc205e on 2026-09-08: P3 part 3 adds servo and DC-motor MicroPython
+    // drivers for the Pico (upstream PR #11). MEASURED, not assumed: the range
+    // `8c17dfa..e3ecc205e` touches ONE source file and ZERO examples, so this is
+    // the rare pin bump with no gallery churn — no re-sync, no polarity or
+    // flat-twin re-derivation. The servo/motor formula and clamp are rendered
+    // from one shared body with the C arm, and the MicroPython arm is asserted
+    // to within one `duty_u16` LSB of it rather than bit-exact, because the two
+    // APIs have different resolutions over the 20 ms frame. Nothing in the SPIKE
+    // emitter changed; the artifact assertions below were re-run at the new pin.
+        'e3ecc205eaae66e56d05b1dc054222ffbc2b2bba');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
