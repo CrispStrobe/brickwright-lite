@@ -117,9 +117,14 @@ const KNOWN_DEAD = new Map([
     ['lib/bw-circuit-ui/model/demo-netlist.js', {roadmap: '4.3',
         reason: 'Vendored; used only by bw-circuit-ui\'s standalone demo (main.jsx).'}],
     // export-png.js removed from KNOWN_DEAD: the lite export menu now imports it.
-    ['lib/bw-circuit-ui/model/simulation.js', {roadmap: '4.3',
-        reason: 'Vendored; lite drives the board through bw-board, not through ' +
-            'bw-circuit-ui\'s own simulation shim.'}],
+    // simulation.js removed from KNOWN_DEAD: CircuitDesigner.jsx has imported
+    // demoPinScriptApplies from it since the bw-circuit-ui c276c0d bump. The
+    // entry's reason -- lite drives the board through bw-board, not through
+    // bw-circuit-ui's simulation shim -- is still true of the SHIM, and the module
+    // is no longer only a shim: upstream moved the demo-blink-yields-to-a-program
+    // predicate into it, and the vendored designer imports that. The list was
+    // right to fail; a bump that revives a module is exactly when this entry has
+    // to go.
     // machine-extract.js removed from KNOWN_DEAD: now imported by upstream circuit-ui.
     // bw-board vendored tree: device-specific modules synced for completeness, wired when
     // the corresponding device target or debug view lands. Each is a leaf — nothing within
