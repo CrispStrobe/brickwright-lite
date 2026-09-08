@@ -60,12 +60,13 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // and deadline volatile so SDCC must give the debugger linked RAM symbols;
     // release 8051 output and every other target retain their prior policy.
     // The SPIKE artifact below was re-run and remains byte-for-byte unchanged.
-    // -> c593574 on 2026-09-08: the active-low lesson repair and its follow-up
-    // measurement corrections touch zero files under src/ across the exact
-    // 33ab265..c593574 range. The shared emitter therefore does not move; this
-    // assertion still forces the round-trip artifact to be checked at the pin.
+    // -> 9173ca75 on 2026-09-08: the active-low lesson repair and its follow-up
+    // measurement corrections touch zero files under src/ through c593574;
+    // the later range only converges the already-present examples catalogue
+    // and adds upstream tests. The compiler emitter therefore does not move,
+    // while this assertion still forces the round-trip artifact at the pin.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'c593574367179132aa193d7f5a4477c0299e3ab3');
+        '9173ca756a72e5be81578a084c4c783ebc5c267d');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

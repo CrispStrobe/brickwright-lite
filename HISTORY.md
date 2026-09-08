@@ -7,7 +7,8 @@ plan or roadmap. Detailed commit, CI and ownership evidence remains in Git and
 ## 2026-09-08
 
 - **The active-low lesson split reached Lite through the guarded sb3 corpus
-  pin** (upstream `c593574367179132aa193d7f5a4477c0299e3ab3`). Lessons 06,
+  pin** (content commit `c593574367179132aa193d7f5a4477c0299e3ab3`, shipped
+  pin `9173ca756a72e5be81578a084c4c783ebc5c267d`). Lessons 06,
   32, and 46 are architecture-specific and no longer advertise retargeted
   benches that erase their premise; lesson 56 provides the portable logical
   state versus electrical pin-level comparison across eleven devices. The
@@ -15,8 +16,11 @@ plan or roadmap. Detailed commit, CI and ownership evidence remains in Git and
   and bw-circuit-ui `59c4dce8b92f6f0cc8dea5b7be051530b6d779f9`, caught all four
   mutations on both surfaces and now reads 745 attempted / 54 undecided / 691
   agreeing / 0 inverted for seated benches, and 674 / 49 / 625 / 0 for flat
-  twins. The exact `33ab265..c593574` range changes zero `src/` files, so no
-  emitter content rode this pin move.
+  twins. The exact `33ab265..c593574` range changes zero `src/` files. The
+  subsequent `c593574..9173ca7` range converges the already-present
+  `i8086_counter` catalogue entry and adds only its upstream tests; the
+  normalized catalogue delta is 0/0 and the stale Lite divergence declaration
+  is retired. No emitter content rode either part of this pin move.
 - **Compiler recovery now follows routed lesson URLs and SIM mode cannot open
   part properties** (bw-circuit-ui upstream `59c4dce8b92f6f0cc8dea5b7be051530b6d779f9`,
   upstream run `34242742198`; Lite `37f41c6da8b4926337076b4f5be1e472090102dd`,

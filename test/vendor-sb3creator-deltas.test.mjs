@@ -6,13 +6,14 @@
  * getting that wrong would have been the easy mistake: sync-sb3creator.mjs
  * flattens `src/utils/<name>.js` to `src/lib/sb3-creator-<name>.js` and rewrites
  * the relative imports to match, so six of fourteen mapped files differ on disk
- * and five differ ONLY by that rewrite. A byte gate would go red on the sync
+ * and all five differ ONLY by that rewrite. A byte gate would go red on the sync
  * doing exactly what it exists to do.
  *
- * So the sync's own transform stays the authority -- it verifies thirteen of the
- * fourteen -- and this gate closes the hole the transform leaves.
+ * So the sync's own transform stays the authority -- at the 9173ca75 pin it
+ * verifies all fourteen -- and this gate keeps that empty stale set exact.
  *
- * THE HOLE. The fourteenth file is reported and waved through:
+ * THE HISTORICAL HOLE. Before i8086_counter converged upstream, the fourteenth
+ * file was reported and waved through:
  *
  *     STALE sb3-creator-examples.js  (differs from sb3-creator@main)
  *     1 intentional downstream file delta(s) allowed.
@@ -52,13 +53,15 @@ const declared = () => {
     return JSON.parse(m[1]);
 };
 
-test('the declared deltas each say what they are and what is lost', () => {
+test('the declared delta set is explicit and each entry says what it is and what is lost', () => {
     // The list is worth nothing if an entry can be a bare filename. Same
     // standard the absentByDesign entries are held to.
     const spec = declared();
     const entries = Object.entries(spec.deltas);
-    assert.ok(entries.length > 0, 'the delta list is empty -- if nothing diverges, say so in the ' +
-        'prose and delete this gate; an empty list that a count could grow past is worse than none');
+    if (entries.length === 0) {
+        assert.match(readFileSync(DOC, 'utf8'), /There are none at `9173ca75`/,
+            'an empty exact set must be stated in prose, not inferred from missing entries');
+    }
     for (const [file, e] of entries) {
         assert.ok(e.what && e.what.length > 40, `${file}: no description of WHAT the delta is`);
         assert.ok(e.falsifiable && e.falsifiable.length > 20,

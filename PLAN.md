@@ -36,11 +36,11 @@ The next work stays serialized, with one bounded claim per session:
 | Order | Bounded track | Ownership and acceptance boundary |
 |---|---|---|
 | 1 | Make every cross-repo CI input immutable | Finish the claimed bw-circuit-ui clone-pin lane, then census the other upstream repositories by clone site. A new clone must fail the derived gate until it receives one full 40-character reviewed SHA; corpus-derived pins remain the authority where they already bind sources to baselines. |
-| 2 | Retire the two singleton source forks upstream | Upstream `bw-circuit-ui`'s `ExamplesBrowser`/`intro-doc` extraction as one consumer-preserving change, then upstream `sb3-creator`'s `i8086_counter`. After each green upstream promotion, re-pin and sync Lite exactly and make the executable divergence inventory reject the retired entry. |
+| 2 | Retire the singleton source forks upstream | `sb3-creator`'s `i8086_counter` is upstream at `9173ca75`; this pin cycle removes its now-false declaration after the executable inventory reads 0/0. The remaining item is `bw-circuit-ui`'s `ExamplesBrowser`/`intro-doc` extraction as one consumer-preserving change, followed by an exact re-pin whose inventory rejects that retired entry. |
 | 3 | Retire the 18-file `bw-board` fork by dependency-complete units | The measured graph has one coupled ten-file unit and eight independent files; file size and `lineLevelOnly` status do not define review boundaries. Move complete producer/consumer contracts together, treat sync artefacts in the sync layer, relocate Lite-owned helpers that do not belong upstream, and re-pin only after each upstream and downstream gate chain is green. |
 
-The zero-divergence census is exact at this baseline: 20 declared source forks
-(18 `bw-board`, one `bw-circuit-ui`, one `sb3-creator`) and 11 downstream-created
+The zero-divergence census is exact at this candidate: 19 declared source forks
+(18 `bw-board`, one `bw-circuit-ui`, zero `sb3-creator`) and 11 downstream-created
 placements. Licence copies and generated manifests remain downstream by
 construction; eliminating divergence does not mean copying those artefacts into
 an upstream `src/` tree.
