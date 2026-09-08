@@ -59,6 +59,8 @@ import {existsSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 import {isHostedCompilerRequest} from './lib/offline-compiler-policy.mjs';
+import {GPL_TOOLCHAIN_ORIGIN as GPL_ORIGIN}
+    from '../overlay/scratch-gui/src/lib/sdcc-wasm/toolchain-source.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, '..');
@@ -131,6 +133,11 @@ const main = async () => {
     const browser = await chromium.launch();
     const page = await browser.newPage({viewport: {width: 1600, height: 1100}});
     const hostedCompilerRequests = [];
+    // WHERE THE TOOLCHAIN CAME FROM, recorded so the opt-in run can assert it
+    // rather than leave it inferred. Since 2026-09-07 no SDCC byte is in this
+    // build, so a successful local compile can only mean the GPL origin served
+    // it — but "can only mean" is reasoning, and this gate should measure.
+    const gplToolchainRequests = [];
     // Keep localhost available for the production bundle and its WASM assets,
     // but make the hosted compiler physically unreachable. Abort before the
     // request leaves Chromium and retain its URL as failure evidence.
@@ -142,10 +149,12 @@ const main = async () => {
     // of URLs that can reach `hostedCompilerRequests` is identical either way;
     // only the ones that could never have been recorded stop being routed.
     //
-    // Why it matters: this build pulls roughly 35 MB over localhost — a 14.7 MB
-    // vendor chunk, four SDCC wasm stages and a 3.3 MB runtime pack — and
-    // handing every one of those responses back through the driver is what took
-    // the renderer down. A dead renderer then loses the run's whole report,
+    // Why it matters: this build pulls tens of MB — a 14.7 MB vendor chunk over
+    // localhost, and (since the toolchain stopped shipping in this BSD-3 app)
+    // four SDCC wasm stages plus a 3.3 MB runtime pack from the GPL origin —
+    // and handing every one of those responses back through the driver is what
+    // took the renderer down. NOTE the change: those SDCC assets used to be
+    // local, and this comment said so until 2026-09-08. A dead renderer then loses the run's whole report,
     // which is the failure the crash handler below exists to name.
     const appOrigin = new URL(url).origin;
     await page.route(u => {
@@ -156,6 +165,11 @@ const main = async () => {
         if (isHostedCompilerRequest(route.request(), url)) {
             hostedCompilerRequests.push(route.request().url());
             return route.abort('blockedbyclient');
+        }
+        // Not blocked — the GPL toolchain must be reachable for the opt-in run
+        // to compile at all. Only recorded.
+        if (/\/static\/sdcc-wasm\//.test(route.request().url())) {
+            gplToolchainRequests.push(route.request().url());
         }
         return route.continue();
     });
@@ -578,6 +592,18 @@ WHEN flag clicked:
         console.log(`screenshots: ${SHOTS}`);
         process.exit(dfFailed.length ? 1 : 0);
     } else {
+        // THE LOCAL ROUTE, MEASURED RATHER THAN INFERRED. Nothing GPL is in this
+        // build, so an opt-in compile that reached no hosted service must have
+        // fetched the toolchain from its own GPL origin. Assert exactly that,
+        // because "must have" stops being true the moment someone reintroduces
+        // a bundled copy — and D2 alone would still pass if they did.
+        const fromGpl = gplToolchainRequests.filter(u => u.startsWith(GPL_ORIGIN));
+        record('the toolchain was fetched from the GPL origin, not from this app',
+            fromGpl.length > 0 && fromGpl.length === gplToolchainRequests.length,
+            gplToolchainRequests.length
+                ? `${fromGpl.length}/${gplToolchainRequests.length} from ${GPL_ORIGIN} — e.g. ${fromGpl[0] || gplToolchainRequests[0]}`
+                : 'no toolchain request seen at all — is it bundled again?');
+
         // Unchanged assertion, behind the opt-in above. A user who asks for the
         // in-page compiler still gets a build that touches no network.
         record('D2: the 8051 build made exactly zero hosted compiler requests',
