@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
+import {SPIKE_FIRMWARE_TARGETS} from './spike-hub-state.js';
+
 let panel = null;
 
 const element = (tag, attributes = {}, text = '') => {

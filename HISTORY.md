@@ -1,5 +1,10 @@
 # Brickwright Lite history
 
+- Replayed the SPIKE simulator work on current `main`: explicit compatibility
+  profiles, opt-in protocol simulation, pinned Classic extension sources, and
+  the bounded neutral Renode state bridge. Firmware binaries remain external
+  and are neither downloaded nor executed by this GUI simulation.
+
 Completed and rejected work moves here when it no longer belongs in the active
 plan or roadmap. Detailed commit, CI and ownership evidence remains in Git and
 `LANES.md`.

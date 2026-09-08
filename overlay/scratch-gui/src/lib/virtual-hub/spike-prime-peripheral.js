@@ -84,25 +84,26 @@ export class VirtualSpikePrimePeripheral {
         hubState = new VirtualSpikeHubState()} = {}) {
         this.id = id;
         this.name = name;
-        this.services = [{
+        this._legoServices = [{
             uuid: SPIKE_SERVICE,
             characteristics: [
                 {uuid: SPIKE_RX, properties: {write: true, writeWithoutResponse: true}},
                 {uuid: SPIKE_TX, properties: {notify: true}}
             ]
         }];
-        if (hubState.data.firmwareTarget === 'legacy-v2') this.services = [];
         this.hubState = hubState;
         this.state = hubState.data;
-        this._syncServices();
         this._unsubscribe = null;
         this._unregisterTransport = null;
         this._frame = [];
         this._sink = null;
     }
 
+    get services () {
+        return spikeFirmwareTarget(this.hubState.data.firmwareTarget).legoBle ? this._legoServices : [];
+    }
+
     connect () {
-        this._syncServices();
         if (!this.state.simulationEnabled || !spikeFirmwareTarget(this.state.firmwareTarget).legoBle) {
             throw new Error('virtual SPIKE BLE is not enabled for this firmware profile');
         }
