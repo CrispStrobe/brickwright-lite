@@ -117,6 +117,19 @@ const hostState = page => page.evaluate(() => {
     };
 });
 
+const debugIdentity = page => page.evaluate(() => {
+    const host = document.querySelector('[data-bw-debug-host]');
+    const panel = host && host.querySelector('[data-debugger-panel]');
+    if (host && !host.dataset.discoveryIdentity) host.dataset.discoveryIdentity = 'code-entry-host';
+    if (panel && !panel.dataset.discoveryIdentity) panel.dataset.discoveryIdentity = 'code-entry-panel';
+    return {
+        hosts: document.querySelectorAll('[data-bw-debug-host]').length,
+        panels: document.querySelectorAll('[data-debugger-panel]').length,
+        hostIdentity: host && host.dataset.discoveryIdentity,
+        panelIdentity: panel && panel.dataset.discoveryIdentity
+    };
+});
+
 const setDock = (page, value) => page.evaluate(v => {
     // Exactly what Settings → Workspace → Debugger dispatches.
     window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-debug-dock', value: v}}));
@@ -147,9 +160,16 @@ try {
     // it is empty, never a squeezed designer and never a blank strip.
     await page.locator('[role="tab"]', {hasText: 'Code'}).first().click();
     await page.waitForTimeout(1000);
-    await setDock(page, 'right');
+    const codeEntry = page.locator('[data-testid="bw-open-circuit-debugger"]');
+    check('Code has one direct debugger entry point', await codeEntry.count() === 1);
+    await codeEntry.click();
     const freshRight = await waitFor(() => hostState(page), s => s.soloPane, 15000);
-    check('no-pins coding: dock "right" portals the panel shell, not the designer',
+    check('Code entry reopens the hidden right pane',
+        await page.evaluate(() => localStorage.getItem('bw-right-pane-hidden')) === '0');
+    check('Code entry selects the existing right-docked debugger',
+        await page.evaluate(() => localStorage.getItem('bw-debug-dock')) === 'right' &&
+        await page.evaluate(() => localStorage.getItem('bw-stage-circuit')) === '1');
+    check('no-pins Code entry portals the panel shell, not the designer',
         freshRight.soloPane && !freshRight.looksLikeDesigner,
         `soloPane=${freshRight.soloPane} designer=${freshRight.looksLikeDesigner} text="${freshRight.text}"`);
     check('no-pins coding: the shell says why it is empty', freshRight.noCodeHint || freshRight.hasDebugger,
@@ -172,6 +192,14 @@ try {
     check('mcu bench: while coding, dock "right" is the PANEL, not a squeezed designer',
         mcuRight.soloPane && !mcuRight.looksLikeDesigner,
         `soloPane=${mcuRight.soloPane} designer=${mcuRight.looksLikeDesigner}`);
+    await page.locator('[data-debugger-panel] [data-debug-run]:visible').click();
+    await page.waitForFunction(() =>
+        document.querySelector('[data-debugger-panel]')?.dataset.debugPhase === 'running',
+    null, {timeout: 20000});
+    const identityBefore = await debugIdentity(page);
+    check('Code entry has exactly one debugger host and panel',
+        identityBefore.hosts === 1 && identityBefore.panels === 1,
+        JSON.stringify(identityBefore));
 
     // Round trip: the other docks still work, and coming back to 'right'
     // (designer now loaded) is the path that always worked.
@@ -181,6 +209,13 @@ try {
     await setDock(page, 'right');
     check('mcu bench: back to "right" holds',
         (await waitFor(() => hostState(page), s => s.hasDebugger, 15000)).hasDebugger);
+    const identityAfter = await debugIdentity(page);
+    check('dock round trip preserves the one host and panel identity',
+        identityAfter.hosts === 1 && identityAfter.panels === 1 &&
+        identityAfter.hostIdentity === 'code-entry-host' &&
+        identityAfter.panelIdentity === 'code-entry-panel', JSON.stringify(identityAfter));
+    check('dock round trip preserves the running debugger session',
+        await page.locator('[data-debugger-panel]').getAttribute('data-debug-phase') === 'running');
     await page.close();
 
     // ── 3 + 4: machine-class. Z80 bench, BBC BASIC, dock right, then talk

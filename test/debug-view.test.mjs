@@ -1,0 +1,76 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+
+import {
+    CIRCUIT_DEBUGGER_VIEW,
+    setCircuitView,
+    showCircuitDebugger
+} from '../overlay/scratch-gui/src/lib/bw-debug/debug-view.js';
+
+class TestEvent {
+    constructor (type, init) {
+        this.type = type;
+        this.detail = init.detail;
+    }
+}
+
+const harness = ({storageFailure = false} = {}) => {
+    const writes = [];
+    const events = [];
+    return {
+        writes,
+        events,
+        options: {
+            storage: {setItem (key, value) {
+                if (storageFailure) throw new Error('storage denied');
+                writes.push([key, value]);
+            }},
+            eventTarget: {dispatchEvent: event => events.push(event)},
+            EventClass: TestEvent
+        }
+    };
+};
+
+test('showCircuitDebugger publishes the complete existing right-pane transaction', () => {
+    const h = harness();
+    showCircuitDebugger(h.options);
+    const expected = Object.entries(CIRCUIT_DEBUGGER_VIEW);
+    assert.deepEqual(h.writes, expected);
+    assert.deepEqual(h.events.map(event => [event.type, event.detail.key, event.detail.value]),
+        expected.map(([key, value]) => ['bw-settings-change', key, value]));
+});
+
+test('private-storage failure does not prevent the live debugger request', () => {
+    const h = harness({storageFailure: true});
+    showCircuitDebugger(h.options);
+    assert.deepEqual(h.writes, []);
+    assert.deepEqual(h.events.map(event => [event.detail.key, event.detail.value]),
+        Object.entries(CIRCUIT_DEBUGGER_VIEW));
+});
+
+test('the shared circuit-view transaction preserves non-debugger views', () => {
+    const h = harness();
+    setCircuitView({fullWidth: false, dock: 'top'}, h.options);
+    assert.deepEqual(Object.fromEntries(h.writes), {
+        'bw-hide-stage': '0',
+        'bw-right-pane-hidden': '0',
+        'bw-debug-dock': 'top',
+        'bw-stage-circuit': '0',
+        'bw-circuit-theme': 'light'
+    });
+});
+
+test('the Code entry point requests the owner; it does not construct debugger state', () => {
+    const importer = readFileSync(new URL(
+        '../overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx', import.meta.url), 'utf8');
+    const stageHeader = readFileSync(new URL(
+        '../overlay/scratch-gui/src/components/stage-header/stage-header.jsx', import.meta.url), 'utf8');
+    const helper = readFileSync(new URL(
+        '../overlay/scratch-gui/src/lib/bw-debug/debug-view.js', import.meta.url), 'utf8');
+    assert.equal((importer.match(/data-testid="bw-open-circuit-debugger"/g) || []).length, 1);
+    assert.match(importer, /onClick=\{\(\) => showCircuitDebugger\(\)\}/);
+    assert.match(stageHeader, /import \{setCircuitView\} from '..\/..\/lib\/bw-debug\/debug-view\.js'/);
+    assert.doesNotMatch(importer, /createDebugRunner|<DebugPanel|createPortal|debugState\s*[:=]/);
+    assert.doesNotMatch(helper, /createDebugRunner\s*\(|<DebugPanel|ReactDOM|connect\s*\(/);
+});

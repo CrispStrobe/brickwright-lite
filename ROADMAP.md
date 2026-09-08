@@ -545,6 +545,17 @@ the measurement on every build. A count that only grows is not a gate.
 
 ## 3. Hardware / debugger surfaces
 
+### Code-tab debugger discoverability — candidate 2026-09-08
+
+The full Circuit `DebugPanel` already survives Code/Circuit and dock changes through one
+persistent host owned by `CircuitTab`; creating another panel in the Code editor would create a
+second runner and split debugger truth. The Code toolbar now has one presentation-only Debugger
+button. It calls the same neutral `showCircuitDebugger()` transaction as the stage-header control,
+opening the existing right pane without adding panel, runner, portal or Redux state. Focused tests
+pin the complete setting/event transaction and ownership boundary; the existing hosted debugger-
+dock journey now enters through Code, reopens a hidden pane, asserts exactly one host and panel,
+and proves their identity and running phase survive a dock round trip.
+
 ### 3.1 Debugger surface — LARGELY RESOLVED (2026-08-21 tranche), verify before reopening
 `debug-panel.jsx` exists and the 2026-08-21 regression pass landed dock controls, right-dock
 opening the optional pane without remounting, and browser proof that the debugger keeps running
