@@ -1,6 +1,6 @@
 # 8086 device-advancement pass — 2026-09-08
 
-Outcome: no additional production optimization accepted. The shipped JS path,
+Initial-pass outcome: no additional production optimization accepted. The shipped JS path,
 vendor pin and GUI settings are unchanged by this pass. Benchmark candidates
 live only under `scripts/lib/`; project execution does not import them.
 
@@ -61,8 +61,9 @@ The table cached the original arithmetic operation order for cycle costs
 0..255, keyed by both oscillator clocks. It did not defer counter updates.
 Its extra method guards, cache checks and dispatch still failed the general
 performance bar. It is a microbenchmark prototype, not a complete alternative
-machine scheduler: its special dispatch tag is not integrated with halt
-deadlines and must not be used for project execution.
+machine scheduler: in that initial version its special dispatch tag was not
+integrated with halt deadlines. The follow-up below repairs this omission;
+the path remains benchmark-only, not a project execution option.
 
 ## Correctness and scheduling contract
 
@@ -109,3 +110,46 @@ must first pass the per-tick oracle and instruction-observability contract,
 then show a repeatable full-workload gain in normal and throttled Chromium.
 Do not stack these rejected micro-optimizations or introduce batching based
 only on output deadlines. Wasm remains sandbox research, not a project backend.
+
+## Follow-up: preserve correct alternatives behind default-off gates
+
+User request: try PIT countdown/call-overhead optimization, retain correct paths
+for later investigation, and remove only genuinely broken implementations.
+
+`scripts/lib/i8086-device-candidates.mjs` retains the indexed PIT loop, cold-tick
+helper, CGA position cache and exact conversion cache. New `pit-inline` moves
+the ordinary countdown decision into the chip's millisecond advancement loop,
+while respecting custom counter methods. New `pit-mode3` puts the active binary
+square-wave case first and falls back to the original counter method otherwise.
+Neither defers state across calls. All are default-off and isolated from project
+execution: `installDeviceCandidate('none')` changes no prototype, unknown names
+fail, repeated installation is idempotent, and switching variants requires a
+fresh process/browser realm. No runtime GUI toggle or default behavior changes.
+
+Explicit workflow gates are `devices-pit-inline` and `devices-pit-mode3` for
+isolated costs; `full-pit-inline` and `full-pit-mode3` exercise all execution
+layers and completed sorting programs. The older `devices-*` gates remain.
+Use the `8086 execution profile` workflow on `perf/i8086-device-advance`.
+
+Repairs/removals, distinguished from mere slowness:
+
+- Conversion cache: fixed millisecond halt-deadline handling and duplicate
+  reads of overridden method getters. CPU-clock capture still precedes device
+  callbacks, while PIT-clock changes and method replacements remain live.
+- CGA cache: preserve signed-zero modulo behavior by not caching zero cycles.
+- Deferred PIT scheduler: removed the executable batching implementation,
+  because direct public counter reads can observe stale state. Its old factory
+  now throws a named error and the old workflow choice is removed. Git history
+  retains the implementation; the engine negative fixture retains the reason.
+  This is not classed alongside slower-but-correct alternatives.
+- Decoded/Wasm register-block sandbox paths are unchanged and remain bounded,
+  opt-in research, not unrestricted machine backends.
+
+`test/i8086-device-candidates.test.mjs` starts a fresh realm for each of the six
+variants. Each compares 4,000 instruction boundaries and callback traces with
+an independent per-tick counter oracle and original machine traversal, across
+modes 0..7, binary/BCD, both changing clocks, gates, snapshots, CRTC geometry,
+method replacement and callback-time attachment. Halt horizons are compared
+too. The separate 10,000-step clock-conversion test pins exact fractional state
+and method-getter behavior. These are explicit tested contracts, not a claim
+that arbitrary external extensions or untested hardware behavior are proven.

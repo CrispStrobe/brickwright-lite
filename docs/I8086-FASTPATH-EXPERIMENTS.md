@@ -101,6 +101,10 @@ not a promise that every candidate will ship.
   final states. Direct public counter-field reads can also observe deferred
   state; a negative test records that incompatibility. An earlier eligibility
   run failed on the CGA advancing device, then was corrected and rerun.
+  Follow-up: the executable batching implementation has now been removed for
+  that observability violation; the old entry point refuses by name. Correct
+  but slower alternatives are retained default-off; see
+  `I8086-DEVICE-ADVANCE-EXPERIMENTS.md` for the retention policy and repairs.
 * Decoded blocks: benchmark-only, rejected. Run `34217670824` regressed
   throughput 46–77%; validation and dispatch costs outweighed decode savings.
 * WebAssembly: implemented a bounded, self-validating register-block prototype,

@@ -32,6 +32,13 @@ test('public advanceMs overrides and unusual clocks use the reference conversion
     pit.advanceCpuCycles(12,5000000);
     assert.deepEqual(seen,[12*1000/5000000]);
     delete pit.advanceMs;
+    let reads=0;
+    Object.defineProperty(pit,'advanceMs',{configurable:true,get(){
+        reads++;return function(ms){seen.push(ms);};
+    }});
+    pit.advanceCpuCycles(12,5000000);
+    assert.equal(reads,1,'method getter is observed once, as in the original dispatch');
+    delete pit.advanceMs;
     for(const cpuClock of [Infinity,NaN,-5000000]) {
         const a=new I8254(),b=new I8254();
         a.advanceCpuCycles(4,cpuClock);original.call(b,4*1000/cpuClock);

@@ -44,13 +44,14 @@ export function installDeviceCandidate(variant) {
     if (variant === 'pit-clock') {
         const advanceMs = I8254.prototype.advanceMs;
         I8254.prototype.advanceCpuCycles = function(n, cpuClock) {
-            if (!(Number.isInteger(n) && n>=0 && n<256) || this.advanceMs!==advanceMs) {
-                return this.advanceMs(n*1000/cpuClock);
+            const method=this.advanceMs;
+            if (!(Number.isInteger(n) && n>=0 && n<256) || method!==advanceMs) {
+                return method.call(this,n*1000/cpuClock);
             }
             const clock=this.clockHz;
             if(this._cycleCpuClock!==cpuClock || this._cyclePitClock!==clock) {
                 if(!(Number.isFinite(cpuClock)&&cpuClock>0&&Number.isFinite(clock)&&clock>0)) {
-                    return this.advanceMs(n*1000/cpuClock);
+                    return method.call(this,n*1000/cpuClock);
                 }
                 const table=new Float64Array(256);
                 for(let i=0;i<256;i++) table[i]=(i*1000/cpuClock)*clock/1000;
