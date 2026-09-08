@@ -14,9 +14,9 @@ a sync cannot restore them, and they carry the same warning in their own header.
 
 ## bw-board
 
-Pinned at `bc0ae45ef899fafacbdbd22afded42784a4aeebd`. Manifest: `docs/VENDOR-DIVERGENCE-I8086-MACHINE.md`.
+Pinned at `b1e351ef507e77136e92aaae1ba71747a38300e4`. Manifest: `docs/VENDOR-DIVERGENCE-I8086-MACHINE.md`.
 
-190 tracked file(s): 164 plain, 18 declared-divergent, 8 lite-authored.
+190 tracked file(s): 165 plain, 17 declared-divergent, 8 lite-authored.
 
 - `LICENSE` `[lite]`
 - `ac.js`
@@ -27,7 +27,7 @@ Pinned at `bc0ae45ef899fafacbdbd22afded42784a4aeebd`. Manifest: `docs/VENDOR-DIV
 - `avr-peripherals.js`
 - `avr-twi-stub.js`
 - `avr8js-adapter.js`
-- `avr8js-debug.js` `[declared]`
+- `avr8js-debug.js`
 - `ay-3-8912.js`
 - `basic-machine-runner.js`
 - `bbc-z80-runner.js`
