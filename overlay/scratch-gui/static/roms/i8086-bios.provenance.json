@@ -22,7 +22,7 @@
     "path": "overlay/scratch-gui/src/lib/bw-board/i8086-asm.js",
     "sha256": "3270c33885fbb6524ceaa727a1600570fe974e0bb4bc3488d1ecda894fdb0841"
   },
-  "pinAtBuild": "2c568ca0d0addfa88d754d193bd0c32dba13a5b4",
+  "pinAtBuild": "6145e8aeaa4e435f25ec7b6208c98e971be573aa",
   "ancestorOfPinAtBuild": true,
   "behindPinBy": 0
 }

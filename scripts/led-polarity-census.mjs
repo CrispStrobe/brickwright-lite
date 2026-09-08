@@ -38,8 +38,10 @@
  * only.
  *
  * Usage:
- *   node scripts/led-polarity-census.mjs              # self-test, then report
- *   node scripts/led-polarity-census.mjs --self-test  # mutations only
+ *   node scripts/led-polarity-census.mjs                  # both surfaces, self-test then report
+ *   node scripts/led-polarity-census.mjs --self-test      # mutations only
+ *   node scripts/led-polarity-census.mjs --surface bench  # per-device benches only
+ *   node scripts/led-polarity-census.mjs --surface flat   # board-free twins only
  */
 import {readFileSync, existsSync, readdirSync} from 'node:fs';
 import path from 'node:path';
@@ -52,6 +54,23 @@ const SB3Creator = (await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/sb
 const {Circuit} = await loadCircuitModel(ROOT);
 
 const PIN_RE = /^\s*PIN\s+(\w+)\s*=\s*(\S+)\s+OUTPUT\s*(ACTIVE\s+(LOW|HIGH))?/gim;
+
+// ── THE TWO SURFACES. An example ships its per-device bench as
+// `circuit.<device>.json` AND a board-free twin as `circuit-flat.<device>.json`,
+// and the app renders whichever the lesson asks for. This census read the first
+// spelling only, so its denominator was total over ONE of two families — and on
+// 2026-09-08 that is exactly where a defect survived: 69 benches were corrected
+// to their target's polarity, this census read 0 inverted, and the 66 flat twins
+// still carried the old wiring until upstream CI's flat-twin gate caught them.
+// A denominator defined by a filename is a denominator defined by spelling.
+// Both surfaces are measured, each with its own mutation proof, and neither
+// number is folded into the other: they answer about different files.
+const SURFACES = [
+    {name: 'bench', label: 'per-device benches (circuit.<device>.json)',
+        re: /^circuit\.([\w.-]+)\.json$/},
+    {name: 'flat', label: 'board-free twins (circuit-flat.<device>.json)',
+        re: /^circuit-flat\.([\w.-]+)\.json$/}
+];
 
 /** Declarations as the app would see them for this device. */
 const declsFor = (src, device, authoredDevice, {retarget = true} = {}) => {
@@ -78,20 +97,20 @@ const declsFor = (src, device, authoredDevice, {retarget = true} = {}) => {
  * @param {Function} [opts.mutateSrc] (id, src) => src, for mutation tests
  * @returns {object} rows and every bucket that did not become a row
  */
-export function collect ({retarget = true, mutateDoc = null, mutateSrc = null, quiet = false} = {}) {
+export function collect ({retarget = true, mutateDoc = null, mutateSrc = null, quiet = false, benchRe = SURFACES[0].re} = {}) {
     // The circuit model narrates its refusals to the console, which is right in
     // the app and unreadable across 947 benches when a mutation is deliberately
     // breaking them. Silenced only while a mutation runs, never for a real sweep.
     const realConsole = {log: console.log, warn: console.warn, error: console.error};
     if (quiet) { console.log = () => {}; console.warn = () => {}; console.error = () => {}; }
     try {
-        return sweep({retarget, mutateDoc, mutateSrc});
+        return sweep({retarget, mutateDoc, mutateSrc, benchRe});
     } finally {
         if (quiet) Object.assign(console, realConsole);
     }
 }
 
-function sweep ({retarget, mutateDoc, mutateSrc}) {
+function sweep ({retarget, mutateDoc, mutateSrc, benchRe}) {
     const rows = [];
     // SKIPS ARE SCOPED. An example with no program and a pin whose LED did not
     // answer are not the same kind of miss, and summing them under one heading
@@ -117,7 +136,7 @@ function sweep ({retarget, mutateDoc, mutateSrc}) {
         // Filtered, not skipped: a directory holds intros and flat variants, and
         // "not a per-device circuit" is not a finding about the corpus.
         const benches = readdirSync(dir)
-            .map(file => ({file, m: /^circuit\.([\w.-]+)\.json$/.exec(file)}))
+            .map(file => ({file, m: benchRe.exec(file)}))
             .filter(x => x.m);
         for (const {file, m} of benches) {
             const device = m[1];
@@ -181,6 +200,29 @@ const invertLeds = doc => {
     const out = JSON.parse(JSON.stringify(doc));
     const leds = (out.parts || []).filter(p => p.kind === 'led');
     const ledIds = new Set(leds.map(p => p.id));
+    const partsById = new Map((out.parts || []).map(pp => [pp.id, pp]));
+
+    // THE CORPUS SHIPS TWO WIRE DIALECTS, and reading one of them is how this
+    // mutation silently did nothing on every board-free twin. A seated bench
+    // writes `{from: 'led1', fromTerminal: 'anode'}`; a flat twin writes
+    // `{from: {part: 'LED_led1', terminal: 'anode'}}`. The old code tested
+    // `ledIds.has(w.from)`, which is false for an object, so no LED terminal was
+    // ever flipped there — the mutation reported MISSED and the census refused
+    // to publish a flat number, which was the right refusal for the wrong
+    // reason: the instrument, not the surface, was at fault.
+    const endpointOf = (wire, side) => {
+        const value = wire[side];
+        if (value && typeof value === 'object') {
+            return {part: value.part, terminal: value.terminal, set: t => { value.terminal = t; }};
+        }
+        if (typeof value === 'string') {
+            const key = `${side}Terminal`;
+            return {part: value, terminal: wire[key], set: t => { wire[key] = t; }};
+        }
+        return null;
+    };
+    const endpoints = wire => ['from', 'to'].map(side => endpointOf(wire, side)).filter(Boolean);
+
     const flipTerminal = t => (t === 'anode' ? 'cathode' : t === 'cathode' ? 'anode' : t);
     for (const led of leds) {
         const map = led.seat && led.seat.leadMap;
@@ -191,19 +233,49 @@ const invertLeds = doc => {
         }
     }
     for (const w of out.wires || []) {
-        if (ledIds.has(w.from)) w.fromTerminal = flipTerminal(w.fromTerminal);
-        if (typeof w.to === 'string' && ledIds.has(w.to)) w.toTerminal = flipTerminal(w.toTerminal);
+        for (const e of endpoints(w)) if (ledIds.has(e.part)) e.set(flipTerminal(e.terminal));
     }
+
     // …and the rails swap, so the chain hangs from the other supply.
     for (const p of out.parts || []) {
         if (p.kind === 'vcc') { p.kind = 'gnd'; p.terminals = ['gnd']; }
         else if (p.kind === 'gnd') { p.kind = 'vcc'; p.terminals = ['vcc']; }
     }
-    const rename = {vcc: 'gnd', gnd: 'vcc'};
+
+    // A BOARD-FREE TWIN DOES NOT ALWAYS REACH ITS RAILS THROUGH RAIL PARTS: it
+    // may wire straight to the board's own supply terminals. Two further things
+    // the old rename got wrong there, each enough on its own to make the swap a
+    // no-op:
+    //
+    //   CASE. It looked the terminal up in `{vcc, gnd}` as written. A rail PART
+    //   spells its terminal `vcc`, so seated benches matched; a board spells its
+    //   own `VCC`/`GND` in the shipped files, and nothing matched.
+    //
+    //   SPELLING. Not every part calls its positive rail `vcc` — `arduino_uno`
+    //   declares `5v`. Rewriting its `gnd` to `vcc` would name a terminal the
+    //   part does not have, so the circuit would fail to LOAD rather than
+    //   invert; a mutation that breaks a bench is not a mutation that flips it,
+    //   and both look identical in a MISSED/caught line.
+    //
+    // So: match case-insensitively over every supply spelling, and swap to the
+    // spelling the endpoint part itself declares.
+    const IS_HIGH = /^(vcc|5v|3v3|3v|vdd)$/i;
+    const IS_LOW = /^(gnd|gnd2|0v|vss)$/i;
+    const spellingFor = (part, wantHigh) => {
+        const declared = (part && part.terminals) || [];
+        const found = declared.find(t => (wantHigh ? IS_HIGH : IS_LOW).test(String(t)));
+        return found !== undefined ? found : (wantHigh ? 'vcc' : 'gnd');
+    };
     for (const w of out.wires || []) {
-        if (rename[w.fromTerminal]) w.fromTerminal = rename[w.fromTerminal];
-        if (typeof w.to === 'string' && rename[w.toTerminal]) w.toTerminal = rename[w.toTerminal];
+        for (const e of endpoints(w)) {
+            const spelled = String(e.terminal ?? '');
+            const part = partsById.get(e.part);
+            if (IS_HIGH.test(spelled)) e.set(spellingFor(part, false));
+            else if (IS_LOW.test(spelled)) e.set(spellingFor(part, true));
+        }
     }
+
+    const rename = {vcc: 'gnd', gnd: 'vcc'};
     for (const p of out.parts || []) {
         const map = p.seat && p.seat.leadMap;
         if (!map) continue;
@@ -218,9 +290,9 @@ const MUTATIONS = [
     {
         name: 'inverting every LED in one example flips its rows',
         // If this passes unchanged, the census is not reading the CIRCUIT.
-        run: base => {
+        run: (base, benchRe) => {
             const target = '01-blink';
-            const {rows} = collect({quiet: true, mutateDoc: (id, device, doc) => (id === target ? invertLeds(doc) : doc)});
+            const {rows} = collect({quiet: true, benchRe, mutateDoc: (id, device, doc) => (id === target ? invertLeds(doc) : doc)});
             const before = base.rows.filter(r => r.id === target);
             const after = rows.filter(r => r.id === target);
             const flipped = after.filter(r => {
@@ -236,10 +308,10 @@ const MUTATIONS = [
     {
         name: 'flipping a declaration flips agreement without touching the bench',
         // If this passes unchanged, the census is not reading the PROGRAM.
-        run: base => {
+        run: (base, benchRe) => {
             const target = '01-blink';
             const {rows} = collect({
-                quiet: true,
+                quiet: true, benchRe,
                 mutateSrc: (id, src) => (id === target ? src.replace(/\s+ACTIVE\s+LOW/gi, '') : src)
             });
             const before = base.rows.filter(r => r.id === target);
@@ -258,9 +330,9 @@ const MUTATIONS = [
         name: 'a bench that cannot load is COUNTED, not silently dropped',
         // If this passes unchanged, a row can vanish without trace — which is
         // exactly how three earlier buckets stayed hidden.
-        run: base => {
+        run: (base, benchRe) => {
             const {rows, skipped} = collect({
-                quiet: true,
+                quiet: true, benchRe,
                 mutateDoc: (id, device, doc) => (id === '01-blink'
                     ? {...doc, parts: [{id: 'nope', kind: 'not-a-real-kind', params: {}}]}
                     : doc)
@@ -291,8 +363,8 @@ const MUTATIONS = [
         // step is load-bearing; only the second is what actually happens here, and
         // asserting the first would have been asserting a memory of the old
         // instrument.
-        run: base => {
-            const {rows} = collect({retarget: false, quiet: true});
+        run: (base, benchRe) => {
+            const {rows} = collect({retarget: false, quiet: true, benchRe});
             return {
                 changed: rows.length < base.rows.length / 2,
                 detail: `${base.rows.length} decidable readings with retargeting, ${rows.length} without`
@@ -301,12 +373,12 @@ const MUTATIONS = [
     }
 ];
 
-const selfTest = base => {
+const selfTest = (base, benchRe) => {
     console.log('MUTATIONS — each must change the answer, or the census is not reading what it claims:');
     let allFailed = true;
     for (const mutation of MUTATIONS) {
         let result;
-        try { result = mutation.run(base); }
+        try { result = mutation.run(base, benchRe); }
         catch (e) { result = {changed: false, detail: `threw: ${String(e.message).slice(0, 70)}`}; }
         console.log(`   ${result.changed ? 'caught ' : 'MISSED '} ${mutation.name} — ${result.detail}`);
         if (!result.changed) allFailed = false;
@@ -314,14 +386,19 @@ const selfTest = base => {
     return allFailed;
 };
 
-const base = collect();
-const ok = selfTest(base);
-console.log('');
-if (!ok) {
-    console.error('REFUSING TO REPORT: a mutation did not change the answer, so this census is ' +
-        'not measuring what it claims. Fix the instrument before trusting any number below.');
-    process.exitCode = 1;
-} else if (!process.argv.includes('--self-test')) {
+const wanted = (() => {
+    const idx = process.argv.indexOf('--surface');
+    const name = idx !== -1 ? process.argv[idx + 1] : 'all';
+    if (name === 'all') return SURFACES;
+    const one = SURFACES.find(su => su.name === name);
+    if (!one) {
+        console.error(`unknown --surface "${name}" — expected one of: ${SURFACES.map(su => su.name).join(', ')}, all`);
+        process.exit(2);
+    }
+    return [one];
+})();
+
+function report (surface, base) {
     const byScope = new Map();
     for (const [key, n] of base.skipped) {
         const [scope, reason] = key.split('\u0000');
@@ -360,4 +437,40 @@ if (!ok) {
         console.log(`  ${key}  (${list.length})`);
         console.log(`     ${[...new Set(list)].sort().join(', ')}`);
     }
+}
+
+// EACH SURFACE IS ITS OWN MEASUREMENT. The mutations are re-run per surface
+// rather than proved once on benches and assumed for twins: a mutation that
+// moves a seated bench can be a no-op on a board-free one, which is exactly
+// what happened before the rail swap below learned about board terminals. A
+// surface whose instrument cannot be shown to work reports nothing.
+const totals = [];
+for (const surface of wanted) {
+    console.log(`${'='.repeat(72)}\nSURFACE: ${surface.label}\n${'='.repeat(72)}`);
+    const base = collect({benchRe: surface.re});
+    const ok = selfTest(base, surface.re);
+    console.log('');
+    if (!ok) {
+        console.error(`REFUSING TO REPORT ${surface.name}: a mutation did not change the answer, so this ` +
+            'census is not measuring what it claims on this surface. Fix the instrument before ' +
+            'trusting any number for it.');
+        process.exitCode = 1;
+        totals.push([surface, null]);
+        continue;
+    }
+    totals.push([surface, base]);
+    if (!process.argv.includes('--self-test')) report(surface, base);
+    console.log('');
+}
+
+if (totals.length > 1) {
+    console.log(`${'='.repeat(72)}\nBOTH SURFACES\n${'='.repeat(72)}`);
+    for (const [surface, base] of totals) {
+        if (!base) { console.log(`  ${surface.name.padEnd(6)} REFUSED — instrument not proved on this surface`); continue; }
+        const inv = base.rows.filter(r => !r.agrees).length;
+        console.log(`  ${surface.name.padEnd(6)} ${String(base.rows.length).padStart(4)} decidable, ` +
+            `${String(inv).padStart(4)} inverted   (${surface.label})`);
+    }
+    console.log('\n  The two numbers are NOT summed and NOT compared for equality: they answer about');
+    console.log('  different files, and an example may ship a twin for one device and not another.');
 }
