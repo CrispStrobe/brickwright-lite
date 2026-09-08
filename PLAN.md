@@ -17,7 +17,7 @@ gates.
 
 ## Next-session priorities — reconciled 2026-09-08
 
-This shortlist is reconciled with `main` at `dec11a41f`. Completed and rejected
+This shortlist is reconciled with `main` at `c64cca4be`. Completed and rejected
 work, including the payload sequence and N2b–N2e, is recorded in `HISTORY.md`;
 `LANES.md` remains the live ownership authority.
 
@@ -32,7 +32,7 @@ The next work stays serialized, with one bounded claim per session:
 
 | Order | Bounded track | Ownership and acceptance boundary |
 |---|---|---|
-| 1 | N2f: bounded random semantics for 8086 C | Coordinator assigns after this documentation lane lands. Begin with `arduino-sk-p11-crystal-ball`; the honest compile-backed corpus is 78 today and the complete random-plus-literal-output lane can add exactly one for 79, while literal output alone adds zero. Define a documented deterministic `pick random` contract and prove its branch/output trace against an independent oracle. First repair the structured refusal report: minimal `print "Yes"` currently refuses while returning an empty refusal list. |
+| 1 | N2f: bounded random semantics for 8086 C | Measurement isolates `arduino-sk-p11-crystal-ball`: the honest device-C baseline is 47 programs, plus 31 host-only generated programs; 78 is a mixed generation total, not an i8086 compile result. Parsed-graph neutralisation proves random alone and literal output alone add zero, while both together expose exactly one prospective device program (47→48; mixed 78→79). The emitter already records minimal `print "Yes"` in `_cPrintRefused`; the old census omitted that fifth bucket. Production remains unclaimed: implement a documented deterministic inclusive signed-16 `pick random` contract, then prove its branch and DOS screen trace against an independent oracle. |
 | 2 | Retire one declared `bw-board` divergence | Coordinator selects one small file only after N2f. Re-measure against the current `6145e8a` pin, read both sides, upstream or deliberately retire the Lite delta, then require the executable manifest to reject the old declaration. The current inventory has 19 declared `bw-board` files; trimmed-line counts locate work but do not establish which side is correct. |
 | 3 | Milestone 0 circuit-variant electrical equivalence | Coordinator selects one exact circuit family or invariant. Execute both relevant surfaces through the real solver, assert the electrical state, and mutation-prove a meaningful connectivity, polarity, or part-value change. State the covered and uncovered variants in the receipt. |
 

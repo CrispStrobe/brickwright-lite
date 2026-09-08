@@ -25,34 +25,42 @@ item marked with an agent name is being worked on.
 ## Next-session shortlist — reconciled 2026-09-08
 
 [PLAN.md](PLAN.md#next-session-priorities--reconciled-2026-09-08) defines the
-execution order. The exact baseline is `dec11a41f`; [HISTORY.md](HISTORY.md)
+execution order. The exact baseline is `c64cca4be`; [HISTORY.md](HISTORY.md)
 holds completed and rejected work, and [LANES.md](LANES.md) controls live
 ownership. Do not start a later track while an earlier track is owned or under
 landing audit.
 
 ### Track 1 — N2f: random-dependent output on the 8086 C route
 
-**Owner:** unclaimed until the coordinator releases it after this documentation
-reconciliation lands.
+**Owner:** measurement/evidence is claimed on
+`lane/n2f-i8086-c-random-literal-measure`; production remains unclaimed.
 
-**Measured start:** N2e leaves the broad numeric/print reach at 46 programs. A
-separate complete compile-backed corpus census emits 78 today. The first known
-candidate is `arduino-sk-p11-crystal-ball`; the complete random-plus-literal-
-output lane can add exactly one program for 79, while literal output alone adds
-zero. Its printed branch depends on `pick random`, which currently warns and
-lowers to zero. A second precondition is currently false: minimal `print "Yes"`
-refuses as text mode but returns an empty structured refusal list, even though
-the header prose narrates the reason.
+**Measured start:** N2e leaves the broad numeric/print reach at 46 programs.
+Across the complete corpus, 47 programs currently generate device C that the
+hosted gate sends to SmallerC; another 31 generate HOST C and are deliberately
+outside `compileC8086`. The often-quoted 78 is therefore a mixed generation
+total, not a compile-backed i8086 reach. Parsed-block-graph neutralisation forms
+a four-way lattice: baseline, literal-only, random-only, and both. Neither
+single neutralisation adds a program. Both expose exactly
+`arduino-sk-p11-crystal-ball`, for prospective device reach 47→48 and mixed
+generation 78→79. `arduino-05-switch-case` and `arduino-06-knock` fall through
+literal output to the existing ADC/8255 wall. Crystal-ball falls through literal
+output to `pick random`, which is refused rather than lowered to a commented
+zero. Minimal `print "Yes"` already records the named reason in
+`_cPrintRefused`; the old probe's fixed bucket list omitted it. The measurement
+now discovers refusal buckets from emitter source and runtime state and fails on
+an omitted or malformed future bucket.
 
-**Acceptance:** define and document a bounded deterministic random contract that
-fits the 8086 `.COM` model; a real entropy source cannot support the required
-repeatable differential. Compare branch choice and printed output with an
-independent oracle; mutate the random result or branch mapping and require a
-named failure. Repair and mutation-prove structured text-mode refusal attribution
-before trusting the census. Other targets must remain byte-stable. Vendor the
-exact green upstream pin, update both mirrors and pin readers, and re-run the
-compile-backed reach census at exactly 79. A warning, commented zero, or
-incomplete lowering is a refusal rather than a compiled result.
+**Acceptance:** the measured candidate contract is a fixed-seed 16-bit LCG with
+inclusive, normalised signed-16 bounds, rejection sampling, and one consumed draw
+for equal bounds. Treat that as a proposal until production and an independent
+oracle agree on the same state transitions. Compare branch choice and printed
+output through SmallerC → `.COM` → the DOS bench; mutate the random result or
+branch mapping and require a named failure. Other targets must remain
+byte-stable. Vendor the exact green upstream pin, update both mirrors and pin
+readers, and re-run the device compile census at exactly 48 while labelling the
+31 HOST-C programs separately. A warning, commented zero, or incomplete
+lowering is a refusal rather than a compiled result.
 
 ### Track 2 — retire one declared `bw-board` divergence
 
