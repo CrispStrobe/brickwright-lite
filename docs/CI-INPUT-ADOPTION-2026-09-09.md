@@ -62,3 +62,30 @@ The deterministic absent-file proof passes against the adopted pin after the
 upstream default branch has advanced. It deliberately bypasses only the source
 freshness precondition inside its sandbox; the absent-file refusal and explicit
 pin-move checks still execute. The old live-tip fetch waiver is removed.
+
+## Completion receipt
+
+All work is merged. Lite PR 108 merged at
+`5c2c960c78b77f25e72b0a84514afb502b466158` from exact reviewed candidate
+`e92f6c0104864635524d256a9cc643a906270ef7`:
+
+- Build **34316700731**: build, corpus, heavy browser and light browser all green.
+  PR deployment and deployed-GUI jobs are skipped by their normal event condition.
+- Vendor freshness **34316700662** and debugger-focused **34316700640**: green.
+- Unit census: **3157 tests, 3149 pass, 0 fail, 8 skips**. Every file reports zero
+  raw stdout through the runner's transport. The census diagnostic uses the test
+  diagnostic channel.
+- Final pinned-input, gate-quality and skip-evidence suite: 21 pass, zero skips.
+  Supplying a different checkout SHA fails the explicit input-identity assertion.
+- CUI PR 19: merged `a5fcd9394f4184537f8eeaad2c3d211a0e00abe7`, green PR CI
+  **34315239373**. Eight focused pin/census tests pass.
+- sb3-creator PR 12: merged `a7c488290ac800e267bf18d260baf100a239d3b7`, green
+  PR CI **34315039823**. Unit suite 7432 tests / 7101 pass / 0 fail / 331 skips;
+  browser render suite 11 pass / 0 skips. Four focused pin/census tests pass.
+- bw-board PR 4: merged `fe523c1ae10cb566e2d50862fd0ff0ab593975c0`, exact
+  merged-head CI **34314765284** green. Upstream lane closed in `b8979bb`.
+
+These receipts establish the reviewed changes; main's automatic deployment is
+separate and is not represented as a completed PR deployment. The lane is
+released. Fourteen bw-board source forks remain for later dependency-complete
+adoption work.

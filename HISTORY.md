@@ -284,3 +284,16 @@ plan or roadmap. Detailed commit, CI and ownership evidence remains in Git and
   the grouping transform into the capability module, replaced the remaining
   JSX-parsing sentinel with an exact contract and named removal mutation, and
   added a browser equality check between the picker and the panel's full device set.
+
+
+## 2026-09-09 — CI inputs and complete ULA snapshots
+
+Lite PR 108 (`5c2c960c7`) makes vendor/compiler CI checkouts immutable and removes
+the moving-tip dependency from the absent-file sync proof. CUI PR 19 and
+sb3-creator PR 12 publish workflow/script input census improvements upstream.
+The complete ULA snapshot contract is upstream in bw-board PR 4 and adopted at
+exact green `fe523c1`; one declared source fork retires (15 → 14). All required
+checks passed on `e92f6c010`: Build `34316700731`, vendor `34316700662`, debugger
+`34316700640`. See `docs/CI-INPUT-ADOPTION-2026-09-09.md` for counts, scope,
+unchanged ROM evidence and upstream receipts. `docs/UPSTREAM-WIP.md` explains
+why agents batch deliberate pin adoption rather than chase every upstream SHA.
