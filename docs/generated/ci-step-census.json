@@ -1,8 +1,8 @@
 {
- "generatedAt": "2026-09-09T02:12:16.541Z",
+ "generatedAt": "2026-09-09T02:19:42.860Z",
  "repo": "CrispStrobe/brickwright-lite",
  "headSha": "c2e470dae",
- "newestMainRun": 34302105453,
+ "newestMainRun": 34302160139,
  "runs": [
   {
    "run": 34301214581,
@@ -293,16 +293,10 @@
    "sha": "866bfba2c"
   },
   {
-   "run": 34249359082,
-   "workflow": "build.yml",
-   "branch": "lane/code-debugger-discoverability",
-   "sha": "3f43910c7"
-  },
-  {
-   "run": 34248215998,
-   "workflow": "build.yml",
-   "branch": "lane/gearmotor-slug-closeout",
-   "sha": "62c7a00c4"
+   "run": 34302160139,
+   "workflow": "ci-metrics.yml",
+   "branch": "main",
+   "sha": "c2e470dae"
   },
   {
    "run": 34301892869,
@@ -419,12 +413,6 @@
    "sha": "4218ebb1e"
   },
   {
-   "run": 34265276390,
-   "workflow": "ci-metrics.yml",
-   "branch": "main",
-   "sha": "2bb7ad8b0"
-  },
-  {
    "run": 34046275226,
    "workflow": "cycle-core-qualification.yml",
    "branch": "main",
@@ -525,6 +513,12 @@
    "workflow": "cycle-core-qualification.yml",
    "branch": "main",
    "sha": "00819f759"
+  },
+  {
+   "run": 34302105486,
+   "workflow": "debugger.yml",
+   "branch": "main",
+   "sha": "c2e470dae"
   },
   {
    "run": 34300203607,
@@ -1223,6 +1217,12 @@
    "sha": "898a6ae1e"
   },
   {
+   "run": 34302421180,
+   "workflow": "rust-notices.yml",
+   "branch": "lane/rust-notices-reconcile-n2",
+   "sha": "89ff75f10"
+  },
+  {
    "run": 34301953538,
    "workflow": "rust-notices.yml",
    "branch": "lane/rust-notices-reconcile-n2",
@@ -1349,6 +1349,18 @@
    "sha": "d0dcc4f16"
   },
   {
+   "run": 34302435411,
+   "workflow": "vendor-freshness.yml",
+   "branch": "lane/rust-notices-reconcile-n2",
+   "sha": "89ff75f10"
+  },
+  {
+   "run": 34302365709,
+   "workflow": "vendor-freshness.yml",
+   "branch": "lane/rust-notices-reconcile-n2",
+   "sha": "993595e84"
+  },
+  {
    "run": 34302105453,
    "workflow": "vendor-freshness.yml",
    "branch": "main",
@@ -1455,18 +1467,6 @@
    "workflow": "vendor-freshness.yml",
    "branch": "vendor/debug-session-retirement",
    "sha": "fe38646a7"
-  },
-  {
-   "run": 34285328995,
-   "workflow": "vendor-freshness.yml",
-   "branch": "lane/lite-watchpoint-physical-address-v2",
-   "sha": "1739e7e89"
-  },
-  {
-   "run": 34284911301,
-   "workflow": "vendor-freshness.yml",
-   "branch": "vendor/debug-session-retirement",
-   "sha": "149719976"
   }
  ],
  "workflowsInTree": [
@@ -1486,7 +1486,7 @@
  ],
  "workflows": {
   "build.yml": {
-   "runs": 50,
+   "runs": 48,
    "stepsInFile": [
     "Require green upstream evidence for the pinned 8086 engine",
     "Install source-test dependencies",
@@ -1598,8 +1598,8 @@
    "inFileInNoRun": [],
    "steps": {
     "Require green upstream evidence for the pinned 8086 engine": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1612,8 +1612,8 @@
      "class": "always"
     },
     "Vendor the pinned permissive Scratch sources": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1626,8 +1626,8 @@
      "class": "always"
     },
     "Integrate the Code tab (sb3-creator)": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1640,8 +1640,8 @@
      "class": "always"
     },
     "Fetch the heavy simulation engine (labwired-wasm)": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1654,8 +1654,8 @@
      "class": "always"
     },
     "Install": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1668,8 +1668,8 @@
      "class": "always"
     },
     "Apply the scratch-vm overlay (built-in extensions)": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1682,8 +1682,8 @@
      "class": "always"
     },
     "Apply the scratch-paint overlay (extended costume designer)": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1696,8 +1696,8 @@
      "class": "always"
     },
     "Apply the scratch-render overlay (lazy render fonts)": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1710,8 +1710,8 @@
      "class": "always"
     },
     "Fetch the Pico MicroPython firmware for the sim gate (tolerated absent)": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1723,8 +1723,8 @@
      "class": "always"
     },
     "Build the editor": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1737,8 +1737,8 @@
      "class": "always"
     },
     "Install Playwright browser": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1750,8 +1750,8 @@
      "class": "always"
     },
     "Browser gate — native broker packaged assets": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1763,8 +1763,8 @@
      "class": "always"
     },
     "Serve the built app": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1776,8 +1776,8 @@
      "class": "always"
     },
     "Browser gate — the debugger-only pane and its round trip": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1789,8 +1789,8 @@
      "class": "always"
     },
     "Browser gate — debugger recording, reverse and fork history": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1802,8 +1802,8 @@
      "class": "always"
     },
     "Browser gate — the example journey (Lane U)": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1815,8 +1815,8 @@
      "class": "always"
     },
     "Browser gate — what is wrong with the stage after a load": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1828,8 +1828,8 @@
      "class": "always"
     },
     "Browser gate — a program's chip refusal reaches the debug panel": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1841,8 +1841,8 @@
      "class": "always"
     },
     "Browser gate — Machine Loader preset reaches the debugger": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1854,8 +1854,8 @@
      "class": "always"
     },
     "Browser gate — debugger run-to and synchronized inspection": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1867,8 +1867,8 @@
      "class": "always"
     },
     "Browser gate — service worker failure modes": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1880,8 +1880,8 @@
      "class": "always"
     },
     "Browser gate — circuit UX": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1893,8 +1893,8 @@
      "class": "always"
     },
     "Browser gate — render fonts arrive with the first text costume, not before": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1906,8 +1906,8 @@
      "class": "always"
     },
     "Browser gate — circuit rendering and placement": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1919,8 +1919,8 @@
      "class": "always"
     },
     "Browser gate — physical 74C922 keypad encoder": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1932,8 +1932,8 @@
      "class": "always"
     },
     "Browser gate — the DRC can sum chip current": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1945,8 +1945,8 @@
      "class": "always"
     },
     "Browser gate — view buttons": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1958,8 +1958,8 @@
      "class": "always"
     },
     "Browser gate — editor": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1971,8 +1971,8 @@
      "class": "always"
     },
     "Browser gate — unpinned extension sandbox": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1984,8 +1984,8 @@
      "class": "always"
     },
     "Browser gate — game gallery and hardware examples": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -1997,8 +1997,8 @@
      "class": "always"
     },
     "Browser gate — both BASIC profiles execute on real machines": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2010,8 +2010,8 @@
      "class": "always"
     },
     "Browser gate — 8086 local assembly, CGA, keyboard and 8255": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2023,8 +2023,8 @@
      "class": "always"
     },
     "Browser gate — 8086 .COM / .img export (N10)": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2036,8 +2036,8 @@
      "class": "always"
     },
     "Browser gate — micro:bit WebUSB flash button (N9)": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2049,8 +2049,8 @@
      "class": "always"
     },
     "Browser benchmark — 8086 desktop and mobile": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2062,8 +2062,8 @@
      "class": "always"
     },
     "Browser gate — declared extension capability broker": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2075,8 +2075,8 @@
      "class": "always"
     },
     "Browser gate — first-run chooser and guided journeys": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2088,8 +2088,8 @@
      "class": "always"
     },
     "Browser gate — LEGO SPIKE archive and Code-tab round trip": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2101,8 +2101,8 @@
      "class": "always"
     },
     "Browser gate — four-surface project save, reopen and vanilla replacement": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2114,8 +2114,8 @@
      "class": "always"
     },
     "Browser gate — costume artwork survives save/reload and records first-open performance": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2127,8 +2127,8 @@
      "class": "always"
     },
     "Browser gate — first Sounds-tab interactivity": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2140,8 +2140,8 @@
      "class": "always"
     },
     "Browser gate — P21 Code importer activation, retry and state": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2153,8 +2153,8 @@
      "class": "always"
     },
     "Browser gate — the renderer accepts the table the arrays blocks describe": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2166,8 +2166,8 @@
      "class": "always"
     },
     "Browser gate — a missing extension chunk costs its blocks, not the project": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2179,8 +2179,8 @@
      "class": "always"
     },
     "Browser gates — About, intro, interaction, and schematic rendering": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2192,8 +2192,8 @@
      "class": "always"
     },
     "Browser gates — Code chrome, Controller, faceplates, and Instruments": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2205,8 +2205,8 @@
      "class": "always"
     },
     "Browser gate — Aurora-65 keyboard, OLED and VGA workstation": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2218,8 +2218,8 @@
      "class": "always"
     },
     "Browser gate — debugger dock and serial input": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2231,8 +2231,8 @@
      "class": "always"
     },
     "Browser gate — language x device matrix badge and panel": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2244,8 +2244,8 @@
      "class": "always"
     },
     "Browser gate — the heavy engine is not downloaded on first load": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2257,8 +2257,8 @@
      "class": "always"
     },
     "Browser gate — the labwired heavy tier actually executes": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2270,8 +2270,8 @@
      "class": "always"
     },
     "Browser gate — with no engine artifact, the tier is not offered": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2283,8 +2283,8 @@
      "class": "always"
     },
     "Browser gate — offline 8051 compile and debugger evidence": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2296,8 +2296,8 @@
      "class": "always"
     },
     "Browser gate — the DEFAULT route is hosted, and says so (Lane GPL)": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2309,8 +2309,8 @@
      "class": "always"
     },
     "Browser gate — offline linked 8051 assembly listings": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2322,8 +2322,8 @@
      "class": "always"
     },
     "Browser gate — an AVR lesson bench starts offline on its shipped image": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2335,8 +2335,8 @@
      "class": "always"
     },
     "Browser gate — promoted pinned extension worker": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2348,8 +2348,8 @@
      "class": "always"
     },
     "Browser gate — the native Web Bluetooth shim": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2361,8 +2361,8 @@
      "class": "always"
     },
     "Browser gate — MakeCode import": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2374,8 +2374,8 @@
      "class": "always"
     },
     "Browser gate — micro:bit MicroPython tab and simulator": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2387,8 +2387,8 @@
      "class": "always"
     },
     "Browser gate — Pico MicroPython simulator Run lights the LED (N3c)": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2400,8 +2400,8 @@
      "class": "always"
     },
     "Browser gate — Pico ▶ Run refuses by name with no firmware (N3c)": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2413,8 +2413,8 @@
      "class": "always"
     },
     "Browser gate — micro:bit debugger, block and line stepping": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2426,8 +2426,8 @@
      "class": "always"
     },
     "Browser gate — Arduboy console runs a compiled game": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2439,8 +2439,8 @@
      "class": "always"
     },
     "Measure — time every browser wait (manual runs only)": {
-     "existed": 50,
-     "ran": 34,
+     "existed": 48,
+     "ran": 32,
      "existedMain": 16,
      "ranMain": 0,
      "skippedInFailedRuns": 0,
@@ -2453,8 +2453,8 @@
      "why": "trigger — the clause names the event"
     },
     "Audit — every browser gate ran": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2466,8 +2466,8 @@
      "class": "always"
     },
     "Run the lesson corpus walks": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2479,8 +2479,8 @@
      "class": "always"
     },
     "Install source-test dependencies": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2492,8 +2492,8 @@
      "class": "always"
     },
     "Run bounded source-only tests": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2505,8 +2505,8 @@
      "class": "always"
     },
     "Guard — bundled stc12 has all emitted opcodes": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2518,8 +2518,8 @@
      "class": "always"
     },
     "Guard — WASM pin is a descendant of the crash-fix floor": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2531,8 +2531,8 @@
      "class": "always"
     },
     "Guard — blocks.jsx has the toolbox null-guard": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2544,8 +2544,8 @@
      "class": "always"
     },
     "Guard — the vendored overlay matches the commit it PINS": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2557,8 +2557,8 @@
      "class": "always"
     },
     "Guard — the example execution gates exist and their ratchets have not grown": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2570,8 +2570,8 @@
      "class": "always"
     },
     "Guard — the fetch-pinning gate exists and can still fail": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2583,8 +2583,8 @@
      "class": "always"
     },
     "Content gates — faceplates, hub faces, retro console": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2596,8 +2596,8 @@
      "class": "always"
     },
     "Vendored-repo history for the pin-move gate": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2609,8 +2609,8 @@
      "class": "always"
     },
     "Fetch the pinned bw-board tree for the pin-reader tests": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2622,8 +2622,8 @@
      "class": "always"
     },
     "Fetch bw-board's default-branch tip for the absent-by-design proof (tolerated absent)": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2635,8 +2635,8 @@
      "class": "always"
     },
     "Restore the sha-pinned ARM toolchain from cache": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2648,8 +2648,8 @@
      "class": "always"
     },
     "Fetch the sha-pinned ARM toolchain for the executed-C differential (tolerated absent)": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2661,8 +2661,8 @@
      "class": "always"
     },
     "Restore the sha-pinned Pico MicroPython firmware from cache": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2674,8 +2674,8 @@
      "class": "always"
     },
     "Fetch the sha-pinned Pico MicroPython firmware for the unit tests (tolerated absent)": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2687,8 +2687,8 @@
      "class": "always"
     },
     "Fetch the GPL SDCC toolchain for the Node consumers (tolerated absent)": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2700,8 +2700,8 @@
      "class": "always"
     },
     "Run unit tests": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2713,8 +2713,8 @@
      "class": "always"
     },
     "Mutation proofs — every enforcement layer must be able to fail": {
-     "existed": 50,
-     "ran": 45,
+     "existed": 48,
+     "ran": 43,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 5,
@@ -2727,8 +2727,8 @@
      "why": "upstream failure — skipped only in runs where an earlier job failed"
     },
     "Guard — packaged native broker proof authority is fresh": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2740,8 +2740,8 @@
      "class": "always"
     },
     "Guard — packaged native broker host and worker assets are fresh": {
-     "existed": 50,
-     "ran": 45,
+     "existed": 48,
+     "ran": 43,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 5,
@@ -2754,8 +2754,8 @@
      "why": "upstream failure — skipped only in runs where an earlier job failed"
     },
     "Guard — no GPL payload reaches the build output": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2767,8 +2767,8 @@
      "class": "always"
     },
     "Guard — the labwired engine stays lazily loaded": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2780,8 +2780,8 @@
      "class": "always"
     },
     "Guard — the first load stays lean": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2793,8 +2793,8 @@
      "class": "always"
     },
     "Fetch stc-compiler (the debugger smoke's disassembly oracle)": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2806,8 +2806,8 @@
      "class": "always"
     },
     "Smoke-test the debugger": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "skippedInFailedRuns": 0,
@@ -2886,35 +2886,35 @@
    },
    "jobs": {
     "browser": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "class": "always"
     },
     "corpus": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "class": "always"
     },
     "build": {
-     "existed": 50,
-     "ran": 50,
+     "existed": 48,
+     "ran": 48,
      "existedMain": 16,
      "ranMain": 16,
      "class": "always"
     },
     "deploy": {
-     "existed": 50,
+     "existed": 48,
      "ran": 16,
      "existedMain": 16,
      "ranMain": 16,
      "class": "sometimes"
     },
     "verify-gui": {
-     "existed": 50,
+     "existed": 48,
      "ran": 16,
      "existedMain": 16,
      "ranMain": 16,
@@ -2981,7 +2981,7 @@
      "class": "always"
     }
    },
-   "sourceSha": "07835eea3"
+   "sourceSha": "c2e470dae"
   },
   "cycle-core-qualification.yml": {
    "runs": 17,
@@ -3122,7 +3122,7 @@
    "sourceSha": "03eed46cb"
   },
   "debugger.yml": {
-   "runs": 19,
+   "runs": 20,
    "stepsInFile": [
     "Dependency-free debugger architecture verdict",
     "Vendor pinned sources",
@@ -3133,10 +3133,10 @@
    "inFileInNoRun": [],
    "steps": {
     "Dependency-free debugger architecture verdict": {
-     "existed": 19,
-     "ran": 19,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 20,
+     "ran": 20,
+     "existedMain": 18,
+     "ranMain": 18,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3146,10 +3146,10 @@
      "class": "always"
     },
     "Vendor pinned sources": {
-     "existed": 19,
-     "ran": 19,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 20,
+     "ran": 20,
+     "existedMain": 18,
+     "ranMain": 18,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3159,10 +3159,10 @@
      "class": "always"
     },
     "Integrate overlays": {
-     "existed": 19,
-     "ran": 19,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 20,
+     "ran": 20,
+     "existedMain": 18,
+     "ranMain": 18,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3172,10 +3172,10 @@
      "class": "always"
     },
     "Install debugger runtime dependencies": {
-     "existed": 19,
-     "ran": 19,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 20,
+     "ran": 20,
+     "existedMain": 18,
+     "ranMain": 18,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3185,10 +3185,10 @@
      "class": "always"
     },
     "Focused debugger contracts and live cores": {
-     "existed": 19,
-     "ran": 19,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 20,
+     "ran": 20,
+     "existedMain": 18,
+     "ranMain": 18,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3200,21 +3200,21 @@
    },
    "jobs": {
     "contracts": {
-     "existed": 19,
-     "ran": 19,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 20,
+     "ran": 20,
+     "existedMain": 18,
+     "ranMain": 18,
      "class": "always"
     },
     "focused": {
-     "existed": 19,
-     "ran": 19,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 20,
+     "ran": 20,
+     "existedMain": 18,
+     "ranMain": 18,
      "class": "always"
     }
    },
-   "sourceSha": "b6a90a847"
+   "sourceSha": "c2e470dae"
   },
   "deploy-daily.yml": {
    "runs": 14,
@@ -4130,7 +4130,7 @@
    "sourceSha": "5b1881b04"
   },
   "rust-notices.yml": {
-   "runs": 1,
+   "runs": 2,
    "stepsInFile": [
     "Check out the notices source",
     "Install Node.js",
@@ -4141,8 +4141,8 @@
    "inFileInNoRun": [],
    "steps": {
     "Check out the notices source": {
-     "existed": 1,
-     "ran": 1,
+     "existed": 2,
+     "ran": 2,
      "existedMain": 0,
      "ranMain": 0,
      "skippedInFailedRuns": 0,
@@ -4154,8 +4154,8 @@
      "class": "always"
     },
     "Install Node.js": {
-     "existed": 1,
-     "ran": 1,
+     "existed": 2,
+     "ran": 2,
      "existedMain": 0,
      "ranMain": 0,
      "skippedInFailedRuns": 0,
@@ -4167,8 +4167,8 @@
      "class": "always"
     },
     "Install Rust": {
-     "existed": 1,
-     "ran": 1,
+     "existed": 2,
+     "ran": 2,
      "existedMain": 0,
      "ranMain": 0,
      "skippedInFailedRuns": 0,
@@ -4180,8 +4180,8 @@
      "class": "always"
     },
     "Test the bounded notices writer": {
-     "existed": 1,
-     "ran": 1,
+     "existed": 2,
+     "ran": 2,
      "existedMain": 0,
      "ranMain": 0,
      "skippedInFailedRuns": 0,
@@ -4193,8 +4193,8 @@
      "class": "always"
     },
     "Check the notices against locked Cargo metadata": {
-     "existed": 1,
-     "ran": 1,
+     "existed": 2,
+     "ran": 2,
      "existedMain": 0,
      "ranMain": 0,
      "skippedInFailedRuns": 0,
@@ -4208,14 +4208,14 @@
    },
    "jobs": {
     "check": {
-     "existed": 1,
-     "ran": 1,
+     "existed": 2,
+     "ran": 2,
      "existedMain": 0,
      "ranMain": 0,
      "class": "always"
     }
    },
-   "sourceSha": "66cf8ccfb"
+   "sourceSha": "89ff75f10"
   },
   "tauri.yml": {
    "runs": 20,
