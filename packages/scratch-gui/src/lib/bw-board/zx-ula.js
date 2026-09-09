@@ -134,6 +134,14 @@ export class ZXULA {
     }
 
     loadState(s) {
+        // Historical machine-v1 snapshots omitted all five input/audio fields.
+        // Preserve their documented reset behavior; partially supplied modern
+        // snapshots are corrupt and must not be mistaken for that legacy form.
+        const inputFields = ['rows', 'speakerEdges', 'earEdges', 'earIdx', 'earLevel'];
+        if (inputFields.every(key => !Object.hasOwn(s, key))) {
+            s = {...s, rows: new Uint8Array(8).fill(0x1f), speakerEdges: [],
+                earEdges: [], earIdx: 0, earLevel: 1};
+        }
         if (!(s.rows instanceof Uint8Array) || s.rows.length !== 8 ||
             !Array.isArray(s.speakerEdges) || !Array.isArray(s.earEdges) ||
             !Number.isSafeInteger(s.earIdx) || s.earIdx < 0 || s.earIdx > s.earEdges.length ||

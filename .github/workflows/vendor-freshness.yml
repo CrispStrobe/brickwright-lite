@@ -65,50 +65,31 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           path: brickwright-lite
+      # Validate all pins together; no partial outputs or fallback to HEAD.
+      - name: Read reviewed vendor pins
+        id: vendor_pins
+        run: node brickwright-lite/scripts/ci-vendor-pins.mjs >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: CrispStrobe/bw-circuit-ui
+          ref: ${{ steps.vendor_pins.outputs.bw-circuit-ui }}
           path: bw-circuit-ui
           fetch-depth: 0
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: CrispStrobe/bw-board
+          ref: ${{ steps.vendor_pins.outputs.bw-board }}
           path: bw-board
           fetch-depth: 0
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: CrispStrobe/sb3-creator
+          ref: ${{ steps.vendor_pins.outputs.sb3-creator }}
           path: sb3-creator
           fetch-depth: 0
-      # PUSH runs are an INTEGRITY gate: lite's tree must match what it
-      # PINS. Comparing against live upstream HEAD made every push red
-      # while the fleet was active — freshness-vs-HEAD is the NIGHTLY
-      # run's job (the staleness alarm), not a push blocker.
-      - name: Pin upstreams to vendor-pins.json (push runs)
-        if: github.event_name == 'push'
-        run: |
-          for repo in bw-circuit-ui bw-board sb3-creator; do
-            sha=$(node -e "const p=require('./brickwright-lite/vendor-pins.json'); const v=p['$repo']||p[Object.keys(p).find(k=>k.includes('$repo'))]; console.log((typeof v==='string'?v:v.sha||v.commit||'').trim())")
-            if [ -n "$sha" ]; then (cd "$repo" && git checkout -q "$sha" && echo "$repo pinned to $sha") || echo "$repo: pin $sha not found, staying on HEAD"; fi
-          done
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
-
-      # Compare against the PINNED upstream commits (vendor-pins.json,
-      # written by each forward sync), not whatever HEAD moved to since
-      # — upstream advancing must not red lite until a deliberate
-      # vendor bump. Missing pin → stay on HEAD.
-      - name: Check out pinned upstream commits
-        run: |
-          for repo in bw-circuit-ui bw-board sb3-creator; do
-            pin=$(jq -r --arg r "$repo" '.[$r] // empty' lego/brickwright-lite/vendor-pins.json 2>/dev/null || true)
-            [ -z "$pin" ] && pin=$(jq -r --arg r "$repo" '.[$r] // empty' brickwright-lite/vendor-pins.json 2>/dev/null || true)
-            if [ -n "$pin" ]; then
-              git -C "$repo" fetch --depth 1 origin "$pin" && git -C "$repo" checkout "$pin" \
-                || echo "::warning::$repo pin $pin not fetchable — comparing against HEAD"
-            fi
-          done
 
       # Each check exits non-zero on drift; run ALL of them even after a
       # failure so one report names every stale tree, then fail once.
@@ -201,8 +182,7 @@ jobs:
             [0-9a-f]*) [ ${#pin} -eq 40 ] || { echo "::error::bw-board pin is not a 40-hex sha: $pin"; exit 1; } ;;
             *) echo "::error::no bw-board pin in $pins"; exit 1 ;;
           esac
-          # RE-READ HEAD RATHER THAN TRUST THE CHECKOUT. The step above falls back
-          # to HEAD with a ::warning:: when a pin is not fetchable, and a warning
+          # Re-read HEAD as an independent check of the exact checkout. A warning
           # is not a stop. This gate means "the tree AT THE PIN"; run against the
           # tip instead and it reports upstream's ordinary progress as undeclared
           # divergence -- lego-b9 measured exactly that against a peer's branch,

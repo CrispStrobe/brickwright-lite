@@ -14,9 +14,9 @@ a sync cannot restore them, and they carry the same warning in their own header.
 
 ## bw-board
 
-Pinned at `8deff2a2f5ded1e73a1a5fe759cf6d9a643fa865`. Manifest: `docs/VENDOR-DIVERGENCE-I8086-MACHINE.md`.
+Pinned at `fe523c1ae10cb566e2d50862fd0ff0ab593975c0`. Manifest: `docs/VENDOR-DIVERGENCE-I8086-MACHINE.md`.
 
-190 tracked file(s): 167 plain, 15 declared-divergent, 8 lite-authored.
+190 tracked file(s): 168 plain, 14 declared-divergent, 8 lite-authored.
 
 - `LICENSE` `[lite]`
 - `ac.js`
@@ -206,7 +206,7 @@ Pinned at `8deff2a2f5ded1e73a1a5fe759cf6d9a643fa865`. Manifest: `docs/VENDOR-DIV
 - `zx-sna.js`
 - `zx-tape.js`
 - `zx-tzx.js`
-- `zx-ula.js` `[declared]`
+- `zx-ula.js`
 - `zx-z80file.js`
 
 ## bw-circuit-ui

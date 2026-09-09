@@ -262,21 +262,6 @@ const CENSUS = [
     {
         file: '.github/workflows/build.yml',
         kind: 'git',
-        text: 'git clone --quiet --filter=blob:none https://github.com/CrispStrobe/bw-board.git "$HEAD_DIR"; then',
-        class: 'waived',
-        why: 'THE TIP IS THE ARGUMENT — a moving ref by definition, the same class as the '
-           + 'emu8051-stc and vendor-history clones below. test/vendor-absent-by-design.test.mjs '
-           + '(lego-be) asks whether an UNSCOPED sync from bw-board\'s default-branch tip refuses '
-           + 'the absent-by-design files by name; sync-bw-board refuses any source BEHIND that '
-           + 'tip, so the pinned tree above cannot serve and the proof had executed in none of '
-           + '20 green runs (plan T13, 2026-09-07). The sha the clone resolved to is printed in '
-           + 'the step log; the proof\'s guard re-fetches origin and skips by name if the tip '
-           + 'moved during the job. Nothing fetched is written into the tree the proof does not '
-           + 'restore from its own snapshot. Tolerated absent by name.'
-    },
-    {
-        file: '.github/workflows/build.yml',
-        kind: 'git',
         text: 'git clone --bare --filter=blob:none https://github.com/CrispStrobe/emu8051-stc.git /tmp/emu8051-stc.git 2>/dev/null',
         class: 'waived',
         why: 'ANCESTRY, not content. The step asks whether the WASM PIN is a '
@@ -632,12 +617,9 @@ describe('fetch pinning: every fetch that decides what ships names an immutable 
             + 'Delete the row, or fix what moved:\n  ' + vanished.map(show).join('\n  '));
     });
 
-    test('every waived row states a reason, and the waived set is the four known ones', () => {
-        // A waiver with no reason is an exemption. Naming the set keeps a fifth
-        // one from joining quietly. Three of the four are GRAPH-ONLY clones
-        // (emu8051-stc ancestry; the T9 pin-move histories; the bw-board TIP for
-        // the absent-by-design proof, T13c) — not holes, and docs/FETCH-PINNING.md
-        // section 4 says so; the fourth is the open one (the library pack).
+    test('every waived row states a reason, and the waived set is the three known ones', () => {
+        // Two graph-only clones (ancestry and pin history) plus the library
+        // pack. The absent-file proof now uses the existing exact-pin tree.
         const waived = CENSUS.filter((r) => r.class === 'waived');
         for (const r of waived) {
             assert.ok((r.why || '').length > 80,
@@ -646,7 +628,6 @@ describe('fetch pinning: every fetch that decides what ships names an immutable 
         assert.deepEqual(waived.map((r) => `${r.file} :: ${r.text.slice(0, 60)}`).sort(), [
             '.github/workflows/build.yml :: git clone --bare --filter=blob:none https://github.com/Crisp',
             '.github/workflows/build.yml :: git clone --quiet --bare --filter=blob:none "https://github.',
-            '.github/workflows/build.yml :: git clone --quiet --filter=blob:none https://github.com/Cris',
             'overlay/scratch-gui/src/lib/offline-assets.js :: github.com/CrispStrobe/brickwright-lite/releases/download/li'
         ], 'the set of fetch sites that cannot be sha-addressed changed. That is either a '
          + 'new hole or a closed one — say which in docs/FETCH-PINNING.md.');

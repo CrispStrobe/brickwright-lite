@@ -15,9 +15,10 @@ This document turns the product review into an ordered implementation plan.
 completed and rejected work. This file defines outcomes, sequencing and release
 gates.
 
-## Next-session priorities — reconciled 2026-09-08
+## Next-session priorities — reconciled 2026-09-09
 
-This shortlist is reconciled with `main` at `ef1fa3e66`. Completed and rejected
+This shortlist starts from `main` at `ca069deb9`; the CI/ULA adoption candidate
+is recorded in `docs/CI-INPUT-ADOPTION-2026-09-09.md`. Completed and rejected
 work, including the payload sequence, N2b–N2f, and compiler/SIM recovery, is recorded in `HISTORY.md`;
 `LANES.md` remains the live ownership authority.
 
@@ -31,16 +32,17 @@ Pin changes remain chains: sync the exact green upstream SHA,
 update every dual-tracked mirror, and re-derive every artifact that stamps the
 pin. A green behavior probe does not make stale provenance acceptable.
 
-The next work stays serialized, with one bounded claim per session:
+The next work follows explicit lane ownership. Adopt related green changes in batches;
+see `docs/UPSTREAM-WIP.md` for the WIP pin-update workflow:
 
 | Order | Bounded track | Ownership and acceptance boundary |
 |---|---|---|
-| 1 | Make every cross-repo CI input immutable | Finish the claimed bw-circuit-ui clone-pin lane, then census the other upstream repositories by clone site. A new clone must fail the derived gate until it receives one full 40-character reviewed SHA; corpus-derived pins remain the authority where they already bind sources to baselines. |
+| 1 | Make every cross-repo CI input immutable | The original CUI lane landed in PR 16; the all-workflow/script census follow-up is PR 19, sb3-creator PR 12, and Lite now checks out validated vendor pins without HEAD fallback. Track exact hosted receipts in the adoption note. A new clone must fail the derived gate until it receives one full 40-character reviewed SHA; corpus-derived pins remain the authority where they already bind sources to baselines. |
 | 2 | ~~Retire the remaining singleton source fork upstream~~ — DONE | `sb3-creator`'s `i8086_counter` is upstream and Lite pins exact `9173ca75`. `bw-circuit-ui` PR 18 preserves the `ExamplesBrowser` consumer while making `intro-doc.jsx` upstream-owned; the guarded Lite sync to `e18dad586` measures 674 identical / 0 divergent and removes both declarations. |
-| 3 | Retire the remaining 17-file `bw-board` fork by dependency-complete units | AVR debug convergence retired the first of the measured 18 at `f917c1f12`. The remaining graph must be re-derived at each pin; file size and `lineLevelOnly` status do not define review boundaries. Move complete producer/consumer contracts together, treat sync artefacts in the sync layer, relocate Lite-owned helpers that do not belong upstream, and re-pin only after each upstream and downstream gate chain is green. |
+| 3 | Retire the remaining 14-file `bw-board` fork by dependency-complete units | AVR debug convergence retired the first of the measured 18 at `f917c1f12`. Debug-session and RP2040 convergence landed subsequently; this candidate retires the complete ULA snapshot contract through upstream PR 4. The remaining graph must be re-derived at each pin; file size and `lineLevelOnly` status do not define review boundaries. Move complete producer/consumer contracts together, treat sync artefacts in the sync layer, relocate Lite-owned helpers that do not belong upstream, and re-pin only after each upstream and downstream gate chain is green. |
 
-The zero-divergence census is exact at this candidate: 17 declared source forks
-(17 `bw-board`, zero `bw-circuit-ui`, zero `sb3-creator`) and 10 downstream-created
+The zero-divergence census is exact at this candidate: 14 declared source forks
+(14 `bw-board`, zero `bw-circuit-ui`, zero `sb3-creator`) and 10 downstream-created
 placements. Licence copies and generated manifests remain downstream by
 construction; eliminating divergence does not mean copying those artefacts into
 an upstream `src/` tree.

@@ -399,8 +399,7 @@ fails unless it touched both.
       "i8086-debug.js",
       "index.js",
       "m6502-adapter.js",
-      "z80-adapter.js",
-      "zx-ula.js"
+      "z80-adapter.js"
     ],
     "note": "Files that diverge only line-by-line and have no named allow-list entry. Recorded as a SET, not counts. reseat-gate.js left this inventory on 2026-09-07: it was not forward-ported work at all, it was lite BEHIND by one upstream commit (20f0d45), and syncing it forward made it identical. Corrected in VENDOR-DIRECTION-2026-09-06.md -- size has no direction. debug-session.js left on 2026-09-08 after its wall-budget implementation converged upstream at bw-board 64ecc940; the guarded bump changed zero bytes in that file, so only its stale declaration retired."
   },
