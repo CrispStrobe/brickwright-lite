@@ -146,6 +146,12 @@ test('the dedicated workflow installs Rust and watches every notices input', () 
         'a new workflow needs a branch dispatch before the CI census can judge it');
     assert.doesNotMatch(workflow, /push:\s*\n\s+branches:/,
         'a new workflow absent from default cannot be dispatched; its path-filtered branch push must bootstrap the first run');
+    assert.match(workflow, /group: rust-notices-\$\{\{ github\.head_ref \|\| github\.ref_name \}\}/,
+        'branch-push and pull-request runs must share one cancellation group');
+    assert.match(workflow, /cancel-in-progress: true/,
+        'a superseded notices-only run must not consume another runner slot');
+    assert.match(workflow, /timeout-minutes: 5/,
+        'the focused metadata check must retain its bounded five-minute ceiling');
     assert.match(workflow, /dtolnay\/rust-toolchain@[0-9a-f]{40}/,
         'Cargo must come from an explicitly pinned Rust-toolchain action, not runner ambience');
     assert.match(workflow, /run: npm run gen:notices:check/,
