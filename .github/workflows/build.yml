@@ -706,6 +706,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: CrispStrobe/stc-compiler
+          ref: 79df4b6d37c78e463f5c1d8caa3cfaa7712935ad
           path: .stc-compiler
 
       - name: Smoke-test the debugger
