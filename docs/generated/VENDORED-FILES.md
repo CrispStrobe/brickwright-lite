@@ -14,9 +14,9 @@ a sync cannot restore them, and they carry the same warning in their own header.
 
 ## bw-board
 
-Pinned at `bc0928222ae027007cd8f7890495572bccab31e3`. Manifest: `docs/VENDOR-DIVERGENCE-I8086-MACHINE.md`.
+Pinned at `8deff2a2f5ded1e73a1a5fe759cf6d9a643fa865`. Manifest: `docs/VENDOR-DIVERGENCE-I8086-MACHINE.md`.
 
-190 tracked file(s): 166 plain, 16 declared-divergent, 8 lite-authored.
+190 tracked file(s): 167 plain, 15 declared-divergent, 8 lite-authored.
 
 - `LICENSE` `[lite]`
 - `ac.js`
@@ -164,7 +164,7 @@ Pinned at `bc0928222ae027007cd8f7890495572bccab31e3`. Manifest: `docs/VENDOR-DIV
 - `resolve-netlist.js` `[lite]`
 - `rp2040-bootrom.js`
 - `rp2040js-adapter.js`
-- `rp2040js-debug.js` `[declared]`
+- `rp2040js-debug.js`
 - `sb-dsp.js`
 - `scripted-mcu.js`
 - `sdcard-spi.js`
