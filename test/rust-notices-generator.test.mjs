@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {
     BEGIN_MARKER,
     END_MARKER,
@@ -22,6 +23,7 @@ const packages = [
 const sentinel = '## HAND-MAINTAINED AFTER\n\nSENTINEL: must survive byte for byte.\n';
 const shell = body => `BEFORE: hand maintained.\n${BEGIN_MARKER}\n\n${body}\n\n${END_MARKER}\n\n${sentinel}`;
 const canonical = shell(rustCrateBody(packages));
+const workflow = readFileSync(new URL('../.github/workflows/rust-notices.yml', import.meta.url), 'utf8');
 
 const captureMain = (argv, io) => {
     const quiet = quietConsole(['log', 'info', 'debug', 'warn', 'error']);
@@ -124,4 +126,26 @@ test('unknown and duplicate CLI flags refuse without reading metadata', () => {
     assert.deepEqual(unknown.lines, [['error', 'usage: node scripts/gen-rust-notices.mjs [--check]']]);
     assert.deepEqual(duplicate.lines, [['error', 'usage: node scripts/gen-rust-notices.mjs [--check]']]);
     assert.equal(read, false);
+});
+
+test('the dedicated workflow installs Rust and watches every notices input', () => {
+    for (const input of [
+        '.github/workflows/rust-notices.yml',
+        'THIRD-PARTY-NOTICES.md',
+        'scripts/gen-rust-notices.mjs',
+        'test/rust-notices-generator.test.mjs',
+        'test/helpers/quiet-console.mjs',
+        'package.json',
+        'apps/tauri/src-tauri/Cargo.lock',
+        'apps/tauri/src-tauri/**/Cargo.toml'
+    ]) {
+        assert.equal(workflow.split(`- '${input}'`).length - 1, 2,
+            `${input} must trigger both push and pull-request Rust-notices runs`);
+    }
+    assert.match(workflow, /workflow_dispatch:/,
+        'a new workflow needs a branch dispatch before the CI census can judge it');
+    assert.match(workflow, /dtolnay\/rust-toolchain@[0-9a-f]{40}/,
+        'Cargo must come from an explicitly pinned Rust-toolchain action, not runner ambience');
+    assert.match(workflow, /run: npm run gen:notices:check/,
+        'the dedicated workflow must execute the live locked-metadata check');
 });
