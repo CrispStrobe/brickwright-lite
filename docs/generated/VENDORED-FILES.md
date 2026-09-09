@@ -14,7 +14,7 @@ a sync cannot restore them, and they carry the same warning in their own header.
 
 ## bw-board
 
-Pinned at `676d9e8936f5d030335807e83a5f6c213f750c2c`. Manifest: `docs/VENDOR-DIVERGENCE-I8086-MACHINE.md`.
+Pinned at `bc0928222ae027007cd8f7890495572bccab31e3`. Manifest: `docs/VENDOR-DIVERGENCE-I8086-MACHINE.md`.
 
 190 tracked file(s): 166 plain, 16 declared-divergent, 8 lite-authored.
 
