@@ -85,30 +85,17 @@ test('the refusal is checked before the line-level guards, and --force does not 
 });
 
 test('an unscoped sync writes nothing new and refuses both by name', (t) => {
-    // THE FUNCTIONAL PROOF, and it needs a DIFFERENT TREE than every other
-    // BW_BOARD_DIR reader.
-    //
-    // `BW_BOARD_DIR` means the tree AT THE PIN -- that is what the census, the
-    // two provenance tests and vendor-identity all want. This one cannot use
-    // it: sync-bw-board refuses a source BEHIND the default branch before it
-    // ever reaches the absent-by-design check, so at the pin this test fails
-    // for a reason that has nothing to do with what it asserts. Measured, not
-    // assumed: at d5850e6 it exits with "BEHIND origin default 8f46f2c".
-    //
-    // So it reads its own variable, and when only the pin tree is offered it
-    // SKIPS BY NAME SAYING WHICH SHA IT NEEDED. A skip that does not say what
-    // it wanted is how a check stays unrun for weeks -- vendor-identity's
-    // inventory went stale behind exactly that.
-    const dir = process.env.BW_BOARD_HEAD_DIR; // gate-shapes-allow: named skip below
+    // Test the absent-file refusal against the adopted input. Source-freshness
+    // has separate tests; --allow-stale below permits this deliberate pin but
+    // does not bypass absentByDesign or pin-move checks.
+    const dir = process.env.BW_BOARD_DIR; // gate-shapes-allow: named skip below
     if (!dir) {
-        t.skip(process.env.BW_BOARD_DIR
-            ? 'BW_BOARD_HEAD_DIR unset -- BW_BOARD_DIR is the tree AT THE PIN and the sync '
-              + 'refuses a source behind the default branch, so the unscoped-sync refusal is '
-              + 'NOT verified here; point BW_BOARD_HEAD_DIR at a bw-board checkout on the '
-              + 'default branch'
-            : 'BW_BOARD_HEAD_DIR unset -- the unscoped-sync refusal is NOT verified here');
+        t.skip('BW_BOARD_DIR unset -- pinned-source refusal is NOT verified here');
         return;
     }
+    const expected = JSON.parse(readFileSync(PINS, 'utf8'))['bw-board'];
+    const actual = execFileSync('git', ['-C', dir, 'rev-parse', 'HEAD'], {encoding: 'utf8'}).trim();
+    assert.equal(actual, expected, 'absent-file proof must read the exact reviewed bw-board pin');
     // THE SYNC MUST NOT WRITE INTO THE TREE THE OTHER GATES ARE READING.
     //
     // An unscoped sync UPDATES vendored files that exist -- board.js, measured
@@ -189,36 +176,9 @@ test('an unscoped sync writes nothing new and refuses both by name', (t) => {
     // What the next reader needs is the pointer, which is this comment.
     const pinsBefore = readFileSync(PINS_S, 'utf8');
 
-    // A THIRD PRECONDITION, and this one fires on EVERY PIN LEG. Two are
-    // already handled above -- the pin-move guard (--pin) and a source tree
-    // that has fallen BEHIND. This is the opposite of behind: the recorded pin
-    // is the SAME SHA as the source tree, and then sync-bw-board refuses with
-    //
-    //   PIN ALREADY MOVED, and avr8js-debug.js has no content base.
-    //   No commit reachable from <sha> along this file's history holds the
-    //   vendored copy byte for byte, so the base falls back to the recorded pin
-    //   -- which is the sha this run is syncing FROM, so the base would be the
-    //   INCOMING file and every upstream edit would read as lite-only work
-    //   being deleted.
-    //
-    // That refusal is CORRECT: with base == source there is no way to tell an
-    // upstream change from a lite deletion, and the sync says so rather than
-    // guessing. But it lands several steps before the absent-by-design check,
-    // so the proof failed "i8088-cycles.js was not refused by name" -- the third
-    // time in two days that this assertion has reported a broken refusal when
-    // the refusal never ran (run 34164869199, pin leg to 2c568ca).
-    //
-    // AND IT IS NOT AN EDGE CASE. A pin leg bumps to upstream's tip; CI clones
-    // upstream's tip for BW_BOARD_HEAD_DIR; so on every pin leg, pin == source
-    // by construction. It also catches main for the window after a bump lands,
-    // until upstream moves on. The leg above went green on a re-run only because
-    // bw-board merged PR #2 in between -- luck, not a fix.
-    //
-    // So: give the sync a real base. The refusal names the remedy itself
-    // ("Restore the PREVIOUS pin and re-run; this script records the new one
-    // itself"), and lite's own history of vendor-pins.json is where the previous
-    // pin lives. Rewound only when the two shas are equal, restored with
-    // everything else below, and byte-compared at the end like the rest.
+    // The source is now always the current pin. Rewind the sandbox's pin to
+    // the previous recorded adoption so three-way source guards have a real
+    // base. This changes only the temporary Lite tree, never the input source.
     const gitOut = (args, cwd) => {
         try { return execFileSync('git', args, { encoding: 'utf8', cwd }).trim(); }
         catch { return null; }
@@ -255,39 +215,11 @@ test('an unscoped sync writes nothing new and refuses both by name', (t) => {
 
     let out = '';
     try {
-        // --pin, AND WHY. A SECOND guard fires before the absent-by-design check,
-        // the same way the BEHIND one does: an unscoped sync from a tree at any
-        // other sha would move the bw-board pin, and scripts/lib-pin.mjs (plan
-        // T9b) refuses a pin move unless --pin is on the command line. Measured
-        // the first time this proof ever executed in CI (run 34145330880,
-        // 2026-09-07, once build.yml began cloning the default-branch tip for
-        // it): "PinMoveRefused: refusing to move the bw-board pin 5547d4351 ->
-        // d8d606598", and the proof failed "i8088-cycles.js was not refused by
-        // name" -- reading as a broken guard when the guard had never run. In CI
-        // the tip is the pin only in the minutes after a bump, so that is the
-        // ORDINARY case here, not an edge one.
-        //
-        // --pin is the right lever rather than a skip: this proof is about the
-        // per-file refusal, and pin discipline is test/pin-only-moves-with-flag
-        // .test.mjs's subject. The move lands in this worktree's vendor-pins.json
-        // and is restored below.
-        out = execFileSync('node', [SYNC_S, '--dir', dir, '--pin'], { encoding: 'utf8', cwd: tree });
+        // Explicit pin movement and deliberate historical source are allowed
+        // only inside this sandbox. The per-file refusal remains enforced.
+        out = execFileSync('node', [SYNC_S, '--dir', dir, '--pin', '--allow-stale'], { encoding: 'utf8', cwd: tree });
     } catch (e) {
         out = `${e.stdout || ''}${e.stderr || ''}`;   // refusals exit non-zero, by design
-    }
-    // A TREE THAT HAS SINCE FALLEN BEHIND IS NOT A FAILING GUARD. "head" is a
-    // moving target: point this at a checkout that was the tip an hour ago and
-    // the sync refuses it for being behind the default branch, long before it
-    // reaches the absent-by-design check. Without this branch the test fails
-    // with "i8088-cycles.js was not refused by name", which reads as the guard
-    // being broken when the guard never ran. It cost me a diagnosis; it should
-    // not cost the next reader one.
-    if (/BEHIND origin default/.test(out)) {
-        cleanup();
-        t.skip('BW_BOARD_HEAD_DIR is behind bw-board\'s default branch, so the sync refused it '
-            + 'before reaching the absent-by-design check -- the refusal is NOT verified here. '
-            + 'Pull that checkout.');
-        return;
     }
     // The tree (vendored files AND the pin) goes back before anything is
     // asserted: a failing assertion must not leave the worktree dirty, which is

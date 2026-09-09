@@ -159,23 +159,17 @@ clones of bw-board, sb3-creator and bw-circuit-ui (added with plan T9, `test/pin
 the current pin. Both endpoints of every such question are full shas already; the clone holds
 the graph that relates them. A stale clone can only make the gate know less — a brand-new
 upstream commit not yet seen — never change what ships, and there is no ref to pin because the
-whole history is the argument. The census test names the waived set exactly (four rows since T13c, see below; three at the time of writing:
-these two and the pack) so a fourth cannot join quietly.
+whole history is the argument. The census test names the waived set exactly (three rows: these two and the pack) so a fourth cannot join quietly.
 
-### A third graph-only clone — the bw-board tip for the absent-by-design proof (2026-09-07, T13c)
+### The moving absent-file proof was retired (2026-09-09)
 
-A fourth `waived` row, and like the two above it is not a hole. lego-be's
-test/vendor-absent-by-design.test.mjs asks whether an UNSCOPED `sync-bw-board.mjs --dir` from
-bw-board's default-branch TIP refuses the absent-by-design files by name. The sync refuses any
-source BEHIND that tip before it reaches the check, so the pinned tree cannot serve, and the proof
-had executed in none of 20 green main runs. build.yml's build job now clones the tip blobless into
-`$RUNNER_TEMP` and exports it as `BW_BOARD_HEAD_DIR`: the tip is the argument — a moving ref by
-definition — the sha it resolved to is printed in the step log with the time, and the proof's own
-guard re-fetches origin and skips by name if the tip moved during the job. Nothing fetched is
-written into the tree the proof does not restore from its own snapshot; a failed clone leaves the
-variable unset and the proof skips by name. The census test now names the waived set by file AND
-the first sixty characters of the fetch text, because "four rows in build.yml" alone would let two
-rows swap without notice.
+The earlier T13c workaround cloned the default-branch tip and could skip when
+upstream advanced. The proof now consumes the existing `BW_BOARD_DIR`, asserts
+its HEAD equals `vendor-pins.json`, and passes `--allow-stale` only inside its
+throwaway sync checkout. This bypasses the unrelated freshness precondition,
+not the absent-file or pin-move guards. Source-freshness behavior remains
+separately tested. The live-tip clone and its waiver are removed: three waived
+sites remain (the two graph queries and the library pack).
 
 ## 5. What now catches the next one
 

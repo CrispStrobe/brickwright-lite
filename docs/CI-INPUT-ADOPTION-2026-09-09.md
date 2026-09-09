@@ -11,7 +11,7 @@ reviewed upstream work, not on every upstream push. This remains active WIP.
 | bw-circuit-ui | Existing PR 16 already pinned the sibling helper. PR 19 extends discovery to every workflow and invoked script imports; `.github/ci-siblings.json` remains authoritative for bw-board/bw-parts and `CORPUS.json` for sb3-creator. Five helper invocations plus one corpus clone. |
 | sb3-creator | Two external checkouts retain `test/fixtures/siblings.json` authority. PR 12 rejects a new unpinned checkout or clone in another workflow or an invoked script. |
 | bw-board | Existing `test/ci-external-input-pins.test.mjs` derives seven external sites, including the labwired build script; four pin/action mutation tests pass. No duplicate pin registry added. |
-| Lite | Nine Actions external checkout sites across 13 workflows. Three vendor checkouts now read validated `vendor-pins.json` outputs directly; missing/fetch-failed pins cannot fall back to HEAD. stc-compiler is fixed at reviewed green `79df4b6d37c78e463f5c1d8caa3cfaa7712935ad`. Existing whole-tree fetch census retains individually named graph/discovery operations; its 11 mutation probes all fail for their intended reasons. |
+| Lite | Nine Actions external checkout sites across 13 workflows. Three vendor checkouts now read validated `vendor-pins.json` outputs directly; missing/fetch-failed pins cannot fall back to HEAD. stc-compiler is fixed at reviewed green `79df4b6d37c78e463f5c1d8caa3cfaa7712935ad`. The absent-file sync proof now uses that same pin instead of a second tip clone or a moving-tip skip. Existing whole-tree fetch census retains individually named graph/discovery operations; its 11 mutation probes all fail for their intended reasons. |
 
 The shared workflow scanner is owned by bw-circuit-ui; sb3-creator and Lite
 carry byte-identical copies. These are tooling copies, outside vendored source
@@ -57,3 +57,8 @@ landing; PR receipts record the final exact candidate and results.
 Upstream test-only CI changes do not require changing Lite's shipping CUI or
 sb3 pins. Their source payload did not change. This is an example of avoiding
 unnecessary SHA churn while still publishing shared improvements upstream.
+
+The deterministic absent-file proof passes against the adopted pin after the
+upstream default branch has advanced. It deliberately bypasses only the source
+freshness precondition inside its sandbox; the absent-file refusal and explicit
+pin-move checks still execute. The old live-tip fetch waiver is removed.
