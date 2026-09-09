@@ -93,8 +93,12 @@ test('an unscoped sync writes nothing new and refuses both by name', (t) => {
         t.skip('BW_BOARD_DIR unset -- pinned-source refusal is NOT verified here');
         return;
     }
+    const gitOut = (args, cwd) => {
+        try { return execFileSync('git', args, { encoding: 'utf8', cwd }).trim(); }
+        catch { return null; }
+    };
     const expected = JSON.parse(readFileSync(PINS, 'utf8'))['bw-board'];
-    const actual = execFileSync('git', ['-C', dir, 'rev-parse', 'HEAD'], {encoding: 'utf8'}).trim();
+    const actual = gitOut(['rev-parse', 'HEAD'], dir);
     assert.equal(actual, expected, 'absent-file proof must read the exact reviewed bw-board pin');
     // THE SYNC MUST NOT WRITE INTO THE TREE THE OTHER GATES ARE READING.
     //
@@ -179,12 +183,8 @@ test('an unscoped sync writes nothing new and refuses both by name', (t) => {
     // The source is now always the current pin. Rewind the sandbox's pin to
     // the previous recorded adoption so three-way source guards have a real
     // base. This changes only the temporary Lite tree, never the input source.
-    const gitOut = (args, cwd) => {
-        try { return execFileSync('git', args, { encoding: 'utf8', cwd }).trim(); }
-        catch { return null; }
-    };
     const recordedPin = JSON.parse(pinsBefore)['bw-board'];
-    const sourceSha = gitOut(['rev-parse', 'HEAD'], dir);
+    const sourceSha = actual;
     if (sourceSha && recordedPin === sourceSha) {
         // The most recent DIFFERENT value this file has recorded for bw-board.
         // Read from git rather than from a hardcoded fallback: a constant here
