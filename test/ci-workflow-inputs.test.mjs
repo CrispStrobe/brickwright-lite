@@ -10,14 +10,14 @@ const allowed = site => site.file === '.github/workflows/vendor-freshness.yml'
     && names.some(name => site.repository === `CrispStrobe/${name}`
         && site.ref === '${{ steps.vendor_pins.outputs.' + name + ' }}');
 
-test('every external workflow checkout has a full pin or validated vendor-pin output', () => {
+test('every external workflow checkout has a full pin or validated vendor-pin output', t => {
     const sites = assertCheckoutPins(workflows, allowed);
     const workflow = workflows.get('.github/workflows/vendor-freshness.yml');
     assert.match(workflow, /id: vendor_pins\n\s+run: node brickwright-lite\/scripts\/ci-vendor-pins.mjs >> "\$GITHUB_OUTPUT"/);
     assert.ok(workflow.indexOf('id: vendor_pins') < workflow.indexOf('repository: CrispStrobe/'));
     assert.equal(sites.filter(allowed).length, 3);
     assert.doesNotMatch(workflow, /staying on HEAD|comparing against HEAD/);
-    console.log(`Audited ${sites.length} external checkout sites across ${workflows.size} workflows`);
+    t.diagnostic(`Audited ${sites.length} external checkout sites across ${workflows.size} workflows`);
 });
 
 test('vendor outputs reject a missing, abbreviated, moving or injected SHA before checkout', () => {
