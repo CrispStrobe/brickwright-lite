@@ -301,9 +301,11 @@ No EasyEDA, Gerber, PCB artwork, or source files from the unlicensed rehsd
 ## Rust (apps/tauri/src-tauri)
 
 Generated from `cargo metadata` against the current Cargo.lock (all
-platform targets, so some entries only apply to specific OSes). All
-permissive (MIT/Apache-2.0/BSD/ISC/Zlib/Unlicense/CC0/MPL-2.0 and similar);
-none copyleft in a way that affects this binary.
+platform targets, so some entries only apply to specific OSes). The licences
+are permissive or file-level MPL-2.0 terms; none extends copyleft to this
+binary as a larger work. Where a crate offers a disjunction, this distribution
+takes a permissive option: specifically, `unescaper` declares
+`MIT OR GPL-3.0-only`, and this distribution elects MIT rather than GPL.
 
 <!-- BEGIN GENERATED RUST CRATE LIST: run `node scripts/gen-rust-notices.mjs` to refresh, do not hand-edit below this line -->
 
@@ -437,7 +439,7 @@ none copyleft in a way that affects this binary.
 - equivalent 1.0.2 (Apache-2.0 OR MIT) -- https://github.com/indexmap-rs/equivalent
 - erased-serde 0.4.10 (MIT OR Apache-2.0) -- https://github.com/dtolnay/erased-serde
 - errno 0.3.14 (MIT OR Apache-2.0) -- https://github.com/lambda-fairy/rust-errno
-- event-listener 5.4.1 (Apache-2.0 OR MIT) -- https://github.com/smol-rs/event-listener
+- event-listener 5.4.2 (Apache-2.0 OR MIT) -- https://github.com/smol-rs/event-listener
 - event-listener-strategy 0.5.4 (Apache-2.0 OR MIT) -- https://github.com/smol-rs/event-listener-strategy
 - fastrand 2.4.1 (Apache-2.0 OR MIT) -- https://github.com/smol-rs/fastrand
 - fdeflate 0.3.7 (MIT OR Apache-2.0) -- https://github.com/image-rs/fdeflate
@@ -514,6 +516,7 @@ none copyleft in a way that affects this binary.
 - indexmap 1.9.3 (Apache-2.0 OR MIT) -- https://github.com/bluss/indexmap
 - indexmap 2.14.0 (Apache-2.0 OR MIT) -- https://github.com/indexmap-rs/indexmap
 - infer 0.19.0 (MIT) -- https://github.com/bojand/infer
+- io-kit-sys 0.4.1 (MIT / Apache-2.0) -- https://github.com/jtakakura/io-kit-rs
 - ipnet 2.12.0 (MIT OR Apache-2.0) -- https://github.com/krisprice/ipnet
 - is-docker 0.2.0 (MIT) -- https://github.com/TheLarkInn/is-docker
 - is-wsl 0.4.0 (MIT) -- https://github.com/TheLarkInn/is-wsl
@@ -538,12 +541,15 @@ none copyleft in a way that affects this binary.
 - libdbus-sys 0.2.7 (Apache-2.0/MIT) -- https://github.com/diwic/dbus-rs
 - libloading 0.7.4 (ISC) -- https://github.com/nagisa/rust_libloading/
 - libredox 0.1.18 (MIT) -- https://gitlab.redox-os.org/redox-os/libredox.git
+- libudev 0.3.0 (MIT) -- https://github.com/dcuddeback/libudev-rs
+- libudev-sys 0.1.4 (MIT) -- https://github.com/dcuddeback/libudev-sys
 - linux-raw-sys 0.12.1 (Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT) -- https://github.com/sunfishcode/linux-raw-sys
 - litemap 0.8.2 (Unicode-3.0) -- https://github.com/unicode-org/icu4x
 - lock_api 0.4.14 (MIT OR Apache-2.0) -- https://github.com/Amanieu/parking_lot
 - log 0.4.33 (MIT OR Apache-2.0) -- https://github.com/rust-lang/log
 - lru-slab 0.1.2 (MIT OR Apache-2.0 OR Zlib) -- https://github.com/Ralith/lru-slab
 - macaddr 1.0.1 (Apache-2.0 OR MIT) -- https://github.com/svartalf/rust-macaddr
+- mach2 0.4.3 (BSD-2-Clause OR MIT OR Apache-2.0) -- https://github.com/JohnTitor/mach2
 - markup5ever 0.38.0 (MIT OR Apache-2.0) -- https://github.com/servo/html5ever
 - memchr 2.8.3 (Unlicense OR MIT) -- https://github.com/BurntSushi/memchr
 - memoffset 0.9.1 (MIT) -- https://github.com/Gilnaa/memoffset
@@ -555,6 +561,7 @@ none copyleft in a way that affects this binary.
 - ndk-context 0.1.1 (MIT OR Apache-2.0) -- https://github.com/rust-windowing/android-ndk-rs
 - ndk-sys 0.6.0+11769913 (MIT OR Apache-2.0) -- https://github.com/rust-mobile/ndk
 - new_debug_unreachable 1.0.6 (MIT) -- https://github.com/mbrubeck/rust-debug-unreachable
+- nix 0.26.4 (MIT) -- https://github.com/nix-rust/nix
 - nix 0.29.0 (MIT) -- https://github.com/nix-rust/nix
 - num_enum 0.7.6 (BSD-3-Clause OR MIT OR Apache-2.0) -- https://github.com/illicitonion/num_enum
 - num_enum_derive 0.7.6 (BSD-3-Clause OR MIT OR Apache-2.0) -- https://github.com/illicitonion/num_enum
@@ -584,7 +591,7 @@ none copyleft in a way that affects this binary.
 - objc2-user-notifications 0.3.2 (Zlib OR Apache-2.0 OR MIT) -- https://github.com/madsmtm/objc2
 - objc2-web-kit 0.3.2 (Zlib OR Apache-2.0 OR MIT) -- https://github.com/madsmtm/objc2
 - once_cell 1.21.4 (MIT OR Apache-2.0) -- https://github.com/matklad/once_cell
-- open 5.3.6 (MIT) -- https://github.com/Byron/open-rs
+- open 5.4.0 (MIT) -- https://github.com/Byron/open-rs
 - option-ext 0.2.0 (MPL-2.0) -- https://github.com/soc/option-ext.git
 - ordered-multimap 0.7.3 (MIT) -- https://github.com/sgodwincs/ordered-multimap-rs
 - ordered-stream 0.2.0 (MIT OR Apache-2.0) -- https://github.com/danieldg/ordered-stream
@@ -654,8 +661,8 @@ none copyleft in a way that affects this binary.
 - rustc_version 0.4.1 (MIT OR Apache-2.0) -- https://github.com/djc/rustc-version-rs
 - rustc-hash 2.1.3 (Apache-2.0 OR MIT) -- https://github.com/rust-lang/rustc-hash
 - rustix 1.1.4 (Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT) -- https://github.com/bytecodealliance/rustix
-- rustls 0.23.41 (Apache-2.0 OR ISC OR MIT) -- https://github.com/rustls/rustls
-- rustls-pki-types 1.15.0 (MIT OR Apache-2.0) -- https://github.com/rustls/pki-types
+- rustls 0.23.43 (Apache-2.0 OR ISC OR MIT) -- https://github.com/rustls/rustls
+- rustls-pki-types 1.15.1 (MIT OR Apache-2.0) -- https://github.com/rustls/pki-types
 - rustls-webpki 0.103.13 (ISC) -- https://github.com/rustls/webpki
 - rustversion 1.0.23 (MIT OR Apache-2.0) -- https://github.com/dtolnay/rustversion
 - ryu 1.0.23 (Apache-2.0 OR BSL-1.0) -- https://github.com/dtolnay/ryu
@@ -684,6 +691,7 @@ none copyleft in a way that affects this binary.
 - serde-xml-rs 0.8.2 (MIT) -- https://github.com/RReverser/serde-xml-rs
 - serialize-to-javascript 0.1.2 (MIT OR Apache-2.0) -- https://github.com/chippers/serialize-to-javascript
 - serialize-to-javascript-impl 0.1.2 (MIT OR Apache-2.0) -- https://github.com/chippers/serialize-to-javascript
+- serialport 4.9.0 (MPL-2.0) -- https://github.com/serialport/serialport-rs
 - servo_arc 0.4.3 (MIT OR Apache-2.0) -- https://github.com/servo/stylo
 - sha1 0.10.6 (MIT OR Apache-2.0) -- https://github.com/RustCrypto/hashes
 - sha2 0.10.9 (MIT OR Apache-2.0) -- https://github.com/RustCrypto/hashes
@@ -727,6 +735,7 @@ none copyleft in a way that affects this binary.
 - tauri-plugin-fs 2.5.1 (Apache-2.0 OR MIT) -- https://github.com/tauri-apps/plugins-workspace
 - tauri-plugin-log 2.8.0 (Apache-2.0 OR MIT) -- https://github.com/tauri-apps/plugins-workspace
 - tauri-plugin-opener 2.5.4 (Apache-2.0 OR MIT) -- https://github.com/tauri-apps/plugins-workspace
+- tauri-plugin-scratchlink-original 0.1.0 (BSD-3-Clause)
 - tauri-plugin-share 2.0.5 (MIT OR Apache-2.0) -- https://github.com/lindongchen/tauri-plugin-share
 - tauri-runtime 2.11.3 (Apache-2.0 OR MIT) -- https://github.com/tauri-apps/tauri
 - tauri-runtime-wry 2.11.4 (Apache-2.0 OR MIT) -- https://github.com/tauri-apps/tauri
@@ -775,6 +784,7 @@ none copyleft in a way that affects this binary.
 - typeid 1.0.3 (MIT OR Apache-2.0) -- https://github.com/dtolnay/typeid
 - typenum 1.20.1 (MIT OR Apache-2.0) -- https://github.com/paholg/typenum
 - uds_windows 1.2.1 (MIT) -- https://github.com/haraldh/rust_uds_windows
+- unescaper 0.1.10 (MIT OR GPL-3.0-only) -- https://github.com/hack-ink/unescaper
 - unic-char-property 0.9.0 (MIT/Apache-2.0) -- https://github.com/open-i18n/rust-unic/
 - unic-char-range 0.9.0 (MIT/Apache-2.0) -- https://github.com/open-i18n/rust-unic/
 - unic-common 0.9.0 (MIT/Apache-2.0) -- https://github.com/open-i18n/rust-unic/
@@ -810,7 +820,7 @@ none copyleft in a way that affects this binary.
 - web-time 1.1.0 (MIT OR Apache-2.0) -- https://github.com/daxpedda/web-time
 - webkit2gtk 2.0.2 (MIT) -- https://github.com/tauri-apps/webkit2gtk-rs
 - webkit2gtk-sys 2.0.2 (MIT) -- https://github.com/tauri-apps/webkit2gtk-rs
-- webpki-roots 1.0.8 (CDLA-Permissive-2.0) -- https://github.com/rustls/webpki-roots
+- webpki-roots 1.0.9 (CDLA-Permissive-2.0) -- https://github.com/rustls/webpki-roots
 - webview2-com 0.38.2 (MIT) -- https://github.com/wravery/webview2-rs
 - webview2-com-macros 0.8.1 (MIT) -- https://github.com/wravery/webview2-rs
 - webview2-com-sys 0.38.2 (MIT) -- https://github.com/wravery/webview2-rs
@@ -886,9 +896,9 @@ none copyleft in a way that affects this binary.
 - xml 1.3.0 (MIT) -- https://github.com/kornelski/xml-rs
 - yoke 0.8.3 (Unicode-3.0) -- https://github.com/unicode-org/icu4x
 - yoke-derive 0.8.2 (Unicode-3.0) -- https://github.com/unicode-org/icu4x
-- zbus 5.17.0 (MIT) -- https://github.com/z-galaxy/zbus/
-- zbus_macros 5.17.0 (MIT) -- https://github.com/z-galaxy/zbus/
-- zbus_names 4.3.3 (MIT) -- https://github.com/z-galaxy/zbus/
+- zbus 5.18.0 (MIT) -- https://github.com/z-galaxy/zbus/
+- zbus_macros 5.18.0 (MIT) -- https://github.com/z-galaxy/zbus/
+- zbus_names 4.3.4 (MIT) -- https://github.com/z-galaxy/zbus/
 - zerocopy 0.8.53 (BSD-2-Clause OR Apache-2.0 OR MIT) -- https://github.com/google/zerocopy
 - zerocopy-derive 0.8.53 (BSD-2-Clause OR Apache-2.0 OR MIT) -- https://github.com/google/zerocopy
 - zerofrom 0.1.8 (Unicode-3.0) -- https://github.com/unicode-org/icu4x
@@ -900,8 +910,8 @@ none copyleft in a way that affects this binary.
 - zip 2.4.2 (MIT) -- https://github.com/zip-rs/zip2.git
 - zmij 1.0.21 (MIT) -- https://github.com/dtolnay/zmij
 - zopfli 0.8.3 (Apache-2.0) -- https://github.com/zopfli-rs/zopfli
-- zvariant 5.13.0 (MIT) -- https://github.com/z-galaxy/zbus/
-- zvariant_derive 5.13.0 (MIT) -- https://github.com/z-galaxy/zbus/
+- zvariant 5.13.1 (MIT) -- https://github.com/z-galaxy/zbus/
+- zvariant_derive 5.13.1 (MIT) -- https://github.com/z-galaxy/zbus/
 - zvariant_utils 3.5.0 (MIT) -- https://github.com/z-galaxy/zbus/
 
 <!-- END GENERATED RUST CRATE LIST -->
