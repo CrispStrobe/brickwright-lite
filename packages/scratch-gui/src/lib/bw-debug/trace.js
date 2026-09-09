@@ -174,3 +174,9 @@ export function hex8(v) {
 export function hex16(v) {
     return (v & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
 }
+
+/** A code address, at least four digits and never silently truncated. */
+export function formatCodeAddress(v) {
+    if (!Number.isSafeInteger(v) || v < 0) return '????';
+    return v.toString(16).toUpperCase().padStart(4, '0');
+}

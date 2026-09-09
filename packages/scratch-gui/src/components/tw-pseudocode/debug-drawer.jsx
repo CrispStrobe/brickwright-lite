@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 
 import {
-    IO_SFRS, TIMER_SFRS, formatBytes, hex8, hex16
+    IO_SFRS, TIMER_SFRS, formatBytes, formatCodeAddress, hex8, hex16
 } from '../../lib/bw-debug/trace.js';
 import {PSW_BITS, sfrName} from '../../lib/bw-debug/opcodes.js';
 import {downloadTraceCsv} from '../../lib/bw-debug/trace-csv.js';
@@ -508,7 +508,7 @@ class DebugDrawer extends React.Component {
                             <span style={{color: here ? '#f39c12' : '#5d6d7e', width: 12}}>
                                 {here ? '▶' : (marked ? '●' : '')}
                             </span>
-                            <span style={{color: '#3498db'}}>{hex16(r.addr)}</span>
+                            <span style={{color: '#3498db'}}>{formatCodeAddress(r.addr)}</span>
                             <span style={{color: '#5d6d7e'}}>{formatBytes(r.bytes)}</span>
                             <span style={{color: here ? '#ecf0f1' : '#bdc3c7'}}>{r.text}</span>
                             {i === 0 && ui && ui.session && ui.session.tasks ? (
@@ -631,7 +631,7 @@ class DebugDrawer extends React.Component {
                     >
                         <span style={{color: '#7f8c8d'}}>{'PC '}</span>
                         <span style={{color: '#ecf0f1', borderBottom: '1px dotted #2c3e50'}}>
-                            {hex16(regs.pc)}
+                            {formatCodeAddress(regs.pc)}
                         </span>
                     </span>
                     {entries.filter(([k]) => k !== 'pc').map(([k, v]) => (
@@ -824,4 +824,5 @@ DebugDrawer.propTypes = {
     clockHz: PropTypes.number
 };
 
+export {DebugDrawer};
 export default DebugDrawer;

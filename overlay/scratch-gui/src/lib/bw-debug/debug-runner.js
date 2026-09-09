@@ -88,6 +88,62 @@ const SKIP_BUDGET = 20000;
 export const DEBUG_LIVE_SNAPSHOT_MS = 250;
 
 /**
+ * Read a short code listing without inventing an address space in the host.
+ *
+ * The target owns both initial address normalization and instruction advance:
+ * 8051/6502/Z80 wrap at 16 bits, while i8086 advances IP inside its current
+ * segment and retains a 20-bit physical address. Missing or malformed
+ * capability answers fail the whole listing closed; a partial list would still
+ * expose clickable rows whose address semantics the target did not validate.
+ */
+export function codeListingRows (target, addr, count = 16) {
+    if (!target || typeof target.disasm !== 'function' ||
+        typeof target.nextCodeAddress !== 'function' ||
+        !Number.isSafeInteger(count) || count < 1) return [];
+
+    const advanced = (from, length, initial = false) => {
+        const next = target.nextCodeAddress(from, length);
+        if (!Number.isSafeInteger(next) || next < 0 || (!initial && next === from)) return null;
+        return next;
+    };
+
+    try {
+        let current = advanced(addr, 0, true);
+        if (current === null) return [];
+        const rows = [];
+        for (let i = 0; i < count; i++) {
+            const decoded = target.disasm(current);
+            let bytes;
+            let text;
+            let length;
+            if (decoded && typeof decoded === 'object') {
+                if (!Array.isArray(decoded.bytes) || !Number.isSafeInteger(decoded.length) ||
+                    decoded.length < 1) return [];
+                bytes = decoded.bytes.slice();
+                text = String(decoded.text ?? '');
+                length = decoded.length;
+            } else {
+                if (typeof target.readMem !== 'function') return [];
+                const head = target.readMem('code', current, 1);
+                if (!head || typeof head[Symbol.iterator] !== 'function' || head.length < 1) return [];
+                length = instructionLength(head[0]);
+                const read = target.readMem('code', current, length);
+                if (!read || typeof read[Symbol.iterator] !== 'function') return [];
+                bytes = [...read];
+                text = String(decoded ?? '');
+            }
+            const next = advanced(current, length);
+            if (next === null) return [];
+            rows.push({addr: current, bytes, text});
+            current = next;
+        }
+        return rows;
+    } catch {
+        return [];
+    }
+}
+
+/**
  * Admit interior event breakpoints only when the producer names the safe
  * boundary that follows them. Event kinds alone do not prove a halt point.
  */
@@ -2807,43 +2863,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
          * table makes it free.
          */
         listing(addr, count = 16) {
-            // No disassembler (or no code-space reads) on this target → no
-            // listing. Same crash as disasm() above; the instruction-length
-            // walk below is 8051-shaped anyway.
-            if (!target || typeof target.disasm !== 'function' || typeof target.readMem !== 'function') return [];
-            // Capability at the DATA, not just the method: the z80 target
-            // has both methods but its readMem answers a refusal object,
-            // and spreading a non-iterable crashed the whole app from
-            // 'under the hood' (owner report #2 of this crash family —
-            // the method-presence guard was the pendant fix and it was
-            // not enough). Anything that is not real bytes ends the
-            // listing; the drawer then says 'no disassembly on this
-            // target' instead of dying.
-            const rows = [];
-            let a = addr & 0xFFFF;
-            try {
-                for (let i = 0; i < count; i++) {
-                    // The machine targets (6502, Z80) return self-describing
-                    // rows — { text, bytes, length } — so the walk needs no
-                    // readMem and no 8051 length table. Prefer that shape.
-                    const d = target.disasm(a);
-                    if (d && typeof d === 'object' && Array.isArray(d.bytes) && d.length >= 1) {
-                        rows.push({ addr: a, bytes: d.bytes.slice(), text: String(d.text ?? '') });
-                        a = (a + d.length) & 0xFFFF;
-                        continue;
-                    }
-                    const head = target.readMem('code', a, 1);
-                    if (!head || typeof head[Symbol.iterator] !== 'function' || head.length < 1) break;
-                    const len = instructionLength(head[0]);
-                    const bytes = target.readMem('code', a, len);
-                    if (!bytes || typeof bytes[Symbol.iterator] !== 'function') break;
-                    rows.push({ addr: a, bytes: [...bytes], text: String(d ?? '') });
-                    a = (a + len) & 0xFFFF;
-                }
-            } catch {
-                return [];
-            }
-            return rows;
+            return codeListingRows(target, addr, count);
         },
 
         /** Does the attached target implement `name` at all? Only the 8051
