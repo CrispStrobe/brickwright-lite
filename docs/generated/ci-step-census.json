@@ -1,458 +1,428 @@
 {
- "generatedAt": "2026-09-08T07:31:20.305Z",
+ "generatedAt": "2026-09-09T02:12:16.541Z",
  "repo": "CrispStrobe/brickwright-lite",
- "headSha": "f568d875a",
- "newestMainRun": 34198767985,
+ "headSha": "c2e470dae",
+ "newestMainRun": 34302105453,
  "runs": [
   {
-   "run": 34192802676,
+   "run": 34301214581,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "1d849ee9b"
+   "sha": "07835eea3"
   },
   {
-   "run": 34191327654,
+   "run": 34300203610,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "0b79a6f23"
+   "sha": "b6a90a847"
   },
   {
-   "run": 34190346825,
+   "run": 34297828459,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "0dec905c3"
+   "sha": "1bfb68b10"
   },
   {
-   "run": 34190342131,
+   "run": 34295730696,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "9af0d0440"
+   "sha": "1de30ac3c"
   },
   {
-   "run": 34189060563,
+   "run": 34290727032,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "cac661bce"
+   "sha": "89c1af698"
   },
   {
-   "run": 34176989230,
+   "run": 34287435706,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "2aa570c6d"
+   "sha": "e671c811b"
   },
   {
-   "run": 34176974222,
+   "run": 34286257638,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "2dd49986d"
+   "sha": "1739e7e89"
   },
   {
-   "run": 34176091427,
+   "run": 34282883097,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "b7352dd6f"
+   "sha": "3d543965f"
   },
   {
-   "run": 34176066870,
+   "run": 34279960458,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "af1c422d7"
+   "sha": "b8da8e197"
   },
   {
-   "run": 34175326560,
+   "run": 34275137804,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "d32731158"
+   "sha": "ef1fa3e66"
   },
   {
-   "run": 34172338541,
+   "run": 34269802686,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "15d5f48c5"
+   "sha": "f917c1f12"
   },
   {
-   "run": 34171955575,
+   "run": 34267943030,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "08bb67138"
+   "sha": "4218ebb1e"
   },
   {
-   "run": 34171220427,
+   "run": 34264362972,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "2c75b8fcc"
+   "sha": "2bb7ad8b0"
   },
   {
-   "run": 34170496751,
+   "run": 34258891216,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "3b806aa3a"
+   "sha": "e64f24f5e"
   },
   {
-   "run": 34170046405,
+   "run": 34257046925,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "205a580c7"
+   "sha": "4540cef3c"
   },
   {
-   "run": 34169844147,
+   "run": 34253029898,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "f17f5c22e"
+   "sha": "a6d5e31c8"
   },
   {
-   "run": 34169075398,
+   "run": 34301389868,
    "workflow": "build.yml",
-   "branch": "main",
-   "sha": "fec0a9edf"
+   "branch": "lane/c3b2-lossless-code-listing-v2",
+   "sha": "c2e470dae"
   },
   {
-   "run": 34198035234,
+   "run": 34300364497,
    "workflow": "build.yml",
-   "branch": "perf/i8086-execution",
-   "sha": "4aef399d6"
+   "branch": "fix/rust-notices-safe-check-n1-replay",
+   "sha": "07835eea3"
   },
   {
-   "run": 34197832516,
+   "run": 34299981222,
    "workflow": "build.yml",
-   "branch": "lane/led-polarity-lite-pin-sim2cx-v2",
-   "sha": "f568d875a"
+   "branch": "fix/rust-notices-safe-check-n1",
+   "sha": "3440a6950"
   },
   {
-   "run": 34192026163,
+   "run": 34299487402,
    "workflow": "build.yml",
-   "branch": "lane/i8086-resync-full",
-   "sha": "a9b09429b"
+   "branch": "lane/c3b1-next-code-address-pin",
+   "sha": "b6a90a847"
   },
   {
-   "run": 34190628002,
+   "run": 34299094448,
    "workflow": "build.yml",
-   "branch": "lane/gpl-untrack",
-   "sha": "4f8273730"
+   "branch": "fix/rust-notices-safe-check-n1",
+   "sha": "b1d85de35"
   },
   {
-   "run": 34189653048,
+   "run": 34297054656,
    "workflow": "build.yml",
-   "branch": "lane/toolchain-settings-ui",
-   "sha": "73251d79c"
+   "branch": "vendor/labwired-breakpoint-handles-v1",
+   "sha": "1bfb68b10"
   },
   {
-   "run": 34189364585,
+   "run": 34294976918,
    "workflow": "build.yml",
-   "branch": "lane/gpl-untrack",
-   "sha": "9af0d0440"
+   "branch": "lane/c2-exact-code-toggle",
+   "sha": "1de30ac3c"
   },
   {
-   "run": 34177088410,
+   "run": 34289705924,
    "workflow": "build.yml",
-   "branch": "docs/record-bw-board-upstream-backlog",
-   "sha": "7de6b5605"
+   "branch": "pin/bw-board-i8086-code-range-v1",
+   "sha": "89c1af698"
   },
   {
-   "run": 34176360048,
+   "run": 34286558047,
    "workflow": "build.yml",
-   "branch": "vendor/lite-authored-headers",
-   "sha": "55a9f1938"
+   "branch": "vendor/debug-session-retirement-v2",
+   "sha": "e671c811b"
   },
   {
-   "run": 34176351535,
+   "run": 34285454094,
    "workflow": "build.yml",
-   "branch": "lane/default-route-proof",
-   "sha": "d602797e7"
+   "branch": "vendor/debug-session-retirement",
+   "sha": "fe38646a7"
   },
   {
-   "run": 34176198212,
+   "run": 34285326698,
    "workflow": "build.yml",
-   "branch": "lane/species-35",
-   "sha": "134f3363d"
+   "branch": "lane/lite-watchpoint-physical-address-v2",
+   "sha": "1739e7e89"
   },
   {
-   "run": 34175540436,
+   "run": 34283917230,
    "workflow": "build.yml",
-   "branch": "lane/default-route-proof",
-   "sha": "685498842"
+   "branch": "lane/lite-watchpoint-physical-address-v1",
+   "sha": "18341e268"
   },
   {
-   "run": 34175359748,
+   "run": 34281599725,
    "workflow": "build.yml",
-   "branch": "pin/bw-circuit-ui-c276c0d",
-   "sha": "38dd33406"
+   "branch": "lane/lite-bwboard-watch-contract-v1",
+   "sha": "3d543965f"
   },
   {
-   "run": 34174906824,
+   "run": 34278812911,
    "workflow": "build.yml",
-   "branch": "lane/default-route-proof",
-   "sha": "fe0824cec"
+   "branch": "vendor/cui-singleton-convergence-v3",
+   "sha": "b8da8e197"
   },
   {
-   "run": 34174798453,
+   "run": 34273964078,
    "workflow": "build.yml",
-   "branch": "pin/bw-circuit-ui-c276c0d",
-   "sha": "a86313954"
+   "branch": "cleanup/package-examples-removal-v3",
+   "sha": "ef1fa3e66"
   },
   {
-   "run": 34174668701,
+   "run": 34270939354,
    "workflow": "build.yml",
-   "branch": "lane/stage-load-and-orbit-ward-r2",
-   "sha": "00b0b7098"
+   "branch": "vendor/cui-singleton-convergence-v2",
+   "sha": "2e19d0835"
   },
   {
-   "run": 34174295697,
+   "run": 34270577546,
    "workflow": "build.yml",
-   "branch": "lane/default-route-proof",
-   "sha": "be483ca74"
+   "branch": "cleanup/overlay-source-of-truth-v2",
+   "sha": "ed59c0a4f"
   },
   {
-   "run": 34174206155,
+   "run": 34269474079,
    "workflow": "build.yml",
-   "branch": "docs/species-36-partial-mechanism",
-   "sha": "a3e034f94"
+   "branch": "cleanup/overlay-source-of-truth-v1",
+   "sha": "3e1bb6fad"
   },
   {
-   "run": 34174124233,
+   "run": 34268635533,
    "workflow": "build.yml",
-   "branch": "pin/bw-circuit-ui-c276c0d",
-   "sha": "fdb5f15e7"
+   "branch": "feat/x86-backend-lab",
+   "sha": "5e74286bc"
   },
   {
-   "run": 34174074486,
+   "run": 34268309352,
    "workflow": "build.yml",
-   "branch": "lane/stage-load-and-orbit-ward-r2",
-   "sha": "31e1fc351"
+   "branch": "lane/lite-avr-retirement-v2",
+   "sha": "f917c1f12"
   },
   {
-   "run": 34173656385,
+   "run": 34268126919,
    "workflow": "build.yml",
-   "branch": "lane/default-route-proof",
-   "sha": "fc801f7ca"
+   "branch": "cleanup/overlay-source-of-truth-v1",
+   "sha": "e23f803a8"
   },
   {
-   "run": 34173477884,
+   "run": 34266508832,
    "workflow": "build.yml",
-   "branch": "lane/stage-load-and-orbit-ward-r2",
-   "sha": "b85400f06"
+   "branch": "fix/debug-history-pause-race-v1",
+   "sha": "4218ebb1e"
   },
   {
-   "run": 34173086756,
+   "run": 34266037150,
    "workflow": "build.yml",
-   "branch": "vendor/sb3-creator-deltas-declared",
-   "sha": "dbc50865a"
+   "branch": "feat/x86-backend-lab",
+   "sha": "8030218da"
   },
   {
-   "run": 34172867663,
+   "run": 34265892483,
    "workflow": "build.yml",
-   "branch": "lane/stage-load-and-orbit-ward-r2",
-   "sha": "4c452a553"
+   "branch": "lane/lite-avr-retirement",
+   "sha": "c8d229bba"
   },
   {
-   "run": 34172557397,
+   "run": 34261844273,
    "workflow": "build.yml",
-   "branch": "vendor/sb3-creator-deltas-declared",
-   "sha": "fb4ea8255"
+   "branch": "lane/sb3-pin-9173ca75-v3",
+   "sha": "2bb7ad8b0"
   },
   {
-   "run": 34172247276,
+   "run": 34259750895,
    "workflow": "build.yml",
-   "branch": "lane/stage-load-and-orbit-ward-r2",
-   "sha": "5f945fc10"
+   "branch": "lane/m6502-event-breakpoint-parity",
+   "sha": "bd58c196e"
   },
   {
-   "run": 34172162761,
+   "run": 34258727694,
    "workflow": "build.yml",
-   "branch": "lane/divergence-counts-vs-reads",
-   "sha": "ea5de3832"
+   "branch": "lane/sb3-pin-c593",
+   "sha": "1ade8a697"
   },
   {
-   "run": 34171673262,
+   "run": 34257773471,
    "workflow": "build.yml",
-   "branch": "vendor/circuit-ui-divergence-declared",
-   "sha": "db08e6cab"
+   "branch": "lane/z80-event-breakpoint-parity",
+   "sha": "e64f24f5e"
   },
   {
-   "run": 34171556628,
+   "run": 34255736047,
    "workflow": "build.yml",
-   "branch": "lane/stage-load-and-orbit-ward-r2",
-   "sha": "c766f9c44"
+   "branch": "lane/avr-event-breakpoints",
+   "sha": "4540cef3c"
   },
   {
-   "run": 34171391710,
+   "run": 34252014184,
    "workflow": "build.yml",
-   "branch": "lane/vendor-divergence-2026-09-08",
-   "sha": "08bb67138"
+   "branch": "lane/code-debugger-discoverability",
+   "sha": "a6d5e31c8"
   },
   {
-   "run": 34170877103,
+   "run": 34250748459,
    "workflow": "build.yml",
-   "branch": "vendor/circuit-ui-divergence-declared",
-   "sha": "3b06d6337"
+   "branch": "lane/code-debugger-discoverability",
+   "sha": "e5e2cea58"
   },
   {
-   "run": 34170851743,
+   "run": 34250238219,
    "workflow": "build.yml",
-   "branch": "lane/stage-load-and-orbit-ward-r2",
-   "sha": "7fc54c437"
+   "branch": "perf/i8086-device-advance",
+   "sha": "866bfba2c"
   },
   {
-   "run": 34170634280,
+   "run": 34249359082,
    "workflow": "build.yml",
-   "branch": "lane/polarity-census-v2",
-   "sha": "803e65698"
+   "branch": "lane/code-debugger-discoverability",
+   "sha": "3f43910c7"
   },
   {
-   "run": 34170159866,
+   "run": 34248215998,
    "workflow": "build.yml",
-   "branch": "lane/stage-load-and-orbit-ward-r2",
-   "sha": "7fac4d669"
+   "branch": "lane/gearmotor-slug-closeout",
+   "sha": "62c7a00c4"
   },
   {
-   "run": 34169864328,
-   "workflow": "build.yml",
-   "branch": "vendor/undeclared-divergence-gate",
-   "sha": "e273685b1"
-  },
-  {
-   "run": 34169265507,
-   "workflow": "build.yml",
-   "branch": "lane/stage-load-and-orbit-ward",
-   "sha": "2ebbdad5d"
-  },
-  {
-   "run": 34169212607,
-   "workflow": "build.yml",
-   "branch": "vendor/undeclared-divergence-gate",
-   "sha": "455a84cfa"
-  },
-  {
-   "run": 34169189348,
-   "workflow": "build.yml",
-   "branch": "lane/led-polarity-census",
-   "sha": "8e40f39b8"
-  },
-  {
-   "run": 34169151030,
-   "workflow": "build.yml",
-   "branch": "lane/aegis-arc-balance-r2",
-   "sha": "0c42c59a8"
-  },
-  {
-   "run": 34193517384,
+   "run": 34301892869,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "1d849ee9b"
+   "sha": "07835eea3"
   },
   {
-   "run": 34192068136,
+   "run": 34300904763,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "0b79a6f23"
+   "sha": "b6a90a847"
   },
   {
-   "run": 34191037158,
+   "run": 34300266226,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "232b016ad"
+   "sha": "b6a90a847"
   },
   {
-   "run": 34191009253,
+   "run": 34298578969,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "232b016ad"
+   "sha": "1bfb68b10"
   },
   {
-   "run": 34190399619,
+   "run": 34297895244,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "0dec905c3"
+   "sha": "1bfb68b10"
   },
   {
-   "run": 34189703937,
+   "run": 34296442803,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "cac661bce"
+   "sha": "1de30ac3c"
   },
   {
-   "run": 34189113103,
+   "run": 34295797967,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "cac661bce"
+   "sha": "1de30ac3c"
   },
   {
-   "run": 34177565462,
+   "run": 34291555789,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "2aa570c6d"
+   "sha": "d308edb13"
   },
   {
-   "run": 34177532100,
+   "run": 34290822069,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "2aa570c6d"
+   "sha": "89c1af698"
   },
   {
-   "run": 34177046317,
+   "run": 34288291028,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "2aa570c6d"
+   "sha": "e671c811b"
   },
   {
-   "run": 34177020993,
+   "run": 34287235080,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "2aa570c6d"
+   "sha": "1739e7e89"
   },
   {
-   "run": 34176643394,
+   "run": 34286331164,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "cea181587"
+   "sha": "1739e7e89"
   },
   {
-   "run": 34176628102,
+   "run": 34283828166,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "cea181587"
+   "sha": "3d543965f"
   },
   {
-   "run": 34175918680,
+   "run": 34282976481,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "d32731158"
+   "sha": "3d543965f"
   },
   {
-   "run": 34173215029,
+   "run": 34280844105,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "ec3cc008e"
+   "sha": "b8da8e197"
   },
   {
-   "run": 34172904703,
+   "run": 34276145898,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "ec3cc008e"
+   "sha": "ef1fa3e66"
   },
   {
-   "run": 34172476879,
+   "run": 34270854437,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "15d5f48c5"
+   "sha": "f917c1f12"
   },
   {
-   "run": 34171770859,
+   "run": 34269155629,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "2c75b8fcc"
+   "sha": "0460b1c76"
   },
   {
-   "run": 34171131198,
+   "run": 34268037786,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "3b806aa3a"
+   "sha": "4218ebb1e"
   },
   {
-   "run": 34170723683,
+   "run": 34265276390,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "3b806aa3a"
+   "sha": "2bb7ad8b0"
   },
   {
    "run": 34046275226,
@@ -557,124 +527,118 @@
    "sha": "00819f759"
   },
   {
-   "run": 34190342224,
+   "run": 34300203607,
    "workflow": "debugger.yml",
    "branch": "main",
-   "sha": "9af0d0440"
+   "sha": "b6a90a847"
   },
   {
-   "run": 34189060602,
+   "run": 34297828435,
    "workflow": "debugger.yml",
    "branch": "main",
-   "sha": "cac661bce"
+   "sha": "1bfb68b10"
   },
   {
-   "run": 34176989250,
+   "run": 34295730796,
    "workflow": "debugger.yml",
    "branch": "main",
-   "sha": "2aa570c6d"
+   "sha": "1de30ac3c"
   },
   {
-   "run": 34176974179,
+   "run": 34290727077,
    "workflow": "debugger.yml",
    "branch": "main",
-   "sha": "2dd49986d"
+   "sha": "89c1af698"
   },
   {
-   "run": 34169075389,
+   "run": 34286257710,
    "workflow": "debugger.yml",
    "branch": "main",
-   "sha": "fec0a9edf"
+   "sha": "1739e7e89"
   },
   {
-   "run": 34164030435,
+   "run": 34282883099,
    "workflow": "debugger.yml",
    "branch": "main",
-   "sha": "10ee157cd"
+   "sha": "3d543965f"
   },
   {
-   "run": 34163360955,
+   "run": 34267942923,
    "workflow": "debugger.yml",
    "branch": "main",
-   "sha": "b1290f6a7"
+   "sha": "4218ebb1e"
   },
   {
-   "run": 34157775178,
+   "run": 34266511938,
    "workflow": "debugger.yml",
-   "branch": "main",
-   "sha": "8b9fbf34f"
+   "branch": "fix/debug-history-pause-race-v1",
+   "sha": "4218ebb1e"
   },
   {
-   "run": 34118997736,
+   "run": 34261266116,
    "workflow": "debugger.yml",
    "branch": "main",
-   "sha": "ac15b8295"
+   "sha": "7a54751ed"
   },
   {
-   "run": 34113154465,
+   "run": 34260871002,
    "workflow": "debugger.yml",
    "branch": "main",
-   "sha": "e42b6bebb"
+   "sha": "bd58c196e"
   },
   {
-   "run": 34102511639,
+   "run": 34258892123,
    "workflow": "debugger.yml",
    "branch": "main",
-   "sha": "37d337935"
+   "sha": "e64f24f5e"
   },
   {
-   "run": 34098323651,
+   "run": 34258891233,
    "workflow": "debugger.yml",
    "branch": "main",
-   "sha": "ef376fd66"
+   "sha": "e64f24f5e"
   },
   {
-   "run": 34088520508,
+   "run": 34257046958,
    "workflow": "debugger.yml",
    "branch": "main",
-   "sha": "d6773184b"
+   "sha": "4540cef3c"
   },
   {
-   "run": 34088166094,
+   "run": 34254732092,
    "workflow": "debugger.yml",
-   "branch": "main",
-   "sha": "4b941539d"
+   "branch": "lane/avr-event-breakpoints",
+   "sha": "2200e3404"
   },
   {
-   "run": 34065841315,
+   "run": 34253045779,
    "workflow": "debugger.yml",
    "branch": "main",
-   "sha": "2ee24e40f"
+   "sha": "a6d5e31c8"
   },
   {
-   "run": 34059584777,
+   "run": 34247656459,
    "workflow": "debugger.yml",
    "branch": "main",
-   "sha": "ebda30263"
+   "sha": "37f41c6da"
   },
   {
-   "run": 34047607180,
+   "run": 34242970089,
    "workflow": "debugger.yml",
    "branch": "main",
-   "sha": "fbfa7936f"
+   "sha": "5ed83a313"
   },
   {
-   "run": 34045563994,
+   "run": 34238687040,
    "workflow": "debugger.yml",
    "branch": "main",
-   "sha": "c048dd417"
+   "sha": "fbd09b0b5"
   },
   {
-   "run": 34045105800,
+   "run": 34201474291,
    "workflow": "debugger.yml",
    "branch": "main",
-   "sha": "d522dd95e"
-  },
-  {
-   "run": 34023608044,
-   "workflow": "debugger.yml",
-   "branch": "main",
-   "sha": "f80a4abe2"
+   "sha": "9d55123eb"
   },
   {
    "run": 34185841231,
@@ -759,6 +723,36 @@
    "workflow": "deploy-daily.yml",
    "branch": "main",
    "sha": "7c47f4558"
+  },
+  {
+   "run": 34294381042,
+   "workflow": "deploy-watchdog.yml",
+   "branch": "main",
+   "sha": "d308edb13"
+  },
+  {
+   "run": 34283007033,
+   "workflow": "deploy-watchdog.yml",
+   "branch": "main",
+   "sha": "3d543965f"
+  },
+  {
+   "run": 34264703272,
+   "workflow": "deploy-watchdog.yml",
+   "branch": "main",
+   "sha": "2bb7ad8b0"
+  },
+  {
+   "run": 34239187686,
+   "workflow": "deploy-watchdog.yml",
+   "branch": "main",
+   "sha": "fbd09b0b5"
+  },
+  {
+   "run": 34211648487,
+   "workflow": "deploy-watchdog.yml",
+   "branch": "main",
+   "sha": "e1765b83c"
   },
   {
    "run": 34187903492,
@@ -851,64 +845,124 @@
    "sha": "6d9a08484"
   },
   {
-   "run": 33992587730,
-   "workflow": "deploy-watchdog.yml",
-   "branch": "main",
-   "sha": "999f88e24"
-  },
-  {
-   "run": 33985938780,
-   "workflow": "deploy-watchdog.yml",
-   "branch": "main",
-   "sha": "5f0b0ac97"
-  },
-  {
-   "run": 33979091458,
-   "workflow": "deploy-watchdog.yml",
-   "branch": "main",
-   "sha": "d5a23c30d"
-  },
-  {
-   "run": 33970149723,
-   "workflow": "deploy-watchdog.yml",
-   "branch": "main",
-   "sha": "5ef81a87e"
-  },
-  {
-   "run": 33961234998,
-   "workflow": "deploy-watchdog.yml",
-   "branch": "main",
-   "sha": "53c1ee94c"
-  },
-  {
-   "run": 34198634470,
+   "run": 34252892689,
    "workflow": "i8086-execution.yml",
-   "branch": "perf/i8086-execution",
-   "sha": "f09ae4303"
+   "branch": "perf/i8086-device-advance",
+   "sha": "6313a2209"
   },
   {
-   "run": 34198035385,
+   "run": 34250621617,
    "workflow": "i8086-execution.yml",
-   "branch": "perf/i8086-execution",
-   "sha": "4aef399d6"
+   "branch": "perf/i8086-device-advance",
+   "sha": "866bfba2c"
   },
   {
-   "run": 34197418847,
+   "run": 34250235052,
    "workflow": "i8086-execution.yml",
-   "branch": "perf/i8086-execution",
-   "sha": "1e6d2ef7e"
+   "branch": "perf/i8086-device-advance",
+   "sha": "866bfba2c"
   },
   {
-   "run": 34196975249,
+   "run": 34250231791,
    "workflow": "i8086-execution.yml",
-   "branch": "perf/i8086-execution",
-   "sha": "6d0225fe1"
+   "branch": "perf/i8086-device-advance",
+   "sha": "866bfba2c"
   },
   {
-   "run": 34196863311,
+   "run": 34250215227,
    "workflow": "i8086-execution.yml",
-   "branch": "perf/i8086-execution",
-   "sha": "c823b0517"
+   "branch": "perf/i8086-device-advance",
+   "sha": "866bfba2c"
+  },
+  {
+   "run": 34249997092,
+   "workflow": "i8086-execution.yml",
+   "branch": "perf/i8086-device-advance",
+   "sha": "fe9f17e88"
+  },
+  {
+   "run": 34249776666,
+   "workflow": "i8086-execution.yml",
+   "branch": "perf/i8086-device-advance",
+   "sha": "1e228805e"
+  },
+  {
+   "run": 34249773454,
+   "workflow": "i8086-execution.yml",
+   "branch": "perf/i8086-device-advance",
+   "sha": "1e228805e"
+  },
+  {
+   "run": 34249770970,
+   "workflow": "i8086-execution.yml",
+   "branch": "perf/i8086-device-advance",
+   "sha": "1e228805e"
+  },
+  {
+   "run": 34249768328,
+   "workflow": "i8086-execution.yml",
+   "branch": "perf/i8086-device-advance",
+   "sha": "1e228805e"
+  },
+  {
+   "run": 34249739288,
+   "workflow": "i8086-execution.yml",
+   "branch": "perf/i8086-device-advance",
+   "sha": "1e228805e"
+  },
+  {
+   "run": 34249247577,
+   "workflow": "i8086-execution.yml",
+   "branch": "perf/i8086-device-advance",
+   "sha": "d0534f1ac"
+  },
+  {
+   "run": 34247790787,
+   "workflow": "i8086-execution.yml",
+   "branch": "perf/i8086-device-advance",
+   "sha": "84c189c0e"
+  },
+  {
+   "run": 34246553782,
+   "workflow": "i8086-execution.yml",
+   "branch": "perf/i8086-device-advance",
+   "sha": "0b0e3de7a"
+  },
+  {
+   "run": 34246198701,
+   "workflow": "i8086-execution.yml",
+   "branch": "perf/i8086-device-advance",
+   "sha": "a514731e6"
+  },
+  {
+   "run": 34245902428,
+   "workflow": "i8086-execution.yml",
+   "branch": "perf/i8086-device-advance",
+   "sha": "a514731e6"
+  },
+  {
+   "run": 34245716047,
+   "workflow": "i8086-execution.yml",
+   "branch": "perf/i8086-device-advance",
+   "sha": "de151399a"
+  },
+  {
+   "run": 34245110500,
+   "workflow": "i8086-execution.yml",
+   "branch": "perf/i8086-device-advance",
+   "sha": "5f0496963"
+  },
+  {
+   "run": 34245107105,
+   "workflow": "i8086-execution.yml",
+   "branch": "perf/i8086-device-advance",
+   "sha": "5f0496963"
+  },
+  {
+   "run": 34245103321,
+   "workflow": "i8086-execution.yml",
+   "branch": "perf/i8086-device-advance",
+   "sha": "5f0496963"
   },
   {
    "run": 34031659129,
@@ -1029,6 +1083,12 @@
    "workflow": "mobile.yml",
    "branch": "v0.1.2",
    "sha": "230fdd759"
+  },
+  {
+   "run": 34202606113,
+   "workflow": "nightly-corpus-differential.yml",
+   "branch": "main",
+   "sha": "9d55123eb"
   },
   {
    "run": 34137440711,
@@ -1163,6 +1223,12 @@
    "sha": "898a6ae1e"
   },
   {
+   "run": 34301953538,
+   "workflow": "rust-notices.yml",
+   "branch": "lane/rust-notices-reconcile-n2",
+   "sha": "66cf8ccfb"
+  },
+  {
    "run": 34045105806,
    "workflow": "tauri.yml",
    "branch": "main",
@@ -1283,124 +1349,124 @@
    "sha": "d0dcc4f16"
   },
   {
-   "run": 34198767985,
+   "run": 34302105453,
    "workflow": "vendor-freshness.yml",
    "branch": "main",
-   "sha": "f568d875a"
+   "sha": "c2e470dae"
   },
   {
-   "run": 34192802700,
+   "run": 34301391360,
+   "workflow": "vendor-freshness.yml",
+   "branch": "lane/c3b2-lossless-code-listing-v2",
+   "sha": "c2e470dae"
+  },
+  {
+   "run": 34301214580,
    "workflow": "vendor-freshness.yml",
    "branch": "main",
-   "sha": "1d849ee9b"
+   "sha": "07835eea3"
   },
   {
-   "run": 34191327632,
+   "run": 34300366201,
+   "workflow": "vendor-freshness.yml",
+   "branch": "fix/rust-notices-safe-check-n1-replay",
+   "sha": "07835eea3"
+  },
+  {
+   "run": 34300203587,
    "workflow": "vendor-freshness.yml",
    "branch": "main",
-   "sha": "0b79a6f23"
+   "sha": "b6a90a847"
   },
   {
-   "run": 34190346805,
+   "run": 34299983149,
+   "workflow": "vendor-freshness.yml",
+   "branch": "fix/rust-notices-safe-check-n1",
+   "sha": "3440a6950"
+  },
+  {
+   "run": 34299489257,
+   "workflow": "vendor-freshness.yml",
+   "branch": "lane/c3b1-next-code-address-pin",
+   "sha": "b6a90a847"
+  },
+  {
+   "run": 34299096589,
+   "workflow": "vendor-freshness.yml",
+   "branch": "fix/rust-notices-safe-check-n1",
+   "sha": "b1d85de35"
+  },
+  {
+   "run": 34297828434,
    "workflow": "vendor-freshness.yml",
    "branch": "main",
-   "sha": "0dec905c3"
+   "sha": "1bfb68b10"
   },
   {
-   "run": 34190342261,
+   "run": 34297056486,
+   "workflow": "vendor-freshness.yml",
+   "branch": "vendor/labwired-breakpoint-handles-v1",
+   "sha": "1bfb68b10"
+  },
+  {
+   "run": 34295730716,
    "workflow": "vendor-freshness.yml",
    "branch": "main",
-   "sha": "9af0d0440"
+   "sha": "1de30ac3c"
   },
   {
-   "run": 34189060545,
+   "run": 34294978513,
+   "workflow": "vendor-freshness.yml",
+   "branch": "lane/c2-exact-code-toggle",
+   "sha": "1de30ac3c"
+  },
+  {
+   "run": 34290727045,
    "workflow": "vendor-freshness.yml",
    "branch": "main",
-   "sha": "cac661bce"
+   "sha": "89c1af698"
   },
   {
-   "run": 34176989219,
+   "run": 34289708315,
+   "workflow": "vendor-freshness.yml",
+   "branch": "pin/bw-board-i8086-code-range-v1",
+   "sha": "89c1af698"
+  },
+  {
+   "run": 34287435699,
    "workflow": "vendor-freshness.yml",
    "branch": "main",
-   "sha": "2aa570c6d"
+   "sha": "e671c811b"
   },
   {
-   "run": 34176974196,
+   "run": 34286560209,
+   "workflow": "vendor-freshness.yml",
+   "branch": "vendor/debug-session-retirement-v2",
+   "sha": "e671c811b"
+  },
+  {
+   "run": 34286257627,
    "workflow": "vendor-freshness.yml",
    "branch": "main",
-   "sha": "2dd49986d"
+   "sha": "1739e7e89"
   },
   {
-   "run": 34176954480,
+   "run": 34285456742,
    "workflow": "vendor-freshness.yml",
-   "branch": "main",
-   "sha": "134f3363d"
+   "branch": "vendor/debug-session-retirement",
+   "sha": "fe38646a7"
   },
   {
-   "run": 34176103937,
+   "run": 34285328995,
    "workflow": "vendor-freshness.yml",
-   "branch": "main",
-   "sha": "cea181587"
+   "branch": "lane/lite-watchpoint-physical-address-v2",
+   "sha": "1739e7e89"
   },
   {
-   "run": 34176091446,
+   "run": 34284911301,
    "workflow": "vendor-freshness.yml",
-   "branch": "main",
-   "sha": "b7352dd6f"
-  },
-  {
-   "run": 34176066890,
-   "workflow": "vendor-freshness.yml",
-   "branch": "main",
-   "sha": "af1c422d7"
-  },
-  {
-   "run": 34175326581,
-   "workflow": "vendor-freshness.yml",
-   "branch": "main",
-   "sha": "d32731158"
-  },
-  {
-   "run": 34174125975,
-   "workflow": "vendor-freshness.yml",
-   "branch": "pin/bw-circuit-ui-c276c0d",
-   "sha": "fdb5f15e7"
-  },
-  {
-   "run": 34172738251,
-   "workflow": "vendor-freshness.yml",
-   "branch": "main",
-   "sha": "ec3cc008e"
-  },
-  {
-   "run": 34172556018,
-   "workflow": "vendor-freshness.yml",
-   "branch": "vendor/sb3-creator-deltas-declared",
-   "sha": "fb4ea8255"
-  },
-  {
-   "run": 34172338527,
-   "workflow": "vendor-freshness.yml",
-   "branch": "main",
-   "sha": "15d5f48c5"
-  },
-  {
-   "run": 34171955591,
-   "workflow": "vendor-freshness.yml",
-   "branch": "main",
-   "sha": "08bb67138"
-  },
-  {
-   "run": 34171220453,
-   "workflow": "vendor-freshness.yml",
-   "branch": "main",
-   "sha": "2c75b8fcc"
-  },
-  {
-   "run": 34170875682,
-   "workflow": "vendor-freshness.yml",
-   "branch": "vendor/circuit-ui-divergence-declared",
-   "sha": "3b06d6337"
+   "branch": "vendor/debug-session-retirement",
+   "sha": "149719976"
   }
  ],
  "workflowsInTree": [
@@ -1414,12 +1480,13 @@
   "mobile.yml",
   "nightly-corpus-differential.yml",
   "release.yml",
+  "rust-notices.yml",
   "tauri.yml",
   "vendor-freshness.yml"
  ],
  "workflows": {
   "build.yml": {
-   "runs": 55,
+   "runs": 50,
    "stepsInFile": [
     "Require green upstream evidence for the pinned 8086 engine",
     "Install source-test dependencies",
@@ -1530,24 +1597,11 @@
    ],
    "inFileInNoRun": [],
    "steps": {
-    "Run the lesson corpus walks": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "corpus"
-     ],
-     "clause": null,
-     "class": "always"
-    },
     "Require green upstream evidence for the pinned 8086 engine": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1558,10 +1612,10 @@
      "class": "always"
     },
     "Vendor the pinned permissive Scratch sources": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1572,10 +1626,10 @@
      "class": "always"
     },
     "Integrate the Code tab (sb3-creator)": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1586,10 +1640,10 @@
      "class": "always"
     },
     "Fetch the heavy simulation engine (labwired-wasm)": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1600,10 +1654,10 @@
      "class": "always"
     },
     "Install": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1614,10 +1668,10 @@
      "class": "always"
     },
     "Apply the scratch-vm overlay (built-in extensions)": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1628,10 +1682,10 @@
      "class": "always"
     },
     "Apply the scratch-paint overlay (extended costume designer)": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1642,10 +1696,10 @@
      "class": "always"
     },
     "Apply the scratch-render overlay (lazy render fonts)": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1656,10 +1710,10 @@
      "class": "always"
     },
     "Fetch the Pico MicroPython firmware for the sim gate (tolerated absent)": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1669,10 +1723,10 @@
      "class": "always"
     },
     "Build the editor": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1683,10 +1737,10 @@
      "class": "always"
     },
     "Install Playwright browser": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1696,10 +1750,10 @@
      "class": "always"
     },
     "Browser gate — native broker packaged assets": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1709,10 +1763,10 @@
      "class": "always"
     },
     "Serve the built app": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1722,10 +1776,10 @@
      "class": "always"
     },
     "Browser gate — the debugger-only pane and its round trip": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1735,10 +1789,10 @@
      "class": "always"
     },
     "Browser gate — debugger recording, reverse and fork history": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1748,10 +1802,10 @@
      "class": "always"
     },
     "Browser gate — the example journey (Lane U)": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1761,10 +1815,10 @@
      "class": "always"
     },
     "Browser gate — what is wrong with the stage after a load": {
-     "existed": 29,
-     "ran": 29,
-     "existedMain": 10,
-     "ranMain": 10,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1774,10 +1828,10 @@
      "class": "always"
     },
     "Browser gate — a program's chip refusal reaches the debug panel": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1787,10 +1841,10 @@
      "class": "always"
     },
     "Browser gate — Machine Loader preset reaches the debugger": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1800,10 +1854,10 @@
      "class": "always"
     },
     "Browser gate — debugger run-to and synchronized inspection": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1813,10 +1867,10 @@
      "class": "always"
     },
     "Browser gate — service worker failure modes": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1826,10 +1880,10 @@
      "class": "always"
     },
     "Browser gate — circuit UX": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1839,10 +1893,10 @@
      "class": "always"
     },
     "Browser gate — render fonts arrive with the first text costume, not before": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1852,10 +1906,10 @@
      "class": "always"
     },
     "Browser gate — circuit rendering and placement": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1865,10 +1919,10 @@
      "class": "always"
     },
     "Browser gate — physical 74C922 keypad encoder": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1878,10 +1932,10 @@
      "class": "always"
     },
     "Browser gate — the DRC can sum chip current": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1891,10 +1945,10 @@
      "class": "always"
     },
     "Browser gate — view buttons": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1904,10 +1958,10 @@
      "class": "always"
     },
     "Browser gate — editor": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1917,10 +1971,10 @@
      "class": "always"
     },
     "Browser gate — unpinned extension sandbox": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1930,10 +1984,10 @@
      "class": "always"
     },
     "Browser gate — game gallery and hardware examples": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1943,10 +1997,10 @@
      "class": "always"
     },
     "Browser gate — both BASIC profiles execute on real machines": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1956,10 +2010,10 @@
      "class": "always"
     },
     "Browser gate — 8086 local assembly, CGA, keyboard and 8255": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1969,10 +2023,10 @@
      "class": "always"
     },
     "Browser gate — 8086 .COM / .img export (N10)": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1982,10 +2036,10 @@
      "class": "always"
     },
     "Browser gate — micro:bit WebUSB flash button (N9)": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -1995,10 +2049,10 @@
      "class": "always"
     },
     "Browser benchmark — 8086 desktop and mobile": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2008,10 +2062,10 @@
      "class": "always"
     },
     "Browser gate — declared extension capability broker": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2021,10 +2075,10 @@
      "class": "always"
     },
     "Browser gate — first-run chooser and guided journeys": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2034,10 +2088,10 @@
      "class": "always"
     },
     "Browser gate — LEGO SPIKE archive and Code-tab round trip": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2047,10 +2101,10 @@
      "class": "always"
     },
     "Browser gate — four-surface project save, reopen and vanilla replacement": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2060,10 +2114,10 @@
      "class": "always"
     },
     "Browser gate — costume artwork survives save/reload and records first-open performance": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2073,10 +2127,10 @@
      "class": "always"
     },
     "Browser gate — first Sounds-tab interactivity": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2086,10 +2140,10 @@
      "class": "always"
     },
     "Browser gate — P21 Code importer activation, retry and state": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2099,10 +2153,10 @@
      "class": "always"
     },
     "Browser gate — the renderer accepts the table the arrays blocks describe": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2112,10 +2166,10 @@
      "class": "always"
     },
     "Browser gate — a missing extension chunk costs its blocks, not the project": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2125,10 +2179,10 @@
      "class": "always"
     },
     "Browser gates — About, intro, interaction, and schematic rendering": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2138,10 +2192,10 @@
      "class": "always"
     },
     "Browser gates — Code chrome, Controller, faceplates, and Instruments": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2151,10 +2205,10 @@
      "class": "always"
     },
     "Browser gate — Aurora-65 keyboard, OLED and VGA workstation": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2164,10 +2218,10 @@
      "class": "always"
     },
     "Browser gate — debugger dock and serial input": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2177,10 +2231,10 @@
      "class": "always"
     },
     "Browser gate — language x device matrix badge and panel": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2190,10 +2244,10 @@
      "class": "always"
     },
     "Browser gate — the heavy engine is not downloaded on first load": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2203,10 +2257,10 @@
      "class": "always"
     },
     "Browser gate — the labwired heavy tier actually executes": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2216,10 +2270,10 @@
      "class": "always"
     },
     "Browser gate — with no engine artifact, the tier is not offered": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2229,10 +2283,10 @@
      "class": "always"
     },
     "Browser gate — offline 8051 compile and debugger evidence": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2242,10 +2296,10 @@
      "class": "always"
     },
     "Browser gate — the DEFAULT route is hosted, and says so (Lane GPL)": {
-     "existed": 18,
-     "ran": 18,
-     "existedMain": 6,
-     "ranMain": 6,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2255,10 +2309,10 @@
      "class": "always"
     },
     "Browser gate — offline linked 8051 assembly listings": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2268,10 +2322,10 @@
      "class": "always"
     },
     "Browser gate — an AVR lesson bench starts offline on its shipped image": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2281,10 +2335,10 @@
      "class": "always"
     },
     "Browser gate — promoted pinned extension worker": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2294,10 +2348,10 @@
      "class": "always"
     },
     "Browser gate — the native Web Bluetooth shim": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2307,10 +2361,10 @@
      "class": "always"
     },
     "Browser gate — MakeCode import": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2320,10 +2374,10 @@
      "class": "always"
     },
     "Browser gate — micro:bit MicroPython tab and simulator": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2333,10 +2387,10 @@
      "class": "always"
     },
     "Browser gate — Pico MicroPython simulator Run lights the LED (N3c)": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2346,10 +2400,10 @@
      "class": "always"
     },
     "Browser gate — Pico ▶ Run refuses by name with no firmware (N3c)": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2359,10 +2413,10 @@
      "class": "always"
     },
     "Browser gate — micro:bit debugger, block and line stepping": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2372,10 +2426,10 @@
      "class": "always"
     },
     "Browser gate — Arduboy console runs a compiled game": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2385,12 +2439,12 @@
      "class": "always"
     },
     "Measure — time every browser wait (manual runs only)": {
-     "existed": 55,
-     "ran": 38,
-     "existedMain": 17,
+     "existed": 50,
+     "ran": 34,
+     "existedMain": 16,
      "ranMain": 0,
      "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 17,
+     "skippedInGreenRuns": 16,
      "jobs": [
       "browser"
      ],
@@ -2399,10 +2453,10 @@
      "why": "trigger — the clause names the event"
     },
     "Audit — every browser gate ran": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2411,11 +2465,24 @@
      "clause": "always()",
      "class": "always"
     },
+    "Run the lesson corpus walks": {
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "corpus"
+     ],
+     "clause": null,
+     "class": "always"
+    },
     "Install source-test dependencies": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2425,10 +2492,10 @@
      "class": "always"
     },
     "Run bounded source-only tests": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2438,10 +2505,10 @@
      "class": "always"
     },
     "Guard — bundled stc12 has all emitted opcodes": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2451,10 +2518,10 @@
      "class": "always"
     },
     "Guard — WASM pin is a descendant of the crash-fix floor": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2464,10 +2531,10 @@
      "class": "always"
     },
     "Guard — blocks.jsx has the toolbox null-guard": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2477,10 +2544,10 @@
      "class": "always"
     },
     "Guard — the vendored overlay matches the commit it PINS": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2490,10 +2557,10 @@
      "class": "always"
     },
     "Guard — the example execution gates exist and their ratchets have not grown": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2503,10 +2570,10 @@
      "class": "always"
     },
     "Guard — the fetch-pinning gate exists and can still fail": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2516,10 +2583,10 @@
      "class": "always"
     },
     "Content gates — faceplates, hub faces, retro console": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2529,10 +2596,10 @@
      "class": "always"
     },
     "Vendored-repo history for the pin-move gate": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2542,10 +2609,10 @@
      "class": "always"
     },
     "Fetch the pinned bw-board tree for the pin-reader tests": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2555,10 +2622,10 @@
      "class": "always"
     },
     "Fetch bw-board's default-branch tip for the absent-by-design proof (tolerated absent)": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2568,10 +2635,10 @@
      "class": "always"
     },
     "Restore the sha-pinned ARM toolchain from cache": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2581,10 +2648,10 @@
      "class": "always"
     },
     "Fetch the sha-pinned ARM toolchain for the executed-C differential (tolerated absent)": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2594,10 +2661,10 @@
      "class": "always"
     },
     "Restore the sha-pinned Pico MicroPython firmware from cache": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2607,10 +2674,10 @@
      "class": "always"
     },
     "Fetch the sha-pinned Pico MicroPython firmware for the unit tests (tolerated absent)": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2620,10 +2687,10 @@
      "class": "always"
     },
     "Fetch the GPL SDCC toolchain for the Node consumers (tolerated absent)": {
-     "existed": 5,
-     "ran": 5,
-     "existedMain": 2,
-     "ranMain": 2,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2633,10 +2700,10 @@
      "class": "always"
     },
     "Run unit tests": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2646,11 +2713,11 @@
      "class": "always"
     },
     "Mutation proofs — every enforcement layer must be able to fail": {
-     "existed": 55,
-     "ran": 44,
-     "existedMain": 17,
-     "ranMain": 17,
-     "skippedInFailedRuns": 11,
+     "existed": 50,
+     "ran": 45,
+     "existedMain": 16,
+     "ranMain": 16,
+     "skippedInFailedRuns": 5,
      "skippedInGreenRuns": 0,
      "jobs": [
       "build"
@@ -2660,10 +2727,10 @@
      "why": "upstream failure — skipped only in runs where an earlier job failed"
     },
     "Guard — packaged native broker proof authority is fresh": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2673,11 +2740,11 @@
      "class": "always"
     },
     "Guard — packaged native broker host and worker assets are fresh": {
-     "existed": 55,
-     "ran": 44,
-     "existedMain": 17,
-     "ranMain": 17,
-     "skippedInFailedRuns": 11,
+     "existed": 50,
+     "ran": 45,
+     "existedMain": 16,
+     "ranMain": 16,
+     "skippedInFailedRuns": 5,
      "skippedInGreenRuns": 0,
      "jobs": [
       "build"
@@ -2687,10 +2754,10 @@
      "why": "upstream failure — skipped only in runs where an earlier job failed"
     },
     "Guard — no GPL payload reaches the build output": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2700,10 +2767,10 @@
      "class": "always"
     },
     "Guard — the labwired engine stays lazily loaded": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2713,10 +2780,10 @@
      "class": "always"
     },
     "Guard — the first load stays lean": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2726,10 +2793,10 @@
      "class": "always"
     },
     "Fetch stc-compiler (the debugger smoke's disassembly oracle)": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2739,10 +2806,10 @@
      "class": "always"
     },
     "Smoke-test the debugger": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2752,10 +2819,10 @@
      "class": "always"
     },
     "Refuse to publish a tree older than the published one": {
-     "existed": 17,
-     "ran": 17,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 16,
+     "ran": 16,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2765,10 +2832,10 @@
      "class": "always"
     },
     "Deploy to GitHub Pages": {
-     "existed": 17,
-     "ran": 17,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 16,
+     "ran": 16,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2778,10 +2845,10 @@
      "class": "always"
     },
     "Install Playwright": {
-     "existed": 17,
-     "ran": 17,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 16,
+     "ran": 16,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2791,10 +2858,10 @@
      "class": "always"
     },
     "Verify GUI renders on deployed site": {
-     "existed": 17,
-     "ran": 17,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 16,
+     "ran": 16,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2802,46 +2869,59 @@
      ],
      "clause": null,
      "class": "always"
+    },
+    "Browser gate — experimental 286 board lab": {
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": null,
+     "class": "always"
     }
    },
    "jobs": {
-    "corpus": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+    "browser": {
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "class": "always"
     },
-    "browser": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+    "corpus": {
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "class": "always"
     },
     "build": {
-     "existed": 55,
-     "ran": 55,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 50,
+     "existedMain": 16,
+     "ranMain": 16,
      "class": "always"
     },
     "deploy": {
-     "existed": 55,
-     "ran": 17,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 16,
+     "existedMain": 16,
+     "ranMain": 16,
      "class": "sometimes"
     },
     "verify-gui": {
-     "existed": 55,
-     "ran": 17,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 50,
+     "ran": 16,
+     "existedMain": 16,
+     "ranMain": 16,
      "class": "sometimes"
     }
    },
-   "sourceSha": "1d849ee9b"
+   "sourceSha": "07835eea3"
   },
   "ci-metrics.yml": {
    "runs": 20,
@@ -2901,7 +2981,7 @@
      "class": "always"
     }
    },
-   "sourceSha": "1d849ee9b"
+   "sourceSha": "07835eea3"
   },
   "cycle-core-qualification.yml": {
    "runs": 17,
@@ -3042,7 +3122,7 @@
    "sourceSha": "03eed46cb"
   },
   "debugger.yml": {
-   "runs": 20,
+   "runs": 19,
    "stepsInFile": [
     "Dependency-free debugger architecture verdict",
     "Vendor pinned sources",
@@ -3053,10 +3133,10 @@
    "inFileInNoRun": [],
    "steps": {
     "Dependency-free debugger architecture verdict": {
-     "existed": 20,
-     "ran": 20,
-     "existedMain": 20,
-     "ranMain": 20,
+     "existed": 19,
+     "ran": 19,
+     "existedMain": 17,
+     "ranMain": 17,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3066,10 +3146,10 @@
      "class": "always"
     },
     "Vendor pinned sources": {
-     "existed": 20,
-     "ran": 20,
-     "existedMain": 20,
-     "ranMain": 20,
+     "existed": 19,
+     "ran": 19,
+     "existedMain": 17,
+     "ranMain": 17,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3079,10 +3159,10 @@
      "class": "always"
     },
     "Integrate overlays": {
-     "existed": 20,
-     "ran": 20,
-     "existedMain": 20,
-     "ranMain": 20,
+     "existed": 19,
+     "ran": 19,
+     "existedMain": 17,
+     "ranMain": 17,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3092,10 +3172,10 @@
      "class": "always"
     },
     "Install debugger runtime dependencies": {
-     "existed": 20,
-     "ran": 20,
-     "existedMain": 20,
-     "ranMain": 20,
+     "existed": 19,
+     "ran": 19,
+     "existedMain": 17,
+     "ranMain": 17,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3105,10 +3185,10 @@
      "class": "always"
     },
     "Focused debugger contracts and live cores": {
-     "existed": 20,
-     "ran": 20,
-     "existedMain": 20,
-     "ranMain": 20,
+     "existed": 19,
+     "ran": 19,
+     "existedMain": 17,
+     "ranMain": 17,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3120,21 +3200,21 @@
    },
    "jobs": {
     "contracts": {
-     "existed": 20,
-     "ran": 20,
-     "existedMain": 20,
-     "ranMain": 20,
+     "existed": 19,
+     "ran": 19,
+     "existedMain": 17,
+     "ranMain": 17,
      "class": "always"
     },
     "focused": {
-     "existed": 20,
-     "ran": 20,
-     "existedMain": 20,
-     "ranMain": 20,
+     "existed": 19,
+     "ran": 19,
+     "existedMain": 17,
+     "ranMain": 17,
      "class": "always"
     }
    },
-   "sourceSha": "9af0d0440"
+   "sourceSha": "b6a90a847"
   },
   "deploy-daily.yml": {
    "runs": 14,
@@ -3302,30 +3382,29 @@
      "class": "always"
     }
    },
-   "sourceSha": "7de6b5605"
+   "sourceSha": "d308edb13"
   },
   "i8086-execution.yml": {
-   "runs": 5,
+   "runs": 20,
    "stepsInFile": [],
    "inFileInNoRun": [],
    "steps": {
     "Run npm ci --ignore-scripts": {
-     "existed": 5,
-     "ran": 4,
+     "existed": 20,
+     "ran": 20,
      "existedMain": 0,
      "ranMain": 0,
-     "skippedInFailedRuns": 1,
+     "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
       "profile"
      ],
      "clause": null,
-     "class": "sometimes",
-     "why": "upstream failure — skipped only in runs where an earlier job failed"
+     "class": "always"
     },
     "Run node --experimental-default-type=module --test test/i8086-execution-workload.test.mjs": {
-     "existed": 3,
-     "ran": 3,
+     "existed": 20,
+     "ran": 20,
      "existedMain": 0,
      "ranMain": 0,
      "skippedInFailedRuns": 0,
@@ -3337,44 +3416,42 @@
      "class": "always"
     },
     "Run npx playwright install --with-deps chromium": {
-     "existed": 5,
-     "ran": 4,
+     "existed": 20,
+     "ran": 20,
      "existedMain": 0,
      "ranMain": 0,
-     "skippedInFailedRuns": 1,
+     "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
       "profile"
      ],
      "clause": null,
-     "class": "sometimes",
-     "why": "upstream failure — skipped only in runs where an earlier job failed"
+     "class": "always"
     },
     "Run node scripts/profile-i8086-execution.mjs": {
-     "existed": 5,
-     "ran": 4,
+     "existed": 20,
+     "ran": 20,
      "existedMain": 0,
      "ranMain": 0,
-     "skippedInFailedRuns": 1,
+     "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
       "profile"
      ],
      "clause": null,
-     "class": "sometimes",
-     "why": "upstream failure — skipped only in runs where an earlier job failed"
+     "class": "always"
     }
    },
    "jobs": {
     "profile": {
-     "existed": 5,
-     "ran": 5,
+     "existed": 20,
+     "ran": 20,
      "existedMain": 0,
      "ranMain": 0,
      "class": "always"
     }
    },
-   "sourceSha": "f09ae4303"
+   "sourceSha": "6313a2209"
   },
   "mobile.yml": {
    "runs": 20,
@@ -3717,18 +3794,24 @@
    "sourceSha": "615ad03c0"
   },
   "nightly-corpus-differential.yml": {
-   "runs": 2,
+   "runs": 3,
    "stepsInFile": [
     "Install source-test dependencies",
+    "Vendor the pinned permissive Scratch sources",
+    "Integrate the Code tab (sb3-creator)",
+    "Install",
+    "Apply the scratch-vm overlay (built-in extensions)",
+    "Apply the scratch-paint overlay (extended costume designer)",
+    "Apply the scratch-render overlay (lazy render fonts)",
     "Run the corpus differential against the hosted service"
    ],
    "inFileInNoRun": [],
    "steps": {
     "Install source-test dependencies": {
-     "existed": 2,
-     "ran": 2,
-     "existedMain": 1,
-     "ranMain": 1,
+     "existed": 3,
+     "ran": 3,
+     "existedMain": 2,
+     "ranMain": 2,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3738,10 +3821,10 @@
      "class": "always"
     },
     "Vendor the pinned permissive Scratch sources": {
-     "existed": 1,
-     "ran": 1,
-     "existedMain": 0,
-     "ranMain": 0,
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 1,
+     "ranMain": 1,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3751,10 +3834,10 @@
      "class": "always"
     },
     "Integrate the Code tab (sb3-creator)": {
-     "existed": 1,
-     "ran": 1,
-     "existedMain": 0,
-     "ranMain": 0,
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 1,
+     "ranMain": 1,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3764,10 +3847,10 @@
      "class": "always"
     },
     "Install": {
-     "existed": 1,
-     "ran": 1,
-     "existedMain": 0,
-     "ranMain": 0,
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 1,
+     "ranMain": 1,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3777,10 +3860,10 @@
      "class": "always"
     },
     "Apply the scratch-vm overlay (built-in extensions)": {
-     "existed": 1,
-     "ran": 1,
-     "existedMain": 0,
-     "ranMain": 0,
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 1,
+     "ranMain": 1,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3790,10 +3873,10 @@
      "class": "always"
     },
     "Apply the scratch-paint overlay (extended costume designer)": {
-     "existed": 1,
-     "ran": 1,
-     "existedMain": 0,
-     "ranMain": 0,
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 1,
+     "ranMain": 1,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3803,10 +3886,10 @@
      "class": "always"
     },
     "Apply the scratch-render overlay (lazy render fonts)": {
-     "existed": 1,
-     "ran": 1,
-     "existedMain": 0,
-     "ranMain": 0,
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 1,
+     "ranMain": 1,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3816,10 +3899,10 @@
      "class": "always"
     },
     "Run the corpus differential against the hosted service": {
-     "existed": 2,
-     "ran": 2,
-     "existedMain": 1,
-     "ranMain": 1,
+     "existed": 3,
+     "ran": 3,
+     "existedMain": 2,
+     "ranMain": 2,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3831,14 +3914,14 @@
    },
    "jobs": {
     "corpus-differential": {
-     "existed": 2,
-     "ran": 2,
-     "existedMain": 1,
-     "ranMain": 1,
+     "existed": 3,
+     "ran": 3,
+     "existedMain": 2,
+     "ranMain": 2,
      "class": "always"
     }
    },
-   "sourceSha": "b3648ffc7"
+   "sourceSha": "9d55123eb"
   },
   "release.yml": {
    "runs": 20,
@@ -4045,6 +4128,94 @@
     }
    },
    "sourceSha": "5b1881b04"
+  },
+  "rust-notices.yml": {
+   "runs": 1,
+   "stepsInFile": [
+    "Check out the notices source",
+    "Install Node.js",
+    "Install Rust",
+    "Test the bounded notices writer",
+    "Check the notices against locked Cargo metadata"
+   ],
+   "inFileInNoRun": [],
+   "steps": {
+    "Check out the notices source": {
+     "existed": 1,
+     "ran": 1,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "check"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Install Node.js": {
+     "existed": 1,
+     "ran": 1,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "check"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Install Rust": {
+     "existed": 1,
+     "ran": 1,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "check"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Test the bounded notices writer": {
+     "existed": 1,
+     "ran": 1,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "check"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Check the notices against locked Cargo metadata": {
+     "existed": 1,
+     "ran": 1,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "check"
+     ],
+     "clause": null,
+     "class": "always"
+    }
+   },
+   "jobs": {
+    "check": {
+     "existed": 1,
+     "ran": 1,
+     "existedMain": 0,
+     "ranMain": 0,
+     "class": "always"
+    }
+   },
+   "sourceSha": "66cf8ccfb"
   },
   "tauri.yml": {
    "runs": 20,
@@ -4288,23 +4459,23 @@
    "steps": {
     "Pin upstreams to vendor-pins.json (push runs)": {
      "existed": 20,
-     "ran": 17,
-     "existedMain": 17,
-     "ranMain": 17,
-     "skippedInFailedRuns": 3,
-     "skippedInGreenRuns": 0,
+     "ran": 8,
+     "existedMain": 8,
+     "ranMain": 8,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 12,
      "jobs": [
       "check"
      ],
      "clause": "github.event_name == 'push'",
      "class": "sometimes",
-     "why": "upstream failure — skipped only in runs where an earlier job failed"
+     "why": "trigger — the clause names the event"
     },
     "Check out pinned upstream commits": {
      "existed": 20,
      "ran": 20,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existedMain": 8,
+     "ranMain": 8,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4314,10 +4485,10 @@
      "class": "always"
     },
     "circuit designer tree matches the pin": {
-     "existed": 18,
-     "ran": 18,
-     "existedMain": 15,
-     "ranMain": 15,
+     "existed": 20,
+     "ran": 20,
+     "existedMain": 8,
+     "ranMain": 8,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4327,10 +4498,10 @@
      "class": "always"
     },
     "circuit designer tree (listing only, not a verdict)": {
-     "existed": 18,
-     "ran": 18,
-     "existedMain": 15,
-     "ranMain": 15,
+     "existed": 20,
+     "ran": 20,
+     "existedMain": 8,
+     "ranMain": 8,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4342,8 +4513,8 @@
     "board engine tree matches the pin": {
      "existed": 20,
      "ran": 20,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existedMain": 8,
+     "ranMain": 8,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4355,8 +4526,8 @@
     "board engine tree (listing only, not a verdict)": {
      "existed": 20,
      "ran": 20,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existedMain": 8,
+     "ranMain": 8,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4366,10 +4537,10 @@
      "class": "always"
     },
     "sb3-creator deltas are the declared ones": {
-     "existed": 12,
-     "ran": 12,
-     "existedMain": 11,
-     "ranMain": 11,
+     "existed": 20,
+     "ran": 20,
+     "existedMain": 8,
+     "ranMain": 8,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4381,8 +4552,8 @@
     "sb3-creator transpiler": {
      "existed": 20,
      "ran": 20,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existedMain": 8,
+     "ranMain": 8,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4394,8 +4565,8 @@
     "examples gallery": {
      "existed": 20,
      "ran": 20,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existedMain": 8,
+     "ranMain": 8,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4407,8 +4578,8 @@
     "parts-data sidecars (bw-circuit-ui -> overlay)": {
      "existed": 20,
      "ran": 20,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existedMain": 8,
+     "ranMain": 8,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4420,8 +4591,8 @@
     "runtime extension gallery content pins": {
      "existed": 20,
      "ran": 20,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existedMain": 8,
+     "ranMain": 8,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4433,8 +4604,8 @@
     "hosted service targets vs snapshot (report only)": {
      "existed": 20,
      "ran": 20,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existedMain": 8,
+     "ranMain": 8,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4442,31 +4613,18 @@
      ],
      "clause": "always()",
      "class": "always"
-    },
-    "circuit designer tree": {
-     "existed": 2,
-     "ran": 2,
-     "existedMain": 2,
-     "ranMain": 2,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "check"
-     ],
-     "clause": null,
-     "class": "always"
     }
    },
    "jobs": {
     "check": {
      "existed": 20,
      "ran": 20,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existedMain": 8,
+     "ranMain": 8,
      "class": "always"
     }
    },
-   "sourceSha": "f568d875a"
+   "sourceSha": "c2e470dae"
   }
  }
 }
