@@ -3,7 +3,9 @@ name: Rust notices
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    # GitHub cannot workflow_dispatch a brand-new workflow until the file is on
+    # the default branch. Let the path-filtered push create that first branch
+    # receipt; PR and push runs share the concurrency group below.
     paths:
       - '.github/workflows/rust-notices.yml'
       - 'THIRD-PARTY-NOTICES.md'
@@ -28,8 +30,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: rust-notices-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: rust-notices-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   check:

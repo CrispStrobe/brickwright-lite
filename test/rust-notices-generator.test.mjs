@@ -144,6 +144,8 @@ test('the dedicated workflow installs Rust and watches every notices input', () 
     }
     assert.match(workflow, /workflow_dispatch:/,
         'a new workflow needs a branch dispatch before the CI census can judge it');
+    assert.doesNotMatch(workflow, /push:\s*\n\s+branches:/,
+        'a new workflow absent from default cannot be dispatched; its path-filtered branch push must bootstrap the first run');
     assert.match(workflow, /dtolnay\/rust-toolchain@[0-9a-f]{40}/,
         'Cargo must come from an explicitly pinned Rust-toolchain action, not runner ambience');
     assert.match(workflow, /run: npm run gen:notices:check/,
