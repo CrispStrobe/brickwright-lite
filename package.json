@@ -11,6 +11,7 @@
         "build:gui:force": "npm run package:broker-proof-pins:check && npm run package:broker-assets:check && cd packages/scratch-gui && npm run build",
         "integrate": "node scripts/integrate.mjs",
         "gen:notices": "node scripts/gen-rust-notices.mjs",
+        "gen:notices:check": "node scripts/gen-rust-notices.mjs --check",
         "gen:8086-report": "node scripts/gen-i8086-capability-report.mjs",
         "gen:8086-report:check": "node scripts/gen-i8086-capability-report.mjs --check",
         "gen:matrix": "node scripts/gen-language-device-matrix.mjs",

@@ -904,6 +904,8 @@ none copyleft in a way that affects this binary.
 - zvariant_derive 5.13.0 (MIT) -- https://github.com/z-galaxy/zbus/
 - zvariant_utils 3.5.0 (MIT) -- https://github.com/z-galaxy/zbus/
 
+<!-- END GENERATED RUST CRATE LIST -->
+
 ## bw-circuit-ui — MPL-2.0
 
 **Location in this repo:** `overlay/scratch-gui/src/lib/bw-circuit-ui/`
