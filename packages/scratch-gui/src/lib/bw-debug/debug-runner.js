@@ -386,6 +386,40 @@ export function toggleTargetWriteWatchpoint ({target, watchBps, space, addr}) {
 }
 
 /**
+ * Apply one code-breakpoint toggle without changing the target's address.
+ *
+ * The runner validates only the host-input shape. The target owns its address
+ * bounds and its refusal sentence, so a 20-bit engine can receive 0x1f000
+ * unchanged. Numeric handles remain the success contract: labwired currently
+ * arms a code breakpoint but returns undefined, which would leave an armed,
+ * invisible breakpoint that this map cannot clear. That target contract must
+ * be repaired at its source rather than guessed successful here.
+ *
+ * @param {object} options toggle inputs
+ * @param {object} options.target active debug target
+ * @param {Map<number, number>} options.addrBps accepted breakpoint handles
+ * @param {number} options.addr address supplied by the caller
+ * @returns {object} added, removed, or refused result
+ */
+export function toggleTargetCodeBreakpoint ({target, addrBps, addr}) {
+    if (!Number.isSafeInteger(addr) || addr < 0) {
+        return {refused: 'code breakpoint address must be a non-negative safe integer'};
+    }
+    if (addrBps.has(addr)) {
+        target.clearBreakpoint(addrBps.get(addr));
+        addrBps.delete(addr);
+        return {removed: true, addr};
+    }
+    const handle = target.setBreakpoint({kind: 'code', addr});
+    if (typeof handle !== 'number') {
+        // The target's own sentence, not a paraphrase of it.
+        return {refused: (handle && handle.unsupported) || 'the engine refused it'};
+    }
+    addrBps.set(addr, handle);
+    return {added: true, addr, handle};
+}
+
+/**
  * @param {object} [opts.machineConfig] wired-extractor {regions, chips} from
  *   Build Machine (bw-machine-extracted) — threads into createDebugTarget
  *   so the bench boots the machine the user wired, not a hardcoded preset.
@@ -2844,18 +2878,11 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         addressBreakpoints: () => [...addrBps.keys()],
         toggleAddressBreakpoint(addr) {
             if (!target) return false;
-            const a = addr & 0xFFFF;
-            if (addrBps.has(a)) {
-                target.clearBreakpoint(addrBps.get(a));
-                addrBps.delete(a);
-            } else {
-                const handle = target.setBreakpoint({ kind: 'code', addr: a });
-                if (typeof handle !== 'number') return false;
-                addrBps.set(a, handle);
-            }
+            const result = toggleTargetCodeBreakpoint({target, addrBps, addr});
+            if (!result.added && !result.removed) return false;
             breakpointGeneration++;
             emit();
-            return addrBps.has(a);
+            return addrBps.has(addr);
         },
 
         /**
