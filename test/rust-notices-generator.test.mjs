@@ -10,6 +10,7 @@ import {
     renderRustNotices,
     rustCrateBody
 } from '../scripts/gen-rust-notices.mjs';
+import {quietConsole} from './helpers/quiet-console.mjs';
 
 const packages = [
     {name: 'zeta', version: '2.0.0', license: 'BSD-2-Clause', repository: 'https://example.test/zeta'},
@@ -22,14 +23,23 @@ const sentinel = '## HAND-MAINTAINED AFTER\n\nSENTINEL: must survive byte for by
 const shell = body => `BEFORE: hand maintained.\n${BEGIN_MARKER}\n\n${body}\n\n${END_MARKER}\n\n${sentinel}`;
 const canonical = shell(rustCrateBody(packages));
 
+const captureMain = (argv, io) => {
+    const quiet = quietConsole(['log', 'info', 'debug', 'warn', 'error']);
+    try {
+        return {code: main(argv, io), lines: quiet.lines};
+    } finally {
+        quiet.restore();
+    }
+};
+
 const run = (doc, metadataPackages = packages, argv = ['--check']) => {
     let written = null;
-    const code = main(argv, {
+    const result = captureMain(argv, {
         readFileSync: () => doc,
         writeFileSync: (_path, text) => { written = text; },
         readCargoMetadata: () => ({packages: metadataPackages})
     });
-    return {code, written};
+    return {...result, written};
 };
 
 test('cargo metadata is locked and its complete argument vector is deliberate', () => {
@@ -47,15 +57,26 @@ test('cargo metadata is locked and its complete argument vector is deliberate', 
 
 test('--check and rewrite use the same rendering result', () => {
     assert.equal(noticesAreCurrent(canonical, packages), true);
-    assert.deepEqual(run(canonical), {code: 0, written: null});
+    const current = run(canonical);
+    assert.equal(current.code, 0);
+    assert.equal(current.written, null);
+    assert.deepEqual(current.lines, [['log', 'gen-rust-notices: Rust crate table is current']]);
 
     const stale = shell('- stale 0.0.0 (UNKNOWN)');
     const checked = run(stale);
     const rewritten = run(stale, packages, []);
     assert.equal(checked.code, 1);
     assert.equal(checked.written, null, '--check must never repair the file it judges');
+    assert.deepEqual(checked.lines, [[
+        'error',
+        'THIRD-PARTY-NOTICES.md Rust crate table is stale; run npm run gen:notices'
+    ]]);
     assert.equal(rewritten.code, 0);
     assert.equal(rewritten.written, canonical);
+    assert.deepEqual(rewritten.lines, [[
+        'log',
+        'gen-rust-notices: wrote 2 crates to THIRD-PARTY-NOTICES.md'
+    ]]);
 });
 
 test('a version mutation is stale', () => {
@@ -96,7 +117,11 @@ test('rewrite preserves every byte after END, including an adversarial sentinel'
 test('unknown and duplicate CLI flags refuse without reading metadata', () => {
     let read = false;
     const io = {readCargoMetadata: () => { read = true; return {packages}; }};
-    assert.equal(main(['--write'], io), 2);
-    assert.equal(main(['--check', '--check'], io), 2);
+    const unknown = captureMain(['--write'], io);
+    const duplicate = captureMain(['--check', '--check'], io);
+    assert.equal(unknown.code, 2);
+    assert.equal(duplicate.code, 2);
+    assert.deepEqual(unknown.lines, [['error', 'usage: node scripts/gen-rust-notices.mjs [--check]']]);
+    assert.deepEqual(duplicate.lines, [['error', 'usage: node scripts/gen-rust-notices.mjs [--check]']]);
     assert.equal(read, false);
 });
