@@ -10,8 +10,8 @@
     "vendoredAs": "i8086-bios.asm",
     "license": "MIT",
     "sha256": "cb3fa6422f7cae8d27ae91069d5189285ab43b418979a99212a89a8c5eee31d2",
-    "sha": "7b8d14041617695e1fc6cf89e62b62a0d7dbe3f4",
-    "date": "2026-09-07",
+    "sha": "676d9e8936f5d030335807e83a5f6c213f750c2c",
+    "date": "2026-09-09",
     "lastTouchedBy": {
       "sha": "7b8d14041617695e1fc6cf89e62b62a0d7dbe3f4",
       "subject": "BIOS: the ROM said BSD-3 about itself and this repo is MIT (D2); the tier stays an XT (D1)",
@@ -22,7 +22,7 @@
     "path": "overlay/scratch-gui/src/lib/bw-board/i8086-asm.js",
     "sha256": "3270c33885fbb6524ceaa727a1600570fe974e0bb4bc3488d1ecda894fdb0841"
   },
-  "pinAtBuild": "64bafdd400a8cd1191e89504f2d019ec740b6b46",
+  "pinAtBuild": "676d9e8936f5d030335807e83a5f6c213f750c2c",
   "ancestorOfPinAtBuild": true,
   "behindPinBy": 0
 }

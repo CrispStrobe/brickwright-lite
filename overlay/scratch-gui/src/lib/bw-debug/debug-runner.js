@@ -390,10 +390,10 @@ export function toggleTargetWriteWatchpoint ({target, watchBps, space, addr}) {
  *
  * The runner validates only the host-input shape. The target owns its address
  * bounds and its refusal sentence, so a 20-bit engine can receive 0x1f000
- * unchanged. Numeric handles remain the success contract: labwired currently
- * arms a code breakpoint but returns undefined, which would leave an armed,
- * invisible breakpoint that this map cannot clear. That target contract must
- * be repaired at its source rather than guessed successful here.
+ * unchanged. Numeric handles remain the success contract. LabWired conforms
+ * from bw-board 676d9e893: installation returns its opaque numeric handle,
+ * while a refusal remains an object. Never guess a nonnumeric result was a
+ * success or this map cannot make the breakpoint visible and clearable.
  *
  * @param {object} options toggle inputs
  * @param {object} options.target active debug target
