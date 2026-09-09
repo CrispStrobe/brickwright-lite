@@ -37,3 +37,9 @@ test('new checkout sites and unrecognized dynamic refs fail by repository', () =
     }
     assert.equal(assertCheckoutPins(new Map([['new.yml', workflow('a'.repeat(40))]])).length, 1);
 });
+
+test('duplicate-ref fixture: a checkout has exactly one ref field', () => {
+    const base = 'steps:\n  - uses: actions/checkout@full\n    with:\n      repository: Acme/duplicate\n      ref: ' + 'a'.repeat(40) + '\n';
+    assert.equal(assertCheckoutPins(new Map([['duplicate.yml', base]])).length, 1);
+    assert.throws(() => assertCheckoutPins(new Map([['duplicate.yml', base + '      ref: ' + 'b'.repeat(40) + '\n']])), /duplicate checkout ref/);
+});
