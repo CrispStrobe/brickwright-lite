@@ -29,6 +29,7 @@
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import { wrappedSample, bindsHardware } from './corpus-sample.mjs';
+import { serialCadenceKnown } from './corpus-cadence.mjs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import SB3Creator from '../packages/scratch-gui/src/lib/sb3-creator.js';
@@ -247,7 +248,7 @@ function sweepStimulus(pins, adc) {
   return stim;
 }
 
-async function corpusMode(count, offset) {
+async function corpusMode(count, offset, ids = null) {
   // The vendored gallery can lag the source-of-truth (the computed
   // 'devices' lists landed in sb3-creator after lite's last example
   // vendoring); EXAMPLES_DIR points at a fresh checkout when needed.
@@ -278,11 +279,28 @@ async function corpusMode(count, offset) {
       `target but bind no PIN/PORT/PART/LEDCUBE/CHIP (D-CORPUS1, owner sb3-creator): ` +
       `${[...hostOnly].slice(0, 5).join(', ')}${hostOnly.size > 5 ? ', …' : ''}`);
   }
-  // Wrapped, and never empty — see scripts/corpus-sample.mjs for why that is
-  // its own module with its own gate.
-  const { sample, start, wrapped } = wrappedSample(pairs, count, offset);
-  console.log(`corpus: ${pairs.length} eligible pairs, running ${sample.length} from offset ${start}` +
-    (wrapped ? ` (wrapped from ${offset})` : ''));
+  // Explicit anchors (a deterministic regression set) bypass the rotation:
+  // named ids run EVERY time, both devices, so a defect on them cannot hide by
+  // simply not being sampled today. That is the one hole a rotating-sample gate
+  // has — it cannot tell "fixed" from "not sampled", the same family as a moved
+  // skip: the number looks fine because the question stopped being asked.
+  let sample, start = 0, wrapped = false;
+  if (ids && ids.length) {
+    const want = new Set(ids);
+    sample = pairs.filter((p) => want.has(p.e.id));
+    const missing = ids.filter((id) => !pairs.some((p) => p.e.id === id));
+    if (missing.length) {
+      console.log(`cases: NO eligible pair for ${missing.join(', ')} — host-only, refused ` +
+        `retarget, or unknown id; an anchor that vanishes is stated, not silent`);
+    }
+    console.log(`cases: running ${sample.length} anchored pair(s) of ${ids.length} id(s): ${ids.join(', ')}`);
+  } else {
+    // Wrapped, and never empty — see scripts/corpus-sample.mjs for why that is
+    // its own module with its own gate.
+    ({ sample, start, wrapped } = wrappedSample(pairs, count, offset));
+    console.log(`corpus: ${pairs.length} eligible pairs, running ${sample.length} from offset ${start}` +
+      (wrapped ? ` (wrapped from ${offset})` : ''));
+  }
   let bad = false;
   for (const { e, devName, retargetId } of sample) {
     const label = `${e.id} -> ${devName}`;
@@ -351,17 +369,21 @@ async function corpusMode(count, offset) {
           (cmp.ok ? '' : '\n  ' + cmp.diffs.slice(0, 3).join('\n  ')));
         if (!cmp.ok) bad = true;
       } else {
-        const semantic = cmp.findings.filter((f) => f.kind !== 'time');
+        const cadence = serialCadenceKnown(e.id, cmp.findings, refCmp, actual);
+        const semantic = cmp.findings.filter((f) => f.kind !== 'time'
+          && !(cadence && /^serial /.test(f.text) && (f.kind === 'value' || f.kind === 'count')));
         const skew = cmp.findings.filter((f) => f.kind === 'time');
-        const verdict = semantic.length ? 'DIFF' : (skew.length ? 'SKEW' : 'AGREE');
+        const verdict = semantic.length ? 'DIFF' : (skew.length || cadence ? 'SKEW' : 'AGREE');
         if (unrecorded) {
           console.log(`  note: ${ref.devices.length} referee device-model events not compared ` +
             `(this recorder captures pin edges and serial, not device state)`);
         }
         console.log(`${label}: ${verdict} (${actual.events.length} ev, ${actual.serial.length} ser` +
-          (skew.length ? `, ${skew.length} timing` : '') + ')' +
+          (skew.length ? `, ${skew.length} timing` : '') + (cadence ? ', serial cadence' : '') + ')' +
           (semantic.length ? '\n  ' + semantic.slice(0, 3).map((f) => f.text).join('\n  ') : '') +
-          (skew.length && !semantic.length ? `\n  skew: ${skew[0].text}` : ''));
+          (cadence && !semantic.length ? `\n  serial values differ only by cadence on a passthrough ` +
+            `(same readings, drifted lines) — WHEN not WHAT [known: ${e.id}]` : '') +
+          (skew.length && !semantic.length && !cadence ? `\n  skew: ${skew[0].text}` : ''));
         if (semantic.length) bad = true;
       }
     } catch (err) {
@@ -459,6 +481,12 @@ if (only === 'explain') {
 }
 if (only === 'corpus') {
   const bad = await corpusMode(Number(process.argv[3] ?? 10), Number(process.argv[4] ?? 0));
+  process.exit(bad ? 1 : 0);
+}
+if (only === 'cases') {
+  // Deterministic anchor set: the named example ids, both devices, every run.
+  //   node scripts/oracle-differential.mjs cases arduino-sk-p14-serial-pot …
+  const bad = await corpusMode(0, 0, process.argv.slice(3));
   process.exit(bad ? 1 : 0);
 }
 let failed = false;
