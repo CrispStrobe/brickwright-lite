@@ -29,10 +29,18 @@
  * did, and ran to the horizon" can only be a when-not-what divergence.
  *
  * FALSIFIED IF a listed program ever gains logic between the read and the print
- * (a threshold, a branch, arithmetic): the premise no longer holds, a wrong
- * value could land on a wrong line for a real reason, and the entry must be
- * removed rather than kept. The regression fixture runs these every run, so a
- * program change that invalidates the premise surfaces there.
+ * (a threshold, a branch, arithmetic), OR IF ORDER OR REPETITION ever carries
+ * meaning in its output. Both are the same condition seen from two sides. The
+ * check below compares the SET of readings, which is deliberately blind to
+ * order and multiplicity: two streams with the same readings in a different
+ * order, or with one sample dropped and a neighbour repeated, have the same set
+ * and are forgiven. For a pure passthrough of a monotonic sweep that is exact —
+ * a dropped sample and a slow sample are the same observable (fewer lines, same
+ * readings, same endpoints), and no comparator experiment separates them, which
+ * is why the forgiveness rests on the program's shape and not the stream's. The
+ * moment order or repetition means something, that blindness becomes a hole and
+ * the entry must be removed, not kept. The regression fixture runs these every
+ * run, so a program change that invalidates the premise surfaces there.
  */
 
 /**
