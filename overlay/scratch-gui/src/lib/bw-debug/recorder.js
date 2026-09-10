@@ -1,3 +1,4 @@
+import {readTicks, describeTicks, TICKS_EXPECTED} from './tick-value.js';
 /**
  * Target-neutral storage primitives for deterministic debug recording.
  *
@@ -247,15 +248,20 @@ export function createDebugRecorder ({
             if (typeof input.producer !== 'string' || !input.producer) {
                 fail('INVALID_INPUT', 'Input requires a non-empty producer');
             }
-            if ((typeof input.time.ticks !== 'number' && typeof input.time.ticks !== 'bigint') ||
-                typeof input.time.domain !== 'string' || !input.time.domain) {
-                fail('INVALID_INPUT', 'Input time requires numeric ticks and a non-empty domain');
+            if (typeof input.time.domain !== 'string' || !input.time.domain) {
+                fail('INVALID_INPUT', 'Input time requires a non-empty domain');
             }
-            if (typeof input.time.ticks === 'number' && !Number.isSafeInteger(input.time.ticks)) {
-                fail('INVALID_INPUT', 'Input time ticks must be a safe integer');
+            // A TICK HAS THREE SPELLINGS -- see ./tick-value.js. This accepted
+            // two of them and refused the third, which is the one a session
+            // arrives in after a round trip: `canonical()` writes a bigint as
+            // `0x...` and JSON.parse hands it back as a string. So a recording
+            // made on a bigint-stamping target (emu8051) imported and then
+            // could not be replayed.
+            const ticks = readTicks(input.time.ticks);
+            if (ticks === null) {
+                fail('INVALID_INPUT', `Input time.ticks is ${describeTicks(input.time.ticks)}; `
+                    + TICKS_EXPECTED);
             }
-            const ticks = BigInt(input.time.ticks);
-            if (ticks < 0n) fail('INVALID_INPUT', 'Input time ticks must be non-negative');
             const previous = lastInputTime.get(input.time.domain);
             if (previous !== undefined && ticks < previous) {
                 fail('INVALID_INPUT_ORDER',

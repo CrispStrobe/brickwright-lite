@@ -1,4 +1,5 @@
 /** Portable, bounded and transactional debugger-session bundles. */
+import {readTicks, describeTicks, TICKS_EXPECTED} from './tick-value.js';
 export const DEBUG_SESSION_BUNDLE_SCHEMA = 1;
 export const DEFAULT_BUNDLE_LIMITS = Object.freeze({totalBytes: 32 * 1024 * 1024,
     chunkBytes: 8 * 1024 * 1024, traceEvents: 100_000, inputs: 100_000, branches: 64,
@@ -8,6 +9,12 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder('utf-8', {fatal: true});
 const plain = value => value && typeof value === 'object' && !Array.isArray(value);
 const fail = (code, message) => { throw Object.assign(new TypeError(message), {code}); };
+// CURSORS ONLY. A cursor is an index into this bundle's own arrays and is a
+// Number by construction. A TICK is a clock reading and has three spellings —
+// see ./tick-value.js. Sharing one helper between them is what made a recorded
+// session export fine and refuse to re-import: the tick was gated by
+// `Number.isSafeInteger`, and the hex string `canonical()` had just written was
+// rejected as a cursor-ordering fault.
 const ordinal = value => Number.isSafeInteger(value) && value >= 0 ? value : null;
 const canonical = value => {
     if (typeof value === 'bigint') return `0x${value.toString(16)}`;
@@ -60,9 +67,29 @@ const normalizeMarks = (bookmarks, annotations, rootId) => {
     return {bookmarks: normalized.filter(item => item.name === 'bookmarks').map(item => item.value),
         annotations: normalized.filter(item => item.name === 'annotations').map(item => item.value)};
 };
+/**
+ * THE MANIFEST IS PLAIN JSON, DELIBERATELY, AND THAT IS A DECISION RATHER THAN
+ * AN ACCIDENT OF WHICH SERIALISER THIS PATH REACHES FOR.
+ *
+ * Chunks go through `canonical()`, which writes a BigInt as `0x…`. This does
+ * not, so a BigInt anywhere in the manifest — a checkpoint's `time.ticks`, say
+ * — refuses the whole export by name instead of being silently re-spelled. The
+ * manifest is what a reader inspects and what integrity is computed over; a
+ * value that changes representation on its way in is the wrong thing to have
+ * there.
+ *
+ * Until this comment the refusal was real and undesigned: the two paths simply
+ * used different serialisers, and nothing recorded which behaviour was
+ * intended. An accidental refusal is indistinguishable from a designed one
+ * until somebody changes the serialiser and cannot tell what they broke. If a
+ * BigInt ever needs to live in the manifest, `canonical()` is the change to
+ * make here — and the import side needs `readTicks` at every point that then
+ * reads one.
+ */
 const manifestBytes = manifest => {
     try { return encoder.encode(JSON.stringify(manifest)).length; } catch {
-        fail('INVALID_BUNDLE_SCHEMA', 'bundle manifest is not JSON serializable');
+        fail('INVALID_BUNDLE_SCHEMA', 'bundle manifest is not JSON serializable '
+            + '(a bigint in the manifest refuses the export by design; chunks may carry one)');
     }
 };
 const validateInspection = (value, cap) => {
@@ -217,10 +244,20 @@ export async function validateDebuggerSessionBundle (bundle, {codecs = {}, limit
         let lastCursor = -1; const inputTimes = new Map();
         for (const input of inputs) {
             if (!plain(input) || ordinal(input.cursor) === null || input.cursor <= lastCursor ||
-                !plain(input.time) || typeof input.time.domain !== 'string' || ordinal(input.time.ticks) === null) {
+                !plain(input.time) || typeof input.time.domain !== 'string') {
                 fail('INVALID_INPUT_ORDER', 'input cursor must increase per branch with deterministic time');
             }
-            const tick = BigInt(input.time.ticks); const prior = inputTimes.get(input.time.domain);
+            // SPELLING IS ITS OWN REFUSAL, and it is separate from ordering
+            // because they are separate problems and the message has to say
+            // which. A hex-string tick used to fail the check above and be
+            // reported as a cursor-ordering fault, sending the reader to look
+            // at cursors that were correct.
+            const tick = readTicks(input.time.ticks);
+            if (tick === null) {
+                fail('INVALID_INPUT_TICKS', `input at cursor ${input.cursor} has `
+                    + `${describeTicks(input.time.ticks)} for time.ticks; ${TICKS_EXPECTED}`);
+            }
+            const prior = inputTimes.get(input.time.domain);
             if (prior !== undefined && tick < prior) fail('INVALID_INPUT_ORDER', 'input time decreased within its clock domain');
             inputTimes.set(input.time.domain, tick);
             lastCursor = input.cursor;
