@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {M6502Machine} from '../overlay/scratch-gui/src/lib/bw-board/m6502-machine.js';
+import {replayOutcome} from '../overlay/scratch-gui/src/lib/bw-board/debug-replay-contract.js';
 import {createM6502Adapter} from '../overlay/scratch-gui/src/lib/bw-board/m6502-adapter.js';
 import {createM6502DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/m6502-debug.js';
 import {Z80Machine} from '../overlay/scratch-gui/src/lib/bw-board/z80-machine.js';
@@ -297,7 +298,13 @@ test('6502 logged buttons and UART input replay to an identical checkpoint hash'
     const expected = hashReplayValues(adapter.machine.saveState());
 
     assert.equal(target.restoreCheckpoint(checkpoint), undefined);
-    for (const input of inputs) assert.equal(target.applyReplayInput(input), true);
+    // Read through replayOutcome rather than compared to a literal `true`:
+    // these targets now return the contract's shapes and replayOutcome
+    // normalises the old bare `true` identically, so the assertion holds across
+    // the change instead of pinning one spelling of success.
+    for (const input of inputs) {
+        assert.equal(replayOutcome(target.applyReplayInput(input)).accepted, true);
+    }
     run6502(adapter.machine, 7);
     assert.equal(hashReplayValues(adapter.machine.saveState()), expected);
     assert.deepEqual(inputs.map(input => input.producer), ['m6502.buttons', 'm6502.serial']);

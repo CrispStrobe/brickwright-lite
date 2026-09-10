@@ -16,6 +16,7 @@
  */
 import { disasm6502 } from './w65c02-disasm.js';
 import {installInstructionDebugEvents} from './instruction-debug-events.js';
+import {replayAccepted, replayRefused} from './debug-replay-contract.js';
 
 export function createM6502DebugTarget(adapter, opts = {}) {
   const machine = adapter.machine;
@@ -138,19 +139,73 @@ export function createM6502DebugTarget(adapter, opts = {}) {
       return () => inputListeners.delete(listener);
     },
 
+    /**
+     * The APPLY half, in the vocabulary `debug-replay-contract.js` declares.
+     *
+     * THREE REFUSALS, NOT ONE. This used to answer every failure with
+     * `UNSUPPORTED_REPLAY_INPUT` -- a malformed payload, a producer with no
+     * path, and a board that simply has no VIA all came back the same. The
+     * third is not the caller's fault at all: it is a fact about the hardware,
+     * and a driver told "unsupported input" looks for a bug in its log rather
+     * than at the machine it built.
+     *
+     *   invalid-replay-input      the FACT is malformed
+     *   unsupported-replay-input  this target has no path for that PRODUCER
+     *   no-input-path             the producer is known, this BOARD cannot take it
+     *
+     * Measured before changing: the only consumer of the old code was
+     * `test/classic-input-replay.test.mjs`, updated with this. The drivers read
+     * `.accepted` or discard the result, and `replayOutcome` normalises the old
+     * shapes identically, so nothing else moves.
+     *
+     * WHAT DELIBERATELY DID NOT CHANGE. There is no dedup here and none is
+     * being added: `publishInput` is a VETO channel, and the contract is
+     * per-call -- an input the recorder never sees is an input it cannot
+     * refuse. Withholding calls to match an upstream target that has no veto
+     * would delete a guarantee, not converge on one.
+     */
     applyReplayInput(input) {
-      if (input?.producer === 'm6502.buttons' && Number.isSafeInteger(input.payload?.mask)) {
-        return typeof machine.setButtons === 'function' ? machine.setButtons(input.payload.mask & 0x1f) : false;
-      }
-      if (input?.producer === 'm6502.serial' && Number.isSafeInteger(input.payload?.byte) && rawSendSerial) {
-        return rawSendSerial(input.payload.byte & 0xff);
-      }
-      if (input?.producer === 'm6502.nmi' && input.payload &&
-          typeof input.payload === 'object' && Object.keys(input.payload).length === 0) {
+      const payload = input?.payload;
+      switch (input?.producer) {
+      case 'm6502.buttons':
+        if (!Number.isSafeInteger(payload?.mask)) {
+          return replayRefused('invalid-replay-input', 'm6502.buttons needs a safe-integer mask');
+        }
+        if (typeof machine.setButtons !== 'function') {
+          return replayRefused('no-input-path', 'this machine has no button input path');
+        }
+        return machine.setButtons(payload.mask & 0x1f)
+          ? replayAccepted()
+          : replayRefused('no-input-path', 'this machine has no VIA to receive a button mask');
+      case 'm6502.serial':
+        if (!Number.isSafeInteger(payload?.byte)) {
+          return replayRefused('invalid-replay-input', 'm6502.serial needs a safe-integer byte');
+        }
+        if (!rawSendSerial) {
+          return replayRefused('no-input-path', 'this adapter has no serial input path');
+        }
+        // The UNWRAPPED method, so a replayed byte does not come back out of
+        // the recorder.
+        return rawSendSerial(payload.byte & 0xff)
+          ? replayAccepted()
+          : replayRefused('no-input-path', 'no chip took the received byte');
+      case 'm6502.nmi':
+        if (!payload || typeof payload !== 'object' || Object.keys(payload).length !== 0) {
+          return replayRefused('invalid-replay-input', 'm6502.nmi carries no payload');
+        }
+        // Guarded, unlike the version this replaces, which called machine.nmi()
+        // bare. This machine has one (m6502-machine.js:604) and the upstream
+        // one now does too, but a refusal is what the contract requires from a
+        // target that does not.
+        if (typeof machine.nmi !== 'function') {
+          return replayRefused('no-input-path', 'this machine has no NMI entry point');
+        }
         machine.nmi();
-        return true;
+        return replayAccepted();
+      default:
+        return replayRefused('unsupported-replay-input',
+          `no replay path for producer ${input?.producer ?? '(none)'}`);
       }
-      return {refused: 'unsupported or malformed 6502 replay input', code: 'UNSUPPORTED_REPLAY_INPUT'};
     },
 
     captureCheckpoint() {
