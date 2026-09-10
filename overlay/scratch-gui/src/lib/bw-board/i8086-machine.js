@@ -36,6 +36,10 @@
  * @module
  */
 import { I8086 } from './i8086.js';
+import {
+    MACHINE_CHECKPOINT_SCHEMA, checkpointRefusal, checkpointSupport,
+    checkpointTopology, cloneCheckpointValue, validateCheckpointEnvelope
+} from './machine-checkpoint.js';
 import { installI8086RamWordAccess } from './i8086-ram-words.js';
 import { I8255 } from './i8255.js';
 import { NS16C550 } from './ns16c550.js';
@@ -1479,16 +1483,71 @@ export class I8086Machine {
         throw new Error(`8086 checkpoint refused: component '${name}' state API is incompatible`);
     }
 
+    // ─── the shared machine-checkpoint contract ─────────────────────────
+    // The 8086 is the third consumer of machine-checkpoint.js, after m6502 and
+    // z80. It reaches the same contract from a different starting point (it once
+    // hand-rolled clone/topology/refusal and THREW; m6502/z80 always RETURNED),
+    // and the module took it with no amendment: its per-machine `reasons` slot
+    // already carries machine-specific refusals (m6502 passes bit-banged serial
+    // and audio; z80 passes buffer-input), so the 8086's bus-trace and audio
+    // refusals are just more reasons.
+
+    checkpointSupport() {
+        // Live state outside the component snapshot: refuse these MODES, the same
+        // shape m6502/z80 use for their own unsnapshotable queues. The shared
+        // checkpointSupport adds a reason for any chip or device whose state
+        // codec is not a complete getState/setState or saveState/loadState pair.
+        const reasons = [];
+        if (this.cpu.busTrace !== null) reasons.push('bus trace is an externally-owned append cursor, not part of the snapshot');
+        if (this._audioBus) reasons.push('audio mixer source phases and buffers are not covered by the chip state APIs');
+        return checkpointSupport(this.chips, this.devices, reasons);
+    }
+
+    checkpointTopology() {
+        // `variant` in the extra slot: 60h is PUSHA on an 80186 and JO on an
+        // 8086, so a checkpoint from the wrong variant must not restore. The
+        // deep state codec guards it again inside loadState; this guards the
+        // envelope before the state is even inspected.
+        return checkpointTopology('i8086', this.config, this.chips, this.devices, {variant: this.variant});
+    }
+
+    /** Kept for callers that only need the boolean; derived from checkpointSupport now. */
     canCheckpoint() {
-        // busTrace is an externally-owned append cursor, and the audio mixer
-        // contains source phases/buffers not covered by every legacy chip's
-        // state API. Refuse these modes instead of claiming a deterministic
-        // restore that merely gets registers and RAM right.
-        if (this.cpu.busTrace !== null || this._audioBus) return false;
-        const components = [...Object.values(this.chips), ...Object.values(this.devices || {})];
-        return components.every(c =>
-            (typeof c.getState === 'function' && typeof c.setState === 'function') ||
-            (typeof c.saveState === 'function' && typeof c.loadState === 'function'));
+        return this.checkpointSupport().supported;
+    }
+
+    captureCheckpoint() {
+        const support = this.checkpointSupport();
+        if (!support.supported) return checkpointRefusal(support);
+        // A base machine-domain time; the debug target overrides it with its
+        // own event-clock domain, the same way m6502/z80's debug bridges do.
+        return cloneCheckpointValue({
+            schema: MACHINE_CHECKPOINT_SCHEMA,
+            topology: this.checkpointTopology(),
+            time: {ticks: this.cycles, domain: 'i8086-cycles', hz: this.clockHz},
+            state: this.saveState()
+        });
+    }
+
+    restoreCheckpoint(checkpoint) {
+        const support = this.checkpointSupport();
+        if (!support.supported) return checkpointRefusal(support);
+        const refusal = validateCheckpointEnvelope(checkpoint, this.checkpointTopology());
+        if (refusal) return refusal;
+        // loadState owns the deep, 8086-specific state validation -- version,
+        // the variant-decode guard, the component-set match, per-chip restore
+        // APIs. It signals a bad snapshot by THROWING; surface that as a returned
+        // INVALID_CHECKPOINT so this contract is return-convention like m6502/z80,
+        // without moving that validation out of the codec that owns it. Time is
+        // NOT validated here: unlike m6502/z80 whose domain is machine-derived,
+        // the 8086's checkpoint time is written by the debug layer (eventDomain),
+        // so the machine cannot judge it -- the debug bridge does.
+        try {
+            this.loadState(cloneCheckpointValue(checkpoint.state));
+        } catch (error) {
+            return {refused: error.message, code: 'INVALID_CHECKPOINT'};
+        }
+        return undefined;
     }
 
     /**

@@ -47,9 +47,8 @@ test('8086 instruction checkpoint restores complete CPU, RAM, device, clock and 
     machine.keyIn(0x1e); // unsupported on BLINK, but must not perturb the snapshot proof
     target.restoreCheckpoint(checkpoint);
 
-    assert.deepEqual(machine.saveState(), checkpoint.machine);
+    assert.deepEqual(machine.saveState(), checkpoint.state);
     assert.equal(checkpoint.schema, 1);
-    assert.equal(checkpoint.mode, 'instruction');
     assert.equal(checkpoint.time.ticks, machine.cycles);
     assert.equal(checkpoint.time.domain, 'i8086-cycles');
     assert.deepEqual(target.capabilities().recording, ['checkpoint', 'restore']);
@@ -80,13 +79,21 @@ test('8086 restore rejects incomplete or mismatched snapshots before mutation', 
     machine.step();
     const checkpoint = target.captureCheckpoint();
     const before = machine.saveState();
-    const incomplete = {...checkpoint, machine: {...checkpoint.machine, cpu: {...checkpoint.machine.cpu}}};
-    delete incomplete.machine.cpu.intShadow;
-    assert.throws(() => target.restoreCheckpoint(incomplete), /CPU field 'intShadow' is missing/);
+    const incomplete = {...checkpoint, state: {...checkpoint.state, cpu: {...checkpoint.state.cpu}}};
+    delete incomplete.state.cpu.intShadow;
+    // Refused, RETURNED not thrown (the machine-checkpoint contract), and before
+    // any mutation -- loadState validates fully before touching execution state.
+    const missing = target.restoreCheckpoint(incomplete);
+    assert.match(missing.refused, /CPU field 'intShadow' is missing/);
+    assert.equal(missing.code, 'INVALID_CHECKPOINT');
     assert.deepEqual(machine.saveState(), before);
 
-    assert.throws(() => target.restoreCheckpoint({...checkpoint, variant: '80186'}),
-        /incompatible target snapshot/);
+    // Variant now lives in the topology, so a wrong-variant checkpoint is caught
+    // by the shared envelope validator before the state is inspected -- 60h is
+    // PUSHA on an 80186 and JO on an 8086, and this must not restore.
+    const target186 = createI8086DebugTarget({machine: new I8086Machine({...BLINK8086, variant: '80186'})});
+    const variantRefusal = target186.restoreCheckpoint(checkpoint);
+    assert.equal(variantRefusal.code, 'CHECKPOINT_TOPOLOGY_MISMATCH');
     assert.deepEqual(machine.saveState(), before);
 });
 
@@ -94,24 +101,28 @@ test('8086 does not advertise checkpoints with an unsnapshotable attached device
     const {machine, target} = fixture();
     machine.attachDevice('opaque', {advance() {}});
     assert.deepEqual(target.capabilities().recording, []);
-    assert.throws(() => target.captureCheckpoint(), /machine state is incomplete/);
+    const refusal = target.captureCheckpoint();
+    assert.ok(refusal.refused, 'an unsnapshotable device makes capture refuse, returned not thrown');
+    assert.equal(refusal.code, 'INCOMPLETE_CHECKPOINT_STATE');
 });
 
 test('8086 fails closed while an external bus-trace cursor or audio mixer is live', () => {
     const traced = fixture();
     traced.machine.cpu.busTrace = [];
     assert.deepEqual(traced.target.capabilities().recording, []);
-    assert.throws(() => traced.target.captureCheckpoint(), /machine state is incomplete/);
+    assert.equal(traced.target.captureCheckpoint().code, 'INCOMPLETE_CHECKPOINT_STATE');
 
     const audible = fixture();
     void audible.machine.audio;
     assert.deepEqual(audible.target.capabilities().recording, []);
-    assert.throws(() => audible.target.captureCheckpoint(), /machine state is incomplete/);
+    assert.equal(audible.target.captureCheckpoint().code, 'INCOMPLETE_CHECKPOINT_STATE');
 });
 
 test('8086 refuses a machine-only checkpoint when a boundary service owns hidden state', () => {
     const {machine} = fixture();
     const target = createI8086DebugTarget({machine, step: () => machine.step()});
     assert.deepEqual(target.capabilities().recording, []);
-    assert.throws(() => target.captureCheckpoint(), /machine state is incomplete/);
+    const refusal = target.captureCheckpoint();
+    assert.ok(refusal.refused, 'a boundary service owning hidden state makes capture refuse');
+    assert.equal(refusal.code, 'INCOMPLETE_CHECKPOINT_STATE');
 });

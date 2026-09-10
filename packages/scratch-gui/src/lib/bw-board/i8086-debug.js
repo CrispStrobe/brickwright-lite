@@ -549,49 +549,60 @@ export function createI8086DebugTarget(adapter, opts = {}) {
             };
         },
 
+        // The machine now owns the checkpoint (machine-checkpoint.js contract,
+        // shared with m6502/z80). This bridge is legitimately THICKER than those
+        // two delegate-and-timestamp bridges, for two documented reasons that are
+        // facts about the 8086 tier, not incompleteness:
+        //   (1) hasExternalStepState() -- an external step service or live input
+        //       source holds state OUTSIDE I8086Machine, which the machine cannot
+        //       see and m6502/z80 have no equivalent of; refused at this layer.
+        //   (2) the debugger's own run state (runState, pendingStep, the event
+        //       epoch), which the thin bridges do not carry.
         captureCheckpoint() {
-            if (hasExternalStepState() || !machine.canCheckpoint?.()) {
-                throw new Error('8086 checkpoint refused: machine state is incomplete');
+            if (hasExternalStepState()) {
+                return {code: 'INCOMPLETE_CHECKPOINT_STATE',
+                    refused: 'a checkpoint cannot capture the external step service state outside the machine'};
             }
-            return {
-                schema: 1,
-                target: 'i8086',
-                variant: machine.variant,
-                mode: 'instruction',
-                time: {
-                    ticks: machine.cycles,
-                    domain: eventDomain(),
-                    hz: machine.clockHz
-                },
-                machine: machine.saveState(),
-                debugger: {
-                    runState,
-                    pendingStep: pendingStep ? {...pendingStep} : null,
-                    eventTimeEpoch,
-                    lastEventTicks
-                }
+            const checkpoint = machine.captureCheckpoint();
+            if (checkpoint.refused) return checkpoint;
+            // Override the machine's base time with the debug event clock (the
+            // same move m6502/z80 bridges make), and attach the debugger state.
+            checkpoint.time = {ticks: machine.cycles, domain: eventDomain(), hz: machine.clockHz};
+            checkpoint.debugger = {
+                runState,
+                pendingStep: pendingStep ? {...pendingStep} : null,
+                eventTimeEpoch,
+                lastEventTicks
             };
+            return checkpoint;
         },
 
         restoreCheckpoint(snapshot) {
-            if (!snapshot || snapshot.schema !== 1 || snapshot.target !== 'i8086' ||
-                snapshot.mode !== 'instruction' || snapshot.variant !== machine.variant ||
-                !snapshot.machine || !snapshot.debugger) {
-                throw new Error('8086 checkpoint refused: incompatible target snapshot');
+            if (!snapshot || !snapshot.debugger) {
+                return {code: 'INVALID_CHECKPOINT', refused: 'checkpoint has no 8086 debugger state'};
             }
-            if (hasExternalStepState() || !machine.canCheckpoint?.()) {
-                throw new Error('8086 checkpoint refused: machine state is incomplete');
+            if (hasExternalStepState()) {
+                return {code: 'INCOMPLETE_CHECKPOINT_STATE',
+                    refused: 'cannot restore over external step service state outside the machine'};
             }
+            // Validate the debugger's own state BEFORE the machine mutates: a bad
+            // run-state must not leave a restored machine with stale debugger
+            // bookkeeping. (machine.restoreCheckpoint is itself atomic -- it
+            // refuses without mutating.)
             const state = snapshot.debugger.runState;
             if (state !== 'running' && state !== 'halted') {
-                throw new Error('8086 checkpoint refused: invalid debugger run state');
+                return {code: 'INVALID_CHECKPOINT', refused: 'invalid debugger run state'};
             }
             const stepState = snapshot.debugger.pendingStep;
             if (stepState !== null && (!stepState || typeof stepState !== 'object' ||
                 !['insn', 'over', 'out'].includes(stepState.kind))) {
-                throw new Error('8086 checkpoint refused: invalid pending instruction step');
+                return {code: 'INVALID_CHECKPOINT', refused: 'invalid pending instruction step'};
             }
-            machine.loadState(snapshot.machine);
+            // The machine validates the envelope (schema, topology -- including
+            // the variant-decode guard) and applies the state, RETURNING a
+            // refusal rather than throwing.
+            const machineRefusal = machine.restoreCheckpoint(snapshot);
+            if (machineRefusal) return machineRefusal;
             runState = state;
             pendingStep = stepState ? {...stepState} : null;
             syncEventHooks();

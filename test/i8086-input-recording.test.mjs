@@ -52,7 +52,9 @@ test('a board-sampled 8086 withdraws checkpoints because its external pin source
     adapter.attachBoard({readPin: () => 1, setPin() {}, advanceTo() {}});
     const target = createI8086DebugTarget(adapter);
     assert.deepEqual(target.capabilities().recording, []);
-    assert.throws(() => target.captureCheckpoint(), /machine state is incomplete/);
+    const refusal = target.captureCheckpoint();
+    assert.ok(refusal.refused, 'a board-sampled 8086 with an unlogged pin source withdraws checkpoint, returned not thrown');
+    assert.equal(refusal.code, 'INCOMPLETE_CHECKPOINT_STATE');
 });
 
 test('all user-facing 8086 runner mutations pass through the recording gate', () => {
