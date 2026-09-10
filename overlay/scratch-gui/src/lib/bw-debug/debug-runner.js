@@ -89,6 +89,22 @@ const SKIP_BUDGET = 20000;
 export const DEBUG_LIVE_SNAPSHOT_MS = 250;
 
 /**
+ * Pair a captured checkpoint with host state for the reverse-execution paths,
+ * BUT propagate a returned refusal unwrapped. The bisection and cycle-replay
+ * guards call rejected() on this value, and a refusal hidden inside `{target}`
+ * is falsy there -- so a refused capture would slip past the guard, caught only
+ * if the target THREW. This keeps those paths uniformly return-convention
+ * rather than relying on a throw to abort a failed capture. `captureHost` is a
+ * thunk so host state is not captured when the checkpoint refused. Exported so
+ * the guarantee is testable without standing up a whole runner.
+ */
+export const wrapSourceState = (checkpoint, captureHost) =>
+    (checkpoint == null || checkpoint === false ||
+        checkpoint.accepted === false || checkpoint.refused)
+        ? checkpoint
+        : {target: checkpoint, host: captureHost()};
+
+/**
  * Read a short code listing without inventing an address space in the host.
  *
  * The target owns both initial address normalization and instruction advance:
@@ -607,8 +623,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             recorder,
             getTarget: () => target,
             restoreCheckpoint: checkpoint => branchSession.restore(checkpoint.eventCursor),
-            captureSourceState: currentTarget => ({target: currentTarget.captureCheckpoint(),
-                host: captureHostState()}),
+            captureSourceState: currentTarget =>
+                wrapSourceState(currentTarget.captureCheckpoint(), captureHostState),
             restoreSourceState: (source, currentTarget) => {
                 currentTarget.restoreCheckpoint(source.target);
                 return commitHostRestore(prepareHostRestore(source.host));
@@ -3250,7 +3266,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             const generation = ++bisectionGeneration;
             bisectionRun = {phase: 'running', probes: 0, maxProbes: 64, result: null};
             emit();
-            const capture = () => ({target: target.captureCheckpoint(), host: captureHostState()});
+            const capture = () => wrapSourceState(target.captureCheckpoint(), captureHostState);
             const restore = source => {
                 target.restoreCheckpoint(source.target);
                 return commitHostRestore(prepareHostRestore(source.host));
