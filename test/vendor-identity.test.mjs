@@ -21,7 +21,7 @@ import {test} from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import {execSync} from 'node:child_process';
-import {applyVendorRewrites, DEEP_IMPORT_REWRITES} from '../scripts/lib/vendor-rewrites.mjs';
+import {applyVendorRewrites, rewritePairs} from '../scripts/lib/vendor-rewrites.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -326,9 +326,18 @@ const walkFiles = (root) => {
  * is bw-board's; it is a no-op on a tree whose files do not contain that import,
  * which is why one reader serves both upstreams.
  */
-const readUpstream = u => applyVendorRewrites(fs.readFileSync(u, 'utf8'));
+// The rewrite depth is derived from where the copy lands, so the reader is
+// built for a specific vendored root rather than being global. That is the
+// boundary this file's header used to name as reachable-but-unasked: a tree at
+// a different nesting depth carrying the same import now gets the right number
+// of `../` instead of this one's.
+const readerFor = spec => {
+    const [root, ...mirrors] = spec.vendoredRoots;
+    return u => applyVendorRewrites(fs.readFileSync(u, 'utf8'), root, {repoRoot: ROOT, mirrors});
+};
 
 const classify = (spec, srcDir) => {
+    const readUpstream = readerFor(spec);
     const vendorRoot = path.join(ROOT, spec.vendoredRoots[0]);
     const declared = new Set([...Object.keys(spec.files || {}), ...(spec.lineLevelOnly?.files ?? [])]);
     const liteAuthored = spec.liteAuthored?.files ?? {};
@@ -575,6 +584,7 @@ test('upstream has not converged on the lite-only work (needs the bw-board tree)
         methods: new Set([...src.matchAll(/^\s{4}(?:static\s+)?([A-Za-z_]\w*)\s*\(/gm)].map(m => m[1])),
         fields: new Set([...src.matchAll(/this\.([A-Za-z_]\w*)\s*=/g)].map(m => m[1]))
     });
+    const readUpstream = readerFor(spec);
     const vendorRoot = path.join(ROOT, spec.vendoredRoots[0]);
     const shouldCover = [];
     const liteOnly = []; // vendored files upstream does not have at this pin — reported, not a silent skip
@@ -827,7 +837,8 @@ test('every sync rewrite the identity gate forgives is one the trees still need'
     const vendored = walkFiles(vendorRoot);
 
     const dead = [];
-    for (const [from, to] of DEEP_IMPORT_REWRITES) {
+    for (const [from, to] of rewritePairs(spec.vendoredRoots[0],
+        {repoRoot: ROOT, mirrors: spec.vendoredRoots.slice(1)})) {
         const upstreamHas = vendored.some(f => {
             const u = path.join(srcDir, f);
             return fs.existsSync(u) && fs.readFileSync(u, 'utf8').includes(from);
@@ -845,5 +856,5 @@ test('every sync rewrite the identity gate forgives is one the trees still need'
         '  byte-identity, safe only while the sync really makes that change to that text.\n' +
         '  One that matches nothing widens what this gate accepts for an expired reason.\n' +
         '  Remove it, or say in the module why the trees stopped showing it.\n');
-    t.diagnostic(`${DEEP_IMPORT_REWRITES.length} sync rewrite(s), all exercised by both trees`);
+    t.diagnostic(`${rewritePairs(spec.vendoredRoots[0], {repoRoot: ROOT, mirrors: spec.vendoredRoots.slice(1)}).length} sync rewrite(s), all exercised by both trees`);
 });

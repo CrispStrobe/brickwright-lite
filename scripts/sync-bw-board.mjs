@@ -33,6 +33,13 @@ const REPO = 'CrispStrobe/bw-board';
 const REF = process.env.BWBOARD_REF || 'master';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const dest = path.join(here, '..', 'overlay', 'scratch-gui', 'src', 'lib', 'bw-board');
+// The rewrite depth is DERIVED from where the copy lands, so the sync says
+// where it lands. Both mirror roots are named because only one of the pair
+// sits under a package.json, and the nearest package boundary across the pair
+// is the node_modules a bundler resolves this import from.
+const REPO_ROOT = path.join(here, '..');
+const VENDORED_ROOT = 'overlay/scratch-gui/src/lib/bw-board';
+const VENDORED_MIRRORS = ['packages/scratch-gui/src/lib/bw-board'];
 const check = process.argv.includes('--check');
 // Lite carries a few deliberate browser integrations on top of the shared
 // board engine (for example its distributable RP2040 boot ROM). Freshness CI
@@ -149,7 +156,7 @@ async function readSource (rel) {
         if (!res.ok) throw new Error(`fetch ${rel} @ ${remoteSha}: HTTP ${res.status}`);
         text = await res.text();
     }
-    return applyVendorRewrites(text);
+    return applyVendorRewrites(text, VENDORED_ROOT, {repoRoot: REPO_ROOT, mirrors: VENDORED_MIRRORS});
 }
 
 // THE ALLOW-LIST TURNS "ONLY A HUMAN KNOWS THE DIRECTION" INTO A FACT THE

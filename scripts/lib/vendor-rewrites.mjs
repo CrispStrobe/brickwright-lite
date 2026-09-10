@@ -1,3 +1,6 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+
 /**
  * THE ONE PLACE THAT KNOWS HOW A VENDORED FILE DIFFERS FROM ITS UPSTREAM BY
  * CONSTRUCTION.
@@ -74,13 +77,98 @@
  * src/lib/bw-board/ -- three levels up. A plain file path bypasses the exports
  * map, which a bare 'rp2040js/dist/…' specifier would trip over in webpack 5.
  */
+/**
+ * ONE REWRITE, AND ITS DEPTH IS DERIVED RATHER THAN WRITTEN DOWN.
+ *
+ * `from` is the text upstream holds. `reaches` is what the specifier is trying
+ * to get to, with the `../` run stripped off -- because the number of `../`s is
+ * the ONLY part that depends on where the copy lands, and it is therefore the
+ * only part a table must not assert.
+ *
+ * The module's own header already named the hazard this closes: the table is
+ * global, so a vendored file at a DIFFERENT nesting depth carrying the same
+ * import would have been rewritten to `../../../` where that is wrong, would
+ * break, and the identity gate would still have reported ok -- correctly, since
+ * that IS what the sync produced. The gate was not wrong; its question was not
+ * that one. Deriving the depth means there is no second question to ask.
+ */
 export const DEEP_IMPORT_REWRITES = [
-    [`'../node_modules/rp2040js/dist/esm/cortex-m0-core.js'`,
-        `'../../../node_modules/rp2040js/dist/esm/cortex-m0-core.js'`],
+    {
+        // cortex-m0-machine.js deep-imports rp2040js's core BY FILE PATH because
+        // the package's exports map exposes only '.' and './gdb-tcp-server'. A
+        // plain file path bypasses the exports map, which a bare
+        // 'rp2040js/dist/...' specifier would trip over in webpack 5.
+        from: `'../node_modules/rp2040js/dist/esm/cortex-m0-core.js'`,
+        reaches: 'node_modules/rp2040js/dist/esm/cortex-m0-core.js'
+    }
 ];
 
-/** Upstream text as the sync would write it into the vendored tree. */
-export function applyVendorRewrites (text) {
-    for (const [from, to] of DEEP_IMPORT_REWRITES) text = text.replaceAll(from, to);
+/**
+ * How many `../` a file in `vendoredRoot` needs to reach the node_modules a
+ * bundler will resolve for it -- i.e. the distance to the nearest ancestor that
+ * owns a package.json.
+ *
+ * WHY A MIRROR LIST RATHER THAN A SPECIAL CASE FOR `overlay/`. Lite keeps each
+ * vendored tree twice, and only one of the pair sits under a package: measured,
+ * `packages/scratch-gui/package.json` exists and nothing above
+ * `overlay/scratch-gui/src/lib/bw-board` does. The twin is not something this
+ * module should know -- it is already in the manifest, as the second entry of
+ * `vendoredRoots` -- so the caller passes the pair and the depth is read off
+ * whichever member of it is under a package. Hardcoding `overlay -> packages`
+ * here would replace one written-down constant with another.
+ *
+ * @param {string} vendoredRoot   repo-relative, e.g. 'packages/x/src/lib/bw-board'
+ * @param {object} opts
+ * @param {string} opts.repoRoot  absolute path to the repository root
+ * @param {string[]} [opts.mirrors] the other vendored roots for the same tree
+ * @returns {number} the number of levels up
+ */
+export function nodeModulesDepth (vendoredRoot, {repoRoot, mirrors = []}) {
+    // THE NEAREST PACKAGE BOUNDARY ACROSS THE WHOLE MIRROR SET, not the first
+    // one found. Measured while writing this: walking up from the overlay root
+    // alone returns 5, because no ancestor of it owns a package.json until the
+    // REPOSITORY ROOT does -- and the monorepo's own package.json is not the
+    // package a bundler resolves this import from. The packages twin returns 3,
+    // which is the depth the hardcoded string had. Taking the first answer gave
+    // a confidently wrong number; taking the nearest gives the right one for
+    // both members of the pair, which is correct because the two mirrors have
+    // identical structure below their mirror root.
+    const depths = [];
+    for (const root of [vendoredRoot, ...mirrors]) {
+        const parts = root.split('/').filter(Boolean);
+        for (let up = 1; up <= parts.length; up++) {
+            const dir = parts.slice(0, parts.length - up);
+            if (existsSync(join(repoRoot, ...dir, 'package.json'))) { depths.push(up); break; }
+        }
+    }
+    if (depths.length) return Math.min(...depths);
+    throw new Error(
+        `vendor rewrite depth is underivable for '${vendoredRoot}': no ancestor of it ` +
+        `or of [${mirrors.join(', ')}] owns a package.json, so there is no node_modules ` +
+        'to count towards. Refusing to guess a depth: a wrong one produces a file that ' +
+        'imports nothing and a gate that calls it correct.');
+}
+
+/** Upstream text as the sync would write it into `vendoredRoot`. */
+export function applyVendorRewrites (text, vendoredRoot, opts) {
+    if (typeof vendoredRoot !== 'string' || !opts || typeof opts.repoRoot !== 'string') {
+        throw new TypeError(
+            'applyVendorRewrites needs the vendored root and {repoRoot} — the rewrite ' +
+            'depth is derived from where the copy lands, so a caller that does not say ' +
+            'where it lands cannot be answered.');
+    }
+    const depth = nodeModulesDepth(vendoredRoot, opts);
+    for (const {from, reaches} of DEEP_IMPORT_REWRITES) {
+        const to = from.replace(/(['"])(?:\.\.\/)+/, (m, q) => q + '../'.repeat(depth));
+        text = text.replaceAll(from, to);
+    }
     return text;
+}
+
+/** The pair a given root produces, for gates that want to see both sides. */
+export function rewritePairs (vendoredRoot, opts) {
+    const depth = nodeModulesDepth(vendoredRoot, opts);
+    return DEEP_IMPORT_REWRITES.map(({from, reaches}) => [
+        from, from.replace(/(['"])(?:\.\.\/)+/, (m, q) => q + '../'.repeat(depth))
+    ]);
 }
