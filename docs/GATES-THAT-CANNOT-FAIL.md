@@ -2404,6 +2404,30 @@ somewhere else: `emu8051-input-log.test.mjs` went red at 8 input records instead
 of 16. "Is this protected?" has two answers here and they disagree because they
 are two questions.
 
+**A FOURTH INSTANCE, AND IT IS THE ONE THAT BREAKS THE PATTERN** (2026-09-10,
+found at the `3a18a8c` bump). Every case above is two instruments disagreeing.
+This is **one instrument agreeing with itself across a change that altered
+everything it was measuring.**
+
+`emu8051-adapter.js` diverged from upstream by **76 changed lines before** the
+bw-board pin bump and **76 after**. Nothing was stable. Three lines left the
+divergence, because upstream had taken lite's post-reset pin-mode fix; three
+arrived, because lite then took upstream's wording of the comment above it. The
+count was correct at both ends and described two different files.
+
+`sync-bw-board.mjs` already warns that a line count HAS NO DIRECTION — it cannot
+tell you whether lite is ahead or behind. This adds the sharper failure: **it can
+also have no MOTION.** A number that does not move is normally the cheapest
+possible evidence that nothing happened, and here it was evidence of nothing at
+all. Had the bump been checked by comparing counts — the obvious cheap check, and
+one a reviewer would accept — it would have reported a clean no-op over a sync,
+a graft, an upstreamed fix returning home, and a declaration retiring.
+
+**The diagnostic still works, which is the encouraging part.** State the
+operation: *the number of lines differing between two files, unordered.* Nothing
+in that operation promises the SET is unchanged, only its size. The question
+"same number, or same lines?" is the whole defence, and it is one question.
+
 **Why it clusters in a repository like this one.** The more derived views a repo
 maintains — and maintaining them is good practice, each one exists because
 someone wanted a question answered cheaply — the more pairs of numbers exist that
