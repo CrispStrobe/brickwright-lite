@@ -16,7 +16,7 @@ a sync cannot restore them, and they carry the same warning in their own header.
 
 Pinned at `1f809683e701c8a9b1dbb3a17b1907c03fa08068`. Manifest: `docs/VENDOR-DIVERGENCE-I8086-MACHINE.md`.
 
-190 tracked file(s): 168 plain, 14 declared-divergent, 8 lite-authored.
+190 tracked file(s): 169 plain, 13 declared-divergent, 8 lite-authored.
 
 - `LICENSE` `[lite]`
 - `ac.js`
@@ -43,7 +43,7 @@ Pinned at `1f809683e701c8a9b1dbb3a17b1907c03fa08068`. Manifest: `docs/VENDOR-DIV
 - `controller-extension.js`
 - `controller-stage-view.js`
 - `controller.js`
-- `cortex-m0-machine.js` `[declared]`
+- `cortex-m0-machine.js`
 - `current-ratings.js`
 - `dac0832.js`
 - `datalogger-extension.js`
