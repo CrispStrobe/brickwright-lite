@@ -259,12 +259,6 @@ fails unless it touched both.
           "falsifiable": "A saved file loads into a differently-wired board and runs as nonsense instead of refusing.",
           "why": "checkpointTopology() stamps the wiring into the file so a restore into a different board is refused, not silently misapplied.",
           "contains": "checkpointTopology\\(\\)"
-        },
-        {
-          "id": "m6502-external-nmi-pin",
-          "falsifiable": "Pulsing the 6502's NMI pin from outside the CPU does nothing, or the machine's peripherals fall behind the processor by the interrupt's bus time so a timer fires late.",
-          "why": "nmi() pulses NMI as an EXTERNAL PIN EVENT and then advances the peripherals through the 7 cycles it costs. Upstream calls this.cpu.nmi() internally from the VGA path but declares no such entry point, so a host driving the pin has nothing to call. NAMED 2026-09-05 after a rebase moved what 'upstream' means and the derived-coverage check found it unexplained -- the third time a pin bump has surfaced an identifier that was lite-only all along.",
-          "contains": "nmi\\(\\) \\{"
         }
       ]
     },
