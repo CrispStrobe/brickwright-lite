@@ -11,6 +11,38 @@ with no checkpoint *concept*.
 > fact or a downstream concern" is a heuristic for reaching it; where the heuristic
 > and the property disagree, the property wins.
 
+## Two things to read first: the counts here, and the row that asked for this
+
+**THE LINE COUNTS IN THIS NOTE ARE RAW `diff` COUNTS AND THE REPOSITORY'S ARE NOT.**
+`sync-bw-board.mjs` and `LANES.md` row 380 report a set difference over TRIMMED
+lines, which is order- and whitespace-insensitive. Mine came from
+`diff | grep -c '^>'`. Worked example on `i8086-debug.js`, both measured here:
+
+| measure | lite-only | upstream-only |
+|---|---|---|
+| trimmed set difference (the repo's, and row 380's) | 218 | 12 |
+| raw `diff` (this note's, elsewhere) | 298 | 14 |
+
+Neither is wrong; they answer different questions, and a reader comparing them
+without knowing that will think one of them is. **Row 380 is the authority for the
+inventory.** Where a number here disagrees with it, prefer row 380 and read this
+note's figures as an ordering of magnitude only.
+
+Row 380 also keeps two categories this note ran together: **14 files are
+`[declared]` divergent** — present on both sides and differing — while the
+lite-authored files are `[lite]`, a separate bucket. "Twenty-two" below adds them,
+which the repo deliberately does not.
+
+**AND THIS NOTE IS THE ANSWER TO A QUESTION ROW 380 ALREADY ASKED.** Re-derived
+independently by brickwright-lite-0c on 2026-09-10, that row reaches the same place
+by another route: the two purely lite-ahead adapter lines both set
+`machine._unloggedBoardInputs`, `checkpointSupport` appears nowhere in bw-board's
+`src/` at the pin or at the tip, and `machine-checkpoint.js` does not exist there
+at all — "the unit of upstreaming here is the checkpoint subsystem, not five
+adapter lines, and that needs a design conversation with bw-board rather than a
+patch." This is that conversation. Two derivations, one answer, neither depending
+on the other.
+
 ## The unit is a subsystem, and it is derived from imports
 
 Twelve of the twenty-two divergences are one feature. That is not a judgement
