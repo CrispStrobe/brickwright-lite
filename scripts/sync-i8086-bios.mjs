@@ -173,11 +173,35 @@ function readSourceAt (dir, sha) {
 /**
  * Which commit's bios.asm reproduces `want`?
  *
- * Walks the commits that touched bios.asm, newest first, assembling each. The
- * search is bounded by that list (eight commits as of 2026-09-06), not by
- * history. Returns null rather than a guess: an unidentified ROM is a finding.
+ * Walks the commits that touched bios.asm, assembling each. The search is
+ * bounded by that list (eleven commits as of 2026-09-10), not by history.
+ * Returns null rather than a guess: an unidentified ROM is a finding.
+ *
+ * ANCESTORS OF THE PIN ARE SEARCHED FIRST, AND THAT IS THE WHOLE POINT.
+ * `git log --all` reaches every ref, feature branches included, and it orders
+ * by date. So the newest commit that touched bios.asm can be one nobody vendors
+ * — and if its bytes match, this used to return it and the ancestry check below
+ * would then refuse a ROM that IS reproducible from the pinned line of history.
+ *
+ * Measured 2026-09-10: eleven commits touch the source, ten are ancestors of the
+ * pin and one, `de39245b` on `feat/x86-backend-lab`, is not. It is also the
+ * newest, so it won every walk. Its only change to bios.asm replaces the named
+ * constant `BIOS_PIC_ICW4` with its literal `09h`, which assembles to identical
+ * bytes — so the ancestor `7b8d1404` reproduces the committed ROM exactly as
+ * well. The refusal was correct about the commit it was handed and wrong about
+ * the ROM, and the defect was here, in what it was handed.
+ *
+ * THE REFUSAL IS NOT RELAXED BY THIS. If no ancestor reproduces the bytes the
+ * caller still refuses; it can now say so truthfully, and name the side-branch
+ * commit that does, which is a finding worth printing rather than an accident of
+ * ordering.
+ *
+ * @param {string} dir bw-board checkout
+ * @param {string} want sha256 of the committed ROM
+ * @param {object} opts `pin` (sha to measure ancestry against) and `log`
+ * @returns {Promise<null|{sha: string, built: object, ancestor: boolean}>}
  */
-async function identify (dir, want, {log = console.log} = {}) {
+export async function identify (dir, want, {pin = null, log = console.log} = {}) {
     const commits = git(dir, ['log', '--format=%H', '--all', '--', SOURCE_IN_BW_BOARD])
         .split('\n').filter(Boolean);
     if (!commits.length) {
@@ -185,15 +209,45 @@ async function identify (dir, want, {log = console.log} = {}) {
             + 'Either this is not a bw-board checkout, or it is a shallow clone whose '
             + 'history does not reach the ROM source.');
     }
-    log(`  searching ${commits.length} commit${commits.length > 1 ? 's' : ''} that touched ${SOURCE_IN_BW_BOARD}`);
-    for (const sha of commits) {
+
+    // A checkout that does not CONTAIN the pin cannot answer an ancestry
+    // question, and answering it anyway would mark every commit a non-ancestor
+    // and produce a confident refusal about nothing. Say it and search unordered.
+    let pinPresent = false;
+    if (pin) {
+        try { git(dir, ['cat-file', '-e', `${pin}^{commit}`]); pinPresent = true; } catch { /* absent */ }
+        if (!pinPresent) {
+            log(`  WARNING: ${dir} does not contain the pin ${pin.slice(0, 9)}, so ancestry`);
+            log('           cannot be decided here and the search is not ordered by it.');
+        }
+    }
+    const isAncestor = sha => {
+        if (!pinPresent) return false;
+        try { git(dir, ['merge-base', '--is-ancestor', sha, pin]); return true; } catch { return false; }
+    };
+    const ancestry = pinPresent ? new Map(commits.map(c => [c, isAncestor(c)])) : null;
+    const ordered = ancestry
+        ? [...commits.filter(c => ancestry.get(c)), ...commits.filter(c => !ancestry.get(c))]
+        : commits;
+
+    if (ancestry) {
+        const n = commits.filter(c => ancestry.get(c)).length;
+        log(`  searching ${commits.length} commit${commits.length > 1 ? 's' : ''} that touched ${SOURCE_IN_BW_BOARD}`
+            + ` — ${n} ancestor${n === 1 ? '' : 's'} of the pin first, then ${commits.length - n} off it`);
+    } else {
+        log(`  searching ${commits.length} commit${commits.length > 1 ? 's' : ''} that touched ${SOURCE_IN_BW_BOARD}`);
+    }
+
+    for (const sha of ordered) {
         let built;
         try {
             built = await assembleBios(readSourceAt(dir, sha));
         } catch {
             continue;   // a source that does not assemble cannot be the one that did
         }
-        if (sha256(built.bytes) === want) return {sha, built};
+        if (sha256(built.bytes) === want) {
+            return {sha, built, ancestor: ancestry ? ancestry.get(sha) : false};
+        }
     }
     return null;
 }
@@ -271,7 +325,7 @@ async function main (argv) {
         return 0;
     }
 
-    const found = await identify(dir, committedSha);
+    const found = await identify(dir, committedSha, {pin});
     if (!found) {
         console.error(`\nNo commit reachable in ${dir} has a ${SOURCE_IN_BW_BOARD} that assembles`);
         console.error(`to the committed ROM (${committedSha.slice(0, 16)}...).`);
@@ -281,8 +335,17 @@ async function main (argv) {
     }
     const behind = git(dir, ['log', '--format=%H', `${found.sha}..${pin}`, '--', SOURCE_IN_BW_BOARD])
         .split('\n').filter(Boolean);
+    // Re-derived here rather than trusted from the search, so the fact the
+    // refusal turns on is measured at the point it is used. `identify` orders by
+    // the same question; if the two ever disagreed that would itself be a defect,
+    // and this is the cheaper place to notice.
     let ancestor = false;
     try { git(dir, ['merge-base', '--is-ancestor', found.sha, pin]); ancestor = true; } catch { /* not an ancestor */ }
+    if (found.ancestor !== ancestor) {
+        throw new Refusal(`the search and the check disagree about whether ${found.sha.slice(0, 9)} `
+            + `is an ancestor of the pin (${found.ancestor} vs ${ancestor}). One of them is asking `
+            + 'a different question and the manifest must not be written on either answer.');
+    }
 
     console.log(`  source     ${found.sha}  (${git(dir, ['log', '-1', '--format=%ad %s', '--date=short', found.sha])})`);
     console.log(`  ancestor of the pin? ${ancestor ? 'yes' : 'NO'}`);
@@ -290,9 +353,14 @@ async function main (argv) {
     for (const c of behind) console.log(`    ${git(dir, ['log', '-1', '--format=%h %ad %s', '--date=short', c])}`);
 
     if (!ancestor) {
-        console.error('\nThe ROM was built from a commit that is NOT an ancestor of the pin.');
-        console.error('That means the shipped binary is ahead of, or off to the side of, what');
-        console.error('vendor-pins.json says this repo vendors. Refusing to record it as normal.');
+        // Reached only when NO ancestor of the pin reproduces the bytes — the
+        // search tries all of them first. So this is a statement about the ROM
+        // and not about which commit happened to sort first.
+        console.error('\nNo commit that is an ancestor of the pin reproduces the committed ROM.');
+        console.error(`The bytes ARE reproducible, from ${found.sha.slice(0, 9)}, which is off the`);
+        console.error('pinned line of history. So the shipped binary is ahead of, or to the side');
+        console.error('of, what vendor-pins.json says this repo vendors. Refusing to record it as');
+        console.error('normal: the manifest would name a commit the pin does not carry.');
         return 1;
     }
     if (mode === 'identify') { console.log('\nIdentified. Nothing written (--record writes the manifest).'); return 0; }

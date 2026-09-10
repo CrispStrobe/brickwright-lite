@@ -16,6 +16,7 @@
 
 import {readFile, writeFile, mkdir, readdir} from 'node:fs/promises';
 import { guardSource } from './lib-source-guard.mjs';
+import { applyVendorRewrites } from './lib/vendor-rewrites.mjs';
 import { resolveRef, recordPin, localSha, listTree, baseForFile, assertPinMoveAllowed } from './lib-pin.mjs';
 import {fileURLToPath} from 'node:url';
 import { execFile } from 'node:child_process';
@@ -138,18 +139,6 @@ const listRemote = async () => (await listTree(REPO, remoteSha).catch((e) => {
 const FILES = srcDir ? await listSrc() : await listRemote();
 if (!FILES.length) throw new Error('empty file list — refusing to "sync" nothing');
 
-// cortex-m0-machine.js deep-imports rp2040js's core BY FILE PATH
-// ('../node_modules/rp2040js/dist/esm/cortex-m0-core.js') because the
-// package's exports map exposes only '.' and './gdb-tcp-server'. That
-// relative path is correct in the bw-board checkout but not from the
-// vendored location, so rewrite it to the path that reaches
-// packages/scratch-gui/node_modules from src/lib/bw-board/ (three
-// levels up). A plain file path bypasses the exports map, which a bare
-// 'rp2040js/dist/…' specifier would trip over in webpack 5.
-const DEEP_IMPORT_REWRITES = [
-    [`'../node_modules/rp2040js/dist/esm/cortex-m0-core.js'`,
-        `'../../../node_modules/rp2040js/dist/esm/cortex-m0-core.js'`],
-];
 
 async function readSource (rel) {
     let text;
@@ -160,8 +149,7 @@ async function readSource (rel) {
         if (!res.ok) throw new Error(`fetch ${rel} @ ${remoteSha}: HTTP ${res.status}`);
         text = await res.text();
     }
-    for (const [from, to] of DEEP_IMPORT_REWRITES) text = text.replaceAll(from, to);
-    return text;
+    return applyVendorRewrites(text);
 }
 
 // THE ALLOW-LIST TURNS "ONLY A HUMAN KNOWS THE DIRECTION" INTO A FACT THE

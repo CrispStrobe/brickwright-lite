@@ -20,6 +20,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
+import {applyVendorRewrites, DEEP_IMPORT_REWRITES} from '../scripts/lib/vendor-rewrites.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -271,6 +272,29 @@ const walkFiles = (root) => {
     return out;
 };
 
+/**
+ * Upstream text AS THE SYNC WOULD WRITE IT, which is the question a vendored file
+ * should be asked. "Does this match upstream" is a question lite never had a yes
+ * to: sync-bw-board.mjs rewrites a deep import on the way in, so the vendored
+ * copy differs from upstream by construction and always will.
+ *
+ * Comparing raw bytes made that sync-authored difference look like lite-only
+ * work, so cortex-m0-machine.js had to be DECLARED in an inventory whose own
+ * `why` says it records forward-ported work. It carries none -- running
+ * `sync-bw-board.mjs --only cortex-m0-machine.js` against a checkout at the pin
+ * leaves the file's hash unmoved.
+ *
+ * Species 37 in its structural form: `--check` said 13, the manifest said 14,
+ * both correct, and the gap read exactly like a stale declaration. One
+ * instrument, imported by both callers, is the remedy the species prescribes.
+ *
+ * This is STRICTLY STRONGER than the byte comparison it replaces, not weaker: it
+ * still refuses every difference the sync would not have made. The rewrite table
+ * is bw-board's; it is a no-op on a tree whose files do not contain that import,
+ * which is why one reader serves both upstreams.
+ */
+const readUpstream = u => applyVendorRewrites(fs.readFileSync(u, 'utf8'));
+
 const classify = (spec, srcDir) => {
     const vendorRoot = path.join(ROOT, spec.vendoredRoots[0]);
     const declared = new Set([...Object.keys(spec.files || {}), ...(spec.lineLevelOnly?.files ?? [])]);
@@ -279,7 +303,7 @@ const classify = (spec, srcDir) => {
     for (const f of walkFiles(vendorRoot)) {
         const u = path.join(srcDir, f);
         if (!fs.existsSync(u)) { liteOnly.push(f); continue; }
-        if (fs.readFileSync(path.join(vendorRoot, f)).equals(fs.readFileSync(u))) identical.push(f);
+        if (fs.readFileSync(path.join(vendorRoot, f), 'utf8') === readUpstream(u)) identical.push(f);
         else if (declared.has(f)) diverged.push(f);
         else undeclared.push(f);
     }
@@ -519,7 +543,7 @@ test('upstream has not converged on the lite-only work (needs the bw-board tree)
         const u = path.join(srcDir, f);
         if (!fs.existsSync(u)) { liteOnly.push(f); continue; }
         const L = declaredIn(fs.readFileSync(path.join(vendorRoot, f), 'utf8'));
-        const U = declaredIn(fs.readFileSync(u, 'utf8'));
+        const U = declaredIn(readUpstream(u));
         const upAll = new Set([...U.methods, ...U.fields]);
         const only = [...new Set([...L.methods, ...L.fields])]
             .filter(x => !upAll.has(x) && !spec.notIdentifiers.includes(x));
@@ -573,7 +597,7 @@ test('upstream has not converged on the lite-only work (needs the bw-board tree)
         const u = path.join(srcDir, f);
         if (!fs.existsSync(u) || namedFiles.has(f)) { notCompared.push(f); continue; }
         if (lineLost(fs.readFileSync(path.join(vendorRoot, f), 'utf8'),
-            fs.readFileSync(u, 'utf8')).length) actual.push(f);
+            readUpstream(u)).length) actual.push(f);
     }
     const recorded = spec.lineLevelOnly.files;
     const appeared = actual.filter(f => !recorded.includes(f));
@@ -597,7 +621,7 @@ test('upstream has not converged on the lite-only work (needs the bw-board tree)
         t.diagnostic(`${file}: not present upstream at all -- nothing to compare`);
         continue;
     }
-    const up = fs.readFileSync(found, 'utf8');
+    const up = readUpstream(found);
 
     // BEFORE trusting a negative result derived from this file, prove the file
     // is the one we mean. Every assertion below is of the form "upstream does
@@ -723,4 +747,50 @@ test('upstream has not converged on the lite-only work (needs the bw-board tree)
     // literal \n. Six short lines beat one unreadable one.
     t.diagnostic(`cross-tree invariant verified against ${srcDir}, ${summary.length} file(s):`);
     for (const line of summary) t.diagnostic(`  ${line}`);
+});
+
+test('every sync rewrite the identity gate forgives is one the trees still need', t => {
+    // A FORGIVENESS THAT NO LONGER CORRESPONDS TO ANYTHING IS THE FIRST SPECIES
+    // IN A NEW COSTUME. readUpstream lets a vendored file differ from upstream on
+    // a line the sync rewrote. Each entry is therefore a small, permanent hole in
+    // byte-identity, and the reason it is safe is that the sync REALLY DOES make
+    // that change to that text. If upstream stops shipping the pattern -- the
+    // import is deleted, the package fixes its exports map, the file goes away --
+    // the entry stops describing anything and quietly widens what the gate
+    // accepts, forever, for a reason that expired.
+    //
+    // So each pair must be EXERCISED: some upstream file has to contain the text
+    // it rewrites FROM, and the vendored tree the text it rewrites TO. Neither
+    // half alone is enough -- a `from` nobody vendors is dead, and a `to` with no
+    // upstream source is lite-authored work wearing a rewrite's clothes.
+    const {dir: srcDir, candidates} = pinnedSrcDir('BW_BOARD_DIR', 'bw-board');
+    if (!srcDir) {
+        t.diagnostic(`SKIPPED, NOT PASSED: upstream not found. Looked in: ${candidates.join(', ')}.`);
+        t.skip('upstream tree not on disk -- the rewrite table is NOT verified against it');
+        return;
+    }
+    const spec = readAllowList();
+    const vendorRoot = path.join(ROOT, spec.vendoredRoots[0]);
+    const vendored = walkFiles(vendorRoot);
+
+    const dead = [];
+    for (const [from, to] of DEEP_IMPORT_REWRITES) {
+        const upstreamHas = vendored.some(f => {
+            const u = path.join(srcDir, f);
+            return fs.existsSync(u) && fs.readFileSync(u, 'utf8').includes(from);
+        });
+        const vendoredHas = vendored.some(f =>
+            fs.readFileSync(path.join(vendorRoot, f), 'utf8').includes(to));
+        if (!upstreamHas || !vendoredHas) {
+            dead.push(`${from}\n      -> ${to}\n      upstream has the source text: ${upstreamHas}; ` +
+                `the vendored tree has the rewritten text: ${vendoredHas}`);
+        }
+    }
+    assert.deepEqual(dead, [],
+        '\n  A SYNC REWRITE NO LONGER DESCRIBES THESE TREES:\n\n    ' + dead.join('\n\n    ') +
+        '\n\n  Each entry in scripts/lib/vendor-rewrites.mjs is a permanent exemption from\n' +
+        '  byte-identity, safe only while the sync really makes that change to that text.\n' +
+        '  One that matches nothing widens what this gate accepts for an expired reason.\n' +
+        '  Remove it, or say in the module why the trees stopped showing it.\n');
+    t.diagnostic(`${DEEP_IMPORT_REWRITES.length} sync rewrite(s), all exercised by both trees`);
 });
