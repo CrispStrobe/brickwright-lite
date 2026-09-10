@@ -1,3 +1,4 @@
+import {readTicks, describeTicks, TICKS_EXPECTED} from './tick-value.js';
 /**
  * Versioned, decoded debugger events and the small loss-bounded live ring.
  *
@@ -25,17 +26,17 @@ const TOP_LEVEL_FIELDS = new Set([
 
 const fail = message => { throw new TypeError(`Invalid debug event: ${message}`); };
 
+// CONVERGED ONTO ./tick-value.js. This was one of FIVE hand-written tick
+// coercions in this directory, and one of TWO carrying an explicit hex branch.
+// Those branches were the evidence: two people, at two different times, hit a
+// `0x…` tick and fixed the file in front of them, and neither payment reached
+// `session-bundle.js`, where the same value was gated by `Number.isSafeInteger`
+// and a recorded session therefore could not be re-imported. Deleting them is
+// what turns that evidence into a mechanism.
 const asOrdinal = (value, name) => {
-    if (typeof value === 'bigint') {
-        if (value < 0n) fail(`${name} must be non-negative`);
-        return value;
-    }
-    if (typeof value === 'number') {
-        if (!Number.isSafeInteger(value) || value < 0) fail(`${name} must be a non-negative safe integer`);
-        return BigInt(value);
-    }
-    if (typeof value === 'string' && /^0x[0-9a-f]+$/i.test(value)) return BigInt(value);
-    fail(`${name} must be an integer, bigint, or canonical hexadecimal string`);
+    const result = readTicks(value);
+    if (result === null) fail(`${name} is ${describeTicks(value)}; ${TICKS_EXPECTED}`);
+    return result;
 };
 
 const cloneValue = value => {

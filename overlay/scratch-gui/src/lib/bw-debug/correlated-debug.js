@@ -1,3 +1,4 @@
+import {readTicks, describeTicks, TICKS_EXPECTED} from './tick-value.js';
 /** Explicit causal correlation for multi-CPU debugger sessions. */
 const refusal = (code, reason, details = {}) => Object.freeze({accepted: false, code, reason, ...details});
 const plain = value => value && typeof value === 'object' && !Array.isArray(value);
@@ -7,9 +8,18 @@ const freeze = value => { if (value && typeof value === 'object' && !Object.isFr
 const cursor = value => plain(value) && typeof value.branchId === 'string' && value.branchId &&
     Number.isSafeInteger(value.eventCursor) && value.eventCursor >= 0 ?
     {branchId: value.branchId, eventCursor: value.eventCursor} : null;
-const ticks = value => {
-    try { const n = BigInt(value); return n >= 0n ? n : null; } catch { return null; }
-};
+// CONVERGED ONTO ./tick-value.js. This was one of FIVE hand-written tick
+// coercions in this directory, and one of TWO carrying an explicit hex branch.
+// Those branches were the evidence: two people, at two different times, hit a
+// `0x…` tick and fixed the file in front of them, and neither payment reached
+// `session-bundle.js`, where the same value was gated by `Number.isSafeInteger`
+// and a recorded session therefore could not be re-imported. Deleting them is
+// what turns that evidence into a mechanism.
+// NARROWED ON PURPOSE: the bare `BigInt(value)` this replaces also accepted a
+// DECIMAL string, `true`, and `''` (as 0n) -- spellings this system does not
+// produce and no caller passes. Measured before narrowing; if one appears, it
+// is a producer to fix rather than a reader to loosen.
+const ticks = readTicks;
 const rejected = value => value === false || value?.accepted === false || value?.refused;
 
 export function createCorrelatedDebugger ({targets, capacity = 8192, maxBranches = 64} = {}) {

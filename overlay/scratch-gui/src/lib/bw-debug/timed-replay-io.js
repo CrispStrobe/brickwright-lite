@@ -1,14 +1,20 @@
+import {readTicks, describeTicks, TICKS_EXPECTED} from './tick-value.js';
 const refusal = (code, reason, details = {}) => Object.freeze({accepted: false, code, reason, ...details});
 const promiseLike = value => value && typeof value.then === 'function';
 const clone = value => structuredClone(value);
+// CONVERGED ONTO ./tick-value.js. This was one of FIVE hand-written tick
+// coercions in this directory, and one of TWO carrying an explicit hex branch.
+// Those branches were the evidence: two people, at two different times, hit a
+// `0x…` tick and fixed the file in front of them, and neither payment reached
+// `session-bundle.js`, where the same value was gated by `Number.isSafeInteger`
+// and a recorded session therefore could not be re-imported. Deleting them is
+// what turns that evidence into a mechanism.
 const ticks = value => {
-    try {
-        const result = BigInt(value);
-        if (result < 0n) throw new Error();
-        return result;
-    } catch {
-        throw new TypeError('recorded input time ticks must be a non-negative integer');
+    const result = readTicks(value);
+    if (result === null) {
+        throw new TypeError(`recorded input time ticks is ${describeTicks(value)}; ${TICKS_EXPECTED}`);
     }
+    return result;
 };
 const safeTicks = value => {
     try {

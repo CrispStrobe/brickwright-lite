@@ -1,15 +1,18 @@
+import {readTicks, describeTicks, TICKS_EXPECTED} from './tick-value.js';
 /** Bounded, renderer-neutral timing view over canonical debugger events. */
 
 const CONTROL = new Set(['m1', 'mreq', 'iorq', 'rd', 'wr', 'rfsh', 'halt', 'wait',
     'int', 'nmi', 'irq', 'reset', 'clock', 'clk', 'rw', 'sync', 'ready', 'hold', 'hlda']);
 const GROUP_ORDER = Object.freeze({address: 0, data: 1, control: 2, pin: 3});
 const plain = value => value && typeof value === 'object' && !Array.isArray(value);
-const ordinal = value => {
-    if (typeof value === 'bigint' && value >= 0n) return value;
-    if (Number.isSafeInteger(value) && value >= 0) return BigInt(value);
-    if (typeof value === 'string' && /^0x[0-9a-f]+$/i.test(value)) return BigInt(value);
-    return null;
-};
+// CONVERGED ONTO ./tick-value.js. This was one of FIVE hand-written tick
+// coercions in this directory, and one of TWO carrying an explicit hex branch.
+// Those branches were the evidence: two people, at two different times, hit a
+// `0x…` tick and fixed the file in front of them, and neither payment reached
+// `session-bundle.js`, where the same value was gated by `Number.isSafeInteger`
+// and a recorded session therefore could not be re-imported. Deleting them is
+// what turns that evidence into a mechanism.
+const ordinal = readTicks;
 const clone = value => structuredClone(value);
 const canonical = value => {
     if (typeof value === 'bigint') return `0x${value.toString(16)}`;
