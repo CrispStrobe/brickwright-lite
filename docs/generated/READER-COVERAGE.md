@@ -23,9 +23,9 @@ Each run of a fixture through its reader is one of three outcomes:
 
 ## Overall
 
-371 clean · 282 degraded · 15 refused (of 668; 56% clean)
+451 clean · 331 degraded · 15 refused (of 797; 57% clean)
 
-- round-trip (emit → read back): 371 clean · 280 degraded · 4 refused (of 655; 57% clean)
+- round-trip (emit → read back): 451 clean · 329 degraded · 4 refused (of 784; 58% clean)
 - native (real source fed to the reader): 0 clean · 2 degraded · 11 refused (of 13; 0% clean)
 
 ## By method, language and device family
@@ -46,31 +46,46 @@ programs are refused as foreign. The refusal reasons below say which.
 
 | method | reader (language) | device family | outcome |
 | --- | --- | --- | --- |
-| round-trip | python | 8051 | 34 clean · 16 degraded · 0 refused (of 50; 68% clean) |
-| round-trip | python | arduino | 15 clean · 52 degraded · 0 refused (of 67; 22% clean) |
-| round-trip | python | microbit | 2 clean · 7 degraded · 0 refused (of 9; 22% clean) |
-| round-trip | python | pico | 0 clean · 3 degraded · 0 refused (of 3; 0% clean) |
+| round-trip | python | 6502 | 4 clean · 1 degraded · 0 refused (of 5; 80% clean) |
+| round-trip | python | 8051 | 35 clean · 16 degraded · 0 refused (of 51; 69% clean) |
+| round-trip | python | arduino | 22 clean · 58 degraded · 0 refused (of 80; 28% clean) |
+| round-trip | python | i8086 | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
+| round-trip | python | microbit | 2 clean · 8 degraded · 0 refused (of 10; 20% clean) |
+| round-trip | python | pico | 2 clean · 6 degraded · 0 refused (of 8; 25% clean) |
 | round-trip | python | spike | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
-| round-trip | javascript | 8051 | 34 clean · 16 degraded · 0 refused (of 50; 68% clean) |
-| round-trip | javascript | arduino | 15 clean · 52 degraded · 0 refused (of 67; 22% clean) |
-| round-trip | javascript | microbit | 9 clean · 0 degraded · 0 refused (of 9; 100% clean) |
-| round-trip | javascript | pico | 0 clean · 3 degraded · 0 refused (of 3; 0% clean) |
+| round-trip | python | z80 | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
+| round-trip | javascript | 6502 | 4 clean · 1 degraded · 0 refused (of 5; 80% clean) |
+| round-trip | javascript | 8051 | 35 clean · 16 degraded · 0 refused (of 51; 69% clean) |
+| round-trip | javascript | arduino | 22 clean · 58 degraded · 0 refused (of 80; 28% clean) |
+| round-trip | javascript | i8086 | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
+| round-trip | javascript | microbit | 10 clean · 0 degraded · 0 refused (of 10; 100% clean) |
+| round-trip | javascript | pico | 2 clean · 6 degraded · 0 refused (of 8; 25% clean) |
 | round-trip | javascript | spike | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
-| round-trip | c | 8051 | 43 clean · 7 degraded · 0 refused (of 50; 86% clean) |
-| round-trip | c | arduino | 52 clean · 15 degraded · 0 refused (of 67; 78% clean) |
-| round-trip | c | microbit | 9 clean · 0 degraded · 0 refused (of 9; 100% clean) |
-| round-trip | c | pico | 0 clean · 3 degraded · 0 refused (of 3; 0% clean) |
+| round-trip | javascript | z80 | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
+| round-trip | c | 6502 | 4 clean · 1 degraded · 0 refused (of 5; 80% clean) |
+| round-trip | c | 8051 | 43 clean · 8 degraded · 0 refused (of 51; 84% clean) |
+| round-trip | c | arduino | 61 clean · 19 degraded · 0 refused (of 80; 76% clean) |
+| round-trip | c | i8086 | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
+| round-trip | c | microbit | 10 clean · 0 degraded · 0 refused (of 10; 100% clean) |
+| round-trip | c | pico | 0 clean · 8 degraded · 0 refused (of 8; 0% clean) |
 | round-trip | c | spike | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
-| round-trip | basic | 8051 | 34 clean · 16 degraded · 0 refused (of 50; 68% clean) |
-| round-trip | basic | arduino | 50 clean · 17 degraded · 0 refused (of 67; 75% clean) |
-| round-trip | basic | microbit | 7 clean · 2 degraded · 0 refused (of 9; 78% clean) |
-| round-trip | basic | pico | 1 clean · 2 degraded · 0 refused (of 3; 33% clean) |
+| round-trip | c | z80 | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
+| round-trip | basic | 6502 | 2 clean · 0 degraded · 0 refused (of 2; 100% clean) |
+| round-trip | basic | 8051 | 34 clean · 17 degraded · 0 refused (of 51; 67% clean) |
+| round-trip | basic | arduino | 62 clean · 18 degraded · 0 refused (of 80; 78% clean) |
+| round-trip | basic | i8086 | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
+| round-trip | basic | microbit | 8 clean · 2 degraded · 0 refused (of 10; 80% clean) |
+| round-trip | basic | pico | 4 clean · 4 degraded · 0 refused (of 8; 50% clean) |
 | round-trip | basic | spike | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
-| round-trip | micropython | 8051 | 30 clean · 20 degraded · 0 refused (of 50; 60% clean) |
-| round-trip | micropython | arduino | 30 clean · 37 degraded · 0 refused (of 67; 45% clean) |
-| round-trip | micropython | microbit | 3 clean · 6 degraded · 0 refused (of 9; 33% clean) |
-| round-trip | micropython | pico | 1 clean · 2 degraded · 0 refused (of 3; 33% clean) |
+| round-trip | basic | z80 | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
+| round-trip | micropython | 6502 | 1 clean · 1 degraded · 0 refused (of 2; 50% clean) |
+| round-trip | micropython | 8051 | 30 clean · 21 degraded · 0 refused (of 51; 59% clean) |
+| round-trip | micropython | arduino | 36 clean · 44 degraded · 0 refused (of 80; 45% clean) |
+| round-trip | micropython | i8086 | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
+| round-trip | micropython | microbit | 4 clean · 6 degraded · 0 refused (of 10; 40% clean) |
+| round-trip | micropython | pico | 4 clean · 4 degraded · 0 refused (of 8; 50% clean) |
 | round-trip | micropython | spike | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
+| round-trip | micropython | z80 | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
 | round-trip | asm | 8086 | 0 clean · 1 degraded · 4 refused (of 5; 0% clean) |
 | native | c | 8051 | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
 | native | c | arduino | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
@@ -80,29 +95,31 @@ programs are refused as foreign. The refusal reasons below say which.
 
 | fixtures | construct kept as a placeholder |
 | --- | --- |
-| 142 | dropped expression statement |
-| 56 | no pins found |
-| 29 | no dialect form for "…" |
-| 22 | unstructured "…" |
-| 13 | dropped call in expression |
-| 11 | no pseudocode for the call "…" |
-| 6 | top-level declaration dropped (no block equivalent): struct __bw_bits2 |
+| 162 | dropped expression statement |
+| 61 | no pins found |
+| 33 | no dialect form for "…" |
+| 26 | unstructured "…" |
+| 17 | no pseudocode for the call "…" |
+| 14 | dropped call in expression |
+| 8 | top-level declaration dropped (no block equivalent): typedef void ( * bw_vec_t ) ( void … |
+| 7 | top-level declaration dropped (no block equivalent): struct __bw_bits2 |
+| 6 | 1 more WHEN script(s) not lifted |
+| 5 | 8 output pins × 20 mA = up to 160 mA at maximum pin ratings (actual current depends on ser |
 | 5 | devices_lcdclear: no equivalent on this board; the block was not translated |
 | 5 | devices_lcdprint: no equivalent on this board; the block was not translated |
 | 5 | devices_lcdcursor: no equivalent on this board; the block was not translated |
 | 5 | devices_oledclear: no equivalent on this board; the block was not translated |
 | 5 | devices_oledprint: no equivalent on this board; the block was not translated |
 | 5 | devices_oledcursor: no equivalent on this board; the block was not translated |
+| 4 | procedure call with arguments not lifted yet: "…" |
 | 3 | devices_setservo: no equivalent on this board; the block was not translated |
 | 3 | Port 1 has 7 output pins |
-| 3 | top-level declaration dropped (no block equivalent): typedef void ( * bw_vec_t ) ( void … |
-| 2 | 8 output pins × 20 mA = up to 160 mA at maximum pin ratings (actual current depends on ser |
+| 3 | Port 0 has 8 output pins |
+| 3 | procedure handle_op with parameters not lifted yet |
+| 3 | procedure handle_digit with parameters not lifted yet |
+| 3 | top-level declaration dropped (no block equivalent): static void bw_print ( const char * s |
 | 2 | 7 output pins × 20 mA = up to 140 mA at maximum pin ratings (actual current depends on ser |
 | 2 | Port 2 has 8 output pins |
-| 2 | Port 0 has 8 output pins |
-| 2 | procedure handle_op with parameters not lifted yet |
-| 2 | procedure handle_digit with parameters not lifted yet |
-| 2 | procedure call with arguments not lifted yet: "…" |
 | 2 | stc12_seg_shownum: no equivalent on this board; the block was not translated |
 | 2 | top-level declaration dropped (no block equivalent): static int _servo_angle [ 2 ] |
 | 2 | no clock #define found |
@@ -117,7 +134,8 @@ programs are refused as foreign. The refusal reasons below say which.
 | 1 | 28 output pins × 20 mA = up to 560 mA at maximum pin ratings (actual current depends on se |
 | 1 | 26 output pins × 20 mA = up to 520 mA at maximum pin ratings (actual current depends on se |
 | 1 | Port 2 has 7 output pins |
-| 1 | 1 more WHEN script(s) not lifted |
+| 1 | 12 output pins × 20 mA = up to 240 mA at maximum pin ratings (actual current depends on se |
+| 1 | procedure render_digit with parameters not lifted yet |
 | 1 | statement dropped (not representable as a block): = ( unsigned char ) ( 0 ) |
 | 1 | statement dropped (not representable as a block): = ( unsigned char ) ( bw_tab_font [ … |
 | 1 | stc12_setport: no equivalent on this board; the block was not translated |
@@ -206,6 +224,11 @@ fixture appears here so its verdict is traceable to the program that caused it.
 | round-trip | c | pico | 70-calculator-simple | degraded | top-level declaration dropped (no block equivalent): typedef void ( * bw_vec_t ) ( void …; top-level declaration dropped (no block equivalent): struct __bw_bits2; no pseudocode for the call "…" |
 | round-trip | basic | pico | 70-calculator-simple | degraded | no dialect form for "…"; unstructured "…" |
 | round-trip | micropython | pico | 70-calculator-simple | degraded | procedure handle_op with parameters not lifted yet; procedure handle_digit with parameters not lifted yet; procedure call with arguments not lifted yet: "…" |
+| round-trip | python | pico | 71-calculator-pcb | degraded | dropped expression statement |
+| round-trip | javascript | pico | 71-calculator-pcb | degraded | dropped expression statement |
+| round-trip | c | pico | 71-calculator-pcb | degraded | top-level declaration dropped (no block equivalent): typedef void ( * bw_vec_t ) ( void …; top-level declaration dropped (no block equivalent): struct __bw_bits2; no pseudocode for the call "…" |
+| round-trip | basic | pico | 71-calculator-pcb | degraded | no dialect form for "…"; unstructured "…" |
+| round-trip | micropython | pico | 71-calculator-pcb | degraded | procedure handle_op with parameters not lifted yet; procedure handle_digit with parameters not lifted yet; procedure call with arguments not lifted yet: "…" |
 | round-trip | python | pico | 72-pico-oled-hello | degraded | dropped expression statement |
 | round-trip | javascript | pico | 72-pico-oled-hello | degraded | dropped expression statement |
 | round-trip | c | pico | 72-pico-oled-hello | degraded | top-level declaration dropped (no block equivalent): typedef void ( * bw_vec_t ) ( void …; top-level declaration dropped (no block equivalent): struct __bw_bits2 |
@@ -222,6 +245,9 @@ fixture appears here so its verdict is traceable to the program that caused it.
 | round-trip | c | arduino | 75-battery-tester | degraded | top-level declaration dropped (no block equivalent): struct __bw_bits2 |
 | round-trip | basic | arduino | 75-battery-tester | degraded | unstructured "…" |
 | round-trip | micropython | arduino | 75-battery-tester | degraded | devices_oledclear: no equivalent on this board; the block was not translated; devices_oledcursor: no equivalent on this board; the block was not translated; devices_oledprint: no equivalent on this board; the block was not translated |
+| round-trip | c | 8051 | 76-multimeter | degraded | 12 output pins × 20 mA = up to 240 mA at maximum pin ratings (actual current depends on se; Port 0 has 8 output pins |
+| round-trip | basic | 8051 | 76-multimeter | degraded | no dialect form for "…"; unstructured "…" |
+| round-trip | micropython | 8051 | 76-multimeter | degraded | 1 more WHEN script(s) not lifted; procedure render_digit with parameters not lifted yet; procedure call with arguments not lifted yet: "…" |
 | round-trip | python | 8051 | 77-keypad-keyshow | degraded | dropped expression statement; dropped call in expression |
 | round-trip | javascript | 8051 | 77-keypad-keyshow | degraded | dropped expression statement; dropped call in expression |
 | round-trip | c | 8051 | 77-keypad-keyshow | degraded | statement dropped (not representable as a block): = ( unsigned char ) ( 0 ); statement dropped (not representable as a block): = ( unsigned char ) ( bw_tab_font [ … |
@@ -398,6 +424,19 @@ fixture appears here so its verdict is traceable to the program that caused it.
 | round-trip | python | arduino | arduino-sk-p14-serial-pot | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-sk-p14-serial-pot | degraded | dropped expression statement |
 | round-trip | micropython | arduino | arduino-sk-p14-serial-pot | degraded | no pins found |
+| round-trip | python | arduino | avr02-dimmer | degraded | dropped expression statement |
+| round-trip | javascript | arduino | avr02-dimmer | degraded | dropped expression statement |
+| round-trip | c | arduino | avr02-dimmer | degraded | no pseudocode for the call "…" |
+| round-trip | micropython | arduino | avr02-dimmer | degraded | no pins found |
+| round-trip | micropython | arduino | avr03-dual-blink | degraded | 1 more WHEN script(s) not lifted |
+| round-trip | python | arduino | avr04-serial-pot | degraded | dropped expression statement |
+| round-trip | javascript | arduino | avr04-serial-pot | degraded | dropped expression statement |
+| round-trip | micropython | arduino | avr04-serial-pot | degraded | no pins found |
+| round-trip | basic | arduino | avr05-button-led | degraded | no dialect form for "…"; unstructured "…" |
+| round-trip | python | arduino | avr06-blink-and-print | degraded | dropped expression statement |
+| round-trip | javascript | arduino | avr06-blink-and-print | degraded | dropped expression statement |
+| round-trip | c | arduino | avr06-blink-and-print | degraded | top-level declaration dropped (no block equivalent): static void bw_print ( const char * s |
+| round-trip | micropython | arduino | avr06-blink-and-print | degraded | 1 more WHEN script(s) not lifted |
 | round-trip | c | arduino | blinkenrocket-pendant | degraded | 16 output pins × 20 mA = up to 320 mA at maximum pin ratings (actual current depends on se |
 | round-trip | basic | arduino | blinkenrocket-pendant | degraded | no dialect form for "…" |
 | round-trip | c | 8051 | disp-bargraph | degraded | 8 output pins × 20 mA = up to 160 mA at maximum pin ratings (actual current depends on ser; Port 2 has 8 output pins |
@@ -420,6 +459,11 @@ fixture appears here so its verdict is traceable to the program that caused it.
 | round-trip | javascript | 8051 | disp-sevenseg | degraded | dropped expression statement |
 | round-trip | c | 8051 | disp-sevenseg | degraded | 7 output pins × 20 mA = up to 140 mA at maximum pin ratings (actual current depends on ser; Port 1 has 7 output pins |
 | round-trip | micropython | 8051 | disp-sevenseg | degraded | devices_showdigit: no equivalent on this board; the block was not translated; no pins found |
+| round-trip | c | 6502 | eater6502-blink | degraded | 8 output pins × 20 mA = up to 160 mA at maximum pin ratings (actual current depends on ser |
+| round-trip | python | 6502 | eater6502-full-build | degraded | dropped expression statement |
+| round-trip | javascript | 6502 | eater6502-full-build | degraded | dropped expression statement |
+| round-trip | micropython | 6502 | eater6502-full-build | degraded | no pins found |
+| round-trip | c | i8086 | i8086-blink | degraded | no pseudocode for the call "…" |
 | round-trip | micropython | microbit | mb01-display | degraded | no pins found |
 | round-trip | python | microbit | mb02-sensors | degraded | dropped call in expression |
 | round-trip | micropython | microbit | mb02-sensors | degraded | no pins found |
@@ -435,9 +479,32 @@ fixture appears here so its verdict is traceable to the program that caused it.
 | round-trip | python | microbit | mb08-thermometer | degraded | dropped call in expression |
 | round-trip | basic | microbit | mb08-thermometer | degraded | unstructured "…" |
 | round-trip | micropython | microbit | mb08-thermometer | degraded | no pins found |
+| round-trip | python | arduino | mega02-adc-print | degraded | dropped expression statement |
+| round-trip | javascript | arduino | mega02-adc-print | degraded | dropped expression statement |
+| round-trip | micropython | arduino | mega02-adc-print | degraded | no pins found |
+| round-trip | c | arduino | mega03-port-current | degraded | 8 output pins × 20 mA = up to 160 mA at maximum pin ratings (actual current depends on ser |
+| round-trip | python | microbit | microbit01-hello | degraded | dropped call in expression |
+| round-trip | python | arduino | nano02-pot-print | degraded | dropped expression statement |
+| round-trip | javascript | arduino | nano02-pot-print | degraded | dropped expression statement |
+| round-trip | micropython | arduino | nano02-pot-print | degraded | no pins found |
+| round-trip | python | arduino | nano03-two-tasks | degraded | dropped expression statement |
+| round-trip | javascript | arduino | nano03-two-tasks | degraded | dropped expression statement |
+| round-trip | c | arduino | nano03-two-tasks | degraded | top-level declaration dropped (no block equivalent): static void bw_print ( const char * s |
+| round-trip | micropython | arduino | nano03-two-tasks | degraded | 1 more WHEN script(s) not lifted |
+| round-trip | c | pico | pico01-blink | degraded | top-level declaration dropped (no block equivalent): typedef void ( * bw_vec_t ) ( void …; no pseudocode for the call "…" |
+| round-trip | python | pico | pico02-pot-print | degraded | dropped expression statement |
+| round-trip | javascript | pico | pico02-pot-print | degraded | dropped expression statement |
+| round-trip | c | pico | pico02-pot-print | degraded | top-level declaration dropped (no block equivalent): typedef void ( * bw_vec_t ) ( void …; no pseudocode for the call "…" |
+| round-trip | python | pico | pico03-two-tasks | degraded | dropped expression statement |
+| round-trip | javascript | pico | pico03-two-tasks | degraded | dropped expression statement |
+| round-trip | c | pico | pico03-two-tasks | degraded | top-level declaration dropped (no block equivalent): typedef void ( * bw_vec_t ) ( void …; top-level declaration dropped (no block equivalent): static void bw_print ( const char * s |
+| round-trip | micropython | pico | pico03-two-tasks | degraded | 1 more WHEN script(s) not lifted |
+| round-trip | c | pico | pico04-button | degraded | top-level declaration dropped (no block equivalent): typedef void ( * bw_vec_t ) ( void …; no pseudocode for the call "…" |
+| round-trip | basic | pico | pico04-button | degraded | no dialect form for "…"; unstructured "…" |
 | round-trip | python | spike | spike01-obstacle-avoid | degraded | dropped expression statement; dropped call in expression |
 | round-trip | javascript | spike | spike01-obstacle-avoid | degraded | dropped expression statement; dropped call in expression |
 | round-trip | micropython | spike | spike01-obstacle-avoid | degraded | spikeprime_motorStart: no equivalent on this board; the block was not translated; spikeprime_motorStop: no equivalent on this board; the block was not translated; spikeprime_displayText: no equivalent on this board; the block was not translated; spikeprime_displayClear: no equivalent on this board; the block was not translated; no pins found |
+| round-trip | c | z80 | z80-pd-bench | degraded | 8 output pins × 20 mA = up to 160 mA at maximum pin ratings (actual current depends on ser |
 | round-trip | asm | 8086 | i8086_analog | refused | refused (refused): line N: the "…" statement is not lifted yet (displays, tones, PWM, keypad, broadcast and " |
 | round-trip | asm | 8086 | i8086_blink | degraded | pin polarity (ACTIVE LOW) is not recoverable from the bytes; every pin is lifted as active |
 | round-trip | asm | 8086 | i8086_counter | refused | refused (refused): line N: the "…" statement is not lifted yet (displays, tones, PWM, keypad, broadcast and " |
@@ -464,7 +531,7 @@ corpus this repository pins, with its licence recorded here.
 
 | source | languages | origin | licence |
 | --- | --- | --- | --- |
-| program.bw corpus | python, javascript, c, basic, micropython | overlay/scratch-gui/examples — 130 device-tagged programs, round-tripped (parse → emit → read back). Emitter gaps not fed to a reader: python 0, javascript 0, c 0, basic 0, micropython 0 | BSD-3 (repo); Arduino-port programs CC0 |
+| program.bw corpus | python, javascript, c, basic, micropython | overlay/scratch-gui/examples — 157 device-tagged programs, round-tripped (parse → emit → read back). Emitter gaps not fed to a reader: python 0, javascript 0, c 0, basic 3, micropython 3 | BSD-3 (repo); Arduino-port programs CC0 |
 | examples-i8086.js | asm | overlay/scratch-gui/src/lib/bw-asm/examples-i8086.js — 11 MASM programs (6 Amey Thakur, 5 ours), fed native | MIT (Amey Thakur set) / BSD-3 (ours) |
 | oracle C fixtures | c | test/fixtures/oracle/{stc12-blink,atmega328p-blink}.c — real device C, fed native to the pin-inferring reader | BSD-3 (repo) |
 | Amey Thakur external corpus (not folded in) | asm | /mnt/volume1/code/retro-corpus-8086 (525 .asm, env I8086_CORPUS) — a larger asm input, deliberately excluded from committed figures so CI stays reproducible | MIT |

@@ -82,19 +82,31 @@ let parseFailed = 0;
 let corpusPrograms = 0;
 
 const idx = JSON.parse(fs.readFileSync(path.join(exDir, 'index.json'), 'utf8'));
-const tagged = idx
-    .filter(e => e.files && e.files.program && (e.devices || []).length)
+// Every example that ships a program; whether it is DEVICE-TAGGED is decided per
+// entry below by deviceOf(), not by the index `devices` field alone. Sorting the
+// superset then skipping the untagged in the loop yields the same ordered set as
+// filtering first — deterministic, and the same shape as before.
+const withProgram = idx
+    .filter(e => e.files && e.files.program)
     .sort((a, b) => a.id.localeCompare(b.id)); // deterministic order
 
-for (const entry of tagged) {
+for (const entry of withProgram) {
     const file = path.join(exDir, entry.files.program);
     if (!fs.existsSync(file)) continue;
     const bw = fs.readFileSync(file, 'utf8');
+    // Device-tagged = declares a DEVICE line OR carries a `devices` index field.
+    // Keying on the DEVICE line the program itself declares — not the index field
+    // alone — keeps a canonical single-device example in the corpus even when it
+    // carries no `devices` array (the upstream gallery shape, e.g. i8086-blink);
+    // the index field is the older, optional form, not the authority. An example
+    // that declares no device at all (a game) is correctly not device-tagged.
+    const device = deviceOf(bw, entry);
+    if (!device) continue;
     let proj;
     try { const c = new SB3(); c.parse(bw); proj = c.project; }
     catch { parseFailed++; continue; }
     corpusPrograms++;
-    const family = famOf(deviceOf(bw, entry));
+    const family = famOf(device);
     for (const [lang, emit] of Object.entries(EMITTERS)) {
         let src = null;
         try { src = emit(proj); } catch { src = null; }
