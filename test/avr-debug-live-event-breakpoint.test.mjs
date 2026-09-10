@@ -24,7 +24,18 @@ test('real AVR device breakpoint halts only at its advertised following retire',
     const adapter = createAvr8jsAdapter({program: TWI_START});
     const target = createAvr8jsDebugTarget(adapter);
     const capabilities = normalizeDebugCapabilities(target.capabilities(), {target: 'avr8js'});
-    assert.deepEqual(capabilities.events, ['instruction', 'device']);
+    // 'memory' JOINED THIS LIST AND THAT IS THE FEATURE, not drift. Until
+    // bw-board fde7556 the AVR debug target published retires and bridge
+    // notifications and NO data accesses at all: it never wrapped readData /
+    // writeData, so a consumer watching an AVR board saw memory accesses while
+    // it ran freely and LOST them the moment a debugger attached. Folding the
+    // target onto the shared instrument gave the debugger path the accessor
+    // wrappers, and the declaration moved in the same commit as the behaviour.
+    // Measured there: a real TWI START went from 1 device fact to 1 memory + 1
+    // device -- the memory fact being the write to TWCR, the store that STARTS
+    // the transaction the device fact describes. The debugger had been
+    // reporting the effect and not the cause.
+    assert.deepEqual(capabilities.events, ['instruction', 'device', 'memory']);
     assert.equal(capabilities.extensions.eventBreakpointBoundary, 'instruction-retire');
 
     const engine = new EventBreakpointEngine(eventBreakpointCapabilities(capabilities));
@@ -48,12 +59,22 @@ test('real AVR device breakpoint halts only at its advertised following retire',
 
     target.step('insn', 2);
     assert.equal(target.runFor(10_000), 'halted');
-    assert.deepEqual(order, [
-        'instruction/retire',
-        'device/access',
-        'instruction/retire',
-        'halt@6'
-    ], 'the access matches immediately but its halt waits for the STS retire');
+    // ASSERTED POSITIONALLY, NOT AS A PINNED SEQUENCE. The claim this test is
+    // NAMED for is that the device access matches immediately while its halt
+    // waits for the following retire — and that claim is about the ORDER of
+    // three specific entries, not about everything else the stream happens to
+    // carry. Pinned as a full list it broke the moment the target learned to
+    // report memory accesses (bw-board fde7556), which is a capability gain
+    // rather than a regression, and it would break again on the next one.
+    const at = name => order.indexOf(name);
+    assert.ok(at('device/access') > -1, `no device access in ${order.join(', ')}`);
+    assert.ok(at('device/access') > at('instruction/retire'),
+        'the access is reported inside the instruction that caused it');
+    assert.equal(order.at(-1), 'halt@6',
+        `the halt is last and lands at the STS retire, not at the access: ${order.join(', ')}`);
+    assert.equal(order.filter(x => x === 'halt@6').length, 1, 'exactly one halt');
+    assert.equal(order.filter(x => x === 'instruction/retire').length, 2,
+        'two retires: the one carrying the access, and the one the halt waits for');
     assert.equal(halts, 1);
 
     for (const event of facts) {
