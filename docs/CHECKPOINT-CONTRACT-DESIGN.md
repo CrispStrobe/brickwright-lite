@@ -223,11 +223,27 @@ and `applyReplayInput(input)`: the input-recording half of replay, deduplicated 
 the native boundary, and described in its own comment as "recorder-compatible
 host-input facts".
 
-Measured rather than inferred: `i8086-debug.js:581` and `m6502-debug.js:141`
-IMPLEMENT `applyReplayInput` too, and both were already in the cluster.
-`bw-debug/instruction-replay.js:45` is the driver that consumes it, and it REFUSES
-a target having neither `applyInput` nor `applyReplayInput`. Three implementations
-of one target-side surface; the adapter is the third, not an outlier.
+Measured rather than inferred — and the first version of this paragraph said
+"three implementations" and was itself a count that was wrong, in a passage whose
+argument is that counting was the wrong instrument. There are **four**, and all
+four are `[declared]` divergent:
+
+| implementer | |
+|---|---|
+| `emu8051-adapter.js:450` | the file this section is about |
+| `i8086-debug.js:581` | already in the cluster |
+| `m6502-debug.js:141` | already in the cluster |
+| `z80-debug.js:113` | already in the cluster |
+
+Four consumers, all lite-side, and the fourth is not like the others:
+`bw-debug/instruction-replay.js:45`, `cycle-replay.js:47` and `timed-replay-io.js:74`
+are generic drivers that REFUSE a target having neither `applyInput` nor
+`applyReplayInput`; `debug-runner.js:2085` is a guarded target-specific caller
+(`targetKind === 'i8086'`) that feeds a ROM image through the same surface. Three
+drivers and one special case, not four of a kind.
+
+So the adapter is the fourth implementation of a surface three of its siblings
+already implement — not an outlier.
 
 **The cluster is defined by a SURFACE, not by a word.** Two halves sharing no
 vocabulary: `checkpointSupport` / `checkpointRefusal` for state, and
