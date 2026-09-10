@@ -25,6 +25,10 @@
  *     `subscribeDebugTargetInputs` returns null for a target without it, so a
  *     target using any other name is simply not recorded.
  *
+ *     A LISTENER'S RETURN VALUE IS IGNORED unless the target declares
+ *     otherwise. See `canVetoDebugInput` — this sentence is the whole of the
+ *     hole it closes.
+ *
  * A REFUSAL IS A RETURN VALUE, NOT AN EXCEPTION. This is the point of the
  * module and the one thing an implementer must not get wrong. A target that
  * cannot apply a fact says so and the driver decides what to do; a target that
@@ -125,14 +129,68 @@ export const canRecordDebugInput = target =>
   !!target && typeof target.onDebugInput === 'function';
 
 /**
- * The two halves, reported separately.
+ * Does this target let a RECORD listener REFUSE an input?
+ *
+ * WHY THIS EXISTS. The module said nothing about what a listener's return value
+ * meant, and two different answers were already in the wild. Measured across
+ * the implementations:
+ *
+ *   fire-and-forget   the return is discarded; the input reaches the machine
+ *                     whatever the listener says. Every target in this tree.
+ *   veto              a listener returning `false` or `{accepted: false}` stops
+ *                     the input reaching the machine at all — "if it cannot be
+ *                     recorded, it does not happen". Two targets in a
+ *                     downstream consumer.
+ *
+ * A recorder's listener that RETURNS something — and the one in the wild does,
+ * `input => !status().active || appendInput(input)` — is therefore honoured by
+ * some targets and silently discarded by others, with no way to ask which. Same
+ * code, two meanings, no signal. That is the hole; the predicate is the signal.
+ *
+ * IT IS NOT A REQUIREMENT AND CANNOT BECOME ONE. A veto needs a moment BEFORE
+ * the input reaches the machine, and not every target has one: `emu8051-adapter`
+ * publishes its facts at the instant the emulated core READS a pin, so its facts
+ * are observations of a read already in flight. Refusing there would mean
+ * declining to answer a read the CPU has issued, which is not an operation.
+ *
+ * NOR IS IT FREE FOR THE TARGETS THAT COULD ADOPT IT. Publishing BEFORE applying
+ * is what makes a veto possible, and it is also what lets a log contain an input
+ * the machine then refused — measured downstream: a button press on a board with
+ * no VIA is logged, and replaying that log aborts on the refusal. The targets
+ * here publish AFTER and only on acceptance, so only a fact the machine TOOK is
+ * a fact. The two are a TRADE, not a ladder, which is why this reports what a
+ * target does rather than what it should do.
+ *
+ * THIS PREDICATE INVOKES THE TARGET, and its siblings do not. `canApplyReplayInput`
+ * and `canRecordDebugInput` ask a STRUCTURAL question — is there a method — that
+ * inspection answers. Whether a return value is honoured is BEHAVIOURAL and
+ * inspection cannot see it, so it has to be declared and the declaration has to
+ * be read. A `capabilities()` that throws answers false rather than propagating,
+ * because a predicate that throws would break the one rule this module exists to
+ * state.
  *
  * @param {object} target
- * @returns {{applies: boolean, records: boolean}}
+ * @returns {boolean}
+ */
+export function canVetoDebugInput(target) {
+  if (!canRecordDebugInput(target) || typeof target.capabilities !== 'function') return false;
+  try {
+    return target.capabilities()?.extensions?.inputAdmission === 'may-refuse';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The capabilities, reported separately.
+ *
+ * @param {object} target
+ * @returns {{applies: boolean, records: boolean, vetoes: boolean}}
  */
 export const replayCapabilities = target => ({
   applies: canApplyReplayInput(target),
-  records: canRecordDebugInput(target)
+  records: canRecordDebugInput(target),
+  vetoes: canVetoDebugInput(target)
 });
 
 /**
@@ -158,6 +216,27 @@ export const replayCapabilities = target => ({
  */
 export function replaySupport(target, reasons = []) {
   const missing = [...reasons];
+  // THE TARGET CONTRIBUTES ITS OWN DYNAMIC REASONS, and this is what makes the
+  // list more than a formality. The doc above names the case: a live board
+  // changes input nets OUTSIDE the debug target, so a restored run diverges
+  // from the recorded one. Only the target knows whether it is in that state,
+  // and a caller cannot be expected to ask — the whole failure this closes is
+  // a driver offering a replay nobody told it was unsafe.
+  //
+  // Optional, and absence is not a refusal: a target that does not implement it
+  // is one with no session-scoped reason to give.
+  if (typeof target?.replayRefusalReasons === 'function') {
+    try {
+      for (const reason of target.replayRefusalReasons() ?? []) {
+        if (typeof reason === 'string' && reason) missing.push(reason);
+      }
+    } catch {
+      // A target that throws while being asked is not thereby supported: the
+      // one rule this module states is that a refusal is a return value, and a
+      // question that cannot be answered is not an answer of yes.
+      missing.push('the target failed while reporting its replay refusal reasons');
+    }
+  }
   // Only the APPLY half is required to replay. Recording is what produced the
   // facts; a target handed facts from elsewhere can still replay them.
   if (!canApplyReplayInput(target)) {

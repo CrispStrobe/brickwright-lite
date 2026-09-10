@@ -352,7 +352,7 @@ fails unless it touched both.
         },
         {
           "id": "z80-debug-timestamped-facts",
-          "disposition": "upstream: lane 1 -- instruction-debug-events.js. Same module property as the m6502 entry; the two rows exist because the gate is per-file, not because there are two mechanisms.",
+          "disposition": "upstream: same as the m6502 entry -- the module is upstream at `38de2e6`, this entry is not retired by that, and it goes when upstream's `z80-debug.js` consumes the module rather than its own inline clock.",
           "falsifiable": "A recorded session plays back in the wrong order, or a saved checkpoint cannot be placed on the timeline against the events around it.",
           "why": "debugTime() stamps every producer fact and every checkpoint from one clock, so replay ordering and checkpoint placement agree. Without it the facts still record and still replay -- just not necessarily in the order they happened, which is the kind of wrong that looks right until a bug depends on ordering. NAMED 2026-09-05 because the pin bump moved upstream and the derived-coverage check found it unexplained.",
           "contains": "debugEvents\\.debugTime\\(\\)"
@@ -366,7 +366,7 @@ fails unless it touched both.
         },
         {
           "id": "z80-debug-event-retire-boundary",
-          "disposition": "upstream: lane 1 -- instruction-debug-events.js. Byte-identical to the m6502 entry and for the same reason: it describes the module's published boundary, not this target's.",
+          "disposition": "upstream: the module is at bw-board `38de2e6`; retires when upstream's `z80-debug.js` consumes it. NOTE: `avr8js-debug.js` publishes the same retire envelope hand-rolled, and MEASURED 2026-09-10 the module cannot serve it -- an AVR core has no `cpu.step`/`read`/`write` to patch (stepping is the free function `avrInstruction(cpu)`, memory is the raw `cpu.data` array), so its access facts come from `adapter.onDeviceAccess` and could not come from anywhere else. Two cores with different observability, not two vocabularies.",
           "falsifiable": "A port or memory event halts the Z80 in the middle of its instruction, before the architectural PC and memory state reach a replayable boundary.",
           "why": "The target explicitly advertises the observed instruction-retire boundary which its instruction-atomic producer publishes after ordered access facts. Runner admission depends on this claim instead of a Z80 name check.",
           "contains": "eventBreakpointBoundary: 'instruction-retire'"
@@ -391,7 +391,7 @@ fails unless it touched both.
         },
         {
           "id": "m6502-debug-timestamped-facts",
-          "disposition": "upstream: lane 1 -- instruction-debug-events.js (145 lines, zero imports, liteAuthored). MEASURED 2026-09-10: this is a property of the MODULE, not of either target -- `debugEvents.debugTime()` sits at the same three structural positions in both debug files and neither target implements a clock. This entry's own `why` already said so: \"named here separately because the gate is per-file\". The split was an artefact of the instrument and read as two facts.",
+          "disposition": "upstream: the MODULE landed at bw-board `38de2e6` and this entry did NOT retire with it -- measured, the gate still passes. `instruction-debug-events.js` is now a vendored file rather than lite-authored, but upstream's own `m6502-debug.js` does not consume it, so `debugEvents.debugTime()` is still lite-only IN THIS FILE. Upstreaming a module does not retire its consumers' entries; converging the consumers does. Retires when upstream's debug files adopt it.",
           "falsifiable": "A recorded session plays back in the wrong order, or a saved checkpoint cannot be placed on the timeline against the events around it.",
           "why": "debugTime() stamps every producer fact and every checkpoint from one clock, so replay ordering and checkpoint placement agree. The same mechanism as the Z80 target -- named here separately because the gate is per-file and a shared explanation would let one of them be deleted while the other stayed green.",
           "contains": "debugEvents\\.debugTime\\(\\)"
@@ -419,7 +419,7 @@ fails unless it touched both.
         },
         {
           "id": "m6502-debug-event-retire-boundary",
-          "disposition": "upstream: lane 1 -- instruction-debug-events.js. The literal `eventBreakpointBoundary: 'instruction-retire'` is byte-identical on both targets and is a claim about what the MODULE publishes (`kind: 'instruction', phase: 'retire'` at instruction-debug-events.js:113).",
+          "disposition": "upstream: the module is at bw-board `38de2e6`; this entry retires when upstream's `m6502-debug.js` publishes the boundary through it instead of declaring it inline.",
           "falsifiable": "A RAM or memory-mapped device event halts the 6502 in the middle of its instruction, before the architectural PC and device state reach a replayable boundary.",
           "why": "The target explicitly advertises the observed instruction-retire boundary which its instruction-atomic producer publishes after ordered memory access facts. Runner admission depends on this capability instead of a CPU-name exception.",
           "contains": "eventBreakpointBoundary: 'instruction-retire'"
@@ -452,13 +452,6 @@ fails unless it touched both.
     "why": "THE MIRROR IMAGE OF absentByDesign BELOW. That list records files upstream has and lite deliberately does not; this one records files LITE has and upstream does not -- lite-authored source living inside a vendored root. Seven as of 2026-09-07, found while measuring a proposed vendored-path gate. They were not invisible: test/vendor-identity.test.mjs has printed them since lego-b9 added the liteOnly and notCompared collectors this morning. But printed is not asserted, and nothing said which of the seven were deliberate. A lite-authored file in a vendored directory is one careless sync from being clobbered and has no upstream to restore it from, so each one is now a decision recorded once rather than an accident nobody has examined. THE REASON MUST SAY WHY IT LIVES HERE RATHER THAN BESIDE LITE'S OWN CODE -- six of the seven are reached by relative import from a vendored sibling that itself carries a declared divergence, which is a real constraint; resolve-netlist.js is not, and its entry says so.",
     "ratchet": "Entries may be REMOVED freely -- a file that moves out or lands upstream should leave. An entry may only be ADDED together with its reason in the same commit, and the gate refuses any lite-authored file that is not listed, so adding the file without the reason cannot go green.",
     "files": {
-      "instruction-debug-events.js": {
-        "reason": "Imported by m6502-debug.js and z80-debug.js, both of which have NAMED allow-list entries above. Those two are vendored files carrying declared lite-only work, and that work is what imports this module by relative path -- so it lives here because its callers do, and it exists at all because their divergence does.",
-        "importedBy": [
-          "m6502-debug.js",
-          "z80-debug.js"
-        ]
-      },
       "machine-checkpoint.js": {
         "reason": "Same shape: imported by z80-machine.js and m6502-machine.js, both NAMED entries. The checkpoint schema is the lite-only save/restore work in those two files factored out of them.",
         "importedBy": [
