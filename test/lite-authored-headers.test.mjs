@@ -22,7 +22,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { ROOT, SOURCES, NEVER_MARK, BEGIN, END, blockFor, applied, declared }
     from '../scripts/gen-lite-authored-headers.mjs';
@@ -51,6 +51,90 @@ test('every declared lite-authored file carries the marker the manifest implies'
         '  node scripts/gen-lite-authored-headers.mjs. A mirror that may disagree with\n' +
         '  its source is a second claim about one fact.\n');
     t.diagnostic(`${files.length} lite-authored file(s) marked, all agreeing with their manifest entry`);
+});
+
+// THE REVERSE SCAN, and it is the direction every other test in this file lacks.
+//
+// The three tests above, and the generator, all walk FROM the manifest TO the
+// file: for each DECLARED lite-authored file, is its marker right. None walks
+// the other way -- FROM a marker back to the manifest -- so a marker in a file
+// the manifest NO LONGER declares is invisible. That is not hypothetical: it is
+// exactly what a convergence does. machine-checkpoint.js was lite-authored,
+// carried this marker, and was upstreamed in the checkpoint pin bump -- its
+// entry left liteAuthored.files and its marker had to be removed BY HAND. If it
+// had been missed, the file would now carry a block reading "Upstream has no
+// copy of this file, so a sync cannot restore it" while upstream has exactly
+// that copy: a header that is not merely stale but the precise opposite of true,
+// and every gate here green.
+//
+// So this scans the vendored trees for the marker and requires every file that
+// carries one to be declared. It is the graveyard guard the rest of this repo's
+// inventories already have, at file granularity: a marker can only be made green
+// by declaring the file OR removing the marker, never by leaving both to drift.
+const walk = (dir) => {
+    const out = [];
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) out.push(...walk(p));
+        else if (e.isFile()) out.push(p);
+    }
+    return out;
+};
+
+// Every root that could hold a marked file: the overlay roots the manifests
+// name, AND their packages/ mirrors, since the marker is a byte of the file and
+// travels with it. Only the ones present on disk (packages/ is gitignored and
+// populated by integrate, so it may be absent in a bare checkout).
+const markerRoots = () => {
+    const roots = new Set();
+    for (const { root } of SOURCES) {
+        roots.add(root);
+        roots.add(root.replace('overlay/', 'packages/'));
+    }
+    return [...roots].map(r => path.join(ROOT, r)).filter(existsSync);
+};
+
+test('every file CARRYING a marker is still declared -- no orphaned markers', async () => {
+    // The legitimate homes for a marker: each declared file, in the overlay copy
+    // AND its packages/ mirror. Built from the manifest, which is the authority.
+    const legitimate = new Set();
+    for (const { rel } of await declared()) {
+        legitimate.add(path.join(ROOT, rel));
+        legitimate.add(path.join(ROOT, rel.replace('overlay/', 'packages/')));
+    }
+
+    const roots = markerRoots();
+    assert.ok(roots.length >= 1,
+        `no vendored root exists to scan (looked for ${SOURCES.map(s => s.root).join(', ')} ` +
+        'and their packages/ mirrors) -- a scan over nothing finds no orphan and passes vacuously');
+
+    const marked = [];
+    for (const root of roots) {
+        for (const p of walk(root)) {
+            // Read a bounded prefix: the marker is asserted to be the first thing
+            // in the file by the test below, so it is always in the first bytes.
+            let head;
+            try { head = readFileSync(p, 'utf8'); } catch { continue; }
+            if (head.includes(BEGIN)) marked.push(p);
+        }
+    }
+
+    // Species 1: a walk that matches nothing satisfies the orphan assertion
+    // trivially. The manifests declare at least five marked files, present in at
+    // least the overlay copy, so a correct scan finds no fewer than five.
+    assert.ok(marked.length >= 5,
+        `the marker scan found only ${marked.length} marked file(s) across ${roots.length} root(s) -- ` +
+        'the marker text or the walk changed, and an orphan scan that finds nothing cannot find an orphan');
+
+    const orphans = marked.filter(p => !legitimate.has(p)).map(p => path.relative(ROOT, p)).sort();
+    assert.deepEqual(orphans, [],
+        '\n  FILES CARRYING A LITE-AUTHORED MARKER THAT THE MANIFEST NO LONGER DECLARES:\n    ' +
+        orphans.join('\n    ') +
+        '\n\n  The marker says upstream has no copy of this file and a sync cannot restore\n' +
+        '  it. If that is no longer true -- the file was upstreamed, renamed, or the entry\n' +
+        '  retired -- the block is now false. Remove the marker (delete the delimited block),\n' +
+        '  or, if the file really is still lite-authored, add its entry back to\n' +
+        '  liteAuthored.files. A marker with no manifest entry is a claim with no author.\n');
 });
 
 test('the marker sits at the very top, where someone opening the file sees it', async () => {
