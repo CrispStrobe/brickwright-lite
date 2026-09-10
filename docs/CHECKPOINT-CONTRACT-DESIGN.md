@@ -75,9 +75,33 @@ measurement and it decides whether a file can move at all.
 | `w65c02-cycle-provider.js` | `../bw-debug/conditional-cycle-provider.js` | no |
 
 `emu8051-debug.js` is 277 lite-only lines and is in the cluster, so this is not a
-footnote. Either the dependency moves upstream with it, or the code takes the
-dependency by injection instead of by import. That choice should be made once, for
-all three, before any of them moves.
+footnote.
+
+### The policy is one RULE applied three times, not one answer
+
+A blanket "move them all up" or "invert them all" gets at least one wrong, because
+the three differ in kind. The question to ask of each is: **is this dependency an
+ENGINE fact or a DOWNSTREAM concern?**
+
+| dependency | kind | ruling |
+|---|---|---|
+| `instructionLength` from `bw-debug/opcodes.js` | how many bytes an 8051 instruction occupies — an engine fact | **upstream it**, on its own merits, independent of checkpointing |
+| `withI8086MemoryPreference` from `bw-i8086-preferences.js` | a user-selected memory preference | **invert to injection** — moving it up drags a settings layer into an engine library |
+| `createConditionalCycleProviderBoundary` from `bw-debug/conditional-cycle-provider.js` | see below | **upstream it**, with `cycle-provider.js` |
+
+The third was measured rather than assumed. `conditional-cycle-provider.js` is 79
+lines importing only `cycle-provider.js`, which is 69 lines importing nothing — a
+leaf pair. Both contain **zero** mentions of settings, storage, project, GUI or
+preference. It is a provider-neutral, fail-closed selection boundary whose only
+non-test consumer is `w65c02-cycle-provider.js`, itself an engine file. Generic
+machinery for negotiating between engine components is an engine fact; the caller
+that decides *which* provider to request may well be downstream, and the boundary
+does not care.
+
+One consequence to state rather than discover: `cycle-provider.js` has seven
+runtime importers today, and one of them is lite's own `bw-debug/debug-runner.js`.
+After the move that becomes lite importing from the vendored tree, which is the
+normal direction, but it means the move touches a lite file too.
 
 ## The twenty-two, classified
 
@@ -101,21 +125,33 @@ all three, before any of them moves.
 `i8086-debug.js`, `emu8051-debug.js`, and the refusal flags in `z80-adapter.js`,
 `m6502-adapter.js`, `i8086-adapter.js`.
 
-**Cycle providers — a second, smaller unit**
+**Cycle providers — a second unit, rooted in the vendored tree**
 
-`z80-cycle-debug.js`, `floooh-z80-cycle-provider.js`, `w65c02-cycle-provider.js`,
-`z80-target-factory.js`. Nothing in the vendored tree imports any of them; their
-only importers are lite TESTS. So upstreaming them means upstreaming their tests
-too, or they arrive with no consumer and no proof.
+`debug-target-factory.js`, `z80-target-factory.js`, `z80-cycle-debug.js`,
+`floooh-z80-cycle-provider.js`, `w65c02-cycle-provider.js`.
+
+> **A FIRST VERSION OF THIS SECTION SAID NOTHING IN THE VENDORED TREE IMPORTS ANY
+> OF THEM, AND THAT WAS FALSE.** It was derived with a grep for
+> `from './<file>'`, and `debug-target-factory.js` reaches two of them by
+> `await import('./z80-target-factory.js')` and
+> `await import('./w65c02-cycle-provider.js')`. A dynamic import is invisible to a
+> static-import scan, which is the same trap as a constructed path defeating a
+> by-name census. The consequence drawn from it — that upstreaming these means
+> upstreaming their tests or they land with no consumer — is WITHDRAWN. They have
+> a consumer, it is a vendored file, and it is on the runtime path.
+
+That also classifies `debug-target-factory.js`, which the first version left
+unclassified: its 12 lite-only lines ARE this wiring — the two dynamic imports,
+the provider boundary, the selection, and the returned `providerBoundary` /
+`providerSelection`. It is the root of this unit, not an independent divergence.
 
 **Not yet classified** — `emu8051-adapter.js` (71 lite-only lines, zero checkpoint
-mentions), `debug-target-factory.js` (12/32, zero mentions), `index.js` (2 export
-lines). These are independent of the cluster and want reading, not counting.
+mentions) and `index.js` (2 export lines). These want reading, not counting.
 
 ## Sequence
 
-1. Decide the outward-dependency policy once: move the three dependencies upstream,
-   or invert them to injection.
+1. Apply the engine-fact/downstream-concern rule to each of the three dependencies
+   — the rulings are in the table above; two move up, one inverts.
 2. Upstream the cluster as a unit, with the refusal surface declared in the
    debug-target interface.
 3. Lite re-pins and its allow-list entries are deleted **in the commit that lands
