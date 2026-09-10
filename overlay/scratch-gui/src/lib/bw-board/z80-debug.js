@@ -11,6 +11,7 @@ import { disasmZ80 } from './z80-disasm.js';
 import { loadSNA, SNA_SIZE } from './zx-sna.js';
 import { loadZ80 } from './zx-z80file.js';
 import {installInstructionDebugEvents} from './instruction-debug-events.js';
+import {replayAccepted, replayRefused} from './debug-replay-contract.js';
 
 /** @param {{ machine: import('./z80-machine.js').Z80Machine }} adapter */
 export function createZ80DebugTarget(adapter, opts = {}) {
@@ -110,19 +111,65 @@ export function createZ80DebugTarget(adapter, opts = {}) {
       return () => inputListeners.delete(listener);
     },
 
+    /**
+     * The APPLY half, in the vocabulary `debug-replay-contract.js` declares.
+     *
+     * THREE REFUSALS, NOT ONE. This used to answer every failure with
+     * `UNSUPPORTED_REPLAY_INPUT` -- a malformed payload, a producer with no
+     * path, and a board that simply has no ULA all came back the same. The
+     * third is not the caller's fault: it is a fact about the hardware.
+     *
+     *   invalid-replay-input      the FACT is malformed
+     *   unsupported-replay-input  this target has no path for that PRODUCER
+     *   no-input-path             the producer is known, this BOARD cannot take it
+     *
+     * WHAT DELIBERATELY DID NOT CHANGE: there is no dedup here and none is
+     * being added. `publishInput` is a VETO channel and the contract is
+     * per-call -- an input the recorder never sees is an input it cannot
+     * refuse.
+     */
     applyReplayInput(input) {
       const payload = input?.payload;
-      if (input?.producer === 'z80.buttons' && Number.isSafeInteger(payload?.mask)) {
-        return typeof machine.setButtons === 'function' ? machine.setButtons(payload.mask & 0x1f) : false;
+      switch (input?.producer) {
+      case 'z80.buttons':
+        if (!Number.isSafeInteger(payload?.mask)) {
+          return replayRefused('invalid-replay-input', 'z80.buttons needs a safe-integer mask');
+        }
+        if (typeof machine.setButtons !== 'function') {
+          return replayRefused('no-input-path', 'this machine has no button input path');
+        }
+        return machine.setButtons(payload.mask & 0x1f)
+          ? replayAccepted()
+          : replayRefused('no-input-path', 'this machine has no joystick interface');
+      case 'z80.keys':
+        // Bounded on purpose: a recorded fact is untrusted by the time it is
+        // replayed, and the ULA matrix is 8x5 -- forty is every key at once.
+        if (!Array.isArray(payload?.names) || payload.names.length > 40 ||
+            !payload.names.every(name => typeof name === 'string' && name.length <= 16)) {
+          return replayRefused('invalid-replay-input',
+            'z80.keys needs at most 40 key names of at most 16 characters');
+        }
+        if (!machine.ula || typeof machine.ula.setKeys !== 'function') {
+          return replayRefused('no-input-path', 'this machine has no ULA to receive key names');
+        }
+        machine.ula.setKeys([...payload.names]);
+        return replayAccepted();
+      case 'z80.serial':
+        if (!Number.isSafeInteger(payload?.byte)) {
+          return replayRefused('invalid-replay-input', 'z80.serial needs a safe-integer byte');
+        }
+        if (!rawSendSerial) {
+          return replayRefused('no-input-path', 'this adapter has no serial input path');
+        }
+        // The UNWRAPPED method, so a replayed byte does not come back out of
+        // the recorder.
+        return rawSendSerial(payload.byte & 0xff)
+          ? replayAccepted()
+          : replayRefused('no-input-path', 'no chip took the received byte');
+      default:
+        return replayRefused('unsupported-replay-input',
+          `no replay path for producer ${input?.producer ?? '(none)'}`);
       }
-      if (input?.producer === 'z80.keys' && Array.isArray(payload?.names) && payload.names.length <= 40 &&
-          payload.names.every(name => typeof name === 'string' && name.length <= 16) && machine.ula) {
-        machine.ula.setKeys([...payload.names]); return true;
-      }
-      if (input?.producer === 'z80.serial' && Number.isSafeInteger(payload?.byte) && rawSendSerial) {
-        return rawSendSerial(payload.byte & 0xff);
-      }
-      return {refused: 'unsupported or malformed Z80 replay input', code: 'UNSUPPORTED_REPLAY_INPUT'};
     },
 
     captureCheckpoint() {
