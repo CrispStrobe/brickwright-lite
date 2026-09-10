@@ -385,6 +385,18 @@ fails unless it touched both.
           "falsifiable": "A recorded session plays back with no input -- the buttons you pressed during recording do nothing on replay.",
           "why": "onInput registers the recorder listener on the 8051 adapter.",
           "contains": "onInput\\("
+        },
+        {
+          "id": "emu8051-post-reset-pin-mode",
+          "falsifiable": "After a reset, an external input arrives one run slice late: reset clears the JS output shadow, so the first post-reset poll skips every pin it no longer has a mode for.",
+          "why": "NOT recorder work, despite sitting inside it. The fallback asks the native core for the pin mode when the JS shadow is empty. It uses only APIs upstream already has (MODE_NAMES, _emu_get_pin_mode) and is a clean upstream candidate on its own. It was undeclared until 2026-09-10 because emu8051-adapter.js is declared by IDENTIFIER and this change introduces none -- a covered file with uncovered lines. Proved by mutation: reverting it left vendor-identity fully GREEN while test/emu8051-input-log.test.mjs went red at 8 records instead of 16. Behaviour coverage caught what declaration coverage could not; they are different instruments and this file needed both.",
+          "contains": "MODE_NAMES\\[wasm\\._emu_get_pin_mode\\(port, bit\\)\\]"
+        },
+        {
+          "id": "emu8051-input-normalization",
+          "falsifiable": "The ADC value the MCU receives differs from the one the recorder logs, so a replayed session drifts from the recorded one.",
+          "why": "normalizeVolts clamps to 0..vcc and the pin callback coerces to 0/1, matching what the native setter would store. Recorder-MOTIVATED but not recorder-gated: it changes what reaches _emu_set_adc_voltage whether or not anyone is listening. Declared 2026-09-10 for the same reason as the entry above.",
+          "contains": "normalizeVolts"
         }
       ]
     }
@@ -397,11 +409,10 @@ fails unless it touched both.
       "emu8051-debug.js",
       "i8086-adapter.js",
       "i8086-debug.js",
-      "index.js",
       "m6502-adapter.js",
       "z80-adapter.js"
     ],
-    "note": "Files that diverge only line-by-line and have no named allow-list entry. Recorded as a SET, not counts. reseat-gate.js left this inventory on 2026-09-07: it was not forward-ported work at all, it was lite BEHIND by one upstream commit (20f0d45), and syncing it forward made it identical. Corrected in VENDOR-DIRECTION-2026-09-06.md -- size has no direction. debug-session.js left on 2026-09-08 after its wall-budget implementation converged upstream at bw-board 64ecc940; the guarded bump changed zero bytes in that file, so only its stale declaration retired."
+    "note": "Files that diverge only line-by-line and have no named allow-list entry. Recorded as a SET, not counts. reseat-gate.js left this inventory on 2026-09-07: it was not forward-ported work at all, it was lite BEHIND by one upstream commit (20f0d45), and syncing it forward made it identical. Corrected in VENDOR-DIRECTION-2026-09-06.md -- size has no direction. debug-session.js left on 2026-09-08 after its wall-budget implementation converged upstream at bw-board 64ecc940; the guarded bump changed zero bytes in that file, so only its stale declaration retired. index.js left on 2026-09-10, and its reason is the one worth reading: the divergence had ALREADY converged in substance and only its LOCATION still differed. Lite split the barrel in 6dfbe4fb7 so getTargetKinds and LABWIRED_KIND came from the import-free target-kinds.js leaf instead of through the 22 KB debug-target-factory.js. Upstream then took that same isolation in 0a779af -- 'restore the leaf a perf isolation depended on' -- but put the re-export in the FACTORY, so lite's barrel line became residue of a convergence that had already happened. Measured, not assumed: the transitive module closure of index.js is 103 modules under BOTH forms, byte for byte the same set, because the adjacent unconditional createDebugTarget re-export pulls the factory either way. The probe was mutation-checked -- dropping that re-export shrinks the closure to 93 and takes target-kinds.js with it -- so the identical result means identity, not a blind measurement. And no lite consumer was ever served by the split: debug-panel.jsx, the only caller, dynamic-imports lib/bw-board/target-kinds.js DIRECTLY, and test/i8086-debug-startup-performance.test.mjs asserts the contract there, at the consumer, not at the barrel."
   },
   "liteAuthored": {
     "why": "THE MIRROR IMAGE OF absentByDesign BELOW. That list records files upstream has and lite deliberately does not; this one records files LITE has and upstream does not -- lite-authored source living inside a vendored root. Seven as of 2026-09-07, found while measuring a proposed vendored-path gate. They were not invisible: test/vendor-identity.test.mjs has printed them since lego-b9 added the liteOnly and notCompared collectors this morning. But printed is not asserted, and nothing said which of the seven were deliberate. A lite-authored file in a vendored directory is one careless sync from being clobbered and has no upstream to restore it from, so each one is now a decision recorded once rather than an accident nobody has examined. THE REASON MUST SAY WHY IT LIVES HERE RATHER THAN BESIDE LITE'S OWN CODE -- six of the seven are reached by relative import from a vendored sibling that itself carries a declared divergence, which is a real constraint; resolve-netlist.js is not, and its entry says so.",
