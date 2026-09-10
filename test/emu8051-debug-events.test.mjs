@@ -8,7 +8,6 @@ const ROOT = path.resolve(import.meta.dirname, '..');
 const WASM_JS = path.join(ROOT, 'overlay/scratch-gui/src/lib/emu8051/emu8051.js');
 const DEBUG_JS = path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-board/emu8051-debug.js');
 const have = existsSync(WASM_JS) && existsSync(DEBUG_JS);
-if (!have) console.log('# SKIP: the vendored emu8051 WASM is not present');
 
 const CLOCK_HZ = 11059200;
 const CYCLE_HEX = ':05000000901234000025\n:00000001FF\n';
@@ -48,8 +47,7 @@ function withoutExports(wasm, names) {
     });
 }
 
-test('8051 advertises only the event evidence its native exports provide', async () => {
-    if (!have) return;
+test('8051 advertises only the event evidence its native exports provide', {skip: have ? false : 'the vendored emu8051 WASM is not present'}, async () => {
     const target = await fixture(CYCLE_HEX);
     const caps = target.capabilities();
     assert.ok(caps.events.includes('instruction'));
@@ -64,8 +62,7 @@ test('8051 advertises only the event evidence its native exports provide', async
     assert.equal(caps.extensions.pinHistoryCapacity, 4096);
 });
 
-test('native pin history emits retained sub-instruction edges with native timestamps', async () => {
-    if (!have) return;
+test('native pin history emits retained sub-instruction edges with native timestamps', {skip: have ? false : 'the vendored emu8051 WASM is not present'}, async () => {
     const target = await fixture(PIN_HEX);
     const events = [];
     target.onDebugEvent(event => events.push(event));
@@ -83,8 +80,7 @@ test('native pin history emits retained sub-instruction edges with native timest
         'the pin edge happened within the instruction and precedes its retire event');
 });
 
-test('a partial pin-history ABI advertises no signal events', async () => {
-    if (!have) return;
+test('a partial pin-history ABI advertises no signal events', {skip: have ? false : 'the vendored emu8051 WASM is not present'}, async () => {
     const {default: createEmu8051} = await import(WASM_JS);
     const {createEmu8051DebugTarget} = await import(DEBUG_JS);
     const wasm = await createEmu8051();
@@ -94,8 +90,7 @@ test('a partial pin-history ABI advertises no signal events', async () => {
     assert.equal(target.capabilities().extensions.signalEvidence, 'none');
 });
 
-test('native pin history uses its write head after wrap and reports the exact loss', async () => {
-    if (!have) return;
+test('native pin history uses its write head after wrap and reports the exact loss', {skip: have ? false : 'the vendored emu8051 WASM is not present'}, async () => {
     const {target, wasm} = await fixtureWithWasm(PIN_LOOP_HEX);
     const events = [];
     target.onDebugEvent(event => events.push(event));
@@ -130,8 +125,7 @@ test('native pin history uses its write head after wrap and reports the exact lo
         'retained post-wrap events preserve native chronological order');
 });
 
-test('an old build may keep write breakpoints without claiming decoded memory events', async () => {
-    if (!have) return;
+test('an old build may keep write breakpoints without claiming decoded memory events', {skip: have ? false : 'the vendored emu8051 WASM is not present'}, async () => {
     const {default: createEmu8051} = await import(WASM_JS);
     const {createEmu8051DebugTarget} = await import(DEBUG_JS);
     const wasm = await createEmu8051();
@@ -144,8 +138,7 @@ test('an old build may keep write breakpoints without claiming decoded memory ev
     assert.equal(caps.fidelity.memory, 'unsupported');
 });
 
-test('real single instruction and oscillator steps emit distinct recorded evidence', async () => {
-    if (!have) return;
+test('real single instruction and oscillator steps emit distinct recorded evidence', {skip: have ? false : 'the vendored emu8051 WASM is not present'}, async () => {
     const target = await fixture(CYCLE_HEX);
     const events = [];
     target.onDebugEvent(event => events.push(event));
@@ -185,8 +178,7 @@ test('real single instruction and oscillator steps emit distinct recorded eviden
     assert.deepEqual(instructionEvents[0].changes.registers.dptr, {before: 0, after: 0x1234});
 });
 
-test('native write-watchpoint emits the measured before/after transition', async () => {
-    if (!have) return;
+test('native write-watchpoint emits the measured before/after transition', {skip: have ? false : 'the vendored emu8051 WASM is not present'}, async () => {
     const target = await fixture(WATCH_HEX);
     const events = [];
     const unsubscribe = target.onDebugEvent(event => events.push(event));

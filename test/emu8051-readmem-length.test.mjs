@@ -26,7 +26,6 @@ const ROOT = path.resolve(import.meta.dirname, '..');
 const WASM_JS = path.join(ROOT, 'overlay/scratch-gui/src/lib/emu8051/emu8051.js');
 const DEBUG_JS = path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-board/emu8051-debug.js');
 const have = existsSync(WASM_JS) && existsSync(DEBUG_JS);
-if (!have) console.log('# SKIP: the vendored emu8051 WASM is not present');
 
 /** The size of the C scratch buffer. Reads must cross this to prove anything. */
 const SCRATCH = 256;
@@ -44,8 +43,7 @@ async function target () {
 /** A pattern with no run of equal bytes, so a stale buffer cannot look right. */
 const pattern = n => Uint8Array.from({length: n}, (_, i) => ((i * 7) + 3) & 0xFF);
 
-test('a bulk read longer than the scratch buffer returns the program, not heap', async () => {
-    if (!have) return;
+test('a bulk read longer than the scratch buffer returns the program, not heap', {skip: have ? false : 'the vendored emu8051 WASM is not present'}, async () => {
     const t = await target();
     const want = pattern(0x800);
     t.writeMem('code', 0, want);
@@ -60,8 +58,7 @@ test('a bulk read longer than the scratch buffer returns the program, not heap',
     }
 });
 
-test('the bulk read agrees with the byte-at-a-time path it is an optimisation of', async () => {
-    if (!have) return;
+test('the bulk read agrees with the byte-at-a-time path it is an optimisation of', {skip: have ? false : 'the vendored emu8051 WASM is not present'}, async () => {
     const t = await target();
     t.writeMem('code', 0, pattern(0x400));
 
@@ -73,8 +70,7 @@ test('the bulk read agrees with the byte-at-a-time path it is an optimisation of
         'the fast path must be indistinguishable from reading one byte at a time');
 });
 
-test('a read that STARTS past the seam is not silently rebased to zero', async () => {
-    if (!have) return;
+test('a read that STARTS past the seam is not silently rebased to zero', {skip: have ? false : 'the vendored emu8051 WASM is not present'}, async () => {
     const t = await target();
     t.writeMem('code', 0, pattern(0x800));
     const want = pattern(0x800);

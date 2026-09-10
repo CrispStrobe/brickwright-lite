@@ -9,7 +9,6 @@ const ROOT = path.resolve(import.meta.dirname, '..');
 const WASM_JS = path.join(ROOT, 'overlay/scratch-gui/src/lib/emu8051/emu8051.js');
 const DEBUG_JS = path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-board/emu8051-debug.js');
 const have = existsSync(WASM_JS) && existsSync(DEBUG_JS);
-if (!have) console.log('# SKIP: the vendored emu8051 WASM is not present');
 
 const CLOCK_HZ = 11059200;
 const PROGRAM = ':0800000075300075304280FEEE\n:00000001FF\n';
@@ -47,8 +46,7 @@ function digest(value) {
     return createHash('sha256').update(text).digest('hex');
 }
 
-test('8051 declines checkpoint capability and names every opaque mutable class', async () => {
-    if (!have) return;
+test('8051 declines checkpoint capability and names every opaque mutable class', {skip: have ? false : 'the vendored emu8051 WASM is not present'}, async () => {
     const target = await fixture();
     const caps = target.capabilities();
     assert.deepEqual(caps.recording, []);
@@ -68,8 +66,7 @@ test('8051 declines checkpoint capability and names every opaque mutable class',
     assert.match(target.captureCheckpoint().refused, /native complete-state WASM ABI/);
 });
 
-test('checkpoint capture/restore refusals neither inspect snapshots nor mutate real emulator state', async () => {
-    if (!have) return;
+test('checkpoint capture/restore refusals neither inspect snapshots nor mutate real emulator state', {skip: have ? false : 'the vendored emu8051 WASM is not present'}, async () => {
     const target = await fixture();
     target.step('insn', 1);
     settle(target);
@@ -83,8 +80,7 @@ test('checkpoint capture/restore refusals neither inspect snapshots nor mutate r
     assert.deepEqual(visibleState(target), before);
 });
 
-test('refused checkpoint calls leave subsequent recorded replay hashes unchanged', async () => {
-    if (!have) return;
+test('refused checkpoint calls leave subsequent recorded replay hashes unchanged', {skip: have ? false : 'the vendored emu8051 WASM is not present'}, async () => {
     const run = async interfere => {
         const target = await fixture();
         const events = [];
