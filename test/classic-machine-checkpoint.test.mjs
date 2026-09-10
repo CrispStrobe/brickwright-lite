@@ -247,8 +247,14 @@ test('checkpoint snapshots and component restore arguments are defensively owned
 test('checkpoint time must match captured machine cycles and target clock', () => {
     const target = createM6502DebugTarget({machine: new M6502Machine(m6502Config())});
     const checkpoint = target.captureCheckpoint();
+    // BigInt(...) + 1n, not `+ 1`: debugTime() returns a BigInt since bw-board
+    // c9aafb6 and `BigInt + Number` THROWS rather than producing a wrong number.
+    // Written when ticks were Numbers, this line encoded that assumption — the
+    // same convergence that made the read and the stamp agree on type made this
+    // arithmetic illegal. Converting first states the intent (one tick off) in a
+    // way that survives either spelling.
     assert.equal(target.restoreCheckpoint({...checkpoint,
-        time: {...checkpoint.time, ticks: checkpoint.time.ticks + 1}}).code,
+        time: {...checkpoint.time, ticks: BigInt(checkpoint.time.ticks) + 1n}}).code,
     'INVALID_CHECKPOINT_TIME');
 });
 
