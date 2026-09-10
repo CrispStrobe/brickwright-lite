@@ -20,6 +20,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
+import {execSync} from 'node:child_process';
 import {applyVendorRewrites, DEEP_IMPORT_REWRITES} from '../scripts/lib/vendor-rewrites.mjs';
 import os from 'node:os';
 import path from 'node:path';
@@ -27,6 +28,32 @@ import {fileURLToPath} from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DOC = path.join(ROOT, 'docs/VENDOR-DIVERGENCE-I8086-MACHINE.md');
+const PINS = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor-pins.json'), 'utf8'));
+
+// Is `dir` (a checkout, or a `/src` under one) at the PINNED sha for `repo`?
+// This gate JUDGES by reading `dir`'s WORKING TREE (see readUpstream), so a dir
+// that is NOT at the pin is a peer's feature branch wearing this gate's name --
+// the exact red lego-b9 measured on 2026-09-07. gen-bw-board-census.mjs refuses
+// off-pin and names both shas; this returns the same fact so callers can too.
+// Repo-agnostic on purpose: sb3-creator already has a CI pin-proof though no
+// judge-test consumes it yet, and a third caller must inherit this, not a third
+// special case.
+//
+// CI IS NOT EXPOSED, and this is defence in depth rather than a bug fix:
+// build.yml ("Fetch the pinned bw-board tree") and vendor-freshness.yml both
+// re-read HEAD and refuse off-pin BEFORE setting the env var. This moves that
+// proof next to the judgment it guards, so a LOCAL run -- or a future CI path
+// that sets the var without copying the YAML check -- is covered by the
+// instrument itself. The fleet was NOT judging wrong trees in CI.
+const headAtPin = (dir, repo) => {
+    const pin = PINS[repo] ?? null;
+    let head = null;
+    try {
+        head = execSync(`git -C ${JSON.stringify(dir)} rev-parse HEAD`,
+            {stdio: ['ignore', 'pipe', 'ignore']}).toString().trim();
+    } catch { /* not a git checkout -- head stays null, atPin false */ }
+    return {head, pin, atPin: Boolean(pin) && head === pin};
+};
 
 const readAllowList = (doc = DOC) => {
     const md = fs.readFileSync(doc, 'utf8');
@@ -244,7 +271,13 @@ const pinnedSrcDir = (envVar = 'BW_BOARD_DIR', repo = 'bw-board') => {
     const dir = candidates.map(d => path.join(d, 'src'))
         .filter(d => fs.existsSync(d))
         .filter(d => process.env[envVar] ? true : outsideTmp(d))[0];
-    return {dir, pinned: Boolean(process.env[envVar]), candidates};
+    // `pinned` means the tree IS at the pin, not merely that the env var is set:
+    // only an explicit env-var dir is a judging candidate, and only when its
+    // HEAD equals the pin. Off-pin (or a non-env fallback) SPEAKS, never JUDGES.
+    const {head, pin, atPin} = dir && process.env[envVar]
+        ? headAtPin(dir, repo)
+        : {head: null, pin: PINS[repo] ?? null, atPin: false};
+    return {dir, pinned: Boolean(process.env[envVar]) && atPin, head, pin, candidates};
 };
 
 // ONE IMPLEMENTATION OF THE BYTE-IDENTITY CLAIM, TWO CORPORA. bw-board and
@@ -346,7 +379,7 @@ const declaresEveryDivergence = (label, {doc, env, repo, floor}) =>
     // A pin move is a PROXY for convergence. This asks the thing itself: after
     // the commit, IS the content what the recorded pin says it is? Same move as
     // baseForFile -- ask what the content is, not what the commit did.
-    const {dir: srcDir, pinned, candidates} = pinnedSrcDir(env, repo);
+    const {dir: srcDir, pinned, head, pin, candidates} = pinnedSrcDir(env, repo);
     if (!srcDir) {
         t.diagnostic(`SKIPPED, NOT PASSED: upstream not found. Looked in: ${candidates.join(', ')}.`);
         t.skip('upstream tree not on disk -- byte-identity against the pin NOT verified');
@@ -370,8 +403,11 @@ const declaresEveryDivergence = (label, {doc, env, repo, floor}) =>
         t.diagnostic(`sibling tree ${srcDir}: ${identical.length} identical, ${diverged.length} ` +
             `declared-divergent, ${undeclared.length} undeclared` +
             `${undeclared.length ? ` (${undeclared.join(', ')})` : ''}, ${liteOnly.length} lite-only`);
-        t.skip(`a sibling ${repo} checkout was found but its COMMIT is unknown -- set ` +
-            `${env} to a checkout at the sha in vendor-pins.json to judge it (CI does)`);
+        t.skip(process.env[env] && head
+            ? `${env} is at ${head.slice(0, 9)} but vendor-pins.json pins ${repo} at ${pin?.slice(0, 9)} -- ` +
+                `a sibling checkout at the wrong commit may SPEAK, not JUDGE; check it out at the pin to judge (CI does, proving HEAD==pin)`
+            : `a sibling ${repo} checkout was found but its COMMIT is unknown -- set ` +
+                `${env} to a checkout at the sha in vendor-pins.json to judge it (CI does)`);
         return;
     }
 
@@ -507,7 +543,10 @@ test('upstream has not converged on the lite-only work (needs the bw-board tree)
     // "Fetch the pinned bw-board tree" step re-reads HEAD to prove it), decides
     // this gate. Recorded, not judged: the same answer the Costume interactivity
     // ceiling got when its number turned out to be about the runner.
-    const pinned = Boolean(process.env.BW_BOARD_DIR);
+    const {head, pin, atPin} = srcDir && process.env.BW_BOARD_DIR
+        ? headAtPin(srcDir, 'bw-board')
+        : {head: null, pin: PINS['bw-board'] ?? null, atPin: false};
+    const pinned = Boolean(process.env.BW_BOARD_DIR) && atPin;
     if (!srcDir) {
         // Not an assertion failure -- upstream genuinely is not here. But it is
         // reported, and it is NOT counted as the invariant having been checked.
@@ -557,9 +596,12 @@ test('upstream has not converged on the lite-only work (needs the bw-board tree)
         t.diagnostic(`sibling tree ${srcDir}: ${shouldCover.length} file(s) carry lite-only work, ` +
             `${uncovered.length} not covered by the allow-list${uncovered.length ? ` (${uncovered.join('; ')})` : ''}; ` +
             `${liteOnly.length} vendored file(s) it does not have${liteOnly.length ? ': ' + liteOnly.join(', ') : ''}`);
-        t.skip('a sibling bw-board checkout was found but its COMMIT is unknown, and this ' +
-            'invariant is only meaningful against the tree at the pin -- set BW_BOARD_DIR to a ' +
-            'bw-board checkout at the sha in vendor-pins.json to judge it (CI does)');
+        t.skip(process.env.BW_BOARD_DIR && head
+            ? `BW_BOARD_DIR is at ${head.slice(0, 9)} but vendor-pins.json pins bw-board at ${pin?.slice(0, 9)} -- ` +
+                'a sibling checkout at the wrong commit may SPEAK, not JUDGE; check it out at the pin to judge (CI does, proving HEAD==pin)'
+            : 'a sibling bw-board checkout was found but its COMMIT is unknown, and this ' +
+                'invariant is only meaningful against the tree at the pin -- set BW_BOARD_DIR to a ' +
+                'bw-board checkout at the sha in vendor-pins.json to judge it (CI does)');
         return;
     }
     assert.deepEqual(uncovered, [],
@@ -763,10 +805,21 @@ test('every sync rewrite the identity gate forgives is one the trees still need'
     // it rewrites FROM, and the vendored tree the text it rewrites TO. Neither
     // half alone is enough -- a `from` nobody vendors is dead, and a `to` with no
     // upstream source is lite-authored work wearing a rewrite's clothes.
-    const {dir: srcDir, candidates} = pinnedSrcDir('BW_BOARD_DIR', 'bw-board');
+    const {dir: srcDir, pinned, head, pin, candidates} = pinnedSrcDir('BW_BOARD_DIR', 'bw-board');
     if (!srcDir) {
         t.diagnostic(`SKIPPED, NOT PASSED: upstream not found. Looked in: ${candidates.join(', ')}.`);
         t.skip('upstream tree not on disk -- the rewrite table is NOT verified against it');
+        return;
+    }
+    if (!pinned) {
+        // This reads srcDir's WORKING TREE too (does upstream still contain the
+        // rewrite source text), so an off-pin checkout could call a live rule
+        // dead. SPEAK, not JUDGE -- same ruling as the two tests above.
+        t.skip(process.env.BW_BOARD_DIR && head
+            ? `BW_BOARD_DIR is at ${head.slice(0, 9)} but vendor-pins.json pins bw-board at ${pin?.slice(0, 9)} -- ` +
+                'the rewrite table is only meaningful against the tree at the pin; check it out at the pin (CI does)'
+            : 'a sibling bw-board checkout was found but its COMMIT is unknown -- set BW_BOARD_DIR to a ' +
+                'checkout at the sha in vendor-pins.json to verify the rewrite table (CI does)');
         return;
     }
     const spec = readAllowList();
