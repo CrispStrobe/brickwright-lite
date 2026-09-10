@@ -5,6 +5,12 @@ A design note, not a lane. It exists because the obvious plan — upstream the
 diverged files largest first — would upstream a checkpoint *consumer* into a repo
 with no checkpoint *concept*.
 
+> **THE PROPERTY EVERYTHING BELOW IS FOR: the vendored tree has no outward
+> dependencies. That is what makes it vendorable.** It is why the third axis
+> blocks at all, and it is the thing to check a ruling against. "Is this an engine
+> fact or a downstream concern" is a heuristic for reaching it; where the heuristic
+> and the property disagree, the property wins.
+
 ## The unit is a subsystem, and it is derived from imports
 
 Twelve of the twenty-two divergences are one feature. That is not a judgement
@@ -83,6 +89,15 @@ A blanket "move them all up" or "invert them all" gets at least one wrong, becau
 the three differ in kind. The question to ask of each is: **is this dependency an
 ENGINE fact or a DOWNSTREAM concern?**
 
+**With a qualifier the rule needs, added after it failed once.** The rule as first
+written assumed injection is always mechanically available. It is not:
+**injection is an option only where a NON-VENDORED injection point exists on the
+path.** For the cycle-provider boundary there is none — the only production caller
+of `createW65C02ProviderBoundary` is `debug-target-factory.js:371`, itself
+vendored — so injecting would relocate the dependency inside the vendored tree
+rather than remove it. Where no such point exists the choice is move-it or
+stay-blocked, and the heuristic has nothing to say.
+
 | dependency | kind | ruling |
 |---|---|---|
 | `instructionLength` from `bw-debug/opcodes.js` | how many bytes an 8051 instruction occupies — an engine fact | **upstream it**, on its own merits, independent of checkpointing |
@@ -130,6 +145,16 @@ direction is already established — `bw-debug/debug-runner.js` imports
 `conditional-cycle-provider.js` is the stronger half and does not depend on this
 argument: it has exactly one vendored consumer, `w65c02-cycle-provider.js`, which
 is the file being unblocked.
+
+**"Move only the boundary" is NOT a third option, and it looked like one.** I held
+it in reserve as a fallback. `conditional-cycle-provider.js` line 1 is
+`import {negotiateCycleProvider} from './cycle-provider.js'`, so moving it alone
+would hand upstream an outward dependency on a LITE module — strictly worse than
+today, where the outward dependency at least points from the vendored tree into
+lite's own layer. They are a leaf pair and they move together or not at all. The
+real options are both, or neither with `w65c02-cycle-provider.js` staying blocked.
+
+**Ruling: move both.**
 
 ## The twenty-two, classified
 
