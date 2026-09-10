@@ -277,9 +277,9 @@ export function createEmu8051Adapter(wasm, opts = {}) {
       for (let bit = 0; bit < 8; bit++) {
         const pinId = `P${port}.${bit}`;
         const state = lastState.get(pinId);
-        // Reset clears the JS output shadow before the first post-reset poll.
-        // Query native mode in that window so external inputs are seated
-        // before execution instead of one run slice late.
+        // reset() clears lastState, so between a reset and the next poll there is
+        // no remembered mode and this loop used to seat nothing -- an external
+        // input arrived one run slice late. The core knows the mode throughout.
         const mode = state?.mode ?? MODE_NAMES[wasm._emu_get_pin_mode(port, bit)] ?? 'quasi';
         if (mode === 'input' || mode === 'quasi' || mode === 'opendrain') {
           const level = board.readPin(pinId);
