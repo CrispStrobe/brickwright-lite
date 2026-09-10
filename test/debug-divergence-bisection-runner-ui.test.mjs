@@ -19,6 +19,10 @@ test('runner probes passively and restores source before its one output resync',
     const body = runner.slice(start, end);
     assert.match(body, /createDivergenceBisection\(\{maxProbes: 64/);
     assert.match(body, /captureSource: capture, restoreSource: restore/);
+    assert.match(body, /const capture = \(\) => wrapSourceState\(target\.captureCheckpoint\(\), captureHostState\)/,
+        'the bisection source capture routes through wrapSourceState, so a RETURNED refusal is not buried in ' +
+        'the {target, host} wrapper the source guard cannot see -- the second closure B1 fixed, held here so ' +
+        'B2 (which removes the throw that currently compensates) cannot silently revert it');
     assert.match(body, /replay\.reverseToCycle\(cursor\.eventCursor\)/);
     assert.match(body, /passive: true,[\s\S]{0,100}deterministic: true, externalEffects: 0/);
     assert.match(body, /replayOutputGate\.resynchronize\(snapshot\(\)\)/);
