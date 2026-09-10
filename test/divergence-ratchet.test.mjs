@@ -65,10 +65,10 @@ const DOC = path.join(ROOT, 'docs/VENDOR-DIVERGENCE-I8086-MACHINE.md');
  * count to edit.
  */
 const RATCHET = {
-    files: 5,             // declared-divergent files with named identifier entries
-    entries: 33,          // liteOnly entries across those files
+    files: 3,             // declared-divergent files with named identifier entries
+    entries: 17,          // liteOnly entries across those files
     lineLevelOnly: 6,     // files carrying undeclared-identifier line divergence
-    liteAuthored: 7       // lite-authored files living inside the vendored root
+    liteAuthored: 6       // lite-authored files living inside the vendored root
 };
 
 const spec = () => {

@@ -200,62 +200,6 @@ fails unless it touched both.
           "falsifiable": "The debugger will not single-step: you press Step and nothing moves.",
           "why": "Per-instruction hook carrying pcBefore/pcAfter and the cycle delta. The debugger's single-step and the trace view are both built on it.",
           "contains": "if \\(this\\.hooks\\.onInstruction\\) \\{?[^}]*?pcBefore"
-        },
-        {
-          "id": "checkpoint-topology-snapshot",
-          "disposition": "upstream: lane A \u2014 machine-checkpoint.js + three machine consumers; expected to retire with the pin bump that follows",
-          "falsifiable": "You save a program on one board, load it on a board wired differently, and it runs as nonsense instead of refusing.",
-          "why": "A checkpoint restored into a DIFFERENT machine topology is silent corruption -- same registers, different wiring. The snapshot makes restore refuse rather than half-work.",
-          "contains": "_snapshotTopology\\(\\)"
-        },
-        {
-          "id": "checkpoint-refuses-incomplete-state",
-          "disposition": "upstream: lane A \u2014 machine-checkpoint.js + three machine consumers; expected to retire with the pin bump that follows",
-          "falsifiable": "You save, reload, and the machine comes back subtly wrong -- a sound still playing, a chip mid-transfer -- instead of telling you it could not save.",
-          "why": "canCheckpoint() refuses rather than saving a machine whose components lack a complete state API. THIS IS THE ABSENT-HARDWARE RULE APPLIED TO SAVE STATE: a partial checkpoint restores to a plausible-looking wrong machine, which is worse than no checkpoint.",
-          "contains": "canCheckpoint\\(\\)"
-        },
-        {
-          "id": "checkpoint-component-state-api",
-          "disposition": "upstream: lane A \u2014 machine-checkpoint.js + three machine consumers; expected to retire with the pin bump that follows",
-          "falsifiable": "A saved file changes by itself after you save it, because it shares memory with the running machine.",
-          "why": "getState/saveState dual-API bridge with deep clone, so a checkpoint does not alias live device buffers.",
-          "contains": "static _cloneCheckpointValue\\(value\\)"
-        },
-        {
-          "id": "checkpoint-component-bridge",
-          "disposition": "upstream: lane A \u2014 machine-checkpoint.js + three machine consumers; expected to retire with the pin bump that follows",
-          "falsifiable": "Saving works on one board and produces a file that will not load on the same board, with no explanation of which part failed.",
-          "why": "_saveComponent and _loadComponent name the failing component in the error ('component X has no state API', 'X state API is incompatible') rather than throwing from inside a generic loop. ADDED 2026-09-05 BECAUSE THE DERIVED COVERAGE CHECK FOUND THEM UNEXPLAINED -- the pinned >=8 floor had never noticed, because 8 entries is 8 entries whatever they cover.",
-          "contains": "static _saveComponent\\(name, component\\)"
-        },
-        {
-          "id": "i8086-checkpoint-support",
-          "disposition": "upstream: lane A \u2014 machine-checkpoint.js + three machine consumers; expected to retire with the pin bump that follows",
-          "falsifiable": "The 8086 saves a file that silently comes back wrong -- a bus trace mid-capture, an audio mixer mid-phase -- instead of telling you it could not save.",
-          "why": "checkpointSupport() collects the REASONS a save cannot be trusted (bus trace is an externally-owned append cursor; the audio mixer holds source phases outside the chip state APIs) and defers to the shared machine-checkpoint.js for the per-component codec check. The 8086 is the third consumer of that lite-authored module (B2, 2026-09-10); a sync deletes this and the machine claims a checkpoint it cannot honour.",
-          "contains": "checkpointSupport\\(\\) \\{"
-        },
-        {
-          "id": "i8086-checkpoint-topology",
-          "disposition": "upstream: lane A \u2014 machine-checkpoint.js + three machine consumers; expected to retire with the pin bump that follows",
-          "falsifiable": "A checkpoint from an 80186 restores onto an 8086: 60h is PUSHA on one and JO on the other, so the same bytes run as different instructions and the machine goes silently wrong.",
-          "why": "checkpointTopology() carries the variant in the shared topology so a wrong-variant checkpoint is refused by the envelope before its state is inspected. Forward-ported here and never upstreamed.",
-          "contains": "checkpointTopology\\(\\) \\{"
-        },
-        {
-          "id": "i8086-checkpoint-capture",
-          "disposition": "upstream: lane A \u2014 machine-checkpoint.js + three machine consumers; expected to retire with the pin bump that follows",
-          "falsifiable": "You cannot save a running 8086 program: the save does nothing, or produces a file that will not load on the same board.",
-          "why": "captureCheckpoint(): the save path, on the machine-checkpoint.js contract (schema, topology, cloneCheckpointValue). Forward-ported here and never upstreamed.",
-          "contains": "captureCheckpoint\\(\\) \\{"
-        },
-        {
-          "id": "i8086-checkpoint-restore",
-          "disposition": "upstream: lane A \u2014 machine-checkpoint.js + three machine consumers; expected to retire with the pin bump that follows",
-          "falsifiable": "You cannot reload a saved 8086 program, or a corrupt file half-applies and leaves a wrong machine running.",
-          "why": "restoreCheckpoint(): the load path. Validates the shared envelope, then wraps loadState's deep 8086 validation so a bad snapshot returns an INVALID_CHECKPOINT refusal rather than throwing or half-applying.",
-          "contains": "restoreCheckpoint\\(checkpoint\\) \\{"
         }
       ],
       "graftedFromUpstream": [
@@ -272,72 +216,8 @@ fails unless it touched both.
         {
           "id": "cycle-estimator-not-vendored",
           "absent": "CycleEstimator|i8088-timing",
-          "falsifiable": "The 8086 stops working completely — no machine, no screen, no blocks — because the file it now says it imports is not in this repository at all.",
-          "why": "THIS ENTRY POINTS THE OTHER WAY FROM THE NINE ABOVE. Upstream HAS this and lite deliberately does not, so there is no lite-only text for `contains` to hold; `absent` must NOT match the vendored copy. bw-board's i8086-machine.js imports CycleEstimator from ./i8088-timing.js at line 44 and uses _cycleEst nine times (9256cf7, opt-in cycle-accurate timing, ~6x). That import is present at MASTER AND AT THE CURRENT PIN, so lite did not fall behind on it — lite REMOVED it, before this allow-list existed to record the decision. Found 2026-09-06 while measuring vendor direction, having been written down nowhere for the whole time the nine entries above were being maintained. Re-adding the import means vendoring i8088-timing.js AND i8088-cycles.js, which it imports TABLES and PROVENANCE from: 983 KB of new bundle, 975 KB of it one table file, for a mode lite does not expose. That is a decision with its own owner and its own row, not something a pin move carries in silently."
-        }
-      ]
-    },
-    "z80-machine.js": {
-      "liteOnly": [
-        {
-          "id": "z80-checkpoint-capture",
-          "disposition": "upstream: lane A \u2014 machine-checkpoint.js + three machine consumers; expected to retire with the pin bump that follows",
-          "falsifiable": "You cannot save and reload a running program: the save does nothing, or produces a file that will not load on the same board.",
-          "why": "captureCheckpoint/restoreCheckpoint: the save and load path itself. Forward-ported here and never upstreamed.",
-          "contains": "captureCheckpoint\\(\\)"
-        },
-        {
-          "id": "z80-checkpoint-restore",
-          "disposition": "upstream: lane A \u2014 machine-checkpoint.js + three machine consumers; expected to retire with the pin bump that follows",
-          "falsifiable": "You cannot save and reload a running program: the save does nothing, or produces a file that will not load on the same board.",
-          "why": "The load half. Validates the envelope before touching machine state, so a bad file is refused rather than half-applied.",
-          "contains": "restoreCheckpoint\\("
-        },
-        {
-          "id": "z80-checkpoint-support",
-          "disposition": "upstream: lane A \u2014 machine-checkpoint.js + three machine consumers; expected to retire with the pin bump that follows",
-          "falsifiable": "The machine saves a file that silently comes back wrong -- a sound still playing, a chip mid-transfer -- instead of telling you it could not save.",
-          "why": "checkpointSupport() collects REASONS a save cannot be trusted (host PC traps owning state outside the machine) and refuses rather than saving something that reloads wrong.",
-          "contains": "checkpointSupport\\(\\)"
-        },
-        {
-          "id": "z80-checkpoint-topology",
-          "disposition": "upstream: lane A \u2014 machine-checkpoint.js + three machine consumers; expected to retire with the pin bump that follows",
-          "falsifiable": "A saved file loads into a differently-wired board and runs as nonsense instead of refusing.",
-          "why": "checkpointTopology() stamps the wiring into the file so a restore into a different board is refused, not silently misapplied.",
-          "contains": "checkpointTopology\\(\\)"
-        }
-      ]
-    },
-    "m6502-machine.js": {
-      "liteOnly": [
-        {
-          "id": "m6502-checkpoint-capture",
-          "disposition": "upstream: lane A \u2014 machine-checkpoint.js + three machine consumers; expected to retire with the pin bump that follows",
-          "falsifiable": "You cannot save and reload a running program: the save does nothing, or produces a file that will not load on the same board.",
-          "why": "captureCheckpoint/restoreCheckpoint: the save and load path itself. Forward-ported here and never upstreamed.",
-          "contains": "captureCheckpoint\\(\\)"
-        },
-        {
-          "id": "m6502-checkpoint-restore",
-          "disposition": "upstream: lane A \u2014 machine-checkpoint.js + three machine consumers; expected to retire with the pin bump that follows",
-          "falsifiable": "You cannot save and reload a running program: the save does nothing, or produces a file that will not load on the same board.",
-          "why": "The load half. Validates the envelope before touching machine state, so a bad file is refused rather than half-applied.",
-          "contains": "restoreCheckpoint\\("
-        },
-        {
-          "id": "m6502-checkpoint-support",
-          "disposition": "upstream: lane A \u2014 machine-checkpoint.js + three machine consumers; expected to retire with the pin bump that follows",
-          "falsifiable": "The machine saves a file that silently comes back wrong -- a sound still playing, a chip mid-transfer -- instead of telling you it could not save.",
-          "why": "checkpointSupport() collects REASONS a save cannot be trusted (host PC traps owning state outside the machine) and refuses rather than saving something that reloads wrong.",
-          "contains": "checkpointSupport\\(\\)"
-        },
-        {
-          "id": "m6502-checkpoint-topology",
-          "disposition": "upstream: lane A \u2014 machine-checkpoint.js + three machine consumers; expected to retire with the pin bump that follows",
-          "falsifiable": "A saved file loads into a differently-wired board and runs as nonsense instead of refusing.",
-          "why": "checkpointTopology() stamps the wiring into the file so a restore into a different board is refused, not silently misapplied.",
-          "contains": "checkpointTopology\\(\\)"
+          "falsifiable": "The 8086 stops working completely \u2014 no machine, no screen, no blocks \u2014 because the file it now says it imports is not in this repository at all.",
+          "why": "THIS ENTRY POINTS THE OTHER WAY FROM THE NINE ABOVE. Upstream HAS this and lite deliberately does not, so there is no lite-only text for `contains` to hold; `absent` must NOT match the vendored copy. bw-board's i8086-machine.js imports CycleEstimator from ./i8088-timing.js at line 44 and uses _cycleEst nine times (9256cf7, opt-in cycle-accurate timing, ~6x). That import is present at MASTER AND AT THE CURRENT PIN, so lite did not fall behind on it \u2014 lite REMOVED it, before this allow-list existed to record the decision. Found 2026-09-06 while measuring vendor direction, having been written down nowhere for the whole time the nine entries above were being maintained. Re-adding the import means vendoring i8088-timing.js AND i8088-cycles.js, which it imports TABLES and PROVENANCE from: 983 KB of new bundle, 975 KB of it one table file, for a mode lite does not expose. That is a decision with its own owner and its own row, not something a pin move carries in silently."
         }
       ]
     },
@@ -345,7 +225,7 @@ fails unless it touched both.
       "liteOnly": [
         {
           "id": "z80-debug-checkpoint-bridge",
-          "disposition": "upstream: lane A \u2014 machine-checkpoint.js + three machine consumers; expected to retire with the pin bump that follows",
+          "disposition": "upstream: the debug bridges are a SEPARATE lane from the machine-checkpoint contract (they carry replay/input-recording divergence beyond checkpoint); NOT retired by this pin bump, to be upstreamed with the rest of the debug-target replay surface.",
           "falsifiable": "You cannot save and reload a running program: the save does nothing, or produces a file that will not load on the same board.",
           "why": "The debug target forwards captureCheckpoint and restoreCheckpoint to the machine; without it the debugger cannot save or reload at all.",
           "contains": "captureCheckpoint"
@@ -384,7 +264,7 @@ fails unless it touched both.
       "liteOnly": [
         {
           "id": "m6502-debug-checkpoint-bridge",
-          "disposition": "upstream: lane A \u2014 machine-checkpoint.js + three machine consumers; expected to retire with the pin bump that follows",
+          "disposition": "upstream: the debug bridges are a SEPARATE lane from the machine-checkpoint contract (they carry replay/input-recording divergence beyond checkpoint); NOT retired by this pin bump, to be upstreamed with the rest of the debug-target replay surface.",
           "falsifiable": "You cannot save and reload a running program: the save does nothing, or produces a file that will not load on the same board.",
           "why": "Same bridge on the 6502 target: captureCheckpoint and restoreCheckpoint forwarded to the machine.",
           "contains": "captureCheckpoint"
@@ -452,13 +332,6 @@ fails unless it touched both.
     "why": "THE MIRROR IMAGE OF absentByDesign BELOW. That list records files upstream has and lite deliberately does not; this one records files LITE has and upstream does not -- lite-authored source living inside a vendored root. Seven as of 2026-09-07, found while measuring a proposed vendored-path gate. They were not invisible: test/vendor-identity.test.mjs has printed them since lego-b9 added the liteOnly and notCompared collectors this morning. But printed is not asserted, and nothing said which of the seven were deliberate. A lite-authored file in a vendored directory is one careless sync from being clobbered and has no upstream to restore it from, so each one is now a decision recorded once rather than an accident nobody has examined. THE REASON MUST SAY WHY IT LIVES HERE RATHER THAN BESIDE LITE'S OWN CODE -- six of the seven are reached by relative import from a vendored sibling that itself carries a declared divergence, which is a real constraint; resolve-netlist.js is not, and its entry says so.",
     "ratchet": "Entries may be REMOVED freely -- a file that moves out or lands upstream should leave. An entry may only be ADDED together with its reason in the same commit, and the gate refuses any lite-authored file that is not listed, so adding the file without the reason cannot go green.",
     "files": {
-      "machine-checkpoint.js": {
-        "reason": "Same shape: imported by z80-machine.js and m6502-machine.js, both NAMED entries. The checkpoint schema is the lite-only save/restore work in those two files factored out of them.",
-        "importedBy": [
-          "z80-machine.js",
-          "m6502-machine.js"
-        ]
-      },
       "w65c02-cycle-provider.js": {
         "reason": "Imported by debug-target-factory.js, a lineLevelOnly entry. Holds the JSMOO W65C02 REJECTION -- a qualification verdict with its candidate and oracle commits. Deliberately a refusal record rather than an engine: it is the evidence for not adopting one, so it belongs beside the factory that would otherwise reach for it.",
         "importedBy": [

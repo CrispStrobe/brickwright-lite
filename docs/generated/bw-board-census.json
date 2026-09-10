@@ -2,7 +2,7 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "38de2e6059218d2c0b627c82051808062c75720c",
+    "sha": "89576daf1ab8c74139db0bfcc44ad2f22aae7d17",
     "read": "2026-09-10"
   },
   "rows": [
@@ -196,7 +196,8 @@
       "ci": "no",
       "via": "/mnt/volume1/code/blinkenrocket-firmware/build/main.hex",
       "gates": [
-        "test/blinkenrocket-modem-e2e.test.mjs"
+        "test/blinkenrocket-modem-e2e.test.mjs",
+        "test/sibling-checkout-lookup.test.mjs"
       ],
       "what": "The reference Blinkenrocket firmware hex. Without it the sound-becomes-data modem loop is unproven end to end."
     },

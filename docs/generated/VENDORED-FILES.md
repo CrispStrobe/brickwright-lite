@@ -14,9 +14,9 @@ a sync cannot restore them, and they carry the same warning in their own header.
 
 ## bw-board
 
-Pinned at `38de2e6059218d2c0b627c82051808062c75720c`. Manifest: `docs/VENDOR-DIVERGENCE-I8086-MACHINE.md`.
+Pinned at `89576daf1ab8c74139db0bfcc44ad2f22aae7d17`. Manifest: `docs/VENDOR-DIVERGENCE-I8086-MACHINE.md`.
 
-191 tracked file(s): 173 plain, 11 declared-divergent, 7 lite-authored.
+191 tracked file(s): 176 plain, 9 declared-divergent, 6 lite-authored.
 
 - `LICENSE` `[lite]`
 - `ac.js`
@@ -144,11 +144,11 @@ Pinned at `38de2e6059218d2c0b627c82051808062c75720c`. Manifest: `docs/VENDOR-DIV
 - `m6502-adapter.js` `[declared]`
 - `m6502-debug.js` `[declared]`
 - `m6502-extract.js`
-- `m6502-machine.js` `[declared]`
+- `m6502-machine.js`
 - `m6507-machine.js`
 - `m6532.js`
 - `m74c922.js`
-- `machine-checkpoint.js` `[lite]`
+- `machine-checkpoint.js`
 - `machine-media.js`
 - `mc6845.js`
 - `mc6850.js`
@@ -201,7 +201,7 @@ Pinned at `38de2e6059218d2c0b627c82051808062c75720c`. Manifest: `docs/VENDOR-DIV
 - `z80-debug.js` `[declared]`
 - `z80-disasm.js`
 - `z80-extract.js`
-- `z80-machine.js` `[declared]`
+- `z80-machine.js`
 - `z80-target-factory.js` `[lite]`
 - `z80.js`
 - `zx-sna.js`
