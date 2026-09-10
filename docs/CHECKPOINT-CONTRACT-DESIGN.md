@@ -212,9 +212,28 @@ classification is for.
 
 | group | files |
 |---|---|
-| **checkpoint cluster** (10) | `i8086-machine.js`, `m6502-machine.js`, `z80-machine.js`, `i8086-debug.js`, `m6502-debug.js`, `z80-debug.js`, `emu8051-debug.js`, and the replay-refusal flags in `i8086-adapter.js`, `m6502-adapter.js`, `z80-adapter.js` |
+| **checkpoint/replay cluster** (11) | `i8086-machine.js`, `m6502-machine.js`, `z80-machine.js`, `i8086-debug.js`, `m6502-debug.js`, `z80-debug.js`, `emu8051-debug.js`, `emu8051-adapter.js`, and the replay-refusal flags in `i8086-adapter.js`, `m6502-adapter.js`, `z80-adapter.js` |
 | **cycle-provider unit** (1) | `debug-target-factory.js` — its lite-only lines ARE the two dynamic imports, the provider boundary and the selection |
-| **unclassified** (1) | `emu8051-adapter.js` — zero checkpoint mentions. Wants reading, not counting. |
+
+**`emu8051-adapter.js` was the last unclassified file and it is in the cluster.**
+It was left out because it mentions `checkpoint` zero times — and that count was the
+wrong instrument, because this half of the subsystem uses different words. Its 58
+lite-only lines are `observedInputs`, `recordInput`, `inputListeners`, `onInput(cb)`
+and `applyReplayInput(input)`: the input-recording half of replay, deduplicated at
+the native boundary, and described in its own comment as "recorder-compatible
+host-input facts".
+
+Measured rather than inferred: `i8086-debug.js:581` and `m6502-debug.js:141`
+IMPLEMENT `applyReplayInput` too, and both were already in the cluster.
+`bw-debug/instruction-replay.js:45` is the driver that consumes it, and it REFUSES
+a target having neither `applyInput` nor `applyReplayInput`. Three implementations
+of one target-side surface; the adapter is the third, not an outlier.
+
+**The cluster is defined by a SURFACE, not by a word.** Two halves sharing no
+vocabulary: `checkpointSupport` / `checkpointRefusal` for state, and
+`onInput` / `applyReplayInput` for the input log. Counting one word found one half.
+That is a by-name census missing a synonym — the same species as the import-syntax
+miss recorded above, one level up.
 
 ### `[lite]` — 8 files upstream does not have
 
@@ -225,9 +244,18 @@ classification is for.
 | **move OUT of the vendored tree** (1) | `resolve-netlist.js` — zero importers inside the vendored tree, two in lite's own runtime (`pico-sim-run.js`, `bw-debug/debug-runner.js`) |
 | **permanent** (1) | `LICENSE` — attribution that travels with the copy |
 
-So the checkpoint cluster is **12 files across both categories**, and the
-cycle-provider unit is **5**. Those two numbers are the ones to plan against; 20 is
-not a quantity anyone should act on.
+So the checkpoint/replay cluster is **13 files across both categories** (11
+`[declared]` + 2 `[lite]`), and the cycle-provider unit is **5**. Those two numbers
+are the ones to plan against; 20 is not a quantity anyone should act on. No
+`[declared]` file is now unclassified.
+
+**A consequence for the upstream design.** The replay DRIVER,
+`bw-debug/instruction-replay.js`, is a lite file, and it is what refuses a target
+lacking the surface. So the contract has a third piece beyond the two refusals: a
+target-side surface (`onInput`, `applyReplayInput`) that upstream would declare,
+and a driver that today lives downstream. Whether the driver follows it up is a
+separate decision from whether the surface does, and it should be taken
+deliberately rather than discovered when the first commit is written.
 
 ## Sequence
 
@@ -238,7 +266,9 @@ not a quantity anyone should act on.
 3. Lite re-pins and its allow-list entries are deleted **in the commit that lands
    each file** — a ledger tidied afterwards is a ledger nobody trusts.
 4. Then the cycle-provider unit, with its tests.
-5. Read the three unclassified files.
+5. Decide whether the replay driver (`bw-debug/instruction-replay.js`) follows the
+   target-side surface upstream or stays downstream. A separate decision from
+   whether the surface moves.
 
 Nothing here starts before the cluster's outward dependencies have a decision,
 because that decision changes what the first commit looks like.
