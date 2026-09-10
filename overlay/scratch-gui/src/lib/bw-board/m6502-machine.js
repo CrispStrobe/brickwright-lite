@@ -31,28 +31,15 @@ import { Latch374 } from './latch374.js';
 import { SDCardSPI } from './sdcard-spi.js';
 import {
     MACHINE_CHECKPOINT_SCHEMA, checkpointRefusal, checkpointSupport, cloneCheckpointValue,
-    checkpointTopology, statePair, validateCheckpointEnvelope
+    checkpointTopology, statePair, validateCheckpointEnvelope, validateCheckpointState
 } from './machine-checkpoint.js';
 
 // State codecs are part of the checkpoint schema. Comparing their structural
 // shape against a fresh sample catches a missing nested latch/counter before
 // any component is mutated. Array lengths may legitimately vary (UART RX
 // queues); typed memory blocks may not.
-const sameCheckpointShape = (actual, expected) => {
-    if (ArrayBuffer.isView(expected)) {
-        return ArrayBuffer.isView(actual) && actual.constructor === expected.constructor &&
-            actual.length === expected.length;
-    }
-    if (Array.isArray(expected)) return Array.isArray(actual);
-    if (expected && typeof expected === 'object') {
-        if (!actual || typeof actual !== 'object' || Array.isArray(actual)) return false;
-        const a = Object.keys(actual).sort();
-        const e = Object.keys(expected).sort();
-        return a.length === e.length && e.every((key, index) => key === a[index] &&
-            sameCheckpointShape(actual[key], expected[key]));
-    }
-    return typeof actual === typeof expected;
-};
+// sameCheckpointShape moved to machine-checkpoint.js on 2026-09-10; it was
+// always a contract-layer helper and the 8086 needed it too.
 
 /**
  * @typedef {object} MachineConfig
@@ -193,6 +180,11 @@ export class M6502Machine {
         this.mem = new Uint8Array(65536);
         /** @type {Record<string, W65C22|W65C51>} */
         this.chips = {};
+        // Built on first use, NOT here: config validation later in this
+        // constructor can throw, and a schedule built now would describe a
+        // board that is about to be rejected. See i8086-machine.js for the
+        // full note; the hazard is silent, so it is recorded at both sites.
+        this._advList = null;   // hot-loop cache; see _buildAdvanceList
         this._decode = [];
         for (const r of config.regions) {
             this._decode.push({ ...r, chip: null });
@@ -541,20 +533,35 @@ export class M6502Machine {
     attachDevice(name, dev) {
         this.devices = this.devices || {};
         this.devices[name] = dev;
+        this._advList = null;   // schedule is stale
         return dev;
     }
 
-    _advanceChips(n) {
+    /**
+     * Flat list of the targets _advanceChips actually calls, built on first
+     * use and invalidated in attachDevice. That loop runs once per
+     * instruction, and Object.keys() allocated a fresh name array each time --
+     * on the 8086 tier the identical pattern was 89% of machine.step().
+     */
+    _buildAdvanceList() {
+        const list = [];
         for (const name of Object.keys(this.chips)) {
             const chip = this.chips[name];
-            if (chip.advance) chip.advance(n);
+            if (chip.advance) list.push(chip);
         }
         if (this.devices) {
             for (const name of Object.keys(this.devices)) {
                 const dev = this.devices[name];
-                if (dev.advance) dev.advance(n);
+                if (dev.advance) list.push(dev);
             }
         }
+        this._advList = list;
+        return list;
+    }
+
+    _advanceChips(n) {
+        const list = this._advList !== null ? this._advList : this._buildAdvanceList();
+        for (let i = 0; i < list.length; i++) list[i].advance(n);
     }
 
     /**
@@ -600,7 +607,24 @@ export class M6502Machine {
         return false;
     }
 
-    /** Pulse NMI as an external pin event and advance machine peripherals through its bus time. */
+    /** One instruction (or one idle cycle when waiting); returns cycles consumed. */
+    /**
+     * Pulse NMI as an external pin event, and ADVANCE MACHINE TIME THROUGH IT.
+     *
+     * The CPU has had `nmi()` since this file existed and nothing surfaced it,
+     * so the debug target reached `machine.cpu.nmi()` directly — which is what
+     * this machine does internally for the vsync NMI at the simplevga branch
+     * below, and which is wrong for an EXTERNAL pulse. `cpu.nmi()` charges the
+     * seven-cycle interrupt sequence to the CPU's own counter and to nothing
+     * else: `this.cycles` does not move, so the peripherals are not advanced
+     * through that bus time and every timestamp taken from the machine clock
+     * reads as though the interrupt were free.
+     *
+     * Ported from a downstream consumer's copy of this file, which has had it
+     * for months. Upstream had the CPU entry point and no machine one.
+     *
+     * @returns {boolean} always true — an NMI is non-maskable and always taken
+     */
     nmi() {
         this.cpu.nmi();
         this.cycles += 7;
@@ -608,15 +632,39 @@ export class M6502Machine {
         return true;
     }
 
-    /** One instruction (or one idle cycle when waiting); returns cycles consumed. */
     /**
      * Face-input contract: press/release the four control buttons a
      * human (or a face capturing arrow keys) drives. Convention from
      * gfoot's simplevga snake — ACTIVE-LOW buttons on the first VIA's
      * PA0..PA3 (down, up, right, left). mask bit set = pressed.
      */
+    /**
+     * The VIA a button mask goes to, or null. One `find`, two callers.
+     *
+     * The predicate below and `setButtons` were the same scan written twice;
+     * they cannot disagree now.
+     */
+    _buttonVia() {
+        return Object.values(this.chips).find(
+            (c) => c && typeof c.setInput === 'function' && 'inA' in c) ?? null;
+    }
+
+    /**
+     * Can this machine take a button mask at all?
+     *
+     * Asked BEFORE a host offers buttons, so the offer matches the board — the
+     * shape `I8086Machine.canTakeKeys()` already has, and for the same reason.
+     * Without it a caller can only find out by calling `setButtons` and reading
+     * the answer, which is too late for anything that wants to act on the
+     * capability rather than on the outcome: a face that advertises a control
+     * the board cannot take, or a recorder that logs a press nothing received.
+     *
+     * @returns {boolean}
+     */
+    canTakeButtons() { return this._buttonVia() !== null; }
+
     setButtons(mask) {
-        const via = Object.values(this.chips).find((c) => c && typeof c.setInput === 'function' && 'inA' in c);
+        const via = this._buttonVia();
         if (!via) return false;
         for (let bit = 0; bit < 4; bit++) {
             via.setInput('a', bit, (mask >> bit) & 1 ? 0 : 1);
@@ -777,6 +825,7 @@ export class M6502Machine {
     }
 
     /** CPU state keys to snapshot (same pattern as Z80Machine.CPU_STATE). */
+    /** CPU state keys to snapshot (same pattern as Z80Machine.CPU_STATE). */
     static CPU_STATE = [
         'pc', 'a', 'x', 'y', 's', 'p', 'stopped', 'waiting', 'cycles', '_crossed', '_extra'
     ];
@@ -810,21 +859,23 @@ export class M6502Machine {
         const refusal = validateCheckpointEnvelope(checkpoint, this.checkpointTopology());
         if (refusal) return refusal;
         const state = checkpoint.state;
-        const expected = Object.keys(this.chips).sort();
-        const actual = Object.keys(state.chips || {}).sort();
-        const expectedDevices = Object.keys(this.devices || {}).sort();
-        const actualDevices = Object.keys(state.devices || {}).sort();
-        const currentShape = this.saveState();
-        if (state.v !== 1 || !(state.mem instanceof Uint8Array) || state.mem.length !== 65536 ||
-            !state.cpu || M6502Machine.CPU_STATE.some(key => !Object.hasOwn(state.cpu, key)) ||
-            !Number.isSafeInteger(state.cycles) || state.cycles < 0 ||
-            !state.pinLevels || typeof state.pinLevels !== 'object' || Array.isArray(state.pinLevels) ||
-            JSON.stringify(expected) !== JSON.stringify(actual) ||
-            JSON.stringify(expectedDevices) !== JSON.stringify(actualDevices) ||
-            !sameCheckpointShape(state.cpu, currentShape.cpu) ||
-            !sameCheckpointShape(state.chips, currentShape.chips) ||
-            !sameCheckpointShape(state.devices, currentShape.devices)) {
-            return {refused: 'checkpoint machine state is incomplete', code: 'INVALID_CHECKPOINT'};
+        // The version / memory-image / CPU-field / component-set / shape clauses
+        // are the SHARED ones and live in machine-checkpoint.js, so all three
+        // machines refuse the same malformed state for the same named reason.
+        // Only what is genuinely this machine's stays here.
+        const badState = validateCheckpointState(state, {
+            version: 1,
+            memBytes: this.mem.length,
+            cpuKeys: M6502Machine.CPU_STATE,
+            chips: this.chips,
+            devices: this.devices,
+            shape: this.saveState()
+        });
+        if (badState) return badState;
+        if (!Number.isSafeInteger(state.cycles) || state.cycles < 0 ||
+            !state.pinLevels || typeof state.pinLevels !== 'object' || Array.isArray(state.pinLevels)) {
+            return {refused: 'checkpoint machine state is incomplete', code: 'INVALID_CHECKPOINT',
+                details: {reason: 'cycle counter or pin levels are not a restorable shape'}};
         }
         if (!checkpoint.time || checkpoint.time.ticks !== state.cycles ||
             checkpoint.time.hz !== this.clockHz ||
