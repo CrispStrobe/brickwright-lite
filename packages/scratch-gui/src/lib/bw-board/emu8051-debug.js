@@ -539,9 +539,7 @@ export function createEmu8051DebugTarget(wasm, opts = {}) {
                 schema: 1,
                 engine: 'emu8051-stc',
                 boundary: 'oscillator-clock',
-                timeDomain: Number.isSafeInteger(hz) && hz > 0 ?
-                    (debugTimeEpoch ? `8051-oscillator-reset-${debugTimeEpoch}` : '8051-oscillator') :
-                    (debugTimeEpoch ? `8051-simulation-ns-reset-${debugTimeEpoch}` : '8051-simulation-ns'),
+                timeDomain: debugTime().domain,
                 ...(Number.isSafeInteger(hz) && hz > 0 ? {clockHz: hz} : {}),
                 fidelity: 'recorded',
                 resumable: true,
