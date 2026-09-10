@@ -385,6 +385,18 @@ fails unless it touched both.
           "falsifiable": "A recorded session plays back with no input -- the buttons you pressed during recording do nothing on replay.",
           "why": "onInput registers the recorder listener on the 8051 adapter.",
           "contains": "onInput\\("
+        },
+        {
+          "id": "emu8051-post-reset-pin-mode",
+          "falsifiable": "After a reset, an external input arrives one run slice late: reset clears the JS output shadow, so the first post-reset poll skips every pin it no longer has a mode for.",
+          "why": "NOT recorder work, despite sitting inside it. The fallback asks the native core for the pin mode when the JS shadow is empty. It uses only APIs upstream already has (MODE_NAMES, _emu_get_pin_mode) and is a clean upstream candidate on its own. It was undeclared until 2026-09-10 because emu8051-adapter.js is declared by IDENTIFIER and this change introduces none -- a covered file with uncovered lines. Proved by mutation: reverting it left vendor-identity fully GREEN while test/emu8051-input-log.test.mjs went red at 8 records instead of 16. Behaviour coverage caught what declaration coverage could not; they are different instruments and this file needed both.",
+          "contains": "MODE_NAMES\\[wasm\\._emu_get_pin_mode\\(port, bit\\)\\]"
+        },
+        {
+          "id": "emu8051-input-normalization",
+          "falsifiable": "The ADC value the MCU receives differs from the one the recorder logs, so a replayed session drifts from the recorded one.",
+          "why": "normalizeVolts clamps to 0..vcc and the pin callback coerces to 0/1, matching what the native setter would store. Recorder-MOTIVATED but not recorder-gated: it changes what reaches _emu_set_adc_voltage whether or not anyone is listening. Declared 2026-09-10 for the same reason as the entry above.",
+          "contains": "normalizeVolts"
         }
       ]
     }
