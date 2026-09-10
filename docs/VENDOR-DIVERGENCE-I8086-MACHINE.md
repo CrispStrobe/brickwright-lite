@@ -185,6 +185,30 @@ fails unless it touched both.
           "falsifiable": "Saving works on one board and produces a file that will not load on the same board, with no explanation of which part failed.",
           "why": "_saveComponent and _loadComponent name the failing component in the error ('component X has no state API', 'X state API is incompatible') rather than throwing from inside a generic loop. ADDED 2026-09-05 BECAUSE THE DERIVED COVERAGE CHECK FOUND THEM UNEXPLAINED -- the pinned >=8 floor had never noticed, because 8 entries is 8 entries whatever they cover.",
           "contains": "static _saveComponent\\(name, component\\)"
+        },
+        {
+          "id": "i8086-checkpoint-support",
+          "falsifiable": "The 8086 saves a file that silently comes back wrong -- a bus trace mid-capture, an audio mixer mid-phase -- instead of telling you it could not save.",
+          "why": "checkpointSupport() collects the REASONS a save cannot be trusted (bus trace is an externally-owned append cursor; the audio mixer holds source phases outside the chip state APIs) and defers to the shared machine-checkpoint.js for the per-component codec check. The 8086 is the third consumer of that lite-authored module (B2, 2026-09-10); a sync deletes this and the machine claims a checkpoint it cannot honour.",
+          "contains": "checkpointSupport\\(\\) \\{"
+        },
+        {
+          "id": "i8086-checkpoint-topology",
+          "falsifiable": "A checkpoint from an 80186 restores onto an 8086: 60h is PUSHA on one and JO on the other, so the same bytes run as different instructions and the machine goes silently wrong.",
+          "why": "checkpointTopology() carries the variant in the shared topology so a wrong-variant checkpoint is refused by the envelope before its state is inspected. Forward-ported here and never upstreamed.",
+          "contains": "checkpointTopology\\(\\) \\{"
+        },
+        {
+          "id": "i8086-checkpoint-capture",
+          "falsifiable": "You cannot save a running 8086 program: the save does nothing, or produces a file that will not load on the same board.",
+          "why": "captureCheckpoint(): the save path, on the machine-checkpoint.js contract (schema, topology, cloneCheckpointValue). Forward-ported here and never upstreamed.",
+          "contains": "captureCheckpoint\\(\\) \\{"
+        },
+        {
+          "id": "i8086-checkpoint-restore",
+          "falsifiable": "You cannot reload a saved 8086 program, or a corrupt file half-applies and leaves a wrong machine running.",
+          "why": "restoreCheckpoint(): the load path. Validates the shared envelope, then wraps loadState's deep 8086 validation so a bad snapshot returns an INVALID_CHECKPOINT refusal rather than throwing or half-applying.",
+          "contains": "restoreCheckpoint\\(checkpoint\\) \\{"
         }
       ],
       "graftedFromUpstream": [
