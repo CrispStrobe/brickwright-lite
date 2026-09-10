@@ -39,6 +39,7 @@ import {
     setCondition, conditionOf, allConditions
 } from './breakpoints.js';
 import { parseCondition } from './condition.js';
+import { canRecordDebugInput } from '../bw-board/debug-replay-contract.js';
 import { createTrace, IO_SFRS, TIMER_SFRS } from './trace.js';
 import {createDebugFoundation, subscribeDebugTargetEvents} from './debug-foundation.js';
 import {createRecordingSession, subscribeDebugTargetInputs} from './recording-session.js';
@@ -227,11 +228,29 @@ export function createDebugSnapshotEmitter({
     };
 }
 
-/** Atomic recorder-before-application gate for replayable external inputs. */
+/**
+ * Atomic recorder-before-application gate for replayable external inputs.
+ *
+ * THE MANUAL APPEND IS A WORKAROUND FOR A TARGET THAT CANNOT RECORD, and it is
+ * skipped for one that can. Three of the four targets here publish their own
+ * host-input facts through `onDebugInput`, which the recorder subscribes to;
+ * the 8086 did not, which is why this gate exists and why its only caller was
+ * gated on `targetKind === 'i8086'`. Now that the 8086 records too, appending
+ * here as well would put EVERY input in the log twice -- once from this gate
+ * and once from the target -- and a replay of that log would apply each input
+ * twice.
+ *
+ * The condition is `canRecordDebugInput`, not the target's name: a target that
+ * loses or gains the record half changes which path logs it, and nothing has to
+ * remember to update a list. It is deliberately not a silent fallback -- if
+ * neither path logs, that is visible as an empty log rather than as a shim
+ * quietly covering for it.
+ */
 export function applyRecordedTargetInput ({target, recordingSession, producer, payload, apply}) {
     const input = {producer, payload};
     if (typeof target?.canApplyReplayInput === 'function' && !target.canApplyReplayInput(input)) return false;
     if (!recordingSession.status().active) return apply();
+    if (canRecordDebugInput(target)) return apply();
     let logged;
     try {
         logged = recordingSession.appendInput({...input, time: target.debugTime()});

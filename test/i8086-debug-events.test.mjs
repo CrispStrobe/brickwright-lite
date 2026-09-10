@@ -137,7 +137,17 @@ test('8086 preserves pre-existing machine observation hooks', () => {
     assert.deepEqual(observed.map(e => e.value), [0x33, 0x33]);
 });
 
-test('8086 starts a named time domain after restoring an older checkpoint', () => {
+test('8086 starts a named REWIND domain after restoring an older checkpoint', () => {
+    // RENAMED 2026-09-10: the domain was `i8086-cycles-reset-N` until the
+    // vendored copy converged with bw-board. The old name is written here on
+    // purpose -- someone debugging a replay that refuses because two logs
+    // disagree will grep for the string in the log, and a rename that leaves no
+    // trace of its predecessor makes that grep come back empty.
+    //
+    // `reset()` ADVANCES this clock; the backward moves are `loadState` (which
+    // this test drives) and the explicit bump in `restoreCheckpoint`. It was
+    // never a reset epoch. The 8051's `-reset-` suffix IS correct for its own
+    // mechanism and must not be converged with this one.
     const {machine, events} = fixture(Uint8Array.of(0x90, 0x90, 0x90));
     const saved = machine.saveState();
     machine.step();
@@ -146,6 +156,6 @@ test('8086 starts a named time domain after restoring an older checkpoint', () =
     machine.step();
     const retire = events.filter(e => e.kind === 'instruction');
     assert.equal(retire[0].time.domain, 'i8086-cycles');
-    assert.equal(retire[2].time.domain, 'i8086-cycles-reset-1');
+    assert.equal(retire[2].time.domain, 'i8086-cycles-rewind-1');
     assert.equal(retire[2].time.ticks, retire[0].time.ticks);
 });
