@@ -68,11 +68,50 @@ export function createHistoricalOutputGate ({publishState}) {
  * in HALT/WAI; returning an instruction boundary at a different time is a
  * visible refusal, never an approximation.
  */
+/**
+ * Can this target be driven by a timed input replay, and if not, WHY.
+ *
+ * A TARGET LACKING `replayToInputBoundary` IS A CAPABILITY FACT, NOT A CALLER
+ * ERROR, and it was reported as one until 2026-09-10: the factory threw a raw
+ * `TypeError` naming three methods at once. Measured, `replayToInputBoundary`
+ * exists on exactly ONE target — m6502-debug — so z80, i8086 and the 8051 are
+ * all outside timed input replay, and every one of them met the same
+ * undifferentiated type error. A refusal is a return value; that is the rule
+ * this whole surface is built on, and the module already had a `refusal()`
+ * helper it used for four other cases and not for this one.
+ *
+ * Shaped after `replaySupport` in the target contract: reasons are a LIST,
+ * because a target can be missing more than one thing and a caller deciding
+ * what to offer needs all of them, not the first.
+ *
+ * @param {object} target
+ * @returns {{supported: boolean, reasons: string[]}}
+ */
+export function timedReplaySupport (target) {
+    const reasons = [];
+    if (!target || typeof target !== 'object') {
+        return {supported: false, reasons: ['no target was given']};
+    }
+    if (typeof target.debugTime !== 'function') reasons.push('the target does not implement debugTime');
+    if (typeof target.replayToInputBoundary !== 'function') {
+        reasons.push('the target does not implement replayToInputBoundary, so it cannot stop at a recorded input');
+    }
+    if (typeof target.applyReplayInput !== 'function') {
+        reasons.push('the target does not implement applyReplayInput');
+    }
+    return reasons.length ? {supported: false, reasons} : {supported: true, reasons: []};
+}
+
 export function createTimedInputReplay ({target, inputs, outputGate, normalizeTimeDomain = value => value}) {
-    if (!target || typeof target.debugTime !== 'function' ||
-        typeof target.replayToInputBoundary !== 'function' ||
-        typeof target.applyReplayInput !== 'function') {
-        throw new TypeError('timed input replay requires debugTime, replayToInputBoundary, and applyReplayInput');
+    // THE CAPABILITY GATE STILL THROWS HERE, DELIBERATELY, AND THAT IS NOT A
+    // CONTRADICTION OF THE NOTE ABOVE. A factory cannot both return a replay and
+    // return a refusal. What changed is that the refusal is now ASKABLE before
+    // construction and arrives with named reasons, so a caller has something to
+    // consult instead of a type error to catch — the same relationship
+    // `canApplyReplayInput` has with `applyReplayInput`.
+    const support = timedReplaySupport(target);
+    if (!support.supported) {
+        throw new TypeError(`timed input replay is unsupported by this target: ${support.reasons.join('; ')}`);
     }
     if (!outputGate || typeof outputGate.begin !== 'function' || typeof outputGate.resynchronize !== 'function') {
         throw new TypeError('timed input replay requires a historical output gate');

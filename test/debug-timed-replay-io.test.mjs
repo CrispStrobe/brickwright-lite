@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {createHistoricalOutputGate, createTimedInputReplay} from
+import {createHistoricalOutputGate, createTimedInputReplay, timedReplaySupport} from
     '../overlay/scratch-gui/src/lib/bw-debug/timed-replay-io.js';
 
 const input = (cursor, ticks, producer, payload = {}) => ({cursor,
@@ -98,4 +98,35 @@ test('clock mismatch, passed inputs, and asynchronous target hooks fail closed',
         replayToInputBoundary: async () => ({accepted: true}), applyReplayInput () {}});
     replay.start();
     assert.match(replay.replayNextBoundary().reason, /synchronous/);
+});
+
+test('timedReplaySupport names EVERY missing capability, not the first', () => {
+    // The defect this replaces: the factory threw one `TypeError` naming three
+    // methods at once, for a target that was missing any of them. Measured on
+    // 2026-09-10, `replayToInputBoundary` exists on exactly ONE target
+    // (m6502-debug), so z80, i8086 and the 8051 all met the same
+    // undifferentiated error and a caller could not tell which of the three it
+    // lacked, nor that the answer was a capability rather than a mistake.
+    assert.deepEqual(timedReplaySupport({
+        debugTime () {}, replayToInputBoundary () {}, applyReplayInput () {}
+    }), {supported: true, reasons: []});
+
+    // Reasons are a LIST because a target can lack more than one, and a caller
+    // deciding what to offer needs all of them. Asserted as a set of two, so a
+    // version that returns only the first fails here.
+    const none = timedReplaySupport({debugTime () {}});
+    assert.equal(none.supported, false);
+    assert.equal(none.reasons.length, 2,
+        `expected both missing capabilities, got: ${none.reasons.join(' | ')}`);
+    assert.ok(none.reasons.some(r => r.includes('replayToInputBoundary')));
+    assert.ok(none.reasons.some(r => r.includes('applyReplayInput')));
+
+    assert.deepEqual(timedReplaySupport(null), {supported: false, reasons: ['no target was given']});
+
+    // And the factory's throw now carries those reasons rather than a fixed
+    // sentence, so the message says which capability is absent.
+    assert.throws(() => createTimedInputReplay({
+        target: {debugTime () {}}, inputs: [],
+        outputGate: createHistoricalOutputGate({publishState () {}})
+    }), /replayToInputBoundary/);
 });
