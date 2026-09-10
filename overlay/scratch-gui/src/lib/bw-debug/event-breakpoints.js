@@ -6,6 +6,7 @@
  * compiled by an injected bounded evaluator.  That keeps inspection from
  * accidentally acknowledging an interrupt or consuming a device register.
  */
+import {readTicks} from './tick-value.js';
 
 const EVENT_KINDS = {
     execute: ['instruction'],
@@ -77,13 +78,24 @@ function inRange(value, range) {
     return typeof value === 'number' && value >= range.start && value <= range.end;
 }
 
+/**
+ * Is this TICK at or past that one? Both operands are tick counts -- the single
+ * caller is `ordinalAtLeast(event.time.ticks, spec.at)` for a time breakpoint.
+ *
+ * CONVERGED ONTO ./tick-value.js, which reads all three spellings. The version
+ * this replaces decided whether to compare as BigInt by asking whether EITHER
+ * side looked big, then coerced inside a try -- so the same pair could be
+ * compared two different ways depending on which spelling the other operand
+ * happened to arrive in.
+ *
+ * NARROWED, DELIBERATELY: a non-integer threshold (`at: 1.5`) used to be
+ * compared numerically and now refuses, because a fractional tick is not a tick.
+ * Measured before narrowing -- nothing in src/ or test/ passes one.
+ */
 function ordinalAtLeast(value, threshold) {
-    if (typeof value === 'bigint' || typeof threshold === 'bigint' ||
-        (typeof value === 'string' && /^0x[0-9a-f]+$/i.test(value)) ||
-        (typeof threshold === 'string' && /^0x[0-9a-f]+$/i.test(threshold))) {
-        try { return BigInt(value) >= BigInt(threshold); } catch { return false; }
-    }
-    return typeof value === 'number' && typeof threshold === 'number' && value >= threshold;
+    const left = readTicks(value);
+    const right = readTicks(threshold);
+    return left !== null && right !== null && left >= right;
 }
 
 function supportedKinds(capabilities) {
@@ -209,6 +221,10 @@ function compileMatcher(spec) {
         return event => event.time?.domain === spec.domain &&
             ordinalAtLeast(event.time.ticks, spec.at);
     case 'count':
+        // NOT A TICK: `spec.at` here is an event COUNT and the left side is a
+        // running total, both plain Numbers. A shape-grep for the tick readers
+        // will land on this line next to the one above; it does not belong to
+        // them, and this comment is here so nobody re-opens it.
         return (_event, context) => (context?.counts?.[spec.counter || 'events'] || 0) >= spec.at;
     default:
         return null;

@@ -1,14 +1,15 @@
 /** Bounded, target-neutral selection model for synchronized debugger panes. */
+import {readTicks} from './tick-value.js';
 
 const clone = value => structuredClone(value);
 
 const refusal = (code, details = {}) => ({accepted: false, code, ...details});
-const ordinal = value => {
-    if (typeof value === 'bigint' && value >= 0n) return value;
-    if (Number.isSafeInteger(value) && value >= 0) return BigInt(value);
-    if (typeof value === 'string' && /^0x[0-9a-f]+$/i.test(value)) return BigInt(value);
-    return null;
-};
+// CONVERGED ONTO ./tick-value.js. Byte-identical to the copy that was in
+// timing-waveform.js, which is how it stayed invisible: two censuses of the
+// tick readers both worked from a LIST of five, and a list cannot contain what
+// nobody put on it. Grepping the SHAPE -- the hex branch itself -- found this
+// one and two more.
+const ordinal = readTicks;
 
 export function createDebugTimeline ({capacity = 4096} = {}) {
     if (!Number.isSafeInteger(capacity) || capacity < 1) {
