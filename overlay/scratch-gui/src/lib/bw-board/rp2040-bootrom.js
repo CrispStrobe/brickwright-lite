@@ -21,9 +21,14 @@
  * copied; the datasheet describes an interface and this satisfies it.
  *
  * WHAT IT IS NOT. This is not the real bootrom. There is no USB mass
- * storage, no `reset_usb_boot`, and — the one that currently matters — no
- * SOFT-FLOAT TABLE. mufplib is exactly the part that is not free, so the
- * `'SF'` lookup misses and returns 0.
+ * storage and no `reset_usb_boot`.
+ *
+ * THE SOFT-FLOAT TABLE IS NO LONGER THE GAP, and this paragraph said it was
+ * for two days after it stopped being true — the failure this file keeps
+ * finding in other people's prose, in its own header. mufplib remains the
+ * part of Raspberry Pi's ROM that is not free, so none of it is used; the
+ * table below is written from the datasheet's interface like everything else
+ * here, and nine of its entries are real (see SF_TABLE).
  *
  * HOW FAR THAT GETS, measured against MicroPython 1.22.2 for the Pico
  * (RPI_PICO-20240222-v1.22.2.uf2, reproducible with
@@ -35,6 +40,24 @@
  * 848,420. Booting asks this table for FOURTEEN distinct codes; with the
  * flash block below, thirteen are answered and zero calls land at address
  * 0. The fourteenth is `'SF'`.
+ *
+ * A SECOND PROBE ARTEFACT, IN THE SAME ROUTINE, 2026-09-10. A probe watching
+ * `rom_table_lookup`'s entry address reported each call with a DIFFERENT table
+ * pointer, ascending by four — which reads like a caller walking a structure
+ * and is nothing of the kind. The old loop branched back to the routine's
+ * FIRST instruction, so every iteration re-entered the watched address with r0
+ * already advanced, and the probe recorded the scan rather than the call.
+ *
+ * Measured both ways rather than reasoned about, by restoring the old loop:
+ *
+ *   entry == loop start   table=68c, 690, 694, 698, 684, 67c, 688, 680 ...
+ *   loop one in           table=680 every time, which is the real argument
+ *
+ * The bound added below moved the loop one instruction past the entry, so the
+ * artefact is gone by construction rather than by care. The CODES were always
+ * real; the addresses beside them were the instrument. Kept because this file
+ * has now produced two probe artefacts in the same routine, and the next
+ * person to point something at it should expect a third.
  *
  * THE PANIC THIS HEADER USED TO DESCRIBE WAS A PROBE ARTEFACT, and the
  * detail is kept because it cost a session and would cost another. The
@@ -62,11 +85,17 @@
  * VTOR yourself, and none of it happens. See
  * docs/PICO-MICROPYTHON-BOOT.md in brickwright-lite for the measurements.
  *
- * WHAT IS STILL MISSING is the soft-float table. `'SF'` returns 0 and the
- * lookup path tolerates it. Worth knowing: a MISSED lookup returns 0 and
- * the SDK calls it — there is no null check at most call sites — so
- * address 0 gets executed as Thumb. That is why the flash functions below
- * had to be real rather than absent.
+ * WHAT IS STILL MISSING, as of 2026-09-10: USB mass storage,
+ * `reset_usb_boot`, and nine of the twenty-one soft-float entries — the four
+ * fixed-point conversions and the five transcendentals. Those return a quiet
+ * NaN and are named one by one in the test, so the list cannot go stale
+ * quietly the way the paragraph above did.
+ *
+ * Worth knowing, and still true: a MISSED lookup returns 0 and the SDK calls
+ * it — there is no null check at most call sites — so address 0 gets executed
+ * as Thumb. That is why the flash functions below had to be real rather than
+ * absent, and why every soft-float entry points at a routine that RETURNS
+ * rather than at nothing.
  *
  * @module
  */
@@ -205,21 +234,46 @@ export function buildBootrom () {
     // The table is (u16 code, u16 value) pairs ending in a zero code. The
     // SDK calls this through the pointer at 0x18, so the ADDRESS matters
     // and the implementation does not.
+    // THE SCAN IS BOUNDED, and it was not. The loop walked four bytes at a
+    // time until it read a zero halfword, with nothing to stop it: given a
+    // garbage table pointer it runs until some address happens to hold a zero,
+    // or forever, wrapping r0 around 32 bits on the way. A function whose
+    // contract is "returns 0 when the code is not present" cannot honour that
+    // for a bad table, and it turns a caller's bad pointer into a HANG, which
+    // is the least diagnosable failure there is.
+    //
+    // Measured downstream (lego-ac, 2026-09-10): Kaluma's first GPIO call busy
+    // loops in this very routine at 0x100, entered from 0x1000463f with a
+    // garbage table and code. 255 pairs is 1020 bytes, far past any real
+    // table — the SDK's largest has about fifteen entries — so the bound
+    // cannot be reached by a legitimate call and a bad one now gets the
+    // documented miss instead of an infinite loop.
+    //
+    // THIS DOES NOT EXPLAIN WHY THE POINTER IS GARBAGE. It converts an
+    // undiagnosable hang into a defined 0, which is where the SF table went
+    // too; the caller's bad argument is still open.
+    //
+    // Written with asm() rather than counted offsets, because this file's own
+    // header records what a branch offset counted from the wrong place did to
+    // memcpy, and this routine had three of them.
     const lookup = pc;
-    pc = emit(view, pc, [
-        0x8802,             // ldrh r2, [r0, #0]     ; entry code
-        0x2a00,             // cmp  r2, #0
-        0xd003,             // beq  .notfound        ; +3: `movs r0,#0`, not the
-                            //                         `bx lr` after it, which
-                            //                         returns the TABLE pointer
-        0x428a,             // cmp  r2, r1
-        0xd003,             // beq  .found
-        0x3004,             // adds r0, #4           ; next pair
-        0xe7f8,             // b    .loop
-        0x2000,             // .notfound: movs r0, #0
-        0x4770,             // bx   lr
-        0x8840,             // .found: ldrh r0, [r0, #2]
-        0x4770              // bx   lr
+    pc = asm(view, pc, [
+        0x23ff,                     // movs r3, #255          ; pairs left to scan
+        ['label', 'lk_loop'],
+        0x8802,                     // ldrh r2, [r0, #0]      ; entry code
+        0x2a00,                     // cmp  r2, #0
+        ['beq', 'lk_notfound'],     //                        ; terminator
+        0x428a,                     // cmp  r2, r1
+        ['beq', 'lk_found'],
+        0x3004,                     // adds r0, #4            ; next pair
+        0x3b01,                     // subs r3, #1
+        ['bne', 'lk_loop'],
+        ['label', 'lk_notfound'],
+        0x2000,                     // movs r0, #0
+        0x4770,                     // bx   lr
+        ['label', 'lk_found'],
+        0x8840,                     // ldrh r0, [r0, #2]
+        0x4770                      // bx   lr
     ]);
 
     // ── memcpy(r0 = dst, r1 = src, r2 = n) → r0 = dst ───────────────────
@@ -944,6 +998,468 @@ export function buildBootrom () {
         ['b', 'fd_signit'],
     ]);
 
+    // ── float2int(r0 = float) → r0 = int32, truncating toward zero ─────
+    //
+    // SF table index 7, and the inverse of int2float above. C truncates toward
+    // zero rather than rounding, so the right shift IS the conversion and there
+    // is no rounding step to get wrong.
+    //
+    // DECLARED UNSUPPORTED, and refused by name in the tests rather than
+    // guessed at: |x| >= 2^31 does not fit an int32, and C leaves the result
+    // undefined. This returns 0 rather than inventing a saturation the
+    // datasheet does not specify. NaN and infinity land in the same branch.
+    const float2int = pc;
+    pc = asm(view, pc, [
+        0xb5f0, // push {r4-r7, lr}
+        0x0fc1, // lsrs r1, r0, #31       ; r1 = sign
+        0x0042, // lsls r2, r0, #1
+        0x0e12, // lsrs r2, r2, #24       ; r2 = exponent
+        0x0243, // lsls r3, r0, #9
+        0x0a5b, // lsrs r3, r3, #9        ; r3 = mantissa
+        0x2a7f, // cmp  r2, #127
+        ['bge', 'f2i_ge1'],
+        0x2000, // movs r0, #0
+        0xbdf0, // pop  {r4-r7, pc}
+        ['label', 'f2i_ge1'],
+        0x2a9e, // cmp  r2, #158
+        ['blt', 'f2i_range'],
+        0x2000, // movs r0, #0
+        0xbdf0, // pop  {r4-r7, pc}
+        ['label', 'f2i_range'],
+        0x2401, // movs r4, #1
+        0x05e4, // lsls r4, r4, #23
+        0x4323, // orrs r3, r4            ; restore the implicit 1: r3 = 1.mmm << 23
+        0x0014, // movs r4, r2
+        0x3c96, // subs r4, #150          ; r4 = exp - 150
+        0x2c00, // cmp  r4, #0
+        ['blt', 'f2i_right'],
+        0x40a3, // lsls r3, r4            ; scale up
+        ['b', 'f2i_sign'],
+        ['label', 'f2i_right'],
+        0x4264, // rsbs r4, r4, #0        ; how far down
+        0x40e3, // lsrs r3, r4            ; TRUNCATES toward zero, which is the C rule
+        ['label', 'f2i_sign'],
+        0x0018, // movs r0, r3
+        0x2900, // cmp  r1, #0
+        ['beq', 'f2i_out'],
+        0x4240, // rsbs r0, r0, #0        ; negative
+        ['label', 'f2i_out'],
+        0xbdf0, // pop  {r4-r7, pc}
+    ]);
+
+    // ── uint2float(r0 = uint32) → r0 = float ───────────────────────────
+    //
+    // SF table index 13. int2float without the sign step, and with the same
+    // round-to-nearest-ties-to-even, so 2^24+1 rounds DOWN and 2^24+3 rounds UP
+    // for the same reason: the surviving mantissa must be even.
+    const uint2float = pc;
+    pc = asm(view, pc, [
+        0xb5f0, // push {r4-r7, lr}
+        0x2800, // cmp  r0, #0
+        ['bne', 'u2f_nz'],
+        0xbdf0, // pop  {r4-r7, pc}       ; +0.0
+        ['label', 'u2f_nz'],
+        0x2200, // movs r2, #0            ; shift count
+        ['label', 'u2f_norm'],
+        0x0003, // movs r3, r0            ; N = bit 31
+        ['bmi', 'u2f_normed'],
+        0x0040, // lsls r0, r0, #1
+        0x3201, // adds r2, #1
+        ['b', 'u2f_norm'],
+        ['label', 'u2f_normed'],
+        0x239e, // movs r3, #158
+        0x1a9b, // subs r3, r3, r2        ; exponent
+        0x0002, // movs r2, r0
+        0x0612, // lsls r2, r2, #24       ; the 8 dropped bits
+        0x0a00, // lsrs r0, r0, #8
+        0x2a00, // cmp  r2, #0
+        ['beq', 'u2f_pack'],
+        0x0014, // movs r4, r2
+        ['bpl', 'u2f_pack'],                    // guard clear
+        0x0054, // lsls r4, r2, #1        ; sticky
+        ['bne', 'u2f_up'],
+        0x0004, // movs r4, r0
+        0x07e4, // lsls r4, r4, #31       ; tie: to even
+        ['beq', 'u2f_pack'],
+        ['label', 'u2f_up'],
+        0x3001, // adds r0, #1
+        0x0e04, // lsrs r4, r0, #24
+        0x2c00, // cmp  r4, #0
+        ['beq', 'u2f_pack'],
+        0x0840, // lsrs r0, r0, #1
+        0x3301, // adds r3, #1
+        ['label', 'u2f_pack'],
+        0x0240, // lsls r0, r0, #9
+        0x0a40, // lsrs r0, r0, #9
+        0x05db, // lsls r3, r3, #23
+        0x4318, // orrs r0, r3
+        0xbdf0, // pop  {r4-r7, pc}
+    ]);
+
+    // ── float2uint(r0 = float) → r0 = uint32, truncating ───────────────
+    //
+    // SF table index 9. Every refused case returns 0 and they are refused BY
+    // NAME in the tests rather than guessed at: a negative input, |x| >= 2^32,
+    // NaN and infinity are all undefined in C, and this does not invent a
+    // saturation the datasheet does not specify. The zero is loaded before the
+    // checks so every refusal exits through one path.
+    const float2uint = pc;
+    pc = asm(view, pc, [
+        0xb5f0, // push {r4-r7, lr}
+        0x0fc1, // lsrs r1, r0, #31       ; sign
+        0x0042, // lsls r2, r0, #1
+        0x0e12, // lsrs r2, r2, #24       ; exponent
+        0x0243, // lsls r3, r0, #9
+        0x0a5b, // lsrs r3, r3, #9        ; mantissa
+        0x2000, // movs r0, #0            ; the answer for every refused case
+        0x2900, // cmp  r1, #0
+        ['bne', 'f2u_out'],                     // negative: undefined in C, refused
+        0x2a7f, // cmp  r2, #127
+        ['blt', 'f2u_out'],                     // |x| < 1
+        0x2a9f, // cmp  r2, #159
+        ['bge', 'f2u_out'],                     // >= 2^32, and NaN/Inf, refused
+        0x2401, // movs r4, #1
+        0x05e4, // lsls r4, r4, #23
+        0x4323, // orrs r3, r4            ; implicit 1
+        0x0014, // movs r4, r2
+        0x3c96, // subs r4, #150
+        0x2c00, // cmp  r4, #0
+        ['blt', 'f2u_right'],
+        0x40a3, // lsls r3, r4
+        ['b', 'f2u_done'],
+        ['label', 'f2u_right'],
+        0x4264, // rsbs r4, r4, #0
+        0x40e3, // lsrs r3, r4            ; truncate
+        ['label', 'f2u_done'],
+        0x0018, // movs r0, r3
+        ['label', 'f2u_out'],
+        0xbdf0, // pop  {r4-r7, pc}
+    ]);
+
+    // ── fsqrt(r0 = float) → r0 = sqrt(x) ───────────────────────────────
+    //
+    // SF table index 6. Digit-by-digit, two bits of radicand per bit of root,
+    // which is long division's cousin and the reason to prefer it here: it
+    // leaves an exact REMAINDER, and the remainder is what separates a root
+    // that terminates from one that does not. Newton's method converges faster
+    // and cannot tell those apart at the rounding edge.
+    //
+    // The exponent is forced EVEN first, folding the odd bit into the
+    // significand as a doubling. sqrt of a value in [1,4) is in [1,2), so the
+    // root is 25 bits with bit 24 set in both cases and there is one shape to
+    // pack rather than two.
+    //
+    // A negative input is undefined in C and returns a quiet NaN; sqrt(+Inf)
+    // is +Inf; signed zeros come back unchanged, which is IEEE's rule and not
+    // an accident of the flush.
+    const fsqrt = pc;
+    pc = asm(view, pc, [
+        0xb5f0, // push {r4-r7, lr}
+        0x0fc1, // lsrs r1, r0, #31       ; sign
+        0x0042, // lsls r2, r0, #1
+        0x0e12, // lsrs r2, r2, #24       ; exponent
+        0x0243, // lsls r3, r0, #9
+        0x0a5b, // lsrs r3, r3, #9        ; mantissa
+        0x2aff, // cmp  r2, #255
+        ['bne', 'sq_finite'],
+        0x2b00, // cmp  r3, #0
+        ['bne', 'sq_nan'],                      // NaN in, NaN out
+        0x2900, // cmp  r1, #0
+        ['bne', 'sq_nan'],                      // sqrt(-Inf)
+        0xbdf0, // pop  {r4-r7, pc}       ; sqrt(+Inf) = +Inf
+        ['label', 'sq_finite'],
+        0x2a00, // cmp  r2, #0
+        ['beq', 'sq_ret'],                      // +-0, and subnormals flushed to it
+        0x2900, // cmp  r1, #0
+        ['beq', 'sq_pos'],
+        ['label', 'sq_nan'],
+        0x20ff, // movs r0, #255
+        0x05c0, // lsls r0, r0, #23
+        0x2101, // movs r1, #1
+        0x0589, // lsls r1, r1, #22
+        0x4308, // orrs r0, r1            ; sqrt of a negative is undefined: qNaN
+        ['label', 'sq_ret'],
+        0xbdf0, // pop  {r4-r7, pc}
+        ['label', 'sq_pos'],
+        0x2401, // movs r4, #1
+        0x05e4, // lsls r4, r4, #23
+        0x4323, // orrs r3, r4            ; r3 = S = 1.f as 24 bits
+        0x3a7f, // subs r2, #127          ; r2 = e
+        0x0014, // movs r4, r2
+        0x2501, // movs r5, #1
+        0x402c, // ands r4, r5            ; r4 = e & 1
+        0x2c00, // cmp  r4, #0
+        ['beq', 'sq_even'],
+        0x3a01, // subs r2, #1            ; e -= 1, now even
+        0x009b, // lsls r3, r3, #2        ; and the value doubles: M = S << 2
+        ['b', 'sq_scaled'],
+        ['label', 'sq_even'],
+        0x005b, // lsls r3, r3, #1        ; M = S << 1
+        ['label', 'sq_scaled'],
+        0x1052, // asrs r2, r2, #1        ; result exponent = e/2, arithmetic for negatives
+        0x327f, // adds r2, #127          ; ...biased
+        0x019b, // lsls r3, r3, #6        ; align M so its top bit is at 31
+        0x2400, // movs r4, #0            ; root
+        0x2500, // movs r5, #0            ; remainder
+        0x2619, // movs r6, #25           ; bits to produce
+        ['label', 'sq_loop'],
+        0x001f, // movs r7, r3
+        0x0fbf, // lsrs r7, r7, #30       ; the next two bits
+        0x009b, // lsls r3, r3, #2        ; zeros arrive on their own once M is spent
+        0x00ad, // lsls r5, r5, #2
+        0x433d, // orrs r5, r7            ; rem = rem<<2 | pair
+        0x0027, // movs r7, r4
+        0x00bf, // lsls r7, r7, #2
+        0x3701, // adds r7, #1            ; trial = root<<2 | 1
+        0x42bd, // cmp  r5, r7
+        ['blo', 'sq_zero'],
+        0x1bed, // subs r5, r5, r7        ; it fits
+        0x0064, // lsls r4, r4, #1
+        0x3401, // adds r4, #1            ; root = root<<1 | 1
+        ['b', 'sq_next'],
+        ['label', 'sq_zero'],
+        0x0064, // lsls r4, r4, #1        ; root = root<<1
+        ['label', 'sq_next'],
+        0x3e01, // subs r6, #1
+        0x2e00, // cmp  r6, #0
+        ['bne', 'sq_loop'],
+        0x0027, // movs r7, r4
+        0x2001, // movs r0, #1
+        0x4007, // ands r7, r0            ; guard = root bit 0
+        0x0864, // lsrs r4, r4, #1        ; 24-bit significand
+        0x2f00, // cmp  r7, #0
+        ['beq', 'sq_pack'],                     // guard clear: round down
+        0x2d00, // cmp  r5, #0
+        ['bne', 'sq_up'],                       // a remainder is sticky: round up
+        0x0027, // movs r7, r4
+        0x07ff, // lsls r7, r7, #31       ; exact tie: round to even
+        ['beq', 'sq_pack'],
+        ['label', 'sq_up'],
+        0x3401, // adds r4, #1
+        0x0e27, // lsrs r7, r4, #24
+        0x2f00, // cmp  r7, #0
+        ['beq', 'sq_pack'],
+        0x0864, // lsrs r4, r4, #1
+        0x3201, // adds r2, #1
+        ['label', 'sq_pack'],
+        0x0264, // lsls r4, r4, #9
+        0x0a64, // lsrs r4, r4, #9        ; drop the implicit 1
+        0x05d2, // lsls r2, r2, #23
+        0x0020, // movs r0, r4
+        0x4310, // orrs r0, r2            ; sqrt is never negative
+        0xbdf0, // pop  {r4-r7, pc}
+    ]);
+
+    // ── fix2float(r0 = int32 m, r1 = n) → r0 = m / 2^n as a float ──────
+    //
+    // SF table index 12. This is int2float with the exponent reduced by the
+    // fractional-bit count, which is the whole of fixed-point conversion: the
+    // significand and its rounding are identical, and only the scale differs.
+    // n is parked in r6 at entry because the sign work below needs r1.
+    const fix2float = pc;
+    pc = asm(view, pc, [
+        0xb5f0, // push {r4-r7, lr}
+        0x000e, // movs r6, r1           ; n, kept clear of the sign work below
+        0x2800, // cmp  r0, #0
+        ['bne', 'fx2f_nz'],
+        0xbdf0, // pop  {r4-r7, pc}      ; +0.0
+        ['label', 'fx2f_nz'],
+        0x2100, // movs r1, #0           ; sign
+        0x2800, // cmp  r0, #0
+        ['bge', 'fx2f_pos'],
+        0x2101, // movs r1, #1
+        0x4240, // rsbs r0, r0, #0      ; magnitude
+        ['label', 'fx2f_pos'],
+        0x2200, // movs r2, #0           ; shift count
+        ['label', 'fx2f_norm'],
+        0x0003, // movs r3, r0
+        ['bmi', 'fx2f_normed'],
+        0x0040, // lsls r0, r0, #1
+        0x3201, // adds r2, #1
+        ['b', 'fx2f_norm'],
+        ['label', 'fx2f_normed'],
+        0x239e, // movs r3, #158
+        0x1a9b, // subs r3, r3, r2
+        0x1b9b, // subs r3, r3, r6       ; ...less the fractional bits
+        0x0002, // movs r2, r0
+        0x0612, // lsls r2, r2, #24      ; the 8 dropped bits
+        0x0a00, // lsrs r0, r0, #8
+        0x2a00, // cmp  r2, #0
+        ['beq', 'fx2f_range'],
+        0x0014, // movs r4, r2
+        ['bpl', 'fx2f_range'],                 // guard clear
+        0x0054, // lsls r4, r2, #1       ; sticky
+        ['bne', 'fx2f_up'],
+        0x0004, // movs r4, r0
+        0x07e4, // lsls r4, r4, #31      ; tie: to even
+        ['beq', 'fx2f_range'],
+        ['label', 'fx2f_up'],
+        0x3001, // adds r0, #1
+        0x0e04, // lsrs r4, r0, #24
+        0x2c00, // cmp  r4, #0
+        ['beq', 'fx2f_range'],
+        0x0840, // lsrs r0, r0, #1
+        0x3301, // adds r3, #1
+        ['label', 'fx2f_range'],
+        0x2b00, // cmp  r3, #0
+        ['bgt', 'fx2f_pack'],
+        0x2000, // movs r0, #0
+        0x07c9, // lsls r1, r1, #31
+        0x4308, // orrs r0, r1           ; a signed zero
+        0xbdf0, // pop  {r4-r7, pc}
+        ['label', 'fx2f_pack'],
+        0x0240, // lsls r0, r0, #9
+        0x0a40, // lsrs r0, r0, #9
+        0x05db, // lsls r3, r3, #23
+        0x4318, // orrs r0, r3
+        0x07c9, // lsls r1, r1, #31
+        0x4308, // orrs r0, r1
+        0xbdf0, // pop  {r4-r7, pc}
+    ]);
+
+    // ── ufix2float(r0 = uint32 m, r1 = n) → r0 = m / 2^n ──────────────
+    //
+    // SF table index 14. fix2float without the sign step.
+    const ufix2float = pc;
+    pc = asm(view, pc, [
+        0xb5f0, // push {r4-r7, lr}
+        0x000e, // movs r6, r1           ; n, kept clear of the sign work below
+        0x2800, // cmp  r0, #0
+        ['bne', 'ufx2f_nz'],
+        0xbdf0, // pop  {r4-r7, pc}      ; +0.0
+        ['label', 'ufx2f_nz'],
+        0x2100, // movs r1, #0           ; sign
+        0x2200, // movs r2, #0           ; shift count
+        ['label', 'ufx2f_norm'],
+        0x0003, // movs r3, r0
+        ['bmi', 'ufx2f_normed'],
+        0x0040, // lsls r0, r0, #1
+        0x3201, // adds r2, #1
+        ['b', 'ufx2f_norm'],
+        ['label', 'ufx2f_normed'],
+        0x239e, // movs r3, #158
+        0x1a9b, // subs r3, r3, r2
+        0x1b9b, // subs r3, r3, r6       ; ...less the fractional bits
+        0x0002, // movs r2, r0
+        0x0612, // lsls r2, r2, #24      ; the 8 dropped bits
+        0x0a00, // lsrs r0, r0, #8
+        0x2a00, // cmp  r2, #0
+        ['beq', 'ufx2f_range'],
+        0x0014, // movs r4, r2
+        ['bpl', 'ufx2f_range'],                 // guard clear
+        0x0054, // lsls r4, r2, #1       ; sticky
+        ['bne', 'ufx2f_up'],
+        0x0004, // movs r4, r0
+        0x07e4, // lsls r4, r4, #31      ; tie: to even
+        ['beq', 'ufx2f_range'],
+        ['label', 'ufx2f_up'],
+        0x3001, // adds r0, #1
+        0x0e04, // lsrs r4, r0, #24
+        0x2c00, // cmp  r4, #0
+        ['beq', 'ufx2f_range'],
+        0x0840, // lsrs r0, r0, #1
+        0x3301, // adds r3, #1
+        ['label', 'ufx2f_range'],
+        0x2b00, // cmp  r3, #0
+        ['bgt', 'ufx2f_pack'],
+        0x2000, // movs r0, #0
+        0x07c9, // lsls r1, r1, #31
+        0x4308, // orrs r0, r1           ; a signed zero
+        0xbdf0, // pop  {r4-r7, pc}
+        ['label', 'ufx2f_pack'],
+        0x0240, // lsls r0, r0, #9
+        0x0a40, // lsrs r0, r0, #9
+        0x05db, // lsls r3, r3, #23
+        0x4318, // orrs r0, r3
+        0x07c9, // lsls r1, r1, #31
+        0x4308, // orrs r0, r1
+        0xbdf0, // pop  {r4-r7, pc}
+    ]);
+
+    // ── float2fix(r0 = float, r1 = n) → r0 = int32, truncating ────────
+    //
+    // SF table index 8. float2int with the exponent RAISED by n before the
+    // range check, so the scaling happens for free inside the shift that was
+    // already there. Truncates toward zero, as C does.
+    const float2fix = pc;
+    pc = asm(view, pc, [
+        0xb5f0, // push {r4-r7, lr}
+        0x000e, // movs r6, r1           ; n
+        0x0fc1, // lsrs r1, r0, #31      ; sign
+        0x0042, // lsls r2, r0, #1
+        0x0e12, // lsrs r2, r2, #24      ; exponent
+        0x0243, // lsls r3, r0, #9
+        0x0a5b, // lsrs r3, r3, #9       ; mantissa
+        0x2000, // movs r0, #0           ; the answer for every refused case
+        0x2aff, // cmp  r2, #255
+        ['beq', 'f2fx_out'],                  // NaN and infinity, refused
+        0x1992, // adds r2, r2, r6       ; scale by the fractional bits
+        0x2a7f, // cmp  r2, #127
+        ['blt', 'f2fx_out'],                  // |x| < 1 after scaling
+        0x2a9e, // cmp  r2, #158
+        ['bge', 'f2fx_out'],                  // out of range, refused
+        0x2401, // movs r4, #1
+        0x05e4, // lsls r4, r4, #23
+        0x4323, // orrs r3, r4           ; implicit 1
+        0x0014, // movs r4, r2
+        0x3c96, // subs r4, #150
+        0x2c00, // cmp  r4, #0
+        ['blt', 'f2fx_right'],
+        0x40a3, // lsls r3, r4
+        ['b', 'f2fx_done'],
+        ['label', 'f2fx_right'],
+        0x4264, // rsbs r4, r4, #0
+        0x40e3, // lsrs r3, r4           ; truncate toward zero
+        ['label', 'f2fx_done'],
+        0x0018, // movs r0, r3
+        0x2900, // cmp  r1, #0
+        ['beq', 'f2fx_out'],
+        0x4240, // rsbs r0, r0, #0
+        ['label', 'f2fx_out'],
+        0xbdf0, // pop  {r4-r7, pc}
+    ]);
+
+    // ── float2ufix(r0 = float, r1 = n) → r0 = uint32, truncating ──────
+    //
+    // SF table index 10. float2fix without the sign, and refusing a negative
+    // input the way float2uint does.
+    const float2ufix = pc;
+    pc = asm(view, pc, [
+        0xb5f0, // push {r4-r7, lr}
+        0x000e, // movs r6, r1           ; n
+        0x0fc1, // lsrs r1, r0, #31      ; sign
+        0x0042, // lsls r2, r0, #1
+        0x0e12, // lsrs r2, r2, #24      ; exponent
+        0x0243, // lsls r3, r0, #9
+        0x0a5b, // lsrs r3, r3, #9       ; mantissa
+        0x2000, // movs r0, #0           ; the answer for every refused case
+        0x2900, // cmp  r1, #0
+        ['bne', 'f2ufx_out'],                // negative: undefined in C
+        0x2aff, // cmp  r2, #255
+        ['beq', 'f2ufx_out'],                  // NaN and infinity, refused
+        0x1992, // adds r2, r2, r6       ; scale by the fractional bits
+        0x2a7f, // cmp  r2, #127
+        ['blt', 'f2ufx_out'],                  // |x| < 1 after scaling
+        0x2a9f, // cmp  r2, #159
+        ['bge', 'f2ufx_out'],                  // out of range, refused
+        0x2401, // movs r4, #1
+        0x05e4, // lsls r4, r4, #23
+        0x4323, // orrs r3, r4           ; implicit 1
+        0x0014, // movs r4, r2
+        0x3c96, // subs r4, #150
+        0x2c00, // cmp  r4, #0
+        ['blt', 'f2ufx_right'],
+        0x40a3, // lsls r3, r4
+        ['b', 'f2ufx_done'],
+        ['label', 'f2ufx_right'],
+        0x4264, // rsbs r4, r4, #0
+        0x40e3, // lsrs r3, r4           ; truncate toward zero
+        ['label', 'f2ufx_done'],
+        0x0018, // movs r0, r3
+        ['label', 'f2ufx_out'],
+        0xbdf0, // pop  {r4-r7, pc}
+    ]);
+
     // ── the single-precision soft-float stub ───────────────────────────
     //
     // EVERY 'SF' ENTRY POINTS HERE, AND NONE OF THEM COMPUTES ANYTHING.
@@ -1057,7 +1573,15 @@ export function buildBootrom () {
     view.setUint32(sfTable + 1 * 4, thumb(fsub), true);
     view.setUint32(sfTable + 2 * 4, thumb(fmul), true);
     view.setUint32(sfTable + 3 * 4, thumb(fdiv), true);
+    view.setUint32(sfTable + 12 * 4, thumb(fix2float), true);
+    view.setUint32(sfTable + 14 * 4, thumb(ufix2float), true);
+    view.setUint32(sfTable + 8 * 4, thumb(float2fix), true);
+    view.setUint32(sfTable + 10 * 4, thumb(float2ufix), true);
+    view.setUint32(sfTable + 6 * 4, thumb(fsqrt), true);
+    view.setUint32(sfTable + 7 * 4, thumb(float2int), true);
+    view.setUint32(sfTable + 9 * 4, thumb(float2uint), true);
     view.setUint32(sfTable + 11 * 4, thumb(int2float), true);
+    view.setUint32(sfTable + 13 * 4, thumb(uint2float), true);
 
     const dataTable = sfTable + SF_TABLE_ENTRIES * 4;
     view.setUint16(dataTable, ROM_DATA.SOFT_FLOAT, true);
