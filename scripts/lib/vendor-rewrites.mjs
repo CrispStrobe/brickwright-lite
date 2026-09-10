@@ -30,6 +30,36 @@
  * strictly stronger question, because it still refuses every difference the sync
  * would not have made.
  *
+ * WHAT A GREEN FROM THE IDENTITY GATE NOW MEANS, AND WHAT IT DOES NOT. It used
+ * to certify *this file matches upstream*. It now certifies *this file matches
+ * what the sync would produce* -- strictly stronger against drift, and SILENT ON
+ * WHETHER THE SYNC'S OUTPUT IS CORRECT. Those are different claims and the
+ * difference is reachable: this table is global, not scoped to one file, so a
+ * vendored file at a different nesting depth carrying the same import would be
+ * rewritten to `../../../` where that is wrong, would break, and the gate would
+ * report ok -- correctly, because that IS what the sync produced. The gate is not
+ * wrong there; its question is simply not that one. Undrifted is not the same as
+ * correct, and a green here is evidence of the first only. (lego-ac found this
+ * boundary by reading the module rather than reasoning about it.)
+ *
+ * WHY GLOBAL IS NONETHELESS RIGHT: the sync imports this same table and applies
+ * it the same way, so gate and sync agree BY CONSTRUCTION rather than by two
+ * people keeping two copies in step. Sharing the module does more work than
+ * sharing a constant would.
+ *
+ * THE RATCHET IN test/vendor-identity.test.mjs IS THE LOAD-BEARING PART OF THIS
+ * DESIGN, not a nicety attached to it. Every pair must be exercised by BOTH trees
+ * -- upstream holding the text it rewrites FROM, the vendored tree the text it
+ * rewrites TO. Without it this table is a place to bury divergences: add a pair,
+ * and any difference matching it stops being reported by anything. With it, a
+ * pair that describes nothing fails loudly. That requirement is the difference
+ * between one instrument and a blind spot with good manners.
+ *
+ * A property worth knowing, since it was checked rather than hoped for: the pair
+ * matches a SINGLE-QUOTED literal. Reformatting upstream to double quotes stops
+ * the sync rewriting and stops the gate forgiving in the same move, so the file
+ * surfaces as a divergence instead of silently slipping through. It fails safe.
+ *
  * ADDING AN ENTRY HERE WIDENS WHAT THE IDENTITY GATE FORGIVES. It is a
  * transformation lite applies to EVERY vendored copy of that text, not a licence
  * for one file to differ: the sync must actually perform it, or the two callers
