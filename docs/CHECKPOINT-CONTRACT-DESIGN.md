@@ -11,6 +11,35 @@ with no checkpoint *concept*.
 > fact or a downstream concern" is a heuristic for reaching it; where the heuristic
 > and the property disagree, the property wins.
 
+## WHAT HAS MOVED SINCE THIS WAS MEASURED (added 2026-09-10, later the same day)
+
+**The measurements below stand as taken and the names in them do not.** This is a
+dated correction rather than a rewrite: the reasoning is only checkable against
+the tree it was performed on, and silently repainting it would destroy that.
+
+- **The replay half of the cluster went upstream and came back.** bw-board now
+  declares the surface in `src/debug-replay-contract.js` and all four targets
+  implement BOTH halves; the vendored copies of `emu8051-adapter.js` and
+  `i8086-debug.js` have converged on it (Lite `8dd901512`, `6f9b0cc5a`).
+- **`onInput` IS GONE, and it never had a consumer.** Everywhere below that pairs
+  `onInput` with `applyReplayInput`, read `onDebugInput`. The recorder
+  (`bw-debug/recording-session.js:42`) has always gated on `onDebugInput` and
+  returned null without it, so the 8051's `onInput` was reachable only from its
+  own tests and **the downstream 8051 had never been recorded at all**. The
+  observation this document makes — that counting one word found one half of a
+  two-vocabulary surface — is exactly right, and the half it found was the name
+  with no consumer.
+- **`i8086-debug.js:581` and the other line numbers are stale.** The 8086 gained
+  the record half it lacked, so the file moved.
+- **`debug-runner.js`'s `targetKind === 'i8086'` special case is gone.** It existed
+  because the 8086 could not record itself; with the target recording, the manual
+  append became a duplicate, and the gate now keys on `canRecordDebugInput(target)`.
+- **The 13-file checkpoint/replay cluster still stands as a cluster.** Only its
+  replay half has moved; `machine-checkpoint.js`, `instruction-debug-events.js` and
+  the per-machine capture/restore work remain `[lite]` or `[declared]`, and the
+  third piece this document identifies — the DRIVER living downstream — is still
+  downstream and still an undecided question.
+
 ## Two things to read first: the counts here, and the row that asked for this
 
 **THE LINE COUNTS IN THIS NOTE ARE RAW `diff` COUNTS AND THE REPOSITORY'S ARE NOT.**

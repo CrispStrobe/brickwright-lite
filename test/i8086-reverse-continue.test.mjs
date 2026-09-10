@@ -22,7 +22,7 @@ const fixture = () => {
     const recording = createRecordingSession({recorder, eventStream: stream, getTarget: () => target});
     target.onDebugEvent(fact => stream.publish(fact));
     stream.onEvent(event => recording.appendBatch([event]));
-    const logicalDomain = domain => domain.replace(/-reset-\d+$/, '');
+    const logicalDomain = domain => domain.replace(/-(?:reset|rewind)-\d+$/, '');
     const replay = createInstructionReplayController({
         recorder,
         getTarget: () => target,

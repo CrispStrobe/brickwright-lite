@@ -29,6 +29,7 @@
  */
 import { disasmI8086 } from './i8086-disasm.js';
 import { renderMode, likelyMode } from './i8086-cga.js';
+import { replayAccepted, replayRefused } from './debug-replay-contract.js';
 
 /**
  * A CGA mode-control byte (3D8h) read back as a BIOS mode number, or null if
@@ -221,14 +222,93 @@ export function createI8086DebugTarget(adapter, opts = {}) {
     const originalInstructionHook = machine.hooks?.onInstruction || null;
     let eventTimeEpoch = 0;
     let lastEventTicks = -1;
+    /**
+     * The domain string, BUILT IN ONE PLACE.
+     *
+     * It used to be spelled inline three times -- in `eventTime`, in
+     * `debugTime` and in `captureCheckpoint` -- and upstream found the same
+     * doubling by MUTATING its rename rather than reading it: reverting one
+     * spelling and leaving the other passed the whole suite, because every
+     * assertion ran in epoch 0 where all spellings are the bare
+     * `i8086-cycles` and the divergence is invisible. It appears only once an
+     * epoch exists, as a target whose facts, whose reported clock and whose
+     * checkpoints disagree about which timeline they are on.
+     *
+     * Renaming three literals fixes today's rename. One builder makes the next
+     * one impossible to get half-right.
+     *
+     * RENAMED 2026-09-10: `i8086-cycles-reset-N` -> `i8086-cycles-rewind-N`.
+     * `reset()` ADVANCES this clock (i8086-machine.js:1130); the only backward
+     * moves are `loadState` and the explicit bump in `restoreCheckpoint`. A log
+     * recorded before this carries the old string, and a replayer compares
+     * domains by EQUALITY -- so older logs are NOT replayable. There is no
+     * migration; this note is the whole of it.
+     *
+     * The 8051's `8051-input-ns-reset-N` is CORRECT and must not be converged
+     * with this: its epoch bumps inside its own `reset()`, which takes its
+     * clock to zero. Each suffix names its own mechanism -- a distinction, not
+     * an inconsistency.
+     */
+    const eventDomain = () =>
+        (eventTimeEpoch ? `i8086-cycles-rewind-${eventTimeEpoch}` : 'i8086-cycles');
+    /** Levels only -- see publishInputLevel. Events must not consult this. */
+    const observedInputs = new Map();
+    let inputListeners = [];
+
+    /**
+     * The advancing stamp: reading it is how a rewind gets noticed.
+     *
+     * TWO MECHANISMS, AND THIS FILE IS THE ONLY PLACE THAT HAS BOTH. Upstream
+     * DETECTS a rewind here and clears the dedup map, which catches any cause
+     * whatever -- its restore does not go through the target, so it has no call
+     * site to hook. This copy ALSO bumps explicitly in `restoreCheckpoint`,
+     * because here the restore DOES go through the target. Detection alone
+     * cannot see a restore that lands ABOVE the last stamped tick; the explicit
+     * bump can. Neither side alone is correct after the graft, so both are here.
+     */
     const eventTime = (ticks = machine.cycles) => {
-        if (ticks < lastEventTicks) eventTimeEpoch++;
+        if (ticks < lastEventTicks) {
+            eventTimeEpoch++;
+            observedInputs.clear();
+        }
         lastEventTicks = ticks;
         return {
             ticks,
-            domain: eventTimeEpoch ? `i8086-cycles-reset-${eventTimeEpoch}` : 'i8086-cycles',
+            domain: eventDomain(),
             hz: machine.clockHz
         };
+    };
+
+    const emitInput = (producer, payload, time) => {
+        const fact = {time, producer, payload: {...payload}};
+        // A copy each: a recorder that stores the object and a listener that
+        // mutates it would otherwise corrupt the log in place.
+        for (const listener of inputListeners) {
+            listener({...fact, time: {...fact.time}, payload: {...fact.payload}});
+        }
+    };
+
+    /**
+     * A LEVEL: a GPIO bit already high, set high again, is one state and not
+     * two facts. The stamp is taken BEFORE the dedup gate, never after -- a
+     * suppressed input that skipped the stamp would never notice the timeline
+     * moved under it.
+     */
+    const publishInputLevel = (producer, key, payload) => {
+        const time = eventTime();
+        const signature = JSON.stringify(payload);
+        if (observedInputs.get(key) === signature) return;
+        observedInputs.set(key, signature);
+        emitInput(producer, payload, time);
+    };
+
+    /**
+     * An EVENT: a scancode, a byte, an NMI. The same scancode twice is
+     * autorepeat and the same byte twice is two characters; deduplicating
+     * either would replay a transcript with something missing.
+     */
+    const publishInputEvent = (producer, payload) => {
+        emitInput(producer, payload, eventTime());
     };
     const publishDebugEvent = event => {
         if (debugEventListener) debugEventListener(event);
@@ -480,7 +560,7 @@ export function createI8086DebugTarget(adapter, opts = {}) {
                 mode: 'instruction',
                 time: {
                     ticks: machine.cycles,
-                    domain: eventTimeEpoch ? `i8086-cycles-reset-${eventTimeEpoch}` : 'i8086-cycles',
+                    domain: eventDomain(),
                     hz: machine.clockHz
                 },
                 machine: machine.saveState(),
@@ -519,6 +599,12 @@ export function createI8086DebugTarget(adapter, opts = {}) {
             // existing event clock run backwards. Start a fresh named epoch;
             // the runner owns the global event sequence/cursor.
             eventTimeEpoch++;
+            // AND CLEAR THE MAP. Before the record half arrived there was no map
+            // to clear; now there is, and a restore that lands ABOVE the last
+            // stamped tick is exactly the case `eventTime` cannot detect. Leaving
+            // the map would drop the first post-restore change that happened to
+            // match a level from the abandoned timeline.
+            observedInputs.clear();
             lastEventTicks = machine.cycles;
             cachedVideoKey = null;
             cachedVideoFrame = null;
@@ -545,60 +631,233 @@ export function createI8086DebugTarget(adapter, opts = {}) {
         debugTime() {
             return {
                 ticks: machine.cycles,
-                domain: eventTimeEpoch ? `i8086-cycles-reset-${eventTimeEpoch}` : 'i8086-cycles',
+                domain: eventDomain(),
                 hz: machine.clockHz
             };
         },
 
-        /** Pure preflight for recorder-before-application input handling. */
+        /**
+         * The preflight, and the apply half, ADOPTED FROM UPSTREAM rather than
+         * kept in step. What this copy had, and what each fix was:
+         *
+         *   ONE REFUSAL CODE FOR EVERY SITUATION. `invalid-replay-input` was
+         *   returned for a malformed payload AND for a board with no PIC. A
+         *   board with no PIC is not a bad input, it is a fact about the
+         *   hardware, and a driver that cannot tell them apart retries the one
+         *   it should report.
+         *
+         *   THE APPLY SWITCH ENDED IN `{accepted: true}`. A producer added to
+         *   the preflight and not to the apply half reported success having
+         *   done nothing. The `default` clause below is unreachable and is kept
+         *   precisely so that stops being possible.
+         *
+         *   THE SERIAL PREFLIGHT TESTED `rxPush` ONLY, while `machine.serialIn`
+         *   (i8086-machine.js:1423) accepts `rxPush` OR `rxByte` -- so the
+         *   preflight and the operation it fronts could disagree about the same
+         *   board.
+         *
+         *   EVERY REACH OUTSIDE THE CLOSURE NOW ANSWERS THROUGH `has`/`chips`.
+         *   This copy called `machine.canTakeKeys()` and `machine.chips[...]`
+         *   unguarded, so a target built over a bare `{machine}` THREW where the
+         *   contract requires a return value.
+         */
         canApplyReplayInput(input) {
+            return this.replayInputRefusal(input) === null;
+        },
+
+        /**
+         * WHY THE REFUSALS ARE SEPARATED, when the ported version returned one
+         * code for all of them. Downstream answered a malformed payload, an
+         * unsupported producer and a board with no keyboard with the same
+         * `invalid-replay-input`, and the third is not the caller's fault at
+         * all — it is a fact about the hardware. Measured before changing it:
+         * no consumer reads the code (the runner reads `.accepted`, and the two
+         * replay drivers discard the result), so refining it breaks nothing.
+         *
+         * @returns {{code: string, reason: string}|null} null when applicable
+         */
+        replayInputRefusal(input) {
             const p = input?.payload;
-            if (!p || typeof p !== 'object') return false;
+            // EVERY REACH OUTSIDE THIS CLOSURE IS CHECKED HERE, not at the call
+            // site that happened to be written last. Callers construct this
+            // target over a bare `{machine}` — code-address-progression.test.mjs
+            // :32 builds `{machine: {cpu: {}}}` literally — so `machine.chips`,
+            // `machine.canTakeKeys` and the rest are frequently absent, and the
+            // contract's central rule is that a target refuses rather than
+            // throwing for an input it merely cannot serve.
+            const has = name => typeof machine?.[name] === 'function';
+            const chips = machine?.chips && typeof machine.chips === 'object'
+                ? machine.chips : null;
+            if (!p || typeof p !== 'object') {
+                return {code: 'invalid-replay-input', reason: 'a replay input needs a payload object'};
+            }
             switch (input.producer) {
             case 'i8086.key':
-                return Number.isInteger(p.scancode) && p.scancode >= 0 && p.scancode <= 0xff &&
-                    machine.canTakeKeys() === true;
-            case 'i8086.gpio':
-                return typeof p.chip === 'string' && !!machine.chips[p.chip] &&
-                    typeof machine.chips[p.chip].setInput === 'function' &&
-                    ['a', 'b', 'c'].includes(p.port) &&
-                    Number.isInteger(p.bit) && p.bit >= 0 && p.bit <= 7 &&
-                    (p.level === 0 || p.level === 1);
+                if (!(Number.isInteger(p.scancode) && p.scancode >= 0 && p.scancode <= 0xff)) {
+                    return {code: 'invalid-replay-input', reason: 'i8086.key needs a scancode in 0..255'};
+                }
+                if (!has('canTakeKeys') || !has('keyIn')) {
+                    return {code: 'no-input-path', reason: 'this target has no machine that can take a key'};
+                }
+                if (machine.canTakeKeys() !== true) {
+                    return {code: 'no-input-path', reason: 'this board has no 8255 + PIC to take a key'};
+                }
+                return null;
+            case 'i8086.gpio': {
+                const chip = chips && typeof p.chip === 'string' ? chips[p.chip] : null;
+                if (!(['a', 'b', 'c'].includes(p.port) && Number.isInteger(p.bit) &&
+                      p.bit >= 0 && p.bit <= 7 && (p.level === 0 || p.level === 1))) {
+                    return {code: 'invalid-replay-input',
+                        reason: 'i8086.gpio needs port a|b|c, bit 0..7 and level 0|1'};
+                }
+                if (!chip || typeof chip.setInput !== 'function' || !has('setInput')) {
+                    return {code: 'no-input-path',
+                        reason: `no chip named ${p.chip} on this board takes an input bit`};
+                }
+                return null;
+            }
             case 'i8086.serial':
-                return Number.isInteger(p.byte) && p.byte >= 0 && p.byte <= 0xff &&
-                    Object.values(machine.chips).some(c => typeof c.rxPush === 'function');
+                if (!(Number.isInteger(p.byte) && p.byte >= 0 && p.byte <= 0xff)) {
+                    return {code: 'invalid-replay-input', reason: 'i8086.serial needs a byte in 0..255'};
+                }
+                // THE PREFLIGHT TESTS WHAT serialIn TESTS, both branches.
+                // machine.serialIn (i8086-machine.js:1423) accepts a chip with
+                // rxPush OR one with rxByte; the ported preflight tested only
+                // rxPush, so the two could disagree about the same board.
+                //
+                // Measured, so the reason for the second branch is not
+                // overstated: NO chip in this tree exposes an `rxByte` method
+                // today — the 16550 and the 8251 both use rxPush, and that
+                // branch of serialIn has no implementor. The point is not that
+                // a board exists which needs it; it is that a preflight must
+                // answer the question the operation asks, so that adding such a
+                // chip does not silently start refusing a path it has.
+                if (!chips || !has('serialIn') || !Object.values(chips).some(
+                    c => typeof c?.rxPush === 'function' || typeof c?.rxByte === 'function')) {
+                    return {code: 'no-input-path', reason: 'no chip on this board receives a byte'};
+                }
+                return null;
             case 'i8086.nmi':
-                return Object.keys(p).length === 0;
+                if (Object.keys(p).length !== 0) {
+                    return {code: 'invalid-replay-input', reason: 'i8086.nmi carries no payload'};
+                }
+                return has('nmi') ? null
+                    : {code: 'no-input-path', reason: 'this target has no machine to interrupt'};
             case 'i8086.rom':
-                return p.bytes instanceof Uint8Array &&
-                    (p.at === undefined || (Number.isInteger(p.at) && p.at >= 0 && p.at < 0x100000));
+                if (!(p.bytes instanceof Uint8Array)) {
+                    return {code: 'invalid-replay-input', reason: 'i8086.rom needs bytes as a Uint8Array'};
+                }
+                if (!(p.at === undefined ||
+                      (Number.isInteger(p.at) && p.at >= 0 && p.at < 0x100000))) {
+                    return {code: 'invalid-replay-input', reason: 'i8086.rom `at` must be inside 1MB'};
+                }
+                return has('loadRom') && has('reset') ? null
+                    : {code: 'no-input-path', reason: 'this target has no machine to load a ROM into'};
             default:
-                return false;
+                return {code: 'unsupported-replay-input',
+                    reason: `no replay path for producer ${input?.producer ?? '(none)'}`};
             }
         },
 
-        /** Apply one recorder-owned external input without generating another log entry. */
+        /**
+         * The APPLY half. Every failure is a return value, never a throw.
+         *
+         * Five producers, all five with a measured path in THIS build:
+         *
+         *   i8086.key     machine.keyIn        i8086-machine.js:1574
+         *   i8086.gpio    machine.setInput     i8086-machine.js:1558
+         *   i8086.serial  adapter.sendSerial   i8086-adapter.js:74
+         *   i8086.nmi     machine.nmi          i8086-machine.js:1226
+         *   i8086.rom     machine.loadRom      i8086-machine.js:1118
+         *
+         * NOTHING APPLIED HERE IS RE-RECORDED. Each path reaches the machine
+         * directly rather than through this target's own recording entry
+         * points; the one that needs a gate is the GPIO level, whose dedup map
+         * is seeded so a second replay pass does not read as a change.
+         */
         applyReplayInput(input) {
-            if (!this.canApplyReplayInput(input)) {
-                return {accepted: false, code: 'invalid-replay-input', producer: input?.producer};
-            }
+            const refusal = this.replayInputRefusal(input);
+            if (refusal) return replayRefused(refusal.code, refusal.reason);
             const p = input.payload;
-            if (input.producer === 'i8086.key') return {accepted: machine.keyIn(p.scancode) === true};
-            if (input.producer === 'i8086.gpio') {
-                return {accepted: machine.setInput(p.chip, p.port, p.bit, p.level) === true};
+            switch (input.producer) {
+            case 'i8086.key':
+                return machine.keyIn(p.scancode) === true ? replayAccepted()
+                    : replayRefused('no-input-path', 'the machine did not take the key');
+            case 'i8086.gpio': {
+                const applied = machine.setInput(p.chip, p.port, p.bit, p.level) === true;
+                if (applied) {
+                    observedInputs.set(`${p.chip}.${p.port}.${p.bit}`,
+                        JSON.stringify({chip: p.chip, port: p.port, bit: p.bit, level: p.level}));
+                }
+                return applied ? replayAccepted()
+                    : replayRefused('no-input-path', 'the machine did not take the input bit');
             }
-            if (input.producer === 'i8086.serial') return {accepted: machine.serialIn(p.byte) === true};
-            if (input.producer === 'i8086.nmi') machine.nmi();
-            if (input.producer === 'i8086.rom') {
+            case 'i8086.serial':
+                return machine.serialIn(p.byte) === true ? replayAccepted()
+                    : replayRefused('no-input-path', 'no chip took the received byte');
+            case 'i8086.nmi':
+                machine.nmi();
+                return replayAccepted();
+            case 'i8086.rom':
                 machine.loadRom(p.bytes, p.at);
                 machine.reset();
+                return replayAccepted();
+            default:
+                // Unreachable: replayInputRefusal has already refused it. Kept
+                // so a new producer added to one switch and not the other is a
+                // refusal rather than a silent `accepted: true` fall-through,
+                // which is what the ported version did.
+                return replayRefused('unsupported-replay-input',
+                    `no replay path for producer ${input?.producer ?? '(none)'}`);
             }
-            return {accepted: true};
         },
 
         nmi() {
+            if (typeof machine?.nmi !== 'function') return false;
             machine.nmi();
+            publishInputEvent('i8086.nmi', {});
             return true;
+        },
+
+        /**
+         * A received serial byte, RECORDED on the way in.
+         *
+         * NEW HERE: this copy had no serial entry point at all, so a byte
+         * reaching the machine passed nothing that could log it. THE BYPASS IS
+         * STATED RATHER THAN CLAIMED CLOSED: a caller holding the adapter can
+         * still call `adapter.sendSerial` directly and will not be recorded.
+         */
+        sendSerial(byte) {
+            // The adapter is optional: several callers construct this target
+            // over a bare {machine}, so reaching for adapter.sendSerial
+            // unconditionally would throw where the machine can take the byte
+            // perfectly well.
+            const send = typeof adapter?.sendSerial === 'function' ? b => adapter.sendSerial(b)
+                : typeof machine?.serialIn === 'function' ? b => machine.serialIn(b)
+                : null;
+            if (!send) return false;
+            const accepted = send(byte & 0xff) === true;
+            if (accepted) publishInputEvent('i8086.serial', {byte: byte & 0xff});
+            return accepted;
+        },
+
+        /**
+         * The RECORD half, and the reason this graft exists. `onDebugInput` is
+         * the name with a consumer: `subscribeDebugTargetInputs`
+         * (bw-debug/recording-session.js:42) returns null without it, and this
+         * was the ONLY one of the four targets here that lacked it. It applied
+         * recorded facts and produced none -- a key handed straight to the
+         * target was applied and lost.
+         *
+         * @param {(fact: {time: object, producer: string, payload: object}) => void} listener
+         * @returns {() => void} unsubscribe
+         */
+        onDebugInput(listener) {
+            if (typeof listener !== 'function') {
+                throw new TypeError('debug input listener must be a function');
+            }
+            inputListeners.push(listener);
+            return () => { inputListeners = inputListeners.filter(l => l !== listener); };
         },
 
         /**
@@ -614,7 +873,13 @@ export function createI8086DebugTarget(adapter, opts = {}) {
          * leaves every modifier stuck down.
          */
         keyIn(scancode) {
-            return typeof machine.keyIn === 'function' ? machine.keyIn(scancode) : false;
+            if (typeof machine.keyIn !== 'function') return false;
+            const accepted = machine.keyIn(scancode);
+            // ONLY A KEY THE MACHINE TOOK IS A FACT. A board with no keyboard
+            // returns false, and logging that would replay a keystroke that
+            // never reached anything.
+            if (accepted === true) publishInputEvent('i8086.key', {scancode});
+            return accepted;
         },
 
         /**
@@ -636,8 +901,15 @@ export function createI8086DebugTarget(adapter, opts = {}) {
         },
 
         setInput(chip, port, bit, level) {
-            return typeof machine.setInput === 'function'
-                ? machine.setInput(chip, port, bit, level) : false;
+            if (typeof machine.setInput !== 'function') return false;
+            const accepted = machine.setInput(chip, port, bit, level);
+            // A LEVEL, not an event: a bit already high and set high again is
+            // one state. See publishInputLevel.
+            if (accepted === true) {
+                publishInputLevel('i8086.gpio', `${chip}.${port}.${bit}`,
+                    {chip, port, bit, level});
+            }
+            return accepted;
         },
 
         state() { return runState; },

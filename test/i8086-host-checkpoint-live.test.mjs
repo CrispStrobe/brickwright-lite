@@ -49,7 +49,7 @@ const fixture = () => {
             log: () => { externalActions++; }
         });
     });
-    const logicalDomain = domain => domain.replace(/-reset-\d+$/, '');
+    const logicalDomain = domain => domain.replace(/-(?:reset|rewind)-\d+$/, '');
     const replay = createInstructionReplayController({
         recorder: foundation.recorder,
         getTarget: () => target,

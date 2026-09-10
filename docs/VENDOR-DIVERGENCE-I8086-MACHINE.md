@@ -305,18 +305,6 @@ fails unless it touched both.
     "m6502-debug.js": {
       "liteOnly": [
         {
-          "id": "m6502-debug-replay-input",
-          "falsifiable": "A recorded session plays back with no input -- the buttons you pressed during recording do nothing on replay.",
-          "why": "applyReplayInput routes a recorded producer event back into the machine; without it a replay runs with the program but none of the input.",
-          "contains": "applyReplayInput\\("
-        },
-        {
-          "id": "m6502-debug-input-listener",
-          "falsifiable": "A recorded session plays back with no input -- the buttons you pressed during recording do nothing on replay.",
-          "why": "onDebugInput registers the listener the recorder subscribes to. No listener, nothing recorded to replay.",
-          "contains": "onDebugInput\\("
-        },
-        {
           "id": "m6502-debug-checkpoint-bridge",
           "falsifiable": "You cannot save and reload a running program: the save does nothing, or produces a file that will not load on the same board.",
           "why": "Same bridge on the 6502 target: captureCheckpoint and restoreCheckpoint forwarded to the machine.",

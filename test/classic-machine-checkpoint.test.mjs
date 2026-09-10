@@ -92,7 +92,7 @@ test('classic targets reverse to a recorded instruction boundary with verified e
         const eventCursor = eventStream.nextSequence();
         machine.step();
         session.stop();
-        const logicalDomain = domain => domain.replace(/-reset-\d+$/, '');
+        const logicalDomain = domain => domain.replace(/-(?:reset|rewind)-\d+$/, '');
         const replay = createInstructionReplayController({recorder, getTarget: () => target,
             restoreCheckpoint: checkpoint => session.restore(checkpoint.eventCursor),
             subscribeEvents: listener => eventStream.onEvent(listener),
