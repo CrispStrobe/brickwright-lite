@@ -2311,3 +2311,78 @@ correct negatives about a red-then-green gate all pointed away from its cause
 (species 34), and they were still what made the cause findable, because they
 closed a family. A negative is worth exactly the scope it establishes. The
 failure here is not producing negatives; it is spending one outside its range.
+
+## Thirty-seventh species: A NUMBER THAT TRAVELS WITHOUT ITS INSTRUMENT (2026-09-10, named by lego-ac; three instances in one day from lego-ac, lego-b9 and brickwright-lite-0c)
+
+A repository with several derived views of the same underlying facts — a sync's
+normalized comparison, a manifest's set difference, a generated index's tally, a
+behaviour test's assertion — produces numbers that are each correct and each
+answer a slightly different question. Nothing forces a number to carry its
+instrument when it is quoted somewhere else. **The measurement is sound; the
+transport is lossy.**
+
+The defect is in the CITATION, not the measurement, and that is what makes this
+its own species rather than a variant of anything above it. Every gate that
+cannot fail has something wrong you can go and find in the code that produced
+it. Here there is nothing wrong to find. Each number is exactly right about the
+question it was asked, and the damage happens in a sentence somewhere else that
+reads it as an answer to a different one.
+
+**The tell, and it is the cleanest symptom statement any of us produced: every
+party is right, and a reader comparing them concludes someone cannot count.**
+That is lego-b9's line. When you notice yourself thinking "one of these people
+has made an arithmetic error", the hypothesis to reach for first is not
+miscounting — it is two instruments.
+
+**The diagnostic.** Can you state, for each number, the exact operation that
+produced it? If not, the number is unlabelled, and any comparison using it has
+no content **in either direction** — it can neither confirm nor contradict. This
+is the part that bites: an unlabelled number does not merely fail to prove the
+thing, it also fails to disprove it, so a disagreement between two of them is
+not evidence of anything at all.
+
+**Three instances on 2026-09-10, in three subsystems, found within hours of each
+other.**
+
+*Raw versus trimmed line counts.* On `i8086-debug.js`, raw `diff | grep -c '^>'`
+gives **298**; the trimmed, order- and whitespace-insensitive set difference the
+manifest and LANES row 380 use gives **218 / 12**. Both correct. The raw count
+ranks files by how much work is involved; only the trimmed one reconciles with
+the inventory. They were quoted in the same breath, to several agents, without
+either being labelled.
+
+*A sync's `--check` versus the manifest.* `sync-bw-board.mjs --check` reports
+**13 DIFFERS** while the manifest declares **14**. This looks exactly like a
+stale declaration, which is a thing the reverse assertion exists to catch, and it
+is not one: `cortex-m0-machine.js` differs from upstream only in an import path
+that the sync itself rewrites, so `--check` normalizes what the inventory counts.
+Two instruments, one file, no defect.
+
+*Declaration coverage versus behaviour coverage.* Reverting the post-reset
+pin-mode fallback in `emu8051-adapter.js` left `vendor-identity.test.mjs`
+**fully green** — the file is declared in `files`, which asserts declared
+IDENTIFIERS survive a sync, and the fallback introduces none. It was covered, but
+somewhere else: `emu8051-input-log.test.mjs` went red at 8 input records instead
+of 16. "Is this protected?" has two answers here and they disagree because they
+are two questions.
+
+**Why it clusters in a repository like this one.** The more derived views a repo
+maintains — and maintaining them is good practice, each one exists because
+someone wanted a question answered cheaply — the more pairs of numbers exist that
+look comparable and are not. The practice that creates the safety creates the
+species. Three instances in a day in three unrelated subsystems is not three
+people being careless; it is what this structure produces when numbers move
+between people faster than their definitions do.
+
+**The remedy is a habit, not a gate, which is why it is recorded here rather
+than built.** Quote the instrument with the number, always — "13 by `--check`",
+"14 declared", "218/12 trimmed", "298 raw". And before using one number to check
+another, prove they are the same instrument; otherwise the check is decoration in
+the strict sense this document means, since it cannot come out either way.
+
+**The corollary that cost the most time.** A number without its instrument does
+not just mislead — it can send someone to fix a defect that does not exist. The
+`--check` 13 versus declared 14 gap read as a stale declaration for long enough
+to be worth chasing, and chasing it would have meant deleting a correct entry.
+The one that catches this is the same one that catches most of what is in this
+document: go and measure it yourself before you act on it.
