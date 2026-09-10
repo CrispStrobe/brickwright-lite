@@ -234,6 +234,53 @@ test('supports event, time and context count predicates', () => {
         {counts: {cycles: 0}}).matchingIds, ['deadline']);
 });
 
+test('a time breakpoint does NOT fire before its threshold, in any tick spelling', () => {
+    // TWO MUTATION SURVIVORS, now held. Making `ordinalAtLeast` return `true`
+    // unconditionally reddened nothing across 33 cases, and so did making it
+    // ignore the threshold entirely — only FLIPPING the comparison reddened
+    // anything. So a time breakpoint could fire at tick 0 for `at: 5000` and
+    // the suite would have agreed.
+    //
+    // The three spellings are here because a tick arrives as a Number from most
+    // machines, a BigInt from the 8051 and the instruction instrument, and a
+    // `0x…` string after a session round trip. A threshold comparison that
+    // works for one and not another is the defect this convergence exists for.
+    const engine = new EventBreakpointEngine(capabilities);
+    engine.add({id: 'deadline', kind: 'time', domain: 'oscillator', at: 100});
+
+    const at = ticks => engine.evaluate({kind: 'port', time: {domain: 'oscillator', ticks}},
+        {counts: {}}).matchingIds;
+
+    for (const [name, before, exact, after] of [
+        ['Number', 99, 100, 101],
+        ['BigInt', 99n, 100n, 101n],
+        ['hex string', '0x63', '0x64', '0x65']
+    ]) {
+        assert.deepEqual(at(before), [], `${name}: fired BEFORE its threshold`);
+        assert.deepEqual(at(exact), ['deadline'], `${name}: did not fire AT its threshold`);
+        assert.deepEqual(at(after), ['deadline'], `${name}: did not fire after its threshold`);
+    }
+});
+
+test('a time breakpoint refuses a tick or a threshold it cannot read', () => {
+    // The other half: unreadable means "does not fire", not "fires always".
+    // Without this, a reader that returns null for everything and a comparison
+    // that ignores its operands are indistinguishable.
+    const engine = new EventBreakpointEngine(capabilities);
+    engine.add({id: 'deadline', kind: 'time', domain: 'oscillator', at: 100});
+    for (const bad of ['abc', '12', null, {}, 1.5, -1]) {
+        assert.deepEqual(
+            engine.evaluate({kind: 'port', time: {domain: 'oscillator', ticks: bad}},
+                {counts: {}}).matchingIds, [], `an unreadable tick ${String(bad)} fired a breakpoint`);
+    }
+    const loose = new EventBreakpointEngine(capabilities);
+    loose.add({id: 'fractional', kind: 'time', domain: 'oscillator', at: 1.5});
+    assert.deepEqual(
+        loose.evaluate({kind: 'port', time: {domain: 'oscillator', ticks: 100}},
+            {counts: {}}).matchingIds, [],
+        'a fractional THRESHOLD is not a tick and must not fire');
+});
+
 test('supports source, block, task, scheduler, device and call predicates', () => {
     const engine = new EventBreakpointEngine(capabilities);
     engine.add({id: 'line', kind: 'source', file: 'main.c', line: 9});
