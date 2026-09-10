@@ -2358,12 +2358,30 @@ ranks files by how much work is involved; only the trimmed one reconciles with
 the inventory. They were quoted in the same breath, to several agents, without
 either being labelled.
 
-*A sync's `--check` versus the manifest.* `sync-bw-board.mjs --check` reports
-**13 DIFFERS** while the manifest declares **14**. This looks exactly like a
+*A sync's `--check` versus the manifest.* `sync-bw-board.mjs --check` reported
+**13 DIFFERS** while the manifest declared **14**. This looks exactly like a
 stale declaration, which is a thing the reverse assertion exists to catch, and it
-is not one: `cortex-m0-machine.js` differs from upstream only in an import path
-that the sync itself rewrites, so `--check` normalizes what the inventory counts.
-Two instruments, one file, no defect.
+was not one: `cortex-m0-machine.js` differs from upstream only in an import path
+that the sync itself rewrites, so `--check` normalized what the inventory counted.
+
+**Two instruments, one file — and then a defect after all, which makes this the
+strongest of the three.** Both of us wrote the gap off in writing as harmless,
+and it was not. The file was declared in an inventory whose own `why` says it
+records *forward-ported work*, and it carries none: a sync reproduces lite's
+bytes exactly. It had been declared **only because the two instruments
+disagreed** — the identity gate compared raw bytes, saw a difference the sync
+itself had made, and the undeclared-divergence gate then required a human to
+settle the argument in the manifest. So the unlabelled disagreement did not
+merely mislead a reader. **It manufactured a false record, in a document whose
+whole purpose is to be true, and that record then had to be maintained by
+everyone who touched the list.** The entry survived four months and several
+audits, including two by people who had just measured the discrepancy and
+correctly explained it away.
+
+The fix was one instrument: `scripts/lib/vendor-rewrites.mjs`, imported by both
+the sync and the gate, so the gate asks *is this what a sync would produce*
+rather than *does this match upstream* — a question lite never had a yes to for
+that file.
 
 *Declaration coverage versus behaviour coverage.* Reverting the post-reset
 pin-mode fallback in `emu8051-adapter.js` left `vendor-identity.test.mjs`
