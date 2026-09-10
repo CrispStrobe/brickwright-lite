@@ -46,6 +46,11 @@ const {identify, assembleBios, VENDORED_SOURCE, SOURCE_IN_BW_BOARD} =
     await import(path.join(ROOT, 'scripts/sync-i8086-bios.mjs'));
 
 const sha256 = buf => createHash('sha256').update(buf).digest('hex');
+// `git` from PATH is the SUBJECT here, not an ambient input. What is under test is
+// how `git log --all -- <path>` orders candidates, and the script being tested
+// invokes git the same way; a test that resolved git differently from the code it
+// exercises would be testing a different program.
+// gate-shapes-allow: git IS the subject, reason above.
 const git = (dir, args) => execFileSync('git', ['-C', dir, ...args],
     {encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']}).trim();
 
