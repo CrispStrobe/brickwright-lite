@@ -99,8 +99,7 @@ async function emu8051Fixture() {
     return target;
 }
 
-test('8051 native step-over and step-out preserve real call-depth semantics', async () => {
-    if (!have8051) return;
+test('8051 native step-over and step-out preserve real call-depth semantics', {skip: have8051 ? false : 'the vendored emu8051 WASM is not present'}, async () => {
     let target = await emu8051Fixture();
     assert.ok(target.capabilities().steps.includes('over'));
     assert.equal(target.step('over'), undefined);
@@ -121,8 +120,7 @@ test('8051 native step-over and step-out preserve real call-depth semantics', as
     target.destroy();
 });
 
-test('8051 advertises and executes synchronous run-to across its exact code range', async () => {
-    if (!have8051) return;
+test('8051 advertises and executes synchronous run-to across its exact code range', {skip: have8051 ? false : 'the vendored emu8051 WASM is not present'}, async () => {
     const target = await emu8051Fixture();
     assert.deepEqual(target.capabilities().runTo, [{kind: 'address', space: 'code',
         addressMin: 0, addressMax: 0xffff, stopSides: ['before'], installation: 'sync'}]);

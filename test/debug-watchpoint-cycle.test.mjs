@@ -25,7 +25,6 @@ const WASM_JS = path.join(ROOT, 'overlay/scratch-gui/src/lib/emu8051/emu8051.js'
 const DEBUG_JS = path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-board/emu8051-debug.js');
 
 const have = existsSync(WASM_JS) && existsSync(DEBUG_JS);
-if (!have) console.log('# SKIP: the vendored emu8051 WASM is not present');
 
 /** MOV 30h,#00 ; MOV 30h,#42 ; SJMP $ — one watched byte, one real change. */
 const WATCH_HEX = ':0800000075300075304280FEEE\n:00000001FF\n';
@@ -52,8 +51,7 @@ function settle (t) {
 
 // ── D29 ──────────────────────────────────────────────────────────────────
 
-test('the VENDORED build exports the watchpoint API — the thing D29 said it did not', async () => {
-    if (!have) return;
+test('the VENDORED build exports the watchpoint API — the thing D29 said it did not', {skip: have ? false : 'the vendored emu8051 WASM is not present'}, async () => {
     const {wasm} = await targetWith(WATCH_HEX);
     assert.equal(typeof wasm._emu_dbg_set_bp_write, 'function',
         'D29 recorded this export as absent from the pinned build. It was present.');
@@ -64,8 +62,7 @@ test('the VENDORED build exports the watchpoint API — the thing D29 said it di
     }
 });
 
-test('a write to a watched address halts, and the halt names the address and the value', async () => {
-    if (!have) return;
+test('a write to a watched address halts, and the halt names the address and the value', {skip: have ? false : 'the vendored emu8051 WASM is not present'}, async () => {
     const {t} = await targetWith(WATCH_HEX);
     assert.ok(t.capabilities().breakpoints.includes('write'),
         'the vendored build offers write breakpoints');
@@ -88,8 +85,7 @@ test('a write to a watched address halts, and the halt names the address and the
     assert.equal(why.prev, 0x00, 'the transition, which is the evidence');
 });
 
-test('a same-value store does NOT halt — the honest limit, pinned as behaviour', async () => {
-    if (!have) return;
+test('a same-value store does NOT halt — the honest limit, pinned as behaviour', {skip: have ? false : 'the vendored emu8051 WASM is not present'}, async () => {
     // MOV 30h,#00 ; MOV 30h,#00 ; SJMP $ onto a byte already 0.
     const SAME = ':0800000075300075300080FE30\n:00000001FF\n';
     const {t} = await targetWith(SAME);
@@ -101,8 +97,7 @@ test('a same-value store does NOT halt — the honest limit, pinned as behaviour
         'the UI wording and the lesson hint both need re-reading.');
 });
 
-test('a halt that is not a watchpoint carries no address to misread', async () => {
-    if (!have) return;
+test('a halt that is not a watchpoint carries no address to misread', {skip: have ? false : 'the vendored emu8051 WASM is not present'}, async () => {
     const {t} = await targetWith(CYCLE_HEX);
     const seen = [];
     t.onHalt(why => seen.push(why));
@@ -116,8 +111,7 @@ test('a halt that is not a watchpoint carries no address to misread', async () =
 
 // ── D25 ──────────────────────────────────────────────────────────────────
 
-test('the vendored build offers a cycle step, and it is strictly finer than an instruction', async () => {
-    if (!have) return;
+test('the vendored build offers a cycle step, and it is strictly finer than an instruction', {skip: have ? false : 'the vendored emu8051 WASM is not present'}, async () => {
     const {t} = await targetWith(CYCLE_HEX);
     assert.ok(t.capabilities().steps.includes('cycle'),
         'the vendored emu8051 declares a cycle step');
@@ -168,8 +162,7 @@ test('the engines that cannot step a cycle refuse by name, and say why', async (
         'and points at the number it CAN report: what the instruction cost');
 });
 
-test('the cycle counter the drawer SHOWS advances by exactly one per cycle step', async () => {
-    if (!have) return;
+test('the cycle counter the drawer SHOWS advances by exactly one per cycle step', {skip: have ? false : 'the vendored emu8051 WASM is not present'}, async () => {
     // The drawer derives cycles from program time — `Math.round(tNs/1e9 * hz)`
     // — and says so rather than presenting a derived number as a counted one.
     // emu8051 exports no hardware cycle counter, so that derivation is the only
@@ -215,8 +208,7 @@ function withoutExports (wasm, names) {
     });
 }
 
-test('a build with no watchpoint export offers none, and refuses with a reason', async () => {
-    if (!have) return;
+test('a build with no watchpoint export offers none, and refuses with a reason', {skip: have ? false : 'the vendored emu8051 WASM is not present'}, async () => {
     const {default: createEmu8051} = await import(WASM_JS);
     const {createEmu8051DebugTarget} = await import(DEBUG_JS);
     const wasm = await createEmu8051();
@@ -231,8 +223,7 @@ test('a build with no watchpoint export offers none, and refuses with a reason',
         'and it names the honest alternative rather than just declining');
 });
 
-test('a build with no cycle-step export offers none, and refuses with a reason', async () => {
-    if (!have) return;
+test('a build with no cycle-step export offers none, and refuses with a reason', {skip: have ? false : 'the vendored emu8051 WASM is not present'}, async () => {
     const {default: createEmu8051} = await import(WASM_JS);
     const {createEmu8051DebugTarget} = await import(DEBUG_JS);
     const wasm = await createEmu8051();
