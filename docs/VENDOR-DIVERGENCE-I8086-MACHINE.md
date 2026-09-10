@@ -352,28 +352,28 @@ fails unless it touched both.
         },
         {
           "id": "z80-debug-timestamped-facts",
-          "disposition": "upstream: partition being measured (lego-b9, 2026-09-10) \u2014 the ten debug-event contracts go up as whatever set they turn out to be",
+          "disposition": "upstream: lane 1 -- instruction-debug-events.js. Same module property as the m6502 entry; the two rows exist because the gate is per-file, not because there are two mechanisms.",
           "falsifiable": "A recorded session plays back in the wrong order, or a saved checkpoint cannot be placed on the timeline against the events around it.",
           "why": "debugTime() stamps every producer fact and every checkpoint from one clock, so replay ordering and checkpoint placement agree. Without it the facts still record and still replay -- just not necessarily in the order they happened, which is the kind of wrong that looks right until a bug depends on ordering. NAMED 2026-09-05 because the pin bump moved upstream and the derived-coverage check found it unexplained.",
           "contains": "debugEvents\\.debugTime\\(\\)"
         },
         {
           "id": "z80-debug-replay-instruction",
-          "disposition": "upstream: partition being measured (lego-b9, 2026-09-10) \u2014 the ten debug-event contracts go up as whatever set they turn out to be",
+          "disposition": "upstream: BLOCKED on the checkpoint block (lane A), same dependency and same shape as the m6502 entry. `cpu.halted` where the 6502 uses `cpu.stopped || cpu.waiting`; everything else is one contract.",
           "falsifiable": "Stepping backwards one instruction silently does nothing, instead of saying why it cannot -- for example that a halted Z80 has no instruction to retire without a recorded interrupt.",
           "why": "replayInstruction() checks checkpointSupport() and the halted state FIRST and returns a coded refusal ('unsupported-replay', 'halted-without-instruction') with the reason. The refusal is the feature: an unsupported reverse-step that returns nothing is indistinguishable from one that worked and changed nothing.",
           "contains": "replayInstruction\\(\\)"
         },
         {
           "id": "z80-debug-event-retire-boundary",
-          "disposition": "upstream: partition being measured (lego-b9, 2026-09-10) \u2014 the ten debug-event contracts go up as whatever set they turn out to be",
+          "disposition": "upstream: lane 1 -- instruction-debug-events.js. Byte-identical to the m6502 entry and for the same reason: it describes the module's published boundary, not this target's.",
           "falsifiable": "A port or memory event halts the Z80 in the middle of its instruction, before the architectural PC and memory state reach a replayable boundary.",
           "why": "The target explicitly advertises the observed instruction-retire boundary which its instruction-atomic producer publishes after ordered access facts. Runner admission depends on this claim instead of a Z80 name check.",
           "contains": "eventBreakpointBoundary: 'instruction-retire'"
         },
         {
           "id": "z80-debug-memory-event-space",
-          "disposition": "upstream: partition being measured (lego-b9, 2026-09-10) \u2014 the ten debug-event contracts go up as whatever set they turn out to be",
+          "disposition": "upstream: WITH lane 1, kept SEPARATE from the m6502 entry. `passiveRead: true` here against `false` on m6502 -- same name, different contract. The pair that would have been grafted as one and been wrong.",
           "falsifiable": "The Z80 publishes memory events which the breakpoint compiler refuses because the target declares no matching address space.",
           "why": "The mem capability connects the already-published memory facts and passive debugger read surface to the target-neutral event predicate engine.",
           "contains": "spaces: \\{mem: \\{read: true, write: true, passiveRead: true\\}\\}"
@@ -391,42 +391,42 @@ fails unless it touched both.
         },
         {
           "id": "m6502-debug-timestamped-facts",
-          "disposition": "upstream: partition being measured (lego-b9, 2026-09-10) \u2014 the ten debug-event contracts go up as whatever set they turn out to be",
+          "disposition": "upstream: lane 1 -- instruction-debug-events.js (145 lines, zero imports, liteAuthored). MEASURED 2026-09-10: this is a property of the MODULE, not of either target -- `debugEvents.debugTime()` sits at the same three structural positions in both debug files and neither target implements a clock. This entry's own `why` already said so: \"named here separately because the gate is per-file\". The split was an artefact of the instrument and read as two facts.",
           "falsifiable": "A recorded session plays back in the wrong order, or a saved checkpoint cannot be placed on the timeline against the events around it.",
           "why": "debugTime() stamps every producer fact and every checkpoint from one clock, so replay ordering and checkpoint placement agree. The same mechanism as the Z80 target -- named here separately because the gate is per-file and a shared explanation would let one of them be deleted while the other stayed green.",
           "contains": "debugEvents\\.debugTime\\(\\)"
         },
         {
           "id": "m6502-debug-replay-instruction",
-          "disposition": "upstream: partition being measured (lego-b9, 2026-09-10) \u2014 the ten debug-event contracts go up as whatever set they turn out to be",
+          "disposition": "upstream: BLOCKED on the checkpoint block (lane A). `replayInstruction` calls `machine.checkpointSupport()`, so it cannot move before machine-checkpoint.js and its consumers are upstream. Structurally identical to the z80 entry -- same three refusal codes, same watchHit discipline, the try/finally comment verbatim -- differing only in the CPU-specific halted predicate and a chip name in a reason string. Do not start this before lane A lands.",
           "falsifiable": "Stepping backwards one instruction silently does nothing instead of saying why it cannot.",
           "why": "replayInstruction() checks checkpointSupport() first and returns a CODED refusal with a reason. The refusal is the feature: an unsupported reverse-step that returns nothing is indistinguishable from one that worked and changed nothing.",
           "contains": "replayInstruction\\(\\)"
         },
         {
           "id": "m6502-debug-nmi-is-recorded",
-          "disposition": "upstream: partition being measured (lego-b9, 2026-09-10) \u2014 the ten debug-event contracts go up as whatever set they turn out to be",
+          "disposition": "stays: MEASURED 2026-09-10 -- `z80-machine.js` contains zero `nmi(`, so there is no host NMI entry point on that target to record and no second consumer for a shared contract. NOT MODELLED rather than not applicable: a real Z80 has an NMI pin, so this is a gap in the Z80 model and not a fact about the architecture. It goes up if and when the Z80 grows one.",
           "falsifiable": "A recorded session that used the NMI button replays without it -- the interrupt happens live and is missing on playback, so the run diverges at that point and nowhere before it.",
           "why": "nmi() calls publishInput('m6502.nmi') FIRST and refuses if the recorder rejects it, so the interrupt cannot happen without being recorded. Dropping the publish leaves a working button and an unreplayable recording, which is the failure that looks like a working feature.",
           "contains": "publishInput\\('m6502\\.nmi'"
         },
         {
           "id": "m6502-debug-replay-boundary",
-          "disposition": "upstream: partition being measured (lego-b9, 2026-09-10) \u2014 the ten debug-event contracts go up as whatever set they turn out to be",
+          "disposition": "stays -- AND LEAVES THIS LEDGER'S SCOPE. MEASURED: `replayToInputBoundary` exists on m6502 alone (z80 0, i8086 0, emu8051 0), so z80 and i8086 are excluded from timed input replay entirely. Its two consumers disagree about the absence and NEITHER returns a refusal: instruction-replay.js:152 raises a NAMED replay error (`reverse-input-boundary-unsupported`), timed-replay-io.js:73 throws a raw `TypeError`. This is not a divergence to upstream -- it is a missing feature on two targets plus a driver throwing a TypeError for a capability the contract already has a vocabulary for. Own lane, needs a design decision first, root scoping.",
           "falsifiable": "Reverse-stepping to a recorded input lands somewhere else, or accepts a malformed boundary and runs to an arbitrary point instead of saying the boundary was invalid.",
           "why": "replayToInputBoundary() parses the boundary as a BigInt inside a try and returns a CODED refusal ('invalid-input-boundary') rather than throwing or coercing. A NaN tick count that is silently accepted replays to the wrong place and reports success.",
           "contains": "replayToInputBoundary\\(boundary\\)"
         },
         {
           "id": "m6502-debug-event-retire-boundary",
-          "disposition": "upstream: partition being measured (lego-b9, 2026-09-10) \u2014 the ten debug-event contracts go up as whatever set they turn out to be",
+          "disposition": "upstream: lane 1 -- instruction-debug-events.js. The literal `eventBreakpointBoundary: 'instruction-retire'` is byte-identical on both targets and is a claim about what the MODULE publishes (`kind: 'instruction', phase: 'retire'` at instruction-debug-events.js:113).",
           "falsifiable": "A RAM or memory-mapped device event halts the 6502 in the middle of its instruction, before the architectural PC and device state reach a replayable boundary.",
           "why": "The target explicitly advertises the observed instruction-retire boundary which its instruction-atomic producer publishes after ordered memory access facts. Runner admission depends on this capability instead of a CPU-name exception.",
           "contains": "eventBreakpointBoundary: 'instruction-retire'"
         },
         {
           "id": "m6502-debug-memory-event-space",
-          "disposition": "upstream: partition being measured (lego-b9, 2026-09-10) \u2014 the ten debug-event contracts go up as whatever set they turn out to be",
+          "disposition": "upstream: WITH lane 1, but this entry does NOT merge with z80's. MEASURED: the memory facts come from the module, the CAPABILITY does not -- `passiveRead: false` here (m6502-debug.js:92) against `true` on z80 (z80-debug.js:87). The false is load-bearing and justified in the `why`: it preserves the truth that RAM and MMIO occupy one address space. Converging these two by name would be wrong.",
           "falsifiable": "The 6502 publishes memory events which the breakpoint compiler refuses, or conditions destructively read a memory-mapped VIA while deciding whether to halt.",
           "why": "The mem capability connects published memory facts to the target-neutral predicate engine while passiveRead false preserves the truth that RAM and MMIO occupy one address space.",
           "contains": "spaces: \\{mem: \\{read: true, write: true, passiveRead: false\\}\\}"
