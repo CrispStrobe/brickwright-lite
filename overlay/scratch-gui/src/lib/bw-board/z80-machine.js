@@ -27,7 +27,7 @@ import { Latch374 } from './latch374.js';
 import { Buffer244 } from './buffer244.js';
 import {
     MACHINE_CHECKPOINT_SCHEMA, checkpointRefusal, checkpointSupport, cloneCheckpointValue,
-    checkpointTopology, statePair, validateCheckpointEnvelope
+    checkpointTopology, statePair, validateCheckpointEnvelope, validateCheckpointState
 } from './machine-checkpoint.js';
 
 export const SEARLE = Object.freeze({
@@ -74,6 +74,12 @@ export class Z80Machine {
         this.cycles = 0;
         /** @type {Record<string, MC6850>} */
         this.chips = {};
+        // Built on first use, NOT here: config validation later in this
+        // constructor can throw, and a schedule built now would describe a
+        // board that is about to be rejected. See i8086-machine.js for the
+        // full note; the hazard is silent, so it is recorded at both sites.
+        this._advList = null;   // hot-loop caches; see _buildHotLists
+        this._irqList = null;
         this._portMap = new Map();
         // Direction-aware port slots: a read-strobed chip (74HC244 IN) and
         // a write-strobed chip (74HC374 OUT) legally share one port — IN
@@ -310,8 +316,26 @@ export class Z80Machine {
      * bit4 fire) mapped onto Kempston bit order (000FUDLR). False
      * when the machine has no Kempston interface.
      */
+    /**
+     * Can this machine take a button mask at all?
+     *
+     * Asked BEFORE a host offers buttons, so the offer matches the board — the
+     * shape `I8086Machine.canTakeKeys()` already has, and for the same reason.
+     * Without it a caller can only find out by calling `setButtons` and reading
+     * the answer, which is too late for anything that wants to act on the
+     * capability rather than on the outcome: a face that advertises a control
+     * the board cannot take, or a recorder that logs a press nothing received.
+     *
+     * A board has a Kempston port when the config asks for one or when it has a
+     * ULA (z80-machine.js constructor); without it the read at 0x1f is unmapped
+     * and there is nowhere for a mask to go.
+     *
+     * @returns {boolean}
+     */
+    canTakeButtons() { return this._kempston !== null; }
+
     setButtons(mask) {
-        if (this._kempston === null) return false;
+        if (!this.canTakeButtons()) return false;
         this._kempston =
             ((mask >> 2) & 1)          // right
             | (((mask >> 3) & 1) << 1) // left
@@ -351,16 +375,26 @@ export class Z80Machine {
         const refusal = validateCheckpointEnvelope(checkpoint, this.checkpointTopology());
         if (refusal) return refusal;
         const state = checkpoint.state;
-        const expected = Object.keys(this.chips).sort();
-        const actual = Object.keys(state.chips || {}).sort();
-        const expectedDevices = Object.keys(this.devices || {}).sort();
-        const actualDevices = Object.keys(state.devices || {}).sort();
+        // The version / memory-image / CPU-field / component-set clauses are the
+        // SHARED ones and live in machine-checkpoint.js, so all three machines
+        // refuse the same malformed state for the same named reason. The tape,
+        // the ULA and the 128K banking below are genuinely this machine's.
+        //
+        // No `shape` is passed: a z80's chip state legitimately changes shape
+        // between captures (the tape's block list, the ULA's edge arrays), so a
+        // shape check against a fresh sample would refuse valid checkpoints.
+        // That is a property of this machine, not an omission -- see the
+        // per-chip clauses below, which check the same ground precisely.
+        const badState = validateCheckpointState(state, {
+            version: 1,
+            memBytes: this.mem.length,
+            cpuKeys: Z80Machine.CPU_STATE,
+            chips: this.chips,
+            devices: this.devices
+        });
+        if (badState) return badState;
         const ulaState = this.ula && state.chips?.ula;
-        if (state.v !== 1 || !(state.mem instanceof Uint8Array) || state.mem.length !== 65536 ||
-            !state.cpu || Z80Machine.CPU_STATE.some(key => !Object.hasOwn(state.cpu, key)) ||
-            JSON.stringify(expected) !== JSON.stringify(actual) ||
-            JSON.stringify(expectedDevices) !== JSON.stringify(actualDevices) ||
-            (!!state.zx128 !== this._zx128) ||
+        if ((!!state.zx128 !== this._zx128) ||
             (!!state.tape !== !!this.tape) ||
             (state.tape && (!Number.isSafeInteger(state.tape.pos) || !Array.isArray(state.tape.blocks) ||
                 state.tape.blocks.some(block => !Number.isSafeInteger(block.flag) ||
@@ -485,6 +519,7 @@ export class Z80Machine {
     attachDevice(name, dev) {
         this.devices = this.devices || {};
         this.devices[name] = dev;
+        this._advList = null;   // schedule is stale
         return dev;
     }
 
@@ -504,21 +539,37 @@ export class Z80Machine {
         return Math.max(4, Math.min(h, 0x10000));
     }
 
-    _advanceChips(n) {
+    /**
+     * Flat lists of the chips these hot loops actually touch, built on first
+     * use. Both loops run once per instruction, and Object.keys() allocated a
+     * fresh name array each time -- on the 8086 tier the identical pattern was
+     * measured at 89% of machine.step(). Invalidated in attachDevice.
+     */
+    _buildHotLists() {
+        this._advList = [];
         for (const k of Object.keys(this.chips)) {
             const c = this.chips[k];
-            if (typeof c.advance === 'function') c.advance(n);
+            if (typeof c.advance === 'function') this._advList.push(c);
         }
         if (this.devices) {
             for (const k of Object.keys(this.devices)) {
                 const d = this.devices[k];
-                if (typeof d.advance === 'function') d.advance(n);
+                if (typeof d.advance === 'function') this._advList.push(d);
             }
         }
+        this._irqList = Object.values(this.chips);
+    }
+
+    _advanceChips(n) {
+        if (this._advList === null) this._buildHotLists();
+        const list = this._advList;
+        for (let i = 0; i < list.length; i++) list[i].advance(n);
     }
 
     _anyIrq() {
-        for (const k of Object.keys(this.chips)) if (this.chips[k].irqAsserted) return true;
+        if (this._advList === null) this._buildHotLists();
+        const list = this._irqList;
+        for (let i = 0; i < list.length; i++) if (list[i].irqAsserted) return true;
         return false;
     }
 
