@@ -28,10 +28,13 @@ without knowing that will think one of them is. **Row 380 is the authority for t
 inventory.** Where a number here disagrees with it, prefer row 380 and read this
 note's figures as an ordering of magnitude only.
 
-Row 380 also keeps two categories this note ran together: **14 files are
-`[declared]` divergent** — present on both sides and differing — while the
-lite-authored files are `[lite]`, a separate bucket. "Twenty-two" below adds them,
-which the repo deliberately does not.
+Row 380 also keeps two categories this note originally ran together: files that are
+`[declared]` divergent — present on both sides and differing — and lite-authored
+files, which are `[lite]`. They are different relationships to upstream and the sum
+answers no question, so they are counted separately throughout and never added.
+**The declared figure moves**: 18 at pin `b195fa0`, 14 at `fe523c1ae`, **12** at
+`1f809683e` where this note is measured. Any count here is a count at a named pin
+and a later bump moves it.
 
 **AND THIS NOTE IS THE ANSWER TO A QUESTION ROW 380 ALREADY ASKED.** Re-derived
 independently by brickwright-lite-0c on 2026-09-10, that row reaches the same place
@@ -45,9 +48,11 @@ on the other.
 
 ## The unit is a subsystem, and it is derived from imports
 
-Twelve of the twenty-two divergences are one feature. That is not a judgement
-about what the files are called; it is the import graph and a count of who
-mentions the concept.
+The checkpoint cluster is twelve files — ten of the twelve `[declared]` divergences
+and two of the eight `[lite]` ones. That is not a judgement about what the files
+are called; it is the import graph and a count of who mentions the concept. (The
+two categories are counted separately throughout; see the classification below for
+why summing them answers no question.)
 
 | evidence | result |
 |---|---|
@@ -188,66 +193,41 @@ real options are both, or neither with `w65c02-cycle-provider.js` staying blocke
 
 **Ruling: move both.**
 
-## The twenty-two, classified
+## The declared 12 and the lite-authored 8, classified
 
-**Permanent — remove from the backlog, they cannot converge**
+**Re-derived at pin `1f809683e` on 2026-09-10, after two retirements.** An earlier
+version of this section was headed "the twenty-two", which summed `[declared]` and
+`[lite]`. Those are different relationships to upstream — a file that exists on
+both sides and differs, versus a file upstream does not have — and the sum answers
+no question. The declared figure has also moved twice, 18 → 14 → **12**. Counted
+separately below, and never added.
 
-| file | why |
+Two entries left the declared list since the first draft, and both were files this
+note had already set aside: `cortex-m0-machine.js`, whose whole
+divergence was a relative `node_modules` path, and `index.js`, two export lines.
+Being classified as *not real divergences* and then retired is the outcome that
+classification is for.
+
+### `[declared]` — 12 files, exist on both sides and differ
+
+| group | files |
 |---|---|
-| `LICENSE` | attribution that must travel with the vendored copy |
-| `cortex-m0-machine.js` (1/1) | `../../../node_modules` vs `../node_modules` — the vendoring mechanism itself |
+| **checkpoint cluster** (10) | `i8086-machine.js`, `m6502-machine.js`, `z80-machine.js`, `i8086-debug.js`, `m6502-debug.js`, `z80-debug.js`, `emu8051-debug.js`, and the replay-refusal flags in `i8086-adapter.js`, `m6502-adapter.js`, `z80-adapter.js` |
+| **cycle-provider unit** (1) | `debug-target-factory.js` — its lite-only lines ARE the two dynamic imports, the provider boundary and the selection |
+| **unclassified** (1) | `emu8051-adapter.js` — zero checkpoint mentions. Wants reading, not counting. |
 
-**Move out of the vendored tree, do not upstream**
+### `[lite]` — 8 files upstream does not have
 
-| file | why |
+| group | files |
 |---|---|
-| `resolve-netlist.js` | lite-authored, and its only importers are lite's own `pico-sim-run.js` and `bw-debug/debug-runner.js`. Nothing in the vendored tree uses it. |
+| **checkpoint cluster core** (2) | `machine-checkpoint.js`, `instruction-debug-events.js` |
+| **cycle-provider unit** (4) | `z80-target-factory.js`, `z80-cycle-debug.js`, `floooh-z80-cycle-provider.js`, `w65c02-cycle-provider.js` |
+| **move OUT of the vendored tree** (1) | `resolve-netlist.js` — zero importers inside the vendored tree, two in lite's own runtime (`pico-sim-run.js`, `bw-debug/debug-runner.js`) |
+| **permanent** (1) | `LICENSE` — attribution that travels with the copy |
 
-**The checkpoint cluster — one upstream unit**
-
-`machine-checkpoint.js`, `instruction-debug-events.js`, `z80-machine.js`,
-`m6502-machine.js`, `i8086-machine.js`, `z80-debug.js`, `m6502-debug.js`,
-`i8086-debug.js`, `emu8051-debug.js`, and the refusal flags in `z80-adapter.js`,
-`m6502-adapter.js`, `i8086-adapter.js`.
-
-**Cycle providers — a second unit, rooted in the vendored tree**
-
-`debug-target-factory.js`, `z80-target-factory.js`, `z80-cycle-debug.js`,
-`floooh-z80-cycle-provider.js`, `w65c02-cycle-provider.js`.
-
-> **A FIRST VERSION OF THIS SECTION SAID NOTHING IN THE VENDORED TREE IMPORTS ANY
-> OF THEM, AND THAT WAS FALSE.** It was derived with a grep for
-> `from './<file>'`, and `debug-target-factory.js` reaches two of them by
-> `await import('./z80-target-factory.js')` and
-> `await import('./w65c02-cycle-provider.js')`. The consequence drawn from it —
-> that upstreaming these means upstreaming their tests or they land with no
-> consumer — is WITHDRAWN. They have a consumer, it is a vendored file, and it is
-> on the runtime path.
->
-> **AND IT IS NOT THE CONSTRUCTED-PATH TRAP, which is what I first called it.**
-> That trap is about paths ASSEMBLED from segments — `join(root, 'docs', name)`,
-> a template, a concatenation — which no literal search can see, and whose remedy
-> is a shape detector. Here the specifier is a plain literal: a bare-name grep for
-> `z80-target-factory` finds it without trouble. What returned zero was the
-> pattern narrowed to `from './z80-target-factory`. Nothing was hidden; one import
-> syntax was matched and the other was not, and the remedy is only a wider
-> pattern — `from '…'`, `await import('…')` and `require('…')` together. Naming it
-> the constructed-path trap would send the next reader to build a detector they do
-> not need while still missing this.
->
-> `debug-target-factory.js` reaches **thirteen** modules by `await import('./…')`,
-> so a static-import scan is blind to the whole target-factory dispatch path, not
-> to one corner of it. The graph below was re-derived with a reader that sees both
-> forms; the checkpoint cluster's two core files came back with the same importers
-> they had, so that half of the derivation stands.
-
-That also classifies `debug-target-factory.js`, which the first version left
-unclassified: its 12 lite-only lines ARE this wiring — the two dynamic imports,
-the provider boundary, the selection, and the returned `providerBoundary` /
-`providerSelection`. It is the root of this unit, not an independent divergence.
-
-**Not yet classified** — `emu8051-adapter.js` (71 lite-only lines, zero checkpoint
-mentions) and `index.js` (2 export lines). These want reading, not counting.
+So the checkpoint cluster is **12 files across both categories**, and the
+cycle-provider unit is **5**. Those two numbers are the ones to plan against; 20 is
+not a quantity anyone should act on.
 
 ## Sequence
 
