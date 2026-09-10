@@ -271,18 +271,6 @@ fails unless it touched both.
     "z80-debug.js": {
       "liteOnly": [
         {
-          "id": "z80-debug-replay-input",
-          "falsifiable": "A recorded session plays back with no input -- the buttons you pressed during recording do nothing on replay.",
-          "why": "applyReplayInput routes a recorded producer event back into the machine; without it a replay runs with the program but none of the input.",
-          "contains": "applyReplayInput\\("
-        },
-        {
-          "id": "z80-debug-input-listener",
-          "falsifiable": "A recorded session plays back with no input -- the buttons you pressed during recording do nothing on replay.",
-          "why": "onDebugInput registers the listener the recorder subscribes to. No listener, nothing recorded to replay.",
-          "contains": "onDebugInput\\("
-        },
-        {
           "id": "z80-debug-checkpoint-bridge",
           "falsifiable": "You cannot save and reload a running program: the save does nothing, or produces a file that will not load on the same board.",
           "why": "The debug target forwards captureCheckpoint and restoreCheckpoint to the machine; without it the debugger cannot save or reload at all.",
@@ -369,28 +357,6 @@ fails unless it touched both.
           "falsifiable": "The 6502 publishes memory events which the breakpoint compiler refuses, or conditions destructively read a memory-mapped VIA while deciding whether to halt.",
           "why": "The mem capability connects published memory facts to the target-neutral predicate engine while passiveRead false preserves the truth that RAM and MMIO occupy one address space.",
           "contains": "spaces: \\{mem: \\{read: true, write: true, passiveRead: false\\}\\}"
-        }
-      ]
-    },
-    "emu8051-adapter.js": {
-      "liteOnly": [
-        {
-          "id": "emu8051-replay-input",
-          "falsifiable": "A recorded session plays back with no input -- the buttons you pressed during recording do nothing on replay.",
-          "why": "applyReplayInput on the 8051 adapter.",
-          "contains": "applyReplayInput\\("
-        },
-        {
-          "id": "emu8051-input-listener",
-          "falsifiable": "A recorded session plays back with no input -- the buttons you pressed during recording do nothing on replay.",
-          "why": "onInput registers the recorder listener on the 8051 adapter. NOTE 2026-09-10: a fourth entry, emu8051-post-reset-pin-mode, left this list at the 3a18a8c bump. It was declared here on 2026-09-10 after being found as undeclared lite-only work, upstreamed the same day as bw-board 76760ec, and retired hours later when the bump brought it back -- declared, upstreamed and retired inside one day, which is the ledger's ratchet working at speed rather than a churn. The gate that caught it is the convergence check, which works at ENTRY level: two of us predicted nothing would fire, reasoning that staleDeclared is file-level and the file still diverges by the recorder. Both true, and both irrelevant, because a third gate was already asking the right question.",
-          "contains": "onInput\\("
-        },
-        {
-          "id": "emu8051-input-normalization",
-          "falsifiable": "The ADC value the MCU receives differs from the one the recorder logs, so a replayed session drifts from the recorded one.",
-          "why": "normalizeVolts clamps to 0..vcc and the pin callback coerces to 0/1, matching what the native setter would store. Recorder-MOTIVATED but not recorder-gated: it changes what reaches _emu_set_adc_voltage whether or not anyone is listening. Declared 2026-09-10 for the same reason as the entry above.",
-          "contains": "normalizeVolts"
         }
       ]
     }

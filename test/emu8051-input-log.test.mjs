@@ -10,7 +10,7 @@ const ADAPTER_JS = path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-board/emu8051
 const have = existsSync(WASM_JS) && existsSync(ADAPTER_JS);
 if (!have) console.log('# SKIP: vendored emu8051 WASM is not present');
 
-async function fixture(mode = 'poll') {
+async function fixture(mode = 'poll', attachBoard = true) {
     const {default: createEmu8051} = await import(WASM_JS);
     const {createEmu8051Adapter} = await import(ADAPTER_JS);
     const raw = await createEmu8051();
@@ -32,15 +32,18 @@ async function fixture(mode = 'poll') {
         readAnalog(pin) { return analog.get(pin) ?? 0; }
     };
     const adapter = createEmu8051Adapter(wasm, {mode, ports: [1]});
-    adapter.attachBoard(board);
+    if (attachBoard) adapter.attachBoard(board);
     return {adapter, calls, digital, analog};
 }
+
+/** The same instrumented wasm with NO board — the only state that permits replay. */
+const boardless = (mode = 'poll') => fixture(mode, false);
 
 test('poll boundary logs initial and changed pin/ADC inputs exactly once', async () => {
     if (!have) return;
     const {adapter, digital, analog} = await fixture();
     const inputs = [];
-    adapter.onInput(input => inputs.push(input));
+    adapter.onDebugInput(input => inputs.push(input));
     adapter.runNs(1000);
     assert.equal(inputs.filter(input => input.producer === 'emu8051.pin').length, 8);
     assert.equal(inputs.filter(input => input.producer === 'emu8051.adc').length, 8);
@@ -57,11 +60,21 @@ test('poll boundary logs initial and changed pin/ADC inputs exactly once', async
     ]);
 });
 
-test('poll-mode replay validates and applies recorded inputs without re-logging them', async () => {
+test('replay reaches the NATIVE setters and does not re-log itself', async () => {
+    // BOARDLESS, AND THAT IS THE POINT OF THIS EDIT. Until the dce90bc pin this
+    // ran with a board attached and asserted `{accepted: true}`. Upstream then
+    // measured that a live board re-asserts its own pin values, so a replay in
+    // POLL mode was accepted and silently overwritten one run slice later --
+    // the guard used to test the MODE and give the board as its reason. It now
+    // turns on the board, in either mode, so the accepted path is boardless.
+    //
+    // What this file still proves that upstream's own suite does not: the wasm
+    // here is Proxy-wrapped, so it can assert the value handed to the NATIVE
+    // setter, not merely that the call was accepted.
     if (!have) return;
-    const {adapter, calls} = await fixture();
+    const {adapter, calls} = await boardless();
     const inputs = [];
-    adapter.onInput(input => inputs.push(input));
+    adapter.onDebugInput(input => inputs.push(input));
     assert.deepEqual(adapter.applyReplayInput({producer: 'emu8051.pin',
         payload: {port: 1, bit: 3, level: 0}}), {accepted: true});
     assert.deepEqual(adapter.applyReplayInput({producer: 'emu8051.adc',
@@ -73,20 +86,27 @@ test('poll-mode replay validates and applies recorded inputs without re-logging 
         payload: {port: 9, bit: 0, level: 1}}).accepted, false);
 });
 
-test('push mode refuses latch replay while the live board callback owns input', async () => {
+test('an ATTACHED BOARD refuses replay, in either mode', async () => {
+    // The predicate is the board, not the mode. In poll mode runNs/readPort/
+    // writePort/setPortMode all reach the sync path, which reads the live board
+    // and pushes its values into the core through the same native setter -- so
+    // poll-with-a-board is the identical authority conflict, and before the
+    // dce90bc pin it was accepted silently.
     if (!have) return;
-    const {adapter} = await fixture('push');
-    const result = adapter.applyReplayInput({producer: 'emu8051.pin',
-        payload: {port: 1, bit: 0, level: 0}});
-    assert.equal(result.accepted, false);
-    assert.equal(result.code, 'live-board-input-authority');
+    for (const mode of ['poll', 'push']) {
+        const {adapter} = await fixture(mode);
+        const result = adapter.applyReplayInput({producer: 'emu8051.pin',
+            payload: {port: 1, bit: 0, level: 0}});
+        assert.equal(result.accepted, false, `${mode} mode with a board must refuse`);
+        assert.equal(result.code, 'live-board-input-authority');
+    }
 });
 
 test('reset starts a fresh monotonic input domain and republishes initial state', async () => {
     if (!have) return;
     const {adapter} = await fixture();
     const inputs = [];
-    adapter.onInput(input => inputs.push(input));
+    adapter.onDebugInput(input => inputs.push(input));
     adapter.runNs(1000);
     adapter.reset();
     adapter.runNs(1000);
@@ -103,8 +123,8 @@ test('listeners receive isolated records and ADC logs the native clamped value',
     analog.set('P1.0', 99);
     analog.set('P1.1', Number.NaN);
     const observed = [];
-    adapter.onInput(input => { input.payload.level = 99; input.time.domain = 'mutated'; });
-    adapter.onInput(input => observed.push(input));
+    adapter.onDebugInput(input => { input.payload.level = 99; input.time.domain = 'mutated'; });
+    adapter.onDebugInput(input => observed.push(input));
     adapter.runNs(1000);
     const pin = observed.find(input => input.producer === 'emu8051.pin');
     assert.equal(pin.payload.level, 1);
