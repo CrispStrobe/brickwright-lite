@@ -87,7 +87,7 @@ ENGINE fact or a DOWNSTREAM concern?**
 |---|---|---|
 | `instructionLength` from `bw-debug/opcodes.js` | how many bytes an 8051 instruction occupies — an engine fact | **upstream it**, on its own merits, independent of checkpointing |
 | `withI8086MemoryPreference` from `bw-i8086-preferences.js` | a user-selected memory preference | **invert to injection** — moving it up drags a settings layer into an engine library |
-| `createConditionalCycleProviderBoundary` from `bw-debug/conditional-cycle-provider.js` | see below | **upstream it**, with `cycle-provider.js` |
+| `createConditionalCycleProviderBoundary` from `bw-debug/conditional-cycle-provider.js` | see below | **upstream it**; `cycle-provider.js` goes with it, and that part is the weaker half of the case |
 
 The third was measured rather than assumed. `conditional-cycle-provider.js` is 79
 lines importing only `cycle-provider.js`, which is 69 lines importing nothing — a
@@ -98,10 +98,38 @@ machinery for negotiating between engine components is an engine fact; the calle
 that decides *which* provider to request may well be downstream, and the boundary
 does not care.
 
-One consequence to state rather than discover: `cycle-provider.js` has seven
-runtime importers today, and one of them is lite's own `bw-debug/debug-runner.js`.
-After the move that becomes lite importing from the vendored tree, which is the
-normal direction, but it means the move touches a lite file too.
+**The number I first gave for `cycle-provider.js` was wrong and it cuts against the
+move.** I said seven runtime importers, one of them lite's. That seven came from
+counting files that merely CONTAIN the string `cycle-provider`, which matches
+`conditional-cycle-provider` and `w65c02-cycle-provider` as well. Measured on the
+exact specifier there are **three**, and all three are lite-side:
+`bw-debug/debug-runner.js`, `bw-debug/cycle-replay.js`, and
+`bw-debug/conditional-cycle-provider.js`. **No vendored file imports it directly**;
+the vendored tree reaches it only transitively, through
+`w65c02-cycle-provider.js` → `conditional-cycle-provider.js`.
+
+So it is not "a lite file gets touched". `cycle-provider.js` is today entirely a
+lite module with three lite consumers, and moving it up means lite importing it
+back out of the vendored tree in two places, for something no vendored file uses
+directly.
+
+**The argument re-made against that shape.** The property being bought is that the
+vendored tree has NO outward dependencies — that is what makes it vendorable, and
+it is why this axis blocks at all. Moving both modules achieves it outright.
+Injection does not: `negotiateCycleProvider` has exactly one call site inside the
+boundary, but the only thing that could inject it is `w65c02-cycle-provider.js`,
+which is itself vendored, so the dependency would simply move rather than leave.
+Threading it from lite would mean a parameter added to two vendored functions and
+carried through the factory's dynamic dispatch — more coupling, expressed as less.
+
+The cost is real and stated: upstream acquires a 69-line module it does not
+currently use, and two lite files import it back through the vendored tree. That
+direction is already established — `bw-debug/debug-runner.js` imports
+`../bw-board/resolve-netlist.js` today — so it is normal rather than novel.
+
+`conditional-cycle-provider.js` is the stronger half and does not depend on this
+argument: it has exactly one vendored consumer, `w65c02-cycle-provider.js`, which
+is the file being unblocked.
 
 ## The twenty-two, classified
 
@@ -134,11 +162,27 @@ normal direction, but it means the move touches a lite file too.
 > OF THEM, AND THAT WAS FALSE.** It was derived with a grep for
 > `from './<file>'`, and `debug-target-factory.js` reaches two of them by
 > `await import('./z80-target-factory.js')` and
-> `await import('./w65c02-cycle-provider.js')`. A dynamic import is invisible to a
-> static-import scan, which is the same trap as a constructed path defeating a
-> by-name census. The consequence drawn from it — that upstreaming these means
-> upstreaming their tests or they land with no consumer — is WITHDRAWN. They have
-> a consumer, it is a vendored file, and it is on the runtime path.
+> `await import('./w65c02-cycle-provider.js')`. The consequence drawn from it —
+> that upstreaming these means upstreaming their tests or they land with no
+> consumer — is WITHDRAWN. They have a consumer, it is a vendored file, and it is
+> on the runtime path.
+>
+> **AND IT IS NOT THE CONSTRUCTED-PATH TRAP, which is what I first called it.**
+> That trap is about paths ASSEMBLED from segments — `join(root, 'docs', name)`,
+> a template, a concatenation — which no literal search can see, and whose remedy
+> is a shape detector. Here the specifier is a plain literal: a bare-name grep for
+> `z80-target-factory` finds it without trouble. What returned zero was the
+> pattern narrowed to `from './z80-target-factory`. Nothing was hidden; one import
+> syntax was matched and the other was not, and the remedy is only a wider
+> pattern — `from '…'`, `await import('…')` and `require('…')` together. Naming it
+> the constructed-path trap would send the next reader to build a detector they do
+> not need while still missing this.
+>
+> `debug-target-factory.js` reaches **thirteen** modules by `await import('./…')`,
+> so a static-import scan is blind to the whole target-factory dispatch path, not
+> to one corner of it. The graph below was re-derived with a reader that sees both
+> forms; the checkpoint cluster's two core files came back with the same importers
+> they had, so that half of the derivation stands.
 
 That also classifies `debug-target-factory.js`, which the first version left
 unclassified: its 12 lite-only lines ARE this wiring — the two dynamic imports,
