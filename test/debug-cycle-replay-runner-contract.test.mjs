@@ -25,7 +25,8 @@ test('recorder indexes strict recorded-cycle cursors without treating reconstruc
 test('runner cycle reverse shares recording, cursor, output and reverse-continue lifecycles', () => {
     assert.match(runner, /createCycleReplayController\(\{/);
     assert.match(runner, /restoreCheckpoint: checkpoint => branchSession\.restore\(checkpoint\.eventCursor\)/);
-    assert.match(runner, /captureSourceState:[\s\S]{0,180}captureHostState\(\)/);
+    assert.match(runner, /captureSourceState:[\s\S]{0,180}wrapSourceState\(currentTarget\.captureCheckpoint\(\), captureHostState\)/,
+        'cycle-reverse source capture routes through wrapSourceState, so a returned refusal is not buried in the {target, host} wrapper the guard cannot see');
     assert.match(runner, /restoreSourceState:[\s\S]{0,220}commitHostRestore/);
     assert.match(runner, /reverseDebugToCycle:[\s\S]{0,900}replayOutputGate\.resynchronize\(snapshot\(\)\)/);
     assert.match(runner, /reverseStepDebugCycleStatus\(\)[\s\S]{0,700}previousCycleBoundaryCursor\(before\)/);
