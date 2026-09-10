@@ -72,7 +72,20 @@ test('instrument: Wave 7 still has the ten lessons this gate measures', () => {
 
 // ── machines-logic-levels / 06-active-low-high ─────────────────────────────
 
-test('OPEN DEFECT: the active-high level the lesson quotes depends on the port mode', async () => {
+// Was an OPEN DEFECT: "the active-high level the lesson quotes depends on the
+// port mode." The mode dependence is real and PERMANENT — the STC12's default
+// quasi-bidirectional pin drives high through a weak pull-up that cannot source
+// an LED, so a driven-high P1.1 reads ~2.1 V and its active-high LED stays dark,
+// where a push-pull pin reaches ~4.9 V and lights it. That is not a bug to fix;
+// it is 8051 hardware. The defect was that the LESSON quoted one mode's level as
+// if it were the level. It no longer does: the `measure` hint quotes both modes
+// and makes the dependence the point ("different electrical level: that is the
+// whole lesson"), and the example's intro/EXPECTED both call the active-high LED
+// faint on this bench and disclaim a generic push-pull claim. So this ADJUDICATES
+// rather than waits: it pins the electrical reality AND that the lesson teaches
+// it. Falsified — re-measure Wave 7 — if a quasi pin ever sources an LED (a model
+// change) or the lesson stops disclosing the mode dependence.
+test('ADJUDICATED (was OPEN DEFECT): the active-high level depends on port mode, and the lesson teaches that', async () => {
     assert.equal(lesson('machines-logic-levels').exampleId, '06-active-low-high');
     // The bench: an active-low LED from the rail through P1.0, an active-high
     // LED from P1.1 to ground.
@@ -100,7 +113,17 @@ test('OPEN DEFECT: the active-high level the lesson quotes depends on the port m
     near(quasi.high, 2.1193, 5e-4, 'P1.1 driven high, quasi-bidirectional');
     near(quasi.highLed, 0.0066, 5e-4, 'and the active-high LED is essentially dark');
     assert.ok(quasi.highLed < pushpull.highLed / 20,
-        'the two port modes no longer differ on this bench — re-measure Wave 7');
+        'a quasi pin now sources the active-high LED as well as push-pull — the hardware ' +
+        'premise of this lesson changed, re-measure Wave 7');
+
+    // The adjudication's other half: the lesson must TEACH the dependence, not
+    // quote one mode's level as if it were the level. Pin the disclosure so a
+    // revert to a single-mode number fires here.
+    const hint = checkpoint('machines-logic-levels', 'measure').copy.en.hint;
+    assert.match(hint, /push-pull/i, 'the measure hint must name the push-pull level it quotes');
+    assert.match(hint, /quasi-bidirectional/i, 'and the default quasi-bidirectional mode');
+    assert.match(hint, /cannot source|weak pull-up|essentially dark/i,
+        'and say the default mode cannot source the active-high LED — the whole point of the lesson');
 });
 
 // ── machines-gates-registers / 20-shift-register-binary ────────────────────
