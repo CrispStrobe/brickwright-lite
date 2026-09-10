@@ -383,14 +383,8 @@ fails unless it touched both.
         {
           "id": "emu8051-input-listener",
           "falsifiable": "A recorded session plays back with no input -- the buttons you pressed during recording do nothing on replay.",
-          "why": "onInput registers the recorder listener on the 8051 adapter.",
+          "why": "onInput registers the recorder listener on the 8051 adapter. NOTE 2026-09-10: a fourth entry, emu8051-post-reset-pin-mode, left this list at the 3a18a8c bump. It was declared here on 2026-09-10 after being found as undeclared lite-only work, upstreamed the same day as bw-board 76760ec, and retired hours later when the bump brought it back -- declared, upstreamed and retired inside one day, which is the ledger's ratchet working at speed rather than a churn. The gate that caught it is the convergence check, which works at ENTRY level: two of us predicted nothing would fire, reasoning that staleDeclared is file-level and the file still diverges by the recorder. Both true, and both irrelevant, because a third gate was already asking the right question.",
           "contains": "onInput\\("
-        },
-        {
-          "id": "emu8051-post-reset-pin-mode",
-          "falsifiable": "After a reset, an external input arrives one run slice late: reset clears the JS output shadow, so the first post-reset poll skips every pin it no longer has a mode for.",
-          "why": "NOT recorder work, despite sitting inside it. The fallback asks the native core for the pin mode when the JS shadow is empty. It uses only APIs upstream already has (MODE_NAMES, _emu_get_pin_mode) and is a clean upstream candidate on its own. It was undeclared until 2026-09-10 because emu8051-adapter.js is declared by IDENTIFIER and this change introduces none -- a covered file with uncovered lines. Proved by mutation: reverting it left vendor-identity fully GREEN while test/emu8051-input-log.test.mjs went red at 8 records instead of 16. Behaviour coverage caught what declaration coverage could not; they are different instruments and this file needed both.",
-          "contains": "MODE_NAMES\\[wasm\\._emu_get_pin_mode\\(port, bit\\)\\]"
         },
         {
           "id": "emu8051-input-normalization",
