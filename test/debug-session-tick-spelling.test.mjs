@@ -117,6 +117,23 @@ test('and the replay half accepts what the import half produced', async () => {
     }
 });
 
+test('a NEGATIVE tick is refused in every spelling', async () => {
+    // MUTATION SURVIVOR, now held. Making `readTicks` return a negative bigint
+    // unchanged reddened nothing across 47 cases: the refusals elsewhere in
+    // this file all use values of the wrong TYPE, and none was the right type
+    // with the wrong SIGN. A clock that has run backwards past zero is not a
+    // spelling question, and it was the one part of the contract nothing held.
+    const {readTicks} = await import(path.join(LIB, 'bw-debug/tick-value.js'));
+    for (const negative of [-1, -1n, -4242, -4242n]) {
+        assert.equal(readTicks(negative), null, `${negative} was read as a tick`);
+    }
+    // And the boundary on the accepting side, or "refuses negatives" is equally
+    // satisfied by a reader that refuses zero.
+    assert.equal(readTicks(0), 0n);
+    assert.equal(readTicks(0n), 0n);
+    assert.equal(readTicks('0x0'), 0n);
+});
+
 test('an unreadable tick refuses as a SPELLING problem and names what it found', async () => {
     // The half of this defect that cost the most: the refusal used to blame
     // cursor ordering. Asserting the CODE and the message together is what
