@@ -266,3 +266,74 @@ test('an unscoped sync writes nothing new and refuses both by name', (t) => {
     assert.deepEqual(after, [],
         `an unscoped sync created ${after.join(', ')} -- the whole point of this entry kind`);
 });
+
+// ---- THE REVERSE DIRECTION -------------------------------------------------
+//
+// Everything above asserts that every DECLARED absent file really is absent.
+// Nothing asserted the other way: that every file which IS absent has been
+// accounted for. So the ledger could be incomplete while this suite stayed
+// green, which is how `pin-functions.js` sat undeclared across many pin bumps.
+// Found by lego-b9; the derivation below is why the obvious repair was wrong.
+//
+// TWO MECHANISMS KEEP A FILE OUT OF LITE, AND THEY DIFFER IN KIND:
+//
+//   `absentByDesign` (this manifest) means WE CHOSE NOT TO TAKE THIS. It is
+//   reversible, it carries `why` and `falsifiable`, and the CycleEstimator pair
+//   is exactly that — lite removed a feature and could take it back tomorrow.
+//
+//   `EXCLUDE` (sync-bw-board.mjs) means THIS CANNOT BE TAKEN. `pin-functions.js`
+//   does `import { readFileSync } from 'node:fs'` and is marked NODE-ONLY in
+//   upstream's own index.js. A browser bundle cannot import node:fs. Nobody will
+//   ever "reverse" that while the file is what it is.
+//
+// Filing the second under the first would put a true fact (it is absent) in a
+// place that implies a false reason (we decided), and invite a future reader to
+// undo something that was never a choice. So this asserts the UNION and reads
+// EXCLUDE from the sync itself rather than restating it — a copy here would be a
+// third place stating one fact, and would go stale the first time the sync moved.
+//
+// THIS TEST INSPECTS THE TREE; IT DOES NOT PERFORM A SYNC. That matters for
+// predicting what a mutation does: removing a name from EXCLUDE does not make
+// the file appear on disk, it makes an absent file unaccounted — so the
+// assertion FAILS. Stated because the opposite reading is defensible until the
+// mechanism is named.
+test('every file absent from lite is accounted for, by decision or by impossibility', t => {
+    const dir = process.env.BW_BOARD_DIR; // gate-shapes-allow: named skip below
+    if (!dir || !statSync(join(dir, 'src'), {throwIfNoEntry: false})) {
+        t.skip('BW_BOARD_DIR unset or has no src/ -- the reverse direction is NOT verified here');
+        return;
+    }
+    const upstream = readdirSync(join(dir, 'src'))
+        .filter(f => f.endsWith('.js')).sort();
+    const vendored = new Set(readdirSync(VENDORED).filter(f => f.endsWith('.js')));
+
+    // READ, never restate: the sync's own exclusion set is the authority for
+    // "cannot be taken", so this follows it when it changes.
+    const syncSrc = readFileSync(SYNC, 'utf8');
+    const excludeMatch = syncSrc.match(/const EXCLUDE = new Set\(\[([^\]]*)\]\)/);
+    assert.ok(excludeMatch,
+        'sync-bw-board.mjs no longer declares `const EXCLUDE = new Set([...])` — this test reads ' +
+        'that set as the authority for "cannot be vendored"; if it moved, point this at its new home ' +
+        'rather than hardcoding a copy here');
+    const excluded = new Set([...excludeMatch[1].matchAll(/'([^']+)'/g)].map(m => m[1]));
+    assert.ok(excluded.size > 0, 'the sync declares an empty EXCLUDE set — expected at least one node-only module');
+
+    const declared = new Set(Object.keys(spec().absentByDesign ?? {}));
+    const unaccounted = upstream.filter(f => !vendored.has(f) && !declared.has(f) && !excluded.has(f));
+
+    assert.deepEqual(unaccounted, [],
+        `these upstream files are absent from lite and nothing says why:\n` +
+        unaccounted.map(f => `  ${f}`).join('\n') +
+        `\n\nEither it was a DECISION — add it to absentByDesign with a why and a falsifiable ` +
+        `sentence — or it CANNOT be vendored, in which case it belongs in sync-bw-board.mjs's ` +
+        `EXCLUDE set with the technical reason. Do not put the second kind in the first: an ` +
+        `absentByDesign entry reads as a choice and invites someone to reverse it.`);
+
+    // The population is small enough today to state, so a future reader can see
+    // at a glance whether it grew: 3 absent of ~190, 2 declared and 1 excluded.
+    const absent = upstream.filter(f => !vendored.has(f));
+    assert.ok(absent.length >= declared.size + excluded.size - 1,
+        `accounting lists more files than are actually absent (${absent.length} absent, ` +
+        `${declared.size} declared, ${excluded.size} excluded) — a stale entry names a file ` +
+        `that came back`);
+});
