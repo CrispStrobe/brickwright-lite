@@ -84,7 +84,10 @@ test('8086 restore rejects incomplete or mismatched snapshots before mutation', 
     // Refused, RETURNED not thrown (the machine-checkpoint contract), and before
     // any mutation -- loadState validates fully before touching execution state.
     const missing = target.restoreCheckpoint(incomplete);
-    assert.match(missing.refused, /CPU field 'intShadow' is missing/);
+    // The converged validateCheckpointState makes `refused` a stable category
+    // ('checkpoint machine state is incomplete') and carries the specifics in
+    // `details.reason`; assert the missing field there, where it now lives.
+    assert.match(missing.details.reason, /intShadow/);
     assert.equal(missing.code, 'INVALID_CHECKPOINT');
     assert.deepEqual(machine.saveState(), before);
 
