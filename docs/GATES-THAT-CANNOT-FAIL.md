@@ -2374,9 +2374,22 @@ itself had made, and the undeclared-divergence gate then required a human to
 settle the argument in the manifest. So the unlabelled disagreement did not
 merely mislead a reader. **It manufactured a false record, in a document whose
 whole purpose is to be true, and that record then had to be maintained by
-everyone who touched the list.** The entry survived four months and several
-audits, including two by people who had just measured the discrepancy and
-correctly explained it away.
+everyone who touched the list.** **The entry was created, audited and explained away inside five
+days**, by people actively working on that exact list. It entered the manifest at
+`ade8d1e7f` on 2026-09-05 and was removed on 2026-09-10; the vendored file it
+described was itself only sixteen days old, first appearing at `ba02583ef` on
+2026-08-25. Two of the audits were by people who had just measured the
+discrepancy and correctly explained it away.
+
+Five days is the worse number, which is why it belongs here. Four months would
+make this slow rot that more vigilance would catch. Five days makes it something
+vigilance does not catch, because being right about why two numbers differ is
+exactly what stops you asking whether one of them produced something.
+
+*(The duration in the first draft of this entry was "four months". It was not
+measured. It was invented inside the entry warning against unmeasured numbers,
+and caught by lego-ac going to check it — which is the same move that found all
+three instances above.)*
 
 The fix was one instrument: `scripts/lib/vendor-rewrites.mjs`, imported by both
 the sync and the gate, so the gate asks *is this what a sync would produce*
