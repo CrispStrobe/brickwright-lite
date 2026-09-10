@@ -24,7 +24,7 @@
  *   node scripts/gen-lite-authored-headers.mjs           rewrite the blocks
  *   node scripts/gen-lite-authored-headers.mjs --check   exit 1 if any is stale
  */
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -98,6 +98,62 @@ export const applied = (src, block) => {
     return src.slice(0, i) + block + src.slice(j + END.length);
 };
 
+/**
+ * Take a marker OFF a file that no longer declares one.
+ *
+ * WHY THIS EXISTS. This script could add a marker and could not retract one:
+ * the loop below walks the DECLARED files, so a file removed from the manifest
+ * is never visited and its block sits there asserting a thing that has stopped
+ * being true. Constructed on 2026-09-10 -- delete an entry, leave the block --
+ * and BOTH the `--check` mode and `test/lite-authored-headers.test.mjs`
+ * reported agreement, because both iterate the same list. The bad state was
+ * unreachable by every check that existed.
+ *
+ * It stopped being hypothetical the moment upstreaming became the default:
+ * `instruction-debug-events.js` went up, came back vendored, and left a stale
+ * block that only the SYNC's content guard noticed -- by refusing to delete 17
+ * lines it could not know were stale, which is the right instinct from a tool
+ * that has no idea what a marker is.
+ *
+ * Exactly the inverse of `applied`, including the blank line that one inserts
+ * when it prepends, so that retracting a freshly applied block returns the
+ * original byte for byte. There is a round-trip test for that; without it this
+ * is a function that deletes lines from vendored files on a guess.
+ */
+export const retracted = (src) => {
+    const i = src.indexOf(BEGIN);
+    if (i === -1) return src;
+    const j = src.indexOf(END, i);
+    if (j === -1) return src;                 // half a marker: leave it and let the gate shout
+    let after = j + END.length;
+    if (i === 0 && src.slice(after, after + 2) === '\n\n') after += 2;
+    return src.slice(0, i) + src.slice(after);
+};
+
+/**
+ * Every file under the declared roots that CARRIES a marker, declared or not.
+ *
+ * Derived by walking the roots rather than by listing names, because the whole
+ * point is to find the file nobody remembered to look at.
+ */
+export const marked = async () => {
+    const out = [];
+    const walk = async (dir, root) => {
+        let entries;
+        try { entries = await readdir(dir, { withFileTypes: true }); } catch { return; }
+        for (const e of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+            const full = path.join(dir, e.name);
+            if (e.isDirectory()) { await walk(full, root); continue; }
+            if (NEVER_MARK.has(e.name)) continue;
+            let src;
+            try { src = await readFile(full, 'utf8'); } catch { continue; }
+            if (src.includes(BEGIN)) out.push(path.relative(ROOT, full));
+        }
+    };
+    for (const { root } of SOURCES) await walk(path.join(ROOT, root), root);
+    return out;
+};
+
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
     const check = process.argv.includes('--check');
@@ -112,9 +168,28 @@ if (isMain) {
         await writeFile(p, next);
         console.log(`  wrote ${rel}`);
     }
+    // AND THE OTHER DIRECTION: a marker on a file the manifest no longer
+    // declares. The loop above cannot see one, because it walks the declared
+    // list; this walks the roots.
+    const declaredRels = new Set((await declared()).map(d => d.rel));
+    const orphans = (await marked()).filter(rel => !declaredRels.has(rel));
+    for (const rel of orphans) {
+        const p = path.join(ROOT, rel);
+        const src = await readFile(p, 'utf8');
+        stale.push(rel);
+        if (check) { console.log(`  ORPHAN ${rel}`); continue; }
+        await writeFile(p, retracted(src));
+        console.log(`  retracted ${rel}`);
+    }
+
     if (check && stale.length) {
         console.error(`\n${stale.length} marker(s) do not match the manifest — run: node scripts/gen-lite-authored-headers.mjs`);
+        if (orphans.length) {
+            console.error(`  ${orphans.length} of them are ORPHANS: the file carries a marker and the ` +
+                'manifest no longer declares it. That is what a file going upstream looks like.');
+        }
         process.exit(1);
     }
-    console.log(check ? '\nmarkers agree with the manifests.' : `\n${stale.length} marker(s) written.`);
+    console.log(check ? '\nmarkers agree with the manifests.'
+        : `\n${stale.length - orphans.length} marker(s) written, ${orphans.length} retracted.`);
 }

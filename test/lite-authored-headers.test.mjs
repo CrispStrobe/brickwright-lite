@@ -24,7 +24,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { ROOT, SOURCES, NEVER_MARK, BEGIN, END, blockFor, applied, declared }
+import { ROOT, SOURCES, NEVER_MARK, BEGIN, END, blockFor, applied, retracted, declared, marked }
     from '../scripts/gen-lite-authored-headers.mjs';
 
 test('every declared lite-authored file carries the marker the manifest implies', async t => {
@@ -97,4 +97,101 @@ test('a marked file is still valid source', async () => {
         assert.ok(!/^\s*$/.test(src.slice(src.indexOf(END) + END.length, src.indexOf(END) + END.length + 200)),
             `${rel}: nothing but blank lines follows the marker -- the file's own content is gone`);
     }
+});
+
+test('NO FILE CARRIES A MARKER THE MANIFEST NO LONGER DECLARES', async t => {
+    // THE OTHER DIRECTION, and until 2026-09-10 nothing checked it. Every test
+    // in this file and every mode of the generator walked the DECLARED list, so
+    // a file removed from the manifest was visited by neither and its block sat
+    // there asserting a thing that had stopped being true.
+    //
+    // Constructed to prove it: delete one entry, leave the block, and both
+    // `--check` and this suite reported agreement and exited 0. The bad state
+    // was unreachable by every check that existed.
+    //
+    // It stopped being hypothetical the moment upstreaming became the default.
+    // `instruction-debug-events.js` went up and came back vendored, and the
+    // stale block was caught only by the SYNC's content guard — which refused
+    // to delete seventeen lines it had no way of knowing were stale. That is
+    // the right instinct from a tool that does not know what a marker is, and
+    // it is not a check.
+    const declaredRels = new Set((await declared()).map(d => d.rel));
+    const all = await marked();
+
+    // Species 1 again: a walk that finds nothing satisfies the assertion below.
+    assert.ok(all.length >= 5,
+        `only ${all.length} marked file(s) were found by walking the roots — the walk stopped ` +
+        'matching, and an orphan check over nothing passes trivially');
+
+    // Every declared file that carries a marker must be FOUND by the walk, or
+    // the orphan set is computed against a short list and under-reports.
+    for (const rel of declaredRels) {
+        const src = readFileSync(path.join(ROOT, rel), 'utf8');
+        if (!src.includes(BEGIN)) continue;          // NEVER_MARK files, e.g. LICENSE
+        assert.ok(all.includes(rel), `${rel} carries a marker and the walk did not find it`);
+    }
+
+    // ONE MUTATION IS INERT HERE AND IS RECORDED AS INERT: making the walk
+    // non-recursive changes nothing today, because every marked file and every
+    // declared one sits flat in its root — measured, not assumed. It stops
+    // being inert the moment a lite-authored file lands in a subdirectory, and
+    // `bw-circuit-ui/model/` already exists, so that is a when rather than an
+    // if. The assertion above is what will catch it: a nested declared file
+    // would be missing from the walk.
+    const orphans = all.filter(rel => !declaredRels.has(rel));
+    assert.deepEqual(orphans, [],
+        '\n  FILES CARRYING A MARKER THAT THE MANIFEST NO LONGER DECLARES:\n    ' +
+        orphans.join('\n    ') +
+        '\n\n  This is what a file going UPSTREAM looks like: it stops being lite-authored\n' +
+        '  and the block stays behind claiming it is. Run\n' +
+        '  node scripts/gen-lite-authored-headers.mjs — it retracts them now.\n');
+    t.diagnostic(`${all.length} marked file(s), ${declaredRels.size} declared, 0 orphaned`);
+});
+
+test('retracting a marker returns the file BYTE FOR BYTE', () => {
+    // `retracted` deletes lines from vendored files. Without this it is a
+    // function that does that on a guess — and the blank line `applied` inserts
+    // when it prepends is exactly the sort of thing an inverse forgets.
+    const original = 'export const x = 1;\n\nexport const y = 2;\n';
+    const block = blockFor('x.js', { reason: 'a reason' }, 'docs/D.md');
+
+    const withMarker = applied(original, block);
+    assert.ok(withMarker.startsWith(BEGIN), 'the marker goes on the front');
+    assert.ok(withMarker.includes(END));
+    assert.notEqual(withMarker, original);
+
+    assert.equal(retracted(withMarker), original, 'the round trip is not byte-exact');
+
+    // Idempotent in both directions, like `applied` is.
+    assert.equal(retracted(retracted(withMarker)), original);
+    assert.equal(retracted(original), original, 'retracting from an unmarked file changes nothing');
+});
+
+test('retracting leaves a HALF marker alone rather than guessing where it ends', () => {
+    // A file with a BEGIN and no END is damaged, and the honest response is to
+    // leave it for a human and let the assertions above shout. Deleting to the
+    // end of the file would be the other option and it is unrecoverable.
+    const damaged = `${BEGIN}\n// someone truncated this\nexport const x = 1;\n`;
+    assert.equal(retracted(damaged), damaged);
+});
+
+test('a marker NOT at the top loses its span and NOTHING ELSE', () => {
+    // The blank line is taken back only when the marker STARTS the file,
+    // because that is the only case `applied` inserted one. A marker anywhere
+    // else can only have been put there by hand, and this function has no way
+    // to know which surrounding newline was part of it — so it removes the
+    // delimited span exactly and leaves the whitespace for a human.
+    //
+    // Asserted as what it IS rather than as what would be tidy: my first
+    // version of this test expected the newline to be absorbed, and bending the
+    // function to satisfy it would have meant guessing at a byte mid-file. A
+    // retraction that guesses is the one thing this must not be.
+    const block = blockFor('x.js', { reason: 'a reason' }, 'docs/D.md');
+    const withMarker = `#!/usr/bin/env node\n${block}\nexport const x = 1;\n`;
+
+    const out = retracted(withMarker);
+    assert.equal(out, '#!/usr/bin/env node\n\nexport const x = 1;\n');
+    assert.ok(!out.includes(BEGIN) && !out.includes(END), 'the whole span is gone');
+    assert.ok(out.includes('#!/usr/bin/env node'), 'and the line before it survived');
+    assert.ok(out.includes('export const x = 1;'), 'and the code after it survived');
 });
