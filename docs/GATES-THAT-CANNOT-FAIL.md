@@ -2321,6 +2321,13 @@ answer a slightly different question. Nothing forces a number to carry its
 instrument when it is quoted somewhere else. **The measurement is sound; the
 transport is lossy.**
 
+**A wrong number that invites a fix is more dangerous than one that invites a
+shrug.** That is why this is worth a species rather than an aphorism. A number
+that provokes a shrug wastes a moment. One that provokes a repair damages the
+thing it was measuring — and the instance below where `--check` said 13 against a
+manifest declaring 14 was heading exactly there, since the repair it invited was
+deleting a correct entry.
+
 The defect is in the CITATION, not the measurement, and that is what makes this
 its own species rather than a variant of anything above it. Every gate that
 cannot fail has something wrong you can go and find in the code that produced
@@ -2380,9 +2387,7 @@ than built.** Quote the instrument with the number, always — "13 by `--check`"
 another, prove they are the same instrument; otherwise the check is decoration in
 the strict sense this document means, since it cannot come out either way.
 
-**The corollary that cost the most time.** A number without its instrument does
-not just mislead — it can send someone to fix a defect that does not exist. The
-`--check` 13 versus declared 14 gap read as a stale declaration for long enough
-to be worth chasing, and chasing it would have meant deleting a correct entry.
-The one that catches this is the same one that catches most of what is in this
-document: go and measure it yourself before you act on it.
+**And the habit that catches it is the one that catches most of what is in this
+document:** go and measure it yourself before you act on it. Every instance above
+was found by somebody who went to verify a number rather than use it, and in two
+of the three the verifier was the person who had quoted it.
