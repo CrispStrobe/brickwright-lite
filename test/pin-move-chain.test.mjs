@@ -231,9 +231,33 @@ test('the repo-history half ran, or says by name that it could not', t => {
 // ---- fire it on purpose ----------------------------------------------------
 
 test('a previous pin planted in a generated document is red, naming the file, the sha and which pin it was', () => {
-    const [sha, meta] = [...previous.entries()][0];
+    // THE FIXTURE ACCUSES ITSELF BEFORE IT ACCUSES THE DETECTOR.
+    //
+    // Measured 2026-09-11: this case failed `0 !== 1` and read as "the staleness
+    // detector is broken". The detector was right. `previous` had been poisoned
+    // by a reformat of vendor-pins.json, so the sha this planted was STILL A
+    // CURRENT PIN, and finding nothing was the correct answer to the question
+    // actually asked.
+    //
+    // A failing fixture means the subject is wrong OR the plant was degenerate,
+    // and the failure text always accuses the subject — it is written from the
+    // fixture's point of view. Mutation testing cannot catch that, because the
+    // thing is already red and red is what you were hoping for. The only defence
+    // is to assert what the fixture PRODUCED before asserting what it concluded.
+    const first = [...previous.entries()][0];
+    assert.ok(first, 'fixture: no previous pin exists to plant, so this case proves nothing '
+        + 'about the detector — see previousPinsFromHistory');
+    const [sha, meta] = first;
+    assert.ok(!Object.values(currentPins()).includes(sha),
+        `fixture: the "previous" pin ${sha.slice(0, 9)} is STILL A CURRENT PIN, so planting `
+        + 'it is planting nothing stale and finding nothing is correct. The defect is in the '
+        + 'previous-pin map, not in the detector this case is about.');
     const doc = `docs/generated/I8086-CAPABILITY-REPORT.md`;
-    const text = readFileSync(path.join(ROOT, doc), 'utf8').replace(currentPins()['bw-board'], sha);
+    const original = readFileSync(path.join(ROOT, doc), 'utf8');
+    const text = original.replace(currentPins()['bw-board'], sha);
+    assert.notEqual(text, original,
+        `fixture: the plant was a NO-OP — ${doc} does not contain the current bw-board pin, `
+        + 'so nothing was replaced and the document under test is unmodified');
     const f = judgeFile(doc, text, known);
     assert.equal(f.length, 1, 'exactly the planted sha');
     assert.equal(f[0].sha, sha);
