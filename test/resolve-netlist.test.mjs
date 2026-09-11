@@ -11,7 +11,7 @@
  */
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {resolveNetlist} from '../overlay/scratch-gui/src/lib/bw-board/resolve-netlist.js';
+import {resolveNetlist} from '../overlay/scratch-gui/src/lib/bw-debug/resolve-netlist.js';
 
 test('a rejected netlist is refused by name, never papered over with an inferred bench', async () => {
     const vm = {runtime: {circuitBoard: null, circuitModel: {netlistError: 'R3 has no connection\n(more detail)'}}};

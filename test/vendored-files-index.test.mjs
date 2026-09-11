@@ -55,8 +55,29 @@ test('every entry the index flags is flagged BY a manifest, not by hand', async 
     // `[declared]` that no manifest declares would be this document asserting a
     // divergence on its own authority.
     const md = readFileSync(path.join(ROOT, OUT), 'utf8');
-    const flagged = [...md.matchAll(/^- `([^`]+)` `\[(lite|declared)\]`$/gm)].map(m => [m[1], m[2]]);
-    assert.ok(flagged.length > 0, 'nothing is flagged at all -- the tags stopped being emitted');
+    const flagged = [...md.matchAll(/^- `([^`]+)` `\[(lite|declared|generated)\]`$/gm)].map(m => [m[1], m[2]]);
+    // THE FLOOR THAT RETIRES ITSELF -- the fifth of these found in one afternoon,
+    // and the pattern is the point. `flagged.length > 0` was a correct species-1
+    // defence while divergences existed; the moment every one of them was
+    // upstreamed it became a permanent red demanding that the tree be dirty.
+    //
+    // The matcher is proved against a fabricated index instead, and the real
+    // index is then allowed to flag nothing. A tag that stopped being emitted and
+    // a tree with nothing to tag produce the same empty list, and only the
+    // fixture tells them apart.
+    const FABRICATED = [
+        '- `fab-a.js` `[lite]`',
+        '- `fab-b.js` `[declared]`',
+        '- `fab-c.json` `[generated]`',
+        '- `fab-plain.js`'
+    ].join('\n');
+    const probe = [...FABRICATED.matchAll(/^- `([^`]+)` `\[(lite|declared|generated)\]`$/gm)]
+        .map(m => `${m[1]}:${m[2]}`);
+    assert.deepEqual(probe, ['fab-a.js:lite', 'fab-b.js:declared', 'fab-c.json:generated'],
+        'the flag matcher no longer reads the index line shape this generator writes, so it '
+        + 'finds nothing whatever the index says -- and an empty flag list is exactly what a '
+        + 'clean tree produces. It also must NOT match the untagged line, or every plain '
+        + 'vendored file would read as flagged.');
 
     const expected = new Map();
     for (const { doc } of TREES) {
@@ -64,7 +85,19 @@ test('every entry the index flags is flagged BY a manifest, not by hand', async 
             .match(/```json\n([\s\S]*?)\n```/)[1]);
         for (const f of [...Object.keys(spec.files || {}), ...(spec.lineLevelOnly?.files ?? [])]) expected.set(f, 'declared');
         for (const f of Object.keys(spec.liteAuthored?.files ?? {})) expected.set(f, 'lite');
+        for (const f of Object.keys(spec.generated?.files ?? {})) expected.set(f, 'generated');
     }
+
+    // BOTH DIRECTIONS. The loop below catches an index flag no manifest supports;
+    // this catches a manifest entry the index silently stopped showing, which is
+    // how `.vendor-manifest.json` vanished from the index the day it was moved
+    // from `liteAuthored` to `generated`.
+    const indexed = new Set(flagged.map(([f]) => f));
+    const unlisted = [...expected.keys()].filter(f => !indexed.has(f)).sort();
+    assert.deepEqual(unlisted, [],
+        `a manifest declares ${unlisted.join(', ')} but the index flags nothing for it. The `
+        + 'index is where someone looks to find what is in a vendored tree that upstream '
+        + 'cannot restore; a declared file missing from it is invisible exactly there.');
     for (const [file, tag] of flagged) {
         assert.equal(expected.get(file), tag,
             `${file} is flagged [${tag}] in the index but the manifests say ` +

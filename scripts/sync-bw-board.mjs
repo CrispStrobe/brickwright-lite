@@ -143,7 +143,42 @@ const listRemote = async () => (await listTree(REPO, remoteSha).catch((e) => {
     .filter((p) => !EXCLUDE.has(path.basename(p)))
     .sort();
 
-const FILES = srcDir ? await listSrc() : await listRemote();
+/**
+ * FILES UPSTREAM KEEPS AT ITS REPOSITORY ROOT, not under src/.
+ *
+ * LICENSE is the only one, and it had NEVER been synced by anything: this
+ * script walks src/, so the vendored copy was placed by hand once and then
+ * left. By 2026-09-11 it had lost its copyright year, and nothing could see
+ * that, because the identity gate resolved every vendored path under src/ too
+ * and therefore skipped it as "upstream does not have this file".
+ *
+ * The map is READ FROM THE LEDGER, not repeated here. `rootSourced` is the same
+ * declaration the gate uses to decide what to compare, so the thing that COPIES
+ * a file and the thing that CHECKS it cannot disagree about which files those
+ * are -- the failure mode that put a hand-placed licence outside every gate in
+ * the first place.
+ */
+const readRootSourced = async () => {
+    const md = await readFile(
+        path.join(here, '..', 'docs', 'VENDOR-DIVERGENCE-I8086-MACHINE.md'), 'utf8').catch(() => null);
+    if (md === null) return null;
+    const m = md.match(/```json\n([\s\S]*?)\n```/);
+    if (!m) return null;
+    try { return JSON.parse(m[1]).rootSourced ?? {}; } catch { return null; }
+};
+const rootSourced = await readRootSourced();
+if (rootSourced === null) {
+    // Same rule as the allow-list above: an unreadable declaration must say the
+    // protection is not in force, never pass silently as "nothing declared".
+    console.error('\n  WARNING: rootSourced could not be read from the divergence ledger.');
+    console.error('  Files upstream keeps at its repository root (LICENSE) are NOT synced');
+    console.error('  by this run.\n');
+}
+
+const FILES = [
+    ...(srcDir ? await listSrc() : await listRemote()),
+    ...Object.values(rootSourced ?? {})
+];
 if (!FILES.length) throw new Error('empty file list — refusing to "sync" nothing');
 
 

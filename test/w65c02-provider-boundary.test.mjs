@@ -5,7 +5,7 @@ import test from 'node:test';
 import {createConditionalCycleProviderBoundary} from
     '../overlay/scratch-gui/src/lib/bw-debug/conditional-cycle-provider.js';
 import {createW65C02ProviderBoundary, JSMOO_W65C02_REJECTION} from
-    '../overlay/scratch-gui/src/lib/bw-board/w65c02-cycle-provider.js';
+    '../overlay/scratch-gui/src/lib/bw-debug/w65c02-cycle-provider.js';
 
 const fast = {capabilities: () => ({steps: ['insn'], reverse: [], fidelity: {cycle: 'unsupported'}})};
 
@@ -72,10 +72,44 @@ test('a qualified loader failure returns to the default instead of escaping', ()
     assert.match(result.receipt.reasons.at(-1), /module absent/);
 });
 
-test('the 6502 factory selects through the boundary without importing JSMoo', () => {
+test('the 6502 factory selects through an INJECTED boundary, and lite is what injects it', () => {
+    // THE CONVERGENCE MOVED THE SEAM, AND THIS TEST WAS LEFT ASKING THE OLD HALF.
+    //
+    // It used to assert that the vendored `debug-target-factory.js` contains
+    // `createW65C02ProviderBoundary` by name. That was true while the factory was
+    // a lite fork. It stopped being true when upstream gained the seam instead:
+    // the factory now takes `opts.providerBoundary` and knows nothing about
+    // W65C02 at all, and lite installs the boundary at its own call site. The
+    // factory is byte-identical to upstream, which is the point.
+    //
+    // So the claim splits in two, because it was always two claims wearing one
+    // assertion: the factory must SELECT through whatever it is given, and lite
+    // must GIVE it the right thing. Asserting only the first would pass with
+    // nothing ever injected; asserting only the second would pass with the
+    // factory ignoring it.
     const factory = readFileSync(new URL(
         '../overlay/scratch-gui/src/lib/bw-board/debug-target-factory.js', import.meta.url), 'utf8');
-    assert.match(factory, /createW65C02ProviderBoundary/);
-    assert.match(factory, /providerBoundary\.select\(opts\.cycleProvider \|\| 'fast-w65c02'\)/);
-    assert.doesNotMatch(factory, /(?:import|require)\([^)]*jsmoo/i);
+    assert.match(factory, /typeof opts\.providerBoundary !== 'function'/,
+        'the vendored factory no longer guards on an injected providerBoundary, so lite\'s '
+        + 'injection may be reaching nothing');
+    assert.match(factory, /providerBoundary\.select\(opts\.cycleProvider\)/,
+        'the factory no longer selects through the boundary it was given');
+    assert.doesNotMatch(factory, /createW65C02ProviderBoundary/,
+        'the vendored factory names lite\'s boundary by name again. That is a FORK: the '
+        + 'seam is `opts.providerBoundary` and the W65C02 rejection record is lite\'s, not '
+        + "upstream's. Inject it from the call site instead.");
+    assert.doesNotMatch(factory, /(?:import|require)\([^)]*jsmoo/i,
+        'the factory reaches JSMoo directly, which is the whole thing the boundary exists '
+        + 'to prevent');
+
+    // And the other half: something in lite must actually install it, or the
+    // guard above is satisfied by a boundary nobody ever passes.
+    const caller = readFileSync(new URL(
+        '../overlay/scratch-gui/src/lib/bw-debug/debug-runner.js', import.meta.url), 'utf8');
+    assert.match(caller, /createW65C02ProviderBoundary/,
+        'nothing in lite imports the W65C02 provider boundary any more, so every 6502 '
+        + 'target is built with no boundary at all and the rejection record is unreachable');
+    assert.match(caller, /targetOpts\.providerBoundary\s*=\s*createW65C02ProviderBoundary/,
+        'lite imports the boundary but never assigns it to `providerBoundary` — the import '
+        + 'is the half that is easy to see and the assignment is the half that does anything');
 });

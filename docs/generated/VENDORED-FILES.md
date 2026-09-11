@@ -10,15 +10,17 @@ rule `test/vendor-identity.test.mjs` enforces.
 
 Files marked `[declared]` deliberately differ from upstream and the manifest says
 why. Files marked `[lite]` were written by lite and have NO upstream counterpart:
+and `[generated]` ones are written by a sync script, so they have no upstream
+counterpart either but nobody authored them.
 a sync cannot restore them, and they carry the same warning in their own header.
 
 ## bw-board
 
-Pinned at `2a5a607749fbfbbfe9824b7374973005acbc6715`. Manifest: `docs/VENDOR-DIVERGENCE-I8086-MACHINE.md`.
+Pinned at `25e126044b706fb2de85d216c3ba6e408ad43380`. Manifest: `docs/VENDOR-DIVERGENCE-I8086-MACHINE.md`.
 
-190 tracked file(s): 187 plain, 1 declared-divergent, 2 lite-authored.
+190 tracked file(s): 190 plain, 0 declared-divergent, 0 lite-authored.
 
-- `LICENSE` `[lite]`
+- `LICENSE`
 - `ac.js`
 - `adc0809.js`
 - `air.js`
@@ -142,7 +144,7 @@ Pinned at `2a5a607749fbfbbfe9824b7374973005acbc6715`. Manifest: `docs/VENDOR-DIV
 - `labwired-debug.js`
 - `latch374.js`
 - `m6502-adapter.js`
-- `m6502-debug.js` `[declared]`
+- `m6502-debug.js`
 - `m6502-extract.js`
 - `m6502-machine.js`
 - `m6507-machine.js`
@@ -162,7 +164,7 @@ Pinned at `2a5a607749fbfbbfe9824b7374973005acbc6715`. Manifest: `docs/VENDOR-DIV
 - `r6507.js`
 - `register-all.js`
 - `reseat-gate.js`
-- `resolve-netlist.js` `[lite]`
+- `resolve-netlist.js`
 - `rp2040-bootrom.js`
 - `rp2040js-adapter.js`
 - `rp2040js-debug.js`
@@ -213,10 +215,10 @@ Pinned at `2a5a607749fbfbbfe9824b7374973005acbc6715`. Manifest: `docs/VENDOR-DIV
 
 Pinned at `a5fcd9394f4184537f8eeaad2c3d211a0e00abe7`. Manifest: `docs/VENDOR-DIVERGENCE-BW-CIRCUIT-UI.md`.
 
-679 tracked file(s): 677 plain, 0 declared-divergent, 2 lite-authored.
+679 tracked file(s): 679 plain, 0 declared-divergent, 0 lite-authored.
 
-- `.vendor-manifest.json` `[lite]`
-- `LICENSE` `[lite]`
+- `.vendor-manifest.json` `[generated]`
+- `LICENSE`
 - `audio/buzzer-audio.js`
 - `components/ArchitectureFace.jsx`
 - `components/AsmDebugPanel.jsx`

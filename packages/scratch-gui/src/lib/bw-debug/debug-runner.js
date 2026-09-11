@@ -53,7 +53,7 @@ import {createSelectedEventSeekCoordinator} from './selected-event-seek.js';
 import {createDebugRecorder} from './recorder.js';
 // The run board is resolved the same way for the debugger and the MicroPython
 // simulator Run — one copy of the phantom-inferred-bench rejection.
-import {resolveNetlist} from '../bw-board/resolve-netlist.js';
+import {resolveNetlist} from './resolve-netlist.js';
 import {createHaltOccurrenceLedger} from './halt-occurrence-ledger.js';
 import {createForkRecordingStore} from './fork-recording-store.js';
 import {createBranchCursor} from './fork-history.js';

@@ -110,7 +110,31 @@ const declaredDivergent = new Set([
 // Files lite AUTHORED inside this vendored root. Upstream has no counterpart, so
 // the delete pass below -- which removes anything not in the source tree -- would
 // take them, and nothing would restore them.
-const declaredLiteAuthored = new Set(Object.keys(divergenceSpec.liteAuthored?.files ?? {}));
+const declaredLiteAuthored = new Set([
+    ...Object.keys(divergenceSpec.liteAuthored?.files ?? {}),
+    // GENERATED files are kept for the same reason and by the same rule, but they
+    // are a different KIND: the sync writes them, so they have no upstream
+    // counterpart because they describe THIS copy rather than because lite forked
+    // them. Split out of liteAuthored 2026-09-11 so that category can mean one
+    // thing and reach zero. Both must survive the delete pass below.
+    ...Object.keys(divergenceSpec.generated?.files ?? {})
+]);
+/**
+ * Vendored files upstream keeps at its REPOSITORY ROOT rather than under src/.
+ *
+ * LICENSE, and it had never been synced by anything: this script walks src/, so
+ * the copy in the vendored root was placed by hand once and then left alone. By
+ * 2026-09-11 it was not the licence any more -- upstream ships the full 373-line
+ * MPL-2.0 text and the vendored copy had become the five-line Exhibit A notice
+ * with a copyright line appended. Nothing could see that, because the identity
+ * gate resolved vendored paths under src/ too and skipped it as "upstream does
+ * not have this file".
+ *
+ * READ FROM THE LEDGER, not repeated here: the same `rootSourced` declaration
+ * the gate uses to decide what to COMPARE is what this uses to decide what to
+ * COPY, so the two cannot disagree about which files those are.
+ */
+const rootSourced = divergenceSpec.rootSourced ?? {};
 if (!check) {
     const manifest = await readFile(manifestPath, 'utf8').then(JSON.parse).catch(() => null);
     if (manifest) {
@@ -202,11 +226,14 @@ if (!check) {
 }
 
 let stale = 0;
-const files = await walk();
+const files = [...await walk(), ...Object.keys(rootSourced)];
 const written = {};
 for (const rel of files) {
     const out = path.join(dest, rel);
-    const next = await readFile(path.join(srcDir, 'src', rel), 'utf8');
+    const next = await readFile(
+        rootSourced[rel]
+            ? path.join(srcDir, rootSourced[rel])
+            : path.join(srcDir, 'src', rel), 'utf8');
     const current = await readFile(out, 'utf8').catch(() => null);
     if (current === next) { console.log(`  ok    ${rel}`); written[rel] = sha(next); continue; }
     // A declared divergence is kept, and the manifest records WHAT IS ON DISK

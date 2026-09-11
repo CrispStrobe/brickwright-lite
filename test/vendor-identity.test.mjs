@@ -107,7 +107,7 @@ const vendoredPaths = (spec, file) => presentRoots(spec)
 
 // Species 1 defence: a gate whose corpus is empty passes everything. Assert the
 // allow-list is populated BEFORE trusting any result derived from iterating it.
-test('the vendor allow-list is non-empty and covers both dual-tracked copies', () => {
+test('the allow-list has a corpus behind it — entries, or identity over the whole tree', () => {
     const spec = readAllowList();
     // NOT A PINNED COUNT. This used to read `>= 8`, which is a number pinned to
     // my own measurement -- so legitimate upstreaming turns it red and the
@@ -118,9 +118,31 @@ test('the vendor allow-list is non-empty and covers both dual-tracked copies', (
     //
     // What survives here is only the species-1 defence: a gate iterating an
     // empty list passes everything, so refuse an empty list. No magic number.
-    assert.ok(coveredFiles(spec).length > 0,
-        'the allow-list covers no files. Every check that iterates it would pass vacuously.');
-    for (const [file, cfg] of coveredFiles(spec)) {
+    // THE FLOOR THAT RETIRED ITSELF THE DAY IT MATTERED. This read
+    // `coveredFiles(spec).length > 0` -- correct while divergences existed, and
+    // a permanent red the moment the list reached the zero this whole apparatus
+    // was built to reach. A ratchet whose anti-vacuity check refuses its own
+    // goal state cannot be left standing: someone reaching zero deletes the
+    // check, and the gate goes vacuous exactly when nothing is left to notice
+    // regrowth.
+    //
+    // So the species-1 defence is made in the right place. AN EMPTY ALLOW-LIST
+    // IS FINE; AN EMPTY CORPUS IS NOT. When the list is empty, the claim is
+    // discharged by byte-identity over every vendored file instead, and THAT
+    // corpus must be non-empty. The schema checks below then run over whichever
+    // list exists, plus a fabricated entry that proves they still fire.
+    const covered = coveredFiles(spec);
+    if (covered.length === 0) {
+        const roots = presentRoots(spec);
+        assert.ok(roots.length >= 1, 'the allow-list is empty AND no vendored root exists — '
+            + 'there is no corpus at all, so nothing here means anything');
+        const files = walkFiles(path.join(ROOT, roots[0]));
+        assert.ok(files.length > 50,
+            `the allow-list is empty and the vendored root holds only ${files.length} file(s). `
+            + 'An empty list is the goal; an empty TREE is a broken checkout, and the two '
+            + 'look identical to every assertion in this file.');
+    }
+    for (const [file, cfg] of covered) {
         assert.ok(cfg.liteOnly.length > 0, `${file} is listed with no entries`);
     }
     // The kerotakis lane's rule, enforced rather than suggested: every entry
@@ -347,14 +369,50 @@ const readerFor = spec => {
     return u => applyVendorRewrites(fs.readFileSync(u, 'utf8'), root, {repoRoot: ROOT, mirrors});
 };
 
+/**
+ * NOT EVERY VENDORED FILE COMES FROM UPSTREAM'S src/.
+ *
+ * This walk compared every vendored path against `<upstream>/src/<same path>`,
+ * so a file upstream keeps at its REPOSITORY ROOT had no counterpart to compare
+ * against, fell out as "upstream does not have this", and had to be declared as
+ * LITE-AUTHORED to keep the gate green. LICENSE was exactly that, in both
+ * vendored trees, and the declaration said "attribution, not code -- permanent".
+ *
+ * IT WAS NOT PERMANENT, IT WAS UNCOMPARED, AND BOTH COPIES HAD DRIFTED.
+ * Measured 2026-09-11, the day this mapping was added:
+ *
+ *   - bw-board/LICENSE had lost its copyright YEAR: upstream publishes
+ *     "Copyright (c) 2026 CrispStrobe", the vendored copy said "Copyright (c)
+ *     CrispStrobe".
+ *   - bw-circuit-ui/LICENSE was not the licence at all. Upstream ships the full
+ *     373-line MPL-2.0 text; the vendored copy was the five-line Exhibit A
+ *     notice with a copyright line appended -- a POINTER to the licence sitting
+ *     under the name of the licence, in a directory whose sync script says in
+ *     its own comment that the file is there "for MPL-2.0 compliance".
+ *
+ * Neither was anyone's decision. They were the consequence of a file that no
+ * gate could see, kept quiet by a declaration that explained its absence from
+ * the comparison as a property of the file.
+ *
+ * So the fix is to COMPARE IT, not to declare it. `rootSourced` maps a vendored
+ * path to a path relative to the upstream REPOSITORY ROOT; those files then run
+ * through exactly the same byte-identity assertion as everything else, and a
+ * licence that drifts from the one its author publishes reds like any other
+ * divergence.
+ */
 const classify = (spec, srcDir) => {
     const readUpstream = readerFor(spec);
     const vendorRoot = path.join(ROOT, spec.vendoredRoots[0]);
     const declared = new Set([...Object.keys(spec.files || {}), ...(spec.lineLevelOnly?.files ?? [])]);
     const liteAuthored = spec.liteAuthored?.files ?? {};
+    // `srcDir` is `<upstream>/src`; its parent is the upstream repository root.
+    const repoRoot = path.dirname(srcDir);
+    const rootSourced = spec.rootSourced ?? {};
     const identical = [], diverged = [], undeclared = [], liteOnly = [];
     for (const f of walkFiles(vendorRoot)) {
-        const u = path.join(srcDir, f);
+        const u = rootSourced[f]
+            ? path.join(repoRoot, rootSourced[f])
+            : path.join(srcDir, f);
         if (!fs.existsSync(u)) { liteOnly.push(f); continue; }
         if (fs.readFileSync(path.join(vendorRoot, f), 'utf8') === readUpstream(u)) identical.push(f);
         else if (declared.has(f)) diverged.push(f);
@@ -462,7 +520,19 @@ const declaresEveryDivergence = (label, {doc, env, repo, floor}) =>
     // to be DECLARED turns them into seven decisions made once. Ratchets the
     // same way the rest of this manifest does: removal is free, addition costs
     // a reason in the same commit.
-    const undeclaredLiteOnly = liteOnly.filter(f => !liteAuthored[f]);
+    // A THIRD KIND, AND IT IS NOT LITE-AUTHORED SOURCE. `.vendor-manifest.json`
+    // is written BY the sync as its record of what it last wrote -- the baseline
+    // the local-edit detection compares against. Filing it under "files lite
+    // authored inside a vendored root" made that category mean two different
+    // things, and the reason written beside it had to argue that a generated
+    // bookkeeping file was a deliberate piece of lite source.
+    //
+    // Separating them is what lets `liteAuthored` reach a meaningful zero: with
+    // the manifest in the list, the count can never fall below one, so the
+    // ratchet's terminal value would have been "1, forever, for a reason that is
+    // not a divergence". A number that cannot reach its goal stops being read.
+    const generated = spec.generated?.files ?? {};
+    const undeclaredLiteOnly = liteOnly.filter(f => !liteAuthored[f] && !generated[f]);
     assert.deepEqual(undeclaredLiteOnly, [],
         '\n  LITE-AUTHORED FILES INSIDE THE VENDORED ROOT, DECLARED NOWHERE:\n    ' +
         undeclaredLiteOnly.join('\n    ') +
@@ -475,7 +545,8 @@ const declaresEveryDivergence = (label, {doc, env, repo, floor}) =>
     // And the other direction, or the list becomes a graveyard: every declared
     // entry must still BE a lite-authored file here. One that landed upstream,
     // or moved out of this directory, has to leave the list.
-    const stale = Object.keys(liteAuthored).filter(f => !liteOnly.includes(f));
+    const stale = [...Object.keys(liteAuthored), ...Object.keys(generated)]
+        .filter(f => !liteOnly.includes(f));
     assert.deepEqual(stale, [],
         '\n  liteAuthored ENTRIES THAT NO LONGER DESCRIBE ANYTHING:\n    ' + stale.join('\n    ') +
         '\n\n  The file moved out of the vendored root, or upstream now has it. Either way\n' +
@@ -802,9 +873,35 @@ test('upstream has not converged on the lite-only work (needs the bw-board tree)
     summary.push(`${file}: ${cfg.liteOnly.length} named, ${liteOnlyIds.length} identifiers`);
     }
 
-    assert.ok(summary.length > 0,
-        'the cross-tree tier compared no files at all. Upstream src/ exists but nothing ' +
-        'in the allow-list was found in it; refusing to report this as a verified invariant.');
+    // SAME RETIREMENT, SAME REPAIR. This asserted `summary.length > 0` — which
+    // was the species-1 defence while the allow-list had entries, and became a
+    // permanent red when it reached zero. The tier's subject is "for each
+    // DECLARED lite-only divergence, has upstream converged on it?", and with
+    // nothing declared there is genuinely nothing to ask.
+    //
+    // But "nothing to ask" must not be reported as "asked and found nothing".
+    // With an empty list the claim is discharged by BYTE IDENTITY instead: a
+    // file identical to upstream cannot contain unexplained lite-only work, and
+    // that is a stronger statement than this tier ever made. So assert it, over
+    // a corpus that must be large, rather than passing on an empty loop.
+    if (summary.length === 0) {
+        const {identical, diverged, undeclared, liteOnly} = classify(spec, srcDir);
+        assert.ok(identical.length > 50,
+            `the allow-list is empty and only ${identical.length} vendored file(s) are `
+            + 'byte-identical to upstream. With nothing declared, identity is the ONLY thing '
+            + 'discharging this tier, and a corpus this small means the comparison is broken '
+            + 'rather than the tree clean.');
+        assert.deepEqual([...diverged, ...undeclared, ...liteOnly], [],
+            '\n  THE ALLOW-LIST IS EMPTY BUT THE TREE IS NOT A MIRROR.\n' +
+            `  declared-divergent: ${diverged.join(', ') || 'none'}\n` +
+            `  undeclared:         ${undeclared.join(', ') || 'none'}\n` +
+            `  no upstream file:   ${liteOnly.join(', ') || 'none'}\n\n` +
+            '  Every vendored file must equal upstream at the pin, because nothing is\n' +
+            '  declared to excuse any of them. Send the divergence upstream and take it\n' +
+            '  back down; do not re-open the ledger to make this green.\n');
+        t.diagnostic(`allow-list empty: discharged by identity over ${identical.length} file(s) at the pin`);
+        return;
+    }
     // One diagnostic per file: node's TAP writer escapes newlines inside a
     // single diagnostic, so a multi-line summary renders as one long line of
     // literal \n. Six short lines beat one unreadable one.

@@ -54,7 +54,23 @@ export const licenceId = text => {
     if (/public domain/i.test(t)) return 'Public Domain';
     return null;
 };
-const holderOf = text => (String(text || '').match(/Copyright\s*(?:\(c\)|©)?\s*(?:[\d,\s–-]+)?\s*([^\n]+)/i) || [])[1]?.replace(/^\d[\d,\s–-]*/, '').trim() || null;
+// A COPYRIGHT LINE, NOT THE WORD ANYWHERE IN THE TEXT.
+//
+// This matched `/Copyright.../i` unanchored, which is fine for a short MIT or
+// BSD notice and wrong for a full licence body. MPL-2.0 section 2.6 reads
+// "copyright doctrines of fair use, fair dealing, or other equivalents" and
+// section 3.4 "including copyright notices" -- so the first match in the MPL
+// text is prose, and the holder came back as
+// "doctrines of fair use, fair dealing, or other".
+//
+// Found 2026-09-11, the day bw-circuit-ui's vendored LICENSE stopped being a
+// five-line pointer and became the licence upstream actually ships. The bug was
+// always there; nothing had ever handed this function a real licence body.
+//
+// `^` with the m flag: a copyright NOTICE starts its line. MPL carries none of
+// its own, and `null` is the right answer for it rather than a sentence from
+// section 2.6.
+export const holderOf = text => (String(text || '').match(/^[ \t]*Copyright\s*(?:\(c\)|©)?\s*(?:[\d,\s–-]+)?\s*([^\n]+)/im) || [])[1]?.replace(/^\d[\d,\s–-]*/, '').trim() || null;
 
 /** 1. npm dependencies integrate.mjs adds — from the adder itself. */
 export const liteAddedDeps = (root, integrateText = readFileSync(path.join(root, 'scripts/integrate.mjs'), 'utf8')) => {

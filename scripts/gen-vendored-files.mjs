@@ -62,6 +62,8 @@ export const render = async () => {
         '',
         'Files marked `[declared]` deliberately differ from upstream and the manifest says',
         'why. Files marked `[lite]` were written by lite and have NO upstream counterpart:',
+        'and `[generated]` ones are written by a sync script, so they have no upstream',
+        'counterpart either but nobody authored them.',
         'a sync cannot restore them, and they carry the same warning in their own header.',
         '',
     ];
@@ -69,6 +71,12 @@ export const render = async () => {
         const spec = await manifestOf(doc);
         const declared = new Set([...Object.keys(spec.files || {}), ...(spec.lineLevelOnly?.files ?? [])]);
         const lite = new Set(Object.keys(spec.liteAuthored?.files ?? {}));
+        // A GENERATED file is still a file with no upstream counterpart, and the
+        // index is where someone looks to find out what is in a vendored tree
+        // that upstream cannot restore. Split out of `[lite]` on 2026-09-11:
+        // without its own tag, `.vendor-manifest.json` simply stopped appearing
+        // as anything, which made the index quieter and less true at once.
+        const generated = new Set(Object.keys(spec.generated?.files ?? {}));
         const files = tracked(root);
         out.push(`## ${repo}`, '',
             `Pinned at \`${pins[repo]}\`. Manifest: \`${doc}\`.`, '',
@@ -76,7 +84,9 @@ export const render = async () => {
             `${declared.size} declared-divergent, ${lite.size} lite-authored.`, '');
         for (const f of files) {
             const rel = f.slice(root.length + 1);
-            const tag = lite.has(rel) ? ' `[lite]`' : declared.has(rel) ? ' `[declared]`' : '';
+            const tag = lite.has(rel) ? ' `[lite]`'
+                : generated.has(rel) ? ' `[generated]`'
+                : declared.has(rel) ? ' `[declared]`' : '';
             out.push(`- \`${rel}\`${tag}`);
         }
         out.push('');

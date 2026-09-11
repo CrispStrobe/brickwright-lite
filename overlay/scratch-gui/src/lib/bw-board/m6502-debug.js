@@ -454,21 +454,32 @@ export function createM6502DebugTarget(adapter, opts = {}) {
     },
 
     /**
-     * TIMED INPUT REPLAY, RE-GRAFTED AT THE PIN BUMP — it exists on this target
-     * alone and upstream has ZERO occurrences of it in any file.
+     * REVERSE-STEP TO A RECORDED INPUT. The companion to replayInstruction():
+     * that one retires exactly one instruction, this one runs forward to the
+     * exact machine time at which a recorded input was delivered, so a replay
+     * can re-apply it at the tick it actually happened rather than near it.
      *
-     * Declared `stays` in docs/VENDOR-DIVERGENCE-I8086-MACHINE.md as
-     * `m6502-debug-replay-boundary`, and that entry says in its own words that
-     * it LEAVES THAT LEDGER'S SCOPE: it is a missing feature on two targets plus
-     * two consumers that disagree about the absence — instruction-replay.js
-     * raises a NAMED replay error, timed-replay-io.js throws a raw TypeError —
-     * and it needs a design decision before it can go anywhere.
+     * EVERY REFUSAL IS CODED AND NOTHING IS COERCED. The boundary comes out of
+     * a recording, which means it comes from disk, another session, or another
+     * version of this file -- so `ticks` is parsed with BigInt() inside a try
+     * rather than with Number(). `Number('12x')` is NaN and NaN comparisons are
+     * all false, so a malformed boundary silently satisfies `>= machine.cycles`,
+     * the loop never runs, and the caller is told it stopped at a boundary it
+     * never reached. BigInt() throws on exactly that input, which is why the
+     * refusal is possible to make at all.
      *
-     * So the convergence took upstream's file wholesale and put this back,
-     * rather than losing a capability to a sync. Everything it touches
-     * (`machine`, `cpu`, `this.debugTime()`) exists in the converged target.
+     * THE DOMAIN CHECK STRIPS A RESET SUFFIX BY DESIGN. restoreCheckpoint()
+     * renames the domain per epoch (`m6502-cycles-reset-3`) so facts from two
+     * timelines cannot be read as one; a boundary recorded before a restore is
+     * still on this clock, so the suffix is removed before comparing rather
+     * than treated as a foreign domain.
+     *
+     * INEXACT IS A REFUSAL, NOT A ROUNDING. The 6502 retires whole
+     * instructions, so a boundary recorded mid-instruction has no machine state
+     * to stop at. Running to the next boundary after it and reporting success
+     * would replay the input at the wrong time and report that it did not --
+     * so the overshoot is detected and named.
      */
-
     replayToInputBoundary(boundary) {
       let requested;
       try {

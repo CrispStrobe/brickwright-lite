@@ -198,6 +198,14 @@ export function createI8086DebugTarget(adapter, opts = {}) {
      */
     const priorPortAccess = adapter?.machine?.hooks?.onPortAccess ?? null;
 
+    /**
+     * And the same for the interrupt observer, for the same reason. `2a5a607`
+     * fixed the port hook; this is the other hook on the same object, assigned
+     * over in the same function, and it stayed only because the test that caught
+     * the first one exercises ports.
+     */
+    const priorInterrupt = adapter?.machine?.hooks?.onInterrupt ?? null;
+
     const machine = adapter.machine;
     const cpu = machine.cpu;
     const cpuId = opts.cpuId || 'i8086';
@@ -561,14 +569,28 @@ export function createI8086DebugTarget(adapter, opts = {}) {
         // `publishInterrupt` is itself inert without listeners, so the event half
         // costs a call and a `listeners.size` check on a path that fires per
         // delivered interrupt rather than per instruction.
-        machine.hooks.onInterrupt = (intWatches.size || debugEventSubscribers)
+        // CHAINED, NOT OVERWRITTEN -- see priorPortAccess above. Also note the
+        // condition: without `priorInterrupt` here, clearing the last watch wrote
+        // `null` over the machine's own hook and erased it for good.
+        //
+        // OUR OWN BOOKKEEPING FIRST, FOREIGN CALLBACKS AFTER -- the same order
+        // the port chain above uses, and the reason is not symmetry for its own
+        // sake. `eventHit` is a pure assignment that cannot throw; `priorInterrupt`
+        // is somebody else's function and `publishInterrupt` runs somebody else's
+        // listeners. Calling either of those before the watch scan means one
+        // throwing observer costs the debugger the breakpoint it was holding --
+        // the user asked to stop on vector 0x08, an unrelated hook threw, and
+        // execution ran on with nothing recorded. Scan first and that cannot
+        // happen, whatever the foreign code does.
+        machine.hooks.onInterrupt = (intWatches.size || debugEventSubscribers || priorInterrupt)
             ? (ev) => {
-                debugEvents.publishInterrupt({vector: ev.vector, source: ev.source});
                 for (const [id, w] of intWatches) {
                     if (w.vector != null && w.vector !== ev.vector) continue;
                     if (w.source && w.source !== ev.source) continue;
                     eventHit = { cause: 'interrupt', bp: id, ...ev };
                 }
+                debugEvents.publishInterrupt({vector: ev.vector, source: ev.source});
+                if (priorInterrupt) priorInterrupt(ev);
             }
             : null;
     };

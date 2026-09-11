@@ -65,45 +65,38 @@ const DOC = path.join(ROOT, 'docs/VENDOR-DIVERGENCE-I8086-MACHINE.md');
  * count to edit.
  */
 const RATCHET = {
-    files: 1,              // declared-divergent files with named identifier entries
-    entries: 1,            // liteOnly entries across those files
+    files: 0,              // declared-divergent files with named identifier entries
+    entries: 0,            // liteOnly entries across those files
     lineLevelOnly: 0,      // files carrying undeclared-identifier line divergence
-    liteAuthored: 2        // lite-authored files living inside the vendored root
+    liteAuthored: 0        // lite-authored files living inside the vendored root
 };
 
 /**
  * THE DECOMPOSITION, pinned for the same reason the total is.
  *
- * MEASURED 2026-09-11: 13 is not thirteen of a kind, and reading the bare total
- * as one backlog sizes two jobs as one. Two readers of the bare number sized it
- * wrong on the day it was written, which is why this is a pinned assertion and
- * not a paragraph.
+ * BOTH ARE EMPTY AS OF 2026-09-11, and the reason each entry left is worth more
+ * than the zero. The last one to go was `m6502-debug-replay-boundary`, the only
+ * `stays:` in the ledger, filed on a measurement that said it *"LEAVES THIS
+ * LEDGER'S SCOPE ... needs a design decision and its own lane"*.
  *
- * It is 1 + 12. `i8086-machine.js` carries a single machine-boundary observer,
- * structurally what `displayRevision` was before it went up. The other 12 are
- * the z80/m6502 replay-surface convergence held on the owner's ruling, and that
- * is ONE lane whatever its entry count.
+ * It needed neither. Re-reading it, the thing it said could not be decided was
+ * how CONSUMERS should behave when a target lacks `replayToInputBoundary` --
+ * which is a caller's question, and not a reason the METHOD could not live
+ * upstream. The method went to bw-board, where it is now an ordinary capability
+ * of the 6502 target with the suite it had never had, and lite takes the file
+ * byte-identical. A `stays:` justified by a hard question about something ELSE
+ * is the shape to look for: the hard question was real and it was not this
+ * entry's.
  *
- * The 12 are not twelve of a kind either. Ten are `upstream:`. The other two are
- * `stays:`, both filed under `m6502-debug.js`, and neither retires by converging
- * the bridges because neither is a divergence to converge:
- *
- *   - `m6502-debug-nmi-is-recorded` stays on a measurement about a DIFFERENT
- *     file — `z80-machine.js` has zero `nmi(`, so there is no second consumer to
- *     converge with. The entry is on m6502; the reason is about the z80.
- *   - `m6502-debug-replay-boundary` says in its own words that it LEAVES THIS
- *     LEDGER'S SCOPE: a missing feature on two targets plus a driver throwing a
- *     raw TypeError, needing a design decision and its own lane.
- *
- * So the shape is 1 observer + 10 convergence + 2 that are not this lane's work.
- * A count that hides that is a schedule nobody can size.
+ * THE MAPS STAY, AT ZERO, rather than being deleted with the entries. An empty
+ * map that is asserted-empty reds the day something is added without being
+ * decomposed; a deleted map reds nothing, and the decomposition has to be
+ * re-invented by whoever adds the second entry.
  */
-const PER_FILE = {
-    'm6502-debug.js': 1
-};
+const PER_FILE = {};
 
 /** Exact, like everything else here: a `stays:` appearing or retiring is a decision. */
-const DISPOSITIONS = {upstream: 0, stays: 1};
+const DISPOSITIONS = {upstream: 0, stays: 0};
 
 const spec = () => {
     const md = readFileSync(DOC, 'utf8');
@@ -112,8 +105,7 @@ const spec = () => {
     return JSON.parse(m[1]);
 };
 
-const counts = () => {
-    const d = spec();
+const counts = (d = spec()) => {
     return {
         files: Object.keys(d.files).length,
         entries: Object.values(d.files).reduce((n, v) => n + v.liteOnly.length, 0),
@@ -203,11 +195,96 @@ test('every entry carries a disposition, and it is upstream: or stays:', () => {
     }
 });
 
-test('the ratchet is reached — a corpus of nothing satisfies the assertions above', () => {
-    // Species 1: every assertion here passes vacuously against an empty ledger.
-    const now = counts();
-    assert.ok(now.files + now.lineLevelOnly + now.liteAuthored > 0
-        || Object.values(RATCHET).every(v => v === 0),
-        'the ledger read as empty while the ratchet expects entries — that is a parse failure, '
-        + 'not a clean tree');
+/**
+ * THE HOLE THAT OPENS THE DAY THE RATCHET REACHES ZERO, and the only test in
+ * this file that does not read the real ledger.
+ *
+ * Every assertion above counts things in the ledger and compares the count to a
+ * recorded number. While the ledger had entries, a broken counter showed up as a
+ * wrong number. Now that the ledger is EMPTY and every recorded number is 0, a
+ * counter that returns 0 for the wrong reason — a renamed key, a changed JSON
+ * shape, a `?? []` swallowing a parse failure — agrees with every expectation in
+ * this file. Zero is where a ratchet is at its weakest, not its strongest: the
+ * measurement and the failure now produce the same reading.
+ *
+ * The anti-vacuity check this replaces could not close that. It said "the ledger
+ * is non-empty OR every ratchet value is 0" — which, at the terminal value, is
+ * satisfied by the second clause no matter what the first one found. It was
+ * written to catch a parse failure while entries existed, and it retired itself
+ * on the day it became load-bearing.
+ *
+ * So the counters are driven against a FABRICATED ledger with a known answer. If
+ * `counts()` can find 2 files, 3 entries, 1 line-level file and 2 lite-authored
+ * files in a spec that contains exactly those, then its 0 on the real ledger is a
+ * measurement. If it cannot, its 0 is an artefact, and the ledger could have
+ * regrown to any size with this file still green.
+ *
+ * THE FIXTURE IS DELIBERATELY NOT THE SHAPE THE REAL LEDGER HAD. It carries two
+ * files rather than one, a mix of `upstream:` and `stays:`, and an entry in each
+ * collection — so a counter that happens to work for the last shape this repo
+ * held is not enough to pass it.
+ */
+const SYNTHETIC = {
+    files: {
+        'fabricated-a.js': {
+            liteOnly: [
+                {id: 'fab-a-one', disposition: 'upstream: not a real entry', region: 'x'},
+                {id: 'fab-a-two', disposition: 'stays -- not a real entry', region: 'y'}
+            ]
+        },
+        'fabricated-b.js': {
+            liteOnly: [
+                {id: 'fab-b-one', disposition: 'upstream: not a real entry', region: 'z'}
+            ]
+        }
+    },
+    lineLevelOnly: {files: ['fabricated-c.js'], disposition: 'x'.repeat(50)},
+    liteAuthored: {
+        files: {'fab-d.js': {reason: 'x'}, 'fab-e.js': {reason: 'x'}},
+        disposition: 'x'.repeat(50)
+    }
+};
+
+test('the counters find what is there — driven against a fabricated ledger', () => {
+    assert.deepEqual(counts(SYNTHETIC), {files: 2, entries: 3, lineLevelOnly: 1, liteAuthored: 2},
+        'counts() cannot see entries that ARE there, so its 0 on the real ledger is an '
+        + 'artefact of a broken reader rather than a measurement of a clean tree. Every '
+        + 'assertion in this file is currently passing for that reason.');
+});
+
+test('the disposition split is counted, not assumed — same fabricated ledger', () => {
+    // The same hole, one layer down: `DISPOSITIONS` is {upstream: 0, stays: 0},
+    // so a split that counts nothing at all agrees with it exactly. This drives
+    // the same regexes the real test uses over a spec with one of each.
+    const now = {upstream: 0, stays: 0};
+    for (const cfg of Object.values(SYNTHETIC.files)) {
+        for (const e of cfg.liteOnly) {
+            if (/^stays\b/.test(e.disposition)) now.stays++;
+            else if (/^upstream\b/.test(e.disposition)) now.upstream++;
+        }
+    }
+    assert.deepEqual(now, {upstream: 2, stays: 1},
+        'the disposition regexes match nothing even on a spec built to contain both, so '
+        + '{upstream: 0, stays: 0} on the real ledger says nothing about the real ledger');
+});
+
+test('the real ledger is EMPTY, and that is read rather than assumed', () => {
+    // Says the terminal state out loud, so reaching it is an assertion someone
+    // made rather than a number that drifted to zero. Paired with the two tests
+    // above, "empty" now means measured-empty.
+    const d = spec();
+    assert.deepEqual(Object.keys(d.files), [],
+        'the ledger declares divergent files again. Every one of them is a fork the owner '
+        + 'ruled against; send it upstream and take the file back down.');
+    assert.deepEqual(d.lineLevelOnly.files, []);
+    assert.deepEqual(Object.keys(d.liteAuthored.files), []);
+
+    // The categories themselves must survive at zero: an absent key reads as
+    // "never considered", and the next file to arrive would have nowhere to go.
+    for (const key of ['lineLevelOnly', 'liteAuthored']) {
+        assert.ok(d[key] && typeof d[key].disposition === 'string',
+            `${key} was DELETED rather than emptied. Keep the category and its disposition: `
+            + 'a ratchet at zero still needs somewhere to record the next arrival, and a '
+            + 'missing key reads as a question nobody asked.');
+    }
 });

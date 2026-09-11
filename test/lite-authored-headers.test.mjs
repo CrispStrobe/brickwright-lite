@@ -30,11 +30,26 @@ import { ROOT, SOURCES, NEVER_MARK, BEGIN, END, blockFor, applied, declared }
 test('every declared lite-authored file carries the marker the manifest implies', async t => {
     const files = await declared();
 
-    // Species 1: an empty corpus satisfies every assertion below, and this list
-    // is DERIVED from two documents either of which could stop parsing.
-    assert.ok(files.length >= 5,
-        `only ${files.length} lite-authored file(s) were derived from the manifests -- the json ` +
-        'block moved or stopped parsing, and a marker check over nothing passes trivially');
+    // THE FLOOR THAT RETIRED ITSELF. This read `files.length >= 5` -- a correct
+    // species-1 defence while lite-authored files existed, and a permanent red
+    // once every one of them had been upstreamed or moved out. The list reaching
+    // zero is the GOAL; a check that calls the goal a parse failure gets deleted
+    // by whoever reaches it, and the marker gate then goes vacuous for good.
+    //
+    // So the species-1 defence moves to where it can still be made: the marker
+    // MACHINERY is driven against a fabricated entry whose answer is known, and
+    // the derived list is then allowed to be empty because an empty reading has
+    // been distinguished from a broken one.
+    const fabricated = blockFor(
+        'fab.js',
+        {reason: 'a fabricated entry, so the block builder is known to still build'},
+        'docs/FABRICATED.md');
+    assert.ok(fabricated.startsWith(BEGIN) && fabricated.includes(END),
+        'blockFor no longer produces a delimited marker block, so every marker this gate '
+        + 'compares against is empty and every comparison below succeeds vacuously');
+    assert.ok(fabricated.includes('fab.js') && fabricated.includes('a fabricated entry'),
+        'the marker block no longer carries the file name or the manifest reason, so a '
+        + 'marker could disagree with its entry in either and this gate would not see it');
 
     const stale = [];
     for (const { file, entry, doc, rel } of files) {
@@ -91,6 +106,23 @@ const markerRoots = () => {
         roots.add(root);
         roots.add(root.replace('overlay/', 'packages/'));
     }
+    // A MARKER CAN LEAVE THE VENDORED ROOT, AND ITS LIE LEAVES WITH IT.
+    //
+    // This scan walked only the vendored roots -- which is where a LEGITIMATE
+    // marker lives, and exactly why it could not see the case that actually
+    // happened. `w65c02-cycle-provider.js` was relocated out of lib/bw-board/ to
+    // lib/bw-debug/ and took its generated header along: still saying "LIVES
+    // INSIDE A VENDORED ROOT", still naming a manifest that had retired its
+    // entry, and now in a directory this walk did not visit. The orphan check
+    // reported no orphans because the orphan had moved out of its reach.
+    //
+    // So the scan is widened to the whole of each `src/lib`. Its subject is "a
+    // file claiming to be lite-authored-inside-a-vendored-root", and that claim
+    // is at its most wrong precisely where the file is NOT in one.
+    for (const { root } of SOURCES) {
+        const lib = root.replace(/\/lib\/.*$/, '/lib');
+        if (lib !== root) { roots.add(lib); roots.add(lib.replace('overlay/', 'packages/')); }
+    }
     return [...roots].map(r => path.join(ROOT, r)).filter(existsSync);
 };
 
@@ -109,8 +141,10 @@ test('every file CARRYING a marker is still declared -- no orphaned markers', as
         'and their packages/ mirrors) -- a scan over nothing finds no orphan and passes vacuously');
 
     const marked = [];
+    let scanned = 0;
     for (const root of roots) {
         for (const p of walk(root)) {
+            scanned++;
             // Read a bounded prefix: the marker is asserted to be the first thing
             // in the file by the test below, so it is always in the first bytes.
             let head;
@@ -119,12 +153,23 @@ test('every file CARRYING a marker is still declared -- no orphaned markers', as
         }
     }
 
-    // Species 1: a walk that matches nothing satisfies the orphan assertion
-    // trivially. The manifests declare at least five marked files, present in at
-    // least the overlay copy, so a correct scan finds no fewer than five.
-    assert.ok(marked.length >= 5,
-        `the marker scan found only ${marked.length} marked file(s) across ${roots.length} root(s) -- ` +
-        'the marker text or the walk changed, and an orphan scan that finds nothing cannot find an orphan');
+    // SAME RETIREMENT, SAME REPAIR. `marked.length >= 5` was the species-1 defence
+    // and became a permanent red when the last marked file left. What must stay
+    // non-vacuous is the DETECTOR: an orphan scan whose matcher has stopped
+    // matching reports "no orphans" exactly as a clean tree does.
+    //
+    // The walk's corpus is still asserted -- there must be roots, and they must
+    // hold files -- and the matcher is fired at a string that carries a marker
+    // and one that does not, which is the pair a single positive case misses.
+    assert.ok(roots.length >= 1, 'no vendored root exists at all; the scan had nothing to walk');
+    assert.ok(scanned > 50,
+        `the marker walk only looked at ${scanned} file(s) across ${roots.length} root(s) -- `
+        + 'an orphan scan over an empty tree finds no orphan for the wrong reason');
+    assert.ok(`${BEGIN}\n// x\n${END}`.includes(BEGIN),
+        'the BEGIN sentinel no longer matches a block that literally contains it');
+    assert.ok(!'// an ordinary file header\n'.includes(BEGIN),
+        'the BEGIN sentinel matches an UNMARKED file, so every file reads as marked and '
+        + 'the orphan list is meaningless');
 
     const orphans = marked.filter(p => !legitimate.has(p)).map(p => path.relative(ROOT, p)).sort();
     assert.deepEqual(orphans, [],
@@ -163,7 +208,19 @@ test('LICENSE and the generated manifest are excluded by name, with a reason', a
         const md = readFileSync(path.join(ROOT, doc), 'utf8');
         const m = md.match(/```json\n([\s\S]*?)\n```/);
         if (!m) continue;
-        for (const f of Object.keys(JSON.parse(m[1]).liteAuthored?.files ?? {})) declaredNames.add(path.basename(f));
+        // EVERY CATEGORY A MANIFEST CAN DECLARE, not just liteAuthored. Both
+        // never-mark names left that one category on 2026-09-11 without leaving
+        // the tree: LICENSE became `rootSourced` (upstream's file at a path the
+        // comparison could not previously resolve) and .vendor-manifest.json
+        // became `generated` (written by the sync, not authored by anyone). They
+        // still must never be marked -- prepending to a legal notice alters it,
+        // and JSON carries no comment -- so the exclusion is as load-bearing as
+        // it ever was. Reading only liteAuthored made this gate conclude the
+        // exclusion "protects nothing" about two files it very much protects.
+        const spec = JSON.parse(m[1]);
+        for (const f of Object.keys(spec.liteAuthored?.files ?? {})) declaredNames.add(path.basename(f));
+        for (const f of Object.keys(spec.generated?.files ?? {})) declaredNames.add(path.basename(f));
+        for (const f of Object.keys(spec.rootSourced ?? {})) declaredNames.add(path.basename(f));
     }
     for (const n of NEVER_MARK) {
         assert.ok(declaredNames.has(n),

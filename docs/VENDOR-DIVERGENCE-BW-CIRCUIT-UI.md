@@ -88,14 +88,19 @@ badly, measured. The block is what `test/vendor-identity.test.mjs` reads.
   "liteAuthored": {
     "why": "Files lite has that upstream does not, inside a vendored root -- the same inventory docs/VENDOR-DIVERGENCE-I8086-MACHINE.md keeps for bw-board, and for the same reason: upstream has no copy to restore them from and no upstream review ever sees them. Each reason must say why the file lives in a vendored directory rather than beside lite's own code.",
     "ratchet": "Removal is free. An addition costs a reason in the same commit, and the gate refuses any lite-authored file not listed, so adding the file without the reason cannot go green.",
+    "files": {}
+  },
+  "rootSourced": {
+    "LICENSE": "LICENSE"
+  },
+  "rootSourcedWhy": "VENDORED FILES THAT COME FROM UPSTREAM'S REPOSITORY ROOT, NOT ITS src/. Added 2026-09-11. The identity walk resolved every vendored path against `<upstream>/src/<same path>`, so a file upstream keeps at its root had no counterpart, fell out as \"upstream does not have this\", and had to be declared LITE-AUTHORED to keep the gate green -- with a reason that explained its absence from the comparison as a property of the file (\"attribution, not code -- permanent\"). It was not permanent, it was UNCOMPARED, and it had drifted: measured the day this mapping was added, bw-board/LICENSE had lost its copyright YEAR and bw-circuit-ui/LICENSE was not the licence at all but the five-line Exhibit A notice standing in for the full 373-line MPL-2.0 text upstream publishes. Both now run through the same byte-identity assertion as every other vendored file.",
+  "generated": {
+    "why": "FILES THE SYNC WRITES, not files lite authored. Split out of liteAuthored on 2026-09-11. `.vendor-manifest.json` is the sync's own record of what it last wrote -- the baseline its local-edit detection compares against, the safety added after the 930000d incident overwrote weeks of un-upstreamed patches. It has no upstream counterpart because it is not upstream's file and never could be: it describes THIS copy. Filing it under lite-authored source made that category mean two things and put a floor of 1 under a ratchet whose terminal value is 0 -- a number that cannot reach its goal stops being read.",
+    "ratchet": "Entries may be REMOVED freely. An entry may only be ADDED with its reason in the same commit, and the gate refuses any undeclared file, so adding without declaring cannot go green. A GENERATED file must be reproducible by running the generator; if it is not, it is not generated, it is authored.",
     "files": {
-      "LICENSE": {
-        "reason": "Upstream's licence text, carried with the vendored copy so the terms travel with the code rather than living only in a manifest. Upstream keeps it at the repository root, not under src/, so it has no counterpart at the path this comparison walks. Attribution, not code.",
-        "importedBy": []
-      },
       ".vendor-manifest.json": {
-        "reason": "Written by sync-bw-circuit-ui.mjs to record what it copied. It is generated INTO the vendored root by the sync itself, so it is lite-authored by construction and can never have an upstream counterpart.",
-        "importedBy": []
+        "generator": "scripts/sync-bw-circuit-ui.mjs",
+        "reason": "Written by the sync at the end of every successful run: one sha1 per vendored file, so the NEXT sync can tell an upstream change from a lite-local edit and refuse rather than silently discard it. Deleting it does not lose source, it loses the baseline -- which is why it is in the sync's KEEP floor as well as in this list."
       }
     }
   }

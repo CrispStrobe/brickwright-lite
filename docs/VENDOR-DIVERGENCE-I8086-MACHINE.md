@@ -1,5 +1,43 @@
 # `bw-board/i8086-machine.js` has diverged BOTH WAYS
 
+> ## THIS LEDGER IS EMPTY — 2026-09-11
+>
+> **`files: 0`. `lineLevelOnly: 0`. `liteAuthored: 0`.** Every vendored bw-board
+> file is byte-identical to upstream at the pin (189 of 189), modulo the one
+> transformation `scripts/lib/vendor-rewrites.mjs` DERIVES: the `../` depth of a
+> vendored `node_modules` import. There is no divergence left to declare.
+>
+> **The history below is kept on purpose and is not describing the present.** The
+> lede is the 2026-09-04 discovery, the tables are counts that no longer hold, and
+> the two owner rulings are the reason any of it moved. What each entry cost to
+> retire is the part worth keeping — the numbers are not.
+>
+> **WHAT THE LAST FOUR RETIREMENTS ACTUALLY TOOK**, since "it went upstream" hides
+> the work:
+>
+> | was | why it was here | what retired it |
+> |---|---|---|
+> | `i8088-cycles.js` / `i8088-timing.js` absent | vendoring `i8086-machine.js` meant 975 KB of cycle table for an opt-in path | upstream INJECTED the estimator (`5afadcd`); the divergence dissolved rather than converging |
+> | `m6502-debug-replay-boundary` (`stays`) | *"needs a design decision and its own lane"* | re-reading it: the undecidable part was a CALLER's question. The method went upstream with the suite it never had |
+> | `resolve-netlist.js` lite-authored | it was extracted into a vendored directory in `41d5f0cbb` and nobody moved it | moved to `bw-debug/`, beside its two callers, three importers repointed |
+> | `LICENSE` lite-authored, *"permanent"* | the identity walk resolved vendored paths under upstream's `src/`, and a licence lives at the repo ROOT | `rootSourced` maps it. It was not permanent, it was UNCOMPARED — and it had drifted in both trees |
+>
+> **THE LAST ONE IS THE ONE TO REMEMBER.** A declaration that explains why a file
+> cannot be compared, written as though it were a property of the file, is how a
+> licence lost its copyright year in one tree and stopped being the licence at all
+> in the other. Nothing was wrong with the reasoning in that entry except its
+> subject.
+>
+> **THE GATES DO NOT GO AWAY AT ZERO, AND THREE OF THEM HAD TO CHANGE TO SURVIVE
+> IT.** `divergence-ratchet`, `vendor-residue-ratchet`, `vendor-identity` and
+> `disposition-deadline` each carried an anti-vacuity floor of the form *"refuse an
+> empty ledger"* — correct while entries existed, and a permanent red on the day
+> the ledger emptied. A floor that refuses its own goal state gets deleted by
+> whoever reaches the goal, leaving the gate vacuous exactly when nothing else is
+> watching for regrowth. Each now proves its MACHINERY against a fabricated ledger
+> and asserts the real one is empty, which are two different claims and were being
+> made as one.
+
 Discovered 2026-09-04 while trying to vendor the NE2000 into lite.
 
 > ## AND IT NOW HAS A DEADLINE — owner ruling, 2026-09-11
@@ -181,40 +219,17 @@ fails unless it touched both.
     "else",
     "function"
   ],
-  "files": {
-    "m6502-debug.js": {
-      "liteOnly": [
-        {
-          "id": "m6502-debug-replay-boundary",
-          "disposition": "stays -- AND LEAVES THIS LEDGER'S SCOPE. Re-grafted at the 2026-09-11 pin bump rather than lost to a wholesale take: `replayToInputBoundary` has ZERO occurrences anywhere in upstream src/, and three consumers here (instruction-replay.js, timed-replay-io.js, and its own tests). MEASURED by simulating the take -- a wholesale copy reds m6502-timed-input-replay with 'the target does not implement replayToInputBoundary'. It is not a divergence to converge: it is a missing feature on two targets plus two consumers that disagree about the absence, one raising a NAMED replay error and one a raw TypeError. Needs a design decision and its own lane.",
-          "markedAt": "2026-09-11",
-          "falsifiable": "Reverse-stepping to a recorded input lands somewhere else, or accepts a malformed boundary and runs to an arbitrary point instead of saying the boundary was invalid.",
-          "why": "replayToInputBoundary() parses the boundary as a BigInt inside a try and returns a CODED refusal ('invalid-input-boundary') rather than throwing or coercing. A NaN tick count that is silently accepted replays to the wrong place and reports success.",
-          "contains": "replayToInputBoundary\\(boundary\\)",
-          "region": "replayToInputBoundary"
-        }
-      ]
-    }
-  },
+  "files": {},
   "lineLevelOnly": {
     "files": [],
     "disposition": "EMPTY since the 2026-09-11 pin bump. All six converged: debug-target-factory, emu8051-debug, i8086-adapter, i8086-debug, m6502-adapter and z80-adapter are now byte-identical to upstream at the pin. Kept as a CATEGORY rather than deleted, because a file acquiring undeclared-identifier line divergence needs somewhere to be recorded, and an absent key reads as \"never considered\"."
   },
   "liteAuthored": {
-    "disposition": "DISPOSITION 2026-09-11, after the bump: TWO left of six. floooh-z80-cycle-provider.js, z80-cycle-debug.js and z80-target-factory.js went UPSTREAM (bw-board 8300d79) and are now plain vendored files. w65c02-cycle-provider.js RELOCATED out of the vendored root to bw-debug/, where its only consumer and its own dependency live -- upstream gained the seam (opts.providerBoundary) and not the JSMoo rejection record, which is lite's. LICENSE is permanent: attribution travels with the copy. resolve-netlist.js moves OUT rather than up -- zero importers inside the vendored tree, two in lite's own runtime.",
+    "disposition": "EMPTY SINCE 2026-09-11, AND THE CATEGORY STAYS. Six became zero. floooh-z80-cycle-provider.js, z80-cycle-debug.js and z80-target-factory.js went UPSTREAM (bw-board 8300d79). w65c02-cycle-provider.js RELOCATED to bw-debug/, where its only consumer and its own dependency live. resolve-netlist.js RELOCATED to bw-debug/ for the reason its own entry had been asking for since 2026-09-07: zero importers inside the vendored tree, two in lite's own runtime, and it was sitting where a sync operates with no upstream to restore it from. LICENSE is no longer lite-authored and never was -- see rootSourced above; it is upstream's file at a path this comparison could not resolve, and it is compared now. KEPT AS A CATEGORY rather than deleted: a lite-authored file appearing inside a vendored root needs somewhere to be recorded, and an absent key reads as \"never considered\".",
     "markedAt": "2026-09-10",
     "why": "THE MIRROR IMAGE OF absentByDesign BELOW. That list records files upstream has and lite deliberately does not; this one records files LITE has and upstream does not -- lite-authored source living inside a vendored root. Seven as of 2026-09-07, found while measuring a proposed vendored-path gate. They were not invisible: test/vendor-identity.test.mjs has printed them since lego-b9 added the liteOnly and notCompared collectors this morning. But printed is not asserted, and nothing said which of the seven were deliberate. A lite-authored file in a vendored directory is one careless sync from being clobbered and has no upstream to restore it from, so each one is now a decision recorded once rather than an accident nobody has examined. THE REASON MUST SAY WHY IT LIVES HERE RATHER THAN BESIDE LITE'S OWN CODE -- six of the seven are reached by relative import from a vendored sibling that itself carries a declared divergence, which is a real constraint; resolve-netlist.js is not, and its entry says so.",
     "ratchet": "Entries may be REMOVED freely -- a file that moves out or lands upstream should leave. An entry may only be ADDED together with its reason in the same commit, and the gate refuses any lite-authored file that is not listed, so adding the file without the reason cannot go green.",
-    "files": {
-      "resolve-netlist.js": {
-        "reason": "THE ONE WITH NO REASON TO BE HERE, and it is recorded rather than moved because moving it is a change to running code and this entry is not. NOTHING in the vendored root imports it: both consumers are lite's own -- bw-debug/debug-runner.js and pico-sim-run.js -- and upstream has no counterpart. It was extracted from debug-runner.js in 41d5f0cbb so the bare-metal debug path and the MicroPython Run resolve the board the same way, and it landed in the vendored directory rather than beside either caller. It is load-bearing (the phantom-inferred-bench rejection, owner reports 2026-08-16/17), which is exactly why it should not be sitting where a sync operates. MOVING IT TO bw-debug/ IS A SEPARATE LANE; this entry exists so that decision is asked rather than forgotten.",
-        "importedBy": []
-      },
-      "LICENSE": {
-        "reason": "Upstream's licence text, carried with the vendored copy so the terms travel with the code rather than living only in a manifest. Upstream keeps it at the repository root, not under src/, so it has no counterpart at the path this comparison walks. Attribution, not code. Declared 2026-09-07 when the gate's walk became recursive and every-extension: it had been invisible while the walk filtered `.js`, along with the 55 files of the devices/ subtree, all of which proved byte-identical.",
-        "importedBy": []
-      }
-    }
+    "files": {}
   },
   "absentByDesign": {
     "i8088-cycles.js": {
@@ -227,7 +242,11 @@ fails unless it touched both.
       "why": "REASON REWRITTEN 2026-09-11 and the divergence is GONE with it. Until bw-board 5afadcd, i8086-machine.js imported CycleEstimator at MODULE SCOPE, so vendoring that file meant shipping 974,864 bytes of generated cycle table in the editor bundle for a path that is opt-in, defaults to null and that nothing enables. Lite could not pay it, so it removed the whole path across ten sites -- and i8086-machine.js became unvendorable. The estimator is now INJECTED, so lite takes that file BYTE-IDENTICAL and simply does not pass an estimator. These two files stay absent because lite does not use the feature, not because lite amputated it.",
       "sinceUpstream": "5afadcd"
     }
-  }
+  },
+  "rootSourced": {
+    "LICENSE": "LICENSE"
+  },
+  "rootSourcedWhy": "VENDORED FILES THAT COME FROM UPSTREAM'S REPOSITORY ROOT, NOT ITS src/. Added 2026-09-11. The identity walk resolved every vendored path against `<upstream>/src/<same path>`, so a file upstream keeps at its root had no counterpart, fell out as \"upstream does not have this\", and had to be declared LITE-AUTHORED to keep the gate green -- with a reason that explained its absence from the comparison as a property of the file (\"attribution, not code -- permanent\"). It was not permanent, it was UNCOMPARED, and it had drifted: measured the day this mapping was added, bw-board/LICENSE had lost its copyright YEAR and bw-circuit-ui/LICENSE was not the licence at all but the five-line Exhibit A notice standing in for the full 373-line MPL-2.0 text upstream publishes. Both now run through the same byte-identity assertion as every other vendored file."
 }
 ```
 

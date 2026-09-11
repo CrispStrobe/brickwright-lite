@@ -925,11 +925,22 @@ UI: board canvas, schematic view, part models, interaction handlers, and wokwi
 element wrappers), licensed under **MPL-2.0** (Mozilla Public License 2.0).
 
 - **Licence:** MPL-2.0
+- **Copyright:** (c) CrispStrobe
 - **Upstream:** CrispStrobe/bw-circuit-ui (private repository)
 - **Source availability:** the vendored files are readable JavaScript in this
   public repository and constitute the Corresponding Source Code for the
   purposes of MPL-2.0 §3.2(a). No additional source beyond what is checked in
   under the path above is required to build or modify these files.
+
+The `LICENSE` file in that directory is upstream's own, byte for byte. Until
+2026-09-11 it was a five-line Exhibit A NOTICE standing in for the licence, with
+a copyright line appended — a pointer to the terms, under the name of the terms.
+Nothing compared it, because the vendor identity gate resolved vendored paths
+under upstream's `src/` and a licence lives at the repository root. It is
+compared now (`rootSourced` in the divergence ledger), which is why the copyright
+holder is recorded HERE: the MPL-2.0 text upstream publishes carries no
+copyright line of its own, and the attribution must not be what gets lost in
+making the licence exact.
 
 ### Licence boundary
 

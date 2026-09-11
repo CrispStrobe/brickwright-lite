@@ -66,7 +66,7 @@ export async function startPicoSimRun ({image, vm, stc, py, onStatus, onError}) 
     const {createRp2040jsAdapter} = await import(
         /* webpackChunkName: "bw-board" */ './bw-board/rp2040js-adapter.js');
     const {resolveNetlist} = await import(
-        /* webpackChunkName: "bw-board" */ './bw-board/resolve-netlist.js');
+        /* webpackChunkName: "bw-board" */ './bw-debug/resolve-netlist.js');
     const {createPicoRepl} = await import('./pico-repl.js');
     const {USBCDC} = await import('rp2040js');
 

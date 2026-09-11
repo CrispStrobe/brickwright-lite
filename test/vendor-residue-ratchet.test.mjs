@@ -68,11 +68,13 @@ const PINS = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor-pins.json'), 'ut
  * commit, so the number is the truth and not a high-water mark.
  */
 const RESIDUE = {
-    // ONE FILE, since the 2026-09-11 pin bump. i8086-machine.js and z80-debug.js
-    // are byte-identical to upstream and left this map entirely; m6502-debug.js
-    // carries the re-grafted `replayToInputBoundary`, which attributes to two
-    // residue lines once its declared region is subtracted.
-    'm6502-debug.js': {ahead: 2, behind: 0}
+    // EMPTY. The terminal value, reached 2026-09-11: no declared file remains, so
+    // there is no file left to carry residue. m6502-debug.js was the last, and it
+    // left by the front door rather than by being forgiven -- `replayToInputBoundary`
+    // went UPSTREAM (bw-board), and lite now takes the file byte-identical.
+    //
+    // THE MAP STAYS, EMPTY, and the test below asserts it against a measurement.
+    // Deleting it would delete the thing that notices the first file to come back.
 };
 
 // liteRemoved is a DECISION (may hold steady forever); liteBehind is a DEBT (may
@@ -109,11 +111,26 @@ const pinnedSrcDir = (envVar = 'BW_BOARD_DIR', repo = 'bw-board') => {
 
 const declaredFiles = (spec) => Object.entries(spec.files);
 
-test('every declared entry declares a region, and no catch-all is claimed region-only', () => {
-    const spec = readAllowList();
-    // Species 1: iterate nothing and every assertion below passes. The ledger
-    // declares three files with entries; refuse an empty read.
-    assert.ok(declaredFiles(spec).length >= 1, 'the ledger declares no files');
+test('the region checks FIND the defects planted for them — the machinery, not the tree', () => {
+    // DRIVEN AGAINST A FABRICATED LEDGER, NOT THE REAL ONE, AND THAT IS THE POINT.
+    //
+    // This test used to read the real ledger and refuse an empty result:
+    // `assert.ok(declaredFiles(spec).length >= 1, 'the ledger declares no files')`.
+    // That floor was correct for as long as the ledger had entries and wrong on
+    // the day it did not -- the terminal state of a ratchet whose stated goal is
+    // zero is exactly the state its own anti-vacuity check called a parse failure.
+    //
+    // Deleting the floor is not the fix either: with an empty ledger the loop
+    // below iterates nothing, `missing` and `catchAll` stay empty, and the region
+    // checks pass without having examined anything. A region checker that has
+    // stopped working agrees with a clean tree, perfectly, forever.
+    //
+    // So the checks run over a spec BUILT to fail them. Each fixture entry is a
+    // known defect of exactly the shape this test exists to catch, and the
+    // assertion is that they are all FOUND. The real ledger's emptiness is then
+    // asserted separately, by the test below, as a measurement rather than as the
+    // absence of a complaint.
+    const spec = SYNTHETIC_BAD;
     const missing = [], catchAll = [];
     let entries = 0;
     for (const [file, cfg] of declaredFiles(spec)) {
@@ -122,7 +139,69 @@ test('every declared entry declares a region, and no catch-all is claimed region
         for (const id of missingRegion) missing.push(`${file}:${id}`);
         for (const id of catchAllWithoutBlock(claims)) catchAll.push(`${file}:${id}`);
     }
-    assert.ok(entries >= 1, `the ledger parsed ZERO entries — the schema or JSON shape changed, and every region check below passes vacuously over an empty set. One entry survives the 2026-09-11 bump; zero means a parse failure, not a clean tree`);
+    assert.equal(entries, 4,
+        `the fabricated ledger parsed ${entries} entries, not 4 — the reader cannot see `
+        + 'entries that ARE there, so every region check below is passing over an empty '
+        + 'set and would pass over a real ledger full of undeclared regions too');
+    assert.deepEqual(missing.sort(), ['bad-a.js:no-region', 'bad-b.js:also-no-region'],
+        '\n  THE REGION CHECKER DID NOT FIND THE MISSING REGIONS PLANTED FOR IT.\n  found: '
+        + missing.join(', ') +
+        '\n\n  Two entries in the fixture have no `region`/`regions` at all. If they are not\n'
+        + '  reported here, this check cannot report a real one either, and its silence on\n'
+        + '  the live ledger means nothing.\n');
+    assert.deepEqual(catchAll, ['bad-c.js:bare-catch-all'],
+        '\n  THE CATCH-ALL CHECKER DID NOT FIND THE BARE CATCH-ALL PLANTED FOR IT.\n  found: '
+        + catchAll.join(', ') +
+        '\n\n  One fixture entry claims `<module>` with no `block` anchor -- the shape that\n'
+        + '  swallows a whole file. Not reporting it here means not reporting it anywhere.\n');
+});
+
+/**
+ * A LEDGER BUILT TO FAIL, so the checks that read the real one are known to work.
+ *
+ * Every entry here is a defect of a shape the region checks exist to catch:
+ * two with no region at all, one claiming a catch-all with no block anchor, and
+ * one correctly formed so the fixture cannot pass by reporting everything.
+ */
+const SYNTHETIC_BAD = {
+    files: {
+        'bad-a.js': {liteOnly: [{id: 'no-region', disposition: 'upstream: fixture'}]},
+        'bad-b.js': {liteOnly: [
+            {id: 'also-no-region', disposition: 'upstream: fixture'},
+            {id: 'well-formed', disposition: 'upstream: fixture', region: 'someFunction'}
+        ]},
+        'bad-c.js': {liteOnly: [
+            {id: 'bare-catch-all', disposition: 'upstream: fixture', region: '<module>'}
+        ]}
+    }
+};
+
+test('THE REAL LEDGER IS EMPTY — measured, not inferred from a quiet gate', () => {
+    // The separation the test above depends on. Those checks now prove the
+    // MACHINERY works; this one proves the TREE is clean. Neither can stand in
+    // for the other, and collapsing them is what produced an anti-vacuity floor
+    // that refused its own goal state.
+    const spec = readAllowList();
+    assert.deepEqual(Object.keys(spec.files), [],
+        'a declared-divergent file is back in the ledger. The residue ratchet is at its '
+        + 'terminal value, so this is not a number to raise — it is a fork to send upstream.');
+    assert.deepEqual(RESIDUE, {},
+        'RESIDUE names files the ledger no longer declares, or the ledger regrew and RESIDUE '
+        + 'was edited to match instead of the divergence being sent upstream');
+});
+
+test('and the REAL ledger has no entry missing a region or claiming a bare catch-all', () => {
+    // The same two checks, over the live tree. Empty today, and the test above is
+    // what makes that emptiness worth anything: these two tests together say
+    // "the checker works AND it found nothing", which is a different claim from
+    // either one alone.
+    const spec = readAllowList();
+    const missing = [], catchAll = [];
+    for (const [file, cfg] of declaredFiles(spec)) {
+        const {claims, missingRegion} = claimsFromFileCfg(cfg);
+        for (const id of missingRegion) missing.push(`${file}:${id}`);
+        for (const id of catchAllWithoutBlock(claims)) catchAll.push(`${file}:${id}`);
+    }
     assert.deepEqual(missing, [],
         '\n  LEDGER ENTRIES WITH NO REGION:\n    ' + missing.join('\n    ') +
         '\n\n  The residue ratchet attributes each changed line to a declared region. An entry\n' +

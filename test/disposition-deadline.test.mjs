@@ -116,12 +116,48 @@ test.describe('a disposition has a deadline', () => {
             `only ${ledgers.length} VENDOR-DIVERGENCE-*.md found in docs/ — there are three `
             + 'vendored upstreams and each has a ledger; a scan over fewer is a scan over a '
             + 'population somebody handed it');
-        assert.ok(entries.length >= 10,
-            `only ${entries.length} ledger entries parsed from ${ledgers.length} ledger(s) — `
-            + 'the document, its json fences, or the files/liteOnly shape has changed, and a '
-            + 'deadline check over nothing finds nothing overdue');
-        assert.ok(entries.some(e => isUpstream(e.disposition)),
-            'no entry is dispositioned `upstream`, so this gate is asserting nothing today');
+        // THE THIRD FLOOR TO RETIRE ITSELF AT ZERO, and the pattern is worth naming
+        // because it is not a coincidence: `>= 10 entries` and `some entry is
+        // upstream:` were both correct species-1 defences while entries existed,
+        // and both became permanent reds on the day the ledgers emptied. An
+        // anti-vacuity check anchored to a live corpus REFUSES ITS OWN GOAL STATE
+        // — and the repair a person reaches for under a red gate is deletion,
+        // which leaves the check vacuous exactly when nothing else is watching.
+        //
+        // The fix is the same one the divergence and residue ratchets took: keep
+        // the corpus claim where it still has a corpus (there are three ledgers,
+        // and that has not changed), and prove the PARSER separately, against a
+        // fabricated ledger whose answer is known. Then zero entries is a
+        // measurement rather than a reading a broken parser also produces.
+        const FABRICATED = [
+            '```json',
+            JSON.stringify({files: {'fab.js': {liteOnly: [
+                {id: 'fab-overdue', disposition: 'upstream: fixture', markedAt: '2020-01-01'},
+                {id: 'fab-stays', disposition: 'stays -- fixture', markedAt: '2020-01-01'}
+            ]}}}),
+            '```'
+        ].join('\n');
+        const parsed = ledgerEntries(FABRICATED);
+        assert.equal(parsed.length, 2,
+            `the ledger parser found ${parsed.length} entries in a document built to contain `
+            + 'exactly 2. It cannot see entries that ARE there, so its 0 on the real ledgers '
+            + 'says nothing about the real ledgers and every deadline below is unchecked.');
+        assert.equal(parsed.filter(e => isUpstream(e.disposition)).length, 1,
+            'the `upstream:` discriminator matched the wrong number of fabricated entries, so '
+            + 'a real overdue entry would not be recognised as one either');
+        assert.ok(daysHeld(parsed[0].markedAt, Date.now()) > 1000,
+            'daysHeld returned nothing usable for a 2020 date — an entry could be '
+            + 'years overdue and this gate would compute no age for it');
+
+        // And the real ledgers. Zero is the goal state, so it is asserted rather
+        // than left as the absence of a complaint: with the parser proven above,
+        // an empty read is a measurement. A NON-empty read is fine too — it just
+        // means there is something for the deadline tests below to judge.
+        const upstreamEntries = entries.filter(e => isUpstream(e.disposition));
+        assert.ok(entries.length === 0 || upstreamEntries.length > 0,
+            `${entries.length} ledger entries exist and NONE is dispositioned \`upstream\`, so `
+            + 'every one of them has been excused. That is the state the inverted default was '
+            + 'ruled against: a ledger of `stays` is a fork with paperwork.');
     });
 
     test.it('every entry records WHEN its disposition was assigned', () => {

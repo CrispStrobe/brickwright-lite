@@ -137,3 +137,46 @@ test('sectionFor matches a name only as a word: "lit" is not "split", "board" is
     assert.match(sectionFor(doc, 'labwired'), /^## labwired-core/);
     assert.match(sectionFor('## wokwi-elements — MIT\n', '@wokwi/elements'), /wokwi/);
 });
+
+test('holderOf reads a copyright LINE, and finds none in a licence that has none', () => {
+    // THE REGRESSION THIS EXISTS FOR, measured 2026-09-11. `holderOf` matched
+    // /Copyright/i anywhere in the text — correct for a short MIT or BSD notice
+    // and wrong the first time it was handed a full licence BODY. MPL-2.0 says
+    // "copyright doctrines of fair use, fair dealing, or other equivalents" in
+    // section 2.6, so the holder came back as
+    //
+    //     "doctrines of fair use, fair dealing, or other"
+    //
+    // and the notices gate reported bw-circuit-ui as missing its holder. The bug
+    // had always been there; nothing had ever handed this function a real licence
+    // until the vendored bw-circuit-ui LICENSE stopped being a five-line pointer.
+    //
+    // Anchored to the start of a line now, so this asserts BOTH directions: a real
+    // notice is still read, and prose that merely mentions copyright is not.
+    const {holderOf} = censusModule;
+    assert.equal(holderOf('MIT License\n\nCopyright (c) 2026 CrispStrobe\n\nPermission is'),
+        'CrispStrobe', 'a plain MIT notice no longer yields its holder');
+    assert.equal(holderOf('Copyright 2020-2026 Someone Else'), 'Someone Else',
+        'a bare year range in front of the holder is not being stripped');
+    assert.equal(holderOf('  Copyright (c) 2026 Indented Holder'), 'Indented Holder',
+        'an indented notice — the shape inside MPL Exhibit A — is not read');
+
+    // The MPL prose that produced the defect. No copyright line, so: null.
+    const mplProse = [
+        '2.6. Fair Use',
+        '',
+        'This License is not intended to limit any rights You have under',
+        'applicable copyright doctrines of fair use, fair dealing, or other',
+        'equivalents.',
+        '',
+        '3.4. Notices',
+        '',
+        'You may not remove or alter the substance of any license notices',
+        '(including copyright notices, patent notices, disclaimers of warranty...'
+    ].join('\n');
+    assert.equal(holderOf(mplProse), null,
+        'holderOf found a "holder" in licence PROSE that contains no copyright notice at '
+        + 'all. Unanchored, it returns "doctrines of fair use, fair dealing, or other" — '
+        + 'and a gate that compares that against a notices section reports a missing '
+        + 'holder for a file whose licence simply does not name one.');
+});
