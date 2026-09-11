@@ -50,6 +50,14 @@ const LEDGERS = () => readdirSync(DOCS_DIR)
 // 2026-08/09 this repo moved the bw-board pin roughly weekly, so an entry that
 // survives thirty days has watched about four syncs go past without being sent.
 const BUDGET_DAYS = 30;
+
+// A liteBehind DEBT is cheaper to pay than an `upstream` intention — running the
+// sync is a local operation (`npm run sync:bwboard` then review), not an upstream
+// round-trip that has to land in another repo and come back on a pin bump. So its
+// budget is HALF: a debt that has watched two pin bumps go past (the pin moves
+// roughly weekly, so ~14 days) without being synced is overdue, where an upstream
+// intention gets four bumps. Derived from cadence, not copied from 30.
+const LITE_BEHIND_BUDGET_DAYS = 14;
 const DAY = 24 * 60 * 60 * 1000;
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -62,6 +70,24 @@ export function ledgerEntries (markdown) {
         try { spec = JSON.parse(block[1]); } catch { continue; }
         for (const [file, body] of Object.entries(spec.files || {})) {
             for (const entry of body.liteOnly || []) out.push({ file, ...entry });
+        }
+    }
+    return out;
+}
+
+/**
+ * The liteBehind entries — a DEBT (upstream moved and we have not caught up),
+ * which is a different key from liteOnly and gets a SHORTER budget below. Read
+ * explicitly rather than folding liteBehind under the liteOnly/`upstream` path,
+ * so a debt cannot borrow an intention's clock by accident.
+ */
+export function liteBehindEntries (markdown) {
+    const out = [];
+    for (const block of markdown.matchAll(/```json\n([\s\S]*?)\n```/g)) {
+        let spec;
+        try { spec = JSON.parse(block[1]); } catch { continue; }
+        for (const [file, body] of Object.entries(spec.files || {})) {
+            for (const entry of body.liteBehind || []) out.push({ file, ...entry });
         }
     }
     return out;
@@ -168,5 +194,73 @@ test.describe('a disposition has a deadline', () => {
         assert.equal(isUpstream('stays — this is lite\'s own'), false);
         assert.equal(isUpstream('sync: take upstream\'s form'), false);
         assert.equal(isUpstream(undefined), false);
+    });
+
+    // --- liteBehind: a DEBT, on its own shorter clock -------------------------
+    //
+    // liteRemoved and liteBehind are separate keys (VENDORING-REGIME.md): a
+    // removal is a decision that may stand, a liteBehind is a debt that must be
+    // synced down. A debt ages too, and faster — see LITE_BEHIND_BUDGET_DAYS. The
+    // liteBehind path is SEPARATE from the `upstream` path above on purpose: its
+    // dispositions read `sync:`, which `isUpstream` deliberately does not match,
+    // so a debt can never borrow the longer intention clock.
+    const behind = ledgers.flatMap(doc =>
+        liteBehindEntries(readFileSync(doc, 'utf8')).map(e => ({ ...e, doc: path.basename(doc) })));
+
+    test.it('a liteBehind `sync:` disposition is not caught by the upstream clock', () => {
+        // The guard against the accident named in the ruling: were `isUpstream`
+        // to match `sync:`, every debt would silently inherit the 30-day budget
+        // instead of its own 14. It must not.
+        assert.equal(isUpstream('sync: adopt upstream\'s expanded comment'), false);
+        assert.equal(isUpstream('sync'), false);
+        assert.ok(LITE_BEHIND_BUDGET_DAYS < BUDGET_DAYS,
+            'a sync debt is cheaper to pay than an upstream trip, so its budget must be shorter');
+    });
+
+    test.it('every liteBehind entry records WHEN the debt was marked', () => {
+        // Vacuous while no debt exists, and correct the day one does — the
+        // write-the-absence-check-before-the-subject shape. The arithmetic itself
+        // is driven at constructed dates below, where it cannot be vacuous.
+        const missing = behind
+            .filter(e => !ISO.test(e.markedAt ?? ''))
+            .map(e => `${e.doc} ${e.file}:${e.id} (markedAt=${JSON.stringify(e.markedAt)})`);
+        assert.deepEqual(missing, [],
+            'these liteBehind debts carry no `markedAt`, so the sync clock cannot start:\n    '
+            + missing.join('\n    ') + '\n\n  Add "markedAt": "YYYY-MM-DD" — the date the debt was noticed.');
+    });
+
+    test.it('no liteBehind debt has outlived its shorter budget', () => {
+        const now = Date.now();
+        const overdue = behind
+            .map(e => ({ e, held: daysHeld(e.markedAt, now) }))
+            .filter(({ held }) => held !== null && held > LITE_BEHIND_BUDGET_DAYS)
+            .map(({ e, held }) => `${e.doc} ${e.file}:${e.id} — marked ${e.markedAt}, held ${held} days `
+                + `(${held - LITE_BEHIND_BUDGET_DAYS} over the ${LITE_BEHIND_BUDGET_DAYS}-day sync budget)`);
+        assert.deepEqual(overdue, [],
+            '\n  A liteBehind DEBT HAS NOT BEEN SYNCED DOWN:\n    ' + overdue.join('\n    ')
+            + `\n\n  A debt is not an intention: the remedy is one thing, run the sync\n`
+            + '  (`npm run sync:bwboard`), reconcile, and retire the entry. If it turns out\n'
+            + '  lite means to keep the difference, it was never liteBehind — move it to a\n'
+            + '  `stays` liteOnly entry with the reason.\n');
+    });
+
+    test.it('the liteBehind budget is what the check applies, driven at constructed dates', () => {
+        // M3, for the shorter budget: the live ledger holds no debt today, so the
+        // selection runs against constructed entries at the boundary, with the same
+        // predicate and the same constant as the assertion above.
+        const now = Date.parse('2026-12-01T00:00:00Z');
+        const at = days => new Date(now - days * DAY).toISOString().slice(0, 10);
+        const sample = [
+            { file: 'f.js', id: 'inside', markedAt: at(LITE_BEHIND_BUDGET_DAYS) },
+            { file: 'f.js', id: 'over', markedAt: at(LITE_BEHIND_BUDGET_DAYS + 1) },
+            { file: 'f.js', id: 'upstream-age', markedAt: at(BUDGET_DAYS) } // over the sync budget, under the upstream one
+        ];
+        const overdue = sample
+            .filter(e => (daysHeld(e.markedAt, now) ?? 0) > LITE_BEHIND_BUDGET_DAYS)
+            .map(e => e.id);
+        assert.deepEqual(overdue, ['over', 'upstream-age'],
+            `with LITE_BEHIND_BUDGET_DAYS=${LITE_BEHIND_BUDGET_DAYS}, a debt one day past it is overdue, and `
+            + 'a debt as old as the 30-day UPSTREAM budget is well past the shorter sync one — which is the '
+            + 'point of giving a debt its own, shorter clock.');
     });
 });

@@ -487,8 +487,17 @@ export class I8086Machine {
         this.mem = new Uint8Array(1 << 20);
         /** @type {Record<string, I8255|NS16C550|MC6850>} */
         this.chips = {};
-        // Flattened advance schedule, built on first use. null means stale.
-        // Avoid allocating Object.keys(this.chips) for every instruction.
+        // Flattened advance schedule, built on first use. null = needs rebuild.
+        // See _advanceChips: this exists because Object.keys() in that loop
+        // allocated an array per INSTRUCTION.
+        //
+        // IT MUST STAY LAZY, and the reason is not performance. Config
+        // validation later in this constructor -- the port-conflict refusal --
+        // can THROW. Building the schedule here instead would mean caching a
+        // board that is about to be rejected. Nothing would fail if someone
+        // moved it: the throw still happens, the cache is simply garbage that
+        // is never read. The hazard is silent, which is why it is written at
+        // the site rather than left in a review comment.
         this._advList = null;
         // Monotonic invalidation token for the host renderer. It changes on
         // visible VRAM/register writes, not on every CPU instruction.
