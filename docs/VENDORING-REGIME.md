@@ -109,6 +109,29 @@ Two schema changes go with it, and the second matters more than it looks:
   zero. Under one key a ratchet cannot tell peace from obligation and its number
   stops meaning anything.
 
+## The one failure no ratchet can catch
+
+**A count that goes down for a convergence that has not occurred is a lie that looks
+like progress.**
+
+The ratchet is exact in both directions: it reds if the number grows, and it reds if the
+number falls and nobody wrote the smaller one down. What it cannot see is a retirement
+that is *correct in form and premature in fact* — entries removed because the upstream
+trip was made, before the trip actually **landed** and the pin **moved**. The count falls,
+the ratchet is satisfied, and the ledger now claims upstream has something it does not.
+
+The rule follows from what an entry means: an entry describes **what upstream lacks**.
+Until the upstream change is on its default branch *and* `vendor-pins.json` names a commit
+that contains it, upstream still lacks it, whatever anyone has pushed to a lane.
+
+So a retirement belongs to the **pin bump**, never to the lane that does the upstreaming.
+The lane makes the trip; the bump records that it arrived. Two commits, deliberately —
+and only a person checking whether upstream actually has the thing can tell them apart,
+because to every gate in this repo they look identical.
+
+(Stated by `brickwright-lite-0c` on 2026-09-11, declining to retire four entries on the
+lane that upstreamed them.)
+
 ## Three things that are not what they look like
 
 **"Lite is behind" has two causes with opposite remedies.** Upstream moved and we
