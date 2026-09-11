@@ -71,6 +71,42 @@ const RATCHET = {
     liteAuthored: 6       // lite-authored files living inside the vendored root
 };
 
+/**
+ * THE DECOMPOSITION, pinned for the same reason the total is.
+ *
+ * MEASURED 2026-09-11: 13 is not thirteen of a kind, and reading the bare total
+ * as one backlog sizes two jobs as one. Two readers of the bare number sized it
+ * wrong on the day it was written, which is why this is a pinned assertion and
+ * not a paragraph.
+ *
+ * It is 1 + 12. `i8086-machine.js` carries a single machine-boundary observer,
+ * structurally what `displayRevision` was before it went up. The other 12 are
+ * the z80/m6502 replay-surface convergence held on the owner's ruling, and that
+ * is ONE lane whatever its entry count.
+ *
+ * The 12 are not twelve of a kind either. Ten are `upstream:`. The other two are
+ * `stays:`, both filed under `m6502-debug.js`, and neither retires by converging
+ * the bridges because neither is a divergence to converge:
+ *
+ *   - `m6502-debug-nmi-is-recorded` stays on a measurement about a DIFFERENT
+ *     file — `z80-machine.js` has zero `nmi(`, so there is no second consumer to
+ *     converge with. The entry is on m6502; the reason is about the z80.
+ *   - `m6502-debug-replay-boundary` says in its own words that it LEAVES THIS
+ *     LEDGER'S SCOPE: a missing feature on two targets plus a driver throwing a
+ *     raw TypeError, needing a design decision and its own lane.
+ *
+ * So the shape is 1 observer + 10 convergence + 2 that are not this lane's work.
+ * A count that hides that is a schedule nobody can size.
+ */
+const PER_FILE = {
+    'i8086-machine.js': 1,
+    'z80-debug.js': 5,
+    'm6502-debug.js': 7
+};
+
+/** Exact, like everything else here: a `stays:` appearing or retiring is a decision. */
+const DISPOSITIONS = {upstream: 11, stays: 2};
+
 const spec = () => {
     const md = readFileSync(DOC, 'utf8');
     const m = md.match(/```json\n([\s\S]*?)\n```/);
@@ -100,6 +136,48 @@ test('divergence may only go DOWN — the ratchet is exact, not a ceiling', () =
                   + `${now[key]} in this commit, so the number stays the truth rather than a `
                   + 'high-water mark with slack that permits regrowth.');
     }
+});
+
+test('the decomposition is pinned, not just the total', () => {
+    const d = spec();
+    const per = Object.fromEntries(
+        Object.entries(d.files).map(([file, cfg]) => [file, cfg.liteOnly.length]));
+
+    assert.deepEqual(per, PER_FILE,
+        'the per-file split moved. Update PER_FILE in the same commit and say which lane '
+        + 'moved it — a total that stays 13 while the split changes is a lane finishing '
+        + 'and another growing, reported as no change.');
+
+    // The two numbers are pinned against each other so they cannot drift apart:
+    // a decomposition maintained beside a total is two builders of one value.
+    const summed = Object.values(PER_FILE).reduce((n, v) => n + v, 0);
+    assert.equal(summed, RATCHET.entries,
+        `PER_FILE sums to ${summed} but RATCHET.entries is ${RATCHET.entries} — one of the `
+        + 'two was edited alone, and whichever is wrong has been reading as confirmation '
+        + 'of the other.');
+});
+
+test('the upstream/stays split is exact, and a `stays:` is named', () => {
+    const d = spec();
+    const now = {upstream: 0, stays: 0};
+    const staysIds = [];
+    for (const [file, cfg] of Object.entries(d.files)) {
+        for (const e of cfg.liteOnly) {
+            if (/^stays\b/.test(e.disposition)) { now.stays++; staysIds.push(`${file} -> ${e.id}`); }
+            else if (/^upstream\b/.test(e.disposition)) now.upstream++;
+        }
+    }
+    assert.deepEqual(now, DISPOSITIONS,
+        `the disposition split is now ${JSON.stringify(now)} against a recorded `
+        + `${JSON.stringify(DISPOSITIONS)}. A new \`stays:\` is the owner's ruling being `
+        + 'set aside for one entry and is a decision to take in the open; a `stays:` '
+        + 'becoming `upstream:` is good and this number moves down in that commit. '
+        + `Current \`stays:\` entries: ${staysIds.join(', ') || '(none)'}`);
+
+    // Not vacuous: the counters above only move if the regexes match something.
+    assert.equal(now.upstream + now.stays, RATCHET.entries,
+        'some entry matched neither `upstream` nor `stays`, so the split above counted '
+        + 'past it — the disposition-shape test is the one that should have caught that');
 });
 
 test('every entry carries a disposition, and it is upstream: or stays:', () => {
