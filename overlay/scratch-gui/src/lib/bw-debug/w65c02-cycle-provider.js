@@ -16,7 +16,7 @@
 // Imported by: debug-target-factory.js
 // --- end lite-authored marker ---
 
-import {createConditionalCycleProviderBoundary} from '../bw-debug/conditional-cycle-provider.js';
+import {createConditionalCycleProviderBoundary} from './conditional-cycle-provider.js';
 
 export const JSMOO_W65C02_REJECTION = Object.freeze({
     id: 'jsmoo-w65c02',

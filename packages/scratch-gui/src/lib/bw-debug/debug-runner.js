@@ -2235,7 +2235,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // Upstream does not need somebody else's rejection record; it needs the
         // hook. So the record stays here and the seam went up.
         const {createW65C02ProviderBoundary} =
-            await import('../bw-board/w65c02-cycle-provider.js');
+            await import('./w65c02-cycle-provider.js');
         targetOpts.providerBoundary = createW65C02ProviderBoundary;
 
         const result = await createDebugTarget('eater6502', targetOpts);

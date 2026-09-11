@@ -371,10 +371,19 @@ async function createEater6502Target(opts) {
   } catch {
     // m6502-debug.js not available — adapter-only mode
   }
-  if (!target) return {target, adapter};
-  const {createW65C02ProviderBoundary} = await import('./w65c02-cycle-provider.js');
-  const providerBoundary = createW65C02ProviderBoundary(target);
-  const providerSelection = providerBoundary.select(opts.cycleProvider || 'fast-w65c02');
+  // THE BOUNDARY IS INJECTED, matching upstream's `opts.providerBoundary` hook
+  // (bw-board 8300d79). This file used to import `./w65c02-cycle-provider.js`,
+  // which reaches out to `../bw-debug/conditional-cycle-provider.js` -- the last
+  // outward reach from this vendored root. The provider has moved to bw-debug
+  // where its consumers live, and lite passes it in at the call site.
+  //
+  // Written to match upstream EXACTLY so the pin bump takes this file whole
+  // rather than finding a divergence here.
+  if (!target || typeof opts.providerBoundary !== 'function') {
+    return {target, adapter};
+  }
+  const providerBoundary = opts.providerBoundary(target);
+  const providerSelection = providerBoundary.select(opts.cycleProvider);
   return {target: providerSelection.target, adapter, providerBoundary, providerSelection};
 }
 
