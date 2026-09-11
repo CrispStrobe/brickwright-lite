@@ -190,7 +190,9 @@ fails unless it touched both.
           "markedAt": "2026-09-10",
           "falsifiable": "The screen redraws on every frame even when nothing on it changed, so the fan spins up on a program that is just sitting at a prompt.",
           "why": "Host-renderer optimisation: a monotonic token bumped on visible VRAM and CRTC writes so the renderer can skip repaints. Never upstreamed. A sync deletes it and NOTHING FAILS -- the machine constructs, the screen just repaints every frame until someone profiles.",
-          "contains": "this\\.displayRevision = 0;"
+          "contains": "this\\.displayRevision = 0;",
+          "region": "constructor",
+          "block": "// Monotonic invalidation token[\\s\\S]*?this\\.displayRevision = 0;"
         },
         {
           "id": "display-revision-bump-vram",
@@ -198,7 +200,8 @@ fails unless it touched both.
           "markedAt": "2026-09-10",
           "falsifiable": "Same as above: the picture is right, the machine is just working far harder than it needs to.",
           "why": "The bump must stay GOVERNED by the VRAM address test. Hoisting it out bumps on every write and destroys the optimisation while still reading as present.",
-          "contains": "if \\(addr >= 0xa0000 && addr <= 0xbffff\\) \\{?[^}]*?this\\.displayRevision = \\(this\\.displayRevision \\+ 1\\)"
+          "contains": "if \\(addr >= 0xa0000 && addr <= 0xbffff\\) \\{?[^}]*?this\\.displayRevision = \\(this\\.displayRevision \\+ 1\\)",
+          "region": "_write"
         },
         {
           "id": "display-revision-bump-crtc",
@@ -206,7 +209,8 @@ fails unless it touched both.
           "markedAt": "2026-09-10",
           "falsifiable": "Switching video modes does not refresh the screen, or refreshes it constantly.",
           "why": "Same, governed by the CRTC port range.",
-          "contains": "if \\(port >= 0x3b0 && port <= 0x3df\\) \\{?[^}]*?this\\.displayRevision = \\(this\\.displayRevision \\+ 1\\)"
+          "contains": "if \\(port >= 0x3b0 && port <= 0x3df\\) \\{?[^}]*?this\\.displayRevision = \\(this\\.displayRevision \\+ 1\\)",
+          "region": "_out"
         },
         {
           "id": "display-revision-bump-block",
@@ -214,7 +218,8 @@ fails unless it touched both.
           "markedAt": "2026-09-10",
           "falsifiable": "Loading an image into video memory does not make it appear until something else happens to trigger a repaint.",
           "why": "Same, governed by the block-write overlap test.",
-          "contains": "if \\(base <= 0xbffff && base \\+ bytes\\.length > 0xa0000\\) \\{?[^}]*?this\\.displayRevision = \\(this\\.displayRevision \\+ 1\\)"
+          "contains": "if \\(base <= 0xbffff && base \\+ bytes\\.length > 0xa0000\\) \\{?[^}]*?this\\.displayRevision = \\(this\\.displayRevision \\+ 1\\)",
+          "region": "loadRom"
         },
         {
           "id": "on-instruction-hook",
@@ -222,7 +227,9 @@ fails unless it touched both.
           "markedAt": "2026-09-10",
           "falsifiable": "The debugger will not single-step: you press Step and nothing moves.",
           "why": "Per-instruction hook carrying pcBefore/pcAfter and the cycle delta. The debugger's single-step and the trace view are both built on it.",
-          "contains": "if \\(this\\.hooks\\.onInstruction\\) \\{?[^}]*?pcBefore"
+          "contains": "if \\(this\\.hooks\\.onInstruction\\) \\{?[^}]*?pcBefore",
+          "region": "step",
+          "block": "// The instruction observer is deliberately at the machine boundary,[\\s\\S]*?this\\.hooks\\.onInstruction\\(\\{[\\s\\S]*?\\}\\);"
         }
       ],
       "graftedFromUpstream": [
@@ -240,7 +247,27 @@ fails unless it touched both.
           "id": "cycle-estimator-not-vendored",
           "absent": "CycleEstimator|i8088-timing",
           "falsifiable": "The 8086 stops working completely \u2014 no machine, no screen, no blocks \u2014 because the file it now says it imports is not in this repository at all.",
-          "why": "THIS ENTRY POINTS THE OTHER WAY FROM THE NINE ABOVE. Upstream HAS this and lite deliberately does not, so there is no lite-only text for `contains` to hold; `absent` must NOT match the vendored copy. bw-board's i8086-machine.js imports CycleEstimator from ./i8088-timing.js at line 44 and uses _cycleEst nine times (9256cf7, opt-in cycle-accurate timing, ~6x). That import is present at MASTER AND AT THE CURRENT PIN, so lite did not fall behind on it \u2014 lite REMOVED it, before this allow-list existed to record the decision. Found 2026-09-06 while measuring vendor direction, having been written down nowhere for the whole time the nine entries above were being maintained. Re-adding the import means vendoring i8088-timing.js AND i8088-cycles.js, which it imports TABLES and PROVENANCE from: 983 KB of new bundle, 975 KB of it one table file, for a mode lite does not expose. That is a decision with its own owner and its own row, not something a pin move carries in silently."
+          "why": "THIS ENTRY POINTS THE OTHER WAY FROM THE NINE ABOVE. Upstream HAS this and lite deliberately does not, so there is no lite-only text for `contains` to hold; `absent` must NOT match the vendored copy. bw-board's i8086-machine.js imports CycleEstimator from ./i8088-timing.js at line 44 and uses _cycleEst nine times (9256cf7, opt-in cycle-accurate timing, ~6x). That import is present at MASTER AND AT THE CURRENT PIN, so lite did not fall behind on it \u2014 lite REMOVED it, before this allow-list existed to record the decision. Found 2026-09-06 while measuring vendor direction, having been written down nowhere for the whole time the nine entries above were being maintained. Re-adding the import means vendoring i8088-timing.js AND i8088-cycles.js, which it imports TABLES and PROVENANCE from: 983 KB of new bundle, 975 KB of it one table file, for a mode lite does not expose. That is a decision with its own owner and its own row, not something a pin move carries in silently.",
+          "regions": [
+            "enableI8088CycleTiming",
+            "cycleTimingStats",
+            "_cycleKey",
+            "_stepTimed"
+          ],
+          "blocks": [
+            {
+              "region": "<module>",
+              "anchor": "import \\{ CycleEstimator \\} from '\\./i8088-timing\\.js';[\\s\\S]*?for \\(let b = 0; b < 256; b\\+\\+\\) \\{[\\s\\S]*?\\n\\}"
+            },
+            {
+              "region": "constructor",
+              "anchor": "this\\._cycleEst = null;[^\\n]*"
+            },
+            {
+              "region": "step",
+              "anchor": "const n = this\\._cycleEst === null[\\s\\S]*?_stepTimed\\(\\)[\\s\\S]*?return n;"
+            }
+          ]
         }
       ]
     },
@@ -252,7 +279,8 @@ fails unless it touched both.
           "markedAt": "2026-09-10",
           "falsifiable": "You cannot save and reload a running program: the save does nothing, or produces a file that will not load on the same board.",
           "why": "The debug target forwards captureCheckpoint and restoreCheckpoint to the machine; without it the debugger cannot save or reload at all.",
-          "contains": "captureCheckpoint"
+          "contains": "captureCheckpoint",
+          "region": "captureCheckpoint"
         },
         {
           "id": "z80-debug-timestamped-facts",
@@ -260,7 +288,12 @@ fails unless it touched both.
           "markedAt": "2026-09-10",
           "falsifiable": "A recorded session plays back in the wrong order, or a saved checkpoint cannot be placed on the timeline against the events around it.",
           "why": "debugTime() stamps every producer fact and every checkpoint from one clock, so replay ordering and checkpoint placement agree. Without it the facts still record and still replay -- just not necessarily in the order they happened, which is the kind of wrong that looks right until a bug depends on ordering. NAMED 2026-09-05 because the pin bump moved upstream and the derived-coverage check found it unexplained.",
-          "contains": "debugEvents\\.debugTime\\(\\)"
+          "contains": "debugEvents\\.debugTime\\(\\)",
+          "regions": [
+            "<setup>",
+            "captureCheckpoint",
+            "debugTime"
+          ]
         },
         {
           "id": "z80-debug-replay-instruction",
@@ -268,7 +301,8 @@ fails unless it touched both.
           "markedAt": "2026-09-10",
           "falsifiable": "Stepping backwards one instruction silently does nothing, instead of saying why it cannot -- for example that a halted Z80 has no instruction to retire without a recorded interrupt.",
           "why": "replayInstruction() checks checkpointSupport() and the halted state FIRST and returns a coded refusal ('unsupported-replay', 'halted-without-instruction') with the reason. The refusal is the feature: an unsupported reverse-step that returns nothing is indistinguishable from one that worked and changed nothing.",
-          "contains": "replayInstruction\\(\\)"
+          "contains": "replayInstruction\\(\\)",
+          "region": "replayInstruction"
         },
         {
           "id": "z80-debug-event-retire-boundary",
@@ -276,7 +310,8 @@ fails unless it touched both.
           "markedAt": "2026-09-10",
           "falsifiable": "A port or memory event halts the Z80 in the middle of its instruction, before the architectural PC and memory state reach a replayable boundary.",
           "why": "The target explicitly advertises the observed instruction-retire boundary which its instruction-atomic producer publishes after ordered access facts. Runner admission depends on this claim instead of a Z80 name check.",
-          "contains": "eventBreakpointBoundary: 'instruction-retire'"
+          "contains": "eventBreakpointBoundary: 'instruction-retire'",
+          "region": "capabilities"
         },
         {
           "id": "z80-debug-memory-event-space",
@@ -284,7 +319,8 @@ fails unless it touched both.
           "markedAt": "2026-09-10",
           "falsifiable": "The Z80 publishes memory events which the breakpoint compiler refuses because the target declares no matching address space.",
           "why": "The mem capability connects the already-published memory facts and passive debugger read surface to the target-neutral event predicate engine.",
-          "contains": "spaces: \\{mem: \\{read: true, write: true, passiveRead: true\\}\\}"
+          "contains": "spaces: \\{mem: \\{read: true, write: true, passiveRead: true\\}\\}",
+          "region": "capabilities"
         }
       ]
     },
@@ -296,7 +332,8 @@ fails unless it touched both.
           "markedAt": "2026-09-10",
           "falsifiable": "You cannot save and reload a running program: the save does nothing, or produces a file that will not load on the same board.",
           "why": "Same bridge on the 6502 target: captureCheckpoint and restoreCheckpoint forwarded to the machine.",
-          "contains": "captureCheckpoint"
+          "contains": "captureCheckpoint",
+          "region": "captureCheckpoint"
         },
         {
           "id": "m6502-debug-timestamped-facts",
@@ -304,7 +341,12 @@ fails unless it touched both.
           "markedAt": "2026-09-10",
           "falsifiable": "A recorded session plays back in the wrong order, or a saved checkpoint cannot be placed on the timeline against the events around it.",
           "why": "debugTime() stamps every producer fact and every checkpoint from one clock, so replay ordering and checkpoint placement agree. The same mechanism as the Z80 target -- named here separately because the gate is per-file and a shared explanation would let one of them be deleted while the other stayed green.",
-          "contains": "debugEvents\\.debugTime\\(\\)"
+          "contains": "debugEvents\\.debugTime\\(\\)",
+          "regions": [
+            "<setup>",
+            "captureCheckpoint",
+            "debugTime"
+          ]
         },
         {
           "id": "m6502-debug-replay-instruction",
@@ -312,7 +354,8 @@ fails unless it touched both.
           "markedAt": "2026-09-10",
           "falsifiable": "Stepping backwards one instruction silently does nothing instead of saying why it cannot.",
           "why": "replayInstruction() checks checkpointSupport() first and returns a CODED refusal with a reason. The refusal is the feature: an unsupported reverse-step that returns nothing is indistinguishable from one that worked and changed nothing.",
-          "contains": "replayInstruction\\(\\)"
+          "contains": "replayInstruction\\(\\)",
+          "region": "replayInstruction"
         },
         {
           "id": "m6502-debug-nmi-is-recorded",
@@ -320,7 +363,8 @@ fails unless it touched both.
           "markedAt": "2026-09-10",
           "falsifiable": "A recorded session that used the NMI button replays without it -- the interrupt happens live and is missing on playback, so the run diverges at that point and nowhere before it.",
           "why": "nmi() calls publishInput('m6502.nmi') FIRST and refuses if the recorder rejects it, so the interrupt cannot happen without being recorded. Dropping the publish leaves a working button and an unreplayable recording, which is the failure that looks like a working feature.",
-          "contains": "publishInput\\('m6502\\.nmi'"
+          "contains": "publishInput\\('m6502\\.nmi'",
+          "region": "nmi"
         },
         {
           "id": "m6502-debug-replay-boundary",
@@ -328,7 +372,8 @@ fails unless it touched both.
           "markedAt": "2026-09-10",
           "falsifiable": "Reverse-stepping to a recorded input lands somewhere else, or accepts a malformed boundary and runs to an arbitrary point instead of saying the boundary was invalid.",
           "why": "replayToInputBoundary() parses the boundary as a BigInt inside a try and returns a CODED refusal ('invalid-input-boundary') rather than throwing or coercing. A NaN tick count that is silently accepted replays to the wrong place and reports success.",
-          "contains": "replayToInputBoundary\\(boundary\\)"
+          "contains": "replayToInputBoundary\\(boundary\\)",
+          "region": "replayToInputBoundary"
         },
         {
           "id": "m6502-debug-event-retire-boundary",
@@ -336,7 +381,8 @@ fails unless it touched both.
           "markedAt": "2026-09-10",
           "falsifiable": "A RAM or memory-mapped device event halts the 6502 in the middle of its instruction, before the architectural PC and device state reach a replayable boundary.",
           "why": "The target explicitly advertises the observed instruction-retire boundary which its instruction-atomic producer publishes after ordered memory access facts. Runner admission depends on this capability instead of a CPU-name exception.",
-          "contains": "eventBreakpointBoundary: 'instruction-retire'"
+          "contains": "eventBreakpointBoundary: 'instruction-retire'",
+          "region": "capabilities"
         },
         {
           "id": "m6502-debug-memory-event-space",
@@ -344,7 +390,8 @@ fails unless it touched both.
           "markedAt": "2026-09-10",
           "falsifiable": "The 6502 publishes memory events which the breakpoint compiler refuses, or conditions destructively read a memory-mapped VIA while deciding whether to halt.",
           "why": "The mem capability connects published memory facts to the target-neutral predicate engine while passiveRead false preserves the truth that RAM and MMIO occupy one address space.",
-          "contains": "spaces: \\{mem: \\{read: true, write: true, passiveRead: false\\}\\}"
+          "contains": "spaces: \\{mem: \\{read: true, write: true, passiveRead: false\\}\\}",
+          "region": "capabilities"
         }
       ]
     }
