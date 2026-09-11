@@ -18,7 +18,7 @@ a sync cannot restore them, and they carry the same warning in their own header.
 
 Pinned at `25e126044b706fb2de85d216c3ba6e408ad43380`. Manifest: `docs/VENDOR-DIVERGENCE-I8086-MACHINE.md`.
 
-190 tracked file(s): 190 plain, 0 declared-divergent, 0 lite-authored.
+189 tracked file(s): 189 plain, 0 declared-divergent, 0 lite-authored.
 
 - `LICENSE`
 - `ac.js`
@@ -164,7 +164,6 @@ Pinned at `25e126044b706fb2de85d216c3ba6e408ad43380`. Manifest: `docs/VENDOR-DIV
 - `r6507.js`
 - `register-all.js`
 - `reseat-gate.js`
-- `resolve-netlist.js`
 - `rp2040-bootrom.js`
 - `rp2040js-adapter.js`
 - `rp2040js-debug.js`

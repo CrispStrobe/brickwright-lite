@@ -197,7 +197,20 @@ export async function recordPin (name, sha, {pinsFile = PINS_FILE, log = console
     const pins = await readFile(pinsFile, 'utf8').then(JSON.parse).catch(() => ({}));
     if (pins[name] === sha) { log(`  pin unchanged: ${name}@${sha}`); return sha; }
     pins[name] = sha;
-    await writeFile(pinsFile, JSON.stringify(pins, null, 1) + '\n');
+    // INDENT 2, WHICH IS WHAT THE FILE ALREADY USES -- and this is not cosmetic.
+    //
+    // This wrote `null, 1`, so every --pin run REFORMATTED all three lines. Git
+    // then shows three changed lines where one pin moved, and
+    // `parsePreviousPins` (test/pin-move-chain.test.mjs) reads `-` lines out of
+    // that diff to learn which shas are FORMER pins. Measured 2026-09-11: a
+    // single bw-board bump put bw-circuit-ui's and sb3-creator's CURRENT shas
+    // into the previous-pin map, because their lines had "changed" too.
+    //
+    // Nothing said so. The staleness scan then treats a current pin as a former
+    // one, and the fixture that plants "a previous pin" plants a sha that is
+    // still live, finds nothing, and reports that the detector is broken.
+    // A whitespace default, three tests, and no connection between them.
+    await writeFile(pinsFile, JSON.stringify(pins, null, 2) + '\n');
     log(`  pinned ${name}@${sha}`);
     return sha;
 }

@@ -70,14 +70,36 @@ const git = (cwd, ...args) => execFileSync('git', ['-C', cwd, ...args], {encodin
 export const currentPins = () => JSON.parse(readFileSync(PINS, 'utf8'));
 
 /** Every sha the pins file ever held, with the lite commit that replaced it. Pure over `git log -p` text. */
-export const parsePreviousPins = logText => {
+/**
+ * Former pin values, read out of the diff git prints for vendor-pins.json.
+ *
+ * A `-` LINE IS NOT PROOF A PIN MOVED, which is the whole reason `currentShas`
+ * exists. Any rewrite of the file — a changed indent, a reordered key, a
+ * trailing-newline fix — makes git print a `-` line for EVERY pin, including the
+ * ones whose value is unchanged. Measured 2026-09-11: `scripts/lib-pin.mjs`
+ * wrote the file with `JSON.stringify(pins, null, 1)` where the file uses indent
+ * 2, so one bw-board bump reformatted all three lines and put bw-circuit-ui's
+ * and sb3-creator's CURRENT shas into this map as "previous pins".
+ *
+ * What that costs downstream is silent and wrong in both directions: the
+ * staleness scan starts reporting live pins as stale, and the fixture that
+ * plants "a previous pin" to prove the detector works plants a sha that is still
+ * current, finds nothing, and reads as a broken detector.
+ *
+ * So a sha that IS a current pin is never a previous pin, whatever the diff
+ * looked like. That also covers the honest case the indent bug only imitated: a
+ * pin moved away and then back.
+ */
+export const parsePreviousPins = (logText, currentShas = new Set()) => {
     const prev = new Map();
     let commit = null;
     for (const line of logText.split('\n')) {
         const c = line.match(/^COMMIT ([0-9a-f]{40}) (\S+)/);
         if (c) { commit = {sha: c[1], date: c[2]}; continue; }
         const m = line.match(/^-\s*"([\w-]+)":\s*"([0-9a-f]{40})"/);
-        if (m && commit && !prev.has(m[2])) prev.set(m[2], {repo: m[1], replacedIn: commit.sha.slice(0, 9), on: commit.date});
+        if (m && commit && !prev.has(m[2]) && !currentShas.has(m[2])) {
+            prev.set(m[2], {repo: m[1], replacedIn: commit.sha.slice(0, 9), on: commit.date});
+        }
     }
     return prev;
 };
@@ -131,7 +153,7 @@ const previousPinsFromHistory = () => {
     const count = Number(git(ROOT, 'rev-list', '--count', 'HEAD', '--', 'vendor-pins.json').trim());
     const shallow = git(ROOT, 'rev-parse', '--is-shallow-repository').trim() === 'true';
     const log = git(ROOT, 'log', '-p', '--format=COMMIT %H %ad', '--date=short', '--', 'vendor-pins.json');
-    return {count, shallow, previous: parsePreviousPins(log)};
+    return {count, shallow, previous: parsePreviousPins(log, new Set(Object.values(currentPins())))};
 };
 
 const repoHistory = () => {
@@ -241,4 +263,50 @@ test('the previous-pin parser reads the diff shape git prints, and ignores every
     const p = parsePreviousPins(log);
     assert.deepEqual([...p.keys()], ['1'.repeat(40), '3'.repeat(40)]);
     assert.deepEqual(p.get('1'.repeat(40)), {repo: 'bw-board', replacedIn: 'aaaaaaaaa', on: '2026-09-07'});
+});
+
+test('a REFORMAT of the pins file does not invent previous pins for pins that never moved', () => {
+    // THE DEFECT THIS EXISTS FOR, measured 2026-09-11. `scripts/lib-pin.mjs`
+    // wrote vendor-pins.json with `JSON.stringify(pins, null, 1)` while the file
+    // uses indent 2, so every --pin run rewrote all three lines. Git prints a `-`
+    // for each, and two pins that had not moved at all entered the previous-pin
+    // map — while still being the current pins.
+    //
+    // Nothing connected the whitespace default to the three tests it broke. This
+    // is the connection, stated as the invariant rather than as the indent: a
+    // current pin is never a previous pin.
+    const current = {'bw-board': 'b'.repeat(40), 'sb3-creator': 'c'.repeat(40)};
+    const reformatted = [
+        'COMMIT ' + 'a'.repeat(40) + ' 2026-09-11',
+        '-  "bw-board": "' + 'd'.repeat(40) + '",',     // really moved
+        '-  "sb3-creator": "' + 'c'.repeat(40) + '"',   // only reindented
+        '+ "bw-board": "' + 'b'.repeat(40) + '",',
+        '+ "sb3-creator": "' + 'c'.repeat(40) + '"'
+    ].join('\n');
+
+    const naive = parsePreviousPins(reformatted);
+    assert.ok(naive.has('c'.repeat(40)),
+        'fixture: the unguarded parser did NOT pick up the reindented line, so this case '
+        + 'is not reproducing the defect and proves nothing about the guard');
+
+    const guarded = parsePreviousPins(reformatted, new Set(Object.values(current)));
+    assert.deepEqual([...guarded.keys()], ['d'.repeat(40)],
+        'a pin that only changed INDENTATION is being reported as a former pin. Every '
+        + 'downstream reader then treats a live sha as stale, and the fixture that plants '
+        + '"a previous pin" plants one that is still current and finds nothing.');
+    assert.equal(guarded.get('d'.repeat(40)).repo, 'bw-board',
+        'the one pin that really moved lost its repo name to the filter');
+});
+
+test('the pins file keeps the indentation its own history is diffed against', () => {
+    // Not a style rule. The previous-pin map is read out of `git log -p` on this
+    // file, so its FORMATTING is an input to a gate. A writer using a different
+    // indent reformats every line and manufactures the finding above. Asserted
+    // here so the two cannot drift apart again in silence.
+    const raw = readFileSync(path.join(ROOT, 'vendor-pins.json'), 'utf8');
+    assert.equal(raw, JSON.stringify(JSON.parse(raw), null, 2) + '\n',
+        'vendor-pins.json is not `JSON.stringify(pins, null, 2)` + newline. Whatever wrote '
+        + 'it last uses a different shape, so the next pin bump will rewrite every line and '
+        + 'put unchanged pins into the previous-pin map. Fix the WRITER '
+        + '(scripts/lib-pin.mjs), not this file.');
 });
