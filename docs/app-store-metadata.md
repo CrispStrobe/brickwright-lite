@@ -199,6 +199,88 @@ Bitte Abstürze, falsche Simulationen oder Messwerte, unzugängliche Bedieneleme
 Übersetzungsfehler, verlorenen Fortschritt, Layoutprobleme sowie Hub- und
 macOS-Version melden.
 
+## What to Test — 0.1.16 en-US
+
+This build is almost entirely about the recorded debugger, and the honest summary
+is that reverse debugging worked once per session and now works repeatedly.
+
+What was wrong:
+- **Stepping backwards refused after the first rewind.** On the 6502 you could
+  take a checkpoint and restore it — once. Every checkpoint captured after that
+  restore was rejected, with a message about "simulation time" that pointed
+  nowhere near the cause.
+- **On the Z80 and the 8086 a reverse step could refuse outright**, reporting
+  that the replayed event stream had diverged. It had not; the two recordings
+  were being compared as though they were on different clocks.
+- **Attaching the debugger could silence instrumentation the machine already
+  had.** If something was watching I/O ports or interrupts before the debugger
+  opened, it stopped seeing them.
+
+All three were the same root cause: after a rewind the debugger renames its clock
+so that facts from before and after cannot be confused, and several parts of the
+app disagreed about how to read that name.
+
+Please test, in this order:
+1. **Record a session, take a checkpoint, step backwards, then take another
+   checkpoint and step backwards again.** The second one is the case that used to
+   fail. Both should restore, and the timeline should stay coherent.
+2. **Run forward after a reverse step.** A child recording should start, and the
+   parent history should be unchanged.
+3. **Export a recorded session and re-import it.** Bookmarks, notes and
+   checkpoint comparisons should survive the round trip.
+4. **Try event breakpoints and run-to** on a 6502, Z80 and 8086 project — the
+   three cores whose clocks were affected.
+
+Also in this build: five more worked examples, and continued work on the
+pseudocode importer and the circuit tab. Most of the rest of the release is
+internal measurement and vendoring discipline that testers will not see.
+
+Please report any debugger button that is enabled but does nothing, any refusal
+whose wording does not match what you did, and any history entry that disappears
+between a rewind and a re-run.
+
+## What to Test — 0.1.16 de-DE
+
+Dieser Build betrifft fast ausschließlich den aufzeichnenden Debugger. Kurz gesagt:
+Rückwärts-Debugging funktionierte bisher einmal pro Sitzung und funktioniert jetzt
+wiederholt.
+
+Was defekt war:
+- **Rückwärtsschritte wurden nach dem ersten Zurückspulen verweigert.** Beim 6502
+  ließ sich ein Prüfpunkt erfassen und wiederherstellen — genau einmal. Jeder
+  danach erfasste Prüfpunkt wurde abgelehnt, mit einer Meldung über die
+  „Simulationszeit", die nicht auf die Ursache zeigte.
+- **Beim Z80 und beim 8086 konnte ein Rückwärtsschritt ganz verweigert werden**,
+  mit dem Hinweis, der wiedergegebene Ereignisstrom sei abgewichen. War er nicht;
+  die beiden Aufzeichnungen wurden verglichen, als lägen sie auf verschiedenen
+  Uhren.
+- **Das Öffnen des Debuggers konnte vorhandene Beobachtung stummschalten.** Wer
+  vorher Ports oder Interrupts mitgelesen hat, sah danach nichts mehr.
+
+Alle drei hatten dieselbe Ursache: Nach einem Zurückspulen benennt der Debugger
+seine Uhr um, damit Fakten von vor und nach dem Sprung nicht verwechselt werden —
+und mehrere Stellen der App waren sich über das Lesen dieses Namens uneinig.
+
+Bitte in dieser Reihenfolge testen:
+1. **Sitzung aufzeichnen, Prüfpunkt setzen, rückwärts springen, dann erneut einen
+   Prüfpunkt setzen und wieder rückwärts springen.** Der zweite Durchgang ist der
+   Fall, der bisher scheiterte. Beide sollen gelingen, die Timeline schlüssig
+   bleiben.
+2. **Nach einem Rückwärtsschritt wieder vorwärts laufen lassen.** Eine
+   Kind-Aufzeichnung soll beginnen, der übergeordnete Verlauf unverändert bleiben.
+3. **Aufgezeichnete Sitzung exportieren und wieder importieren.** Lesezeichen,
+   Notizen und Prüfpunktvergleiche sollen den Weg überstehen.
+4. **Ereignis-Haltepunkte und „Laufen bis" prüfen** — bei einem 6502-, einem Z80-
+   und einem 8086-Projekt, den drei betroffenen Kernen.
+
+Außerdem enthalten: fünf weitere ausgearbeitete Beispiele sowie weitere Arbeit am
+Pseudocode-Import und am Schaltungs-Tab. Der übrige Teil dieses Releases besteht
+aus interner Messung und Vendoring-Disziplin und ist für Testende nicht sichtbar.
+
+Bitte jeden Debugger-Knopf melden, der aktiv ist, aber nichts bewirkt, jede
+Verweigerung, deren Wortlaut nicht zur Aktion passt, und jeden Verlaufseintrag,
+der zwischen Zurückspulen und Neustart verschwindet.
+
 ## What to Test — 0.1.15 en-US
 
 This build extends the debugger's recorded-history tools. Please record a session,

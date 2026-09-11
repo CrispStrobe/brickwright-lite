@@ -15,13 +15,43 @@ const section = (source, title) => {
 
 test('canonical store descriptions are bilingual, accurate, and within Apple limits', async () => {
     const source = await readFile(metadataPath, 'utf8');
+    const shippingVersion = JSON.parse(
+        await readFile(new URL('../apps/tauri/src-tauri/tauri.conf.json', import.meta.url), 'utf8')).version;
+    assert.match(shippingVersion, /^\d+\.\d+\.\d+$/,
+        `tauri.conf.json's version is ${JSON.stringify(shippingVersion)} — the section names `
+        + 'below are built from it, so an unreadable version would look for headings that '
+        + 'cannot exist and this gate would fail for the wrong reason');
     const names = [
         'TestFlight app description — en-US',
         'TestFlight app description — de-DE',
         'App Store description — en-US',
         'App Store description — de-DE',
-        'What to Test — 0.1.6 en-US',
-        'What to Test — 0.1.6 de-DE'
+        // DERIVED FROM THE VERSION THAT IS ABOUT TO SHIP, not frozen at the one
+        // this file was written for.
+        //
+        // These read `0.1.6` and had since 0.1.6, while
+        // scripts/push-tester-notes.mjs's own header says this gate "asserts the
+        // sections for the current version exist". It did not — it asserted the
+        // sections for ONE PAST version exist, forever.
+        //
+        // MEASURED BEFORE CHANGING IT, and the measurement is the good news:
+        // every version from 0.1.5 to 0.1.15 has both locales written. The
+        // discipline has been kept by hand on every release. So this was a
+        // LATENT hazard rather than a live failure — the gate would have gone on
+        // being green through the first release somebody forgot, and
+        // push-tester-notes would have refused an empty whatsNew at the end of a
+        // tagged build instead of a test refusing it before the tag.
+        //
+        // (I first read this as "0.1.12 onward shipped with no notes". That was
+        // my grep sorting document order and my reading the wrong end of it, not
+        // the repository. Enumerated, then written down.)
+        //
+        // A hardcoded literal where a derivation belongs, with prose elsewhere
+        // claiming the derivation. Reading the version from the file the release
+        // actually ships turns a kept habit into a checked one: the bump reds
+        // this gate until the notes are written.
+        `What to Test — ${shippingVersion} en-US`,
+        `What to Test — ${shippingVersion} de-DE`
     ];
 
     for (const name of names) {
