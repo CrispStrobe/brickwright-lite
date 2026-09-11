@@ -2221,6 +2221,23 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             board = db.board;
         }
         readyMsg += ` — ${db.why}`;
+        // THE PROVIDER BOUNDARY IS INJECTED, not imported by the factory.
+        //
+        // `w65c02-cycle-provider.js` used to be imported by the vendored
+        // `debug-target-factory.js`, which made a vendored file reach out to
+        // `../bw-debug/conditional-cycle-provider.js` — the last of three such
+        // reaches. bw-board now takes an optional `providerBoundary`, so the
+        // factory needs no knowledge of JSMoo and lite supplies the boundary it
+        // already owns. Absent this option the factory behaves exactly as before.
+        //
+        // The file this imports also carries the JSMOO W65C02 REJECTION — a
+        // qualification verdict about a candidate UPSTREAM NEVER EVALUATED.
+        // Upstream does not need somebody else's rejection record; it needs the
+        // hook. So the record stays here and the seam went up.
+        const {createW65C02ProviderBoundary} =
+            await import('../bw-board/w65c02-cycle-provider.js');
+        targetOpts.providerBoundary = createW65C02ProviderBoundary;
+
         const result = await createDebugTarget('eater6502', targetOpts);
         wireMachineBench(result, createDebugSession);
         setStatus('ready', readyMsg);
