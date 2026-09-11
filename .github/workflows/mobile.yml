@@ -311,8 +311,28 @@ jobs:
       # to Apple, so iOS TestFlight silently stayed on whatever was uploaded by
       # hand (0.1.0, 2026-08-05) while macOS moved on. Tagging looked like it
       # released both platforms and only released one.
+      #
+      # THE GUARD NOW SAYS WHAT THE COMMENT ABOVE SAYS. It read
+      # `startsWith(github.ref, 'refs/tags/')` alone -- and a workflow_dispatch
+      # ON A TAG satisfies that, so a manual test run did attempt a real App
+      # Store upload, which is the one thing the comment says must never happen.
+      #
+      # Measured: run 34031659129, workflow_dispatch on v0.1.15. Build, signing
+      # and validation all succeeded; Apple refused the upload with
+      #
+      #   status 409  ENTITY_ERROR.ATTRIBUTE.INVALID.DUPLICATE
+      #   The bundle version must be higher than the previously uploaded
+      #   version: '0.1.15'.
+      #
+      # The correct answer, reported as a failed `ios-signed` job -- which reads
+      # as a signing problem, two steps after signing demonstrably succeeded.
+      #
+      # ONLY THIS STEP IS GATED ON THE EVENT. The tester-notes and TestFlight
+      # steps below are idempotent and their comments say a re-run is the
+      # recovery path, so a dispatch over a tag still repairs those for a build
+      # Apple already has. It just no longer tries to upload that build twice.
       - name: Validate + upload to App Store Connect
-        if: startsWith(github.ref, 'refs/tags/')
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         run: |
           set -euo pipefail
           mkdir -p ~/.appstoreconnect/private_keys

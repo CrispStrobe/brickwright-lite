@@ -177,8 +177,14 @@ jobs:
       # Validate + upload to App Store Connect -- only on real version tags,
       # never on workflow_dispatch test runs (avoids spamming builds onto the
       # app record while iterating on this workflow).
+      #
+      # AND THE GUARD SAYS SO NOW. It read the ref shape alone, and a
+      # workflow_dispatch ON A TAG satisfies that — so "avoids spamming builds
+      # onto the app record while iterating on this workflow" was a sentence,
+      # not a condition. Found 2026-09-11 by the gate written for mobile.yml's
+      # identical defect, which is the only reason this one was looked at.
       - name: Validate + upload to App Store Connect
-        if: matrix.os == 'macos-latest' && startsWith(github.ref, 'refs/tags/')
+        if: github.event_name == 'push' && matrix.os == 'macos-latest' && startsWith(github.ref, 'refs/tags/')
         run: |
           mkdir -p ~/.appstoreconnect/private_keys
           echo "${{ secrets.APPSTORE_API_KEY_P8 }}" | base64 --decode \
