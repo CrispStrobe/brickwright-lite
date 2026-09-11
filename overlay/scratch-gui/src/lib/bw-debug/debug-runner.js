@@ -54,6 +54,7 @@ import {createDebugRecorder} from './recorder.js';
 // The run board is resolved the same way for the debugger and the MicroPython
 // simulator Run — one copy of the phantom-inferred-bench rejection.
 import {resolveNetlist} from './resolve-netlist.js';
+import {logicalTimeDomain} from '../bw-board/instruction-debug-events.js';
 import {createHaltOccurrenceLedger} from './halt-occurrence-ledger.js';
 import {createForkRecordingStore} from './fork-recording-store.js';
 import {createBranchCursor} from './fork-history.js';
@@ -559,7 +560,25 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     const selectedInspectionStore = createSelectedEventInspectionStore();
     let selectedInspectionKey = null;
     let selectedInspectionView = null;
-    const replayClockDomain = domain => String(domain).replace(/-reset-\d+$/, '');
+    // IMPORTED, NOT WRITTEN OUT AGAIN. This was `/-reset-\d+$/` — and three of
+    // the four cores lite ships stamp `rewind`, not `reset`:
+    //
+    //     avr8js-adapter.js  rewindLabel: 'reset'
+    //     z80-debug.js       rewindLabel: 'rewind'
+    //     m6502-debug.js     rewindLabel: 'rewind'
+    //     i8086-debug.js     rewindLabel: 'rewind'
+    //
+    // So after ANY restore, a replayed event carried `z80-cycles-rewind-1` while
+    // the recorded one carried `z80-cycles`, the two compared unequal, and the
+    // reverse step refused with `replayed event stream diverged` — a symptom
+    // three layers from a regex. That is what the debug-history browser proof
+    // had been failing on.
+    //
+    // `logicalTimeDomain` is declared in the vendored module that WRITES the
+    // suffix, and that module now refuses a label the parser cannot strip. One
+    // authority, so this cannot drift again: a fifth core updates REWIND_LABELS
+    // there and this follows for free.
+    const replayClockDomain = logicalTimeDomain;
     const normalizeReplayEvent = event => {
         const {schema, seq, inputCursor, ...fact} = event;
         return {...fact, time: {...fact.time, domain: replayClockDomain(fact.time.domain)}};

@@ -54,6 +54,7 @@ let page;
 let url = process.env.PROOF_URL || process.env.BW_URL || null;
 const checks = [];
 const diagnostics = [];
+let refusalText = '';
 const check = (name, ok, detail = '') => {
     checks.push({name, ok, detail});
     console.log(`${ok ? 'PASS' : 'FAIL'}: ${name}${detail ? ` — ${detail}` : ''}`);
@@ -162,12 +163,34 @@ try {
     check('browser emitted no console, page, or request failure', diagnostics.length === 0,
         diagnostics.join(' | '));
 } catch (error) {
+    // PRINT IT. This pushed straight into `checks` without going through
+    // `check()`, which is the only thing that logs — so a failing run printed
+    // its passing checks, then "Debug history browser proof FAILED.", and
+    // nothing whatever about what failed. The reason existed only inside
+    // report.json, an uploaded artifact somebody has to go and download.
+    //
+    // Measured 2026-09-11: three CI runs reported this failure and none of them
+    // said the gate timed out waiting for a reverse step that was refusing. An
+    // instrument that knows the answer and does not print it costs more than one
+    // that cannot tell.
     diagnostics.push(`gate: ${error.stack || error.message || error}`);
     checks.push({name: 'complete workflow', ok: false, detail: error.message || String(error)});
+    console.log(`FAIL: complete workflow — ${error.message || String(error)}`);
 } finally {
+    // READ THE REFUSAL OFF THE PAGE BEFORE CLOSING IT. The gate waits for a
+    // refusal element to be ABSENT, so on failure the element is present and
+    // carries the reason in plain text. That reason was previously visible only
+    // by opening final.png by eye — which is how "the reverse step refuses with
+    // `replayed event stream diverged`" stayed unknown across three CI runs.
+    if (page) {
+        refusalText = await page.evaluate(() => {
+            const el = document.querySelector('[data-debug-reverse-refusal]');
+            return el ? el.textContent.trim() : '';
+        }).catch(() => '');
+    }
     if (page) await page.screenshot({path: join(artifacts, 'final.png'), fullPage: true})
         .catch(error => diagnostics.push(`screenshot: ${error.message}`));
-    const report = {url, checks, diagnostics,
+    const report = {url, checks, diagnostics, refusalText,
         passed: checks.filter(item => item.ok).length, failed: checks.filter(item => !item.ok).length};
     await writeFile(join(artifacts, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
     if (browser) await browser.close();
@@ -175,5 +198,17 @@ try {
 }
 
 const failed = checks.some(item => !item.ok) || diagnostics.length > 0;
+if (failed) {
+    // The whole reason, on stdout, where the CI log is. Anything the page put in
+    // front of the user at the moment of failure is the most useful line here —
+    // a reverse step that REFUSES looks identical to one that hangs, from the
+    // outside, and the refusal text is what tells them apart.
+    for (const item of checks.filter(c => !c.ok)) {
+        console.log(`  failed check: ${item.name}${item.detail ? ` — ${item.detail}` : ''}`);
+    }
+    for (const line of diagnostics) console.log(`  diagnostic: ${line}`);
+    if (refusalText) console.log(`  ON-SCREEN REFUSAL: ${refusalText}`);
+    console.log(`  report: ${join(artifacts, 'report.json')}`);
+}
 console.log(failed ? '\nDebug history browser proof FAILED.' : '\nDebug history browser proof passed.');
 process.exit(failed ? 1 : 0);
