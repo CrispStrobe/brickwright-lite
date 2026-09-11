@@ -66,6 +66,9 @@ machinery rather than something both sides keep.
 | `originalInterruptHook` | 3 | 221 | **nothing yet — see §4** |
 | `eventDomain` | 4 | 252 | keep; upstream has it too (4 refs) |
 
+**A deletion brief that lists only what to delete is a brief that has done the
+easy half.** The table above is the easy half. This is the other one.
+
 **Do not delete these.** They exist on both sides and upstream still uses them:
 `eventTime` (6), `eventTimeEpoch` (5), `lastEventTicks` (5), `observedInputs` (5),
 `syncEventHooks` (5), `cachedVideoKey` (3), `cachedVideoFrame` (4).
