@@ -2,8 +2,8 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "4b6fe5c9a96473931a22f9176095a0395e0d95ae",
-    "read": "2026-09-10"
+    "sha": "56a49dc2940a73e2d4f7cea6c631e9ee383bc3fd",
+    "read": "2026-09-11"
   },
   "rows": [
     {
@@ -26,8 +26,8 @@
       "id": "8088-vectors",
       "kind": "oracle",
       "present": true,
-      "ciAvailable": false,
-      "ci": "not yet — the grind is young and its scores are still moving",
+      "ciAvailable": true,
+      "ci": "yes — the `vectors186` job checks out SingleStepTests/v20 at a pinned ref. This row said \"not yet\" while that job already existed; the claim was about the SCORES still moving, which is a different question from whether CI has the input",
       "via": "/home/claudeuser/code/8088-vectors/v2",
       "gates": [
         "scripts/grind-i8088-cycles.mjs"
@@ -83,9 +83,27 @@
       "gates": [
         "test/emu8051-idle-fastforward.test.mjs",
         "test/brightness-emu8051.test.js",
-        "test/emu8051-debug.test.js"
+        "test/emu8051-debug.test.js",
+        "test/conformance-real-wasm.test.js",
+        "test/device-drivers-e2e.test.js",
+        "test/end-to-end-dimmer.test.js",
+        "test/motor-e2e.test.js",
+        "test/rung8-serial-reads.test.js",
+        "test/servo-e2e.test.js"
       ],
       "what": "A second 8051 implementation (MIT sibling repo), built to WASM. Cross-checks the emu8051 adapter against a different upstream."
+    },
+    {
+      "id": "stc-examples",
+      "kind": "fixture",
+      "present": true,
+      "ciAvailable": false,
+      "ci": "no — the `test` job checks out emu8051-stc only",
+      "via": "/mnt/volume1/code/stc/examples",
+      "gates": [
+        "test/example-manifest.test.js"
+      ],
+      "what": "The stc example set — one NN-name directory per example, each with a pins.json the netlist inference is checked against, plus a manifest."
     },
     {
       "id": "labwired-wasm",
@@ -189,11 +207,23 @@
       "what": "Spectrum 48K/128K ROMs. Without them the ZX tier boots nothing and its snapshot, tape and banking gates do not run."
     },
     {
+      "id": "ucsim-stc12-trace",
+      "kind": "oracle",
+      "present": true,
+      "ciAvailable": false,
+      "ci": "no — ci.yml does not check this out; serial-debug-e2e skips its ucsim half there",
+      "via": "/mnt/volume1/code/ucsim-stc/ucsim/src/sims/s51.src/stc12_trace",
+      "gates": [
+        "test/serial-debug-e2e.test.js"
+      ],
+      "what": "The ucsim STC12 trace binary, built with -inject support (a81091e). serial-debug-e2e compares the monitor protocol against it."
+    },
+    {
       "id": "blinkenrocket-fw",
       "kind": "fixture",
       "present": true,
-      "ciAvailable": false,
-      "ci": "no",
+      "ciAvailable": true,
+      "ci": "yes — checked out at a pinned ref by the `test` job since 2026-09-10, which is what makes the modem end-to-end run there rather than skip",
       "via": "/mnt/volume1/code/blinkenrocket-firmware/build/main.hex",
       "gates": [
         "test/blinkenrocket-modem-e2e.test.mjs",

@@ -18,9 +18,18 @@
  * (see VENDORING-REGIME and the ledger dispositions). A ratchet records the
  * measured remainder and forbids it GROWING, which closes the hole — an
  * undetectable new divergence now reds by count — while the deadline on the
- * declared entries drives the existing remainder down. i8086 is already at its
- * floor: one lite-ahead run, the restore-side displayRevision bump, which cannot
- * be resolved inside lite (it is upstream work) and so is residue until it lands.
+ * declared entries drives the existing remainder down.
+ *
+ * i8086 is at ZERO since 2026-09-11, and how it got there is worth the space. Its
+ * floor used to be one lite-ahead run -- the restore-side displayRevision bump --
+ * which could not be resolved inside lite because it was upstream work. It was sent
+ * up as bw-board `b4ec3a9` and came back at this pin, so the run is gone.
+ *
+ * WHAT SURVIVED THE CONVERGENCE WAS THE PROSE. Once the code matched, the whole
+ * remaining run was COMMENT -- lite's note saying `Lite-only (upstream lacks it)`,
+ * which the landing had made false. So the number did NOT move when the code
+ * converged, and read as an incomplete convergence. Read a stuck residue line by
+ * line before concluding the convergence failed.
  *
  * ## What the number counts, and how a region is attributed
  *
@@ -59,7 +68,7 @@ const PINS = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor-pins.json'), 'ut
  * commit, so the number is the truth and not a high-water mark.
  */
 const RESIDUE = {
-    'i8086-machine.js': {ahead: 1, behind: 0},   // the restore-side displayRevision bump, upstream work
+    'i8086-machine.js': {ahead: 0, behind: 0},   // ZERO since 2026-09-11: sent upstream, came back at this pin
     'z80-debug.js': {ahead: 12, behind: 8},      // the replay-surface convergence, held on the owner's ruling
     'm6502-debug.js': {ahead: 16, behind: 4}     //   "
 };
@@ -106,7 +115,7 @@ test('every declared entry declares a region, and no catch-all is claimed region
         for (const id of missingRegion) missing.push(`${file}:${id}`);
         for (const id of catchAllWithoutBlock(claims)) catchAll.push(`${file}:${id}`);
     }
-    assert.ok(entries >= 15, `only ${entries} entries parsed — the schema or JSON shape changed and a region check over nothing passes`);
+    assert.ok(entries >= 14, `only ${entries} entries parsed — the schema or JSON shape changed and a region check over nothing passes`);
     assert.deepEqual(missing, [],
         '\n  LEDGER ENTRIES WITH NO REGION:\n    ' + missing.join('\n    ') +
         '\n\n  The residue ratchet attributes each changed line to a declared region. An entry\n' +

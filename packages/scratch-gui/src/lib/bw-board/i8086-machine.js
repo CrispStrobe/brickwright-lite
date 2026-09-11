@@ -499,8 +499,13 @@ export class I8086Machine {
         // is never read. The hazard is silent, which is why it is written at
         // the site rather than left in a review comment.
         this._advList = null;
-        // Monotonic invalidation token for the host renderer. It changes on
-        // visible VRAM/register writes, not on every CPU instruction.
+        // Monotonic invalidation token for a host renderer. It moves on the
+        // events that can change what is VISIBLE -- video-window writes, display
+        // control ports, an overlapping bulk load, a state restore -- and on
+        // nothing else. A renderer caches its last frame against it and skips
+        // when it has not moved. The negative is what makes it useful: a token
+        // that moved on every instruction would be safe and carry no
+        // information, so ordinary RAM must leave it alone.
         this.displayRevision = 0;
         this.cycles = 0;
         this._pinLevels = {};
@@ -1870,22 +1875,9 @@ export class I8086Machine {
         this._nmiPending = !!s.machine.nmiPending;
         this._kbdStrobe = !!s.machine.kbdStrobe;
         this._pinLevels = {...s.machine.pinLevels};
-        // A restore changes what is on screen, so the host renderer must repaint:
-        // bump displayRevision the same way a VRAM/CRTC write does. Lite-only
-        // (upstream lacks it) and deliberately UNDECLARED -- it is a functionally
-        // necessary companion to display-revision that belongs upstream, not an
-        // entry to grow the divergence ledger with. Goes up as its own lane.
-        //
-        // WHAT MAKES THE OMISSION SAFE, named here because an omission that cites
-        // its protection is a decision and one that does not is a hope. No ledger
-        // entry covers this line -- the file is declared by IDENTIFIER and this
-        // line introduces none -- so the vendor gates do NOT hold it. MEASURED
-        // 2026-09-11 by deleting it from both mirrors: vendor-identity,
-        // vendored-files-index, overlay-packages-pairs, machine-attach-order and
-        // gate-shapes all stayed GREEN, and test 5 of
-        // test/i8086-performance-regressions.test.mjs -- "the shipped machine
-        // dirties video for every bulk and bus mutation path" -- went red. That
-        // test is the whole protection. Move or rename it and this line is naked.
+        // A restore replaces video memory wholesale without going through
+        // _write, so a renderer holding a cached frame would keep drawing the
+        // pre-restore screen until something unrelated moved the token.
         this.displayRevision = (this.displayRevision + 1) >>> 0;
         for (const name of chipNames) {
             const pair = statePair(this.chips[name]);

@@ -66,7 +66,7 @@ const DOC = path.join(ROOT, 'docs/VENDOR-DIVERGENCE-I8086-MACHINE.md');
  */
 const RATCHET = {
     files: 3,             // declared-divergent files with named identifier entries
-    entries: 17,          // liteOnly entries across those files
+    entries: 13,          // liteOnly entries across those files
     lineLevelOnly: 6,     // files carrying undeclared-identifier line divergence
     liteAuthored: 6       // lite-authored files living inside the vendored root
 };

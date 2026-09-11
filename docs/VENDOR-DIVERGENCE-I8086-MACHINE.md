@@ -185,43 +185,6 @@ fails unless it touched both.
     "i8086-machine.js": {
       "liteOnly": [
         {
-          "id": "display-revision-token",
-          "disposition": "upstream: UNASSIGNED and needs a lane \u2014 no measured reason to stay; under the 2026-09-10 default an entry with no `stays:` reason is one nobody has decided",
-          "markedAt": "2026-09-10",
-          "falsifiable": "The screen redraws on every frame even when nothing on it changed, so the fan spins up on a program that is just sitting at a prompt.",
-          "why": "Host-renderer optimisation: a monotonic token bumped on visible VRAM and CRTC writes so the renderer can skip repaints. Never upstreamed. A sync deletes it and NOTHING FAILS -- the machine constructs, the screen just repaints every frame until someone profiles.",
-          "contains": "this\\.displayRevision = 0;",
-          "region": "constructor",
-          "block": "// Monotonic invalidation token[\\s\\S]*?this\\.displayRevision = 0;"
-        },
-        {
-          "id": "display-revision-bump-vram",
-          "disposition": "upstream: UNASSIGNED and needs a lane \u2014 no measured reason to stay; under the 2026-09-10 default an entry with no `stays:` reason is one nobody has decided",
-          "markedAt": "2026-09-10",
-          "falsifiable": "Same as above: the picture is right, the machine is just working far harder than it needs to.",
-          "why": "The bump must stay GOVERNED by the VRAM address test. Hoisting it out bumps on every write and destroys the optimisation while still reading as present.",
-          "contains": "if \\(addr >= 0xa0000 && addr <= 0xbffff\\) \\{?[^}]*?this\\.displayRevision = \\(this\\.displayRevision \\+ 1\\)",
-          "region": "_write"
-        },
-        {
-          "id": "display-revision-bump-crtc",
-          "disposition": "upstream: UNASSIGNED and needs a lane \u2014 no measured reason to stay; under the 2026-09-10 default an entry with no `stays:` reason is one nobody has decided",
-          "markedAt": "2026-09-10",
-          "falsifiable": "Switching video modes does not refresh the screen, or refreshes it constantly.",
-          "why": "Same, governed by the CRTC port range.",
-          "contains": "if \\(port >= 0x3b0 && port <= 0x3df\\) \\{?[^}]*?this\\.displayRevision = \\(this\\.displayRevision \\+ 1\\)",
-          "region": "_out"
-        },
-        {
-          "id": "display-revision-bump-block",
-          "disposition": "upstream: UNASSIGNED and needs a lane \u2014 no measured reason to stay; under the 2026-09-10 default an entry with no `stays:` reason is one nobody has decided",
-          "markedAt": "2026-09-10",
-          "falsifiable": "Loading an image into video memory does not make it appear until something else happens to trigger a repaint.",
-          "why": "Same, governed by the block-write overlap test.",
-          "contains": "if \\(base <= 0xbffff && base \\+ bytes\\.length > 0xa0000\\) \\{?[^}]*?this\\.displayRevision = \\(this\\.displayRevision \\+ 1\\)",
-          "region": "loadRom"
-        },
-        {
           "id": "on-instruction-hook",
           "disposition": "upstream: UNASSIGNED and needs a lane \u2014 no measured reason to stay; under the 2026-09-10 default an entry with no `stays:` reason is one nobody has decided",
           "markedAt": "2026-09-10",
