@@ -43,6 +43,7 @@ import { canRecordDebugInput } from '../bw-board/debug-replay-contract.js';
 import { createTrace, IO_SFRS, TIMER_SFRS } from './trace.js';
 import {createDebugFoundation, subscribeDebugTargetEvents} from './debug-foundation.js';
 import {createRecordingSession, subscribeDebugTargetInputs} from './recording-session.js';
+import {withI8086MemoryPreference} from '../bw-i8086-preferences.js';
 import {createInstructionReplayController} from './instruction-replay.js';
 import {createCycleReplayController} from './cycle-replay.js';
 import {createHistoricalOutputGate} from './timed-replay-io.js';
@@ -2444,6 +2445,30 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             board = db.board;
         }
         readyMsg += ` — ${db.why}`;
+
+        // THE MEMORY-MODE PREFERENCE IS RESOLVED HERE, not inside the vendored
+        // adapter. `bw-board/i8086-adapter.js` currently does
+        // `withI8086MemoryPreference(opts.config ?? BREADBOARD8086)`, which makes a
+        // VENDORED file import `../bw-i8086-preferences.js` -- a reach OUT of the
+        // vendored root, and one of only three in that tree. bw-board is a headless
+        // emulator library; a `globalThis.localStorage` read has no business in it,
+        // and this is the one of the three that needs NO upstream change at all.
+        //
+        // THE DEFAULT IS RESOLVED HERE ON PURPOSE. The preference AMENDS a config,
+        // and there is not always one to amend: `targetOpts.config` is set on two
+        // branches above and left unset on the rest, where the adapter's own
+        // `?? BREADBOARD8086` supplies it. Move the call without the default and in
+        // `reference` mode you pass `{...undefined, fastWords: false}` --
+        // `{fastWords: false}` -- which REPLACES the breadboard map rather than
+        // amending it. The machine then boots on an empty config and the failure
+        // reads as a board problem.
+        //
+        // Idempotent, so this is safe while the adapter still applies it too: the
+        // adapter's copy leaves with the next bw-board pin bump. Provider before
+        // consumer, so there is no moment where the preference is unapplied.
+        const {BREADBOARD8086} = await import('../bw-board/i8086-machine.js');
+        targetOpts.config = withI8086MemoryPreference(targetOpts.config ?? BREADBOARD8086);
+
         const result = await createDebugTarget('i8086', targetOpts);
         wireMachineBench(result, createDebugSession);
         setStatus('ready', readyMsg);
