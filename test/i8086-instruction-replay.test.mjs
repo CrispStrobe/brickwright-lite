@@ -6,6 +6,18 @@ import {createDebugEventStream} from '../overlay/scratch-gui/src/lib/bw-debug/ev
 import {createDebugRecorder} from '../overlay/scratch-gui/src/lib/bw-debug/recorder.js';
 import {createRecordingSession} from '../overlay/scratch-gui/src/lib/bw-debug/recording-session.js';
 import {createInstructionReplayController} from '../overlay/scratch-gui/src/lib/bw-debug/instruction-replay.js';
+// IMPORTED, NOT REDEFINED. Every test that drove a replay used to declare its
+// own `logicalDomain` — and every one of them was CORRECT, stripping both epoch
+// labels, because whoever wrote it had read the builder. The app's copy stripped
+// only `-reset-` while three of four cores stamp `rewind`.
+//
+// So the suite encoded the right rule, the app encoded the wrong one, and they
+// never met: these tests passed while reverse debugging refused in the browser.
+// A test that is MORE correct than the code it covers is caught by nothing —
+// it does not fail and it does not lie. Importing the authority is what makes
+// the two the same rule.
+import {logicalTimeDomain} from '../overlay/scratch-gui/src/lib/bw-board/instruction-debug-events.js';
+
 
 const fixture = () => {
     const machine = new I8086Machine(BLINK8086);
@@ -21,7 +33,7 @@ const fixture = () => {
     const session = createRecordingSession({recorder, eventStream: stream, getTarget: () => target});
     target.onDebugEvent(fact => stream.publish(fact));
     stream.onEvent(event => session.appendBatch([event]));
-    const logicalDomain = domain => domain.replace(/-(?:reset|rewind)-\d+$/, '');
+    const logicalDomain = logicalTimeDomain;
     const normalizeEvent = event => {
         const {schema, seq, inputCursor, ...fact} = event;
         return {...fact, time: {...fact.time, domain: logicalDomain(fact.time.domain)}};
@@ -86,10 +98,10 @@ test('replay reports event divergence without exposing recorded payloads', () =>
             ? {...event, port: {...event.port, value: event.port.value ^ 1}} : event)),
         applyInput: (target, input) => target.setInput(
             input.payload.chip, input.payload.port, input.payload.bit, input.payload.level),
-        normalizeTimeDomain: domain => domain.replace(/-(?:reset|rewind)-\d+$/, ''),
+        normalizeTimeDomain: logicalTimeDomain,
         normalizeEvent: event => {
             const {schema, seq, inputCursor, ...fact} = event;
-            return {...fact, time: {...fact.time, domain: fact.time.domain.replace(/-(?:reset|rewind)-\d+$/, '')}};
+            return {...fact, time: {...fact.time, domain: logicalTimeDomain(fact.time.domain)}};
         }
     });
     const result = divergent.reverseToEvent(cursor);
@@ -127,10 +139,10 @@ test('replay can restore target and debugger-host state through one checkpoint t
             restoredCheckpoint = checkpoint;
             return f.target.restoreCheckpoint(checkpoint.snapshot);
         },
-        normalizeTimeDomain: domain => domain.replace(/-(?:reset|rewind)-\d+$/, ''),
+        normalizeTimeDomain: logicalTimeDomain,
         normalizeEvent: event => {
             const {schema, seq, inputCursor, ...fact} = event;
-            return {...fact, time: {...fact.time, domain: fact.time.domain.replace(/-(?:reset|rewind)-\d+$/, '')}};
+            return {...fact, time: {...fact.time, domain: logicalTimeDomain(fact.time.domain)}};
         }
     });
 

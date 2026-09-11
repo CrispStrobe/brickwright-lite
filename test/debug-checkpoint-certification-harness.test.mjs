@@ -6,6 +6,8 @@ import {M6502Machine} from '../overlay/scratch-gui/src/lib/bw-board/m6502-machin
 import {createM6502DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/m6502-debug.js';
 import {Z80Machine} from '../overlay/scratch-gui/src/lib/bw-board/z80-machine.js';
 import {createZ80DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/z80-debug.js';
+// IMPORTED, NOT REDEFINED — see test/epoch-domain-single-authority.test.mjs.
+import {logicalTimeDomain} from '../overlay/scratch-gui/src/lib/bw-board/instruction-debug-events.js';
 
 const fixture = ({refuseMissing = true} = {}) => {
     const listeners = new Set();
@@ -73,7 +75,7 @@ test('checkpoint certification detects accepted omitted functional state by repl
 
 test('the same certification contract runs unchanged against real 6502 and Z80 targets', () => {
     const normalizeEvent = event => ({...event, time: {...event.time,
-        domain: event.time.domain.replace(/-(?:reset|rewind)-\d+$/, '')}});
+        domain: logicalTimeDomain(event.time.domain)}});
     const adapters = [
         () => {
             const machine = new M6502Machine({clockHz: 1_000_000,

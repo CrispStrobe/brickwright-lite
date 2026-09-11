@@ -8,6 +8,18 @@ import {createDebugEventStream} from '../overlay/scratch-gui/src/lib/bw-debug/ev
 import {createDebugRecorder} from '../overlay/scratch-gui/src/lib/bw-debug/recorder.js';
 import {createRecordingSession} from '../overlay/scratch-gui/src/lib/bw-debug/recording-session.js';
 import {createInstructionReplayController} from '../overlay/scratch-gui/src/lib/bw-debug/instruction-replay.js';
+// IMPORTED, NOT REDEFINED. Every test that drove a replay used to declare its
+// own `logicalDomain` — and every one of them was CORRECT, stripping both epoch
+// labels, because whoever wrote it had read the builder. The app's copy stripped
+// only `-reset-` while three of four cores stamp `rewind`.
+//
+// So the suite encoded the right rule, the app encoded the wrong one, and they
+// never met: these tests passed while reverse debugging refused in the browser.
+// A test that is MORE correct than the code it covers is caught by nothing —
+// it does not fail and it does not lie. Importing the authority is what makes
+// the two the same rule.
+import {logicalTimeDomain} from '../overlay/scratch-gui/src/lib/bw-board/instruction-debug-events.js';
+
 
 const loadCoordinator = async () => {
     const module = await import('../overlay/scratch-gui/src/lib/bw-debug/selected-event-seek.js');
@@ -31,7 +43,7 @@ const fixture = () => {
         events.push(event);
         recording.appendBatch([event]);
     });
-    const logicalDomain = domain => domain.replace(/-(?:reset|rewind)-\d+$/, '');
+    const logicalDomain = logicalTimeDomain;
     const replay = createInstructionReplayController({
         recorder,
         getTarget: () => target,

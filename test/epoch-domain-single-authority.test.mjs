@@ -90,27 +90,83 @@ test('every core lite ships stamps a label the imported parser can strip', () =>
         + 'diverges: ' + unstrippable.map(([f, l]) => `${f} -> ${l}`).join(', '));
 });
 
-test('no app file keeps its own copy of the epoch pattern', () => {
+test('no app file OR TEST keeps its own copy of the epoch STRIPPER', () => {
     // THE DEFECT AS A RULE. One local regex, in one file, broke reverse
     // debugging for three of four targets and was invisible to a node suite
     // whose every test carried the CORRECT version of the same rule.
     //
     // The vendored module that declares it is exempt — it is the authority.
+    // STRIPPING IS THE SECOND IMPLEMENTATION; MATCHING IS NOT.
+    //
+    // A `.replace(/-(?:reset|rewind)-\d+$/, '')` is a private copy of
+    // `logicalTimeDomain` and is what this forbids. An `assert.match(domain,
+    // /-rewind-\d+$/)` is a test asserting that a stamped domain IS stamped —
+    // legitimate, and a gate that banned the pattern outright would forbid the
+    // fixture checks that make these cases non-vacuous. So the predicate is the
+    // pattern AND a replace on the same line.
+    //
+    // TESTS ARE IN SCOPE, and that is the point rather than thoroughness. Five
+    // test files carried their own correct copy while the app carried a wrong
+    // one; the suite passed and the app failed. The tests were the reason it
+    // stayed hidden, so they are exactly where this has to look.
+    const roots = [APP, path.join(ROOT, 'test'), path.join(ROOT, 'scripts')].filter(fs.existsSync);
     const offenders = [];
-    for (const file of walk(APP)) {
+    let scanned = 0;
+    for (const file of roots.flatMap(r => walk(r))) {
+        // Two files are exempt, for the same reason: they are the AUTHORITY and
+        // the gate that checks it. The vendored module declares the rule; this
+        // file carries both spellings as fixture data in the detector case
+        // below, and a gate that reports its own examples is a gate nobody keeps.
         if (file.endsWith(path.join('bw-board', 'instruction-debug-events.js'))) continue;
+        if (path.basename(file) === 'epoch-domain-single-authority.test.mjs') continue;
+        scanned++;
         fs.readFileSync(file, 'utf8').split('\n').forEach((line, i) => {
             if (/^\s*(\/\/|\*|\/\*)/.test(line)) return;      // a comment may quote it
-            if (/-(?:reset|rewind)-\\d\+/.test(line) || /-reset-\\d\+/.test(line)) {
+            // BOTH SPELLINGS. The first version of this matched only the
+            // literal `-reset-\d+` / `-rewind-\d+` form — which is what
+            // debug-runner.js had, and is NOT what the five test files had.
+            // They wrote the alternation, `-(?:reset|rewind)-\d+`, which
+            // contains neither literal. So the gate walked straight past the
+            // exact copies it was written to find, and I only noticed because I
+            // planted one and watched nothing happen.
+            //
+            // Firing a gate at the shape you pictured proves the pattern matches
+            // your idea of the defect. Both spellings are fired at below.
+            const hasPattern = /(?:reset\|rewind|-reset-|-rewind-)[^\n]*\\d/.test(line);
+            if (hasPattern && /\.replace\s*\(/.test(line)) {
                 offenders.push(`${path.relative(ROOT, file)}:${i + 1}`);
             }
         });
     }
+    assert.ok(scanned > 200,
+        `only ${scanned} file(s) walked across ${roots.length} root(s) — the walk stopped `
+        + 'matching, and a scan of nothing finds no copy');
     assert.deepEqual(offenders, [],
         'these files write the epoch-suffix pattern out again instead of importing '
         + '`logicalTimeDomain`:\n    ' + offenders.join('\n    ')
         + '\n\n  A copy does not follow REWIND_LABELS when a core is added. That is how '
         + 'lite came to strip `-reset-` for three cores that stamp `-rewind-`.');
+});
+
+test('the stripper-detector matches BOTH spellings, and not a matcher', () => {
+    // The predicate the gate above turns on, fired at every form that has
+    // actually appeared in this repository — plus the ones that must not trip.
+    const detects = line => {
+        const hasPattern = /(?:reset\|rewind|-reset-|-rewind-)[^\n]*\\d/.test(line);
+        return hasPattern && /\.replace\s*\(/.test(line);
+    };
+    // Real copies, both spellings, both seen in this repo today:
+    assert.ok(detects(String.raw`const d = domain.replace(/-reset-\d+$/, '');`),
+        'the literal form — what debug-runner.js carried — is not detected');
+    assert.ok(detects(String.raw`const logicalDomain = domain => domain.replace(/-(?:reset|rewind)-\d+$/, '');`),
+        'the ALTERNATION form — what all five test files carried — is not detected. '
+        + 'This is the miss that let the gate pass over the copies it exists to find.');
+    // Must NOT trip: asserting a stamped domain IS stamped, and unrelated replaces.
+    assert.ok(!detects(String.raw`assert.match(domain, /-rewind-\d+$/, 'not stamped');`),
+        'a MATCHER is being reported as a private stripper — the fixture checks that make '
+        + 'these cases non-vacuous would all have to be deleted to satisfy it');
+    assert.ok(!detects(String.raw`const name = raw.replace(/\s+/g, '-');`),
+        'an unrelated replace is being reported');
 });
 
 test('a replayed fact from after a restore compares EQUAL to the one recorded before it', () => {
