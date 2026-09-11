@@ -212,9 +212,9 @@ Pinned at `56a49dc2940a73e2d4f7cea6c631e9ee383bc3fd`. Manifest: `docs/VENDOR-DIV
 
 ## bw-circuit-ui
 
-Pinned at `e18dad586ec54a759f7db5e4072c2d7e45420087`. Manifest: `docs/VENDOR-DIVERGENCE-BW-CIRCUIT-UI.md`.
+Pinned at `a5fcd9394f4184537f8eeaad2c3d211a0e00abe7`. Manifest: `docs/VENDOR-DIVERGENCE-BW-CIRCUIT-UI.md`.
 
-676 tracked file(s): 674 plain, 0 declared-divergent, 2 lite-authored.
+679 tracked file(s): 677 plain, 0 declared-divergent, 2 lite-authored.
 
 - `.vendor-manifest.json` `[lite]`
 - `LICENSE` `[lite]`
@@ -444,6 +444,9 @@ Pinned at `e18dad586ec54a759f7db5e4072c2d7e45420087`. Manifest: `docs/VENDOR-DIV
 - `parts-data/74ls32.svg`
 - `parts-data/74ls373.json`
 - `parts-data/74ls373.svg`
+- `parts-data/ART-PROVENANCE.md`
+- `parts-data/README.md`
+- `parts-data/THIRD-PARTY.md`
 - `parts-data/adxl335.json`
 - `parts-data/adxl335.svg`
 - `parts-data/ambient_light.json`

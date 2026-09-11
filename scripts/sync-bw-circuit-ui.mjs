@@ -34,12 +34,42 @@ if (!srcDir) { console.error('needs --dir <bw-circuit-ui checkout> for now'); pr
 // main.jsx is the Vite harness entry and has no business in the fork.
 const SKIP = new Set(['main.jsx']);
 
+/**
+ * WHAT THIS SYNC VENDORS, as ONE list read by BOTH walks.
+ *
+ * It was two, and they had already drifted: the source walk took
+ * `jsx?|json|svg|css` and the orphan walk `jsx?|json|svg`. So a `.css` file
+ * deleted upstream was copied down for as long as it existed and then kept
+ * forever once it did not -- synced by one list, invisible to the other, with
+ * nothing red. Adding `.md` to one of them would have made a second file type
+ * behave that way.
+ *
+ * `.md` is here since 2026-09-11: lite ships 267 SVG part drawings out of
+ * `parts-data/`, and the documents that say where that art came from stayed
+ * upstream purely because this regex did not name their extension.
+ */
+const VENDORED_EXT = /\.(jsx?|json|svg|css|md)$/;
+
 async function walk (rel = '') {
     const out = [];
     for (const e of await readdir(path.join(srcDir, 'src', rel), {withFileTypes: true})) {
         const r = rel ? `${rel}/${e.name}` : e.name;
         if (e.isDirectory()) out.push(...await walk(r));
-        else if (/\.(jsx?|json|svg|css)$/.test(e.name) && !SKIP.has(e.name)) out.push(r);
+        // `.md` IS VENDORED, and it was not until 2026-09-11. Lite ships 267 SVG
+        // part drawings out of `parts-data/`, and the three documents that say
+        // where that art came from -- ART-PROVENANCE.md (methodology and the
+        // datasheet sources per chip), THIRD-PARTY.md (the attribution record,
+        // naming wokwi-elements as an MIT style reference and asserting that no
+        // paths were copied) and README.md (which reveals that the whole
+        // directory is generated from a FOURTH repo, bw-parts, that nothing in
+        // vendor-pins.json records) -- stayed upstream because `.md` was not in
+        // this regex.
+        //
+        // That was an exclusion by ACCIDENT rather than by decision: every other
+        // file this sync declines is named in SKIP with a reason, and these three
+        // were declined by an extension list nobody had revisited. The assets
+        // travel; the statement that they are clean should travel with them.
+        else if (VENDORED_EXT.test(e.name) && !SKIP.has(e.name)) out.push(r);
     }
     return out.sort();
 }
@@ -230,7 +260,7 @@ if (!check) {
         for (const e of await readdir(path.join(dest, rel), {withFileTypes: true})) {
             const r = rel ? `${rel}/${e.name}` : e.name;
             if (e.isDirectory()) out.push(...await walkDest(r));
-            else if (/\.(jsx?|json|svg)$/.test(e.name)) out.push(r);
+            else if (VENDORED_EXT.test(e.name)) out.push(r);
         }
         return out;
     }
