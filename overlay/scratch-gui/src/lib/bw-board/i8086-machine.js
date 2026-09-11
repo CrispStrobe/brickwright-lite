@@ -1866,6 +1866,17 @@ export class I8086Machine {
         // (upstream lacks it) and deliberately UNDECLARED -- it is a functionally
         // necessary companion to display-revision that belongs upstream, not an
         // entry to grow the divergence ledger with. Goes up as its own lane.
+        //
+        // WHAT MAKES THE OMISSION SAFE, named here because an omission that cites
+        // its protection is a decision and one that does not is a hope. No ledger
+        // entry covers this line -- the file is declared by IDENTIFIER and this
+        // line introduces none -- so the vendor gates do NOT hold it. MEASURED
+        // 2026-09-11 by deleting it from both mirrors: vendor-identity,
+        // vendored-files-index, overlay-packages-pairs, machine-attach-order and
+        // gate-shapes all stayed GREEN, and test 5 of
+        // test/i8086-performance-regressions.test.mjs -- "the shipped machine
+        // dirties video for every bulk and bus mutation path" -- went red. That
+        // test is the whole protection. Move or rename it and this line is naked.
         this.displayRevision = (this.displayRevision + 1) >>> 0;
         for (const name of chipNames) {
             const pair = statePair(this.chips[name]);
