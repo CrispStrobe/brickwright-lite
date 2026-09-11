@@ -220,7 +220,21 @@ test('restore opens a new event time domain even when replay rewinds cycles', ()
     assert.equal(target.restoreCheckpoint(checkpoint), undefined);
     machine.step();
     const retires = stream.drain().filter(event => event.kind === 'instruction');
-    assert.match(retires.at(-1).time.domain, /^z80-tstates-reset-1$/);
+    assert.ok(retires.length >= 2,
+        `expected retires either side of the restore, got ${retires.length}`);
+
+    // THE BASE IS DERIVED, NOT NAMED. This asserted `/^z80-tstates-reset-1$/`
+    // and broke when the event clock's base moved to `z80-cycles` -- a rename
+    // that was correct (an event clock on a different base from the replay
+    // clock is two timelines a replayer reads as one) and that this hardcoded
+    // fragment could not survive. Taking the base from the FIRST retire and
+    // requiring the last to be that same base plus a fresh epoch keeps the
+    // property under test -- a restore opens a new domain on the same clock --
+    // without pinning either spelling.
+    const base = retires[0].time.domain;
+    assert.match(base, /^z80-[a-z]+$/, 'the pre-restore domain is an unsuffixed base');
+    assert.equal(retires.at(-1).time.domain, `${base}-reset-1`,
+        'a restore opens epoch 1 on the same base the run started in');
     assert.notEqual(retires[0].time.domain, retires.at(-1).time.domain);
 });
 

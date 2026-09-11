@@ -28,12 +28,33 @@ const fixture = () => {
 const canonical = value => {
     if (ArrayBuffer.isView(value)) return Array.from(value);
     if (Array.isArray(value)) return value.map(canonical);
+    // BIGINT IS TAGGED, NOT COERCED. Fact times are BigInt ticks now that this
+    // target publishes through the shared event module, and `JSON.stringify`
+    // throws on one -- which is how this helper started failing. Tagging mirrors
+    // recorder.js's own `{"$bigint": "..."}` encoding, and it matters that it is
+    // a TAG rather than `Number(value)` or `value.toString()`: those would hash
+    // 3n and 3 identically, so a tick type silently changing back would read as
+    // no change at all in a comparison whose whole job is to notice change.
+    if (typeof value === 'bigint') return {$bigint: value.toString()};
     if (value && typeof value === 'object') {
         return Object.fromEntries(Object.keys(value).sort().map(k => [k, canonical(value[k])]));
     }
     return value;
 };
 const hash = value => createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');
+
+test('the canonical hash tells a BigInt tick from a Number one', () => {
+    // A HOLDER FOR THE TAGGING, because the comment above `canonical` makes a
+    // claim no other case here checks. `Number(value)` or `value.toString()`
+    // would hash 3n and 3 identically, so a tick type quietly changing back
+    // would read as NO CHANGE in comparisons whose whole job is to notice
+    // change -- and every checkpoint case below would still pass. Measured:
+    // with the tag replaced by Number(), this suite stayed green, which is why
+    // this case exists rather than the comment alone.
+    assert.notEqual(hash({ticks: 3n}), hash({ticks: 3}),
+        'a BigInt tick and a Number tick must not share a hash');
+    assert.equal(hash({ticks: 3n}), hash({ticks: 3n}), 'and the hash is stable');
+});
 
 test('8086 instruction checkpoint restores complete CPU, RAM, device, clock and pending-line state', () => {
     const {machine, target} = fixture();
