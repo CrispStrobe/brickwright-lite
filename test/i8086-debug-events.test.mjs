@@ -39,10 +39,34 @@ test('8086 publishes a true retire boundary with exact PCs, cost, and machine cl
     target.step('insn', 1);
     target.runFor(1_000);
     const retire = events.find(event => event.kind === 'instruction');
-    assert.deepEqual(retire.time, {ticks: machine.cycles, domain: 'i8086-cycles', hz: 5_000_000});
+    // TICKS ARE BigInt, AND THAT IS THE CONTRACT RATHER THAN A DEFECT. The
+    // shared event module stamps `BigInt(ticks)`; `machine.cycles` is still a
+    // Number, so the two are compared in the tick type the fact carries. Checked
+    // downstream before accepting it: recorder.js encodes bigint as
+    // `{"$bigint":"..."}` and readTicks normalises on the way in, so a BigInt
+    // tick round-trips through the log. A tick type the recorder could not carry
+    // would have made this a regression instead.
+    assert.equal(typeof retire.time.ticks, 'bigint',
+        'the shared module stamps BigInt ticks; a Number here means this target is not '
+        + 'going through it');
+    assert.deepEqual(retire.time,
+        {ticks: BigInt(machine.cycles), domain: 'i8086-cycles', hz: 5_000_000});
     assert.equal(retire.pcBefore, 0x100);
     assert.equal(retire.pcAfter, 0x101);
-    assert.equal(retire.instruction.cycles, machine.cycles);
+    // THE COST MOVED, IT WAS NOT LOST. This target now publishes through the
+    // shared event module, which puts the instruction's cost in
+    // `changes.cycles` (instruction-debug-events.js:328) rather than in
+    // `instruction.cycles`. Same value, different field, and it is the shape
+    // every target going through that module already uses -- so this is the
+    // convergence and not a dropped field. Both spellings are asserted: the
+    // new one carries the cost, and the old one must be ABSENT rather than
+    // undefined-valued, so a half-migrated target that publishes both is a red
+    // instead of two disagreeing costs nobody compares.
+    assert.equal(typeof retire.changes.cycles, 'number',
+        'the cost is a Number count of cycles, not a tick timestamp');
+    assert.equal(retire.changes.cycles, machine.cycles);
+    assert.ok(!('cycles' in retire.instruction),
+        'the pre-convergence `instruction.cycles` must be gone, not shadowing changes.cycles');
     assert.deepEqual(retire.instruction.bytes, [0x90]);
     assert.equal(retire.instruction.length, 1);
     assert.equal(retire.instruction.text.toLowerCase(), 'nop');
