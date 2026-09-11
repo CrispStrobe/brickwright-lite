@@ -65,10 +65,10 @@ const DOC = path.join(ROOT, 'docs/VENDOR-DIVERGENCE-I8086-MACHINE.md');
  * count to edit.
  */
 const RATCHET = {
-    files: 3,             // declared-divergent files with named identifier entries
-    entries: 13,          // liteOnly entries across those files
-    lineLevelOnly: 6,     // files carrying undeclared-identifier line divergence
-    liteAuthored: 6       // lite-authored files living inside the vendored root
+    files: 1,              // declared-divergent files with named identifier entries
+    entries: 1,            // liteOnly entries across those files
+    lineLevelOnly: 0,      // files carrying undeclared-identifier line divergence
+    liteAuthored: 2        // lite-authored files living inside the vendored root
 };
 
 /**
@@ -99,13 +99,11 @@ const RATCHET = {
  * A count that hides that is a schedule nobody can size.
  */
 const PER_FILE = {
-    'i8086-machine.js': 1,
-    'z80-debug.js': 5,
-    'm6502-debug.js': 7
+    'm6502-debug.js': 1
 };
 
 /** Exact, like everything else here: a `stays:` appearing or retiring is a decision. */
-const DISPOSITIONS = {upstream: 11, stays: 2};
+const DISPOSITIONS = {upstream: 0, stays: 1};
 
 const spec = () => {
     const md = readFileSync(DOC, 'utf8');

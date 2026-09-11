@@ -68,14 +68,21 @@ const PINS = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor-pins.json'), 'ut
  * commit, so the number is the truth and not a high-water mark.
  */
 const RESIDUE = {
-    'i8086-machine.js': {ahead: 0, behind: 0},   // ZERO since 2026-09-11: sent upstream, came back at this pin
-    'z80-debug.js': {ahead: 12, behind: 8},      // the replay-surface convergence, held on the owner's ruling
-    'm6502-debug.js': {ahead: 16, behind: 4}     //   "
+    // ONE FILE, since the 2026-09-11 pin bump. i8086-machine.js and z80-debug.js
+    // are byte-identical to upstream and left this map entirely; m6502-debug.js
+    // carries the re-grafted `replayToInputBoundary`, which attributes to two
+    // residue lines once its declared region is subtracted.
+    'm6502-debug.js': {ahead: 2, behind: 0}
 };
 
 // liteRemoved is a DECISION (may hold steady forever); liteBehind is a DEBT (may
 // only fall). Counted separately so the ratchet can tell peace from obligation.
-const LITE_REMOVED = 1; // i8086 CycleEstimator
+// ZERO since 2026-09-11. The i8086 CycleEstimator removal is GONE -- not
+// converged, DISSOLVED: bw-board 5afadcd made the estimator an injected option
+// instead of a module-scope import, so lite takes i8086-machine.js byte-identical
+// and simply does not pass one. A removal stops being a divergence when the thing
+// removed stops being mandatory.
+const LITE_REMOVED = 0;
 const LITE_BEHIND = 0;  // none yet; the bridges become the first when the convergence lands
 
 const readAllowList = () => JSON.parse(fs.readFileSync(DOC, 'utf8').match(/```json\n([\s\S]*?)\n```/)[1]);
@@ -115,7 +122,7 @@ test('every declared entry declares a region, and no catch-all is claimed region
         for (const id of missingRegion) missing.push(`${file}:${id}`);
         for (const id of catchAllWithoutBlock(claims)) catchAll.push(`${file}:${id}`);
     }
-    assert.ok(entries >= 14, `only ${entries} entries parsed — the schema or JSON shape changed and a region check over nothing passes`);
+    assert.ok(entries >= 1, `the ledger parsed ZERO entries — the schema or JSON shape changed, and every region check below passes vacuously over an empty set. One entry survives the 2026-09-11 bump; zero means a parse failure, not a clean tree`);
     assert.deepEqual(missing, [],
         '\n  LEDGER ENTRIES WITH NO REGION:\n    ' + missing.join('\n    ') +
         '\n\n  The residue ratchet attributes each changed line to a declared region. An entry\n' +

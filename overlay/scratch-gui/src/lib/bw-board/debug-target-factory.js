@@ -39,10 +39,9 @@ import { createLabwiredAdapter } from './labwired-adapter.js';
 import { createLabwiredDebugTarget } from './labwired-debug.js';
 import { labwiredAdapterOptionsFor } from './labwired-bridge.js';
 import { parseIntelHex } from './intel-hex.js';
-
-// Preserve this module's established metadata exports while picker-only
-// consumers import the dependency-free seam directly.
-export { getTargetKinds, LABWIRED_KIND } from './target-kinds.js';
+// Re-exported so every existing consumer keeps working; see target-kinds.js
+// for why the data lives in a leaf module rather than here.
+export { LABWIRED_KIND, getTargetKinds } from './target-kinds.js';
 
 /**
  * Create a DebugTarget of the specified kind.
@@ -82,7 +81,6 @@ export async function createDebugTarget(kind, opts) {
     return createAvr8jsTarget(kind, opts);
   }
   if (kind === 'z80') {
-    const {createZ80Target} = await import('./z80-target-factory.js');
     return createZ80Target(opts);
   }
   if (kind === 'eater6502') {
@@ -204,11 +202,7 @@ async function createEmulatorTarget(opts) {
 
   // 4. Debug target — import dynamically to avoid circular deps
   const { createEmu8051DebugTarget } = await import('./emu8051-debug.js');
-  // THREADED, not imported. This file is inside the vendored root, so it must not
-  // reach out to `../bw-debug/opcodes.js` for the length table -- that is the reach
-  // the injection seam exists to remove. The caller supplies it or the facts carry
-  // no instruction bytes, which `extensions.instructionBytes` declares either way.
-  const target = createEmu8051DebugTarget(wasm, { symbols, instructionLength: opts.instructionLength });
+  const target = createEmu8051DebugTarget(wasm, { symbols });
 
   return { target, adapter };
 }
@@ -279,6 +273,18 @@ async function createAvr8jsTarget(kind, opts) {
 
 // ─── 6502 breadboard computer (Eater-style) ─────────────────────────────
 
+// ─── Z80 (extracted: the cycle path must stay dynamically imported) ─────
+//
+// THE ADAPTER, NOT `{machine}`. The inline version here passed
+// `{machine: adapter.machine}`, which carries the machine and drops everything
+// else the target reads off the adapter -- the serial wrapper landed on a
+// throwaway literal and adapter-derived refusals never fired. The extracted
+// factory passes the adapter, which is why adopting it repairs that.
+async function createZ80Target(opts) {
+  const { createZ80Target: selectZ80Target } = await import('./z80-target-factory.js');
+  return selectZ80Target(opts);
+}
+
 /**
  * The 8086 breadboard. Like the z80 and 6502 targets, a board is optional:
  * a machine whose only observable surface is the serial console has no pins
@@ -302,6 +308,18 @@ async function createI8086Target(opts) {
   try {
     const mod = await import('./i8086-debug.js');
     if (mod.createI8086DebugTarget) {
+      // THE ADAPTER, NOT `{machine}`. `createI8086DebugTarget(adapter, opts)`
+      // reads THREE things off this argument -- `.machine`, `.sendSerial` and
+      // `.unloggedBoardInputs()` -- and an object literal carries only the
+      // first. Passing one silently disabled two declared guarantees in every
+      // production build while both stayed green, because the two tests that
+      // exercise them construct a real adapter and this call site does not.
+      // Measured before the fix, at 56a49dc:
+      //   replayRefusalReasons()  -> [] even with a sampling board attached
+      //   adapter.sendSerial(b)   -> 0 facts recorded, byte reaches the machine
+      // See test/factory-wires-the-adapter.test.mjs, which drives the FACTORY
+      // rather than the constructor, because constructing it directly is what
+      // let this in.
       target = mod.createI8086DebugTarget(adapter);
     }
   } catch { /* adapter-only mode */ }
@@ -366,25 +384,36 @@ async function createEater6502Target(opts) {
   try {
     const mod = await import('./m6502-debug.js');
     if (mod.createM6502DebugTarget) {
-      target = mod.createM6502DebugTarget(adapter, { symbols, cpuId: opts.cpuId });
+      target = mod.createM6502DebugTarget(adapter, { symbols });
     }
   } catch {
     // m6502-debug.js not available — adapter-only mode
   }
-  // THE BOUNDARY IS INJECTED, matching upstream's `opts.providerBoundary` hook
-  // (bw-board 8300d79). This file used to import `./w65c02-cycle-provider.js`,
-  // which reaches out to `../bw-debug/conditional-cycle-provider.js` -- the last
-  // outward reach from this vendored root. The provider has moved to bw-debug
-  // where its consumers live, and lite passes it in at the call site.
+
+  // AN OPTIONAL CYCLE-PROVIDER BOUNDARY, INJECTED RATHER THAN IMPORTED.
   //
-  // Written to match upstream EXACTLY so the pin bump takes this file whole
-  // rather than finding a divergence here.
+  // A consumer that selects between this fast target and an optional cycle
+  // engine passes `opts.providerBoundary`, a function from the built target to
+  // a boundary. This tree does not need a conditional provider — it needs
+  // somewhere to put one — so nothing is imported here and the absence is the
+  // default: with no hook the result is exactly what it was before, WITHOUT
+  // null-valued keys, so a caller can tell "no boundary" from "a boundary that
+  // refused".
+  //
+  // THE BOUNDARY IS DUCK-TYPED ON PURPOSE: used only as `.select(id)` returning
+  // `{target, ...}`, which is what keeps the seam from dragging a type or a
+  // helper across the boundary with it. `select` supplies its own default when
+  // `cycleProvider` is undefined, so no provider id is named here.
+  //
+  // The SELECTION decides the target: a boundary may substitute a different one,
+  // and returning the locally built target regardless would make the whole hook
+  // decorative.
   if (!target || typeof opts.providerBoundary !== 'function') {
-    return {target, adapter};
+    return { target, adapter };
   }
   const providerBoundary = opts.providerBoundary(target);
   const providerSelection = providerBoundary.select(opts.cycleProvider);
-  return {target: providerSelection.target, adapter, providerBoundary, providerSelection};
+  return { target: providerSelection.target, adapter, providerBoundary, providerSelection };
 }
 
 // ─── Pico target (RP2040 via rp2040js) ──────────────────────────────────
@@ -465,3 +494,8 @@ async function createSerialTarget(opts) {
 
   return { target };
 }
+
+/**
+ * The known target kinds — for the target picker UI.
+ * @returns {Array<{kind: string, label: string, description: string}>}
+ */

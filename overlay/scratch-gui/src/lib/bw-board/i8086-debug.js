@@ -218,7 +218,20 @@ export function createI8086DebugTarget(adapter, opts = {}) {
      */
     const debugEvents = installInstructionDebugEvents({
         cpu, machine, cpuId, timeDomain: 'i8086-cycles', port: true,
+        // UNREVIEWED — preserves today's `-reset-` behaviour EXACTLY (a no-op made
+        // explicit because rewindLabel is now required). This core's reset()
+        // advances the clock, so the correct label is 'rewind', but that is a
+        // behaviour change with a test and belongs to the i8086 session's #8 work
+        // (rides with restoring the interrupt vocabulary). Do not flip it here.
+        rewindLabel: 'reset',
         addressMask: 0xfffff,
+        // A write fact that says only what the address BECAME cannot tell a
+        // no-op write from a real one, and 8086 code makes no-op writes
+        // constantly through read-modify-write and masked register updates. The
+        // module defaults this off because adding the field changes the fact
+        // shape for every subscriber; this target wants the diff and pays the
+        // extra read per write for it, and only while somebody is listening.
+        captureWriteBefore: true,
         pcOf: c => c.pc & 0xfffff,
         clock: () => machine.cycles,
         captureRegisters: () => machine._architecturalRegisters(),
@@ -278,6 +291,8 @@ export function createI8086DebugTarget(adapter, opts = {}) {
     // (emu8051-adapter.js), and that reset takes its clock to zero. Its epoch
     // really is a reset epoch. The name matches the mechanism on both targets
     // now, which is the point — not that all four should read alike.
+    /** Subscribers to the EVENT half; the interrupt hook installs for them too. */
+    let debugEventSubscribers = 0;
     let eventTimeEpoch = 0;
     /**
      * The event clock's domain name. Written out at three sites once the
@@ -294,7 +309,36 @@ export function createI8086DebugTarget(adapter, opts = {}) {
      * Declining is the point: a snapshot that silently omits state restores a
      * machine that looks right and is not.
      */
-    const hasUncapturedInputState = () => adapter?.unloggedBoardInputs?.() === true;
+    /**
+     * A BOUNDARY SERVICE MAY OWN THE INSTRUCTION STEP. Some hosts put a layer
+     * between this target and the machine -- work that must happen at an
+     * instruction boundary before the hardware steps, a DOS trap layer being the
+     * case this exists for. Stepping the machine directly runs the CPU and not
+     * the service: the program executes, its system calls never happen, and
+     * nothing reports it.
+     *
+     * NOTHING IN THIS REPOSITORY INSTALLS ONE, which makes it UNINSTALLED rather
+     * than dead -- the same standing as `captureWriteBefore`, which nothing here
+     * sets either. The distinction is whether anything CAN install it, and a
+     * downstream vendoring of this file does. It was deleted once as an
+     * unreachable branch, on a measurement taken only in this repository.
+     *
+     * Kept as one replaceable operation rather than a Proxy over the machine:
+     * runFor reads machine time every instruction, and proxying those reads
+     * makes a direct execution loop pay for service dispatch repeatedly.
+     */
+    const executeStep = typeof adapter?.step === 'function'
+        ? () => adapter.step()
+        : () => machine.step();
+    /**
+     * State this target cannot capture, in EITHER of its two forms: a live board
+     * input source sampled directly and never logged, or a boundary service
+     * holding functional state outside I8086Machine. Declining is the point --
+     * a checkpoint that silently omits state restores a machine that looks right
+     * and is not.
+     */
+    const hasUncapturedInputState = () => typeof adapter?.step === 'function'
+        || adapter?.unloggedBoardInputs?.() === true;
     let lastEventTicks = -1;
     /** Levels only — see publishInputLevel. Events must not consult this. */
     const observedInputs = new Map();
@@ -476,8 +520,17 @@ export function createI8086DebugTarget(adapter, opts = {}) {
                 }
             }
             : null;
-        machine.hooks.onInterrupt = intWatches.size
+        // TWO CONSUMERS, ONE HOOK. The watch path predates the event path and
+        // must not depend on it, so the hook installs for either -- a target
+        // whose interrupt observation worked only while somebody was subscribed
+        // would satisfy every publication test and fail the breakpoint.
+        //
+        // `publishInterrupt` is itself inert without listeners, so the event half
+        // costs a call and a `listeners.size` check on a path that fires per
+        // delivered interrupt rather than per instruction.
+        machine.hooks.onInterrupt = (intWatches.size || debugEventSubscribers)
             ? (ev) => {
+                debugEvents.publishInterrupt({vector: ev.vector, source: ev.source});
                 for (const [id, w] of intWatches) {
                     if (w.vector != null && w.vector !== ev.vector) continue;
                     if (w.source && w.source !== ev.source) continue;
@@ -539,6 +592,25 @@ export function createI8086DebugTarget(adapter, opts = {}) {
                 breakpoints: machine.hooks
                     ? ['code', 'write', 'port', 'int']
                     : ['code', 'write'],
+                // RESTORED AFTER THE MODULE ADOPTION TOOK THEM WITH THE
+                // PUBLICATION. Both mechanisms stayed in this file and both
+                // declarations left with the code that used to publish, so every
+                // capability-driven consumer fail-closed on a target that works.
+                //
+                // `runTo` is the 20-bit physical space: the run-to mechanism is
+                // the code breakpoint above, and setBreakpoint accepts any
+                // address the bus can carry.
+                runTo: [{kind: 'address', space: 'code', addressMin: 0, addressMax: 0xfffff,
+                    stopSides: ['before'], installation: 'sync'}],
+                // WHAT IS ACTUALLY PUBLISHED, which is not what lite declared
+                // before the adoption. It listed 'interrupt' too; the shared
+                // module has no interrupt vocabulary -- zero occurrences -- so
+                // this target no longer produces one. Declaring it here would
+                // restore the claim without the fact, which is the same defect
+                // in the opposite direction and the harder one to find.
+                // 'interrupt' is back because publishInterrupt exists again --
+                // the claim returns with the fact, not before it.
+                events: ['instruction', 'memory', 'port', 'interrupt'],
                 // Declared only when the machine can actually checkpoint AND
                 // nothing outside it holds state. Advertising a recording a
                 // caller cannot complete is the same defect as advertising a
@@ -720,7 +792,13 @@ export function createI8086DebugTarget(adapter, opts = {}) {
          * vocabularies for one thing begin.
          */
         onDebugEvent(listener) {
-            return debugEvents.onDebugEvent(listener);
+            // The module's hooks install themselves on first listener; the
+            // machine-level interrupt hook is THIS file's and has to be told,
+            // or a subscriber arriving after construction sees no interrupts.
+            const off = debugEvents.onDebugEvent(listener);
+            debugEventSubscribers++;
+            syncEventHooks();
+            return () => { off?.(); debugEventSubscribers--; syncEventHooks(); };
         },
 
         onDebugInput(listener) {
@@ -804,6 +882,12 @@ export function createI8086DebugTarget(adapter, opts = {}) {
                     reason: 'the halted CPU cannot retire an instruction without a recorded wake input'};
             }
             const before = machine.cycles;
+            // machine.step, NOT executeStep, and the reason is three lines above:
+            // this method refuses outright when a boundary service exists, so a
+            // seam here could never be reached. Routing through it anyway would
+            // be a branch that cannot be taken -- which is the exact shape whose
+            // deletion cost the seam in the first place, and it is no better for
+            // being on the other side of the argument.
             machine.step();
             return {accepted: true, boundary: 'instruction', cycles: machine.cycles - before};
         },
@@ -1261,7 +1345,22 @@ export function createI8086DebugTarget(adapter, opts = {}) {
                         halt({ cause: 'step' }); return 'halted';
                     }
                 }
-                machine.step();
+                // NO-PROGRESS GUARD, and the seam is why it is needed.
+                // machine.step() always advances -- even a halted CPU advances by
+                // its wake horizon -- so this loop could not fail to terminate while
+                // that was the only way to step. A boundary service can decline to
+                // advance, and then `machine.cycles < deadlineCycles` is true forever:
+                // the debugger hangs, with no timeout and no verdict.
+                //
+                // Halting BY NAME rather than spinning or quietly returning. A service
+                // that retires no machine time is a real condition its host has to see.
+                const cyclesBeforeStep = machine.cycles;
+                executeStep();
+                if (machine.cycles === cyclesBeforeStep) {
+                    halt({ cause: 'no-progress',
+                        reason: 'the boundary service retired no machine time; it cannot be stepped' });
+                    return 'halted';
+                }
                 // Checked BEFORE the write watch, and the order is arbitrary
                 // only in appearance: a port write that trips both is one
                 // event, and reporting the port — the thing the user asked

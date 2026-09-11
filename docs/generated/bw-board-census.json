@@ -2,7 +2,7 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "56a49dc2940a73e2d4f7cea6c631e9ee383bc3fd",
+    "sha": "f2863154c3a4351fd3403805f2c85351f764449b",
     "read": "2026-09-11"
   },
   "rows": [
@@ -84,6 +84,7 @@
         "test/emu8051-idle-fastforward.test.mjs",
         "test/brightness-emu8051.test.js",
         "test/emu8051-debug.test.js",
+        "test/emu8051-debug-events.test.mjs",
         "test/conformance-real-wasm.test.js",
         "test/device-drivers-e2e.test.js",
         "test/end-to-end-dimmer.test.js",

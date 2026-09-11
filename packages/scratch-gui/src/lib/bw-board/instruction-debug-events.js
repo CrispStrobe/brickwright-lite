@@ -68,6 +68,16 @@
  *   Property names on `cpu` for the four wrappable accessors.
  * @param {(cpu: object) => number} [opts.pcOf] the program counter, in the units facts carry.
  * @param {() => number} [opts.clock] the tick count facts are stamped with.
+ * @param {boolean} [opts.captureWriteBefore=false] include the PRIOR value on a
+ *   memory write fact, making it a diff rather than an assignment. Off by
+ *   default because adding a field changes the fact shape for every existing
+ *   subscriber. MEASURED on the write path in isolation -- 2M writes inside one
+ *   bracket, best of seven, two runs: 1.13x / 63.8ns and 1.09x / 42.8ns per
+ *   write. That is an upper bound, not a program's cost: the same change against
+ *   a STEPPING machine at one, four and sixteen stores per loop gave 1.079,
+ *   1.005 and 1.120 -- a spread wider than the effect, so at realistic densities
+ *   it is below this harness's noise floor. Quoted as unresolved there rather
+ *   than as the one clean-looking number.
  * @param {number} [opts.addressMask=0xffff] width of the MEMORY address space, as
  *   a mask. The default is every core this module served when it was written; a
  *   20-bit core passes 0xfffff. `pcOf` was already a parameter, so without this a
@@ -82,7 +92,22 @@
 export function installInstructionDebugEvents({cpu, machine, cpuId, timeDomain, port = false,
   captureRegisters, captureInstruction, idleCause = () => 'parked',
   accessors: accessorNames = {}, pcOf = c => c.pc & 0xffff, addressMask = 0xffff,
-  clock = () => machine.cycles}) {
+  captureWriteBefore = false,
+  clock = () => machine.cycles, rewindLabel}) {
+  // REQUIRED, no default: the suffix stamped on a domain after a BACKWARD clock
+  // move is a per-target FACT, not a module constant. Pass 'rewind' when the
+  // core's reset() ADVANCES the clock (the backward moves are loadState /
+  // checkpoint restore — z80, 6502, 8086); pass 'reset' when reset() zeroes it.
+  // There is no safe default — `-reset-` is wrong for every core that reaches
+  // this code, and a default would go invisible the moment a fifth consumer
+  // forgot it. lite's comment forbids converging the two namings for exactly
+  // this reason, so the parameter — not a constant — is the fix.
+  if (typeof rewindLabel !== 'string' || !rewindLabel) {
+    throw new TypeError(
+      'installInstructionDebugEvents needs rewindLabel: "rewind" if this core\'s '
+      + 'reset() advances the clock (the backward move is loadState/restore), '
+      + '"reset" if reset() zeroes it. State it; there is no safe default.');
+  }
   const NAME = {read: 'read', write: 'write', inPort: 'inPort', outPort: 'outPort',
     ...accessorNames};
   const listeners = new Set();
@@ -118,7 +143,7 @@ export function installInstructionDebugEvents({cpu, machine, cpuId, timeDomain, 
     lastTicks = value;
     return {
       ticks: value,
-      domain: timeEpoch ? `${timeDomain}-reset-${timeEpoch}` : timeDomain,
+      domain: timeEpoch ? `${timeDomain}-${rewindLabel}-${timeEpoch}` : timeDomain,
       hz: machine.clockHz
     };
   };
@@ -226,8 +251,24 @@ export function installInstructionDebugEvents({cpu, machine, cpuId, timeDomain, 
     cpu[NAME.read] = hooks.ours.read;
 
     hooks.ours.write = (address, value) => {
+      // `before` is what makes a write fact a DIFF rather than an assignment.
+      // "This address is now 5" and "this write changed something" are different
+      // claims, and real code makes no-op writes constantly -- read-modify-write
+      // and masked register updates store the value already there.
+      //
+      // TWO GATES, AND THEY DO DIFFERENT JOBS. The `accesses` guard is the
+      // LISTENER opt-in -- null unless somebody is subscribed and a bracket is
+      // open -- so an unwatched machine performs no read at all, the same stance
+      // as the register and instruction samples above. `captureWriteBefore` is
+      // the CONSUMER opt-in, and it defaults off because adding a field changes
+      // the fact shape for every existing subscriber: the golden capture reddens
+      // on it, which is that fixture doing exactly its job. A caller that wants
+      // diffs asks for them and pays the extra read per write; one that does not
+      // is byte-for-byte unaffected.
       if (accesses) accesses.push({kind: 'memory', memory: {
-        space: 'mem', address: address & addressMask, width: 1, direction: 'write', value: value & 0xff
+        space: 'mem', address: address & addressMask, width: 1, direction: 'write',
+        ...(captureWriteBefore ? {before: hooks.read.call(cpu, address) & 0xff} : {}),
+        value: value & 0xff
       }});
       return hooks.write.call(cpu, address, value);
     };
@@ -477,6 +518,33 @@ export function installInstructionDebugEvents({cpu, machine, cpuId, timeDomain, 
     },
 
     /**
+     * Publish an INTERRUPT fact — a target-callable publisher, like
+     * publishIdleElapse and publishClockJump: additive and inert until a target
+     * calls it. No core in this module published an interrupt before; the 8086
+     * hand-rolled one downstream with exactly this shape
+     * (`{kind:'interrupt', phase:'accepted', interrupt:{vector, source}}`) and its
+     * adoption of this module dropped it, because there was no verb here to
+     * publish it WITH. A target that does not call this is unchanged, and
+     * `capabilities().events` must not list 'interrupt' until one does — declaring
+     * a kind nothing publishes is the same defect pointing the other way.
+     *
+     * @param {{vector?: number, source?: string, ticks?: number, phase?: string}} [opts]
+     * @returns {boolean} false if nobody is listening
+     */
+    publishInterrupt({vector, source, ticks = clock(), phase = 'accepted'} = {}) {
+      if (!listeners.size) return false;
+      publish({
+        cpuId,
+        kind: 'interrupt',
+        phase,
+        fidelity: 'recorded',
+        time: time(ticks),
+        interrupt: {vector, source}
+      });
+      return true;
+    },
+
+    /**
      * Contribute an access observed elsewhere. See `contributeAccess`.
      *
      * @param {{kind: string}} access the fact's own fields, without the
@@ -505,7 +573,7 @@ export function installInstructionDebugEvents({cpu, machine, cpuId, timeDomain, 
         // restore would consume the regression and leave the next real fact in
         // an era nothing explains).
         ticks: BigInt(clock()),
-        domain: timeEpoch ? `${timeDomain}-reset-${timeEpoch}` : timeDomain,
+        domain: timeEpoch ? `${timeDomain}-${rewindLabel}-${timeEpoch}` : timeDomain,
         hz: machine.clockHz
       };
     },

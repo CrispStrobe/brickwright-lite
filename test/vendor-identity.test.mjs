@@ -213,11 +213,22 @@ test('a merge has not reintroduced what lite deliberately removed', () => {
             }
         }
     }
-    // Species 1 again: iterating an empty list passes everything. Deleting the
-    // liteRemoved arrays would make this gate green rather than absent.
-    assert.ok(entries > 0,
-        'no liteRemoved entries exist, so this gate iterated nothing and proved nothing. ' +
-        'If the last one was legitimately retired, retire this assertion in the same commit.');
+    // RETIRED 2026-09-11, IN THE COMMIT THAT EMPTIED THE SET, as this assertion's
+    // own message instructed. The last `liteRemoved` entry was the i8086
+    // CycleEstimator, and it did not converge -- it DISSOLVED. bw-board 5afadcd
+    // made the estimator an injected option instead of a module-scope import, so
+    // lite takes i8086-machine.js byte-identical and simply does not pass one.
+    // A removal stops being a divergence when the thing removed stops being
+    // mandatory, and there is then nothing a merge could put back.
+    //
+    // The zero is ASSERTED rather than assumed, so this reads as a measured empty
+    // set and not as a gate somebody quietly deleted. A new `liteRemoved` entry
+    // reds it, and whoever adds one restores the `entries > 0` floor with it --
+    // at which point the loop above is live again and this comment goes.
+    assert.equal(entries, 0,
+        `expected zero liteRemoved entries and found ${entries}. A new removal is a ` +
+        'new divergence: give it a `falsifiable` sentence and restore the ' +
+        '`entries > 0` floor this comment replaced, so the loop above is held again.');
     assert.deepEqual(reintroduced, [],
         '\n  A MERGE HAS PUT BACK SOMETHING LITE REMOVED ON PURPOSE.\n' +
         '  A three-way merge toward upstream reintroduces these by default --\n' +

@@ -44,10 +44,30 @@ export function createM6502DebugTarget(adapter, opts = {}) {
    */
   const debugEvents = installInstructionDebugEvents({
     cpu, machine, cpuId, timeDomain: 'm6502-cycles',
+    // 'rewind', because m6502-machine.reset() ADVANCES the clock (+7) — the only
+    // backward move is loadState/restore. Aligns event facts with this target's
+    // INPUT facts, which already stamp `-rewind-` (eventDomain).
+    rewindLabel: 'rewind',
     clock: () => machine.cycles,
     captureRegisters: () => ({pc: cpu.pc, a: cpu.a, x: cpu.x, y: cpu.y, sp: cpu.s, p: cpu.p}),
     captureInstruction: address => ({address, ...disasm6502(a => machine.mem[a & 0xffff], address)})
   });
+
+  // ONE PREDICATE for uncaptured board input, read by replayRefusalReasons AND
+  // the checkpoint gate (recording, checkpointRefusal, captureCheckpoint,
+  // restoreCheckpoint) so the reason and the enforcement cannot disagree. A board
+  // sampling input nets does so OUTSIDE the target, so those inputs are not in the
+  // log and a checkpoint over them replays into a divergence: refuse, do not merely
+  // mention it. The gate used to live on the machine (checkpointSupport() read
+  // machine._unloggedBoardInputs); the adapter sync onto unloggedBoardInputs()
+  // retired that flag, so it has to read the accessor HERE or the gate goes dead.
+  const UNCAPTURED_INPUT_REASON = 'live board input-net sampling is not logged';
+  const hasUncapturedInputState = () => adapter?.unloggedBoardInputs?.() === true;
+
+  // ONE VALIDITY CHECK, read by the FACE method (setButtons, live) and by
+  // applyReplayInput (replay), so the live path cannot accept a mask replay will
+  // refuse — an un-replayable input recorded is the inverse of the guarantee.
+  const validButtonMask = mask => Number.isSafeInteger(mask);
 
   let runState = 'halted'; // 'halted' | 'running'
   let pendingStep = null;  // { kind: 'insn'|'block'|'over'|'out', ... }
@@ -293,6 +313,12 @@ export function createM6502DebugTarget(adapter, opts = {}) {
       const checkpointStatus = typeof machine.checkpointSupport === 'function'
         ? machine.checkpointSupport()
         : { supported: false, reasons: ['this machine has no checkpoint support'] };
+      // ONE list: the machine's own reasons AND uncaptured board input, so
+      // recording, checkpointRefusal and captureCheckpoint() cannot disagree.
+      const checkpointRefusalReasons = [
+        ...(checkpointStatus.supported ? [] : checkpointStatus.reasons),
+        ...(hasUncapturedInputState() ? [UNCAPTURED_INPUT_REASON] : [])
+      ];
       return {
         steps: [...(symbols ? ['insn', 'block'] : ['insn']), 'over', 'out'],
         breakpoints: [...(symbols ? ['code', 'yield'] : ['code']), 'write'],
@@ -305,7 +331,7 @@ export function createM6502DebugTarget(adapter, opts = {}) {
         events: ['instruction', 'memory'],
         spaces: {mem: {read: true, write: true, passiveRead: false}},
         fidelity: {instruction: 'recorded', memory: 'reconstructed', cycle: 'unsupported'},
-        recording: checkpointStatus.supported ? ['checkpoint', 'restore'] : [],
+        recording: checkpointRefusalReasons.length ? [] : ['checkpoint', 'restore'],
         // Two audio contracts (E6.8.11a). 'tone' is what the hardware is
         // CONFIGURED to produce and 'samples' is what it SOUNDS like;
         // 'samples' is advertised only when a chip on this machine can
@@ -323,7 +349,7 @@ export function createM6502DebugTarget(adapter, opts = {}) {
           // Memory facts are published before the same machine.step() publishes
           // its recorded retire, so the runner may defer their actions safely.
           eventBreakpointBoundary: 'instruction-retire',
-          ...(checkpointStatus.supported ? {} : {checkpointRefusal: checkpointStatus.reasons}),
+          ...(checkpointRefusalReasons.length ? {checkpointRefusal: checkpointRefusalReasons} : {}),
           inputReplay: ['m6502.buttons', 'm6502.nmi', ...(rawSendSerial ? ['m6502.serial'] : [])],
           inputRefusals: [
             'live board input-net changes bypass the target and disable checkpoint recording',
@@ -374,6 +400,12 @@ export function createM6502DebugTarget(adapter, opts = {}) {
      * against a debug fact gets one clock, not two.
      */
     captureCheckpoint() {
+      // A snapshot over unlogged board inputs restores a machine that looks right
+      // and is not — refuse rather than hand back a checkpoint replayRefusalReasons()
+      // has already disowned.
+      if (hasUncapturedInputState()) {
+        return { code: 'INCOMPLETE_CHECKPOINT_STATE', refused: UNCAPTURED_INPUT_REASON };
+      }
       const checkpoint = machine.captureCheckpoint();
       if (!checkpoint.refused) {
         checkpoint.time = { ticks: machine.cycles, domain: eventDomain(), hz: machine.clockHz };
@@ -391,6 +423,10 @@ export function createM6502DebugTarget(adapter, opts = {}) {
      * own event epoch is left to its detection: the accepted seam.
      */
     restoreCheckpoint(checkpoint) {
+      if (hasUncapturedInputState()) {
+        return { code: 'INCOMPLETE_CHECKPOINT_STATE',
+          refused: 'cannot restore over a live board input source sampled outside the machine' };
+      }
       const result = machine.restoreCheckpoint(checkpoint);
       if (!result) { inputTimeEpoch++; lastTicks = machine.cycles; }
       return result;
@@ -506,7 +542,13 @@ export function createM6502DebugTarget(adapter, opts = {}) {
 
     setBreakpoint(spec) {
       if (spec.kind === 'code') {
-        if (spec.addr == null) return { unsupported: 'addr required' };
+        // ENFORCE the ceiling capabilities().runTo declares (addressMax 0xffff).
+        // Without it an out-of-range address is accepted and stored: it cannot
+        // match a 16-bit pc, so it is a handle for a breakpoint that never fires —
+        // accepted but dead, and one mask away from the z80's wrong-place halt.
+        if (!Number.isSafeInteger(spec.addr) || spec.addr < 0 || spec.addr > 0xffff) {
+          return { unsupported: 'code breakpoint addr must be in 0x0000..0xffff' };
+        }
         const id = nextBpId++;
         breakpoints.set(id, { kind: 'code', addr: spec.addr });
         return id;
@@ -669,7 +711,10 @@ export function createM6502DebugTarget(adapter, opts = {}) {
      * PA0..3). Returns false when the machine has no VIA to receive it.
      */
     setButtons(mask) {
-      if (typeof machine.setButtons !== 'function') return false;
+      // Refuse a mask the REPLAY path would refuse (validButtonMask), so a live
+      // input that cannot be replayed is not applied and recorded. Same predicate,
+      // both paths — see the m6502.buttons branch in applyReplayInput.
+      if (typeof machine.setButtons !== 'function' || !validButtonMask(mask)) return false;
       // RAW — the machine reads PA0..3 and ignores the rest; the log records what
       // the host sent, and the signature is that raw value on both live and replay.
       return level('m6502.buttons', 'buttons', {mask}, () => machine.setButtons(mask));
@@ -744,8 +789,8 @@ export function createM6502DebugTarget(adapter, opts = {}) {
      * @returns {string[]}
      */
     replayRefusalReasons() {
-      return adapter?.unloggedBoardInputs?.()
-        ? ['live board input-net sampling is not logged']
+      return hasUncapturedInputState()
+        ? [UNCAPTURED_INPUT_REASON]
         : [];
     },
 
@@ -830,7 +875,7 @@ export function createM6502DebugTarget(adapter, opts = {}) {
       const payload = input?.payload;
       switch (input?.producer) {
         case 'm6502.buttons': {
-          if (!Number.isSafeInteger(payload?.mask)) {
+          if (!validButtonMask(payload?.mask)) {
             return replayRefused('invalid-replay-input', 'm6502.buttons needs a safe-integer mask');
           }
           // Passed through UNMASKED. The machine reads bits 0..3 and ignores the

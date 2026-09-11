@@ -14,9 +14,9 @@ a sync cannot restore them, and they carry the same warning in their own header.
 
 ## bw-board
 
-Pinned at `56a49dc2940a73e2d4f7cea6c631e9ee383bc3fd`. Manifest: `docs/VENDOR-DIVERGENCE-I8086-MACHINE.md`.
+Pinned at `f2863154c3a4351fd3403805f2c85351f764449b`. Manifest: `docs/VENDOR-DIVERGENCE-I8086-MACHINE.md`.
 
-191 tracked file(s): 176 plain, 9 declared-divergent, 6 lite-authored.
+190 tracked file(s): 187 plain, 1 declared-divergent, 2 lite-authored.
 
 - `LICENSE` `[lite]`
 - `ac.js`
@@ -50,7 +50,7 @@ Pinned at `56a49dc2940a73e2d4f7cea6c631e9ee383bc3fd`. Manifest: `docs/VENDOR-DIV
 - `datalogger.js`
 - `debug-replay-contract.js`
 - `debug-session.js`
-- `debug-target-factory.js` `[declared]`
+- `debug-target-factory.js`
 - `devices.js`
 - `devices/a2-displays.js`
 - `devices/accelerometers.js`
@@ -109,21 +109,21 @@ Pinned at `56a49dc2940a73e2d4f7cea6c631e9ee383bc3fd`. Manifest: `docs/VENDOR-DIV
 - `devices/um245r.js`
 - `ega-card.js`
 - `emu8051-adapter.js`
-- `emu8051-debug.js` `[declared]`
+- `emu8051-debug.js`
 - `face-live.js`
 - `face.js`
-- `floooh-z80-cycle-provider.js` `[lite]`
+- `floooh-z80-cycle-provider.js`
 - `funscii-font.js`
 - `hercules-card.js`
-- `i8086-adapter.js` `[declared]`
+- `i8086-adapter.js`
 - `i8086-asm.js`
 - `i8086-cga.js`
-- `i8086-debug.js` `[declared]`
+- `i8086-debug.js`
 - `i8086-disasm.js`
 - `i8086-dos.js`
 - `i8086-emu8086.js`
 - `i8086-extract.js`
-- `i8086-machine.js` `[declared]`
+- `i8086-machine.js`
 - `i8086-ram-words.js`
 - `i8086.js`
 - `i8088-biu.js`
@@ -141,7 +141,7 @@ Pinned at `56a49dc2940a73e2d4f7cea6c631e9ee383bc3fd`. Manifest: `docs/VENDOR-DIV
 - `labwired-chips.js`
 - `labwired-debug.js`
 - `latch374.js`
-- `m6502-adapter.js` `[declared]`
+- `m6502-adapter.js`
 - `m6502-debug.js` `[declared]`
 - `m6502-extract.js`
 - `m6502-machine.js`
@@ -189,20 +189,19 @@ Pinned at `56a49dc2940a73e2d4f7cea6c631e9ee383bc3fd`. Manifest: `docs/VENDOR-DIV
 - `validate.js`
 - `vdu-decoder.js`
 - `vga-card.js`
-- `w65c02-cycle-provider.js` `[lite]`
 - `w65c02-disasm.js`
 - `w65c02.js`
 - `w65c22.js`
 - `w65c51.js`
 - `ym3812.js`
-- `z80-adapter.js` `[declared]`
+- `z80-adapter.js`
 - `z80-ctc.js`
-- `z80-cycle-debug.js` `[lite]`
-- `z80-debug.js` `[declared]`
+- `z80-cycle-debug.js`
+- `z80-debug.js`
 - `z80-disasm.js`
 - `z80-extract.js`
 - `z80-machine.js`
-- `z80-target-factory.js` `[lite]`
+- `z80-target-factory.js`
 - `z80.js`
 - `zx-sna.js`
 - `zx-tape.js`

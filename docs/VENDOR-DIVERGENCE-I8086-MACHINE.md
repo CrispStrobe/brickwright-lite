@@ -182,227 +182,30 @@ fails unless it touched both.
     "function"
   ],
   "files": {
-    "i8086-machine.js": {
-      "liteOnly": [
-        {
-          "id": "on-instruction-hook",
-          "disposition": "upstream: UNASSIGNED and needs a lane \u2014 no measured reason to stay; under the 2026-09-10 default an entry with no `stays:` reason is one nobody has decided",
-          "markedAt": "2026-09-10",
-          "falsifiable": "The debugger will not single-step: you press Step and nothing moves.",
-          "why": "Per-instruction hook carrying pcBefore/pcAfter and the cycle delta. The debugger's single-step and the trace view are both built on it.",
-          "contains": "if \\(this\\.hooks\\.onInstruction\\) \\{?[^}]*?pcBefore",
-          "region": "step",
-          "block": "// The instruction observer is deliberately at the machine boundary,[\\s\\S]*?this\\.hooks\\.onInstruction\\(\\{[\\s\\S]*?\\}\\);"
-        }
-      ],
-      "graftedFromUpstream": [
-        {
-          "id": "ne2000-chip-kind",
-          "contains": "ne2000"
-        },
-        {
-          "id": "port-conflict-check",
-          "contains": "both claim"
-        }
-      ],
-      "liteRemoved": [
-        {
-          "id": "cycle-estimator-not-vendored",
-          "absent": "CycleEstimator|i8088-timing",
-          "falsifiable": "The 8086 stops working completely \u2014 no machine, no screen, no blocks \u2014 because the file it now says it imports is not in this repository at all.",
-          "why": "THIS ENTRY POINTS THE OTHER WAY FROM THE NINE ABOVE. Upstream HAS this and lite deliberately does not, so there is no lite-only text for `contains` to hold; `absent` must NOT match the vendored copy. bw-board's i8086-machine.js imports CycleEstimator from ./i8088-timing.js at line 44 and uses _cycleEst nine times (9256cf7, opt-in cycle-accurate timing, ~6x). That import is present at MASTER AND AT THE CURRENT PIN, so lite did not fall behind on it \u2014 lite REMOVED it, before this allow-list existed to record the decision. Found 2026-09-06 while measuring vendor direction, having been written down nowhere for the whole time the nine entries above were being maintained. Re-adding the import means vendoring i8088-timing.js AND i8088-cycles.js, which it imports TABLES and PROVENANCE from: 983 KB of new bundle, 975 KB of it one table file, for a mode lite does not expose. That is a decision with its own owner and its own row, not something a pin move carries in silently.",
-          "regions": [
-            "enableI8088CycleTiming",
-            "cycleTimingStats",
-            "_cycleKey",
-            "_stepTimed"
-          ],
-          "blocks": [
-            {
-              "region": "<module>",
-              "anchor": "import \\{ CycleEstimator \\} from '\\./i8088-timing\\.js';[\\s\\S]*?for \\(let b = 0; b < 256; b\\+\\+\\) \\{[\\s\\S]*?\\n\\}"
-            },
-            {
-              "region": "constructor",
-              "anchor": "this\\._cycleEst = null;[^\\n]*"
-            },
-            {
-              "region": "step",
-              "anchor": "const n = this\\._cycleEst === null[\\s\\S]*?_stepTimed\\(\\)[\\s\\S]*?return n;"
-            }
-          ]
-        }
-      ]
-    },
-    "z80-debug.js": {
-      "liteOnly": [
-        {
-          "id": "z80-debug-checkpoint-bridge",
-          "disposition": "upstream: the debug bridges are a SEPARATE lane from the machine-checkpoint contract (they carry replay/input-recording divergence beyond checkpoint); NOT retired by this pin bump, to be upstreamed with the rest of the debug-target replay surface.",
-          "markedAt": "2026-09-10",
-          "falsifiable": "You cannot save and reload a running program: the save does nothing, or produces a file that will not load on the same board.",
-          "why": "The debug target forwards captureCheckpoint and restoreCheckpoint to the machine; without it the debugger cannot save or reload at all.",
-          "contains": "captureCheckpoint",
-          "region": "captureCheckpoint"
-        },
-        {
-          "id": "z80-debug-timestamped-facts",
-          "disposition": "upstream: same as the m6502 entry -- the module is upstream at `38de2e6`, this entry is not retired by that, and it goes when upstream's `z80-debug.js` consumes the module rather than its own inline clock.",
-          "markedAt": "2026-09-10",
-          "falsifiable": "A recorded session plays back in the wrong order, or a saved checkpoint cannot be placed on the timeline against the events around it.",
-          "why": "debugTime() stamps every producer fact and every checkpoint from one clock, so replay ordering and checkpoint placement agree. Without it the facts still record and still replay -- just not necessarily in the order they happened, which is the kind of wrong that looks right until a bug depends on ordering. NAMED 2026-09-05 because the pin bump moved upstream and the derived-coverage check found it unexplained.",
-          "contains": "debugEvents\\.debugTime\\(\\)",
-          "regions": [
-            "<setup>",
-            "captureCheckpoint",
-            "debugTime"
-          ]
-        },
-        {
-          "id": "z80-debug-replay-instruction",
-          "disposition": "upstream: BLOCKED on the checkpoint block (lane A), same dependency and same shape as the m6502 entry. `cpu.halted` where the 6502 uses `cpu.stopped || cpu.waiting`; everything else is one contract.",
-          "markedAt": "2026-09-10",
-          "falsifiable": "Stepping backwards one instruction silently does nothing, instead of saying why it cannot -- for example that a halted Z80 has no instruction to retire without a recorded interrupt.",
-          "why": "replayInstruction() checks checkpointSupport() and the halted state FIRST and returns a coded refusal ('unsupported-replay', 'halted-without-instruction') with the reason. The refusal is the feature: an unsupported reverse-step that returns nothing is indistinguishable from one that worked and changed nothing.",
-          "contains": "replayInstruction\\(\\)",
-          "region": "replayInstruction"
-        },
-        {
-          "id": "z80-debug-event-retire-boundary",
-          "disposition": "upstream: the module is at bw-board `38de2e6`; retires when upstream's `z80-debug.js` consumes it. NOTE: `avr8js-debug.js` publishes the same retire envelope hand-rolled, and MEASURED 2026-09-10 the module cannot serve it -- an AVR core has no `cpu.step`/`read`/`write` to patch (stepping is the free function `avrInstruction(cpu)`, memory is the raw `cpu.data` array), so its access facts come from `adapter.onDeviceAccess` and could not come from anywhere else. Two cores with different observability, not two vocabularies.",
-          "markedAt": "2026-09-10",
-          "falsifiable": "A port or memory event halts the Z80 in the middle of its instruction, before the architectural PC and memory state reach a replayable boundary.",
-          "why": "The target explicitly advertises the observed instruction-retire boundary which its instruction-atomic producer publishes after ordered access facts. Runner admission depends on this claim instead of a Z80 name check.",
-          "contains": "eventBreakpointBoundary: 'instruction-retire'",
-          "region": "capabilities"
-        },
-        {
-          "id": "z80-debug-memory-event-space",
-          "disposition": "upstream: WITH lane 1, kept SEPARATE from the m6502 entry. `passiveRead: true` here against `false` on m6502 -- same name, different contract. The pair that would have been grafted as one and been wrong.",
-          "markedAt": "2026-09-10",
-          "falsifiable": "The Z80 publishes memory events which the breakpoint compiler refuses because the target declares no matching address space.",
-          "why": "The mem capability connects the already-published memory facts and passive debugger read surface to the target-neutral event predicate engine.",
-          "contains": "spaces: \\{mem: \\{read: true, write: true, passiveRead: true\\}\\}",
-          "region": "capabilities"
-        }
-      ]
-    },
     "m6502-debug.js": {
       "liteOnly": [
         {
-          "id": "m6502-debug-checkpoint-bridge",
-          "disposition": "upstream: the debug bridges are a SEPARATE lane from the machine-checkpoint contract (they carry replay/input-recording divergence beyond checkpoint); NOT retired by this pin bump, to be upstreamed with the rest of the debug-target replay surface.",
-          "markedAt": "2026-09-10",
-          "falsifiable": "You cannot save and reload a running program: the save does nothing, or produces a file that will not load on the same board.",
-          "why": "Same bridge on the 6502 target: captureCheckpoint and restoreCheckpoint forwarded to the machine.",
-          "contains": "captureCheckpoint",
-          "region": "captureCheckpoint"
-        },
-        {
-          "id": "m6502-debug-timestamped-facts",
-          "disposition": "upstream: the MODULE landed at bw-board `38de2e6` and this entry did NOT retire with it -- measured, the gate still passes. `instruction-debug-events.js` is now a vendored file rather than lite-authored, but upstream's own `m6502-debug.js` does not consume it, so `debugEvents.debugTime()` is still lite-only IN THIS FILE. Upstreaming a module does not retire its consumers' entries; converging the consumers does. Retires when upstream's debug files adopt it.",
-          "markedAt": "2026-09-10",
-          "falsifiable": "A recorded session plays back in the wrong order, or a saved checkpoint cannot be placed on the timeline against the events around it.",
-          "why": "debugTime() stamps every producer fact and every checkpoint from one clock, so replay ordering and checkpoint placement agree. The same mechanism as the Z80 target -- named here separately because the gate is per-file and a shared explanation would let one of them be deleted while the other stayed green.",
-          "contains": "debugEvents\\.debugTime\\(\\)",
-          "regions": [
-            "<setup>",
-            "captureCheckpoint",
-            "debugTime"
-          ]
-        },
-        {
-          "id": "m6502-debug-replay-instruction",
-          "disposition": "upstream: BLOCKED on the checkpoint block (lane A). `replayInstruction` calls `machine.checkpointSupport()`, so it cannot move before machine-checkpoint.js and its consumers are upstream. Structurally identical to the z80 entry -- same three refusal codes, same watchHit discipline, the try/finally comment verbatim -- differing only in the CPU-specific halted predicate and a chip name in a reason string. Do not start this before lane A lands.",
-          "markedAt": "2026-09-10",
-          "falsifiable": "Stepping backwards one instruction silently does nothing instead of saying why it cannot.",
-          "why": "replayInstruction() checks checkpointSupport() first and returns a CODED refusal with a reason. The refusal is the feature: an unsupported reverse-step that returns nothing is indistinguishable from one that worked and changed nothing.",
-          "contains": "replayInstruction\\(\\)",
-          "region": "replayInstruction"
-        },
-        {
-          "id": "m6502-debug-nmi-is-recorded",
-          "disposition": "stays: MEASURED 2026-09-10 -- `z80-machine.js` contains zero `nmi(`, so there is no host NMI entry point on that target to record and no second consumer for a shared contract. NOT MODELLED rather than not applicable: a real Z80 has an NMI pin, so this is a gap in the Z80 model and not a fact about the architecture. It goes up if and when the Z80 grows one.",
-          "markedAt": "2026-09-10",
-          "falsifiable": "A recorded session that used the NMI button replays without it -- the interrupt happens live and is missing on playback, so the run diverges at that point and nowhere before it.",
-          "why": "nmi() calls publishInput('m6502.nmi') FIRST and refuses if the recorder rejects it, so the interrupt cannot happen without being recorded. Dropping the publish leaves a working button and an unreplayable recording, which is the failure that looks like a working feature.",
-          "contains": "publishInput\\('m6502\\.nmi'",
-          "region": "nmi"
-        },
-        {
           "id": "m6502-debug-replay-boundary",
-          "disposition": "stays -- AND LEAVES THIS LEDGER'S SCOPE. MEASURED: `replayToInputBoundary` exists on m6502 alone (z80 0, i8086 0, emu8051 0), so z80 and i8086 are excluded from timed input replay entirely. Its two consumers disagree about the absence and NEITHER returns a refusal: instruction-replay.js:152 raises a NAMED replay error (`reverse-input-boundary-unsupported`), timed-replay-io.js:73 throws a raw `TypeError`. This is not a divergence to upstream -- it is a missing feature on two targets plus a driver throwing a TypeError for a capability the contract already has a vocabulary for. Own lane, needs a design decision first, root scoping.",
-          "markedAt": "2026-09-10",
+          "disposition": "stays -- AND LEAVES THIS LEDGER'S SCOPE. Re-grafted at the 2026-09-11 pin bump rather than lost to a wholesale take: `replayToInputBoundary` has ZERO occurrences anywhere in upstream src/, and three consumers here (instruction-replay.js, timed-replay-io.js, and its own tests). MEASURED by simulating the take -- a wholesale copy reds m6502-timed-input-replay with 'the target does not implement replayToInputBoundary'. It is not a divergence to converge: it is a missing feature on two targets plus two consumers that disagree about the absence, one raising a NAMED replay error and one a raw TypeError. Needs a design decision and its own lane.",
+          "markedAt": "2026-09-11",
           "falsifiable": "Reverse-stepping to a recorded input lands somewhere else, or accepts a malformed boundary and runs to an arbitrary point instead of saying the boundary was invalid.",
           "why": "replayToInputBoundary() parses the boundary as a BigInt inside a try and returns a CODED refusal ('invalid-input-boundary') rather than throwing or coercing. A NaN tick count that is silently accepted replays to the wrong place and reports success.",
           "contains": "replayToInputBoundary\\(boundary\\)",
           "region": "replayToInputBoundary"
-        },
-        {
-          "id": "m6502-debug-event-retire-boundary",
-          "disposition": "upstream: the module is at bw-board `38de2e6`; this entry retires when upstream's `m6502-debug.js` publishes the boundary through it instead of declaring it inline.",
-          "markedAt": "2026-09-10",
-          "falsifiable": "A RAM or memory-mapped device event halts the 6502 in the middle of its instruction, before the architectural PC and device state reach a replayable boundary.",
-          "why": "The target explicitly advertises the observed instruction-retire boundary which its instruction-atomic producer publishes after ordered memory access facts. Runner admission depends on this capability instead of a CPU-name exception.",
-          "contains": "eventBreakpointBoundary: 'instruction-retire'",
-          "region": "capabilities"
-        },
-        {
-          "id": "m6502-debug-memory-event-space",
-          "disposition": "upstream: WITH lane 1, but this entry does NOT merge with z80's. MEASURED: the memory facts come from the module, the CAPABILITY does not -- `passiveRead: false` here (m6502-debug.js:92) against `true` on z80 (z80-debug.js:87). The false is load-bearing and justified in the `why`: it preserves the truth that RAM and MMIO occupy one address space. Converging these two by name would be wrong.",
-          "markedAt": "2026-09-10",
-          "falsifiable": "The 6502 publishes memory events which the breakpoint compiler refuses, or conditions destructively read a memory-mapped VIA while deciding whether to halt.",
-          "why": "The mem capability connects published memory facts to the target-neutral predicate engine while passiveRead false preserves the truth that RAM and MMIO occupy one address space.",
-          "contains": "spaces: \\{mem: \\{read: true, write: true, passiveRead: false\\}\\}",
-          "region": "capabilities"
         }
       ]
     }
   },
   "lineLevelOnly": {
-    "disposition": "DISPOSITION 2026-09-10: upstream, as a set. All six files are self-contained -- no imports outside the vendored tree -- so the no-outward-dependencies property does not hold any of them here. They carry no declared identifier, so nothing retires them one at a time; they retire when the work in them goes up with the contract it belongs to. Needs a lane.",
-    "markedAt": "2026-09-10",
-    "why": "These files carry forward-ported work that adds no NEW declared identifier -- changed method bodies, extra branches, comments -- so the identifier-based coverage above cannot see them. 458 lines as of 2026-09-05. They are protected by the sync's content-derived guard, but that only runs when someone runs the sync; this inventory is what makes the test suite see them too. Recorded as a SET, not counts, so ordinary edits do not churn it. UPDATED 2026-09-05 (later): six files joined the set -- avr8js-debug, i8259, rp2040-bootrom, rp2040js-debug, w65c51, zx-ula. THE SET DOES NOT DISTINGUISH AHEAD FROM BEHIND, and these show both. Measured lite-only vs upstream-only lines: i8259 32/156 and rp2040-bootrom 56/91 are lite being BEHIND (the 8259 rotation work landed in bw-board this afternoon and the vendor is held pending a readable CI verdict); zx-ula 19/3 and avr8js-debug 5/1 look forward-ported. The ratio is a SIGNAL, not proof -- sync-bw-board.mjs says plainly that a content comparison cannot tell direction, and that is still true. What the ratio does is tell you which way to look first. Re-derive after the vendor lands. UPDATED 2026-09-05 (pin bump to 0a779af). FOUR FILES LEFT THE SET -- i8086, i8259, ne2000, rp2040-bootrom -- because the bump synced them and they now match upstream; the gate reported them as GONE, which is the direction an inventory that could only fail one way would have missed entirely. ONE JOINED: z80-adapter.js, one lite-only line, undocumented until the gate named it. Both directions fired on the same run, against the branch that caused them.",
-    "files": [
-      "debug-target-factory.js",
-      "emu8051-debug.js",
-      "i8086-adapter.js",
-      "i8086-debug.js",
-      "m6502-adapter.js",
-      "z80-adapter.js"
-    ],
-    "note": "Files that diverge only line-by-line and have no named allow-list entry. Recorded as a SET, not counts. reseat-gate.js left this inventory on 2026-09-07: it was not forward-ported work at all, it was lite BEHIND by one upstream commit (20f0d45), and syncing it forward made it identical. Corrected in VENDOR-DIRECTION-2026-09-06.md -- size has no direction. debug-session.js left on 2026-09-08 after its wall-budget implementation converged upstream at bw-board 64ecc940; the guarded bump changed zero bytes in that file, so only its stale declaration retired. index.js left on 2026-09-10, and its reason is the one worth reading: the divergence had ALREADY converged in substance and only its LOCATION still differed. Lite split the barrel in 6dfbe4fb7 so getTargetKinds and LABWIRED_KIND came from the import-free target-kinds.js leaf instead of through the 22 KB debug-target-factory.js. Upstream then took that same isolation in 0a779af -- 'restore the leaf a perf isolation depended on' -- but put the re-export in the FACTORY, so lite's barrel line became residue of a convergence that had already happened. Measured, not assumed: the transitive module closure of index.js is 103 modules under BOTH forms, byte for byte the same set, because the adjacent unconditional createDebugTarget re-export pulls the factory either way. The probe was mutation-checked -- dropping that re-export shrinks the closure to 93 and takes target-kinds.js with it -- so the identical result means identity, not a blind measurement. And no lite consumer was ever served by the split: debug-panel.jsx, the only caller, dynamic-imports lib/bw-board/target-kinds.js DIRECTLY, and test/i8086-debug-startup-performance.test.mjs asserts the contract there, at the consumer, not at the barrel. cortex-m0-machine.js left on 2026-09-10 WITHOUT ANYTHING BEING SYNCED, because it never belonged: this inventory records forward-ported work and that file carries none. Its whole difference from upstream is a deep-import path the SYNC ITSELF rewrites on the way in (scripts/lib/vendor-rewrites.mjs), so a sync reproduces lite's bytes exactly -- measured, not assumed: run `sync-bw-board.mjs --only cortex-m0-machine.js` at the pin and the hash does not move. It was declared only because two instruments disagreed: `--check` applied the rewrite and reported ok, while this gate compared raw bytes and saw a divergence someone then had to write up. Both now read the same module, and the gate asks the question a vendored file should be asked -- is this what a sync would produce -- which is strictly stronger than byte equality with upstream, a thing lite never had."
+    "files": [],
+    "disposition": "EMPTY since the 2026-09-11 pin bump. All six converged: debug-target-factory, emu8051-debug, i8086-adapter, i8086-debug, m6502-adapter and z80-adapter are now byte-identical to upstream at the pin. Kept as a CATEGORY rather than deleted, because a file acquiring undeclared-identifier line divergence needs somewhere to be recorded, and an absent key reads as \"never considered\"."
   },
   "liteAuthored": {
-    "disposition": "DISPOSITION 2026-09-10: upstream, EXCEPT two, and both exceptions are measured rather than asserted. `resolve-netlist.js` moves OUT rather than up -- zero importers inside the vendored tree, two in Lite's own runtime -- so it is a relocation, not an upstreaming. `w65c02-cycle-provider.js` is the ONLY file in this ledger with an outward dependency (`../bw-debug/conditional-cycle-provider.js`); that coupling is resolved first or it travels with it. `LICENSE` is permanent -- attribution travels with the copy. The other five (`machine-checkpoint.js`, `instruction-debug-events.js`, `floooh-z80-cycle-provider.js`, `z80-cycle-debug.js`, `z80-target-factory.js`) are self-contained and go up; `machine-checkpoint.js` is lane A and is the reason this whole default changed -- it absorbed a third consumer with zero amendment, which is the argument.",
+    "disposition": "DISPOSITION 2026-09-11, after the bump: TWO left of six. floooh-z80-cycle-provider.js, z80-cycle-debug.js and z80-target-factory.js went UPSTREAM (bw-board 8300d79) and are now plain vendored files. w65c02-cycle-provider.js RELOCATED out of the vendored root to bw-debug/, where its only consumer and its own dependency live -- upstream gained the seam (opts.providerBoundary) and not the JSMoo rejection record, which is lite's. LICENSE is permanent: attribution travels with the copy. resolve-netlist.js moves OUT rather than up -- zero importers inside the vendored tree, two in lite's own runtime.",
     "markedAt": "2026-09-10",
     "why": "THE MIRROR IMAGE OF absentByDesign BELOW. That list records files upstream has and lite deliberately does not; this one records files LITE has and upstream does not -- lite-authored source living inside a vendored root. Seven as of 2026-09-07, found while measuring a proposed vendored-path gate. They were not invisible: test/vendor-identity.test.mjs has printed them since lego-b9 added the liteOnly and notCompared collectors this morning. But printed is not asserted, and nothing said which of the seven were deliberate. A lite-authored file in a vendored directory is one careless sync from being clobbered and has no upstream to restore it from, so each one is now a decision recorded once rather than an accident nobody has examined. THE REASON MUST SAY WHY IT LIVES HERE RATHER THAN BESIDE LITE'S OWN CODE -- six of the seven are reached by relative import from a vendored sibling that itself carries a declared divergence, which is a real constraint; resolve-netlist.js is not, and its entry says so.",
     "ratchet": "Entries may be REMOVED freely -- a file that moves out or lands upstream should leave. An entry may only be ADDED together with its reason in the same commit, and the gate refuses any lite-authored file that is not listed, so adding the file without the reason cannot go green.",
     "files": {
-      "w65c02-cycle-provider.js": {
-        "reason": "Imported by debug-target-factory.js, a lineLevelOnly entry. Holds the JSMOO W65C02 REJECTION -- a qualification verdict with its candidate and oracle commits. Deliberately a refusal record rather than an engine: it is the evidence for not adopting one, so it belongs beside the factory that would otherwise reach for it.",
-        "importedBy": [
-          "debug-target-factory.js"
-        ]
-      },
-      "z80-target-factory.js": {
-        "reason": "Imported by debug-target-factory.js, a lineLevelOnly entry. Selects fast or cycle Z80 execution, and dynamically imports the cycle path so the optional core is never pulled into the bundle by the fast one.",
-        "importedBy": [
-          "debug-target-factory.js"
-        ]
-      },
-      "z80-cycle-debug.js": {
-        "reason": "Second order: imported by z80-target-factory.js, which is itself lite-authored and here for the reason above. No upstream file references it.",
-        "importedBy": [
-          "z80-target-factory.js"
-        ]
-      },
-      "floooh-z80-cycle-provider.js": {
-        "reason": "Third order: imported only by z80-cycle-debug.js. The optional product boundary for the qualified floooh/chips Z80 engine -- third-party source and WASM deliberately NOT bundled, a caller must supply a loader for a reviewed wrapper. That refusal is the point of the file and is why it is source rather than a dependency.",
-        "importedBy": [
-          "z80-cycle-debug.js"
-        ]
-      },
       "resolve-netlist.js": {
         "reason": "THE ONE WITH NO REASON TO BE HERE, and it is recorded rather than moved because moving it is a change to running code and this entry is not. NOTHING in the vendored root imports it: both consumers are lite's own -- bw-debug/debug-runner.js and pico-sim-run.js -- and upstream has no counterpart. It was extracted from debug-runner.js in 41d5f0cbb so the bare-metal debug path and the MicroPython Run resolve the board the same way, and it landed in the vendored directory rather than beside either caller. It is load-bearing (the phantom-inferred-bench rejection, owner reports 2026-08-16/17), which is exactly why it should not be sitting where a sync operates. MOVING IT TO bw-debug/ IS A SEPARATE LANE; this entry exists so that decision is asked rather than forgotten.",
         "importedBy": []
@@ -415,14 +218,14 @@ fails unless it touched both.
   },
   "absentByDesign": {
     "i8088-cycles.js": {
-      "falsifiable": "The editor bundle grows by roughly 983 KB, 975 KB of it one cycle table, for a timing mode lite does not expose in any UI.",
-      "why": "Lite REMOVED the opt-in cycle-accurate timing path (upstream 9256cf7's CycleEstimator) before the allow-list existed to record it -- brickwright-lite-ea's tenth divergence, found by measuring direction per file and in no document until 2026-09-06. Upstream imports it from i8086-machine.js; lite has zero references to any of it. A sync CREATES this file because there is no local copy to compare, so no line-level entry can protect it.",
-      "sinceUpstream": "9256cf7"
+      "falsifiable": "Lite passes {CycleEstimator} to enableI8088CycleTiming somewhere, at which point it needs both files and this entry is wrong.",
+      "why": "REASON REWRITTEN 2026-09-11 and the divergence is GONE with it. Until bw-board 5afadcd, i8086-machine.js imported CycleEstimator at MODULE SCOPE, so vendoring that file meant shipping 974,864 bytes of generated cycle table in the editor bundle for a path that is opt-in, defaults to null and that nothing enables. Lite could not pay it, so it removed the whole path across ten sites -- and i8086-machine.js became unvendorable. The estimator is now INJECTED, so lite takes that file BYTE-IDENTICAL and simply does not pass an estimator. These two files stay absent because lite does not use the feature, not because lite amputated it.",
+      "sinceUpstream": "5afadcd"
     },
     "i8088-timing.js": {
-      "falsifiable": "Same: the file lite does not have pulls in i8088-cycles.js, so taking either takes both.",
-      "why": "The other half of the removed CycleEstimator path. i8088-timing.js is what i8086-machine.js imports; it in turn pulls i8088-cycles.js. Absent by the same decision and for the same reason.",
-      "sinceUpstream": "9256cf7"
+      "falsifiable": "Lite passes {CycleEstimator} to enableI8088CycleTiming somewhere, at which point it needs both files and this entry is wrong.",
+      "why": "REASON REWRITTEN 2026-09-11 and the divergence is GONE with it. Until bw-board 5afadcd, i8086-machine.js imported CycleEstimator at MODULE SCOPE, so vendoring that file meant shipping 974,864 bytes of generated cycle table in the editor bundle for a path that is opt-in, defaults to null and that nothing enables. Lite could not pay it, so it removed the whole path across ten sites -- and i8086-machine.js became unvendorable. The estimator is now INJECTED, so lite takes that file BYTE-IDENTICAL and simply does not pass an estimator. These two files stay absent because lite does not use the feature, not because lite amputated it.",
+      "sinceUpstream": "5afadcd"
     }
   }
 }
