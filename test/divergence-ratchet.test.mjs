@@ -38,13 +38,34 @@
  * refusal was being read as a decision. This gate is the floor under that work,
  * not a substitute for it. `vendor-identity.test.mjs` is what judges content.
  *
- * ## The intended end state
+ * ## The end state, REACHED 2026-09-11 — and why this file did not go away
  *
- * Zero. Every count here reaching 0 means the vendored tree is a pure mirror of
- * upstream plus the transformations `scripts/lib/vendor-rewrites.mjs` performs by
- * construction — and at that point this file and the ledger both go away. A
- * ratchet whose terminal value is 0 is a plan; one with no terminal value is a
- * budget.
+ * Zero. Every count here is 0: the vendored tree is a pure mirror of upstream
+ * plus the transformations `scripts/lib/vendor-rewrites.mjs` performs by
+ * construction. A ratchet whose terminal value is 0 is a plan; one with no
+ * terminal value is a budget.
+ *
+ * THIS PARAGRAPH USED TO END "and at that point this file and the ledger both go
+ * away". That was written as a promise and it is wrong, which only became
+ * visible on the day it came due:
+ *
+ *   - Zero is where a ratchet is WEAKEST, not where it retires. While the counts
+ *     were non-zero, a broken counter showed up as a wrong number. At zero, a
+ *     counter that returns 0 because it is broken agrees with every expectation
+ *     in this file. Measured: hardwiring `counts()` to zeros left five of six
+ *     cases green. Only the fabricated-ledger control below caught it.
+ *   - Nothing else notices regrowth. The gate that judges CONTENT
+ *     (`vendor-identity`) reds when a vendored file stops matching upstream —
+ *     but a NEW declared divergence is, to that gate, a file with an excuse.
+ *     This ratchet is what makes adding the excuse cost something.
+ *   - Deleting a gate at the moment its subject is empty is the same move as
+ *     deleting an anti-vacuity floor because it went red at the goal state. Both
+ *     leave the check absent exactly when nothing is left watching.
+ *
+ * So the file stays, and its job changed rather than ended: the numbers are
+ * asserted at 0 against the real ledger, and the machinery that produces them is
+ * proved separately against a fixture with a known answer. Those are two claims,
+ * and until 2026-09-11 they were being made as one.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
