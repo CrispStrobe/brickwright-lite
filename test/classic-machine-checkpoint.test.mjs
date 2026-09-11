@@ -233,8 +233,19 @@ test('restore opens a new event time domain even when replay rewinds cycles', ()
     // without pinning either spelling.
     const base = retires[0].time.domain;
     assert.match(base, /^z80-[a-z]+$/, 'the pre-restore domain is an unsuffixed base');
-    assert.equal(retires.at(-1).time.domain, `${base}-reset-1`,
-        'a restore opens epoch 1 on the same base the run started in');
+
+    // THE LABEL IS THE TARGET'S BUSINESS, NOT THIS TEST'S. I derived the BASE
+    // here and then hardcoded `-reset-`, which is half a fix: the epoch label
+    // became a per-target parameter and z80 now stamps `-rewind-`, so this
+    // broke again one pin later for the same reason it broke the first time.
+    // The property under test is that a restore opens a NEW epoch on the SAME
+    // clock -- base preserved, epoch 1, some label -- and none of that needs
+    // the label's spelling.
+    const after = retires.at(-1).time.domain;
+    const parts = new RegExp(`^(${base})-([a-z]+)-(\\d+)$`).exec(after);
+    assert.ok(parts, `post-restore domain ${after} is not <base>-<label>-<epoch> on base ${base}`);
+    assert.equal(parts[1], base, 'the restore stays on the clock the run started in');
+    assert.equal(parts[3], '1', 'and opens the first epoch, not a later one');
     assert.notEqual(retires[0].time.domain, retires.at(-1).time.domain);
 });
 
