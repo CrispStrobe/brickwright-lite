@@ -19,7 +19,6 @@
  */
 
 import { I8086Machine, BREADBOARD8086 } from './i8086-machine.js';
-import {withI8086MemoryPreference} from '../bw-i8086-preferences.js';
 
 /**
  * @param {object} [opts]
@@ -28,9 +27,10 @@ import {withI8086MemoryPreference} from '../bw-i8086-preferences.js';
  * @param {number} [opts.romAt] - ROM load address (default: first rom region)
  */
 export function createI8086Adapter(opts = {}) {
-    const config = withI8086MemoryPreference(opts.config ?? BREADBOARD8086);
+    const config = opts.config ?? BREADBOARD8086;
 
     let board = null;
+    let unloggedBoardInputs = false;
     let serialListener = null;
     const stats = { pinChangeCount: 0, advanceToCount: 0 };
 
@@ -70,6 +70,9 @@ export function createI8086Adapter(opts = {}) {
         machine,
         clockHz: config.clockHz,
 
+        /** Does a live board sample input nets that nothing records? */
+        unloggedBoardInputs() { return unloggedBoardInputs; },
+
         onSerial(cb) { serialListener = cb; },
 
         sendSerial(byte) { return machine.serialIn(byte & 0xff); },
@@ -78,14 +81,14 @@ export function createI8086Adapter(opts = {}) {
 
         attachBoard(b) {
             board = b;
+            // syncInputs samples input nets that never pass through the debug
+            // target, so nothing records them.
+            unloggedBoardInputs = typeof b?.readPin === 'function';
             // Reset fetches from FFFF:0000 and publishes the initial pin
             // state, which for a just-reset 8255 is "nothing driven".
             machine.reset();
             syncInputs();
         },
-
-        /** A live board is an input producer whose state is not in the CPU snapshot. */
-        hasLiveInputSource() { return !!(board && typeof board.readPin === 'function'); },
 
         syncInputs,
 

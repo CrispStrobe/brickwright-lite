@@ -38,6 +38,7 @@ export function createM6502Adapter(opts = {}) {
   const config = opts.config ?? EATER6502;
 
   let board = null;
+  let unloggedBoardInputs = false;
   const stats = { pinChangeCount: 0, advanceToCount: 0 };
   let serialListener = null;
 
@@ -149,6 +150,9 @@ export function createM6502Adapter(opts = {}) {
     machine,
     clockHz: config.clockHz,
 
+    /** Does a live board sample input nets that nothing records? */
+    unloggedBoardInputs() { return unloggedBoardInputs; },
+
     onSerial(cb) { serialListener = cb; },
 
     /** RX side: bit-banged VIA serial first (G-Pascal-class boards),
@@ -173,10 +177,10 @@ export function createM6502Adapter(opts = {}) {
 
     attachBoard(b) {
       board = b;
-      // A live board may change input nets without going through the debug
-      // target. Until those solver transitions are logged, checkpoint replay
-      // must refuse this topology rather than silently diverge.
-      machine._unloggedBoardInputs = typeof b.readPin === 'function';
+      // A board with readPin means syncInputs samples input nets that never pass
+      // through the debug target, so nothing logs them. Recorded where the fact
+      // is created; the target surfaces it via replayRefusalReasons().
+      unloggedBoardInputs = typeof b?.readPin === 'function';
       // Bridge PS/2 parts to the machine VIA before reset, so the
       // capture chain's advance() runs from the first instruction.
       bridgePS2(b);

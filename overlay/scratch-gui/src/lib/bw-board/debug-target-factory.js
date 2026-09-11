@@ -204,7 +204,11 @@ async function createEmulatorTarget(opts) {
 
   // 4. Debug target — import dynamically to avoid circular deps
   const { createEmu8051DebugTarget } = await import('./emu8051-debug.js');
-  const target = createEmu8051DebugTarget(wasm, { symbols });
+  // THREADED, not imported. This file is inside the vendored root, so it must not
+  // reach out to `../bw-debug/opcodes.js` for the length table -- that is the reach
+  // the injection seam exists to remove. The caller supplies it or the facts carry
+  // no instruction bytes, which `extensions.instructionBytes` declares either way.
+  const target = createEmu8051DebugTarget(wasm, { symbols, instructionLength: opts.instructionLength });
 
   return { target, adapter };
 }

@@ -1537,7 +1537,14 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         symbols = built.symbols;
         variableTable = (symbols.variables || []).filter((v) => v.space);
         pinTable = stc.pins || [];
-        target = createEmu8051DebugTarget(wasm, {symbols, clockHz: fosc});
+        // `instructionLength` IS INJECTED, not imported by the vendored file.
+        // Upstream's emu8051-debug.js used to `import '../bw-debug/opcodes.js'` --
+        // a reach OUT of the vendored root, one of three, and the one whose table
+        // is GENERATED from a source in neither repo. It now reads `opts`, so the
+        // table stays lite's and the caller hands it over. Without this the fact
+        // payload loses `bytes` and `length`; the trace pane is unaffected because
+        // it computes lengths from its own import of the same function.
+        target = createEmu8051DebugTarget(wasm, {symbols, clockHz: fosc, instructionLength});
         session = createDebugSession(target, {
             onChange: (st) => {
                 if (st.halted) {

@@ -1888,6 +1888,32 @@ export class I8086Machine {
             this.devices[name][pair[1]](s.devices[name]);
         }
     }
+
+    /**
+     * The architectural register file, as a plain snapshot.
+     *
+     * GRAFTED AT THE PIN BUMP. Upstream added this alongside an instruction hook
+     * (bw-board 438d8bb) and then reverted the hook (722db63) while keeping this,
+     * because `i8086-debug.js` passes it to the shared event module as
+     * `captureRegisters`. Lite takes that debug file but NOT this machine --
+     * upstream's `i8086-machine.js` imports `./i8088-timing.js`, the CycleEstimator
+     * path lite deliberately removed (`liteRemoved`, 983 KB of cycle tables for a
+     * timing mode lite exposes in no UI), and re-deriving that removal against the
+     * new upstream is its own lane rather than a graft.
+     *
+     * So this is the one piece of upstream's machine the converged debug target
+     * needs. Without it every instruction fact loses its register pair, silently:
+     * `captureRegisters` is optional and the module simply publishes no registers.
+     */
+    _architecturalRegisters() {
+        return {
+            ax: this.cpu.ax, bx: this.cpu.bx, cx: this.cpu.cx, dx: this.cpu.dx,
+            sp: this.cpu.sp, bp: this.cpu.bp, si: this.cpu.si, di: this.cpu.di,
+            ip: this.cpu.ip, cs: this.cpu.cs, ds: this.cpu.ds, es: this.cpu.es,
+            ss: this.cpu.ss, flags: this.cpu.flags, pc: this.cpu.pc
+        };
+    }
+
 }
 
 export default I8086Machine;

@@ -44,12 +44,40 @@ export function subscribeDebugTargetInputs (target, recordingSession) {
         typeof recordingSession.status !== 'function') {
         throw new TypeError('debug target inputs require a recording session');
     }
-    const unsubscribe = target.onDebugInput(input =>
-        !recordingSession.status().active || recordingSession.appendInput(input));
-    if (typeof unsubscribe !== 'function') {
+    // TWO HOOKS, NOT A RETURN VALUE — the converged bridge's contract.
+    //
+    // This used to veto through `onDebugInput`'s return: `appendInput` throws on a
+    // refusal and the bridge published BEFORE applying, so a throw stopped the input.
+    // The converged bridge publishes AFTER acceptance and IGNORES the return, so that
+    // veto is gone: the fact arrives once the machine already has the input, and a
+    // throw in a listener is not a refusal, it is a broken listener.
+    //
+    // So the ASK and the TELL are registered separately, and BOTH are wired here
+    // rather than in two places, because the window between them is the guarantee:
+    // "an un-recordable input does not happen".
+    const unsubscribeTell = target.onDebugInput(input => {
+        if (!recordingSession.status().active) return;
+        recordingSession.appendInput(input);
+    });
+    if (typeof unsubscribeTell !== 'function') {
         throw new TypeError('onDebugInput must return an unsubscribe function');
     }
-    return unsubscribe;
+
+    // THE ASK. A target without the hook degrades to fire-and-forget rather than
+    // throwing: `canVetoDebugInput` is structural, so a caller can ask whether the
+    // guarantee holds instead of assuming it. An INACTIVE session accepts everything
+    // — it is not recording, so there is nothing it could fail to record.
+    const unsubscribeAsk = typeof target.onDebugInputAdmission === 'function'
+        ? target.onDebugInputAdmission(input => (
+            !recordingSession.status().active
+                ? {accepted: true}
+                : recordingSession.wouldAcceptInput(input)))
+        : null;
+    if (unsubscribeAsk !== null && typeof unsubscribeAsk !== 'function') {
+        throw new TypeError('onDebugInputAdmission must return an unsubscribe function');
+    }
+
+    return () => { unsubscribeTell(); if (unsubscribeAsk) unsubscribeAsk(); };
 }
 
 /** Connect complete target and optional debugger-host checkpoints to the recorder. */
@@ -219,6 +247,15 @@ export function createRecordingSession ({
                 failure = {code: 'recording-error', message: error?.message || String(error)};
                 return {accepted: false, ...failure};
             }
+        },
+
+        /**
+         * THE DRY RUN, delegated rather than reimplemented. `recorder.js` answers
+         * this and `appendInput`'s refusal from ONE pure function, so the veto and
+         * the record cannot disagree about what is recordable.
+         */
+        wouldAcceptInput (input) {
+            return recorder.wouldAcceptInput({...input, schema: RECORDER_SCHEMA});
         },
 
         appendInput (input) {

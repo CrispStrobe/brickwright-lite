@@ -98,15 +98,22 @@ test('a byte sent through the TARGET is recorded exactly once with no adapter at
     assert.equal(serial[0].payload.byte, 0x42);
 });
 
-test('the adapter-held bypass is UNRECORDED on this build, and the recorder is live while it is', () => {
-    // CHARACTERISATION, NOT A REQUIREMENT. Lite states this bypass rather than
-    // closing it: a caller holding the adapter can call `adapter.sendSerial`
-    // directly and no fact is produced. Upstream closes it by wrapping the
-    // adapter, so after the bump this path is expected to START recording.
+test('the adapter-held bypass is RECORDED since the pin bump, exactly once', () => {
+    // THE BYPASS IS CLOSED, AND THIS CASE IS HOW WE KNOW. It was written as a
+    // two-way detector while lite still had the bypass -- a caller holding the
+    // adapter could call `adapter.sendSerial` directly and no fact was produced,
+    // and lite's own comment said so. It reddened at the bump, which is what it
+    // was for, and the count it reported decided which outcome we got:
     //
-    // That makes this case a two-way detector rather than a guard: it fails if
-    // the bypass closes, and the message says that is an IMPROVEMENT to be
-    // adopted deliberately, not a regression to be undone.
+    //     0 -> still bypassed        1 -> CLOSED        2 -> double-log
+    //
+    // Measured at the bump: ONE. Upstream's wrapper arrived in the same file as
+    // the method it feeds, so a wholesale take carried both, and lite's own
+    // publish did not survive alongside it. A partial take -- lifting
+    // `sendSerial` without the construction block at i8086-debug.js:385-394 --
+    // is the thing that would have given 0, and it would have been silent.
+    //
+    // DO NOT RE-OPEN THE BYPASS TO MAKE ANYTHING PASS.
     const adapter = createI8086Adapter({config: withUart()});
     const target = createI8086DebugTarget(adapter);
     const facts = [];
@@ -125,9 +132,10 @@ test('the adapter-held bypass is UNRECORDED on this build, and the recorder is l
         'the recorder was live throughout, so the count above is a fact about the '
         + 'adapter path and not about the listener');
 
-    assert.equal(afterBypass, 0,
-        'the adapter-held bypass has started recording. READ THE EXACTLY-ONCE CASE FIRST: '
-        + 'if it reports 2, both mechanisms are live and this is a DOUBLE-LOG, not a closed '
+    assert.equal(afterBypass, 1,
+        'the adapter-held bypass stopped recording, or started recording TWICE. '
+        + 'READ THE EXACTLY-ONCE CASE FIRST: if it reports 2, both mechanisms are live '
+        + 'and this is a DOUBLE-LOG, not a closed '
         + 'bypass — fix that instead. If it still reports 1, then upstream\'s '
         + 'construction-time wrapper has closed a bypass lite only stated, which is an '
         + 'IMPROVEMENT. Adopt it: assert 1 here, and drop the "will not be recorded" '
