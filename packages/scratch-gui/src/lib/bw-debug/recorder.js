@@ -38,6 +38,44 @@ const assertSchema = (record, label) => {
     }
 };
 
+// THE ADMISSION DECISION FOR AN INPUT, as one pure function so appendInput and
+// wouldAcceptInput CANNOT disagree — appendInput throws this, the dry run returns
+// it, and there is exactly one decision. Returns a {code, message, details}
+// descriptor to REFUSE, or null to ACCEPT. Mutates nothing: it reads the input
+// and the lastInputTime map and touches neither. The five conditions are exactly
+// what appendInput refused on before this was extracted — schema, a time object,
+// a non-empty producer and domain, a readable tick, and a non-decreasing tick in
+// the domain (the byte budget is not here on purpose: going over EVICTS old
+// inputs rather than rejecting the new one, so it is not an admission concern).
+const inputRefusal = (input, lastInputTime) => {
+    if (!input || input.schema !== RECORDER_SCHEMA) {
+        return {code: 'SCHEMA_MISMATCH',
+            message: `Input schema ${String(input && input.schema)} is not supported; expected ${RECORDER_SCHEMA}`,
+            details: {expected: RECORDER_SCHEMA, actual: input && input.schema}};
+    }
+    if (!input.time || typeof input.time !== 'object') {
+        return {code: 'INVALID_INPUT', message: 'Input requires a simulation time object'};
+    }
+    if (typeof input.producer !== 'string' || !input.producer) {
+        return {code: 'INVALID_INPUT', message: 'Input requires a non-empty producer'};
+    }
+    if (typeof input.time.domain !== 'string' || !input.time.domain) {
+        return {code: 'INVALID_INPUT', message: 'Input time requires a non-empty domain'};
+    }
+    const ticks = readTicks(input.time.ticks);
+    if (ticks === null) {
+        return {code: 'INVALID_INPUT',
+            message: `Input time.ticks is ${describeTicks(input.time.ticks)}; ${TICKS_EXPECTED}`};
+    }
+    const previous = lastInputTime.get(input.time.domain);
+    if (previous !== undefined && ticks < previous) {
+        return {code: 'INVALID_INPUT_ORDER',
+            message: `Input time decreased in domain ${input.time.domain}`,
+            details: {domain: input.time.domain, previous, actual: ticks}};
+    }
+    return null;
+};
+
 const assertCursor = (value, label, min, max) => {
     if (!Number.isSafeInteger(value) || value < min || value > max) {
         fail('INVALID_CURSOR', `${label} ${String(value)} is outside retained range [${min}, ${max}]`,
@@ -241,33 +279,14 @@ export function createDebugRecorder ({
 
     return {
         appendInput (input) {
-            assertSchema(input, 'Input');
-            if (!input.time || typeof input.time !== 'object') {
-                fail('INVALID_INPUT', 'Input requires a simulation time object');
-            }
-            if (typeof input.producer !== 'string' || !input.producer) {
-                fail('INVALID_INPUT', 'Input requires a non-empty producer');
-            }
-            if (typeof input.time.domain !== 'string' || !input.time.domain) {
-                fail('INVALID_INPUT', 'Input time requires a non-empty domain');
-            }
-            // A TICK HAS THREE SPELLINGS -- see ./tick-value.js. This accepted
-            // two of them and refused the third, which is the one a session
-            // arrives in after a round trip: `canonical()` writes a bigint as
-            // `0x...` and JSON.parse hands it back as a string. So a recording
-            // made on a bigint-stamping target (emu8051) imported and then
-            // could not be replayed.
+            // One decision, shared with wouldAcceptInput below (a TICK still has
+            // three spellings -- see ./tick-value.js -- and inputRefusal reads all
+            // three via readTicks). A refusal throws; acceptance falls through to
+            // the mutation, which is the only part appendInput does that the dry
+            // run does not.
+            const refusal = inputRefusal(input, lastInputTime);
+            if (refusal) fail(refusal.code, refusal.message, refusal.details);
             const ticks = readTicks(input.time.ticks);
-            if (ticks === null) {
-                fail('INVALID_INPUT', `Input time.ticks is ${describeTicks(input.time.ticks)}; `
-                    + TICKS_EXPECTED);
-            }
-            const previous = lastInputTime.get(input.time.domain);
-            if (previous !== undefined && ticks < previous) {
-                fail('INVALID_INPUT_ORDER',
-                    `Input time decreased in domain ${input.time.domain}`,
-                    {domain: input.time.domain, previous, actual: ticks});
-            }
             const value = clone({...input, cursor: nextInputCursor, order: nextInputCursor});
             const stored = {...value, _bytes: utf8Bytes(value)};
             inputs.push(stored);
@@ -275,6 +294,24 @@ export function createDebugRecorder ({
             lastInputTime.set(input.time.domain, ticks);
             nextInputCursor++;
             return clone(value);
+        },
+
+        // A DRY RUN of appendInput's admission decision, returning a verdict and
+        // MUTATING NOTHING. The bw-board debug bridges call this as the ASK before
+        // applying a host input, so a refused input never reaches the machine and
+        // never seeds the dedup map -- which is what makes "a refused ASK writes
+        // nothing" structural rather than a matter of a throw unwinding before the
+        // apply. It lands here first, uncalled, because this recorder is lite's
+        // own and the bridges that will call it are vendored from bw-board: the
+        // provider ships before the consumer, in the repo that owns the provider.
+        // The caller is the bridge lane (converge z80-debug/m6502-debug onto the
+        // two-hook contract). If this throws, that is a defect in the dry run, not
+        // a refusal -- inputRefusal is total over any value.
+        wouldAcceptInput (input) {
+            const refusal = inputRefusal(input, lastInputTime);
+            return refusal
+                ? {accepted: false, code: refusal.code, reason: refusal.message, details: refusal.details}
+                : {accepted: true};
         },
 
         appendEvent (event) {
