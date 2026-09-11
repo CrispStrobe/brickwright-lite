@@ -7,7 +7,19 @@ import path from 'node:path';
 const ROOT = path.resolve(import.meta.dirname, '..');
 const WASM_JS = path.join(ROOT, 'overlay/scratch-gui/src/lib/emu8051/emu8051.js');
 const DEBUG_JS = path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-board/emu8051-debug.js');
-const have = existsSync(WASM_JS) && existsSync(DEBUG_JS);
+/**
+ * THE OPCODE LENGTH TABLE IS INJECTED HERE BECAUSE PRODUCTION INJECTS IT.
+ *
+ * The vendored target stopped importing `../bw-debug/opcodes.js` — that reach
+ * out of the vendored root is what the `opts.instructionLength` seam exists to
+ * remove, and the table is generated from stc-compiler's stc_disasm.py, which
+ * lives in neither repo. So the HOST supplies it: debug-runner.js:1547 passes
+ * the imported table and debug-target-factory.js:211 threads it from its own
+ * caller. A fixture that omitted it would be testing a target no production
+ * path builds, and the retire facts would silently carry no opcode bytes.
+ */
+const OPCODES_JS = path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-debug/opcodes.js');
+const have = existsSync(WASM_JS) && existsSync(DEBUG_JS) && existsSync(OPCODES_JS);
 
 const CLOCK_HZ = 11059200;
 const CYCLE_HEX = ':05000000901234000025\n:00000001FF\n';
@@ -28,7 +40,13 @@ async function fixtureWithWasm(hex) {
     wasm._emu_init(1);
     wasm._emu_set_fosc(CLOCK_HZ);
     wasm._emu_set_vcc(5.0);
-    const target = createEmu8051DebugTarget(wasm, {clockHz: CLOCK_HZ});
+    const {instructionLength} = await import(OPCODES_JS);
+    // Asserted, not assumed: an undefined table here is indistinguishable from
+    // a build that cannot decode bytes, and every bytes assertion below would
+    // fail for the wrong reason.
+    assert.equal(typeof instructionLength, 'function',
+        'the opcode length table must load, or the injected-table cases test nothing');
+    const target = createEmu8051DebugTarget(wasm, {clockHz: CLOCK_HZ, instructionLength});
     wasm.ccall('emu_load_hex', 'number', ['string', 'number'], [hex, hex.length]);
     target.reset();
     return {target, wasm};
