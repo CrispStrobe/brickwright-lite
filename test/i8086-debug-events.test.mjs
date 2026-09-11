@@ -95,17 +95,56 @@ test('8086 retire snapshots pre-execution bytes and post-boundary architectural 
 });
 
 test('8086 avoids snapshot/disassembly capture when no debug listener is active', () => {
-    let observed;
-    const machine = new I8086Machine(CONFIG, {onInstruction: event => { observed = event; }});
-    machine.cpu.cs = 0;
-    machine.cpu.ip = 0x100;
-    machine.mem[0x100] = 0x90;
-    createI8086DebugTarget({machine});
-    machine.step();
-    assert.equal(observed.pcBefore, 0x100);
-    assert.equal('bytesBefore' in observed, false);
-    assert.equal('registersBefore' in observed, false);
-    assert.equal('registersAfter' in observed, false);
+    // REPOINTED at the shared module, whose laziness this now is. The machine-level
+    // `onInstruction` hook this used to drive was reverted upstream (bw-board
+    // 722db63) once `i8086-debug.js` adopted `instruction-debug-events.js`: the
+    // module brackets `cpu.step` itself, so a second machine-level hook was a
+    // producer with no consumer.
+    //
+    // DEFENCE IN DEPTH, AND THE MUTATION SAID SO. Two guards hold this: the module
+    // installs its wrappers only on the FIRST listener, and `runInstruction` returns
+    // early when the listener set is empty. Defeating either alone leaves the other,
+    // and this case stays green — it reds only when BOTH are defeated. That is the
+    // right shape for a cost claim (either mechanism is sufficient) and it is worth
+    // stating, because a single mutation coming back green here looks like a weak
+    // test and is not.
+    //
+    // The CLAIM is unchanged and is about cost, not about facts. "No facts when
+    // nobody listens" is true of any publisher and would be vacuous. What matters
+    // is that the EXPENSIVE work — the register snapshot and the instruction image
+    // — is not done either, and that is observable by counting the calls the
+    // capture closures make into the machine.
+    const counted = (withListener) => {
+        const machine = new I8086Machine(CONFIG);
+        machine.cpu.cs = 0;
+        machine.cpu.ip = 0x100;
+        machine.mem[0x100] = 0x90;                       // NOP
+        const target = createI8086DebugTarget({machine});
+
+        let regs = 0, reads = 0;
+        const realRegs = machine._architecturalRegisters.bind(machine);
+        const realRead = machine._read.bind(machine);
+        machine._architecturalRegisters = () => { regs++; return realRegs(); };
+        machine._read = (a) => { reads++; return realRead(a); };
+
+        const off = withListener ? target.onDebugEvent(() => {}) : null;
+        machine.step();
+        if (off) off();
+        return {regs, reads};
+    };
+
+    const idle = counted(false);
+    const busy = counted(true);
+
+    assert.ok(busy.regs > 0,
+        'fixture: a listening target captured no registers at all, so the comparison '
+        + 'below is between two zeros and proves nothing');
+    assert.equal(idle.regs, 0,
+        `the register snapshot was taken with nobody listening (${idle.regs} calls) — `
+        + 'the module must not pay for evidence no one asked for');
+    assert.ok(idle.reads < busy.reads,
+        `an idle target read memory as much as a listening one (${idle.reads} vs `
+        + `${busy.reads}) — the instruction image is being captured regardless`);
 });
 
 test('8086 records program writes and OUT values without debugger-initiated reads', () => {

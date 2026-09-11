@@ -191,6 +191,13 @@ export function labelsFromAssembly(result, opts = {}) {
 import { replayAccepted, replayRefused } from './debug-replay-contract.js';
 
 export function createI8086DebugTarget(adapter, opts = {}) {
+    /**
+     * Whatever port observer the MACHINE already had. Captured once, before this
+     * target installs anything, so the watch handler can chain to it instead of
+     * replacing it. See the assignment site for why capturing later is wrong.
+     */
+    const priorPortAccess = adapter?.machine?.hooks?.onPortAccess ?? null;
+
     const machine = adapter.machine;
     const cpu = machine.cpu;
     const cpuId = opts.cpuId || 'i8086';
@@ -218,12 +225,22 @@ export function createI8086DebugTarget(adapter, opts = {}) {
      */
     const debugEvents = installInstructionDebugEvents({
         cpu, machine, cpuId, timeDomain: 'i8086-cycles', port: true,
-        // UNREVIEWED — preserves today's `-reset-` behaviour EXACTLY (a no-op made
-        // explicit because rewindLabel is now required). This core's reset()
-        // advances the clock, so the correct label is 'rewind', but that is a
-        // behaviour change with a test and belongs to the i8086 session's #8 work
-        // (rides with restoring the interrupt vocabulary). Do not flip it here.
-        rewindLabel: 'reset',
+        // REVIEWED AND FLIPPED 2026-09-11. This core's `reset()` ADVANCES the clock
+        // — the backward moves are `loadState` and the explicit bump in
+        // `restoreCheckpoint` — so the epoch it opens is a REWIND, never a reset.
+        // It was `'reset'` for one commit as an explicit no-op while the parameter
+        // became required, with a note routing the correction here.
+        //
+        // The evidence is downstream: brickwright-lite's `i8086-debug-events`
+        // asserts `i8086-cycles-rewind-1` after restoring an older checkpoint, and
+        // the no-op produced `i8086-cycles-reset-1`. That expectation is not a
+        // preference — lite renamed this epoch on 2026-09-10 precisely because the
+        // clock does not go backwards on reset, and its comment says the 8051's
+        // `-reset-` is correct for ITS mechanism and must not be converged with
+        // this one.
+        //
+        // avr8js is still `'reset'` and still unreviewed; that is its session's.
+        rewindLabel: 'rewind',
         addressMask: 0xfffff,
         // A write fact that says only what the address BECAME cannot tell a
         // no-op write from a real one, and 8086 code makes no-op writes
@@ -511,6 +528,21 @@ export function createI8086DebugTarget(adapter, opts = {}) {
      * gave up rather than what it was about to.
      */
     const syncEventHooks = () => {
+        // CHAINED, NOT OVERWRITTEN. This used to assign the watch handler over
+        // `machine.hooks.onPortAccess` and, with no watches, assign `null` —
+        // which SILENCED whatever the machine already had installed. Measured:
+        // a machine constructed with its own `onPortAccess` saw its hook fire,
+        // and stopped the moment a debug listener registered. A debugger that
+        // silences the instrumentation already present is worse than one that
+        // observes nothing, because that hook is how something else was watching.
+        //
+        // `priorPortAccess` is captured ONCE at construction, not here: this
+        // assignment runs again whenever the watch set changes, and capturing at
+        // the assignment would capture OUR OWN wrapper the second time round and
+        // chain it to itself.
+        //
+        // Same defect as `sendSerial` had before `rootDebugSendSerial`; this is
+        // the accessor where the chaining was still missing.
         machine.hooks.onPortAccess = portWatches.size
             ? (ev) => {
                 for (const [id, w] of portWatches) {
@@ -518,8 +550,9 @@ export function createI8086DebugTarget(adapter, opts = {}) {
                     if (w.dir && w.dir !== ev.dir) continue;
                     eventHit = { cause: 'port', bp: id, ...ev };
                 }
+                if (priorPortAccess) priorPortAccess(ev);
             }
-            : null;
+            : priorPortAccess ?? null;
         // TWO CONSUMERS, ONE HOOK. The watch path predates the event path and
         // must not depend on it, so the hook installs for either -- a target
         // whose interrupt observation worked only while somebody was subscribed
