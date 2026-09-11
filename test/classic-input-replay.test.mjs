@@ -149,16 +149,26 @@ test('live Z80 buffer sampling suppresses recording with an explicit reason', ()
     adapter.attachBoard({readPin: () => false, setPin() {}});
     const target = createZ80DebugTarget(adapter);
     assert.deepEqual(target.capabilities().recording, []);
-    // THE GUARANTEE IS THE EMPTY `recording` AND THE REFUSAL, both of which
-    // hold. The REASON changed with the convergence: it now refuses because
-    // this chip has no paired state codec rather than because live buffer
-    // input cannot be logged.
+    // THE REASON MUST NAME THE CAUSE, and this assertion was briefly WRONG.
     //
-    // NOT AN EQUIVALENT REASON, and the difference is worth keeping in view:
-    // add a state codec for that chip and this refusal disappears, while the
-    // unlogged live input it used to be about is still there. The guarantee
-    // holds today by a route that does not mention its original cause, so it
-    // is asserted here as the refusal it is rather than reworded to look like
-    // the old one.
-    assert.match(target.captureCheckpoint().refused, /no paired state codec/);
+    // Mid-bump this refused only because the chip had no paired state codec;
+    // the `live board buffer-input sampling is not logged` reason had been
+    // lost. I read that as a benign rename and updated the expectation to the
+    // codec wording — which was an expectation edited to match a REGRESSION.
+    // It was a symptom of the checkpoint gate dropping its unlogged-input
+    // consequence, and fixing that restored this reason. The signal was
+    // already visible and I did not act on it: a guarantee that stops naming
+    // its own cause has usually lost something, not been reworded.
+    //
+    // So the CAUSE-NAMING reason is what is asserted, and it is asserted as a
+    // MEMBER of the list rather than as the whole of it. Both reasons are
+    // legitimately present here — the codec one is about restoring chip state,
+    // this one about inputs that never reach the log — and a case pinning one
+    // spelling of the pair reds the day the other is added.
+    const refusal = target.captureCheckpoint();
+    assert.match(refusal.refused, /buffer-input sampling is not logged/);
+    assert.ok(target.capabilities().extensions.checkpointRefusal
+        .some(reason => /buffer-input sampling/.test(reason)),
+    'the declared reasons must still name the unlogged input, not only the missing codec: '
+    + 'losing this reason while keeping the refusal is how the consequence went missing before');
 });
