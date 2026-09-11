@@ -264,20 +264,47 @@ function anchorComplaints (entries, sections) {
  */
 function staleIntegratedFiles () {
     const stale = [];
+    const absent = [];
     for (const f of walk(overlaySrc)) {
         const rel = relative(overlaySrc, f).split('\\').join('/');
         const built = join(builtSrc, rel);
-        if (!existsSync(built)) continue;
+        // ABSENT IS THE STALENESS THAT MATTERS, and this skipped it.
+        //
+        // The line here was `if (!existsSync(built)) continue;` — so a module
+        // present in overlay/ and MISSING from the integrated tree was not
+        // counted as stale at all. That is the exact condition this check exists
+        // to prevent: the dead-module scan below builds its importer corpus from
+        // the integrated tree, so a module that has not been integrated is a
+        // MISSING IMPORTER, and anything only it imports reads as dead.
+        //
+        // Measured 2026-09-11 in a worktree: 129 overlay modules absent from the
+        // integrated tree, and the scan reported `z80-adapter.js` and
+        // `z80-debug.js` as imported by nothing — because their only importer,
+        // `z80-target-factory.js`, was one of the 129. Both are live and reached
+        // by dynamic import from the debug target factory.
+        //
+        // A comment two paragraphs up already said this check is what stops "a
+        // live module reported as dead, which is how a real fix nearly got
+        // deleted". It was skipping the half that does it.
+        if (!existsSync(built)) { absent.push(rel); continue; }
         if (readFileSync(f, 'utf8') !== readFileSync(built, 'utf8')) stale.push(rel);
     }
-    return stale;
+    return {stale, absent};
 }
 
 test('the integrated tree is current', {
     skip: existsSync(builtSrc) ? false :
         'packages/scratch-gui not integrated — run `npm run integrate` first'
 }, () => {
-    const stale = staleIntegratedFiles();
+    const {stale, absent} = staleIntegratedFiles();
+    assert.deepEqual(absent, [],
+        `${absent.length} overlay module(s) are NOT IN the integrated packages/ tree:\n    ` +
+        `${absent.slice(0, 12).join('\n    ')}` +
+        `${absent.length > 12 ? `\n    ... and ${absent.length - 12} more` : ''}\n\n` +
+        `Run \`npm run integrate\`. Until then the dead-module check below builds its\n` +
+        `importer corpus from a tree missing these files — so anything imported ONLY by\n` +
+        `one of them reads as imported by nothing. That is not a weaker version of the\n` +
+        `staleness below; it is the form that actually produces a false "dead" verdict.`);
     assert.deepEqual(stale, [],
         `${stale.length} file(s) differ between overlay/ and the integrated ` +
         `packages/ tree:\n    ${stale.join('\n    ')}\n\n` +
@@ -315,6 +342,29 @@ test('every overlay module is imported by something', {
     skip: existsSync(builtSrc) ? false :
         'packages/scratch-gui not integrated — run `npm run integrate` first'
 }, (t) => {
+    // A CHECK WHOSE CORPUS IS INCOMPLETE MUST NOT ANSWER.
+    //
+    // The importer corpus is the INTEGRATED tree. A module that exists in
+    // overlay/ and has not been integrated is a missing importer, so anything
+    // only it imports reads as "imported by nothing" — a false accusation
+    // against live code, and the loudest one this repository can make.
+    //
+    // Measured in a worktree: 129 modules absent, and this reported
+    // `lib/bw-board/z80-adapter.js` and `z80-debug.js` as dead. Both are reached
+    // by dynamic import from `z80-target-factory.js` — which was one of the 129.
+    // In CI the integrate step runs and the count is zero, so nothing changes
+    // there; locally the check now says what it cannot know instead of guessing.
+    //
+    // SKIPPED, NOT PASSED, and by name with the count: a silent skip here would
+    // be the same failure one layer over.
+    const {absent} = staleIntegratedFiles();
+    if (absent.length) {
+        t.diagnostic(`SKIPPED, NOT PASSED: ${absent.length} overlay module(s) are not in the `
+            + 'integrated tree, so the importer corpus is incomplete and any "dead" verdict '
+            + 'would be unsafe. Run `npm run integrate`.');
+        t.skip(`importer corpus incomplete — ${absent.length} overlay module(s) not integrated`);
+        return;
+    }
     const referenced = referencedBasenames();
 
     const { dead, notIntegrated } = scanOverlay(overlaySrc, builtSrc, referenced);
