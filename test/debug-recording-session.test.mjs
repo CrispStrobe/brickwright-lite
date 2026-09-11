@@ -93,23 +93,73 @@ test('target checkpoint and restore refusals remain refusals at the session boun
     });
 });
 
-test('target input subscription records only while active and returns recorder refusal', () => {
-    let listener = null;
+test('target input subscription wires both hooks: the TELL records, the ASK admits', () => {
+    // TWO HOOKS, NOT A RETURN VALUE. This used to assert the veto through the
+    // TELL's return -- `true` while inactive, the recorder's refusal while
+    // active -- because the bridge published before applying. The converged
+    // bridge publishes AFTER acceptance and ignores that return, so a refusal
+    // delivered there would arrive once the machine already had the input.
+    // The veto moved to `onDebugInputAdmission`; both are registered here, and
+    // this checks that BOTH were wired, because a subscription that wires only
+    // the TELL loses the guarantee silently.
+    let tell = null;
+    let ask = null;
     let active = false;
-    const seen = [];
-    const target = {onDebugInput: cb => { listener = cb; return () => { listener = null; }; }};
+    const recorded = [];
+    const target = {
+        onDebugInput: cb => { tell = cb; return () => { tell = null; }; },
+        onDebugInputAdmission: cb => { ask = cb; return () => { ask = null; }; }
+    };
     const session = {
         status: () => ({active}),
-        appendInput: input => { seen.push(input); return {accepted: false, code: 'budget'}; }
+        appendInput: input => { recorded.push(input); return {accepted: true}; },
+        wouldAcceptInput: () => ({accepted: false, code: 'budget'})
     };
     const unsubscribe = subscribeDebugTargetInputs(target, session);
-    assert.equal(listener({producer: 'key'}), true);
-    assert.deepEqual(seen, []);
+    assert.equal(typeof tell, 'function', 'the TELL was registered');
+    assert.equal(typeof ask, 'function', 'the ASK was registered');
+
+    // INACTIVE: nothing is recorded, and the ASK admits everything -- there is
+    // nothing a session that is not recording could fail to record. Asserted
+    // rather than assumed, because an ASK that always accepts and an ASK that
+    // is never consulted look identical from here.
+    tell({producer: 'key'});
+    assert.deepEqual(recorded, [], 'an inactive session records nothing');
+    assert.deepEqual(ask({producer: 'key'}), {accepted: true},
+        'an inactive session admits everything');
+
+    // ACTIVE, DRIVEN EXPLICITLY: now the ASK must carry the recorder's refusal.
     active = true;
-    assert.deepEqual(listener({producer: 'key'}), {accepted: false, code: 'budget'});
-    assert.deepEqual(seen, [{producer: 'key'}]);
+    assert.deepEqual(ask({producer: 'key'}), {accepted: false, code: 'budget'},
+        'the veto is the recorder\'s own verdict, delegated');
+    // And the TELL still records, ignoring any return value it might have had.
+    tell({producer: 'key'});
+    assert.deepEqual(recorded, [{producer: 'key'}], 'the TELL records while active');
+
     unsubscribe();
-    assert.equal(listener, null);
+    assert.equal(tell, null, 'the TELL was unsubscribed');
+    assert.equal(ask, null, 'and so was the ASK -- one unsubscribe releases both');
+});
+
+test('a target with no ASK hook degrades to fire-and-forget rather than throwing', () => {
+    // The structural half of the contract: a target that cannot veto still
+    // subscribes, so a caller can ask `canVetoDebugInput` whether the
+    // guarantee holds instead of discovering it from a throw.
+    let tell = null;
+    const recorded = [];
+    const target = {onDebugInput: cb => { tell = cb; return () => { tell = null; }; }};
+    const session = {
+        status: () => ({active: true}),
+        appendInput: input => { recorded.push(input); return {accepted: true}; },
+        wouldAcceptInput: () => ({accepted: false, code: 'budget'})
+    };
+    const unsubscribe = subscribeDebugTargetInputs(target, session);
+    assert.equal(typeof unsubscribe, 'function', 'the subscription still takes');
+    tell({producer: 'key'});
+    assert.deepEqual(recorded, [{producer: 'key'}],
+        'and the TELL still records -- the missing veto withholds nothing');
+    unsubscribe();
+    assert.equal(tell, null);
 });
 
 test('optional host state is captured separately and committed after target restore', () => {

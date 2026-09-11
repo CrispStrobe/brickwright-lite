@@ -73,13 +73,30 @@ const TARGETS = {
 for (const [name, spec] of Object.entries(TARGETS)) {
   test(`${name}: the table covers every producer the source handles`, () => {
     // Self-maintaining. Without this the table quietly describes an older
-    // switch and a producer added later is never driven here at all.
+    // dispatch and a producer added later is never driven here at all.
+    //
+    // SHAPE-AGNOSTIC ON PURPOSE. This scanned `case '<prefix>.x':` only, and the
+    // convergence replaced the z80 target's switch with `if (input?.producer ===
+    // '<prefix>.x')` chains -- so the scan found NOTHING while all three
+    // producers were still handled, and the gate failed for its own syntax
+    // rather than for anything about the target. The two legs now dispatch
+    // differently from each other, so matching one spelling makes a
+    // parameterised gate silently leg-specific.
+    //
+    // Both forms are matched, and the anti-vacuity check comes FIRST: an empty
+    // scan compared against an empty table would agree, and a gate whose
+    // pattern has rotted must say so rather than pass.
     const src = readFileSync(new URL(`../${SRC}/${spec.file}`, import.meta.url), 'utf8');
-    const producers = [...new Set(
-      [...src.matchAll(new RegExp(`case '(${spec.prefix}\\.[a-z]+)':`, 'g'))].map(m => m[1]))];
+    const producers = [...new Set([
+      ...[...src.matchAll(new RegExp(`case '(${spec.prefix}\\.[a-z]+)':`, 'g'))].map(m => m[1]),
+      ...[...src.matchAll(new RegExp(`producer === '(${spec.prefix}\\.[a-z]+)'`, 'g'))].map(m => m[1])
+    ])];
+    assert.ok(producers.length >= 3,
+      `the dispatch scan found only ${producers.length} producers in ${spec.file}. Either the `
+      + 'target really handles fewer than three, or this pattern no longer matches how it '
+      + 'dispatches -- check that before touching the table.');
     assert.deepEqual(producers.sort(), Object.keys(spec.valid).sort(),
       'a producer with no valid payload here is a producer this test does not check');
-    assert.ok(producers.length >= 3, `the scan found only ${producers.length}`);
   });
 
   test(`${name}: a board that cannot take an input REFUSES, naming the hardware`, () => {
