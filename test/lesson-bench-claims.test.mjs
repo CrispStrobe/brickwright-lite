@@ -56,7 +56,7 @@ test('instrument: the device registry is populated before any board is built', a
     assert.equal(typeof BoardImpl, 'function');
     const {getDevice, registeredKinds} = await import(path.join(
         path.resolve(import.meta.dirname, '..'),
-        'overlay/scratch-gui/src/lib/bw-board/devices.js'));
+        'node_modules/bw-board/src/devices.js'));
     // dc_motor and switch come from registerAllDevices(); with an empty registry
     // pc26-motor-clamp solves to a bench with no motor and reads as "0 V, fine".
     // (`npn` is deliberately NOT checked: it is a BUILTIN element kind stamped
@@ -362,7 +362,7 @@ test('starter-circuit-path: the edits its checkpoint asks for now reach the less
     // producer had to exist.
     const {Circuit} = await boot();
     const root = path.resolve(import.meta.dirname, '..');
-    const cui = path.join(root, 'overlay/scratch-gui/src/lib/bw-circuit-ui');
+    const cui = path.join(root, 'node_modules/bw-circuit-ui/src');
     const {circuitToDeclarations} = await import(path.join(cui, 'model/declarations.js'));
     const {circuitSignature} = await import(path.join(cui, 'model/circuit-signature.js'));
     const raw = JSON.parse(readFileSync(path.join(EXAMPLES, circuitPathFor('47-battery-led')), 'utf8'));
@@ -409,6 +409,6 @@ test('instrument-voltage-divider: the midpoint is exactly what the formula predi
     // the meter part is filtered out of the engine netlist before the solve.
     const {getMeterReading} = await import(path.join(
         path.resolve(import.meta.dirname, '..'),
-        'overlay/scratch-gui/src/lib/bw-circuit-ui/model/meter-reading.js'));
+        'node_modules/bw-circuit-ui/src/model/meter-reading.js'));
     assert.equal(typeof getMeterReading, 'function');
 });

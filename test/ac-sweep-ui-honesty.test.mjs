@@ -4,8 +4,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-import { BoardImpl } from '../overlay/scratch-gui/src/lib/bw-board/board.js';
-import { createSweepRun, netlistOf } from '../overlay/scratch-gui/src/lib/bw-circuit-ui/model/sweep-protocol.js';
+import { BoardImpl } from 'bw-board/board.js';
+import { createSweepRun, netlistOf } from 'bw-circuit-ui/model/sweep-protocol.js';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
@@ -58,8 +58,8 @@ describe('the vendored analytical AC contract reaches the UI', () => {
     // are deliberately AIMED AT THE NEW TRUTH rather than merely renamed: a
     // one-sided control passing under a two-sided name would be the same defect
     // wearing this gate's own id.
-    const panel = readFileSync(path.join(root, 'overlay/scratch-gui/src/lib/bw-circuit-ui/components/SweepPanel.jsx'), 'utf8');
-    const readout = readFileSync(path.join(root, 'overlay/scratch-gui/src/lib/bw-circuit-ui/model/sweep-readout.js'), 'utf8');
+    const panel = readFileSync(path.join(root, 'node_modules/bw-circuit-ui/src/components/SweepPanel.jsx'), 'utf8');
+    const readout = readFileSync(path.join(root, 'node_modules/bw-circuit-ui/src/model/sweep-readout.js'), 'utf8');
     assert.match(panel, /data-testid="bw-sweep-region-warning"/);
     // The scope method keeps a STABLE identity through the data-driven METHODS
     // array -- `data-testid={m.testid}` -- so the id survived the redesign even

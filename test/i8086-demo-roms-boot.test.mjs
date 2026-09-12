@@ -22,7 +22,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import * as MACHINE from '../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js';
+import * as MACHINE from 'bw-board/i8086-machine.js';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const ROMS = join(repo, 'overlay', 'scratch-gui', 'static', 'roms');

@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import {BoardImpl} from '../overlay/scratch-gui/src/lib/bw-board/board.js';
-import {registerTier2Parts} from '../overlay/scratch-gui/src/lib/bw-board/devices/tier2-parts.js';
-import {registerMiscParts} from '../overlay/scratch-gui/src/lib/bw-board/devices/misc-parts.js';
-import {M74C922} from '../overlay/scratch-gui/src/lib/bw-board/m74c922.js';
+import {BoardImpl} from 'bw-board/board.js';
+import {registerTier2Parts} from 'bw-board/devices/tier2-parts.js';
+import {registerMiscParts} from 'bw-board/devices/misc-parts.js';
+import {M74C922} from 'bw-board/m74c922.js';
 
 registerMiscParts();
 registerTier2Parts();

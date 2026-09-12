@@ -30,7 +30,7 @@ import {SOURCE, INTEGRATED} from './helpers/bw-integrated.mjs';
 import {
     ensureFirmware, parseUF2, createPicoMachine, CACHED_UF2, FIRMWARE
 } from '../scripts/probe-pico-micropython.mjs';
-import {ROM_FUNC} from '../overlay/scratch-gui/src/lib/bw-board/rp2040-bootrom.js';
+import {ROM_FUNC} from 'bw-board/rp2040-bootrom.js';
 
 const SKIP = !existsSync(join(INTEGRATED, 'node_modules', 'rp2040js'))
     ? 'needs rp2040js from the integrated tree (npm run integrate, then npm install in packages/scratch-gui)'

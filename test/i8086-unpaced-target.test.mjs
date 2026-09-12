@@ -1,8 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {measureUnpacedTarget} from '../scripts/lib/i8086-unpaced-target.mjs';
-import {I8086Machine} from '../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js';
-import {createI8086DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/i8086-debug.js';
+import {I8086Machine} from 'bw-board/i8086-machine.js';
+import {createI8086DebugTarget} from 'bw-board/i8086-debug.js';
 
 test('unpaced production probe measures real progress and rejects an idle substitute', () => {
     const machine = new I8086Machine({clockHz: 5e6,

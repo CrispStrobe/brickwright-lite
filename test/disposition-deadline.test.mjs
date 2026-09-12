@@ -52,7 +52,7 @@ const LEDGERS = () => readdirSync(DOCS_DIR)
 const BUDGET_DAYS = 30;
 
 // A liteBehind DEBT is cheaper to pay than an `upstream` intention — running the
-// sync is a local operation (`npm run sync:bwboard` then review), not an upstream
+// sync is a local operation (`npm run sync:sb3creator` then review), not an upstream
 // round-trip that has to land in another repo and come back on a pin bump. So its
 // budget is HALF: a debt that has watched two pin bumps go past (the pin moves
 // roughly weekly, so ~14 days) without being synced is overdue, where an upstream
@@ -112,9 +112,10 @@ test.describe('a disposition has a deadline', () => {
         // Species 1: every assertion below is satisfied by an empty list. A
         // renamed document, a changed fence or a JSON parse failure would all
         // report a clean bill of health for a ledger nobody looked at.
-        assert.ok(ledgers.length >= 3,
-            `only ${ledgers.length} VENDOR-DIVERGENCE-*.md found in docs/ — there are three `
-            + 'vendored upstreams and each has a ledger; a scan over fewer is a scan over a '
+        assert.ok(ledgers.length >= 1,
+            `only ${ledgers.length} VENDOR-DIVERGENCE-*.md found in docs/ — sb3-creator is `
+            + 'still vendored by copy and has a ledger (bw-board and bw-circuit-ui are npm '
+            + 'packages since 2026-09-12 and have none); a scan over zero is a scan over a '
             + 'population somebody handed it');
         // THE THIRD FLOOR TO RETIRE ITSELF AT ZERO, and the pattern is worth naming
         // because it is not a coincidence: `>= 10 entries` and `some entry is
@@ -275,7 +276,7 @@ test.describe('a disposition has a deadline', () => {
         assert.deepEqual(overdue, [],
             '\n  A liteBehind DEBT HAS NOT BEEN SYNCED DOWN:\n    ' + overdue.join('\n    ')
             + `\n\n  A debt is not an intention: the remedy is one thing, run the sync\n`
-            + '  (`npm run sync:bwboard`), reconcile, and retire the entry. If it turns out\n'
+            + '  (`npm run sync:sb3creator`), reconcile, and retire the entry. If it turns out\n'
             + '  lite means to keep the difference, it was never liteBehind — move it to a\n'
             + '  `stays` liteOnly entry with the reason.\n');
     });

@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
-import {I8086Machine, BLINK8086} from '../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js';
-import {createI8086DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/i8086-debug.js';
+import {I8086Machine, BLINK8086} from 'bw-board/i8086-machine.js';
+import {createI8086DebugTarget} from 'bw-board/i8086-debug.js';
 import {createDebugEventStream} from '../overlay/scratch-gui/src/lib/bw-debug/event-stream.js';
 import {createDebugRecorder} from '../overlay/scratch-gui/src/lib/bw-debug/recorder.js';
 import {createRecordingSession} from '../overlay/scratch-gui/src/lib/bw-debug/recording-session.js';
@@ -18,7 +18,7 @@ import {createInstructionReplayController} from '../overlay/scratch-gui/src/lib/
 // A test that is MORE correct than the code it covers is caught by nothing —
 // it does not fail and it does not lie. Importing the authority is what makes
 // the two the same rule.
-import {logicalTimeDomain} from '../overlay/scratch-gui/src/lib/bw-board/instruction-debug-events.js';
+import {logicalTimeDomain} from 'bw-board/instruction-debug-events.js';
 
 
 const loadCoordinator = async () => {

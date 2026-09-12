@@ -12,7 +12,7 @@ test('eater6502-bench circuit extracts without contention', async () => {
     assert.ok(existsSync(circuitPath), 'circuit.json missing');
     const circuit = JSON.parse(readFileSync(circuitPath, 'utf8'));
     const { extract6502Machine } = await import(
-        '../overlay/scratch-gui/src/lib/bw-board/m6502-extract.js'
+        '../node_modules/bw-board/src/m6502-extract.js'
     );
     const r = extract6502Machine(circuit);
     assert.ok(r.ok, `expected ok, got reasons: ${r.reasons.join('; ')}`);
@@ -34,7 +34,7 @@ test('eater6502-contention-bug circuit produces a contention error', async () =>
     assert.ok(existsSync(circuitPath), 'circuit.json missing');
     const circuit = JSON.parse(readFileSync(circuitPath, 'utf8'));
     const { extract6502Machine } = await import(
-        '../overlay/scratch-gui/src/lib/bw-board/m6502-extract.js'
+        '../node_modules/bw-board/src/m6502-extract.js'
     );
     const r = extract6502Machine(circuit);
     assert.equal(r.ok, false, 'expected the contention bug to be caught');

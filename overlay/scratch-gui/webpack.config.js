@@ -297,8 +297,16 @@ cfgs.forEach(c => {
     const babelRule = (c.module.rules || []).find(r => r.loader === 'babel-loader');
     if (babelRule) {
         const origExclude = babelRule.exclude || [];
+        // The base rule (scratch-webpack-configuration) excludes node_modules EXCEPT paths
+        // containing "scratch". bw-board and bw-circuit-ui are our own upstream repos taken
+        // as git-sha packages (vendor-pins.json -> integrate.mjs -> package.json), and
+        // bw-circuit-ui is JSX: without this `not:` term the designer does not parse at
+        // all, and the engine ships without preset-env. Same treatment as scratch-*.
+        const OWN_PACKAGES = /node_modules[\\/](bw-board|bw-circuit-ui)[\\/]/;
         babelRule.exclude = [
-            ...origExclude,
+            ...origExclude.map(e => (e && Array.isArray(e.and) && Array.isArray(e.not))
+                ? {...e, not: [...e.not, OWN_PACKAGES]}
+                : e),
             /scratch-blocks[\\/]blockly_compressed/
         ];
     }

@@ -44,11 +44,11 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '..');
 const ROM = join(repo, 'overlay/scratch-gui/static/roms/i8086-bios.bin');
 const SOURCE = join(repo, 'overlay/scratch-gui/static/roms/i8086-bios.asm');
-const ASSEMBLER = join(repo, 'overlay/scratch-gui/src/lib/bw-board/i8086-asm.js');
+const ASSEMBLER = join(repo, 'node_modules/bw-board/src/i8086-asm.js');
 const MANIFEST = join(repo, 'overlay/scratch-gui/static/roms/i8086-bios.provenance.json');
 
 const REL_SOURCE = 'overlay/scratch-gui/static/roms/i8086-bios.asm  (bw-board rom/bios.asm)';
-const REL_ASSEMBLER = 'overlay/scratch-gui/src/lib/bw-board/i8086-asm.js';
+const REL_ASSEMBLER = 'node_modules/bw-board/src/i8086-asm.js';
 
 const sha256 = (buf) => createHash('sha256').update(buf).digest('hex');
 

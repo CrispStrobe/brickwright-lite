@@ -22,7 +22,7 @@ import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const WASM_JS = path.join(ROOT, 'overlay/scratch-gui/src/lib/emu8051/emu8051.js');
-const DEBUG_JS = path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-board/emu8051-debug.js');
+const DEBUG_JS = path.join(ROOT, 'node_modules/bw-board/src/emu8051-debug.js');
 
 const have = existsSync(WASM_JS) && existsSync(DEBUG_JS);
 
@@ -142,9 +142,9 @@ test('the engines that cannot step a cycle refuse by name, and say why', async (
     // The honest-refusal half of D25. These four cores execute a whole
     // instruction per call, so a cycle button on them would be the D5 lie.
     const {M6502Machine, EATER6502} = await import(
-        path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-board/m6502-machine.js'));
+        path.join(ROOT, 'node_modules/bw-board/src/m6502-machine.js'));
     const {createM6502DebugTarget} = await import(
-        path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-board/m6502-debug.js'));
+        path.join(ROOT, 'node_modules/bw-board/src/m6502-debug.js'));
 
     const m = new M6502Machine(EATER6502, {});
     m.loadRom([0xa9, 0x01, 0xdb]);

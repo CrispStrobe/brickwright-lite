@@ -15,7 +15,7 @@ import { dirname, join } from 'node:path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const exDir = join(__dirname, '../overlay/scratch-gui/examples');
 
-import { ControllerPanel, WIDGET_TYPES } from '../overlay/scratch-gui/src/lib/bw-board/controller.js';
+import { ControllerPanel, WIDGET_TYPES } from 'bw-board/controller.js';
 
 // mono_lcd and rgb_light may not be on main yet — check availability
 const HAS_MONO_LCD = !!WIDGET_TYPES.MONO_LCD;

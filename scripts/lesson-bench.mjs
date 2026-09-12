@@ -24,8 +24,8 @@ import {readFileSync, readdirSync, existsSync, realpathSync} from 'node:fs';
 import path from 'node:path';
 
 const root = path.resolve(import.meta.dirname, '..');
-const cui = path.join(root, 'overlay/scratch-gui/src/lib/bw-circuit-ui');
-const bwb = path.join(root, 'overlay/scratch-gui/src/lib/bw-board');
+const cui = path.join(root, 'node_modules/bw-circuit-ui/src');
+const bwb = path.join(root, 'node_modules/bw-board/src');
 export const EXAMPLES = path.join(root, 'overlay/scratch-gui/examples');
 
 /**

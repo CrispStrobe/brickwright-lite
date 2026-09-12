@@ -62,8 +62,8 @@ test('no ghost pins remain in STC12-specific vendored source', async () => {
     const { resolve } = await import('node:path');
 
     const dirs = [
-        'overlay/scratch-gui/src/lib/bw-circuit-ui',
-        'overlay/scratch-gui/src/lib/bw-board'
+        'node_modules/bw-circuit-ui/src',
+        'node_modules/bw-board/src'
     ];
 
     for (const dir of dirs) {

@@ -1,7 +1,7 @@
-import {I8086Machine} from '../../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js';
-import {DOSBOX8086, createDos8086} from '../../overlay/scratch-gui/src/lib/bw-board/i8086-dos.js';
-import {assemble} from '../../overlay/scratch-gui/src/lib/bw-board/i8086-asm.js';
-import {EMU8086_INC, createEmu8086} from '../../overlay/scratch-gui/src/lib/bw-board/i8086-emu8086.js';
+import {I8086Machine} from 'bw-board/i8086-machine.js';
+import {DOSBOX8086, createDos8086} from 'bw-board/i8086-dos.js';
+import {assemble} from 'bw-board/i8086-asm.js';
+import {EMU8086_INC, createEmu8086} from 'bw-board/i8086-emu8086.js';
 
 export function setupCorpus(source, name) {
     // These corpus programs only set AH=4Ch. Bubble/insertion leave AL='$';

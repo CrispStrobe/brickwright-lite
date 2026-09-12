@@ -4,8 +4,8 @@ import {readFileSync, readdirSync} from 'node:fs';
 import path from 'node:path';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-const ROOTS = ['overlay/scratch-gui/src/lib/bw-circuit-ui',
-    'packages/scratch-gui/src/lib/bw-circuit-ui'];
+const ROOTS = ['node_modules/bw-circuit-ui/src',
+    'packages/scratch-gui/node_modules/bw-circuit-ui/src'];
 const OLD = 'hobby_gearmotor';
 
 const walk = dir => readdirSync(dir, {withFileTypes: true}).flatMap(entry => {

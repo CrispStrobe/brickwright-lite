@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {I8086Machine} from '../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js';
-import {createI8086DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/i8086-debug.js';
+import {I8086Machine} from 'bw-board/i8086-machine.js';
+import {createI8086DebugTarget} from 'bw-board/i8086-debug.js';
 import {normalizeDebugEvent} from '../overlay/scratch-gui/src/lib/bw-debug/event-stream.js';
 import {normalizeDebugCapabilities} from '../overlay/scratch-gui/src/lib/bw-debug/debug-capabilities.js';
 

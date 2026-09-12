@@ -32,9 +32,9 @@
  * @module
  */
 
-import {parseIntelHex} from '../bw-board/intel-hex.js';
-import {createAvr8jsAdapter} from '../bw-board/avr8js-adapter.js';
-import {createSSD1306SPI} from '../bw-board/devices/ssd1306.js';
+import {parseIntelHex} from 'bw-board/intel-hex.js';
+import {createAvr8jsAdapter} from 'bw-board/avr8js-adapter.js';
+import {createSSD1306SPI} from 'bw-board/devices/ssd1306.js';
 
 /** PLLCSR, in data space. Bit 1 enables the USB PLL, bit 0 says it locked. */
 const PLLCSR = 0x49;

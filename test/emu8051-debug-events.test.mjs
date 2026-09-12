@@ -6,7 +6,7 @@ import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const WASM_JS = path.join(ROOT, 'overlay/scratch-gui/src/lib/emu8051/emu8051.js');
-const DEBUG_JS = path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-board/emu8051-debug.js');
+const DEBUG_JS = path.join(ROOT, 'node_modules/bw-board/src/emu8051-debug.js');
 /**
  * THE OPCODE LENGTH TABLE IS INJECTED HERE BECAUSE PRODUCTION INJECTS IT.
  *

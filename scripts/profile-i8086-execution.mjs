@@ -40,7 +40,7 @@ const server = createServer(async (req, res) => {
         const sourceRoot = isHarness ? root : roots[kind];
         let path = resolve(sourceRoot, ...parts);
         if (!path.startsWith(sourceRoot + sep)) { res.writeHead(403).end(); return; }
-        if (kind === 'candidate' && parts.slice(0, -1).join('/') === 'overlay/scratch-gui/src/lib/bw-board' &&
+        if (kind === 'candidate' && parts.slice(0, -1).join('/') === 'node_modules/bw-board/src' &&
             engineFiles.includes(parts.at(-1))) path = resolve(engineRoot, 'src', parts.at(-1));
         res.setHeader('Content-Type', 'text/javascript');
         res.end(await readFile(path));

@@ -1,6 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import {INTRO_L10N, parseIntro, renderMarkdown} from '../../lib/bw-circuit-ui/intro-doc.jsx';
+import {INTRO_L10N, parseIntro, renderMarkdown} from 'bw-circuit-ui/intro-doc.jsx';
 
 /**
  * The (i) beside the project name, when that name came from an example.

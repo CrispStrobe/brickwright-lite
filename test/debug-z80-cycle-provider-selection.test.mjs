@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createZ80Target} from '../overlay/scratch-gui/src/lib/bw-board/z80-target-factory.js';
+import {createZ80Target} from 'bw-board/z80-target-factory.js';
 import {createFlooohZ80CycleProvider, FLOOOH_Z80_PINS, FLOOOH_Z80_STATE_FIELDS}
-  from '../overlay/scratch-gui/src/lib/bw-board/floooh-z80-cycle-provider.js';
+  from 'bw-board/floooh-z80-cycle-provider.js';
 
 const pins = value => Object.fromEntries(FLOOOH_Z80_PINS.map(name =>
   [name, ['m1', 'mreq', 'iorq', 'rd', 'wr', 'rfsh', 'halt', 'wait', 'int', 'nmi'].includes(name)

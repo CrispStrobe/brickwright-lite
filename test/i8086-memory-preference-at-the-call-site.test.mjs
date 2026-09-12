@@ -15,7 +15,7 @@ import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 import {withI8086MemoryPreference, setI8086MemoryMode}
     from '../overlay/scratch-gui/src/lib/bw-i8086-preferences.js';
-import {BREADBOARD8086} from '../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js';
+import {BREADBOARD8086} from 'bw-board/i8086-machine.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const runner = (tree) => readFileSync(

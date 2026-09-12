@@ -2,9 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {I8086Machine, BLINK8086} from
-    '../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js';
+    'bw-board/i8086-machine.js';
 import {createI8086DebugTarget} from
-    '../overlay/scratch-gui/src/lib/bw-board/i8086-debug.js';
+    'bw-board/i8086-debug.js';
 import {createInstructionAtomicRunToCoordinator, createRunToCoordinator} from
     '../overlay/scratch-gui/src/lib/bw-debug/run-to.js';
 

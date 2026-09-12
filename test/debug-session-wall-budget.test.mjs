@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createDebugSession} from '../overlay/scratch-gui/src/lib/bw-board/debug-session.js';
+import {createDebugSession} from 'bw-board/debug-session.js';
 
 const fake = (rate = 1_000_000) => {
     let sim = 0n;

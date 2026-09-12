@@ -13,8 +13,8 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ControllerPanel } from '../overlay/scratch-gui/src/lib/bw-board/controller.js';
-import { bindPanelToVariables } from '../overlay/scratch-gui/src/lib/bw-board/controller-binding.js';
+import { ControllerPanel } from 'bw-board/controller.js';
+import { bindPanelToVariables } from 'bw-board/controller-binding.js';
 
 function mockVM(vars) {
     const variables = {};

@@ -13,7 +13,7 @@ import { dirname, join } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-import { ControllerPanel, WIDGET_TYPES } from '../overlay/scratch-gui/src/lib/bw-board/controller.js';
+import { ControllerPanel, WIDGET_TYPES } from 'bw-board/controller.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 

@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {I8086Machine, BLINK8086, TIERA8088} from '../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js';
-import {createI8086DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/i8086-debug.js';
-import {createI8086Adapter} from '../overlay/scratch-gui/src/lib/bw-board/i8086-adapter.js';
+import {I8086Machine, BLINK8086, TIERA8088} from 'bw-board/i8086-machine.js';
+import {createI8086DebugTarget} from 'bw-board/i8086-debug.js';
+import {createI8086Adapter} from 'bw-board/i8086-adapter.js';
 import {applyRecordedTargetInput} from '../overlay/scratch-gui/src/lib/bw-debug/debug-runner.js';
 
 test('recorder gate persists a valid input before applying it and blocks logging failure', () => {

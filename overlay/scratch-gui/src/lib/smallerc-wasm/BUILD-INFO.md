@@ -174,7 +174,7 @@ This module turns C into **assembly text** and stops. It does not assemble,
 link, or produce a binary.
 
 As of 2026-09-04 **nothing in the app imports it**, deliberately. The assembler
-that would consume the output, `lib/bw-board/i8086-asm.js`, is MASM-dialect: it
+that would consume the output, `bw-board/i8086-asm.js` (the engine package), is MASM-dialect: it
 rejects SmallerC's output on line 1 —
 
     8086 asm (line 1): "BITS" is not an instruction, directive or macro this assembler knows
@@ -182,7 +182,7 @@ rejects SmallerC's output on line 1 —
 and `SECTION`, `RESB` and NASM's `align`/`alignb` are likewise unknown to it.
 So the compiler is correct and tested on its own terms and is **not reachable
 end-to-end**. Closing that gap needs a NASM front end in `i8086-asm.js`, which
-lives in the **vendored** `bw-board/` tree that `npm run sync:bwboard`
+lives in the `bw-board` package that `vendor-pins.json` pins and `npm install`
 overwrites wholesale — it has to land upstream, not here. ROADMAP §4.6, §3.8.2b.
 
 ## Licence

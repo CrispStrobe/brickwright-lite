@@ -1,6 +1,6 @@
 // Isolated, fixed-input benchmark. No project, device, DOM or debugger access.
-import {I8086} from '../bw-board/i8086.js';
-import {assemble} from '../bw-board/i8086-asm.js';
+import {I8086} from 'bw-board/i8086.js';
+import {assemble} from 'bw-board/i8086-asm.js';
 import {createRegisterBlockExperiment} from './register-block-experiment.js';
 
 export const WORKLOADS = Object.freeze({

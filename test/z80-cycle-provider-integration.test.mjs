@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createFlooohZ80CycleProvider, FLOOOH_Z80_PINS, FLOOOH_Z80_STATE_FIELDS}
-  from '../overlay/scratch-gui/src/lib/bw-board/floooh-z80-cycle-provider.js';
+  from 'bw-board/floooh-z80-cycle-provider.js';
 import {createZ80CycleDebugTarget}
-  from '../overlay/scratch-gui/src/lib/bw-board/z80-cycle-debug.js';
+  from 'bw-board/z80-cycle-debug.js';
 import {createDebugTarget}
-  from '../overlay/scratch-gui/src/lib/bw-board/debug-target-factory.js';
+  from 'bw-board/debug-target-factory.js';
 
 const pins = value => Object.fromEntries(FLOOOH_Z80_PINS.map((name, i) => [name, name === 'data' ? value : i]));
 const state = value => Object.fromEntries(FLOOOH_Z80_STATE_FIELDS.map((name, i) =>

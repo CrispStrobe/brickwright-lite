@@ -111,7 +111,18 @@ export const vendoredTrees = (root, owner) => {
         const v = head.match(/VENDORED from ([\w.-]+)\/([\w.-]+)/i);
         if (v) out.push({kind: 'vendored-file', name: v[2], upstreamOwner: v[1], evidence: path.relative(root, f).replace(/\\/g, '/'), licence: null, holder: null});
     }
-    for (const [name] of Object.entries(pins)) if (!out.some(o => o.name === name || o.name === name.replace(/-flasher$/, ''))) out.push({kind: 'vendored-tree', name, licence: null, holder: null, evidence: 'vendor-pins.json', pinned: true});
+    for (const [name] of Object.entries(pins)) {
+        if (out.some(o => o.name === name || o.name === name.replace(/-flasher$/, ''))) continue;
+        // A pinned upstream taken as an npm PACKAGE (bw-board, bw-circuit-ui since
+        // 2026-09-12) ships its LICENSE inside node_modules, not under lib/.
+        const pkgLicence = path.join(root, 'node_modules', name, 'LICENSE');
+        if (existsSync(pkgLicence)) {
+            const text = readFileSync(pkgLicence, 'utf8');
+            out.push({kind: 'vendored-tree', name, licence: licenceId(text), holder: holderOf(text), evidence: `node_modules/${name}/LICENSE`, pinned: true});
+            continue;
+        }
+        out.push({kind: 'vendored-tree', name, licence: null, holder: null, evidence: 'vendor-pins.json', pinned: true});
+    }
     for (const o of out) o.own = Boolean(owner) && (String(o.holder || '').includes(owner) || o.upstreamOwner === owner);
     return out;
 };

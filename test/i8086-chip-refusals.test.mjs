@@ -34,8 +34,8 @@ import assert from 'node:assert/strict';
 // EXPLAIN a contract and the wrong place to be its only machine-readable copy.
 // Lite pinned past it at 435599c and the literal list is gone. Three readers,
 // one list.
-import {I8086Machine, PCXT8086} from '../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js';
-import {ROW_FIELDS} from '../overlay/scratch-gui/src/lib/bw-board/chip-ledger.js';
+import {I8086Machine, PCXT8086} from 'bw-board/i8086-machine.js';
+import {ROW_FIELDS} from 'bw-board/chip-ledger.js';
 
 const machine = () => new I8086Machine(PCXT8086);
 

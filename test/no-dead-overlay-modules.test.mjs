@@ -83,10 +83,6 @@ const ALLOWED = new Map([
     ['lib/smallerc-wasm/dist/smlrpp.js', {roadmap: '4.6',
         reason: 'Emscripten output (the ucpp preprocessor), loaded the same way and executed by ' +
             'the same test. Verified 2026-09-04.'}],
-    ['lib/bw-circuit-ui/main.jsx', {roadmap: '4.3',
-        reason: 'bw-circuit-ui\'s own standalone demo entry point. Vendored wholesale by ' +
-            'sync-bw-circuit-ui.mjs, which copies the upstream src tree rather than ' +
-            'cherry-picking; unused here by design.'}]
 ]);
 
 /**
@@ -114,8 +110,6 @@ const KNOWN_DEAD = new Map([
     // deferred rather than pending (§3.2 pane-slots). The roadmap's rule for that
     // case is "delete the vendored file until its feature is real", and for a file
     // we wrote, deletion is a tool we actually have. git remembers it.
-    ['lib/bw-circuit-ui/model/demo-netlist.js', {roadmap: '4.3',
-        reason: 'Vendored; used only by bw-circuit-ui\'s standalone demo (main.jsx).'}],
     // export-png.js removed from KNOWN_DEAD: the lite export menu now imports it.
     // simulation.js removed from KNOWN_DEAD: CircuitDesigner.jsx has imported
     // demoPinScriptApplies from it since the bw-circuit-ui c276c0d bump. The
@@ -126,22 +120,12 @@ const KNOWN_DEAD = new Map([
     // right to fail; a bump that revives a module is exactly when this entry has
     // to go.
     // machine-extract.js removed from KNOWN_DEAD: now imported by upstream circuit-ui.
-    // bw-board vendored tree: device-specific modules synced for completeness, wired when
-    // the corresponding device target or debug view lands. Each is a leaf — nothing within
-    // the vendored tree imports it either; the sync copies the full src/ tree.
-    ['lib/bw-board/avr-peripherals.js', {roadmap: '4.4',
-        reason: 'Vendored; AVR peripheral extensions (SPI/I2C devices) — wired when AVR debug lands.'}],
-    ['lib/bw-board/face-live.js', {roadmap: '4.4',
-        reason: 'Vendored; live-mode face resolver — wired when tethered hardware lands.'}],
+    // bw-board and bw-circuit-ui entries left this list on 2026-09-12: both are npm
+    // packages now (vendor-pins.json -> package.json), so nothing of theirs is an
+    // overlay module and a package's unused files are its own business.
     // m6502-extract.js removed from KNOWN_DEAD: now imported by drc.js (bus extractor DRC rule).
-    ['lib/bw-board/m6507-machine.js', {roadmap: '4.4',
-        reason: 'Vendored; Atari 2600 / SBC6507 machine — future device target.'}],
     // m74c922.js removed from KNOWN_DEAD: tier2-parts registers its physical keypad model.
     // mc6845.js removed from KNOWN_DEAD: now imported by upstream bw-board (tilevga).
-    ['lib/bw-board/blinkenrocket-modem.js', {roadmap: '4.4',
-        reason: 'Vendored; blinkenrocket audio modem — wired when firmware upload lands.'}],
-    ['lib/bw-board/zx-tzx.js', {roadmap: '4.4',
-        reason: 'Vendored; ZX Spectrum tape format — wired when tape loading lands.'}],
     // vdu-decoder.js removed from KNOWN_DEAD: now imported by vdu-terminal.jsx (BBC BASIC VDU canvas).
     // z80-debug.js removed from KNOWN_DEAD: now imported by debug-target-factory (Z80 interactive target).
     // z80-extract.js removed from KNOWN_DEAD: now imported by drc.js (bus extractor DRC rule).
@@ -159,12 +143,6 @@ const KNOWN_DEAD = new Map([
     // i8086-emu8086.js removed 2026-09-08: the completed-program performance
     // corpus now imports it from scripts/lib/i8086-corpus-workload.mjs.
     // This is a real benchmark consumer, not a new editor runtime route.
-    ['lib/bw-board/i8088-biu.js', {roadmap: '4.4',
-        reason: 'Vendored; the experimental 8088 bus-timing predictor is exercised by '
-            + 'bw-board\'s cycle-model corpus, not by lite\'s instruction-stepped app.'}],
-    ['lib/bw-board/reseat-gate.js', {roadmap: '4.4',
-        reason: 'Vendored; a bw-board acceptance helper used to compare machines during '
-            + 'cross-family reseating. It is test infrastructure, not app runtime code.'}],
 ]);
 
 const SPEC = /from\s+['"]([^'"]+)['"]|import\(\s*(?:\/\*[^*]*\*\/\s*)?['"]([^'"]+)['"]|require\(\s*['"]([^'"]+)['"]/g;

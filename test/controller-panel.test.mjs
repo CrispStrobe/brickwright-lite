@@ -7,8 +7,8 @@ import { dirname, join } from 'node:path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Import the data-model modules (no DOM dependency)
-import { ControllerPanel, WIDGET_TYPES } from '../overlay/scratch-gui/src/lib/bw-board/controller.js';
-import { bindPanelToBoard, createControllerDriver } from '../overlay/scratch-gui/src/lib/bw-board/controller-binding.js';
+import { ControllerPanel, WIDGET_TYPES } from 'bw-board/controller.js';
+import { bindPanelToBoard, createControllerDriver } from 'bw-board/controller-binding.js';
 
 describe('ControllerPanel — joystick widget', () => {
 

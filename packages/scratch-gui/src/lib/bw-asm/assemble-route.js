@@ -154,7 +154,7 @@ export function cRouteFor (device) {
 export const ASM_DIALECTS = Object.freeze(['auto', 'masm', 'nasm']);
 
 export async function assembleLocal8086 (source, opts = {}) {
-    const mod = await import(/* webpackChunkName: "i8086-asm" */ '../bw-board/i8086-asm.js');
+    const mod = await import(/* webpackChunkName: "i8086-asm" */ 'bw-board/i8086-asm.js');
     const assemble = mod.assemble || mod.default;
     if (typeof assemble !== 'function') {
         throw new AsmRouteError(
@@ -531,7 +531,7 @@ export async function compileC8086 (cSource, seams = {}) {
     const asm = C_STARTUP + helpers + cleaned;
 
     const assemble = assembleLocal || (async (src) => {
-        const mod = await import(/* webpackChunkName: "i8086-asm" */ '../bw-board/i8086-asm.js');
+        const mod = await import(/* webpackChunkName: "i8086-asm" */ 'bw-board/i8086-asm.js');
         // `setcc: true` IS FOR COMPILER OUTPUT ONLY, and the assembler's
         // default is off for a reason worth repeating here. SmallerC lowers a
         // comparison used as a VALUE -- `return a >= 1;`, `int b = (a > 1);`,

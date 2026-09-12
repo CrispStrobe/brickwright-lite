@@ -233,66 +233,6 @@ jobs:
           fi
           echo "blocks.jsx: toolbox null-guard present (good)"
 
-      - name: Guard — the vendored overlay matches the commit it PINS
-        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
-        run: |
-          # WHAT THIS COMPARES, AND WHAT IT USED TO.
-          #
-          # It used to fetch the raw CDN at `<repo>/master/<file>` with a
-          # `main` fallback and compare the overlay against THAT. Three things
-          # were wrong with one line:
-          #
-          #   1. It named a MUTABLE ref. Upstream advancing made this warn, so
-          #      the warning meant "someone pushed", not "lite is broken" — and
-          #      a warning that fires for a non-problem is one nobody reads.
-          #   2. It read the RAW CDN, which caches branch URLs for minutes. A
-          #      run right after a push compares against the previous commit and
-          #      says "up to date" about a tree it did not see. That exact
-          #      mechanism vendored a stale bw-board on 2026-08-23.
-          #   3. `master || main` guessed the branch name, and a wrong guess
-          #      curls a 404 into `$upstream`, which this reads as "not
-          #      accessible (private repo?)" — a confident, well-formed, wrong
-          #      statement about why nothing was compared.
-          #
-          # The right comparand is what lite CLAIMS: vendor-pins.json. Fetched
-          # sha-addressed, so the CDN cannot lie about it, and a difference now
-          # means the overlay does not match its own pin — an integrity failure
-          # rather than news about upstream. Freshness-vs-HEAD is a separate
-          # question and it has its own workflow (vendor-freshness.yml, nightly).
-          #
-          # Still a warning, not a failure: vendor-freshness.yml is the blocking
-          # gate, and two red gates for one fact is how a real one gets muted.
-          mismatch=0
-          for pair in \
-            "bw-circuit-ui:CrispStrobe/bw-circuit-ui:src/index.js:overlay/scratch-gui/src/lib/bw-circuit-ui/index.js" \
-            "bw-board:CrispStrobe/bw-board:src/index.js:overlay/scratch-gui/src/lib/bw-board/index.js"; do
-            IFS=: read -r name repo remote local <<< "$pair"
-            if [ ! -f "$local" ]; then continue; fi
-            pin=$(jq -r --arg r "$name" '.[$r] // empty' vendor-pins.json)
-            case "$pin" in
-              [0-9a-f]*) [ ${#pin} -eq 40 ] || { echo "::error::vendor-pins.json pins $name to '$pin', which is not a 40-hex sha"; exit 1; } ;;
-              *) echo "::warning::$name has no pin in vendor-pins.json — nothing to compare against"; continue ;;
-            esac
-            upstream=$(curl -sf "https://raw.githubusercontent.com/$repo/$pin/$remote" || echo "")
-            if [ -z "$upstream" ]; then
-              # A sha-addressed 404 is NOT ambiguous the way the branch-name
-              # version was: the commit is unreachable, so say that.
-              echo "::warning::$name: $repo@$pin/$remote is not fetchable (private repo, or the pin names a commit that is gone)"
-              continue
-            fi
-            local_hash=$(sha256sum "$local" | cut -d' ' -f1)
-            # `echo` not `printf '%s'`: command substitution stripped the
-              # trailing newline curl delivered, and the file on disk has one.
-              remote_hash=$(echo "$upstream" | sha256sum | cut -d' ' -f1)
-            if [ "$local_hash" != "$remote_hash" ]; then
-              echo "::warning::$name overlay does NOT match its own pin $pin — re-run the sync, or correct vendor-pins.json"
-              mismatch=$((mismatch+1))
-            else
-              echo "$name: overlay matches pin $pin"
-            fi
-          done
-          echo "overlay-vs-pin mismatches: $mismatch"
-
       # --- tests ---
 
       # Milestone 0: the shipped example corpus must be proven to EXECUTE, and

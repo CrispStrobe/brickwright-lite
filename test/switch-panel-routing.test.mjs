@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(resolve(repo, p), 'utf8');
-const panel = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/SwitchPanel.jsx');
+const panel = read('node_modules/bw-circuit-ui/src/components/SwitchPanel.jsx');
 const debugPanel = read('overlay/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx');
 const runner = read('overlay/scratch-gui/src/lib/bw-debug/debug-runner.js');
 

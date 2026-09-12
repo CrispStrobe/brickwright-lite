@@ -1,9 +1,9 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {I8086} from '../overlay/scratch-gui/src/lib/bw-board/i8086.js';
-import {I8086Machine} from '../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js';
-import {DOSBOX8086} from '../overlay/scratch-gui/src/lib/bw-board/i8086-dos.js';
-import {createI8086DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/i8086-debug.js';
+import {I8086} from 'bw-board/i8086.js';
+import {I8086Machine} from 'bw-board/i8086-machine.js';
+import {DOSBOX8086} from 'bw-board/i8086-dos.js';
+import {createI8086DebugTarget} from 'bw-board/i8086-debug.js';
 
 test('the 8086 runner uses its boundary step without rounding away tiny budgets', () => {
     const machine = new I8086Machine(DOSBOX8086);

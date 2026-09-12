@@ -92,7 +92,12 @@ const BASELINE = {
     // six pre-existing sites in vendor-absent-by-design and
     // vendor-source-guard; a missing Git still throws rather than passing an
     // empty census, and the fixture fires the cwd-rooting guard deliberately.
-    'AMBIENT-BINDING': 9,
+    // 9 -> 6 on 2026-09-12: vendor-absent-by-design.test.mjs is retired with the
+    // sync it proved (bw-board is an npm package now; nothing copies files that
+    // could accidentally create an absent-by-design one). Its three sites go
+    // with it; vendor-source-guard's three and no-tracked-package-examples'
+    // three remain.
+    'AMBIENT-BINDING': 6,
     // 12 -> 0 on 2026-09-02. The rule now ignores an appearance that is immediately followed by
     // a click/fill/count/evaluate — synchronisation before the real assertion, and the correct
     // way to write a browser gate. The five that survived that narrowing were each triaged at

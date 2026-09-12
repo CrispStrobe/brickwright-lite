@@ -2,12 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {certifyCheckpointReplay} from './helpers/checkpoint-certification.mjs';
-import {M6502Machine} from '../overlay/scratch-gui/src/lib/bw-board/m6502-machine.js';
-import {createM6502DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/m6502-debug.js';
-import {Z80Machine} from '../overlay/scratch-gui/src/lib/bw-board/z80-machine.js';
-import {createZ80DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/z80-debug.js';
+import {M6502Machine} from 'bw-board/m6502-machine.js';
+import {createM6502DebugTarget} from 'bw-board/m6502-debug.js';
+import {Z80Machine} from 'bw-board/z80-machine.js';
+import {createZ80DebugTarget} from 'bw-board/z80-debug.js';
 // IMPORTED, NOT REDEFINED — see test/epoch-domain-single-authority.test.mjs.
-import {logicalTimeDomain} from '../overlay/scratch-gui/src/lib/bw-board/instruction-debug-events.js';
+import {logicalTimeDomain} from 'bw-board/instruction-debug-events.js';
 
 const fixture = ({refuseMissing = true} = {}) => {
     const listeners = new Set();

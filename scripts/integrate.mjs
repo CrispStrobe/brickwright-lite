@@ -60,6 +60,17 @@ pkg.dependencies['@lit/react'] = pkg.dependencies['@lit/react'] || '^1.0.8';    
 pkg.dependencies['@wokwi/elements'] = pkg.dependencies['@wokwi/elements'] || '^1.9.2';   // MIT
 pkg.dependencies['avr8js'] = pkg.dependencies['avr8js'] || '^0.21.0';                   // MIT — ATmega328P emulator (lazy-imported)
 pkg.dependencies['rp2040js'] = pkg.dependencies['rp2040js'] || '1.3.3';                // MIT — RP2040/Pico emulator (lazy-imported)
+// The board engine and the circuit designer are OUR upstream repos, taken as git-sha
+// dependencies rather than copied in: vendor-pins.json stays the single authority for the
+// sha (the same file every pin gate reads), and the package.json spec is DERIVED from it
+// here, so a pin bump is one edit and the installed tree is the pinned tree by construction.
+// Both are MIT. bw-circuit-ui declares bw-board as a peer, so one engine copy serves both.
+const pins = JSON.parse(readFileSync(path.join(ROOT, 'vendor-pins.json'), 'utf8'));
+for (const name of ['bw-board', 'bw-circuit-ui']) {
+    const sha = pins[name];
+    if (!/^[0-9a-f]{40}$/.test(sha || '')) throw new Error(`vendor-pins.json: ${name} must be a 40-hex sha, got ${JSON.stringify(sha)}`);
+    pkg.dependencies[name] = `github:CrispStrobe/${name}#${sha}`;
+}
 pkg.dependencies['scratch-vm'] = '4.8.115';                      // last BSD-3; built from src via alias
 // Pin scratch-paint exactly, for the same reason as scratch-vm: overlay/scratch-paint holds FULL
 // FILE COPIES of the costume-designer files we own, authored against one exact base. The base
@@ -78,6 +89,6 @@ pkg.dependencies['@codemirror/language'] = pkg.dependencies['@codemirror/languag
 pkg.dependencies['@codemirror/search'] = pkg.dependencies['@codemirror/search'] || '^6.5.8';       // MIT
 pkg.dependencies['@codemirror/theme-one-dark'] = pkg.dependencies['@codemirror/theme-one-dark'] || '^6.1.2'; // MIT
 writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
-console.log('  ensured deps (skulpt, jszip, lit + wokwi elements, codemirror) + pinned avr8js@0.21.0, rp2040js@1.3.3, scratch-vm@4.8.115, scratch-paint@2.2.518');
+console.log('  ensured deps (skulpt, jszip, lit + wokwi elements, codemirror, bw-board + bw-circuit-ui at vendor-pins.json) + pinned avr8js@0.21.0, rp2040js@1.3.3, scratch-vm@4.8.115, scratch-paint@2.2.518');
 
 console.log('Integration applied. `cd packages/scratch-gui && npm install --ignore-scripts && npm run build`.');

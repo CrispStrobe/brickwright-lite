@@ -34,9 +34,9 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import SB3Creator from '../packages/scratch-gui/src/lib/sb3-creator.js';
 import { interpretTrace, compareTraces } from '../packages/scratch-gui/src/lib/trace-oracle.js';
-import { createAvr8jsAdapter } from '../packages/scratch-gui/src/lib/bw-board/avr8js-adapter.js';
-import { createRp2040jsAdapter } from '../packages/scratch-gui/src/lib/bw-board/rp2040js-adapter.js';
-import { parseIntelHex } from '../packages/scratch-gui/src/lib/bw-board/intel-hex.js';
+import { createAvr8jsAdapter } from '../packages/scratch-gui/node_modules/bw-board/src/avr8js-adapter.js';
+import { createRp2040jsAdapter } from '../packages/scratch-gui/node_modules/bw-board/src/rp2040js-adapter.js';
+import { parseIntelHex } from '../packages/scratch-gui/node_modules/bw-board/src/intel-hex.js';
 
 const COMPILER = process.env.COMPILER_URL || 'https://stc-compiler.vercel.app';
 

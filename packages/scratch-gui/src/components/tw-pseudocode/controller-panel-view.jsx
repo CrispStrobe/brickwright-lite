@@ -1,6 +1,6 @@
 import React, {useEffect, useRef} from 'react';
-import { ControllerPanel, WIDGET_TYPES, WIDGET_DEFAULTS } from '../../lib/bw-board/controller.js';
-import { bindPanelToBoard } from '../../lib/bw-board/controller-binding.js';
+import { ControllerPanel, WIDGET_TYPES, WIDGET_DEFAULTS } from 'bw-board/controller.js';
+import { bindPanelToBoard } from 'bw-board/controller-binding.js';
 
 const L10N = {
     en: {

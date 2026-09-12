@@ -15,15 +15,15 @@ import {reverseCycleControlStatus} from '../../lib/bw-debug/reverse-cycle-ui.js'
 
 // VDP screen — lazy-loaded, only renders when the runner has video output.
 const PortLeds = React.lazy(() =>
-    import(/* webpackChunkName: "bw-debug-faces" */ '../../lib/bw-circuit-ui/components/PortLeds.jsx')
+    import(/* webpackChunkName: "bw-debug-faces" */ 'bw-circuit-ui/components/PortLeds.jsx')
         .then(m => ({default: m.PortLeds}))
 );
 const SwitchPanel = React.lazy(() =>
-    import(/* webpackChunkName: "bw-debug-faces" */ '../../lib/bw-circuit-ui/components/SwitchPanel.jsx')
+    import(/* webpackChunkName: "bw-debug-faces" */ 'bw-circuit-ui/components/SwitchPanel.jsx')
         .then(m => ({default: m.SwitchPanel}))
 );
 const VdpScreen = React.lazy(() =>
-    import(/* webpackChunkName: "bw-debug-faces" */ '../../lib/bw-circuit-ui/components/VdpScreen.jsx')
+    import(/* webpackChunkName: "bw-debug-faces" */ 'bw-circuit-ui/components/VdpScreen.jsx')
         .then(m => ({default: m.VdpScreen}))
 );
 
@@ -391,7 +391,7 @@ class DebugPanel extends React.Component {
         }
         // The menu comes from bw-board, not from a list duplicated here: it owns
         // which targets exist and what each one is called.
-        import(/* webpackChunkName: "bw-debug-target-kinds" */ '../../lib/bw-board/target-kinds.js')
+        import(/* webpackChunkName: "bw-debug-target-kinds" */ 'bw-board/target-kinds.js')
             .then(async m => {
                 if (!m.getTargetKinds) return;
                 // ...plus the kinds the app can SELECT and bw-board does not

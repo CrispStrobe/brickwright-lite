@@ -769,10 +769,10 @@ class CircuitTab extends React.Component {
         this.loading = true;
         try {
             const [engine, m6502, z80, i8086] = await Promise.all([
-                import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/index.js'),
-                import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/m6502-extract.js'),
-                import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/z80-extract.js'),
-                import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/i8086-extract.js')
+                import(/* webpackChunkName: "bw-board" */ 'bw-board'),
+                import(/* webpackChunkName: "bw-board" */ 'bw-board/m6502-extract.js'),
+                import(/* webpackChunkName: "bw-board" */ 'bw-board/z80-extract.js'),
+                import(/* webpackChunkName: "bw-board" */ 'bw-board/i8086-extract.js')
             ]);
             const extract6502Machine = m6502.extract6502Machine;
             const extractZ80Machine = z80.extractZ80Machine;
@@ -782,7 +782,7 @@ class CircuitTab extends React.Component {
             // own tests — servo/555/h-bridge netlists failed as "unknown kind"
             // with their drivers sitting right there. Register at injection.
             if (typeof engine.registerAllDevices === 'function') engine.registerAllDevices();
-            const ui = await import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/index.js');
+            const ui = await import(/* webpackChunkName: "bw-circuit-ui" */ 'bw-circuit-ui');
             // Inject only once the designer is genuinely needed. Keeping the
             // DRC and retro extractors at module scope made webpack promote the
             // board/Circuit UI graph into the cold Code-tab journey even though
@@ -849,7 +849,7 @@ class CircuitTab extends React.Component {
             // and worse, looked like a stale build, because that catch offers
             // the failure to the chunk-recovery path and would have reloaded
             // the page over a missing part drawing.
-            import(/* webpackChunkName: "bw-circuit-ui" */ '../../lib/bw-circuit-ui/model/sidecar-loader.js')
+            import(/* webpackChunkName: "bw-circuit-ui" */ 'bw-circuit-ui/model/sidecar-loader.js')
                 .catch((e) => console.warn(
                     '[brickwright] part sidecars unavailable — the palette will ' +
                     'fall back to built-in drawings:', e));

@@ -25,14 +25,14 @@ import {
     VERBS, VERB_FAMILIES, FAMILY, PROGRAMMABLE, REFUSED, REFUSED_DOCUMENTED,
     SECTIONS, REASON
 } from '../overlay/scratch-gui/src/lib/bw-parts/profiles.js';
-import {registerAllDevices} from '../overlay/scratch-gui/src/lib/bw-board/register-all.js';
-import {registeredKinds} from '../overlay/scratch-gui/src/lib/bw-board/devices.js';
+import {registerAllDevices} from 'bw-board/register-all.js';
+import {registeredKinds} from 'bw-board/devices.js';
 import {deriveVerbFamilies, buildPartProfiles, checkPartProfiles, stubbed8051} from '../scripts/gen-part-profiles.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '..');
 const EMITTER = join(repo, 'overlay/scratch-gui/src/lib/sb3-creator.js');
-const DEVICES = join(repo, 'overlay/scratch-gui/src/lib/bw-board/devices.js');
+const DEVICES = join(repo, 'node_modules/bw-board/src/devices.js');
 const DOC = join(repo, 'docs/generated/PART-PROFILES.md');
 
 /**

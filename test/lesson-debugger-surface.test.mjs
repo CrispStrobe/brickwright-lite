@@ -24,8 +24,8 @@ const ROOT = path.resolve(import.meta.dirname, '..');
 const read = rel => readFileSync(path.join(ROOT, rel), 'utf8');
 
 const TARGETS = ['emu8051-debug', 'avr8js-debug', 'rp2040js-debug']
-    .map(n => [n, read(`overlay/scratch-gui/src/lib/bw-board/${n}.js`)]);
-const PANEL = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/DebugStatus.jsx');
+    .map(n => [n, read(`node_modules/bw-board/src/${n}.js`)]);
+const PANEL = read('node_modules/bw-circuit-ui/src/components/DebugStatus.jsx');
 
 test('conditional breakpoints accept the syntax debug-conditional-breakpoints teaches', async () => {
     const {parseCondition} = await import(

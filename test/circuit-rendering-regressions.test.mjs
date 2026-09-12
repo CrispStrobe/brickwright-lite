@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {createHitTest, partBounds} from '../overlay/scratch-gui/src/lib/bw-circuit-ui/interaction/hittest.js';
-import {computeLeadMap, straddleRefRow} from '../overlay/scratch-gui/src/lib/bw-circuit-ui/model/footprints.js';
-import {runDrc} from '../overlay/scratch-gui/src/lib/bw-circuit-ui/model/drc.js';
+import {createHitTest, partBounds} from 'bw-circuit-ui/interaction/hittest.js';
+import {computeLeadMap, straddleRefRow} from 'bw-circuit-ui/model/footprints.js';
+import {runDrc} from 'bw-circuit-ui/model/drc.js';
 
-const ui = 'overlay/scratch-gui/src/lib/bw-circuit-ui';
+const ui = 'node_modules/bw-circuit-ui/src';
 const canvas = readFileSync(`${ui}/components/BoardCanvas.jsx`, 'utf8');
 const breadboard = readFileSync(`${ui}/components/BreadboardView.jsx`, 'utf8');
 const designer = readFileSync(`${ui}/components/CircuitDesigner.jsx`, 'utf8');

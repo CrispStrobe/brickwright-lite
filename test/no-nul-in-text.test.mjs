@@ -67,8 +67,8 @@ export const isBinaryByRole = file => BINARY_EXT.has((file.match(/\.([^./]+)$/) 
 
 /** Files carrying a NUL that upstream must fix (or lego-be's one character); each expires when its NUL is gone. */
 export const KNOWN = [
-    {file: 'overlay/scratch-gui/src/lib/bw-circuit-ui/importers/easyeda-pro-pcb.js', nuls: 2, pin: 'bw-circuit-ui a8797322', why: 'composite key at line 305; identical to upstream at the pin — fix in bw-circuit-ui, re-vendor'},
-    {file: 'overlay/scratch-gui/src/lib/bw-circuit-ui/model/board-lift.js', nuls: 1, pin: 'bw-circuit-ui a8797322', why: 'composite key at line 106; identical to upstream at the pin — fix in bw-circuit-ui, re-vendor'},
+    {file: 'node_modules/bw-circuit-ui/src/importers/easyeda-pro-pcb.js', nuls: 2, pin: 'bw-circuit-ui a8797322', why: 'composite key at line 305; identical to upstream at the pin — fix in bw-circuit-ui, re-vendor'},
+    {file: 'node_modules/bw-circuit-ui/src/model/board-lift.js', nuls: 1, pin: 'bw-circuit-ui a8797322', why: 'composite key at line 106; identical to upstream at the pin — fix in bw-circuit-ui, re-vendor'},
 ];
 
 /** Every NUL in a buffer, as {offset, line, context}. Pure. */

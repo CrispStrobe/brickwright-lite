@@ -7,7 +7,7 @@ import {
     findTriggerIndex,
     latestWindowStart,
     triggeredWindowStart
-} from '../overlay/scratch-gui/src/lib/bw-circuit-ui/model/scope-tools.js';
+} from 'bw-circuit-ui/model/scope-tools.js';
 
 const waveform = values => ({
     samples: Float64Array.from(values.flatMap(value => [value, value])),

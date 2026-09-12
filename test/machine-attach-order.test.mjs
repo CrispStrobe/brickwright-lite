@@ -43,7 +43,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 
-const L = new URL('../overlay/scratch-gui/src/lib/bw-board/', import.meta.url);
+const L = new URL('../node_modules/bw-board/src/', import.meta.url);
 const {I8086Machine} = await import(new URL('i8086-machine.js', L).href);
 const {Z80Machine} = await import(new URL('z80-machine.js', L).href);
 const {M6502Machine} = await import(new URL('m6502-machine.js', L).href);

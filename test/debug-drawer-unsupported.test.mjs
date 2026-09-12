@@ -31,12 +31,12 @@ test('only the 8051 target actually implements setPc and wipe', () => {
     // real setPc one day, this fails and the gating below can be relaxed —
     // which is the point of asserting the premise rather than assuming it.
     const cortex = ['labwired-debug', 'rp2040js-debug', 'avr8js-debug']
-        .map(n => [n, read(`overlay/scratch-gui/src/lib/bw-board/${n}.js`)]);
+        .map(n => [n, read(`node_modules/bw-board/src/${n}.js`)]);
     for (const [name, src] of cortex) {
         assert.doesNotMatch(src, /^\s*setPc\s*[(:]/m, `${name} now has setPc — re-read this test`);
         assert.doesNotMatch(src, /^\s*wipe\s*[(:]/m, `${name} now has wipe — re-read this test`);
     }
-    assert.match(read('overlay/scratch-gui/src/lib/bw-board/emu8051-debug.js'), /setPc/,
+    assert.match(read('node_modules/bw-board/src/emu8051-debug.js'), /setPc/,
         'the 8051 target is the one that does implement it');
 });
 

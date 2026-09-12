@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
 import {EventBreakpointEngine} from '../overlay/scratch-gui/src/lib/bw-debug/event-breakpoints.js';
-import {I8086Machine, BLINK8086} from '../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js';
-import {createI8086DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/i8086-debug.js';
-import {createZ80Adapter} from '../overlay/scratch-gui/src/lib/bw-board/z80-adapter.js';
-import {createZ80DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/z80-debug.js';
-import {createM6502Adapter} from '../overlay/scratch-gui/src/lib/bw-board/m6502-adapter.js';
-import {createM6502DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/m6502-debug.js';
+import {I8086Machine, BLINK8086} from 'bw-board/i8086-machine.js';
+import {createI8086DebugTarget} from 'bw-board/i8086-debug.js';
+import {createZ80Adapter} from 'bw-board/z80-adapter.js';
+import {createZ80DebugTarget} from 'bw-board/z80-debug.js';
+import {createM6502Adapter} from 'bw-board/m6502-adapter.js';
+import {createM6502DebugTarget} from 'bw-board/m6502-debug.js';
 import {createDebugEventStream} from '../overlay/scratch-gui/src/lib/bw-debug/event-stream.js';
 import {eventBreakpointCapabilities, normalizeDebugCapabilities} from
     '../overlay/scratch-gui/src/lib/bw-debug/debug-capabilities.js';

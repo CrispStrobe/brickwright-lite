@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 
-import {circuitToDeclarations} from '../overlay/scratch-gui/src/lib/bw-circuit-ui/model/declarations.js';
+import {circuitToDeclarations} from 'bw-circuit-ui/model/declarations.js';
 
 function circuit(kind, terminal) {
     const parts = [

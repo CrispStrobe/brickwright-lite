@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import {createAvr8jsAdapter} from '../overlay/scratch-gui/src/lib/bw-board/avr8js-adapter.js';
-import {createAvr8jsDebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/avr8js-debug.js';
+import {createAvr8jsAdapter} from 'bw-board/avr8js-adapter.js';
+import {createAvr8jsDebugTarget} from 'bw-board/avr8js-debug.js';
 import {
     commandCapability, eventBreakpointCapabilities, normalizeDebugCapabilities
 } from '../overlay/scratch-gui/src/lib/bw-debug/debug-capabilities.js';
