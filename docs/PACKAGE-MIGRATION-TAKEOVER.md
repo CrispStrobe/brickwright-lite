@@ -99,7 +99,47 @@ only those content-addressed proof sources. Both CI builds verify the emitted
 manifest, aliases, filename, length and exact source bytes. License verification
 also has a postbuild mode, and the browser checks actual served files under
 `static/licenses/`. These output checks complement, not replace, source checks.
-Rebuilt-output acceptance remains to be recorded after those changes.
+Rebuilt-output acceptance passed: the emitted proof is exactly 1421 bytes with
+SHA-256 `109b38c1740624623b31e0782f4e8b09769674dd7302851ef3858bc7c3fd2484`;
+all nine source/mirror/emitted notice files match. The final production browser
+run passed 26/26 scenarios, including the three served notice/source files.
+
+## Review branch and first CI cycle
+
+Draft PR: https://github.com/CrispStrobe/brickwright-lite/pull/110 . Original
+worktree preservation was rechecked: its tracked diff still has the initial
+SHA-256 recorded above. No default-branch merge or deployment has been performed.
+
+First candidate `bdbb669fa`:
+
+- Build run `34689291365`: main unit suite 3262 tests, 3254 passed, zero failed,
+  eight explicit skips. The production build succeeded with two size warnings.
+- Both light and heavy browser jobs succeeded, including 8086 desktop/mobile
+  benchmarks, labwired execution and the offline AVR lesson.
+- Debugger run `34689291384`: both jobs succeeded. Vendor freshness and Rust
+  notices also succeeded.
+- The build job as a whole failed because the fetch-pinning mutation prover
+  still targeted a deleted sync script. The corpus job lacked a root package
+  install. Neither failure is omitted from the qualification result.
+
+The corpus job now installs root packages before solver walks (14 focused
+workflow checks passed). The mutation prover targets the surviving equivalent
+sb3 sync; its **actual isolated run** caught 11/11 mutations, restored seven
+files byte-for-byte and passed the restored control. Follow-up CI must qualify
+these changes; the PR remains draft pending that result.
+
+The local full run with all histories reported 3278 tests, 3247 passed, 30
+skipped and one audit false positive from a source search needle. That needle
+was explicitly classified without changing the audit baseline, and the audit
+rerun passed 11/11. The immutable first CI candidate subsequently passed its
+complete fast suite as recorded above; these are separate receipts, not a
+claim that a failed local summary was green.
+
+The forward helper now installs and verifies both package locations, regenerates
+notices/reports only after source verification, checks emitted assets and stages
+only declared outputs with checked mirrors. Its tests include the real read-only
+BIOS default-check CLI. Unsupported BIOS byte changes require manual review;
+unknown flags and conflicting explicit pins refuse. No live forward was run.
 
 Circuit-UI diagnostic-only commit `13a7563` preserves the original drag threshold
 and the 34-scenario default. Three local runs moved the resistor; the final
