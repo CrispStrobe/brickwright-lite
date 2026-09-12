@@ -1,3 +1,4 @@
+import {importPackageSource} from './helpers/package-source.mjs';
 // N2c acceptance — a single-script wait crosses the same INT 15h/86h DOS
 // machine-time door on the generated C and ASM routes. The comparison is in
 // emulated CPU cycles, not PIT ticks: this bench's PIT has no IRQ and is fed at
@@ -63,7 +64,7 @@ async function buildRoutes (src, {removeDosWait = false} = {}) {
     const {compileC8086} = await import(new URL('bw-asm/assemble-route.js', L).href);
     const seams = {compileC: nodeCompileC};
     if (removeDosWait) {
-        const {assemble} = await import(new URL('bw-board/i8086-asm.js', L).href);
+        const {assemble} = await importPackageSource('bw-board/i8086-asm.js');
         seams.assembleLocal = async source => assemble(source.replace(
             /    mov ah, 86h\n    int 15h/, '    nop\n    nop'),
         {variant: '80186', setcc: true});

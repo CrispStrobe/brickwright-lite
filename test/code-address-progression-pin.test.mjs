@@ -1,3 +1,4 @@
+import {importPackageSource} from './helpers/package-source.mjs';
 /**
  * The vendored targets own progression through their real code-address spaces.
  *
@@ -9,13 +10,12 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {importSource} from './helpers/bw-integrated.mjs';
 
-const {createEmu8051DebugTarget} = await importSource('src/lib/bw-board/emu8051-debug.js');
-const {createM6502DebugTarget} = await importSource('src/lib/bw-board/m6502-debug.js');
-const {createZ80DebugTarget} = await importSource('src/lib/bw-board/z80-debug.js');
-const {createI8086DebugTarget} = await importSource('src/lib/bw-board/i8086-debug.js');
-const {createLabwiredDebugTarget} = await importSource('src/lib/bw-board/labwired-debug.js');
+const {createEmu8051DebugTarget} = await importPackageSource('bw-board/emu8051-debug.js');
+const {createM6502DebugTarget} = await importPackageSource('bw-board/m6502-debug.js');
+const {createZ80DebugTarget} = await importPackageSource('bw-board/z80-debug.js');
+const {createI8086DebugTarget} = await importPackageSource('bw-board/i8086-debug.js');
+const {createLabwiredDebugTarget} = await importPackageSource('bw-board/labwired-debug.js');
 
 const emu8051Surface = Object.fromEntries([
     '_emu_dbg_state', '_emu_dbg_run', '_emu_dbg_halt', '_emu_dbg_step',

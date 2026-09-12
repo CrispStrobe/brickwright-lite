@@ -1,3 +1,4 @@
+import {importPackageSource} from './helpers/package-source.mjs';
 /**
  * A micro:bit program can light an LED in a Circuit.
  *
@@ -21,7 +22,6 @@
 
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {importSource} from './helpers/bw-integrated.mjs';
 
 import {loadExtensionClass, stubRuntime} from './helpers/bw-extensions.mjs';
 
@@ -159,9 +159,9 @@ test('a micro:bit block lights a real LED through the real solver', async () => 
     // calls the right method and nothing else. This builds the circuit a
     // learner would draw — micro:bit P0, 220R, red LED, ground — hands it
     // to the actual MNA solver, and drives it from the BLOCK.
-    const B = 'src/lib/bw-board';
-    const {BoardImpl} = await importSource(`${B}/index.js`);
-    const {registerAllDevices} = await importSource(`${B}/register-all.js`);
+    const B = 'bw-board';
+    const {BoardImpl} = await importPackageSource(`${B}/index.js`);
+    const {registerAllDevices} = await importPackageSource(`${B}/register-all.js`);
     registerAllDevices();
 
     const board = new BoardImpl(3.3);

@@ -1,3 +1,4 @@
+import {packageSourceRoot} from './helpers/package-source.mjs';
 /**
  * Wave 6 — "Signals and systems" — claims gate.
  *
@@ -32,8 +33,8 @@ import {balancedFrom} from './helpers/js-scope.mjs';
 
 const REPO = path.resolve(import.meta.dirname, '..');
 const GUI = path.join(REPO, 'overlay/scratch-gui/src');
-const CUI = path.join(GUI, 'lib/bw-circuit-ui');
-const BWB = path.join(GUI, 'lib/bw-board');
+const CUI = packageSourceRoot('bw-circuit-ui');
+const BWB = packageSourceRoot('bw-board');
 const WAVE = JSON.parse(readFileSync(
     path.join(GUI, 'components/gui/lesson-waves/signals-6.json'), 'utf8'));
 

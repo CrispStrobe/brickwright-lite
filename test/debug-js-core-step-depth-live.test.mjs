@@ -1,11 +1,12 @@
+import {importPackageSource} from './helpers/package-source.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {importSource} from './helpers/bw-integrated.mjs';
 
-const {createAvr8jsAdapter} = await importSource('src/lib/bw-board/avr8js-adapter.js');
-const {createAvr8jsDebugTarget} = await importSource('src/lib/bw-board/avr8js-debug.js');
-const {createRp2040jsAdapter, RAM_START} = await importSource('src/lib/bw-board/rp2040js-adapter.js');
-const {createRp2040jsDebugTarget} = await importSource('src/lib/bw-board/rp2040js-debug.js');
+const {createAvr8jsAdapter} = await importPackageSource('bw-board/avr8js-adapter.js');
+const {createAvr8jsDebugTarget} = await importPackageSource('bw-board/avr8js-debug.js');
+const {createRp2040jsAdapter, RAM_START} = await importPackageSource('bw-board/rp2040js-adapter.js');
+const {createRp2040jsDebugTarget} = await importPackageSource('bw-board/rp2040js-debug.js');
 const {createRunToCoordinator} = await importSource('src/lib/bw-debug/run-to.js');
 
 function settle(target) {

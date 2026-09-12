@@ -1,3 +1,4 @@
+import {importPackageSource} from './helpers/package-source.mjs';
 // C IN, A RUNNING PROGRAM OUT — the whole browser-side chain, in one test.
 //
 //   C source -> SmallerC (BSD-2, compiled to WASM) -> NASM `bits 16`
@@ -115,7 +116,7 @@ test('the compiler reaches for 80186 instructions from ORDINARY C, so the route 
         {compileC: nodeCompileC});
     assert.match(built.asm, /\bleave\b/i, 'SmallerC emitted LEAVE for a plain function');
 
-    const {assemble} = await import(new URL('bw-board/i8086-asm.js', L).href);
+    const {assemble} = await importPackageSource('bw-board/i8086-asm.js');
     assert.throws(() => assemble(built.asm, {}),
         /"LEAVE" is an 80186 instruction and this is an 8086/,
         'and an 8086 refuses it by name — so the variant is load-bearing, not decoration');

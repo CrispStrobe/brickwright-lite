@@ -1,3 +1,4 @@
+import {importPackageSource} from './helpers/package-source.mjs';
 /**
  * DOES THE LOCAL ASSEMBLER READ WHAT THE LOCAL C COMPILER WRITES? Measured
  * here, program by program, rather than asserted anywhere.
@@ -68,7 +69,7 @@ async function toolchain () {
 }
 
 const compiler = () => import(new URL('smallerc-wasm/compiler.js', L).href);
-const asmMod = () => import(new URL('bw-board/i8086-asm.js', L).href);
+const asmMod = () => importPackageSource('bw-board/i8086-asm.js');
 
 /**
  * The corpus: every program `test/smallerc-wasm.test.mjs` compiles

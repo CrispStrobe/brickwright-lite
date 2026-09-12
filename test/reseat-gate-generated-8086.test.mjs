@@ -1,3 +1,4 @@
+import {importPackageSource} from './helpers/package-source.mjs';
 /**
  * Option 3 of the reseat gate: the 8086 program is GENERATED from pseudocode,
  * not hand-asserted.
@@ -22,11 +23,11 @@ import {SOURCE, REPO} from './helpers/bw-integrated.mjs';
 
 const SB3Creator = (await import(path.join(SOURCE, 'src/lib/sb3-creator.js'))).default;
 const { buildPseudocode8086 } = await import(path.join(SOURCE, 'src/lib/bw-asm/pseudocode-8086.js'));
-const { extract8086Machine } = await import(path.join(SOURCE, 'src/lib/bw-board/i8086-extract.js'));
-const { I8086Machine } = await import(path.join(SOURCE, 'src/lib/bw-board/i8086-machine.js'));
-const { extract6502Machine } = await import(path.join(SOURCE, 'src/lib/bw-board/m6502-extract.js'));
-const { M6502Machine } = await import(path.join(SOURCE, 'src/lib/bw-board/m6502-machine.js'));
-const { reseatGate } = await import(path.join(SOURCE, 'src/lib/bw-board/reseat-gate.js'));
+const { extract8086Machine } = await importPackageSource('bw-board/i8086-extract.js');
+const { I8086Machine } = await importPackageSource('bw-board/i8086-machine.js');
+const { extract6502Machine } = await importPackageSource('bw-board/m6502-extract.js');
+const { M6502Machine } = await importPackageSource('bw-board/m6502-machine.js');
+const { reseatGate } = await importPackageSource('bw-board/reseat-gate.js');
 
 const FIX = path.join(REPO, 'test/fixtures/reseat');
 const GALLERY = JSON.parse(readFileSync(path.join(FIX, 'e4-via-blink.json'), 'utf8'));

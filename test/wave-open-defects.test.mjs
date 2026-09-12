@@ -1,3 +1,4 @@
+import {packageSourceFile} from './helpers/package-source.mjs';
 /**
  * The lite half of the seven lesson-review waves' open defects.
  *
@@ -324,7 +325,7 @@ test('D33 FIXED: the terminal face is tail-anchored, and the panel renders it', 
 // upstream has.
 
 test('the vendored bw-board carries the fixes lite depends on', () => {
-    const bwb = rel => readFileSync(path.join(GUI, 'lib/bw-board', rel), 'utf8');
+    const bwb = rel => readFileSync(packageSourceFile(`bw-board/${rel}`), 'utf8');
     assert.match(bwb('mna.js'), /bjtRegions\.get\(part\.id\) === 'saturated'/,
         'D19: the vendored solver still reports beta*Ib on a saturated collector');
     assert.match(bwb('mna.js'), /part\.kind === 'button' \|\| part\.kind === 'switch'/,

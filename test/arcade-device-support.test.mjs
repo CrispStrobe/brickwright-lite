@@ -1,3 +1,4 @@
+import {packageSourceFile} from './helpers/package-source.mjs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -25,11 +26,11 @@ test('Arcade blocks mutate shared state instead of being VM no-ops', () => {
 });
 
 test('PyBadge is a code-drawn circuit board, while LC is not given fake headers', () => {
-    const sidecar = JSON.parse(readFileSync(`${gui}/lib/bw-circuit-ui/parts-data/pybadge.json`, 'utf8'));
+    const sidecar = JSON.parse(readFileSync(packageSourceFile('bw-circuit-ui/parts-data/pybadge.json'), 'utf8'));
     assert.equal(sidecar.kind, 'pybadge');
     assert.ok(sidecar.terminals.some(pin => pin.name === 'stemma_sda'));
     assert.ok(sidecar.terminals.some(pin => pin.name === 'd13'));
-    const palette = readFileSync(`${gui}/lib/bw-circuit-ui/components/PartPalette.jsx`, 'utf8');
+    const palette = readFileSync(packageSourceFile('bw-circuit-ui/components/PartPalette.jsx'), 'utf8');
     assert.match(palette, /kind: 'pybadge'/);
     assert.doesNotMatch(palette, /kind: 'pybadge-lc'/);
 });

@@ -1,3 +1,4 @@
+import {packageSourceRoot} from './helpers/package-source.mjs';
 /**
  * Wave 7 — "Computers from wires upward" — claims gate.
  *
@@ -30,8 +31,8 @@ import {SOURCE} from './helpers/bw-integrated.mjs';
 
 const REPO = path.resolve(import.meta.dirname, '..');
 const GUI = path.join(REPO, 'overlay/scratch-gui/src');
-const CUI = path.join(GUI, 'lib/bw-circuit-ui');
-const BWB = path.join(GUI, 'lib/bw-board');
+const CUI = packageSourceRoot('bw-circuit-ui');
+const BWB = packageSourceRoot('bw-board');
 const WAVE = JSON.parse(readFileSync(
     path.join(GUI, 'components/gui/lesson-waves/machines-7.json'), 'utf8'));
 

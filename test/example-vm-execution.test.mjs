@@ -1,3 +1,4 @@
+import {packageSourceRoot} from './helpers/package-source.mjs';
 /**
  * Milestone 0 — the shipped example corpus is proven to EXECUTE.
  *
@@ -367,7 +368,7 @@ test('every device kind the devices extension can drive accepts a control verb',
     // registered kinds instead would be wrong, not merely noisy: 185 of the 193
     // registered kinds are passive parts (gates, resistors, ICs) that no verb
     // addresses, and they correctly have no handler.
-    const bwb = path.join(REPO, 'overlay', 'scratch-gui', 'src', 'lib', 'bw-board');
+    const bwb = packageSourceRoot('bw-board');
     (await import(path.join(bwb, 'register-all.js'))).registerAllDevices();
     const {getDevice, hasDevice, registeredKinds} = await import(path.join(bwb, 'devices.js'));
 

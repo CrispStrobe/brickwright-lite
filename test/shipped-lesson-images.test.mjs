@@ -1,3 +1,4 @@
+import {packageSourceRoot} from './helpers/package-source.mjs';
 /**
  * The prebuilt lesson images — D2's second half — and the gate that keeps them
  * honest.
@@ -67,7 +68,7 @@ import {SOURCE, REPO, importGuiDependency} from './helpers/bw-integrated.mjs';
 const OVERLAY = path.join(REPO, 'overlay/scratch-gui');
 const IMAGES = path.join(OVERLAY, 'static/lesson-images');
 const EXAMPLES = path.join(OVERLAY, 'examples');
-const BW_BOARD = path.join(SOURCE, 'src/lib/bw-board');
+const BW_BOARD = packageSourceRoot('bw-board');
 
 const sha256 = s => createHash('sha256').update(s, 'utf8').digest('hex');
 const manifest = JSON.parse(readFileSync(path.join(IMAGES, 'manifest.json'), 'utf8'));

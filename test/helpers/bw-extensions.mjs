@@ -1,3 +1,4 @@
+import {packageSourceFile} from './package-source.mjs';
 /**
  * Load lite's BUNDLED extensions the way the shipped app loads them, from the
  * git source of truth (`overlay/scratch-vm/...`) rather than from the installed
@@ -221,8 +222,8 @@ export function guardedBoardMembers () {
 export function boardMemberNames () {
     const names = new Set();
     const roots = [
-        path.join(REPO, 'overlay', 'scratch-gui', 'src', 'lib', 'bw-circuit-ui', 'model', 'circuit.js'),
-        path.join(REPO, 'overlay', 'scratch-gui', 'src', 'lib', 'bw-board', 'board.js')
+        packageSourceFile('bw-circuit-ui/model/circuit.js'),
+        packageSourceFile('bw-board/board.js')
     ];
     for (const file of roots) {
         if (!existsSync(file)) continue;

@@ -1,15 +1,14 @@
+import {importPackageSource} from './helpers/package-source.mjs';
 /**
- * The vendored i8086 target accepts one contiguous 20-bit physical write
- * range or refuses it. This is a runtime proof because i8086-debug.js remains
- * a declared Lite fork: pin identity alone cannot prove that the guarded
- * upstream hunk survived its three-way integration.
+ * The installed i8086 target accepts one contiguous 20-bit physical write
+ * range or refuses it. This runtime proof survives the retired Lite fork:
+ * package identity alone cannot prove that the range guard still works.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {importSource} from './helpers/bw-integrated.mjs';
 
-const {I8086Machine} = await importSource('src/lib/bw-board/i8086-machine.js');
-const {createI8086DebugTarget} = await importSource('src/lib/bw-board/i8086-debug.js');
+const {I8086Machine} = await importPackageSource('bw-board/i8086-machine.js');
+const {createI8086DebugTarget} = await importPackageSource('bw-board/i8086-debug.js');
 
 const CALL_PROGRAM = [
     0xb8, 0x34, 0x12,

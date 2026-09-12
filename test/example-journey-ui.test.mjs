@@ -1,3 +1,4 @@
+import {packageSourceFile} from './helpers/package-source.mjs';
 // The example journey: browse, pick a device, see which example you are in.
 //
 // Three owner-reported defects (Lane U in docs/LANGUAGE-DEVICE-MATRIX-PLAN.md),
@@ -33,7 +34,7 @@ import {fileURLToPath} from 'node:url';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const gui = join(repo, 'overlay/scratch-gui/src');
-const read = p => readFileSync(join(gui, p), 'utf8');
+const read = p => readFileSync(p.startsWith('bw-circuit-ui/') ? packageSourceFile(p) : join(gui, p), 'utf8');
 const code = text => text
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
     .split('\n').map(l => l.replace(/(^|[^:])\/\/.*$/, '$1')).join('\n');
@@ -55,7 +56,7 @@ test('the comment stripper strips, and only comments', () => {
 });
 
 test('U1-2: the catalogue does not narrow or label by the pre-selected device', () => {
-    const browser = code(read('lib/bw-circuit-ui/components/ExamplesBrowser.jsx'));
+    const browser = code(read('bw-circuit-ui/components/ExamplesBrowser.jsx'));
     assert.ok(browser.length > 2000, 'the catalogue source did not load; every check below is vacuous');
     assert.ok(!/deviceCompat\s*\(/.test(browser),
         'ExamplesBrowser calls deviceCompat again. The device is chosen AFTER the example, so a '
@@ -100,15 +101,15 @@ test('U1-1: the active example reaches the Code tab from BOTH load paths', () =>
 });
 
 test('U1-3: one intro renderer, imported by both readers', () => {
-    const shared = code(read('lib/bw-circuit-ui/intro-doc.jsx'));
+    const shared = code(read('bw-circuit-ui/intro-doc.jsx'));
     for (const sym of ['parseIntro', 'renderMarkdown', 'INTRO_L10N']) {
         assert.ok(new RegExp(`export (const|function) ${sym}\\b`).test(shared),
             `intro-doc does not export ${sym}`);
     }
-    const browser = code(read('lib/bw-circuit-ui/components/ExamplesBrowser.jsx'));
+    const browser = code(read('bw-circuit-ui/components/ExamplesBrowser.jsx'));
     const button = code(read('components/menu-bar/example-intro-button.jsx'));
     for (const [name, src] of [['ExamplesBrowser', browser], ['example-intro-button', button]]) {
-        assert.match(src, /from '\.\.?\/(\.\.\/lib\/bw-circuit-ui\/)?intro-doc\.jsx'/,
+        assert.match(src, /from '(?:\.\.?\/|bw-circuit-ui\/)intro-doc\.jsx'/,
             `${name} does not import the shared intro module`);
         assert.ok(!/function (parseIntro|renderMarkdown)\b/.test(src),
             `${name} defines its own ${'parseIntro/renderMarkdown'} again. Two renderers for one `
@@ -151,8 +152,8 @@ test('nothing an edited file uses went missing when code moved between files', (
     // file still needs can. This walks every SCREAMING_CASE constant a file
     // mentions and requires it to be defined or imported there.
     const files = [
-        'lib/bw-circuit-ui/components/ExamplesBrowser.jsx',
-        'lib/bw-circuit-ui/intro-doc.jsx',
+        'bw-circuit-ui/components/ExamplesBrowser.jsx',
+        'bw-circuit-ui/intro-doc.jsx',
         'components/menu-bar/example-intro-button.jsx'
     ];
     const missing = [];

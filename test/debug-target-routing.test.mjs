@@ -1,3 +1,4 @@
+import {packageSourceFile} from './helpers/package-source.mjs';
 /**
  * debug-target-factory routing: three engines, one factory, no silent misrouting.
  *
@@ -18,17 +19,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-const here = dirname(fileURLToPath(import.meta.url));
-const LITE = join(here, '..', 'packages', 'scratch-gui', 'src');
-const factoryPath = join(LITE, 'lib', 'bw-board', 'debug-target-factory.js');
-const targetKindsPath = join(LITE, 'lib', 'bw-board', 'target-kinds.js');
+// These are package API tests, not GUI integration: root npm installs supply
+// the engine and its declared avr8js/rp2040js dependencies. Missing packages fail.
+const factoryPath = packageSourceFile('bw-board/debug-target-factory.js');
+const targetKindsPath = packageSourceFile('bw-board/target-kinds.js');
 
-test('getTargetKinds lists all three simulator engines', {
-    skip: existsSync(targetKindsPath) ? false : 'not integrated'
-}, async () => {
+test('getTargetKinds lists all three simulator engines', async () => {
     // Import the picker seam directly. Pulling this assertion through the
     // factory would also initialize every CPU adapter and would fail to prove
     // the dependency boundary the production picker relies on.
@@ -48,9 +45,7 @@ test('getTargetKinds lists all three simulator engines', {
     }
 });
 
-test('unknown target kind throws rather than defaulting', {
-    skip: existsSync(factoryPath) ? false : 'not integrated'
-}, async () => {
+test('unknown target kind throws rather than defaulting', async () => {
     const { createDebugTarget } = await import(factoryPath);
     await assert.rejects(
         () => createDebugTarget('nonexistent', {}),
@@ -59,9 +54,7 @@ test('unknown target kind throws rather than defaulting', {
     );
 });
 
-test('emulator kind requires opts.wasm (routes to 8051, not AVR)', {
-    skip: existsSync(factoryPath) ? false : 'not integrated'
-}, async () => {
+test('emulator kind requires opts.wasm (routes to 8051, not AVR)', async () => {
     const { createDebugTarget } = await import(factoryPath);
     // The emulator path requires opts.wasm — if it reaches the AVR path
     // instead, the error would mention 'board' not 'wasm'.
@@ -72,9 +65,7 @@ test('emulator kind requires opts.wasm (routes to 8051, not AVR)', {
     );
 });
 
-test('avr8js kind requires opts.board (routes to AVR, not 8051)', {
-    skip: existsSync(factoryPath) ? false : 'not integrated'
-}, async () => {
+test('avr8js kind requires opts.board (routes to AVR, not 8051)', async () => {
     const { createDebugTarget } = await import(factoryPath);
     // The avr8js path requires opts.board — if it reaches the 8051 path
     // instead, the error would mention 'wasm' not 'board'.
@@ -85,9 +76,7 @@ test('avr8js kind requires opts.board (routes to AVR, not 8051)', {
     );
 });
 
-test('rp2040js kind requires opts.board (routes to Pico, not 8051)', {
-    skip: existsSync(factoryPath) ? false : 'not integrated'
-}, async () => {
+test('rp2040js kind requires opts.board (routes to Pico, not 8051)', async () => {
     const { createDebugTarget } = await import(factoryPath);
     await assert.rejects(
         () => createDebugTarget('rp2040js', {}),
@@ -96,24 +85,20 @@ test('rp2040js kind requires opts.board (routes to Pico, not 8051)', {
     );
 });
 
-test('avr8js lazy import resolves (the adapter module loads)', {
-    skip: existsSync(factoryPath) ? false : 'not integrated'
-}, async () => {
+test('avr8js lazy import resolves (the adapter module loads)', async () => {
     // The adapter is lazy-imported inside createAvr8jsTarget. Verify the
     // module itself resolves — a lazy import that fails only for users who
     // need it is the exact failure shape this project keeps catching.
-    const adapterPath = join(LITE, 'lib', 'bw-board', 'avr8js-adapter.js');
-    assert.ok(existsSync(adapterPath), 'avr8js-adapter.js missing from overlay');
+    const adapterPath = packageSourceFile('bw-board/avr8js-adapter.js');
+    assert.ok(existsSync(adapterPath), 'avr8js-adapter.js missing from installed engine package');
     const mod = await import(adapterPath);
     assert.ok(typeof mod.createAvr8jsAdapter === 'function',
         'avr8js-adapter.js must export createAvr8jsAdapter');
 });
 
-test('rp2040js lazy import resolves (the adapter module loads)', {
-    skip: existsSync(factoryPath) ? false : 'not integrated'
-}, async () => {
-    const adapterPath = join(LITE, 'lib', 'bw-board', 'rp2040js-adapter.js');
-    assert.ok(existsSync(adapterPath), 'rp2040js-adapter.js missing from overlay');
+test('rp2040js lazy import resolves (the adapter module loads)', async () => {
+    const adapterPath = packageSourceFile('bw-board/rp2040js-adapter.js');
+    assert.ok(existsSync(adapterPath), 'rp2040js-adapter.js missing from installed engine package');
     const mod = await import(adapterPath);
     assert.ok(typeof mod.createRp2040jsAdapter === 'function',
         'rp2040js-adapter.js must export createRp2040jsAdapter');

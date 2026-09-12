@@ -1,3 +1,4 @@
+import {importPackageSource} from './helpers/package-source.mjs';
 // The C route's port-I/O primitives, injected conditionally.
 //
 // compileC8086 supplies bw_outb/bw_inb as asm helpers because SmallerC has no
@@ -48,7 +49,7 @@ async function nodeCompileC (code, options) {
     return compileWithToolchain(code, options, await toolchain());
 }
 const route = () => import(new URL('bw-asm/assemble-route.js', L).href);
-const asmMod = () => import(new URL('bw-board/i8086-asm.js', L).href);
+const asmMod = () => importPackageSource('bw-board/i8086-asm.js');
 const bench = () => import(new URL('bw-debug/i8086-dos-bench.js', L).href);
 
 const OUT_PROGRAM = 'extern void bw_outb(unsigned port, unsigned val);\n'

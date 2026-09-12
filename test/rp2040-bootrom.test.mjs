@@ -1,3 +1,4 @@
+import {importPackageSource} from './helpers/package-source.mjs';
 /**
  * A boot ROM we are allowed to ship.
  *
@@ -198,7 +199,7 @@ test('reverse32 reverses bit order', {skip: SKIP}, async () => {
  * is the ROM the core reads, through the emulator's own bus.
  */
 test('the adapter installs the ROM where the core reads it', {skip: SKIP}, async () => {
-    const {createRp2040jsAdapter} = await importSource('src/lib/bw-board/rp2040js-adapter.js');
+    const {createRp2040jsAdapter} = await importPackageSource('bw-board/rp2040js-adapter.js');
     const {rp2040} = createRp2040jsAdapter();
     const rom = buildBootrom();
     const view = new DataView(rom.buffer);

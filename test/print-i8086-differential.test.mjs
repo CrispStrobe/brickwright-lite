@@ -1,3 +1,4 @@
+import {importPackageSource} from './helpers/package-source.mjs';
 // N2d acceptance — the bounded i8086 C numeric print helper must produce the
 // same DOS-visible rows as the ASM route. Equality alone is insufficient, so
 // the signed boundaries have an independent expected-value oracle too.
@@ -57,7 +58,7 @@ async function buildRoutes (source, {mutateCrlf = false, mutateProject = null} =
     const {compileC8086} = await import(new URL('bw-asm/assemble-route.js', L).href);
     const seams = {compileC: nodeCompileC};
     if (mutateCrlf) {
-        const {assemble} = await import(new URL('bw-board/i8086-asm.js', L).href);
+        const {assemble} = await importPackageSource('bw-board/i8086-asm.js');
         seams.assembleLocal = async assembly => {
             const crlf = [
                 '    mov dl, 0Dh', '    mov ah, 02h', '    int 21h',
@@ -195,7 +196,7 @@ test('a numeric-print call with helper injection removed fails by unresolved sym
         const body = compiled.asm
             .replace(/^\s*bits\s+16\s*$/im, '')
             .replace(/^\s*extern\s+_bw_outb\s*$/im, '');
-        const {assemble} = await import(new URL('bw-board/i8086-asm.js', L).href);
+        const {assemble} = await importPackageSource('bw-board/i8086-asm.js');
         assert.throws(() => assemble([
             'bits 16',
             'org 100h',

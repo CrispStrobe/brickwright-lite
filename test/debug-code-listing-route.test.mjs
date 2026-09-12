@@ -1,3 +1,4 @@
+import {importPackageSource} from './helpers/package-source.mjs';
 /** Target-owned code progression reaches the drawer without host-side masking. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -5,8 +6,8 @@ import {importSource} from './helpers/bw-integrated.mjs';
 
 const {codeListingRows} = await importSource('src/lib/bw-debug/debug-runner.js');
 const {formatCodeAddress, hex16} = await importSource('src/lib/bw-debug/trace.js');
-const {createLabwiredDebugTarget} = await importSource('src/lib/bw-board/labwired-debug.js');
-const {createI8086DebugTarget} = await importSource('src/lib/bw-board/i8086-debug.js');
+const {createLabwiredDebugTarget} = await importPackageSource('bw-board/labwired-debug.js');
+const {createI8086DebugTarget} = await importPackageSource('bw-board/i8086-debug.js');
 
 const objectTarget = next => ({
     disasm: addr => ({text: `at ${addr}`, bytes: [0x90], length: 1}),

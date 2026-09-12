@@ -1,3 +1,4 @@
+import {importPackageSource} from './helpers/package-source.mjs';
 /**
  * The PIN lowering, probed for what its own tests could not have asked.
  *
@@ -174,7 +175,7 @@ test('the keyboard and the 8255 do not collide on THIS bench, and the reason is 
         assert.equal(controlWord(out.asm).word & 0x10, 0,
             'port A is configured as an OUTPUT by a program that never mentions it');
 
-        const {DOSBOX8086_XT} = await import(new URL('bw-board/i8086-dos.js', L).href);
+        const {DOSBOX8086_XT} = await importPackageSource('bw-board/i8086-dos.js');
         assert.ok(!DOSBOX8086_XT.chips.some((c) => c.kind === 'pic'),
             'if this config gains a PIC, the port A default above stops being harmless');
     });

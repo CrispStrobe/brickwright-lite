@@ -23,7 +23,7 @@ test('the assembled DOS path does not eagerly load the bw-board barrel', () => {
         assert.ok(attach.length > 3000, 'attachI8086 capture is empty or truncated');
         const dosBranch = attach.indexOf('if (isDosProgram)');
         const dosReturn = attach.indexOf('return session;', dosBranch);
-        const barrelImport = attach.indexOf("'../bw-board/index.js'", dosBranch);
+        const barrelImport = attach.indexOf("'bw-board'", dosBranch);
 
         assert.ok(dosBranch >= 0 && dosReturn > dosBranch, 'DOS branch boundaries moved');
         assert.ok(barrelImport > dosReturn,
@@ -32,7 +32,7 @@ test('the assembled DOS path does not eagerly load the bw-board barrel', () => {
         const dosStartup = attach.slice(dosBranch, dosReturn);
         assert.match(dosStartup, /Promise\.all\(\[/,
             'the independent session and DOS-bench chunks should load in parallel');
-        assert.match(dosStartup, /'\.\.\/bw-board\/debug-session\.js'/,
+        assert.match(dosStartup, /'bw-board\/debug-session\.js'/,
             'DOS startup needs the small session module directly');
         assert.match(dosStartup, /'\.\/i8086-dos-bench\.js'/,
             'DOS startup still needs its service-layer bench');
@@ -52,10 +52,10 @@ test('the DOS bench keeps its direct dependencies in the dedicated chunk', () =>
 test('the target picker loads metadata without the bw-board barrel', () => {
     for (const source of panelSources) {
         assert.match(source,
-            /webpackChunkName: "bw-debug-target-kinds" \*\/ '\.\.\/\.\.\/lib\/bw-board\/target-kinds\.js'/,
+            /webpackChunkName: "bw-debug-target-kinds" \*\/ 'bw-board\/target-kinds\.js'/,
             'picker metadata should have its own dependency-free chunk');
         assert.doesNotMatch(source,
-            /webpackChunkName: "bw-board" \*\/ '\.\.\/\.\.\/lib\/bw-board\/index\.js'/,
+            /webpackChunkName: "bw-board" \*\/ 'bw-board'/,
             'opening the picker must not request the broad board barrel');
     }
 });

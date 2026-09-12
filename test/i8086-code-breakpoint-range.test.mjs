@@ -1,15 +1,14 @@
+import {importPackageSource} from './helpers/package-source.mjs';
 /**
- * The vendored i8086 target keeps direct physical code addresses distinct
- * from segment:offset hardware addresses. This runtime proof is local because
- * i8086-debug.js remains a declared Lite fork: an unchanged divergence count
- * cannot prove that the upstream guard survived its three-way graft.
+ * The installed i8086 target keeps direct physical code addresses distinct
+ * from segment:offset hardware addresses. This runtime proof survives the
+ * retired Lite fork: package identity alone does not prove the range behavior.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {importSource} from './helpers/bw-integrated.mjs';
 
-const {I8086Machine} = await importSource('src/lib/bw-board/i8086-machine.js');
-const {createI8086DebugTarget} = await importSource('src/lib/bw-board/i8086-debug.js');
+const {I8086Machine} = await importPackageSource('bw-board/i8086-machine.js');
+const {createI8086DebugTarget} = await importPackageSource('bw-board/i8086-debug.js');
 
 const targetWith = () => {
     const machine = new I8086Machine();

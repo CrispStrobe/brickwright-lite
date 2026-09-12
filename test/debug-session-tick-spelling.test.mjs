@@ -1,3 +1,4 @@
+import {importPackageSource} from './helpers/package-source.mjs';
 /**
  * A RECORDED SESSION MUST SURVIVE ITS OWN EXPORT.
  *
@@ -67,8 +68,8 @@ test('a real 8051 target stamps a tick this system must be able to round-trip', 
     // NOT a hand-built fixture: the point is that the producer really does emit
     // the spelling the bundle then has to carry.
     const {default: createEmu8051} = await import(WASM_JS);
-    const {createEmu8051Adapter} = await import(path.join(LIB, 'bw-board/emu8051-adapter.js'));
-    const {createEmu8051DebugTarget} = await import(path.join(LIB, 'bw-board/emu8051-debug.js'));
+    const {createEmu8051Adapter} = await importPackageSource('bw-board/emu8051-adapter.js');
+    const {createEmu8051DebugTarget} = await importPackageSource('bw-board/emu8051-debug.js');
 
     const wasm = await createEmu8051();
     createEmu8051Adapter(wasm, {mode: 'poll', ports: [1]});

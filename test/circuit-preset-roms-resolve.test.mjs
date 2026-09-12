@@ -1,3 +1,4 @@
+import {packageSourceFile} from './helpers/package-source.mjs';
 /**
  * EVERY PRESET ROM BUTTON IN THE SHIPPED UI RESOLVES TO A FILE.
  *
@@ -26,8 +27,7 @@ import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const DESIGNER = join(repo, 'overlay', 'scratch-gui', 'src', 'lib',
-    'bw-circuit-ui', 'components', 'CircuitDesigner.jsx');
+const DESIGNER = packageSourceFile('bw-circuit-ui/components/CircuitDesigner.jsx');
 const ROMS = join(repo, 'overlay', 'scratch-gui', 'static', 'roms');
 
 /** Every preset that names a ROM, as {id, rom}, parsed from the component. */

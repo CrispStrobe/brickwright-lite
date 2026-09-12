@@ -1,3 +1,4 @@
+import {importPackageSource} from './helpers/package-source.mjs';
 // N2f acceptance: direct literal output and deterministic bounded random must
 // survive the complete generated-C -> SmallerC -> 80186 .COM -> DOS route.
 // The expected values below come from an independent JS model of the reviewed
@@ -113,7 +114,7 @@ async function buildCrystal ({mutateC = code => code, mutateAssembly = null} = {
     const {compileC8086} = await import(new URL('bw-asm/assemble-route.js', L).href);
     const seams = {compileC: nodeCompileC};
     if (mutateAssembly) {
-        const {assemble} = await import(new URL('bw-board/i8086-asm.js', L).href);
+        const {assemble} = await importPackageSource('bw-board/i8086-asm.js');
         seams.assembleLocal = assembly => assemble(mutateAssembly(assembly),
             {variant: '80186', setcc: true});
     }
@@ -236,7 +237,7 @@ test('helper injection is conditional, and removing it fails by unresolved symbo
 
         const source = 'extern int bw_random(int from, int to);\n'
             + 'int main(void) { return bw_random(1, 8); }';
-        const {assemble} = await import(new URL('bw-board/i8086-asm.js', L).href);
+        const {assemble} = await importPackageSource('bw-board/i8086-asm.js');
         await assert.rejects(() => compileC8086(source, {
             compileC: nodeCompileC,
             assembleLocal: assembly => {

@@ -28,12 +28,11 @@ test('every layout which paints CircuitDesigner still loads it', () => {
 test('CircuitTab keeps broad circuit imports behind the guarded load boundary', () => {
     const source = tabSource();
     const beforeClass = source.slice(0, source.indexOf('class CircuitTab'));
-    const lib = ['..', '..', 'lib'].join('/') + '/';
     for (const specifier of [
-        `${lib}bw-circuit-ui/model/drc.js`,
-        `${lib}bw-board/m6502-extract.js`,
-        `${lib}bw-board/z80-extract.js`,
-        `${lib}bw-board/i8086-extract.js`
+        `bw-circuit-ui/model/drc.js`,
+        `bw-board/m6502-extract.js`,
+        `bw-board/z80-extract.js`,
+        `bw-board/i8086-extract.js`
     ]) {
         assert.ok(!beforeClass.includes(specifier), `${specifier} returned to the initial import graph`);
     }
@@ -42,11 +41,11 @@ test('CircuitTab keeps broad circuit imports behind the guarded load boundary', 
     assert.match(load, /shouldLoadCircuitDesigner\(\{/,
         'load itself must defend against incidental callers, not only one lifecycle path');
     for (const specifier of [
-        `${lib}bw-board/index.js`,
-        `${lib}bw-board/m6502-extract.js`,
-        `${lib}bw-board/z80-extract.js`,
-        `${lib}bw-board/i8086-extract.js`,
-        `${lib}bw-circuit-ui/index.js`
+        `bw-board`,
+        `bw-board/m6502-extract.js`,
+        `bw-board/z80-extract.js`,
+        `bw-board/i8086-extract.js`,
+        `bw-circuit-ui`
     ]) {
         // Containment, not co-presence: the specifier must sit INSIDE a dynamic
         // import with a chunk name, not merely somewhere in the same slice as one.

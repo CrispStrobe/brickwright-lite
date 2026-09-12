@@ -203,7 +203,7 @@ test('a replayed fact from after a restore compares EQUAL to the one recorded be
         "debug-runner.js does not assign the imported authority to `replayClockDomain`. "
         + 'Everything else in this file can be green while the app compares clock domains '
         + 'with its own rule — that is the defect, not a variation of it.');
-    assert.match(runner, /import\s*\{[^}]*logicalTimeDomain[^}]*\}\s*from\s*'\.\.\/bw-board\/instruction-debug-events\.js'/,
+    assert.match(runner, /import\s*\{[^}]*logicalTimeDomain[^}]*\}\s*from\s*'bw-board\/instruction-debug-events\.js'/,
         'debug-runner.js references logicalTimeDomain without importing it from the vendored '
         + 'module that declares it');
 });

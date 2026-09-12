@@ -1,3 +1,4 @@
+import {importPackageSource, packageSourceFile, packageSourceRoot} from './helpers/package-source.mjs';
 /**
  * Every declared INPUT pin that has a control wired to it must RESPOND to that
  * control, through the simulator driver, on the bench its example ships.
@@ -96,21 +97,21 @@ const overlayCompiler = readFileSync(path.join(OV, 'sb3-creator.js'));
 let _circuitMod = null;
 async function boot () {
     if (_circuitMod) return _circuitMod;
-    const {setEngine} = await import(path.join(OV, 'bw-circuit-ui/engine.js'));
-    const {BoardImpl} = await import(path.join(OV, 'bw-board/board.js'));
-    const {inferNetlist, checkWiring} = await import(path.join(OV, 'bw-board/infer-netlist.js'));
-    const {hasDevice, getDevice} = await import(path.join(OV, 'bw-board/devices.js'));
-    (await import(path.join(OV, 'bw-board/register-all.js'))).registerAllDevices();
-    const {runDcSweep, runAcSweep, logSpace} = await import(path.join(OV, 'bw-board/sweep.js'));
+    const {setEngine} = await importPackageSource('bw-circuit-ui/engine.js');
+    const {BoardImpl} = await importPackageSource('bw-board/board.js');
+    const {inferNetlist, checkWiring} = await importPackageSource('bw-board/infer-netlist.js');
+    const {hasDevice, getDevice} = await importPackageSource('bw-board/devices.js');
+    (await importPackageSource('bw-board/register-all.js')).registerAllDevices();
+    const {runDcSweep, runAcSweep, logSpace} = await importPackageSource('bw-board/sweep.js');
     setEngine({BoardImpl, inferNetlist, checkWiring, hasDevice, getDevice,
         runDcSweep, runAcSweep, logSpace});
-    const {registerSidecar} = await import(path.join(OV, 'bw-circuit-ui/model/parts-registry.js'));
-    for (const name of readdirSync(path.join(OV, 'bw-circuit-ui/parts-data'))) {
+    const {registerSidecar} = await importPackageSource('bw-circuit-ui/model/parts-registry.js');
+    for (const name of readdirSync(path.join(packageSourceRoot('bw-circuit-ui'), 'parts-data'))) {
         if (!name.endsWith('.json')) continue;
-        const sidecar = JSON.parse(readFileSync(path.join(OV, 'bw-circuit-ui/parts-data', name), 'utf8'));
+        const sidecar = JSON.parse(readFileSync(packageSourceFile(`bw-circuit-ui/parts-data/${name}`), 'utf8'));
         if (sidecar.kind) registerSidecar(sidecar);
     }
-    _circuitMod = await import(path.join(OV, 'bw-circuit-ui/model/circuit.js'));
+    _circuitMod = await importPackageSource('bw-circuit-ui/model/circuit.js');
     return _circuitMod;
 }
 

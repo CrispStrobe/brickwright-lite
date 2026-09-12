@@ -1,3 +1,4 @@
+import {importPackageSource, packageSourceFile} from './helpers/package-source.mjs';
 /** P6a: the existing UI route can put an 8086 fixture behind Machine Loader. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,7 +11,7 @@ import {
 } from '../scripts/verify-machine-loader-rom-control.mjs';
 
 const fixture = JSON.parse(readFileSync(path.join(REPO, 'test/fixtures/reseat/e4-reseated-8086.json'), 'utf8'));
-const {extract8086Machine} = await import(path.join(SOURCE, 'src/lib/bw-board/i8086-extract.js'));
+const {extract8086Machine} = await importPackageSource('bw-board/i8086-extract.js');
 
 test('the uploaded fixture is a complete extractable 8086 machine', () => {
     const result = extract8086Machine(fixture);
@@ -28,8 +29,7 @@ test('the uploaded fixture is a complete extractable 8086 machine', () => {
 
 test('the real File menu route and timerdemo dispatch seam remain connected', () => {
     const menu = readFileSync(path.join(SOURCE, 'src/components/menu-bar/menu-bar.jsx'), 'utf8');
-    const designer = readFileSync(path.join(SOURCE,
-        'src/lib/bw-circuit-ui/components/CircuitDesigner.jsx'), 'utf8');
+    const designer = readFileSync(packageSourceFile('bw-circuit-ui/components/CircuitDesigner.jsx'), 'utf8');
     const panel = readFileSync(path.join(SOURCE, 'src/components/tw-pseudocode/debug-panel.jsx'), 'utf8');
 
     assert.match(menu, /CustomEvent\('bw-circuit-file', \{detail: \{action: 'load'\}\}\)/,

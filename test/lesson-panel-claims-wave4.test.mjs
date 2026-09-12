@@ -1,3 +1,4 @@
+import {importPackageSource} from './helpers/package-source.mjs';
 /**
  * Wave 4 — "Interactive systems" — claims gate.
  *
@@ -74,8 +75,8 @@ test('instrument: Wave 4 still has the eight lessons this gate measures', () => 
 const SB3Creator = (await import(path.join(SOURCE, 'src/lib/sb3-creator.js'))).default;
 const VM = (await importGuiDependency('scratch-vm/src/index.js')).default;
 const {interpretTrace} = await import(path.join(SOURCE, 'src/lib/trace-oracle.js'));
-const {ControllerPanel} = await import(path.join(GUI, 'lib/bw-board/controller.js'));
-const {bindPanelToVariables} = await import(path.join(GUI, 'lib/bw-board/controller-binding.js'));
+const {ControllerPanel} = await importPackageSource('bw-board/controller.js');
+const {bindPanelToVariables} = await importPackageSource('bw-board/controller-binding.js');
 
 /**
  * Load an example's program into the real VM and wire its shipped controller

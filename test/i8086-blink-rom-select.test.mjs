@@ -1,3 +1,4 @@
+import {importPackageSource} from './helpers/package-source.mjs';
 /**
  * P7: the i8086-blink gallery circuit decodes a REAL 8086 machine — the ROM's
  * chip select is bound, not floating.
@@ -18,7 +19,7 @@ import path from 'node:path';
 import {readFileSync} from 'node:fs';
 import {SOURCE, REPO} from './helpers/bw-integrated.mjs';
 
-const {extract8086Machine} = await import(path.join(SOURCE, 'src/lib/bw-board/i8086-extract.js'));
+const {extract8086Machine} = await importPackageSource('bw-board/i8086-extract.js');
 const CIRCUIT = JSON.parse(readFileSync(
     path.join(REPO, 'overlay/scratch-gui/examples/i8086-blink/circuit.json'), 'utf8'));
 
