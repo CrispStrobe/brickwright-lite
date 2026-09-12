@@ -64,7 +64,9 @@ pkg.dependencies['rp2040js'] = pkg.dependencies['rp2040js'] || '1.3.3';         
 // dependencies rather than copied in: vendor-pins.json stays the single authority for the
 // sha (the same file every pin gate reads), and the package.json spec is DERIVED from it
 // here, so a pin bump is one edit and the installed tree is the pinned tree by construction.
-// Both are MIT. bw-circuit-ui declares bw-board as a peer, so one engine copy serves both.
+// Preserve each package's actual LICENSE/notices (bw-circuit-ui's LICENSE is
+// MPL-2.0 despite its current package.json MIT label). bw-circuit-ui declares
+// bw-board as a peer, so one engine copy serves both.
 const pins = JSON.parse(readFileSync(path.join(ROOT, 'vendor-pins.json'), 'utf8'));
 for (const name of ['bw-board', 'bw-circuit-ui']) {
     const sha = pins[name];
