@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {resolve} from 'node:path';
-import {extract6502Machine} from '../overlay/scratch-gui/src/lib/bw-board/m6502-extract.js';
-import {createM6502Adapter} from '../overlay/scratch-gui/src/lib/bw-board/m6502-adapter.js';
-import {PS2Keyboard} from '../overlay/scratch-gui/src/lib/bw-board/ps2.js';
-import {ControllerPanel} from '../overlay/scratch-gui/src/lib/bw-board/controller.js';
-import {bindPanelToBoard} from '../overlay/scratch-gui/src/lib/bw-board/controller-binding.js';
-import {registerAllDevices} from '../overlay/scratch-gui/src/lib/bw-board/register-all.js';
-import {BoardImpl} from '../overlay/scratch-gui/src/lib/bw-board/board.js';
-import {terminalsForKind} from '../overlay/scratch-gui/src/lib/bw-circuit-ui/model/circuit.js';
+import {extract6502Machine} from 'bw-board/m6502-extract.js';
+import {createM6502Adapter} from 'bw-board/m6502-adapter.js';
+import {PS2Keyboard} from 'bw-board/ps2.js';
+import {ControllerPanel} from 'bw-board/controller.js';
+import {bindPanelToBoard} from 'bw-board/controller-binding.js';
+import {registerAllDevices} from 'bw-board/register-all.js';
+import {BoardImpl} from 'bw-board/board.js';
+import {terminalsForKind} from 'bw-circuit-ui/model/circuit.js';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const base = resolve(root, 'overlay/scratch-gui/examples/aurora65-workstation');
@@ -91,7 +91,7 @@ test('part-bound keyboard widget sends text through PS/2 device control', () => 
 });
 
 test('circuit keyboard face exposes all 74 clickable scan-code keys', () => {
-  const src = readFileSync(resolve(root, 'overlay/scratch-gui/src/lib/bw-circuit-ui/components/BoardCanvas.jsx'), 'utf8');
+  const src = readFileSync(resolve(root, 'node_modules/bw-circuit-ui/src/components/BoardCanvas.jsx'), 'utf8');
   const face = src.slice(src.indexOf("case 'ps2':"), src.indexOf("case 'ps2':") + 7000);
   const keys = [...face.matchAll(/,\s*'([a-z0-9]+)'\]/g)].map(m => m[1]);
   assert.equal(new Set(keys).size, 74, `expected the labelled 74-key face, found ${new Set(keys).size}`);

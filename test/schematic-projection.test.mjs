@@ -1,8 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 
-import {projectSchematic} from '../overlay/scratch-gui/src/lib/bw-circuit-ui/model/schematic-projection.js';
-import {netsFromWires} from '../overlay/scratch-gui/src/lib/bw-circuit-ui/model/schematic-svg.js';
+import {projectSchematic} from 'bw-circuit-ui/model/schematic-projection.js';
+import {netsFromWires} from 'bw-circuit-ui/model/schematic-svg.js';
 
 test('schematic shows the implicit ground reference when no GND part is placed', () => {
     const parts = [

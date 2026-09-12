@@ -39,7 +39,7 @@ const only = process.argv.includes('--only') ? process.argv[process.argv.indexOf
 const MUTATIONS = [
     {
         layer: 'Milestone 0: inferred buzzer kind is proved by electrical behavior',
-        file: 'overlay/scratch-gui/src/lib/bw-circuit-ui/model/infer-seated.js',
+        file: 'node_modules/bw-circuit-ui/src/model/infer-seated.js',
         find: "      const buz = circuit.addPart('buzzer', {}, 0, 0, pin.name);",
         with: "      const buz = circuit.addPart('led', {}, 0, 0, pin.name);",
         suite: 'test/seated-buzzer-equivalence.test.mjs',

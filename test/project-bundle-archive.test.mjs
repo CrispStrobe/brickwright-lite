@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import JSZip from 'jszip';
-import {ControllerPanel} from '../overlay/scratch-gui/src/lib/bw-board/controller.js';
+import {ControllerPanel} from 'bw-board/controller.js';
 
 const module = await import('../overlay/scratch-gui/src/lib/bw-project-bundle.js');
 

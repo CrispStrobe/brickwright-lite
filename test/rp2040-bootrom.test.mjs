@@ -28,7 +28,7 @@ import {join} from 'node:path';
 import {INTEGRATED, importSource} from './helpers/bw-integrated.mjs';
 import {
     buildBootrom, BOOTROM_SIZE, ROM_FUNC
-} from '../overlay/scratch-gui/src/lib/bw-board/rp2040-bootrom.js';
+} from 'bw-board/rp2040-bootrom.js';
 
 const canEmulate = existsSync(join(INTEGRATED, 'node_modules', 'rp2040js'));
 const SKIP = canEmulate ? false : 'needs rp2040js from the integrated tree';

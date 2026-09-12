@@ -29,7 +29,7 @@
  * CI runs `npm run vendor` and then `node scripts/integrate.mjs`, which copies
  * overlay/ into packages/. .gitignore says so in as many words: packages/ is
  * POPULATED, not tracked. 33 of the 127 files under
- * packages/scratch-gui/src/lib/bw-board -- the whole 8086 support-chip tier --
+ * packages/scratch-gui/node_modules/bw-board/src -- the whole 8086 support-chip tier --
  * are correctly absent from git and correctly present after integrate.
  *
  * So a bare `git archive HEAD` MANUFACTURES A FAILURE for any test that reads

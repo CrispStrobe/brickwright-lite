@@ -1,7 +1,7 @@
 {
     "name": "brickwright-lite",
     "private": true,
-    "description": "A fully-permissive (BSD-3 / Apache-2.0 / MIT) Brickwright — a contained fork of the pre-relicense Scratch stack you can bundle and ship on any app store, with blocks⇄code⇄Python/JS and LEGO extensions.",
+    "description": "A fully-permissive (BSD-3 / Apache-2.0 / MIT) Brickwright \u2014 a contained fork of the pre-relicense Scratch stack you can bundle and ship on any app store, with blocks\u21c4code\u21c4Python/JS and LEGO extensions.",
     "license": "BSD-3-Clause",
     "scripts": {
         "vendor": "node scripts/vendor.mjs",
@@ -28,10 +28,8 @@
         "bench:debug-snapshots": "node scripts/bench-debug-snapshots.mjs",
         "sync:sb3creator": "node scripts/sync-sb3creator.mjs",
         "sync:sb3creator:check": "node scripts/sync-sb3creator.mjs --check",
-        "sync:bwboard": "node scripts/sync-bw-board.mjs",
-        "sync:bwboard:check": "node scripts/sync-bw-board.mjs --check",
-        "sync:circuitui": "node scripts/sync-bw-circuit-ui.mjs",
-        "sync:circuitui:check": "node scripts/sync-bw-circuit-ui.mjs --check",
+        "pin:packages": "node scripts/pin-packages.mjs",
+        "pin:packages:check": "node scripts/pin-packages.mjs --check",
         "sync:emuwasm": "node scripts/sync-emu8051-wasm.mjs",
         "sync:emuwasm:check": "node scripts/sync-emu8051-wasm.mjs --check",
         "sync:examples": "node scripts/sync-examples.mjs",
@@ -99,6 +97,8 @@
         "node": ">=22"
     },
     "devDependencies": {
+        "bw-board": "github:CrispStrobe/bw-board#d7436dc782dd1c499f0fb29ae5cfaa8ab78ec2d6",
+        "bw-circuit-ui": "github:CrispStrobe/bw-circuit-ui#657e0217fa14fe345ad2781ae87d7f1e9b1e42fe",
         "jszip": "3.10.1",
         "playwright": "^1.62.1"
     }

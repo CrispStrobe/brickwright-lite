@@ -88,7 +88,7 @@ test('the 6502 factory selects through an INJECTED boundary, and lite is what in
     // nothing ever injected; asserting only the second would pass with the
     // factory ignoring it.
     const factory = readFileSync(new URL(
-        '../overlay/scratch-gui/src/lib/bw-board/debug-target-factory.js', import.meta.url), 'utf8');
+        '../node_modules/bw-board/src/debug-target-factory.js', import.meta.url), 'utf8');
     assert.match(factory, /typeof opts\.providerBoundary !== 'function'/,
         'the vendored factory no longer guards on an injected providerBoundary, so lite\'s '
         + 'injection may be reaching nothing');

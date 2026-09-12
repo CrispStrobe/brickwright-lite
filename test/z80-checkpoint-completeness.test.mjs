@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import {Z80Machine} from '../overlay/scratch-gui/src/lib/bw-board/z80-machine.js';
-import {createZ80DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/z80-debug.js';
+import {Z80Machine} from 'bw-board/z80-machine.js';
+import {createZ80DebugTarget} from 'bw-board/z80-debug.js';
 import {hashReplayValues} from '../overlay/scratch-gui/src/lib/bw-debug/recorder.js';
 
 const config = {clockHz: 3_500_000,

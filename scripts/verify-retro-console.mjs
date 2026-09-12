@@ -19,7 +19,7 @@ import { dirname, join } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-import { ControllerPanel } from '../overlay/scratch-gui/src/lib/bw-board/controller.js';
+import { ControllerPanel } from 'bw-board/controller.js';
 
 // ─── Load the controller.json ───────────────────────────────────────
 

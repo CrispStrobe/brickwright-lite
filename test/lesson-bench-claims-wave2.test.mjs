@@ -113,7 +113,7 @@ test('measurement-current-burden: 74-ammeter\'s LCD renders what the program pri
     // 2026-08-24 (bw-board 6df60a5); the lesson is version 3 and asks for the
     // display again.
     const {getDevice} = await import(path.join(ROOT,
-        'overlay/scratch-gui/src/lib/bw-board/devices.js'));
+        'node_modules/bw-board/src/devices.js'));
     const {board} = await load('74-ammeter');
     board.advanceTo(50n * MS);
     assert.equal(board.parts.find(p => p.id === 'lcd1').kind, 'char_lcd_i2c');

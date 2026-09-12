@@ -12,7 +12,8 @@
  * as it knows its source sha) and again inside recordPin as the backstop.
  *
  * The list of syncs is DERIVED — every scripts/sync-*.mjs that calls
- * recordPin — never typed here. Today only sync-bw-board takes --only; the
+ * recordPin — never typed here. (sync-bw-board, which took --only, is gone:
+ * bw-board is a package now; its pin moves through scripts/pin-packages.mjs.) The
  * others are whole-tree syncs, and the rule is the same for them: without
  * --pin, a source at a different sha is a refusal naming old and new.
  *
@@ -101,7 +102,7 @@ test('the tool that exists to move the pins passes --pin to every pin-recording 
 
 // ---- live: a scoped sync against a checkout at another sha leaves the pin alone --
 
-const CHECKOUT = {'sync-bw-board.mjs': ['bw-board', 'BW_BOARD_DIR', '--only mna.js'], 'sync-sb3creator.mjs': ['sb3-creator', 'SB3_CREATOR_DIR', ''], 'sync-bw-circuit-ui.mjs': ['bw-circuit-ui', 'BW_CIRCUIT_UI_DIR', ''], 'sync-examples.mjs': ['sb3-creator', 'SB3_CREATOR_DIR', ''], 'sync-flasher.mjs': ['stc-compiler-flasher', 'STC_COMPILER_DIR', '']};
+const CHECKOUT = {'sync-sb3creator.mjs': ['sb3-creator', 'SB3_CREATOR_DIR', ''], 'sync-examples.mjs': ['sb3-creator', 'SB3_CREATOR_DIR', ''], 'sync-flasher.mjs': ['stc-compiler-flasher', 'STC_COMPILER_DIR', '']};
 
 for (const f of syncs) {
     const [repo, envVar, scope] = CHECKOUT[f] || [null, null, ''];

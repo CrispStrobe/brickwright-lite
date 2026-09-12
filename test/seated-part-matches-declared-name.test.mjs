@@ -26,7 +26,7 @@ import {contradiction, declaredPartKind} from '../scripts/lib/declared-part-kind
 
 const EXAMPLES = 'overlay/scratch-gui/examples';
 const kinds = new Set([...readFileSync(
-    'overlay/scratch-gui/src/lib/bw-circuit-ui/model/footprints.js', 'utf8')
+    'node_modules/bw-circuit-ui/src/model/footprints.js', 'utf8')
     .matchAll(/^ {2}([a-z_0-9]+)\s*:\s*\{/gm)].map(m => m[1]));
 
 /**

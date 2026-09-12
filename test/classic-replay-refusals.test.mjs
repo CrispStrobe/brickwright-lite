@@ -20,13 +20,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {createM6502Adapter} from '../overlay/scratch-gui/src/lib/bw-board/m6502-adapter.js';
-import {createM6502DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/m6502-debug.js';
-import {Z80Machine} from '../overlay/scratch-gui/src/lib/bw-board/z80-machine.js';
-import {createZ80DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/z80-debug.js';
-import {replayOutcome} from '../overlay/scratch-gui/src/lib/bw-board/debug-replay-contract.js';
+import {createM6502Adapter} from 'bw-board/m6502-adapter.js';
+import {createM6502DebugTarget} from 'bw-board/m6502-debug.js';
+import {Z80Machine} from 'bw-board/z80-machine.js';
+import {createZ80DebugTarget} from 'bw-board/z80-debug.js';
+import {replayOutcome} from 'bw-board/debug-replay-contract.js';
 
-const SRC = 'overlay/scratch-gui/src/lib/bw-board';
+const SRC = 'node_modules/bw-board/src';
 
 /** A 6502 with NO VIA and NO adapter serial: nothing can take any input. */
 const barrenM6502 = () => {

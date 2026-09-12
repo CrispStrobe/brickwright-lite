@@ -7,7 +7,7 @@ const root = resolve(new URL('..', import.meta.url).pathname);
 const read = file => readFileSync(resolve(root, file), 'utf8');
 
 test('Circuit Designer has a view toggle (realistic / schematic) and a mode attribute', () => {
-    const source = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/CircuitDesigner.jsx');
+    const source = read('node_modules/bw-circuit-ui/src/components/CircuitDesigner.jsx');
     assert.match(source, /data-circuit-view-toggle/);
     assert.match(source, /data-sim-mode/);
     assert.match(source, /Realistic view/);
@@ -16,7 +16,7 @@ test('Circuit Designer has a view toggle (realistic / schematic) and a mode attr
 
 test('the production circuit host injects the device model accessor the designer consumes', () => {
     const host = read('overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx');
-    const contract = read('overlay/scratch-gui/src/lib/bw-circuit-ui/engine.js');
+    const contract = read('node_modules/bw-circuit-ui/src/engine.js');
     assert.match(contract, /_engine\.getDevice/,
         'the vendored designer no longer consumes getDevice; update this host-contract gate');
     assert.match(host, /const getCircuitDevice = kind => kind === 'stc_mcu' \? null : engine\.getDevice\(kind\)/,
@@ -26,7 +26,7 @@ test('the production circuit host injects the device model accessor the designer
 });
 
 test('part editor uses focused, native numeric controls', () => {
-    const editor = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/InlineEditor.jsx');
+    const editor = read('node_modules/bw-circuit-ui/src/components/InlineEditor.jsx');
     assert.match(editor, /data-inline-editor/);
     assert.match(editor, /firstInput\.current\?\.focus/);
     assert.match(editor, /type=\{typeof v === 'number' \? 'number' : 'text'\}/);
@@ -34,13 +34,13 @@ test('part editor uses focused, native numeric controls', () => {
 });
 
 test('light circuit theme does not override toggle paint', () => {
-    const theme = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/circuit-theme.css');
+    const theme = read('node_modules/bw-circuit-ui/src/components/circuit-theme.css');
     assert.doesNotMatch(theme, /data-bw-circuit-theme="light"\]\s*button\)[\s\S]*background:\s*#ffffff\s*!important/);
     assert.match(theme, /Buttons own their active\/inactive colors inline/);
 });
 
 test('Circuit Designer side selectors expose toggle and divider', () => {
-    const designer = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/CircuitDesigner.jsx');
+    const designer = read('node_modules/bw-circuit-ui/src/components/CircuitDesigner.jsx');
     assert.match(designer, /data-selectors-toggle/);
     assert.match(designer, /data-selectors-panel/);
     assert.match(designer, /data-selector-divider/);
@@ -49,7 +49,7 @@ test('Circuit Designer side selectors expose toggle and divider', () => {
 });
 
 test('Circuit Designer keeps simulation and debugger controls in the instruments column', () => {
-    const source = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/CircuitDesigner.jsx');
+    const source = read('node_modules/bw-circuit-ui/src/components/CircuitDesigner.jsx');
     assert.match(source, /data-instruments-column/);
     assert.match(source, /data-instruments-scroll/);
     assert.match(source, /data-instruments-scroll[^\n]*overflowY: 'auto'/);
@@ -77,8 +77,8 @@ test('Circuit Designer keeps simulation and debugger controls in the instruments
 });
 
 test('oscilloscope exposes real scale, edge trigger, and time-cursor controls', () => {
-    const scope = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/ScopePanel.jsx');
-    const tools = read('overlay/scratch-gui/src/lib/bw-circuit-ui/model/scope-tools.js');
+    const scope = read('node_modules/bw-circuit-ui/src/components/ScopePanel.jsx');
+    const tools = read('node_modules/bw-circuit-ui/src/model/scope-tools.js');
     assert.match(scope, /voltsPerDiv/);
     assert.match(scope, /triggerMode/);
     assert.match(scope, /triggerLevel/);
@@ -131,7 +131,7 @@ test('Green Flag and Red Flag reach Circuit Designer even without MCU code', () 
 
 test('SIM starts the same MCU program path as Green Flag', () => {
     const tab = read('overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx');
-    const designer = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/CircuitDesigner.jsx');
+    const designer = read('node_modules/bw-circuit-ui/src/components/CircuitDesigner.jsx');
     assert.match(tab, /onSimulationStart=\{this\.handleProjectStart\}/);
     // SAME BLOCK, not the same LINE. The old assertion pinned the exact
     // one-line spelling, so inserting any statement into the block -- which the

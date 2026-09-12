@@ -2,13 +2,13 @@ import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 
-import {retainEqualPan} from '../overlay/scratch-gui/src/lib/bw-circuit-ui/interaction/transform.js';
+import {retainEqualPan} from 'bw-circuit-ui/interaction/transform.js';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
-const overlayCanvas = 'overlay/scratch-gui/src/lib/bw-circuit-ui/components/BoardCanvas.jsx';
-const packageCanvas = 'packages/scratch-gui/src/lib/bw-circuit-ui/components/BoardCanvas.jsx';
-const overlayTransform = 'overlay/scratch-gui/src/lib/bw-circuit-ui/interaction/transform.js';
-const packageTransform = 'packages/scratch-gui/src/lib/bw-circuit-ui/interaction/transform.js';
+const overlayCanvas = 'node_modules/bw-circuit-ui/src/components/BoardCanvas.jsx';
+const packageCanvas = 'packages/scratch-gui/node_modules/bw-circuit-ui/src/components/BoardCanvas.jsx';
+const overlayTransform = 'node_modules/bw-circuit-ui/src/interaction/transform.js';
+const packageTransform = 'packages/scratch-gui/node_modules/bw-circuit-ui/src/interaction/transform.js';
 
 test('idempotent fit retries retain the existing pan state reference', () => {
     const current = {x: -12.5, y: 33.25};

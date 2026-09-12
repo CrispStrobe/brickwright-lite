@@ -106,7 +106,7 @@ const VENDORED = [
         name: 'rp2040js',
         licence: 'MIT',
         holder: 'Uri Shaked',
-        evidence: 'packages/scratch-gui/src/lib/bw-board/rp2040js-debug.js',
+        evidence: 'packages/scratch-gui/node_modules/bw-board/src/rp2040js-debug.js',
         inBinary: false,
         text: null,
     },

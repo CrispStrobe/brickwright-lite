@@ -24,7 +24,7 @@
 // ------------------------------------------
 // There is no external assembler in this chain. bw-board's ROM is built by
 // `src/i8086-asm.js`, its own MASM-subset assembler, and lite VENDORS that
-// file at overlay/scratch-gui/src/lib/bw-board/i8086-asm.js -- byte-identical
+// file at node_modules/bw-board/src/i8086-asm.js -- byte-identical
 // to bw-board at the pin and at master, checked. So this script assembles with
 // lite's copy, not bw-board's.
 //
@@ -62,7 +62,7 @@ import {fileURLToPath} from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '..');
 
-export const ASSEMBLER = join(repo, 'overlay/scratch-gui/src/lib/bw-board/i8086-asm.js');
+export const ASSEMBLER = join(repo, 'node_modules/bw-board/src/i8086-asm.js');
 export const ROM = join(repo, 'overlay/scratch-gui/static/roms/i8086-bios.bin');
 export const MANIFEST = join(repo, 'overlay/scratch-gui/static/roms/i8086-bios.provenance.json');
 // The ROM's source, vendored as text beside the binary so CI can re-derive the
@@ -426,7 +426,7 @@ function writeManifest ({sourceSha, sourceText, romSha, bytes, entry, segment, a
             })()
         },
         assembler: {
-            path: 'overlay/scratch-gui/src/lib/bw-board/i8086-asm.js',
+            path: 'node_modules/bw-board/src/i8086-asm.js',
             sha256: assemblerSha
         },
         pinAtBuild: pin,

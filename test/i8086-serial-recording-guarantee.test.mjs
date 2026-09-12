@@ -32,9 +32,9 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {I8086Machine, TIERA8088} from '../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js';
-import {createI8086DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/i8086-debug.js';
-import {createI8086Adapter} from '../overlay/scratch-gui/src/lib/bw-board/i8086-adapter.js';
+import {I8086Machine, TIERA8088} from 'bw-board/i8086-machine.js';
+import {createI8086DebugTarget} from 'bw-board/i8086-debug.js';
+import {createI8086Adapter} from 'bw-board/i8086-adapter.js';
 
 /** TIERA8088 plus a UART, so there is a chip to take the byte. */
 const withUart = () => ({...TIERA8088, chips: [...TIERA8088.chips,

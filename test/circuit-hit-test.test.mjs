@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createHitTest, partBounds } from '../overlay/scratch-gui/src/lib/bw-circuit-ui/interaction/hittest.js';
-import { computeLeadMap, FOOTPRINTS } from '../overlay/scratch-gui/src/lib/bw-circuit-ui/model/footprints.js';
-import { seatGeometry } from '../overlay/scratch-gui/src/lib/bw-circuit-ui/interaction/seat-geometry.js';
-import { BreadboardModel } from '../overlay/scratch-gui/src/lib/bw-circuit-ui/model/breadboard.js';
-import { DIP_PIN_PITCH, DIP_ROW_OFFSET } from '../overlay/scratch-gui/src/lib/bw-circuit-ui/model/dip-geometry.js';
+import { createHitTest, partBounds } from 'bw-circuit-ui/interaction/hittest.js';
+import { computeLeadMap, FOOTPRINTS } from 'bw-circuit-ui/model/footprints.js';
+import { seatGeometry } from 'bw-circuit-ui/interaction/seat-geometry.js';
+import { BreadboardModel } from 'bw-circuit-ui/model/breadboard.js';
+import { DIP_PIN_PITCH, DIP_ROW_OFFSET } from 'bw-circuit-ui/model/dip-geometry.js';
 
 test('STC12 renderer uses the breadboard raster', () => {
   assert.equal(DIP_PIN_PITCH, 14);

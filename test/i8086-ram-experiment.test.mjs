@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {I8086Machine} from '../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js';
+import {I8086Machine} from 'bw-board/i8086-machine.js';
 import {installRamWordExperiment} from '../scripts/lib/i8086-ram-experiment.mjs';
 
 test('guarded word access preserves wrap, ROM/open bus, video and installed observers', () => {

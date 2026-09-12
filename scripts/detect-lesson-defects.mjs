@@ -251,7 +251,7 @@ const HYPOTHETICAL = /\b(would|were|imagine|suppose|if you|hypothetical|in a rea
 /** Does an ordinary circuit edit move the derived declarations? Measured. */
 async function circuitEditIsVisible(exampleId) {
     const {Circuit} = await boot();
-    const cui = path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-circuit-ui');
+    const cui = path.join(ROOT, 'node_modules/bw-circuit-ui/src');
     // The SAME function CircuitDesigner compares against, not a re-derivation:
     // a second copy of the rule would be free to disagree with the one that
     // decides whether the host is notified.

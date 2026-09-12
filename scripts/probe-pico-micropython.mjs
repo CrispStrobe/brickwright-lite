@@ -4,7 +4,7 @@
  * Pi Pico inside rp2040js through this repo's clean-room bootrom, and report
  * exactly where it gets to.
  *
- * WHY IT EXISTS. `overlay/scratch-gui/src/lib/bw-board/rp2040-bootrom.js`
+ * WHY IT EXISTS. `node_modules/bw-board/src/rp2040-bootrom.js`
  * recorded a panic at step ~26,600 with a call chain of raw addresses and no
  * symbols. Every claim in that header was a measurement someone made once by
  * hand, and one of them turned out to be an artefact of how the image was

@@ -64,8 +64,8 @@ import layout, {STAGE_SIZE_MODES} from '../../lib/layout-constants';
 import {resolveStageSize} from '../../lib/screen-utils';
 import {themeMap} from '../../lib/themes';
 
-import { ControllerPanel } from '../../lib/bw-board/controller.js';
-import { bindPanelToVariables } from '../../lib/bw-board/controller-binding.js';
+import { ControllerPanel } from 'bw-board/controller.js';
+import { bindPanelToVariables } from 'bw-board/controller-binding.js';
 import styles from './gui.css';
 import addExtensionIcon from './icon--extensions.svg';
 import codeIcon from './icon--code.svg';

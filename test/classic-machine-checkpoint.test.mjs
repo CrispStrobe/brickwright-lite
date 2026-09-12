@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import {M6502Machine} from '../overlay/scratch-gui/src/lib/bw-board/m6502-machine.js';
-import {replayOutcome} from '../overlay/scratch-gui/src/lib/bw-board/debug-replay-contract.js';
-import {createM6502Adapter} from '../overlay/scratch-gui/src/lib/bw-board/m6502-adapter.js';
-import {createM6502DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/m6502-debug.js';
-import {Z80Machine} from '../overlay/scratch-gui/src/lib/bw-board/z80-machine.js';
-import {createZ80DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/z80-debug.js';
+import {M6502Machine} from 'bw-board/m6502-machine.js';
+import {replayOutcome} from 'bw-board/debug-replay-contract.js';
+import {createM6502Adapter} from 'bw-board/m6502-adapter.js';
+import {createM6502DebugTarget} from 'bw-board/m6502-debug.js';
+import {Z80Machine} from 'bw-board/z80-machine.js';
+import {createZ80DebugTarget} from 'bw-board/z80-debug.js';
 import {hashReplayValues} from '../overlay/scratch-gui/src/lib/bw-debug/recorder.js';
 import {createDebugRecorder} from '../overlay/scratch-gui/src/lib/bw-debug/recorder.js';
 import {createDebugEventStream} from '../overlay/scratch-gui/src/lib/bw-debug/event-stream.js';
@@ -22,7 +22,7 @@ import {createInstructionReplayController} from '../overlay/scratch-gui/src/lib/
 // A test that is MORE correct than the code it covers is caught by nothing —
 // it does not fail and it does not lie. Importing the authority is what makes
 // the two the same rule.
-import {logicalTimeDomain} from '../overlay/scratch-gui/src/lib/bw-board/instruction-debug-events.js';
+import {logicalTimeDomain} from 'bw-board/instruction-debug-events.js';
 
 
 const m6502Config = (clockHz = 1_000_000, chips = []) => ({

@@ -39,7 +39,7 @@ import {
     setCondition, conditionOf, allConditions
 } from './breakpoints.js';
 import { parseCondition } from './condition.js';
-import { canRecordDebugInput } from '../bw-board/debug-replay-contract.js';
+import { canRecordDebugInput } from 'bw-board/debug-replay-contract.js';
 import { createTrace, IO_SFRS, TIMER_SFRS } from './trace.js';
 import {createDebugFoundation, subscribeDebugTargetEvents} from './debug-foundation.js';
 import {createRecordingSession, subscribeDebugTargetInputs} from './recording-session.js';
@@ -54,7 +54,7 @@ import {createDebugRecorder} from './recorder.js';
 // The run board is resolved the same way for the debugger and the MicroPython
 // simulator Run — one copy of the phantom-inferred-bench rejection.
 import {resolveNetlist} from './resolve-netlist.js';
-import {logicalTimeDomain} from '../bw-board/instruction-debug-events.js';
+import {logicalTimeDomain} from 'bw-board/instruction-debug-events.js';
 import {createHaltOccurrenceLedger} from './halt-occurrence-ledger.js';
 import {createForkRecordingStore} from './fork-recording-store.js';
 import {createBranchCursor} from './fork-history.js';
@@ -1458,7 +1458,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         setStatus('attaching', 'starting the emulator…');
         const [{ createEmu8051DebugTarget, createDebugSession, createEmu8051Adapter,
             BoardImpl, inferNetlist }, createEmu8051] = await Promise.all([
-            import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js'),
+            import(/* webpackChunkName: "bw-board" */ 'bw-board'),
             import(/* webpackChunkName: "emu8051" */ '../emu8051/emu8051.js').then((m) => m.default || m)
         ]);
 
@@ -1601,7 +1601,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     async function attachAvr8js(built, avrKind = 'avr8js') {
         setStatus('attaching', 'starting the AVR emulator…');
         const { createDebugTarget, createDebugSession, BoardImpl, inferNetlist } =
-            await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
+            await import(/* webpackChunkName: "bw-board" */ 'bw-board');
 
         const stc = projectStc(null);
 
@@ -1683,7 +1683,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     async function attachRp2040js(built) {
         setStatus('attaching', 'starting the Pico emulator…');
         const { createDebugTarget, createDebugSession, BoardImpl, inferNetlist } =
-            await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
+            await import(/* webpackChunkName: "bw-board" */ 'bw-board');
 
         const stc = projectStc(null);
         const clockHz = built.f_cpu || built.clockHz || 125_000_000;
@@ -1772,7 +1772,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     async function attachLabwiredTarget (built) {
         setStatus('attaching', 'starting the labwired engine…');
         const { createDebugTarget, createDebugSession, BoardImpl, inferNetlist, STM32F0 } =
-            await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
+            await import(/* webpackChunkName: "bw-board" */ 'bw-board');
         const { loadLabwired } = await import(
             /* webpackChunkName: "labwired-probe" */ '../labwired-engine.js');
 
@@ -1891,7 +1891,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     async function attachStm32F0Target(built) {
         setStatus('attaching', 'starting the STM32F030 emulator…');
         const { createDebugTarget, createDebugSession, BoardImpl, inferNetlist } =
-            await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
+            await import(/* webpackChunkName: "bw-board" */ 'bw-board');
 
         const stc = projectStc(null);
         const clockHz = built.f_cpu || built.clockHz || 48_000_000;
@@ -1986,7 +1986,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const bytes = media.bytes;
         if (bytes.length > 1 && bytes[0] === 0x3a) { // ':' — Intel HEX text
             const { parseIhex } = await import(
-                /* webpackChunkName: "bw-board" */ '../bw-board/machine-media.js');
+                /* webpackChunkName: "bw-board" */ 'bw-board/machine-media.js');
             const parsed = parseIhex(new TextDecoder().decode(bytes));
             return { bytes: parsed.bytes, origin: parsed.origin };
         }
@@ -2199,7 +2199,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     // the default remains Tali Forth 2 on py65mon.
     async function attachEater6502() {
         const { createDebugTarget, createDebugSession } =
-            await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
+            await import(/* webpackChunkName: "bw-board" */ 'bw-board');
 
         const targetOpts = {};
         let readyMsg;
@@ -2270,7 +2270,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     // media at all, the default remains BBC BASIC.
     async function attachZ80() {
         const { createDebugTarget, createDebugSession } =
-            await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
+            await import(/* webpackChunkName: "bw-board" */ 'bw-board');
 
         const targetOpts = {};
         let readyMsg;
@@ -2355,7 +2355,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             // parallel, after publishing the attaching state so a cold chunk
             // fetch never looks like a dead Run button.
             const [{createDebugSession}, {createI8086DosBench}] = await Promise.all([
-                import(/* webpackChunkName: "bw-debug-i8086" */ '../bw-board/debug-session.js'),
+                import(/* webpackChunkName: "bw-debug-i8086" */ 'bw-board/debug-session.js'),
                 import(/* webpackChunkName: "bw-debug-i8086" */ './i8086-dos-bench.js')
             ]);
             const img = await resolveMediaImage(bootMedia);
@@ -2428,7 +2428,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // Hardware machines still use the target factory. Keep its broad
         // registry out of the overwhelmingly common assembled-DOS startup.
         const { createDebugTarget, createDebugSession } =
-            await import(/* webpackChunkName: "bw-board" */ '../bw-board/index.js');
+            await import(/* webpackChunkName: "bw-board" */ 'bw-board');
 
         if (bootMedia) {
             setStatus('attaching', `booting ${bootMedia.name || 'ROM'}…`);
@@ -2509,7 +2509,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // Idempotent, so this is safe while the adapter still applies it too: the
         // adapter's copy leaves with the next bw-board pin bump. Provider before
         // consumer, so there is no moment where the preference is unapplied.
-        const {BREADBOARD8086} = await import('../bw-board/i8086-machine.js');
+        const {BREADBOARD8086} = await import('bw-board/i8086-machine.js');
         targetOpts.config = withI8086MemoryPreference(targetOpts.config ?? BREADBOARD8086);
 
         const result = await createDebugTarget('i8086', targetOpts);

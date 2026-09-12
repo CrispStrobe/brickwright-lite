@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {buildSeatedFromDeclarations} from '../overlay/scratch-gui/src/lib/bw-circuit-ui/model/infer-seated.js';
+import {buildSeatedFromDeclarations} from 'bw-circuit-ui/model/infer-seated.js';
 
 class FakeCircuit {
     constructor() {

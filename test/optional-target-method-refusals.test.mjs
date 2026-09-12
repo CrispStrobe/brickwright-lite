@@ -34,7 +34,7 @@ import {fileURLToPath} from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DEBUG = path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-debug');
-const BOARD = path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-board');
+const BOARD = path.join(ROOT, 'node_modules/bw-board/src');
 
 /** Methods a target MAY implement, which a consumer must therefore check for. */
 const OPTIONAL = ['replayToInputBoundary'];

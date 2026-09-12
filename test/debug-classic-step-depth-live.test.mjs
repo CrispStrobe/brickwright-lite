@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import {existsSync} from 'node:fs';
 import path from 'node:path';
 
-import {M6502Machine} from '../overlay/scratch-gui/src/lib/bw-board/m6502-machine.js';
-import {createM6502DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/m6502-debug.js';
-import {Z80Machine} from '../overlay/scratch-gui/src/lib/bw-board/z80-machine.js';
-import {createZ80DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/z80-debug.js';
+import {M6502Machine} from 'bw-board/m6502-machine.js';
+import {createM6502DebugTarget} from 'bw-board/m6502-debug.js';
+import {Z80Machine} from 'bw-board/z80-machine.js';
+import {createZ80DebugTarget} from 'bw-board/z80-debug.js';
 import {createRunToCoordinator} from '../overlay/scratch-gui/src/lib/bw-debug/run-to.js';
 
 const ram = [{kind: 'ram', start: 0, end: 0xffff}];
@@ -83,7 +83,7 @@ for (const [name, fixture, stack] of [
 
 const root = path.resolve(import.meta.dirname, '..');
 const wasmModule = path.join(root, 'overlay/scratch-gui/src/lib/emu8051/emu8051.js');
-const debugModule = path.join(root, 'overlay/scratch-gui/src/lib/bw-board/emu8051-debug.js');
+const debugModule = path.join(root, 'node_modules/bw-board/src/emu8051-debug.js');
 const have8051 = existsSync(wasmModule) && existsSync(debugModule);
 const callHex = ':0A000000120007741180FE742222E2\n:00000001FF\n';
 

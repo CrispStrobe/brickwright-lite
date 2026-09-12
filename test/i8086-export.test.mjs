@@ -17,8 +17,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {resolve, dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {I8086Machine, PCXT8086} from '../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js';
-import {assemble, assembleRaw} from '../overlay/scratch-gui/src/lib/bw-board/i8086-asm.js';
+import {I8086Machine, PCXT8086} from 'bw-board/i8086-machine.js';
+import {assemble, assembleRaw} from 'bw-board/i8086-asm.js';
 import {
     buildFloppyImage, FLOPPY_BYTES, FLOPPY_GEOMETRY, comFilename, imgFilename
 } from '../overlay/scratch-gui/src/lib/bw-asm/i8086-floppy.js';

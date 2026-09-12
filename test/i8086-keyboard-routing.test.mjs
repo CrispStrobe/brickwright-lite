@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '..');
 const vdp = readFileSync(resolve(repo,
-    'overlay/scratch-gui/src/lib/bw-circuit-ui/components/VdpScreen.jsx'), 'utf8');
+    'node_modules/bw-circuit-ui/src/components/VdpScreen.jsx'), 'utf8');
 const runner = readFileSync(resolve(repo,
     'overlay/scratch-gui/src/lib/bw-debug/debug-runner.js'), 'utf8');
 const panel = readFileSync(resolve(repo,

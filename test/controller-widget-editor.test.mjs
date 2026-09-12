@@ -45,7 +45,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ControllerPanel } from '../overlay/scratch-gui/src/lib/bw-board/controller.js';
+import { ControllerPanel } from 'bw-board/controller.js';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const VIEW = join(repo, 'overlay', 'scratch-gui', 'src', 'components',

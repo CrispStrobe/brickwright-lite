@@ -14,10 +14,10 @@ import path from 'node:path';
 import process from 'node:process';
 import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {renderSchematicSvg} from '../overlay/scratch-gui/src/lib/bw-circuit-ui/model/schematic-svg.js';
-import {Circuit} from '../overlay/scratch-gui/src/lib/bw-circuit-ui/model/circuit.js';
-import {setEngine} from '../overlay/scratch-gui/src/lib/bw-circuit-ui/engine.js';
-import {registerSidecar} from '../overlay/scratch-gui/src/lib/bw-circuit-ui/model/parts-registry.js';
+import {renderSchematicSvg} from 'bw-circuit-ui/model/schematic-svg.js';
+import {Circuit} from 'bw-circuit-ui/model/circuit.js';
+import {setEngine} from 'bw-circuit-ui/engine.js';
+import {registerSidecar} from 'bw-circuit-ui/model/parts-registry.js';
 
 // Load circuits through the same normalization and breadboard-net resolution
 // as the interactive designer. A renderer that silently drops board-hole

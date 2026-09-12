@@ -10,7 +10,7 @@ import path from 'node:path';
 import {boot} from '../scripts/lesson-bench.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
-const CUI = path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-circuit-ui');
+const CUI = path.join(ROOT, 'node_modules/bw-circuit-ui/src');
 const {Circuit} = await boot();
 const {buildSeatedFromDeclarations} = await import(path.join(CUI, 'model/infer-seated.js'));
 const {FOOTPRINTS, computeLeadMap} = await import(path.join(CUI, 'model/footprints.js'));

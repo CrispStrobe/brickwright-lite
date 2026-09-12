@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => readFileSync(resolve(repo, p), 'utf8');
-const leds = read('overlay/scratch-gui/src/lib/bw-circuit-ui/components/PortLeds.jsx');
+const leds = read('node_modules/bw-circuit-ui/src/components/PortLeds.jsx');
 const runner = read('overlay/scratch-gui/src/lib/bw-debug/debug-runner.js');
 const panel = read('overlay/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx');
 

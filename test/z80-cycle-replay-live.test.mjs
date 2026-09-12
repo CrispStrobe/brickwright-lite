@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {createZ80CycleDebugTarget} from
-    '../overlay/scratch-gui/src/lib/bw-board/z80-cycle-debug.js';
+    'bw-board/z80-cycle-debug.js';
 import {FLOOOH_Z80_PINS, FLOOOH_Z80_STATE_FIELDS} from
-    '../overlay/scratch-gui/src/lib/bw-board/floooh-z80-cycle-provider.js';
+    'bw-board/floooh-z80-cycle-provider.js';
 import {createCycleReplayController} from
     '../overlay/scratch-gui/src/lib/bw-debug/cycle-replay.js';
 

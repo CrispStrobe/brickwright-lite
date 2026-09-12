@@ -147,7 +147,7 @@ describe('save-what-you-see and the widgets key (2026-08-25)', () => {
 
     test('a controller panel round-trips through the bw-ctl-widgets key', async () => {
         const {ControllerPanel} =
-            await import('../overlay/scratch-gui/src/lib/bw-board/controller.js');
+            await import('bw-board/controller.js');
         const panel = new ControllerPanel();
         const w = panel.addWidget('speed', 'slider', {min: 0, max: 255}, {x: 10, y: 20});
         w.binding = {kind: 'pin', pin: 'P1.0'};

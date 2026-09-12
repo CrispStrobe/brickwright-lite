@@ -73,7 +73,7 @@ const THIS_GATE = 'test/fetch-pinning.test.mjs';
 const VENDORED = [
     /^packages\//,
     /^node_modules\//,
-    /^overlay\/scratch-gui\/src\/lib\/(bw-board|bw-circuit-ui|emu8051|libraries|parts-data)\//,
+    /^overlay\/scratch-gui\/src\/lib\/(emu8051|libraries|parts-data)\//,
     /^overlay\/scratch-gui\/src\/lib\/sb3-creator/,
     /^overlay\/scratch-gui\/(examples|static\/microbit-sim)\//,
     /(^|\/)package-lock\.json$/,
@@ -159,7 +159,7 @@ const TEXT_EXT = new Set(['.js', '.mjs', '.cjs', '.jsx', '.ts', '.tsx', '.json',
  *
  * FOR THIS WALK THAT NAMED SET IS CURRENTLY EMPTY, and the reason is worth
  * recording rather than discovering later: the three NUL-bearing source files
- * in this repo all live under `overlay/scratch-gui/src/lib/bw-board/` and
+ * in this repo all live under `node_modules/bw-board/src/` and
  * `.../bw-circuit-ui/`, which VENDORED already excludes before the NUL guard
  * is reached. So this walk skips 93 binaries and no source. If a NUL ever
  * appears in a file this walk was meant to read, the line names it.
@@ -298,13 +298,6 @@ const CENSUS = [
            + 'digest through `download_pack_zip` and verify before extracting; it '
            + 'is a Rust change this branch could not build and therefore did not '
            + 'make. See docs/FETCH-PINNING.md section 4.'
-    },
-    {
-        file: 'scripts/sync-bw-board.mjs',
-        kind: 'raw',
-        text: 'raw.githubusercontent.com/${REPO}/${remoteSha}',
-        class: 'resolved-var',
-        why: 'remoteSha comes from resolveRef() before the first content read.'
     },
     {
         file: 'scripts/sync-flasher.mjs',
@@ -667,7 +660,7 @@ describe('fetch pinning: every fetch that decides what ships names an immutable 
         // The structural claim behind `resolved-var`. Without it, a future edit
         // could reintroduce `const RAW = .../${REF}` and the census row would
         // still match on the variable NAME while meaning nothing.
-        const REMOTE_SYNCS = ['sync-bw-board.mjs', 'sync-examples.mjs', 'sync-sb3creator.mjs', 'sync-emu8051-wasm.mjs', 'sync-flasher.mjs'];
+        const REMOTE_SYNCS = ['sync-examples.mjs', 'sync-sb3creator.mjs', 'sync-emu8051-wasm.mjs', 'sync-flasher.mjs'];
         for (const f of REMOTE_SYNCS) {
             const src = readFileSync(path.join(ROOT, 'scripts', f), 'utf8');
             assert.match(src, /resolveRef\s*\(/,

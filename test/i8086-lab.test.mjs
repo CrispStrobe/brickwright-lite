@@ -2,8 +2,8 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {compareSandbox} from '../overlay/scratch-gui/src/lib/bw-i8086-lab/benchmark.js';
 import {getI8086MemoryMode, setI8086MemoryMode, withI8086MemoryPreference} from '../overlay/scratch-gui/src/lib/bw-i8086-preferences.js';
-import {createI8086Adapter} from '../overlay/scratch-gui/src/lib/bw-board/i8086-adapter.js';
-import {BREADBOARD8086} from '../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js';
+import {createI8086Adapter} from 'bw-board/i8086-adapter.js';
+import {BREADBOARD8086} from 'bw-board/i8086-machine.js';
 import {createI8086DosBench} from '../overlay/scratch-gui/src/lib/bw-debug/i8086-dos-bench.js';
 
 for (const workload of ['registers','mixed','strings']) test(`sandbox ${workload}: real backends match and execute`, async () => {

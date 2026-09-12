@@ -19,7 +19,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 import {ControllerPanel, WIDGET_TYPES, WIDGET_DEFAULTS, DECORATION_TYPES}
-    from '../overlay/scratch-gui/src/lib/bw-board/controller.js';
+    from 'bw-board/controller.js';
 import {balancedAfter} from './helpers/js-scope.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');

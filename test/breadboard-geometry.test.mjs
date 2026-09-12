@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { bbFootprint } from '../overlay/scratch-gui/src/lib/bw-circuit-ui/interaction/breadboard-snap.js';
+import { bbFootprint } from 'bw-circuit-ui/interaction/breadboard-snap.js';
 
 test('breadboard visual footprint follows full, half, and mini sizes', () => {
   assert.deepEqual(bbFootprint({ params: {} }), { w: 922, h: 310 });

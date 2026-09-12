@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
-const root = 'overlay/scratch-gui/src/lib/bw-circuit-ui';
+const root = 'node_modules/bw-circuit-ui/src';
 const canvas = readFileSync(`${root}/components/BoardCanvas.jsx`, 'utf8');
 const thumbnail = readFileSync(`${root}/components/PartThumbnail.jsx`, 'utf8');
 const wrappers = readFileSync(`${root}/wokwi-wrappers/index.js`, 'utf8');

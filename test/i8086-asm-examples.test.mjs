@@ -291,7 +291,7 @@ test('two cards on one hub: B hears one frame and IGNORES the other', async () =
 test('two cards at ONE address is refused by the machine', async () => {
     // Why the example uses 320h and 340h rather than whatever came to hand.
     const {I8086Machine} = await import(
-        new URL('../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js', import.meta.url).href);
+        new URL('../node_modules/bw-board/src/i8086-machine.js', import.meta.url).href);
     assert.throws(() => new I8086Machine({
         clockHz: 5e6,
         regions: [{kind: 'ram', start: 0, end: 0xffff}],

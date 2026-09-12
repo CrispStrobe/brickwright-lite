@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {I8086Machine} from '../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js';
+import {I8086Machine} from 'bw-board/i8086-machine.js';
 import {createPitSchedulingExperiment} from '../scripts/lib/i8086-pit-scheduling-experiment.mjs';
 const fixture = () => {
     const machine = new I8086Machine({clockHz:5e6,regions:[{kind:'ram',start:0,end:0xfffff}],

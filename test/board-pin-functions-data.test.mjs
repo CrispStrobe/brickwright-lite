@@ -4,7 +4,7 @@ import {readFile} from 'node:fs/promises';
 
 async function sidecar(kind) {
     return JSON.parse(await readFile(
-        `overlay/scratch-gui/src/lib/bw-circuit-ui/parts-data/${kind}.json`, 'utf8'));
+        `node_modules/bw-circuit-ui/src/parts-data/${kind}.json`, 'utf8'));
 }
 
 function pin(board, name) {

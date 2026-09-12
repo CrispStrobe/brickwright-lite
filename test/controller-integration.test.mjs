@@ -15,9 +15,9 @@
  */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { ControllerPanel } from '../overlay/scratch-gui/src/lib/bw-board/controller.js';
-import { ControllerExtension } from '../overlay/scratch-gui/src/lib/bw-board/controller-extension.js';
-import { bindPanelToBoard } from '../overlay/scratch-gui/src/lib/bw-board/controller-binding.js';
+import { ControllerPanel } from 'bw-board/controller.js';
+import { ControllerExtension } from 'bw-board/controller-extension.js';
+import { bindPanelToBoard } from 'bw-board/controller-binding.js';
 
 describe('Controller E2E — a running program reads a live widget', () => {
   it('joystick: operating it changes what controllerX/Y report', () => {

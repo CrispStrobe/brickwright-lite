@@ -1,9 +1,9 @@
 // Browser-native diagnostic workload. This bypasses UI pacing deliberately;
 // production UI latency remains the responsibility of bench-i8086-browser.mjs.
-import {I8086Machine} from '../../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js';
-import {createDos8086, DOSBOX8086} from '../../overlay/scratch-gui/src/lib/bw-board/i8086-dos.js';
-import {createI8086DebugTarget} from '../../overlay/scratch-gui/src/lib/bw-board/i8086-debug.js';
-import {assemble} from '../../overlay/scratch-gui/src/lib/bw-board/i8086-asm.js';
+import {I8086Machine} from 'bw-board/i8086-machine.js';
+import {createDos8086, DOSBOX8086} from 'bw-board/i8086-dos.js';
+import {createI8086DebugTarget} from 'bw-board/i8086-debug.js';
+import {assemble} from 'bw-board/i8086-asm.js';
 import {createRegisterBlockExperiment} from './i8086-block-experiment.mjs';
 import {installRamWordExperiment} from './i8086-ram-experiment.mjs';
 import {createPitSchedulingExperiment} from './i8086-pit-scheduling-experiment.mjs';

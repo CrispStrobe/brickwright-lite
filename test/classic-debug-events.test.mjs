@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createM6502Adapter} from '../overlay/scratch-gui/src/lib/bw-board/m6502-adapter.js';
-import {createM6502DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/m6502-debug.js';
-import {createZ80Adapter} from '../overlay/scratch-gui/src/lib/bw-board/z80-adapter.js';
-import {createZ80DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/z80-debug.js';
+import {createM6502Adapter} from 'bw-board/m6502-adapter.js';
+import {createM6502DebugTarget} from 'bw-board/m6502-debug.js';
+import {createZ80Adapter} from 'bw-board/z80-adapter.js';
+import {createZ80DebugTarget} from 'bw-board/z80-debug.js';
 
 const board = {advanceTo() {}, setPin() {}};
 

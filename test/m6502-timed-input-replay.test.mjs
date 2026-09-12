@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import {M6502Machine} from '../overlay/scratch-gui/src/lib/bw-board/m6502-machine.js';
-import {createM6502DebugTarget} from '../overlay/scratch-gui/src/lib/bw-board/m6502-debug.js';
+import {M6502Machine} from 'bw-board/m6502-machine.js';
+import {createM6502DebugTarget} from 'bw-board/m6502-debug.js';
 import {createHistoricalOutputGate, createTimedInputReplay} from
     '../overlay/scratch-gui/src/lib/bw-debug/timed-replay-io.js';
 

@@ -35,8 +35,8 @@ import path from 'node:path';
  * @returns {Promise<{Circuit: Function}>} the circuit model, engine injected
  */
 export async function loadCircuitModel (root) {
-    const cui = path.join(root, 'overlay/scratch-gui/src/lib/bw-circuit-ui');
-    const bwb = path.join(root, 'overlay/scratch-gui/src/lib/bw-board');
+    const cui = path.join(root, 'node_modules/bw-circuit-ui/src');
+    const bwb = path.join(root, 'node_modules/bw-board/src');
     const {setEngine} = await import(path.join(cui, 'engine.js'));
     const {BoardImpl} = await import(path.join(bwb, 'board.js'));
     const {inferNetlist, checkWiring} = await import(path.join(bwb, 'infer-netlist.js'));

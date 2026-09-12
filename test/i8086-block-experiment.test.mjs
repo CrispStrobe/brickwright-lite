@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {I8086} from '../overlay/scratch-gui/src/lib/bw-board/i8086.js';
+import {I8086} from 'bw-board/i8086.js';
 import {createRegisterBlockExperiment} from '../scripts/lib/i8086-block-experiment.mjs';
 const state = cpu => Object.fromEntries(['ax','bx','cx','dx','sp','bp','si','di','cs','ds','es','ss','ip','flags','cycles','intShadow','halted'].map(k => [k,cpu[k]]));
 function fixture(program) {

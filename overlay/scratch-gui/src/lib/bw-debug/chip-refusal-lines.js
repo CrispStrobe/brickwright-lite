@@ -23,7 +23,7 @@
  * Reading `machine.chips.dma1.unmodelled` directly would work today and would
  * quietly stop being the whole story on the next chip.
  */
-import {ROW_FIELDS} from '../bw-board/chip-ledger.js';
+import {ROW_FIELDS} from 'bw-board/chip-ledger.js';
 
 /** Two hex digits for a port or register, four when it does not fit. */
 const addr = (n) => `${n.toString(16).toUpperCase().padStart(n > 0xff ? 4 : 2, '0')}h`;

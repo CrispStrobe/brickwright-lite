@@ -59,8 +59,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {resolve, dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {I8086Machine, PCXT8086} from '../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js';
-import {assembleRaw} from '../overlay/scratch-gui/src/lib/bw-board/i8086-asm.js';
+import {I8086Machine, PCXT8086} from 'bw-board/i8086-machine.js';
+import {assembleRaw} from 'bw-board/i8086-asm.js';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const ROM = new Uint8Array(readFileSync(join(repo, 'overlay/scratch-gui/static/roms/i8086-bios.bin')));

@@ -2656,7 +2656,7 @@ class PseudocodeImporter extends React.Component {
             // someone actually runs with the simulated-board driver, and the bundle is
             // already large enough that everything optional should stay out of the entry.
             const {BoardImpl, inferNetlist} =
-                await import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/index.js');
+                await import(/* webpackChunkName: "bw-board" */ 'bw-board');
             const stc = this.currentStc();
             if (!stc || !(stc.pins || []).length) {
                 buf.push('simulated board: the project declares no PINs, so there is nothing to wire.\n');
@@ -2906,13 +2906,13 @@ class PseudocodeImporter extends React.Component {
             const isBbc = this.state.basicProfile === 'bbc';
             let runner;
             if (isBbc) {
-                const {BbcZ80Runner} = await import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/bbc-z80-runner.js');
+                const {BbcZ80Runner} = await import(/* webpackChunkName: "bw-board" */ 'bw-board/bbc-z80-runner.js');
                 const res = await fetch('static/roms/bbcbasic.com');
                 if (!res.ok) throw new Error('Failed to load bbcbasic.com');
                 const com = new Uint8Array(await res.arrayBuffer());
                 runner = new BbcZ80Runner({com}).start(code, {maxSteps: 200_000_000, inputs: []});
             } else {
-                const {BasicMachineRunner} = await import(/* webpackChunkName: "bw-board" */ '../../lib/bw-board/basic-machine-runner.js');
+                const {BasicMachineRunner} = await import(/* webpackChunkName: "bw-board" */ 'bw-board/basic-machine-runner.js');
                 const res = await fetch('static/roms/basic.rom');
                 if (!res.ok) throw new Error('Failed to load basic.rom');
                 const rom = new Uint8Array(await res.arrayBuffer());

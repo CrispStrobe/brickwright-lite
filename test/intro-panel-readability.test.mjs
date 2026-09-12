@@ -26,7 +26,7 @@ import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const BUTTON = path.join(ROOT, 'overlay/scratch-gui/src/components/menu-bar/example-intro-button.jsx');
-const CATALOGUE = path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-circuit-ui/components/ExamplesBrowser.jsx');
+const CATALOGUE = path.join(ROOT, 'node_modules/bw-circuit-ui/src/components/ExamplesBrowser.jsx');
 const IMPORTER = path.join(ROOT, 'overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx');
 
 test('the menu-bar (i) panel uses the catalogue\'s width and wraps, rather than its own 420px', () => {

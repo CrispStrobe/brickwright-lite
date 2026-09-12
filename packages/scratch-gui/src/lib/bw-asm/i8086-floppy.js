@@ -20,7 +20,7 @@
  *
  * @module
  */
-import {assembleRaw} from '../bw-board/i8086-asm.js';
+import {assembleRaw} from 'bw-board/i8086-asm.js';
 
 /** The boot sector runs at 0000:7C00, so it is assembled there — its INT 21h
  *  handler's OFFSET must be the real address the vector at 0000:0084 points to. */

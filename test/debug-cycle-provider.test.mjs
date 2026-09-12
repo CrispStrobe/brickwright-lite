@@ -6,7 +6,7 @@ import {pathToFileURL} from 'node:url';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const PROVIDER = path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-debug/cycle-provider.js');
-const DEBUG = path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-board/emu8051-debug.js');
+const DEBUG = path.join(ROOT, 'node_modules/bw-board/src/emu8051-debug.js');
 const WASM_JS = path.join(ROOT, 'overlay/scratch-gui/src/lib/emu8051/emu8051.js');
 const WASM = path.join(ROOT, 'overlay/scratch-gui/src/lib/emu8051/emu8051.wasm');
 

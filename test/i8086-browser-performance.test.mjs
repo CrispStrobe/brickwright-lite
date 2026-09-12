@@ -284,11 +284,11 @@ test('React profiling and source marks are opt-in at all three relevant subtrees
     const circuit = readFileSync(new URL(
         '../overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx', import.meta.url), 'utf8');
     const designer = readFileSync(new URL(
-        '../overlay/scratch-gui/src/lib/bw-circuit-ui/components/CircuitDesigner.jsx', import.meta.url), 'utf8');
+        '../node_modules/bw-circuit-ui/src/components/CircuitDesigner.jsx', import.meta.url), 'utf8');
     const canvas = readFileSync(new URL(
-        '../overlay/scratch-gui/src/lib/bw-circuit-ui/components/BoardCanvas.jsx', import.meta.url), 'utf8');
+        '../node_modules/bw-circuit-ui/src/components/BoardCanvas.jsx', import.meta.url), 'utf8');
     const boardHook = readFileSync(new URL(
-        '../overlay/scratch-gui/src/lib/bw-circuit-ui/hooks/useBoard.js', import.meta.url), 'utf8');
+        '../node_modules/bw-circuit-ui/src/hooks/useBoard.js', import.meta.url), 'utf8');
     const webpack = readFileSync(new URL(
         '../packages/scratch-gui/webpack.config.js', import.meta.url), 'utf8');
     const workflow = readFileSync(new URL('../.github/workflows/build.yml', import.meta.url), 'utf8');

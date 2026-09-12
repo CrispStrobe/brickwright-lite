@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {runDrc} from '../overlay/scratch-gui/src/lib/bw-circuit-ui/model/drc.js';
+import {runDrc} from 'bw-circuit-ui/model/drc.js';
 
 function picoCircuit(sourceKind, sourceParams = {}) {
     return {

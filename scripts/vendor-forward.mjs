@@ -84,9 +84,11 @@ try {
 
     // All syncs from the SAME clone set.
     // --pin: this tool exists to move the pins; a bare sync refuses to (lib-pin.mjs).
-    sh(`node scripts/sync-bw-circuit-ui.mjs --dir ${clones['bw-circuit-ui']} --pin`);
-    sh(`node scripts/sync-parts-data.mjs --dir ${clones['bw-circuit-ui']}`);
-    sh(`node scripts/sync-bw-board.mjs --dir ${clones['bw-board']} --pin`);
+    // bw-circuit-ui and bw-board are packages: record the pins, then let
+    // pin-packages.mjs derive the package.json specs and reinstall.
+    for (const repo of ['bw-circuit-ui', 'bw-board']) {
+        sh(`node scripts/pin-packages.mjs --set ${repo}=${shaOf(clones[repo])}`);
+    }
     sh(`node scripts/sync-sb3creator.mjs --dir ${clones['sb3-creator']} --pin`);
     sh(`node scripts/sync-examples.mjs --dir ${clones['sb3-creator']} --pin`);
 

@@ -26,11 +26,11 @@ const read = p => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 
 const MENU_BAR = 'overlay/scratch-gui/src/components/menu-bar/menu-bar.jsx';
 const CIRCUIT_TAB = 'overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx';
-const DESIGNER = 'overlay/scratch-gui/src/lib/bw-circuit-ui/components/CircuitDesigner.jsx';
-const CANVAS = 'overlay/scratch-gui/src/lib/bw-circuit-ui/components/BoardCanvas.jsx';
-const REGISTRY = 'overlay/scratch-gui/src/lib/bw-circuit-ui/model/exporters/registry.js';
-const SCOPE = 'overlay/scratch-gui/src/lib/bw-circuit-ui/components/ScopePanel.jsx';
-const SWEEP = 'overlay/scratch-gui/src/lib/bw-circuit-ui/components/SweepPanel.jsx';
+const DESIGNER = 'node_modules/bw-circuit-ui/src/components/CircuitDesigner.jsx';
+const CANVAS = 'node_modules/bw-circuit-ui/src/components/BoardCanvas.jsx';
+const REGISTRY = 'node_modules/bw-circuit-ui/src/model/exporters/registry.js';
+const SCOPE = 'node_modules/bw-circuit-ui/src/components/ScopePanel.jsx';
+const SWEEP = 'node_modules/bw-circuit-ui/src/components/SweepPanel.jsx';
 const EXPORT_PROOF = 'scripts/verify-circuit-export-completeness.mjs';
 
 const dispatchedActions = src => {

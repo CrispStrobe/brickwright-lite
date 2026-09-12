@@ -18,9 +18,9 @@ function capture(text, re, label) {
 const fmt = n => Number(String(n).replaceAll(',', '')).toLocaleString('en-US');
 
 export function buildI8086CapabilityReport() {
-    const cpu = read('overlay/scratch-gui/src/lib/bw-board/i8086.js');
-    const disasm = read('overlay/scratch-gui/src/lib/bw-board/i8086-disasm.js');
-    const machine = read('overlay/scratch-gui/src/lib/bw-board/i8086-machine.js');
+    const cpu = read('node_modules/bw-board/src/i8086.js');
+    const disasm = read('node_modules/bw-board/src/i8086-disasm.js');
+    const machine = read('node_modules/bw-board/src/i8086-machine.js');
     const runner = read('overlay/scratch-gui/src/lib/bw-debug/debug-runner.js');
     const ciVerifier = read('scripts/verify-bw-board-ci.mjs');
     const browserGate = read('scripts/verify-i8086-browser.mjs');
@@ -98,15 +98,15 @@ export function buildI8086CapabilityReport() {
     });
 
     const limitations = [
-        ['CPU timing', 'Instruction-level architectural state; no prefetch/BIU or T-state schedule', 'overlay/scratch-gui/src/lib/bw-board/i8086.js', /NOT modeled, deliberately: the prefetch queue and the BIU/],
-        ['8088 BIU experiment', 'Orders bus operations, but omits wait states, DMA stealing and exact transfer T-states', 'overlay/scratch-gui/src/lib/bw-board/i8088-biu.js', /WHAT THIS DOES NOT MODEL/],
-        ['8255', 'Mode 0 exact; modes 1/2 fall back with a warning and no handshake IRQ', 'overlay/scratch-gui/src/lib/bw-board/i8255.js', /MODES 1 AND 2 ARE NOT MODELLED/],
+        ['CPU timing', 'Instruction-level architectural state; no prefetch/BIU or T-state schedule', 'node_modules/bw-board/src/i8086.js', /NOT modeled, deliberately: the prefetch queue and the BIU/],
+        ['8088 BIU experiment', 'Orders bus operations, but omits wait states, DMA stealing and exact transfer T-states', 'node_modules/bw-board/src/i8088-biu.js', /WHAT THIS DOES NOT MODEL/],
+        ['8255', 'Mode 0 exact; modes 1/2 fall back with a warning and no handshake IRQ', 'node_modules/bw-board/src/i8255.js', /MODES 1 AND 2 ARE NOT MODELLED/],
         // Modes 1 and 5 and BCD decade counting were all added 2026-09-05, so the
         // old anchor /NO MODES 1 OR 5/ no longer appears and the row read as
         // "evidence disappeared" -- which sounds like a capability was LOST when
         // in fact two limitations were lifted. The anchor now names the one
         // limitation that remains, so the row fails again only if that changes.
-        ['8254', 'Modes 0-5 and BCD decades; no sub-instruction timing', 'overlay/scratch-gui/src/lib/bw-board/i8254.js', /STILL NO SUB-INSTRUCTION TIMING/],
+        ['8254', 'Modes 0-5 and BCD decades; no sub-instruction timing', 'node_modules/bw-board/src/i8254.js', /STILL NO SUB-INSTRUCTION TIMING/],
         // RE-ANCHORED 2026-09-05 with the pin bump, text and anchor together.
         // Rotation, poll mode and special mask mode landed upstream, so
         // /NO PRIORITY ROTATION/ stopped matching -- and the discriminator
@@ -121,13 +121,13 @@ export function buildI8086CapabilityReport() {
         // afternoon, because a stale summary line repeated it while also
         // claiming FIXED PRIORITY in the very commit that implemented
         // rotation; the ambiguity check would now catch that.
-        ['8259', 'Modes and priority rotation, poll and special mask; one controller, no cascaded slave; level-sensed, no LTIM edge/level distinction', 'overlay/scratch-gui/src/lib/bw-board/i8259.js', /LEVEL-SENSED/],
-        ['8251', 'Byte protocol only; no bit timing, parity/framing, or synchronous data path', 'overlay/scratch-gui/src/lib/bw-board/i8251.js', /NO BIT TIMING/],
-        ['8237', 'Programmer-visible transfer model without bus-cycle arbitration', 'overlay/scratch-gui/src/lib/bw-board/i8237.js', /programmer-visible register model, cycle-count-free/i],
-        ['uPD765', 'Sector-level phase machine; no magnetic encoding or physical drive timing', 'overlay/scratch-gui/src/lib/bw-board/upd765.js', /ACCURACY TIER: SECTOR-LEVEL, PHASE-EXACT/],
-        ['Video', 'Useful CGA/EGA/VGA/Hercules subsets; frame cadence is not scanline/cycle exact', 'overlay/scratch-gui/src/lib/bw-board/vga-card.js', /NOT THE RASTER/],
-        ['OPL2', 'Pitch and envelope-shape target, not chip-identical timbre', 'overlay/scratch-gui/src/lib/bw-board/ym3812.js', /PITCH AND ENVELOPE SHAPE, not timbre/],
-        ['Sound Blaster', 'SB 1.x/2.0 8-bit mono subset; no SB16, mixer, or ADC', 'overlay/scratch-gui/src/lib/bw-board/sb-dsp.js', /NOT a 16-bit SB16/]
+        ['8259', 'Modes and priority rotation, poll and special mask; one controller, no cascaded slave; level-sensed, no LTIM edge/level distinction', 'node_modules/bw-board/src/i8259.js', /LEVEL-SENSED/],
+        ['8251', 'Byte protocol only; no bit timing, parity/framing, or synchronous data path', 'node_modules/bw-board/src/i8251.js', /NO BIT TIMING/],
+        ['8237', 'Programmer-visible transfer model without bus-cycle arbitration', 'node_modules/bw-board/src/i8237.js', /programmer-visible register model, cycle-count-free/i],
+        ['uPD765', 'Sector-level phase machine; no magnetic encoding or physical drive timing', 'node_modules/bw-board/src/upd765.js', /ACCURACY TIER: SECTOR-LEVEL, PHASE-EXACT/],
+        ['Video', 'Useful CGA/EGA/VGA/Hercules subsets; frame cadence is not scanline/cycle exact', 'node_modules/bw-board/src/vga-card.js', /NOT THE RASTER/],
+        ['OPL2', 'Pitch and envelope-shape target, not chip-identical timbre', 'node_modules/bw-board/src/ym3812.js', /PITCH AND ENVELOPE SHAPE, not timbre/],
+        ['Sound Blaster', 'SB 1.x/2.0 8-bit mono subset; no SB16, mixer, or ADC', 'node_modules/bw-board/src/sb-dsp.js', /NOT a 16-bit SB16/]
     ];
     // A missing accuracy anchor has TWO opposite causes and they want opposite
     // responses, so they must not share a sentence. On 2026-09-05 the 8254 anchor

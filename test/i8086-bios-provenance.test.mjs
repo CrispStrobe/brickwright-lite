@@ -36,7 +36,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '..');
 const ROM = join(repo, 'overlay/scratch-gui/static/roms/i8086-bios.bin');
 const MANIFEST = join(repo, 'overlay/scratch-gui/static/roms/i8086-bios.provenance.json');
-const ASSEMBLER = join(repo, 'overlay/scratch-gui/src/lib/bw-board/i8086-asm.js');
+const ASSEMBLER = join(repo, 'node_modules/bw-board/src/i8086-asm.js');
 const PINS = join(repo, 'vendor-pins.json');
 
 // The ROM is behind the pin by this many bios.asm commits. It is asserted
@@ -82,7 +82,7 @@ test('the committed ROM is the file the manifest describes', () => {
 
 test('the manifest names the assembler that is actually vendored here', () => {
     const m = JSON.parse(readFileSync(MANIFEST, 'utf8'));
-    assert.equal(m.assembler.path, 'overlay/scratch-gui/src/lib/bw-board/i8086-asm.js');
+    assert.equal(m.assembler.path, 'node_modules/bw-board/src/i8086-asm.js');
     assert.equal(sha256(readFileSync(ASSEMBLER)), m.assembler.sha256,
         'the vendored i8086 assembler has changed since the ROM was recorded.\n'
         + 'The ROM is that assembler\'s output. A new assembler may assemble the same source '

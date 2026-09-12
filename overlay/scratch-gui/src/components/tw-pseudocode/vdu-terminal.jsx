@@ -1,5 +1,5 @@
 import React from 'react';
-import {VduDecoder} from '../../lib/bw-board/vdu-decoder.js';
+import {VduDecoder} from 'bw-board/vdu-decoder.js';
 
 /**
  * VduTerminal — BBC BASIC VDU terminal with canvas graphics.

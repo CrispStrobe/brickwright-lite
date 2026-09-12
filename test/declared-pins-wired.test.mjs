@@ -44,8 +44,8 @@ import path from 'node:path';
 import {ppiPadTerminal} from '../overlay/scratch-gui/src/lib/bw-asm/pseudocode-8086.js';
 
 const root = path.resolve(import.meta.dirname, '..');
-const cui = path.join(root, 'overlay/scratch-gui/src/lib/bw-circuit-ui');
-const bwb = path.join(root, 'overlay/scratch-gui/src/lib/bw-board');
+const cui = path.join(root, 'node_modules/bw-circuit-ui/src');
+const bwb = path.join(root, 'node_modules/bw-board/src');
 const EXAMPLES = path.join(root, 'overlay/scratch-gui/examples');
 
 /** Parts that provide program-addressable pads. Not only the MCU: eater6502

@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 
-import {inferNetlist} from '../overlay/scratch-gui/src/lib/bw-board/infer-netlist.js';
+import {inferNetlist} from 'bw-board/infer-netlist.js';
 
 test('Pico inferred netlists use GP header names instead of STC port placeholders', () => {
     const result = inferNetlist({

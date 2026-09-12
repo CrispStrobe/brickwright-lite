@@ -3,8 +3,8 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
-const overlayPath = 'overlay/scratch-gui/src/lib/bw-circuit-ui/components/CircuitDesigner.jsx';
-const packagePath = 'packages/scratch-gui/src/lib/bw-circuit-ui/components/CircuitDesigner.jsx';
+const overlayPath = 'node_modules/bw-circuit-ui/src/components/CircuitDesigner.jsx';
+const packagePath = 'packages/scratch-gui/node_modules/bw-circuit-ui/src/components/CircuitDesigner.jsx';
 
 const assertBatchedLoad = source => {
     assert.match(source, /import ReactDOM from 'react-dom';/);

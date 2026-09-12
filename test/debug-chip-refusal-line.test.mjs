@@ -27,12 +27,12 @@ import {readFileSync} from 'node:fs';
 import {resolve, dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {I8086Machine, PCXT8086, BREADBOARD8086}
-    from '../overlay/scratch-gui/src/lib/bw-board/i8086-machine.js';
-import {assembleRaw} from '../overlay/scratch-gui/src/lib/bw-board/i8086-asm.js';
+    from 'bw-board/i8086-machine.js';
+import {assembleRaw} from 'bw-board/i8086-asm.js';
 import {createI8086DosBench} from '../overlay/scratch-gui/src/lib/bw-debug/i8086-dos-bench.js';
 import {chipRefusalLines, chipRefusalLine, formatAnchor, formatCount}
     from '../overlay/scratch-gui/src/lib/bw-debug/chip-refusal-lines.js';
-import {ROW_FIELDS} from '../overlay/scratch-gui/src/lib/bw-board/chip-ledger.js';
+import {ROW_FIELDS} from 'bw-board/chip-ledger.js';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 

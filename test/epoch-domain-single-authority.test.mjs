@@ -40,11 +40,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {logicalTimeDomain, REWIND_LABELS}
-    from '../overlay/scratch-gui/src/lib/bw-board/instruction-debug-events.js';
+    from 'bw-board/instruction-debug-events.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const APP = path.join(ROOT, 'overlay/scratch-gui/src');
-const BOARD = path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-board');
+const BOARD = path.join(ROOT, 'node_modules/bw-board/src');
 
 const walk = (dir, out = []) => {
     for (const name of fs.readdirSync(dir)) {
