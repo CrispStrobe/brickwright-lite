@@ -4,8 +4,10 @@ import {readFileSync, readdirSync} from 'node:fs';
 import path from 'node:path';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-const ROOTS = ['node_modules/bw-circuit-ui/src',
-    'packages/scratch-gui/node_modules/bw-circuit-ui/src'];
+// This belongs to the pre-integration source suite: inspect the pinned root
+// package. Installed-package provenance separately verifies the GUI copy after
+// its install, without making source tests depend on that later build step.
+const ROOTS = ['node_modules/bw-circuit-ui/src'];
 const OLD = 'hobby_gearmotor';
 
 const walk = dir => readdirSync(dir, {withFileTypes: true}).flatMap(entry => {
@@ -54,6 +56,6 @@ test('gearmotor closeout rejects old asset, stale reference and missing canonica
     assert.throws(() => validateCloseout({...good,
         contents: new Map([['runtime.js', `case '${OLD}':`]])}), /still reference/);
     const missing = new Set(baseFiles);
-    missing.delete(`${ROOTS[1]}/parts-data/gearmotor.svg`);
+    missing.delete(`${ROOTS[0]}/parts-data/gearmotor.svg`);
     assert.throws(() => validateCloseout({...good, files: missing}), /canonical gearmotor\.svg missing/);
 });

@@ -62,9 +62,9 @@ export async function startPicoSimRun ({image, vm, stc, py, onStatus, onError}) 
     // the labwired-engine.js discipline. rp2040js carries USBCDC (the RPI_PICO
     // REPL is on USB, not UART0).
     const {BoardImpl, inferNetlist} = await import(
-        /* webpackChunkName: "bw-board" */ './bw-board/index.js');
+        /* webpackChunkName: "bw-board" */ 'bw-board');
     const {createRp2040jsAdapter} = await import(
-        /* webpackChunkName: "bw-board" */ './bw-board/rp2040js-adapter.js');
+        /* webpackChunkName: "bw-board" */ 'bw-board/rp2040js-adapter');
     const {resolveNetlist} = await import(
         /* webpackChunkName: "bw-board" */ './bw-debug/resolve-netlist.js');
     const {createPicoRepl} = await import('./pico-repl.js');

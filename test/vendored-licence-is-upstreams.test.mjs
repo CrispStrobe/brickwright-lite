@@ -4,11 +4,11 @@
  * History: two vendored LICENSE files drifted from upstream for weeks because
  * a comparison could not reach them and a ledger excused them as "attribution,
  * not code — permanent". Now that bw-board and bw-circuit-ui are npm packages
- * pinned by sha, the file cannot drift — npm installs upstream's bytes — but
+ * pinned by sha, installed bytes are checked separately against Git archives;
  * two things can still go wrong and this holds both:
  *
  *   1. the package could stop shipping a LICENSE (a `files` field upstream, or
- *      a rename), and the bundle would carry MIT code with no notice;
+ *      a rename), and the bundle would carry licensed code with no notice;
  *   2. the copy webpack bundles from (packages/scratch-gui/node_modules) could
  *      differ from the copy the tests read (root node_modules) — two installs,
  *      one pin, and only one of them is what ships.
@@ -32,11 +32,21 @@ export const licenceLooksReal = text =>
     /MIT License/.test(text) && /Copyright \(c\) (19|20)\d\d/.test(text) && /Permission is hereby granted/.test(text);
 
 for (const name of PACKAGES) {
-    test(`${name}: the installed package ships upstream's MIT licence with a dated copyright line`, () => {
+    test(`${name}: the installed package preserves its actual upstream licence`, () => {
         assert.ok(fs.existsSync(rootCopy(name)), `${name} has no LICENSE in node_modules — the package stopped shipping it`);
         const text = fs.readFileSync(rootCopy(name), 'utf8');
-        assert.ok(licenceLooksReal(text), `${name}/LICENSE is not a real MIT notice with a year:\n${text.slice(0, 200)}`);
-        assert.match(text, /CrispStrobe/, `${name}/LICENSE does not name the upstream holder`);
+        if (name === 'bw-board') {
+            assert.ok(licenceLooksReal(text), `${name}/LICENSE is not a real MIT notice with a year`);
+            assert.match(text, /CrispStrobe/, `${name}/LICENSE does not name the upstream holder`);
+        } else {
+            assert.equal(name, 'bw-circuit-ui', 'classify any newly pinned package explicitly');
+            assert.match(text, /^Mozilla Public License Version 2\.0\r?\n/);
+            assert.match(text, /Exhibit A/);
+            assert.match(text, /Exhibit B/);
+        }
+        const license = name === 'bw-board' ? 'MIT' : 'MPL-2.0';
+        assert.equal(fs.readFileSync(path.join(ROOT, 'overlay/scratch-gui/static/licenses', `${name}.${license}.txt`), 'utf8'), text,
+            'the app static notice preserves the complete installed LICENSE bytes');
     });
 
     test(`${name}: the copy webpack bundles is byte-identical to the copy the tests read`, {

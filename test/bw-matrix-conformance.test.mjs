@@ -41,7 +41,7 @@ const assembleRoute = src('lib/bw-asm/assemble-route.js');
 const sdcc = src('lib/sdcc-wasm/compiler.js');
 const smallerc = src('lib/smallerc-wasm/compiler.js');
 const creator = src('lib/sb3-creator.js');
-const factory = src('lib/bw-board/debug-target-factory.js');
+const factory = readFileSync(new URL(import.meta.resolve('bw-board/debug-target-factory.js')), 'utf8');
 const hosted = JSON.parse(readFileSync(join(REPO, 'docs/generated/hosted-targets.json'), 'utf8'));
 
 // ---- the picker is DERIVED, not reconciled -----------------------------------

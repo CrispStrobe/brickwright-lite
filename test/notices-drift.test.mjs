@@ -50,7 +50,10 @@ test('the census found the shipping set it is about to judge (floors per source)
     assert.ok(by('npm').length >= 10, `${by('npm').length} lite-added npm deps — integrate.mjs adds fourteen today`);
     assert.ok(by('vendored-tree').length >= 3, 'three pinned vendored trees');
     assert.ok(by('rom').length >= 10, 'the ROMs under static/roms');
-    assert.ok(by('wasm').length >= 3, 'emu8051, SmallerC, SDCC');
+    // SDCC is an opt-in external download, absent in a clean checkout. Never
+    // require its local cache as evidence of what the application ships.
+    const wasmNames = new Set(by('wasm').map(item => item.name));
+    for (const name of ['emu8051', 'smallerc']) assert.ok(wasmNames.has(name), `missing shipped WASM census entry: ${name}`);
     assert.ok(by('fetched').length >= 3, 'the syncs that place artifacts under static/');
     assert.ok(owner, 'the repo owner could not be read from the git remote; the own-code exemption is off and the findings below are the stricter set');
 });

@@ -918,55 +918,56 @@ takes a permissive option: specifically, `unescaper` declares
 
 ## bw-circuit-ui — MPL-2.0
 
-**Location in this repo:** `overlay/scratch-gui/src/lib/bw-circuit-ui/`
+**Installed location:** `node_modules/bw-circuit-ui/` (root tooling) and
+`packages/scratch-gui/node_modules/bw-circuit-ui/` (application).
 
-This directory contains a vendored copy of **bw-circuit-ui** (circuit designer
+The application imports the pinned Git package **bw-circuit-ui** (circuit designer
 UI: board canvas, schematic view, part models, interaction handlers, and wokwi
 element wrappers), licensed under **MPL-2.0** (Mozilla Public License 2.0).
 
 - **Licence:** MPL-2.0
 - **Copyright:** (c) CrispStrobe
-- **Upstream:** CrispStrobe/bw-circuit-ui (private repository)
-- **Source availability:** the vendored files are readable JavaScript in this
-  public repository and constitute the Corresponding Source Code for the
-  purposes of MPL-2.0 §3.2(a). No additional source beyond what is checked in
-  under the path above is required to build or modify these files.
+- **Upstream:** https://github.com/CrispStrobe/bw-circuit-ui
+- **Source availability:** `licenses/bw-packages.sources.json` in the built
+  application records the full pinned commit, public source tree and source
+  archive URLs. The tracked source manifest lives in
+  `overlay/scratch-gui/static/licenses/bw-packages.sources.json`.
 
-The `LICENSE` file in that directory is upstream's own, byte for byte. Until
-2026-09-11 it was a five-line Exhibit A NOTICE standing in for the licence, with
-a copyright line appended — a pointer to the terms, under the name of the terms.
-Nothing compared it, because the vendor identity gate resolved vendored paths
-under upstream's `src/` and a licence lives at the repository root. It is
-compared now (`rootSourced` in the divergence ledger), which is why the copyright
-holder is recorded HERE: the MPL-2.0 text upstream publishes carries no
-copyright line of its own, and the attribution must not be what gets lost in
-making the licence exact.
+`licenses/bw-circuit-ui.MPL-2.0.txt` preserves upstream's actual `LICENSE`
+bytes. Package metadata at the current pin incorrectly says MIT; that metadata
+does not replace the MPL-2.0 license file. The attribution is retained here
+because the standard MPL text contains no project copyright line.
 
 ### Licence boundary
 
 MPL-2.0 is a file-level copyleft licence. Each file under
-`overlay/scratch-gui/src/lib/bw-circuit-ui/` remains licensed under MPL-2.0
+the installed `bw-circuit-ui` package remains licensed under MPL-2.0
 within this BSD-3-Clause project. MPL-2.0 §3.3 ("Larger Work") explicitly
 permits distributing MPL-licensed files alongside files under a different
 licence — which is how this bundle is structured.
 
-Modifications to any file in that directory must be made available under
-MPL-2.0. Files outside that directory are unaffected and remain BSD-3-Clause.
+Modifications to covered files must be made available under MPL-2.0. This
+migration consumes the pinned upstream package without application-local source
+patches; the source links identify that exact version. Other components retain
+their respective licenses.
 
 ## bw-board — MIT
 
-**Location in this repo:** `overlay/scratch-gui/src/lib/bw-board/`
+**Installed location:** `node_modules/bw-board/` (root tooling) and
+`packages/scratch-gui/node_modules/bw-board/` (application).
 
-This directory contains a vendored copy of **bw-board** (simulation engine:
+The application imports the pinned Git package **bw-board** (simulation engine:
 netlist inference, pin model, MNA solver, device drivers, emu8051 adapter),
 licensed under the **MIT License**.
 
 - **Licence:** MIT
-- **Upstream:** CrispStrobe/bw-board (private repository)
-- **Licence file:** `overlay/scratch-gui/src/lib/bw-board/LICENSE`
+- **Upstream:** https://github.com/CrispStrobe/bw-board
+- **Licence file:** `overlay/scratch-gui/static/licenses/bw-board.MIT.txt`,
+  shipped as `licenses/bw-board.MIT.txt`.
+- **Pinned source links:** `licenses/bw-packages.sources.json` in the application.
 
 MIT requires the copyright and permission notice to be included in all copies
-or substantial portions of the Software. The directory-level LICENSE file
+or substantial portions of the Software. The preserved upstream LICENSE file
 carries both.
 
 ## sb3-creator — MPL-2.0
@@ -1050,7 +1051,7 @@ Both halves are now true, and they were not always. As of `dd603a5a4` no SDCC
 byte is copied into `packages/scratch-gui/build`, so none reaches the `.app`
 that `tauri.conf.json` assembles, and a CI guard fails the build if any
 reappears. As of 2026-09-08 the **202 files** that remained in the source tree —
-101 under `overlay/scratch-gui/src/lib/sdcc-wasm/dist/` and 101 in their tracked
+101 under the former SDCC `dist/` directory and 101 in its tracked
 mirror — are removed from version control and gitignored, so a clone of this
 repository receives no SDCC at all.
 
@@ -1130,7 +1131,7 @@ the packaged application as of `dd603a5a4`, and
 `scripts/verify-no-gpl-in-build.mjs` fails the build if any reappears.
 
 **The source tree:** as of 2026-09-08 it carries no SDCC at all. The 202 files
-that used to sit under `overlay/scratch-gui/src/lib/sdcc-wasm/dist/` and its
+that used to sit under the former SDCC `dist/` directory and its
 tracked mirror are removed from version control and gitignored, so a clone
 receives none of them. **Everything** in this repository is BSD-3-Clause (see
 `LICENSE` at the root).
@@ -1195,7 +1196,7 @@ Self-hosted under `static/microbit-sim/` (built from source with emscripten).
 **avr8js** (MIT License, https://github.com/wokwi/avr8js) provides
 instruction-level ATmega328P emulation (Arduino Uno/Nano) for the
 circuit simulator. Imported as `avr8js` via the bw-board adapter
-(`overlay/scratch-gui/src/lib/bw-board/avr8js-adapter.js`).
+(`bw-board/avr8js-adapter.js` in the installed package).
 
 - **Version:** 0.21.0
 - **Licence:** MIT — Copyright (c) 2019-2025 Uri Shaked
@@ -1225,7 +1226,7 @@ image, which is the point of having two.
 **wokwi-elements** (MIT License, https://github.com/wokwi/wokwi-elements)
 provides the web-component renderings of electronic parts (LED, resistor,
 buzzer, etc.) used in the circuit designer. The elements are imported as
-`@wokwi/elements` via `overlay/scratch-gui/src/lib/bw-circuit-ui/wokwi-wrappers/`.
+`@wokwi/elements` via `bw-circuit-ui/src/wokwi-wrappers/` in the installed package.
 
 - **Licence:** MIT — Copyright (c) 2020-2025 Uri Shaked
 - **Source:** https://github.com/wokwi/wokwi-elements
@@ -1284,7 +1285,7 @@ Emscripten's runtime glue (MIT / University of Illinois).
 simulated Pico's Python programs. Copyright (c) 2013-2025 Damien P. George and
 MicroPython contributors.
 
-- **What ships:** the versioned UF2 named in `overlay/scratch-gui/src/lib/bw-board/rp2040-bootrom.js`,
+- **What ships:** the versioned UF2 named in the installed `bw-board/rp2040-bootrom.js`,
   fetched at build time by `scripts/sync-pico-micropython.mjs`, verified against its
   SHA-256, written under `packages/scratch-gui/static/pico-micropython/` (gitignored) and
   copied into the app by webpack — so it is served, never committed.

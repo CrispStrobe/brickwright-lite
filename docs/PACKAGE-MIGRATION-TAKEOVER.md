@@ -43,3 +43,45 @@ requires reproduction. Its package metadata says MIT but its LICENSE is MPL-2.0;
 do not label both imported packages MIT or erase the actual license notice.
 
 No merge or deployment is established by this document.
+
+## Takeover integration progress
+
+The execution-policy GUI candidate is integrated with installed engine
+`7fbdfa9f575ba6c7da36e253b98c92e9093d8837`; exact upstream CI run
+`34687110308` completed successfully. UI remains pinned at `657e0217` above.
+Both packages in both root and GUI installs passed pinned Git-archive/npm-pack
+byte verification (engine 1114 files and UI 1109 files per install). This does
+not certify all transitive dependencies. The installed-package focused policy
+suite passed 16 tests, zero skips, without the test-only source loader.
+
+`docs/PACKAGE-FORK-PRESERVATION-AUDIT.md` classifies every deleted-copy delta;
+no current declared local behavior is missing. Optional timing data is present
+in the package payload, so production bundle reachability remains a build check.
+
+Both CI build paths now verify actual installed sources and static license
+assets before building. Metadata-only `pin:packages:check` is explicitly not a
+byte-identity verdict. Exact MIT and MPL-2.0 license files and pinned public
+source links are preserved in the application static assets. The inaccurate
+claim that circuit UI is MIT has been corrected in app notices and tests.
+
+The first full integrated run was **diagnostic**, spanning repairs: 3164 tests,
+3066 passed, 47 failed, 51 skipped. Its failures include removed copied-source
+paths and clean-checkout assumptions; it is not a release verdict. Test repairs
+retain explicit package authority, lazy-import contracts and failure mutations.
+Full tests/build/browser verification after repairs remain required.
+
+Circuit-UI diagnostic-only commit `13a7563` preserves the original drag threshold
+and the 34-scenario default. Three local runs moved the resistor; the final
+targeted run preserved the original await sequence. The CI zero-motion failure
+was not reproduced, so no speculative production fix is claimed.
+
+## Advancing a package pin
+
+After an explicit reviewed pin advance and dependency installation, run installed
+source verification against the exact upstream commits before generating notices:
+`npm run gen:package-notices`. Commit the generated overlay and GUI license/source
+mirrors with the pin. `npm run verify:package-notices` rejects stale bytes or source
+links. `integrate.mjs` copies these assets but does not bless unverified installed
+bytes or regenerate notices automatically. Regenerate the engine census and ROM
+provenance alongside engine pin changes. Final release gates must run on the
+resulting immutable candidate, not on a mixture of revisions.

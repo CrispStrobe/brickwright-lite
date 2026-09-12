@@ -7,6 +7,14 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {waitFor} from '../overlay/scratch-gui/src/lib/pico-sim-run.js';
 
+test('Pico runtime loads pinned packages lazily, not removed copied engine paths', async () => {
+    const source = await readFile(new URL('../overlay/scratch-gui/src/lib/pico-sim-run.js', import.meta.url), 'utf8');
+    assert.match(source, /await import\(\s*\/\* webpackChunkName: "bw-board" \*\/ 'bw-board'\)/);
+    assert.match(source, /await import\(\s*\/\* webpackChunkName: "bw-board" \*\/ 'bw-board\/rp2040js-adapter'\)/);
+    assert.doesNotMatch(source, /['"]\.\/bw-board\//);
+    assert.equal(await readFile(new URL('../packages/scratch-gui/src/lib/pico-sim-run.js', import.meta.url), 'utf8'), source);
+});
+
 test('waitFor surfaces a terminal replacement failure without waiting for timeout', async () => {
     const failure = new Error('fresh USB epoch failed');
     await assert.rejects(waitFor(() => false, () => false, 60_000, () => failure), failure);

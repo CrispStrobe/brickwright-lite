@@ -214,6 +214,8 @@ const describeSkips = ({unreadable, nul}) => {
 //                 the step itself refuses a value that is not 40-hex
 //   resolver      not a content fetch: it reads a NAME to PRODUCE a sha. This
 //                 is the fix, not the defect.
+//   source-link   not a build fetch: a source-availability link emitted for
+//                 users, or its exact fixture assertion; validated by notices tests.
 //   content-hash  the NAME is mutable (a release tag) but the CONTENT is
 //                 sha256-verified against a constant in the same file BEFORE
 //                 anything is written. Strictly stronger than sha-addressing,
@@ -223,6 +225,35 @@ const describeSkips = ({unreadable, nul}) => {
 //                 excused — and not `sha-const`, because the URL carries a tag.
 //   waived        genuinely cannot be sha-addressed; reason required
 const CENSUS = [
+    ...['bw-board', 'bw-circuit-ui'].map(name => ({
+        file: 'overlay/scratch-gui/static/licenses/bw-packages.sources.json',
+        kind: 'archive',
+        text: `github.com/CrispStrobe/${name}/archive/${JSON.parse(readFileSync(path.join(ROOT, 'vendor-pins.json'), 'utf8'))[name]}.tar.gz`,
+        class: 'source-link',
+        why: 'Public source-availability link, not executed by the build. Notices check asserts the exact full pinned SHA and mirrored manifest bytes.'
+    })),
+    {
+        file: 'scripts/package-upstream-notices.mjs', kind: 'archive',
+        text: 'github.com/CrispStrobe/${name}/archive/${sha}.tar.gz', class: 'source-link',
+        why: 'Emits links only; package allowlist and full commit SHA are validated before writing the source manifest.'
+    },
+    {
+        file: 'test/package-upstream-notices.test.mjs', kind: 'archive',
+        text: 'github.com/CrispStrobe/bw-circuit-ui/archive/${pins[', class: 'source-link',
+        why: 'Fixture assertion for generated source-availability links; no network request is made.'
+    },
+    {
+        file: '.github/workflows/build.yml', kind: 'git',
+        text: 'git clone --filter=blob:none --no-checkout https://github.com/CrispStrobe/bw-circuit-ui.git /tmp/bw-circuit-ui',
+        class: 'shell-pin',
+        why: 'Provenance source is checked out to the validated 40-hex UI_PIN, HEAD equality is asserted, then installed package bytes are compared against the pinned Git archive.'
+    },
+    {
+        file: '.github/workflows/build.yml', kind: 'git',
+        text: 'git clone --filter=blob:none --no-checkout "https://github.com/CrispStrobe/$PACKAGE.git" "/tmp/$PACKAGE"',
+        class: 'shell-pin',
+        why: 'Browser build loops over the two fixed package names, validates full PACKAGE_PIN, checks out that commit and asserts HEAD before verifying installed bytes.'
+    },
     {
         file: 'overlay/scratch-gui/src/lib/smallerc-wasm/build.sh',
         kind: 'git',
@@ -231,16 +262,6 @@ const CENSUS = [
         pin: 'SMALLERC_COMMIT',
         why: 'the clone is immediately checked out to SMALLERC_COMMIT and the script refuses '
            + 'to build unless HEAD equals that full commit SHA.'
-    },
-    {
-        file: '.github/workflows/build.yml',
-        kind: 'raw',
-        text: 'raw.githubusercontent.com/$repo/$pin/$remote',
-        class: 'shell-pin',
-        why: 'the overlay-vs-pin guard. $pin comes from vendor-pins.json and the '
-           + 'step exits 1 if it is not 40 hex characters. This line used to name '
-           + '`master` with a `main` fallback, which made it warn whenever upstream '
-           + 'moved and stay silent when the CDN served a stale copy.'
     },
     {
         file: '.github/workflows/build.yml',

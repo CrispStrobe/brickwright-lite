@@ -19,6 +19,9 @@ test('offline pinned pack rejects modified installed source even when metadata s
     try {
         const repoDir = path.join(temp, 'repo'), installedDir = path.join(temp, 'installed');
         mkdirSync(repoDir); mkdirSync(installedDir);
+        // git is an explicit build-tool prerequisite, not an emulated runtime
+        // oracle. This fixture creates its own isolated repository; no ambient
+        // checkout supplies expected bytes. gate-shapes-allow
         const git = args => execFileSync('git', ['-C', repoDir, ...args], {encoding: 'utf8'}).trim();
         git(['init', '-q']); git(['remote', 'add', 'origin', 'https://github.com/CrispStrobe/bw-board.git']);
         writeFileSync(path.join(repoDir, 'package.json'), JSON.stringify({name: 'bw-board', version: '0.0.1', files: ['src'], scripts: {prepack: 'exit 77', prepare: 'exit 78'}}) + '\n');
