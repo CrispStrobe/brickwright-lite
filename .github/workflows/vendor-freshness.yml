@@ -247,6 +247,40 @@ jobs:
           cd brickwright-lite
           SB3_CREATOR_DIR="$GITHUB_WORKSPACE/sb3-creator" node --test test/vendor-sb3creator-deltas.test.mjs
 
+      # THE ONLY PLACE THE sb3-creator IDENTITY JUDGE RUNS. It landed in
+      # 4461b4f43 with no step invoking it, so it skipped in build.yml (no
+      # sb3-creator tree there) and ran nowhere at all -- caught by T13's skip
+      # census, which reds a skip with no pointer as "a gate nobody runs". It
+      # belongs here for the same reason the deltas test and the bw-circuit-ui
+      # corpus do: this workflow already checks out all three upstreams at their
+      # pins, and duplicating a 14-file clone into every push and PR of build.yml
+      # would buy nothing.
+      #
+      # A SEPARATE STEP, NOT AN ARGUMENT TO THE ONE ABOVE, because renaming that
+      # step would invalidate the LANES pointer that quotes its name verbatim and
+      # the step census recorded under it. The pin equality this needs is already
+      # enforced by that step (it exits 1 before this one runs on a mismatch) AND
+      # by the test itself, which skips rather than judges a tree off the pin.
+      #
+      # WHICH IS EXACTLY WHY THE SKIP IS A FAILURE HERE. Everywhere else a skip
+      # means "verified somewhere else"; here there is no somewhere else, so a
+      # skip means the gate ran nowhere while reporting success -- the state this
+      # step was added to end. `node --test` exits 0 on a skip, so the TAP is
+      # read rather than the exit code.
+      - name: sb3-creator vendored files are byte-identical at the pin
+        if: always()
+        run: |
+          set -euo pipefail
+          cd brickwright-lite
+          SB3_CREATOR_DIR="$GITHUB_WORKSPACE/sb3-creator" \
+            node --test test/sb3-creator-vendor-identity.test.mjs | tee /tmp/sb3-identity.tap
+          skipped=$(grep -c '# SKIP' /tmp/sb3-identity.tap || true)
+          if [ "$skipped" != "0" ]; then
+            grep '# SKIP' /tmp/sb3-identity.tap || true
+            echo "::error::the sb3-creator identity judge SKIPPED $skipped subtest(s) in the one step that runs it -- it is pinned and checked out here, so a skip is a gate executing nowhere, not a gate deferring to somewhere else"
+            exit 1
+          fi
+
       # Kept: it is the thing that verifies the transform, and it passes.
       - name: sb3-creator transpiler
         run: node brickwright-lite/scripts/sync-sb3creator.mjs --check --dir sb3-creator --allow-stale
