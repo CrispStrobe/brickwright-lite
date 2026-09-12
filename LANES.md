@@ -355,10 +355,6 @@ keeping, it is worth a branch.
 ## CLAIMS — work in progress
 
 | npm package migration takeover + execution-policy GUI adoption | Codex root, user-authorized 2026-09-12 | `feat/package-migration-takeover`, preserved checkpoint `44872243a`, base `411828a` | ACTIVE: original `lane/upstreams-as-packages` worktree/index untouched. Isolated takeover owns packaging/build/GUI integration; separate agents audit forks/provenance and reproduce circuit-UI drag failure. No default-branch merge/deploy until qualified. |
-- codex-app-adoption-audit: package migration test/source path authority repair only, own feat/package-fork-audit worktree; excludes root-owned bw-matrix-conformance and gearmotor-slug-closeout; no package/runtime changes. 2026-09-12.
-- codex-app-adoption-audit: follow-up migration gates (no-dead-overlay, no-NUL complete source scope, pin-sync census, Pico integrated package import), isolated feat/package-fork-audit; parent authorizes script exception. 2026-09-12.
-- codex-app-adoption-audit: package-aware vendor-forward orchestration and focused mocked tests, own isolated branch; no live forward/pin moves. 2026-09-12.
-- codex-app-adoption-audit: forward utility review corrections, actual BIOS CLI read-only regression, strict flags and pre-build guard; isolated branch. 2026-09-12.
 
 
 
@@ -489,6 +485,13 @@ keeping, it is worth a branch.
 | C: a doc's name printed as markdown is not a read, and the trigger list may not vouch for itself | lego-b9 (VPS Claude session, worktree `wt/lego-b9-t9`, branch `lane/doc-triggers-output-only`) | 2026-09-07 | **CLAIMED** (lego-ac's ask, option C of docs/CI-QUEUE-2026-09-07-MAIN.md). Two instances held docs/LANGUAGE-DEVICE-MATRIX-PLAN.md in build.yml's re-include list: `scripts/gen-reader-coverage.mjs:171` and `scripts/gen-language-device-matrix.mjs:97`, each printing the plan's name between escaped backticks inside a template literal — a report's provenance line, not a read. Five main runs on 2026-09-07 (127 runner-min) verified plan-only edits for it. While measuring, a second thing: the census scans `.github/`, so build.yml's own `- 'docs/X.md'` entries counted as mentions and the test's STALE direction could never fire (fired live: re-including a doc nothing names stayed 5/5 green) — two docs whose readers had left (`DEBUGGER-NEXT-ROADMAP.md`, `FULL-DEBUGGER-ARCHITECTURE.md`) were still re-included; GATES thirtieth species. `scripts/lib/doc-triggers.mjs`: a workflow's trigger entry is not a mention; a name between escaped backticks is stripped before the match and listed by `outputOnlyMentions` (reported in the test's diagnostic, not counted). Mutations in a throwaway tree (printed-only line, read line, both on one line, a trigger entry vs a `run:` that reads) and on the real list (an unmentioned doc, chosen at run time, re-included → stale by name); fired live: a code line naming the plan → missing by name. Re-includes 18 → 15; a plan-only or LANES-only push now starts no run. |
 
 ## DONE — recently, so nobody redoes it
+
+Package migration test and forward-helper sublane — Codex app_adoption_audit,
+2026-09-12: source-path authority, complete census scope, Pico probe and package-aware
+forward helper handed off; integrated as `94402fb9c`, `b58ac0f68`, `e37ff83f9`,
+`6bfd8f703`. Repaired integrated suite 537/537; forward tests 13/13 including the
+actual read-only BIOS CLI. No live forward or pin update was performed by this
+sublane. Root retains the separate migration/build/CI qualification claim above.
 
 Package migration schematic sidecars — Codex policy_review, `fix/schematic-installed-package-data` (2026-09-12): `scripts/render-schematic.mjs` now reads the pinned root installation's `src/parts-data`, with no overlay/sibling fallback. Syntax and diff checks passed; parent integration runs the four visual baselines with its installed packages. No dependency or browser changes.
 
