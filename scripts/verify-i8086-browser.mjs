@@ -99,9 +99,13 @@ try {
         }
     });
     await page.addInitScript(() => {
-        localStorage.clear();
+        // Initialize only once so the later reload really tests persistence.
+        if (!sessionStorage.getItem('bw-i8086-browser-initialized')) {
+            localStorage.clear();
+            sessionStorage.clear();
+            sessionStorage.setItem('bw-i8086-browser-initialized', '1');
+        }
         localStorage.setItem('bw-starter-v1-complete', '1');
-        sessionStorage.clear();
     });
 
     // Keep the built app and its lazy chunks local, but make a hosted compiler
@@ -241,6 +245,15 @@ try {
     await page.getByText('8086 execution diagnostics…', {exact: true}).click();
     const lab = page.getByTestId('i8086-lab');
     await lab.waitFor({state: 'visible'});
+    const executionStatus = page.getByTestId('i8086-execution-status');
+    const activeBeforePreference = await executionStatus.textContent();
+    record('actual constructed DOS target is reported as Auto / DOS-services / JavaScript',
+        /Active request: auto/.test(activeBeforePreference) &&
+        /8086\s*\/\s*dos-services\s*\/\s*javascript/.test(activeBeforePreference));
+    await page.getByTestId('i8086-execution-mode').selectOption('wired');
+    record('browser execution preference persists without relabelling the existing target',
+        await page.evaluate(() => localStorage.getItem('bw-i8086-execution')) === 'wired' &&
+        await executionStatus.textContent() === activeBeforePreference);
     await page.getByTestId('i8086-memory-mode').selectOption('reference');
     record('reference byte preference persists without selecting an experimental backend',
         await page.evaluate(() => localStorage.getItem('bw-i8086-memory')) === 'reference');
@@ -270,6 +283,45 @@ try {
     await lab.waitFor({state: 'hidden'});
     record('Escape closes the diagnostics dialog', true);
     record('closed sandbox leaves no hidden dialog controls in the document', await lab.count() === 0);
+
+    // Use the real assemble/attach route again: Wired must refuse this new DOS
+    // construction, not relabel it as wired or quietly start a functional core.
+    await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    await page.getByTestId('bw-asm-assemble').click();
+    await page.getByRole('tab', {name: /Circuit/}).click();
+    await page.getByText('Settings', {exact: true}).click();
+    await page.getByText('8086 execution diagnostics…', {exact: true}).click();
+    await page.waitForFunction(() => {
+        const text = document.querySelector('[data-testid="i8086-execution-status"]')?.textContent || '';
+        return /Refused: no-matching-implementation/.test(text) && /no functional substitute/.test(text);
+    }, null, {timeout: 30000});
+    record('real project reconstruction refuses Wired without claiming an active backend',
+        /No active 8086\/80186/.test(await executionStatus.textContent()));
+
+    // A real navigation exercises persisted storage, not only the in-memory
+    // session override. The fresh page starts with no active target claim.
+    await page.reload({waitUntil: 'domcontentloaded', timeout: 90000});
+    await page.waitForSelector('[role="tab"]', {timeout: 60000});
+    await page.getByText('Settings', {exact: true}).click();
+    await page.getByText('8086 execution diagnostics…', {exact: true}).click();
+    record('Wired preference survives a browser reload',
+        await page.getByTestId('i8086-execution-mode').inputValue() === 'wired');
+    await page.getByTestId('i8086-execution-mode').selectOption('auto');
+    await page.keyboard.press('Escape');
+    await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    await device.selectOption('i8086');
+    await page.getByTestId('bw-lang-row').getByRole('button', {name: /ASM/}).click();
+    await examples.selectOption('pins');
+    await page.waitForFunction(() => /An LED and a Switch on the 8255/.test(
+        document.querySelector('.cm-content')?.textContent || ''), null, {timeout: 15000});
+    await page.getByTestId('bw-asm-assemble').click();
+    await page.getByRole('tab', {name: /Circuit/}).click();
+    await page.getByText('Settings', {exact: true}).click();
+    await page.getByText('8086 execution diagnostics…', {exact: true}).click();
+    await page.waitForFunction(() => /Active request: auto.*dos-services.*javascript/.test(
+        document.querySelector('[data-testid="i8086-execution-status"]')?.textContent || ''),
+    null, {timeout: 30000});
+    record('Auto successfully reconstructs the DOS-services target after explicit refusal', true);
 
     record('the 8086 journey made no hosted compiler request', hostedCompilerRequests.length === 0,
         hostedCompilerRequests.join(' | '));

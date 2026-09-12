@@ -16,6 +16,9 @@ DOS media keeps DOS services; hardware remains hardware. Wired asks for wired
 semantics and is explicitly refused before the target factory runs. The RAM
 shortcut diagnostic remains independent. Changing either preference leaves
 existing targets unchanged; rebuild or reattach to apply.
+This first slice is explicitly browser-local, not project-saved semantic
+metadata. Exporting or sharing a project does not transfer this preference.
+The UI labels this scope and continues to derive semantics from media/context.
 
 DOS bench construction and the hardware `createDebugTarget` boundary perform
 admission. Active requested/actual/reason metadata is frozen and published only
@@ -62,3 +65,36 @@ objects have no such hook or externally scheduled execution of their own, so
 their abandoned state is ordinary collectible JavaScript. After successful
 delivery, the runner owns session/target teardown; the signal listener only
 clears active status. Composite wrappers are not assumed to own a destructor.
+
+Mirror provenance: at base `411828a`, the authoritative overlay diagnostics JSX
+had 96 lines, but its `packages/` counterpart was untracked/ignored, not a stale
+tracked version. This candidate deliberately adds the exact authoritative
+overlay copy to tracked `packages/`, hence the initial 124-line package addition
+versus a 30-line overlay diff (29 insertions, one deletion). Subsequent label changes remain byte-identical;
+the integration regression checks that identity. No unrelated package files
+were mirrored or imported from another worker's tree.
+
+## Executable browser gate (not yet run for this candidate)
+
+`scripts/verify-i8086-browser.mjs` now extends the existing production journey:
+after real local assembly and DOS execution it opens the actual diagnostics,
+checks Auto/DOS-services/JavaScript status, selects Wired, checks persisted
+storage and unchanged active label/target/registers/RAM, then reassembles through
+the actual UI and requires a named refusal with no active-backend claim. A
+reload proves persistence rather than just the tab override; selecting Auto
+and assembling again must restore a real DOS-services selection. Initial
+storage clearing is now once per browser session so reload does not erase the
+very preference under test. No synthetic constructor is called by this proof.
+
+After the package migration and a fresh build, execute the existing command:
+
+```sh
+PROOF_URL=http://localhost:8617/ node scripts/verify-i8086-browser.mjs
+```
+
+The existing workflow already runs this gate and preserves its artifact folder.
+For this candidate only syntax and source-contract tests have run, not Chromium;
+they are not browser acceptance. The migration worktree was still dirty at
+`411828a` when checked, so no heavy build/browser run was started. Hardware-ROM
+browser construction and 80186 UI selection still need an additional journey;
+the bounded controller/real DOS tests are not a claim that those UI paths passed.

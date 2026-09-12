@@ -52,7 +52,7 @@ export default function I8086Lab () {
         onCancel={event => { event.preventDefault(); close(); }}>
         <h2 id="i8086-lab-title">8086 execution diagnostics</h2>
         <button className={styles.close} onClick={close} aria-label="Close 8086 diagnostics">Close</button>
-        <label className={styles.row}>Project execution requirement
+        <label className={styles.row}>8086 execution preference (this browser)
             <select data-testid="i8086-execution-mode" value={executionMode} onChange={event => {
                 const value = event.target.value;
                 const persisted = i8086Execution.setPreference(value);
@@ -65,7 +65,8 @@ export default function I8086Lab () {
                 <option value="wired">Wired digital (unavailable — construction will be refused)</option>
             </select>
         </label>
-        <p>This does not switch a running target. Rebuild or reattach to apply. Auto uses DOS services
+        <p>This browser-local preference is not saved in the project and does not switch a running target.
+            Rebuild or reattach to apply. Project and media context is preserved: Auto uses DOS services
             for DOS programs and functional hardware for hardware setups; it never substitutes one for the other.</p>
         <div role="status" data-testid="i8086-execution-status">
             {executionState.active ? <>

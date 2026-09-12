@@ -92,3 +92,16 @@ test('CI runs the 8086 proof against the served build and preserves its evidence
     assert.match(workflow, /path: artifacts\/i8086-browser\//);
     assert.match(workflow, /if-no-files-found: error/);
 });
+
+test('browser gate exercises execution preference through real controls and reconstruction', () => {
+    for (const evidence of [
+        "getByTestId('i8086-execution-mode').selectOption('wired')",
+        'await executionStatus.textContent() === activeBeforePreference',
+        'No active 8086\\/80186', 'Refused: no-matching-implementation',
+        'await page.reload(', "inputValue() === 'wired'",
+        "getByTestId('i8086-execution-mode').selectOption('auto')",
+        'Auto successfully reconstructs the DOS-services target after explicit refusal'
+    ]) assert.ok(proof.includes(evidence), `missing execution browser step: ${evidence}`);
+    assert.doesNotMatch(proof, /i8086Execution\.(?:construct|setPreference)\(/,
+        'browser proof must drive actual application controls, not construct a synthetic target');
+});

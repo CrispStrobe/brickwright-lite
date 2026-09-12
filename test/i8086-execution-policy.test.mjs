@@ -166,5 +166,7 @@ test('target boundaries, lifecycle and GUI hold actual admission/status and mirr
     assert.match(texts[2], /catch \(e\) \{\s*unschedule\(\);\s*i8086Execution\.release/);
     assert.match(texts[3], /i8086Execution\.subscribe\(setExecutionState\)/);
     assert.match(texts[3], /Wired digital \(unavailable/);
+    assert.match(texts[3], /8086 execution preference \(this browser\)/);
+    assert.match(texts[3], /not saved in the project/);
     assert.match(texts[3], /Decoded blocks and Wasm are not supported project backends/);
 });
