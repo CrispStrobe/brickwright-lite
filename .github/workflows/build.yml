@@ -768,6 +768,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: npm run verify:bwboard-ci
+      - name: Install root package inputs before browser integration
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Vendor the pinned permissive Scratch sources
         run: npm run vendor
       - name: Integrate the Code tab (sb3-creator)
@@ -799,7 +801,6 @@ jobs:
         if: ${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}
         run: |
           set -euo pipefail
-          npm ci --ignore-scripts --no-audit --no-fund
           for PACKAGE in bw-board bw-circuit-ui; do
             PACKAGE_PIN=$(node -e "const p=require('./vendor-pins.json')[process.argv[1]]; if(!/^[0-9a-f]{40}$/.test(p || '')) process.exit(1); console.log(p)" "$PACKAGE")
             git clone --filter=blob:none --no-checkout "https://github.com/CrispStrobe/$PACKAGE.git" "/tmp/$PACKAGE"

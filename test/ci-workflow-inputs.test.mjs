@@ -60,6 +60,7 @@ function assertInstalledProvenanceBeforeBuild(source) {
         assert.ok(build?.includes(`steps.${id}.outcome == 'success'`), `${name}: build must require provenance success`);
         assert.ok(job.indexOf(`id: ${id}`) < job.indexOf('id: build_editor'), `${name}: provenance must precede build`);
         assert.ok(job.indexOf('npm ci --ignore-scripts') < job.indexOf('node scripts/pin-packages.mjs --verify-installed'), `${name}: root install must precede verification`);
+        assert.ok(job.indexOf('npm ci --ignore-scripts') >= 0 && job.indexOf('npm ci --ignore-scripts') < job.indexOf('node scripts/integrate.mjs'), `${name}: root package bootstrap must precede integration`);
         assert.ok(job.indexOf('cd packages/scratch-gui && npm install') < job.indexOf('node scripts/pin-packages.mjs --verify-installed'), `${name}: GUI install must precede verification`);
         assert.ok(job.includes('/^[0-9a-f]{40}$/'), `${name}: source pins require full-SHA validation`);
         assert.ok(job.includes('rev-parse HEAD'), `${name}: fetched source HEAD must be checked`);
@@ -82,4 +83,13 @@ test('both build paths verify actual root and GUI bytes, pinned sources and ship
         source.replaceAll('/^[0-9a-f]{40}$/', '/^[0-9a-f]+$/'),
         source.replaceAll('https://github.com/CrispStrobe/bw-circuit-ui.git', 'https://evil.example/bw-circuit-ui.git')
     ]) assert.throws(() => assertInstalledProvenanceBeforeBuild(mutated));
+});
+
+test('both debugger jobs install the root packages their tests load', () => {
+    const workflow = workflows.get('.github/workflows/debugger.yml');
+    for (const section of [workflow.split('  contracts:')[1].split('  focused:')[0], workflow.split('  focused:')[1]]) {
+        const install = section.indexOf('npm ci --ignore-scripts');
+        assert.ok(install >= 0 && install < section.indexOf('node --test'));
+    }
+    assert.doesNotMatch(workflow, /Dependency-free debugger architecture/);
 });
