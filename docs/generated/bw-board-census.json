@@ -2,7 +2,7 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "208710e006af1e5007fe31e37fb472ce9587255f",
+    "sha": "0bd314e3a56c5b17078279cbd2482b1c5949d654",
     "read": "2026-09-12"
   },
   "rows": [
@@ -110,6 +110,7 @@
         "test/emu8051-idle-fastforward.test.mjs",
         "test/brightness-emu8051.test.js",
         "test/emu8051-debug.test.js",
+        "test/emu8051-checkpoint-refusal-shape.test.mjs",
         "test/emu8051-debug-events.test.mjs",
         "test/conformance-real-wasm.test.js",
         "test/device-drivers-e2e.test.js",
