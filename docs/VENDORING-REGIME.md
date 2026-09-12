@@ -84,30 +84,71 @@ its `markedAt`, and how many days over it is, so the red reads as what it is.
 Thirty days is about four pin bumps at this repo's observed cadence: an overdue
 entry has watched four syncs go past without being sent.
 
-## The hole
+## The hole — named 2026-09-04, and the demonstration it carried has expired
 
 **A file that is declared divergent for one reason accepts unlimited further
 divergence.** Once a file has any ledger entry, `vendor-identity` classifies its
-*whole* byte-difference as `diverged` and accepts it. Verified: changing
-`this.cycles += 4` to `+= 5` in `i8086-machine.js`, in both mirrors, leaves every
-vendor gate green.
+*whole* byte-difference as `diverged` and accepts it. That is still a true
+statement about the mechanism.
 
-The remedy under construction is **region attribution** — attributing each
-changed region to a declared entry and ratcheting the unattributed remainder to
-zero. The measurement exists and is deterministic (identical residue across an
-18-commit window where upstream is byte-identical; it moved once, in the right
-direction, when a real convergence landed).
+**THE WORKED PROOF UNDER IT IS NO LONGER TRUE, AND IT DID NOT FAIL — IT
+EXPIRED.** It read: changing `this.cycles += 4` to `+= 5` in `i8086-machine.js`,
+in both mirrors, leaves every vendor gate green. Re-run 2026-09-12 at the pin
+(`BW_BOARD_DIR` at `53c3fdb`, 189 files judged), the identical two-line edit reds
+`vendor-identity` twice, each naming the file:
 
-Two schema changes go with it, and the second matters more than it looks:
+```
+not ok 5 - no vendored bw-board file diverges from upstream at the pin without being declared
+not ok 7 - upstream has not converged on the lite-only work
+             APPEARED (new divergence nobody has written up): i8086-machine.js
+```
 
-- each entry gains a **`region`** (derived by running the attributor, never by
-  inspection) plus an optional **`block`** anchor for a region that holds both
-  declared and undeclared work;
-- **`liteRemoved` and `liteBehind` are separate keys.** `liteRemoved` is *"we
-  decided not to have this"* — a decision that may legitimately stand forever.
-  `liteBehind` is *"we have not caught up with this"* — a debt that must reach
-  zero. Under one key a ratchet cannot tell peace from obligation and its number
-  stops meaning anything.
+It does not red because the hole was patched. It reds because `i8086-machine.js`
+is no longer a *declared* file — the ledger is empty, so the edit lands in
+`undeclared`, which was never forgiven in the first place. The proof had an
+unstated precondition (*"pick a file that has an entry"*), and when the last
+entry left, a sentence claiming a measured green became a sentence claiming a
+measured green about nothing. **A demonstration that depends on a precondition
+states the precondition, or it expires silently — and reads as current forever.**
+
+**AND IT HAD BEEN COPIED, ONCE BACKWARDS.** Two files restated this experiment's
+verdict instead of citing it: `scripts/lib/vendor-residue.mjs` said the edit
+"reds nothing" (agreeing with the measurement) and
+`test/vendor-residue-ratchet.test.mjs` said it "reds every other vendor gate"
+(its exact inverse) — same edit, same file, same cited source. The inverted copy
+sat in the header of the gate whose entire justification is that the edit reds
+nothing, so the header argued the gate was unnecessary and nobody read it that
+way. Both now cite this section and state no verdict of their own. A conclusion
+copied away from its measurement has nothing left to check it against, and the
+copies do not disagree loudly — they disagree in two files nobody opens together.
+
+## What closed it, and why only one of the two counts
+
+**Region attribution shipped** — `scripts/lib/vendor-residue.mjs` attributes each
+changed region to a declared entry, `test/vendor-residue-ratchet.test.mjs`
+ratchets the unattributed remainder, and both schema changes went with it: a
+**`region`** per entry (derived by running the attributor, never by inspection)
+with an optional **`block`** anchor where a region holds both declared and
+undeclared work; and **`liteRemoved` and `liteBehind` as separate keys** —
+`liteRemoved` is *"we decided not to have this"*, a decision that may
+legitimately stand forever, `liteBehind` is *"we have not caught up"*, a debt
+that must reach zero. Under one key a ratchet cannot tell peace from obligation
+and its number stops meaning anything; they now carry separate counts and
+separate deadlines (14 days for the debt, 30 for an `upstream` intention).
+
+**And the ledger emptied**, so nothing is declared and nothing is forgiven.
+
+Only the first is a mechanism. The second is a *state*, and it ends on the day
+one entry is added. A reader who takes "the hole is closed" from the emptiness
+will trust the gates further than they can be trusted the next time a fork is
+declared — which is the same mistake as the expired proof above, made in the
+opposite direction. What holds on that day is the residue ratchet, and its
+terminal `RESIDUE = {}` is asserted rather than assumed: the first file to come
+back reds `THE REAL LEDGER IS EMPTY — measured, not inferred from a quiet gate`
+by name, and the region checks that read the live ledger are proved against a
+fabricated one (`SYNTHETIC_BAD`) so their silence over an empty ledger is worth
+something. A regrowth cannot arrive quietly; it arrives as a fork to send
+upstream.
 
 ## The one failure no ratchet can catch
 

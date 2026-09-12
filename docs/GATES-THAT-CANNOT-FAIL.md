@@ -2446,3 +2446,39 @@ the strict sense this document means, since it cannot come out either way.
 document:** go and measure it yourself before you act on it. Every instance above
 was found by somebody who went to verify a number rather than use it, and in two
 of the three the verifier was the person who had quoted it.
+
+**A FIFTH INSTANCE, AND WHAT TRAVELLED WAS A VERDICT, NOT A NUMBER** (2026-09-12,
+brickwright-lite-0c). `docs/VENDORING-REGIME.md` § "The hole" carried a worked
+measurement: `this.cycles += 4` → `+= 5` in `i8086-machine.js`, both mirrors,
+**leaves every vendor gate green** — the demonstration that a declared file's
+whole byte-difference is forgiven, and the entire argument for building the
+residue ratchet. Two other files quoted it instead of citing it:
+
+| where | what it said |
+|---|---|
+| `docs/VENDORING-REGIME.md` (the measurement) | "leaves every vendor gate green" |
+| `scripts/lib/vendor-residue.mjs:5` | "reds nothing" ✓ |
+| `test/vendor-residue-ratchet.test.mjs:7` | "reds every other vendor gate" ✗ |
+
+Same edit, same file, same cited source, opposite verdicts — and the inverted
+copy is in the header of **the gate that exists because the edit reds nothing.**
+That header had been arguing, for as long as it stood, that its own gate was
+unnecessary, and it read as ordinary prose the whole time. This is the species'
+lede in its strongest form: a wrong reading that invites a repair, where the
+repair invited is deleting the instrument.
+
+**The expiry is the second half, and it is the part that generalises.** The
+measurement itself is no longer reproducible — re-run 2026-09-12 at pin
+`53c3fdb`, the identical two-line edit reds `vendor-identity` twice, naming
+`i8086-machine.js` both times. Nothing was fixed and nothing broke. The proof had
+an unstated precondition — *pick a file that has a ledger entry* — and on
+2026-09-11 the ledger reached zero, so there is no longer any such file. A
+sentence reporting a measured green became a sentence reporting a measured green
+**about nothing**, and went on reading as current.
+
+So the diagnostic extends: state the operation *and its preconditions*. A number
+whose instrument is named can still be checked; a demonstration whose
+precondition is unnamed cannot even be re-run, and it does not announce its own
+expiry — it just sits there being quoted. All three sites were repaired by making
+the doc the only place that states the verdict, which is the same remedy as the
+first instance's one-instrument fix, applied to prose.
