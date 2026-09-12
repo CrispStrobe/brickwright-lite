@@ -79,6 +79,7 @@ and Bluetooth Classic** without a browser or a separate install.
 **Web build:**
 
 ```bash
+npm ci --ignore-scripts --no-audit --no-fund      # root tooling + pinned engine/UI packages (Node 22)
 npm run vendor                                   # fetch pinned sources into packages/
 node scripts/integrate.mjs                       # overlay our delta
 cd packages/scratch-gui

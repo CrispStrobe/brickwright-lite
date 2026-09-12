@@ -1,7 +1,7 @@
 {
     "name": "brickwright-lite",
     "private": true,
-    "description": "A fully-permissive (BSD-3 / Apache-2.0 / MIT) Brickwright — a contained fork of the pre-relicense Scratch stack you can bundle and ship on any app store, with blocks⇄code⇄Python/JS and LEGO extensions.",
+    "description": "Brickwright visual computing workbench: circuits, emulated machines, blocks⇄code⇄Python/JS and LEGO extensions. Component licenses are recorded in THIRD-PARTY-NOTICES.md.",
     "license": "BSD-3-Clause",
     "scripts": {
         "vendor": "node scripts/vendor.mjs",
