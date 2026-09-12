@@ -37,8 +37,8 @@ test('package acknowledgements link to complete shipped notices, not deleted sou
         const entry = entries.find(item => item.name.startsWith(`${name} (`));
         assert.ok(entry, `missing ${name} acknowledgement`);
         assert.equal(entry.license, license);
-        assert.equal(entry.licenseUrl, `licenses/${name}.${license}.txt`);
-        assert.equal(read(`overlay/scratch-gui/static/${entry.licenseUrl}`), read(`node_modules/${name}/LICENSE`));
+        assert.equal(entry.licenseUrl, `static/licenses/${name}.${license}.txt`);
+        assert.equal(read(`overlay/scratch-gui/${entry.licenseUrl}`), read(`node_modules/${name}/LICENSE`));
     }
     assert.equal(read('packages/scratch-gui/src/components/menu-bar/about-data.js'),
         read('overlay/scratch-gui/src/components/menu-bar/about-data.js'));

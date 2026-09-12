@@ -85,6 +85,12 @@ try {
     if (!url) ({server, url} = await serveBuild());
     browser = await chromium.launch({headless: true});
     page = await browser.newPage({viewport: {width: 1600, height: 1050}});
+    for (const name of ['bw-board.MIT.txt', 'bw-circuit-ui.MPL-2.0.txt', 'bw-packages.sources.json']) {
+        const response = await page.request.get(new URL(`static/licenses/${name}`, url).href);
+        const expected = await readFile(join(root, 'overlay/scratch-gui/static/licenses', name));
+        record(`the production server preserves package notice ${name}`, response.ok() &&
+            Buffer.from(await response.body()).equals(expected));
+    }
     page.on('dialog', dialog => dialog.accept());
     page.on('pageerror', error => diagnostics.push(`pageerror: ${error.stack || error.message}`));
     page.on('requestfailed', request => diagnostics.push(

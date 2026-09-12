@@ -928,12 +928,12 @@ element wrappers), licensed under **MPL-2.0** (Mozilla Public License 2.0).
 - **Licence:** MPL-2.0
 - **Copyright:** (c) CrispStrobe
 - **Upstream:** https://github.com/CrispStrobe/bw-circuit-ui
-- **Source availability:** `licenses/bw-packages.sources.json` in the built
+- **Source availability:** `static/licenses/bw-packages.sources.json` in the built
   application records the full pinned commit, public source tree and source
   archive URLs. The tracked source manifest lives in
   `overlay/scratch-gui/static/licenses/bw-packages.sources.json`.
 
-`licenses/bw-circuit-ui.MPL-2.0.txt` preserves upstream's actual `LICENSE`
+`static/licenses/bw-circuit-ui.MPL-2.0.txt` preserves upstream's actual `LICENSE`
 bytes. Package metadata at the current pin incorrectly says MIT; that metadata
 does not replace the MPL-2.0 license file. The attribution is retained here
 because the standard MPL text contains no project copyright line.
@@ -963,8 +963,8 @@ licensed under the **MIT License**.
 - **Licence:** MIT
 - **Upstream:** https://github.com/CrispStrobe/bw-board
 - **Licence file:** `overlay/scratch-gui/static/licenses/bw-board.MIT.txt`,
-  shipped as `licenses/bw-board.MIT.txt`.
-- **Pinned source links:** `licenses/bw-packages.sources.json` in the application.
+  shipped as `static/licenses/bw-board.MIT.txt`.
+- **Pinned source links:** `static/licenses/bw-packages.sources.json` in the application.
 
 MIT requires the copyright and permission notice to be included in all copies
 or substantial portions of the Software. The preserved upstream LICENSE file
