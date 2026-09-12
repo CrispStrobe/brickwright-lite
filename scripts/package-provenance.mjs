@@ -1,6 +1,7 @@
 // Offline, explicit content verification. Lock metadata is not installed proof.
 import {execFileSync} from 'node:child_process';
-import {mkdtempSync, mkdirSync, readdirSync, lstatSync, readFileSync, writeFileSync, rmSync} from 'node:fs';
+import {mkdtempSync, mkdirSync, readdirSync, lstatSync, readFileSync, writeFileSync, realpathSync, rmSync} from 'node:fs';
+import {createRequire} from 'node:module';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 
@@ -13,6 +14,16 @@ export function githubIdentityMatches(value, owner, name, sha) {
         `https://github.com/${owner}/${name}.git${suffix}`,
         ...(sha === undefined ? [`git@github.com:${owner}/${name}.git`] : [])
     ].includes(value);
+}
+
+/** Narrow architectural check, not verification of arbitrary dependencies. */
+export function verifySingleEngineResolution(installedRoot) {
+    const root = path.resolve(installedRoot);
+    const expected = realpathSync(path.join(root, 'bw-board', 'package.json'));
+    const fromUI = createRequire(realpathSync(path.join(root, 'bw-circuit-ui', 'package.json')));
+    const actual = realpathSync(fromUI.resolve('bw-board/package.json'));
+    if (actual !== expected) throw new Error(`bw-circuit-ui resolves a shadow bw-board: ${actual}; expected sibling ${expected}`);
+    return Object.freeze({verified: 'single-engine-resolution', engineManifest: expected});
 }
 
 function files(dir, prefix = '', skipDependencies = false) {

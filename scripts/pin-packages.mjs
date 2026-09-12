@@ -25,7 +25,7 @@ import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { recordPin } from './lib-pin.mjs';
-import {githubIdentityMatches, verifyInstalledPackage} from './package-provenance.mjs';
+import {githubIdentityMatches, verifyInstalledPackage, verifySingleEngineResolution} from './package-provenance.mjs';
 
 export const PACKAGES = Object.freeze(['bw-board', 'bw-circuit-ui']);
 export const OWNER = 'CrispStrobe';
@@ -123,6 +123,7 @@ async function main () {
                     console.log(JSON.stringify({installedRoot, ...result}));
                 }
             }
+            for (const installedRoot of installedRoots) console.log(JSON.stringify({installedRoot, ...verifySingleEngineResolution(installedRoot)}));
         }
         return;
     }

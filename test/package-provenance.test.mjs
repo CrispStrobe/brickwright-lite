@@ -4,7 +4,7 @@ import {execFileSync} from 'node:child_process';
 import {mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, cpSync, symlinkSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
-import {githubIdentityMatches, verifyInstalledPackage} from '../scripts/package-provenance.mjs';
+import {githubIdentityMatches, verifyInstalledPackage, verifySingleEngineResolution} from '../scripts/package-provenance.mjs';
 
 test('Git identity accepts only exact supported host/owner/package/commit forms', () => {
     const sha = 'a'.repeat(40), url = `git+ssh://git@github.com/CrispStrobe/bw-board.git#${sha}`;
@@ -12,6 +12,34 @@ test('Git identity accepts only exact supported host/owner/package/commit forms'
     for (const bad of [url.replace('github.com', 'github.com.evil'), url.replace('bw-board', 'bw-circuit-ui'), url + '?x', url.replace('CrispStrobe', 'Other')]) {
         assert.equal(githubIdentityMatches(bad, 'CrispStrobe', 'bw-board', sha), false);
     }
+});
+
+test('each UI resolves its own verified sibling engine, never a nested or ancestor shadow', () => {
+    const temp = mkdtempSync(path.join(tmpdir(), 'engine-resolution-'));
+    try {
+        const roots = [path.join(temp, 'node_modules'), path.join(temp, 'gui/node_modules')];
+        const engine = dir => {
+            mkdirSync(dir, {recursive: true});
+            writeFileSync(path.join(dir, 'package.json'), JSON.stringify({name: 'bw-board', exports: {'./package.json': './package.json'}}));
+        };
+        for (const root of roots) {
+            engine(path.join(root, 'bw-board'));
+            mkdirSync(path.join(root, 'bw-circuit-ui'), {recursive: true});
+            writeFileSync(path.join(root, 'bw-circuit-ui/package.json'), '{"name":"bw-circuit-ui"}');
+            const result = verifySingleEngineResolution(root);
+            assert.ok(Object.isFrozen(result));
+            assert.equal(result.engineManifest, path.join(root, 'bw-board/package.json'));
+        }
+        // Same metadata and bytes still constitute another physical engine instance.
+        const shadow = path.join(roots[1], 'bw-circuit-ui/node_modules/bw-board');
+        engine(shadow);
+        assert.throws(() => verifySingleEngineResolution(roots[1]), /shadow bw-board/);
+        assert.doesNotThrow(() => verifySingleEngineResolution(roots[0]));
+        rmSync(shadow, {recursive: true});
+        rmSync(path.join(roots[1], 'bw-board'), {recursive: true});
+        // Do not accept ancestor fallback merely because Node can resolve it.
+        assert.throws(() => verifySingleEngineResolution(roots[1]), /ENOENT/);
+    } finally { rmSync(temp, {recursive: true, force: true}); }
 });
 
 test('offline pinned pack rejects modified installed source even when metadata still agrees', () => {

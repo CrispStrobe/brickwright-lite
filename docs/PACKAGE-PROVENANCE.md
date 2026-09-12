@@ -33,6 +33,11 @@ working directory; every package in every supplied root must pass. Omitting
 the option verifies only this repository's root install, never implicitly the
 GUI install. Missing roots fail, not skip. Metadata checks remain root-scoped;
 the existing integrated GUI spec test checks its derived manifest separately.
+After byte verification, each UI must resolve `bw-board/package.json` to its
+own verified sibling engine's physical path. A nested UI engine copy is refused,
+even with identical version or bytes; an absent sibling cannot fall back to an
+ancestor. This is a narrow single-engine architecture check, not a claim that
+all transitive dependency versions or contents have been verified.
 
 Trust boundaries: the reviewed pin and local Git object store are supplied by
 the operator; a remote URL alone is not cryptographic proof of repository
