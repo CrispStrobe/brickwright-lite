@@ -2482,3 +2482,107 @@ precondition is unnamed cannot even be re-run, and it does not announce its own
 expiry — it just sits there being quoted. All three sites were repaired by making
 the doc the only place that states the verdict, which is the same remedy as the
 first instance's one-instrument fix, applied to prose.
+
+## Thirty-eighth species: A SOUND CHECK ABOUT THE WRONG SUBJECT, RUN AT THE MOMENT OF CONFIRMATION (2026-09-12, named jointly by brickwright-lite-0c and lego-ac; six instances in one day, three each)
+
+Every other entry in this document is about a gate. This one is about the person
+or agent reading it, and it is here because on 2026-09-12 two sessions produced
+three instances each, independently, and neither caught their own.
+
+**The rule: you stop at the first thing that confirms the shape you arrived with,
+and the check you run at that point is SOUND.** That is what makes it invisible
+from inside. The evidence is real, the command is correct, the output is what it
+appears to be. It is simply answering the question you brought rather than the
+question in front of you. **A wrong check announces itself. A sound check about
+the wrong subject does not.** (lego-ac's statement of it, which is sharper than
+"confirmation bias" and, unlike that phrase, names something you can act on.)
+
+It is the neighbour of species 37. There, a number is quoted away from the
+instrument that produced it and the defect lives in the citation. Here there is
+no citation and no artifact at all — the only trace is a green check and a
+conclusion that does not follow from it.
+
+### The six, with what each check actually measured
+
+*Discarded files versus a branch tip* (brickwright-lite-0c). Uncommitted changes
+were discarded from a worktree after `git hash-object` confirmed both files
+byte-equal to `origin/main`. Sound check. It was then reported as "the leftover
+branch tip is byte-identical to main". The tip was based on a commit predating
+the fix and was missing 51 lines — the same 51 whose deletion the hash-check had
+just prevented. Both subjects were "the thing I did not land", in the same
+paragraph. Caught by lego-ac running `merge-base --is-ancestor`.
+
+*The `else` branch* (brickwright-lite-0c). `deadWorkflow` was reported as
+"checks the workflow FILE exists, not the step", from reading
+`skip-pointers.mjs:66` — `if (!existsSync(wf))`. Line 67 is `else` and line 69 is
+the predicate inside it, which resolves a declared step:
+`!text.includes(basename(p.file)) && !(p.step && text.includes(\`name: ${p.step}\`))`. A false ordering constraint went to two sessions, one
+of which had it on a critical path. Caught by lego-ac renaming the step and
+running the census (fired, four pointers, by line number) rather than reasoning
+about the predicate.
+
+*The adjacent clause* (brickwright-lite-0c). `pinnedDir` in the sb3-creator judge
+was repaired for losing a conditional from a resolver copied three times, with
+fifteen lines of comment and `vendor-identity`'s own header quoted in the commit
+message. The clause quoted was
+`4461b4f43:test/vendor-identity.test.mjs:306` (that file was deleted on
+2026-09-12 with the vendored roots). **Line 307 — the next line — reads
+*"`pinned` means the tree IS at the pin, not merely that the env var is set"*.**
+It was not carried across, so an unnamed sibling coincidentally sitting at the
+pin could JUDGE the gate. Caught by the owner in `bbc9fd900`: *"The prose was
+right and the predicate was one word away from it."*
+
+(The first draft of this paragraph said "four lines below", from memory, and did
+not check. It is one line below. **The entry warning against unverified
+confirmation asserted an unverified distance, in the direction that made the miss
+sound more forgivable** — the same shape as species 37's first draft inventing
+"four months" for a five-day interval. Recorded rather than silently corrected,
+for the same reason that one was.)
+
+*A sweep that elects its own reference* (lego-ac). An `rs` default was chosen
+because a corpus sweep elected it, and sent on as a finding before running a
+falsifier that had already been written down. The calibration inverts exactly
+when `rs` equals the reference device's `RS`, so the sweep elects whatever the
+deck was built with; every LED model card in every deck in that repo is `RS=10`.
+Not a fit — an identity. Caught by running the falsifier.
+
+*The number that moved for a different reason* (lego-ac; their measurement). A
+bulk-resistance correction was applied to silicon diodes as well as LEDs, making
+them worse than before the work started — 0.5446 V against ngspice's 0.6532,
+where the untouched code had given 0.7426. What nearly let it through is the
+sharpest detail in this entry: **the failing expectation MOVED, which read as
+confirmation that the fix was working.** Caught because ngspice happened to be
+open from something else.
+
+*The fix that generated a second wrong claim* (lego-ac). Repairing a skip
+diagnostic produced a line reading `BW_BOARD_DIR is at fa20bb8c7` when the
+variable was unset and the sha belonged to an unnamed sibling. Caught by reading
+the skip output instead of the pass count.
+
+### The detection asymmetry, which is the actionable part
+
+**Five of the six were caught by a different agent re-measuring. The sixth was
+caught by luck.** Not one was caught by its author at the time, and all six
+authors are people who habitually verify. That is a property of the species, not
+of the day: the author's check is sound, so re-running it reproduces the same
+green. Vigilance is not the countermeasure, because vigilance is what produced
+the sound check.
+
+### The diagnostic
+
+**When a check confirms what you expected, that is the moment to ask what ELSE
+would produce that same result.** Confirmation is where attention stops, so it
+has to be made the trigger rather than the terminus.
+
+The four answers that would have worked today, worth keeping as a starting list:
+
+- *the adjacent clause* — you fixed the thing you came for; read the lines around it
+- *the `else` branch* — you read the condition that matched your expectation and not its complement
+- *the other subject* — the operation is right, name what it was applied to, out loud
+- *it moved for a different reason* — a number changing is not evidence it changed because of you
+
+And the structural version, which does not depend on anyone remembering the list:
+**route a conclusion to somebody who will re-measure it before acting on it.** All
+six were found that way. It is also the argument against the instinct to present
+a finding as settled — every one of these was sent, or nearly sent, as a
+conclusion rather than as a measurement somebody else could reproduce.
