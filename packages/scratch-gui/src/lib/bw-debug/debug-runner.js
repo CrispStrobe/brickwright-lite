@@ -44,6 +44,7 @@ import { createTrace, IO_SFRS, TIMER_SFRS } from './trace.js';
 import {createDebugFoundation, subscribeDebugTargetEvents} from './debug-foundation.js';
 import {createRecordingSession, subscribeDebugTargetInputs} from './recording-session.js';
 import {withI8086MemoryPreference} from '../bw-i8086-preferences.js';
+import {i8086Execution} from '../bw-i8086-execution.js';
 import {createInstructionReplayController} from './instruction-replay.js';
 import {createCycleReplayController} from './cycle-replay.js';
 import {createHistoricalOutputGate} from './timed-replay-io.js';
@@ -525,6 +526,8 @@ export function toggleTargetCodeBreakpoint ({target, addrBps, addr}) {
 export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.vercel.app', targetKind = 'emulator', machineConfig = null, bootMedia = null, onChange = () => {} }) {
     let session = null;
     let target = null;
+    let i8086ExecutionResult = null;
+    const i8086ExecutionLifetime = new AbortController();
     let runToTarget = null;
     let runToController = null;
     let activeRunTo = null;
@@ -2368,6 +2371,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                     : (img.bytes[0] === 0x4d && img.bytes[1] === 0x5a) ? 'exe' : 'com';
             let exited = null;
             const bench = await createI8086DosBench({
+                executionSignal: i8086ExecutionLifetime.signal,
                 bytes: img.bytes, format,
                 // Hardware the program asked for. `createI8086DosBench`
                 // merges these onto the preset BY NAME, so a scheduled
@@ -2391,6 +2395,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                     setStatus('ready', `program exited with code ${code}`);
                 }
             });
+            i8086ExecutionResult = bench;
+            if (i8086ExecutionLifetime.signal.aborted) throw new Error('8086 attachment was disposed');
             // No adapter: a DOS program has no pins, no serial UART and no
             // board to drive, so there is nothing for one to bridge. Passing
             // an empty one rather than the bench object is deliberate —
@@ -2512,7 +2518,11 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const {BREADBOARD8086} = await import('bw-board/i8086-machine.js');
         targetOpts.config = withI8086MemoryPreference(targetOpts.config ?? BREADBOARD8086);
 
-        const result = await createDebugTarget('i8086', targetOpts);
+        const result = await i8086Execution.construct({context: 'hardware',
+            family: targetOpts.config.variant || '8086', signal: i8086ExecutionLifetime.signal},
+        async () => await createDebugTarget('i8086', targetOpts));
+        i8086ExecutionResult = result;
+        if (i8086ExecutionLifetime.signal.aborted) throw new Error('8086 attachment was disposed');
         wireMachineBench(result, createDebugSession);
         setStatus('ready', readyMsg);
         return session;
@@ -2763,6 +2773,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 schedule();
             } catch (e) {
                 unschedule();
+                i8086Execution.release(i8086ExecutionResult);
+                i8086ExecutionResult = null;
                 // A failed lazy chunk (emu8051, bw-board) inside this try is
                 // exactly the caught-import blind spot the page recovery
                 // documents: the rejection is handled here, so the global
@@ -3912,6 +3924,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         symbols: () => symbols,
 
         destroy() {
+            i8086ExecutionLifetime.abort();
+            i8086Execution.release(i8086ExecutionResult);
+            i8086ExecutionResult = null;
             setValueResolver(null);
             if (vm && vm.runtime) delete vm.runtime._bwDebugVariables;
             unschedule();

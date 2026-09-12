@@ -57,8 +57,14 @@
  *                    screenText: () => string[], report: () => object}>}
  */
 import {withI8086MemoryPreference} from '../bw-i8086-preferences.js';
+import {i8086Execution} from '../bw-i8086-execution.js';
 
 export async function createI8086DosBench (opts) {
+    return i8086Execution.construct({context: 'dos', family: opts.variant || '8086', signal: opts.executionSignal},
+        () => createI8086DosBenchSelected(opts));
+}
+
+async function createI8086DosBenchSelected (opts) {
     const {bytes, format, keys, onChar, onExit, variant, chips} = opts;
     if (!bytes || !bytes.length) throw new Error('the DOS bench was handed an empty image');
 
