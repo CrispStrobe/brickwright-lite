@@ -2483,7 +2483,7 @@ expiry — it just sits there being quoted. All three sites were repaired by mak
 the doc the only place that states the verdict, which is the same remedy as the
 first instance's one-instrument fix, applied to prose.
 
-## Thirty-eighth species: A SOUND CHECK ABOUT THE WRONG SUBJECT, RUN AT THE MOMENT OF CONFIRMATION (2026-09-12, named jointly by brickwright-lite-0c and lego-ac; six instances in one day, three each)
+## Thirty-eighth species: A SOUND CHECK ABOUT THE WRONG SUBJECT, RUN AT THE MOMENT OF CONFIRMATION (2026-09-12, named jointly by brickwright-lite-0c and lego-ac; ten instances in one day — six found after the fact, one caught before sending, and three committed while writing this entry, the last two after the remedy for them was written down)
 
 Every other entry in this document is about a gate. This one is about the person
 or agent reading it, and it is here because on 2026-09-12 two sessions produced
@@ -2546,13 +2546,35 @@ when `rs` equals the reference device's `RS`, so the sweep elects whatever the
 deck was built with; every LED model card in every deck in that repo is `RS=10`.
 Not a fit — an identity. Caught by running the falsifier.
 
-*The number that moved for a different reason* (lego-ac; their measurement). A
-bulk-resistance correction was applied to silicon diodes as well as LEDs, making
-them worse than before the work started — 0.5446 V against ngspice's 0.6532,
-where the untouched code had given 0.7426. What nearly let it through is the
-sharpest detail in this entry: **the failing expectation MOVED, which read as
-confirmation that the fix was working.** Caught because ngspice happened to be
-open from something else.
+*The number that moved for a different reason* (lego-ac). A bulk-resistance
+correction was applied to silicon diodes as well as LEDs. The conversion
+subtracts `iRated × rd`, and `rd = 10` is an LED's bulk resistance; the reference
+silicon part `D1N4148 D(IS=2.52e-9 RS=0.568 N=1.752)` has 0.568 Ω, so the
+correction subtracted 200 mV where the device drops 11 mV. Bare diode, 5 V
+through 1 kΩ, against ngspice's **0.6532 V**:
+
+| | anode | error |
+|---|---|---|
+| `vf` treated as the knee, `rd = 10` (before any change) | 0.7426 V | +13.68 % |
+| converted, shared `rd = 10` | **0.5446 V** | **−16.63 %** |
+| converted, `rd = SILICON_RD = 0.568` | 0.6793 V | +4.00 % |
+
+**All four rows matter and a three-row version teaches the wrong lesson.** The
+middle row is a change that was made and was locally green; the last row is the
+fix, and it beats the pre-change state as well as the regression. A table showing
+only damage says "everything was broken", when what happened is that a correction
+became a regression by carrying one constant across a kind boundary.
+
+What nearly let it through is the sharpest detail in this entry: **the failing
+expectation MOVED, which read as confirmation that the fix was working.** In
+lego-ac's own words, *"a hand-computed expectation moving is not evidence the new
+value is better. Only the oracle is."* Full derivation on bw-board
+`40ac5d8:test/measurements/E13B-CALIBRATION-REDERIVED.md`.
+
+(Re-deriving this table from the prose above reproduces rows 1 and 2 exactly —
+they depend only on the device and the piecewise formula — and misses rows 3 and
+4, which depend on the engine's conversion constants. **Read those two from the
+lane, do not recompute them from a description.** Established by trying, here.)
 
 *The fix that generated a second wrong claim* (lego-ac). Repairing a skip
 diagnostic produced a line reading `BW_BOARD_DIR is at fa20bb8c7` when the
@@ -2561,13 +2583,97 @@ the skip output instead of the pass count.
 
 ### The detection asymmetry, which is the actionable part
 
-**Five of the six were caught by a different agent re-measuring. The sixth was
-caught by luck.** Not one was caught by its author at the time, and all six
-authors are people who habitually verify. That is a property of the species, not
-of the day: the author's check is sound, so re-running it reproduces the same
-green. Vigilance is not the countermeasure, because vigilance is what produced
-the sound check.
+**Five of the six were caught by a different agent re-measuring.** Not one was
+caught by its author at the time, and all six authors are people who habitually
+verify. That is a property of the species, not of the day: the author's check is
+sound, so re-running it reproduces the same green. Vigilance is not the
+countermeasure, because vigilance is what produced the sound check.
 
+**The sixth is the interesting one, and its first write-up here was wrong.** It
+said "caught by luck — ngspice happened to be open". lego-ac corrected that, and
+the correction is load-bearing: the ngspice harness had been built an hour
+earlier for unrelated work, so asking the oracle about one more circuit cost
+about thirty seconds. *"I did not decide to be careful. The oracle was cheap, so
+it got consulted."*
+
+That is structural, and it generalises: **all three of lego-ac's instances had an
+oracle available, and the two that were missed are the two where consulting it
+would have taken a setup step.** So the second countermeasure, alongside routing
+conclusions to someone who will re-measure:
+
+**Make the oracle cheap enough that checking is less effort than reasoning.** An
+oracle that costs a setup step is consulted when you already suspect something,
+which is exactly when you do not need it. One that costs thirty seconds gets
+consulted at the moment of confirmation, which is the only moment that helps.
+
+(Note the shape of the original error: "I got lucky" is unrepeatable, excuses the
+author, and removes any design obligation. It was also the more flattering
+version in the direction that softens the lesson — the third time in this entry
+that an inaccuracy ran that way.)
+
+### A seventh, caught BEFORE it was sent — what that looked like
+
+(2026-09-12, lego-ac.) Testing whether a proposed orphan-pointer gate had a
+reachable miss, a probe found that a *directory path* in a pointer row went
+uncaught, and a finding was nearly sent on that basis. The probe had called the
+internal API and bypassed `parsePointers`, whose grammar is
+
+    const POINTER = /^- (test\/\S+\.test\.mjs) :: (.+?) :: (.+)$/;
+
+so a row naming a directory cannot be parsed as a pointer at all and the miss is
+unreachable by construction. Driven rather than reasoned, here, against that
+regex: `- test/foo.test.mjs :: …` matches; `- test/ :: …`, `- src/lib/ :: …` and
+`- test/foo.mjs :: …` do not.
+
+**What made this one different is not care, it is that the entry point was
+cheap to call.** The probe reached for the internal API because it was the one
+already in hand. Same species, and the catch is the same countermeasure: test
+through the door users come in, and make that door easy enough to reach for
+first.
+
+### An eighth, committed while writing this entry, and it is the cleanest one here
+
+The section above — "A seventh" — was first inserted by a script anchored on the
+string `### The diagnostic`. The edit asserted the anchor was present, the assert
+passed, the write succeeded. **The heading appears three times in this document,**
+and the insertion landed in an unrelated species six hundred lines earlier, under
+"## What happened", where it sat as a paragraph about pointer grammar inside
+somebody else's incident.
+
+Look at the check: `assert old in s`. It is SOUND. It answers *"does this string
+exist"* — correctly, three times over — while the question was *"is this the
+occurrence I mean"*. The assert passing is what stopped the looking. Caught only
+because the next command printed a line number and 694 was not where species 38
+lives.
+
+**This is the species committed inside its own documentation, in the act of
+documenting it**, and it is worth more than any of the seven above, because a
+reader can watch it happen rather than take somebody's word that it did. The
+paragraph a few rows up, about "four lines below" being one line below, is the
+same thing at a smaller scale in the same hour.
+
+The specific lesson, which generalises past this document: **a string anchor is a
+claim of uniqueness, and `replace(…, 1)` never checks it.** Assert the count, not
+the presence — and after any positional edit, print where it landed.
+
+**AND THEN IT HAPPENED AGAIN, IN THE SCRIPT THAT ADDED THE PARAGRAPH ABOVE.** The
+edit inserting this very section used the same anchor, the same `replace(…, 1)`,
+and landed in the same wrong species six hundred lines away. The remedy had been
+written down thirty seconds earlier, in the text being inserted, and was not
+applied to the insertion carrying it.
+
+**A third variant followed immediately.** The repair script then verified its
+extracted block by asserting a phrase was inside it. The assert failed and the
+phrase was there — line-wrapped, so *"a string anchor is a claim of uniqueness"*
+exists in the file as two lines and in the check as one. A sound check, a true
+negative about a string, a false negative about the text. The fix that finally
+held asserted the block's LINE COUNT and then printed which species the result
+landed under, before writing.
+
+So the honest count for this instance is three, in about ten minutes, by one
+author who had just finished naming the mechanism. **Knowing the species does not
+confer immunity from it** — which is the most useful thing this entry can tell a
+reader, and the least comfortable to write down.
 ### The diagnostic
 
 **When a check confirms what you expected, that is the moment to ask what ELSE
@@ -2581,8 +2687,9 @@ The four answers that would have worked today, worth keeping as a starting list:
 - *the other subject* — the operation is right, name what it was applied to, out loud
 - *it moved for a different reason* — a number changing is not evidence it changed because of you
 
-And the structural version, which does not depend on anyone remembering the list:
-**route a conclusion to somebody who will re-measure it before acting on it.** All
-six were found that way. It is also the argument against the instinct to present
+And the two structural versions, which do not depend on anyone remembering the
+list: **route a conclusion to somebody who will re-measure it before acting on
+it**, and **keep the oracle cheap enough to consult on a whim.** Five were found
+the first way and the sixth the second. It is also the argument against the instinct to present
 a finding as settled — every one of these was sent, or nearly sent, as a
 conclusion rather than as a measurement somebody else could reproduce.
