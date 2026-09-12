@@ -148,6 +148,18 @@ was not reproduced, so no speculative production fix is claimed.
 
 ## Advancing a package pin
 
+Follow-up CI at `7748746f7` passed 3255 unit tests (8 skips), corpus,
+debugger and production compilation, but exposed a stale boot-payload assertion:
+the package build splits the 6502 extractor into anonymous lazy chunk `8933`
+in the named `bw-board` group. The guard now permits shared lazy JS for this
+marker while retaining the named entry, positive emitted-byte control, eager
+exclusion and preload prohibition (including the actual shared asset names).
+Fixture mutations reject missing/map-only markers, eager/script-loaded bytes,
+shared preloads and a missing named loader. The real local production output
+passes, with 1079 KiB gzipped eager scripts against the unchanged 1300 KiB limit.
+This is a guard-layout correction, not a new runtime optimization; final CI
+qualification remains required.
+
 After an explicit reviewed pin advance and dependency installation, run installed
 source verification against the exact upstream commits before generating notices:
 `npm run gen:package-notices`. Commit the generated overlay and GUI license/source

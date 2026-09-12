@@ -64,6 +64,10 @@ const LAZY = [
     {what: 'board canvas', marker: 'Could not recognise this file', chunk: 'bw-circuit-ui',
         why: 'the guarded load in circuit-tab.jsx (webpackChunkName "bw-circuit-ui")'},
     {what: '6502 bus extractor (bw-board)', marker: 'no RAM, ROM, VIA or ACIA on the board', chunk: 'bw-board',
+        // npm package modules shared by multiple lazy consumers may be extracted
+        // into an anonymous split chunk. Keep the named entry requirement and
+        // eager-byte prohibition; require the marker in emitted lazy JS too.
+        sharedLazy: true,
         why: 'the guarded load in circuit-tab.jsx (webpackChunkName "bw-board")'},
     {what: 'lesson waves', marker: '"journeyId":"lesson-waves', altMarkers: ['journeyId:"lesson-waves'], chunk: 'guided-lessons',
         why: 'React.lazy(GuidedLessons) in src/components/gui/gui.jsx',
@@ -164,9 +168,12 @@ for (const m of LAZY) {
     check(`${m.what} have their own chunk (chunks/${m.chunk}*.js)`, Boolean(chunk),
         chunk ? `${chunk}, ${kib(statSync(join(chunksDir, chunk)).size)}` : `no chunks/${m.chunk}*.js — check ${m.why}`);
     if (chunk && !m.optional) {
-        const src = readFileSync(join(chunksDir, chunk), 'utf8');
-        check(`the marker for ${m.what} still discriminates (found in its chunk)`, has(src, m),
-            has(src, m) ? '' : `${JSON.stringify(m.marker)} is in neither the first load nor its chunk — the marker rotted, so the "not in the first load" check above proves nothing`);
+        const candidates = m.sharedLazy ? chunkFiles.filter(f => f.endsWith('.js')) : [chunk];
+        const found = candidates.filter(f => has(readFileSync(join(chunksDir, f), 'utf8'), m));
+        check(`the marker for ${m.what} still discriminates (found in ${m.sharedLazy ? 'lazy JS' : 'its chunk'})`, found.length > 0,
+            found.length ? found.join(', ') : `${JSON.stringify(m.marker)} is missing from its permitted lazy chunks — the marker rotted, so the "not in the first load" check above proves nothing`);
+        if (m.sharedLazy) check(`nothing preloads shared ${m.what} payloads`,
+            found.every(f => !html.includes(f)), 'index.html must not reference the matched shared payload assets');
     }
     check(`nothing preloads ${m.what} into the first load`, !html.includes(m.chunk),
         `index.html must not reference chunks/${m.chunk}*`);
