@@ -25,6 +25,7 @@ import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { recordPin } from './lib-pin.mjs';
+import {githubIdentityMatches, verifyInstalledPackage} from './package-provenance.mjs';
 
 export const PACKAGES = Object.freeze(['bw-board', 'bw-circuit-ui']);
 export const OWNER = 'CrispStrobe';
@@ -67,7 +68,8 @@ export function findings ({pinsFile = PINS, pkgFile = PKG, lockFile = LOCK} = {}
             const entry = lock.packages?.[`node_modules/${name}`];
             const resolved = entry?.resolved || '';
             const sha = want[name].slice(-40);
-            if (!resolved.includes(sha)) out.push(`package-lock.json node_modules/${name} resolved ${JSON.stringify(resolved)} does not carry the pinned sha ${sha}`);
+            if (lock.packages?.['']?.devDependencies?.[name] !== want[name]) out.push(`package-lock.json root devDependencies.${name} does not match ${want[name]}`);
+            if (!githubIdentityMatches(resolved, OWNER, name, sha) || entry?.link) out.push(`package-lock.json node_modules/${name} resolved ${JSON.stringify(resolved)} is not exactly ${OWNER}/${name}@${sha}`);
         }
     } else {
         out.push('package-lock.json is missing');
@@ -88,22 +90,40 @@ function writeSpecs () {
 async function main () {
     const args = process.argv.slice(2);
     const setIdx = args.indexOf('--set');
+    if (setIdx !== -1 && (args.includes('--check') || args.includes('--verify-installed'))) throw new Error('--set cannot be combined with read-only verification');
     if (setIdx !== -1) {
         const m = /^([a-z0-9-]+)=([0-9a-f]{40})$/.exec(args[setIdx + 1] || '');
         if (!m || !PACKAGES.includes(m[1])) {
             console.error(`--set wants <${PACKAGES.join('|')}>=<40-hex sha>`);
             process.exit(2);
         }
-        await recordPin(m[1], m[2], {pinsFile: PINS});
+        await setPackagePin(m[1], m[2]);
     }
-    if (args.includes('--check')) {
+    if (args.includes('--check') || args.includes('--verify-installed')) {
         const f = findings();
         if (f.length) {
             for (const line of f) console.error(`STALE: ${line}`);
             console.error('Run `npm run pin:packages` to derive package.json from vendor-pins.json and reinstall.');
             process.exit(1);
         }
-        console.log(`pin:packages: ${PACKAGES.join(', ')} match vendor-pins.json in package.json and package-lock.json`);
+        console.log(`pin:packages: ${PACKAGES.join(', ')} metadata consistent (installed contents not verified)`);
+        if (args.includes('--verify-installed')) {
+            const installedRoots = args.flatMap((arg, i) => {
+                if (arg !== '--installed-root') return [];
+                if (!args[i + 1] || args[i + 1].startsWith('--')) throw new Error('--installed-root requires a node_modules directory');
+                return [path.resolve(args[i + 1])];
+            });
+            if (!installedRoots.length) installedRoots.push(path.join(ROOT, 'node_modules'));
+            for (const name of PACKAGES) {
+                const prefix = `${name}=`;
+                const sources = args.flatMap((arg, i) => arg === '--source' && args[i + 1]?.startsWith(prefix) ? [args[i + 1].slice(prefix.length)] : []);
+                if (sources.length !== 1 || !sources[0]) throw new Error(`verification requires exactly one --source ${name}=/trusted/local/git/repo`);
+                for (const installedRoot of installedRoots) {
+                    const result = verifyInstalledPackage({repoDir: path.resolve(sources[0]), installedDir: path.join(installedRoot, name), owner: OWNER, name, sha: pinnedSpecs()[name].slice(-40)});
+                    console.log(JSON.stringify({installedRoot, ...result}));
+                }
+            }
+        }
         return;
     }
     writeSpecs();
@@ -114,6 +134,12 @@ async function main () {
         process.exit(1);
     }
     console.log('pin:packages: package.json and package-lock.json follow vendor-pins.json');
+}
+
+/** --set is itself explicit pin-move authority, unlike a file sync. */
+export async function setPackagePin(name, sha, {pinsFile = PINS, log = console.log} = {}) {
+    if (!PACKAGES.includes(name) || !SHA.test(sha || '')) throw new Error('invalid explicit package pin');
+    return recordPin(name, sha, {pinsFile, log, explicit: true, scoped: false});
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

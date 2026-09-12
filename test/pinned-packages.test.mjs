@@ -17,7 +17,8 @@ import { readFileSync, existsSync, writeFileSync, mkdtempSync, rmSync } from 'no
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PACKAGES, findings, pinnedSpecs, specFor } from '../scripts/pin-packages.mjs';
+import {spawnSync} from 'node:child_process';
+import { PACKAGES, findings, pinnedSpecs, specFor, setPackagePin } from '../scripts/pin-packages.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pins = JSON.parse(readFileSync(path.join(ROOT, 'vendor-pins.json'), 'utf8'));
@@ -44,20 +45,8 @@ test('the integrated GUI package.json carries the same specs (integrate.mjs deri
     }
 });
 
-test('the installed trees ARE the pinned shas (npm records the resolved commit)', () => {
-    // A lockfile can agree with the pin while node_modules holds yesterday's
-    // install. npm writes the resolved git URL (with the commit) into the
-    // installed package.json under `_resolved` for git deps in older npm, and
-    // the lock's `resolved` field is what `npm ci` honours; here we check the
-    // tree that tests actually import from.
-    for (const name of PACKAGES) {
-        const dir = path.join(ROOT, 'node_modules', name);
-        assert.ok(existsSync(path.join(dir, 'package.json')), `${name} is not installed at the root — run \`npm ci\``);
-        const lock = JSON.parse(readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8'));
-        assert.ok(String(lock.packages[`node_modules/${name}`]?.resolved || '').includes(pins[name]),
-            `${name}: package-lock.json resolved entry does not carry the pin`);
-    }
-});
+// Installed proof belongs to --verify-installed, which compares actual bytes
+// with npm's packed payload from the pinned Git object, not lock metadata.
 
 test('the derivation is checkable: a planted disagreement is named, in each file', () => {
     const tmp = mkdtempSync(path.join(tmpdir(), 'pin-packages-'));
@@ -69,11 +58,25 @@ test('the derivation is checkable: a planted disagreement is named, in each file
         writeFileSync(pinsFile, JSON.stringify({'bw-board': a, 'bw-circuit-ui': b, 'sb3-creator': 'c'.repeat(40)}));
         const good = {devDependencies: {'bw-board': specFor('bw-board', a), 'bw-circuit-ui': specFor('bw-circuit-ui', b)}};
         const goodLock = {packages: {
+            '': good,
             'node_modules/bw-board': {resolved: `git+ssh://git@github.com/CrispStrobe/bw-board.git#${a}`},
             'node_modules/bw-circuit-ui': {resolved: `git+ssh://git@github.com/CrispStrobe/bw-circuit-ui.git#${b}`}
         }};
         writeFileSync(pkgFile, JSON.stringify(good)); writeFileSync(lockFile, JSON.stringify(goodLock));
         assert.deepEqual(findings({pinsFile, pkgFile, lockFile}), []);
+        for (const resolved of [
+            `git+ssh://git@evil.example/CrispStrobe/bw-board.git#${a}`,
+            `git+ssh://git@github.com/SomeoneElse/bw-board.git#${a}`,
+            `git+ssh://git@github.com/CrispStrobe/not-bw-board.git#${a}`,
+            `git+ssh://git@github.com/CrispStrobe/bw-board.git#${a}suffix`,
+            `https://evil.example/${a}`
+        ]) {
+            writeFileSync(lockFile, JSON.stringify({packages: {...goodLock.packages, 'node_modules/bw-board': {resolved}}}));
+            assert.match(findings({pinsFile, pkgFile, lockFile}).join('\n'), /node_modules\/bw-board/);
+        }
+        writeFileSync(lockFile, JSON.stringify({packages: {...goodLock.packages, '': {devDependencies: {}}}}));
+        assert.match(findings({pinsFile, pkgFile, lockFile}).join('\n'), /root devDependencies/);
+        writeFileSync(lockFile, JSON.stringify(goodLock));
         // package.json behind the pin
         writeFileSync(pkgFile, JSON.stringify({devDependencies: {...good.devDependencies, 'bw-board': specFor('bw-board', b)}}));
         assert.match(findings({pinsFile, pkgFile, lockFile}).join('\n'), /package\.json devDependencies\.bw-board/);
@@ -86,5 +89,27 @@ test('the derivation is checkable: a planted disagreement is named, in each file
         assert.throws(() => findings({pinsFile, pkgFile, lockFile}), /bw-board must be a 40-hex sha/);
     } finally {
         rmSync(tmp, {recursive: true, force: true});
+    }
+});
+
+test('--set is explicit authority and changes only the requested package pin', async () => {
+    const temp = mkdtempSync(path.join(tmpdir(), 'explicit-package-pin-'));
+    try {
+        const pinsFile = path.join(temp, 'pins.json');
+        const before = {'bw-board': 'a'.repeat(40), 'bw-circuit-ui': 'b'.repeat(40)};
+        writeFileSync(pinsFile, JSON.stringify(before));
+        await setPackagePin('bw-board', 'c'.repeat(40), {pinsFile, log: () => {}});
+        assert.deepEqual(JSON.parse(readFileSync(pinsFile)), {...before, 'bw-board': 'c'.repeat(40)});
+        await assert.rejects(setPackagePin('unknown', 'd'.repeat(40), {pinsFile}), /invalid explicit/);
+    } finally { rmSync(temp, {recursive: true, force: true}); }
+});
+
+test('read-only flags reject --set before touching repository pins', () => {
+    const before = readFileSync(path.join(ROOT, 'vendor-pins.json'));
+    for (const flag of ['--check', '--verify-installed']) {
+        const result = spawnSync(process.execPath, ['scripts/pin-packages.mjs', flag, '--set', `bw-board=${'e'.repeat(40)}`], {cwd: ROOT, encoding: 'utf8'});
+        assert.equal(result.status, 1);
+        assert.match(result.stderr, /cannot be combined with read-only/);
+        assert.deepEqual(readFileSync(path.join(ROOT, 'vendor-pins.json')), before);
     }
 });
