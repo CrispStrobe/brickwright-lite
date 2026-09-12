@@ -1,7 +1,11 @@
 # What lite changes in the vendored sb3-creator files, and why a byte comparison is the wrong question here
 
-The other two vendored trees are compared BYTE FOR BYTE against upstream at the
-pin, because they are copied unchanged. **This one is not copied unchanged.**
+Vendored trees are normally compared BYTE FOR BYTE against upstream at the pin,
+because they are copied unchanged. **This one is not copied unchanged.**
+
+*(Until 2026-09-12 this sentence began "The other two vendored trees". There are
+no other two: `bw-board` and `bw-circuit-ui` became npm git-sha dependencies that
+day and this is the only vendored tree left. See `docs/VENDORING-REGIME.md`.)*
 `scripts/sync-sb3creator.mjs` flattens `src/utils/<name>.js` into
 `src/lib/sb3-creator-<name>.js` and REWRITES the relative imports to match:
 
