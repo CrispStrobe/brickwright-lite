@@ -6,6 +6,17 @@ import {vendorPinOutputs} from '../scripts/ci-vendor-pins.mjs';
 
 const workflows = workflowSources(new URL('..', import.meta.url).pathname);
 const names = ['bw-circuit-ui', 'bw-board', 'sb3-creator'];
+
+test('the isolated corpus job installs pinned root packages before running solver walks', () => {
+    const workflow = workflows.get('.github/workflows/build.yml');
+    const start = workflow.indexOf('\n  corpus:\n');
+    assert.ok(start >= 0, 'corpus job exists');
+    const next = workflow.slice(start + 1).search(/\n  [\w-]+:\n/);
+    const corpus = next < 0 ? workflow.slice(start) : workflow.slice(start, start + 1 + next);
+    const install = corpus.indexOf('npm ci --ignore-scripts --no-audit --no-fund');
+    assert.ok(install >= 0 && install < corpus.indexOf('npm run test:corpus'),
+        'a fresh corpus runner needs root bw-board and bw-circuit-ui before any lesson simulation');
+});
 const copiedRepos = ['CrispStrobe/sb3-creator'];
 const allowed = site => site.file === '.github/workflows/vendor-freshness.yml'
     && names.some(name => copiedRepos.includes(site.repository) && site.repository === `CrispStrobe/${name}`

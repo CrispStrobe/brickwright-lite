@@ -1672,6 +1672,8 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with: { node-version: 22 }
+      - name: Install pinned root packages for the corpus solver
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Run the lesson corpus walks
         run: |
           set -o pipefail
@@ -1682,7 +1684,8 @@ jobs:
           npm run test:corpus 2>&1 | tee /tmp/corpus.tap
           rc=${PIPESTATUS[0]}
           set -e
-          # No node_modules in this job, so the GUI-scope hook can redirect nothing here by design; the line proves it.
+          # Root packages supply the solver. There is no GUI installation in
+          # this job, so a GUI-scope redirect is still unexpected.
           echo "bare specifiers re-resolved from packages/scratch-gui by the corpus walks:"
           if [ -s test-results/corpus.gui-scope.tsv ]; then cut -f1 test-results/corpus.gui-scope.tsv | sort | uniq -c | sort -rn; else echo "  (none)"; fi
           node scripts/check-gui-scope.mjs --log test-results/corpus.gui-scope.tsv
