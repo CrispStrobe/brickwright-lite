@@ -70,6 +70,37 @@ paths and clean-checkout assumptions; it is not a release verdict. Test repairs
 retain explicit package authority, lazy-import contracts and failure mutations.
 Full tests/build/browser verification after repairs remain required.
 
+Subsequent local receipts (Node 22.23.2):
+
+- Repaired package-path suite: 537/537, zero skips.
+- Source suite: 175/175, zero skips.
+- Production browser: 23/23 scenarios before the later served-license checks;
+  actual DOS assembly, keyboard/8255 effects, settings persistence, Wired
+  refusal and Auto reconstruction passed. No hosted compiler request or
+  uncaught page error. This is DOS-services acceptance, not a full BIOS DOS boot.
+- Full repaired diagnostic: 3262 tests, 3231 passed, one setup failure,
+  30 skipped. The failing history-completeness assertion had only BW_BOARD_DIR;
+  supplying all three histories passed the 10-test history suite without code
+  changes. A fully configured final rerun is still required.
+- Native broker source-isolation browser gate: 1/1 lifecycle and 4/4 blocked
+  remote/script/nested-worker/loopback attempts. This gate reads source assets;
+  it does not certify emitted proof bytes.
+
+The production module-graph audit traversed 5846 module records (4356 unique
+identifiers), with 188 engine and 411 UI identifiers as positive controls.
+Neither `i8088-cycles.js` nor `i8088-timing.js` appeared. The policy, 8086 core,
+designer and labwired loader were in noninitial chunks. This receipt belongs
+to webpack hash `687f5bd2935f7432131d`, before the emitted-proof repair below.
+
+That audit also caught a real emitted-asset defect: Terser changed the
+content-addressed native proof source from its reviewed 1421 bytes to 829 bytes,
+leaving the manifest digest stale. The targeted copy metadata now preserves
+only those content-addressed proof sources. Both CI builds verify the emitted
+manifest, aliases, filename, length and exact source bytes. License verification
+also has a postbuild mode, and the browser checks actual served files under
+`static/licenses/`. These output checks complement, not replace, source checks.
+Rebuilt-output acceptance remains to be recorded after those changes.
+
 Circuit-UI diagnostic-only commit `13a7563` preserves the original drag threshold
 and the 34-scenario default. Three local runs moved the resistor; the final
 targeted run preserved the original await sequence. The CI zero-motion failure
