@@ -2483,7 +2483,7 @@ expiry — it just sits there being quoted. All three sites were repaired by mak
 the doc the only place that states the verdict, which is the same remedy as the
 first instance's one-instrument fix, applied to prose.
 
-## Thirty-eighth species: A SOUND CHECK ABOUT THE WRONG SUBJECT, RUN AT THE MOMENT OF CONFIRMATION (2026-09-12, named jointly by brickwright-lite-0c and lego-ac; ten instances in one day — six found after the fact, one caught before sending, and three committed while writing this entry, the last two after the remedy for them was written down)
+## Thirty-eighth species: A SOUND CHECK ABOUT THE WRONG SUBJECT, RUN AT THE MOMENT OF CONFIRMATION (2026-09-12, named jointly by brickwright-lite-0c and lego-ac; ten instances in one day — six found after the fact, one caught before sending, three committed while writing this entry, and the ninth of those committed after its own remedy had been written down thirty seconds earlier; READ THE EIGHTH FIRST)
 
 Every other entry in this document is about a gate. This one is about the person
 or agent reading it, and it is here because on 2026-09-12 two sessions produced
@@ -2501,6 +2501,14 @@ It is the neighbour of species 37. There, a number is quoted away from the
 instrument that produced it and the defect lives in the citation. Here there is
 no citation and no artifact at all — the only trace is a green check and a
 conclusion that does not follow from it.
+
+**START WITH THE EIGHTH INSTANCE BELOW, NOT WITH THE SIX.** The six can all be
+read as carelessness by a reader who wants to; the eighth cannot. It needed no
+misreading, no stale snapshot, no adjacent clause — just `assert old in s`,
+answering *"does this string exist"* correctly while the question was *"is this
+the occurrence I mean"*. **A predicate whose truth is not the truth you need**,
+with the subject drifting from an object to an index. That is the species with
+the mask off, and it is lego-ac's framing rather than mine.
 
 ### The six, with what each check actually measured
 
@@ -2569,12 +2577,20 @@ What nearly let it through is the sharpest detail in this entry: **the failing
 expectation MOVED, which read as confirmation that the fix was working.** In
 lego-ac's own words, *"a hand-computed expectation moving is not evidence the new
 value is better. Only the oracle is."* Full derivation on bw-board
-`40ac5d8:test/measurements/E13B-CALIBRATION-REDERIVED.md`.
+`ceae0de:test/measurements/E13B-CALIBRATION-REDERIVED.md`.
 
-(Re-deriving this table from the prose above reproduces rows 1 and 2 exactly —
-they depend only on the device and the piecewise formula — and misses rows 3 and
-4, which depend on the engine's conversion constants. **Read those two from the
-lane, do not recompute them from a description.** Established by trying, here.)
+**And the attempt to re-derive this table turned out to be a finding about the
+document, not about the guess.** Re-deriving from the prose reproduces rows 1 and
+2 exactly — they need only the device and the piecewise formula — and misses rows
+3 and 4, reconstructing 0.5063 and 0.6517 from the reasonable guess `vf = 0.7,
+n = 1.0`. Rows 3 and 4 are **solver readings, not hand formulas**, and depend on
+which junction path the part routes to, which the table did not say. Four numbers
+in one column, two reproducible from the text and two not, with nothing marking
+which. lego-ac's own summary: *"a measurement nobody can re-run is a claim, and I
+published three of those and called it a derivation."* The doc at `ceae0de` now
+carries the ngspice deck (with the SPICE title-line trap named), the netlist, and
+the accessor — `nodeVoltages.get('n_a')` after `advanceTo(1_000_000n)`. **A
+failed reproduction is evidence about the record, not only about whoever tried.**
 
 *The fix that generated a second wrong claim* (lego-ac). Repairing a skip
 diagnostic produced a line reading `BW_BOARD_DIR is at fa20bb8c7` when the
@@ -2656,11 +2672,19 @@ The specific lesson, which generalises past this document: **a string anchor is 
 claim of uniqueness, and `replace(…, 1)` never checks it.** Assert the count, not
 the presence — and after any positional edit, print where it landed.
 
-**AND THEN IT HAPPENED AGAIN, IN THE SCRIPT THAT ADDED THE PARAGRAPH ABOVE.** The
-edit inserting this very section used the same anchor, the same `replace(…, 1)`,
-and landed in the same wrong species six hundred lines away. The remedy had been
-written down thirty seconds earlier, in the text being inserted, and was not
-applied to the insertion carrying it.
+**AND THEN IT HAPPENED AGAIN, IN THE SCRIPT THAT ADDED THE PARAGRAPH ABOVE** —
+same anchor, same `replace(…, 1)`, same wrong species six hundred lines away. The
+remedy had been written thirty seconds earlier, in the text being inserted, and
+was not applied to the insertion carrying it.
+
+**That is not the eighth instance twice; it is a different claim, and a more
+useful one.** It says nothing about whether the remedy works and everything about
+**when** it fires. In lego-ac's words: *"a remedy written thirty seconds ago is
+knowledge, not a habit, and knowledge does not fire during execution."* Which is
+why "be more careful" would not have helped here, and why the line-count assert
+did: **the countermeasure has to be something that RUNS, not something you
+know.** Every entry in this document that ends in "remember to…" is weaker than
+one that ends in a predicate somebody executes.
 
 **A third variant followed immediately.** The repair script then verified its
 extracted block by asserting a phrase was inside it. The assert failed and the
