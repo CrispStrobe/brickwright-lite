@@ -431,9 +431,13 @@ test('every exclusion is owned by a ROADMAP item that names it', () => {
 test('the anchor gate can fail (three ways)', () => {
     // Verify the instrument. This gate's whole job is to refuse something, and
     // a refusal nobody has watched happen is a claim about code, not a result.
-    const sections = roadmapSections();
-    const anchored = [...KNOWN_DEAD][0];
-    assert.ok(anchored, 'KNOWN_DEAD is empty — nothing to model a fabricated entry on');
+    // The real ledger may correctly become empty when the final dead module
+    // leaves. Instrument mutations must not require keeping a real exclusion.
+    const sections = new Map([['1.1', 'The planned module is owned.js.']]);
+    assert.deepEqual(anchorComplaints([], sections), []);
+    assert.deepEqual(anchorComplaints([['lib/owned.js', {
+        roadmap: '1.1', reason: 'a reason long enough to pass the length check'
+    }]], sections), [], 'the fixture must accept a genuinely owned entry');
 
     const anchorless = anchorComplaints(
         [['lib/fabricated.js', {reason: 'a reason long enough to pass the length check'}]],
@@ -451,7 +455,7 @@ test('the anchor gate can fail (three ways)', () => {
     // file. Without this, sixteen entries could point at one heading and the
     // gate would call that ownership.
     const unnamed = anchorComplaints(
-        [['lib/fabricated.js', {roadmap: anchored[1].roadmap,
+        [['lib/fabricated.js', {roadmap: '1.1',
             reason: 'a reason long enough to clear the length check on its own'}]],
         sections);
     assert.equal(unnamed.length, 1, 'an entry its own section never names must be rejected');

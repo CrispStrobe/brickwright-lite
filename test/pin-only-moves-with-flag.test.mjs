@@ -77,7 +77,8 @@ const syncs = readdirSync(path.join(ROOT, 'scripts')).filter(f => /^sync-.*\.mjs
     .filter(f => /\brecordPin\(/.test(readFileSync(path.join(ROOT, 'scripts', f), 'utf8')));
 
 test('every sync that records a pin pre-checks the move before it writes, and says the rule where its usage lives', () => {
-    assert.ok(syncs.length >= 4, `only ${syncs.length} pin-recording syncs found — the derivation stopped matching`);
+    assert.deepEqual([...syncs].sort(), ['sync-examples.mjs', 'sync-flasher.mjs', 'sync-sb3creator.mjs'],
+        'copy-sync authorities changed: board/UI pins now belong to pin-packages.mjs, not a sync');
     for (const f of syncs) {
         const text = readFileSync(path.join(ROOT, 'scripts', f), 'utf8');
         const pre = text.indexOf('assertPinMoveAllowed(');
@@ -90,14 +91,15 @@ test('every sync that records a pin pre-checks the move before it writes, and sa
 
 test('the tool that exists to move the pins passes --pin to every pin-recording sync it runs', t => {
     const fwd = readFileSync(path.join(ROOT, 'scripts', 'vendor-forward.mjs'), 'utf8');
-    let ran = 0;
+    const ran = [];
     for (const f of syncs) {
         const calls = [...fwd.matchAll(new RegExp(`node scripts/${f.replace('.', '\\.')}[^\`\\n]*`, 'g'))].map(m => m[0]);
         if (calls.length === 0) { t.diagnostic(`vendor-forward does not run ${f}; its pin moves only by hand, with --pin`); continue; }
-        ran++;
+        ran.push(f);
         for (const c of calls) assert.match(c, /--pin\b/, `vendor-forward runs ${f} without --pin: ${c}`);
     }
-    assert.ok(ran >= 4, `vendor-forward runs only ${ran} of the pin-recording syncs — the derivation or the tool changed`);
+    assert.deepEqual(ran.sort(), ['sync-examples.mjs', 'sync-sb3creator.mjs'],
+        'vendor-forward must cover both remaining sb3 copy syncs; flasher is explicitly manual');
 });
 
 // ---- live: a scoped sync against a checkout at another sha leaves the pin alone --

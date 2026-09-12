@@ -38,9 +38,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 /**
  * Where `rp2040js` resolves: the INTEGRATED tree, same rule as
- * test/helpers/bw-integrated.mjs. The repo root has no node_modules, and
- * `overlay/` is source-of-truth-in-git rather than something you can import
- * a dependency from — so the emulator has to come from
+ * test/helpers/bw-integrated.mjs. Root packages serve source tests, but this
+ * probe must exercise the GUI's actual installed engine and emulator from
  * `packages/scratch-gui`, or from wherever BW_INTEGRATED_ROOT points.
  */
 export const INTEGRATED = process.env.BW_INTEGRATED_ROOT
@@ -164,8 +163,13 @@ export async function createPicoMachine (image, opts = {}) {
             '`npm run vendor && npm run integrate`, then `npm install` in packages/scratch-gui, ' +
             'or point BW_INTEGRATED_ROOT at a tree that has both.');
     }
+    const adapterFile = path.join(INTEGRATED, 'node_modules/bw-board/src/rp2040js-adapter.js');
+    if (!fs.existsSync(adapterFile)) {
+        throw new Error(`no bw-board adapter under ${INTEGRATED}; install the prepared GUI dependencies. ` +
+            'The probe does not substitute root packages or retired vendored copies.');
+    }
     const { createRp2040jsAdapter } = await import(
-        pathToFileURL(path.join(INTEGRATED, 'src/lib/bw-board/rp2040js-adapter.js')).href);
+        pathToFileURL(adapterFile).href);
     const { USBCDC } = await import(
         pathToFileURL(path.join(INTEGRATED, 'node_modules/rp2040js/dist/esm/index.js')).href);
 

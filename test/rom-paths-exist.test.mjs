@@ -36,6 +36,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { resolve, dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {packageSourceRoot} from './helpers/package-source.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '..');
@@ -92,12 +93,17 @@ export function resolveRomNames (text) {
     return {names: [...names], unresolvable, constructed: constructed.length, listNames: listNames.length};
 }
 
-test('every static/roms file the overlay can fetch — literal or built from a preset list — exists', () => {
+test('every static/roms file the app and installed Circuit UI can fetch — literal or built from a preset list — exists', () => {
     const missing = [];
     const seen = new Set();
     const blind = [];
     let constructedSeen = 0;
-    for (const file of walk(overlaySrc)) {
+    // CircuitDesigner and its preset list now belong to the installed package.
+    // Keep that source in the census; deleting copied UI must not delete proof.
+    const uiFiles = walk(packageSourceRoot('bw-circuit-ui'));
+    assert.ok(uiFiles.some(file => file.endsWith('/components/CircuitDesigner.jsx')),
+        'the installed Machine Loader must participate in the ROM census');
+    for (const file of [...walk(overlaySrc), ...uiFiles]) {
         const text = readFileSync(file, 'utf8');
         const {names, unresolvable, constructed} = resolveRomNames(text);
         constructedSeen += constructed;

@@ -41,8 +41,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
-import {readFileSync, statSync} from 'node:fs';
+import {readFileSync, statSync, readdirSync} from 'node:fs';
 import path from 'node:path';
+import {packageSourceRoot} from './helpers/package-source.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const NUL = String.fromCharCode(0);
@@ -108,24 +109,53 @@ export const judge = (files, known = KNOWN) => {
 // gate-shapes-allow
 const tracked = () => execFileSync('git', ['-C', ROOT, 'ls-files', '-z'], {encoding: 'utf8', maxBuffer: 64 << 20}).split(NUL).filter(Boolean);
 
+// npm migration changed ownership, not the obligation to inspect upstream
+// text. Scan installed source recursively as well as every tracked app file.
+function upstreamFiles (name) {
+    const root = packageSourceRoot(name);
+    const files = [];
+    function visit (dir, relative = '') {
+        for (const entry of readdirSync(dir, {withFileTypes: true})) {
+            const rel = path.join(relative, entry.name);
+            const file = path.join(dir, entry.name);
+            if (entry.isDirectory()) visit(file, rel);
+            else if (entry.isFile() && statSync(file).size > 0) {
+                files.push({file: `node_modules/${name}/src/${rel.split(path.sep).join('/')}`, buf: readFileSync(file)});
+            }
+        }
+    }
+    visit(root);
+    return files;
+}
+
 // The count comes from the list, not from a number typed in the name. It read
 // "the KNOWN four" while KNOWN held two: the entries expire as their NULs are
 // fixed upstream, and a name that restates a count goes stale the first time
 // one does.
-test(`every tracked file outside a binary role is free of NUL bytes, except the ${KNOWN.length} KNOWN with their pins`, t => {
+test(`tracked app and installed upstream source text is free of NUL bytes, except the ${KNOWN.length} KNOWN with their pins`, t => {
     const files = [];
     const unreadable = [];
     for (const f of tracked()) { const p = path.join(ROOT, f); let st; try { st = statSync(p); } catch (e) { unreadable.push(`${f} (${e.code})`); continue; } if (st.isFile() && st.size > 0) files.push({file: f, buf: readFileSync(p)}); }
+    const trackedText = files.filter(({file}) => !isBinaryByRole(file)).length;
+    const upstreamCounts = {};
+    for (const name of ['bw-board', 'bw-circuit-ui']) {
+        const upstream = upstreamFiles(name);
+        upstreamCounts[name] = upstream.filter(({file}) => !isBinaryByRole(file)).length;
+        files.push(...upstream);
+    }
     const {findings, stale, scanned} = judge(files);
     // the skipped set, reported: binaries by role, and anything the walk could not stat
     t.diagnostic(`scanned ${scanned} text files; skipped ${files.length - scanned} binary by role; ${unreadable.length} unreadable${unreadable.length ? ': ' + unreadable.join(', ') : ''}`);
     assert.deepEqual(unreadable, [], 'tracked files this gate could not read');
-    // 9,519 on the parent commit. This lane deliberately untracked 1,529
-    // generated gallery copies; 1,528 were non-empty text and the remaining
-    // file was empty, so the same complete walk now measures 7,991. Keep a
-    // floor close to that measured population: intentional deletion changes
-    // the number, but a collapsed git walk must still fail closed.
-    assert.ok(scanned > 7900, `only ${scanned} text files scanned — 7,991 after removing 1,528 non-empty generated gallery copies; the walk collapsed`);
+    // Immutable trees: 411828a has 8,039 nonempty tracked text files. Migration
+    // snapshot 44872243 removes 1,656 and adds 2 => 6,385: engine copies 189+162,
+    // UI copies 679+609, docs 3, scripts 6, tests 8. The upstream source remains
+    // scanned above, once per installed package instead of twice as copied
+    // roots. Independent floors prevent package files hiding a collapsed app
+    // walk (or the reverse). Measured installed pins 7fbdfa9 / 657e021: 232/678.
+    assert.ok(trackedText >= 6385, `only ${trackedText} tracked text files; migration baseline is 6385`);
+    assert.ok(upstreamCounts['bw-board'] >= 232, `engine source walk collapsed: ${upstreamCounts['bw-board']}`);
+    assert.ok(upstreamCounts['bw-circuit-ui'] >= 678, `UI source walk collapsed: ${upstreamCounts['bw-circuit-ui']}`);
     assert.deepEqual(stale, [], 'KNOWN entries whose NUL is gone — remove them:\n  ' + stale.join('\n  '));
     assert.deepEqual(findings, [], 'literal NUL byte(s) in tracked text:\n  ' + findings.join('\n  '));
 });
@@ -151,7 +181,8 @@ test('mutation: a KNOWN entry whose NUL is gone is stale, and one whose count mo
 
 test('the live tree: KNOWN today is exactly the files that still carry a NUL, and this file carries none', () => {
     for (const k of KNOWN) {
-        const hits = nulsIn(readFileSync(path.join(ROOT, k.file)));
+        const [, name, , ...relative] = k.file.split('/');
+        const hits = nulsIn(readFileSync(path.join(packageSourceRoot(name), ...relative)));
         assert.equal(hits.length, k.nuls, `${k.file}: ${hits.length} NUL(s) today, KNOWN says ${k.nuls}`);
     }
     assert.equal(nulsIn(readFileSync(new URL(import.meta.url))).length, 0, 'this test spells the byte only as an escape');
