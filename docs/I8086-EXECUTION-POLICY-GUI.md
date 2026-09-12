@@ -98,3 +98,39 @@ they are not browser acceptance. The migration worktree was still dirty at
 `411828a` when checked, so no heavy build/browser run was started. Hardware-ROM
 browser construction and 80186 UI selection still need an additional journey;
 the bounded controller/real DOS tests are not a claim that those UI paths passed.
+
+## Migration handoff diagnostic — 2026-09-12 09:43 UTC
+
+Read-only remote pins: Lite `main` remained
+`411828a304dd84759cd4c1fb82444e72944ffbdc`; bw-circuit-ui `master` remained
+`a5fcd9394f4184537f8eeaad2c3d211a0e00abe7`.
+The npm migration tree was still uncommitted at that Lite base, with engine
+`d7436dc782dd1c499f0fb29ae5cfaa8ab78ec2d6` and circuit UI
+`657e0217fa14fe345ad2781ae87d7f1e9b1e42fe` in its package specs. That engine
+package does not yet contain P2 execution-policy. The migration remains owned
+by its original coordinator; a session-limit message is not an ownership transfer.
+
+[Circuit UI PR 20](https://github.com/CrispStrobe/bw-circuit-ui/pull/20) remains
+open. [Run 34685501168](https://github.com/CrispStrobe/bw-circuit-ui/actions/runs/34685501168)
+at exact circuit commit `657e0217fa14fe345ad2781ae87d7f1e9b1e42fe` passed its
+unit, SPICE and KiCad jobs but failed the browser interaction job: 33 of 34
+scenarios passed. The sole failure was `sweep-canvas-live`, reporting a resistor
+movement of 0 px while the sweep was running. All 60 progress labels appeared
+and there were zero page errors. The run uploaded no artifacts.
+
+The precise failing predicate is in `scripts/verify-interaction.mjs:1265–1289`:
+it records the first `wokwi-resistor` bounding box, sends a 120 px drag and
+requires horizontal displacement greater than 60 px. The diagnostic sentence
+"canvas froze" does not prove that the event loop froze: without pointer hit
+targets/event traces or per-point timing, occlusion, missed gesture handling
+and blocking remain distinguishable hypotheses, not established causes.
+
+`SweepPanel` uses `runSweepAsync`; without a host sweep worker the fallback
+yields between points, so a slow single point can still block. The PR did not
+change those sweep/UI/test files; `src/main.jsx` changes engine imports to npm
+paths. Engine `board.js`, `mna.js` and `sweep.js` are byte-identical between the
+former sibling pin `a7f4cd356952cdb3765b9febf56979e6ee48e9a2` and `d7436dc`.
+Neither P2 policy nor P3 GUI code was present in this failing run. There is no
+evidence here of a policy regression, and no specific source fix is justified
+without a targeted reproduction. Do not relabel the failed gate as green or
+land the incomplete package migration to bypass it.
