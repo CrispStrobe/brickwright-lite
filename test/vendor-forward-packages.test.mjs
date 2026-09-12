@@ -144,6 +144,8 @@ test('CLI keeps clean-tree preflight, exact clone identities, scoped staging and
     assert.ok(src.indexOf("sh('npm run build'") < src.indexOf('verifyForwardBuild(sh'));
     assert.ok(src.indexOf("sh('npm run check:load')") < src.indexOf("sh('npm run build'"));
     assert.match(src, /Claude-Session: vendor-forward-script/);
+    // Search needle only: this assertion launches no Python process and reads
+    // no external checkout. The helper owns the preview server. gate-shapes-allow
     assert.ok(src.indexOf('verifyForwardBuild(sh') < src.indexOf("server = spawn('python3'"));
     assert.doesNotMatch(src, /shaOf\(/);
     assert.ok(src.indexOf('selectForwardOutputs([...changed, ...added])') < src.indexOf('git add -f --'));
