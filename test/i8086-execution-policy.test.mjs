@@ -79,6 +79,49 @@ test('status waits for actual construction and errors never claim an active back
     assert.match(app.snapshot().refusal.reason, /device creation failed/);
 });
 
+test('nullish package-loader rejections retain named construction refusal', async () => {
+    for (const rejection of [null, undefined]) {
+        const app = controller({loadPolicy: async () => { throw rejection; }});
+        let calls = 0;
+        await assert.rejects(app.construct({context: 'hardware'}, async () => { calls++; return {}; }),
+            error => error.executionRefusal?.code === 'construction-failed' &&
+                error.executionRefusal.reason === String(rejection));
+        assert.equal(calls, 0);
+        assert.equal(app.snapshot().active, null);
+        assert.equal(app.snapshot().refusal.reason, String(rejection));
+    }
+});
+
+test('nullish factory rejections retain named construction refusal', needsPolicy, async () => {
+    for (const rejection of [null, undefined]) {
+        const app = controller();
+        await assert.rejects(app.construct({context: 'dos'}, async () => { throw rejection; }),
+            error => error.executionRefusal?.code === 'construction-failed' &&
+                error.executionRefusal.reason === String(rejection));
+        assert.equal(app.snapshot().active, null);
+        assert.equal(app.snapshot().refusal.reason, String(rejection));
+    }
+});
+
+test('abort before delivery destroys the inner DOS-style target or a direct target exactly once', needsPolicy, async () => {
+    for (const composite of [false, true]) {
+        const app = controller();
+        const lifetime = new AbortController();
+        let destroyed = 0;
+        let outerDestroyed = 0;
+        const target = {destroy() { destroyed++; }};
+        const result = composite ? {target, destroy() { outerDestroyed++; }} : target;
+        await assert.rejects(app.construct({context: composite ? 'dos' : 'hardware', signal: lifetime.signal}, async () => {
+            lifetime.abort();
+            return result;
+        }), /construction-cancelled/);
+        assert.equal(destroyed, 1);
+        assert.equal(outerDestroyed, 0, 'composite cleanup belongs to the target, not an unrelated outer hook');
+        assert.equal(app.snapshot().active, null);
+        assert.equal(app.statusFor(result), null, 'cancelled construction was never published');
+    }
+});
+
 test('disposal and supersession suppress stale status; old release cannot clear a newer target', needsPolicy, async () => {
     const app = controller();
     const aborted = new AbortController();

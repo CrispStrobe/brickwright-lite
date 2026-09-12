@@ -42,7 +42,7 @@ Vendoring these sources does not make native execution selectable in the app.
 The original behavior below is the baseline. The P3 candidate now adds
 construction-time Auto/Functional/Wired preferences and actual/refused status
 for 8086/80186 only; see `I8086-EXECUTION-POLICY-GUI.md` for the implementation,
-17 passing focused checks and still-required package/browser integration gates.
+20 passing focused checks and still-required package/browser integration gates.
 Cross-chip consumers and observation/topology re-admission remain future work.
 
 Settings → 8086 execution diagnostics exposes optimized/reference RAM word
