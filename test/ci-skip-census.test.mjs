@@ -74,6 +74,12 @@ test('mutation: the five shapes that must redden', () => {
     const gone = judgeSkips([], [{...good[0], file: 'test/no-such-test-ever.test.mjs', line: 9}], {root: ROOT}).orphan;
     assert.equal(gone.length, 1); assert.match(gone[0], /LANES\.md:9 test\/no-such-test-ever\.test\.mjs does not exist/);
     assert.deepEqual(judgeSkips([], [{...good[0], file: 'test/ci-skip-census.test.mjs', line: 9}], {root: ROOT}).orphan, [], 'an existing file is not an orphan');
+    // The same orphan through the PARSER, not a constructed object: if the row grammar
+    // stops matching, parsePointers returns nothing and zero orphans would read like a
+    // clean file — so the fixture proves a parsed row for an absent file fires.
+    const parsedOrphan = parsePointers(`${HEADING}\n\n- test/no-such-test-ever.test.mjs :: X unset :: box somewhere 2026-09-12 someone\n`);
+    assert.equal(parsedOrphan.length, 1, 'the orphan fixture row did not parse — the grammar moved');
+    assert.equal(judgeSkips([], parsedOrphan, {root: ROOT}).orphan.length, 1);
     // A reading for a test file that is gone is stale, not unpointed.
     const st = judgeSkips([{file: 'test/no-such-test-ever.test.mjs', name: 'a', reason: 'X unset'}], [], {root: ROOT});
     assert.deepEqual(st.unpointed, []); assert.equal(st.stale.length, 1);
