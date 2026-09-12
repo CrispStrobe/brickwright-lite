@@ -85,10 +85,11 @@ jobs:
       # ONLY sb3-creator IS COPIED IN ANY MORE. bw-board and bw-circuit-ui became
       # npm packages on 2026-09-12: vendor-pins.json still pins them, integrate.mjs
       # and scripts/pin-packages.mjs derive the package.json specs from the pin,
-      # and npm installs that sha -- so "does the tree match the pin" holds by
-      # construction and the identity steps that used to ask it are gone. What
-      # remains for them is `npm run pin:packages:check` in build.yml and the
-      # pin-move gates.
+      # and npm installs that sha. Matching lock metadata does NOT establish
+      # installed content identity. build.yml verifies both root and GUI package
+      # payloads against independently fetched pinned Git sources before either
+      # build, plus checks preserved upstream notices. Do not duplicate those
+      # source fetches here; this job owns only the copied sb3-creator transform.
       # THE TRANSPILER'S CHECK IS SOUND AND ITS ALLOWANCE IS NOT. Unlike the two
       # steps above, sync-sb3creator.mjs --check EXITS 0 on a healthy tree and
       # genuinely verifies its own transform: it flattens src/utils/<name>.js to

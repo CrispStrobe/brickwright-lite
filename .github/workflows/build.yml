@@ -74,8 +74,6 @@ on:
       - 'docs/LESSON-REVIEW-WAVE-6.md'
       - 'docs/LESSON-REVIEW-WAVE-7.md'
       - 'docs/PICO-KALUMA-BOOT.md'
-      - 'docs/VENDOR-DIVERGENCE-BW-CIRCUIT-UI.md'
-      - 'docs/VENDOR-DIVERGENCE-I8086-MACHINE.md'
       - 'docs/VENDOR-DIVERGENCE-SB3-CREATOR.md'
       - 'docs/WAVE-OPEN-DEFECTS.md'
       - 'docs/app-store-metadata.md'
@@ -384,11 +382,7 @@ jobs:
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         run: |
           set -o pipefail
-          PIN=$(node -e "console.log(require('./vendor-pins.json')['bw-board'])")
-          case "$PIN" in
-            [0-9a-f]*) [ ${#PIN} -eq 40 ] || { echo "::error::bw-board pin is not a 40-char sha: $PIN"; exit 1; } ;;
-            *) echo "::error::bw-board pin is not a sha: $PIN"; exit 1 ;;
-          esac
+          PIN=$(node -e "const p=require('./vendor-pins.json')['bw-board']; if(!/^[0-9a-f]{40}$/.test(p || '')) process.exit(1); console.log(p)")
           git clone --filter=blob:none --no-checkout \
             https://github.com/CrispStrobe/bw-board.git /tmp/bw-board
           git -C /tmp/bw-board checkout -q "$PIN"
@@ -399,6 +393,20 @@ jobs:
           [ "$GOT" = "$PIN" ] || { echo "::error::bw-board tree is at $GOT, pin is $PIN"; exit 1; }
           echo "BW_BOARD_DIR=/tmp/bw-board" >> "$GITHUB_ENV"
           echo "bw-board at the pin ${PIN:0:9}"
+
+      - name: Verify pinned installed package bytes and upstream notices
+        id: package_provenance
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' && steps.bwboard_tree.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          UI_PIN=$(node -e "const p=require('./vendor-pins.json')['bw-circuit-ui']; if(!/^[0-9a-f]{40}$/.test(p || '')) process.exit(1); console.log(p)")
+          git clone --filter=blob:none --no-checkout https://github.com/CrispStrobe/bw-circuit-ui.git /tmp/bw-circuit-ui
+          git -C /tmp/bw-circuit-ui checkout --detach -q "$UI_PIN"
+          [ "$(git -C /tmp/bw-circuit-ui rev-parse HEAD)" = "$UI_PIN" ]
+          node scripts/pin-packages.mjs --verify-installed \
+            --source bw-board=/tmp/bw-board --source bw-circuit-ui=/tmp/bw-circuit-ui \
+            --installed-root node_modules --installed-root packages/scratch-gui/node_modules
+          node scripts/package-upstream-notices.mjs --check
 
       # The absent-by-design proof consumes BW_BOARD_DIR at the recorded pin.
       # No second moving checkout or skip when the default branch advances.
@@ -579,7 +587,7 @@ jobs:
 
       - name: Build the editor
         id: build_editor
-        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' && steps.package_provenance.outcome == 'success' }}
         run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build
 
       # LICENCE COMPLIANCE, and the gate that did not exist on 2026-08-10.
@@ -786,6 +794,22 @@ jobs:
       - name: Apply the scratch-render overlay (lazy render fonts)
         id: overlays_browser
         run: node scripts/apply-render-overlay.mjs
+      - name: Verify pinned installed package bytes and upstream notices before browser build
+        id: browser_package_provenance
+        if: ${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --no-audit --no-fund
+          for PACKAGE in bw-board bw-circuit-ui; do
+            PACKAGE_PIN=$(node -e "const p=require('./vendor-pins.json')[process.argv[1]]; if(!/^[0-9a-f]{40}$/.test(p || '')) process.exit(1); console.log(p)" "$PACKAGE")
+            git clone --filter=blob:none --no-checkout "https://github.com/CrispStrobe/$PACKAGE.git" "/tmp/$PACKAGE"
+            git -C "/tmp/$PACKAGE" checkout --detach -q "$PACKAGE_PIN"
+            [ "$(git -C "/tmp/$PACKAGE" rev-parse HEAD)" = "$PACKAGE_PIN" ]
+          done
+          node scripts/pin-packages.mjs --verify-installed \
+            --source bw-board=/tmp/bw-board --source bw-circuit-ui=/tmp/bw-circuit-ui \
+            --installed-root node_modules --installed-root packages/scratch-gui/node_modules
+          node scripts/package-upstream-notices.mjs --check
       # The Pico simulator firmware (650 KB, sha256-pinned, never committed) is
       # fetched into static/ so webpack serves it. TOLERATED ABSENT by name: if
       # the fetch fails (network), the execute gate below SKIPS and the absent
@@ -795,7 +819,7 @@ jobs:
         run: npm run sync:picomicropython || echo "pico firmware sync failed — the execute gate will skip; the absent gate still runs"
       - name: Build the editor
         id: build_editor_browser
-        if: ${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.overlays_browser.outcome == 'success' && steps.browser_package_provenance.outcome == 'success' }}
         run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build
 
       # Browser acceptance BEFORE the artifact leaves this job. The
