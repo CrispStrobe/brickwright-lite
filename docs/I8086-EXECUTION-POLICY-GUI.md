@@ -134,3 +134,12 @@ Neither P2 policy nor P3 GUI code was present in this failing run. There is no
 evidence here of a policy regression, and no specific source fix is justified
 without a targeted reproduction. Do not relabel the failed gate as green or
 land the incomplete package migration to bypass it.
+
+Bounded reproduction assessment: the available installed circuit-UI package has
+no scenario filter in its interaction script and no prebuilt `dist` bundle.
+The script unconditionally launches `npx vite` and all 34 scenarios; Vite is not
+resolvable from that package installation (Playwright is). Consequently no
+targeted browser run was started, no peer tree was edited, and no dependencies
+were installed. The migration owner can reproduce after preparing its own
+dev dependencies, ideally instrumenting pointer hit targets and sweep-point
+durations in an isolated lane before attributing the failure.
