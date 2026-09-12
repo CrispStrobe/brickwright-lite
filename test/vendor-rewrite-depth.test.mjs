@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {pinnedUpstream} from './helpers/pinned-upstream.mjs';
 import { applyVendorRewrites, nodeModulesDepth, rewritePairs, DEEP_IMPORT_REWRITES }
     from '../scripts/lib/vendor-rewrites.mjs';
 
@@ -46,10 +47,22 @@ test('a sync of the real upstream file produces exactly the bytes lite holds', (
     // The end-to-end claim, and the only one that proves the derivation is not
     // merely self-consistent. Skipped BY NAME rather than assert.ok(true) when
     // the sibling checkout is absent.
-    const dir = process.env.BW_BOARD_DIR;
-    const upstream = dir && path.join(dir, 'src', 'cortex-m0-machine.js');
+    // THE SKIP SAID "at the pin" AND THE CODE DID NOT CHECK IT. This read
+    // BW_BOARD_DIR bare, so any tree -- a peer's feature branch included --
+    // decided a byte-identity claim, while the message told the reader the pin
+    // had been verified. Resolved through the one shared resolver now, whose
+    // `pinned` is the judging predicate.
+    const {dir: srcDir, pinned, named, head, pin} = pinnedUpstream('bw-board');
+    const upstream = srcDir && path.join(srcDir, 'cortex-m0-machine.js');
     if (!upstream || !fs.existsSync(upstream)) {
         return test.skip('set BW_BOARD_DIR to a bw-board checkout at the pin to judge this');
+    }
+    if (!pinned) {
+        return test.skip(named && head
+            ? `BW_BOARD_DIR is at ${head.slice(0, 9)} but the pin is ${String(pin).slice(0, 9)} — `
+              + 'a tree off the pin may SPEAK, not JUDGE'
+            : `BW_BOARD_DIR unset (a sibling at ${String(head).slice(0, 9)} may SPEAK, not JUDGE) — `
+              + `set it to a checkout at ${String(pin).slice(0, 9)}`);
     }
     const produced = applyVendorRewrites(fs.readFileSync(upstream, 'utf8'), OVERLAY, PAIR);
     const vendored = fs.readFileSync(path.join(ROOT, OVERLAY, 'cortex-m0-machine.js'), 'utf8');

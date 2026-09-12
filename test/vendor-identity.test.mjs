@@ -20,40 +20,14 @@
 import {test} from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
-import {execSync} from 'node:child_process';
 import {applyVendorRewrites, rewritePairs} from '../scripts/lib/vendor-rewrites.mjs';
-import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {pinnedUpstream} from './helpers/pinned-upstream.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DOC = path.join(ROOT, 'docs/VENDOR-DIVERGENCE-I8086-MACHINE.md');
 const PINS = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor-pins.json'), 'utf8'));
-
-// Is `dir` (a checkout, or a `/src` under one) at the PINNED sha for `repo`?
-// This gate JUDGES by reading `dir`'s WORKING TREE (see readUpstream), so a dir
-// that is NOT at the pin is a peer's feature branch wearing this gate's name --
-// the exact red lego-b9 measured on 2026-09-07. gen-bw-board-census.mjs refuses
-// off-pin and names both shas; this returns the same fact so callers can too.
-// Repo-agnostic on purpose: sb3-creator already has a CI pin-proof though no
-// judge-test consumes it yet, and a third caller must inherit this, not a third
-// special case.
-//
-// CI IS NOT EXPOSED, and this is defence in depth rather than a bug fix:
-// build.yml ("Fetch the pinned bw-board tree") and vendor-freshness.yml both
-// re-read HEAD and refuse off-pin BEFORE setting the env var. This moves that
-// proof next to the judgment it guards, so a LOCAL run -- or a future CI path
-// that sets the var without copying the YAML check -- is covered by the
-// instrument itself. The fleet was NOT judging wrong trees in CI.
-const headAtPin = (dir, repo) => {
-    const pin = PINS[repo] ?? null;
-    let head = null;
-    try {
-        head = execSync(`git -C ${JSON.stringify(dir)} rev-parse HEAD`,
-            {stdio: ['ignore', 'pipe', 'ignore']}).toString().trim();
-    } catch { /* not a git checkout -- head stays null, atPin false */ }
-    return {head, pin, atPin: Boolean(pin) && head === pin};
-};
 
 const readAllowList = (doc = DOC) => {
     const md = fs.readFileSync(doc, 'utf8');
@@ -291,27 +265,6 @@ test('the two dual-tracked vendored copies have not drifted apart', t => {
 // about a sibling checkout being a DIRECTORY, not a COMMIT. Factored out rather
 // than copied: two resolutions of "which upstream" would be two answers, and the
 // one that is wrong would be the one nobody re-read.
-const pinnedSrcDir = (envVar = 'BW_BOARD_DIR', repo = 'bw-board') => {
-    const candidates = [
-        process.env[envVar], // gate-shapes-allow: judged only when this is set, see below
-        path.resolve(ROOT, `../../${repo}`),
-        path.resolve(ROOT, `../${repo}`)
-    ].filter(Boolean);
-    const TMP = fs.realpathSync(os.tmpdir());
-    const outsideTmp = (d) => {
-        try { return !fs.realpathSync(d).startsWith(TMP); } catch { return false; }
-    };
-    const dir = candidates.map(d => path.join(d, 'src'))
-        .filter(d => fs.existsSync(d))
-        .filter(d => process.env[envVar] ? true : outsideTmp(d))[0];
-    // `pinned` means the tree IS at the pin, not merely that the env var is set:
-    // only an explicit env-var dir is a judging candidate, and only when its
-    // HEAD equals the pin. Off-pin (or a non-env fallback) SPEAKS, never JUDGES.
-    const {head, pin, atPin} = dir && process.env[envVar]
-        ? headAtPin(dir, repo)
-        : {head: null, pin: PINS[repo] ?? null, atPin: false};
-    return {dir, pinned: Boolean(process.env[envVar]) && atPin, head, pin, candidates};
-};
 
 // ONE IMPLEMENTATION OF THE BYTE-IDENTITY CLAIM, TWO CORPORA. bw-board and
 // bw-circuit-ui are different trees with different manifests and the same
@@ -457,7 +410,7 @@ const declaresEveryDivergence = (label, {doc, env, repo, floor}) =>
     // A pin move is a PROXY for convergence. This asks the thing itself: after
     // the commit, IS the content what the recorded pin says it is? Same move as
     // baseForFile -- ask what the content is, not what the commit did.
-    const {dir: srcDir, pinned, head, pin, candidates} = pinnedSrcDir(env, repo);
+    const {dir: srcDir, pinned, head, pin, candidates} = pinnedUpstream(repo);
     if (!srcDir) {
         t.diagnostic(`SKIPPED, NOT PASSED: upstream not found. Looked in: ${candidates.join(', ')}.`);
         t.skip('upstream tree not on disk -- byte-identity against the pin NOT verified');
@@ -581,63 +534,15 @@ test('upstream has not converged on the lite-only work (needs the bw-board tree)
     // gate-shapes-allow: the ambient part is WHICH directory, and a wrong answer
     // is now caught by the corpus check below rather than passing as a clean
     // negative. The tier still skips loudly when there is no tree at all.
-    const candidates = [
-        process.env.BW_BOARD_DIR, // gate-shapes-allow: see the corpus check below
-        path.resolve(ROOT, '../../bw-board'),
-        path.resolve(ROOT, '../bw-board')
-    ].filter(Boolean);
-    // NEVER BIND TO A CANDIDATE INSIDE THE SYSTEM TEMP DIR.
-    //
-    // `path.resolve(ROOT, '../bw-board')` is meant to find a sibling checkout.
-    // When ROOT is a reproduction tree at /tmp/clean-checkout-XXXX, that
-    // candidate is `/tmp/bw-board` -- and on this box `/tmp/bw-board` is a
-    // SYMLINK TO THE REAL REPOSITORY, created weeks ago by someone else. So a
-    // run inside a deliberately isolated tree reached straight back out to the
-    // host's live bw-board, which defeats the entire point of reproducing a
-    // clean checkout.
-    //
-    // It happened to resolve somewhere real. That is luck: /tmp is shared and
-    // world-writable, and the next thing named `bw-board` there could be
-    // anything at all. A source sibling is never legitimately inside the
-    // system temp directory, so refuse the whole class rather than special-case
-    // the symlink.
-    //
-    // Found because `audit-clean-checkout` reported this file FAILING while the
-    // same tree run by hand PASSED -- the two disagreed, and the disagreement
-    // was the finding.
-    const TMP = fs.realpathSync(os.tmpdir());
-    const outsideTmp = (d) => {
-        try { return !fs.realpathSync(d).startsWith(TMP); } catch { return false; }
-    };
-    const srcDir = candidates.map(d => path.join(d, 'src'))
-        .filter(d => fs.existsSync(d))
-        .filter(d => process.env.BW_BOARD_DIR ? true : outsideTmp(d))[0];
-    // A SIBLING CHECKOUT IS A DIRECTORY, NOT A COMMIT — and this comparison is
-    // only meaningful against the tree AT THE PIN. The /tmp rule above closed
-    // binding to the wrong REPOSITORY; this closes binding to the right
-    // repository at the wrong COMMIT, which the corpus check cannot see because
-    // the files are all there and all plausible.
-    //
-    // MEASURED 2026-09-07 (lego-b9): on the VPS both fallbacks resolve to
-    // checkouts a peer left on a feature branch (`../../bw-board` at 2e7143a
-    // `vocab-lego-be`, `../bw-board` at 5f79057 `fab-cuiB-board`), neither the
-    // pin nor upstream's tip. Against those this test went RED with "APPEARED
-    // (new divergence nobody has written up): board.js, rp2040-bootrom.js".
-    // Against a clone AT THE PIN, in the same worktree, minutes apart: 5/5, no
-    // divergence. The red was a report about a peer's branch, wearing this
-    // gate's name.
-    //
-    // So the sibling still gets to SPEAK — the divergence list is real
-    // information for whoever has that tree — but it may not JUDGE. Only
-    // BW_BOARD_DIR, which by the fleet's convention means the tree at the pin
-    // (test/vendor-absent-by-design.test.mjs states it, and CI's
-    // "Fetch the pinned bw-board tree" step re-reads HEAD to prove it), decides
-    // this gate. Recorded, not judged: the same answer the Costume interactivity
-    // ceiling got when its number turned out to be about the runner.
-    const {head, pin, atPin} = srcDir && process.env.BW_BOARD_DIR
-        ? headAtPin(srcDir, 'bw-board')
-        : {head: null, pin: PINS['bw-board'] ?? null, atPin: false};
-    const pinned = Boolean(process.env.BW_BOARD_DIR) && atPin;
+    // Resolved by the ONE shared resolver (test/helpers/pinned-upstream.mjs),
+    // which carries the two rules this block used to state inline: never bind to
+    // a candidate inside the system temp dir (on this box /tmp/bw-board is a
+    // symlink to the real repository, so an isolated /tmp/clean-checkout run
+    // reached straight back out to the host's live tree), and a sibling checkout
+    // is a DIRECTORY not a COMMIT, so it may SPEAK but only an explicit
+    // BW_BOARD_DIR at the pin may JUDGE. Both were measured, and the measurements
+    // live with the resolver now rather than beside one of its four copies.
+    const {dir: srcDir, pinned, head, pin, candidates} = pinnedUpstream('bw-board');
     if (!srcDir) {
         // Not an assertion failure -- upstream genuinely is not here. But it is
         // reported, and it is NOT counted as the invariant having been checked.
@@ -923,7 +828,7 @@ test('every sync rewrite the identity gate forgives is one the trees still need'
     // it rewrites FROM, and the vendored tree the text it rewrites TO. Neither
     // half alone is enough -- a `from` nobody vendors is dead, and a `to` with no
     // upstream source is lite-authored work wearing a rewrite's clothes.
-    const {dir: srcDir, pinned, head, pin, candidates} = pinnedSrcDir('BW_BOARD_DIR', 'bw-board');
+    const {dir: srcDir, pinned, head, pin, candidates} = pinnedUpstream('bw-board');
     if (!srcDir) {
         t.diagnostic(`SKIPPED, NOT PASSED: upstream not found. Looked in: ${candidates.join(', ')}.`);
         t.skip('upstream tree not on disk -- the rewrite table is NOT verified against it');

@@ -52,10 +52,9 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
-import {execSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
+import {pinnedUpstream} from './helpers/pinned-upstream.mjs';
 import {residueForFile, claimsFromFileCfg, catchAllWithoutBlock} from '../scripts/lib/vendor-residue.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -90,26 +89,6 @@ const LITE_REMOVED = 0;
 const LITE_BEHIND = 0;  // none yet; the bridges become the first when the convergence lands
 
 const readAllowList = () => JSON.parse(fs.readFileSync(DOC, 'utf8').match(/```json\n([\s\S]*?)\n```/)[1]);
-
-const headAtPin = (dir, repo) => {
-    const pin = PINS[repo] ?? null;
-    let head = null;
-    try { head = execSync(`git -C ${JSON.stringify(dir)} rev-parse HEAD`, {stdio: ['ignore', 'pipe', 'ignore']}).toString().trim(); }
-    catch { /* not a checkout */ }
-    return {head, pin, atPin: Boolean(pin) && head === pin};
-};
-
-// The pinned upstream src dir, resolved the way vendor-identity resolves it: only
-// an explicit env-var checkout at the pin JUDGES; a sibling or off-pin tree SPEAKS.
-const pinnedSrcDir = (envVar = 'BW_BOARD_DIR', repo = 'bw-board') => {
-    const candidates = [process.env[envVar], path.resolve(ROOT, `../../${repo}`), path.resolve(ROOT, `../${repo}`)].filter(Boolean);
-    const TMP = fs.realpathSync(os.tmpdir());
-    const outsideTmp = (d) => { try { return !fs.realpathSync(d).startsWith(TMP); } catch { return false; } };
-    const dir = candidates.map(d => path.join(d, 'src')).filter(d => fs.existsSync(d))
-        .filter(d => process.env[envVar] ? true : outsideTmp(d))[0];
-    const {head, pin, atPin} = dir && process.env[envVar] ? headAtPin(dir, repo) : {head: null, pin: PINS[repo] ?? null, atPin: false};
-    return {dir, pinned: Boolean(process.env[envVar]) && atPin, head, pin, candidates};
-};
 
 const declaredFiles = (spec) => Object.entries(spec.files);
 
@@ -236,7 +215,7 @@ test('liteRemoved (a decision) and liteBehind (a debt) are counted separately', 
 });
 
 test('the residue matches the ratchet exactly, both directions (needs the pinned bw-board tree)', t => {
-    const {dir: srcDir, pinned, head, pin, candidates} = pinnedSrcDir();
+    const {dir: srcDir, pinned, head, pin, candidates} = pinnedUpstream('bw-board');
     if (!srcDir) {
         t.diagnostic(`SKIPPED, NOT PASSED: upstream not found. Looked in: ${candidates.join(', ')}.`);
         t.skip('upstream tree not on disk — residue NOT verified against the pin');

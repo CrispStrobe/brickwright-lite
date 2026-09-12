@@ -34,49 +34,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
-import {execSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
+import {pinnedUpstream} from './helpers/pinned-upstream.mjs';
 import {SB3_CREATOR_FILES, SB3_CREATOR_IMPORT_REWRITES, SB3_CREATOR_POSSIBLE_REWRITES,
     applySb3CreatorRewrites} from '../scripts/lib/vendor-rewrites.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const LIB = path.join(ROOT, 'overlay/scratch-gui/src/lib');
 const PIN = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor-pins.json'), 'utf8'))['sb3-creator'];
-
-/**
- * A checkout at the pin, or null. Same rule the other two obey: an explicit
- * env-var dir whose HEAD equals the pin JUDGES; anything else SPEAKS, and this
- * gate skips by name rather than comparing against a peer's feature branch.
- */
-const pinnedDir = () => {
-    const candidates = [process.env.SB3_CREATOR_DIR,
-        path.resolve(ROOT, '../../sb3-creator'), path.resolve(ROOT, '../sb3-creator')].filter(Boolean);
-    const TMP = fs.realpathSync(os.tmpdir());
-    const outsideTmp = (d) => {
-        try { return !fs.realpathSync(d).startsWith(TMP); } catch { return false; }
-    };
-    // THE /tmp RULE IS ABOUT IMPLICIT SIBLINGS, NOT ABOUT AN EXPLICIT ANSWER. It
-    // exists so a scratch checkout somebody left beside the repo is never picked
-    // up as the upstream nobody named. `SB3_CREATOR_DIR` IS somebody naming one,
-    // so it is exempt -- which is what the other three resolvers do
-    // (`process.env[envVar] ? true : outsideTmp(d)`), and what the paragraph above
-    // this function already claims: "an explicit env-var dir whose HEAD equals the
-    // pin JUDGES". Applied unconditionally, as it was when this resolver was
-    // copied, an explicit dir under /tmp was discarded and the skip then read
-    // "no sb3-creator checkout found" while NAMING the directory it had just
-    // rejected. vendor-identity.test.mjs says of its own resolver that two
-    // resolutions of "which upstream" would be two answers and the wrong one
-    // would be the one nobody re-read; this was the fourth copy and the clause it
-    // lost was the one that makes it usable outside CI.
-    const dir = candidates.filter(d => fs.existsSync(path.join(d, 'src/utils')))
-        .filter(d => process.env.SB3_CREATOR_DIR ? true : outsideTmp(d))[0];
-    if (!dir) return {dir: null, head: null, atPin: false, candidates};
-    let head = null;
-    try { head = execSync(`git -C ${JSON.stringify(dir)} rev-parse HEAD`, {stdio: ['ignore', 'pipe', 'ignore']}).toString().trim(); } catch { /* not a checkout */ }
-    return {dir, head, atPin: head === PIN, candidates};
-};
 
 test('the file map is populated, and every vendored copy is on disk', () => {
     // Species 1: a map of nothing satisfies the identity claim below perfectly.
@@ -92,13 +58,13 @@ test('the file map is populated, and every vendored copy is on disk', () => {
 });
 
 test('every vendored sb3-creator file equals upstream at the pin', t => {
-    const {dir, head, atPin, candidates} = pinnedDir();
+    const {root: dir, head, pinned, candidates} = pinnedUpstream('sb3-creator');
     if (!dir) {
         t.diagnostic(`SKIPPED, NOT PASSED: no sb3-creator checkout found. Looked in: ${candidates.join(', ')}.`);
         t.skip('upstream tree not on disk — byte-identity against the pin NOT verified');
         return;
     }
-    if (!atPin) {
+    if (!pinned) {
         t.diagnostic(`SKIPPED, NOT PASSED: ${dir} is at ${head?.slice(0, 9)} but the pin is ${PIN?.slice(0, 9)}.`);
         t.skip('a tree off the pin may SPEAK, not JUDGE — set SB3_CREATOR_DIR to a checkout at the pin');
         return;
@@ -152,8 +118,8 @@ test('no upstream file imports a rename the sync does NOT handle', () => {
     // Measured 2026-09-12: none of the seven is imported by anything upstream.
     // That is why six entries have been sufficient. This fires on the day a
     // fourteenth import arrives, which is the only moment anyone could act on it.
-    const {dir, atPin} = pinnedDir();
-    if (!dir || !atPin) return;   // the identity test above already reports the skip
+    const {root: dir, pinned} = pinnedUpstream('sb3-creator');
+    if (!dir || !pinned) return;   // the identity test above already reports the skip
 
     const handled = new Set(SB3_CREATOR_IMPORT_REWRITES.map(([from]) => from));
     const unhandled = SB3_CREATOR_POSSIBLE_REWRITES.filter(([from]) => !handled.has(from));
