@@ -6,10 +6,12 @@ export const quote = value => `'${String(value).replaceAll("'", "'\\''")}'`;
 export function parseForwardPins (args) {
     const pinned = {};
     for (let i = 0; i < args.length; i++) {
-        if (args[i] !== '--at') continue;
+        if (args[i] === '--no-commit') continue;
+        if (args[i] !== '--at') throw new Error(`unknown forward argument ${args[i]}`);
         const [name, sha, extra] = String(args[++i] || '').split('=');
         if (!['bw-board', 'bw-circuit-ui', 'sb3-creator'].includes(name)) throw new Error(`--at: unknown upstream ${name}`);
         if (extra !== undefined || !/^[0-9a-f]{40}$/.test(sha || '')) throw new Error(`--at ${name}: expected a full 40-hex sha`);
+        if (pinned[name] && pinned[name] !== sha) throw new Error(`conflicting --at selections for ${name}`);
         pinned[name] = sha;
     }
     return pinned;
@@ -26,17 +28,18 @@ export function refreshForwardPackages (run, {root, clones, verifyGuiMetadata = 
     // Verify the assembler's installed source before deriving ROMs or reports.
     verify([registry]);
     try {
-        run(`node scripts/sync-i8086-bios.mjs --dir ${quote(clones['bw-board'])} --check`);
+        run(`node scripts/sync-i8086-bios.mjs --dir ${quote(clones['bw-board'])}`);
     } catch (error) {
         throw new Error('Forward refused: BIOS bytes/source require manual review. Refresh and review ' +
             'the BIOS with sync-i8086-bios.mjs before retrying; no build or commit was accepted.', {cause: error});
     }
-    // --check established byte identity; --write refreshes source/pin provenance.
-    run(`node scripts/sync-i8086-bios.mjs --dir ${quote(clones['bw-board'])} --write`);
+    // Default mode established byte identity. --record refreshes provenance
+    // for the existing ROM, without replacing the binary.
+    run(`node scripts/sync-i8086-bios.mjs --dir ${quote(clones['bw-board'])} --record`);
     run(`node scripts/sync-i8086-demo-roms.mjs --dir ${quote(clones['bw-board'])} --write`);
     run(`node scripts/gen-bw-board-census.mjs --dir ${quote(clones['bw-board'])}`);
     run('npm run integrate');
-    run('npm install --ignore-scripts --no-audit --no-fund', {cwd: gui});
+    run('npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund', {cwd: gui});
     for (const name of ['vm', 'paint', 'render']) run(`node scripts/apply-${name}-overlay.mjs`);
     verifyGuiMetadata(root);
     // Both actual payloads, including the UI's single-engine resolution, not

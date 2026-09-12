@@ -358,6 +358,8 @@ keeping, it is worth a branch.
 - codex-app-adoption-audit: package migration test/source path authority repair only, own feat/package-fork-audit worktree; excludes root-owned bw-matrix-conformance and gearmotor-slug-closeout; no package/runtime changes. 2026-09-12.
 - codex-app-adoption-audit: follow-up migration gates (no-dead-overlay, no-NUL complete source scope, pin-sync census, Pico integrated package import), isolated feat/package-fork-audit; parent authorizes script exception. 2026-09-12.
 - codex-app-adoption-audit: package-aware vendor-forward orchestration and focused mocked tests, own isolated branch; no live forward/pin moves. 2026-09-12.
+- codex-app-adoption-audit: forward utility review corrections, actual BIOS CLI read-only regression, strict flags and pre-build guard; isolated branch. 2026-09-12.
+
 
 
 
@@ -800,6 +802,8 @@ name.
 who you are and who you are talking to before broadcasting either.
 
 ## Skips that execute elsewhere
+
+- test/vendor-forward-packages.test.mjs :: BW_BOARD_DIR unset — actual forward BIOS CLI not exercised :: workflow .github/workflows/build.yml step 'Fetch the pinned bw-board tree for the pin-reader tests' supplies the exact engine input for the unit suite; also explicitly run against takeover app/7fbdfa9 checkout on lego-vps 2026-09-12 codex-app-adoption-audit
 
 Every test CI skips must point at the ONE place it executes (plan T13). One line per file and
 VERBATIM skip reason — `- test/<file> :: <reason> :: <where> <date> <who>` — read by

@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import {mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
-import {parseForwardPins, refreshForwardPackages, verifyForwardBuild, selectForwardOutputs, forwardMirror,
+import {fileURLToPath} from 'node:url';
+import {execSync} from 'node:child_process';
+import {quote, parseForwardPins, refreshForwardPackages, verifyForwardBuild, selectForwardOutputs, forwardMirror,
     verifyGuiPackageMetadata} from '../scripts/lib/vendor-forward-packages.mjs';
 
 const config = {root: '/app', clones: {'bw-board': '/clones/engine', 'bw-circuit-ui': '/clones/ui'}};
@@ -15,6 +17,13 @@ const record = fail => {
     };
     return {calls, run, options: {...config, verifyGuiMetadata: () => calls.push({cmd: 'GUI metadata check'})}};
 };
+
+test('shell argument quoting preserves literal newlines and the generated commit trailer', () => {
+    const body = "literal 'quotes' and $(false)\n\nClaude-Session: vendor-forward-script";
+    assert.equal(execSync(`printf %s ${quote(body)}`, {encoding: 'utf8'}), body);
+    assert.equal(execSync('git interpret-trailers --parse', {input: body, encoding: 'utf8'}),
+        'Claude-Session: vendor-forward-script\n');
+});
 
 test('emitted proof and notices are verified against the actual build directory', () => {
     const {calls, run} = record();
@@ -38,6 +47,10 @@ test('package forward installs GUI after integrate, restores all overlays, prove
     assert.ok(at('npm run integrate') < at('npm install'));
     const install = calls.find(row => row.cmd.startsWith('npm install'));
     assert.equal(install.options.cwd, '/app/packages/scratch-gui');
+    assert.match(install.cmd, /--legacy-peer-deps/);
+    const bios = commands.filter(cmd => cmd.includes('sync-i8086-bios.mjs'));
+    assert.deepEqual(bios, ["node scripts/sync-i8086-bios.mjs --dir '/clones/engine'",
+        "node scripts/sync-i8086-bios.mjs --dir '/clones/engine' --record"]);
     for (const overlay of ['vm', 'paint', 'render']) {
         assert.ok(at('npm install') < at(`apply-${overlay}-overlay`));
         assert.ok(at(`apply-${overlay}-overlay`) < at('GUI metadata check'));
@@ -62,7 +75,7 @@ for (const step of ['--verify-installed', 'npm install', 'apply-render-overlay',
 }
 
 test('changed BIOS requires manual review and cannot reach write/install/notices', () => {
-    const {calls, run, options} = record(cmd => cmd.includes('sync-i8086-bios') && cmd.includes('--check'));
+    const {calls, run, options} = record(cmd => cmd.includes('sync-i8086-bios') && !cmd.includes('--record'));
     assert.throws(() => refreshForwardPackages(run, options), /BIOS bytes\/source require manual review/);
     assert.ok(!calls.some(({cmd}) => cmd.includes('--write') || cmd.includes('npm install') || cmd.includes('notices')));
 });
@@ -75,6 +88,11 @@ test('explicit immutable --at selections remain reproducible and malformed names
     for (const value of ['bw-board=main', 'bw-board=abc123', `unknown=${sha}`, `bw-board=${sha}=extra`]) {
         assert.throws(() => parseForwardPins(['--at', value]), /--at/);
     }
+    for (const flag of ['--att', '--no-comit', '--pin', 'unexpected']) {
+        assert.throws(() => parseForwardPins([flag]), /unknown forward argument/);
+    }
+    assert.throws(() => parseForwardPins(['--at', `bw-board=${sha}`, '--at', `bw-board=${'b'.repeat(40)}`]), /conflicting --at/);
+    assert.deepEqual(parseForwardPins(['--at', `bw-board=${sha}`, '--at', `bw-board=${sha}`]), {'bw-board': sha});
 });
 
 test('staging includes exact manifests, locks, reports and own mirrors; unrelated paths refuse', () => {
@@ -124,10 +142,29 @@ test('CLI keeps clean-tree preflight, exact clone identities, scoped staging and
     assert.match(src, /if \(!pinned\[repo\]\) sh\(`git.*merge-base --is-ancestor/);
     assert.match(src, /pin-packages\.mjs --set \$\{repo\}=\$\{shas\[repo\]\} --pin/);
     assert.ok(src.indexOf("sh('npm run build'") < src.indexOf('verifyForwardBuild(sh'));
+    assert.ok(src.indexOf("sh('npm run check:load')") < src.indexOf("sh('npm run build'"));
+    assert.match(src, /Claude-Session: vendor-forward-script/);
     assert.ok(src.indexOf('verifyForwardBuild(sh') < src.indexOf("server = spawn('python3'"));
     assert.doesNotMatch(src, /shaOf\(/);
     assert.ok(src.indexOf('selectForwardOutputs([...changed, ...added])') < src.indexOf('git add -f --'));
     assert.doesNotMatch(src, /pkill|git add overlay|process\.exit\(/);
     assert.match(src, /spawn\('python3', \['-u', '-m', 'http.server', '0'/);
     assert.match(src, /finally \{[\s\S]*server\.kill\('SIGTERM'\)/);
+});
+
+test('actual forward BIOS comparison CLI accepts default mode and leaves provenance bytes unchanged', {
+    skip: process.env.BW_BOARD_DIR ? false : 'BW_BOARD_DIR unset — actual forward BIOS CLI not exercised'
+}, () => {
+    const root = process.env.BW_FORWARD_APP_ROOT || fileURLToPath(new URL('../', import.meta.url));
+    const dir = path.resolve(process.env.BW_BOARD_DIR);
+    const {calls, run, options} = record();
+    refreshForwardPackages(run, {...options, clones: {...config.clones, 'bw-board': dir}});
+    const command = calls.find(({cmd}) => cmd.includes('sync-i8086-bios.mjs')).cmd;
+    const files = ['vendor-pins.json', ...['i8086-bios.bin', 'i8086-bios.asm', 'i8086-bios.provenance.json']
+        .map(name => `overlay/scratch-gui/static/roms/${name}`)];
+    const before = files.map(file => readFileSync(path.join(root, file)));
+    const output = execSync(command, {cwd: root, encoding: 'utf8', timeout: 30000,
+        env: {...process.env, PATH: `${path.dirname(process.execPath)}${path.delimiter}${process.env.PATH}`}});
+    assert.match(output, /the committed ROM is this source\. Nothing to do\./);
+    files.forEach((file, i) => assert.deepEqual(readFileSync(path.join(root, file)), before[i], file));
 });

@@ -128,6 +128,7 @@ try {
     // through all three browser gates and then failed CI on a unit test
     // asserting the old geometry — this line closes that hole).
     sh('npm test');
+    sh('npm run check:load');
     sh('npm run build', { cwd: path.join(ROOT, 'packages', 'scratch-gui'), env: { ...process.env, NODE_ENV: 'production', NODE_OPTIONS: '--max-old-space-size=2560' } });
     verifyForwardBuild(sh, {root: ROOT});
 
@@ -176,13 +177,13 @@ try {
     const pins = UPSTREAMS.map((r) => `${r}@${shas[r]}`).join('\n');
     sh(`git add -f -- ${outputs.map(quote).join(' ')}`);
     const subject = UPSTREAMS.map((r) => `${r}@${shas[r].slice(0, 12)}`).join(', ');
-    sh(`git commit --author="CrispStrobe <cze+github@mailbox.org>" -m "vendor forward: ${subject}" -m ${JSON.stringify(
+    sh(`git commit --author="CrispStrobe <cze+github@mailbox.org>" -m "vendor forward: ${subject}" -m ${quote(
         'Coherent forward via scripts/vendor-forward.mjs: each upstream resolved to a sha, '
         + 'fetched AT that sha with the checkout asserted to match, all trees + pins from one '
         + 'state, integrate + build + all three browser gates green before commit.\n\n'
         + 'Re-derive this exact state with:\n  node scripts/vendor-forward.mjs '
         + UPSTREAMS.map((r) => `--at ${r}=${shas[r]}`).join(' ')
-        + `\n\n${pins}`)}`);
+        + `\n\n${pins}\n\nClaude-Session: vendor-forward-script`)}`);
     console.log('committed locally. Review the commit, then choose an explicit push destination.');
     }
 } finally {
