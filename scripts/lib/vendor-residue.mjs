@@ -2,11 +2,18 @@
  * THE RESIDUE ATTRIBUTOR — what a declared-divergent vendored file differs from
  * upstream-at-pin BEYOND the divergences the ledger declares.
  *
- * `vendor-identity` forgives a declared file's WHOLE byte-difference (the hole in
- * docs/VENDORING-REGIME.md: `this.cycles += 4` → `+= 5` in a declared file, both
- * mirrors, reds nothing). This computes the REMAINDER: every changed line that no
- * ledger entry claims. `test/vendor-residue-ratchet.test.mjs` ratchets that
- * remainder to zero.
+ * `vendor-identity` forgives a declared file's WHOLE byte-difference — the hole,
+ * named and demonstrated in docs/VENDORING-REGIME.md § "The hole". This computes the
+ * REMAINDER: every changed line that no ledger entry claims.
+ * `test/vendor-residue-ratchet.test.mjs` ratchets that remainder to zero.
+ *
+ * THE VERDICT IS CITED, NOT RESTATED, AND THAT IS DELIBERATE. This header and the
+ * ratchet's both used to carry their own copy of the experiment's outcome, and the
+ * two copies disagreed — "reds nothing" here, "reds every other vendor gate" there,
+ * about the same two-line edit to the same file. Neither was re-run; one was
+ * transcribed backwards, and the inverted one sat in the header of the gate whose
+ * whole justification is that the edit reds nothing. A conclusion copied away from
+ * its measurement has nothing left to check it against.
  *
  * ## What the number counts, stated so it cannot drift into meaning something else
  *

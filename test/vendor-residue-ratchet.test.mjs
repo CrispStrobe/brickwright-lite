@@ -4,9 +4,11 @@
  *
  * `vendor-identity` forgives a declared file's WHOLE byte-difference: once a file
  * has any ledger entry it is classified `diverged` and every further difference
- * rides in free. docs/VENDORING-REGIME.md names the hole and proves it — changing
- * `this.cycles += 4` to `+= 5` in a declared file, both mirrors, reds every other
- * vendor gate. This one attributes each changed REGION to a declared entry and
+ * rides in free. docs/VENDORING-REGIME.md § "The hole" names it and carries the
+ * measurement; the verdict is not restated here, because the copy that used to
+ * stand in this paragraph said the edit "reds every other vendor gate" — the exact
+ * inverse of the finding, in the header of the gate that exists BECAUSE it reds
+ * nothing. This one attributes each changed REGION to a declared entry and
  * counts what no entry claims. That count may only fall; its terminal value is
  * zero, at which point a declared file differs from upstream by exactly what the
  * ledger says and nothing else.
