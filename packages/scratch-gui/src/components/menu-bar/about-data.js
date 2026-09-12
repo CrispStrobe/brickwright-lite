@@ -401,15 +401,16 @@ const ABOUT_GROUPS = [
             },
             {
                 name: 'bw-board (simulation engine)',
-                url: 'https://github.com/CrispStrobe',
+                url: 'https://github.com/CrispStrobe/bw-board',
                 license: 'MIT',
-                licenseUrl: `${REPO}/blob/main/overlay/scratch-gui/src/lib/bw-board/LICENSE`,
+                licenseUrl: 'licenses/bw-board.MIT.txt',
                 role: 'Netlist inference, MNA solver, device drivers, emulator adapters'
             },
             {
                 name: 'bw-circuit-ui (circuit designer)',
-                url: 'https://github.com/CrispStrobe',
+                url: 'https://github.com/CrispStrobe/bw-circuit-ui',
                 license: 'MPL-2.0',
+                licenseUrl: 'licenses/bw-circuit-ui.MPL-2.0.txt',
                 role: 'Board canvas, schematic view, part models, wokwi element wrappers'
             },
             {

@@ -30,6 +30,20 @@ const read = rel => readFileSync(path.join(ROOT, rel), 'utf8');
 const NOTICES = read('THIRD-PARTY-NOTICES.md');
 const ABOUT = read('overlay/scratch-gui/src/components/menu-bar/bw-about.jsx');
 
+test('package acknowledgements link to complete shipped notices, not deleted source copies', async () => {
+    const {default: groups} = await import('../overlay/scratch-gui/src/components/menu-bar/about-data.js');
+    const entries = groups.flatMap(group => group.entries);
+    for (const [name, license] of [['bw-board', 'MIT'], ['bw-circuit-ui', 'MPL-2.0']]) {
+        const entry = entries.find(item => item.name.startsWith(`${name} (`));
+        assert.ok(entry, `missing ${name} acknowledgement`);
+        assert.equal(entry.license, license);
+        assert.equal(entry.licenseUrl, `licenses/${name}.${license}.txt`);
+        assert.equal(read(`overlay/scratch-gui/static/${entry.licenseUrl}`), read(`node_modules/${name}/LICENSE`));
+    }
+    assert.equal(read('packages/scratch-gui/src/components/menu-bar/about-data.js'),
+        read('overlay/scratch-gui/src/components/menu-bar/about-data.js'));
+});
+
 /**
  * Things that ship and that no lockfile knows about. Each names the evidence
  * that it really is shipped, so a future reader can check rather than trust.
