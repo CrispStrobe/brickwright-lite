@@ -35,6 +35,7 @@ import { promisify } from 'node:util';
 const execFileP = promisify(execFile);
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
+import { applySb3CreatorRewrites } from './lib/vendor-rewrites.mjs';
 
 const REPO = 'CrispStrobe/sb3-creator';
 const REF = process.env.SB3CREATOR_REF || 'main';
@@ -114,13 +115,18 @@ async function readSource (rel) {
 
 // Cross-file imports use the source repo's filenames; rewrite them to the vendored
 // names (e.g. javascriptToPseudocode.js imports pythonToPseudocode.js).
-const rewriteImports = (src) => src
-    .replace(/(['"])\.\/pythonToPseudocode\.js\1/g, "'./sb3-creator-python.js'")
-    .replace(/(['"])\.\/micropythonToPseudocode\.js\1/g, "'./sb3-creator-micropython.js'")
-    .replace(/(['"])\.\/runtimeRegistry\.generated\.js\1/g, "'./sb3-creator-runtime.js'")
-    .replace(/(['"])\.\/scratchRuntime\.js\1/g, "'./sb3-creator-scratchruntime.js'")
-    .replace(/(['"])\.\/cHostRuntime\.js\1/g, "'./sb3-creator-chostruntime.js'")
-    .replace(/(['"])\.\/cHostToPseudocode\.js\1/g, "'./sb3-creator-chost.js'");
+//
+// IMPORTED FROM scripts/lib/vendor-rewrites.mjs, NOT DEFINED HERE. The table used
+// to live in this file — and this file does its work at import time, so no test
+// could read it. That is exactly why sb3-creator had no judge-test while
+// bw-board and bw-circuit-ui did: a gate cannot check a transformation it has no
+// way to apply. vendor-identity.test.mjs carried the note "sb3-creator already
+// has a CI pin-proof though no judge-test consumes it yet" for months because of
+// where these six lines sat.
+//
+// Now the sync and test/sb3-creator-vendor-identity.test.mjs read one table, so
+// a rewrite added to one cannot go missing from the other.
+const rewriteImports = applySb3CreatorRewrites;
 
 // REFUSE TO DELETE WORK THAT EXISTS ONLY HERE.
 //

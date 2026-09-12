@@ -172,3 +172,86 @@ export function rewritePairs (vendoredRoot, opts) {
         from, from.replace(/(['"])(?:\.\.\/)+/, (m, q) => q + '../'.repeat(depth))
     ]);
 }
+
+/**
+ * SB3-CREATOR: THE SAME PROBLEM, A DIFFERENT SHAPE.
+ *
+ * bw-board and bw-circuit-ui are vendored as WHOLE DIRECTORIES whose filenames
+ * match upstream, so a vendored path maps to an upstream path by identity and a
+ * directory walk finds the set. sb3-creator is not: fourteen named files are
+ * copied out of `src/utils/` into lite's own `lib/` AND RENAMED
+ * (`pythonToPseudocode.js` -> `sb3-creator-python.js`), because they land beside
+ * lite's own modules rather than in a mirror of the upstream tree.
+ *
+ * The rename forces a second transformation. A file that imports a sibling by
+ * its upstream name would import nothing after the copy, so the sync rewrites
+ * those specifiers as it goes. Measured 2026-09-12: five of the fourteen differ
+ * from upstream for this reason and only this reason — with the rewrite applied,
+ * all fourteen are byte-identical at the pin.
+ *
+ * BOTH TABLES LIVE HERE FOR THE REASON IN THIS MODULE'S HEADER. Until today the
+ * map and the rewrite lived only inside `sync-sb3creator.mjs`, which does its
+ * work at import time and so cannot be read by a test. That is why sb3-creator
+ * had no judge-test while the other two upstreams did, and why
+ * `vendor-identity.test.mjs` carried the note "sb3-creator already has a CI
+ * pin-proof though no judge-test consumes it yet". A gate cannot check a
+ * transformation it has no way to apply.
+ */
+export const SB3_CREATOR_FILES = Object.freeze([
+    ['sb3-creator.js', 'src/utils/sb3Creator.js'],
+    ['trace-oracle.js', 'src/utils/traceOracle.js'],
+    ['sb3-creator-examples.js', 'src/utils/examples.js'],
+    ['sb3-creator-python.js', 'src/utils/pythonToPseudocode.js'],
+    ['sb3-creator-micropython.js', 'src/utils/micropythonToPseudocode.js'],
+    ['pico-repl.js', 'src/utils/picoRepl.js'],
+    ['sb3-creator-javascript.js', 'src/utils/javascriptToPseudocode.js'],
+    ['sb3-creator-c.js', 'src/utils/cToPseudocode.js'],
+    ['sb3-creator-runtime.js', 'src/utils/runtimeRegistry.generated.js'],
+    ['sb3-creator-scratchruntime.js', 'src/utils/scratchRuntime.js'],
+    ['sb3-creator-chostruntime.js', 'src/utils/cHostRuntime.js'],
+    ['sb3-creator-chost.js', 'src/utils/cHostToPseudocode.js'],
+    ['sb3-creator-basic.js', 'src/utils/basicToPseudocode.js'],
+    ['cubeDirections.js', 'src/utils/cubeDirections.js'],
+]);
+
+/**
+ * The import remapping the sb3-creator sync performs by construction.
+ *
+ * THIS IS THE SYNC'S ACTUAL TABLE, SIX ENTRIES, NOT A DERIVATION OF THE RENAME
+ * MAP ABOVE — and the difference is a finding rather than an accident.
+ *
+ * Deriving it from SB3_CREATOR_FILES yields THIRTEEN rewrites: every file whose
+ * vendored name differs from its upstream name. The sync performs six. So seven
+ * possible renames are unhandled, and a vendored file that imported one of them
+ * by its upstream name (`./sb3Creator.js`, `./traceOracle.js`, `./examples.js`,
+ * ...) would be copied in with an import pointing at a file that does not exist.
+ *
+ * A GATE MUST APPLY THE RULE THE SYNC APPLIES, not the rule it ought to. Using
+ * the derived thirteen here would make the comparison green against a transform
+ * nothing performs — a check true about something other than what it is about.
+ * The seven-entry gap is asserted separately, as the latent hazard it is.
+ */
+export const SB3_CREATOR_IMPORT_REWRITES = Object.freeze([
+    ['pythonToPseudocode.js', 'sb3-creator-python.js'],
+    ['micropythonToPseudocode.js', 'sb3-creator-micropython.js'],
+    ['runtimeRegistry.generated.js', 'sb3-creator-runtime.js'],
+    ['scratchRuntime.js', 'sb3-creator-scratchruntime.js'],
+    ['cHostRuntime.js', 'sb3-creator-chostruntime.js'],
+    ['cHostToPseudocode.js', 'sb3-creator-chost.js']
+]);
+
+/** Every rename the file map implies — the superset the sync does NOT fully cover. */
+export const SB3_CREATOR_POSSIBLE_REWRITES = Object.freeze(
+    SB3_CREATOR_FILES
+        .map(([local, up]) => [up.replace(/^src\/utils\//, ''), local])
+        .filter(([from, to]) => from !== to));
+
+export function applySb3CreatorRewrites (text) {
+    let out = text;
+    for (const [from, to] of SB3_CREATOR_IMPORT_REWRITES) {
+        out = out.replace(
+            new RegExp(`(['"])\\./${from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\1`, 'g'),
+            `'./${to}'`);
+    }
+    return out;
+}
