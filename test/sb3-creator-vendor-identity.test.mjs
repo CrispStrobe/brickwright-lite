@@ -54,8 +54,24 @@ const pinnedDir = () => {
     const candidates = [process.env.SB3_CREATOR_DIR,
         path.resolve(ROOT, '../../sb3-creator'), path.resolve(ROOT, '../sb3-creator')].filter(Boolean);
     const TMP = fs.realpathSync(os.tmpdir());
+    const outsideTmp = (d) => {
+        try { return !fs.realpathSync(d).startsWith(TMP); } catch { return false; }
+    };
+    // THE /tmp RULE IS ABOUT IMPLICIT SIBLINGS, NOT ABOUT AN EXPLICIT ANSWER. It
+    // exists so a scratch checkout somebody left beside the repo is never picked
+    // up as the upstream nobody named. `SB3_CREATOR_DIR` IS somebody naming one,
+    // so it is exempt -- which is what the other three resolvers do
+    // (`process.env[envVar] ? true : outsideTmp(d)`), and what the paragraph above
+    // this function already claims: "an explicit env-var dir whose HEAD equals the
+    // pin JUDGES". Applied unconditionally, as it was when this resolver was
+    // copied, an explicit dir under /tmp was discarded and the skip then read
+    // "no sb3-creator checkout found" while NAMING the directory it had just
+    // rejected. vendor-identity.test.mjs says of its own resolver that two
+    // resolutions of "which upstream" would be two answers and the wrong one
+    // would be the one nobody re-read; this was the fourth copy and the clause it
+    // lost was the one that makes it usable outside CI.
     const dir = candidates.filter(d => fs.existsSync(path.join(d, 'src/utils')))
-        .filter(d => { try { return !fs.realpathSync(d).startsWith(TMP); } catch { return false; } })[0];
+        .filter(d => process.env.SB3_CREATOR_DIR ? true : outsideTmp(d))[0];
     if (!dir) return {dir: null, head: null, atPin: false, candidates};
     let head = null;
     try { head = execSync(`git -C ${JSON.stringify(dir)} rev-parse HEAD`, {stdio: ['ignore', 'pipe', 'ignore']}).toString().trim(); } catch { /* not a checkout */ }
