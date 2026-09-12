@@ -96,7 +96,7 @@ const MUTATIONS = [
     },
     {
         name: 'a sync script falls back to the mutable ref when resolution fails',
-        file: 'scripts/sync-bw-board.mjs',
+        file: 'scripts/sync-sb3creator.mjs',
         edit: (s) => s.replace(`const RAW = \`${raw('${REPO}/${remoteSha}')}\`;`,
             `const RAW = \`${raw('${REPO}/${remoteSha ?? REF}')}\`;`),
         expect: 'falls back to the mutable REF'
