@@ -486,6 +486,8 @@ keeping, it is worth a branch.
 
 ## DONE — recently, so nobody redoes it
 
+Package migration schematic sidecars — Codex policy_review, `fix/schematic-installed-package-data` (2026-09-12): `scripts/render-schematic.mjs` now reads the pinned root installation's `src/parts-data`, with no overlay/sibling fallback. Syntax and diff checks passed; parent integration runs the four visual baselines with its installed packages. No dependency or browser changes.
+
 | 8086 execution policy GUI P3 | Codex app_adoption_audit; root coordinates | `feat/execution-policy-gui`, isolated `wt/lite-execution-policy-gui`, base `411828a` | CANDIDATE COMPLETE 2026-09-12. App-owned construction admission/preferences/active/refusal status for existing DOS/hardware runners; Wired explicit refusal, RAM/sandbox independent. Future package import requires coordinated npm migration/P2. Focused Node22 suite20/20, no skips, explicit local P2 mapping; nullish rejection and composite abort cleanup reviewed; full app/build/browser gates remain. No vendor/pin/sync edits, shared-tree changes, publishing or deploy. Root owns integration. |
 | Package migration fork preservation audit | Codex app_adoption_audit; root coordinates | `feat/package-fork-audit`, isolated `wt/lite-package-fork-audit`, audit `d3f7a45fb` | DONE 2026-09-12. Docs-only immutable Git blob comparison of both deleted mirrors at411828a to engine d7436dc/7fbdfa9 and UI657e021. No current declared local behavior lost; historical forks already upstream/relocated. Exact differing and stale package-only files classified. License metadata conflict, optional-table bundle payload and installed-byte identity remain integration cautions. No root/peer source edits or runtime/browser test claim. |
 

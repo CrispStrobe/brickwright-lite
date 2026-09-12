@@ -48,7 +48,9 @@ if ((!all && !allVariants && !exampleId && !circuitArg) || !['svg', 'png', 'both
 }
 
 const examplesRoot = path.join(root, 'overlay', 'scratch-gui', 'examples');
-const partsDataRoot = path.join(root, 'overlay', 'scratch-gui', 'src', 'lib', 'bw-circuit-ui', 'parts-data');
+// Use the pinned root installation, like the package imports above. Do not fall
+// back to removed overlay copies or sibling checkouts with different contents.
+const partsDataRoot = path.join(root, 'node_modules', 'bw-circuit-ui', 'src', 'parts-data');
 for (const filename of await fs.readdir(partsDataRoot)) {
     if (!filename.endsWith('.json')) continue;
     registerSidecar(JSON.parse(await fs.readFile(path.join(partsDataRoot, filename), 'utf8')));
