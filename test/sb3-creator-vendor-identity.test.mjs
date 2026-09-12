@@ -49,6 +49,19 @@ const PIN = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor-pins.json'), 'utf
  * A checkout at the pin, or null. Same rule the other two obey: an explicit
  * env-var dir whose HEAD equals the pin JUDGES; anything else SPEAKS, and this
  * gate skips by name rather than comparing against a peer's feature branch.
+ *
+ * `pinned` IS THE JUDGING PREDICATE, NOT `atPin`. `atPin` says only that the
+ * tree we happened to find sits at the pin -- and the tree we happened to find
+ * may be a sibling nobody named. Reading `atPin` therefore let an UNNAMED
+ * sibling JUDGE this gate whenever it coincidentally sat at the pin, which is
+ * exactly the rule the paragraph above claims to enforce. The prose was right
+ * and the predicate was one word away from it.
+ *
+ * `named` exists so the skip can say WHOSE head it is reporting. HEAD is read
+ * for a sibling too, because "a sibling is at <sha> but the pin is <sha>" is the
+ * sentence that tells someone what to do -- but a message branching on `head`
+ * alone would then write "SB3_CREATOR_DIR is at <sha>" when the variable is
+ * unset and the sha belongs to a tree nobody named.
  */
 const pinnedDir = () => {
     const candidates = [process.env.SB3_CREATOR_DIR,
@@ -72,10 +85,12 @@ const pinnedDir = () => {
     // lost was the one that makes it usable outside CI.
     const dir = candidates.filter(d => fs.existsSync(path.join(d, 'src/utils')))
         .filter(d => process.env.SB3_CREATOR_DIR ? true : outsideTmp(d))[0];
-    if (!dir) return {dir: null, head: null, atPin: false, candidates};
+    const named = Boolean(process.env.SB3_CREATOR_DIR);
+    if (!dir) return {dir: null, head: null, atPin: false, pinned: false, named, candidates};
     let head = null;
     try { head = execSync(`git -C ${JSON.stringify(dir)} rev-parse HEAD`, {stdio: ['ignore', 'pipe', 'ignore']}).toString().trim(); } catch { /* not a checkout */ }
-    return {dir, head, atPin: head === PIN, candidates};
+    const atPin = head === PIN;
+    return {dir, head, atPin, pinned: named && atPin, named, candidates};
 };
 
 test('the file map is populated, and every vendored copy is on disk', () => {
@@ -92,15 +107,19 @@ test('the file map is populated, and every vendored copy is on disk', () => {
 });
 
 test('every vendored sb3-creator file equals upstream at the pin', t => {
-    const {dir, head, atPin, candidates} = pinnedDir();
+    const {dir, head, pinned, named, candidates} = pinnedDir();
     if (!dir) {
         t.diagnostic(`SKIPPED, NOT PASSED: no sb3-creator checkout found. Looked in: ${candidates.join(', ')}.`);
         t.skip('upstream tree not on disk — byte-identity against the pin NOT verified');
         return;
     }
-    if (!atPin) {
-        t.diagnostic(`SKIPPED, NOT PASSED: ${dir} is at ${head?.slice(0, 9)} but the pin is ${PIN?.slice(0, 9)}.`);
-        t.skip('a tree off the pin may SPEAK, not JUDGE — set SB3_CREATOR_DIR to a checkout at the pin');
+    if (!pinned) {
+        t.diagnostic(named
+            ? `SKIPPED, NOT PASSED: SB3_CREATOR_DIR=${dir} is at ${head?.slice(0, 9)} but the pin is ${PIN?.slice(0, 9)}.`
+            : `SKIPPED, NOT PASSED: ${dir} is a sibling nobody named, at ${head?.slice(0, 9)}; the pin is ${PIN?.slice(0, 9)}.`);
+        t.skip(named
+            ? 'a tree off the pin may SPEAK, not JUDGE — point SB3_CREATOR_DIR at a checkout at the pin'
+            : 'an UNNAMED sibling may SPEAK, not JUDGE, even sitting at the pin — set SB3_CREATOR_DIR');
         return;
     }
 
@@ -152,8 +171,8 @@ test('no upstream file imports a rename the sync does NOT handle', () => {
     // Measured 2026-09-12: none of the seven is imported by anything upstream.
     // That is why six entries have been sufficient. This fires on the day a
     // fourteenth import arrives, which is the only moment anyone could act on it.
-    const {dir, atPin} = pinnedDir();
-    if (!dir || !atPin) return;   // the identity test above already reports the skip
+    const {dir, pinned} = pinnedDir();
+    if (!dir || !pinned) return;   // the identity test above already reports the skip
 
     const handled = new Set(SB3_CREATOR_IMPORT_REWRITES.map(([from]) => from));
     const unhandled = SB3_CREATOR_POSSIBLE_REWRITES.filter(([from]) => !handled.has(from));
