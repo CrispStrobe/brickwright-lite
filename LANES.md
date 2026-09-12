@@ -357,6 +357,8 @@ keeping, it is worth a branch.
 | npm package migration takeover + execution-policy GUI adoption | Codex root, user-authorized 2026-09-12 | `feat/package-migration-takeover`, preserved checkpoint `44872243a`, base `411828a` | ACTIVE: original `lane/upstreams-as-packages` worktree/index untouched. Isolated takeover owns packaging/build/GUI integration; separate agents audit forks/provenance and reproduce circuit-UI drag failure. No default-branch merge/deploy until qualified. |
 - codex-app-adoption-audit: package migration test/source path authority repair only, own feat/package-fork-audit worktree; excludes root-owned bw-matrix-conformance and gearmotor-slug-closeout; no package/runtime changes. 2026-09-12.
 - codex-app-adoption-audit: follow-up migration gates (no-dead-overlay, no-NUL complete source scope, pin-sync census, Pico integrated package import), isolated feat/package-fork-audit; parent authorizes script exception. 2026-09-12.
+- codex-app-adoption-audit: package-aware vendor-forward orchestration and focused mocked tests, own isolated branch; no live forward/pin moves. 2026-09-12.
+
 
 
 
