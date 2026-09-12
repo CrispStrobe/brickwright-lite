@@ -2482,3 +2482,238 @@ precondition is unnamed cannot even be re-run, and it does not announce its own
 expiry — it just sits there being quoted. All three sites were repaired by making
 the doc the only place that states the verdict, which is the same remedy as the
 first instance's one-instrument fix, applied to prose.
+
+## Thirty-eighth species: A SOUND CHECK ABOUT THE WRONG SUBJECT, RUN AT THE MOMENT OF CONFIRMATION (2026-09-12, named jointly by brickwright-lite-0c and lego-ac; ten instances in one day — six found after the fact, one caught before sending, three committed while writing this entry, and the ninth of those committed after its own remedy had been written down thirty seconds earlier; READ THE EIGHTH FIRST)
+
+Every other entry in this document is about a gate. This one is about the person
+or agent reading it, and it is here because on 2026-09-12 two sessions produced
+three instances each, independently, and neither caught their own.
+
+**The rule: you stop at the first thing that confirms the shape you arrived with,
+and the check you run at that point is SOUND.** That is what makes it invisible
+from inside. The evidence is real, the command is correct, the output is what it
+appears to be. It is simply answering the question you brought rather than the
+question in front of you. **A wrong check announces itself. A sound check about
+the wrong subject does not.** (lego-ac's statement of it, which is sharper than
+"confirmation bias" and, unlike that phrase, names something you can act on.)
+
+It is the neighbour of species 37. There, a number is quoted away from the
+instrument that produced it and the defect lives in the citation. Here there is
+no citation and no artifact at all — the only trace is a green check and a
+conclusion that does not follow from it.
+
+**START WITH THE EIGHTH INSTANCE BELOW, NOT WITH THE SIX.** The six can all be
+read as carelessness by a reader who wants to; the eighth cannot. It needed no
+misreading, no stale snapshot, no adjacent clause — just `assert old in s`,
+answering *"does this string exist"* correctly while the question was *"is this
+the occurrence I mean"*. **A predicate whose truth is not the truth you need**,
+with the subject drifting from an object to an index. That is the species with
+the mask off, and it is lego-ac's framing rather than mine.
+
+### The six, with what each check actually measured
+
+*Discarded files versus a branch tip* (brickwright-lite-0c). Uncommitted changes
+were discarded from a worktree after `git hash-object` confirmed both files
+byte-equal to `origin/main`. Sound check. It was then reported as "the leftover
+branch tip is byte-identical to main". The tip was based on a commit predating
+the fix and was missing 51 lines — the same 51 whose deletion the hash-check had
+just prevented. Both subjects were "the thing I did not land", in the same
+paragraph. Caught by lego-ac running `merge-base --is-ancestor`.
+
+*The `else` branch* (brickwright-lite-0c). `deadWorkflow` was reported as
+"checks the workflow FILE exists, not the step", from reading
+`skip-pointers.mjs:66` — `if (!existsSync(wf))`. Line 67 is `else` and line 69 is
+the predicate inside it, which resolves a declared step:
+`!text.includes(basename(p.file)) && !(p.step && text.includes(\`name: ${p.step}\`))`. A false ordering constraint went to two sessions, one
+of which had it on a critical path. Caught by lego-ac renaming the step and
+running the census (fired, four pointers, by line number) rather than reasoning
+about the predicate.
+
+*The adjacent clause* (brickwright-lite-0c). `pinnedDir` in the sb3-creator judge
+was repaired for losing a conditional from a resolver copied three times, with
+fifteen lines of comment and `vendor-identity`'s own header quoted in the commit
+message. The clause quoted was
+`4461b4f43:test/vendor-identity.test.mjs:306` (that file was deleted on
+2026-09-12 with the vendored roots). **Line 307 — the next line — reads
+*"`pinned` means the tree IS at the pin, not merely that the env var is set"*.**
+It was not carried across, so an unnamed sibling coincidentally sitting at the
+pin could JUDGE the gate. Caught by the owner in `bbc9fd900`: *"The prose was
+right and the predicate was one word away from it."*
+
+(The first draft of this paragraph said "four lines below", from memory, and did
+not check. It is one line below. **The entry warning against unverified
+confirmation asserted an unverified distance, in the direction that made the miss
+sound more forgivable** — the same shape as species 37's first draft inventing
+"four months" for a five-day interval. Recorded rather than silently corrected,
+for the same reason that one was.)
+
+*A sweep that elects its own reference* (lego-ac). An `rs` default was chosen
+because a corpus sweep elected it, and sent on as a finding before running a
+falsifier that had already been written down. The calibration inverts exactly
+when `rs` equals the reference device's `RS`, so the sweep elects whatever the
+deck was built with; every LED model card in every deck in that repo is `RS=10`.
+Not a fit — an identity. Caught by running the falsifier.
+
+*The number that moved for a different reason* (lego-ac). A bulk-resistance
+correction was applied to silicon diodes as well as LEDs. The conversion
+subtracts `iRated × rd`, and `rd = 10` is an LED's bulk resistance; the reference
+silicon part `D1N4148 D(IS=2.52e-9 RS=0.568 N=1.752)` has 0.568 Ω, so the
+correction subtracted 200 mV where the device drops 11 mV. Bare diode, 5 V
+through 1 kΩ, against ngspice's **0.6532 V**:
+
+| | anode | error |
+|---|---|---|
+| `vf` treated as the knee, `rd = 10` (before any change) | 0.7426 V | +13.68 % |
+| converted, shared `rd = 10` | **0.5446 V** | **−16.63 %** |
+| converted, `rd = SILICON_RD = 0.568` | 0.6793 V | +4.00 % |
+
+**All four rows matter and a three-row version teaches the wrong lesson.** The
+middle row is a change that was made and was locally green; the last row is the
+fix, and it beats the pre-change state as well as the regression. A table showing
+only damage says "everything was broken", when what happened is that a correction
+became a regression by carrying one constant across a kind boundary.
+
+What nearly let it through is the sharpest detail in this entry: **the failing
+expectation MOVED, which read as confirmation that the fix was working.** In
+lego-ac's own words, *"a hand-computed expectation moving is not evidence the new
+value is better. Only the oracle is."* Full derivation on bw-board
+`ceae0de:test/measurements/E13B-CALIBRATION-REDERIVED.md`.
+
+**And the attempt to re-derive this table turned out to be a finding about the
+document, not about the guess.** Re-deriving from the prose reproduces rows 1 and
+2 exactly — they need only the device and the piecewise formula — and misses rows
+3 and 4, reconstructing 0.5063 and 0.6517 from the reasonable guess `vf = 0.7,
+n = 1.0`. Rows 3 and 4 are **solver readings, not hand formulas**, and depend on
+which junction path the part routes to, which the table did not say. Four numbers
+in one column, two reproducible from the text and two not, with nothing marking
+which. lego-ac's own summary: *"a measurement nobody can re-run is a claim, and I
+published three of those and called it a derivation."* The doc at `ceae0de` now
+carries the ngspice deck (with the SPICE title-line trap named), the netlist, and
+the accessor — `nodeVoltages.get('n_a')` after `advanceTo(1_000_000n)`. **A
+failed reproduction is evidence about the record, not only about whoever tried.**
+
+*The fix that generated a second wrong claim* (lego-ac). Repairing a skip
+diagnostic produced a line reading `BW_BOARD_DIR is at fa20bb8c7` when the
+variable was unset and the sha belonged to an unnamed sibling. Caught by reading
+the skip output instead of the pass count.
+
+### The detection asymmetry, which is the actionable part
+
+**Five of the six were caught by a different agent re-measuring.** Not one was
+caught by its author at the time, and all six authors are people who habitually
+verify. That is a property of the species, not of the day: the author's check is
+sound, so re-running it reproduces the same green. Vigilance is not the
+countermeasure, because vigilance is what produced the sound check.
+
+**The sixth is the interesting one, and its first write-up here was wrong.** It
+said "caught by luck — ngspice happened to be open". lego-ac corrected that, and
+the correction is load-bearing: the ngspice harness had been built an hour
+earlier for unrelated work, so asking the oracle about one more circuit cost
+about thirty seconds. *"I did not decide to be careful. The oracle was cheap, so
+it got consulted."*
+
+That is structural, and it generalises: **all three of lego-ac's instances had an
+oracle available, and the two that were missed are the two where consulting it
+would have taken a setup step.** So the second countermeasure, alongside routing
+conclusions to someone who will re-measure:
+
+**Make the oracle cheap enough that checking is less effort than reasoning.** An
+oracle that costs a setup step is consulted when you already suspect something,
+which is exactly when you do not need it. One that costs thirty seconds gets
+consulted at the moment of confirmation, which is the only moment that helps.
+
+(Note the shape of the original error: "I got lucky" is unrepeatable, excuses the
+author, and removes any design obligation. It was also the more flattering
+version in the direction that softens the lesson — the third time in this entry
+that an inaccuracy ran that way.)
+
+### A seventh, caught BEFORE it was sent — what that looked like
+
+(2026-09-12, lego-ac.) Testing whether a proposed orphan-pointer gate had a
+reachable miss, a probe found that a *directory path* in a pointer row went
+uncaught, and a finding was nearly sent on that basis. The probe had called the
+internal API and bypassed `parsePointers`, whose grammar is
+
+    const POINTER = /^- (test\/\S+\.test\.mjs) :: (.+?) :: (.+)$/;
+
+so a row naming a directory cannot be parsed as a pointer at all and the miss is
+unreachable by construction. Driven rather than reasoned, here, against that
+regex: `- test/foo.test.mjs :: …` matches; `- test/ :: …`, `- src/lib/ :: …` and
+`- test/foo.mjs :: …` do not.
+
+**What made this one different is not care, it is that the entry point was
+cheap to call.** The probe reached for the internal API because it was the one
+already in hand. Same species, and the catch is the same countermeasure: test
+through the door users come in, and make that door easy enough to reach for
+first.
+
+### An eighth, committed while writing this entry, and it is the cleanest one here
+
+The section above — "A seventh" — was first inserted by a script anchored on the
+string `### The diagnostic`. The edit asserted the anchor was present, the assert
+passed, the write succeeded. **The heading appears three times in this document,**
+and the insertion landed in an unrelated species six hundred lines earlier, under
+"## What happened", where it sat as a paragraph about pointer grammar inside
+somebody else's incident.
+
+Look at the check: `assert old in s`. It is SOUND. It answers *"does this string
+exist"* — correctly, three times over — while the question was *"is this the
+occurrence I mean"*. The assert passing is what stopped the looking. Caught only
+because the next command printed a line number and 694 was not where species 38
+lives.
+
+**This is the species committed inside its own documentation, in the act of
+documenting it**, and it is worth more than any of the seven above, because a
+reader can watch it happen rather than take somebody's word that it did. The
+paragraph a few rows up, about "four lines below" being one line below, is the
+same thing at a smaller scale in the same hour.
+
+The specific lesson, which generalises past this document: **a string anchor is a
+claim of uniqueness, and `replace(…, 1)` never checks it.** Assert the count, not
+the presence — and after any positional edit, print where it landed.
+
+**AND THEN IT HAPPENED AGAIN, IN THE SCRIPT THAT ADDED THE PARAGRAPH ABOVE** —
+same anchor, same `replace(…, 1)`, same wrong species six hundred lines away. The
+remedy had been written thirty seconds earlier, in the text being inserted, and
+was not applied to the insertion carrying it.
+
+**That is not the eighth instance twice; it is a different claim, and a more
+useful one.** It says nothing about whether the remedy works and everything about
+**when** it fires. In lego-ac's words: *"a remedy written thirty seconds ago is
+knowledge, not a habit, and knowledge does not fire during execution."* Which is
+why "be more careful" would not have helped here, and why the line-count assert
+did: **the countermeasure has to be something that RUNS, not something you
+know.** Every entry in this document that ends in "remember to…" is weaker than
+one that ends in a predicate somebody executes.
+
+**A third variant followed immediately.** The repair script then verified its
+extracted block by asserting a phrase was inside it. The assert failed and the
+phrase was there — line-wrapped, so *"a string anchor is a claim of uniqueness"*
+exists in the file as two lines and in the check as one. A sound check, a true
+negative about a string, a false negative about the text. The fix that finally
+held asserted the block's LINE COUNT and then printed which species the result
+landed under, before writing.
+
+So the honest count for this instance is three, in about ten minutes, by one
+author who had just finished naming the mechanism. **Knowing the species does not
+confer immunity from it** — which is the most useful thing this entry can tell a
+reader, and the least comfortable to write down.
+### The diagnostic
+
+**When a check confirms what you expected, that is the moment to ask what ELSE
+would produce that same result.** Confirmation is where attention stops, so it
+has to be made the trigger rather than the terminus.
+
+The four answers that would have worked today, worth keeping as a starting list:
+
+- *the adjacent clause* — you fixed the thing you came for; read the lines around it
+- *the `else` branch* — you read the condition that matched your expectation and not its complement
+- *the other subject* — the operation is right, name what it was applied to, out loud
+- *it moved for a different reason* — a number changing is not evidence it changed because of you
+
+And the two structural versions, which do not depend on anyone remembering the
+list: **route a conclusion to somebody who will re-measure it before acting on
+it**, and **keep the oracle cheap enough to consult on a whim.** Five were found
+the first way and the sixth the second. It is also the argument against the instinct to present
+a finding as settled — every one of these was sent, or nearly sent, as a
+conclusion rather than as a measurement somebody else could reproduce.
