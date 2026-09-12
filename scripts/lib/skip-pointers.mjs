@@ -55,12 +55,18 @@ export const parsePointers = text => {
 
 /**
  * Pure verdict over skips [{file, name, reason}] and pointers.
- * @returns {{unpointed: string[], moved: string[], undated: string[], deadWorkflow: string[]}}
+ * @returns {{unpointed: string[], moved: string[], undated: string[], deadWorkflow: string[], orphan: string[], stale: string[]}}
  */
 export const judgeSkips = (skips, pointers, {root = null} = {}) => {
-    const unpointed = [], moved = [], undated = [], deadWorkflow = [];
+    const unpointed = [], moved = [], undated = [], deadWorkflow = [], orphan = [], stale = [];
     for (const p of pointers) {
         if (!p.date) undated.push(`LANES.md:${p.line} ${p.file} — a pointer without a date is a claim nobody can check`);
+        // A pointer is only ever validated against a skip that HAPPENED, so a pointer
+        // for a test that no longer exists is unreachable by every check below: it
+        // resolves, its workflow still names the step, and the census stays green over
+        // a voucher for nothing (found 2026-09-12 when two vendor gates were retired
+        // and their rows stayed). Ask the filesystem, not the skip list.
+        if (root && !existsSync(path.join(root, p.file))) orphan.push(`LANES.md:${p.line} ${p.file} does not exist — a pointer for a test that is gone vouches for nothing; delete the row`);
         if (p.workflow && root) {
             const wf = path.join(root, p.workflow);
             if (!existsSync(wf)) deadWorkflow.push(`LANES.md:${p.line} ${p.file} → ${p.workflow} does not exist`);
@@ -73,12 +79,18 @@ export const judgeSkips = (skips, pointers, {root = null} = {}) => {
     for (const s of skips) {
         const file = s.file.replace(/^.*\/(test\/)/, '$1');
         const base = path.basename(file);
+        // Readings are history: a skip recorded for a test file the tree no longer
+        // has is not a gate nobody runs, it is a gate nobody HAS. It is reported as
+        // stale (the readings want regenerating) and judged no further — otherwise
+        // deleting a retired test and its pointer in the same commit reds this
+        // census until the next --fetch, which punishes the honest order.
+        if (root && !existsSync(path.join(root, file))) { stale.push(`${file}: "${s.name}" is in the readings but the file is gone — regenerate docs/generated/ci-skip-census.json`); continue; }
         const same = pointers.filter(p => path.basename(p.file) === base);
         if (same.some(p => p.reason === s.reason)) continue;
         if (same.length) moved.push(`${base}: "${s.name}" skips with "${s.reason}" but the pointer(s) at LANES.md:${same.map(p => p.line).join(',')} vouch for "${same[0].reason}" — the reason moved; re-verify where it executes and move the pointer`);
         else unpointed.push(`${base}: "${s.name}" skipped ("${s.reason}") and nothing says where it executes — a gate nobody runs; add a pointer under "${HEADING}" in LANES.md`);
     }
-    return {unpointed, moved, undated, deadWorkflow};
+    return {unpointed, moved, undated, deadWorkflow, orphan, stale};
 };
 
 /** Skips from a census file's `files` map: [{file, name, reason}]. */

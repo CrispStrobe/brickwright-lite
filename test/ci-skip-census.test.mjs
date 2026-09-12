@@ -43,6 +43,8 @@ test('every skipped test in the readings points at where it executes; pointers a
     const v = judgeSkips(readings.tests.filter(x => x.reasonLive).map(x => ({file: x.file, name: x.name, reason: x.reason})), pointers, {root: ROOT});
     assert.deepEqual(v.undated, [], v.undated.join('\n'));
     assert.deepEqual(v.deadWorkflow, [], v.deadWorkflow.join('\n'));
+    assert.deepEqual(v.orphan, [], 'pointer(s) for tests that no longer exist:\n  ' + v.orphan.join('\n  '));
+    if (v.stale.length) t.diagnostic(`stale readings (file gone since the runs were read): ${v.stale.join('; ')}`);
     assert.deepEqual(v.moved, [], 'reason(s) edited without the pointer moving:\n  ' + v.moved.join('\n  '));
     assert.deepEqual(v.unpointed, [], 'gate(s) nobody runs:\n  ' + v.unpointed.join('\n  '));
 });
@@ -67,7 +69,14 @@ test('a TEMPORARY pointer expires by the readings: once its test has executed in
 test('mutation: the five shapes that must redden', () => {
     const skips = [{file: 'test/x.test.mjs', name: 'a', reason: 'X unset'}];
     const good = parsePointers(`${HEADING}\n\n- test/x.test.mjs :: X unset :: box somewhere 2026-09-07 someone\n`);
-    assert.deepEqual(judgeSkips(skips, good), {unpointed: [], moved: [], undated: [], deadWorkflow: []});
+    assert.deepEqual(judgeSkips(skips, good), {unpointed: [], moved: [], undated: [], deadWorkflow: [], orphan: [], stale: []});
+    // A pointer whose test file is gone: silent by construction until this list existed.
+    const gone = judgeSkips([], [{...good[0], file: 'test/no-such-test-ever.test.mjs', line: 9}], {root: ROOT}).orphan;
+    assert.equal(gone.length, 1); assert.match(gone[0], /LANES\.md:9 test\/no-such-test-ever\.test\.mjs does not exist/);
+    assert.deepEqual(judgeSkips([], [{...good[0], file: 'test/ci-skip-census.test.mjs', line: 9}], {root: ROOT}).orphan, [], 'an existing file is not an orphan');
+    // A reading for a test file that is gone is stale, not unpointed.
+    const st = judgeSkips([{file: 'test/no-such-test-ever.test.mjs', name: 'a', reason: 'X unset'}], [], {root: ROOT});
+    assert.deepEqual(st.unpointed, []); assert.equal(st.stale.length, 1);
     // no pointer at all
     assert.match(judgeSkips(skips, []).unpointed[0], /x\.test\.mjs: "a" skipped \("X unset"\) and nothing says where it executes — a gate nobody runs/);
     // the reason moved

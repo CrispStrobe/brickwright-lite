@@ -2,7 +2,7 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "7fbdfa9f575ba6c7da36e253b98c92e9093d8837",
+    "sha": "208710e006af1e5007fe31e37fb472ce9587255f",
     "read": "2026-09-12"
   },
   "rows": [
@@ -10,20 +10,23 @@
       "id": "harris-native-wasm",
       "kind": "fixture",
       "present": false,
-      "ciAvailable": false,
-      "ci": "no — bw-board CI does not yet build the optional native prototype; its tests report explicit skips without HARRIS_NET_WASM",
+      "ciAvailable": true,
+      "ci": "yes — .github/workflows/harris-native.yml builds a fresh owned artifact, requires zero skipped native/hybrid tests and qualifies the same module in Chromium; ordinary CI may still skip without HARRIS_NET_WASM",
       "via": "tried $HARRIS_NET_WASM",
       "gates": [
         "test/harris-native-admitted-graph.test.mjs",
         "test/harris-native-bus-sequencer.test.mjs",
         "test/harris-native-bus-circuit.test.mjs",
         "test/harris-native-evaluators.test.mjs",
+        "test/harris-native-boot-bridge.test.mjs",
+        "test/harris-native-memory-board.test.mjs",
         "test/harris-native-incremental-nets.test.mjs",
         "test/harris-native-memory-circuit.test.mjs",
         "test/harris-native-memory.test.mjs",
         "test/harris-native-net-kernel.test.mjs",
         "test/harris-native-phase-circuit.test.mjs",
         "test/harris-native-phase-components.test.mjs",
+        "test/harris-native-producer-counters.test.mjs",
         "test/harris-native-phase-schedule.test.mjs",
         "test/harris-native-phase-end-seam.test.mjs"
       ],
