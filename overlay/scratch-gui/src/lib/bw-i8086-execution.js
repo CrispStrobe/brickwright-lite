@@ -92,8 +92,8 @@ export function createI8086ExecutionController({
             signal?.addEventListener('abort', () => release(result), {once: true});
             return result;
         } catch (error) {
-            if (error.executionRefusal) throw error;
-            throw fail('construction-failed', error.message || String(error));
+            if (error?.executionRefusal) throw error;
+            throw fail('construction-failed', error?.message || String(error));
         }
     };
     return Object.freeze({getPreference, setPreference, construct, release,

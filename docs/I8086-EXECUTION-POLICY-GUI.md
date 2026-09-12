@@ -35,7 +35,7 @@ must not be described as deployable until those gates run against the integrated
 dependency and UI. This first slice does not change observer/topology lifecycle,
 enable whole-backend hot swap, or assert 4.77 MHz wired performance.
 
-Focused verification: Node 22.12.0, 17 tests passed with zero skips in policy,
+Focused verification: Node 22.12.0, 20 tests passed with zero skips in policy,
 real DOS construction, existing sandbox and RAM-preference callsite suites.
 The explicitly mapped P2 source is engine `617dc44217bdf2d7fc48f63c079102e65207998b`,
 `src/execution-policy.js` SHA-256
@@ -53,3 +53,12 @@ node --loader ./test/helpers/execution-policy-source-loader.mjs \
 After migration run against the actual installed package without the loader or
 environment override. The loader is test-only, maps just this exact module, and
 does not create a fake package or authorize a production fallback.
+
+Review follow-up covers package loaders and factories rejecting `null` or
+`undefined`: both remain named `construction-failed` refusals. Abort before
+delivery invokes the returned target's optional `destroy` hook (the inner
+`result.target` for composite DOS results). Current DOS/debug target/machine
+objects have no such hook or externally scheduled execution of their own, so
+their abandoned state is ordinary collectible JavaScript. After successful
+delivery, the runner owns session/target teardown; the signal listener only
+clears active status. Composite wrappers are not assumed to own a destructor.
