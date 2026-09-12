@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync} from 'node:fs';
+import {mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, cpSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {packageNotices, NOTICE_DIRS} from '../scripts/package-upstream-notices.mjs';
@@ -29,6 +29,20 @@ test('upstream notice bytes, source pins and both mirrors are deterministic and 
         packageNotices(options);
         assert.deepEqual(readFileSync(sourcePath), initial);
         assert.equal(JSON.parse(initial).packages[1].sourceArchive, `https://github.com/CrispStrobe/bw-circuit-ui/archive/${pins['bw-circuit-ui']}.tar.gz`);
+        const buildDir = path.join(rootDir, 'build');
+        assert.throws(() => packageNotices({...options, buildDir}), /read-only and requires --check/);
+        assert.equal(packageNotices({...options, check: true, buildDir}).findings.length, 3);
+        cpSync(path.join(rootDir, NOTICE_DIRS[0]), path.join(buildDir, 'static/licenses'), {recursive: true});
+        assert.deepEqual(packageNotices({...options, check: true, buildDir}).findings, []);
+        assert.equal(packageNotices({...options, check: true, buildDir}).files, 9);
+        for (const filename of ['bw-board.MIT.txt', 'bw-circuit-ui.MPL-2.0.txt', 'bw-packages.sources.json']) {
+            const output = path.join(buildDir, 'static/licenses', filename);
+            const original = readFileSync(output);
+            writeFileSync(output, original.subarray(0, original.length - 1));
+            const findings = packageNotices({...options, check: true, buildDir}).findings;
+            assert.equal(findings.length, 1); assert.ok(findings[0].includes(`build/static/licenses/${filename}`));
+            writeFileSync(output, original);
+        }
         writeFileSync(pinsFile, JSON.stringify({...pins, 'bw-board': 'c'.repeat(40)}));
         assert.equal(packageNotices({...options, check: true}).findings.filter(f => f.includes('bw-packages.sources.json')).length, 2);
         writeFileSync(pinsFile, JSON.stringify(pins));

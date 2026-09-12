@@ -8,6 +8,12 @@ const reactProfiling = process.env.BW_REACT_PROFILE === '1';
 
 const ScratchWebpackConfigBuilder = require('scratch-webpack-configuration');
 
+// These source bytes are identified by a reviewed digest, not minifiable code.
+// CopyWebpackPlugin forwards this flag; Terser skips only the marked assets.
+const preserveProofAssetInfo = ({filename}) =>
+    /^static\/native-broker\/proof-pins\/sources\/[0-9a-f]{64}\.js$/.test(filename.replace(/\\/g, '/'))
+        ? {minimized: true} : {};
+
 /**
  * The commit this bundle was built from, short form.
  *
@@ -206,7 +212,8 @@ const buildConfig = baseConfig.clone()
         patterns: [
             {
                 from: 'static',
-                to: 'static'
+                to: 'static',
+                info: preserveProofAssetInfo
             },
             {
                 from: 'extensions/**',

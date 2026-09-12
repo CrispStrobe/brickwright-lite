@@ -13,7 +13,8 @@ const PACKAGES = Object.freeze([
 ]);
 export const NOTICE_DIRS = Object.freeze(['overlay/scratch-gui/static/licenses', 'packages/scratch-gui/static/licenses']);
 
-export function packageNotices({rootDir = ROOT, pinsFile = path.join(rootDir, 'vendor-pins.json'), installedRoot = path.join(rootDir, 'node_modules'), check = false} = {}) {
+export function packageNotices({rootDir = ROOT, pinsFile = path.join(rootDir, 'vendor-pins.json'), installedRoot = path.join(rootDir, 'node_modules'), check = false, buildDir} = {}) {
+    if (buildDir && !check) throw new Error('--build-dir is read-only and requires --check');
     const pins = JSON.parse(readFileSync(pinsFile, 'utf8'));
     const files = new Map(), packages = [];
     // Validate all inputs before writing any output; metadata license is not authority.
@@ -35,8 +36,9 @@ export function packageNotices({rootDir = ROOT, pinsFile = path.join(rootDir, 'v
     files.set('bw-packages.sources.json', Buffer.from(JSON.stringify({schemaVersion: 1,
         provenance: 'Requires separate pinned installed-content verification; these URLs identify expected source availability, not a network availability check.', packages}, null, 2) + '\n'));
     const findings = [];
-    for (const relativeDir of NOTICE_DIRS) {
-        const dir = path.join(rootDir, relativeDir);
+    const directories = [...NOTICE_DIRS, ...(buildDir ? [path.join(path.resolve(buildDir), 'static/licenses')] : [])];
+    for (const relativeDir of directories) {
+        const dir = path.resolve(rootDir, relativeDir);
         if (!check) mkdirSync(dir, {recursive: true});
         for (const [name, bytes] of files) {
             const target = path.join(dir, name);
@@ -46,7 +48,7 @@ export function packageNotices({rootDir = ROOT, pinsFile = path.join(rootDir, 'v
             } else writeFileSync(target, bytes);
         }
     }
-    return Object.freeze({files: files.size * NOTICE_DIRS.length, findings: Object.freeze(findings)});
+    return Object.freeze({files: files.size * directories.length, findings: Object.freeze(findings)});
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -54,8 +56,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         const args = process.argv.slice(2), options = {check: args.includes('--check')};
         for (let i = 0; i < args.length; i++) {
             if (args[i] === '--check') continue;
-            const key = {'--installed-root': 'installedRoot', '--pins': 'pinsFile'}[args[i]];
-            if (!key || !args[i + 1] || args[i + 1].startsWith('--')) throw new Error('usage: package-upstream-notices.mjs [--check] [--installed-root node_modules] [--pins vendor-pins.json]');
+            const key = {'--installed-root': 'installedRoot', '--pins': 'pinsFile', '--build-dir': 'buildDir'}[args[i]];
+            if (!key || !args[i + 1] || args[i + 1].startsWith('--')) throw new Error('usage: package-upstream-notices.mjs [--check [--build-dir build]] [--installed-root node_modules] [--pins vendor-pins.json]');
             options[key] = path.resolve(args[++i]);
         }
         const result = packageNotices(options);

@@ -590,6 +590,12 @@ jobs:
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' && steps.package_provenance.outcome == 'success' }}
         run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build
 
+      - name: Guard — emitted native broker proof bytes retain reviewed authority
+        if: ${{ !cancelled() && steps.build_editor.outcome == 'success' }}
+        run: |
+          node scripts/verify-emitted-native-broker-proof.mjs packages/scratch-gui/build
+          node scripts/package-upstream-notices.mjs --check --build-dir packages/scratch-gui/build
+
       # LICENCE COMPLIANCE, and the gate that did not exist on 2026-08-10.
       # SDCC is GPL-2.0-or-later; this app is BSD-3-Clause, and tauri.conf.json
       # bundles packages/scratch-gui/build wholesale, so a webpack copy rule put
@@ -822,6 +828,12 @@ jobs:
         id: build_editor_browser
         if: ${{ !cancelled() && steps.overlays_browser.outcome == 'success' && steps.browser_package_provenance.outcome == 'success' }}
         run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build
+
+      - name: Guard — emitted native broker proof bytes retain reviewed authority
+        if: ${{ !cancelled() && steps.build_editor_browser.outcome == 'success' }}
+        run: |
+          node scripts/verify-emitted-native-broker-proof.mjs packages/scratch-gui/build
+          node scripts/package-upstream-notices.mjs --check --build-dir packages/scratch-gui/build
 
       # Browser acceptance BEFORE the artifact leaves this job. The
       # 930000d incident shipped a wall-to-wall visual regression on
