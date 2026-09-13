@@ -68,16 +68,18 @@ rewrite cannot be written down without a mapped file behind it.
 
 ## The pipeline
 
-Three upstreams have exact reproducible identities in `vendor-pins.json`.
-**One of them is vendored; two are installed directly from their upstream
-packages.** The pin is package identity, not an invitation for a second person
-to repeat or manually shuttle the implementation.
+Three repository-wide upstreams and one path-scoped artifact have exact
+reproducible identities in `vendor-pins.json`. **One repository is vendored,
+two are installed directly from their upstream packages, and the stc flasher
+is a single generated file.** The pin is package identity, not an invitation
+for a second person to repeat or manually shuttle the implementation.
 
 | upstream | how it arrives | what holds it |
 |---|---|---|
 | `sb3-creator` | **vendored** — synced into `overlay/`, mirrored into `packages/` | the pipeline below |
 | `bw-board` | **npm git-sha dependency** | `vendor-pins.json` -> `package.json` + `packages/scratch-gui/package.json` + the lockfile, derivation asserted by `test/pinned-packages.test.mjs` |
 | `bw-circuit-ui` | **npm git-sha dependency** | same |
+| `stc-compiler-flasher` | **path-scoped generated copy** — `docs/flash.js` becomes the two byte-identical `flasher.js` mirrors | `scripts/sync-flasher.mjs` binds remote and `--dir` input to the recorded stc-compiler commit; `test/flasher-source-provenance.test.mjs` fixes source/body/mirror identity |
 
 The pipeline, for the one tree that still has one:
 
@@ -89,11 +91,17 @@ The pipeline, for the one tree that still has one:
 | **mirror** | `overlay/scratch-gui/…` is the tracked source; `packages/scratch-gui/…` is the tree that builds |
 | **integrate** | `npm run integrate` copies overlay into packages |
 
-**`vendor-pins.json` is still the single source of the sha for all three**, which
+**`vendor-pins.json` is still the single source of each shipping sha**, which
 is the reason a migration to packages did not become a second place to record a
 commit. The two package specs and the lockfile are DERIVED from it and
 `pinned-packages` reds if they drift — including if the spec points at another
 host, another owner, or a similarly-named repo.
+
+The flasher pin is deliberately **path-scoped**, not a fourth global repository
+authority. stc-compiler also supplies independently versioned hosted snapshots,
+debugger tools and deployed APIs; their legitimate revisions must not be called
+stale merely because the browser flasher came from another commit. Only the sync
+script, its pin, these provenance words and the two mirrors belong to this pin.
 
 **The sync refuses rather than overwrites.** If taking upstream's version would
 delete lite-only work, it reports `kept` and leaves the file alone. That refusal

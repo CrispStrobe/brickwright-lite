@@ -58,6 +58,7 @@ import path from 'node:path';
 const ROOT = path.resolve(import.meta.dirname, '..');
 const PINS = path.join(ROOT, 'vendor-pins.json');
 const REPOS = ['bw-board', 'sb3-creator', 'bw-circuit-ui'];
+const SCOPED_PINS = ['stc-compiler-flasher'];
 const ENV_DIR = {'bw-board': 'BW_BOARD_DIR', 'sb3-creator': 'SB3_CREATOR_DIR', 'bw-circuit-ui': 'BW_CIRCUIT_UI_DIR'};
 const PROVENANCE = 'overlay/scratch-gui/static/roms/i8086-bios.provenance.json';
 const HEX40 = /\b[0-9a-f]{40}\b/g;
@@ -90,14 +91,14 @@ export const currentPins = () => JSON.parse(readFileSync(PINS, 'utf8'));
  * looked like. That also covers the honest case the indent bug only imitated: a
  * pin moved away and then back.
  */
-export const parsePreviousPins = (logText, currentShas = new Set()) => {
+export const parsePreviousPins = (logText, currentShas = new Set(), allowedKeys = new Set(REPOS)) => {
     const prev = new Map();
     let commit = null;
     for (const line of logText.split('\n')) {
         const c = line.match(/^COMMIT ([0-9a-f]{40}) (\S+)/);
         if (c) { commit = {sha: c[1], date: c[2]}; continue; }
         const m = line.match(/^-\s*"([\w-]+)":\s*"([0-9a-f]{40})"/);
-        if (m && commit && !prev.has(m[2]) && !currentShas.has(m[2])) {
+        if (m && allowedKeys.has(m[1]) && commit && !prev.has(m[2]) && !currentShas.has(m[2])) {
             prev.set(m[2], {repo: m[1], replacedIn: commit.sha.slice(0, 9), on: commit.date});
         }
     }
@@ -178,14 +179,15 @@ const trackedCodeFiles = () => git(ROOT, 'ls-files', '-z').split('\0').filter(f 
 
 const {count, shallow, previous} = previousPinsFromHistory();
 const {history, where} = repoHistory();
-const current = new Set(Object.values(currentPins()));
+const current = new Set(REPOS.map(repo => currentPins()[repo]));
 const known = {current, previous, history};
 
-test('the pins file is what it says: three repos, full 40-hex shas, every one a commit of its repo where history is reachable', () => {
+test('the pins file names three global repos plus explicitly scoped artifact pins', () => {
     const pins = currentPins();
-    assert.deepEqual(Object.keys(pins).sort(), [...REPOS].sort());
-    for (const [repo, sha] of Object.entries(pins)) {
-        assert.match(sha, /^[0-9a-f]{40}$/, `${repo} pin is not a full sha`);
+    assert.deepEqual(Object.keys(pins).sort(), [...REPOS, ...SCOPED_PINS].sort());
+    for (const [repo, sha] of Object.entries(pins)) assert.match(sha, /^[0-9a-f]{40}$/, `${repo} pin is not a full sha`);
+    for (const repo of REPOS) {
+        const sha = pins[repo];
         if (where[repo]) assert.equal(history.get(sha), repo, `${repo}'s pin ${sha.slice(0, 9)} is not a commit in ${where[repo]}`);
     }
 });
@@ -248,7 +250,7 @@ test('a previous pin planted in a generated document is red, naming the file, th
     assert.ok(first, 'fixture: no previous pin exists to plant, so this case proves nothing '
         + 'about the detector — see previousPinsFromHistory');
     const [sha, meta] = first;
-    assert.ok(!Object.values(currentPins()).includes(sha),
+    assert.ok(!REPOS.map(repo => currentPins()[repo]).includes(sha),
         `fixture: the "previous" pin ${sha.slice(0, 9)} is STILL A CURRENT PIN, so planting `
         + 'it is planting nothing stale and finding nothing is correct. The defect is in the '
         + 'previous-pin map, not in the detector this case is about.');
@@ -287,6 +289,24 @@ test('the previous-pin parser reads the diff shape git prints, and ignores every
     const p = parsePreviousPins(log);
     assert.deepEqual([...p.keys()], ['1'.repeat(40), '3'.repeat(40)]);
     assert.deepEqual(p.get('1'.repeat(40)), {repo: 'bw-board', replacedIn: 'aaaaaaaaa', on: '2026-09-07'});
+});
+
+test('global previous-pin parsing excludes scoped flasher history at the parsing boundary', () => {
+    const globalOld = '1111111111111111111111111111111111111111';
+    const flasherOld = '2222222222222222222222222222222222222222';
+    const log = `COMMIT ${'a'.repeat(40)} 2026-09-13\n-  "bw-board": "${globalOld}"\n-  "stc-compiler-flasher": "${flasherOld}"`;
+    const global = parsePreviousPins(log, new Set(), new Set(REPOS));
+    assert.deepEqual([...global.keys()], [globalOld]);
+    const scoped = parsePreviousPins(log, new Set(), new Set(SCOPED_PINS));
+    assert.deepEqual([...scoped.keys()], [flasherOld]);
+    const scopedPaths = new Set(['vendor-pins.json', 'scripts/sync-flasher.mjs',
+        'overlay/scratch-gui/src/lib/flasher.js', 'packages/scratch-gui/src/lib/flasher.js',
+        'docs/VENDORING-REGIME.md']);
+    const scopedJudge = (file, text) => scopedPaths.has(file) && text.includes(flasherOld) ? [flasherOld] : [];
+    assert.deepEqual(scopedJudge('scripts/sync-flasher.mjs', flasherOld), [flasherOld]);
+    assert.deepEqual(scopedJudge('docs/generated/hosted-targets.json', flasherOld), []);
+    assert.deepEqual(scopedJudge('docs/generated/hosted-targets.json', currentPins()['stc-compiler-flasher']), []);
+    assert.deepEqual(scopedJudge('docs/generated/hosted-targets.json', '79df4b6d37c78e463f5c1d8caa3cfaa7712935ad'), []);
 });
 
 test('a REFORMAT of the pins file does not invent previous pins for pins that never moved', () => {
