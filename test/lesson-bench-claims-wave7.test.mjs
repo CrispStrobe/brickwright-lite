@@ -639,6 +639,17 @@ test('the Wave 7 revisions are present, EN and DE, at the content version this r
     // checkpoint was worded around — single-step and downstream transition — are
     // demands again instead of disclosures.
     says('machines-clocks', 'measure', 'action', /step button/i, /Schritt-Taster/i);
+    // THIS GATE CANNOT SEE THAT ITS NUMBER DIED. The alternation's branches are a
+    // CLAIM ('divide-by-two') and a RESTATEMENT of a measured value (4.4643), so
+    // the concept keeps it green while the figure goes false — which it has: the
+    // bench now reads 4.4286, and lego-ac's prose scan finds 4.4643 four times in
+    // ttl-clock-module's intro.md and EXPECTED.md, stale under the new engine.
+    // Lite scanned for this shape on 2026-09-13 (an alternation containing a
+    // decimal literal) and found exactly TWO: this one, and the aliasing hint
+    // below, whose 1.2207 Hz is NOT stale — a frequency the vf correction does
+    // not touch. Fixing this means the prose lane, since the text is
+    // sb3-creator's; the gate should then assert the quoted figure against the
+    // measured one instead of accepting either.
     says('machines-clocks', 'measure', 'hint', /divide-by-two|4\.4643/, /Zweiteiler|4,4643/);
     says('machines-buses', 'trace', 'action', /instruction|per-cycle|cycle-level/i, /Befehl|Zyklus/i);
     says('machines-6502-execution', 'step', 'action', /load a program|preset/i, /Programm laden|Preset/i);
