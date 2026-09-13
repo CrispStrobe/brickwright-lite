@@ -34,7 +34,7 @@ test('every external workflow checkout has a full pin or validated vendor-pin ou
     assert.deepEqual(sites.filter(allowedGlobal).map(site => site.repository).sort(), copiedRepos);
     assert.doesNotMatch(workflow, /staying on HEAD|comparing against HEAD/);
     const build = workflows.get('.github/workflows/build.yml');
-    assert.match(build, /id: stc_flasher_pin\n\s+if:[^\n]+\n\s+run: echo "sha=\$\(node -p \\"require\('\.\/vendor-pins\.json'\)\['stc-compiler-flasher'\]\\"\)" >> "\$GITHUB_OUTPUT"/);
+    assert.match(build, /id: stc_flasher_pin\n\s+if:[^\n]+\n\s+run: \|\n\s+node -e .*stc-compiler-flasher.*\/\^\[0-9a-f\]\{40\}\$\//);
     assert.ok(build.indexOf('id: stc_flasher_pin') < build.indexOf('repository: CrispStrobe/stc-compiler'));
     assert.deepEqual(sites.filter(allowedFlasher).map(site => site.repository), ['CrispStrobe/stc-compiler']);
     t.diagnostic(`Audited ${sites.length} external checkout sites across ${workflows.size} workflows`);

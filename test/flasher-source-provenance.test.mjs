@@ -32,9 +32,12 @@ test('pinned checkout HEAD, canonical origin, source body and both mirrors agree
 
 test('Build checks out the separately pinned flasher source for this exact proof', () => {
     const workflow = read(ROOT, '.github/workflows/build.yml');
-    assert.match(workflow, /sha=\$\(node -p .*\['stc-compiler-flasher'\]/);
+    assert.match(workflow, /const sha=require\("\.\/vendor-pins\.json"\)\["stc-compiler-flasher"\]/);
+    assert.match(workflow, /\/\^\[0-9a-f\]\{40\}\$\//);
     assert.match(workflow, /ref: \$\{\{ steps\.stc_flasher_pin\.outputs\.sha \}\}/);
     assert.match(workflow, /STC_COMPILER_FLASHER_DIR: \$\{\{ github\.workspace \}\}\/\.stc-compiler-flasher/);
+    assert.match(workflow, /id: stc_flasher_source\n\s+if:.*steps\.stc_flasher_pin\.outcome == 'success'/);
+    assert.match(workflow, /- name: Run unit tests\n\s+if:.*steps\.stc_flasher_source\.outcome == 'success'/);
 });
 
 const tempLite = () => {
