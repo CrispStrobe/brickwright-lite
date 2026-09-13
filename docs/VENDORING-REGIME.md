@@ -7,6 +7,12 @@ This is the standing statement. `VENDOR-DIRECTION-2026-09-06.md` is a dated
 measurement and `VENDOR-DIVERGENCE-*.md` are the per-upstream ledgers; this file
 is the rule they serve.
 
+> **This is distinct from the lane/landing protocol.** `LANES.md` may reduce
+> duplicate CI runs and handoffs, but it cannot waive a pin, identity, mirror,
+> provenance, or upstream-first requirement here. Landing quickly answers
+> *when a reviewed commit moves*; this regime answers *which repository owns the
+> bytes*. The latter must still be true before the former can proceed.
+
 > ## THE POPULATION CHANGED ON 2026-09-12 — read this before the rest
 >
 > **Two of the three upstreams stopped being vendored.** `bw-board` and

@@ -15,6 +15,16 @@ breadboards before soldering the real thing.
 **Native binaries:** built by CI for macOS, Windows, Linux, iOS and Android
 (see **Actions** / **Releases**).
 
+### Source ownership and upstream integrity
+
+Fast landing does not mean local forking. `bw-board` and `bw-circuit-ui` are
+installed from exact git SHAs; `sb3-creator`, the sole vendored upstream, is
+checked for pinned byte identity, derived rewrites, and matching tracked
+mirrors. Shared behavior lands in its upstream repository first and reaches
+Lite through an explicit pin move. See [the vendoring regime](docs/VENDORING-REGIME.md)
+for the enforced invariants, and [the lane ledger](LANES.md) for the separate
+human coordination and qualification process.
+
 ## What it does
 
 ### Circuit Designer and hardware workbench

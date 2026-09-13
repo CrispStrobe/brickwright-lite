@@ -17,6 +17,33 @@ photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
 ## The protocol
 
+### Two regimes — do not confuse them
+
+This file coordinates **people and landing**: who owns a change, which paths it
+may touch, and how one tested head reaches `main`. The lean qualification rule
+below removes duplicate hosted runs from that process.
+
+It does **not** relax **upstream identity**. That separate regime is specified
+in [`docs/VENDORING-REGIME.md`](docs/VENDORING-REGIME.md) and is enforced by
+code and tests:
+
+- `bw-board` and `bw-circuit-ui` are installed from exact git SHAs. There is no
+  tracked Lite copy in which a private fork can hide; package specifications and
+  the lockfile must derive from `vendor-pins.json`.
+- `sb3-creator` is the sole remaining vendored tree. Its output must equal the
+  pinned upstream after only map-derived rewrites, and its `overlay/` and
+  `packages/` mirrors must be byte-identical.
+- A file sync never moves a pin. Pin movement requires explicit `--pin`, a
+  reviewed upstream commit, regenerated derived evidence, and all identity and
+  mirror gates green. A refused sync is a merge decision, never permission to
+  keep an undocumented Lite fork.
+- Work that belongs upstream lands upstream first. Lite then advances the exact
+  pin; it does not recreate the behavior locally.
+
+These invariants are the reason a faster lane protocol is safe. They remain
+mandatory even for a one-line change and even when hosted qualification is not
+repeated.
+
 **1. Before you start anything, look.**
 
 ```bash
