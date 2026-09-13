@@ -28,6 +28,13 @@ test('pinned checkout HEAD, canonical origin, source body and both mirrors agree
     assert.equal(read(ROOT, 'packages/scratch-gui/src/lib/flasher.js'), expected);
 });
 
+test('Build checks out the separately pinned flasher source for this exact proof', () => {
+    const workflow = read(ROOT, '.github/workflows/build.yml');
+    assert.match(workflow, /sha=\$\(node -p .*\['stc-compiler-flasher'\]/);
+    assert.match(workflow, /ref: \$\{\{ steps\.stc_flasher_pin\.outputs\.sha \}\}/);
+    assert.match(workflow, /STC_COMPILER_FLASHER_DIR: \$\{\{ github\.workspace \}\}\/\.stc-compiler-flasher/);
+});
+
 const tempLite = () => {
     const root = mkdtempSync(path.join(tmpdir(), 'flasher-sync-'));
     for (const dir of ['scripts', 'overlay/scratch-gui/src/lib']) mkdirSync(path.join(root, dir), {recursive: true});
@@ -57,6 +64,19 @@ test('a different local commit is refused before destination or pin writes', t =
     const r = spawnSync(process.execPath, ['scripts/sync-flasher.mjs', '--dir', upstream], {cwd: root, encoding: 'utf8'});
     assert.notEqual(r.status, 0);
     assert.match(r.stdout + r.stderr, /refusing to move the stc-compiler-flasher pin/);
+    assert.equal(read(root, 'overlay/scratch-gui/src/lib/flasher.js'), beforeFile);
+    assert.equal(read(root, 'vendor-pins.json'), beforePins);
+});
+
+test('a same-commit checkout from the wrong origin is refused before writes', t => {
+    if (!STC) return t.skip('STC_COMPILER_FLASHER_DIR unset — wrong-origin refusal not checked');
+    const root = tempLite(), upstream = path.join(root, 'upstream');
+    execFileSync('git', ['clone', '-q', STC, upstream]);
+    execFileSync('git', ['-C', upstream, 'remote', 'set-url', 'origin', 'https://github.com/Other/stc-compiler.git']);
+    const beforeFile = read(root, 'overlay/scratch-gui/src/lib/flasher.js'), beforePins = read(root, 'vendor-pins.json');
+    const r = spawnSync(process.execPath, ['scripts/sync-flasher.mjs', '--dir', upstream, '--pin'], {cwd: root, encoding: 'utf8'});
+    assert.notEqual(r.status, 0);
+    assert.match(r.stdout + r.stderr, /refusing flasher source from/);
     assert.equal(read(root, 'overlay/scratch-gui/src/lib/flasher.js'), beforeFile);
     assert.equal(read(root, 'vendor-pins.json'), beforePins);
 });
