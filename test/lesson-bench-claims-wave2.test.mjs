@@ -145,9 +145,9 @@ test('measurement-resistance: no bare parallel pair is exposed to the probes', a
     board.advanceTo(60n * MS);
     near(board.resistance(netId(board, 'r1', 'a'), netId(board, 'r1', 'b')), 470, 1, 'one resistor alone');
     near(board.resistance(netId(board, 'led1', 'anode'), netId(board, 'led1', 'cathode')),
-        2010, 60, 'one LED alone, under the 1 mA test current');
+        1806.2464, 60, 'one LED alone, under the 1 mA test current');
     near(board.resistance(netId(board, 'vcc1', 'vcc'), netId(board, 'gnd1', 'gnd')),
-        2181.8, 40, 'the whole network, rail to rail');
+        1981.8141, 40, 'the whole network, rail to rail');
     // The v1 hint's 470||470 = 235 ohm is nowhere on this bench.
     assert.ok(Math.abs(board.resistance(netId(board, 'vcc1', 'vcc'), netId(board, 'gnd1', 'gnd')) - 235) > 100,
         'if 235 ohm ever appears here, the v1 hint was right and the review is wrong');
@@ -414,7 +414,7 @@ test('OPEN DEFECT: the ohmmeter answers differently depending on which probe is 
     // depends on. A quantity set by an off-state diode model does not deserve
     // a 0.2% pin; +-40 still fails if the network changes and no longer fires
     // on a model refinement.
-    near(board.resistance(hot, gnd), 2181.8, 40, 'probed hot-to-ground — the real path');
+    near(board.resistance(hot, gnd), 1981.8141, 40, 'probed hot-to-ground — the real path');
     assert.ok(board.resistance(gnd, hot) > 1e6,
         'the ohmmeter has become symmetric. Re-measure, update ' +
         'docs/LESSON-REVIEW-WAVE-2.md and the measurement-resistance hint, then delete this test.');

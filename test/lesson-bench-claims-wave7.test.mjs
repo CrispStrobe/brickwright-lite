@@ -102,16 +102,16 @@ test('ADJUDICATED (was OPEN DEFECT): the active-high level depends on port mode,
         };
     };
     const pushpull = await read('pushpull');
-    near(pushpull.low, 0.0725, 5e-4, 'P1.0 driven low, push-pull');
-    near(pushpull.high, 4.9275, 5e-4, 'P1.1 driven high, push-pull');
-    near(pushpull.lowLed, 0.1449, 5e-4, 'the active-low LED');
-    near(pushpull.highLed, 0.1449, 5e-4, 'the active-high LED, push-pull');
+    near(pushpull.low, 0.0773, 5e-4, 'P1.0 driven low, push-pull');
+    near(pushpull.high, 4.9227, 5e-4, 'P1.1 driven high, push-pull');
+    near(pushpull.lowLed, 0.1546, 5e-4, 'the active-low LED');
+    near(pushpull.highLed, 0.1546, 5e-4, 'the active-high LED, push-pull');
 
     // The 8051's default port mode is quasi-bidirectional: a weak pull-up that
     // cannot source an LED. Same pin, same "high", 2.8 V lower.
     const quasi = await read('quasi');
-    near(quasi.low, 0.0725, 5e-4, 'P1.0 driven low is the same in either mode');
-    near(quasi.high, 2.1193, 5e-4, 'P1.1 driven high, quasi-bidirectional');
+    near(quasi.low, 0.0773, 5e-4, 'P1.0 driven low is the same in either mode');
+    near(quasi.high, 1.9284, 5e-4, 'P1.1 driven high, quasi-bidirectional');
     near(quasi.highLed, 0.0066, 5e-4, 'and the active-high LED is essentially dark');
     assert.ok(quasi.highLed < pushpull.highLed / 20,
         'a quasi pin now sources the active-high LED as well as push-pull — the hardware ' +
@@ -309,7 +309,18 @@ test('machines-clocks: the step button clocks state, and the state holds after t
             `press ${i + 1}: Q moved when the button was RELEASED — it is following, not storing`);
         seen.push(Number(q().toFixed(4)));
     }
-    assert.deepEqual(seen, [4.4643, 0, 4.4643, 0],
+    // 4.4286 V, not the 4.4643 this read before 2026-09-13: the flip-flop drives
+    // 5 V behind 50 Ω into 220 Ω and a red LED, and the LED's knee moved from a
+    // flat 2.0 to vf − 0.020·rd = 1.8 under the datasheet convention, so more of
+    // the drop lands on the resistances. Toggle and hold are unchanged — this is
+    // a level, not a behaviour.
+    //
+    // THE SHIPPED LESSON STILL SAYS 4.4643. ttl-clock-module/intro.md,
+    // intro.de.md and EXPECTED.md all quote it, and that text is sb3-creator's,
+    // vendored here at its own pin. Reported with the corpus count; the `says`
+    // check below passes on its 'divide-by-two' alternative, so it does NOT
+    // catch the disagreement.
+    assert.deepEqual(seen, [4.4286, 0, 4.4286, 0],
         'four presses must toggle Q twice — a divide-by-two is also a frequency divider');
 
     // EXPECTED.md's claim is now the measured one.

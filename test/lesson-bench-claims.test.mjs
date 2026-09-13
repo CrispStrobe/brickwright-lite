@@ -79,11 +79,11 @@ test('electricity-polarity: the bench reverses a DIODE, and both LEDs face the s
     assert.ok(volts(board, 'd1', 'anode') > volts(board, 'd1', 'cathode'), 'd1 is forward');
     assert.ok(volts(board, 'd2', 'cathode') > volts(board, 'd2', 'anode'), 'd2 is reverse');
 
-    near(milliamps(board, 'r1', 'b'), 4.694, 0.01, 'forward branch current');
+    near(milliamps(board, 'r1', 'b'), 5.2267, 0.01, 'forward branch current');
     near(milliamps(board, 'r2', 'b'), 0, 0.001, 'reverse branch current');
-    near(volts(board, 'd1', 'anode'), 2.794, 0.01, 'V at d1 anode');
+    near(volts(board, 'd1', 'anode'), 2.5434, 0.01, 'V at d1 anode');
     near(volts(board, 'd2', 'cathode'), 5.0, 0.01, 'V at d2 cathode (blocked, sits at VCC)');
-    near(board.ledBrightness('led1'), 0.2347, 0.001, 'green LED brightness');
+    near(board.ledBrightness('led1'), 0.2613, 0.001, 'green LED brightness');
     near(board.ledBrightness('led2'), 0, 0.001, 'red LED brightness');
 });
 
@@ -121,26 +121,38 @@ test('negative control: truly reversing d1 extinguishes led1, turning d2 forward
 test('electricity-resistance: three branches are ordered and separable by eye', async () => {
     const {board} = await fresh('45-led-current-comparison');
     board.advanceTo(50n * MS);
-    near(milliamps(board, 'r1', 'b'), 13.043, 0.01, '220 ohm branch');
-    near(milliamps(board, 'r2', 'b'), 6.250, 0.01, '470 ohm branch');
-    near(milliamps(board, 'r3', 'b'), 2.970, 0.01, '1k branch');
+    near(milliamps(board, 'r1', 'b'), 13.9130, 0.01, '220 ohm branch');
+    near(milliamps(board, 'r2', 'b'), 6.6667, 0.01, '470 ohm branch');
+    near(milliamps(board, 'r3', 'b'), 3.1683, 0.01, '1k branch');
     const b = ['led1', 'led2', 'led3'].map(id => board.ledBrightness(id));
     assert.ok(b[0] > b[1] && b[1] > b[2], `brightness must be monotone, got ${b}`);
     assert.ok(b[0] - b[2] > 0.4, 'the brightest and dimmest must be tellable apart');
 });
 
 // ── electricity-ohms-law → 34-ohms-law ──────────────────────────────────────
-test('electricity-ohms-law: the calculation and the measurement differ by ~1%, as the lesson says', async () => {
+test('electricity-ohms-law: the hand calculation is ~5.6% low, because a real LED drops less than its rated Vf', async () => {
     const {board} = await fresh('34-ohms-law');
     board.advanceTo(50n * MS);
     const measured = milliamps(board, 'r1', 'b');
     const naive = (5 - 2) / 1000 * 1000;     // the lesson's I = (Vsupply - Vled) / R
-    near(measured, 2.970, 0.01, 'branch current');
-    near(volts(board, 'r1', 'b'), 2.0297, 0.01, 'V at the LED anode');
-    // The "explain the difference" checkpoint needs a difference that is real
-    // but small: big enough to notice, small enough to be the LED model.
+    // Hand oracle: I = (5 − 1.8) / (1000 + 10) = 3.16832 mA. The 1.8 is the
+    // KNEE — vf − 0.020·rd — under bw-board's datasheet vf convention, where
+    // `vf` is the drop at the rated 20 mA rather than a flat threshold.
+    near(measured, 3.1683, 0.01, 'branch current');
+    near(volts(board, 'r1', 'b'), 1.8317, 0.01, 'V at the LED anode');
+    // THE TEACHING POINT MOVED, AND IT MOVED TOWARDS THE TRUTH. This read
+    // "differ by ~1%" while the solver shared the lesson's own simplification:
+    // both put a flat 2.0 V across the LED, so of course they nearly agreed.
+    // The engine now models the device, a real LED at 3 mA drops well under its
+    // 20 mA rating, and the honest gap is 5.6% — the learner's estimate is LOW,
+    // which is the thing worth explaining.
+    //
+    // CONSEQUENCE OUTSIDE THIS REPO: the shipped lesson states the old figures
+    // (34-ohms-law/EXPECTED.md: "(5.0 - 2.0) / 1000 = 3.0 mA"). That text is
+    // sb3-creator's and is now wrong for this bench. Reported with the count.
     const errorPct = Math.abs(measured - naive) / naive * 100;
-    assert.ok(errorPct > 0.2 && errorPct < 5, `expected a small honest gap, got ${errorPct}%`);
+    near(errorPct, 5.61, 0.1, 'the gap the lesson has to explain');
+    assert.ok(measured > naive, 'the measurement must exceed the naive estimate, not fall short');
 });
 
 // ── electricity-series-parallel → 22-series-parallel ────────────────────────
@@ -151,10 +163,10 @@ test('electricity-series-parallel: the supply carries all THREE branches, not ju
     const p1 = milliamps(board, 'r3', 'b');
     const p2 = milliamps(board, 'r4', 'b');
     const supply = -milliamps(board, 'vcc1', 'vcc');
-    near(series, 3.158, 0.01, 'series branch');
-    near(p1, 6.250, 0.01, 'parallel branch 1');
-    near(p2, 6.250, 0.01, 'parallel branch 2');
-    near(supply, 15.658, 0.01, 'supply current');
+    near(series, 3.3684, 0.01, 'series branch');
+    near(p1, 6.6667, 0.01, 'parallel branch 1');
+    near(p2, 6.6667, 0.01, 'parallel branch 2');
+    near(supply, 16.7018, 0.01, 'supply current');
     near(supply, series + p1 + p2, 0.01, 'Isupply = Iseries + Ip1 + Ip2 (the v2 hint)');
     // The v1 hint said Isource = Ibranch1 + Ibranch2. It is false here by the
     // series branch, and there is no node on this bench where it holds.
@@ -191,7 +203,15 @@ test('electricity-capacitor: charge and discharge are separate paths, and the ta
     assert.ok(first > 2.5, `discharge starts with real LED current, got ${first} mA`);
     board.advanceTo(t += 8000n * MS);
     // The revised lesson's teaching point: it does NOT decay to 0 V.
-    near(volts(board, 'cap', 'a'), 2.0, 0.05, 'discharge tail flattens at the LED forward voltage');
+    // The tail flattens at the LED's KNEE (vf − 0.020·rd = 1.8), not at its
+    // datasheet Vf. Those were the same number while the solver read vf as a flat
+    // threshold; under the corrected convention `vf` is the drop at the rated
+    // 20 mA and a nearly-dead capacitor is nowhere near that current. The lesson's
+    // teaching point — it does NOT decay to 0 V — is untouched.
+    //
+    // pc29-capacitor-discharge/intro.md still says it "stops near 2 V"; that text
+    // is sb3-creator's and is now off by 0.22 V. Reported with the corpus count.
+    near(volts(board, 'cap', 'a'), 1.7784, 0.05, 'discharge tail flattens at the LED knee');
 });
 
 // ── electricity-inductor → pc52-inductor-filter ─────────────────────────────
@@ -237,10 +257,10 @@ test('electricity-diode: reversing the source keeps load polarity and costs two 
 
     assert.deepEqual(pos.conducting, ['d1', 'd4'], '+9 V selects one diagonal');
     assert.deepEqual(neg.conducting, ['d2', 'd3'], '-9 V selects the other');
-    near(pos.out, 7.4913, 0.01, 'bridge output at +9 V');
+    near(pos.out, 7.6168, 0.01, 'bridge output at +9 V');
     near(neg.out, pos.out, 0.001, 'bridge output is unchanged by reversing the source');
     near(neg.load, pos.load, 0.001, 'load current is unchanged, and never reverses');
-    near(9 - pos.out, 1.5087, 0.01, 'the output is short of the source by exactly two forward drops');
+    near(9 - pos.out, 1.3832, 0.01, 'the output is short of the source by exactly two forward drops');
 });
 
 // ── electricity-transistor-switch → 38-npn-switch ───────────────────────────
@@ -254,12 +274,12 @@ test('electricity-transistor-switch: the switch really switches', async () => {
     board.advanceTo(t += 50n * MS);
     near(volts(board, 'q1', 'base'), 0.704, 0.01, 'base on');
     near(volts(board, 'q1', 'collector'), 0.201, 0.01, 'collector saturated');
-    near(milliamps(board, 'r1', 'b'), 5.832, 0.01, 'load branch on');
+    near(milliamps(board, 'r1', 'b'), 6.2487, 0.01, 'load branch on');
     // ledBrightness averages over a 20 ms window whose samples are recorded at
     // each advance boundary, so one 50 ms hop leaves the window holding the OLD
     // state and reads 0. Step it, the way the app's animation loop does.
     for (let i = 0; i < 4; i++) board.advanceTo(t += 10n * MS);
-    near(board.ledBrightness('led1'), 0.2916, 0.001, 'LED on (after the 20 ms window fills)');
+    near(board.ledBrightness('led1'), 0.3124, 0.001, 'LED on (after the 20 ms window fills)');
 });
 
 test('electricity-transistor-switch: every reading in the load loop agrees', async () => {
@@ -285,7 +305,7 @@ test('electricity-transistor-switch: every reading in the load loop agrees', asy
     // One series loop, therefore one current. This is the claim the lesson's
     // version 3 hint makes and the one that was false before the repair.
     const load = milliamps(on.board, 'r1', 'b');
-    near(load, 5.8321, 0.01, 'load resistor');
+    near(load, 6.2487, 0.01, 'load resistor');
     for (const [part, terminal] of [['led1', 'anode'], ['q1', 'collector']]) {
         near(milliamps(on.board, part, terminal), load, 0.01,
             `${part}.${terminal} must agree with the load resistor in the same series loop`);
@@ -336,7 +356,18 @@ test('electricity-motor-flyback: the bench opens unpowered, and the spike needs 
     let lo = Infinity;
     for (let i = 0; i < d.samples.length; i += 2) if (!Number.isNaN(d.samples[i])) lo = Math.min(lo, d.samples[i]);
     assert.equal(Number(d.sampleIntervalNs), 10_000, 'scope samples at 10 us');
-    assert.ok(lo < -8, `the scope must catch the clamped spike, saw ${lo} V`);
+    // THE CLAMP IS 8x TIGHTER NOW, AND THAT IS THE CORRECTION, NOT A REGRESSION.
+    // A flyback diode holds the kick at one forward drop below ground: knee + I·Rs,
+    // where the knee is vf − 0.020·rd = 0.7 − 0.020·0.568 = 0.6886 V. Measured
+    // −1.1997 V, so I ≈ (1.1997 − 0.6886) / 0.568 ≈ 0.90 A through the inductor —
+    // consistent, and hand-checkable.
+    //
+    // This asserted `lo < -8` while silicon's bulk resistance was 10 Ω, which is 18x
+    // the real 1N4148's 0.568 and made the clamped spike look eight times larger
+    // than a real diode allows. Reaching −8 V through 0.568 Ω would need 12.9 A.
+    // The lesson's point is unchanged and better served: the diode CLAMPS the kick.
+    assert.ok(lo < -0.9 && lo > -2,
+        `the clamped spike must sit near one forward drop below ground, saw ${lo} V`);
 });
 
 // ── starter-circuit-path → 47-battery-led ───────────────────────────────────
@@ -345,7 +376,7 @@ test('starter-circuit-path: the loop is closed and the numbers are the ones a le
     board.advanceTo(50n * MS);
     near(volts(board, 'bat1', 'pos'), 9.0, 0.01, 'battery +');
     near(volts(board, 'bat1', 'neg'), 0.0, 0.01, 'battery -');
-    near(milliamps(board, 'r1', 'b'), 6.931, 0.01, 'loop current');
+    near(milliamps(board, 'r1', 'b'), 7.1252, 0.01, 'loop current');
     assert.ok(board.ledBrightness('led1') > 0.3, 'the LED is lit');
 });
 
