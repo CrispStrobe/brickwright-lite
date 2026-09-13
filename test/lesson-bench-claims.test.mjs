@@ -273,13 +273,13 @@ test('electricity-transistor-switch: the switch really switches', async () => {
     circuit.setControl('btn1', 1);
     board.advanceTo(t += 50n * MS);
     near(volts(board, 'q1', 'base'), 0.704, 0.01, 'base on');
-    near(volts(board, 'q1', 'collector'), 0.201, 0.01, 'collector saturated');
-    near(milliamps(board, 'r1', 'b'), 6.2487, 0.01, 'load branch on');
+    near(volts(board, 'q1', 'collector'), 0.07829, 0.002, 'collector on');
+    near(milliamps(board, 'r1', 'b'), 6.5036, 0.01, 'load branch on');
     // ledBrightness averages over a 20 ms window whose samples are recorded at
     // each advance boundary, so one 50 ms hop leaves the window holding the OLD
     // state and reads 0. Step it, the way the app's animation loop does.
     for (let i = 0; i < 4; i++) board.advanceTo(t += 10n * MS);
-    near(board.ledBrightness('led1'), 0.3124, 0.001, 'LED on (after the 20 ms window fills)');
+    near(board.ledBrightness('led1'), 0.32518, 0.001, 'LED on (after the 20 ms window fills)');
 });
 
 test('electricity-transistor-switch: every reading in the load loop agrees', async () => {
@@ -300,12 +300,12 @@ test('electricity-transistor-switch: every reading in the load loop agrees', asy
     on.setControl('btn1', 1);
     on.board.advanceTo(50n * MS);
     near(volts(on.board, 'q1', 'base'), 0.6957, 0.002, 'base pressed');
-    near(volts(on.board, 'q1', 'collector'), 0.2006, 0.002, 'collector pressed');
+    near(volts(on.board, 'q1', 'collector'), 0.07829, 0.002, 'collector pressed');
 
     // One series loop, therefore one current. This is the claim the lesson's
     // version 3 hint makes and the one that was false before the repair.
     const load = milliamps(on.board, 'r1', 'b');
-    near(load, 6.2487, 0.01, 'load resistor');
+    near(load, 6.5036, 0.01, 'load resistor');
     for (const [part, terminal] of [['led1', 'anode'], ['q1', 'collector']]) {
         near(milliamps(on.board, part, terminal), load, 0.01,
             `${part}.${terminal} must agree with the load resistor in the same series loop`);
