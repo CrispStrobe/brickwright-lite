@@ -78,6 +78,30 @@ const MUTATIONS = [
         expect: 'red'
     },
     {
+        layer: 'micro:bit flasher: only the nRF52833 part authority is admitted',
+        file: 'overlay/scratch-gui/src/lib/flasher.js',
+        find: 'FICR_PART: 0x10000100, PART_NRF52833: 0x52833',
+        with: 'FICR_PART: 0x10000100, PART_NRF52833: 0x52832',
+        suite: 'test/microbit-daplink-flash.test.mjs',
+        expect: 'red'
+    },
+    {
+        layer: 'micro:bit flasher: the nRF52833 erase-page size drives every touched page',
+        file: 'overlay/scratch-gui/src/lib/flasher.js',
+        find: 'PAGE_SIZE: 0x1000,      // 4 KiB, FICR.CODEPAGESIZE',
+        with: 'PAGE_SIZE: 0x2000,      // mutation: wrong 8 KiB page',
+        suite: 'test/microbit-daplink-flash.test.mjs',
+        expect: 'red'
+    },
+    {
+        layer: 'micro:bit flasher: a wrong part is refused before any erase command',
+        file: 'overlay/scratch-gui/src/lib/flasher.js',
+        find: "      throw new Error(`the attached target is not an nRF52833 (FICR.INFO.PART=0x${part.toString(16)}); `\n        + 'this flashes the micro:bit V2 only');",
+        with: "      await mem.write32(NRF.NVMC_ERASEPAGE, 0);\n      throw new Error(`the attached target is not an nRF52833 (FICR.INFO.PART=0x${part.toString(16)}); `\n        + 'this flashes the micro:bit V2 only');",
+        suite: 'test/microbit-daplink-flash.test.mjs',
+        expect: 'red'
+    },
+    {
         layer: 'JS caller: the editor names an operation and never a lease',
         file: 'overlay/scratch-vm/src/extension-support/native-platform-capability.js',
         find: "                payload: JSON.stringify({kind: 'capability', operation: OPERATION, args})",
