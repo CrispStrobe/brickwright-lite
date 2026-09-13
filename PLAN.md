@@ -58,6 +58,25 @@ stop gate and rejected measurements remain in `HISTORY.md`. Keep full Technic
 simulation, wholesale cycle-core replacement, broad language expansion, and
 framework migration in their longer-term plans.
 
+### Flasher delivery simplification (planned, unclaimed)
+
+Replace the generated `flasher.js` copy with a proper build-time ESM dependency.
+The current exact-SHA sync and provenance gates are safe, but they compensate for
+the fact that `stc-compiler` exposes its reusable browser flasher only as
+`docs/flash.js`, not through an installable package API. Do not replace that with
+a runtime GitHub/CDN import: flashing must remain available offline and builds
+must remain reproducible.
+
+The preferred end state is a small dedicated flasher package rather than making
+consumers install the compiler/service repository. Extract the DOM-independent
+protocol and transport code, expose protocol-specific entry points so the GUI
+bundles only what it uses, and pin the package by full Git SHA through the normal
+package/lockfile authority. Migrate and test the upstream browser first, then
+Lite. Only after both consumers use the package and preserve the existing flash
+sequences may Lite delete `sync-flasher.mjs`, the two generated mirrors, the
+path-scoped `stc-compiler-flasher` pin, and their copy-provenance checks. The
+detailed phases and acceptance gates are in `ROADMAP.md` §3.6.
+
 ### Future machine breadth — Motorola 68000 SBC (planned, unclaimed)
 
 The next retro CPU family, when Milestone 0 and the current vendor-convergence

@@ -877,6 +877,66 @@ Lite-side items (ours, this repo):
    the strengthened gates (corpus execution, KCL residual, rail-short,
    net-coalesce warnings).
 
+### 3.6 Replace the generated flasher copy with an ESM package — PLANNED, UNCLAIMED
+
+The current arrangement is correct but unnecessarily elaborate as a permanent
+architecture. `stc-compiler` has no npm package manifest or exported library
+entry point; its tested reusable implementation is the 1,187-line
+`docs/flash.js`. Lite consequently carries two generated `flasher.js` mirrors,
+a path-scoped commit pin, a sync tool, source/origin/body identity checks, and
+pin-history exceptions. That machinery makes a copied source file behave like a
+pinned dependency. It should remain until a real dependency can replace it
+without weakening offline use, provenance, or the device-write tests.
+
+Preferred architecture: extract a small, DOM-independent ESM package (working
+name `@brickwright/flasher`) with protocol-specific subpath exports. A dedicated
+package/repository is preferred over turning the whole compiler/service
+repository into a dependency: consumers should not install its hosted-service,
+toolchain, documentation, and deployment surface merely to obtain browser flash
+protocols. A package housed in `stc-compiler` is acceptable only if measurement
+shows that its published artifact and install lifecycle are equally isolated.
+Importing GitHub raw content or a CDN at runtime is not an option: it would make
+hardware deployment depend on network availability, remote MIME/CORS/CSP
+behavior, and a mutable external service.
+
+Ordered work:
+
+1. **F1 — define the library boundary.** Inventory every exported symbol and
+   both current consumers. Separate transports/protocols from page/UI code and
+   specify stable subpaths such as `./avr`, `./stc`, `./micropython`, `./stm32`
+   and `./microbit`. Preserve dependency injection at Web Serial/WebUSB
+   boundaries so tests never require a browser device. Decide the package home
+   from measured packed bytes, dependency graph, install scripts, ownership and
+   release/versioning behavior; record the decision before moving code.
+2. **F2 — extract without semantic drift.** Move the single tested
+   implementation into the package and make the `stc-compiler` browser import
+   it. The existing mock-bootloader/DAP suite must execute against the installed
+   package entry points, including ordered halt/part-check/erase/program/read
+   mode/reset/cleanup, both 4 KiB pages, refusal before destructive traffic,
+   AVR/STC/STM32 paths, and their load-bearing mutations. Compare emitted USB
+   and serial command transcripts before and after; source similarity alone is
+   not an oracle.
+3. **F3 — adopt it in Lite at an exact revision.** Add a full-Git-SHA package
+   specification and lockfile binding using the same installed-package
+   provenance regime as `bw-board` and `bw-circuit-ui`. Replace Lite's dynamic
+   import of `../../lib/flasher.js` with package subpath imports while retaining
+   lazy chunks. Prove the real production bundle contains the required exports,
+   does not include unused protocol modules, works with the network disabled,
+   and produces byte-for-behavior identical flash command transcripts.
+4. **F4 — retire the compatibility machinery.** Only after F2 and F3 land,
+   remove both generated `flasher.js` mirrors, `scripts/sync-flasher.mjs`, the
+   scoped `stc-compiler-flasher` entry in `vendor-pins.json`, and tests or history
+   exceptions whose only job was governing that copy. Update
+   `docs/VENDORING-REGIME.md` in the same landing. Gates must fail by name on a
+   stale package SHA, wrong repository origin, lockfile disagreement, missing
+   subpath export, or reintroduced generated mirror.
+
+Acceptance is not merely fewer files. The final package must add no runtime
+network dependency, preserve every supported board and refusal, keep hardware
+write evidence mutation-proven, and reduce or hold the lazy flasher chunk's
+compressed size. If package overhead makes that chunk larger or prevents
+tree-shaking, keep the generated copy until the package boundary is corrected.
+
 ### 3.7 The 8086 tier — CORE + DISASSEMBLER LANDED 2026-09-03, the rest scoped
 
 Full plan, survey and licence rulings in `docs/I8086-CORE-PLAN.md`; the engine
