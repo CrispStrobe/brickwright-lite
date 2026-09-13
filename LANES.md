@@ -1,4 +1,4 @@
-# Who is doing what — claim before you start, release when you finish
+# Who is doing what — merge the claim before implementation
 
 Created 2026-08-24, after two sessions independently did the same repair.
 
@@ -19,7 +19,8 @@ photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
 ### Two regimes — do not confuse them
 
-This file coordinates **people and landing**: who owns a change, which paths it
+This file is the canonical lane registry for this repository. It coordinates
+**people and landing**: who owns a change, which paths or package boundary it
 may touch, and how one tested head reaches `main`. The lean qualification rule
 below removes duplicate hosted runs from that process.
 
@@ -44,35 +45,44 @@ These invariants are the reason a faster lane protocol is safe. They remain
 mandatory even for a one-line change and even when hosted qualification is not
 repeated.
 
-**1. Before you start anything, look.**
+**1. Use one isolated worktree per session and one active task. Before you start
+implementation, look.**
 
 ```bash
 git fetch origin
 git log --oneline -20 origin/main          # what landed while you were away
 git branch -r --sort=-committerdate | head # what someone else has open
 ```
-Then read the CLAIMS table below. If your work is already claimed or already
-landed, you have just saved yourself an hour — say so and pick something else.
+Then read the CLAIMS table below and compare scopes by overlapping paths or
+package boundary, not by vague task title. If your work is already claimed or
+landed, say so and pick something else.
 
-**2. Claim it here, in the same push as your first commit.**
+**2. Merge a claim-only commit to the canonical remote `main` before changing
+implementation.** A local row or unmerged branch owns nothing. Record at least
+owner/session, isolated worktree, exact scope, base SHA and status. Two writers
+may both read “free”; if your guarded non-force push loses, fetch and reread. If
+the competing scope is occupied, abandon the lane—do not auto-rebase a duplicate
+claim through. Expired claims require explicit takeover.
 
-Add a row before you begin. A claim costs one line and is the only thing that
-makes a collision visible *before* both of you have done the work.
+Existing dirty or in-flight work is not discarded to comply: preserve it,
+record or resolve ownership before its next implementation step, and never
+reset, force-move, cancel or overwrite it.
 
-**3. Release it here when you finish**, in the same push as your last commit.
-Move the row to DONE with the sha. An abandoned claim is worse than no claim:
-the next person reads it as work in progress and stays away from something
-nobody is doing.
+**3. Release it in the implementation commit.** Move the row to DONE and include
+focused test, exact-head CI and result links already available. The commit that
+contains the DONE row identifies itself via `git log -- LANES.md`; do not add a
+second ledger-only commit merely to write its own impossible self-hash. Extra
+audit documents are for failures or substantial risk, not routine handoffs.
 
 ### Lean qualification rule (2026-09-13)
 
 The claim prevents duplicate work; the tests prove the change. Do not turn the
 ledger itself into a second implementation lane:
 
-- Keep the claim, isolated worktree, explicit path envelope, focused behaviour
-  tests, and proportionate mutation proofs. Before the ONE hosted qualification,
-  make the candidate final: move its row to DONE in that same head and include
-  every receipt already available.
+- Keep the remotely merged claim, isolated worktree, explicit path envelope,
+  focused behaviour tests, and a meaningful negative or mutation proof where it
+  applies. Before the ONE hosted qualification, make the candidate final: move
+  its row to DONE in that same head and include every receipt already available.
 - One automatic exact-head qualification set is enough. When it is green and
   the remote default branch is still the candidate's parent, re-check both shas
   and fast-forward normally. Never force-push and never dispatch a duplicate.
@@ -88,6 +98,14 @@ ledger itself into a second implementation lane:
 - A real failure still stops the lane. Do not rerun an unchanged failure, relax
   its gate, or bury it in the ledger. Batch status checks and poll GitHub no more
   than once per minute.
+- Five minutes from claim to landing is the target for a small bounded edit, not
+  permission to skip relevant checks or knowingly land corruption. ABI,
+  persistent-state, scheduler, destructive and other semantic-risk changes leave
+  the fast path for proportionately broader proof.
+- One owner carries a lane through landing using guarded non-force pushes or a
+  single landing queue. Avoid mandatory handoff ping-pong. When coordinating by
+  screen/tmux, send the message text and then a carriage return as separate
+  delivery calls so the message is actually submitted.
 
 This replaces the fleet habit of separately qualifying the implementation,
 then a CLAIM-to-DONE-only successor, then waiting on the identical post-push
@@ -99,8 +117,10 @@ is a standing instruction that fires later, possibly for someone who did not
 write it. If one goes red for you, CLAIM IT before acting — that is exactly the
 case this file was written for.
 
-**5. If you push something that changes what another repo's gates load** — a
-pin, a vendored file, a shared fixture — say so in the same minute, in the row.
+**5. If work changes what another repository consumes**, claim both package
+boundaries, land the owning upstream first, and let the same lane owner carry
+the direct packaged dependency update downstream. Record the exact reproducible
+identity in the row; do not copy source or substitute a manual pin-handoff loop.
 
 **6. Before pushing a ledger edit, check the SHAPE of your tree, not just
 your diff.** On 2026-08-24 main's entire tree was wiped (84,148 files,
@@ -545,6 +565,8 @@ keeping, it is worth a branch.
 | C: a doc's name printed as markdown is not a read, and the trigger list may not vouch for itself | lego-b9 (VPS Claude session, worktree `wt/lego-b9-t9`, branch `lane/doc-triggers-output-only`) | 2026-09-07 | **CLAIMED** (lego-ac's ask, option C of docs/CI-QUEUE-2026-09-07-MAIN.md). Two instances held docs/LANGUAGE-DEVICE-MATRIX-PLAN.md in build.yml's re-include list: `scripts/gen-reader-coverage.mjs:171` and `scripts/gen-language-device-matrix.mjs:97`, each printing the plan's name between escaped backticks inside a template literal — a report's provenance line, not a read. Five main runs on 2026-09-07 (127 runner-min) verified plan-only edits for it. While measuring, a second thing: the census scans `.github/`, so build.yml's own `- 'docs/X.md'` entries counted as mentions and the test's STALE direction could never fire (fired live: re-including a doc nothing names stayed 5/5 green) — two docs whose readers had left (`DEBUGGER-NEXT-ROADMAP.md`, `FULL-DEBUGGER-ARCHITECTURE.md`) were still re-included; GATES thirtieth species. `scripts/lib/doc-triggers.mjs`: a workflow's trigger entry is not a mention; a name between escaped backticks is stripped before the match and listed by `outputOnlyMentions` (reported in the test's diagnostic, not counted). Mutations in a throwaway tree (printed-only line, read line, both on one line, a trigger entry vs a `run:` that reads) and on the real list (an unmentioned doc, chosen at run time, re-included → stale by name); fired live: a code line naming the plan → missing by name. Re-includes 18 → 15; a plan-only or LANES-only push now starts no run. |
 
 ## DONE — recently, so nobody redoes it
+
+| remote-first fast-lane protocol | `/root/sol_lane_coordination` (Codex) | 2026-09-13 | **DONE in the documentation commit containing this row** (use `git log -1 -- LANES.md docs/VENDORING-REGIME.md` for its exact non-self-referential commit identity), after remotely merged claim `33ffb7987`. The canonical registry now requires isolated one-task worktrees, remote-before-implementation claims, race-loser/explicit-takeover handling, proportional five-minute checks, one owner through landing, no routine audit-doc/pin-handoff loop, and submitted-CR peer messages. `docs/VENDORING-REGIME.md` distinguishes direct upstream package consumption from floating identity and preserves exact pins/lockfile integrity. Docs-only validation: changed-path envelope is exactly these two files, `git diff --check` green, links resolve, and root tree shape preserved. |
 
 | the regime doc described deleted machinery as present, one day after being fixed for the opposite | brickwright-lite-0c, assigned by lego-38 | `lane/regime-hole-past-tense` `16df974ad` → main (docs only: VENDORING-REGIME.md +185/-86, VENDOR-DIVERGENCE-SB3-CREATOR.md +6/-2) | § "The hole" was rewritten 09-11 for describing a SHIPPED thing as pending; the package migration then deleted the machinery it had just been made accurate about, so it described a DELETED thing as present. **Same defect, opposite direction, one day apart, through a change nobody connected to the file.** SCOPE WIDENED PAST THE ASSIGNED SECTION ON PURPOSE: the paragraph above it read "Three upstreams are vendored ... bw-board, bw-circuit-ui, sb3-creator" — one is — and a careful past tense under a false premise is the same defect one level up. Also stale and fixed: the pipeline's `npm run sync:bwboard` (script deleted), the rule's exception member (the `../` depth rewrite left with bw-board; the sb3-creator flatten-rewrite remains and is still DERIVED), the appearing-table's citation of `vendor-identity` and its fourth row reading "NO — green" (that row WAS the hole), the persisting-section's ratchet in present tense, and the sb3 ledger's own first line "The other two vendored trees are compared BYTE FOR BYTE". NEW IN THE REWRITE: (a) the hole cannot regrow in sb3-creator STRUCTURALLY — `sb3-creator-vendor-identity` compares all 14 mapped files with no exemption path in it, `vendor-sb3creator-deltas` asserts the reported set is exactly the declared one, so declaring a delta cannot widen what the comparison forgives because the comparison forgives nothing; the old pair failed precisely by being ONE gate doing both jobs; (b) three closures not two — MECHANISM (region attribution, deleted), STATE (ledger emptied, file gone), STRUCTURE (the trees stopped being vendored, the only one still standing) — the 09-11 text warned against mistaking the state for a mechanism and was overtaken within a day by a change of structure, *when a defect keeps needing a gate, ask whether the thing being gated should exist*; (c) the retirement-belongs-to-the-pin-bump rule re-scoped to dependency bumps, accepted by lego-38 — a `github:` spec is a pin with different syntax. CHECKED BOTH DIRECTIONS: every file the doc names exists, every file it names only in past tense is confirmed absent. Gates with SB3_CREATOR_DIR at the pin: disposition-deadline, vendor-sb3creator-deltas, sb3-creator-vendor-identity, pinned-packages, overlay-packages-pairs, vendor-source-guard — 27 tests, 0 fail, 0 skips. (`pinned-packages` was opened to report vendor-pins.json and package.json as two records of one sha; the gap was already closed with mutation coverage for wrong host, wrong owner and a similarly-named repo. No finding, recorded because it would otherwise have been raised.) |
 

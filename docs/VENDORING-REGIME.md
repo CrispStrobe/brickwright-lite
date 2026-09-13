@@ -13,6 +13,13 @@ is the rule they serve.
 > *when a reviewed commit moves*; this regime answers *which repository owns the
 > bytes*. The latter must still be true before the former can proceed.
 
+The lane owner carries an upstream change through its downstream package update
+without copying source or handing a pin request around the fleet. “Direct” means
+Lite installs the upstream package itself; it does not mean a floating branch.
+The exact commit, derived package specifications and lockfile remain the
+reproducible identity. Where a package already replaces a vendored tree, never
+reintroduce a mirror or manual source-propagation round trip.
+
 > ## THE POPULATION CHANGED ON 2026-09-12 — read this before the rest
 >
 > **Two of the three upstreams stopped being vendored.** `bw-board` and
@@ -61,8 +68,10 @@ rewrite cannot be written down without a mapped file behind it.
 
 ## The pipeline
 
-Three upstreams are pinned by exact sha in `vendor-pins.json`. **One of them is
-vendored; two are installed.**
+Three upstreams have exact reproducible identities in `vendor-pins.json`.
+**One of them is vendored; two are installed directly from their upstream
+packages.** The pin is package identity, not an invitation for a second person
+to repeat or manually shuttle the implementation.
 
 | upstream | how it arrives | what holds it |
 |---|---|---|
