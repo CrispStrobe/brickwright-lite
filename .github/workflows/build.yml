@@ -504,8 +504,23 @@ jobs:
             exit 1
           fi
 
+      - name: Resolve the path-scoped stc flasher pin
+        id: stc_flasher_pin
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        run: echo "sha=$(node -p \"require('./vendor-pins.json')['stc-compiler-flasher']\")" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch stc-compiler at the flasher artifact pin
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: CrispStrobe/stc-compiler
+          ref: ${{ steps.stc_flasher_pin.outputs.sha }}
+          path: .stc-compiler-flasher
+
       - name: Run unit tests
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        env:
+          STC_COMPILER_FLASHER_DIR: ${{ github.workspace }}/.stc-compiler-flasher
         run: |
           if ! grep -q '"test"' package.json; then
             echo "::error::package.json has no test script — tests exist but nothing runs them"

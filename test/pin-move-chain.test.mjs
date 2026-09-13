@@ -299,14 +299,15 @@ test('global previous-pin parsing excludes scoped flasher history at the parsing
     assert.deepEqual([...global.keys()], [globalOld]);
     const scoped = parsePreviousPins(log, new Set(), new Set(SCOPED_PINS));
     assert.deepEqual([...scoped.keys()], [flasherOld]);
-    const scopedPaths = new Set(['vendor-pins.json', 'scripts/sync-flasher.mjs',
-        'overlay/scratch-gui/src/lib/flasher.js', 'packages/scratch-gui/src/lib/flasher.js',
-        'docs/VENDORING-REGIME.md']);
-    const scopedJudge = (file, text) => scopedPaths.has(file) && text.includes(flasherOld) ? [flasherOld] : [];
-    assert.deepEqual(scopedJudge('scripts/sync-flasher.mjs', flasherOld), [flasherOld]);
-    assert.deepEqual(scopedJudge('docs/generated/hosted-targets.json', flasherOld), []);
-    assert.deepEqual(scopedJudge('docs/generated/hosted-targets.json', currentPins()['stc-compiler-flasher']), []);
-    assert.deepEqual(scopedJudge('docs/generated/hosted-targets.json', '79df4b6d37c78e463f5c1d8caa3cfaa7712935ad'), []);
+    const globalKnown = {current, previous: global, history: new Map()};
+    assert.deepEqual(judgeFile('test/independent-stc.js', `const SHA = '${flasherOld}';`, globalKnown), [],
+        'a former scoped flasher pin leaked into the global judge');
+    assert.deepEqual(judgeFile('test/independent-stc.js',
+        `const SHA = '${currentPins()['stc-compiler-flasher']}';`, globalKnown), [],
+    'the current scoped flasher pin leaked into the global judge');
+    assert.deepEqual(judgeFile('test/independent-stc.js',
+        `const SHA = '79df4b6d37c78e463f5c1d8caa3cfaa7712935ad';`, globalKnown), [],
+    'an independent hosted-target stc revision entered global pin authority');
 });
 
 test('a REFORMAT of the pins file does not invent previous pins for pins that never moved', () => {
