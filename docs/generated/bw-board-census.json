@@ -2,8 +2,8 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "0bd314e3a56c5b17078279cbd2482b1c5949d654",
-    "read": "2026-09-12"
+    "sha": "44fe9e4d7be66a09869015d96b8a6815f0e0b746",
+    "read": "2026-09-13"
   },
   "rows": [
     {
@@ -22,6 +22,7 @@
         "test/harris-native-memory-board.test.mjs",
         "test/harris-native-incremental-nets.test.mjs",
         "test/harris-native-memory-circuit.test.mjs",
+        "test/harris-native-system-admission.test.mjs",
         "test/harris-native-memory.test.mjs",
         "test/harris-native-net-kernel.test.mjs",
         "test/harris-native-phase-circuit.test.mjs",
@@ -98,6 +99,18 @@
         "test/lcapy-oracle.test.mjs"
       ],
       "what": "An independent SYMBOLIC circuit solver. The only non-numerical check on mna.js."
+    },
+    {
+      "id": "ngspice",
+      "kind": "oracle",
+      "present": true,
+      "ciAvailable": true,
+      "ci": "yes — installed by apt in the `test` job and asserted by `--require ngspice`, so the live solver comparison is a standing claim rather than a recorded one",
+      "via": "ngspice on $PATH at /usr/bin/ngspice",
+      "gates": [
+        "test/ngspice-neutral-oracle.test.mjs"
+      ],
+      "what": "The reference NUMERIC circuit simulator. lcapy is symbolic and exact but cannot model a junction; ngspice models devices, so the two are complementary rather than redundant -- where both agree and we do not, it is us, and where THEY disagree the circuit is ill-posed and belongs in neither corpus. Note that the ngspice GOLDENS under test/golden/ are pre-recorded and need no binary; this row is for the gates that invoke ngspice LIVE."
     },
     {
       "id": "emu8051",
