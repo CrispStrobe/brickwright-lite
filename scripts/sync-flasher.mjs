@@ -32,11 +32,11 @@ const check = process.argv.includes('--check');
 const dirIdx = process.argv.indexOf('--dir');
 const srcDir = dirIdx !== -1 ? process.argv[dirIdx + 1] : null;
 
-const canonicalRemote = 'https://github.com/CrispStrobe/stc-compiler.git';
+const canonicalRemote = /^(?:https:\/\/github\.com\/|git@github\.com:)CrispStrobe\/stc-compiler(?:\.git)?$/;
 const sha = srcDir ? await localSha(srcDir) : (await resolveRef(REPO, REF)).sha;
 if (srcDir) {
     const remote = execFileSync('git', ['-C', srcDir, 'remote', 'get-url', 'origin'], {encoding: 'utf8'}).trim();
-    if (remote !== canonicalRemote && remote !== 'git@github.com:CrispStrobe/stc-compiler.git') {
+    if (!canonicalRemote.test(remote)) {
         throw new Error(`refusing flasher source from ${remote}: --dir must be a CrispStrobe/stc-compiler checkout`);
     }
 }

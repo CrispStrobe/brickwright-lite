@@ -18,17 +18,25 @@ test('the isolated corpus job installs pinned root packages before running solve
         'a fresh corpus runner needs root bw-board and bw-circuit-ui before any lesson simulation');
 });
 const copiedRepos = ['CrispStrobe/sb3-creator'];
-const allowed = site => site.file === '.github/workflows/vendor-freshness.yml'
+const allowedGlobal = site => site.file === '.github/workflows/vendor-freshness.yml'
     && names.some(name => copiedRepos.includes(site.repository) && site.repository === `CrispStrobe/${name}`
         && site.ref === '${{ steps.vendor_pins.outputs.' + name + ' }}');
+const allowedFlasher = site => site.file === '.github/workflows/build.yml'
+    && site.repository === 'CrispStrobe/stc-compiler'
+    && site.ref === '${{ steps.stc_flasher_pin.outputs.sha }}';
+const allowed = site => allowedGlobal(site) || allowedFlasher(site);
 
 test('every external workflow checkout has a full pin or validated vendor-pin output', t => {
     const sites = assertCheckoutPins(workflows, allowed);
     const workflow = workflows.get('.github/workflows/vendor-freshness.yml');
     assert.match(workflow, /id: vendor_pins\n\s+run: node brickwright-lite\/scripts\/ci-vendor-pins.mjs >> "\$GITHUB_OUTPUT"/);
     assert.ok(workflow.indexOf('id: vendor_pins') < workflow.indexOf('repository: CrispStrobe/'));
-    assert.deepEqual(sites.filter(allowed).map(site => site.repository).sort(), copiedRepos);
+    assert.deepEqual(sites.filter(allowedGlobal).map(site => site.repository).sort(), copiedRepos);
     assert.doesNotMatch(workflow, /staying on HEAD|comparing against HEAD/);
+    const build = workflows.get('.github/workflows/build.yml');
+    assert.match(build, /id: stc_flasher_pin\n\s+if:[^\n]+\n\s+run: echo "sha=\$\(node -p \\"require\('\.\/vendor-pins\.json'\)\['stc-compiler-flasher'\]\\"\)" >> "\$GITHUB_OUTPUT"/);
+    assert.ok(build.indexOf('id: stc_flasher_pin') < build.indexOf('repository: CrispStrobe/stc-compiler'));
+    assert.deepEqual(sites.filter(allowedFlasher).map(site => site.repository), ['CrispStrobe/stc-compiler']);
     t.diagnostic(`Audited ${sites.length} external checkout sites across ${workflows.size} workflows`);
 });
 
