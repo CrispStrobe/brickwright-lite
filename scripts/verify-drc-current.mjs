@@ -27,10 +27,10 @@
  * the real Circuit Designer and reads the warning chip.
  *
  *   BENCH 1 — measured, fully rated. Eight red LEDs, each through 100 Ω from
- *     the 5 V rail to ground: (5 − 2)/(100 + 10) = 27.3 mA apiece, 218 mA in
+ *     the 5 V rail to ground: (5 − 1.8)/(100 + 10) = 29.1 mA apiece, 232.7 mA in
  *     total, past the 120 mA chip limit. The DANGER fires either way here —
  *     the current is solved, not rated — but under the fallback its text MUST
- *     read "at least 218 mA … Some parts (vcc, gnd, resistor) cannot be rated",
+ *     read "at least 232.7 mA … Some parts (vcc, gnd, resistor) cannot be rated",
  *     because with `() => null` every passive is an unknown. A clean "218 mA"
  *     with no hedge is therefore a browser-visible fingerprint of the real
  *     ratings being live in the shipped bundle.
@@ -174,11 +174,16 @@ try {
     const one = await loadAndRead(measuredBench(), 'Total circuit current is');
     check('overloaded LED bench raises the warning chip', one.chip);
     console.log(`  bench 1 findings:\n    ${one.text.replace(/\n/g, '\n    ')}`);
+    // 232.7 mA, not 218: the LED knee is vf − 0.020·rd = 1.8 under bw-board's
+    // datasheet vf convention, so each branch is (5 − 1.8)/110 = 29.0909 mA and
+    // eight of them are 232.727. Both figures below moved by exactly
+    // 3.2/3.0 = 1.066667, which is the check that ONLY the knee moved: if any
+    // other term had, the total and the per-part number would not share one factor.
     check('bench 1 reports an aggregate current past the chip limit',
-        /Total circuit current is .*218 mA, exceeding the .*120 mA limit/.test(one.text),
+        /Total circuit current is .*23[23] mA, exceeding the .*120 mA limit/.test(one.text),
         one.text.slice(0, 200));
     check('bench 1 names the LEDs as the largest consumers',
-        /led \(27 mA\)/.test(one.text));
+        /led \(29 mA\)/.test(one.text));
     // THE DISCRIMINATOR: with `getMaxCurrent: () => null` every passive on this
     // bench (vcc, gnd, resistor) is unrated, so the text is FORCED to say
     // "at least" and to append the hedge. Their absence is the injection.
