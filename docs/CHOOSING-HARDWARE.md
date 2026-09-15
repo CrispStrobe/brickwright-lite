@@ -129,6 +129,41 @@ So the ladder is not "everything needs the server". It is:
 | CircuitPython boards | **nothing to make** — copy the `.py` |
 | Arduboy | run a `.hex` someone else built; see above for what building one would take |
 
+## The Tang Nano 20K is a FOURTH kind, and it is not a device choice at all
+
+Added 2026-09-15. It breaks the frame above, which is why it gets its own
+heading rather than a row in a table that would misdescribe it.
+
+**It is not in the device dropdown.** The Code tab's device list is for boards
+that run a program you wrote in blocks. An FPGA runs whatever was loaded onto
+it: the board has no instruction set of its own, so "choosing" it the way you
+choose an Arduino would be a category error. Nothing here compiles to it,
+simulates it, or flashes it.
+
+**What choosing it DOES get you, today**, and the list is deliberately short:
+
+- **The part, in the Circuit tab.** A real pinout from the Sipeed datasheet v1.3
+  -- both 20-pin headers, the 34 free IOs, the six power pins -- so it can be
+  placed and wired like any other board.
+- **The rule that saves the board.** Gowin I/O is 3.3 V and **not 5 V
+  tolerant**. The DRC catches 5 V reaching a bank pin. Note the direction: the
+  board's own `5V` header pin is a power OUTPUT, so powering a 5 V part from it
+  is legitimate; returning that part's 5 V signal to a bank pin is what destroys
+  the FPGA.
+- **A warning the simulator owes you.** The board's GND/3V3/5V pins are places
+  to wire, not sources -- it is a passthrough part, so a loop returning through
+  its own ground reads as an open circuit. `board-rail-not-simulated` says so,
+  because otherwise the reading looks like a broken part and the circuit works
+  fine on real hardware.
+
+**Behind `BW_ENABLE_FPGA`** (off in every shipped build) there is an FPGA tab
+that reads Gowin `.cst` constraints against that part and answers which of a
+design's ports can reach the board, which cannot and why, and emits a canonical
+`.cst` for the real toolchain. It does not synthesise, simulate or flash, and it
+says so.
+
+The plan, and what each later phase would add: `docs/TANG-NANO.md`.
+
 ## Circuits is a different axis, not a fourth kind
 
 This is the part that is easy to get backwards. **Circuits is not a
