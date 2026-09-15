@@ -3,6 +3,7 @@ import TANG_NANO_20K from 'bw-circuit-ui/parts-data/tang_nano_20k.json';
 import {parseCst} from '../../lib/bw-fpga/cst.js';
 import {bridge} from '../../lib/bw-fpga/port-bridge.js';
 import {applyPortValues} from '../../lib/bw-fpga/drive.js';
+import {readPorts, checkWidths} from '../../lib/bw-fpga/yosys.js';
 
 /**
  * The FPGA / HDL surface — TN2 and TN2b of docs/TANG-NANO.md.
@@ -51,17 +52,40 @@ const Row = ({tone, children}) => (
 
 const FpgaTab = () => {
     const [text, setText] = React.useState(EXAMPLE);
-    const {bindings, refusals, warnings, plan} = React.useMemo(() => {
+    const [netlistText, setNetlistText] = React.useState('');
+    const {bindings, refusals, warnings, plan, top} = React.useMemo(() => {
         const {constraints, problems} = parseCst(text);
-        const out = bridge({constraints, part: TANG_NANO_20K});
+
+        // The netlist is OPTIONAL. Without it the bridge can still say where a
+        // port lands; with it, it can also say whether the port exists -- which
+        // is how a rename that silently unplugs a signal gets caught.
+        let netlistPorts = null;
+        let top = null;
+        const netlistProblems = [];
+        const trimmed = netlistText.trim();
+        if (trimmed) {
+            try {
+                const read = readPorts(JSON.parse(trimmed));
+                netlistPorts = Object.keys(read.ports).length ? read.ports : null;
+                top = read.top;
+                netlistProblems.push(...read.problems);
+            } catch (e) {
+                netlistProblems.push({code: 'netlist-not-json',
+                    reason: `The netlist is not valid JSON: ${e.message}`});
+            }
+        }
+
+        const out = bridge({constraints, part: TANG_NANO_20K, netlistPorts});
+        if (netlistPorts) netlistProblems.push(...checkWidths(netlistPorts, out.bindings));
+        problems.push(...netlistProblems);
         // Dry run: the same call the circuit engine would take, against a
         // recorder instead of a board. With no values -- because nothing models
         // the fabric yet -- every output comes back as "undriven", which is the
         // honest picture rather than a row of zeroes.
         const ops = [];
         const {unset} = applyPortValues({setPin: (...a) => ops.push(a)}, out.bindings, {});
-        return {...out, refusals: [...problems, ...out.refusals], plan: {ops, unset}};
-    }, [text]);
+        return {...out, refusals: [...problems, ...out.refusals], plan: {ops, unset}, top};
+    }, [text, netlistText]);
 
     return (
         <div style={{padding: '1.25rem', maxWidth: '52rem', lineHeight: 1.5, overflowY: 'auto'}}>
@@ -79,6 +103,21 @@ const FpgaTab = () => {
                 style={{width: '100%', minHeight: '11rem', fontFamily: 'monospace',
                     fontSize: '0.85rem', padding: '0.6rem'}}
             />
+
+            <details style={{margin: '0.75rem 0'}}>
+                <summary style={{cursor: 'pointer'}}>
+                    {'Optional: paste a Yosys JSON netlist to also check the ports exist'}
+                    {top ? <strong>{` — top module: ${top}`}</strong> : null}
+                </summary>
+                <textarea
+                    value={netlistText}
+                    onChange={e => setNetlistText(e.target.value)}
+                    spellCheck={false}
+                    placeholder={'yosys -p \'synth_gowin -json out.json\' design.v'}
+                    style={{width: '100%', minHeight: '7rem', fontFamily: 'monospace',
+                        fontSize: '0.8rem', padding: '0.6rem', marginTop: '0.4rem'}}
+                />
+            </details>
 
             <h3>{`Reaches the board (${bindings.length})`}</h3>
             <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
