@@ -147,6 +147,15 @@ jobs:
         run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
       - name: Apply the scratch-vm overlay (built-in extensions)
         run: node scripts/apply-vm-overlay.mjs
+      # The FPGA surface is behind BW_ENABLE_FPGA, off in every build here, and
+      # webpack genuinely drops it — verified by grepping the shipped
+      # github-pages artifact for six strings distinctive to it: zero hits in
+      # 123 MB. That is the feature AND the hole: webpack never PARSES those
+      # files, so a JSX error would wait months for somebody to set the flag.
+      # Seconds, in a job that already installed the GUI's babel; a whole
+      # flag-on build job would have cost a build slot this repo counts.
+      - name: Parse the flagged JSX that no build compiles
+        run: node scripts/check-flagged-jsx.mjs
       # Everything from here to `Serve the built app` is an INDEPENDENT check —
       # guards, unit tests, the lazy-bundle inspection, the debugger smoke test.
       # None of them produces an input the next one needs, so none of them should
