@@ -771,10 +771,18 @@ chipset. Those are dependency-complete follow-ons, not acceptance shortcuts for
 the SBC.
 
 
-#### Tang Nano 20K — FPGA execution tiers — SCOPED 2026-09-15, UNCLAIMED
+#### Tang Nano 20K — FPGA execution tiers — TN0/TN1/TN2 LANDED 2026-09-15, TN2b in review
 
-Full decisions, rationale and the TN0–TN6 phase plan in
-[`docs/TANG-NANO.md`](docs/TANG-NANO.md). Summary and evidence here so the
+Full decisions, rationale, phase plan and CURRENT STATUS in
+[`docs/TANG-NANO.md`](docs/TANG-NANO.md) — which carries the status table, not
+this entry, so the two cannot disagree.
+
+**Built so far:** the board part and its 3.3 V rule (bw-circuit-ui #24), the
+`gate-level` machine semantics (bw-board #6), both pins moved into lite (#112),
+the HDL surface behind `BW_ENABLE_FPGA` (#113), and the pin bridge (#114, in
+review) — which reads a Gowin `.cst` against the real part and drives an output
+port to light a real LED through the real solver. Synthesis, any model of the
+fabric, flashing and every SoC remain unbuilt, and the surface says so. Summary and evidence here so the
 roadmap is not missing a hardware track that exists only in another file.
 
 The board in hand is `GW2AR-LV18QN88C8/I7` (QN88, **20736 LUT4 / 15552 FF**,
