@@ -839,10 +839,18 @@ not. Checked 2026-09-15: the C64 core for this exact board
 (`vossstef/tang_nano_20k_c64` -> `MiSTle-Dev/C64Nano`) is **GPL-3.0**, as are
 NESTang, SNESTang, `NES_MiSTer` and `fx68k`; `C64_MiSTer`, `BBCMicro_MiSTer`,
 `Minimig-AGA_MiSTer` and Arlet's `verilog-6502` declare **no licence at all**,
-which is worse — no permission, not "probably fine". GPL cores can use the
-gallery-extension escape hatch (fetched at runtime, never bundled), **but hosted
-synthesis makes our server a GPL distributor with a source-offer obligation —
-an owner decision to settle before TN3 serves one.** ROMs are a second wall:
+which is worse — no permission, not "probably fine". **DECIDED 2026-09-15: GPL cores build on the LOCAL tier only, never on our
+server.** Compiling GPL HDL and handing back a bitstream would convey a
+derivative work and make the service a distributor with a standing source-offer
+duty, whose failure mode is an ordinary engineering act — the first build that
+patches a core breaks the "unmodified upstream" story and we owe our own source.
+Building locally conveys nothing. This costs nothing architecturally (TN6 exists
+anyway for weight), but it changes TN6's meaning from "the same thing, offline"
+to **strictly more capable** — a difference the policy layer already obliges us
+to surface rather than hide. **TN3 therefore owes a licence check at submission,
+refusing GPL by name with a pointer to the local route, as an acceptance
+criterion rather than later hardening; unlicensed cores are refused on both
+tiers, because a local build does not manufacture permission.** ROMs are a second wall:
 C64 KERNAL/BASIC/CHARGEN and the Acorn sets are copyrighted, so user-supplied or
 licensed only, on the existing `bw-board/roms/` provenance practice. **Hence the
 retro route is an SBC, not a home computer** — the same trap the M68K entry above

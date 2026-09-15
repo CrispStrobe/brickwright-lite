@@ -36,6 +36,7 @@ Implementation note that otherwise costs an afternoon: **C-grade devices require
 | 16 | retro cores | pursued as **TN5b, in parallel with TN5a** — not instead of it |
 | 17 | retro scope | a **6502/Z80 SBC**, not a home computer |
 | 18 | pin bridge | its own phase (**TN2b**) — netlist ports into the MNA engine |
+| 19 | GPL cores | **local WASM tier only**; hosted synthesis refuses them **by name** |
 
 ## 2. The licence position, verified
 
@@ -107,6 +108,52 @@ would cost, since the analysis is done:
 Revisit only if signal-level waveforms are actually wanted as a *shipped*
 feature.
 
+## 2.3 GPL cores build locally, never on our server — DECIDED 2026-09-15
+
+The trigger is narrow, and it is worth stating precisely so nobody widens it by
+accident. *Using* GPL tools is not it: running a compiler never licences its
+output, and our toolchain is permissive anyway. The trigger is **our server
+taking GPL HDL, compiling it, and handing the bitstream to a user** — conveying
+a derivative work, which obliges us to offer corresponding source to that
+recipient. The app stays clean either way; the obligation would land on the
+*service*.
+
+Three options were weighed. **The decision is: GPL cores compile on the user's
+own machine, through the local WASM tier (TN6), and never on ours.** The user
+builds it for themselves, so nothing is conveyed and no obligation arises.
+
+Why not the alternatives:
+
+- **Refusing GPL cores entirely** is clean but forecloses every existing retro
+  core, and "why can I not build the C64 core that runs on this exact board?"
+  becomes a permanent question with an unsatisfying answer.
+- **Serving them and pointing at upstream for source** is defensible — the
+  source is public, and `vendor-pins.json`, the sha256-gated fetches and
+  `test/notices-drift.test.mjs` are exactly the machinery for it. It was
+  rejected because it converts a bounded decision into a **standing compliance
+  duty**, whose failure mode is an ordinary engineering act: the first time a
+  build patches a core — a pin constraint, a clock tweak, a bug fix — the
+  "unmodified upstream" story breaks and we owe *our* modified source, and
+  nobody would flag that at the time.
+
+**This costs nothing architecturally**, because the local tier exists anyway for
+weight reasons. What it changes is the local tier's meaning: it is no longer
+merely *the same thing, offline* — it is **strictly more capable**, and that is
+a difference the policy layer already requires us to surface rather than hide
+(§3, "never silently lower fidelity", named refusals).
+
+**Consequences to implement, not to remember:**
+
+- **TN3 owes a licence check at submission**, refusing by name with the reason
+  and a pointer to the local route. That is an acceptance criterion, not later
+  hardening — the failure mode otherwise is deciding this implicitly by letting
+  the hosted path accept whatever HDL it is handed.
+- **TN6 is no longer optional-nice.** It is the only route for a whole class of
+  designs, which changes how its 261 MB download is presented: not "a speed-up
+  you may want" but "the way these cores build".
+- **Unlicensed cores are refused on BOTH tiers.** No licence is no permission,
+  and a local build does not manufacture one.
+
 ## 2.2 The cores are a separate licence question, and it goes the other way
 
 §2 is about the **toolchain**, and it is uniformly permissive. The **cores** —
@@ -128,12 +175,8 @@ not "probably fine". Three buckets, and they are not equal:
 
 - **Own or permissive HDL** — shippable. Includes anything we write.
 - **GPL cores** — the existing escape hatch applies: *fetched at runtime from a
-  URL, never bundled*, exactly as the GPL gallery extensions are. **But note the
-  wrinkle:** hosted synthesis means our server compiles GPL source and returns a
-  bitstream. That is distribution, and it makes the service a GPL distributor
-  with a source-offer obligation. Probably satisfiable (the source is public and
-  we can point at it), but it is an **owner decision, not an implementation
-  detail** — settle it before TN3 serves a GPL core.
+  URL, never bundled*, exactly as the GPL gallery extensions are. **Decided
+  2026-09-15: they build on the LOCAL tier only.** See §2.3.
 - **Unlicensed** — unusable. Full stop.
 
 ### ROMs are a second wall
@@ -436,7 +479,10 @@ becomes part of this one. It is also independent of every SoC decision.
 yosys/nextpnr/apicula route beside the existing compile route.
 **Accept.** A blinky builds end to end for `GW2AR-LV18QN88C8/I7` with
 `--vopt family` handled; outputs are reproducible and sha-recorded; failures
-surface synthesis errors rather than a generic failure.
+surface synthesis errors rather than a generic failure. **A GPL-licensed source
+is refused BY NAME**, with the reason and a pointer to the local tier (§2.3);
+an unlicensed source is refused outright. This is an acceptance criterion, not
+later hardening.
 **Note.** This is where the unknown-unknowns live. Budget accordingly.
 
 ### TN4 — Flashing, in Tauri
@@ -488,7 +534,7 @@ most working infrastructure for the least effort — a known-good board target, 
 SoC that builds, a generated simulator. TN5b reuses the synthesis and flashing
 that TN3/TN4 prove out. Both ship.
 
-### TN6 — Local WASM synthesis, opt-in
+### TN6 — Local WASM synthesis, opt-in — and the only route for GPL cores
 **Deliver.** `@yowasp/yosys` + `@yowasp/nextpnr-himbaechel-gowin` fetched on the
 labwired pattern — deploy-time fetch, sha256 gate, absent until probed — with an
 explicit user setting.
