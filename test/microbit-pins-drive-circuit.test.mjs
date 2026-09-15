@@ -196,6 +196,9 @@ test('a micro:bit block lights a real LED through the real solver', async () => 
 
     // And the current is right, which is the part a wiring bug cannot fake:
     // 3.3 V across 220R and a red LED's ~2.2 V forward drop is about 5 mA.
-    const mA = board.branchCurrent('d1', 'anode') * 1000;
+    // Positive-OUT contract (bw-circuit-ui 4aea457): forward LED current ENTERS
+    // the anode, so the raw branch current is negative and the forward
+    // magnitude is its explicit negative. Magnitude unchanged at ~6.1 mA.
+    const mA = -board.branchCurrent('d1', 'anode') * 1000;
     assert.ok(mA > 4 && mA < 6.5, `${mA.toFixed(2)} mA is not a 220R red LED at 3.3 V`);
 });

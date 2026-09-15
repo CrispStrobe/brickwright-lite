@@ -162,7 +162,11 @@ test('electricity-series-parallel: the supply carries all THREE branches, not ju
     const series = milliamps(board, 'r1', 'b');
     const p1 = milliamps(board, 'r3', 'b');
     const p2 = milliamps(board, 'r4', 'b');
-    const supply = -milliamps(board, 'vcc1', 'vcc');
+    // Raw current is signed positive OUT of the probed terminal (bw-circuit-ui
+    // 4aea457, "Align CUI raw currents with positive-OUT contract", checked
+    // against the ngspice oracle). OUT of the supply terminal IS the current
+    // the rail delivers, so this no longer negates. The magnitude is unchanged.
+    const supply = milliamps(board, 'vcc1', 'vcc');
     near(series, 3.3684, 0.01, 'series branch');
     near(p1, 6.6667, 0.01, 'parallel branch 1');
     near(p2, 6.6667, 0.01, 'parallel branch 2');
@@ -199,7 +203,9 @@ test('electricity-capacitor: charge and discharge are separate paths, and the ta
     circuit.setControl('charge', 0);
     circuit.setControl('discharge', 1);
     board.advanceTo(t += 1n * MS);
-    const first = milliamps(board, 'led', 'anode');
+    // Positive-OUT: forward LED current ENTERS the anode, so the raw reading is
+    // negative and its forward magnitude is the explicit negative of it.
+    const first = -milliamps(board, 'led', 'anode');
     assert.ok(first > 2.5, `discharge starts with real LED current, got ${first} mA`);
     board.advanceTo(t += 8000n * MS);
     // The revised lesson's teaching point: it does NOT decay to 0 V.
@@ -306,8 +312,11 @@ test('electricity-transistor-switch: every reading in the load loop agrees', asy
     // version 3 hint makes and the one that was false before the repair.
     const load = milliamps(on.board, 'r1', 'b');
     near(load, 6.5036, 0.01, 'load resistor');
+    // Both of these terminals are ENTERED by the loop current, so under the
+    // positive-OUT contract they read negative; the loop agreement is on their
+    // forward magnitudes. r1.b is left as-is because the current leaves it.
     for (const [part, terminal] of [['led1', 'anode'], ['q1', 'collector']]) {
-        near(milliamps(on.board, part, terminal), load, 0.01,
+        near(-milliamps(on.board, part, terminal), load, 0.01,
             `${part}.${terminal} must agree with the load resistor in the same series loop`);
     }
     // And the base loop, including the button that used to read zero.
