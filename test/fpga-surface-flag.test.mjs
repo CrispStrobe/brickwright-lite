@@ -70,9 +70,21 @@ test('the surface does not claim to do what it cannot', () => {
     // TN5 do not exist, so the panel must not imply synthesis, simulation or
     // flashing -- the same rule target-kinds.js states for picker entries.
     const panel = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx');
-    assert.match(panel, /not built yet/i,
-        'the panel must say plainly that it does nothing yet');
-    for (const claim of [/\bsynthesis(ing)? (is )?(available|ready)\b/i, /\bflash(es|ing) (to )?the board\b/i]) {
-        assert.ok(!claim.test(panel), `the panel implies a capability that does not exist: ${claim}`);
+    // Test the CLAIM, not a phrase. An earlier version of this assertion matched
+    // the literal words "not built yet" and went red the moment the same
+    // disclaimer was reworded -- a guard that polices spelling instead of
+    // meaning gets weakened by whoever hits it next.
+    const disclaimer = /(not built yet|is not built|none of that is built|does not (synthesi|simulat|flash))/i;
+    assert.match(panel, disclaimer,
+        'the panel must say plainly, somewhere, that the toolchain half does not exist');
+    const visible = panel.slice(panel.indexOf('const FpgaTab'));
+    for (const verb of [/synthesis/i, /simulat/i, /flash/i]) {
+        if (!verb.test(visible)) continue;
+        assert.ok(disclaimer.test(visible),
+            `the panel mentions ${verb} in user-facing text without the disclaimer nearby`);
+    }
+    for (const overclaim of [/\bsynthesis(ing)? (is )?(available|ready)\b/i,
+        /\bflash(es|ing) (to )?the board\b/i, /\bruns your (verilog|design)\b/i]) {
+        assert.ok(!overclaim.test(panel), `the panel implies a capability that does not exist: ${overclaim}`);
     }
 });

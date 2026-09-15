@@ -1,0 +1,122 @@
+/**
+ * The pin bridge — TN2b. Every claim has a case that trips it and one that
+ * must not, matching the standard the DRC tests in bw-circuit-ui set.
+ *
+ * The board part is the REAL one, read from the pinned bw-circuit-ui package
+ * rather than a fixture, so a pin move that changes the Tang Nano's pinout
+ * reddens these tests instead of leaving them agreeing with a stale copy.
+ */
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {parseCst, splitBit} from '../overlay/scratch-gui/src/lib/bw-fpga/cst.js';
+import {bindPorts, bridge, pinIndex} from '../overlay/scratch-gui/src/lib/bw-fpga/port-bridge.js';
+
+const require = createRequire(import.meta.url);
+const PART = require('bw-circuit-ui/parts-data/tang_nano_20k.json');
+
+const codes = list => list.map(x => x.code).sort();
+
+test('the part under test really is the shipped Tang Nano', () => {
+    assert.equal(PART.kind, 'tang_nano_20k');
+    assert.equal(pinIndex(PART).size, 34,
+        'the bridge must see exactly the 34 free IOs the datasheet names; '
+        + 'power and ground carry no _fpgaPin');
+});
+
+test('IO_LOC and IO_PORT are parsed, comments and blank lines are not', () => {
+    const {constraints, problems} = parseCst(`
+        // a comment
+        IO_LOC "led" 15;
+        IO_PORT "led" IO_TYPE=LVCMOS33 DRIVE=8;
+
+        # another comment
+        IO_LOC "btn" 88;
+    `);
+    assert.deepEqual(problems, []);
+    assert.equal(constraints.get('led').pins[0], 15);
+    assert.equal(constraints.get('led').attrs.IO_TYPE, 'LVCMOS33');
+    assert.equal(constraints.get('btn').pins[0], 88);
+});
+
+test('a bus port keeps its base and index', () => {
+    assert.deepEqual(splitBit('led[3]'), {base: 'led', index: 3});
+    assert.deepEqual(splitBit('clk'), {base: 'clk', index: null});
+});
+
+test('a port with attributes but no placement is a NAMED problem, not a skip', () => {
+    const {problems} = parseCst('IO_PORT "orphan" IO_TYPE=LVCMOS33;');
+    assert.deepEqual(codes(problems), ['port-not-placed']);
+});
+
+test('a header pin binds to the terminal the board part actually exposes', () => {
+    const {constraints} = parseCst('IO_LOC "sig" 73;');
+    const {bindings, refusals} = bindPorts(constraints, PART);
+    assert.deepEqual(refusals, []);
+    assert.equal(bindings.length, 1);
+    assert.equal(bindings[0].pin, 73);
+    assert.equal(bindings[0].terminal, 'p73',
+        'terminal names are FPGA pin numbers, which is what a .cst uses');
+});
+
+test('a valid FPGA pin that is NOT on a header is refused by name', () => {
+    // 33-40 are the HDMI pairs, 4 is the 27 MHz clock, 69/70 the UART. All real
+    // pins; none of them reach a breadboard. This is the bridge's whole point.
+    for (const pin of [33, 40, 4, 69, 59]) {
+        const {constraints} = parseCst(`IO_LOC "sig" ${pin};`);
+        const {bindings, refusals} = bindPorts(constraints, PART);
+        assert.deepEqual(bindings, [], `pin ${pin} must not bind`);
+        assert.deepEqual(codes(refusals), ['pin-not-on-header'], `pin ${pin}`);
+        assert.match(refusals[0].reason, /not brought out to a header/);
+    }
+});
+
+test('two ports on one pin is refused, not last-one-wins', () => {
+    const {constraints} = parseCst('IO_LOC "a" 73;\nIO_LOC "b" 73;');
+    const {bindings, refusals} = bindPorts(constraints, PART);
+    assert.equal(bindings.length, 1, 'the first placement stands');
+    assert.deepEqual(codes(refusals), ['pin-claimed-twice']);
+    assert.match(refusals[0].reason, /short on real silicon/);
+});
+
+test('a pin that also drives onboard hardware binds, but warns', () => {
+    // Pin 15 is LED0. Driving it from the breadboard also moves the board's own
+    // LED, and a user who does not know that will misread their own circuit.
+    const {constraints} = parseCst('IO_LOC "sig" 15;');
+    const {bindings, refusals, warnings} = bindPorts(constraints, PART);
+    assert.deepEqual(refusals, []);
+    assert.equal(bindings.length, 1, 'it is usable, so it must still bind');
+    assert.deepEqual(codes(warnings), ['shares-onboard-hardware']);
+    assert.match(warnings[0].reason, /onboard hardware/);
+});
+
+test('a header pin with no onboard role binds silently', () => {
+    const {warnings} = bindPorts(parseCst('IO_LOC "sig" 86;').constraints, PART);
+    assert.deepEqual(warnings, [],
+        'pin 86 has no onboard function; warning about it would train users to ignore warnings');
+});
+
+test('an IO_TYPE the banks cannot provide warns and still binds', () => {
+    const {constraints} = parseCst('IO_LOC "sig" 73;\nIO_PORT "sig" IO_TYPE=LVCMOS18;');
+    const {bindings, warnings} = bindPorts(constraints, PART);
+    assert.equal(bindings.length, 1);
+    assert.deepEqual(codes(warnings), ['io-standard-mismatch']);
+    assert.match(warnings[0].reason, /3\.3|LVCMOS33/);
+});
+
+test('constraints and design must agree, in both directions', () => {
+    const {constraints} = parseCst('IO_LOC "led" 15;\nIO_LOC "ghost" 73;');
+    const ports = {led: {direction: 'output'}, lonely: {direction: 'input'}};
+    const {bindings, refusals} = bridge({constraints, part: PART, netlistPorts: ports});
+    assert.equal(bindings.length, 1);
+    assert.equal(bindings[0].direction, 'output', 'the direction comes from the design');
+    assert.deepEqual(codes(refusals), ['port-not-in-design', 'port-unplaced']);
+});
+
+test('a bus binds bit by bit, in pin order', () => {
+    const {constraints} = parseCst('IO_LOC "led[0]" 73;\nIO_LOC "led[1]" 74;');
+    const {bindings, refusals} = bindPorts(constraints, PART);
+    assert.deepEqual(refusals, []);
+    assert.deepEqual(bindings.map(b => [b.base, b.index, b.terminal]),
+        [['led', 0, 'p73'], ['led', 1, 'p74']]);
+});
