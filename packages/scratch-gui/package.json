@@ -112,8 +112,8 @@
     "@codemirror/language": "^6.10.8",
     "@codemirror/search": "^6.5.8",
     "@codemirror/theme-one-dark": "^6.1.2",
-    "bw-board": "github:CrispStrobe/bw-board#0a0480276f6621b80a21650ed84f42416a89206c",
-    "bw-circuit-ui": "github:CrispStrobe/bw-circuit-ui#2f63ed5b6b56cf2614c7cecdd9554db26fc24ffe"
+    "bw-board": "github:CrispStrobe/bw-board#76877a20bf0bdcca352eac3d9ae8872b1ac0def7",
+    "bw-circuit-ui": "github:CrispStrobe/bw-circuit-ui#1c8e82705c5c3e82c81ec00382a6462ffed63074"
   },
   "peerDependencies": {
     "react": "^16.0.0",
