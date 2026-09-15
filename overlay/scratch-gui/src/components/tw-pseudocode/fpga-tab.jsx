@@ -2,6 +2,7 @@ import React from 'react';
 import TANG_NANO_20K from 'bw-circuit-ui/parts-data/tang_nano_20k.json';
 import {parseCst} from '../../lib/bw-fpga/cst.js';
 import {bridge} from '../../lib/bw-fpga/port-bridge.js';
+import {applyPortValues} from '../../lib/bw-fpga/drive.js';
 
 /**
  * The FPGA / HDL surface — TN2 and TN2b of docs/TANG-NANO.md.
@@ -50,10 +51,16 @@ const Row = ({tone, children}) => (
 
 const FpgaTab = () => {
     const [text, setText] = React.useState(EXAMPLE);
-    const {bindings, refusals, warnings} = React.useMemo(() => {
+    const {bindings, refusals, warnings, plan} = React.useMemo(() => {
         const {constraints, problems} = parseCst(text);
         const out = bridge({constraints, part: TANG_NANO_20K});
-        return {...out, refusals: [...problems, ...out.refusals]};
+        // Dry run: the same call the circuit engine would take, against a
+        // recorder instead of a board. With no values -- because nothing models
+        // the fabric yet -- every output comes back as "undriven", which is the
+        // honest picture rather than a row of zeroes.
+        const ops = [];
+        const {unset} = applyPortValues({setPin: (...a) => ops.push(a)}, out.bindings, {});
+        return {...out, refusals: [...problems, ...out.refusals], plan: {ops, unset}};
     }, [text]);
 
     return (
@@ -109,8 +116,25 @@ const FpgaTab = () => {
                 </>
             ) : null}
 
+            <h3>{'What the circuit engine would be told'}</h3>
+            <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
+                {plan.ops.map(([terminal, mode], i) => (
+                    <Row key={i} tone="#4a6fa5">
+                        <code>{terminal}</code>{` → ${mode}`}
+                        {mode === 'input' ? <em style={{opacity: 0.8}}>{' (high-Z: the design reads it)'}</em> : null}
+                    </Row>
+                ))}
+                {plan.unset.map((u, i) => (
+                    <Row key={`u${i}`} tone="#7a7a7a">
+                        <code>{u.terminal}</code>
+                        {' — undriven: nothing models the design yet, so there is no value to put on it.'}
+                    </Row>
+                ))}
+                {plan.ops.length || plan.unset.length ? null : <li style={{opacity: 0.7}}>{'Nothing to drive.'}</li>}
+            </ul>
+
             <p style={{opacity: 0.7, marginTop: '1.5rem'}}>
-                {'Planned next: driving these terminals from the circuit engine, then hosted '}
+                {'Planned next: a model of the design to supply those values, then hosted '}
                 {'synthesis, then flashing from the native app.'}
             </p>
         </div>
