@@ -138,3 +138,32 @@ export function bridge ({constraints, part, netlistPorts = null, ioStandard} = {
 
     return result;
 }
+
+/**
+ * Regroup bindings back into constraint records, ready for emitCst.
+ *
+ * Bindings are PER PIN -- a multi-pin `IO_LOC "pair" 73,74;` produces two of
+ * them, both carrying the same `port`. Anything that rebuilds constraints by
+ * keying a Map on `port` therefore keeps only the last pin and silently drops
+ * the rest, and the file that leaves for real silicon is quietly wrong.
+ *
+ * This is that regrouping, in one place with a test, rather than re-derived by
+ * each caller. `source` (the original parsed constraints) is optional and only
+ * carries the IO_PORT attributes across.
+ */
+export function constraintsFromBindings (bindings, source = null) {
+    const byPort = new Map();
+    for (const b of bindings || []) {
+        const existing = byPort.get(b.port);
+        if (existing) {
+            if (!existing.pins.includes(b.pin)) existing.pins.push(b.pin);
+            continue;
+        }
+        const attrs = source instanceof Map
+            ? (source.get(b.port) || {}).attrs
+            : undefined;
+        byPort.set(b.port, {port: b.port, pins: [b.pin], ...(attrs ? {attrs} : {})});
+    }
+    for (const c of byPort.values()) c.pins.sort((x, y) => x - y);
+    return byPort;
+}
