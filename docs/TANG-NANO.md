@@ -1,8 +1,28 @@
 # Tang Nano 20K (Gowin GW2AR-18) — decisions and implementation plan
 
-Scoped 2026-09-15. Supersedes two earlier drafts of this file: one that assumed
-the 9K, one that left the architecture open. The architecture is now decided and
-recorded below. **Nothing is built. No lane is claimed.**
+Scoped 2026-09-15, and **partly built the same day** — this file is no longer a
+plan alone. Supersedes two earlier drafts: one that assumed the 9K, one that
+left the architecture open.
+
+## Status, as of 2026-09-15
+
+| phase | state |
+|---|---|
+| **TN0** board part + 3.3 V DRC | **landed** — `bw-circuit-ui` PR #24, in lite via the pin move |
+| **TN1** `gate-level` semantics | **landed** — `bw-board` PR #6, in lite via the pin move |
+| pins moved into lite | **landed** — lite PR #112 (`bw-board` 76877a2, `bw-circuit-ui` 1c8e827) |
+| **TN2** HDL surface behind `BW_ENABLE_FPGA` | **landed** — lite PR #113 |
+| **TN2b** the pin bridge | **in review** — lite PR #114 |
+| inert-rail DRC rule (a TN0 follow-up) | **in review** — `bw-circuit-ui` PR #25 |
+| TN3 hosted synthesis · TN4 flashing · TN5a/TN5b · TN6 | not started |
+
+**What works today:** the Tang Nano 20K places and wires on a breadboard with a
+real pinout, the 3.3 V rule catches 5 V fed back into a bank pin, and — behind
+the flag — a Gowin `.cst` is read against the real part to say which ports reach
+the board, with an output port driving a real LED through the real solver.
+
+**What does not exist:** synthesis, any model of the fabric, flashing, and every
+SoC. The surface says so, and a test refuses text that would claim otherwise.
 
 Hardware in hand: `GW2AR-LV18QN88C8/I7`, QN88, **20736 LUT4 / 15552 FF**,
 64 Mbit SDRAM in package, HDMI, microSD, RGB LED, 27 MHz input, onboard
@@ -563,6 +583,42 @@ Verilator as a shipped dependency; DSP or SERDES primitives; HDMI beyond a test
 pattern; a `gate-level` tier that claims to model timing; and **the tab on by
 default**.
 These are follow-ons or separate decisions, not acceptance shortcuts.
+
+## 8b. Two things only building it revealed
+
+Both cost a debugging detour and are recorded so the next person does not repeat
+them.
+
+### The board's own power pins are inert, and that looks like a broken part
+
+`tang_nano_20k` is a `PASSTHROUGH` kind: the engine models it as driveable
+terminals and **nothing else**. Its GND, 3V3 and 5V pins are places to wire, not
+sources. A bench returning an LED's cathode to the board's own `gnd_1` reads
+**1.3e-10 A** — indistinguishable from a broken part, and the available
+conclusion is "the simulator is lying".
+
+It is not; the loop is open. On real hardware that circuit works, which is
+exactly why nobody suspects the bench. Wiring the return leg to the board's
+ground pin is the obvious first move, so the trap sits on the most likely first
+circuit anyone builds with this part.
+
+A `board-rail-not-simulated` **warning** now names it (bw-circuit-ui PR #25) —
+warning and not danger, because the bench is wrong and the circuit is not, and
+firing only when something is actually wired to the pin. **The real fix is an
+engine device for the board so its rails carry current like the hardware does.**
+That is unbuilt and worth doing.
+
+### The engine's current sign convention changed under us
+
+The pin move adopted bw-circuit-ui `4aea457`, *"Align CUI raw currents with
+positive-OUT contract"*: raw current is signed **positive OUT of the probed
+terminal**, so a forward LED current, which ENTERS the anode, reads negative.
+Four lite benches encoded the old convention and were the stale party; their
+assertions moved to the contract, with no expected magnitude changed — which is
+the check that distinguishes a convention from a drift.
+
+Anything reading a current from this engine needs to know this. It is not
+specific to the FPGA work; it just surfaced here first.
 
 ## 9. Still open, deliberately
 
