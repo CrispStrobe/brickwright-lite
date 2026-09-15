@@ -110,6 +110,57 @@ a flag. `vendor-source-guard` separately refuses a sync from a checkout that is
 neither ancestor nor descendant of the upstream default branch, so a stale clone
 cannot sync lite backwards.
 
+## What a pin move strands — the checklist, measured 2026-09-15
+
+Moving `bw-board` and `bw-circuit-ui` took THREE red CI rounds, and not one of
+them was the pin itself. Every failure was a generated artefact still naming the
+old sha. They are listed here because the set is discoverable up front and was
+instead found one round at a time.
+
+`pin-packages.mjs --set` moves the pin and makes `package.json` and
+`package-lock.json` follow. It does NOT touch anything below.
+
+| artefact | regenerate with | found by |
+|---|---|---|
+| `docs/generated/I8086-CAPABILITY-REPORT.md` | `npm run gen:8086-report` | `pin-move-chain` |
+| `docs/generated/bw-board-census.json` + both `census-snapshot.js` mirrors | `gen-bw-board-census.mjs --dir <checkout at the new pin>` | `pin-move-chain` |
+| `docs/generated/LANGUAGE-DEVICE-MATRIX.md` | `npm run gen:matrix` | `bw-matrix-doc` |
+| both `static/licenses/bw-packages.sources.json` | `package-upstream-notices.mjs` | the **browser** gates |
+| `static/roms/i8086-demos.provenance.json` | `sync-i8086-demo-roms.mjs --dir <checkout> --write` | `circuit-preset-roms-resolve` |
+| `static/roms/i8086-bios.provenance.json` | `sync-i8086-bios.mjs --dir <checkout> --write` | `i8086-bios-provenance` |
+
+Then `node scripts/integrate.mjs`, because several of those have tracked mirrors
+under `packages/scratch-gui/`.
+
+Four things that cost time and are not obvious:
+
+- **The matrix is SECOND-ORDER.** `gen:matrix:check` passed until the census was
+  regenerated, and went stale because of it. Checking the set once, before
+  regenerating anything, gives a clean bill of health that is wrong.
+- **The ROM syncs verify by default and only record with `--write`.** Running
+  them without it prints "all ROMs match" and changes nothing, which reads like
+  success.
+- **`gen:census:check` and `gen:hosted-targets:check` REQUIRE `--dir`.** Run
+  bare, they exit non-zero with a usage error that is easy to read as staleness.
+  Two of the five "stale" results in my first sweep were this.
+- **Check exit codes, not the tail of a pipeline.** `script --check | tail` is
+  `tail`'s status, and it reported a stale census as up to date.
+
+### And a pin move is not scoped to the change that motivated it
+
+That move adopted **58 bw-board commits and 113 bw-circuit-ui commits**; three
+were the ones being delivered. One of the others changed the engine's current
+sign convention (`4aea457`, positive-OUT), and four lite benches encoded the old
+one. Those assertions moved to the contract with **no expected magnitude
+changed**, which is the check that separates a convention change from a drift.
+
+Budget a pin move as an adoption of everything upstream has accumulated, and
+read the range first:
+
+```bash
+git -C <upstream> log --oneline <old-pin>..<new-pin>
+```
+
 ## What stops a divergence appearing
 
 **For `bw-board` and `bw-circuit-ui` the answer is now structural: there is no
