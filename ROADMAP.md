@@ -833,12 +833,42 @@ today, only `BW_VERSION` and `BW_BUILD_TIME`. Enabling by default is a separate
 later decision that **may never be taken**. Which tiers appear inside the surface
 follows the `LABWIRED_KIND` probe rule, not the flag.
 
+**THE CORES ARE A SEPARATE LICENCE QUESTION AND IT GOES THE OTHER WAY.** The
+toolchain is uniformly permissive; the HDL you would actually put on the board is
+not. Checked 2026-09-15: the C64 core for this exact board
+(`vossstef/tang_nano_20k_c64` -> `MiSTle-Dev/C64Nano`) is **GPL-3.0**, as are
+NESTang, SNESTang, `NES_MiSTer` and `fx68k`; `C64_MiSTer`, `BBCMicro_MiSTer`,
+`Minimig-AGA_MiSTer` and Arlet's `verilog-6502` declare **no licence at all**,
+which is worse — no permission, not "probably fine". GPL cores can use the
+gallery-extension escape hatch (fetched at runtime, never bundled), **but hosted
+synthesis makes our server a GPL distributor with a source-offer obligation —
+an owner decision to settle before TN3 serves one.** ROMs are a second wall:
+C64 KERNAL/BASIC/CHARGEN and the Acorn sets are copyrighted, so user-supplied or
+licensed only, on the existing `bw-board/roms/` provenance practice. **Hence the
+retro route is an SBC, not a home computer** — the same trap the M68K entry above
+names ("not an Amiga … a small serial SBC").
+
 **Phases:** TN0 board part + 3.3 V DRC (ships alone, unflagged, needs none of the
 above to be right) · TN1 `gate-level` upstream + pin move · TN2 surface behind the
-flag with digitaljs on canned designs · TN3 hosted synthesis · TN4 flashing in
-Tauri · TN5 LiteX + VexRiscv + Renode · TN6 local WASM opt-in with a differential
-gate. Explicit non-goals: Linux, Z80/6502 soft cores, Verilator as a shipped
-dependency, DSP/SERDES, HDMI beyond a test pattern, and the tab on by default.
+flag with digitaljs on canned designs · **TN2b the pin bridge — netlist ports into
+the MNA circuit engine (`pin-model.js`/`pin-functions.js`/`infer-netlist.js` are
+the seam; plausibly the highest-value item in the plan, and independent of every
+SoC decision)** · TN3 hosted synthesis · TN4 flashing in Tauri · **TN5a LiteX +
+VexRiscv + Renode** · **TN5b a 6502/Z80 SBC with our own emulator as its
+functional tier, in parallel and not instead** · TN6 local WASM opt-in with a
+differential gate.
+
+**TN5a and TN5b are additive.** Six of seven phases are SoC-agnostic — Yosys,
+nextpnr and apicula do not care what the HDL describes — and only the functional
+tier forks. TN5a's `csr.json` *generates* its Renode platform; TN5b's
+correspondence is *asserted* and closed by a differential gate instead, the
+`ucsim-stc`/`simavr` pattern. TN5b is strictly better in one respect: Renode is
+.NET and desktop-only, while `z80.js` already runs in the browser, so a retro
+personality is live-debuggable on a Chromebook where VexRiscv is replay-only.
+
+Explicit non-goals: Linux, complete home computers, shipping any GPL or
+unlicensed core, Verilator as a shipped dependency, DSP/SERDES, HDMI beyond a
+test pattern, and the tab on by default.
 
 **Open and blocking:** which USB-JTAG bridge is on our 20K revision (FTDI vs
 Bouffalo BL702/BL616) — per-bridge WebUSB work plus the Windows WinUSB/Zadig

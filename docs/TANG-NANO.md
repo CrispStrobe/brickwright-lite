@@ -33,6 +33,9 @@ Implementation note that otherwise costs an afternoon: **C-grade devices require
 | 13 | Verilator | **dev-side oracle only**; not a shipped dependency |
 | 14 | slice one | board part + 3.3 V DRC rule, nothing else |
 | 15 | delivery | own `lane/…` branch; surface hidden behind a build-time flag |
+| 16 | retro cores | pursued as **TN5b, in parallel with TN5a** — not instead of it |
+| 17 | retro scope | a **6502/Z80 SBC**, not a home computer |
+| 18 | pin bridge | its own phase (**TN2b**) — netlist ports into the MNA engine |
 
 ## 2. The licence position, verified
 
@@ -103,6 +106,72 @@ would cost, since the analysis is done:
 
 Revisit only if signal-level waveforms are actually wanted as a *shipped*
 feature.
+
+## 2.2 The cores are a separate licence question, and it goes the other way
+
+§2 is about the **toolchain**, and it is uniformly permissive. The **cores** —
+the HDL you would actually put on the board — are not. Checked 2026-09-15
+against the GitHub licence API:
+
+| core | licence |
+|---|---|
+| C64 for Tang Nano 20K (`vossstef/tang_nano_20k_c64` -> `MiSTle-Dev/C64Nano`) | **GPL-3.0** |
+| NESTang / SNESTang (nand2mario; both target the 20K) | **GPL-3.0** |
+| `NES_MiSTer` | **GPL-3.0** |
+| `fx68k` (68000) | **GPL-3.0** |
+| `C64_MiSTer`, `BBCMicro_MiSTer`, `Minimig-AGA_MiSTer` | **no licence declared** |
+| Arlet's `verilog-6502` | **no licence declared** |
+
+**The retro FPGA core ecosystem is almost entirely GPL-3.0 or unlicensed**, and
+**unlicensed is worse than GPL here** — no licence means no permission at all,
+not "probably fine". Three buckets, and they are not equal:
+
+- **Own or permissive HDL** — shippable. Includes anything we write.
+- **GPL cores** — the existing escape hatch applies: *fetched at runtime from a
+  URL, never bundled*, exactly as the GPL gallery extensions are. **But note the
+  wrinkle:** hosted synthesis means our server compiles GPL source and returns a
+  bitstream. That is distribution, and it makes the service a GPL distributor
+  with a source-offer obligation. Probably satisfiable (the source is public and
+  we can point at it), but it is an **owner decision, not an implementation
+  detail** — settle it before TN3 serves a GPL core.
+- **Unlicensed** — unusable. Full stop.
+
+### ROMs are a second wall
+
+A complete home computer needs its ROMs, and they are copyrighted: C64
+KERNAL/BASIC/CHARGEN (Cloanto claims them), Acorn/BBC ROMs their own situation.
+**Never bundled** — user-supplied or licensed only. The practice already exists
+here (`bw-board/roms/`, BIOS provenance recorded by sha256), so this is a known
+shape rather than a new problem. It does mean "C64 on the Tang Nano" can never
+be one click.
+
+### Which is why the retro route is an SBC, not a home computer
+
+The 6502 and Z80 are the sweet spot: small (roughly 1–3k LUT4 each — **estimates
+to be measured, not facts**), well understood, and **we already own the
+emulators** that become their functional tier. A clean or permissively-licensed
+core is tractable in a way a C64 never will be.
+
+This mirrors how [ROADMAP.md](../ROADMAP.md)'s M68K entry scopes its own trap:
+*"The first machine is not an Amiga, Macintosh, or Mega Drive. It is a small
+serial SBC."* Same discipline, same reason.
+
+### What fits at all
+
+20736 LUT4 / 15552 FF / 8 MB SDRAM. **LUT figures below are estimates and must
+be measured before anything is promised:**
+
+| core | ~LUT4 | verdict |
+|---|---|---|
+| 6502 | 1–2k | fits easily |
+| Z80 (T80) | 2–3k | fits easily |
+| AVR | 2–3k | fits easily |
+| 68000 | 5–8k | fits |
+| Acorn Electron (6502 + ULA) | small | would fit; **no known 20K port**, MiSTer version unlicensed |
+| C64 | — | **proven** on this exact board (C64Nano) |
+| NES / SNES | — | **proven** (NESTang / SNESTang); SNES reportedly tight |
+| 8086/80186 (Next186 class) | ~10k+ | plausible but tight |
+| Amiga (Minimig-AGA) | — | too big, and unlicensed |
 
 ## 3. The tier model
 
@@ -287,7 +356,7 @@ markers with no `MERGE_HEAD` — stale leftover state, not an active merge.
 Nothing can be claimed until that is resolved, and resolving `vendor-pins.json`
 means deciding which `bw-board`/`bw-circuit-ui` shas are correct. Owner call.
 
-## 8. Implementation plan — TN0 to TN6
+## 8. Implementation plan — TN0 to TN6, two routes from TN5
 
 Each phase is independently reviewable and names its own acceptance. Phases are
 ordered by dependency, not by appeal.
@@ -348,6 +417,20 @@ one canned netlist simulates and its signals are observable; the notices carry
 digitaljs by name, licence and holder.
 **Note.** No user HDL authoring yet, and the UI must be careful not to imply it.
 
+### TN2b — The pin bridge into the circuit engine
+**Deliver.** Top-level ports of a synthesised netlist exposed as pins the **MNA
+circuit engine** can drive and read, so an FPGA design lights an LED on the
+virtual breadboard beside it. The seam exists in `bw-board` — `pin-model.js`,
+`pin-functions.js`, `infer-netlist.js` — but nothing today connects a Yosys
+netlist's ports to circuit nodes.
+**Accept.** A design with one input and one output drives a real part on the
+breadboard, and the DRC still applies to the pin it drives.
+**Why this is called out separately.** It was implied by TN2 and should not have
+been. **This is plausibly the highest-value item in the whole plan** — "write
+Verilog, watch it light an LED on the breadboard beside it" is something nothing
+else does, and it is the point where the FPGA stops being a separate app and
+becomes part of this one. It is also independent of every SoC decision.
+
 ### TN3 — Hosted synthesis
 **Deliver.** Verilog in, **bitstream + Yosys netlist JSON out**, from a hosted
 yosys/nextpnr/apicula route beside the existing compile route.
@@ -362,7 +445,7 @@ serial and ScratchLink transports; browsers get a bitstream **file download**.
 **Accept.** The board in hand blinks from a bitstream this project produced.
 **Blocked on.** Identifying the USB-JTAG bridge on our revision — see §9.
 
-### TN5 — LiteX + VexRiscv + Renode, the functional tier
+### TN5a — LiteX + VexRiscv + Renode, the functional tier
 **Reconcile before planning.** Overlaps the UNCLAIMED Renode phases of the STM32
 lane (`LANES.md`, STM32 path lane) and the existing `wt-renode-*` worktrees. Talk to that
 lane's owner; do not open a parallel Renode track.
@@ -372,6 +455,38 @@ that `bw-debug` replays for web users.
 **Accept.** The same SoC description drives both the simulation and a bitstream
 that runs on the board; a trace replays in the existing inspection UI; the
 desktop/web difference (live vs replay) is **stated in the UI**, not discovered.
+
+### TN5b — A retro SBC, in parallel with TN5a and not instead of it
+**The two routes are additive, not exclusive.** Six of the seven phases —
+TN0, TN1, TN2, TN2b, TN3, TN4, TN6 — are SoC-agnostic: Yosys, nextpnr and
+apicula do not care what the HDL describes. **Only the functional tier forks.**
+
+**Deliver.** A small 6502 or Z80 SBC in HDL — CPU, RAM, ROM, a UART, and GPIO
+into the breadboard — with **our own `z80.js` / `w65c02.js` as the functional
+tier** rather than Renode.
+
+**What differs from TN5a, and it is one thing.** A LiteX SoC's `csr.json`
+*generates* the Renode platform, so simulation and bitstream provably share one
+description. A hand-written SBC has no such generator, so the correspondence
+between our emulator and the HDL is **asserted, not generated**. That is not a
+blocker — it is a claim needing different evidence, and this project already
+has the culture for it: a **differential gate**, the same program on `z80.js`
+and on real silicon, compared. `ucsim-stc`, `simavr` and the `emu8051-stc`
+differential runner are the precedent.
+
+**Where TN5b is strictly better than TN5a.** Renode is .NET and desktop-only, so
+VexRiscv debugging is live in Tauri and replay-only on the web. `z80.js` is ours
+and **already runs in the browser**, wired into `bw-debug` — so a retro
+personality is **live-debuggable on a Chromebook**, which the RISC-V one cannot
+be. The retro route is not the poor relation.
+
+**Accept.** A program runs on the SBC in the browser and on the real board, and
+a differential gate holds the two to the same observable behaviour.
+
+**Why second, and it is only ordering.** TN5a first because LiteX hands over the
+most working infrastructure for the least effort — a known-good board target, an
+SoC that builds, a generated simulator. TN5b reuses the synthesis and flashing
+that TN3/TN4 prove out. Both ship.
 
 ### TN6 — Local WASM synthesis, opt-in
 **Deliver.** `@yowasp/yosys` + `@yowasp/nextpnr-himbaechel-gowin` fetched on the
@@ -386,14 +501,21 @@ the download leaves every other tier working.
     TN0 ──────────────────────────────► (ships alone)
     TN1 ──┬──► TN3 ──┬──► TN4
           │          └──► TN6
-          └──► TN2
-    TN3 ──────────► TN5 (also needs TN4 for the silicon half)
+          └──► TN2 ──► TN2b
+    TN3 ──┬──► TN5a   (LiteX + VexRiscv + Renode)
+          └──► TN5b   (retro SBC + our own emulator)
+    both TN5a and TN5b also need TN4 for the silicon half.
 
-### Explicit non-goals for TN0–TN6
+TN0, TN1, TN2, TN2b, TN3, TN4 and TN6 are SoC-agnostic and serve both routes.
+Only TN5a/TN5b fork.
 
-Linux on the soft CPU (8 MB SDRAM); Z80/6502 soft cores; Verilator as a shipped
-dependency; DSP or SERDES primitives; HDMI beyond a test pattern; a
-`gate-level` tier that claims to model timing; and **the tab on by default**.
+### Explicit non-goals for the whole plan
+
+Linux on the soft CPU (8 MB SDRAM); **complete home computers** (C64, Electron,
+Amiga — licence and ROM walls, see §2.2); shipping any GPL or unlicensed core;
+Verilator as a shipped dependency; DSP or SERDES primitives; HDMI beyond a test
+pattern; a `gate-level` tier that claims to model timing; and **the tab on by
+default**.
 These are follow-ons or separate decisions, not acceptance shortcuts.
 
 ## 9. Still open, deliberately
