@@ -54,7 +54,13 @@ export function parseCst (text) {
                     reason: `IO_LOC for "${port}" does not name a numeric pin.`});
                 return;
             }
-            if (constraints.has(port)) {
+            // PLACED twice, not merely mentioned twice. An IO_PORT line before
+            // the IO_LOC is ordinary and legal -- Gowin's own examples do it --
+            // so keying this on "an entry exists" reported a duplicate for every
+            // port that declared its attributes first. Found by the emit/parse
+            // round-trip, which is exactly the shape that hits it.
+            const prior = constraints.get(port);
+            if (prior && Array.isArray(prior.pins) && prior.pins.length) {
                 problems.push({code: 'duplicate-port', lineNumber, port,
                     reason: `"${port}" is placed more than once; the later IO_LOC wins in Gowin, `
                         + 'so the two lines disagree about where the signal goes.'});
@@ -90,4 +96,46 @@ export function parseCst (text) {
     }
 
     return {constraints, problems};
+}
+
+/**
+ * Emit constraints back out as a .cst the real Gowin toolchain will accept.
+ *
+ * The loop this closes matters more than the code: a design wired up here can
+ * leave, unchanged, for openFPGALoader and real silicon. Without it this surface
+ * is a viewer, and everything a user does in it has to be retyped somewhere else
+ * to be worth anything.
+ *
+ * Deliberately canonical rather than round-trip-faithful: comments, ordering and
+ * whitespace from the input are NOT preserved. The parser's output is the
+ * contract, so `parseCst(emitCst(parseCst(x)))` must equal `parseCst(x)` --
+ * which is the property the tests assert, and is a stronger claim than
+ * byte-equality would be, because byte-equality can hold while the meaning
+ * drifts.
+ *
+ * @param {Map|Iterable} constraints  from parseCst
+ * @param {{header?: string}} [options]
+ * @returns {string}
+ */
+export function emitCst (constraints, {header = null} = {}) {
+    const entries = constraints instanceof Map
+        ? Array.from(constraints.values())
+        : Array.from(constraints || []);
+
+    const placed = entries.filter(c => Array.isArray(c.pins) && c.pins.length);
+    // Pin order, not declaration order: a .cst read by a human is read by pin.
+    placed.sort((a, b) => a.pins[0] - b.pins[0] || (a.port < b.port ? -1 : 1));
+
+    const lines = [];
+    if (header) for (const line of String(header).split(/\r?\n/)) lines.push(`// ${line}`);
+
+    for (const c of placed) {
+        lines.push(`IO_LOC  "${c.port}" ${c.pins.join(',')};`);
+        const attrs = c.attrs || {};
+        const keys = Object.keys(attrs).sort();
+        if (keys.length) {
+            lines.push(`IO_PORT "${c.port}" ${keys.map(k => `${k}=${attrs[k]}`).join(' ')};`);
+        }
+    }
+    return lines.length ? `${lines.join('\n')}\n` : '';
 }
