@@ -44,6 +44,26 @@ Two things that survey corrects, because both are stale in the CLAUDE.md files:
 
 ---
 
+## Not built: Tang Nano 20K (Gowin FPGA) — scoped 2026-09-15
+
+Listed here so this matrix is not read as "no FPGA was ever considered".
+**Nothing is implemented and no lane is claimed.** Decisions, licence
+verification and the TN0–TN6 phase plan are in [TANG-NANO.md](TANG-NANO.md).
+
+An FPGA does not fit the module columns above, because the board is not a device
+with an instruction set — it is whatever was loaded onto it. The scoped model
+adds a fourth `MACHINE_SEMANTICS` value, `gate-level`, beneath `wired-digital`,
+and names the board (`tangnano20k`) in `DEVICE` with the SoC as a separate
+field — precisely so that adding a personality never mints a new permanent id.
+That is the `stc12` lesson in §3 above, applied before the fact rather than
+after.
+
+One correction this matrix owes: the **250 MB function limit** cited under the
+compiler section is stale. Fluid Compute now allows 5 GB packages, which changes
+the hosted-toolchain arithmetic for any large toolchain, not only the FPGA one.
+
+---
+
 ## What each module would need
 
 Ordered by cost, cheapest first. The ratio is stark: three of the four boards
