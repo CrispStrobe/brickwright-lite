@@ -770,6 +770,111 @@ disk controllers, a commercial ROM, and any named home computer/console custom
 chipset. Those are dependency-complete follow-ons, not acceptance shortcuts for
 the SBC.
 
+
+#### Tang Nano 20K — FPGA execution tiers — SCOPED 2026-09-15, UNCLAIMED
+
+Full decisions, rationale and the TN0–TN6 phase plan in
+[`docs/TANG-NANO.md`](docs/TANG-NANO.md). Summary and evidence here so the
+roadmap is not missing a hardware track that exists only in another file.
+
+The board in hand is `GW2AR-LV18QN88C8/I7` (QN88, **20736 LUT4 / 15552 FF**,
+64 Mbit SDRAM in package, HDMI, microSD, 27 MHz in). **8 MB of SDRAM rules out
+Linux on the soft CPU**; do not plan for it. C-grade devices require
+`--vopt family` passed to nextpnr and gowin_pack.
+
+**The licence question resolves in our favour, which was not expected.** Checked
+2026-09-15 against the GitHub licence API and upstream LICENSE files: Yosys ISC,
+nextpnr ISC, Project Apicula MIT, openFPGALoader **Apache-2.0**, LiteX
+BSD-2-Clause, litex-renode Apache-2.0, Renode **MIT**, digitaljs BSD-2-Clause.
+The GPL problem that forced `stc-compiler.vercel.app` does not recur here — for
+the Gowin flow, *where* a tool runs is a question about weight, not
+contamination. Two consequences: **Renode is the first heavyweight simulator we
+may legitimately bundle** (the never-bundle oracle policy exists because
+`ucsim-stc` is GPL, and Renode is not), and `hneemann/Digital` is GPL-3.0 and
+excluded. Verilator is `LGPL-3.0-only OR Artistic-2.0` and stays a **dev-side
+oracle**, beside `simavr` — running a tool does not licence its output, so that
+use needs no policy change; shipping its runtime would, and we are not.
+
+**Measured, npm `release` dist-tag, 2026-09-15:** `@yowasp/yosys` 0.68.1207 is
+**78.3 MB** unpacked and `@yowasp/nextpnr-himbaechel-gowin` 0.11.825 is
+**183.3 MB** — 261 MB combined, **13x labwired's 20 MB**, against a first-load
+payload that measured 5.53 MB and ratchets against 7. Place and route is
+therefore **hosted by default**, with local WASM an explicit opt-in on the
+labwired fetch-and-sha256 pattern and a differential gate owed between the two
+backends. `digitaljs` 0.14.2 is 14.6 MB and is the gate-level tier. (Naming
+trap: `@yowasp/nextpnr-himbaechel` alone does not exist on npm; the Gowin flow
+is the `-gowin` package.)
+
+**The unifying model is the existing one.** `bw-board`'s `execution-policy.js`
+freezes `MACHINE_SEMANTICS = ['dos-services', 'functional-hardware',
+'wired-digital']`; the FPGA adds a fourth value, **`gate-level`**, beneath
+`wired-digital` — a netlist is logic and nets, not bus phases, and stretching
+`wired-digital` to cover it would damage a definition the 8086 path depends on.
+That is an upstream `bw-board` change arriving through the pin-move chain, so it
+**cannot be validated locally until the pin moves**: longest lead in the plan,
+start it first. Real silicon is deliberately **not** a tier — flashing is its own
+action, because a dropdown entry that needs a cable and can fail physically is
+not the same category as three reversible simulation tiers.
+
+**LiteX is the single source.** `litex_boards/targets/sipeed_tang_nano_20k.py`
+exists upstream and is not a stub (27 MHz in, 48 MHz sys, `GENSDRPHY`,
+`--with-video-terminal`, `--with-spi-sdcard`, `--flash`). `csr.json` feeds
+litex-renode to generate `.repl`/`.resc`, and the same description feeds
+yosys/nextpnr/apicula to a bitstream — so simulation and silicon cannot drift.
+**Cost accepted knowingly:** Renode knows RISC-V and ARM, not Z80, so choosing
+VexRiscv gives up the retro-core story the README leads with; `z80.js` and
+`w65c02.js` are not reused and nothing in TN0–TN5 serves that audience.
+
+**Delivery is gated.** Own `lane/…` branch, claimed in `LANES.md` in the same
+push as the first commit; the HDL surface (its own surface, **not** a Code-tab
+language) ships hidden behind a build-time `BW_ENABLE_FPGA` so a flag-off build
+pays nothing — there is no general feature-flag mechanism in the GUI overlay
+today, only `BW_VERSION` and `BW_BUILD_TIME`. Enabling by default is a separate
+later decision that **may never be taken**. Which tiers appear inside the surface
+follows the `LABWIRED_KIND` probe rule, not the flag.
+
+**THE CORES ARE A SEPARATE LICENCE QUESTION AND IT GOES THE OTHER WAY.** The
+toolchain is uniformly permissive; the HDL you would actually put on the board is
+not. Checked 2026-09-15: the C64 core for this exact board
+(`vossstef/tang_nano_20k_c64` -> `MiSTle-Dev/C64Nano`) is **GPL-3.0**, as are
+NESTang, SNESTang, `NES_MiSTer` and `fx68k`; `C64_MiSTer`, `BBCMicro_MiSTer`,
+`Minimig-AGA_MiSTer` and Arlet's `verilog-6502` declare **no licence at all**,
+which is worse — no permission, not "probably fine". GPL cores can use the
+gallery-extension escape hatch (fetched at runtime, never bundled), **but hosted
+synthesis makes our server a GPL distributor with a source-offer obligation —
+an owner decision to settle before TN3 serves one.** ROMs are a second wall:
+C64 KERNAL/BASIC/CHARGEN and the Acorn sets are copyrighted, so user-supplied or
+licensed only, on the existing `bw-board/roms/` provenance practice. **Hence the
+retro route is an SBC, not a home computer** — the same trap the M68K entry above
+names ("not an Amiga … a small serial SBC").
+
+**Phases:** TN0 board part + 3.3 V DRC (ships alone, unflagged, needs none of the
+above to be right) · TN1 `gate-level` upstream + pin move · TN2 surface behind the
+flag with digitaljs on canned designs · **TN2b the pin bridge — netlist ports into
+the MNA circuit engine (`pin-model.js`/`pin-functions.js`/`infer-netlist.js` are
+the seam; plausibly the highest-value item in the plan, and independent of every
+SoC decision)** · TN3 hosted synthesis · TN4 flashing in Tauri · **TN5a LiteX +
+VexRiscv + Renode** · **TN5b a 6502/Z80 SBC with our own emulator as its
+functional tier, in parallel and not instead** · TN6 local WASM opt-in with a
+differential gate.
+
+**TN5a and TN5b are additive.** Six of seven phases are SoC-agnostic — Yosys,
+nextpnr and apicula do not care what the HDL describes — and only the functional
+tier forks. TN5a's `csr.json` *generates* its Renode platform; TN5b's
+correspondence is *asserted* and closed by a differential gate instead, the
+`ucsim-stc`/`simavr` pattern. TN5b is strictly better in one respect: Renode is
+.NET and desktop-only, while `z80.js` already runs in the browser, so a retro
+personality is live-debuggable on a Chromebook where VexRiscv is replay-only.
+
+Explicit non-goals: Linux, complete home computers, shipping any GPL or
+unlicensed core, Verilator as a shipped dependency, DSP/SERDES, HDMI beyond a
+test pattern, and the tab on by default.
+
+**Open and blocking:** which USB-JTAG bridge is on our 20K revision (FTDI vs
+Bouffalo BL702/BL616) — per-bridge WebUSB work plus the Windows WinUSB/Zadig
+driver claim Web Serial avoids. Blocks any flashing promise in the UI; answer
+before TN4.
+
 ### 3.5 Circuits engine & interchange campaign — SCOPED 2026-08-23, upstream-first
 
 The full engine/format survey (2026-08-23) produced fully-scoped work items in the
