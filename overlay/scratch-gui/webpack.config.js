@@ -95,6 +95,14 @@ const baseConfig = new ScratchWebpackConfigBuilder(
         // comparing bundle hashes against the repo by hand, which is not something a user can
         // be asked to do — and every bug report is unanswerable until you know the version.
         // CI sets GITHUB_SHA; a local build falls back to asking git; neither is fatal.
+        // Brickwright: the FPGA/HDL surface is OFF unless a build asks for it.
+        // A BUILD-TIME flag, not a runtime toggle, on purpose: webpack
+        // dead-code-eliminates the branch, so an off build carries no tab, no
+        // chunk and no gate-level dependency at all. First-load payload measured
+        // 5.53 MB and ratchets against 7 (see bw-board target-kinds.js), which a
+        // runtime toggle could not promise. Enabling it by DEFAULT is a separate,
+        // later decision that may never be taken -- see docs/TANG-NANO.md.
+        'process.env.BW_ENABLE_FPGA': JSON.stringify(process.env.BW_ENABLE_FPGA === '1'),
         'process.env.BW_VERSION': JSON.stringify(buildVersion()),
         'process.env.BW_BUILD_TIME': JSON.stringify(new Date().toISOString()),
         'process.env.DEBUG': Boolean(process.env.DEBUG),
