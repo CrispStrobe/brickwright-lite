@@ -10,7 +10,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {parseCst, splitBit, emitCst} from '../overlay/scratch-gui/src/lib/bw-fpga/cst.js';
-import {bindPorts, bridge, pinIndex} from '../overlay/scratch-gui/src/lib/bw-fpga/port-bridge.js';
+import {bindPorts, bridge, pinIndex, constraintsFromBindings} from '../overlay/scratch-gui/src/lib/bw-fpga/port-bridge.js';
 
 const require = createRequire(import.meta.url);
 const PART = require('bw-circuit-ui/parts-data/tang_nano_20k.json');
@@ -185,4 +185,24 @@ test('IO_PORT before IO_LOC is legal, and is not a duplicate', () => {
 test('two IO_LOC lines for one port IS a duplicate', () => {
     const {problems} = parseCst('IO_LOC "led" 73;\nIO_LOC "led" 74;');
     assert.deepEqual(problems.map(p => p.code), ['duplicate-port']);
+});
+
+test('a multi-pin placement survives the trip back out', () => {
+    // Bindings are PER PIN, so `IO_LOC "pair" 73,74;` makes two of them with the
+    // same port. Rebuilding constraints by keying a Map on the port keeps only
+    // the last pin, and the .cst that leaves for real silicon is quietly wrong
+    // by one pin. That is what this regrouping exists to prevent.
+    const {constraints} = parseCst('IO_LOC "pair" 73,74;\nIO_PORT "pair" IO_TYPE=LVCMOS33;');
+    const {bindings, refusals} = bindPorts(constraints, PART);
+    assert.deepEqual(refusals, []);
+    assert.equal(bindings.length, 2, 'one binding per pin');
+
+    const regrouped = constraintsFromBindings(bindings, constraints);
+    assert.equal(regrouped.size, 1, 'one constraint per port');
+    assert.deepEqual(regrouped.get('pair').pins, [73, 74], 'both pins must survive');
+
+    const out = emitCst(regrouped);
+    assert.match(out, /IO_LOC\s+"pair" 73,74;/);
+    assert.deepEqual(parseCst(out).constraints.get('pair').pins, [73, 74]);
+    assert.equal(parseCst(out).constraints.get('pair').attrs.IO_TYPE, 'LVCMOS33');
 });
