@@ -13,9 +13,10 @@
  */
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync, existsSync} from 'node:fs';
 import {resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {createRequire} from 'node:module';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const read = p => readFileSync(resolve(here, '..', p), 'utf8');
@@ -87,4 +88,40 @@ test('the surface does not claim to do what it cannot', () => {
         /\bflash(es|ing) (to )?the board\b/i, /\bruns your (verilog|design)\b/i]) {
         assert.ok(!overclaim.test(panel), `the panel implies a capability that does not exist: ${overclaim}`);
     }
+});
+
+test('every import in the flagged surface resolves — because NO build compiles it', () => {
+    // The hole this closes: CI only ever builds with BW_ENABLE_FPGA off, and the
+    // flag-off build genuinely drops this file (verified by grepping the shipped
+    // github-pages artifact for its strings — zero hits). Both facts together
+    // mean webpack NEVER parses fpga-tab.jsx in CI, so a renamed or moved module
+    // would break the surface and no gate would say a word until someone turned
+    // the flag on.
+    //
+    // A full flag-on build would catch more, and costs a build slot on a repo
+    // that counts them. This catches the likely failure -- a path that stopped
+    // existing -- for nothing.
+    const panelPath = 'overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx';
+    const panel = read(panelPath);
+    const dir = resolve(here, '..', dirname(panelPath));
+
+    const specifiers = [...panel.matchAll(/^import\s+[^'"]*from\s+'([^']+)';/gm)].map(m => m[1]);
+    assert.ok(specifiers.length >= 3, `expected several imports, found ${specifiers.length}`);
+
+    const missing = [];
+    for (const spec of specifiers) {
+        if (spec.startsWith('.')) {
+            if (!existsSync(resolve(dir, spec))) missing.push(spec);
+            continue;
+        }
+        if (spec === 'react') continue;
+        // A bare specifier must resolve as a package (the board JSON does).
+        try {
+            createRequire(import.meta.url).resolve(spec);
+        } catch {
+            missing.push(spec);
+        }
+    }
+    assert.deepEqual(missing, [],
+        `the flagged surface imports paths that do not resolve: ${missing.join(', ')}`);
 });
