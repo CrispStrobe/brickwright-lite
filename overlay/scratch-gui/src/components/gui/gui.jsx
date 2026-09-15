@@ -7,6 +7,7 @@ import {connect} from 'react-redux';
 import MediaQuery from 'react-responsive';
 import {Tab, Tabs, TabList, TabPanel} from 'react-tabs';
 import CircuitTab from '../tw-pseudocode/circuit-tab.jsx';
+import FpgaTab from '../tw-pseudocode/fpga-tab.jsx';
 const MicrobitSimPane = React.lazy(() =>
     import(/* webpackChunkName: "bw-microbit-sim" */ '../tw-pseudocode/microbit-sim-pane.jsx')
 );
@@ -103,6 +104,17 @@ const recordStarterEvent = (type, journeyId) => {
 // costumes, sounds), 3 and 4 are Brickwright's Code and Circuit tabs. The panels
 // are force-rendered, so a panel's own idea of "visible" has to come from here.
 const CODE_TAB_INDEX = 3;
+
+// The FPGA/HDL surface is a BUILD-TIME opt-in and ships hidden. Webpack replaces
+// this with a literal, so an off build drops the tab, its panel and everything
+// they import. It is appended LAST so no existing tab index moves: CODE_TAB_INDEX
+// and circuit-tab.jsx's hard-coded index both stay valid either way, which
+// test/circuit-tab-index.test.mjs checks.
+//
+// This is deliberately not a Code-tab language. The Code tab's premise is
+// blocks <-> pseudocode <-> Python/JS as representations of ONE program, and
+// Verilog is not a representation of a Scratch script. See docs/TANG-NANO.md.
+const FPGA_ENABLED = process.env.BW_ENABLE_FPGA;
 
 const GUIComponent = props => {
     const [starterOpen, setStarterOpen] = React.useState(false);
@@ -722,6 +734,15 @@ const GUIComponent = props => {
                                             id="gui.gui.circuitTab"
                                         />
                                     </Tab>
+                                    {FPGA_ENABLED ? (
+                                        <Tab className={tabClassNames.tab}>
+                                            <FormattedMessage
+                                                defaultMessage="⬢ FPGA"
+                                                description="Brickwright FPGA/HDL surface tab"
+                                                id="gui.gui.fpgaTab"
+                                            />
+                                        </Tab>
+                                    ) : null}
                                 </TabList>
                                 <TabPanel className={tabClassNames.tabPanel}>
                                     {middleContent === 'code' ? (
@@ -781,6 +802,11 @@ const GUIComponent = props => {
                                 <TabPanel className={tabClassNames.tabPanel}>
                                     <CircuitTab />
                                 </TabPanel>
+                                {FPGA_ENABLED ? (
+                                    <TabPanel className={tabClassNames.tabPanel}>
+                                        <FpgaTab />
+                                    </TabPanel>
+                                ) : null}
                             </Tabs>
                             <button
                                 type="button"
