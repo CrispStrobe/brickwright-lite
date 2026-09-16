@@ -1205,6 +1205,69 @@ circuit simulator. Imported as `avr8js` via the bw-board adapter
   No source code from avr8js is modified; the package is consumed as
   a published npm dependency.
 
+## digitaljs — BSD-2-Clause (HEADLESS CORE ONLY)
+
+**digitaljs** (BSD-2-Clause, https://github.com/tilk/digitaljs) provides the
+gate-level simulation behind the FPGA tier: a synthesised netlist evaluated gate
+by gate, whose output ports drive real terminals on the circuit surface.
+
+- **Version:** 0.14.2 (pinned exactly, not a range — see below)
+- **Licence:** BSD-2-Clause — Copyright (c) Marek Materzok
+- **Source:** https://github.com/tilk/digitaljs
+- **Usage:** `HeadlessCircuit` only, reached through a webpack alias to
+  `digitaljs/lib/circuit.js`.
+
+**WHAT WE DO NOT TAKE, AND WHY IT MATTERS.** digitaljs's own `browser` export
+condition is the full visual editor. That entry pulls **jquery-ui** and
+**elkjs**, and elkjs is **EPL-2.0** — which is not in the licence set this
+product ships. The headless core reaches neither. The alias is therefore a
+licence boundary rather than an optimisation, and
+`test/fpga-third-party-surface.test.mjs` fails if it is removed or if any source
+imports the full entry.
+
+What the headless core does reach, and what therefore ships when the FPGA
+surface is enabled:
+
+| package | licence |
+|---|---|
+| `@joint/core` 4.1.3 | MPL-2.0 |
+| `3vl` 1.0.1 | BSD-2-Clause |
+| `jquery` 3.7.1 | MIT |
+
+The pin is EXACT because both the licence position and the module resolution are
+version-specific facts, verified rather than assumed. A range could move onto a
+version where the subpath or its tree differs and leave this notice silently
+stale.
+
+No digitaljs source is modified; the package is consumed as a published npm
+dependency.
+
+## yosys2digitaljs — BSD-2-Clause (`core` SUBPATH ONLY)
+
+**yosys2digitaljs** (BSD-2-Clause, https://github.com/tilk/yosys2digitaljs)
+converts a Yosys JSON netlist into the format digitaljs simulates.
+
+- **Version:** 0.10.3 (pinned exactly)
+- **Licence:** BSD-2-Clause — Copyright (c) Marek Materzok
+- **Source:** https://github.com/tilk/yosys2digitaljs
+- **Usage:** the `core` subpath only — pure JSON-to-JSON conversion.
+
+**WHAT WE DO NOT TAKE.** Its `node` subpath shells out to a local Yosys and
+pulls temp-file dependencies, one of which (`truncate-utf8-bytes`, via
+`sanitize-filename`) is **WTFPL-only**. The `core` subpath requires exactly:
+
+| package | licence |
+|---|---|
+| `3vl` 1.0.1 | BSD-2-Clause |
+| `big-integer` 1.6.52 | Unlicense (public-domain dedication) |
+| `hashmap` 2.4.0 | MIT |
+
+That set is asserted by a test, so a future version adding a dependency to the
+core path goes red before this notice goes stale.
+
+No yosys2digitaljs source is modified; the package is consumed as a published
+npm dependency.
+
 ## rp2040js — MIT
 
 **rp2040js** (MIT License, https://github.com/wokwi/rp2040js) provides the

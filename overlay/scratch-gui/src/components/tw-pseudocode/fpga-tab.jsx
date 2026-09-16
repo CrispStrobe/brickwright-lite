@@ -43,6 +43,29 @@ IO_LOC  "shared" 15;
 IO_LOC  "video" 33;
 `;
 
+// The simulator is LAZY, and the flag alone was not enough.
+//
+// Everything else in this surface is pure ESM the flag-off build drops entirely
+// — verified by grepping the shipped artifact. digitaljs is different: the alias
+// points at its CommonJS build (the package exports no subpath, so there is no
+// ESM one to point at), and webpack cannot tree-shake CommonJS. A static import
+// therefore put ~25 KiB gz of it into the EAGER bundle even with the flag off,
+// and the first-load guard caught it: 1325 KiB against a 1300 KiB budget.
+//
+// So it is a dynamic import, which is also how the debugger panel and the render
+// fonts stay out of the boot chunk. One chunk, fetched only when a netlist is
+// actually pasted.
+let simModulePromise = null;
+const loadSimulator = () => {
+    if (!simModulePromise) {
+        simModulePromise = Promise.all([
+            import(/* webpackChunkName: "bw-fpga-sim" */ '../../lib/bw-fpga/sim.js'),
+            import(/* webpackChunkName: "bw-fpga-sim" */ 'digitaljs')
+        ]).then(([sim, engine]) => ({...sim, engine}));
+    }
+    return simModulePromise;
+};
+
 const Row = ({tone, children}) => (
     <li style={{
         margin: '0.25rem 0', padding: '0.4rem 0.6rem', borderRadius: 4,
@@ -53,19 +76,68 @@ const Row = ({tone, children}) => (
 const FpgaTab = () => {
     const [text, setText] = React.useState(EXAMPLE);
     const [netlistText, setNetlistText] = React.useState('');
-    const {bindings, refusals, warnings, plan, top, canonical} = React.useMemo(() => {
+    const [inputs, setInputs] = React.useState({});
+    const [sim, setSim] = React.useState({values: {}, note: null, problems: []});
+
+    // Load and run the simulator when there is something to simulate. Nothing is
+    // fetched until a netlist is actually pasted.
+    React.useEffect(() => {
+        let live = true;
+        const trimmed = netlistText.trim();
+        if (!trimmed) {
+            setSim({values: {}, note: null, problems: []});
+            return () => { live = false; };
+        }
+        let parsed;
+        try {
+            parsed = JSON.parse(trimmed);
+        } catch {
+            return () => { live = false; };   // the memo already reports bad JSON
+        }
+        loadSimulator().then(({GateLevelSim, fromYosys, engine}) => {
+            if (!live) return;
+            const {circuit, problems} = fromYosys(parsed);
+            if (!circuit) return setSim({values: {}, note: null, problems});
+            try {
+                const s = new GateLevelSim(circuit, engine);
+                const {ports} = readPorts(parsed);
+                for (const [name, p] of Object.entries(ports)) {
+                    if (p.direction !== 'input') continue;
+                    s.setInput(name, inputs[name] ? 1 : 0, p.width || 1);
+                }
+                const settled = s.settle();
+                if (!settled.settled) {
+                    return setSim({values: {}, note: null,
+                        problems: [{code: 'did-not-settle', reason: settled.reason}]});
+                }
+                const read = s.outputValues(ports);
+                setSim({values: read.values, note: `settled in ${settled.steps} step(s)`,
+                    problems: read.problems});
+            } catch (e) {
+                setSim({values: {}, note: null, problems: [{code: 'simulation-failed',
+                    reason: `The design could not be simulated: ${e.message}`}]});
+            }
+        }).catch(e => live && setSim({values: {}, note: null,
+            problems: [{code: 'simulator-unavailable',
+                reason: `The gate-level simulator could not be loaded: ${e.message}`}]}));
+        return () => { live = false; };
+    }, [netlistText, inputs]);
+    const {bindings, refusals, warnings, plan, top, canonical, inputPorts, simNote} =
+            React.useMemo(() => {
         const {constraints, problems} = parseCst(text);
 
         // The netlist is OPTIONAL. Without it the bridge can still say where a
         // port lands; with it, it can also say whether the port exists -- which
         // is how a rename that silently unplugs a signal gets caught.
         let netlistPorts = null;
+        let parsedNetlist = null;
         let top = null;
         const netlistProblems = [];
         const trimmed = netlistText.trim();
         if (trimmed) {
             try {
-                const read = readPorts(JSON.parse(trimmed));
+                parsedNetlist = JSON.parse(trimmed);
+                const read = readPorts(parsedNetlist);
                 netlistPorts = Object.keys(read.ports).length ? read.ports : null;
                 top = read.top;
                 netlistProblems.push(...read.problems);
@@ -78,12 +150,17 @@ const FpgaTab = () => {
         const out = bridge({constraints, part: TANG_NANO_20K, netlistPorts});
         if (netlistPorts) netlistProblems.push(...checkWidths(netlistPorts, out.bindings));
         problems.push(...netlistProblems);
+
+        // The design's own values arrive asynchronously, from the lazy chunk.
+        const values = sim.values;
+        const simNote = sim.note;
+        problems.push(...sim.problems);
         // Dry run: the same call the circuit engine would take, against a
         // recorder instead of a board. With no values -- because nothing models
         // the fabric yet -- every output comes back as "undriven", which is the
         // honest picture rather than a row of zeroes.
         const ops = [];
-        const {unset} = applyPortValues({setPin: (...a) => ops.push(a)}, out.bindings, {});
+        const {unset} = applyPortValues({setPin: (...a) => ops.push(a)}, out.bindings, values);
         // Canonical .cst for the real Gowin toolchain. Only the placements that
         // actually reach the board: handing openFPGALoader a constraint naming a
         // pin this board does not bring out would be wrong in a new way rather
@@ -91,8 +168,11 @@ const FpgaTab = () => {
         const reachable = constraintsFromBindings(out.bindings, constraints);
         const canonical = emitCst(reachable,
             {header: 'Generated by Brickwright from the constraints above.\nOnly ports that reach a header pin are included.'});
-        return {...out, refusals: [...problems, ...out.refusals], plan: {ops, unset}, top, canonical};
-    }, [text, netlistText]);
+        return {...out, refusals: [...problems, ...out.refusals], plan: {ops, unset},
+            top, canonical, inputPorts: netlistPorts
+                ? Object.entries(netlistPorts).filter(([, p]) => p.direction === 'input').map(([n]) => n)
+                : [], simNote};
+    }, [text, netlistText, sim]);
 
     return (
         <div style={{padding: '1.25rem', maxWidth: '52rem', lineHeight: 1.5, overflowY: 'auto'}}>
@@ -162,11 +242,36 @@ const FpgaTab = () => {
                 </>
             ) : null}
 
-            <h3>{'What the circuit engine would be told'}</h3>
+            {inputPorts.length ? (
+                <>
+                    <h3>{'Design inputs'}</h3>
+                    <p style={{marginTop: 0, opacity: 0.8}}>
+                        {'Nothing drives these yet, so set them here and watch the outputs follow.'}
+                    </p>
+                    <div style={{display: 'flex', gap: '0.75rem', flexWrap: 'wrap'}}>
+                        {inputPorts.map(name => (
+                            <label key={name} style={{display: 'flex', alignItems: 'center', gap: '0.35rem'}}>
+                                <input
+                                    type="checkbox"
+                                    checked={Boolean(inputs[name])}
+                                    onChange={e => setInputs({...inputs, [name]: e.target.checked})}
+                                />
+                                <code>{name}</code>
+                            </label>
+                        ))}
+                    </div>
+                </>
+            ) : null}
+
+            <h3>
+                {'What the circuit engine would be told'}
+                {simNote ? <span style={{opacity: 0.7, fontWeight: 'normal'}}>{` — ${simNote}`}</span> : null}
+            </h3>
             <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
-                {plan.ops.map(([terminal, mode], i) => (
+                {plan.ops.map(([terminal, mode, driveHigh], i) => (
                     <Row key={i} tone="#4a6fa5">
                         <code>{terminal}</code>{` → ${mode}`}
+                        {mode === 'pushpull' ? <strong>{driveHigh ? ' HIGH' : ' LOW'}</strong> : null}
                         {mode === 'input' ? <em style={{opacity: 0.8}}>{' (high-Z: the design reads it)'}</em> : null}
                     </Row>
                 ))}
