@@ -133,6 +133,10 @@ test('the request carries the target, the contract version, and --vopt family', 
     });
     assert.equal(sent.contract, CONTRACT_VERSION);
     assert.deepEqual(sent.target, TANG_NANO_20K_TARGET);
+    assert.equal(sent.target.family, 'GW2A-18C',
+        'the family is the CHIPDB name, not the part number: nextpnr ships GW2A-18C '
+        + 'and has no GW2A at all. Sending the wrong one fails with "Unable to read '
+        + 'chipdb", which reads like a broken service rather than a wrong string.');
     assert.equal(sent.target.vopt, 'family',
         'C-grade Gowin devices need --vopt family; a service that forgets it fails '
         + 'in a way that reads like a broken design');

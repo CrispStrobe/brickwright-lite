@@ -22,7 +22,7 @@
  *   POST <endpoint>
  *   {
  *     "contract": 1,
- *     "target":   {"family": "GW2A", "device": "GW2AR-LV18QN88C8/I7", "vopt": "family"},
+ *     "target":   {"family": "GW2A-18C", "device": "GW2AR-LV18QN88C8/I7", "vopt": "family"},
  *     "top":      "<module name>",
  *     "files":    [{"name": "blink.v", "source": "..."}],
  *     "constraints": "IO_LOC \"led\" 73;\n..."
@@ -48,9 +48,30 @@ import {screenForHostedSynthesis} from './licence.js';
 
 export const CONTRACT_VERSION = 1;
 
-/** The board this project targets. Widening this is a decision, not a parameter. */
+/**
+ * The board this project targets. Widening this is a decision, not a parameter.
+ *
+ * `family` and `device` are DIFFERENT STRINGS FOR DIFFERENT TOOLS, and conflating
+ * them cost three CI rounds in bw-synth before the toolchain was asked what it
+ * actually had:
+ *
+ *   device  GW2AR-LV18QN88C8/I7   the ordering code — what you buy, what
+ *                                 nextpnr takes as --device
+ *   family  GW2A-18C              the chipdb name — what the bitstream format
+ *                                 belongs to, what nextpnr loads and what
+ *                                 gowin_pack takes as -d
+ *
+ * The Tang Nano 20K's part is a C-GRADE GW2A-18 — that is what the `C8` in the
+ * ordering code means — so its database is `GW2A-18C`, not the `GW2A` a reader
+ * infers from the part number. nextpnr ships GW1N-1, GW1N-4, GW1N-9, GW1N-9C,
+ * GW1NS-4, GW1NZ-1, GW2A-18, GW2A-18C, GW5A-25A and GW5AST-138C, and no `GW2A`.
+ *
+ * This is also what apicula's readme means by "C devices require passing the
+ * --vopt family flag": it is distinguishing the C-grade database from the plain
+ * one, not asking for a vendor name.
+ */
 export const TANG_NANO_20K_TARGET = Object.freeze({
-    family: 'GW2A',
+    family: 'GW2A-18C',
     device: 'GW2AR-LV18QN88C8/I7',
     vopt: 'family'
 });
