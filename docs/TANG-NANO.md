@@ -584,11 +584,14 @@ pattern; a `gate-level` tier that claims to model timing; and **the tab on by
 default**.
 These are follow-ons or separate decisions, not acceptance shortcuts.
 
-## 8a. Decision 6 (vendor digitaljs) has a dependency problem — checked 2026-09-16
+## 8a. Decision 6 had a dependency problem — found, and resolved by taking a different subpath
 
-**Read this before vendoring anything.** digitaljs itself is BSD-2-Clause, as
-the interview recorded. Its dependency tree is not uniformly so, and the problem
-is a hard, static import.
+**Resolved. Kept because the reasoning is reusable, not because it is pending.**
+
+digitaljs itself is BSD-2-Clause, as the interview recorded. Its dependency tree
+is not uniformly so — and the way out was not any of the three options this
+section first proposed. It was a fourth: **the package has a headless entry that
+does not reach the problem at all.** That is what shipped.
 
 **The full transitive tree, installed and read from each package's own
 `package.json` — 12 packages, exactly one problem:**
@@ -625,20 +628,37 @@ It is not optional at BUILD time: line 16 is a static
 `import { elk_layout } from './elkjs.mjs';`, so it is bundled whichever engine
 is selected.
 
-### Three ways out, and one of them needs no policy change
+### What shipped, and why not the three options first considered
 
-1. **Patch the static import out and select `dagre`** (recommended). BSD-2
-   permits modification freely, and the repository already has the machinery:
-   `apply-vm-overlay.mjs`, `apply-paint-overlay.mjs` and
-   `apply-render-overlay.mjs` all lay owned files over an installed package at
-   build time. Result: no EPL or GPL code ships, ~8 MB lighter, layout still
-   works. Costs one more overlay script and a note saying why it exists.
-2. **Add EPL-2.0 to the allowed set.** It is weak copyleft, comparable in
-   strength to the MPL-2.0 already accepted. But it lengthens a deliberately
-   short set for one graph-layout library, and the GPL-3.0 half of the dual
-   makes the audit story harder to state plainly.
-3. **Write the gate-level simulator ourselves** — the option the interview
-   rejected, and this does not make it more attractive.
+**SHIPPED: the headless core, via a webpack alias.** `digitaljs`'s `package.json`
+declares `main: ./lib/circuit.js` — the headless simulator — and reaches the
+visual editor only through its `browser` export condition. The headless import
+graph is `@joint/core` (MPL-2.0), `3vl` (BSD-2) and `jquery` (MIT): **no elkjs,
+no jquery-ui.** So the licence problem disappears rather than being negotiated
+with, and 4.6 MB of jquery-ui goes with it.
+
+An alias is also the only available mechanism: the package declares no subpath
+exports, so `digitaljs/lib/circuit.js` cannot be imported directly
+(`ERR_PACKAGE_PATH_NOT_EXPORTED`). Webpack's alias bypasses the exports map,
+which is wanted here and nowhere else.
+
+The same shape applied to the converter: `yosys2digitaljs` exposes `core` (pure
+JSON-to-JSON, requiring exactly `3vl`, `big-integer`, `hashmap`) and `node`
+(shells out to Yosys, pulls a WTFPL-only dependency). We take `core`.
+
+`test/fpga-third-party-surface.test.mjs` holds both boundaries: it fails if the
+alias is removed, if any source imports a full entry, if the converter's core
+grows a dependency, or if either package stops being pinned exactly.
+
+The three options this section originally listed, and why none was needed:
+
+1. **Patch the static import out and select `dagre`.** Would have worked, and
+   costs a maintained patch against a third-party package plus the whole
+   jQuery/JointJS UI stack we do not want in a React app.
+2. **Add EPL-2.0 to the allowed set.** Unnecessary once nothing reaches elkjs.
+   The analysis is kept below because the question will recur.
+3. **Write the gate-level simulator ourselves.** Rejected by the interview, and
+   the headless core made the question moot.
 
 **The audit above IS the full transitive tree** (installed with
 `npm install --ignore-scripts digitaljs@0.14.2` and walked, reading each
