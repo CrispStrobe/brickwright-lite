@@ -584,6 +584,88 @@ pattern; a `gate-level` tier that claims to model timing; and **the tab on by
 default**.
 These are follow-ons or separate decisions, not acceptance shortcuts.
 
+## 8a. Decision 6 had a dependency problem — found, and resolved by taking a different subpath
+
+**Resolved. Kept because the reasoning is reusable, not because it is pending.**
+
+digitaljs itself is BSD-2-Clause, as the interview recorded. Its dependency tree
+is not uniformly so — and the way out was not any of the three options this
+section first proposed. It was a fourth: **the package has a headless entry that
+does not reach the problem at all.** That is what shipped.
+
+**The full transitive tree, installed and read from each package's own
+`package.json` — 12 packages, exactly one problem:**
+
+| dependency | licence | verdict |
+|---|---|---|
+| `digitaljs` 0.14.2, `3vl`, `wavecanvas` | BSD-2-Clause | allowed |
+| `@joint/core` 4.1.3, `@joint/layout-directed-graph` 4.1.4 | MPL-2.0 | allowed |
+| `@dagrejs/dagre` 1.0.4, `@dagrejs/graphlib` 2.1.13 | MIT | allowed |
+| `jquery` 3.7.1, `jquery-ui` 1.14.2 | MIT | allowed |
+| `fastpriorityqueue` 0.7.5, `web-worker` 1.5.0 | Apache-2.0 | allowed |
+| **`elkjs` 0.11.1** | **EPL-2.0** | **not in our set** |
+
+Two corrections to this section's first draft, both from installing the tree
+rather than reading registry metadata for `latest`:
+
+- **The version that actually resolves is `elkjs@0.11.1`, not 0.12.0** —
+  digitaljs pins `^0.11.0`. Its own `package.json` and `LICENSE.md` declare
+  **EPL-2.0 alone**, not the `EPL-2.0 OR GPL-3.0-or-later` dual that npm reports
+  for 0.12.0. There is no GPL half to worry about, and no choice of licence to
+  elect. The lesson is narrow and repeatable: **audit the resolved tree, not the
+  registry's `latest`.**
+- **The MIT dagre packages are already installed**, because
+  `@joint/layout-directed-graph` depends on them. The alternative layout engine
+  needs nothing added.
+
+### It is a layout engine, and digitaljs already has another one
+
+`src/index.mjs` takes `layoutEngine` as a constructor option with two values:
+`"dagre"`, which uses the **MPL-2.0** `@joint/layout-directed-graph`, and
+`"elkjs"`, which is the default. So elkjs is optional AT RUNTIME.
+
+It is not optional at BUILD time: line 16 is a static
+`import { elk_layout } from './elkjs.mjs';`, so it is bundled whichever engine
+is selected.
+
+### What shipped, and why not the three options first considered
+
+**SHIPPED: the headless core, via a webpack alias.** `digitaljs`'s `package.json`
+declares `main: ./lib/circuit.js` — the headless simulator — and reaches the
+visual editor only through its `browser` export condition. The headless import
+graph is `@joint/core` (MPL-2.0), `3vl` (BSD-2) and `jquery` (MIT): **no elkjs,
+no jquery-ui.** So the licence problem disappears rather than being negotiated
+with, and 4.6 MB of jquery-ui goes with it.
+
+An alias is also the only available mechanism: the package declares no subpath
+exports, so `digitaljs/lib/circuit.js` cannot be imported directly
+(`ERR_PACKAGE_PATH_NOT_EXPORTED`). Webpack's alias bypasses the exports map,
+which is wanted here and nowhere else.
+
+The same shape applied to the converter: `yosys2digitaljs` exposes `core` (pure
+JSON-to-JSON, requiring exactly `3vl`, `big-integer`, `hashmap`) and `node`
+(shells out to Yosys, pulls a WTFPL-only dependency). We take `core`.
+
+`test/fpga-third-party-surface.test.mjs` holds both boundaries: it fails if the
+alias is removed, if any source imports a full entry, if the converter's core
+grows a dependency, or if either package stops being pinned exactly.
+
+The three options this section originally listed, and why none was needed:
+
+1. **Patch the static import out and select `dagre`.** Would have worked, and
+   costs a maintained patch against a third-party package plus the whole
+   jQuery/JointJS UI stack we do not want in a React app.
+2. **Add EPL-2.0 to the allowed set.** Unnecessary once nothing reaches elkjs.
+   The analysis is kept below because the question will recur.
+3. **Write the gate-level simulator ourselves.** Rejected by the interview, and
+   the headless core made the question moot.
+
+**The audit above IS the full transitive tree** (installed with
+`npm install --ignore-scripts digitaljs@0.14.2` and walked, reading each
+package's own declaration). Twelve packages, one blocker, and the blocker is a
+layout engine whose MIT replacement is already in the tree. THIRD-PARTY-NOTICES.md
+still needs its per-file entries written when this lands.
+
 ## 8b. Two things only building it revealed
 
 Both cost a debugging detour and are recorded so the next person does not repeat
