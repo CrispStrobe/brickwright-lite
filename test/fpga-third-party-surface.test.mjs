@@ -95,3 +95,26 @@ test('both packages are pinned exactly, not by range', () => {
             `${name} must be pinned exactly, got ${spec}`);
     }
 });
+
+test('the simulator is loaded LAZILY, not statically', () => {
+    // The flag is not enough for this one, and that was learned the hard way.
+    // Every other file in the surface is pure ESM that a flag-off build drops
+    // entirely. digitaljs is CommonJS — the alias has to point at its CJS build
+    // because the package exports no subpath — and webpack cannot tree-shake
+    // CommonJS. A static import put it in the EAGER bundle even with the flag
+    // off, and the first-load guard failed at 1325 KiB against a 1300 KiB budget.
+    //
+    // The build guard catches a regression here, but only in CI and only after a
+    // full build. This catches it in the source, for nothing.
+    const panel = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx');
+
+    for (const spec of ['digitaljs', '../../lib/bw-fpga/sim.js']) {
+        const staticImport = new RegExp(`^import[^\\n]*from\\s+'${spec.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}';`, 'm');
+        assert.ok(!staticImport.test(panel),
+            `${spec} must not be imported statically — it lands in the eager bundle`);
+    }
+    assert.match(panel, /import\(\s*\/\* webpackChunkName: "bw-fpga-sim" \*\/\s*'digitaljs'\s*\)/,
+        'digitaljs must be a dynamic import with a named chunk');
+    assert.match(panel, /import\(\s*\/\* webpackChunkName: "bw-fpga-sim" \*\/\s*'\.\.\/\.\.\/lib\/bw-fpga\/sim\.js'\s*\)/,
+        'sim.js must share that chunk — splitting them fetches two for one feature');
+});
