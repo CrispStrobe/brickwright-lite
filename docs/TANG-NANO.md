@@ -14,7 +14,10 @@ left the architecture open.
 | **TN2** HDL surface behind `BW_ENABLE_FPGA` | **landed** — lite PR #113 |
 | **TN2b** the pin bridge | **in review** — lite PR #114 |
 | inert-rail DRC rule (a TN0 follow-up) | **in review** — `bw-circuit-ui` PR #25 |
-| TN3 hosted synthesis · TN4 flashing · TN5a/TN5b · TN6 | not started |
+| **TN3** client half | **landed** — lite PRs #124, #125 |
+| **TN3** service | **written and proven, NOT deployed** — [`CrispStrobe/bw-synth`](https://github.com/CrispStrobe/bw-synth) |
+| **TN6a** capability gate | **landed** — lite PR #127 |
+| TN6a fetch + worker · TN6b · TN4 flashing · TN5a/TN5b | not started |
 
 **What works today:** the Tang Nano 20K places and wires on a breadboard with a
 real pinout, the 3.3 V rule catches 5 V fed back into a bank pin, and — behind
@@ -601,6 +604,41 @@ Verilator as a shipped dependency; DSP or SERDES primitives; HDMI beyond a test
 pattern; a `gate-level` tier that claims to model timing; and **the tab on by
 default**.
 These are follow-ons or separate decisions, not acceptance shortcuts.
+
+## 7.3 The synthesis service exists — `CrispStrobe/bw-synth`
+
+Created 2026-09-16, per the decision to give it its own repository rather than
+bolt it onto lite's Vercel project or onto `stc-compiler`. lite's project builds
+the editor; coupling that deploy to a ~300 MB toolchain would inflate a build
+that already ratchets on payload.
+
+**It is Python, not Node, and the reason is not preference.** `gowin_pack` *is*
+Apicula, which is Python. All three tools are on PyPI — `yowasp-yosys`,
+`yowasp-nextpnr-himbaechel-gowin`, `apycula` — so one runtime installs the whole
+flow. A Node service would have needed a second runtime for the packer alone.
+
+**What is proven, and what is not:**
+
+| claim | state |
+|---|---|
+| synthesis runs end to end | **proven** — a blinky reaches a 6.16 MB bitstream in CI |
+| the request path is correct | **proven** — 11 cases, no socket, no toolchain |
+| the licence screen refuses copyleft | **proven** — 7 cases, both repos, tested independently |
+| the service has ever served a request | **no** — the HTTP transport has not run |
+| it is deployed | **no** |
+
+The licence screen is duplicated there on purpose. lite screens before upload,
+which is right for the user — a refusal after the source has left the machine has
+already lost — but that is a client, a client can be bypassed, and the rule it
+enforces is what keeps the service from being a GPL distributor. A policy that
+depends on a browser is not a policy.
+
+**Four CI rounds, and three were the same mistake:** guessing a plausible string
+against a toolchain nobody had run — a dependency version that belonged to
+another package, a binary named after its package rather than its tool, and a
+chipdb that does not exist. The fourth asked the toolchain what it had and got an
+answer in one round. That is recorded in `bw-synth`'s README for whoever repeats
+it.
 
 ## 8a. Decision 6 had a dependency problem — found, and resolved by taking a different subpath
 
