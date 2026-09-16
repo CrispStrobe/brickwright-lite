@@ -4,6 +4,10 @@ import {parseCst, emitCst} from '../../lib/bw-fpga/cst.js';
 import {bridge, constraintsFromBindings} from '../../lib/bw-fpga/port-bridge.js';
 import {applyPortValues} from '../../lib/bw-fpga/drive.js';
 import {readPorts, checkWidths} from '../../lib/bw-fpga/yosys.js';
+// Small and dependency-free, so these stay static: the licence screen is useful
+// on its own, and the synthesis client's only job today is to refuse honestly.
+import {screenForHostedSynthesis} from '../../lib/bw-fpga/licence.js';
+import {synthesise} from '../../lib/bw-fpga/synthesis.js';
 
 /**
  * The FPGA / HDL surface — TN2 and TN2b of docs/TANG-NANO.md.
@@ -78,6 +82,15 @@ const FpgaTab = () => {
     const [netlistText, setNetlistText] = React.useState('');
     const [inputs, setInputs] = React.useState({});
     const [sim, setSim] = React.useState({values: {}, note: null, problems: []});
+    const [hdl, setHdl] = React.useState('');
+    const [synth, setSynth] = React.useState(null);
+
+    // The licence screen is worth running as you type: it is the one part of
+    // TN3 that works without a service, and it answers a question the user
+    // cannot answer by looking.
+    const hdlScreen = React.useMemo(
+        () => screenForHostedSynthesis(hdl.trim() ? [{name: 'design.v', source: hdl}] : []),
+        [hdl]);
 
     // Load and run the simulator when there is something to simulate. Nothing is
     // fetched until a netlist is actually pasted.
@@ -286,7 +299,55 @@ const FpgaTab = () => {
 
             {canonical ? (
                 <>
-                    <h3>{'Constraints for the Gowin toolchain'}</h3>
+                    <h3>{'Verilog (for synthesis)'}</h3>
+            <p style={{marginTop: 0, opacity: 0.8}}>
+                {'No synthesis service is configured, so nothing here is built yet. '}
+                {'What does work is the licence check — it decides whether a design '}
+                {'may be built on a shared server at all.'}
+            </p>
+            <textarea
+                value={hdl}
+                onChange={e => setHdl(e.target.value)}
+                spellCheck={false}
+                placeholder={'// SPDX-License-Identifier: MIT\nmodule blink(output led);\n  assign led = 1\'b1;\nendmodule'}
+                style={{width: '100%', minHeight: '8rem', fontFamily: 'monospace',
+                    fontSize: '0.85rem', padding: '0.6rem'}}
+            />
+            {hdl.trim() ? (
+                <ul style={{listStyle: 'none', padding: 0, margin: '0.5rem 0 0'}}>
+                    {hdlScreen.refusals.map((r, i) => (
+                        <Row key={`sr${i}`} tone="#b34747">
+                            <strong>{r.spdx || 'copyleft'}</strong>{`: ${r.reason}`}
+                        </Row>
+                    ))}
+                    {hdlScreen.warnings.map((w, i) => (
+                        <Row key={`sw${i}`} tone="#b8860b">{w.reason}</Row>
+                    ))}
+                    {hdlScreen.refusals.length || hdlScreen.warnings.length ? null : (
+                        <Row tone="#3a8a3a">
+                            {'Declares a permissive licence — it could be built on a shared '}
+                            {'server once one exists.'}
+                        </Row>
+                    )}
+                </ul>
+            ) : null}
+            <p>
+                <button
+                    type="button"
+                    onClick={() => synthesise({
+                        files: [{name: 'design.v', source: hdl}],
+                        constraints: text
+                    }).then(setSynth)}
+                    disabled={!hdl.trim()}
+                >{'Synthesise'}</button>
+                {synth && !synth.ok ? (
+                    <span style={{marginLeft: '0.6rem', opacity: 0.85}}>
+                        <strong>{synth.code}</strong>{`: ${synth.reason}`}
+                    </span>
+                ) : null}
+            </p>
+
+            <h3>{'Constraints for the Gowin toolchain'}</h3>
                     <p style={{marginTop: 0, opacity: 0.8}}>
                         {'Canonical .cst covering only the ports that reach a header pin. '}
                         {'This is what leaves for real silicon.'}
