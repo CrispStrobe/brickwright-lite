@@ -590,20 +590,30 @@ These are follow-ons or separate decisions, not acceptance shortcuts.
 the interview recorded. Its dependency tree is not uniformly so, and the problem
 is a hard, static import.
 
+**The full transitive tree, installed and read from each package's own
+`package.json` — 12 packages, exactly one problem:**
+
 | dependency | licence | verdict |
 |---|---|---|
-| `@joint/core` 4.3.3 (6.2 MB) | MPL-2.0 | allowed |
-| `@joint/layout-directed-graph` | MPL-2.0 | allowed |
-| `3vl`, `wavecanvas` | BSD-2-Clause | allowed |
-| `fastpriorityqueue`, `web-worker` | Apache-2.0 | allowed |
-| `jquery`, `jquery-ui` (7.5 MB) | MIT | allowed |
-| **`elkjs` 0.12.0 (8.0 MB)** | **`EPL-2.0 OR GPL-3.0-or-later`** | **neither is in our set** |
+| `digitaljs` 0.14.2, `3vl`, `wavecanvas` | BSD-2-Clause | allowed |
+| `@joint/core` 4.1.3, `@joint/layout-directed-graph` 4.1.4 | MPL-2.0 | allowed |
+| `@dagrejs/dagre` 1.0.4, `@dagrejs/graphlib` 2.1.13 | MIT | allowed |
+| `jquery` 3.7.1, `jquery-ui` 1.14.2 | MIT | allowed |
+| `fastpriorityqueue` 0.7.5, `web-worker` 1.5.0 | Apache-2.0 | allowed |
+| **`elkjs` 0.11.1** | **EPL-2.0** | **not in our set** |
 
-EPL-2.0 is not in the allowed set (BSD-3 / Apache-2.0 / MIT / MPL-2.0) and the
-other half of the dual is GPL-3.0-or-later. Note also that the elkjs repository
-declares **no licence GitHub can identify** (`NOASSERTION`); the dual-licence
-statement is npm metadata. Anyone adopting it should read the repository's own
-licence files rather than trust the registry field.
+Two corrections to this section's first draft, both from installing the tree
+rather than reading registry metadata for `latest`:
+
+- **The version that actually resolves is `elkjs@0.11.1`, not 0.12.0** —
+  digitaljs pins `^0.11.0`. Its own `package.json` and `LICENSE.md` declare
+  **EPL-2.0 alone**, not the `EPL-2.0 OR GPL-3.0-or-later` dual that npm reports
+  for 0.12.0. There is no GPL half to worry about, and no choice of licence to
+  elect. The lesson is narrow and repeatable: **audit the resolved tree, not the
+  registry's `latest`.**
+- **The MIT dagre packages are already installed**, because
+  `@joint/layout-directed-graph` depends on them. The alternative layout engine
+  needs nothing added.
 
 ### It is a layout engine, and digitaljs already has another one
 
@@ -630,10 +640,11 @@ is selected.
 3. **Write the gate-level simulator ourselves** — the option the interview
    rejected, and this does not make it more attractive.
 
-**Still to do before any of this lands:** the table above is DIRECT dependencies
-only. `@joint/core` and `jquery-ui` have their own trees, and
-THIRD-PARTY-NOTICES.md is a per-file inventory, so the full transitive audit has
-to happen before a single byte is vendored.
+**The audit above IS the full transitive tree** (installed with
+`npm install --ignore-scripts digitaljs@0.14.2` and walked, reading each
+package's own declaration). Twelve packages, one blocker, and the blocker is a
+layout engine whose MIT replacement is already in the tree. THIRD-PARTY-NOTICES.md
+still needs its per-file entries written when this lands.
 
 ## 8b. Two things only building it revealed
 
