@@ -8,8 +8,9 @@
  */
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {defaultCatalog, probeBackends, selectBackend, offerable}
+import {defaultCatalog, probeBackends, selectBackend, offerable, healthUrl}
     from '../overlay/scratch-gui/src/lib/bw-fpga/backends.js';
+import {synthUrl} from '../overlay/scratch-gui/src/lib/bw-fpga/synthesis.js';
 
 const codes = list => (list || []).map(x => x.code).sort();
 const ok = () => Promise.resolve({status: 200});
@@ -111,4 +112,54 @@ test('with nothing available at all, auto says so plainly', () => {
     const r = selectBackend({backend: 'auto', available: [], catalog: defaultCatalog()});
     assert.equal(r.code, 'no-backend-available');
     assert.match(r.reason, /Nothing can be built/);
+});
+
+// ── the two modules have to mean the same thing by "endpoint" ────
+//
+// They did not. The probe GET `${endpoint}/health`; `synthesise` POSTed to
+// `endpoint` itself. One configured value — BW_SYNTHESIS_ENDPOINT — feeds both,
+// so at most one of them could ever have been right, and nothing noticed because
+// neither path runs in any build CI compiles.
+
+test('probe and synthesis derive their urls from the SAME base', () => {
+    const base = 'https://bw-synth.vercel.app/api';
+    assert.equal(healthUrl(base), 'https://bw-synth.vercel.app/api/health');
+    assert.equal(synthUrl(base), 'https://bw-synth.vercel.app/api/synth');
+});
+
+test('a trailing slash does not produce a doubled one', () => {
+    assert.equal(healthUrl('https://x/api/'), 'https://x/api/health');
+    assert.equal(synthUrl('https://x/api//'), 'https://x/api/synth');
+});
+
+test('the probe asks the url synthesis would post to, minus the verb', async () => {
+    const asked = [];
+    const catalog = defaultCatalog({hostedEndpoint: 'https://bw-synth.vercel.app/api'});
+    await probeBackends({
+        catalog,
+        capabilities: capable,
+        fetchImpl: url => {
+            asked.push(url);
+            return Promise.resolve({status: 503});
+        }
+    });
+    assert.deepEqual(asked, ['https://bw-synth.vercel.app/api/health']);
+});
+
+test('a 503 from the live service means the backend is NOT offered', async () => {
+    // bw-synth answers 503 today: deployed, and the toolchain does not fit its
+    // /tmp. A health check that reports trouble must remove the backend, not
+    // decorate it — the selector is fail-closed for exactly this shape.
+    const catalog = defaultCatalog({hostedEndpoint: 'https://bw-synth.vercel.app/api'});
+    const {available, probes} = await probeBackends({
+        catalog,
+        capabilities: capable,
+        fetchImpl: () => Promise.resolve({status: 503})
+    });
+    assert.deepEqual(available, []);
+    assert.equal(probes.find(p => p.id === 'hosted').code, 'unhealthy');
+
+    const sel = selectBackend({backend: 'auto', available, catalog});
+    assert.equal(sel.accepted, false);
+    assert.equal(sel.code, 'no-backend-available');
 });
