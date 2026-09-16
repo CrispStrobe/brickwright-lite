@@ -584,6 +584,57 @@ pattern; a `gate-level` tier that claims to model timing; and **the tab on by
 default**.
 These are follow-ons or separate decisions, not acceptance shortcuts.
 
+## 8a. Decision 6 (vendor digitaljs) has a dependency problem — checked 2026-09-16
+
+**Read this before vendoring anything.** digitaljs itself is BSD-2-Clause, as
+the interview recorded. Its dependency tree is not uniformly so, and the problem
+is a hard, static import.
+
+| dependency | licence | verdict |
+|---|---|---|
+| `@joint/core` 4.3.3 (6.2 MB) | MPL-2.0 | allowed |
+| `@joint/layout-directed-graph` | MPL-2.0 | allowed |
+| `3vl`, `wavecanvas` | BSD-2-Clause | allowed |
+| `fastpriorityqueue`, `web-worker` | Apache-2.0 | allowed |
+| `jquery`, `jquery-ui` (7.5 MB) | MIT | allowed |
+| **`elkjs` 0.12.0 (8.0 MB)** | **`EPL-2.0 OR GPL-3.0-or-later`** | **neither is in our set** |
+
+EPL-2.0 is not in the allowed set (BSD-3 / Apache-2.0 / MIT / MPL-2.0) and the
+other half of the dual is GPL-3.0-or-later. Note also that the elkjs repository
+declares **no licence GitHub can identify** (`NOASSERTION`); the dual-licence
+statement is npm metadata. Anyone adopting it should read the repository's own
+licence files rather than trust the registry field.
+
+### It is a layout engine, and digitaljs already has another one
+
+`src/index.mjs` takes `layoutEngine` as a constructor option with two values:
+`"dagre"`, which uses the **MPL-2.0** `@joint/layout-directed-graph`, and
+`"elkjs"`, which is the default. So elkjs is optional AT RUNTIME.
+
+It is not optional at BUILD time: line 16 is a static
+`import { elk_layout } from './elkjs.mjs';`, so it is bundled whichever engine
+is selected.
+
+### Three ways out, and one of them needs no policy change
+
+1. **Patch the static import out and select `dagre`** (recommended). BSD-2
+   permits modification freely, and the repository already has the machinery:
+   `apply-vm-overlay.mjs`, `apply-paint-overlay.mjs` and
+   `apply-render-overlay.mjs` all lay owned files over an installed package at
+   build time. Result: no EPL or GPL code ships, ~8 MB lighter, layout still
+   works. Costs one more overlay script and a note saying why it exists.
+2. **Add EPL-2.0 to the allowed set.** It is weak copyleft, comparable in
+   strength to the MPL-2.0 already accepted. But it lengthens a deliberately
+   short set for one graph-layout library, and the GPL-3.0 half of the dual
+   makes the audit story harder to state plainly.
+3. **Write the gate-level simulator ourselves** — the option the interview
+   rejected, and this does not make it more attractive.
+
+**Still to do before any of this lands:** the table above is DIRECT dependencies
+only. `@joint/core` and `jquery-ui` have their own trees, and
+THIRD-PARTY-NOTICES.md is a per-file inventory, so the full transitive audit has
+to happen before a single byte is vendored.
+
 ## 8b. Two things only building it revealed
 
 Both cost a debugging detour and are recorded so the next person does not repeat
