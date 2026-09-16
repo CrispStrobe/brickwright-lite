@@ -24,17 +24,54 @@
  * @module
  */
 
-/** The smallest module that requires WasmGC: a struct type in a recursion group. */
-const WASM_GC_PROBE = Uint8Array.from([
+/**
+ * A module every WebAssembly runtime accepts: one empty function type.
+ *
+ * THE CONTROL, and it exists because its absence hid a real bug. The first
+ * version of the GC probe below declared a type-section size of 6 where its
+ * payload was 5 bytes. Every runtime rejected it as malformed — "section (code
+ * 1, Type) extends past" — so the probe reported "no WasmGC" EVERYWHERE,
+ * including on Chromium 151, which supports it perfectly well. The local tier
+ * would have been refused on every browser forever, with a confident message
+ * naming a feature that was present.
+ *
+ * A probe that cannot tell "the feature is missing" from "the probe is broken"
+ * is worse than no probe. If this control fails to compile, the detector says so
+ * rather than blaming the runtime.
+ */
+const WASM_CONTROL_PROBE = Uint8Array.from([
     0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
-    0x01, 0x06, 0x01, 0x5f, 0x01, 0x7f, 0x00
+    0x01, 0x04, 0x01, 0x60, 0x00, 0x00
 ]);
 
-/** A tag section — the exception-handling family the toolchain compiles against. */
+/**
+ * WasmGC: a struct type definition. Section size 5 = count + 0x5f + field count
+ * + i32 + immutability.
+ * Verified 2026-09-16: rejected by Node 20 ("Unknown type code 0x5f"), accepted
+ * by Chromium 151.
+ */
+const WASM_GC_PROBE = Uint8Array.from([
+    0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+    0x01, 0x05, 0x01, 0x5f, 0x01, 0x7f, 0x00
+]);
+
+/**
+ * Exception handling as the toolchain actually uses it: a function body
+ * containing `try_table` (0x1f), the 2024 proposal.
+ *
+ * NOT a tag section. An earlier version of this probe tested for one, and Node
+ * 20 accepts tag sections happily while failing to compile yosys at opcode 0x1f
+ * — so that probe passed on a runtime that cannot run the toolchain, which is
+ * the exact failure mode a capability check exists to prevent.
+ * Verified 2026-09-16: rejected by Node 20, accepted by Chromium 151.
+ */
 const WASM_EH_PROBE = Uint8Array.from([
     0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
     0x01, 0x04, 0x01, 0x60, 0x00, 0x00,
-    0x0d, 0x03, 0x01, 0x00, 0x00
+    0x03, 0x02, 0x01, 0x00,
+    0x0a, 0x08, 0x01, 0x06,
+    0x00, 0x1f, 0x40, 0x00, 0x0b,
+    0x0b
 ]);
 
 const compiles = bytes => {
@@ -54,16 +91,18 @@ const compiles = bytes => {
 export function detectWasmCapabilities (impl = null) {
     const test = impl || compiles;
     const wasm = typeof WebAssembly !== 'undefined';
-    const wasmGC = wasm && test(WASM_GC_PROBE);
-    const exceptions = wasm && test(WASM_EH_PROBE);
+    const controlPassed = wasm && test(WASM_CONTROL_PROBE);
+    const wasmGC = controlPassed && test(WASM_GC_PROBE);
+    const exceptions = controlPassed && test(WASM_EH_PROBE);
 
     const missing = [];
     if (!wasm) missing.push('WebAssembly');
-    if (wasm && !wasmGC) missing.push('WasmGC');
-    if (wasm && !exceptions) missing.push('exception handling');
+    if (wasm && !controlPassed) missing.push('a working probe');
+    if (controlPassed && !wasmGC) missing.push('WasmGC');
+    if (controlPassed && !exceptions) missing.push('exception handling (try_table)');
 
-    return {wasm, wasmGC, exceptions,
-        canRunLocalToolchain: wasm && wasmGC && exceptions,
+    return {wasm, controlPassed, wasmGC, exceptions,
+        canRunLocalToolchain: controlPassed && wasmGC && exceptions,
         missing};
 }
 
@@ -79,6 +118,14 @@ export function localToolchainRefusal (caps = detectWasmCapabilities()) {
     if (!caps.wasm) {
         return {code: 'no-webassembly',
             reason: 'This browser has no WebAssembly, so the local toolchain cannot run here.'};
+    }
+    if (!caps.controlPassed) {
+        // Not the runtime's fault, and saying otherwise would send someone to
+        // upgrade a browser that was never the problem.
+        return {code: 'probe-broken',
+            reason: 'The capability check itself failed on a module every runtime accepts, '
+                + 'so it cannot tell whether this browser supports the toolchain. Refusing '
+                + 'rather than guessing — and this is a bug here, not in your browser.'};
     }
     return {code: 'wasm-features-missing',
         reason: `The local toolchain needs ${caps.missing.join(' and ')}, which this browser `
