@@ -73,6 +73,21 @@ for (const name of ['bw-board', 'bw-circuit-ui']) {
     if (!/^[0-9a-f]{40}$/.test(sha || '')) throw new Error(`vendor-pins.json: ${name} must be a 40-hex sha, got ${JSON.stringify(sha)}`);
     pkg.dependencies[name] = `github:CrispStrobe/${name}#${sha}`;
 }
+// The gate-level FPGA tier, behind BW_ENABLE_FPGA and absent from a flag-off build.
+// PINNED EXACTLY, and not as a range, because BOTH the licence position and the
+// module resolution are version-specific facts we verified rather than assumed:
+//   digitaljs@0.14.2        BSD-2. Reached through its HEADLESS core by the alias in
+//                           webpack.config.js. Its `browser` entry is the full visual
+//                           editor and pulls jquery-ui plus elkjs, and elkjs is EPL-2.0 —
+//                           outside the allowed set. The headless core reaches neither.
+//   yosys2digitaljs@0.10.3  BSD-2. Only its `core` subpath is used: that requires exactly
+//                           3vl (BSD-2), big-integer (Unlicense) and hashmap (MIT). The
+//                           `node` subpath shells out to Yosys and pulls temp-file deps,
+//                           one of them WTFPL-only.
+// A range on either could move onto a version where those subpaths or their trees differ,
+// and the audit would be silently stale. See docs/TANG-NANO.md §8a.
+pkg.dependencies['digitaljs'] = '0.14.2';                        // BSD-2 (headless core only)
+pkg.dependencies['yosys2digitaljs'] = '0.10.3';                  // BSD-2 (core subpath only)
 pkg.dependencies['scratch-vm'] = '4.8.115';                      // last BSD-3; built from src via alias
 // Pin scratch-paint exactly, for the same reason as scratch-vm: overlay/scratch-paint holds FULL
 // FILE COPIES of the costume-designer files we own, authored against one exact base. The base
@@ -91,6 +106,6 @@ pkg.dependencies['@codemirror/language'] = pkg.dependencies['@codemirror/languag
 pkg.dependencies['@codemirror/search'] = pkg.dependencies['@codemirror/search'] || '^6.5.8';       // MIT
 pkg.dependencies['@codemirror/theme-one-dark'] = pkg.dependencies['@codemirror/theme-one-dark'] || '^6.1.2'; // MIT
 writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
-console.log('  ensured deps (skulpt, jszip, lit + wokwi elements, codemirror, bw-board + bw-circuit-ui at vendor-pins.json) + pinned avr8js@0.21.0, rp2040js@1.3.3, scratch-vm@4.8.115, scratch-paint@2.2.518');
+console.log('  ensured deps (skulpt, jszip, lit + wokwi elements, codemirror, digitaljs + yosys2digitaljs, bw-board + bw-circuit-ui at vendor-pins.json) + pinned avr8js@0.21.0, rp2040js@1.3.3, scratch-vm@4.8.115, scratch-paint@2.2.518');
 
 console.log('Integration applied. `cd packages/scratch-gui && npm install --ignore-scripts && npm run build`.');
