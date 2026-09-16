@@ -16,6 +16,14 @@
 // build slots.
 //
 // Deliberately parse-only. It does not typecheck, lint, or render.
+//
+// AND IT DOES NOT CATCH UNDEFINED REFERENCES, which is worth stating because it
+// let one through. Building the backend selector on the wrong branch produced a
+// tab that called screenForHostedSynthesis and read state that existed only on
+// another branch; this script parsed it happily, because the syntax was fine.
+// Together with test/fpga-surface-flag.test.mjs, which resolves every import,
+// the covered failures are: broken syntax, and a module that moved. A reference
+// that does not exist is NOT covered, and only a flag-on build would catch it.
 import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import path from 'node:path';

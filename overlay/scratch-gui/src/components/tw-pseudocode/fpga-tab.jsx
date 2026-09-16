@@ -8,6 +8,8 @@ import {readPorts, checkWidths} from '../../lib/bw-fpga/yosys.js';
 // on its own, and the synthesis client's only job today is to refuse honestly.
 import {screenForHostedSynthesis} from '../../lib/bw-fpga/licence.js';
 import {synthesise} from '../../lib/bw-fpga/synthesis.js';
+import {defaultCatalog, probeBackends, selectBackend, offerable}
+    from '../../lib/bw-fpga/backends.js';
 
 /**
  * The FPGA / HDL surface — TN2 and TN2b of docs/TANG-NANO.md.
@@ -70,6 +72,12 @@ const loadSimulator = () => {
     return simModulePromise;
 };
 
+// A copyleft source needs the local tier, and asking the selector for that
+// capability is how the refusal comes back NAMED rather than as a mystery.
+const needsLocalTier = hdl => hdl.trim()
+    ? screenForHostedSynthesis([{name: 'design.v', source: hdl}]).refusals.length > 0
+    : false;
+
 const Row = ({tone, children}) => (
     <li style={{
         margin: '0.25rem 0', padding: '0.4rem 0.6rem', borderRadius: 4,
@@ -84,10 +92,31 @@ const FpgaTab = () => {
     const [sim, setSim] = React.useState({values: {}, note: null, problems: []});
     const [hdl, setHdl] = React.useState('');
     const [synth, setSynth] = React.useState(null);
+    const [backend, setBackend] = React.useState('auto');
+    const [probe, setProbe] = React.useState({available: [], probes: []});
+
+    // Probe once. Nothing is offered that was not actually found, and an absent
+    // backend is shown WITH ITS REASON rather than omitted — "no synthesis
+    // service is configured" is more useful to a reader than an empty list.
+    const catalog = React.useMemo(() => defaultCatalog({
+        hostedEndpoint: process.env.BW_SYNTHESIS_ENDPOINT || null
+    }), []);
+    React.useEffect(() => {
+        let live = true;
+        probeBackends({catalog, localAvailable: false}).then(r => live && setProbe(r));
+        return () => { live = false; };
+    }, [catalog]);
 
     // The licence screen is worth running as you type: it is the one part of
     // TN3 that works without a service, and it answers a question the user
     // cannot answer by looking.
+    const selection = React.useMemo(() => selectBackend({
+        backend,
+        requiredCapabilities: needsLocalTier(hdl) ? ['copyleft-sources'] : [],
+        available: probe.available,
+        catalog
+    }), [backend, hdl, probe, catalog]);
+
     const hdlScreen = React.useMemo(
         () => screenForHostedSynthesis(hdl.trim() ? [{name: 'design.v', source: hdl}] : []),
         [hdl]);
@@ -331,6 +360,39 @@ const FpgaTab = () => {
                     )}
                 </ul>
             ) : null}
+            <h3>{'Where it would be built'}</h3>
+            <ul style={{listStyle: 'none', padding: 0, margin: '0 0 0.5rem'}}>
+                {catalog.map(entry => {
+                    const p = probe.probes.find(x => x.id === entry.id);
+                    const isAvailable = probe.available.includes(entry.id);
+                    return (
+                        <Row key={entry.id} tone={isAvailable ? '#3a8a3a' : '#7a7a7a'}>
+                            <strong>{entry.label}</strong>
+                            {isAvailable ? ' — available' : ` — unavailable: ${p ? p.reason : 'not probed'}`}
+                            <div style={{opacity: 0.75, fontSize: '0.9em'}}>{entry.description}</div>
+                        </Row>
+                    );
+                })}
+            </ul>
+            {offerable(catalog, probe.available).length > 1 ? (
+                <p>
+                    <label>
+                        {'Backend: '}
+                        <select value={backend} onChange={ev => setBackend(ev.target.value)}>
+                            <option value="auto">{'Auto'}</option>
+                            {offerable(catalog, probe.available).map(en => (
+                                <option key={en.id} value={en.id}>{en.label}</option>
+                            ))}
+                        </select>
+                    </label>
+                </p>
+            ) : null}
+            <p style={{opacity: 0.85}}>
+                {selection.accepted
+                    ? <>{'Would build on '}<strong>{selection.selected.label}</strong>{` — ${selection.reason}`}</>
+                    : <><strong>{selection.code}</strong>{`: ${selection.reason}`}</>}
+            </p>
+
             <p>
                 <button
                     type="button"

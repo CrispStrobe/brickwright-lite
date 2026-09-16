@@ -103,6 +103,9 @@ const baseConfig = new ScratchWebpackConfigBuilder(
         // runtime toggle could not promise. Enabling it by DEFAULT is a separate,
         // later decision that may never be taken -- see docs/TANG-NANO.md.
         'process.env.BW_ENABLE_FPGA': JSON.stringify(process.env.BW_ENABLE_FPGA === '1'),
+        // Where hosted synthesis lives, when it exists. Null means "not configured",
+        // which the backend probe reports as a REASON rather than an empty picker.
+        'process.env.BW_SYNTHESIS_ENDPOINT': JSON.stringify(process.env.BW_SYNTHESIS_ENDPOINT || null),
         'process.env.BW_VERSION': JSON.stringify(buildVersion()),
         'process.env.BW_BUILD_TIME': JSON.stringify(new Date().toISOString()),
         'process.env.DEBUG': Boolean(process.env.DEBUG),
