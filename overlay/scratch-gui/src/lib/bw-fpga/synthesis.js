@@ -19,7 +19,13 @@
  *
  * THE CONTRACT (v1), so the service and this agree before either is written:
  *
- *   POST <endpoint>
+ *   POST <endpoint>/synth          GET <endpoint>/health
+ *
+ * `endpoint` is a BASE, not a full URL. It has to be: the probe in backends.js
+ * needs a health check at a sibling path, and one configured value has to reach
+ * both. For `CrispStrobe/bw-synth` on Vercel that base is
+ * `https://bw-synth.vercel.app/api`.
+ *
  *   {
  *     "contract": 1,
  *     "target":   {"family": "GW2A-18C", "device": "GW2AR-LV18QN88C8/I7", "vopt": "family"},
@@ -112,7 +118,8 @@ export function validateResponse (body) {
  * @param {Array<{name: string, source: string}>} req.files
  * @param {string} req.constraints  the .cst text
  * @param {string} [req.top]
- * @param {string|null} [req.endpoint]  absent means no service is configured
+ * @param {string|null} [req.endpoint]  BASE url; the request goes to `<endpoint>/synth`.
+ *                                      Absent means no service is configured.
  * @param {Function} [req.fetchImpl]    injected for tests
  * @returns {Promise<object>}
  */
@@ -135,9 +142,9 @@ export async function synthesise ({files, constraints, top = null, endpoint = nu
 
     if (!endpoint) {
         return refusal('no-synthesis-service',
-            'No synthesis service is configured, so nothing can be built here yet. '
-            + 'This is TN3 and it is not implemented — the client, the contract and the '
-            + 'licence screening exist, the service does not.',
+            'No synthesis service is configured in this build, so nothing can be built '
+            + 'here. The service exists (CrispStrobe/bw-synth) and this build was not '
+            + 'given its address — set BW_SYNTHESIS_ENDPOINT to its base url.',
             {warnings: screen.warnings});
     }
 
@@ -148,7 +155,7 @@ export async function synthesise ({files, constraints, top = null, endpoint = nu
 
     let res;
     try {
-        res = await doFetch(endpoint, {
+        res = await doFetch(synthUrl(endpoint), {
             method: 'POST',
             headers: {'content-type': 'application/json'},
             body: JSON.stringify({contract: CONTRACT_VERSION, target, top,
@@ -174,4 +181,13 @@ export async function synthesise ({files, constraints, top = null, endpoint = nu
     const validated = validateResponse(body);
     if (validated.ok) validated.warnings = screen.warnings;
     return validated;
+}
+
+/**
+ * The POST url for a base endpoint. Exported because the tab and the tests both
+ * need to agree with the probe about what `endpoint` means, and a second place
+ * that concatenates strings is a second place that can disagree.
+ */
+export function synthUrl (endpoint) {
+    return `${String(endpoint).replace(/\/+$/, '')}/synth`;
 }

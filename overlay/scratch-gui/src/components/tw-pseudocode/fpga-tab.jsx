@@ -389,7 +389,7 @@ const FpgaTab = () => {
             ) : null}
             <p style={{opacity: 0.85}}>
                 {selection.accepted
-                    ? <>{'Would build on '}<strong>{selection.selected.label}</strong>{` — ${selection.reason}`}</>
+                    ? <>{'Builds on '}<strong>{selection.selected.label}</strong>{` — ${selection.reason}`}</>
                     : <><strong>{selection.code}</strong>{`: ${selection.reason}`}</>}
             </p>
 
@@ -398,9 +398,15 @@ const FpgaTab = () => {
                     type="button"
                     onClick={() => synthesise({
                         files: [{name: 'design.v', source: hdl}],
-                        constraints: text
+                        constraints: text,
+                        // The SELECTED backend's endpoint, not the configured one.
+                        // Passing nothing here made the button refuse
+                        // `no-synthesis-service` even when a service was
+                        // configured and the selector had just said it would
+                        // build there — a selection displayed but never aimed at.
+                        endpoint: selection.accepted ? selection.selected.endpoint : null
                     }).then(setSynth)}
-                    disabled={!hdl.trim()}
+                    disabled={!hdl.trim() || !selection.accepted}
                 >{'Synthesise'}</button>
                 {synth && !synth.ok ? (
                     <span style={{marginLeft: '0.6rem', opacity: 0.85}}>

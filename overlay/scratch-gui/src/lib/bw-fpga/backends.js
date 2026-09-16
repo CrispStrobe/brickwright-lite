@@ -24,8 +24,10 @@
  *   somewhere else than asked is how two backends that disagree become
  *   unfalsifiable bug reports.
  *
- * There is no service yet. The catalog is written so adding one is a config
- * entry rather than a code change.
+ * The catalog is written so adding a service is a config entry rather than a code
+ * change, and `endpoint` is a BASE url throughout — `<base>/health` here,
+ * `<base>/synth` in synthesis.js. One configured value has to reach both, which
+ * is why neither module concatenates its own path inline.
  *
  * @module
  */
@@ -104,8 +106,9 @@ export async function probeBackends ({catalog, fetchImpl = null, localAvailable 
 
         if (!entry.endpoint) {
             probes.push({id: entry.id, ok: false, code: 'not-configured',
-                reason: 'No synthesis service is configured. This is TN3 and the service '
-                    + 'does not exist yet; the client and its contract do.'});
+                reason: 'No synthesis service is configured in this build. The service '
+                    + 'exists (CrispStrobe/bw-synth); this build was not given its '
+                    + 'address. Set BW_SYNTHESIS_ENDPOINT to its base url.'});
             continue;
         }
 
@@ -117,7 +120,7 @@ export async function probeBackends ({catalog, fetchImpl = null, localAvailable 
         }
 
         try {
-            const res = await withTimeout(doFetch(`${entry.endpoint}/health`, {method: 'GET'}),
+            const res = await withTimeout(doFetch(healthUrl(entry.endpoint), {method: 'GET'}),
                 timeoutMs);
             if (res && res.status >= 200 && res.status < 300) {
                 available.push(entry.id);
@@ -205,4 +208,13 @@ export function selectBackend ({backend = 'auto', requiredCapabilities = [],
 export function offerable (catalog, available) {
     const ids = new Set(available);
     return (catalog || []).filter(e => ids.has(e.id));
+}
+
+/**
+ * The health url for a base endpoint. The sibling of `synthUrl` in synthesis.js;
+ * both exported so the tab and the tests agree with the probe rather than each
+ * rebuilding the string.
+ */
+export function healthUrl (endpoint) {
+    return `${String(endpoint).replace(/\/+$/, '')}/health`;
 }

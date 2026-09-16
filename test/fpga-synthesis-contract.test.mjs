@@ -74,7 +74,12 @@ test('with no service configured it REFUSES — it does not fake a result', () =
         .then(r => {
             assert.equal(r.ok, false);
             assert.equal(r.code, 'no-synthesis-service');
-            assert.match(r.reason, /not implemented/);
+            // The reason used to say the service "is not implemented". It is,
+            // and it is deployed, so the refusal now has to tell the truth about
+            // WHICH thing is missing: this build's configuration, not the
+            // service. Asserted by naming the switch a reader would set.
+            assert.match(r.reason, /BW_SYNTHESIS_ENDPOINT/);
+            assert.doesNotMatch(r.reason, /the service does not/);
             assert.ok(!('bitstream' in r), 'a refusal must not carry an artefact');
         });
 });
@@ -170,4 +175,17 @@ test('an SPDX id we do not recognise is unknown, not assumed either way', () => 
     assert.equal(r.family, 'unknown');
     assert.equal(r.spdx, 'SomeVendor-Proprietary-1.0',
         'the declaration is still reported, so a human can judge it');
+});
+
+test('the POST goes to <base>/synth, not to the base itself', async () => {
+    let asked = null;
+    await synthesise({
+        files: [file('a.v', '// SPDX-License-Identifier: MIT\nmodule a; endmodule')],
+        constraints: '', endpoint: 'https://bw-synth.vercel.app/api',
+        fetchImpl: url => {
+            asked = url;
+            return Promise.resolve({status: 503, json: () => Promise.resolve({})});
+        }
+    });
+    assert.equal(asked, 'https://bw-synth.vercel.app/api/synth');
 });

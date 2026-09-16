@@ -125,3 +125,34 @@ test('every import in the flagged surface resolves — because NO build compiles
     assert.deepEqual(missing, [],
         `the flagged surface imports paths that do not resolve: ${missing.join(', ')}`);
 });
+
+// ── a selection nothing acts on ─────────────────────────────────
+//
+// The tab computed `selectBackend(...)`, displayed which backend it would build
+// on, and then called `synthesise()` without an endpoint — so the button refused
+// `no-synthesis-service` even in a build that had been given one. Nothing caught
+// it: no build compiles this file, and check-flagged-jsx parses it without
+// executing it. A source-text assertion is the instrument that fits, in the same
+// spirit as the tab-index tests above.
+
+const TAB = 'overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx';
+
+test('the Synthesise call is aimed at the SELECTED backend', () => {
+    const tab = read(TAB);
+    const call = tab.slice(tab.indexOf('synthesise({'));
+    assert.ok(call.startsWith('synthesise({'), 'the tab must call synthesise');
+    const args = call.slice(0, call.indexOf('}).then'));
+    assert.match(args, /endpoint:/,
+        'synthesise() without an endpoint always refuses; a selector whose answer is '
+        + 'displayed but not passed is a decoration');
+    assert.match(args, /selection\.selected\.endpoint/,
+        'the endpoint must come from the selection, not from the raw configured value — '
+        + 'otherwise an explicit "local" request would silently POST to the hosted service');
+});
+
+test('the button is disabled when no backend was selected', () => {
+    const tab = read(TAB);
+    assert.match(tab, /disabled=\{!hdl\.trim\(\) \|\| !selection\.accepted\}/,
+        'an enabled button that can only refuse teaches the user the tool is broken '
+        + 'rather than that nothing is configured; the reason is already on screen');
+});
