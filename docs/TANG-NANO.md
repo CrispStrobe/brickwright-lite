@@ -29,8 +29,23 @@ Hardware in hand: `GW2AR-LV18QN88C8/I7`, QN88, **20736 LUT4 / 15552 FF**,
 USB-JTAG. Generous for any soft CPU we would ship; **8 MB of SDRAM rules out
 Linux** — do not plan for it.
 
-Implementation note that otherwise costs an afternoon: **C-grade devices require
-`--vopt family` passed to nextpnr and gowin_pack.** apicula's readme says so.
+Implementation note that otherwise costs an afternoon, now with the part the
+readme leaves out: **C-grade devices require `--vopt family`**, and the value is
+the **chipdb name, not the part number**.
+
+    device  GW2AR-LV18QN88C8/I7   the ordering code — what you buy
+    family  GW2A-18C              the chipdb — what nextpnr loads and
+                                  gowin_pack takes as -d
+
+The Tang Nano 20K's part is a C-grade GW2A-18 — that is what the `C8` means — so
+its database is `GW2A-18C`. nextpnr ships `GW1N-1`, `GW1N-4`, `GW1N-9`,
+`GW1N-9C`, `GW1NS-4`, `GW1NZ-1`, `GW2A-18`, `GW2A-18C`, `GW5A-25A`,
+`GW5AST-138C` — and **no `GW2A` at all**, which is the string a reader infers
+from the part number and the one that cost three CI rounds in `bw-synth`.
+
+Apicula's line about C devices is distinguishing the C-grade database from the
+plain one. This document repeated that rule four times before anyone understood
+what it was distinguishing.
 
 ---
 
