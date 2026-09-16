@@ -13,12 +13,17 @@ import {defaultCatalog, probeBackends, selectBackend, offerable}
 
 const codes = list => (list || []).map(x => x.code).sort();
 const ok = () => Promise.resolve({status: 200});
+// A runtime that can run the local toolchain. Injected because this box cannot —
+// Node 20 has no WasmGC — and a selector whose local path is untestable here
+// would have its refusals exercised by nobody.
+const capable = {wasm: true, wasmGC: true, exceptions: true,
+    canRunLocalToolchain: true, missing: []};
 
 test('a backend nobody can reach is NOT offered', async () => {
     // target-kinds.js: a picker entry nobody can select is a lie the front end
     // tells for us.
     const catalog = defaultCatalog();               // no endpoint, nothing downloaded
-    const {available, probes} = await probeBackends({catalog});
+    const {available, probes} = await probeBackends({catalog, capabilities: capable});
     assert.deepEqual(available, []);
     assert.deepEqual(offerable(catalog, available), [],
         'an empty picker is honest; a full one that refuses on click is not');
@@ -28,7 +33,7 @@ test('a backend nobody can reach is NOT offered', async () => {
 test('probing is FAIL-CLOSED: a service that errors is not available', async () => {
     const catalog = defaultCatalog({hostedEndpoint: 'https://synth.invalid'});
     const {available, probes} = await probeBackends({
-        catalog, fetchImpl: () => Promise.reject(new Error('ENOTFOUND'))
+        catalog, capabilities: capable, fetchImpl: () => Promise.reject(new Error('ENOTFOUND'))
     });
     assert.deepEqual(available, []);
     assert.equal(probes.find(p => p.id === 'hosted').code, 'unreachable');
@@ -37,7 +42,7 @@ test('probing is FAIL-CLOSED: a service that errors is not available', async () 
 test('a service answering non-2xx is unhealthy, not available', async () => {
     const catalog = defaultCatalog({hostedEndpoint: 'https://synth.invalid'});
     const {available, probes} = await probeBackends({
-        catalog, fetchImpl: () => Promise.resolve({status: 503})
+        catalog, capabilities: capable, fetchImpl: () => Promise.resolve({status: 503})
     });
     assert.deepEqual(available, []);
     assert.equal(probes.find(p => p.id === 'hosted').code, 'unhealthy');
@@ -45,7 +50,7 @@ test('a service answering non-2xx is unhealthy, not available', async () => {
 
 test('auto prefers hosted, and SAYS that it did', async () => {
     const catalog = defaultCatalog({hostedEndpoint: 'https://synth.example'});
-    const {available} = await probeBackends({catalog, fetchImpl: ok, localAvailable: true});
+    const {available} = await probeBackends({catalog, capabilities: capable, fetchImpl: ok, localAvailable: true});
     assert.deepEqual(available.sort(), ['hosted', 'local']);
 
     const r = selectBackend({backend: 'auto', available, catalog});
@@ -56,7 +61,7 @@ test('auto prefers hosted, and SAYS that it did', async () => {
 
 test('auto falls through to local when hosted is absent — and names why', async () => {
     const catalog = defaultCatalog();               // hosted not configured
-    const {available} = await probeBackends({catalog, localAvailable: true});
+    const {available} = await probeBackends({catalog, capabilities: capable, localAvailable: true});
     const r = selectBackend({backend: 'auto', available, catalog});
     assert.equal(r.selected.id, 'local');
     assert.deepEqual(codes(r.refusals), ['unavailable'],
@@ -67,7 +72,7 @@ test('an EXPLICIT request that cannot be honoured refuses — it does not fall b
     // The rule that matters most. Building somewhere other than asked is how two
     // backends that disagree become unfalsifiable bug reports.
     const catalog = defaultCatalog({hostedEndpoint: 'https://synth.example'});
-    const {available} = await probeBackends({catalog, fetchImpl: ok, localAvailable: false});
+    const {available} = await probeBackends({catalog, capabilities: capable, fetchImpl: ok, localAvailable: false});
     const r = selectBackend({backend: 'local', available, catalog});
     assert.equal(r.accepted, false);
     assert.equal(r.selected, null);
@@ -77,7 +82,7 @@ test('an EXPLICIT request that cannot be honoured refuses — it does not fall b
 
 test('copyleft sources select the local tier, and REFUSE hosted by name', async () => {
     const catalog = defaultCatalog({hostedEndpoint: 'https://synth.example'});
-    const {available} = await probeBackends({catalog, fetchImpl: ok, localAvailable: true});
+    const {available} = await probeBackends({catalog, capabilities: capable, fetchImpl: ok, localAvailable: true});
 
     const r = selectBackend({backend: 'auto', requiredCapabilities: ['copyleft-sources'],
         available, catalog});
@@ -89,7 +94,7 @@ test('copyleft sources select the local tier, and REFUSE hosted by name', async 
 
 test('copyleft with no local toolchain is a refusal, not a hosted build', async () => {
     const catalog = defaultCatalog({hostedEndpoint: 'https://synth.example'});
-    const {available} = await probeBackends({catalog, fetchImpl: ok, localAvailable: false});
+    const {available} = await probeBackends({catalog, capabilities: capable, fetchImpl: ok, localAvailable: false});
     const r = selectBackend({backend: 'auto', requiredCapabilities: ['copyleft-sources'],
         available, catalog});
     assert.equal(r.accepted, false,
