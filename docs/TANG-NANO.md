@@ -15,7 +15,7 @@ left the architecture open.
 | **TN2b** the pin bridge | **in review** — lite PR #114 |
 | inert-rail DRC rule (a TN0 follow-up) | **in review** — `bw-circuit-ui` PR #25 |
 | **TN3** client half | **landed** — lite PRs #124, #125 |
-| **TN3** service | **written and proven, NOT deployed** — [`CrispStrobe/bw-synth`](https://github.com/CrispStrobe/bw-synth) |
+| **TN3** service | **deployed, and the toolchain does not fit the host** — [`CrispStrobe/bw-synth`](https://github.com/CrispStrobe/bw-synth), §5.1 |
 | **TN6a** capability gate | **landed** — lite PR #127 |
 | TN6a fetch + worker · TN6b · TN4 flashing · TN5a/TN5b | not started |
 
@@ -666,8 +666,15 @@ flow. A Node service would have needed a second runtime for the packer alone.
 | synthesis runs end to end | **proven** — a blinky reaches a 6.16 MB bitstream in CI |
 | the request path is correct | **proven** — 11 cases, no socket, no toolchain |
 | the licence screen refuses copyleft | **proven** — 7 cases, both repos, tested independently |
-| the service has ever served a request | **no** — the HTTP transport has not run |
-| it is deployed | **no** |
+| the service has ever served a request | **yes** — in production, and it refused a GPL-3.0 source by name |
+| it is deployed | **yes** — `https://bw-synth.vercel.app` |
+| **synthesis runs ON THE DEPLOYED HOST** | **no** — 525 MB of writable `/tmp`, 0 MB free (§5.1) |
+
+The last row is the one that matters, and it is kept separate from the first
+deliberately: everything above it works in production, and the thing the service
+exists to do does not, because of where it is running rather than what it is.
+`/api/health` reports that in those words with the byte counts, so the client's
+fail-closed selector does not offer a backend that cannot build.
 
 The licence screen is duplicated there on purpose. lite screens before upload,
 which is right for the user — a refusal after the source has left the machine has
