@@ -30,6 +30,8 @@
  * @module
  */
 
+import {detectWasmCapabilities, localToolchainRefusal} from './wasm-capabilities.js';
+
 export const BACKEND_KINDS = Object.freeze(['hosted', 'local']);
 
 /**
@@ -69,18 +71,33 @@ export function defaultCatalog ({hostedEndpoint = null} = {}) {
  * @returns {Promise<{available: string[], probes: Array}>}
  */
 export async function probeBackends ({catalog, fetchImpl = null, localAvailable = false,
-    timeoutMs = 3000} = {}) {
+    timeoutMs = 3000, capabilities = null} = {}) {
     const probes = [];
     const available = [];
 
     for (const entry of catalog || []) {
         if (entry.kind === 'local') {
+            // CAPABILITY BEFORE DOWNLOAD. The toolchain's WebAssembly needs
+            // WasmGC, and the audience this project names first — school
+            // Chromebooks — is exactly the population most likely to be on a
+            // browser without it. Finding that out AFTER 78 MB would be the
+            // worst possible order, so it is checked first and the refusal
+            // names the missing feature rather than saying "unsupported".
+            // Injectable for the same reason fetchImpl is: a selector that can
+            // only be tested on a runtime that happens to support WasmGC is a
+            // selector whose refusal path is never exercised.
+            const refusal = localToolchainRefusal(capabilities || detectWasmCapabilities());
+            if (refusal) {
+                probes.push({id: entry.id, ok: false, ...refusal});
+                continue;
+            }
             if (localAvailable) {
                 available.push(entry.id);
                 probes.push({id: entry.id, ok: true, reason: 'The toolchain is downloaded.'});
             } else {
                 probes.push({id: entry.id, ok: false, code: 'not-downloaded',
-                    reason: 'The local toolchain has not been downloaded yet.'});
+                    reason: 'This browser can run the local toolchain, but it has not been '
+                        + 'downloaded yet (~78 MB, once).'});
             }
             continue;
         }
