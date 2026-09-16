@@ -849,8 +849,10 @@ data. Every one of those findings was then fixed; the chain is recorded in
 
 **L4. Arcade lowered to a UF2.** Investigation then build.
 `bw_arcade.py` emits PXT TypeScript; the PXT compiler (MIT) can produce a
-UF2 for PyBadge. Measure whether it runs in the 250 MB function limit hosted;
-if not, name the alternative.
+UF2 for PyBadge. Measure whether it runs hosted — and measure the right limit:
+the package ceiling is 5 GB, while **writable `/tmp` is ~525 MB and holds the
+installed dependencies too** (`docs/device-matrix.md`, and `docs/TANG-NANO.md`
+§5.1 for how that was found). If not, name the alternative.
 DoD (investigation): doc with the measurement.
 
 #### L3 findings acted on

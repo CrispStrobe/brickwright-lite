@@ -58,9 +58,22 @@ field — precisely so that adding a personality never mints a new permanent id.
 That is the `stc12` lesson in §3 above, applied before the fact rather than
 after.
 
-One correction this matrix owes: the **250 MB function limit** cited under the
-compiler section is stale. Fluid Compute now allows 5 GB packages, which changes
-the hosted-toolchain arithmetic for any large toolchain, not only the FPGA one.
+One correction this matrix owes, and a correction to the correction. The
+**250 MB function limit** cited under the compiler section is stale: Fluid
+Compute allows 5 GB packages. But **package size is not the limit that bites**,
+and this document said for a day that it was.
+
+Measured from inside a live Vercel function on 2026-09-16, deploying the Gowin
+toolchain (`CrispStrobe/bw-synth`): `/tmp` is **525 MB total and 0 MB free**
+after a 333 MB dependency install, because dependencies are installed into it
+at runtime. Anything that unpacks on first run — the YoWASP WASM tools do —
+then dies with `OSError: [Errno 28] No space left on device`. The deployment
+itself built fine.
+
+So the arithmetic a hosted toolchain owes is **installed size plus whatever it
+writes at runtime, against ~525 MB of ephemeral disk**, not against the package
+ceiling. For the pico-sdk route below that is the number to check; for the FPGA
+one it is already decided, and `docs/TANG-NANO.md` §5.1 records how.
 
 ---
 
@@ -80,8 +93,10 @@ Uno, Nano and micro:bit landed today. The RP2040 has two routes:
   because MicroPython has no `goto`. A `PicoTarget` is mostly a pin table and
   a peripheral vocabulary.
 - **C, via the pico-sdk.** arm-none-eabi plus CMake plus a 100 MB SDK, against
-  a 250 MB function limit that already holds a 32 MB AVR toolchain. Not worth
-  it for what it buys.
+  ~525 MB of writable ephemeral disk that already holds a 32 MB AVR toolchain
+  (see the correction above — the package ceiling is 5 GB and is not the
+  binding number). It would probably fit; it is still not worth it for what it
+  buys.
 
 MicroPython, then. Flashing is also nearly free: the Pico presents the same
 serial REPL, so `flashMicrobit` generalises to `flashMicroPython`. (Installing

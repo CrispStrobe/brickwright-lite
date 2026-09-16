@@ -15,7 +15,7 @@ left the architecture open.
 | **TN2b** the pin bridge | **in review** — lite PR #114 |
 | inert-rail DRC rule (a TN0 follow-up) | **in review** — `bw-circuit-ui` PR #25 |
 | **TN3** client half | **landed** — lite PRs #124, #125 |
-| **TN3** service | **written and proven, NOT deployed** — [`CrispStrobe/bw-synth`](https://github.com/CrispStrobe/bw-synth) |
+| **TN3** service | **deployed, and the toolchain does not fit the host** — [`CrispStrobe/bw-synth`](https://github.com/CrispStrobe/bw-synth), §5.1 |
 | **TN6a** capability gate | **landed** — lite PR #127 |
 | TN6a fetch + worker · TN6b · TN4 flashing · TN5a/TN5b | not started |
 
@@ -354,9 +354,46 @@ backend switch would violate "never silently lower fidelity" in spirit, the
 selected backend must be visible, and the two backends owe a **differential
 gate** — the same bitstream from either, or bug reports become unfalsifiable.
 
-Note while doing this that the 250 MB function limit quoted in
-[device-matrix.md](device-matrix.md) is stale: Fluid Compute now allows 5 GB
-packages, which changes that arithmetic entirely.
+### 5.1 The limit this section checked was the wrong limit
+
+The paragraph that used to stand here said the 250 MB function limit quoted in
+[device-matrix.md](device-matrix.md) was stale, because Fluid Compute now allows
+5 GB packages, and that this changed the arithmetic entirely. **That is true and
+it does not help.** The service was built and deployed — `CrispStrobe/bw-synth`,
+live at `https://bw-synth.vercel.app` — and the package ceiling was never what
+stopped it. The deployment builds fine at 333 MB.
+
+Measured from inside the running function on 2026-09-16, not inferred:
+
+    /tmp         525 MB total,   0 MB free
+    dependencies             333 MB   (installed into /tmp by the runtime)
+    /var/task     31 MB total,   0 MB free
+
+The dependencies are installed into `/tmp`, and the YoWASP packages then want to
+unpack their WebAssembly into that same filesystem on first run. There is nothing
+left, and the tool dies with `OSError: [Errno 28] No space left on device`.
+
+**The binding constraint is writable ephemeral storage at runtime, not package
+size.** A ~330 MB toolchain that unpacks another ~100 MB does not fit in 525 MB,
+and no amount of headroom in the 5 GB package ceiling changes that number.
+
+What this does not invalidate: §5's conclusion that the heavy tier belongs off
+the Chromebook. 261 MB of WASM is still the wrong thing to ship to the audience
+the README names first. What it invalidates is the assumption that *hosted*
+meant *the same serverless platform the compile route already uses* — that
+followed from a limit nobody had measured against this workload.
+
+What is proven in production today: the contract, the routing, and **the licence
+rule** — a GPL-3.0 source POSTed to `/api/synth` is refused by name, with
+evidence, pointing at the local tier, without ever reaching synthesis. `gowin_pack`
+resolves and runs. `/api/health` reports 503 with the per-tool reasons and those
+byte counts, because the client's backend selector is fail-closed and a backend
+that cannot do the work must not be offered.
+
+So TN3's remaining work is **a host with a real disk** — a container (Fly,
+Railway, Render) or Vercel Sandbox — and that is a platform decision, not a code
+one. The flow itself is not in doubt: bw-synth's CI builds a blinky to a
+**6.16 MB bitstream** for `GW2AR-LV18QN88C8/I7` on every push.
 
 ## 6. Device identity and surfaces
 
@@ -525,6 +562,11 @@ is refused BY NAME**, with the reason and a pointer to the local tier (§2.3);
 an unlicensed source is refused outright. This is an acceptance criterion, not
 later hardening.
 **Note.** This is where the unknown-unknowns live. Budget accordingly.
+**Status, 2026-09-16.** Built as `CrispStrobe/bw-synth` and deployed. The
+licence refusal is enforced in production; the flow builds a blinky to a
+6.16 MB bitstream in CI. It **cannot run on the deployed host**: 525 MB of
+writable `/tmp`, 0 MB free after a 333 MB install (§5.1). Remaining work is
+re-homing to a host with a real disk, which is a platform decision.
 
 ### TN4 — Flashing, in Tauri
 **Deliver.** openFPGALoader driven from the native app, beside the existing
@@ -624,8 +666,15 @@ flow. A Node service would have needed a second runtime for the packer alone.
 | synthesis runs end to end | **proven** — a blinky reaches a 6.16 MB bitstream in CI |
 | the request path is correct | **proven** — 11 cases, no socket, no toolchain |
 | the licence screen refuses copyleft | **proven** — 7 cases, both repos, tested independently |
-| the service has ever served a request | **no** — the HTTP transport has not run |
-| it is deployed | **no** |
+| the service has ever served a request | **yes** — in production, and it refused a GPL-3.0 source by name |
+| it is deployed | **yes** — `https://bw-synth.vercel.app` |
+| **synthesis runs ON THE DEPLOYED HOST** | **no** — 525 MB of writable `/tmp`, 0 MB free (§5.1) |
+
+The last row is the one that matters, and it is kept separate from the first
+deliberately: everything above it works in production, and the thing the service
+exists to do does not, because of where it is running rather than what it is.
+`/api/health` reports that in those words with the byte counts, so the client's
+fail-closed selector does not offer a backend that cannot build.
 
 The licence screen is duplicated there on purpose. lite screens before upload,
 which is right for the user — a refusal after the source has left the machine has
