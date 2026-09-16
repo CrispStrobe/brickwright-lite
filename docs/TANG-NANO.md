@@ -196,7 +196,10 @@ not "probably fine". Three buckets, and they are not equal:
 - **Own or permissive HDL** — shippable. Includes anything we write.
 - **GPL cores** — the existing escape hatch applies: *fetched at runtime from a
   URL, never bundled*, exactly as the GPL gallery extensions are. **Decided
-  2026-09-15: they build on the LOCAL tier only.** See §2.3.
+  2026-09-15: they build on the LOCAL tier only** (§2.3) — but see **§8c**: the
+  local tier cannot currently produce a bitstream at all, because the packer is
+  Python and has no browser build. GPL cores can be simulated locally; they
+  cannot reach silicon through this app today.
 - **Unlicensed** — unusable. Full stop.
 
 ### ROMs are a second wall
@@ -701,6 +704,58 @@ the check that distinguishes a convention from a drift.
 
 Anything reading a current from this engine needs to know this. It is not
 specific to the FPGA work; it just surfaced here first.
+
+## 8c. TN6 cannot produce a bitstream in a browser — checked 2026-09-16
+
+**This qualifies decision 19 and should be read before planning the local tier.**
+
+Decision 19 sends GPL-licensed cores to the local tier because building them on
+our server would convey a derivative work. That reasoning is sound and unchanged.
+What was not checked at the time is whether the local tier can actually *finish
+the job*.
+
+It cannot, today. The Gowin flow has three stages and only two of them can run
+in a browser:
+
+| stage | tool | browser? |
+|---|---|---|
+| synthesis | Yosys | **yes** — `@yowasp/yosys`, 78.3 MB |
+| place & route | nextpnr-himbaechel-gowin | **yes** — 183.3 MB |
+| **bitstream packing** | **Apicula `gowin_pack`** | **NO** |
+
+`gowin_pack` is Python. There is no `@yowasp/apicula`, no equivalent on npm, and
+nothing published that packs a Gowin bitstream in JavaScript or WebAssembly.
+
+### What that means, stated plainly
+
+**A GPL core can be SIMULATED locally but cannot reach real silicon through this
+app at all.** Not "slowly" or "with a download" — there is no path. The hosted
+route refuses it by policy and the local route cannot finish it by capability.
+
+That is a real gap in decision 19, and it is better to know now than after
+someone downloads 261 MB expecting a bitstream.
+
+### The only route around it, and it is unproven
+
+Pyodide (MPL-2.0, in the allowed set) could in principle run `apycula` in the
+browser. Apicula declares a `pure` extra (`msgpack`, `cattrs`) alongside its
+default compiled dependencies (`msgspec`, `fastcrc`), which suggests a
+pure-Python path exists for exactly this kind of environment. With numpy, the
+wheel and the device database that is roughly another 40 MB on top of 261 MB,
+and **none of it has been tried.**
+
+### So TN6 splits, and only one half is worth building now
+
+**TN6a — local synthesis to a NETLIST.** Yosys alone, 78.3 MB. Turns Verilog
+into something the gate-level tier can simulate, with no service and no licence
+question. Useful, decision-free, and a quarter of the download.
+
+**TN6b — local place & route and bitstream.** Needs nextpnr (183.3 MB) *and* a
+browser-runnable packer that does not exist. Research, not implementation.
+
+**The recommendation is TN6a now, TN6b as a spike later** — and, separately,
+that the UI must not offer a local *bitstream* until TN6b exists, because a
+button that cannot finish is the lie `target-kinds.js` describes.
 
 ## 9. Still open, deliberately
 
