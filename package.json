@@ -101,7 +101,9 @@
     "devDependencies": {
         "bw-board": "github:CrispStrobe/bw-board#76877a20bf0bdcca352eac3d9ae8872b1ac0def7",
         "bw-circuit-ui": "github:CrispStrobe/bw-circuit-ui#6846512f35bbe5effa92820875a343110e4ad1ba",
+        "digitaljs": "^0.14.2",
         "jszip": "3.10.1",
-        "playwright": "^1.62.1"
+        "playwright": "^1.62.1",
+        "yosys2digitaljs": "^0.10.3"
     }
 }
