@@ -806,6 +806,54 @@ the tab's own text implies it would be. Wiring `synth.netlist` into the
 simulator's input is a small change, deferred because it is UI behaviour that
 wants the same flag-on browser confirmation and the box was under load.
 
+## 7.5 Driving the on-screen board (#1) — the lite side is ready, the seam is upstream
+
+The honest gap behind "the tab doesn't do much": it produces a bitstream/netlist
+file and DISPLAYS, as text, "what the circuit engine would be told" — it never
+drives the visible breadboard, so you can't watch your design light an LED. That
+is the payoff, and it was set aside for the examples/flashing work. Here is where
+it actually stands, measured 2026-09-17, so whoever picks it up does not re-derive
+it.
+
+**The lite side is already built.** `lib/bw-fpga/drive.js`'s `applyPortValues(
+circuit, bindings, values)` takes any `{setPin(terminal, mode, driveHigh)}` and
+drives the design's simulated output values onto the bound terminals. The pin
+bridge (`port-bridge.js`) already maps ports → the Tang Nano's header terminals,
+and the Tang Nano is a placed part whose pins ARE driveable terminals
+(`PASSTHROUGH_KINDS`). The tab computes exactly this today — it just applies it to
+a throwaway recorder (`{setPin: (...a) => ops.push(a)}`) instead of a real
+circuit, because it has nothing else to hand it.
+
+**The seam that is missing is upstream, in `bw-circuit-ui`.** The live `Circuit`
+(the one with `setPin`) lives inside the lazily-mounted `CircuitDesigner`, and
+lite reaches it only through the `bw-circuit-file` window-message channel — which
+carries file load/save and `m.toJSON()` snapshots, NOT a live "drive these
+terminals" call. The package exposes no drive API and no channel for one (checked:
+no `setPin`/`externalDrive`/drive-message export in the vendored tree). So the FPGA
+tab has the values and the bindings and the code to apply them, and no handle to
+the real circuit to apply them TO.
+
+**What unblocks it, precisely.** bw-circuit-ui needs to expose one of:
+  1. the live `Circuit`'s `setPin` (or the `Circuit` itself) on a known handle —
+     e.g. `window.__bwCircuit` published by `CircuitDesigner` while mounted, the
+     same shape `pico-sim-run.js` uses for `window.__bwPicoSim`; or
+  2. a `bw-circuit-drive` message: `{terminal, mode, driveHigh}` that
+     `CircuitDesigner` applies to its `Circuit` and repaints.
+Either is small in bw-circuit-ui and turns the lite side into three lines: on a
+settled sim, `applyPortValues(theExposedCircuit, bindings, sim.values)`. It is an
+upstream lane (its repo, its owner), with lite as the ready consumer — the same
+posture as the TN0/TN1 pin work.
+
+**And a clock (#2), which is lite-only and independent.** A combinational design
+(Button → LED) would light the moment #1 lands, because its output follows its
+input with no time involved. A sequential one (the Counter) needs clock edges to
+move: `GateLevelSim` settles once, and nothing toggles `clk`. A "Run" control that
+pulses the clock input and re-settles on a timer — `setInput(clk, 0)` → settle →
+`setInput(clk, 1)` → settle, repeatedly — makes counters advance and their LEDs
+animate. That is self-contained in `sim.js` + the tab and does not wait on
+bw-circuit-ui; it just has no VISIBLE effect until #1 gives the values somewhere
+to go, so the two are best done together.
+
 ## 8a. Decision 6 had a dependency problem — found, and resolved by taking a different subpath
 
 **Resolved. Kept because the reasoning is reusable, not because it is pending.**
