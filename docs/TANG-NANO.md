@@ -18,6 +18,7 @@ left the architecture open.
 | **TN3** service | **deployed, and the toolchain does not fit the host** — [`CrispStrobe/bw-synth`](https://github.com/CrispStrobe/bw-synth), §5.1 |
 | **TN6a** capability gate | **landed** — lite PR #127 |
 | **TN6b** bitstream packer | **works** — byte-identical to native, in Chromium 151 (§8d) |
+| **TN6b** whole chain in a browser | **works** — Verilog → bitstream, byte-identical, ~280 MB (§8e) |
 | TN6a fetch + worker · TN6b place & route · TN4 flashing · TN5a/TN5b | not started |
 
 **What works today:** the Tang Nano 20K places and wires on a breadboard with a
@@ -975,6 +976,74 @@ local backend offerable.
 **The fixtures are nextpnr output, not a substitute for it.** `blink-pnr.json`
 and `counter-pnr.json` were produced by the real flow and committed so the packer
 can be gated without 261 MB of toolchain. They prove the packer, not the chain.
+
+## 8e. The whole chain runs in a browser — measured 2026-09-17
+
+§8d closed the packer. This closes nextpnr, the 183 MB stage nobody had tried,
+and with it TN6b's existence question. **Verilog to bitstream, entirely in
+Chromium 151, byte-identical to the fully native chain.**
+
+| stage | | time | fetched |
+|---|---|---|---|
+| synthesis | `@yowasp/yosys` | 3.9 s | 77.4 MB |
+| place & route | `@yowasp/nextpnr-himbaechel-gowin` | 2.8 s | 182.9 MB |
+| bitstream | Apicula under Pyodide | 5.5 s | ~20 MB |
+
+```
+bitstream   586e54ac…64e257d
+native was  586e54ac…64e257d
+```
+
+Repeatable: `node scripts/probe-browser-fpga-chain.mjs --install`, then run it.
+
+### The version skew is the interesting part of the result
+
+The npm nextpnr and the PyPI one are different builds, and their `--write` JSON
+differs — `c8ef337d…` from the browser against a differently-sized file from the
+native run. **The bitstream does not differ.** The differential holds at the
+artefact that reaches hardware and not at the intermediate, which is the outcome
+you want and not the one you would have predicted by hashing the middle of the
+pipeline. Anyone tempted to gate on the nextpnr JSON should read that twice.
+
+### Where the 183 MB actually is
+
+The nextpnr wasm is **2.5 MB**. The other 180 MB is four chipdb resource
+tarballs, and the package fetches **all four regardless of the target family** —
+this flow needs GW2A-18C alone, and Apicula's own database for that part is
+0.38 MB. So the size problem is not the tool, it is that the resource bundle is
+not selective. That is the lever for anyone shrinking this, and it is now a
+measured number rather than a guess.
+
+### Node 20 refuses it, from the engine rather than from our probe
+
+```
+invalid value type 'noexternref', enable with --experimental-wasm-gc
+```
+
+That is `lib/bw-fpga/wasm-capabilities.js`'s refusal arriving independently, from
+the WebAssembly engine, on a runtime the probe already declines. Two instruments
+agreeing is worth more than either alone — and it is why the capability gate has
+to come *before* the 78 MB rather than after.
+
+### There is no gate behind this, deliberately
+
+~280 MB per run buys a re-proof of an **existence** claim, and existence does not
+regress the way behaviour does. `test/fpga-pyodide-packer.test.mjs` gates the
+packer because that is 20 MB and it is the half that can silently break: an
+upstream Apicula release can change a bitstream. A browser cannot stop having
+WebAssembly.
+
+### What is now true about TN6b, and what it still does not license
+
+The chain exists and produces the right artefact. What remains is **entirely
+size and UX** — 280 MB is not a download you hand a school Chromebook without
+asking, which is what §5 said about 261 MB and still says.
+
+**The UI rule from §8c is unchanged and this does not relax it.** A local
+bitstream may be offered when the app can actually run this chain, on a probe,
+with the download consented to — not because a probe script on a workstation
+proved it possible. `backends.js` stays fail-closed, and `local` stays
+`not-downloaded`.
 
 ## 9. Still open, deliberately
 

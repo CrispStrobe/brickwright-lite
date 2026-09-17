@@ -110,8 +110,13 @@ export function installPyodide () {
 /**
  * Pack one design and return what came out. Throws on a packer failure rather
  * than reporting a hash for a bitstream nobody produced.
+ *
+ * `pnrOverride` packs a nextpnr output from somewhere else — the browser chain
+ * probe uses it to pack what the browser's own nextpnr wrote. The design still
+ * names which RECORDED hash the result is compared against, which is the whole
+ * point: a different route to the same bitstream is the claim.
  */
-export async function packWithPyodide (design, {loadPyodide} = {}) {
+export async function packWithPyodide (design, {loadPyodide, pnrOverride = null} = {}) {
     const spec = DESIGNS[design];
     if (!spec) throw new Error(`no such design: ${design}`);
 
@@ -139,7 +144,8 @@ await micropip.install(${JSON.stringify(APYCULA)}, deps=False)
 `);
     const ready = Date.now() - t0;
 
-    py.FS.writeFile('/in.json', readFileSync(path.join(FIXTURES, spec.pnr)));
+    py.FS.writeFile('/in.json',
+        readFileSync(pnrOverride || path.join(FIXTURES, spec.pnr)));
     const t1 = Date.now();
     const failure = await py.runPythonAsync(`
 import sys, warnings
