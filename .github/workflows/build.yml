@@ -478,6 +478,23 @@ jobs:
         timeout-minutes: 3
         run: npm run sync:picomicropython || echo "::warning::pico firmware sync failed — the twelve firmware-gated unit tests will skip by name"
 
+      # THE FPGA PACKER GATE NEEDS A PYTHON RUNTIME, AND IT IS NOT A DEPENDENCY.
+      # test/fpga-pyodide-packer.test.mjs asserts that Apicula's gowin_pack,
+      # running under Pyodide, packs the committed nextpnr fixtures to bitstreams
+      # BYTE-IDENTICAL to the native packer. That is the measurement that
+      # reversed docs/TANG-NANO.md §8c ("there is no path"), so it is worth
+      # running rather than recording once and trusting.
+      #
+      # Pyodide is 17 MB and serves exactly this gate, so it is installed into
+      # gitignored artifacts/ rather than added to package.json, and Apicula
+      # itself comes from PyPI at run time. Tolerated absent for the same reason
+      # the Pico firmware is: a network failure must degrade the run to a NAMED
+      # skip, not redden a build over something nobody changed.
+      - name: Install Pyodide for the FPGA bitstream-packer gate (tolerated absent)
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        timeout-minutes: 4
+        run: node scripts/probe-pyodide-packer.mjs --install || echo "::warning::pyodide install failed — the two packer gates will skip by name"
+
       # THE GPL TOOLCHAIN, FETCHED RATHER THAN TRACKED.
       # SDCC is GPL-2.0-or-later and this repository is BSD-3-Clause, so as of
       # 2026-09-08 the binaries are no longer committed here — they live at
