@@ -142,6 +142,33 @@ const FpgaTab = () => {
         () => screenForHostedSynthesis(hdl.trim() ? [{name: 'design.v', source: hdl}] : []),
         [hdl]);
 
+    // A successful synthesis was, until now, invisible: `synth` was rendered only
+    // when NOT ok, so a working build stranded its bitstream (hosted) or netlist
+    // (local) in state with no way to reach it. Browsers CAN save a Blob (unlike
+    // the artifact sandbox), so a successful result becomes a download here. The
+    // object URLs are revoked when the result changes, so they do not leak.
+    const artefacts = React.useMemo(() => {
+        if (!synth || !synth.ok) return null;
+        const out = {};
+        if (synth.bitstream) {
+            const bin = atob(synth.bitstream);
+            const bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            out.bitstream = {url: URL.createObjectURL(new Blob([bytes],
+                {type: 'application/octet-stream'})), bytes: bytes.length};
+        }
+        if (synth.netlist) {
+            out.netlist = {url: URL.createObjectURL(new Blob(
+                [JSON.stringify(synth.netlist)], {type: 'application/json'})),
+            modules: Object.keys(synth.netlist.modules || {}).length};
+        }
+        return out;
+    }, [synth]);
+    React.useEffect(() => () => {
+        if (artefacts && artefacts.bitstream) URL.revokeObjectURL(artefacts.bitstream.url);
+        if (artefacts && artefacts.netlist) URL.revokeObjectURL(artefacts.netlist.url);
+    }, [artefacts]);
+
     // Load and run the simulator when there is something to simulate. Nothing is
     // fetched until a netlist is actually pasted.
     React.useEffect(() => {
@@ -442,6 +469,21 @@ const FpgaTab = () => {
                 {synth && !synth.ok ? (
                     <span style={{marginLeft: '0.6rem', opacity: 0.85}}>
                         <strong>{synth.code}</strong>{`: ${synth.reason}`}
+                    </span>
+                ) : null}
+                {synth && synth.ok && artefacts ? (
+                    <span style={{marginLeft: '0.6rem'}}>
+                        {artefacts.bitstream ? (
+                            <>
+                                {`✓ Built a ${artefacts.bitstream.bytes.toLocaleString()}-byte bitstream. `}
+                                <a href={artefacts.bitstream.url} download="design.fs">{'Download .fs'}</a>
+                            </>
+                        ) : artefacts.netlist ? (
+                            <>
+                                {`✓ Synthesised a netlist (${artefacts.netlist.modules} modules). `}
+                                <a href={artefacts.netlist.url} download="design.json">{'Download netlist'}</a>
+                            </>
+                        ) : '✓ Done.'}
                     </span>
                 ) : null}
             </p>

@@ -264,3 +264,22 @@ test('the FPGA tab root is an absolute-inset scroller, so it actually scrolls', 
         'inset must reach the panel bottom, or the scroller is not full height');
     assert.match(style, /overflowY:\s*'auto'/, 'the root must scroll its own content');
 });
+
+// ── a successful synthesis must be reachable, not stranded in state ──
+//
+// `synth` was rendered only when NOT ok, so a working build left its bitstream
+// (hosted) or netlist (local) in React state with no way for the user to get it.
+// Browsers can save a Blob (the artifact sandbox cannot), so success now offers
+// a download. Gated because no build compiles this file.
+
+test('a successful synthesis offers its artefact as a download', () => {
+    const tab = codeOnly(read(TAB));
+    assert.match(tab, /synth && synth\.ok/,
+        'the success branch (synth.ok) must render something — a working build was invisible');
+    assert.match(tab, /download="design\.fs"/,
+        'a hosted bitstream must be downloadable, or the build produced nothing the user can use');
+    assert.match(tab, /createObjectURL/,
+        'the bitstream/netlist must become a Blob URL the browser can save');
+    assert.match(tab, /revokeObjectURL/,
+        'the object URLs must be revoked when the result changes, or they leak');
+});
