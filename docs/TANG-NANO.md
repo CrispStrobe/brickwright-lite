@@ -20,6 +20,7 @@ left the architecture open.
 | **TN6b** bitstream packer | **works** — byte-identical to native, in Chromium 151 (§8d) |
 | **TN6b** whole chain in a browser | **works** — Verilog → bitstream, byte-identical, ~280 MB (§8e) |
 | **TN6a** fetch + worker | **landed** — local synthesis to a netlist, behind the flag |
+| **the flag-on surface, assembled** | **driven in a real browser, all 4 paths pass** — staging, §7.4 |
 | TN6b place & route in the app · TN4 flashing · TN5a/TN5b | not started |
 
 **What works today:** the Tang Nano 20K places and wires on a breadboard with a
@@ -736,6 +737,58 @@ another package, a binary named after its package rather than its tool, and a
 chipdb that does not exist. The fourth asked the toolchain what it had and got an
 answer in one round. That is recorded in `bw-synth`'s README for whoever repeats
 it.
+
+## 7.4 The surface was assembled and driven — staging, 2026-09-17
+
+Every part of the FPGA surface had been proven in isolation — unit tests, the
+packer probe, the browser-chain probe, the request-path tests. None of it had
+ever been **compiled into a real editor build and clicked**, because
+`BW_ENABLE_FPGA` is off in every build here and `check-flagged-jsx` only *parses*
+the flagged files. So a flag-on staging build was made — CI `workflow_dispatch`
+on a throwaway branch, `BW_ENABLE_FPGA=1` and `BW_SYNTHESIS_ENDPOINT` pointed at
+the deployed `https://synth.crispstro.be/api` — served at `fpga.crispstro.be` and
+driven in headless Chromium 151. All four paths pass:
+
+| path | result |
+|---|---|
+| the tab scrolls | client 628 / content 2119, `overflow:auto` |
+| hosted synth | `ok`, 4.6 MB bitstream, a **Download .fs** blob link |
+| local toolchain | 77 MB Yosys fetched in-browser, WasmGC compiled, worker ready |
+| local synth | netlist produced, a **Download netlist** link |
+
+**It found four real bugs that every isolated test had missed** — which is the
+whole reason to assemble it:
+
+1. **The tab did not scroll.** Its root is a flex item in a `display:flex` panel,
+   and a flex item's default `min-height:auto` refuses to shrink below its
+   content, so the tall content overflowed and everything below the fold was
+   unreachable. Fixed with the absolute-inset pattern `circuit-tab.jsx` uses in
+   the same panel.
+2. **A successful build was invisible.** The result was rendered only when NOT
+   ok, so a working synthesis stranded its bitstream/netlist in state. Now a
+   Blob download.
+3. **`/api/health` raced the client's 3 s probe.** It re-ran all three WASM tools
+   (~2.5 s) on every call, so the hosted backend flickered in and out of
+   "available". Fixed in bw-synth by memoizing the healthy result (immutable
+   container) and warming it at worker boot — 2.5 s → 0.1 s.
+4. **The local tier forced `-top top`.** It defaulted the top module to the
+   literal `top`, so `synth_gowin` found no such module and produced nothing for
+   any design not named `top`. Now it lets `synth_gowin` auto-select, as the
+   hosted route does.
+
+**The lesson, recorded because it will recur:** the source-text gates on the
+flagged surface (`fpga-surface-flag`) are *necessary but not sufficient*. The
+first scroll fix passed its gate and did not fix the browser; the gate was a
+proxy that matched the source while the layout stayed broken. Anything that is
+layout, wiring, or runtime behaviour needs a flag-on build and a real browser to
+confirm — the gates catch a deleted property, not a wrong one. Budget a staging
+drive when the surface changes, not just a green gate.
+
+**Known remaining polish (not a bug):** the local netlist is offered as a
+download but not yet auto-loaded into the gate-level simulator above it, though
+the tab's own text implies it would be. Wiring `synth.netlist` into the
+simulator's input is a small change, deferred because it is UI behaviour that
+wants the same flag-on browser confirmation and the box was under load.
 
 ## 8a. Decision 6 had a dependency problem — found, and resolved by taking a different subpath
 
