@@ -44,23 +44,23 @@ test('a real SEQUENTIAL netlist counts when clocked (the #2 payoff, end to end)'
     assert.equal(clk, 'clk');
     const {circuit, problems} = fromYosys(nl);
     assert.deepEqual(problems, []);
-    const sim = new GateLevelSim(circuit, engine);
 
-    // Held in reset: the counter is a defined 0 (not x).
-    sim.setInput('rst_n', 0, 1);
-    assert.ok(sim.settle().settled);
-    assert.equal(sim.outputValues(ports).values.led, 0, 'reset holds the counter at 0');
-
-    // Release reset and step the clock: the LEDs count up in binary.
-    sim.setInput('rst_n', 1, 1);
-    const seen = [];
-    for (let i = 0; i < 6; i++) {
-        const r = sim.tickClock(clk, 1);
-        assert.ok(r.settled, 'each edge settles');
-        seen.push(sim.outputValues(ports).values.led);
-    }
-    assert.deepEqual(seen, [1, 2, 3, 4, 5, 6],
-        'the counter advances one per clock — this is what reaches the board');
+    // This mirrors THE TAB EXACTLY: it rebuilds the sim from scratch on every
+    // step (deps [netlistText, inputs, clockCycles]) and only ever tickClocks —
+    // it never asserts-then-releases a reset. So the design must be reset-FREE
+    // with an initialised register: cnt starts defined at 0 (the flop's `initial`,
+    // from the Verilog `= 0`) and counts on the clock alone. An async-reset design
+    // would sit at x here, which is why the example carries no rst_n.
+    const step = n => {
+        const sim = new GateLevelSim(circuit, engine);   // fresh, like the tab
+        if (n > 0) assert.ok(sim.tickClock(clk, n).settled, 'each edge settles');
+        else assert.ok(sim.settle().settled);
+        return sim.outputValues(ports).values.led;
+    };
+    assert.equal(step(0), 0, 'the initialised counter is a defined 0 before any clock');
+    assert.deepEqual([1, 2, 3, 4, 5, 6].map(step),
+        [1, 2, 3, 4, 5, 6],
+        'the counter advances one per clock, from scratch each time — what the tab does');
 });
 
 test('port addressing is by NET name even when device ids are dev0/dev1', () => {
@@ -70,6 +70,6 @@ test('port addressing is by NET name even when device ids are dev0/dev1', () => 
     const {circuit} = fromYosys(nl);
     const sim = new GateLevelSim(circuit, engine);
     // If addressing regressed to device-id, these throw "Invalid call to setInput".
-    assert.doesNotThrow(() => sim.setInput('clk', 0, 1).setInput('rst_n', 1, 1));
+    assert.doesNotThrow(() => sim.setInput('clk', 0, 1).setInput('clk', 1, 1));
     assert.doesNotThrow(() => sim.getOutput('led'));
 });
