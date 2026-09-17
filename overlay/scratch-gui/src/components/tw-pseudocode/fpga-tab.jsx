@@ -278,126 +278,23 @@ const FpgaTab = () => {
         <div style={{maxWidth: '52rem'}}>
             <h2 style={{marginTop: 0}}>{'FPGA — Tang Nano 20K'}</h2>
             <p style={{marginTop: 0}}>
-                {'Which of a design’s pins can actually reach the breadboard. This reads '}
-                {'Gowin constraints against the real board part. It does not synthesise, '}
-                {'simulate or flash anything — none of that is built yet.'}
+                {'Write Verilog, synthesise it to a bitstream on the hosted service or to a '}
+                {'netlist here in the browser, and check that your pin constraints reach the '}
+                {'board. Copyleft sources are refused on the shared server and must be built '}
+                {'locally — the licence check below decides.'}
             </p>
 
-            <textarea
-                value={text}
-                onChange={e => setText(e.target.value)}
-                spellCheck={false}
-                style={{width: '100%', minHeight: '11rem', fontFamily: 'monospace',
-                    fontSize: '0.85rem', padding: '0.6rem'}}
-            />
-
-            <details style={{margin: '0.75rem 0'}}>
-                <summary style={{cursor: 'pointer'}}>
-                    {'Optional: paste a Yosys JSON netlist to also check the ports exist'}
-                    {top ? <strong>{` — top module: ${top}`}</strong> : null}
-                </summary>
-                <textarea
-                    value={netlistText}
-                    onChange={e => setNetlistText(e.target.value)}
-                    spellCheck={false}
-                    placeholder={'yosys -p \'synth_gowin -json out.json\' design.v'}
-                    style={{width: '100%', minHeight: '7rem', fontFamily: 'monospace',
-                        fontSize: '0.8rem', padding: '0.6rem', marginTop: '0.4rem'}}
-                />
-            </details>
-
-            <h3>{`Reaches the board (${bindings.length})`}</h3>
-            <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
-                {bindings.map(b => (
-                    <Row key={`${b.port}-${b.pin}`} tone="#3a8a3a">
-                        <code>{b.port}</code>{' → pin '}<code>{b.pin}</code>
-                        {' → terminal '}<code>{b.terminal}</code>
-                        {b.sharedWith ? <em style={{opacity: 0.8}}>{' (shares onboard hardware)'}</em> : null}
-                    </Row>
-                ))}
-                {bindings.length ? null : <li style={{opacity: 0.7}}>{'Nothing placed yet.'}</li>}
-            </ul>
-
-            {warnings.length ? (
-                <>
-                    <h3>{`Usable, with a caveat (${warnings.length})`}</h3>
-                    <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
-                        {warnings.map((w, i) => (
-                            <Row key={i} tone="#b8860b"><strong>{w.port}</strong>{`: ${w.reason}`}</Row>
-                        ))}
-                    </ul>
-                </>
-            ) : null}
-
-            {refusals.length ? (
-                <>
-                    <h3>{`Cannot reach the board (${refusals.length})`}</h3>
-                    <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
-                        {refusals.map((r, i) => (
-                            <Row key={i} tone="#b34747">
-                                <strong>{r.port || `line ${r.lineNumber}`}</strong>{`: ${r.reason}`}
-                            </Row>
-                        ))}
-                    </ul>
-                </>
-            ) : null}
-
-            {inputPorts.length ? (
-                <>
-                    <h3>{'Design inputs'}</h3>
-                    <p style={{marginTop: 0, opacity: 0.8}}>
-                        {'Nothing drives these yet, so set them here and watch the outputs follow.'}
-                    </p>
-                    <div style={{display: 'flex', gap: '0.75rem', flexWrap: 'wrap'}}>
-                        {inputPorts.map(name => (
-                            <label key={name} style={{display: 'flex', alignItems: 'center', gap: '0.35rem'}}>
-                                <input
-                                    type="checkbox"
-                                    checked={Boolean(inputs[name])}
-                                    onChange={e => setInputs({...inputs, [name]: e.target.checked})}
-                                />
-                                <code>{name}</code>
-                            </label>
-                        ))}
-                    </div>
-                </>
-            ) : null}
-
-            <h3>
-                {'What the circuit engine would be told'}
-                {simNote ? <span style={{opacity: 0.7, fontWeight: 'normal'}}>{` — ${simNote}`}</span> : null}
-            </h3>
-            <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
-                {plan.ops.map(([terminal, mode, driveHigh], i) => (
-                    <Row key={i} tone="#4a6fa5">
-                        <code>{terminal}</code>{` → ${mode}`}
-                        {mode === 'pushpull' ? <strong>{driveHigh ? ' HIGH' : ' LOW'}</strong> : null}
-                        {mode === 'input' ? <em style={{opacity: 0.8}}>{' (high-Z: the design reads it)'}</em> : null}
-                    </Row>
-                ))}
-                {plan.unset.map((u, i) => (
-                    <Row key={`u${i}`} tone="#7a7a7a">
-                        <code>{u.terminal}</code>
-                        {' — undriven: nothing models the design yet, so there is no value to put on it.'}
-                    </Row>
-                ))}
-                {plan.ops.length || plan.unset.length ? null : <li style={{opacity: 0.7}}>{'Nothing to drive.'}</li>}
-            </ul>
-
-            {canonical ? (
-                <>
-                    <h3>{'Verilog (for synthesis)'}</h3>
-            <p style={{marginTop: 0, opacity: 0.8}}>
-                {'No synthesis service is configured, so nothing here is built yet. '}
-                {'What does work is the licence check — it decides whether a design '}
-                {'may be built on a shared server at all.'}
-            </p>
+            {/* PRIMARY FLOW: the design, and building it. This used to be gated on
+                `canonical` (a generated .cst), so nothing here appeared until the user
+                typed pin constraints first — the tab looked like two empty textareas.
+                The pin checker is now a collapsible panel at the bottom. */}
+            <h3>{'Verilog'}</h3>
             <textarea
                 value={hdl}
                 onChange={e => setHdl(e.target.value)}
                 spellCheck={false}
                 placeholder={'// SPDX-License-Identifier: MIT\nmodule blink(output led);\n  assign led = 1\'b1;\nendmodule'}
-                style={{width: '100%', minHeight: '8rem', fontFamily: 'monospace',
+                style={{width: '100%', minHeight: '9rem', fontFamily: 'monospace',
                     fontSize: '0.85rem', padding: '0.6rem'}}
             />
             {hdl.trim() ? (
@@ -412,21 +309,21 @@ const FpgaTab = () => {
                     ))}
                     {hdlScreen.refusals.length || hdlScreen.warnings.length ? null : (
                         <Row tone="#3a8a3a">
-                            {'Declares a permissive licence — it could be built on a shared '}
-                            {'server once one exists.'}
+                            {'Declares a permissive licence — it may be built on the shared server.'}
                         </Row>
                     )}
                 </ul>
             ) : null}
+
             <h3>{'Where it would be built'}</h3>
             <ul style={{listStyle: 'none', padding: 0, margin: '0 0 0.5rem'}}>
                 {catalog.map(entry => {
-                    const p = probe.probes.find(x => x.id === entry.id);
+                    const pr = probe.probes.find(x => x.id === entry.id);
                     const isAvailable = probe.available.includes(entry.id);
                     return (
                         <Row key={entry.id} tone={isAvailable ? '#3a8a3a' : '#7a7a7a'}>
                             <strong>{entry.label}</strong>
-                            {isAvailable ? ' — available' : ` — unavailable: ${p ? p.reason : 'not probed'}`}
+                            {isAvailable ? ' — available' : ` — unavailable: ${pr ? pr.reason : 'not probed'}`}
                             <div style={{opacity: 0.75, fontSize: '0.9em'}}>{entry.description}</div>
                         </Row>
                     );
@@ -457,11 +354,6 @@ const FpgaTab = () => {
                     onClick={() => synthesise({
                         files: [{name: 'design.v', source: hdl}],
                         constraints: text,
-                        // The SELECTED backend's endpoint, not the configured one.
-                        // Passing nothing here made the button refuse
-                        // `no-synthesis-service` even when a service was
-                        // configured and the selector had just said it would
-                        // build there — a selection displayed but never aimed at.
                         endpoint: selection.accepted ? selection.selected.endpoint : null
                     }).then(setSynth)}
                     disabled={!hdl.trim() || !selection.accepted}
@@ -490,14 +382,11 @@ const FpgaTab = () => {
 
             <h3>{'Synthesise in this browser (TN6a)'}</h3>
             <p style={{opacity: 0.85}}>
-                {'Yosys runs here, producing a NETLIST the simulator above can run. '}
-                {'It does not produce a bitstream — that needs place and route, another '}
-                {'183 MB, which is not offered yet.'}
+                {'Yosys runs here, producing a netlist you can download or check in the pin '}
+                {'panel below. It does not produce a bitstream — that needs place and route, '}
+                {'another 183 MB, which is not offered yet.'}
             </p>
             <p>
-                {/* The state is always shown WITH its reason, including the
-                    refusals: "this browser has no WasmGC" tells a reader what to
-                    do and "unavailable" does not. */}
                 <strong>{local ? local.code || local.state : 'starting'}</strong>
                 {local ? `: ${local.reason}` : ''}
             </p>
@@ -513,10 +402,6 @@ const FpgaTab = () => {
                                 : r.result))
                             .finally(() => setLocalBusy(false));
                     }}
-                    /* Offered only where it can work and is not already here:
-                       a button that can only refuse teaches the user the tool is
-                       broken rather than that something is missing. The reason is
-                       already on screen above. */
                     disabled={localBusy || !local || local.code !== 'not-downloaded'}
                 >{localBusy ? 'Downloading…' : 'Download the toolchain (77 MB, once)'}</button>
             </p>
@@ -533,19 +418,137 @@ const FpgaTab = () => {
                 >{'Synthesise here'}</button>
             </p>
 
-            <h3>{'Constraints for the Gowin toolchain'}</h3>
-                    <p style={{marginTop: 0, opacity: 0.8}}>
-                        {'Canonical .cst covering only the ports that reach a header pin. '}
-                        {'This is what leaves for real silicon.'}
-                    </p>
-                    <pre style={{background: 'rgba(127,127,127,0.1)', padding: '0.7rem',
-                        borderRadius: 4, overflowX: 'auto', fontSize: '0.82rem'}}>{canonical}</pre>
-                </>
-            ) : null}
+            {/* SECONDARY: pin-reachability checker, collapsed by default. It reads the
+                Gowin constraints below against the real board part; those same
+                constraints are sent with a hosted build. */}
+            <details style={{marginTop: '1.5rem'}}>
+                <summary style={{cursor: 'pointer', fontWeight: 'bold'}}>
+                    {`Check which pins reach the board (${bindings.length} placed`}
+                    {refusals.length ? `, ${refusals.length} cannot` : ''}
+                    {')'}
+                </summary>
+                <p style={{opacity: 0.85}}>
+                    {'Which of a design’s pins can actually reach the breadboard. This reads '}
+                    {'Gowin constraints against the real board part, and the same constraints '}
+                    {'are sent with a hosted build.'}
+                </p>
+                <textarea
+                    value={text}
+                    onChange={e => setText(e.target.value)}
+                    spellCheck={false}
+                    style={{width: '100%', minHeight: '9rem', fontFamily: 'monospace',
+                        fontSize: '0.85rem', padding: '0.6rem'}}
+                />
+
+                <details style={{margin: '0.75rem 0'}}>
+                    <summary style={{cursor: 'pointer'}}>
+                        {'Optional: paste a Yosys JSON netlist to also check the ports exist'}
+                        {top ? <strong>{` — top module: ${top}`}</strong> : null}
+                    </summary>
+                    <textarea
+                        value={netlistText}
+                        onChange={e => setNetlistText(e.target.value)}
+                        spellCheck={false}
+                        placeholder={'yosys -p \'synth_gowin -json out.json\' design.v'}
+                        style={{width: '100%', minHeight: '7rem', fontFamily: 'monospace',
+                            fontSize: '0.8rem', padding: '0.6rem', marginTop: '0.4rem'}}
+                    />
+                </details>
+
+                <h3>{`Reaches the board (${bindings.length})`}</h3>
+                <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
+                    {bindings.map(b => (
+                        <Row key={`${b.port}-${b.pin}`} tone="#3a8a3a">
+                            <code>{b.port}</code>{' → pin '}<code>{b.pin}</code>
+                            {' → terminal '}<code>{b.terminal}</code>
+                            {b.sharedWith ? <em style={{opacity: 0.8}}>{' (shares onboard hardware)'}</em> : null}
+                        </Row>
+                    ))}
+                    {bindings.length ? null : <li style={{opacity: 0.7}}>{'Nothing placed yet.'}</li>}
+                </ul>
+
+                {warnings.length ? (
+                    <>
+                        <h3>{`Usable, with a caveat (${warnings.length})`}</h3>
+                        <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
+                            {warnings.map((w, i) => (
+                                <Row key={i} tone="#b8860b"><strong>{w.port}</strong>{`: ${w.reason}`}</Row>
+                            ))}
+                        </ul>
+                    </>
+                ) : null}
+
+                {refusals.length ? (
+                    <>
+                        <h3>{`Cannot reach the board (${refusals.length})`}</h3>
+                        <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
+                            {refusals.map((r, i) => (
+                                <Row key={i} tone="#b34747">
+                                    <strong>{r.port || `line ${r.lineNumber}`}</strong>{`: ${r.reason}`}
+                                </Row>
+                            ))}
+                        </ul>
+                    </>
+                ) : null}
+
+                {inputPorts.length ? (
+                    <>
+                        <h3>{'Design inputs'}</h3>
+                        <p style={{marginTop: 0, opacity: 0.8}}>
+                            {'Nothing drives these yet, so set them here and watch the outputs follow.'}
+                        </p>
+                        <div style={{display: 'flex', gap: '0.75rem', flexWrap: 'wrap'}}>
+                            {inputPorts.map(name => (
+                                <label key={name} style={{display: 'flex', alignItems: 'center', gap: '0.35rem'}}>
+                                    <input
+                                        type="checkbox"
+                                        checked={Boolean(inputs[name])}
+                                        onChange={e => setInputs({...inputs, [name]: e.target.checked})}
+                                    />
+                                    <code>{name}</code>
+                                </label>
+                            ))}
+                        </div>
+                    </>
+                ) : null}
+
+                <h3>
+                    {'What the circuit engine would be told'}
+                    {simNote ? <span style={{opacity: 0.7, fontWeight: 'normal'}}>{` — ${simNote}`}</span> : null}
+                </h3>
+                <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
+                    {plan.ops.map(([terminal, mode, driveHigh], i) => (
+                        <Row key={i} tone="#4a6fa5">
+                            <code>{terminal}</code>{` → ${mode}`}
+                            {mode === 'pushpull' ? <strong>{driveHigh ? ' HIGH' : ' LOW'}</strong> : null}
+                            {mode === 'input' ? <em style={{opacity: 0.8}}>{' (high-Z: the design reads it)'}</em> : null}
+                        </Row>
+                    ))}
+                    {plan.unset.map((u, i) => (
+                        <Row key={`u${i}`} tone="#7a7a7a">
+                            <code>{u.terminal}</code>
+                            {' — undriven: nothing models the design yet, so there is no value to put on it.'}
+                        </Row>
+                    ))}
+                    {plan.ops.length || plan.unset.length ? null : <li style={{opacity: 0.7}}>{'Nothing to drive.'}</li>}
+                </ul>
+
+                {canonical ? (
+                    <>
+                        <h3>{'Constraints for the Gowin toolchain'}</h3>
+                        <p style={{marginTop: 0, opacity: 0.8}}>
+                            {'Canonical .cst covering only the ports that reach a header pin. '}
+                            {'This is what leaves for real silicon.'}
+                        </p>
+                        <pre style={{background: 'rgba(127,127,127,0.1)', padding: '0.7rem',
+                            borderRadius: 4, overflowX: 'auto', fontSize: '0.82rem'}}>{canonical}</pre>
+                    </>
+                ) : null}
+            </details>
 
             <p style={{opacity: 0.7, marginTop: '1.5rem'}}>
-                {'Planned next: a model of the design to supply those values, then hosted '}
-                {'synthesis, then flashing from the native app.'}
+                {'Planned next: a model of the design that feeds the local netlist into the '}
+                {'simulator, then flashing from the native app.'}
             </p>
         </div>
         </div>
