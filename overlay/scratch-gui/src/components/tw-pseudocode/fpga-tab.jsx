@@ -10,6 +10,7 @@ import {readPorts, checkWidths} from '../../lib/bw-fpga/yosys.js';
 import {screenForHostedSynthesis} from '../../lib/bw-fpga/licence.js';
 import {synthesise} from '../../lib/bw-fpga/synthesis.js';
 import {createLocalClient} from '../../lib/bw-fpga/local-client.js';
+import {probeFlash, flashBitstream} from '../../lib/bw-fpga/fpga-tauri-transport.js';
 import {defaultCatalog, probeBackends, selectBackend, offerable}
     from '../../lib/bw-fpga/backends.js';
 
@@ -96,6 +97,10 @@ const FpgaTab = () => {
     const [synth, setSynth] = React.useState(null);
     const [backend, setBackend] = React.useState('auto');
     const [probe, setProbe] = React.useState({available: [], probes: []});
+    // TN4. Flashing needs the native app; a browser can only download the .fs.
+    // Probed fail-closed, so a Flash button appears only where it actually works.
+    const [flash, setFlash] = React.useState({available: false});
+    const [flashMsg, setFlashMsg] = React.useState(null);
     // TN6a. `localAvailable: false` was hard-coded below, which made the local
     // backend permanently unofferable however capable the browser was. The
     // worker answers it now — and answers `not-downloaded` until someone
@@ -128,6 +133,12 @@ const FpgaTab = () => {
             .then(r => live && setProbe(r));
         return () => { live = false; };
     }, [catalog, local]);
+
+    React.useEffect(() => {
+        let live = true;
+        probeFlash().then(r => live && setFlash(r));
+        return () => { live = false; };
+    }, []);
 
     // The licence screen is worth running as you type: it is the one part of
     // TN3 that works without a service, and it answers a question the user
@@ -382,6 +393,25 @@ const FpgaTab = () => {
                             <>
                                 {`✓ Built a ${artefacts.bitstream.bytes.toLocaleString()}-byte bitstream. `}
                                 <a href={artefacts.bitstream.url} download="design.fs">{'Download .fs'}</a>
+                                {flash.available ? (
+                                    <button
+                                        type="button"
+                                        style={{marginLeft: '0.5rem', padding: '0.15rem 0.5rem', cursor: 'pointer'}}
+                                        onClick={() => {
+                                            setFlashMsg('Flashing…');
+                                            flashBitstream(synth.bitstream)
+                                                .then(r => setFlashMsg(`✓ ${r}`))
+                                                .catch(e => setFlashMsg(`Flash failed: ${e.message}`));
+                                        }}
+                                    >{'Flash to board'}</button>
+                                ) : null}
+                                {flashMsg ? <span style={{marginLeft: '0.5rem', opacity: 0.85}}>{flashMsg}</span> : null}
+                                <div style={{opacity: 0.7, fontSize: '0.85em', marginTop: '0.25rem'}}>
+                                    {flash.available
+                                        ? 'Flashing runs openFPGALoader in the native app.'
+                                        : 'A browser cannot flash. With the board on USB: '}
+                                    {flash.available ? null : <code>{'openFPGALoader -b tangnano20k design.fs'}</code>}
+                                </div>
                             </>
                         ) : artefacts.netlist ? (
                             <>

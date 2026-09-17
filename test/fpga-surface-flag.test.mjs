@@ -333,3 +333,17 @@ test('the tab offers starter examples that load a design in one click', () => {
     assert.match(tab, /setHdl\(ex\.verilog\)/, 'an example must fill the Verilog box');
     assert.match(tab, /setText\(ex\.cst\)/, 'an example must fill the constraints too');
 });
+
+// ── flashing is native-only, and the button never lies (TN4) ────
+
+test('the Flash button appears only when the native flash transport is available', () => {
+    const tab = codeOnly(read(TAB));
+    assert.match(tab, /flash\.available \? \(/,
+        'a Flash button must be gated on flash.available — a browser cannot flash, and a '
+        + 'button that only fails is the lie target-kinds.js forbids');
+    assert.match(tab, /flashBitstream\(synth\.bitstream\)/,
+        'the button must flash the produced bitstream');
+    // and the browser path must tell a user with a board how to flash it themselves
+    assert.match(tab, /openFPGALoader -b tangnano20k design\.fs/,
+        'when flashing is unavailable, the panel must show the openFPGALoader command');
+});

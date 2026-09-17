@@ -623,6 +623,22 @@ serial and ScratchLink transports; browsers get a bitstream **file download**.
 **Accept.** The board in hand blinks from a bitstream this project produced.
 **Blocked on.** Identifying the USB-JTAG bridge on our revision — see §9.
 
+**Status, 2026-09-17 — the JS half is wired, the rest is off this box.** The
+browser path is done: a hosted build's `.fs` downloads, and the tab shows the
+`openFPGALoader -b tangnano20k design.fs` command for a user with the board. The
+native path is `lib/bw-fpga/fpga-tauri-transport.js`, the same `invoke()` shape
+as `pico-tauri-transport.js`, and it is **fail-closed by probe**: it asks the
+native app for an `fpga_flash_available` command and a "Flash to board" button
+appears only if that answers — so the button never shows in a browser or in an
+app that does not implement flashing. Six unit tests cover it with an injected
+`invoke`.
+
+What is NOT done here, and cannot be: the Rust `fpga_flash_available` /
+`fpga_flash_bitstream` commands live in the Tauri app (another repo), and
+flashing needs a board on USB — which this VM has no passthrough for. So the
+acceptance criterion (a board blinks from our bitstream) is unmet until those
+commands exist and someone runs it on hardware. The JS half is ready for them.
+
 ### TN5a — LiteX + VexRiscv + Renode, the functional tier
 **Reconcile before planning.** Overlaps the UNCLAIMED Renode phases of the STM32
 lane (`LANES.md`, STM32 path lane) and the existing `wt-renode-*` worktrees. Talk to that
