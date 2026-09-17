@@ -8,6 +8,7 @@ import {readPorts, checkWidths} from '../../lib/bw-fpga/yosys.js';
 // on its own, and the synthesis client's only job today is to refuse honestly.
 import {screenForHostedSynthesis} from '../../lib/bw-fpga/licence.js';
 import {synthesise} from '../../lib/bw-fpga/synthesis.js';
+import {createLocalClient} from '../../lib/bw-fpga/local-client.js';
 import {defaultCatalog, probeBackends, selectBackend, offerable}
     from '../../lib/bw-fpga/backends.js';
 
@@ -94,6 +95,12 @@ const FpgaTab = () => {
     const [synth, setSynth] = React.useState(null);
     const [backend, setBackend] = React.useState('auto');
     const [probe, setProbe] = React.useState({available: [], probes: []});
+    // TN6a. `localAvailable: false` was hard-coded below, which made the local
+    // backend permanently unofferable however capable the browser was. The
+    // worker answers it now — and answers `not-downloaded` until someone
+    // consents to 78 MB, which is an honest state and not a failure.
+    const [local, setLocal] = React.useState(null);
+    const [localBusy, setLocalBusy] = React.useState(false);
 
     // Probe once. Nothing is offered that was not actually found, and an absent
     // backend is shown WITH ITS REASON rather than omitted — "no synthesis
@@ -101,11 +108,25 @@ const FpgaTab = () => {
     const catalog = React.useMemo(() => defaultCatalog({
         hostedEndpoint: process.env.BW_SYNTHESIS_ENDPOINT || null
     }), []);
+    // One client for the life of the tab: it owns the worker, and the worker
+    // owns whether 78 MB is already here. A new one per render would forget.
+    const localClient = React.useMemo(() => createLocalClient({
+        spawn: () => new Worker(new URL('../../lib/bw-fpga/yosys-worker.js', import.meta.url),
+            {type: 'module'}),
+        onState: m => setLocal(m.state)
+    }), []);
     React.useEffect(() => {
         let live = true;
-        probeBackends({catalog, localAvailable: false}).then(r => live && setProbe(r));
+        localClient.init().then(r => live && setLocal(r.state));
+        return () => { live = false; localClient.terminate(); };
+    }, [localClient]);
+
+    React.useEffect(() => {
+        let live = true;
+        probeBackends({catalog, localAvailable: Boolean(local && local.available)})
+            .then(r => live && setProbe(r));
         return () => { live = false; };
-    }, [catalog]);
+    }, [catalog, local]);
 
     // The licence screen is worth running as you type: it is the one part of
     // TN3 that works without a service, and it answers a question the user
@@ -413,6 +434,51 @@ const FpgaTab = () => {
                         <strong>{synth.code}</strong>{`: ${synth.reason}`}
                     </span>
                 ) : null}
+            </p>
+
+            <h3>{'Synthesise in this browser (TN6a)'}</h3>
+            <p style={{opacity: 0.85}}>
+                {'Yosys runs here, producing a NETLIST the simulator above can run. '}
+                {'It does not produce a bitstream — that needs place and route, another '}
+                {'183 MB, which is not offered yet.'}
+            </p>
+            <p>
+                {/* The state is always shown WITH its reason, including the
+                    refusals: "this browser has no WasmGC" tells a reader what to
+                    do and "unavailable" does not. */}
+                <strong>{local ? local.code || local.state : 'starting'}</strong>
+                {local ? `: ${local.reason}` : ''}
+            </p>
+            <p>
+                <button
+                    type="button"
+                    onClick={() => {
+                        setLocalBusy(true);
+                        localClient.download({consent: true})
+                            .then(r => setLocal(r.result && r.result.ok
+                                ? {state: 'ready', available: true, ok: true,
+                                    reason: 'The toolchain is downloaded.'}
+                                : r.result))
+                            .finally(() => setLocalBusy(false));
+                    }}
+                    /* Offered only where it can work and is not already here:
+                       a button that can only refuse teaches the user the tool is
+                       broken rather than that something is missing. The reason is
+                       already on screen above. */
+                    disabled={localBusy || !local || local.code !== 'not-downloaded'}
+                >{localBusy ? 'Downloading…' : 'Download the toolchain (77 MB, once)'}</button>
+            </p>
+            <p>
+                <button
+                    type="button"
+                    onClick={() => {
+                        setLocalBusy(true);
+                        localClient.synthesise({files: [{name: 'design.v', source: hdl}]})
+                            .then(r => setSynth(r.result))
+                            .finally(() => setLocalBusy(false));
+                    }}
+                    disabled={localBusy || !hdl.trim() || !local || !local.available}
+                >{'Synthesise here'}</button>
             </p>
 
             <h3>{'Constraints for the Gowin toolchain'}</h3>

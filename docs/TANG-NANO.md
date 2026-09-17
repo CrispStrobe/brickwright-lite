@@ -19,7 +19,8 @@ left the architecture open.
 | **TN6a** capability gate | **landed** — lite PR #127 |
 | **TN6b** bitstream packer | **works** — byte-identical to native, in Chromium 151 (§8d) |
 | **TN6b** whole chain in a browser | **works** — Verilog → bitstream, byte-identical, ~280 MB (§8e) |
-| TN6a fetch + worker · TN6b place & route · TN4 flashing · TN5a/TN5b | not started |
+| **TN6a** fetch + worker | **landed** — local synthesis to a netlist, behind the flag |
+| TN6b place & route in the app · TN4 flashing · TN5a/TN5b | not started |
 
 **What works today:** the Tang Nano 20K places and wires on a breadboard with a
 real pinout, the 3.3 V rule catches 5 V fed back into a bank pin, and — behind
