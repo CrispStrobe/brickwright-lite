@@ -150,6 +150,22 @@ test('it synthesises to a netlist and asks Yosys for the Gowin flow by name', as
     assert.equal(runYosys.calls[1].files['blink.v'].includes('module blink'), true);
 });
 
+test('with no top given, it lets synth_gowin auto-select — never `-top top`', async () => {
+    // The tab passes no top. Defaulting to `-top top` made synth_gowin look for a
+    // module named "top" and produce nothing for a design named `blink` — the local
+    // tier failed for every real design (found by the staging drive). No -top lets
+    // yosys auto-select the hierarchy top, as the hosted route does.
+    const runYosys = stubYosys();
+    const tc = createLocalToolchain({runYosys, capabilities: CAPABLE});
+    await tc.download({consent: true});
+    await tc.synthesise({files: [{name: 'blink.v', source: 'module blink(output led); assign led=1; endmodule'}]});
+    const script = runYosys.calls[1].args.join(' ');
+    assert.doesNotMatch(script, /-top top\b/,
+        'defaulting -top to "top" is the bug that made the local tier produce no netlist');
+    assert.match(script, /synth_gowin -json/,
+        'with no top named, synth_gowin must run without -top so it auto-selects');
+});
+
 test('a design that does not compile is an ANSWER, not an outage', async () => {
     const tc = createLocalToolchain({
         runYosys: stubYosys({fail: 'syntax error in blink.v line 3'}), capabilities: CAPABLE});
