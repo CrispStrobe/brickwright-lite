@@ -22,6 +22,24 @@
 
 const DIRECTIONS = new Set(['input', 'output', 'inout']);
 
+/**
+ * Is a module's `top` attribute set?
+ *
+ * REAL Yosys does not write `1`. It writes integer-valued attributes as binary
+ * STRINGS — `(* top *)` comes back as `"00000000000000000000000000000001"`,
+ * 32 bits wide. The hand-written fixtures used `top: 1`, which passed the parser
+ * against a value the tool never emits; the first real `synth_gowin` netlist fed
+ * here (blink, from synth.crispstro.be) read as "no top module" for exactly this
+ * reason. So a binary string is decoded and any non-zero value counts, while the
+ * integer/`'1'`/`true` forms stay accepted for the fixtures and any writer that
+ * uses them.
+ */
+function topAttrSet (v) {
+    if (v === 1 || v === true) return true;
+    if (typeof v === 'string' && /^[01]+$/.test(v)) return parseInt(v, 2) !== 0;
+    return false;
+}
+
 /** The module Yosys marked `(* top *)`, else the only one, else null. */
 export function topModule (netlist) {
     const modules = netlist && netlist.modules;
@@ -29,7 +47,7 @@ export function topModule (netlist) {
     const names = Object.keys(modules);
     const marked = names.filter(n => {
         const attrs = (modules[n] && modules[n].attributes) || {};
-        return attrs.top === 1 || attrs.top === '1' || attrs.top === true;
+        return topAttrSet(attrs.top);
     });
     if (marked.length === 1) return {name: marked[0], module: modules[marked[0]]};
     if (marked.length > 1) return null;

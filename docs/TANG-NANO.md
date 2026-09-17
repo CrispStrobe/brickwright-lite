@@ -854,6 +854,59 @@ animate. That is self-contained in `sim.js` + the tab and does not wait on
 bw-circuit-ui; it just has no VISIBLE effect until #1 gives the values somewhere
 to go, so the two are best done together.
 
+## 7.6 #1 and #2 landed — and feeding the sim a REAL netlist found the next wall
+
+Both shipped. The upstream seam (#1) is live: `bw-circuit-ui` at the pinned
+`6997596` publishes `window.__bwCircuit = {setPin, advanceBy, advanceTo}` from
+`CircuitDesigner`'s mount effect (I made that upstream change), and the pin bump
+that activates it merged as #158. The consumer half was already in the tab.
+
+The clock (#2) shipped as #159 — but NOT as the timer-"Run" sketched above. A
+timer would have animated nothing useful: `GateLevelSim.tickClock(clockPort,
+cycles)` drives the clock low→high and settles each edge, bounded like `settle`;
+the tab drives it from a **single-step** "Clock" panel (Step / +8 / Reset). The
+reason is arithmetic, and it is the first thing to know here: **the `counter`
+example divides its clock by 2²⁰, so it needs ~a million steps to move an LED in
+the gate-level sim** — a timer would spin forever and show nothing. A new
+`sequence` example (a 4-bit counter, no divider) is the one built to step. A
+divided clock is right for real silicon and wrong for tick-by-tick simulation;
+that tension is inherent, not a bug.
+
+**The contract verifies end to end at the source level.** `setPin(pin, mode,
+driveHigh)` (upstream) ← `useCircuit` ← `circuit.setPin`, and `applyPortValues`
+calls `setPin(b.terminal, mode, value)` with that exact shape; the deps are
+`useCallback`-stable, so the handle publishes once on mount. `fpga-gate-level-sim`'s
+"THE LOOP" already proves `applyPortValues` lights a real `bw-circuit-ui` board.
+
+**What only a REAL netlist could show — and it is a wall.** Every test and the
+§7.4 staging drive used hand-written GENERIC netlists or only *downloaded* the
+synth output; nobody had fed a real `synth_gowin` netlist to the gate-level sim,
+because §7.5 deferred the drive. Doing so (blink, from `synth.crispstro.be`)
+found two things the fixtures hid:
+
+1. **Real Yosys marks the top module `"00000000000000000000000000000001"`** — a
+   32-bit binary string, not the integer `1` the fixtures used — so `topModule`
+   read every real netlist as "no top module", breaking the pin checker on real
+   output. **Fixed** (`topAttrSet` decodes the binary form; a test now uses the
+   real format). The pin checker now places `led` from the real blink netlist.
+2. **`synth_gowin` output is not simulatable as-is.** It carries `$specify2`
+   timing cells and Gowin primitives (`OBUF`, `VCC`, `LUT*`), and
+   `yosys2digitaljs` rejects them (`Invalid cell type: $specify2`). So the sim —
+   fed the tab's own synthesis output — produces no values, and the seam has
+   nothing to drive. The tab reports this honestly (a named `conversion-failed`),
+   but a synthesised design cannot yet animate the board.
+
+**What unblocks #2's payoff (the next lane).** The sim needs a **generic**
+netlist, not the bitstream one: a second Yosys pass (`read_verilog; proc; opt;
+… write_json` — the technology-independent shape `yosys2digitaljs` is built for),
+produced alongside the Gowin-mapped netlist that `gowin_pack` needs. That is a
+change in the synthesis producers — `bw-synth` (hosted) and `local-toolchain.js`
+(the in-browser worker) — to return `{bitstreamNetlist, simNetlist}`, with the
+tab feeding `simNetlist` to `GateLevelSim`. Until then the seam is proven by
+contract and by the hand-written LOOP, and drives correctly for any generic
+netlist; it simply has no real synthesised design to carry, because the synthesis
+tier hands it a netlist its simulator was never meant to read.
+
 ## 8a. Decision 6 had a dependency problem — found, and resolved by taking a different subpath
 
 **Resolved. Kept because the reasoning is reusable, not because it is pending.**

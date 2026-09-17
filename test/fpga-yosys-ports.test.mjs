@@ -129,3 +129,27 @@ test('a design with no clock has no clock port, and data is never mistaken for o
     assert.equal(detectClockPort({}), null);
     assert.equal(detectClockPort(null), null);
 });
+
+test('the top module is found when marked the way REAL Yosys marks it', () => {
+    // Yosys writes integer-valued attributes as binary strings: `(* top *)`
+    // comes back as a 32-bit "00...01", NOT the integer 1 the hand fixtures used.
+    // The first real synth_gowin netlist (blink, from synth.crispstro.be) read as
+    // "no top module" until topModule decoded this. A regression here silently
+    // breaks the pin checker for every real netlist while the fixtures stay green.
+    const real = {modules: {
+        blink: {attributes: {top: '00000000000000000000000000000001'},
+            ports: {led: {direction: 'output', bits: [2]}}},
+        OBUF: {attributes: {}, ports: {O: {direction: 'output', bits: [3]}}}
+    }};
+    assert.equal(topModule(real).name, 'blink');
+    const {top, ports} = readPorts(real);
+    assert.equal(top, 'blink');
+    assert.deepEqual(Object.keys(ports), ['led']);
+
+    // An all-zero binary string is the attribute PRESENT but not set — not a top.
+    const notTop = {modules: {
+        a: {attributes: {top: '00000000000000000000000000000000'}, ports: {x: {direction: 'input', bits: [2]}}},
+        b: {attributes: {}, ports: {y: {direction: 'output', bits: [3]}}}
+    }};
+    assert.equal(topModule(notTop), null, 'top=0 is not a marked top; two unmarked modules are ambiguous');
+});
