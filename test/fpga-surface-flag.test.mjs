@@ -302,3 +302,22 @@ test('a successful synthesis offers its artefact as a download', () => {
     assert.match(tab, /revokeObjectURL/,
         'the object URLs must be revoked when the result changes, or they leak');
 });
+
+// ── the local netlist feeds the simulator, as the blurb promises ──
+//
+// The tab says the in-browser tier produces "a netlist you can ... check in the
+// pin panel below". The netlist textarea (netlistText) drives the gate-level
+// sim, so a successful local synth must populate it — otherwise the promise is
+// empty and the netlist only exists as a download.
+
+test('a successful local synthesis feeds its netlist into the simulator', () => {
+    const tab = codeOnly(read(TAB));
+    const at = tab.indexOf('localClient.synthesise(');
+    assert.ok(at > 0, 'the local synth handler must exist');
+    const handler = tab.slice(at, at + 500);
+    assert.match(handler, /r\.result\.netlist/,
+        'the handler must look at the returned netlist');
+    assert.match(handler, /setNetlistText\(/,
+        'a local netlist must be fed into netlistText, which drives the sim — the blurb '
+        + 'promises the pin panel can check it, and only setNetlistText makes that true');
+});

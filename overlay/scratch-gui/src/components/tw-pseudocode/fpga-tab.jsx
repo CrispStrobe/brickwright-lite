@@ -411,7 +411,17 @@ const FpgaTab = () => {
                     onClick={() => {
                         setLocalBusy(true);
                         localClient.synthesise({files: [{name: 'design.v', source: hdl}]})
-                            .then(r => setSynth(r.result))
+                            .then(r => {
+                                setSynth(r.result);
+                                // Feed a successful local netlist straight into the
+                                // pin panel's simulator, which is what the blurb
+                                // above promises ("a netlist you can ... check in
+                                // the pin panel below"). The netlist textarea drives
+                                // the gate-level sim, so setting it is all it takes.
+                                if (r.result && r.result.ok && r.result.netlist) {
+                                    setNetlistText(JSON.stringify(r.result.netlist, null, 2));
+                                }
+                            })
                             .finally(() => setLocalBusy(false));
                     }}
                     disabled={localBusy || !hdl.trim() || !local || !local.available}
@@ -547,8 +557,7 @@ const FpgaTab = () => {
             </details>
 
             <p style={{opacity: 0.7, marginTop: '1.5rem'}}>
-                {'Planned next: a model of the design that feeds the local netlist into the '}
-                {'simulator, then flashing from the native app.'}
+                {'Planned next: flashing a produced bitstream from the native app.'}
             </p>
         </div>
         </div>
