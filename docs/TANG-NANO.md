@@ -913,8 +913,16 @@ metadata**, and the route around it is three lines of install code.
 Pyodide is ordinary Emscripten WebAssembly. It needs neither WasmGC nor
 `try_table`, which is what keeps the YoWASP tools off this Node 20 box
 (`lib/bw-fpga/wasm-capabilities.js`). The packer half of TN6b is therefore
-testable on runtimes where the synthesis half is not — and that asymmetry is
-asserted, so it cannot rot silently.
+testable on runtimes where the synthesis half is not.
+
+That asymmetry is asserted — but only where it can be. Showing the packer does
+not *need* WasmGC means packing somewhere WasmGC is absent; on a runtime that has
+it, a successful pack proves nothing about independence from it. CI runs Node 22
+and has it, this box runs Node 20 and does not, so the test carries the absence
+as a **precondition** rather than an assertion and skips by name elsewhere, with
+a pointer at the Node 20 box under LANES.md's "Skips that execute elsewhere".
+The first version asserted "this runtime lacks WasmGC" and reddened CI — a claim
+about the environment wearing the costume of a claim about the packer.
 
 ### What this changes, and what it does not
 

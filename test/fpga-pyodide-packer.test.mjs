@@ -35,13 +35,25 @@ import path from 'node:path';
 import {
     DESIGNS, FAMILY, FIXTURES, PYODIDE_ENTRY, INSTALL_HINT, packWithPyodide
 } from '../scripts/probe-pyodide-packer.mjs';
+import {detectWasmCapabilities} from '../overlay/scratch-gui/src/lib/bw-fpga/wasm-capabilities.js';
 
 const SKIP = existsSync(PYODIDE_ENTRY)
     ? false
     : `needs pyodide — run \`${INSTALL_HINT}\``;
 
+// The independence test below can only be RUN on a runtime that lacks WasmGC —
+// on one that has it, packing successfully says nothing about whether the packer
+// needed it. Asserting "this runtime lacks WasmGC" was the first version of that
+// test and it was wrong: a claim about the environment, dressed as a claim about
+// the packer. It is a precondition, so it is a skip.
+const NO_WASMGC = detectWasmCapabilities().canRunLocalToolchain
+    ? 'this runtime CAN run the WasmGC toolchain, so packing here shows nothing about independence from it'
+    : false;
+
 if (SKIP) {
     process.stderr.write(`[bw gate] fpga-pyodide-packer: SKIPPING 2 tests — ${SKIP}\n`);
+} else if (NO_WASMGC) {
+    process.stderr.write(`[bw gate] fpga-pyodide-packer: SKIPPING 1 test — ${NO_WASMGC}\n`);
 }
 
 // ── these run with or without pyodide ───────────────────────────
@@ -80,19 +92,18 @@ test('gowin_pack runs in Pyodide and produces the NATIVE bitstream, byte for byt
         }
     });
 
-test('it needs no WasmGC, which is what makes the packer half testable at all',
-    {skip: SKIP}, async () => {
-        // The YoWASP synthesis tools need WasmGC and try_table, which Node 20
-        // has neither of (lib/bw-fpga/wasm-capabilities.js). Pyodide is ordinary
-        // Emscripten WebAssembly. If this ever starts failing on a runtime where
-        // the packer works, the capability probe is what to look at — not this.
-        const detect = await import('../overlay/scratch-gui/src/lib/bw-fpga/wasm-capabilities.js');
-        const caps = detect.detectWasmCapabilities();
-        assert.equal(caps.canRunLocalToolchain, false,
-            'this Node build was expected to LACK WasmGC; if it has it now, this test '
-            + 'no longer demonstrates what it claims and should be re-aimed');
+test('the packer runs on a runtime that CANNOT run the synthesis tools',
+    {skip: SKIP || NO_WASMGC}, async () => {
+        // This is the asymmetry TN6b turns on. The YoWASP synthesis tools need
+        // WasmGC and try_table; Pyodide is ordinary Emscripten WebAssembly and
+        // needs neither. So the packer half reaches runtimes the synthesis half
+        // does not — and the only way to SHOW that is to pack somewhere the
+        // synthesis tools are refused, which is what the skip above guarantees.
+        assert.equal(detectWasmCapabilities().canRunLocalToolchain, false,
+            'the skip predicate and the assertion disagree, which means one of them '
+            + 'is reading a stale capability object');
         const r = await packWithPyodide('blink');
         assert.equal(r.sha256, DESIGNS.blink.sha256,
-            'the packer ran on a runtime that cannot run the synthesis tools');
+            'the packer failed on exactly the runtime where it matters most');
         assert.equal(FAMILY, 'GW2A-18C');
     });
