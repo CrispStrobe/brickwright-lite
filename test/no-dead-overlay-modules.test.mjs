@@ -147,6 +147,27 @@ const KNOWN_DEAD = new Map([
 
 const SPEC = /from\s+['"]([^'"]+)['"]|import\(\s*(?:\/\*[^*]*\*\/\s*)?['"]([^'"]+)['"]|require\(\s*['"]([^'"]+)['"]/g;
 
+/**
+ * Two ways a module is reached WITHOUT an import statement, both of which this
+ * scan called dead on 2026-09-17.
+ *
+ *   `new Worker(new URL('./x.js', import.meta.url))` — webpack's worker syntax.
+ *   It is a real reference: webpack resolves it and emits a chunk. There is no
+ *   `import`, so the scan saw none.
+ *
+ *   A webpack `resolve.alias` target. `yosys-absent.js` exists precisely to be
+ *   substituted for a bare specifier in a flag-off build; the only thing that
+ *   names it is webpack.config.js.
+ *
+ * Both were live, both read as "imported by nothing", and KNOWN_DEAD would have
+ * been the wrong home for either — that list is for code that exists UNUSED, and
+ * these run. The gate learns the reference forms instead, which is the same
+ * direction every earlier fix here took: this scan's failure mode is calling a
+ * live module dead, and each new way to reach a module is one more chance to do
+ * exactly that.
+ */
+const NON_IMPORT_SPEC = /new\s+URL\(\s*['"]([^'"]+)['"]|alias\[[^\]]*\]\s*=\s*(?:[^;\n]*?)['"]([^'"]+\.(?:js|jsx|mjs))['"]/g;
+
 function walk (dir, out = []) {
     for (const name of readdirSync(dir)) {
         const p = join(dir, name);
@@ -167,13 +188,22 @@ function walk (dir, out = []) {
  */
 function referencedBasenames () {
     const referenced = new Set();
-    const files = [...walk(builtSrc), ...(existsSync(scriptsDir) ? walk(scriptsDir) : [])];
+    // webpack.config.js is a consumer too, and is in neither tree the walk
+    // covers: it is beside `src/`, not inside it. An alias target named only
+    // there was invisible.
+    const webpackConfig = join(builtSrc, '..', 'webpack.config.js');
+    const files = [...walk(builtSrc), ...(existsSync(scriptsDir) ? walk(scriptsDir) : []),
+        ...(existsSync(webpackConfig) ? [webpackConfig] : [])];
     for (const f of files) {
-        for (const m of readFileSync(f, 'utf8').matchAll(SPEC)) {
-            const spec = m[1] || m[2] || m[3];
-            const base = spec.replace(/\/$/, '').split('/').pop();
-            referenced.add(base);
-            referenced.add(base.replace(/\.(js|jsx|mjs)$/, ''));
+        const text = readFileSync(f, 'utf8');
+        for (const re of [SPEC, NON_IMPORT_SPEC]) {
+            for (const m of text.matchAll(re)) {
+                const spec = m[1] || m[2] || m[3];
+                if (!spec) continue;
+                const base = spec.replace(/\/$/, '').split('/').pop();
+                referenced.add(base);
+                referenced.add(base.replace(/\.(js|jsx|mjs)$/, ''));
+            }
         }
     }
     return referenced;
