@@ -367,13 +367,17 @@ test('the Flash button appears only when the native flash transport is available
 
 // ── the design drives the on-screen board (#1), guarded ─────────
 
-test('the tab drives the placed board through the designer live handle', () => {
+test('the tab drives the placed board through the PERSISTENT circuit handle', () => {
     const tab = codeOnly(read(TAB));
-    assert.match(tab, /window\.__bwCircuit/,
-        'the tab must reach bw-circuit-ui\'s published live handle');
+    // window.__circuit is the live model published by circuit-tab.jsx's
+    // onCircuitReady; it PERSISTS across a tab switch (window.__bwCircuit, the
+    // designer's mount-effect handle, is deleted when the designer unmounts — as
+    // it does whenever this tab is active — so it is a fallback only).
+    assert.match(tab, /window\.__circuit\b/,
+        'the tab must reach the PERSISTENT live circuit handle, not only the '
+        + 'designer-lifecycle-bound one that vanishes when this tab is active');
     assert.match(tab, /applyPortValues\(c, bindings, sim\.values\)/,
         'it must apply the design\'s simulated values onto the bound terminals');
     assert.match(tab, /typeof c\.setPin !== 'function'/,
-        'it must NO-OP when the handle is absent — a build without a designer, or a '
-        + 'bw-circuit-ui without the handle, must be unaffected (fail-closed by presence)');
+        'it must NO-OP when no circuit has been loaded — fail-closed by presence');
 });

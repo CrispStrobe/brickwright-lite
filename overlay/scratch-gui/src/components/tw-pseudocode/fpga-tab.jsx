@@ -297,15 +297,23 @@ const FpgaTab = () => {
                 : [], simNote};
     }, [text, netlistText, sim]);
 
-    // Drive the on-screen board with the design's outputs, when the circuit
-    // designer has published its live handle (bw-circuit-ui sets window.__bwCircuit
-    // while mounted). Guarded: with no designer, or a bw-circuit-ui build without
-    // the handle, this no-ops — so a synthesised design lights the placed board's
-    // LED where both exist, and changes nothing where they do not. The handle is
-    // the upstream half (bw-circuit-ui exposes the live Circuit's setPin); this is
-    // the consumer half. §7.5 records the seam.
+    // Drive the on-screen board with the design's outputs, through the live
+    // Circuit model.
+    //
+    // The handle is `window.__circuit`: circuit-tab.jsx's onCircuitReady publishes
+    // the live Circuit there (and mirrors it to vm.runtime.circuitModel), and it
+    // PERSISTS — the model outlives the designer. That is the whole point here.
+    // window.__bwCircuit (CircuitDesigner's mount effect) is a fallback only: it is
+    // DELETED when the designer unmounts, which it does whenever a non-Circuit tab
+    // — this one — is active under the default debugger dock. So driving through it
+    // meant the handle was gone exactly when the FPGA tab needed it: a real-browser
+    // drive found the seam dead though every source gate passed (the §7.4 lesson,
+    // again). window.__circuit survives the tab switch, so the design actually
+    // lights the placed board.
+    //
+    // Guarded: with no circuit ever loaded, or no bound ports, this no-ops.
     React.useEffect(() => {
-        const c = (typeof window !== 'undefined') && window.__bwCircuit;
+        const c = (typeof window !== 'undefined') && (window.__circuit || window.__bwCircuit);
         if (!c || typeof c.setPin !== 'function' || !bindings.length) return undefined;
         try {
             applyPortValues(c, bindings, sim.values);
