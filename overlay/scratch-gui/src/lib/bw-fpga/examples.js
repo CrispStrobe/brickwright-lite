@@ -54,19 +54,22 @@ export const EXAMPLES = Object.freeze([
         id: 'sequence',
         label: 'Counting sequence — 4 LEDs',
         blurb: 'The one to WATCH move: a 4-bit counter with no clock divider, so every '
-            + 'clock changes an LED. Synthesise it, release reset, and use the Step clock '
-            + 'button — the four LEDs count up in binary on the board. (`counter` divides by '
-            + '2²⁰ so it blinks on real silicon but would need a million steps to move here; '
-            + 'this one is built to step.)',
-        verilog: 'module sequence(input clk, input rst_n, output [3:0] led);\n'
-            + '  reg [3:0] cnt;\n'
-            + '  always @(posedge clk or negedge rst_n)\n'
-            + '    if (!rst_n) cnt <= 4\'d0;\n'
-            + '    else        cnt <= cnt + 1\'b1;\n'
+            + 'clock changes an LED. Synthesise it, then use the Step clock button — the '
+            + 'four LEDs count up in binary on the board. (`counter` divides by 2²⁰ so it '
+            + 'blinks on real silicon but would need a million steps to move here; this one '
+            + 'is built to step.)',
+        // NO reset: the register is initialised instead. The tab rebuilds the
+        // gate-level sim from scratch on every step, so an async reset could never
+        // be asserted-then-released across steps — the counter would sit at x. An
+        // initialised reg starts defined at 0 and counts on the clock alone, which
+        // is exactly what the tab's step model can drive. (Yosys carries the `= 0`
+        // as a netname init; yosys2digitaljs honours it as the flop's initial.)
+        verilog: 'module sequence(input clk, output [3:0] led);\n'
+            + '  reg [3:0] cnt = 4\'d0;\n'
+            + '  always @(posedge clk) cnt <= cnt + 1\'b1;\n'
             + '  assign led = cnt;\n'
             + 'endmodule\n',
         cst: 'IO_LOC "clk" 4;\nIO_PORT "clk" IO_TYPE=LVCMOS33;\n'
-            + 'IO_LOC "rst_n" 88;\nIO_PORT "rst_n" IO_TYPE=LVCMOS33;\n'
             + 'IO_LOC "led[0]" 15;\nIO_LOC "led[1]" 16;\n'
             + 'IO_LOC "led[2]" 17;\nIO_LOC "led[3]" 18;\n'
             + 'IO_PORT "led[0]" IO_TYPE=LVCMOS33;\nIO_PORT "led[1]" IO_TYPE=LVCMOS33;\n'
