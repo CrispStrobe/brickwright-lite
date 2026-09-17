@@ -321,3 +321,15 @@ test('a successful local synthesis feeds its netlist into the simulator', () => 
         'a local netlist must be fed into netlistText, which drives the sim — the blurb '
         + 'promises the pin panel can check it, and only setNetlistText makes that true');
 });
+
+// ── the Verilog box is never a blank page ───────────────────────
+
+test('the tab offers starter examples that load a design in one click', () => {
+    const tab = codeOnly(read(TAB));
+    assert.match(tab, /import \{EXAMPLES\}/, 'the tab must pull in the starter designs');
+    assert.match(tab, /EXAMPLES\.map\(/, 'it must render a control per example');
+    // loading one must set BOTH the Verilog and the constraints, or the pin
+    // checker would describe a different design than the one in the box.
+    assert.match(tab, /setHdl\(ex\.verilog\)/, 'an example must fill the Verilog box');
+    assert.match(tab, /setText\(ex\.cst\)/, 'an example must fill the constraints too');
+});
