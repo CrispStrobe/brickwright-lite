@@ -629,7 +629,7 @@ behind the clean-room bootrom (CDC at instruction 946,123, REPL prompt at 1,175,
 runs JavaScript live through the same run-live seam (one extra: its ANSI line editor emits `ESC[6n` and
 blocks until answered). The first GPIO call HANGS: `pinMode(25, OUTPUT)` busy-loops in the bootrom's
 `rom_table_lookup` from LR 0x1000463f with a null lookup result used as a base pointer — the same shape
-as MicroPython's flash-funcs gap (N3a). Licence ledger: Kaluma/JerryScript/CMSIS Apache-2.0, pico-sdk
+as MicroPython's flash-funcs gap (N3a). **(Upstream fix, 2026-09-17: this hang is GONE at bw-board `64850bc` — 17 commits past lite's pin — a one-byte ROM version fix; the wall stands only for our current pin. See the N11a note below.)** Licence ledger: Kaluma/JerryScript/CMSIS Apache-2.0, pico-sdk
 and littlefs BSD-3, TinyUSB MIT; a shipped UF2 would need the Apache NOTICE and attributions.
 Recommendation: buildable through the existing seam, BLOCKED on one bootrom entry; the JS·Pico cell
 does not flip until a blink is observed. **N5-1 (2026-09-06):** the ROM code is `'SF'` (0x4653), the bootrom's single-precision SOFT-FLOAT
@@ -779,6 +779,36 @@ fetched only in the job that
 runs the differential; the executed-C legs SKIP BY NAME when no toolchain is present, and the static anchor still
 runs everywhere, so the C side is never left with no gate. **N11 (the SHIPPED in-browser button = Door 2,
 clang→WASM ~15–40 MB) stays OPEN** — N11a is the CI-differential oracle, not the offline compiler.
+
+**N11a — the "dodging the `rom_table_lookup` wall" premise is measured DEAD upstream, 2026-09-17**
+(routed in by session lego-a4; commit relationship verified here). The sentence above justifies
+`entry: 'vector'` two ways — "the clean-room bootrom is never touched" AND "dodging the Kaluma
+`rom_table_lookup` wall". The second half rests on N5's finding that the first GPIO call HANGS in
+`rom_table_lookup` from `0x1000463f`. That wall is **gone**. Measured at bw-board master `64850bc`
+(GitHub `compare`: **17 commits ahead of lite's pin `76877a2`, 0 behind** — so the fix landed
+upstream AFTER our pin, not in our tree yet) against Kaluma 1.2.1, sending the exact line
+`scripts/probe-pico-kaluma.mjs --blink` sends — `pinMode(25, OUTPUT); digitalWrite(25, HIGH)` —
+GPIO25 drives high (`outputEnable=true`), `rom_table_lookup` answers 14 of 14 codes with none
+returning 0 and none spinning, and `0x1000463f` never appears. The cause was **one byte**: bw-board's
+bootrom left the version byte at `0x13` zero, so pico-sdk's shim-table initialiser took its "old
+bootrom" leg and left 31 of 32 double-precision operator pointers null; the first GPIO call went
+through a null pointer into the ROM's zeros. (bw-board side is closed — ROADMAP R3, LANES DONE at
+`64850bc`.)
+
+**What this changes, and what it does not.** `entry: 'vector'` STAYS — but for the ISOLATION reason
+alone, which the first half already states: a compiled-C oracle must not reach the hardware through
+OUR ROM, or the oracle and the thing under test share a failure mode. That is a good reason and the
+behaviour is correct. It is a **different** reason from "the bootrom would hang", and the two exclude
+different Door 2 designs — planning that still inherits the dead premise rules out options that are now
+open (e.g. a Door 2 that boots a compiled image THROUGH the fixed bootrom rather than jumping past it).
+Note the scope: our pin `76877a2` predates the fix, so **N5's hang stands for lite's current pin** until
+the bw-board pin crosses `64850bc`; this note is why it will need revisiting when it does.
+
+**One limit, kept visible.** `--blink` sends a REPL line and watches `gpio[25]`; it does NOT load a
+program, so it drives the hardware through the same run-live seam already measured, not through a
+distinct loaded-image entry. A genuine **compiled image entered through the bootrom** remains
+UNMEASURED. If Door 2 ever runs one that way rather than jumping at the vector, that path has no
+evidence behind it and should get its own lane.
 
 ### Lane L — lowered halves to add or complete
 
