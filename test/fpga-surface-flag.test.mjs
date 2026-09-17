@@ -156,3 +156,48 @@ test('the button is disabled when no backend was selected', () => {
         'an enabled button that can only refuse teaches the user the tool is broken '
         + 'rather than that nothing is configured; the reason is already on screen');
 });
+
+// ── TN6a: the local tier's availability must be ASKED, not asserted ──
+
+// A source-text gate that reads comments judges PROSE, not code. `palette-engine-coverage`
+// learned this when an apostrophe in a comment made it report nine orphans that did not
+// exist; here the comment EXPLAINING the old `localAvailable: false` would have counted as
+// the thing it warns about, so a correct fix could never pass.
+const codeOnly = text => text.split('\n')
+    .map(line => line.replace(/^\s*(\/\/|\*|\/\*).*$/, ''))
+    .join('\n');
+
+test('localAvailable comes from the worker, not from a literal', () => {
+    const tab = codeOnly(read(TAB));
+    assert.doesNotMatch(tab, /localAvailable:\s*(true|false)/,
+        'a hard-coded localAvailable makes the backend permanently offerable or '
+        + 'permanently not, whatever the browser can actually do — it was `false` '
+        + 'for the whole of TN3');
+    assert.match(tab, /localAvailable:\s*Boolean\(local/,
+        'it must be derived from the state the worker reported');
+});
+
+test('the download button is offered only where it can work', () => {
+    const tab = read(TAB);
+    assert.match(tab, /disabled=\{localBusy \|\| !local \|\| local\.code !== 'not-downloaded'\}/,
+        'an enabled button that can only refuse teaches the user the tool is broken; '
+        + 'the reason is already rendered above it');
+});
+
+test('the tab never asks for a local bitstream', () => {
+    // §8c's rule, and the one thing TN6a must not quietly relax: place and route
+    // is another 183 MB that is not offered, so nothing here may imply a
+    // bitstream comes out of the local tier.
+    const tab = read(TAB);
+    const localCalls = tab.match(/localClient\.\w+/g) || [];
+    assert.deepEqual([...new Set(localCalls)].sort(),
+        ['localClient.download', 'localClient.init', 'localClient.synthesise',
+            'localClient.terminate']);
+    assert.doesNotMatch(tab, /localClient\.bitstream/);
+});
+
+test('the worker is terminated when the tab goes away', () => {
+    const tab = read(TAB);
+    assert.match(tab, /localClient\.terminate\(\)/,
+        'a worker holding 78 MB of compiled WebAssembly must not outlive its tab');
+});
