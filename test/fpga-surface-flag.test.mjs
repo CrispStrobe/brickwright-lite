@@ -248,15 +248,38 @@ test('the stub throws rather than pretending to be a toolchain', async () => {
 // to the panel and scroll its own content. Gated because no build compiles this
 // file and it is one deleted property from returning.
 
-test('the FPGA tab root can actually scroll (minHeight:0 + overflow), not just overflow', () => {
+test('the FPGA tab root is an absolute-inset scroller, so it actually scrolls', () => {
+    // The tab panel (position:relative) and its ancestors carry min-height:auto and
+    // overflow:visible, so a FLOW child grows the chain until gui_flex-wrapper clips it
+    // with overflow:hidden — no user scroll (reported unusable 2026-09-17; a flex
+    // minHeight:0 fix measured NOT enough). circuit-tab.jsx's pattern is the one that
+    // works: absolute inset:0 contributes zero flow height, so the panel stays bounded
+    // and the content scrolls inside it.
     const tab = codeOnly(read(TAB));
-    // The root div is the one carrying maxWidth: '52rem'; check the style object it sits in.
-    const at = tab.indexOf("maxWidth: '52rem'");
-    assert.ok(at > 0, 'the FPGA tab root (maxWidth 52rem) was not found');
-    const style = tab.slice(at - 120, at + 200);
-    assert.match(style, /minHeight:\s*0/,
-        'a flex item without min-height:0 refuses to shrink below its content, so the '
-        + 'panel overflows and the tab is unscrollable — the bug that made it unusable');
-    assert.match(style, /overflowY:\s*'auto'/,
-        'the root must scroll its own content');
+    const at = tab.indexOf("position: 'absolute'");
+    assert.ok(at > 0, 'the FPGA tab root must be position:absolute (the circuit-tab pattern)');
+    const style = tab.slice(at, at + 160);
+    assert.match(style, /top:\s*0/);
+    assert.match(style, /bottom:\s*0/,
+        'inset must reach the panel bottom, or the scroller is not full height');
+    assert.match(style, /overflowY:\s*'auto'/, 'the root must scroll its own content');
+});
+
+// ── a successful synthesis must be reachable, not stranded in state ──
+//
+// `synth` was rendered only when NOT ok, so a working build left its bitstream
+// (hosted) or netlist (local) in React state with no way for the user to get it.
+// Browsers can save a Blob (the artifact sandbox cannot), so success now offers
+// a download. Gated because no build compiles this file.
+
+test('a successful synthesis offers its artefact as a download', () => {
+    const tab = codeOnly(read(TAB));
+    assert.match(tab, /synth && synth\.ok/,
+        'the success branch (synth.ok) must render something — a working build was invisible');
+    assert.match(tab, /download="design\.fs"/,
+        'a hosted bitstream must be downloadable, or the build produced nothing the user can use');
+    assert.match(tab, /createObjectURL/,
+        'the bitstream/netlist must become a Blob URL the browser can save');
+    assert.match(tab, /revokeObjectURL/,
+        'the object URLs must be revoked when the result changes, or they leak');
 });

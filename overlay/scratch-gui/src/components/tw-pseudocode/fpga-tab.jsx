@@ -142,6 +142,33 @@ const FpgaTab = () => {
         () => screenForHostedSynthesis(hdl.trim() ? [{name: 'design.v', source: hdl}] : []),
         [hdl]);
 
+    // A successful synthesis was, until now, invisible: `synth` was rendered only
+    // when NOT ok, so a working build stranded its bitstream (hosted) or netlist
+    // (local) in state with no way to reach it. Browsers CAN save a Blob (unlike
+    // the artifact sandbox), so a successful result becomes a download here. The
+    // object URLs are revoked when the result changes, so they do not leak.
+    const artefacts = React.useMemo(() => {
+        if (!synth || !synth.ok) return null;
+        const out = {};
+        if (synth.bitstream) {
+            const bin = atob(synth.bitstream);
+            const bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            out.bitstream = {url: URL.createObjectURL(new Blob([bytes],
+                {type: 'application/octet-stream'})), bytes: bytes.length};
+        }
+        if (synth.netlist) {
+            out.netlist = {url: URL.createObjectURL(new Blob(
+                [JSON.stringify(synth.netlist)], {type: 'application/json'})),
+            modules: Object.keys(synth.netlist.modules || {}).length};
+        }
+        return out;
+    }, [synth]);
+    React.useEffect(() => () => {
+        if (artefacts && artefacts.bitstream) URL.revokeObjectURL(artefacts.bitstream.url);
+        if (artefacts && artefacts.netlist) URL.revokeObjectURL(artefacts.netlist.url);
+    }, [artefacts]);
+
     // Load and run the simulator when there is something to simulate. Nothing is
     // fetched until a netlist is actually pasted.
     React.useEffect(() => {
@@ -238,13 +265,17 @@ const FpgaTab = () => {
     }, [text, netlistText, sim]);
 
     return (
-        // The tab panel is `display:flex; flex-grow:1` (a flex row), so this root is a
-    // flex item. overflowY:auto alone does NOTHING here — the default min-height:auto
-    // makes a flex item refuse to shrink below its content, so the panel overflows and
-    // the page is unscrollable (reported unusable 2026-09-17). minHeight:0 lets it
-    // shrink to the panel and scroll its own content; flex:1 1 auto claims the panel.
-    <div style={{padding: '1.25rem', maxWidth: '52rem', lineHeight: 1.5,
-        flex: '1 1 auto', minHeight: 0, overflowY: 'auto', boxSizing: 'border-box'}}>
+        // Scrolling here needs the pattern circuit-tab.jsx uses, not a flex one. The tab
+    // panel is `position:relative` but its ancestors (gui_tabs, the panel) all carry
+    // min-height:auto and overflow:visible, so a flow child just grows the chain until
+    // gui_flex-wrapper clips it with overflow:hidden — no user scroll anywhere (reported
+    // unusable 2026-09-17; a flex minHeight:0 fix was NOT enough, the chain still grew).
+    // Absolute inset:0 makes this contribute ZERO flow height, so the panel stays at its
+    // bounded height and this fills it and scrolls its own content. maxWidth lives on an
+    // inner wrapper so the scroll area is full width.
+    <div style={{position: 'absolute', top: 0, right: 0, bottom: 0, left: 0,
+        overflowY: 'auto', padding: '1.25rem', lineHeight: 1.5, boxSizing: 'border-box'}}>
+        <div style={{maxWidth: '52rem'}}>
             <h2 style={{marginTop: 0}}>{'FPGA — Tang Nano 20K'}</h2>
             <p style={{marginTop: 0}}>
                 {'Which of a design’s pins can actually reach the breadboard. This reads '}
@@ -440,6 +471,21 @@ const FpgaTab = () => {
                         <strong>{synth.code}</strong>{`: ${synth.reason}`}
                     </span>
                 ) : null}
+                {synth && synth.ok && artefacts ? (
+                    <span style={{marginLeft: '0.6rem'}}>
+                        {artefacts.bitstream ? (
+                            <>
+                                {`✓ Built a ${artefacts.bitstream.bytes.toLocaleString()}-byte bitstream. `}
+                                <a href={artefacts.bitstream.url} download="design.fs">{'Download .fs'}</a>
+                            </>
+                        ) : artefacts.netlist ? (
+                            <>
+                                {`✓ Synthesised a netlist (${artefacts.netlist.modules} modules). `}
+                                <a href={artefacts.netlist.url} download="design.json">{'Download netlist'}</a>
+                            </>
+                        ) : '✓ Done.'}
+                    </span>
+                ) : null}
             </p>
 
             <h3>{'Synthesise in this browser (TN6a)'}</h3>
@@ -501,6 +547,7 @@ const FpgaTab = () => {
                 {'Planned next: a model of the design to supply those values, then hosted '}
                 {'synthesis, then flashing from the native app.'}
             </p>
+        </div>
         </div>
     );
 };
