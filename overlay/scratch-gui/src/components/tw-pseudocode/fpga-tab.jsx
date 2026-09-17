@@ -3,6 +3,7 @@ import TANG_NANO_20K from 'bw-circuit-ui/parts-data/tang_nano_20k.json';
 import {parseCst, emitCst} from '../../lib/bw-fpga/cst.js';
 import {bridge, constraintsFromBindings} from '../../lib/bw-fpga/port-bridge.js';
 import {applyPortValues} from '../../lib/bw-fpga/drive.js';
+import {EXAMPLES} from '../../lib/bw-fpga/examples.js';
 import {readPorts, checkWidths} from '../../lib/bw-fpga/yosys.js';
 // Small and dependency-free, so these stay static: the licence screen is useful
 // on its own, and the synthesis client's only job today is to refuse honestly.
@@ -289,6 +290,18 @@ const FpgaTab = () => {
                 typed pin constraints first — the tab looked like two empty textareas.
                 The pin checker is now a collapsible panel at the bottom. */}
             <h3>{'Verilog'}</h3>
+            <p style={{margin: '0 0 0.5rem', opacity: 0.85}}>
+                {'New here? Load a starter design, then Synthesise:'}
+                {EXAMPLES.map(ex => (
+                    <button
+                        key={ex.id}
+                        type="button"
+                        title={ex.blurb}
+                        onClick={() => { setHdl(ex.verilog); setText(ex.cst); setSynth(null); }}
+                        style={{marginLeft: '0.4rem', padding: '0.15rem 0.5rem', cursor: 'pointer'}}
+                    >{ex.label}</button>
+                ))}
+            </p>
             <textarea
                 value={hdl}
                 onChange={e => setHdl(e.target.value)}
