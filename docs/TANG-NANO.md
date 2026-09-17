@@ -908,6 +908,38 @@ The fallback was verified against the standard CRC-16/ARC check vector
 So the blocker was never a missing capability. It was **one line of packaging
 metadata**, and the route around it is three lines of install code.
 
+### The fix belongs upstream, and it is written
+
+`deps=False` is a workaround for someone else's packaging bug, and a workaround
+in our install path is a thing we own forever. So the fix exists on a fork —
+[`CrispStrobe/apicula`](https://github.com/CrispStrobe/apicula), branch
+`fastcrc-optional-on-wasm` — as an environment marker:
+
+```python
+'fastcrc; sys_platform != "emscripten"',
+```
+
+That changes nothing for anyone: fastcrc is still installed everywhere it can
+build, and simply not asked for where no wheel can exist.
+
+**Proven by a controlled experiment, not by reasoning.** The released 0.32 wheel
+was repacked with exactly one line of its METADATA rewritten and every other
+member copied byte for byte, so the dependency declaration is the only variable:
+
+| wheel | `micropip.install`, deps ON |
+|---|---|
+| released | `ValueError: Can't find a pure Python 3 wheel for 'fastcrc'` |
+| one METADATA line changed | **OK** |
+
+and the patched install then packs `counter` to the same
+`21502783…8b69704` the native packer produces. The change is necessary *and*
+sufficient.
+
+No pull request is open yet — that is a decision, not an oversight. Until one is
+merged and released, `scripts/probe-pyodide-packer.mjs` keeps `deps=False`,
+which is why that flag carries a comment saying it is load-bearing rather than a
+shortcut.
+
 ### Why this was testable here when the synthesis half is not
 
 Pyodide is ordinary Emscripten WebAssembly. It needs neither WasmGC nor
