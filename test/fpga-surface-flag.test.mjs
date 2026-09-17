@@ -237,3 +237,26 @@ test('the stub throws rather than pretending to be a toolchain', async () => {
         'a stub that returns something plausible is how it ends up standing in for the '
         + 'real thing without anyone noticing');
 });
+
+// ── the tab must be scrollable, or its lower half is unreachable ──
+//
+// The tab panel is `display:flex; flex-grow:1` (gui.css .tab-panel.is-selected),
+// so the FPGA tab's root is a flex item. `overflow-y:auto` alone does nothing:
+// a flex item's default `min-height:auto` refuses to shrink below its content,
+// so the tall FPGA content overflows the panel and the page cannot scroll —
+// reported unusable 2026-09-17. The fix is `min-height:0` so the item can shrink
+// to the panel and scroll its own content. Gated because no build compiles this
+// file and it is one deleted property from returning.
+
+test('the FPGA tab root can actually scroll (minHeight:0 + overflow), not just overflow', () => {
+    const tab = codeOnly(read(TAB));
+    // The root div is the one carrying maxWidth: '52rem'; check the style object it sits in.
+    const at = tab.indexOf("maxWidth: '52rem'");
+    assert.ok(at > 0, 'the FPGA tab root (maxWidth 52rem) was not found');
+    const style = tab.slice(at - 120, at + 200);
+    assert.match(style, /minHeight:\s*0/,
+        'a flex item without min-height:0 refuses to shrink below its content, so the '
+        + 'panel overflows and the tab is unscrollable — the bug that made it unusable');
+    assert.match(style, /overflowY:\s*'auto'/,
+        'the root must scroll its own content');
+});

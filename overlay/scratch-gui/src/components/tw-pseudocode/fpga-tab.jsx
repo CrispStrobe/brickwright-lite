@@ -238,7 +238,13 @@ const FpgaTab = () => {
     }, [text, netlistText, sim]);
 
     return (
-        <div style={{padding: '1.25rem', maxWidth: '52rem', lineHeight: 1.5, overflowY: 'auto'}}>
+        // The tab panel is `display:flex; flex-grow:1` (a flex row), so this root is a
+    // flex item. overflowY:auto alone does NOTHING here — the default min-height:auto
+    // makes a flex item refuse to shrink below its content, so the panel overflows and
+    // the page is unscrollable (reported unusable 2026-09-17). minHeight:0 lets it
+    // shrink to the panel and scroll its own content; flex:1 1 auto claims the panel.
+    <div style={{padding: '1.25rem', maxWidth: '52rem', lineHeight: 1.5,
+        flex: '1 1 auto', minHeight: 0, overflowY: 'auto', boxSizing: 'border-box'}}>
             <h2 style={{marginTop: 0}}>{'FPGA — Tang Nano 20K'}</h2>
             <p style={{marginTop: 0}}>
                 {'Which of a design’s pins can actually reach the breadboard. This reads '}
