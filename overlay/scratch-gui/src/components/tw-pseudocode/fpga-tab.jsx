@@ -276,6 +276,22 @@ const FpgaTab = () => {
                 : [], simNote};
     }, [text, netlistText, sim]);
 
+    // Drive the on-screen board with the design's outputs, when the circuit
+    // designer has published its live handle (bw-circuit-ui sets window.__bwCircuit
+    // while mounted). Guarded: with no designer, or a bw-circuit-ui build without
+    // the handle, this no-ops — so a synthesised design lights the placed board's
+    // LED where both exist, and changes nothing where they do not. The handle is
+    // the upstream half (bw-circuit-ui exposes the live Circuit's setPin); this is
+    // the consumer half. §7.5 records the seam.
+    React.useEffect(() => {
+        const c = (typeof window !== 'undefined') && window.__bwCircuit;
+        if (!c || typeof c.setPin !== 'function' || !bindings.length) return undefined;
+        try {
+            applyPortValues(c, bindings, sim.values);
+        } catch (e) { /* the board may not have the Tang Nano placed or pins wired */ }
+        return undefined;
+    }, [sim.values, bindings]);
+
     return (
         // Scrolling here needs the pattern circuit-tab.jsx uses, not a flex one. The tab
     // panel is `position:relative` but its ancestors (gui_tabs, the panel) all carry

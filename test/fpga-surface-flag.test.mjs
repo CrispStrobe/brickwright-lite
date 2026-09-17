@@ -347,3 +347,16 @@ test('the Flash button appears only when the native flash transport is available
     assert.match(tab, /openFPGALoader -b tangnano20k design\.fs/,
         'when flashing is unavailable, the panel must show the openFPGALoader command');
 });
+
+// ── the design drives the on-screen board (#1), guarded ─────────
+
+test('the tab drives the placed board through the designer live handle', () => {
+    const tab = codeOnly(read(TAB));
+    assert.match(tab, /window\.__bwCircuit/,
+        'the tab must reach bw-circuit-ui\'s published live handle');
+    assert.match(tab, /applyPortValues\(c, bindings, sim\.values\)/,
+        'it must apply the design\'s simulated values onto the bound terminals');
+    assert.match(tab, /typeof c\.setPin !== 'function'/,
+        'it must NO-OP when the handle is absent — a build without a designer, or a '
+        + 'bw-circuit-ui without the handle, must be unaffected (fail-closed by presence)');
+});
