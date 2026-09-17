@@ -164,10 +164,15 @@ export function createLocalToolchain ({runYosys, capabilities = null, onState = 
                 'The toolchain has not been downloaded, so nothing can be synthesised here '
                 + 'yet. Nothing was fetched by this call.');
         }
-        const topName = top || 'top';
+        // Only pass -top when the caller named one. Defaulting to 'top' ran
+        // `synth_gowin -top top` against a design whose module is `blink`, so
+        // yosys found no such module and produced nothing — the local tier failed
+        // for every design that isn't literally named top (found by the staging
+        // drive). With no -top, synth_gowin auto-selects the top of the hierarchy,
+        // which is what the hosted route does and why it worked.
         const tree = Object.fromEntries(files.map(f => [f.name, f.source]));
         const script = `read_verilog ${files.map(f => f.name).join(' ')}; `
-            + `synth_gowin -top ${topName} -json design.json`;
+            + `synth_gowin${top ? ` -top ${top}` : ''} -json design.json`;
         let out;
         try {
             out = await runYosys(['-q', '-p', script], tree, {stdout: null, stderr: null});
@@ -190,7 +195,7 @@ export function createLocalToolchain ({runYosys, capabilities = null, onState = 
         } catch (e) {
             return refusal('netlist-unreadable', `The netlist did not parse: ${e.message}`);
         }
-        return {ok: true, code: 'synthesised', netlist, top: topName};
+        return {ok: true, code: 'synthesised', netlist, top: top || null};
     };
 
     return {
