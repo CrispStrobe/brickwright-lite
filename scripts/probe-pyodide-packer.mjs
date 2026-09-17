@@ -125,6 +125,13 @@ export async function packWithPyodide (design, {loadPyodide} = {}) {
     // pure wheel (fastcrc) is one the packer does not need, and asking for it
     // is the only thing that fails. numpy and msgspec are supplied above and
     // here because skipping deps skips the ones it DOES need too.
+    //
+    // It is also a workaround for someone else's packaging bug, and it goes
+    // away when that is fixed upstream: setup.py declares fastcrc as required
+    // while apycula/crc16.py treats it as optional. The one-line fix is written
+    // at CrispStrobe/apicula, branch fastcrc-optional-on-wasm, and proven
+    // necessary and sufficient against a repacked release wheel (§8d). When it
+    // lands and ships, this argument comes out and deps stay on.
     await py.runPythonAsync(`
 import micropip
 await micropip.install('msgspec')
