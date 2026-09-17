@@ -67,27 +67,46 @@ test('the FPGA tab is LAST, so no existing tab index moved', () => {
 });
 
 test('the surface does not claim to do what it cannot', () => {
-    // A hidden surface can still lie to the one person who enables it. TN3/TN4/
-    // TN5 do not exist, so the panel must not imply synthesis, simulation or
-    // flashing -- the same rule target-kinds.js states for picker entries.
+    // Synthesis now EXISTS (hosted + local, both driven end to end), so the old
+    // blanket "does not synthesise" disclaimer is gone and this gate no longer
+    // requires it. What still does NOT exist is flashing (TN4) and a local-tier
+    // BITSTREAM — the browser tier produces a netlist only. Those honesties must
+    // stay, and nothing may imply flashing works.
     const panel = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx');
-    // Test the CLAIM, not a phrase. An earlier version of this assertion matched
-    // the literal words "not built yet" and went red the moment the same
-    // disclaimer was reworded -- a guard that polices spelling instead of
-    // meaning gets weakened by whoever hits it next.
-    const disclaimer = /(not built yet|is not built|none of that is built|does not (synthesi|simulat|flash))/i;
-    assert.match(panel, disclaimer,
-        'the panel must say plainly, somewhere, that the toolchain half does not exist');
-    const visible = panel.slice(panel.indexOf('const FpgaTab'));
-    for (const verb of [/synthesis/i, /simulat/i, /flash/i]) {
-        if (!verb.test(visible)) continue;
-        assert.ok(disclaimer.test(visible),
-            `the panel mentions ${verb} in user-facing text without the disclaimer nearby`);
-    }
-    for (const overclaim of [/\bsynthesis(ing)? (is )?(available|ready)\b/i,
-        /\bflash(es|ing) (to )?the board\b/i, /\bruns your (verilog|design)\b/i]) {
+    // The local tier must keep saying it produces no bitstream.
+    assert.match(panel, /does not produce a bitstream/i,
+        'the in-browser tier makes a netlist, not a bitstream — that limit must stay stated');
+    // Flashing is not built: it may appear only as a future/"planned" item, never
+    // as a present capability.
+    assert.doesNotMatch(panel, /\bflash(es|ing)? (the |your )?(board|bitstream|design)\b(?![^<]*[Pp]lanned)/,
+        'the panel must not imply it can flash the board — TN4 is not built');
+    for (const overclaim of [/\bflash(es|ing) (to )?the board\b/i, /\bplaces (and|&) routes in the browser\b/i]) {
         assert.ok(!overclaim.test(panel), `the panel implies a capability that does not exist: ${overclaim}`);
     }
+});
+
+test('the primary flow is NOT gated on entering pin constraints first', () => {
+    // The bug that made the tab read as "two empty textfields": the whole
+    // Verilog + Synthesise UI was wrapped in `{canonical ? (...)}`, and canonical
+    // (a generated .cst) is empty until constraints are typed — so a fresh user
+    // saw no design input and no button. The Verilog input must come BEFORE, and
+    // outside of, any `canonical` gate.
+    const panel = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx');
+    const verilog = panel.indexOf("<h3>{'Verilog'}");
+    const canonicalGate = panel.indexOf('{canonical ?');
+    assert.ok(verilog > 0, 'the Verilog input heading must exist');
+    assert.ok(canonicalGate === -1 || verilog < canonicalGate,
+        'Verilog/Synthesise must not sit inside the canonical gate — that hid the whole flow');
+});
+
+test('the pin checker is a collapsed panel, not the first thing shown', () => {
+    const panel = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx');
+    assert.match(panel, /<summary[^>]*>\s*\n?\s*{`Check which pins reach the board/,
+        'the pin checker must live under a <details> summary, demoted below the synth flow');
+    // and it must come AFTER the Synthesise button, not before it
+    const synth = panel.indexOf(">{'Synthesise'}</button>");
+    const checker = panel.indexOf('Check which pins reach the board');
+    assert.ok(synth > 0 && checker > synth, 'the pin checker must appear after the synth flow');
 });
 
 test('every import in the flagged surface resolves — because NO build compiles it', () => {
