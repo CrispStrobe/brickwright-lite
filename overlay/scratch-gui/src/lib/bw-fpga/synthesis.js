@@ -107,7 +107,13 @@ export function validateResponse (body) {
         return refusal('bad-response',
             'The service reported success but returned no netlist, so nothing can be simulated.');
     }
-    return {ok: true, netlist: body.netlist, bitstream: body.bitstream ?? null,
+    // `netlist` is the Gowin-mapped netlist the bitstream is built from;
+    // `simNetlist` is the generic one the gate-level simulator can actually read
+    // (the mapped one carries $specify2 + Gowin primitives it rejects). The tab
+    // feeds simNetlist to the sim. It may be absent on an older service or null
+    // when the generic pass degraded — carried through as null, not invented.
+    return {ok: true, netlist: body.netlist, simNetlist: body.simNetlist ?? null,
+        bitstream: body.bitstream ?? null,
         log: body.log ?? null, toolVersions: body.toolVersions ?? null};
 }
 

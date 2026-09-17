@@ -416,7 +416,15 @@ const FpgaTab = () => {
                         files: [{name: 'design.v', source: hdl}],
                         constraints: text,
                         endpoint: selection.accepted ? selection.selected.endpoint : null
-                    }).then(setSynth)}
+                    }).then(r => {
+                        setSynth(r);
+                        // Drive the board from the design: feed the GENERIC sim
+                        // netlist (not the Gowin-mapped `netlist`, which the sim
+                        // cannot read) into the simulator's input.
+                        if (r && r.ok && r.simNetlist) {
+                            setNetlistText(JSON.stringify(r.simNetlist, null, 2));
+                        }
+                    })}
                     disabled={!hdl.trim() || !selection.accepted}
                 >{'Synthesise'}</button>
                 {synth && !synth.ok ? (
@@ -493,13 +501,15 @@ const FpgaTab = () => {
                         localClient.synthesise({files: [{name: 'design.v', source: hdl}]})
                             .then(r => {
                                 setSynth(r.result);
-                                // Feed a successful local netlist straight into the
-                                // pin panel's simulator, which is what the blurb
-                                // above promises ("a netlist you can ... check in
-                                // the pin panel below"). The netlist textarea drives
-                                // the gate-level sim, so setting it is all it takes.
-                                if (r.result && r.result.ok && r.result.netlist) {
-                                    setNetlistText(JSON.stringify(r.result.netlist, null, 2));
+                                // Feed the GENERIC sim netlist into the pin panel's
+                                // simulator, which is what the blurb above promises
+                                // ("a netlist you can ... check in the pin panel
+                                // below"). It must be simNetlist, not netlist: the
+                                // synth_gowin `netlist` is Gowin-mapped and the sim
+                                // cannot read it. The textarea drives the sim, so
+                                // setting it is all it takes.
+                                if (r.result && r.result.ok && r.result.simNetlist) {
+                                    setNetlistText(JSON.stringify(r.result.simNetlist, null, 2));
                                 }
                             })
                             .finally(() => setLocalBusy(false));

@@ -303,23 +303,40 @@ test('a successful synthesis offers its artefact as a download', () => {
         'the object URLs must be revoked when the result changes, or they leak');
 });
 
-// ── the local netlist feeds the simulator, as the blurb promises ──
+// ── the local SIM netlist feeds the simulator, as the blurb promises ──
 //
 // The tab says the in-browser tier produces "a netlist you can ... check in the
 // pin panel below". The netlist textarea (netlistText) drives the gate-level
 // sim, so a successful local synth must populate it — otherwise the promise is
-// empty and the netlist only exists as a download.
+// empty and the netlist only exists as a download. It must be the GENERIC
+// simNetlist: the synth_gowin `netlist` is Gowin-mapped and yosys2digitaljs
+// cannot read it, so feeding that would put an unsimulatable netlist in the box.
 
-test('a successful local synthesis feeds its netlist into the simulator', () => {
+test('a successful local synthesis feeds its SIM netlist into the simulator', () => {
     const tab = codeOnly(read(TAB));
     const at = tab.indexOf('localClient.synthesise(');
     assert.ok(at > 0, 'the local synth handler must exist');
-    const handler = tab.slice(at, at + 500);
-    assert.match(handler, /r\.result\.netlist/,
-        'the handler must look at the returned netlist');
+    const handler = tab.slice(at, at + 600);
+    assert.match(handler, /r\.result\.simNetlist/,
+        'the handler must feed the GENERIC simNetlist — the Gowin-mapped netlist is not '
+        + 'simulatable ($specify2), so driving the sim from it would be a regression');
     assert.match(handler, /setNetlistText\(/,
-        'a local netlist must be fed into netlistText, which drives the sim — the blurb '
+        'the sim netlist must be fed into netlistText, which drives the sim — the blurb '
         + 'promises the pin panel can check it, and only setNetlistText makes that true');
+});
+
+test('a successful HOSTED synthesis also feeds its SIM netlist into the simulator', () => {
+    // The hosted route used to only setSynth (a download), so a hosted design
+    // never drove the board — the §7.4 "known polish". Now it feeds simNetlist,
+    // so hosted and local both animate the board.
+    const tab = codeOnly(read(TAB));
+    const at = tab.indexOf('synthesise({');
+    assert.ok(at > 0, 'the hosted synth handler must exist');
+    const handler = tab.slice(at, at + 600);
+    assert.match(handler, /r\.simNetlist/,
+        'the hosted handler must feed the generic simNetlist, not the Gowin-mapped netlist');
+    assert.match(handler, /setNetlistText\(/,
+        'a hosted design must reach the sim too, or only local designs light the board');
 });
 
 // ── the Verilog box is never a blank page ───────────────────────

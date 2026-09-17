@@ -907,6 +907,38 @@ contract and by the hand-written LOOP, and drives correctly for any generic
 netlist; it simply has no real synthesised design to carry, because the synthesis
 tier hands it a netlist its simulator was never meant to read.
 
+## 7.7 The wall is down — a synthesised design drives the board, end to end
+
+Built. The generic sim netlist now exists on BOTH producers, and a second,
+smaller wall behind it was found and fixed too.
+
+- **bw-synth** (hosted, PR #1): `synthesise()` runs a second, technology-independent
+  pass — extracted as `sim_netlist()`, the same coarse flow `yosys2digitaljs`
+  uses (`proc; opt; memory -nomap; wreduce -memx; opt -full; write_json`) — and
+  returns it as `simNetlist` beside the Gowin `netlist`. It degrades to null
+  rather than failing the bitstream.
+- **local-toolchain.js** (in-browser worker): the same second pass, so the local
+  tier drives the board too, not just the hosted one.
+- **synthesis.js / the tab**: `simNetlist` is carried through the contract, and
+  BOTH synth routes now feed it into `netlistText` — which closes the §7.4 "known
+  polish" (the hosted route used to only offer a download and never drove).
+
+**The second wall: `GateLevelSim` addressed ports by NAME.** With a real
+`simNetlist` in hand, `setInput('clk')` still threw — because `yosys2digitaljs`
+names its devices `dev0/dev1/…` and carries the port in a `net` property, while
+the hand-written fixtures used net-as-id. So `GateLevelSim` now builds a
+port-name → device-id map from the netlist's Input/Output devices (identity for
+the fixtures, a real translation for synthesised output). Only after THIS does a
+real netlist drive.
+
+**Proven end to end** (`fpga-sim-real-netlist`, on fixtures that are real `yosys`
+output, not hand-written): blink settles `led` HIGH, and the 4-bit `sequence`
+counter — held at 0 in reset, then stepped — reads `1,2,3,4,5,6` on the board.
+That is a synthesised design lighting the on-screen breadboard through the whole
+chain: Verilog → generic netlist → `yosys2digitaljs` → `GateLevelSim` → the #2
+clock → `applyPortValues` → `window.__bwCircuit`. The payoff #1 and #2 were built
+for is real.
+
 ## 8a. Decision 6 had a dependency problem — found, and resolved by taking a different subpath
 
 **Resolved. Kept because the reasoning is reusable, not because it is pending.**
