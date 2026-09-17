@@ -936,8 +936,52 @@ output, not hand-written): blink settles `led` HIGH, and the 4-bit `sequence`
 counter — held at 0 in reset, then stepped — reads `1,2,3,4,5,6` on the board.
 That is a synthesised design lighting the on-screen breadboard through the whole
 chain: Verilog → generic netlist → `yosys2digitaljs` → `GateLevelSim` → the #2
-clock → `applyPortValues` → `window.__bwCircuit`. The payoff #1 and #2 were built
-for is real.
+clock → `applyPortValues` → the circuit. The payoff #1 and #2 were built for is
+real — but two more walls stood between §7.7 (proven in Node) and it working in a
+real browser, and §7.8 is where they fell.
+
+## 7.8 It works in a real browser — and the last two walls only a browser could show
+
+§7.7 proved the chain in Node. Assembling it into a flag-on build and DRIVING it
+in headless Chromium — the §7.4 discipline — found two more faults that every Node
+test and every source gate passed straight through. Both are now fixed, and the
+loop is **verified end to end in a real browser**.
+
+**Wall 1 — the example did not count in the TAB.** The `sequence` counter used an
+async reset. But the tab rebuilds `GateLevelSim` from scratch on every step and
+only ever `tickClock`s; it can never assert-then-release a reset across steps. So
+the counter sat at `x` (reset released) or `0` (reset held) and never moved — the
+one example built to be watched moving, didn't. Fixed (#162) with a reset-FREE
+counter whose register is INITIALISED (`reg [3:0] cnt = 0`): Yosys carries the
+init, `yosys2digitaljs` honours it as the flop's `initial`, and it counts on the
+clock alone — exactly what the tab's step model drives.
+
+**Wall 2 — the drive handle vanished under the FPGA tab.** The drive reached
+`window.__bwCircuit`, published by `CircuitDesigner`'s mount effect (#158) and
+DELETED when the designer unmounts — which it does whenever a non-Circuit tab is
+active under the default debugger dock, i.e. exactly when the FPGA tab is showing.
+Measured in the browser: present on the Circuit tab, `false` on the FPGA tab. So
+`setPin` was never called, though the source gate for the handle passed. The fix
+(#163): lite ALREADY published the right handle — `window.__circuit`, the live
+`Circuit` model from `circuit-tab.jsx`'s `onCircuitReady` (also on
+`vm.runtime.circuitModel`), which OUTLIVES the designer and survives the tab
+switch. The drive now prefers it; `window.__bwCircuit` is a fallback only. (§7.5's
+search for a handle looked at the vendored `bw-circuit-ui` tree and missed lite's
+own `onCircuitReady` — which is why the redundant upstream handle was added at
+all.)
+
+**The proof.** A flag-on build (`BW_ENABLE_FPGA=1`), driven in headless Chromium:
+load the reset-free counter's netlist, expand the pin-checker panel, step the
+Clock button — and `p15..p18` are driven through `window.__circuit`, the LSB `p15`
+toggling `true,false,true,false` as the counter counts `1,2,3,4`. Every earlier
+tier was already green; only the assembled, clicked build showed these two, which
+is the whole reason §7.4 says to budget a browser drive whenever the surface
+changes.
+
+**One piece is deployment, not code.** The hosted `synth.crispstro.be` must be
+redeployed to return `simNetlist` (`cd /opt/bwsynth && git pull && docker build -t
+bwsynth:latest . && sudo IMAGE=bwsynth:latest deploy/run.sh`); it needs root on
+the VPS. The LOCAL in-browser tier drives the board today with no deploy.
 
 ## 8a. Decision 6 had a dependency problem — found, and resolved by taking a different subpath
 
