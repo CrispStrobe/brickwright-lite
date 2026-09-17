@@ -82,6 +82,24 @@ export function readPorts (netlist) {
  * A 4-bit bus with three IO_LOC lines is a real and easy mistake, and it is
  * invisible unless someone counts.
  */
+/**
+ * Which input port, if any, is the clock -- the one the tab steps to animate a
+ * sequential design. A clock is a single-bit INPUT named like one; a multi-bit
+ * port is data, never a clock, so width gates before the name does. An exact
+ * `clk`/`clock` wins over a merely clock-ish name (`clk_i`, `sys_clk`) so a
+ * design with both picks the real one.
+ * @param {object} ports  the {name: {direction, width}} map from readPorts
+ * @returns {string|null}
+ */
+export function detectClockPort (ports) {
+    const inputs = Object.entries(ports || {})
+        .filter(([, p]) => p && p.direction === 'input' && (p.width || 1) === 1)
+        .map(([name]) => name);
+    const exact = inputs.find(n => /^(clk|clock)$/i.test(n));
+    if (exact) return exact;
+    return inputs.find(n => /(^|[_])(clk|clock)([_]|$)/i.test(n)) || null;
+}
+
 export function checkWidths (ports, bindings) {
     const placed = new Map();
     for (const b of bindings || []) {
