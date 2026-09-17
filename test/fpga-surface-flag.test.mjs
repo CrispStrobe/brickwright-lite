@@ -201,3 +201,39 @@ test('the worker is terminated when the tab goes away', () => {
     assert.match(tab, /localClient\.terminate\(\)/,
         'a worker holding 78 MB of compiled WebAssembly must not outlive its tab');
 });
+
+// ── an off build must not need the local toolchain installed ────
+//
+// THE FLAG DOES NOT STOP RESOLUTION. `process.env.BW_ENABLE_FPGA` is a
+// DefinePlugin substitution, so it removes the flagged code from the OUTPUT,
+// after webpack has resolved the graph — and `new Worker(new URL(…))` is
+// detected statically, so yosys-worker.js enters that graph either way. Build
+// run 35185515757 went red on `Can't resolve '@yowasp/yosys'`, a 75 MB package
+// this repository deliberately does not depend on. The comments on this surface
+// said "no build compiles it"; what is true is that no build EXECUTES it.
+
+test('a flag-off build resolves @yowasp/yosys to a stub, not to a dependency', () => {
+    const webpack = read(WEBPACK);
+    assert.match(webpack, /BW_ENABLE_FPGA !== '1'/,
+        'the stub must be conditional: an ON build has to reach the real package');
+    assert.match(webpack, /alias\['@yowasp\/yosys\$'\]/,
+        'an exact-match alias, so @yowasp/yosys/anything is untouched');
+    assert.match(webpack, /yosys-absent\.js/);
+});
+
+test('@yowasp/yosys is NOT a dependency of this repo', () => {
+    const require_ = createRequire(import.meta.url);
+    const pkg = require_('../package.json');
+    for (const field of ['dependencies', 'devDependencies', 'optionalDependencies']) {
+        assert.equal(Object.keys(pkg[field] || {}).some(d => d.startsWith('@yowasp/')), false,
+            `${field} must not carry @yowasp/*: 75 MB in every install to serve a tier `
+            + 'that is off by default is the trade the local tier exists to avoid');
+    }
+});
+
+test('the stub throws rather than pretending to be a toolchain', async () => {
+    const stub = await import('../overlay/scratch-gui/src/lib/bw-fpga/yosys-absent.js');
+    assert.throws(() => stub.runYosys(['-V'], {}), /BW_ENABLE_FPGA=1/,
+        'a stub that returns something plausible is how it ends up standing in for the '
+        + 'real thing without anyone noticing');
+});

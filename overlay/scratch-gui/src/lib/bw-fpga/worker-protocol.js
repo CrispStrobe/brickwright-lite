@@ -7,9 +7,11 @@
  * download, which is the one moment the user most needs the page to be alive.
  *
  * WHY THE PROTOCOL IS A PURE FUNCTION AND THE WORKER IS FIFTEEN LINES. Nothing
- * in this repository compiles the worker: it is behind BW_ENABLE_FPGA like the
+ * in this repository EXECUTES the worker: it is behind BW_ENABLE_FPGA like the
  * rest of the surface, and `scripts/check-flagged-jsx.mjs` parses without
- * executing. bw-synth learned the same lesson in Python and split
+ * executing. (Note the verb. webpack RESOLVES these modules even with the flag
+ * off — DefinePlugin drops the code after the graph is built — which is how a
+ * default build went red on a missing @yowasp/yosys; see yosys-absent.js.) bw-synth learned the same lesson in Python and split
  * `handle_synth(raw_body, *, run=None)` out of its transport for it. So the
  * decisions live here, where a test can reach them without a Worker, and
  * yosys-worker.js is glue thin enough to read in one go.
