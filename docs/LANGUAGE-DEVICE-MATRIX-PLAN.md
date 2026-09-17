@@ -629,7 +629,7 @@ behind the clean-room bootrom (CDC at instruction 946,123, REPL prompt at 1,175,
 runs JavaScript live through the same run-live seam (one extra: its ANSI line editor emits `ESC[6n` and
 blocks until answered). The first GPIO call HANGS: `pinMode(25, OUTPUT)` busy-loops in the bootrom's
 `rom_table_lookup` from LR 0x1000463f with a null lookup result used as a base pointer — the same shape
-as MicroPython's flash-funcs gap (N3a). **(Upstream fix, 2026-09-17: this hang is GONE at bw-board `64850bc` — 17 commits past lite's pin — a one-byte ROM version fix; the wall stands only for our current pin. See the N11a note below.)** Licence ledger: Kaluma/JerryScript/CMSIS Apache-2.0, pico-sdk
+as MicroPython's flash-funcs gap (N3a). **(CORRECTED 2026-09-17: this hang is ALREADY FIXED at lite's pin, not merely upstream. The one-byte fix is bw-board `64354e8` — an ANCESTOR of our pin `76877a2`, with `rom[0x13] = 0x01` present in the pinned tree at line 2202 — so N5's hang does NOT stand for lite's current pin. An earlier version of this pointer cited `64850bc` and called the fix 17 commits ahead; `64850bc` is the docs-lane close, not the fix. See the corrected N11a note below.)** Licence ledger: Kaluma/JerryScript/CMSIS Apache-2.0, pico-sdk
 and littlefs BSD-3, TinyUSB MIT; a shipped UF2 would need the Apache NOTICE and attributions.
 Recommendation: buildable through the existing seam, BLOCKED on one bootrom entry; the JS·Pico cell
 does not flip until a blink is observed. **N5-1 (2026-09-06):** the ROM code is `'SF'` (0x4653), the bootrom's single-precision SOFT-FLOAT
@@ -780,35 +780,44 @@ runs the differential; the executed-C legs SKIP BY NAME when no toolchain is pre
 runs everywhere, so the C side is never left with no gate. **N11 (the SHIPPED in-browser button = Door 2,
 clang→WASM ~15–40 MB) stays OPEN** — N11a is the CI-differential oracle, not the offline compiler.
 
-**N11a — the "dodging the `rom_table_lookup` wall" premise is measured DEAD upstream, 2026-09-17**
-(routed in by session lego-a4; commit relationship verified here). The sentence above justifies
+**N11a — the "dodging the `rom_table_lookup` wall" premise is dead AT LITE'S PIN, 2026-09-17
+(corrected — an earlier version of this note got the scope wrong).** The sentence above justifies
 `entry: 'vector'` two ways — "the clean-room bootrom is never touched" AND "dodging the Kaluma
 `rom_table_lookup` wall". The second half rests on N5's finding that the first GPIO call HANGS in
-`rom_table_lookup` from `0x1000463f`. That wall is **gone**. Measured at bw-board master `64850bc`
-(GitHub `compare`: **17 commits ahead of lite's pin `76877a2`, 0 behind** — so the fix landed
-upstream AFTER our pin, not in our tree yet) against Kaluma 1.2.1, sending the exact line
-`scripts/probe-pico-kaluma.mjs --blink` sends — `pinMode(25, OUTPUT); digitalWrite(25, HIGH)` —
-GPIO25 drives high (`outputEnable=true`), `rom_table_lookup` answers 14 of 14 codes with none
-returning 0 and none spinning, and `0x1000463f` never appears. The cause was **one byte**: bw-board's
-bootrom left the version byte at `0x13` zero, so pico-sdk's shim-table initialiser took its "old
-bootrom" leg and left 31 of 32 double-precision operator pointers null; the first GPIO call went
-through a null pointer into the ROM's zeros. (bw-board side is closed — ROADMAP R3, LANES DONE at
-`64850bc`.)
+`rom_table_lookup` from `0x1000463f`. That wall is **gone, and gone at our own pin**, not merely
+upstream.
 
-**What this changes, and what it does not.** `entry: 'vector'` STAYS — but for the ISOLATION reason
-alone, which the first half already states: a compiled-C oracle must not reach the hardware through
-OUR ROM, or the oracle and the thing under test share a failure mode. That is a good reason and the
-behaviour is correct. It is a **different** reason from "the bootrom would hang", and the two exclude
-different Door 2 designs — planning that still inherits the dead premise rules out options that are now
-open (e.g. a Door 2 that boots a compiled image THROUGH the fixed bootrom rather than jumping past it).
-Note the scope: our pin `76877a2` predates the fix, so **N5's hang stands for lite's current pin** until
-the bw-board pin crosses `64850bc`; this note is why it will need revisiting when it does.
+**The fix, and where it sits.** bw-board `64354e8` ("the bootrom version byte is at 0x13, and it was
+zero") sets `rom[0x13] = 0x01`; it is an **ancestor of lite's pin `76877a2`** (GitHub `compare`:
+`behind_by 0`), and the byte is present in the pinned tree at line 2202. Measured at a detached
+worktree at exactly `76877a2`, Kaluma 1.2.1: `pinMode(25, OUTPUT); digitalWrite(25, HIGH)` returns
+undefined, GP25 final value 1, `outputEnable` true, zero jumps to address zero. So N5's hang is fixed
+at our current pin. The one-byte cause: with the version byte zero, pico-sdk's shim-table initialiser
+took its "old bootrom" leg and left 31 of 32 double-precision operator pointers null; the first GPIO
+call went through a null pointer into the ROM's zeros.
+
+**The correction, recorded as such.** An earlier version of this note (PRs #144/#145) said the fix
+"landed upstream AFTER our pin, not in our tree yet" and that "N5's hang stands for lite's current pin
+until the pin crosses `64850bc`". That was **wrong**. `64850bc` is the docs-lane close (it touches only
+`LANES.md`/`ROADMAP.md`); I compared the pin against it instead of against the fix `64354e8`, got a
+true "17 commits ahead", and drew a conclusion — *the fix is not in our tree* — the measurement never
+supported, because I never checked what `64850bc` actually changed. That is the exact failure this
+section is about: a correct measurement whose conclusion acquires a scope it has not earned. Routed and
+re-measured by lego-a4 at the pinned tree; verified here (`rom[0x13]`, the ancestry, and the two shas'
+contents).
+
+**What this changes, and what it does not.** `entry: 'vector'` STAYS — for the ISOLATION reason the
+first half already states: a compiled-C oracle must not reach the hardware through OUR ROM, or the
+oracle and the thing under test share a failure mode. That holds whether or not the ROM works. It is a
+**different** reason from "the bootrom would hang", and the two exclude different Door 2 designs — and
+because the wall is gone **at our pin**, a Door 2 that boots a compiled image THROUGH the bootrom is
+genuinely open, not blocked (subject to the flash-entry limit below, which is a separate question).
 
 **One limit, kept visible — and now narrowed on one half, not closed.** `--blink` sends a REPL line
 and watches `gpio[25]`; it does NOT load a program, so it drives the hardware through the same
 run-live seam already measured, not through a distinct loaded-image entry. **Narrowed 2026-09-17**
-(bw-board `b8faec5`, verified 19 commits ahead of our pin `76877a2` and 2 past `64850bc` — still
-upstream, not in lite's tree): `test/rp2040-bootrom-guest-abi.test.mjs` loads a 24-halfword Thumb
+(bw-board `b8faec5`, verified 19 commits ahead of our pin `76877a2` — still upstream, not in lite's
+tree, and a DIFFERENT commit from the version-byte fix `64354e8`, which IS pinned): `test/rp2040-bootrom-guest-abi.test.mjs` loads a 24-halfword Thumb
 program into SRAM that performs the documented ROM sequence itself — reads the u16 at `0x16`, reads
 `rom_table_lookup` at `0x18`, `blx`-es it with the `'SF'` code, loads an entry and `blx`-es that —
 reaches every fixed-point conversion and agrees with `Math.fround`; a mutation asking for `'XF'`
