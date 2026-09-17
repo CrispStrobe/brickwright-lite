@@ -15,7 +15,7 @@ left the architecture open.
 | **TN2b** the pin bridge | **in review** — lite PR #114 |
 | inert-rail DRC rule (a TN0 follow-up) | **in review** — `bw-circuit-ui` PR #25 |
 | **TN3** client half | **landed** — lite PRs #124, #125 |
-| **TN3** service | **deployed, and the toolchain does not fit the host** — [`CrispStrobe/bw-synth`](https://github.com/CrispStrobe/bw-synth), §5.1 |
+| **TN3** service | **runs on a real host** — hardened container, differential proven; TLS/DNS pending — [`CrispStrobe/bw-synth`](https://github.com/CrispStrobe/bw-synth), §5.2 |
 | **TN6a** capability gate | **landed** — lite PR #127 |
 | **TN6b** bitstream packer | **works** — byte-identical to native, in Chromium 151 (§8d) |
 | **TN6b** whole chain in a browser | **works** — Verilog → bitstream, byte-identical, ~280 MB (§8e) |
@@ -397,6 +397,39 @@ So TN3's remaining work is **a host with a real disk** — a container (Fly,
 Railway, Render) or Vercel Sandbox — and that is a platform decision, not a code
 one. The flow itself is not in doubt: bw-synth's CI builds a blinky to a
 **6.16 MB bitstream** for `GW2AR-LV18QN88C8/I7` on every push.
+
+### 5.2 It runs on a real host — measured 2026-09-17
+
+The platform decision was taken: bw-synth runs in a **hardened Docker container**
+on the project's own VPS, and it does everything Vercel could not. Measured on
+that host: **368 MB installed, ~200 MB peak RSS, ~8 s per build** — the toolchain
+fits with room to spare the moment the disk is real.
+
+Proven against the running service, not asserted (`scripts/probe-hosted-synth.mjs`):
+
+- a blinky comes back as `586e54ac…64e257d` — **byte-identical to the native and
+  browser chains** (§8d, §8e). All three tiers are now pinned to one bitstream,
+  which is the differential §5 demanded: *the same bitstream from either, or bug
+  reports become unfalsifiable.*
+- a GPL-3.0 source is refused **by name**, `alternative: local-tier`, synthesis
+  never reached — the licence rule, enforced in production.
+
+The container is confined because it runs a toolchain over arbitrary Verilog from
+the internet: non-root, read-only root filesystem, all Linux capabilities
+dropped, `no-new-privileges`, published only on loopback behind nginx, and
+**egress blocked at the host firewall** — a synthesiser has no reason to make an
+outbound connection, and a blocked one cannot exfiltrate if the toolchain is ever
+exploited. `deploy/` in `bw-synth` carries the run command, the egress block, its
+systemd unit, and the nginx vhost, so it is reproducible rather than living on one
+box; `DEPLOY.md` records the three bugs that cost the deploy (the YoWASP cache
+path, the `--internal`-network trap, and that neither shows up outside a real WSGI
+server).
+
+**What remains is not code.** A DNS record and a TLS certificate — the service is
+reachable on the host's loopback and answers correctly; it is not yet public.
+Once it is, brickwright-lite's `BW_SYNTHESIS_ENDPOINT` points at it and the
+hosted backend appears in the selector beside local. Nothing about §8c's UI rule
+changes: hosted still cannot build copyleft, and the selector stays fail-closed.
 
 ## 6. Device identity and surfaces
 
