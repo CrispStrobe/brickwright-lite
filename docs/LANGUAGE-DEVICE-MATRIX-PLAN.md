@@ -804,11 +804,21 @@ open (e.g. a Door 2 that boots a compiled image THROUGH the fixed bootrom rather
 Note the scope: our pin `76877a2` predates the fix, so **N5's hang stands for lite's current pin** until
 the bw-board pin crosses `64850bc`; this note is why it will need revisiting when it does.
 
-**One limit, kept visible.** `--blink` sends a REPL line and watches `gpio[25]`; it does NOT load a
-program, so it drives the hardware through the same run-live seam already measured, not through a
-distinct loaded-image entry. A genuine **compiled image entered through the bootrom** remains
-UNMEASURED. If Door 2 ever runs one that way rather than jumping at the vector, that path has no
-evidence behind it and should get its own lane.
+**One limit, kept visible — and now narrowed on one half, not closed.** `--blink` sends a REPL line
+and watches `gpio[25]`; it does NOT load a program, so it drives the hardware through the same
+run-live seam already measured, not through a distinct loaded-image entry. **Narrowed 2026-09-17**
+(bw-board `b8faec5`, verified 19 commits ahead of our pin `76877a2` and 2 past `64850bc` — still
+upstream, not in lite's tree): `test/rp2040-bootrom-guest-abi.test.mjs` loads a 24-halfword Thumb
+program into SRAM that performs the documented ROM sequence itself — reads the u16 at `0x16`, reads
+`rom_table_lookup` at `0x18`, `blx`-es it with the `'SF'` code, loads an entry and `blx`-es that —
+reaches every fixed-point conversion and agrees with `Math.fround`; a mutation asking for `'XF'`
+misses the lookup and the guest publishes 0 through the null slide, so the lookup is load-bearing.
+That closes *can a loaded program use this ROM's ABI at all* — **yes, from SRAM through the
+documented lookup**. It does NOT close *a compiled C image boots through the bootrom*: that guest is
+hand-written Thumb entered at RAM_START, not an image entering via the flash boot path, and this
+ROM's reset vector still goes to a spin. So the **flash-entry half is still UNMEASURED** — if Door 2
+ever stops jumping past the bootrom and boots an image the flash way, that path has no evidence
+behind it and still wants its own lane.
 
 ### Lane L — lowered halves to add or complete
 
