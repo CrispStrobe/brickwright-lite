@@ -145,6 +145,9 @@ jobs:
         run: node scripts/sync-labwired-wasm.mjs || echo "labwired-wasm unavailable — the heavy tier will not be offered"
       - name: Install
         run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+
+      - name: STAGING — install the local FPGA toolchain for a flag-on build
+        run: cd packages/scratch-gui && npm install --no-save --ignore-scripts --legacy-peer-deps --no-audit --no-fund @yowasp/yosys
       - name: Apply the scratch-vm overlay (built-in extensions)
         run: node scripts/apply-vm-overlay.mjs
       # The FPGA surface is behind BW_ENABLE_FPGA, off in every build here, and
@@ -631,7 +634,7 @@ jobs:
       - name: Build the editor
         id: build_editor
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' && steps.package_provenance.outcome == 'success' }}
-        run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build
+        run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 BW_ENABLE_FPGA=1 BW_SYNTHESIS_ENDPOINT=https://synth.crispstro.be/api npm run build
 
       - name: Guard — emitted native broker proof bytes retain reviewed authority
         if: ${{ !cancelled() && steps.build_editor.outcome == 'success' }}
