@@ -29,6 +29,7 @@ const NO_GC = {wasm: true, controlPassed: true, wasmGC: false, exceptions: true,
 
 /** A Yosys that records what it was asked and answers with a netlist. */
 const stubYosys = ({netlist = {modules: {blink: {ports: {}, cells: {}}}},
+    simNetlist = {modules: {blink: {ports: {led: {}}, cells: {}}}},
     fail = null, chunks = 0} = {}) => {
     const calls = [];
     const run = async (args, files, options) => {
@@ -41,7 +42,12 @@ const stubYosys = ({netlist = {modules: {blink: {ports: {}, cells: {}}}},
                 {totalLength: chunks, doneLength: i});
         }
         if (fail) throw new Error(fail);
-        return {'design.json': JSON.stringify(netlist)};
+        // The generic sim pass writes design_sim.json; the synth_gowin pass writes
+        // design.json. Answer whichever this invocation asked for.
+        const script = args.join(' ');
+        return script.includes('design_sim.json')
+            ? {'design_sim.json': JSON.stringify(simNetlist)}
+            : {'design.json': JSON.stringify(netlist)};
     };
     run.calls = calls;
     return run;
@@ -148,6 +154,42 @@ test('it synthesises to a netlist and asks Yosys for the Gowin flow by name', as
     assert.match(script, /synth_gowin/, 'synth_ice40 would run and produce a wrong netlist');
     assert.match(script, /-top blink/);
     assert.equal(runYosys.calls[1].files['blink.v'].includes('module blink'), true);
+});
+
+test('synthesise also runs a GENERIC pass and returns simNetlist', async () => {
+    // The synth_gowin netlist cannot be simulated (Gowin primitives + $specify2),
+    // so a second, technology-independent pass produces the netlist the board is
+    // driven from. Mirrors bw-synth's sim_netlist().
+    const runYosys = stubYosys();
+    const tc = createLocalToolchain({runYosys, capabilities: CAPABLE});
+    await tc.download({consent: true});
+    const r = await tc.synthesise({
+        files: [{name: 'blink.v', source: 'module blink(output led); assign led = 1; endmodule'}],
+        top: 'blink'});
+    assert.equal(r.ok, true);
+    assert.ok(r.simNetlist && r.simNetlist.modules, 'a simNetlist must come back for the sim');
+
+    // Two passes: the Gowin one for the bitstream, the generic one for the sim.
+    const scripts = runYosys.calls.map(c => c.args.join(' '));
+    const simScript = scripts.find(s => s.includes('design_sim.json'));
+    assert.ok(simScript, 'a generic write_json design_sim.json pass must run');
+    assert.doesNotMatch(simScript, /synth_gowin/, 'the sim pass must NOT be Gowin-mapped');
+    assert.match(simScript, /proc; opt;.*write_json/, 'the coarse yosys2digitaljs flow');
+});
+
+test('a failed generic pass degrades to a null simNetlist, keeping the netlist', async () => {
+    // The sim pass is best-effort: if it throws, the mapped netlist still returns.
+    const runYosys = async (args, files) => {
+        if (args.join(' ').includes('design_sim.json')) throw new Error('generic pass blew up');
+        return {'design.json': JSON.stringify({modules: {blink: {ports: {}, cells: {}}}})};
+    };
+    runYosys.calls = [];
+    const tc = createLocalToolchain({runYosys, capabilities: CAPABLE});
+    await tc.download({consent: true});
+    const r = await tc.synthesise({files: [{name: 'blink.v', source: 'module blink; endmodule'}]});
+    assert.equal(r.ok, true);
+    assert.equal(r.simNetlist, null, 'a broken generic pass is null, not a thrown request');
+    assert.ok(r.netlist && r.netlist.modules, 'the mapped netlist still stands');
 });
 
 test('with no top given, it lets synth_gowin auto-select — never `-top top`', async () => {

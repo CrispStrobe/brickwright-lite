@@ -195,7 +195,27 @@ export function createLocalToolchain ({runYosys, capabilities = null, onState = 
         } catch (e) {
             return refusal('netlist-unreadable', `The netlist did not parse: ${e.message}`);
         }
-        return {ok: true, code: 'synthesised', netlist, top: top || null};
+        // A SECOND, technology-independent netlist for the gate-level simulator.
+        // The synth_gowin netlist above is Gowin-mapped (LUTs, OBUFs, $specify2)
+        // and yosys2digitaljs cannot read it, so it cannot drive the board. This
+        // runs the same coarse flow bw-synth's sim_netlist() runs — the flow
+        // yosys2digitaljs itself uses — from clean sources, since a mapped netlist
+        // cannot be un-mapped. It DEGRADES to null: a design that mapped but
+        // tripped the generic pass still returns its (Gowin) netlist.
+        let simNetlist = null;
+        try {
+            const hier = top ? `hierarchy -top ${top}`
+                : 'setattr -mod -unset top; hierarchy -auto-top';
+            const simScript = `read_verilog ${files.map(f => f.name).join(' ')}; ${hier}; `
+                + 'proc; opt; memory -nomap; wreduce -memx; opt -full; write_json design_sim.json';
+            const simOut = await runYosys(['-q', '-p', simScript], tree, {stdout: null, stderr: null});
+            const simRaw = simOut && simOut['design_sim.json'];
+            if (simRaw) {
+                simNetlist = typeof simRaw === 'string' ? JSON.parse(simRaw)
+                    : JSON.parse(new TextDecoder().decode(simRaw));
+            }
+        } catch { /* degrade: the mapped netlist still stands, the sim just has nothing */ }
+        return {ok: true, code: 'synthesised', netlist, simNetlist, top: top || null};
     };
 
     return {

@@ -103,6 +103,19 @@ test('a well-formed reply is accepted and carries the netlist', () => {
     assert.deepEqual(r.netlist, {modules: {top: {}}});
 });
 
+test('the generic simNetlist is carried through for the board-drive tier', () => {
+    // The gate-level sim reads simNetlist, not the Gowin-mapped netlist. It must
+    // survive validation, and be null (never invented) on an older service.
+    const withSim = validateResponse({contract: CONTRACT_VERSION, ok: true,
+        netlist: {modules: {top: {}}}, simNetlist: {modules: {top: {cells: {}}}},
+        bitstream: 'AAAA', log: 'ok'});
+    assert.deepEqual(withSim.simNetlist, {modules: {top: {cells: {}}}});
+
+    const without = validateResponse({contract: CONTRACT_VERSION, ok: true,
+        netlist: {modules: {top: {}}}, bitstream: 'AAAA', log: 'ok'});
+    assert.equal(without.simNetlist, null, 'absent simNetlist is null, not undefined or a guess');
+});
+
 test('a contract mismatch refuses rather than guessing', () => {
     const r = validateResponse({contract: 999, ok: true, netlist: {}});
     assert.equal(r.ok, false);

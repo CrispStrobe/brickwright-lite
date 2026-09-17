@@ -80,6 +80,27 @@ export class GateLevelSim {
         }
         this._circuit = new engine.HeadlessCircuit(circuitJson);
         this._settleFailed = false;
+
+        // digitaljs addresses cells by DEVICE ID. A REAL yosys2digitaljs netlist
+        // names its devices dev0/dev1/... and carries the port name in the `net`
+        // property; the hand-written test fixtures happen to use net-as-id, which
+        // is why setInput('a') worked there and a synthesised design's
+        // setInput('clk') did not (getCell returned undefined). So map top-level
+        // Input/Output ports to their device id. Identity for the fixtures, a real
+        // translation for synthesised netlists.
+        this._portId = {};
+        const devices = (circuitJson && circuitJson.devices) || {};
+        for (const [id, d] of Object.entries(devices)) {
+            if (d && (d.type === 'Input' || d.type === 'Output') && d.net) {
+                this._portId[d.net] = id;
+            }
+        }
+    }
+
+    /** The device id addressing a port -- see the constructor. */
+    _id (port) {
+        return Object.prototype.hasOwnProperty.call(this._portId, port)
+            ? this._portId[port] : port;
     }
 
     /** Drive one input port from a boolean, a number or a bit string. */
@@ -88,7 +109,7 @@ export class GateLevelSim {
             ? value.padStart(bits, '0')
             : (typeof value === 'number' ? value : (value ? 1 : 0))
                 .toString(2).padStart(bits, '0').slice(-bits);
-        this._circuit.setInput(port, Vector3vl.fromBin(bin, bits));
+        this._circuit.setInput(this._id(port), Vector3vl.fromBin(bin, bits));
         return this;
     }
 
@@ -145,7 +166,7 @@ export class GateLevelSim {
 
     /** One output port, as a bit string ('0', '1', 'x' for undefined). */
     getOutput (port) {
-        return this._circuit.getOutput(port).toBin();
+        return this._circuit.getOutput(this._id(port)).toBin();
     }
 
     /**
