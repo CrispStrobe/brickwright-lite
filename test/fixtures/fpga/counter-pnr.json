@@ -1,0 +1,2972 @@
+{
+  "creator": "Next Generation Place and Route (Version nextpnr-0.11.1)",
+  "modules": {
+    "top": {
+      "settings": {
+        "route": "00000000000000000000000000000001",
+        "router/tmg_ripup": "0 ",
+        "router1/useEstimate": "1 ",
+        "router1/fullCleanupReroute": "1 ",
+        "router1/cleanupReroute": "1 ",
+        "router1/maxIterCnt": "200",
+        "place": "00000000000000000000000000000001",
+        "placer1/startTemp": "1.000000",
+        "placer1/minBelsForGridPick": "64",
+        "placer1/netShareWeight": "0.000000",
+        "placer1/constraintWeight": "10.000000",
+        "placerHeap/cellPlacementTimeout": "8",
+        "placerHeap/noCtrlSet": "0 ",
+        "placerHeap/netShareWeight": "0.000000",
+        "placerHeap/parallelRefine": "0 ",
+        "pack": "00000000000000000000000000000001",
+        "synth": "00000000000000000000000000000001",
+        "placerHeap/timingWeight": "10 ",
+        "placerHeap/criticalityExponent": "2",
+        "placerHeap/beta": "0.900000",
+        "placerHeap/alpha": "0.100000",
+        "seed": "0011000101000001010110010010011001010011010110001001011110010011",
+        "arch.type": " ",
+        "arch.name": "himbaechel",
+        "router": "default",
+        "placer": "heap",
+        "auto_freq": "00000000000000000000000000000000",
+        "timing_driven": "00000000000000000000000000000001",
+        "target_freq": "12000000.000000",
+        "cst.filename": "counter.cst",
+        "packer.partno": "GW2AR-LV18QN88C8/I7",
+        "packer.chipdb": "GW2A-18C",
+        "packer.arch": "himbaechel/gowin"
+      },
+      "attributes": {
+        "top": "00000000000000000000000000000001",
+        "src": "counter.v:2.1-8.10"
+      },
+      "ports": {
+        "rst_n": {
+          "direction": "input",
+          "bits": [ 9495 ]
+        },
+        "led": {
+          "direction": "output",
+          "bits": [ 9518, 9515, 9512, 9509, 9506, 9503 ]
+        },
+        "clk": {
+          "direction": "input",
+          "bits": [ 9493 ]
+        }
+      },
+      "cells": {
+        "led_OBUF_O_I_LUT1_F_1_I0_DFFC_Q_passthrough_lut$": {
+          "hide_name": 0,
+          "type": "LUT4",
+          "parameters": {
+            "INIT": "00000000000000001111111100000000"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000101",
+            "NEXTPNR_BEL": "X5Y44/LUT4"
+          },
+          "port_directions": {
+            "F": "output",
+            "I3": "input"
+          },
+          "connections": {
+            "F": [ 9737 ],
+            "I3": [ 9526 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_12_I1_DFFC_Q_passthrough_lut$": {
+          "hide_name": 0,
+          "type": "LUT4",
+          "parameters": {
+            "INIT": "00000000000000001111111100000000"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000101",
+            "NEXTPNR_BEL": "X2Y43/LUT3"
+          },
+          "port_directions": {
+            "F": "output",
+            "I3": "input"
+          },
+          "connections": {
+            "F": [ 9735 ],
+            "I3": [ 9566 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_18_I1_DFFC_Q_passthrough_lut$": {
+          "hide_name": 0,
+          "type": "LUT4",
+          "parameters": {
+            "INIT": "00000000000000001111111100000000"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000101",
+            "NEXTPNR_BEL": "X4Y43/LUT2"
+          },
+          "port_directions": {
+            "F": "output",
+            "I3": "input"
+          },
+          "connections": {
+            "F": [ 9733 ],
+            "I3": [ 9592 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_22_I1_DFFC_Q_passthrough_lut$": {
+          "hide_name": 0,
+          "type": "LUT4",
+          "parameters": {
+            "INIT": "00000000000000001111111100000000"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000101",
+            "NEXTPNR_BEL": "X3Y43/LUT3"
+          },
+          "port_directions": {
+            "F": "output",
+            "I3": "input"
+          },
+          "connections": {
+            "F": [ 9731 ],
+            "I3": [ 9616 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_6_I1_DFFC_Q_passthrough_lut$": {
+          "hide_name": 0,
+          "type": "LUT4",
+          "parameters": {
+            "INIT": "00000000000000001111111100000000"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000101",
+            "NEXTPNR_BEL": "X3Y43/LUT0"
+          },
+          "port_directions": {
+            "F": "output",
+            "I3": "input"
+          },
+          "connections": {
+            "F": [ 9729 ],
+            "I3": [ 9637 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_9_I1_DFFC_Q_passthrough_lut$": {
+          "hide_name": 0,
+          "type": "LUT4",
+          "parameters": {
+            "INIT": "00000000000000001111111100000000"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000101",
+            "NEXTPNR_BEL": "X2Y43/LUT0"
+          },
+          "port_directions": {
+            "F": "output",
+            "I3": "input"
+          },
+          "connections": {
+            "F": [ 9727 ],
+            "I3": [ 9648 ]
+          }
+        },
+        "clk_IBUF_I_O_BUFG": {
+          "hide_name": 0,
+          "type": "BUFG",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X0Y27/BUFG1"
+          },
+          "port_directions": {
+            "O": "output",
+            "I": "input"
+          },
+          "connections": {
+            "O": [  ],
+            "I": [ 9714 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_1_DUMMY_ALULC": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "ALU_MODE": "C2L"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X5Y44/ALU3"
+          },
+          "port_directions": {
+          },
+          "connections": {
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_CIN_ALU_COUT_HEAD_ALULC": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "ALU_MODE": "C2L"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X1Y44/ALU0"
+          },
+          "port_directions": {
+            "I2": "input",
+            "COUT": "output"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "COUT": [ 9683 ]
+          }
+        },
+        "GSR": {
+          "hide_name": 0,
+          "type": "GSR",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000010",
+            "NEXTPNR_BEL": "X50Y27/GSR"
+          },
+          "port_directions": {
+            "GSRI": "input"
+          },
+          "connections": {
+            "GSRI": [ 9678 ]
+          }
+        },
+        "rst_n_IBUF_I_O_LUT1_I0": {
+          "hide_name": 0,
+          "type": "LUT1",
+          "parameters": {
+            "INIT": "01"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X7Y39/LUT5",
+            "src": "/share/gowin/cells_map.v:135.23-136.15",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I0": "input",
+            "F": "output"
+          },
+          "connections": {
+            "I0": [ 9664 ],
+            "F": [ 9525 ]
+          }
+        },
+        "rst_n_IBUF_I": {
+          "hide_name": 0,
+          "type": "IBUF",
+          "parameters": {
+            "NET_I": "NET",
+            "NET_O": "NET"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000101",
+            "NEXTPNR_BEL": "X55Y29/IOBA",
+            "src": "counter.v:2.33-2.38",
+            "&IO_TYPE=LVCMOS33": "00000000000000000000000000000001",
+            "keep": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "O": "output",
+            "I": "input"
+          },
+          "connections": {
+            "O": [ 9664 ],
+            "I": [ 9495 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_I0_DFFC_Q": {
+          "hide_name": 0,
+          "type": "DFFC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X4Y44/DFF5",
+            "src": "counter.v:4.5-6.39|/share/gowin/cells_map.v:91.7-91.59",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "Q": "output",
+            "D": "input",
+            "CLK": "input",
+            "CLEAR": "input"
+          },
+          "connections": {
+            "Q": [ 9520 ],
+            "D": [ 9645 ],
+            "CLK": [ 9499 ],
+            "CLEAR": [ 9525 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_5_I0_DFFC_Q": {
+          "hide_name": 0,
+          "type": "DFFC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X5Y44/DFF2",
+            "src": "counter.v:4.5-6.39|/share/gowin/cells_map.v:91.7-91.59",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "Q": "output",
+            "D": "input",
+            "CLK": "input",
+            "CLEAR": "input"
+          },
+          "connections": {
+            "Q": [ 9549 ],
+            "D": [ 9550 ],
+            "CLK": [ 9499 ],
+            "CLEAR": [ 9525 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_5": {
+          "hide_name": 0,
+          "type": "LUT1",
+          "parameters": {
+            "INIT": "01"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X3Y50/LUT3",
+            "src": "/share/gowin/cells_map.v:135.23-136.15",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I0": "input",
+            "F": "output"
+          },
+          "connections": {
+            "I0": [ 9549 ],
+            "F": [ 9502 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_4_I0_DFFC_Q": {
+          "hide_name": 0,
+          "type": "DFFC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X4Y44/DFF4",
+            "src": "counter.v:4.5-6.39|/share/gowin/cells_map.v:91.7-91.59",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "Q": "output",
+            "D": "input",
+            "CLK": "input",
+            "CLEAR": "input"
+          },
+          "connections": {
+            "Q": [ 9587 ],
+            "D": [ 9588 ],
+            "CLK": [ 9499 ],
+            "CLEAR": [ 9525 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_4": {
+          "hide_name": 0,
+          "type": "LUT1",
+          "parameters": {
+            "INIT": "01"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X1Y44/LUT7",
+            "src": "/share/gowin/cells_map.v:135.23-136.15",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I0": "input",
+            "F": "output"
+          },
+          "connections": {
+            "I0": [ 9587 ],
+            "F": [ 9514 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_DFFC_Q": {
+          "hide_name": 0,
+          "type": "DFFC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X4Y44/DFF3",
+            "src": "counter.v:4.5-6.39|/share/gowin/cells_map.v:91.7-91.59",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "Q": "output",
+            "D": "input",
+            "CLK": "input",
+            "CLEAR": "input"
+          },
+          "connections": {
+            "Q": [ 9532 ],
+            "D": [ 9538 ],
+            "CLK": [ 9499 ],
+            "CLEAR": [ 9525 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_LUT1_F_I0_DFFC_Q": {
+          "hide_name": 0,
+          "type": "DFFC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X1Y43/DFF0",
+            "src": "counter.v:4.5-6.39|/share/gowin/cells_map.v:91.7-91.59",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "Q": "output",
+            "D": "input",
+            "CLK": "input",
+            "CLEAR": "input"
+          },
+          "connections": {
+            "Q": [ 9651 ],
+            "D": [ 9655 ],
+            "CLK": [ 9499 ],
+            "CLEAR": [ 9525 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_LUT1_F": {
+          "hide_name": 0,
+          "type": "LUT1",
+          "parameters": {
+            "INIT": "01"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X1Y43/LUT0",
+            "src": "/share/gowin/cells_map.v:135.23-136.15",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I0": "input",
+            "F": "output"
+          },
+          "connections": {
+            "I0": [ 9651 ],
+            "F": [ 9655 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_I1_DFFC_Q": {
+          "hide_name": 0,
+          "type": "DFFC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X1Y44/DFF2",
+            "src": "counter.v:4.5-6.39|/share/gowin/cells_map.v:91.7-91.59",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "Q": "output",
+            "D": "input",
+            "CLK": "input",
+            "CLEAR": "input"
+          },
+          "connections": {
+            "Q": [ 9544 ],
+            "D": [ 9545 ],
+            "CLK": [ 9499 ],
+            "CLEAR": [ 9525 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_CIN_ALU_COUT": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "RAW_ALU_LUT": "00000000000000000011000000111111",
+            "ALU_MODE": "00000000000000000000000000000010"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X1Y44/ALU1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I2": "input",
+            "SUM": "output",
+            "I3": "input",
+            "I1": "input",
+            "I0": "input",
+            "COUT": "output",
+            "CIN": "input"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "SUM": [ 9652 ],
+            "I3": [  ],
+            "I1": [ 9651 ],
+            "I0": [  ],
+            "COUT": [ 9542 ],
+            "CIN": [ 9683 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_9_I1_DFFC_Q": {
+          "hide_name": 0,
+          "type": "DFFC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X2Y43/DFF0",
+            "src": "counter.v:4.5-6.39|/share/gowin/cells_map.v:91.7-91.59",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "Q": "output",
+            "D": "input",
+            "CLK": "input",
+            "CLEAR": "input"
+          },
+          "connections": {
+            "Q": [ 9647 ],
+            "D": [ 9727 ],
+            "CLK": [ 9499 ],
+            "CLEAR": [ 9525 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_9": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "RAW_ALU_LUT": "00000000000000001100000011000000",
+            "ALU_MODE": "00000000000000000000000000000010"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X2Y44/ALU5",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I2": "input",
+            "SUM": "output",
+            "I3": "input",
+            "I1": "input",
+            "I0": "input",
+            "COUT": "output",
+            "CIN": "input"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "SUM": [ 9648 ],
+            "I3": [  ],
+            "I1": [ 9647 ],
+            "I0": [  ],
+            "COUT": [ 9640 ],
+            "CIN": [ 9559 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_8": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "RAW_ALU_LUT": "00000000000000001100000011000000",
+            "ALU_MODE": "00000000000000000000000000000010"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X4Y44/ALU5",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I2": "input",
+            "SUM": "output",
+            "I3": "input",
+            "I1": "input",
+            "I0": "input",
+            "COUT": "output",
+            "CIN": "input"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "SUM": [ 9645 ],
+            "I3": [  ],
+            "I1": [ 9520 ],
+            "I0": [  ],
+            "COUT": [ 9624 ],
+            "CIN": [ 9586 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_7_I1_DFFC_Q": {
+          "hide_name": 0,
+          "type": "DFFC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X3Y44/DFF0",
+            "src": "counter.v:4.5-6.39|/share/gowin/cells_map.v:91.7-91.59",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "Q": "output",
+            "D": "input",
+            "CLK": "input",
+            "CLEAR": "input"
+          },
+          "connections": {
+            "Q": [ 9641 ],
+            "D": [ 9642 ],
+            "CLK": [ 9499 ],
+            "CLEAR": [ 9525 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_7": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "RAW_ALU_LUT": "00000000000000001100000011000000",
+            "ALU_MODE": "00000000000000000000000000000010"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X3Y44/ALU0",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I2": "input",
+            "SUM": "output",
+            "I3": "input",
+            "I1": "input",
+            "I0": "input",
+            "COUT": "output",
+            "CIN": "input"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "SUM": [ 9642 ],
+            "I3": [  ],
+            "I1": [ 9641 ],
+            "I0": [  ],
+            "COUT": [ 9635 ],
+            "CIN": [ 9640 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_6_I1_DFFC_Q": {
+          "hide_name": 0,
+          "type": "DFFC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X3Y43/DFF0",
+            "src": "counter.v:4.5-6.39|/share/gowin/cells_map.v:91.7-91.59",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "Q": "output",
+            "D": "input",
+            "CLK": "input",
+            "CLEAR": "input"
+          },
+          "connections": {
+            "Q": [ 9636 ],
+            "D": [ 9729 ],
+            "CLK": [ 9499 ],
+            "CLEAR": [ 9525 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_6": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "RAW_ALU_LUT": "00000000000000001100000011000000",
+            "ALU_MODE": "00000000000000000000000000000010"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X3Y44/ALU1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I2": "input",
+            "SUM": "output",
+            "I3": "input",
+            "I1": "input",
+            "I0": "input",
+            "COUT": "output",
+            "CIN": "input"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "SUM": [ 9637 ],
+            "I3": [  ],
+            "I1": [ 9636 ],
+            "I0": [  ],
+            "COUT": [ 9626 ],
+            "CIN": [ 9635 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_5_I1_DFFC_Q": {
+          "hide_name": 0,
+          "type": "DFFC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X1Y44/DFF5",
+            "src": "counter.v:4.5-6.39|/share/gowin/cells_map.v:91.7-91.59",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "Q": "output",
+            "D": "input",
+            "CLK": "input",
+            "CLEAR": "input"
+          },
+          "connections": {
+            "Q": [ 9631 ],
+            "D": [ 9632 ],
+            "CLK": [ 9499 ],
+            "CLEAR": [ 9525 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_5": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "RAW_ALU_LUT": "00000000000000001100000011000000",
+            "ALU_MODE": "00000000000000000000000000000010"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X1Y44/ALU5",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I2": "input",
+            "SUM": "output",
+            "I3": "input",
+            "I1": "input",
+            "I0": "input",
+            "COUT": "output",
+            "CIN": "input"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "SUM": [ 9632 ],
+            "I3": [  ],
+            "I1": [ 9631 ],
+            "I0": [  ],
+            "COUT": [ 9595 ],
+            "CIN": [ 9553 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_4_I1_DFFC_Q": {
+          "hide_name": 0,
+          "type": "DFFC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X3Y44/DFF2",
+            "src": "counter.v:4.5-6.39|/share/gowin/cells_map.v:91.7-91.59",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "Q": "output",
+            "D": "input",
+            "CLK": "input",
+            "CLEAR": "input"
+          },
+          "connections": {
+            "Q": [ 9627 ],
+            "D": [ 9628 ],
+            "CLK": [ 9499 ],
+            "CLEAR": [ 9525 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_4": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "RAW_ALU_LUT": "00000000000000001100000011000000",
+            "ALU_MODE": "00000000000000000000000000000010"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X3Y44/ALU2",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I2": "input",
+            "SUM": "output",
+            "I3": "input",
+            "I1": "input",
+            "I0": "input",
+            "COUT": "output",
+            "CIN": "input"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "SUM": [ 9628 ],
+            "I3": [  ],
+            "I1": [ 9627 ],
+            "I0": [  ],
+            "COUT": [ 9601 ],
+            "CIN": [ 9626 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_3": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "RAW_ALU_LUT": "00000000000000001100000011000000",
+            "ALU_MODE": "00000000000000000000000000000010"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X5Y44/ALU0",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I2": "input",
+            "SUM": "output",
+            "I3": "input",
+            "I1": "input",
+            "I0": "input",
+            "COUT": "output",
+            "CIN": "input"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "SUM": [ 9530 ],
+            "I3": [  ],
+            "I1": [ 9528 ],
+            "I0": [  ],
+            "COUT": [ 9578 ],
+            "CIN": [ 9624 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_2_I1_DFFC_Q": {
+          "hide_name": 0,
+          "type": "DFFC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X3Y44/DFF3",
+            "src": "counter.v:4.5-6.39|/share/gowin/cells_map.v:91.7-91.59",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "Q": "output",
+            "D": "input",
+            "CLK": "input",
+            "CLEAR": "input"
+          },
+          "connections": {
+            "Q": [ 9603 ],
+            "D": [ 9604 ],
+            "CLK": [ 9499 ],
+            "CLEAR": [ 9525 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_23_I1_DFFC_Q": {
+          "hide_name": 0,
+          "type": "DFFC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X4Y44/DFF2",
+            "src": "counter.v:4.5-6.39|/share/gowin/cells_map.v:91.7-91.59",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "Q": "output",
+            "D": "input",
+            "CLK": "input",
+            "CLEAR": "input"
+          },
+          "connections": {
+            "Q": [ 9619 ],
+            "D": [ 9620 ],
+            "CLK": [ 9499 ],
+            "CLEAR": [ 9525 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_23": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "RAW_ALU_LUT": "00000000000000001100000011000000",
+            "ALU_MODE": "00000000000000000000000000000010"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X4Y44/ALU2",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I2": "input",
+            "SUM": "output",
+            "I3": "input",
+            "I1": "input",
+            "I0": "input",
+            "COUT": "output",
+            "CIN": "input"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "SUM": [ 9620 ],
+            "I3": [  ],
+            "I1": [ 9619 ],
+            "I0": [  ],
+            "COUT": [ 9534 ],
+            "CIN": [ 9581 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_22_I1_DFFC_Q": {
+          "hide_name": 0,
+          "type": "DFFC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X3Y43/DFF3",
+            "src": "counter.v:4.5-6.39|/share/gowin/cells_map.v:91.7-91.59",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "Q": "output",
+            "D": "input",
+            "CLK": "input",
+            "CLEAR": "input"
+          },
+          "connections": {
+            "Q": [ 9615 ],
+            "D": [ 9731 ],
+            "CLK": [ 9499 ],
+            "CLEAR": [ 9525 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_22": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "RAW_ALU_LUT": "00000000000000001100000011000000",
+            "ALU_MODE": "00000000000000000000000000000010"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X3Y44/ALU4",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I2": "input",
+            "SUM": "output",
+            "I3": "input",
+            "I1": "input",
+            "I0": "input",
+            "COUT": "output",
+            "CIN": "input"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "SUM": [ 9616 ],
+            "I3": [  ],
+            "I1": [ 9615 ],
+            "I0": [  ],
+            "COUT": [ 9606 ],
+            "CIN": [ 9602 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_21_I1_DFFC_Q": {
+          "hide_name": 0,
+          "type": "DFFC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X2Y44/DFF1",
+            "src": "counter.v:4.5-6.39|/share/gowin/cells_map.v:91.7-91.59",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "Q": "output",
+            "D": "input",
+            "CLK": "input",
+            "CLEAR": "input"
+          },
+          "connections": {
+            "Q": [ 9611 ],
+            "D": [ 9612 ],
+            "CLK": [ 9499 ],
+            "CLEAR": [ 9525 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_21": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "RAW_ALU_LUT": "00000000000000001100000011000000",
+            "ALU_MODE": "00000000000000000000000000000010"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X2Y44/ALU1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I2": "input",
+            "SUM": "output",
+            "I3": "input",
+            "I1": "input",
+            "I0": "input",
+            "COUT": "output",
+            "CIN": "input"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "SUM": [ 9612 ],
+            "I3": [  ],
+            "I1": [ 9611 ],
+            "I0": [  ],
+            "COUT": [ 9573 ],
+            "CIN": [ 9596 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_20_I1_DFFC_Q": {
+          "hide_name": 0,
+          "type": "DFFC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X3Y44/DFF5",
+            "src": "counter.v:4.5-6.39|/share/gowin/cells_map.v:91.7-91.59",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "Q": "output",
+            "D": "input",
+            "CLK": "input",
+            "CLEAR": "input"
+          },
+          "connections": {
+            "Q": [ 9607 ],
+            "D": [ 9608 ],
+            "CLK": [ 9499 ],
+            "CLEAR": [ 9525 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_20": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "RAW_ALU_LUT": "00000000000000001100000011000000",
+            "ALU_MODE": "00000000000000000000000000000010"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X3Y44/ALU5",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I2": "input",
+            "SUM": "output",
+            "I3": "input",
+            "I1": "input",
+            "I0": "input",
+            "COUT": "output",
+            "CIN": "input"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "SUM": [ 9608 ],
+            "I3": [  ],
+            "I1": [ 9607 ],
+            "I0": [  ],
+            "COUT": [ 9590 ],
+            "CIN": [ 9606 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_2": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "RAW_ALU_LUT": "00000000000000001100000011000000",
+            "ALU_MODE": "00000000000000000000000000000010"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X3Y44/ALU3",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I2": "input",
+            "SUM": "output",
+            "I3": "input",
+            "I1": "input",
+            "I0": "input",
+            "COUT": "output",
+            "CIN": "input"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "SUM": [ 9604 ],
+            "I3": [  ],
+            "I1": [ 9603 ],
+            "I0": [  ],
+            "COUT": [ 9602 ],
+            "CIN": [ 9601 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_19_I1_DFFC_Q": {
+          "hide_name": 0,
+          "type": "DFFC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X2Y44/DFF0",
+            "src": "counter.v:4.5-6.39|/share/gowin/cells_map.v:91.7-91.59",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "Q": "output",
+            "D": "input",
+            "CLK": "input",
+            "CLEAR": "input"
+          },
+          "connections": {
+            "Q": [ 9597 ],
+            "D": [ 9598 ],
+            "CLK": [ 9499 ],
+            "CLEAR": [ 9525 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_19": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "RAW_ALU_LUT": "00000000000000001100000011000000",
+            "ALU_MODE": "00000000000000000000000000000010"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X2Y44/ALU0",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I2": "input",
+            "SUM": "output",
+            "I3": "input",
+            "I1": "input",
+            "I0": "input",
+            "COUT": "output",
+            "CIN": "input"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "SUM": [ 9598 ],
+            "I3": [  ],
+            "I1": [ 9597 ],
+            "I0": [  ],
+            "COUT": [ 9596 ],
+            "CIN": [ 9595 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_18_I1_DFFC_Q": {
+          "hide_name": 0,
+          "type": "DFFC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X4Y43/DFF2",
+            "src": "counter.v:4.5-6.39|/share/gowin/cells_map.v:91.7-91.59",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "Q": "output",
+            "D": "input",
+            "CLK": "input",
+            "CLEAR": "input"
+          },
+          "connections": {
+            "Q": [ 9591 ],
+            "D": [ 9733 ],
+            "CLK": [ 9499 ],
+            "CLEAR": [ 9525 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_18": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "RAW_ALU_LUT": "00000000000000001100000011000000",
+            "ALU_MODE": "00000000000000000000000000000010"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X4Y44/ALU0",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I2": "input",
+            "SUM": "output",
+            "I3": "input",
+            "I1": "input",
+            "I0": "input",
+            "COUT": "output",
+            "CIN": "input"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "SUM": [ 9592 ],
+            "I3": [  ],
+            "I1": [ 9591 ],
+            "I0": [  ],
+            "COUT": [ 9580 ],
+            "CIN": [ 9590 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_17": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "RAW_ALU_LUT": "00000000000000001100000011000000",
+            "ALU_MODE": "00000000000000000000000000000010"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X4Y44/ALU4",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I2": "input",
+            "SUM": "output",
+            "I3": "input",
+            "I1": "input",
+            "I0": "input",
+            "COUT": "output",
+            "CIN": "input"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "SUM": [ 9588 ],
+            "I3": [  ],
+            "I1": [ 9587 ],
+            "I0": [  ],
+            "COUT": [ 9586 ],
+            "CIN": [ 9535 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_16_I1_DFFC_Q": {
+          "hide_name": 0,
+          "type": "DFFC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X4Y44/DFF1",
+            "src": "counter.v:4.5-6.39|/share/gowin/cells_map.v:91.7-91.59",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "Q": "output",
+            "D": "input",
+            "CLK": "input",
+            "CLEAR": "input"
+          },
+          "connections": {
+            "Q": [ 9582 ],
+            "D": [ 9583 ],
+            "CLK": [ 9499 ],
+            "CLEAR": [ 9525 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_16": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "RAW_ALU_LUT": "00000000000000001100000011000000",
+            "ALU_MODE": "00000000000000000000000000000010"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X4Y44/ALU1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I2": "input",
+            "SUM": "output",
+            "I3": "input",
+            "I1": "input",
+            "I0": "input",
+            "COUT": "output",
+            "CIN": "input"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "SUM": [ 9583 ],
+            "I3": [  ],
+            "I1": [ 9582 ],
+            "I0": [  ],
+            "COUT": [ 9581 ],
+            "CIN": [ 9580 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_15": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "RAW_ALU_LUT": "00000000000000001100000011000000",
+            "ALU_MODE": "00000000000000000000000000000010"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X5Y44/ALU1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I2": "input",
+            "SUM": "output",
+            "I3": "input",
+            "I1": "input",
+            "I0": "input",
+            "COUT": "output",
+            "CIN": "input"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "SUM": [ 9526 ],
+            "I3": [  ],
+            "I1": [ 9523 ],
+            "I0": [  ],
+            "COUT": [ 9547 ],
+            "CIN": [ 9578 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_14_I1_DFFC_Q": {
+          "hide_name": 0,
+          "type": "DFFC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X2Y44/DFF2",
+            "src": "counter.v:4.5-6.39|/share/gowin/cells_map.v:91.7-91.59",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "Q": "output",
+            "D": "input",
+            "CLK": "input",
+            "CLEAR": "input"
+          },
+          "connections": {
+            "Q": [ 9574 ],
+            "D": [ 9575 ],
+            "CLK": [ 9499 ],
+            "CLEAR": [ 9525 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_14": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "RAW_ALU_LUT": "00000000000000001100000011000000",
+            "ALU_MODE": "00000000000000000000000000000010"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X2Y44/ALU2",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I2": "input",
+            "SUM": "output",
+            "I3": "input",
+            "I1": "input",
+            "I0": "input",
+            "COUT": "output",
+            "CIN": "input"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "SUM": [ 9575 ],
+            "I3": [  ],
+            "I1": [ 9574 ],
+            "I0": [  ],
+            "COUT": [ 9564 ],
+            "CIN": [ 9573 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_13_I1_DFFC_Q": {
+          "hide_name": 0,
+          "type": "DFFC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X1Y44/DFF3",
+            "src": "counter.v:4.5-6.39|/share/gowin/cells_map.v:91.7-91.59",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "Q": "output",
+            "D": "input",
+            "CLK": "input",
+            "CLEAR": "input"
+          },
+          "connections": {
+            "Q": [ 9569 ],
+            "D": [ 9570 ],
+            "CLK": [ 9499 ],
+            "CLEAR": [ 9525 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_13": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "RAW_ALU_LUT": "00000000000000001100000011000000",
+            "ALU_MODE": "00000000000000000000000000000010"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X1Y44/ALU3",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I2": "input",
+            "SUM": "output",
+            "I3": "input",
+            "I1": "input",
+            "I0": "input",
+            "COUT": "output",
+            "CIN": "input"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "SUM": [ 9570 ],
+            "I3": [  ],
+            "I1": [ 9569 ],
+            "I0": [  ],
+            "COUT": [ 9552 ],
+            "CIN": [ 9543 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_12_I1_DFFC_Q": {
+          "hide_name": 0,
+          "type": "DFFC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X2Y43/DFF3",
+            "src": "counter.v:4.5-6.39|/share/gowin/cells_map.v:91.7-91.59",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "Q": "output",
+            "D": "input",
+            "CLK": "input",
+            "CLEAR": "input"
+          },
+          "connections": {
+            "Q": [ 9565 ],
+            "D": [ 9735 ],
+            "CLK": [ 9499 ],
+            "CLEAR": [ 9525 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_12": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "RAW_ALU_LUT": "00000000000000001100000011000000",
+            "ALU_MODE": "00000000000000000000000000000010"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X2Y44/ALU3",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I2": "input",
+            "SUM": "output",
+            "I3": "input",
+            "I1": "input",
+            "I0": "input",
+            "COUT": "output",
+            "CIN": "input"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "SUM": [ 9566 ],
+            "I3": [  ],
+            "I1": [ 9565 ],
+            "I0": [  ],
+            "COUT": [ 9558 ],
+            "CIN": [ 9564 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_11_I1_DFFC_Q": {
+          "hide_name": 0,
+          "type": "DFFC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X2Y44/DFF4",
+            "src": "counter.v:4.5-6.39|/share/gowin/cells_map.v:91.7-91.59",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "Q": "output",
+            "D": "input",
+            "CLK": "input",
+            "CLEAR": "input"
+          },
+          "connections": {
+            "Q": [ 9560 ],
+            "D": [ 9561 ],
+            "CLK": [ 9499 ],
+            "CLEAR": [ 9525 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_11": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "RAW_ALU_LUT": "00000000000000001100000011000000",
+            "ALU_MODE": "00000000000000000000000000000010"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X2Y44/ALU4",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I2": "input",
+            "SUM": "output",
+            "I3": "input",
+            "I1": "input",
+            "I0": "input",
+            "COUT": "output",
+            "CIN": "input"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "SUM": [ 9561 ],
+            "I3": [  ],
+            "I1": [ 9560 ],
+            "I0": [  ],
+            "COUT": [ 9559 ],
+            "CIN": [ 9558 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_10_I1_DFFC_Q": {
+          "hide_name": 0,
+          "type": "DFFC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X1Y44/DFF4",
+            "src": "counter.v:4.5-6.39|/share/gowin/cells_map.v:91.7-91.59",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "Q": "output",
+            "D": "input",
+            "CLK": "input",
+            "CLEAR": "input"
+          },
+          "connections": {
+            "Q": [ 9554 ],
+            "D": [ 9555 ],
+            "CLK": [ 9499 ],
+            "CLEAR": [ 9525 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_10": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "RAW_ALU_LUT": "00000000000000001100000011000000",
+            "ALU_MODE": "00000000000000000000000000000010"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X1Y44/ALU4",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I2": "input",
+            "SUM": "output",
+            "I3": "input",
+            "I1": "input",
+            "I0": "input",
+            "COUT": "output",
+            "CIN": "input"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "SUM": [ 9555 ],
+            "I3": [  ],
+            "I1": [ 9554 ],
+            "I0": [  ],
+            "COUT": [ 9553 ],
+            "CIN": [ 9552 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_1": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "RAW_ALU_LUT": "00000000000000001100000011000000",
+            "ALU_MODE": "00000000000000000000000000000010"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X5Y44/ALU2",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I2": "input",
+            "SUM": "output",
+            "I3": "input",
+            "I1": "input",
+            "I0": "input",
+            "COUT": "output",
+            "CIN": "input"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "SUM": [ 9550 ],
+            "I3": [  ],
+            "I1": [ 9549 ],
+            "I0": [  ],
+            "COUT": [ 9548 ],
+            "CIN": [ 9547 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "RAW_ALU_LUT": "00000000000000001100000011000000",
+            "ALU_MODE": "00000000000000000000000000000010"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X1Y44/ALU2",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I2": "input",
+            "SUM": "output",
+            "I3": "input",
+            "I1": "input",
+            "I0": "input",
+            "COUT": "output",
+            "CIN": "input"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "SUM": [ 9545 ],
+            "I3": [  ],
+            "I1": [ 9544 ],
+            "I0": [  ],
+            "COUT": [ 9543 ],
+            "CIN": [ 9542 ]
+          }
+        },
+        "$PACKER_GND_DRV": {
+          "hide_name": 1,
+          "type": "GOWIN_GND",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000010",
+            "NEXTPNR_BEL": "X0Y0/GND"
+          },
+          "port_directions": {
+            "G": "output"
+          },
+          "connections": {
+            "G": [ 9679 ]
+          }
+        },
+        "$PACKER_VCC_DRV": {
+          "hide_name": 1,
+          "type": "GOWIN_VCC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000010",
+            "NEXTPNR_BEL": "X0Y0/VCC"
+          },
+          "port_directions": {
+            "V": "output"
+          },
+          "connections": {
+            "V": [ 9678 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1": {
+          "hide_name": 0,
+          "type": "ALU",
+          "parameters": {
+            "RAW_ALU_LUT": "00000000000000001100000011000000",
+            "ALU_MODE": "00000000000000000000000000000010"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X4Y44/ALU3",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I2": "input",
+            "SUM": "output",
+            "I3": "input",
+            "I1": "input",
+            "I0": "input",
+            "COUT": "output",
+            "CIN": "input"
+          },
+          "connections": {
+            "I2": [ 9678 ],
+            "SUM": [ 9538 ],
+            "I3": [  ],
+            "I1": [ 9532 ],
+            "I0": [  ],
+            "COUT": [ 9535 ],
+            "CIN": [ 9534 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3": {
+          "hide_name": 0,
+          "type": "LUT1",
+          "parameters": {
+            "INIT": "01"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X4Y46/LUT7",
+            "src": "/share/gowin/cells_map.v:135.23-136.15",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I0": "input",
+            "F": "output"
+          },
+          "connections": {
+            "I0": [ 9532 ],
+            "F": [ 9517 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_2_I0_DFFC_Q": {
+          "hide_name": 0,
+          "type": "DFFC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X5Y44/DFF0",
+            "src": "counter.v:4.5-6.39|/share/gowin/cells_map.v:91.7-91.59",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "Q": "output",
+            "D": "input",
+            "CLK": "input",
+            "CLEAR": "input"
+          },
+          "connections": {
+            "Q": [ 9528 ],
+            "D": [ 9530 ],
+            "CLK": [ 9499 ],
+            "CLEAR": [ 9525 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_2": {
+          "hide_name": 0,
+          "type": "LUT1",
+          "parameters": {
+            "INIT": "01"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X1Y44/LUT6",
+            "src": "/share/gowin/cells_map.v:135.23-136.15",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I0": "input",
+            "F": "output"
+          },
+          "connections": {
+            "I0": [ 9528 ],
+            "F": [ 9508 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_1_I0_DFFC_Q": {
+          "hide_name": 0,
+          "type": "DFFC",
+          "parameters": {
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X5Y44/DFF4",
+            "src": "counter.v:4.5-6.39|/share/gowin/cells_map.v:91.7-91.59",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "Q": "output",
+            "D": "input",
+            "CLK": "input",
+            "CLEAR": "input"
+          },
+          "connections": {
+            "Q": [ 9523 ],
+            "D": [ 9737 ],
+            "CLK": [ 9499 ],
+            "CLEAR": [ 9525 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_1": {
+          "hide_name": 0,
+          "type": "LUT1",
+          "parameters": {
+            "INIT": "01"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X5Y46/LUT6",
+            "src": "/share/gowin/cells_map.v:135.23-136.15",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I0": "input",
+            "F": "output"
+          },
+          "connections": {
+            "I0": [ 9523 ],
+            "F": [ 9505 ]
+          }
+        },
+        "led_OBUF_O_I_LUT1_F": {
+          "hide_name": 0,
+          "type": "LUT1",
+          "parameters": {
+            "INIT": "01"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000001",
+            "NEXTPNR_BEL": "X4Y47/LUT4",
+            "src": "/share/gowin/cells_map.v:135.23-136.15",
+            "module_not_derived": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "I0": "input",
+            "F": "output"
+          },
+          "connections": {
+            "I0": [ 9520 ],
+            "F": [ 9511 ]
+          }
+        },
+        "led_OBUF_O_5": {
+          "hide_name": 0,
+          "type": "OBUF",
+          "parameters": {
+            "NET_I": "NET",
+            "NET_O": "NET"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000101",
+            "NEXTPNR_BEL": "X0Y46/IOBA",
+            "src": "counter.v:2.53-2.56",
+            "&IO_TYPE=LVCMOS33": "00000000000000000000000000000001",
+            "keep": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "O": "output",
+            "I": "input"
+          },
+          "connections": {
+            "O": [ 9518 ],
+            "I": [ 9517 ]
+          }
+        },
+        "led_OBUF_O_4": {
+          "hide_name": 0,
+          "type": "OBUF",
+          "parameters": {
+            "NET_I": "NET",
+            "NET_O": "NET"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000101",
+            "NEXTPNR_BEL": "X0Y46/IOBB",
+            "src": "counter.v:2.53-2.56",
+            "&IO_TYPE=LVCMOS33": "00000000000000000000000000000001",
+            "keep": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "O": "output",
+            "I": "input"
+          },
+          "connections": {
+            "O": [ 9515 ],
+            "I": [ 9514 ]
+          }
+        },
+        "led_OBUF_O_3": {
+          "hide_name": 0,
+          "type": "OBUF",
+          "parameters": {
+            "NET_I": "NET",
+            "NET_O": "NET"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000101",
+            "NEXTPNR_BEL": "X0Y48/IOBA",
+            "src": "counter.v:2.53-2.56",
+            "&IO_TYPE=LVCMOS33": "00000000000000000000000000000001",
+            "keep": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "O": "output",
+            "I": "input"
+          },
+          "connections": {
+            "O": [ 9512 ],
+            "I": [ 9511 ]
+          }
+        },
+        "led_OBUF_O_2": {
+          "hide_name": 0,
+          "type": "OBUF",
+          "parameters": {
+            "NET_I": "NET",
+            "NET_O": "NET"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000101",
+            "NEXTPNR_BEL": "X0Y48/IOBB",
+            "src": "counter.v:2.53-2.56",
+            "&IO_TYPE=LVCMOS33": "00000000000000000000000000000001",
+            "keep": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "O": "output",
+            "I": "input"
+          },
+          "connections": {
+            "O": [ 9509 ],
+            "I": [ 9508 ]
+          }
+        },
+        "led_OBUF_O_1": {
+          "hide_name": 0,
+          "type": "OBUF",
+          "parameters": {
+            "NET_I": "NET",
+            "NET_O": "NET"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000101",
+            "NEXTPNR_BEL": "X0Y50/IOBA",
+            "src": "counter.v:2.53-2.56",
+            "&IO_TYPE=LVCMOS33": "00000000000000000000000000000001",
+            "keep": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "O": "output",
+            "I": "input"
+          },
+          "connections": {
+            "O": [ 9506 ],
+            "I": [ 9505 ]
+          }
+        },
+        "led_OBUF_O": {
+          "hide_name": 0,
+          "type": "OBUF",
+          "parameters": {
+            "NET_I": "NET",
+            "NET_O": "NET"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000101",
+            "NEXTPNR_BEL": "X0Y50/IOBB",
+            "src": "counter.v:2.53-2.56",
+            "&IO_TYPE=LVCMOS33": "00000000000000000000000000000001",
+            "keep": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "O": "output",
+            "I": "input"
+          },
+          "connections": {
+            "O": [ 9503 ],
+            "I": [ 9502 ]
+          }
+        },
+        "clk_IBUF_I": {
+          "hide_name": 0,
+          "type": "IBUF",
+          "parameters": {
+            "NET_I": "NET",
+            "NET_O": "NET"
+          },
+          "attributes": {
+            "BEL_STRENGTH": "00000000000000000000000000000101",
+            "NEXTPNR_BEL": "X0Y6/IOBA",
+            "src": "counter.v:2.22-2.25",
+            "&IO_TYPE=LVCMOS33": "00000000000000000000000000000001",
+            "keep": "00000000000000000000000000000001"
+          },
+          "port_directions": {
+            "O": "output",
+            "I": "input"
+          },
+          "connections": {
+            "O": [ 9499 ],
+            "I": [ 9493 ]
+          }
+        }
+      },
+      "netnames": {
+        "rst_n_IBUF_I_O_LUT1_I0_F$gate_net$": {
+          "hide_name": 0,
+          "bits": [ 9739 ] ,
+          "attributes": {
+            "ROUTING": " "
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_1_I0_DFFC_Q$conn$D": {
+          "hide_name": 0,
+          "bits": [ 9737 ] ,
+          "attributes": {
+            "ROUTING": "X5Y44/F4;;1;X5Y44/XD4;X5Y44/XD4/F4;1"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_12_I1_DFFC_Q$conn$D": {
+          "hide_name": 0,
+          "bits": [ 9735 ] ,
+          "attributes": {
+            "ROUTING": "X2Y43/F3;;1;X2Y43/XD3;X2Y43/XD3/F3;1"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_18_I1_DFFC_Q$conn$D": {
+          "hide_name": 0,
+          "bits": [ 9733 ] ,
+          "attributes": {
+            "ROUTING": "X4Y43/F2;;1;X4Y43/XD2;X4Y43/XD2/F2;1"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_22_I1_DFFC_Q$conn$D": {
+          "hide_name": 0,
+          "bits": [ 9731 ] ,
+          "attributes": {
+            "ROUTING": "X3Y43/F3;;1;X3Y43/XD3;X3Y43/XD3/F3;1"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_6_I1_DFFC_Q$conn$D": {
+          "hide_name": 0,
+          "bits": [ 9729 ] ,
+          "attributes": {
+            "ROUTING": "X3Y43/F0;;1;X3Y43/XD0;X3Y43/XD0/F0;1"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_9_I1_DFFC_Q$conn$D": {
+          "hide_name": 0,
+          "bits": [ 9727 ] ,
+          "attributes": {
+            "ROUTING": "X2Y43/F0;;1;X2Y43/XD0;X2Y43/XD0/F0;1"
+          }
+        },
+        "clk_IBUF_I_O_BUFG$conn$I": {
+          "hide_name": 0,
+          "bits": [ 9714 ] ,
+          "attributes": {
+            "ROUTING": " "
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_CIN_ALU_COUT_HEAD_ALULC": {
+          "hide_name": 0,
+          "bits": [ 9683 ] ,
+          "attributes": {
+            "ROUTING": "X1Y44/COUT0;;1"
+          }
+        },
+        "rst_n_IBUF_I_O": {
+          "hide_name": 0,
+          "bits": [ 9664 ] ,
+          "attributes": {
+            "ROUTING": "X55Y29/F6;;1;X55Y29/W830;X55Y29/W830/F6;1;X47Y29/S830;X47Y29/S830/W838;1;X47Y37/W830;X47Y37/W830/S838;1;X39Y37/W830;X39Y37/W830/W838;1;X31Y37/W830;X31Y37/W830/W838;1;X23Y37/W830;X23Y37/W830/W838;1;X15Y37/W830;X15Y37/W830/W838;1;X7Y37/S250;X7Y37/S250/W838;1;X7Y39/X06;X7Y39/X06/S252;1;X7Y39/A5;X7Y39/A5/X06;1",
+            "src": "/share/gowin/cells_map.v:130.20-130.21",
+            "single_bit_vector": "00000000000000000000000000000001",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "rst_n": {
+          "hide_name": 0,
+          "bits": [ 9495 ] ,
+          "attributes": {
+            "ROUTING": " ",
+            "src": "counter.v:2.33-2.38"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM[0]": {
+          "hide_name": 0,
+          "bits": [ 9655 ] ,
+          "attributes": {
+            "ROUTING": "X1Y43/F0;;1;X1Y43/XD0;X1Y43/XD0/F0;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:34.28-34.29",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_CIN_ALU_COUT_SUM": {
+          "hide_name": 0,
+          "bits": [ 9652 ] ,
+          "attributes": {
+            "ROUTING": " "
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_LUT1_F_I0": {
+          "hide_name": 0,
+          "bits": [ 9651 ] ,
+          "attributes": {
+            "ROUTING": "X1Y43/X01;X1Y43/X01/Q0;1;X1Y43/A0;X1Y43/A0/X01;1;X1Y43/Q0;;1;X1Y43/SN10;X1Y43/SN10/Q0;1;X1Y44/B1;X1Y44/B1/S111;1",
+            "src": "/share/gowin/cells_map.v:130.20-130.21",
+            "single_bit_vector": "00000000000000000000000000000001",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM[10]": {
+          "hide_name": 0,
+          "bits": [ 9648 ] ,
+          "attributes": {
+            "ROUTING": "X2Y44/F5;;1;X2Y44/N100;X2Y44/N100/F5;1;X2Y43/D0;X2Y43/D0/N101;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:34.28-34.29",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_9_I1": {
+          "hide_name": 0,
+          "bits": [ 9647 ] ,
+          "attributes": {
+            "ROUTING": "X2Y43/Q0;;1;X2Y43/SN20;X2Y43/SN20/Q0;1;X2Y44/B5;X2Y44/B5/S121;1"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM[22]": {
+          "hide_name": 0,
+          "bits": [ 9645 ] ,
+          "attributes": {
+            "ROUTING": "X4Y44/F5;;1;X4Y44/XD5;X4Y44/XD5/F5;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:34.28-34.29",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM[11]": {
+          "hide_name": 0,
+          "bits": [ 9642 ] ,
+          "attributes": {
+            "ROUTING": "X3Y44/F0;;1;X3Y44/XD0;X3Y44/XD0/F0;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:34.28-34.29",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_7_I1": {
+          "hide_name": 0,
+          "bits": [ 9641 ] ,
+          "attributes": {
+            "ROUTING": "X3Y44/Q0;;1;X3Y44/X05;X3Y44/X05/Q0;1;X3Y44/B0;X3Y44/B0/X05;1"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_9_COUT": {
+          "hide_name": 0,
+          "bits": [ 9640 ] ,
+          "attributes": {
+            "ROUTING": "X3Y44/CIN0;;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5|/share/gowin/cells_sim.v:1033.25-1033.29",
+            "abc9_carry": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM[12]": {
+          "hide_name": 0,
+          "bits": [ 9637 ] ,
+          "attributes": {
+            "ROUTING": "X3Y44/F1;;1;X3Y44/N100;X3Y44/N100/F1;1;X3Y43/D0;X3Y43/D0/N101;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:34.28-34.29",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_6_I1": {
+          "hide_name": 0,
+          "bits": [ 9636 ] ,
+          "attributes": {
+            "ROUTING": "X3Y43/Q0;;1;X3Y43/SN10;X3Y43/SN10/Q0;1;X3Y44/B1;X3Y44/B1/S111;1"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_7_COUT": {
+          "hide_name": 0,
+          "bits": [ 9635 ] ,
+          "attributes": {
+            "ROUTING": "X3Y44/COUT0;;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5|/share/gowin/cells_sim.v:1033.25-1033.29",
+            "abc9_carry": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM[4]": {
+          "hide_name": 0,
+          "bits": [ 9632 ] ,
+          "attributes": {
+            "ROUTING": "X1Y44/F5;;1;X1Y44/XD5;X1Y44/XD5/F5;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:34.28-34.29",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_5_I1": {
+          "hide_name": 0,
+          "bits": [ 9631 ] ,
+          "attributes": {
+            "ROUTING": "X1Y44/Q5;;1;X1Y44/X08;X1Y44/X08/Q5;1;X1Y44/B5;X1Y44/B5/X08;1"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM[13]": {
+          "hide_name": 0,
+          "bits": [ 9628 ] ,
+          "attributes": {
+            "ROUTING": "X3Y44/F2;;1;X3Y44/XD2;X3Y44/XD2/F2;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:34.28-34.29",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_4_I1": {
+          "hide_name": 0,
+          "bits": [ 9627 ] ,
+          "attributes": {
+            "ROUTING": "X3Y44/Q2;;1;X3Y44/X01;X3Y44/X01/Q2;1;X3Y44/B2;X3Y44/B2/X01;1"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_6_COUT": {
+          "hide_name": 0,
+          "bits": [ 9626 ] ,
+          "attributes": {
+            "ROUTING": "X3Y44/COUT1;;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5|/share/gowin/cells_sim.v:1033.25-1033.29",
+            "abc9_carry": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_8_COUT": {
+          "hide_name": 0,
+          "bits": [ 9624 ] ,
+          "attributes": {
+            "ROUTING": "X5Y44/CIN0;;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5|/share/gowin/cells_sim.v:1033.25-1033.29",
+            "abc9_carry": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM[19]": {
+          "hide_name": 0,
+          "bits": [ 9620 ] ,
+          "attributes": {
+            "ROUTING": "X4Y44/F2;;1;X4Y44/XD2;X4Y44/XD2/F2;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:34.28-34.29",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_23_I1": {
+          "hide_name": 0,
+          "bits": [ 9619 ] ,
+          "attributes": {
+            "ROUTING": "X4Y44/Q2;;1;X4Y44/S130;X4Y44/S130/Q2;1;X4Y44/B2;X4Y44/B2/S130;1"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM[15]": {
+          "hide_name": 0,
+          "bits": [ 9616 ] ,
+          "attributes": {
+            "ROUTING": "X3Y44/F4;;1;X3Y44/SN20;X3Y44/SN20/F4;1;X3Y43/E260;X3Y43/E260/N121;1;X3Y43/D3;X3Y43/D3/E260;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:34.28-34.29",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_22_I1": {
+          "hide_name": 0,
+          "bits": [ 9615 ] ,
+          "attributes": {
+            "ROUTING": "X3Y43/Q3;;1;X3Y43/SN20;X3Y43/SN20/Q3;1;X3Y44/B4;X3Y44/B4/S121;1"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM[6]": {
+          "hide_name": 0,
+          "bits": [ 9612 ] ,
+          "attributes": {
+            "ROUTING": "X2Y44/F1;;1;X2Y44/XD1;X2Y44/XD1/F1;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:34.28-34.29",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_21_I1": {
+          "hide_name": 0,
+          "bits": [ 9611 ] ,
+          "attributes": {
+            "ROUTING": "X2Y44/Q1;;1;X2Y44/B1;X2Y44/B1/Q1;1"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM[16]": {
+          "hide_name": 0,
+          "bits": [ 9608 ] ,
+          "attributes": {
+            "ROUTING": "X3Y44/F5;;1;X3Y44/XD5;X3Y44/XD5/F5;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:34.28-34.29",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_20_I1": {
+          "hide_name": 0,
+          "bits": [ 9607 ] ,
+          "attributes": {
+            "ROUTING": "X3Y44/Q5;;1;X3Y44/X08;X3Y44/X08/Q5;1;X3Y44/B5;X3Y44/B5/X08;1"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_22_COUT": {
+          "hide_name": 0,
+          "bits": [ 9606 ] ,
+          "attributes": {
+            "ROUTING": "X3Y44/COUT4;;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5|/share/gowin/cells_sim.v:1033.25-1033.29",
+            "abc9_carry": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM[14]": {
+          "hide_name": 0,
+          "bits": [ 9604 ] ,
+          "attributes": {
+            "ROUTING": "X3Y44/F3;;1;X3Y44/XD3;X3Y44/XD3/F3;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:34.28-34.29",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_2_I1": {
+          "hide_name": 0,
+          "bits": [ 9603 ] ,
+          "attributes": {
+            "ROUTING": "X3Y44/Q3;;1;X3Y44/B3;X3Y44/B3/Q3;1"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_2_COUT": {
+          "hide_name": 0,
+          "bits": [ 9602 ] ,
+          "attributes": {
+            "ROUTING": "X3Y44/COUT3;;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5|/share/gowin/cells_sim.v:1033.25-1033.29",
+            "abc9_carry": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_4_COUT": {
+          "hide_name": 0,
+          "bits": [ 9601 ] ,
+          "attributes": {
+            "ROUTING": "X3Y44/COUT2;;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5|/share/gowin/cells_sim.v:1033.25-1033.29",
+            "abc9_carry": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM[5]": {
+          "hide_name": 0,
+          "bits": [ 9598 ] ,
+          "attributes": {
+            "ROUTING": "X2Y44/F0;;1;X2Y44/XD0;X2Y44/XD0/F0;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:34.28-34.29",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_19_I1": {
+          "hide_name": 0,
+          "bits": [ 9597 ] ,
+          "attributes": {
+            "ROUTING": "X2Y44/Q0;;1;X2Y44/X05;X2Y44/X05/Q0;1;X2Y44/B0;X2Y44/B0/X05;1"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_19_COUT": {
+          "hide_name": 0,
+          "bits": [ 9596 ] ,
+          "attributes": {
+            "ROUTING": "X2Y44/COUT0;;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5|/share/gowin/cells_sim.v:1033.25-1033.29",
+            "abc9_carry": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_5_COUT": {
+          "hide_name": 0,
+          "bits": [ 9595 ] ,
+          "attributes": {
+            "ROUTING": "X2Y44/CIN0;;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5|/share/gowin/cells_sim.v:1033.25-1033.29",
+            "abc9_carry": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM[17]": {
+          "hide_name": 0,
+          "bits": [ 9592 ] ,
+          "attributes": {
+            "ROUTING": "X4Y44/F0;;1;X4Y44/N100;X4Y44/N100/F0;1;X4Y43/D2;X4Y43/D2/N101;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:34.28-34.29",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_18_I1": {
+          "hide_name": 0,
+          "bits": [ 9591 ] ,
+          "attributes": {
+            "ROUTING": "X4Y43/Q2;;1;X4Y43/SN10;X4Y43/SN10/Q2;1;X4Y44/B0;X4Y44/B0/S111;1"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_20_COUT": {
+          "hide_name": 0,
+          "bits": [ 9590 ] ,
+          "attributes": {
+            "ROUTING": "X4Y44/CIN0;;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5|/share/gowin/cells_sim.v:1033.25-1033.29",
+            "abc9_carry": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM[21]": {
+          "hide_name": 0,
+          "bits": [ 9588 ] ,
+          "attributes": {
+            "ROUTING": "X4Y44/F4;;1;X4Y44/XD4;X4Y44/XD4/F4;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:34.28-34.29",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_4_I0": {
+          "hide_name": 0,
+          "bits": [ 9587 ] ,
+          "attributes": {
+            "ROUTING": "X4Y44/W240;X4Y44/W240/Q4;1;X2Y44/W250;X2Y44/W250/W242;1;X1Y44/A7;X1Y44/A7/W251;1;X4Y44/Q4;;1;X4Y44/X03;X4Y44/X03/Q4;1;X4Y44/B4;X4Y44/B4/X03;1",
+            "src": "/share/gowin/cells_map.v:130.20-130.21",
+            "single_bit_vector": "00000000000000000000000000000001",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_17_COUT": {
+          "hide_name": 0,
+          "bits": [ 9586 ] ,
+          "attributes": {
+            "ROUTING": "X4Y44/COUT4;;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5|/share/gowin/cells_sim.v:1033.25-1033.29",
+            "abc9_carry": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM[18]": {
+          "hide_name": 0,
+          "bits": [ 9583 ] ,
+          "attributes": {
+            "ROUTING": "X4Y44/F1;;1;X4Y44/XD1;X4Y44/XD1/F1;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:34.28-34.29",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_16_I1": {
+          "hide_name": 0,
+          "bits": [ 9582 ] ,
+          "attributes": {
+            "ROUTING": "X4Y44/Q1;;1;X4Y44/B1;X4Y44/B1/Q1;1"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_16_COUT": {
+          "hide_name": 0,
+          "bits": [ 9581 ] ,
+          "attributes": {
+            "ROUTING": "X4Y44/COUT1;;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5|/share/gowin/cells_sim.v:1033.25-1033.29",
+            "abc9_carry": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_18_COUT": {
+          "hide_name": 0,
+          "bits": [ 9580 ] ,
+          "attributes": {
+            "ROUTING": "X4Y44/COUT0;;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5|/share/gowin/cells_sim.v:1033.25-1033.29",
+            "abc9_carry": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_3_COUT": {
+          "hide_name": 0,
+          "bits": [ 9578 ] ,
+          "attributes": {
+            "ROUTING": "X5Y44/COUT0;;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5|/share/gowin/cells_sim.v:1033.25-1033.29",
+            "abc9_carry": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM[7]": {
+          "hide_name": 0,
+          "bits": [ 9575 ] ,
+          "attributes": {
+            "ROUTING": "X2Y44/F2;;1;X2Y44/XD2;X2Y44/XD2/F2;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:34.28-34.29",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_14_I1": {
+          "hide_name": 0,
+          "bits": [ 9574 ] ,
+          "attributes": {
+            "ROUTING": "X2Y44/Q2;;1;X2Y44/X01;X2Y44/X01/Q2;1;X2Y44/B2;X2Y44/B2/X01;1"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_21_COUT": {
+          "hide_name": 0,
+          "bits": [ 9573 ] ,
+          "attributes": {
+            "ROUTING": "X2Y44/COUT1;;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5|/share/gowin/cells_sim.v:1033.25-1033.29",
+            "abc9_carry": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM[2]": {
+          "hide_name": 0,
+          "bits": [ 9570 ] ,
+          "attributes": {
+            "ROUTING": "X1Y44/F3;;1;X1Y44/XD3;X1Y44/XD3/F3;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:34.28-34.29",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_13_I1": {
+          "hide_name": 0,
+          "bits": [ 9569 ] ,
+          "attributes": {
+            "ROUTING": "X1Y44/Q3;;1;X1Y44/B3;X1Y44/B3/Q3;1"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM[8]": {
+          "hide_name": 0,
+          "bits": [ 9566 ] ,
+          "attributes": {
+            "ROUTING": "X2Y44/F3;;1;X2Y44/SN20;X2Y44/SN20/F3;1;X2Y43/E260;X2Y43/E260/N121;1;X2Y43/D3;X2Y43/D3/E260;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:34.28-34.29",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_12_I1": {
+          "hide_name": 0,
+          "bits": [ 9565 ] ,
+          "attributes": {
+            "ROUTING": "X2Y43/Q3;;1;X2Y43/S230;X2Y43/S230/Q3;1;X2Y44/B3;X2Y44/B3/S231;1"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_14_COUT": {
+          "hide_name": 0,
+          "bits": [ 9564 ] ,
+          "attributes": {
+            "ROUTING": "X2Y44/COUT2;;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5|/share/gowin/cells_sim.v:1033.25-1033.29",
+            "abc9_carry": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM[9]": {
+          "hide_name": 0,
+          "bits": [ 9561 ] ,
+          "attributes": {
+            "ROUTING": "X2Y44/F4;;1;X2Y44/XD4;X2Y44/XD4/F4;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:34.28-34.29",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_11_I1": {
+          "hide_name": 0,
+          "bits": [ 9560 ] ,
+          "attributes": {
+            "ROUTING": "X2Y44/Q4;;1;X2Y44/X03;X2Y44/X03/Q4;1;X2Y44/B4;X2Y44/B4/X03;1"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_11_COUT": {
+          "hide_name": 0,
+          "bits": [ 9559 ] ,
+          "attributes": {
+            "ROUTING": "X2Y44/COUT4;;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5|/share/gowin/cells_sim.v:1033.25-1033.29",
+            "abc9_carry": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_12_COUT": {
+          "hide_name": 0,
+          "bits": [ 9558 ] ,
+          "attributes": {
+            "ROUTING": "X2Y44/COUT3;;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5|/share/gowin/cells_sim.v:1033.25-1033.29",
+            "abc9_carry": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM[3]": {
+          "hide_name": 0,
+          "bits": [ 9555 ] ,
+          "attributes": {
+            "ROUTING": "X1Y44/F4;;1;X1Y44/XD4;X1Y44/XD4/F4;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:34.28-34.29",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_10_I1": {
+          "hide_name": 0,
+          "bits": [ 9554 ] ,
+          "attributes": {
+            "ROUTING": "X1Y44/Q4;;1;X1Y44/X03;X1Y44/X03/Q4;1;X1Y44/B4;X1Y44/B4/X03;1"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_10_COUT": {
+          "hide_name": 0,
+          "bits": [ 9553 ] ,
+          "attributes": {
+            "ROUTING": "X1Y44/COUT4;;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5|/share/gowin/cells_sim.v:1033.25-1033.29",
+            "abc9_carry": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_13_COUT": {
+          "hide_name": 0,
+          "bits": [ 9552 ] ,
+          "attributes": {
+            "ROUTING": "X1Y44/COUT3;;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5|/share/gowin/cells_sim.v:1033.25-1033.29",
+            "abc9_carry": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM[25]": {
+          "hide_name": 0,
+          "bits": [ 9550 ] ,
+          "attributes": {
+            "ROUTING": "X5Y44/F2;;1;X5Y44/XD2;X5Y44/XD2/F2;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:34.28-34.29",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_5_I0": {
+          "hide_name": 0,
+          "bits": [ 9549 ] ,
+          "attributes": {
+            "ROUTING": "X5Y44/S810;X5Y44/S810/Q2;1;X5Y48/W210;X5Y48/W210/S814;1;X3Y48/S210;X3Y48/S210/W212;1;X3Y50/X02;X3Y50/X02/S212;1;X3Y50/A3;X3Y50/A3/X02;1;X5Y44/Q2;;1;X5Y44/X01;X5Y44/X01/Q2;1;X5Y44/B2;X5Y44/B2/X01;1",
+            "src": "/share/gowin/cells_map.v:130.20-130.21",
+            "single_bit_vector": "00000000000000000000000000000001",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_1_COUT": {
+          "hide_name": 0,
+          "bits": [ 9548 ] ,
+          "attributes": {
+            "ROUTING": " ",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5|/share/gowin/cells_sim.v:1033.25-1033.29",
+            "abc9_carry": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_15_COUT": {
+          "hide_name": 0,
+          "bits": [ 9547 ] ,
+          "attributes": {
+            "ROUTING": "X5Y44/COUT1;;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5|/share/gowin/cells_sim.v:1033.25-1033.29",
+            "abc9_carry": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM[1]": {
+          "hide_name": 0,
+          "bits": [ 9545 ] ,
+          "attributes": {
+            "ROUTING": "X1Y44/F2;;1;X1Y44/XD2;X1Y44/XD2/F2;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:34.28-34.29",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_I1": {
+          "hide_name": 0,
+          "bits": [ 9544 ] ,
+          "attributes": {
+            "ROUTING": "X1Y44/Q2;;1;X1Y44/X01;X1Y44/X01/Q2;1;X1Y44/B2;X1Y44/B2/X01;1"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_COUT": {
+          "hide_name": 0,
+          "bits": [ 9543 ] ,
+          "attributes": {
+            "ROUTING": "X1Y44/COUT2;;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5|/share/gowin/cells_sim.v:1033.25-1033.29",
+            "abc9_carry": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_CIN": {
+          "hide_name": 0,
+          "bits": [ 9542 ] ,
+          "attributes": {
+            "ROUTING": "X1Y44/COUT1;;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5|/share/gowin/cells_sim.v:1033.25-1033.29",
+            "abc9_carry": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM[20]": {
+          "hide_name": 0,
+          "bits": [ 9538 ] ,
+          "attributes": {
+            "ROUTING": "X4Y44/F3;;1;X4Y44/XD3;X4Y44/XD3/F3;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:34.28-34.29",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "$PACKER_GND": {
+          "hide_name": 1,
+          "bits": [ 9679 ] ,
+          "attributes": {
+            "ROUTING": " "
+          }
+        },
+        "$PACKER_VCC": {
+          "hide_name": 1,
+          "bits": [ 9678 ] ,
+          "attributes": {
+            "ROUTING": "X3Y44/C2;X3Y44/C2/N241;1;X3Y45/N240;X3Y45/N240/VCC;1;X3Y45/VCC;;1;X1Y44/C0;X1Y44/C0/X04;1;X1Y44/X04;X1Y44/X04/VCC;1;X5Y44/C0;X5Y44/C0/S242;1;X5Y42/S240;X5Y42/S240/VCC;1;X5Y42/VCC;;1;X2Y44/C0;X2Y44/C0/N262;1;X2Y46/N260;X2Y46/N260/VCC;1;X2Y46/VCC;;1;X4Y44/C3;X4Y44/C3/N262;1;X4Y46/N260;X4Y46/N260/VCC;1;X4Y46/VCC;;1;X1Y44/C5;X1Y44/C5/W262;1;X3Y44/W260;X3Y44/W260/VCC;1;X5Y44/C1;X5Y44/C1/S241;1;X5Y43/S240;X5Y43/S240/VCC;1;X5Y43/VCC;;1;X3Y44/C0;X3Y44/C0/S262;1;X3Y42/S260;X3Y42/S260/VCC;1;X3Y42/VCC;;1;X5Y44/C2;X5Y44/C2/N261;1;X5Y45/N260;X5Y45/N260/VCC;1;X5Y45/VCC;;1;X3Y44/C1;X3Y44/C1/S261;1;X3Y43/S260;X3Y43/S260/VCC;1;X3Y43/VCC;;1;X4Y44/C5;X4Y44/C5/S202;1;X4Y42/S200;X4Y42/S200/VCC;1;X4Y42/VCC;;1;X2Y44/C4;X2Y44/C4/E262;1;X0Y44/E260;X0Y44/E260/VCC;1;X0Y44/VCC;;1;X1Y44/C2;X1Y44/C2/N241;1;X1Y45/N240;X1Y45/N240/VCC;1;X1Y45/VCC;;1;X2Y44/C1;X2Y44/C1/S241;1;X2Y43/S240;X2Y43/S240/VCC;1;X2Y43/VCC;;1;X1Y44/C3;X1Y44/C3/S262;1;X1Y42/S260;X1Y42/S260/VCC;1;X1Y42/VCC;;1;X50Y27/C4;X50Y27/C4/W262;1;X52Y27/W260;X52Y27/W260/VCC;1;X52Y27/VCC;;1;X4Y44/C1;X4Y44/C1/W241;1;X5Y44/W240;X5Y44/W240/VCC;1;X5Y44/VCC;;1;X3Y44/C4;X3Y44/C4/N222;1;X3Y46/N220;X3Y46/N220/VCC;1;X3Y46/VCC;;1;X4Y44/C0;X4Y44/C0/N241;1;X4Y45/N240;X4Y45/N240/VCC;1;X4Y45/VCC;;1;X2Y44/C2;X2Y44/C2/N241;1;X2Y45/N240;X2Y45/N240/VCC;1;X2Y45/VCC;;1;X2Y44/C5;X2Y44/C5/S222;1;X2Y42/S220;X2Y42/S220/VCC;1;X2Y42/VCC;;1;X2Y44/C3;X2Y44/C3/X04;1;X2Y44/X04;X2Y44/X04/VCC;1;X2Y44/VCC;;1;X3Y44/C3;X3Y44/C3/X04;1;X3Y44/X04;X3Y44/X04/VCC;1;X3Y44/VCC;;1;X4Y44/C2;X4Y44/C2/W242;1;X6Y44/W240;X6Y44/W240/VCC;1;X6Y44/VCC;;1;X1Y44/C1;X1Y44/C1/S241;1;X1Y43/S240;X1Y43/S240/VCC;1;X1Y43/VCC;;1;X1Y44/C4;X1Y44/C4/N202;1;X1Y46/N200;X1Y46/N200/VCC;1;X1Y46/VCC;;1;X3Y44/C5;X3Y44/C5/E262;1;X1Y44/E260;X1Y44/E260/VCC;1;X1Y44/VCC;;1;X4Y44/C4;X4Y44/C4/X08;1;X4Y44/X08;X4Y44/X08/VCC;1;X4Y44/VCC;;1"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_COUT": {
+          "hide_name": 0,
+          "bits": [ 9535 ] ,
+          "attributes": {
+            "ROUTING": "X4Y44/COUT3;;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5|/share/gowin/cells_sim.v:1033.25-1033.29",
+            "abc9_carry": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM_ALU_SUM_23_COUT": {
+          "hide_name": 0,
+          "bits": [ 9534 ] ,
+          "attributes": {
+            "ROUTING": "X4Y44/COUT2;;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:57.7-63.5|/share/gowin/cells_sim.v:1033.25-1033.29",
+            "abc9_carry": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0": {
+          "hide_name": 0,
+          "bits": [ 9532 ] ,
+          "attributes": {
+            "ROUTING": "X4Y44/S230;X4Y44/S230/Q3;1;X4Y46/A7;X4Y46/A7/S232;1;X4Y44/Q3;;1;X4Y44/B3;X4Y44/B3/Q3;1",
+            "src": "/share/gowin/cells_map.v:130.20-130.21",
+            "single_bit_vector": "00000000000000000000000000000001",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM[23]": {
+          "hide_name": 0,
+          "bits": [ 9530 ] ,
+          "attributes": {
+            "ROUTING": "X5Y44/F0;;1;X5Y44/XD0;X5Y44/XD0/F0;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:34.28-34.29",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_2_I0": {
+          "hide_name": 0,
+          "bits": [ 9528 ] ,
+          "attributes": {
+            "ROUTING": "X5Y44/W210;X5Y44/W210/S100;1;X3Y44/W210;X3Y44/W210/W212;1;X1Y44/X06;X1Y44/X06/W212;1;X1Y44/A6;X1Y44/A6/X06;1;X5Y44/Q0;;1;X5Y44/S100;X5Y44/S100/Q0;1;X5Y44/B0;X5Y44/B0/S100;1",
+            "src": "/share/gowin/cells_map.v:130.20-130.21",
+            "single_bit_vector": "00000000000000000000000000000001",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_3_I0_ALU_I1_SUM[24]": {
+          "hide_name": 0,
+          "bits": [ 9526 ] ,
+          "attributes": {
+            "ROUTING": "X5Y44/F1;;1;X5Y44/X02;X5Y44/X02/F1;1;X5Y44/D4;X5Y44/D4/X02;1",
+            "src": "counter.v:6.28-6.38|/share/gowin/arith_map.v:34.28-34.29",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "rst_n_IBUF_I_O_LUT1_I0_F": {
+          "hide_name": 0,
+          "bits": [ 9525 ] ,
+          "attributes": {
+            "SEG_WIRES_TO_ISOLATE": "X0Y36/LT00;X4Y36/LT00;",
+            "ROUTING": "X7Y39/F5;;5;X7Y47/W830;X7Y47/W830/S838;5;X3Y47/S830;X3Y47/S830/W834;5;X3Y54/E250;X3Y54/E250/N838;5;X4Y54/A6;X4Y54/A6/E251;5;X7Y39/S830;X7Y39/S830/F5;5;X7Y47/S830;X7Y47/S830/S838;5;X7Y54/W830;X7Y54/W830/N838;5;X0Y54/E130;X0Y54/E130/E838;5;X0Y54/A6;X0Y54/A6/E130;5;X5Y44/LSR1;X5Y44/LSR1/LB31;5;X4Y44/LSR2;X4Y44/LSR2/LB31;5;X1Y43/LSR0;X1Y43/LSR0/LB31;5;X2Y43/LSR0;X2Y43/LSR0/LB31;5;X3Y44/LSR0;X3Y44/LSR0/LB31;5;X3Y43/LSR0;X3Y43/LSR0/LB31;5;X3Y44/LSR1;X3Y44/LSR1/LB31;5;X4Y44/LSR1;X4Y44/LSR1/LB31;5;X3Y43/LSR1;X3Y43/LSR1/LB31;5;X3Y44/LSR2;X3Y44/LSR2/LB31;5;X2Y44/LSR0;X2Y44/LSR0/LB31;5;X4Y43/LBO0;X4Y43/LBO0/LT01;5;X4Y43/LSR1;X4Y43/LSR1/LB31;5;X4Y44/LSR0;X4Y44/LSR0/LB31;5;X2Y44/LSR1;X2Y44/LSR1/LB31;5;X1Y44/LSR1;X1Y44/LSR1/LB31;5;X0Y43/LBO0;X0Y43/LBO0/LT01;5;X2Y43/LSR1;X2Y43/LSR1/LB31;5;X2Y44/LSR2;X2Y44/LSR2/LB31;5;X0Y36/LT00;X0Y54/LT02/A6;5;X0Y44/LBO0;X0Y44/LBO0/LT01;5;X1Y44/LSR2;X1Y44/LSR2/LB31;5;X5Y44/LSR0;X5Y44/LSR0/LB31;5;X4Y36/LT00;X4Y54/LT02/A6;5;X4Y44/LBO0;X4Y44/LBO0/LT01;5;X5Y44/LSR2;X5Y44/LSR2/LB31;5"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_1_I0": {
+          "hide_name": 0,
+          "bits": [ 9523 ] ,
+          "attributes": {
+            "ROUTING": "X5Y46/X03;X5Y46/X03/S242;1;X5Y46/A6;X5Y46/A6/X03;1;X5Y44/Q4;;1;X5Y44/S240;X5Y44/S240/Q4;1;X5Y44/B1;X5Y44/B1/S240;1",
+            "src": "/share/gowin/cells_map.v:130.20-130.21",
+            "single_bit_vector": "00000000000000000000000000000001",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led_OBUF_O_I_LUT1_F_I0": {
+          "hide_name": 0,
+          "bits": [ 9520 ] ,
+          "attributes": {
+            "ROUTING": "X4Y44/SN10;X4Y44/SN10/Q5;1;X4Y45/S250;X4Y45/S250/S111;1;X4Y47/X06;X4Y47/X06/S252;1;X4Y47/A4;X4Y47/A4/X06;1;X4Y44/Q5;;1;X4Y44/E250;X4Y44/E250/Q5;1;X4Y44/B5;X4Y44/B5/E250;1",
+            "src": "/share/gowin/cells_map.v:130.20-130.21",
+            "single_bit_vector": "00000000000000000000000000000001",
+            "force_downto": "00000000000000000000000000000001"
+          }
+        },
+        "led[0]": {
+          "hide_name": 0,
+          "bits": [ 9518 ] ,
+          "attributes": {
+            "ROUTING": " ",
+            "src": "counter.v:2.53-2.56"
+          }
+        },
+        "led_OBUF_O_I[0]": {
+          "hide_name": 0,
+          "bits": [ 9517 ] ,
+          "attributes": {
+            "ROUTING": "X4Y46/F7;;1;X4Y46/W270;X4Y46/W270/F7;1;X2Y46/W270;X2Y46/W270/W272;1;X0Y46/A0;X0Y46/A0/W272;1"
+          }
+        },
+        "led[1]": {
+          "hide_name": 0,
+          "bits": [ 9515 ] ,
+          "attributes": {
+            "ROUTING": " ",
+            "src": "counter.v:2.53-2.56"
+          }
+        },
+        "led_OBUF_O_I[1]": {
+          "hide_name": 0,
+          "bits": [ 9514 ] ,
+          "attributes": {
+            "ROUTING": "X1Y44/F7;;1;X1Y44/EW20;X1Y44/EW20/F7;1;X0Y44/S220;X0Y44/S220/W121;1;X0Y46/D1;X0Y46/D1/S222;1"
+          }
+        },
+        "led[2]": {
+          "hide_name": 0,
+          "bits": [ 9512 ] ,
+          "attributes": {
+            "ROUTING": " ",
+            "src": "counter.v:2.53-2.56"
+          }
+        },
+        "led_OBUF_O_I[2]": {
+          "hide_name": 0,
+          "bits": [ 9511 ] ,
+          "attributes": {
+            "ROUTING": "X4Y47/F4;;1;X4Y47/W820;X4Y47/W820/F4;1;X0Y47/S270;X0Y47/S270/W824;1;X0Y48/A0;X0Y48/A0/S271;1"
+          }
+        },
+        "led[3]": {
+          "hide_name": 0,
+          "bits": [ 9509 ] ,
+          "attributes": {
+            "ROUTING": " ",
+            "src": "counter.v:2.53-2.56"
+          }
+        },
+        "led_OBUF_O_I[3]": {
+          "hide_name": 0,
+          "bits": [ 9508 ] ,
+          "attributes": {
+            "ROUTING": "X1Y44/F6;;1;X1Y44/S830;X1Y44/S830/F6;1;X1Y48/W250;X1Y48/W250/S834;1;X0Y48/X08;X0Y48/X08/W251;1;X0Y48/D1;X0Y48/D1/X08;1"
+          }
+        },
+        "led[4]": {
+          "hide_name": 0,
+          "bits": [ 9506 ] ,
+          "attributes": {
+            "ROUTING": " ",
+            "src": "counter.v:2.53-2.56"
+          }
+        },
+        "led_OBUF_O_I[4]": {
+          "hide_name": 0,
+          "bits": [ 9505 ] ,
+          "attributes": {
+            "ROUTING": "X5Y46/F6;;1;X5Y46/S830;X5Y46/S830/F6;1;X5Y50/W830;X5Y50/W830/S834;1;X2Y50/W250;X2Y50/W250/E838;1;X0Y50/A0;X0Y50/A0/W252;1"
+          }
+        },
+        "led[5]": {
+          "hide_name": 0,
+          "bits": [ 9503 ] ,
+          "attributes": {
+            "ROUTING": " ",
+            "src": "counter.v:2.53-2.56"
+          }
+        },
+        "led_OBUF_O_I[5]": {
+          "hide_name": 0,
+          "bits": [ 9502 ] ,
+          "attributes": {
+            "ROUTING": "X3Y50/F3;;1;X3Y50/EW20;X3Y50/EW20/F3;1;X2Y50/W220;X2Y50/W220/W121;1;X0Y50/D1;X0Y50/D1/W222;1"
+          }
+        },
+        "clk_IBUF_I_O": {
+          "hide_name": 0,
+          "bits": [ 9499 ] ,
+          "attributes": {
+            "ROUTING": "X0Y6/S830;X0Y6/S830/F6;5;X0Y14/S800;X0Y14/S800/S838;5;X0Y22/S810;X0Y22/S810/S808;5;X0Y30/N210;X0Y30/N210/S818;5;X0Y28/N240;X0Y28/N240/N212;5;X0Y27/CLK1;X0Y27/CLK1/N241;5;X0Y6/F6;;5;X5Y44/CLK1;X5Y44/CLK1/GB20;5;X4Y44/CLK2;X4Y44/CLK2/GB20;5;X1Y43/CLK0;X1Y43/CLK0/GB20;5;X2Y43/CLK0;X2Y43/CLK0/GB20;5;X3Y44/CLK0;X3Y44/CLK0/GB20;5;X3Y43/CLK0;X3Y43/CLK0/GB20;5;X3Y44/CLK1;X3Y44/CLK1/GB20;5;X4Y44/CLK1;X4Y44/CLK1/GB20;5;X3Y43/CLK1;X3Y43/CLK1/GB20;5;X3Y44/CLK2;X3Y44/CLK2/GB20;5;X2Y44/CLK0;X2Y44/CLK0/GB20;5;X5Y43/GBO0;X5Y43/GBO0/GT00;5;X4Y43/CLK1;X4Y43/CLK1/GB20;5;X4Y44/CLK0;X4Y44/CLK0/GB20;5;X2Y44/CLK1;X2Y44/CLK1/GB20;5;X1Y44/CLK1;X1Y44/CLK1/GB20;5;X3Y43/GB20;X1Y43/GBO0/GT00;5;X2Y43/CLK1;X2Y43/CLK1/GB20;5;X2Y44/CLK2;X2Y44/CLK2/GB20;5;X1Y35/GT00;X1Y46/GT00/SPINE18;5;X0Y44/GB20;X1Y44/GBO0/GT00;5;X1Y44/CLK2;X1Y44/CLK2/GB20;5;X5Y44/CLK0;X5Y44/CLK0/GB20;5;X1Y46/SPINE18;X27Y27/SPINE18/TLBDCLK3;5;X5Y32/GT00;X5Y46/GT00/SPINE18;5;X4Y44/GB20;X5Y44/GBO0/GT00;5;X5Y44/CLK2;X5Y44/CLK2/GB20;5"
+          }
+        },
+        "clk": {
+          "hide_name": 0,
+          "bits": [ 9493 ] ,
+          "attributes": {
+            "ROUTING": " ",
+            "src": "counter.v:2.22-2.25"
+          }
+        }
+      }
+    }
+  }
+}

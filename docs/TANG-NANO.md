@@ -17,7 +17,8 @@ left the architecture open.
 | **TN3** client half | **landed** — lite PRs #124, #125 |
 | **TN3** service | **deployed, and the toolchain does not fit the host** — [`CrispStrobe/bw-synth`](https://github.com/CrispStrobe/bw-synth), §5.1 |
 | **TN6a** capability gate | **landed** — lite PR #127 |
-| TN6a fetch + worker · TN6b · TN4 flashing · TN5a/TN5b | not started |
+| **TN6b** bitstream packer | **works** — byte-identical to native, in Chromium 151 (§8d) |
+| TN6a fetch + worker · TN6b place & route · TN4 flashing · TN5a/TN5b | not started |
 
 **What works today:** the Tang Nano 20K places and wires on a breadboard with a
 real pinout, the 3.3 V rule catches 5 V fed back into a bank pin, and — behind
@@ -807,7 +808,13 @@ the check that distinguishes a convention from a drift.
 Anything reading a current from this engine needs to know this. It is not
 specific to the FPGA work; it just surfaced here first.
 
-## 8c. TN6 cannot produce a bitstream in a browser — checked 2026-09-16
+## 8c. TN6 cannot produce a bitstream in a browser — WRONG, corrected 2026-09-17
+
+> **Read §8d first.** This section was written on 2026-09-16 and its central
+> claim is false. `gowin_pack` runs in Pyodide and produces a **byte-identical**
+> bitstream to the native packer. The section is kept unedited below because the
+> reasoning that led to the wrong conclusion is worth seeing, and because §8d is
+> a correction to it rather than a replacement.
 
 **This qualifies decision 19 and should be read before planning the local tier.**
 
@@ -858,6 +865,76 @@ browser-runnable packer that does not exist. Research, not implementation.
 **The recommendation is TN6a now, TN6b as a spike later** — and, separately,
 that the UI must not offer a local *bitstream* until TN6b exists, because a
 button that cannot finish is the lie `target-kinds.js` describes.
+
+## 8d. The spike was run, and the packer works — measured 2026-09-17
+
+**§8c's central claim is false.** `gowin_pack` runs in Pyodide and produces a
+bitstream **byte-identical** to the one the native packer produces, in headless
+Chromium 151 and in Node 20. Two designs, both matching:
+
+| design | | native `gowin_pack` | in the browser |
+|---|---|---|---|
+| `blink` | one output tied high | `586e54ac…64e257d` | same |
+| `counter` | 26-bit counter, 36 LUT4, 26 DFF | `21502783…8b69704` | same |
+
+Both pack to 4,618,782 bytes, because a Gowin bitstream is a fixed-size frame
+image for the part — **length proves nothing here**, which is why the hashes are
+the assertion and why `test/fpga-pyodide-packer.test.mjs` separately requires the
+two designs to differ from each other. A packer that ignored its input would
+otherwise pass.
+
+Cost, measured rather than guessed: Pyodide core **13 MB**, its wheels (numpy,
+msgspec and micropip's own) **3.4 MB**, Apicula **3.5 MB** — about **20 MB**, of
+which the GW2A-18C chip database is 0.38 MB. §8c guessed "roughly another 40 MB".
+Toolchain ready in ~8 s; each pack takes ~6 s.
+
+### Two things §8c had wrong, and the second is the interesting one
+
+**Apicula's `[pure]` extra is not the pure-Python path.** §8c read the extra as
+suggesting one existed. It ADDS `msgpack` and `cattrs`; it never removes
+`fastcrc`, a compiled Rust extension with no pure wheel. `micropip.install(
+'apycula[pure]')` fails in exactly the same place the bare install does, and
+`fastcrc` is the *only* thing that fails — numpy, msgspec, msgpack and cattrs all
+install.
+
+**Apicula does not need `fastcrc`, and already says so in its own source.**
+`apycula/crc16.py` guards the import with `try/except ImportError` and falls back
+to a 256-entry CRC-16/ARC table, warning about performance. `setup.py` lists as a
+hard dependency something the code treats as optional. Installing with
+`deps=False` and supplying numpy and msgspec by hand yields the whole packer.
+The fallback was verified against the standard CRC-16/ARC check vector
+(`"123456789"` → `0xBB3D`) rather than trusted.
+
+So the blocker was never a missing capability. It was **one line of packaging
+metadata**, and the route around it is three lines of install code.
+
+### Why this was testable here when the synthesis half is not
+
+Pyodide is ordinary Emscripten WebAssembly. It needs neither WasmGC nor
+`try_table`, which is what keeps the YoWASP tools off this Node 20 box
+(`lib/bw-fpga/wasm-capabilities.js`). The packer half of TN6b is therefore
+testable on runtimes where the synthesis half is not — and that asymmetry is
+asserted, so it cannot rot silently.
+
+### What this changes, and what it does not
+
+**Decision 19 now has a route to silicon.** A GPL core sent to the local tier
+can reach a bitstream. §8c's "there is no path" was the strongest objection to
+decision 19 and it is withdrawn.
+
+**TN6b is no longer research.** What remains is nextpnr at 183.3 MB, which needs
+WasmGC (Chromium 151 has it, that Node 20 box does not) — a **size and capability
+question, not an existence one**. The packer is 20 MB of the ~203 MB total, and
+it is done.
+
+**The UI rule in §8c stands unchanged.** A local bitstream must not be offered
+until the whole chain can finish, because the packer working does not mean place
+and route does. `backends.js` is fail-closed for this, and nothing here makes the
+local backend offerable.
+
+**The fixtures are nextpnr output, not a substitute for it.** `blink-pnr.json`
+and `counter-pnr.json` were produced by the real flow and committed so the packer
+can be gated without 261 MB of toolchain. They prove the packer, not the chain.
 
 ## 9. Still open, deliberately
 
