@@ -425,11 +425,23 @@ box; `DEPLOY.md` records the three bugs that cost the deploy (the YoWASP cache
 path, the `--internal`-network trap, and that neither shows up outside a real WSGI
 server).
 
-**What remains is not code.** A DNS record and a TLS certificate — the service is
-reachable on the host's loopback and answers correctly; it is not yet public.
-Once it is, brickwright-lite's `BW_SYNTHESIS_ENDPOINT` points at it and the
-hosted backend appears in the selector beside local. Nothing about §8c's UI rule
-changes: hosted still cannot build copyleft, and the selector stays fail-closed.
+**It is public.** `https://synth.crispstro.be/api` — real Let's Encrypt TLS,
+HTTP redirected to HTTPS, `scripts/probe-hosted-synth.mjs` green against it over
+the open internet: the byte-identical blinky and the licence refusal, both from
+the deployed service rather than a tunnel.
+
+That is the canonical hosted endpoint. It is **not** wired into the default site,
+and should not be: the FPGA surface is off in every build here (`BW_ENABLE_FPGA`
+unset), so a hosted endpoint in that build would point at a tab nobody can open.
+A flag-on build is where it belongs, and it is one pairing:
+
+```
+BW_ENABLE_FPGA=1 BW_SYNTHESIS_ENDPOINT=https://synth.crispstro.be/api npm run build
+```
+
+Then the hosted backend appears in the selector beside local. Nothing about §8c's
+UI rule changes: hosted still cannot build copyleft, and the selector stays
+fail-closed — a service that answered 503 would simply not be offered.
 
 ## 6. Device identity and surfaces
 
