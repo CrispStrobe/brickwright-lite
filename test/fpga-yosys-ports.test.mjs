@@ -10,7 +10,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
-import {readPorts, topModule, checkWidths} from '../overlay/scratch-gui/src/lib/bw-fpga/yosys.js';
+import {readPorts, topModule, checkWidths, detectClockPort} from '../overlay/scratch-gui/src/lib/bw-fpga/yosys.js';
 import {parseCst} from '../overlay/scratch-gui/src/lib/bw-fpga/cst.js';
 import {bridge} from '../overlay/scratch-gui/src/lib/bw-fpga/port-bridge.js';
 
@@ -95,4 +95,37 @@ test('a fully placed bus is silent', () => {
     const {constraints} = parseCst('IO_LOC "q[0]" 73;\nIO_LOC "q[1]" 74;');
     const {bindings} = bridge({constraints, part: PART, netlistPorts: ports});
     assert.deepEqual(checkWidths(ports, bindings), []);
+});
+
+test('the clock port is the single-bit input named like one', () => {
+    // Exact clk/clock, then clock-ish (sys_clk, clk_i). A multi-bit port is data,
+    // never a clock, so width gates before the name.
+    assert.equal(detectClockPort({
+        clk: {direction: 'input', width: 1},
+        rst_n: {direction: 'input', width: 1},
+        led: {direction: 'output', width: 4}
+    }), 'clk');
+    assert.equal(detectClockPort({
+        sys_clk: {direction: 'input', width: 1},
+        d: {direction: 'input', width: 8}
+    }), 'sys_clk');
+    // An exact name wins over a merely clock-ish one.
+    assert.equal(detectClockPort({
+        clk_i: {direction: 'input', width: 1},
+        clock: {direction: 'input', width: 1}
+    }), 'clock');
+});
+
+test('a design with no clock has no clock port, and data is never mistaken for one', () => {
+    assert.equal(detectClockPort({
+        btn: {direction: 'input', width: 1},
+        led: {direction: 'output', width: 1}
+    }), null);
+    // "clock" as an OUTPUT, or a multi-bit "clk_bus", is not the input clock.
+    assert.equal(detectClockPort({
+        clock: {direction: 'output', width: 1},
+        clk_data: {direction: 'input', width: 4}
+    }), null);
+    assert.equal(detectClockPort({}), null);
+    assert.equal(detectClockPort(null), null);
 });

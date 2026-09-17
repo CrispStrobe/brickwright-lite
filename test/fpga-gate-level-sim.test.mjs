@@ -118,6 +118,63 @@ test('a malformed netlist is a named problem, not a throw', () => {
     assert.deepEqual(problems.map(p => p.code), ['conversion-failed']);
 });
 
+// A T flip-flop: Q toggles on every rising edge of clk (D is fed by ~Q). The
+// initial is pinned to 0 so the design is defined before the first clock, which
+// is the same thing the tab's reset does for a real counter.
+const toggleFF = () => ({
+    devices: {
+        clk: {type: 'Input', net: 'clk', order: 0, bits: 1},
+        q: {type: 'Output', net: 'q', order: 1, bits: 1},
+        ff: {type: 'Dff', bits: 1, initial: '0', polarity: {clock: true}},
+        inv: {type: 'Not', bits: 1}
+    },
+    connectors: [
+        {from: {id: 'clk', port: 'out'}, to: {id: 'ff', port: 'clk'}},
+        {from: {id: 'ff', port: 'out'}, to: {id: 'inv', port: 'in'}},
+        {from: {id: 'inv', port: 'out'}, to: {id: 'ff', port: 'in'}},
+        {from: {id: 'ff', port: 'out'}, to: {id: 'q', port: 'in'}}
+    ],
+    subcircuits: {}
+});
+
+test('tickClock advances a clocked design one whole cycle at a time', () => {
+    const sim = new GateLevelSim(toggleFF(), engine);
+    sim.settle();
+    assert.equal(sim.getOutput('q'), '0', 'the flop holds its initial before any clock');
+    const seen = [];
+    for (let i = 0; i < 4; i++) {
+        const r = sim.tickClock('clk', 1);
+        assert.ok(r.settled, 'a single flop must settle each edge');
+        assert.equal(r.cycles, 1);
+        seen.push(sim.getOutput('q'));
+    }
+    assert.deepEqual(seen, ['1', '0', '1', '0'], 'each cycle is one toggle');
+});
+
+test('tickClock runs many cycles in one call', () => {
+    const sim = new GateLevelSim(toggleFF(), engine);
+    sim.settle();
+    const r = sim.tickClock('clk', 8);   // even number of toggles -> back to 0
+    assert.ok(r.settled);
+    assert.equal(r.cycles, 8);
+    assert.equal(sim.getOutput('q'), '0');
+});
+
+test('tickClock is BOUNDED — an edge that never settles reports, it does not hang', () => {
+    const neverSettles = {
+        HeadlessCircuit: function () {
+            this.hasPendingEvents = true;
+            this.setInput = () => {};
+            this.updateGates = () => {};
+        }
+    };
+    const sim = new GateLevelSim({devices: {}, connectors: [], subcircuits: {}}, neverSettles);
+    const r = sim.tickClock('clk', 5);
+    assert.equal(r.settled, false);
+    assert.equal(r.cycles, 0, 'it failed on the first edge, so no cycle completed');
+    assert.match(r.reason, /combinational loop/);
+});
+
 test('THE LOOP: a design output lights a real LED on the breadboard', () => {
     // sim -> outputValues -> bridge bindings -> setPin -> MNA solver -> LED.
     const sim = new GateLevelSim(andGate(), engine);

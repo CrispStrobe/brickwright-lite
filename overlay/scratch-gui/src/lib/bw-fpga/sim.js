@@ -113,6 +113,36 @@ export class GateLevelSim {
         return {settled: true, steps};
     }
 
+    /**
+     * Advance a clocked design by whole clock cycles.
+     *
+     * The clock is a top-level INPUT port -- the .cst places it on a pin, the
+     * bridge binds it, and here we drive it -- NOT a free-running device. So time
+     * is exactly the edges we apply: each cycle drives the clock low then high,
+     * settling after each edge so a posedge-triggered flip-flop captures. That is
+     * what lets the tab single-step a counter and read the board between clicks.
+     *
+     * BOUNDED like {@link settle}: if any edge fails to settle the run stops at
+     * that cycle and reports, rather than spinning. `cycles` in the result is how
+     * many completed.
+     * @returns {{settled: boolean, cycles: number, steps: number, reason?: string}}
+     */
+    tickClock (clockPort, cycles = 1) {
+        let steps = 0;
+        for (let i = 0; i < cycles; i++) {
+            for (const level of [0, 1]) {
+                this.setInput(clockPort, level, 1);
+                const r = this.settle();
+                steps += r.steps;
+                if (!r.settled) {
+                    return {settled: false, cycles: i, steps, reason: r.reason};
+                }
+            }
+        }
+        this._settleFailed = false;
+        return {settled: true, cycles, steps};
+    }
+
     /** One output port, as a bit string ('0', '1', 'x' for undefined). */
     getOutput (port) {
         return this._circuit.getOutput(port).toBin();

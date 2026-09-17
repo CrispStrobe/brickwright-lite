@@ -49,5 +49,27 @@ export const EXAMPLES = Object.freeze([
             + 'IO_PORT "led[0]" IO_TYPE=LVCMOS33;\nIO_PORT "led[1]" IO_TYPE=LVCMOS33;\n'
             + 'IO_PORT "led[2]" IO_TYPE=LVCMOS33;\nIO_PORT "led[3]" IO_TYPE=LVCMOS33;\n'
             + 'IO_PORT "led[4]" IO_TYPE=LVCMOS33;\nIO_PORT "led[5]" IO_TYPE=LVCMOS33;\n'
+    }),
+    Object.freeze({
+        id: 'sequence',
+        label: 'Counting sequence — 4 LEDs',
+        blurb: 'The one to WATCH move: a 4-bit counter with no clock divider, so every '
+            + 'clock changes an LED. Synthesise it, release reset, and use the Step clock '
+            + 'button — the four LEDs count up in binary on the board. (`counter` divides by '
+            + '2²⁰ so it blinks on real silicon but would need a million steps to move here; '
+            + 'this one is built to step.)',
+        verilog: 'module sequence(input clk, input rst_n, output [3:0] led);\n'
+            + '  reg [3:0] cnt;\n'
+            + '  always @(posedge clk or negedge rst_n)\n'
+            + '    if (!rst_n) cnt <= 4\'d0;\n'
+            + '    else        cnt <= cnt + 1\'b1;\n'
+            + '  assign led = cnt;\n'
+            + 'endmodule\n',
+        cst: 'IO_LOC "clk" 4;\nIO_PORT "clk" IO_TYPE=LVCMOS33;\n'
+            + 'IO_LOC "rst_n" 88;\nIO_PORT "rst_n" IO_TYPE=LVCMOS33;\n'
+            + 'IO_LOC "led[0]" 15;\nIO_LOC "led[1]" 16;\n'
+            + 'IO_LOC "led[2]" 17;\nIO_LOC "led[3]" 18;\n'
+            + 'IO_PORT "led[0]" IO_TYPE=LVCMOS33;\nIO_PORT "led[1]" IO_TYPE=LVCMOS33;\n'
+            + 'IO_PORT "led[2]" IO_TYPE=LVCMOS33;\nIO_PORT "led[3]" IO_TYPE=LVCMOS33;\n'
     })
 ]);
