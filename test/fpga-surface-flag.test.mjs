@@ -501,3 +501,25 @@ test('the widget mirror removes stale fpga indicators for pins no longer driven'
     assert.match(gui, /controllerPanel\.removeWidget\(existing\)/,
         'the stale indicator must actually be removed');
 });
+
+// ── the demo board follows the loaded design's pins ──
+//
+// The demo board used to hard-wire LEDs on 15-18 regardless of the design in
+// the box, so loading an example on other pins ("Counter — 6 LEDs") wired LEDs
+// the design never drives and left its real outputs dark. The builder already
+// takes a `pins` option; the tab now hands it the design's OUTPUT pins so the
+// board matches whatever is loaded. With no design, the builder's own default
+// (15-18) applies — where the sequence and chaser examples put their LEDs.
+
+test('the demo board is wired on the loaded design\'s output pins', () => {
+    const tab = codeOnly(read(TAB));
+    // It must read the CURRENT output pins (through a ref, since the builder runs
+    // from an async callback), not a fixed list.
+    assert.match(tab, /outputPinsRef\.current = outputPins/,
+        'the builder must see the latest output pins, not a stale closure');
+    assert.match(tab, /buildDemoBoard\(c, pins\.length \? \{pins\} : \{\}\)/,
+        'the demo board must be wired on the design pins when there are any, else the default');
+    // The confirmation names the pins it actually lit, not a hard-coded "15-18".
+    assert.match(tab, /result\.leds\.map\(l => l\.pin\)/,
+        'the message must report the pins actually wired');
+});
