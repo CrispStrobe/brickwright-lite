@@ -515,8 +515,9 @@ test('the demo board is wired on the loaded design\'s output pins', () => {
     const tab = codeOnly(read(TAB));
     // It must read the CURRENT output pins (through a ref, since the builder runs
     // from an async callback), not a fixed list.
-    assert.match(tab, /outputPinsRef\.current = outputPins/,
-        'the builder must see the latest output pins, not a stale closure');
+    assert.match(tab, /outputPinsRef\.current = netlistText\.trim\(\) \? outputPins : \[\]/,
+        'the builder must see the latest output pins (through a ref), and only trust '
+        + 'them once a netlist gives directions — else a clock input gets an LED');
     assert.match(tab, /buildDemoBoard\(c, pins\.length \? \{pins\} : \{\}\)/,
         'the demo board must be wired on the design pins when there are any, else the default');
     // The confirmation names the pins it actually lit, not a hard-coded "15-18".
