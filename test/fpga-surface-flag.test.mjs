@@ -621,3 +621,18 @@ test('the guide surfaces the schematic, waveforms and gate builder', () => {
     assert.match(tab, /waveforms/, 'the waveforms are named');
     assert.match(tab, /build it visually/, 'the gate builder is surfaced for people who would rather not type HDL');
 });
+
+// ── Rung 3 live: the gate builder runs in the browser, no synthesis ──
+test('the gate builder evaluates live and colours wires by value', () => {
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder.jsx');
+    assert.match(ui, /import \{evalModel, stepClock as stepClockEval\}/,
+        'the builder must evaluate the model in-browser');
+    assert.match(ui, /toggleInput\(node\.name\)/, 'clicking an input toggles it live');
+    assert.match(ui, /wireStroke\(v\)/, 'wires are coloured by their live value');
+    assert.match(ui, /stepClockEval\(model, inputVals/, 'a clock step advances the flip-flops');
+    // The evaluation logic lives in a pure, tested module — not inline in the UI.
+    const ev = read('overlay/scratch-gui/src/lib/bw-fpga/gate-eval.js');
+    assert.match(ev, /export function evalModel/);
+    assert.match(ev, /export function stepClock/);
+    assert.match(ev, /=== 'x'/, 'an unknown net stays x, never invented');
+});
