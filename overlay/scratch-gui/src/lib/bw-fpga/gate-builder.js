@@ -39,7 +39,18 @@ export function inputPorts (node) {
 
 /** Does this node drive a net (has an `out`)? Inputs and gates do; outputs sink. */
 export function hasOutput (node) {
-    return node.kind === 'in' || node.kind === 'gate';
+    return node.kind === 'in' || node.kind === 'gate' || node.kind === 'instance';
+}
+
+/** The ports a subcircuit exposes, derived from its own input/output nodes when
+ *  a module does not declare them explicitly. dir is 'in'/'out'. */
+export function derivePorts (def) {
+    const ports = [];
+    for (const n of (def && def.nodes) || []) {
+        if (n.kind === 'in') ports.push({name: n.name, dir: 'in', width: n.width || 1});
+        else if (n.kind === 'out') ports.push({name: n.name, dir: 'out', width: n.width || 1});
+    }
+    return ports;
 }
 
 // A legal Verilog identifier from a user-typed name; falls back to the id so a
@@ -59,37 +70,48 @@ function ident (name, fallback) {
  * @returns {{verilog: string, problems: Array}}
  */
 export function modelToVerilog (model, {moduleName = 'design'} = {}) {
-    const nodes = (model && model.nodes) || [];
-    const edges = (model && model.edges) || [];
     const problems = [];
+    const modules = (model && model.modules) || [];
+    // Port maps of every subcircuit, so an instance knows its ports' directions.
+    const moduleDefs = {};
+    for (const m of modules) moduleDefs[m.name] = {ports: m.ports && m.ports.length ? m.ports : derivePorts(m)};
+
+    const chunks = [];
+    for (const m of modules) chunks.push(emitModule(m, m.name, moduleDefs, problems));
+    chunks.push(emitModule(model, moduleName, moduleDefs, problems));
+    return {verilog: chunks.join('\n') + '\n', problems};
+}
+
+/**
+ * Emit one Verilog module from a {nodes, edges} definition. Nodes are inputs,
+ * outputs, gates, or INSTANCES of other modules (kind:'instance', module:<name>)
+ * — which is how the builder composes: build a full-adder once, drop it in many
+ * times. `moduleDefs` gives each instance's ports so its wiring is generated.
+ *
+ * @returns {string} the module text (no trailing newline)
+ */
+function emitModule (def, name, moduleDefs, problems) {
+    const nodes = (def && def.nodes) || [];
+    const edges = (def && def.edges) || [];
     const byId = Object.fromEntries(nodes.map(n => [n.id, n]));
 
-    // Net name for whatever DRIVES a port. An input drives its own name; a gate
-    // drives an internal wire; nothing else drives.
-    const driverNet = node => {
+    // The net that DRIVES a given (node, port): an input drives its own name, a
+    // gate its single wire, an instance a per-output wire.
+    const driverNet = (node, port) => {
         if (!node) return null;
         if (node.kind === 'in') return ident(node.name, `in_${node.id}`);
         if (node.kind === 'gate') return `w_${node.id}`;
+        if (node.kind === 'instance') return `w_${node.id}_${ident(port, 'out')}`;
         return null;
     };
 
-    // For each sink port (a gate input, an output's `in`), the net feeding it.
     const feed = new Map(); // `${nodeId}.${port}` -> net
     for (const e of edges) {
         const src = byId[e.from && e.from.node];
         if (!src || !hasOutput(src)) { problems.push({code: 'edge-source-not-a-driver'}); continue; }
-        feed.set(`${e.to.node}.${e.to.port}`, driverNet(src));
+        feed.set(`${e.to.node}.${e.to.port}`, driverNet(src, e.from.port));
     }
     const netFor = (nodeId, port) => feed.get(`${nodeId}.${port}`) || null;
-
-    const inputs = nodes.filter(n => n.kind === 'in');
-    const outputs = nodes.filter(n => n.kind === 'out');
-    const gates = nodes.filter(n => n.kind === 'gate');
-
-    if (!outputs.length) problems.push({code: 'no-output', reason: 'Add at least one output so the design drives something.'});
-
-    // Any unconnected input port is a floating signal; name it so the learner
-    // can see which, and tie it low rather than emit illegal Verilog.
     const tieLow = (nodeId, port, who) => {
         const net = netFor(nodeId, port);
         if (net) return net;
@@ -97,43 +119,61 @@ export function modelToVerilog (model, {moduleName = 'design'} = {}) {
             reason: `${who} has nothing wired to its "${port}" input, so it reads 0.`});
         return "1'b0";
     };
+    const busDecl = (kw, nm, width) => (width > 1 ? `${kw} [${width - 1}:0] ${nm}` : `${kw} ${nm}`);
 
-    const inNames = inputs.map(n => ident(n.name, `in_${n.id}`));
-    const outNames = outputs.map(n => ident(n.name, `out_${n.id}`));
+    const inputs = nodes.filter(n => n.kind === 'in');
+    const outputs = nodes.filter(n => n.kind === 'out');
+    const gates = nodes.filter(n => n.kind === 'gate');
+    const instances = nodes.filter(n => n.kind === 'instance');
+
+    if (!outputs.length && name === 'design') {
+        problems.push({code: 'no-output', reason: 'Add at least one output so the design drives something.'});
+    }
+
     const portDecls = [
-        ...inNames.map(nm => `input ${nm}`),
-        ...outNames.map(nm => `output ${nm}`)
+        ...inputs.map(n => busDecl('input', ident(n.name, `in_${n.id}`), n.width || 1)),
+        ...outputs.map(n => busDecl('output', ident(n.name, `out_${n.id}`), n.width || 1))
     ];
 
-    const lines = [];
-    lines.push(`module ${ident(moduleName, 'design')}(${portDecls.join(', ')});`);
+    const lines = [`module ${ident(name, 'design')}(${portDecls.join(', ')});`];
 
-    // Combinational gates: a wire + a continuous assign (order-independent).
-    const comb = gates.filter(g => GATE_DEFS[g.type] && !GATE_DEFS[g.type].seq);
-    const seq = gates.filter(g => GATE_DEFS[g.type] && GATE_DEFS[g.type].seq);
-    for (const g of comb) {
-        const def = GATE_DEFS[g.type];
+    for (const g of gates.filter(x => GATE_DEFS[x.type] && !GATE_DEFS[x.type].seq)) {
+        const gd = GATE_DEFS[g.type];
         const n = {};
-        for (const port of def.ins) n[port] = tieLow(g.id, port, `${def.label} gate`);
-        lines.push(`  wire w_${g.id};`);
-        lines.push(`  assign w_${g.id} = ${def.expr(n)};`);
+        for (const port of gd.ins) n[port] = tieLow(g.id, port, `${gd.label} gate`);
+        const w = g.width || 1;
+        lines.push(`  ${w > 1 ? `wire [${w - 1}:0] w_${g.id};` : `wire w_${g.id};`}`);
+        lines.push(`  assign w_${g.id} = ${gd.expr(n)};`);
     }
-    // Flip-flops: a reg clocked on their wired clock.
-    for (const g of seq) {
+    for (const g of gates.filter(x => GATE_DEFS[x.type] && GATE_DEFS[x.type].seq)) {
         const d = tieLow(g.id, 'd', 'Flip-flop');
         const clk = netFor(g.id, 'clk');
-        if (!clk) { problems.push({code: 'dff-no-clock', reason: 'A flip-flop needs a clock wired to its "clk" input.'}); }
-        lines.push(`  reg w_${g.id};`);
+        if (!clk) problems.push({code: 'dff-no-clock', reason: 'A flip-flop needs a clock wired to its "clk" input.'});
+        const w = g.width || 1;
+        lines.push(`  ${w > 1 ? `reg [${w - 1}:0] w_${g.id};` : `reg w_${g.id};`}`);
         lines.push(`  always @(posedge ${clk || "1'b0"}) w_${g.id} <= ${d};`);
     }
-    // Outputs.
+    // Module INSTANCES — the composition primitive.
+    for (const inst of instances) {
+        const md = moduleDefs[inst.module];
+        if (!md) { problems.push({code: 'unknown-module', reason: `Instance references unknown module "${inst.module}".`}); continue; }
+        const conns = [];
+        for (const p of md.ports) {
+            if (p.dir === 'out') {
+                const w = p.width || 1;
+                lines.push(`  ${w > 1 ? `wire [${w - 1}:0] w_${inst.id}_${ident(p.name, 'out')};` : `wire w_${inst.id}_${ident(p.name, 'out')};`}`);
+                conns.push(`.${ident(p.name)}(w_${inst.id}_${ident(p.name, 'out')})`);
+            } else {
+                conns.push(`.${ident(p.name)}(${tieLow(inst.id, p.name, `${inst.module} instance`)})`);
+            }
+        }
+        lines.push(`  ${ident(inst.module)} ${ident(inst.id, `u_${inst.id}`)}(${conns.join(', ')});`);
+    }
     for (const o of outputs) {
-        const net = tieLow(o.id, 'in', `Output "${ident(o.name, o.id)}"`);
-        lines.push(`  assign ${ident(o.name, `out_${o.id}`)} = ${net};`);
+        lines.push(`  assign ${ident(o.name, `out_${o.id}`)} = ${tieLow(o.id, 'in', `Output "${ident(o.name, o.id)}"`)};`);
     }
     lines.push('endmodule');
-
-    return {verilog: lines.join('\n') + '\n', problems};
+    return lines.join('\n');
 }
 
 // Header pins for generated constraints, from the pins the shipped examples use
