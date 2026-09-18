@@ -1,5 +1,6 @@
 import React from 'react';
 import {GATE_DEFS, inputPorts, hasOutput, modelToVerilog, modelToCst} from '../../lib/bw-fpga/gate-builder.js';
+import {evalModel, stepClock as stepClockEval} from '../../lib/bw-fpga/gate-eval.js';
 
 /**
  * Build logic by placing gates and wiring them — Rung 3 of the FPGA visual
@@ -51,6 +52,17 @@ const FpgaGateBuilder = ({onUseVerilog}) => {
     const [problems, setProblems] = React.useState([]);
     const idRef = React.useRef(1);
     const nid = prefix => `${prefix}${idRef.current++}`;
+    // LIVE evaluation: toggle an input, and every wire settles to its value —
+    // offline, no synthesis. Stepping the clock advances the flip-flops.
+    const [inputVals, setInputVals] = React.useState({});
+    const [dffState, setDffState] = React.useState({});
+    const evalResult = React.useMemo(() => evalModel(model, inputVals, dffState), [model, inputVals, dffState]);
+    const hasDff = model.nodes.some(n => n.kind === 'gate' && n.type === 'dff');
+    const toggleInput = name => setInputVals(v => ({...v, [name]: v[name] ? 0 : 1}));
+    const stepClock = () => setDffState(s => stepClockEval(model, inputVals, s));
+    const resetState = () => setDffState({});
+    const valFill = v => (v === 1 ? '#bbf7d0' : v === 0 ? '#e2e8f0' : '#ffffff');
+    const wireStroke = v => (v === 1 ? '#16a34a' : v === 0 ? '#64748b' : '#cbd5e1');
 
     // Lay the model out whenever it changes.
     React.useEffect(() => {
@@ -133,11 +145,20 @@ const FpgaGateBuilder = ({onUseVerilog}) => {
                 ))}
                 <span style={{opacity: 0.4}}>{'|'}</span>
                 <button type="button" onClick={clearAll} style={{padding: '0.2rem 0.5rem', cursor: 'pointer'}}>{'Clear'}</button>
+                {hasDff ? (
+                    <>
+                        <span style={{opacity: 0.4}}>{'|'}</span>
+                        <button type="button" onClick={stepClock} data-testid="bw-fpga-live-step"
+                            style={{padding: '0.2rem 0.5rem', cursor: 'pointer'}}>{'▸ Step clock'}</button>
+                        <button type="button" onClick={resetState}
+                            style={{padding: '0.2rem 0.5rem', cursor: 'pointer'}}>{'Reset state'}</button>
+                    </>
+                ) : null}
             </div>
             <p style={{margin: '0 0 0.5rem', fontSize: '0.8rem', opacity: 0.8}}>
                 {pending
                     ? <strong>{`Wiring from ${pending.node}.${pending.port} — click an input port to connect (or click another output to change the source).`}</strong>
-                    : 'Click an output port (right, green), then an input port (left) to wire them.'}
+                    : 'It runs live: click an input box to toggle 0/1 and watch the wires light. Wire by clicking an output port (right) then an input port (left).'}
             </p>
             <div style={{overflow: 'auto', border: '1px solid rgba(71,85,105,0.25)', borderRadius: 6, background: '#f8fafc', maxHeight: '55vh'}}>
                 <svg width={W} height={H} style={{display: 'block'}} role="img" aria-label="Gate builder canvas" data-testid="bw-fpga-builder-svg">
@@ -146,18 +167,29 @@ const FpgaGateBuilder = ({onUseVerilog}) => {
                             const a = portPos(e.from.node, e.from.port);
                             const b = portPos(e.to.node, e.to.port);
                             if (!a || !b) return null;
-                            return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#475569" strokeWidth={1.6} />;
+                            const v = evalResult.values[e.from.node];
+                            return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+                                stroke={wireStroke(v)} strokeWidth={v === 1 ? 2.4 : 1.6}
+                                data-testid={`bw-fpga-wire-${e.from.node}-${e.to.node}-${e.to.port}`}
+                                data-value={v === undefined ? 'x' : String(v)} />;
                         })}
                         {model.nodes.map(node => {
                             const c = byId[node.id];
                             if (!c) return null;
                             const isIo = node.kind !== 'gate';
                             const def = node.kind === 'gate' ? GATE_DEFS[node.type] : null;
+                            const dispVal = node.kind === 'out' ? evalResult.outputs[node.name] : evalResult.values[node.id];
                             return (
-                                <g key={node.id} transform={`translate(${c.x},${c.y})`} data-testid={`bw-fpga-node-${node.id}`}>
+                                <g key={node.id} transform={`translate(${c.x},${c.y})`} data-testid={`bw-fpga-node-${node.id}`}
+                                    data-value={dispVal === undefined ? 'x' : String(dispVal)}>
                                     <rect width={c.width} height={c.height} rx={isIo ? 10 : 4}
-                                        fill={node.kind === 'in' ? '#e0f2fe' : node.kind === 'out' ? '#fef9c3' : '#ffffff'}
-                                        stroke="#475569" strokeWidth={1.2} />
+                                        fill={valFill(dispVal)}
+                                        stroke={node.kind === 'in' ? '#0284c7' : node.kind === 'out' ? '#ca8a04' : '#475569'}
+                                        strokeWidth={1.3}
+                                        style={node.kind === 'in' ? {cursor: 'pointer'} : undefined}
+                                        onClick={node.kind === 'in' ? () => toggleInput(node.name) : undefined}>
+                                        {node.kind === 'in' ? <title>{'click to toggle 0/1'}</title> : null}
+                                    </rect>
                                     <text x={c.width / 2} y={c.height / 2} textAnchor="middle" dominantBaseline="central"
                                         fontSize={isIo ? 10 : 12} fontWeight={isIo ? 'normal' : 'bold'} fill="#1e293b"
                                         fontFamily={isIo ? 'monospace' : 'sans-serif'}>
