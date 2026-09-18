@@ -12,6 +12,7 @@ import {screenForHostedSynthesis} from '../../lib/bw-fpga/licence.js';
 import {synthesise} from '../../lib/bw-fpga/synthesis.js';
 import {createLocalClient} from '../../lib/bw-fpga/local-client.js';
 import {probeFlash, flashBitstream} from '../../lib/bw-fpga/fpga-tauri-transport.js';
+import {webUsbSupported} from '../../lib/bw-fpga/webusb-flash.js';
 import {defaultCatalog, probeBackends, selectBackend, offerable}
     from '../../lib/bw-fpga/backends.js';
 
@@ -534,10 +535,21 @@ const FpgaTab = () => {
                                 ) : null}
                                 {flashMsg ? <span style={{marginLeft: '0.5rem', opacity: 0.85}}>{flashMsg}</span> : null}
                                 <div style={{opacity: 0.7, fontSize: '0.85em', marginTop: '0.25rem'}}>
-                                    {flash.available
-                                        ? 'Flashing runs openFPGALoader in the native app.'
-                                        : 'A browser cannot flash. With the board on USB: '}
-                                    {flash.available ? null : <code>{'openFPGALoader -b tangnano20k design.fs'}</code>}
+                                    {flash.available ? (
+                                        'Flashing runs openFPGALoader in the native app.'
+                                    ) : (
+                                        <>
+                                            {'A browser cannot flash yet. With the board on USB, use the CLI '}
+                                            <code>{'bw-fpga flash ./design.fs'}</code>{' or '}
+                                            <code>{'openFPGALoader -b tangnano20k design.fs'}</code>{'.'}
+                                            {webUsbSupported() ? (
+                                                <div style={{marginTop: '0.15rem'}}>
+                                                    {'Your browser has WebUSB; direct in-browser flashing is '
+                                                        + 'planned (TANG-NANO §TN4) but not built yet.'}
+                                                </div>
+                                            ) : null}
+                                        </>
+                                    )}
                                 </div>
                             </>
                         ) : artefacts.netlist ? (

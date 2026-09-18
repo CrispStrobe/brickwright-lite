@@ -639,6 +639,32 @@ flashing needs a board on USB — which this VM has no passthrough for. So the
 acceptance criterion (a board blinks from our bitstream) is unmet until those
 commands exist and someone runs it on hardware. The JS half is ready for them.
 
+**And what DOES flash today, without the native app:** the `bw-fpga` CLI
+(`scripts/bw-fpga.mjs`) — `bw-fpga flash ./design.fs` shells to openFPGALoader —
+and openFPGALoader run directly. The tab's browser path names both.
+
+#### TN4b — Flashing from the browser over WebUSB (scaffold in, flasher not)
+
+**Why a scaffold and not a flasher.** Direct browser flashing means reimplementing,
+over WebUSB, what openFPGALoader does against the board's on-board USB→JTAG bridge:
+claim the bridge (an FTDI FT2232 on the common revision, a BL702 on newer ones —
+different command sets), drive JTAG (FTDI MPSSE bit-bang or the BL702 protocol),
+read IDCODE and check it is a GW2AR-18, then run the Gowin programming sequence
+(SRAM vs embedded flash: erase, stream the `.fs`, read back and verify) — bounded,
+cancellable, honest about a half-written flash. **Every step of that can only be
+validated against a real board** (exact descriptors, the bridge command set, JTAG
+timing), and this VM has no USB passthrough. Shipping an *untested* flasher would
+be exactly the "implies flashing works when it does not" that
+`fpga-surface-flag`'s honesty gate forbids.
+
+**What landed (`lib/bw-fpga/webusb-flash.js`):** the foundation that needs no
+hardware to be correct — `webUsbSupported()`, `requestBoard()` (the picker, scoped
+to `TANG_NANO_USB_FILTERS`), and `flashOverWebUsb()`, which returns a NAMED
+`not-implemented` refusal and **never a false success** (a unit test pins that
+invariant). The tab, when the browser has WebUSB, says direct flashing is planned
+here but not built — no button that pretends. The plan above is the whole of what
+is left; it wants a board on someone's desk, not more design.
+
 ### TN5a — LiteX + VexRiscv + Renode, the functional tier
 **Reconcile before planning.** Overlaps the UNCLAIMED Renode phases of the STM32
 lane (`LANES.md`, STM32 path lane) and the existing `wt-renode-*` worktrees. Talk to that
