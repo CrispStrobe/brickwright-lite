@@ -524,3 +524,32 @@ test('the demo board is wired on the loaded design\'s output pins', () => {
     assert.match(tab, /result\.leds\.map\(l => l\.pin\)/,
         'the message must report the pins actually wired');
 });
+
+// ── Rung 1: the synthesised design is drawn as gates (a visual analog) ──
+//
+// The whole app is visual; the FPGA tab was a Verilog textbox. HDL is not a
+// Scratch script, so the honest analog is a SCHEMATIC, not blocks. The tab now
+// draws the synthesised netlist as gates, laid out with elkjs, lighting the nets
+// whose value it knows. The heavy layout lib loads only when the view shows.
+
+test('the FPGA tab shows the synthesised design as a gate schematic', () => {
+    const tab = codeOnly(read(TAB));
+    assert.match(tab, /import\(\s*\/\*[^*]*\*\/\s*'\.\/fpga-schematic\.jsx'\)/,
+        'the schematic view must be its own lazy chunk (it pulls elkjs)');
+    assert.match(tab, /<FpgaSchematic netlistText=\{netlistText\} netValues=\{netValues\}/,
+        'the tab must render the schematic from the same netlist the sim reads, with known net values');
+});
+
+test('the schematic model and view exist and are wired to elkjs, not a heavy renderer', () => {
+    const model = read('overlay/scratch-gui/src/lib/bw-fpga/schematic.js');
+    assert.match(model, /export function buildSchematicModel/,
+        'a pure model builder must exist (testable without a browser)');
+    assert.match(model, /org\.eclipse\.elk\.algorithm/,
+        'layout must be elkjs — no jointjs/MPL renderer pulled into the bundle');
+    const view = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-schematic.jsx');
+    assert.match(view, /elkjs\/lib\/elk\.bundled\.js/, 'the view lays out with elkjs');
+    assert.match(view, /buildSchematicModel/, 'the view draws the pure model');
+    // Honesty: an unknown net is drawn as unknown, never guessed to 0.
+    assert.match(view, /a wire lights with the value it carries|wireColor/, 'wires are coloured by real value');
+    assert.doesNotMatch(view, /@joint|jointjs/, 'no jointjs — the team avoided that dependency on purpose');
+});
