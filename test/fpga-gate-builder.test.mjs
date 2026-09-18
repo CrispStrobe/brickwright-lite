@@ -140,3 +140,92 @@ test('modelToCst places each I/O on a pin — a clock on 4, outputs on LED pins'
     // gates are not ports and must not be placed
     assert.doesNotMatch(cst, /"g"/);
 });
+
+// ── hierarchy: a subcircuit becomes a module, reused via instances ──
+const HALF_ADDER = {
+    name: 'half_adder',
+    nodes: [
+        {id: 'a', kind: 'in', name: 'a'}, {id: 'b', kind: 'in', name: 'b'},
+        {id: 'x', kind: 'gate', type: 'xor'}, {id: 'c', kind: 'gate', type: 'and'},
+        {id: 's', kind: 'out', name: 'sum'}, {id: 'co', kind: 'out', name: 'carry'}
+    ],
+    edges: [
+        {from: {node: 'a', port: 'out'}, to: {node: 'x', port: 'a'}},
+        {from: {node: 'b', port: 'out'}, to: {node: 'x', port: 'b'}},
+        {from: {node: 'a', port: 'out'}, to: {node: 'c', port: 'a'}},
+        {from: {node: 'b', port: 'out'}, to: {node: 'c', port: 'b'}},
+        {from: {node: 'x', port: 'out'}, to: {node: 's', port: 'in'}},
+        {from: {node: 'c', port: 'out'}, to: {node: 'co', port: 'in'}}
+    ]
+};
+
+test('a subcircuit is emitted as its own module and instantiated in the top', () => {
+    const model = {
+        modules: [HALF_ADDER],
+        nodes: [
+            {id: 'i1', kind: 'in', name: 'p'}, {id: 'i2', kind: 'in', name: 'q'},
+            {id: 'ha', kind: 'instance', module: 'half_adder'},
+            {id: 'o1', kind: 'out', name: 's'}, {id: 'o2', kind: 'out', name: 'cout'}
+        ],
+        edges: [
+            {from: {node: 'i1', port: 'out'}, to: {node: 'ha', port: 'a'}},
+            {from: {node: 'i2', port: 'out'}, to: {node: 'ha', port: 'b'}},
+            {from: {node: 'ha', port: 'sum'}, to: {node: 'o1', port: 'in'}},
+            {from: {node: 'ha', port: 'carry'}, to: {node: 'o2', port: 'in'}}
+        ]
+    };
+    const {verilog, problems} = modelToVerilog(model);
+    assert.deepEqual(problems, []);
+    assert.match(verilog, /module half_adder\(input a, input b, output sum, output carry\);/);
+    assert.match(verilog, /assign w_x = a \^ b;/, 'the subcircuit body is generated');
+    // the top instantiates it, wiring the parent nets to the module ports
+    assert.match(verilog, /half_adder ha\(\.a\(p\), \.b\(q\), \.sum\(w_ha_sum\), \.carry\(w_ha_carry\)\);/);
+    assert.match(verilog, /assign s = w_ha_sum;/, 'an instance output drives its own wire');
+});
+
+test('two instances of a subcircuit get independent wires (a full-adder from two half-adders)', () => {
+    const model = {
+        modules: [HALF_ADDER],
+        nodes: [
+            {id: 'h1', kind: 'instance', module: 'half_adder'},
+            {id: 'h2', kind: 'instance', module: 'half_adder'},
+            {id: 'a', kind: 'in', name: 'a'}, {id: 'o', kind: 'out', name: 'y'}
+        ],
+        edges: [
+            {from: {node: 'a', port: 'out'}, to: {node: 'h1', port: 'a'}},
+            {from: {node: 'h1', port: 'sum'}, to: {node: 'h2', port: 'a'}},
+            {from: {node: 'h2', port: 'sum'}, to: {node: 'o', port: 'in'}}
+        ]
+    };
+    const {verilog} = modelToVerilog(model);
+    assert.match(verilog, /wire w_h1_sum;/);
+    assert.match(verilog, /wire w_h2_sum;/, 'each instance has its own output wires');
+    assert.match(verilog, /half_adder h2\(\.a\(w_h1_sum\)/, 'one instance feeds the next');
+});
+
+test('an instance of an unknown module is a named problem', () => {
+    const {problems} = modelToVerilog({
+        nodes: [{id: 'u', kind: 'instance', module: 'nope'}, {id: 'o', kind: 'out', name: 'y'}],
+        edges: [{from: {node: 'u', port: 'out'}, to: {node: 'o', port: 'in'}}]
+    });
+    assert.ok(problems.some(p => p.code === 'unknown-module'));
+});
+
+// ── buses: a multi-bit port/gate declares its width ──
+test('a multi-bit input, gate and output declare [N-1:0]', () => {
+    const model = {
+        nodes: [
+            {id: 'a', kind: 'in', name: 'a', width: 4}, {id: 'b', kind: 'in', name: 'b', width: 4},
+            {id: 'g', kind: 'gate', type: 'and', width: 4}, {id: 'y', kind: 'out', name: 'y', width: 4}
+        ],
+        edges: [
+            {from: {node: 'a', port: 'out'}, to: {node: 'g', port: 'a'}},
+            {from: {node: 'b', port: 'out'}, to: {node: 'g', port: 'b'}},
+            {from: {node: 'g', port: 'out'}, to: {node: 'y', port: 'in'}}
+        ]
+    };
+    const {verilog} = modelToVerilog(model);
+    assert.match(verilog, /input \[3:0\] a, input \[3:0\] b, output \[3:0\] y/);
+    assert.match(verilog, /wire \[3:0\] w_g;/);
+    assert.match(verilog, /assign w_g = a & b;/, 'the operator is bit-parallel over the bus');
+});
