@@ -1,0 +1,68 @@
+{
+  "creator": "Yosys 0.69 (git sha1 9f75ca1f9, Release, Clang /workspace/YoWASP/yosys/wasi-sdk-33.0-x86_64-linux/share/cmake/../..//bin/clang++ 22.1.0)",
+  "modules": {
+    "chaser": {
+      "attributes": {
+        "top": "00000000000000000000000000000001",
+        "src": "chaser.v:1.1-5.10"
+      },
+      "ports": {
+        "clk": {
+          "direction": "input",
+          "bits": [ 2 ]
+        },
+        "led": {
+          "direction": "output",
+          "bits": [ 3, 4, 5, 6 ]
+        }
+      },
+      "cells": {
+        "$procdff$3": {
+          "hide_name": 1,
+          "type": "$dff",
+          "parameters": {
+            "CLK_POLARITY": "1",
+            "WIDTH": "00000000000000000000000000000100"
+          },
+          "attributes": {
+            "src": "chaser.v:3.3-3.51"
+          },
+          "port_directions": {
+            "CLK": "input",
+            "D": "input",
+            "Q": "output"
+          },
+          "connections": {
+            "CLK": [ 2 ],
+            "D": [ 6, 3, 4, 5 ],
+            "Q": [ 3, 4, 5, 6 ]
+          }
+        }
+      },
+      "netnames": {
+        "clk": {
+          "hide_name": 0,
+          "bits": [ 2 ],
+          "attributes": {
+            "src": "chaser.v:1.21-1.24"
+          }
+        },
+        "led": {
+          "hide_name": 0,
+          "bits": [ 3, 4, 5, 6 ],
+          "attributes": {
+            "src": "chaser.v:1.39-1.42"
+          }
+        },
+        "pos": {
+          "hide_name": 0,
+          "bits": [ 3, 4, 5, 6 ],
+          "attributes": {
+            "init": "0001",
+            "src": "chaser.v:2.13-2.16"
+          }
+        }
+      }
+    }
+  }
+}

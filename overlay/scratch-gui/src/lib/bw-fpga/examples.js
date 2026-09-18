@@ -80,5 +80,26 @@ export const EXAMPLES = Object.freeze([
             + 'IO_LOC "led[2]" 17;\nIO_LOC "led[3]" 18;\n'
             + 'IO_PORT "led[0]" IO_TYPE=LVCMOS33;\nIO_PORT "led[1]" IO_TYPE=LVCMOS33;\n'
             + 'IO_PORT "led[2]" IO_TYPE=LVCMOS33;\nIO_PORT "led[3]" IO_TYPE=LVCMOS33;\n'
+    }),
+    Object.freeze({
+        id: 'chaser',
+        label: 'LED chaser — a moving light',
+        blurb: 'The most fun to step: one lit LED rotates across the four with every '
+            + 'clock — 0001 → 0010 → 0100 → 1000 → back again. A 4-bit register initialised '
+            + 'to one bit and rotated left, so it needs no reset and moves on every edge. '
+            + 'Synthesise it, then hold Step clock (or +8) and watch the light chase around '
+            + 'the board. This is the “Knight Rider” a first FPGA is for.',
+        // Reset-free with an initialised register — the tab rebuilds the sim each
+        // step and only clocks, so (like `sequence`) the flop must start defined.
+        verilog: 'module chaser(input clk, output [3:0] led);\n'
+            + '  reg [3:0] pos = 4\'b0001;\n'
+            + '  always @(posedge clk) pos <= {pos[2:0], pos[3]};\n'
+            + '  assign led = pos;\n'
+            + 'endmodule\n',
+        cst: 'IO_LOC "clk" 4;\nIO_PORT "clk" IO_TYPE=LVCMOS33;\n'
+            + 'IO_LOC "led[0]" 15;\nIO_LOC "led[1]" 16;\n'
+            + 'IO_LOC "led[2]" 17;\nIO_LOC "led[3]" 18;\n'
+            + 'IO_PORT "led[0]" IO_TYPE=LVCMOS33;\nIO_PORT "led[1]" IO_TYPE=LVCMOS33;\n'
+            + 'IO_PORT "led[2]" IO_TYPE=LVCMOS33;\nIO_PORT "led[3]" IO_TYPE=LVCMOS33;\n'
     })
 ]);
