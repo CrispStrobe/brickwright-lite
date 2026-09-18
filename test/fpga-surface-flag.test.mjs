@@ -596,3 +596,19 @@ test('the gate-builder Verilog generator is pure and refuses to emit illegal HDL
     assert.match(ui, /modelToVerilog\(model\)/, 'the UI must generate via the tested pure function');
     assert.doesNotMatch(ui, /'module '|`module /, 'the UI must not build Verilog strings itself');
 });
+
+// ── B: internal-wire liveness in the schematic ──
+test('the schematic can light INTERNAL wires, defensively and without regression', () => {
+    const sim = read('overlay/scratch-gui/src/lib/bw-fpga/sim.js');
+    assert.match(sim, /netValue \(net\)/, 'the sim must read a single named net');
+    assert.match(sim, /catch \(e\) \{ \/\* engine internals shifted/,
+        'the read must NEVER throw — the engine graph is not a stable surface');
+    assert.match(sim, /return null;/, 'an unreadable net returns null, so the caller draws it unknown');
+    const view = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-schematic.jsx');
+    assert.match(view, /liveNet\[net\] !== undefined \? liveNet\[net\]/,
+        'a live internal value wins, but falls back to the I/O values — additive only');
+    assert.match(view, /sim\.netValues\(nets\)/, 'the schematic reads every net of its own settle');
+    // The tab feeds the schematic the live clock/inputs so it reflects the board.
+    const tab = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx');
+    assert.match(tab, /<FpgaSchematic[^>]*inputs=\{inputs\} clockCycles=\{clockCycles\}/);
+});
