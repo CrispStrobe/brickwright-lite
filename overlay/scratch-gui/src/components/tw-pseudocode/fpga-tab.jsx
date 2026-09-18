@@ -88,6 +88,9 @@ const FpgaWaveform = React.lazy(() =>
 // Rung 3: build logic by placing gates, no Verilog typed. Shares the elkjs chunk.
 const FpgaGateBuilder = React.lazy(() =>
     import(/* webpackChunkName: "bw-fpga-schematic" */ './fpga-gate-builder.jsx'));
+// The React Flow canvas (MIT): drag/zoom node editor, its own chunk.
+const FpgaGateBuilderRf = React.lazy(() =>
+    import(/* webpackChunkName: "bw-fpga-rf" */ './fpga-gate-builder-rf.jsx'));
 
 // A copyleft source needs the local tier, and asking the selector for that
 // capability is how the refusal comes back NAMED rather than as a mystery.
@@ -556,6 +559,16 @@ const FpgaTab = () => {
                 <div style={{marginTop: '0.6rem'}}>
                     <React.Suspense fallback={<p style={{opacity: 0.7}}>{'Loading the gate builder…'}</p>}>
                         <FpgaGateBuilder onUseVerilog={(v, cst) => { setHdl(v); if (cst) setText(cst); setSynth(null); }} />
+                    </React.Suspense>
+                </div>
+            </details>
+            <details style={{margin: '0 0 0.75rem'}}>
+                <summary style={{cursor: 'pointer'}}>
+                    {'…or on a full canvas — drag, zoom, and wire (React Flow)'}
+                </summary>
+                <div style={{marginTop: '0.6rem'}}>
+                    <React.Suspense fallback={<p style={{opacity: 0.7}}>{'Loading the canvas…'}</p>}>
+                        <FpgaGateBuilderRf onUseVerilog={(v, cst) => { setHdl(v); if (cst) setText(cst); setSynth(null); }} />
                     </React.Suspense>
                 </div>
             </details>

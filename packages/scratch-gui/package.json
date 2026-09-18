@@ -114,6 +114,7 @@
     "@codemirror/theme-one-dark": "^6.1.2",
     "bw-board": "github:CrispStrobe/bw-board#d4cb508933ac96d9ffea7cd453d204ae7c8065d2",
     "bw-circuit-ui": "github:CrispStrobe/bw-circuit-ui#6997596c2b3b9204e38458742d92b6f677e23274",
+    "@xyflow/react": "^12.3.0",
     "digitaljs": "0.14.2",
     "yosys2digitaljs": "0.10.3"
   },

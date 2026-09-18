@@ -636,3 +636,15 @@ test('the gate builder evaluates live and colours wires by value', () => {
     assert.match(ev, /export function stepClock/);
     assert.match(ev, /=== 'x'/, 'an unknown net stays x, never invented');
 });
+
+// ── the React Flow canvas foundation: a permissive dep + a tested bridge ──
+test('the gate builder canvas dep is React Flow (MIT), registered for the build', () => {
+    const integ = read('scripts/integrate.mjs');
+    assert.match(integ, /@xyflow\/react.*MIT/,
+        'the canvas library must be the MIT React Flow, registered with its licence like every dep');
+    const bridge = read('overlay/scratch-gui/src/lib/bw-fpga/gate-builder-rf.js');
+    assert.match(bridge, /export function reactFlowToModel/, 'React Flow state → our model (feeds the tested generator)');
+    assert.match(bridge, /export function modelToReactFlow/, 'our model → React Flow state (seeds the canvas)');
+    // positions are UI-only and must not leak into the logic model
+    assert.match(bridge, /Positions are UI-only and dropped/);
+});

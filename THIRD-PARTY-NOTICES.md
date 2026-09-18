@@ -1268,6 +1268,23 @@ core path goes red before this notice goes stale.
 No yosys2digitaljs source is modified; the package is consumed as a published
 npm dependency.
 
+## React Flow (@xyflow/react) — MIT
+
+**React Flow** (MIT, https://reactflow.dev, https://github.com/xyflow/xyflow),
+Copyright (c) xyflow GmbH, provides the interactive node/wire CANVAS for the FPGA
+gate builder — drag, pan, zoom, a minimap, and connectable handles. It is a UI
+library only; the design that synthesises stays this project's own model (a pure,
+tested bridge translates React Flow state, and our own generator emits the
+Verilog — xyflow does not).
+
+- **Package:** `@xyflow/react` (scope `xyflow`)
+- **Licence:** MIT — Copyright (c) xyflow GmbH
+- **Source:** https://github.com/xyflow/xyflow
+- **Usage:** lazy-imported and behind the FPGA build flag, so it is in the FPGA
+  chunk only. Its stylesheet is injected GLOBALLY via an inline-loader import,
+  because scratch-webpack-configuration hashes every `.css` and React Flow's own
+  global classes must survive.
+
 ## rp2040js — MIT
 
 **rp2040js** (MIT License, https://github.com/wokwi/rp2040js) provides the
