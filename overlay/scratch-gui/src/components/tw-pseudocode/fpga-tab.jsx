@@ -105,6 +105,9 @@ const FpgaTab = () => {
     // force-rendered (gui.jsx keeps every TabPanel mounted), so the interval
     // keeps advancing while the user watches the Controller view.
     const [autoRun, setAutoRun] = React.useState(false);
+    // Whether the design's outputs have been mirrored into the Controller/Widgets
+    // view yet — the last step of the first-run guide.
+    const [mirrored, setMirrored] = React.useState(false);
     // One-click demo board: wiring a Tang Nano + 4 LEDs so a synthesised counter
     // has something to light. Feedback only — the wiring happens on the live board.
     const [demoMsg, setDemoMsg] = React.useState(null);
@@ -437,7 +440,10 @@ const FpgaTab = () => {
                         hint: 'try “Counting sequence”, then Synthesise'},
                     {done: clockCycles > 0,
                         label: 'Step the clock',
-                        hint: 'the four LEDs count up in binary on the board'}
+                        hint: 'the four LEDs count up in binary on the board'},
+                    {done: mirrored,
+                        label: 'See it in the Controller view',
+                        hint: 'the ⎈ button under Clock mirrors the LEDs as widgets and runs the design'}
                 ];
                 const allDone = steps.every(s => s.done);
                 const hide = () => {
@@ -448,8 +454,8 @@ const FpgaTab = () => {
                     <div style={{border: '1px solid rgba(74,111,165,0.4)', borderRadius: 6,
                         padding: '0.75rem 1rem', margin: '0 0 1rem', background: 'rgba(74,111,165,0.07)'}}>
                         <strong>{allDone
-                            ? '🎉 You designed a chip, synthesised it, and watched it run.'
-                            : 'New to the FPGA lab? Three steps to see your logic light LEDs:'}</strong>
+                            ? '🎉 You designed a chip, synthesised it, and watched it light LEDs on the board and in the Widgets view.'
+                            : 'New to the FPGA lab? Four steps to see your logic light LEDs:'}</strong>
                         <ol style={{margin: '0.5rem 0 0.25rem', paddingLeft: '1.4rem'}}>
                             {steps.map((s, i) => (
                                 <li key={i} style={{opacity: s.done ? 0.55 : 1, margin: '0.15rem 0'}}>
@@ -798,6 +804,7 @@ const FpgaTab = () => {
                                         window.dispatchEvent(new CustomEvent('bw-fpga-leds',
                                             {detail: {pins: outputPins}}));
                                         setAutoRun(true);
+                                        setMirrored(true);
                                     }}
                                     style={{padding: '0.35rem 0.8rem', cursor: 'pointer'}}
                                 >{'⎈ Show the LEDs in the Controller view'}</button>
