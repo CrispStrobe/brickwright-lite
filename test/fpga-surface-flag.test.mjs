@@ -662,3 +662,13 @@ test('the React Flow builder composes: save a subcircuit and instantiate it', ()
     assert.match(bridge, /modules && modules\.length \? \{modules, nodes, edges\}/,
         'the bridge carries the subcircuit library into the model');
 });
+
+// ── bus wires: the canvas can make multi-bit ports ──
+test('the React Flow builder can set a node bit width (buses)', () => {
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /const \[newWidth, setNewWidth\]/, 'a width for the next node');
+    assert.match(ui, /data-testid="bw-fpga-rf-width"/, 'a width selector on the toolbar');
+    assert.match(ui, /width: newWidth/, 'new nodes take the chosen width');
+    const gb = read('overlay/scratch-gui/src/lib/bw-fpga/gate-builder.js');
+    assert.match(gb, /A multi-bit port needs ONE pin per bit/, 'a bus is constrained per-bit, or P&R fails');
+});

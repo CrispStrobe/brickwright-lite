@@ -201,17 +201,24 @@ export function modelToCst (model) {
         lines.push(`IO_LOC "${nm}" ${pin};`);
         lines.push(`IO_PORT "${nm}" IO_TYPE=LVCMOS33;`);
     };
+    // A multi-bit port needs ONE pin per bit — a bus placed on a single pin
+    // fails place-and-route. Each bit is constrained as name[i], the spelling the
+    // generated Verilog uses.
+    const placePort = (baseName, width, nextPin, who) => {
+        for (let bit = 0; bit < Math.max(1, width); bit++) {
+            const pin = nextPin();
+            if (pin === undefined) { problems.push({code: 'out-of-pins', reason: `No spare pin for ${who} "${baseName}".`}); return; }
+            place(width > 1 ? `${baseName}[${bit}]` : baseName, pin);
+        }
+    };
     for (const n of nodes) {
         if (n.kind === 'in') {
             const nm = ident(n.name, `in_${n.id}`);
-            const pin = /clk|clock/i.test(n.name || '') ? 4 : IN_PINS[ii++];
-            if (pin === undefined) { problems.push({code: 'out-of-pins', reason: `No spare pin for input "${nm}".`}); continue; }
-            place(nm, pin);
+            if ((n.width || 1) === 1 && /clk|clock/i.test(n.name || '')) { place(nm, 4); continue; }
+            placePort(nm, n.width || 1, () => IN_PINS[ii++], 'input');
         } else if (n.kind === 'out') {
             const nm = ident(n.name, `out_${n.id}`);
-            const pin = OUT_PINS[oi++];
-            if (pin === undefined) { problems.push({code: 'out-of-pins', reason: `No spare pin for output "${nm}".`}); continue; }
-            place(nm, pin);
+            placePort(nm, n.width || 1, () => OUT_PINS[oi++], 'output');
         }
     }
     return {cst: lines.join('\n') + '\n', problems};
