@@ -33,8 +33,14 @@ export const EXAMPLES = Object.freeze([
     }),
     Object.freeze({
         id: 'counter',
-        label: 'Counter — 6 LEDs',
-        blurb: 'Sequential: a 26-bit counter drives six LEDs. Its clock and reset are on-board (not header pins), so the pin checker flags them — correct: you flash this, you do not breadboard it.',
+        label: 'Counter — 6 LEDs (for the board)',
+        blurb: 'The one you FLASH, not the one you watch here. A 26-bit counter drives six '
+            + 'LEDs off ~cnt[25:20], so on the real 27 MHz board the top bit blinks a few '
+            + 'times a second — but that same ÷2²⁰ means the Step clock button would need a '
+            + 'million presses to move an LED in the simulator, so it looks frozen here. To '
+            + 'WATCH a counter count in the tab, use “Counting sequence”. Its clock and reset '
+            + 'are on-board pins (the checker flags them, correctly). This is a proven '
+            + 'reference bitstream — flash it and the board blinks.',
         verilog: 'module counter(input clk, input rst_n, output [5:0] led);\n'
             + '  reg [25:0] cnt;\n'
             + '  always @(posedge clk or negedge rst_n)\n'
