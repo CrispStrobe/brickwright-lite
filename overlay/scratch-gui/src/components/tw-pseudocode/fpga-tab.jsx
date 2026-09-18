@@ -326,6 +326,15 @@ const FpgaTab = () => {
             .map(b => b.pin);
         return [...new Set(pins)].sort((a, b) => a - b);
     }, [bindings]);
+    // The demo-board builder runs from async callbacks (it may wait for the
+    // Circuit tab to mount), so it reads the latest output pins through a ref
+    // rather than a stale closure — the board then matches whatever design is
+    // loaded when the button is pressed. Only trust the pins once a netlist
+    // exists: without one, port DIRECTIONS are unknown, so an input (a clock)
+    // would be miscounted as an output and get an LED. No netlist → the
+    // builder's own default (15–18) applies.
+    const outputPinsRef = React.useRef([]);
+    outputPinsRef.current = netlistText.trim() ? outputPins : [];
 
     // Drive the on-screen board with the design's outputs, through the live
     // Circuit model.
@@ -386,10 +395,20 @@ const FpgaTab = () => {
         : null);
     const buildOnCircuit = React.useCallback(c => {
         try {
-            buildDemoBoard(c);
-            setDemoMsg({ok: true, text: 'Wired a Tang Nano 20K with 4 LEDs on pins '
-                + '15–18. Load “Counting sequence”, Synthesise, then Step the clock — '
-                + 'they count up in binary on the board.'});
+            // Wire LEDs on the pins the LOADED design drives, so the board matches
+            // whatever example is open — not always 15–18. With no design yet, the
+            // builder's own default (pins 15–18) applies, which is where the
+            // “Counting sequence” and chaser examples put their LEDs.
+            const pins = outputPinsRef.current;
+            const result = buildDemoBoard(c, pins.length ? {pins} : {});
+            const litPins = result.leds.map(l => l.pin);
+            setDemoMsg({ok: true, text: `Wired a Tang Nano 20K with ${litPins.length} `
+                + `LED${litPins.length === 1 ? '' : 's'} on pin${litPins.length === 1 ? '' : 's'} `
+                + `${litPins.join(', ')}. `
+                + (pins.length
+                    ? 'Synthesise and Step the clock — they follow the design on the board.'
+                    : 'Load “Counting sequence”, Synthesise, then Step the clock — '
+                        + 'they count up in binary on the board.')});
         } catch (e) {
             setDemoMsg({ok: false, text: `Could not wire the demo board: ${e.message}`});
         }
