@@ -85,6 +85,9 @@ const FpgaSchematic = React.lazy(() =>
 // Rung 2 of the visual analog: the design's outputs as waveforms over time.
 const FpgaWaveform = React.lazy(() =>
     import(/* webpackChunkName: "bw-fpga-waveform" */ './fpga-waveform.jsx'));
+// Rung 3: build logic by placing gates, no Verilog typed. Shares the elkjs chunk.
+const FpgaGateBuilder = React.lazy(() =>
+    import(/* webpackChunkName: "bw-fpga-schematic" */ './fpga-gate-builder.jsx'));
 
 // A copyleft source needs the local tier, and asking the selector for that
 // capability is how the refusal comes back NAMED rather than as a mystery.
@@ -532,6 +535,16 @@ const FpgaTab = () => {
                     >{ex.label}</button>
                 ))}
             </p>
+            <details style={{margin: '0 0 0.75rem'}}>
+                <summary style={{cursor: 'pointer'}}>
+                    {'Or build it visually — place gates and wire them, no Verilog typed'}
+                </summary>
+                <div style={{marginTop: '0.6rem'}}>
+                    <React.Suspense fallback={<p style={{opacity: 0.7}}>{'Loading the gate builder…'}</p>}>
+                        <FpgaGateBuilder onUseVerilog={(v, cst) => { setHdl(v); if (cst) setText(cst); setSynth(null); }} />
+                    </React.Suspense>
+                </div>
+            </details>
             <p style={{margin: '0 0 0.75rem'}}>
                 <button
                     type="button"
