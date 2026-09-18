@@ -74,3 +74,42 @@ test('a 1-bit node does not carry a width field (kept minimal)', () => {
     const back = reactFlowToModel([{id: 'a', data: {kind: 'in', name: 'a', width: 1}}], []);
     assert.equal('width' in back.nodes[0], false, 'width 1 is the default and stays implicit');
 });
+
+// ── hierarchy on the canvas: a saved subcircuit library composes ──
+test('reactFlowToModel carries a subcircuit library through to the generator', () => {
+    const halfAdder = {
+        name: 'half_adder',
+        nodes: [
+            {id: 'a', kind: 'in', name: 'a'}, {id: 'b', kind: 'in', name: 'b'},
+            {id: 'x', kind: 'gate', type: 'xor'}, {id: 's', kind: 'out', name: 'sum'}
+        ],
+        edges: [
+            {from: {node: 'a', port: 'out'}, to: {node: 'x', port: 'a'}},
+            {from: {node: 'b', port: 'out'}, to: {node: 'x', port: 'b'}},
+            {from: {node: 'x', port: 'out'}, to: {node: 's', port: 'in'}}
+        ]
+    };
+    const rfNodes = [
+        {id: 'i', data: {kind: 'in', name: 'p'}},
+        {id: 'j', data: {kind: 'in', name: 'q'}},
+        {id: 'u', data: {kind: 'instance', module: 'half_adder'}},
+        {id: 'o', data: {kind: 'out', name: 'y'}}
+    ];
+    const rfEdges = [
+        {source: 'i', target: 'u', sourceHandle: 'out', targetHandle: 'a'},
+        {source: 'j', target: 'u', sourceHandle: 'out', targetHandle: 'b'},
+        {source: 'u', target: 'o', sourceHandle: 'sum', targetHandle: 'in'}
+    ];
+    const model = reactFlowToModel(rfNodes, rfEdges, [halfAdder]);
+    assert.equal(model.modules.length, 1, 'the library travels with the design');
+    const {verilog, problems} = modelToVerilog(model);
+    assert.deepEqual(problems, []);
+    assert.match(verilog, /module half_adder\(/, 'the subcircuit is emitted');
+    assert.match(verilog, /half_adder u\(\.a\(p\), \.b\(q\), \.sum\(w_u_sum\)\);/,
+        'instantiated in the top with both inputs wired');
+});
+
+test('no library means a plain flat model (no modules key)', () => {
+    const m = reactFlowToModel([{id: 'a', data: {kind: 'in', name: 'a'}}], []);
+    assert.equal('modules' in m, false);
+});

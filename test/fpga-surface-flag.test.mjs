@@ -648,3 +648,17 @@ test('the gate builder canvas dep is React Flow (MIT), registered for the build'
     // positions are UI-only and must not leak into the logic model
     assert.match(bridge, /Positions are UI-only and dropped/);
 });
+
+// ── visual hierarchy on the canvas: save a subcircuit, drop instances ──
+test('the React Flow builder composes: save a subcircuit and instantiate it', () => {
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /const saveSubcircuit = /, 'a design can be saved as a reusable subcircuit');
+    assert.match(ui, /derivePorts\(model\)/, 'its I/O become the subcircuit ports');
+    assert.match(ui, /const addInstance = /, 'a saved subcircuit can be dropped as an instance');
+    assert.match(ui, /instance: InstanceNode/, 'instances render with per-port handles');
+    assert.match(ui, /reactFlowToModel\(nodes, edges, library\)/,
+        'generate must pass the library so the Verilog carries every subcircuit as a module');
+    const bridge = read('overlay/scratch-gui/src/lib/bw-fpga/gate-builder-rf.js');
+    assert.match(bridge, /modules && modules\.length \? \{modules, nodes, edges\}/,
+        'the bridge carries the subcircuit library into the model');
+});
