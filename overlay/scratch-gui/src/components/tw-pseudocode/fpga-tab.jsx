@@ -4,6 +4,7 @@ import {parseCst, emitCst} from '../../lib/bw-fpga/cst.js';
 import {bridge, constraintsFromBindings} from '../../lib/bw-fpga/port-bridge.js';
 import {applyPortValues} from '../../lib/bw-fpga/drive.js';
 import {EXAMPLES} from '../../lib/bw-fpga/examples.js';
+import {buildDemoBoard} from '../../lib/bw-fpga/demo-board.js';
 import {readPorts, checkWidths, detectClockPort} from '../../lib/bw-fpga/yosys.js';
 // Small and dependency-free, so these stay static: the licence screen is useful
 // on its own, and the synthesis client's only job today is to refuse honestly.
@@ -96,6 +97,9 @@ const FpgaTab = () => {
     // design is combinational-until-clocked: at 0 the flops hold reset, and each
     // "Step" advances one whole cycle so the board can be read between clicks.
     const [clockCycles, setClockCycles] = React.useState(0);
+    // One-click demo board: wiring a Tang Nano + 4 LEDs so a synthesised counter
+    // has something to light. Feedback only — the wiring happens on the live board.
+    const [demoMsg, setDemoMsg] = React.useState(null);
     const [sim, setSim] = React.useState({values: {}, note: null, problems: []});
     const [hdl, setHdl] = React.useState('');
     const [synth, setSynth] = React.useState(null);
@@ -357,6 +361,32 @@ const FpgaTab = () => {
                         style={{marginLeft: '0.4rem', padding: '0.15rem 0.5rem', cursor: 'pointer'}}
                     >{ex.label}</button>
                 ))}
+            </p>
+            <p style={{margin: '0 0 0.75rem'}}>
+                <button
+                    type="button"
+                    onClick={() => {
+                        const c = (typeof window !== 'undefined') && window.__circuit;
+                        if (!c || typeof c.addPart !== 'function') {
+                            setDemoMsg({ok: false, text: 'Open the 🔌 Circuit tab once so the board '
+                                + 'exists, then try again.'});
+                            return;
+                        }
+                        try {
+                            buildDemoBoard(c);
+                            setDemoMsg({ok: true, text: 'Wired a Tang Nano 20K with 4 LEDs on pins '
+                                + '15–18. Load “Counting sequence”, Synthesise, then Step the clock — '
+                                + 'they count up in binary on the board.'});
+                        } catch (e) {
+                            setDemoMsg({ok: false, text: `Could not wire the demo board: ${e.message}`});
+                        }
+                    }}
+                    style={{padding: '0.2rem 0.6rem', cursor: 'pointer'}}
+                >{'⬢ Wire up a demo board'}</button>
+                {demoMsg ? (
+                    <span style={{marginLeft: '0.5rem', opacity: 0.9,
+                        color: demoMsg.ok ? '#2e7d32' : '#b34747'}}>{demoMsg.text}</span>
+                ) : null}
             </p>
             <textarea
                 value={hdl}
