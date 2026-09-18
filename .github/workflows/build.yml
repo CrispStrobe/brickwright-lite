@@ -145,16 +145,20 @@ jobs:
         run: node scripts/sync-labwired-wasm.mjs || echo "labwired-wasm unavailable — the heavy tier will not be offered"
       - name: Install
         run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+      # The deployable build below is flag-ON, and flag-on webpack aliases
+      # @yowasp/yosys to the REAL package (an off build gets the yosys-absent stub),
+      # so the local FPGA tier's worker resolves. ~75 MB, in the deploy build only.
+      - name: Install the local FPGA toolchain (the deployable build is flag-on)
+        run: cd packages/scratch-gui && npm install --no-save --ignore-scripts --legacy-peer-deps --no-audit --no-fund @yowasp/yosys
       - name: Apply the scratch-vm overlay (built-in extensions)
         run: node scripts/apply-vm-overlay.mjs
-      # The FPGA surface is behind BW_ENABLE_FPGA, off in every build here, and
-      # webpack genuinely drops it — verified by grepping the shipped
-      # github-pages artifact for six strings distinctive to it: zero hits in
-      # 123 MB. That is the feature AND the hole: webpack never PARSES those
-      # files, so a JSX error would wait months for somebody to set the flag.
-      # Seconds, in a job that already installed the GUI's babel; a whole
-      # flag-on build job would have cost a build slot this repo counts.
-      - name: Parse the flagged JSX that no build compiles
+      # The FPGA surface ships in the DEPLOYABLE build (BW_ENABLE_FPGA=1 above),
+      # behind a per-user opt-in (Settings ▸ FPGA lab, default off) and lazily
+      # loaded so it stays out of first paint — verify-boot-payload proves the
+      # heavy libs are not eager. The BROWSER-gate build below stays flag-off, so
+      # this parse still guards the flagged JSX for that path — cheap, and it also
+      # catches a syntax error before the deploy build reaches it.
+      - name: Parse the flagged JSX
         run: node scripts/check-flagged-jsx.mjs
       # Everything from here to `Serve the built app` is an INDEPENDENT check —
       # guards, unit tests, the lazy-bundle inspection, the debugger smoke test.
@@ -631,7 +635,7 @@ jobs:
       - name: Build the editor
         id: build_editor
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' && steps.package_provenance.outcome == 'success' }}
-        run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build
+        run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 BW_ENABLE_FPGA=1 BW_SYNTHESIS_ENDPOINT=https://synth.crispstro.be/api npm run build
 
       - name: Guard — emitted native broker proof bytes retain reviewed authority
         if: ${{ !cancelled() && steps.build_editor.outcome == 'success' }}
