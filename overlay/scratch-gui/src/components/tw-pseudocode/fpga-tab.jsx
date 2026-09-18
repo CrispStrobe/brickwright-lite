@@ -77,6 +77,12 @@ const loadSimulator = () => {
     return simModulePromise;
 };
 
+// The schematic view (Rung 1 of the FPGA visual analog): the synthesised design
+// drawn as gates. Its own chunk, because it pulls elkjs (layout) and the netlist
+// converter — loaded only when a design has been synthesised and the view shows.
+const FpgaSchematic = React.lazy(() =>
+    import(/* webpackChunkName: "bw-fpga-schematic" */ './fpga-schematic.jsx'));
+
 // A copyleft source needs the local tier, and asking the selector for that
 // capability is how the refusal comes back NAMED rather than as a mystery.
 const needsLocalTier = hdl => hdl.trim()
@@ -335,6 +341,15 @@ const FpgaTab = () => {
     // builder's own default (15–18) applies.
     const outputPinsRef = React.useRef([]);
     outputPinsRef.current = netlistText.trim() ? outputPins : [];
+    // What the schematic lights: the values we actually know — the design's
+    // inputs (set below) and its outputs (from the sim). Internal nets stay
+    // neutral until Rung 1's follow-up reads them from the live circuit.
+    const netValues = React.useMemo(() => {
+        const nv = {};
+        for (const [k, v] of Object.entries(inputs || {})) nv[k] = v;
+        for (const [k, v] of Object.entries(sim.values || {})) nv[k] = v;
+        return nv;
+    }, [inputs, sim.values]);
 
     // Drive the on-screen board with the design's outputs, through the live
     // Circuit model.
@@ -740,6 +755,20 @@ const FpgaTab = () => {
                             fontSize: '0.8rem', padding: '0.6rem', marginTop: '0.4rem'}}
                     />
                 </details>
+
+                {netlistText.trim() ? (
+                    <>
+                        <h3>{'Schematic — your design as gates'}</h3>
+                        <p style={{marginTop: 0, opacity: 0.8}}>
+                            {'This is the Verilog above, synthesised to logic gates. Inputs sit on '}
+                            {'the left, outputs on the right; a wire lights with the value it carries '}
+                            {'as you step the clock.'}
+                        </p>
+                        <React.Suspense fallback={<p style={{opacity: 0.7}}>{'Loading the schematic view…'}</p>}>
+                            <FpgaSchematic netlistText={netlistText} netValues={netValues} />
+                        </React.Suspense>
+                    </>
+                ) : null}
 
                 <h3>{`Reaches the board (${bindings.length})`}</h3>
                 <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
