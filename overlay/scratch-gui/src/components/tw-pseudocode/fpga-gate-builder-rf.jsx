@@ -1,7 +1,12 @@
 import React from 'react';
 import {ReactFlow, ReactFlowProvider, Background, Controls, MiniMap, addEdge,
     useNodesState, useEdgesState, Handle, Position} from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
+// React Flow's stylesheet uses GLOBAL classes (.react-flow__*) that its own JS
+// applies. scratch-webpack-configuration runs css-loader with `modules` on for
+// ALL .css, which would HASH those classes and break the canvas. The `!!` prefix
+// plus inline loaders bypass the configured rule and inject this one stylesheet
+// globally (css-loader defaults `modules` off).
+import '!!style-loader!css-loader!@xyflow/react/dist/style.css';
 import {GATE_DEFS, inputPorts, modelToVerilog, modelToCst} from '../../lib/bw-fpga/gate-builder.js';
 import {reactFlowToModel, modelToReactFlow} from '../../lib/bw-fpga/gate-builder-rf.js';
 
