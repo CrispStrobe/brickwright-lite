@@ -15,7 +15,7 @@
  * in `data`; a React Flow edge's source/target are node ids and its handles are
  * port names. Positions are UI-only and dropped — the model is about logic.
  *
- * @param {Array} rfNodes  React Flow nodes: {id, data:{kind, gtype?, name?, width?, module?}}
+ * @param {Array} rfNodes  React Flow nodes: {id, data:{kind, gtype?, name?, width?, module?, dataWidth?, addrWidth?}}
  * @param {Array} rfEdges  React Flow edges: {source, target, sourceHandle, targetHandle}
  * @param {Array} [modules]  saved subcircuits ({name, nodes, edges, ports}) to compose
  * @returns {{modules?: Array, nodes: Array, edges: Array}} our model
@@ -28,6 +28,8 @@ export function reactFlowToModel (rfNodes, rfEdges, modules) {
         if (d.name != null) node.name = d.name;
         if (d.width != null && d.width !== 1) node.width = d.width;
         if (d.module != null) node.module = d.module;
+        if (d.dataWidth != null) node.dataWidth = d.dataWidth;
+        if (d.addrWidth != null) node.addrWidth = d.addrWidth;
         return node;
     });
     const edges = (rfEdges || []).map(e => ({
@@ -49,12 +51,13 @@ export function reactFlowToModel (rfNodes, rfEdges, modules) {
  * @returns {{nodes: Array, edges: Array}} React Flow state
  */
 export function modelToReactFlow (model, positions = {}) {
-    const rfType = kind => (kind === 'in' || kind === 'out' ? 'io' : kind === 'instance' ? 'instance' : 'gate');
+    const rfType = kind => (kind === 'in' || kind === 'out' ? 'io' : kind === 'instance' ? 'instance' : kind === 'memory' ? 'memory' : 'gate');
     const nodes = ((model && model.nodes) || []).map((n, i) => ({
         id: n.id,
         type: rfType(n.kind),
         position: positions[n.id] || {x: i * 130, y: (i % 2) * 70},
-        data: {kind: n.kind, gtype: n.type, name: n.name, width: n.width || 1, module: n.module}
+        data: {kind: n.kind, gtype: n.type, name: n.name, width: n.width || 1, module: n.module,
+            dataWidth: n.dataWidth, addrWidth: n.addrWidth}
     }));
     const edges = ((model && model.edges) || []).map((e, i) => ({
         id: `e${i}`,

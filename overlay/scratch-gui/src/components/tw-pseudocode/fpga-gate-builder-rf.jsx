@@ -76,7 +76,28 @@ const InstanceNode = ({data}) => {
     );
 };
 
-const nodeTypes = {gate: GateNode, io: IoNode, instance: InstanceNode};
+// A synchronous single-port RAM: clk/addr/din/we in on the left, the registered
+// read data (dout) out on the right. The label shows its geometry (words x bits).
+const MEM_INS = ['clk', 'addr', 'din', 'we'];
+const MemoryNode = ({data}) => {
+    const dw = data.dataWidth || 4;
+    const aw = data.addrWidth || 2;
+    return (
+        <div style={{position: 'relative', minWidth: 84, minHeight: MEM_INS.length * 14 + 10,
+            padding: '6px 10px', border: '1.6px solid #0f766e', borderRadius: 6, background: '#f0fdfa',
+            textAlign: 'center', fontSize: 11, fontWeight: 'bold', color: '#0f766e'}}>
+            {MEM_INS.map((p, i) => (
+                <Handle key={p} type="target" position={Position.Left} id={p}
+                    style={{top: `${((i + 1) / (MEM_INS.length + 1)) * 100}%`, background: '#0284c7'}} />
+            ))}
+            <div>{'\u25A6 RAM'}</div>
+            <div style={{fontWeight: 'normal', opacity: 0.75}}>{`${1 << aw}\u00D7${dw}`}</div>
+            <Handle type="source" position={Position.Right} id="dout" style={{top: '50%', background: '#22c55e'}} />
+        </div>
+    );
+};
+
+const nodeTypes = {gate: GateNode, io: IoNode, instance: InstanceNode, memory: MemoryNode};
 
 // A starter so the canvas is not blank: a AND b → y.
 const STARTER = () => modelToReactFlow({
@@ -129,6 +150,12 @@ const InnerBuilder = ({onUseVerilog}) => {
             data: {kind, name: `${kind === 'in' ? 'in' : 'out'}${n}`, width: newWidth}
         }];
     });
+    // A RAM defaults to a 4x4 (2-bit addr, 4-bit data) — the shape that fits the
+    // header pins and is proven to place-and-route to a bitstream.
+    const addMemory = () => setNodes(ns => [...ns, {
+        id: nid('m'), type: 'memory', position: {x: 200, y: 40 + (ns.length % 6) * 50},
+        data: {kind: 'memory', dataWidth: 4, addrWidth: 2}
+    }]);
     const onConnect = React.useCallback(params => setEdges(es => addEdge(params, es)), [setEdges]);
 
     const generate = () => {
@@ -153,6 +180,8 @@ const InnerBuilder = ({onUseVerilog}) => {
                 {['and', 'or', 'not', 'xor', 'nand', 'nor', 'dff'].map(t => (
                     <button key={t} type="button" onClick={() => addGate(t)} style={{cursor: 'pointer'}}>{`+ ${GATE_DEFS[t].label}`}</button>
                 ))}
+                <button type="button" onClick={addMemory} title="A synchronous single-port RAM (4x4, fits the board pins)"
+                    style={{cursor: 'pointer'}} data-testid="bw-fpga-rf-memory">{'+ RAM'}</button>
                 <span style={{opacity: 0.4}}>{'|'}</span>
                 <button type="button" onClick={saveSubcircuit} title="Save this whole design as a reusable subcircuit"
                     style={{cursor: 'pointer'}} data-testid="bw-fpga-rf-save">{'⤓ Save as subcircuit'}</button>

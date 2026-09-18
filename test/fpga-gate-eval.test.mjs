@@ -121,3 +121,29 @@ test('a combinational loop settles to unknown, and never hangs', () => {
     const r = evalModel(m, {});
     assert.equal(r.outputs.y, 'x', 'a self-driven inverter has no defined level');
 });
+
+// A memory node is a synthesis-path feature — the 1-bit live evaluator does not
+// simulate RAM. It must DEGRADE, not crash: surrounding gates still evaluate,
+// and the un-simulated memory output reads 'x' rather than throwing.
+test('a memory node does not break live evaluation of the rest of the design', () => {
+    const model = {
+        nodes: [
+            {id: 'a', kind: 'in', name: 'a'}, {id: 'b', kind: 'in', name: 'b'},
+            {id: 'g', kind: 'gate', type: 'and'}, {id: 'y', kind: 'out', name: 'y'},
+            {id: 'ck', kind: 'in', name: 'clk'},
+            {id: 'ram', kind: 'memory', dataWidth: 4, addrWidth: 2},
+            {id: 'q', kind: 'out', name: 'q'}
+        ],
+        edges: [
+            {from: {node: 'a', port: 'out'}, to: {node: 'g', port: 'a'}},
+            {from: {node: 'b', port: 'out'}, to: {node: 'g', port: 'b'}},
+            {from: {node: 'g', port: 'out'}, to: {node: 'y', port: 'in'}},
+            {from: {node: 'ck', port: 'out'}, to: {node: 'ram', port: 'clk'}},
+            {from: {node: 'ram', port: 'dout'}, to: {node: 'q', port: 'in'}}
+        ]
+    };
+    const {outputs} = evalModel(model, {a: 1, b: 1});
+    assert.equal(outputs.y, 1, 'real gates still evaluate with a memory node present');
+    assert.equal(outputs.q, 'x', 'the un-simulated memory output is unknown, not a crash');
+    assert.doesNotThrow(() => stepClock(model, {a: 1, b: 1}));
+});
