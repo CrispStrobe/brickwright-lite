@@ -400,3 +400,20 @@ test('the tab drives the placed board through the PERSISTENT circuit handle', ()
     assert.match(tab, /typeof c\.setPin !== 'function'/,
         'it must NO-OP when no circuit has been loaded — fail-closed by presence');
 });
+
+test('the first-run guide tracks the three steps from real state, and can be hidden', () => {
+    const panel = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx');
+    // It must read the tab's actual state, not run a scripted tour that ticks
+    // steps the user never did.
+    assert.match(panel, /done: Boolean\(demoMsg && demoMsg\.ok\)/,
+        'step 1 (demo board) must reflect the real demo-board result');
+    assert.match(panel, /done: Boolean\(\(synth && synth\.ok\) \|\| netlistText\.trim\(\)\)/,
+        'step 2 (synthesise) must reflect a real netlist/synth result');
+    assert.match(panel, /done: clockCycles > 0/,
+        'step 3 (step the clock) must reflect real clock steps');
+    // It is dismissible per browser, and defaults to SHOWN (a new user sees it).
+    assert.match(panel, /localStorage\.setItem\('bw-fpga-guide-done', '1'\)/,
+        'hiding the guide must persist so it does not nag');
+    assert.match(panel, /getItem\('bw-fpga-guide-done'\) === '1'/,
+        'the guide is shown unless the user has hidden it (default: shown)');
+});
