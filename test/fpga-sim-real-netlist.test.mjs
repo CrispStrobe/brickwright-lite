@@ -73,3 +73,21 @@ test('port addressing is by NET name even when device ids are dev0/dev1', () => 
     assert.doesNotThrow(() => sim.setInput('clk', 0, 1).setInput('clk', 1, 1));
     assert.doesNotThrow(() => sim.getOutput('led'));
 });
+
+test('the LED chaser rotates a single lit bit (real netlist, clock-only)', () => {
+    const nl = fixture('chaser-sim.json');
+    const {ports} = readPorts(nl);
+    assert.equal(detectClockPort(ports), 'clk');
+    const {circuit, problems} = fromYosys(nl);
+    assert.deepEqual(problems, []);
+    // Mirror the tab: fresh sim per step, clock-only, from an initialised flop.
+    const step = n => {
+        const sim = new GateLevelSim(circuit, engine);
+        if (n > 0) assert.ok(sim.tickClock('clk', n).settled);
+        else assert.ok(sim.settle().settled);
+        return sim.outputValues(ports).values.led;
+    };
+    assert.equal(step(0), 1, 'the light starts at led[0] (0001)');
+    assert.deepEqual([1, 2, 3, 4, 5].map(step), [2, 4, 8, 1, 2],
+        'the lit bit rotates left and wraps: 0001→0010→0100→1000→0001→0010');
+});
