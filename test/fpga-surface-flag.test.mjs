@@ -400,3 +400,16 @@ test('the tab drives the placed board through the PERSISTENT circuit handle', ()
     assert.match(tab, /typeof c\.setPin !== 'function'/,
         'it must NO-OP when no circuit has been loaded — fail-closed by presence');
 });
+
+test('the demo board WAKES the lazily-mounted circuit designer instead of just refusing', () => {
+    // Real-browser finding: a user who opts in and lands on the FPGA tab has no
+    // window.__circuit (the designer mounts only once its own tab is visited), so
+    // the demo board — and the drive seam — had nothing to build on. The button
+    // now wakes the designer (mount-only) and waits for the handle.
+    const tab = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx');
+    assert.match(tab, /new CustomEvent\('bw-circuit-file'[\s\S]{0,120}mountOnly: true/,
+        'the demo board must wake the designer, not only tell the user to visit Circuit');
+    const circuitTab = read('overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx');
+    assert.match(circuitTab, /if \(detail\.mountOnly\) \{ this\.load\(\{explicit: true\}\); return; \}/,
+        'circuit-tab must honour a mount-only wake so the FPGA tab can bring the designer up');
+});

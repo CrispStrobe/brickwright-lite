@@ -159,6 +159,10 @@ class CircuitTab extends React.Component {
         if (this.state.Designer || this.state.error) return;
         const detail = (e && e.detail) || {};
         if (detail.bwReplay) return;
+        // A mount-only wake carries no action to replay: another surface (the FPGA
+        // tab) needs the live circuit handle (window.__circuit / vm.runtime.circuitModel)
+        // and has to bring the designer up without a File-menu action running.
+        if (detail.mountOnly) { this.load({explicit: true}); return; }
         this._circuitFilePending = detail.action || null;
         if (this._circuitFilePending) this.load({explicit: true});
     }

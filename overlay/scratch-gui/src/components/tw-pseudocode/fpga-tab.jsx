@@ -365,15 +365,31 @@ const FpgaTab = () => {
             <p style={{margin: '0 0 0.75rem'}}>
                 <button
                     type="button"
-                    onClick={() => {
-                        const c = (typeof window !== 'undefined') && window.__circuit;
-                        if (!c || typeof c.addPart !== 'function') {
-                            setDemoMsg({ok: false, text: 'Open the 🔌 Circuit tab once so the board '
-                                + 'exists, then try again.'});
+                    onClick={async () => {
+                        const has = () => typeof window !== 'undefined' && window.__circuit
+                            && typeof window.__circuit.addPart === 'function';
+                        // The circuit designer mounts lazily, only when its own tab has
+                        // been visited — so a user who opts in and lands straight here
+                        // has no live board yet. Wake it (mount-only, no File action)
+                        // and wait briefly for the handle it publishes, so the demo
+                        // works without a detour through the Circuit tab.
+                        if (!has()) {
+                            setDemoMsg({ok: true, text: 'Starting the circuit board…'});
+                            if (typeof window !== 'undefined') {
+                                window.dispatchEvent(new CustomEvent('bw-circuit-file',
+                                    {detail: {mountOnly: true}}));
+                            }
+                            for (let i = 0; i < 80 && !has(); i++) {
+                                await new Promise(r => setTimeout(r, 100));
+                            }
+                        }
+                        if (!has()) {
+                            setDemoMsg({ok: false, text: 'The circuit board did not start. Open the '
+                                + '🔌 Circuit tab once, then try again.'});
                             return;
                         }
                         try {
-                            buildDemoBoard(c);
+                            buildDemoBoard(window.__circuit);
                             setDemoMsg({ok: true, text: 'Wired a Tang Nano 20K with 4 LEDs on pins '
                                 + '15–18. Load “Counting sequence”, Synthesise, then Step the clock — '
                                 + 'they count up in binary on the board.'});
