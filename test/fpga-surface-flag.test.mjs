@@ -572,4 +572,24 @@ test('the waveform builder is pure and honest about unknown values', () => {
         'the sim must record outputs per cycle, bounded by a cap');
     assert.match(sim, /Math\.min\(Math\.max\(0, cycles \| 0\), cap\)/,
         'the trace length must be bounded so a large step count cannot build an unbounded array');
+
+// ── Rung 3: build logic by placing gates, no Verilog typed ──
+test('the FPGA tab offers a visual gate builder that feeds the Verilog box', () => {
+    const tab = codeOnly(read(TAB));
+    assert.match(tab, /import\(\s*\/\*[^*]*\*\/\s*'\.\/fpga-gate-builder\.jsx'\)/,
+        'the gate builder is its own lazy chunk (shared with the schematic)');
+    assert.match(tab, /<FpgaGateBuilder onUseVerilog=\{v => \{ setHdl\(v\); setSynth\(null\); \}\}/,
+        'building gates must drop generated Verilog into the box, so it synthesises like any design');
+});
+
+test('the gate-builder Verilog generator is pure and refuses to emit illegal HDL', () => {
+    const gb = read('overlay/scratch-gui/src/lib/bw-fpga/gate-builder.js');
+    assert.match(gb, /export function modelToVerilog/, 'a pure generator exists (fully tested)');
+    assert.match(gb, /unconnected-input/, 'a floating input is a NAMED problem, tied low, not illegal HDL');
+    assert.match(gb, /replace\(\/\[\^A-Za-z0-9_\]\/g/, 'user names are sanitised to legal identifiers');
+    // The builder UI must not itself contain HDL string-building — that lives in
+    // the tested pure module.
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder.jsx');
+    assert.match(ui, /modelToVerilog\(model\)/, 'the UI must generate via the tested pure function');
+    assert.doesNotMatch(ui, /'module '|`module /, 'the UI must not build Verilog strings itself');
 });
