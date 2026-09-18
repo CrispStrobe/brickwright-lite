@@ -133,17 +133,12 @@ test('the pin checker is a collapsed panel, not the first thing shown', () => {
     assert.ok(synth > 0 && checker > synth, 'the pin checker must appear after the synth flow');
 });
 
-test('every import in the flagged surface resolves — because NO build compiles it', () => {
-    // The hole this closes: CI only ever builds with BW_ENABLE_FPGA off, and the
-    // flag-off build genuinely drops this file (verified by grepping the shipped
-    // github-pages artifact for its strings — zero hits). Both facts together
-    // mean webpack NEVER parses fpga-tab.jsx in CI, so a renamed or moved module
-    // would break the surface and no gate would say a word until someone turned
-    // the flag on.
-    //
-    // A full flag-on build would catch more, and costs a build slot on a repo
-    // that counts them. This catches the likely failure -- a path that stopped
-    // existing -- for nothing.
+test('every import in the flagged surface resolves', () => {
+    // The DEPLOYABLE build is now flag-on and compiles this file, so a moved or
+    // renamed module would fail that build. But the BROWSER-gate build stays
+    // flag-off and never parses fpga-tab.jsx, and this test is milliseconds
+    // against a build slot the repo counts — so it keeps catching the likely
+    // failure (a path that stopped existing) without waiting on a webpack run.
     const panelPath = 'overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx';
     const panel = read(panelPath);
     const dir = resolve(here, '..', dirname(panelPath));
