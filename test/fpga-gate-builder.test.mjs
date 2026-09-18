@@ -246,3 +246,31 @@ test('a bus port is constrained one pin per bit (a single pin would fail P&R)', 
     assert.match(clk, /IO_LOC "clk" 4;/);
     assert.doesNotMatch(clk, /clk\[/);
 });
+
+test('a memory node emits a synchronous single-port RAM (Yosys infers a $mem)', () => {
+    const model = {nodes: [
+        {id: 'clk', kind: 'in', name: 'clk'}, {id: 'a', kind: 'in', name: 'addr', width: 4},
+        {id: 'd', kind: 'in', name: 'din', width: 8}, {id: 'we', kind: 'in', name: 'we'},
+        {id: 'ram', kind: 'memory', dataWidth: 8, addrWidth: 4},
+        {id: 'o', kind: 'out', name: 'q', width: 8}
+    ], edges: [
+        {from: {node: 'clk', port: 'out'}, to: {node: 'ram', port: 'clk'}},
+        {from: {node: 'a', port: 'out'}, to: {node: 'ram', port: 'addr'}},
+        {from: {node: 'd', port: 'out'}, to: {node: 'ram', port: 'din'}},
+        {from: {node: 'we', port: 'out'}, to: {node: 'ram', port: 'we'}},
+        {from: {node: 'ram', port: 'dout'}, to: {node: 'o', port: 'in'}}
+    ]};
+    const {verilog, problems} = modelToVerilog(model);
+    assert.deepEqual(problems, []);
+    assert.match(verilog, /reg \[7:0\] mem_ram \[0:15\];/, 'a 16 x 8-bit reg array');
+    assert.match(verilog, /if \(we\) mem_ram\[addr\] <= din;/, 'write on write-enable');
+    assert.match(verilog, /w_ram <= mem_ram\[addr\];/, 'a registered (synchronous) read');
+    assert.match(verilog, /assign q = w_ram;/, 'the read data drives the output');
+});
+
+test('a memory with no clock wired is a named problem', () => {
+    const {problems} = modelToVerilog({nodes: [
+        {id: 'ram', kind: 'memory'}, {id: 'o', kind: 'out', name: 'q'}
+    ], edges: [{from: {node: 'ram', port: 'dout'}, to: {node: 'o', port: 'in'}}]});
+    assert.ok(problems.some(p => p.code === 'memory-no-clock'));
+});
