@@ -21,10 +21,12 @@ const loadElk = () => {
     return elkPromise;
 };
 
-// Colour a wire by its known value: driven-high green, driven-low slate, and a
-// neutral grey when the value is unknown (an internal net we do not read yet, or
-// a multi-bit bus). Never guesses — an unknown wire looks unknown.
-const wireColor = v => (v === 1 || v === '1' ? '#22c55e' : (v === 0 || v === '0' ? '#64748b' : '#cbd5e1'));
+// Colour a wire by its known value. Never guesses — an unknown wire looks unknown.
+const isHigh = v => v === 1 || v === '1' || v === true;
+const isLow = v => v === 0 || v === '0' || v === false;
+// green driven-high, slate driven-low, neutral grey when unknown (an internal
+// net we do not read yet, or a multi-bit bus). Never guesses.
+const wireColor = v => (isHigh(v) ? '#22c55e' : (isLow(v) ? '#64748b' : '#cbd5e1'));
 
 const NodeBox = ({node, laid}) => {
     const {x, y, width, height} = laid;
@@ -102,7 +104,6 @@ const FpgaSchematic = ({netlistText, netValues}) => {
     const model = parsed.model;
     const nodesById = Object.fromEntries(model.nodes.map(n => [n.id, n]));
     const edgesById = Object.fromEntries(model.edges.map(e => [e.id, e]));
-    const laidById = Object.fromEntries((graph.children || []).map(c => [c.id, c]));
     const W = Math.max(graph.width || 0, 40) + 16;
     const H = Math.max(graph.height || 0, 40) + 16;
 
@@ -133,7 +134,7 @@ const FpgaSchematic = ({netlistText, netValues}) => {
                                 .map(p => `${p.x},${p.y}`).join(' ');
                             return (
                                 <polyline key={e.id} points={pts} fill="none"
-                                    stroke={wireColor(v)} strokeWidth={v === 1 || v === '1' ? 2.4 : 1.6}
+                                    stroke={wireColor(v)} strokeWidth={isHigh(v) ? 2.4 : 1.6}
                                     data-testid={`bw-fpga-wire-${edge ? edge.net : e.id}`}
                                     data-value={v === undefined ? 'x' : String(v)} />
                             );
