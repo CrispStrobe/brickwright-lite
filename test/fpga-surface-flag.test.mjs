@@ -417,3 +417,39 @@ test('the first-run guide tracks the three steps from real state, and can be hid
     assert.match(panel, /getItem\('bw-fpga-guide-done'\) === '1'/,
         'the guide is shown unless the user has hidden it (default: shown)');
 });
+
+// ── the demo board works OUT OF THE BOX, without a Circuit-tab detour ──
+//
+// The board only exists once the Circuit tab's designer has mounted and
+// published window.__circuit. A user who lands straight on the FPGA tab has
+// never opened Circuit, so a naive demo click had nothing to build on and the
+// old copy told them to "Open the 🔌 Circuit tab once … then try again" — a
+// dead end for the out-of-box case (#172 tried to force a hidden designer to
+// mount and could not: render() omits the designer under the default debugger
+// dock while this tab is visible). The fix asks the app to MAKE the Circuit tab
+// visible — the one path that reliably mounts the designer and publishes the
+// handle — then waits for it and builds. gui.jsx owns the tab list; the tab
+// only knows the index, so it dispatches an event gui.jsx listens for.
+
+test('the demo button asks the app to show the Circuit tab, then builds when the handle appears', () => {
+    const tab = codeOnly(read(TAB));
+    // It must dispatch the tab-activation request (it cannot flip tabs itself —
+    // gui.jsx owns the tab list), aimed at the Circuit tab index.
+    assert.match(tab, /dispatchEvent\(new CustomEvent\('bw-activate-tab'/,
+        'the demo button must ask gui.jsx to show a tab, not tell the user to do it by hand');
+    assert.match(tab, /detail: \{index: CIRCUIT_TAB_INDEX\}/,
+        'the activation request must name the Circuit tab, whose designer publishes window.__circuit');
+    // It must WAIT for the handle and then build — not assume it appears synchronously.
+    assert.match(tab, /buildDemoBoard\(/, 'it must actually wire the demo board');
+    assert.match(tab, /liveCircuit\(\)/,
+        'it must re-check for the live handle (the designer mounts asynchronously)');
+});
+
+test('gui.jsx flips to a tab when asked by bw-activate-tab, using the tab list it owns', () => {
+    const gui = codeOnly(read(GUI));
+    assert.match(gui, /addEventListener\('bw-activate-tab'/,
+        'gui.jsx must listen for the activation request — it is the only component that '
+        + 'owns onActivateTab and can make the Circuit tab visible');
+    assert.match(gui, /props\.onActivateTab\(idx\)/,
+        'the listener must drive the same tab-select path the tabs themselves use');
+});

@@ -205,6 +205,17 @@ const GUIComponent = props => {
             window.removeEventListener('bw-open-lessons', openLessons);
         };
     }, []);
+    // Let another surface (the FPGA tab) activate a tab by index — it needs the
+    // Circuit tab to become visible so its designer mounts and publishes the live
+    // circuit handle. The tab list lives here; the requester only knows the index.
+    React.useEffect(() => {
+        const onActivate = e => {
+            const idx = e && e.detail && e.detail.index;
+            if (typeof idx === 'number' && props.onActivateTab) props.onActivateTab(idx);
+        };
+        window.addEventListener('bw-activate-tab', onActivate);
+        return () => window.removeEventListener('bw-activate-tab', onActivate);
+    }, [props.onActivateTab]);
     const chooseStarter = React.useCallback(journey => {
         setStarterBusy(true);
         setStarterError('');
