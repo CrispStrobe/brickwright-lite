@@ -401,7 +401,7 @@ test('the tab drives the placed board through the PERSISTENT circuit handle', ()
         'it must NO-OP when no circuit has been loaded — fail-closed by presence');
 });
 
-test('the first-run guide tracks the three steps from real state, and can be hidden', () => {
+test('the first-run guide tracks its steps from real state, and can be hidden', () => {
     const panel = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx');
     // It must read the tab's actual state, not run a scripted tour that ticks
     // steps the user never did.
@@ -411,6 +411,8 @@ test('the first-run guide tracks the three steps from real state, and can be hid
         'step 2 (synthesise) must reflect a real netlist/synth result');
     assert.match(panel, /done: clockCycles > 0/,
         'step 3 (step the clock) must reflect real clock steps');
+    assert.match(panel, /done: mirrored/,
+        'step 4 (the Widgets view) must reflect the design actually being mirrored there');
     // It is dismissible per browser, and defaults to SHOWN (a new user sees it).
     assert.match(panel, /localStorage\.setItem\('bw-fpga-guide-done', '1'\)/,
         'hiding the guide must persist so it does not nag');
