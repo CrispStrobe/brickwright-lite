@@ -492,3 +492,12 @@ test('gui.jsx mirrors the FPGA output into the Controller panel, behind the buil
     assert.ok(guard > 0 && guard < at,
         'the mirror effect must be gated on FPGA_BUILT so an off build folds it away');
 });
+
+// ── re-mirroring a different design clears the previous design's indicators ──
+test('the widget mirror removes stale fpga indicators for pins no longer driven', () => {
+    const gui = codeOnly(read(GUI));
+    assert.match(gui, /\/\^fpga_p\\d\+\$\/\.test\(existing\) && !want\.has\(existing\)/,
+        'switching designs must drop indicators for pins the new design does not drive');
+    assert.match(gui, /controllerPanel\.removeWidget\(existing\)/,
+        'the stale indicator must actually be removed');
+});
