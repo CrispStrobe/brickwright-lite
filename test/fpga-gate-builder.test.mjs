@@ -229,3 +229,20 @@ test('a multi-bit input, gate and output declare [N-1:0]', () => {
     assert.match(verilog, /wire \[3:0\] w_g;/);
     assert.match(verilog, /assign w_g = a & b;/, 'the operator is bit-parallel over the bus');
 });
+
+test('a bus port is constrained one pin per bit (a single pin would fail P&R)', () => {
+    const {cst} = modelToCst({nodes: [
+        {id: 'i', kind: 'in', name: 'sw', width: 2},
+        {id: 'o', kind: 'out', name: 'y', width: 4}
+    ]});
+    // the 4-bit output takes four LED pins, as name[i]
+    assert.match(cst, /IO_LOC "y\[0\]" 15;/);
+    assert.match(cst, /IO_LOC "y\[3\]" 18;/);
+    // the 2-bit input takes two spare pins
+    assert.match(cst, /IO_LOC "sw\[0\]" 88;/);
+    assert.match(cst, /IO_LOC "sw\[1\]" 74;/);
+    // a 1-bit clock still takes pin 4 by name (no bit index)
+    const clk = modelToCst({nodes: [{id: 'c', kind: 'in', name: 'clk'}]}).cst;
+    assert.match(clk, /IO_LOC "clk" 4;/);
+    assert.doesNotMatch(clk, /clk\[/);
+});

@@ -97,6 +97,7 @@ const InnerBuilder = ({onUseVerilog}) => {
     const [edges, setEdges, onEdgesChange] = useEdgesState(start.edges);
     const [problems, setProblems] = React.useState([]);
     const [library, setLibrary] = React.useState([]); // saved subcircuits
+    const [newWidth, setNewWidth] = React.useState(1); // bit width for the next node
     const idRef = React.useRef(100);
     const nid = p => `${p}${idRef.current++}`;
 
@@ -118,14 +119,14 @@ const InnerBuilder = ({onUseVerilog}) => {
 
     const addGate = type => setNodes(ns => [...ns, {
         id: nid('g'), type: 'gate', position: {x: 180, y: 40 + (ns.length % 6) * 40},
-        data: {kind: 'gate', gtype: type}
+        data: {kind: 'gate', gtype: type, width: newWidth}
     }]);
     const addIo = kind => setNodes(ns => {
         const n = ns.filter(x => x.data.kind === kind).length + 1;
         return [...ns, {
             id: nid(kind === 'in' ? 'i' : 'o'), type: 'io',
             position: {x: kind === 'in' ? 0 : 360, y: 40 + (ns.length % 6) * 40},
-            data: {kind, name: `${kind === 'in' ? 'in' : 'out'}${n}`, width: 1}
+            data: {kind, name: `${kind === 'in' ? 'in' : 'out'}${n}`, width: newWidth}
         }];
     });
     const onConnect = React.useCallback(params => setEdges(es => addEdge(params, es)), [setEdges]);
@@ -143,6 +144,12 @@ const InnerBuilder = ({onUseVerilog}) => {
             <div style={{display: 'flex', gap: '0.35rem', flexWrap: 'wrap', margin: '0 0 0.4rem'}}>
                 <button type="button" onClick={() => addIo('in')} style={{cursor: 'pointer'}}>{'+ Input'}</button>
                 <button type="button" onClick={() => addIo('out')} style={{cursor: 'pointer'}}>{'+ Output'}</button>
+                <label style={{fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 3}} title="Bit width of the next node — >1 makes a bus">
+                    {'width'}
+                    <select value={newWidth} onChange={e => setNewWidth(Number(e.target.value))} data-testid="bw-fpga-rf-width">
+                        {[1, 2, 4, 8, 16].map(w => <option key={w} value={w}>{w}</option>)}
+                    </select>
+                </label>
                 {['and', 'or', 'not', 'xor', 'nand', 'nor', 'dff'].map(t => (
                     <button key={t} type="button" onClick={() => addGate(t)} style={{cursor: 'pointer'}}>{`+ ${GATE_DEFS[t].label}`}</button>
                 ))}
