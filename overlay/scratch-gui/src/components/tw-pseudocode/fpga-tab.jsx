@@ -98,6 +98,13 @@ const FpgaTab = () => {
     // design is combinational-until-clocked: at 0 the flops hold reset, and each
     // "Step" advances one whole cycle so the board can be read between clicks.
     const [clockCycles, setClockCycles] = React.useState(0);
+    // A free-running clock: tick on an interval so the design advances on its
+    // own. The Controller/Widgets view is a right-pane dock on OTHER tabs, so a
+    // user cannot step the clock here and watch the mirrored LEDs there at the
+    // same time — a self-running clock decouples the two. This tab is
+    // force-rendered (gui.jsx keeps every TabPanel mounted), so the interval
+    // keeps advancing while the user watches the Controller view.
+    const [autoRun, setAutoRun] = React.useState(false);
     // One-click demo board: wiring a Tang Nano + 4 LEDs so a synthesised counter
     // has something to light. Feedback only — the wiring happens on the live board.
     const [demoMsg, setDemoMsg] = React.useState(null);
@@ -307,6 +314,16 @@ const FpgaTab = () => {
                 : [], simNote};
     }, [text, netlistText, sim]);
 
+    // The header pins the design DRIVES (outputs), for mirroring into the
+    // Controller/Widgets view. Inputs are excluded — a mirrored indicator shows
+    // what the design puts out, not what the breadboard feeds in.
+    const outputPins = React.useMemo(() => {
+        const pins = (bindings || [])
+            .filter(b => b.direction !== 'input' && typeof b.pin === 'number')
+            .map(b => b.pin);
+        return [...new Set(pins)].sort((a, b) => a - b);
+    }, [bindings]);
+
     // Drive the on-screen board with the design's outputs, through the live
     // Circuit model.
     //
@@ -326,10 +343,26 @@ const FpgaTab = () => {
         const c = (typeof window !== 'undefined') && (window.__circuit || window.__bwCircuit);
         if (!c || typeof c.setPin !== 'function' || !bindings.length) return undefined;
         try {
-            applyPortValues(c, bindings, sim.values);
+            const {applied} = applyPortValues(c, bindings, sim.values);
+            // Broadcast the driven output pins so the Controller/Widgets view can
+            // mirror them (gui.jsx owns the panel; it only needs pin -> level).
+            const leds = applied
+                .filter(a => a.mode === 'pushpull')
+                .map(a => ({pin: a.pin, high: Boolean(a.driveHigh)}));
+            if (leds.length && typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('bw-fpga-output', {detail: {leds}}));
+            }
         } catch (e) { /* the board may not have the Tang Nano placed or pins wired */ }
         return undefined;
     }, [sim.values, bindings]);
+
+    // The free-running clock (see autoRun). Ticking clockCycles re-runs the sim
+    // effect, which drives the board and broadcasts the outputs above.
+    React.useEffect(() => {
+        if (!autoRun) return undefined;
+        const id = setInterval(() => setClockCycles(c => c + 1), 600);
+        return () => clearInterval(id);
+    }, [autoRun]);
 
     // Wire the demo board — out of the box, from this tab, with no detour.
     //
@@ -744,10 +777,35 @@ const FpgaTab = () => {
                                 onClick={() => setClockCycles(0)}
                                 style={{padding: '0.35rem 0.8rem', cursor: clockCycles === 0 ? 'default' : 'pointer'}}
                             >{'Reset'}</button>
+                            <button
+                                type="button"
+                                onClick={() => setAutoRun(v => !v)}
+                                style={{padding: '0.35rem 0.8rem', cursor: 'pointer',
+                                    fontWeight: autoRun ? 'bold' : 'normal'}}
+                            >{autoRun ? '⏸ Stop auto-run' : '▶ Auto-run'}</button>
                             <span style={{opacity: 0.8}}>
                                 {clockCycles}{clockCycles === 1 ? ' cycle' : ' cycles'}
                             </span>
                         </div>
+                        {/* Mirror the output pins into the Controller/Widgets view, so the
+                            synthesised design's LEDs are visible there too — not only on
+                            the placed board. gui.jsx owns the panel; we hand it the pins. */}
+                        {outputPins.length ? (
+                            <p style={{margin: '0.75rem 0 0'}}>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        window.dispatchEvent(new CustomEvent('bw-fpga-leds',
+                                            {detail: {pins: outputPins}}));
+                                        setAutoRun(true);
+                                    }}
+                                    style={{padding: '0.35rem 0.8rem', cursor: 'pointer'}}
+                                >{'⎈ Show the LEDs in the Controller view'}</button>
+                                <span style={{marginLeft: '0.5rem', opacity: 0.75}}>
+                                    {`mirrors pins ${outputPins.join(', ')} as indicators and starts the clock`}
+                                </span>
+                            </p>
+                        ) : null}
                     </>
                 ) : null}
 

@@ -453,3 +453,40 @@ test('gui.jsx flips to a tab when asked by bw-activate-tab, using the tab list i
     assert.match(gui, /props\.onActivateTab\(idx\)/,
         'the listener must drive the same tab-select path the tabs themselves use');
 });
+
+// ── the synthesised design is visible in the Widgets view too ──
+//
+// The FPGA tab drives the placed board's LEDs, but the Controller/Widgets view
+// is a right-pane dock the tab cannot reach, and this build's bw-board pin has
+// no path from a board pin into a widget. So the tab broadcasts its output pins
+// and their levels, and gui.jsx (which owns the panel) mirrors them as indicator
+// widgets — the design's LEDs show in the Widgets view, not only on the board.
+
+test('the FPGA tab broadcasts its driven output pins and their live levels', () => {
+    const tab = codeOnly(read(TAB));
+    assert.match(tab, /dispatchEvent\(new CustomEvent\('bw-fpga-leds'/,
+        'the tab must offer to mirror its output pins into the Controller view');
+    assert.match(tab, /dispatchEvent\(new CustomEvent\('bw-fpga-output'/,
+        'the tab must broadcast live pin levels so the mirrored indicators can follow');
+    assert.match(tab, /outputPins/,
+        'it must mirror the DRIVEN pins (outputs), not every binding');
+    // A free-running clock is what makes the Widgets view watchable: you cannot
+    // step here and watch the dock on another tab at once.
+    assert.match(tab, /setInterval\(\(\) => setClockCycles/,
+        'a self-running clock must exist, or the mirrored view never advances');
+});
+
+test('gui.jsx mirrors the FPGA output into the Controller panel, behind the build flag', () => {
+    const gui = codeOnly(read(GUI));
+    assert.match(gui, /addEventListener\('bw-fpga-leds'/,
+        'gui.jsx must create the indicator widgets — it owns the controller panel');
+    assert.match(gui, /addEventListener\('bw-fpga-output'/,
+        'gui.jsx must update the indicators as the design runs');
+    assert.match(gui, /controllerPanel\.setBargraphValue\(name, high \? 1 : 0\)/,
+        'each pin level must drive its indicator');
+    // The wiring is FPGA-surface code, so an off build must drop it.
+    const at = gui.indexOf("addEventListener('bw-fpga-leds'");
+    const guard = gui.lastIndexOf('if (!FPGA_BUILT) return undefined;', at);
+    assert.ok(guard > 0 && guard < at,
+        'the mirror effect must be gated on FPGA_BUILT so an off build folds it away');
+});
