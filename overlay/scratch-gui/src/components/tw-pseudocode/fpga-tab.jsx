@@ -541,7 +541,7 @@ const FpgaTab = () => {
                 </summary>
                 <div style={{marginTop: '0.6rem'}}>
                     <React.Suspense fallback={<p style={{opacity: 0.7}}>{'Loading the gate builder…'}</p>}>
-                        <FpgaGateBuilder onUseVerilog={v => { setHdl(v); setSynth(null); }} />
+                        <FpgaGateBuilder onUseVerilog={(v, cst) => { setHdl(v); if (cst) setText(cst); setSynth(null); }} />
                     </React.Suspense>
                 </div>
             </details>

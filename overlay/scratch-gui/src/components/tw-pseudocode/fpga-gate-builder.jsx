@@ -1,5 +1,5 @@
 import React from 'react';
-import {GATE_DEFS, inputPorts, hasOutput, modelToVerilog} from '../../lib/bw-fpga/gate-builder.js';
+import {GATE_DEFS, inputPorts, hasOutput, modelToVerilog, modelToCst} from '../../lib/bw-fpga/gate-builder.js';
 
 /**
  * Build logic by placing gates and wiring them — Rung 3 of the FPGA visual
@@ -101,8 +101,12 @@ const FpgaGateBuilder = ({onUseVerilog}) => {
 
     const generate = () => {
         const {verilog, problems: probs} = modelToVerilog(model);
+        const {cst} = modelToCst(model);
         setProblems(probs);
-        if (onUseVerilog) onUseVerilog(verilog);
+        // Hand back BOTH the HDL and matching constraints: without a .cst for
+        // THIS design's ports, the tab's default constraints reach nextpnr and
+        // place-and-route fails.
+        if (onUseVerilog) onUseVerilog(verilog, cst);
     };
 
     const byId = Object.fromEntries((graph ? graph.children : []).map(c => [c.id, c]));

@@ -572,14 +572,17 @@ test('the waveform builder is pure and honest about unknown values', () => {
         'the sim must record outputs per cycle, bounded by a cap');
     assert.match(sim, /Math\.min\(Math\.max\(0, cycles \| 0\), cap\)/,
         'the trace length must be bounded so a large step count cannot build an unbounded array');
+});
 
 // ── Rung 3: build logic by placing gates, no Verilog typed ──
 test('the FPGA tab offers a visual gate builder that feeds the Verilog box', () => {
     const tab = codeOnly(read(TAB));
     assert.match(tab, /import\(\s*\/\*[^*]*\*\/\s*'\.\/fpga-gate-builder\.jsx'\)/,
         'the gate builder is its own lazy chunk (shared with the schematic)');
-    assert.match(tab, /<FpgaGateBuilder onUseVerilog=\{v => \{ setHdl\(v\); setSynth\(null\); \}\}/,
-        'building gates must drop generated Verilog into the box, so it synthesises like any design');
+    assert.match(tab, /<FpgaGateBuilder onUseVerilog=/,
+        'the tab must render the gate builder');
+    assert.match(tab, /setHdl\(v\); if \(cst\) setText\(cst\); setSynth\(null\)/,
+        'building gates must drop generated Verilog AND matching constraints into the boxes');
 });
 
 test('the gate-builder Verilog generator is pure and refuses to emit illegal HDL', () => {

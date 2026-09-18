@@ -135,3 +135,44 @@ export function modelToVerilog (model, {moduleName = 'design'} = {}) {
 
     return {verilog: lines.join('\n') + '\n', problems};
 }
+
+// Header pins for generated constraints, from the pins the shipped examples use
+// (verified against the real Tang Nano 20K part). A named clock takes pin 4;
+// outputs take LED-capable header pins; other inputs take spare header pins.
+const OUT_PINS = [15, 16, 17, 18, 19, 20, 73];
+const IN_PINS = [88, 74, 76, 77, 80, 81, 82, 83];
+
+/**
+ * Generate a matching Gowin .cst for a gate model, so the built design places
+ * and routes. Without one the tab's default constraints — for a DIFFERENT
+ * design's ports — reach nextpnr and it fails. Each input/output gets a pin:
+ * a clock-named input pin 4, outputs the LED pins, other inputs spare pins.
+ *
+ * @param {{nodes: Array}} model
+ * @returns {{cst: string, problems: Array}}
+ */
+export function modelToCst (model) {
+    const nodes = (model && model.nodes) || [];
+    const problems = [];
+    const lines = [];
+    let oi = 0;
+    let ii = 0;
+    const place = (nm, pin) => {
+        lines.push(`IO_LOC "${nm}" ${pin};`);
+        lines.push(`IO_PORT "${nm}" IO_TYPE=LVCMOS33;`);
+    };
+    for (const n of nodes) {
+        if (n.kind === 'in') {
+            const nm = ident(n.name, `in_${n.id}`);
+            const pin = /clk|clock/i.test(n.name || '') ? 4 : IN_PINS[ii++];
+            if (pin === undefined) { problems.push({code: 'out-of-pins', reason: `No spare pin for input "${nm}".`}); continue; }
+            place(nm, pin);
+        } else if (n.kind === 'out') {
+            const nm = ident(n.name, `out_${n.id}`);
+            const pin = OUT_PINS[oi++];
+            if (pin === undefined) { problems.push({code: 'out-of-pins', reason: `No spare pin for output "${nm}".`}); continue; }
+            place(nm, pin);
+        }
+    }
+    return {cst: lines.join('\n') + '\n', problems};
+}

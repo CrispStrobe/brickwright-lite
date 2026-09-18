@@ -6,7 +6,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {modelToVerilog, inputPorts, hasOutput, GATE_DEFS} from
+import {modelToVerilog, modelToCst, inputPorts, hasOutput, GATE_DEFS} from
     '../overlay/scratch-gui/src/lib/bw-fpga/gate-builder.js';
 
 test('a two-input AND becomes a module with the expected ports and assign', () => {
@@ -121,4 +121,22 @@ test('the port helpers agree with the gate defs', () => {
     assert.equal(hasOutput({kind: 'out'}), false);
     assert.deepEqual(inputPorts({kind: 'out'}), ['in']);
     assert.deepEqual(GATE_DEFS.and.ins, ['a', 'b']);
+});
+
+test('modelToCst places each I/O on a pin — a clock on 4, outputs on LED pins', () => {
+    const model = {
+        nodes: [
+            {id: 'ck', kind: 'in', name: 'clk'}, {id: 'd', kind: 'in', name: 'd'},
+            {id: 'g', kind: 'gate', type: 'dff'}, {id: 'q', kind: 'out', name: 'led'}
+        ],
+        edges: []
+    };
+    const {cst, problems} = modelToCst(model);
+    assert.deepEqual(problems, []);
+    assert.match(cst, /IO_LOC "clk" 4;/, 'a clock-named input goes to pin 4');
+    assert.match(cst, /IO_LOC "led" 15;/, 'the first output goes to the first LED pin');
+    assert.match(cst, /IO_LOC "d" 88;/, 'a non-clock input goes to a spare header pin');
+    assert.match(cst, /IO_PORT "led" IO_TYPE=LVCMOS33;/, 'each pin gets a level constraint');
+    // gates are not ports and must not be placed
+    assert.doesNotMatch(cst, /"g"/);
 });
