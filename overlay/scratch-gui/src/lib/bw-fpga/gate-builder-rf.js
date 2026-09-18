@@ -17,9 +17,10 @@
  *
  * @param {Array} rfNodes  React Flow nodes: {id, data:{kind, gtype?, name?, width?, module?}}
  * @param {Array} rfEdges  React Flow edges: {source, target, sourceHandle, targetHandle}
- * @returns {{nodes: Array, edges: Array}} our model
+ * @param {Array} [modules]  saved subcircuits ({name, nodes, edges, ports}) to compose
+ * @returns {{modules?: Array, nodes: Array, edges: Array}} our model
  */
-export function reactFlowToModel (rfNodes, rfEdges) {
+export function reactFlowToModel (rfNodes, rfEdges, modules) {
     const nodes = (rfNodes || []).map(n => {
         const d = n.data || {};
         const node = {id: n.id, kind: d.kind};
@@ -33,7 +34,9 @@ export function reactFlowToModel (rfNodes, rfEdges) {
         from: {node: e.source, port: e.sourceHandle || 'out'},
         to: {node: e.target, port: e.targetHandle || 'in'}
     }));
-    return {nodes, edges};
+    // A subcircuit library composes: the generator emits each as its own module
+    // and instantiates it. Passed through so the top design carries its parts.
+    return modules && modules.length ? {modules, nodes, edges} : {nodes, edges};
 }
 
 /**

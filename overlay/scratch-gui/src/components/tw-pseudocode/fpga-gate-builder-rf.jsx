@@ -7,7 +7,7 @@ import {ReactFlow, ReactFlowProvider, Background, Controls, MiniMap, addEdge,
 // plus inline loaders bypass the configured rule and inject this one stylesheet
 // globally (css-loader defaults `modules` off).
 import '!!style-loader!css-loader!@xyflow/react/dist/style.css';
-import {GATE_DEFS, inputPorts, modelToVerilog, modelToCst} from '../../lib/bw-fpga/gate-builder.js';
+import {GATE_DEFS, modelToVerilog, modelToCst, derivePorts} from '../../lib/bw-fpga/gate-builder.js';
 import {reactFlowToModel, modelToReactFlow} from '../../lib/bw-fpga/gate-builder-rf.js';
 
 /**
@@ -53,7 +53,30 @@ const IoNode = ({data}) => {
     );
 };
 
-const nodeTypes = {gate: GateNode, io: IoNode};
+// A subcircuit instance: input handles down the left, output handles down the
+// right, one per the module's ports. The module name is the label.
+const InstanceNode = ({data}) => {
+    const ports = data.ports || [];
+    const ins = ports.filter(p => p.dir === 'in');
+    const outs = ports.filter(p => p.dir === 'out');
+    return (
+        <div style={{position: 'relative', minWidth: 74, minHeight: Math.max(40, ports.length * 14 + 8),
+            padding: '6px 10px', border: '1.6px double #7c3aed', borderRadius: 6, background: '#faf5ff',
+            textAlign: 'center', fontSize: 11, fontWeight: 'bold'}}>
+            {ins.map((p, i) => (
+                <Handle key={`i${p.name}`} type="target" position={Position.Left} id={p.name}
+                    style={{top: `${((i + 1) / (ins.length + 1)) * 100}%`, background: '#0284c7'}} />
+            ))}
+            <span>{data.module}</span>
+            {outs.map((p, i) => (
+                <Handle key={`o${p.name}`} type="source" position={Position.Right} id={p.name}
+                    style={{top: `${((i + 1) / (outs.length + 1)) * 100}%`, background: '#22c55e'}} />
+            ))}
+        </div>
+    );
+};
+
+const nodeTypes = {gate: GateNode, io: IoNode, instance: InstanceNode};
 
 // A starter so the canvas is not blank: a AND b → y.
 const STARTER = () => modelToReactFlow({
@@ -73,8 +96,25 @@ const InnerBuilder = ({onUseVerilog}) => {
     const [nodes, setNodes, onNodesChange] = useNodesState(start.nodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(start.edges);
     const [problems, setProblems] = React.useState([]);
+    const [library, setLibrary] = React.useState([]); // saved subcircuits
     const idRef = React.useRef(100);
     const nid = p => `${p}${idRef.current++}`;
+
+    // Save the whole canvas as a reusable subcircuit — the composition primitive.
+    const saveSubcircuit = () => {
+        const model = reactFlowToModel(nodes, edges);
+        const ports = derivePorts(model);
+        if (!ports.length) { setProblems([{reason: 'Add inputs and outputs before saving a subcircuit — they become its ports.'}]); return; }
+        const base = 'block';
+        let n = 1;
+        const names = new Set(library.map(m => m.name));
+        while (names.has(`${base}${n}`)) n++;
+        setLibrary(lib => [...lib, {name: `${base}${n}`, nodes: model.nodes, edges: model.edges, ports}]);
+    };
+    const addInstance = mod => setNodes(ns => [...ns, {
+        id: nid('u'), type: 'instance', position: {x: 200, y: 40 + (ns.length % 6) * 45},
+        data: {kind: 'instance', module: mod.name, ports: mod.ports}
+    }]);
 
     const addGate = type => setNodes(ns => [...ns, {
         id: nid('g'), type: 'gate', position: {x: 180, y: 40 + (ns.length % 6) * 40},
@@ -91,7 +131,7 @@ const InnerBuilder = ({onUseVerilog}) => {
     const onConnect = React.useCallback(params => setEdges(es => addEdge(params, es)), [setEdges]);
 
     const generate = () => {
-        const model = reactFlowToModel(nodes, edges);
+        const model = reactFlowToModel(nodes, edges, library);
         const {verilog, problems: probs} = modelToVerilog(model);
         const {cst} = modelToCst(model);
         setProblems(probs);
@@ -106,7 +146,22 @@ const InnerBuilder = ({onUseVerilog}) => {
                 {['and', 'or', 'not', 'xor', 'nand', 'nor', 'dff'].map(t => (
                     <button key={t} type="button" onClick={() => addGate(t)} style={{cursor: 'pointer'}}>{`+ ${GATE_DEFS[t].label}`}</button>
                 ))}
+                <span style={{opacity: 0.4}}>{'|'}</span>
+                <button type="button" onClick={saveSubcircuit} title="Save this whole design as a reusable subcircuit"
+                    style={{cursor: 'pointer'}} data-testid="bw-fpga-rf-save">{'⤓ Save as subcircuit'}</button>
             </div>
+            {library.length ? (
+                <div style={{display: 'flex', gap: '0.35rem', flexWrap: 'wrap', margin: '0 0 0.4rem', alignItems: 'center'}}>
+                    <span style={{fontSize: '0.8rem', opacity: 0.75}}>{'Your blocks:'}</span>
+                    {library.map(mod => (
+                        <button key={mod.name} type="button" onClick={() => addInstance(mod)}
+                            title={`ports: ${mod.ports.map(p => p.name).join(', ')}`}
+                            data-testid={`bw-fpga-rf-lib-${mod.name}`}
+                            style={{cursor: 'pointer', border: '1px solid #7c3aed', borderRadius: 10, padding: '0.1rem 0.5rem', background: '#faf5ff'}}
+                        >{`+ ${mod.name}`}</button>
+                    ))}
+                </div>
+            ) : null}
             <div style={{height: '48vh', minHeight: 300, border: '1px solid rgba(71,85,105,0.25)', borderRadius: 6}}
                 data-testid="bw-fpga-rf-canvas">
                 <ReactFlow
