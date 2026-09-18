@@ -389,6 +389,56 @@ const GUIComponent = props => {
         return () => window.removeEventListener('bw-controller-changed', onChanged);
     }, [props.vm, controllerPanel]);
 
+    // Mirror the FPGA design's OUTPUT pins into the Controller/Widgets view.
+    //
+    // The FPGA tab drives the placed board's LEDs, but the Widgets view is a
+    // right-pane dock the tab cannot reach — and a board pin has no path into a
+    // widget in this build's bw-board pin. So the tab hands us the pin numbers
+    // (`bw-fpga-leds`) and their live levels (`bw-fpga-output`), and we own the
+    // panel: one indicator widget per pin, updated as the design runs. Then the
+    // synthesised LEDs are visible in the Widgets view too, not only on the board.
+    // Gated on the build flag so an FPGA-off build drops the wiring entirely.
+    React.useEffect(() => {
+        if (!FPGA_BUILT) return undefined;
+        const wname = pin => `fpga_p${pin}`;
+        const onLeds = e => {
+            const pins = (e && e.detail && e.detail.pins) || [];
+            if (!pins.length) return;
+            pins.forEach((pin, i) => {
+                const name = wname(pin);
+                if (!controllerPanel.getWidget(name)) {
+                    try {
+                        controllerPanel.addWidget(name, 'bargraph',
+                            {min: 0, max: 1, segments: 1, label: `p${pin}`},
+                            {x: 1 + (i * 3), y: 1, w: 2, h: 3});
+                    } catch (err) { /* a name clash means it is already there */ }
+                }
+            });
+            // Play mode renders the indicators as live displays, not editor chrome.
+            controllerPanel.setMode('play');
+            // Dock the panel and show a tab where the dock renders, so the LEDs
+            // are actually on screen rather than mounted into a collapsed pane.
+            window.dispatchEvent(new CustomEvent('bw-settings-change',
+                {detail: {key: 'bw-debug-dock', value: 'controller'}}));
+            if (props.onActivateTab) props.onActivateTab(CODE_TAB_INDEX);
+        };
+        const onOutput = e => {
+            const leds = (e && e.detail && e.detail.leds) || [];
+            for (const {pin, high} of leds) {
+                const name = wname(pin);
+                if (controllerPanel.getWidget(name) && typeof controllerPanel.setBargraphValue === 'function') {
+                    try { controllerPanel.setBargraphValue(name, high ? 1 : 0); } catch (err) { /* removed mid-run */ }
+                }
+            }
+        };
+        window.addEventListener('bw-fpga-leds', onLeds);
+        window.addEventListener('bw-fpga-output', onOutput);
+        return () => {
+            window.removeEventListener('bw-fpga-leds', onLeds);
+            window.removeEventListener('bw-fpga-output', onOutput);
+        };
+    }, [controllerPanel, props.onActivateTab]);
+
     // Resolve the board instance from the runtime (circuit-tab creates it).
     //
     // THIS IS A PLAIN READ OF A MUTABLE RUNTIME FIELD, so React has no reason to
