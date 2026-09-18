@@ -86,6 +86,7 @@
         "prove:pins": "node scripts/prove-fetch-pinning.mjs",
         "test:all": "npm run test && npm run smoke:debugger",
         "probe:layout": "node scripts/probe-layout.mjs",
+        "probe:builder-synth": "node scripts/probe-builder-synthesis.mjs",
         "verify:boot-payload": "node scripts/verify-boot-payload.mjs",
         "test:fast": "node scripts/check-node.mjs && BW_GUI_SCOPE_LOG=test-results/fast.gui-scope.tsv node --test --import ./scripts/lib/register-gui-scope.mjs --test-reporter=tap --test-reporter-destination=stdout --test-reporter=./scripts/lib/test-census-reporter.mjs --test-reporter-destination=test-results/fast.census.json $(node scripts/list-tests.mjs fast)",
         "test:corpus": "node scripts/check-node.mjs && BW_GUI_SCOPE_LOG=test-results/corpus.gui-scope.tsv node --test --import ./scripts/lib/register-gui-scope.mjs --test-reporter=tap --test-reporter-destination=stdout --test-reporter=./scripts/lib/test-census-reporter.mjs --test-reporter-destination=test-results/corpus.census.json $(node scripts/list-tests.mjs corpus)",
