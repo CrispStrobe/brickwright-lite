@@ -504,6 +504,20 @@ const FpgaTab = () => {
                                 </li>
                             ))}
                         </ol>
+                        {netlistText.trim() ? (
+                            <p style={{margin: '0.35rem 0 0.15rem', fontSize: '0.85rem'}}>
+                                <strong>{'Three ways to SEE it: '}</strong>
+                                {'your design is drawn as a '}<em>{'gate schematic'}</em>
+                                {' and as '}<em>{'waveforms'}</em>{' below — and you can '}
+                                <em>{'build your own logic'}</em>{' by placing gates (under “Verilog”), '}
+                                {'no HDL typed.'}
+                            </p>
+                        ) : (
+                            <p style={{margin: '0.35rem 0 0.15rem', fontSize: '0.85rem', opacity: 0.85}}>
+                                {'Prefer no typing? Open '}<em>{'“build it visually”'}</em>
+                                {' under Verilog and place gates — it runs live and generates the HDL for you.'}
+                            </p>
+                        )}
                         <button type="button" onClick={hide}
                             style={{marginTop: '0.35rem', padding: '0.15rem 0.6rem', cursor: 'pointer'}}
                         >{allDone ? 'Done' : 'Hide this'}</button>
