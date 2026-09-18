@@ -6,7 +6,6 @@ import {createI8086DebugTarget} from 'bw-board/i8086-debug.js';
 import {assemble} from 'bw-board/i8086-asm.js';
 import {createRegisterBlockExperiment} from './i8086-block-experiment.mjs';
 import {installRamWordExperiment} from './i8086-ram-experiment.mjs';
-import {createPitSchedulingExperiment} from './i8086-pit-scheduling-experiment.mjs';
 
 const bodies = {
     registers: `ADD AX, BX
@@ -96,7 +95,6 @@ export function setup(layer, workload = 'mixed', options = {}) {
     if (options.blockMode && layer !== 'core') throw new Error('Block experiment requires the owned flat-RAM core');
     const block = options.blockMode ? createRegisterBlockExperiment(cpu, machine.mem, options.blockMode,
         {loopOnly: options.blockMode === 'wasm'}) : null;
-    const scheduler = options.pitSchedule ? createPitSchedulingExperiment(machine) : null;
     target?.run();
     const step = layer === 'core' ? () => { machine.cycles += cpu.step(); } :
         layer === 'dos' ? () => dos.step() : () => machine.step();
@@ -116,7 +114,7 @@ export function setup(layer, workload = 'mixed', options = {}) {
                 while (machine.cycles < deadline) step();
             }
             };
-            if (scheduler) scheduler.run(execute); else execute();
+            execute();
             const wallMs = performance.now() - started;
             if (!snapshot) return {wallMs, cycles: machine.cycles - before};
             const address = (cpu.ds << 4) + 0x110;
@@ -129,8 +127,7 @@ export function setup(layer, workload = 'mixed', options = {}) {
             return {wallMs, cycles: machine.cycles - before, totalCycles: machine.cycles,
                 realTimeRatio: (machine.cycles - before) * 1000 / machine.clockHz / wallMs,
                 heartbeat, registers, memoryHash: memoryHash >>> 0,
-                ...(block ? {blockStats: {...block.stats}} : {}),
-                ...(scheduler ? {pitStats: {...scheduler.stats}} : {})};
+                ...(block ? {blockStats: {...block.stats}} : {})};
         }
     };
 }
