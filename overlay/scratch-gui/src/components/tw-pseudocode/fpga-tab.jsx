@@ -331,6 +331,55 @@ const FpgaTab = () => {
         return undefined;
     }, [sim.values, bindings]);
 
+    // Wire the demo board — out of the box, from this tab, with no detour.
+    //
+    // The board only exists once the Circuit tab's designer has mounted and
+    // published `window.__circuit` (see the drive effect above). A user who lands
+    // straight on this tab has never opened Circuit, so that handle is absent and a
+    // naive click had nothing to build on. Rather than reach across tabs to force a
+    // hidden designer to mount (fragile: the designer's render() omits itself under
+    // the default debugger dock when this tab is the visible one), we ASK the app to
+    // make the Circuit tab visible — the one reliable path that mounts the designer,
+    // runs onCircuitReady, and shows the wired board. gui.jsx owns the tab list and
+    // listens for `bw-activate-tab`; we only know the index. Then we wait for the
+    // handle to appear and build. The board persists, so the user can switch right
+    // back here and drive it.
+    const CIRCUIT_TAB_INDEX = 4;
+    const liveCircuit = () => (typeof window !== 'undefined'
+        ? (window.__circuit && typeof window.__circuit.addPart === 'function' ? window.__circuit : null)
+        : null);
+    const buildOnCircuit = React.useCallback(c => {
+        try {
+            buildDemoBoard(c);
+            setDemoMsg({ok: true, text: 'Wired a Tang Nano 20K with 4 LEDs on pins '
+                + '15–18. Load “Counting sequence”, Synthesise, then Step the clock — '
+                + 'they count up in binary on the board.'});
+        } catch (e) {
+            setDemoMsg({ok: false, text: `Could not wire the demo board: ${e.message}`});
+        }
+    }, []);
+    const wireDemoBoard = React.useCallback(() => {
+        const now = liveCircuit();
+        if (now) { buildOnCircuit(now); return; }
+        if (typeof window === 'undefined') return;
+        // Ask gui.jsx to show the Circuit tab so its designer mounts and publishes
+        // window.__circuit, then poll briefly for the handle.
+        setDemoMsg({pending: true, text: 'Setting up the board…'});
+        window.dispatchEvent(new CustomEvent('bw-activate-tab', {detail: {index: CIRCUIT_TAB_INDEX}}));
+        const deadline = Date.now() + 8000;
+        const tick = () => {
+            const c = liveCircuit();
+            if (c) { buildOnCircuit(c); return; }
+            if (Date.now() > deadline) {
+                setDemoMsg({ok: false, text: 'Open the 🔌 Circuit tab once so the board '
+                    + 'exists, then try again.'});
+                return;
+            }
+            setTimeout(tick, 150);
+        };
+        setTimeout(tick, 150);
+    }, [buildOnCircuit]);
+
     return (
         // Scrolling here needs the pattern circuit-tab.jsx uses, not a flex one. The tab
     // panel is `position:relative` but its ancestors (gui_tabs, the panel) all carry
@@ -410,27 +459,12 @@ const FpgaTab = () => {
             <p style={{margin: '0 0 0.75rem'}}>
                 <button
                     type="button"
-                    onClick={() => {
-                        const c = (typeof window !== 'undefined') && window.__circuit;
-                        if (!c || typeof c.addPart !== 'function') {
-                            setDemoMsg({ok: false, text: 'Open the 🔌 Circuit tab once so the board '
-                                + 'exists, then try again.'});
-                            return;
-                        }
-                        try {
-                            buildDemoBoard(c);
-                            setDemoMsg({ok: true, text: 'Wired a Tang Nano 20K with 4 LEDs on pins '
-                                + '15–18. Load “Counting sequence”, Synthesise, then Step the clock — '
-                                + 'they count up in binary on the board.'});
-                        } catch (e) {
-                            setDemoMsg({ok: false, text: `Could not wire the demo board: ${e.message}`});
-                        }
-                    }}
+                    onClick={() => wireDemoBoard()}
                     style={{padding: '0.2rem 0.6rem', cursor: 'pointer'}}
                 >{'⬢ Wire up a demo board'}</button>
                 {demoMsg ? (
                     <span style={{marginLeft: '0.5rem', opacity: 0.9,
-                        color: demoMsg.ok ? '#2e7d32' : '#b34747'}}>{demoMsg.text}</span>
+                        color: demoMsg.ok ? '#2e7d32' : (demoMsg.pending ? '#555' : '#b34747')}}>{demoMsg.text}</span>
                 ) : null}
             </p>
             <textarea
