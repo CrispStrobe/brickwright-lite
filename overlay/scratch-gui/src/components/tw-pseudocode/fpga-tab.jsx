@@ -82,6 +82,9 @@ const loadSimulator = () => {
 // converter — loaded only when a design has been synthesised and the view shows.
 const FpgaSchematic = React.lazy(() =>
     import(/* webpackChunkName: "bw-fpga-schematic" */ './fpga-schematic.jsx'));
+// Rung 2 of the visual analog: the design's outputs as waveforms over time.
+const FpgaWaveform = React.lazy(() =>
+    import(/* webpackChunkName: "bw-fpga-waveform" */ './fpga-waveform.jsx'));
 
 // A copyleft source needs the local tier, and asking the selector for that
 // capability is how the refusal comes back NAMED rather than as a mystery.
@@ -766,6 +769,20 @@ const FpgaTab = () => {
                         </p>
                         <React.Suspense fallback={<p style={{opacity: 0.7}}>{'Loading the schematic view…'}</p>}>
                             <FpgaSchematic netlistText={netlistText} netValues={netValues} />
+                        </React.Suspense>
+                    </>
+                ) : null}
+
+                {netlistText.trim() ? (
+                    <>
+                        <h3>{'Waveforms — the outputs over time'}</h3>
+                        <p style={{marginTop: 0, opacity: 0.8}}>
+                            {'The design run from reset for a few clock cycles: each output bit as a '}
+                            {'square wave. A counter reads bottom-up — the lowest bit toggles every '}
+                            {'cycle, the highest slowest.'}
+                        </p>
+                        <React.Suspense fallback={<p style={{opacity: 0.7}}>{'Loading the waveform view…'}</p>}>
+                            <FpgaWaveform netlistText={netlistText} inputs={inputs} />
                         </React.Suspense>
                     </>
                 ) : null}

@@ -164,6 +164,30 @@ export class GateLevelSim {
         return {settled: true, cycles, steps};
     }
 
+    /**
+     * Trace every output cycle by cycle: its value at cycle 0 (the settled reset
+     * state) and after each clock edge. This is what the waveform view draws — a
+     * 4-bit counter becomes four square waves. BOUNDED like {@link tickClock}: an
+     * unsettled cycle stops the trace and reports, and no more than `cap` cycles
+     * are recorded so a large step count cannot build an unbounded array.
+     *
+     * @returns {{trace: Array<{cycle:number, values:Object}>, settled:boolean, reason?:string}}
+     */
+    traceClock (clockPort, cycles, ports, cap = 128) {
+        const trace = [];
+        const record = cyc => { trace.push({cycle: cyc, values: this.outputValues(ports).values}); };
+        const s0 = this.settle();
+        if (!s0.settled) return {trace, settled: false, reason: s0.reason};
+        record(0);
+        const n = Math.min(Math.max(0, cycles | 0), cap);
+        for (let k = 1; k <= n; k++) {
+            const t = this.tickClock(clockPort, 1);
+            if (!t.settled) return {trace, settled: false, reason: t.reason};
+            record(k);
+        }
+        return {trace, settled: true};
+    }
+
     /** One output port, as a bit string ('0', '1', 'x' for undefined). */
     getOutput (port) {
         return this._circuit.getOutput(this._id(port)).toBin();

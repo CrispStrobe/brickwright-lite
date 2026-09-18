@@ -553,3 +553,23 @@ test('the schematic model and view exist and are wired to elkjs, not a heavy ren
     assert.match(view, /a wire lights with the value it carries|wireColor/, 'wires are coloured by real value');
     assert.doesNotMatch(view, /@joint|jointjs/, 'no jointjs — the team avoided that dependency on purpose');
 });
+
+// ── Rung 2: the design's outputs as waveforms over time ──
+test('the FPGA tab shows output waveforms for a clocked design', () => {
+    const tab = codeOnly(read(TAB));
+    assert.match(tab, /import\(\s*\/\*[^*]*\*\/\s*'\.\/fpga-waveform\.jsx'\)/,
+        'the waveform view is its own lazy chunk');
+    assert.match(tab, /<FpgaWaveform netlistText=\{netlistText\} inputs=\{inputs\}/,
+        'the tab must render the waveform from the same netlist and inputs');
+});
+
+test('the waveform builder is pure and honest about unknown values', () => {
+    const wf = read('overlay/scratch-gui/src/lib/bw-fpga/waveform.js');
+    assert.match(wf, /export function traceToLanes/, 'a pure lane builder exists (testable without a browser)');
+    assert.match(wf, /return 'x'/, 'an undefined value stays x, never coerced to a confident low');
+    const sim = read('overlay/scratch-gui/src/lib/bw-fpga/sim.js');
+    assert.match(sim, /traceClock \(clockPort, cycles, ports/,
+        'the sim must record outputs per cycle, bounded by a cap');
+    assert.match(sim, /Math\.min\(Math\.max\(0, cycles \| 0\), cap\)/,
+        'the trace length must be bounded so a large step count cannot build an unbounded array');
+});
