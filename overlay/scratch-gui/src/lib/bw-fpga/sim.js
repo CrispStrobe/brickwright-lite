@@ -220,4 +220,61 @@ export class GateLevelSim {
         }
         return {values, problems: undefined_};
     }
+
+    /**
+     * Read a single NAMED net's settled level, for lighting the schematic's
+     * internal wires. digitaljs indexes wires by their netname; a wire is driven
+     * by some device's output port, so its value is that device's output.
+     *
+     * DELIBERATELY DEFENSIVE and NEVER THROWS: it reaches into the engine's own
+     * cell graph, which is not a stable public surface, and tries several forms.
+     * Any failure returns null, and the caller draws that net as unknown — the
+     * same as before this existed. So internal-wire liveness can only ADD colour,
+     * never break the schematic if the engine's internals shift.
+     *
+     * @param {string} net  the net (wire) name from the connector
+     * @returns {string|null} a bit string ('0','1','x','010'…) or null if unread
+     */
+    netValue (net) {
+        try {
+            const c = this._circuit;
+            const wire = c.findWireByLabel ? c.findWireByLabel(net) : null;
+            if (!wire) return null;
+            // 1) the link may carry its own signal
+            const own = wire.get && wire.get('signal');
+            if (own && typeof own.toBin === 'function') return own.toBin();
+            // 2) otherwise read the driving device's output for the source port
+            const src = wire.get ? wire.get('source') : (wire.source && wire.source());
+            const graph = c._graph;
+            if (src && src.id && graph && graph.getCell) {
+                const cell = graph.getCell(src.id);
+                if (cell) {
+                    const outs = cell.get && cell.get('outputSignals');
+                    const sig = outs && outs[src.port || 'out'];
+                    if (sig && typeof sig.toBin === 'function') return sig.toBin();
+                    if (typeof cell.getOutput === 'function') {
+                        const g = cell.getOutput();
+                        if (g && typeof g.toBin === 'function') return g.toBin();
+                    }
+                }
+            }
+        } catch (e) { /* engine internals shifted — the net just stays unknown */ }
+        return null;
+    }
+
+    /**
+     * Read many nets at once, as {net: 0|1|number|'x'} — 1-bit as boolean-ish
+     * 0/1, wider as a number, an undefined bit as 'x'. Nets that cannot be read
+     * are omitted, so the schematic leaves them neutral.
+     */
+    netValues (nets) {
+        const out = {};
+        for (const net of nets || []) {
+            const bin = this.netValue(net);
+            if (bin == null) continue;
+            if (/[^01]/.test(bin)) { out[net] = 'x'; continue; }
+            out[net] = bin.length === 1 ? (bin === '1' ? 1 : 0) : parseInt(bin, 2);
+        }
+        return out;
+    }
 }

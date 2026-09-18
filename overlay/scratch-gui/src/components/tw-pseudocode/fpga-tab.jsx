@@ -781,7 +781,7 @@ const FpgaTab = () => {
                             {'as you step the clock.'}
                         </p>
                         <React.Suspense fallback={<p style={{opacity: 0.7}}>{'Loading the schematic view…'}</p>}>
-                            <FpgaSchematic netlistText={netlistText} netValues={netValues} />
+                            <FpgaSchematic netlistText={netlistText} netValues={netValues} inputs={inputs} clockCycles={clockCycles} />
                         </React.Suspense>
                     </>
                 ) : null}

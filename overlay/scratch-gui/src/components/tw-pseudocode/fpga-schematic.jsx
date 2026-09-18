@@ -1,6 +1,21 @@
 import React from 'react';
 import {buildSchematicModel, toElkGraph, NODE_SIZE} from '../../lib/bw-fpga/schematic.js';
 import {fromYosys} from '../../lib/bw-fpga/sim.js';
+import {readPorts, detectClockPort} from '../../lib/bw-fpga/yosys.js';
+
+// The sim engine (shared chunk with the tab) is loaded only to READ internal
+// wire values — the schematic runs its own settle so it never disturbs the
+// board-driving sim.
+let simPromise = null;
+const loadSim = () => {
+    if (!simPromise) {
+        simPromise = Promise.all([
+            import(/* webpackChunkName: "bw-fpga-sim" */ '../../lib/bw-fpga/sim.js'),
+            import(/* webpackChunkName: "bw-fpga-sim" */ 'digitaljs')
+        ]).then(([sim, engine]) => ({...sim, engine}));
+    }
+    return simPromise;
+};
 
 /**
  * The synthesised design, drawn as gates — the visual analog the FPGA tab was
@@ -59,7 +74,37 @@ const NodeBox = ({node, laid}) => {
     );
 };
 
-const FpgaSchematic = ({netlistText, netValues}) => {
+const FpgaSchematic = ({netlistText, netValues, inputs, clockCycles = 0}) => {
+    // INTERNAL-wire liveness: run our own settle and read every named net, so
+    // signals light as they flow THROUGH the gates — not just at the I/O. Reads
+    // are defensive (see GateLevelSim.netValues); nets that cannot be read fall
+    // back to the I/O values the tab passes, so this only ever adds colour.
+    const [liveNet, setLiveNet] = React.useState({});
+    React.useEffect(() => {
+        const t = (netlistText || '').trim();
+        if (!t) { setLiveNet({}); return undefined; }
+        let json; try { json = JSON.parse(t); } catch (e) { return undefined; }
+        let live = true;
+        loadSim().then(({GateLevelSim, fromYosys: fy, engine}) => {
+            if (!live) return;
+            const {circuit} = fy(json);
+            if (!circuit) return;
+            try {
+                const sim = new GateLevelSim(circuit, engine);
+                const {ports} = readPorts(json);
+                const clockPort = detectClockPort(ports);
+                for (const [name, p] of Object.entries(ports)) {
+                    if (p.direction !== 'input' || name === clockPort) continue;
+                    sim.setInput(name, (inputs && inputs[name]) ? 1 : 0, p.width || 1);
+                }
+                if (clockPort && clockCycles > 0) sim.tickClock(clockPort, clockCycles);
+                else sim.settle();
+                const nets = [...new Set((circuit.connectors || []).map(c => c.name).filter(Boolean))];
+                if (live) setLiveNet(sim.netValues(nets));
+            } catch (e) { /* leave internal nets to the I/O fallback */ }
+        }).catch(() => {});
+        return () => { live = false; };
+    }, [netlistText, inputs, clockCycles]);
     // Parse + convert + model once per netlist. Pure and cheap; the layout is
     // the async part.
     const parsed = React.useMemo(() => {
@@ -127,7 +172,9 @@ const FpgaSchematic = ({netlistText, netValues}) => {
                         {/* wires first, so gates draw on top */}
                         {(graph.edges || []).map(e => {
                             const edge = edgesById[e.id];
-                            const v = edge && netValues ? netValues[edge.net] : undefined;
+                            const net = edge && edge.net;
+                            const v = net != null && liveNet[net] !== undefined ? liveNet[net]
+                                : (net != null && netValues ? netValues[net] : undefined);
                             const sec = (e.sections || [])[0];
                             if (!sec) return null;
                             const pts = [sec.startPoint, ...(sec.bendPoints || []), sec.endPoint]
