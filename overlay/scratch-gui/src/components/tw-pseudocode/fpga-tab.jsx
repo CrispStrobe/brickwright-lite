@@ -100,6 +100,11 @@ const FpgaTab = () => {
     // One-click demo board: wiring a Tang Nano + 4 LEDs so a synthesised counter
     // has something to light. Feedback only — the wiring happens on the live board.
     const [demoMsg, setDemoMsg] = React.useState(null);
+    // The first-run guide tracks the three steps through the tab's real state and
+    // stays until the user hides it (or opts out for good in this browser).
+    const [guideDismissed, setGuideDismissed] = React.useState(() => {
+        try { return localStorage.getItem('bw-fpga-guide-done') === '1'; } catch { return false; }
+    });
     const [sim, setSim] = React.useState({values: {}, note: null, problems: []});
     const [hdl, setHdl] = React.useState('');
     const [synth, setSynth] = React.useState(null);
@@ -337,6 +342,45 @@ const FpgaTab = () => {
     <div style={{position: 'absolute', top: 0, right: 0, bottom: 0, left: 0,
         overflowY: 'auto', padding: '1.25rem', lineHeight: 1.5, boxSizing: 'border-box'}}>
         <div style={{maxWidth: '52rem'}}>
+            {guideDismissed ? null : (() => {
+                // Progress is READ from the tab's real state, so a step ticks when
+                // the user actually does it — not a scripted tour that lies.
+                const steps = [
+                    {done: Boolean(demoMsg && demoMsg.ok),
+                        label: 'Wire up a demo board',
+                        hint: 'the ⬢ button below wires a Tang Nano + 4 LEDs on pins 15–18'},
+                    {done: Boolean((synth && synth.ok) || netlistText.trim()),
+                        label: 'Load a design and synthesise it',
+                        hint: 'try “Counting sequence”, then Synthesise'},
+                    {done: clockCycles > 0,
+                        label: 'Step the clock',
+                        hint: 'the four LEDs count up in binary on the board'}
+                ];
+                const allDone = steps.every(s => s.done);
+                const hide = () => {
+                    try { localStorage.setItem('bw-fpga-guide-done', '1'); } catch (e) { /* private mode */ }
+                    setGuideDismissed(true);
+                };
+                return (
+                    <div style={{border: '1px solid rgba(74,111,165,0.4)', borderRadius: 6,
+                        padding: '0.75rem 1rem', margin: '0 0 1rem', background: 'rgba(74,111,165,0.07)'}}>
+                        <strong>{allDone
+                            ? '🎉 You designed a chip, synthesised it, and watched it run.'
+                            : 'New to the FPGA lab? Three steps to see your logic light LEDs:'}</strong>
+                        <ol style={{margin: '0.5rem 0 0.25rem', paddingLeft: '1.4rem'}}>
+                            {steps.map((s, i) => (
+                                <li key={i} style={{opacity: s.done ? 0.55 : 1, margin: '0.15rem 0'}}>
+                                    {s.done ? '✓ ' : ''}{s.label}
+                                    <span style={{opacity: 0.7}}>{` — ${s.hint}`}</span>
+                                </li>
+                            ))}
+                        </ol>
+                        <button type="button" onClick={hide}
+                            style={{marginTop: '0.35rem', padding: '0.15rem 0.6rem', cursor: 'pointer'}}
+                        >{allDone ? 'Done' : 'Hide this'}</button>
+                    </div>
+                );
+            })()}
             <h2 style={{marginTop: 0}}>{'FPGA — Tang Nano 20K'}</h2>
             <p style={{marginTop: 0}}>
                 {'Write Verilog, synthesise it to a bitstream on the hosted service or to a '}
