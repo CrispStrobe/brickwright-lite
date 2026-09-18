@@ -34,9 +34,13 @@ export const TANG_NANO_USB_FILTERS = Object.freeze([
     {vendorId: 0x33aa}                        // Sipeed (BL702 debugger); productId TBD on hardware
 ]);
 
-/** Does this browser expose WebUSB at all? */
-export function webUsbSupported () {
-    return typeof navigator !== 'undefined' && Boolean(navigator.usb);
+/**
+ * Does this environment expose WebUSB at all?
+ * @param {Navigator} [nav]  injected for tests — Node 22 ships a read-only
+ *   `navigator` global, so a test cannot swap it; passing one avoids that.
+ */
+export function webUsbSupported (nav = (typeof navigator !== 'undefined' ? navigator : null)) {
+    return Boolean(nav && nav.usb);
 }
 
 /**
@@ -70,7 +74,7 @@ export async function requestBoard (usb = (typeof navigator !== 'undefined' ? na
  */
 export async function flashOverWebUsb () {
     return {ok: false, code: 'not-implemented',
-        reason: 'Direct browser flashing over WebUSB is planned (docs/TANG-NANO.md §TN4) but not '
+        reason: 'Direct browser flashing over WebUSB is planned (the Tang Nano plan, §TN4b) but not '
             + 'built yet — it needs the Gowin JTAG programming sequence written against a real '
             + 'board. For now, flash with `bw-fpga flash design.fs`, openFPGALoader, or the native app.'};
 }

@@ -17,13 +17,10 @@ test('flashOverWebUsb NEVER claims success — it is not implemented', async () 
 });
 
 test('webUsbSupported reflects navigator.usb', () => {
-    const prev = globalThis.navigator;
-    try {
-        globalThis.navigator = {usb: {}};
-        assert.equal(webUsbSupported(), true);
-        globalThis.navigator = {};
-        assert.equal(webUsbSupported(), false);
-    } finally { globalThis.navigator = prev; }
+    // Injected, not swapped on the global: Node 22 ships a read-only `navigator`.
+    assert.equal(webUsbSupported({usb: {}}), true);
+    assert.equal(webUsbSupported({}), false);
+    assert.equal(webUsbSupported(null), false);
 });
 
 test('requestBoard refuses by name where there is no WebUSB', async () => {
