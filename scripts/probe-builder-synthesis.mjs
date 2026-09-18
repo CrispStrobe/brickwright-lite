@@ -63,6 +63,23 @@ const DESIGNS = {
             {from: {node: 'f', port: 'out'}, to: {node: 'q', port: 'in'}}
         ]
     },
+    // memory: a synchronous 4 x 4 single-port RAM (Yosys infers a $mem; the read is
+    // registered). Fits the header pins once ports expand per-bit (bus CST).
+    'sync RAM 4x4 (fits the header pins)': {
+        nodes: [
+            {id: 'clk', kind: 'in', name: 'clk'}, {id: 'a', kind: 'in', name: 'addr', width: 2},
+            {id: 'd', kind: 'in', name: 'din', width: 4}, {id: 'we', kind: 'in', name: 'we'},
+            {id: 'ram', kind: 'memory', dataWidth: 4, addrWidth: 2},
+            {id: 'o', kind: 'out', name: 'q', width: 4}
+        ],
+        edges: [
+            {from: {node: 'clk', port: 'out'}, to: {node: 'ram', port: 'clk'}},
+            {from: {node: 'a', port: 'out'}, to: {node: 'ram', port: 'addr'}},
+            {from: {node: 'd', port: 'out'}, to: {node: 'ram', port: 'din'}},
+            {from: {node: 'we', port: 'out'}, to: {node: 'ram', port: 'we'}},
+            {from: {node: 'ram', port: 'dout'}, to: {node: 'o', port: 'in'}}
+        ]
+    },
     // hierarchy: a full adder from two half-adders + an OR
     'full adder (2 half-adders)': {
         modules: [HALF_ADDER],

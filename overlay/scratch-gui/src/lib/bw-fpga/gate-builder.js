@@ -39,7 +39,7 @@ export function inputPorts (node) {
 
 /** Does this node drive a net (has an `out`)? Inputs and gates do; outputs sink. */
 export function hasOutput (node) {
-    return node.kind === 'in' || node.kind === 'gate' || node.kind === 'instance';
+    return node.kind === 'in' || node.kind === 'gate' || node.kind === 'instance' || node.kind === 'memory';
 }
 
 /** The ports a subcircuit exposes, derived from its own input/output nodes when
@@ -102,6 +102,7 @@ function emitModule (def, name, moduleDefs, problems) {
         if (node.kind === 'in') return ident(node.name, `in_${node.id}`);
         if (node.kind === 'gate') return `w_${node.id}`;
         if (node.kind === 'instance') return `w_${node.id}_${ident(port, 'out')}`;
+        if (node.kind === 'memory') return `w_${node.id}`; // the registered read data
         return null;
     };
 
@@ -125,6 +126,7 @@ function emitModule (def, name, moduleDefs, problems) {
     const outputs = nodes.filter(n => n.kind === 'out');
     const gates = nodes.filter(n => n.kind === 'gate');
     const instances = nodes.filter(n => n.kind === 'instance');
+    const memories = nodes.filter(n => n.kind === 'memory');
 
     if (!outputs.length && name === 'design') {
         problems.push({code: 'no-output', reason: 'Add at least one output so the design drives something.'});
@@ -168,6 +170,24 @@ function emitModule (def, name, moduleDefs, problems) {
             }
         }
         lines.push(`  ${ident(inst.module)} ${ident(inst.id, `u_${inst.id}`)}(${conns.join(', ')});`);
+    }
+    // Synchronous single-port RAM: a reg array, a write on we, a registered
+    // read — the shape Yosys infers as a $mem cell. addr/din/we/clk are inputs;
+    // the registered read data (`w_<id>`) is the memory's output.
+    for (const m of memories) {
+        const dw = Math.max(1, m.dataWidth || 8);
+        const aw = Math.max(1, m.addrWidth || 4);
+        const clk = netFor(m.id, 'clk');
+        if (!clk) problems.push({code: 'memory-no-clock', reason: 'A memory needs a clock wired to its "clk" input.'});
+        const addr = tieLow(m.id, 'addr', 'Memory');
+        const din = tieLow(m.id, 'din', 'Memory');
+        const we = tieLow(m.id, 'we', 'Memory');
+        lines.push(`  reg [${dw - 1}:0] mem_${m.id} [0:${(1 << aw) - 1}];`);
+        lines.push(`  reg [${dw - 1}:0] w_${m.id};`);
+        lines.push(`  always @(posedge ${clk || "1'b0"}) begin`);
+        lines.push(`    if (${we}) mem_${m.id}[${addr}] <= ${din};`);
+        lines.push(`    w_${m.id} <= mem_${m.id}[${addr}];`);
+        lines.push('  end');
     }
     for (const o of outputs) {
         lines.push(`  assign ${ident(o.name, `out_${o.id}`)} = ${tieLow(o.id, 'in', `Output "${ident(o.name, o.id)}"`)};`);
