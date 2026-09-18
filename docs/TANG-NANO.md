@@ -1009,6 +1009,49 @@ redeployed to return `simNetlist` (`cd /opt/bwsynth && git pull && docker build 
 bwsynth:latest . && sudo IMAGE=bwsynth:latest deploy/run.sh`); it needs root on
 the VPS. The LOCAL in-browser tier drives the board today with no deploy.
 
+## 7.9 The FPGA tab got a VISUAL analog, and the surface reaches users (2026-09-18)
+
+The tab was the app's one non-visual surface — a Verilog textbox in an app whose
+whole premise is seeing and manipulating. HDL is not a Scratch script
+(concurrent, structural), so the honest analog is **not** blocks: it is a
+**schematic**. Every library needed was already installed (`yosys2digitaljs`,
+`elkjs`, `digitaljs`), so it was built without new dependencies and without
+`@joint/core` (MPL-2.0) — layout is elkjs, drawing is our own SVG.
+
+A three-rung learning ladder, each rung a pure tested core + a lazy UI chunk:
+
+- **Rung 1 — gate schematic** (`schematic.js`, `fpga-schematic.jsx`): the
+  synthesised design drawn as gates. Wires light by value — I/O first, then
+  every INTERNAL net (read defensively from the digitaljs engine graph, so a
+  read failure degrades to I/O-only, never a regression). *Browser-verified: a
+  blink wire lit green; a counter drew a multi-cell schematic.*
+- **Rung 2 — waveforms** (`waveform.js`, `sim.js` `traceClock`,
+  `fpga-waveform.jsx`): each output bit as a square wave over cycles. *Verified:
+  a 4-bit counter reads led[0] `0101…`, led[3] `0000…1111` — each bit half the
+  frequency below it.* (This is the §2.3 "signal-level waveforms" that were
+  deferred; they turned out cheap once a real netlist and sim existed.)
+- **Rung 3 — gate builder** (`gate-builder.js`, `gate-eval.js`,
+  `fpga-gate-builder.jsx`): place gates, wire them, and it generates matching
+  Verilog + a `.cst` and runs it — *no HDL typed*. It also RUNS live in-browser
+  (toggle an input, step the clock, watch wires light) so synthesis becomes "put
+  it on real hardware", not the only way to see logic work. *Verified: a built
+  D-flip-flop generated valid Verilog and returned a bitstream from the hosted
+  service; a T flip-flop halves the clock in the live evaluator.* The Verilog
+  and the evaluator both tie an unconnected input low, so the live view predicts
+  the hardware. The FPGA tab now mirrors the Code tab's blocks↔text duality, as
+  **gates↔HDL**.
+
+**And the surface reaches users, not just exists.** A runtime opt-in
+(`bw-fpga-preferences`, default OFF) + a Settings toggle ship the ⬢ tab; the
+`bw-fpga` CLI drives synth/flash/check; starter examples fill the box in one
+click; a one-click demo board wires a Tang Nano + LEDs on **the pins the loaded
+design drives** and works OUT OF THE BOX (it shows the Circuit tab, which mounts
+the designer and publishes the live handle); a synthesised design's LEDs mirror
+into the Controller/**Widgets** view (a free-running clock makes them watchable
+there); and a first-run guide walks the whole journey and points to all three
+visual views. The board-native pin→widget path (bw-board #12) lands with the
+d4cb508 pin move.
+
 ## 8a. Decision 6 had a dependency problem — found, and resolved by taking a different subpath
 
 **Resolved. Kept because the reasoning is reusable, not because it is pending.**
