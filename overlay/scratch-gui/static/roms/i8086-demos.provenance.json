@@ -1,6 +1,6 @@
 {
   "note": "Pre-built 8086 demo ROMs vendored from bw-board. See scripts/sync-i8086-demo-roms.mjs.",
-  "pinAtBuild": "76877a20bf0bdcca352eac3d9ae8872b1ac0def7",
+  "pinAtBuild": "d4cb508933ac96d9ffea7cd453d204ae7c8065d2",
   "roms": [
     {
       "rom": "i8086-blink-demo.bin",
