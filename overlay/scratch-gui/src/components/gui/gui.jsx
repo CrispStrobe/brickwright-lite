@@ -404,6 +404,16 @@ const GUIComponent = props => {
         const onLeds = e => {
             const pins = (e && e.detail && e.detail.pins) || [];
             if (!pins.length) return;
+            // Drop indicators left over from a PREVIOUS design's pins — switching
+            // from the 6-LED counter (15-20) to the 4-LED sequence (15-18) must
+            // not leave p19/p20 hanging. Only our own `fpga_p*` widgets are
+            // touched; a user's other widgets are never removed.
+            const want = new Set(pins.map(pin => wname(pin)));
+            for (const existing of controllerPanel.getWidgetNames()) {
+                if (/^fpga_p\d+$/.test(existing) && !want.has(existing)) {
+                    try { controllerPanel.removeWidget(existing); } catch (err) { /* already gone */ }
+                }
+            }
             pins.forEach((pin, i) => {
                 const name = wname(pin);
                 if (!controllerPanel.getWidget(name)) {
