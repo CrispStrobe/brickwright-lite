@@ -612,3 +612,12 @@ test('the schematic can light INTERNAL wires, defensively and without regression
     const tab = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx');
     assert.match(tab, /<FpgaSchematic[^>]*inputs=\{inputs\} clockCycles=\{clockCycles\}/);
 });
+
+// ── C: the first-run guide points to the visual views ──
+test('the guide surfaces the schematic, waveforms and gate builder', () => {
+    const tab = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx');
+    assert.match(tab, /Three ways to SEE it/, 'a synthesised design points the learner to its visual views');
+    assert.match(tab, /gate schematic/, 'the schematic is named');
+    assert.match(tab, /waveforms/, 'the waveforms are named');
+    assert.match(tab, /build it visually/, 'the gate builder is surfaced for people who would rather not type HDL');
+});
