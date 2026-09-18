@@ -5,7 +5,8 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {webUsbSupported, requestBoard, flashOverWebUsb, TANG_NANO_USB_FILTERS}
+import {webUsbSupported, requestBoard, flashOverWebUsb, TANG_NANO_USB_FILTERS,
+    readGowinBitstream, GOWIN_MAGIC}
     from '../overlay/scratch-gui/src/lib/bw-fpga/webusb-flash.js';
 
 test('flashOverWebUsb NEVER claims success — it is not implemented', async () => {
@@ -51,4 +52,24 @@ test('the filter list is non-empty and frozen (a starting set, kept honest)', ()
     assert.ok(TANG_NANO_USB_FILTERS.length >= 1);
     assert.ok(Object.isFrozen(TANG_NANO_USB_FILTERS));
     assert.ok(TANG_NANO_USB_FILTERS.every(f => typeof f.vendorId === 'number'));
+});
+
+test('readGowinBitstream accepts a real-shaped .fs (padding ones, then the magic)', () => {
+    const fs = '1111\n' + GOWIN_MAGIC + '\n0000111100001111\n';
+    const r = readGowinBitstream(fs);
+    assert.equal(r.ok, true);
+    assert.equal(r.magicAt, 4, 'four ones of padding precede the magic');
+    assert.equal(r.bits, 4 + GOWIN_MAGIC.length + 16, 'whitespace is ignored, all bits counted');
+});
+
+test('readGowinBitstream REFUSES what is not a Gowin bitstream — the board must never be handed it', () => {
+    assert.equal(readGowinBitstream('').code, 'empty');
+    assert.equal(readGowinBitstream('not a bitstream at all 0101').code, 'not-gowin');
+    // magic present but the preamble is not all ones = malformed
+    assert.equal(readGowinBitstream('1101' + GOWIN_MAGIC).code, 'bad-preamble');
+});
+
+test('the magic is 0xA5C3', () => {
+    assert.equal(parseInt(GOWIN_MAGIC, 2), 0xA5C3);
+    assert.equal(GOWIN_MAGIC.length, 16);
 });
