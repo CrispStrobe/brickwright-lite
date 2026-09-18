@@ -41,17 +41,41 @@ test('OFF is the default: nothing enables the surface without the env var', () =
         `the define must not fall back to a default that turns it on: ${line.trim()}`);
 });
 
-test('both the tab and its panel are gated, not just the tab', () => {
+test('the tab is dropped at BUILD time and hidden behind the user opt-in at RUNTIME', () => {
     const gui = read(GUI);
+    // The BUILD gate stays: FpgaTab is behind the substituted literal, so an off
+    // build folds it to null and emits no FPGA chunk (the drop the payload guards
+    // rely on). The RUNTIME gate is added: visibility is build AND the user's
+    // preference, so shipping the code does not put the tab in front of everyone.
+    assert.match(gui, /const FpgaTab = process\.env\.BW_ENABLE_FPGA[\s\S]{0,80}React\.lazy\(\(\) => import\(/,
+        'FpgaTab must be behind the build literal AND lazy — an off build must emit no '
+        + 'FPGA chunk, and an on build must keep the surface out of first paint');
+    assert.match(gui, /const FPGA_BUILT = process\.env\.BW_ENABLE_FPGA;/,
+        'the build gate must read the substituted literal directly, so webpack can fold it');
+    assert.match(gui, /const showFpga = FPGA_BUILT && fpgaEnabled;/,
+        'visibility is BUILD and the user opt-in — the build half still folds to false when off');
     const tabList = gui.slice(gui.indexOf('<TabList'), gui.indexOf('</TabList>'));
-    assert.match(tabList, /FPGA_ENABLED \? \(/,
-        'the <Tab> is not gated');
+    assert.match(tabList, /showFpga \? \(/, 'the <Tab> is not gated on showFpga');
     const panels = gui.slice(gui.indexOf('</TabList>'), gui.indexOf('</Tabs>'));
-    assert.match(panels, /FPGA_ENABLED \? \(/,
-        'the <TabPanel> is not gated — a panel without a tab still mounts and still '
-        + 'pulls its imports into the bundle');
-    assert.match(gui, /const FPGA_ENABLED = process\.env\.BW_ENABLE_FPGA;/,
-        'the gate must read the substituted literal directly, so webpack can fold it');
+    assert.match(panels, /showFpga \? \(/,
+        'the <TabPanel> is not gated — a panel without a tab still mounts and pulls its chunk');
+});
+
+test('the user opt-in is a runtime preference, and OFF by default', () => {
+    const prefs = read('overlay/scratch-gui/src/lib/bw-fpga-preferences.js');
+    assert.match(prefs, /getItem\(FPGA_ENABLED_KEY\) === '1'/,
+        'enabled means the stored value is exactly "1"');
+    assert.match(prefs, /catch \{ return false; \}/,
+        'with no storage (a private window) the tab is OFF, never on by accident');
+    // gui.jsx must react to the toggle without a reload: the menu and the tab list
+    // are different components, joined by the event the prefs module dispatches.
+    const gui = read(GUI);
+    assert.match(gui, /addEventListener\(FPGA_TOGGLE_EVENT/,
+        'the tab list must listen for the toggle so the tab appears without a reload');
+    const menu = read('overlay/scratch-gui/src/components/menu-bar/settings-menu.jsx');
+    assert.match(menu, /process\.env\.BW_ENABLE_FPGA \? workspaceSelect\(/,
+        'the settings toggle must itself be behind the build flag — no toggle for a tab '
+        + 'whose code was never bundled');
 });
 
 test('the FPGA tab is LAST, so no existing tab index moved', () => {

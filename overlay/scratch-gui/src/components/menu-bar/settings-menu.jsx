@@ -18,6 +18,7 @@ import {DEFAULT_THEME, HIGH_CONTRAST_THEME, themeMap} from '../../lib/themes';
 import {persistTheme} from '../../lib/themes/themePersistance';
 import {setTheme} from '../../reducers/theme.js';
 import {hardReload} from '../../lib/hard-reload.js';
+import {getFpgaEnabled, setFpgaEnabled} from '../../lib/bw-fpga-preferences.js';
 
 const emit = (name, value) => {
     window.dispatchEvent(new CustomEvent(name, {detail: value}));
@@ -102,6 +103,15 @@ const SettingsMenu = ({canChangeLanguage, canChangeTheme, isRtl, onRequestClose,
                                 {value: 'full-light', label: 'Full width · light'},
                                 {value: 'full-dark', label: 'Full width · dark'}
                             ], 'Choose circuit layout and appearance')}
+                            {/* Build-time gate: DefinePlugin drops this whole item when the FPGA
+                                surface is not bundled, so it never offers a tab that cannot exist. */}
+                            {process.env.BW_ENABLE_FPGA ? workspaceSelect(
+                                'FPGA lab (⬢ tab)', getFpgaEnabled() ? '1' : '0',
+                                value => { setFpgaEnabled(value === '1'); onRequestClose(); }, [
+                                    {value: '0', label: 'Off'},
+                                    {value: '1', label: 'On'}
+                                ], 'Show the ⬢ FPGA tab: synthesise Verilog for the Tang Nano 20K and '
+                                    + 'drive the on-screen board') : null}
                         </Submenu>
                     </MenuItem>
                 </MenuSection>

@@ -7,7 +7,16 @@ import {connect} from 'react-redux';
 import MediaQuery from 'react-responsive';
 import {Tab, Tabs, TabList, TabPanel} from 'react-tabs';
 import CircuitTab from '../tw-pseudocode/circuit-tab.jsx';
-import FpgaTab from '../tw-pseudocode/fpga-tab.jsx';
+import {getFpgaEnabled, FPGA_TOGGLE_EVENT} from '../../lib/bw-fpga-preferences.js';
+// FpgaTab ships only in a build that carries it (BW_ENABLE_FPGA), and even then
+// loads LAZILY: its synthesis/simulation code must not weigh on first paint, and
+// most users never open it. React.lazy keeps the whole surface in a chunk fetched
+// only when the tab is shown. In a build WITHOUT the flag, DefinePlugin makes the
+// condition a literal false and the import() lives in a dead branch, so no FPGA
+// code is emitted — the build-time drop the payload guards depend on is intact.
+const FpgaTab = process.env.BW_ENABLE_FPGA
+    ? React.lazy(() => import(/* webpackChunkName: "bw-fpga-tab" */ '../tw-pseudocode/fpga-tab.jsx'))
+    : null;
 const MicrobitSimPane = React.lazy(() =>
     import(/* webpackChunkName: "bw-microbit-sim" */ '../tw-pseudocode/microbit-sim-pane.jsx')
 );
@@ -114,10 +123,22 @@ const CODE_TAB_INDEX = 3;
 // This is deliberately not a Code-tab language. The Code tab's premise is
 // blocks <-> pseudocode <-> Python/JS as representations of ONE program, and
 // Verilog is not a representation of a Scratch script. See docs/TANG-NANO.md.
-const FPGA_ENABLED = process.env.BW_ENABLE_FPGA;
+// BUILD-time: is the FPGA surface bundled at all? Never gates visibility alone —
+// see showFpga below, which also requires the user's opt-in.
+const FPGA_BUILT = process.env.BW_ENABLE_FPGA;
 
 const GUIComponent = props => {
     const [starterOpen, setStarterOpen] = React.useState(false);
+    // RUNTIME: has the user switched the FPGA tab on (Settings ▸ FPGA lab)? It
+    // ships hidden even when built. The settings menu and this tab list are
+    // different components, so a window event keeps them in step without a reload.
+    const [fpgaEnabled, setFpgaEnabled] = React.useState(getFpgaEnabled);
+    React.useEffect(() => {
+        const onToggle = () => setFpgaEnabled(getFpgaEnabled());
+        window.addEventListener(FPGA_TOGGLE_EVENT, onToggle);
+        return () => window.removeEventListener(FPGA_TOGGLE_EVENT, onToggle);
+    }, []);
+    const showFpga = FPGA_BUILT && fpgaEnabled;
     const [starterBusy, setStarterBusy] = React.useState(false);
     const [starterError, setStarterError] = React.useState('');
     const [lessonsOpen, setLessonsOpen] = React.useState(false);
@@ -734,7 +755,7 @@ const GUIComponent = props => {
                                             id="gui.gui.circuitTab"
                                         />
                                     </Tab>
-                                    {FPGA_ENABLED ? (
+                                    {showFpga ? (
                                         <Tab className={tabClassNames.tab}>
                                             <FormattedMessage
                                                 defaultMessage="⬢ FPGA"
@@ -802,9 +823,13 @@ const GUIComponent = props => {
                                 <TabPanel className={tabClassNames.tabPanel}>
                                     <CircuitTab />
                                 </TabPanel>
-                                {FPGA_ENABLED ? (
+                                {showFpga ? (
                                     <TabPanel className={tabClassNames.tabPanel}>
-                                        <FpgaTab />
+                                        <React.Suspense fallback={
+                                            <div style={{padding: 24, color: '#64748b'}}>{'Loading FPGA lab…'}</div>
+                                        }>
+                                            <FpgaTab />
+                                        </React.Suspense>
                                     </TabPanel>
                                 ) : null}
                             </Tabs>
