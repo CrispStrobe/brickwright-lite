@@ -171,7 +171,17 @@ const MemoryNode = ({data}) => {
     );
 };
 
-const nodeTypes = {gate: GateNode, io: IoNode, instance: InstanceNode, memory: MemoryNode};
+// A constant source: drives a fixed value (double-click to edit). No inputs.
+const ConstNode = ({data}) => (
+    <div style={{position: 'relative', padding: '6px 12px', borderRadius: 4,
+        border: '1.4px solid #7c3aed', background: '#f5f3ff', fontFamily: 'monospace',
+        fontSize: 13, fontWeight: 'bold', color: '#6d28d9'}}>
+        {data.value != null ? String(data.value) : '0'}
+        <Handle type="source" position={Position.Right} id="out" style={{background: '#22c55e'}} />
+    </div>
+);
+
+const nodeTypes = {gate: GateNode, io: IoNode, instance: InstanceNode, memory: MemoryNode, const: ConstNode};
 
 // A starter so the canvas is not blank: a AND b → y.
 const STARTER = () => modelToReactFlow({
@@ -247,6 +257,8 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
             });
         } else if (item.kind === 'memory') {
             setNodes(ns => [...ns, {id: nid('m'), type: 'memory', position, data: {kind: 'memory', dataWidth: 4, addrWidth: 2}}]);
+        } else if (item.kind === 'const') {
+            setNodes(ns => [...ns, {id: nid('k'), type: 'const', position, data: {kind: 'const', value: 1}}]);
         } else if (item.kind === 'template' && item.model) {
             // Drop a starter near the cursor, id-remapped so it MERGES onto the
             // canvas instead of clobbering whatever is already there.

@@ -30,6 +30,8 @@ export const GATE_DEFS = {
     nor: {label: 'NOR', glyph: '≥1', ins: ['a', 'b'], inverting: true, expr: n => `~(${n.a} | ${n.b})`},
     xnor: {label: 'XNOR', glyph: '=1', ins: ['a', 'b'], inverting: true, expr: n => `~(${n.a} ^ ${n.b})`},
     not: {label: 'NOT', glyph: '1', ins: ['a'], inverting: true, expr: n => `~${n.a}`},
+    buffer: {label: 'BUF', glyph: '1', ins: ['a'], expr: n => `${n.a}`},
+    cinv: {label: 'CINV', glyph: '~?', ins: ['a', 'inv'], expr: n => `${n.inv} ? ~${n.a} : ${n.a}`},
     eq: {label: 'EQ', glyph: '==', ins: ['a', 'b'], expr: n => `${n.a} == ${n.b}`},
     neq: {label: 'NEQ', glyph: '!=', ins: ['a', 'b'], expr: n => `${n.a} != ${n.b}`},
     lt: {label: 'LT', glyph: '<', ins: ['a', 'b'], expr: n => `${n.a} < ${n.b}`},

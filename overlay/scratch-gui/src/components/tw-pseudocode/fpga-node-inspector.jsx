@@ -20,11 +20,15 @@ const nodeTitle = data => {
 // Which fields are editable for this node, as [key, type] pairs.
 const fieldsFor = data => {
     const f = [];
+    if (data.kind === 'const') return [['value', 'number']];
     if (data.kind === 'in' || data.kind === 'out') f.push(['name', 'text']);
     if (data.kind === 'memory') { f.push(['dataWidth', 'number']); f.push(['addrWidth', 'number']); }
     else if (data.kind !== 'instance') f.push(['width', 'number']);
     return f;
 };
+
+// widths must be ≥1; a constant's value may be 0.
+const minFor = key => (key === 'value' ? 0 : 1);
 
 export function NodeInspector ({node, x, y, onChange, onClose}) {
     const ref = React.useRef(null);
@@ -51,9 +55,9 @@ export function NodeInspector ({node, x, y, onChange, onClose}) {
                         autoFocus={i === 0}
                         type={type}
                         inputMode={type === 'number' ? 'numeric' : undefined}
-                        min={type === 'number' ? 1 : undefined}
+                        min={type === 'number' ? minFor(key) : undefined}
                         value={data[key] ?? (type === 'number' ? 1 : '')}
-                        onChange={e => onChange(node.id, {[key]: type === 'number' ? Math.max(1, Number(e.target.value) || 1) : e.target.value})}
+                        onChange={e => onChange(node.id, {[key]: type === 'number' ? Math.max(minFor(key), Number(e.target.value) || 0) : e.target.value})}
                         onKeyDown={e => { if (e.key === 'Enter') onClose(); }}
                         style={{width: 72, height: 26, boxSizing: 'border-box', padding: '2px 4px',
                             border: '1px solid #64748b', borderRadius: 3, fontFamily: 'monospace', fontSize: 11}}
