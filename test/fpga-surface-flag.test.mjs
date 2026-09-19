@@ -701,3 +701,14 @@ test('a placed node can be inspected (params) and right-clicked (delete/duplicat
     assert.match(insp, /dataWidth.*addrWidth|addrWidth/, 'RAM geometry is editable');
     assert.doesNotMatch(insp, /from 'bw-circuit-ui/, 'ported for the gate domain — no board-package import coupling');
 });
+
+// ── live simulation: Run mode colours wires and shows values ──
+test('the builder runs live — wires colour by value, inputs toggle', () => {
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /import \{evalModel, stepClock\}/, 'the tested evaluator drives Run mode');
+    assert.match(ui, /data-testid="bw-fpga-rf-run"/, 'a Run toggle');
+    assert.match(ui, /const shownEdges = live/, 'edges recolour by their source value');
+    assert.match(ui, /const onNodeClick = /, 'clicking an input toggles it');
+    assert.match(ui, /stepClock\(reactFlowToModel/, 'a clock step advances flip-flops');
+    assert.match(ui, /nodes=\{shownNodes\} edges=\{shownEdges\}/, 'the canvas renders the live values');
+});

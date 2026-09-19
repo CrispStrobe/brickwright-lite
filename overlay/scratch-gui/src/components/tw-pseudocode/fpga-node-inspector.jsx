@@ -1,5 +1,6 @@
 import React from 'react';
 import {GATE_DEFS} from '../../lib/bw-fpga/gate-builder.js';
+// (no board-package import — this is ported for the gate domain)
 
 /**
  * Editing a placed node — a small floating inspector (double-click a node) and a
