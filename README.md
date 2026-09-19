@@ -108,6 +108,18 @@ npx tauri dev                 # desktop
 npx tauri android build --apk # or:  npx tauri ios build
 ```
 
+**Verilog to SVG** (needs Yosys):
+
+```bash
+npm run render:fpga -- design.v --output render --title "My circuit"
+```
+
+The renderer preserves named modules and expands one hierarchy level by
+default. Use `--expand-depth 0` for macro boxes, `--expand-depth 2` to expose
+another level, or `--top module_name` when a file contains several candidates.
+Large repeated arrays stay collapsed automatically; adjust that threshold with
+`--max-expanded-instances`.
+
 For an installable physical-iPad development package, use the production asset
 pipeline even when signing with an Apple Development profile:
 
