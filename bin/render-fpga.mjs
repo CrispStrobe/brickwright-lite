@@ -6,6 +6,7 @@ import {execFileSync} from 'child_process';
 import {program} from 'commander';
 import ELK from 'elkjs';
 import {yosysToModel} from '../overlay/scratch-gui/src/lib/bw-fpga/yosys-to-model.js';
+import {gateShape} from '../overlay/scratch-gui/src/lib/bw-fpga/glyphs.js';
 
 const NODE_WIDTH = 64;
 const IO_SIZE = 24;
@@ -157,48 +158,7 @@ const pointPath = section => {
 
 const findPort = (node, name) => (node.ports || []).find(item => item.id.endsWith(`.${name}`));
 
-const OP_GLYPH = {
-    add: '+', sub: '\u2212', mul: '\u00D7',
-    eq: '=', neq: '\u2260', lt: '<', gt: '>', lte: '\u2264', gte: '\u2265',
-    shl: '\u00AB', shr: '\u00BB',
-    reduce_or: '\u22651', reduce_and: '&', reduce_xor: '=1'
-};
-const gateShape = node => {
-    const {x, y, width, height} = node;
-    const centerX = x + width / 2;
-    const centerY = y + height / 2;
-    if (node.type === 'slice' || node.type === 'concat') {
-        const barX = centerX - 2.5;
-        const label = node.type === 'slice' && node.hi != null
-            ? (node.hi === node.lo ? String(node.lo) : `${node.hi}:${node.lo}`)
-            : '';
-        const text = label ? `<text class="bus-label" x="${centerX}" y="${y - 3}">${xml(label)}</text>` : '';
-        return `<rect class="bus-tap" x="${barX}" y="${y}" width="5" height="${height}"/>${text}`;
-    }
-    if (node.type === 'and') {
-        return `<path class="gate" d="M ${x} ${y} L ${centerX} ${y} A ${width / 2} ${height / 2} 0 0 1 ${centerX} ${y + height} L ${x} ${y + height} Z"/>`;
-    }
-    if (node.type === 'or' || node.type === 'xor') {
-        const body = `<path class="gate" d="M ${x + 6} ${y} Q ${x + width * .34} ${centerY} ${x + 6} ${y + height} Q ${x + width * .68} ${y + height} ${x + width} ${centerY} Q ${x + width * .68} ${y} ${x + 6} ${y} Z"/>`;
-        return node.type === 'xor' ? `${body}<path class="gate-line" d="M ${x} ${y} Q ${x + width * .28} ${centerY} ${x} ${y + height}"/>` : body;
-    }
-    if (node.type === 'not') {
-        return `<polygon class="gate" points="${x},${y} ${x + width - 10},${centerY} ${x},${y + height}"/><circle class="gate" cx="${x + width - 5}" cy="${centerY}" r="5"/>`;
-    }
-    if (node.type === 'mux' || node.type === 'pmux') {
-        return `<polygon class="gate" points="${x},${y} ${x + width},${y + 9} ${x + width},${y + height - 9} ${x},${y + height}"/>`;
-    }
-    const box = `<rect class="gate" x="${x}" y="${y}" width="${width}" height="${height}" rx="3"/>`;
-    if (node.type === 'dff' || node.type === 'adff' || node.type === 'dlatch') {
-        // a clocked register: box with an edge-clock triangle on the left rail
-        const tri = `<path class="gate-line" d="M ${x} ${centerY - 7} L ${x + 9} ${centerY} L ${x} ${centerY + 7}"/>`;
-        const label = node.type === 'adff' ? 'aDFF' : node.type === 'dlatch' ? 'DLAT' : 'DFF';
-        return `${box}${tri}<text class="gate-label" x="${x + width * .58}" y="${centerY}">${label}</text>`;
-    }
-    const glyph = OP_GLYPH[node.type];
-    if (glyph) return `${box}<text class="gate-op" x="${centerX}" y="${centerY}">${xml(glyph)}</text>`;
-    return `${box}<text class="gate-label" x="${centerX}" y="${centerY}">${xml((node.type || 'gate').toUpperCase())}</text>`;
-};
+
 
 function renderPorts (node, offsetX, offsetY, showLabels) {
     return (node.ports || []).map(item => {

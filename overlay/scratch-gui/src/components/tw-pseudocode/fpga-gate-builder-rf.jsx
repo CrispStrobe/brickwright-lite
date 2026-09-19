@@ -10,6 +10,17 @@ import {ReactFlow, ReactFlowProvider, Background, Controls, MiniMap, addEdge,
 import '!!style-loader!css-loader!@xyflow/react/dist/style.css';
 import {GATE_DEFS, modelToVerilog, modelToCst, derivePorts} from '../../lib/bw-fpga/gate-builder.js';
 import {reactFlowToModel, modelToReactFlow} from '../../lib/bw-fpga/gate-builder-rf.js';
+import {gateShape} from '../../lib/bw-fpga/glyphs.js';
+
+// The gate glyphs are shared with the CLI/schematic renderer; their classes are
+// styled once here, scoped under `.bw-glyph` so they never touch the rest of the app.
+const GLYPH_CSS = `
+.bw-glyph .gate{fill:#fff;stroke:#334155;stroke-width:2}
+.bw-glyph .gate-line{fill:none;stroke:#334155;stroke-width:2;stroke-linecap:round}
+.bw-glyph .bus-tap{fill:#0284c7;stroke:none}
+.bw-glyph .gate-op{font:700 20px Arial,sans-serif;fill:#111;text-anchor:middle;dominant-baseline:middle}
+.bw-glyph .gate-label{font:700 11px Arial,sans-serif;fill:#111;text-anchor:middle;dominant-baseline:middle}
+.bw-glyph .bus-label{font:9px Arial,sans-serif;fill:#64748b;text-anchor:middle}`;
 
 const L10N = {
     en: {
@@ -56,19 +67,23 @@ const pickLocale = loc => (loc && L10N[String(loc).slice(0, 2)] ? String(loc).sl
  */
 
 // A logic gate: input handles down the left (one per port), one output right.
+// A gate drawn with the SHARED glyph (the same shape the CLI/schematic use), so
+// an AND looks like an AND on the canvas too — not a labelled box.
+const GATE_W = 60;
 const GateNode = ({data}) => {
-    const def = GATE_DEFS[data.gtype] || {glyph: data.gtype, ins: ['a', 'b']};
+    const def = GATE_DEFS[data.gtype] || {ins: ['a', 'b']};
     const ins = def.ins || [];
+    const height = Math.max(40, ins.length * 16 + 12);
+    const shape = gateShape({type: data.gtype, x: 0, y: 0, width: GATE_W, height});
     return (
-        <div style={{position: 'relative', width: 52, minHeight: 40, padding: '4px 2px',
-            border: '1.3px solid #475569', borderRadius: 4, background: '#ffffff',
-            textAlign: 'center', fontWeight: 'bold', fontSize: 13}}>
+        <div style={{position: 'relative', width: GATE_W, height}}>
             {ins.map((p, i) => (
                 <Handle key={p} type="target" position={Position.Left} id={p}
                     style={{top: `${((i + 1) / (ins.length + 1)) * 100}%`, background: '#0284c7'}} />
             ))}
-            <span>{def.glyph || data.gtype}</span>
-            {def.inverting ? <span style={{color: '#94a3b8'}}>{'○'}</span> : null}
+            <svg className="bw-glyph" width={GATE_W} height={height} viewBox={`0 0 ${GATE_W} ${height}`}
+                style={{display: 'block', overflow: 'visible'}}
+                dangerouslySetInnerHTML={{__html: shape}} />
             <Handle type="source" position={Position.Right} id="out" style={{background: '#22c55e'}} />
         </div>
     );
@@ -210,6 +225,7 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
 
     return (
         <div>
+            <style>{GLYPH_CSS}</style>
             <div style={{display: 'flex', gap: '0.35rem', flexWrap: 'wrap', margin: '0 0 0.4rem'}}>
                 <button type="button" onClick={() => addIo('in')} style={{cursor: 'pointer'}}>{L10N[pickLocale(locale)].addInput}</button>
                 <button type="button" onClick={() => addIo('out')} style={{cursor: 'pointer'}}>{L10N[pickLocale(locale)].addOutput}</button>
