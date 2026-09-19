@@ -121,3 +121,61 @@ test('a combinational loop settles to unknown, and never hangs', () => {
     const r = evalModel(m, {});
     assert.equal(r.outputs.y, 'x', 'a self-driven inverter has no defined level');
 });
+
+// A memory node is a synthesis-path feature — the 1-bit live evaluator does not
+// simulate RAM. It must DEGRADE, not crash: surrounding gates still evaluate,
+// and the un-simulated memory output reads 'x' rather than throwing.
+test('a memory node does not break live evaluation of the rest of the design', () => {
+    const model = {
+        nodes: [
+            {id: 'a', kind: 'in', name: 'a'}, {id: 'b', kind: 'in', name: 'b'},
+            {id: 'g', kind: 'gate', type: 'and'}, {id: 'y', kind: 'out', name: 'y'},
+            {id: 'ck', kind: 'in', name: 'clk'},
+            {id: 'ram', kind: 'memory', dataWidth: 4, addrWidth: 2},
+            {id: 'q', kind: 'out', name: 'q'}
+        ],
+        edges: [
+            {from: {node: 'a', port: 'out'}, to: {node: 'g', port: 'a'}},
+            {from: {node: 'b', port: 'out'}, to: {node: 'g', port: 'b'}},
+            {from: {node: 'g', port: 'out'}, to: {node: 'y', port: 'in'}},
+            {from: {node: 'ck', port: 'out'}, to: {node: 'ram', port: 'clk'}},
+            {from: {node: 'ram', port: 'dout'}, to: {node: 'q', port: 'in'}}
+        ]
+    };
+    const {outputs} = evalModel(model, {a: 1, b: 1});
+    assert.equal(outputs.y, 1, 'real gates still evaluate with a memory node present');
+    assert.equal(outputs.q, 'x', 'the un-simulated memory output is unknown, not a crash');
+    assert.doesNotThrow(() => stepClock(model, {a: 1, b: 1}));
+});
+
+test('a flip-flop preserves unknown across a known → unknown → known clock sequence', () => {
+    const model = unknownD => ({
+        nodes: [
+            {id: 'd', kind: 'in', name: 'd'},
+            {id: 'keep', kind: 'in', name: 'keep'},
+            {id: 'loop', kind: 'gate', type: 'not'},
+            {id: 'ff', kind: 'gate', type: 'dff'},
+            {id: 'sibling', kind: 'gate', type: 'dff'},
+            {id: 'q', kind: 'out', name: 'q'},
+            {id: 'stable', kind: 'out', name: 'stable'}
+        ],
+        edges: [
+            {from: {node: 'loop', port: 'out'}, to: {node: 'loop', port: 'a'}},
+            {from: {node: unknownD ? 'loop' : 'd', port: 'out'}, to: {node: 'ff', port: 'd'}},
+            {from: {node: 'keep', port: 'out'}, to: {node: 'sibling', port: 'd'}},
+            {from: {node: 'ff', port: 'out'}, to: {node: 'q', port: 'in'}},
+            {from: {node: 'sibling', port: 'out'}, to: {node: 'stable', port: 'in'}}
+        ]
+    });
+    let state = stepClock(model(false), {d: 1, keep: 1});
+    assert.deepEqual(evalModel(model(false), {}, state).outputs, {q: 1, stable: 1});
+
+    state = stepClock(model(true), {keep: 1}, state);
+    assert.equal(state.ff, 'x', 'the clock captures the unknown combinational value');
+    assert.deepEqual(evalModel(model(true), {}, state).outputs, {q: 'x', stable: 1},
+        'rendering keeps x while an independent flop remains known');
+
+    state = stepClock(model(false), {d: 0, keep: 1}, state);
+    assert.deepEqual(evalModel(model(false), {}, state).outputs, {q: 0, stable: 1},
+        'a later known input replaces x only on a later clock edge');
+});
