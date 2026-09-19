@@ -54,7 +54,7 @@ export function modelToReactFlow (model, positions = {}) {
         id: n.id,
         type: rfType(n.kind),
         position: positions[n.id] || {x: i * 130, y: (i % 2) * 70},
-        data: {kind: n.kind, gtype: n.type, name: n.name, width: n.width || 1, module: n.module}
+        data: {kind: n.kind, gtype: n.type, name: n.name, width: n.width || 1, module: n.module, ports: n.ports}
     }));
     const edges = ((model && model.edges) || []).map((e, i) => ({
         id: `e${i}`,

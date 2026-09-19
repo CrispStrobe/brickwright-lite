@@ -44,10 +44,19 @@ export function yosysToModel(jsonText) {
     
     for (const [cname, cdef] of Object.entries(mod.cells || {})) {
         const type = typeMap[cdef.type];
-        if (!type) continue; // Skip unmapped cells for now, or map to blackbox
-        
         const id = nextId('cell');
         cdef._modelId = id; // attach for later
+        
+        if (!type) {
+            // Unmapped cell -> Blackbox Instance
+            const ports = [];
+            for (const [portName, dir] of Object.entries(cdef.port_directions)) {
+                ports.push({name: portName, dir: dir === 'output' ? 'out' : 'in', width: (cdef.connections[portName] || []).length});
+            }
+            nodes.push({id, kind: 'instance', module: cdef.type, ports});
+            continue;
+        }
+        
         nodes.push({id, kind: 'gate', type}); // We could add width if needed, but gate-eval uses args lengths mostly, except it's good to have width
         
         // Find output ports
@@ -128,6 +137,7 @@ export function yosysToModel(jsonText) {
                     if (type === 'mux' && portName === 'A') toPort = 'd0';
                     if (type === 'mux' && portName === 'B') toPort = 'd1';
                     if (type === 'mux' && portName === 'S') toPort = 'sel';
+                    if (!type) toPort = portName; // blackbox instances keep their exact port names
                     
                     edges.push({from: src, to: {node: id, port: toPort}});
                 }
