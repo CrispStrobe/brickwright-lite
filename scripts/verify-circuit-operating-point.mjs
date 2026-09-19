@@ -44,6 +44,7 @@ const importSpice = async (designer, name, body) => {
         throw new Error(`SPICE import was not lossless: tone=${tone} ${text}`);
     }
     await report.locator('[data-transfer-report-close]').click();
+    await report.waitFor({state: 'hidden', timeout: 5000});
 };
 
 const runOperatingPoint = async designer => {
