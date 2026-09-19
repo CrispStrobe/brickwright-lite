@@ -577,10 +577,13 @@ test('the waveform builder is pure and honest about unknown values', () => {
 // ── Rung 3: build logic by placing gates, no Verilog typed ──
 test('the FPGA tab offers a visual gate builder that feeds the Verilog box', () => {
     const tab = codeOnly(read(TAB));
-    assert.match(tab, /import\(\s*\/\*[^*]*\*\/\s*'\.\/fpga-gate-builder\.jsx'\)/,
-        'the gate builder is its own lazy chunk (shared with the schematic)');
-    assert.match(tab, /<FpgaGateBuilder [^>]*onUseVerilog=/,
-        'the tab must render the gate builder');
+    // the React Flow canvas is the sole visual builder (the old SVG one was retired)
+    assert.match(tab, /import\(\s*\/\*[^*]*\*\/\s*'\.\/fpga-gate-builder-rf\.jsx'\)/,
+        'the React Flow builder is its own lazy chunk');
+    assert.match(tab, /<FpgaGateBuilderRf [^>]*onUseVerilog=/,
+        'the tab must render the React Flow gate builder');
+    assert.doesNotMatch(tab, /<FpgaGateBuilder [^>]*onUseVerilog=/,
+        'the redundant old SVG builder must not also be rendered');
     assert.match(tab, /setHdl\(v\); if \(cst\) setText\(cst\); setSynth\(null\)/,
         'building gates must drop generated Verilog AND matching constraints into the boxes');
 });
@@ -592,7 +595,7 @@ test('the gate-builder Verilog generator is pure and refuses to emit illegal HDL
     assert.match(gb, /replace\(\/\[\^A-Za-z0-9_\]\/g/, 'user names are sanitised to legal identifiers');
     // The builder UI must not itself contain HDL string-building — that lives in
     // the tested pure module.
-    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder.jsx');
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
     assert.match(ui, /modelToVerilog\(model\)/, 'the UI must generate via the tested pure function');
     assert.doesNotMatch(ui, /'module '|`module /, 'the UI must not build Verilog strings itself');
 });
@@ -620,21 +623,6 @@ test('the guide surfaces the schematic, waveforms and gate builder', () => {
     assert.match(tab, /gate schematic/, 'the schematic is named');
     assert.match(tab, /waveforms/, 'the waveforms are named');
     assert.match(tab, /build it visually/, 'the gate builder is surfaced for people who would rather not type HDL');
-});
-
-// ── Rung 3 live: the gate builder runs in the browser, no synthesis ──
-test('the gate builder evaluates live and colours wires by value', () => {
-    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder.jsx');
-    assert.match(ui, /import \{evalModel, stepClock as stepClockEval\}/,
-        'the builder must evaluate the model in-browser');
-    assert.match(ui, /toggleInput\(node\.name\)/, 'clicking an input toggles it live');
-    assert.match(ui, /wireStroke\(v\)/, 'wires are coloured by their live value');
-    assert.match(ui, /stepClockEval\(model, inputVals/, 'a clock step advances the flip-flops');
-    // The evaluation logic lives in a pure, tested module — not inline in the UI.
-    const ev = read('overlay/scratch-gui/src/lib/bw-fpga/gate-eval.js');
-    assert.match(ev, /export function evalModel/);
-    assert.match(ev, /export function stepClock/);
-    assert.match(ev, /=== 'x'/, 'an unknown net stays x, never invented');
 });
 
 // ── the React Flow canvas foundation: a permissive dep + a tested bridge ──
@@ -773,4 +761,23 @@ test('the palette offers T, SR and JK flip-flops that synthesise', () => {
     assert.match(gb, /tff: \{label: 'T-FF'/, 'the T flip-flop is defined');
     assert.match(gb, /seqNext:/, 'flip-flops carry a Verilog next-state');
     assert.match(gb, /gd\.seqNext\(nets, reg\)/, 'the codegen is generic over the family');
+});
+
+// ── the canvas must show its design even when opened from a collapsed panel ──
+test('the React Flow canvas re-fits when its container gains size', () => {
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /new ResizeObserver/, 'a ResizeObserver re-fits the view');
+    assert.match(ui, /rf\.fitView\(\{padding/, 'so nodes are never left off-screen');
+    assert.match(ui, /onInit=\{inst => \{ try \{ inst\.fitView/, 'and it fits on init');
+});
+
+// ── the canvas can be exported to SVG (CLI-inspectable, saves browser drives) ──
+test('the builder can export the canvas as an SVG', () => {
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /import \{canvasToSvg\}/, 'the pure exporter is used');
+    assert.match(ui, /const exportSvg = /, 'an export handler');
+    assert.match(ui, /data-testid="bw-fpga-rf-svg"/, 'a visible Export SVG button');
+    const lib = read('overlay/scratch-gui/src/lib/bw-fpga/canvas-svg.js');
+    assert.match(lib, /export function canvasToSvg/, 'and it lives in a pure, reusable module');
+    assert.match(lib, /import \{gateShape\}/, 'reusing the shared glyphs');
 });

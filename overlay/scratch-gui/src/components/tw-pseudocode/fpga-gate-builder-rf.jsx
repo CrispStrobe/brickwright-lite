@@ -11,6 +11,7 @@ import '!!style-loader!css-loader!@xyflow/react/dist/style.css';
 import {GATE_DEFS, modelToVerilog, modelToCst, derivePorts} from '../../lib/bw-fpga/gate-builder.js';
 import {reactFlowToModel, modelToReactFlow} from '../../lib/bw-fpga/gate-builder-rf.js';
 import {gateShape} from '../../lib/bw-fpga/glyphs.js';
+import {canvasToSvg} from '../../lib/bw-fpga/canvas-svg.js';
 import {buildPaletteCatalog} from '../../lib/bw-fpga/palette-catalog.js';
 import FpgaGatePalette, {DRAG_MIME} from './fpga-gate-palette.jsx';
 import {NodeInspector, NodeContextMenu} from './fpga-node-inspector.jsx';
@@ -242,6 +243,21 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
     // Verilog-only starters live in the examples browser, not the palette.
     const catalog = React.useMemo(() => buildPaletteCatalog(EXAMPLES.filter(e => e.model && e.model.nodes)), []);
     const rf = useReactFlow();
+    // The canvas is often mounted inside a collapsed <details> (zero height), so
+    // React Flow's mount-time fitView fits nothing and the design is off-screen —
+    // the "empty canvas" bug. Re-fit whenever the container gains/changes size.
+    const canvasRef = React.useRef(null);
+    React.useEffect(() => {
+        const el = canvasRef.current;
+        if (!el || typeof ResizeObserver === 'undefined') return undefined;
+        const ro = new ResizeObserver(() => {
+            if (el.clientHeight > 0 && el.clientWidth > 0) {
+                try { rf.fitView({padding: 0.2, duration: 0}); } catch (e) { /* not ready yet */ }
+            }
+        });
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, [rf]);
 
     // Turn a palette drag descriptor into a canvas node at `position`. A RAM
     // defaults to a 4x4 (2-bit addr, 4-bit data) — the shape that fits the
@@ -287,6 +303,19 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
         placeNode(item, rf.screenToFlowPosition({x: e.clientX, y: e.clientY}));
     };
     const onConnect = React.useCallback(params => setEdges(es => addEdge(params, es)), [setEdges]);
+
+    // Export the canvas as a standalone SVG — the SAME nodes/glyphs/wires shown,
+    // at their live positions. A CLI-inspectable snapshot of the design.
+    const exportSvg = () => {
+        const model = reactFlowToModel(nodes, edges, library);
+        const positions = Object.fromEntries(nodes.map(n => [n.id, n.position]));
+        const svg = canvasToSvg(model, positions);
+        const url = URL.createObjectURL(new Blob([svg], {type: 'image/svg+xml'}));
+        const a = document.createElement('a');
+        a.href = url; a.download = 'fpga-canvas.svg';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    };
 
     // Editing a placed node: double-click opens the inspector; a patch merges
     // into node.data (the bridge reads width/name/dataWidth/addrWidth from there).
@@ -401,6 +430,8 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                 <button type="button" data-testid="bw-fpga-rf-clear"
                     onClick={() => { setNodes([]); setEdges([]); setCheckResult(null); }}
                     title="Clear the canvas" style={{cursor: 'pointer'}}>{'🗑 Clear'}</button>
+                <button type="button" data-testid="bw-fpga-rf-svg" onClick={exportSvg}
+                    title="Export the canvas as an SVG" style={{cursor: 'pointer'}}>{'⤓ SVG'}</button>
                 <span style={{opacity: 0.4}}>{'|'}</span>
                 <button type="button" data-testid="bw-fpga-rf-learn"
                     onClick={() => setShowLearn(s => !s)}
@@ -444,11 +475,12 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                         onSelect={selectChallenge} onCheck={runCheck} onNext={goNext} />
                 ) : null}
                 <FpgaGatePalette catalog={catalog} />
-                <div style={{flex: '1 1 auto', height: '48vh', minHeight: 300, border: '1px solid rgba(71,85,105,0.25)', borderRadius: 6}}
+                <div ref={canvasRef} style={{flex: '1 1 auto', height: '48vh', minHeight: 300, border: '1px solid rgba(71,85,105,0.25)', borderRadius: 6}}
                     data-testid="bw-fpga-rf-canvas" onDrop={onDrop} onDragOver={onDragOver}>
                     <ReactFlow
                         nodes={shownNodes} edges={shownEdges}
                         onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect}
+                        onInit={inst => { try { inst.fitView({padding: 0.2}); } catch (e) { /* no-op */ } }}
                         onNodeClick={onNodeClick}
                         onNodeDoubleClick={onNodeDoubleClick} onNodeContextMenu={onNodeContextMenu}
                         onEdgeContextMenu={onEdgeContextMenu} onPaneClick={() => { setMenu(null); setInspect(null); }}

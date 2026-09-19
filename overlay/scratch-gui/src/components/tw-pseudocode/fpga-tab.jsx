@@ -55,7 +55,7 @@ const L10N = {
         newHere: 'New here? Load a starter design, then Synthesise:',
         orBuildItVisually: 'Or build it visually — place gates and wire them, no Verilog typed',
         loadingGateBuilder: 'Loading the gate builder…',
-        orOnFullCanvas: '…or on a full canvas — drag, zoom, and wire (React Flow)',
+        orOnFullCanvas: 'Build it visually — drag gates onto the canvas and wire them (no Verilog typed)',
         loadingCanvas: 'Loading the canvas…',
         wireDemoBoardBtn: '⬢ Wire up a demo board',
         permissiveLicence: 'Declares a permissive licence — it may be built on the shared server.',
@@ -167,7 +167,7 @@ const L10N = {
         newHere: 'Neu hier? Laden Sie ein Starter-Design, dann Synthetisieren:',
         orBuildItVisually: 'Oder visuell bauen — Gatter platzieren und verdrahten, ohne Verilog zu tippen',
         loadingGateBuilder: 'Lade den Gatter-Builder…',
-        orOnFullCanvas: '…oder auf einer vollen Leinwand — ziehen, zoomen und verdrahten (React Flow)',
+        orOnFullCanvas: 'Visuell bauen — Gatter auf die Leinwand ziehen und verdrahten (kein Verilog)',
         loadingCanvas: 'Lade die Leinwand…',
         wireDemoBoardBtn: '⬢ Demoboard verkabeln',
         permissiveLicence: 'Erklärt eine freizügige Lizenz — es kann auf dem geteilten Server gebaut werden.',
@@ -317,10 +317,9 @@ const FpgaSchematic = React.lazy(() =>
 // Rung 2 of the visual analog: the design's outputs as waveforms over time.
 const FpgaWaveform = React.lazy(() =>
     import(/* webpackChunkName: "bw-fpga-waveform" */ './fpga-waveform.jsx'));
-// Rung 3: build logic by placing gates, no Verilog typed. Shares the elkjs chunk.
-const FpgaGateBuilder = React.lazy(() =>
-    import(/* webpackChunkName: "bw-fpga-schematic" */ './fpga-gate-builder.jsx'));
-// The React Flow canvas (MIT): drag/zoom node editor, its own chunk.
+// The React Flow canvas (MIT): drag/zoom node editor, its own chunk. The old
+// hand-rolled SVG builder (fpga-gate-builder.jsx) was retired from the tab — this
+// canvas superseded it; two stacked builders were redundant and confusing.
 const FpgaGateBuilderRf = React.lazy(() =>
     import(/* webpackChunkName: "bw-fpga-rf" */ './fpga-gate-builder-rf.jsx'));
 
@@ -785,17 +784,7 @@ const FpgaTab = (props) => {
                     >{ex.label}</button>
                 ))}
             </p>
-            <details style={{margin: '0 0 0.75rem'}}>
-                <summary style={{cursor: 'pointer'}}>
-                    {L10N[pickLocale(props.locale)].orBuildItVisually}
-                </summary>
-                <div style={{marginTop: '0.6rem'}}>
-                    <React.Suspense fallback={<p style={{opacity: 0.7}}>{L10N[pickLocale(props.locale)].loadingGateBuilder}</p>}>
-                        <FpgaGateBuilder seed={seed} locale={props.locale} onUseVerilog={(v, cst) => { setHdl(v); if (cst) setText(cst); setSynth(null); }} />
-                    </React.Suspense>
-                </div>
-            </details>
-            <details style={{margin: '0 0 0.75rem'}}>
+            <details style={{margin: '0 0 0.75rem'}} open>
                 <summary style={{cursor: 'pointer'}}>
                     {L10N[pickLocale(props.locale)].orOnFullCanvas}
                 </summary>
