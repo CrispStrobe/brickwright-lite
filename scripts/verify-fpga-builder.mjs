@@ -104,8 +104,10 @@ try {
 
         const synth = page.getByRole('button', {name: /Synthesise|Synthetisieren/i}).first();
         await synth.waitFor({state: 'visible', timeout: 10000});
-        await page.waitForFunction(button => !button.disabled, await synth.elementHandle(), {timeout: 30000});
-        await synth.click();
+        // Keep this as a locator operation: the Circuit-tab round trip can
+        // rerender the button, so an ElementHandle captured before it settles
+        // becomes a detached disabled node that can never change.
+        await synth.click({timeout: 30000});
         const bitstream = page.getByRole('link', {name: /Download \.fs/i});
         await bitstream.waitFor({timeout});
         check(await bitstream.isVisible(), 'visual AND reaches a real bitstream download');
