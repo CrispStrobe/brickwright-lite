@@ -112,7 +112,10 @@ export function verilogToModel(text, moduleDefs = {}) {
                 const xorMatch = expr.match(/^([A-Za-z0-9_']+)\s*\^\s*([A-Za-z0-9_']+)$/);
                 const notMatch = expr.match(/^~([A-Za-z0-9_']+)$/);
                 
-                if (notAndMatch) { type = 'nand'; args = [notAndMatch[1], notAndMatch[2]]; }
+                if (addMatch) { type = 'add'; args = [addMatch[1], addMatch[2]]; }
+                else if (subMatch) { type = 'sub'; args = [subMatch[1], subMatch[2]]; }
+                else if (muxMatch) { type = 'mux'; args = [muxMatch[1], muxMatch[3], muxMatch[2]]; } // muxMatch[1] = sel, muxMatch[3] = d0, muxMatch[2] = d1
+                else if (notAndMatch) { type = 'nand'; args = [notAndMatch[1], notAndMatch[2]]; }
                 else if (notOrMatch) { type = 'nor'; args = [notOrMatch[1], notOrMatch[2]]; }
                 else if (notXorMatch) { type = 'xnor'; args = [notXorMatch[1], notXorMatch[2]]; }
                 else if (andMatch) { type = 'and'; args = [andMatch[1], andMatch[2]]; }
@@ -126,7 +129,7 @@ export function verilogToModel(text, moduleDefs = {}) {
                 }
                 
                 currentModule.nodes.push({id, kind: 'gate', type});
-                const ports = ['a', 'b'];
+                const ports = type === 'mux' ? ['sel', 'd0', 'd1'] : ['a', 'b'];
                 for (let j = 0; j < args.length; j++) {
                     currentModule.edges.push({
                         from: parseNet(args[j]),

@@ -17,9 +17,12 @@ import {GATE_DEFS, hasOutput} from './gate-builder.js';
 // Combinational evaluators, on 0/1 operands. An 'x' (unknown) operand makes the
 // result 'x' — the live view never invents a level.
 const OPS = {
+    add: (a, b) => a + b,
+    sub: (a, b) => a - b,
+    mux: (sel, d0, d1) => sel ? d1 : d0,
     and: (a, b) => a & b, or: (a, b) => a | b, xor: (a, b) => a ^ b,
-    nand: (a, b) => 1 - (a & b), nor: (a, b) => 1 - (a | b), xnor: (a, b) => 1 - (a ^ b),
-    not: a => 1 - a
+    nand: (a, b) => ~(a & b), nor: (a, b) => ~(a | b), xnor: (a, b) => ~(a ^ b),
+    not: a => ~a
 };
 
 /** Map every sink port `${node}.${port}` to the node id that drives it. */
@@ -58,10 +61,10 @@ export function evalModel (model, inputs = {}, dffState = {}) {
     };
 
     for (const n of nodes) {
-        if (n.kind === 'in') values[n.id] = inputs[n.name] ? 1 : 0;
-        else if (n.kind === 'const') values[n.id] = n.value ? 1 : 0;
+        if (n.kind === 'in') values[n.id] = Number(inputs[n.name]) || 0;
+        else if (n.kind === 'const') values[n.id] = Number(n.value) || 0;
         else if (n.kind === 'gate' && GATE_DEFS[n.type] && GATE_DEFS[n.type].seq) {
-            values[n.id] = dffState[n.id] ? 1 : 0; // a flip-flop drives its state
+            values[n.id] = Number(dffState[n.id]) || 0; // a flip-flop drives its state
         }
     }
 
@@ -76,7 +79,9 @@ export function evalModel (model, inputs = {}, dffState = {}) {
         for (const g of comb) {
             const def = GATE_DEFS[g.type];
             const args = def.ins.map(port => netInto(g.id, port));
-            const v = args.some(a => a === 'x') ? 'x' : OPS[g.type](...args);
+            const vUnmasked = args.some(a => a === 'x') ? 'x' : OPS[g.type](...args);
+            const w = g.width || 1;
+            const v = vUnmasked === 'x' ? 'x' : (w >= 32 ? Number(BigInt(vUnmasked) & ((1n << BigInt(w)) - 1n)) : (vUnmasked & ((1 << w) - 1)) >>> 0);
             if (values[g.id] !== v) { values[g.id] = v; changed = true; }
         }
     }
@@ -103,7 +108,7 @@ export function stepClock (model, inputs = {}, dffState = {}) {
         if (n.kind === 'gate' && GATE_DEFS[n.type] && GATE_DEFS[n.type].seq) {
             const src = feed.get(`${n.id}.d`);
             const d = src === undefined ? 0 : values[src];
-            next[n.id] = d === 1 ? 1 : 0;
+            next[n.id] = d;
         }
     }
     return next;

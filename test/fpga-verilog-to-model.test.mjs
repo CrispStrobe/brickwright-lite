@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {modelToVerilog} from '../overlay/scratch-gui/src/lib/bw-fpga/gate-builder.js';
+import {modelToVerilog, GATE_DEFS} from '../overlay/scratch-gui/src/lib/bw-fpga/gate-builder.js';
 import {verilogToModel} from '../overlay/scratch-gui/src/lib/bw-fpga/verilog-to-model.js';
 import {evalModel, stepClock} from '../overlay/scratch-gui/src/lib/bw-fpga/gate-eval.js';
 import {EXAMPLES} from '../overlay/scratch-gui/src/lib/bw-fpga/examples.js';
@@ -54,7 +54,7 @@ test('behavior-equivalence oracle: button follows input', () => {
 
 test('fuzz contract: parse(emit(x)) ≡ x for dozens of randomly generated structural models', () => {
     // Generate 50 random models and ensure they perfectly round-trip
-    const types = ['and', 'or', 'xor', 'nand', 'nor', 'xnor', 'not'];
+    const types = ['and', 'or', 'xor', 'nand', 'nor', 'xnor', 'not', 'add', 'sub', 'mux'];
     for (let i = 0; i < 50; i++) {
         const numInputs = 1 + Math.floor(Math.random() * 3);
         const numGates = 1 + Math.floor(Math.random() * 10);
@@ -74,16 +74,12 @@ test('fuzz contract: parse(emit(x)) ≡ x for dozens of randomly generated struc
             const id = `g${j}`;
             nodes.push({id, kind: 'gate', type});
             
-            // Wire up 'a'
-            edges.push({
-                from: {node: availableSources[Math.floor(Math.random() * availableSources.length)].id, port: 'out'},
-                to: {node: id, port: 'a'}
-            });
-            // Wire up 'b' if needed
-            if (type !== 'not') {
+            // Wire up inputs dynamically
+            const def = GATE_DEFS[type];
+            for (const port of def.ins) {
                 edges.push({
                     from: {node: availableSources[Math.floor(Math.random() * availableSources.length)].id, port: 'out'},
-                    to: {node: id, port: 'b'}
+                    to: {node: id, port}
                 });
             }
             availableSources.push(nodes[nodes.length - 1]);

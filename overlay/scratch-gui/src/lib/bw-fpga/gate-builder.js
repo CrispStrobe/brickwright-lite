@@ -19,6 +19,9 @@
  * expr.
  */
 export const GATE_DEFS = {
+    add: {label: 'ADD', glyph: '+', ins: ['a', 'b'], expr: n => `${n.a} + ${n.b}`},
+    sub: {label: 'SUB', glyph: '-', ins: ['a', 'b'], expr: n => `${n.a} - ${n.b}`},
+    mux: {label: 'MUX', glyph: '?', ins: ['sel', 'd0', 'd1'], expr: n => `${n.sel} ? ${n.d1} : ${n.d0}`},
     and: {label: 'AND', glyph: '&', ins: ['a', 'b'], expr: n => `${n.a} & ${n.b}`},
     or: {label: 'OR', glyph: '≥1', ins: ['a', 'b'], expr: n => `${n.a} | ${n.b}`},
     xor: {label: 'XOR', glyph: '=1', ins: ['a', 'b'], expr: n => `${n.a} ^ ${n.b}`},
