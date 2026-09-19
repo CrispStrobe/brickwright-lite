@@ -1410,6 +1410,7 @@ jobs:
           PROOF_URL=http://localhost:8617/ node scripts/verify-faceplate-matrix.mjs
           PROOF_URL=http://localhost:8617/ node scripts/verify-instruments-scroll.mjs
           PROOF_URL=http://localhost:8617/ node scripts/verify-circuit-export-completeness.mjs
+          PROOF_URL=http://localhost:8617/ node scripts/verify-circuit-operating-point.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
@@ -1419,6 +1420,7 @@ jobs:
             artifacts/controller-panel/*
             artifacts/faceplate-matrix/*
             artifacts/verify-instruments-scroll-*
+            artifacts/circuit-operating-point/*
           if-no-files-found: warn
       - name: Browser gate — Aurora-65 keyboard, OLED and VGA workstation
         timeout-minutes: 3  # derived: p95 8 s × 3 → 3 min over 20 green runs to 34176091427; max 9 s in run 34118997841 (gen-gate-budgets.mjs)

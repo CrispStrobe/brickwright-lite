@@ -59,6 +59,7 @@
         "verify:circuit-rendering": "node scripts/verify-circuit-rendering.mjs",
         "verify:examples": "node scripts/verify-example-selector.mjs",
         "verify:instruments": "node scripts/verify-instruments-scroll.mjs",
+        "verify:circuit-op": "node scripts/verify-circuit-operating-point.mjs",
         "verify:microbit": "node scripts/verify-microbit.mjs",
         "verify:microbit-flash": "node scripts/verify-microbit-flash.mjs",
         "verify:starters": "node scripts/verify-starter-journeys.mjs",
