@@ -1,50 +1,68 @@
 // Wire up a demonstration Tang Nano 20K board so the FPGA payoff is one click,
 // not a hand-built breadboard.
 //
-// It places the FPGA and four LEDs (each through a 330Ω resistor to ground) on
-// header pins 15-18 — the EXACT placement the `sequence` example's .cst names.
-// So: press this, load `sequence`, Synthesise, and Step the clock, and these
-// four LEDs count up in binary on the board.
+// It builds a CLEAN, self-contained circuit: a breadboard, the Tang Nano beside
+// it, and four (resistor → LED → ground) legs SEATED on the breadboard so the
+// board's own strips make the connections and the parts actually sit in holes —
+// a usable, readable circuit, not a pile of free-floating parts at one spot.
 //
-// It builds through the live Circuit model's addPart/addWire — the same API
-// fpga-gate-level-sim's "THE LOOP" test builds a working, drivable board with, so
-// the result is not a mock: the pins the design drives are the pins these LEDs
-// hang on. positions are left near the origin like the gallery circuits (the
-// breadboard lays parts out itself); a small spread keeps them from colliding.
+// Each LED hangs on FPGA header pin 15..18 — the placement the `sequence`
+// example's .cst names — so: press this, load `sequence`, Synthesise, Step the
+// clock, and the four LEDs count up in binary on the board.
+//
+// It builds through the live Circuit's addPart/addWire/seatPart — the same API
+// the designer uses — so the result is not a mock: the pins the design drives
+// are the pins these LEDs hang on.
 
 /** The pins `sequence` places led[0..3] on. Kept in step with examples.js. */
 export const DEMO_LED_PINS = [15, 16, 17, 18];
 
 /**
- * @param {{addPart: Function, addWire: Function}} circuit  the live Circuit
- *   (window.__circuit) — bw-circuit-ui's model with addPart(kind, params, x, y)
- *   returning {id} and addWire(idA, terminalA, idB, terminalB).
- * @param {{pins?: number[], ohms?: number}} [opts]
- * @returns {{tang: string, gnd: string, leds: Array<{pin, resistor, led}>}}
+ * @param {object} circuit  the live Circuit (window.__circuit): addPart(kind,
+ *   params, x, y) → {id}, addWire(idA, tA, idB, tB), and — for seating on the
+ *   breadboard — seatPart(id, boardId, {terminal: holeId}), removePart(id) and
+ *   a `parts` array.
+ * @param {{pins?: number[], ohms?: number, clear?: boolean}} [opts]
+ * @returns {{board:string, tang:string, gnd:string, leds:Array<{pin,resistor,led}>}}
  */
-export function buildDemoBoard (circuit, {pins = DEMO_LED_PINS, ohms = 330} = {}) {
+export function buildDemoBoard (circuit, {pins = DEMO_LED_PINS, ohms = 330, clear = true} = {}) {
     if (!circuit || typeof circuit.addPart !== 'function' || typeof circuit.addWire !== 'function') {
         throw new TypeError('buildDemoBoard needs a live circuit with addPart/addWire '
             + '(window.__circuit, published by the circuit designer)');
     }
-    // Positions are WORLD PIXELS (part.x = x in circuit.js), and the Tang Nano is
-    // 60 x 210 px at the origin. The old layout put every LED/resistor at x=3..12
-    // — INSIDE that footprint, 3 px apart — so the whole board piled onto one spot.
-    // Spread the four LED columns to the RIGHT of the board, each with its resistor
-    // above and LED below, and drop ground clear underneath.
-    const tang = circuit.addPart('tang_nano_20k', {}, 0, 0);
-    const COL0 = 120;
-    const COL_GAP = 110;
-    const gnd = circuit.addPart('gnd', {}, COL0, 260);
+    const canSeat = typeof circuit.seatPart === 'function';
+
+    // Start clean so the demo is deterministic and never lands on top of the
+    // default starter circuit's parts (the old bug: everything at one spot).
+    if (clear && Array.isArray(circuit.parts) && typeof circuit.removePart === 'function') {
+        for (const part of [...circuit.parts]) circuit.removePart(part.id);
+    }
+
+    // A breadboard to seat the LEDs on; the Tang Nano and ground sit beside it.
+    const board = circuit.addPart('breadboard', {}, 340, 320);
+    const tang = circuit.addPart('tang_nano_20k', {}, 60, 140);
+    const gnd = circuit.addPart('gnd', {}, 150, 40);
+    // Ground the top-minus rail; every LED cathode returns to it.
+    if (canSeat) circuit.seatPart(gnd.id, board.id, {gnd: 't-2'});
+
     const leds = pins.map((pin, i) => {
-        const x = COL0 + (i * COL_GAP);
-        const resistor = circuit.addPart('resistor', {ohms}, x, 40);
-        const led = circuit.addPart('led', {}, x, 130);
-        // FPGA header pin -> resistor -> LED anode; LED cathode -> ground.
+        const col = 6 + (i * 8); // spread across the board: columns 6, 14, 22, 30
+        const resistor = circuit.addPart('resistor', {ohms}, 0, 0);
+        const led = circuit.addPart('led', {}, 0, 0);
+        if (canSeat) {
+            // resistor lies across row b; the LED stands with its anode sharing
+            // the resistor's far column (same a–e strip) and its cathode on the
+            // ground rail. The board's strips wire R.b→anode and cathode→ground.
+            circuit.seatPart(resistor.id, board.id, {a: `b${col}`, b: `b${col + 3}`});
+            circuit.seatPart(led.id, board.id, {anode: `a${col + 3}`, cathode: `t-${col + 3}`});
+        }
+        // The guaranteed electrical chain (independent of seating): the FPGA pin
+        // drives the resistor, the resistor the LED, the LED returns to ground.
         circuit.addWire(tang.id, `p${pin}`, resistor.id, 'a');
         circuit.addWire(resistor.id, 'b', led.id, 'anode');
         circuit.addWire(led.id, 'cathode', gnd.id, 'gnd');
         return {pin, resistor: resistor.id, led: led.id};
     });
-    return {tang: tang.id, gnd: gnd.id, leds};
+
+    return {board: board.id, tang: tang.id, gnd: gnd.id, leds};
 }

@@ -15,15 +15,18 @@ const MS = 1_000_000n;
 function recorder () {
     const parts = [];
     const wires = [];
+    const seats = [];
     let n = 0;
     return {
         addPart: (kind, params, x, y) => {
             const id = `${kind}#${n++}`;
-            parts.push({id, kind, params, x, y});
+            parts.push({id, kind, params: params || {}, x, y});
             return {id};
         },
         addWire: (idA, ta, idB, tb) => wires.push({idA, ta, idB, tb}),
-        parts, wires
+        removePart: id => { const i = parts.findIndex(p => p.id === id); if (i >= 0) parts.splice(i, 1); return i >= 0; },
+        seatPart: (id, boardId, leadMap) => { seats.push({id, boardId, leadMap}); return true; },
+        parts, wires, seats
     };
 }
 
@@ -45,23 +48,28 @@ test('it places one Tang Nano, one ground, and a resistor+LED per pin', () => {
     assert.ok(c.parts.filter(p => p.kind === 'resistor').every(p => p.params.ohms === 330));
 });
 
-test('no two parts land on the same spot, and LEDs clear the Tang Nano footprint', () => {
+test('parts are SEATED on the breadboard, each lead in its own hole', () => {
     const c = recorder();
+    const {board} = buildDemoBoard(c);
+    assert.ok(c.parts.some(p => p.kind === 'breadboard'), 'a breadboard is added to seat on');
+    // every resistor and LED is seated (the old bug: free-floating parts piled at one spot)
+    const seatedIds = new Set(c.seats.map(s => s.id));
+    for (const p of c.parts.filter(x => x.kind === 'resistor' || x.kind === 'led')) {
+        assert.ok(seatedIds.has(p.id), `${p.kind} ${p.id} must be seated on the breadboard`);
+    }
+    assert.ok(c.seats.every(s => s.boardId === board), 'seated on the demo breadboard');
+    // no two leads share a hole
+    const holes = c.seats.flatMap(s => Object.values(s.leadMap));
+    assert.equal(holes.length, new Set(holes).size, 'no two leads occupy the same hole');
+});
+
+test('it starts from a clean canvas, clearing any default circuit first', () => {
+    const c = recorder();
+    c.addPart('vsource', {}, 0, 0);
+    c.addPart('led', {}, 0, 0); // a pre-existing starter circuit
     buildDemoBoard(c);
-    // every part has a DISTINCT position (the old layout piled them at ~one spot)
-    const seen = new Set();
-    for (const p of c.parts) {
-        const key = `${p.x},${p.y}`;
-        assert.ok(!seen.has(key), `two parts share ${key} — they would overlap`);
-        seen.add(key);
-    }
-    // the Tang Nano is 60px wide at the origin; nothing else may sit inside it
-    const tang = c.parts.find(p => p.kind === 'tang_nano_20k');
-    assert.equal(tang.x, 0);
-    for (const p of c.parts) {
-        if (p === tang) continue;
-        assert.ok(p.x >= 100, `${p.kind} at x=${p.x} overlaps the Tang Nano (0..60)`);
-    }
+    assert.ok(!c.parts.some(p => p.kind === 'vsource'), 'the default parts are cleared');
+    assert.equal(c.parts.filter(p => p.kind === 'tang_nano_20k').length, 1, 'exactly one Tang Nano');
 });
 
 test('each LED hangs on the pin the sequence example names: pin -> R -> LED -> gnd', () => {
