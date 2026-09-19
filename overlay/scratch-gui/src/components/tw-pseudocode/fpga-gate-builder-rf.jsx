@@ -16,7 +16,7 @@ import FpgaGatePalette, {DRAG_MIME} from './fpga-gate-palette.jsx';
 import {NodeInspector, NodeContextMenu} from './fpga-node-inspector.jsx';
 import {evalModel, stepClock} from '../../lib/bw-fpga/gate-eval.js';
 import {EXAMPLES} from '../../lib/bw-fpga/examples.js';
-import {challengeById} from '../../lib/bw-fpga/challenges.js';
+import {CHALLENGES, challengeById, isUnlocked} from '../../lib/bw-fpga/challenges.js';
 import {grade} from '../../lib/bw-fpga/grader.js';
 import FpgaChallengePanel from './fpga-challenges.jsx';
 
@@ -346,6 +346,14 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
             setPassed(next); saveProgress(next);
         }
     };
+    // Jump to the next still-unsolved, unlocked challenge after the current one.
+    const goNext = () => {
+        const after = new Set(passed); if (active) after.add(active);
+        const start = active ? CHALLENGES.findIndex(c => c.id === active) + 1 : 0;
+        const order = [...CHALLENGES.slice(start), ...CHALLENGES.slice(0, start)];
+        const nextC = order.find(c => !after.has(c.id) && isUnlocked(c.id, after));
+        if (nextC) selectChallenge(nextC.id);
+    };
 
     const generate = () => {
         const model = reactFlowToModel(nodes, edges, library);
@@ -369,6 +377,9 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                 <span style={{opacity: 0.4}}>{'|'}</span>
                 <button type="button" onClick={saveSubcircuit} title={L10N[pickLocale(locale)].saveTitle}
                     style={{cursor: 'pointer'}} data-testid="bw-fpga-rf-save">{L10N[pickLocale(locale)].saveAsSubcircuit}</button>
+                <button type="button" data-testid="bw-fpga-rf-clear"
+                    onClick={() => { setNodes([]); setEdges([]); setCheckResult(null); }}
+                    title="Clear the canvas" style={{cursor: 'pointer'}}>{'🗑 Clear'}</button>
                 <span style={{opacity: 0.4}}>{'|'}</span>
                 <button type="button" data-testid="bw-fpga-rf-learn"
                     onClick={() => setShowLearn(s => !s)}
@@ -402,7 +413,7 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
             <div style={{display: 'flex', alignItems: 'stretch'}}>
                 {showLearn ? (
                     <FpgaChallengePanel active={active} passed={passed} result={checkResult}
-                        onSelect={selectChallenge} onCheck={runCheck} />
+                        onSelect={selectChallenge} onCheck={runCheck} onNext={goNext} />
                 ) : null}
                 <FpgaGatePalette catalog={catalog} />
                 <div style={{flex: '1 1 auto', height: '48vh', minHeight: 300, border: '1px solid rgba(71,85,105,0.25)', borderRadius: 6}}
@@ -414,6 +425,7 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                         onNodeDoubleClick={onNodeDoubleClick} onNodeContextMenu={onNodeContextMenu}
                         onEdgeContextMenu={onEdgeContextMenu} onPaneClick={() => { setMenu(null); setInspect(null); }}
                         nodeTypes={nodeTypes} fitView
+                        snapToGrid snapGrid={[16, 16]} deleteKeyCode={['Backspace', 'Delete']}
                         proOptions={{hideAttribution: true}}
                     >
                         <Background />

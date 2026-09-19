@@ -15,7 +15,7 @@ const stateOf = (c, passed, active) =>
 const ICON = {done: '✓', active: '▸', open: '○', locked: '🔒'};
 const COLOR = {done: '#16a34a', active: '#1d4ed8', open: '#475569', locked: '#94a3b8'};
 
-export function FpgaChallengePanel ({active, passed, result, onSelect, onCheck}) {
+export function FpgaChallengePanel ({active, passed, result, onSelect, onCheck, onNext}) {
     const activeC = active ? challengeById(active) : null;
     const done = CHALLENGES.filter(c => passed.has(c.id)).length;
     return (
@@ -50,6 +50,12 @@ export function FpgaChallengePanel ({active, passed, result, onSelect, onCheck})
                     {result ? (
                         <div data-testid="bw-fpga-result" style={{marginTop: 6, fontSize: 11, lineHeight: 1.4,
                             color: result.pass ? '#166534' : '#b91c1c'}}>{gradeMessage(result, activeC)}</div>
+                    ) : null}
+                    {result && result.pass ? (
+                        <button type="button" onClick={onNext} data-testid="bw-fpga-next"
+                            style={{marginTop: 6, width: '100%', padding: '5px 8px', cursor: 'pointer', fontWeight: 'bold',
+                                border: '1px solid #1d4ed8', borderRadius: 6, background: '#eff6ff', color: '#1d4ed8'}}
+                        >{'Next challenge →'}</button>
                     ) : null}
                 </div>
             ) : (
