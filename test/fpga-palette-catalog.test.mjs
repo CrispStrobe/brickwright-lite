@@ -38,3 +38,11 @@ test('templates become their own section only when provided', () => {
     assert.equal(section.items[0].kind, 'template');
     assert.equal(section.items[0].label, 'Blinky');
 });
+
+test('a blocks list becomes a Blocks section that drops as templates', () => {
+    const cat = buildPaletteCatalog([], [{id: 'demux', label: '1:2 Demux', model: {nodes: [], edges: []}}]);
+    const blocks = cat.find(s => s.id === 'blocks');
+    assert.ok(blocks, 'a Blocks section appears');
+    assert.equal(blocks.items[0].kind, 'template', 'blocks drop via the template path');
+    assert.equal(blocks.items[0].label, '1:2 Demux');
+});
