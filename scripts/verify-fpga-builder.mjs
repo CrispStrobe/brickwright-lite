@@ -27,12 +27,24 @@ const check = (value, message, detail = '') => {
 };
 
 const diagnostics = [];
+const synthResponses = [];
 const browser = await chromium.launch({headless: true});
 const context = await browser.newContext();
 const page = await context.newPage();
 page.on('pageerror', error => diagnostics.push(`pageerror: ${error.stack || error.message}`));
 page.on('console', message => {
     if (message.type() === 'error') diagnostics.push(`console.error: ${message.text()}`);
+});
+page.on('response', async response => {
+    if (response.request().method() !== 'POST' || !/\/synth(?:\?|$)/.test(response.url())) return;
+    try {
+        const body = await response.json();
+        synthResponses.push({status: response.status(), keys: Object.keys(body).sort(), ok: body.ok,
+            hasNetlist: Boolean(body.netlist), hasSimNetlist: Boolean(body.simNetlist),
+            simModules: Object.keys(body.simNetlist?.modules || {})});
+    } catch (error) {
+        synthResponses.push({status: response.status(), error: error.message});
+    }
 });
 
 try {
@@ -98,10 +110,13 @@ try {
         await bitstream.waitFor({timeout});
         check(await bitstream.isVisible(), 'visual AND reaches a real bitstream download');
 
-        const inputHeading = page.getByRole('heading', {name: /Design inputs|Design-Eingänge/i});
+        const inputHeading = page.getByRole('heading', {
+            name: /Design inputs|Design-Eingänge/i,
+            includeHidden: true
+        });
         await inputHeading.waitFor({state: 'attached', timeout: 30000});
         const pinDetails = inputHeading.locator('xpath=ancestor::details[1]');
-        if (!await pinDetails.getAttribute('open')) await pinDetails.locator('summary').first().click();
+        if (await pinDetails.getAttribute('open') === null) await pinDetails.locator('summary').first().click();
         const input = name => pinDetails.getByText(name, {exact: true})
             .locator('xpath=ancestor::label[1]').locator('input[type="checkbox"]');
         const a = input('a');
@@ -141,12 +156,13 @@ try {
     if (diagnostics.length > pageErrors.length) {
         console.log(`  diagnostic: ${diagnostics.filter(line => !line.startsWith('pageerror:')).join(' | ')}`);
     }
-    await writeFile(resolve(artifacts, 'report.json'), JSON.stringify({url, skipSynth, checks, diagnostics}, null, 2));
+    await writeFile(resolve(artifacts, 'report.json'), JSON.stringify(
+        {url, skipSynth, checks, diagnostics, synthResponses}, null, 2));
     console.log(`FPGA builder browser proof passed (${checks.length} checks).`);
 } catch (error) {
     await page.screenshot({path: resolve(artifacts, 'failure.png'), fullPage: true}).catch(() => {});
     await writeFile(resolve(artifacts, 'report.json'), JSON.stringify({url, skipSynth, checks, diagnostics,
-        error: error.stack || error.message}, null, 2));
+        synthResponses, error: error.stack || error.message}, null, 2));
     throw error;
 } finally {
     await browser.close();
