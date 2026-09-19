@@ -180,6 +180,18 @@ class CircuitTab extends React.Component {
         // designer is absent: it starts the load and replays the action once the
         // receiver exists, so the menu reaches the feature from a cold start.
         window.addEventListener('bw-circuit-file', this._circuitFileWake);
+        // The FPGA tab's "wire up a demo board" builds a circuit into the live
+        // model, but the designer re-renders only on its own edits or a fresh
+        // circuitData prop — so it hands us the built circuit's JSON and we LOAD
+        // it, the same path a saved circuit takes (re-renders + applies live).
+        this._loadCircuitData = event => {
+            const data = event && event.detail && event.detail.data;
+            if (!data || !Array.isArray(data.parts)) return;
+            this._markReactUpdate('host:fpga-demo');
+            this.setState({circuitData: data});
+            if (typeof this._applyToLiveCircuit === 'function') this._applyToLiveCircuit(data);
+        };
+        window.addEventListener('bw-load-circuit-data', this._loadCircuitData);
         // Project save/load carries the Circuit and Widgets tabs through the
         // .sb3 bundle (lib/bw-project-bundle.js). COLLECT: flush the LIVE
         // state into the bundle's keys before the save reads them — the
@@ -555,6 +567,7 @@ class CircuitTab extends React.Component {
         if (this._hostRO) { this._hostRO.disconnect(); this._hostRO = null; }
         window.removeEventListener('resize', this._measureBox);
         window.removeEventListener('bw-circuit-file', this._circuitFileWake);
+        window.removeEventListener('bw-load-circuit-data', this._loadCircuitData);
         window.removeEventListener('bw-project-bundle-collect', this._onBundleCollect);
         window.removeEventListener('bw-project-bundle-loaded', this._onBundleLoaded);
         window.removeEventListener('bw-settings-change', this._settingsHandler);

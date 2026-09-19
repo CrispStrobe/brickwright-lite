@@ -657,6 +657,13 @@ const FpgaTab = (props) => {
             // “Counting sequence” and chaser examples put their LEDs.
             const pins = outputPinsRef.current;
             const result = buildDemoBoard(c, pins.length ? {pins} : {});
+            // Make the designer RENDER what we built. Mutating the live circuit
+            // model alone does NOT re-render it — the designer reacts only to its
+            // own edits or a fresh circuitData prop — so hand it the built
+            // circuit's JSON and load it the way a saved circuit loads.
+            if (typeof c.toJSON === 'function' && typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('bw-load-circuit-data', {detail: {data: c.toJSON()}}));
+            }
             const litPins = result.leds.map(l => l.pin);
             setDemoMsg({ok: true, text: `Wired a Tang Nano 20K with ${litPins.length} `
                 + `LED${litPins.length === 1 ? '' : 's'} on pin${litPins.length === 1 ? '' : 's'} `
