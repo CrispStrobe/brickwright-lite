@@ -179,3 +179,25 @@ test('a flip-flop preserves unknown across a known → unknown → known clock s
     assert.deepEqual(evalModel(model(false), {}, state).outputs, {q: 0, stable: 1},
         'a later known input replaces x only on a later clock edge');
 });
+
+// The live canvas colours each wire by its SOURCE node's value and shows each
+// output by name — so evalModel must expose both. This pins that contract.
+test('evalModel exposes per-node values (wire colours) and named outputs', () => {
+    const model = {
+        nodes: [
+            {id: 'a', kind: 'in', name: 'a'}, {id: 'b', kind: 'in', name: 'b'},
+            {id: 'g', kind: 'gate', type: 'and'}, {id: 'y', kind: 'out', name: 'y'}
+        ],
+        edges: [
+            {from: {node: 'a', port: 'out'}, to: {node: 'g', port: 'a'}},
+            {from: {node: 'b', port: 'out'}, to: {node: 'g', port: 'b'}},
+            {from: {node: 'g', port: 'out'}, to: {node: 'y', port: 'in'}}
+        ]
+    };
+    const {values, outputs} = evalModel(model, {a: 1, b: 1});
+    assert.equal(values.a, 1, 'the input wire carries its value');
+    assert.equal(values.g, 1, 'the gate output wire is coloured 1 & 1 = 1');
+    assert.equal(outputs.y, 1, 'the named output reads 1');
+    // toggling one input recolours downstream
+    assert.equal(evalModel(model, {a: 1, b: 0}).values.g, 0);
+});

@@ -686,3 +686,37 @@ test('the builder places nodes by dragging from a categorised palette', () => {
     const catalog = read('overlay/scratch-gui/src/lib/bw-fpga/palette-catalog.js');
     assert.match(catalog, /export function buildPaletteCatalog/, 'the catalogue is pure data over GATE_DEFS');
 });
+
+// ── inspector + right-click: edit a node's params, delete/duplicate ──
+test('a placed node can be inspected (params) and right-clicked (delete/duplicate)', () => {
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /onNodeDoubleClick=\{onNodeDoubleClick\}/, 'double-click opens the inspector');
+    assert.match(ui, /onNodeContextMenu=\{onNodeContextMenu\}/, 'right-click opens the menu');
+    assert.match(ui, /const patchNode = /, 'edits merge into node.data');
+    assert.match(ui, /const duplicateNode = /, 'a node can be duplicated');
+    assert.match(ui, /<NodeInspector node=\{inspectNode\}/, 'the inspector renders for the live node');
+    const insp = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-node-inspector.jsx');
+    assert.match(insp, /export function NodeInspector/, 'a native-control inspector');
+    assert.match(insp, /export function NodeContextMenu/, 'a duplicate/delete menu');
+    assert.match(insp, /dataWidth.*addrWidth|addrWidth/, 'RAM geometry is editable');
+    assert.doesNotMatch(insp, /from 'bw-circuit-ui/, 'ported for the gate domain — no board-package import coupling');
+});
+
+// ── live simulation: Run mode colours wires and shows values ──
+test('the builder runs live — wires colour by value, inputs toggle', () => {
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /import \{evalModel, stepClock\}/, 'the tested evaluator drives Run mode');
+    assert.match(ui, /data-testid="bw-fpga-rf-run"/, 'a Run toggle');
+    assert.match(ui, /const shownEdges = live/, 'edges recolour by their source value');
+    assert.match(ui, /const onNodeClick = /, 'clicking an input toggles it');
+    assert.match(ui, /stepClock\(reactFlowToModel/, 'a clock step advances flip-flops');
+    assert.match(ui, /nodes=\{shownNodes\} edges=\{shownEdges\}/, 'the canvas renders the live values');
+});
+
+// ── templates: drag a starter design onto the canvas ──
+test('the palette offers starter templates that merge onto the canvas', () => {
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /buildPaletteCatalog\(EXAMPLES\.filter\(e => e\.model/, 'model-bearing examples become templates');
+    assert.match(ui, /item\.kind === 'template'/, 'a template drop is handled');
+    assert.match(ui, /idMap\[n\.id\] = id/, 'ids are remapped so a template MERGES, not clobbers');
+});

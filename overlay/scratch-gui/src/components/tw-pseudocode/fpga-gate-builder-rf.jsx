@@ -13,6 +13,9 @@ import {reactFlowToModel, modelToReactFlow} from '../../lib/bw-fpga/gate-builder
 import {gateShape} from '../../lib/bw-fpga/glyphs.js';
 import {buildPaletteCatalog} from '../../lib/bw-fpga/palette-catalog.js';
 import FpgaGatePalette, {DRAG_MIME} from './fpga-gate-palette.jsx';
+import {NodeInspector, NodeContextMenu} from './fpga-node-inspector.jsx';
+import {evalModel, stepClock} from '../../lib/bw-fpga/gate-eval.js';
+import {EXAMPLES} from '../../lib/bw-fpga/examples.js';
 
 // The gate glyphs are shared with the CLI/schematic renderer; their classes are
 // styled once here, scoped under `.bw-glyph` so they never touch the rest of the app.
@@ -91,15 +94,23 @@ const GateNode = ({data}) => {
     );
 };
 
-// An input (drives, handle right) or output (sinks, handle left).
+// The colour a logic value reads as: 1 live-green, 0 grey, unknown pale.
+const valueColor = v => (v === 1 || v === '1' ? '#16a34a' : v === 0 || v === '0' ? '#94a3b8' : '#cbd5e1');
+
+// An input (drives, handle right) or output (sinks, handle left). In Run mode it
+// shows its live value (and an input is clickable to toggle).
 const IoNode = ({data}) => {
     const isIn = data.kind === 'in';
+    const live = data.live;
+    const running = live !== undefined;
     return (
         <div style={{position: 'relative', padding: '6px 10px', borderRadius: 12,
-            border: `1.3px solid ${isIn ? '#0284c7' : '#ca8a04'}`,
-            background: isIn ? '#e0f2fe' : '#fef9c3', fontFamily: 'monospace', fontSize: 11}}>
+            border: `1.3px solid ${running ? valueColor(live) : (isIn ? '#0284c7' : '#ca8a04')}`,
+            background: isIn ? '#e0f2fe' : '#fef9c3', fontFamily: 'monospace', fontSize: 11,
+            cursor: running && isIn ? 'pointer' : 'default'}}>
             {isIn ? null : <Handle type="target" position={Position.Left} id="in" style={{background: '#0284c7'}} />}
             {data.name}{data.width > 1 ? `[${data.width - 1}:0]` : ''}
+            {running ? <b style={{marginLeft: 6, color: valueColor(live)}}>{String(live)}</b> : null}
             {isIn ? <Handle type="source" position={Position.Right} id="out" style={{background: '#22c55e'}} /> : null}
         </div>
     );
@@ -178,6 +189,11 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
     const [problems, setProblems] = React.useState([]);
     const [library, setLibrary] = React.useState([]); // saved subcircuits
     const [newWidth, setNewWidth] = React.useState(1); // bit width for the next node
+    const [inspect, setInspect] = React.useState(null); // {id, x, y} of the node being edited
+    const [menu, setMenu] = React.useState(null); // {target:'node'|'edge', id, x, y}
+    const [running, setRunning] = React.useState(false); // live-simulation mode
+    const [inputs, setInputs] = React.useState({}); // live input values, by input name
+    const [clockState, setClockState] = React.useState({}); // dff state for stepClock
     const idRef = React.useRef(100);
     const nid = p => `${p}${idRef.current++}`;
 
@@ -197,7 +213,9 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
         data: {kind: 'instance', module: mod.name, ports: mod.ports}
     }]);
 
-    const catalog = React.useMemo(() => buildPaletteCatalog(), []);
+    // Only examples that carry a gate model can seed the model canvas; the
+    // Verilog-only starters live in the examples browser, not the palette.
+    const catalog = React.useMemo(() => buildPaletteCatalog(EXAMPLES.filter(e => e.model && e.model.nodes)), []);
     const rf = useReactFlow();
 
     // Turn a palette drag descriptor into a canvas node at `position`. A RAM
@@ -215,9 +233,20 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
         } else if (item.kind === 'memory') {
             setNodes(ns => [...ns, {id: nid('m'), type: 'memory', position, data: {kind: 'memory', dataWidth: 4, addrWidth: 2}}]);
         } else if (item.kind === 'template' && item.model) {
+            // Drop a starter near the cursor, id-remapped so it MERGES onto the
+            // canvas instead of clobbering whatever is already there.
             const seeded = modelToReactFlow(item.model);
-            setNodes(seeded.nodes);
-            setEdges(seeded.edges);
+            const idMap = {};
+            const placed = seeded.nodes.map(n => {
+                const id = nid('t');
+                idMap[n.id] = id;
+                return {...n, id, position: {x: (n.position ? n.position.x : 0) + position.x,
+                    y: (n.position ? n.position.y : 0) + position.y}};
+            });
+            const wired = seeded.edges.map((e, i) => ({...e, id: `te${idRef.current}_${i}`,
+                source: idMap[e.source] || e.source, target: idMap[e.target] || e.target}));
+            setNodes(ns => [...ns, ...placed]);
+            setEdges(es => [...es, ...wired]);
         }
     };
 
@@ -231,6 +260,49 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
         placeNode(item, rf.screenToFlowPosition({x: e.clientX, y: e.clientY}));
     };
     const onConnect = React.useCallback(params => setEdges(es => addEdge(params, es)), [setEdges]);
+
+    // Editing a placed node: double-click opens the inspector; a patch merges
+    // into node.data (the bridge reads width/name/dataWidth/addrWidth from there).
+    const patchNode = (id, patch) => setNodes(ns => ns.map(n => (n.id === id ? {...n, data: {...n.data, ...patch}} : n)));
+    const deleteNode = id => {
+        setNodes(ns => ns.filter(n => n.id !== id));
+        setEdges(es => es.filter(e => e.source !== id && e.target !== id));
+    };
+    const duplicateNode = id => setNodes(ns => {
+        const src = ns.find(n => n.id === id);
+        if (!src) return ns;
+        const copy = {...src, id: nid('c'), position: {x: src.position.x + 30, y: src.position.y + 30},
+            data: {...src.data}, selected: false};
+        return [...ns, copy];
+    });
+    const onNodeDoubleClick = (e, node) => setInspect({id: node.id, x: e.clientX, y: e.clientY});
+    const onNodeContextMenu = (e, node) => { e.preventDefault(); setInspect(null); setMenu({target: 'node', id: node.id, x: e.clientX, y: e.clientY}); };
+    const onEdgeContextMenu = (e, edge) => { e.preventDefault(); setInspect(null); setMenu({target: 'edge', id: edge.id, x: e.clientX, y: e.clientY}); };
+    const inspectNode = inspect && nodes.find(n => n.id === inspect.id);
+
+    // Live simulation: evaluate the current design and paint values onto the
+    // canvas. Primitive gates + flip-flops evaluate; buses/memory/instances stay
+    // unknown (the tested graceful-degradation boundary) and read pale.
+    const live = React.useMemo(() => {
+        if (!running) return null;
+        try { return evalModel(reactFlowToModel(nodes, edges), inputs, clockState); } catch (e) { return null; }
+    }, [running, nodes, edges, inputs, clockState]);
+    const wire = valueColor;
+    const shownEdges = live
+        ? edges.map(e => ({...e, animated: live.values[e.source] === 1,
+            style: {stroke: wire(live.values[e.source]), strokeWidth: 2}}))
+        : edges;
+    const shownNodes = live
+        ? nodes.map(n => (n.data.kind === 'in' || n.data.kind === 'out'
+            ? {...n, data: {...n.data, live: n.data.kind === 'out' ? live.outputs[n.data.name] : (inputs[n.data.name] ? 1 : 0)}}
+            : n))
+        : nodes;
+    const onNodeClick = (e, node) => {
+        if (running && node.data.kind === 'in') {
+            setInputs(prev => ({...prev, [node.data.name]: prev[node.data.name] ? 0 : 1}));
+        }
+    };
+    const stepClk = () => setClockState(prev => stepClock(reactFlowToModel(nodes, edges), inputs, prev));
 
     const generate = () => {
         const model = reactFlowToModel(nodes, edges, library);
@@ -254,6 +326,17 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                 <span style={{opacity: 0.4}}>{'|'}</span>
                 <button type="button" onClick={saveSubcircuit} title={L10N[pickLocale(locale)].saveTitle}
                     style={{cursor: 'pointer'}} data-testid="bw-fpga-rf-save">{L10N[pickLocale(locale)].saveAsSubcircuit}</button>
+                <span style={{opacity: 0.4}}>{'|'}</span>
+                <button type="button" data-testid="bw-fpga-rf-run"
+                    onClick={() => { setRunning(r => !r); setInspect(null); setMenu(null); }}
+                    title="Simulate live — click inputs to toggle, wires colour by value"
+                    style={{cursor: 'pointer', fontWeight: 'bold', color: running ? '#16a34a' : undefined}}
+                >{running ? '■ Stop' : '▶ Run'}</button>
+                {running ? (
+                    <button type="button" onClick={stepClk} data-testid="bw-fpga-rf-clock"
+                        title="Advance one clock edge (flip-flops)" style={{cursor: 'pointer'}}>{'⟳ Clock'}</button>
+                ) : null}
+                {running ? <span style={{fontSize: '0.75rem', opacity: 0.7}}>{'click an input to toggle 0/1'}</span> : null}
             </div>
             {library.length ? (
                 <div style={{display: 'flex', gap: '0.35rem', flexWrap: 'wrap', margin: '0 0 0.4rem', alignItems: 'center'}}>
@@ -272,8 +355,11 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                 <div style={{flex: '1 1 auto', height: '48vh', minHeight: 300, border: '1px solid rgba(71,85,105,0.25)', borderRadius: 6}}
                     data-testid="bw-fpga-rf-canvas" onDrop={onDrop} onDragOver={onDragOver}>
                     <ReactFlow
-                        nodes={nodes} edges={edges}
+                        nodes={shownNodes} edges={shownEdges}
                         onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect}
+                        onNodeClick={onNodeClick}
+                        onNodeDoubleClick={onNodeDoubleClick} onNodeContextMenu={onNodeContextMenu}
+                        onEdgeContextMenu={onEdgeContextMenu} onPaneClick={() => { setMenu(null); setInspect(null); }}
                         nodeTypes={nodeTypes} fitView
                         proOptions={{hideAttribution: true}}
                     >
@@ -282,6 +368,18 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                         <MiniMap pannable zoomable />
                     </ReactFlow>
                 </div>
+                {inspectNode ? (
+                    <NodeInspector node={inspectNode} x={inspect.x} y={inspect.y}
+                        onChange={patchNode} onClose={() => setInspect(null)} />
+                ) : null}
+                {menu ? (
+                    <NodeContextMenu target={menu.target} x={menu.x} y={menu.y}
+                        onClose={() => setMenu(null)}
+                        onDelete={() => (menu.target === 'edge'
+                            ? setEdges(es => es.filter(e => e.id !== menu.id))
+                            : deleteNode(menu.id))}
+                        onDuplicate={() => duplicateNode(menu.id)} />
+                ) : null}
             </div>
             <div style={{margin: '0.5rem 0'}}>
                 <button type="button" onClick={generate} style={{padding: '0.35rem 0.8rem', cursor: 'pointer', fontWeight: 'bold'}}
