@@ -122,9 +122,16 @@ export function stepClock (model, inputs = {}, dffState = {}) {
     const next = {};
     for (const n of (model.nodes || [])) {
         if (n.kind === 'gate' && GATE_DEFS[n.type] && GATE_DEFS[n.type].seq) {
-            const src = feed.get(`${n.id}.d`);
-            const d = src === undefined ? 0 : values[src];
-            next[n.id] = d;
+            const gd = GATE_DEFS[n.type];
+            const nets = {};
+            for (const port of gd.ins) {
+                if (port === 'clk') continue;
+                const src = feed.get(`${n.id}.${port}`);
+                nets[port] = src === undefined ? 0 : (values[src] === 'x' ? 'x' : values[src]);
+            }
+            const cur = dffState[n.id] === 'x' ? 'x' : (Number(dffState[n.id]) || 0);
+            const step = gd.seqStep || (m => m.d);
+            next[n.id] = Object.values(nets).some(v => v === 'x') ? 'x' : (step(nets, cur) ? 1 : 0);
         }
     }
     return next;

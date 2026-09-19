@@ -201,3 +201,30 @@ test('evalModel exposes per-node values (wire colours) and named outputs', () =>
     // toggling one input recolours downstream
     assert.equal(evalModel(model, {a: 1, b: 0}).values.g, 0);
 });
+
+// The sequential family (T/SR/JK flip-flops) advances by the tested stepClock.
+test('T, SR and JK flip-flops step correctly', () => {
+    const ff = (type, ins) => ({nodes: [...ins.map(n => ({id: n, kind: 'in', name: n})),
+        {id: 'f', kind: 'gate', type}, {id: 'q', kind: 'out', name: 'q'}],
+    edges: [...ins.map(n => ({from: {node: n, port: 'out'}, to: {node: 'f', port: n}})),
+        {from: {node: 'f', port: 'out'}, to: {node: 'q', port: 'in'}}]});
+
+    // T-FF toggles when t=1, holds when t=0
+    let m = ff('tff', ['t', 'clk']); let s = {};
+    const seq = []; for (let i = 0; i < 4; i++) { seq.push(evalModel(m, {t: 1}, s).outputs.q); s = stepClock(m, {t: 1}, s); }
+    assert.deepEqual(seq, [0, 1, 0, 1], 'T-FF divides the clock by two');
+    s = stepClock(m, {t: 0}, {f: 1}); assert.equal(s.f, 1, 't=0 holds');
+
+    // SR-FF: set dominates path, reset clears, else holds
+    m = ff('srff', ['s', 'r', 'clk']);
+    assert.equal(stepClock(m, {s: 1, r: 0}, {}).f, 1, 'set → 1');
+    assert.equal(stepClock(m, {s: 0, r: 1}, {f: 1}).f, 0, 'reset → 0');
+    assert.equal(stepClock(m, {s: 0, r: 0}, {f: 1}).f, 1, 'hold');
+
+    // JK-FF: j&k toggles, j sets, k resets, else holds
+    m = ff('jkff', ['j', 'k', 'clk']);
+    assert.equal(stepClock(m, {j: 1, k: 1}, {f: 0}).f, 1, 'j&k toggles');
+    assert.equal(stepClock(m, {j: 1, k: 0}, {f: 0}).f, 1, 'j sets');
+    assert.equal(stepClock(m, {j: 0, k: 1}, {f: 1}).f, 0, 'k resets');
+    assert.equal(stepClock(m, {j: 0, k: 0}, {f: 1}).f, 1, 'hold');
+});
