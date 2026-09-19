@@ -17,6 +17,7 @@ import FpgaGatePalette, {DRAG_MIME} from './fpga-gate-palette.jsx';
 import {NodeInspector, NodeContextMenu} from './fpga-node-inspector.jsx';
 import {evalModel, stepClock} from '../../lib/bw-fpga/gate-eval.js';
 import {EXAMPLES} from '../../lib/bw-fpga/examples.js';
+import {BUILTINS} from '../../lib/bw-fpga/builtins.js';
 import {CHALLENGES, challengeById, isUnlocked} from '../../lib/bw-fpga/challenges.js';
 import {grade} from '../../lib/bw-fpga/grader.js';
 import FpgaChallengePanel from './fpga-challenges.jsx';
@@ -241,7 +242,7 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
 
     // Only examples that carry a gate model can seed the model canvas; the
     // Verilog-only starters live in the examples browser, not the palette.
-    const catalog = React.useMemo(() => buildPaletteCatalog(EXAMPLES.filter(e => e.model && e.model.nodes)), []);
+    const catalog = React.useMemo(() => buildPaletteCatalog(EXAMPLES.filter(e => e.model && e.model.nodes), BUILTINS), []);
     const rf = useReactFlow();
     // The canvas is often mounted inside a collapsed <details> (zero height), so
     // React Flow's mount-time fitView fits nothing and the design is off-screen —

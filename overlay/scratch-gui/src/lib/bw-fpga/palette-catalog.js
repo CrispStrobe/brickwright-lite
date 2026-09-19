@@ -29,7 +29,7 @@ const GATE_CATEGORIES = [
  * @param {Array} [templates] starter designs ({label, model|nodes/edges}) for a Templates section
  * @returns {Array} palette sections
  */
-export function buildPaletteCatalog (templates = []) {
+export function buildPaletteCatalog (templates = [], blocks = []) {
     const sections = [];
 
     sections.push({id: 'io', label: 'In / Out', items: [
@@ -53,6 +53,14 @@ export function buildPaletteCatalog (templates = []) {
     sections.push({id: 'mem', label: 'Memory', items: [
         {kind: 'memory', label: 'RAM'}
     ]});
+
+    if (blocks && blocks.length) {
+        sections.push({
+            id: 'blocks',
+            label: 'Blocks',
+            items: blocks.map(b => ({kind: 'template', label: b.label, model: b.model}))
+        });
+    }
 
     if (templates && templates.length) {
         sections.push({

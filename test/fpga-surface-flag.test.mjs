@@ -781,3 +781,13 @@ test('the builder can export the canvas as an SVG', () => {
     assert.match(lib, /export function canvasToSvg/, 'and it lives in a pure, reusable module');
     assert.match(lib, /import \{gateShape\}/, 'reusing the shared glyphs');
 });
+
+// ── built-in blocks: decoder / demux from the palette ──
+test('the palette offers built-in decoder/demux blocks', () => {
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /import \{BUILTINS\}/, 'built-ins are loaded');
+    assert.match(ui, /buildPaletteCatalog\(EXAMPLES\.filter\([^)]*\), BUILTINS\)/, 'and fed to the palette as Blocks');
+    const b = read('overlay/scratch-gui/src/lib/bw-fpga/builtins.js');
+    assert.match(b, /decoder2to4/);
+    assert.match(b, /demux1to2/);
+});
