@@ -42,6 +42,16 @@
   <text class="io-text" x="134" y="92">0</text>
   <circle class="pin" cx="124" cy="92" r="3" />
   <circle class="pin" cx="184" cy="92" r="3" />
+  <rect class="io-box out-box" x="348" y="212" width="20" height="20" />
+  <text class="io-text out-text" x="358" y="222">0</text>
+  <text class="label" x="383" y="222">out_4</text>
+  <circle class="pin" cx="348" cy="222" r="3" />
+  <circle class="pin" cx="408" cy="222" r="3" />
+  <rect class="io-box out-box" x="460" y="272" width="20" height="20" />
+  <text class="io-text out-text" x="470" y="282">0</text>
+  <text class="label" x="495" y="282">out_5</text>
+  <circle class="pin" cx="460" cy="282" r="3" />
+  <circle class="pin" cx="520" cy="282" r="3" />
   <path class="gate" d="M 348 262 Q 366 282 348 302 Q 384 302 408 282 Q 384 262 348 262 Z" />
   <circle class="pin" cx="348" cy="288.6666666666667" r="3" />
   <text class="port-label" x="353" y="288.6666666666667">a</text>
@@ -68,15 +78,5 @@
   <text class="port-label" x="291" y="242" text-anchor="end">carry</text>
   <circle class="pin" cx="296" cy="222" r="3" />
   <text class="port-label" x="291" y="222" text-anchor="end">sum</text>
-  <rect class="io-box out-box" x="348" y="212" width="20" height="20" />
-  <text class="io-text out-text" x="358" y="222">0</text>
-  <text class="label" x="383" y="222">out_7</text>
-  <circle class="pin" cx="348" cy="222" r="3" />
-  <circle class="pin" cx="408" cy="222" r="3" />
-  <rect class="io-box out-box" x="460" y="272" width="20" height="20" />
-  <text class="io-text out-text" x="470" y="282">0</text>
-  <text class="label" x="495" y="282">out_8</text>
-  <circle class="pin" cx="460" cy="282" r="3" />
-  <circle class="pin" cx="520" cy="282" r="3" />
 </g>
 </svg>

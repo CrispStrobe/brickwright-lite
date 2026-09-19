@@ -38,6 +38,11 @@
   <text class="io-text" x="22" y="152">0</text>
   <circle class="pin" cx="12" cy="152" r="3" />
   <circle class="pin" cx="72" cy="152" r="3" />
+  <rect class="io-box out-box" x="236" y="212" width="20" height="20" />
+  <text class="io-text out-text" x="246" y="222">0</text>
+  <text class="label" x="271" y="222">out_4</text>
+  <circle class="pin" cx="236" cy="222" r="3" />
+  <circle class="pin" cx="296" cy="222" r="3" />
   <rect class="gate" x="124" y="162" width="60" height="100" />
   <text class="label" x="154" y="174">adff</text>
   <circle class="pin" cx="184" cy="182" r="3" />
@@ -48,10 +53,5 @@
   <text class="port-label" x="179" y="242" text-anchor="end">D</text>
   <circle class="pin" cx="184" cy="222" r="3" />
   <text class="port-label" x="179" y="222" text-anchor="end">Q</text>
-  <rect class="io-box out-box" x="236" y="212" width="20" height="20" />
-  <text class="io-text out-text" x="246" y="222">0</text>
-  <text class="label" x="271" y="222">out_5</text>
-  <circle class="pin" cx="236" cy="222" r="3" />
-  <circle class="pin" cx="296" cy="222" r="3" />
 </g>
 </svg>
