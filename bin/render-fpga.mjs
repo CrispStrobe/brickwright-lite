@@ -71,6 +71,8 @@ const elkGraph = {
     },
     children: model.nodes.map(n => ({
         id: n.id,
+        type: n.type || n.kind,
+        label: n.type || n.kind,
         width: NODE_W,
         height: nodeH(n),
         properties: {
@@ -99,19 +101,16 @@ elk.layout(elkGraph).then(layoutedGraph => {
     }
 
     if (options.format === 'svg' || options.format === 'both') {
-        // Quick and dirty SVG generation from ELK JSON
+        
+        // Better SVG generation from ELK JSON
         let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${layoutedGraph.width + 100}" height="${layoutedGraph.height + 100}">\n`;
         svg += `<style>
-            rect { fill: #f0f0f0; stroke: #333; stroke-width: 2px; rx: 5px; }
-            text { font-family: monospace; font-size: 10px; fill: #333; }
-            path { fill: none; stroke: #555; stroke-width: 1.5px; }
+            .gate { fill: #f8f9fa; stroke: #343a40; stroke-width: 2px; }
+            .wire { fill: none; stroke: #495057; stroke-width: 2px; stroke-linejoin: round; }
+            .label { font-family: sans-serif; font-size: 10px; fill: #212529; text-anchor: middle; dominant-baseline: middle; }
+            .pin { fill: #495057; }
         </style>\n`;
         svg += `<g transform="translate(50, 50)">\n`;
-        
-        for (const n of layoutedGraph.children) {
-            svg += `  <rect x="${n.x}" y="${n.y}" width="${n.width}" height="${n.height}" />\n`;
-            svg += `  <text x="${n.x + 5}" y="${n.y + 15}">${n.id}</text>\n`;
-        }
         
         for (const e of layoutedGraph.edges || []) {
             if (e.sections && e.sections.length > 0) {
@@ -121,10 +120,40 @@ elk.layout(elkGraph).then(layoutedGraph => {
                     d += `L ${p.x} ${p.y} `;
                 }
                 d += `L ${s.endPoint.x} ${s.endPoint.y}`;
-                svg += `  <path d="${d}" />\n`;
+                svg += `  <path class="wire" d="${d}" />\n`;
+            }
+        }
+        
+        for (const n of layoutedGraph.children) {
+            const cx = n.x + n.width / 2;
+            const cy = n.y + n.height / 2;
+            if (n.type === 'and') {
+                svg += `  <path class="gate" d="M ${n.x} ${n.y} L ${n.x + n.width/2} ${n.y} A ${n.width/2} ${n.height/2} 0 0 1 ${n.x + n.width/2} ${n.y + n.height} L ${n.x} ${n.y + n.height} Z" />\n`;
+                svg += `  <text class="label" x="${cx - 5}" y="${cy}">AND</text>\n`;
+            } else if (n.type === 'or') {
+                svg += `  <path class="gate" d="M ${n.x} ${n.y} Q ${n.x + n.width*0.3} ${cy} ${n.x} ${n.y + n.height} Q ${n.x + n.width*0.6} ${n.y + n.height} ${n.x + n.width} ${cy} Q ${n.x + n.width*0.6} ${n.y} ${n.x} ${n.y} Z" />\n`;
+                svg += `  <text class="label" x="${cx - 5}" y="${cy}">OR</text>\n`;
+            } else if (n.type === 'not') {
+                svg += `  <polygon class="gate" points="${n.x},${n.y} ${n.x + n.width - 8},${cy} ${n.x},${n.y + n.height}" />\n`;
+                svg += `  <circle class="gate" cx="${n.x + n.width - 4}" cy="${cy}" r="4" />\n`;
+            } else if (n.type === 'xor') {
+                svg += `  <path class="gate" d="M ${n.x + 4} ${n.y} Q ${n.x + n.width*0.3 + 4} ${cy} ${n.x + 4} ${n.y + n.height} Q ${n.x + n.width*0.6} ${n.y + n.height} ${n.x + n.width} ${cy} Q ${n.x + n.width*0.6} ${n.y} ${n.x + 4} ${n.y} Z" />\n`;
+                svg += `  <path class="wire" d="M ${n.x} ${n.y} Q ${n.x + n.width*0.3} ${cy} ${n.x} ${n.y + n.height}" />\n`;
+                svg += `  <text class="label" x="${cx - 5}" y="${cy}">XOR</text>\n`;
+            } else if (n.type === 'dff') {
+                svg += `  <rect class="gate" x="${n.x}" y="${n.y}" width="${n.width}" height="${n.height}" />\n`;
+                svg += `  <polygon class="wire" points="${n.x},${n.y + n.height - 15} ${n.x + 10},${n.y + n.height - 10} ${n.x},${n.y + n.height - 5}" />\n`;
+                svg += `  <text class="label" x="${cx}" y="${cy - 5}">DFF</text>\n`;
+            } else if (n.type === 'mux') {
+                svg += `  <polygon class="gate" points="${n.x},${n.y} ${n.x + n.width},${n.y + 10} ${n.x + n.width},${n.y + n.height - 10} ${n.x},${n.y + n.height}" />\n`;
+                svg += `  <text class="label" x="${cx}" y="${cy}">MUX</text>\n`;
+            } else {
+                svg += `  <rect class="gate" rx="3" x="${n.x}" y="${n.y}" width="${n.width}" height="${n.height}" />\n`;
+                svg += `  <text class="label" x="${cx}" y="${cy}">${n.type ? n.type.toUpperCase() : n.id}</text>\n`;
             }
         }
         svg += `</g>\n</svg>\n`;
+
         const svgFile = path.join(outDir, `${basename}.svg`);
         fs.writeFileSync(svgFile, svg);
         console.log(`      Saved rendering to ${svgFile}`);
