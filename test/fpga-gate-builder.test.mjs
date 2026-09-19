@@ -6,7 +6,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {modelToVerilog, modelToCst, inputPorts, hasOutput, GATE_DEFS} from
+import {modelToVerilog, modelToCst, inputPorts, hasOutput, GATE_DEFS, parseVerilogPorts} from
     '../overlay/scratch-gui/src/lib/bw-fpga/gate-builder.js';
 
 test('a two-input AND becomes a module with the expected ports and assign', () => {
@@ -292,4 +292,29 @@ test('constant, buffer and controlled-inverter emit the right Verilog', () => {
     assert.match(verilog, /assign w_b = a;/, 'buffer passes through');
     assert.match(verilog, /assign w_c = e \? ~a : a;/, 'controlled inverter');
     assert.match(verilog, /assign yk = 1'b1;/, 'a constant drives a literal');
+});
+
+test('a Code block is a raw-Verilog module — emitted verbatim and instantiated', () => {
+    const code = 'module adder8(input [7:0] a, input [7:0] b, output [7:0] sum);\n  assign sum = a + b;\nendmodule';
+    const {name, ports} = parseVerilogPorts(code);
+    assert.equal(name, 'adder8');
+    assert.deepEqual(ports, [{name: 'a', dir: 'in', width: 8}, {name: 'b', dir: 'in', width: 8}, {name: 'sum', dir: 'out', width: 8}]);
+    const model = {
+        modules: [{name, verilog: code, ports}],
+        nodes: [{id: 'a', kind: 'in', name: 'a', width: 8}, {id: 'b', kind: 'in', name: 'b', width: 8},
+            {id: 'u', kind: 'instance', module: 'adder8'}, {id: 's', kind: 'out', name: 'sum', width: 8}],
+        edges: [{from: {node: 'a', port: 'out'}, to: {node: 'u', port: 'a'}},
+            {from: {node: 'b', port: 'out'}, to: {node: 'u', port: 'b'}},
+            {from: {node: 'u', port: 'sum'}, to: {node: 's', port: 'in'}}]
+    };
+    const {verilog, problems} = modelToVerilog(model);
+    assert.deepEqual(problems, []);
+    assert.match(verilog, /module adder8\(input \[7:0\] a, input \[7:0\] b, output \[7:0\] sum\);/, 'emitted verbatim');
+    assert.match(verilog, /adder8 u\(\.a\(a\), \.b\(b\), \.sum\(w_u_sum\)\);/, 'and instantiated');
+});
+
+test('parseVerilogPorts handles shared-keyword ports and bus widths', () => {
+    assert.deepEqual(parseVerilogPorts('module g(input a, b, output y);').ports,
+        [{name: 'a', dir: 'in', width: 1}, {name: 'b', dir: 'in', width: 1}, {name: 'y', dir: 'out', width: 1}]);
+    assert.equal(parseVerilogPorts('module m(output [3:0] q);').ports[0].width, 4);
 });

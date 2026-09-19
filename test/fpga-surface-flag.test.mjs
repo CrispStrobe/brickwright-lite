@@ -791,3 +791,13 @@ test('the palette offers built-in decoder/demux blocks', () => {
     assert.match(b, /decoder2to4/);
     assert.match(b, /demux1to2/);
 });
+
+// ── Code block: a node written in raw Verilog (icestudio-style) ──
+test('a Verilog Code block can be added and instantiated', () => {
+    const gb = read('overlay/scratch-gui/src/lib/bw-fpga/gate-builder.js');
+    assert.match(gb, /export function parseVerilogPorts/, 'ports are parsed from the Verilog header');
+    assert.match(gb, /m\.verilog \? String\(m\.verilog\)\.trim\(\)/, 'code modules are emitted verbatim');
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /const addCodeBlock = /, 'the modal adds a code module to the library');
+    assert.match(ui, /data-testid="bw-fpga-rf-code"/, 'a Code button');
+});
