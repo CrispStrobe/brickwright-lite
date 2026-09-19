@@ -10,7 +10,7 @@
  *
  * @module
  */
-import {evalModel} from './gate-eval.js';
+import {evalModel, stepClock} from './gate-eval.js';
 
 /** Names present on the model, by kind. */
 const namesOfKind = (model, kind) =>
@@ -40,7 +40,39 @@ export function validateInterface (model, challenge) {
  *   failing   — {inputs, output, expected, got} or {inputs, reason} for the first miss.
  *   checked   — how many input combinations were verified.
  */
+/**
+ * Grade a SEQUENTIAL challenge: clock the design through a stimulus and compare
+ * each cycle's output to the reference. The design's state advances with the
+ * tested stepClock, so it needs a flip-flop wired up.
+ */
+export function gradeSequential (model, challenge) {
+    const problem = validateInterface(model, challenge);
+    if (problem) return {pass: false, problem};
+
+    const stim = challenge.stimulus || {};
+    const driven = Object.keys(stim);
+    const cycles = challenge.cycles || (driven.length ? stim[driven[0]].length : 0);
+    const expected = challenge.seqExpect(stim);
+    let state = {};
+    for (let t = 0; t < cycles; t++) {
+        const inputs = {};
+        for (const k of driven) inputs[k] = stim[k][t];
+        const {outputs, settled} = evalModel(model, inputs, state);
+        if (!settled) {
+            return {pass: false, failing: {cycle: t, reason: 'the design never settled at this cycle'}, checked: t};
+        }
+        for (const {name} of challenge.outputs) {
+            if (outputs[name] !== expected[t][name]) {
+                return {pass: false, failing: {cycle: t, inputs, output: name, expected: expected[t][name], got: outputs[name]}, checked: t};
+            }
+        }
+        state = stepClock(model, inputs, state);
+    }
+    return {pass: true, checked: cycles, sequential: true};
+}
+
 export function grade (model, challenge) {
+    if (challenge.sequential) return gradeSequential(model, challenge);
     const problem = validateInterface(model, challenge);
     if (problem) return {pass: false, problem};
 
@@ -66,9 +98,17 @@ export function grade (model, challenge) {
 
 /** A one-line, learner-facing summary of a grade result. */
 export function gradeMessage (result, challenge) {
-    if (result.pass) return `✓ Correct — verified all ${result.checked} input combinations.`;
+    if (result.pass) {
+        return result.sequential
+            ? `✓ Correct — held through all ${result.checked} clock cycles.`
+            : `✓ Correct — verified all ${result.checked} input combinations.`;
+    }
     if (result.problem) return result.problem;
     const f = result.failing;
+    if (f.cycle !== undefined) {
+        if (f.reason) return `Not yet: at clock cycle ${f.cycle}, ${f.reason}`;
+        return `Not yet: at clock cycle ${f.cycle}, output ${f.output} is ${f.got} but should be ${f.expected}.`;
+    }
     const inStr = Object.entries(f.inputs).map(([k, v]) => `${k}=${v}`).join(', ');
     if (f.reason) return `Not yet: with ${inStr}, ${f.reason}`;
     return `Not yet: with ${inStr}, output ${f.output} is ${f.got} but should be ${f.expected}.`;

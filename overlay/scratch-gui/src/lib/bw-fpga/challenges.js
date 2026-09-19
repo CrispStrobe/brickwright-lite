@@ -75,6 +75,23 @@ export const CHALLENGES = Object.freeze([
         brief: 'Two select bits choose one of four inputs. s1 s0 pick d0..d3.',
         inputs: io(['d0', 'd1', 'd2', 'd3', 's0', 's1']), outputs: io(['y']),
         expect: i => ({y: [i.d0, i.d1, i.d2, i.d3][(i.s1 << 1) | i.s0]})
+    },
+    // Sequential steps — graded by clocking the design (stepClock) through a
+    // stimulus, so they need a flip-flop (DFF) and a clk input.
+    {
+        id: 'register', title: 'A register (D flip-flop)', requires: ['mux4'], sequential: true,
+        brief: 'Store a bit. Wire d and clk into a DFF and q out: q takes d on each clock, so it shows the PREVIOUS d. Use Run + ⟳ Clock to watch it.',
+        inputs: io(['d', 'clk']), outputs: io(['q']),
+        stimulus: {d: [1, 0, 0, 1, 1, 0]},
+        seqExpect: stim => { let q = 0; return stim.d.map(v => { const out = {q}; q = v; return out; }); }
+    },
+    {
+        id: 'toggle', title: 'Toggle flip-flop (÷2)', requires: ['register', 'not'], sequential: true,
+        brief: 'A 1-bit counter: q flips every clock. Feed the DFF its own inverted output (q → NOT → d), and clock it. That halves the clock frequency.',
+        inputs: io(['clk']), outputs: io(['q']),
+        cycles: 6,
+        stimulus: {},
+        seqExpect: () => [0, 1, 0, 1, 0, 1].map(q => ({q}))
     }
 ]);
 
