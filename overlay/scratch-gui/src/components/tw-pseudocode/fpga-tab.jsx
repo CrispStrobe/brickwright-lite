@@ -4,6 +4,7 @@ import TANG_NANO_20K from 'bw-circuit-ui/parts-data/tang_nano_20k.json';
 import {parseCst, emitCst} from '../../lib/bw-fpga/cst.js';
 import {bridge, constraintsFromBindings} from '../../lib/bw-fpga/port-bridge.js';
 import {applyPortValues} from '../../lib/bw-fpga/drive.js';
+import {verilogToModel} from '../../lib/bw-fpga/verilog-to-model.js';
 import {EXAMPLES} from '../../lib/bw-fpga/examples.js';
 import {buildDemoBoard} from '../../lib/bw-fpga/demo-board.js';
 import {readPorts, checkWidths, detectClockPort} from '../../lib/bw-fpga/yosys.js';
@@ -49,6 +50,7 @@ const L10N = {
         fpgaDesc3: 'board. Copyleft sources are refused on the shared server and must be built ',
         fpgaDesc4: 'locally — the licence check below decides.',
         verilogTitle: 'Verilog',
+        parseToCanvas: '⤵ Use as Canvas',
         newHere: 'New here? Load a starter design, then Synthesise:',
         orBuildItVisually: 'Or build it visually — place gates and wire them, no Verilog typed',
         loadingGateBuilder: 'Loading the gate builder…',
@@ -159,6 +161,7 @@ const L10N = {
         fpgaDesc3: 'Board erreichen. Copyleft-Quellen werden auf dem geteilten Server abgelehnt und müssen ',
         fpgaDesc4: 'lokal gebaut werden — die Lizenzprüfung unten entscheidet.',
         verilogTitle: 'Verilog',
+        parseToCanvas: '⤵ Use as Canvas',
         newHere: 'Neu hier? Laden Sie ein Starter-Design, dann Synthetisieren:',
         orBuildItVisually: 'Oder visuell bauen — Gatter platzieren und verdrahten, ohne Verilog zu tippen',
         loadingGateBuilder: 'Lade den Gatter-Builder…',
@@ -818,6 +821,19 @@ const FpgaTab = (props) => {
                 style={{width: '100%', minHeight: '9rem', fontFamily: 'monospace',
                     fontSize: '0.85rem', padding: '0.6rem'}}
             />
+            <div style={{textAlign: 'right', marginTop: '-1.5rem', marginRight: '0.5rem', pointerEvents: 'none'}}>
+                <button
+                    type="button"
+                    style={{pointerEvents: 'auto', fontSize: '0.75rem', padding: '0.1rem 0.4rem', cursor: 'pointer',
+                        background: 'rgba(255,255,255,0.85)', border: '1px solid #ccc', borderRadius: '4px'}}
+                    onClick={() => {
+                        const {model} = verilogToModel(hdl);
+                        if (model) setSeed(model);
+                    }}
+                >
+                    {L10N[pickLocale(props.locale)].parseToCanvas}
+                </button>
+            </div>
             {hdl.trim() ? (
                 <ul style={{listStyle: 'none', padding: 0, margin: '0.5rem 0 0'}}>
                     {hdlScreen.refusals.map((r, i) => (
