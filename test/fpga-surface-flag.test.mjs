@@ -720,3 +720,29 @@ test('the palette offers starter templates that merge onto the canvas', () => {
     assert.match(ui, /item\.kind === 'template'/, 'a template drop is handled');
     assert.match(ui, /idMap\[n\.id\] = id/, 'ids are remapped so a template MERGES, not clobbers');
 });
+
+// ── the learning path: a guided, auto-graded challenge ladder ──
+test('the builder has a learning path — challenges, Check, saved progress', () => {
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /import \{grade\}/, 'the tested grader drives Check');
+    assert.match(ui, /data-testid="bw-fpga-rf-learn"/, 'a Learn toggle');
+    assert.match(ui, /const selectChallenge = /, 'selecting a step scaffolds its I/O');
+    assert.match(ui, /const runCheck = /, 'Check grades the built design');
+    assert.match(ui, /localStorage/, 'progress persists across sessions');
+    const panel = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-challenges.jsx');
+    assert.match(panel, /data-testid="bw-fpga-check"/, 'a Check button');
+    assert.match(panel, /gradeMessage/, 'the result explains what to fix');
+    const grader = read('overlay/scratch-gui/src/lib/bw-fpga/grader.js');
+    assert.match(grader, /import \{evalModel\}/, 'grading reuses the tested evaluator');
+});
+
+// ── canvas UX polish: snap, keyboard-delete, clear, next-on-pass ──
+test('the canvas has snap-to-grid, keyboard delete, clear, and next-on-pass', () => {
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /snapToGrid snapGrid=\{\[16, 16\]\}/, 'nodes snap to a grid');
+    assert.match(ui, /deleteKeyCode=\{\['Backspace', 'Delete'\]\}/, 'Delete/Backspace removes selection');
+    assert.match(ui, /data-testid="bw-fpga-rf-clear"/, 'a Clear button');
+    assert.match(ui, /const goNext = /, 'advance to the next unlocked challenge');
+    const panel = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-challenges.jsx');
+    assert.match(panel, /data-testid="bw-fpga-next"/, 'a Next button appears on a pass');
+});

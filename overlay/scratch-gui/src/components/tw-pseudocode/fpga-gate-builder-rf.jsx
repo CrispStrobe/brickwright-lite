@@ -16,6 +16,17 @@ import FpgaGatePalette, {DRAG_MIME} from './fpga-gate-palette.jsx';
 import {NodeInspector, NodeContextMenu} from './fpga-node-inspector.jsx';
 import {evalModel, stepClock} from '../../lib/bw-fpga/gate-eval.js';
 import {EXAMPLES} from '../../lib/bw-fpga/examples.js';
+import {CHALLENGES, challengeById, isUnlocked} from '../../lib/bw-fpga/challenges.js';
+import {grade} from '../../lib/bw-fpga/grader.js';
+import FpgaChallengePanel from './fpga-challenges.jsx';
+
+const PROGRESS_KEY = 'bw-fpga-progress';
+const loadProgress = () => {
+    try { return new Set(JSON.parse(localStorage.getItem(PROGRESS_KEY) || '[]')); } catch (e) { return new Set(); }
+};
+const saveProgress = set => {
+    try { localStorage.setItem(PROGRESS_KEY, JSON.stringify([...set])); } catch (e) { /* private mode: keep in memory */ }
+};
 
 // The gate glyphs are shared with the CLI/schematic renderer; their classes are
 // styled once here, scoped under `.bw-glyph` so they never touch the rest of the app.
@@ -194,6 +205,10 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
     const [running, setRunning] = React.useState(false); // live-simulation mode
     const [inputs, setInputs] = React.useState({}); // live input values, by input name
     const [clockState, setClockState] = React.useState({}); // dff state for stepClock
+    const [showLearn, setShowLearn] = React.useState(false); // learning-path panel
+    const [active, setActive] = React.useState(null); // active challenge id
+    const [passed, setPassed] = React.useState(loadProgress); // completed challenge ids
+    const [checkResult, setCheckResult] = React.useState(null);
     const idRef = React.useRef(100);
     const nid = p => `${p}${idRef.current++}`;
 
@@ -304,6 +319,42 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
     };
     const stepClk = () => setClockState(prev => stepClock(reactFlowToModel(nodes, edges), inputs, prev));
 
+    // Learning path: selecting a challenge scaffolds a clean canvas with just its
+    // named inputs and outputs; Check grades the built design and, on a pass,
+    // records progress (unlocking the next step).
+    const selectChallenge = id => {
+        const c = challengeById(id);
+        if (!c) return;
+        setActive(id);
+        setCheckResult(null);
+        setRunning(false);
+        idRef.current += 1;
+        const ins = c.inputs.map((p, i) => ({id: nid('i'), type: 'io',
+            position: {x: 0, y: 20 + i * 60}, data: {kind: 'in', name: p.name, width: 1}}));
+        const outs = c.outputs.map((p, i) => ({id: nid('o'), type: 'io',
+            position: {x: 360, y: 20 + i * 60}, data: {kind: 'out', name: p.name, width: 1}}));
+        setNodes([...ins, ...outs]);
+        setEdges([]);
+    };
+    const runCheck = () => {
+        const c = challengeById(active);
+        if (!c) return;
+        const result = grade(reactFlowToModel(nodes, edges), c);
+        setCheckResult(result);
+        if (result.pass && !passed.has(active)) {
+            const next = new Set(passed); next.add(active);
+            setPassed(next); saveProgress(next);
+        }
+    };
+    // Jump to the next still-unsolved, unlocked challenge after the current one.
+    const goNext = () => {
+        const after = new Set(passed); if (active) after.add(active);
+        const start = active ? CHALLENGES.findIndex(c => c.id === active) + 1 : 0;
+        const order = [...CHALLENGES.slice(start), ...CHALLENGES.slice(0, start)];
+        const nextC = order.find(c => !after.has(c.id) && isUnlocked(c.id, after));
+        if (nextC) selectChallenge(nextC.id);
+    };
+
     const generate = () => {
         const model = reactFlowToModel(nodes, edges, library);
         const {verilog, problems: probs} = modelToVerilog(model);
@@ -326,6 +377,15 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                 <span style={{opacity: 0.4}}>{'|'}</span>
                 <button type="button" onClick={saveSubcircuit} title={L10N[pickLocale(locale)].saveTitle}
                     style={{cursor: 'pointer'}} data-testid="bw-fpga-rf-save">{L10N[pickLocale(locale)].saveAsSubcircuit}</button>
+                <button type="button" data-testid="bw-fpga-rf-clear"
+                    onClick={() => { setNodes([]); setEdges([]); setCheckResult(null); }}
+                    title="Clear the canvas" style={{cursor: 'pointer'}}>{'🗑 Clear'}</button>
+                <span style={{opacity: 0.4}}>{'|'}</span>
+                <button type="button" data-testid="bw-fpga-rf-learn"
+                    onClick={() => setShowLearn(s => !s)}
+                    title="A guided path of build-it-yourself challenges, auto-graded"
+                    style={{cursor: 'pointer', fontWeight: 'bold', color: showLearn ? '#1d4ed8' : undefined}}
+                >{showLearn ? '📘 Learning ✓' : '📘 Learn'}</button>
                 <span style={{opacity: 0.4}}>{'|'}</span>
                 <button type="button" data-testid="bw-fpga-rf-run"
                     onClick={() => { setRunning(r => !r); setInspect(null); setMenu(null); }}
@@ -351,6 +411,10 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                 </div>
             ) : null}
             <div style={{display: 'flex', alignItems: 'stretch'}}>
+                {showLearn ? (
+                    <FpgaChallengePanel active={active} passed={passed} result={checkResult}
+                        onSelect={selectChallenge} onCheck={runCheck} onNext={goNext} />
+                ) : null}
                 <FpgaGatePalette catalog={catalog} />
                 <div style={{flex: '1 1 auto', height: '48vh', minHeight: 300, border: '1px solid rgba(71,85,105,0.25)', borderRadius: 6}}
                     data-testid="bw-fpga-rf-canvas" onDrop={onDrop} onDragOver={onDragOver}>
@@ -361,6 +425,7 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                         onNodeDoubleClick={onNodeDoubleClick} onNodeContextMenu={onNodeContextMenu}
                         onEdgeContextMenu={onEdgeContextMenu} onPaneClick={() => { setMenu(null); setInspect(null); }}
                         nodeTypes={nodeTypes} fitView
+                        snapToGrid snapGrid={[16, 16]} deleteKeyCode={['Backspace', 'Delete']}
                         proOptions={{hideAttribution: true}}
                     >
                         <Background />
