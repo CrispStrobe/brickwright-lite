@@ -59,6 +59,7 @@ export function evalModel (model, inputs = {}, dffState = {}) {
 
     for (const n of nodes) {
         if (n.kind === 'in') values[n.id] = inputs[n.name] ? 1 : 0;
+        else if (n.kind === 'const') values[n.id] = n.value ? 1 : 0;
         else if (n.kind === 'gate' && GATE_DEFS[n.type] && GATE_DEFS[n.type].seq) {
             values[n.id] = dffState[n.id] ? 1 : 0; // a flip-flop drives its state
         }

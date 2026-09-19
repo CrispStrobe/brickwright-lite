@@ -1,6 +1,43 @@
 import React from 'react';
+import {connect} from 'react-redux';
 import {GATE_DEFS, inputPorts, hasOutput, modelToVerilog, modelToCst} from '../../lib/bw-fpga/gate-builder.js';
 import {evalModel, stepClock as stepClockEval} from '../../lib/bw-fpga/gate-eval.js';
+
+const L10N = {
+    en: {
+        addInput: '+ Input',
+        addOutput: '+ Output',
+        clear: 'Clear',
+        stepClock: '▸ Step clock',
+        resetState: 'Reset state',
+        wiringStatusPrefix: 'Wiring from ',
+        wiringStatusSuffix: ' — click an input port to connect (or click another output to change the source).',
+        idleStatus: 'It runs live: click an input box to toggle 0/1 and watch the wires light. Wire by clicking an output port (right) then an input port (left).',
+        clickToggle: 'click to toggle 0/1',
+        inLabel: 'in',
+        outLabel: 'out',
+        remove: 'remove',
+        useVerilog: '⤵ Use as Verilog',
+        useVerilogDesc: 'generates the HDL above and synthesises it'
+    },
+    de: {
+        addInput: '+ Eingang',
+        addOutput: '+ Ausgang',
+        clear: 'Löschen',
+        stepClock: '▸ Takt weiter',
+        resetState: 'Zustand zurücksetzen',
+        wiringStatusPrefix: 'Verkabelung von ',
+        wiringStatusSuffix: ' — klicke auf einen Eingangs-Port zum Verbinden (oder einen anderen Ausgang, um die Quelle zu ändern).',
+        idleStatus: 'Es läuft live: Klicke auf ein Eingabefeld, um 0/1 umzuschalten, und sieh, wie die Kabel aufleuchten. Verkable, indem du auf einen Ausgangs-Port (rechts) und dann auf einen Eingangs-Port (links) klickst.',
+        clickToggle: 'Klicken, um 0/1 umzuschalten',
+        inLabel: 'Ein',
+        outLabel: 'Aus',
+        remove: 'entfernen',
+        useVerilog: '⤵ Als Verilog verwenden',
+        useVerilogDesc: 'generiert das obige HDL und synthetisiert es'
+    }
+};
+const pickLocale = loc => (loc && L10N[String(loc).slice(0, 2)] ? String(loc).slice(0, 2) : 'en');
 
 /**
  * Build logic by placing gates and wiring them — Rung 3 of the FPGA visual
@@ -45,8 +82,12 @@ const STARTER = () => ({
     ]
 });
 
-const FpgaGateBuilder = ({onUseVerilog}) => {
-    const [model, setModel] = React.useState(STARTER);
+const FpgaGateBuilder = (props) => {
+    const {onUseVerilog, seed} = props;
+    const [model, setModel] = React.useState(seed || STARTER);
+    React.useEffect(() => {
+        if (seed) setModel(seed);
+    }, [seed]);
     const [pending, setPending] = React.useState(null); // {node, port} awaiting a sink
     const [graph, setGraph] = React.useState(null);
     const [problems, setProblems] = React.useState([]);
@@ -136,29 +177,29 @@ const FpgaGateBuilder = ({onUseVerilog}) => {
     return (
         <div>
             <div style={{display: 'flex', gap: '0.35rem', flexWrap: 'wrap', margin: '0 0 0.5rem', alignItems: 'center'}}>
-                <button type="button" onClick={addInput} style={{padding: '0.2rem 0.5rem', cursor: 'pointer'}}>{'+ Input'}</button>
-                <button type="button" onClick={addOutput} style={{padding: '0.2rem 0.5rem', cursor: 'pointer'}}>{'+ Output'}</button>
+                <button type="button" onClick={addInput} style={{padding: '0.2rem 0.5rem', cursor: 'pointer'}}>{L10N[pickLocale(props.locale)].addInput}</button>
+                <button type="button" onClick={addOutput} style={{padding: '0.2rem 0.5rem', cursor: 'pointer'}}>{L10N[pickLocale(props.locale)].addOutput}</button>
                 <span style={{opacity: 0.4}}>{'|'}</span>
                 {gateBtns.map(t => (
                     <button key={t} type="button" onClick={() => addGate(t)} title={`${GATE_DEFS[t].label} gate`}
                         style={{padding: '0.2rem 0.5rem', cursor: 'pointer'}}>{`+ ${GATE_DEFS[t].label}`}</button>
                 ))}
                 <span style={{opacity: 0.4}}>{'|'}</span>
-                <button type="button" onClick={clearAll} style={{padding: '0.2rem 0.5rem', cursor: 'pointer'}}>{'Clear'}</button>
+                <button type="button" onClick={clearAll} style={{padding: '0.2rem 0.5rem', cursor: 'pointer'}}>{L10N[pickLocale(props.locale)].clear}</button>
                 {hasDff ? (
                     <>
                         <span style={{opacity: 0.4}}>{'|'}</span>
                         <button type="button" onClick={stepClock} data-testid="bw-fpga-live-step"
-                            style={{padding: '0.2rem 0.5rem', cursor: 'pointer'}}>{'▸ Step clock'}</button>
+                            style={{padding: '0.2rem 0.5rem', cursor: 'pointer'}}>{L10N[pickLocale(props.locale)].stepClock}</button>
                         <button type="button" onClick={resetState}
-                            style={{padding: '0.2rem 0.5rem', cursor: 'pointer'}}>{'Reset state'}</button>
+                            style={{padding: '0.2rem 0.5rem', cursor: 'pointer'}}>{L10N[pickLocale(props.locale)].resetState}</button>
                     </>
                 ) : null}
             </div>
             <p style={{margin: '0 0 0.5rem', fontSize: '0.8rem', opacity: 0.8}}>
                 {pending
-                    ? <strong>{`Wiring from ${pending.node}.${pending.port} — click an input port to connect (or click another output to change the source).`}</strong>
-                    : 'It runs live: click an input box to toggle 0/1 and watch the wires light. Wire by clicking an output port (right) then an input port (left).'}
+                    ? <strong>{`${L10N[pickLocale(props.locale)].wiringStatusPrefix}${pending.node}.${pending.port}${L10N[pickLocale(props.locale)].wiringStatusSuffix}`}</strong>
+                    : L10N[pickLocale(props.locale)].idleStatus}
             </p>
             <div style={{overflow: 'auto', border: '1px solid rgba(71,85,105,0.25)', borderRadius: 6, background: '#f8fafc', maxHeight: '55vh'}}>
                 <svg width={W} height={H} style={{display: 'block'}} role="img" aria-label="Gate builder canvas" data-testid="bw-fpga-builder-svg">
@@ -188,7 +229,7 @@ const FpgaGateBuilder = ({onUseVerilog}) => {
                                         strokeWidth={1.3}
                                         style={node.kind === 'in' ? {cursor: 'pointer'} : undefined}
                                         onClick={node.kind === 'in' ? () => toggleInput(node.name) : undefined}>
-                                        {node.kind === 'in' ? <title>{'click to toggle 0/1'}</title> : null}
+                                        {node.kind === 'in' ? <title>{L10N[pickLocale(props.locale)].clickToggle}</title> : null}
                                     </rect>
                                     <text x={c.width / 2} y={c.height / 2} textAnchor="middle" dominantBaseline="central"
                                         fontSize={isIo ? 10 : 12} fontWeight={isIo ? 'normal' : 'bold'} fill="#1e293b"
@@ -218,11 +259,11 @@ const FpgaGateBuilder = ({onUseVerilog}) => {
                 <div style={{display: 'flex', gap: '0.75rem', flexWrap: 'wrap', margin: '0.5rem 0'}}>
                     {model.nodes.filter(n => n.kind !== 'gate').map(n => (
                         <label key={n.id} style={{fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 4}}>
-                            <span style={{opacity: 0.7}}>{n.kind === 'in' ? 'in' : 'out'}</span>
+                            <span style={{opacity: 0.7}}>{n.kind === 'in' ? L10N[pickLocale(props.locale)].inLabel : L10N[pickLocale(props.locale)].outLabel}</span>
                             <input value={n.name} onChange={e => rename(n.id, e.target.value)}
                                 data-testid={`bw-fpga-name-${n.id}`}
                                 style={{width: '5rem', fontFamily: 'monospace', fontSize: '0.8rem'}} />
-                            <button type="button" onClick={() => removeNode(n.id)} title="remove"
+                            <button type="button" onClick={() => removeNode(n.id)} title={L10N[pickLocale(props.locale)].remove}
                                 style={{cursor: 'pointer', padding: '0 0.3rem'}}>{'×'}</button>
                         </label>
                     ))}
@@ -232,8 +273,8 @@ const FpgaGateBuilder = ({onUseVerilog}) => {
                 <button type="button" onClick={generate}
                     disabled={!model.nodes.length}
                     style={{padding: '0.35rem 0.8rem', cursor: model.nodes.length ? 'pointer' : 'default', fontWeight: 'bold'}}
-                >{'⤵ Use as Verilog'}</button>
-                <span style={{fontSize: '0.8rem', opacity: 0.75}}>{'generates the HDL above and synthesises it'}</span>
+                >{L10N[pickLocale(props.locale)].useVerilog}</button>
+                <span style={{fontSize: '0.8rem', opacity: 0.75}}>{L10N[pickLocale(props.locale)].useVerilogDesc}</span>
             </div>
             {problems.length ? (
                 <ul style={{listStyle: 'none', padding: 0, margin: '0.25rem 0'}}>
@@ -246,4 +287,5 @@ const FpgaGateBuilder = ({onUseVerilog}) => {
     );
 };
 
-export default FpgaGateBuilder;
+export { FpgaGateBuilder };
+export default connect(state => ({locale: state.locales && state.locales.locale}))(FpgaGateBuilder);

@@ -1,4 +1,5 @@
 import React from 'react';
+import {connect} from 'react-redux';
 import TANG_NANO_20K from 'bw-circuit-ui/parts-data/tang_nano_20k.json';
 import {parseCst, emitCst} from '../../lib/bw-fpga/cst.js';
 import {bridge, constraintsFromBindings} from '../../lib/bw-fpga/port-bridge.js';
@@ -15,6 +16,231 @@ import {probeFlash, flashBitstream} from '../../lib/bw-fpga/fpga-tauri-transport
 import {webUsbSupported} from '../../lib/bw-fpga/webusb-flash.js';
 import {defaultCatalog, probeBackends, selectBackend, offerable}
     from '../../lib/bw-fpga/backends.js';
+
+const L10N = {
+    en: {
+        wireDemoBoard: 'Wire up a demo board',
+        wireDemoBoardHint: 'the ⬢ button below wires a Tang Nano + 4 LEDs on pins 15–18',
+        loadDesign: 'Load a design and synthesise it',
+        loadDesignHint: 'try “Counting sequence”, then Synthesise',
+        stepClock: 'Step the clock',
+        stepClockHint: 'the four LEDs count up in binary on the board',
+        seeInController: 'See it in the Controller view',
+        seeInControllerHint: 'the ⎈ button under Clock mirrors the LEDs as widgets and runs the design',
+        allDone: '🎉 You designed a chip, synthesised it, and watched it light LEDs on the board and in the Widgets view.',
+        newToFpga: 'New to the FPGA lab? Four steps to see your logic light LEDs:',
+        threeWaysToSee: 'Three ways to SEE it: ',
+        designDrawnAs: 'your design is drawn as a ',
+        gateSchematic: 'gate schematic',
+        andAs: ' and as ',
+        waveforms: 'waveforms',
+        belowAndYouCan: ' below — and you can ',
+        buildYourOwnLogic: 'build your own logic',
+        byPlacingGates: ' by placing gates (under “Verilog”), ',
+        noHdlTyped: 'no HDL typed.',
+        preferNoTyping: 'Prefer no typing? Open ',
+        buildItVisuallyQuote: '“build it visually”',
+        underVerilog: ' under Verilog and place gates — it runs live and generates the HDL for you.',
+        done: 'Done',
+        hideThis: 'Hide this',
+        fpgaTitle: 'FPGA — Tang Nano 20K',
+        fpgaDesc1: 'Write Verilog, synthesise it to a bitstream on the hosted service or to a ',
+        fpgaDesc2: 'netlist here in the browser, and check that your pin constraints reach the ',
+        fpgaDesc3: 'board. Copyleft sources are refused on the shared server and must be built ',
+        fpgaDesc4: 'locally — the licence check below decides.',
+        verilogTitle: 'Verilog',
+        newHere: 'New here? Load a starter design, then Synthesise:',
+        orBuildItVisually: 'Or build it visually — place gates and wire them, no Verilog typed',
+        loadingGateBuilder: 'Loading the gate builder…',
+        orOnFullCanvas: '…or on a full canvas — drag, zoom, and wire (React Flow)',
+        loadingCanvas: 'Loading the canvas…',
+        wireDemoBoardBtn: '⬢ Wire up a demo board',
+        permissiveLicence: 'Declares a permissive licence — it may be built on the shared server.',
+        whereBuiltTitle: 'Where it would be built',
+        backendLabel: 'Backend: ',
+        autoOption: 'Auto',
+        buildsOn: 'Builds on ',
+        synthesiseBtn: 'Synthesise',
+        downloadFs: 'Download .fs',
+        flashToBoard: 'Flash to board',
+        flashingRuns: 'Flashing runs openFPGALoader in the native app.',
+        browserCannotFlash1: 'A browser cannot flash yet. With the board on USB, use the CLI ',
+        browserCannotFlash2: ' or ',
+        browserCannotFlash3: '.',
+        browserHasWebUsb: 'Your browser has WebUSB; direct in-browser flashing is planned (TANG-NANO §TN4) but not built yet.',
+        downloadNetlist: 'Download netlist',
+        doneFeedback: '✓ Done.',
+        synthesiseHereTitle: 'Synthesise in this browser (TN6a)',
+        yosysRunsHere1: 'Yosys runs here, producing a netlist you can download or check in the pin ',
+        yosysRunsHere2: 'panel below. It does not produce a bitstream — that needs place and route, ',
+        yosysRunsHere3: 'another 183 MB, which is not offered yet.',
+        starting: 'starting',
+        downloading: 'Downloading…',
+        downloadToolchain: 'Download the toolchain (77 MB, once)',
+        synthesiseHereBtn: 'Synthesise here',
+        checkPinsTitle: 'Check which pins reach the board (',
+        placed: ' placed',
+        cannot: ' cannot',
+        checkPinsDesc1: 'Which of a design’s pins can actually reach the breadboard. This reads ',
+        checkPinsDesc2: 'Gowin constraints against the real board part, and the same constraints ',
+        checkPinsDesc3: 'are sent with a hosted build.',
+        optionalPasteNetlist: 'Optional: paste a Yosys JSON netlist to also check the ports exist',
+        topModule: ' — top module: ',
+        schematicTitle: 'Schematic — your design as gates',
+        schematicDesc1: 'This is the Verilog above, synthesised to logic gates. Inputs sit on ',
+        schematicDesc2: 'the left, outputs on the right; a wire lights with the value it carries ',
+        schematicDesc3: 'as you step the clock.',
+        loadingSchematic: 'Loading the schematic view…',
+        waveformsTitle: 'Waveforms — the outputs over time',
+        waveformsDesc1: 'The design run from reset for a few clock cycles: each output bit as a ',
+        waveformsDesc2: 'square wave. A counter reads bottom-up — the lowest bit toggles every ',
+        waveformsDesc3: 'cycle, the highest slowest.',
+        loadingWaveform: 'Loading the waveform view…',
+        reachesBoard: 'Reaches the board (',
+        pinArrow: ' → pin ',
+        terminalArrow: ' → terminal ',
+        sharesHardware: ' (shares onboard hardware)',
+        nothingPlacedYet: 'Nothing placed yet.',
+        usableWithCaveat: 'Usable, with a caveat (',
+        cannotReachBoard: 'Cannot reach the board (',
+        clockTitle: 'Clock',
+        clockDesc1: 'This design is clocked on ',
+        clockDesc2: '. Step it to advance the design one cycle at a time and watch the outputs — and the board — follow.',
+        stepClockBtn: 'Step clock ▸',
+        resetBtn: 'Reset',
+        stopAutoRun: '⏸ Stop auto-run',
+        autoRun: '▶ Auto-run',
+        cycle: ' cycle',
+        cycles: ' cycles',
+        showLeds: '⎈ Show the LEDs in the Controller view',
+        mirrorsPins: 'mirrors pins ',
+        asIndicators: ' as indicators and starts the clock',
+        designInputsTitle: 'Design inputs',
+        nothingDrivesThese: 'Nothing drives these yet, so set them here and watch the outputs follow.',
+        whatCircuitEngine: 'What the circuit engine would be told',
+        high: ' HIGH',
+        low: ' LOW',
+        highZ: ' (high-Z: the design reads it)',
+        undriven: ' — undriven: nothing models the design yet, so there is no value to put on it.',
+        nothingToDrive: 'Nothing to drive.',
+        constraintsTitle: 'Constraints for the Gowin toolchain',
+        constraintsDesc1: 'Canonical .cst covering only the ports that reach a header pin. ',
+        constraintsDesc2: 'This is what leaves for real silicon.',
+        plannedNext: 'Planned next: flashing a produced bitstream from the native app.'
+    },
+    de: {
+        wireDemoBoard: 'Demoboard verkabeln',
+        wireDemoBoardHint: 'der ⬢ Button unten verkabelt einen Tang Nano + 4 LEDs an Pins 15–18',
+        loadDesign: 'Design laden und synthetisieren',
+        loadDesignHint: 'versuchen Sie "Counting sequence", dann Synthesise',
+        stepClock: 'Uhr takten',
+        stepClockHint: 'die vier LEDs zählen binär auf dem Board hoch',
+        seeInController: 'In der Controller-Ansicht ansehen',
+        seeInControllerHint: 'der ⎈ Button unter Clock spiegelt die LEDs als Widgets und führt das Design aus',
+        allDone: '🎉 Sie haben einen Chip entworfen, synthetisiert und gesehen, wie er LEDs auf dem Board und in der Widgets-Ansicht zum Leuchten bringt.',
+        newToFpga: 'Neu im FPGA-Labor? Vier Schritte, um Ihre Logik LEDs leuchten zu sehen:',
+        threeWaysToSee: 'Drei Möglichkeiten, es zu SEHEN: ',
+        designDrawnAs: 'Ihr Design wird gezeichnet als ',
+        gateSchematic: 'Gatterschaltplan',
+        andAs: ' und als ',
+        waveforms: 'Wellenformen',
+        belowAndYouCan: ' unten — und Sie können ',
+        buildYourOwnLogic: 'Ihre eigene Logik bauen',
+        byPlacingGates: ' indem Sie Gatter platzieren (unter "Verilog"), ',
+        noHdlTyped: 'ohne HDL zu tippen.',
+        preferNoTyping: 'Lieber nicht tippen? Öffnen Sie ',
+        buildItVisuallyQuote: '"visuell bauen"',
+        underVerilog: ' unter Verilog und platzieren Sie Gatter — es läuft live und generiert das HDL für Sie.',
+        done: 'Fertig',
+        hideThis: 'Dies ausblenden',
+        fpgaTitle: 'FPGA — Tang Nano 20K',
+        fpgaDesc1: 'Schreiben Sie Verilog, synthetisieren Sie es zu einem Bitstream im gehosteten Service oder zu einer ',
+        fpgaDesc2: 'Netzliste hier im Browser, und prüfen Sie, ob Ihre Pin-Constraints das ',
+        fpgaDesc3: 'Board erreichen. Copyleft-Quellen werden auf dem geteilten Server abgelehnt und müssen ',
+        fpgaDesc4: 'lokal gebaut werden — die Lizenzprüfung unten entscheidet.',
+        verilogTitle: 'Verilog',
+        newHere: 'Neu hier? Laden Sie ein Starter-Design, dann Synthetisieren:',
+        orBuildItVisually: 'Oder visuell bauen — Gatter platzieren und verdrahten, ohne Verilog zu tippen',
+        loadingGateBuilder: 'Lade den Gatter-Builder…',
+        orOnFullCanvas: '…oder auf einer vollen Leinwand — ziehen, zoomen und verdrahten (React Flow)',
+        loadingCanvas: 'Lade die Leinwand…',
+        wireDemoBoardBtn: '⬢ Demoboard verkabeln',
+        permissiveLicence: 'Erklärt eine freizügige Lizenz — es kann auf dem geteilten Server gebaut werden.',
+        whereBuiltTitle: 'Wo es gebaut werden würde',
+        backendLabel: 'Backend: ',
+        autoOption: 'Auto',
+        buildsOn: 'Baut auf ',
+        synthesiseBtn: 'Synthetisieren',
+        downloadFs: '.fs herunterladen',
+        flashToBoard: 'Auf Board flashen',
+        flashingRuns: 'Flashen führt openFPGALoader in der nativen App aus.',
+        browserCannotFlash1: 'Ein Browser kann noch nicht flashen. Mit dem Board am USB, nutzen Sie die CLI ',
+        browserCannotFlash2: ' oder ',
+        browserCannotFlash3: '.',
+        browserHasWebUsb: 'Ihr Browser hat WebUSB; direktes Flashen im Browser ist geplant (TANG-NANO §TN4) aber noch nicht eingebaut.',
+        downloadNetlist: 'Netzliste herunterladen',
+        doneFeedback: '✓ Fertig.',
+        synthesiseHereTitle: 'In diesem Browser synthetisieren (TN6a)',
+        yosysRunsHere1: 'Yosys läuft hier und produziert eine Netzliste, die Sie herunterladen oder im Pin-Panel ',
+        yosysRunsHere2: 'unten überprüfen können. Es produziert keinen Bitstream — das erfordert Place and Route, ',
+        yosysRunsHere3: 'weitere 183 MB, was noch nicht angeboten wird.',
+        starting: 'starte',
+        downloading: 'Lade herunter…',
+        downloadToolchain: 'Toolchain herunterladen (77 MB, einmalig)',
+        synthesiseHereBtn: 'Hier synthetisieren',
+        checkPinsTitle: 'Prüfen, welche Pins das Board erreichen (',
+        placed: ' platziert',
+        cannot: ' können nicht',
+        checkPinsDesc1: 'Welche Pins eines Designs tatsächlich das Breadboard erreichen können. Dies liest ',
+        checkPinsDesc2: 'Gowin-Constraints gegen das echte Board-Teil, und die gleichen Constraints ',
+        checkPinsDesc3: 'werden bei einem gehosteten Build gesendet.',
+        optionalPasteNetlist: 'Optional: Fügen Sie eine Yosys JSON-Netzliste ein, um auch zu prüfen, ob die Ports existieren',
+        topModule: ' — Top-Modul: ',
+        schematicTitle: 'Schaltplan — Ihr Design als Gatter',
+        schematicDesc1: 'Dies ist das obige Verilog, synthetisiert zu Logikgattern. Eingänge sitzen auf ',
+        schematicDesc2: 'der linken Seite, Ausgänge auf der rechten; ein Kabel leuchtet mit dem Wert, den es trägt, ',
+        schematicDesc3: 'während Sie die Uhr takten.',
+        loadingSchematic: 'Lade die Schaltplan-Ansicht…',
+        waveformsTitle: 'Wellenformen — die Ausgänge über die Zeit',
+        waveformsDesc1: 'Das Design, ausgeführt vom Reset für einige Taktzyklen: jedes Ausgangs-Bit als ',
+        waveformsDesc2: 'Rechteckwelle. Ein Zähler liest von unten nach oben — das niedrigste Bit wechselt jeden ',
+        waveformsDesc3: 'Zyklus, das höchste am langsamsten.',
+        loadingWaveform: 'Lade die Wellenform-Ansicht…',
+        reachesBoard: 'Erreicht das Board (',
+        pinArrow: ' → Pin ',
+        terminalArrow: ' → Terminal ',
+        sharesHardware: ' (teilt Onboard-Hardware)',
+        nothingPlacedYet: 'Noch nichts platziert.',
+        usableWithCaveat: 'Nutzbar, mit einem Vorbehalt (',
+        cannotReachBoard: 'Kann das Board nicht erreichen (',
+        clockTitle: 'Uhr',
+        clockDesc1: 'Dieses Design wird getaktet auf ',
+        clockDesc2: '. Takten Sie es, um das Design einen Zyklus nach dem anderen voranzutreiben und sehen Sie zu, wie die Ausgänge — und das Board — folgen.',
+        stepClockBtn: 'Uhr takten ▸',
+        resetBtn: 'Zurücksetzen',
+        stopAutoRun: '⏸ Auto-Run stoppen',
+        autoRun: '▶ Auto-Run',
+        cycle: ' Zyklus',
+        cycles: ' Zyklen',
+        showLeds: '⎈ Zeige die LEDs in der Controller-Ansicht',
+        mirrorsPins: 'spiegelt Pins ',
+        asIndicators: ' als Indikatoren und startet die Uhr',
+        designInputsTitle: 'Design-Eingänge',
+        nothingDrivesThese: 'Nichts treibt diese bisher an, also stellen Sie sie hier ein und sehen Sie zu, wie die Ausgänge folgen.',
+        whatCircuitEngine: 'Was der Schaltungs-Engine mitgeteilt werden würde',
+        high: ' HIGH',
+        low: ' LOW',
+        highZ: ' (High-Z: das Design liest es)',
+        undriven: ' — ungetrieben: nichts modelliert bisher das Design, also gibt es keinen Wert, den man darauf legen könnte.',
+        nothingToDrive: 'Nichts anzutreiben.',
+        constraintsTitle: 'Constraints für die Gowin-Toolchain',
+        constraintsDesc1: 'Kanonisches .cst, das nur die Ports abdeckt, die einen Header-Pin erreichen. ',
+        constraintsDesc2: 'Das ist es, was für echtes Silizium abgeht.',
+        plannedNext: 'Als nächstes geplant: Flashen eines produzierten Bitstreams aus der nativen App.'
+    }
+};
+const pickLocale = loc => (loc && L10N[String(loc).slice(0, 2)] ? String(loc).slice(0, 2) : 'en');
+
 
 /**
  * The FPGA / HDL surface — TN2 and TN2b of docs/TANG-NANO.md.
@@ -105,7 +331,7 @@ const Row = ({tone, children}) => (
     }}>{children}</li>
 );
 
-const FpgaTab = () => {
+const FpgaTab = (props) => {
     const [text, setText] = React.useState(EXAMPLE);
     const [netlistText, setNetlistText] = React.useState('');
     const [inputs, setInputs] = React.useState({});
@@ -133,6 +359,7 @@ const FpgaTab = () => {
     });
     const [sim, setSim] = React.useState({values: {}, note: null, problems: []});
     const [hdl, setHdl] = React.useState('');
+    const [seed, setSeed] = React.useState(null);
     const [synth, setSynth] = React.useState(null);
     const [backend, setBackend] = React.useState('auto');
     const [probe, setProbe] = React.useState({available: [], probes: []});
@@ -476,17 +703,17 @@ const FpgaTab = () => {
                 // the user actually does it — not a scripted tour that lies.
                 const steps = [
                     {done: Boolean(demoMsg && demoMsg.ok),
-                        label: 'Wire up a demo board',
-                        hint: 'the ⬢ button below wires a Tang Nano + 4 LEDs on pins 15–18'},
+                        label: L10N[pickLocale(props.locale)].wireDemoBoard,
+                        hint: L10N[pickLocale(props.locale)].wireDemoBoardHint},
                     {done: Boolean((synth && synth.ok) || netlistText.trim()),
-                        label: 'Load a design and synthesise it',
-                        hint: 'try “Counting sequence”, then Synthesise'},
+                        label: L10N[pickLocale(props.locale)].loadDesign,
+                        hint: L10N[pickLocale(props.locale)].loadDesignHint},
                     {done: clockCycles > 0,
-                        label: 'Step the clock',
-                        hint: 'the four LEDs count up in binary on the board'},
+                        label: L10N[pickLocale(props.locale)].stepClock,
+                        hint: L10N[pickLocale(props.locale)].stepClockHint},
                     {done: mirrored,
-                        label: 'See it in the Controller view',
-                        hint: 'the ⎈ button under Clock mirrors the LEDs as widgets and runs the design'}
+                        label: L10N[pickLocale(props.locale)].seeInController,
+                        hint: L10N[pickLocale(props.locale)].seeInControllerHint}
                 ];
                 const allDone = steps.every(s => s.done);
                 const hide = () => {
@@ -497,8 +724,8 @@ const FpgaTab = () => {
                     <div style={{border: '1px solid rgba(74,111,165,0.4)', borderRadius: 6,
                         padding: '0.75rem 1rem', margin: '0 0 1rem', background: 'rgba(74,111,165,0.07)'}}>
                         <strong>{allDone
-                            ? '🎉 You designed a chip, synthesised it, and watched it light LEDs on the board and in the Widgets view.'
-                            : 'New to the FPGA lab? Four steps to see your logic light LEDs:'}</strong>
+                            ? L10N[pickLocale(props.locale)].allDone
+                            : L10N[pickLocale(props.locale)].newToFpga}</strong>
                         <ol style={{margin: '0.5rem 0 0.25rem', paddingLeft: '1.4rem'}}>
                             {steps.map((s, i) => (
                                 <li key={i} style={{opacity: s.done ? 0.55 : 1, margin: '0.15rem 0'}}>
@@ -509,66 +736,66 @@ const FpgaTab = () => {
                         </ol>
                         {netlistText.trim() ? (
                             <p style={{margin: '0.35rem 0 0.15rem', fontSize: '0.85rem'}}>
-                                <strong>{'Three ways to SEE it: '}</strong>
-                                {'your design is drawn as a '}<em>{'gate schematic'}</em>
-                                {' and as '}<em>{'waveforms'}</em>{' below — and you can '}
-                                <em>{'build your own logic'}</em>{' by placing gates (under “Verilog”), '}
-                                {'no HDL typed.'}
+                                <strong>{L10N[pickLocale(props.locale)].threeWaysToSee}</strong>
+                                {L10N[pickLocale(props.locale)].designDrawnAs}<em>{L10N[pickLocale(props.locale)].gateSchematic}</em>
+                                {L10N[pickLocale(props.locale)].andAs}<em>{L10N[pickLocale(props.locale)].waveforms}</em>{L10N[pickLocale(props.locale)].belowAndYouCan}
+                                <em>{L10N[pickLocale(props.locale)].buildYourOwnLogic}</em>{L10N[pickLocale(props.locale)].byPlacingGates}
+                                {L10N[pickLocale(props.locale)].noHdlTyped}
                             </p>
                         ) : (
                             <p style={{margin: '0.35rem 0 0.15rem', fontSize: '0.85rem', opacity: 0.85}}>
-                                {'Prefer no typing? Open '}<em>{'“build it visually”'}</em>
-                                {' under Verilog and place gates — it runs live and generates the HDL for you.'}
+                                {L10N[pickLocale(props.locale)].preferNoTyping}<em>{L10N[pickLocale(props.locale)].buildItVisuallyQuote}</em>
+                                {L10N[pickLocale(props.locale)].underVerilog}
                             </p>
                         )}
                         <button type="button" onClick={hide}
                             style={{marginTop: '0.35rem', padding: '0.15rem 0.6rem', cursor: 'pointer'}}
-                        >{allDone ? 'Done' : 'Hide this'}</button>
+                        >{allDone ? L10N[pickLocale(props.locale)].done : L10N[pickLocale(props.locale)].hideThis}</button>
                     </div>
                 );
             })()}
-            <h2 style={{marginTop: 0}}>{'FPGA — Tang Nano 20K'}</h2>
+            <h2 style={{marginTop: 0}}>{L10N[pickLocale(props.locale)].fpgaTitle}</h2>
             <p style={{marginTop: 0}}>
-                {'Write Verilog, synthesise it to a bitstream on the hosted service or to a '}
-                {'netlist here in the browser, and check that your pin constraints reach the '}
-                {'board. Copyleft sources are refused on the shared server and must be built '}
-                {'locally — the licence check below decides.'}
+                {L10N[pickLocale(props.locale)].fpgaDesc1}
+                {L10N[pickLocale(props.locale)].fpgaDesc2}
+                {L10N[pickLocale(props.locale)].fpgaDesc3}
+                {L10N[pickLocale(props.locale)].fpgaDesc4}
             </p>
 
             {/* PRIMARY FLOW: the design, and building it. This used to be gated on
                 `canonical` (a generated .cst), so nothing here appeared until the user
                 typed pin constraints first — the tab looked like two empty textareas.
                 The pin checker is now a collapsible panel at the bottom. */}
-            <h3>{'Verilog'}</h3>
+            <h3>{L10N[pickLocale(props.locale)].verilogTitle}</h3>
             <p style={{margin: '0 0 0.5rem', opacity: 0.85}}>
-                {'New here? Load a starter design, then Synthesise:'}
+                {L10N[pickLocale(props.locale)].newHere}
                 {EXAMPLES.map(ex => (
                     <button
                         key={ex.id}
                         type="button"
                         title={ex.blurb}
-                        onClick={() => { setHdl(ex.verilog); setText(ex.cst); setSynth(null); }}
+                        onClick={() => { setHdl(ex.verilog); setText(ex.cst); setSynth(null); setSeed(ex.model); }}
                         style={{marginLeft: '0.4rem', padding: '0.15rem 0.5rem', cursor: 'pointer'}}
                     >{ex.label}</button>
                 ))}
             </p>
             <details style={{margin: '0 0 0.75rem'}}>
                 <summary style={{cursor: 'pointer'}}>
-                    {'Or build it visually — place gates and wire them, no Verilog typed'}
+                    {L10N[pickLocale(props.locale)].orBuildItVisually}
                 </summary>
                 <div style={{marginTop: '0.6rem'}}>
-                    <React.Suspense fallback={<p style={{opacity: 0.7}}>{'Loading the gate builder…'}</p>}>
-                        <FpgaGateBuilder onUseVerilog={(v, cst) => { setHdl(v); if (cst) setText(cst); setSynth(null); }} />
+                    <React.Suspense fallback={<p style={{opacity: 0.7}}>{L10N[pickLocale(props.locale)].loadingGateBuilder}</p>}>
+                        <FpgaGateBuilder seed={seed} locale={props.locale} onUseVerilog={(v, cst) => { setHdl(v); if (cst) setText(cst); setSynth(null); }} />
                     </React.Suspense>
                 </div>
             </details>
             <details style={{margin: '0 0 0.75rem'}}>
                 <summary style={{cursor: 'pointer'}}>
-                    {'…or on a full canvas — drag, zoom, and wire (React Flow)'}
+                    {L10N[pickLocale(props.locale)].orOnFullCanvas}
                 </summary>
                 <div style={{marginTop: '0.6rem'}}>
-                    <React.Suspense fallback={<p style={{opacity: 0.7}}>{'Loading the canvas…'}</p>}>
-                        <FpgaGateBuilderRf onUseVerilog={(v, cst) => { setHdl(v); if (cst) setText(cst); setSynth(null); }} />
+                    <React.Suspense fallback={<p style={{opacity: 0.7}}>{L10N[pickLocale(props.locale)].loadingCanvas}</p>}>
+                        <FpgaGateBuilderRf seed={seed} locale={props.locale} onUseVerilog={(v, cst) => { setHdl(v); if (cst) setText(cst); setSynth(null); }} />
                     </React.Suspense>
                 </div>
             </details>
@@ -577,7 +804,7 @@ const FpgaTab = () => {
                     type="button"
                     onClick={() => wireDemoBoard()}
                     style={{padding: '0.2rem 0.6rem', cursor: 'pointer'}}
-                >{'⬢ Wire up a demo board'}</button>
+                >{L10N[pickLocale(props.locale)].wireDemoBoardBtn}</button>
                 {demoMsg ? (
                     <span style={{marginLeft: '0.5rem', opacity: 0.9,
                         color: demoMsg.ok ? '#2e7d32' : (demoMsg.pending ? '#555' : '#b34747')}}>{demoMsg.text}</span>
@@ -603,13 +830,13 @@ const FpgaTab = () => {
                     ))}
                     {hdlScreen.refusals.length || hdlScreen.warnings.length ? null : (
                         <Row tone="#3a8a3a">
-                            {'Declares a permissive licence — it may be built on the shared server.'}
+                            {L10N[pickLocale(props.locale)].permissiveLicence}
                         </Row>
                     )}
                 </ul>
             ) : null}
 
-            <h3>{'Where it would be built'}</h3>
+            <h3>{L10N[pickLocale(props.locale)].whereBuiltTitle}</h3>
             <ul style={{listStyle: 'none', padding: 0, margin: '0 0 0.5rem'}}>
                 {catalog.map(entry => {
                     const pr = probe.probes.find(x => x.id === entry.id);
@@ -626,9 +853,9 @@ const FpgaTab = () => {
             {offerable(catalog, probe.available).length > 1 ? (
                 <p>
                     <label>
-                        {'Backend: '}
+                        {L10N[pickLocale(props.locale)].backendLabel}
                         <select value={backend} onChange={ev => setBackend(ev.target.value)}>
-                            <option value="auto">{'Auto'}</option>
+                            <option value="auto">{L10N[pickLocale(props.locale)].autoOption}</option>
                             {offerable(catalog, probe.available).map(en => (
                                 <option key={en.id} value={en.id}>{en.label}</option>
                             ))}
@@ -638,7 +865,7 @@ const FpgaTab = () => {
             ) : null}
             <p style={{opacity: 0.85}}>
                 {selection.accepted
-                    ? <>{'Builds on '}<strong>{selection.selected.label}</strong>{` — ${selection.reason}`}</>
+                    ? <>{L10N[pickLocale(props.locale)].buildsOn}<strong>{selection.selected.label}</strong>{` — ${selection.reason}`}</>
                     : <><strong>{selection.code}</strong>{`: ${selection.reason}`}</>}
             </p>
 
@@ -659,7 +886,7 @@ const FpgaTab = () => {
                         }
                     })}
                     disabled={!hdl.trim() || !selection.accepted}
-                >{'Synthesise'}</button>
+                >{L10N[pickLocale(props.locale)].synthesiseBtn}</button>
                 {synth && !synth.ok ? (
                     <span style={{marginLeft: '0.6rem', opacity: 0.85}}>
                         <strong>{synth.code}</strong>{`: ${synth.reason}`}
@@ -670,7 +897,7 @@ const FpgaTab = () => {
                         {artefacts.bitstream ? (
                             <>
                                 {`✓ Built a ${artefacts.bitstream.bytes.toLocaleString()}-byte bitstream. `}
-                                <a href={artefacts.bitstream.url} download="design.fs">{'Download .fs'}</a>
+                                <a href={artefacts.bitstream.url} download="design.fs">{L10N[pickLocale(props.locale)].downloadFs}</a>
                                 {flash.available ? (
                                     <button
                                         type="button"
@@ -681,21 +908,21 @@ const FpgaTab = () => {
                                                 .then(r => setFlashMsg(`✓ ${r}`))
                                                 .catch(e => setFlashMsg(`Flash failed: ${e.message}`));
                                         }}
-                                    >{'Flash to board'}</button>
+                                    >{L10N[pickLocale(props.locale)].flashToBoard}</button>
                                 ) : null}
                                 {flashMsg ? <span style={{marginLeft: '0.5rem', opacity: 0.85}}>{flashMsg}</span> : null}
                                 <div style={{opacity: 0.7, fontSize: '0.85em', marginTop: '0.25rem'}}>
                                     {flash.available ? (
-                                        'Flashing runs openFPGALoader in the native app.'
+                                        L10N[pickLocale(props.locale)].flashingRuns
                                     ) : (
                                         <>
-                                            {'A browser cannot flash yet. With the board on USB, use the CLI '}
-                                            <code>{'bw-fpga flash ./design.fs'}</code>{' or '}
-                                            <code>{'openFPGALoader -b tangnano20k design.fs'}</code>{'.'}
+                                            {L10N[pickLocale(props.locale)].browserCannotFlash1}
+                                            <code>{'bw-fpga flash ./design.fs'}</code>{L10N[pickLocale(props.locale)].browserCannotFlash2}
+                                            <code>{'openFPGALoader -b tangnano20k design.fs'}</code>{L10N[pickLocale(props.locale)].browserCannotFlash3}
                                             {webUsbSupported() ? (
                                                 <div style={{marginTop: '0.15rem'}}>
-                                                    {'Your browser has WebUSB; direct in-browser flashing is '
-                                                        + 'planned (TANG-NANO §TN4) but not built yet.'}
+                                                    {L10N[pickLocale(props.locale)].browserHasWebUsb
+                                                        }
                                                 </div>
                                             ) : null}
                                         </>
@@ -705,21 +932,21 @@ const FpgaTab = () => {
                         ) : artefacts.netlist ? (
                             <>
                                 {`✓ Synthesised a netlist (${artefacts.netlist.modules} modules). `}
-                                <a href={artefacts.netlist.url} download="design.json">{'Download netlist'}</a>
+                                <a href={artefacts.netlist.url} download="design.json">{L10N[pickLocale(props.locale)].downloadNetlist}</a>
                             </>
-                        ) : '✓ Done.'}
+                        ) : L10N[pickLocale(props.locale)].doneFeedback}
                     </span>
                 ) : null}
             </p>
 
-            <h3>{'Synthesise in this browser (TN6a)'}</h3>
+            <h3>{L10N[pickLocale(props.locale)].synthesiseHereTitle}</h3>
             <p style={{opacity: 0.85}}>
-                {'Yosys runs here, producing a netlist you can download or check in the pin '}
-                {'panel below. It does not produce a bitstream — that needs place and route, '}
-                {'another 183 MB, which is not offered yet.'}
+                {L10N[pickLocale(props.locale)].yosysRunsHere1}
+                {L10N[pickLocale(props.locale)].yosysRunsHere2}
+                {L10N[pickLocale(props.locale)].yosysRunsHere3}
             </p>
             <p>
-                <strong>{local ? local.code || local.state : 'starting'}</strong>
+                <strong>{local ? local.code || local.state : L10N[pickLocale(props.locale)].starting}</strong>
                 {local ? `: ${local.reason}` : ''}
             </p>
             <p>
@@ -735,7 +962,7 @@ const FpgaTab = () => {
                             .finally(() => setLocalBusy(false));
                     }}
                     disabled={localBusy || !local || local.code !== 'not-downloaded'}
-                >{localBusy ? 'Downloading…' : 'Download the toolchain (77 MB, once)'}</button>
+                >{localBusy ? L10N[pickLocale(props.locale)].downloading : L10N[pickLocale(props.locale)].downloadToolchain}</button>
             </p>
             <p>
                 <button
@@ -759,7 +986,7 @@ const FpgaTab = () => {
                             .finally(() => setLocalBusy(false));
                     }}
                     disabled={localBusy || !hdl.trim() || !local || !local.available}
-                >{'Synthesise here'}</button>
+                >{L10N[pickLocale(props.locale)].synthesiseHereBtn}</button>
             </p>
 
             {/* SECONDARY: pin-reachability checker, collapsed by default. It reads the
@@ -767,14 +994,14 @@ const FpgaTab = () => {
                 constraints are sent with a hosted build. */}
             <details style={{marginTop: '1.5rem'}}>
                 <summary style={{cursor: 'pointer', fontWeight: 'bold'}}>
-                    {`Check which pins reach the board (${bindings.length} placed`}
-                    {refusals.length ? `, ${refusals.length} cannot` : ''}
+                    {`\${L10N[pickLocale(props.locale)].checkPinsTitle}${bindings.length}\${L10N[pickLocale(props.locale)].placed}`}
+                    {refusals.length ? `, ${refusals.length}${L10N[pickLocale(props.locale)].cannot}` : ''}
                     {')'}
                 </summary>
                 <p style={{opacity: 0.85}}>
-                    {'Which of a design’s pins can actually reach the breadboard. This reads '}
-                    {'Gowin constraints against the real board part, and the same constraints '}
-                    {'are sent with a hosted build.'}
+                    {L10N[pickLocale(props.locale)].checkPinsDesc1}
+                    {L10N[pickLocale(props.locale)].checkPinsDesc2}
+                    {L10N[pickLocale(props.locale)].checkPinsDesc3}
                 </p>
                 <textarea
                     value={text}
@@ -786,8 +1013,8 @@ const FpgaTab = () => {
 
                 <details style={{margin: '0.75rem 0'}}>
                     <summary style={{cursor: 'pointer'}}>
-                        {'Optional: paste a Yosys JSON netlist to also check the ports exist'}
-                        {top ? <strong>{` — top module: ${top}`}</strong> : null}
+                        {L10N[pickLocale(props.locale)].optionalPasteNetlist}
+                        {top ? <strong>{`${L10N[pickLocale(props.locale)].topModule}${top}`}</strong> : null}
                     </summary>
                     <textarea
                         value={netlistText}
@@ -801,13 +1028,13 @@ const FpgaTab = () => {
 
                 {netlistText.trim() ? (
                     <>
-                        <h3>{'Schematic — your design as gates'}</h3>
+                        <h3>{L10N[pickLocale(props.locale)].schematicTitle}</h3>
                         <p style={{marginTop: 0, opacity: 0.8}}>
-                            {'This is the Verilog above, synthesised to logic gates. Inputs sit on '}
-                            {'the left, outputs on the right; a wire lights with the value it carries '}
-                            {'as you step the clock.'}
+                            {L10N[pickLocale(props.locale)].schematicDesc1}
+                            {L10N[pickLocale(props.locale)].schematicDesc2}
+                            {L10N[pickLocale(props.locale)].schematicDesc3}
                         </p>
-                        <React.Suspense fallback={<p style={{opacity: 0.7}}>{'Loading the schematic view…'}</p>}>
+                        <React.Suspense fallback={<p style={{opacity: 0.7}}>{L10N[pickLocale(props.locale)].loadingSchematic}</p>}>
                             <FpgaSchematic netlistText={netlistText} netValues={netValues} inputs={inputs} clockCycles={clockCycles} />
                         </React.Suspense>
                     </>
@@ -815,33 +1042,33 @@ const FpgaTab = () => {
 
                 {netlistText.trim() ? (
                     <>
-                        <h3>{'Waveforms — the outputs over time'}</h3>
+                        <h3>{L10N[pickLocale(props.locale)].waveformsTitle}</h3>
                         <p style={{marginTop: 0, opacity: 0.8}}>
-                            {'The design run from reset for a few clock cycles: each output bit as a '}
-                            {'square wave. A counter reads bottom-up — the lowest bit toggles every '}
-                            {'cycle, the highest slowest.'}
+                            {L10N[pickLocale(props.locale)].waveformsDesc1}
+                            {L10N[pickLocale(props.locale)].waveformsDesc2}
+                            {L10N[pickLocale(props.locale)].waveformsDesc3}
                         </p>
-                        <React.Suspense fallback={<p style={{opacity: 0.7}}>{'Loading the waveform view…'}</p>}>
+                        <React.Suspense fallback={<p style={{opacity: 0.7}}>{L10N[pickLocale(props.locale)].loadingWaveform}</p>}>
                             <FpgaWaveform netlistText={netlistText} inputs={inputs} />
                         </React.Suspense>
                     </>
                 ) : null}
 
-                <h3>{`Reaches the board (${bindings.length})`}</h3>
+                <h3>{`${L10N[pickLocale(props.locale)].reachesBoard}${bindings.length})`}</h3>
                 <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
                     {bindings.map(b => (
                         <Row key={`${b.port}-${b.pin}`} tone="#3a8a3a">
-                            <code>{b.port}</code>{' → pin '}<code>{b.pin}</code>
-                            {' → terminal '}<code>{b.terminal}</code>
-                            {b.sharedWith ? <em style={{opacity: 0.8}}>{' (shares onboard hardware)'}</em> : null}
+                            <code>{b.port}</code>{L10N[pickLocale(props.locale)].pinArrow}<code>{b.pin}</code>
+                            {L10N[pickLocale(props.locale)].terminalArrow}<code>{b.terminal}</code>
+                            {b.sharedWith ? <em style={{opacity: 0.8}}>{L10N[pickLocale(props.locale)].sharesHardware}</em> : null}
                         </Row>
                     ))}
-                    {bindings.length ? null : <li style={{opacity: 0.7}}>{'Nothing placed yet.'}</li>}
+                    {bindings.length ? null : <li style={{opacity: 0.7}}>{L10N[pickLocale(props.locale)].nothingPlacedYet}</li>}
                 </ul>
 
                 {warnings.length ? (
                     <>
-                        <h3>{`Usable, with a caveat (${warnings.length})`}</h3>
+                        <h3>{`${L10N[pickLocale(props.locale)].usableWithCaveat}${warnings.length})`}</h3>
                         <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
                             {warnings.map((w, i) => (
                                 <Row key={i} tone="#b8860b"><strong>{w.port}</strong>{`: ${w.reason}`}</Row>
@@ -852,7 +1079,7 @@ const FpgaTab = () => {
 
                 {refusals.length ? (
                     <>
-                        <h3>{`Cannot reach the board (${refusals.length})`}</h3>
+                        <h3>{`${L10N[pickLocale(props.locale)].cannotReachBoard}${refusals.length})`}</h3>
                         <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
                             {refusals.map((r, i) => (
                                 <Row key={i} tone="#b34747">
@@ -865,18 +1092,18 @@ const FpgaTab = () => {
 
                 {clockPort ? (
                     <>
-                        <h3>{'Clock'}</h3>
+                        <h3>{L10N[pickLocale(props.locale)].clockTitle}</h3>
                         <p style={{marginTop: 0, opacity: 0.8}}>
-                            {'This design is clocked on '}<code>{clockPort}</code>
-                            {'. Step it to advance the design one cycle at a time and watch '
-                                + 'the outputs — and the board — follow.'}
+                            {L10N[pickLocale(props.locale)].clockDesc1}<code>{clockPort}</code>
+                            {L10N[pickLocale(props.locale)].clockDesc2
+                                }
                         </p>
                         <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap'}}>
                             <button
                                 type="button"
                                 onClick={() => setClockCycles(c => c + 1)}
                                 style={{padding: '0.35rem 0.8rem', cursor: 'pointer'}}
-                            >{'Step clock ▸'}</button>
+                            >{L10N[pickLocale(props.locale)].stepClockBtn}</button>
                             <button
                                 type="button"
                                 onClick={() => setClockCycles(c => c + 8)}
@@ -887,15 +1114,15 @@ const FpgaTab = () => {
                                 disabled={clockCycles === 0}
                                 onClick={() => setClockCycles(0)}
                                 style={{padding: '0.35rem 0.8rem', cursor: clockCycles === 0 ? 'default' : 'pointer'}}
-                            >{'Reset'}</button>
+                            >{L10N[pickLocale(props.locale)].resetBtn}</button>
                             <button
                                 type="button"
                                 onClick={() => setAutoRun(v => !v)}
                                 style={{padding: '0.35rem 0.8rem', cursor: 'pointer',
                                     fontWeight: autoRun ? 'bold' : 'normal'}}
-                            >{autoRun ? '⏸ Stop auto-run' : '▶ Auto-run'}</button>
+                            >{autoRun ? L10N[pickLocale(props.locale)].stopAutoRun : L10N[pickLocale(props.locale)].autoRun}</button>
                             <span style={{opacity: 0.8}}>
-                                {clockCycles}{clockCycles === 1 ? ' cycle' : ' cycles'}
+                                {clockCycles}{clockCycles === 1 ? L10N[pickLocale(props.locale)].cycle : L10N[pickLocale(props.locale)].cycles}
                             </span>
                         </div>
                         {/* Mirror the output pins into the Controller/Widgets view, so the
@@ -912,9 +1139,9 @@ const FpgaTab = () => {
                                         setMirrored(true);
                                     }}
                                     style={{padding: '0.35rem 0.8rem', cursor: 'pointer'}}
-                                >{'⎈ Show the LEDs in the Controller view'}</button>
+                                >{L10N[pickLocale(props.locale)].showLeds}</button>
                                 <span style={{marginLeft: '0.5rem', opacity: 0.75}}>
-                                    {`mirrors pins ${outputPins.join(', ')} as indicators and starts the clock`}
+                                    {`\${L10N[pickLocale(props.locale)].mirrorsPins}${outputPins.join(', ')}\${L10N[pickLocale(props.locale)].asIndicators}`}
                                 </span>
                             </p>
                         ) : null}
@@ -923,9 +1150,9 @@ const FpgaTab = () => {
 
                 {inputPorts.length ? (
                     <>
-                        <h3>{'Design inputs'}</h3>
+                        <h3>{L10N[pickLocale(props.locale)].designInputsTitle}</h3>
                         <p style={{marginTop: 0, opacity: 0.8}}>
-                            {'Nothing drives these yet, so set them here and watch the outputs follow.'}
+                            {L10N[pickLocale(props.locale)].nothingDrivesThese}
                         </p>
                         <div style={{display: 'flex', gap: '0.75rem', flexWrap: 'wrap'}}>
                             {inputPorts.map(name => (
@@ -943,32 +1170,32 @@ const FpgaTab = () => {
                 ) : null}
 
                 <h3>
-                    {'What the circuit engine would be told'}
+                    {L10N[pickLocale(props.locale)].whatCircuitEngine}
                     {simNote ? <span style={{opacity: 0.7, fontWeight: 'normal'}}>{` — ${simNote}`}</span> : null}
                 </h3>
                 <ul style={{listStyle: 'none', padding: 0, margin: 0}}>
                     {plan.ops.map(([terminal, mode, driveHigh], i) => (
                         <Row key={i} tone="#4a6fa5">
                             <code>{terminal}</code>{` → ${mode}`}
-                            {mode === 'pushpull' ? <strong>{driveHigh ? ' HIGH' : ' LOW'}</strong> : null}
-                            {mode === 'input' ? <em style={{opacity: 0.8}}>{' (high-Z: the design reads it)'}</em> : null}
+                            {mode === 'pushpull' ? <strong>{driveHigh ? L10N[pickLocale(props.locale)].high : L10N[pickLocale(props.locale)].low}</strong> : null}
+                            {mode === 'input' ? <em style={{opacity: 0.8}}>{L10N[pickLocale(props.locale)].highZ}</em> : null}
                         </Row>
                     ))}
                     {plan.unset.map((u, i) => (
                         <Row key={`u${i}`} tone="#7a7a7a">
                             <code>{u.terminal}</code>
-                            {' — undriven: nothing models the design yet, so there is no value to put on it.'}
+                            {L10N[pickLocale(props.locale)].undriven}
                         </Row>
                     ))}
-                    {plan.ops.length || plan.unset.length ? null : <li style={{opacity: 0.7}}>{'Nothing to drive.'}</li>}
+                    {plan.ops.length || plan.unset.length ? null : <li style={{opacity: 0.7}}>{L10N[pickLocale(props.locale)].nothingToDrive}</li>}
                 </ul>
 
                 {canonical ? (
                     <>
-                        <h3>{'Constraints for the Gowin toolchain'}</h3>
+                        <h3>{L10N[pickLocale(props.locale)].constraintsTitle}</h3>
                         <p style={{marginTop: 0, opacity: 0.8}}>
-                            {'Canonical .cst covering only the ports that reach a header pin. '}
-                            {'This is what leaves for real silicon.'}
+                            {L10N[pickLocale(props.locale)].constraintsDesc1}
+                            {L10N[pickLocale(props.locale)].constraintsDesc2}
                         </p>
                         <pre style={{background: 'rgba(127,127,127,0.1)', padding: '0.7rem',
                             borderRadius: 4, overflowX: 'auto', fontSize: '0.82rem'}}>{canonical}</pre>
@@ -977,11 +1204,11 @@ const FpgaTab = () => {
             </details>
 
             <p style={{opacity: 0.7, marginTop: '1.5rem'}}>
-                {'Planned next: flashing a produced bitstream from the native app.'}
+                {L10N[pickLocale(props.locale)].plannedNext}
             </p>
         </div>
         </div>
     );
 };
 
-export default FpgaTab;
+export default connect(state => ({locale: state.locales && state.locales.locale}))(FpgaTab);

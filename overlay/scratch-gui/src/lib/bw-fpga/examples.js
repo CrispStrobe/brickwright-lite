@@ -21,7 +21,16 @@ export const EXAMPLES = Object.freeze([
         label: 'Blinky — LED on',
         blurb: 'The smallest thing that builds: one output tied high.',
         verilog: 'module blink(output led);\n  assign led = 1\'b1;\nendmodule\n',
-        cst: 'IO_LOC "led" 73;\nIO_PORT "led" IO_TYPE=LVCMOS33;\n'
+        cst: 'IO_LOC "led" 73;\nIO_PORT "led" IO_TYPE=LVCMOS33;\n',
+        model: {
+            nodes: [
+                {id: 'led', kind: 'out', name: 'led', width: 1},
+                {id: 'c1', kind: 'const', value: 1, width: 1}
+            ],
+            edges: [
+                {from: {node: 'c1', port: 'out'}, to: {node: 'led', port: 'in'}}
+            ]
+        }
     }),
     Object.freeze({
         id: 'button',
@@ -29,7 +38,16 @@ export const EXAMPLES = Object.freeze([
         blurb: 'Combinational: the LED follows a header input. Good for wiring a switch.',
         verilog: 'module top(input btn, output led);\n  assign led = btn;\nendmodule\n',
         cst: 'IO_LOC "btn" 74;\nIO_PORT "btn" IO_TYPE=LVCMOS33;\n'
-            + 'IO_LOC "led" 73;\nIO_PORT "led" IO_TYPE=LVCMOS33;\n'
+            + 'IO_LOC "led" 73;\nIO_PORT "led" IO_TYPE=LVCMOS33;\n',
+        model: {
+            nodes: [
+                {id: 'btn', kind: 'in', name: 'btn', width: 1},
+                {id: 'led', kind: 'out', name: 'led', width: 1}
+            ],
+            edges: [
+                {from: {node: 'btn', port: 'out'}, to: {node: 'led', port: 'in'}}
+            ]
+        }
     }),
     Object.freeze({
         id: 'counter',
@@ -54,7 +72,8 @@ export const EXAMPLES = Object.freeze([
             + 'IO_LOC "led[3]" 18;\nIO_LOC "led[4]" 19;\nIO_LOC "led[5]" 20;\n'
             + 'IO_PORT "led[0]" IO_TYPE=LVCMOS33;\nIO_PORT "led[1]" IO_TYPE=LVCMOS33;\n'
             + 'IO_PORT "led[2]" IO_TYPE=LVCMOS33;\nIO_PORT "led[3]" IO_TYPE=LVCMOS33;\n'
-            + 'IO_PORT "led[4]" IO_TYPE=LVCMOS33;\nIO_PORT "led[5]" IO_TYPE=LVCMOS33;\n'
+            + 'IO_PORT "led[4]" IO_TYPE=LVCMOS33;\nIO_PORT "led[5]" IO_TYPE=LVCMOS33;\n',
+        model: null
     }),
     Object.freeze({
         id: 'sequence',
@@ -79,7 +98,8 @@ export const EXAMPLES = Object.freeze([
             + 'IO_LOC "led[0]" 15;\nIO_LOC "led[1]" 16;\n'
             + 'IO_LOC "led[2]" 17;\nIO_LOC "led[3]" 18;\n'
             + 'IO_PORT "led[0]" IO_TYPE=LVCMOS33;\nIO_PORT "led[1]" IO_TYPE=LVCMOS33;\n'
-            + 'IO_PORT "led[2]" IO_TYPE=LVCMOS33;\nIO_PORT "led[3]" IO_TYPE=LVCMOS33;\n'
+            + 'IO_PORT "led[2]" IO_TYPE=LVCMOS33;\nIO_PORT "led[3]" IO_TYPE=LVCMOS33;\n',
+        model: null
     }),
     Object.freeze({
         id: 'chaser',
@@ -100,6 +120,7 @@ export const EXAMPLES = Object.freeze([
             + 'IO_LOC "led[0]" 15;\nIO_LOC "led[1]" 16;\n'
             + 'IO_LOC "led[2]" 17;\nIO_LOC "led[3]" 18;\n'
             + 'IO_PORT "led[0]" IO_TYPE=LVCMOS33;\nIO_PORT "led[1]" IO_TYPE=LVCMOS33;\n'
-            + 'IO_PORT "led[2]" IO_TYPE=LVCMOS33;\nIO_PORT "led[3]" IO_TYPE=LVCMOS33;\n'
+            + 'IO_PORT "led[2]" IO_TYPE=LVCMOS33;\nIO_PORT "led[3]" IO_TYPE=LVCMOS33;\n',
+        model: null
     })
 ]);

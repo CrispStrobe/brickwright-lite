@@ -1,6 +1,29 @@
 import React from 'react';
+import {connect} from 'react-redux';
 import {traceToLanes, laneWavePoints} from '../../lib/bw-fpga/waveform.js';
 import {readPorts, detectClockPort} from '../../lib/bw-fpga/yosys.js';
+
+const L10N = {
+    en: {
+        badJson: 'The netlist is not valid JSON.',
+        badNetlist: 'Could not read the netlist.',
+        simError: 'The waveform could not be simulated: ',
+        noClock: 'Waveforms show a clocked design over time — this one has no clock to step.',
+        tracing: 'Tracing the design…',
+        noOutputs: 'This design drives no outputs to trace.',
+        ariaLabel: 'Output waveforms over clock cycles'
+    },
+    de: {
+        badJson: 'Die Netzliste ist kein gültiges JSON.',
+        badNetlist: 'Die Netzliste konnte nicht gelesen werden.',
+        simError: 'Die Wellenform konnte nicht simuliert werden: ',
+        noClock: 'Wellenformen zeigen ein getaktetes Design über die Zeit — dieses hat keinen Takt zum Ausführen.',
+        tracing: 'Design wird verfolgt…',
+        noOutputs: 'Dieses Design hat keine Ausgänge zum Verfolgen.',
+        ariaLabel: 'Ausgangswellenformen über Taktzyklen'
+    }
+};
+const pickLocale = loc => (loc && L10N[String(loc).slice(0, 2)] ? String(loc).slice(0, 2) : 'en');
 
 /**
  * A clocked design's outputs, over time — Rung 2 of the FPGA visual analog. It
@@ -30,14 +53,15 @@ const CYCLE_W = 26;
 const LANE_H = 26;
 const LABEL_W = 78;
 
-const FpgaWaveform = ({netlistText, inputs}) => {
+const FpgaWaveform = (props) => {
+    const {netlistText, inputs, locale} = props;
     const [state, setState] = React.useState({status: 'idle'});
 
     React.useEffect(() => {
         const trimmed = (netlistText || '').trim();
         if (!trimmed) { setState({status: 'empty'}); return undefined; }
         let parsed;
-        try { parsed = JSON.parse(trimmed); } catch (e) { setState({status: 'error', message: 'The netlist is not valid JSON.'}); return undefined; }
+        try { parsed = JSON.parse(trimmed); } catch (e) { setState({status: 'error', message: L10N[pickLocale(locale)].badJson}); return undefined; }
         const {ports} = readPorts(parsed);
         const clockPort = detectClockPort(ports);
         if (!clockPort) { setState({status: 'no-clock'}); return undefined; }
@@ -49,7 +73,7 @@ const FpgaWaveform = ({netlistText, inputs}) => {
         loadSim().then(({GateLevelSim, fromYosys, engine}) => {
             if (!live) return;
             const {circuit, problems} = fromYosys(parsed);
-            if (!circuit) { setState({status: 'error', message: (problems && problems[0] && problems[0].reason) || 'Could not read the netlist.'}); return; }
+            if (!circuit) { setState({status: 'error', message: (problems && problems[0] && problems[0].reason) || L10N[pickLocale(locale)].badNetlist}); return; }
             const sim = new GateLevelSim(circuit, engine);
             for (const [name, p] of Object.entries(ports)) {
                 if (p.direction !== 'input' || name === clockPort) continue;
@@ -59,26 +83,26 @@ const FpgaWaveform = ({netlistText, inputs}) => {
             if (!settled) { setState({status: 'error', message: reason}); return; }
             const {lanes, cycles} = traceToLanes(trace, ports);
             setState({status: 'ready', lanes, cycles, clockPort});
-        }).catch(e => { if (live) setState({status: 'error', message: `The waveform could not be simulated: ${e.message}`}); });
+        }).catch(e => { if (live) setState({status: 'error', message: `${L10N[pickLocale(locale)].simError}${e.message}`}); });
         return () => { live = false; };
-    }, [netlistText, inputs]);
+    }, [netlistText, inputs, locale]);
 
     if (state.status === 'empty') return null;
     if (state.status === 'no-clock') {
-        return <p style={{opacity: 0.7, margin: 0}}>{'Waveforms show a clocked design over time — this one has no clock to step.'}</p>;
+        return <p style={{opacity: 0.7, margin: 0}}>{L10N[pickLocale(locale)].noClock}</p>;
     }
     if (state.status === 'error') return <p style={{color: '#b34747', margin: 0}}>{state.message}</p>;
-    if (state.status !== 'ready') return <p style={{opacity: 0.7, margin: 0}}>{'Tracing the design…'}</p>;
+    if (state.status !== 'ready') return <p style={{opacity: 0.7, margin: 0}}>{L10N[pickLocale(locale)].tracing}</p>;
 
     const {lanes, cycles} = state;
-    if (!lanes.length) return <p style={{opacity: 0.7, margin: 0}}>{'This design drives no outputs to trace.'}</p>;
+    if (!lanes.length) return <p style={{opacity: 0.7, margin: 0}}>{L10N[pickLocale(locale)].noOutputs}</p>;
     const n = cycles.length;
     const width = LABEL_W + (n - 1) * CYCLE_W + 8;
     const height = lanes.length * LANE_H + 22;
 
     return (
         <div style={{overflow: 'auto', border: '1px solid rgba(71,85,105,0.25)', borderRadius: 6, background: '#0f172a', maxHeight: '50vh'}}>
-            <svg width={width} height={height} style={{display: 'block'}} role="img" aria-label="Output waveforms over clock cycles">
+            <svg width={width} height={height} style={{display: 'block'}} role="img" aria-label={L10N[pickLocale(props.locale)].ariaLabel}>
                 {/* cycle grid + numbers */}
                 {cycles.map((c, i) => (
                     <g key={`c${c}`}>
@@ -113,4 +137,4 @@ const FpgaWaveform = ({netlistText, inputs}) => {
     );
 };
 
-export default FpgaWaveform;
+export default connect(state => ({locale: state.locales && state.locales.locale}))(FpgaWaveform);

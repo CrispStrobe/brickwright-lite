@@ -28,5 +28,10 @@
     "id": "gui.gui.circuitTab",
     "description": "Brickwright circuit designer tab",
     "defaultMessage": "🔌 Circuit"
+  },
+  {
+    "id": "gui.gui.fpgaTab",
+    "description": "Brickwright FPGA/HDL surface tab",
+    "defaultMessage": "⬢ FPGA"
   }
 ]

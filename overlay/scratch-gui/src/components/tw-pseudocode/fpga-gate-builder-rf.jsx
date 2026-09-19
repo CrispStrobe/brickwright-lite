@@ -1,4 +1,5 @@
 import React from 'react';
+import {connect} from 'react-redux';
 import {ReactFlow, ReactFlowProvider, Background, Controls, MiniMap, addEdge,
     useNodesState, useEdgesState, Handle, Position} from '@xyflow/react';
 // React Flow's stylesheet uses GLOBAL classes (.react-flow__*) that its own JS
@@ -9,6 +10,36 @@ import {ReactFlow, ReactFlowProvider, Background, Controls, MiniMap, addEdge,
 import '!!style-loader!css-loader!@xyflow/react/dist/style.css';
 import {GATE_DEFS, modelToVerilog, modelToCst, derivePorts} from '../../lib/bw-fpga/gate-builder.js';
 import {reactFlowToModel, modelToReactFlow} from '../../lib/bw-fpga/gate-builder-rf.js';
+
+const L10N = {
+    en: {
+        addInput: '+ Input',
+        addOutput: '+ Output',
+        width: 'width',
+        widthTitle: 'Bit width of the next node — >1 makes a bus',
+        saveAsSubcircuit: '⤓ Save as subcircuit',
+        saveTitle: 'Save this whole design as a reusable subcircuit',
+        yourBlocks: 'Your blocks:',
+        portsTitle: 'ports:',
+        useAsVerilog: '⤵ Use as Verilog',
+        hint: 'drag to place, connect a green output to a blue input, then synthesise',
+        errNoPorts: 'Add inputs and outputs before saving a subcircuit — they become its ports.'
+    },
+    de: {
+        addInput: '+ Eingang',
+        addOutput: '+ Ausgang',
+        width: 'Breite',
+        widthTitle: 'Bitbreite des nächsten Knotens — >1 erzeugt einen Bus',
+        saveAsSubcircuit: '⤓ Als Teilschaltung speichern',
+        saveTitle: 'Speichere diesen gesamten Entwurf als wiederverwendbare Teilschaltung',
+        yourBlocks: 'Deine Blöcke:',
+        portsTitle: 'Ports:',
+        useAsVerilog: '⤵ Als Verilog verwenden',
+        hint: 'Ziehen zum Platzieren, verbinde einen grünen Ausgang mit einem blauen Eingang, dann synthetisieren',
+        errNoPorts: 'Füge Ein- und Ausgänge hinzu, bevor du eine Teilschaltung speicherst — sie werden deren Ports.'
+    }
+};
+const pickLocale = loc => (loc && L10N[String(loc).slice(0, 2)] ? String(loc).slice(0, 2) : 'en');
 
 /**
  * The gate builder on a real node/wire canvas — React Flow (MIT). Drag, pan,
@@ -91,10 +122,17 @@ const STARTER = () => modelToReactFlow({
     ]
 }, {a: {x: 0, y: 20}, b: {x: 0, y: 110}, g: {x: 160, y: 60}, y: {x: 300, y: 60}});
 
-const InnerBuilder = ({onUseVerilog}) => {
-    const start = React.useMemo(STARTER, []);
+const InnerBuilder = ({onUseVerilog, seed, locale}) => {
+    const start = React.useMemo(() => (seed ? modelToReactFlow(seed) : STARTER()), [seed]);
     const [nodes, setNodes, onNodesChange] = useNodesState(start.nodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(start.edges);
+    React.useEffect(() => {
+        if (seed) {
+            const rf = modelToReactFlow(seed);
+            setNodes(rf.nodes);
+            setEdges(rf.edges);
+        }
+    }, [seed, setNodes, setEdges]);
     const [problems, setProblems] = React.useState([]);
     const [library, setLibrary] = React.useState([]); // saved subcircuits
     const [newWidth, setNewWidth] = React.useState(1); // bit width for the next node
@@ -105,7 +143,7 @@ const InnerBuilder = ({onUseVerilog}) => {
     const saveSubcircuit = () => {
         const model = reactFlowToModel(nodes, edges);
         const ports = derivePorts(model);
-        if (!ports.length) { setProblems([{reason: 'Add inputs and outputs before saving a subcircuit — they become its ports.'}]); return; }
+        if (!ports.length) { setProblems([{reason: L10N[pickLocale(locale)].errNoPorts}]); return; }
         const base = 'block';
         let n = 1;
         const names = new Set(library.map(m => m.name));
@@ -142,10 +180,10 @@ const InnerBuilder = ({onUseVerilog}) => {
     return (
         <div>
             <div style={{display: 'flex', gap: '0.35rem', flexWrap: 'wrap', margin: '0 0 0.4rem'}}>
-                <button type="button" onClick={() => addIo('in')} style={{cursor: 'pointer'}}>{'+ Input'}</button>
-                <button type="button" onClick={() => addIo('out')} style={{cursor: 'pointer'}}>{'+ Output'}</button>
-                <label style={{fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 3}} title="Bit width of the next node — >1 makes a bus">
-                    {'width'}
+                <button type="button" onClick={() => addIo('in')} style={{cursor: 'pointer'}}>{L10N[pickLocale(locale)].addInput}</button>
+                <button type="button" onClick={() => addIo('out')} style={{cursor: 'pointer'}}>{L10N[pickLocale(locale)].addOutput}</button>
+                <label style={{fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 3}} title={L10N[pickLocale(locale)].widthTitle}>
+                    {L10N[pickLocale(locale)].width}
                     <select value={newWidth} onChange={e => setNewWidth(Number(e.target.value))} data-testid="bw-fpga-rf-width">
                         {[1, 2, 4, 8, 16].map(w => <option key={w} value={w}>{w}</option>)}
                     </select>
@@ -154,15 +192,15 @@ const InnerBuilder = ({onUseVerilog}) => {
                     <button key={t} type="button" onClick={() => addGate(t)} style={{cursor: 'pointer'}}>{`+ ${GATE_DEFS[t].label}`}</button>
                 ))}
                 <span style={{opacity: 0.4}}>{'|'}</span>
-                <button type="button" onClick={saveSubcircuit} title="Save this whole design as a reusable subcircuit"
-                    style={{cursor: 'pointer'}} data-testid="bw-fpga-rf-save">{'⤓ Save as subcircuit'}</button>
+                <button type="button" onClick={saveSubcircuit} title={L10N[pickLocale(locale)].saveTitle}
+                    style={{cursor: 'pointer'}} data-testid="bw-fpga-rf-save">{L10N[pickLocale(locale)].saveAsSubcircuit}</button>
             </div>
             {library.length ? (
                 <div style={{display: 'flex', gap: '0.35rem', flexWrap: 'wrap', margin: '0 0 0.4rem', alignItems: 'center'}}>
-                    <span style={{fontSize: '0.8rem', opacity: 0.75}}>{'Your blocks:'}</span>
+                    <span style={{fontSize: '0.8rem', opacity: 0.75}}>{L10N[pickLocale(locale)].yourBlocks}</span>
                     {library.map(mod => (
                         <button key={mod.name} type="button" onClick={() => addInstance(mod)}
-                            title={`ports: ${mod.ports.map(p => p.name).join(', ')}`}
+                            title={`${L10N[pickLocale(locale)].portsTitle} ${mod.ports.map(p => p.name).join(', ')}`}
                             data-testid={`bw-fpga-rf-lib-${mod.name}`}
                             style={{cursor: 'pointer', border: '1px solid #7c3aed', borderRadius: 10, padding: '0.1rem 0.5rem', background: '#faf5ff'}}
                         >{`+ ${mod.name}`}</button>
@@ -184,9 +222,9 @@ const InnerBuilder = ({onUseVerilog}) => {
             </div>
             <div style={{margin: '0.5rem 0'}}>
                 <button type="button" onClick={generate} style={{padding: '0.35rem 0.8rem', cursor: 'pointer', fontWeight: 'bold'}}
-                >{'⤵ Use as Verilog'}</button>
+                >{L10N[pickLocale(locale)].useAsVerilog}</button>
                 <span style={{marginLeft: '0.5rem', fontSize: '0.8rem', opacity: 0.75}}>
-                    {'drag to place, connect a green output to a blue input, then synthesise'}
+                    {L10N[pickLocale(locale)].hint}
                 </span>
             </div>
             {problems.length ? (
@@ -204,4 +242,4 @@ const FpgaGateBuilderRf = props => (
     </ReactFlowProvider>
 );
 
-export default FpgaGateBuilderRf;
+export default connect(state => ({locale: state.locales && state.locales.locale}))(FpgaGateBuilderRf);

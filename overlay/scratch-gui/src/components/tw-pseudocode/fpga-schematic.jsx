@@ -1,7 +1,34 @@
 import React from 'react';
+import {connect} from 'react-redux';
 import {buildSchematicModel, toElkGraph, NODE_SIZE} from '../../lib/bw-fpga/schematic.js';
 import {fromYosys} from '../../lib/bw-fpga/sim.js';
 import {readPorts, detectClockPort} from '../../lib/bw-fpga/yosys.js';
+
+const L10N = {
+    en: {
+        empty_text: 'Synthesise a design and its gates appear here — the Verilog you wrote, as a circuit.',
+        drawing_text: 'Drawing the schematic…',
+        cells: 'cells',
+        nets: 'nets',
+        unknown: 'unknown',
+        invalid_json: 'The netlist is not valid JSON.',
+        read_error: 'Could not read the netlist.',
+        no_cells: 'The netlist has no cells to draw.',
+        layout_failed: 'Layout failed'
+    },
+    de: {
+        empty_text: 'Synthetisieren Sie ein Design und seine Gatter erscheinen hier — das von Ihnen geschriebene Verilog als Schaltung.',
+        drawing_text: 'Zeichne den Schaltplan…',
+        cells: 'Zellen',
+        nets: 'Netze',
+        unknown: 'unbekannt',
+        invalid_json: 'Die Netzliste ist kein gültiges JSON.',
+        read_error: 'Die Netzliste konnte nicht gelesen werden.',
+        no_cells: 'Die Netzliste hat keine Zellen zum Zeichnen.',
+        layout_failed: 'Layout fehlgeschlagen'
+    }
+};
+const pickLocale = loc => (loc && L10N[String(loc).slice(0, 2)] ? String(loc).slice(0, 2) : 'en');
 
 // The sim engine (shared chunk with the tab) is loaded only to READ internal
 // wire values — the schematic runs its own settle so it never disturbs the
@@ -74,7 +101,7 @@ const NodeBox = ({node, laid}) => {
     );
 };
 
-const FpgaSchematic = ({netlistText, netValues, inputs, clockCycles = 0}) => {
+const FpgaSchematic = ({netlistText, netValues, inputs, clockCycles = 0, locale}) => {
     // INTERNAL-wire liveness: run our own settle and read every named net, so
     // signals light as they flow THROUGH the gates — not just at the I/O. Reads
     // are defensive (see GateLevelSim.netValues); nets that cannot be read fall
@@ -111,13 +138,13 @@ const FpgaSchematic = ({netlistText, netValues, inputs, clockCycles = 0}) => {
         const t = (netlistText || '').trim();
         if (!t) return {status: 'empty'};
         let json;
-        try { json = JSON.parse(t); } catch (e) { return {status: 'error', message: 'The netlist is not valid JSON.'}; }
+        try { json = JSON.parse(t); } catch (e) { return {status: 'error', message: L10N[pickLocale(locale)].invalid_json}; }
         const {circuit, problems} = fromYosys(json);
-        if (!circuit) return {status: 'error', message: (problems && problems[0] && problems[0].reason) || 'Could not read the netlist.'};
+        if (!circuit) return {status: 'error', message: (problems && problems[0] && problems[0].reason) || L10N[pickLocale(locale)].read_error};
         const model = buildSchematicModel(circuit);
-        if (!model.nodes.length) return {status: 'error', message: 'The netlist has no cells to draw.'};
+        if (!model.nodes.length) return {status: 'error', message: L10N[pickLocale(locale)].no_cells};
         return {status: 'ok', model};
-    }, [netlistText]);
+    }, [netlistText, locale]);
 
     const [layout, setLayout] = React.useState({status: 'idle'});
     React.useEffect(() => {
@@ -127,14 +154,14 @@ const FpgaSchematic = ({netlistText, netValues, inputs, clockCycles = 0}) => {
         loadElk()
             .then(ELK => new ELK().layout(toElkGraph(parsed.model)))
             .then(graph => { if (live) setLayout({status: 'ready', graph}); })
-            .catch(e => { if (live) setLayout({status: 'error', message: `Layout failed: ${e.message}`}); });
+            .catch(e => { if (live) setLayout({status: 'error', message: `${L10N[pickLocale(locale)].layout_failed}: ${e.message}`}); });
         return () => { live = false; };
     }, [parsed]);
 
     if (parsed.status === 'empty') {
         return (
             <p style={{opacity: 0.7, margin: 0}}>
-                {'Synthesise a design and its gates appear here — the Verilog you wrote, as a circuit.'}
+                {L10N[pickLocale(locale)].empty_text}
             </p>
         );
     }
@@ -142,7 +169,7 @@ const FpgaSchematic = ({netlistText, netValues, inputs, clockCycles = 0}) => {
         return <p style={{color: '#b34747', margin: 0}}>{layout.message || parsed.message}</p>;
     }
     if (layout.status !== 'ready') {
-        return <p style={{opacity: 0.7, margin: 0}}>{'Drawing the schematic…'}</p>;
+        return <p style={{opacity: 0.7, margin: 0}}>{L10N[pickLocale(locale)].drawing_text}</p>;
     }
 
     const {graph} = layout;
@@ -155,7 +182,7 @@ const FpgaSchematic = ({netlistText, netValues, inputs, clockCycles = 0}) => {
     return (
         <div>
             <div style={{display: 'flex', gap: '1rem', alignItems: 'center', margin: '0 0 0.5rem', fontSize: '0.8rem', opacity: 0.85, flexWrap: 'wrap'}}>
-                <span>{`${model.nodes.length} cells · ${model.edges.length} nets`}</span>
+                <span>{`${model.nodes.length} ${L10N[pickLocale(locale)].cells} · ${model.edges.length} ${L10N[pickLocale(locale)].nets}`}</span>
                 <span style={{display: 'inline-flex', alignItems: 'center', gap: 4}}>
                     <svg width={16} height={8}><line x1={0} y1={4} x2={16} y2={4} stroke="#22c55e" strokeWidth={2.5} /></svg>1
                 </span>
@@ -163,7 +190,7 @@ const FpgaSchematic = ({netlistText, netValues, inputs, clockCycles = 0}) => {
                     <svg width={16} height={8}><line x1={0} y1={4} x2={16} y2={4} stroke="#64748b" strokeWidth={2.5} /></svg>0
                 </span>
                 <span style={{display: 'inline-flex', alignItems: 'center', gap: 4}}>
-                    <svg width={16} height={8}><line x1={0} y1={4} x2={16} y2={4} stroke="#cbd5e1" strokeWidth={2.5} /></svg>{'unknown'}
+                    <svg width={16} height={8}><line x1={0} y1={4} x2={16} y2={4} stroke="#cbd5e1" strokeWidth={2.5} /></svg>{L10N[pickLocale(locale)].unknown}
                 </span>
             </div>
             <div style={{overflow: 'auto', border: '1px solid rgba(71,85,105,0.25)', borderRadius: 6, background: '#f8fafc', maxHeight: '60vh'}}>
@@ -198,5 +225,5 @@ const FpgaSchematic = ({netlistText, netValues, inputs, clockCycles = 0}) => {
     );
 };
 
-export default FpgaSchematic;
+export default connect(state => ({locale: state.locales && state.locales.locale}))(FpgaSchematic);
 export {NODE_SIZE};

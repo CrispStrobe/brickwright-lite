@@ -39,7 +39,7 @@ export function inputPorts (node) {
 
 /** Does this node drive a net (has an `out`)? Inputs and gates do; outputs sink. */
 export function hasOutput (node) {
-    return node.kind === 'in' || node.kind === 'gate' || node.kind === 'instance' || node.kind === 'memory';
+    return node.kind === 'in' || node.kind === 'gate' || node.kind === 'instance' || node.kind === 'memory' || node.kind === 'const';
 }
 
 /** The ports a subcircuit exposes, derived from its own input/output nodes when
@@ -100,6 +100,7 @@ function emitModule (def, name, moduleDefs, problems) {
     const driverNet = (node, port) => {
         if (!node) return null;
         if (node.kind === 'in') return ident(node.name, `in_${node.id}`);
+        if (node.kind === 'const') return `1'b${node.value ? 1 : 0}`;
         if (node.kind === 'gate') return `w_${node.id}`;
         if (node.kind === 'instance') return `w_${node.id}_${ident(port, 'out')}`;
         if (node.kind === 'memory') return `w_${node.id}`; // the registered read data
