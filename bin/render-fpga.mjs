@@ -50,9 +50,10 @@ const port = (id, side, index = 0) => ({
     }
 });
 
-const gateHeight = node => Math.max(48, 22 + (node.inputPorts?.length || 0) * 15);
+const isBusTap = node => node.type === 'slice' || node.type === 'concat';
+const gateHeight = node => isBusTap(node) ? Math.max(20, 8 + (node.inputPorts?.length || 1) * 12) : Math.max(48, 22 + (node.inputPorts?.length || 0) * 15);
 
-const gateWidth = node => ['and', 'or', 'xor', 'not', 'mux', 'pmux'].includes(node.type) ? NODE_WIDTH : 96;
+const gateWidth = node => isBusTap(node) ? 16 : ['and', 'or', 'xor', 'not', 'mux', 'pmux'].includes(node.type) ? NODE_WIDTH : 96;
 
 const nodePorts = node => {
     if (node.kind === 'in' || node.kind === 'const') return [port(`${node.id}.out`, 'EAST')];
@@ -71,14 +72,23 @@ const nodePorts = node => {
     ];
 };
 
-const layoutOptions = {
+// NETWORK_SIMPLEX gives the tightest placement but is super-linear and
+// recurses deeply — on big graphs it takes minutes or overflows the stack.
+// Above a size threshold we switch to BRANDES_KOEPF with minimal thoroughness,
+// which lays the same graphs out in a few seconds without crashing.
+const FAST_LAYOUT_ABOVE = 120;
+// Above this the graph is a whole subsystem/CPU: no legible one-page schematic
+// exists and layout cost explodes, so we draw a summary card instead.
+const HARD_LAYOUT_CAP = 1200;
+const layoutOptionsFor = count => ({
     'org.eclipse.elk.algorithm': 'layered',
     'org.eclipse.elk.direction': 'RIGHT',
     'org.eclipse.elk.spacing.nodeNode': '28',
-    'org.eclipse.elk.layered.spacing.nodeNodeBetweenLayers': '72',
+    'org.eclipse.elk.layered.spacing.nodeNodeBetweenLayers': count > FAST_LAYOUT_ABOVE ? '48' : '72',
     'org.eclipse.elk.edgeRouting': 'ORTHOGONAL',
-    'org.eclipse.elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX'
-};
+    'org.eclipse.elk.layered.nodePlacement.strategy': count > FAST_LAYOUT_ABOVE ? 'BRANDES_KOEPF' : 'NETWORK_SIMPLEX',
+    ...(count > FAST_LAYOUT_ABOVE ? {'org.eclipse.elk.layered.thoroughness': '1'} : {})
+});
 
 async function layoutModule (moduleName, models, depth, maxExpandedInstances, ancestors = []) {
     const model = models[moduleName];
@@ -98,7 +108,7 @@ async function layoutModule (moduleName, models, depth, maxExpandedInstances, an
 
     const graph = {
         id: moduleName,
-        layoutOptions,
+        layoutOptions: layoutOptionsFor(nodes.length),
         children: nodes.map(node => {
             const childLayout = childLayouts.get(node.id);
             let width = gateWidth(node);
@@ -147,10 +157,24 @@ const pointPath = section => {
 
 const findPort = (node, name) => (node.ports || []).find(item => item.id.endsWith(`.${name}`));
 
+const OP_GLYPH = {
+    add: '+', sub: '\u2212', mul: '\u00D7',
+    eq: '=', neq: '\u2260', lt: '<', gt: '>', lte: '\u2264', gte: '\u2265',
+    shl: '\u00AB', shr: '\u00BB',
+    reduce_or: '\u22651', reduce_and: '&', reduce_xor: '=1'
+};
 const gateShape = node => {
     const {x, y, width, height} = node;
     const centerX = x + width / 2;
     const centerY = y + height / 2;
+    if (node.type === 'slice' || node.type === 'concat') {
+        const barX = centerX - 2.5;
+        const label = node.type === 'slice' && node.hi != null
+            ? (node.hi === node.lo ? String(node.lo) : `${node.hi}:${node.lo}`)
+            : '';
+        const text = label ? `<text class="bus-label" x="${centerX}" y="${y - 3}">${xml(label)}</text>` : '';
+        return `<rect class="bus-tap" x="${barX}" y="${y}" width="5" height="${height}"/>${text}`;
+    }
     if (node.type === 'and') {
         return `<path class="gate" d="M ${x} ${y} L ${centerX} ${y} A ${width / 2} ${height / 2} 0 0 1 ${centerX} ${y + height} L ${x} ${y + height} Z"/>`;
     }
@@ -164,7 +188,16 @@ const gateShape = node => {
     if (node.type === 'mux' || node.type === 'pmux') {
         return `<polygon class="gate" points="${x},${y} ${x + width},${y + 9} ${x + width},${y + height - 9} ${x},${y + height}"/>`;
     }
-    return `<rect class="gate" x="${x}" y="${y}" width="${width}" height="${height}" rx="3"/><text class="gate-label" x="${x + width * .7}" y="${centerY}">${xml((node.type || 'gate').toUpperCase())}</text>`;
+    const box = `<rect class="gate" x="${x}" y="${y}" width="${width}" height="${height}" rx="3"/>`;
+    if (node.type === 'dff' || node.type === 'adff' || node.type === 'dlatch') {
+        // a clocked register: box with an edge-clock triangle on the left rail
+        const tri = `<path class="gate-line" d="M ${x} ${centerY - 7} L ${x + 9} ${centerY} L ${x} ${centerY + 7}"/>`;
+        const label = node.type === 'adff' ? 'aDFF' : node.type === 'dlatch' ? 'DLAT' : 'DFF';
+        return `${box}${tri}<text class="gate-label" x="${x + width * .58}" y="${centerY}">${label}</text>`;
+    }
+    const glyph = OP_GLYPH[node.type];
+    if (glyph) return `${box}<text class="gate-op" x="${centerX}" y="${centerY}">${xml(glyph)}</text>`;
+    return `${box}<text class="gate-label" x="${centerX}" y="${centerY}">${xml((node.type || 'gate').toUpperCase())}</text>`;
 };
 
 function renderPorts (node, offsetX, offsetY, showLabels) {
@@ -173,7 +206,7 @@ function renderPorts (node, offsetX, offsetY, showLabels) {
         const y = offsetY + node.y + item.y + item.height / 2;
         const name = item.id.slice(item.id.lastIndexOf('.') + 1);
         const isLeft = item.x < node.width / 2;
-        const label = showLabels && name !== 'in' && name !== 'out' ?
+        const label = showLabels && name !== 'in' && name !== 'out' && name !== 'a' && name !== 'b' ?
             `<text class="port-label ${isLeft ? 'port-left' : 'port-right'}" x="${x + (isLeft ? 8 : -8)}" y="${y}">${xml(name)}</text>` : '';
         return `<circle class="pin" cx="${x}" cy="${y}" r="4"/>${label}`;
     }).join('');
@@ -223,9 +256,8 @@ function renderGraph (graph, offsetX = 0, offsetY = 0, nested = false) {
         const centerY = y + node.height / 2;
         if (node.kind === 'in' || node.kind === 'out' || node.kind === 'const') {
             const isOutput = node.kind === 'out';
-            const value = node.kind === 'const' ? node.value : 0;
             output += `<rect class="io-box${isOutput ? ' output' : ''}" x="${x}" y="${y}" width="${node.width}" height="${node.height}"/>`;
-            output += `<text class="io-value${isOutput ? ' output' : ''}" x="${centerX}" y="${centerY}">${xml(value)}</text>`;
+            if (node.kind === 'const') output += `<text class="io-value" x="${centerX}" y="${centerY}">${xml(node.value)}</text>`;
             if (node.kind !== 'const' && !nested) {
                 output += `<text class="io-label ${isOutput ? 'right' : 'left'}" x="${isOutput ? x + node.width + 12 : x - 12}" y="${centerY}">${xml(node.name)}</text>`;
             }
@@ -233,7 +265,7 @@ function renderGraph (graph, offsetX = 0, offsetY = 0, nested = false) {
         } else if (node.kind === 'instance') {
             output += `<rect class="module${node.expanded ? ' expanded' : ''}" x="${x}" y="${y}" width="${node.width}" height="${node.height}" rx="4"/>`;
             output += `<text class="module-title" x="${centerX}" y="${y + 21}">${xml(titleCase(node.module))}</text>`;
-            if (node.name) output += `<text class="instance-name" x="${centerX}" y="${y + 36}">${xml(node.name)}</text>`;
+            if (node.name && !node.name.startsWith('$')) output += `<text class="instance-name" x="${centerX}" y="${y + 36}">${xml(node.name)}</text>`;
             output += renderBridgeWires(node, offsetX, offsetY);
             if (node.childLayout) output += renderGraph(node.childLayout, x + CHILD_X, y + CHILD_Y, true);
             output += renderPorts(node, offsetX, offsetY, true);
@@ -255,11 +287,27 @@ function toSvg (layout, title) {
     const body = renderGraph(layout).replaceAll('><', '>\n<');
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
 <style>
-.canvas{fill:#fff}.gate,.module,.io-box{fill:#fff;stroke:#000;stroke-width:4}.module.expanded{fill:#fafafa;stroke-dasharray:8 6}.wire{fill:none;stroke:#087f23;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.bridge{stroke:#83ea91}.gate-line{fill:none;stroke:#000;stroke-width:4;stroke-linecap:round}.pin{fill:#087f23}.io-box.output{stroke:#101cff}.io-value{font:700 20px Arial,sans-serif;fill:#087f23;text-anchor:middle;dominant-baseline:middle}.io-value.output{fill:#087f23}.title{font:28px Arial,sans-serif;fill:#111;text-anchor:middle}.io-label{font:20px Arial,sans-serif;fill:#111;dominant-baseline:middle}.io-label.left{text-anchor:end}.io-label.right{text-anchor:start}.module-title{font:18px Arial,sans-serif;fill:#111;text-anchor:middle}.instance-name{font:12px Arial,sans-serif;fill:#666;text-anchor:middle}.gate-label{font:700 12px Arial,sans-serif;fill:#111;text-anchor:middle;dominant-baseline:middle}.port-label{font:12px Arial,sans-serif;fill:#111;dominant-baseline:middle}.port-left{text-anchor:start}.port-right{text-anchor:end}
+.canvas{fill:#fff}.gate,.module,.io-box{fill:#fff;stroke:#000;stroke-width:4}.module.expanded{fill:#fafafa;stroke-dasharray:8 6}.wire{fill:none;stroke:#087f23;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.bridge{stroke:#83ea91}.gate-line{fill:none;stroke:#000;stroke-width:4;stroke-linecap:round}.pin{fill:#087f23}.io-box.output{stroke:#101cff}.io-value{font:700 20px Arial,sans-serif;fill:#087f23;text-anchor:middle;dominant-baseline:middle}.io-value.output{fill:#087f23}.title{font:28px Arial,sans-serif;fill:#111;text-anchor:middle}.io-label{font:20px Arial,sans-serif;fill:#111;dominant-baseline:middle}.io-label.left{text-anchor:end}.io-label.right{text-anchor:start}.module-title{font:18px Arial,sans-serif;fill:#111;text-anchor:middle}.instance-name{font:12px Arial,sans-serif;fill:#666;text-anchor:middle}.gate-label{font:700 12px Arial,sans-serif;fill:#111;text-anchor:middle;dominant-baseline:middle}.port-label{font:12px Arial,sans-serif;fill:#111;dominant-baseline:middle}.port-left{text-anchor:start}.port-right{text-anchor:end}.gate-op{font:700 26px Arial,sans-serif;fill:#111;text-anchor:middle;dominant-baseline:middle}.bus-tap{fill:#087f23;stroke:none}.bus-label{font:11px Arial,sans-serif;fill:#444;text-anchor:middle}
 </style>
 <rect class="canvas" width="100%" height="100%"/>
 <text class="title" x="${width / 2}" y="42">${xml(title)}</text>
 <g transform="translate(${left} ${top})">${body}</g>
+</svg>
+`;
+}
+
+function placeholderSvg (title, count) {
+    const width = 660;
+    const height = 240;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+<style>
+.canvas{fill:#fff;stroke:#ccc;stroke-width:2}.title{font:28px Arial,sans-serif;fill:#111;text-anchor:middle}.big{font:700 40px Arial,sans-serif;fill:#087f23;text-anchor:middle}.note{font:16px Arial,sans-serif;fill:#555;text-anchor:middle}
+</style>
+<rect class="canvas" x="1" y="1" width="${width - 2}" height="${height - 2}" rx="8"/>
+<text class="title" x="${width / 2}" y="58">${xml(title)}</text>
+<text class="big" x="${width / 2}" y="128">${count} cells</text>
+<text class="note" x="${width / 2}" y="168">Too large to draw as one legible schematic.</text>
+<text class="note" x="${width / 2}" y="194">Render a sub-module (--top) for detail.</text>
 </svg>
 `;
 }
@@ -298,20 +346,35 @@ async function main () {
     console.log(`      Top ${parsed.topModName}: ${parsed.model.nodes.length} nodes, ${parsed.model.edges.length} edges.`);
 
     console.log('[3/4] Running ElkJS auto-layout...');
-    const layout = await layoutModule(
-        parsed.topModName, parsed.models, options.expandDepth, options.maxExpandedInstances
-    );
+    // A whole-CPU netlist (thousands of cells) has no legible single-page
+    // schematic and costs minutes to lay out — emit an honest summary instead
+    // of a giant unreadable canvas, and never crash on it.
+    const nodeCount = parsed.model.nodes.length;
+    let layout = null;
+    if (nodeCount > HARD_LAYOUT_CAP) {
+        console.warn(`      ${parsed.topModName} has ${nodeCount} cells (> ${HARD_LAYOUT_CAP}); emitting a summary placeholder — drill into a sub-module for detail.`);
+    } else {
+        try {
+            layout = await layoutModule(
+                parsed.topModName, parsed.models, options.expandDepth, options.maxExpandedInstances
+            );
+        } catch (error) {
+            console.warn(`      Auto-layout could not place this graph (${error.message || error}); emitting a summary placeholder.`);
+            layout = null;
+        }
+    }
+    const diagramTitle = options.title || titleCase(parsed.topModName);
     console.log('[4/4] Generating outputs...');
     if (options.format === 'json' || options.format === 'both') {
         const layoutFile = path.join(outDir, `${basename}_layout.json`);
         if (path.resolve(layoutFile) === inputFile) throw new Error('Layout output would overwrite the input netlist');
-        fs.writeFileSync(layoutFile, JSON.stringify(layout, null, 2));
+        fs.writeFileSync(layoutFile, JSON.stringify(layout || {tooLarge: true, cells: nodeCount, module: parsed.topModName}, null, 2));
         console.log(`      Saved structured layout to ${layoutFile}`);
     }
     if (options.format === 'svg' || options.format === 'both') {
         const svgFile = path.join(outDir, `${basename}.svg`);
         if (path.resolve(svgFile) === inputFile) throw new Error('SVG output would overwrite the input netlist');
-        fs.writeFileSync(svgFile, toSvg(layout, options.title || titleCase(parsed.topModName)));
+        fs.writeFileSync(svgFile, layout ? toSvg(layout, diagramTitle) : placeholderSvg(diagramTitle, nodeCount));
         console.log(`      Saved rendering to ${svgFile}`);
     }
     console.log('Done!');
