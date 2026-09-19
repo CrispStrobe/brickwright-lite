@@ -24,6 +24,8 @@
 // directly. The native app transport remains fail-closed until its Rust commands
 // exist and are validated against hardware.
 
+import {identifyTangNanoTransport} from './usb-identification.js';
+
 /**
  * Filters for `navigator.usb.requestDevice` — the user still picks the device.
  * Pinning the exact productId for every board revision is part of the
@@ -58,7 +60,7 @@ export async function requestBoard (usb = (typeof navigator !== 'undefined' ? na
     }
     try {
         const device = await usb.requestDevice({filters: [...TANG_NANO_USB_FILTERS]});
-        return {ok: true, device};
+        return {ok: true, device, identification: identifyTangNanoTransport(device)};
     } catch (e) {
         return {ok: false, code: 'no-device',
             reason: (e && e.message) ? e.message : 'No board was selected.'};
