@@ -1,57 +1,36 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="408" height="404">
+<svg xmlns="http://www.w3.org/2000/svg" width="576" height="284" viewBox="0 0 576 284">
 <style>
-            .gate { fill: #ffffff; stroke: #000000; stroke-width: 3px; }
-            .wire { fill: none; stroke: #007c00; stroke-width: 3px; stroke-linejoin: round; }
-            .label { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 12px; fill: #000000; text-anchor: middle; dominant-baseline: middle; }
-            .pin { fill: #007c00; }
-            .port-label { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 10px; fill: #000000; }
-            .io-box { fill: #ffffff; stroke: #000000; stroke-width: 3px; }
-            .io-text { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 14px; fill: #007c00; text-anchor: middle; dominant-baseline: middle; font-weight: bold; }
-            .out-box { stroke: #0000ff; }
-            .out-text { fill: #0000ff; }
-        </style>
-<g transform="translate(50, 50)">
-  <path class="wire" d="M 72 152 L 194 152 L 194 182 L 184 182" />
-  <path class="wire" d="M 72 92 L 204 92 L 204 202 L 184 202" />
-  <path class="wire" d="M 72 272 L 194 272 L 194 242 L 184 242" />
-  <path class="wire" d="M 184 222 L 236 222" />
-  <rect class="gate" x="12" y="12" width="60" height="40" />
-  <text class="label" x="42" y="24">const</text>
-  <circle class="pin" cx="12" cy="32" r="3" />
-  <circle class="pin" cx="72" cy="32" r="3" />
-  <rect class="gate" x="92" y="12" width="60" height="40" />
-  <text class="label" x="122" y="24">const</text>
-  <circle class="pin" cx="92" cy="32" r="3" />
-  <circle class="pin" cx="152" cy="32" r="3" />
-  <text class="label" x="-3" y="272">1</text>
-  <rect class="io-box" x="12" y="262" width="20" height="20" />
-  <text class="io-text" x="22" y="272">0</text>
-  <circle class="pin" cx="12" cy="272" r="3" />
-  <circle class="pin" cx="72" cy="272" r="3" />
-  <text class="label" x="-3" y="92">2</text>
-  <rect class="io-box" x="12" y="82" width="20" height="20" />
-  <text class="io-text" x="22" y="92">0</text>
-  <circle class="pin" cx="12" cy="92" r="3" />
-  <circle class="pin" cx="72" cy="92" r="3" />
-  <text class="label" x="-3" y="152">3</text>
-  <rect class="io-box" x="12" y="142" width="20" height="20" />
-  <text class="io-text" x="22" y="152">0</text>
-  <circle class="pin" cx="12" cy="152" r="3" />
-  <circle class="pin" cx="72" cy="152" r="3" />
-  <rect class="io-box out-box" x="236" y="212" width="20" height="20" />
-  <text class="io-text out-text" x="246" y="222">0</text>
-  <text class="label" x="271" y="222">out_4</text>
-  <circle class="pin" cx="236" cy="222" r="3" />
-  <circle class="pin" cx="296" cy="222" r="3" />
-  <rect class="gate" x="124" y="162" width="60" height="100" />
-  <text class="label" x="154" y="174">adff</text>
-  <circle class="pin" cx="184" cy="182" r="3" />
-  <text class="port-label" x="179" y="182" text-anchor="end">ARST</text>
-  <circle class="pin" cx="184" cy="202" r="3" />
-  <text class="port-label" x="179" y="202" text-anchor="end">CLK</text>
-  <circle class="pin" cx="184" cy="242" r="3" />
-  <text class="port-label" x="179" y="242" text-anchor="end">D</text>
-  <circle class="pin" cx="184" cy="222" r="3" />
-  <text class="port-label" x="179" y="222" text-anchor="end">Q</text>
-</g>
+.canvas{fill:#fff}.gate,.module,.io-box{fill:#fff;stroke:#000;stroke-width:4}.module.expanded{fill:#fafafa;stroke-dasharray:8 6}.wire{fill:none;stroke:#087f23;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.bridge{stroke:#83ea91}.gate-line{fill:none;stroke:#000;stroke-width:4;stroke-linecap:round}.pin{fill:#087f23}.io-box.output{stroke:#101cff}.io-value{font:700 20px Arial,sans-serif;fill:#087f23;text-anchor:middle;dominant-baseline:middle}.io-value.output{fill:#087f23}.title{font:28px Arial,sans-serif;fill:#111;text-anchor:middle}.io-label{font:20px Arial,sans-serif;fill:#111;dominant-baseline:middle}.io-label.left{text-anchor:end}.io-label.right{text-anchor:start}.module-title{font:18px Arial,sans-serif;fill:#111;text-anchor:middle}.instance-name{font:12px Arial,sans-serif;fill:#666;text-anchor:middle}.gate-label{font:700 12px Arial,sans-serif;fill:#111;text-anchor:middle;dominant-baseline:middle}.port-label{font:12px Arial,sans-serif;fill:#111;dominant-baseline:middle}.port-left{text-anchor:start}.port-right{text-anchor:end}
+</style>
+<rect class="canvas" width="100%" height="100%"/>
+<text class="title" x="288" y="42">FlipFlop</text>
+<g transform="translate(110 84)"><path class="wire" d="M 42 128 L 52 128 L 52 94 L 114 94"/>
+<path class="wire" d="M 42 76 L 114 76"/>
+<path class="wire" d="M 42 24 L 52 24 L 52 57 L 114 57"/>
+<path class="wire" d="M 222 76 L 294 76"/>
+<rect class="io-box" x="12" y="12" width="24" height="24"/>
+<text class="io-value" x="24" y="24">0</text>
+<text class="io-label left" x="0" y="24">d</text>
+<circle class="pin" cx="39" cy="24" r="4"/>
+<rect class="io-box" x="12" y="64" width="24" height="24"/>
+<text class="io-value" x="24" y="76">0</text>
+<text class="io-label left" x="0" y="76">clk</text>
+<circle class="pin" cx="39" cy="76" r="4"/>
+<rect class="io-box" x="12" y="116" width="24" height="24"/>
+<text class="io-value" x="24" y="128">0</text>
+<text class="io-label left" x="0" y="128">rst</text>
+<circle class="pin" cx="39" cy="128" r="4"/>
+<rect class="io-box output" x="300" y="64" width="24" height="24"/>
+<text class="io-value output" x="312" y="76">0</text>
+<text class="io-label right" x="336" y="76">q</text>
+<circle class="pin" cx="297" cy="76" r="4"/>
+<rect class="gate" x="120" y="42" width="96" height="67" rx="3"/>
+<text class="gate-label" x="187.2" y="75.5">ADFF</text>
+<circle class="pin" cx="117" cy="94" r="4"/>
+<text class="port-label port-left" x="125" y="94">reset</text>
+<circle class="pin" cx="117" cy="76" r="4"/>
+<text class="port-label port-left" x="125" y="76">clk</text>
+<circle class="pin" cx="117" cy="57" r="4"/>
+<text class="port-label port-left" x="125" y="57">d</text>
+<circle class="pin" cx="219" cy="76" r="4"/></g>
 </svg>

@@ -1,124 +1,233 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1192" height="564.3333333333334">
+<svg xmlns="http://www.w3.org/2000/svg" width="3372" height="664" viewBox="0 0 3372 664">
 <style>
-            .gate { fill: #ffffff; stroke: #000000; stroke-width: 3px; }
-            .wire { fill: none; stroke: #007c00; stroke-width: 3px; stroke-linejoin: round; }
-            .label { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 12px; fill: #000000; text-anchor: middle; dominant-baseline: middle; }
-            .pin { fill: #007c00; }
-            .port-label { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 10px; fill: #000000; }
-            .io-box { fill: #ffffff; stroke: #000000; stroke-width: 3px; }
-            .io-text { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 14px; fill: #007c00; text-anchor: middle; dominant-baseline: middle; font-weight: bold; }
-            .out-box { stroke: #0000ff; }
-            .out-text { fill: #0000ff; }
-        </style>
-<g transform="translate(50, 50)">
-  <path class="wire" d="M 408 327.33333333333337 L 428 327.33333333333337 L 428 273 L 460 273" />
-  <path class="wire" d="M 632 199.25 L 684 199.25" />
-  <path class="wire" d="M 184 379.83333333333337 L 236 379.83333333333337" />
-  <path class="wire" d="M 72 432.33333333333337 L 194 432.33333333333337 L 194 401.08333333333337 L 184 401.08333333333337" />
-  <path class="wire" d="M 72 167 L 194 167 L 194 358.58333333333337 L 184 358.58333333333337" />
-  <path class="wire" d="M 296 379.83333333333337 L 418 379.83333333333337 L 418 348.58333333333337 L 408 348.58333333333337" />
-  <path class="wire" d="M 72 167 L 418 167 L 418 306.08333333333337 L 408 306.08333333333337" />
-  <path class="wire" d="M 520 273 L 642 273 L 642 241.75 L 632 241.75" />
-  <path class="wire" d="M 72 167 L 418 167 L 418 303 L 652 303 L 652 220.5 L 632 220.5" />
-  <path class="wire" d="M 744 199.25 L 876 199.25 L 876 114.5 L 856 114.5" />
-  <path class="wire" d="M 72 167 L 866 167 L 866 135.75 L 856 135.75" />
-  <path class="wire" d="M 184 379.83333333333337 L 204 379.83333333333337 L 204 409.83333333333337 L 428 409.83333333333337 L 428 340.6666666666667 L 460 340.6666666666667" />
-  <path class="wire" d="M 408 327.33333333333337 L 460 327.3333333333333" />
-  <path class="wire" d="M 520 334 L 684 334.00000000000006" />
-  <path class="wire" d="M 632 199.25 L 662 199.25 L 662 320.6666666666667 L 684 320.6666666666667" />
-  <path class="wire" d="M 744 327.33333333333337 L 886 327.33333333333337 L 886 106.58333333333334 L 908 106.58333333333334" />
-  <path class="wire" d="M 856 93.25 L 908 93.25" />
-  <path class="wire" d="M 968 99.91666666666667 L 1020 99.91666666666667" />
-  <rect class="gate" x="12" y="12" width="60" height="40" />
-  <text class="label" x="42" y="24">const</text>
-  <circle class="pin" cx="12" cy="32" r="3" />
-  <circle class="pin" cx="72" cy="32" r="3" />
-  <rect class="gate" x="92" y="12" width="60" height="40" />
-  <text class="label" x="122" y="24">const</text>
-  <circle class="pin" cx="92" cy="32" r="3" />
-  <circle class="pin" cx="152" cy="32" r="3" />
-  <text class="label" x="-3" y="432.33333333333337">1</text>
-  <rect class="io-box" x="12" y="422.33333333333337" width="20" height="20" />
-  <text class="io-text" x="22" y="432.33333333333337">0</text>
-  <circle class="pin" cx="12" cy="432.33333333333337" r="3" />
-  <circle class="pin" cx="72" cy="432.33333333333337" r="3" />
-  <text class="label" x="-3" y="167">2</text>
-  <rect class="io-box" x="12" y="157" width="20" height="20" />
-  <text class="io-text" x="22" y="167">0</text>
-  <circle class="pin" cx="12" cy="167" r="3" />
-  <circle class="pin" cx="72" cy="167" r="3" />
-  <rect class="io-box out-box" x="1020" y="89.91666666666667" width="20" height="20" />
-  <text class="io-text out-text" x="1030" y="99.91666666666667">0</text>
-  <text class="label" x="1055" y="99.91666666666667">out_3</text>
-  <circle class="pin" cx="1020" cy="99.91666666666667" r="3" />
-  <circle class="pin" cx="1080" cy="99.91666666666667" r="3" />
-  <polygon class="gate" points="460,253 512,273 460,293" />
-  <circle class="gate" cx="516" cy="273" r="4" />
-  <circle class="pin" cx="460" cy="273" r="3" />
-  <text class="port-label" x="465" y="273">a</text>
-  <circle class="pin" cx="520" cy="273" r="3" />
-  <polygon class="gate" points="684,179.25 736,199.25 684,219.25" />
-  <circle class="gate" cx="740" cy="199.25" r="4" />
-  <circle class="pin" cx="684" cy="199.25" r="3" />
-  <text class="port-label" x="689" y="199.25">a</text>
-  <circle class="pin" cx="744" cy="199.25" r="3" />
-  <polygon class="gate" points="236,359.83333333333337 288,379.83333333333337 236,399.83333333333337" />
-  <circle class="gate" cx="292" cy="379.83333333333337" r="4" />
-  <circle class="pin" cx="236" cy="379.83333333333337" r="3" />
-  <text class="port-label" x="241" y="379.83333333333337">a</text>
-  <circle class="pin" cx="296" cy="379.83333333333337" r="3" />
-  <rect class="gate" x="124" y="337.33333333333337" width="60" height="85" />
-  <text class="label" x="154" y="349.33333333333337">t_ff</text>
-  <circle class="pin" cx="184" cy="401.08333333333337" r="3" />
-  <text class="port-label" x="179" y="401.08333333333337" text-anchor="end">clk</text>
-  <circle class="pin" cx="184" cy="379.83333333333337" r="3" />
-  <text class="port-label" x="179" y="379.83333333333337" text-anchor="end">q</text>
-  <circle class="pin" cx="184" cy="358.58333333333337" r="3" />
-  <text class="port-label" x="179" y="358.58333333333337" text-anchor="end">rst</text>
-  <rect class="gate" x="348" y="284.83333333333337" width="60" height="85" />
-  <text class="label" x="378" y="296.83333333333337">t_ff</text>
-  <circle class="pin" cx="408" cy="348.58333333333337" r="3" />
-  <text class="port-label" x="403" y="348.58333333333337" text-anchor="end">clk</text>
-  <circle class="pin" cx="408" cy="327.33333333333337" r="3" />
-  <text class="port-label" x="403" y="327.33333333333337" text-anchor="end">q</text>
-  <circle class="pin" cx="408" cy="306.08333333333337" r="3" />
-  <text class="port-label" x="403" y="306.08333333333337" text-anchor="end">rst</text>
-  <rect class="gate" x="572" y="178" width="60" height="85" />
-  <text class="label" x="602" y="190">t_ff</text>
-  <circle class="pin" cx="632" cy="241.75" r="3" />
-  <text class="port-label" x="627" y="241.75" text-anchor="end">clk</text>
-  <circle class="pin" cx="632" cy="199.25" r="3" />
-  <text class="port-label" x="627" y="199.25" text-anchor="end">q</text>
-  <circle class="pin" cx="632" cy="220.5" r="3" />
-  <text class="port-label" x="627" y="220.5" text-anchor="end">rst</text>
-  <rect class="gate" x="796" y="72" width="60" height="85" />
-  <text class="label" x="826" y="84">t_ff</text>
-  <circle class="pin" cx="856" cy="114.5" r="3" />
-  <text class="port-label" x="851" y="114.5" text-anchor="end">clk</text>
-  <circle class="pin" cx="856" cy="93.25" r="3" />
-  <text class="port-label" x="851" y="93.25" text-anchor="end">q</text>
-  <circle class="pin" cx="856" cy="135.75" r="3" />
-  <text class="port-label" x="851" y="135.75" text-anchor="end">rst</text>
-  <rect class="gate" x="460" y="314" width="60" height="40" />
-  <text class="label" x="490" y="326">concat</text>
-  <circle class="pin" cx="460" cy="340.6666666666667" r="3" />
-  <text class="port-label" x="465" y="340.6666666666667">a</text>
-  <circle class="pin" cx="460" cy="327.3333333333333" r="3" />
-  <text class="port-label" x="465" y="327.3333333333333">b</text>
-  <circle class="pin" cx="520" cy="334" r="3" />
-  <rect class="gate" x="684" y="307.33333333333337" width="60" height="40" />
-  <text class="label" x="714" y="319.33333333333337">concat</text>
-  <circle class="pin" cx="684" cy="334.00000000000006" r="3" />
-  <text class="port-label" x="689" y="334.00000000000006">a</text>
-  <circle class="pin" cx="684" cy="320.6666666666667" r="3" />
-  <text class="port-label" x="689" y="320.6666666666667">b</text>
-  <circle class="pin" cx="744" cy="327.33333333333337" r="3" />
-  <rect class="gate" x="908" y="79.91666666666667" width="60" height="40" />
-  <text class="label" x="938" y="91.91666666666667">concat</text>
-  <circle class="pin" cx="908" cy="106.58333333333334" r="3" />
-  <text class="port-label" x="913" y="106.58333333333334">a</text>
-  <circle class="pin" cx="908" cy="93.25" r="3" />
-  <text class="port-label" x="913" y="93.25">b</text>
-  <circle class="pin" cx="968" cy="99.91666666666667" r="3" />
-</g>
+.canvas{fill:#fff}.gate,.module,.io-box{fill:#fff;stroke:#000;stroke-width:4}.module.expanded{fill:#fafafa;stroke-dasharray:8 6}.wire{fill:none;stroke:#087f23;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.bridge{stroke:#83ea91}.gate-line{fill:none;stroke:#000;stroke-width:4;stroke-linecap:round}.pin{fill:#087f23}.io-box.output{stroke:#101cff}.io-value{font:700 20px Arial,sans-serif;fill:#087f23;text-anchor:middle;dominant-baseline:middle}.io-value.output{fill:#087f23}.title{font:28px Arial,sans-serif;fill:#111;text-anchor:middle}.io-label{font:20px Arial,sans-serif;fill:#111;dominant-baseline:middle}.io-label.left{text-anchor:end}.io-label.right{text-anchor:start}.module-title{font:18px Arial,sans-serif;fill:#111;text-anchor:middle}.instance-name{font:12px Arial,sans-serif;fill:#666;text-anchor:middle}.gate-label{font:700 12px Arial,sans-serif;fill:#111;text-anchor:middle;dominant-baseline:middle}.port-label{font:12px Arial,sans-serif;fill:#111;dominant-baseline:middle}.port-left{text-anchor:start}.port-right{text-anchor:end}
+</style>
+<rect class="canvas" width="100%" height="100%"/>
+<text class="title" x="1686" y="42">Asynchronous Counter</text>
+<g transform="translate(110 84)"><path class="wire" d="M 1334 244 L 1422 244"/>
+<path class="wire" d="M 2086 244 L 2106 244 L 2106 190 L 2174 190"/>
+<path class="wire" d="M 614 387 L 624 387 L 624 289 L 686 289"/>
+<path class="wire" d="M 42 432 L 114 432"/>
+<path class="wire" d="M 42 100 L 52 100 L 52 342 L 114 342"/>
+<path class="wire" d="M 762 289 L 834 289"/>
+<path class="wire" d="M 42 100 L 772 100 L 772 199 L 834 199"/>
+<path class="wire" d="M 1498 244 L 1524 244 L 1524 289 L 1586 289"/>
+<path class="wire" d="M 42 100 L 1524 100 L 1524 199 L 1586 199"/>
+<path class="wire" d="M 2250 190 L 2338 190"/>
+<path class="wire" d="M 42 100 L 2338 100"/>
+<path class="wire" d="M 1334 244 L 1354 244 L 1354 397 L 1406 397"/>
+<path class="wire" d="M 614 387 L 1344 387 L 1344 377 L 1406 377"/>
+<path class="wire" d="M 2086 244 L 2106 244 L 2106 298 L 2158 298"/>
+<path class="wire" d="M 1514 387 L 2096 387 L 2096 278 L 2158 278"/>
+<path class="wire" d="M 2838 145 L 2858 145 L 2858 309 L 2910 309"/>
+<path class="wire" d="M 2266 288 L 2848 288 L 2848 289 L 2910 289"/>
+<path class="wire" d="M 3018 299 L 3090 299"/>
+<rect class="io-box" x="12" y="420" width="24" height="24"/>
+<text class="io-value" x="24" y="432">0</text>
+<text class="io-label left" x="0" y="432">clk</text>
+<circle class="pin" cx="39" cy="432" r="4"/>
+<rect class="io-box" x="12" y="88" width="24" height="24"/>
+<text class="io-value" x="24" y="100">0</text>
+<text class="io-label left" x="0" y="100">rst</text>
+<circle class="pin" cx="39" cy="100" r="4"/>
+<rect class="io-box output" x="3096" y="287" width="24" height="24"/>
+<text class="io-value output" x="3108" y="299">0</text>
+<text class="io-label right" x="3132" y="299">q</text>
+<circle class="pin" cx="3093" cy="299" r="4"/>
+<polygon class="gate" points="1428,220 1482,244 1428,268"/>
+<circle class="gate" cx="1487" cy="244" r="5"/>
+<circle class="pin" cx="1425" cy="244" r="4"/>
+<text class="port-label port-left" x="1433" y="244">a</text>
+<circle class="pin" cx="1495" cy="244" r="4"/>
+<polygon class="gate" points="2180,166 2234,190 2180,214"/>
+<circle class="gate" cx="2239" cy="190" r="5"/>
+<circle class="pin" cx="2177" cy="190" r="4"/>
+<text class="port-label port-left" x="2185" y="190">a</text>
+<circle class="pin" cx="2247" cy="190" r="4"/>
+<polygon class="gate" points="692,265 746,289 692,313"/>
+<circle class="gate" cx="751" cy="289" r="5"/>
+<circle class="pin" cx="689" cy="289" r="4"/>
+<text class="port-label port-left" x="697" y="289">a</text>
+<circle class="pin" cx="759" cy="289" r="4"/>
+<rect class="module expanded" x="120" y="254" width="488" height="266" rx="4"/>
+<text class="module-title" x="364" y="275">T Ff</text>
+<text class="instance-name" x="364" y="290">t0</text>
+<path class="wire bridge" d="M 117 432 L 190 432 L 190 408 L 263 408"/>
+<path class="wire bridge" d="M 611 387 L 566 387 L 566 363 L 521 363"/>
+<path class="wire bridge" d="M 117 342 L 190 342 L 190 460 L 263 460"/>
+<path class="wire" d="M 446 363 L 456 363 L 456 310 L 180 310 L 180 344 L 190 344"/>
+<path class="wire" d="M 266 460 L 286 460 L 286 381 L 338 381"/>
+<path class="wire" d="M 266 408 L 276 408 L 276 363 L 338 363"/>
+<path class="wire" d="M 266 344 L 338 344"/>
+<path class="wire" d="M 446 363 L 518 363"/>
+<rect class="io-box" x="236" y="396" width="24" height="24"/>
+<text class="io-value" x="248" y="408">0</text>
+<circle class="pin" cx="263" cy="408" r="4"/>
+<rect class="io-box" x="236" y="448" width="24" height="24"/>
+<text class="io-value" x="248" y="460">0</text>
+<circle class="pin" cx="263" cy="460" r="4"/>
+<rect class="io-box output" x="524" y="351" width="24" height="24"/>
+<text class="io-value output" x="536" y="363">0</text>
+<circle class="pin" cx="521" cy="363" r="4"/>
+<polygon class="gate" points="196,320 250,344 196,368"/>
+<circle class="gate" cx="255" cy="344" r="5"/>
+<circle class="pin" cx="193" cy="344" r="4"/>
+<text class="port-label port-left" x="201" y="344">a</text>
+<circle class="pin" cx="263" cy="344" r="4"/>
+<rect class="gate" x="344" y="329" width="96" height="67" rx="3"/>
+<text class="gate-label" x="411.2" y="362.5">ADFF</text>
+<circle class="pin" cx="341" cy="381" r="4"/>
+<text class="port-label port-left" x="349" y="381">reset</text>
+<circle class="pin" cx="341" cy="363" r="4"/>
+<text class="port-label port-left" x="349" y="363">clk</text>
+<circle class="pin" cx="341" cy="344" r="4"/>
+<text class="port-label port-left" x="349" y="344">d</text>
+<circle class="pin" cx="443" cy="363" r="4"/>
+<circle class="pin" cx="117" cy="432" r="4"/>
+<text class="port-label port-left" x="125" y="432">clk</text>
+<circle class="pin" cx="611" cy="387" r="4"/>
+<text class="port-label port-right" x="603" y="387">q</text>
+<circle class="pin" cx="117" cy="342" r="4"/>
+<text class="port-label port-left" x="125" y="342">rst</text>
+<rect class="module expanded" x="840" y="111" width="488" height="266" rx="4"/>
+<text class="module-title" x="1084" y="132">T Ff</text>
+<text class="instance-name" x="1084" y="147">t1</text>
+<path class="wire bridge" d="M 837 289 L 910 289 L 910 265 L 983 265"/>
+<path class="wire bridge" d="M 1331 244 L 1286 244 L 1286 220 L 1241 220"/>
+<path class="wire bridge" d="M 837 199 L 910 199 L 910 317 L 983 317"/>
+<path class="wire" d="M 1166 220 L 1176 220 L 1176 167 L 900 167 L 900 201 L 910 201"/>
+<path class="wire" d="M 986 317 L 1006 317 L 1006 238 L 1058 238"/>
+<path class="wire" d="M 986 265 L 996 265 L 996 220 L 1058 220"/>
+<path class="wire" d="M 986 201 L 1058 201"/>
+<path class="wire" d="M 1166 220 L 1238 220"/>
+<rect class="io-box" x="956" y="253" width="24" height="24"/>
+<text class="io-value" x="968" y="265">0</text>
+<circle class="pin" cx="983" cy="265" r="4"/>
+<rect class="io-box" x="956" y="305" width="24" height="24"/>
+<text class="io-value" x="968" y="317">0</text>
+<circle class="pin" cx="983" cy="317" r="4"/>
+<rect class="io-box output" x="1244" y="208" width="24" height="24"/>
+<text class="io-value output" x="1256" y="220">0</text>
+<circle class="pin" cx="1241" cy="220" r="4"/>
+<polygon class="gate" points="916,177 970,201 916,225"/>
+<circle class="gate" cx="975" cy="201" r="5"/>
+<circle class="pin" cx="913" cy="201" r="4"/>
+<text class="port-label port-left" x="921" y="201">a</text>
+<circle class="pin" cx="983" cy="201" r="4"/>
+<rect class="gate" x="1064" y="186" width="96" height="67" rx="3"/>
+<text class="gate-label" x="1131.2" y="219.5">ADFF</text>
+<circle class="pin" cx="1061" cy="238" r="4"/>
+<text class="port-label port-left" x="1069" y="238">reset</text>
+<circle class="pin" cx="1061" cy="220" r="4"/>
+<text class="port-label port-left" x="1069" y="220">clk</text>
+<circle class="pin" cx="1061" cy="201" r="4"/>
+<text class="port-label port-left" x="1069" y="201">d</text>
+<circle class="pin" cx="1163" cy="220" r="4"/>
+<circle class="pin" cx="837" cy="289" r="4"/>
+<text class="port-label port-left" x="845" y="289">clk</text>
+<circle class="pin" cx="1331" cy="244" r="4"/>
+<text class="port-label port-right" x="1323" y="244">q</text>
+<circle class="pin" cx="837" cy="199" r="4"/>
+<text class="port-label port-left" x="845" y="199">rst</text>
+<rect class="module expanded" x="1592" y="111" width="488" height="266" rx="4"/>
+<text class="module-title" x="1836" y="132">T Ff</text>
+<text class="instance-name" x="1836" y="147">t2</text>
+<path class="wire bridge" d="M 1589 289 L 1662 289 L 1662 265 L 1735 265"/>
+<path class="wire bridge" d="M 2083 244 L 2038 244 L 2038 220 L 1993 220"/>
+<path class="wire bridge" d="M 1589 199 L 1662 199 L 1662 317 L 1735 317"/>
+<path class="wire" d="M 1918 220 L 1928 220 L 1928 167 L 1652 167 L 1652 201 L 1662 201"/>
+<path class="wire" d="M 1738 317 L 1758 317 L 1758 238 L 1810 238"/>
+<path class="wire" d="M 1738 265 L 1748 265 L 1748 220 L 1810 220"/>
+<path class="wire" d="M 1738 201 L 1810 201"/>
+<path class="wire" d="M 1918 220 L 1990 220"/>
+<rect class="io-box" x="1708" y="253" width="24" height="24"/>
+<text class="io-value" x="1720" y="265">0</text>
+<circle class="pin" cx="1735" cy="265" r="4"/>
+<rect class="io-box" x="1708" y="305" width="24" height="24"/>
+<text class="io-value" x="1720" y="317">0</text>
+<circle class="pin" cx="1735" cy="317" r="4"/>
+<rect class="io-box output" x="1996" y="208" width="24" height="24"/>
+<text class="io-value output" x="2008" y="220">0</text>
+<circle class="pin" cx="1993" cy="220" r="4"/>
+<polygon class="gate" points="1668,177 1722,201 1668,225"/>
+<circle class="gate" cx="1727" cy="201" r="5"/>
+<circle class="pin" cx="1665" cy="201" r="4"/>
+<text class="port-label port-left" x="1673" y="201">a</text>
+<circle class="pin" cx="1735" cy="201" r="4"/>
+<rect class="gate" x="1816" y="186" width="96" height="67" rx="3"/>
+<text class="gate-label" x="1883.2" y="219.5">ADFF</text>
+<circle class="pin" cx="1813" cy="238" r="4"/>
+<text class="port-label port-left" x="1821" y="238">reset</text>
+<circle class="pin" cx="1813" cy="220" r="4"/>
+<text class="port-label port-left" x="1821" y="220">clk</text>
+<circle class="pin" cx="1813" cy="201" r="4"/>
+<text class="port-label port-left" x="1821" y="201">d</text>
+<circle class="pin" cx="1915" cy="220" r="4"/>
+<circle class="pin" cx="1589" cy="289" r="4"/>
+<text class="port-label port-left" x="1597" y="289">clk</text>
+<circle class="pin" cx="2083" cy="244" r="4"/>
+<text class="port-label port-right" x="2075" y="244">q</text>
+<circle class="pin" cx="1589" cy="199" r="4"/>
+<text class="port-label port-left" x="1597" y="199">rst</text>
+<rect class="module expanded" x="2344" y="12" width="488" height="266" rx="4"/>
+<text class="module-title" x="2588" y="33">T Ff</text>
+<text class="instance-name" x="2588" y="48">t3</text>
+<path class="wire bridge" d="M 2341 190 L 2414 190 L 2414 166 L 2487 166"/>
+<path class="wire bridge" d="M 2835 145 L 2790 145 L 2790 121 L 2745 121"/>
+<path class="wire bridge" d="M 2341 100 L 2414 100 L 2414 218 L 2487 218"/>
+<path class="wire" d="M 2670 121 L 2680 121 L 2680 68 L 2404 68 L 2404 102 L 2414 102"/>
+<path class="wire" d="M 2490 218 L 2510 218 L 2510 139 L 2562 139"/>
+<path class="wire" d="M 2490 166 L 2500 166 L 2500 121 L 2562 121"/>
+<path class="wire" d="M 2490 102 L 2562 102"/>
+<path class="wire" d="M 2670 121 L 2742 121"/>
+<rect class="io-box" x="2460" y="154" width="24" height="24"/>
+<text class="io-value" x="2472" y="166">0</text>
+<circle class="pin" cx="2487" cy="166" r="4"/>
+<rect class="io-box" x="2460" y="206" width="24" height="24"/>
+<text class="io-value" x="2472" y="218">0</text>
+<circle class="pin" cx="2487" cy="218" r="4"/>
+<rect class="io-box output" x="2748" y="109" width="24" height="24"/>
+<text class="io-value output" x="2760" y="121">0</text>
+<circle class="pin" cx="2745" cy="121" r="4"/>
+<polygon class="gate" points="2420,78 2474,102 2420,126"/>
+<circle class="gate" cx="2479" cy="102" r="5"/>
+<circle class="pin" cx="2417" cy="102" r="4"/>
+<text class="port-label port-left" x="2425" y="102">a</text>
+<circle class="pin" cx="2487" cy="102" r="4"/>
+<rect class="gate" x="2568" y="87" width="96" height="67" rx="3"/>
+<text class="gate-label" x="2635.2" y="120.5">ADFF</text>
+<circle class="pin" cx="2565" cy="139" r="4"/>
+<text class="port-label port-left" x="2573" y="139">reset</text>
+<circle class="pin" cx="2565" cy="121" r="4"/>
+<text class="port-label port-left" x="2573" y="121">clk</text>
+<circle class="pin" cx="2565" cy="102" r="4"/>
+<text class="port-label port-left" x="2573" y="102">d</text>
+<circle class="pin" cx="2667" cy="121" r="4"/>
+<circle class="pin" cx="2341" cy="190" r="4"/>
+<text class="port-label port-left" x="2349" y="190">clk</text>
+<circle class="pin" cx="2835" cy="145" r="4"/>
+<text class="port-label port-right" x="2827" y="145">q</text>
+<circle class="pin" cx="2341" cy="100" r="4"/>
+<text class="port-label port-left" x="2349" y="100">rst</text>
+<rect class="gate" x="1412" y="361" width="96" height="52" rx="3"/>
+<text class="gate-label" x="1479.2" y="387">CONCAT</text>
+<circle class="pin" cx="1409" cy="397" r="4"/>
+<text class="port-label port-left" x="1417" y="397">a</text>
+<circle class="pin" cx="1409" cy="377" r="4"/>
+<text class="port-label port-left" x="1417" y="377">b</text>
+<circle class="pin" cx="1511" cy="387" r="4"/>
+<rect class="gate" x="2164" y="262" width="96" height="52" rx="3"/>
+<text class="gate-label" x="2231.2" y="288">CONCAT</text>
+<circle class="pin" cx="2161" cy="298" r="4"/>
+<text class="port-label port-left" x="2169" y="298">a</text>
+<circle class="pin" cx="2161" cy="278" r="4"/>
+<text class="port-label port-left" x="2169" y="278">b</text>
+<circle class="pin" cx="2263" cy="288" r="4"/>
+<rect class="gate" x="2916" y="273" width="96" height="52" rx="3"/>
+<text class="gate-label" x="2983.2" y="299">CONCAT</text>
+<circle class="pin" cx="2913" cy="309" r="4"/>
+<text class="port-label port-left" x="2921" y="309">a</text>
+<circle class="pin" cx="2913" cy="289" r="4"/>
+<text class="port-label port-left" x="2921" y="289">b</text>
+<circle class="pin" cx="3015" cy="299" r="4"/></g>
 </svg>

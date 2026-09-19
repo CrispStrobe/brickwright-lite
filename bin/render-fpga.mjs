@@ -2,199 +2,310 @@
 
 import fs from 'fs';
 import path from 'path';
-import { execSync } from 'child_process';
-import { program } from 'commander';
+import {execFileSync} from 'child_process';
+import {program} from 'commander';
 import ELK from 'elkjs';
-import { yosysToModel } from '../overlay/scratch-gui/src/lib/bw-fpga/yosys-to-model.js';
-import { GATE_DEFS } from '../overlay/scratch-gui/src/lib/bw-fpga/gate-builder.js';
+import {yosysToModel} from '../overlay/scratch-gui/src/lib/bw-fpga/yosys-to-model.js';
 
-program
-  .version('1.0.0')
-  .description('Convert Verilog into structured layout (ElkJS JSON) and SVG renderings using the visual FPGA pipeline.')
-  .argument('<input>', 'Input Verilog file (.v)')
-  .option('-o, --output <dir>', 'Output directory', '.')
-  .option('--format <fmt>', 'Output format: json, svg, or both', 'both')
-  .parse(process.argv);
-
-const options = program.opts();
-const inputFile = program.args[0];
-
-if (!fs.existsSync(inputFile)) {
-    console.error(`Error: File ${inputFile} not found.`);
-    process.exit(1);
-}
-
-const basename = path.basename(inputFile, '.v');
-const outDir = options.output;
-if (!fs.existsSync(outDir)) {
-    fs.mkdirSync(outDir, { recursive: true });
-}
-
-// 1. Run Yosys
-console.log(`[1/4] Synthesizing ${inputFile} with Yosys...`);
-const jsonFile = path.join(outDir, `${basename}.json`);
-try {
-    execSync(`yosys -q -p "prep; write_json ${jsonFile}" ${inputFile}`);
-} catch (e) {
-    console.error("Yosys synthesis failed!");
-    process.exit(1);
-}
-
-// 2. Parse into internal model
-console.log(`[2/4] Parsing Yosys netlist into visual graph...`);
-const jsonText = fs.readFileSync(jsonFile, 'utf8');
-const { model, problems } = yosysToModel(jsonText);
-if (problems && problems.length > 0) {
-    console.warn("Parser warnings:", problems);
-}
-console.log(`      Found ${model.nodes.length} nodes and ${model.edges.length} edges.`);
-
-// 3. Layout with ElkJS
-console.log(`[3/4] Running ElkJS auto-layout...`);
+const NODE_WIDTH = 64;
+const IO_SIZE = 24;
+const CHILD_X = 48;
+const CHILD_Y = 44;
+const CHILD_RIGHT = 48;
+const CHILD_BOTTOM = 36;
 const elk = new ELK();
 
-// Approximate node sizing based on React Flow UI
-const nodeH = n => {
-    if (n.kind === 'gate') return 40;
-    if (n.kind === 'io') return 30;
-    if (n.kind === 'instance') return 40 + (n.ports ? n.ports.length * 15 : 0);
-    return 40;
-};
-const NODE_W = 60;
+program
+    .version('1.1.0')
+    .description('Convert Verilog into structured ElkJS layouts and CircuitVerse-style SVGs.')
+    .argument('<input>', 'Input Verilog file (.v)')
+    .option('-o, --output <dir>', 'Output directory', '.')
+    .option('--format <fmt>', 'Output format: json, svg, or both', 'both')
+    .option('--top <module>', 'Top-level Verilog module')
+    .option('--expand-depth <count>', 'Nested module levels to draw inline', value => Number.parseInt(value, 10), 1)
+    .option('--max-expanded-instances <count>', 'Collapse modules containing more instances', value => Number.parseInt(value, 10), 8)
+    .option('--title <text>', 'Diagram title')
+    .parse(process.argv);
 
-const elkGraph = {
-    id: 'root',
+const options = program.opts();
+const inputArgument = program.args[0];
+const inputFile = path.resolve(inputArgument);
+const outDir = path.resolve(options.output);
+
+const xml = value => String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
+
+const titleCase = value => value.replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase());
+
+const port = (id, side, index = 0) => ({
+    id,
+    width: 6,
+    height: 6,
     layoutOptions: {
-        'org.eclipse.elk.algorithm': 'layered',
-        'org.eclipse.elk.direction': 'RIGHT',
-        'org.eclipse.elk.spacing.nodeNode': '20',
-        'org.eclipse.elk.layered.spacing.nodeNodeBetweenLayers': '52',
-        'org.eclipse.elk.portConstraints': 'FIXED_ORDER'
-    },
-    children: model.nodes.map(n => {
-        let ports = [];
-        if (n.kind === 'gate' && GATE_DEFS[n.type]) {
-            const ins = GATE_DEFS[n.type].ins;
-            ports = ins.map((p, i) => ({
-                id: `${n.id}.${p}`,
-                properties: { 'org.eclipse.elk.port.side': 'WEST', 'org.eclipse.elk.port.index': i }
-            }));
-            ports.push({ id: `${n.id}.out`, properties: { 'org.eclipse.elk.port.side': 'EAST', 'org.eclipse.elk.port.index': 0 } });
-        } else if (n.kind === 'instance' && n.ports) {
-            let iIn = 0, iOut = 0;
-            for (const p of n.ports) {
-                if (p.dir === 'input') ports.push({ id: `${n.id}.${p.name}`, properties: { 'org.eclipse.elk.port.side': 'WEST', 'org.eclipse.elk.port.index': iIn++ } });
-                else ports.push({ id: `${n.id}.${p.name}`, properties: { 'org.eclipse.elk.port.side': 'EAST', 'org.eclipse.elk.port.index': iOut++ } });
-            }
-        } else {
-            // generic IN/OUT, CONST etc
-            ports.push({ id: `${n.id}.in`, properties: { 'org.eclipse.elk.port.side': 'WEST' } });
-            ports.push({ id: `${n.id}.out`, properties: { 'org.eclipse.elk.port.side': 'EAST' } });
-        }
+        'org.eclipse.elk.port.side': side,
+        'org.eclipse.elk.port.index': String(index)
+    }
+});
 
-        return {
-            id: n.id,
-            type: n.type || n.kind,
-            label: n.type || n.kind,
-            width: NODE_W,
-            height: nodeH(n),
-            properties: {
-                'org.eclipse.elk.portConstraints': 'FIXED_SIDE'
-            },
-            ports
-        };
-    }),
-    edges: model.edges.map((e, i) => {
-        // Fallback to out/in if port doesn't exist
-        const sp = e.from.port || 'out';
-        const tp = e.to.port || 'in';
-        return {
-            id: `e${i}`,
-            sources: [`${e.from.node}.${sp}`],
-            targets: [`${e.to.node}.${tp}`]
-        };
-    })
+const gateHeight = node => Math.max(48, 22 + (node.inputPorts?.length || 0) * 15);
+
+const gateWidth = node => ['and', 'or', 'xor', 'not', 'mux', 'pmux'].includes(node.type) ? NODE_WIDTH : 96;
+
+const nodePorts = node => {
+    if (node.kind === 'in' || node.kind === 'const') return [port(`${node.id}.out`, 'EAST')];
+    if (node.kind === 'out') return [port(`${node.id}.in`, 'WEST')];
+    if (node.kind === 'instance') {
+        let inputIndex = 0;
+        let outputIndex = 0;
+        return (node.ports || []).map(item => item.dir === 'in' ?
+            port(`${node.id}.${item.name}`, 'WEST', inputIndex++) :
+            port(`${node.id}.${item.name}`, 'EAST', outputIndex++));
+    }
+    const inputs = node.inputPorts || [];
+    return [
+        ...inputs.map((name, index) => port(`${node.id}.${name}`, 'WEST', index)),
+        port(`${node.id}.out`, 'EAST')
+    ];
 };
 
-elk.layout(elkGraph).then(layoutedGraph => {
-    console.log(`[4/4] Generating outputs...`);
-    
+const layoutOptions = {
+    'org.eclipse.elk.algorithm': 'layered',
+    'org.eclipse.elk.direction': 'RIGHT',
+    'org.eclipse.elk.spacing.nodeNode': '28',
+    'org.eclipse.elk.layered.spacing.nodeNodeBetweenLayers': '72',
+    'org.eclipse.elk.edgeRouting': 'ORTHOGONAL',
+    'org.eclipse.elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX'
+};
+
+async function layoutModule (moduleName, models, depth, maxExpandedInstances, ancestors = []) {
+    const model = models[moduleName];
+    if (!model) return null;
+    const usedNodes = new Set(model.edges.flatMap(edge => [edge.from.node, edge.to.node]));
+    const nodes = model.nodes.filter(node => node.kind !== 'const' || usedNodes.has(node.id));
+    const childLayouts = new Map();
+    const expandableInstances = nodes.filter(node => node.kind === 'instance' && models[node.module]);
+
+    for (const node of nodes) {
+        if (node.kind !== 'instance' || depth <= 0 || !models[node.module] || ancestors.includes(node.module) ||
+            expandableInstances.length > maxExpandedInstances) continue;
+        childLayouts.set(node.id, await layoutModule(
+            node.module, models, depth - 1, maxExpandedInstances, [...ancestors, moduleName]
+        ));
+    }
+
+    const graph = {
+        id: moduleName,
+        layoutOptions,
+        children: nodes.map(node => {
+            const childLayout = childLayouts.get(node.id);
+            let width = gateWidth(node);
+            let height = gateHeight(node);
+            if (node.kind === 'in' || node.kind === 'out' || node.kind === 'const') width = height = IO_SIZE;
+            if (node.kind === 'instance') {
+                width = childLayout ? childLayout.width + CHILD_X + CHILD_RIGHT : 136;
+                height = childLayout ? childLayout.height + CHILD_Y + CHILD_BOTTOM :
+                    Math.max(70, 42 + Math.max(1, node.ports?.length || 0) * 14);
+            }
+            return {
+                id: node.id,
+                width,
+                height,
+                ports: nodePorts(node),
+                layoutOptions: {'org.eclipse.elk.portConstraints': 'FIXED_ORDER'},
+                kind: node.kind,
+                type: node.type,
+                name: node.name,
+                module: node.module,
+                value: node.value,
+                inputPorts: node.inputPorts,
+                expanded: Boolean(childLayout)
+            };
+        }),
+        edges: model.edges
+            .filter(edge => usedNodes.has(edge.from.node) && usedNodes.has(edge.to.node))
+            .map((edge, index) => ({
+                id: `edge_${index}`,
+                sources: [`${edge.from.node}.${edge.from.port || 'out'}`],
+                targets: [`${edge.to.node}.${edge.to.port || 'in'}`]
+            }))
+    };
+
+    const result = await elk.layout(graph);
+    for (const node of result.children || []) {
+        if (childLayouts.has(node.id)) node.childLayout = childLayouts.get(node.id);
+    }
+    return result;
+}
+
+const pointPath = section => {
+    const points = [section.startPoint, ...(section.bendPoints || []), section.endPoint];
+    return points.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' ');
+};
+
+const findPort = (node, name) => (node.ports || []).find(item => item.id.endsWith(`.${name}`));
+
+const gateShape = node => {
+    const {x, y, width, height} = node;
+    const centerX = x + width / 2;
+    const centerY = y + height / 2;
+    if (node.type === 'and') {
+        return `<path class="gate" d="M ${x} ${y} L ${centerX} ${y} A ${width / 2} ${height / 2} 0 0 1 ${centerX} ${y + height} L ${x} ${y + height} Z"/>`;
+    }
+    if (node.type === 'or' || node.type === 'xor') {
+        const body = `<path class="gate" d="M ${x + 6} ${y} Q ${x + width * .34} ${centerY} ${x + 6} ${y + height} Q ${x + width * .68} ${y + height} ${x + width} ${centerY} Q ${x + width * .68} ${y} ${x + 6} ${y} Z"/>`;
+        return node.type === 'xor' ? `${body}<path class="gate-line" d="M ${x} ${y} Q ${x + width * .28} ${centerY} ${x} ${y + height}"/>` : body;
+    }
+    if (node.type === 'not') {
+        return `<polygon class="gate" points="${x},${y} ${x + width - 10},${centerY} ${x},${y + height}"/><circle class="gate" cx="${x + width - 5}" cy="${centerY}" r="5"/>`;
+    }
+    if (node.type === 'mux' || node.type === 'pmux') {
+        return `<polygon class="gate" points="${x},${y} ${x + width},${y + 9} ${x + width},${y + height - 9} ${x},${y + height}"/>`;
+    }
+    return `<rect class="gate" x="${x}" y="${y}" width="${width}" height="${height}" rx="3"/><text class="gate-label" x="${x + width * .7}" y="${centerY}">${xml((node.type || 'gate').toUpperCase())}</text>`;
+};
+
+function renderPorts (node, offsetX, offsetY, showLabels) {
+    return (node.ports || []).map(item => {
+        const x = offsetX + node.x + item.x + item.width / 2;
+        const y = offsetY + node.y + item.y + item.height / 2;
+        const name = item.id.slice(item.id.lastIndexOf('.') + 1);
+        const isLeft = item.x < node.width / 2;
+        const label = showLabels && name !== 'in' && name !== 'out' ?
+            `<text class="port-label ${isLeft ? 'port-left' : 'port-right'}" x="${x + (isLeft ? 8 : -8)}" y="${y}">${xml(name)}</text>` : '';
+        return `<circle class="pin" cx="${x}" cy="${y}" r="4"/>${label}`;
+    }).join('');
+}
+
+function renderBridgeWires (node, offsetX, offsetY) {
+    if (!node.childLayout) return '';
+    const childOffsetX = offsetX + node.x + CHILD_X;
+    const childOffsetY = offsetY + node.y + CHILD_Y;
+    return (node.ports || []).map(outerPort => {
+        const name = outerPort.id.slice(outerPort.id.lastIndexOf('.') + 1);
+        const childNode = (node.childLayout.children || []).find(item => item.name === name &&
+            (item.kind === 'in' || item.kind === 'out'));
+        if (!childNode) return '';
+        const innerPort = findPort(childNode, childNode.kind === 'in' ? 'out' : 'in');
+        if (!innerPort) return '';
+        const start = {
+            x: offsetX + node.x + outerPort.x + outerPort.width / 2,
+            y: offsetY + node.y + outerPort.y + outerPort.height / 2
+        };
+        const end = {
+            x: childOffsetX + childNode.x + innerPort.x + innerPort.width / 2,
+            y: childOffsetY + childNode.y + innerPort.y + innerPort.height / 2
+        };
+        const middleX = (start.x + end.x) / 2;
+        return `<path class="wire bridge" d="M ${start.x} ${start.y} L ${middleX} ${start.y} L ${middleX} ${end.y} L ${end.x} ${end.y}"/>`;
+    }).join('');
+}
+
+function renderGraph (graph, offsetX = 0, offsetY = 0, nested = false) {
+    let output = '';
+    for (const edge of graph.edges || []) {
+        for (const section of edge.sections || []) {
+            const shifted = {
+                startPoint: {x: section.startPoint.x + offsetX, y: section.startPoint.y + offsetY},
+                bendPoints: (section.bendPoints || []).map(point => ({x: point.x + offsetX, y: point.y + offsetY})),
+                endPoint: {x: section.endPoint.x + offsetX, y: section.endPoint.y + offsetY}
+            };
+            output += `<path class="wire" d="${pointPath(shifted)}"/>`;
+        }
+    }
+
+    for (const node of graph.children || []) {
+        const x = offsetX + node.x;
+        const y = offsetY + node.y;
+        const centerX = x + node.width / 2;
+        const centerY = y + node.height / 2;
+        if (node.kind === 'in' || node.kind === 'out' || node.kind === 'const') {
+            const isOutput = node.kind === 'out';
+            const value = node.kind === 'const' ? node.value : 0;
+            output += `<rect class="io-box${isOutput ? ' output' : ''}" x="${x}" y="${y}" width="${node.width}" height="${node.height}"/>`;
+            output += `<text class="io-value${isOutput ? ' output' : ''}" x="${centerX}" y="${centerY}">${xml(value)}</text>`;
+            if (node.kind !== 'const' && !nested) {
+                output += `<text class="io-label ${isOutput ? 'right' : 'left'}" x="${isOutput ? x + node.width + 12 : x - 12}" y="${centerY}">${xml(node.name)}</text>`;
+            }
+            output += renderPorts(node, offsetX, offsetY, false);
+        } else if (node.kind === 'instance') {
+            output += `<rect class="module${node.expanded ? ' expanded' : ''}" x="${x}" y="${y}" width="${node.width}" height="${node.height}" rx="4"/>`;
+            output += `<text class="module-title" x="${centerX}" y="${y + 21}">${xml(titleCase(node.module))}</text>`;
+            if (node.name) output += `<text class="instance-name" x="${centerX}" y="${y + 36}">${xml(node.name)}</text>`;
+            output += renderBridgeWires(node, offsetX, offsetY);
+            if (node.childLayout) output += renderGraph(node.childLayout, x + CHILD_X, y + CHILD_Y, true);
+            output += renderPorts(node, offsetX, offsetY, true);
+        } else {
+            output += gateShape({...node, x, y});
+            output += renderPorts(node, offsetX, offsetY, true);
+        }
+    }
+    return output;
+}
+
+function toSvg (layout, title) {
+    const left = 110;
+    const right = 130;
+    const top = 84;
+    const bottom = 48;
+    const width = Math.ceil(layout.width + left + right);
+    const height = Math.ceil(layout.height + top + bottom);
+    const body = renderGraph(layout).replaceAll('><', '>\n<');
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+<style>
+.canvas{fill:#fff}.gate,.module,.io-box{fill:#fff;stroke:#000;stroke-width:4}.module.expanded{fill:#fafafa;stroke-dasharray:8 6}.wire{fill:none;stroke:#087f23;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.bridge{stroke:#83ea91}.gate-line{fill:none;stroke:#000;stroke-width:4;stroke-linecap:round}.pin{fill:#087f23}.io-box.output{stroke:#101cff}.io-value{font:700 20px Arial,sans-serif;fill:#087f23;text-anchor:middle;dominant-baseline:middle}.io-value.output{fill:#087f23}.title{font:28px Arial,sans-serif;fill:#111;text-anchor:middle}.io-label{font:20px Arial,sans-serif;fill:#111;dominant-baseline:middle}.io-label.left{text-anchor:end}.io-label.right{text-anchor:start}.module-title{font:18px Arial,sans-serif;fill:#111;text-anchor:middle}.instance-name{font:12px Arial,sans-serif;fill:#666;text-anchor:middle}.gate-label{font:700 12px Arial,sans-serif;fill:#111;text-anchor:middle;dominant-baseline:middle}.port-label{font:12px Arial,sans-serif;fill:#111;dominant-baseline:middle}.port-left{text-anchor:start}.port-right{text-anchor:end}
+</style>
+<rect class="canvas" width="100%" height="100%"/>
+<text class="title" x="${width / 2}" y="42">${xml(title)}</text>
+<g transform="translate(${left} ${top})">${body}</g>
+</svg>
+`;
+}
+
+async function main () {
+    if (!fs.existsSync(inputFile)) throw new Error(`Input file not found: ${inputFile}`);
+    if (!['json', 'svg', 'both'].includes(options.format)) throw new Error('--format must be json, svg, or both');
+    if (!Number.isInteger(options.expandDepth) || options.expandDepth < 0) throw new Error('--expand-depth must be a non-negative integer');
+    if (!Number.isInteger(options.maxExpandedInstances) || options.maxExpandedInstances < 0) {
+        throw new Error('--max-expanded-instances must be a non-negative integer');
+    }
+    if (options.top && !/^[A-Za-z_][A-Za-z0-9_$]*$/.test(options.top)) {
+        throw new Error('--top must be a plain Verilog module identifier');
+    }
+    fs.mkdirSync(outDir, {recursive: true});
+
+    const basename = path.basename(inputFile, path.extname(inputFile));
+    const jsonFile = path.join(outDir, `${basename}.json`);
+    const topCommand = options.top ? ` -top ${options.top}` : ' -auto-top';
+    console.log(`[1/4] Synthesizing ${inputFile} with Yosys...`);
+    execFileSync('yosys', ['-q', '-p', `hierarchy${topCommand}; prep; write_json ${JSON.stringify(jsonFile)}`, inputArgument], {stdio: 'inherit'});
+
+    console.log('[2/4] Parsing Yosys netlist into visual graph...');
+    const parsed = yosysToModel(fs.readFileSync(jsonFile, 'utf8'), {topModule: options.top});
+    if (parsed.problems.length) console.warn('Parser warnings:', parsed.problems);
+    console.log(`      Top ${parsed.topModName}: ${parsed.model.nodes.length} nodes, ${parsed.model.edges.length} edges.`);
+
+    console.log('[3/4] Running ElkJS auto-layout...');
+    const layout = await layoutModule(
+        parsed.topModName, parsed.models, options.expandDepth, options.maxExpandedInstances
+    );
+    console.log('[4/4] Generating outputs...');
     if (options.format === 'json' || options.format === 'both') {
         const layoutFile = path.join(outDir, `${basename}_layout.json`);
-        fs.writeFileSync(layoutFile, JSON.stringify(layoutedGraph, null, 2));
+        fs.writeFileSync(layoutFile, JSON.stringify(layout, null, 2));
         console.log(`      Saved structured layout to ${layoutFile}`);
     }
-
     if (options.format === 'svg' || options.format === 'both') {
-        
-        // Better SVG generation from ELK JSON
-        let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${layoutedGraph.width + 100}" height="${layoutedGraph.height + 100}">\n`;
-        svg += `<style>
-            .gate { fill: #f8f9fa; stroke: #343a40; stroke-width: 2px; }
-            .wire { fill: none; stroke: #495057; stroke-width: 2px; stroke-linejoin: round; }
-            .label { font-family: sans-serif; font-size: 10px; fill: #212529; text-anchor: middle; dominant-baseline: middle; }
-            .pin { fill: #495057; }
-            .port-label { font-family: sans-serif; font-size: 7px; fill: #6c757d; }
-        </style>\n`;
-        svg += `<g transform="translate(50, 50)">\n`;
-        
-        for (const e of layoutedGraph.edges || []) {
-            if (e.sections && e.sections.length > 0) {
-                const s = e.sections[0];
-                let d = `M ${s.startPoint.x} ${s.startPoint.y} `;
-                for (const p of s.bendPoints || []) {
-                    d += `L ${p.x} ${p.y} `;
-                }
-                d += `L ${s.endPoint.x} ${s.endPoint.y}`;
-                svg += `  <path class="wire" d="${d}" />\n`;
-            }
-        }
-        
-        for (const n of layoutedGraph.children) {
-            const cx = n.x + n.width / 2;
-            const cy = n.y + n.height / 2;
-            if (n.type === 'and') {
-                svg += `  <path class="gate" d="M ${n.x} ${n.y} L ${n.x + n.width/2} ${n.y} A ${n.width/2} ${n.height/2} 0 0 1 ${n.x + n.width/2} ${n.y + n.height} L ${n.x} ${n.y + n.height} Z" />\n`;
-                svg += `  <text class="label" x="${cx - 5}" y="${cy}">AND</text>\n`;
-            } else if (n.type === 'or') {
-                svg += `  <path class="gate" d="M ${n.x} ${n.y} Q ${n.x + n.width*0.3} ${cy} ${n.x} ${n.y + n.height} Q ${n.x + n.width*0.6} ${n.y + n.height} ${n.x + n.width} ${cy} Q ${n.x + n.width*0.6} ${n.y} ${n.x} ${n.y} Z" />\n`;
-                svg += `  <text class="label" x="${cx - 5}" y="${cy}">OR</text>\n`;
-            } else if (n.type === 'not') {
-                svg += `  <polygon class="gate" points="${n.x},${n.y} ${n.x + n.width - 8},${cy} ${n.x},${n.y + n.height}" />\n`;
-                svg += `  <circle class="gate" cx="${n.x + n.width - 4}" cy="${cy}" r="4" />\n`;
-            } else if (n.type === 'xor') {
-                svg += `  <path class="gate" d="M ${n.x + 4} ${n.y} Q ${n.x + n.width*0.3 + 4} ${cy} ${n.x + 4} ${n.y + n.height} Q ${n.x + n.width*0.6} ${n.y + n.height} ${n.x + n.width} ${cy} Q ${n.x + n.width*0.6} ${n.y} ${n.x + 4} ${n.y} Z" />\n`;
-                svg += `  <path class="wire" d="M ${n.x} ${n.y} Q ${n.x + n.width*0.3} ${cy} ${n.x} ${n.y + n.height}" />\n`;
-                svg += `  <text class="label" x="${cx - 5}" y="${cy}">XOR</text>\n`;
-            } else if (n.type === 'dff') {
-                svg += `  <rect class="gate" x="${n.x}" y="${n.y}" width="${n.width}" height="${n.height}" />\n`;
-                svg += `  <polygon class="wire" points="${n.x},${n.y + n.height - 15} ${n.x + 10},${n.y + n.height - 10} ${n.x},${n.y + n.height - 5}" />\n`;
-                svg += `  <text class="label" x="${cx}" y="${cy - 5}">DFF</text>\n`;
-            } else if (n.type === 'mux') {
-                svg += `  <polygon class="gate" points="${n.x},${n.y} ${n.x + n.width},${n.y + 10} ${n.x + n.width},${n.y + n.height - 10} ${n.x},${n.y + n.height}" />\n`;
-                svg += `  <text class="label" x="${cx}" y="${cy}">MUX</text>\n`;
-            } else {
-                svg += `  <rect class="gate" rx="3" x="${n.x}" y="${n.y}" width="${n.width}" height="${n.height}" />\n`;
-                svg += `  <text class="label" x="${cx}" y="${cy}">${n.type ? n.type.toUpperCase() : n.id}</text>\n`;
-            }
-
-            // Draw Ports
-            for (const p of (n.ports || [])) {
-                svg += `  <circle class="pin" cx="${n.x + p.x}" cy="${n.y + p.y}" r="2" />\n`;
-                const label = p.id.split('.').pop();
-                if (label !== 'in' && label !== 'out') {
-                    if (p.x === 0) svg += `  <text class="port-label" x="${n.x + 4}" y="${n.y + p.y + 3}">${label}</text>\n`;
-                    else svg += `  <text class="port-label" x="${n.x + n.width - 4}" y="${n.y + p.y + 3}" text-anchor="end">${label}</text>\n`;
-                }
-            }
-        }
-        svg += `</g>\n</svg>\n`;
-
         const svgFile = path.join(outDir, `${basename}.svg`);
-        fs.writeFileSync(svgFile, svg);
+        fs.writeFileSync(svgFile, toSvg(layout, options.title || titleCase(parsed.topModName)));
         console.log(`      Saved rendering to ${svgFile}`);
     }
-    
-    console.log("Done!");
-}).catch(console.error);
+    console.log('Done!');
+}
 
+main().catch(error => {
+    console.error(error.message || error);
+    process.exitCode = 1;
+});

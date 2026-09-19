@@ -21,6 +21,7 @@
 export const GATE_DEFS = {
     add: {label: 'ADD', glyph: '+', ins: ['a', 'b'], expr: n => `${n.a} + ${n.b}`},
     sub: {label: 'SUB', glyph: '-', ins: ['a', 'b'], expr: n => `${n.a} - ${n.b}`},
+    mul: {label: 'MUL', glyph: '*', ins: ['a', 'b'], expr: n => `${n.a} * ${n.b}`},
     mux: {label: 'MUX', glyph: '?', ins: ['sel', 'd0', 'd1'], expr: n => `${n.sel} ? ${n.d1} : ${n.d0}`},
     and: {label: 'AND', glyph: '&', ins: ['a', 'b'], expr: n => `${n.a} & ${n.b}`},
     or: {label: 'OR', glyph: '≥1', ins: ['a', 'b'], expr: n => `${n.a} | ${n.b}`},
@@ -29,6 +30,16 @@ export const GATE_DEFS = {
     nor: {label: 'NOR', glyph: '≥1', ins: ['a', 'b'], inverting: true, expr: n => `~(${n.a} | ${n.b})`},
     xnor: {label: 'XNOR', glyph: '=1', ins: ['a', 'b'], inverting: true, expr: n => `~(${n.a} ^ ${n.b})`},
     not: {label: 'NOT', glyph: '1', ins: ['a'], inverting: true, expr: n => `~${n.a}`},
+    eq: {label: 'EQ', glyph: '==', ins: ['a', 'b'], expr: n => `${n.a} == ${n.b}`},
+    neq: {label: 'NEQ', glyph: '!=', ins: ['a', 'b'], expr: n => `${n.a} != ${n.b}`},
+    lt: {label: 'LT', glyph: '<', ins: ['a', 'b'], expr: n => `${n.a} < ${n.b}`},
+    gt: {label: 'GT', glyph: '>', ins: ['a', 'b'], expr: n => `${n.a} > ${n.b}`},
+    lte: {label: 'LTE', glyph: '<=', ins: ['a', 'b'], expr: n => `${n.a} <= ${n.b}`},
+    gte: {label: 'GTE', glyph: '>=', ins: ['a', 'b'], expr: n => `${n.a} >= ${n.b}`},
+    shl: {label: 'SHL', glyph: '<<', ins: ['a', 'b'], expr: n => `${n.a} << ${n.b}`},
+    shr: {label: 'SHR', glyph: '>>', ins: ['a', 'b'], expr: n => `${n.a} >> ${n.b}`},
+    concat: {label: 'CONCAT', glyph: '{}', ins: ['a', 'b'], expr: n => `{${n.a}, ${n.b}}`},
+    slice: {label: 'SLICE', glyph: '[:]', ins: ['in'], expr: (n, g) => `${n.in}[${g.hi || 0}:${g.lo || 0}]`},
     dff: {label: 'DFF', glyph: 'DFF', ins: ['d', 'clk'], seq: true}
 };
 
@@ -149,7 +160,7 @@ function emitModule (def, name, moduleDefs, problems) {
         for (const port of gd.ins) n[port] = tieLow(g.id, port, `${gd.label} gate`);
         const w = g.width || 1;
         lines.push(`  ${w > 1 ? `wire [${w - 1}:0] w_${g.id};` : `wire w_${g.id};`}`);
-        lines.push(`  assign w_${g.id} = ${gd.expr(n)};`);
+        lines.push(`  assign w_${g.id} = ${gd.expr(n, g)};`);
     }
     for (const g of gates.filter(x => GATE_DEFS[x.type] && GATE_DEFS[x.type].seq)) {
         const d = tieLow(g.id, 'd', 'Flip-flop');

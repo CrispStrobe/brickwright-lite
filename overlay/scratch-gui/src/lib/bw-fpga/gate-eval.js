@@ -19,10 +19,21 @@ import {GATE_DEFS, hasOutput} from './gate-builder.js';
 const OPS = {
     add: (a, b) => a + b,
     sub: (a, b) => a - b,
+    mul: (a, b) => a * b,
     mux: (sel, d0, d1) => sel ? d1 : d0,
     and: (a, b) => a & b, or: (a, b) => a | b, xor: (a, b) => a ^ b,
     nand: (a, b) => ~(a & b), nor: (a, b) => ~(a | b), xnor: (a, b) => ~(a ^ b),
-    not: a => ~a
+    not: a => ~a,
+    eq: (a, b) => a === b ? 1 : 0,
+    neq: (a, b) => a !== b ? 1 : 0,
+    lt: (a, b) => a < b ? 1 : 0,
+    gt: (a, b) => a > b ? 1 : 0,
+    lte: (a, b) => a <= b ? 1 : 0,
+    gte: (a, b) => a >= b ? 1 : 0,
+    shl: (a, b) => a << b,
+    shr: (a, b) => a >> b,
+    concat: (a, b, w, g) => (a << (g.widthB || 0)) | b,
+    slice: (inVal, w, g) => (inVal >> (g.lo || 0)) & ((1 << ((g.hi || 0) - (g.lo || 0) + 1)) - 1)
 };
 
 /** Map every sink port `${node}.${port}` to the node id that drives it. */
@@ -79,7 +90,7 @@ export function evalModel (model, inputs = {}, dffState = {}) {
         for (const g of comb) {
             const def = GATE_DEFS[g.type];
             const args = def.ins.map(port => netInto(g.id, port));
-            const vUnmasked = args.some(a => a === 'x') ? 'x' : OPS[g.type](...args);
+            const vUnmasked = args.some(a => a === 'x') ? 'x' : OPS[g.type](...args, g.width, g);
             const w = g.width || 1;
             const v = vUnmasked === 'x' ? 'x' : (w >= 32 ? Number(BigInt(vUnmasked) & ((1n << BigInt(w)) - 1n)) : (vUnmasked & ((1 << w) - 1)) >>> 0);
             if (values[g.id] !== v) { values[g.id] = v; changed = true; }
