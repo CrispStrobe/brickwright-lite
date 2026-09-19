@@ -22,6 +22,7 @@ export const REQUIRED_BW_BOARD_JOBS = Object.freeze({
         'The vectors are actually here',
         'MOO reader agrees with the JSON encoding',
         '8086 core — all 646,000 vectors',
+        'FAST 286 real-mode — 200 vectors from every opcode file',
         '8086 disassembler — all 646,000, on text and length'
     ],
     corpus: [

@@ -51,12 +51,18 @@ test('a later failed rerun does not erase an earlier valid immutable-SHA receipt
 });
 
 test('refuses a wrong SHA or a missing, duplicate, skipped, or hollow required job', async t => {
+    const failedVectorStep = successfulJobs().map(job => job.name !== 'vectors' ? job : {
+        ...job,
+        steps: job.steps.map(step => step.name !== 'FAST 286 real-mode — 200 vectors from every opcode file'
+            ? step : {...step, conclusion: 'failure'})
+    });
     const cases = {
         'wrong job SHA': successfulJobs().map((job, i) => i ? job : {...job, head_sha: 'b'.repeat(40)}),
         'missing job': successfulJobs().slice(1),
         'duplicate job': [...successfulJobs(), successfulJobs()[0]],
         'skipped job': successfulJobs().map((job, i) => i ? job : {...job, conclusion: 'skipped'}),
-        'missing step': successfulJobs().map((job, i) => i ? job : {...job, steps: []})
+        'missing step': successfulJobs().map((job, i) => i ? job : {...job, steps: []}),
+        'failed FAST 286 step': failedVectorStep
     };
     for (const [name, jobs] of Object.entries(cases)) {
         await t.test(name, async () => {
