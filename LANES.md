@@ -431,6 +431,8 @@ keeping, it is worth a branch.
 
 ## CLAIMS — work in progress
 
+| FPGA unknown-state correctness and RAM canvas integration | Astra coordinator / Sol fpga, session astra-sept19 | `lane/astra-fpga-consolidation`; `/mnt/volume1/code/lego/wt-astra-fpga-consolidation`; base `0435b0336` | **CLAIMED 2026-09-19.** Reconcile open PR194 additively on current main: fpga-gate-builder-rf.jsx, gate-builder-rf.js, gate-eval.js and focused FPGA tests/probe. Preserve hierarchy ports and localization; fix captured unknown propagation; qualify RAM canvas/model/codegen with honest simulation limits. PR194 remains intact for attribution; no package pins, USB helper or other active lane paths. |
+
 | FPGA read-only USB protocol identification | Astra coordinator / Sol hardware, session astra-sept19 | `lane/astra-usb-identification`; `/mnt/volume1/code/lego/wt-astra-usb-identification`; base `1a48f9212` | **CLAIMED 2026-09-19.** Lite bw-fpga usb-identification.js / webusb-flash.js, focused USB identification tests and docs/TANG-NANO.md hardware milestone. Read-only granted-device descriptor capture and honest protocol classification; no device open, interface claim, flashing, physical-silicon inference, package pins or canvas edits. |
 
 | September 19 plan reconciliation | Astra coordinator / Sol planning, session astra-sept19 | `lane/astra-sept19-plan`; `/mnt/volume1/code/lego/wt-astra-sept19-plan`; base `97b68e5f4` | **CLAIMED 2026-09-19.** PLAN.md next-session priorities and docs/UPSTREAM-WIP.md only: reconcile installed packages, FPGA consolidation, hardware milestone and purposeful exact-SHA adoption. No package pins or overlap with consolidated circuit package refresh. |
