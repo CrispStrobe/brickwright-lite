@@ -72,14 +72,23 @@ const nodePorts = node => {
     ];
 };
 
-const layoutOptions = {
+// NETWORK_SIMPLEX gives the tightest placement but is super-linear and
+// recurses deeply — on big graphs it takes minutes or overflows the stack.
+// Above a size threshold we switch to BRANDES_KOEPF with minimal thoroughness,
+// which lays the same graphs out in a few seconds without crashing.
+const FAST_LAYOUT_ABOVE = 120;
+// Above this the graph is a whole subsystem/CPU: no legible one-page schematic
+// exists and layout cost explodes, so we draw a summary card instead.
+const HARD_LAYOUT_CAP = 1200;
+const layoutOptionsFor = count => ({
     'org.eclipse.elk.algorithm': 'layered',
     'org.eclipse.elk.direction': 'RIGHT',
     'org.eclipse.elk.spacing.nodeNode': '28',
-    'org.eclipse.elk.layered.spacing.nodeNodeBetweenLayers': '72',
+    'org.eclipse.elk.layered.spacing.nodeNodeBetweenLayers': count > FAST_LAYOUT_ABOVE ? '48' : '72',
     'org.eclipse.elk.edgeRouting': 'ORTHOGONAL',
-    'org.eclipse.elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX'
-};
+    'org.eclipse.elk.layered.nodePlacement.strategy': count > FAST_LAYOUT_ABOVE ? 'BRANDES_KOEPF' : 'NETWORK_SIMPLEX',
+    ...(count > FAST_LAYOUT_ABOVE ? {'org.eclipse.elk.layered.thoroughness': '1'} : {})
+});
 
 async function layoutModule (moduleName, models, depth, maxExpandedInstances, ancestors = []) {
     const model = models[moduleName];
@@ -99,7 +108,7 @@ async function layoutModule (moduleName, models, depth, maxExpandedInstances, an
 
     const graph = {
         id: moduleName,
-        layoutOptions,
+        layoutOptions: layoutOptionsFor(nodes.length),
         children: nodes.map(node => {
             const childLayout = childLayouts.get(node.id);
             let width = gateWidth(node);
@@ -287,6 +296,22 @@ function toSvg (layout, title) {
 `;
 }
 
+function placeholderSvg (title, count) {
+    const width = 660;
+    const height = 240;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+<style>
+.canvas{fill:#fff;stroke:#ccc;stroke-width:2}.title{font:28px Arial,sans-serif;fill:#111;text-anchor:middle}.big{font:700 40px Arial,sans-serif;fill:#087f23;text-anchor:middle}.note{font:16px Arial,sans-serif;fill:#555;text-anchor:middle}
+</style>
+<rect class="canvas" x="1" y="1" width="${width - 2}" height="${height - 2}" rx="8"/>
+<text class="title" x="${width / 2}" y="58">${xml(title)}</text>
+<text class="big" x="${width / 2}" y="128">${count} cells</text>
+<text class="note" x="${width / 2}" y="168">Too large to draw as one legible schematic.</text>
+<text class="note" x="${width / 2}" y="194">Render a sub-module (--top) for detail.</text>
+</svg>
+`;
+}
+
 async function main () {
     if (!fs.existsSync(inputFile)) throw new Error(`Input file not found: ${inputFile}`);
     if (!['json', 'svg', 'both'].includes(options.format)) throw new Error('--format must be json, svg, or both');
@@ -321,20 +346,35 @@ async function main () {
     console.log(`      Top ${parsed.topModName}: ${parsed.model.nodes.length} nodes, ${parsed.model.edges.length} edges.`);
 
     console.log('[3/4] Running ElkJS auto-layout...');
-    const layout = await layoutModule(
-        parsed.topModName, parsed.models, options.expandDepth, options.maxExpandedInstances
-    );
+    // A whole-CPU netlist (thousands of cells) has no legible single-page
+    // schematic and costs minutes to lay out — emit an honest summary instead
+    // of a giant unreadable canvas, and never crash on it.
+    const nodeCount = parsed.model.nodes.length;
+    let layout = null;
+    if (nodeCount > HARD_LAYOUT_CAP) {
+        console.warn(`      ${parsed.topModName} has ${nodeCount} cells (> ${HARD_LAYOUT_CAP}); emitting a summary placeholder — drill into a sub-module for detail.`);
+    } else {
+        try {
+            layout = await layoutModule(
+                parsed.topModName, parsed.models, options.expandDepth, options.maxExpandedInstances
+            );
+        } catch (error) {
+            console.warn(`      Auto-layout could not place this graph (${error.message || error}); emitting a summary placeholder.`);
+            layout = null;
+        }
+    }
+    const diagramTitle = options.title || titleCase(parsed.topModName);
     console.log('[4/4] Generating outputs...');
     if (options.format === 'json' || options.format === 'both') {
         const layoutFile = path.join(outDir, `${basename}_layout.json`);
         if (path.resolve(layoutFile) === inputFile) throw new Error('Layout output would overwrite the input netlist');
-        fs.writeFileSync(layoutFile, JSON.stringify(layout, null, 2));
+        fs.writeFileSync(layoutFile, JSON.stringify(layout || {tooLarge: true, cells: nodeCount, module: parsed.topModName}, null, 2));
         console.log(`      Saved structured layout to ${layoutFile}`);
     }
     if (options.format === 'svg' || options.format === 'both') {
         const svgFile = path.join(outDir, `${basename}.svg`);
         if (path.resolve(svgFile) === inputFile) throw new Error('SVG output would overwrite the input netlist');
-        fs.writeFileSync(svgFile, toSvg(layout, options.title || titleCase(parsed.topModName)));
+        fs.writeFileSync(svgFile, layout ? toSvg(layout, diagramTitle) : placeholderSvg(diagramTitle, nodeCount));
         console.log(`      Saved rendering to ${svgFile}`);
     }
     console.log('Done!');

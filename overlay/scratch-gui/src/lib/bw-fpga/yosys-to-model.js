@@ -94,8 +94,11 @@ const parseModule = mod => {
         }
     }
 
+    const resolveCache = new Map();
     const resolveBits = bits => {
         if (!bits || bits.length === 0) return null;
+        const key = bits.join(',');
+        if (resolveCache.has(key)) return resolveCache.get(key);
         const runs = [];
         let currentRun = null;
 
@@ -139,6 +142,7 @@ const parseModule = mod => {
             edges.push({from: result, to: {node: id, port: 'b'}});
             result = {node: id, port: 'out', width: high.width + result.width};
         }
+        resolveCache.set(key, result);
         return result;
     };
 
