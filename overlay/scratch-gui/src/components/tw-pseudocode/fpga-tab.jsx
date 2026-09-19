@@ -5,6 +5,7 @@ import {parseCst, emitCst} from '../../lib/bw-fpga/cst.js';
 import {bridge, constraintsFromBindings} from '../../lib/bw-fpga/port-bridge.js';
 import {applyPortValues} from '../../lib/bw-fpga/drive.js';
 import {verilogToModel} from '../../lib/bw-fpga/verilog-to-model.js';
+import {yosysToModel} from '../../lib/bw-fpga/yosys-to-model.js';
 import {EXAMPLES} from '../../lib/bw-fpga/examples.js';
 import {buildDemoBoard} from '../../lib/bw-fpga/demo-board.js';
 import {readPorts, checkWidths, detectClockPort} from '../../lib/bw-fpga/yosys.js';
