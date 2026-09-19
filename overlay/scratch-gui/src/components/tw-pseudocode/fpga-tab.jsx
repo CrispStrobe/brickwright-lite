@@ -87,6 +87,7 @@ const L10N = {
         checkPinsDesc2: 'Gowin constraints against the real board part, and the same constraints ',
         checkPinsDesc3: 'are sent with a hosted build.',
         optionalPasteNetlist: 'Optional: paste a Yosys JSON netlist to also check the ports exist',
+        importYosysToCanvas: '⤵ Import prep netlist to Canvas',
         topModule: ' — top module: ',
         schematicTitle: 'Schematic — your design as gates',
         schematicDesc1: 'This is the Verilog above, synthesised to logic gates. Inputs sit on ',
@@ -198,6 +199,7 @@ const L10N = {
         checkPinsDesc2: 'Gowin-Constraints gegen das echte Board-Teil, und die gleichen Constraints ',
         checkPinsDesc3: 'werden bei einem gehosteten Build gesendet.',
         optionalPasteNetlist: 'Optional: Fügen Sie eine Yosys JSON-Netzliste ein, um auch zu prüfen, ob die Ports existieren',
+        importYosysToCanvas: '⤵ Import prep netlist to Canvas',
         topModule: ' — Top-Modul: ',
         schematicTitle: 'Schaltplan — Ihr Design als Gatter',
         schematicDesc1: 'Dies ist das obige Verilog, synthetisiert zu Logikgattern. Eingänge sitzen auf ',
@@ -1040,6 +1042,23 @@ const FpgaTab = (props) => {
                         style={{width: '100%', minHeight: '7rem', fontFamily: 'monospace',
                             fontSize: '0.8rem', padding: '0.6rem', marginTop: '0.4rem'}}
                     />
+                    <div style={{textAlign: 'right', marginTop: '0.2rem'}}>
+                        <button
+                            type="button"
+                            style={{fontSize: '0.75rem', padding: '0.1rem 0.4rem', cursor: 'pointer',
+                                background: 'rgba(255,255,255,0.85)', border: '1px solid #ccc', borderRadius: '4px'}}
+                            onClick={() => {
+                                try {
+                                    const {model} = yosysToModel(netlistText);
+                                    if (model) setSeed(model);
+                                } catch (e) {
+                                    console.error('Failed to parse yosys JSON', e);
+                                }
+                            }}
+                        >
+                            {L10N[pickLocale(props.locale)].importYosysToCanvas}
+                        </button>
+                    </div>
                 </details>
 
                 {netlistText.trim() ? (
