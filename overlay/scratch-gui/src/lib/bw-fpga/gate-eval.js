@@ -75,7 +75,10 @@ export function evalModel (model, inputs = {}, dffState = {}) {
         if (n.kind === 'in') values[n.id] = Number(inputs[n.name]) || 0;
         else if (n.kind === 'const') values[n.id] = Number(n.value) || 0;
         else if (n.kind === 'gate' && GATE_DEFS[n.type] && GATE_DEFS[n.type].seq) {
-            values[n.id] = Number(dffState[n.id]) || 0; // a flip-flop drives its state
+            // A captured unknown stays unknown. Number('x') is NaN, and the old
+            // `Number(...) || 0` silently fabricated a low level one render after
+            // the flop had correctly captured x.
+            values[n.id] = dffState[n.id] === 'x' ? 'x' : (Number(dffState[n.id]) || 0);
         }
     }
 
@@ -109,7 +112,7 @@ export function evalModel (model, inputs = {}, dffState = {}) {
  * Advance the flip-flops one clock edge: each flip-flop takes the value on its
  * `d` input, evaluated against the CURRENT state. Returns the next state.
  *
- * @returns {Object} the new {dffNodeId: 0|1} (an 'x' d-input holds the flop at 0)
+ * @returns {Object} the new {dffNodeId: 0|1|'x'} (an unknown d-input stays unknown)
  */
 export function stepClock (model, inputs = {}, dffState = {}) {
     const {values} = evalModel(model, inputs, dffState);

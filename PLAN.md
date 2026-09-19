@@ -15,37 +15,38 @@ This document turns the product review into an ordered implementation plan.
 completed and rejected work. This file defines outcomes, sequencing and release
 gates.
 
-## Next-session priorities — reconciled 2026-09-09
+## Next-session priorities — reconciled 2026-09-19
 
-This shortlist starts from `main` at `ca069deb9`; the CI/ULA adoption candidate
-is recorded in `docs/CI-INPUT-ADOPTION-2026-09-09.md`. Completed and rejected
-work, including the payload sequence, N2b–N2f, and compiler/SIM recovery, is recorded in `HISTORY.md`;
-`LANES.md` remains the live ownership authority.
+This shortlist starts from `main` at `1a48f9212`. Completed and rejected work is
+recorded in `HISTORY.md`; `LANES.md` is the live ownership authority. In
+particular, the former 14-file `bw-board` convergence priority is complete by a
+change of architecture: `bw-board` and `bw-circuit-ui` are direct npm
+dependencies pinned to exact Git SHAs. They have no tracked Lite source trees to
+converge. `sb3-creator` is the sole remaining vendored tree, with its mapped
+rewrite and dual-tracked mirrors still judged at its exact pin. The measured
+copy-era fork counts remain historical evidence in `HISTORY.md` and
+`docs/VENDORING-REGIME.md`, not current work.
 
-The current base includes the separately downloaded GPL SDCC toolchain and its
-CLI/UI manager, the complete i8086 example/emitter re-sync, corrected LED
-polarity on both circuit surfaces, an audible TONE path, and bounded 8086 C
-numeric lists, deterministic signed-16 random selection, literal DOS output,
-hash-routed local-compiler recovery, complete SIM-mode property exclusion, and
-removal of the unreachable legacy `hobby_gearmotor` package assets.
-Pin changes remain chains: sync the exact green upstream SHA,
-update every dual-tracked mirror, and re-derive every artifact that stamps the
-pin. A green behavior probe does not make stale provenance acceptable.
-
-The next work follows explicit lane ownership. Adopt related green changes in batches;
-see `docs/UPSTREAM-WIP.md` for the WIP pin-update workflow:
+Adopt upstream changes in purposeful batches. A pin is a frozen candidate that
+Lite has reviewed, not a subscription to every upstream commit. The lane owner
+reads the full range, advances the existing authority to one full SHA, regenerates
+every pin-derived artefact, and qualifies that exact identity. Do not open a
+second package-adoption lane or chase a moving upstream head while a candidate is
+under review; see `docs/UPSTREAM-WIP.md`.
 
 | Order | Bounded track | Ownership and acceptance boundary |
 |---|---|---|
-| 1 | ~~Make every cross-repo CI input immutable~~ — DONE | The original CUI lane landed in PR 16; the all-workflow/script census follow-up is PR 19, sb3-creator PR 12, and Lite now checks out validated vendor pins without HEAD fallback. Track exact hosted receipts in the adoption note. A new clone must fail the derived gate until it receives one full 40-character reviewed SHA; corpus-derived pins remain the authority where they already bind sources to baselines. |
-| 2 | ~~Retire the remaining singleton source fork upstream~~ — DONE | `sb3-creator`'s `i8086_counter` is upstream and Lite pins exact `9173ca75`. `bw-circuit-ui` PR 18 preserves the `ExamplesBrowser` consumer while making `intro-doc.jsx` upstream-owned; the guarded Lite sync to `e18dad586` measures 674 identical / 0 divergent and removes both declarations. |
-| 3 | Retire the remaining 14-file `bw-board` fork by dependency-complete units | AVR debug convergence retired the first of the measured 18 at `f917c1f12`. Debug-session and RP2040 convergence landed subsequently; Lite PR 108 retires the complete ULA snapshot contract through upstream PR 4. The remaining graph must be re-derived at each pin; file size and `lineLevelOnly` status do not define review boundaries. Move complete producer/consumer contracts together, treat sync artefacts in the sync layer, relocate Lite-owned helpers that do not belong upstream, and re-pin only after each upstream and downstream gate chain is green. |
+| 1 | Complete the consolidated circuit package refresh | **Owned by bwcx in `LANES.md`.** It carries the already-selected `bw-circuit-ui` and `bw-board` ranges through package pins/specs/locks, derived evidence, the 80286 capability/census and lesson/corpus consequences, and one hosted Build on a frozen final head. Other lanes must not duplicate that adoption or edit either package boundary. |
+| 2 | Consolidate the active FPGA development without widening its delivery claim | **Unknown-state correctness and RAM canvas integration are separately owned in `LANES.md`.** Preserve the compiled HDL surface, tested hosted/local synthesis paths, hierarchy ports, localization, and the current schematic renderer while that lane reconciles the open work and the package refresh crosses beneath it. The deployable build now includes the lazily loaded FPGA code, with the tab default-off until a user enables **Settings ▸ Workspace ▸ FPGA lab**; an off build can still omit the surface. Re-test the integrated surface on the eventual package candidate rather than replacing its implementation or starting another pin move. |
+| 3 | Advance the next real-hardware FPGA boundary only from measured facts | The Tang Nano board part and `gate-level` semantics are already present through Lite's shipped package pins; the package refresh adopts later work without establishing that foundation. The read-only USB-identification step is separately owned in `LANES.md`: it can classify descriptors from a granted device, but descriptors alone cannot establish which bridge or board revision is physically present. A flashing lane requires descriptor capture from the real board, independent board-revision evidence, and hardware transport proof. Keep service availability, feature-default policy, and a release claim separate from a successful synthesis/download demonstration. |
 
-The zero-divergence census is exact at this candidate: 14 declared source forks
-(14 `bw-board`, zero `bw-circuit-ui`, zero `sb3-creator`) and 10 downstream-created
-placements. Licence copies and generated manifests remain downstream by
-construction; eliminating divergence does not mean copying those artefacts into
-an upstream `src/` tree.
+The package architecture does not weaken upstream-first ownership. Reusable
+engine, renderer, importer, and generator changes land in their owning upstream
+first and arrive in Lite through the exact package SHA. Application preferences,
+feature gating, and packaging adaptations remain Lite-owned. The flasher is a
+separate path-scoped generated artifact: its exact `stc-compiler-flasher` pin
+governs only `docs/flash.js` and the two derived mirrors, not the compiler
+repository as a whole.
 
 The active-low eligibility decision is closed upstream at `c593574`.
 `06-active-low-high`, `32-source-vs-sink`, and `46-port-overcurrent` now stay on

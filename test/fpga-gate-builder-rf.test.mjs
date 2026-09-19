@@ -113,3 +113,56 @@ test('no library means a plain flat model (no modules key)', () => {
     const m = reactFlowToModel([{id: 'a', data: {kind: 'in', name: 'a'}}], []);
     assert.equal('modules' in m, false);
 });
+
+test('a memory node round-trips kind + geometry and generates a RAM', () => {
+    const model = {
+        nodes: [
+            {id: 'clk', kind: 'in', name: 'clk'}, {id: 'a', kind: 'in', name: 'addr', width: 2},
+            {id: 'd', kind: 'in', name: 'din', width: 4}, {id: 'we', kind: 'in', name: 'we'},
+            {id: 'ram', kind: 'memory', dataWidth: 4, addrWidth: 2},
+            {id: 'o', kind: 'out', name: 'q', width: 4}
+        ],
+        edges: [
+            {from: {node: 'clk', port: 'out'}, to: {node: 'ram', port: 'clk'}},
+            {from: {node: 'a', port: 'out'}, to: {node: 'ram', port: 'addr'}},
+            {from: {node: 'd', port: 'out'}, to: {node: 'ram', port: 'din'}},
+            {from: {node: 'we', port: 'out'}, to: {node: 'ram', port: 'we'}},
+            {from: {node: 'ram', port: 'dout'}, to: {node: 'o', port: 'in'}}
+        ]
+    };
+    const rf = modelToReactFlow(model);
+    const ramRf = rf.nodes.find(n => n.id === 'ram');
+    assert.equal(ramRf.type, 'memory', 'the memory kind maps to the memory RF node type');
+    assert.equal(ramRf.data.dataWidth, 4);
+    assert.equal(ramRf.data.addrWidth, 2);
+    // the dout→q wire survives with the memory output port name
+    assert.ok(rf.edges.some(e => e.source === 'ram' && e.sourceHandle === 'dout'));
+
+    const back = reactFlowToModel(rf.nodes, rf.edges);
+    const ram = back.nodes.find(n => n.id === 'ram');
+    assert.equal(ram.kind, 'memory');
+    assert.equal(ram.dataWidth, 4);
+    assert.equal(ram.addrWidth, 2);
+    const {verilog, problems} = modelToVerilog(back);
+    assert.deepEqual(problems, []);
+    assert.match(verilog, /reg \[3:0\] mem_ram \[0:3\];/, 'a 4 x 4-bit RAM from the round-tripped model');
+    assert.match(verilog, /w_ram <= mem_ram\[addr\];/, 'a registered read');
+});
+
+test('memory geometry and hierarchy ports survive together on one canvas', () => {
+    const ports = [{name: 'a', dir: 'in', width: 4}, {name: 'q', dir: 'out', width: 4}];
+    const rf = modelToReactFlow({
+        nodes: [
+            {id: 'block', kind: 'instance', module: 'ram_block', ports},
+            {id: 'ram', kind: 'memory', dataWidth: 4, addrWidth: 2}
+        ],
+        edges: []
+    });
+    const block = rf.nodes.find(n => n.id === 'block');
+    const ram = rf.nodes.find(n => n.id === 'ram');
+    assert.equal(block.type, 'instance');
+    assert.deepEqual(block.data.ports, ports, 'resolving the RAM merge must not erase instance handles');
+    assert.equal(ram.type, 'memory');
+    assert.equal(ram.data.dataWidth, 4);
+    assert.equal(ram.data.addrWidth, 2);
+});

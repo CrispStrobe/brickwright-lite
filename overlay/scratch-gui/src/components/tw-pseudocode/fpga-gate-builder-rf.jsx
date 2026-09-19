@@ -17,6 +17,8 @@ const L10N = {
         addOutput: '+ Output',
         width: 'width',
         widthTitle: 'Bit width of the next node — >1 makes a bus',
+        addMemory: '+ RAM',
+        memoryTitle: 'A synchronous single-port RAM (4×4, fits the board pins)',
         saveAsSubcircuit: '⤓ Save as subcircuit',
         saveTitle: 'Save this whole design as a reusable subcircuit',
         yourBlocks: 'Your blocks:',
@@ -30,6 +32,8 @@ const L10N = {
         addOutput: '+ Ausgang',
         width: 'Breite',
         widthTitle: 'Bitbreite des nächsten Knotens — >1 erzeugt einen Bus',
+        addMemory: '+ RAM',
+        memoryTitle: 'Ein synchroner Single-Port-RAM (4×4, passt auf die Board-Pins)',
         saveAsSubcircuit: '⤓ Als Teilschaltung speichern',
         saveTitle: 'Speichere diesen gesamten Entwurf als wiederverwendbare Teilschaltung',
         yourBlocks: 'Deine Blöcke:',
@@ -107,7 +111,28 @@ const InstanceNode = ({data}) => {
     );
 };
 
-const nodeTypes = {gate: GateNode, io: IoNode, instance: InstanceNode};
+// A synchronous single-port RAM: clk/addr/din/we in on the left, the registered
+// read data (dout) out on the right. The label shows its geometry (words x bits).
+const MEM_INS = ['clk', 'addr', 'din', 'we'];
+const MemoryNode = ({data}) => {
+    const dw = data.dataWidth || 4;
+    const aw = data.addrWidth || 2;
+    return (
+        <div style={{position: 'relative', minWidth: 84, minHeight: MEM_INS.length * 14 + 10,
+            padding: '6px 10px', border: '1.6px solid #0f766e', borderRadius: 6, background: '#f0fdfa',
+            textAlign: 'center', fontSize: 11, fontWeight: 'bold', color: '#0f766e'}}>
+            {MEM_INS.map((p, i) => (
+                <Handle key={p} type="target" position={Position.Left} id={p}
+                    style={{top: `${((i + 1) / (MEM_INS.length + 1)) * 100}%`, background: '#0284c7'}} />
+            ))}
+            <div>{'\u25A6 RAM'}</div>
+            <div style={{fontWeight: 'normal', opacity: 0.75}}>{`${1 << aw}\u00D7${dw}`}</div>
+            <Handle type="source" position={Position.Right} id="dout" style={{top: '50%', background: '#22c55e'}} />
+        </div>
+    );
+};
+
+const nodeTypes = {gate: GateNode, io: IoNode, instance: InstanceNode, memory: MemoryNode};
 
 // A starter so the canvas is not blank: a AND b → y.
 const STARTER = () => modelToReactFlow({
@@ -167,6 +192,12 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
             data: {kind, name: `${kind === 'in' ? 'in' : 'out'}${n}`, width: newWidth}
         }];
     });
+    // A RAM defaults to a 4x4 (2-bit addr, 4-bit data) — the shape that fits the
+    // header pins and is proven to place-and-route to a bitstream.
+    const addMemory = () => setNodes(ns => [...ns, {
+        id: nid('m'), type: 'memory', position: {x: 200, y: 40 + (ns.length % 6) * 50},
+        data: {kind: 'memory', dataWidth: 4, addrWidth: 2}
+    }]);
     const onConnect = React.useCallback(params => setEdges(es => addEdge(params, es)), [setEdges]);
 
     const generate = () => {
@@ -191,6 +222,8 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                 {['and', 'or', 'not', 'xor', 'nand', 'nor', 'dff'].map(t => (
                     <button key={t} type="button" onClick={() => addGate(t)} style={{cursor: 'pointer'}}>{`+ ${GATE_DEFS[t].label}`}</button>
                 ))}
+                <button type="button" onClick={addMemory} title={L10N[pickLocale(locale)].memoryTitle}
+                    style={{cursor: 'pointer'}} data-testid="bw-fpga-rf-memory">{L10N[pickLocale(locale)].addMemory}</button>
                 <span style={{opacity: 0.4}}>{'|'}</span>
                 <button type="button" onClick={saveSubcircuit} title={L10N[pickLocale(locale)].saveTitle}
                     style={{cursor: 'pointer'}} data-testid="bw-fpga-rf-save">{L10N[pickLocale(locale)].saveAsSubcircuit}</button>
