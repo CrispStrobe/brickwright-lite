@@ -686,3 +686,18 @@ test('the builder places nodes by dragging from a categorised palette', () => {
     const catalog = read('overlay/scratch-gui/src/lib/bw-fpga/palette-catalog.js');
     assert.match(catalog, /export function buildPaletteCatalog/, 'the catalogue is pure data over GATE_DEFS');
 });
+
+// ── inspector + right-click: edit a node's params, delete/duplicate ──
+test('a placed node can be inspected (params) and right-clicked (delete/duplicate)', () => {
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /onNodeDoubleClick=\{onNodeDoubleClick\}/, 'double-click opens the inspector');
+    assert.match(ui, /onNodeContextMenu=\{onNodeContextMenu\}/, 'right-click opens the menu');
+    assert.match(ui, /const patchNode = /, 'edits merge into node.data');
+    assert.match(ui, /const duplicateNode = /, 'a node can be duplicated');
+    assert.match(ui, /<NodeInspector node=\{inspectNode\}/, 'the inspector renders for the live node');
+    const insp = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-node-inspector.jsx');
+    assert.match(insp, /export function NodeInspector/, 'a native-control inspector');
+    assert.match(insp, /export function NodeContextMenu/, 'a duplicate/delete menu');
+    assert.match(insp, /dataWidth.*addrWidth|addrWidth/, 'RAM geometry is editable');
+    assert.doesNotMatch(insp, /from 'bw-circuit-ui/, 'ported for the gate domain — no board-package import coupling');
+});

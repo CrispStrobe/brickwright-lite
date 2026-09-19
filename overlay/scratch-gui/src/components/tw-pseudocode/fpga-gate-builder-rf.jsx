@@ -13,6 +13,7 @@ import {reactFlowToModel, modelToReactFlow} from '../../lib/bw-fpga/gate-builder
 import {gateShape} from '../../lib/bw-fpga/glyphs.js';
 import {buildPaletteCatalog} from '../../lib/bw-fpga/palette-catalog.js';
 import FpgaGatePalette, {DRAG_MIME} from './fpga-gate-palette.jsx';
+import {NodeInspector, NodeContextMenu} from './fpga-node-inspector.jsx';
 
 // The gate glyphs are shared with the CLI/schematic renderer; their classes are
 // styled once here, scoped under `.bw-glyph` so they never touch the rest of the app.
@@ -178,6 +179,8 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
     const [problems, setProblems] = React.useState([]);
     const [library, setLibrary] = React.useState([]); // saved subcircuits
     const [newWidth, setNewWidth] = React.useState(1); // bit width for the next node
+    const [inspect, setInspect] = React.useState(null); // {id, x, y} of the node being edited
+    const [menu, setMenu] = React.useState(null); // {target:'node'|'edge', id, x, y}
     const idRef = React.useRef(100);
     const nid = p => `${p}${idRef.current++}`;
 
@@ -232,6 +235,25 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
     };
     const onConnect = React.useCallback(params => setEdges(es => addEdge(params, es)), [setEdges]);
 
+    // Editing a placed node: double-click opens the inspector; a patch merges
+    // into node.data (the bridge reads width/name/dataWidth/addrWidth from there).
+    const patchNode = (id, patch) => setNodes(ns => ns.map(n => (n.id === id ? {...n, data: {...n.data, ...patch}} : n)));
+    const deleteNode = id => {
+        setNodes(ns => ns.filter(n => n.id !== id));
+        setEdges(es => es.filter(e => e.source !== id && e.target !== id));
+    };
+    const duplicateNode = id => setNodes(ns => {
+        const src = ns.find(n => n.id === id);
+        if (!src) return ns;
+        const copy = {...src, id: nid('c'), position: {x: src.position.x + 30, y: src.position.y + 30},
+            data: {...src.data}, selected: false};
+        return [...ns, copy];
+    });
+    const onNodeDoubleClick = (e, node) => setInspect({id: node.id, x: e.clientX, y: e.clientY});
+    const onNodeContextMenu = (e, node) => { e.preventDefault(); setInspect(null); setMenu({target: 'node', id: node.id, x: e.clientX, y: e.clientY}); };
+    const onEdgeContextMenu = (e, edge) => { e.preventDefault(); setInspect(null); setMenu({target: 'edge', id: edge.id, x: e.clientX, y: e.clientY}); };
+    const inspectNode = inspect && nodes.find(n => n.id === inspect.id);
+
     const generate = () => {
         const model = reactFlowToModel(nodes, edges, library);
         const {verilog, problems: probs} = modelToVerilog(model);
@@ -274,6 +296,8 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                     <ReactFlow
                         nodes={nodes} edges={edges}
                         onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect}
+                        onNodeDoubleClick={onNodeDoubleClick} onNodeContextMenu={onNodeContextMenu}
+                        onEdgeContextMenu={onEdgeContextMenu} onPaneClick={() => { setMenu(null); setInspect(null); }}
                         nodeTypes={nodeTypes} fitView
                         proOptions={{hideAttribution: true}}
                     >
@@ -282,6 +306,18 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                         <MiniMap pannable zoomable />
                     </ReactFlow>
                 </div>
+                {inspectNode ? (
+                    <NodeInspector node={inspectNode} x={inspect.x} y={inspect.y}
+                        onChange={patchNode} onClose={() => setInspect(null)} />
+                ) : null}
+                {menu ? (
+                    <NodeContextMenu target={menu.target} x={menu.x} y={menu.y}
+                        onClose={() => setMenu(null)}
+                        onDelete={() => (menu.target === 'edge'
+                            ? setEdges(es => es.filter(e => e.id !== menu.id))
+                            : deleteNode(menu.id))}
+                        onDuplicate={() => duplicateNode(menu.id)} />
+                ) : null}
             </div>
             <div style={{margin: '0.5rem 0'}}>
                 <button type="button" onClick={generate} style={{padding: '0.35rem 0.8rem', cursor: 'pointer', fontWeight: 'bold'}}
