@@ -51,3 +51,11 @@ test('content-hashed bundles are immutable; everything that can change by name i
         assert.ok(!matches(mutable), `${mutable} changes under its own name and must revalidate`);
     }
 });
+
+test('the Vercel production build is FLAG-ON, like the deployable GH Pages build', () => {
+    const script = fs.readFileSync('scripts/vercel-build.sh', 'utf8');
+    assert.match(script, /BW_ENABLE_FPGA=1[^\n]*npm run build/,
+        'the deployed site must ship the FPGA surface (the settings toggle) — build.yml is flag-on and Vercel must match');
+    assert.match(script, /@yowasp\/yosys/,
+        'the in-browser local synthesis tier needs the real yosys package, not the absent-stub');
+});

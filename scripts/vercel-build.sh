@@ -19,5 +19,9 @@ node scripts/integrate.mjs
 node scripts/sync-labwired-wasm.mjs || echo "labwired-wasm unavailable — the heavy tier will not be offered"
 cd packages/scratch-gui
 npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+# The deployable build is FLAG-ON (matches .github/workflows/build.yml): the FPGA
+# surface ships, so the settings toggle appears. @yowasp/yosys is the real package
+# for the in-browser local synthesis tier (an off build gets the yosys-absent stub).
+npm install --no-save --ignore-scripts --legacy-peer-deps --no-audit --no-fund @yowasp/yosys
 cd ../.. && node scripts/apply-vm-overlay.mjs && node scripts/apply-paint-overlay.mjs && node scripts/apply-render-overlay.mjs && cd packages/scratch-gui
-NODE_ENV=production CI=true NODE_OPTIONS=--max-old-space-size=2560 npm run build
+NODE_ENV=production CI=true NODE_OPTIONS=--max-old-space-size=2560 BW_ENABLE_FPGA=1 BW_SYNTHESIS_ENDPOINT=https://synth.crispstro.be/api npm run build
