@@ -733,7 +733,7 @@ test('the builder has a learning path — challenges, Check, saved progress', ()
     assert.match(panel, /data-testid="bw-fpga-check"/, 'a Check button');
     assert.match(panel, /gradeMessage/, 'the result explains what to fix');
     const grader = read('overlay/scratch-gui/src/lib/bw-fpga/grader.js');
-    assert.match(grader, /import \{evalModel\}/, 'grading reuses the tested evaluator');
+    assert.match(grader, /import \{evalModel/, 'grading reuses the tested evaluator');
 });
 
 // ── canvas UX polish: snap, keyboard-delete, clear, next-on-pass ──
@@ -745,4 +745,12 @@ test('the canvas has snap-to-grid, keyboard delete, clear, and next-on-pass', ()
     assert.match(ui, /const goNext = /, 'advance to the next unlocked challenge');
     const panel = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-challenges.jsx');
     assert.match(panel, /data-testid="bw-fpga-next"/, 'a Next button appears on a pass');
+});
+
+// ── Run mode shows each wire's live value (label + colour + animation) ──
+test('Run mode labels each wire with its live bit value', () => {
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /label: v === undefined \? 'x' : String\(v\)/, 'each wire shows its bit');
+    assert.match(ui, /animated: v === 1/, 'live 1s animate');
+    assert.match(ui, /strokeWidth: v === 1 \? 2\.6 : 1\.8/, 'active wires thicken');
 });
