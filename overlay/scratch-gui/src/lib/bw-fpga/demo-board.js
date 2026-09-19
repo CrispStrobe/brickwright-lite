@@ -27,11 +27,19 @@ export function buildDemoBoard (circuit, {pins = DEMO_LED_PINS, ohms = 330} = {}
         throw new TypeError('buildDemoBoard needs a live circuit with addPart/addWire '
             + '(window.__circuit, published by the circuit designer)');
     }
+    // Positions are WORLD PIXELS (part.x = x in circuit.js), and the Tang Nano is
+    // 60 x 210 px at the origin. The old layout put every LED/resistor at x=3..12
+    // — INSIDE that footprint, 3 px apart — so the whole board piled onto one spot.
+    // Spread the four LED columns to the RIGHT of the board, each with its resistor
+    // above and LED below, and drop ground clear underneath.
     const tang = circuit.addPart('tang_nano_20k', {}, 0, 0);
-    const gnd = circuit.addPart('gnd', {}, 0, 6);
+    const COL0 = 120;
+    const COL_GAP = 110;
+    const gnd = circuit.addPart('gnd', {}, COL0, 260);
     const leds = pins.map((pin, i) => {
-        const resistor = circuit.addPart('resistor', {ohms}, 3 + (i * 3), 0);
-        const led = circuit.addPart('led', {}, 3 + (i * 3), 3);
+        const x = COL0 + (i * COL_GAP);
+        const resistor = circuit.addPart('resistor', {ohms}, x, 40);
+        const led = circuit.addPart('led', {}, x, 130);
         // FPGA header pin -> resistor -> LED anode; LED cathode -> ground.
         circuit.addWire(tang.id, `p${pin}`, resistor.id, 'a');
         circuit.addWire(resistor.id, 'b', led.id, 'anode');

@@ -577,10 +577,13 @@ test('the waveform builder is pure and honest about unknown values', () => {
 // ── Rung 3: build logic by placing gates, no Verilog typed ──
 test('the FPGA tab offers a visual gate builder that feeds the Verilog box', () => {
     const tab = codeOnly(read(TAB));
-    assert.match(tab, /import\(\s*\/\*[^*]*\*\/\s*'\.\/fpga-gate-builder\.jsx'\)/,
-        'the gate builder is its own lazy chunk (shared with the schematic)');
-    assert.match(tab, /<FpgaGateBuilder [^>]*onUseVerilog=/,
-        'the tab must render the gate builder');
+    // the React Flow canvas is the sole visual builder (the old SVG one was retired)
+    assert.match(tab, /import\(\s*\/\*[^*]*\*\/\s*'\.\/fpga-gate-builder-rf\.jsx'\)/,
+        'the React Flow builder is its own lazy chunk');
+    assert.match(tab, /<FpgaGateBuilderRf [^>]*onUseVerilog=/,
+        'the tab must render the React Flow gate builder');
+    assert.doesNotMatch(tab, /<FpgaGateBuilder [^>]*onUseVerilog=/,
+        'the redundant old SVG builder must not also be rendered');
     assert.match(tab, /setHdl\(v\); if \(cst\) setText\(cst\); setSynth\(null\)/,
         'building gates must drop generated Verilog AND matching constraints into the boxes');
 });
@@ -773,4 +776,12 @@ test('the palette offers T, SR and JK flip-flops that synthesise', () => {
     assert.match(gb, /tff: \{label: 'T-FF'/, 'the T flip-flop is defined');
     assert.match(gb, /seqNext:/, 'flip-flops carry a Verilog next-state');
     assert.match(gb, /gd\.seqNext\(nets, reg\)/, 'the codegen is generic over the family');
+});
+
+// ── the canvas must show its design even when opened from a collapsed panel ──
+test('the React Flow canvas re-fits when its container gains size', () => {
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /new ResizeObserver/, 'a ResizeObserver re-fits the view');
+    assert.match(ui, /rf\.fitView\(\{padding/, 'so nodes are never left off-screen');
+    assert.match(ui, /onInit=\{inst => \{ try \{ inst\.fitView/, 'and it fits on init');
 });

@@ -45,6 +45,25 @@ test('it places one Tang Nano, one ground, and a resistor+LED per pin', () => {
     assert.ok(c.parts.filter(p => p.kind === 'resistor').every(p => p.params.ohms === 330));
 });
 
+test('no two parts land on the same spot, and LEDs clear the Tang Nano footprint', () => {
+    const c = recorder();
+    buildDemoBoard(c);
+    // every part has a DISTINCT position (the old layout piled them at ~one spot)
+    const seen = new Set();
+    for (const p of c.parts) {
+        const key = `${p.x},${p.y}`;
+        assert.ok(!seen.has(key), `two parts share ${key} — they would overlap`);
+        seen.add(key);
+    }
+    // the Tang Nano is 60px wide at the origin; nothing else may sit inside it
+    const tang = c.parts.find(p => p.kind === 'tang_nano_20k');
+    assert.equal(tang.x, 0);
+    for (const p of c.parts) {
+        if (p === tang) continue;
+        assert.ok(p.x >= 100, `${p.kind} at x=${p.x} overlaps the Tang Nano (0..60)`);
+    }
+});
+
 test('each LED hangs on the pin the sequence example names: pin -> R -> LED -> gnd', () => {
     const c = recorder();
     const {tang, gnd} = buildDemoBoard(c);

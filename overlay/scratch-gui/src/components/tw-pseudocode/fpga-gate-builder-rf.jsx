@@ -242,6 +242,21 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
     // Verilog-only starters live in the examples browser, not the palette.
     const catalog = React.useMemo(() => buildPaletteCatalog(EXAMPLES.filter(e => e.model && e.model.nodes)), []);
     const rf = useReactFlow();
+    // The canvas is often mounted inside a collapsed <details> (zero height), so
+    // React Flow's mount-time fitView fits nothing and the design is off-screen —
+    // the "empty canvas" bug. Re-fit whenever the container gains/changes size.
+    const canvasRef = React.useRef(null);
+    React.useEffect(() => {
+        const el = canvasRef.current;
+        if (!el || typeof ResizeObserver === 'undefined') return undefined;
+        const ro = new ResizeObserver(() => {
+            if (el.clientHeight > 0 && el.clientWidth > 0) {
+                try { rf.fitView({padding: 0.2, duration: 0}); } catch (e) { /* not ready yet */ }
+            }
+        });
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, [rf]);
 
     // Turn a palette drag descriptor into a canvas node at `position`. A RAM
     // defaults to a 4x4 (2-bit addr, 4-bit data) — the shape that fits the
@@ -444,11 +459,12 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                         onSelect={selectChallenge} onCheck={runCheck} onNext={goNext} />
                 ) : null}
                 <FpgaGatePalette catalog={catalog} />
-                <div style={{flex: '1 1 auto', height: '48vh', minHeight: 300, border: '1px solid rgba(71,85,105,0.25)', borderRadius: 6}}
+                <div ref={canvasRef} style={{flex: '1 1 auto', height: '48vh', minHeight: 300, border: '1px solid rgba(71,85,105,0.25)', borderRadius: 6}}
                     data-testid="bw-fpga-rf-canvas" onDrop={onDrop} onDragOver={onDragOver}>
                     <ReactFlow
                         nodes={shownNodes} edges={shownEdges}
                         onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect}
+                        onInit={inst => { try { inst.fitView({padding: 0.2}); } catch (e) { /* no-op */ } }}
                         onNodeClick={onNodeClick}
                         onNodeDoubleClick={onNodeDoubleClick} onNodeContextMenu={onNodeContextMenu}
                         onEdgeContextMenu={onEdgeContextMenu} onPaneClick={() => { setMenu(null); setInspect(null); }}
