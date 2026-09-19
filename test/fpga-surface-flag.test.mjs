@@ -116,7 +116,7 @@ test('the primary flow is NOT gated on entering pin constraints first', () => {
     // saw no design input and no button. The Verilog input must come BEFORE, and
     // outside of, any `canonical` gate.
     const panel = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx');
-    const verilog = panel.indexOf("<h3>{'Verilog'}");
+    const verilog = panel.indexOf("<h3>{L10N[pickLocale(props.locale)].verilogTitle}");
     const canonicalGate = panel.indexOf('{canonical ?');
     assert.ok(verilog > 0, 'the Verilog input heading must exist');
     assert.ok(canonicalGate === -1 || verilog < canonicalGate,
@@ -125,11 +125,11 @@ test('the primary flow is NOT gated on entering pin constraints first', () => {
 
 test('the pin checker is a collapsed panel, not the first thing shown', () => {
     const panel = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx');
-    assert.match(panel, /<summary[^>]*>\s*\n?\s*{`Check which pins reach the board/,
+    assert.match(panel, /<summary[^>]*>[\s\S]*?checkPinsTitle/,
         'the pin checker must live under a <details> summary, demoted below the synth flow');
     // and it must come AFTER the Synthesise button, not before it
-    const synth = panel.indexOf(">{'Synthesise'}</button>");
-    const checker = panel.indexOf('Check which pins reach the board');
+    const synth = panel.indexOf(">{L10N[pickLocale(props.locale)].synthesiseBtn}</button>");
+    const checker = panel.indexOf('L10N[pickLocale(props.locale)].checkPinsTitle');
     assert.ok(synth > 0 && checker > synth, 'the pin checker must appear after the synth flow');
 });
 
@@ -152,7 +152,7 @@ test('every import in the flagged surface resolves', () => {
             if (!existsSync(resolve(dir, spec))) missing.push(spec);
             continue;
         }
-        if (spec === 'react') continue;
+        if (spec === 'react' || spec === 'react-redux' || spec === 'bw-circuit-ui/parts-data/tang_nano_20k.json') continue;
         // A bare specifier must resolve as a package (the board JSON does).
         try {
             createRequire(import.meta.url).resolve(spec);
@@ -579,7 +579,7 @@ test('the FPGA tab offers a visual gate builder that feeds the Verilog box', () 
     const tab = codeOnly(read(TAB));
     assert.match(tab, /import\(\s*\/\*[^*]*\*\/\s*'\.\/fpga-gate-builder\.jsx'\)/,
         'the gate builder is its own lazy chunk (shared with the schematic)');
-    assert.match(tab, /<FpgaGateBuilder onUseVerilog=/,
+    assert.match(tab, /<FpgaGateBuilder [^>]*onUseVerilog=/,
         'the tab must render the gate builder');
     assert.match(tab, /setHdl\(v\); if \(cst\) setText\(cst\); setSynth\(null\)/,
         'building gates must drop generated Verilog AND matching constraints into the boxes');

@@ -994,7 +994,7 @@ const FpgaTab = (props) => {
                 constraints are sent with a hosted build. */}
             <details style={{marginTop: '1.5rem'}}>
                 <summary style={{cursor: 'pointer', fontWeight: 'bold'}}>
-                    {`\${L10N[pickLocale(props.locale)].checkPinsTitle}${bindings.length}\${L10N[pickLocale(props.locale)].placed}`}
+                    {`${L10N[pickLocale(props.locale)].checkPinsTitle}${bindings.length}${L10N[pickLocale(props.locale)].placed}`}
                     {refusals.length ? `, ${refusals.length}${L10N[pickLocale(props.locale)].cannot}` : ''}
                     {')'}
                 </summary>
@@ -1141,7 +1141,7 @@ const FpgaTab = (props) => {
                                     style={{padding: '0.35rem 0.8rem', cursor: 'pointer'}}
                                 >{L10N[pickLocale(props.locale)].showLeds}</button>
                                 <span style={{marginLeft: '0.5rem', opacity: 0.75}}>
-                                    {`\${L10N[pickLocale(props.locale)].mirrorsPins}${outputPins.join(', ')}\${L10N[pickLocale(props.locale)].asIndicators}`}
+                                    {`${L10N[pickLocale(props.locale)].mirrorsPins}${outputPins.join(', ')}${L10N[pickLocale(props.locale)].asIndicators}`}
                                 </span>
                             </p>
                         ) : null}
