@@ -431,7 +431,7 @@ keeping, it is worth a branch.
 
 ## CLAIMS — work in progress
 
-
+| Lite browser proof for signed controlled-source DC operating point | `/root` (Codex), `/mnt/volume1/code/wt/lite-circuit-op-browser`, branch `lane/circuit-op-browser-smoke` | exact base `d2ba84bf957196bfc48147e77b394500a355d6b2`; paths `LANES.md`, `scripts/verify-circuit-operating-point.mjs`, `package.json`, `.github/workflows/build.yml` | **CLAIM 2026-09-19.** Test-only consumer proof: through the shipped browser, import a signed E/G SPICE fixture, open Instruments, click DC operating point, assert converged metadata and nonzero signed current, export SPICE, and re-import without semantic loss. No package/source/pin/corpus/ADI-runner change; the active upstream 46,403-row ADI lane remains separate. One focused local built-artifact run, one negative/mutation consequence, then the single exact-head Build qualification. |
 
 
 
