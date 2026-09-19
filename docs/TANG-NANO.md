@@ -621,7 +621,9 @@ re-homing to a host with a real disk, which is a platform decision.
 **Deliver.** openFPGALoader driven from the native app, beside the existing
 serial and ScratchLink transports; browsers get a bitstream **file download**.
 **Accept.** The board in hand blinks from a bitstream this project produced.
-**Blocked on.** Identifying the USB-JTAG bridge on our revision — see §9.
+**Blocked on.** Capturing the USB descriptors and exercising the programmer on
+the board in hand — see §9. The protocol family can now be identified without
+claiming the device, but descriptors cannot identify the physical bridge chip.
 
 **Status, 2026-09-17 — the JS half is wired, the rest is off this box.** The
 browser path is done: a hosted build's `.fs` downloads, and the tab shows the
@@ -647,8 +649,7 @@ and openFPGALoader run directly. The tab's browser path names both.
 
 **Why a scaffold and not a flasher.** Direct browser flashing means reimplementing,
 over WebUSB, what openFPGALoader does against the board's on-board USB→JTAG bridge:
-claim the bridge (an FTDI FT2232 on the common revision, a BL702 on newer ones —
-different command sets), drive JTAG (FTDI MPSSE bit-bang or the BL702 protocol),
+claim the bridge, drive JTAG through its FT2232-compatible protocol,
 read IDCODE and check it is a GW2AR-18, then run the Gowin programming sequence
 (SRAM vs embedded flash: erase, stream the `.fs`, read back and verify) — bounded,
 cancellable, honest about a half-written flash. **Every step of that can only be
@@ -664,6 +665,50 @@ to `TANG_NANO_USB_FILTERS`), and `flashOverWebUsb()`, which returns a NAMED
 invariant). The tab, when the browser has WebUSB, says direct flashing is planned
 here but not built — no button that pretends. The plan above is the whole of what
 is left; it wants a board on someone's desk, not more design.
+
+**Read-only USB identification, 2026-09-19.** Sipeed documents the Nano 20K's
+onboard debugger as a [Bouffalo BL616](https://wiki.sipeed.com/hardware/en/tang/tang-nano-20k/nano-20k.html),
+while openFPGALoader's [board table](https://github.com/trabucayre/openFPGALoader/blob/master/src/board.hpp)
+selects its `ft2232` transport for `tangnano20k`. Those facts are compatible:
+the BL616 firmware has been reported upstream to
+[emulate an FT2232 and reuse its USB vendor ID](https://github.com/trabucayre/openFPGALoader/issues/418).
+Consequently a `0403:6010` descriptor identifies an **FT2232-compatible USB
+protocol**, not an FTDI chip. Manufacturer and product strings are useful
+evidence, but do not prove the silicon either.
+
+`lib/bw-fpga/usb-identification.js` records those descriptor fields and
+classifies the presented protocol. Its granted-device inventory calls only
+`navigator.usb.getDevices()`; it does not prompt, open a device, choose a
+configuration, claim an interface, or transfer bytes. WebUSB permission belongs
+to an origin, so a grant made to the deployed site does not carry over to a
+local server. Run `python3 -m http.server 8000` at the repository root, open
+`http://localhost:8000/`, and exercise that module from that page's browser
+console:
+
+```js
+const usbId = await import(
+    'http://localhost:8000/overlay/scratch-gui/src/lib/bw-fpga/usb-identification.js'
+);
+await usbId.inspectGrantedUsbDevices(navigator.usb);
+```
+
+An `{ok: true, devices: []}` result means this origin has no already-granted
+device. To grant this localhost origin access deliberately, import the existing
+picker and invoke it separately; it prompts but still does not open, claim, or
+program the selected device:
+
+```js
+const picker = await import(
+    'http://localhost:8000/overlay/scratch-gui/src/lib/bw-fpga/webusb-flash.js'
+);
+await picker.requestBoard(navigator.usb); // deliberate permission prompt
+await usbId.inspectGrantedUsbDevices(navigator.usb); // read-only inventory
+```
+
+This VM has no Tang Nano USB passthrough:
+its only non-root-hub device is a QEMU tablet (`0627:0001`), and
+openFPGALoader is not installed. No real-board descriptor or flash result is
+claimed here.
 
 ### TN5a — LiteX + VexRiscv + Renode, the functional tier
 **Reconcile before planning.** Overlaps the UNCLAIMED Renode phases of the STM32
@@ -1408,10 +1453,12 @@ proved it possible. `backends.js` stays fail-closed, and `local` stays
 
 ## 9. Still open, deliberately
 
-- **Which USB-JTAG bridge is on our 20K revision** (FTDI vs Bouffalo
-  BL702/BL616). Browser flashing is per-bridge WebUSB work plus the Windows
-  WinUSB/Zadig driver-claim problem Web Serial does not have. **Blocks any
-  flashing promise in the UI.** Answer before TN4.
+- **Capture and exercise the debugger on the 20K revision in hand.** Its
+  `0403:6010` descriptor can establish an FT2232-compatible protocol, but cannot
+  distinguish an FTDI chip from BL616 firmware emulating one. Record the exact
+  descriptors, then validate open/claim, JTAG IDCODE and programming on the real
+  board. Windows still has the WinUSB/Zadig driver-claim problem Web Serial does
+  not have. **Blocks any flashing promise in the UI.**
 - **How digitaljs's rendering reconciles with the circuit surface.** It brings
   its own visualisation; two visual languages for "wires and parts" in one app is
   a design problem, not a packaging one.
