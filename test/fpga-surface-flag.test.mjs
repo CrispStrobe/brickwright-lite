@@ -712,3 +712,11 @@ test('the builder runs live — wires colour by value, inputs toggle', () => {
     assert.match(ui, /stepClock\(reactFlowToModel/, 'a clock step advances flip-flops');
     assert.match(ui, /nodes=\{shownNodes\} edges=\{shownEdges\}/, 'the canvas renders the live values');
 });
+
+// ── templates: drag a starter design onto the canvas ──
+test('the palette offers starter templates that merge onto the canvas', () => {
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /buildPaletteCatalog\(EXAMPLES\.filter\(e => e\.model/, 'model-bearing examples become templates');
+    assert.match(ui, /item\.kind === 'template'/, 'a template drop is handled');
+    assert.match(ui, /idMap\[n\.id\] = id/, 'ids are remapped so a template MERGES, not clobbers');
+});

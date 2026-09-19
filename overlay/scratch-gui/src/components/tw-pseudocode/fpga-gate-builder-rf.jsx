@@ -15,6 +15,7 @@ import {buildPaletteCatalog} from '../../lib/bw-fpga/palette-catalog.js';
 import FpgaGatePalette, {DRAG_MIME} from './fpga-gate-palette.jsx';
 import {NodeInspector, NodeContextMenu} from './fpga-node-inspector.jsx';
 import {evalModel, stepClock} from '../../lib/bw-fpga/gate-eval.js';
+import {EXAMPLES} from '../../lib/bw-fpga/examples.js';
 
 // The gate glyphs are shared with the CLI/schematic renderer; their classes are
 // styled once here, scoped under `.bw-glyph` so they never touch the rest of the app.
@@ -212,7 +213,9 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
         data: {kind: 'instance', module: mod.name, ports: mod.ports}
     }]);
 
-    const catalog = React.useMemo(() => buildPaletteCatalog(), []);
+    // Only examples that carry a gate model can seed the model canvas; the
+    // Verilog-only starters live in the examples browser, not the palette.
+    const catalog = React.useMemo(() => buildPaletteCatalog(EXAMPLES.filter(e => e.model && e.model.nodes)), []);
     const rf = useReactFlow();
 
     // Turn a palette drag descriptor into a canvas node at `position`. A RAM
@@ -230,9 +233,20 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
         } else if (item.kind === 'memory') {
             setNodes(ns => [...ns, {id: nid('m'), type: 'memory', position, data: {kind: 'memory', dataWidth: 4, addrWidth: 2}}]);
         } else if (item.kind === 'template' && item.model) {
+            // Drop a starter near the cursor, id-remapped so it MERGES onto the
+            // canvas instead of clobbering whatever is already there.
             const seeded = modelToReactFlow(item.model);
-            setNodes(seeded.nodes);
-            setEdges(seeded.edges);
+            const idMap = {};
+            const placed = seeded.nodes.map(n => {
+                const id = nid('t');
+                idMap[n.id] = id;
+                return {...n, id, position: {x: (n.position ? n.position.x : 0) + position.x,
+                    y: (n.position ? n.position.y : 0) + position.y}};
+            });
+            const wired = seeded.edges.map((e, i) => ({...e, id: `te${idRef.current}_${i}`,
+                source: idMap[e.source] || e.source, target: idMap[e.target] || e.target}));
+            setNodes(ns => [...ns, ...placed]);
+            setEdges(es => [...es, ...wired]);
         }
     };
 
