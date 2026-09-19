@@ -1,0 +1,308 @@
+{
+  "creator": "Yosys 0.69+post (git sha1 143eb14f9cc55d6f8927e68523b0c9d2166ed02c, Release, AppleClang clang++ 21.0.0.21000101)",
+  "modules": {
+    "async_counter": {
+      "attributes": {
+        "hdlname": "async_counter",
+        "src": "async_counter.v:8.1-17.10"
+      },
+      "ports": {
+        "clk": {
+          "direction": "input",
+          "bits": [ 2 ]
+        },
+        "rst": {
+          "direction": "input",
+          "bits": [ 3 ]
+        },
+        "q": {
+          "direction": "output",
+          "bits": [ 4, 5, 6, 7 ]
+        }
+      },
+      "cells": {
+        "$not$async_counter.v:10$2": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "async_counter.v:10.15-10.20"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 5 ],
+            "Y": [ 8 ]
+          }
+        },
+        "$not$async_counter.v:11$3": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "async_counter.v:11.15-11.20"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 6 ],
+            "Y": [ 9 ]
+          }
+        },
+        "$not$async_counter.v:9$1": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "async_counter.v:9.15-9.20"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 4 ],
+            "Y": [ 10 ]
+          }
+        },
+        "t0": {
+          "hide_name": 0,
+          "type": "t_ff",
+          "parameters": {
+          },
+          "attributes": {
+            "module_not_derived": "00000000000000000000000000000001",
+            "src": "async_counter.v:13.8-13.43"
+          },
+          "port_directions": {
+            "clk": "input",
+            "q": "output",
+            "rst": "input"
+          },
+          "connections": {
+            "clk": [ 2 ],
+            "q": [ 4 ],
+            "rst": [ 3 ]
+          }
+        },
+        "t1": {
+          "hide_name": 0,
+          "type": "t_ff",
+          "parameters": {
+          },
+          "attributes": {
+            "module_not_derived": "00000000000000000000000000000001",
+            "src": "async_counter.v:14.8-14.43"
+          },
+          "port_directions": {
+            "clk": "input",
+            "q": "output",
+            "rst": "input"
+          },
+          "connections": {
+            "clk": [ 10 ],
+            "q": [ 5 ],
+            "rst": [ 3 ]
+          }
+        },
+        "t2": {
+          "hide_name": 0,
+          "type": "t_ff",
+          "parameters": {
+          },
+          "attributes": {
+            "module_not_derived": "00000000000000000000000000000001",
+            "src": "async_counter.v:15.8-15.43"
+          },
+          "port_directions": {
+            "clk": "input",
+            "q": "output",
+            "rst": "input"
+          },
+          "connections": {
+            "clk": [ 8 ],
+            "q": [ 6 ],
+            "rst": [ 3 ]
+          }
+        },
+        "t3": {
+          "hide_name": 0,
+          "type": "t_ff",
+          "parameters": {
+          },
+          "attributes": {
+            "module_not_derived": "00000000000000000000000000000001",
+            "src": "async_counter.v:16.8-16.43"
+          },
+          "port_directions": {
+            "clk": "input",
+            "q": "output",
+            "rst": "input"
+          },
+          "connections": {
+            "clk": [ 9 ],
+            "q": [ 7 ],
+            "rst": [ 3 ]
+          }
+        }
+      },
+      "netnames": {
+        "clk": {
+          "hide_name": 0,
+          "bits": [ 2 ],
+          "attributes": {
+            "src": "async_counter.v:8.28-8.31"
+          }
+        },
+        "clk1": {
+          "hide_name": 0,
+          "bits": [ 10 ],
+          "attributes": {
+            "src": "async_counter.v:9.8-9.12"
+          }
+        },
+        "clk2": {
+          "hide_name": 0,
+          "bits": [ 8 ],
+          "attributes": {
+            "src": "async_counter.v:10.8-10.12"
+          }
+        },
+        "clk3": {
+          "hide_name": 0,
+          "bits": [ 9 ],
+          "attributes": {
+            "src": "async_counter.v:11.8-11.12"
+          }
+        },
+        "q": {
+          "hide_name": 0,
+          "bits": [ 4, 5, 6, 7 ],
+          "attributes": {
+            "src": "async_counter.v:8.57-8.58"
+          }
+        },
+        "rst": {
+          "hide_name": 0,
+          "bits": [ 3 ],
+          "attributes": {
+            "src": "async_counter.v:8.39-8.42"
+          }
+        }
+      }
+    },
+    "t_ff": {
+      "attributes": {
+        "hdlname": "t_ff",
+        "src": "async_counter.v:1.1-6.10"
+      },
+      "ports": {
+        "clk": {
+          "direction": "input",
+          "bits": [ 2 ]
+        },
+        "rst": {
+          "direction": "input",
+          "bits": [ 3 ]
+        },
+        "q": {
+          "direction": "output",
+          "bits": [ 4 ]
+        }
+      },
+      "cells": {
+        "$not$async_counter.v:4$5": {
+          "hide_name": 1,
+          "type": "$not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "async_counter.v:4.15-4.17"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 4 ],
+            "Y": [ 5 ]
+          }
+        },
+        "$procdff$8": {
+          "hide_name": 1,
+          "type": "$adff",
+          "parameters": {
+            "ARST_POLARITY": "1",
+            "ARST_VALUE": "0",
+            "CLK_POLARITY": "1",
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "async_counter.v:2.3-5.6"
+          },
+          "port_directions": {
+            "ARST": "input",
+            "CLK": "input",
+            "D": "input",
+            "Q": "output"
+          },
+          "connections": {
+            "ARST": [ 3 ],
+            "CLK": [ 2 ],
+            "D": [ 5 ],
+            "Q": [ 4 ]
+          }
+        }
+      },
+      "netnames": {
+        "$0\\q[0:0]": {
+          "hide_name": 1,
+          "bits": [ 5 ],
+          "attributes": {
+            "src": "async_counter.v:2.3-5.6"
+          }
+        },
+        "clk": {
+          "hide_name": 0,
+          "bits": [ 2 ],
+          "attributes": {
+            "src": "async_counter.v:1.19-1.22"
+          }
+        },
+        "q": {
+          "hide_name": 0,
+          "bits": [ 4 ],
+          "attributes": {
+            "src": "async_counter.v:1.46-1.47"
+          }
+        },
+        "rst": {
+          "hide_name": 0,
+          "bits": [ 3 ],
+          "attributes": {
+            "src": "async_counter.v:1.30-1.33"
+          }
+        }
+      }
+    }
+  }
+}

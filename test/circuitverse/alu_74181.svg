@@ -1,0 +1,459 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1304" height="1529.3333333333335">
+<style>
+            .gate { fill: #f8f9fa; stroke: #343a40; stroke-width: 2px; }
+            .wire { fill: none; stroke: #495057; stroke-width: 2px; stroke-linejoin: round; }
+            .label { font-family: sans-serif; font-size: 10px; fill: #212529; text-anchor: middle; dominant-baseline: middle; }
+            .pin { fill: #495057; }
+            .port-label { font-family: sans-serif; font-size: 7px; fill: #6c757d; }
+        </style>
+<g transform="translate(50, 50)">
+  <path class="wire" d="M 72 578.6666666666667 L 82 578.6666666666667 L 82 1179.6666666666667 L 572 1179.666666666667" />
+  <path class="wire" d="M 520 1133.0000000000002 L 530 1133.0000000000002 L 530 1166.3333333333335 L 572 1166.3333333333335" />
+  <path class="wire" d="M 632 1173.0000000000002 L 684 1173.0000000000002" />
+  <path class="wire" d="M 632 1113 L 642 1113 L 642 1159.6666666666667 L 684 1159.6666666666667" />
+  <path class="wire" d="M 968 1277.3333333333335 L 1020 1277.3333333333335" />
+  <path class="wire" d="M 632 167.66666666666652 L 684 167.66666666666666" />
+  <path class="wire" d="M 632 167.66666666666652 L 642 167.66666666666652 L 642 154.33333333333326 L 684 154.33333333333334" />
+  <path class="wire" d="M 632 167.66666666666652 L 642 167.66666666666652 L 642 130 L 754 130 L 754 147.66666666666652 L 796 147.6666666666666" />
+  <path class="wire" d="M 744 161 L 796 160.99999999999991" />
+  <path class="wire" d="M 632 167.66666666666652 L 642 167.66666666666652 L 642 191 L 908 190.99999999999991" />
+  <path class="wire" d="M 856 154.33333333333326 L 866 154.33333333333326 L 866 177.66666666666652 L 908 177.6666666666666" />
+  <path class="wire" d="M 968 184.33333333333326 L 978 184.33333333333326 L 978 1264.0000000000002 L 1020 1264" />
+  <path class="wire" d="M 296 332 L 348 332" />
+  <path class="wire" d="M 296 572.0000000000001 L 348 572.0000000000001" />
+  <path class="wire" d="M 296 932.0000000000002 L 348 932.0000000000002" />
+  <path class="wire" d="M 296 92 L 348 92" />
+  <path class="wire" d="M 72 518.6666666666667 L 92 518.6666666666667 L 92 1118.666666666667 L 194 1118.666666666667 L 194 992.0000000000002 L 236 992.0000000000002" />
+  <path class="wire" d="M 72 578.6666666666667 L 82 578.6666666666667 L 82 338.66666666666674 L 124 338.66666666666674" />
+  <path class="wire" d="M 184 338.66666666666674 L 236 338.6666666666667" />
+  <path class="wire" d="M 72 518.6666666666667 L 92 518.6666666666667 L 92 278.66666666666674 L 124 278.66666666666674" />
+  <path class="wire" d="M 184 278.66666666666674 L 194 278.66666666666674 L 194 325.33333333333326 L 236 325.3333333333333" />
+  <path class="wire" d="M 72 578.6666666666667 L 124 578.6666666666667" />
+  <path class="wire" d="M 184 578.6666666666667 L 236 578.6666666666667" />
+  <path class="wire" d="M 72 518.6666666666667 L 124 518.6666666666667" />
+  <path class="wire" d="M 184 518.6666666666667 L 194 518.6666666666667 L 194 565.3333333333335 L 236 565.3333333333335" />
+  <path class="wire" d="M 72 578.6666666666667 L 82 578.6666666666667 L 82 938.6666666666667 L 124 938.6666666666667" />
+  <path class="wire" d="M 184 938.6666666666667 L 236 938.6666666666669" />
+  <path class="wire" d="M 72 518.6666666666667 L 92 518.6666666666667 L 92 878.6666666666667 L 124 878.6666666666667" />
+  <path class="wire" d="M 184 878.6666666666667 L 194 878.6666666666667 L 194 925.3333333333335 L 236 925.3333333333336" />
+  <path class="wire" d="M 72 578.6666666666667 L 82 578.6666666666667 L 82 98.66666666666674 L 124 98.66666666666674" />
+  <path class="wire" d="M 184 98.66666666666674 L 236 98.66666666666667" />
+  <path class="wire" d="M 72 518.6666666666667 L 92 518.6666666666667 L 92 38.66666666666674 L 124 38.66666666666674" />
+  <path class="wire" d="M 184 38.66666666666674 L 194 38.66666666666674 L 194 85.33333333333326 L 236 85.33333333333333" />
+  <path class="wire" d="M 296 452.0000000000001 L 460 452.0000000000001" />
+  <path class="wire" d="M 408 332 L 418 332 L 418 442.0000000000001 L 460 442.0000000000001" />
+  <path class="wire" d="M 296 512.0000000000001 L 306 512.0000000000001 L 306 272 L 348 272" />
+  <path class="wire" d="M 408 272 L 428 272 L 428 432.0000000000001 L 460 432.0000000000001" />
+  <path class="wire" d="M 296 692 L 460 692" />
+  <path class="wire" d="M 408 572.0000000000001 L 418 572.0000000000001 L 418 682 L 460 682" />
+  <path class="wire" d="M 296 512.0000000000001 L 348 512.0000000000001" />
+  <path class="wire" d="M 408 512.0000000000001 L 428 512.0000000000001 L 428 672 L 460 672" />
+  <path class="wire" d="M 296 812.0000000000001 L 418 812.0000000000001 L 418 922.0000000000002 L 460 922.0000000000002" />
+  <path class="wire" d="M 408 932.0000000000002 L 460 932.0000000000002" />
+  <path class="wire" d="M 296 512.0000000000001 L 306 512.0000000000001 L 306 782.0000000000001 L 348 782.0000000000001" />
+  <path class="wire" d="M 408 782.0000000000001 L 428 782.0000000000001 L 428 912.0000000000002 L 460 912.0000000000002" />
+  <path class="wire" d="M 296 212 L 460 212" />
+  <path class="wire" d="M 408 92 L 418 92 L 418 202 L 460 202" />
+  <path class="wire" d="M 296 512.0000000000001 L 306 512.0000000000001 L 306 32 L 348 32" />
+  <path class="wire" d="M 408 32 L 428 32 L 428 192 L 460 192" />
+  <path class="wire" d="M 296 992.0000000000002 L 428 992.0000000000002 L 428 1123.0000000000002 L 460 1123.0000000000002" />
+  <path class="wire" d="M 296 1149.6666666666667 L 348 1149.666666666667" />
+  <path class="wire" d="M 72 518.6666666666667 L 92 518.6666666666667 L 92 1118.666666666667 L 316 1118.666666666667 L 316 1136.3333333333335 L 348 1136.3333333333335" />
+  <path class="wire" d="M 408 1143.0000000000002 L 460 1143.0000000000002" />
+  <path class="wire" d="M 296 512.0000000000001 L 306 512.0000000000001 L 306 1023.0000000000002 L 348 1023.0000000000002" />
+  <path class="wire" d="M 408 1023.0000000000002 L 418 1023.0000000000002 L 418 1133.0000000000002 L 460 1133.0000000000002" />
+  <path class="wire" d="M 744 1166.3333333333335 L 796 1166.3333333333335" />
+  <path class="wire" d="M 856 1166.3333333333335 L 896 1166.3333333333335 L 896 1267.3333333333335 L 908 1267.3333333333335" />
+  <path class="wire" d="M 520 682 L 572 682" />
+  <path class="wire" d="M 520 442.0000000000001 L 530 442.0000000000001 L 530 668.6666666666667 L 572 668.6666666666667" />
+  <path class="wire" d="M 520 922.0000000000002 L 684 922.0000000000001" />
+  <path class="wire" d="M 632 675.3333333333334 L 642 675.3333333333334 L 642 908.6666666666667 L 684 908.6666666666669" />
+  <path class="wire" d="M 520 202 L 774 202 L 774 1219.6666666666667 L 796 1219.6666666666667" />
+  <path class="wire" d="M 744 915.3333333333335 L 764 915.3333333333335 L 764 1233.0000000000002 L 796 1233.0000000000002" />
+  <path class="wire" d="M 856 1226.3333333333335 L 886 1226.3333333333335 L 886 1277.3333333333335 L 908 1277.3333333333335" />
+  <path class="wire" d="M 856 1287.3333333333335 L 908 1287.3333333333335" />
+  <path class="wire" d="M 744 1166.3333333333335 L 754 1166.3333333333335 L 754 1347.3333333333335 L 796 1347.3333333333335" />
+  <path class="wire" d="M 856 1347.3333333333335 L 908 1347.3333333333335" />
+  <path class="wire" d="M 296 1149.6666666666667 L 306 1149.6666666666667 L 306 1256.3333333333335 L 876 1256.3333333333335 L 876 1327.3333333333335 L 908 1327.3333333333335" />
+  <path class="wire" d="M 856 1287.3333333333335 L 866 1287.3333333333335 L 866 1337.3333333333335 L 908 1337.3333333333335" />
+  <path class="wire" d="M 72 578.6666666666667 L 82 578.6666666666667 L 82 458.66666666666674 L 124 458.66666666666674" />
+  <path class="wire" d="M 184 458.66666666666674 L 236 458.6666666666668" />
+  <path class="wire" d="M 72 518.6666666666667 L 92 518.6666666666667 L 92 398.66666666666674 L 124 398.66666666666674" />
+  <path class="wire" d="M 184 398.66666666666674 L 194 398.66666666666674 L 194 445.3333333333335 L 236 445.3333333333334" />
+  <path class="wire" d="M 72 578.6666666666667 L 82 578.6666666666667 L 82 698.6666666666667 L 124 698.6666666666667" />
+  <path class="wire" d="M 184 698.6666666666667 L 236 698.6666666666666" />
+  <path class="wire" d="M 72 518.6666666666667 L 92 518.6666666666667 L 92 638.6666666666667 L 124 638.6666666666667" />
+  <path class="wire" d="M 184 638.6666666666667 L 194 638.6666666666667 L 194 685.3333333333334 L 236 685.3333333333334" />
+  <path class="wire" d="M 72 578.6666666666667 L 82 578.6666666666667 L 82 818.6666666666667 L 124 818.6666666666667" />
+  <path class="wire" d="M 184 818.6666666666667 L 236 818.6666666666667" />
+  <path class="wire" d="M 72 518.6666666666667 L 92 518.6666666666667 L 92 758.6666666666667 L 124 758.6666666666667" />
+  <path class="wire" d="M 184 758.6666666666667 L 194 758.6666666666667 L 194 805.3333333333335 L 236 805.3333333333335" />
+  <path class="wire" d="M 72 578.6666666666667 L 82 578.6666666666667 L 82 218.66666666666674 L 124 218.66666666666674" />
+  <path class="wire" d="M 184 218.66666666666674 L 236 218.66666666666666" />
+  <path class="wire" d="M 72 518.6666666666667 L 92 518.6666666666667 L 92 158.66666666666674 L 124 158.66666666666674" />
+  <path class="wire" d="M 184 158.66666666666674 L 194 158.66666666666674 L 194 205.33333333333326 L 236 205.33333333333334" />
+  <path class="wire" d="M 968 1277.3333333333335 L 978 1277.3333333333335 L 978 1397.3333333333335 L 1020 1397.3333333333335" />
+  <path class="wire" d="M 296 1149.6666666666667 L 306 1149.6666666666667 L 306 1083.0000000000002 L 348 1083.0000000000002" />
+  <path class="wire" d="M 296 1149.6666666666667 L 306 1149.6666666666667 L 306 1210.6666666666667 L 348 1210.6666666666667" />
+  <path class="wire" d="M 968 1337.3333333333335 L 1020 1337.3333333333335" />
+  <path class="wire" d="M 1080 1270.6666666666667 L 1132 1270.6666666666667" />
+  <rect class="gate" rx="3" x="236" y="1129.6666666666667" width="60" height="40" />
+  <text class="label" x="266" y="1149.6666666666667">CONST</text>
+  <circle class="pin" cx="236" cy="1149.6666666666667" r="2" />
+  <circle class="pin" cx="296" cy="1149.6666666666667" r="2" />
+  <rect class="gate" rx="3" x="572" y="147.66666666666652" width="60" height="40" />
+  <text class="label" x="602" y="167.66666666666652">CONST</text>
+  <circle class="pin" cx="572" cy="167.66666666666652" r="2" />
+  <circle class="pin" cx="632" cy="167.66666666666652" r="2" />
+  <rect class="gate" rx="3" x="12" y="558.6666666666667" width="60" height="40" />
+  <text class="label" x="42" y="578.6666666666667">IN</text>
+  <circle class="pin" cx="12" cy="578.6666666666667" r="2" />
+  <circle class="pin" cx="72" cy="578.6666666666667" r="2" />
+  <rect class="gate" rx="3" x="12" y="498.66666666666674" width="60" height="40" />
+  <text class="label" x="42" y="518.6666666666667">IN</text>
+  <circle class="pin" cx="12" cy="518.6666666666667" r="2" />
+  <circle class="pin" cx="72" cy="518.6666666666667" r="2" />
+  <rect class="gate" rx="3" x="236" y="492.0000000000001" width="60" height="40" />
+  <text class="label" x="266" y="512.0000000000001">IN</text>
+  <circle class="pin" cx="236" cy="512.0000000000001" r="2" />
+  <circle class="pin" cx="296" cy="512.0000000000001" r="2" />
+  <rect class="gate" rx="3" x="796" y="1267.3333333333335" width="60" height="40" />
+  <text class="label" x="826" y="1287.3333333333335">IN</text>
+  <circle class="pin" cx="796" cy="1287.3333333333335" r="2" />
+  <circle class="pin" cx="856" cy="1287.3333333333335" r="2" />
+  <rect class="gate" rx="3" x="572" y="1093" width="60" height="40" />
+  <text class="label" x="602" y="1113">IN</text>
+  <circle class="pin" cx="572" cy="1113" r="2" />
+  <circle class="pin" cx="632" cy="1113" r="2" />
+  <rect class="gate" rx="3" x="572" y="1153.0000000000002" width="60" height="40" />
+  <text class="label" x="602" y="1173.0000000000002">ADD</text>
+  <circle class="pin" cx="572" cy="1179.666666666667" r="2" />
+  <text class="port-label" x="576" y="1182.666666666667">a</text>
+  <circle class="pin" cx="572" cy="1166.3333333333335" r="2" />
+  <text class="port-label" x="576" y="1169.3333333333335">b</text>
+  <circle class="pin" cx="632" cy="1173.0000000000002" r="2" />
+  <rect class="gate" rx="3" x="684" y="1146.3333333333335" width="60" height="40" />
+  <text class="label" x="714" y="1166.3333333333335">ADD</text>
+  <circle class="pin" cx="684" cy="1173.0000000000002" r="2" />
+  <text class="port-label" x="688" y="1176.0000000000002">a</text>
+  <circle class="pin" cx="684" cy="1159.6666666666667" r="2" />
+  <text class="port-label" x="688" y="1162.6666666666667">b</text>
+  <circle class="pin" cx="744" cy="1166.3333333333335" r="2" />
+  <rect class="gate" rx="3" x="1020" y="1250.6666666666667" width="60" height="40" />
+  <text class="label" x="1050" y="1270.6666666666667">EQ</text>
+  <circle class="pin" cx="1020" cy="1277.3333333333335" r="2" />
+  <text class="port-label" x="1024" y="1280.3333333333335">a</text>
+  <circle class="pin" cx="1020" cy="1264" r="2" />
+  <text class="port-label" x="1024" y="1267">b</text>
+  <circle class="pin" cx="1080" cy="1270.6666666666667" r="2" />
+  <polygon class="gate" points="348,312 400,332 348,352" />
+  <circle class="gate" cx="404" cy="332" r="4" />
+  <circle class="pin" cx="348" cy="332" r="2" />
+  <text class="port-label" x="352" y="335">a</text>
+  <circle class="pin" cx="408" cy="332" r="2" />
+  <polygon class="gate" points="348,552.0000000000001 400,572.0000000000001 348,592.0000000000001" />
+  <circle class="gate" cx="404" cy="572.0000000000001" r="4" />
+  <circle class="pin" cx="348" cy="572.0000000000001" r="2" />
+  <text class="port-label" x="352" y="575.0000000000001">a</text>
+  <circle class="pin" cx="408" cy="572.0000000000001" r="2" />
+  <polygon class="gate" points="348,912.0000000000002 400,932.0000000000002 348,952.0000000000002" />
+  <circle class="gate" cx="404" cy="932.0000000000002" r="4" />
+  <circle class="pin" cx="348" cy="932.0000000000002" r="2" />
+  <text class="port-label" x="352" y="935.0000000000002">a</text>
+  <circle class="pin" cx="408" cy="932.0000000000002" r="2" />
+  <polygon class="gate" points="348,72 400,92 348,112" />
+  <circle class="gate" cx="404" cy="92" r="4" />
+  <circle class="pin" cx="348" cy="92" r="2" />
+  <text class="port-label" x="352" y="95">a</text>
+  <circle class="pin" cx="408" cy="92" r="2" />
+  <polygon class="gate" points="236,972.0000000000002 288,992.0000000000002 236,1012.0000000000002" />
+  <circle class="gate" cx="292" cy="992.0000000000002" r="4" />
+  <circle class="pin" cx="236" cy="992.0000000000002" r="2" />
+  <text class="port-label" x="240" y="995.0000000000002">a</text>
+  <circle class="pin" cx="296" cy="992.0000000000002" r="2" />
+  <path class="gate" d="M 236 312 Q 254 332 236 352 Q 272 352 296 332 Q 272 312 236 312 Z" />
+  <text class="label" x="261" y="332">OR</text>
+  <circle class="pin" cx="236" cy="338.6666666666667" r="2" />
+  <text class="port-label" x="240" y="341.6666666666667">a</text>
+  <circle class="pin" cx="236" cy="325.3333333333333" r="2" />
+  <text class="port-label" x="240" y="328.3333333333333">b</text>
+  <circle class="pin" cx="296" cy="332" r="2" />
+  <path class="gate" d="M 236 552.0000000000001 Q 254 572.0000000000001 236 592.0000000000001 Q 272 592.0000000000001 296 572.0000000000001 Q 272 552.0000000000001 236 552.0000000000001 Z" />
+  <text class="label" x="261" y="572.0000000000001">OR</text>
+  <circle class="pin" cx="236" cy="578.6666666666667" r="2" />
+  <text class="port-label" x="240" y="581.6666666666667">a</text>
+  <circle class="pin" cx="236" cy="565.3333333333335" r="2" />
+  <text class="port-label" x="240" y="568.3333333333335">b</text>
+  <circle class="pin" cx="296" cy="572.0000000000001" r="2" />
+  <path class="gate" d="M 236 912.0000000000002 Q 254 932.0000000000002 236 952.0000000000002 Q 272 952.0000000000002 296 932.0000000000002 Q 272 912.0000000000002 236 912.0000000000002 Z" />
+  <text class="label" x="261" y="932.0000000000002">OR</text>
+  <circle class="pin" cx="236" cy="938.6666666666669" r="2" />
+  <text class="port-label" x="240" y="941.6666666666669">a</text>
+  <circle class="pin" cx="236" cy="925.3333333333336" r="2" />
+  <text class="port-label" x="240" y="928.3333333333336">b</text>
+  <circle class="pin" cx="296" cy="932.0000000000002" r="2" />
+  <path class="gate" d="M 236 72 Q 254 92 236 112 Q 272 112 296 92 Q 272 72 236 72 Z" />
+  <text class="label" x="261" y="92">OR</text>
+  <circle class="pin" cx="236" cy="98.66666666666667" r="2" />
+  <text class="port-label" x="240" y="101.66666666666667">a</text>
+  <circle class="pin" cx="236" cy="85.33333333333333" r="2" />
+  <text class="port-label" x="240" y="88.33333333333333">b</text>
+  <circle class="pin" cx="296" cy="92" r="2" />
+  <polygon class="gate" points="460,422.0000000000001 520,432.0000000000001 520,452.0000000000001 460,462.0000000000001" />
+  <text class="label" x="490" y="442.0000000000001">MUX</text>
+  <circle class="pin" cx="460" cy="432.0000000000001" r="2" />
+  <text class="port-label" x="464" y="435.0000000000001">sel</text>
+  <circle class="pin" cx="460" cy="452.0000000000001" r="2" />
+  <text class="port-label" x="464" y="455.0000000000001">d0</text>
+  <circle class="pin" cx="460" cy="442.0000000000001" r="2" />
+  <text class="port-label" x="464" y="445.0000000000001">d1</text>
+  <circle class="pin" cx="520" cy="442.0000000000001" r="2" />
+  <polygon class="gate" points="460,662 520,672 520,692 460,702" />
+  <text class="label" x="490" y="682">MUX</text>
+  <circle class="pin" cx="460" cy="672" r="2" />
+  <text class="port-label" x="464" y="675">sel</text>
+  <circle class="pin" cx="460" cy="692" r="2" />
+  <text class="port-label" x="464" y="695">d0</text>
+  <circle class="pin" cx="460" cy="682" r="2" />
+  <text class="port-label" x="464" y="685">d1</text>
+  <circle class="pin" cx="520" cy="682" r="2" />
+  <polygon class="gate" points="460,902.0000000000002 520,912.0000000000002 520,932.0000000000002 460,942.0000000000002" />
+  <text class="label" x="490" y="922.0000000000002">MUX</text>
+  <circle class="pin" cx="460" cy="912.0000000000002" r="2" />
+  <text class="port-label" x="464" y="915.0000000000002">sel</text>
+  <circle class="pin" cx="460" cy="922.0000000000002" r="2" />
+  <text class="port-label" x="464" y="925.0000000000002">d0</text>
+  <circle class="pin" cx="460" cy="932.0000000000002" r="2" />
+  <text class="port-label" x="464" y="935.0000000000002">d1</text>
+  <circle class="pin" cx="520" cy="922.0000000000002" r="2" />
+  <polygon class="gate" points="460,182 520,192 520,212 460,222" />
+  <text class="label" x="490" y="202">MUX</text>
+  <circle class="pin" cx="460" cy="192" r="2" />
+  <text class="port-label" x="464" y="195">sel</text>
+  <circle class="pin" cx="460" cy="212" r="2" />
+  <text class="port-label" x="464" y="215">d0</text>
+  <circle class="pin" cx="460" cy="202" r="2" />
+  <text class="port-label" x="464" y="205">d1</text>
+  <circle class="pin" cx="520" cy="202" r="2" />
+  <polygon class="gate" points="460,1113.0000000000002 520,1123.0000000000002 520,1143.0000000000002 460,1153.0000000000002" />
+  <text class="label" x="490" y="1133.0000000000002">MUX</text>
+  <circle class="pin" cx="460" cy="1133.0000000000002" r="2" />
+  <text class="port-label" x="464" y="1136.0000000000002">sel</text>
+  <circle class="pin" cx="460" cy="1123.0000000000002" r="2" />
+  <text class="port-label" x="464" y="1126.0000000000002">d0</text>
+  <circle class="pin" cx="460" cy="1143.0000000000002" r="2" />
+  <text class="port-label" x="464" y="1146.0000000000002">d1</text>
+  <circle class="pin" cx="520" cy="1133.0000000000002" r="2" />
+  <polygon class="gate" points="908,1257.3333333333335 968,1267.3333333333335 968,1287.3333333333335 908,1297.3333333333335" />
+  <text class="label" x="938" y="1277.3333333333335">MUX</text>
+  <circle class="pin" cx="908" cy="1287.3333333333335" r="2" />
+  <text class="port-label" x="912" y="1290.3333333333335">sel</text>
+  <circle class="pin" cx="908" cy="1267.3333333333335" r="2" />
+  <text class="port-label" x="912" y="1270.3333333333335">d0</text>
+  <circle class="pin" cx="908" cy="1277.3333333333335" r="2" />
+  <text class="port-label" x="912" y="1280.3333333333335">d1</text>
+  <circle class="pin" cx="968" cy="1277.3333333333335" r="2" />
+  <polygon class="gate" points="908,1317.3333333333335 968,1327.3333333333335 968,1347.3333333333335 908,1357.3333333333335" />
+  <text class="label" x="938" y="1337.3333333333335">MUX</text>
+  <circle class="pin" cx="908" cy="1337.3333333333335" r="2" />
+  <text class="port-label" x="912" y="1340.3333333333335">sel</text>
+  <circle class="pin" cx="908" cy="1347.3333333333335" r="2" />
+  <text class="port-label" x="912" y="1350.3333333333335">d0</text>
+  <circle class="pin" cx="908" cy="1327.3333333333335" r="2" />
+  <text class="port-label" x="912" y="1330.3333333333335">d1</text>
+  <circle class="pin" cx="968" cy="1337.3333333333335" r="2" />
+  <path class="gate" d="M 240 432.0000000000001 Q 258 452.0000000000001 240 472.0000000000001 Q 272 472.0000000000001 296 452.0000000000001 Q 272 432.0000000000001 240 432.0000000000001 Z" />
+  <path class="wire" d="M 236 432.0000000000001 Q 254 452.0000000000001 236 472.0000000000001" />
+  <text class="label" x="261" y="452.0000000000001">XOR</text>
+  <circle class="pin" cx="236" cy="458.6666666666668" r="2" />
+  <text class="port-label" x="240" y="461.6666666666668">a</text>
+  <circle class="pin" cx="236" cy="445.3333333333334" r="2" />
+  <text class="port-label" x="240" y="448.3333333333334">b</text>
+  <circle class="pin" cx="296" cy="452.0000000000001" r="2" />
+  <path class="gate" d="M 240 672 Q 258 692 240 712 Q 272 712 296 692 Q 272 672 240 672 Z" />
+  <path class="wire" d="M 236 672 Q 254 692 236 712" />
+  <text class="label" x="261" y="692">XOR</text>
+  <circle class="pin" cx="236" cy="698.6666666666666" r="2" />
+  <text class="port-label" x="240" y="701.6666666666666">a</text>
+  <circle class="pin" cx="236" cy="685.3333333333334" r="2" />
+  <text class="port-label" x="240" y="688.3333333333334">b</text>
+  <circle class="pin" cx="296" cy="692" r="2" />
+  <path class="gate" d="M 240 792.0000000000001 Q 258 812.0000000000001 240 832.0000000000001 Q 272 832.0000000000001 296 812.0000000000001 Q 272 792.0000000000001 240 792.0000000000001 Z" />
+  <path class="wire" d="M 236 792.0000000000001 Q 254 812.0000000000001 236 832.0000000000001" />
+  <text class="label" x="261" y="812.0000000000001">XOR</text>
+  <circle class="pin" cx="236" cy="818.6666666666667" r="2" />
+  <text class="port-label" x="240" y="821.6666666666667">a</text>
+  <circle class="pin" cx="236" cy="805.3333333333335" r="2" />
+  <text class="port-label" x="240" y="808.3333333333335">b</text>
+  <circle class="pin" cx="296" cy="812.0000000000001" r="2" />
+  <path class="gate" d="M 240 192 Q 258 212 240 232 Q 272 232 296 212 Q 272 192 240 192 Z" />
+  <path class="wire" d="M 236 192 Q 254 212 236 232" />
+  <text class="label" x="261" y="212">XOR</text>
+  <circle class="pin" cx="236" cy="218.66666666666666" r="2" />
+  <text class="port-label" x="240" y="221.66666666666666">a</text>
+  <circle class="pin" cx="236" cy="205.33333333333334" r="2" />
+  <text class="port-label" x="240" y="208.33333333333334">b</text>
+  <circle class="pin" cx="296" cy="212" r="2" />
+  <rect class="gate" rx="3" x="684" y="141" width="60" height="40" />
+  <text class="label" x="714" y="161">CONCAT</text>
+  <circle class="pin" cx="684" cy="167.66666666666666" r="2" />
+  <text class="port-label" x="688" y="170.66666666666666">a</text>
+  <circle class="pin" cx="684" cy="154.33333333333334" r="2" />
+  <text class="port-label" x="688" y="157.33333333333334">b</text>
+  <circle class="pin" cx="744" cy="161" r="2" />
+  <rect class="gate" rx="3" x="796" y="134.33333333333326" width="60" height="40" />
+  <text class="label" x="826" y="154.33333333333326">CONCAT</text>
+  <circle class="pin" cx="796" cy="147.6666666666666" r="2" />
+  <text class="port-label" x="800" y="150.6666666666666">a</text>
+  <circle class="pin" cx="796" cy="160.99999999999991" r="2" />
+  <text class="port-label" x="800" y="163.99999999999991">b</text>
+  <circle class="pin" cx="856" cy="154.33333333333326" r="2" />
+  <rect class="gate" rx="3" x="908" y="164.33333333333326" width="60" height="40" />
+  <text class="label" x="938" y="184.33333333333326">CONCAT</text>
+  <circle class="pin" cx="908" cy="190.99999999999991" r="2" />
+  <text class="port-label" x="912" y="193.99999999999991">a</text>
+  <circle class="pin" cx="908" cy="177.6666666666666" r="2" />
+  <text class="port-label" x="912" y="180.6666666666666">b</text>
+  <circle class="pin" cx="968" cy="184.33333333333326" r="2" />
+  <rect class="gate" rx="3" x="124" y="318.66666666666674" width="60" height="40" />
+  <text class="label" x="154" y="338.66666666666674">SLICE</text>
+  <circle class="pin" cx="124" cy="338.66666666666674" r="2" />
+  <circle class="pin" cx="184" cy="338.66666666666674" r="2" />
+  <rect class="gate" rx="3" x="124" y="258.66666666666674" width="60" height="40" />
+  <text class="label" x="154" y="278.66666666666674">SLICE</text>
+  <circle class="pin" cx="124" cy="278.66666666666674" r="2" />
+  <circle class="pin" cx="184" cy="278.66666666666674" r="2" />
+  <rect class="gate" rx="3" x="124" y="558.6666666666667" width="60" height="40" />
+  <text class="label" x="154" y="578.6666666666667">SLICE</text>
+  <circle class="pin" cx="124" cy="578.6666666666667" r="2" />
+  <circle class="pin" cx="184" cy="578.6666666666667" r="2" />
+  <rect class="gate" rx="3" x="124" y="498.66666666666674" width="60" height="40" />
+  <text class="label" x="154" y="518.6666666666667">SLICE</text>
+  <circle class="pin" cx="124" cy="518.6666666666667" r="2" />
+  <circle class="pin" cx="184" cy="518.6666666666667" r="2" />
+  <rect class="gate" rx="3" x="124" y="918.6666666666667" width="60" height="40" />
+  <text class="label" x="154" y="938.6666666666667">SLICE</text>
+  <circle class="pin" cx="124" cy="938.6666666666667" r="2" />
+  <circle class="pin" cx="184" cy="938.6666666666667" r="2" />
+  <rect class="gate" rx="3" x="124" y="858.6666666666667" width="60" height="40" />
+  <text class="label" x="154" y="878.6666666666667">SLICE</text>
+  <circle class="pin" cx="124" cy="878.6666666666667" r="2" />
+  <circle class="pin" cx="184" cy="878.6666666666667" r="2" />
+  <rect class="gate" rx="3" x="124" y="78.66666666666674" width="60" height="40" />
+  <text class="label" x="154" y="98.66666666666674">SLICE</text>
+  <circle class="pin" cx="124" cy="98.66666666666674" r="2" />
+  <circle class="pin" cx="184" cy="98.66666666666674" r="2" />
+  <rect class="gate" rx="3" x="124" y="18.666666666666742" width="60" height="40" />
+  <text class="label" x="154" y="38.66666666666674">SLICE</text>
+  <circle class="pin" cx="124" cy="38.66666666666674" r="2" />
+  <circle class="pin" cx="184" cy="38.66666666666674" r="2" />
+  <rect class="gate" rx="3" x="348" y="252" width="60" height="40" />
+  <text class="label" x="378" y="272">SLICE</text>
+  <circle class="pin" cx="348" cy="272" r="2" />
+  <circle class="pin" cx="408" cy="272" r="2" />
+  <rect class="gate" rx="3" x="348" y="492.0000000000001" width="60" height="40" />
+  <text class="label" x="378" y="512.0000000000001">SLICE</text>
+  <circle class="pin" cx="348" cy="512.0000000000001" r="2" />
+  <circle class="pin" cx="408" cy="512.0000000000001" r="2" />
+  <rect class="gate" rx="3" x="348" y="762.0000000000001" width="60" height="40" />
+  <text class="label" x="378" y="782.0000000000001">SLICE</text>
+  <circle class="pin" cx="348" cy="782.0000000000001" r="2" />
+  <circle class="pin" cx="408" cy="782.0000000000001" r="2" />
+  <rect class="gate" rx="3" x="348" y="12" width="60" height="40" />
+  <text class="label" x="378" y="32">SLICE</text>
+  <circle class="pin" cx="348" cy="32" r="2" />
+  <circle class="pin" cx="408" cy="32" r="2" />
+  <rect class="gate" rx="3" x="348" y="1123.0000000000002" width="60" height="40" />
+  <text class="label" x="378" y="1143.0000000000002">CONCAT</text>
+  <circle class="pin" cx="348" cy="1149.666666666667" r="2" />
+  <text class="port-label" x="352" y="1152.666666666667">a</text>
+  <circle class="pin" cx="348" cy="1136.3333333333335" r="2" />
+  <text class="port-label" x="352" y="1139.3333333333335">b</text>
+  <circle class="pin" cx="408" cy="1143.0000000000002" r="2" />
+  <rect class="gate" rx="3" x="348" y="1003.0000000000002" width="60" height="40" />
+  <text class="label" x="378" y="1023.0000000000002">SLICE</text>
+  <circle class="pin" cx="348" cy="1023.0000000000002" r="2" />
+  <circle class="pin" cx="408" cy="1023.0000000000002" r="2" />
+  <rect class="gate" rx="3" x="796" y="1146.3333333333335" width="60" height="40" />
+  <text class="label" x="826" y="1166.3333333333335">SLICE</text>
+  <circle class="pin" cx="796" cy="1166.3333333333335" r="2" />
+  <circle class="pin" cx="856" cy="1166.3333333333335" r="2" />
+  <rect class="gate" rx="3" x="572" y="655.3333333333334" width="60" height="40" />
+  <text class="label" x="602" y="675.3333333333334">CONCAT</text>
+  <circle class="pin" cx="572" cy="682" r="2" />
+  <text class="port-label" x="576" y="685">a</text>
+  <circle class="pin" cx="572" cy="668.6666666666667" r="2" />
+  <text class="port-label" x="576" y="671.6666666666667">b</text>
+  <circle class="pin" cx="632" cy="675.3333333333334" r="2" />
+  <rect class="gate" rx="3" x="684" y="895.3333333333335" width="60" height="40" />
+  <text class="label" x="714" y="915.3333333333335">CONCAT</text>
+  <circle class="pin" cx="684" cy="922.0000000000001" r="2" />
+  <text class="port-label" x="688" y="925.0000000000001">a</text>
+  <circle class="pin" cx="684" cy="908.6666666666669" r="2" />
+  <text class="port-label" x="688" y="911.6666666666669">b</text>
+  <circle class="pin" cx="744" cy="915.3333333333335" r="2" />
+  <rect class="gate" rx="3" x="796" y="1206.3333333333335" width="60" height="40" />
+  <text class="label" x="826" y="1226.3333333333335">CONCAT</text>
+  <circle class="pin" cx="796" cy="1219.6666666666667" r="2" />
+  <text class="port-label" x="800" y="1222.6666666666667">a</text>
+  <circle class="pin" cx="796" cy="1233.0000000000002" r="2" />
+  <text class="port-label" x="800" y="1236.0000000000002">b</text>
+  <circle class="pin" cx="856" cy="1226.3333333333335" r="2" />
+  <rect class="gate" rx="3" x="796" y="1327.3333333333335" width="60" height="40" />
+  <text class="label" x="826" y="1347.3333333333335">SLICE</text>
+  <circle class="pin" cx="796" cy="1347.3333333333335" r="2" />
+  <circle class="pin" cx="856" cy="1347.3333333333335" r="2" />
+  <rect class="gate" rx="3" x="124" y="438.66666666666674" width="60" height="40" />
+  <text class="label" x="154" y="458.66666666666674">SLICE</text>
+  <circle class="pin" cx="124" cy="458.66666666666674" r="2" />
+  <circle class="pin" cx="184" cy="458.66666666666674" r="2" />
+  <rect class="gate" rx="3" x="124" y="378.66666666666674" width="60" height="40" />
+  <text class="label" x="154" y="398.66666666666674">SLICE</text>
+  <circle class="pin" cx="124" cy="398.66666666666674" r="2" />
+  <circle class="pin" cx="184" cy="398.66666666666674" r="2" />
+  <rect class="gate" rx="3" x="124" y="678.6666666666667" width="60" height="40" />
+  <text class="label" x="154" y="698.6666666666667">SLICE</text>
+  <circle class="pin" cx="124" cy="698.6666666666667" r="2" />
+  <circle class="pin" cx="184" cy="698.6666666666667" r="2" />
+  <rect class="gate" rx="3" x="124" y="618.6666666666667" width="60" height="40" />
+  <text class="label" x="154" y="638.6666666666667">SLICE</text>
+  <circle class="pin" cx="124" cy="638.6666666666667" r="2" />
+  <circle class="pin" cx="184" cy="638.6666666666667" r="2" />
+  <rect class="gate" rx="3" x="124" y="798.6666666666667" width="60" height="40" />
+  <text class="label" x="154" y="818.6666666666667">SLICE</text>
+  <circle class="pin" cx="124" cy="818.6666666666667" r="2" />
+  <circle class="pin" cx="184" cy="818.6666666666667" r="2" />
+  <rect class="gate" rx="3" x="124" y="738.6666666666667" width="60" height="40" />
+  <text class="label" x="154" y="758.6666666666667">SLICE</text>
+  <circle class="pin" cx="124" cy="758.6666666666667" r="2" />
+  <circle class="pin" cx="184" cy="758.6666666666667" r="2" />
+  <rect class="gate" rx="3" x="124" y="198.66666666666674" width="60" height="40" />
+  <text class="label" x="154" y="218.66666666666674">SLICE</text>
+  <circle class="pin" cx="124" cy="218.66666666666674" r="2" />
+  <circle class="pin" cx="184" cy="218.66666666666674" r="2" />
+  <rect class="gate" rx="3" x="124" y="138.66666666666674" width="60" height="40" />
+  <text class="label" x="154" y="158.66666666666674">SLICE</text>
+  <circle class="pin" cx="124" cy="158.66666666666674" r="2" />
+  <circle class="pin" cx="184" cy="158.66666666666674" r="2" />
+  <rect class="gate" rx="3" x="1020" y="1377.3333333333335" width="60" height="40" />
+  <text class="label" x="1050" y="1397.3333333333335">OUT</text>
+  <circle class="pin" cx="1020" cy="1397.3333333333335" r="2" />
+  <circle class="pin" cx="1080" cy="1397.3333333333335" r="2" />
+  <rect class="gate" rx="3" x="348" y="1063.0000000000002" width="60" height="40" />
+  <text class="label" x="378" y="1083.0000000000002">OUT</text>
+  <circle class="pin" cx="348" cy="1083.0000000000002" r="2" />
+  <circle class="pin" cx="408" cy="1083.0000000000002" r="2" />
+  <rect class="gate" rx="3" x="348" y="1190.6666666666667" width="60" height="40" />
+  <text class="label" x="378" y="1210.6666666666667">OUT</text>
+  <circle class="pin" cx="348" cy="1210.6666666666667" r="2" />
+  <circle class="pin" cx="408" cy="1210.6666666666667" r="2" />
+  <rect class="gate" rx="3" x="1020" y="1317.3333333333335" width="60" height="40" />
+  <text class="label" x="1050" y="1337.3333333333335">OUT</text>
+  <circle class="pin" cx="1020" cy="1337.3333333333335" r="2" />
+  <circle class="pin" cx="1080" cy="1337.3333333333335" r="2" />
+  <rect class="gate" rx="3" x="1132" y="1250.6666666666667" width="60" height="40" />
+  <text class="label" x="1162" y="1270.6666666666667">OUT</text>
+  <circle class="pin" cx="1132" cy="1270.6666666666667" r="2" />
+  <circle class="pin" cx="1192" cy="1270.6666666666667" r="2" />
+</g>
+</svg>
