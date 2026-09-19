@@ -11,6 +11,7 @@ import '!!style-loader!css-loader!@xyflow/react/dist/style.css';
 import {GATE_DEFS, modelToVerilog, modelToCst, derivePorts} from '../../lib/bw-fpga/gate-builder.js';
 import {reactFlowToModel, modelToReactFlow} from '../../lib/bw-fpga/gate-builder-rf.js';
 import {gateShape} from '../../lib/bw-fpga/glyphs.js';
+import {canvasToSvg} from '../../lib/bw-fpga/canvas-svg.js';
 import {buildPaletteCatalog} from '../../lib/bw-fpga/palette-catalog.js';
 import FpgaGatePalette, {DRAG_MIME} from './fpga-gate-palette.jsx';
 import {NodeInspector, NodeContextMenu} from './fpga-node-inspector.jsx';
@@ -303,6 +304,19 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
     };
     const onConnect = React.useCallback(params => setEdges(es => addEdge(params, es)), [setEdges]);
 
+    // Export the canvas as a standalone SVG — the SAME nodes/glyphs/wires shown,
+    // at their live positions. A CLI-inspectable snapshot of the design.
+    const exportSvg = () => {
+        const model = reactFlowToModel(nodes, edges, library);
+        const positions = Object.fromEntries(nodes.map(n => [n.id, n.position]));
+        const svg = canvasToSvg(model, positions);
+        const url = URL.createObjectURL(new Blob([svg], {type: 'image/svg+xml'}));
+        const a = document.createElement('a');
+        a.href = url; a.download = 'fpga-canvas.svg';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    };
+
     // Editing a placed node: double-click opens the inspector; a patch merges
     // into node.data (the bridge reads width/name/dataWidth/addrWidth from there).
     const patchNode = (id, patch) => setNodes(ns => ns.map(n => (n.id === id ? {...n, data: {...n.data, ...patch}} : n)));
@@ -416,6 +430,8 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                 <button type="button" data-testid="bw-fpga-rf-clear"
                     onClick={() => { setNodes([]); setEdges([]); setCheckResult(null); }}
                     title="Clear the canvas" style={{cursor: 'pointer'}}>{'🗑 Clear'}</button>
+                <button type="button" data-testid="bw-fpga-rf-svg" onClick={exportSvg}
+                    title="Export the canvas as an SVG" style={{cursor: 'pointer'}}>{'⤓ SVG'}</button>
                 <span style={{opacity: 0.4}}>{'|'}</span>
                 <button type="button" data-testid="bw-fpga-rf-learn"
                     onClick={() => setShowLearn(s => !s)}
