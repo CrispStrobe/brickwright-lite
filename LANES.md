@@ -431,6 +431,8 @@ keeping, it is worth a branch.
 
 ## CLAIMS — work in progress
 
+| FPGA renderer real CI execution | Astra coordinator / Sol planning, session astra-sept19 | `lane/astra-renderer-ci`; `/mnt/volume1/code/lego/wt-astra-renderer-ci`; base `5f3207c9d` | **CLAIMED 2026-09-19.** Repair base Build 35433463484: bin/render-fpga.mjs accepts existing Yosys JSON; test/fpga-render-cli.test.mjs exercises actual layout/SVG from a checked-in netlist without missing-Yosys skip or ambient PATH. No gate baseline widening, fabricated skip receipt, package pins or changes to synthesis semantics. |
+
 | FPGA unknown-state correctness and RAM canvas integration | Astra coordinator / Sol fpga, session astra-sept19 | `lane/astra-fpga-consolidation`; `/mnt/volume1/code/lego/wt-astra-fpga-consolidation`; base `0435b0336` | **CLAIMED 2026-09-19.** Reconcile open PR194 additively on current main: fpga-gate-builder-rf.jsx, gate-builder-rf.js, gate-eval.js and focused FPGA tests/probe. Preserve hierarchy ports and localization; fix captured unknown propagation; qualify RAM canvas/model/codegen with honest simulation limits. PR194 remains intact for attribution; no package pins, USB helper or other active lane paths. |
 
 | FPGA read-only USB protocol identification | Astra coordinator / Sol hardware, session astra-sept19 | `lane/astra-usb-identification`; `/mnt/volume1/code/lego/wt-astra-usb-identification`; base `1a48f9212` | **CLAIMED 2026-09-19.** Lite bw-fpga usb-identification.js / webusb-flash.js, focused USB identification tests and docs/TANG-NANO.md hardware milestone. Read-only granted-device descriptor capture and honest protocol classification; no device open, interface claim, flashing, physical-silicon inference, package pins or canvas edits. |
