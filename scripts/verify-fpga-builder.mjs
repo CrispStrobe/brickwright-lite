@@ -75,38 +75,72 @@ try {
     check(/synchronous single-port RAM|synchroner Single-Port-RAM/i.test(ramTitle || ''),
         'the RAM action has localized explanatory text', ramTitle || '(missing title)');
     await ramButton.click();
-    await builder.getByText('4×4', {exact: true}).waitFor({timeout: 10000});
-    check(true, 'adding RAM shows its 4×4 geometry on the live canvas');
+    const ramGeometry = builder.getByText('4×4', {exact: true});
+    await ramGeometry.waitFor({timeout: 10000});
+    check(await ramGeometry.isVisible(), 'adding RAM shows its 4×4 geometry on the live canvas');
 
     // RAM is intentionally not claimed as live-simulated. Return to the clean
     // AND HDL generated before it was added and prove the production journey.
     if (!skipSynth) {
         await page.getByRole('button', {name: /Wire up a demo board|Demo-Board verdrahten/i}).click();
-        await page.locator('[role="tab"]', {hasText: /Circuit/i}).first()
-            .waitFor({state: 'visible', timeout: 10000});
         await page.waitForFunction(() => window.__circuit && typeof window.__circuit.addPart === 'function',
             null, {timeout: 15000});
         await fpgaTab.click();
-        await page.getByText(/Wired a Tang Nano 20K|Tang Nano 20K.*verdrahtet/i)
-            .waitFor({timeout: 10000});
-        check(true, 'the FPGA journey creates a persistent demo circuit');
+        const wired = page.getByText(/Wired a Tang Nano 20K|Tang Nano 20K.*verdrahtet/i);
+        await wired.waitFor({timeout: 10000});
+        check(await wired.isVisible(), 'the FPGA journey creates a persistent demo circuit');
 
         const synth = page.getByRole('button', {name: /Synthesise|Synthetisieren/i}).first();
         await synth.waitFor({state: 'visible', timeout: 10000});
         await page.waitForFunction(button => !button.disabled, await synth.elementHandle(), {timeout: 30000});
         await synth.click();
-        await page.getByRole('link', {name: /Download \.fs/i}).waitFor({timeout});
-        check(true, 'visual AND reaches a real bitstream download');
-        await page.waitForFunction(() => window.__fpgaOutputs.length > 0, null, {timeout: 30000});
-        const outputs = await page.evaluate(() => window.__fpgaOutputs.at(-1));
-        check(Array.isArray(outputs?.leds) && outputs.leds.some(led => led.pin === 15),
-            'the synthesised AND drives the demo circuit output pin', JSON.stringify(outputs));
+        const bitstream = page.getByRole('link', {name: /Download \.fs/i});
+        await bitstream.waitFor({timeout});
+        check(await bitstream.isVisible(), 'visual AND reaches a real bitstream download');
+
+        const inputHeading = page.getByRole('heading', {name: /Design inputs|Design-Eingänge/i});
+        await inputHeading.waitFor({state: 'attached', timeout: 30000});
+        const pinDetails = inputHeading.locator('xpath=ancestor::details[1]');
+        if (!await pinDetails.getAttribute('open')) await pinDetails.locator('summary').first().click();
+        const input = name => pinDetails.getByText(name, {exact: true})
+            .locator('xpath=ancestor::label[1]').locator('input[type="checkbox"]');
+        const a = input('a');
+        const b = input('b');
+        await a.waitFor({state: 'visible', timeout: 10000});
+        await b.waitFor({state: 'visible', timeout: 10000});
+
+        const expectPin = async (high, action, description) => {
+            await page.evaluate(() => { window.__fpgaOutputs = []; });
+            await action();
+            await page.waitForFunction(expected => {
+                const eventReachedPin = window.__fpgaOutputs.some(event =>
+                    event?.leds?.some(led => Number(led.pin) === 15 && led.high === expected));
+                const boardState = window.__circuit?.board?.pinStates?.get('p15');
+                return eventReachedPin && boardState?.mode === 'pushpull' && boardState.driveHigh === expected;
+            }, high, {timeout: 30000});
+            const observed = await page.evaluate(() => ({
+                output: window.__fpgaOutputs.at(-1),
+                board: window.__circuit.board.pinStates.get('p15')
+            }));
+            check(observed.output.leds.some(led => Number(led.pin) === 15 && led.high === high) &&
+                observed.board.mode === 'pushpull' && observed.board.driveHigh === high,
+            description, JSON.stringify(observed));
+        };
+        // The transition itself must produce each observation; clearing the
+        // capture first prevents a stale post-synthesis event from passing.
+        await expectPin(false, () => a.check(), 'AND output stays low for a=1, b=0');
+        await expectPin(true, () => b.check(), 'AND output rises for a=1, b=1');
+        await expectPin(false, () => a.uncheck(), 'AND output falls for a=0, b=1');
     } else {
         console.log('  note: FPGA_SKIP_SYNTH=1 — synthesis and demo-circuit checks intentionally omitted');
     }
 
     await page.screenshot({path: resolve(artifacts, 'fpga-builder.png'), fullPage: true});
-    check(diagnostics.length === 0, 'the journey emits no browser errors', diagnostics.join(' | '));
+    const pageErrors = diagnostics.filter(line => line.startsWith('pageerror:'));
+    check(pageErrors.length === 0, 'the journey emits no uncaught page errors', pageErrors.join(' | '));
+    if (diagnostics.length > pageErrors.length) {
+        console.log(`  diagnostic: ${diagnostics.filter(line => !line.startsWith('pageerror:')).join(' | ')}`);
+    }
     await writeFile(resolve(artifacts, 'report.json'), JSON.stringify({url, skipSynth, checks, diagnostics}, null, 2));
     console.log(`FPGA builder browser proof passed (${checks.length} checks).`);
 } catch (error) {
