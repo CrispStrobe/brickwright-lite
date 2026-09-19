@@ -1,6 +1,6 @@
 import {packageSourceFile} from './helpers/package-source.mjs';
 /**
- * debug-target-factory routing: three engines, one factory, no silent misrouting.
+ * debug-target-factory routing: every shipped engine, one factory, no silent misrouting.
  *
  * Three execution engines (emu8051, avr8js, rp2040js) route through one
  * createDebugTarget() factory. Each was verified individually; this test
@@ -25,7 +25,7 @@ import { existsSync } from 'node:fs';
 const factoryPath = packageSourceFile('bw-board/debug-target-factory.js');
 const targetKindsPath = packageSourceFile('bw-board/target-kinds.js');
 
-test('getTargetKinds lists all three simulator engines', async () => {
+test('getTargetKinds lists the shipped simulator engines', async () => {
     // Import the picker seam directly. Pulling this assertion through the
     // factory would also initialize every CPU adapter and would fail to prove
     // the dependency boundary the production picker relies on.
@@ -36,6 +36,8 @@ test('getTargetKinds lists all three simulator engines', async () => {
     assert.ok(kindIds.includes('emulator'), 'missing emulator (emu8051)');
     assert.ok(kindIds.includes('avr8js'), 'missing avr8js');
     assert.ok(kindIds.includes('rp2040js'), 'missing rp2040js');
+    assert.ok(kindIds.includes('i8086'), 'missing i8086');
+    assert.ok(kindIds.includes('i80286'), 'missing i80286');
     assert.ok(kindIds.includes('serial'), 'missing serial');
 
     // Each entry must have label and description
@@ -43,6 +45,12 @@ test('getTargetKinds lists all three simulator engines', async () => {
         assert.ok(k.label, `${k.kind} has no label`);
         assert.ok(k.description, `${k.kind} has no description`);
     }
+});
+
+test('i80286 reaches the 80286 machine variant rather than silently using 8086', async () => {
+    const { createDebugTarget } = await import(factoryPath);
+    const result = await createDebugTarget('i80286', {});
+    assert.equal(result.adapter?.machine?.variant, '80286');
 });
 
 test('unknown target kind throws rather than defaulting', async () => {

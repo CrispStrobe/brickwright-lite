@@ -23,5 +23,7 @@ test('the report distinguishes pinned vector evidence, local tests, and timing l
     assert.match(report, /Lite does not download the large vector corpora/);
     assert.match(report, /verify:bwboard-ci/);
     assert.match(report, /no prefetch\/BIU or T-state schedule/);
-    assert.match(report, /This is not a 80286-or-later emulator/);
+    assert.match(report, /available as `i80286`; diagnostic, not vector-complete/);
+    assert.match(report, /is \*\*not\*\* a complete protected-mode or cycle-accurate 80286/);
+    assert.match(report, /diagnostic gap census rather than a green conformance total/);
 });
