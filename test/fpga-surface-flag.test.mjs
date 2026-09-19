@@ -672,3 +672,17 @@ test('the React Flow builder can set a node bit width (buses)', () => {
     const gb = read('overlay/scratch-gui/src/lib/bw-fpga/gate-builder.js');
     assert.match(gb, /A multi-bit port needs ONE pin per bit/, 'a bus is constrained per-bit, or P&R fails');
 });
+
+// ── the palette: drag parts onto the canvas (CircuitVerse/icestudio-style) ──
+test('the builder places nodes by dragging from a categorised palette', () => {
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /import FpgaGatePalette, \{DRAG_MIME\}/, 'the palette sidebar is mounted');
+    assert.match(ui, /<FpgaGatePalette catalog=\{catalog\}/, 'fed by the pure catalogue');
+    assert.match(ui, /rf\.screenToFlowPosition/, 'a drop lands the node where the cursor is');
+    assert.match(ui, /const placeNode = /, 'one place-node path for gate/io/memory/template drops');
+    const palette = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-palette.jsx');
+    assert.match(palette, /e\.dataTransfer\.setData\(DRAG_MIME/, 'rows start a drag carrying a descriptor');
+    assert.match(palette, /gateShape\(/, 'gate rows preview the shared glyph');
+    const catalog = read('overlay/scratch-gui/src/lib/bw-fpga/palette-catalog.js');
+    assert.match(catalog, /export function buildPaletteCatalog/, 'the catalogue is pure data over GATE_DEFS');
+});

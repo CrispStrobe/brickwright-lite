@@ -1,7 +1,7 @@
 import React from 'react';
 import {connect} from 'react-redux';
 import {ReactFlow, ReactFlowProvider, Background, Controls, MiniMap, addEdge,
-    useNodesState, useEdgesState, Handle, Position} from '@xyflow/react';
+    useNodesState, useEdgesState, useReactFlow, Handle, Position} from '@xyflow/react';
 // React Flow's stylesheet uses GLOBAL classes (.react-flow__*) that its own JS
 // applies. scratch-webpack-configuration runs css-loader with `modules` on for
 // ALL .css, which would HASH those classes and break the canvas. The `!!` prefix
@@ -11,6 +11,8 @@ import '!!style-loader!css-loader!@xyflow/react/dist/style.css';
 import {GATE_DEFS, modelToVerilog, modelToCst, derivePorts} from '../../lib/bw-fpga/gate-builder.js';
 import {reactFlowToModel, modelToReactFlow} from '../../lib/bw-fpga/gate-builder-rf.js';
 import {gateShape} from '../../lib/bw-fpga/glyphs.js';
+import {buildPaletteCatalog} from '../../lib/bw-fpga/palette-catalog.js';
+import FpgaGatePalette, {DRAG_MIME} from './fpga-gate-palette.jsx';
 
 // The gate glyphs are shared with the CLI/schematic renderer; their classes are
 // styled once here, scoped under `.bw-glyph` so they never touch the rest of the app.
@@ -195,24 +197,39 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
         data: {kind: 'instance', module: mod.name, ports: mod.ports}
     }]);
 
-    const addGate = type => setNodes(ns => [...ns, {
-        id: nid('g'), type: 'gate', position: {x: 180, y: 40 + (ns.length % 6) * 40},
-        data: {kind: 'gate', gtype: type, width: newWidth}
-    }]);
-    const addIo = kind => setNodes(ns => {
-        const n = ns.filter(x => x.data.kind === kind).length + 1;
-        return [...ns, {
-            id: nid(kind === 'in' ? 'i' : 'o'), type: 'io',
-            position: {x: kind === 'in' ? 0 : 360, y: 40 + (ns.length % 6) * 40},
-            data: {kind, name: `${kind === 'in' ? 'in' : 'out'}${n}`, width: newWidth}
-        }];
-    });
-    // A RAM defaults to a 4x4 (2-bit addr, 4-bit data) — the shape that fits the
+    const catalog = React.useMemo(() => buildPaletteCatalog(), []);
+    const rf = useReactFlow();
+
+    // Turn a palette drag descriptor into a canvas node at `position`. A RAM
+    // defaults to a 4x4 (2-bit addr, 4-bit data) — the shape that fits the
     // header pins and is proven to place-and-route to a bitstream.
-    const addMemory = () => setNodes(ns => [...ns, {
-        id: nid('m'), type: 'memory', position: {x: 200, y: 40 + (ns.length % 6) * 50},
-        data: {kind: 'memory', dataWidth: 4, addrWidth: 2}
-    }]);
+    const placeNode = (item, position) => {
+        if (item.kind === 'gate') {
+            setNodes(ns => [...ns, {id: nid('g'), type: 'gate', position, data: {kind: 'gate', gtype: item.gtype, width: newWidth}}]);
+        } else if (item.kind === 'in' || item.kind === 'out') {
+            setNodes(ns => {
+                const n = ns.filter(x => x.data.kind === item.kind).length + 1;
+                return [...ns, {id: nid(item.kind === 'in' ? 'i' : 'o'), type: 'io', position,
+                    data: {kind: item.kind, name: `${item.kind === 'in' ? 'in' : 'out'}${n}`, width: newWidth}}];
+            });
+        } else if (item.kind === 'memory') {
+            setNodes(ns => [...ns, {id: nid('m'), type: 'memory', position, data: {kind: 'memory', dataWidth: 4, addrWidth: 2}}]);
+        } else if (item.kind === 'template' && item.model) {
+            const seeded = modelToReactFlow(item.model);
+            setNodes(seeded.nodes);
+            setEdges(seeded.edges);
+        }
+    };
+
+    const onDragOver = e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; };
+    const onDrop = e => {
+        e.preventDefault();
+        const raw = e.dataTransfer.getData(DRAG_MIME);
+        if (!raw) return;
+        let item;
+        try { item = JSON.parse(raw); } catch (err) { return; }
+        placeNode(item, rf.screenToFlowPosition({x: e.clientX, y: e.clientY}));
+    };
     const onConnect = React.useCallback(params => setEdges(es => addEdge(params, es)), [setEdges]);
 
     const generate = () => {
@@ -226,20 +243,14 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
     return (
         <div>
             <style>{GLYPH_CSS}</style>
-            <div style={{display: 'flex', gap: '0.35rem', flexWrap: 'wrap', margin: '0 0 0.4rem'}}>
-                <button type="button" onClick={() => addIo('in')} style={{cursor: 'pointer'}}>{L10N[pickLocale(locale)].addInput}</button>
-                <button type="button" onClick={() => addIo('out')} style={{cursor: 'pointer'}}>{L10N[pickLocale(locale)].addOutput}</button>
+            <div style={{display: 'flex', gap: '0.35rem', flexWrap: 'wrap', margin: '0 0 0.4rem', alignItems: 'center'}}>
+                <span style={{fontSize: '0.8rem', opacity: 0.75}}>{'drag a part from the palette →'}</span>
                 <label style={{fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 3}} title={L10N[pickLocale(locale)].widthTitle}>
                     {L10N[pickLocale(locale)].width}
                     <select value={newWidth} onChange={e => setNewWidth(Number(e.target.value))} data-testid="bw-fpga-rf-width">
                         {[1, 2, 4, 8, 16].map(w => <option key={w} value={w}>{w}</option>)}
                     </select>
                 </label>
-                {['and', 'or', 'not', 'xor', 'nand', 'nor', 'dff'].map(t => (
-                    <button key={t} type="button" onClick={() => addGate(t)} style={{cursor: 'pointer'}}>{`+ ${GATE_DEFS[t].label}`}</button>
-                ))}
-                <button type="button" onClick={addMemory} title={L10N[pickLocale(locale)].memoryTitle}
-                    style={{cursor: 'pointer'}} data-testid="bw-fpga-rf-memory">{L10N[pickLocale(locale)].addMemory}</button>
                 <span style={{opacity: 0.4}}>{'|'}</span>
                 <button type="button" onClick={saveSubcircuit} title={L10N[pickLocale(locale)].saveTitle}
                     style={{cursor: 'pointer'}} data-testid="bw-fpga-rf-save">{L10N[pickLocale(locale)].saveAsSubcircuit}</button>
@@ -256,18 +267,21 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                     ))}
                 </div>
             ) : null}
-            <div style={{height: '48vh', minHeight: 300, border: '1px solid rgba(71,85,105,0.25)', borderRadius: 6}}
-                data-testid="bw-fpga-rf-canvas">
-                <ReactFlow
-                    nodes={nodes} edges={edges}
-                    onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect}
-                    nodeTypes={nodeTypes} fitView
-                    proOptions={{hideAttribution: true}}
-                >
-                    <Background />
-                    <Controls />
-                    <MiniMap pannable zoomable />
-                </ReactFlow>
+            <div style={{display: 'flex', alignItems: 'stretch'}}>
+                <FpgaGatePalette catalog={catalog} />
+                <div style={{flex: '1 1 auto', height: '48vh', minHeight: 300, border: '1px solid rgba(71,85,105,0.25)', borderRadius: 6}}
+                    data-testid="bw-fpga-rf-canvas" onDrop={onDrop} onDragOver={onDragOver}>
+                    <ReactFlow
+                        nodes={nodes} edges={edges}
+                        onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect}
+                        nodeTypes={nodeTypes} fitView
+                        proOptions={{hideAttribution: true}}
+                    >
+                        <Background />
+                        <Controls />
+                        <MiniMap pannable zoomable />
+                    </ReactFlow>
+                </div>
             </div>
             <div style={{margin: '0.5rem 0'}}>
                 <button type="button" onClick={generate} style={{padding: '0.35rem 0.8rem', cursor: 'pointer', fontWeight: 'bold'}}
