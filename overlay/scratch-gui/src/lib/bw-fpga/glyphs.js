@@ -57,8 +57,9 @@ export function gateShape (node) {
         const body = `<path class="gate" d="M ${x + 6} ${y} Q ${x + width * .34} ${centerY} ${x + 6} ${y + height} Q ${x + width * .68} ${y + height} ${x + width} ${centerY} Q ${x + width * .68} ${y} ${x + 6} ${y} Z"/>`;
         return node.type === 'xor' ? `${body}<path class="gate-line" d="M ${x} ${y} Q ${x + width * .28} ${centerY} ${x} ${y + height}"/>` : body;
     }
-    if (node.type === 'not') {
-        return `<polygon class="gate" points="${x},${y} ${x + width - 10},${centerY} ${x},${y + height}"/><circle class="gate" cx="${x + width - 5}" cy="${centerY}" r="5"/>`;
+    if (node.type === 'not' || node.type === 'buffer') {
+        const tri = `<polygon class="gate" points="${x},${y} ${x + width - 10},${centerY} ${x},${y + height}"/>`;
+        return node.type === 'not' ? `${tri}<circle class="gate" cx="${x + width - 5}" cy="${centerY}" r="5"/>` : tri;
     }
     if (node.type === 'mux' || node.type === 'pmux') {
         return `<polygon class="gate" points="${x},${y} ${x + width},${y + 9} ${x + width},${y + height - 9} ${x},${y + height}"/>`;

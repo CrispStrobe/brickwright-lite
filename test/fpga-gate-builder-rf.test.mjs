@@ -166,3 +166,12 @@ test('memory geometry and hierarchy ports survive together on one canvas', () =>
     assert.equal(ram.data.dataWidth, 4);
     assert.equal(ram.data.addrWidth, 2);
 });
+
+test('a constant node round-trips its value and drives a literal', () => {
+    const rf = modelToReactFlow({nodes: [{id: 'k', kind: 'const', value: 0}, {id: 'y', kind: 'out', name: 'y'}],
+        edges: [{from: {node: 'k', port: 'out'}, to: {node: 'y', port: 'in'}}]});
+    assert.equal(rf.nodes.find(n => n.id === 'k').type, 'const', 'a const maps to the const RF node');
+    const back = reactFlowToModel(rf.nodes, rf.edges);
+    assert.equal(back.nodes.find(n => n.id === 'k').value, 0, 'value 0 survives (not dropped as falsy)');
+    assert.match(modelToVerilog(back).verilog, /assign y = 1'b0;/);
+});

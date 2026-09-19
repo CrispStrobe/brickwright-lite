@@ -274,3 +274,22 @@ test('a memory with no clock wired is a named problem', () => {
     ], edges: [{from: {node: 'ram', port: 'dout'}, to: {node: 'o', port: 'in'}}]});
     assert.ok(problems.some(p => p.code === 'memory-no-clock'));
 });
+
+test('constant, buffer and controlled-inverter emit the right Verilog', () => {
+    const model = {nodes: [
+        {id: 'a', kind: 'in', name: 'a'}, {id: 'e', kind: 'in', name: 'e'},
+        {id: 'k', kind: 'const', value: 1},
+        {id: 'b', kind: 'gate', type: 'buffer'}, {id: 'c', kind: 'gate', type: 'cinv'},
+        {id: 'yb', kind: 'out', name: 'yb'}, {id: 'yc', kind: 'out', name: 'yc'}, {id: 'yk', kind: 'out', name: 'yk'}
+    ], edges: [
+        {from: {node: 'a', port: 'out'}, to: {node: 'b', port: 'a'}}, {from: {node: 'b', port: 'out'}, to: {node: 'yb', port: 'in'}},
+        {from: {node: 'a', port: 'out'}, to: {node: 'c', port: 'a'}}, {from: {node: 'e', port: 'out'}, to: {node: 'c', port: 'inv'}},
+        {from: {node: 'c', port: 'out'}, to: {node: 'yc', port: 'in'}},
+        {from: {node: 'k', port: 'out'}, to: {node: 'yk', port: 'in'}}
+    ]};
+    const {verilog, problems} = modelToVerilog(model);
+    assert.deepEqual(problems, []);
+    assert.match(verilog, /assign w_b = a;/, 'buffer passes through');
+    assert.match(verilog, /assign w_c = e \? ~a : a;/, 'controlled inverter');
+    assert.match(verilog, /assign yk = 1'b1;/, 'a constant drives a literal');
+});

@@ -24,6 +24,8 @@ const OPS = {
     and: (a, b) => a & b, or: (a, b) => a | b, xor: (a, b) => a ^ b,
     nand: (a, b) => ~(a & b), nor: (a, b) => ~(a | b), xnor: (a, b) => ~(a ^ b),
     not: a => ~a,
+    buffer: a => a,
+    cinv: (a, inv) => (inv ? ~a : a),
     eq: (a, b) => a === b ? 1 : 0,
     neq: (a, b) => a !== b ? 1 : 0,
     lt: (a, b) => a < b ? 1 : 0,

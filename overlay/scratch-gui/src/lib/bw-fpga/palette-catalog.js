@@ -12,7 +12,7 @@ import {GATE_DEFS} from './gate-builder.js';
 // Which gate types sit in which category. Every GATE_DEFS key appears exactly
 // once (guarded by the unit test) so nothing the codegen understands is hidden.
 const GATE_CATEGORIES = [
-    {id: 'logic', label: 'Logic', types: ['and', 'or', 'not', 'xor', 'nand', 'nor', 'xnor']},
+    {id: 'logic', label: 'Logic', types: ['and', 'or', 'not', 'buffer', 'cinv', 'xor', 'nand', 'nor', 'xnor']},
     {id: 'arith', label: 'Arithmetic', types: ['add', 'sub', 'mul', 'shl', 'shr']},
     {id: 'compare', label: 'Compare', types: ['eq', 'neq', 'lt', 'gt', 'lte', 'gte']},
     {id: 'mux', label: 'Select', types: ['mux']},
@@ -34,7 +34,8 @@ export function buildPaletteCatalog (templates = []) {
 
     sections.push({id: 'io', label: 'In / Out', items: [
         {kind: 'in', label: 'Input'},
-        {kind: 'out', label: 'Output'}
+        {kind: 'out', label: 'Output'},
+        {kind: 'const', label: 'Constant'}
     ]});
 
     for (const cat of GATE_CATEGORIES) {

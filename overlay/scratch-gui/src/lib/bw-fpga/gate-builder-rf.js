@@ -28,6 +28,7 @@ export function reactFlowToModel (rfNodes, rfEdges, modules) {
         if (d.name != null) node.name = d.name;
         if (d.width != null && d.width !== 1) node.width = d.width;
         if (d.module != null) node.module = d.module;
+        if (d.value != null) node.value = d.value;
         if (d.dataWidth != null) node.dataWidth = d.dataWidth;
         if (d.addrWidth != null) node.addrWidth = d.addrWidth;
         return node;
@@ -51,12 +52,12 @@ export function reactFlowToModel (rfNodes, rfEdges, modules) {
  * @returns {{nodes: Array, edges: Array}} React Flow state
  */
 export function modelToReactFlow (model, positions = {}) {
-    const rfType = kind => (kind === 'in' || kind === 'out' ? 'io' : kind === 'instance' ? 'instance' : kind === 'memory' ? 'memory' : 'gate');
+    const rfType = kind => (kind === 'in' || kind === 'out' ? 'io' : kind === 'instance' ? 'instance' : kind === 'memory' ? 'memory' : kind === 'const' ? 'const' : 'gate');
     const nodes = ((model && model.nodes) || []).map((n, i) => ({
         id: n.id,
         type: rfType(n.kind),
         position: positions[n.id] || {x: i * 130, y: (i % 2) * 70},
-        data: {kind: n.kind, gtype: n.type, name: n.name, width: n.width || 1, module: n.module,
+        data: {kind: n.kind, gtype: n.type, name: n.name, width: n.width || 1, module: n.module, value: n.value,
             ports: n.ports, dataWidth: n.dataWidth, addrWidth: n.addrWidth}
     }));
     const edges = ((model && model.edges) || []).map((e, i) => ({

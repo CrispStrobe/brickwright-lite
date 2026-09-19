@@ -754,3 +754,13 @@ test('Run mode labels each wire with its live bit value', () => {
     assert.match(ui, /animated: v === 1/, 'live 1s animate');
     assert.match(ui, /strokeWidth: v === 1 \? 2\.6 : 1\.8/, 'active wires thicken');
 });
+
+// ── new primitives: constant source, buffer, controlled inverter ──
+test('the palette gains a Constant source and buffer/cinv gates', () => {
+    const cat = read('overlay/scratch-gui/src/lib/bw-fpga/palette-catalog.js');
+    assert.match(cat, /kind: 'const', label: 'Constant'/, 'a Constant source node');
+    assert.match(cat, /'buffer', 'cinv'/, 'buffer and controlled inverter in Logic');
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /const: ConstNode/, 'the constant renders its value');
+    assert.match(ui, /item\.kind === 'const'/, 'a constant can be dropped');
+});
