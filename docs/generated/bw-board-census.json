@@ -2,8 +2,8 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "d4cb508933ac96d9ffea7cd453d204ae7c8065d2",
-    "read": "2026-09-18"
+    "sha": "9058d51f84e3e9021dd9a3e39e7916e316acd19d",
+    "read": "2026-09-19"
   },
   "rows": [
     {
@@ -48,6 +48,19 @@
         "scripts/grind-i8086-disasm.mjs"
       ],
       "what": "SingleStepTests 8086 — 646,000 vectors from an Intel P80C86A-2. Grounds src/i8086.js and src/i8086-disasm.js on TEXT as well as state."
+    },
+    {
+      "id": "80286-vectors",
+      "kind": "oracle",
+      "present": false,
+      "ciAvailable": true,
+      "ci": "yes — the `vectors` job checks out v1_real_mode and runs the diagnostic 286 gap census",
+      "via": "tried $I80286_VECTORS, /home/claudeuser/code/80286-vectors/v1_real_mode",
+      "gates": [
+        "scripts/grind-i8086-286.mjs",
+        "scripts/grind-i80286.mjs"
+      ],
+      "what": "SingleStepTests 80286 real-mode — grades the fast functional 286 (src/i8086.js variant:'80286') and the cycle-accurate harris 286."
     },
     {
       "id": "8088-vectors",
