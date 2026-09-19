@@ -211,11 +211,11 @@ function emitModule (def, name, moduleDefs, problems) {
     return lines.join('\n');
 }
 
-// Header pins for generated constraints, from the pins the shipped examples use
-// (verified against the real Tang Nano 20K part). A named clock takes pin 4;
-// outputs take LED-capable header pins; other inputs take spare header pins.
+// Header pins for generated constraints, verified against the pinned Tang Nano
+// 20K part schema. A named clock takes the board's dedicated pin 4; outputs take
+// LED-capable header pins; other inputs take distinct spare header pins.
 const OUT_PINS = [15, 16, 17, 18, 19, 20, 73];
-const IN_PINS = [88, 74, 76, 77, 80, 81, 82, 83];
+const IN_PINS = [74, 76, 77, 80, 75, 85, 27, 28];
 
 /**
  * Generate a matching Gowin .cst for a gate model, so the built design places

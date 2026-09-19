@@ -118,6 +118,10 @@ try {
         await inputHeading.waitFor({state: 'attached', timeout: 30000});
         const pinDetails = inputHeading.locator('xpath=ancestor::details[1]');
         if (await pinDetails.getAttribute('open') === null) await pinDetails.locator('summary').first().click();
+        const pinReport = await pinDetails.innerText();
+        check(!/not brought out to a header/i.test(pinReport) &&
+            /a\s*→\s*pin\s*74/i.test(pinReport) && /b\s*→\s*pin\s*76/i.test(pinReport),
+        'generated AND inputs reach unique breadboard header pins');
         const input = name => pinDetails.getByText(name, {exact: true})
             .locator('xpath=ancestor::label[1]').locator('input[type="checkbox"]');
         const a = input('a');

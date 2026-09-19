@@ -135,7 +135,7 @@ test('modelToCst places each I/O on a pin — a clock on 4, outputs on LED pins'
     assert.deepEqual(problems, []);
     assert.match(cst, /IO_LOC "clk" 4;/, 'a clock-named input goes to pin 4');
     assert.match(cst, /IO_LOC "led" 15;/, 'the first output goes to the first LED pin');
-    assert.match(cst, /IO_LOC "d" 88;/, 'a non-clock input goes to a spare header pin');
+    assert.match(cst, /IO_LOC "d" 74;/, 'a non-clock input goes to a spare header pin');
     assert.match(cst, /IO_PORT "led" IO_TYPE=LVCMOS33;/, 'each pin gets a level constraint');
     // gates are not ports and must not be placed
     assert.doesNotMatch(cst, /"g"/);
@@ -239,8 +239,8 @@ test('a bus port is constrained one pin per bit (a single pin would fail P&R)', 
     assert.match(cst, /IO_LOC "y\[0\]" 15;/);
     assert.match(cst, /IO_LOC "y\[3\]" 18;/);
     // the 2-bit input takes two spare pins
-    assert.match(cst, /IO_LOC "sw\[0\]" 88;/);
-    assert.match(cst, /IO_LOC "sw\[1\]" 74;/);
+    assert.match(cst, /IO_LOC "sw\[0\]" 74;/);
+    assert.match(cst, /IO_LOC "sw\[1\]" 76;/);
     // a 1-bit clock still takes pin 4 by name (no bit index)
     const clk = modelToCst({nodes: [{id: 'c', kind: 'in', name: 'clk'}]}).cst;
     assert.match(clk, /IO_LOC "clk" 4;/);

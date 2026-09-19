@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {parseCst, splitBit, emitCst} from '../overlay/scratch-gui/src/lib/bw-fpga/cst.js';
 import {bindPorts, bridge, pinIndex, constraintsFromBindings} from '../overlay/scratch-gui/src/lib/bw-fpga/port-bridge.js';
+import {modelToCst} from '../overlay/scratch-gui/src/lib/bw-fpga/gate-builder.js';
 
 const require = createRequire(import.meta.url);
 const PART = require('bw-circuit-ui/parts-data/tang_nano_20k.json');
@@ -94,6 +95,38 @@ test('a header pin with no onboard role binds silently', () => {
     const {warnings} = bindPorts(parseCst('IO_LOC "sig" 86;').constraints, PART);
     assert.deepEqual(warnings, [],
         'pin 86 has no onboard function; warning about it would train users to ignore warnings');
+});
+
+test('generated AND and 4x4 RAM use unique reachable header pins except the onboard clock', () => {
+    const andModel = {nodes: [
+        {id: 'a', kind: 'in', name: 'a'}, {id: 'b', kind: 'in', name: 'b'},
+        {id: 'g', kind: 'gate', type: 'and'}, {id: 'y', kind: 'out', name: 'y'}
+    ]};
+    const ramModel = {nodes: [
+        {id: 'clk', kind: 'in', name: 'clk'}, {id: 'a', kind: 'in', name: 'addr', width: 2},
+        {id: 'd', kind: 'in', name: 'din', width: 4}, {id: 'we', kind: 'in', name: 'we'},
+        {id: 'ram', kind: 'memory', dataWidth: 4, addrWidth: 2},
+        {id: 'o', kind: 'out', name: 'q', width: 4}
+    ]};
+    const fullCapacityModel = {nodes: [
+        {id: 'i', kind: 'in', name: 'inputs', width: 8},
+        {id: 'o', kind: 'out', name: 'outputs', width: 7}
+    ]};
+    for (const [name, model] of [
+        ['AND', andModel], ['4x4 RAM', ramModel], ['full allocator capacity', fullCapacityModel]
+    ]) {
+        const generated = modelToCst(model);
+        assert.deepEqual(generated.problems, [], `${name} has enough generated pins`);
+        const {constraints} = parseCst(generated.cst);
+        const placed = [...constraints.values()].flatMap(c => c.pins);
+        assert.equal(new Set(placed).size, placed.length, `${name} never assigns one pin twice`);
+        const result = bindPorts(constraints, PART);
+        const expectedRefusals = name === '4x4 RAM' ? [{port: 'clk', pin: 4}] : [];
+        assert.deepEqual(result.refusals.map(({port, pin}) => ({port, pin})), expectedRefusals,
+            `${name} only permits the intentional onboard clock outside the headers`);
+        assert.ok(result.bindings.every(binding => pinIndex(PART).has(binding.pin)),
+            `${name} nonclock I/O all reaches the pinned board schema`);
+    }
 });
 
 test('an IO_TYPE the banks cannot provide warns and still binds', () => {
