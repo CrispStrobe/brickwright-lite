@@ -75,31 +75,31 @@ try {
     check(/synchronous single-port RAM|synchroner Single-Port-RAM/i.test(ramTitle || ''),
         'the RAM action has localized explanatory text', ramTitle || '(missing title)');
     await ramButton.click();
-    await builder.getByText('4×4', {exact: true}).waitFor({timeout: 10000});
-    check(true, 'adding RAM shows its 4×4 geometry on the live canvas');
+    const ramGeometry = builder.getByText('4×4', {exact: true});
+    await ramGeometry.waitFor({timeout: 10000});
+    check(await ramGeometry.isVisible(), 'adding RAM shows its 4×4 geometry on the live canvas');
 
     // RAM is intentionally not claimed as live-simulated. Return to the clean
     // AND HDL generated before it was added and prove the production journey.
     if (!skipSynth) {
         await page.getByRole('button', {name: /Wire up a demo board|Demo-Board verdrahten/i}).click();
-        await page.locator('[role="tab"]', {hasText: /Circuit/i}).first()
-            .waitFor({state: 'visible', timeout: 10000});
         await page.waitForFunction(() => window.__circuit && typeof window.__circuit.addPart === 'function',
             null, {timeout: 15000});
         await fpgaTab.click();
-        await page.getByText(/Wired a Tang Nano 20K|Tang Nano 20K.*verdrahtet/i)
-            .waitFor({timeout: 10000});
-        check(true, 'the FPGA journey creates a persistent demo circuit');
+        const wired = page.getByText(/Wired a Tang Nano 20K|Tang Nano 20K.*verdrahtet/i);
+        await wired.waitFor({timeout: 10000});
+        check(await wired.isVisible(), 'the FPGA journey creates a persistent demo circuit');
 
         const synth = page.getByRole('button', {name: /Synthesise|Synthetisieren/i}).first();
         await synth.waitFor({state: 'visible', timeout: 10000});
         await page.waitForFunction(button => !button.disabled, await synth.elementHandle(), {timeout: 30000});
         await synth.click();
-        await page.getByRole('link', {name: /Download \.fs/i}).waitFor({timeout});
-        check(true, 'visual AND reaches a real bitstream download');
+        const bitstream = page.getByRole('link', {name: /Download \.fs/i});
+        await bitstream.waitFor({timeout});
+        check(await bitstream.isVisible(), 'visual AND reaches a real bitstream download');
 
         const inputHeading = page.getByRole('heading', {name: /Design inputs|Design-Eingänge/i});
-        await inputHeading.waitFor({timeout: 30000});
+        await inputHeading.waitFor({state: 'attached', timeout: 30000});
         const pinDetails = inputHeading.locator('xpath=ancestor::details[1]');
         if (!await pinDetails.getAttribute('open')) await pinDetails.locator('summary').first().click();
         const input = name => pinDetails.getByText(name, {exact: true})
@@ -112,12 +112,19 @@ try {
         const expectPin = async (high, action, description) => {
             await page.evaluate(() => { window.__fpgaOutputs = []; });
             await action();
-            await page.waitForFunction(expected => window.__fpgaOutputs.some(event =>
-                event?.leds?.some(led => Number(led.pin) === 15 && led.high === expected)), high,
-            {timeout: 30000});
-            const output = await page.evaluate(() => window.__fpgaOutputs.at(-1));
-            check(output.leds.some(led => Number(led.pin) === 15 && led.high === high),
-                description, JSON.stringify(output));
+            await page.waitForFunction(expected => {
+                const eventReachedPin = window.__fpgaOutputs.some(event =>
+                    event?.leds?.some(led => Number(led.pin) === 15 && led.high === expected));
+                const boardState = window.__circuit?.board?.pinStates?.get('p15');
+                return eventReachedPin && boardState?.mode === 'pushpull' && boardState.driveHigh === expected;
+            }, high, {timeout: 30000});
+            const observed = await page.evaluate(() => ({
+                output: window.__fpgaOutputs.at(-1),
+                board: window.__circuit.board.pinStates.get('p15')
+            }));
+            check(observed.output.leds.some(led => Number(led.pin) === 15 && led.high === high) &&
+                observed.board.mode === 'pushpull' && observed.board.driveHigh === high,
+            description, JSON.stringify(observed));
         };
         // The transition itself must produce each observation; clearing the
         // capture first prevents a stale post-synthesis event from passing.
