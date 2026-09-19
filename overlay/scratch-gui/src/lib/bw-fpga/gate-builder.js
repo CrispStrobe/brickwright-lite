@@ -93,6 +93,29 @@ function ident (name, fallback) {
  * @param {{moduleName?: string}} [opts]
  * @returns {{verilog: string, problems: Array}}
  */
+/**
+ * Parse a Verilog module's name and ANSI-style ports from its source — so a
+ * hand-written Code block wires up on the canvas without the user re-declaring
+ * its ports. Handles `input a, b` and `output [7:0] y`.
+ *
+ * @param {string} verilog
+ * @returns {{name: string, ports: Array<{name, dir, width}>}}
+ */
+export function parseVerilogPorts (verilog) {
+    const text = String(verilog || '');
+    const nameMatch = text.match(/module\s+([A-Za-z_]\w*)/);
+    const name = nameMatch ? nameMatch[1] : 'code';
+    const ports = [];
+    const re = /\b(input|output)\b\s*(?:wire|reg)?\s*(?:\[\s*(\d+)\s*:\s*(\d+)\s*\])?\s*([A-Za-z_]\w*(?:\s*,\s*(?!input|output|wire|reg\b)[A-Za-z_]\w*)*)/g;
+    let m;
+    while ((m = re.exec(text))) {
+        const dir = m[1] === 'input' ? 'in' : 'out';
+        const width = m[2] != null ? Math.abs(Number(m[2]) - Number(m[3])) + 1 : 1;
+        for (const nm of m[4].split(',').map(part => part.trim())) ports.push({name: nm, dir, width});
+    }
+    return {name, ports};
+}
+
 export function modelToVerilog (model, {moduleName = 'design'} = {}) {
     const problems = [];
     const modules = (model && model.modules) || [];
@@ -101,7 +124,7 @@ export function modelToVerilog (model, {moduleName = 'design'} = {}) {
     for (const m of modules) moduleDefs[m.name] = {ports: m.ports && m.ports.length ? m.ports : derivePorts(m)};
 
     const chunks = [];
-    for (const m of modules) chunks.push(emitModule(m, m.name, moduleDefs, problems));
+    for (const m of modules) chunks.push(m.verilog ? String(m.verilog).trim() : emitModule(m, m.name, moduleDefs, problems));
     chunks.push(emitModule(model, moduleName, moduleDefs, problems));
     return {verilog: chunks.join('\n') + '\n', problems};
 }

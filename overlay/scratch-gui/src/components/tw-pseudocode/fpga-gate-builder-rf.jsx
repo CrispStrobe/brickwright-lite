@@ -8,7 +8,7 @@ import {ReactFlow, ReactFlowProvider, Background, Controls, MiniMap, addEdge,
 // plus inline loaders bypass the configured rule and inject this one stylesheet
 // globally (css-loader defaults `modules` off).
 import '!!style-loader!css-loader!@xyflow/react/dist/style.css';
-import {GATE_DEFS, modelToVerilog, modelToCst, derivePorts} from '../../lib/bw-fpga/gate-builder.js';
+import {GATE_DEFS, modelToVerilog, modelToCst, derivePorts, parseVerilogPorts} from '../../lib/bw-fpga/gate-builder.js';
 import {reactFlowToModel, modelToReactFlow} from '../../lib/bw-fpga/gate-builder-rf.js';
 import {gateShape} from '../../lib/bw-fpga/glyphs.js';
 import {canvasToSvg} from '../../lib/bw-fpga/canvas-svg.js';
@@ -210,7 +210,11 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
         }
     }, [seed, setNodes, setEdges]);
     const [problems, setProblems] = React.useState([]);
-    const [library, setLibrary] = React.useState([]); // saved subcircuits
+    const [library, setLibrary] = React.useState([]); // saved subcircuits + code blocks
+    const [codeOpen, setCodeOpen] = React.useState(false); // the Verilog code-block editor
+    const CODE_STARTER = 'module my_block(input a, input b, output y);\n  assign y = a & b;\nendmodule\n';
+    const [codeText, setCodeText] = React.useState(CODE_STARTER);
+    const [codeErr, setCodeErr] = React.useState('');
     const [newWidth, setNewWidth] = React.useState(1); // bit width for the next node
     const [inspect, setInspect] = React.useState(null); // {id, x, y} of the node being edited
     const [menu, setMenu] = React.useState(null); // {target:'node'|'edge', id, x, y}
@@ -234,6 +238,17 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
         const names = new Set(library.map(m => m.name));
         while (names.has(`${base}${n}`)) n++;
         setLibrary(lib => [...lib, {name: `${base}${n}`, nodes: model.nodes, edges: model.edges, ports}]);
+    };
+    // A Code block is a subcircuit defined by raw Verilog (icestudio-style): parse
+    // its ports so it wires up, add it to the library, and it instantiates like any
+    // saved block — the generator emits the Verilog verbatim.
+    const addCodeBlock = () => {
+        const {name, ports} = parseVerilogPorts(codeText);
+        if (!ports.length) { setCodeErr('No input/output ports found — declare them in the module header.'); return; }
+        if (library.some(m => m.name === name)) { setCodeErr(`A block named "${name}" already exists — rename the module.`); return; }
+        setLibrary(lib => [...lib, {name, ports, verilog: codeText}]);
+        setCodeErr('');
+        setCodeOpen(false);
     };
     const addInstance = mod => setNodes(ns => [...ns, {
         id: nid('u'), type: 'instance', position: {x: 200, y: 40 + (ns.length % 6) * 45},
@@ -417,6 +432,31 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
     return (
         <div>
             <style>{GLYPH_CSS}</style>
+            {codeOpen ? (
+                <div data-testid="bw-fpga-code-modal" style={{position: 'fixed', inset: 0, zIndex: 300,
+                    background: 'rgba(15,23,42,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}
+                    onMouseDown={() => setCodeOpen(false)}>
+                    <div onMouseDown={e => e.stopPropagation()} style={{background: '#fff', borderRadius: 8, padding: 16,
+                        width: 'min(560px, 92vw)', boxShadow: '0 10px 30px rgba(0,0,0,0.3)'}}>
+                        <div style={{fontWeight: 'bold', marginBottom: 6}}>{'Verilog code block'}</div>
+                        <div style={{fontSize: 12, color: '#64748b', marginBottom: 8}}>
+                            {'Write a Verilog module; its ports are read from the header. It becomes a reusable block.'}
+                        </div>
+                        <textarea value={codeText} onChange={e => setCodeText(e.target.value)} spellCheck={false}
+                            data-testid="bw-fpga-code-text" rows={9}
+                            style={{width: '100%', boxSizing: 'border-box', fontFamily: 'monospace', fontSize: 12,
+                                border: '1px solid #94a3b8', borderRadius: 4, padding: 8}} />
+                        {codeErr ? <div style={{color: '#b91c1c', fontSize: 12, marginTop: 4}}>{codeErr}</div> : null}
+                        <div style={{display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 10}}>
+                            <button type="button" onClick={() => setCodeOpen(false)} style={{cursor: 'pointer'}}>{'Cancel'}</button>
+                            <button type="button" onClick={addCodeBlock} data-testid="bw-fpga-code-add"
+                                style={{cursor: 'pointer', fontWeight: 'bold', border: '1px solid #7c3aed',
+                                    borderRadius: 6, background: '#faf5ff', color: '#6d28d9', padding: '4px 12px'}}
+                            >{'Add block'}</button>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
             <div style={{display: 'flex', gap: '0.35rem', flexWrap: 'wrap', margin: '0 0 0.4rem', alignItems: 'center'}}>
                 <span style={{fontSize: '0.8rem', opacity: 0.75}}>{'drag a part from the palette →'}</span>
                 <label style={{fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: 3}} title={L10N[pickLocale(locale)].widthTitle}>
@@ -428,6 +468,9 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                 <span style={{opacity: 0.4}}>{'|'}</span>
                 <button type="button" onClick={saveSubcircuit} title={L10N[pickLocale(locale)].saveTitle}
                     style={{cursor: 'pointer'}} data-testid="bw-fpga-rf-save">{L10N[pickLocale(locale)].saveAsSubcircuit}</button>
+                <button type="button" onClick={() => { setCodeErr(''); setCodeOpen(true); }}
+                    title="Add a block written in raw Verilog (icestudio-style)"
+                    style={{cursor: 'pointer'}} data-testid="bw-fpga-rf-code">{'</> Code'}</button>
                 <button type="button" data-testid="bw-fpga-rf-clear"
                     onClick={() => { setNodes([]); setEdges([]); setCheckResult(null); }}
                     title="Clear the canvas" style={{cursor: 'pointer'}}>{'🗑 Clear'}</button>
