@@ -6,6 +6,7 @@ import { execSync } from 'child_process';
 import { program } from 'commander';
 import ELK from 'elkjs';
 import { yosysToModel } from '../overlay/scratch-gui/src/lib/bw-fpga/yosys-to-model.js';
+import { GATE_DEFS } from '../overlay/scratch-gui/src/lib/bw-fpga/gate-builder.js';
 
 program
   .version('1.0.0')
@@ -67,28 +68,52 @@ const elkGraph = {
         'org.eclipse.elk.algorithm': 'layered',
         'org.eclipse.elk.direction': 'RIGHT',
         'org.eclipse.elk.spacing.nodeNode': '20',
-        'org.eclipse.elk.layered.spacing.nodeNodeBetweenLayers': '52'
+        'org.eclipse.elk.layered.spacing.nodeNodeBetweenLayers': '52',
+        'org.eclipse.elk.portConstraints': 'FIXED_ORDER'
     },
-    children: model.nodes.map(n => ({
-        id: n.id,
-        type: n.type || n.kind,
-        label: n.type || n.kind,
-        width: NODE_W,
-        height: nodeH(n),
-        properties: {
-            'org.eclipse.elk.portConstraints': 'FIXED_SIDE'
-        },
-        // We only mock ports for layout purposes, React Flow draws them dynamically
-        ports: [
-            { id: `${n.id}.in`, properties: { 'org.eclipse.elk.port.side': 'WEST' } },
-            { id: `${n.id}.out`, properties: { 'org.eclipse.elk.port.side': 'EAST' } }
-        ]
-    })),
-    edges: model.edges.map((e, i) => ({
-        id: `e${i}`,
-        sources: [`${e.from.node}.out`],
-        targets: [`${e.to.node}.in`]
-    }))
+    children: model.nodes.map(n => {
+        let ports = [];
+        if (n.kind === 'gate' && GATE_DEFS[n.type]) {
+            const ins = GATE_DEFS[n.type].ins;
+            ports = ins.map((p, i) => ({
+                id: `${n.id}.${p}`,
+                properties: { 'org.eclipse.elk.port.side': 'WEST', 'org.eclipse.elk.port.index': i }
+            }));
+            ports.push({ id: `${n.id}.out`, properties: { 'org.eclipse.elk.port.side': 'EAST', 'org.eclipse.elk.port.index': 0 } });
+        } else if (n.kind === 'instance' && n.ports) {
+            let iIn = 0, iOut = 0;
+            for (const p of n.ports) {
+                if (p.dir === 'input') ports.push({ id: `${n.id}.${p.name}`, properties: { 'org.eclipse.elk.port.side': 'WEST', 'org.eclipse.elk.port.index': iIn++ } });
+                else ports.push({ id: `${n.id}.${p.name}`, properties: { 'org.eclipse.elk.port.side': 'EAST', 'org.eclipse.elk.port.index': iOut++ } });
+            }
+        } else {
+            // generic IN/OUT, CONST etc
+            ports.push({ id: `${n.id}.in`, properties: { 'org.eclipse.elk.port.side': 'WEST' } });
+            ports.push({ id: `${n.id}.out`, properties: { 'org.eclipse.elk.port.side': 'EAST' } });
+        }
+
+        return {
+            id: n.id,
+            type: n.type || n.kind,
+            label: n.type || n.kind,
+            width: NODE_W,
+            height: nodeH(n),
+            properties: {
+                'org.eclipse.elk.portConstraints': 'FIXED_SIDE'
+            },
+            ports
+        };
+    }),
+    edges: model.edges.map((e, i) => {
+        // Fallback to out/in if port doesn't exist
+        const sp = e.from.port || 'out';
+        const tp = e.to.port || 'in';
+        return {
+            id: `e${i}`,
+            sources: [`${e.from.node}.${sp}`],
+            targets: [`${e.to.node}.${tp}`]
+        };
+    })
 };
 
 elk.layout(elkGraph).then(layoutedGraph => {
@@ -109,6 +134,7 @@ elk.layout(elkGraph).then(layoutedGraph => {
             .wire { fill: none; stroke: #495057; stroke-width: 2px; stroke-linejoin: round; }
             .label { font-family: sans-serif; font-size: 10px; fill: #212529; text-anchor: middle; dominant-baseline: middle; }
             .pin { fill: #495057; }
+            .port-label { font-family: sans-serif; font-size: 7px; fill: #6c757d; }
         </style>\n`;
         svg += `<g transform="translate(50, 50)">\n`;
         
@@ -150,6 +176,16 @@ elk.layout(elkGraph).then(layoutedGraph => {
             } else {
                 svg += `  <rect class="gate" rx="3" x="${n.x}" y="${n.y}" width="${n.width}" height="${n.height}" />\n`;
                 svg += `  <text class="label" x="${cx}" y="${cy}">${n.type ? n.type.toUpperCase() : n.id}</text>\n`;
+            }
+
+            // Draw Ports
+            for (const p of (n.ports || [])) {
+                svg += `  <circle class="pin" cx="${n.x + p.x}" cy="${n.y + p.y}" r="2" />\n`;
+                const label = p.id.split('.').pop();
+                if (label !== 'in' && label !== 'out') {
+                    if (p.x === 0) svg += `  <text class="port-label" x="${n.x + 4}" y="${n.y + p.y + 3}">${label}</text>\n`;
+                    else svg += `  <text class="port-label" x="${n.x + n.width - 4}" y="${n.y + p.y + 3}" text-anchor="end">${label}</text>\n`;
+                }
             }
         }
         svg += `</g>\n</svg>\n`;
