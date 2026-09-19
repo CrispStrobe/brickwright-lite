@@ -431,6 +431,8 @@ keeping, it is worth a branch.
 
 ## CLAIMS — work in progress
 
+| 80286 qualified upstream package adoption | Astra coordinator / Sol, astra-286-sept19 | `lane/astra-286-adoption`; `/mnt/volume1/code/lego/wt-astra-286-adoption`; base `3599c9c67` | **CLAIMED 2026-09-19.** Adopt one qualified bw-board 286 integration SHA after upstream landing; regenerate pin-derived package specs/lock/notices/census/ROM provenance/capability report and focused target checks. Reconcile real-mode evidence wording with upstream blocking/full qualification, without protected-mode or timing claims. Keep CUI/sb3/flasher pins fixed. Does not own the separately claimed signed controlled-source browser journey or its workflow/package script registration. |
+
 | Lite browser proof for signed controlled-source DC operating point | `/root` (Codex), `/mnt/volume1/code/wt/lite-circuit-op-browser`, branch `lane/circuit-op-browser-smoke` | exact base `d2ba84bf957196bfc48147e77b394500a355d6b2`; paths `LANES.md`, `scripts/verify-circuit-operating-point.mjs`, `package.json`, `.github/workflows/build.yml` | **CLAIM 2026-09-19.** Test-only consumer proof: through the shipped browser, import a signed E/G SPICE fixture, open Instruments, click DC operating point, assert converged metadata and nonzero signed current, export SPICE, and re-import without semantic loss. No package/source/pin/corpus/ADI-runner change; the active upstream 46,403-row ADI lane remains separate. One focused local built-artifact run, one negative/mutation consequence, then the single exact-head Build qualification. |
 
 
