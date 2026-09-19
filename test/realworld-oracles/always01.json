@@ -1,0 +1,130 @@
+{
+  "creator": "Yosys 0.69+post (git sha1 143eb14f9cc55d6f8927e68523b0c9d2166ed02c, Release, AppleClang clang++ 21.0.0.21000101)",
+  "modules": {
+    "uut_always01": {
+      "attributes": {
+        "hdlname": "uut_always01",
+        "src": "always01.v:1.1-10.10"
+      },
+      "ports": {
+        "clock": {
+          "direction": "input",
+          "bits": [ 2 ]
+        },
+        "reset": {
+          "direction": "input",
+          "bits": [ 3 ]
+        },
+        "count": {
+          "direction": "output",
+          "bits": [ 4, 5, 6, 7 ]
+        }
+      },
+      "cells": {
+        "$add$always01.v:8$2": {
+          "hide_name": 1,
+          "type": "$add",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000100",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000100"
+          },
+          "attributes": {
+            "src": "always01.v:8.24-8.33"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 4, 5, 6, 7 ],
+            "B": [ "1" ],
+            "Y": [ 8, 9, 10, 11 ]
+          }
+        },
+        "$procdff$4": {
+          "hide_name": 1,
+          "type": "$dff",
+          "parameters": {
+            "CLK_POLARITY": "1",
+            "WIDTH": "00000000000000000000000000000100"
+          },
+          "attributes": {
+            "src": "always01.v:7.1-8.34"
+          },
+          "port_directions": {
+            "CLK": "input",
+            "D": "input",
+            "Q": "output"
+          },
+          "connections": {
+            "CLK": [ 2 ],
+            "D": [ 12, 13, 14, 15 ],
+            "Q": [ 4, 5, 6, 7 ]
+          }
+        },
+        "$ternary$always01.v:8$3": {
+          "hide_name": 1,
+          "type": "$mux",
+          "parameters": {
+            "WIDTH": "00000000000000000000000000000100"
+          },
+          "attributes": {
+            "src": "always01.v:8.11-8.33"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "S": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 8, 9, 10, 11 ],
+            "B": [ "0", "0", "0", "0" ],
+            "S": [ 3 ],
+            "Y": [ 12, 13, 14, 15 ]
+          }
+        }
+      },
+      "netnames": {
+        "$0\\count[3:0]": {
+          "hide_name": 1,
+          "bits": [ 12, 13, 14, 15 ],
+          "attributes": {
+            "src": "always01.v:7.1-8.34"
+          }
+        },
+        "$add$always01.v:8$2_Y": {
+          "hide_name": 1,
+          "bits": [ 8, 9, 10, 11 ],
+          "attributes": {
+          }
+        },
+        "clock": {
+          "hide_name": 0,
+          "bits": [ 2 ],
+          "attributes": {
+            "src": "always01.v:3.7-3.12"
+          }
+        },
+        "count": {
+          "hide_name": 0,
+          "bits": [ 4, 5, 6, 7 ],
+          "attributes": {
+            "src": "always01.v:4.14-4.19"
+          }
+        },
+        "reset": {
+          "hide_name": 0,
+          "bits": [ 3 ],
+          "attributes": {
+            "src": "always01.v:3.14-3.19"
+          }
+        }
+      }
+    }
+  }
+}
