@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {createHash} from 'node:crypto';
 
 const root = path.resolve(import.meta.dirname, '..');
 const output = path.join(root, 'docs/generated/I8086-CAPABILITY-REPORT.md');
@@ -21,6 +22,10 @@ export function buildI8086CapabilityReport() {
     const cpu = read('node_modules/bw-board/src/i8086.js');
     const disasm = read('node_modules/bw-board/src/i8086-disasm.js');
     const machine = read('node_modules/bw-board/src/i8086-machine.js');
+    const upstreamWorkflow = read('node_modules/bw-board/.github/workflows/ci.yml');
+    const harrisReceipt = JSON.parse(read('node_modules/bw-board/docs/receipts/2026-09-19-harris-real-mode.json'));
+    const harrisSemantic = harrisReceipt.report;
+    const compiledDos = JSON.parse(read('node_modules/bw-board/docs/HARRIS-COMPILED-DOS-BOOT-REPORT.json'));
     const runner = read('overlay/scratch-gui/src/lib/bw-debug/debug-runner.js');
     const ciVerifier = read('scripts/verify-bw-board-ci.mjs');
     const browserGate = read('scripts/verify-i8086-browser.mjs');
@@ -42,6 +47,38 @@ export function buildI8086CapabilityReport() {
     capture(cpu, /expected '8086', '80186' or '80286'/, '80286 selectable core variant');
     capture(cpu, /80286 two-byte \(0x0F\) group — real-mode EXECUTING subset only/,
         '80286 real-mode execution boundary');
+    const [fast286Sample] = capture(upstreamWorkflow,
+        /this ([\d,]+)-vector sample stays affordable on every CI run/,
+        'blocking 80286 per-push sample size');
+    const [fast286Files] = capture(upstreamWorkflow,
+        /coverage of every opcode file[\s\S]{0,120}?all (\d+) files/,
+        'blocking 80286 opcode-file coverage');
+    capture(ciVerifier, /FAST 286 real-mode — 200 vectors from every opcode file/,
+        'Lite requires the blocking 80286 upstream step');
+    capture(machine, /TWENTY-BIT MEMORY\. A megabyte/, 'shipped 80286 machine memory boundary');
+    if (harrisSemantic.summary?.accepted !== true || harrisSemantic.summary.fullSuite !== true
+        || harrisSemantic.summary.pass !== 1477997 || harrisSemantic.summary.fail !== 0
+        || harrisSemantic.summary.unsupported !== 0 || harrisSemantic.summary.budget !== 0
+        || harrisSemantic.summary.revoked !== 3 || harrisSemantic.summary.timingGraded !== false
+        || harrisSemantic.summary.physicalBoardGraded !== false) {
+        throw new Error('8086 capability evidence disappeared: accepted full Harris semantic receipt');
+    }
+    const receiptSources = new Map([
+        ['../src/experimental/harris-80c286-boot-cpu.js', 'node_modules/bw-board/src/experimental/harris-80c286-boot-cpu.js'],
+        ['./lib/sst286.mjs', 'node_modules/bw-board/scripts/lib/sst286.mjs'],
+        ['./grind-i80286.mjs', 'node_modules/bw-board/scripts/grind-i80286.mjs'],
+    ]);
+    for (const [receiptPath, shippedPath] of receiptSources) {
+        const actual = createHash('sha256').update(read(shippedPath)).digest('hex');
+        if (harrisSemantic.summary.sourceHashes?.[receiptPath] !== actual) {
+            throw new Error(`8086 capability evidence is historical: Harris receipt hash for ${receiptPath} `
+                + 'does not match the pinned engine');
+        }
+    }
+    if (compiledDos.accepted !== true || compiledDos.outcome?.status !== 'dos-prompt'
+        || compiledDos.netBackend !== 'compiled') {
+        throw new Error('8086 capability evidence disappeared: accepted compiled wired DOS receipt');
+    }
     capture(cpu, /Accuracy tier: architectural state/, 'instruction-level accuracy boundary');
     capture(machine, /Execution is instruction-stepped/, 'machine timing boundary');
     for (const job of ['test', 'vectors', 'corpus', 'vectors186']) {
@@ -102,6 +139,7 @@ export function buildI8086CapabilityReport() {
 
     const limitations = [
         ['CPU timing', 'Instruction-level architectural state; no prefetch/BIU or T-state schedule', 'node_modules/bw-board/src/i8086.js', /NOT modeled, deliberately: the prefetch queue and the BIU/],
+        ['80286 machine memory', 'The core retains real-mode addresses above 1 MiB, but the shipped breadboard machine decodes only 1 MiB; no PC/AT extended-memory or A20-gate model', 'node_modules/bw-board/src/i8086-machine.js', /TWENTY-BIT MEMORY\. A megabyte/],
         ['8088 BIU experiment', 'Orders bus operations, but omits wait states, DMA stealing and exact transfer T-states', 'node_modules/bw-board/src/i8088-biu.js', /WHAT THIS DOES NOT MODEL/],
         ['8255', 'Mode 0 exact; modes 1/2 fall back with a warning and no handshake IRQ', 'node_modules/bw-board/src/i8255.js', /MODES 1 AND 2 ARE NOT MODELLED/],
         // Modes 1 and 5 and BCD decade counting were all added 2026-09-05, so the
@@ -194,9 +232,13 @@ Vendored engine: \`CrispStrobe/bw-board@${pins['bw-board']}\`.
 | 8086 disassembly | **${fmt(disasm8086Vectors)}/${fmt(disasm8086Vectors)} text and length** | Same hardware-derived corpus |
 | 80186 execution additions | **${fmt(v20Vectors)}/${fmt(v20Vectors)} usable V20 vectors** | NEC V20 oracle for shared 80186 encodings; not a V20-compatibility claim |
 | 80186 disassembly | **${fmt(disasm186Vectors)}/${fmt(disasm186Vectors)} text and length** | V20 disassembly strings, with documented syntax exclusions |
-| 80286 real-mode execution | **available as \`i80286\`; diagnostic, not vector-complete** | Fast functional 186 superset plus the implemented real-mode 0x0F group; the SST286 census still reports gaps and does not grade timing |
+| 80286 real-mode execution | **blocking ${fmt(fast286Sample)}-vector sample across all ${fast286Files} opcode files** | Fast functional core; every push rejects failures, unsupported results, exhausted budgets or incomplete accounting; full-corpus qualification is separate |
 
-The selectable instruction variants are **8086**, **80186**, and **80286 real mode**. The first two instruction sets also serve 8088 and 80188 machines respectively; their external bus width is outside this instruction-stepped core. The 80286 target is deliberately a fast functional real-mode variant: it includes the 186 ISA, 286 flag/PUSH-SP differences and the implemented SGDT/SIDT/LGDT/LIDT/SMSW/LMSW/CLTS group. It is **not** a complete protected-mode or cycle-accurate 80286, and its upstream SST286 run is a diagnostic gap census rather than a green conformance total.
+The selectable instruction variants are **8086**, **80186**, and **80286 real mode**. The first two instruction sets also serve 8088 and 80188 machines respectively; their external bus width is outside this instruction-stepped core. The 80286 target is deliberately a fast functional real-mode variant: it includes the 186 ISA, 286 flag/PUSH-SP differences, 24-bit real-mode physical-address formation and the implemented SGDT/SIDT/LGDT/LIDT/SMSW/LMSW/CLTS group. It is **not** a complete protected-mode or cycle-accurate 80286.
+
+The pinned engine also carries a source-hash-matched semantic receipt for the Harris test-only adapter: **${fmt(harrisSemantic.summary.pass)}/${fmt(harrisSemantic.summary.pass)} executed vectors** across ${harrisSemantic.summary.files} files, with ${harrisSemantic.summary.revoked} upstream revocations and zero failures, unsupported results or budget exits. Generation verifies the three embedded source hashes in \`docs/receipts/2026-09-19-harris-real-mode.json\` against the pinned package. That adapter result does not grade timing or a physical board and does not substitute for the fast core's separate full-corpus qualification. An accepted historical compiled-wired receipt reaches the DOS prompt; it is functional evidence for the source hashes recorded in \`HARRIS-COMPILED-DOS-BOOT-REPORT.json\`, not evidence that the semantic SST adapter boots DOS.
+
+The production \`i80286\` debug target still uses \`I8086Machine\`'s one-megabyte, twenty-address-line breadboard map. Core addresses above 1 MiB read as unmapped/open bus there and writes are dropped. Lite does not claim a PC/AT extended-memory map or an A20 gate.
 
 The vector totals above are declarations carried by the pinned, byte-verified engine source and maintained by its upstream grinders. Networked product and release builds run \`npm run verify:bwboard-ci\`, which requires successful upstream \`test\`, \`vectors\`, \`corpus\`, and \`vectors186\` jobs at this exact SHA. Lite does not download the large vector corpora during its own test run. Its local tests instead protect the integration surfaces below.
 

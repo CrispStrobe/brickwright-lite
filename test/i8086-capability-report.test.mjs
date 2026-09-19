@@ -23,7 +23,13 @@ test('the report distinguishes pinned vector evidence, local tests, and timing l
     assert.match(report, /Lite does not download the large vector corpora/);
     assert.match(report, /verify:bwboard-ci/);
     assert.match(report, /no prefetch\/BIU or T-state schedule/);
-    assert.match(report, /available as `i80286`; diagnostic, not vector-complete/);
+    assert.match(report, /blocking 65,200-vector sample across all 326 opcode files/);
+    assert.match(report, /full-corpus qualification is separate/);
+    assert.match(report, /1,477,997\/1,477,997 executed vectors/);
+    assert.match(report, /Generation verifies the three embedded source hashes/);
+    assert.match(report, /semantic SST adapter boots DOS/);
+    assert.match(report, /one-megabyte, twenty-address-line breadboard map/);
+    assert.match(report, /unmapped\/open bus/);
     assert.match(report, /is \*\*not\*\* a complete protected-mode or cycle-accurate 80286/);
-    assert.match(report, /diagnostic gap census rather than a green conformance total/);
+    assert.doesNotMatch(report, /diagnostic gap census/);
 });

@@ -2,7 +2,7 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "9058d51f84e3e9021dd9a3e39e7916e316acd19d",
+    "sha": "84842a8678ef08766a6447618e0662c0f7cd40f2",
     "read": "2026-09-19"
   },
   "rows": [
@@ -54,13 +54,13 @@
       "kind": "oracle",
       "present": false,
       "ciAvailable": true,
-      "ci": "yes — the `vectors` job checks out v1_real_mode and runs the diagnostic 286 gap census",
+      "ci": "yes — `vectors` blocks on 200 vectors from every opcode file; the dedicated 286 qualification runs the full pinned corpus and retains separate fast/Harris reports",
       "via": "tried $I80286_VECTORS, /home/claudeuser/code/80286-vectors/v1_real_mode",
       "gates": [
         "scripts/grind-i8086-286.mjs",
         "scripts/grind-i80286.mjs"
       ],
-      "what": "SingleStepTests 80286 real-mode — grades the fast functional 286 (src/i8086.js variant:'80286') and the cycle-accurate harris 286."
+      "what": "SingleStepTests 80286 real-mode — blocking bounded coverage of the fast functional 286 (src/i8086.js variant:'80286'), plus separate full semantic qualification of that core and the Harris test-only semantic-memory adapter; no timing or physical-board grading."
     },
     {
       "id": "8088-vectors",
@@ -325,10 +325,10 @@
     {
       "id": "masm",
       "kind": "oracle",
-      "present": false,
+      "present": true,
       "ciAvailable": false,
       "ci": "no — the binaries live at an absolute /tmp path, the same blind spot as the ehBASIC ROM: audit-clean-checkout strips untracked REPO files by archiving HEAD and cannot reach /tmp, so their absence in a fresh checkout is invisible to it. Can only stand in CI if the job fetches them explicitly.",
-      "via": "tried $MSDOS_BIN_DIR, /tmp/msdosbin",
+      "via": "$MSDOS_BIN_DIR=/mnt/volume1/code/msdos-v2-bin",
       "gates": [
         "test/oracle-masm.test.mjs",
         "scripts/oracle-masm.mjs"
