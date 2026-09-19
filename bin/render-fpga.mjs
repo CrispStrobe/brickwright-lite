@@ -17,8 +17,8 @@ const elk = new ELK();
 
 program
     .version('1.1.0')
-    .description('Convert Verilog into structured ElkJS layouts and CircuitVerse-style SVGs.')
-    .argument('<input>', 'Input Verilog file (.v)')
+    .description('Convert Verilog or a Yosys JSON netlist into structured ElkJS layouts and CircuitVerse-style SVGs.')
+    .argument('<input>', 'Input Verilog file (.v) or existing Yosys netlist (.json)')
     .option('-o, --output <dir>', 'Output directory', '.')
     .option('--format <fmt>', 'Output format: json, svg, or both', 'both')
     .option('--top <module>', 'Top-level Verilog module')
@@ -277,13 +277,23 @@ async function main () {
     fs.mkdirSync(outDir, {recursive: true});
 
     const basename = path.basename(inputFile, path.extname(inputFile));
-    const jsonFile = path.join(outDir, `${basename}.json`);
-    const topCommand = options.top ? ` -top ${options.top}` : ' -auto-top';
-    console.log(`[1/4] Synthesizing ${inputFile} with Yosys...`);
-    execFileSync('yosys', ['-q', '-p', `hierarchy${topCommand}; prep; write_json ${JSON.stringify(jsonFile)}`, inputArgument], {stdio: 'inherit'});
+    const existingNetlist = path.extname(inputFile).toLowerCase() === '.json';
+    const jsonFile = existingNetlist ? inputFile : path.join(outDir, `${basename}.json`);
+    if (existingNetlist) {
+        console.log(`[1/4] Using existing Yosys netlist ${inputFile}...`);
+    } else {
+        const topCommand = options.top ? ` -top ${options.top}` : ' -auto-top';
+        console.log(`[1/4] Synthesizing ${inputFile} with Yosys...`);
+        execFileSync('yosys', ['-q', '-p', `hierarchy${topCommand}; prep; write_json ${JSON.stringify(jsonFile)}`, inputFile], {stdio: 'inherit'});
+    }
 
     console.log('[2/4] Parsing Yosys netlist into visual graph...');
-    const parsed = yosysToModel(fs.readFileSync(jsonFile, 'utf8'), {topModule: options.top});
+    let parsed;
+    try {
+        parsed = yosysToModel(fs.readFileSync(jsonFile, 'utf8'), {topModule: options.top});
+    } catch (error) {
+        throw new Error(`Invalid Yosys JSON in ${jsonFile}: ${error.message || error}`);
+    }
     if (parsed.problems.length) console.warn('Parser warnings:', parsed.problems);
     console.log(`      Top ${parsed.topModName}: ${parsed.model.nodes.length} nodes, ${parsed.model.edges.length} edges.`);
 
@@ -294,11 +304,13 @@ async function main () {
     console.log('[4/4] Generating outputs...');
     if (options.format === 'json' || options.format === 'both') {
         const layoutFile = path.join(outDir, `${basename}_layout.json`);
+        if (path.resolve(layoutFile) === inputFile) throw new Error('Layout output would overwrite the input netlist');
         fs.writeFileSync(layoutFile, JSON.stringify(layout, null, 2));
         console.log(`      Saved structured layout to ${layoutFile}`);
     }
     if (options.format === 'svg' || options.format === 'both') {
         const svgFile = path.join(outDir, `${basename}.svg`);
+        if (path.resolve(svgFile) === inputFile) throw new Error('SVG output would overwrite the input netlist');
         fs.writeFileSync(svgFile, toSvg(layout, options.title || titleCase(parsed.topModName)));
         console.log(`      Saved rendering to ${svgFile}`);
     }
