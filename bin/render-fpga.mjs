@@ -50,9 +50,10 @@ const port = (id, side, index = 0) => ({
     }
 });
 
-const gateHeight = node => Math.max(48, 22 + (node.inputPorts?.length || 0) * 15);
+const isBusTap = node => node.type === 'slice' || node.type === 'concat';
+const gateHeight = node => isBusTap(node) ? Math.max(20, 8 + (node.inputPorts?.length || 1) * 12) : Math.max(48, 22 + (node.inputPorts?.length || 0) * 15);
 
-const gateWidth = node => ['and', 'or', 'xor', 'not', 'mux', 'pmux'].includes(node.type) ? NODE_WIDTH : 96;
+const gateWidth = node => isBusTap(node) ? 16 : ['and', 'or', 'xor', 'not', 'mux', 'pmux'].includes(node.type) ? NODE_WIDTH : 96;
 
 const nodePorts = node => {
     if (node.kind === 'in' || node.kind === 'const') return [port(`${node.id}.out`, 'EAST')];
@@ -151,6 +152,14 @@ const gateShape = node => {
     const {x, y, width, height} = node;
     const centerX = x + width / 2;
     const centerY = y + height / 2;
+    if (node.type === 'slice' || node.type === 'concat') {
+        const barX = centerX - 2.5;
+        const label = node.type === 'slice' && node.hi != null
+            ? (node.hi === node.lo ? String(node.lo) : `${node.hi}:${node.lo}`)
+            : '';
+        const text = label ? `<text class="bus-label" x="${centerX}" y="${y - 3}">${xml(label)}</text>` : '';
+        return `<rect class="bus-tap" x="${barX}" y="${y}" width="5" height="${height}"/>${text}`;
+    }
     if (node.type === 'and') {
         return `<path class="gate" d="M ${x} ${y} L ${centerX} ${y} A ${width / 2} ${height / 2} 0 0 1 ${centerX} ${y + height} L ${x} ${y + height} Z"/>`;
     }
@@ -223,9 +232,8 @@ function renderGraph (graph, offsetX = 0, offsetY = 0, nested = false) {
         const centerY = y + node.height / 2;
         if (node.kind === 'in' || node.kind === 'out' || node.kind === 'const') {
             const isOutput = node.kind === 'out';
-            const value = node.kind === 'const' ? node.value : 0;
             output += `<rect class="io-box${isOutput ? ' output' : ''}" x="${x}" y="${y}" width="${node.width}" height="${node.height}"/>`;
-            output += `<text class="io-value${isOutput ? ' output' : ''}" x="${centerX}" y="${centerY}">${xml(value)}</text>`;
+            if (node.kind === 'const') output += `<text class="io-value" x="${centerX}" y="${centerY}">${xml(node.value)}</text>`;
             if (node.kind !== 'const' && !nested) {
                 output += `<text class="io-label ${isOutput ? 'right' : 'left'}" x="${isOutput ? x + node.width + 12 : x - 12}" y="${centerY}">${xml(node.name)}</text>`;
             }
@@ -255,7 +263,7 @@ function toSvg (layout, title) {
     const body = renderGraph(layout).replaceAll('><', '>\n<');
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
 <style>
-.canvas{fill:#fff}.gate,.module,.io-box{fill:#fff;stroke:#000;stroke-width:4}.module.expanded{fill:#fafafa;stroke-dasharray:8 6}.wire{fill:none;stroke:#087f23;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.bridge{stroke:#83ea91}.gate-line{fill:none;stroke:#000;stroke-width:4;stroke-linecap:round}.pin{fill:#087f23}.io-box.output{stroke:#101cff}.io-value{font:700 20px Arial,sans-serif;fill:#087f23;text-anchor:middle;dominant-baseline:middle}.io-value.output{fill:#087f23}.title{font:28px Arial,sans-serif;fill:#111;text-anchor:middle}.io-label{font:20px Arial,sans-serif;fill:#111;dominant-baseline:middle}.io-label.left{text-anchor:end}.io-label.right{text-anchor:start}.module-title{font:18px Arial,sans-serif;fill:#111;text-anchor:middle}.instance-name{font:12px Arial,sans-serif;fill:#666;text-anchor:middle}.gate-label{font:700 12px Arial,sans-serif;fill:#111;text-anchor:middle;dominant-baseline:middle}.port-label{font:12px Arial,sans-serif;fill:#111;dominant-baseline:middle}.port-left{text-anchor:start}.port-right{text-anchor:end}
+.canvas{fill:#fff}.gate,.module,.io-box{fill:#fff;stroke:#000;stroke-width:4}.module.expanded{fill:#fafafa;stroke-dasharray:8 6}.wire{fill:none;stroke:#087f23;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.bridge{stroke:#83ea91}.gate-line{fill:none;stroke:#000;stroke-width:4;stroke-linecap:round}.pin{fill:#087f23}.io-box.output{stroke:#101cff}.io-value{font:700 20px Arial,sans-serif;fill:#087f23;text-anchor:middle;dominant-baseline:middle}.io-value.output{fill:#087f23}.title{font:28px Arial,sans-serif;fill:#111;text-anchor:middle}.io-label{font:20px Arial,sans-serif;fill:#111;dominant-baseline:middle}.io-label.left{text-anchor:end}.io-label.right{text-anchor:start}.module-title{font:18px Arial,sans-serif;fill:#111;text-anchor:middle}.instance-name{font:12px Arial,sans-serif;fill:#666;text-anchor:middle}.gate-label{font:700 12px Arial,sans-serif;fill:#111;text-anchor:middle;dominant-baseline:middle}.port-label{font:12px Arial,sans-serif;fill:#111;dominant-baseline:middle}.port-left{text-anchor:start}.port-right{text-anchor:end}.bus-tap{fill:#087f23;stroke:none}.bus-label{font:11px Arial,sans-serif;fill:#444;text-anchor:middle}
 </style>
 <rect class="canvas" width="100%" height="100%"/>
 <text class="title" x="${width / 2}" y="42">${xml(title)}</text>
