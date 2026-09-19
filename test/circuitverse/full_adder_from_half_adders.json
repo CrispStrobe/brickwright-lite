@@ -4,6 +4,7 @@
     "full_adder_from_half_adders": {
       "attributes": {
         "hdlname": "full_adder_from_half_adders",
+        "top": "00000000000000000000000000000001",
         "src": "full_adder_from_half_adders.v:6.1-11.10"
       },
       "ports": {
