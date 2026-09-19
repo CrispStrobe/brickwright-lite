@@ -106,5 +106,9 @@
         "jszip": "3.10.1",
         "playwright": "^1.62.1",
         "yosys2digitaljs": "^0.10.3"
+    },
+    "dependencies": {
+        "commander": "^15.0.0",
+        "elkjs": "^0.12.0"
     }
 }
