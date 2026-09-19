@@ -32,10 +32,16 @@ test('requestBoard refuses by name where there is no WebUSB', async () => {
 
 test('requestBoard returns the picked device, and offers the Tang Nano filters', async () => {
     let seenFilters = null;
-    const usb = {requestDevice: async ({filters}) => { seenFilters = filters; return {id: 'dev'}; }};
+    const device = {id: 'dev', vendorId: 0x0403, productId: 0x6010,
+        manufacturerName: 'SIPEED', productName: 'FactoryAIOT Pro JTAG Debugger'};
+    const usb = {requestDevice: async ({filters}) => { seenFilters = filters; return device; }};
     const r = await requestBoard(usb);
     assert.equal(r.ok, true);
-    assert.deepEqual(r.device, {id: 'dev'});
+    assert.equal(r.device, device);
+    assert.equal(r.identification.match, 'compatible');
+    assert.equal(r.identification.protocol, 'ft2232-compatible');
+    assert.equal(r.identification.physicalBridge, 'unknown');
+    assert.match(r.identification.evidence.join('\n'), /SIPEED/);
     assert.ok(seenFilters.length >= 1 && seenFilters.every(f => 'vendorId' in f),
         'the picker must be scoped to Tang Nano bridges');
 });

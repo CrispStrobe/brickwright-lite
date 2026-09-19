@@ -4,11 +4,11 @@
 // means reimplementing, over WebUSB, what openFPGALoader does against the board's
 // on-board USB→JTAG bridge:
 //
-//   1. requestDevice + open + claimInterface on the bridge (an FTDI FT2232 on the
-//      common Tang Nano 20K revision; a BL702 on newer ones — different command
-//      sets, so this is per-bridge work).
-//   2. Drive JTAG through the bridge (FTDI MPSSE bit-bang, or the BL702's own
-//      protocol): TMS/TDI/TDO, the TAP state machine.
+//   1. requestDevice + open + claimInterface on the bridge. A 0403:6010
+//      descriptor establishes FT2232 protocol compatibility, not the physical
+//      bridge silicon; see usb-identification.js.
+//   2. Drive JTAG through that FT2232-compatible protocol: TMS/TDI/TDO, the TAP
+//      state machine.
 //   3. Read IDCODE and check it is a GW2AR-18 before writing anything.
 //   4. The Gowin programming sequence: SRAM (volatile, fast) vs embedded flash
 //      (persistent) — erase, stream the .fs bitstream, then read back and verify.
@@ -21,7 +21,10 @@
 // protocol. See docs/TANG-NANO.md §TN4.
 //
 // Until it exists, flashing is: `bw-fpga flash design.fs` (the CLI), openFPGALoader
-// directly, or the native app's Flash button — all of which DO flash today.
+// directly. The native app transport remains fail-closed until its Rust commands
+// exist and are validated against hardware.
+
+import {identifyTangNanoTransport} from './usb-identification.js';
 
 /**
  * Filters for `navigator.usb.requestDevice` — the user still picks the device.
@@ -29,9 +32,9 @@
  * hardware-in-the-loop work, so this is a starting set, not a closed one.
  */
 export const TANG_NANO_USB_FILTERS = Object.freeze([
-    {vendorId: 0x0403, productId: 0x6010},   // FTDI FT2232C/D/H — older Tang Nano cable
-    {vendorId: 0x0403, productId: 0x6011},   // FTDI FT4232H
-    {vendorId: 0x33aa}                        // Sipeed (BL702 debugger); productId TBD on hardware
+    {vendorId: 0x0403, productId: 0x6010},   // FT2232-compatible; physical bridge unknown
+    {vendorId: 0x0403, productId: 0x6011},   // Existing broad picker entry; not board identity
+    {vendorId: 0x33aa}                        // Existing Sipeed-wide entry; ambiguous until captured
 ]);
 
 /**
@@ -57,7 +60,7 @@ export async function requestBoard (usb = (typeof navigator !== 'undefined' ? na
     }
     try {
         const device = await usb.requestDevice({filters: [...TANG_NANO_USB_FILTERS]});
-        return {ok: true, device};
+        return {ok: true, device, identification: identifyTangNanoTransport(device)};
     } catch (e) {
         return {ok: false, code: 'no-device',
             reason: (e && e.message) ? e.message : 'No board was selected.'};
