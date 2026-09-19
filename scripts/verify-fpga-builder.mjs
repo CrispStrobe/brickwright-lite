@@ -103,7 +103,6 @@ try {
         check(await wired.isVisible(), 'the FPGA journey creates a persistent demo circuit');
 
         const synth = page.getByRole('button', {name: /Synthesise|Synthetisieren/i}).first();
-        await synth.waitFor({state: 'visible', timeout: 10000});
         // Keep this as a locator operation: the Circuit-tab round trip can
         // rerender the button, so an ElementHandle captured before it settles
         // becomes a detached disabled node that can never change.
