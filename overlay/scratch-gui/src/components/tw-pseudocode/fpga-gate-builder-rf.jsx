@@ -303,9 +303,18 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
         try { return evalModel(reactFlowToModel(nodes, edges), inputs, clockState); } catch (e) { return null; }
     }, [running, nodes, edges, inputs, clockState]);
     const wire = valueColor;
+    // In Run mode each wire carries its live value: coloured, the '1's animate
+    // (dashes flow) and thicken, and a small label shows the bit itself.
     const shownEdges = live
-        ? edges.map(e => ({...e, animated: live.values[e.source] === 1,
-            style: {stroke: wire(live.values[e.source]), strokeWidth: 2}}))
+        ? edges.map(e => {
+            const v = live.values[e.source];
+            return {...e, animated: v === 1,
+                style: {stroke: wire(v), strokeWidth: v === 1 ? 2.6 : 1.8},
+                label: v === undefined ? 'x' : String(v),
+                labelStyle: {fill: wire(v), fontWeight: 700, fontSize: 11},
+                labelBgStyle: {fill: '#ffffff', fillOpacity: 0.85},
+                labelBgPadding: [2, 2], labelBgBorderRadius: 3};
+        })
         : edges;
     const shownNodes = live
         ? nodes.map(n => (n.data.kind === 'in' || n.data.kind === 'out'
@@ -396,7 +405,14 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                     <button type="button" onClick={stepClk} data-testid="bw-fpga-rf-clock"
                         title="Advance one clock edge (flip-flops)" style={{cursor: 'pointer'}}>{'⟳ Clock'}</button>
                 ) : null}
-                {running ? <span style={{fontSize: '0.75rem', opacity: 0.7}}>{'click an input to toggle 0/1'}</span> : null}
+                {running ? (
+                    <span style={{fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: 8}}>
+                        <span style={{opacity: 0.7}}>{'click an input to toggle'}</span>
+                        <span style={{color: '#16a34a', fontWeight: 700}}>{'1'}</span>
+                        <span style={{color: '#94a3b8', fontWeight: 700}}>{'0'}</span>
+                        <span style={{color: '#cbd5e1', fontWeight: 700}}>{'x'}</span>
+                    </span>
+                ) : null}
             </div>
             {library.length ? (
                 <div style={{display: 'flex', gap: '0.35rem', flexWrap: 'wrap', margin: '0 0 0.4rem', alignItems: 'center'}}>

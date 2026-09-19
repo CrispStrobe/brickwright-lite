@@ -81,14 +81,25 @@ test('the curriculum is self-consistent — 0/1 references, a valid unlock DAG',
             assert.ok(ids.has(r), `${c.id} requires unknown ${r}`);
             assert.ok(CHALLENGES.findIndex(x => x.id === r) < index, `${c.id} requires later ${r}`);
         }
-        // the reference returns 0/1 for every output across every input combination
-        const names = c.inputs.map(i => i.name);
-        for (let bits = 0; bits < (1 << names.length); bits++) {
-            const inp = {};
-            names.forEach((nm, i) => { inp[nm] = (bits >> i) & 1; });
-            const out = c.expect(inp);
-            for (const {name} of c.outputs) {
-                assert.ok(out[name] === 0 || out[name] === 1, `${c.id}.${name} must be 0/1, got ${out[name]}`);
+        if (c.sequential) {
+            // a sequential reference returns a 0/1 value per output per cycle
+            const seq = c.seqExpect(c.stimulus || {});
+            assert.ok(Array.isArray(seq) && seq.length > 0, `${c.id} needs a per-cycle reference`);
+            for (const step of seq) {
+                for (const {name} of c.outputs) {
+                    assert.ok(step[name] === 0 || step[name] === 1, `${c.id}.${name} must be 0/1 each cycle`);
+                }
+            }
+        } else {
+            // the reference returns 0/1 for every output across every input combination
+            const names = c.inputs.map(i => i.name);
+            for (let bits = 0; bits < (1 << names.length); bits++) {
+                const inp = {};
+                names.forEach((nm, i) => { inp[nm] = (bits >> i) & 1; });
+                const out = c.expect(inp);
+                for (const {name} of c.outputs) {
+                    assert.ok(out[name] === 0 || out[name] === 1, `${c.id}.${name} must be 0/1, got ${out[name]}`);
+                }
             }
         }
     }
@@ -96,4 +107,39 @@ test('the curriculum is self-consistent — 0/1 references, a valid unlock DAG',
     assert.equal(isUnlocked('wire', new Set()), true);
     assert.equal(isUnlocked('and', new Set()), false);
     assert.equal(isUnlocked('and', new Set(['wire', 'not'])), true);
+});
+
+// ── sequential challenges: clocked designs graded over a stimulus ──
+test('a correct register passes; a plain wire (no DFF) fails at cycle 0', () => {
+    const reg = {nodes: [inNode('d'), inNode('clk'), gate('f', 'dff'), outNode('q')],
+        edges: [wire('d', 'f', 'd'), wire('clk', 'f', 'clk'), wire('f', 'o_q')]};
+    const ok = grade(reg, challengeById('register'));
+    assert.equal(ok.pass, true, 'q follows d one clock late');
+    assert.equal(ok.checked, 6);
+
+    // a learner who just wires d straight to q (no storage): q = d, not previous d
+    const wireOnly = {nodes: [inNode('d'), inNode('clk'), outNode('q')], edges: [wire('d', 'o_q')]};
+    const bad = grade(wireOnly, challengeById('register'));
+    assert.equal(bad.pass, false);
+    assert.equal(bad.failing.cycle, 0, 'the very first clock exposes the missing register');
+    assert.equal(bad.failing.expected, 0);
+    assert.equal(bad.failing.got, 1);
+});
+
+test('a toggle flip-flop (q → NOT → d) halves the clock', () => {
+    const t = {nodes: [inNode('clk'), gate('f', 'dff'), gate('n', 'not'), outNode('q')],
+        edges: [wire('clk', 'f', 'clk'), wire('f', 'n', 'a'), wire('n', 'f', 'd'), wire('f', 'o_q')]};
+    const res = grade(t, challengeById('toggle'));
+    assert.equal(res.pass, true, 'q = 0,1,0,1,0,1 over six clocks');
+    // a DFF that just holds (d tied from q, not inverted) never toggles
+    const stuck = {nodes: [inNode('clk'), gate('f', 'dff'), outNode('q')],
+        edges: [wire('clk', 'f', 'clk'), wire('f', 'f', 'd'), wire('f', 'o_q')]};
+    assert.equal(grade(stuck, challengeById('toggle')).pass, false);
+});
+
+test('gradeMessage reports sequential failures by clock cycle', () => {
+    const wireOnly = {nodes: [inNode('d'), inNode('clk'), outNode('q')], edges: [wire('d', 'o_q')]};
+    const msg = gradeMessage(grade(wireOnly, challengeById('register')), challengeById('register'));
+    assert.match(msg, /clock cycle 0/);
+    assert.match(gradeMessage({pass: true, checked: 6, sequential: true}), /through all 6 clock cycles/);
 });
