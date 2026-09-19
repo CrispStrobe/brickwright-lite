@@ -36,7 +36,17 @@ const ROOT = path.resolve(import.meta.dirname, '..');
  * UI rather than tweaking a selector.
  */
 const KNOWN_UNWIRED = {
-    // Empty, and both entries that were briefly here on 2026-09-03 were WRONG:
+    'verify-fpga-builder.mjs': 'manual exact-deployable-artifact qualification: the routine browser '
+        + 'job is deliberately flag-off, while this proof requires the flag-on candidate and the live hosted '
+        + 'synthesis service. Run `PROOF_URL=https://<exact-candidate>/ node scripts/verify-fpga-builder.mjs`; '
+        + 'FPGA_SKIP_SYNTH=1 is visual-only development evidence, never the release receipt.',
+    // The FPGA entry is intentionally manual because its subject is the exact
+    // deployable flag-on artifact plus a live service, while routine browser CI
+    // deliberately builds flag-off. The command and the non-release visual mode
+    // are named above so this is disclosed state rather than a fabricated wire.
+    //
+    // Before that entry this was empty, and both entries that were briefly here
+    // on 2026-09-03 were WRONG:
     //
     //   smoke-debugger.mjs — recorded as "runs nowhere". It has run on EVERY build since it was
     //     written, through `npm run smoke:debugger`, exiting 2 for want of sdcc and being
