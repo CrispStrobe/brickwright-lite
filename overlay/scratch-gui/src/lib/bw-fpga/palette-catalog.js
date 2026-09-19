@@ -16,7 +16,7 @@ const GATE_CATEGORIES = [
     {id: 'arith', label: 'Arithmetic', types: ['add', 'sub', 'mul', 'shl', 'shr']},
     {id: 'compare', label: 'Compare', types: ['eq', 'neq', 'lt', 'gt', 'lte', 'gte']},
     {id: 'mux', label: 'Select', types: ['mux']},
-    {id: 'seq', label: 'Sequential', types: ['dff']},
+    {id: 'seq', label: 'Sequential', types: ['dff', 'tff', 'srff', 'jkff']},
     {id: 'bus', label: 'Bus', types: ['slice', 'concat']}
 ];
 

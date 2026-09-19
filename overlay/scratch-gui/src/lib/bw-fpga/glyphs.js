@@ -65,10 +65,11 @@ export function gateShape (node) {
         return `<polygon class="gate" points="${x},${y} ${x + width},${y + 9} ${x + width},${y + height - 9} ${x},${y + height}"/>`;
     }
     const box = `<rect class="gate" x="${x}" y="${y}" width="${width}" height="${height}" rx="3"/>`;
-    if (node.type === 'dff' || node.type === 'adff' || node.type === 'dlatch') {
+    const REG_LABEL = {adff: 'aDFF', dlatch: 'DLAT', tff: 'T-FF', srff: 'SR', jkff: 'JK'};
+    if (REG_LABEL[node.type] || node.type === 'dff') {
         // a clocked register: box with an edge-clock triangle on the left rail
         const tri = `<path class="gate-line" d="M ${x} ${centerY - 7} L ${x + 9} ${centerY} L ${x} ${centerY + 7}"/>`;
-        const label = node.type === 'adff' ? 'aDFF' : node.type === 'dlatch' ? 'DLAT' : 'DFF';
+        const label = REG_LABEL[node.type] || 'DFF';
         return `${box}${tri}<text class="gate-label" x="${x + width * .58}" y="${centerY}">${label}</text>`;
     }
     const glyph = OP_GLYPH[node.type];

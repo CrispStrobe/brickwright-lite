@@ -764,3 +764,13 @@ test('the palette gains a Constant source and buffer/cinv gates', () => {
     assert.match(ui, /const: ConstNode/, 'the constant renders its value');
     assert.match(ui, /item\.kind === 'const'/, 'a constant can be dropped');
 });
+
+// ── the sequential family: T/SR/JK flip-flops ──
+test('the palette offers T, SR and JK flip-flops that synthesise', () => {
+    const cat = read('overlay/scratch-gui/src/lib/bw-fpga/palette-catalog.js');
+    assert.match(cat, /'dff', 'tff', 'srff', 'jkff'/, 'the sequential family is in the palette');
+    const gb = read('overlay/scratch-gui/src/lib/bw-fpga/gate-builder.js');
+    assert.match(gb, /tff: \{label: 'T-FF'/, 'the T flip-flop is defined');
+    assert.match(gb, /seqNext:/, 'flip-flops carry a Verilog next-state');
+    assert.match(gb, /gd\.seqNext\(nets, reg\)/, 'the codegen is generic over the family');
+});

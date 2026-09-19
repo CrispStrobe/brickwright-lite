@@ -42,7 +42,15 @@ export const GATE_DEFS = {
     shr: {label: 'SHR', glyph: '>>', ins: ['a', 'b'], expr: n => `${n.a} >> ${n.b}`},
     concat: {label: 'CONCAT', glyph: '{}', ins: ['a', 'b'], expr: n => `{${n.a}, ${n.b}}`},
     slice: {label: 'SLICE', glyph: '[:]', ins: ['in'], expr: (n, g) => `${n.in}[${g.hi || 0}:${g.lo || 0}]`},
-    dff: {label: 'DFF', glyph: 'DFF', ins: ['d', 'clk'], seq: true}
+    dff: {label: 'DFF', glyph: 'DFF', ins: ['d', 'clk'], seq: true,
+        seqNext: n => `${n.d}`, seqStep: n => n.d},
+    tff: {label: 'T-FF', glyph: 'T', ins: ['t', 'clk'], seq: true,
+        seqNext: (n, reg) => `${n.t} ? ~${reg} : ${reg}`, seqStep: (n, cur) => (n.t ? (cur ? 0 : 1) : cur)},
+    srff: {label: 'SR-FF', glyph: 'SR', ins: ['s', 'r', 'clk'], seq: true,
+        seqNext: (n, reg) => `${n.s} ? 1'b1 : (${n.r} ? 1'b0 : ${reg})`, seqStep: (n, cur) => (n.s ? 1 : (n.r ? 0 : cur))},
+    jkff: {label: 'JK-FF', glyph: 'JK', ins: ['j', 'k', 'clk'], seq: true,
+        seqNext: (n, reg) => `${n.j} ? (${n.k} ? ~${reg} : 1'b1) : (${n.k} ? 1'b0 : ${reg})`,
+        seqStep: (n, cur) => (n.j ? (n.k ? (cur ? 0 : 1) : 1) : (n.k ? 0 : cur))}
 };
 
 /** The input ports of a node (a gate's `ins`, an output's single `in`). Inputs
@@ -165,12 +173,15 @@ function emitModule (def, name, moduleDefs, problems) {
         lines.push(`  assign w_${g.id} = ${gd.expr(n, g)};`);
     }
     for (const g of gates.filter(x => GATE_DEFS[x.type] && GATE_DEFS[x.type].seq)) {
-        const d = tieLow(g.id, 'd', 'Flip-flop');
+        const gd = GATE_DEFS[g.type];
         const clk = netFor(g.id, 'clk');
         if (!clk) problems.push({code: 'dff-no-clock', reason: 'A flip-flop needs a clock wired to its "clk" input.'});
         const w = g.width || 1;
-        lines.push(`  ${w > 1 ? `reg [${w - 1}:0] w_${g.id};` : `reg w_${g.id};`}`);
-        lines.push(`  always @(posedge ${clk || "1'b0"}) w_${g.id} <= ${d};`);
+        const reg = `w_${g.id}`;
+        const nets = {};
+        for (const port of gd.ins) { if (port !== 'clk') nets[port] = tieLow(g.id, port, gd.label); }
+        lines.push(`  ${w > 1 ? `reg [${w - 1}:0] ${reg};` : `reg ${reg};`}`);
+        lines.push(`  always @(posedge ${clk || "1'b0"}) ${reg} <= ${gd.seqNext(nets, reg)};`);
     }
     // Module INSTANCES — the composition primitive.
     for (const inst of instances) {
