@@ -1,10 +1,11 @@
 const TYPE_MAP = {
     '$add': 'add', '$sub': 'sub', '$mul': 'mul',
     '$and': 'and', '$or': 'or', '$xor': 'xor', '$not': 'not',
-    '$logic_and': 'and', '$logic_or': 'or', '$logic_not': 'not', '$reduce_or': 'reduce_or',
+    '$logic_and': 'and', '$logic_or': 'or', '$logic_not': 'not',
+    '$reduce_or': 'reduce_or', '$reduce_bool': 'reduce_or', '$reduce_and': 'reduce_and', '$reduce_xor': 'reduce_xor',
     '$eq': 'eq', '$ne': 'neq', '$lt': 'lt', '$gt': 'gt', '$le': 'lte', '$ge': 'gte',
     '$shl': 'shl', '$shr': 'shr', '$mux': 'mux', '$pmux': 'pmux',
-    '$dff': 'dff', '$adff': 'adff',
+    '$dff': 'dff', '$adff': 'adff', '$dffe': 'dff', '$sdff': 'dff', '$sdffe': 'dff', '$adffe': 'adff', '$dlatch': 'dlatch',
     '$_AND_': 'and', '$_OR_': 'or', '$_XOR_': 'xor', '$_NOT_': 'not',
     '$_MUX_': 'mux', '$_DFF_P_': 'dff'
 };

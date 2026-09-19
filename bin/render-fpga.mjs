@@ -148,6 +148,12 @@ const pointPath = section => {
 
 const findPort = (node, name) => (node.ports || []).find(item => item.id.endsWith(`.${name}`));
 
+const OP_GLYPH = {
+    add: '+', sub: '\u2212', mul: '\u00D7',
+    eq: '=', neq: '\u2260', lt: '<', gt: '>', lte: '\u2264', gte: '\u2265',
+    shl: '\u00AB', shr: '\u00BB',
+    reduce_or: '\u22651', reduce_and: '&', reduce_xor: '=1'
+};
 const gateShape = node => {
     const {x, y, width, height} = node;
     const centerX = x + width / 2;
@@ -173,7 +179,16 @@ const gateShape = node => {
     if (node.type === 'mux' || node.type === 'pmux') {
         return `<polygon class="gate" points="${x},${y} ${x + width},${y + 9} ${x + width},${y + height - 9} ${x},${y + height}"/>`;
     }
-    return `<rect class="gate" x="${x}" y="${y}" width="${width}" height="${height}" rx="3"/><text class="gate-label" x="${x + width * .7}" y="${centerY}">${xml((node.type || 'gate').toUpperCase())}</text>`;
+    const box = `<rect class="gate" x="${x}" y="${y}" width="${width}" height="${height}" rx="3"/>`;
+    if (node.type === 'dff' || node.type === 'adff' || node.type === 'dlatch') {
+        // a clocked register: box with an edge-clock triangle on the left rail
+        const tri = `<path class="gate-line" d="M ${x} ${centerY - 7} L ${x + 9} ${centerY} L ${x} ${centerY + 7}"/>`;
+        const label = node.type === 'adff' ? 'aDFF' : node.type === 'dlatch' ? 'DLAT' : 'DFF';
+        return `${box}${tri}<text class="gate-label" x="${x + width * .58}" y="${centerY}">${label}</text>`;
+    }
+    const glyph = OP_GLYPH[node.type];
+    if (glyph) return `${box}<text class="gate-op" x="${centerX}" y="${centerY}">${xml(glyph)}</text>`;
+    return `${box}<text class="gate-label" x="${centerX}" y="${centerY}">${xml((node.type || 'gate').toUpperCase())}</text>`;
 };
 
 function renderPorts (node, offsetX, offsetY, showLabels) {
@@ -182,7 +197,7 @@ function renderPorts (node, offsetX, offsetY, showLabels) {
         const y = offsetY + node.y + item.y + item.height / 2;
         const name = item.id.slice(item.id.lastIndexOf('.') + 1);
         const isLeft = item.x < node.width / 2;
-        const label = showLabels && name !== 'in' && name !== 'out' ?
+        const label = showLabels && name !== 'in' && name !== 'out' && name !== 'a' && name !== 'b' ?
             `<text class="port-label ${isLeft ? 'port-left' : 'port-right'}" x="${x + (isLeft ? 8 : -8)}" y="${y}">${xml(name)}</text>` : '';
         return `<circle class="pin" cx="${x}" cy="${y}" r="4"/>${label}`;
     }).join('');
@@ -241,7 +256,7 @@ function renderGraph (graph, offsetX = 0, offsetY = 0, nested = false) {
         } else if (node.kind === 'instance') {
             output += `<rect class="module${node.expanded ? ' expanded' : ''}" x="${x}" y="${y}" width="${node.width}" height="${node.height}" rx="4"/>`;
             output += `<text class="module-title" x="${centerX}" y="${y + 21}">${xml(titleCase(node.module))}</text>`;
-            if (node.name) output += `<text class="instance-name" x="${centerX}" y="${y + 36}">${xml(node.name)}</text>`;
+            if (node.name && !node.name.startsWith('$')) output += `<text class="instance-name" x="${centerX}" y="${y + 36}">${xml(node.name)}</text>`;
             output += renderBridgeWires(node, offsetX, offsetY);
             if (node.childLayout) output += renderGraph(node.childLayout, x + CHILD_X, y + CHILD_Y, true);
             output += renderPorts(node, offsetX, offsetY, true);
@@ -263,7 +278,7 @@ function toSvg (layout, title) {
     const body = renderGraph(layout).replaceAll('><', '>\n<');
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
 <style>
-.canvas{fill:#fff}.gate,.module,.io-box{fill:#fff;stroke:#000;stroke-width:4}.module.expanded{fill:#fafafa;stroke-dasharray:8 6}.wire{fill:none;stroke:#087f23;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.bridge{stroke:#83ea91}.gate-line{fill:none;stroke:#000;stroke-width:4;stroke-linecap:round}.pin{fill:#087f23}.io-box.output{stroke:#101cff}.io-value{font:700 20px Arial,sans-serif;fill:#087f23;text-anchor:middle;dominant-baseline:middle}.io-value.output{fill:#087f23}.title{font:28px Arial,sans-serif;fill:#111;text-anchor:middle}.io-label{font:20px Arial,sans-serif;fill:#111;dominant-baseline:middle}.io-label.left{text-anchor:end}.io-label.right{text-anchor:start}.module-title{font:18px Arial,sans-serif;fill:#111;text-anchor:middle}.instance-name{font:12px Arial,sans-serif;fill:#666;text-anchor:middle}.gate-label{font:700 12px Arial,sans-serif;fill:#111;text-anchor:middle;dominant-baseline:middle}.port-label{font:12px Arial,sans-serif;fill:#111;dominant-baseline:middle}.port-left{text-anchor:start}.port-right{text-anchor:end}.bus-tap{fill:#087f23;stroke:none}.bus-label{font:11px Arial,sans-serif;fill:#444;text-anchor:middle}
+.canvas{fill:#fff}.gate,.module,.io-box{fill:#fff;stroke:#000;stroke-width:4}.module.expanded{fill:#fafafa;stroke-dasharray:8 6}.wire{fill:none;stroke:#087f23;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.bridge{stroke:#83ea91}.gate-line{fill:none;stroke:#000;stroke-width:4;stroke-linecap:round}.pin{fill:#087f23}.io-box.output{stroke:#101cff}.io-value{font:700 20px Arial,sans-serif;fill:#087f23;text-anchor:middle;dominant-baseline:middle}.io-value.output{fill:#087f23}.title{font:28px Arial,sans-serif;fill:#111;text-anchor:middle}.io-label{font:20px Arial,sans-serif;fill:#111;dominant-baseline:middle}.io-label.left{text-anchor:end}.io-label.right{text-anchor:start}.module-title{font:18px Arial,sans-serif;fill:#111;text-anchor:middle}.instance-name{font:12px Arial,sans-serif;fill:#666;text-anchor:middle}.gate-label{font:700 12px Arial,sans-serif;fill:#111;text-anchor:middle;dominant-baseline:middle}.port-label{font:12px Arial,sans-serif;fill:#111;dominant-baseline:middle}.port-left{text-anchor:start}.port-right{text-anchor:end}.gate-op{font:700 26px Arial,sans-serif;fill:#111;text-anchor:middle;dominant-baseline:middle}.bus-tap{fill:#087f23;stroke:none}.bus-label{font:11px Arial,sans-serif;fill:#444;text-anchor:middle}
 </style>
 <rect class="canvas" width="100%" height="100%"/>
 <text class="title" x="${width / 2}" y="42">${xml(title)}</text>
