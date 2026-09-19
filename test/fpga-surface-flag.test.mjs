@@ -791,3 +791,14 @@ test('the palette offers built-in decoder/demux blocks', () => {
     assert.match(b, /decoder2to4/);
     assert.match(b, /demux1to2/);
 });
+
+// ── the demo board RENDERS: it loads the built circuit so the designer updates ──
+test('wiring the demo board loads it as circuitData so the designer re-renders', () => {
+    const tab = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx');
+    assert.match(tab, /dispatchEvent\(new CustomEvent\('bw-load-circuit-data'/, 'the built circuit is dispatched to be loaded');
+    assert.match(tab, /c\.toJSON\(\)/, 'as the live circuit JSON');
+    const ct = read('overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx');
+    assert.match(ct, /addEventListener\('bw-load-circuit-data'/, 'circuit-tab loads it');
+    assert.match(ct, /this\.setState\(\{circuitData: data\}\)/, 'as a fresh circuitData prop so the designer re-renders');
+    assert.match(ct, /removeEventListener\('bw-load-circuit-data'/, 'and cleans up the listener');
+});
