@@ -29,7 +29,8 @@
 // scripts/lib-pin.mjs and docs/FETCH-PINNING.md.
 import {writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
-import {MAP, UPSTREAM_COMMIT, UPSTREAM_REPO, ROOT, sha256, rawURL, bundlePath} from './bundled-upstream.mjs';
+import {readFileSync} from 'node:fs';
+import {MAP, UPSTREAM_COMMIT, UPSTREAM_REPO, ROOT, sha256, rawURL, bundlePath, sourceOf} from './bundled-upstream.mjs';
 
 const PINS = resolve(ROOT, 'overlay/scratch-vm/src/extension-support/bundled-upstream-pins.json');
 
@@ -77,17 +78,29 @@ const pins = {
 };
 
 let changed = 0;
-for (const [id, path] of Object.entries(MAP)) {
-    const source = await fetchText(rawURL(path));
+const vendorPins = JSON.parse(readFileSync(resolve(ROOT, 'vendor-pins.json'), 'utf8'));
+
+for (const id of Object.keys(MAP)) {
+    const from = sourceOf(id, vendorPins);
+    const source = await fetchText(rawURL(from.path, from.repo, from.commit));
     const bundle = renderBundle(source);
-    pins.files[id] = {path, sha256: sha256(source), bytes: Buffer.byteLength(source, 'utf8')};
+    pins.files[id] = {
+        path: from.path,
+        sha256: sha256(source),
+        bytes: Buffer.byteLength(source, 'utf8'),
+        // Recorded per file, because not every bundle comes from the same
+        // repository: controller is vendored from the bw-board package, which
+        // ships the extension and is pinned by sha like any other package.
+        ...(from.repo === UPSTREAM_REPO ? {} : {repo: from.repo, commit: from.commit})
+    };
 
     if (!check) {
         writeFileSync(bundlePath(id), bundle);
         changed++;
     }
     process.stderr.write(
-        `${id.padEnd(20)} ${pins.files[id].sha256.slice(0, 16)}  ${pins.files[id].bytes} B\n`);
+        `${id.padEnd(20)} ${pins.files[id].sha256.slice(0, 16)}  ${pins.files[id].bytes} B` +
+        `${from.repo === UPSTREAM_REPO ? '' : `  <- ${from.repo}`}\n`);
 }
 
 if (check) {

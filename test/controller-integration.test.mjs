@@ -18,6 +18,28 @@ import { describe, it } from 'node:test';
 import { ControllerPanel } from 'bw-board/controller.js';
 import { ControllerExtension } from 'bw-board/controller-extension.js';
 import { bindPanelToBoard } from 'bw-board/controller-binding.js';
+import { bundleSource, sha256 } from '../scripts/spike/bundled-upstream.mjs';
+import { readFileSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// THIS TEST IMPORTS THE PACKAGE; THE APP LOADS A BUNDLE. Until 2026-09-20
+// those were different programs — bw-board shipped fourteen blocks and Lite
+// bundled a five-block copy — so this file proved its loops against code the
+// app did not run, while its heading said "the ACTUAL interfaces". The bundle
+// is vendored from this same package file now, and the assertion below is what
+// keeps that true rather than merely true today.
+describe('Controller provenance', () => {
+  it('the extension this test imports is the one the app ships', () => {
+    const pins = JSON.parse(readFileSync(resolve(
+        dirname(fileURLToPath(import.meta.url)),
+        '../overlay/scratch-vm/src/extension-support/bundled-upstream-pins.json'), 'utf8'));
+    assert.equal(sha256(bundleSource('controller')), pins.files.controller.sha256,
+        'the shipped controller bundle is no longer bw-board/src/controller-extension.js');
+    assert.equal(pins.files.controller.path, 'src/controller-extension.js',
+        'the pin points somewhere other than the file this test imports');
+  });
+});
 
 describe('Controller E2E — a running program reads a live widget', () => {
   it('joystick: operating it changes what controllerX/Y report', () => {

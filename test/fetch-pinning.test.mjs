@@ -330,11 +330,14 @@ const CENSUS = [
     {
         file: 'scripts/spike/bundled-upstream.mjs',
         kind: 'raw',
-        text: 'raw.githubusercontent.com/${UPSTREAM_REPO}/${UPSTREAM_COMMIT}/${path}',
+        text: 'raw.githubusercontent.com/${repo}/${commit}/${path}',
         class: 'sha-const',
-        why: 'UPSTREAM_COMMIT is a literal 40-hex sha in the same module, checked by ' +
-            'test/bundled-extensions-match-upstream.test.mjs against the pin file it wrote. ' +
-            'Nothing resolves a branch: moving the pin is an edit someone makes and reviews.'
+        why: 'Both arguments are recorded 40-hex shas, never a branch. Most bundles take ' +
+            'UPSTREAM_COMMIT, a literal in the same module; `controller` comes from the ' +
+            'bw-board package and takes vendor-pins.json["bw-board"], which pinned-packages ' +
+            'already gates. test/bundled-extensions-match-upstream.test.mjs checks both, and ' +
+            'requires a non-default repo to name its own full sha. Moving either is an edit ' +
+            'someone makes and reviews.'
     },
     {
         file: 'scripts/sync-gallery-pins.mjs',

@@ -53,6 +53,12 @@ const builtinExtensions = {
     stc12: () => require('../extensions/crispstrobe/stc12'),
     stc12live: () => require('../extensions/crispstrobe/stc12live'),
     circuit: () => require('../extensions/crispstrobe/circuit'),
+    // Vendored from the bw-board PACKAGE, not from CrispStrobe/extensions —
+    // bw-board ships this extension and Lite had carried a five-block copy of
+    // its fourteen, so the panel offered lcd, oled, simplevga, keyboard,
+    // bargraph and rgb widgets that no block could drive. The path is
+    // unchanged because only the bundle's contents moved; see MAP in
+    // scripts/spike/bundled-upstream.mjs.
     controller: () => require('../extensions/crispstrobe/controller'),
     // Device convenience blocks: servo, motor, relay, sensors, LCD, NeoPixel.
     // 7 stubs (showdigit, setrgb, setpixel, clearmatrix, devicestate, ircode,

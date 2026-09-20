@@ -146,7 +146,17 @@ test('the pins describe real files at a plausible size', () => {
     for (const [id, entry] of Object.entries(pins.files)) {
         assert.match(entry.sha256, /^[0-9a-f]{64}$/, `${id} has no usable hash`);
         assert.ok(entry.bytes > 1000, `${id} recorded only ${entry.bytes} bytes — a truncated fetch?`);
-        assert.match(entry.path, /^extensions\/CrispStrobe\/.+\.js$/, `${id} has an odd upstream path`);
+        assert.match(entry.path, /^[\w./-]+\.js$/, `${id} has an odd upstream path`);
+        // A bundle from somewhere other than CrispStrobe/extensions must say
+        // where, and at which commit. Without this an entry could quietly
+        // change repository and the pin would still look like the pin.
+        if (entry.repo || entry.commit) {
+            assert.match(entry.repo || '', /^[\w-]+\/[\w.-]+$/, `${id} names an odd repo`);
+            assert.match(entry.commit || '', /^[0-9a-f]{40}$/, `${id}'s repo pin is not a full sha`);
+        } else {
+            assert.match(entry.path, /^extensions\/CrispStrobe\//,
+                `${id} claims CrispStrobe/extensions but its path is not in it`);
+        }
     }
 });
 
@@ -167,4 +177,20 @@ test('a bundle that is not a makeExt wrapper is Lite-only, not silently skipped'
             `${id} claims ${MAP[id]} but is not a makeExt bundle, so nothing was compared`);
     }
     assert.ok(readFileSync(bundlePath(ids[0]), 'utf8').length > 0);
+});
+
+test('a bundle vendored from another repository is pinned there, not here', () => {
+    // controller comes from the bw-board package rather than
+    // CrispStrobe/extensions. Its pin must be the sha vendor-pins.json already
+    // records for that package — two records of one fact that can disagree is
+    // exactly the shape this whole gate exists to prevent.
+    const vendorPins = JSON.parse(readFileSync(resolve(ROOT, 'vendor-pins.json'), 'utf8'));
+    for (const [id, entry] of Object.entries(MAP)) {
+        if (typeof entry === 'string') continue;
+        const recorded = pins.files[id];
+        assert.ok(recorded, `${id} has no pin`);
+        assert.equal(recorded.commit, vendorPins[entry.pin],
+            `${id} is pinned at a different sha than vendor-pins.json["${entry.pin}"]`);
+        assert.equal(recorded.repo, entry.repo);
+    }
 });
