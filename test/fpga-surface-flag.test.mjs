@@ -968,3 +968,17 @@ test('the palette offers an LED bank that lights per bit in Run mode', () => {
     const bridge = read('overlay/scratch-gui/src/lib/bw-fpga/gate-builder-rf.js');
     assert.match(bridge, /DISPLAY_KINDS = new Set\(\['seg7', 'led', 'ledbank'\]\)/, 'the bank is an instrument, dropped from the netlist');
 });
+
+// ── the "minimise" lesson: challenges graded on gate count too ──
+test('the learning path has minimise challenges graded on size, using the minimiser', () => {
+    const ch = read('overlay/scratch-gui/src/lib/bw-fpga/challenges.js');
+    assert.match(ch, /id: 'absorb'.*minimize: true/s, 'an absorption challenge');
+    assert.match(ch, /id: 'consensus'.*minimize: true/s, 'a consensus challenge');
+    assert.match(ch, /id: 'majority_min'.*minimize: true/s, 'a minimal-majority challenge');
+    const g = read('overlay/scratch-gui/src/lib/bw-fpga/grader.js');
+    assert.match(g, /export function minimalGates/, 'the budget is the true minimum (Quine–McCluskey)');
+    assert.match(g, /import \{synthesizeTruthTable, truthTableFrom\}/, 'computed from the reference via the minimiser');
+    assert.match(g, /challenge\.minimize/, 'grade() enforces the gate budget');
+    assert.match(g, /overBudget/, 'a correct-but-oversized design is rejected on size');
+    assert.match(g, /Correct AND minimal/, 'and a minimal one is celebrated');
+});

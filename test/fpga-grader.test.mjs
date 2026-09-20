@@ -143,3 +143,39 @@ test('gradeMessage reports sequential failures by clock cycle', () => {
     assert.match(msg, /clock cycle 0/);
     assert.match(gradeMessage({pass: true, checked: 6, sequential: true}), /through all 6 clock cycles/);
 });
+
+// ── the "minimise" lesson: graded on SIZE as well as correctness ──
+import {synthesizeTruthTable, truthTableFrom} from '../overlay/scratch-gui/src/lib/bw-fpga/synthesize.js';
+import {minimalGates} from '../overlay/scratch-gui/src/lib/bw-fpga/grader.js';
+
+const buildFor = (challenge, opts) => synthesizeTruthTable(
+    truthTableFrom(challenge.inputs.map(i => i.name), challenge.outputs.map(o => o.name), challenge.expect), opts);
+
+test('a minimise challenge passes only when the design is correct AND minimal', () => {
+    for (const c of CHALLENGES.filter(x => x.minimize)) {
+        const budget = minimalGates(c);
+        // The MINIMISED build is correct and at budget → pass.
+        const min = grade(buildFor(c, {minimize: true}), c);
+        assert.equal(min.pass, true, `${c.id}: minimal design must pass`);
+        assert.equal(min.minimal.used, budget);
+        // The RAW sum-of-products is correct but larger → rejected on size,
+        // unless the function is already minimal at raw size (budget 0 cases
+        // synthesise to 0 gates raw too).
+        const rawModel = buildFor(c, {minimize: false});
+        const rawGates = rawModel.nodes.filter(n => n.kind === 'gate').length;
+        const raw = grade(rawModel, c);
+        if (rawGates > budget) {
+            assert.equal(raw.pass, false, `${c.id}: an oversized correct design must not pass`);
+            assert.equal(raw.overBudget.budget, budget);
+            assert.match(gradeMessage(raw, c), /minimum is/);
+        }
+    }
+});
+
+test('consensus: a 4-gate solution passes, the raw 3-term SOP does not', () => {
+    const c = challengeById('consensus');
+    assert.equal(minimalGates(c), 4);
+    const raw = grade(buildFor(c, {minimize: false}), c);
+    assert.equal(raw.pass, false);
+    assert.ok(raw.overBudget.used > 4, 'the raw SOP is bigger than the 4-gate minimum');
+});

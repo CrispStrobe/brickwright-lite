@@ -11,6 +11,22 @@
  * @module
  */
 import {evalModel, stepClock} from './gate-eval.js';
+import {synthesizeTruthTable, truthTableFrom} from './synthesize.js';
+
+/** Gates in a model. Display instruments (led/seg7/ledbank) never count. */
+const gateCount = model => ((model && model.nodes) || []).filter(n => n.kind === 'gate').length;
+
+/**
+ * The minimum gate count for a combinational challenge — its reference function,
+ * synthesised with Quine–McCluskey minimisation. This is the budget a "minimise"
+ * challenge grades against: build the function, then get down to this.
+ */
+export function minimalGates (challenge) {
+    const ins = challenge.inputs.map(i => i.name);
+    const outs = challenge.outputs.map(o => o.name);
+    const table = truthTableFrom(ins, outs, challenge.expect);
+    return gateCount(synthesizeTruthTable(table, {minimize: true}));
+}
 
 /** Names present on the model, by kind. */
 const namesOfKind = (model, kind) =>
@@ -93,15 +109,28 @@ export function grade (model, challenge) {
             }
         }
     }
+    // A "minimise" challenge grades on SIZE too: the design must be correct AND
+    // no larger than the minimum (Quine–McCluskey) gate count.
+    if (challenge.minimize) {
+        const budget = minimalGates(challenge);
+        const used = gateCount(model);
+        if (used > budget) return {pass: false, checked: total, overBudget: {used, budget}};
+        return {pass: true, checked: total, minimal: {used, budget}};
+    }
     return {pass: true, checked: total};
 }
 
 /** A one-line, learner-facing summary of a grade result. */
 export function gradeMessage (result, challenge) {
     if (result.pass) {
+        if (result.minimal) return `✓ Correct AND minimal — ${result.minimal.used} gate${result.minimal.used === 1 ? '' : 's'}, the fewest possible.`;
         return result.sequential
             ? `✓ Correct — held through all ${result.checked} clock cycles.`
             : `✓ Correct — verified all ${result.checked} input combinations.`;
+    }
+    if (result.overBudget) {
+        return `Correct, but it uses ${result.overBudget.used} gates — the minimum is ${result.overBudget.budget}. `
+            + `Reduce it: the ⊞ Truth table tool minimises, or spot the input that never matters.`;
     }
     if (result.problem) return result.problem;
     const f = result.failing;
