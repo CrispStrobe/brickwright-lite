@@ -20,6 +20,7 @@ import {EXAMPLES} from '../../lib/bw-fpga/examples.js';
 import {BUILTINS} from '../../lib/bw-fpga/builtins.js';
 import {sevenSegSvg, seg7Value, ledValue, ledBankValues} from '../../lib/bw-fpga/output-devices.js';
 import {layerPositions} from '../../lib/bw-fpga/auto-layout.js';
+import {defaultMmioMap} from '../../lib/bw-fpga/mmio.js';
 import {CHALLENGES, challengeById, isUnlocked} from '../../lib/bw-fpga/challenges.js';
 import {grade} from '../../lib/bw-fpga/grader.js';
 import FpgaChallengePanel from './fpga-challenges.jsx';
@@ -402,6 +403,12 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
     const pinMap = React.useMemo(() => {
         try { return modelPinMap(reactFlowToModel(nodes, edges, library)).pins; } catch (e) { return []; }
     }, [nodes, edges, library]);
+    // The memory map a PROGRAM would use to talk to this design: inputs at 0x00…,
+    // outputs at 0x10… — the Code↔FPGA (memory-mapped I/O) bridge, made visible.
+    const mmioMap = React.useMemo(() => {
+        try { return defaultMmioMap(reactFlowToModel(nodes, edges, library)); } catch (e) { return []; }
+    }, [nodes, edges, library]);
+    const hex2 = n => `0x${n.toString(16).padStart(2, '0').toUpperCase()}`;
     const rf = useReactFlow();
     // The canvas is often mounted inside a collapsed <details> (zero height), so
     // React Flow's mount-time fitView fits nothing and the design is off-screen —
@@ -772,6 +779,12 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                 {pinMap.length ? (
                     <div data-testid="bw-fpga-rf-pinmap" style={{fontSize: '0.75rem', color: '#0f766e', marginTop: 4, fontFamily: 'monospace'}}>
                         {'⬢ Board pins: '}{pinMap.map(p => `${p.name}→${p.pin}`).join('  ')}
+                    </div>
+                ) : null}
+                {mmioMap.length ? (
+                    <div data-testid="bw-fpga-rf-mmio" style={{fontSize: '0.75rem', color: '#6d28d9', marginTop: 2, fontFamily: 'monospace'}}
+                        title="How a program (Code tab) would address this design as a memory-mapped peripheral">
+                        {'⌗ Memory map: '}{mmioMap.map(e => `${e.port}@${hex2(e.addr)}(${e.dir})`).join('  ')}
                     </div>
                 ) : null}
             </div>

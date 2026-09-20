@@ -1050,3 +1050,15 @@ test('the builder ships a counter template and a counter→7-seg block', () => {
     assert.match(bridge, /DIRECT = new Set\(\['instance', 'memory', 'const', 'tunnel', 'led', 'seg7', 'ledbank'\]\)/,
         'display kinds render as themselves when a model is loaded, not as gates');
 });
+
+// ── the Code↔FPGA bridge: memory-mapped I/O ──
+test('an FPGA design is addressable as a memory-mapped peripheral', () => {
+    const mm = read('overlay/scratch-gui/src/lib/bw-fpga/mmio.js');
+    assert.match(mm, /export function defaultMmioMap/, 'a design gets a default address map (inputs 0x00.., outputs 0x10..)');
+    assert.match(mm, /export function runMmioCycle/, 'one bus cycle drives the design and reads its outputs back');
+    assert.match(mm, /import \{evalModel, stepClock\}/, 'the hardware is the tested evaluator; MMIO is the address map around it');
+    assert.match(mm, /clk\|clock/i, 'the clock is the bus cycle, not a program register');
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /defaultMmioMap\(reactFlowToModel\(nodes, edges, library\)\)/, 'the builder derives the map from the live design');
+    assert.match(ui, /data-testid="bw-fpga-rf-mmio"/, 'and shows how a program would address it');
+});
