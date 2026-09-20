@@ -6,7 +6,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SEG7_FONT, SEGMENTS, decodeSeg7, sevenSegDecoderModel, sevenSegSvg, seg7Value, ledValue} from '../overlay/scratch-gui/src/lib/bw-fpga/output-devices.js';
+import {SEG7_FONT, SEGMENTS, decodeSeg7, sevenSegDecoderModel, sevenSegSvg, seg7Value, ledValue, ledBankValues} from '../overlay/scratch-gui/src/lib/bw-fpga/output-devices.js';
 import {evalModel} from '../overlay/scratch-gui/src/lib/bw-fpga/gate-eval.js';
 import {modelToVerilog} from '../overlay/scratch-gui/src/lib/bw-fpga/gate-builder.js';
 
@@ -78,4 +78,16 @@ test('ledValue reads the single bit driving an LED (undefined if unwired)', () =
     assert.equal(ledValue('led', edges, {g: 1}), 1);
     assert.equal(ledValue('led', edges, {g: 0}), 0);
     assert.equal(ledValue('led', [], {g: 1}), undefined);
+});
+
+test('ledBankValues reads each bit of a bank from its d0..d(n-1) inputs', () => {
+    const edges = [
+        {source: 'g0', target: 'bank', targetHandle: 'd0'},
+        {source: 'g1', target: 'bank', targetHandle: 'd1'},
+        {source: 'g2', target: 'bank', targetHandle: 'd2'}
+        // d3 intentionally unwired
+    ];
+    const vals = {g0: 1, g1: 0, g2: 1};
+    assert.deepEqual(ledBankValues('bank', edges, vals, 4), [1, 0, 1, undefined]);
+    assert.deepEqual(ledBankValues('bank', [], vals, 2), [undefined, undefined]);
 });

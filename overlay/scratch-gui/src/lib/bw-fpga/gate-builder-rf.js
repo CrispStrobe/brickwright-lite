@@ -22,7 +22,7 @@
  */
 // Display devices (LED, seven-segment) are viewing instruments, not logic: they
 // are dropped from the synthesised model, along with the edges that feed them.
-const DISPLAY_KINDS = new Set(['seg7', 'led']);
+const DISPLAY_KINDS = new Set(['seg7', 'led', 'ledbank']);
 
 export function reactFlowToModel (rfNodes, rfEdges, modules) {
     const shown = new Set();

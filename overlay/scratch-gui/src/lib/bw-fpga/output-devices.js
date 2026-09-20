@@ -130,3 +130,14 @@ export function ledValue (nodeId, rfEdges, values) {
     const e = (rfEdges || []).find(x => x.target === nodeId && x.targetHandle === 'in');
     return e ? values[e.source] : undefined;
 }
+
+/** An LED bank shows several bits at once — one device instead of N LEDs. Its
+ *  per-bit live state, read from inputs d0..d(bits-1) (each 0/1/undefined). */
+export function ledBankValues (nodeId, rfEdges, values, bits) {
+    const out = [];
+    for (let i = 0; i < bits; i++) {
+        const e = (rfEdges || []).find(x => x.target === nodeId && x.targetHandle === `d${i}`);
+        out.push(e ? values[e.source] : undefined);
+    }
+    return out;
+}

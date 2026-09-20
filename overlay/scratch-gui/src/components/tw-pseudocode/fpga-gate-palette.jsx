@@ -32,6 +32,14 @@ const Thumb = ({item}) => {
         return <span style={{flex: '0 0 auto', width: 18, height: 18, borderRadius: '50%',
             border: '2px solid #dc2626', background: 'radial-gradient(circle at 35% 30%, #fecaca, #ef4444 70%)'}} />;
     }
+    if (item.kind === 'ledbank') {
+        return (
+            <span style={{flex: '0 0 auto', display: 'inline-flex', gap: 2, padding: 2, borderRadius: 3, background: '#0f172a'}}>
+                {[0, 1, 2, 3].map(i => <span key={i} style={{width: 6, height: 6, borderRadius: '50%',
+                    background: 'radial-gradient(circle at 35% 30%, #fecaca, #ef4444 70%)'}} />)}
+            </span>
+        );
+    }
     const bg = item.kind === 'in' ? '#e0f2fe' : item.kind === 'out' ? '#fef9c3'
         : item.kind === 'memory' ? '#f0fdfa' : '#ede9fe';
     const border = item.kind === 'in' ? '#0284c7' : item.kind === 'out' ? '#ca8a04'
