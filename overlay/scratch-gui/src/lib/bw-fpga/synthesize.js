@@ -11,13 +11,18 @@
  * @module
  */
 
+import {minimizeOutput} from './minimize.js';
+
 /**
  * @param {{inputs: string[], outputs: string[], rows: Array<Object>}} spec
  *   `rows` is the full table: each row has every input name (0/1) and every
  *   output name (0/1). 2^inputs rows.
+ * @param {{minimize?: boolean}} [opts]  when `minimize`, each output is reduced
+ *   to a small prime-implicant cover (Quine–McCluskey) instead of one AND-term
+ *   per 1-row — a designed circuit rather than a raw sum of minterms.
  * @returns {{nodes: Array, edges: Array}} a gate model
  */
-export function synthesizeTruthTable ({inputs, outputs, rows}) {
+export function synthesizeTruthTable ({inputs, outputs, rows}, {minimize = false} = {}) {
     const nodes = [];
     const edges = [];
     let idc = 0;
@@ -61,13 +66,23 @@ export function synthesizeTruthTable ({inputs, outputs, rows}) {
         return acc;
     };
 
+    const n = inputs.length;
     for (const out of outputs) {
         const outId = `out_${out}`;
         nodes.push({id: outId, kind: 'out', name: out});
         const minterms = rows.filter(r => Number(r[out]) === 1);
         if (minterms.length === 0) { wire(constNode(0), outId, 'in'); continue; }
         if (minterms.length === rows.length) { wire(constNode(1), outId, 'in'); continue; }
-        const terms = minterms.map(r => chain('and', inputs.map(nm => literal(nm, Number(r[nm])))));
+        let terms;
+        if (minimize) {
+            // Reduce to a prime-implicant cover: each term keeps only the inputs
+            // that matter, so shared literals collapse the gate count.
+            const codes = minterms.map(r => inputs.reduce((acc, nm, i) => acc | (Number(r[nm]) << i), 0));
+            terms = minimizeOutput(n, codes).map(lits =>
+                chain('and', lits.map(l => literal(inputs[l.index], l.value))));
+        } else {
+            terms = minterms.map(r => chain('and', inputs.map(nm => literal(nm, Number(r[nm])))));
+        }
         wire(chain('or', terms), outId, 'in');
     }
 

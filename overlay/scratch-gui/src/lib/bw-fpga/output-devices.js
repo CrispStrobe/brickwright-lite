@@ -71,7 +71,7 @@ export function sevenSegDecoderModel () {
         const font = SEG7_FONT[value];
         return Object.fromEntries(SEGMENTS.map(s => [`seg_${s}`, font[s]]));
     });
-    return synthesizeTruthTable(table);
+    return synthesizeTruthTable(table, {minimize: true});
 }
 
 /** Palette/builtin descriptor (same shape as builtins.js) for the decoder. */
