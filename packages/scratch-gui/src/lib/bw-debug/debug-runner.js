@@ -2366,9 +2366,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             // signature decides otherwise. Guessing 'com' for an .EXE would
             // execute its header, which disassembles as garbage and looks
             // like a broken CPU rather than a misread file.
-            const format = bootMedia.slot === 'exe' ? 'exe'
-                : bootMedia.slot === 'com' ? 'com'
-                    : (img.bytes[0] === 0x4d && img.bytes[1] === 0x5a) ? 'exe' : 'com';
+            const format = bootMedia.slot === 'disk' ? 'disk'
+                : bootMedia.slot === 'exe' ? 'exe'
+                    : bootMedia.slot === 'com' ? 'com'
+                        : (img.bytes[0] === 0x4d && img.bytes[1] === 0x5a) ? 'exe' : 'com';
             let exited = null;
             const bench = await createI8086DosBench({
                 executionSignal: i8086ExecutionLifetime.signal,
