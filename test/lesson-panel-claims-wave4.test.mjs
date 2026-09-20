@@ -464,13 +464,26 @@ test('interactive-lego-recovery: the connection observable has a producer, and t
     const lessons = readFileSync(path.join(GUI, 'components/gui/guided-lessons.jsx'), 'utf8');
     assert.match(lessons, /'hardware-state':\s*'bw-hardware-state'/);
 
-    // The transport: Bluetooth CLASSIC through the Scratch Link helper, not
-    // Web Bluetooth from the page.
+    // The transport. This sentinel fired on 2026-09-20, exactly as written:
+    // spikeprime absorbed the four other SPIKE extensions and gained Web
+    // Bluetooth, so "not from the page itself" stopped being true and the
+    // lesson's hint was corrected. What it guards now is that the hint keeps
+    // describing BOTH routes, because the lesson's whole subject is knowing
+    // which one you got.
     const spike = readFileSync(path.join(VM_EXT, 'spikeprime/index.js'), 'utf8');
     assert.match(spike, /getScratchLinkSocket\(\\?"BT\\?"\)/,
-        'spikeprime changed transport — re-check what interactive-lego-recovery must disclose');
-    assert.ok(!/navigator\.bluetooth|navigator\.serial/.test(spike),
-        'spikeprime can now connect from the page itself — the Scratch Link disclosure can go');
+        'spikeprime lost the Bluetooth Classic path — firmware 2.x hubs have no other route, ' +
+        'so re-check what interactive-lego-recovery discloses');
+    assert.match(spike, /navigator\.bluetooth/,
+        'spikeprime lost the Web Bluetooth path — the lesson says a 3.x hub needs no helper');
+
+    const hint = checkpoint('interactive-lego-recovery', 'recover').copy;
+    for (const [lang, expected] of [['en', /Web Bluetooth/], ['de', /Web Bluetooth/]]) {
+        assert.match(hint[lang].hint, expected,
+            `the ${lang} hint no longer mentions the page-native route`);
+        assert.match(hint[lang].hint, /Scratch Link/,
+            `the ${lang} hint no longer mentions the helper a 2.x hub still needs`);
+    }
 });
 
 // ── interactive-calibration-control / arduino-03-calibration ───────────────

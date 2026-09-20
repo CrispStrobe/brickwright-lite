@@ -59,16 +59,35 @@ test('no GUI module reaches the VM overlay by a path the build cannot follow', (
     assert.deepEqual(offenders, []);
 });
 
+/**
+ * One method's body, by brace matching.
+ *
+ * Not a fixed character window: a window is a gate that stops biting the
+ * moment the method grows past it, silently, which is exactly what
+ * test/gate-shapes.test.mjs refuses (WINDOWED-SEARCH).
+ */
+const methodBody = (source, name) => {
+    const start = source.indexOf(`    ${name} (`);
+    assert.ok(start > 0, `${name} not found`);
+    const open = source.indexOf('{', start);
+    assert.ok(open > start, `${name} has no body`);
+    let depth = 0;
+    for (let i = open; i < source.length; i++) {
+        if (source[i] === '{') depth++;
+        else if (source[i] === '}' && --depth === 0) return source.slice(open, i + 1);
+    }
+    throw new Error(`${name} body is unterminated`);
+};
+
 test('the manager resolves a legacy id before it looks anything up', () => {
     // Order matters: the rewrite has to happen before the hasOwn checks, or
     // the legacy id misses both maps and falls through.
     for (const method of ['loadExtensionURL', 'loadExtensionIdSync']) {
-        const start = managerSource.indexOf(`    ${method} (`);
-        assert.ok(start > 0, `${method} not found`);
-        const body = managerSource.slice(start, start + 400);
+        const body = methodBody(managerSource, method);
         const rewrite = body.indexOf('resolveExtensionId(');
         const firstLookup = body.indexOf('hasOwn(');
         assert.ok(rewrite > 0, `${method} does not resolve legacy ids`);
+        assert.ok(firstLookup > 0, `${method} no longer looks an id up — re-read this test`);
         assert.ok(rewrite < firstLookup,
             `${method} looks the id up before resolving it`);
     }
@@ -143,6 +162,15 @@ test('the installer is idempotent and survives a failing migration', async () =>
 
     // A project that cannot be migrated must still be handed on: losing the
     // blocks that needed migrating is bad, losing the project is worse.
-    const hostile = {get targets () { throw new Error('boom'); }};
-    assert.equal(await vm.deserializeProject(hostile, null), 'ok');
+    // The installer reports the failure, so the report is silenced here
+    // rather than left to print into the CI log as if something had gone
+    // wrong with the run.
+    const hostile = {get targets () { throw new Error('deliberate: unreadable project'); }};
+    const realError = console.error;
+    console.error = () => {};
+    try {
+        assert.equal(await vm.deserializeProject(hostile, null), 'ok');
+    } finally {
+        console.error = realError;
+    }
 });

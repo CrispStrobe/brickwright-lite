@@ -6,6 +6,7 @@ import {connect} from 'react-redux';
 import VM from 'scratch-vm';
 import AudioEngine from 'scratch-audio';
 import unblockAudio from './audio-context-unblock.js';
+import installSpikeProjectMigration from './spike-project-migration.js';
 
 import {setProjectUnchanged} from '../reducers/project-changed';
 import {
@@ -29,6 +30,11 @@ const vmManagerHOC = function (WrappedComponent) {
             ]);
         }
         componentDidMount () {
+            // Before anything can be loaded: projects saved against the five
+            // old SPIKE extension ids are rewritten as they come in. Installed
+            // outside the `initialized` guard because it patches the VM rather
+            // than configuring it, and is idempotent by design.
+            installSpikeProjectMigration(this.props.vm);
             if (!this.props.vm.initialized) {
                 this.audioEngine = new AudioEngine();
                 // Firefox never settles decodeAudioData on a suspended context, which
