@@ -207,3 +207,40 @@ test('display instruments (LED, seven-segment) are excluded from the synthesised
     assert.equal(model.edges.length, 1); // only a→g survives; edges into instruments dropped
     assert.equal(model.edges[0].to.node, 'g');
 });
+
+// ── display kinds survive the bridge (loaded/template models render correctly) ──
+test('modelToReactFlow maps display instruments to their own node types', () => {
+    const model = {nodes: [
+        {id: 'l', kind: 'led'}, {id: 's', kind: 'seg7'}, {id: 'b', kind: 'ledbank', bits: 8}
+    ], edges: []};
+    const rf = modelToReactFlow(model);
+    const type = id => rf.nodes.find(n => n.id === id).type;
+    assert.equal(type('l'), 'led'); assert.equal(type('s'), 'seg7'); assert.equal(type('b'), 'ledbank');
+    assert.equal(rf.nodes.find(n => n.id === 'b').data.bits, 8, 'the bank width round-trips');
+});
+
+// ── sequential/datapath templates: they synthesise AND count ──
+import {EXAMPLES} from '../overlay/scratch-gui/src/lib/bw-fpga/examples.js';
+import {BUILTINS} from '../overlay/scratch-gui/src/lib/bw-fpga/builtins.js';
+import {evalModel, stepClock} from '../overlay/scratch-gui/src/lib/bw-fpga/gate-eval.js';
+
+test('every model-bearing example synthesises to legal HDL', () => {
+    for (const ex of EXAMPLES.filter(e => e.model && e.model.nodes)) {
+        assert.deepEqual(modelToVerilog(ex.model).problems, [], `${ex.id} must synthesise cleanly`);
+    }
+});
+
+test('the counter example and the counter→7-seg block actually count', () => {
+    const runCount = model => {
+        let st = {}; const seen = [];
+        for (let i = 0; i < 6; i++) { seen.push(evalModel(model, {}, st).outputs.count); st = stepClock(model, {}, st); }
+        return seen;
+    };
+    assert.deepEqual(runCount(EXAMPLES.find(e => e.id === 'counter4').model), [0, 1, 2, 3, 4, 5]);
+    const c7 = BUILTINS.find(b => b.id === 'counter7seg');
+    assert.deepEqual(runCount(c7.model), [0, 1, 2, 3, 4, 5]);
+    // its seg7 is a display instrument — dropped from the synthesised netlist
+    const back = reactFlowToModel(modelToReactFlow(c7.model).nodes, modelToReactFlow(c7.model).edges);
+    assert.ok(!back.nodes.some(n => n.kind === 'seg7'), 'the display is not emitted as HDL');
+    assert.deepEqual(modelToVerilog(back).problems, [], 'and the rest synthesises');
+});

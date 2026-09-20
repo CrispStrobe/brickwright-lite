@@ -57,5 +57,24 @@ export const BUILTINS = Object.freeze([
         id: 'seg7_decoder', label: '7-seg decoder (4→7)',
         blurb: 'A 4-bit number in (d0–d3), seven segment-drive signals out (seg_a–seg_g): the classic hex font, minimised to a real gate circuit — drop it and see how a display driver is built.',
         model: sevenSegDecoderModel()
+    },
+    {
+        id: 'counter7seg', label: 'Counter → 7-seg (0…F)',
+        blurb: 'A 4-bit counter driving a seven-segment display: drop it, Run, and step the clock to watch it count 0…F on the digit — registers + datapath + a display, wired.',
+        model: {
+            nodes: [
+                {id: 'clk', kind: 'in', name: 'clk', width: 1},
+                {id: 'one', kind: 'const', value: 1, width: 4},
+                {id: 'q', kind: 'gate', type: 'dff', width: 4},
+                {id: 'add', kind: 'gate', type: 'add', width: 4},
+                {id: 'count', kind: 'out', name: 'count', width: 4},
+                {id: 'disp', kind: 'seg7'}
+            ],
+            edges: [
+                E('clk', 'q', 'clk'),
+                E('q', 'add', 'a'), E('one', 'add', 'b'), E('add', 'q', 'd'),
+                E('q', 'count', 'in'), E('q', 'disp', 'd')
+            ]
+        }
     }
 ]);

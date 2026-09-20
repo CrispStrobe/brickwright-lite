@@ -58,13 +58,16 @@ export function reactFlowToModel (rfNodes, rfEdges, modules) {
  * @returns {{nodes: Array, edges: Array}} React Flow state
  */
 export function modelToReactFlow (model, positions = {}) {
-    const rfType = kind => (kind === 'in' || kind === 'out' ? 'io' : kind === 'instance' ? 'instance' : kind === 'memory' ? 'memory' : kind === 'const' ? 'const' : kind === 'tunnel' ? 'tunnel' : 'gate');
+    // A device kind renders with its own node type; display instruments (led,
+    // seg7, ledbank) included, so a loaded/template model shows them correctly.
+    const DIRECT = new Set(['instance', 'memory', 'const', 'tunnel', 'led', 'seg7', 'ledbank']);
+    const rfType = kind => (kind === 'in' || kind === 'out' ? 'io' : DIRECT.has(kind) ? kind : 'gate');
     const nodes = ((model && model.nodes) || []).map((n, i) => ({
         id: n.id,
         type: rfType(n.kind),
         position: positions[n.id] || {x: i * 130, y: (i % 2) * 70},
         data: {kind: n.kind, gtype: n.type, name: n.name, width: n.width || 1, module: n.module, value: n.value,
-            ports: n.ports, dataWidth: n.dataWidth, addrWidth: n.addrWidth}
+            ports: n.ports, dataWidth: n.dataWidth, addrWidth: n.addrWidth, bits: n.bits}
     }));
     const edges = ((model && model.edges) || []).map((e, i) => ({
         id: `e${i}`,
