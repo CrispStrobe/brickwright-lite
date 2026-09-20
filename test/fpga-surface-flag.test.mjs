@@ -1017,3 +1017,14 @@ test('the seven-segment and LED bank can be fed by a single bus wire', () => {
     assert.match(ui, /position=\{Position\.Top\} id="d"/, 'the seg7 has a bus input handle');
     assert.match(ui, /position=\{Position\.Left\} id="d"/, 'the LED bank has a bus input handle');
 });
+
+// ── live RAM: the memory node simulates in Run mode ──
+test('a RAM simulates live — writes on we, registered read on dout', () => {
+    const ev = read('overlay/scratch-gui/src/lib/bw-fpga/gate-eval.js');
+    assert.match(ev, /n\.kind === 'memory'/, 'evalModel drives the memory dout');
+    assert.match(ev, /if \(we === 1\) mem\[addr\] =/, 'stepClock writes the word when we is high');
+    assert.match(ev, /takes the OLD word at addr/i, 'the registered-read semantics are documented');
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /k === 'memory'\) return \{\.\.\.n, data: \{\.\.\.n\.data, live: live\.values\[n\.id\]\}\}/, 'the RAM value is fed to the node');
+    assert.match(ui, /'dout '.*String\(data\.live\)/s, 'the RAM shows its dout in Run mode');
+});

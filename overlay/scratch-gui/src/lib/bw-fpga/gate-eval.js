@@ -81,6 +81,12 @@ export function evalModel (model, inputs = {}, dffState = {}) {
             // `Number(...) || 0` silently fabricated a low level one render after
             // the flop had correctly captured x.
             values[n.id] = dffState[n.id] === 'x' ? 'x' : (Number(dffState[n.id]) || 0);
+        } else if (n.kind === 'memory') {
+            // A synchronous RAM drives its REGISTERED read (dout); it updates only
+            // on a clock, so combinationally it shows the last clocked read (0
+            // until the first clock, a zero-initialised sim).
+            const st = dffState[n.id];
+            values[n.id] = (st && st.w !== undefined) ? st.w : 0;
         }
     }
 
@@ -138,6 +144,28 @@ export function stepClock (model, inputs = {}, dffState = {}) {
             const raw = Object.values(nets).some(v => v === 'x') ? 'x' : step(nets, cur);
             next[n.id] = raw === 'x' ? 'x'
                 : (w >= 32 ? Number(BigInt(raw) & ((1n << BigInt(w)) - 1n)) : (Number(raw) & ((1 << w) - 1)) >>> 0);
+        } else if (n.kind === 'memory') {
+            // Synchronous single-port RAM on a clock edge: `if (we) mem[addr] <= din;
+            // dout <= mem[addr];` — both nonblocking, so the registered read (dout)
+            // takes the OLD word at addr, before this cycle's write.
+            const aw = n.addrWidth || 2;
+            const dw = n.dataWidth || 4;
+            const size = 1 << aw;
+            const prev = (dffState[n.id] && dffState[n.id].mem) ? dffState[n.id] : {mem: new Array(size).fill(0), w: 0};
+            const rd = port => { const src = feed.get(`${n.id}.${port}`); return src === undefined ? 0 : values[src]; };
+            const addrRaw = rd('addr');
+            const we = rd('we');
+            const din = rd('din');
+            const mem = prev.mem.slice();
+            let readOut;
+            if (addrRaw === 'x') {
+                readOut = 'x'; // an unknown address reads (and would write) an unknown place
+            } else {
+                const addr = (Number(addrRaw) || 0) & (size - 1);
+                readOut = mem[addr];
+                if (we === 1) mem[addr] = din === 'x' ? 'x' : (Number(din) || 0) & ((1 << dw) - 1);
+            }
+            next[n.id] = {mem, w: readOut};
         }
     }
     return next;
