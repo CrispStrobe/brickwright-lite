@@ -242,6 +242,9 @@ const Seg7Node = ({data}) => {
     return (
         <div style={{position: 'relative', padding: '6px 8px', border: '1.6px solid #334155',
             borderRadius: 6, background: '#0f172a'}}>
+            {/* A single BUS wire on top feeds the whole value; the per-bit d0..d3
+                on the left still work for hand-built logic. */}
+            <Handle type="target" position={Position.Top} id="d" style={{left: '50%', background: '#22c55e'}} />
             {['d0', 'd1', 'd2', 'd3'].map((p, i) => (
                 <Handle key={p} type="target" position={Position.Left} id={p}
                     style={{top: `${((i + 1) / 5) * 100}%`, background: '#0284c7'}} />
@@ -260,6 +263,9 @@ const LedBankNode = ({data}) => {
     return (
         <div style={{position: 'relative', display: 'flex', gap: 4, padding: '8px 8px',
             border: '1.6px solid #334155', borderRadius: 6, background: '#0f172a'}}>
+            {/* A single BUS wire on the left lights all lamps from its bits; the
+                per-bit d0..d(n-1) on top still work for hand-built logic. */}
+            <Handle type="target" position={Position.Left} id="d" style={{top: '50%', background: '#22c55e'}} />
             {Array.from({length: bits}, (_, i) => {
                 const on = live[i] === 1;
                 const known = live[i] === 1 || live[i] === 0;

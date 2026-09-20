@@ -131,7 +131,13 @@ export function stepClock (model, inputs = {}, dffState = {}) {
             }
             const cur = dffState[n.id] === 'x' ? 'x' : (Number(dffState[n.id]) || 0);
             const step = gd.seqStep || (m => m.d);
-            next[n.id] = Object.values(nets).some(v => v === 'x') ? 'x' : (step(nets, cur) ? 1 : 0);
+            // Capture the WIDTH of the flop, masked — a 1-bit flop stays 0/1, a
+            // multi-bit DFF (a register) holds all its bits, so a bus counter or
+            // accumulator actually counts instead of sticking at 1.
+            const w = n.width || 1;
+            const raw = Object.values(nets).some(v => v === 'x') ? 'x' : step(nets, cur);
+            next[n.id] = raw === 'x' ? 'x'
+                : (w >= 32 ? Number(BigInt(raw) & ((1n << BigInt(w)) - 1n)) : (Number(raw) & ((1 << w) - 1)) >>> 0);
         }
     }
     return next;

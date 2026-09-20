@@ -999,3 +999,21 @@ test('a bus input (width>1) is set with a number field, not a 0/1 toggle', () =>
     // A nonzero bus reads as a LIVE wire, not idle.
     assert.match(ui, /const isLive = v => v !== undefined && v !== 'x' && v !== 0/, 'a nonzero bus wire is live');
 });
+
+// ── sequential datapath: multi-bit registers + bus-fed displays ──
+test('a multi-bit register holds all its bits (bus counters/accumulators)', () => {
+    const ev = read('overlay/scratch-gui/src/lib/bw-fpga/gate-eval.js');
+    // stepClock must MASK the captured value to the flop width, not coerce to 0/1.
+    assert.match(ev, /multi-bit DFF \(a register\) holds all its bits/, 'the register-width intent is documented');
+    assert.match(ev, /const w = n\.width \|\| 1;/, 'the flop width is read');
+    assert.match(ev, /w >= 32 \? Number\(BigInt\(raw\)/, 'and the captured value is masked to that width');
+    assert.doesNotMatch(ev, /step\(nets, cur\) \? 1 : 0/, 'the old 0/1 coercion must be gone');
+});
+
+test('the seven-segment and LED bank can be fed by a single bus wire', () => {
+    const dev = read('overlay/scratch-gui/src/lib/bw-fpga/output-devices.js');
+    assert.match(dev, /targetHandle === 'd'\);\s*\n\s*if \(bus/, 'a bus wire on the d handle carries the whole value');
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /position=\{Position\.Top\} id="d"/, 'the seg7 has a bus input handle');
+    assert.match(ui, /position=\{Position\.Left\} id="d"/, 'the LED bank has a bus input handle');
+});

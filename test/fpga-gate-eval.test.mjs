@@ -274,3 +274,33 @@ test('a comparator and a mux select on bus values', () => {
     assert.equal(evalModel(model, {a: 11, b: 6}).outputs.big, 11, 'mux picks the larger');
     assert.equal(evalModel(model, {a: 3, b: 8}).outputs.big, 8, 'mux picks the larger');
 });
+
+// ── multi-bit registers: a real counter counts (not stuck at 1) ──
+test('a 4-bit register accumulates — q+1 counts 0..15 and wraps', () => {
+    const model = {
+        nodes: [
+            {id: 'one', kind: 'const', value: 1, width: 4}, {id: 'q', kind: 'gate', type: 'dff', width: 4},
+            {id: 'add', kind: 'gate', type: 'add', width: 4}, {id: 'out', kind: 'out', name: 'q', width: 4}
+        ],
+        edges: [
+            {from: {node: 'q', port: 'out'}, to: {node: 'add', port: 'a'}},
+            {from: {node: 'one', port: 'out'}, to: {node: 'add', port: 'b'}},
+            {from: {node: 'add', port: 'out'}, to: {node: 'q', port: 'd'}},
+            {from: {node: 'q', port: 'out'}, to: {node: 'out', port: 'in'}}
+        ]
+    };
+    let st = {}; const seen = [];
+    for (let i = 0; i < 18; i++) { seen.push(evalModel(model, {}, st).outputs.q); st = stepClock(model, {}, st); }
+    assert.deepEqual(seen, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0, 1], 'counts and wraps at 16');
+});
+
+test('a 1-bit toggle flip-flop still toggles after the register fix', () => {
+    const model = {
+        nodes: [{id: 'one', kind: 'const', value: 1}, {id: 't', kind: 'gate', type: 'tff'}, {id: 'q', kind: 'out', name: 'q'}],
+        edges: [{from: {node: 'one', port: 'out'}, to: {node: 't', port: 't'}},
+            {from: {node: 't', port: 'out'}, to: {node: 'q', port: 'in'}}]
+    };
+    let st = {}; const seen = [];
+    for (let i = 0; i < 6; i++) { seen.push(evalModel(model, {}, st).outputs.q); st = stepClock(model, {}, st); }
+    assert.deepEqual(seen, [0, 1, 0, 1, 0, 1]);
+});

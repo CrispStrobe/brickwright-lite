@@ -91,3 +91,14 @@ test('ledBankValues reads each bit of a bank from its d0..d(n-1) inputs', () => 
     assert.deepEqual(ledBankValues('bank', edges, vals, 4), [1, 0, 1, undefined]);
     assert.deepEqual(ledBankValues('bank', [], vals, 2), [undefined, undefined]);
 });
+
+test('seg7Value and ledBankValues read a single BUS wire on the d handle', () => {
+    // A register's bus output on the `d` handle carries the whole value.
+    const busEdge = [{source: 'reg', target: 'disp', targetHandle: 'd'}];
+    assert.equal(seg7Value('disp', busEdge, {reg: 13}), 13, 'seg7 shows the bus value');
+    assert.deepEqual(ledBankValues('bank', [{source: 'reg', target: 'bank', targetHandle: 'd'}], {reg: 0b1010}, 4),
+        [0, 1, 0, 1], 'bank lights the bus value bits (LSB first)');
+    // With no bus wire, it still falls back to the per-bit inputs.
+    const perBit = [{source: 'g', target: 'disp', targetHandle: 'd0'}];
+    assert.equal(seg7Value('disp', perBit, {g: 1}), 1, 'per-bit d0 still works');
+});
