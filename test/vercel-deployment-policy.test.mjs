@@ -41,6 +41,14 @@ test('every Vercel production run deploys the current main checkout', () => {
         'a run that never publishes must say so as an error');
     assert.match(workflow, /\n\s*exit 1\s*$/m,
         'a run that never publishes must fail, so that green means published');
+    // The adjacency check above pins THE guarded publish; it cannot see a
+    // SECOND one. An unguarded `vercel deploy` added elsewhere in this job —
+    // a fallback after the loop, say — would satisfy every assertion above
+    // while shipping exactly the stale tree the comparison exists to stop.
+    // So the publish site is required to be unique, which is what makes
+    // "published" imply "guarded" rather than only "guarded somewhere".
+    assert.equal((workflow.match(/vercel deploy --prebuilt --prod/g) || []).length, 1,
+        'more than one production publish site — the guard above covers only the first');
     for (const secret of ['VERCEL_TOKEN', 'VERCEL_ORG_ID', 'VERCEL_PROJECT_ID']) {
         assert.match(workflow, new RegExp(`secrets\\.${secret}`));
     }
