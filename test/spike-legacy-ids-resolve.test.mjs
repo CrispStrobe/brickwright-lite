@@ -10,6 +10,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync, readdirSync} from 'node:fs';
+import {quietConsole} from './helpers/quiet-console.mjs';
 import {resolve, dirname} from 'node:path';
 import {createRequire} from 'node:module';
 import {fileURLToPath} from 'node:url';
@@ -18,6 +19,14 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
 const require = createRequire(import.meta.url);
 const migration = await import('../overlay/scratch-gui/src/lib/spike-legacy-migration.js');
+
+// The installer reports a migration it performed, and one of the tests below
+// performs one. Those bytes would go straight to the runner's stdout pipe,
+// where they are not diagnostics but corruption: the TAP stream stops
+// deserialising and this file reports ZERO tests while still exiting clean.
+// That is how it failed on CI — not as a red test, but as a silent absence
+// the suite's own "every file reported tests" check had to catch.
+quietConsole();
 
 const managerSource = readFileSync(
     resolve(root, 'overlay/scratch-vm/src/extension-support/extension-manager.js'), 'utf8');
@@ -166,11 +175,5 @@ test('the installer is idempotent and survives a failing migration', async () =>
     // rather than left to print into the CI log as if something had gone
     // wrong with the run.
     const hostile = {get targets () { throw new Error('deliberate: unreadable project'); }};
-    const realError = console.error;
-    console.error = () => {};
-    try {
-        assert.equal(await vm.deserializeProject(hostile, null), 'ok');
-    } finally {
-        console.error = realError;
-    }
+    assert.equal(await vm.deserializeProject(hostile, null), 'ok');
 });
