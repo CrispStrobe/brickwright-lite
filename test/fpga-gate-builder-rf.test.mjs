@@ -189,3 +189,21 @@ test('a tunnel round-trips its net name and generates a shared net', () => {
     assert.equal(back.nodes.find(n => n.id === 't1').name, 'clk');
     assert.match(modelToVerilog(back).verilog, /assign y = w_tun_clk;/);
 });
+
+test('display instruments (LED, seven-segment) are excluded from the synthesised model', () => {
+    const rfNodes = [
+        {id: 'a', data: {kind: 'in', name: 'a'}},
+        {id: 'g', data: {kind: 'gate', gtype: 'not'}},
+        {id: 'led', data: {kind: 'led'}},
+        {id: 'disp', data: {kind: 'seg7'}}
+    ];
+    const rfEdges = [
+        {source: 'a', target: 'g', sourceHandle: 'out', targetHandle: 'a'},
+        {source: 'g', target: 'led', sourceHandle: 'out', targetHandle: 'in'},
+        {source: 'a', target: 'disp', sourceHandle: 'out', targetHandle: 'd0'}
+    ];
+    const model = reactFlowToModel(rfNodes, rfEdges);
+    assert.deepEqual(model.nodes.map(n => n.id), ['a', 'g']); // instruments dropped
+    assert.equal(model.edges.length, 1); // only a→g survives; edges into instruments dropped
+    assert.equal(model.edges[0].to.node, 'g');
+});

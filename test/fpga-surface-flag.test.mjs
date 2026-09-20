@@ -835,3 +835,41 @@ test('the builder can generate a circuit from a truth table', () => {
     const modal = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-truth-table.jsx');
     assert.match(modal, /synthesizeTruthTable\(/, 'the modal uses the tested synthesiser');
 });
+
+// ── output devices: an LED and a seven-segment display that light in Run ──
+//
+// The far end of a circuit is where bits become something you can SEE. The
+// palette offers an LED and a seven-segment display; both are viewing
+// INSTRUMENTS, dropped from the synthesised netlist (they emit no HDL) but lit
+// live from the values on their inputs. The seven-segment FACE and the hex
+// decoder are pure and proved against the font (fpga-output-devices.test.mjs).
+test('the palette offers LED and seven-segment output devices that light in Run mode', () => {
+    const cat = read('overlay/scratch-gui/src/lib/bw-fpga/palette-catalog.js');
+    assert.match(cat, /id: 'display', label: 'Display'/, 'a Display section in the palette');
+    assert.match(cat, /kind: 'led', label: 'LED'/, 'an LED device');
+    assert.match(cat, /kind: 'seg7', label: '7-seg display'/, 'a seven-segment device');
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /led: LedNode, seg7: Seg7Node/, 'the devices render as nodes');
+    assert.match(ui, /item\.kind === 'led'/, 'an LED can be dropped');
+    assert.match(ui, /item\.kind === 'seg7'/, 'a seven-segment can be dropped');
+    assert.match(ui, /ledValue\(n\.id, edges, live\.values\)/, 'an LED lights from its live input');
+    assert.match(ui, /seg7Value\(n\.id, edges, live\.values\)/, 'the display reads its 4-bit input live');
+});
+
+test('display devices are instruments — dropped from the synthesised model, not emitted as HDL', () => {
+    const bridge = read('overlay/scratch-gui/src/lib/bw-fpga/gate-builder-rf.js');
+    assert.match(bridge, /DISPLAY_KINDS = new Set\(\['seg7', 'led'\]\)/,
+        'the bridge must know display kinds are instruments');
+    assert.match(bridge, /filter\(n => !DISPLAY_KINDS\.has/, 'display nodes are dropped from the model');
+    assert.match(bridge, /shown\.has\(e\.source\) && shown\.has\(e\.target\)/,
+        'and their edges too, so codegen never sees an instrument');
+});
+
+test('the seven-segment core is pure: a hex font, a decoder, and a shared face', () => {
+    const dev = read('overlay/scratch-gui/src/lib/bw-fpga/output-devices.js');
+    assert.match(dev, /export const SEG7_FONT/, 'the hex font (the oracle) is exported');
+    assert.match(dev, /export function sevenSegDecoderModel/, 'a synthesisable 4→7 decoder gate model');
+    assert.match(dev, /export function sevenSegSvg/, 'a shared SVG face for the canvas and the widget');
+    assert.match(dev, /import \{synthesizeTruthTable, truthTableFrom\}/,
+        'the decoder is built by the tested truth-table synthesiser, not hand-wired');
+});
