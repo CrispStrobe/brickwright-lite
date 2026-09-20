@@ -10,6 +10,12 @@
 //
 // The fixture is judged by test/spike-unified-coverage.test.mjs. Editing it to
 // make that test pass is exactly the mistake it exists to catch.
+//
+// `--from` reproduces THAT CHECKOUT's sources, which is not automatically the
+// pin Lite shipped: CrispStrobe/extensions main has already moved past
+// c681d995 (spikeprimeble lost an internal `_processMessage` there). The
+// frozen fixture records what Lite shipped, so a regeneration that differs is
+// information about the upstream, not a correction to the fixture.
 import {readFileSync, writeFileSync, mkdirSync, existsSync} from 'node:fs';
 import {resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -53,20 +59,24 @@ const unwrapBundle = function (text) {
     return JSON.parse(text.slice(start, end + 1));
 };
 
+const from = process.argv.includes('--from')
+    ? process.argv[process.argv.indexOf('--from') + 1]
+    : null;
+
 const readSource = function (id) {
-    const from = process.argv.includes('--from')
-        ? process.argv[process.argv.indexOf('--from') + 1]
-        : null;
     if (from) {
         const p = resolve(from, SOURCES[id].upstream);
-        if (existsSync(p)) return readFileSync(p, 'utf8');
+        if (!existsSync(p)) throw new Error(`${SOURCES[id].upstream} is not in ${from}`);
+        return readFileSync(p, 'utf8');
     }
-    const p = resolve(root, SOURCES[id].bundle);
-    if (!existsSync(p)) {
-        throw new Error(
-            `no source for ${id}: ${p} is gone and no --from <CrispStrobe/extensions checkout> was given`);
-    }
-    return unwrapBundle(readFileSync(p, 'utf8'));
+    // The in-tree bundle path is kept for the record of where these came
+    // from, but it is deliberately NOT a fallback any more. Four of the five
+    // bundles are gone, and the fifth — spikeprime — is now the UNIFIED
+    // extension: reading it here would quietly regenerate the fixture from
+    // the thing the fixture exists to judge.
+    throw new Error(
+        `${id}'s legacy bundle is no longer in this tree (it was ${SOURCES[id].bundle}). ` +
+        'Pass --from <a CrispStrobe/extensions checkout at c681d995>.');
 };
 
 // Browser-ish globals the extensions touch while loading.
@@ -112,6 +122,12 @@ for (const id of Object.keys(SOURCES)) {
     let inst;
     try {
         inst = loadExtension(readSource(id));
+    } catch (error) {
+        restore();
+        // A dev script, but an unreadable stack here reads as a bug in the
+        // script rather than as the missing input it is.
+        process.stderr.write(`\n${id}: ${error.message}\n`);
+        process.exit(1);
     } finally {
         restore();
     }
