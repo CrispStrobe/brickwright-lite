@@ -8,6 +8,7 @@ import MediaQuery from 'react-responsive';
 import {Tab, Tabs, TabList, TabPanel} from 'react-tabs';
 import CircuitTab from '../tw-pseudocode/circuit-tab.jsx';
 import {getFpgaEnabled, FPGA_TOGGLE_EVENT} from '../../lib/bw-fpga-preferences.js';
+import {pinsToValue} from '../../lib/bw-fpga/pin-value.js';
 // FpgaTab ships only in a build that carries it (BW_ENABLE_FPGA), and even then
 // loads LAZILY: its synthesis/simulation code must not weigh on first paint, and
 // most users never open it. React.lazy keeps the whole surface in a chunk fetched
@@ -401,6 +402,7 @@ const GUIComponent = props => {
     React.useEffect(() => {
         if (!FPGA_BUILT) return undefined;
         const wname = pin => `fpga_p${pin}`;
+        const SEG7_NAME = 'fpga_value'; // the one seven-segment readout of the outputs
         const onLeds = e => {
             const pins = (e && e.detail && e.detail.pins) || [];
             if (!pins.length) return;
@@ -440,12 +442,36 @@ const GUIComponent = props => {
                     try { controllerPanel.setBargraphValue(name, high ? 1 : 0); } catch (err) { /* removed mid-run */ }
                 }
             }
+            // A seven-segment readout (opt-in via bw-fpga-seg7) shows the SAME
+            // output pins folded into one number, so a counter reads 0,1,2,3…
+            if (controllerPanel.getWidget(SEG7_NAME) && typeof controllerPanel.setSevenSegValue === 'function') {
+                try { controllerPanel.setSevenSegValue(SEG7_NAME, pinsToValue(leds)); } catch (err) { /* removed mid-run */ }
+            }
+        };
+        // Opt-in: the FPGA tab asks for a seven-segment digit of its outputs. We
+        // own the panel, so we make the widget; `bw-fpga-output` then drives it.
+        const onSeg7 = e => {
+            const pins = (e && e.detail && e.detail.pins) || [];
+            if (!pins.length) return;
+            if (!controllerPanel.getWidget(SEG7_NAME)) {
+                try {
+                    controllerPanel.addWidget(SEG7_NAME, 'sevenseg',
+                        {digits: Math.max(2, String((1 << pins.length) - 1).length), label: 'value'},
+                        {x: 1, y: 5, w: 5, h: 4});
+                } catch (err) { /* already there */ }
+            }
+            controllerPanel.setMode('play');
+            window.dispatchEvent(new CustomEvent('bw-settings-change',
+                {detail: {key: 'bw-debug-dock', value: 'controller'}}));
+            if (props.onActivateTab) props.onActivateTab(CODE_TAB_INDEX);
         };
         window.addEventListener('bw-fpga-leds', onLeds);
         window.addEventListener('bw-fpga-output', onOutput);
+        window.addEventListener('bw-fpga-seg7', onSeg7);
         return () => {
             window.removeEventListener('bw-fpga-leds', onLeds);
             window.removeEventListener('bw-fpga-output', onOutput);
+            window.removeEventListener('bw-fpga-seg7', onSeg7);
         };
     }, [controllerPanel, props.onActivateTab]);
 

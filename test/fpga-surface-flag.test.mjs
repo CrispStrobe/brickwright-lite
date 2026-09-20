@@ -937,3 +937,22 @@ test('the canvas has undo/redo (buttons + Ctrl-Z), snapshotting before edits', (
     assert.match(ui, /e\.shiftKey\) redo\(\); else undo\(\)/, 'Ctrl-Z undo, Ctrl-Shift-Z redo');
     assert.match(ui, /onNodeDragStart=\{\(\) => takeSnapshot\(\)\}/, 'a move is undoable too');
 });
+
+// ── cross-tab: the FPGA outputs as a seven-segment number (opt-in) ──
+test('the FPGA tab can mirror its outputs as a seven-segment digit', () => {
+    const tab = codeOnly(read(TAB));
+    assert.match(tab, /data-testid="bw-fpga-show-seg7"/, 'a "show as 7-seg" control');
+    assert.match(tab, /dispatchEvent\(new CustomEvent\('bw-fpga-seg7'/,
+        'it must ask gui.jsx to make the seven-segment widget');
+    const gui = codeOnly(read(GUI));
+    assert.match(gui, /addEventListener\('bw-fpga-seg7'/, 'gui.jsx owns the panel and creates the widget');
+    assert.match(gui, /addWidget\(SEG7_NAME, 'sevenseg'/, 'a real sevenseg widget, not a bargraph');
+    assert.match(gui, /setSevenSegValue\(SEG7_NAME, pinsToValue\(leds\)\)/,
+        'bw-fpga-output must drive the digit with the folded pin value');
+    // gated behind the build flag like the rest of the mirror
+    const at = gui.indexOf("addEventListener('bw-fpga-seg7'");
+    const guard = gui.lastIndexOf('if (!FPGA_BUILT) return undefined;', at);
+    assert.ok(guard > 0 && guard < at, 'the seg7 mirror must be inside the FPGA_BUILT-gated effect');
+    const pv = read('overlay/scratch-gui/src/lib/bw-fpga/pin-value.js');
+    assert.match(pv, /export function pinsToValue/, 'a pure LSB-first pin folder (tested without a browser)');
+});

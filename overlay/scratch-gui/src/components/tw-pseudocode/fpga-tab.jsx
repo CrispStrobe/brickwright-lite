@@ -117,6 +117,7 @@ const L10N = {
         cycle: ' cycle',
         cycles: ' cycles',
         showLeds: '⎈ Show the LEDs in the Controller view',
+        showSeg7: '⧉ Show as a 7-seg number',
         mirrorsPins: 'mirrors pins ',
         asIndicators: ' as indicators and starts the clock',
         designInputsTitle: 'Design inputs',
@@ -229,6 +230,7 @@ const L10N = {
         cycle: ' Zyklus',
         cycles: ' Zyklen',
         showLeds: '⎈ Zeige die LEDs in der Controller-Ansicht',
+        showSeg7: '⧉ Als 7-Segment-Zahl zeigen',
         mirrorsPins: 'spiegelt Pins ',
         asIndicators: ' als Indikatoren und startet die Uhr',
         designInputsTitle: 'Design-Eingänge',
@@ -1172,6 +1174,21 @@ const FpgaTab = (props) => {
                                     }}
                                     style={{padding: '0.35rem 0.8rem', cursor: 'pointer'}}
                                 >{L10N[pickLocale(props.locale)].showLeds}</button>
+                                <button
+                                    type="button"
+                                    data-testid="bw-fpga-show-seg7"
+                                    onClick={() => {
+                                        // Mirror the SAME outputs, folded into one number on a
+                                        // seven-segment widget (a counter then reads 0,1,2,3…).
+                                        window.dispatchEvent(new CustomEvent('bw-fpga-leds',
+                                            {detail: {pins: outputPins}}));
+                                        window.dispatchEvent(new CustomEvent('bw-fpga-seg7',
+                                            {detail: {pins: outputPins}}));
+                                        setAutoRun(true);
+                                        setMirrored(true);
+                                    }}
+                                    style={{marginLeft: '0.4rem', padding: '0.35rem 0.8rem', cursor: 'pointer'}}
+                                >{L10N[pickLocale(props.locale)].showSeg7}</button>
                                 <span style={{marginLeft: '0.5rem', opacity: 0.75}}>
                                     {`${L10N[pickLocale(props.locale)].mirrorsPins}${outputPins.join(', ')}${L10N[pickLocale(props.locale)].asIndicators}`}
                                 </span>
