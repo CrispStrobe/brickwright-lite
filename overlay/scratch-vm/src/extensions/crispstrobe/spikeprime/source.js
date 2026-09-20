@@ -1344,6 +1344,7 @@
       return new Promise((resolve, reject) => {
         let ws;
         try {
+          // eslint-disable-next-line extension/check-can-fetch -- the address is a local relay the user typed into the `connect to bridge at` block, so the choice of host IS the user's action; canFetch would prompt for permission the user just granted. Same reasoning as legospike_bridge.js, which this absorbed.
           ws = new WebSocket(url);
         } catch (e) {
           reject(e);
