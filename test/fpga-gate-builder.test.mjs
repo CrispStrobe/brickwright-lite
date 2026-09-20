@@ -318,3 +318,30 @@ test('parseVerilogPorts handles shared-keyword ports and bus widths', () => {
         [{name: 'a', dir: 'in', width: 1}, {name: 'b', dir: 'in', width: 1}, {name: 'y', dir: 'out', width: 1}]);
     assert.equal(parseVerilogPorts('module m(output [3:0] q);').ports[0].width, 4);
 });
+
+test('a tunnel is a NAMED net — same-named tunnels share one wire, no drawn edge', () => {
+    const model = {nodes: [
+        {id: 'a', kind: 'in', name: 'a'}, {id: 't1', kind: 'tunnel', name: 'sig'},
+        {id: 't2', kind: 'tunnel', name: 'sig'}, {id: 'y', kind: 'out', name: 'y'}
+    ], edges: [
+        {from: {node: 'a', port: 'out'}, to: {node: 't1', port: 'in'}},
+        {from: {node: 't2', port: 'out'}, to: {node: 'y', port: 'in'}}
+    ]};
+    const {verilog, problems} = modelToVerilog(model);
+    assert.deepEqual(problems, []);
+    assert.equal((verilog.match(/wire w_tun_sig;/g) || []).length, 1, 'the net is declared once');
+    assert.match(verilog, /assign w_tun_sig = a;/, 'driven where the signal enters');
+    assert.match(verilog, /assign y = w_tun_sig;/, 'read where it exits — no wire between the tunnels');
+});
+
+test('a tunnel driven from two places is a named problem', () => {
+    const {problems} = modelToVerilog({nodes: [
+        {id: 'a', kind: 'in', name: 'a'}, {id: 'b', kind: 'in', name: 'b'},
+        {id: 't1', kind: 'tunnel', name: 'n'}, {id: 't2', kind: 'tunnel', name: 'n'}, {id: 'y', kind: 'out', name: 'y'}
+    ], edges: [
+        {from: {node: 'a', port: 'out'}, to: {node: 't1', port: 'in'}},
+        {from: {node: 'b', port: 'out'}, to: {node: 't2', port: 'in'}},
+        {from: {node: 't1', port: 'out'}, to: {node: 'y', port: 'in'}}
+    ]});
+    assert.ok(problems.some(p => p.code === 'tunnel-multiple-drivers'));
+});

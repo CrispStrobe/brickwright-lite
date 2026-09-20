@@ -13,6 +13,7 @@ import {GATE_DEFS} from '../../lib/bw-fpga/gate-builder.js';
 const nodeTitle = data => {
     if (data.kind === 'in' || data.kind === 'out') return data.name || data.kind;
     if (data.kind === 'memory') return 'RAM';
+    if (data.kind === 'tunnel') return 'Tunnel';
     if (data.kind === 'instance') return data.module || 'block';
     return (GATE_DEFS[data.gtype] && GATE_DEFS[data.gtype].label) || data.gtype || 'node';
 };
@@ -21,7 +22,7 @@ const nodeTitle = data => {
 const fieldsFor = data => {
     const f = [];
     if (data.kind === 'const') return [['value', 'number']];
-    if (data.kind === 'in' || data.kind === 'out') f.push(['name', 'text']);
+    if (data.kind === 'in' || data.kind === 'out' || data.kind === 'tunnel') f.push(['name', 'text']);
     if (data.kind === 'memory') { f.push(['dataWidth', 'number']); f.push(['addrWidth', 'number']); }
     else if (data.kind !== 'instance') f.push(['width', 'number']);
     return f;

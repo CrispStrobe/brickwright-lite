@@ -175,3 +175,17 @@ test('a constant node round-trips its value and drives a literal', () => {
     assert.equal(back.nodes.find(n => n.id === 'k').value, 0, 'value 0 survives (not dropped as falsy)');
     assert.match(modelToVerilog(back).verilog, /assign y = 1'b0;/);
 });
+
+test('a tunnel round-trips its net name and generates a shared net', () => {
+    const rf = modelToReactFlow({
+        nodes: [{id: 'a', kind: 'in', name: 'a'}, {id: 't1', kind: 'tunnel', name: 'clk'},
+            {id: 't2', kind: 'tunnel', name: 'clk'}, {id: 'y', kind: 'out', name: 'y'}],
+        edges: [{from: {node: 'a', port: 'out'}, to: {node: 't1', port: 'in'}},
+            {from: {node: 't2', port: 'out'}, to: {node: 'y', port: 'in'}}]
+    });
+    assert.equal(rf.nodes.find(n => n.id === 't1').type, 'tunnel');
+    assert.equal(rf.nodes.find(n => n.id === 't1').data.name, 'clk');
+    const back = reactFlowToModel(rf.nodes, rf.edges);
+    assert.equal(back.nodes.find(n => n.id === 't1').name, 'clk');
+    assert.match(modelToVerilog(back).verilog, /assign y = w_tun_clk;/);
+});

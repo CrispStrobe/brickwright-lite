@@ -183,7 +183,19 @@ const ConstNode = ({data}) => (
     </div>
 );
 
-const nodeTypes = {gate: GateNode, io: IoNode, instance: InstanceNode, memory: MemoryNode, const: ConstNode};
+// A tunnel: a NAMED net. Every tunnel with the same name is one wire, so a
+// signal wired into one is read from the others — no drawn wire between them.
+const TunnelNode = ({data}) => (
+    <div style={{position: 'relative', padding: '5px 14px 5px 10px', borderRadius: 3,
+        border: '1.4px solid #0891b2', background: '#ecfeff', fontFamily: 'monospace',
+        fontSize: 11, color: '#0e7490', clipPath: 'polygon(0 0, 88% 0, 100% 50%, 88% 100%, 0 100%)'}}>
+        <Handle type="target" position={Position.Left} id="in" style={{background: '#0284c7'}} />
+        {'⤷ '}{data.name || 'net'}
+        <Handle type="source" position={Position.Right} id="out" style={{background: '#22c55e'}} />
+    </div>
+);
+
+const nodeTypes = {gate: GateNode, io: IoNode, instance: InstanceNode, memory: MemoryNode, const: ConstNode, tunnel: TunnelNode};
 
 // A starter so the canvas is not blank: a AND b → y.
 const STARTER = () => modelToReactFlow({
@@ -291,6 +303,11 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
             setNodes(ns => [...ns, {id: nid('m'), type: 'memory', position, data: {kind: 'memory', dataWidth: 4, addrWidth: 2}}]);
         } else if (item.kind === 'const') {
             setNodes(ns => [...ns, {id: nid('k'), type: 'const', position, data: {kind: 'const', value: 1}}]);
+        } else if (item.kind === 'tunnel') {
+            setNodes(ns => {
+                const n = ns.filter(x => x.data.kind === 'tunnel').length + 1;
+                return [...ns, {id: nid('t'), type: 'tunnel', position, data: {kind: 'tunnel', name: `net${n}`}}];
+            });
         } else if (item.kind === 'template' && item.model) {
             // Drop a starter near the cursor, id-remapped so it MERGES onto the
             // canvas instead of clobbering whatever is already there.
