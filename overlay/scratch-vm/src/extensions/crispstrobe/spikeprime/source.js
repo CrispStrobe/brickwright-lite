@@ -1,8 +1,20 @@
-// Name: LEGO Spike Transpiler
+// Name: LEGO SPIKE Prime / Robot Inventor
 // ID: spikeprime
-// Description: Control Spike Prime via Live Streaming or transpile blocks to Python.
+// Description: Control a SPIKE Prime or Robot Inventor hub over Scratch Link, Web Bluetooth or a local bridge, on either firmware generation, and transpile blocks to SPIKE Python.
 // By: CrispStrobe <https://github.com/CrispStrobe>
 // License: MPL-2.0
+//
+// This replaces five extensions that were one hub reached four ways:
+// spikeprimeBTC, spikeprimeBridge (firmware 2.x REPL over Scratch Link BT and
+// a local WebSocket relay) and spikeprimeble, legospikeprimeBLE (the SPIKE 3
+// binary protocol on GATT FD02 over Web Bluetooth and Scratch Link BLE).
+// Between them: 236 blocks, of which exactly one appeared in all five.
+//
+// The transport is detected rather than configured, and a route that finds
+// nothing advances to the next; the firmware is then confirmed by the hub
+// itself, from the SPIKE 3 InfoResponse or a 2.x hub.info() line. SPIKE Prime
+// (45678) and Robot Inventor (51515) are the same hardware and are told apart
+// by the variant the hub reports, never by the advertised Bluetooth name.
 (function (Scratch) {
   "use strict";
 
@@ -44,7 +56,8 @@
       stopMotor: "stop motor [PORT] with [ACTION]",
       motorPairMove: "start steering [STEERING] speed [SPEED]%",
       displayShowImage: "show built-in image [IMAGE]",
-      setLightMatrixPixel: "set 3x3 light [PORT] pixel x:[X] y:[Y] brightness [BRIGHTNESS]%",
+      setLightMatrixPixel:
+        "set 3x3 light [PORT] pixel x:[X] y:[Y] brightness [BRIGHTNESS]%",
       getFaceUp: "hub face up",
       getDistanceIn: "[PORT] distance in [UNIT]",
       // Transpilation Section
@@ -190,7 +203,8 @@
       stopMotor: "Motor [PORT] mit [ACTION] stoppen",
       motorPairMove: "Lenkung [STEERING] mit Tempo [SPEED]% starten",
       displayShowImage: "eingebautes Bild [IMAGE] anzeigen",
-      setLightMatrixPixel: "3x3-Matrix [PORT] Pixel x:[X] y:[Y] Helligkeit [BRIGHTNESS]%",
+      setLightMatrixPixel:
+        "3x3-Matrix [PORT] Pixel x:[X] y:[Y] Helligkeit [BRIGHTNESS]%",
       getFaceUp: "Hub-Oberseite",
       getDistanceIn: "[PORT] Abstand in [UNIT]",
       extensionName: "LEGO SPIKE Prime",
@@ -892,23 +906,6 @@
     DEV_MATRIX_3X3: 0x0e,
   };
 
-  // The colour ids a SPIKE 3 colour sensor reports, in the order the firmware
-  // numbers them. Identical to the table the 2.x REPL stream uses, so the two
-  // modes return the same colour names for the same brick.
-  const SpikeColorNames = [
-    "black",
-    "magenta",
-    "purple",
-    "blue",
-    "azure",
-    "turquoise",
-    "green",
-    "yellow",
-    "orange",
-    "red",
-    "white",
-  ];
-
   const COBS = {
     /**
      * COBS with the run codes offset by 3, so that no code can be 0x00, 0x01
@@ -953,11 +950,17 @@
         if (code <= 2) throw new Error("reserved COBS code");
         const adjusted = code === 0xff ? null : code - 3;
         const delimiter =
-          adjusted === null ? null : Math.floor(adjusted / SPIKE3.MAX_BLOCK_SIZE);
+          adjusted === null
+            ? null
+            : Math.floor(adjusted / SPIKE3.MAX_BLOCK_SIZE);
         const block =
-          adjusted === null ? SPIKE3.MAX_BLOCK_SIZE : adjusted % SPIKE3.MAX_BLOCK_SIZE;
-        if (delimiter !== null && delimiter > 2) throw new Error("invalid COBS delimiter");
-        if (offset + block > input.length) throw new Error("truncated COBS block");
+          adjusted === null
+            ? SPIKE3.MAX_BLOCK_SIZE
+            : adjusted % SPIKE3.MAX_BLOCK_SIZE;
+        if (delimiter !== null && delimiter > 2)
+          throw new Error("invalid COBS delimiter");
+        if (offset + block > input.length)
+          throw new Error("truncated COBS block");
         for (let i = 0; i < block; i++) output.push(input[offset++]);
         if (delimiter !== null && offset < input.length) output.push(delimiter);
       }
@@ -979,12 +982,16 @@
      */
     unpack(frame) {
       const start = frame[0] === 1 ? 1 : 0;
-      if (frame.length - start < 2 || frame[frame.length - 1] !== SPIKE3.DELIMITER) {
+      if (
+        frame.length - start < 2 ||
+        frame[frame.length - 1] !== SPIKE3.DELIMITER
+      ) {
         throw new Error("unterminated frame");
       }
       const encoded = frame.slice(start, -1);
       for (let i = 0; i < encoded.length; i++) {
-        if (encoded[i] >= 1 && encoded[i] <= 3) throw new Error("unescaped control byte");
+        if (encoded[i] >= 1 && encoded[i] <= 3)
+          throw new Error("unescaped control byte");
         encoded[i] ^= SPIKE3.XOR;
       }
       return COBS.decode(encoded);
@@ -1011,7 +1018,13 @@
 
   /** GATT over Scratch Link. */
   class BLELink extends JSONRPC {
-    constructor(runtime, extensionId, peripheralOptions, connectCallback, resetCallback = null) {
+    constructor(
+      runtime,
+      extensionId,
+      peripheralOptions,
+      connectCallback,
+      resetCallback = null
+    ) {
       super();
       this._runtime = runtime;
       this._extensionId = extensionId;
@@ -1038,7 +1051,10 @@
     requestPeripheral() {
       this._availablePeripherals = {};
       if (this._discoverTimeoutID) window.clearTimeout(this._discoverTimeoutID);
-      this._discoverTimeoutID = window.setTimeout(this._handleDiscoverTimeout.bind(this), 15000);
+      this._discoverTimeoutID = window.setTimeout(
+        this._handleDiscoverTimeout.bind(this),
+        15000
+      );
       this.sendRemoteRequest("discover", this._peripheralOptions).catch((e) =>
         this._handleRequestError(e)
       );
@@ -1065,7 +1081,11 @@
       return this._connected;
     }
 
-    startNotifications(serviceId, characteristicId, onCharacteristicChanged = null) {
+    startNotifications(
+      serviceId,
+      characteristicId,
+      onCharacteristicChanged = null
+    ) {
       this._characteristicDidChangeCallback = onCharacteristicChanged;
       return this.sendRemoteRequest("startNotifications", {
         serviceId,
@@ -1073,11 +1093,19 @@
       }).catch((e) => this.handleDisconnectError(e));
     }
 
-    write(serviceId, characteristicId, message, encoding = null, withResponse = null) {
+    write(
+      serviceId,
+      characteristicId,
+      message,
+      encoding = null,
+      withResponse = null
+    ) {
       const params = { serviceId, characteristicId, message };
       if (encoding) params.encoding = encoding;
       if (withResponse !== null) params.withResponse = withResponse;
-      return this.sendRemoteRequest("write", params).catch((e) => this.handleDisconnectError(e));
+      return this.sendRemoteRequest("write", params).catch((e) =>
+        this.handleDisconnectError(e)
+      );
     }
 
     didReceiveCall(method, params) {
@@ -1088,7 +1116,8 @@
             this._runtime.constructor.PERIPHERAL_LIST_UPDATE,
             this._availablePeripherals
           );
-          if (this._discoverTimeoutID) window.clearTimeout(this._discoverTimeoutID);
+          if (this._discoverTimeoutID)
+            window.clearTimeout(this._discoverTimeoutID);
           break;
         case "userDidPickPeripheral":
           this._availablePeripherals[params.peripheralId] = params;
@@ -1096,11 +1125,13 @@
             this._runtime.constructor.USER_PICKED_PERIPHERAL,
             this._availablePeripherals
           );
-          if (this._discoverTimeoutID) window.clearTimeout(this._discoverTimeoutID);
+          if (this._discoverTimeoutID)
+            window.clearTimeout(this._discoverTimeoutID);
           break;
         case "userDidNotPickPeripheral":
           this._runtime.emit(this._runtime.constructor.PERIPHERAL_SCAN_TIMEOUT);
-          if (this._discoverTimeoutID) window.clearTimeout(this._discoverTimeoutID);
+          if (this._discoverTimeoutID)
+            window.clearTimeout(this._discoverTimeoutID);
           break;
         case "characteristicDidChange":
           if (this._characteristicDidChangeCallback) {
@@ -1119,10 +1150,13 @@
       if (!this._connected) return;
       this.disconnect();
       if (this._resetCallback) this._resetCallback();
-      this._runtime.emit(this._runtime.constructor.PERIPHERAL_CONNECTION_LOST_ERROR, {
-        message: `Scratch lost connection to`,
-        extensionId: this._extensionId,
-      });
+      this._runtime.emit(
+        this._runtime.constructor.PERIPHERAL_CONNECTION_LOST_ERROR,
+        {
+          message: `Scratch lost connection to`,
+          extensionId: this._extensionId,
+        }
+      );
     }
 
     _handleRequestError() {
@@ -1197,8 +1231,14 @@
       this._tx.addEventListener("characteristicvaluechanged", (event) => {
         if (!this._characteristicDidChangeCallback) return;
         const view = event.target.value;
-        const bytes = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
-        this._characteristicDidChangeCallback(Base64Util.uint8ArrayToBase64(bytes));
+        const bytes = new Uint8Array(
+          view.buffer,
+          view.byteOffset,
+          view.byteLength
+        );
+        this._characteristicDidChangeCallback(
+          Base64Util.uint8ArrayToBase64(bytes)
+        );
       });
       this._connected = true;
       this._runtime.emit(this._runtime.constructor.PERIPHERAL_CONNECTED);
@@ -1222,7 +1262,11 @@
       return this._connected;
     }
 
-    startNotifications(serviceId, characteristicId, onCharacteristicChanged = null) {
+    startNotifications(
+      serviceId,
+      characteristicId,
+      onCharacteristicChanged = null
+    ) {
       this._characteristicDidChangeCallback = onCharacteristicChanged;
       return Promise.resolve();
     }
@@ -1233,7 +1277,9 @@
      */
     write(serviceId, characteristicId, message, encoding = null) {
       const bytes =
-        encoding === "base64" ? Base64Util.base64ToUint8Array(message) : Uint8Array.from(message);
+        encoding === "base64"
+          ? Base64Util.base64ToUint8Array(message)
+          : Uint8Array.from(message);
       this._writeChain = this._writeChain
         .then(async () => {
           if (!this._rx) return;
@@ -1267,7 +1313,13 @@
    * Scratch Link nor Web Bluetooth still reaches a 2.x hub.
    */
   class BridgeLink {
-    constructor(runtime, extensionId, connectCallback, resetCallback = null, messageCallback = null) {
+    constructor(
+      runtime,
+      extensionId,
+      connectCallback,
+      resetCallback = null,
+      messageCallback = null
+    ) {
       this._runtime = runtime;
       this._extensionId = extensionId;
       this._connectCallback = connectCallback;
@@ -1308,7 +1360,10 @@
           const was = this._connected;
           this._connected = false;
           if (this._resetCallback) this._resetCallback();
-          if (was) this._runtime.emit(this._runtime.constructor.PERIPHERAL_DISCONNECTED);
+          if (was)
+            this._runtime.emit(
+              this._runtime.constructor.PERIPHERAL_DISCONNECTED
+            );
         };
         ws.onerror = () => {
           this._connected = false;
@@ -1319,7 +1374,9 @@
           const text = typeof event.data === "string" ? event.data : "";
           // The stream hub expects what Scratch Link hands it: base64.
           this._messageCallback({
-            message: Base64Util.uint8ArrayToBase64(new TextEncoder().encode(text)),
+            message: Base64Util.uint8ArrayToBase64(
+              new TextEncoder().encode(text)
+            ),
           });
         };
       });
@@ -1902,7 +1959,9 @@ continuous_sensor_loop()
             this._initializeContinuousSensorMonitoring();
           }
         } else if (dataText.startsWith("HUBINFO:")) {
-          const [firmware, variant] = dataText.slice("HUBINFO:".length).split("|");
+          const [firmware, variant] = dataText
+            .slice("HUBINFO:".length)
+            .split("|");
           this._firmware = firmware || null;
           this._hardwareVariant = variant || null;
         } else if (dataText.startsWith(">>>")) {
@@ -2106,7 +2165,12 @@ continuous_sensor_loop()
         temperature: 25,
         hubTemp: 25,
         power: { current: 0, voltage: 0 },
-        gestures: { tapped: false, doubletapped: false, shake: false, freefall: false },
+        gestures: {
+          tapped: false,
+          doubletapped: false,
+          shake: false,
+          freefall: false,
+        },
         motorPositions: {},
       };
     }
@@ -2246,13 +2310,20 @@ continuous_sensor_loop()
         case "scratch.motor_start":
         case "scratch.motor_set_speed":
           if (portId < 0) break;
-          return this._sendTunnelJSON({ m: "motor", p: { port: portId, speed: this._speed(p.speed) } });
+          return this._sendTunnelJSON({
+            m: "motor",
+            p: { port: portId, speed: this._speed(p.speed) },
+          });
 
         case "scratch.motor_stop":
           if (portId < 0) break;
           return this._sendTunnelJSON({
             m: "motor",
-            p: { port: portId, speed: 0, end_state: SpikeMotorStopMode[p.stop] ?? p.stop ?? 1 },
+            p: {
+              port: portId,
+              speed: 0,
+              end_state: SpikeMotorStopMode[p.stop] ?? p.stop ?? 1,
+            },
           });
 
         default:
@@ -2263,7 +2334,10 @@ continuous_sensor_loop()
 
     _speed(value) {
       const n = Number(value);
-      return Math.max(-100, Math.min(100, Math.round(Number.isFinite(n) ? n : 0)));
+      return Math.max(
+        -100,
+        Math.min(100, Math.round(Number.isFinite(n) ? n : 0))
+      );
     }
 
     _sendTunnelJSON(command) {
@@ -2305,7 +2379,8 @@ continuous_sensor_loop()
 
     _send(message, useLimiter = false) {
       if (!this.isConnected()) return Promise.resolve();
-      if (useLimiter && !this._rateLimiter.okayToSend()) return Promise.resolve();
+      if (useLimiter && !this._rateLimiter.okayToSend())
+        return Promise.resolve();
       const packed = COBS.pack(message);
       return Promise.resolve(
         this._link.write(
@@ -2320,7 +2395,11 @@ continuous_sensor_loop()
     // --------------------------------------------------------------- receive
 
     _onConnect() {
-      this._link.startNotifications(SPIKE3.SERVICE, SPIKE3.TX_CHAR, this._onMessage);
+      this._link.startNotifications(
+        SPIKE3.SERVICE,
+        SPIKE3.TX_CHAR,
+        this._onMessage
+      );
       this._streamingRequested = false;
       // Ask what we are talking to. Device streaming is requested the moment
       // it answers (see _handleInfoResponse) rather than after a fixed wait:
@@ -2331,7 +2410,10 @@ continuous_sensor_loop()
       this._send(Uint8Array.from([SPIKE3.INFO_REQUEST]), false);
       // A hub that never answers still gets asked, so a missing InfoResponse
       // costs the packet size rather than every sensor reading.
-      this._streamingFallback = setTimeout(() => this._requestStreamingOnce(), 1000);
+      this._streamingFallback = setTimeout(
+        () => this._requestStreamingOnce(),
+        1000
+      );
     }
 
     _requestStreamingOnce() {
@@ -2644,7 +2726,10 @@ continuous_sensor_loop()
     // separates a Robot Inventor from a SPIKE Prime, and only the 2.x REPL
     // reports it — so a 3.x hub is named "SPIKE Prime" for the family rather
     // than guessed at from the advertised Bluetooth name, which is editable.
-    const named = variant && /invent/i.test(String(variant)) ? "Robot Inventor" : "SPIKE Prime";
+    const named =
+      variant && /invent/i.test(String(variant))
+        ? "Robot Inventor"
+        : "SPIKE Prime";
     if (!firmware) return named;
     return `${named} (firmware ${firmware})`;
   };
@@ -2652,7 +2737,8 @@ continuous_sensor_loop()
   class HubRouter {
     constructor(runtime, extensionId) {
       this._runtime =
-        runtime || (typeof globalThis.vm !== "undefined" ? globalThis.vm.runtime : null);
+        runtime ||
+        (typeof globalThis.vm !== "undefined" ? globalThis.vm.runtime : null);
       this._extensionId = extensionId;
       this._mode = HubMode.AUTO;
       this._resolvedMode = null;
@@ -2666,15 +2752,20 @@ continuous_sensor_loop()
       // A runtime that cannot hold a peripheral (a headless one, a harness)
       // is not a reason for the extension to fail to load: the blocks that do
       // not need hardware still work.
-      if (this._runtime && typeof this._runtime.registerPeripheralExtension === "function") {
+      if (
+        this._runtime &&
+        typeof this._runtime.registerPeripheralExtension === "function"
+      ) {
         this._runtime.registerPeripheralExtension(extensionId, this);
       }
       // The transports emit this themselves when discovery finds nothing; it
       // is the signal to try the next route rather than to give up.
       if (this._runtime && typeof this._runtime.on === "function") {
         const timeoutEvent =
-          this._runtime.constructor && this._runtime.constructor.PERIPHERAL_SCAN_TIMEOUT;
-        if (timeoutEvent) this._runtime.on(timeoutEvent, () => this._onScanTimeout());
+          this._runtime.constructor &&
+          this._runtime.constructor.PERIPHERAL_SCAN_TIMEOUT;
+        if (timeoutEvent)
+          this._runtime.on(timeoutEvent, () => this._onScanTimeout());
       }
     }
 
@@ -2730,7 +2821,9 @@ continuous_sensor_loop()
       switch (mode) {
         case HubMode.SCRATCH_LINK_BT:
         case HubMode.SCRATCH_LINK_BLE:
-          return Boolean(runtime && typeof runtime.getScratchLinkSocket === "function");
+          return Boolean(
+            runtime && typeof runtime.getScratchLinkSocket === "function"
+          );
         case HubMode.WEB_BLE:
           return WebBLELink.available();
         case HubMode.BRIDGE:
@@ -2742,7 +2835,9 @@ continuous_sensor_loop()
 
     /** The routes this machine actually has, in preference order. */
     availableModes() {
-      return MODE_PREFERENCE.filter((m) => HubRouter.transportAvailable(m, this._runtime));
+      return MODE_PREFERENCE.filter((m) =>
+        HubRouter.transportAvailable(m, this._runtime)
+      );
     }
 
     // -------------------------------------------------------------- lifecycle
@@ -2762,7 +2857,9 @@ continuous_sensor_loop()
       this._candidates =
         this._mode === HubMode.AUTO
           ? this.availableModes()
-          : [this._mode].filter((m) => HubRouter.transportAvailable(m, this._runtime));
+          : [this._mode].filter((m) =>
+              HubRouter.transportAvailable(m, this._runtime)
+            );
 
       if (!this._candidates.length) {
         this._emitNoTransport();
@@ -3020,7 +3117,9 @@ continuous_sensor_loop()
      */
     supports(capability) {
       const caps =
-        this._activeProtocol === "spike3" ? HubRouter.SPIKE3_CAPABILITIES : HubRouter.REPL_CAPABILITIES;
+        this._activeProtocol === "spike3"
+          ? HubRouter.SPIKE3_CAPABILITIES
+          : HubRouter.REPL_CAPABILITIES;
       return caps.indexOf(capability) !== -1;
     }
   }
@@ -6974,7 +7073,11 @@ continuous_sensor_loop()
       const ports = this._validatePorts(Cast.toString(args.PORT));
       const action = Cast.toString(args.ACTION).trim().toLowerCase();
       const call =
-        action === "coast" ? "float()" : action === "hold" ? "hold()" : "brake()";
+        action === "coast"
+          ? "float()"
+          : action === "hold"
+            ? "hold()"
+            : "brake()";
       const promises = ports.map((port) =>
         this._peripheral
           .sendCommand("scratch.motor_stop", { port: port, stop: action })
@@ -6994,8 +7097,12 @@ continuous_sensor_loop()
       const [left, right] = this._peripheral.movementMotors;
       // Steering biases one wheel against the other: at +100 the inner wheel
       // reverses, which is what turns the model on the spot.
-      const leftSpeed = Math.round(speed * (steering > 0 ? 1 : 1 + steering / 50) * 9.3);
-      const rightSpeed = Math.round(speed * (steering < 0 ? 1 : 1 - steering / 50) * 9.3);
+      const leftSpeed = Math.round(
+        speed * (steering > 0 ? 1 : 1 + steering / 50) * 9.3
+      );
+      const rightSpeed = Math.round(
+        speed * (steering < 0 ? 1 : 1 - steering / 50) * 9.3
+      );
       return this._peripheral
         .sendPythonCommand(
           `import hub; hub.port.${left}.motor.run_at_speed(${leftSpeed}); ` +
@@ -7025,7 +7132,11 @@ continuous_sensor_loop()
       const port = Cast.toString(args.PORT).trim().toUpperCase();
       const x = MathUtil.clamp(Math.round(Cast.toNumber(args.X)), 0, 2);
       const y = MathUtil.clamp(Math.round(Cast.toNumber(args.Y)), 0, 2);
-      const brightness = MathUtil.clamp(Math.round(Cast.toNumber(args.BRIGHTNESS)), 0, 100);
+      const brightness = MathUtil.clamp(
+        Math.round(Cast.toNumber(args.BRIGHTNESS)),
+        0,
+        100
+      );
       const index = y * 3 + x;
       const level = Math.round((brightness / 100) * 10);
       return this._peripheral.sendPythonCommand(
@@ -7063,7 +7174,9 @@ continuous_sensor_loop()
         case "mm":
           // Prefer the figure the 3.x hub actually sent over cm*10, so a
           // millimetre reader gets the sensor's own resolution back.
-          return portData.distanceMM === undefined ? cm * 10 : portData.distanceMM;
+          return portData.distanceMM === undefined
+            ? cm * 10
+            : portData.distanceMM;
         case "in":
           return cm / 2.54;
         case "%":
