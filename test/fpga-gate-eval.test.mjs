@@ -228,3 +228,49 @@ test('T, SR and JK flip-flops step correctly', () => {
     assert.equal(stepClock(m, {j: 0, k: 1}, {f: 1}).f, 0, 'k resets');
     assert.equal(stepClock(m, {j: 0, k: 0}, {f: 1}).f, 1, 'hold');
 });
+
+// ── the datapath: multi-bit buses compute (what the Run-mode number field drives) ──
+test('a 4-bit adder/subtracter/mux/comparator computes on bus values', () => {
+    const model = {
+        nodes: [
+            {id: 'a', kind: 'in', name: 'a', width: 4}, {id: 'b', kind: 'in', name: 'b', width: 4},
+            {id: 'add', kind: 'gate', type: 'add', width: 4}, {id: 'sub', kind: 'gate', type: 'sub', width: 4},
+            {id: 'sum', kind: 'out', name: 'sum', width: 4}, {id: 'dif', kind: 'out', name: 'dif', width: 4}
+        ],
+        edges: [
+            {from: {node: 'a', port: 'out'}, to: {node: 'add', port: 'a'}},
+            {from: {node: 'b', port: 'out'}, to: {node: 'add', port: 'b'}},
+            {from: {node: 'a', port: 'out'}, to: {node: 'sub', port: 'a'}},
+            {from: {node: 'b', port: 'out'}, to: {node: 'sub', port: 'b'}},
+            {from: {node: 'add', port: 'out'}, to: {node: 'sum', port: 'in'}},
+            {from: {node: 'sub', port: 'out'}, to: {node: 'dif', port: 'in'}}
+        ]
+    };
+    const r1 = evalModel(model, {a: 5, b: 9}).outputs;
+    assert.equal(r1.sum, 14, '5+9');
+    const r2 = evalModel(model, {a: 12, b: 7}).outputs;
+    assert.equal(r2.sum, 3, '12+7 wraps in 4 bits');
+    assert.equal(evalModel(model, {a: 9, b: 4}).outputs.dif, 5, '9-4');
+});
+
+test('a comparator and a mux select on bus values', () => {
+    const model = {
+        nodes: [
+            {id: 'a', kind: 'in', name: 'a', width: 4}, {id: 'b', kind: 'in', name: 'b', width: 4},
+            {id: 'gt', kind: 'gate', type: 'gt'}, {id: 'm', kind: 'gate', type: 'mux', width: 4},
+            {id: 'big', kind: 'out', name: 'big', width: 4}, {id: 'agtb', kind: 'out', name: 'agtb'}
+        ],
+        edges: [
+            {from: {node: 'a', port: 'out'}, to: {node: 'gt', port: 'a'}},
+            {from: {node: 'b', port: 'out'}, to: {node: 'gt', port: 'b'}},
+            {from: {node: 'gt', port: 'out'}, to: {node: 'agtb', port: 'in'}},
+            {from: {node: 'gt', port: 'out'}, to: {node: 'm', port: 'sel'}},
+            {from: {node: 'a', port: 'out'}, to: {node: 'm', port: 'd1'}},
+            {from: {node: 'b', port: 'out'}, to: {node: 'm', port: 'd0'}},
+            {from: {node: 'm', port: 'out'}, to: {node: 'big', port: 'in'}}
+        ]
+    };
+    assert.equal(evalModel(model, {a: 11, b: 6}).outputs.agtb, 1, '11 > 6');
+    assert.equal(evalModel(model, {a: 11, b: 6}).outputs.big, 11, 'mux picks the larger');
+    assert.equal(evalModel(model, {a: 3, b: 8}).outputs.big, 8, 'mux picks the larger');
+});
