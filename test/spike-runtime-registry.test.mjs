@@ -19,7 +19,7 @@ import {resolve, dirname} from 'node:path';
 import {createRequire} from 'node:module';
 import {fileURLToPath} from 'node:url';
 import {quietConsole} from './helpers/quiet-console.mjs';
-import {buildEntry} from '../scripts/spike/gen-runtime-ops.mjs';
+import {buildEntry, render} from '../scripts/spike/gen-runtime-ops.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
@@ -27,14 +27,17 @@ const require = createRequire(import.meta.url);
 
 quietConsole();
 
-const checkedIn = JSON.parse(
-    readFileSync(resolve(root, 'overlay/scratch-gui/src/lib/spike-runtime-ops.json'), 'utf8'));
+const opsPath = resolve(root, 'overlay/scratch-gui/src/lib/spike-runtime-ops.js');
+const checkedIn = (await import(opsPath)).default;
 const ledger = require('./fixtures/spike-legacy-ledger.json');
 const migration = require('../overlay/scratch-vm/src/extension-support/spike-legacy-migration.js');
 
 test('the checked-in ops match the extension that ships', () => {
     assert.deepEqual(checkedIn, buildEntry(),
         'run: node scripts/spike/gen-runtime-ops.mjs');
+    // Rendered exactly as the generator renders it, so "regenerate" is always
+    // a no-op diff when nothing changed.
+    assert.equal(readFileSync(opsPath, 'utf8'), render(buildEntry()));
 });
 
 test('every opcode the migration can produce has a registry entry', () => {

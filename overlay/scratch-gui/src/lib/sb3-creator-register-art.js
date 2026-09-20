@@ -24,7 +24,7 @@
 // lazily-loaded chunk. Nothing here is in the initial bundle.
 import SB3Creator from './sb3-creator.js';
 import art from './sb3-creator-vector-art.js';
-import spikeRuntimeOps from './spike-runtime-ops.json';
+import spikeRuntimeOps from './spike-runtime-ops.js';
 import {LEGACY_IDS as SPIKE_LEGACY_IDS}
     from '../../../scratch-vm/src/extension-support/spike-legacy-migration.js';
 
