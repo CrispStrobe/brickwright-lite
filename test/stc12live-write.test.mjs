@@ -7,15 +7,15 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { bundleSource } from '../scripts/spike/bundled-upstream.mjs';
 
-const here = dirname(fileURLToPath(import.meta.url));
-const src = readFileSync(join(here,
-    '../overlay/scratch-vm/src/extensions/crispstrobe/stc12live/index.js'), 'utf8');
-// The extension body is the template string handed to makeExt(`...`).
-const body = src.slice(src.indexOf('`') + 1, src.lastIndexOf('`'));
+// The body used to be sliced from between the first and last backtick, which
+// assumed the bundle was `makeExt(`…`)`. It is `makeExt("…")` now, and more to
+// the point a test should not know which: that encoding ended the template
+// early twice — 711e4744f and 2258847c1 are both "URGENT/fix: a backtick broke
+// the build". bundleSource asks the module what it holds instead of reading
+// its punctuation, so this no longer has an opinion about either.
+const body = bundleSource('stc12live');
 
 function loadInstance() {
     let inst = null;

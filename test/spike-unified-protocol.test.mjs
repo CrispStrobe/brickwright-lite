@@ -17,6 +17,7 @@ import {resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {quietConsole} from './helpers/quiet-console.mjs';
 import {makeRuntime} from '../scripts/spike/fake-runtime.mjs';
+import {bundleSource} from '../scripts/spike/bundled-upstream.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
@@ -37,8 +38,9 @@ const setNavigator = value => Object.defineProperty(
     globalThis, 'navigator', {value, configurable: true, writable: true});
 setNavigator({language: 'en-US', userAgent: 'node'});
 
-const source = readFileSync(
-    resolve(root, 'overlay/scratch-vm/src/extensions/crispstrobe/spikeprime/source.js'), 'utf8');
+// The BUNDLE is the program now: the extension is vendored from
+// CrispStrobe/extensions at the pin and there is no local source file.
+const source = bundleSource('spikeprime');
 
 /**
  * The extension keeps its internals closed over, which is right for shipped

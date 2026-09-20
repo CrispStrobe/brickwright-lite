@@ -23,7 +23,7 @@ import {writeFileSync} from 'node:fs';
 import {resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {loadExtension} from './load-extension.mjs';
-import {readSource} from './build-bundle.mjs';
+import {bundleSource} from './bundled-upstream.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '../..');
@@ -71,7 +71,10 @@ export const buildEntry = function () {
     })();
     let info;
     try {
-        info = loadExtension(readSource('spikeprime')).getInfo();
+        // Read from the BUNDLE, which is what the app loads. There is no
+        // local source file any more: the extension is vendored from
+        // CrispStrobe/extensions at the pin (scripts/spike/vendor-bundles.mjs).
+        info = loadExtension(bundleSource('spikeprime')).getInfo();
     } finally {
         restore();
     }
