@@ -27,8 +27,20 @@ test('every Vercel production run deploys the current main checkout', () => {
     assert.match(workflow, /vercel deploy --prebuilt --prod/);
     assert.match(workflow, /git ls-remote origin refs\/heads\/main/,
         'main can advance during the build, so freshness must be checked immediately before publication');
-    assert.match(workflow, /if: steps\.freshness\.outputs\.stale != 'true'/,
-        'the production publish must consume the post-build freshness verdict');
+    // The verdict used to be a step output consumed by `if:`. It is now an
+    // inline comparison inside a retry loop, because a single attempt that
+    // skipped the publish still exited 0 -- on 2026-09-20 three dispatches in
+    // a row published nothing and all reported success. What the policy
+    // actually requires is unchanged and asserted here directly: the publish
+    // must be guarded by the post-build comparison, never reached otherwise.
+    assert.match(workflow, /if \[ "\$local_sha" = "\$remote_sha" \]; then\s*\n\s*vercel deploy --prebuilt --prod/,
+        'the production publish must be guarded by the post-build freshness comparison');
+    // And the gap that let a skip masquerade as a deploy: a run that never
+    // wins the race must fail, not exit 0 having published nothing.
+    assert.match(workflow, /::error::main advanced during all/,
+        'a run that never publishes must say so as an error');
+    assert.match(workflow, /\n\s*exit 1\s*$/m,
+        'a run that never publishes must fail, so that green means published');
     for (const secret of ['VERCEL_TOKEN', 'VERCEL_ORG_ID', 'VERCEL_PROJECT_ID']) {
         assert.match(workflow, new RegExp(`secrets\\.${secret}`));
     }
