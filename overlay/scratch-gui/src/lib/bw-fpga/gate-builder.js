@@ -63,7 +63,7 @@ export function inputPorts (node) {
 
 /** Does this node drive a net (has an `out`)? Inputs and gates do; outputs sink. */
 export function hasOutput (node) {
-    return node.kind === 'in' || node.kind === 'gate' || node.kind === 'instance' || node.kind === 'memory' || node.kind === 'const';
+    return node.kind === 'in' || node.kind === 'gate' || node.kind === 'instance' || node.kind === 'memory' || node.kind === 'const' || node.kind === 'tunnel';
 }
 
 /** The ports a subcircuit exposes, derived from its own input/output nodes when
@@ -151,6 +151,7 @@ function emitModule (def, name, moduleDefs, problems) {
         if (node.kind === 'gate') return `w_${node.id}`;
         if (node.kind === 'instance') return `w_${node.id}_${ident(port, 'out')}`;
         if (node.kind === 'memory') return `w_${node.id}`; // the registered read data
+        if (node.kind === 'tunnel') return `w_tun_${ident(node.name, 'net')}`; // a NAMED net shared by same-named tunnels
         return null;
     };
 
@@ -175,6 +176,7 @@ function emitModule (def, name, moduleDefs, problems) {
     const gates = nodes.filter(n => n.kind === 'gate');
     const instances = nodes.filter(n => n.kind === 'instance');
     const memories = nodes.filter(n => n.kind === 'memory');
+    const tunnels = nodes.filter(n => n.kind === 'tunnel');
 
     if (!outputs.length && name === 'design') {
         problems.push({code: 'no-output', reason: 'Add at least one output so the design drives something.'});
@@ -205,6 +207,26 @@ function emitModule (def, name, moduleDefs, problems) {
         for (const port of gd.ins) { if (port !== 'clk') nets[port] = tieLow(g.id, port, gd.label); }
         lines.push(`  ${w > 1 ? `reg [${w - 1}:0] ${reg};` : `reg ${reg};`}`);
         lines.push(`  always @(posedge ${clk || "1'b0"}) ${reg} <= ${gd.seqNext(nets, reg)};`);
+    }
+    // Tunnels — a NAMED net: every tunnel with the same name is one wire, so a
+    // signal wired into one tunnel is read from the others with no drawn wire.
+    const tunDeclared = new Set();
+    const tunDriven = new Set();
+    for (const t of tunnels) {
+        const nm = ident(t.name, 'net');
+        if (!tunDeclared.has(nm)) {
+            const w = t.width || 1;
+            lines.push(`  ${w > 1 ? `wire [${w - 1}:0] w_tun_${nm};` : `wire w_tun_${nm};`}`);
+            tunDeclared.add(nm);
+        }
+    }
+    for (const t of tunnels) {
+        const nm = ident(t.name, 'net');
+        const src = netFor(t.id, 'in');
+        if (!src) continue;
+        if (tunDriven.has(nm)) { problems.push({code: 'tunnel-multiple-drivers', reason: `Tunnel "${t.name}" is driven from more than one place.`}); continue; }
+        lines.push(`  assign w_tun_${nm} = ${src};`);
+        tunDriven.add(nm);
     }
     // Module INSTANCES — the composition primitive.
     for (const inst of instances) {

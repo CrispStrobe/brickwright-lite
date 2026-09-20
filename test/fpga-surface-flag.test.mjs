@@ -812,3 +812,14 @@ test('wiring the demo board loads it as circuitData so the designer re-renders',
     assert.match(ct, /this\.setState\(\{circuitData: data\}\)/, 'as a fresh circuitData prop so the designer re-renders');
     assert.match(ct, /removeEventListener\('bw-load-circuit-data'/, 'and cleans up the listener');
 });
+
+// ── tunnels: named nets that declutter wiring ──
+test('the palette offers a tunnel (named net) that the codegen shares', () => {
+    const cat = read('overlay/scratch-gui/src/lib/bw-fpga/palette-catalog.js');
+    assert.match(cat, /kind: 'tunnel', label: 'Tunnel'/, 'a Tunnel in the palette');
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /tunnel: TunnelNode/, 'the tunnel renders as a named tag');
+    assert.match(ui, /item\.kind === 'tunnel'/, 'a tunnel can be dropped');
+    const gb = read('overlay/scratch-gui/src/lib/bw-fpga/gate-builder.js');
+    assert.match(gb, /w_tun_\$\{ident\(node\.name, 'net'\)\}/, 'same-named tunnels share one net');
+});

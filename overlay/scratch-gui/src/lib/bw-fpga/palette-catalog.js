@@ -51,7 +51,8 @@ export function buildPaletteCatalog (templates = [], blocks = []) {
     }
 
     sections.push({id: 'mem', label: 'Memory', items: [
-        {kind: 'memory', label: 'RAM'}
+        {kind: 'memory', label: 'RAM'},
+        {kind: 'tunnel', label: 'Tunnel'}
     ]});
 
     if (blocks && blocks.length) {

@@ -52,7 +52,7 @@ export function reactFlowToModel (rfNodes, rfEdges, modules) {
  * @returns {{nodes: Array, edges: Array}} React Flow state
  */
 export function modelToReactFlow (model, positions = {}) {
-    const rfType = kind => (kind === 'in' || kind === 'out' ? 'io' : kind === 'instance' ? 'instance' : kind === 'memory' ? 'memory' : kind === 'const' ? 'const' : 'gate');
+    const rfType = kind => (kind === 'in' || kind === 'out' ? 'io' : kind === 'instance' ? 'instance' : kind === 'memory' ? 'memory' : kind === 'const' ? 'const' : kind === 'tunnel' ? 'tunnel' : 'gate');
     const nodes = ((model && model.nodes) || []).map((n, i) => ({
         id: n.id,
         type: rfType(n.kind),

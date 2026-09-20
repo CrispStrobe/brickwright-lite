@@ -26,6 +26,7 @@ function inPorts (node) {
     if (node.kind === 'out') return ['in'];
     if (node.kind === 'memory') return ['clk', 'addr', 'din', 'we'];
     if (node.kind === 'instance') return (node.ports || []).filter(p => p.dir === 'in').map(p => p.name);
+    if (node.kind === 'tunnel') return ['in'];
     return [];
 }
 /** The output port names a node exposes on its right. */
@@ -33,6 +34,7 @@ function outPorts (node) {
     if (node.kind === 'in' || node.kind === 'const' || node.kind === 'gate') return ['out'];
     if (node.kind === 'memory') return ['dout'];
     if (node.kind === 'instance') return (node.ports || []).filter(p => p.dir === 'out').map(p => p.name);
+    if (node.kind === 'tunnel') return ['out'];
     return [];
 }
 
