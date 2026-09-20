@@ -917,3 +917,23 @@ test('the 7-seg decoder is a minimised, droppable block laid out as a schematic'
     const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
     assert.match(ui, /modelToReactFlow\(item\.model, layerPositions\(item\.model\)\)/, 'a dropped block is laid out, not zig-zagged');
 });
+
+// ── undo/redo: a real editor steps back ──
+test('the canvas has undo/redo (buttons + Ctrl-Z), snapshotting before edits', () => {
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /const takeSnapshot = /, 'a snapshot-before-edit primitive');
+    assert.match(ui, /const undo = /, 'an undo');
+    assert.match(ui, /const redo = /, 'a redo');
+    assert.match(ui, /data-testid="bw-fpga-rf-undo"/, 'an Undo button');
+    assert.match(ui, /data-testid="bw-fpga-rf-redo"/, 'a Redo button');
+    // snapshots must guard the discrete edits, or undo has nothing to step back to
+    for (const site of [/const placeNode = \(item, position\) => \{\s*takeSnapshot\(\)/,
+        /onConnect = React\.useCallback\(params => \{ takeSnapshot\(\)/,
+        /const loadModel = model => \{\s*takeSnapshot\(\)/,
+        /const deleteNode = id => \{\s*takeSnapshot\(\)/]) {
+        assert.match(ui, site, `a mutation is not snapshotted: ${site}`);
+    }
+    assert.match(ui, /onKeyDownCapture=\{onCanvasKeyDown\}/, 'keyboard undo/redo + snapshot-before-delete');
+    assert.match(ui, /e\.shiftKey\) redo\(\); else undo\(\)/, 'Ctrl-Z undo, Ctrl-Shift-Z redo');
+    assert.match(ui, /onNodeDragStart=\{\(\) => takeSnapshot\(\)\}/, 'a move is undoable too');
+});
