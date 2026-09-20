@@ -194,7 +194,13 @@ jobs:
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         run: |
           FILE=overlay/scratch-vm/src/extensions/crispstrobe/stc12/index.js
-          COUNT=$(grep -c 'opcode:' "$FILE")
+          # `grep -o | wc -l` counts OCCURRENCES; `grep -c` counts LINES that
+          # match. The bundles are one long line now — they hold the extension
+          # as a JSON string rather than a template literal, because a stray
+          # backtick in a comment closed the template early twice (711e4744f,
+          # 2258847c1). With `grep -c` this guard read 30 opcodes as 1 and
+          # failed a correct tree.
+          COUNT=$(grep -o 'opcode:' "$FILE" | wc -l | tr -d ' ')
           echo "stc12 opcodes: $COUNT"
           if [ "$COUNT" -lt 10 ]; then
             echo "::error::Bundled stc12 has only $COUNT opcodes (need ≥10). Was it rebuilt from the gallery?"

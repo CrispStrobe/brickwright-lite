@@ -63,6 +63,13 @@ opcodes. `sb3-creator/reference/extensions/stc12.js` defines all of them plus
 `led_set`, `led_only`, `keypad`. So this is a vendoring lag: the fix exists
 upstream and has not been carried across.
 
+> **Resolved 2026-09-20.** The bundle is at 30 opcodes and byte-identical to
+> `CrispStrobe/extensions` at the recorded pin. The lag itself is what
+> `test/bundled-extensions-match-upstream.test.mjs` now prevents: a bundle that
+> drifts from the file it claims fails, so "the fix exists upstream and has not
+> been carried across" can no longer be true without a test saying so. The
+> measurement above stands as it was taken.
+
 | example | undefined opcodes it authors |
 | --- | --- |
 | `79-a2-sampler` | `stc12_whenkey`, `stc12_keypad`, `stc12_seg_shownum`, `stc12_seg_clear`, `stc12_led_only` |
