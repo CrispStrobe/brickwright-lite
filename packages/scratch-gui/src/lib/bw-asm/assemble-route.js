@@ -137,6 +137,23 @@ export function cRouteFor (device) {
 }
 
 /**
+ * Targets whose **BASIC** compiles IN THE BROWSER, by bw-board's basicToAsm
+ * (BASIC -> 8086 asm) rather than running on a 6502/Z80 ROM interpreter.
+ *
+ * A separate set from LOCAL_C_TARGETS on the same principle as that one is
+ * separate from LOCAL_ASM_TARGETS: the 8086 is the only chip with a BASIC->asm
+ * compiler, while 6502/Z80 run BASIC as a ROM interpreter (pseudocode-importer
+ * `runBasic`) and have no native BASIC image. Deriving one set from another
+ * would encode a coincidence.
+ */
+export const LOCAL_BASIC_TARGETS = new Set(['i8086']);
+
+/** 'local' (compile to an 8086 .COM) or 'rom' (run on a 6502/Z80 interpreter). */
+export function basicRouteFor (device) {
+    return LOCAL_BASIC_TARGETS.has(asmTargetForDevice(device)) ? 'local' : 'rom';
+}
+
+/**
  * The in-browser 8086 assembler, loaded on demand.
  *
  * THE COMPONENT AND THE GATE BOTH REACH IT THROUGH THIS FUNCTION, and that
@@ -625,6 +642,75 @@ export async function requestCBuild ({source, device}, seams = {}) {
         warnings: (built.warnings || []).map(w => (typeof w === 'string' ?
             w : `${w.line ? `L${w.line}: ` : ''}${w.message}`)),
         listing: null
+    };
+}
+
+/**
+ * Compile BASIC to an 8086 `.COM` IN THE BROWSER and return an image the DOS
+ * bench can boot — the BASIC counterpart of requestCBuild.
+ *
+ * BASIC on the 8086 is genuinely new: the BASIC tab otherwise runs a 6502 or
+ * Z80 ROM interpreter (pseudocode-importer `runBasic`), which cannot target the
+ * 8086 at all. bw-board's `basicToAsm` turns integer BASIC into MASM-dialect
+ * asm, and the same in-browser assembler the ASM and C routes use assembles it
+ * to a flat `.COM`. Both stages are loaded on demand (same chunk as the C
+ * route's assembler), so no one who is not running BASIC pays for them.
+ *
+ * @param {{source: string, device: string}} req
+ * @param {{basicToAsm?: Function, assemble?: Function}} [seams] test-only overrides
+ * @returns {Promise<{bytes: Uint8Array, target: string, route: 'local',
+ *   format: 'com', slotId: 'com', profile: 'dos', org: number, asm: string,
+ *   warnings: string[], listing: null}>}
+ */
+export async function requestBasicBuild ({source, device}, seams = {}) {
+    const target = asmTargetForDevice(device);
+    if (!LOCAL_BASIC_TARGETS.has(target)) {
+        throw new AsmRouteError(
+            `${target} has no BASIC->asm route — it runs BASIC on a ROM interpreter, not the 8086`,
+            {route: 'rom', target, reason: 'transport'});
+    }
+    if (typeof source !== 'string' || !source.trim()) {
+        throw new AsmRouteError('there is no BASIC to compile',
+            {route: 'local', target, reason: 'source'});
+    }
+    let bytes, asm;
+    try {
+        let basicToAsm = seams.basicToAsm;
+        if (!basicToAsm) {
+            const bmod = await import(/* webpackChunkName: "basic-to-asm" */ 'bw-board/basic-to-asm.js');
+            basicToAsm = bmod.basicToAsm || bmod.default;
+        }
+        if (typeof basicToAsm !== 'function') {
+            throw new AsmRouteError('the BASIC compiler loaded but exports no basicToAsm()',
+                {route: 'local', target, reason: 'transport'});
+        }
+        asm = basicToAsm(source);
+        let assemble = seams.assemble;
+        if (!assemble) {
+            const amod = await import(/* webpackChunkName: "i8086-asm" */ 'bw-board/i8086-asm.js');
+            assemble = amod.assemble || amod.default;
+        }
+        if (typeof assemble !== 'function') {
+            throw new AsmRouteError('the local 8086 assembler loaded but exports no assemble()',
+                {route: 'local', target, reason: 'transport'});
+        }
+        // basicToAsm emits MASM-dialect, .COM-shaped asm; assemble it to a flat
+        // 100h image, the same format the C route produces.
+        bytes = assemble(asm, {format: 'com'}).bytes;
+    } catch (e) {
+        // basicToAsm names the BASIC line it refused; the assembler names the
+        // instruction. Both are the learner's to fix, so keep the message and
+        // add only the route.
+        if (e instanceof AsmRouteError) throw e;
+        throw new AsmRouteError(e.message, {route: 'local', target, reason: 'source'});
+    }
+    if (!bytes || !bytes.length) {
+        throw new AsmRouteError('the local BASIC route produced no image',
+            {route: 'local', target, reason: 'source'});
+    }
+    return {
+        bytes, target, route: 'local', format: 'com',
+        slotId: 'com', profile: 'dos', org: 0x100, asm, warnings: [], listing: null
     };
 }
 

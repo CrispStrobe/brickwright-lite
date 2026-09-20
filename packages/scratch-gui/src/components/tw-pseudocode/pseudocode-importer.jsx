@@ -11,7 +11,7 @@ import {IMPORT_ACCEPT, isImportableArtefact} from '../../lib/bw-makecode/accept.
 // splitting.
 import {asmExamplesFor} from '../../lib/bw-asm/examples.js';
 import {
-    requestAssembly, requestCBuild, asmRouteFor, cRouteFor, asmTargetForDevice, ASM_DIALECTS
+    requestAssembly, requestCBuild, asmRouteFor, cRouteFor, requestBasicBuild, asmTargetForDevice, ASM_DIALECTS
 } from '../../lib/bw-asm/assemble-route.js';
 import {
     summarize as matrixSummary, explain as matrixExplain, LANGUAGES as MATRIX_LANGUAGES,
@@ -120,6 +120,9 @@ const L10N = {
         basicInputExhausted: 'Program asked for INPUT but no more answers were provided.',
         basicNoPrompt: 'BASIC did not reach its ready prompt — the ROM may not have loaded.',
         basicLoading: 'Loading BASIC machine…',
+        basic8086Building: 'Compiling BASIC for the 8086 in this browser…',
+        basic8086Refused: (m) => `The BASIC compiler refused this program: ${m}`,
+        basic8086Failed: (m) => `The 8086 BASIC route could not run: ${m}`,
         apply: '✓ Apply art & convert to blocks', done: 'Done',
         applyTitle: n => `Assign a sprite to ${n} more file(s) first`,
         applyReady: 'Bake these costumes in and convert your code to blocks',
@@ -317,6 +320,9 @@ const L10N = {
         basicInputExhausted: 'Programm hat INPUT erwartet, aber es waren keine weiteren Antworten vorhanden.',
         basicNoPrompt: 'BASIC hat seine Bereit-Eingabeaufforderung nicht erreicht — das ROM wurde möglicherweise nicht geladen.',
         basicLoading: 'BASIC-Maschine wird geladen…',
+        basic8086Building: 'Übersetze BASIC für den 8086 in diesem Browser…',
+        basic8086Refused: (m) => `Der BASIC-Compiler hat dieses Programm abgelehnt: ${m}`,
+        basic8086Failed: (m) => `Die 8086-BASIC-Route lief nicht: ${m}`,
         apply: '✓ Grafik übernehmen & zu Blöcken', done: 'Fertig',
         applyTitle: n => `Weise erst ${n} weiteren Datei(en) ein Sprite zu`,
         applyReady: 'Diese Kostüme einbacken und den Code zu Blöcken umwandeln',
@@ -1679,7 +1685,7 @@ class PseudocodeImporter extends React.Component {
             else if (to === 'python') code = new SB3().generatePython(proj, this.genOpts());
             else if (to === 'c') code = new SB3().generateC(proj);
             else if (to === 'basic') {
-                const r = new SB3().generateBASIC(proj, {profile: this.state.basicProfile, lineNumbers: this.state.basicLineNumbers});
+                const r = new SB3().generateBASIC(proj, {profile: this.state.basicProfile === 'i8086' ? 'ms' : this.state.basicProfile, lineNumbers: this.state.basicLineNumbers});
                 code = r.ok ? r.basic : `REM === Cannot show as BASIC ===\n${r.reasons.map(s => 'REM ' + s).join('\n')}`;
             } else if (to === 'micropython') {
                 const r = new SB3().generateMicroPython(proj);
@@ -2065,6 +2071,43 @@ class PseudocodeImporter extends React.Component {
             busy: false,
             buffers: {...st.buffers, asm: out.asm || st.buffers.asm},
             status: this.L.runC8086Built(out.bytes.length, routeName) + warn
+        }));
+    }
+
+    /**
+     * Compile the BASIC buffer to an 8086 .COM and boot it on the DOS bench —
+     * the BASIC counterpart of runCOn8086. Reached only from the 'i8086' BASIC
+     * profile; the 6502/Z80 profiles keep the ROM-interpreter path in runBasic.
+     * device is 'i8086' by construction (the profile is the deliberate choice to
+     * target the 8086), so it does not depend on the machine selector.
+     */
+    async runBasicOn8086 (code) {
+        const source = code != null ? code : this.activeCode();
+        if (!source.trim()) return;
+        this.setState({busy: true, running: true, status: this.L.basic8086Building,
+            output: null, basicRawOutput: '', basicIsBbc: false});
+        let out;
+        try {
+            out = await requestBasicBuild({source, device: 'i8086'});
+        } catch (e) {
+            this.setState({busy: false, running: false, status: e.reason === 'source'
+                ? this.L.basic8086Refused(e.message)
+                : this.L.basic8086Failed(e.message)});
+            return;
+        }
+        const detail = {rom: out.bytes, listing: null, target: out.target,
+            slotId: out.slotId, profile: out.profile, format: out.format};
+        try { localStorage.setItem('bw-right-pane-hidden', '0'); } catch { /* private mode */ }
+        window.dispatchEvent(new CustomEvent('bw-settings-change', {
+            detail: {key: 'bw-right-pane-hidden', value: '0'}
+        }));
+        window.__bwPendingMedia = {type: 'asm', detail};
+        window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {detail}));
+        const warn = out.warnings.length ? this.L.asmWarnings(out.warnings) : '';
+        this.setState(st => ({
+            busy: false, running: false,
+            buffers: {...st.buffers, asm: out.asm || st.buffers.asm},
+            status: this.L.runC8086Built(out.bytes.length, this.L.runC8086Route) + warn
         }));
     }
 
@@ -2901,6 +2944,9 @@ class PseudocodeImporter extends React.Component {
     async runBasic () {
         const code = this.activeCode();
         if (!code.trim()) return;
+        // The 8086 profile compiles BASIC to a .COM and boots the DOS bench (the
+        // C/asm-tab path), rather than running a 6502/Z80 ROM interpreter.
+        if (this.state.basicProfile === 'i8086') return this.runBasicOn8086(code);
         this.setState({output: '', running: true, status: this.L.basicLoading, basicRawOutput: '', basicIsBbc: false});
         try {
             const isBbc = this.state.basicProfile === 'bbc';
@@ -3335,7 +3381,7 @@ class PseudocodeImporter extends React.Component {
             if (lang !== 'javascript') nb.javascript = new SB3Creator().generateJavaScript(proj, this.genOpts());
             nb.c = new SB3Creator().generateC(proj);
             {
-                const br = new SB3Creator().generateBASIC(proj, {profile: this.state.basicProfile, lineNumbers: this.state.basicLineNumbers});
+                const br = new SB3Creator().generateBASIC(proj, {profile: this.state.basicProfile === 'i8086' ? 'ms' : this.state.basicProfile, lineNumbers: this.state.basicLineNumbers});
                 nb.basic = br.ok ? br.basic : `REM === Cannot show as BASIC ===\n${br.reasons.map(s => 'REM ' + s).join('\n')}`;
             }
             nb.asm = ''; // cleared — re-fetched on next ASM tab switch
@@ -3368,7 +3414,7 @@ class PseudocodeImporter extends React.Component {
         try {
             const SB3Creator = (await this.lib()).default;
             const project = JSON.parse(this.props.vm.toJSON());
-            const basicResult = new SB3Creator().generateBASIC(project, {profile: this.state.basicProfile, lineNumbers: this.state.basicLineNumbers});
+            const basicResult = new SB3Creator().generateBASIC(project, {profile: this.state.basicProfile === 'i8086' ? 'ms' : this.state.basicProfile, lineNumbers: this.state.basicLineNumbers});
             const mpResult = new SB3Creator().generateMicroPython(project);
             const buffers = {
                 pseudocode: new SB3Creator().decompile(project),
@@ -3855,6 +3901,7 @@ class PseudocodeImporter extends React.Component {
                                 style={{padding: '2px 6px', borderRadius: 4, border: '1px solid #cbd5e1'}}>
                                 <option value="bbc">{'BBC BASIC'}</option>
                                 <option value="ms">{'6502 BASIC'}</option>
+                                <option value="i8086">{'8086 BASIC (native)'}</option>
                             </select>
                         </label>
                         <label style={{display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer'}}>
