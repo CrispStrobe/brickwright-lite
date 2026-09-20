@@ -62,9 +62,14 @@ const runOperatingPoint = async designer => {
         // Descriptor snapshot of bw-board's solver device coverage. Grew when the
         // bw-board pin bump (a031fbea) pulled in the NPN level-1 / NMOS / PMOS
         // small-signal model work (already green on bw-board master): the list
-        // gained z-q-m and the -z-npn-level1-nmos-pmos suffix. The numeric currents
-        // below are unchanged, so the physics of this circuit is intact.
-        /Converged — grounded-static-native-r-c-l-d-z-q-m-v-i-e-g-exact-ideal-l-explicit-shockley-d-z-npn-level1-nmos-pmos/,
+        // gained z-q-m and the -z-npn-level1-nmos-pmos suffix. Grew again on the
+        // bump to 00af429e, which admitted the LED operating point (bw-board
+        // 157caed0 — mna.js already treats led and diode as one junction, and
+        // operatingPoint() now stops refusing 'led' by kind): the device list
+        // gained -led- after r-c-l-d, and the model list gained -led- after
+        // shockley-d. The numeric currents below are unchanged, so the physics of
+        // this controlled-source circuit (which has no LED) is intact.
+        /Converged — grounded-static-native-r-c-l-d-led-z-q-m-v-i-e-g-exact-ideal-l-explicit-shockley-d-led-z-npn-level1-nmos-pmos/,
         /controlled sources: ideal-explicit-finite-parameters-only/i,
         /supported kinds:.*vcvs.*vccs/i,
         /G1\.outn: 0\.00100000 A/,
