@@ -185,6 +185,14 @@ async function connectOverScratchLink (source) {
         record.error = e.message;
     }
     record.connected = Boolean(extension && extension.isConnected());
+    if (record.connected) {
+        record.writesBeforeMotor = record.writes.length;
+        try {
+            await extension.motorOn({PORT: 'A'});
+        } catch (e) {
+            record.motorError = e.message;
+        }
+    }
     // The hub starts a 5 s battery heartbeat on connect. Left running it keeps
     // the test process alive long after the assertions are done.
     try {
@@ -244,4 +252,25 @@ test('commands are addressed to the service that actually owns them', async () =
     assert.ok(led.length > 0, 'the hub must write the LED colour on connect');
     assert.deepEqual([...new Set(led.map(w => w.service))], [IO_SERVICE],
         'outputCommand is on the IO service, not the advertised one');
+});
+
+test('a motor runs on a hub that never announces its external ports', async () => {
+    // This session sends no attachedIO notifications at all, which is exactly
+    // what the LPF2 Smart Hub clone does: it reports its four internal
+    // devices and stays silent about ports 1 and 2 even with a motor attached
+    // and turning. Output is addressed by port number, so the announcement
+    // was never needed -- but getMotor() returned null without one and every
+    // motor block became a silent no-op.
+    const run = await connectOverScratchLink(shippedSource());
+    assert.ok(run.connected, `connect() did not establish a session: ${run.error}`);
+    assert.equal(run.motorError, undefined, `motorOn threw: ${run.motorError}`);
+
+    const OUTPUT_COMMAND = '00001565-1212-efde-1523-785feabcd123';
+    const fromMotor = run.writes.slice(run.writesBeforeMotor)
+        .filter(w => w.characteristic === OUTPUT_COMMAND);
+    assert.ok(fromMotor.length > 0,
+        'turning motor A on must reach the hub even though the hub never ' +
+        'announced anything on port 1');
+    assert.deepEqual([...new Set(fromMotor.map(w => w.service))], [IO_SERVICE],
+        'the motor command goes to the IO service');
 });
