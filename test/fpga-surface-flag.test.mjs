@@ -823,3 +823,15 @@ test('the palette offers a tunnel (named net) that the codegen shares', () => {
     const gb = read('overlay/scratch-gui/src/lib/bw-fpga/gate-builder.js');
     assert.match(gb, /w_tun_\$\{ident\(node\.name, 'net'\)\}/, 'same-named tunnels share one net');
 });
+
+// ── combinational analysis: truth table → generated circuit ──
+test('the builder can generate a circuit from a truth table', () => {
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /import TruthTableModal/, 'the modal is mounted');
+    assert.match(ui, /data-testid="bw-fpga-rf-tt"/, 'a Truth table button');
+    assert.match(ui, /onGenerate=\{loadModel\}/, 'generating loads the synthesised model onto the canvas');
+    const lib = read('overlay/scratch-gui/src/lib/bw-fpga/synthesize.js');
+    assert.match(lib, /export function synthesizeTruthTable/, 'a pure sum-of-products synthesiser');
+    const modal = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-truth-table.jsx');
+    assert.match(modal, /synthesizeTruthTable\(/, 'the modal uses the tested synthesiser');
+});

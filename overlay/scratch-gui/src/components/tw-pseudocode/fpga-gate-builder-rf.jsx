@@ -21,6 +21,7 @@ import {BUILTINS} from '../../lib/bw-fpga/builtins.js';
 import {CHALLENGES, challengeById, isUnlocked} from '../../lib/bw-fpga/challenges.js';
 import {grade} from '../../lib/bw-fpga/grader.js';
 import FpgaChallengePanel from './fpga-challenges.jsx';
+import TruthTableModal from './fpga-truth-table.jsx';
 
 const PROGRESS_KEY = 'bw-fpga-progress';
 const loadProgress = () => {
@@ -224,6 +225,7 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
     const [problems, setProblems] = React.useState([]);
     const [library, setLibrary] = React.useState([]); // saved subcircuits + code blocks
     const [codeOpen, setCodeOpen] = React.useState(false); // the Verilog code-block editor
+    const [ttOpen, setTtOpen] = React.useState(false); // the truth-table → circuit modal
     const CODE_STARTER = 'module my_block(input a, input b, output y);\n  assign y = a & b;\nendmodule\n';
     const [codeText, setCodeText] = React.useState(CODE_STARTER);
     const [codeErr, setCodeErr] = React.useState('');
@@ -337,6 +339,14 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
     };
     const onConnect = React.useCallback(params => setEdges(es => addEdge(params, es)), [setEdges]);
 
+    // Load a freshly synthesised (or otherwise built) model onto the canvas.
+    const loadModel = model => {
+        const seeded = modelToReactFlow(model);
+        setNodes(seeded.nodes);
+        setEdges(seeded.edges);
+        setTtOpen(false);
+    };
+
     // Export the canvas as a standalone SVG — the SAME nodes/glyphs/wires shown,
     // at their live positions. A CLI-inspectable snapshot of the design.
     const exportSvg = () => {
@@ -449,6 +459,7 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
     return (
         <div>
             <style>{GLYPH_CSS}</style>
+            {ttOpen ? <TruthTableModal onGenerate={loadModel} onClose={() => setTtOpen(false)} /> : null}
             {codeOpen ? (
                 <div data-testid="bw-fpga-code-modal" style={{position: 'fixed', inset: 0, zIndex: 300,
                     background: 'rgba(15,23,42,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}
@@ -488,6 +499,9 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                 <button type="button" onClick={() => { setCodeErr(''); setCodeOpen(true); }}
                     title="Add a block written in raw Verilog (icestudio-style)"
                     style={{cursor: 'pointer'}} data-testid="bw-fpga-rf-code">{'</> Code'}</button>
+                <button type="button" onClick={() => setTtOpen(true)}
+                    title="Generate a circuit from a truth table (combinational analysis)"
+                    style={{cursor: 'pointer'}} data-testid="bw-fpga-rf-tt">{'⊞ Truth table'}</button>
                 <button type="button" data-testid="bw-fpga-rf-clear"
                     onClick={() => { setNodes([]); setEdges([]); setCheckResult(null); }}
                     title="Clear the canvas" style={{cursor: 'pointer'}}>{'🗑 Clear'}</button>
