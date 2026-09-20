@@ -316,3 +316,18 @@ export function modelToCst (model) {
     }
     return {cst: lines.join('\n') + '\n', problems};
 }
+
+/**
+ * The board-pin map for a design's ports — which physical Tang Nano 20K pin each
+ * input/output (and bit of a bus) lands on. A structured read of the SAME
+ * placement `modelToCst` emits, so a builder can show "y → pin 15" before any
+ * synthesis. Pure.
+ *
+ * @returns {{pins: Array<{name:string, pin:number}>, problems: Array}}
+ */
+export function modelPinMap (model) {
+    const {cst, problems} = modelToCst(model);
+    const pins = [];
+    for (const m of cst.matchAll(/IO_LOC "([^"]+)" (\d+);/g)) pins.push({name: m[1], pin: Number(m[2])});
+    return {pins, problems};
+}

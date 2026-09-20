@@ -8,7 +8,7 @@ import {ReactFlow, ReactFlowProvider, Background, Controls, MiniMap, addEdge,
 // plus inline loaders bypass the configured rule and inject this one stylesheet
 // globally (css-loader defaults `modules` off).
 import '!!style-loader!css-loader!@xyflow/react/dist/style.css';
-import {GATE_DEFS, modelToVerilog, modelToCst, derivePorts, parseVerilogPorts} from '../../lib/bw-fpga/gate-builder.js';
+import {GATE_DEFS, modelToVerilog, modelToCst, modelPinMap, derivePorts, parseVerilogPorts} from '../../lib/bw-fpga/gate-builder.js';
 import {reactFlowToModel, modelToReactFlow} from '../../lib/bw-fpga/gate-builder-rf.js';
 import {gateShape} from '../../lib/bw-fpga/glyphs.js';
 import {canvasToSvg} from '../../lib/bw-fpga/canvas-svg.js';
@@ -397,6 +397,11 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
     // Only examples that carry a gate model can seed the model canvas; the
     // Verilog-only starters live in the examples browser, not the palette.
     const catalog = React.useMemo(() => buildPaletteCatalog(EXAMPLES.filter(e => e.model && e.model.nodes), BUILTINS), []);
+    // Which real Tang Nano 20K pin each port lands on — the bridge to silicon,
+    // shown before any synthesis (the same placement modelToCst emits).
+    const pinMap = React.useMemo(() => {
+        try { return modelPinMap(reactFlowToModel(nodes, edges, library)).pins; } catch (e) { return []; }
+    }, [nodes, edges, library]);
     const rf = useReactFlow();
     // The canvas is often mounted inside a collapsed <details> (zero height), so
     // React Flow's mount-time fitView fits nothing and the design is off-screen —
@@ -764,6 +769,11 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                 <span style={{marginLeft: '0.5rem', fontSize: '0.8rem', opacity: 0.75}}>
                     {L10N[pickLocale(locale)].hint}
                 </span>
+                {pinMap.length ? (
+                    <div data-testid="bw-fpga-rf-pinmap" style={{fontSize: '0.75rem', color: '#0f766e', marginTop: 4, fontFamily: 'monospace'}}>
+                        {'⬢ Board pins: '}{pinMap.map(p => `${p.name}→${p.pin}`).join('  ')}
+                    </div>
+                ) : null}
             </div>
             {problems.length ? (
                 <ul style={{listStyle: 'none', padding: 0, margin: '0.25rem 0'}}>

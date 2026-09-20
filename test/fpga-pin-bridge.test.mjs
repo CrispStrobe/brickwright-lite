@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {parseCst, splitBit, emitCst} from '../overlay/scratch-gui/src/lib/bw-fpga/cst.js';
 import {bindPorts, bridge, pinIndex, constraintsFromBindings} from '../overlay/scratch-gui/src/lib/bw-fpga/port-bridge.js';
-import {modelToCst} from '../overlay/scratch-gui/src/lib/bw-fpga/gate-builder.js';
+import {modelToCst, modelPinMap} from '../overlay/scratch-gui/src/lib/bw-fpga/gate-builder.js';
 
 const require = createRequire(import.meta.url);
 const PART = require('bw-circuit-ui/parts-data/tang_nano_20k.json');
@@ -238,4 +238,17 @@ test('a multi-pin placement survives the trip back out', () => {
     assert.match(out, /IO_LOC\s+"pair" 73,74;/);
     assert.deepEqual(parseCst(out).constraints.get('pair').pins, [73, 74]);
     assert.equal(parseCst(out).constraints.get('pair').attrs.IO_TYPE, 'LVCMOS33');
+});
+
+test('modelPinMap maps each port (and bus bit) to its Tang Nano pin', () => {
+    const model = {nodes: [
+        {id: 'a', kind: 'in', name: 'a'}, {id: 'c', kind: 'in', name: 'clk'},
+        {id: 'y', kind: 'out', name: 'y'}, {id: 'z', kind: 'out', name: 'z', width: 2}
+    ], edges: []};
+    const {pins} = modelPinMap(model);
+    const by = Object.fromEntries(pins.map(p => [p.name, p.pin]));
+    assert.equal(by.clk, 4, 'a clock takes the dedicated pin 4');
+    assert.equal(by.a, 74, 'an input takes a spare header pin');
+    assert.equal(by.y, 15, 'an output takes an LED pin');
+    assert.equal(by['z[0]'], 16); assert.equal(by['z[1]'], 17); // a bus is per-bit
 });

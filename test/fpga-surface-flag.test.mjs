@@ -1028,3 +1028,12 @@ test('a RAM simulates live — writes on we, registered read on dout', () => {
     assert.match(ui, /k === 'memory'\) return \{\.\.\.n, data: \{\.\.\.n\.data, live: live\.values\[n\.id\]\}\}/, 'the RAM value is fed to the node');
     assert.match(ui, /'dout '.*String\(data\.live\)/s, 'the RAM shows its dout in Run mode');
 });
+
+// ── the bridge to silicon: the builder previews each port's board pin ──
+test('the builder shows which Tang Nano pin each port lands on', () => {
+    const gb = read('overlay/scratch-gui/src/lib/bw-fpga/gate-builder.js');
+    assert.match(gb, /export function modelPinMap/, 'a pure pin-map (the same placement modelToCst emits)');
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /modelPinMap\(reactFlowToModel\(nodes, edges, library\)\)/, 'computed from the live design');
+    assert.match(ui, /data-testid="bw-fpga-rf-pinmap"/, 'and shown before synthesis');
+});
