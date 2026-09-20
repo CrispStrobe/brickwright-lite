@@ -353,3 +353,41 @@ test('the hub describes itself only once it has said something', () => {
     assert.equal(router.firmwareVersion, '');
     restore();
 });
+
+// ------------------------------------------- what a hub cannot do, it says
+
+/** The extension instance, with its router pointed at a chosen protocol. */
+const extensionOn = protocol => {
+    const ext = internals.instance;
+    ext._peripheral._activeProtocol = protocol;
+    return ext;
+};
+
+test('a reading the firmware cannot take comes back blank, not plausible', () => {
+    // The promise the palette makes: blocks do not disappear on connect, so a
+    // learner can see one their hub cannot do — and what they must not see is
+    // a number. "0% reflected light" and "25 degrees" are measurements someone
+    // will act on; blank is visibly the absence of one.
+    const spike3 = extensionOn('spike3');
+    assert.equal(spike3.getReflection({PORT: 'A'}), '', 'the 3.x colour record has no reflection channel');
+    assert.equal(spike3.getAmbientLight({PORT: 'A'}), '', 'nor an ambient one');
+    assert.equal(spike3.getHubVoltage(), '', 'nor a power channel');
+    assert.equal(spike3.getHubCurrent(), '');
+    assert.equal(spike3.getBatteryTemperature(), '', 'this used to answer a flat 25');
+    assert.equal(spike3.getHubTemperature(), '');
+
+    const repl = extensionOn('repl');
+    assert.equal(repl.getFaceUp(), '', 'only the 3.x IMU record carries a face index');
+});
+
+test('a reading the firmware CAN take is still a reading', () => {
+    // The guard must not swallow the supported case.
+    const repl = extensionOn('repl');
+    assert.equal(repl.getHubVoltage(), 0, '2.x reports power, and zero here is a real zero');
+    assert.equal(repl.getBatteryTemperature(), 25);
+    assert.equal(repl.getReflection({PORT: 'A'}), 0);
+
+    const spike3 = extensionOn('spike3');
+    assert.equal(typeof spike3.getFaceUp(), 'string');
+    assert.notEqual(spike3.getFaceUp(), '');
+});

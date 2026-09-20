@@ -99,6 +99,12 @@ firmware cannot do the thing says so rather than returning a plausible zero.
 | log files on the hub | |
 | distance-sensor lights | |
 
+A reporter whose firmware has no such reading returns **blank**, not zero. That is the
+whole of "explains itself" for a reporter, and it is a real change: `getBatteryTemperature`
+used to answer a flat `25` for a hub that had never sent a temperature, and
+`getReflection` a flat `0`. A fabricated reading is worse than a blank because it looks
+like a measurement. Boolean blocks have no room for a third answer and report false.
+
 This is not a loss: those blocks never existed in the BLE extensions. The difference is
 that they are now visible and explain themselves instead of being absent.
 

@@ -2639,8 +2639,12 @@ continuous_sensor_loop()
    * guessing from the advertised Bluetooth name, which the user can change.
    */
   const describeHub = function (protocol, firmware, variant) {
-    const family = protocol === "spike3" ? "SPIKE Prime" : "SPIKE Prime";
-    const named = variant && /invent/i.test(String(variant)) ? "Robot Inventor" : family;
+    // The protocol does NOT name the hub: both hubs speak both protocols
+    // depending on the firmware flashed to them. Only the hardware variant
+    // separates a Robot Inventor from a SPIKE Prime, and only the 2.x REPL
+    // reports it — so a 3.x hub is named "SPIKE Prime" for the family rather
+    // than guessed at from the advertised Bluetooth name, which is editable.
+    const named = variant && /invent/i.test(String(variant)) ? "Robot Inventor" : "SPIKE Prime";
     if (!firmware) return named;
     return `${named} (firmware ${firmware})`;
   };
@@ -6640,16 +6644,25 @@ continuous_sensor_loop()
     getBatteryLevel() {
       return this._peripheral.battery || 100;
     }
+    // The `|| 25` here was reporting room temperature for a hub that had
+    // never sent one — a fabricated reading is worse than a blank, because it
+    // looks like a measurement. The 3.x device notifications carry no
+    // temperature or power channel at all, so on that firmware these are
+    // blank rather than plausible.
     getBatteryTemperature() {
+      if (!this._needs("hub-temperature")) return "";
       return this._peripheral.temperature || 25;
     }
     getHubTemperature() {
+      if (!this._needs("hub-temperature")) return "";
       return this._peripheral.hubTemp || 25;
     }
     getHubCurrent() {
+      if (!this._needs("hub-power")) return "";
       return this._peripheral.power.current || 0;
     }
     getHubVoltage() {
+      if (!this._needs("hub-power")) return "";
       return this._peripheral.power.voltage || 0;
     }
 
@@ -6701,6 +6714,7 @@ continuous_sensor_loop()
       return "none";
     }
     getReflection(args) {
+      if (!this._needs("reflection")) return "";
       const port = Cast.toString(args.PORT).trim().toUpperCase();
       const portData = this._peripheral.portValues[port];
       if (portData && portData.type === "color")
@@ -6708,6 +6722,7 @@ continuous_sensor_loop()
       return 0;
     }
     getAmbientLight(args) {
+      if (!this._needs("ambient")) return "";
       const port = Cast.toString(args.PORT).trim().toUpperCase();
       const portData = this._peripheral.portValues[port];
       if (portData && portData.type === "color") return portData.ambient || 0;
@@ -7025,6 +7040,10 @@ continuous_sensor_loop()
 
     /** Which face of the hub points up, as a name. */
     getFaceUp() {
+      // Only the 3.x IMU record carries a face index. The 2.x REPL reports an
+      // orientation state instead, which getOrientation gives; answering
+      // "top" here would be inventing one.
+      if (!this._needs("face-up")) return "";
       return this._peripheral.faceUp;
     }
 
@@ -7057,6 +7076,23 @@ continuous_sensor_loop()
     }
 
     // Utility
+
+    /**
+     * What a reporter returns when the connected firmware has no such reading.
+     *
+     * Empty, not zero. "0 %% reflected light" is a measurement and a learner
+     * will act on it; blank is visibly the absence of one. The palette does not
+     * hide blocks the hub cannot do — a block set that reshuffles on connect is
+     * harder to learn from than one that stays put and explains itself — so
+     * this is what "explains itself" amounts to for a reporter.
+     *
+     * Boolean blocks have no room for a third answer and report false.
+     * docs/SPIKE-CONSOLIDATION.md carries the per-firmware table.
+     */
+    _needs(capability) {
+      return this._peripheral.supports(capability);
+    }
+
     _noteToFrequency(note) {
       return Math.pow(2, (note - 69 + 12) / 12) * 440;
     }
