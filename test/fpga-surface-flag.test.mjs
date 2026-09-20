@@ -1084,3 +1084,19 @@ test('the palette offers a 4-bit ALU capstone block', () => {
     assert.match(b, /type: 'add'.*type: 'sub'.*type: 'and'.*type: 'or'/s, 'it wires all four operations');
     assert.match(b, /type: 'mux'/, 'and multiplexes the result by op');
 });
+
+// ── FPGA→Circuits: realise a gate as its CMOS transistors, next to the demo board ──
+test('the FPGA tab can build a gate from transistors in the Circuit tab', () => {
+    const cm = read('overlay/scratch-gui/src/lib/bw-fpga/cmos.js');
+    assert.match(cm, /export function gateToCmos/, 'the gate→CMOS netlist (verified in fpga-cmos)');
+    const cb = read('overlay/scratch-gui/src/lib/bw-fpga/cmos-board.js');
+    assert.match(cb, /export function buildCmosGate/, 'places the netlist as real nmos/pmos parts');
+    assert.match(cb, /addPart\('vcc'|addPart\(t\.kind/, 'through the live-circuit API, like buildDemoBoard');
+    const tab = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx');
+    assert.match(tab, /import \{buildCmosGate\}/, 'the tab uses it');
+    assert.match(tab, /data-testid="bw-fpga-build-transistors"/, 'a button next to the demo board');
+    assert.match(tab, /data-testid="bw-fpga-cmos-gate"/, 'with a gate selector (more of the editor)');
+    assert.match(tab, /realizeGate\(cmosGate\)/, 'it realises the chosen gate on the live circuit');
+    // honesty: the UI must say this is the silicon underneath, not the FPGA's fabric
+    assert.match(tab, /silicon underneath the logic|an FPGA itself uses LUTs/, 'the LUT-vs-transistor honesty is stated');
+});
