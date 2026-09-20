@@ -30,7 +30,7 @@ quietConsole();
 const opsPath = resolve(root, 'overlay/scratch-gui/src/lib/spike-runtime-ops.js');
 const checkedIn = (await import(opsPath)).default;
 const ledger = require('./fixtures/spike-legacy-ledger.json');
-const migration = require('../overlay/scratch-vm/src/extension-support/spike-legacy-migration.js');
+const migration = await import('../overlay/scratch-gui/src/lib/spike-legacy-migration.js');
 
 test('the checked-in ops match the extension that ships', () => {
     assert.deepEqual(checkedIn, buildEntry(),

@@ -21,7 +21,7 @@
 // untouched; only the in-memory project is migrated. Saving afterwards writes
 // the unified ids, which is the right moment for that to become permanent —
 // when the user chose to save, not when they happened to open.
-import {migrateProject} from '../../../scratch-vm/src/extension-support/spike-legacy-migration.js';
+import {migrateProject} from './spike-legacy-migration.js';
 
 const INSTALLED = Symbol.for('brickwright.spikeMigrationInstalled');
 

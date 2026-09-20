@@ -9,7 +9,7 @@
 // present under another name, and the blocks are dropped.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync, readdirSync} from 'node:fs';
 import {resolve, dirname} from 'node:path';
 import {createRequire} from 'node:module';
 import {fileURLToPath} from 'node:url';
@@ -17,10 +17,47 @@ import {fileURLToPath} from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
 const require = createRequire(import.meta.url);
-const migration = require('../overlay/scratch-vm/src/extension-support/spike-legacy-migration.js');
+const migration = await import('../overlay/scratch-gui/src/lib/spike-legacy-migration.js');
 
 const managerSource = readFileSync(
     resolve(root, 'overlay/scratch-vm/src/extension-support/extension-manager.js'), 'utf8');
+
+test('the manager\'s inlined id list matches the canonical table', () => {
+    // scratch-vm cannot import the table: this overlay is applied INTO
+    // scratch-gui's node_modules, so no path from there reaches
+    // scratch-gui/src/lib. Four strings are duplicated instead, and this is
+    // what stops the copy from drifting away from the original.
+    const inlined = managerSource.match(/const SPIKE_LEGACY_IDS = \[([^\]]*)\]/);
+    assert.ok(inlined, 'extension-manager.js no longer inlines the legacy ids');
+    const ids = [...inlined[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
+    assert.deepEqual(ids.sort(), [...migration.LEGACY_IDS].sort());
+
+    const unified = managerSource.match(/const SPIKE_UNIFIED_ID = '([^']+)'/);
+    assert.ok(unified);
+    assert.equal(unified[1], migration.UNIFIED_ID);
+});
+
+test('no GUI module reaches the VM overlay by a path the build cannot follow', () => {
+    // The overlay lands in packages/scratch-gui/node_modules/scratch-vm, so a
+    // `../../../scratch-vm/...` specifier resolves in this repo and not in the
+    // built app — it compiled here and failed the editor build on CI. Nothing
+    // in the GUI overlay may reach for it that way again.
+    const offenders = [];
+    const walk = dir => {
+        for (const entry of readdirSync(dir, {withFileTypes: true})) {
+            const full = resolve(dir, entry.name);
+            if (entry.isDirectory()) { walk(full); continue; }
+            if (!/\.(js|jsx|mjs)$/.test(entry.name)) continue;
+            const text = readFileSync(full, 'utf8');
+            if (/from '[^']*\.\.\/scratch-vm\//.test(text) ||
+                /require\('[^']*\.\.\/scratch-vm\//.test(text)) {
+                offenders.push(full.slice(root.length + 1));
+            }
+        }
+    };
+    walk(resolve(root, 'overlay/scratch-gui/src'));
+    assert.deepEqual(offenders, []);
+});
 
 test('the manager resolves a legacy id before it looks anything up', () => {
     // Order matters: the rewrite has to happen before the hasOwn checks, or

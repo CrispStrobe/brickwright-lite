@@ -1,6 +1,19 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The five SPIKE-family extension ids collapse into one (`spikeprime`).
+//
+// WHY THIS LIVES IN THE GUI AND NOT BESIDE THE EXTENSIONS
+// -------------------------------------------------------
+// It is about opcodes, so scratch-vm looks like its home. It cannot be: the
+// VM overlay is applied to `packages/scratch-gui/node_modules/scratch-vm`
+// after install, so from the built GUI there is no relative path to it, and
+// the repo root does not resolve `scratch-vm` either — a package specifier
+// would build but break every unit test. Its two heaviest consumers are GUI
+// anyway (project load, and the Code tab's runtime registry).
+//
+// scratch-vm needs only the four retired ids, which extension-manager.js
+// inlines with a pointer back here; `test/spike-legacy-ids-resolve.test.mjs`
+// fails if the two lists ever disagree, so the duplication cannot drift.
 // This file is the whole contract for that collapse, and it is the only place
 // the rename table is written down: the VM's project loader applies it, the
 // GUI's library entry defers to it, and `test/spike-unified-coverage.test.mjs`
@@ -244,7 +257,7 @@ const migrateProject = function (project) {
     return count;
 };
 
-module.exports = {
+export {
     UNIFIED_ID,
     LEGACY_IDS,
     RENAMES,

@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 
 const require = createRequire(import.meta.url);
-const migration = require('../overlay/scratch-vm/src/extension-support/spike-legacy-migration.js');
+const migration = await import('../overlay/scratch-gui/src/lib/spike-legacy-migration.js');
 const ledger = require('./fixtures/spike-legacy-ledger.json');
 
 const {migrateBlock, migrateProject, resolveOpcode} = migration;

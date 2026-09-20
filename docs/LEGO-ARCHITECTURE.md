@@ -52,7 +52,7 @@ The denominator is not hidden: the canonical extension had **84** opcodes at ext
 extensions had and three the merge makes possible. The executable census classifies them as **30 mapped, 21 host-control blocks, 4 event
 hats, and 29 learner-facing gaps**. The five other SPIKE-family extension IDs had different block
 schemas and were not aliases for this map; they are now one extension, and
-`overlay/scratch-vm/src/extension-support/spike-legacy-migration.js` is the table that
+`overlay/scratch-gui/src/lib/spike-legacy-migration.js` is the table that
 says which of their opcodes became which.
 
 **The remaining islands.** Outside that measured slice, two authoring worlds still do not meet:

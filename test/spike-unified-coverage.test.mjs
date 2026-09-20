@@ -27,7 +27,7 @@ const root = resolve(here, '..');
 const require = createRequire(import.meta.url);
 
 const ledger = require('./fixtures/spike-legacy-ledger.json');
-const migration = require('../overlay/scratch-vm/src/extension-support/spike-legacy-migration.js');
+const migration = await import('../overlay/scratch-gui/src/lib/spike-legacy-migration.js');
 
 // The extensions log on load; none of it may reach fd 1.
 quietConsole();

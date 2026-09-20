@@ -4,8 +4,16 @@ const maybeFormatMessage = require('../util/maybe-format-message');
 
 const BlockType = require('./block-type');
 const {pinForURL, pinStatusFor, verifyGallerySource} = require('./gallery-integrity');
-const {LEGACY_IDS: SPIKE_LEGACY_IDS, UNIFIED_ID: SPIKE_UNIFIED_ID} =
-    require('./spike-legacy-migration');
+// The four SPIKE ids that became `spikeprime`.
+//
+// Inlined rather than imported: the canonical table lives in the GUI
+// (scratch-gui/src/lib/spike-legacy-migration.js, which explains why), and
+// this overlay is applied INTO scratch-gui's node_modules — so there is no
+// path from here to there that survives the build. Four strings is a cheap
+// duplication and test/spike-legacy-ids-resolve.test.mjs fails if it drifts
+// from the table.
+const SPIKE_LEGACY_IDS = ['spikeprimeBTC', 'spikeprimeBridge', 'spikeprimeble', 'legospikeprimeBLE'];
+const SPIKE_UNIFIED_ID = 'spikeprime';
 
 /**
  * The id an extension request should actually load.

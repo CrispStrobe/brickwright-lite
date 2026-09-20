@@ -25,8 +25,7 @@
 import SB3Creator from './sb3-creator.js';
 import art from './sb3-creator-vector-art.js';
 import spikeRuntimeOps from './spike-runtime-ops.js';
-import {LEGACY_IDS as SPIKE_LEGACY_IDS}
-    from '../../../scratch-vm/src/extension-support/spike-legacy-migration.js';
+import {LEGACY_IDS as SPIKE_LEGACY_IDS} from './spike-legacy-migration.js';
 
 // Returns the entry count; ignored here, asserted by the tests (246 as of 2026-08-30).
 SB3Creator.registerVectorArt(art);
