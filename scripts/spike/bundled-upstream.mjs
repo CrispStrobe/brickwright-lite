@@ -42,7 +42,7 @@ export const ROOT = resolve(here, '../..');
 export const BUNDLES = resolve(ROOT, 'overlay/scratch-vm/src/extensions/crispstrobe');
 
 /** CrispStrobe/extensions commit these sha256s were taken at. */
-export const UPSTREAM_COMMIT = '92cbcf94af01098502c13cd7695529596d378608';
+export const UPSTREAM_COMMIT = '3c7eabc094af516c9dba2c4c721667c048779860';
 export const UPSTREAM_REPO = 'CrispStrobe/extensions';
 
 /**
@@ -70,6 +70,20 @@ export const MAP = {
     stc12live: 'extensions/CrispStrobe/stc12live.js',
     universalgamepad: 'extensions/CrispStrobe/gamepad.js',
     wedo2unified: 'extensions/CrispStrobe/lego_wedo2_universal.js',
+
+    // Written in Lite, upstreamed 2026-09-20 (CrispStrobe/extensions#4), and
+    // vendored back so the gate covers them like everything else. bitops and
+    // devices are sb3-creator OUTPUT CONTRACTS — the generator emits
+    // bitops_* and devices_* opcodes — so the gallery is their proper home
+    // rather than a courtesy copy.
+    bitops: 'extensions/CrispStrobe/bitops.js',
+    devices: 'extensions/CrispStrobe/devices.js',
+    microbitplus: 'extensions/CrispStrobe/microbitplus.js',
+    // Keyed by DIRECTORY, which is not this one's extension id: the folder is
+    // `text2speech` (it replaced the stock extension of that name) while the
+    // id it registers is `brickwrightTTS`. Renaming the folder would move the
+    // path extension-manager requires, for no gain.
+    text2speech: 'extensions/CrispStrobe/brickwright_tts.js',
 
     // Not CrispStrobe/extensions. bw-board ships this extension and Lite had a
     // five-block copy of its fourteen — the panel offered lcd, oled,
@@ -99,12 +113,6 @@ export const sourceOf = function (id, pins) {
 export const LITE_ONLY = {
     arcade: 'Lite-native. Reads the GUI console\'s runtime state, so upstreaming it ' +
         'would mean upstreaming that contract too.',
-    bitops: 'Queued for upstream (2026-09-20 audit). An sb3-creator output contract: ' +
-        'the generator emits bitops_* opcodes.',
-    devices: 'Queued for upstream (2026-09-20 audit). An sb3-creator output contract.',
-    microbitplus: 'Queued for upstream (2026-09-20 audit).',
-    text2speech: 'Queued for upstream (2026-09-20 audit). Replaces the stock cloud ' +
-        'extension with an on-device one.'
 };
 
 /**
