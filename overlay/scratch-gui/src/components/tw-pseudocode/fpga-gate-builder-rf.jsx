@@ -19,6 +19,7 @@ import {evalModel, stepClock} from '../../lib/bw-fpga/gate-eval.js';
 import {EXAMPLES} from '../../lib/bw-fpga/examples.js';
 import {BUILTINS} from '../../lib/bw-fpga/builtins.js';
 import {sevenSegSvg, seg7Value, ledValue} from '../../lib/bw-fpga/output-devices.js';
+import {layerPositions} from '../../lib/bw-fpga/auto-layout.js';
 import {CHALLENGES, challengeById, isUnlocked} from '../../lib/bw-fpga/challenges.js';
 import {grade} from '../../lib/bw-fpga/grader.js';
 import FpgaChallengePanel from './fpga-challenges.jsx';
@@ -383,10 +384,17 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
 
     // Load a freshly synthesised (or otherwise built) model onto the canvas.
     const loadModel = model => {
-        const seeded = modelToReactFlow(model);
+        // Lay the generated design out as a schematic (inputs left → output
+        // right, gates by depth) instead of the bridge's naive zig-zag.
+        const seeded = modelToReactFlow(model, layerPositions(model));
         setNodes(seeded.nodes);
         setEdges(seeded.edges);
         setTtOpen(false);
+        // The generated design lands at fresh positions, so the previous fit
+        // region no longer frames it — without this its gates sit off-screen
+        // (LOOK-verified: a generated XOR showed only its I/O). Fit once React
+        // Flow has measured the new nodes (a frame later).
+        setTimeout(() => { try { rf.fitView({padding: 0.2, duration: 300}); } catch (e) { /* not ready */ } }, 60);
     };
 
     // Export the canvas as a standalone SVG — the SAME nodes/glyphs/wires shown,

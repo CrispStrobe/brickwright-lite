@@ -836,6 +836,26 @@ test('the builder can generate a circuit from a truth table', () => {
     assert.match(modal, /synthesizeTruthTable\(/, 'the modal uses the tested synthesiser');
 });
 
+test('a generated circuit re-fits the view, so its gates are not left off-screen', () => {
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    // loadModel replaces the canvas with the generated design at fresh positions;
+    // without a re-fit the old fit region frames nothing (LOOK-verified: a
+    // generated XOR showed only its I/O, its five gates off-screen).
+    const at = ui.indexOf('const loadModel =');
+    assert.ok(at > 0, 'loadModel must exist');
+    const body = ui.slice(at, at + 800);
+    assert.match(body, /rf\.fitView\(/, 'loadModel must fit the view to the generated design');
+});
+
+test('a generated circuit is laid out as a schematic, not the naive zig-zag', () => {
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /modelToReactFlow\(model, layerPositions\(model\)\)/,
+        'loadModel must position the generated nodes by depth (inputs left, output right)');
+    const lay = read('overlay/scratch-gui/src/lib/bw-fpga/auto-layout.js');
+    assert.match(lay, /export function layerPositions/, 'a pure topological layout exists (tested without a browser)');
+    assert.match(lay, /visiting\.has\(id\)/, 'the layering must be cycle-safe (sequential feedback)');
+});
+
 // ── output devices: an LED and a seven-segment display that light in Run ──
 //
 // The far end of a circuit is where bits become something you can SEE. The
