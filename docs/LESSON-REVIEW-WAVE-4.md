@@ -38,7 +38,7 @@ to this wave's question. Seven defects sat behind it.
 
 | lesson | example | v | verdict |
 | --- | --- | --- | --- |
-| interactive-extension-discovery | mb05-lesson | 2→**3** | **defect, fixed** — the green flag runs blocks that are all no-ops, and the "connection indicator" it names does not exist for this extension |
+| interactive-extension-discovery | mb05-lesson | 2→**3**→**4** | **defect, fixed** — the "connection indicator" it names does not exist for this extension; the "all no-ops" half was re-measured 2026-09-20 and narrowed (the pin blocks drive a Circuit) |
 | interactive-sensor-capability | mb02-sensors | 1→2→**3** | defect, **FIXED 2026-08-24** — the sim pane now carries a sensor control per declared range; copy restored |
 | interactive-lego-recovery | spike01-obstacle-avoid | 1→**2** | **defect (disclosure), fixed** — the hub path needs the Scratch Link helper, which the lesson never says |
 | interactive-input-controls | retro-console | 1→2→**3** | defect, **FIXED 2026-08-24** — the inspector edits functional config, and the bench opens in play mode |
@@ -136,6 +136,30 @@ bundled WASM simulator. It does not fire `project-run`.
 **Fixed** in copy, EN and DE, version 3: the checkpoint now has the learner run
 both ways and compare, says plainly that the green flag runs no-ops, and points
 at the block wording instead of an icon that is not drawn.
+
+**RE-MEASURED 2026-09-20, and the blanket half is no longer true.** `c9ab921ea`
+("set pin P0 to 1 now actually sets pin P0") gave `microbitplus` a `get board()`
+reading `runtime.circuitBoard`, and `digitalwrite` / `analogwrite` / `setpull`
+now drive an open Circuit through `board.setPin`. So the **pin** blocks are not
+no-ops under the green flag; the **display and sensor** blocks still are, and
+the five sensors still read `return 0;` exactly as quoted above. The missing
+`showStatusButton` is also unchanged — still 0 occurrences.
+
+Two things had gone stale on the strength of one sentence. The extension's own
+header comment still said "the VM opcode methods are intentional no-ops" long
+after a third of them had stopped being that, and `test/lesson-panel-claims-
+wave4.test.mjs` was grepping for exactly that comment — so a blanket claim kept
+passing because a stale sentence was still there to find. It surfaced only when
+the extension was re-vendored from `CrispStrobe/extensions`, where the comment
+had been rewritten. That is an argument for vendoring, not against it: the
+divergence existed either way, and upstreaming is what made it visible.
+
+Corrected in the same commit: the hint in both languages now says the display
+and sensor blocks are the no-ops and names the pin blocks as the exception; the
+sentinel is split into the halves that still reproduce (flat sensors, no
+indicator) and the half that is now guarded as fixed (`digitalwrite` reaching
+`board.setPin`), and it reads the extension through the bundle unwrapper rather
+than grepping the vendored file's punctuation.
 
 ### 2. interactive-sensor-capability/observe — no simulated input could be varied — FIXED 2026-08-24
 

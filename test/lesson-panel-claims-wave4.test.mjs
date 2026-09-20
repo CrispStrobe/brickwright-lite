@@ -36,6 +36,7 @@ import {readFileSync, existsSync} from 'node:fs';
 import path from 'node:path';
 import {SOURCE, REPO, importGuiDependency} from './helpers/bw-integrated.mjs';
 import {balancedAfter} from './helpers/js-scope.mjs';
+import {bundleSource} from '../scripts/spike/bundled-upstream.mjs';
 
 const EX = path.join(REPO, 'overlay/scratch-gui/examples');
 const GUI = path.join(REPO, 'overlay/scratch-gui/src');
@@ -398,23 +399,74 @@ test('every faceplate with an operable control opens in play mode', () => {
 
 // ── interactive-extension-discovery + interactive-sensor-capability ────────
 
-test('OPEN DEFECT: the micro:bit blocks are no-ops in the VM, and this extension shows no connection indicator', () => {
+test('PARTLY RESOLVED: the micro:bit SENSORS are still flat, the PINS are not, and there is still no indicator', () => {
     assert.equal(lesson('interactive-extension-discovery').exampleId, 'mb05-lesson');
     assert.equal(lesson('interactive-sensor-capability').exampleId, 'mb02-sensors');
-    const source = readFileSync(path.join(VM_EXT, 'microbitplus/index.js'), 'utf8');
 
-    // Its own header says so, and the methods agree.
-    assert.match(source, /opcode methods are intentional no-ops/,
-        'microbitplus no longer documents its blocks as VM no-ops — re-measure');
+    // WHY THIS TEST WAS RENAMED AND SPLIT (2026-09-20).
+    //
+    // It used to be one OPEN DEFECT asserting "the micro:bit blocks are no-ops
+    // in the VM", and it leaned on the extension's own header line saying so.
+    // Half of that stopped being true at c9ab921ea ("set pin P0 to 1 now
+    // actually sets pin P0"), which gave microbitplus a `get board()` reading
+    // runtime.circuitBoard and made digitalwrite/analogwrite/setpull drive a
+    // Circuit. The sentinel did not notice, because the header comment it
+    // grepped was still sitting in lite's local copy, describing a state the
+    // code had left. A blanket claim kept passing on the strength of a stale
+    // sentence.
+    //
+    // It surfaced only when the extension was re-vendored from
+    // CrispStrobe/extensions, where that comment had been rewritten — which is
+    // the argument for vendoring rather than a point against it: the divergence
+    // existed either way and upstreaming is what made it visible.
+    //
+    // So each half is now asserted against the thing it is about, and the two
+    // lesson hints that repeated the blanket claim (in both languages) were
+    // narrowed in the same commit.
+    //
+    // Read through the unwrapper, not the bundle text: vendor-bundles.mjs
+    // renders a bundle as makeExt(<source as a JSON string>), so newlines
+    // arrive as the two characters \n and quotes arrive escaped, and every
+    // source-shaped pattern below would match nothing. That failure is the
+    // dangerous direction — a sentinel that stops seeing its subject reports
+    // the defect resolved and retires itself.
+    const source = bundleSource('microbitplus');
+    assert.ok(source, 'the microbitplus bundle did not unwrap — every assertion below ' +
+        'would be a scan over nothing, and this sentinel would go quiet rather than red');
+
+    // STILL OPEN (1/2): the five sensor reporters answer a flat 0 regardless of
+    // the simulator's sliders. interactive-sensor-capability's hint depends on
+    // this, and on the reading that a flat 0 is also a legal value.
     for (const sensor of ['accel', 'light', 'temp', 'sound', 'compass']) {
         assert.match(source, new RegExp(`${sensor}\\(\\)\\s*\\{\\s*return 0;\\s*\\}`),
             `microbitplus.${sensor}() no longer returns a flat 0 — the sensor lesson can be softened`);
     }
+
+    // STILL OPEN (2/2): no connection indicator on this extension.
     assert.ok(!/showStatusButton/.test(source),
         'microbitplus now declares showStatusButton — a connection indicator exists and ' +
         'interactive-extension-discovery may name it again');
     // Contrast, so "no indicator" is a property of THIS extension, not of the app.
-    assert.match(readFileSync(path.join(VM_EXT, 'spikeprime/index.js'), 'utf8'), /showStatusButton: true/);
+    const spike = bundleSource('spikeprime');
+    assert.ok(spike, 'the spikeprime bundle did not unwrap — the contrast below proves nothing');
+    assert.match(spike, /showStatusButton: true/);
+
+    // RESOLVED, and now guarded rather than deleted: the pin blocks reach a
+    // Circuit. If this ever goes back to a no-op, the hint that tells learners
+    // the pin blocks are the exception becomes false and must move with it.
+    assert.match(source, /get board\(\)/,
+        'microbitplus lost its board accessor — the pin blocks are no-ops again');
+    assert.match(source, /digitalwrite\s*\(args\)\s*\{[\s\S]{0,200}?board\.setPin\(/,
+        'microbitplus.digitalwrite no longer drives board.setPin — `set pin P0 to 1` is inert ' +
+        'again (the c9ab921ea defect), and interactive-extension-discovery\'s hint is wrong');
+
+    // The two hints must keep saying which blocks they mean. A blanket
+    // "every one of them is a no-op" is what went stale last time.
+    const discovery = JSON.stringify(lesson('interactive-extension-discovery'));
+    assert.doesNotMatch(discovery, /every one of them is a no-op|jeder von ihnen wirkungslos/,
+        'interactive-extension-discovery is claiming the whole extension is inert again');
+    assert.match(discovery, /pin blocks are the exception/);
+    assert.match(discovery, /Pin-Bl\u00f6cke sind die Ausnahme/);
 });
 
 test('the micro:bit simulator models its sensors, and lite can now vary them', () => {

@@ -15,6 +15,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
 import {boot, load, EXAMPLES, circuitPathFor} from '../scripts/lesson-bench.mjs';
+import {bundleSource} from '../scripts/spike/bundled-upstream.mjs';
 
 const MS = 1_000_000n;
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -71,9 +72,28 @@ test('RESOLVED UPSTREAM: 73-voltmeter\'s OLED renders — the verbs and the disp
     // review was in flight — 6f8d11c5c vendored the dispatcher, 802fc1050 added
     // eleven OLED/TFT opcodes — so the assertion is inverted rather than deleted,
     // and now guards the fix instead of the defect.
-    const ext = readFileSync(path.join(ROOT,
-        'overlay/scratch-vm/src/extensions/crispstrobe/devices/index.js'), 'utf8');
-    const declared = [...ext.matchAll(/opcode: *'([a-z0-9_]+)'/g)].map(m => m[1]);
+    //
+    // READ THROUGH THE UNWRAPPER, NOT THE BUNDLE TEXT (2026-09-20). This used
+    // to readFileSync the bundle and scan it for `opcode: '<verb>'`. That held
+    // only while the bundle happened to be readable JavaScript with the same
+    // quoting as its author used. `devices` is now vendored from
+    // CrispStrobe/extensions, and vendor-bundles.mjs renders a bundle as
+    // makeExt(<source as a JSON string>) — so every quote inside arrives
+    // escaped, the file reads `opcode: \"oledclear\"`, and a regex written for
+    // single quotes matched ZERO of the 48 opcodes present. The sentinel fired
+    // saying the extension had "lost oledclear again" when nothing had been
+    // lost; only the encoding moved. This is the second time a punctuation-
+    // shaped scan has been fooled by the JSON re-encoding (the first counted
+    // stc12's 30 opcodes as 1), so it reads through the repo's own unwrapper,
+    // which EVALUATES the bundle with a stubbed adapter and hands back the
+    // source the extension is actually built from.
+    const ext = bundleSource('devices');
+    assert.ok(ext, 'the devices bundle did not unwrap — the sentinel below would sweep over nothing');
+    const declared = [...ext.matchAll(/opcode: *["']([a-z0-9_]+)["']/g)].map(m => m[1]);
+    // Floor: an empty or tiny surface makes every `includes` below vacuous.
+    assert.ok(declared.length >= 40,
+        `only ${declared.length} opcodes parsed out of the devices source — the reader is broken, ` +
+        'and an absent verb below would be indistinguishable from an unreadable file');
     for (const verb of ['oledclear', 'oledcursor', 'oledprint']) {
         assert.ok(declared.includes(verb), `the devices extension has lost ${verb} again`);
     }
