@@ -328,6 +328,15 @@ const CENSUS = [
         why: 'sha comes from resolveRef() before the content read; flash.js from stc-compiler.'
     },
     {
+        file: 'scripts/spike/bundled-upstream.mjs',
+        kind: 'raw',
+        text: 'raw.githubusercontent.com/${UPSTREAM_REPO}/${UPSTREAM_COMMIT}/${path}',
+        class: 'sha-const',
+        why: 'UPSTREAM_COMMIT is a literal 40-hex sha in the same module, checked by ' +
+            'test/bundled-extensions-match-upstream.test.mjs against the pin file it wrote. ' +
+            'Nothing resolves a branch: moving the pin is an edit someone makes and reviews.'
+    },
+    {
         file: 'scripts/sync-gallery-pins.mjs',
         kind: 'raw',
         text: 'raw.githubusercontent.com/${REPO}/${commit}/build-snippets/${name}.js',
