@@ -10,6 +10,8 @@
  * @module
  */
 
+import {sevenSegDecoderModel} from './output-devices.js';
+
 const IN = (id, name) => ({id, kind: 'in', name, width: 1});
 const OUT = (id, name) => ({id, kind: 'out', name, width: 1});
 const G = (id, type) => ({id, kind: 'gate', type});
@@ -50,5 +52,10 @@ export const BUILTINS = Object.freeze([
                 E('s1', 'a3', 'a'), E('s0', 'a3', 'b'), E('a3', 'y3', 'in')  //  s1 &  s0
             ]
         }
+    },
+    {
+        id: 'seg7_decoder', label: '7-seg decoder (4→7)',
+        blurb: 'A 4-bit number in (d0–d3), seven segment-drive signals out (seg_a–seg_g): the classic hex font, minimised to a real gate circuit — drop it and see how a display driver is built.',
+        model: sevenSegDecoderModel()
     }
 ]);

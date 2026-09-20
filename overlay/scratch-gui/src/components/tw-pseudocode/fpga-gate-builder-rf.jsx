@@ -18,7 +18,8 @@ import {NodeInspector, NodeContextMenu} from './fpga-node-inspector.jsx';
 import {evalModel, stepClock} from '../../lib/bw-fpga/gate-eval.js';
 import {EXAMPLES} from '../../lib/bw-fpga/examples.js';
 import {BUILTINS} from '../../lib/bw-fpga/builtins.js';
-import {sevenSegSvg, seg7Value, ledValue} from '../../lib/bw-fpga/output-devices.js';
+import {sevenSegSvg, seg7Value, ledValue, ledBankValues} from '../../lib/bw-fpga/output-devices.js';
+import {layerPositions} from '../../lib/bw-fpga/auto-layout.js';
 import {CHALLENGES, challengeById, isUnlocked} from '../../lib/bw-fpga/challenges.js';
 import {grade} from '../../lib/bw-fpga/grader.js';
 import FpgaChallengePanel from './fpga-challenges.jsx';
@@ -234,7 +235,33 @@ const Seg7Node = ({data}) => {
     );
 };
 
-const nodeTypes = {gate: GateNode, io: IoNode, instance: InstanceNode, memory: MemoryNode, const: ConstNode, tunnel: TunnelNode, led: LedNode, seg7: Seg7Node};
+// An LED bank — several bits shown at once as a row of lamps (one device rather
+// than N separate LEDs). data.bits input handles; data.live is a per-bit array.
+const LedBankNode = ({data}) => {
+    const bits = data.bits || 4;
+    const live = data.live || [];
+    return (
+        <div style={{position: 'relative', display: 'flex', gap: 4, padding: '8px 8px',
+            border: '1.6px solid #334155', borderRadius: 6, background: '#0f172a'}}>
+            {Array.from({length: bits}, (_, i) => {
+                const on = live[i] === 1;
+                const known = live[i] === 1 || live[i] === 0;
+                return (
+                    <div key={i} style={{position: 'relative'}}>
+                        <Handle type="target" position={Position.Top} id={`d${i}`}
+                            style={{background: '#0284c7', left: '50%'}} />
+                        <div style={{width: 16, height: 16, borderRadius: '50%',
+                            border: `1.5px solid ${on ? '#f87171' : '#475569'}`,
+                            background: on ? 'radial-gradient(circle at 35% 30%, #fecaca, #ef4444 70%)' : (known ? '#1e293b' : '#0b1220'),
+                            boxShadow: on ? '0 0 8px 2px rgba(239,68,68,0.6)' : 'none'}} />
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
+const nodeTypes = {gate: GateNode, io: IoNode, instance: InstanceNode, memory: MemoryNode, const: ConstNode, tunnel: TunnelNode, led: LedNode, seg7: Seg7Node, ledbank: LedBankNode};
 
 // A starter so the canvas is not blank: a AND b → y.
 const STARTER = () => modelToReactFlow({
@@ -253,6 +280,38 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
     const start = React.useMemo(() => (seed ? modelToReactFlow(seed) : STARTER()), [seed]);
     const [nodes, setNodes, onNodesChange] = useNodesState(start.nodes);
     const [edges, setEdges, onEdgesChange] = useEdgesState(start.edges);
+
+    // ── Undo / redo ──────────────────────────────────────────────────────────
+    // Snapshot the canvas BEFORE each discrete edit (place, connect, delete,
+    // move, generate…); Ctrl-Z steps back, Ctrl-Shift-Z / Ctrl-Y forward. Refs
+    // hold the latest nodes/edges so a snapshot captures the pre-edit state
+    // without waiting for React to flush the setter.
+    const nodesRef = React.useRef(nodes);
+    const edgesRef = React.useRef(edges);
+    nodesRef.current = nodes;
+    edgesRef.current = edges;
+    const pastRef = React.useRef([]);
+    const futureRef = React.useRef([]);
+    const [, bumpHist] = React.useReducer(x => x + 1, 0);
+    const takeSnapshot = React.useCallback(() => {
+        pastRef.current.push({nodes: nodesRef.current, edges: edgesRef.current});
+        if (pastRef.current.length > 100) pastRef.current.shift();
+        futureRef.current = [];
+        bumpHist();
+    }, []);
+    const undo = React.useCallback(() => {
+        const prev = pastRef.current.pop();
+        if (!prev) return;
+        futureRef.current.push({nodes: nodesRef.current, edges: edgesRef.current});
+        setNodes(prev.nodes); setEdges(prev.edges); bumpHist();
+    }, [setNodes, setEdges]);
+    const redo = React.useCallback(() => {
+        const next = futureRef.current.pop();
+        if (!next) return;
+        pastRef.current.push({nodes: nodesRef.current, edges: edgesRef.current});
+        setNodes(next.nodes); setEdges(next.edges); bumpHist();
+    }, [setNodes, setEdges]);
+
     React.useEffect(() => {
         if (seed) {
             const rf = modelToReactFlow(seed);
@@ -331,6 +390,7 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
     // defaults to a 4x4 (2-bit addr, 4-bit data) — the shape that fits the
     // header pins and is proven to place-and-route to a bitstream.
     const placeNode = (item, position) => {
+        takeSnapshot();
         if (item.kind === 'gate') {
             setNodes(ns => [...ns, {id: nid('g'), type: 'gate', position, data: {kind: 'gate', gtype: item.gtype, width: newWidth}}]);
         } else if (item.kind === 'in' || item.kind === 'out') {
@@ -352,10 +412,14 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
             setNodes(ns => [...ns, {id: nid('led'), type: 'led', position, data: {kind: 'led'}}]);
         } else if (item.kind === 'seg7') {
             setNodes(ns => [...ns, {id: nid('seg'), type: 'seg7', position, data: {kind: 'seg7'}}]);
+        } else if (item.kind === 'ledbank') {
+            setNodes(ns => [...ns, {id: nid('bank'), type: 'ledbank', position, data: {kind: 'ledbank', bits: item.bits || 4}}]);
         } else if (item.kind === 'template' && item.model) {
             // Drop a starter near the cursor, id-remapped so it MERGES onto the
-            // canvas instead of clobbering whatever is already there.
-            const seeded = modelToReactFlow(item.model);
+            // canvas instead of clobbering whatever is already there. Lay it out
+            // as a schematic (a big block like the 7-seg decoder is unreadable in
+            // the bridge's zig-zag).
+            const seeded = modelToReactFlow(item.model, layerPositions(item.model));
             const idMap = {};
             const placed = seeded.nodes.map(n => {
                 const id = nid('t');
@@ -379,14 +443,32 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
         try { item = JSON.parse(raw); } catch (err) { return; }
         placeNode(item, rf.screenToFlowPosition({x: e.clientX, y: e.clientY}));
     };
-    const onConnect = React.useCallback(params => setEdges(es => addEdge(params, es)), [setEdges]);
+    const onConnect = React.useCallback(params => { takeSnapshot(); setEdges(es => addEdge(params, es)); }, [setEdges, takeSnapshot]);
+
+    // Keyboard on the canvas: Ctrl-Z undo, Ctrl-Shift-Z / Ctrl-Y redo, and a
+    // snapshot just before React Flow deletes the selection (capture phase fires
+    // before its own Delete/Backspace handler).
+    const onCanvasKeyDown = e => {
+        const meta = e.ctrlKey || e.metaKey;
+        if (meta && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); if (e.shiftKey) redo(); else undo(); }
+        else if (meta && (e.key === 'y' || e.key === 'Y')) { e.preventDefault(); redo(); }
+        else if (e.key === 'Delete' || e.key === 'Backspace') { takeSnapshot(); }
+    };
 
     // Load a freshly synthesised (or otherwise built) model onto the canvas.
     const loadModel = model => {
-        const seeded = modelToReactFlow(model);
+        takeSnapshot();
+        // Lay the generated design out as a schematic (inputs left → output
+        // right, gates by depth) instead of the bridge's naive zig-zag.
+        const seeded = modelToReactFlow(model, layerPositions(model));
         setNodes(seeded.nodes);
         setEdges(seeded.edges);
         setTtOpen(false);
+        // The generated design lands at fresh positions, so the previous fit
+        // region no longer frames it — without this its gates sit off-screen
+        // (LOOK-verified: a generated XOR showed only its I/O). Fit once React
+        // Flow has measured the new nodes (a frame later).
+        setTimeout(() => { try { rf.fitView({padding: 0.2, duration: 300}); } catch (e) { /* not ready */ } }, 60);
     };
 
     // Export the canvas as a standalone SVG — the SAME nodes/glyphs/wires shown,
@@ -404,18 +486,19 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
 
     // Editing a placed node: double-click opens the inspector; a patch merges
     // into node.data (the bridge reads width/name/dataWidth/addrWidth from there).
-    const patchNode = (id, patch) => setNodes(ns => ns.map(n => (n.id === id ? {...n, data: {...n.data, ...patch}} : n)));
+    const patchNode = (id, patch) => { takeSnapshot(); setNodes(ns => ns.map(n => (n.id === id ? {...n, data: {...n.data, ...patch}} : n))); };
     const deleteNode = id => {
+        takeSnapshot();
         setNodes(ns => ns.filter(n => n.id !== id));
         setEdges(es => es.filter(e => e.source !== id && e.target !== id));
     };
-    const duplicateNode = id => setNodes(ns => {
+    const duplicateNode = id => { takeSnapshot(); return setNodes(ns => {
         const src = ns.find(n => n.id === id);
         if (!src) return ns;
         const copy = {...src, id: nid('c'), position: {x: src.position.x + 30, y: src.position.y + 30},
             data: {...src.data}, selected: false};
         return [...ns, copy];
-    });
+    }); };
     const onNodeDoubleClick = (e, node) => setInspect({id: node.id, x: e.clientX, y: e.clientY});
     const onNodeContextMenu = (e, node) => { e.preventDefault(); setInspect(null); setMenu({target: 'node', id: node.id, x: e.clientX, y: e.clientY}); };
     const onEdgeContextMenu = (e, edge) => { e.preventDefault(); setInspect(null); setMenu({target: 'edge', id: edge.id, x: e.clientX, y: e.clientY}); };
@@ -450,6 +533,7 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
             }
             if (k === 'led') return {...n, data: {...n.data, live: ledValue(n.id, edges, live.values)}};
             if (k === 'seg7') return {...n, data: {...n.data, value: seg7Value(n.id, edges, live.values)}};
+            if (k === 'ledbank') return {...n, data: {...n.data, live: ledBankValues(n.id, edges, live.values, n.data.bits || 4)}};
             return n;
         })
         : nodes;
@@ -550,8 +634,14 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                 <button type="button" onClick={() => setTtOpen(true)}
                     title="Generate a circuit from a truth table (combinational analysis)"
                     style={{cursor: 'pointer'}} data-testid="bw-fpga-rf-tt">{'⊞ Truth table'}</button>
+                <button type="button" data-testid="bw-fpga-rf-undo"
+                    onClick={undo} disabled={!pastRef.current.length}
+                    title="Undo (Ctrl-Z)" style={{cursor: pastRef.current.length ? 'pointer' : 'default'}}>{'↶ Undo'}</button>
+                <button type="button" data-testid="bw-fpga-rf-redo"
+                    onClick={redo} disabled={!futureRef.current.length}
+                    title="Redo (Ctrl-Shift-Z)" style={{cursor: futureRef.current.length ? 'pointer' : 'default'}}>{'↷ Redo'}</button>
                 <button type="button" data-testid="bw-fpga-rf-clear"
-                    onClick={() => { setNodes([]); setEdges([]); setCheckResult(null); }}
+                    onClick={() => { takeSnapshot(); setNodes([]); setEdges([]); setCheckResult(null); }}
                     title="Clear the canvas" style={{cursor: 'pointer'}}>{'🗑 Clear'}</button>
                 <button type="button" data-testid="bw-fpga-rf-svg" onClick={exportSvg}
                     title="Export the canvas as an SVG" style={{cursor: 'pointer'}}>{'⤓ SVG'}</button>
@@ -599,10 +689,11 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                 ) : null}
                 <FpgaGatePalette catalog={catalog} />
                 <div ref={canvasRef} style={{flex: '1 1 auto', height: '48vh', minHeight: 300, border: '1px solid rgba(71,85,105,0.25)', borderRadius: 6}}
-                    data-testid="bw-fpga-rf-canvas" onDrop={onDrop} onDragOver={onDragOver}>
+                    data-testid="bw-fpga-rf-canvas" onDrop={onDrop} onDragOver={onDragOver} onKeyDownCapture={onCanvasKeyDown}>
                     <ReactFlow
                         nodes={shownNodes} edges={shownEdges}
                         onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect}
+                        onNodeDragStart={() => takeSnapshot()}
                         onInit={inst => { try { inst.fitView({padding: 0.2}); } catch (e) { /* no-op */ } }}
                         onNodeClick={onNodeClick}
                         onNodeDoubleClick={onNodeDoubleClick} onNodeContextMenu={onNodeContextMenu}

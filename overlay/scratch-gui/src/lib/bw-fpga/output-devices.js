@@ -71,7 +71,7 @@ export function sevenSegDecoderModel () {
         const font = SEG7_FONT[value];
         return Object.fromEntries(SEGMENTS.map(s => [`seg_${s}`, font[s]]));
     });
-    return synthesizeTruthTable(table);
+    return synthesizeTruthTable(table, {minimize: true});
 }
 
 /** Palette/builtin descriptor (same shape as builtins.js) for the decoder. */
@@ -129,4 +129,15 @@ export function seg7Value (nodeId, rfEdges, values) {
 export function ledValue (nodeId, rfEdges, values) {
     const e = (rfEdges || []).find(x => x.target === nodeId && x.targetHandle === 'in');
     return e ? values[e.source] : undefined;
+}
+
+/** An LED bank shows several bits at once — one device instead of N LEDs. Its
+ *  per-bit live state, read from inputs d0..d(bits-1) (each 0/1/undefined). */
+export function ledBankValues (nodeId, rfEdges, values, bits) {
+    const out = [];
+    for (let i = 0; i < bits; i++) {
+        const e = (rfEdges || []).find(x => x.target === nodeId && x.targetHandle === `d${i}`);
+        out.push(e ? values[e.source] : undefined);
+    }
+    return out;
 }

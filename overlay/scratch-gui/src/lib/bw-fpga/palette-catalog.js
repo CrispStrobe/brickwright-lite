@@ -52,6 +52,7 @@ export function buildPaletteCatalog (templates = [], blocks = []) {
 
     sections.push({id: 'display', label: 'Display', items: [
         {kind: 'led', label: 'LED'},
+        {kind: 'ledbank', label: 'LED bank'},
         {kind: 'seg7', label: '7-seg display'}
     ]});
 

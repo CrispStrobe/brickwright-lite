@@ -51,5 +51,5 @@ test('a Display section offers LED and seven-segment output devices', () => {
     const cat = buildPaletteCatalog();
     const display = cat.find(s => s.id === 'display');
     assert.ok(display, 'a Display section appears');
-    assert.deepEqual(display.items.map(i => i.kind), ['led', 'seg7']);
+    assert.deepEqual(display.items.map(i => i.kind), ['led', 'ledbank', 'seg7']);
 });

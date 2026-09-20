@@ -836,6 +836,26 @@ test('the builder can generate a circuit from a truth table', () => {
     assert.match(modal, /synthesizeTruthTable\(/, 'the modal uses the tested synthesiser');
 });
 
+test('a generated circuit re-fits the view, so its gates are not left off-screen', () => {
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    // loadModel replaces the canvas with the generated design at fresh positions;
+    // without a re-fit the old fit region frames nothing (LOOK-verified: a
+    // generated XOR showed only its I/O, its five gates off-screen).
+    const at = ui.indexOf('const loadModel =');
+    assert.ok(at > 0, 'loadModel must exist');
+    const body = ui.slice(at, at + 800);
+    assert.match(body, /rf\.fitView\(/, 'loadModel must fit the view to the generated design');
+});
+
+test('a generated circuit is laid out as a schematic, not the naive zig-zag', () => {
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /modelToReactFlow\(model, layerPositions\(model\)\)/,
+        'loadModel must position the generated nodes by depth (inputs left, output right)');
+    const lay = read('overlay/scratch-gui/src/lib/bw-fpga/auto-layout.js');
+    assert.match(lay, /export function layerPositions/, 'a pure topological layout exists (tested without a browser)');
+    assert.match(lay, /visiting\.has\(id\)/, 'the layering must be cycle-safe (sequential feedback)');
+});
+
 // ── output devices: an LED and a seven-segment display that light in Run ──
 //
 // The far end of a circuit is where bits become something you can SEE. The
@@ -858,7 +878,7 @@ test('the palette offers LED and seven-segment output devices that light in Run 
 
 test('display devices are instruments — dropped from the synthesised model, not emitted as HDL', () => {
     const bridge = read('overlay/scratch-gui/src/lib/bw-fpga/gate-builder-rf.js');
-    assert.match(bridge, /DISPLAY_KINDS = new Set\(\['seg7', 'led'\]\)/,
+    assert.match(bridge, /DISPLAY_KINDS = new Set\(\['seg7', 'led'/,
         'the bridge must know display kinds are instruments');
     assert.match(bridge, /filter\(n => !DISPLAY_KINDS\.has/, 'display nodes are dropped from the model');
     assert.match(bridge, /shown\.has\(e\.source\) && shown\.has\(e\.target\)/,
@@ -872,4 +892,79 @@ test('the seven-segment core is pure: a hex font, a decoder, and a shared face',
     assert.match(dev, /export function sevenSegSvg/, 'a shared SVG face for the canvas and the widget');
     assert.match(dev, /import \{synthesizeTruthTable, truthTableFrom\}/,
         'the decoder is built by the tested truth-table synthesiser, not hand-wired');
+});
+
+// ── logic minimisation: truth-table→circuit yields a designed circuit ──
+test('the synthesiser can minimise (Quine–McCluskey), and the modal offers it', () => {
+    const syn = read('overlay/scratch-gui/src/lib/bw-fpga/synthesize.js');
+    assert.match(syn, /import \{minimizeOutput\}/, 'the synthesiser uses the pure minimiser');
+    assert.match(syn, /\{minimize = false\}/, 'minimising is an option (default off; the modal turns it on)');
+    const min = read('overlay/scratch-gui/src/lib/bw-fpga/minimize.js');
+    assert.match(min, /export function primeImplicants/, 'Quine–McCluskey prime implicants (pure, tested)');
+    assert.match(min, /export function minimizeOutput/, 'a per-output SOP minimiser');
+    const modal = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-truth-table.jsx');
+    assert.match(modal, /data-testid="bw-fpga-tt-minimize"/, 'a minimise checkbox');
+    assert.match(modal, /tableRows\(\)\}, \{minimize\}\)/, 'Generate honours the checkbox');
+    assert.match(modal, /data-testid="bw-fpga-tt-gatehint"/, 'a gate-count hint teaches what minimising saves');
+});
+
+test('the 7-seg decoder is a minimised, droppable block laid out as a schematic', () => {
+    const b = read('overlay/scratch-gui/src/lib/bw-fpga/builtins.js');
+    assert.match(b, /id: 'seg7_decoder'/, 'the decoder is a palette Block');
+    assert.match(b, /sevenSegDecoderModel\(\)/, 'built from the tested decoder model');
+    const dev = read('overlay/scratch-gui/src/lib/bw-fpga/output-devices.js');
+    assert.match(dev, /synthesizeTruthTable\(table, \{minimize: true\}\)/, 'the decoder is minimised (309→~78 gates), else it is undroppable');
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /modelToReactFlow\(item\.model, layerPositions\(item\.model\)\)/, 'a dropped block is laid out, not zig-zagged');
+});
+
+// ── undo/redo: a real editor steps back ──
+test('the canvas has undo/redo (buttons + Ctrl-Z), snapshotting before edits', () => {
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /const takeSnapshot = /, 'a snapshot-before-edit primitive');
+    assert.match(ui, /const undo = /, 'an undo');
+    assert.match(ui, /const redo = /, 'a redo');
+    assert.match(ui, /data-testid="bw-fpga-rf-undo"/, 'an Undo button');
+    assert.match(ui, /data-testid="bw-fpga-rf-redo"/, 'a Redo button');
+    // snapshots must guard the discrete edits, or undo has nothing to step back to
+    for (const site of [/const placeNode = \(item, position\) => \{\s*takeSnapshot\(\)/,
+        /onConnect = React\.useCallback\(params => \{ takeSnapshot\(\)/,
+        /const loadModel = model => \{\s*takeSnapshot\(\)/,
+        /const deleteNode = id => \{\s*takeSnapshot\(\)/]) {
+        assert.match(ui, site, `a mutation is not snapshotted: ${site}`);
+    }
+    assert.match(ui, /onKeyDownCapture=\{onCanvasKeyDown\}/, 'keyboard undo/redo + snapshot-before-delete');
+    assert.match(ui, /e\.shiftKey\) redo\(\); else undo\(\)/, 'Ctrl-Z undo, Ctrl-Shift-Z redo');
+    assert.match(ui, /onNodeDragStart=\{\(\) => takeSnapshot\(\)\}/, 'a move is undoable too');
+});
+
+// ── cross-tab: the FPGA outputs as a seven-segment number (opt-in) ──
+test('the FPGA tab can mirror its outputs as a seven-segment digit', () => {
+    const tab = codeOnly(read(TAB));
+    assert.match(tab, /data-testid="bw-fpga-show-seg7"/, 'a "show as 7-seg" control');
+    assert.match(tab, /dispatchEvent\(new CustomEvent\('bw-fpga-seg7'/,
+        'it must ask gui.jsx to make the seven-segment widget');
+    const gui = codeOnly(read(GUI));
+    assert.match(gui, /addEventListener\('bw-fpga-seg7'/, 'gui.jsx owns the panel and creates the widget');
+    assert.match(gui, /addWidget\(SEG7_NAME, 'sevenseg'/, 'a real sevenseg widget, not a bargraph');
+    assert.match(gui, /setSevenSegValue\(SEG7_NAME, pinsToValue\(leds\)\)/,
+        'bw-fpga-output must drive the digit with the folded pin value');
+    // gated behind the build flag like the rest of the mirror
+    const at = gui.indexOf("addEventListener('bw-fpga-seg7'");
+    const guard = gui.lastIndexOf('if (!FPGA_BUILT) return undefined;', at);
+    assert.ok(guard > 0 && guard < at, 'the seg7 mirror must be inside the FPGA_BUILT-gated effect');
+    const pv = read('overlay/scratch-gui/src/lib/bw-fpga/pin-value.js');
+    assert.match(pv, /export function pinsToValue/, 'a pure LSB-first pin folder (tested without a browser)');
+});
+
+// ── LED bank: several bits shown at once, one device ──
+test('the palette offers an LED bank that lights per bit in Run mode', () => {
+    const cat = read('overlay/scratch-gui/src/lib/bw-fpga/palette-catalog.js');
+    assert.match(cat, /kind: 'ledbank', label: 'LED bank'/, 'an LED bank device');
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /ledbank: LedBankNode/, 'the bank renders as a node');
+    assert.match(ui, /item\.kind === 'ledbank'/, 'a bank can be dropped');
+    assert.match(ui, /ledBankValues\(n\.id, edges, live\.values, n\.data\.bits/, 'each bit lights from its own input');
+    const bridge = read('overlay/scratch-gui/src/lib/bw-fpga/gate-builder-rf.js');
+    assert.match(bridge, /DISPLAY_KINDS = new Set\(\['seg7', 'led', 'ledbank'\]\)/, 'the bank is an instrument, dropped from the netlist');
 });

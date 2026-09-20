@@ -14,6 +14,7 @@ export function TruthTableModal ({onGenerate, onClose}) {
     const [inStr, setInStr] = React.useState('a, b');
     const [outStr, setOutStr] = React.useState('y');
     const [bits, setBits] = React.useState({}); // `${row}:${out}` -> 0|1
+    const [minimize, setMinimize] = React.useState(true);
     const inputs = clean(inStr);
     const outputs = clean(outStr);
     const n = inputs.length;
@@ -22,7 +23,7 @@ export function TruthTableModal ({onGenerate, onClose}) {
     const cell = (ri, o) => (bits[`${ri}:${o}`] ? 1 : 0);
     const toggle = (ri, o) => setBits(b => ({...b, [`${ri}:${o}`]: b[`${ri}:${o}`] ? 0 : 1}));
 
-    const generate = () => {
+    const tableRows = () => {
         const rows = [];
         for (let ri = 0; ri < rowCount; ri++) {
             const row = {};
@@ -30,8 +31,20 @@ export function TruthTableModal ({onGenerate, onClose}) {
             outputs.forEach(o => { row[o] = cell(ri, o); });
             rows.push(row);
         }
-        onGenerate(synthesizeTruthTable({inputs, outputs, rows}));
+        return rows;
     };
+
+    // A live teaching hint: how many gates minimising saves on this table.
+    const gateHint = React.useMemo(() => {
+        if (!rowCount || !outputs.length) return null;
+        try {
+            const spec = {inputs, outputs, rows: tableRows()};
+            const g = m => m.nodes.filter(x => x.kind === 'gate').length;
+            return {min: g(synthesizeTruthTable(spec, {minimize: true})), raw: g(synthesizeTruthTable(spec))};
+        } catch (e) { return null; }
+    }, [inStr, outStr, bits]);
+
+    const generate = () => onGenerate(synthesizeTruthTable({inputs, outputs, rows: tableRows()}, {minimize}));
 
     return (
         <div data-testid="bw-fpga-tt-modal" style={{position: 'fixed', inset: 0, zIndex: 300,
@@ -80,7 +93,19 @@ export function TruthTableModal ({onGenerate, onClose}) {
                 ) : (
                     <div style={{color: '#b91c1c', fontSize: 12}}>{`Enter 1–${MAX_INPUTS} inputs and at least one output.`}</div>
                 )}
-                <div style={{display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12}}>
+                <div style={{display: 'flex', gap: 8, alignItems: 'center', marginTop: 12, fontSize: 12}}>
+                    <label style={{cursor: 'pointer', userSelect: 'none'}}>
+                        <input type="checkbox" checked={minimize} onChange={e => setMinimize(e.target.checked)}
+                            data-testid="bw-fpga-tt-minimize" /> {'minimise (Quine–McCluskey)'}
+                    </label>
+                    {gateHint ? (
+                        <span data-testid="bw-fpga-tt-gatehint" style={{color: '#64748b'}}>
+                            {minimize
+                                ? `${gateHint.min} gate${gateHint.min === 1 ? '' : 's'}${gateHint.min < gateHint.raw ? ` (${gateHint.raw} raw)` : ''}`
+                                : `${gateHint.raw} gates (${gateHint.min} minimised)`}
+                        </span>
+                    ) : null}
+                    <span style={{flex: 1}} />
                     <button type="button" onClick={onClose} style={{cursor: 'pointer'}}>{'Cancel'}</button>
                     <button type="button" onClick={generate} disabled={!rowCount || !outputs.length}
                         data-testid="bw-fpga-tt-generate"
