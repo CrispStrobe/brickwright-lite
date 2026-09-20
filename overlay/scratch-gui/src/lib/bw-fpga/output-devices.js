@@ -117,6 +117,10 @@ export const DISPLAY_KINDS = Object.freeze(new Set(['seg7', 'led']));
 /** The 4-bit value driving a seven-segment device, read from the live values on
  *  its d0..d3 inputs (unconnected/unknown bits read 0). React-Flow-edge shape. */
 export function seg7Value (nodeId, rfEdges, values) {
+    // A single BUS wire on the `d` handle carries the whole value (a register or
+    // counter feeds it directly); otherwise assemble it bit-by-bit from d0..d3.
+    const bus = (rfEdges || []).find(x => x.target === nodeId && x.targetHandle === 'd');
+    if (bus && typeof values[bus.source] === 'number') return values[bus.source];
     let v = 0;
     for (let i = 0; i < 4; i++) {
         const e = (rfEdges || []).find(x => x.target === nodeId && x.targetHandle === `d${i}`);
@@ -134,6 +138,13 @@ export function ledValue (nodeId, rfEdges, values) {
 /** An LED bank shows several bits at once — one device instead of N LEDs. Its
  *  per-bit live state, read from inputs d0..d(bits-1) (each 0/1/undefined). */
 export function ledBankValues (nodeId, rfEdges, values, bits) {
+    // A single BUS wire on `d` lights the lamps from that value's bits; else each
+    // lamp reads its own d0..d(bits-1) input.
+    const bus = (rfEdges || []).find(x => x.target === nodeId && x.targetHandle === 'd');
+    if (bus && typeof values[bus.source] === 'number') {
+        const v = values[bus.source];
+        return Array.from({length: bits}, (_, i) => (v >> i) & 1);
+    }
     const out = [];
     for (let i = 0; i < bits; i++) {
         const e = (rfEdges || []).find(x => x.target === nodeId && x.targetHandle === `d${i}`);
