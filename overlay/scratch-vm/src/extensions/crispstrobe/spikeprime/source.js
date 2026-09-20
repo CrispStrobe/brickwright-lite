@@ -21,7 +21,32 @@
   // ============================================================================
   const translations = {
     en: {
-      extensionName: "SPIKE Prime BTC (with Transpile)",
+      extensionName: "LEGO SPIKE Prime",
+      // Connection & modes — the blocks the four folded-in extensions had
+      connectionLabel: "🔌 Connection",
+      connectHub: "connect to hub",
+      connectHubAt: "connect to bridge at [URL]",
+      disconnectHub: "disconnect",
+      isConnected: "connected?",
+      getHubType: "hub type",
+      getFirmwareVersion: "hub firmware version",
+      getConnectionMode: "connection mode",
+      setConnectionMode: "set connection mode to [MODE]",
+      enableStreamingMode: "enable streaming mode",
+      disableStreamingMode: "disable streaming mode",
+      "mode.auto": "auto-detect",
+      "mode.scratchlinkBle": "Scratch Link (BLE)",
+      "mode.scratchlinkBt": "Scratch Link (Bluetooth Classic)",
+      "mode.webBle": "Web Bluetooth",
+      "mode.bridge": "local bridge",
+      // Blocks carried over from the BLE extensions
+      startMotor: "start motor [PORT] at [SPEED]%",
+      stopMotor: "stop motor [PORT] with [ACTION]",
+      motorPairMove: "start steering [STEERING] speed [SPEED]%",
+      displayShowImage: "show built-in image [IMAGE]",
+      setLightMatrixPixel: "set 3x3 light [PORT] pixel x:[X] y:[Y] brightness [BRIGHTNESS]%",
+      getFaceUp: "hub face up",
+      getDistanceIn: "[PORT] distance in [UNIT]",
       // Transpilation Section
       transpilationLabel: "📝 Code Generation",
       transpileProject: "transpile project to SPIKE Python",
@@ -144,7 +169,31 @@
       confirmDelete: "Delete {0} from hub?",
     },
     de: {
-      extensionName: "SPIKE Prime Ultimate (BTC + Transpile)",
+      // Verbindung & Modi
+      connectionLabel: "🔌 Verbindung",
+      connectHub: "mit Hub verbinden",
+      connectHubAt: "mit Bridge verbinden unter [URL]",
+      disconnectHub: "Verbindung trennen",
+      isConnected: "verbunden?",
+      getHubType: "Hub-Typ",
+      getFirmwareVersion: "Hub-Firmware-Version",
+      getConnectionMode: "Verbindungsmodus",
+      setConnectionMode: "Verbindungsmodus auf [MODE] setzen",
+      enableStreamingMode: "Streaming-Modus einschalten",
+      disableStreamingMode: "Streaming-Modus ausschalten",
+      "mode.auto": "automatisch erkennen",
+      "mode.scratchlinkBle": "Scratch Link (BLE)",
+      "mode.scratchlinkBt": "Scratch Link (Bluetooth Classic)",
+      "mode.webBle": "Web Bluetooth",
+      "mode.bridge": "lokale Bridge",
+      startMotor: "Motor [PORT] mit [SPEED]% starten",
+      stopMotor: "Motor [PORT] mit [ACTION] stoppen",
+      motorPairMove: "Lenkung [STEERING] mit Tempo [SPEED]% starten",
+      displayShowImage: "eingebautes Bild [IMAGE] anzeigen",
+      setLightMatrixPixel: "3x3-Matrix [PORT] Pixel x:[X] y:[Y] Helligkeit [BRIGHTNESS]%",
+      getFaceUp: "Hub-Oberseite",
+      getDistanceIn: "[PORT] Abstand in [UNIT]",
+      extensionName: "LEGO SPIKE Prime",
       // Transpilation Section
       transpilationLabel: "📝 Code-Generierung",
       transpileProject: "Projekt zu SPIKE Python transpilieren",
@@ -264,11 +313,83 @@
         "Zum Hochladen auf SPIKE Prime:\n1. Projekt als .llsp Datei speichern\n2. In SPIKE Prime App öffnen\n3. Zum Hub hochladen\n\nOder Bluetooth-Dateiübertragung nutzen, falls verfügbar.",
       confirmDelete: "{0} vom Hub löschen?",
     },
+    fr: {
+      // Carried over from the two folded-in extensions that shipped French
+      // (legospike_bridge and legospike_ble), re-keyed onto the unified block
+      // names. Keys without a French original fall back to English in t().
+      extensionName: "SPIKE Prime",
+      connectionLabel: "🔌 Connexion",
+      connectHub: "se connecter au SPIKE Prime",
+      connectHubAt: "🔌 se connecter à [URL]",
+      disconnectHub: "déconnecter",
+      isConnected: "connecté ?",
+      getHubType: "type de hub",
+      getFirmwareVersion: "version du micrologiciel du hub",
+      getConnectionMode: "mode de connexion",
+      setConnectionMode: "définir le mode de connexion sur [MODE]",
+      enableStreamingMode: "activer le mode diffusion",
+      disableStreamingMode: "désactiver le mode diffusion",
+      "mode.auto": "détection automatique",
+      "mode.scratchlinkBle": "Scratch Link (BLE)",
+      "mode.scratchlinkBt": "Scratch Link (Bluetooth Classic)",
+      "mode.webBle": "Web Bluetooth",
+      "mode.bridge": "pont local",
+      motorRunFor: "[PORT] tourne [DIRECTION] pendant [VALUE] [UNIT]",
+      motorStart: "[PORT] démarrer moteur [DIRECTION]",
+      motorStop: "[PORT] arrêter moteur",
+      motorSetSpeed: "[PORT] définir vitesse sur [SPEED] %",
+      getPosition: "[PORT] position",
+      getRelativePosition: "position du moteur [PORT]",
+      startMotor: "démarrer moteur [PORT] à [SPEED]%",
+      stopMotor: "arrêter moteur [PORT] avec [ACTION]",
+      displayText: "écrire [TEXT]",
+      displayImage: "allumer [MATRIX]",
+      displayPattern: "afficher motif [PATTERN]",
+      displayClear: "éteindre les pixels",
+      setPixel: "définir pixel [X] [Y] sur [BRIGHTNESS] %",
+      setLightMatrixPixel:
+        "définir matrice 3x3 [PORT] pixel x:[X] y:[Y] luminosité [BRIGHTNESS]%",
+      getAngle: "angle [AXIS]",
+      getAcceleration: "accélération [AXIS]",
+      resetYaw: "réinitialiser l'angle de lacet",
+      getDistance: "[PORT] distance",
+      getDistanceIn: "[PORT] distance en [UNIT]",
+      getColor: "[PORT] couleur",
+      getForce: "[PORT] force",
+      isForceSensorPressed: "capteur de force [PORT] pressé ?",
+      getFaceUp: "hub face en haut",
+      whenGesture: "quand le hub [GESTURE]",
+      playBeep: "bip [FREQUENCY] Hz pendant [DURATION] ms",
+      runPythonCommand: "exécuter Python : [CODE]",
+      stopSound: "arrêter tous les sons",
+      getBatteryLevel: "niveau de batterie %",
+      getTimer: "minuteur",
+      resetTimer: "réinitialiser minuteur",
+      getReplOutput: "sortie REPL",
+      clearReplOutput: "effacer la sortie REPL",
+    },
   };
 
   // ============================================================================
   // LANGUAGE DETECTION
   // ============================================================================
+  /**
+   * Which translation table a BCP-47 locale tag should use.
+   *
+   * Two of the extensions folded into this one shipped French; the SPIKE
+   * extension this file grew from only ever chose between German and English,
+   * so a French user would have silently lost their translations in the merge.
+   * Deciding it once, from the tables that actually exist, is also what stops
+   * the next added language from needing seven edits.
+   */
+  const pickLang = (tag) => {
+    const lower = String(tag || "").toLowerCase();
+    const match = Object.keys(translations).find(
+      (code) => code !== "en" && lower.startsWith(code)
+    );
+    return match || "en";
+  };
+
   function detectLanguage() {
     const results = {};
     let finalLanguage = "en";
@@ -352,9 +473,7 @@
       results.reduxStore !== "not available"
     ) {
       console.log("🌍 [SPIKE] ✓ Using Redux store locale:", results.reduxStore);
-      finalLanguage = results.reduxStore.toLowerCase().startsWith("de")
-        ? "de"
-        : "en";
+      finalLanguage = pickLang(results.reduxStore);
     } else if (
       results.turboWarpLocalStorage &&
       typeof results.turboWarpLocalStorage === "string" &&
@@ -364,11 +483,7 @@
         "🌍 [SPIKE] ✓ Using TurboWarp localStorage:",
         results.turboWarpLocalStorage
       );
-      finalLanguage = results.turboWarpLocalStorage
-        .toLowerCase()
-        .startsWith("de")
-        ? "de"
-        : "en";
+      finalLanguage = pickLang(results.turboWarpLocalStorage);
     } else if (
       results.scratchVMLocale &&
       typeof results.scratchVMLocale === "string" &&
@@ -378,9 +493,7 @@
         "🌍 [SPIKE] ✓ Using Scratch VM locale:",
         results.scratchVMLocale
       );
-      finalLanguage = results.scratchVMLocale.toLowerCase().startsWith("de")
-        ? "de"
-        : "en";
+      finalLanguage = pickLang(results.scratchVMLocale);
     } else if (
       results.documentLang &&
       typeof results.documentLang === "string" &&
@@ -391,9 +504,7 @@
         "🌍 [SPIKE] ✓ Using document.documentElement.lang:",
         results.documentLang
       );
-      finalLanguage = results.documentLang.toLowerCase().startsWith("de")
-        ? "de"
-        : "en";
+      finalLanguage = pickLang(results.documentLang);
     } else if (
       results.navigatorLanguage &&
       typeof results.navigatorLanguage === "string" &&
@@ -403,9 +514,7 @@
         "🌍 [SPIKE] ✓ Using navigator.language:",
         results.navigatorLanguage
       );
-      finalLanguage = results.navigatorLanguage.toLowerCase().startsWith("de")
-        ? "de"
-        : "en";
+      finalLanguage = pickLang(results.navigatorLanguage);
     } else if (
       results.navigatorLanguages &&
       Array.isArray(results.navigatorLanguages) &&
@@ -415,11 +524,7 @@
         "🌍 [SPIKE] ✓ Using navigator.languages[0]:",
         results.navigatorLanguages[0]
       );
-      finalLanguage = results.navigatorLanguages[0]
-        .toLowerCase()
-        .startsWith("de")
-        ? "de"
-        : "en";
+      finalLanguage = pickLang(results.navigatorLanguages[0]);
     } else {
       console.log("🌍 [SPIKE] ✗ No locale detected, using default: en");
     }
@@ -458,9 +563,7 @@
           const currentLocale = state.locales?.locale;
           if (currentLocale && currentLocale !== lastKnownLocale) {
             lastKnownLocale = currentLocale;
-            const newLang = currentLocale.toLowerCase().startsWith("de")
-              ? "de"
-              : "en";
+            const newLang = pickLang(currentLocale);
             if (newLang !== currentLang) {
               currentLang = newLang;
               console.log(
@@ -4332,6 +4435,82 @@ continuous_sensor_loop()
         blockIconURI: iconURI,
         showStatusButton: true,
         blocks: [
+          // Connection Section
+          //
+          // These are what the four other SPIKE extensions each offered in
+          // their own spelling. The hub connects through the status button
+          // like any Scratch peripheral; these blocks exist so a project can
+          // also connect, check, and choose a route from inside the script —
+          // which is what `spikeprimeble`, `spikeprimeBridge` and
+          // `legospikeprimeBLE` let it do, and what would otherwise be lost.
+          {
+            blockType: BlockType.LABEL,
+            text: t("connectionLabel"),
+          },
+          {
+            opcode: "connectHub",
+            blockType: BlockType.COMMAND,
+            text: t("connectHub"),
+          },
+          {
+            opcode: "connectHubAt",
+            blockType: BlockType.COMMAND,
+            text: t("connectHubAt"),
+            arguments: {
+              URL: {
+                type: ArgumentType.STRING,
+                defaultValue: "localhost:8081",
+              },
+            },
+          },
+          {
+            opcode: "disconnectHub",
+            blockType: BlockType.COMMAND,
+            text: t("disconnectHub"),
+          },
+          {
+            opcode: "isConnected",
+            blockType: BlockType.BOOLEAN,
+            text: t("isConnected"),
+          },
+          {
+            opcode: "getHubType",
+            blockType: BlockType.REPORTER,
+            text: t("getHubType"),
+          },
+          {
+            opcode: "getFirmwareVersion",
+            blockType: BlockType.REPORTER,
+            text: t("getFirmwareVersion"),
+          },
+          {
+            opcode: "getConnectionMode",
+            blockType: BlockType.REPORTER,
+            text: t("getConnectionMode"),
+          },
+          {
+            opcode: "setConnectionMode",
+            blockType: BlockType.COMMAND,
+            text: t("setConnectionMode"),
+            arguments: {
+              MODE: {
+                type: ArgumentType.STRING,
+                menu: "CONNECTION_MODE",
+                defaultValue: "auto",
+              },
+            },
+          },
+          {
+            opcode: "enableStreamingMode",
+            blockType: BlockType.COMMAND,
+            text: t("enableStreamingMode"),
+          },
+          {
+            opcode: "disableStreamingMode",
+            blockType: BlockType.COMMAND,
+            text: t("disableStreamingMode"),
+          },
+
           // Transpilation Section
           {
             blockType: BlockType.LABEL,
@@ -4468,6 +4647,18 @@ continuous_sensor_loop()
             },
           },
           {
+            // `legospikeprimeBLE` steered and set the pair speed together.
+            // `steer` leaves the speed at whatever setMovementSpeed last set,
+            // so both behaviours stay reachable.
+            opcode: "motorPairMove",
+            text: t("motorPairMove"),
+            blockType: BlockType.COMMAND,
+            arguments: {
+              STEERING: { type: ArgumentType.NUMBER, defaultValue: 0 },
+              SPEED: { type: ArgumentType.NUMBER, defaultValue: 50 },
+            },
+          },
+          {
             opcode: "startTank",
             text: t("startTank"),
             blockType: BlockType.COMMAND,
@@ -4553,6 +4744,41 @@ continuous_sensor_loop()
                 type: ArgumentType.STRING,
                 menu: "MULTIPLE_PORT",
                 defaultValue: "A",
+              },
+            },
+          },
+          {
+            // `spikeprimeble` combined "set the speed" and "start turning" in
+            // one block. Kept as its own block rather than folded into
+            // motorStart, whose DIRECTION argument means something else.
+            opcode: "startMotor",
+            text: t("startMotor"),
+            blockType: BlockType.COMMAND,
+            arguments: {
+              PORT: {
+                type: ArgumentType.STRING,
+                menu: "MULTIPLE_PORT",
+                defaultValue: "A",
+              },
+              SPEED: { type: ArgumentType.NUMBER, defaultValue: 75 },
+            },
+          },
+          {
+            // motorStop with an explicit stop action, as `spikeprimeble` had
+            // it. motorStop keeps using the port's configured stop action.
+            opcode: "stopMotor",
+            text: t("stopMotor"),
+            blockType: BlockType.COMMAND,
+            arguments: {
+              PORT: {
+                type: ArgumentType.STRING,
+                menu: "MULTIPLE_PORT",
+                defaultValue: "A",
+              },
+              ACTION: {
+                type: ArgumentType.STRING,
+                menu: "STOP_ACTION",
+                defaultValue: "brake",
               },
             },
           },
@@ -4684,6 +4910,17 @@ continuous_sensor_loop()
             opcode: "displayClear",
             text: t("displayClear"),
             blockType: BlockType.COMMAND,
+          },
+          {
+            // The 3.x firmware carries a table of built-in images addressed by
+            // number; `displayImage` instead takes a 25-pixel bitmap. Neither
+            // replaces the other, so both are offered.
+            opcode: "displayShowImage",
+            text: t("displayShowImage"),
+            blockType: BlockType.COMMAND,
+            arguments: {
+              IMAGE: { type: ArgumentType.NUMBER, defaultValue: 1 },
+            },
           },
           {
             opcode: "setPixel",
@@ -4903,6 +5140,25 @@ continuous_sensor_loop()
               },
             },
           },
+          {
+            // The 3x3 colour matrix accessory, one pixel at a time. This is a
+            // different device from the hub's own 5x5 display, which is what
+            // setPixel addresses — the two were easy to confuse across the old
+            // extensions and are deliberately kept apart here.
+            opcode: "setLightMatrixPixel",
+            text: t("setLightMatrixPixel"),
+            blockType: BlockType.COMMAND,
+            arguments: {
+              PORT: {
+                type: ArgumentType.STRING,
+                menu: "PORT",
+                defaultValue: "C",
+              },
+              X: { type: ArgumentType.NUMBER, defaultValue: 1 },
+              Y: { type: ArgumentType.NUMBER, defaultValue: 1 },
+              BRIGHTNESS: { type: ArgumentType.NUMBER, defaultValue: 100 },
+            },
+          },
           "---",
           // Gestures
           {
@@ -4932,6 +5188,14 @@ continuous_sensor_loop()
           {
             opcode: "getOrientation",
             text: t("getOrientation"),
+            blockType: BlockType.REPORTER,
+          },
+          {
+            // Which face is up, as a name. Distinct from getOrientation, which
+            // reports the hub's orientation state, and from getAngle, which
+            // reports a number.
+            opcode: "getFaceUp",
+            text: t("getFaceUp"),
             blockType: BlockType.REPORTER,
           },
           "---",
@@ -5043,6 +5307,28 @@ continuous_sensor_loop()
                 type: ArgumentType.STRING,
                 menu: "PORT",
                 defaultValue: "A",
+              },
+            },
+          },
+          {
+            // getDistance reports centimetres, because that is what it meant
+            // on the 2.x hub it came from and projects depend on it. The BLE
+            // extensions reported millimetres; those readers migrate to this
+            // block with UNIT already set, so neither kind of project changes
+            // what it reads. See spike-legacy-migration.js.
+            opcode: "getDistanceIn",
+            text: t("getDistanceIn"),
+            blockType: BlockType.REPORTER,
+            arguments: {
+              PORT: {
+                type: ArgumentType.STRING,
+                menu: "PORT",
+                defaultValue: "A",
+              },
+              UNIT: {
+                type: ArgumentType.STRING,
+                menu: "DISTANCE_UNIT",
+                defaultValue: "cm",
               },
             },
           },
@@ -5291,6 +5577,20 @@ continuous_sensor_loop()
         ],
         menus: {
           PORT: { acceptReporters: true, items: SpikePorts },
+          CONNECTION_MODE: {
+            acceptReporters: true,
+            items: [
+              { value: "auto", text: t("mode.auto") },
+              { value: "scratchlink-ble", text: t("mode.scratchlinkBle") },
+              { value: "scratchlink-bt", text: t("mode.scratchlinkBt") },
+              { value: "web-ble", text: t("mode.webBle") },
+              { value: "bridge", text: t("mode.bridge") },
+            ],
+          },
+          DISTANCE_UNIT: {
+            acceptReporters: true,
+            items: ["cm", "mm", "in", "%"],
+          },
           MULTIPLE_PORT: {
             acceptReporters: true,
             items: [
@@ -6419,6 +6719,190 @@ continuous_sensor_loop()
     }
     exitScript() {
       return this._peripheral.sendPythonCommand("raise SystemExit");
+    }
+
+    // ========================================================================
+    // CONNECTION
+    //
+    // The status button remains the ordinary way to connect. These exist
+    // because the four extensions folded in here let a project connect from
+    // inside a script, and dropping that would be losing a feature even
+    // though the palette looks fuller without it.
+    // ========================================================================
+
+    connectHub() {
+      this._peripheral.scan();
+    }
+
+    connectHubAt(args) {
+      this._peripheral.setBridgeURL(Cast.toString(args.URL));
+      this._peripheral.setMode("bridge");
+      this._peripheral.scan();
+    }
+
+    disconnectHub() {
+      this._peripheral.disconnect();
+    }
+
+    isConnected() {
+      return this._peripheral.isConnected();
+    }
+
+    /**
+     * What the hub said it is — never a guess from the advertised name, which
+     * the user can rename. Empty until the hub has answered.
+     */
+    getHubType() {
+      return this._peripheral.hubDescription;
+    }
+
+    getFirmwareVersion() {
+      return this._peripheral.firmwareVersion;
+    }
+
+    /**
+     * The route in use once connected, or the route that would be tried. The
+     * difference matters: before connecting, "auto" is a policy; after, it is
+     * a fact.
+     */
+    getConnectionMode() {
+      return this._peripheral.resolvedMode || this._peripheral.mode;
+    }
+
+    setConnectionMode(args) {
+      this._peripheral.setMode(Cast.toString(args.MODE));
+    }
+
+    /**
+     * Streaming is the 3.x hub pushing sensor records on an interval. Turning
+     * it off freezes the sensor reporters at their last value, which is what
+     * `legospikeprimeBLE` offered it for. The 2.x hub streams through its
+     * Python sensor loop instead and has no equivalent switch, so this reports
+     * unsupported there rather than silently doing nothing.
+     */
+    enableStreamingMode() {
+      if (!this._peripheral.supports("streaming")) return;
+      this._peripheral.active.setDeviceNotifications(true);
+    }
+
+    disableStreamingMode() {
+      if (!this._peripheral.supports("streaming")) return;
+      this._peripheral.active.setDeviceNotifications(false);
+    }
+
+    // ========================================================================
+    // MOTORS (blocks carried over from the BLE extensions)
+    // ========================================================================
+
+    /** Set the speed and start turning in one step. */
+    startMotor(args) {
+      const ports = this._validatePorts(Cast.toString(args.PORT));
+      const speed = MathUtil.clamp(Cast.toNumber(args.SPEED), -100, 100);
+      const promises = ports.map((port) => {
+        this._peripheral.motorSettings[port].speed = Math.abs(speed);
+        return this._peripheral.sendPythonCommand(
+          `import hub; hub.port.${port}.motor.run_at_speed(${Math.round(speed * 9.3)})`
+        );
+      });
+      return Promise.all(promises).then(() => {});
+    }
+
+    /** Stop with an explicitly named stop action. */
+    stopMotor(args) {
+      const ports = this._validatePorts(Cast.toString(args.PORT));
+      const action = Cast.toString(args.ACTION).trim().toLowerCase();
+      const call =
+        action === "coast" ? "float()" : action === "hold" ? "hold()" : "brake()";
+      const promises = ports.map((port) =>
+        this._peripheral.sendPythonCommand(
+          `import hub; hub.port.${port}.motor.pwm(0); hub.port.${port}.motor.${call}`
+        )
+      );
+      return Promise.all(promises).then(() => {});
+    }
+
+    /** Steer and set the pair speed together. */
+    motorPairMove(args) {
+      const steering = MathUtil.clamp(Cast.toNumber(args.STEERING), -100, 100);
+      const speed = MathUtil.clamp(Cast.toNumber(args.SPEED), -100, 100);
+      const [left, right] = this._peripheral.movementMotors;
+      // Steering biases one wheel against the other: at +100 the inner wheel
+      // reverses, which is what turns the model on the spot.
+      const leftSpeed = Math.round(speed * (steering > 0 ? 1 : 1 + steering / 50) * 9.3);
+      const rightSpeed = Math.round(speed * (steering < 0 ? 1 : 1 - steering / 50) * 9.3);
+      return this._peripheral
+        .sendPythonCommand(
+          `import hub; hub.port.${left}.motor.run_at_speed(${leftSpeed}); ` +
+            `hub.port.${right}.motor.run_at_speed(${rightSpeed})`
+        )
+        .then(() => {});
+    }
+
+    // ========================================================================
+    // DISPLAY
+    // ========================================================================
+
+    /** One of the hub's built-in images, addressed by number. */
+    displayShowImage(args) {
+      const image = Math.max(1, Math.round(Cast.toNumber(args.IMAGE)));
+      return this._peripheral.sendPythonCommand(
+        `import hub; hub.display.show(hub.Image(hub.Image.ALL_IMAGES[${image - 1}]) ` +
+          `if ${image} <= len(hub.Image.ALL_IMAGES) else hub.Image.HAPPY)`
+      );
+    }
+
+    /**
+     * One pixel of a 3x3 colour matrix accessory on a port. Not the hub's own
+     * 5x5 display — that is setPixel.
+     */
+    setLightMatrixPixel(args) {
+      const port = Cast.toString(args.PORT).trim().toUpperCase();
+      const x = MathUtil.clamp(Math.round(Cast.toNumber(args.X)), 0, 2);
+      const y = MathUtil.clamp(Math.round(Cast.toNumber(args.Y)), 0, 2);
+      const brightness = MathUtil.clamp(Math.round(Cast.toNumber(args.BRIGHTNESS)), 0, 100);
+      const index = y * 3 + x;
+      const level = Math.round((brightness / 100) * 10);
+      return this._peripheral.sendPythonCommand(
+        `import hub; _m = hub.port.${port}.device; _p = list(_m.get(5) or [0]*9); ` +
+          `_p[${index}] = ${level}; _m.mode(5, bytes(_p))`
+      );
+    }
+
+    // ========================================================================
+    // SENSORS
+    // ========================================================================
+
+    /** Which face of the hub points up, as a name. */
+    getFaceUp() {
+      return this._peripheral.faceUp;
+    }
+
+    /**
+     * The distance sensor in a unit the project names.
+     *
+     * The driver holds centimetres (and, on 3.x, the raw millimetres it was
+     * given), so every unit here is a conversion of a measured figure rather
+     * than a re-reading of the sensor.
+     */
+    getDistanceIn(args) {
+      const port = Cast.toString(args.PORT).trim().toUpperCase();
+      const portData = this._peripheral.portValues[port];
+      if (!portData || portData.type !== "distance") return 0;
+      const cm = Cast.toNumber(portData.distance);
+      switch (Cast.toString(args.UNIT).trim().toLowerCase()) {
+        case "mm":
+          // Prefer the figure the 3.x hub actually sent over cm*10, so a
+          // millimetre reader gets the sensor's own resolution back.
+          return portData.distanceMM === undefined ? cm * 10 : portData.distanceMM;
+        case "in":
+          return cm / 2.54;
+        case "%":
+          // The SPIKE distance sensor's useful range is 0-200 cm; the percent
+          // form is what the official app shows.
+          return MathUtil.clamp((cm / 200) * 100, 0, 100);
+        default:
+          return cm;
+      }
     }
 
     // Utility
