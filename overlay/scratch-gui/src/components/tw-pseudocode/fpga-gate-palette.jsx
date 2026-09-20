@@ -1,6 +1,7 @@
 import React from 'react';
 import {gateShape} from '../../lib/bw-fpga/glyphs.js';
 import {paletteItems} from '../../lib/bw-fpga/palette-catalog.js';
+import {sevenSegSvg} from '../../lib/bw-fpga/output-devices.js';
 
 /**
  * The gate-builder palette — a categorised, searchable sidebar you drag parts
@@ -20,6 +21,16 @@ const Thumb = ({item}) => {
                 style={{overflow: 'visible', flex: '0 0 auto'}}
                 dangerouslySetInnerHTML={{__html: gateShape({type: item.gtype, x: 4, y: 2, width: 48, height: 40})}} />
         );
+    }
+    if (item.kind === 'seg7') {
+        return (
+            <svg width={22} height={30} viewBox="0 0 100 160" style={{flex: '0 0 auto', background: '#0f172a', borderRadius: 3}}
+                dangerouslySetInnerHTML={{__html: sevenSegSvg(8)}} />
+        );
+    }
+    if (item.kind === 'led') {
+        return <span style={{flex: '0 0 auto', width: 18, height: 18, borderRadius: '50%',
+            border: '2px solid #dc2626', background: 'radial-gradient(circle at 35% 30%, #fecaca, #ef4444 70%)'}} />;
     }
     const bg = item.kind === 'in' ? '#e0f2fe' : item.kind === 'out' ? '#fef9c3'
         : item.kind === 'memory' ? '#f0fdfa' : '#ede9fe';

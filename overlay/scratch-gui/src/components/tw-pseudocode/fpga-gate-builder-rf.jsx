@@ -18,6 +18,7 @@ import {NodeInspector, NodeContextMenu} from './fpga-node-inspector.jsx';
 import {evalModel, stepClock} from '../../lib/bw-fpga/gate-eval.js';
 import {EXAMPLES} from '../../lib/bw-fpga/examples.js';
 import {BUILTINS} from '../../lib/bw-fpga/builtins.js';
+import {sevenSegSvg, seg7Value, ledValue} from '../../lib/bw-fpga/output-devices.js';
 import {CHALLENGES, challengeById, isUnlocked} from '../../lib/bw-fpga/challenges.js';
 import {grade} from '../../lib/bw-fpga/grader.js';
 import FpgaChallengePanel from './fpga-challenges.jsx';
@@ -196,7 +197,44 @@ const TunnelNode = ({data}) => (
     </div>
 );
 
-const nodeTypes = {gate: GateNode, io: IoNode, instance: InstanceNode, memory: MemoryNode, const: ConstNode, tunnel: TunnelNode};
+// An LED output device — a viewing instrument, not logic. One input; in Run mode
+// it glows when the wire feeding it is 1 (data.live = 1|0|undefined).
+const LedNode = ({data}) => {
+    const on = data.live === 1;
+    const known = data.live === 1 || data.live === 0;
+    return (
+        <div style={{position: 'relative', width: 44, height: 44, borderRadius: '50%',
+            border: `2px solid ${on ? '#dc2626' : '#94a3b8'}`,
+            background: on ? 'radial-gradient(circle at 35% 30%, #fecaca, #ef4444 70%)' : (known ? '#f1f5f9' : '#f8fafc'),
+            boxShadow: on ? '0 0 12px 3px rgba(239,68,68,0.6)' : 'none',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 9, color: on ? '#7f1d1d' : '#94a3b8', fontWeight: 'bold'}}>
+            <Handle type="target" position={Position.Left} id="in" style={{background: '#0284c7'}} />
+            {'LED'}
+        </div>
+    );
+};
+
+// A seven-segment display — an instrument reading four input bits (d0..d3) and
+// showing the hex digit (via the SHARED seven-segment face). data.value is set
+// in Run mode from the live values on its inputs.
+const Seg7Node = ({data}) => {
+    const value = typeof data.value === 'number' ? data.value : null;
+    const svg = sevenSegSvg(value == null ? {} : value);
+    return (
+        <div style={{position: 'relative', padding: '6px 8px', border: '1.6px solid #334155',
+            borderRadius: 6, background: '#0f172a'}}>
+            {['d0', 'd1', 'd2', 'd3'].map((p, i) => (
+                <Handle key={p} type="target" position={Position.Left} id={p}
+                    style={{top: `${((i + 1) / 5) * 100}%`, background: '#0284c7'}} />
+            ))}
+            <svg width={34} height={54} viewBox="0 0 100 160" style={{display: 'block'}}
+                dangerouslySetInnerHTML={{__html: svg}} />
+        </div>
+    );
+};
+
+const nodeTypes = {gate: GateNode, io: IoNode, instance: InstanceNode, memory: MemoryNode, const: ConstNode, tunnel: TunnelNode, led: LedNode, seg7: Seg7Node};
 
 // A starter so the canvas is not blank: a AND b → y.
 const STARTER = () => modelToReactFlow({
@@ -310,6 +348,10 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                 const n = ns.filter(x => x.data.kind === 'tunnel').length + 1;
                 return [...ns, {id: nid('t'), type: 'tunnel', position, data: {kind: 'tunnel', name: `net${n}`}}];
             });
+        } else if (item.kind === 'led') {
+            setNodes(ns => [...ns, {id: nid('led'), type: 'led', position, data: {kind: 'led'}}]);
+        } else if (item.kind === 'seg7') {
+            setNodes(ns => [...ns, {id: nid('seg'), type: 'seg7', position, data: {kind: 'seg7'}}]);
         } else if (item.kind === 'template' && item.model) {
             // Drop a starter near the cursor, id-remapped so it MERGES onto the
             // canvas instead of clobbering whatever is already there.
@@ -401,9 +443,15 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
         })
         : edges;
     const shownNodes = live
-        ? nodes.map(n => (n.data.kind === 'in' || n.data.kind === 'out'
-            ? {...n, data: {...n.data, live: n.data.kind === 'out' ? live.outputs[n.data.name] : (inputs[n.data.name] ? 1 : 0)}}
-            : n))
+        ? nodes.map(n => {
+            const k = n.data.kind;
+            if (k === 'in' || k === 'out') {
+                return {...n, data: {...n.data, live: k === 'out' ? live.outputs[n.data.name] : (inputs[n.data.name] ? 1 : 0)}};
+            }
+            if (k === 'led') return {...n, data: {...n.data, live: ledValue(n.id, edges, live.values)}};
+            if (k === 'seg7') return {...n, data: {...n.data, value: seg7Value(n.id, edges, live.values)}};
+            return n;
+        })
         : nodes;
     const onNodeClick = (e, node) => {
         if (running && node.data.kind === 'in') {

@@ -20,8 +20,14 @@
  * @param {Array} [modules]  saved subcircuits ({name, nodes, edges, ports}) to compose
  * @returns {{modules?: Array, nodes: Array, edges: Array}} our model
  */
+// Display devices (LED, seven-segment) are viewing instruments, not logic: they
+// are dropped from the synthesised model, along with the edges that feed them.
+const DISPLAY_KINDS = new Set(['seg7', 'led']);
+
 export function reactFlowToModel (rfNodes, rfEdges, modules) {
-    const nodes = (rfNodes || []).map(n => {
+    const shown = new Set();
+    const nodes = (rfNodes || []).filter(n => !DISPLAY_KINDS.has((n.data || {}).kind)).map(n => {
+        shown.add(n.id);
         const d = n.data || {};
         const node = {id: n.id, kind: d.kind};
         if (d.gtype != null) node.type = d.gtype;
@@ -33,7 +39,7 @@ export function reactFlowToModel (rfNodes, rfEdges, modules) {
         if (d.addrWidth != null) node.addrWidth = d.addrWidth;
         return node;
     });
-    const edges = (rfEdges || []).map(e => ({
+    const edges = (rfEdges || []).filter(e => shown.has(e.source) && shown.has(e.target)).map(e => ({
         from: {node: e.source, port: e.sourceHandle || 'out'},
         to: {node: e.target, port: e.targetHandle || 'in'}
     }));

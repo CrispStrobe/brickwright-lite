@@ -46,3 +46,10 @@ test('a blocks list becomes a Blocks section that drops as templates', () => {
     assert.equal(blocks.items[0].kind, 'template', 'blocks drop via the template path');
     assert.equal(blocks.items[0].label, '1:2 Demux');
 });
+
+test('a Display section offers LED and seven-segment output devices', () => {
+    const cat = buildPaletteCatalog();
+    const display = cat.find(s => s.id === 'display');
+    assert.ok(display, 'a Display section appears');
+    assert.deepEqual(display.items.map(i => i.kind), ['led', 'seg7']);
+});
