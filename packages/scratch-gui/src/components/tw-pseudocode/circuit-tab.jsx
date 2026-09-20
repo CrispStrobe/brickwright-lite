@@ -121,7 +121,8 @@ class CircuitTab extends React.Component {
         this.state = {Designer: null, ui: null, error: null, reloading: false, stc: null,
             board: null, debugState: null, panel: 'designer', circuit: null, hintDismissed,
             debugHintDismissed, hideStage, debugDock, showInStage, rightPaneHidden,
-            examples: null, examplesError: null, circuitData: null, loadingExample: null,
+            examples: null, examplesError: null, curriculum: null,
+            circuitData: null, loadingExample: null,
             machineBooted: false, pendingExampleTitle: null};
         this.handleRunnerChange = this.handleRunnerChange.bind(this);
         this.handleCircuitReady = this.handleCircuitReady.bind(this);
@@ -167,6 +168,7 @@ class CircuitTab extends React.Component {
         if (this.props.isVisible) {
             this.load();
             this.loadExamples();
+            this.loadCurriculum();
         }
         window.addEventListener('resize', this._measureBox);
         // The File menu's four circuit actions (menu-bar.jsx) dispatch
@@ -492,6 +494,7 @@ class CircuitTab extends React.Component {
         if (this.props.isVisible && !prevProps.isVisible) {
             this.load();
             this.loadExamples();
+            this.loadCurriculum();
             // Re-entering Circuit is the final synchronization point: its
             // persistent debugger is now committed and visible. Re-deliver
             // the retained image so a handoff made while Code owned the tab
@@ -1075,6 +1078,42 @@ class CircuitTab extends React.Component {
             }
         })();
         return this.examplesLoadingPromise;
+    }
+
+    /**
+     * The Codex manifest — the trails, chapters and stations that turn the
+     * gallery into a curriculum instead of a grid of thumbnails.
+     *
+     * CircuitDesigner shows the Codex only when it is handed BOTH `examples`
+     * and `curriculum`, and this host only ever handed it examples — so the
+     * Codex shell, the trails and every word of their narrative shipped dark,
+     * and the gallery was the only way in. Nobody could have noticed from the
+     * app: an absent toggle looks exactly like a feature that does not exist.
+     *
+     * Unlike the gallery, a missing manifest is NOT surfaced as an error. The
+     * gallery is what this tab is for and its absence is a broken build; the
+     * Codex is an additional lens over the same examples, and a build without
+     * it should quietly show the gallery rather than an apology.
+     */
+    async loadCurriculum () {
+        if (this.state.curriculum) return this.state.curriculum;
+        if (this.curriculumLoadingPromise) return this.curriculumLoadingPromise;
+        this.curriculumLoadingPromise = (async () => {
+            try {
+                const res = await fetch('examples/curriculum.json');
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                if (!data || !Array.isArray(data.trails) || data.trails.length === 0) return null;
+                this._markReactUpdate('host:curriculum');
+                this.setState({curriculum: data});
+                return data;
+            } catch (e) {
+                return null;
+            } finally {
+                this.curriculumLoadingPromise = null;
+            }
+        })();
+        return this.curriculumLoadingPromise;
     }
 
     /** Open one of the three first-run journeys through the normal loaders. */
@@ -1846,6 +1885,7 @@ class CircuitTab extends React.Component {
                     performanceProbe={this._performanceProbe}
                     stc={stc}
                     examples={this.state.examples || undefined}
+                    curriculum={this.state.curriculum || undefined}
                     onLoadExample={this.loadExample}
                     board={this.state.board || undefined}
                     debugState={this.state.debugState || undefined}
@@ -2004,7 +2044,7 @@ class CircuitTab extends React.Component {
                             // click so it reads as the current view, not a live selector.
                             if (panel === id && id === 'designer') return;
                             this.setState({panel: id});
-                            if (id === 'examples') this.loadExamples();
+                            if (id === 'examples') { this.loadExamples(); this.loadCurriculum(); }
                         }}
                         title={tabTitles[id]}
                         aria-label={tabTitles[id]}
