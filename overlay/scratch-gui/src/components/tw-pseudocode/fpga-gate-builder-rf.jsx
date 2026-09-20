@@ -18,7 +18,7 @@ import {NodeInspector, NodeContextMenu} from './fpga-node-inspector.jsx';
 import {evalModel, stepClock} from '../../lib/bw-fpga/gate-eval.js';
 import {EXAMPLES} from '../../lib/bw-fpga/examples.js';
 import {BUILTINS} from '../../lib/bw-fpga/builtins.js';
-import {sevenSegSvg, seg7Value, ledValue} from '../../lib/bw-fpga/output-devices.js';
+import {sevenSegSvg, seg7Value, ledValue, ledBankValues} from '../../lib/bw-fpga/output-devices.js';
 import {layerPositions} from '../../lib/bw-fpga/auto-layout.js';
 import {CHALLENGES, challengeById, isUnlocked} from '../../lib/bw-fpga/challenges.js';
 import {grade} from '../../lib/bw-fpga/grader.js';
@@ -235,7 +235,33 @@ const Seg7Node = ({data}) => {
     );
 };
 
-const nodeTypes = {gate: GateNode, io: IoNode, instance: InstanceNode, memory: MemoryNode, const: ConstNode, tunnel: TunnelNode, led: LedNode, seg7: Seg7Node};
+// An LED bank — several bits shown at once as a row of lamps (one device rather
+// than N separate LEDs). data.bits input handles; data.live is a per-bit array.
+const LedBankNode = ({data}) => {
+    const bits = data.bits || 4;
+    const live = data.live || [];
+    return (
+        <div style={{position: 'relative', display: 'flex', gap: 4, padding: '8px 8px',
+            border: '1.6px solid #334155', borderRadius: 6, background: '#0f172a'}}>
+            {Array.from({length: bits}, (_, i) => {
+                const on = live[i] === 1;
+                const known = live[i] === 1 || live[i] === 0;
+                return (
+                    <div key={i} style={{position: 'relative'}}>
+                        <Handle type="target" position={Position.Top} id={`d${i}`}
+                            style={{background: '#0284c7', left: '50%'}} />
+                        <div style={{width: 16, height: 16, borderRadius: '50%',
+                            border: `1.5px solid ${on ? '#f87171' : '#475569'}`,
+                            background: on ? 'radial-gradient(circle at 35% 30%, #fecaca, #ef4444 70%)' : (known ? '#1e293b' : '#0b1220'),
+                            boxShadow: on ? '0 0 8px 2px rgba(239,68,68,0.6)' : 'none'}} />
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
+const nodeTypes = {gate: GateNode, io: IoNode, instance: InstanceNode, memory: MemoryNode, const: ConstNode, tunnel: TunnelNode, led: LedNode, seg7: Seg7Node, ledbank: LedBankNode};
 
 // A starter so the canvas is not blank: a AND b → y.
 const STARTER = () => modelToReactFlow({
@@ -386,6 +412,8 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
             setNodes(ns => [...ns, {id: nid('led'), type: 'led', position, data: {kind: 'led'}}]);
         } else if (item.kind === 'seg7') {
             setNodes(ns => [...ns, {id: nid('seg'), type: 'seg7', position, data: {kind: 'seg7'}}]);
+        } else if (item.kind === 'ledbank') {
+            setNodes(ns => [...ns, {id: nid('bank'), type: 'ledbank', position, data: {kind: 'ledbank', bits: item.bits || 4}}]);
         } else if (item.kind === 'template' && item.model) {
             // Drop a starter near the cursor, id-remapped so it MERGES onto the
             // canvas instead of clobbering whatever is already there. Lay it out
@@ -505,6 +533,7 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
             }
             if (k === 'led') return {...n, data: {...n.data, live: ledValue(n.id, edges, live.values)}};
             if (k === 'seg7') return {...n, data: {...n.data, value: seg7Value(n.id, edges, live.values)}};
+            if (k === 'ledbank') return {...n, data: {...n.data, live: ledBankValues(n.id, edges, live.values, n.data.bits || 4)}};
             return n;
         })
         : nodes;

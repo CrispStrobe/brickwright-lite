@@ -878,7 +878,7 @@ test('the palette offers LED and seven-segment output devices that light in Run 
 
 test('display devices are instruments — dropped from the synthesised model, not emitted as HDL', () => {
     const bridge = read('overlay/scratch-gui/src/lib/bw-fpga/gate-builder-rf.js');
-    assert.match(bridge, /DISPLAY_KINDS = new Set\(\['seg7', 'led'\]\)/,
+    assert.match(bridge, /DISPLAY_KINDS = new Set\(\['seg7', 'led'/,
         'the bridge must know display kinds are instruments');
     assert.match(bridge, /filter\(n => !DISPLAY_KINDS\.has/, 'display nodes are dropped from the model');
     assert.match(bridge, /shown\.has\(e\.source\) && shown\.has\(e\.target\)/,
@@ -955,4 +955,16 @@ test('the FPGA tab can mirror its outputs as a seven-segment digit', () => {
     assert.ok(guard > 0 && guard < at, 'the seg7 mirror must be inside the FPGA_BUILT-gated effect');
     const pv = read('overlay/scratch-gui/src/lib/bw-fpga/pin-value.js');
     assert.match(pv, /export function pinsToValue/, 'a pure LSB-first pin folder (tested without a browser)');
+});
+
+// ── LED bank: several bits shown at once, one device ──
+test('the palette offers an LED bank that lights per bit in Run mode', () => {
+    const cat = read('overlay/scratch-gui/src/lib/bw-fpga/palette-catalog.js');
+    assert.match(cat, /kind: 'ledbank', label: 'LED bank'/, 'an LED bank device');
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /ledbank: LedBankNode/, 'the bank renders as a node');
+    assert.match(ui, /item\.kind === 'ledbank'/, 'a bank can be dropped');
+    assert.match(ui, /ledBankValues\(n\.id, edges, live\.values, n\.data\.bits/, 'each bit lights from its own input');
+    const bridge = read('overlay/scratch-gui/src/lib/bw-fpga/gate-builder-rf.js');
+    assert.match(bridge, /DISPLAY_KINDS = new Set\(\['seg7', 'led', 'ledbank'\]\)/, 'the bank is an instrument, dropped from the netlist');
 });
