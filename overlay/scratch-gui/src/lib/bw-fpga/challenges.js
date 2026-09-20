@@ -76,6 +76,29 @@ export const CHALLENGES = Object.freeze([
         inputs: io(['d0', 'd1', 'd2', 'd3', 's0', 's1']), outputs: io(['y']),
         expect: i => ({y: [i.d0, i.d1, i.d2, i.d3][(i.s1 << 1) | i.s0]})
     },
+    // Minimise steps — graded on SIZE as well as correctness: the design must be
+    // right AND use no more than the minimum (Quine–McCluskey) gate count. This
+    // is where a learner meets Boolean minimisation (the ⊞ Truth table tool's
+    // "minimise" does it, or reason it out). The budget is computed from the
+    // reference, so it is always the true minimum.
+    {
+        id: 'absorb', title: 'Absorption — spot the useless input', requires: ['or', 'and'], minimize: true,
+        brief: 'y = a OR (a AND b). Build it from gates — then notice b never changes the answer, and get it down to the minimum (a single wire, zero gates).',
+        inputs: io(['a', 'b']), outputs: io(['y']),
+        expect: i => ({y: i.a | (i.a & i.b)})
+    },
+    {
+        id: 'consensus', title: 'Consensus — drop the redundant term', requires: ['absorb'], minimize: true,
+        brief: 'y = (a·b) + (¬b·c) + (a·c). The last term is implied by the other two (the consensus theorem) — remove it and reach the minimum.',
+        inputs: io(['a', 'b', 'c']), outputs: io(['y']),
+        expect: i => ({y: (i.a & i.b) | ((i.b ? 0 : 1) & i.c) | (i.a & i.c)})
+    },
+    {
+        id: 'majority_min', title: 'Majority, minimally', requires: ['consensus'], minimize: true,
+        brief: 'Output 1 when at least two of a, b, c are 1 — in as few gates as possible. The minimum is a·b + b·c + a·c with no inverters.',
+        inputs: io(['a', 'b', 'c']), outputs: io(['y']),
+        expect: i => ({y: (i.a + i.b + i.c) >= 2 ? 1 : 0})
+    },
     // Sequential steps — graded by clocking the design (stepClock) through a
     // stimulus, so they need a flip-flop (DFF) and a clk input.
     {
