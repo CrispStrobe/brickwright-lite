@@ -144,7 +144,7 @@ test('a memory node does not break live evaluation of the rest of the design', (
     };
     const {outputs} = evalModel(model, {a: 1, b: 1});
     assert.equal(outputs.y, 1, 'real gates still evaluate with a memory node present');
-    assert.equal(outputs.q, 'x', 'the un-simulated memory output is unknown, not a crash');
+    assert.equal(outputs.q, 0, 'the memory now simulates — its registered read is zero-initialised, not a crash');
     assert.doesNotThrow(() => stepClock(model, {a: 1, b: 1}));
 });
 
@@ -303,4 +303,37 @@ test('a 1-bit toggle flip-flop still toggles after the register fix', () => {
     let st = {}; const seen = [];
     for (let i = 0; i < 6; i++) { seen.push(evalModel(model, {}, st).outputs.q); st = stepClock(model, {}, st); }
     assert.deepEqual(seen, [0, 1, 0, 1, 0, 1]);
+});
+
+// ── live RAM: a synchronous single-port memory holds what you write ──
+test('a 4x4 RAM writes on we and reads back (registered read)', () => {
+    const model = {
+        nodes: [
+            {id: 'addr', kind: 'in', name: 'addr', width: 2}, {id: 'din', kind: 'in', name: 'din', width: 4},
+            {id: 'we', kind: 'in', name: 'we'}, {id: 'clk', kind: 'in', name: 'clk'},
+            {id: 'ram', kind: 'memory', addrWidth: 2, dataWidth: 4}, {id: 'q', kind: 'out', name: 'q', width: 4}
+        ],
+        edges: [
+            {from: {node: 'addr', port: 'out'}, to: {node: 'ram', port: 'addr'}},
+            {from: {node: 'din', port: 'out'}, to: {node: 'ram', port: 'din'}},
+            {from: {node: 'we', port: 'out'}, to: {node: 'ram', port: 'we'}},
+            {from: {node: 'clk', port: 'out'}, to: {node: 'ram', port: 'clk'}},
+            {from: {node: 'ram', port: 'out'}, to: {node: 'q', port: 'in'}}
+        ]
+    };
+    let st = {};
+    const dout = inp => evalModel(model, inp, st).outputs.q;
+    assert.equal(dout({}), 0, 'zero-initialised before any write');
+    st = stepClock(model, {addr: 1, din: 7, we: 1}, st); // mem[1] <= 7, dout <= old mem[1] (0)
+    st = stepClock(model, {addr: 1, we: 0}, st);          // dout <= mem[1] (7)
+    assert.equal(dout({addr: 1}), 7, 'reads back the written word');
+    st = stepClock(model, {addr: 2, din: 3, we: 1}, st);
+    st = stepClock(model, {addr: 2, we: 0}, st);
+    assert.equal(dout({addr: 2}), 3, 'a second address is independent');
+    st = stepClock(model, {addr: 1, we: 0}, st);
+    assert.equal(dout({addr: 1}), 7, 'the first word is unchanged');
+    // we=0 must not overwrite
+    st = stepClock(model, {addr: 1, din: 9, we: 0}, st);
+    st = stepClock(model, {addr: 1, we: 0}, st);
+    assert.equal(dout({addr: 1}), 7, 'a write is gated by we');
 });

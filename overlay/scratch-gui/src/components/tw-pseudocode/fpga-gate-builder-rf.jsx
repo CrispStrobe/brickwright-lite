@@ -188,6 +188,11 @@ const MemoryNode = ({data}) => {
             ))}
             <div>{'\u25A6 RAM'}</div>
             <div style={{fontWeight: 'normal', opacity: 0.75}}>{`${1 << aw}\u00D7${dw}`}</div>
+            {data.live !== undefined ? (
+                <div style={{fontWeight: 'normal', fontFamily: 'monospace', color: '#0369a1'}}>
+                    {'dout '}<b>{String(data.live)}</b>
+                </div>
+            ) : null}
             <Handle type="source" position={Position.Right} id="dout" style={{top: '50%', background: '#22c55e'}} />
         </div>
     );
@@ -565,6 +570,7 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
             if (k === 'led') return {...n, data: {...n.data, live: ledValue(n.id, edges, live.values)}};
             if (k === 'seg7') return {...n, data: {...n.data, value: seg7Value(n.id, edges, live.values)}};
             if (k === 'ledbank') return {...n, data: {...n.data, live: ledBankValues(n.id, edges, live.values, n.data.bits || 4)}};
+            if (k === 'memory') return {...n, data: {...n.data, live: live.values[n.id]}};
             return n;
         })
         : nodes;
