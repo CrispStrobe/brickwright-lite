@@ -11,7 +11,7 @@ import {IMPORT_ACCEPT, isImportableArtefact} from '../../lib/bw-makecode/accept.
 // splitting.
 import {asmExamplesFor} from '../../lib/bw-asm/examples.js';
 import {
-    requestAssembly, requestCBuild, requestBasicBuild, asmRouteFor, cRouteFor, asmTargetForDevice, ASM_DIALECTS
+    requestAssembly, requestCBuild, asmRouteFor, cRouteFor, requestBasicBuild, asmTargetForDevice, ASM_DIALECTS
 } from '../../lib/bw-asm/assemble-route.js';
 import {
     summarize as matrixSummary, explain as matrixExplain, LANGUAGES as MATRIX_LANGUAGES,

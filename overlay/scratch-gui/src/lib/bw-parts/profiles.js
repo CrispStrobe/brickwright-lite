@@ -222,7 +222,7 @@ export const REFUSED = Object.freeze({
     'dip-surface': [
         'i8251', 'i8253', 'i8254', 'i8255', 'i8259', 'i8284', 'm6532', 'mc6850',
         'ns16c550', 'w65c22', 'w65c51', 'ay8912', 'tms9918', 'simplevga_card',
-        'ps2', 'um245r', 'um66t', 'kd9561', 'isd1820'
+        'ps2', 'ps2mouse', 'um245r', 'um66t', 'kd9561', 'isd1820'
     ],
     passive: [
         'battery', 'battery_9v', 'battery_aa', 'battery_coin', 'solar_cell',

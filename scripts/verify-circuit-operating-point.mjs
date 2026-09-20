@@ -59,7 +59,12 @@ const runOperatingPoint = async designer => {
     await result.waitFor({state: 'visible', timeout: 10000});
     const text = await result.innerText();
     for (const expected of [
-        /Converged — grounded-static-native-r-c-l-d-v-i-e-g-exact-ideal-l-explicit-shockley-d/,
+        // Descriptor snapshot of bw-board's solver device coverage. Grew when the
+        // bw-board pin bump (a031fbea) pulled in the NPN level-1 / NMOS / PMOS
+        // small-signal model work (already green on bw-board master): the list
+        // gained z-q-m and the -z-npn-level1-nmos-pmos suffix. The numeric currents
+        // below are unchanged, so the physics of this circuit is intact.
+        /Converged — grounded-static-native-r-c-l-d-z-q-m-v-i-e-g-exact-ideal-l-explicit-shockley-d-z-npn-level1-nmos-pmos/,
         /controlled sources: ideal-explicit-finite-parameters-only/i,
         /supported kinds:.*vcvs.*vccs/i,
         /G1\.outn: 0\.00100000 A/,
