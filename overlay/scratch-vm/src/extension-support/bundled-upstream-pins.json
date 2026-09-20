@@ -82,6 +82,13 @@
             "path": "extensions/CrispStrobe/lego_wedo2_universal.js",
             "sha256": "dd2d31ac03164b4b04da525baceef4499350b5fa0582698909e14ddcdfb12572",
             "bytes": 60908
+        },
+        "controller": {
+            "path": "src/controller-extension.js",
+            "sha256": "e7c35e7ae3d45ec2bdb1a7b1b9d51c727889bfd3780b852ffb11fe13a92ad079",
+            "bytes": 15127,
+            "repo": "CrispStrobe/bw-board",
+            "commit": "84842a8678ef08766a6447618e0662c0f7cd40f2"
         }
     }
 }

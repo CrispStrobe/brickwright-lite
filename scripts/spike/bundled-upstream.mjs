@@ -45,7 +45,14 @@ export const BUNDLES = resolve(ROOT, 'overlay/scratch-vm/src/extensions/crispstr
 export const UPSTREAM_COMMIT = '92cbcf94af01098502c13cd7695529596d378608';
 export const UPSTREAM_REPO = 'CrispStrobe/extensions';
 
-/** bundle directory name → path within the upstream repository. */
+/**
+ * bundle directory name → where its source lives upstream.
+ *
+ * A bare string is a path in CrispStrobe/extensions at UPSTREAM_COMMIT. An
+ * object names another repository and the vendor-pins.json key that pins it —
+ * `controller` comes from the bw-board package, which already ships the
+ * extension and is pinned by sha like every other package.
+ */
 export const MAP = {
     arrays: 'extensions/CrispStrobe/arrays.js',
     csp: 'extensions/CrispStrobe/csp.js',
@@ -62,7 +69,24 @@ export const MAP = {
     stc12: 'extensions/CrispStrobe/stc12.js',
     stc12live: 'extensions/CrispStrobe/stc12live.js',
     universalgamepad: 'extensions/CrispStrobe/gamepad.js',
-    wedo2unified: 'extensions/CrispStrobe/lego_wedo2_universal.js'
+    wedo2unified: 'extensions/CrispStrobe/lego_wedo2_universal.js',
+
+    // Not CrispStrobe/extensions. bw-board ships this extension and Lite had a
+    // five-block copy of its fourteen — the panel offered lcd, oled,
+    // simplevga, keyboard, bargraph and rgb widgets that no block could drive.
+    controller: {repo: 'CrispStrobe/bw-board', pin: 'bw-board', path: 'src/controller-extension.js'}
+};
+
+/** Where an entry's source is, resolved against the pins. */
+export const sourceOf = function (id, pins) {
+    const entry = MAP[id];
+    if (!entry) return null;
+    if (typeof entry === 'string') {
+        return {repo: UPSTREAM_REPO, commit: UPSTREAM_COMMIT, path: entry};
+    }
+    const commit = (pins || {})[entry.pin];
+    if (!commit) throw new Error(`${id} is pinned by vendor-pins.json["${entry.pin}"], which is absent`);
+    return {repo: entry.repo, commit, path: entry.path};
 };
 
 /**
@@ -77,8 +101,6 @@ export const LITE_ONLY = {
         'would mean upstreaming that contract too.',
     bitops: 'Queued for upstream (2026-09-20 audit). An sb3-creator output contract: ' +
         'the generator emits bitops_* opcodes.',
-    controller: 'Being replaced by bw-board\'s ControllerExtension export, which has ' +
-        'the same five opcodes plus nine more.',
     devices: 'Queued for upstream (2026-09-20 audit). An sb3-creator output contract.',
     microbitplus: 'Queued for upstream (2026-09-20 audit).',
     text2speech: 'Queued for upstream (2026-09-20 audit). Replaces the stock cloud ' +
@@ -142,5 +164,5 @@ export const bundleIds = function (readdirSync) {
         .sort();
 };
 
-export const rawURL = path =>
-    `https://raw.githubusercontent.com/${UPSTREAM_REPO}/${UPSTREAM_COMMIT}/${path}`;
+export const rawURL = (path, repo = UPSTREAM_REPO, commit = UPSTREAM_COMMIT) =>
+    `https://raw.githubusercontent.com/${repo}/${commit}/${path}`;
