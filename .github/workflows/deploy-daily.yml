@@ -50,28 +50,46 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
-      - name: Build the current checkout
+      # Build the tree, then publish it only if `main` still points at what we
+      # built. An older tree must never overwrite a newer one — that guard is
+      # not negotiable and is unchanged.
+      #
+      # What IS new is convergence. Previously a single attempt skipped the
+      # publish when `main` moved and the job still exited 0, so "the deploy
+      # succeeded" and "the site was updated" were different facts with the
+      # same green tick. On 2026-09-20 three consecutive dispatches published
+      # NOTHING and all reported success; one lost by 26 seconds. The site sat
+      # on an old bundle while every signal said otherwise.
+      #
+      # So: re-fetch, rebuild and retry. A build is ~3 minutes, so three
+      # attempts cover roughly ten minutes of merge traffic, and each attempt
+      # publishes a strictly newer tree than the last would have. If every
+      # attempt loses, FAIL — a red job that published nothing is honest, and
+      # the next scheduled run picks it up. Never exit 0 without publishing.
+      - name: Build and publish the current main, retrying while main advances
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: vercel build --prod --token="$VERCEL_TOKEN"
-
-      - name: Refuse to publish an older main tree
-        id: freshness
         run: |
           set -euo pipefail
-          remote_sha=$(git ls-remote origin refs/heads/main | awk '{print $1}')
-          test -n "$remote_sha"
-          local_sha=$(git rev-parse HEAD)
-          echo "checkout=$local_sha remote-main=$remote_sha"
-          if [ "$local_sha" = "$remote_sha" ]; then
-            echo "stale=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "stale=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::skipping Vercel production publish because main advanced during this build"
-          fi
+          attempts=3
+          for attempt in $(seq 1 "$attempts"); do
+            git fetch --quiet origin main
+            git checkout --quiet --force FETCH_HEAD
+            local_sha=$(git rev-parse HEAD)
+            echo "::group::attempt $attempt/$attempts — building $local_sha"
+            vercel build --prod --token="$VERCEL_TOKEN"
+            echo "::endgroup::"
 
-      - name: Deploy and assign production domains
-        if: steps.freshness.outputs.stale != 'true'
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+            remote_sha=$(git ls-remote origin refs/heads/main | awk '{print $1}')
+            test -n "$remote_sha"
+            echo "checkout=$local_sha remote-main=$remote_sha"
+            if [ "$local_sha" = "$remote_sha" ]; then
+              vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+              echo "::notice::published $local_sha to the production domains"
+              exit 0
+            fi
+            echo "::notice::main advanced $local_sha -> $remote_sha during attempt $attempt; rebuilding the newer tree"
+          done
+          echo "::error::main advanced during all $attempts attempts, so nothing was published. \
+          This is a busy-repository outcome, not a broken tree: re-run when merges settle, or let the schedule catch it."
+          exit 1
