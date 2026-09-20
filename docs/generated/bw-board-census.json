@@ -2,8 +2,8 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "84842a8678ef08766a6447618e0662c0f7cd40f2",
-    "read": "2026-09-19"
+    "sha": "a031fbeaa06316b5198ed5c7e54df6be96592ec1",
+    "read": "2026-09-20"
   },
   "rows": [
     {
@@ -61,6 +61,19 @@
         "scripts/grind-i80286.mjs"
       ],
       "what": "SingleStepTests 80286 real-mode — blocking bounded coverage of the fast functional 286 (src/i8086.js variant:'80286'), plus separate full semantic qualification of that core and the Harris test-only semantic-memory adapter; no timing or physical-board grading."
+    },
+    {
+      "id": "80386ex-moo-vectors",
+      "kind": "oracle",
+      "present": false,
+      "ciAvailable": true,
+      "ci": "yes — the 80286 qualification workflow checks out the exact revision and runs the admitted fixed samples",
+      "via": "tried $SST386_ROOT",
+      "gates": [
+        "test/i80386-moo-parser.test.mjs",
+        "scripts/verify-i80386-moo-sample.mjs"
+      ],
+      "what": "SingleStepTests 80386 MOO 1.1 physical captures from an Intel 386EX. Provides bounded register/RAM samples for the experimental 80386 executor; it is not a 386DX timing oracle or protected-mode corpus."
     },
     {
       "id": "8088-vectors",
@@ -325,15 +338,29 @@
     {
       "id": "masm",
       "kind": "oracle",
-      "present": true,
+      "present": false,
       "ciAvailable": false,
       "ci": "no — the binaries live at an absolute /tmp path, the same blind spot as the ehBASIC ROM: audit-clean-checkout strips untracked REPO files by archiving HEAD and cannot reach /tmp, so their absence in a fresh checkout is invisible to it. Can only stand in CI if the job fetches them explicitly.",
-      "via": "$MSDOS_BIN_DIR=/mnt/volume1/code/msdos-v2-bin",
+      "via": "tried $MSDOS_BIN_DIR, /tmp/msdosbin",
       "gates": [
         "test/oracle-masm.test.mjs",
-        "scripts/oracle-masm.mjs"
+        "scripts/oracle-masm.mjs",
+        "test/dos-toolchain-chain.test.mjs",
+        "test/dos-c-compile.test.mjs"
       ],
       "what": "MASM 1.10 + LINK + EXE2BIN (Microsoft, MIT-relicensed 1982 binaries), an independent assembler toolchain. The differential oracle for MASM compatibility in src/i8086-asm.js — that our .COM is byte-identical to MASM's and that our ASSUME/segment-override and simplified-directive handling matches a real MASM. VERIFIED GREEN 2026-09-05 (10/10). Present on this box at /tmp/msdosbin."
+    },
+    {
+      "id": "doom-short-report",
+      "kind": "fixture",
+      "present": false,
+      "ciAvailable": false,
+      "ci": "no — ordinary CI has neither the external media nor the source-bound raw report; absence is an explicit optional-test skip rather than a standing gameplay claim.",
+      "via": "tried $ASTRA_DOOM_SHORT_REPORT",
+      "gates": [
+        "test/i80386-doom-short-demo-acceptance.test.mjs"
+      ],
+      "what": "Source-bound raw report from the bounded original Doom 1.9 shareware short-demo run. Enables mutation checks for the exact external media, 24-gametic guest completion, DOS return and audited rendered frame; it is not an independent CPU oracle."
     }
   ],
   "lite": {
