@@ -122,5 +122,39 @@ export const EXAMPLES = Object.freeze([
             + 'IO_PORT "led[0]" IO_TYPE=LVCMOS33;\nIO_PORT "led[1]" IO_TYPE=LVCMOS33;\n'
             + 'IO_PORT "led[2]" IO_TYPE=LVCMOS33;\nIO_PORT "led[3]" IO_TYPE=LVCMOS33;\n',
         model: null
+    }),
+    Object.freeze({
+        id: 'counter4',
+        label: '4-bit counter — watch it count',
+        blurb: 'A register plus an adder: q ← q+1 every clock. Run it and step the clock to '
+            + 'see count walk 0,1,2,…,15 and wrap — the smallest sequential datapath.',
+        verilog: 'module counter(input clk, output [3:0] count);\n'
+            + '  wire [3:0] w_add;\n'
+            + '  assign w_add = w_q + 1\'b1;\n'
+            + '  reg [3:0] w_q;\n'
+            + '  always @(posedge clk) w_q <= w_add;\n'
+            + '  assign count = w_q;\n'
+            + 'endmodule\n',
+        cst: 'IO_LOC "clk" 4;\nIO_PORT "clk" IO_TYPE=LVCMOS33;\n'
+            + 'IO_LOC "count[0]" 15;\nIO_LOC "count[1]" 16;\n'
+            + 'IO_LOC "count[2]" 17;\nIO_LOC "count[3]" 18;\n'
+            + 'IO_PORT "count[0]" IO_TYPE=LVCMOS33;\nIO_PORT "count[1]" IO_TYPE=LVCMOS33;\n'
+            + 'IO_PORT "count[2]" IO_TYPE=LVCMOS33;\nIO_PORT "count[3]" IO_TYPE=LVCMOS33;\n',
+        model: {
+            nodes: [
+                {id: 'clk', kind: 'in', name: 'clk', width: 1},
+                {id: 'one', kind: 'const', value: 1, width: 4},
+                {id: 'q', kind: 'gate', type: 'dff', width: 4},
+                {id: 'add', kind: 'gate', type: 'add', width: 4},
+                {id: 'count', kind: 'out', name: 'count', width: 4}
+            ],
+            edges: [
+                {from: {node: 'clk', port: 'out'}, to: {node: 'q', port: 'clk'}},
+                {from: {node: 'q', port: 'out'}, to: {node: 'add', port: 'a'}},
+                {from: {node: 'one', port: 'out'}, to: {node: 'add', port: 'b'}},
+                {from: {node: 'add', port: 'out'}, to: {node: 'q', port: 'd'}},
+                {from: {node: 'q', port: 'out'}, to: {node: 'count', port: 'in'}}
+            ]
+        }
     })
 ]);

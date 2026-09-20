@@ -1037,3 +1037,16 @@ test('the builder shows which Tang Nano pin each port lands on', () => {
     assert.match(ui, /modelPinMap\(reactFlowToModel\(nodes, edges, library\)\)/, 'computed from the live design');
     assert.match(ui, /data-testid="bw-fpga-rf-pinmap"/, 'and shown before synthesis');
 });
+
+// ── loadable sequential/datapath templates (showcase registers + displays) ──
+test('the builder ships a counter template and a counter→7-seg block', () => {
+    const ex = read('overlay/scratch-gui/src/lib/bw-fpga/examples.js');
+    assert.match(ex, /id: 'counter4'/, 'a loadable 4-bit counter example');
+    assert.match(ex, /always @\(posedge clk\) w_q <= w_add;/, 'its Verilog is a real clocked counter');
+    const b = read('overlay/scratch-gui/src/lib/bw-fpga/builtins.js');
+    assert.match(b, /id: 'counter7seg'/, 'a counter→7-seg droppable block');
+    assert.match(b, /kind: 'seg7'/, 'that drives a seven-segment display');
+    const bridge = read('overlay/scratch-gui/src/lib/bw-fpga/gate-builder-rf.js');
+    assert.match(bridge, /DIRECT = new Set\(\['instance', 'memory', 'const', 'tunnel', 'led', 'seg7', 'ledbank'\]\)/,
+        'display kinds render as themselves when a model is loaded, not as gates');
+});
