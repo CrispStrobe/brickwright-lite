@@ -864,7 +864,6 @@
 
     DELIMITER: 0x02,
     XOR: 0x03,
-    COBS_CODE_OFFSET: 2,
     MAX_BLOCK_SIZE: 84,
 
     // Message types
@@ -911,78 +910,84 @@
   ];
 
   const COBS = {
-    /** COBS-encode, offsetting run codes so none can be 0x00 or the delimiter. */
-    encode(data) {
-      const buffer = [];
+    /**
+     * COBS with the run codes offset by 3, so that no code can be 0x00, 0x01
+     * or the 0x02 delimiter. 0xff marks a block that ends without a delimiter
+     * byte of its own.
+     *
+     * This is byte-for-byte the algorithm in
+     * overlay/scratch-gui/src/lib/virtual-hub/spike-prime-peripheral.js, which
+     * is checked against test/fixtures/spike-cobs-v1.json. Sharing the
+     * algorithm is what lets the same fixture judge both, so the extension and
+     * the virtual hub cannot drift into agreeing only with themselves.
+     */
+    encode(input) {
+      const output = [0xff];
       let codeIndex = 0;
-      let code = SPIKE3.COBS_CODE_OFFSET;
-      const beginBlock = () => {
-        codeIndex = buffer.length;
-        buffer.push(0);
-        code = SPIKE3.COBS_CODE_OFFSET;
-      };
-      beginBlock();
-      for (const byte of data) {
-        if (byte > SPIKE3.COBS_CODE_OFFSET) {
-          buffer.push(byte);
-          code++;
-          if (code - SPIKE3.COBS_CODE_OFFSET === SPIKE3.MAX_BLOCK_SIZE) {
-            buffer[codeIndex] = code;
-            beginBlock();
+      let block = 1;
+      for (const byte of input) {
+        if (byte <= 2) {
+          output[codeIndex] = block + 2 + byte * SPIKE3.MAX_BLOCK_SIZE;
+          codeIndex = output.length;
+          output.push(0xff);
+          block = 1;
+        } else {
+          output.push(byte);
+          block++;
+          if (block > SPIKE3.MAX_BLOCK_SIZE) {
+            codeIndex = output.length;
+            output.push(0xff);
+            block = 1;
           }
-          continue;
         }
-        buffer[codeIndex] = code + byte * SPIKE3.MAX_BLOCK_SIZE;
-        beginBlock();
       }
-      buffer[codeIndex] = code;
-      return Uint8Array.from(buffer);
+      output[codeIndex] = block + 2;
+      return Uint8Array.from(output);
     },
 
-    decode(data) {
-      const buffer = [];
-      const unescape = (code) => {
-        if (code === 0xff) return { value: 0xff, size: SPIKE3.MAX_BLOCK_SIZE };
-        const value = Math.floor((code - SPIKE3.COBS_CODE_OFFSET) / SPIKE3.MAX_BLOCK_SIZE);
-        let size = (code - SPIKE3.COBS_CODE_OFFSET) % SPIKE3.MAX_BLOCK_SIZE;
-        if (size === 0) {
-          size = SPIKE3.MAX_BLOCK_SIZE;
-          return { value: value - 1, size };
-        }
-        return { value, size };
-      };
-      let { value, size } = unescape(data[0]);
-      for (let i = 1; i < data.length; i++) {
-        if (size <= 1) {
-          if (value !== 0xff) buffer.push(value);
-          const next = unescape(data[i]);
-          value = next.value;
-          size = next.size;
-          continue;
-        }
-        buffer.push(data[i]);
-        size--;
+    decode(input) {
+      if (!input.length) throw new Error("empty COBS payload");
+      const output = [];
+      for (let offset = 0; offset < input.length; ) {
+        const code = input[offset++];
+        if (code <= 2) throw new Error("reserved COBS code");
+        const adjusted = code === 0xff ? null : code - 3;
+        const delimiter =
+          adjusted === null ? null : Math.floor(adjusted / SPIKE3.MAX_BLOCK_SIZE);
+        const block =
+          adjusted === null ? SPIKE3.MAX_BLOCK_SIZE : adjusted % SPIKE3.MAX_BLOCK_SIZE;
+        if (delimiter !== null && delimiter > 2) throw new Error("invalid COBS delimiter");
+        if (offset + block > input.length) throw new Error("truncated COBS block");
+        for (let i = 0; i < block; i++) output.push(input[offset++]);
+        if (delimiter !== null && offset < input.length) output.push(delimiter);
       }
-      if (size > 0 && value !== 0xff) buffer.push(value);
-      return Uint8Array.from(buffer);
+      return Uint8Array.from(output);
     },
 
     /** Frame a message for the wire: COBS, XOR 0x03, then the 0x02 delimiter. */
     pack(data) {
       const encoded = COBS.encode(data);
-      const framed = new Uint8Array(encoded.length + 1);
-      for (let i = 0; i < encoded.length; i++) framed[i] = encoded[i] ^ SPIKE3.XOR;
-      framed[encoded.length] = SPIKE3.DELIMITER;
-      return framed;
+      return Uint8Array.from(
+        [...encoded].map((byte) => byte ^ SPIKE3.XOR).concat(SPIKE3.DELIMITER)
+      );
     },
 
-    /** Undo `pack`. Returns null when the frame is not terminated. */
+    /**
+     * Undo `pack`. Throws on a frame that is not well formed rather than
+     * returning something plausible — a mis-decoded frame becomes wrong sensor
+     * values, which is worse than a dropped one.
+     */
     unpack(frame) {
-      if (!frame || frame.length === 0) return null;
-      const end = frame[frame.length - 1] === SPIKE3.DELIMITER ? frame.length - 1 : frame.length;
-      const plain = new Uint8Array(end);
-      for (let i = 0; i < end; i++) plain[i] = frame[i] ^ SPIKE3.XOR;
-      return COBS.decode(plain);
+      const start = frame[0] === 1 ? 1 : 0;
+      if (frame.length - start < 2 || frame[frame.length - 1] !== SPIKE3.DELIMITER) {
+        throw new Error("unterminated frame");
+      }
+      const encoded = frame.slice(start, -1);
+      for (let i = 0; i < encoded.length; i++) {
+        if (encoded[i] >= 1 && encoded[i] <= 3) throw new Error("unescaped control byte");
+        encoded[i] ^= SPIKE3.XOR;
+      }
+      return COBS.decode(encoded);
     },
   };
 
@@ -2286,8 +2291,17 @@ continuous_sensor_loop()
           continue;
         }
         if (this._frame.length) {
-          const data = COBS.unpack(Uint8Array.from(this._frame));
+          const frame = Uint8Array.from(this._frame.concat([SPIKE3.DELIMITER]));
           this._frame = [];
+          // A malformed frame is dropped and the stream resumes at the next
+          // delimiter. Decoding it anyway would turn a transport glitch into
+          // wrong sensor readings, which is the harder failure to notice.
+          let data = null;
+          try {
+            data = COBS.unpack(frame);
+          } catch (e) {
+            data = null;
+          }
           if (data && data.length) this._handleMessage(data);
         }
       }
@@ -2562,7 +2576,10 @@ continuous_sensor_loop()
       this._spike3 = new Spike3Hub(this._runtime, extensionId);
       this._activeProtocol = "repl";
 
-      if (this._runtime) {
+      // A runtime that cannot hold a peripheral (a headless one, a harness)
+      // is not a reason for the extension to fail to load: the blocks that do
+      // not need hardware still work.
+      if (this._runtime && typeof this._runtime.registerPeripheralExtension === "function") {
         this._runtime.registerPeripheralExtension(extensionId, this);
       }
     }
