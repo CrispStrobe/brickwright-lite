@@ -65,8 +65,15 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // the later range only converges the already-present examples catalogue
     // and adds upstream tests. The compiler emitter therefore does not move,
     // while this assertion still forces the round-trip artifact at the pin.
+    // -> 2be3fe2b on 2026-09-20: this range DOES move the emitter — the SPIKE
+    // consolidation rewrites `runtimeRegistry.generated.js` and
+    // `spikeprimeDialect.js` (179 lines across two files under src/), which is
+    // exactly why this assertion forces the round-trip artifact to be re-run at
+    // the new pin rather than carried over. The rest of the range is the
+    // examples work: 26 benches rebuilt from their programs, and three new
+    // Codex trails for the digital and MCU domain.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '9173ca756a72e5be81578a084c4c783ebc5c267d');
+        '2be3fe2bacfd5cfb8e23a7095f6cf0c75905ef1b');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
