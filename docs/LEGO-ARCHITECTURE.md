@@ -10,7 +10,7 @@ A complete, MPL-2.0, CrispStrobe-authored LEGO extension suite lives in
 
 | Hub | Extensions | Transport | Deliverable (codegen) |
 |---|---|---|---|
-| Spike Prime | `spikeprime`, `spikeprimeble`, `spikeprimeBTC`, `legospikeprimeBLE`, `spikeprimeBridge` | Web BLE / Scratch Link / bridge | SPIKE Python |
+| Spike Prime / Robot Inventor | `spikeprime` (was five ids; see `SPIKE-CONSOLIDATION.md`) | Web BLE / Scratch Link BLE / Scratch Link BT / bridge, auto-detected | SPIKE Python |
 | EV3 | `ev3comprehensive`, `ev3dev` (id `scratchtoev3`), `ev3lms`, `legoev3direct` | Scratch Link / BLE / serial / WS | EV3 Python (ev3dev2), LMS bytecode |
 | NXT | `legonxt` | BTC / Scratch Link / bridge | NXC |
 | Boost | `legoboostunified` | BLE / Scratch Link / bridge / GATT | transpile |
@@ -46,10 +46,14 @@ CLI output is a ZIP project with the pinned extension URL, and Scratch VM execut
 motor → distance reporter → display → stop chain. Lite vendors that contract and drives the same
 archive through its File menu and Code ⇄ Blocks UI.
 
-The denominator is not hidden: the canonical extension has **84** opcodes at extensions commit
-`c681d995`. The executable census classifies them as **30 mapped, 21 host-control blocks, 4 event
-hats, and 29 learner-facing gaps**. The five other SPIKE-family extension IDs have different block
-schemas and are not aliases for this map.
+The denominator is not hidden: the canonical extension had **84** opcodes at extensions commit
+`c681d995`, and has **101** since the five SPIKE ids were merged into it
+(`SPIKE-CONSOLIDATION.md`) — the 84 unchanged, plus the 14 blocks the four folded-in
+extensions had and three the merge makes possible. The executable census classifies them as **30 mapped, 21 host-control blocks, 4 event
+hats, and 29 learner-facing gaps**. The five other SPIKE-family extension IDs had different block
+schemas and were not aliases for this map; they are now one extension, and
+`overlay/scratch-vm/src/extension-support/spike-legacy-migration.js` is the table that
+says which of their opcodes became which.
 
 **The remaining islands.** Outside that measured slice, two authoring worlds still do not meet:
 
