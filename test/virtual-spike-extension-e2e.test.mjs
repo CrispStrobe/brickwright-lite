@@ -25,15 +25,30 @@ const {default: HubState} = await import(resolve(root, 'spike-hub-state.js'));
 
 const loadBundledExtension = async () => {
     const wrapper = await readFile(resolve(here,
-        '../overlay/scratch-vm/src/extensions/crispstrobe/spikeprimeble/index.js'), 'utf8');
+        '../overlay/scratch-vm/src/extensions/crispstrobe/spikeprime/index.js'), 'utf8');
     const source = JSON.parse(wrapper.slice(wrapper.indexOf('makeExt(') + 8, -3));
     let extension = null;
+    // The unified extension registers a peripheral and emits connection
+    // events, which the old BLE-only extension did not: it drove Web
+    // Bluetooth directly and ignored the runtime. A runtime stub that only
+    // answered getLocale was enough for that and is not enough for this.
+    const runtime = {
+        getLocale: () => 'en',
+        on: () => {},
+        emit: () => {},
+        registerPeripheralExtension: () => {},
+        constructor: {
+            PERIPHERAL_CONNECTED: 'connected', PERIPHERAL_DISCONNECTED: 'disconnected',
+            PERIPHERAL_LIST_UPDATE: 'list', USER_PICKED_PERIPHERAL: 'picked',
+            PERIPHERAL_SCAN_TIMEOUT: 'timeout', PERIPHERAL_REQUEST_ERROR: 'error'
+        }
+    };
     const Scratch = {
         extensions: {unsandboxed: true, register: value => { extension = value; }},
         BlockType: {COMMAND: 'command', REPORTER: 'reporter', BOOLEAN: 'Boolean'},
         ArgumentType: {STRING: 'string', NUMBER: 'number'},
         Cast: {toString: String, toNumber: Number},
-        vm: {runtime: {getLocale: () => 'en'}}
+        vm: {runtime}
     };
     Function('Scratch', source)(Scratch); // eslint-disable-line no-new-func
     return extension;
@@ -107,12 +122,25 @@ test('bundled direct BLE extension runs through the virtual hub and reconnects',
     globalThis.__brickwrightChooseVirtualBluetooth = candidates => candidates[0];
     install();
     const extension = await loadBundledExtension();
+    // No Scratch Link in this runtime, so auto resolves to Web Bluetooth —
+    // which is the route the extension this test used to drive was hard-wired
+    // to. Naming it would hide whether the detection works.
     await extension.connectHub();
+    assert.equal(extension.getConnectionMode(), 'web-ble',
+        'auto should have detected Web Bluetooth');
     assert.equal(extension.isConnected(), true);
     await extension.startMotor({PORT: 'C', SPEED: 65});
     assert.equal(state.data.motors[2].speed, 65);
+    // The hub reports millimetres. spikeprimeble's getDistance returned them
+    // raw; the unified getDistance means centimetres, because that is what it
+    // meant on the 2.x hub it came from and those projects are the many. The
+    // millimetre reading is not lost — it moved to getDistanceIn, which is
+    // where the migration sends every old mm reader.
     state.setPort('B', 'distance', {distance: 345});
-    assert.equal(extension.getDistance({PORT: 'B'}), 345);
+    assert.equal(extension.getDistance({PORT: 'B'}), 34.5, 'centimetres');
+    assert.equal(extension.getDistanceIn({PORT: 'B', UNIT: 'mm'}), 345,
+        'the hub-reported millimetres, at the sensor\'s own resolution');
+    assert.equal(extension.getDistanceIn({PORT: 'B', UNIT: 'cm'}), 34.5);
     extension.disconnectHub();
     assert.equal(state.data.motors[2].speed, 0);
     await extension.connectHub();

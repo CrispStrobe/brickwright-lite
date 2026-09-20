@@ -67,8 +67,11 @@ test('bundled Classic extension uses corrected base64 RFCOMM end to end', async 
             return adapter;
         }
     };
+    // Was spikeprimeBTC, which is now part of the unified extension. Driving
+    // the merged extension over the Classic transport is the stronger test:
+    // it is the 2.x path as it actually ships.
     const wrapper = await readFile(resolve(here,
-        '../overlay/scratch-vm/src/extensions/crispstrobe/spikeprimeBTC/index.js'), 'utf8');
+        '../overlay/scratch-vm/src/extensions/crispstrobe/spikeprime/index.js'), 'utf8');
     const source = JSON.parse(wrapper.slice(wrapper.indexOf('makeExt(') + 8, -3));
     let extension;
     const Scratch = {extensions: {unsandboxed: true, register: value => { extension = value; }},
@@ -76,6 +79,10 @@ test('bundled Classic extension uses corrected base64 RFCOMM end to end', async 
         ArgumentType: {STRING: 'string', NUMBER: 'number', BOOLEAN: 'Boolean'},
         Cast: {toString: String, toNumber: Number}, vm: {runtime}};
     Function('Scratch', source)(Scratch); // eslint-disable-line no-new-func
+    // Name the route: this runtime offers Scratch Link, and auto would try
+    // BLE first. The assertion inside getScratchLinkSocket above is what
+    // proves the choice was honoured.
+    extension._peripheral.setMode('scratchlink-bt');
     extension._peripheral.scan();
     await tick();
     extension._peripheral.connect('brickwright-virtual-spike-classic');

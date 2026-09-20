@@ -1,0 +1,164 @@
+// Freeze what the five legacy SPIKE extensions offered, block by block.
+//
+// This runs ONCE against the legacy bundles and writes
+// test/fixtures/spike-legacy-ledger.json. After the consolidation the legacy
+// bundles are gone from the tree, so the fixture — not the code — is the
+// record of what the unified extension has to keep offering. Re-running it
+// needs the legacy sources back (`--from <dir>` points at a checkout of
+// CrispStrobe/extensions at the pinned commit); the point of freezing is that
+// nobody has to.
+//
+// The fixture is judged by test/spike-unified-coverage.test.mjs. Editing it to
+// make that test pass is exactly the mistake it exists to catch.
+//
+// `--from` reproduces THAT CHECKOUT's sources, which is not automatically the
+// pin Lite shipped: CrispStrobe/extensions main has already moved past
+// c681d995 (spikeprimeble lost an internal `_processMessage` there). The
+// frozen fixture records what Lite shipped, so a regeneration that differs is
+// information about the upstream, not a correction to the fixture.
+import {readFileSync, writeFileSync, mkdirSync, existsSync} from 'node:fs';
+import {resolve, dirname} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {loadExtension, methodNames} from './load-extension.mjs';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const root = resolve(here, '../..');
+
+// Where each legacy extension's source lives, in the two places it can be:
+// the vendored bundle Lite shipped, and the upstream gallery file.
+const SOURCES = {
+    spikeprime: {
+        bundle: 'overlay/scratch-vm/src/extensions/crispstrobe/spikeprime/index.js',
+        upstream: 'extensions/CrispStrobe/legospike_turbowarp_transpile.js'
+    },
+    spikeprimeBTC: {
+        bundle: 'overlay/scratch-vm/src/extensions/crispstrobe/spikeprimeBTC/index.js',
+        upstream: 'extensions/CrispStrobe/legospikeprime_btc_scratchlink.js'
+    },
+    spikeprimeBridge: {
+        bundle: 'overlay/scratch-vm/src/extensions/crispstrobe/spikeprimeBridge/index.js',
+        upstream: 'extensions/CrispStrobe/legospike_bridge.js'
+    },
+    spikeprimeble: {
+        bundle: 'overlay/scratch-vm/src/extensions/crispstrobe/spikeprimeble/index.js',
+        upstream: 'extensions/CrispStrobe/legospike_ble.js'
+    },
+    legospikeprimeBLE: {
+        bundle: 'overlay/scratch-vm/src/extensions/crispstrobe/legospikeprimeBLE/index.js',
+        upstream: 'extensions/CrispStrobe/legospikeprime_ble.js'
+    }
+};
+
+/** A vendored bundle is `makeExt(<the source as a JSON string>)`. Unwrap it. */
+const unwrapBundle = function (text) {
+    const open = text.indexOf('makeExt(');
+    if (open === -1) throw new Error('not a makeExt bundle');
+    const start = text.indexOf('"', open);
+    // The argument runs to the last quote before the closing `);`.
+    const end = text.lastIndexOf('"');
+    return JSON.parse(text.slice(start, end + 1));
+};
+
+const from = process.argv.includes('--from')
+    ? process.argv[process.argv.indexOf('--from') + 1]
+    : null;
+
+const readSource = function (id) {
+    if (from) {
+        const p = resolve(from, SOURCES[id].upstream);
+        if (!existsSync(p)) throw new Error(`${SOURCES[id].upstream} is not in ${from}`);
+        return readFileSync(p, 'utf8');
+    }
+    // The in-tree bundle path is kept for the record of where these came
+    // from, but it is deliberately NOT a fallback any more. Four of the five
+    // bundles are gone, and the fifth — spikeprime — is now the UNIFIED
+    // extension: reading it here would quietly regenerate the fixture from
+    // the thing the fixture exists to judge.
+    throw new Error(
+        `${id}'s legacy bundle is no longer in this tree (it was ${SOURCES[id].bundle}). ` +
+        'Pass --from <a CrispStrobe/extensions checkout at c681d995>.');
+};
+
+// Browser-ish globals the extensions touch while loading.
+globalThis.window = globalThis;
+Object.defineProperty(globalThis, 'navigator',
+    {value: {language: 'en-US', userAgent: 'node'}, configurable: true, writable: true});
+globalThis.document = {
+    documentElement: {lang: 'en'},
+    createElement: () => ({style: {}, appendChild () {}, click () {}, setAttribute () {}}),
+    body: {appendChild () {}, removeChild () {}}
+};
+globalThis.localStorage = {getItem: () => null, setItem: () => {}};
+globalThis.addEventListener = () => {};
+globalThis.alert = () => {};
+globalThis.setInterval = () => 0;
+
+const describeMenu = function (menu) {
+    const items = Array.isArray(menu) ? menu : menu.items;
+    return {
+        acceptReporters: Array.isArray(menu) ? false : Boolean(menu.acceptReporters),
+        items: typeof items === 'string'
+            ? {dynamic: items}
+            : (items || []).map(i => (i && typeof i === 'object' ? {value: i.value, text: i.text} : i))
+    };
+};
+
+const out = {
+    _comment: 'Frozen surface of the five legacy SPIKE extensions. See ' +
+        'overlay/scratch-vm/src/extension-support/spike-legacy-migration.js. Generated by ' +
+        'scripts/spike/gen-legacy-ledger.mjs; do not hand-edit.',
+    extensions: {}
+};
+
+const quiet = () => {
+    const noop = () => {};
+    const saved = {log: console.log, info: console.info, warn: console.warn, debug: console.debug};
+    Object.assign(console, {log: noop, info: noop, warn: noop, debug: noop});
+    return () => Object.assign(console, saved);
+};
+
+for (const id of Object.keys(SOURCES)) {
+    const restore = quiet();
+    let inst;
+    try {
+        inst = loadExtension(readSource(id));
+    } catch (error) {
+        restore();
+        // A dev script, but an unreadable stack here reads as a bug in the
+        // script rather than as the missing input it is.
+        process.stderr.write(`\n${id}: ${error.message}\n`);
+        process.exit(1);
+    } finally {
+        restore();
+    }
+    const info = inst.getInfo();
+    out.extensions[id] = {
+        id: info.id,
+        name: info.name,
+        blocks: (info.blocks || [])
+            .filter(b => b && typeof b === 'object' && b.opcode && b.blockType !== 'label')
+            .map(b => ({
+                opcode: b.opcode,
+                blockType: b.blockType,
+                text: b.text,
+                arguments: Object.fromEntries(Object.entries(b.arguments || {}).map(([k, v]) => [
+                    k, {type: v.type, menu: v.menu || null, defaultValue: v.defaultValue}
+                ]))
+            }))
+            .sort((a, b) => a.opcode.localeCompare(b.opcode)),
+        menus: Object.fromEntries(
+            Object.entries(info.menus || {})
+                .map(([k, v]) => [k, describeMenu(v)])
+                .sort((a, b) => a[0].localeCompare(b[0]))
+        ),
+        methods: methodNames(inst)
+    };
+    process.stderr.write(
+        `${id}: ${out.extensions[id].blocks.length} blocks, ` +
+        `${Object.keys(out.extensions[id].menus).length} menus\n`);
+}
+
+const dest = resolve(root, 'test/fixtures/spike-legacy-ledger.json');
+mkdirSync(dirname(dest), {recursive: true});
+writeFileSync(dest, `${JSON.stringify(out, null, 4)}\n`);
+process.stderr.write(`wrote ${dest}\n`);

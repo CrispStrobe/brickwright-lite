@@ -184,43 +184,18 @@ export default [
         featured: true
     },
     {
-        name: 'LEGO SPIKE Transpiler',
+        // One entry for the whole SPIKE family. It used to be five — Transpiler,
+        // (BLE), (BTC), Bridge and (BLE Alt) — which asked a learner to know
+        // which firmware their hub ran and which Bluetooth plumbing their
+        // machine had before they could pick a block. The extension now detects
+        // both. SPIKE Prime and Robot Inventor are the same hub, so there is
+        // nothing to choose between them either.
+        name: 'LEGO SPIKE Prime / Robot Inventor',
         extensionId: 'spikeprime',
         iconURL: 'static/extension-posters/lego.png',
         insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/legospike_turbowarp_transpile.svg',
-        description: 'LEGO SPIKE Transpiler — bundled built-in.',
-        featured: true
-    },
-    {
-        name: 'LEGO SPIKE Prime (BLE)',
-        extensionId: 'spikeprimeble',
-        iconURL: 'static/extension-posters/lego.png',
-        insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/legospike_turbowarp_transpile.svg',
-        description: 'LEGO SPIKE Prime (BLE) — bundled built-in.',
-        featured: true
-    },
-    {
-        name: 'LEGO SPIKE Prime (BTC)',
-        extensionId: 'spikeprimeBTC',
-        iconURL: 'static/extension-posters/lego.png',
-        insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/legospike_turbowarp_transpile.svg',
-        description: 'LEGO SPIKE Prime (BTC) — bundled built-in.',
-        featured: true
-    },
-    {
-        name: 'LEGO SPIKE Bridge',
-        extensionId: 'spikeprimeBridge',
-        iconURL: 'static/extension-posters/lego.png',
-        insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/legospike_turbowarp_transpile.svg',
-        description: 'LEGO SPIKE Bridge — bundled built-in.',
-        featured: true
-    },
-    {
-        name: 'LEGO SPIKE Prime (BLE Alt)',
-        extensionId: 'legospikeprimeBLE',
-        iconURL: 'static/extension-posters/lego.png',
-        insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/legospike_turbowarp_transpile.svg',
-        description: 'LEGO SPIKE Prime (BLE Alt) — bundled built-in.',
+        description: 'LEGO SPIKE Prime and Robot Inventor — connects over Scratch Link, ' +
+            'Web Bluetooth or a local bridge, on either firmware generation. Bundled built-in.',
         featured: true
     },
     {

@@ -47,6 +47,7 @@ on:
     # generator's template literal (two generators name the plan that way;
     # five main runs on 2026-09-07 verified plan-only edits). Census
     # 2026-09-07: 15 mentioned; the rest of docs/*.md skip.
+    # 2026-09-20: 16 — SPIKE-CONSOLIDATION.md, named by the spikeprime bundle.
     #
     # A skipped run means no Pages deploy for that push. That is correct: the
     # app is byte-identical, and deploy-daily republishes regardless.
@@ -74,6 +75,7 @@ on:
       - 'docs/LESSON-REVIEW-WAVE-6.md'
       - 'docs/LESSON-REVIEW-WAVE-7.md'
       - 'docs/PICO-KALUMA-BOOT.md'
+      - 'docs/SPIKE-CONSOLIDATION.md'
       - 'docs/VENDOR-DIVERGENCE-SB3-CREATOR.md'
       - 'docs/WAVE-OPEN-DEFECTS.md'
       - 'docs/app-store-metadata.md'
