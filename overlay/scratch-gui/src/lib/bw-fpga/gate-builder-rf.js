@@ -78,3 +78,32 @@ export function modelToReactFlow (model, positions = {}) {
     }));
     return {nodes, edges};
 }
+
+/**
+ * Clone a selection for copy/paste: the chosen nodes get fresh ids and a small
+ * offset, and only the edges WHOLLY inside the selection are copied (remapped to
+ * the new ids) — a wire to something not copied is dropped. Pure, so the paste
+ * logic is unit-tested without a browser.
+ *
+ * @param {Array} selNodes  the selected React Flow nodes
+ * @param {Array} allEdges  every edge (internal ones are picked out)
+ * @param {{dx:number, dy:number}} offset
+ * @param {() => string} mkNodeId  a fresh node id per call
+ * @param {() => string} mkEdgeId  a fresh edge id per call
+ * @returns {{nodes: Array, edges: Array}} the clones, marked selected
+ */
+export function cloneSelection (selNodes, allEdges, offset, mkNodeId, mkEdgeId) {
+    const {dx = 40, dy = 40} = offset || {};
+    const idMap = {};
+    const nodes = (selNodes || []).map(n => {
+        const id = mkNodeId();
+        idMap[n.id] = id;
+        const pos = n.position || {x: 0, y: 0};
+        return {...n, id, selected: true, position: {x: pos.x + dx, y: pos.y + dy}};
+    });
+    const inSel = new Set((selNodes || []).map(n => n.id));
+    const edges = (allEdges || [])
+        .filter(e => inSel.has(e.source) && inSel.has(e.target))
+        .map(e => ({...e, id: mkEdgeId(), source: idMap[e.source], target: idMap[e.target], selected: true}));
+    return {nodes, edges};
+}

@@ -9,7 +9,7 @@ import {ReactFlow, ReactFlowProvider, Background, Controls, MiniMap, addEdge,
 // globally (css-loader defaults `modules` off).
 import '!!style-loader!css-loader!@xyflow/react/dist/style.css';
 import {GATE_DEFS, modelToVerilog, modelToCst, modelPinMap, derivePorts, parseVerilogPorts} from '../../lib/bw-fpga/gate-builder.js';
-import {reactFlowToModel, modelToReactFlow} from '../../lib/bw-fpga/gate-builder-rf.js';
+import {reactFlowToModel, modelToReactFlow, cloneSelection} from '../../lib/bw-fpga/gate-builder-rf.js';
 import {gateShape} from '../../lib/bw-fpga/glyphs.js';
 import {canvasToSvg} from '../../lib/bw-fpga/canvas-svg.js';
 import {buildPaletteCatalog} from '../../lib/bw-fpga/palette-catalog.js';
@@ -488,10 +488,29 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
     // Keyboard on the canvas: Ctrl-Z undo, Ctrl-Shift-Z / Ctrl-Y redo, and a
     // snapshot just before React Flow deletes the selection (capture phase fires
     // before its own Delete/Backspace handler).
+    // Copy/paste a selection, and select-all — the editing a real canvas expects.
+    const clipRef = React.useRef(null);
+    const copySelection = () => {
+        const sel = nodesRef.current.filter(n => n.selected);
+        if (sel.length) clipRef.current = {nodes: sel, edges: edgesRef.current};
+    };
+    const pasteSelection = () => {
+        const clip = clipRef.current;
+        if (!clip || !clip.nodes.length) return;
+        takeSnapshot();
+        const {nodes: cn, edges: ce} = cloneSelection(clip.nodes, clip.edges, {dx: 40, dy: 40},
+            () => nid('c'), () => `ce${idRef.current++}`);
+        setNodes(ns => [...ns.map(n => ({...n, selected: false})), ...cn]);
+        setEdges(es => [...es.map(x => ({...x, selected: false})), ...ce]);
+    };
+    const selectAll = () => setNodes(ns => ns.map(n => ({...n, selected: true})));
     const onCanvasKeyDown = e => {
         const meta = e.ctrlKey || e.metaKey;
         if (meta && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); if (e.shiftKey) redo(); else undo(); }
         else if (meta && (e.key === 'y' || e.key === 'Y')) { e.preventDefault(); redo(); }
+        else if (meta && (e.key === 'c' || e.key === 'C')) { copySelection(); }
+        else if (meta && (e.key === 'v' || e.key === 'V')) { e.preventDefault(); pasteSelection(); }
+        else if (meta && (e.key === 'a' || e.key === 'A')) { e.preventDefault(); selectAll(); }
         else if (e.key === 'Delete' || e.key === 'Backspace') { takeSnapshot(); }
     };
 
