@@ -244,3 +244,26 @@ test('the counter example and the counter→7-seg block actually count', () => {
     assert.ok(!back.nodes.some(n => n.kind === 'seg7'), 'the display is not emitted as HDL');
     assert.deepEqual(modelToVerilog(back).problems, [], 'and the rest synthesises');
 });
+
+// ── copy/paste: cloning a selection ──
+import {cloneSelection} from '../overlay/scratch-gui/src/lib/bw-fpga/gate-builder-rf.js';
+
+test('cloneSelection remaps ids, offsets positions, and keeps only internal edges', () => {
+    const sel = [
+        {id: 'a', position: {x: 10, y: 20}, data: {kind: 'in', name: 'a'}},
+        {id: 'g', position: {x: 100, y: 20}, data: {kind: 'gate', gtype: 'not'}}
+    ];
+    const edges = [
+        {id: 'e1', source: 'a', target: 'g', sourceHandle: 'out', targetHandle: 'a'}, // internal → copied
+        {id: 'e2', source: 'g', target: 'y', sourceHandle: 'out', targetHandle: 'in'}  // to non-selected → dropped
+    ];
+    let ni = 0; let ei = 0;
+    const {nodes, edges: ce} = cloneSelection(sel, edges, {dx: 40, dy: 40}, () => `n${ni++}`, () => `c${ei++}`);
+    assert.equal(nodes.length, 2);
+    assert.deepEqual(nodes.map(n => n.id), ['n0', 'n1'], 'fresh ids');
+    assert.deepEqual(nodes[0].position, {x: 50, y: 60}, 'offset applied');
+    assert.ok(nodes.every(n => n.selected), 'clones are selected');
+    assert.equal(ce.length, 1, 'only the internal edge is copied');
+    assert.equal(ce[0].source, 'n0'); assert.equal(ce[0].target, 'n1'); // remapped
+    assert.equal(nodes[0].data.name, 'a', 'node data is preserved');
+});

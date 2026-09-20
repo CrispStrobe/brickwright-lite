@@ -1062,3 +1062,16 @@ test('an FPGA design is addressable as a memory-mapped peripheral', () => {
     assert.match(ui, /defaultMmioMap\(reactFlowToModel\(nodes, edges, library\)\)/, 'the builder derives the map from the live design');
     assert.match(ui, /data-testid="bw-fpga-rf-mmio"/, 'and shows how a program would address it');
 });
+
+// ── canvas editing: copy/paste + select-all ──
+test('the canvas supports copy/paste and select-all', () => {
+    const bridge = read('overlay/scratch-gui/src/lib/bw-fpga/gate-builder-rf.js');
+    assert.match(bridge, /export function cloneSelection/, 'a pure selection-clone (tested)');
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /const copySelection = /, 'Ctrl-C stores the selected nodes');
+    assert.match(ui, /const pasteSelection = /, 'Ctrl-V clones them (undoable via takeSnapshot)');
+    assert.match(ui, /cloneSelection\(clip\.nodes, clip\.edges/, 'paste uses the tested cloner');
+    assert.match(ui, /meta && \(e\.key === 'c'/, 'Ctrl-C bound');
+    assert.match(ui, /meta && \(e\.key === 'v'/, 'Ctrl-V bound');
+    assert.match(ui, /meta && \(e\.key === 'a'/, 'Ctrl-A selects all');
+});
