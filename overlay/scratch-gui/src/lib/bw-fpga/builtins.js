@@ -76,5 +76,29 @@ export const BUILTINS = Object.freeze([
                 E('q', 'count', 'in'), E('q', 'disp', 'd')
             ]
         }
+    },
+    {
+        id: 'alu4', label: '4-bit ALU (+ − & |)',
+        blurb: 'The heart of a CPU: two 4-bit inputs a, b and a 2-bit op (op1 op0 → 00 add, 01 sub, '
+            + '10 and, 11 or) pick the result on y. Datapath, logic and multiplexers, wired into one unit — '
+            + 'drop it, Run, set a/b and toggle op0/op1, and watch y change.',
+        model: {
+            nodes: [
+                {id: 'a', kind: 'in', name: 'a', width: 4}, {id: 'b', kind: 'in', name: 'b', width: 4},
+                {id: 'op0', kind: 'in', name: 'op0', width: 1}, {id: 'op1', kind: 'in', name: 'op1', width: 1},
+                {id: 'add', kind: 'gate', type: 'add', width: 4}, {id: 'sub', kind: 'gate', type: 'sub', width: 4},
+                {id: 'and', kind: 'gate', type: 'and', width: 4}, {id: 'or', kind: 'gate', type: 'or', width: 4},
+                {id: 'mA', kind: 'gate', type: 'mux', width: 4}, {id: 'mB', kind: 'gate', type: 'mux', width: 4},
+                {id: 'my', kind: 'gate', type: 'mux', width: 4}, {id: 'y', kind: 'out', name: 'y', width: 4}
+            ],
+            edges: [
+                E('a', 'add', 'a'), E('b', 'add', 'b'), E('a', 'sub', 'a'), E('b', 'sub', 'b'),
+                E('a', 'and', 'a'), E('b', 'and', 'b'), E('a', 'or', 'a'), E('b', 'or', 'b'),
+                E('op0', 'mA', 'sel'), E('add', 'mA', 'd0'), E('sub', 'mA', 'd1'),
+                E('op0', 'mB', 'sel'), E('and', 'mB', 'd0'), E('or', 'mB', 'd1'),
+                E('op1', 'my', 'sel'), E('mA', 'my', 'd0'), E('mB', 'my', 'd1'),
+                E('my', 'y', 'in')
+            ]
+        }
     }
 ]);
