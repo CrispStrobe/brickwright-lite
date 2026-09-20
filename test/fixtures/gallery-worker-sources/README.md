@@ -1,7 +1,7 @@
 # Gallery worker compatibility sources
 
 These are byte-exact source fixtures from `CrispStrobe/extensions` commit
-`fc94e19ee259c9fc8465c5a0b69dc366085ab376`. Each source retains its upstream
+`92cbcf94af01098502c13cd7695529596d378608`. Each source retains its upstream
 license and attribution header. The compatibility test checks the bytes against
 the corresponding `repo` SHA-256 in `gallery-pins.json` before executing them;
 do not normalize line endings (in particular, `Clay/htmlEncode.js` is CRLF).

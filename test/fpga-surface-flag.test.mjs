@@ -739,8 +739,8 @@ test('the canvas has snap-to-grid, keyboard delete, clear, and next-on-pass', ()
 test('Run mode labels each wire with its live bit value', () => {
     const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
     assert.match(ui, /label: v === undefined \? 'x' : String\(v\)/, 'each wire shows its bit');
-    assert.match(ui, /animated: v === 1/, 'live 1s animate');
-    assert.match(ui, /strokeWidth: v === 1 \? 2\.6 : 1\.8/, 'active wires thicken');
+    assert.match(ui, /animated: isLive\(v\)/, 'live wires animate (1-bit high or nonzero bus)');
+    assert.match(ui, /strokeWidth: isLive\(v\) \? 2\.6 : 1\.8/, 'active wires thicken');
 });
 
 // ── new primitives: constant source, buffer, controlled inverter ──
@@ -981,4 +981,21 @@ test('the learning path has minimise challenges graded on size, using the minimi
     assert.match(g, /challenge\.minimize/, 'grade() enforces the gate budget');
     assert.match(g, /overBudget/, 'a correct-but-oversized design is rejected on size');
     assert.match(g, /Correct AND minimal/, 'and a minimal one is celebrated');
+});
+
+// ── the datapath comes alive: bus inputs take a real number in Run mode ──
+test('a bus input (width>1) is set with a number field, not a 0/1 toggle', () => {
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    // The input node offers a numeric field for width>1, exposing the arithmetic
+    // the evaluator already computes (add/sub/mux/compare on buses).
+    assert.match(ui, /const editable = isIn && running && w > 1;/, 'a bus input is editable in Run mode');
+    assert.match(ui, /data-testid=\{`bw-fpga-rf-inval-\$\{data\.name\}`\}/, 'the field is addressable per input');
+    assert.match(ui, /data\.setValue\(v\)/, 'setting it drives the live input value');
+    // Run mode feeds the REAL numeric value (masked to width), not a coerced 0/1.
+    assert.match(ui, /const val = w === 1 \? \(raw \? 1 : 0\) : /, 'a bus keeps its multi-bit value');
+    assert.match(ui, /setValue: v => setInputs/, 'the node carries a setter for its value');
+    // The click-toggle stays 1-bit only, so a bus field is not flipped by a click.
+    assert.match(ui, /node\.data\.kind === 'in' && \(node\.data\.width \|\| 1\) === 1/, 'only 1-bit inputs toggle on click');
+    // A nonzero bus reads as a LIVE wire, not idle.
+    assert.match(ui, /const isLive = v => v !== undefined && v !== 'x' && v !== 0/, 'a nonzero bus wire is live');
 });

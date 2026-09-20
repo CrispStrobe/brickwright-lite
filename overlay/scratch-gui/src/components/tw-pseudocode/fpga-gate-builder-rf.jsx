@@ -114,19 +114,36 @@ const GateNode = ({data}) => {
 const valueColor = v => (v === 1 || v === '1' ? '#16a34a' : v === 0 || v === '0' ? '#94a3b8' : '#cbd5e1');
 
 // An input (drives, handle right) or output (sinks, handle left). In Run mode it
-// shows its live value (and an input is clickable to toggle).
+// shows its live value; a 1-bit input toggles on click, and a BUS input (width>1)
+// takes a real multi-bit number in a field — so the arithmetic/compare/mux family
+// actually computes, not just 0/1 logic. The colour reads 1-bit levels; a bus
+// value shows as its number.
 const IoNode = ({data}) => {
     const isIn = data.kind === 'in';
     const live = data.live;
     const running = live !== undefined;
+    const w = data.width || 1;
+    const editable = isIn && running && w > 1;
+    const max = w < 31 ? (1 << w) - 1 : Number.MAX_SAFE_INTEGER;
+    const swatch = w === 1 ? valueColor(live) : (isIn ? '#0284c7' : '#ca8a04');
     return (
         <div style={{position: 'relative', padding: '6px 10px', borderRadius: 12,
-            border: `1.3px solid ${running ? valueColor(live) : (isIn ? '#0284c7' : '#ca8a04')}`,
+            border: `1.3px solid ${running ? swatch : (isIn ? '#0284c7' : '#ca8a04')}`,
             background: isIn ? '#e0f2fe' : '#fef9c3', fontFamily: 'monospace', fontSize: 11,
-            cursor: running && isIn ? 'pointer' : 'default'}}>
+            cursor: running && isIn && w === 1 ? 'pointer' : 'default'}}>
             {isIn ? null : <Handle type="target" position={Position.Left} id="in" style={{background: '#0284c7'}} />}
-            {data.name}{data.width > 1 ? `[${data.width - 1}:0]` : ''}
-            {running ? <b style={{marginLeft: 6, color: valueColor(live)}}>{String(live)}</b> : null}
+            {data.name}{w > 1 ? `[${w - 1}:0]` : ''}
+            {editable ? (
+                <input type="number" min={0} max={max} value={String(live)} className="nodrag"
+                    data-testid={`bw-fpga-rf-inval-${data.name}`}
+                    onClick={e => e.stopPropagation()}
+                    onChange={e => {
+                        const v = Math.max(0, Math.min(max, parseInt(e.target.value, 10) || 0));
+                        if (data.setValue) data.setValue(v);
+                    }}
+                    style={{width: Math.max(38, String(max).length * 10 + 18), marginLeft: 6,
+                        fontFamily: 'monospace', fontSize: 11}} />
+            ) : (running ? <b style={{marginLeft: 6, color: valueColor(live)}}>{String(live)}</b> : null)}
             {isIn ? <Handle type="source" position={Position.Right} id="out" style={{background: '#22c55e'}} /> : null}
         </div>
     );
@@ -511,14 +528,17 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
         if (!running) return null;
         try { return evalModel(reactFlowToModel(nodes, edges), inputs, clockState); } catch (e) { return null; }
     }, [running, nodes, edges, inputs, clockState]);
-    const wire = valueColor;
-    // In Run mode each wire carries its live value: coloured, the '1's animate
-    // (dashes flow) and thicken, and a small label shows the bit itself.
+    // A wire is "live" when it carries a nonzero value — a 1-bit high OR a bus
+    // with a nonzero number — so a bus mid-computation reads as active, not idle.
+    const isLive = v => v !== undefined && v !== 'x' && v !== 0 && v !== '0';
+    const wire = v => (isLive(v) ? '#16a34a' : v === 0 || v === '0' ? '#94a3b8' : '#cbd5e1');
+    // In Run mode each wire carries its live value: coloured, the live ones animate
+    // (dashes flow) and thicken, and a small label shows the value (a bit or a bus).
     const shownEdges = live
         ? edges.map(e => {
             const v = live.values[e.source];
-            return {...e, animated: v === 1,
-                style: {stroke: wire(v), strokeWidth: v === 1 ? 2.6 : 1.8},
+            return {...e, animated: isLive(v),
+                style: {stroke: wire(v), strokeWidth: isLive(v) ? 2.6 : 1.8},
                 label: v === undefined ? 'x' : String(v),
                 labelStyle: {fill: wire(v), fontWeight: 700, fontSize: 11},
                 labelBgStyle: {fill: '#ffffff', fillOpacity: 0.85},
@@ -528,8 +548,13 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
     const shownNodes = live
         ? nodes.map(n => {
             const k = n.data.kind;
-            if (k === 'in' || k === 'out') {
-                return {...n, data: {...n.data, live: k === 'out' ? live.outputs[n.data.name] : (inputs[n.data.name] ? 1 : 0)}};
+            if (k === 'out') return {...n, data: {...n.data, live: live.outputs[n.data.name]}};
+            if (k === 'in') {
+                const w = n.data.width || 1;
+                const raw = Number(inputs[n.data.name]) || 0;
+                const val = w === 1 ? (raw ? 1 : 0) : (w < 31 ? (raw & ((1 << w) - 1)) >>> 0 : raw);
+                return {...n, data: {...n.data, live: val,
+                    setValue: v => setInputs(prev => ({...prev, [n.data.name]: v}))}};
             }
             if (k === 'led') return {...n, data: {...n.data, live: ledValue(n.id, edges, live.values)}};
             if (k === 'seg7') return {...n, data: {...n.data, value: seg7Value(n.id, edges, live.values)}};
@@ -538,7 +563,8 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
         })
         : nodes;
     const onNodeClick = (e, node) => {
-        if (running && node.data.kind === 'in') {
+        // A 1-bit input toggles on click; a bus input is set through its number field.
+        if (running && node.data.kind === 'in' && (node.data.width || 1) === 1) {
             setInputs(prev => ({...prev, [node.data.name]: prev[node.data.name] ? 0 : 1}));
         }
     };
