@@ -267,3 +267,16 @@ test('cloneSelection remaps ids, offsets positions, and keeps only internal edge
     assert.equal(ce[0].source, 'n0'); assert.equal(ce[0].target, 'n1'); // remapped
     assert.equal(nodes[0].data.name, 'a', 'node data is preserved');
 });
+
+// ── the capstone: a 4-bit ALU block computes all four ops and synthesises ──
+test('the 4-bit ALU block does add/sub/and/or by op, and is legal HDL', () => {
+    const alu = BUILTINS.find(b => b.id === 'alu4');
+    assert.ok(alu, 'the ALU block exists');
+    const y = (a, b, op0, op1) => evalModel(alu.model, {a, b, op0, op1}).outputs.y;
+    assert.equal(y(5, 9, 0, 0), 14, 'op 00 = add');
+    assert.equal(y(9, 4, 1, 0), 5, 'op 01 = sub');
+    assert.equal(y(12, 10, 0, 1), 8, 'op 10 = and');
+    assert.equal(y(12, 3, 1, 1), 15, 'op 11 = or');
+    assert.equal(y(12, 7, 0, 0), 3, 'add wraps in 4 bits');
+    assert.deepEqual(modelToVerilog(alu.model).problems, [], 'the ALU synthesises to legal HDL');
+});

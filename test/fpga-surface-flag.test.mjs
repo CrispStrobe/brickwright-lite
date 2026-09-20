@@ -1075,3 +1075,12 @@ test('the canvas supports copy/paste and select-all', () => {
     assert.match(ui, /meta && \(e\.key === 'v'/, 'Ctrl-V bound');
     assert.match(ui, /meta && \(e\.key === 'a'/, 'Ctrl-A selects all');
 });
+
+// ── the capstone: a droppable 4-bit ALU ──
+test('the palette offers a 4-bit ALU capstone block', () => {
+    const b = read('overlay/scratch-gui/src/lib/bw-fpga/builtins.js');
+    assert.match(b, /id: 'alu4'/, 'the ALU is a droppable Block');
+    assert.match(b, /op1 op0 → 00 add, 01 sub/, 'its op encoding is documented for the learner');
+    assert.match(b, /type: 'add'.*type: 'sub'.*type: 'and'.*type: 'or'/s, 'it wires all four operations');
+    assert.match(b, /type: 'mux'/, 'and multiplexes the result by op');
+});
