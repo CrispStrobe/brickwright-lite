@@ -72,8 +72,11 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // the new pin rather than carried over. The rest of the range is the
     // examples work: 26 benches rebuilt from their programs, and three new
     // Codex trails for the digital and MCU domain.
+    // -> 06a78ba2 on 2026-09-20: adds `PART <name> = SERVO|MOTOR <channel>` and
+    // resolves a declared name at all seven actuator operand sites, so the
+    // emitter changes again and the artifact is re-run, not carried over.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '2be3fe2bacfd5cfb8e23a7095f6cf0c75905ef1b');
+        '06a78ba28727a113a74511da590f571ebacafb9d');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
