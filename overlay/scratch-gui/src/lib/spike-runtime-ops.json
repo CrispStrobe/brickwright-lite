@@ -1,0 +1,696 @@
+{
+    "runtime": "spikeprime",
+    "ops": {
+        "connectHub": {
+            "kind": "command",
+            "method": "connectHub",
+            "args": []
+        },
+        "connectHubAt": {
+            "kind": "command",
+            "method": "connectHubAt",
+            "args": [
+                "URL"
+            ]
+        },
+        "disconnectHub": {
+            "kind": "command",
+            "method": "disconnectHub",
+            "args": []
+        },
+        "isConnected": {
+            "kind": "boolean",
+            "method": "isConnected",
+            "args": []
+        },
+        "getHubType": {
+            "kind": "reporter",
+            "method": "getHubType",
+            "args": []
+        },
+        "getFirmwareVersion": {
+            "kind": "reporter",
+            "method": "getFirmwareVersion",
+            "args": []
+        },
+        "getConnectionMode": {
+            "kind": "reporter",
+            "method": "getConnectionMode",
+            "args": []
+        },
+        "setConnectionMode": {
+            "kind": "command",
+            "method": "setConnectionMode",
+            "args": [
+                "MODE"
+            ]
+        },
+        "enableStreamingMode": {
+            "kind": "command",
+            "method": "enableStreamingMode",
+            "args": []
+        },
+        "disableStreamingMode": {
+            "kind": "command",
+            "method": "disableStreamingMode",
+            "args": []
+        },
+        "transpileProject": {
+            "kind": "command",
+            "method": "transpileProject",
+            "args": []
+        },
+        "showCode": {
+            "kind": "command",
+            "method": "showCode",
+            "args": []
+        },
+        "downloadCode": {
+            "kind": "command",
+            "method": "downloadCode",
+            "args": []
+        },
+        "getTranspiledCode": {
+            "kind": "reporter",
+            "method": "getTranspiledCode",
+            "args": []
+        },
+        "uploadScriptToHub": {
+            "kind": "command",
+            "method": "uploadScriptToHub",
+            "args": [
+                "NAME"
+            ]
+        },
+        "runScriptOnHub": {
+            "kind": "command",
+            "method": "runScriptOnHub",
+            "args": [
+                "NAME"
+            ]
+        },
+        "renameScriptOnHub": {
+            "kind": "command",
+            "method": "renameScriptOnHub",
+            "args": [
+                "OLD",
+                "NEW"
+            ]
+        },
+        "deleteScriptOnHub": {
+            "kind": "command",
+            "method": "deleteScriptOnHub",
+            "args": [
+                "NAME"
+            ]
+        },
+        "listScriptsOnHub": {
+            "kind": "reporter",
+            "method": "listScriptsOnHub",
+            "args": []
+        },
+        "stopRunningScript": {
+            "kind": "command",
+            "method": "stopRunningScript",
+            "args": []
+        },
+        "setMovementMotors": {
+            "kind": "command",
+            "method": "setMovementMotors",
+            "args": [
+                "PORT_A",
+                "PORT_B"
+            ]
+        },
+        "moveForward": {
+            "kind": "command",
+            "method": "moveForward",
+            "args": [
+                "DIRECTION",
+                "VALUE",
+                "UNIT"
+            ]
+        },
+        "steer": {
+            "kind": "command",
+            "method": "steer",
+            "args": [
+                "STEERING"
+            ]
+        },
+        "motorPairMove": {
+            "kind": "command",
+            "method": "motorPairMove",
+            "args": [
+                "STEERING",
+                "SPEED"
+            ]
+        },
+        "startTank": {
+            "kind": "command",
+            "method": "startTank",
+            "args": [
+                "LEFT_SPEED",
+                "RIGHT_SPEED"
+            ]
+        },
+        "setMovementSpeed": {
+            "kind": "command",
+            "method": "setMovementSpeed",
+            "args": [
+                "SPEED"
+            ]
+        },
+        "stopMovement": {
+            "kind": "command",
+            "method": "stopMovement",
+            "args": []
+        },
+        "motorRunFor": {
+            "kind": "command",
+            "method": "motorRunFor",
+            "args": [
+                "PORT",
+                "DIRECTION",
+                "VALUE",
+                "UNIT"
+            ]
+        },
+        "motorRunToPosition": {
+            "kind": "command",
+            "method": "motorRunToPosition",
+            "args": [
+                "PORT",
+                "POSITION"
+            ]
+        },
+        "motorStart": {
+            "kind": "command",
+            "method": "motorStart",
+            "args": [
+                "PORT",
+                "DIRECTION"
+            ]
+        },
+        "motorStop": {
+            "kind": "command",
+            "method": "motorStop",
+            "args": [
+                "PORT"
+            ]
+        },
+        "startMotor": {
+            "kind": "command",
+            "method": "startMotor",
+            "args": [
+                "PORT",
+                "SPEED"
+            ]
+        },
+        "stopMotor": {
+            "kind": "command",
+            "method": "stopMotor",
+            "args": [
+                "PORT",
+                "ACTION"
+            ]
+        },
+        "motorSetSpeed": {
+            "kind": "command",
+            "method": "motorSetSpeed",
+            "args": [
+                "PORT",
+                "SPEED"
+            ]
+        },
+        "motorSetStopAction": {
+            "kind": "command",
+            "method": "motorSetStopAction",
+            "args": [
+                "PORT",
+                "ACTION"
+            ]
+        },
+        "getPosition": {
+            "kind": "reporter",
+            "method": "getPosition",
+            "args": [
+                "PORT"
+            ]
+        },
+        "getRelativePosition": {
+            "kind": "reporter",
+            "method": "getRelativePosition",
+            "args": [
+                "PORT"
+            ]
+        },
+        "getAbsolutePosition": {
+            "kind": "reporter",
+            "method": "getAbsolutePosition",
+            "args": [
+                "PORT"
+            ]
+        },
+        "getSpeed": {
+            "kind": "reporter",
+            "method": "getSpeed",
+            "args": [
+                "PORT"
+            ]
+        },
+        "resetMotorPosition": {
+            "kind": "command",
+            "method": "resetMotorPosition",
+            "args": [
+                "PORT",
+                "POSITION"
+            ]
+        },
+        "displayText": {
+            "kind": "command",
+            "method": "displayText",
+            "args": [
+                "TEXT"
+            ]
+        },
+        "displayImage": {
+            "kind": "command",
+            "method": "displayImage",
+            "args": [
+                "MATRIX"
+            ]
+        },
+        "displayPattern": {
+            "kind": "command",
+            "method": "displayPattern",
+            "args": [
+                "PATTERN"
+            ]
+        },
+        "displayClear": {
+            "kind": "command",
+            "method": "displayClear",
+            "args": []
+        },
+        "displayShowImage": {
+            "kind": "command",
+            "method": "displayShowImage",
+            "args": [
+                "IMAGE"
+            ]
+        },
+        "setPixel": {
+            "kind": "command",
+            "method": "setPixel",
+            "args": [
+                "X",
+                "Y",
+                "BRIGHTNESS"
+            ]
+        },
+        "rotateDisplay": {
+            "kind": "command",
+            "method": "rotateDisplay",
+            "args": [
+                "ANGLE"
+            ]
+        },
+        "setCenterButtonColor": {
+            "kind": "command",
+            "method": "setCenterButtonColor",
+            "args": [
+                "COLOR"
+            ]
+        },
+        "getAngle": {
+            "kind": "reporter",
+            "method": "getAngle",
+            "args": [
+                "AXIS"
+            ]
+        },
+        "getGyroRate": {
+            "kind": "reporter",
+            "method": "getGyroRate",
+            "args": [
+                "AXIS"
+            ]
+        },
+        "getFilteredGyroRate": {
+            "kind": "reporter",
+            "method": "getFilteredGyroRate",
+            "args": [
+                "AXIS"
+            ]
+        },
+        "getAcceleration": {
+            "kind": "reporter",
+            "method": "getAcceleration",
+            "args": [
+                "AXIS"
+            ]
+        },
+        "getFilteredAcceleration": {
+            "kind": "reporter",
+            "method": "getFilteredAcceleration",
+            "args": [
+                "AXIS"
+            ]
+        },
+        "resetYaw": {
+            "kind": "command",
+            "method": "resetYaw",
+            "args": []
+        },
+        "presetYaw": {
+            "kind": "command",
+            "method": "presetYaw",
+            "args": [
+                "ANGLE"
+            ]
+        },
+        "setMatrix3x3ColorGrid": {
+            "kind": "command",
+            "method": "setMatrix3x3ColorGrid",
+            "args": [
+                "PORT",
+                "P1",
+                "P2",
+                "P3",
+                "P4",
+                "P5",
+                "P6",
+                "P7",
+                "P8",
+                "P9"
+            ]
+        },
+        "setMatrix3x3Custom": {
+            "kind": "command",
+            "method": "setMatrix3x3Custom",
+            "args": [
+                "PORT",
+                "PATTERN"
+            ]
+        },
+        "setMatrix3x3SolidColor": {
+            "kind": "command",
+            "method": "setMatrix3x3SolidColor",
+            "args": [
+                "PORT",
+                "COLOR",
+                "BRIGHTNESS"
+            ]
+        },
+        "clearMatrix3x3": {
+            "kind": "command",
+            "method": "clearMatrix3x3",
+            "args": [
+                "PORT"
+            ]
+        },
+        "setLightMatrixPixel": {
+            "kind": "command",
+            "method": "setLightMatrixPixel",
+            "args": [
+                "PORT",
+                "X",
+                "Y",
+                "BRIGHTNESS"
+            ]
+        },
+        "whenGesture": {
+            "kind": "hat",
+            "method": "whenGesture",
+            "args": [
+                "GESTURE"
+            ]
+        },
+        "isGesture": {
+            "kind": "boolean",
+            "method": "isGesture",
+            "args": [
+                "GESTURE"
+            ]
+        },
+        "getOrientation": {
+            "kind": "reporter",
+            "method": "getOrientation",
+            "args": []
+        },
+        "getFaceUp": {
+            "kind": "reporter",
+            "method": "getFaceUp",
+            "args": []
+        },
+        "playHubSound": {
+            "kind": "command",
+            "method": "playHubSound",
+            "args": [
+                "SOUND"
+            ]
+        },
+        "playBeep": {
+            "kind": "command",
+            "method": "playBeep",
+            "args": [
+                "FREQUENCY",
+                "DURATION"
+            ]
+        },
+        "playNote": {
+            "kind": "command",
+            "method": "playNote",
+            "args": [
+                "NOTE",
+                "SECS"
+            ]
+        },
+        "playWaveBeep": {
+            "kind": "command",
+            "method": "playWaveBeep",
+            "args": [
+                "WAVEFORM",
+                "FREQUENCY",
+                "DURATION"
+            ]
+        },
+        "setVolume": {
+            "kind": "command",
+            "method": "setVolume",
+            "args": [
+                "VOLUME"
+            ]
+        },
+        "stopSound": {
+            "kind": "command",
+            "method": "stopSound",
+            "args": []
+        },
+        "getBatteryLevel": {
+            "kind": "reporter",
+            "method": "getBatteryLevel",
+            "args": []
+        },
+        "getBatteryTemperature": {
+            "kind": "reporter",
+            "method": "getBatteryTemperature",
+            "args": []
+        },
+        "getHubTemperature": {
+            "kind": "reporter",
+            "method": "getHubTemperature",
+            "args": []
+        },
+        "getHubCurrent": {
+            "kind": "reporter",
+            "method": "getHubCurrent",
+            "args": []
+        },
+        "getHubVoltage": {
+            "kind": "reporter",
+            "method": "getHubVoltage",
+            "args": []
+        },
+        "getTimer": {
+            "kind": "reporter",
+            "method": "getTimer",
+            "args": []
+        },
+        "resetTimer": {
+            "kind": "command",
+            "method": "resetTimer",
+            "args": []
+        },
+        "getDistance": {
+            "kind": "reporter",
+            "method": "getDistance",
+            "args": [
+                "PORT"
+            ]
+        },
+        "getDistanceIn": {
+            "kind": "reporter",
+            "method": "getDistanceIn",
+            "args": [
+                "PORT",
+                "UNIT"
+            ]
+        },
+        "setDistanceLights": {
+            "kind": "command",
+            "method": "setDistanceLights",
+            "args": [
+                "PORT",
+                "TL",
+                "TR",
+                "BL",
+                "BR"
+            ]
+        },
+        "getColor": {
+            "kind": "reporter",
+            "method": "getColor",
+            "args": [
+                "PORT"
+            ]
+        },
+        "getReflection": {
+            "kind": "reporter",
+            "method": "getReflection",
+            "args": [
+                "PORT"
+            ]
+        },
+        "getAmbientLight": {
+            "kind": "reporter",
+            "method": "getAmbientLight",
+            "args": [
+                "PORT"
+            ]
+        },
+        "getForce": {
+            "kind": "reporter",
+            "method": "getForce",
+            "args": [
+                "PORT"
+            ]
+        },
+        "isForceSensorPressed": {
+            "kind": "boolean",
+            "method": "isForceSensorPressed",
+            "args": [
+                "PORT"
+            ]
+        },
+        "whenColor": {
+            "kind": "hat",
+            "method": "whenColor",
+            "args": [
+                "PORT",
+                "COLOR"
+            ]
+        },
+        "isColor": {
+            "kind": "boolean",
+            "method": "isColor",
+            "args": [
+                "PORT",
+                "COLOR"
+            ]
+        },
+        "whenForceSensor": {
+            "kind": "hat",
+            "method": "whenForceSensor",
+            "args": [
+                "PORT",
+                "STATE"
+            ]
+        },
+        "isButtonPressed": {
+            "kind": "boolean",
+            "method": "isButtonPressed",
+            "args": [
+                "BUTTON"
+            ]
+        },
+        "whenButtonPressed": {
+            "kind": "hat",
+            "method": "whenButtonPressed",
+            "args": [
+                "BUTTON"
+            ]
+        },
+        "writeLogFile": {
+            "kind": "command",
+            "method": "writeLogFile",
+            "args": [
+                "TEXT",
+                "FILENAME"
+            ]
+        },
+        "readLogFile": {
+            "kind": "reporter",
+            "method": "readLogFile",
+            "args": [
+                "FILENAME"
+            ]
+        },
+        "deleteLogFile": {
+            "kind": "command",
+            "method": "deleteLogFile",
+            "args": [
+                "FILENAME"
+            ]
+        },
+        "listFiles": {
+            "kind": "reporter",
+            "method": "listFiles",
+            "args": []
+        },
+        "runReplCommand": {
+            "kind": "command",
+            "method": "runReplCommand",
+            "args": [
+                "CODE"
+            ]
+        },
+        "getReplOutput": {
+            "kind": "reporter",
+            "method": "getReplOutput",
+            "args": []
+        },
+        "clearReplOutput": {
+            "kind": "command",
+            "method": "clearReplOutput",
+            "args": []
+        },
+        "getReplHistory": {
+            "kind": "reporter",
+            "method": "getReplHistory",
+            "args": [
+                "INDEX"
+            ]
+        },
+        "runPythonCommand": {
+            "kind": "command",
+            "method": "runPythonCommand",
+            "args": [
+                "CODE"
+            ]
+        },
+        "runHubCommand": {
+            "kind": "command",
+            "method": "runHubCommand",
+            "args": [
+                "CODE"
+            ]
+        },
+        "exitScript": {
+            "kind": "command",
+            "method": "exitScript",
+            "args": []
+        }
+    }
+}

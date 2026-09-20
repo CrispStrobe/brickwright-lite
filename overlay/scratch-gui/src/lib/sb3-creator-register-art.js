@@ -24,8 +24,32 @@
 // lazily-loaded chunk. Nothing here is in the initial bundle.
 import SB3Creator from './sb3-creator.js';
 import art from './sb3-creator-vector-art.js';
+import spikeRuntimeOps from './spike-runtime-ops.json';
+import {LEGACY_IDS as SPIKE_LEGACY_IDS}
+    from '../../../scratch-vm/src/extension-support/spike-legacy-migration.js';
 
 // Returns the entry count; ignored here, asserted by the tests (246 as of 2026-08-30).
 SB3Creator.registerVectorArt(art);
+
+// THE SAME ARGUMENT, FOR THE SPIKE RUNTIME REGISTRY.
+//
+// sb3-creator's generated registry still describes the five SPIKE extensions
+// as they were before they became one, and Lite vendors that file under a
+// byte-identity pin it may not edit. But runtimeOp() returns null for an
+// opcode with no entry, so every block the load-time migration moves onto a
+// unified opcode would quietly stop round-tripping through the Code tab.
+//
+// So the entry is derived from the extension that actually ships
+// (scripts/spike/gen-runtime-ops.mjs) and merged here, at the one door that
+// hands out the class — for exactly the reason the art is registered here and
+// not at each call site. The four dead ids go at the same time, so a project
+// can never resolve an opcode against an extension that is no longer loadable.
+// test/spike-runtime-registry.test.mjs holds both properties. When sb3-creator
+// regenerates its registry against the unified extension, this becomes a
+// no-op and can go.
+SB3Creator.RUNTIME_EXTENSIONS.spikeprime = spikeRuntimeOps;
+for (const legacyId of SPIKE_LEGACY_IDS) {
+    delete SB3Creator.RUNTIME_EXTENSIONS[legacyId];
+}
 
 export default SB3Creator;

@@ -1523,7 +1523,7 @@
       // peripheral per extension id, and this hub is one of two that can be
       // the active one. PROJECT_STOP_ALL still binds here, because stopping is
       // per-hub and harmless on the idle one.
-      if (this._runtime) {
+      if (this._runtime && typeof this._runtime.on === "function") {
         this._runtime.on("PROJECT_STOP_ALL", this.stopAll.bind(this));
       }
 
@@ -1697,22 +1697,32 @@
       return this.sendRaw(`${jsonText}\r`, useLimiter, json.i);
     }
 
+    /**
+     * Scratch Link's RFCOMM `send` takes base64 and an explicit encoding.
+     *
+     * This extension used to pass the raw text with no encoding field, which
+     * is not the protocol — spikeprimeBTC, the extension it shared a hub and
+     * a vocabulary with, had always done it correctly. Merging the two forced
+     * the difference into the open, and the correct one wins: the virtual
+     * Classic transport refuses anything else
+     * (test/virtual-spike-classic-extension-e2e.test.mjs), which is how the
+     * discrepancy surfaced at all.
+     */
     sendRaw(text, useLimiter = false, id = null) {
       if (!this.isConnected()) return Promise.resolve();
       if (useLimiter && !this._rateLimiter.okayToSend())
         return Promise.resolve();
 
-      // VERBOSE DEBUG LOG
-      console.log(
-        `%c📤 [SPIKE SEND]: ${text.trim()}`,
-        "color: #00ff00; font-weight: bold;"
-      );
+      const options = {
+        message: Base64Util.uint8ArrayToBase64(new TextEncoder().encode(text)),
+        encoding: "base64",
+      };
 
-      if (!id) return this._bt.sendMessage({ message: text });
+      if (!id) return this._bt.sendMessage(options);
       const promise = new Promise((resolve, reject) => {
         this._openRequests[id] = { resolve, reject };
       });
-      this._bt.sendMessage({ message: text });
+      this._bt.sendMessage(options);
       return promise;
     }
 
@@ -2052,6 +2062,8 @@ continuous_sensor_loop()
       this._firmware = null;
       this._rpcVersion = null;
       this._streaming = true;
+      this._streamingRequested = false;
+      this._streamingFallback = null;
 
       this._rateLimiter = new RateLimiter(BTSendRateMax);
       this._portValues = {};
@@ -2212,11 +2224,62 @@ continuous_sensor_loop()
     // ------------------------------------------------------------------ send
 
     /**
-     * The 3.x firmware has no JSON-RPC verbs. Rejecting is deliberate: it puts
-     * every caller on its existing Python fallback. See the class comment.
+     * The 2.x hub's JSON-RPC verbs, answered natively where 3.x has an
+     * equivalent and rejected where it does not.
+     *
+     * Rejecting is not a failure: every caller in this extension is written as
+     * `sendCommand(...).catch(() => sendPythonCommand(...))`, because the 2.x
+     * firmware was itself inconsistent about which verbs it knew. So a verb
+     * with no 3.x equivalent takes the Python path, which the tunnel accepts.
+     *
+     * What must NOT happen is everything taking the Python path. The 3.x hub
+     * drives its motors from a JSON command on the tunnel — that is what both
+     * BLE extensions sent — and routing motor control through generated
+     * MicroPython instead would be slower, less reliable, and a loss of
+     * fidelity against what those extensions did.
      */
-    sendCommand() {
-      return Promise.reject(new Error("spike3: no JSON-RPC; use the Python path"));
+    sendCommand(method, params) {
+      const p = params || {};
+      const portId = SpikePorts.indexOf(String(p.port || "").toUpperCase());
+
+      switch (method) {
+        case "scratch.motor_start":
+        case "scratch.motor_set_speed":
+          if (portId < 0) break;
+          return this._sendTunnelJSON({ m: "motor", p: { port: portId, speed: this._speed(p.speed) } });
+
+        case "scratch.motor_stop":
+          if (portId < 0) break;
+          return this._sendTunnelJSON({
+            m: "motor",
+            p: { port: portId, speed: 0, end_state: SpikeMotorStopMode[p.stop] ?? p.stop ?? 1 },
+          });
+
+        default:
+          break;
+      }
+      return Promise.reject(new Error(`spike3 has no native ${method}`));
+    }
+
+    _speed(value) {
+      const n = Number(value);
+      return Math.max(-100, Math.min(100, Math.round(Number.isFinite(n) ? n : 0)));
+    }
+
+    _sendTunnelJSON(command) {
+      return this.sendPythonCommandRaw(JSON.stringify(command));
+    }
+
+    /** Tunnel a payload verbatim — no trailing newline, no REPL framing. */
+    sendPythonCommandRaw(text) {
+      if (!this.isConnected()) return Promise.resolve();
+      const bytes = new TextEncoder().encode(text);
+      const message = new Uint8Array(3 + bytes.length);
+      message[0] = SPIKE3.TUNNEL;
+      message[1] = bytes.length & 0xff;
+      message[2] = (bytes.length >> 8) & 0xff;
+      message.set(bytes, 3);
+      return this._send(message, true);
     }
 
     sendPythonCommand(pythonCode) {
@@ -2258,9 +2321,27 @@ continuous_sensor_loop()
 
     _onConnect() {
       this._link.startNotifications(SPIKE3.SERVICE, SPIKE3.TX_CHAR, this._onMessage);
-      // Ask what we are talking to, then ask it to stream its devices.
+      this._streamingRequested = false;
+      // Ask what we are talking to. Device streaming is requested the moment
+      // it answers (see _handleInfoResponse) rather than after a fixed wait:
+      // the InfoResponse is also what carries the packet size, so asking
+      // before it arrives means sending at the wrong MTU. Both BLE extensions
+      // used a 500 ms timer instead, which was slower when the hub was quick
+      // and still too early when it was not.
       this._send(Uint8Array.from([SPIKE3.INFO_REQUEST]), false);
-      setTimeout(() => this.setDeviceNotifications(true), 500);
+      // A hub that never answers still gets asked, so a missing InfoResponse
+      // costs the packet size rather than every sensor reading.
+      this._streamingFallback = setTimeout(() => this._requestStreamingOnce(), 1000);
+    }
+
+    _requestStreamingOnce() {
+      if (this._streamingRequested) return;
+      this._streamingRequested = true;
+      if (this._streamingFallback) {
+        clearTimeout(this._streamingFallback);
+        this._streamingFallback = null;
+      }
+      this.setDeviceNotifications(true);
     }
 
     /**
@@ -2344,6 +2425,7 @@ continuous_sensor_loop()
       if (this._link && this._link.setMaxPacketSize) {
         this._link.setMaxPacketSize(this._maxPacketSize);
       }
+      this._requestStreamingOnce();
     }
 
     /**
@@ -2570,6 +2652,7 @@ continuous_sensor_loop()
       this._extensionId = extensionId;
       this._mode = HubMode.AUTO;
       this._resolvedMode = null;
+      this._candidates = [];
       this._bridgeURL = "localhost:8081";
 
       this._repl = new SpikePrime(this._runtime, extensionId);
@@ -2581,6 +2664,13 @@ continuous_sensor_loop()
       // not need hardware still work.
       if (this._runtime && typeof this._runtime.registerPeripheralExtension === "function") {
         this._runtime.registerPeripheralExtension(extensionId, this);
+      }
+      // The transports emit this themselves when discovery finds nothing; it
+      // is the signal to try the next route rather than to give up.
+      if (this._runtime && typeof this._runtime.on === "function") {
+        const timeoutEvent =
+          this._runtime.constructor && this._runtime.constructor.PERIPHERAL_SCAN_TIMEOUT;
+        if (timeoutEvent) this._runtime.on(timeoutEvent, () => this._onScanTimeout());
       }
     }
 
@@ -2653,24 +2743,56 @@ continuous_sensor_loop()
 
     // -------------------------------------------------------------- lifecycle
 
+    /**
+     * Try the routes this machine has, best first, moving on when one finds
+     * nothing.
+     *
+     * The fallback is the point, not a nicety. Scratch Link reaches both
+     * firmware generations through two different transports, and which one
+     * finds a hub depends on the hub, not on the machine — so picking BLE
+     * because Scratch Link exists and stopping there would leave every
+     * firmware-2.x hub undiscoverable on a machine that can reach it
+     * perfectly well. A scan that finds nothing advances to the next route.
+     */
     scan() {
-      const candidates =
+      this._candidates =
         this._mode === HubMode.AUTO
           ? this.availableModes()
           : [this._mode].filter((m) => HubRouter.transportAvailable(m, this._runtime));
 
-      if (!candidates.length) {
+      if (!this._candidates.length) {
         this._emitNoTransport();
-        return;
+        return Promise.resolve();
       }
+      return this._scanNext();
+    }
 
-      // Scratch Link's two transports both enumerate into Scratch's own
-      // chooser, so when both are available the BLE one is started and the
-      // Classic one follows only if BLE finds nothing. Web Bluetooth and the
-      // bridge each connect directly, so they are only reached when no
-      // Scratch Link transport exists.
-      const mode = candidates[0];
-      this._startScan(mode);
+    /**
+     * Returns the connect promise for the two routes that connect directly
+     * (Web Bluetooth and the bridge), so the `connect to hub` block can be
+     * waited on. The Scratch Link routes only START discovery here — the user
+     * picks from Scratch's chooser and `connect(id)` follows — so there is
+     * nothing to await and the promise resolves immediately.
+     */
+    _scanNext() {
+      const mode = this._candidates.shift();
+      if (!mode) {
+        this._resolvedMode = null;
+        return Promise.resolve();
+      }
+      return Promise.resolve(this._startScan(mode));
+    }
+
+    /**
+     * A scan that timed out means "not on this route", not "not anywhere".
+     * Returns whether another route was started, so the caller can decide
+     * whether the timeout is still worth reporting.
+     */
+    _onScanTimeout() {
+      if (this.isConnected()) return false;
+      if (!this._candidates.length) return false;
+      this._scanNext();
+      return true;
     }
 
     _startScan(mode) {
@@ -2706,10 +2828,7 @@ continuous_sensor_loop()
           // Web Bluetooth has no discovery step of its own: the browser's
           // chooser IS the discovery, and it must run from the gesture that
           // opened it. So this goes straight to connecting.
-          link
-            .connectPeripheral()
-            .catch(() => this._emitRequestError());
-          break;
+          return link.connectPeripheral().catch(() => this._emitRequestError());
         }
 
         case HubMode.BRIDGE: {
@@ -2722,14 +2841,14 @@ continuous_sensor_loop()
           );
           link.setURL(this._bridgeURL);
           this._repl.attach(link);
-          link.connectPeripheral().catch(() => this._emitRequestError());
-          break;
+          return link.connectPeripheral().catch(() => this._emitRequestError());
         }
 
         default:
           this._emitNoTransport();
           break;
       }
+      return Promise.resolve();
     }
 
     connect(id) {
@@ -6748,13 +6867,13 @@ continuous_sensor_loop()
     // ========================================================================
 
     connectHub() {
-      this._peripheral.scan();
+      return this._peripheral.scan();
     }
 
     connectHubAt(args) {
       this._peripheral.setBridgeURL(Cast.toString(args.URL));
       this._peripheral.setMode("bridge");
-      this._peripheral.scan();
+      return this._peripheral.scan();
     }
 
     disconnectHub() {
@@ -6811,15 +6930,26 @@ continuous_sensor_loop()
     // MOTORS (blocks carried over from the BLE extensions)
     // ========================================================================
 
-    /** Set the speed and start turning in one step. */
+    /**
+     * Set the speed and start turning in one step.
+     *
+     * Native command first, Python second — the same chain every other motor
+     * block here uses. On a 3.x hub the native path is the JSON tunnel command
+     * both BLE extensions sent; on a 2.x hub it is the JSON-RPC verb; if
+     * neither verb is known, the generated MicroPython still works.
+     */
     startMotor(args) {
       const ports = this._validatePorts(Cast.toString(args.PORT));
       const speed = MathUtil.clamp(Cast.toNumber(args.SPEED), -100, 100);
       const promises = ports.map((port) => {
         this._peripheral.motorSettings[port].speed = Math.abs(speed);
-        return this._peripheral.sendPythonCommand(
-          `import hub; hub.port.${port}.motor.run_at_speed(${Math.round(speed * 9.3)})`
-        );
+        return this._peripheral
+          .sendCommand("scratch.motor_start", { port: port, speed: speed })
+          .catch(() =>
+            this._peripheral.sendPythonCommand(
+              `import hub; hub.port.${port}.motor.run_at_speed(${Math.round(speed * 9.3)})`
+            )
+          );
       });
       return Promise.all(promises).then(() => {});
     }
@@ -6831,9 +6961,13 @@ continuous_sensor_loop()
       const call =
         action === "coast" ? "float()" : action === "hold" ? "hold()" : "brake()";
       const promises = ports.map((port) =>
-        this._peripheral.sendPythonCommand(
-          `import hub; hub.port.${port}.motor.pwm(0); hub.port.${port}.motor.${call}`
-        )
+        this._peripheral
+          .sendCommand("scratch.motor_stop", { port: port, stop: action })
+          .catch(() =>
+            this._peripheral.sendPythonCommand(
+              `import hub; hub.port.${port}.motor.pwm(0); hub.port.${port}.motor.${call}`
+            )
+          )
       );
       return Promise.all(promises).then(() => {});
     }

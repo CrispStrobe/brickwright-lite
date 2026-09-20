@@ -4,6 +4,21 @@ const maybeFormatMessage = require('../util/maybe-format-message');
 
 const BlockType = require('./block-type');
 const {pinForURL, pinStatusFor, verifyGallerySource} = require('./gallery-integrity');
+const {LEGACY_IDS: SPIKE_LEGACY_IDS, UNIFIED_ID: SPIKE_UNIFIED_ID} =
+    require('./spike-legacy-migration');
+
+/**
+ * The id an extension request should actually load.
+ *
+ * A project saved before the five SPIKE extensions became one names an id
+ * that no longer exists. The project loader rewrites those ids, but not every
+ * path into the manager goes through it — shareBlocksToTarget and direct
+ * loadExtensionURL calls do not — so the last word is here. Without it those
+ * paths would fall through to the bare-id branch below and log a missing
+ * implementation for an extension that is present under another name.
+ */
+const resolveExtensionId = id =>
+    (typeof id === 'string' && SPIKE_LEGACY_IDS.indexOf(id) !== -1 ? SPIKE_UNIFIED_ID : id);
 
 // HTTP(S) URLs are candidates for the content-pinned compatibility path. Unpinned URLs are always
 // sent to the extension worker; see isTrustedExtensionURL / loadExtensionURL.
@@ -67,11 +82,11 @@ const lazyBuiltinExtensions = {
     legopoweredup: () => import(/* webpackChunkName: "ext-legopoweredup" */ '../extensions/crispstrobe/legopoweredup/index.js'),
     legoboostunified: () => import(/* webpackChunkName: "ext-legoboostunified" */ '../extensions/crispstrobe/legoboostunified/index.js'),
     wedo2unified: () => import(/* webpackChunkName: "ext-wedo2unified" */ '../extensions/crispstrobe/wedo2unified/index.js'),
+    // One SPIKE extension. spikeprimeble, spikeprimeBTC, spikeprimeBridge and
+    // legospikeprimeBLE used to sit beside this line; they were the same hub
+    // reached four ways, and they now resolve here through SPIKE_LEGACY_IDS.
+    // See extension-support/spike-legacy-migration.js.
     spikeprime: () => import(/* webpackChunkName: "ext-spikeprime" */ '../extensions/crispstrobe/spikeprime/index.js'),
-    spikeprimeble: () => import(/* webpackChunkName: "ext-spikeprimeble" */ '../extensions/crispstrobe/spikeprimeble/index.js'),
-    spikeprimeBTC: () => import(/* webpackChunkName: "ext-spikeprimeBTC" */ '../extensions/crispstrobe/spikeprimeBTC/index.js'),
-    spikeprimeBridge: () => import(/* webpackChunkName: "ext-spikeprimeBridge" */ '../extensions/crispstrobe/spikeprimeBridge/index.js'),
-    legospikeprimeBLE: () => import(/* webpackChunkName: "ext-legospikeprimeBLE" */ '../extensions/crispstrobe/legospikeprimeBLE/index.js'),
     ev3comprehensive: () => import(/* webpackChunkName: "ext-ev3comprehensive" */ '../extensions/crispstrobe/ev3comprehensive/index.js'),
     legoev3direct: () => import(/* webpackChunkName: "ext-legoev3direct" */ '../extensions/crispstrobe/legoev3direct/index.js'),
     ev3lms: () => import(/* webpackChunkName: "ext-ev3lms" */ '../extensions/crispstrobe/ev3lms/index.js'),
@@ -202,6 +217,7 @@ class ExtensionManager {
      * @param {string} extensionId - the ID of an internal extension
      */
     loadExtensionIdSync (extensionId) {
+        extensionId = resolveExtensionId(extensionId);
         if (hasOwn(lazyBuiltinExtensions, extensionId)) {
             // Nothing calls this for a lazy id today (CORE_EXTENSIONS is empty);
             // if something starts to, it gets the extension a moment later
@@ -274,6 +290,7 @@ class ExtensionManager {
      * @returns {Promise} resolved once the extension is loaded and initialized or rejected on failure
      */
     loadExtensionURL (extensionURL) {
+        extensionURL = resolveExtensionId(extensionURL);
         if (hasOwn(lazyBuiltinExtensions, extensionURL)) {
             return this._loadLazyBuiltinExtension(extensionURL);
         }
