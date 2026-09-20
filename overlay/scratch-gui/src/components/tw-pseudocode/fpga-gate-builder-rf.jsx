@@ -387,6 +387,11 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
         setNodes(seeded.nodes);
         setEdges(seeded.edges);
         setTtOpen(false);
+        // The generated design lands at fresh positions, so the previous fit
+        // region no longer frames it — without this its gates sit off-screen
+        // (LOOK-verified: a generated XOR showed only its I/O). Fit once React
+        // Flow has measured the new nodes (a frame later).
+        setTimeout(() => { try { rf.fitView({padding: 0.2, duration: 300}); } catch (e) { /* not ready */ } }, 60);
     };
 
     // Export the canvas as a standalone SVG — the SAME nodes/glyphs/wires shown,
