@@ -68,8 +68,14 @@ async function discoverLocal () {
     // index.json
     files.set('index.json', await readFile(path.join(root, 'index.json')));
 
-    // READMEs
-    for (const name of ['README.md', 'README.de.md']) {
+    // READMEs, and the Codex manifest.
+    //
+    // curriculum.json is what turns the gallery into a curriculum: trails ->
+    // chapters -> stations over these same examples. It was never synced, so
+    // the app fetched a 404 and CircuitDesigner — which shows the Codex only
+    // when handed BOTH examples and curriculum — silently fell back to the
+    // grid. Optional like the READMEs: a source tree without one still syncs.
+    for (const name of ['README.md', 'README.de.md', 'curriculum.json']) {
         try {
             files.set(name, await readFile(path.join(root, name)));
         } catch { /* optional */ }
@@ -117,8 +123,8 @@ async function discoverRemote () {
         }
     }
 
-    // READMEs
-    for (const name of ['README.md', 'README.de.md']) {
+    // READMEs, and the Codex manifest — see discoverLocal for why.
+    for (const name of ['README.md', 'README.de.md', 'curriculum.json']) {
         try {
             files.set(name, Buffer.from(await readSourceText(name), 'utf8'));
         } catch { /* optional */ }
