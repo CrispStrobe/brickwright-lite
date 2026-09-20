@@ -156,7 +156,12 @@ test('published migration counts distinguish proven, awaiting-proof and ambient 
         result[pin.migration.status] = (result[pin.migration.status] || 0) + 1;
         return result;
     }, {});
-    assert.deepEqual(counts, {worker: 25, deferred: 95});
+    // worker 25 / deferred 98 / candidate 1 = 124. The candidate is bitops:
+    // of the four upstreamed on 2026-09-20 it is the only one touching no
+    // host API at all, so it is awaiting runtime proof rather than blocked.
+    // The other three read the VM runtime or the Web Speech API and are
+    // deferred with a reason each.
+    assert.deepEqual(counts, {worker: 25, deferred: 98, candidate: 1});
 });
 
 test('worker-safe fetch requirements remain measured while their proven cohort stays promoted', () => {

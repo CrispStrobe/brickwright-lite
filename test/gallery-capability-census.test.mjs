@@ -18,8 +18,13 @@ const pins = JSON.parse(readFileSync(path.join(root, 'overlay/scratch-vm/src/ext
 const clone = value => structuredClone(value);
 const slugs = Object.keys(pins.extensions);
 
-test('gallery capability census closes the exact 120/120 pinned denominator', () => {
-    assert.equal(slugs.length, 120);
+test('gallery capability census closes the exact 124/124 pinned denominator', () => {
+    // The number moves when the gallery does — it was 120 until bitops,
+    // devices, microbitplus and brickwright_tts were upstreamed on 2026-09-20.
+    // What is being asserted is N of N: every pinned extension is censused,
+    // with no silent remainder. The literal is here so that growth is a
+    // deliberate edit rather than a drifting denominator.
+    assert.equal(slugs.length, 124);
     assert.equal(validateGalleryContract(pins, slugs), true);
     assert.equal(pins.schemaVersion, 2);
     assert.deepEqual([...GALLERY_CAPABILITIES].sort(), [...new Set(GALLERY_CAPABILITIES)].sort());
@@ -46,13 +51,18 @@ test('gallery capability census is deterministic and its checked-in report agree
     const generated = renderCensusReport(pins);
     assert.equal(generated, renderCensusReport(clone(pins)));
     assert.equal(generated, readFileSync(path.join(root, 'docs/generated/GALLERY-CAPABILITY-CENSUS.md'), 'utf8'));
-    assert.match(generated, /Denominator: \*\*120\/120 URL-loaded pins\*\*/);
+    assert.match(generated, /Denominator: \*\*124\/124 URL-loaded pins\*\*/);
 });
 
 test('every deferred pin has a pin-specific reviewed reason and no generic scan placeholder', () => {
     const deferred = Object.entries(pins.extensions).filter(([, pin]) => pin.migration.status === 'deferred');
-    assert.equal(deferred.length, 95);
-    assert.equal(Object.keys(REVIEWED_DEFERRED_REASONS).length, 95);
+    // 95 until 2026-09-20, when devices, microbitplus and brickwright_tts were
+    // upstreamed and each needed its own blocker written down. bitops was the
+    // fourth and is NOT here: it touches no host API at all, so it had nothing
+    // to defer for. The two counts are asserted separately on purpose — a pin
+    // with no reason and a reason with no pin are different faults.
+    assert.equal(deferred.length, 98);
+    assert.equal(Object.keys(REVIEWED_DEFERRED_REASONS).length, 98);
     for (const [slug, pin] of deferred) {
         assert.equal(pin.migration.reason, REVIEWED_DEFERRED_REASONS[slug], slug);
         assert.doesNotMatch(pin.migration.reason, /^static scan requires review:/, slug);
