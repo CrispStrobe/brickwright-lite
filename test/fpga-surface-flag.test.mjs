@@ -893,3 +893,27 @@ test('the seven-segment core is pure: a hex font, a decoder, and a shared face',
     assert.match(dev, /import \{synthesizeTruthTable, truthTableFrom\}/,
         'the decoder is built by the tested truth-table synthesiser, not hand-wired');
 });
+
+// ── logic minimisation: truth-table→circuit yields a designed circuit ──
+test('the synthesiser can minimise (Quine–McCluskey), and the modal offers it', () => {
+    const syn = read('overlay/scratch-gui/src/lib/bw-fpga/synthesize.js');
+    assert.match(syn, /import \{minimizeOutput\}/, 'the synthesiser uses the pure minimiser');
+    assert.match(syn, /\{minimize = false\}/, 'minimising is an option (default off; the modal turns it on)');
+    const min = read('overlay/scratch-gui/src/lib/bw-fpga/minimize.js');
+    assert.match(min, /export function primeImplicants/, 'Quine–McCluskey prime implicants (pure, tested)');
+    assert.match(min, /export function minimizeOutput/, 'a per-output SOP minimiser');
+    const modal = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-truth-table.jsx');
+    assert.match(modal, /data-testid="bw-fpga-tt-minimize"/, 'a minimise checkbox');
+    assert.match(modal, /tableRows\(\)\}, \{minimize\}\)/, 'Generate honours the checkbox');
+    assert.match(modal, /data-testid="bw-fpga-tt-gatehint"/, 'a gate-count hint teaches what minimising saves');
+});
+
+test('the 7-seg decoder is a minimised, droppable block laid out as a schematic', () => {
+    const b = read('overlay/scratch-gui/src/lib/bw-fpga/builtins.js');
+    assert.match(b, /id: 'seg7_decoder'/, 'the decoder is a palette Block');
+    assert.match(b, /sevenSegDecoderModel\(\)/, 'built from the tested decoder model');
+    const dev = read('overlay/scratch-gui/src/lib/bw-fpga/output-devices.js');
+    assert.match(dev, /synthesizeTruthTable\(table, \{minimize: true\}\)/, 'the decoder is minimised (309→~78 gates), else it is undroppable');
+    const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
+    assert.match(ui, /modelToReactFlow\(item\.model, layerPositions\(item\.model\)\)/, 'a dropped block is laid out, not zig-zagged');
+});

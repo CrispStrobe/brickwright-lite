@@ -355,8 +355,10 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
             setNodes(ns => [...ns, {id: nid('seg'), type: 'seg7', position, data: {kind: 'seg7'}}]);
         } else if (item.kind === 'template' && item.model) {
             // Drop a starter near the cursor, id-remapped so it MERGES onto the
-            // canvas instead of clobbering whatever is already there.
-            const seeded = modelToReactFlow(item.model);
+            // canvas instead of clobbering whatever is already there. Lay it out
+            // as a schematic (a big block like the 7-seg decoder is unreadable in
+            // the bridge's zig-zag).
+            const seeded = modelToReactFlow(item.model, layerPositions(item.model));
             const idMap = {};
             const placed = seeded.nodes.map(n => {
                 const id = nid('t');
