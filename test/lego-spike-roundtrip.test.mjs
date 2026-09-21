@@ -65,17 +65,18 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // the later range only converges the already-present examples catalogue
     // and adds upstream tests. The compiler emitter therefore does not move,
     // while this assertion still forces the round-trip artifact at the pin.
-    // -> 06a78ba2 on 2026-09-21: the SPIKE consolidation reaches sb3-creator.
-    // Unlike every move above, THE EMITTER DID MOVE — src/utils/sb3Creator.js
-    // (+72 lines, a block pointing at a named servo or motor) and
-    // src/utils/spikeprimeDialect.js (+47, the unified extension's 17 new
-    // opcodes classified, 10 of them a new transport-control class). So this
-    // is not a scope argument: the artifact assertions below were RE-RUN at
-    // the new pin, and the round-trip output is byte-for-byte unchanged. The
-    // dialect grew a classification, not a mapping — the mapped set is still
-    // 30, which is what keeps this emitter's output fixed.
+    // -> 06a78ba2 on 2026-09-21, then BACK to 9173ca75 the same day. The
+    // advance was reverted because it carries the gallery examples with it,
+    // and one of the benches that arrived fails lite's circuit placement gate
+    // (CrispStrobe/sb3-creator#14). Recorded rather than erased because the
+    // measurement still stands and saves repeating it: the emitter DID move
+    // over that range — sb3Creator.js +72 and spikeprimeDialect.js +47 — and
+    // the round-trip artifact was re-run at 06a78ba2 and came out
+    // byte-for-byte unchanged, because the dialect grew a classification
+    // rather than a mapping and the mapped set is still 30. So when the bench
+    // is fixed, this pin can move with that already known.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '06a78ba28727a113a74511da590f571ebacafb9d');
+        '9173ca756a72e5be81578a084c4c783ebc5c267d');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
