@@ -199,27 +199,36 @@ export default [
         featured: true
     },
     {
+        // Was one of THREE entries for the stock EV3 firmware — this one,
+        // "LEGO EV3 (Direct)" and "LEGO EV3 LMS" — and the picker gave no way
+        // to tell which you wanted, while this one, the flagship, was the one
+        // whose live mode did not work. They are now one extension; the other
+        // two ids resolve here.
         name: 'LEGO MINDSTORMS EV3',
         extensionId: 'ev3comprehensive',
         iconURL: 'static/extension-posters/lego.png',
         insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/ev3_universal.svg',
-        description: 'LEGO MINDSTORMS EV3 — bundled built-in.',
+        description: 'LEGO MINDSTORMS EV3 — connects over Web Serial, Scratch Link, ' +
+            'a local bridge or HTTP, detected automatically; live control and LMS ' +
+            'transpiling. Bundled built-in.',
         featured: true
     },
     {
-        name: 'LEGO EV3 (Direct)',
-        extensionId: 'legoev3direct',
+        // The oldest brick in the family, and the only one whose toolchain is
+        // a C compiler rather than a protocol: these blocks transpile to NQC
+        // and NQC compiles to an .rcx image. That compile happens locally —
+        // lib/nqc-runtime-hook.js installs runtime.nqcCompile from the
+        // vendored MPL-2.0 build — so the path needs no service and works
+        // offline. The BRICK still needs LEGO's own firmware, which nobody may
+        // ship; see docs/RCX-FIRMWARE.md.
+        name: 'LEGO RCX',
+        extensionId: 'legorcx',
         iconURL: 'static/extension-posters/lego.png',
-        insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/ev3_direct.svg',
-        description: 'LEGO EV3 (Direct) — bundled built-in.',
-        featured: true
-    },
-    {
-        name: 'LEGO EV3 LMS',
-        extensionId: 'ev3lms',
-        iconURL: 'static/extension-posters/lego.png',
-        insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/ev3_lms_transpile.svg',
-        description: 'LEGO EV3 LMS — bundled built-in.',
+        // No insetIconURL: the gallery serves no images/CrispStrobe/lego_rcx.svg
+        // (checked 2026-09-21, 404). Pointing at one anyway would render a
+        // broken image in the picker rather than no image.
+        description: 'LEGO MINDSTORMS RCX — blocks that transpile to NQC and compile to ' +
+            'an .rcx image in the browser. Bring your own firmware. Bundled built-in.',
         featured: true
     },
     {
@@ -404,7 +413,11 @@ export default [
         helpLink: 'https://scratch.mit.edu/microbit'
     },
     {
-        name: 'LEGO MINDSTORMS EV3',
+        // NOT the same extension as 'ev3comprehensive' above, and it used to
+        // carry that one's exact name — two identical rows in one picker, with
+        // nothing to choose between them but their position. This is Scratch's
+        // own stock EV3 extension.
+        name: 'LEGO MINDSTORMS EV3 (Scratch)',
         extensionId: 'ev3',
         collaborator: 'LEGO',
         iconURL: ev3IconURL,

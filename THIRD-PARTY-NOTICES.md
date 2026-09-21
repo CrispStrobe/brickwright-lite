@@ -1043,6 +1043,62 @@ condition they do impose is attribution in binary form, which the shipped
 licence file and the About dialog discharge. Everything else in this
 repository is BSD-3-Clause (see LICENSE at the repo root).
 
+## NQC (Not Quite C) — MPL-2.0
+
+**Location in this repo:** `overlay/scratch-gui/src/lib/nqc-wasm/dist/`
+
+This directory contains NQC compiled to WebAssembly (Emscripten). It turns NQC
+source into an RCX bytecode image (`.rcx`) in the browser, with no network and
+no installed toolchain, for the LEGO Mindstorms RCX. Like SmallerC, it is a
+separate program invoked at the user's request — it is NOT linked into the
+BSD-3 editor code, and nothing loads it until something compiles.
+
+- **Licence:** MPL-2.0
+- **Copyright:** portions (c) 1998-1999 David Baum; portions (c) 2005 John Hansen
+- **Upstream:** https://github.com/jverne/nqc
+- **Upstream commit:** `21c24ec1e520c736ce78e33e4c0dafca887fc2b7` (2022-09-10)
+- **Build toolchain:** Emscripten 6.0.2 (no patches to NQC source; the build
+  selects `RCX_USBTowerPipe_none` and `PSerial_none` instead, because this
+  build compiles and does not drive hardware -- see below)
+- **Licence file:** upstream's own `LICENSE.md` bytes, preserved as
+  `overlay/scratch-gui/static/licenses/nqc.MPL-2.0.txt` and shipped as
+  `static/licenses/nqc.MPL-2.0.txt`
+- **Build script:** `overlay/scratch-gui/src/lib/nqc-wasm/build.sh`, with the
+  provenance and measurements in the neighbouring `BUILD-INFO.md`
+- **Source availability:** the upstream commit above, together with the build
+  script, is the Corresponding Source for the purposes of MPL-2.0 SS 3.2(a).
+  No NQC source file is modified.
+
+### Why this one is vendored and SDCC is not
+
+Both are compilers; only the licence differs, and that difference decides
+everything. SDCC is GPL-2.0-or-later and this app is BSD-3-Clause, so SDCC is
+fetched from its own origin on demand and `scripts/verify-no-gpl-in-build.mjs`
+fails the build if a byte of it reappears. NQC is MPL-2.0, which SS 3.3
+("Larger Work") expressly permits distributing alongside files under another
+licence, so it ships. The practical consequence is the point: the RCX path
+needs no service and works offline.
+
+### Not shipped, deliberately
+
+NQC's serial and USB tower transports are NOT built (`PSerial_none`,
+`RCX_USBTowerPipe_none`). WebAssembly cannot open a serial port, and this
+application drives the infrared link itself from
+`overlay/scratch-gui/src/lib/rcx/rcx-protocol.js` over Web Serial or WebUSB.
+So the vendored build compiles and stops; the downloading is ours.
+
+NQC's output runs on LEGO's standard RCX firmware, which is proprietary and is
+NOT distributed here in any form. See `docs/RCX-FIRMWARE.md`.
+
+### Licence boundary
+
+Everything under `overlay/scratch-gui/src/lib/nqc-wasm/dist/` is upstream
+material under MPL-2.0 and remains so. MPL-2.0 is a file-level copyleft
+licence: modifications to covered files must be made available under MPL-2.0,
+and there are none. `compiler.js` in the parent directory is our own work --
+it invokes the compiler, contains no NQC source, and is BSD-3-Clause with the
+rest of this repository (see LICENSE at the repo root).
+
 ## SDCC (Small Device C Compiler) — GPL-2-or-later
 
 **NOT IN THIS REPOSITORY, NOT IN THE BUILD, AND NOT IN THE PACKAGED APP.**

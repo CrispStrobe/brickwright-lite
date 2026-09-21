@@ -573,7 +573,7 @@ DoD:
 Depends: A4, A6.
 EV3 speaks Bluetooth Classic via the native bridge, so the virtual EV3 hooks
 that seam (`native-scratch-link-bridge` / BTC session factory) instead of Web
-Bluetooth; emulate the direct-command subset `ev3comprehensive`/`legoev3direct`
+Bluetooth; emulate the direct-command subset `ev3comprehensive`
 send (inventory-first, like A2/A3).
 DoD: mirror of A2 with the EV3 extensions; dashboard gains an EV3 brick face.
 

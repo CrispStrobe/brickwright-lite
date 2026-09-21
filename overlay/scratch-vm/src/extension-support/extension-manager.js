@@ -14,6 +14,12 @@ const {pinForURL, pinStatusFor, verifyGallerySource} = require('./gallery-integr
 // from the table.
 const SPIKE_LEGACY_IDS = ['spikeprimeBTC', 'spikeprimeBridge', 'spikeprimeble', 'legospikeprimeBLE'];
 const SPIKE_UNIFIED_ID = 'spikeprime';
+// The two EV3 ids that became `ev3comprehensive`, inlined for the same reason
+// and held against ev3-legacy-migration.js by test/ev3-legacy-ids-resolve.test.mjs.
+// `ev3dev` is NOT here: it runs a different operating system on the brick and
+// is still its own extension.
+const EV3_LEGACY_IDS = ['ev3lms', 'legoev3direct'];
+const EV3_UNIFIED_ID = 'ev3comprehensive';
 
 /**
  * The id an extension request should actually load.
@@ -25,8 +31,12 @@ const SPIKE_UNIFIED_ID = 'spikeprime';
  * paths would fall through to the bare-id branch below and log a missing
  * implementation for an extension that is present under another name.
  */
-const resolveExtensionId = id =>
-    (typeof id === 'string' && SPIKE_LEGACY_IDS.indexOf(id) !== -1 ? SPIKE_UNIFIED_ID : id);
+const resolveExtensionId = id => {
+    if (typeof id !== 'string') return id;
+    if (SPIKE_LEGACY_IDS.indexOf(id) !== -1) return SPIKE_UNIFIED_ID;
+    if (EV3_LEGACY_IDS.indexOf(id) !== -1) return EV3_UNIFIED_ID;
+    return id;
+};
 
 // HTTP(S) URLs are candidates for the content-pinned compatibility path. Unpinned URLs are always
 // sent to the extension worker; see isTrustedExtensionURL / loadExtensionURL.
@@ -101,9 +111,13 @@ const lazyBuiltinExtensions = {
     // reached four ways, and they now resolve here through SPIKE_LEGACY_IDS.
     // See extension-support/spike-legacy-migration.js.
     spikeprime: () => import(/* webpackChunkName: "ext-spikeprime" */ '../extensions/crispstrobe/spikeprime/index.js'),
+    // One EV3 extension for the stock LEGO firmware. legoev3direct and ev3lms
+    // used to sit beside this line; they were the same brick reached with the
+    // same protocol, split across a block surface, a working live
+    // implementation and a compiler, and they now resolve here through
+    // EV3_LEGACY_IDS. ev3dev below is deliberately separate — different OS.
     ev3comprehensive: () => import(/* webpackChunkName: "ext-ev3comprehensive" */ '../extensions/crispstrobe/ev3comprehensive/index.js'),
-    legoev3direct: () => import(/* webpackChunkName: "ext-legoev3direct" */ '../extensions/crispstrobe/legoev3direct/index.js'),
-    ev3lms: () => import(/* webpackChunkName: "ext-ev3lms" */ '../extensions/crispstrobe/ev3lms/index.js'),
+    legorcx: () => import(/* webpackChunkName: "ext-legorcx" */ '../extensions/crispstrobe/legorcx/index.js'),
     legonxt: () => import(/* webpackChunkName: "ext-legonxt" */ '../extensions/crispstrobe/legonxt/index.js'),
     ev3dev: () => import(/* webpackChunkName: "ext-ev3dev" */ '../extensions/crispstrobe/ev3dev/index.js'),
     universalgamepad: () => import(/* webpackChunkName: "ext-universalgamepad" */ '../extensions/crispstrobe/universalgamepad/index.js'),

@@ -16,6 +16,12 @@ packages/scratch-svg-renderer/
 build/
 !overlay/scratch-gui/static/microbit-sim/build/
 dist/
+# NQC as WASM is TRACKED, despite `dist/` above: it is a vendored MPL-2.0
+# compiler that must ship, not a build artefact of this repo. smallerc-wasm's
+# dist is tracked the same way, but by a force-add, which leaves no trace of
+# the decision anywhere a reader would look. This says it out loud instead.
+!overlay/scratch-gui/src/lib/nqc-wasm/dist/
+!overlay/scratch-gui/src/lib/nqc-wasm/dist/**
 /tmp/
 *.tgz
 .vercel

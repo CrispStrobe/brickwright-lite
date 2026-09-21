@@ -47,6 +47,12 @@ on:
     # generator's template literal (two generators name the plan that way;
     # five main runs on 2026-09-07 verified plan-only edits). Census
     # 2026-09-07: 15 mentioned; the rest of docs/*.md skip.
+    # 2026-09-21: 16. RCX-FIRMWARE.md is named by a code line in
+    # lib/rcx-download-hook.js — the string a user reads when the brick does
+    # not answer — which is what makes it a trigger. RCX-IR-PROTOCOL.md was
+    # here for a few hours and is not any more: its only code mention was a
+    # KNOWN_DEAD reason, and that entry went when the module got a caller.
+    # The list tracks what code NAMES, so it shrinks as well as grows.
     # 2026-09-20: 16 — SPIKE-CONSOLIDATION.md, named by the spikeprime bundle.
     #
     # A skipped run means no Pages deploy for that push. That is correct: the
@@ -75,6 +81,7 @@ on:
       - 'docs/LESSON-REVIEW-WAVE-6.md'
       - 'docs/LESSON-REVIEW-WAVE-7.md'
       - 'docs/PICO-KALUMA-BOOT.md'
+      - 'docs/RCX-FIRMWARE.md'
       - 'docs/SPIKE-CONSOLIDATION.md'
       - 'docs/VENDOR-DIVERGENCE-SB3-CREATOR.md'
       - 'docs/WAVE-OPEN-DEFECTS.md'

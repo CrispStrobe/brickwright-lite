@@ -83,6 +83,11 @@ const ALLOWED = new Map([
     ['lib/smallerc-wasm/dist/smlrpp.js', {roadmap: '4.6',
         reason: 'Emscripten output (the ucpp preprocessor), loaded the same way and executed by ' +
             'the same test. Verified 2026-09-04.'}],
+    ['lib/nqc-wasm/dist/nqc.js', {roadmap: '4.7',
+        reason: 'Emscripten output (NQC, MPL-2.0). Loaded by nqc-wasm/compiler.js as ' +
+            '`import(/* webpackIgnore: true */ resolve(\'nqc.js\'))` — a computed specifier. ' +
+            'Its caller is wired: nqc-runtime-hook.js installs runtime.nqcCompile from ' +
+            'vm-manager-hoc.jsx. Executed by test/nqc-wasm.test.mjs. Verified 2026-09-21.'}],
 ]);
 
 /**
@@ -143,6 +148,12 @@ const KNOWN_DEAD = new Map([
     // i8086-emu8086.js removed 2026-09-08: the completed-program performance
     // corpus now imports it from scripts/lib/i8086-corpus-workload.mjs.
     // This is a real benchmark consumer, not a new editor runtime route.
+    // lib/rcx/rcx-protocol.js and lib/rcx/rcx-serial.js LEFT THIS LIST on
+    // 2026-09-21, the same day they joined it. They were listed as waiting for
+    // a call site rather than for a transport, and lib/rcx-download-hook.js is
+    // that call site: it installs runtime.rcxDownload from vm-manager-hoc.jsx
+    // and import()s both. This comment is the record that the entries were
+    // removed in the commit that made them live, which is what the list is for.
 ]);
 
 const SPEC = /from\s+['"]([^'"]+)['"]|import\(\s*(?:\/\*[^*]*\*\/\s*)?['"]([^'"]+)['"]|require\(\s*['"]([^'"]+)['"]/g;

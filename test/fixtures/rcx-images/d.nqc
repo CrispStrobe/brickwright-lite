@@ -1,0 +1,22 @@
+int xyz;
+int qq;
+sub h1()
+{
+  xyz=3;
+}
+sub h2()
+{
+  qq=4;
+}
+task main()
+{
+  h1(); h1(); h2(); h2();
+}
+task t2()
+{
+  xyz=2;
+}
+task t3()
+{
+  xyz=5;
+}

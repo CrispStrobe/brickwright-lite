@@ -1812,6 +1812,64 @@ find it in), and `long` is refused by smlrc itself (`-seg16` has no 32-bit integ
 pinned as named expectations in the test. Matrix cell C × 8086: native, local, simulator only
 (`.COM` export for real hardware is plan task N10).
 
+### 4.7 The RCX tier — CLOSED 2026-09-21, the pair has a caller
+
+Both `lib/rcx/rcx-protocol.js` and `lib/rcx/rcx-serial.js` were in the dead-module list for one
+reason — no call site — and `lib/rcx-download-hook.js` is it. `runtime.rcxDownload` is installed
+from `vm-manager-hoc.jsx` exactly as `runtime.nqcCompile` is, with the same
+`{ok, log}` shape and the same look-it-up-at-call-time contract, so an app that lacks the hook
+keeps today's save-the-file behaviour rather than breaking.
+
+`nqc.js` under `lib/nqc-wasm/dist/` stays in the ALLOWED list, and for a different reason than
+either of those had: it is Emscripten output loaded through a computed, webpack-ignored URL, so
+no static scan can follow it. That is §4.2 and §4.6's situation, not a pending one.
+
+**What the whole path now is, end to end and with no network:** blocks → NQC (the extension's
+transpiler) → `.rcx` (the vendored MPL compiler, byte-identical to native nqc on eight fixtures)
+→ framed commands (the clean-room protocol, matching NQC's own captured frames opcode for opcode)
+→ a tower (Web Serial at 2400 8-O-1, which NQC's own port request confirms) → the brick. The one
+thing nobody may ship is the brick's firmware; see `docs/RCX-FIRMWARE.md`.
+
+**Still open, and named rather than implied:** the extension does not yet CALL
+`runtime.rcxDownload` — it saves the `.rcx`, which is what it was written to do. That is an
+upstream change in `CrispStrobe/extensions`, and until it lands the hook is installed and unused
+by anything but its tests. WebUSB (build order step 5, endpoint handling for LEGO's USB tower
+`0694:0001`) remains unwritten and is not on this path: a home-built tower is an ordinary serial
+adapter and Web Serial reaches both.
+
+### 4.8 An NQC flavour for the Code tab — HALF LANDED 2026-09-21
+
+The ask was "could the C tab take an NQC flavour for direct coding", and that half is done: there
+is an **NQC tab**, you type in it, and two buttons compile it (`runtime.nqcCompile`, the vendored
+MPL build, no network) and send the result to a brick (`runtime.rcxDownload`). It appears when the
+RCX extension is loaded — the RCX has no DEVICE line, so the usual `currentDevice()` test does not
+apply — and stays out of everyone else's way.
+
+**The scoping in the previous version of this entry was wrong about where the work was.** It said
+the Lite half was "one line per branch in `deriveBuffer`" and the real work was `generateNQC` in
+sb3-creator. That is true for blocks → NQC, and irrelevant to what was actually asked: typing NQC
+needs no generator at all. The dispatch in `deriveBuffer` was never touched.
+
+**One conflation had to be undone to do it.** The editor decided read-only by asking `TWO_WAY.has(lang)`,
+and every one-way tab so far happened to be generated output — the MicroPython preview, the ASM
+listing — so read-only was right by accident. NQC is one-way *and* the tab you are meant to type
+in. The question is now `EDITABLE_ONE_WAY`, "is this mine to edit", which is what it should have
+been asking. Adding `nqc` to `TWO_WAY` would have made the editor writable and also offered a
+"to blocks" button for a front end that does not exist; the test refuses that specifically.
+
+**Still open — the other half, blocks → NQC.** `generateNQC(project)` in sb3-creator, a third
+C-family target beside `generateC` (8051 bare metal) and the host C target, with unlike
+constraints: no heap, 32 variables total, `task`/`sub` rather than functions, subroutines that
+cannot nest or recurse, ten task slots. Anything exceeding those must be **refused by name** the
+way `generateBASIC` refuses a multi-WHEN program — `{ok, nqc, reasons}` is the existing shape.
+Only after that does `TWO_WAY` membership become a question, and it additionally needs
+`nqcToPseudocode`, which is the larger half and worse done badly than not done: a lossy round trip
+through the Code tab silently eats blocks.
+
+Note that the RCX extension already transpiles ITS OWN blocks to NQC. `generateNQC` is a different
+thing — a whole Scratch project, not one extension's vocabulary — and the two should not be
+confused when someone picks this up.
+
 ### 5.1 The stc12 extension lite ships is missing 8 opcodes the emitter emits — FIXED
 
 A gate that needs two checkouts side by side runs on a developer machine and **skips in CI**, where

@@ -1,0 +1,7 @@
+# Build artefacts of the per-board toolchains. `build/` is already ignored
+# repo-wide; these are what avr-gcc and cmake leave beside their sources.
+*.elf
+*.hex
+*.uf2
+*.bin
+*.o

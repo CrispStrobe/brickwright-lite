@@ -34,7 +34,28 @@
  * playwright's bundled class is `_Page`, and the first run recorded two calls
  * out of hundreds). Both look exactly like a clean sweep in a summary table.
  */
-import {readFileSync, readdirSync, existsSync} from 'node:fs';
+
+// STDOUT IS A PIPE, AND process.exit() DOES NOT FLUSH IT.
+//
+// On a pipe Node's stdout writes asynchronously, so anything still queued when
+// process.exit() runs is simply dropped. This tool used to `console.log(...)`
+// and exit on the next statement, which was fine for as long as its output fit
+// in the 64 KB pipe buffer — and then the census grew past it, and
+// `--census --json` started emitting exactly 65536 bytes of a 75 kB document.
+// The JSON was valid-looking right up to the truncation point, so the failure
+// read as "unterminated string at position 65536" in whoever parsed it rather
+// than as "the writer lost the tail", which cost an afternoon.
+//
+// So output is buffered and written to fd 1 with writeSync, which is not
+// buffered and cannot be dropped. `flush()` is the only exit.
+const OUT = [];
+const say = (...parts) => OUT.push(parts.join(' '));
+const flush = () => {
+    if (OUT.length) writeSync(1, `${OUT.join('\n')}\n`);
+    process.exit(0);
+};
+
+import {writeSync, readFileSync, readdirSync, existsSync} from 'node:fs';
 import {join, relative} from 'node:path';
 import {createRequire} from 'node:module';
 
@@ -201,29 +222,29 @@ const gs = group(c.sleeps);
 const sum = (rows) => rows.reduce((a, r) => a + r.value, 0);
 
 if (!obsPath) {
-    if (asJson) { console.log(JSON.stringify({census: c, ci: [...CI_GATES]}, null, 1)); process.exit(0); }
-    console.log(`parsed ${c.parsed} files under ${DIRS.join('/ ')}${c.unparsed.length ? `; ${c.unparsed.length} NOT parsed (skipped, and this line is the only place that says so): ${c.unparsed.join(', ')}` : '; 0 unparsable'}\n`);
-    console.log('                       bounds (`timeout: N`)   fixed sleeps (`waitForTimeout(N)`)');
-    const row = (label, b, s) => console.log(
+    if (asJson) { say(JSON.stringify({census: c, ci: [...CI_GATES]}, null, 1)); flush(); }
+    say(`parsed ${c.parsed} files under ${DIRS.join('/ ')}${c.unparsed.length ? `; ${c.unparsed.length} NOT parsed (skipped, and this line is the only place that says so): ${c.unparsed.join(', ')}` : '; 0 unparsable'}\n`);
+    say('                       bounds (`timeout: N`)   fixed sleeps (`waitForTimeout(N)`)');
+    const row = (label, b, s) => say(
         `  ${label.padEnd(20)} ${String(b.length).padStart(5)}                  ${String(s.length).padStart(5)}`
         + `   = ${(sum(s) / 1000).toFixed(1)} s asleep per run`);
     row('run by CI', gb.ci, gs.ci);
     row('runnable, not in CI', gb.other, gs.other);
     row('_tmp- scratch', gb.scratch, gs.scratch);
-    console.log(`  ${'TOTAL'.padEnd(20)} ${String(c.bounds.length).padStart(5)}                  ${String(c.sleeps.length).padStart(5)}`
+    say(`  ${'TOTAL'.padEnd(20)} ${String(c.bounds.length).padStart(5)}                  ${String(c.sleeps.length).padStart(5)}`
         + `   = ${(sum(c.sleeps) / 1000).toFixed(1)} s`);
     // Name the gates that actually WAIT, not every script CI happens to run.
     // `CI_GATES` holds 15 entries and 10 of them are vendor/patch steps with no
     // browser in them; printing that set under the heading "browser gates" is a
     // true list with a false label.
     const waiting = [...new Set([...gb.ci, ...gs.ci].map((r) => r.file))].sort();
-    console.log(`\nOf the ${CI_GATES.size} scripts CI runs, ${waiting.length} contain waits:`);
-    console.log(`  ${waiting.map((f) => f.replace('scripts/', '')).join(', ')}`);
-    console.log('\nThe sleep column is the floor on how long a sweep takes: it is spent whether or');
-    console.log('not the app is ready, and no observation can shorten it. It is not in any');
-    console.log('threshold inventory, because a fixed sleep bounds nothing — which is exactly why');
-    console.log('nobody has ever had to justify one.');
-    process.exit(0);
+    say(`\nOf the ${CI_GATES.size} scripts CI runs, ${waiting.length} contain waits:`);
+    say(`  ${waiting.map((f) => f.replace('scripts/', '')).join(', ')}`);
+    say('\nThe sleep column is the floor on how long a sweep takes: it is spent whether or');
+    say('not the app is ready, and no observation can shorten it. It is not in any');
+    say('threshold inventory, because a fixed sleep bounds nothing — which is exactly why');
+    say('nobody has ever had to justify one.');
+    flush();
 }
 
 const o = readObserved(obsPath);
@@ -253,14 +274,14 @@ for (const b of c.bounds) {
     });
 }
 
-if (asJson) { console.log(JSON.stringify(rows, null, 1)); process.exit(0); }
+if (asJson) { say(JSON.stringify(rows, null, 1)); flush(); }
 
 const observedRows = rows.filter((r) => r.n > 0).sort((a, b) => b.headroom - a.headroom);
-console.log(`sweep: ${o.installs.length} script run(s), ${o.recs.length} calls, `
+say(`sweep: ${o.installs.length} script run(s), ${o.recs.length} calls, `
     + `${o.bounded.length} bounded waits, ${o.sleeps.length} fixed sleeps\n`);
-console.log('site                                            literal   n     p50     p90     max  headroom  outcome');
+say('site                                            literal   n     p50     p90     max  headroom  outcome');
 for (const r of observedRows) {
-    console.log(`  ${r.site.padEnd(44)} ${String(r.literal).padStart(7)} ${String(r.n).padStart(3)}`
+    say(`  ${r.site.padEnd(44)} ${String(r.literal).padStart(7)} ${String(r.n).padStart(3)}`
         + ` ${String(r.p50).padStart(7)} ${String(r.p90).padStart(7)} ${String(r.max).padStart(7)}`
         + ` ${String(r.headroom).padStart(9)}×  ${r.outcomes}`);
 }
@@ -269,12 +290,12 @@ for (const r of observedRows) {
 // it rather than leaving it to whoever reads the column header.
 const singles = observedRows.filter((r) => r.n < 5).length;
 if (singles) {
-    console.log(`\nNOTE: ${singles} of ${observedRows.length} sites were reached fewer than 5 times in this`);
-    console.log('sweep, so their p50/p90/max are the same one or two observations wearing three');
-    console.log('column headings. Treat them as "observed once", not as a distribution. The');
-    console.log('headroom is still meaningful — a 60,000 ms bound over a wait seen at 1,678 ms is');
-    console.log('a fact about that bound — but the TAIL is unmeasured, and the tail is what a');
-    console.log('timeout exists for. Re-run the sweep n times to get one.');
+    say(`\nNOTE: ${singles} of ${observedRows.length} sites were reached fewer than 5 times in this`);
+    say('sweep, so their p50/p90/max are the same one or two observations wearing three');
+    say('column headings. Treat them as "observed once", not as a distribution. The');
+    say('headroom is still meaningful — a 60,000 ms bound over a wait seen at 1,678 ms is');
+    say('a fact about that bound — but the TAIL is unmeasured, and the tail is what a');
+    say('timeout exists for. Re-run the sweep n times to get one.');
 }
 
 // A wait with no written literal inherits playwright's default. Those are not
@@ -283,20 +304,24 @@ if (singles) {
 const inherited = o.bounded.filter((r) => r.timeout == null);
 if (inherited.length) {
     const slowest = Math.max(...inherited.map((r) => r.ms));
-    console.log(`\n${inherited.length} of ${o.bounded.length} bounded waits passed NO timeout and inherited the`);
-    console.log(`default; the slowest took ${Math.round(slowest)} ms. They bound real waits and no inventory`);
-    console.log('counts them, because there is no literal to count.');
+    say(`\n${inherited.length} of ${o.bounded.length} bounded waits passed NO timeout and inherited the`);
+    say(`default; the slowest took ${Math.round(slowest)} ms. They bound real waits and no inventory`);
+    say('counts them, because there is no literal to count.');
 }
 
 const slept = o.sleeps.reduce((a, r) => a + r.ms, 0);
 const total = o.recs.reduce((a, r) => a + r.ms, 0);
 if (total > 0) {
-    console.log(`\nOf ${(total / 1000).toFixed(1)} s spent inside playwright, ${(slept / 1000).toFixed(1)} s `
+    say(`\nOf ${(total / 1000).toFixed(1)} s spent inside playwright, ${(slept / 1000).toFixed(1)} s `
         + `(${Math.round(100 * slept / total)} %) was waitForTimeout() —`);
-    console.log('time spent whether or not the app was ready.');
+    say('time spent whether or not the app was ready.');
 }
 
 const unobserved = rows.filter((r) => r.n === 0 && !r.scratch);
-console.log(`\n${observedRows.length} of ${c.bounds.length} bounds observed. `
+say(`\n${observedRows.length} of ${c.bounds.length} bounds observed. `
     + `${unobserved.length} runnable bounds were NOT reached by this sweep — listed, not silently omitted:`);
-for (const r of unobserved) console.log(`  ${r.site}  ${r.literal}ms  ${r.ci ? '(CI gate)' : ''}`);
+for (const r of unobserved) say(`  ${r.site}  ${r.literal}ms  ${r.ci ? '(CI gate)' : ''}`);
+
+// The observed-report path falls off the end rather than exiting; it must
+// flush too, or its whole report is the thing that gets dropped.
+flush();

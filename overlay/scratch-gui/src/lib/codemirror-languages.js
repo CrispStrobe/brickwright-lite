@@ -9,6 +9,10 @@ export const plainTextLanguage = [];
 export const immediateCodeMirrorLanguage = language => {
     switch (language) {
     case 'c':
+    // NQC is a C dialect — `task`/`sub` and an API, not a different grammar —
+    // so it gets C's highlighting rather than a mode of its own. The cost of
+    // being wrong here is a keyword shown in the wrong colour.
+    case 'nqc':
     case 'python':
     case 'micropython':
     case 'javascript':
@@ -24,6 +28,7 @@ export const immediateCodeMirrorLanguage = language => {
 export const loadDeferredCodeMirrorLanguage = language => {
     switch (language) {
     case 'c':
+    case 'nqc':
         return import(/* webpackChunkName: "bw-codemirror-lang-cpp" */ '@codemirror/lang-cpp')
             .then(module => module.cpp());
     case 'python':
