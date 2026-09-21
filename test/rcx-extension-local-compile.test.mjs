@@ -72,3 +72,23 @@ test('the extension and the compiler agree on which targets exist', async () => 
         assert.ok(NQC_TARGETS.includes(target), `the extension offers ${target}, which nqc does not build`);
     }
 });
+
+test('the shipped bundle reaches for the download hook, not only the compiler', () => {
+    // The last link in the chain, and the one that was missing until the
+    // extension learned about runtime.rcxDownload. If this goes, the block
+    // silently reverts to saving a file and the tower path is dead with
+    // nothing to show for it.
+    assert.match(source, /runtime\.rcxDownload/,
+        'the extension must still look for a host-installed downloader');
+    assert.match(source, /sendToBrick/, 'and expose it as a block');
+});
+
+test('the block is one-based where the host API is zero-based', () => {
+    // The brick numbers its slots 1..5 on its own display; downloadImage takes
+    // 0..4. The subtraction has to happen in the extension, because that is
+    // the layer a learner reads. Asserted on the shipped text rather than
+    // trusted, since an off-by-one here selects the program next door and
+    // reports nothing wrong.
+    assert.match(source, /programSlot:\s*slot\s*-\s*1/,
+        'sendToBrick must convert the displayed slot to the API index');
+});
