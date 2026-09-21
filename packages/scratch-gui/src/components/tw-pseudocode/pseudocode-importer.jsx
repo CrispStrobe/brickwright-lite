@@ -116,6 +116,18 @@ const L10N = {
         fromBlocks: 'From blocks ⇨', fromBlocksTitle: 'Read the current blocks back into all languages',
         compactToBlocks: '⇦ Blocks', compactFromBlocks: 'Blocks ⇨',
         run: 'Run', runBasic: '▶ Run BASIC',
+        nqcCompile: '⚙ Compile .rcx', nqcSend: '🧱 Send to RCX',
+        nqcEmpty: 'Type some NQC first.',
+        nqcNoCompiler: 'This build has no local NQC compiler.',
+        nqcNoTower: 'No tower support here — the .rcx was saved instead. Send it with NQC, ' +
+            'Bricx Command Center or firmdl3.',
+        nqcSent: 'Sent to the brick.',
+        nqcNote: 'NQC (Not Quite C) for the LEGO RCX, compiled in your browser — no network. ' +
+            'Two units are easy to get silently wrong: motor power is 0-7, NOT a percentage ' +
+            '(OUT_LOW is 1, OUT_HALF 3, OUT_FULL 7), and Wait() and PlayTone() take ' +
+            'CENTISECONDS, so Wait(100) is one second. The brick needs LEGO firmware already ' +
+            'loaded; nobody may redistribute it, so this app cannot supply it. A brick without ' +
+            'firmware answers exactly like a brick that is switched off.',
         basicBudget: ms => `Stopped after ${(ms / 1000).toFixed(0)}s simulated time (endless loop?).`,
         basicInputExhausted: 'Program asked for INPUT but no more answers were provided.',
         basicNoPrompt: 'BASIC did not reach its ready prompt — the ROM may not have loaded.',
@@ -319,6 +331,19 @@ const L10N = {
         fromBlocks: 'Von Blöcken ⇨', fromBlocksTitle: 'Das aktuelle Projekt in alle Sprachen einlesen',
         compactToBlocks: '⇦ Blöcke', compactFromBlocks: 'Blöcke ⇨',
         run: 'Ausführen', runBasic: '▶ BASIC ausführen',
+        nqcCompile: '⚙ .rcx kompilieren', nqcSend: '🧱 An RCX senden',
+        nqcEmpty: 'Zuerst NQC eingeben.',
+        nqcNoCompiler: 'Dieser Build hat keinen lokalen NQC-Compiler.',
+        nqcNoTower: 'Hier gibt es keine Turm-Unterstützung — die .rcx wurde stattdessen ' +
+            'gespeichert. Mit NQC, Bricx Command Center oder firmdl3 senden.',
+        nqcSent: 'An den Baustein gesendet.',
+        nqcNote: 'NQC (Not Quite C) für den LEGO RCX, im Browser kompiliert — ohne Netz. ' +
+            'Zwei Einheiten werden leicht unbemerkt falsch: Motorleistung ist 0-7, KEIN ' +
+            'Prozentwert (OUT_LOW ist 1, OUT_HALF 3, OUT_FULL 7), und Wait() und PlayTone() ' +
+            'nehmen HUNDERTSTELSEKUNDEN, Wait(100) ist also eine Sekunde. Der Baustein braucht ' +
+            'bereits geladene LEGO-Firmware; sie darf nicht weitergegeben werden, diese App ' +
+            'kann sie also nicht liefern. Ein Baustein ohne Firmware antwortet genau wie ein ' +
+            'ausgeschalteter.',
         basicBudget: ms => `Nach ${(ms / 1000).toFixed(0)}s simulierter Zeit angehalten (Endlosschleife?).`,
         basicInputExhausted: 'Programm hat INPUT erwartet, aber es waren keine weiteren Antworten vorhanden.',
         basicNoPrompt: 'BASIC hat seine Bereit-Eingabeaufforderung nicht erreicht — das ROM wurde möglicherweise nicht geladen.',
@@ -587,7 +612,12 @@ const CODE_FILES = {
     asm:         {ext: 'asm', mime: 'text/plain',      base: 'program'},
     // main.py is not a preference: it is the name the Pico and the micro:bit
     // boot, and what deployToPico already hands over on non-Chromium.
-    micropython: {ext: 'py',  mime: 'text/x-python',   base: 'main'}
+    micropython: {ext: 'py',  mime: 'text/x-python',   base: 'main'},
+    // NQC's own extension. The MIME is C's because NQC is a C dialect and
+    // every editor on earth already highlights it that way; the EXTENSION is
+    // not, because `nqc` is what the compiler, Bricx Command Center and
+    // twenty-five years of example code expect to see.
+    nqc:         {ext: 'nqc', mime: 'text/x-csrc',     base: 'program'}
 };
 const CODE_ACCEPT = [...new Set(Object.values(CODE_FILES).map(f => `.${f.ext}`)), '.s', '.lst'].join(',');
 
@@ -599,7 +629,7 @@ const CODE_ACCEPT = [...new Set(Object.values(CODE_FILES).map(f => `.${f.ext}`))
 const BW_AUTOSAVE_KEY = 'bw-code-autosave';
 const BW_AUTOSAVE_MAX = 512 * 1024;   // localStorage is ~5MB total; don't hog it
 
-const LANG_LABEL = {pseudocode: 'Pseudocode', python: 'Python', javascript: 'JavaScript', c: 'C', basic: 'BASIC', asm: 'ASM', micropython: 'micro:bit'};
+const LANG_LABEL = {pseudocode: 'Pseudocode', python: 'Python', javascript: 'JavaScript', c: 'C', basic: 'BASIC', asm: 'ASM', micropython: 'micro:bit', nqc: 'NQC'};
 
 const DEVICE_HELP = {
     microbit: 'Run MicroPython in the right-hand micro:bit simulator, use its A/B buttons and sensor sliders, or download a .hex for a real board.',
@@ -629,8 +659,25 @@ const deviceHelp = id => DEVICE_HELP[id] || (/^(arduino|atmega|attiny)/.test(id 
 // DEVICE_CHIP_LABELS imported from ../../lib/device-labels.js
 const TWO_WAY = new Set(['pseudocode', 'python', 'javascript', 'c', 'basic']);
 
+/**
+ * ONE-WAY IS NOT THE SAME AS READ-ONLY, and the two were conflated because
+ * every one-way tab so far happened to be generated output: the MicroPython
+ * preview and the ASM listing are things the app WROTE, so making them
+ * read-only was right by accident.
+ *
+ * NQC is one-way — there is no NQC-to-blocks front end — and yet it is the
+ * tab you are meant to TYPE in. So the question the editor asks is no longer
+ * "can this round-trip" but "is this mine to edit", which is what it should
+ * have been asking all along.
+ */
+const EDITABLE_ONE_WAY = (lang, asmMode) =>
+    lang === 'nqc' || (lang === 'asm' && asmMode === 'source');
+
 const representationNotice = (lang, asmMode, locale) => {
     const de = /^de/i.test(locale || '');
+    if (lang === 'nqc') return de ?
+        'Editierbarer NQC-Quelltext • lokal kompilieren und an den RCX senden • kein Rückweg zu Blöcken' :
+        'Editable NQC source • compile locally and send to an RCX • no reverse conversion to Blocks';
     if (lang === 'micropython') return de ?
         'Generierte schreibgeschützte Vorschau • Blöcke → micro:bit Python • kein Rückweg' :
         'Generated read-only preview • Blocks → micro:bit Python • no reverse conversion';
@@ -818,7 +865,7 @@ class PseudocodeImporter extends React.Component {
         // switching tabs always re-derives them from the latest edit — you can never
         // end up with (say) pseudocode sitting in the Python tab.
         this.state = {revealed: props.isVisible !== false, lang: 'pseudocode', importedPython: false,
-            buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''},
+            buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: '', micropython: '', nqc: ''},
             basicProfile: 'bbc', basicLineNumbers: true,
             uploads: [], status: '', conversionReport: null, reportExpanded: false, busy: false, showRef: false, showInfo: false, showMatrix: false,
             showRepresentation: true,
@@ -1012,7 +1059,7 @@ class PseudocodeImporter extends React.Component {
                 this.setState({
                     lang: 'pseudocode',
                     buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '',
-                        asm: '', micropython: ''},
+                        asm: '', micropython: '', nqc: ''},
                     status: ''
                 });
             } else if (refused) {
@@ -1167,7 +1214,7 @@ class PseudocodeImporter extends React.Component {
             // buffer at a time, so a stale translation of the PREVIOUS source
             // cannot sit in another tab pretending to match.
             buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '',
-                asm: '', micropython: '', [lang]: String(reader.result)},
+                asm: '', micropython: '', nqc: '', [lang]: String(reader.result)},
             asmMode: lang === 'asm' ? 'source' : st.asmMode,
             output: null,
             status: this.L.openDone(file.name, LANG_LABEL[lang] || lang)
@@ -1699,6 +1746,27 @@ class PseudocodeImporter extends React.Component {
             } else code = new SB3().generateJavaScript(proj, this.genOpts());
             return {code};
         } catch (e) { return {error: e.message}; }
+    }
+
+    /**
+     * Is the RCX extension loaded? That is what decides whether the NQC tab
+     * is offered, since the RCX has no DEVICE line of its own.
+     *
+     * Read defensively: this runs on every render, and an extension manager
+     * that has not finished loading — or a host that has none — must not take
+     * the Code tab down with it.
+     */
+    rcxLoaded () {
+        try {
+            const vm = this.props.vm;
+            const ids = vm && vm.extensionManager && vm.extensionManager.getLoadedExtensionURLs ?
+                Object.keys(vm.extensionManager.getLoadedExtensionURLs()) : [];
+            if (ids.includes('legorcx')) return true;
+            const loaded = vm && vm.extensionManager && vm.extensionManager._loadedExtensions;
+            return Boolean(loaded && typeof loaded.has === 'function' && loaded.has('legorcx'));
+        } catch (e) {
+            return false;
+        }
     }
 
     // Switch language tab. If the target buffer is empty, derive it from the active
@@ -2992,6 +3060,75 @@ class PseudocodeImporter extends React.Component {
 
     // Run BASIC on the real emulated machine.
     // 6502 profile → BasicMachineRunner (pump ms), BBC profile → BbcZ80Runner (pump steps).
+    /**
+     * Compile the NQC buffer to an .rcx image.
+     *
+     * `runtime.nqcCompile` is installed by lib/nqc-runtime-hook.js and runs a
+     * vendored MPL-2.0 build of NQC in the browser, so this needs no network.
+     * A host without it gets a named refusal rather than a silent no-op —
+     * there is no hosted fallback HERE on purpose: the RCX extension has one
+     * for its own blocks, and duplicating it in the editor would mean two
+     * places to keep in step.
+     */
+    /**
+     * Hand a binary to the browser as a download. saveCodeFile() does this for
+     * TEXT and cannot be reused: it takes the active buffer and a MIME from
+     * CODE_FILES, and an .rcx is neither.
+     */
+    saveBlob (bytes, name, mime) {
+        const url = URL.createObjectURL(new Blob([bytes], {type: mime}));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = name;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }
+
+    async _compileNqc () {
+        const source = (this.state.buffers.nqc || '').trim();
+        if (!source) return {ok: false, log: this.L.nqcEmpty};
+        const runtime = this.props.vm && this.props.vm.runtime;
+        const compile = runtime && runtime.nqcCompile;
+        if (typeof compile !== 'function') return {ok: false, log: this.L.nqcNoCompiler};
+        try {
+            return await compile.call(runtime, source, 'RCX2');
+        } catch (e) {
+            return {ok: false, log: String((e && e.message) || e)};
+        }
+    }
+
+    async compileNqcToFile () {
+        this.setState({busy: true, status: ''});
+        const out = await this._compileNqc();
+        if (!out.ok) {
+            this.setState({busy: false, status: out.log});
+            return;
+        }
+        this.saveBlob(out.bytes, 'program.rcx', 'application/octet-stream');
+        this.setState({busy: false, status: `${out.bytes.length} bytes`});
+    }
+
+    async sendNqcToBrick () {
+        this.setState({busy: true, status: ''});
+        const out = await this._compileNqc();
+        if (!out.ok) {
+            this.setState({busy: false, status: out.log});
+            return;
+        }
+        const runtime = this.props.vm && this.props.vm.runtime;
+        const send = runtime && runtime.rcxDownload;
+        if (typeof send !== 'function') {
+            // Compiled fine, nowhere to send it: hand over the file rather
+            // than throwing the work away. Same choice the extension makes.
+            this.saveBlob(out.bytes, 'program.rcx', 'application/octet-stream');
+            this.setState({busy: false, status: this.L.nqcNoTower});
+            return;
+        }
+        const result = await send.call(runtime, out.bytes, {programSlot: 0});
+        this.setState({busy: false,
+            status: result && result.ok ? this.L.nqcSent : String((result && result.log) || 'download failed')});
+    }
+
     async runBasic () {
         const code = this.activeCode();
         if (!code.trim()) return;
@@ -3792,7 +3929,15 @@ class PseudocodeImporter extends React.Component {
                         // is no pseudocode then, and hiding the tab would hide
                         // the Run button of the one program we can run as-is.
                         ...(this.currentDevice() === 'microbit' || (this.state.buffers.micropython || '').trim() ?
-                            [['micropython', '🤖 micro:bit']] : [])].map(([l, label]) => {
+                            [['micropython', '🤖 micro:bit']] : []),
+                        // NQC appears for people who have an RCX and stays out
+                        // of everyone else's way. The RCX is not a DEVICE line
+                        // — it is reached through an extension — so the test
+                        // is whether that extension is loaded, plus the usual
+                        // "there is already something in the buffer" so a
+                        // file you opened does not vanish when you switch tabs.
+                        ...(this.rcxLoaded() || (this.state.buffers.nqc || '').trim() ?
+                            [['nqc', '🧱 NQC']] : [])].map(([l, label]) => {
                         const active = this.state.lang === l;
                         return (
                             <button key={l} type="button" aria-pressed={active} onClick={() => this.switchTab(l)}
@@ -4112,14 +4257,14 @@ class PseudocodeImporter extends React.Component {
                         <FallbackEditor
                         value={this.activeCode()}
                         onChange={text => this.setActiveCode(text)}
-                        readOnly={!TWO_WAY.has(this.state.lang) && !(this.state.lang === 'asm' && this.state.asmMode === 'source')}
+                        readOnly={!TWO_WAY.has(this.state.lang) && !EDITABLE_ONE_WAY(this.state.lang, this.state.asmMode)}
                     />
                     }>
                         <CMEditor
                             ref={ref => { this._cmEditor = ref; }}
                             value={this.activeCode()}
                             onChange={text => this.setActiveCode(text)}
-                            readOnly={!TWO_WAY.has(this.state.lang) && !(this.state.lang === 'asm' && this.state.asmMode === 'source')}
+                            readOnly={!TWO_WAY.has(this.state.lang) && !EDITABLE_ONE_WAY(this.state.lang, this.state.asmMode)}
                             lang={this.state.lang}
                         />
                     </React.Suspense>
@@ -4128,7 +4273,7 @@ class PseudocodeImporter extends React.Component {
                     <FallbackEditor
                         value={this.activeCode()}
                         onChange={text => this.setActiveCode(text)}
-                        readOnly={!TWO_WAY.has(this.state.lang) && !(this.state.lang === 'asm' && this.state.asmMode === 'source')}
+                        readOnly={!TWO_WAY.has(this.state.lang) && !EDITABLE_ONE_WAY(this.state.lang, this.state.asmMode)}
                     />
                 )}
 
@@ -4386,6 +4531,27 @@ class PseudocodeImporter extends React.Component {
                                 color: this.state.showCInfo ? '#fff' : '#475569', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'serif'}}
                             title={this.L.cNote.slice(0, 60)} data-testid="bw-c-info-toggle">i</button>
                     ) : null}
+                    {this.state.lang === 'nqc' ? (
+                        <React.Fragment>
+                            <button type="button" onClick={() => this.compileNqcToFile()}
+                                disabled={this.state.busy || !(this.state.buffers.nqc || '').trim()}
+                                data-testid="bw-nqc-compile" title={this.L.nqcNote.slice(0, 80)}
+                                style={{...btn, background: '#e2e8f0', color: '#334155'}}>
+                                {this.L.nqcCompile}
+                            </button>
+                            <button type="button" onClick={() => this.sendNqcToBrick()}
+                                disabled={this.state.busy || !(this.state.buffers.nqc || '').trim()}
+                                data-testid="bw-nqc-send" title={this.L.nqcNote.slice(0, 80)}
+                                style={{...btn, background: '#4c97ff', color: '#fff'}}>
+                                {this.L.nqcSend}
+                            </button>
+                            <button type="button" onClick={() => this.setState(st => ({showNqcInfo: !st.showNqcInfo}))}
+                                style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 18, height: 18,
+                                    padding: 0, border: 'none', borderRadius: '50%', background: this.state.showNqcInfo ? '#4c97ff' : '#e2e8f0',
+                                    color: this.state.showNqcInfo ? '#fff' : '#475569', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'serif'}}
+                                title={this.L.nqcNote.slice(0, 60)} data-testid="bw-nqc-info-toggle">i</button>
+                        </React.Fragment>
+                    ) : null}
                     {this.state.lang === 'basic' ? (
                         <button type="button" onClick={() => this.setState(s => ({showBasicInfo: !s.showBasicInfo}))}
                             style={{display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 18, height: 18,
@@ -4467,6 +4633,13 @@ class PseudocodeImporter extends React.Component {
                     same (i) panel BASIC and ASM already had, and wraps long tokens
                     (bw_outb(port, value), stc-compiler.vercel.app) instead of pushing
                     the row sideways. */}
+                {this.state.lang === 'nqc' && this.state.showNqcInfo && (
+                    <div style={{margin: '6px 0', padding: '8px 10px', background: '#f1f5f9',
+                        border: '1px solid #cbd5e1', borderRadius: 6, fontSize: 12, lineHeight: 1.5, color: '#334155'}}
+                    data-testid="bw-nqc-info">
+                        {this.L.nqcNote}
+                    </div>
+                )}
                 {this.state.lang === 'c' && this.state.showCInfo && (
                     <div style={{padding: '10px 14px', background: '#eff6ff', border: '1px solid #bfdbfe',
                         borderRadius: 8, fontSize: 13, lineHeight: 1.5, color: '#334155', marginTop: 4,

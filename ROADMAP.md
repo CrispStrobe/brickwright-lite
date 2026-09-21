@@ -1837,53 +1837,38 @@ by anything but its tests. WebUSB (build order step 5, endpoint handling for LEG
 `0694:0001`) remains unwritten and is not on this path: a home-built tower is an ordinary serial
 adapter and Web Serial reaches both.
 
-### 4.8 An NQC flavour for the Code tab's C tab — SCOPED 2026-09-21, UNCLAIMED
+### 4.8 An NQC flavour for the Code tab — HALF LANDED 2026-09-21
 
-The RCX tier compiles locally now, but only from blocks: the RCX extension's own transpiler emits
-NQC and `runtime.nqcCompile` turns it into an image. Nobody can *type* NQC. The C tab is the
-obvious home — NQC is a C dialect, the tab already normalises a second dialect (Keil C51, through
-`stc-compiler`) before parsing, and the compile target is already decided by the project's device.
+The ask was "could the C tab take an NQC flavour for direct coding", and that half is done: there
+is an **NQC tab**, you type in it, and two buttons compile it (`runtime.nqcCompile`, the vendored
+MPL build, no network) and send the result to a brick (`runtime.rcxDownload`). It appears when the
+RCX extension is loaded — the RCX has no DEVICE line, so the usual `currentDevice()` test does not
+apply — and stays out of everyone else's way.
 
-**The seam is already the right shape.** `deriveBuffer(src, from, to)` in
-`components/tw-pseudocode/pseudocode-importer.jsx` is a flat dispatch: one `from` branch per
-front end, one `to` branch per generator. An `nqc` entry is one line in each. The surrounding
-work in Lite is mechanical and small:
+**The scoping in the previous version of this entry was wrong about where the work was.** It said
+the Lite half was "one line per branch in `deriveBuffer`" and the real work was `generateNQC` in
+sb3-creator. That is true for blocks → NQC, and irrelevant to what was actually asked: typing NQC
+needs no generator at all. The dispatch in `deriveBuffer` was never touched.
 
-  * `LANGS` (`{ext: 'nqc', mime: 'text/x-csrc', base: 'program'}`) and the language row at ~3737;
-  * `TWO_WAY` membership — only if the front end below is written, and **one-way is a legitimate
-    first landing**, exactly as `micropython` is today;
-  * `codemirror-languages.js` — the C mode is close enough that a dialect of its own is not worth
-    it initially;
-  * the compile action: route to `runtime.nqcCompile` rather than to the hosted C service, which
-    is the thing that makes this worth doing — it is the only Code-tab language that compiles with
-    no network at all;
-  * `cNote`-style help text in **both** EN and DE, naming the two units that are silently wrong
-    otherwise: power is **0..7**, not a percentage, and `Wait()`/`PlayTone()` take
-    **centiseconds**.
+**One conflation had to be undone to do it.** The editor decided read-only by asking `TWO_WAY.has(lang)`,
+and every one-way tab so far happened to be generated output — the MicroPython preview, the ASM
+listing — so read-only was right by accident. NQC is one-way *and* the tab you are meant to type
+in. The question is now `EDITABLE_ONE_WAY`, "is this mine to edit", which is what it should have
+been asking. Adding `nqc` to `TWO_WAY` would have made the editor writable and also offered a
+"to blocks" button for a front end that does not exist; the test refuses that specifically.
 
-**The real work is in sb3-creator, and it is two separable halves.**
+**Still open — the other half, blocks → NQC.** `generateNQC(project)` in sb3-creator, a third
+C-family target beside `generateC` (8051 bare metal) and the host C target, with unlike
+constraints: no heap, 32 variables total, `task`/`sub` rather than functions, subroutines that
+cannot nest or recurse, ten task slots. Anything exceeding those must be **refused by name** the
+way `generateBASIC` refuses a multi-WHEN program — `{ok, nqc, reasons}` is the existing shape.
+Only after that does `TWO_WAY` membership become a question, and it additionally needs
+`nqcToPseudocode`, which is the larger half and worse done badly than not done: a lossy round trip
+through the Code tab silently eats blocks.
 
-*Half one, `generateNQC(project)`.* A third C-family target beside `generateC` (8051 bare metal)
-and the host C target. Its constraints are unlike either: no heap, 32 variables total on the
-standard firmware, `task`/`sub` instead of functions (and subroutines cannot nest or recurse), and
-ten task slots. A project that exceeds any of those must be **refused by name** the way
-`generateBASIC` refuses a multi-WHEN program, not silently truncated — `{ok, nqc, reasons}` is the
-existing shape for that and should be reused.
-
-*Half two, `nqcToPseudocode(text)`.* This is what buys `TWO_WAY`, and it is the larger half. The
-existing C front end is the starting point: NQC differs by keywords (`task`, `sub`, `repeat`,
-`until`, `monitor`) and by an API surface (`OnFwd`, `Off`, `SetSensor`, `SENSOR_1`, `OUT_A`)
-rather than by grammar. Landing half one alone is useful and honest; landing half two badly is
-worse than not landing it, because a lossy round trip through the Code tab silently eats blocks.
-
-**What has to be decided before starting**, and is not decided here: whether `generateNQC` is
-selected by the project's declared device (as the chip/host C split already is) or by the tab
-being explicitly set to NQC. The first is consistent with everything else; the second is what
-someone typing NQC into an empty tab expects. They can both be true, and saying which wins when
-they disagree is the actual design question.
-
-**Cost of not doing it:** an RCX user can build programs with blocks and cannot read or hand-edit
-what they compile, on the one brick in the family whose native language is human-readable text.
+Note that the RCX extension already transpiles ITS OWN blocks to NQC. `generateNQC` is a different
+thing — a whole Scratch project, not one extension's vocabulary — and the two should not be
+confused when someone picks this up.
 
 ### 5.1 The stc12 extension lite ships is missing 8 opcodes the emitter emits — FIXED
 
