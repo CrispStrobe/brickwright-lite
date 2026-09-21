@@ -45,13 +45,23 @@ const wired = function () {
     };
 };
 
-/** Strip the 7-byte header, after checking it. */
-const body = packet => {
+/**
+ * Strip the 7-byte header, after checking it.
+ *
+ * `globals` is how many bytes of the global buffer the command reserves for
+ * its reply, and it is not decoration: a command that asks for a reply must
+ * also say type 0x00 rather than 0x80, and must reserve room for what it
+ * reads back. A reporter that reserved nothing would come back empty and
+ * report 0 — a plausible reading, and wrong.
+ */
+const body = (packet, {globals = 0} = {}) => {
     assert.equal(packet.length - 2, packet[0] | (packet[1] << 8),
         'the length prefix does not describe the packet');
-    assert.equal(packet[4], 0x80, 'not a DIRECT_COMMAND_NO_REPLY');
-    assert.equal(packet[5], 0x00, 'unexpected global allocation');
-    assert.equal(packet[6], 0x00, 'unexpected local allocation');
+    assert.equal(packet[4], globals === 0 ? 0x80 : 0x00,
+        globals === 0 ? 'not a DIRECT_COMMAND_NO_REPLY' :
+            'a command that reserves reply space must ask for a reply');
+    assert.equal(packet[5], globals, 'unexpected global allocation');
+    assert.equal(packet[6] >> 2, 0x00, 'unexpected local allocation');
     return packet.slice(7);
 };
 
@@ -140,4 +150,82 @@ test('a filled shape differs from an outline by one bytecode', async () => {
     assert.equal(filled[1], 0x18, 'FILLCIRCLE');
     assert.deepEqual(outline.slice(2), filled.slice(2),
         'only the shape bytecode should differ between outline and filled');
+});
+
+// ── the four blocks that were wired wrong ────────────────────────────────
+//
+// Every one of these passed the coverage gate, which only asks whether a
+// block has a body. They were found by auditing each block's PORT menu
+// against the converter its body used, and by reading the transpiler that
+// lowers the same blocks — not by any test. These are that audit, frozen.
+
+test('tank drive: LEFT and RIGHT are POWERS, and the ports are B and C', async () => {
+    const w = wired();
+    // The bug: LEFT/RIGHT are numbers, and they were passed through the port
+    // converter, which strips non-ABCD characters — so "50" became the empty
+    // mask, fell back to port A, and BOTH wheels drove the same motor. The
+    // speeds actually sent were VALUE, the duration.
+    const bytes = body(await w.capture(() =>
+        w.instance.tankDrive({LEFT: 50, RIGHT: -50, VALUE: 1, UNIT: 'rotations'})));
+    // ac = opOUTPUT_STEP_POWER. Port B = 0x02, port C = 0x04. 360 degrees is
+    // one rotation. -50 arrives as 0xce.
+    assert.deepEqual(bytes.slice(0, 5), [0xac, 0x00, 0x02, 0x81, 50]);
+    const second = bytes.indexOf(0xac, 1);
+    assert.deepEqual(bytes.slice(second, second + 5), [0xac, 0x00, 0x04, 0x81, 0xce],
+        'the second motor must be port C at the RIGHT power, not port A again');
+    // LC4(360) = 83 68 01 00 00, present once per motor.
+    assert.equal(bytes.filter((b, i) =>
+        b === 0x83 && bytes[i + 1] === 0x68 && bytes[i + 2] === 0x01).length, 2,
+    'each motor must be told to turn 360 degrees');
+});
+
+test('tank drive in seconds uses the timed opcode, not the stepped one', async () => {
+    const w = wired();
+    const bytes = body(await w.capture(() =>
+        w.instance.tankDrive({LEFT: 50, RIGHT: 50, VALUE: 2, UNIT: 'seconds'})));
+    // ad = opOUTPUT_TIME_POWER, and 2 seconds is LC4(2000) = 83 d0 07 00 00.
+    assert.equal(bytes[0], 0xad, 'seconds must lower to OUTPUT_TIME_POWER');
+    assert.ok(bytes.some((b, i) =>
+        b === 0x83 && bytes[i + 1] === 0xd0 && bytes[i + 2] === 0x07),
+    '2 seconds must reach the brick as 2000 ms');
+    // Before the fix, VALUE was ignored entirely and the motors ran forever.
+});
+
+test('steering scales the inner wheel to zero at lock, never into reverse', async () => {
+    const w = wired();
+    // The transpiler computes `speed - speed * |steering| / 100`. The first
+    // version of this used (1 - |s|/50), which reaches a full REVERSE spin at
+    // lock — the same program would then drive differently streamed than
+    // compiled, which is the one thing a dual-mode extension must not do.
+    const locked = body(await w.capture(() =>
+        w.instance.steerDrive({STEERING: 100, SPEED: 50, VALUE: 1, UNIT: 'rotations'})));
+    assert.equal(locked[4], 50, 'the outer wheel keeps the commanded speed');
+    const second = locked.indexOf(0xac, 1);
+    assert.equal(locked[second + 4], 0, 'the inner wheel stops; it must not reverse');
+
+    // Turning the other way makes the LEFT wheel the slow one.
+    const left = body(await w.capture(() =>
+        w.instance.steerDrive({STEERING: -50, SPEED: 80, VALUE: 1, UNIT: 'rotations'})));
+    assert.equal(left[4], 40, 'left wheel: 80 - 80*50/100');
+    assert.equal(left[left.indexOf(0xac, 1) + 4], 80, 'right wheel keeps full speed');
+});
+
+test('motor position and speed read a MOTOR port, not a sensor port', async () => {
+    const w = wired();
+    // The bug: both carry a motorPorts menu (letters), and both were passed
+    // through the SENSOR port converter — parseInt("A") is NaN, which fell
+    // back to 0, so every motor reported whatever was on sensor port 1.
+    // a8 = opOUTPUT_READ; 60 = GV0(0) for speed, 64 = GV0(4) for position.
+    // The tacho reserves 8 global bytes: an int8 speed at 0 and an int32
+    // position at 4, read from one reply.
+    assert.deepEqual(
+        body(await w.capture(() => w.instance.motorPosition({PORT: 'D'})), {globals: 8}),
+        [0xa8, 0x00, 0x08, 0x60, 0x64], 'port D is bitmask 8');
+    assert.deepEqual(
+        body(await w.capture(() => w.instance.motorSpeed({PORT: 'A'})), {globals: 8}),
+        [0xa8, 0x00, 0x01, 0x60, 0x64], 'port A is bitmask 1');
+    // And a sensor block must still use INPUT, so the two families cannot
+    // quietly converge again.
+    const touch = body(await w.capture(() => w.instance.touchSensor({PORT: '1'})), {globals: 4});
+    assert.equal(touch[0], 0x99, 'sensor reads must stay on opINPUT_DEVICE');
 });
