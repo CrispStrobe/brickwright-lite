@@ -82,8 +82,16 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // of a program with a declared servo. The SPIKE emitter is untouched by it,
     // and the artifact below was re-run at the new pin rather than carried over.
     // The rest of the range is example data and gate repairs.
+    // -> 830002ca on 2026-09-21: sb3-creator's CI siblings move to the engine
+    // THIS APP ALREADY SHIPS — bw-board 1,409 commits forward, bw-circuit-ui 337
+    // — and 37 numbers across its gallery are re-derived because an LED is now
+    // solved on its junction instead of clamped at a knee. MEASURED, not
+    // inferred: `git diff --name-only 8e1f4d11 830002ca -- src/` is EMPTY, so
+    // every vendored compiler file is byte-identical across the range and the
+    // SPIKE emitter cannot have moved. The artifact below is re-run at the new
+    // pin regardless, which is the rule this assertion exists to enforce.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '8e1f4d11406fd302a479d693d5058ee6643f72e7');
+        '830002ca430206e0f2d5d2a8cb9d07f6f20ed983');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
