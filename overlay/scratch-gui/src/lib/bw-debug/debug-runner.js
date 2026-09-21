@@ -2433,59 +2433,35 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         }
 
         // A BOOTABLE FLOPPY OS (ELKS, Minix, …) — the media-lab path. Unlike a
-        // ROM, the bytes go into the µPD765, not F0000h: the machine boots the
-        // XT BIOS, sizes the disk and hands off to the OS, and the user then
-        // STEERS it — video() is the CGA screen, keyIn() the keyboard. Two
-        // things a bare ROM boot does not need. First the PCXT config (fdc +
-        // dma + pic + cga), because the default 8086 map is a breadboard with
-        // no disk. Second the AT floppy DRIVE TYPE in INT 13h AH=08h BL, which
-        // the XT BIOS never sets and ELKS trusts (it indexes fd_types[BL-1], so
-        // BL=0 mis-sizes every sector) — supplied as an opt-in onInterrupt hook
-        // so no vendored core file changes, exactly as bw-board's own ELKS
-        // scripts do it.
-        const isFloppyBoot = bootMedia &&
-            (bootMedia.slot === 'floppy' || bootMedia.profile === 'floppy-os');
-        if (isFloppyBoot) {
+        // ROM, the image goes into the µPD765, not F0000h: the machine boots
+        // the XT BIOS, sizes the disk and hands off to the OS, and the user
+        // then STEERS it — video() is the CGA screen, keyIn() the keyboard. So
+        // this only PREPARES the target (the PCXT config — fdc + dma + pic +
+        // cga, because the default 8086 map is a bare breadboard with no disk —
+        // plus the XT BIOS) and stashes the image; the SINGLE i8086 target call
+        // below builds it, and the floppy + the AT drive-type quirk are applied
+        // to the machine afterwards. Routing through the one call site keeps the
+        // memory-preference guard's "exactly one createDebugTarget('i8086')"
+        // true. (The quirk: the XT BIOS never sets the floppy DRIVE TYPE in
+        // INT 13h AH=08h BL, and ELKS indexes fd_types[BL-1], so BL=0 mis-sizes
+        // every sector; supplied as an opt-in onInterrupt hook, no vendored
+        // change, exactly as bw-board's own ELKS scripts do it.)
+        let floppyBoot = null;
+        if (bootMedia && (bootMedia.slot === 'floppy' || bootMedia.profile === 'floppy-os')) {
             setStatus('attaching', `booting ${bootMedia.name || 'floppy'}…`);
-            const { createDebugTarget, createDebugSession } =
-                await import(/* webpackChunkName: "bw-board" */ 'bw-board');
             const { PCXT8086 } =
                 await import(/* webpackChunkName: "bw-board" */ 'bw-board/i8086-machine.js');
             const img = await resolveMediaImage(bootMedia);
             const res = await fetch(new URL('static/roms/i8086-bios.bin', document.baseURI).href);
             if (!res.ok) throw new Error(`Failed to load i8086-bios.bin: HTTP ${res.status}`);
             const bios = new Uint8Array(await res.arrayBuffer());
-            const floppyOpts = { config: PCXT8086, rom: bios, romAt: 0x100000 - bios.length };
-            const db = designerBoard();
-            if (db.board) { floppyOpts.board = db.board; board = db.board; }
-            const result = await createDebugTarget('i8086', floppyOpts);
-            const machine = result.adapter?.machine || result.target?.machine;
-            if (!machine || !machine.chips?.fdc1) {
-                throw new Error('a floppy-boot OS needs the PCXT machine with a µPD765 — none was built');
-            }
-            const priorInt = machine.hooks.onInterrupt;
-            machine.hooks.onInterrupt = (ev) => {
-                if (ev.vector === 0x13 && ev.source === 'int') {
-                    const c = machine.cpu;
-                    if (c.ah === 0x08 && c.dl < 0x80) {
-                        const g = machine.chips.fdc1?.drives?.[c.dl & 3]?.geom;
-                        if (g) {
-                            const cy = g.cylinders | 0, sp = g.sectors | 0;
-                            c.bl = cy <= 40 ? 1 : sp >= 36 ? 5 : sp >= 18 ? 4 : sp >= 15 ? 2 : 3;
-                        }
-                    }
-                }
-                if (priorInt) priorInt(ev);
-            };
-            const geom = bootMedia.geometry ||
-                { cylinders: 80, heads: 2, sectors: 18, bytesPerSector: 512 };
-            machine.chips.fdc1.insert(0, img.bytes, geom);
-            machine.reset();
-            wireMachineBench(result, createDebugSession);
-            setStatus('ready',
-                `${bootMedia.name || 'floppy'} booting — the video is the CGA screen, ` +
-                'the keyboard steers it (it takes ~40M instructions to reach a login prompt)');
-            return session;
+            targetOpts.config = PCXT8086;
+            targetOpts.rom = bios;
+            targetOpts.romAt = 0x100000 - bios.length;
+            floppyBoot = { bytes: img.bytes,
+                geom: bootMedia.geometry || { cylinders: 80, heads: 2, sectors: 18, bytesPerSector: 512 } };
+            readyMsg = `${bootMedia.name || 'floppy'} booting — the video is the CGA screen, `
+                + 'the keyboard steers it (it takes ~40M instructions to reach a login prompt)';
         }
 
         // Hardware machines still use the target factory. Keep its broad
@@ -2493,7 +2469,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const { createDebugTarget, createDebugSession } =
             await import(/* webpackChunkName: "bw-board" */ 'bw-board');
 
-        if (bootMedia) {
+        if (floppyBoot) {
+            // targetOpts.config/rom/romAt and readyMsg were set above; a floppy
+            // is not a ROM, so skip the ROM-as-image branches entirely.
+        } else if (bootMedia) {
             setStatus('attaching', `booting ${bootMedia.name || 'ROM'}…`);
             const img = await resolveMediaImage(bootMedia);
             targetOpts.rom = img.bytes;
@@ -2580,6 +2559,32 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         async () => await createDebugTarget('i8086', targetOpts));
         i8086ExecutionResult = result;
         if (i8086ExecutionLifetime.signal.aborted) throw new Error('8086 attachment was disposed');
+        if (floppyBoot) {
+            // The machine is built; a floppy is not a ROM, so drop the image
+            // into the µPD765 and supply the AT drive-type at INT-13h entry
+            // (before wireMachineBench, so video()/keyIn() bind the running
+            // machine). Then the XT BIOS boots it.
+            const machine = result.adapter?.machine || result.target?.machine;
+            if (!machine || !machine.chips?.fdc1) {
+                throw new Error('a floppy-boot OS needs the PCXT machine with a µPD765 — none was built');
+            }
+            const priorInt = machine.hooks.onInterrupt;
+            machine.hooks.onInterrupt = (ev) => {
+                if (ev.vector === 0x13 && ev.source === 'int') {
+                    const c = machine.cpu;
+                    if (c.ah === 0x08 && c.dl < 0x80) {
+                        const g = machine.chips.fdc1?.drives?.[c.dl & 3]?.geom;
+                        if (g) {
+                            const cy = g.cylinders | 0, sp = g.sectors | 0;
+                            c.bl = cy <= 40 ? 1 : sp >= 36 ? 5 : sp >= 18 ? 4 : sp >= 15 ? 2 : 3;
+                        }
+                    }
+                }
+                if (priorInt) priorInt(ev);
+            };
+            machine.chips.fdc1.insert(0, floppyBoot.bytes, floppyBoot.geom);
+            machine.reset();
+        }
         wireMachineBench(result, createDebugSession);
         setStatus('ready', readyMsg);
         return session;
