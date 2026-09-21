@@ -88,3 +88,34 @@ one we deliberately do not tabulate.
 
 Corrupting a single byte in any file turns three assertions red; that was
 checked rather than assumed.
+
+
+## The corrupted runs
+
+`corrupt/` holds one download per way of damaging a reply, captured the same
+way with `RCX_ORACLE_CORRUPT=<mode>` — the model mangles every reply it sends
+and NQC's exit status records whether it noticed.
+
+| mode | what is damaged | NQC |
+| --- | --- | --- |
+| `checksum` | the sum byte | rejects |
+| `cksumcomp` | the sum's complement | rejects |
+| `opcomp` | the opcode's complement | rejects |
+| `opcode` | a different opcode, complement consistent | rejects |
+| `truncate` | one byte short | rejects |
+| `datacomp` | a payload byte's complement | rejects |
+| `header` | `55 fe 00` — one header byte lost | **accepts** |
+| `garbage` | three junk bytes before the frame | **accepts** |
+
+**The two it accepts are the point.** Rejecting everything malformed would be
+easy and wrong: the header's job is to warm up the serial link, so its leading
+bytes are the ones a cold link eats, and `FindSync` in
+`rcxlib/RCX_PipeTransport.cpp` searches for `55 ff 00`, then `ff 00`, then
+`00` — dropping a byte from the front each time — always requiring the next
+byte to be the complement of the command it just sent.
+
+Our reader was stricter than that and reported `NO_REPLY` for the `header`
+case, which on real hardware means a download that fails intermittently for a
+reason nobody can see. It now shortens the same way, keeps the same guard, and
+`test/rcx-nqc-oracle.test.mjs` holds both halves: all eight verdicts match,
+and a damaged header still must not vouch for an opcode nobody is waiting for.

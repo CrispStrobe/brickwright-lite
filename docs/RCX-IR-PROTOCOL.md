@@ -399,3 +399,39 @@ loop iterates the image in file order and never sorts, so it says nothing
 about an image whose subroutines do not already come first (its own compiler
 always writes them first, which the test verifies on the fixtures); and the
 firmware-download opcodes (`0x75`, `0x65`) are outside what we implement.
+
+## The adversarial run: what each side REFUSES
+
+Everything above compares what the two implementations SEND. The replies in
+those captures were synthesised by the harness, so the receiving half was
+still only as good as the harness author's understanding of it — which is the
+same circularity the clean room existed to avoid, arriving by a different
+door.
+
+So the model was made to corrupt every reply, one way per run, and NQC's own
+exit status was recorded. Eight modes: the checksum, its complement, the
+opcode's complement, a consistent-but-wrong opcode, a truncated frame, a
+payload byte's complement, a damaged header, and three junk bytes in front.
+
+**NQC rejects six and accepts two, and the two it accepts are the finding.**
+
+A damaged header (`55 fe 00`) is accepted, and so is leading garbage. That is
+not laxity, it is `FindSync` in `rcxlib/RCX_PipeTransport.cpp`: it looks for
+`55 ff 00`, then for `ff 00`, then for `00` alone — **dropping a byte from the
+front each time** — and at every level requires the following byte to be the
+complement of the command it just sent.
+
+Read that against what this document already quotes: the header exists to
+"warm up the serial link". Its leading bytes are precisely the ones a cold
+link loses, so insisting on them is insisting on the least reliable part of
+the frame. The opcode complement is what actually identifies a reply, and it
+is what NQC leans on.
+
+**Our reader was stricter, and that was a defect** — `NO_REPLY` for a reply
+that was on the wire and fine, which on real hardware is a download that fails
+intermittently for a reason the user cannot see. It now shortens the same way
+and keeps the same guard, which is what makes a one-byte sync safe: a
+truncated header is only honoured when the byte after it is an opcode the
+reader is actually waiting for. Both halves are asserted — all eight verdicts
+now match, and a damaged header still refuses to vouch for an opcode nobody
+asked for.

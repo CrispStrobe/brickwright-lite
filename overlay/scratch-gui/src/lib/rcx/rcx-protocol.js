@@ -434,13 +434,57 @@ export function createReplyReader() {
       };
 
       for (;;) {
-        // Resynchronise onto a header.
+        // RESYNCHRONISE ONTO A HEADER — OR ONTO WHAT IS LEFT OF ONE.
+        //
+        // Requiring all three bytes of `55 ff 00` looks obviously right and
+        // costs real downloads. RCX Internals says the header's job is to
+        // "warm up the serial link", which means its LEADING bytes are the
+        // ones a cold link is most likely to eat — so demanding them is
+        // demanding the least reliable part of the frame.
+        //
+        // NQC does not. `FindSync` in RCX_PipeTransport.cpp searches for the
+        // full pattern, then drops its first byte and searches for `ff 00`,
+        // then for `00` alone, and at every level requires the byte that
+        // follows to be the complement of the command it sent (compared with
+        // the toggle masked off). Measured 2026-09-21: with the header
+        // corrupted to `55 fe 00`, NQC completes the download and this reader
+        // reported NO_REPLY.
+        //
+        // That guard is what makes a one-byte sync safe, so it is kept
+        // exactly: a shortened sync is only accepted when the next byte is an
+        // opcode this reader is actually waiting for. Without an expectation
+        // set, only the full header will do.
         let start = -1;
-        for (let i = 0; i + 2 < buf.length; i++) {
-          if (buf[i] === 0x55 && buf[i + 1] === 0xff && buf[i + 2] === 0x00) {
+        let syncLen = 0;
+        const awaited = (op) => {
+          if (!expectation) return false;
+          const masked = op & ~TOGGLE_BIT & 0xff;
+          return masked === (expectation.echoOpcode & ~TOGGLE_BIT & 0xff) ||
+                 masked === (expectation.replyOpcode & ~TOGGLE_BIT & 0xff);
+        };
+        for (let len = HEADER.length; len > 0 && start === -1; len--) {
+          const pattern = HEADER.slice(HEADER.length - len);
+          for (let i = 0; i + len < buf.length; i++) {
+            let match = true;
+            for (let k = 0; k < len; k++) {
+              if (buf[i + k] !== pattern[k]) { match = false; break; }
+            }
+            if (!match) continue;
+            // The full header stands on its own; a truncated one has to be
+            // vouched for by the opcode that follows it.
+            if (len < HEADER.length && !awaited(buf[i + len])) continue;
             start = i;
+            syncLen = len;
             break;
           }
+        }
+        if (start !== -1 && syncLen < HEADER.length) {
+          // Put back the bytes the link ate, so everything downstream still
+          // parses a frame that begins with a whole header. What was actually
+          // missing is reported as noise rather than silently invented.
+          noise.push(...buf.slice(0, start + syncLen));
+          buf = [...HEADER, ...buf.slice(start + syncLen)];
+          start = 0;
         }
         if (start === -1) {
           // Keep at most two trailing bytes: a header could be split across chunks.

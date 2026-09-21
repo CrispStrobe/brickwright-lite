@@ -24,11 +24,15 @@ import {join} from 'node:path';
 
 import {
     REQUESTS, OP, TOGGLE_BIT, parseRcxImage, planBlocks,
-    DEFAULT_BLOCK_SIZE, downloadImage, createFakeTower, decodeReply
+    DEFAULT_BLOCK_SIZE, downloadImage, createFakeTower, decodeReply,
+    extractReply, encodeCommand, replyOpcodeFor
 } from '../overlay/scratch-gui/src/lib/rcx/rcx-protocol.js';
 import {
     RCX_BAUD_RATE, RCX_PARITY, RCX_DATA_BITS, RCX_STOP_BITS
 } from '../overlay/scratch-gui/src/lib/rcx/rcx-serial.js';
+
+const encodeCommandFor = (opcode, params) =>
+    encodeCommand(opcode, params, {toggle: false, checkArity: false});
 
 const fx = name => join(import.meta.dirname, 'fixtures/rcx-images', name);
 
@@ -431,4 +435,87 @@ test('opcodes NQC sends that we do not tabulate are named, not silently absent',
         if (!REQUESTS.has(base) && !KNOWN_ABSENT.has(base)) unknown.add(base);
     }
     assert.deepEqual([...unknown], [], 'captured opcodes we neither tabulate nor excuse');
+});
+
+/* ---------------------------------------------------- what each side REFUSES */
+
+/**
+ * NQC's verdict on a download where every reply is corrupted one way.
+ *
+ * Measured, not reasoned about: `RCX_ORACLE_CORRUPT=<mode> nqc -d -pgm 1
+ * t.nqc` against the logging serial port, one run per mode, exit status
+ * recorded. The captures are under `fixtures/rcx-captures/corrupt/`.
+ *
+ * ACCEPTING TWO OF THESE IS THE INTERESTING PART. A parser that rejected
+ * everything malformed would be easy; NQC deliberately tolerates a damaged
+ * header, because the header's job is to warm up the link and its leading
+ * bytes are the ones a cold link eats.
+ */
+const NQC_VERDICT = {
+    checksum: 'reject',   // the sum byte flipped
+    cksumcomp: 'reject',  // the sum's complement flipped
+    opcomp: 'reject',     // the opcode's complement flipped
+    opcode: 'reject',     // a different opcode, its complement consistent
+    truncate: 'reject',   // one byte short
+    datacomp: 'reject',   // a payload byte's complement flipped
+    header: 'accept',     // 55 fe 00 — a header byte lost
+    garbage: 'accept'     // three junk bytes before the frame
+};
+
+const corruptedReply = mode => {
+    const line = readFileSync(
+        join(import.meta.dirname, 'fixtures/rcx-captures/corrupt', `${mode}.log`), 'utf8')
+        .split('\n').filter(l => l.startsWith('RX '));
+    // The first reply with a payload where the mode needs one, else the first.
+    const pick = mode === 'datacomp'
+        ? line.find(l => l.trim().split(/\s+/).length > 10) || line[0]
+        : line[0];
+    return Uint8Array.from(pick.slice(3).trim().split(/\s+/).map(h => parseInt(h, 16)));
+};
+
+const ourVerdict = (mode, reply) => {
+    // The command that reply answers, and how many payload bytes we expect.
+    const isDownload = mode === 'datacomp';
+    const sent = isDownload
+        ? encodeCommandFor(OP.START_TASK_DOWNLOAD, [0, 0, 0, 0x22, 0])
+        : encodeCommandFor(OP.ALIVE, []);
+    const heard = new Uint8Array(sent.length + reply.length);
+    heard.set(sent, 0);
+    heard.set(reply, sent.length);
+    return extractReply(sent, heard, isDownload ? 1 : 0).ok ? 'accept' : 'reject';
+};
+
+test('our decoder draws the same line NQC draws, on all eight corruptions', () => {
+    // THE GAP THIS CLOSES. Every other oracle test checks what we SEND. The
+    // replies in those captures were synthesised by the harness, so until now
+    // the reply side was only as good as the harness author's understanding
+    // of it. This measures NQC's own acceptance instead.
+    const disagreements = [];
+    for (const [mode, theirs] of Object.entries(NQC_VERDICT)) {
+        const ours = ourVerdict(mode, corruptedReply(mode));
+        if (ours !== theirs) disagreements.push(`${mode}: NQC ${theirs}, we ${ours}`);
+    }
+    assert.deepEqual(disagreements, []);
+});
+
+test('a truncated header is tolerated, but only for an opcode we await', () => {
+    // The tolerance above is real and it is narrow. NQC's FindSync shortens
+    // the sync pattern from the front and then REQUIRES the next byte to be
+    // the complement of the command it sent; without that guard, syncing on a
+    // lone 0x00 would turn any zero byte in a payload into a frame boundary.
+    // Ours keeps the guard, so: the same damaged header, followed by an
+    // opcode nobody is waiting for, must NOT resynchronise.
+    const sent = encodeCommandFor(OP.ALIVE, []);
+    const damaged = op => {
+        const body = [0x55, 0xfe, 0x00, op, (~op) & 0xff];
+        const sum = op & 0xff;
+        body.push(sum, (~sum) & 0xff);
+        const heard = new Uint8Array(sent.length + body.length);
+        heard.set(sent, 0);
+        heard.set(Uint8Array.from(body), sent.length);
+        return extractReply(sent, heard, 0).ok;
+    };
+    assert.equal(damaged(replyOpcodeFor(OP.ALIVE)), true, 'the awaited reply must still be found');
+    assert.equal(damaged(replyOpcodeFor(OP.POWER_OFF)), false,
+        'a damaged header must not vouch for an opcode nobody asked for');
 });
