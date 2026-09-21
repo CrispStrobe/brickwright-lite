@@ -16,10 +16,16 @@ import {buildLogicIcGate} from '../overlay/scratch-gui/src/lib/bw-fpga/logic-ic-
 import {buildCmosGate} from '../overlay/scratch-gui/src/lib/bw-fpga/cmos-board.js';
 import {gateToLogicIc, LOGIC_IC_GATES} from '../overlay/scratch-gui/src/lib/bw-fpga/logic-ic.js';
 import {gateToCmos} from '../overlay/scratch-gui/src/lib/bw-fpga/cmos.js';
+import {buildLogicIcCircuit, IC_CIRCUITS} from '../overlay/scratch-gui/src/lib/bw-fpga/logic-ic-circuit.js';
 
 const {Circuit} = await boot();
 
-const REALISE = CHALLENGES.filter(isRealise);
+const REALISE = REALISE_ALL();
+function REALISE_ALL () { return CHALLENGES.filter(isRealise); }
+/** What a realise challenge asks for: one gate, or a named multi-gate circuit. */
+const subjectOf = c => c.gate || c.circuit;
+/** Challenges that realise a SINGLE gate — the ones the gate rules apply to. */
+const GATE_REALISE = REALISE_ALL().filter(c => c.gate);
 /** rung id → how it builds, and whether it can build a given gate at all. */
 const RUNGS = {
     ic: {build: buildLogicIcGate, supports: gateToLogicIc, label: '74HC chip'},
@@ -36,7 +42,8 @@ for (const c of REALISE) {
     for (const rung of c.rungs) {
         test(`${c.id}: building it as ${RUNGS[rung].label} passes the challenge`, () => {
             const circuit = new Circuit(5.0);
-            RUNGS[rung].build(circuit, c.gate);
+            if (c.circuit) buildLogicIcCircuit(circuit, IC_CIRCUITS[c.circuit]);
+            else RUNGS[rung].build(circuit, c.gate);
             const result = gradeRealisedCircuit(circuit, c);
             assert.equal(result.pass, true, gradeMessageRealised(result, c));
             assert.equal(result.checked, 1 << c.inputs.length, 'every input combination was driven');
@@ -62,7 +69,7 @@ test('realising the wrong gate fails the challenge', () => {
 // ── Curriculum consistency ─────────────────────────────────────────────────
 
 test('every realise challenge names a gate its rungs can actually build', () => {
-    for (const c of REALISE) {
+    for (const c of GATE_REALISE) {
         assert.ok(c.gate, `${c.id} must name the gate to realise`);
         assert.ok(Array.isArray(c.rungs) && c.rungs.length, `${c.id} must name its rungs`);
         for (const rung of c.rungs) {
@@ -76,7 +83,7 @@ test('every realise challenge names a gate its rungs can actually build', () => 
 test('a rung is only omitted when the builder really cannot build that gate', () => {
     // Guards against quietly dropping a rung that would in fact work — the
     // curriculum should offer every realisation a gate has.
-    for (const c of REALISE) {
+    for (const c of GATE_REALISE) {
         for (const rung of Object.keys(RUNGS)) {
             if (c.rungs.includes(rung)) continue;
             assert.ok(!RUNGS[rung].supports(c.gate),
@@ -89,7 +96,7 @@ test('every chip the ⚙ builder offers has a challenge that asks for it', () =>
     // Otherwise a part exists in the product only as somebody's WRONG answer.
     // 74HC32 (OR) and 74HC02 (NOR) were exactly that until this test was added:
     // buildable from the dropdown, reachable by no challenge.
-    const covered = new Set(REALISE.map(c => c.gate));
+    const covered = new Set(GATE_REALISE.map(c => c.gate));
     const orphans = LOGIC_IC_GATES.filter(g => !covered.has(g));
     assert.deepEqual(orphans, [],
         `these chips are buildable but no challenge asks for them: ${
@@ -97,7 +104,7 @@ test('every chip the ⚙ builder offers has a challenge that asks for it', () =>
 });
 
 test('every gate the ⚛ builder offers has a challenge too, bar the documented one', () => {
-    const covered = new Set(REALISE.map(c => c.gate));
+    const covered = new Set(GATE_REALISE.map(c => c.gate));
     // 'buffer' is deliberate: two inverters in series teaches nothing the NOT
     // challenge has not already taught, so it stays a toy on the dropdown.
     const ALLOWED_UNCOVERED = ['buffer'];
@@ -128,11 +135,30 @@ test('XOR is the one with no discrete transistor form', () => {
     assert.equal(gateToCmos('xor'), null, 'and cmos.js really has no XOR netlist');
 });
 
-test('realise challenges have a single output — the one LED that gets read', () => {
+test('a single-gate realise challenge reads exactly one LED', () => {
+    for (const c of GATE_REALISE) {
+        assert.equal(c.outputs.length, 1, `${c.id} realises one gate, so it reads one LED`);
+    }
+});
+
+test('every realise challenge is combinational, and none is graded on gate count', () => {
     for (const c of REALISE) {
-        assert.equal(c.outputs.length, 1, `${c.id} must have exactly one output to read off an LED`);
+        assert.ok(c.outputs.length >= 1, `${c.id} must read something`);
         assert.ok(!c.sequential, `${c.id} must be combinational — the board grader enumerates inputs`);
         assert.ok(!c.minimize, `${c.id} cannot be graded on gate count: there is no canvas model to count`);
+    }
+});
+
+test('a multi-gate realise challenge names a spec that really builds its outputs', () => {
+    for (const c of REALISE.filter(x => x.circuit)) {
+        const spec = IC_CIRCUITS[c.circuit];
+        assert.ok(spec, `${c.id} names unknown circuit "${c.circuit}"`);
+        assert.deepEqual(spec.outputs, c.outputs.map(o => o.name),
+            `${c.id}'s outputs must match the spec's, in order`);
+        assert.deepEqual(spec.inputs, c.inputs.map(i => i.name), 'and its inputs');
+        for (const g of spec.gates) {
+            assert.ok(gateToLogicIc(g.type), `${c.id}'s spec uses ${g.type}, which has no chip`);
+        }
     }
 });
 
@@ -144,9 +170,10 @@ test('each realise challenge is gated behind designing that gate on the canvas',
         // there IS a canvas lesson for it. NOR has none (the canvas ladder goes
         // straight from OR to NAND), so it is gated behind OR instead, and its
         // brief teaches the gate itself.
-        if (canvasIds.has(c.gate)) {
-            assert.ok(c.requires.includes(c.gate),
-                `${c.id} should require designing ${c.gate} first`);
+        const subject = subjectOf(c);
+        if (canvasIds.has(subject)) {
+            assert.ok(c.requires.includes(subject),
+                `${c.id} should require designing ${subject} first`);
         }
         assert.ok(!isUnlocked(c.id, new Set()), `${c.id} must not be open from the start`);
     }
@@ -156,7 +183,7 @@ test('the realise challenge with no canvas counterpart is NOR, and only NOR', ()
     // Pins the exception above, so a future gate cannot quietly skip the
     // "design it before you build it" rule by having no canvas lesson.
     const canvasIds = new Set(CHALLENGES.filter(c => !isRealise(c)).map(c => c.id));
-    assert.deepEqual(REALISE.filter(c => !canvasIds.has(c.gate)).map(c => c.gate), ['nor']);
+    assert.deepEqual(REALISE.filter(c => !canvasIds.has(subjectOf(c))).map(subjectOf), ['nor']);
 });
 
 test('the realise ladder unlocks in order once its prerequisites pass', () => {
@@ -198,6 +225,15 @@ test('the briefs\' concrete claims match what the builders actually make', () =>
     assert.match(byId('nor_real').brief, /Four transistors/i, 'and claims four');
     assert.equal(transistorsOf('nor'), 4, 'which is what buildCmosGate makes');
     assert.match(byId('xor_real').brief, new RegExp(chipOf('xor')), 'the XOR brief names the right chip');
+    // The half adder brief assigns a specific chip to each output. Read that
+    // off the spec rather than trusting the prose.
+    const ha = byId('half_adder_real');
+    const spec = IC_CIRCUITS[ha.circuit];
+    const chipFor = out => gateToLogicIc(spec.gates.find(g => g.out === out).type).label;
+    assert.match(ha.brief, new RegExp(`${chipFor('sum')} XOR gives the sum`), 'the sum chip is named correctly');
+    assert.match(ha.brief, new RegExp(`${chipFor('carry')} AND gives the carry`), 'and the carry chip');
+    assert.match(ha.brief, /SAME two switches/, 'and that the inputs are shared');
+    assert.deepEqual(spec.gates.map(g => g.in), [['a', 'b'], ['a', 'b']], 'which the spec really does');
 });
 
 test('every realise brief tells the learner which button to press', () => {

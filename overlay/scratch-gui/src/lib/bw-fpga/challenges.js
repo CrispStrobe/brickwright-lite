@@ -170,6 +170,13 @@ export const CHALLENGES = Object.freeze([
         brief: 'XOR is the one the ⚛ button will not build: it has no tidy pull-up/pull-down pair the way AND and NOR do — it is made of several gates. So take the 74HC86 (⚙) and prove the chip computes it on the board.',
         inputs: io(['a', 'b']), outputs: io(['y']),
         expect: i => ({y: i.a ^ i.b})
+    },
+    {
+        id: 'half_adder_real', title: 'Half adder — addition, in parts you can buy',
+        requires: ['half_adder', 'xor_real'], realise: true, circuit: 'half_adder', rungs: ['ic'],
+        brief: 'Two chips, one job: a 74HC86 XOR gives the sum, a 74HC08 AND gives the carry, and both watch the SAME two switches. Press ⚙ Half adder to build it, then Check — this is the first challenge that reads TWO output LEDs, and it is binary addition happening in parts you could buy. Try 1+1: the sum goes dark and the carry lights.',
+        inputs: io(['a', 'b']), outputs: io(['sum', 'carry']),
+        expect: i => ({sum: i.a ^ i.b, carry: i.a & i.b})
     }
 ]);
 

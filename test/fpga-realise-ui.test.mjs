@@ -98,6 +98,20 @@ test('the verdict is scrolled into view when it arrives', () => {
     assert.ok(!/\.scrollIntoView\(/.test(panel), 'the page itself must stay still');
 });
 
+test('a multi-output challenge names its LEDs, and the tab can build one', () => {
+    const panel = read(PANEL);
+    assert.match(panel, /activeC\.outputs\.length > 1 \?/, 'a multi-output challenge is treated differently');
+    assert.match(panel, /Reads \$\{activeC\.outputs\.length\} LEDs/, 'it says how many LEDs get read');
+    assert.match(panel, /activeC\.outputs\.map\(o => o\.name\)\.join\(' and '\)/, 'and names them');
+    assert.match(panel, /Name them, or stack them in that order/,
+        'which LED is which is the thing a learner can get backwards');
+    // The challenge is unmeetable without a way to build it.
+    const tab = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx');
+    assert.match(tab, /data-testid="bw-fpga-build-half-adder"/, 'the tab has a half-adder button');
+    assert.match(tab, /realizeIcCircuit\('half_adder'\)/, 'wired to the multi-gate builder');
+    assert.match(tab, /import \{buildLogicIcCircuit, IC_CIRCUITS\}/, 'from the shared spec registry');
+});
+
 test('live-circuit.js reaches the board the way the app already does', () => {
     const live = read(LIVE);
     assert.match(live, /window\.__circuit/, 'the handle the circuit designer publishes');

@@ -11,6 +11,7 @@ import {buildDemoBoard} from '../../lib/bw-fpga/demo-board.js';
 import {buildCmosGate} from '../../lib/bw-fpga/cmos-board.js';
 import {buildLogicIcGate} from '../../lib/bw-fpga/logic-ic-board.js';
 import {LOGIC_IC_GATES, gateToLogicIc} from '../../lib/bw-fpga/logic-ic.js';
+import {buildLogicIcCircuit, IC_CIRCUITS} from '../../lib/bw-fpga/logic-ic-circuit.js';
 import {readPorts, checkWidths, detectClockPort} from '../../lib/bw-fpga/yosys.js';
 // Small and dependency-free, so these stay static: the licence screen is useful
 // on its own, and the synthesis client's only job today is to refuse honestly.
@@ -63,6 +64,7 @@ const L10N = {
         wireDemoBoardBtn: '⬢ Wire up a demo board',
         buildTransistorsBtn: '⚛ Build the gate from transistors',
         buildIcBtn: '⚙ Build the gate from a 74xx chip',
+        buildHalfAdderBtn: '⚙ Half adder',
         permissiveLicence: 'Declares a permissive licence — it may be built on the shared server.',
         whereBuiltTitle: 'Where it would be built',
         backendLabel: 'Backend: ',
@@ -178,6 +180,7 @@ const L10N = {
         wireDemoBoardBtn: '⬢ Demoboard verkabeln',
         buildTransistorsBtn: '⚛ Gatter aus Transistoren bauen',
         buildIcBtn: '⚙ Gatter aus einem 74xx-Chip bauen',
+        buildHalfAdderBtn: '⚙ Halbaddierer',
         permissiveLicence: 'Erklärt eine freizügige Lizenz — es kann auf dem geteilten Server gebaut werden.',
         whereBuiltTitle: 'Wo es gebaut werden würde',
         backendLabel: 'Backend: ',
@@ -799,6 +802,26 @@ const FpgaTab = (props) => {
     }, []);
     const realizeIcGate = React.useCallback(gateType => onLiveCircuit(c => buildIcGateOnCircuit(c, gateType)),
         [onLiveCircuit, buildIcGateOnCircuit]);
+    // A MULTI-gate circuit: several chips sharing the input switches, an LED per
+    // named output. The half adder is the first one — the step from "a gate
+    // works" to "these gates together compute something".
+    const buildIcCircuitOnCircuit = React.useCallback((c, key) => {
+        try {
+            const built = buildLogicIcCircuit(c, IC_CIRCUITS[key]);
+            if (typeof c.toJSON === 'function' && typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('bw-load-circuit-data', {detail: {data: c.toJSON()}}));
+            }
+            const chips = built.chips.map(ch => ch.kind.toUpperCase()).join(' + ');
+            const outs = built.outputs.map(o => o.name).join(' and ');
+            setDemoMsg({ok: true, text: `Built a half adder from ${chips} — two chips watching the same `
+                + `two switches, with an LED for ${outs}. Run the circuit and toggle them: `
+                + 'a=1 b=1 darkens the sum and lights the carry, which is 1 + 1 = 10 in binary.'});
+        } catch (e) {
+            setDemoMsg({ok: false, text: `Could not build the circuit: ${e.message}`});
+        }
+    }, []);
+    const realizeIcCircuit = React.useCallback(key => onLiveCircuit(c => buildIcCircuitOnCircuit(c, key)),
+        [onLiveCircuit, buildIcCircuitOnCircuit]);
 
     return (
         // Scrolling here needs the pattern circuit-tab.jsx uses, not a flex one. The tab
@@ -934,6 +957,14 @@ const FpgaTab = (props) => {
                         title="Build this gate as a real 74HC logic chip on the breadboard (the part you solder, above the transistors)"
                         style={{padding: '0.2rem 0.6rem', cursor: 'pointer'}}
                     >{L10N[pickLocale(props.locale)].buildIcBtn}</button>
+                </span>
+                {/* …or a whole multi-chip circuit: the half adder is two chips and two LEDs. */}
+                <span style={{marginLeft: '0.75rem'}}>
+                    <button type="button" data-testid="bw-fpga-build-half-adder"
+                        onClick={() => realizeIcCircuit('half_adder')}
+                        title="Build a half adder from two 74HC chips — XOR for the sum, AND for the carry, sharing the input switches"
+                        style={{padding: '0.2rem 0.6rem', cursor: 'pointer'}}
+                    >{L10N[pickLocale(props.locale)].buildHalfAdderBtn}</button>
                 </span>
                 {demoMsg ? (
                     <span style={{marginLeft: '0.5rem', opacity: 0.9,
