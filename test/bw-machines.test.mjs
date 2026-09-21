@@ -23,6 +23,13 @@ import {
 import {
     activateConfig
 } from '../overlay/scratch-gui/src/lib/bw-machines/activate.js';
+import {
+    ensureVideoWidget, createMachineVideoMirror
+} from '../overlay/scratch-gui/src/lib/bw-machines/video-mirror.js';
+// The REAL panel model + widget vocabulary from the pinned bw-board — so the
+// video-mirror tests drive the same setVgaFrame the browser paints through, not
+// a mock (design §4.2: a machine's screen is a simplevga widget).
+import {ControllerPanel} from 'bw-board/controller.js';
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -400,4 +407,166 @@ test('activate: sha256 mismatch from a verifying fetcher is fatal', async () => 
     // a fetcher that returns a DIFFERENT sha than the ref declares
     const fetcher = async () => ({bytes: new Uint8Array([1, 2, 3]), sha256: 'feedface'});
     await assert.rejects(() => activateConfig(cfg, {fetcher}), /sha256 mismatch/);
+});
+
+// ── 5. widgets: a manifest declares its screen (design §4.2) ──────────────────
+
+/** An i8086 OS whose manifest declares a VGA screen widget bound to video. */
+const elksWithScreen = () => newMachineConfig({
+    ...elksConfig(),
+    widgets: [{
+        name: 'screen', type: 'simplevga',
+        config: {width: 640, height: 200}, layout: {x: 0, y: 0, w: 20, h: 12},
+        source: 'video'
+    }]
+});
+
+test('normalize carries a declared VGA widget and drops a malformed one', () => {
+    const cfg = normalizeMachineConfig({
+        machine: 'i8086', slots: {floppy: 'a.img'},
+        widgets: [
+            {name: 'screen', type: 'simplevga', source: 'video'},
+            {type: 'simplevga'},          // no name → dropped
+            {name: 'x'}                    // no type → dropped
+        ]
+    });
+    assert.equal(cfg.widgets.length, 1);
+    assert.deepEqual(cfg.widgets[0],
+        {name: 'screen', type: 'simplevga', config: {}, layout: null, source: 'video'});
+    // idempotent with widgets present
+    assert.deepEqual(normalizeMachineConfig(cfg), cfg);
+});
+
+test('validate: a video-sourced widget must be a display face; names unique', () => {
+    const ok = validateMachineConfig(elksWithScreen());
+    assert.deepEqual(ok.errors, []);
+
+    const notDisplay = normalizeMachineConfig({
+        machine: 'i8086', slots: {floppy: 'a.img'},
+        widgets: [{name: 'screen', type: 'joystick', source: 'video'}]
+    });
+    const r1 = validateMachineConfig(notDisplay);
+    assert.equal(r1.ok, false);
+    assert.ok(r1.errors.some(e => /not a display face/.test(e)), r1.errors.join(';'));
+
+    const dup = normalizeMachineConfig({
+        machine: 'i8086', slots: {floppy: 'a.img'},
+        widgets: [{name: 'screen', type: 'simplevga'}, {name: 'screen', type: 'lcd'}]
+    });
+    assert.ok(validateMachineConfig(dup).errors.some(e => /duplicate widget name/.test(e)));
+});
+
+test('fromMediaManifest carries a manifest-declared screen widget', () => {
+    const manifest = {
+        title: 'ELKS 0.9.2', machine: 'i8086', machineConfig: 'PCXT8086',
+        slots: {floppy: 'fd1440-fat.img'},
+        floppy: {geometry: {cylinders: 80, heads: 2, sectors: 18}, quirks: ['at-floppy-drive-type']},
+        boot: true,
+        widgets: [{name: 'screen', type: 'simplevga', config: {width: 640, height: 200}, source: 'video'}]
+    };
+    const cfg = fromMediaManifest(manifest, {source: 'projects/elks'});
+    assert.equal(cfg.widgets.length, 1);
+    assert.equal(cfg.widgets[0].source, 'video');
+    assert.equal(cfg.widgets[0].config.width, 640);
+    assert.deepEqual(validateMachineConfig(cfg).errors, []);
+});
+
+test('activate surfaces widgets and names the video-sink widget', async () => {
+    const {fetcher} = stubFetcher();
+    const result = await activateConfig(elksWithScreen(), {fetcher});
+    assert.equal(result.videoWidget, 'screen');
+    assert.equal(result.widgets.length, 1);
+    assert.equal(result.widgets[0].type, 'simplevga');
+    // a config with no declared screen has no video sink (headless/serial-only)
+    const headless = await activateConfig(elksConfig(), {fetcher});
+    assert.equal(headless.videoWidget, null);
+    assert.deepEqual(headless.widgets, []);
+});
+
+// ── 6. video mirror: video() → setVgaFrame → the real panel widget ────────────
+
+/** A hand-driven scheduler so the mirror's rAF loop is stepped deterministically. */
+function manualScheduler() {
+    let pending = null;
+    return {
+        schedule: cb => { pending = cb; return 1; },
+        cancel: () => { pending = null; },
+        flush: () => { const cb = pending; pending = null; if (cb) cb(); }
+    };
+}
+
+/** A fake video card: a solid 4×4 frame with a bumpable frame counter. */
+function fakeVideo() {
+    const rgba = new Uint8ClampedArray(4 * 4 * 4).fill(200);
+    let frame = 0;
+    return {
+        fn: () => ({width: 4, height: 4, rgba, frame, signal: true}),
+        advance: () => { frame += 1; }
+    };
+}
+
+test('ensureVideoWidget creates the widget once and is idempotent', () => {
+    const panel = new ControllerPanel();
+    const decl = {name: 'screen', type: 'simplevga', config: {width: 4, height: 4}, layout: {x: 0, y: 0}};
+    assert.equal(ensureVideoWidget(panel, decl), 'screen');
+    assert.ok(panel.getWidget('screen'));
+    // a second call does not throw on the name clash
+    assert.equal(ensureVideoWidget(panel, decl), 'screen');
+    assert.equal(panel.getWidgetNames().filter(n => n === 'screen').length, 1);
+});
+
+test('the mirror paints the real panel widget from video() frames', () => {
+    const panel = new ControllerPanel();
+    const video = fakeVideo();
+    const sched = manualScheduler();
+    const mirror = createMachineVideoMirror({
+        panel, videoFn: video.fn,
+        widget: {name: 'screen', type: 'simplevga', config: {width: 4, height: 4}},
+        schedule: sched.schedule, cancel: sched.cancel
+    });
+    mirror.start();
+    assert.ok(panel.getWidget('screen'), 'widget created on start');
+
+    sched.flush();                       // one loop iteration → one paint
+    const w = panel.getWidget('screen');
+    assert.ok(w.state.rgba instanceof Uint8ClampedArray, 'framebuffer painted into the widget');
+    assert.equal(w.state.rgba.length, 4 * 4 * 4);
+    assert.equal(w.state.signal, true);
+    assert.equal(mirror.frameCount, 1);
+
+    // same frame number → no repaint (a still screen renumbers nothing)
+    sched.flush();
+    assert.equal(mirror.frameCount, 1);
+
+    // a new frame → repaint
+    video.advance();
+    sched.flush();
+    assert.equal(mirror.frameCount, 2);
+
+    mirror.stop();
+    assert.equal(mirror.running, false);
+    sched.flush();                       // a flush after stop paints nothing
+    assert.equal(mirror.frameCount, 2);
+});
+
+test('the mirror survives a video() that returns null or throws', () => {
+    const panel = new ControllerPanel();
+    const sched = manualScheduler();
+    let mode = 'null';
+    const mirror = createMachineVideoMirror({
+        panel, name: 'screen',
+        widget: {name: 'screen', type: 'simplevga', config: {width: 4, height: 4}},
+        videoFn: () => {
+            if (mode === 'throw') throw new Error('runner torn down');
+            return null;                 // no display card yet
+        },
+        schedule: sched.schedule, cancel: sched.cancel
+    });
+    mirror.start();
+    assert.doesNotThrow(() => sched.flush());   // null frame: nothing painted, no crash
+    assert.equal(mirror.frameCount, 0);
+    mode = 'throw';
+    assert.doesNotThrow(() => sched.flush());   // a throwing video(): swallowed
+    assert.equal(mirror.frameCount, 0);
+    mirror.stop();
 });

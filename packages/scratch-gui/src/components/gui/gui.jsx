@@ -76,6 +76,7 @@ import {resolveStageSize} from '../../lib/screen-utils';
 import {themeMap} from '../../lib/themes';
 
 import { ControllerPanel } from 'bw-board/controller.js';
+import { createMachineVideoMirror } from '../../lib/bw-machines/video-mirror.js';
 import { bindPanelToVariables } from 'bw-board/controller-binding.js';
 import styles from './gui.css';
 import addExtensionIcon from './icon--extensions.svg';
@@ -472,6 +473,56 @@ const GUIComponent = props => {
             window.removeEventListener('bw-fpga-leds', onLeds);
             window.removeEventListener('bw-fpga-output', onOutput);
             window.removeEventListener('bw-fpga-seg7', onSeg7);
+        };
+    }, [controllerPanel, props.onActivateTab]);
+
+    // Mirror a running MACHINE's video() framebuffer into the Widgets pane — the
+    // same idea as the FPGA mirror above, for a machine's SCREEN. A machine's
+    // screen is a `simplevga` widget (design §4.2; bw-board setVgaFrame:
+    // "Mirror a machine video card frame into a VGA widget"), so a booted DOS/
+    // ELKS/6502-with-video machine renders here, not only in the Debug
+    // instrument. A run path opts in by calling `window.bwMirrorMachineVideo(
+    // {videoFn, widget})` once the runner exists; `videoFn` is the runner's
+    // `video()` accessor and `widget` the config's declared screen widget
+    // (activateConfig's `videoWidget`). Only one machine mirror runs at a time.
+    React.useEffect(() => {
+        let mirror = null;
+        const stop = () => { if (mirror) { mirror.stop(); mirror = null; } };
+        const start = payload => {
+            const p = payload || {};
+            const videoFn = typeof p.videoFn === 'function'
+                ? p.videoFn
+                : (p.runner && typeof p.runner.video === 'function'
+                    ? () => p.runner.video() : null);
+            const widget = p.widget && typeof p.widget.name === 'string'
+                ? p.widget
+                // A run path may pass just a name; default to a simplevga screen.
+                : (typeof p.name === 'string' ? {name: p.name, type: 'simplevga'} : null);
+            if (!videoFn || !widget) return;
+            stop();                                 // replace any prior machine mirror
+            mirror = createMachineVideoMirror({panel: controllerPanel, videoFn, widget});
+            mirror.start();
+            // Make the screen actually visible: dock the Widgets pane, play
+            // mode, and surface the code tab where the dock renders — exactly as
+            // the FPGA mirror does for its LEDs.
+            controllerPanel.setMode('play');
+            window.dispatchEvent(new CustomEvent('bw-settings-change',
+                {detail: {key: 'bw-debug-dock', value: 'controller'}}));
+            if (props.onActivateTab) props.onActivateTab(CODE_TAB_INDEX);
+        };
+        const onStart = e => start(e && e.detail);
+        const onStop = () => stop();
+        window.addEventListener('bw-machine-video', onStart);
+        window.addEventListener('bw-machine-video-stop', onStop);
+        // Imperative API so a run path need not know the event names.
+        window.bwMirrorMachineVideo = payload => start(payload);
+        window.bwStopMachineVideo = () => stop();
+        return () => {
+            window.removeEventListener('bw-machine-video', onStart);
+            window.removeEventListener('bw-machine-video-stop', onStop);
+            if (window.bwMirrorMachineVideo) delete window.bwMirrorMachineVideo;
+            if (window.bwStopMachineVideo) delete window.bwStopMachineVideo;
+            stop();
         };
     }, [controllerPanel, props.onActivateTab]);
 

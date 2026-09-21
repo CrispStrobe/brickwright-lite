@@ -42,6 +42,36 @@ const BOOT_PRIORITY = Object.freeze(['floppy', 'hdd', 'com', 'exe', 'disk', 'rom
 const isObj = v => v != null && typeof v === 'object' && !Array.isArray(v);
 const isStr = v => typeof v === 'string' && v.length > 0;
 
+/** Widget types the panel can render a machine's *output* into — the display
+ *  faces of bw-board's ControllerPanel (controller.js WIDGET_TYPES). A widget
+ *  whose `source` is `'video'` is fed each frame from the machine's `video()`
+ *  via `panel.setVgaFrame(...)`; this is how a machine's screen reaches the user
+ *  in the Widgets pane (design §4.2). Kept as data so a new display face is one
+ *  entry, and validated leniently — bw-board's `addWidget` is the final arbiter. */
+export const DISPLAY_WIDGET_TYPES = Object.freeze([
+    'simplevga', 'mono_lcd', 'lcd', 'oled', 'terminal', 'matrix', 'sevenseg', 'bargraph'
+]);
+
+/** Coerce one panel-widget declaration to canonical shape. A widget names a
+ *  `simplevga` (or other display) face the manifest wants placed, and — when
+ *  `source: 'video'` — bound to the machine's framebuffer. `config`/`layout`
+ *  pass through verbatim to bw-board's `addWidget(name, type, config, layout)`. */
+function normalizeWidget(w) {
+    if (!isObj(w)) return null;
+    const name = isStr(w.name) ? w.name : null;
+    const type = isStr(w.type) ? w.type : null;
+    if (!name || !type) return null;
+    return {
+        name,
+        type,
+        config: isObj(w.config) ? {...w.config} : {},
+        layout: isObj(w.layout) ? {...w.layout} : null,
+        // 'video' = mirror runner.video() into this widget (the machine screen);
+        // null/absent = a static or program-driven face the manifest just places.
+        source: w.source === 'video' ? 'video' : null
+    };
+}
+
 /** A stable, cheap id. `crypto.randomUUID` exists in browsers and Node ≥ 16.7;
  *  the fallback keeps this module usable in any host without throwing. */
 function mintId() {
@@ -124,6 +154,13 @@ export function normalizeMachineConfig(cfg) {
         // (the Eater 6502 case). Carried verbatim — it is bw-board's language,
         // not ours to rewrite (design §2: "One schema, shared by GUI and CLI").
         machineConfig: c.machineConfig != null ? c.machineConfig : null,
+        // Panel widgets the manifest declares (design §4.2 "manifests must
+        // define the vga widget if needed"). A `source:'video'` widget is the
+        // machine's screen: created on activate and fed runner.video() frames.
+        // Dropped entries that lack a name+type (a display face is useless
+        // without both) so a malformed one never reaches addWidget.
+        widgets: Array.isArray(c.widgets)
+            ? c.widgets.map(normalizeWidget).filter(Boolean) : [],
         // wired-only (design §3): where the circuit lives.
         circuit: isObj(c.circuit) ? {...c.circuit} : null,
         tags: Array.isArray(c.tags) ? [...c.tags] : [],
@@ -199,6 +236,30 @@ export function validateMachineConfig(cfg) {
             if (!isObj(ref) || !isStr(ref.url)) {
                 errors.push(`slot ${JSON.stringify(id)} has no url`);
             }
+        }
+    }
+
+    // Widget declarations: each face needs a name and a type, names must be
+    // unique (a panel keys widgets by name — a dup silently overwrites), and a
+    // widget the manifest binds to the machine's video (`source:'video'`) must
+    // be a display face — a joystick cannot show a framebuffer.
+    if (cfg.widgets != null) {
+        if (!Array.isArray(cfg.widgets)) {
+            errors.push('widgets must be an array');
+        } else {
+            const seen = new Set();
+            cfg.widgets.forEach((w, i) => {
+                if (!isObj(w) || !isStr(w.name) || !isStr(w.type)) {
+                    errors.push(`widget[${i}] needs a name and a type`);
+                    return;
+                }
+                if (seen.has(w.name)) errors.push(`duplicate widget name ${JSON.stringify(w.name)}`);
+                seen.add(w.name);
+                if (w.source === 'video' && !DISPLAY_WIDGET_TYPES.includes(w.type)) {
+                    errors.push(`widget ${JSON.stringify(w.name)} has source:'video'` +
+                        ` but type ${JSON.stringify(w.type)} is not a display face`);
+                }
+            });
         }
     }
 

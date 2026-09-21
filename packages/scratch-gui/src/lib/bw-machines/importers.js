@@ -158,6 +158,10 @@ export function fromMediaManifest(manifest, opts = {}) {
         machineConfig: manifest.machineConfig != null ? manifest.machineConfig : null,
         slots,
         quirks,
+        // The manifest declares its own panel widgets (design §4.2: "manifests
+        // must define the vga widget if needed"). A `source:'video'` widget is
+        // this machine's screen; normalizeMachineConfig drops any malformed one.
+        widgets: Array.isArray(manifest.widgets) ? manifest.widgets : [],
         provenance: {
             source: opts.source || 'media-lab',
             license: license || null,

@@ -171,6 +171,18 @@ export async function activateConfig(config, opts = {}) {
             '(design §8 step 6); bootMedia/media are produced for when it is');
     }
 
+    // The panel widgets the manifest declared, and which one is the machine's
+    // screen (the `source:'video'` display fed runner.video()). The host creates
+    // these on the ControllerPanel and mirrors video into `videoWidget`; a
+    // config that declares none has no screen widget (videoWidget: null), which
+    // is correct for a serial-only or headless machine.
+    const widgets = Array.isArray(cfg.widgets) ? cfg.widgets : [];
+    const videoWidgetDecl = widgets.find(w => w && w.source === 'video') || null;
+    if (videoWidgetDecl && targetKind === 'i80386') {
+        warnings.push('the machine declares a video widget, but 386 video will ' +
+            'only reach it once the 386 boot path is wired into lite (see above)');
+    }
+
     return {
         mode: 'functional',
         executionMode: cfg.executionMode,
@@ -181,6 +193,8 @@ export async function activateConfig(config, opts = {}) {
         machinePreset,
         quirks: cfg.quirks,
         media,
+        widgets,
+        videoWidget: videoWidgetDecl ? videoWidgetDecl.name : null,
         warnings,
         // The exact subset of createDebugRunner's options this config decides.
         // A caller merges its own `{vm, onChange}` and calls createDebugRunner.
