@@ -26,6 +26,9 @@ import {
     REQUESTS, OP, TOGGLE_BIT, parseRcxImage, planBlocks,
     DEFAULT_BLOCK_SIZE, downloadImage, createFakeTower
 } from '../overlay/scratch-gui/src/lib/rcx/rcx-protocol.js';
+import {
+    RCX_BAUD_RATE, RCX_PARITY, RCX_DATA_BITS, RCX_STOP_BITS
+} from '../overlay/scratch-gui/src/lib/rcx/rcx-serial.js';
 
 const fx = name => join(import.meta.dirname, 'fixtures/rcx-images', name);
 
@@ -134,26 +137,124 @@ test('NQC masks the toggle bit out before looking an opcode up, and so do we', (
     }
 });
 
-test('the download order is NQC\'s: stop, then select the slot', () => {
-    // RCX_Link::Download sends kRCX_StopAllOp, then calls DownloadByChunk,
-    // which sends kRCX_SelectProgramOp, then MakeDeleteTasks, then
-    // MakeDeleteSubs, then a chunk at a time.
-    //
-    // THIS IS THE ONE THING THE ORACLE CHANGED. The contract said "select
-    // program slot -> stop running tasks -> delete", and the implementation
-    // followed it. NQC does the opposite, and it is right: switching the
-    // running program out from under an executing task is nobody's intended
-    // behaviour.
-    const tower = createFakeTower();
-    return downloadImage(parseRcxImage(readFileSync(fx('t.rcx'))), {
-        send: tower.send, programSlot: 0
-    }).then(() => {
-        const ops = tower.decoded().map(d => d.baseOpcode);
-        assert.deepEqual(ops.slice(0, 4), [
-            OP.STOP_ALL_TASKS, OP.SET_PROGRAM_NUMBER,
-            OP.DELETE_ALL_TASKS, OP.DELETE_ALL_SUBROUTINES
-        ]);
+/**
+ * A capture: every frame NQC transmitted, as base opcode + parameter bytes.
+ * `test/fixtures/rcx-captures/README.md` says how they were produced.
+ */
+const capture = name => readFileSync(join(import.meta.dirname, 'fixtures/rcx-captures', name), 'utf8')
+    .split('\n')
+    .filter(line => line.startsWith('TX '))
+    .map(line => {
+        const bytes = line.slice(3).trim().split(/\s+/).map(h => parseInt(h, 16));
+        // 55 ff 00, then opcode and its complement, then each data byte and
+        // its complement, then the checksum pair.
+        const opcode = bytes[3] & ~TOGGLE_BIT & 0xff;
+        const params = [];
+        for (let i = 5; i < bytes.length - 2; i += 2) params.push(bytes[i]);
+        return {opcode, params, raw: bytes};
     });
+
+/** What downloadImage puts on the wire for the same program and slot. */
+const ours = async (image, programSlot, blockSize) => {
+    const tower = createFakeTower();
+    await downloadImage(parseRcxImage(readFileSync(fx(image))), {
+        send: tower.send, programSlot, blockSize
+    });
+    return tower.decoded().map(d => ({opcode: d.baseOpcode, params: [...d.params]}));
+};
+
+/**
+ * NQC brackets the download with two frames we do not send, and both are
+ * outside the protocol this module implements rather than omissions in it:
+ *
+ *   0x10 ALIVE — RCX_Link::Sync() pings before anything, to establish that a
+ *     brick is listening. Ours takes an already-working session; a caller that
+ *     wants the check sends it, and lib/rcx/rcx-serial.js users will, because
+ *     that ping is also how you tell "no brick" from "no tower".
+ *   0x51 PLAY_SOUND — `if (!gQuiet) Send(cmd.MakePlaySound(5))`, the beep that
+ *     tells a user across the room the download finished. A UI decision, not a
+ *     protocol one.
+ */
+const BRACKETS = {lead: [0x10], trail: [0x51]};
+
+const downloadProper = frames => {
+    let a = 0;
+    let b = frames.length;
+    while (a < b && BRACKETS.lead.includes(frames[a].opcode)) a++;
+    while (b > a && BRACKETS.trail.includes(frames[b - 1].opcode)) b--;
+    return frames.slice(a, b);
+};
+
+test('capture: the download sequence matches NQC frame for frame', async () => {
+    // THE COMPARISON THAT REPLACED A SOURCE READING. An earlier version of
+    // this file asserted the order taken from RCX_Link::DownloadByChunk —
+    // stop, then select the slot — and changed the implementation to match.
+    // The capture says otherwise, and the capture wins: that branch is dead
+    // from NQC's own CLI (RCX_Image::Download declares programNumber = 0 and
+    // nqc.cpp never passes one), so the slot is selected by a separate action
+    // BEFORE the download's stop-all. Reading a reference tells you what it
+    // could do; running it tells you what it does.
+    // THE SLOT NUMBERS DIFFER BY ONE AND BOTH ARE RIGHT. NQC's `-pgm N` is
+    // one-based and it sends N-1; our `programSlot` is zero-based and sends it
+    // unchanged. So the capture made with `-pgm 3` is the run our
+    // `programSlot: 2` must reproduce. Writing 3 against 3 here would fail —
+    // and it did, which is how the trap got documented at the API.
+    const cases = [
+        {log: 't-slot3.log', image: 't.rcx', slot: 2},
+        {log: 'mine-native-slot1.log', image: 'mine-native.rcx', slot: 0},
+        {log: 'c-slot2.log', image: 'c.rcx', slot: 1}
+    ];
+    for (const {log, image, slot} of cases) {
+        const theirs = downloadProper(capture(log));
+        const mine = downloadProper(await ours(image, slot, DEFAULT_BLOCK_SIZE));
+        assert.deepEqual(
+            mine.map(f => f.opcode),
+            theirs.map(f => f.opcode),
+            `${log}: opcode sequence differs`);
+        for (let i = 0; i < theirs.length; i++) {
+            assert.deepEqual(mine[i].params, theirs[i].params,
+                `${log}: frame ${i} (opcode 0x${theirs[i].opcode.toString(16)}) payload differs`);
+        }
+    }
+});
+
+test('capture: NQC asks for exactly the line settings rcx-serial.js opens', () => {
+    // The only independent confirmation of those constants. Until this was
+    // captured they were a citation of RCX Internals and nothing more — and a
+    // wrong parity does not raise an error, it produces a brick that never
+    // answers.
+    const header = readFileSync(
+        join(import.meta.dirname, 'fixtures/rcx-captures/t-slot3.log'), 'utf8').split('\n');
+    const speed = header.find(l => l.startsWith('SPEED '));
+    assert.equal(speed, 'SPEED 2400 data=8 parity=odd stop=1');
+    assert.equal(RCX_BAUD_RATE, 2400);
+    assert.equal(RCX_PARITY, 'odd');
+    assert.equal(RCX_DATA_BITS, 8);
+    assert.equal(RCX_STOP_BITS, 1);
+});
+
+test('capture: subroutines precede tasks on the wire, not just in the file', () => {
+    // c.nqc is `sub helper()` plus `task main()`. NQC downloads chunks in file
+    // order and never sorts; we sort. This is the frame evidence that the two
+    // agree, rather than an inference from the file layout.
+    const ops = downloadProper(capture('c-slot2.log')).map(f => f.opcode);
+    assert.ok(ops.indexOf(0x35) < ops.indexOf(0x25),
+        `begin-subroutine must precede begin-task: ${ops.map(o => o.toString(16)).join(' ')}`);
+});
+
+test('capture: our block size is the reference\'s, measured not assumed', () => {
+    // This assertion used to say "no larger than NQC's chunk" and compared
+    // against 50, which was our own default dressed up as a bound. NQC's
+    // kFragmentChunk is 20, so the old claim was false by a factor of two and
+    // passed anyway. The capture settles it: take the payload length of the
+    // first full TRANSFER_DATA frame NQC sent.
+    const transfers = capture('mine-native-slot1.log').filter(f => f.opcode === 0x45);
+    assert.ok(transfers.length >= 2, 'need a multi-block transfer to see a full block');
+    // params are: sequence lo, hi, length lo, hi, then the payload, then a
+    // trailing checksum byte the command carries itself.
+    const payload = transfers[0].params.length - 5;
+    assert.equal(payload, 20);
+    assert.equal(DEFAULT_BLOCK_SIZE, payload);
 });
 
 test('the last block of a transfer is sequence 0, as NQC numbers them', () => {
@@ -190,8 +291,13 @@ test('subroutines already precede tasks in every image NQC writes', () => {
 test('the program slot goes on the wire zero-based, as NQC sends it', () => {
     // `Send(cmd.Set(kRCX_SelectProgramOp, (UByte)(programNumber-1)))` — NQC's
     // API is one-based and the wire is zero-based. Ours is zero-based at the
-    // API too, so the byte is the argument unchanged; what matters is that
-    // the BYTE agrees, and slot 0 must reach the brick as 0.
+    // API too, so the byte is the argument unchanged.
+    //
+    // THE TRAP, which the frame comparison above walked into: the same NUMBER
+    // means different programs in the two APIs. NQC's `-pgm 3` is our
+    // `programSlot: 2`. Anyone porting an NQC command line by copying its
+    // digits selects the wrong program, and the brick reports nothing wrong —
+    // it runs whatever was in the slot they actually picked.
     const tower = createFakeTower();
     return downloadImage(parseRcxImage(readFileSync(fx('t.rcx'))), {
         send: tower.send, programSlot: 3
@@ -201,15 +307,3 @@ test('the program slot goes on the wire zero-based, as NQC sends it', () => {
     });
 });
 
-test('our default block size is not larger than NQC\'s program chunk', () => {
-    // NQC downloads a program with fRCXProgramChunkSize. Ours is 50, chosen so
-    // a frame stays under 256 bytes once every byte is complemented. The claim
-    // asserted here is only the safe direction — a block no larger than what
-    // the reference sends — because a smaller block is always legal and a
-    // larger one may not be.
-    assert.ok(DEFAULT_BLOCK_SIZE <= 50);
-    // And the reason for 50: 50 payload bytes become 100 on the wire, plus
-    // header, opcode, four parameter bytes and checksum, all complemented.
-    const framed = 3 + 2 * (1 + 4 + DEFAULT_BLOCK_SIZE + 1) + 2;
-    assert.ok(framed < 256, `a full block frames to ${framed} bytes`);
-});

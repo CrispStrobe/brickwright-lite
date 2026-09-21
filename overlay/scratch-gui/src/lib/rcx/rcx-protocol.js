@@ -670,7 +670,18 @@ const align4 = (n) => (n + 3) & ~3;
 /** Default bytes of payload per `transfer data` block.
  *  Inferred, not measured: RCX Internals gives no maximum. Chosen so that the
  *  whole frame (3 + 2*(1 + 2+2+N+1 + 1)) stays well under 256 bytes. */
-export const DEFAULT_BLOCK_SIZE = 50;
+/**
+ * Payload bytes per TRANSFER_DATA block.
+ *
+ * 20, because that is `kFragmentChunk` in NQC's RCX_Link.cpp and NQC is the
+ * sender real bricks have actually accepted. This was 50 — chosen only so the
+ * framed result stays under 256 bytes, which it does — until the reference was
+ * captured and turned out to send less than half that. There is no evidence
+ * here that 50 is unsafe and none that it is safe, and "larger than the only
+ * implementation with twenty years of field use" is the wrong side of that to
+ * be on by default. Callers may raise it.
+ */
+export const DEFAULT_BLOCK_SIZE = 20;
 
 const u16le = (n) => [n & 0xff, (n >> 8) & 0xff];
 
@@ -694,6 +705,30 @@ export function encodeTransferDataParams(sequence, data) {
  * each successive block transferred. The special sequence number 0 indicates
  * the last block of a transfer." So the final block — including the only block
  * of a single-block chunk — is sent with sequence 0.
+ */
+/**
+ * Split a chunk into TRANSFER_DATA blocks.
+ *
+ * WHAT THIS DELIBERATELY DOES NOT DO, AND WHY IT IS SAFE. NQC's
+ * `RCX_Link::AdjustChunkSize` shortens a block when its data holds a long run
+ * of zero bytes — "fast downloading doesn't like it and messaging can lose
+ * sync", worst at short range with the transmitter on high power. That is the
+ * receiver's automatic gain control: a long run of zeros is a long continuous
+ * infrared burst, the AGC pulls sensitivity down, and bytes are lost. It is
+ * the same effect `docs/RCX-IR-TOWER-FIRMWARE.md` had to reason about from the
+ * other end, and finding it here, stated as a sender-side workaround, is
+ * independent confirmation that it is real on hardware.
+ *
+ * NQC applies it `if (!bComplement)` — ONLY when complemented transmission is
+ * off. Which explains something no specification says out loud: complementing
+ * every byte is not merely an error check, it is a line code. A zero byte is
+ * always followed by 0xff, so the burst can never exceed one byte's worth of
+ * zeros — the nine bit times, about 142 carrier cycles, that the tower
+ * contract computes as its worst case.
+ *
+ * This implementation always complements (see encodeCommand), so the
+ * adjustment never applies and its absence is correct rather than missing.
+ * Anyone adding the uncomplemented fast mode must implement it.
  */
 export function planBlocks(data, blockSize = DEFAULT_BLOCK_SIZE) {
   if (!Number.isInteger(blockSize) || blockSize < 1) {
@@ -827,8 +862,17 @@ export async function downloadImage(image, options = {}) {
     startTask = null,
   } = options;
 
+  // PROGRAM SLOTS ARE ZERO-BASED HERE AND ONE-BASED IN NQC, and the same
+  // number therefore means different programs in the two. `nqc -pgm 3` puts
+  // the byte 2 on the wire (it sends programNumber - 1); `programSlot: 3`
+  // here puts 3. Anyone porting an NQC command line by copying its digits
+  // selects the program next door, and nothing reports an error — the brick
+  // runs whatever was in the slot they actually picked. Verified against
+  // captured frames in test/rcx-nqc-oracle.test.mjs, which is where the
+  // mismatch first showed up.
   if (!Number.isInteger(programSlot) || programSlot < 0 || programSlot > 4) {
-    throw new RangeError(`program slot must be 0..4, got ${programSlot}`);
+    throw new RangeError(`program slot must be 0..4, got ${programSlot} ` +
+      `(this API is zero-based; NQC's -pgm is one-based)`);
   }
 
   const step = async (label, fn) => {
@@ -836,17 +880,26 @@ export async function downloadImage(image, options = {}) {
     return fn();
   };
 
-  // STOP FIRST, THEN SELECT. docs/RCX-IR-PROTOCOL.md had these the other way
-  // round and so did this function; NQC's own RCX_Link::Download disagrees,
-  // and NQC is the implementation that has driven real bricks for twenty
-  // years. It stops all tasks BEFORE selecting the slot, which is the safer
-  // order for the obvious reason — switching the running program out from
-  // under a task that is still executing is nobody's intended behaviour.
-  // Changed 2026-09-21 after the oracle comparison; see the contract's
-  // afterword.
-  await step('stopAllTasks', () => session.command(OP.STOP_ALL_TASKS));
+  // SELECT THE SLOT, THEN STOP. This order was changed to stop-then-select on
+  // the strength of reading NQC's `RCX_Link::DownloadByChunk`, and changed
+  // back an hour later when the frames NQC actually puts on the wire were
+  // captured. Both readings are worth keeping, because the second is the one
+  // that counts:
+  //
+  //   In SOURCE, DownloadByChunk sends kRCX_StopAllOp and then, `if
+  //   (programNumber)`, kRCX_SelectProgramOp. That branch is DEAD from NQC's
+  //   own CLI — RCX_Image::Download declares `programNumber = 0` and nqc.cpp
+  //   never passes one, so the select inside the download never runs.
+  //
+  //   On the WIRE, `nqc -d -pgm 3` emits 10 91 50 40 70 25 ...: the slot is
+  //   selected by a separate action BEFORE the download's stop-all. That is
+  //   the only order a real brick has ever seen from NQC, and it is this one.
+  //
+  // See test/rcx-nqc-oracle.test.mjs, which now pins captured frames rather
+  // than a reading of the source.
   await step('setProgramNumber', () =>
     session.command(OP.SET_PROGRAM_NUMBER, [programSlot]));
+  await step('stopAllTasks', () => session.command(OP.STOP_ALL_TASKS));
   await step('deleteAllTasks', () => session.command(OP.DELETE_ALL_TASKS));
   await step('deleteAllSubroutines', () => session.command(OP.DELETE_ALL_SUBROUTINES));
 

@@ -100,6 +100,21 @@ its own transmission will parse every command as if the brick had answered it.
 so a mistake here fails silently rather than loudly, which is the worst
 failure mode and the reason to get it right by construction.
 
+**Complementing every byte is a line code, not only a check.** NQC's
+`RCX_Link::AdjustChunkSize` shortens a block when the data holds a long run of
+zero bytes — its comment says "fast downloading doesn't like it and messaging
+can lose sync", worst at short range with the transmitter on high power. That
+is the receiver's automatic gain control: a long run of zeros is a long
+continuous infrared burst, the AGC pulls sensitivity down, and bytes are lost.
+NQC applies the shortening **only** `if (!bComplement)` — because when every
+byte is followed by its complement, a zero byte is always followed by `0xff`
+and the burst can never exceed one byte's worth of zeros. That is the nine bit
+times, about 142 carrier cycles, which `docs/RCX-IR-TOWER-FIRMWARE.md` derives
+from the other end as its worst case. Two documents, two directions, same
+number; and it means an implementation that always complements — ours does —
+needs no equivalent of AdjustChunkSize, while anyone adding the uncomplemented
+fast mode must write one.
+
 ### The reply
 
 > "PC sends query opcode … RCX reply opcode is always `~query opcode`"
@@ -159,12 +174,12 @@ offset  size  field
 
 All multi-byte fields are little-endian.
 
-The download order is: **stop running tasks → select program slot** → delete
+The download order is: select program slot → stop running tasks → delete
 tasks and subroutines → begin task download → send blocks.
 
-That first pair was the wrong way round here until 2026-09-21, and the
-implementation faithfully followed it; see the oracle afterword at the end of
-this file for how it was caught and why stopping first is correct.
+This line was changed to *stop, then select* on 2026-09-21 and changed back
+the same hour; see the oracle afterword at the end of this file, which is
+about how easily a reference can be misread.
 
 ### The opcode table — read it from the source, do not take it from here
 
@@ -286,16 +301,54 @@ cites RCX Internals. No NQC code is copied.
     reject the transfer.
   * **The program slot is zero-based on the wire.**
 
-### What changed
+### What changed, and the mistake in the middle of it
 
-**The download order in this document was wrong.** It said *"select program
-slot → stop running tasks → delete tasks and subroutines"*, and the
-implementation followed it faithfully. `RCX_Link::Download` sends
-`kRCX_StopAllOp` **first** and only then selects the slot — which is the
-safer order for an obvious reason: switching the running program out from
-under an executing task is nobody's intended behaviour. The paragraph above is
-corrected, `downloadImage` now stops first, and the three tests that pinned
-the old order were updated rather than relaxed.
+**The download order.** The first pass at this comparison read
+`RCX_Link::DownloadByChunk`, found it sending `kRCX_StopAllOp` before
+`kRCX_SelectProgramOp`, concluded this document had the pair backwards, and
+changed both the contract and `downloadImage` to match. An hour later the
+frames NQC actually transmits were captured, and they say the opposite:
+
+```
+nqc -TRCX2 -d -pgm 3 t.nqc   ->   10  91  50  40  70  25  45  4d  51
+                                  ping SEL stop del del task xfer xfer beep
+```
+
+The select comes **first**. The branch the earlier reading came from is *dead
+from NQC's own command line*: `RCX_Image::Download` declares
+`programNumber = 0`, `nqc.cpp` never passes one, so `if (programNumber)` inside
+the download never fires and the slot is chosen by a separate `-pgm` action
+before the download begins. Both the contract and the implementation are back
+where they started, and the three tests that were edited to match the wrong
+order were edited back.
+
+The lesson is cheap to state and was not cheap to learn: **reading a reference
+tells you what it can do; running it tells you what it does.** The comparison
+is now built on captured frames — `test/fixtures/rcx-captures/`, three
+programs, compared opcode-for-opcode and payload-for-payload — rather than on
+anybody's reading of anything.
+
+**The default block size**, which the source reading had also gotten wrong in a
+quieter way. An assertion here claimed our 50-byte blocks were "no larger than
+what the reference sends", and it passed while being false by a factor of two:
+NQC's `kFragmentChunk` is **20**. There is no evidence 50 is unsafe and none
+that it is safe, and being larger than the only implementation with twenty
+years of field use is the wrong side of that to be on by default. Now 20,
+measured from a captured frame rather than asserted.
+
+**A footgun that is nobody's bug.** Program slots are zero-based in our API and
+one-based in NQC's, so `nqc -pgm 3` is `programSlot: 2` here. The frame
+comparison walked straight into it. Both are internally consistent, nothing
+reports an error, and a user porting an NQC command line by copying its digits
+runs the program next door — so it is now named at the API, in its
+`RangeError`, and in the test.
+
+### What the capture confirmed that was previously only cited
+
+`SPEED 2400 data=8 parity=odd stop=1` — the first thing NQC asks its serial
+port for. Until this run, `lib/rcx/rcx-serial.js` opened the port on the
+strength of a quotation from RCX Internals and nothing else, and a wrong parity
+is the failure that produces no error at all, just a brick that never answers.
 
 ### What is still unresolved, and is not counted as agreement
 

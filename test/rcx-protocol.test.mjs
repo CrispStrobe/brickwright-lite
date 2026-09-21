@@ -412,21 +412,18 @@ test('download: full run against a fake transport', async () => {
   assert.ok(decoded.every((d) => d.ok), 'every frame we transmitted must be well-formed');
   const ops = decoded.map((d) => d.baseOpcode);
 
-  // stop -> select slot -> delete tasks -> delete subs -> start download -> blocks
+  // select slot -> stop -> delete tasks -> delete subs -> start download -> blocks
   //
-  // STOP COMES FIRST, and this assertion used to say the opposite. The order
-  // was taken from docs/RCX-IR-PROTOCOL.md, which had it wrong; NQC's own
-  // RCX_Link::Download stops all tasks before selecting the slot, and that is
-  // the implementation with twenty years of real bricks behind it. Switching
-  // the running program out from under an executing task is nobody's intended
-  // behaviour. See test/rcx-nqc-oracle.test.mjs, which pins the comparison.
+  // This assertion was flipped to stop-first for an hour, on a reading of
+  // NQC's source, and flipped back when NQC's actual frames were captured:
+  // the branch that reading came from is dead from NQC's own CLI, and on the
+  // wire the slot is selected first. test/rcx-nqc-oracle.test.mjs holds the
+  // captured sequence.
   assert.deepEqual(ops.slice(0, 5), [
-    OP.STOP_ALL_TASKS, OP.SET_PROGRAM_NUMBER, OP.DELETE_ALL_TASKS,
+    OP.SET_PROGRAM_NUMBER, OP.STOP_ALL_TASKS, OP.DELETE_ALL_TASKS,
     OP.DELETE_ALL_SUBROUTINES, OP.START_TASK_DOWNLOAD,
   ]);
-  // Index 1 now, not 0: stopAllTasks goes first and carries no parameters.
-  assert.deepEqual([...decoded[0].params], [], 'stopAllTasks takes no parameters');
-  assert.deepEqual([...decoded[1].params], [2], 'program slot 2');
+  assert.deepEqual([...decoded[0].params], [2], 'program slot 2');
 
   // 34 bytes at 20 per block = 2 blocks, sequences 1 then 0.
   assert.equal(ops.length, 7);
@@ -446,7 +443,7 @@ test('download: full run against a fake transport', async () => {
   assert.deepEqual(rebuilt, [...img.chunks[0].data]);
 
   assert.deepEqual(phases, [
-    'stopAllTasks', 'setProgramNumber', 'deleteAllTasks', 'deleteAllSubroutines',
+    'setProgramNumber', 'stopAllTasks', 'deleteAllTasks', 'deleteAllSubroutines',
     'startDownload', 'transferData', 'transferData', 'done',
   ]);
 });
@@ -488,7 +485,7 @@ test('download: a transport that answers with nothing but echo fails loudly', as
   const echoOnly = (b) => { tower.send(b); return Uint8Array.from(b); };
   await assert.rejects(
     downloadImage(parseRcxImage(readFileSync(fx('t.rcx'))), { send: echoOnly }),
-    /no valid reply to stopAllTasks: NO_REPLY/);
+    /no valid reply to setProgramNumber: NO_REPLY/);
 });
 
 test('download: retries are attempted when configured', async () => {
