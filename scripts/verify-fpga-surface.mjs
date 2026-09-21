@@ -23,7 +23,12 @@ import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const build = join(root, 'packages', 'scratch-gui', 'build');
+// The flag-ON build is the DEPLOY build (build_editor), which the browser job
+// overwrites flag-OFF (build_editor_browser) before serving. To gate the FPGA
+// surface, CI preserves the flag-on build to a sibling dir and points here.
+const build = process.env.BW_FPGA_BUILD_DIR
+    ? resolve(process.env.BW_FPGA_BUILD_DIR)
+    : join(root, 'packages', 'scratch-gui', 'build');
 const shots = join(root, 'artifacts', 'fpga-surface');
 const types = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
     '.png': 'image/png', '.json': 'application/json', '.wasm': 'application/wasm', '.map': 'application/json'};
@@ -113,6 +118,65 @@ try {
     check('Run mode labels the wires with live values', edgeLabels > 0, `${edgeLabels} labels`);
     await page.locator('.react-flow').first().screenshot({path: join(shots, '02-run.png')});
     await page.screenshot({path: join(shots, '03-tab.png')});
+
+    // 6. The demo board connects the Tang Nano to real breadboard parts. This
+    // runs against the BROWSER BUNDLE, whose sidecars come from the generated
+    // parts-data/index.js — unlike node tests, which read the parts-data
+    // directory and so cannot see a stale index. It is the one check that
+    // catches, where it actually bites, a Tang that registered as a 2-terminal
+    // ['a','b'] stub (bw-circuit-ui's index dropping tang_nano_20k): every wire
+    // to a header pin is then silently dropped and the board is dead. Uses the
+    // DEFAULT LED demo (pins 15–18), so it needs no synthesis and is
+    // deterministic.
+    const demoBtn = page.getByRole('button', {name: /Wire up a demo board/i}).first();
+    if (await demoBtn.count()) {
+        await demoBtn.click();
+        // onLiveCircuit shows the Circuit tab and builds the board there; wait
+        // for the live circuit to publish with the Tang placed (dev/prod mounts
+        // can be slow, so wait generously).
+        let built = false;
+        for (let i = 0; i < 30; i++) {
+            built = await page.evaluate(() => {
+                const c = window.__circuit;
+                return !!(c && Array.isArray(c.parts)
+                    && c.parts.some(p => (p.kind || p.type) === 'tang_nano_20k')
+                    && c.parts.some(p => (p.kind || p.type) === 'led'));
+            });
+            if (built) break;
+            await page.waitForTimeout(1000);
+        }
+        check('the demo board builds a Tang + LED circuit', built);
+        if (built) {
+            const r = await page.evaluate(async () => {
+                const c = window.__circuit;
+                const board = (c.board && typeof c.board.readPin === 'function') ? c.board : window.__board;
+                const tang = (c.parts || []).find(p => (p.kind || p.type) === 'tang_nano_20k');
+                const leds = (c.parts || []).filter(p => (p.kind || p.type) === 'led');
+                const tp = c.getPart ? c.getPart(tang.id) : tang;
+                const termCount = (tp && tp.terminals || []).length;
+                let maxBr = 0;
+                if (board && leds.length) {
+                    try { board.setPower && board.setPower(true); } catch (e) { /* */ }
+                    // The default demo hangs LEDs on pins 15–18; drive them high.
+                    for (const pin of [15, 16, 17, 18]) {
+                        try { board.setPin('p' + pin, 'pushpull', 1); } catch (e) { /* */ }
+                    }
+                    try { board.operatingPoint && board.operatingPoint(); board.advanceTo(board.getTime() + 0.05); } catch (e) { /* */ }
+                    for (const l of leds) {
+                        try { const b = board.ledBrightness(l.id); if (b > maxBr) maxBr = b; } catch (e) { /* */ }
+                    }
+                }
+                return {termCount, maxBr};
+            });
+            // The Tang must expose its header pins, not the 2-terminal stub.
+            check('the Tang part exposes its header pins (sidecar registered, not an [a,b] stub)',
+                r.termCount > 2, `${r.termCount} terminals`);
+            // …and the wiring must actually conduct: driving an output lights an LED.
+            check('driving an FPGA output pin lights a demo-board LED through the solver',
+                typeof r.maxBr === 'number' && r.maxBr > 0.1, `max brightness ${r.maxBr}`);
+            await page.screenshot({path: join(shots, '04-demo-board.png')});
+        }
+    }
 } catch (e) {
     check('the FPGA surface drive completed', false, e.message.split('\n')[0]);
 }

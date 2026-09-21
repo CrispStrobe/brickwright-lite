@@ -183,3 +183,18 @@ jobs:
       - name: hosted service targets vs snapshot (report only)
         run: node brickwright-lite/scripts/check-hosted-live.mjs
         if: always()
+
+      # Report-only, same contract as the hosted-service step above. The two
+      # sha-pinned npm upstreams (bw-board, bw-circuit-ui) are installed by sha,
+      # and build.yml verifies the pinned payloads — but nothing notices a pin
+      # falling BEHIND upstream master. That lag is exactly how bw-circuit-ui's
+      # regenerated sidecar index (registering tang_nano_20k) sat on master while
+      # Lite's FPGA demo board stayed electrically dead. This asks GitHub how far
+      # each pin is behind and warns; it never fails — bumping is a deliberate,
+      # reviewed act (scripts/pin-packages.mjs), and a network hiccup is a
+      # "could not compare", not a red build.
+      - name: vendor pin freshness — bw-board / bw-circuit-ui behind master (report only)
+        run: node brickwright-lite/scripts/check-pin-drift.mjs
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
