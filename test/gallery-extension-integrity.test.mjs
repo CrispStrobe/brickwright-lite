@@ -41,8 +41,10 @@ test('only exact, pinned gallery URLs skip the warning', () => {
 test('the shipped map is a complete immutable snapshot, not a token allow-list', () => {
     assert.match(pins.commit, /^[0-9a-f]{40}$/);
     // 120 until 2026-09-20; four extensions written in Lite were upstreamed
-    // and the gallery index grew with them.
-    assert.equal(Object.keys(pins.extensions).length, 124);
+    // and the gallery index grew with them. 128 since the TurboWarp sync of
+    // 2026-09-21: six arrivals less the delisted `sound`, and TurboHook
+    // replaced by Webhooks.
+    assert.equal(Object.keys(pins.extensions).length, 128);
     for (const [slug, pin] of Object.entries(pins.extensions)) {
         assert.match(slug, /^[A-Za-z0-9._/-]+$/);
         assert.match(pin.served, /^[0-9a-f]{64}$/);

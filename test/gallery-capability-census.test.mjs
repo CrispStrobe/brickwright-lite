@@ -18,13 +18,13 @@ const pins = JSON.parse(readFileSync(path.join(root, 'overlay/scratch-vm/src/ext
 const clone = value => structuredClone(value);
 const slugs = Object.keys(pins.extensions);
 
-test('gallery capability census closes the exact 124/124 pinned denominator', () => {
+test('gallery capability census closes the exact 128/128 pinned denominator', () => {
     // The number moves when the gallery does — it was 120 until bitops,
     // devices, microbitplus and brickwright_tts were upstreamed on 2026-09-20.
     // What is being asserted is N of N: every pinned extension is censused,
     // with no silent remainder. The literal is here so that growth is a
     // deliberate edit rather than a drifting denominator.
-    assert.equal(slugs.length, 124);
+    assert.equal(slugs.length, 128);
     assert.equal(validateGalleryContract(pins, slugs), true);
     assert.equal(pins.schemaVersion, 2);
     assert.deepEqual([...GALLERY_CAPABILITIES].sort(), [...new Set(GALLERY_CAPABILITIES)].sort());
@@ -51,7 +51,7 @@ test('gallery capability census is deterministic and its checked-in report agree
     const generated = renderCensusReport(pins);
     assert.equal(generated, renderCensusReport(clone(pins)));
     assert.equal(generated, readFileSync(path.join(root, 'docs/generated/GALLERY-CAPABILITY-CENSUS.md'), 'utf8'));
-    assert.match(generated, /Denominator: \*\*124\/124 URL-loaded pins\*\*/);
+    assert.match(generated, /Denominator: \*\*128\/128 URL-loaded pins\*\*/);
 });
 
 test('every deferred pin has a pin-specific reviewed reason and no generic scan placeholder', () => {
@@ -61,8 +61,13 @@ test('every deferred pin has a pin-specific reviewed reason and no generic scan 
     // fourth and is NOT here: it touches no host API at all, so it had nothing
     // to defer for. The two counts are asserted separately on purpose — a pin
     // with no reason and a reason with no pin are different faults.
-    assert.equal(deferred.length, 98);
-    assert.equal(Object.keys(REVIEWED_DEFERRED_REASONS).length, 98);
+    // 103 since the TurboWarp sync of 2026-09-21: six arrivals (lab/video-sprites,
+    // SharkPool/Messages-Plus, SharkPool/Tune-Shark-V3, SamuelLouf/Geolocation,
+    // CubesterYT/Webhooks, NishiOwO/dectalk) less the delisted `sound`, whose
+    // reason had to go with it — a reason for a pin the gallery no longer has is
+    // exactly what the ledger-matches-denominator check exists to catch.
+    assert.equal(deferred.length, 103);
+    assert.equal(Object.keys(REVIEWED_DEFERRED_REASONS).length, 103);
     for (const [slug, pin] of deferred) {
         assert.equal(pin.migration.reason, REVIEWED_DEFERRED_REASONS[slug], slug);
         assert.doesNotMatch(pin.migration.reason, /^static scan requires review:/, slug);
