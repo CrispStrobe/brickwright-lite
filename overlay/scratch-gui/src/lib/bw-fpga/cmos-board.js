@@ -50,8 +50,18 @@ export function buildCmosGate (circuit, gateType, {clear = true} = {}) {
         const py = t.kind === 'pmos' ? TOP : BOT;
         const p = circuit.addPart(t.kind, {}, px, py);
         join(t.gate, p.id, 'gate');
-        join(t.a, p.id, 'drain');
-        join(t.b, p.id, 'source');
+        // The netlist's `a` is the high-side channel terminal (VCC for a pull-up
+        // PMOS, the drain for a pull-down NMOS) and `b` the low side —
+        // switchLevelEval treats them symmetrically. The SPICE model does NOT: a
+        // MOSFET's threshold is referenced to its SOURCE. For an NMOS the source
+        // is the low side (b); for a PMOS the source is the HIGH side (a). Mapping
+        // a→drain, b→source for both left every pull-up PMOS with source on the
+        // output node, so as the NMOS pulled the output down the PMOS's Vgs rose
+        // toward its threshold and it LEAKED — the output stuck ~4 V instead of
+        // reaching ground, and the gate's LED never went dark. Assign source to
+        // the correct side per kind.
+        if (t.kind === 'pmos') { join(t.a, p.id, 'source'); join(t.b, p.id, 'drain'); }
+        else { join(t.a, p.id, 'drain'); join(t.b, p.id, 'source'); }
         return {id: p.id, kind: t.kind};
     });
 
