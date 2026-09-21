@@ -159,8 +159,12 @@ offset  size  field
 
 All multi-byte fields are little-endian.
 
-The download order is: select program slot → stop running tasks → delete
+The download order is: **stop running tasks → select program slot** → delete
 tasks and subroutines → begin task download → send blocks.
+
+That first pair was the wrong way round here until 2026-09-21, and the
+implementation faithfully followed it; see the oracle afterword at the end of
+this file for how it was caught and why stopping first is correct.
 
 ### The opcode table — read it from the source, do not take it from here
 
@@ -244,3 +248,66 @@ read and shipped. That was discovered after the fact. The clean-room route was
 kept anyway, because two independent implementations that agree on the wire
 bytes are worth more than one, and `rcx_comm.c` is now available as a third
 oracle alongside WebPBrick and brickEmu.
+
+## The oracle run, and the one thing it changed
+
+The clean-room round closed with the implementation checked against fixtures
+the specifier generated and a contract the specifier wrote. That is not the
+argument this file made for the arrangement — *"two agreeing implementations
+are worth more than one"* — so the comparison was finally run, on
+2026-09-21, against **NQC's own `rcxlib`**: the canonical implementation, MPL
+and therefore readable, and the one that has driven real bricks since 1998. It
+is pinned as `test/rcx-nqc-oracle.test.mjs` rather than left as an
+investigation, so the agreement keeps being true rather than having been true
+once.
+
+Reading it is the AUDITOR's job and was done after the clean-room round, never
+during it. What the test records are facts — opcode numbers, reply lengths,
+the order of a download — cited to file and function, exactly as this document
+cites RCX Internals. No NQC code is copied.
+
+### What agreed
+
+  * **Every reply length NQC exercises**, once the conventions are reconciled:
+    NQC's `GetReplyLength` counts the reply opcode byte and our `replyParams`
+    counts only what follows, so `nqc === ours + 1` — and it holds for all
+    eight tabulated opcodes and for the twenty-odd that fall to its `default`.
+  * **Reply lengths are tabulated, not computed.** NQC tabulates them too,
+    which independently confirms the correction the implementer made to this
+    document's arity rule — a correction reached from the opcode table alone,
+    before anyone looked at NQC.
+  * **The toggle is masked out before lookup.** NQC switches on
+    `data[0] & 0xf7`; `0xf7` is `~0x08`, and our request table is keyed the
+    same way.
+  * **The last block of a transfer is sequence 0.** NQC starts at 1,
+    increments, and sets 0 on the final block. We reached the same numbering
+    independently, and it is not a detail anyone would guess — a sequence that
+    counted 1, 2, 3 to the end looks perfectly reasonable and the brick would
+    reject the transfer.
+  * **The program slot is zero-based on the wire.**
+
+### What changed
+
+**The download order in this document was wrong.** It said *"select program
+slot → stop running tasks → delete tasks and subroutines"*, and the
+implementation followed it faithfully. `RCX_Link::Download` sends
+`kRCX_StopAllOp` **first** and only then selects the slot — which is the
+safer order for an obvious reason: switching the running program out from
+under an executing task is nobody's intended behaviour. The paragraph above is
+corrected, `downloadImage` now stops first, and the three tests that pinned
+the old order were updated rather than relaxed.
+
+### What is still unresolved, and is not counted as agreement
+
+`0x52` (set datalog size). Our table says its reply carries one byte; NQC's
+`default` would say none. But **NQC never sends it** — the constant is defined
+in `RCX_Constants.h` and nothing in `rcxlib` or the compiler uses it — so its
+default is untested there and cannot be cited either way. The test names this
+row and excludes it explicitly, because a differential that quietly skips its
+own blind spots reads as broader agreement than it has.
+
+Two more things the oracle does not cover, for the same reason: NQC's chunk
+loop iterates the image in file order and never sorts, so it says nothing
+about an image whose subroutines do not already come first (its own compiler
+always writes them first, which the test verifies on the fixtures); and the
+firmware-download opcodes (`0x75`, `0x65`) are outside what we implement.

@@ -836,12 +836,27 @@ export async function downloadImage(image, options = {}) {
     return fn();
   };
 
+  // STOP FIRST, THEN SELECT. docs/RCX-IR-PROTOCOL.md had these the other way
+  // round and so did this function; NQC's own RCX_Link::Download disagrees,
+  // and NQC is the implementation that has driven real bricks for twenty
+  // years. It stops all tasks BEFORE selecting the slot, which is the safer
+  // order for the obvious reason — switching the running program out from
+  // under a task that is still executing is nobody's intended behaviour.
+  // Changed 2026-09-21 after the oracle comparison; see the contract's
+  // afterword.
+  await step('stopAllTasks', () => session.command(OP.STOP_ALL_TASKS));
   await step('setProgramNumber', () =>
     session.command(OP.SET_PROGRAM_NUMBER, [programSlot]));
-  await step('stopAllTasks', () => session.command(OP.STOP_ALL_TASKS));
   await step('deleteAllTasks', () => session.command(OP.DELETE_ALL_TASKS));
   await step('deleteAllSubroutines', () => session.command(OP.DELETE_ALL_SUBROUTINES));
 
+  // Subroutines before tasks. NQC downloads chunks in FILE order and does not
+  // reorder — but its own compiler already writes subroutines first, so on
+  // every image NQC produces the two are the same sequence (verified on the
+  // fixtures: c.rcx is sub#0 task#0, d.rcx is sub#0 sub#1 task#0..2). Keeping
+  // the sort makes the invariant explicit rather than inherited from whoever
+  // wrote the file, which matters because this function accepts any parsed
+  // image and not only NQC's.
   const ordered = [
     ...image.chunks.filter((c) => c.type === CHUNK_SUBROUTINE),
     ...image.chunks.filter((c) => c.type === CHUNK_TASK),
