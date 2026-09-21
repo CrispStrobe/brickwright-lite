@@ -313,3 +313,36 @@ test('the timer index is its own timer, and resetting one leaves the others alon
         w.args('timerValue', {TIMER: 2}))), {globals: 4});
     assert.deepEqual(read, [0x87, 0x60]);
 });
+
+test('each sensor reads the mode its menu names', async () => {
+    // Verified against ev3_direct's working reads, which are the authority:
+    // readTouch mode 0, readUltrasonic 0 (cm), readInfraredProximity 0,
+    // readGyroAngle GYRO_MODE.ANGLE = 0, readGyroRate RATE = 1,
+    // readAmbientLight COLOR_MODE.AMBIENT = 1, readReflectedLight 0.
+    //
+    // Pinned because a mode is a plain number in the packet: getting one
+    // wrong returns a real reading from the same sensor in the wrong unit or
+    // the wrong quantity. Nothing errors, and the value looks credible.
+    const w = wired();
+    const modeOf = async (opcode, args, globals = 4) =>
+        body(await w.capture(() => w.instance[opcode](w.args(opcode, args))), {globals})[5];
+
+    assert.equal(await modeOf('touchSensor', {PORT: '1'}), 0, 'touch');
+    assert.equal(await modeOf('touchSensorBumped', {PORT: '1'}), 1, 'bump count');
+    assert.equal(await modeOf('ultrasonicSensor', {PORT: '1', UNIT: 'cm'}), 0, 'distance');
+    assert.equal(await modeOf('ultrasonicListen', {PORT: '1'}), 2, 'listen');
+    assert.equal(await modeOf('irProximity', {PORT: '1'}), 0, 'IR proximity');
+
+    for (const [mode, expected] of [['reflected', 0], ['ambient', 1], ['color', 2], ['raw', 3]]) {
+        assert.equal(await modeOf('colorSensor', {PORT: '1', MODE: mode}), expected, mode);
+    }
+    for (const [mode, expected] of [['angle', 0], ['rate', 1], ['fast', 2], ['angle_rate', 3]]) {
+        assert.equal(await modeOf('gyroSensor', {PORT: '1', MODE: mode}), expected, mode);
+    }
+
+    // The unit is applied AFTER the read, not by switching mode: the sensor
+    // always reports centimetres and inches are a conversion. Asserted so a
+    // future "fix" does not change the mode and double-convert.
+    assert.equal(await modeOf('ultrasonicSensor', {PORT: '1', UNIT: 'inch'}), 0,
+        'inches must be converted from the cm reading, not read in a different mode');
+});
