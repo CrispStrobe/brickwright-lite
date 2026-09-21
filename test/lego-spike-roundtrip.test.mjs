@@ -65,18 +65,25 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // the later range only converges the already-present examples catalogue
     // and adds upstream tests. The compiler emitter therefore does not move,
     // while this assertion still forces the round-trip artifact at the pin.
-    // -> 06a78ba2 on 2026-09-21, then BACK to 9173ca75 the same day. The
-    // advance was reverted because it carries the gallery examples with it,
-    // and one of the benches that arrived fails lite's circuit placement gate
-    // (CrispStrobe/sb3-creator#14). Recorded rather than erased because the
-    // measurement still stands and saves repeating it: the emitter DID move
-    // over that range — sb3Creator.js +72 and spikeprimeDialect.js +47 — and
-    // the round-trip artifact was re-run at 06a78ba2 and came out
-    // byte-for-byte unchanged, because the dialect grew a classification
-    // rather than a mapping and the mapped set is still 30. So when the bench
-    // is fixed, this pin can move with that already known.
+    // -> 2be3fe2b on 2026-09-20: this range DOES move the emitter — the SPIKE
+    // consolidation rewrites `runtimeRegistry.generated.js` and
+    // `spikeprimeDialect.js` (179 lines across two files under src/), which is
+    // exactly why this assertion forces the round-trip artifact to be re-run at
+    // the new pin rather than carried over. The rest of the range is the
+    // examples work: 26 benches rebuilt from their programs, and three new
+    // Codex trails for the digital and MCU domain.
+    // -> 06a78ba2 on 2026-09-20: adds `PART <name> = SERVO|MOTOR <channel>` and
+    // resolves a declared name at all seven actuator operand sites, so the
+    // emitter changes again and the artifact is re-run, not carried over.
+    // -> 8e1f4d11 on 2026-09-21: `git diff --name-only 06a78ba2 8e1f4d11 -- src/`
+    // names ONE file, sb3Creator.js, and the change is the missing half of that
+    // same feature: the DECOMPILER had no branch for the new part types, so it
+    // fell through to the 74HC595 writer and threw on p.data for every retarget
+    // of a program with a declared servo. The SPIKE emitter is untouched by it,
+    // and the artifact below was re-run at the new pin rather than carried over.
+    // The rest of the range is example data and gate repairs.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '9173ca756a72e5be81578a084c4c783ebc5c267d');
+        '8e1f4d11406fd302a479d693d5058ee6643f72e7');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

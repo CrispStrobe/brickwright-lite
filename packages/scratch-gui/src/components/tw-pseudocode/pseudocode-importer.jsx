@@ -121,6 +121,9 @@ const L10N = {
         basicNoPrompt: 'BASIC did not reach its ready prompt — the ROM may not have loaded.',
         basicLoading: 'Loading BASIC machine…',
         basic8086Building: 'Compiling BASIC for the 8086 in this browser…',
+        basicRealDosBuilding: 'Compiling BASIC and preparing a real MS-DOS 2.0 boot disk…',
+        basicRealDosFailed: (m) => `Could not prepare the MS-DOS boot disk: ${m}`,
+        basicRealDosBooted: (n) => `Built ${n} bytes and booting real MS-DOS 2.0 — it runs PROG.COM at the A> prompt.`,
         basic8086Refused: (m) => `The BASIC compiler refused this program: ${m}`,
         basic8086Failed: (m) => `The 8086 BASIC route could not run: ${m}`,
         apply: '✓ Apply art & convert to blocks', done: 'Done',
@@ -321,6 +324,9 @@ const L10N = {
         basicNoPrompt: 'BASIC hat seine Bereit-Eingabeaufforderung nicht erreicht — das ROM wurde möglicherweise nicht geladen.',
         basicLoading: 'BASIC-Maschine wird geladen…',
         basic8086Building: 'Übersetze BASIC für den 8086 in diesem Browser…',
+        basicRealDosBuilding: 'Übersetze BASIC und bereite eine echte MS-DOS-2.0-Bootdiskette vor…',
+        basicRealDosFailed: (m) => `Die MS-DOS-Bootdiskette konnte nicht vorbereitet werden: ${m}`,
+        basicRealDosBooted: (n) => `${n} Bytes erzeugt — starte echtes MS-DOS 2.0; es führt PROG.COM am A>-Prompt aus.`,
         basic8086Refused: (m) => `Der BASIC-Compiler hat dieses Programm abgelehnt: ${m}`,
         basic8086Failed: (m) => `Die 8086-BASIC-Route lief nicht: ${m}`,
         apply: '✓ Grafik übernehmen & zu Blöcken', done: 'Fertig',
@@ -1685,7 +1691,7 @@ class PseudocodeImporter extends React.Component {
             else if (to === 'python') code = new SB3().generatePython(proj, this.genOpts());
             else if (to === 'c') code = new SB3().generateC(proj);
             else if (to === 'basic') {
-                const r = new SB3().generateBASIC(proj, {profile: this.state.basicProfile === 'i8086' ? 'ms' : this.state.basicProfile, lineNumbers: this.state.basicLineNumbers});
+                const r = new SB3().generateBASIC(proj, {profile: this.state.basicProfile.startsWith('i8086') ? 'ms' : this.state.basicProfile, lineNumbers: this.state.basicLineNumbers});
                 code = r.ok ? r.basic : `REM === Cannot show as BASIC ===\n${r.reasons.map(s => 'REM ' + s).join('\n')}`;
             } else if (to === 'micropython') {
                 const r = new SB3().generateMicroPython(proj);
@@ -2109,6 +2115,51 @@ class PseudocodeImporter extends React.Component {
             buffers: {...st.buffers, asm: out.asm || st.buffers.asm},
             status: this.L.runC8086Built(out.bytes.length, this.L.runC8086Route) + warn
         }));
+    }
+
+    /**
+     * Compile BASIC and run it on a REAL booted MS-DOS 2.0 kernel (not the fast
+     * INT 21h service bench): the same requestBasicBuild produces the .COM, the
+     * browser-safe FAT12 injector (bw-board/dos-fat-inject) drops it as PROG.COM
+     * onto a copy of the prebuilt MIT MS-DOS 2.0 boot image (a static asset), and
+     * the DOS bench boots that disk — the boot sector loads IO.SYS -> MSDOS.SYS
+     * -> COMMAND.COM, which auto-runs PROG at the A> prompt. Nothing here touches
+     * the receipt-pinned image BUILDER; it only injects into a prebuilt image.
+     */
+    async runBasicOnRealDos (code) {
+        const source = code != null ? code : this.activeCode();
+        if (!source.trim()) return;
+        this.setState({busy: true, running: true, status: this.L.basicRealDosBuilding,
+            output: null, basicRawOutput: '', basicIsBbc: false});
+        let out;
+        try {
+            out = await requestBasicBuild({source, device: 'i8086'});
+        } catch (e) {
+            this.setState({busy: false, running: false, status: e.reason === 'source'
+                ? this.L.basic8086Refused(e.message) : this.L.basic8086Failed(e.message)});
+            return;
+        }
+        let disk;
+        try {
+            const [inj, res] = await Promise.all([
+                import(/* webpackChunkName: "bw-debug-i8086" */ 'bw-board/dos-fat-inject.js'),
+                fetch('static/dos/msdos200-base.img'),
+            ]);
+            if (!res.ok) throw new Error(`base image HTTP ${res.status}`);
+            const base = new Uint8Array(await res.arrayBuffer());
+            disk = inj.injectFile(base, 'PROG.COM', out.bytes);
+        } catch (e) {
+            this.setState({busy: false, running: false, status: this.L.basicRealDosFailed(e.message)});
+            return;
+        }
+        const detail = {rom: disk, listing: null, target: 'i8086', slotId: 'disk', profile: 'dos', format: 'disk'};
+        try { localStorage.setItem('bw-right-pane-hidden', '0'); } catch { /* private mode */ }
+        window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-right-pane-hidden', value: '0'}}));
+        window.__bwPendingMedia = {type: 'asm', detail};
+        window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {detail}));
+        this.setState(st => ({busy: false, running: false,
+            buffers: {...st.buffers, asm: out.asm || st.buffers.asm},
+            status: this.L.basicRealDosBooted(out.bytes.length)}));
     }
 
     /**
@@ -2947,6 +2998,7 @@ class PseudocodeImporter extends React.Component {
         // The 8086 profile compiles BASIC to a .COM and boots the DOS bench (the
         // C/asm-tab path), rather than running a 6502/Z80 ROM interpreter.
         if (this.state.basicProfile === 'i8086') return this.runBasicOn8086(code);
+        if (this.state.basicProfile === 'i8086-dos') return this.runBasicOnRealDos(code);
         this.setState({output: '', running: true, status: this.L.basicLoading, basicRawOutput: '', basicIsBbc: false});
         try {
             const isBbc = this.state.basicProfile === 'bbc';
@@ -3381,7 +3433,7 @@ class PseudocodeImporter extends React.Component {
             if (lang !== 'javascript') nb.javascript = new SB3Creator().generateJavaScript(proj, this.genOpts());
             nb.c = new SB3Creator().generateC(proj);
             {
-                const br = new SB3Creator().generateBASIC(proj, {profile: this.state.basicProfile === 'i8086' ? 'ms' : this.state.basicProfile, lineNumbers: this.state.basicLineNumbers});
+                const br = new SB3Creator().generateBASIC(proj, {profile: this.state.basicProfile.startsWith('i8086') ? 'ms' : this.state.basicProfile, lineNumbers: this.state.basicLineNumbers});
                 nb.basic = br.ok ? br.basic : `REM === Cannot show as BASIC ===\n${br.reasons.map(s => 'REM ' + s).join('\n')}`;
             }
             nb.asm = ''; // cleared — re-fetched on next ASM tab switch
@@ -3414,7 +3466,7 @@ class PseudocodeImporter extends React.Component {
         try {
             const SB3Creator = (await this.lib()).default;
             const project = JSON.parse(this.props.vm.toJSON());
-            const basicResult = new SB3Creator().generateBASIC(project, {profile: this.state.basicProfile === 'i8086' ? 'ms' : this.state.basicProfile, lineNumbers: this.state.basicLineNumbers});
+            const basicResult = new SB3Creator().generateBASIC(project, {profile: this.state.basicProfile.startsWith('i8086') ? 'ms' : this.state.basicProfile, lineNumbers: this.state.basicLineNumbers});
             const mpResult = new SB3Creator().generateMicroPython(project);
             const buffers = {
                 pseudocode: new SB3Creator().decompile(project),
@@ -3902,6 +3954,7 @@ class PseudocodeImporter extends React.Component {
                                 <option value="bbc">{'BBC BASIC'}</option>
                                 <option value="ms">{'6502 BASIC'}</option>
                                 <option value="i8086">{'8086 BASIC (native)'}</option>
+                                <option value="i8086-dos">{'8086 BASIC (real MS-DOS 2.0)'}</option>
                             </select>
                         </label>
                         <label style={{display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer'}}>

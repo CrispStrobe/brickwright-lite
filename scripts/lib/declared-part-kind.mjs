@@ -46,8 +46,24 @@ export const declaredPartKind = (declName, kinds) => {
     return null;
 };
 
+/**
+ * A BANK IS ITS OWN PART, PLURALLY. `ledbank8` is eight LEDs in one footprint,
+ * so `PIN leds = ...` drawn as a `ledbank8` says exactly what the learner
+ * wrote — the picture and the word agree, and only the arity differs. This is
+ * derived from the kind's own spelling rather than tabled, so a later
+ * `resistorbank8` needs no edit here.
+ *
+ * Returns the singular kind a bank kind is a bank OF, or null.
+ */
+export const bankOf = kind => {
+    const m = /^([a-z_]+?)bank\d*$/.exec(String(kind || ''));
+    return m ? m[1] : null;
+};
+
 /** null when the name asserts nothing, or asserts what the part already is. */
 export const contradiction = (declName, kind, kinds) => {
     const want = declaredPartKind(declName, kinds);
-    return want && want !== kind ? want : null;
+    if (!want || want === kind) return null;
+    if (bankOf(kind) === want) return null;
+    return want;
 };

@@ -90,11 +90,16 @@
   "rixxyx": "registers a Scratch.vm.runtime AFTER_EXECUTE hook during source evaluation",
   "runtime-options": "explicitly requires unsandboxed execution and reads or mutates VM runtime options, renderer, stage size, framerate, and events",
   "shreder95ua/resolution": "window.screen width and height reporters require the page realm",
-  "sound": "captures Scratch.vm.runtime.audioEngine during source evaluation and requires util.target sound playback",
   "stretch": "captures the Scratch.vm renderer and mutates util.target drawable scale state",
   "true-fantom/network": "requires navigator network, user-agent, and connection APIs, document.URL, and window.screen; HTTP uses worker-supported Scratch.fetch",
   "veggiecan/LongmanDictionary": "requires DOMParser and XML element queries; HTTP uses worker-supported Scratch.fetch",
   "veggiecan/browserfullscreen": "requires the document fullscreen API, window fullscreen events, and Scratch.vm runtime hats",
   "veggiecan/mobilekeyboard": "explicitly requires unsandboxed execution and creates and appends page input DOM",
-  "vercte/dictionaries": "registers a Scratch.vm.runtime RUNTIME_DISPOSED hook during source evaluation"
+  "vercte/dictionaries": "registers a Scratch.vm.runtime RUNTIME_DISPOSED hook during source evaluation",
+  "CubesterYT/Webhooks": "drives runtime.extensionManager and persists through runtime.extensionStorage, and subscribes to VM lifecycle with runtime.on; its Scratch.fetch posts are worker-safe but the extension-manager and storage seams are not",
+  "NishiOwO/dectalk": "installs a window.onDECtalkAudioCallback global for its emscripten synthesiser and plays through Scratch.vm.runtime.audioEngine.audioContext; the restricted worker exposes neither a window to hang the callback on nor the audio engine",
+  "SamuelLouf/Geolocation": "reads navigator.geolocation, navigator.permissions and navigator.userAgent, and wakes hats via Scratch.vm.runtime.startHats; the restricted worker exposes no navigator geolocation and no VM runtime",
+  "SharkPool/Messages-Plus": "schedules and inspects threads directly on Scratch.vm.runtime -- _pushThread, _restartThread, isActiveThread, allScriptsByOpcodeDo and target lookups; the restricted worker exposes no VM runtime and therefore no thread table",
+  "SharkPool/Tune-Shark-V3": "pushes threads with runtime._pushThread, scans scripts with runtime.allScriptsByOpcodeDo and sequences against runtime.audioEngine and runtime.currentStepTime; its Scratch.canFetch check is worker-safe but the runtime and audio-engine access is not",
+  "lab/video-sprites": "creates DOM elements with document.createElement and reaches the renderer through runtime.renderer, runtime.ioDevices and runtime.requestRedraw; the restricted worker exposes neither a document nor the renderer"
 }

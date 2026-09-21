@@ -161,11 +161,14 @@ test('published migration counts distinguish proven, awaiting-proof and ambient 
     // host API at all, so it is awaiting runtime proof rather than blocked.
     // The other three read the VM runtime or the Web Speech API and are
     // deferred with a reason each.
-    assert.deepEqual(counts, {worker: 25, deferred: 98, candidate: 1});
+    // 24/103/1 = 128 after the TurboWarp sync of 2026-09-21. The cohort fell
+    // 25 -> 24 because upstream delisted CubesterYT/TurboHook in favour of
+    // CubesterYT/Webhooks, which did not inherit the promotion.
+    assert.deepEqual(counts, {worker: 24, deferred: 103, candidate: 1});
 });
 
 test('worker-safe fetch requirements remain measured while their proven cohort stays promoted', () => {
-    for (const slug of ['0832/rxFS2', 'CubesterYT/TurboHook', 'fetch', 'utilities']) {
+    for (const slug of ['0832/rxFS2', 'fetch', 'utilities']) {
         assert.deepEqual(pins.extensions[slug].capabilities, ['fetch-import']);
         assert.equal(pins.extensions[slug].migration.status, 'worker');
         const mutated = structuredClone(pins);

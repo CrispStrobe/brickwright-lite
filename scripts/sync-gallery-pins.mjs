@@ -80,6 +80,12 @@ export const BROKER_CAPABILITIES = Object.freeze([
 // realms and compared registration, getInfo() and a representative opcode.
 // Keeping this policy beside the generator prevents a hand-edited pin from
 // silently claiming runtime proof that will disappear on the next sync.
+// CubesterYT/TurboHook left this list on 2026-09-21: upstream delisted it from
+// extensions.json in favour of CubesterYT/Webhooks. The file survives in the
+// repo, but a slug the gallery no longer serves cannot be runtime-proven FOR
+// that gallery, and the pin it was judged against is gone. Webhooks did NOT
+// inherit the promotion: it is new, unproven, and deferred on
+// runtime.extensionManager / runtime.extensionStorage.
 export const RUNTIME_WORKER_PROVEN = Object.freeze([
     '0832/rxFS2',
     '-SIPC-/consoles',
@@ -88,7 +94,6 @@ export const RUNTIME_WORKER_PROVEN = Object.freeze([
     'Clay/htmlEncode',
     'cs2627883/numericalencoding',
     'DogeisCut/FormatNumbers',
-    'CubesterYT/TurboHook',
     'encoding',
     'fetch',
     'Lily/Cast',

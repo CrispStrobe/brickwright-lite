@@ -35,7 +35,15 @@ try {
 
     const expected = {
         scenarios: 3,
-        opcode: '&lt;b&gt;&amp;&apos;&quot;',
+        // Input is `<b>&"'`, so the tail is the double quote THEN the
+        // apostrophe. It used to be the other way round here because
+        // Clay/htmlEncode had its two cases crossed -- `"` returned &apos;
+        // and `'` returned &quot; -- and this gate faithfully pinned the
+        // bug. TurboWarp fixed the switch upstream and the 2026-09-21 sync
+        // brought the fix in, so the corrected order is what a correct
+        // encoder produces. Changed because the behaviour got RIGHTER, not
+        // to quiet the gate.
+        opcode: '&lt;b&gt;&amp;&quot;&apos;',
         service: 'extension.0.0',
         pendingLoads: 0
     };
