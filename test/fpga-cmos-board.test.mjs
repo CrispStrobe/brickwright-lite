@@ -60,3 +60,13 @@ test('a gate with no CMOS form (xor) throws rather than mis-building', () => {
 test('it refuses a non-circuit object', () => {
     assert.throws(() => buildCmosGate({}, 'not'), /live circuit/);
 });
+
+test('the layout is a readable CMOS schematic: PMOS in a top row above NMOS', () => {
+    const c = mockCircuit();
+    buildCmosGate(c, 'nand');
+    const pmos = c.parts.filter(p => p.kind === 'pmos');
+    const nmos = c.parts.filter(p => p.kind === 'nmos');
+    assert.ok(pmos.every(p => p.y === pmos[0].y), 'PMOS share a row');
+    assert.ok(nmos.every(p => p.y === nmos[0].y), 'NMOS share a row');
+    assert.ok(pmos[0].y < nmos[0].y, 'the pull-up row sits above the pull-down row');
+});
