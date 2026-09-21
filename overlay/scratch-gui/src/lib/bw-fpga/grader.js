@@ -346,7 +346,13 @@ export function gradeRealisedCircuit (circuit, challenge, opts = {}) {
 /** A one-line, learner-facing summary of a real-parts grade. */
 export function gradeMessageRealised (result, challenge) {
     if (result.pass) {
-        return `✓ It works in real parts — the output LED followed the truth table `
+        // A multi-output challenge watches several LEDs, and saying "the output
+        // LED" of a half adder is simply untrue of what was just checked.
+        const nOut = ((challenge && challenge.outputs) || []).length;
+        const leds = nOut > 1
+            ? `all ${nOut} output LEDs followed their truth tables`
+            : 'the output LED followed the truth table';
+        return `✓ It works in real parts — ${leds} `
             + `through all ${result.checked} input combination${result.checked === 1 ? '' : 's'} on the live board.`;
     }
     if (result.problem) return result.problem;

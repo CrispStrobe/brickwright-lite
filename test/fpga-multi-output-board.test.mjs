@@ -67,6 +67,20 @@ test('1+1 really does light the carry and leave the sum dark', () => {
     assert.ok(byName.sum < 0.05, `1+1 must leave the sum dark, got ${byName.sum}`);
 });
 
+test('the pass message does not call two LEDs "the output LED"', () => {
+    // Caught in a browser drive: the half adder passed and the verdict read
+    // "the output LED followed the truth table", which is untrue of what was
+    // just checked.
+    const msg = gradeMessageRealised(gradeRealisedCircuit(realiseHalfAdder(), HALF), HALF);
+    assert.match(msg, /all 2 output LEDs followed their truth tables/, 'plural, and says how many');
+    assert.ok(!/the output LED followed/.test(msg), 'not the singular wording');
+    // The single-output wording is untouched.
+    const AND = {id: 'and', inputs: [{name: 'a'}, {name: 'b'}], outputs: [{name: 'y'}], expect: i => ({y: i.a & i.b})};
+    const c = new Circuit(5.0);
+    buildLogicIcGate(c, 'and');
+    assert.match(gradeMessageRealised(gradeRealisedCircuit(c, AND), AND), /the output LED followed the truth table/);
+});
+
 // ── Outputs are matched by NAME, not by where they sit ──────────────────────
 
 test('the output LEDs carry their names, and discovery uses them', () => {
