@@ -24,29 +24,34 @@
 // lazily-loaded chunk. Nothing here is in the initial bundle.
 import SB3Creator from './sb3-creator.js';
 import art from './sb3-creator-vector-art.js';
-import spikeRuntimeOps from './spike-runtime-ops.js';
 import {LEGACY_IDS as SPIKE_LEGACY_IDS} from './spike-legacy-migration.js';
 
 // Returns the entry count; ignored here, asserted by the tests (246 as of 2026-08-30).
 SB3Creator.registerVectorArt(art);
 
-// THE SAME ARGUMENT, FOR THE SPIKE RUNTIME REGISTRY.
+// RETIRING THE FOUR DEAD SPIKE IDS.
 //
-// sb3-creator's generated registry still describes the five SPIKE extensions
-// as they were before they became one, and Lite vendors that file under a
-// byte-identity pin it may not edit. But runtimeOp() returns null for an
-// opcode with no entry, so every block the load-time migration moves onto a
-// unified opcode would quietly stop round-tripping through the Code tab.
+// Until 2026-09-21 this module also MERGED a derived `spikeprime` entry over
+// the vendored registry, because that registry still described the five SPIKE
+// extensions as they were before they became one, and runtimeOp() returns null
+// for an opcode with no entry — so every block the load-time migration moved
+// onto a unified opcode would have quietly stopped round-tripping through the
+// Code tab.
 //
-// So the entry is derived from the extension that actually ships
-// (scripts/spike/gen-runtime-ops.mjs) and merged here, at the one door that
-// hands out the class — for exactly the reason the art is registered here and
-// not at each call site. The four dead ids go at the same time, so a project
-// can never resolve an opcode against an extension that is no longer loadable.
-// test/spike-runtime-registry.test.mjs holds both properties. When sb3-creator
-// regenerates its registry against the unified extension, this becomes a
-// no-op and can go.
-SB3Creator.RUNTIME_EXTENSIONS.spikeprime = spikeRuntimeOps;
+// sb3-creator has now regenerated its registry against the unified extension
+// (CrispStrobe/sb3-creator#13), so the vendored file carries all 101 unified
+// opcodes and that merge became the no-op its own comment predicted. It is
+// gone. What replaced it is a TEST rather than nothing:
+// test/spike-runtime-registry.test.mjs compares the vendored entry against the
+// table derived from the bundle Lite actually ships, so the two agreeing is
+// now checked instead of arranged. Deleting the derivation along with the
+// merge would have thrown away the only thing that would notice sb3-creator's
+// registry drifting from the shipping extension.
+//
+// The DELETION below stays, and is not symmetric with the merge. sb3-creator
+// deliberately keeps the four legacy ids in its registry — projects in the
+// wild carry them and it still emits for them — but Lite can no longer LOAD
+// those extensions, so an opcode must never resolve against one here.
 for (const legacyId of SPIKE_LEGACY_IDS) {
     delete SB3Creator.RUNTIME_EXTENSIONS[legacyId];
 }
