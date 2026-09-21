@@ -1,5 +1,44 @@
 # bw-bundle — blocked items (campaign: circuit parity)
 
+## OPEN, FLEET-WIDE — main's `build` job has had no verdict since 2026-09-21 04:21
+
+**Nobody's unit run is being verified on `main`, and the failure does not say
+why.** The `Run unit tests` step ends with:
+
+    ##[error]Process completed with exit code 143.
+    ##[error]The runner has received a shutdown signal.
+
+with **no `not ok` line anywhere in the TAP** — the suite is not failing, the
+runner is going away underneath it, roughly four minutes in and about 2,470
+tests deep. Exit 143 is SIGTERM, which is what a GitHub-hosted runner reports
+when its VM is reclaimed; the job's own `timeout-minutes: 30` is not reached,
+so it is not the documented self-cancel this file already records above.
+
+Measured 2026-09-21 06:0x UTC from `gh run list --workflow build.yml --branch main`:
+
+| | |
+|---|---|
+| last SUCCESSFUL main `build` | `b3df0a7a`, run 35559724371, 04:05 |
+| first red | `b0ebc054`, run 35560675607, 04:21 — the #238 merge |
+| main `build` runs since | 3, all failure, same signature |
+| `corpus`, `browser (light)`, `browser (heavy)` | green throughout |
+
+`b3df0a7a..b0ebc054` is the real-DOS GUI lane: a 360K MS-DOS 2.0 image added
+under `static/dos/` in BOTH mirrors, `i8086-dos-bench.js` gaining a `format:
+'disk'` path that boots a FAT12 kernel, `debug-runner.js`,
+`pseudocode-importer.jsx`, and a bw-board pin move `da2a24ed -> 00af429e`. Any
+of those could be it; **this entry deliberately does not name a cause it has
+not measured.** What is established is the boundary: the job was green on the
+commit before that merge and has been red on every main commit after it.
+
+Whoever picks this up: the cheap first measurement is memory, not logic. Add a
+`/usr/bin/time -v` or a `process.memoryUsage()` sampler around the unit step on
+a lane and watch RSS across the run; a suite that boots a DOS kernel in-process
+per case is the shape that reclaims a runner without ever printing a failure.
+
+Noted from the pin-bump lane (lite `5990c4e78`), whose own `corpus` and both
+browser jobs were green on run 35565905193 and which inherited only this.
+
 ## ~~OPEN, FLEET-WIDE~~ — FIXED (`34cf38b78`): lite main had NO CI verdict from 12:00 to 13:20 (2026-08-25)
 
 Not my lane's problem alone, which is why it is at the top: **nobody's work is
