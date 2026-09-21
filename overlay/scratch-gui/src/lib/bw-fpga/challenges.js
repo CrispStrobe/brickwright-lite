@@ -6,6 +6,11 @@
  * tested evaluator, and compares — the same maths-as-oracle idea, turned into
  * auto-grading. `requires` chains them so passing one unlocks the next.
  *
+ * A challenge marked `realise: true` is graded on the BOARD instead of on the
+ * canvas — the learner builds the gate in real parts and the grader drives the
+ * live circuit (grader.js: gradeRealisedCircuit). Its reference function is the
+ * same pure oracle either way.
+ *
  * Reference functions return 0/1 per output name. Inputs are 1-bit unless a
  * width is given. Pure data + pure functions, so the whole curriculum is
  * unit-tested without a browser.
@@ -115,11 +120,56 @@ export const CHALLENGES = Object.freeze([
         cycles: 6,
         stimulus: {},
         seqExpect: () => [0, 1, 0, 1, 0, 1].map(q => ({q}))
+    },
+    // ── Real parts ───────────────────────────────────────────────────────────
+    // Everything above is graded on the DESIGN — the gates drawn on the canvas.
+    // These are graded on the BOARD: realise the gate in the Circuit tab (⚙ as a
+    // 74HC chip, ⚛ as CMOS transistors, or wire it yourself), and the grader
+    // drives the real switches through every input combination and reads the
+    // real output LED (grader.js: gradeRealisedCircuit).
+    //
+    // They are graded by RESULT, never by topology, so ANY construction that
+    // computes the function passes — which is the point: a 14-pin chip and six
+    // transistors are the same gate because they behave the same.
+    //
+    // `rungs` names the realisations that can build this gate, and is checked
+    // against what the builders actually support: 'ic' is logic-ic.js
+    // (not/and/or/nand/nor/xor), 'cmos' is cmos.js, which has no discrete XOR.
+    {
+        id: 'not_real', title: 'NOT — in real parts', requires: ['not'], realise: true, gate: 'not', rungs: ['ic', 'cmos'],
+        brief: 'You drew an inverter. Now build one you could touch. In the Circuit tab press ⚙ for a 74HC04 chip, or ⚛ to wire it from a PMOS and an NMOS — then Check. This grades the BOARD: the switch is really toggled and the output LED is really read.',
+        inputs: io(['a']), outputs: io(['y']),
+        expect: i => ({y: i.a ? 0 : 1})
+    },
+    {
+        id: 'and_real', title: 'AND — in real parts', requires: ['and', 'not_real'], realise: true, gate: 'and', rungs: ['ic', 'cmos'],
+        brief: 'The same AND, in parts that exist. Build it either way — ⚙ drops a 74HC08, ⚛ builds it from six transistors (a NAND, then an inverter). Both pass, because the grader reads the LED, not your wiring.',
+        inputs: io(['a', 'b']), outputs: io(['y']),
+        expect: i => ({y: i.a & i.b})
+    },
+    {
+        id: 'nand_real', title: 'NAND — the universal gate, in silicon', requires: ['nand', 'and_real'], realise: true, gate: 'nand', rungs: ['ic', 'cmos'],
+        brief: 'Build NAND from transistors (⚛) and look at what you get: two PMOS in parallel pulling up, two NMOS in series pulling down. That is the whole gate — four transistors, and every other gate can be built from copies of it.',
+        inputs: io(['a', 'b']), outputs: io(['y']),
+        expect: i => ({y: (i.a & i.b) ? 0 : 1})
+    },
+    {
+        id: 'xor_real', title: 'XOR — a chip with no simple transistor form', requires: ['xor', 'nand_real'], realise: true, gate: 'xor', rungs: ['ic'],
+        brief: 'XOR is the one the ⚛ button will not build: it has no tidy pull-up/pull-down pair the way AND and NOR do — it is made of several gates. So take the 74HC86 (⚙) and prove the chip computes it on the board.',
+        inputs: io(['a', 'b']), outputs: io(['y']),
+        expect: i => ({y: i.a ^ i.b})
     }
 ]);
 
 /** Look up a challenge by id. */
 export const challengeById = id => CHALLENGES.find(c => c.id === id);
+
+/**
+ * Is this challenge graded on the real breadboard rather than on the canvas?
+ * The panel routes on this: a realise challenge is checked with
+ * gradeRealisedCircuit against the live circuit, not with grade against a model.
+ */
+export const isRealise = c => Boolean(c && c.realise);
 
 /** Is `id` unlocked given the set of passed ids? (all prerequisites passed) */
 export function isUnlocked (id, passed) {
