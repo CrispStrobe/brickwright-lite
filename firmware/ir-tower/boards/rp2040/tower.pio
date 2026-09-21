@@ -1,0 +1,42 @@
+;
+; tower.pio — the whole tower, as three PIO instructions.
+;
+; Clean-room; sources listed in ../../README.md. Written from the RP2040
+; datasheet's PIO chapter and the pico-sdk documentation.
+;
+; `jmp pin` is configured (execctrl JMP_PIN) as host TXD, and `set pins` as the
+; LED. The program is then literally the contract's one line of algebra:
+;
+;     IR LED drive = carrier(38 kHz) AND NOT(host TXD)
+;
+; Cycle accounting, with the state machine clocked at 8 x 38 kHz:
+;
+;   TXD high (serial one, dark):  set(1) + delay(2) + jmp(1)          = 4 cycles
+;   TXD low  (serial zero, lit):  set(1) + delay(2) + jmp(1)
+;                                 + set(1) + delay(3)                 = 8 cycles
+;                                 of which 4 are high  -> 50 % duty
+;
+; The two delay fields are patched at load time to move the duty; see port.c.
+; Nothing here reads or writes a FIFO, raises an interrupt, or keeps state —
+; there is no state to keep. A gate has no baud rate.
+;
+.program irtower
+
+.wrap_target
+dark:
+    set pins, 0    [2]      ; 3 cycles dark
+    jmp pin, dark           ; 1 cycle: still a serial one? stay dark
+    set pins, 1    [3]      ; 4 cycles lit, then wrap into `dark` for 4 more
+.wrap
+
+% c-sdk {
+#include "hardware/clocks.h"
+
+/*
+ * The offsets of the two patchable delay fields, so port.c can set the duty
+ * without knowing the encoding by heart. Delay lives in bits 12:8 of a PIO
+ * instruction word when no side-set is configured.
+ */
+#define IRTOWER_PIO_DARK_INSN 0u
+#define IRTOWER_PIO_LIT_INSN  2u
+%}
