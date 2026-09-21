@@ -219,3 +219,93 @@ Steps 1–3 need no LEGO hardware whatsoever, and are where the mistakes live.
   * The achieved carrier frequency and the receiver's burst tolerance are
     recorded numbers, per board, not assumptions.
   * No file in the result is a translation of anything.
+
+## Afterwards: the audit, and what this file got wrong
+
+The implementation is `firmware/ir-tower/`, written by an agent that had not
+read DiyIrTower, from this file plus datasheets. `make -C firmware/ir-tower
+test` runs it in half a second with no hardware; `test/ir-tower-firmware.test.mjs`
+runs the same thing under `npm test`.
+
+**Two boards, at opposite ends of the design space on purpose.** The RP2040
+gates in hardware — `tower.pio` is three instructions, `jmp pin` on host TXD
+inside the carrier loop, and after init the CPU does nothing but `__wfi()`.
+The ATtiny85 gates in software, in 100 bytes of flash and a 14-cycle loop.
+They also differ on the receive path deliberately: the RP2040 wires the
+receiver to the host in copper (`IRT_RX_WIRED_THROUGH`) and the ATtiny
+re-drives it.
+
+### What the auditor checked independently
+
+Not by re-reading the implementer's reasoning — by rebuilding and by reading
+the primary sources:
+
+  * **The ATtiny85 firmware, at the instruction level.** Rebuilt with
+    `avr-gcc`: 100 bytes, and `OCR0A = 0xD2 = 210`, so the period is 211
+    clocks and 8 MHz / 211 = **37 914.692 Hz**, which is the recorded figure to
+    three decimals. `OCR0B = 0x68` gives 105/211 = 49.8 % duty.
+    `TCCR0A = 0x23` / `TCCR0B = 0x09` is fast PWM, TOP = OCR0A, no prescaler,
+    non-inverting on OC0B — correct. The gate loop's longest path is
+    `sbis`(1) + `rjmp`(2) + `sbi`(2) + `rjmp`(2) + `sbis`(1) + `rjmp`(2) +
+    `cbi`(2) + `rjmp`(2) = **exactly 14 cycles**, so 8 MHz / 14 = 571 428 Hz
+    and 1.75 µs of jitter are read off the built binary, not estimated.
+  * **Both polarities, from the disassembly.** The gate toggles `DDRB` bit 1,
+    not the timer — so the carrier never loses phase, which is the thing this
+    file warns about in the opposite direction. TXD high skips to `cbi DDRB,1`
+    (dark on a mark); TXD low sets it (light on a space). The receive relay
+    follows `PINB` bit 3 onto `PORTB` bit 4 uninverted. Both correct.
+  * **The arithmetic**, re-derived: 9 zero bits at 2400 baud is 3.75 ms is
+    **142.5 carrier cycles**, and the gap that follows (parity plus stop) is
+    31.7. At 4800 8-N-1 a `0x00` is 71.3 cycles and a single zero bit is 7.9.
+  * **Vishay document 82459 rev. 2.4**, fetched and read: Fig. 1 is titled
+    *"Output Active Low"*, confirming the polarity this file left as a
+    verification item. Its conditions table gives the TSOP48 family a
+    **minimum burst of 10 cycles**, a required gap of ≥ 10 cycles for bursts
+    of 10 to 72, and **> 3 × burst length for bursts over 72**. And the AGC
+    section says the sensitivity "is automatically reduced" — it attenuates,
+    it does not mute.
+
+The TSOP41/43 family figures in the implementer's report (TSOP4138 68 cycles,
+TSOP4338 40) come from a second Vishay document which the auditor could not
+retrieve; they are the implementer's citation, not re-read here.
+
+### The three findings, which matter more than the code
+
+**1. The verification item in this file has no affirmative answer, and asking
+for one was the mistake.** 142 cycles is outside the published rules of every
+current Vishay remote-control receiver — and both parts DiyIrTower's README
+names are *worse* on this than a TSOP4138. A TSOP4838 at 142 cycles wants a
+gap of more than 426 cycles and the RCX format supplies about 32.
+
+What that costs is **range, not bytes**: the AGC reduces sensitivity rather
+than blanking the output, which is why real towers work anyway. The simulation
+counts violations by default and has `agc_suppresses` for the pessimistic
+reading, where every part loses bytes. So the honest instruction is not "pick a
+part that permits 142 cycles" — none does — but "expect reduced range, and
+prefer the part with the loosest gap rule".
+
+**2. The trade inverts at 4800 baud, which this file assumed it could not.** A
+`0x00` at 4800 8-N-1 is 71 cycles, inside the TSOP4838's 72-cycle threshold —
+but a single zero bit is 7.9 cycles, below that part's 10-cycle *minimum burst
+length*. **A TSOP4838 cannot carry `firmdl3`'s download mode at all**, while
+carrying 2400 baud perfectly. Parts with a 6-cycle minimum can. The suite
+asserts it.
+
+**3. `rx_pin_write()` alone is not implementable.** Nothing can be written
+without reading the receiver. The interface gained `irt_port_rx_recv_read()`,
+and boards that wire it through in copper implement neither.
+
+Two smaller corrections. The `divisor = F_CPU / (2 × 38000)` formula above
+assumes a toggle-on-compare timer, which fixes duty at 50 % and therefore
+cannot satisfy this same file's "make duty a parameter" — both boards use real
+PWM instead. And "state the achieved frequency" under-weighted the clock: on
+an ATtiny85 the divider error (−0.22 %) is two orders of magnitude smaller than
+the internal RC oscillator's ±10 % factory calibration, against a receiver
+passband only 3.8 kHz wide. The number nobody measures is the one that decides
+the range.
+
+### Not verified
+
+The RP2040 port has had no compiler over it — `arm-none-eabi-gcc` is present
+here but the pico-sdk is not, so `boards/rp2040/port.c` and `tower.pio` are
+unbuilt. Neither board has met a brick.
