@@ -96,7 +96,12 @@ export const REQUESTS = new Map([
   [0x45, { name: 'transferData', params: null, reply: 0xb2, replyParams: 1 }],
   [0x50, { name: 'stopAllTasks', params: 0, reply: 0xa7, replyParams: 0 }],
   [0x51, { name: 'playSound', params: 1, reply: 0xa6, replyParams: 0 }],
-  [0x52, { name: 'setDatalogSize', params: 2, reply: 0xa5, replyParams: 1 }],
+  // replyParams 0, not 1. This said 1 until the oracle ran `nqc -clear`, which
+  // is the only thing in NQC that sends this opcode: it transmits
+  // `52 ad 00 ff 00 ff 52 ad` and accepts a reply carrying the complemented
+  // opcode and NOTHING else, exiting 0. With 1 here, extractReply waits for a
+  // byte that never arrives and reports NO_REPLY for an exchange that worked.
+  [0x52, { name: 'setDatalogSize', params: 2, reply: 0xa5, replyParams: 0 }],
   [0x60, { name: 'powerOff', params: 0, reply: 0x97, replyParams: 0 }],
   [0x61, { name: 'deleteTask', params: 1, reply: 0x96, replyParams: 0 }],
   [0x70, { name: 'deleteAllSubroutines', params: 0, reply: 0x87, replyParams: 0 }],

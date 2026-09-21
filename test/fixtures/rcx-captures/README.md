@@ -42,7 +42,7 @@ The `SPEED` line is worth as much as the frames: it is the only independent
 confirmation that `lib/rcx/rcx-serial.js` opens the port correctly, and it was
 previously only a citation.
 
-## The three runs
+## The runs
 
 | file | program | slot | chunks |
 | --- | --- | --- | --- |
@@ -52,3 +52,39 @@ previously only a citation.
 
 `c-slot2.log` is the one that settles chunk ordering: `35` (begin subroutine
 download) precedes `25` (begin task download) on the wire.
+
+Beyond the downloads, one capture per simple action, so the corpus covers
+opcodes the download path never reaches:
+
+| file | command | frames |
+| --- | --- | --- |
+| `run.log` | `-run` | `10 71` |
+| `getversion.log` | `-getversion` | `10 15` |
+| `batterylevel.log` | `-batterylevel` | `10 30` |
+| `near.log` | `-near` | `10 31` |
+| `sleep.log` | `-sleep 5` | `10 b1` |
+| `msg.log` | `-msg 7` | `f7` |
+| `clear.log` | `-clear` | `10 50` then select/delete/delete per slot, then `52` |
+
+`clear.log` earns its place twice over. It is the only thing in NQC that sends
+`0x52`, which settled a row the first comparison had to leave unresolved — and
+it shows that `-clear` deletes subroutines before tasks (`70` then `40`),
+which is the opposite of the order a download uses.
+
+`msg.log` is the only capture with no leading ping, and its opcode `0xf7` is
+one we deliberately do not tabulate.
+
+## What the corpus is used for
+
+59 frames across 16 distinct opcodes, and they serve two different purposes:
+
+  * as an **encoder** oracle — what we transmit for the same program must
+    match, frame for frame and payload for payload;
+  * as a **decoder** corpus — these bytes were produced by NQC rather than by
+    us, so parsing them is not the circular exercise that round-tripping
+    through our own encoder would be. The checksum rule and the value/
+    complement pairing are re-derived from the raw bytes in the test rather
+    than taken from the decoder, so the two are independent statements.
+
+Corrupting a single byte in any file turns three assertions red; that was
+checked rather than assumed.

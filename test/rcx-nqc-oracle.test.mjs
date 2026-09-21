@@ -19,12 +19,12 @@
 // overlay/scratch-gui/src/lib/nqc-wasm was built from.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync, readdirSync} from 'node:fs';
 import {join} from 'node:path';
 
 import {
     REQUESTS, OP, TOGGLE_BIT, parseRcxImage, planBlocks,
-    DEFAULT_BLOCK_SIZE, downloadImage, createFakeTower
+    DEFAULT_BLOCK_SIZE, downloadImage, createFakeTower, decodeReply
 } from '../overlay/scratch-gui/src/lib/rcx/rcx-protocol.js';
 import {
     RCX_BAUD_RATE, RCX_PARITY, RCX_DATA_BITS, RCX_STOP_BITS
@@ -72,12 +72,42 @@ const NQC_VARIABLE = new Set([0x63, 0xa4]);
  * as broader agreement than it has.
  */
 const NQC_DOES_NOT_EXERCISE = new Set([
-    0x52 // kRCX_SetDatalogOp — defined in RCX_Constants.h, sent by nothing in
-         // rcxlib or compiler. Our table says its reply carries one byte;
-         // NQC's default would say none. Neither claim is tested by NQC, so
-         // this row is UNRESOLVED and is excluded from the agreement below
-         // rather than counted as a match or as a conflict.
+    // Was 0x52. It is no longer here: `nqc -clear` sends it — the only thing
+    // in NQC that does — and that run resolved the row against us. See
+    // "the reply of an opcode NQC barely uses" below.
 ]);
+
+test('every declared reply opcode is the complement with the toggle cleared', () => {
+    // This convention is load-bearing and nothing asserted it. Checked naively
+    // against `~opcode`, all 33 entries "mismatch" — by exactly 0x08 every
+    // time, because the table stores the reply in the same canonical form it
+    // keys requests by: toggle bit clear, applied at encode time. That is the
+    // same normalisation NQC does with `data[0] & 0xf7`.
+    //
+    // Which means a single entry written with the toggle SET would have looked
+    // like all the others to a reader and been wrong on the wire, with nothing
+    // to catch it. Now there is.
+    for (const [opcode, spec] of REQUESTS) {
+        assert.equal(spec.reply, (~opcode) & 0xff & ~TOGGLE_BIT,
+            `0x${opcode.toString(16)} (${spec.name}) declares reply 0x${spec.reply.toString(16)}`);
+    }
+});
+
+test('the reply of an opcode NQC barely uses: 0x52 carries no data', () => {
+    // The one row the first oracle pass could not resolve, because NQC's
+    // download path never sends it. `nqc -clear` does — it is the last frame
+    // of that sequence — and the capture settles it: NQC transmits
+    // `52 ad 00 ff 00 ff 52 ad`, accepts a reply of the complemented opcode
+    // alone, and exits 0. We said one data byte, which would have made
+    // extractReply wait for a byte that never comes.
+    const spec = REQUESTS.get(0x52);
+    assert.equal(spec.params, 2, 'a short datalog size');
+    assert.equal(spec.replyParams, 0);
+    const clear = capture('clear.log');
+    const frame = clear.find(f => f.opcode === 0x52);
+    assert.ok(frame, '-clear must still be the capture that exercises this');
+    assert.deepEqual(frame.params, [0, 0]);
+});
 
 test('the reply length of every opcode NQC exercises matches ours', () => {
     const compared = [];
@@ -307,3 +337,98 @@ test('the program slot goes on the wire zero-based, as NQC sends it', () => {
     });
 });
 
+
+/* ------------------------------------------------------------------ decoder */
+
+/** Every TX line in every capture: 59 frames NQC actually transmitted. */
+const allCapturedFrames = () => readdirSync(join(import.meta.dirname, 'fixtures/rcx-captures'))
+    .filter(name => name.endsWith('.log'))
+    .flatMap(name => readFileSync(join(import.meta.dirname, 'fixtures/rcx-captures', name), 'utf8')
+        .split('\n')
+        .filter(line => line.startsWith('TX '))
+        .map(line => ({
+            file: name,
+            bytes: Uint8Array.from(line.slice(3).trim().split(/\s+/).map(h => parseInt(h, 16)))
+        })));
+
+test('the decoder accepts every frame NQC transmitted', () => {
+    // EVERYTHING ABOVE TESTS THE ENCODER. This is the other half, and it is
+    // the half that was never checked against anything but our own fake
+    // tower: these bytes were produced by NQC, not by us, so agreement here
+    // is not circular in the way a round trip through our own encoder is.
+    const frames = allCapturedFrames();
+    assert.ok(frames.length >= 55, `only ${frames.length} captured frames`);
+
+    const refused = [];
+    for (const {file, bytes} of frames) {
+        const decoded = decodeReply(bytes);
+        if (!decoded.ok) refused.push(`${file}: ${decoded.error} — ${decoded.detail}`);
+    }
+    assert.deepEqual(refused, [], 'frames NQC sent that our decoder rejects');
+});
+
+test('the decoder recovers the same opcode and payload the bytes carry', () => {
+    // Accepting a frame is not the same as understanding it. Each byte pair on
+    // the wire is a value and its complement, so the payload can be recovered
+    // here independently of how the decoder does it, and the two compared.
+    for (const {file, bytes} of allCapturedFrames()) {
+        const decoded = decodeReply(bytes);
+        assert.equal(decoded.opcode, bytes[3], `${file}: opcode`);
+        assert.equal(decoded.baseOpcode, bytes[3] & ~TOGGLE_BIT & 0xff, `${file}: base opcode`);
+
+        const expected = [];
+        for (let i = 5; i < bytes.length - 2; i += 2) {
+            assert.equal(bytes[i + 1], (~bytes[i]) & 0xff,
+                `${file}: byte at ${i} is not followed by its complement`);
+            expected.push(bytes[i]);
+        }
+        assert.deepEqual([...decoded.params], expected, `${file}: payload`);
+    }
+});
+
+test('the checksum rule holds on every captured frame', () => {
+    // "Ck is the sum of the opcode and the data bytes, modulo 256." Computed
+    // here from the raw bytes rather than taken from the decoder, so the two
+    // are independent statements of the same rule.
+    for (const {file, bytes} of allCapturedFrames()) {
+        let sum = bytes[3];
+        for (let i = 5; i < bytes.length - 2; i += 2) sum += bytes[i];
+        assert.equal(bytes[bytes.length - 2], sum & 0xff, `${file}: checksum`);
+        assert.equal(bytes[bytes.length - 1], (~sum) & 0xff, `${file}: checksum complement`);
+    }
+});
+
+test('the toggle alternates across NQC\'s own command stream', () => {
+    // RCX Internals says messages "seem to alternate" the 0x08 bit and that
+    // the brick never runs the same opcode twice in a row. This is that claim
+    // measured on a real sender: within one download, consecutive frames must
+    // not repeat both opcode and toggle.
+    const frames = readFileSync(
+        join(import.meta.dirname, 'fixtures/rcx-captures/mine-native-slot1.log'), 'utf8')
+        .split('\n').filter(l => l.startsWith('TX '))
+        .map(l => parseInt(l.slice(3).trim().split(/\s+/)[3], 16));
+    for (let i = 1; i < frames.length; i++) {
+        assert.notEqual(frames[i], frames[i - 1],
+            `frame ${i}: NQC repeated the exact opcode byte 0x${frames[i].toString(16)}`);
+    }
+    // And the repeated TRANSFER_DATA frames are the case that proves it: the
+    // same command four times, distinguishable only by the toggle.
+    const transfers = frames.filter(op => (op & ~TOGGLE_BIT & 0xff) === OP.TRANSFER_DATA);
+    assert.ok(transfers.length >= 4, `only ${transfers.length} transfer frames`);
+    assert.equal(new Set(transfers).size, 2, 'transfers must use exactly two toggle phases');
+});
+
+test('opcodes NQC sends that we do not tabulate are named, not silently absent', () => {
+    // 0xf7 (send an IR message) appears in the corpus via `nqc -msg`. We have
+    // no entry for it, and that is a scope decision rather than an oversight:
+    // nothing in this app sends a message to a brick. Naming it here means the
+    // gap is a recorded choice, and a future frame with an unknown opcode
+    // fails this test instead of passing unnoticed.
+    const KNOWN_ABSENT = new Set([0xf7]);
+    const unknown = new Set();
+    for (const {bytes} of allCapturedFrames()) {
+        const base = bytes[3] & ~TOGGLE_BIT & 0xff;
+        if (!REQUESTS.has(base) && !KNOWN_ABSENT.has(base)) unknown.add(base);
+    }
+    assert.deepEqual([...unknown], [], 'captured opcodes we neither tabulate nor excuse');
+});

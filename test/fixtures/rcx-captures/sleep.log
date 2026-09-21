@@ -1,0 +1,6 @@
+OPEN oracle
+SPEED 2400 data=8 parity=odd stop=1
+TX 55 ff 00 10 ef 10 ef
+RX 55 ff 00 ef 10 ef 10
+TX 55 ff 00 b1 4e 05 fa b6 49
+RX 55 ff 00 4e b1 4e b1

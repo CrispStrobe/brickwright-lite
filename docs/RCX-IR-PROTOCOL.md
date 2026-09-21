@@ -350,14 +350,49 @@ port for. Until this run, `lib/rcx/rcx-serial.js` opened the port on the
 strength of a quotation from RCX Internals and nothing else, and a wrong parity
 is the failure that produces no error at all, just a brick that never answers.
 
-### What is still unresolved, and is not counted as agreement
+### The unresolved row, resolved — against us
 
-`0x52` (set datalog size). Our table says its reply carries one byte; NQC's
-`default` would say none. But **NQC never sends it** — the constant is defined
-in `RCX_Constants.h` and nothing in `rcxlib` or the compiler uses it — so its
-default is untested there and cannot be cited either way. The test names this
-row and excludes it explicitly, because a differential that quietly skips its
-own blind spots reads as broader agreement than it has.
+The first pass left `0x52` (set datalog size) open: our table said its reply
+carries one byte, NQC's `default` would say none, and NQC's download path
+never sends it, so neither claim was tested.
+
+`nqc -clear` sends it. It is the last frame of that sequence, and the capture
+settles the row: NQC transmits `52 ad 00 ff 00 ff 52 ad` and accepts a reply
+carrying the complemented opcode and **nothing else**, exiting 0. **We were
+wrong.** With `replyParams: 1`, `extractReply` waits for a byte that never
+arrives and reports `NO_REPLY` for an exchange that worked perfectly. Fixed,
+and the test now cites the capture rather than excusing the gap.
+
+Widening the corpus to one capture per NQC action was what found it — the
+download path exercises eight opcodes and the whole corpus exercises sixteen.
+
+### The decoder, which nothing had tested against anything foreign
+
+Everything above tests the ENCODER. The 59 captured frames are also the only
+corpus of RCX frames in this repository that we did not produce ourselves, so
+they test the decoder without the circularity of a round trip through our own
+encoder. It accepts all of them, recovers the same opcode and payload in every
+case, and the checksum rule and the value/complement pairing are re-derived
+from the raw bytes in the test rather than taken from the decoder — two
+independent statements of the same rule. Corrupting one byte of one capture
+turns three assertions red, which was checked rather than assumed.
+
+Two smaller things the wider corpus settled. `nqc -clear` deletes subroutines
+before tasks (`70` then `40`), the opposite of a download's order — so neither
+order is "the" order, and ours matching the download path is the right
+comparison. And `0xf7`, the send-a-message opcode, appears via `nqc -msg` and
+is one we deliberately do not tabulate; the test names it as an excused
+absence, so a future capture carrying an opcode we neither tabulate nor excuse
+fails instead of passing unnoticed.
+
+### One thing that looked like 33 bugs and was a convention
+
+Checked naively against `~opcode`, every reply opcode in our table mismatches
+— all 33 of them, by exactly `0x08` every time. The table stores replies in
+the same canonical form it keys requests by, with the toggle bit clear, which
+is the normalisation NQC also does with `data[0] & 0xf7`. Nothing asserted
+that, so one entry written with the toggle set would have read like all the
+others and been wrong on the wire. Now asserted.
 
 Two more things the oracle does not cover, for the same reason: NQC's chunk
 loop iterates the image in file order and never sorts, so it says nothing
