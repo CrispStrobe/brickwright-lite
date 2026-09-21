@@ -2,8 +2,8 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "00af429ef0066e17faaac30bf1f1f04e43a5e6f2",
-    "read": "2026-09-20"
+    "sha": "78089d5d65cb83db4273c159ec24db9ecbe4c9d6",
+    "read": "2026-09-21"
   },
   "rows": [
     {
@@ -338,10 +338,10 @@
     {
       "id": "masm",
       "kind": "oracle",
-      "present": false,
+      "present": true,
       "ciAvailable": false,
       "ci": "no — the binaries live at an absolute /tmp path, the same blind spot as the ehBASIC ROM: audit-clean-checkout strips untracked REPO files by archiving HEAD and cannot reach /tmp, so their absence in a fresh checkout is invisible to it. Can only stand in CI if the job fetches them explicitly.",
-      "via": "tried $MSDOS_BIN_DIR, /tmp/msdosbin",
+      "via": "$MSDOS_BIN_DIR=/mnt/volume1/code/msdos-v2-bin",
       "gates": [
         "test/oracle-masm.test.mjs",
         "scripts/oracle-masm.mjs",
