@@ -20,8 +20,8 @@
 import {writeFileSync, readFileSync} from 'node:fs';
 import {resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {existsSync} from 'node:fs';
 import {loadExtension, methodNames} from '../spike/load-extension.mjs';
-import {bundleSource} from '../spike/bundled-upstream.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '../..');
@@ -32,6 +32,42 @@ const OUT = resolve(root, 'test/fixtures/ev3-legacy-ledger.json');
 // vocabulary, and consolidating it would put 54 blocks that cannot work into
 // the palette of every stock-firmware user.
 export const LEGACY = ['ev3comprehensive', 'ev3lms', 'legoev3direct'];
+
+/** Where each legacy extension's source lives in CrispStrobe/extensions. */
+const UPSTREAM = {
+    ev3comprehensive: 'extensions/CrispStrobe/ev3_universal.js',
+    ev3lms: 'extensions/CrispStrobe/ev3_lms_transpile.js',
+    legoev3direct: 'extensions/CrispStrobe/ev3_direct.js'
+};
+
+const from = process.argv.includes('--from')
+    ? process.argv[process.argv.indexOf('--from') + 1]
+    : null;
+
+/**
+ * The legacy source, and ONLY from a checkout.
+ *
+ * Reading the in-tree bundles is deliberately not a fallback. Two of the three
+ * are gone — retired by the consolidation — and the third, ev3comprehensive,
+ * is now the UNIFIED extension: reading it here would regenerate the fixture
+ * from the very thing the fixture exists to judge, and every coverage test
+ * would then pass by construction.
+ *
+ * Point --from at a CrispStrobe/extensions checkout at 3c7eabc0, the pin Lite
+ * shipped these three at.
+ */
+const readSource = function (id) {
+    if (!from) {
+        throw new Error(
+            `${id}'s legacy source is not in this tree. Pass --from <a ` +
+            'CrispStrobe/extensions checkout at 3c7eabc0>. Reading the in-tree ' +
+            'bundle is refused: ev3comprehensive is the unified extension now, so ' +
+            'the fixture would be regenerated from what it exists to judge.');
+    }
+    const path = resolve(from, UPSTREAM[id]);
+    if (!existsSync(path)) throw new Error(`${UPSTREAM[id]} is not in ${from}`);
+    return readFileSync(path, 'utf8');
+};
 
 globalThis.window = globalThis;
 Object.defineProperty(globalThis, 'navigator',
@@ -44,6 +80,13 @@ globalThis.document = {
 };
 globalThis.localStorage = {getItem: () => null, setItem: () => {}};
 globalThis.addEventListener = () => {};
+globalThis.alert = () => {};
+// These extensions arm reconnect timers in their CONSTRUCTORS, so a process
+// that merely loads them keeps live handles and never exits. Stubbing the
+// timer is what the SPIKE ledger generator does and is the honest fix: the
+// ledger is about getInfo(), and no timer callback contributes to it.
+globalThis.setInterval = () => 0;
+globalThis.setTimeout = () => 0;
 
 /** A block, reduced to the parts a coverage judgement is allowed to rely on. */
 const normaliseBlock = block => ({
@@ -58,9 +101,7 @@ const normaliseBlock = block => ({
 export const buildLedger = function () {
     const extensions = {};
     for (const id of LEGACY) {
-        const source = bundleSource(id);
-        if (!source) throw new Error(`${id}: no bundle to freeze`);
-        const instance = loadExtension(source);
+        const instance = loadExtension(readSource(id));
         const info = instance.getInfo();
         extensions[id] = {
             id: info.id,
@@ -103,14 +144,10 @@ if (isMain) {
             .map(([id, e]) => `${id} ${e.blocks.length}`).join(', ');
         process.stderr.write(`wrote ${OUT} (${counts})\n`);
     }
-    // EXPLICIT EXIT, and not a tidiness preference.
-    //
-    // Loading these extensions starts work that outlives getInfo(): reconnect
-    // timers and a read loop, armed in their constructors. Node then has live
-    // handles and will not exit on its own, so the first run of this script sat
-    // for ten minutes having ALREADY written a correct fixture — the work was
-    // done and only the process was stuck, which is the most misleading way for
-    // a generator to fail. The SPIKE ledger generator needs no such exit; its
-    // extensions arm nothing at construction.
+    // Belt and braces alongside the stubbed timers above: a read loop that
+    // already started keeps its own handle, and the first run of this script
+    // sat for ten minutes having ALREADY written a correct fixture — the work
+    // was done and only the process was stuck, which is the most misleading
+    // way for a generator to fail.
     process.exit(0);
 }

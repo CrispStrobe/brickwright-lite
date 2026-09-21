@@ -11,7 +11,7 @@ A complete, MPL-2.0, CrispStrobe-authored LEGO extension suite lives in
 | Hub | Extensions | Transport | Deliverable (codegen) |
 |---|---|---|---|
 | Spike Prime / Robot Inventor | `spikeprime` (was five ids; see `SPIKE-CONSOLIDATION.md`) | Web BLE / Scratch Link BLE / Scratch Link BT / bridge, auto-detected | SPIKE Python |
-| EV3 | `ev3comprehensive`, `ev3dev` (id `scratchtoev3`), `ev3lms`, `legoev3direct` | Scratch Link / BLE / serial / WS | EV3 Python (ev3dev2), LMS bytecode |
+| EV3 | `ev3comprehensive`, `ev3dev` (id `scratchtoev3`) | Web Serial / Scratch Link / WS bridge / HTTP, auto-detected | EV3 Python (ev3dev2), LMS bytecode |
 | NXT | `legonxt` | BTC / Scratch Link / bridge | NXC |
 | Boost | `legoboostunified` | BLE / Scratch Link / bridge / GATT | transpile |
 | WeDo 2.0 | `wedo2unified` | BLE / Scratch Link / GATT | transpile |
@@ -26,7 +26,7 @@ its emitter distinguishes a `simulator` mode from an `ondevice` mode, and `ondev
 
 **On GPL:** `ev3dev` is GPL, but our `ev3dev` extension (MPL-2.0) *generates/streams* Python
 that runs on the user's own ev3dev brick — it does not vendor or link ev3dev's code. Same for
-`legonxt` (emits NXC, compiled elsewhere) and `ev3lms` (LMS bytecode). We produce code for
+`legonxt` (emits NXC, compiled elsewhere) and `ev3comprehensive` (LMS bytecode). We produce code for
 their runtime; we never embed their runtime. The GPL boundary is never crossed.
 
 The **faceplate campaign** (bw-circuit-ui widgets + bw-board faces + the LCD/RGB widgets in
@@ -37,6 +37,26 @@ That is the ground truth. One useful SPIKE Prime slice now crosses the first gap
 generic multi-hub architecture remains open.
 
 ---
+
+
+### The EV3 family is two extensions, not four (2026-09-21)
+
+`ev3lms` and `legoev3direct` were retired into `ev3comprehensive`. All three
+spoke the same direct-command protocol to the same stock LEGO firmware; what
+was split between them was a block surface, a working live implementation and
+a compiler. `ev3comprehensive` had 47 of its 74 blocks with no live-mode body
+at all and three more answering with constants, while `legoev3direct` — listed
+below it in the picker — had 41 blocks and none hollow. The unified extension
+is 82 blocks with none hollow, over four transports chosen by auto-detection.
+
+`ev3dev` stays separate and that is deliberate: it is a different operating
+system on the brick, with its own vocabulary. Folding it in would put 54 blocks
+that cannot work into every stock-firmware user's palette.
+
+Old projects migrate at load through
+`overlay/scratch-gui/src/lib/ev3-legacy-migration.js`; retired ids also resolve
+in the extension manager, for the paths that do not go through the project
+loader.
 
 ## Gap 1 (highest priority) — pseudocode ⇄ Scratch-with-LEGO-blocks (partial)
 
