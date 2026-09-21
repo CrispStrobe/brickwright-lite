@@ -22,7 +22,7 @@
       "y": 115
     },
     {
-      "id": "MCU",
+      "id": "mega1",
       "kind": "arduino_mega",
       "params": {},
       "terminals": [
@@ -37,25 +37,15 @@
       "y": -5
     },
     {
-      "id": "LDR_ldr",
-      "kind": "ldr",
-      "params": {},
-      "terminals": [
-        "a",
-        "b"
-      ],
-      "x": 400,
-      "y": 255
-    },
-    {
-      "id": "R_DIV_ldr",
-      "kind": "resistor",
+      "id": "POT_ldr",
+      "kind": "potentiometer",
       "params": {
         "ohms": 10000
       },
       "terminals": [
         "a",
-        "b"
+        "b",
+        "wiper"
       ],
       "x": 64,
       "y": 255
@@ -84,7 +74,7 @@
         "anode",
         "cathode"
       ],
-      "x": 456,
+      "x": 400,
       "y": 255
     },
     {
@@ -111,7 +101,7 @@
         "anode",
         "cathode"
       ],
-      "x": 512,
+      "x": 456,
       "y": 255
     },
     {
@@ -138,7 +128,7 @@
         "anode",
         "cathode"
       ],
-      "x": 568,
+      "x": 512,
       "y": 255
     }
   ],
@@ -159,7 +149,7 @@
       "id": "w_flat_1",
       "netId": "bb1:n-col-t15",
       "from": {
-        "part": "MCU",
+        "part": "mega1",
         "terminal": "d22"
       },
       "to": {
@@ -183,7 +173,7 @@
       "id": "w_flat_3",
       "netId": "bb1:n-col-t21",
       "from": {
-        "part": "MCU",
+        "part": "mega1",
         "terminal": "d23"
       },
       "to": {
@@ -205,33 +195,21 @@
     },
     {
       "id": "w_flat_5",
-      "netId": "bb1:n-col-t29",
+      "netId": "bb1:n-col-t5",
       "from": {
-        "part": "LDR_ldr",
-        "terminal": "b"
+        "part": "mega1",
+        "terminal": "a0"
       },
       "to": {
-        "part": "MCU",
-        "terminal": "a0"
+        "part": "POT_ldr",
+        "terminal": "wiper"
       }
     },
     {
       "id": "w_flat_6",
-      "netId": "bb1:n-col-t29",
-      "from": {
-        "part": "LDR_ldr",
-        "terminal": "b"
-      },
-      "to": {
-        "part": "R_DIV_ldr",
-        "terminal": "a"
-      }
-    },
-    {
-      "id": "w_flat_7",
       "netId": "bb1:n-col-t9",
       "from": {
-        "part": "MCU",
+        "part": "mega1",
         "terminal": "d13"
       },
       "to": {
@@ -240,7 +218,7 @@
       }
     },
     {
-      "id": "w_flat_8",
+      "id": "w_flat_7",
       "netId": "bb1:rail-b-",
       "from": {
         "part": "GND",
@@ -252,7 +230,7 @@
       }
     },
     {
-      "id": "w_flat_9",
+      "id": "w_flat_8",
       "netId": "bb1:rail-b-",
       "from": {
         "part": "GND",
@@ -264,7 +242,7 @@
       }
     },
     {
-      "id": "w_flat_10",
+      "id": "w_flat_9",
       "netId": "bb1:rail-b-",
       "from": {
         "part": "GND",
@@ -276,6 +254,18 @@
       }
     },
     {
+      "id": "w_flat_10",
+      "netId": "bb1:rail-b-",
+      "from": {
+        "part": "GND",
+        "terminal": "gnd"
+      },
+      "to": {
+        "part": "mega1",
+        "terminal": "gnd2"
+      }
+    },
+    {
       "id": "w_flat_11",
       "netId": "bb1:rail-b-",
       "from": {
@@ -283,40 +273,28 @@
         "terminal": "gnd"
       },
       "to": {
-        "part": "MCU",
-        "terminal": "gnd2"
+        "part": "POT_ldr",
+        "terminal": "b"
       }
     },
     {
       "id": "w_flat_12",
-      "netId": "bb1:rail-b-",
+      "netId": "bb1:rail-t+",
       "from": {
-        "part": "GND",
-        "terminal": "gnd"
+        "part": "mega1",
+        "terminal": "5v"
       },
       "to": {
-        "part": "R_DIV_ldr",
-        "terminal": "b"
+        "part": "POT_ldr",
+        "terminal": "a"
       }
     },
     {
       "id": "w_flat_13",
       "netId": "bb1:rail-t+",
       "from": {
-        "part": "LDR_ldr",
-        "terminal": "a"
-      },
-      "to": {
-        "part": "MCU",
+        "part": "mega1",
         "terminal": "5v"
-      }
-    },
-    {
-      "id": "w_flat_14",
-      "netId": "bb1:rail-t+",
-      "from": {
-        "part": "LDR_ldr",
-        "terminal": "a"
       },
       "to": {
         "part": "VCC",

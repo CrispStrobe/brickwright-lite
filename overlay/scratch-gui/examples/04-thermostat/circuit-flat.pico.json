@@ -22,7 +22,7 @@
       "y": 115
     },
     {
-      "id": "MCU",
+      "id": "pico1",
       "kind": "pi_pico",
       "params": {},
       "terminals": [
@@ -60,25 +60,15 @@
       "y": 255
     },
     {
-      "id": "NTC_thermistor",
-      "kind": "ntc",
-      "params": {},
-      "terminals": [
-        "a",
-        "b"
-      ],
-      "x": 624,
-      "y": 255
-    },
-    {
-      "id": "R_DIV_thermistor",
-      "kind": "resistor",
+      "id": "POT_sensor",
+      "kind": "potentiometer",
       "params": {
         "ohms": 10000
       },
       "terminals": [
         "a",
-        "b"
+        "b",
+        "wiper"
       ],
       "x": 484,
       "y": 255
@@ -89,31 +79,19 @@
       "id": "w_flat_0",
       "netId": "bb1:n-col-b12",
       "from": {
-        "part": "MCU",
+        "part": "pico1",
         "terminal": "gp26"
       },
       "to": {
-        "part": "NTC_thermistor",
-        "terminal": "b"
+        "part": "POT_sensor",
+        "terminal": "wiper"
       }
     },
     {
       "id": "w_flat_1",
-      "netId": "bb1:n-col-b12",
-      "from": {
-        "part": "MCU",
-        "terminal": "gp26"
-      },
-      "to": {
-        "part": "R_DIV_thermistor",
-        "terminal": "a"
-      }
-    },
-    {
-      "id": "w_flat_2",
       "netId": "bb1:n-col-t27",
       "from": {
-        "part": "MCU",
+        "part": "pico1",
         "terminal": "gp25"
       },
       "to": {
@@ -122,7 +100,7 @@
       }
     },
     {
-      "id": "w_flat_3",
+      "id": "w_flat_2",
       "netId": "bb1:n-col-t31",
       "from": {
         "part": "LED_heater",
@@ -134,7 +112,7 @@
       }
     },
     {
-      "id": "w_flat_4",
+      "id": "w_flat_3",
       "netId": "bb1:rail-b-",
       "from": {
         "part": "GND",
@@ -146,6 +124,18 @@
       }
     },
     {
+      "id": "w_flat_4",
+      "netId": "bb1:rail-b-",
+      "from": {
+        "part": "GND",
+        "terminal": "gnd"
+      },
+      "to": {
+        "part": "pico1",
+        "terminal": "gnd_1"
+      }
+    },
+    {
       "id": "w_flat_5",
       "netId": "bb1:rail-b-",
       "from": {
@@ -153,39 +143,27 @@
         "terminal": "gnd"
       },
       "to": {
-        "part": "MCU",
-        "terminal": "gnd_1"
+        "part": "POT_sensor",
+        "terminal": "b"
       }
     },
     {
       "id": "w_flat_6",
-      "netId": "bb1:rail-b-",
+      "netId": "bb1:rail-t+",
       "from": {
-        "part": "GND",
-        "terminal": "gnd"
+        "part": "pico1",
+        "terminal": "vbus"
       },
       "to": {
-        "part": "R_DIV_thermistor",
-        "terminal": "b"
+        "part": "POT_sensor",
+        "terminal": "a"
       }
     },
     {
       "id": "w_flat_7",
       "netId": "bb1:rail-t+",
       "from": {
-        "part": "MCU",
-        "terminal": "vbus"
-      },
-      "to": {
-        "part": "NTC_thermistor",
-        "terminal": "a"
-      }
-    },
-    {
-      "id": "w_flat_8",
-      "netId": "bb1:rail-t+",
-      "from": {
-        "part": "MCU",
+        "part": "pico1",
         "terminal": "vbus"
       },
       "to": {

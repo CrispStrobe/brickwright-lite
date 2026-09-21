@@ -31,12 +31,14 @@
    "y": 115
   },
   {
-   "id": "MCU",
+   "id": "attiny851",
    "kind": "attiny85",
    "params": {},
    "terminals": [
     "pb0"
    ],
+   "x": 64,
+   "y": 349,
    "seat": {
     "boardId": "bb1",
     "leadMap": {
@@ -49,49 +51,69 @@
      "pb2": "e4",
      "vcc": "e3"
     }
-   },
-   "x": 64,
-   "y": 349
+   }
   },
   {
-   "id": "SERVO_servo",
-   "kind": "servo",
-   "params": {},
+   "id": "R_signal",
+   "kind": "resistor",
+   "params": {
+    "ohms": 1000
+   },
    "terminals": [
-    "signal",
-    "vcc",
-    "gnd"
+    "a",
+    "b"
    ],
+   "x": 176,
+   "y": 255,
    "seat": {
     "boardId": "bb1",
     "leadMap": {
-     "signal": "a11",
-     "vcc": "a12",
-     "gnd": "a13"
+     "a": "a11",
+     "b": "a15"
     }
+   }
+  },
+  {
+   "id": "LED_signal",
+   "kind": "led",
+   "declName": "signal",
+   "params": {
+    "vf": 2,
+    "color": "red"
    },
-   "x": 176,
-   "y": 255
+   "terminals": [
+    "anode",
+    "cathode"
+   ],
+   "x": 260,
+   "y": 255,
+   "seat": {
+    "boardId": "bb1",
+    "leadMap": {
+     "anode": "a17",
+     "cathode": "a18"
+    }
+   }
   }
  ],
  "wires": [
   {
-   "from": "MCU",
+   "from": "attiny851",
    "fromTerminal": "pb0",
-   "to": "SERVO_servo",
-   "toTerminal": "signal"
+   "to": "R_signal",
+   "toTerminal": "a"
   },
   {
-   "from": "VCC",
-   "fromTerminal": "vcc",
-   "to": "SERVO_servo",
-   "toTerminal": "vcc"
+   "from": "R_signal",
+   "fromTerminal": "b",
+   "to": "LED_signal",
+   "toTerminal": "anode"
   },
   {
    "from": "GND",
    "fromTerminal": "gnd",
-   "to": "SERVO_servo",
-   "toTerminal": "gnd"
+   "to": "LED_signal",
+   "toTerminal": "cathode"
   },
   {
    "from": "VCC",
@@ -125,15 +147,15 @@
   {
    "ref": "bbw:bb1:gen_1",
    "boardId": "bb1",
-   "a": "b12",
-   "b": "t+12",
-   "color": "red"
+   "a": "b15",
+   "b": "b17",
+   "color": "blue"
   },
   {
    "ref": "bbw:bb1:gen_2",
    "boardId": "bb1",
-   "a": "b13",
-   "b": "b-13",
+   "a": "b18",
+   "b": "b-18",
    "color": "black"
   },
   {

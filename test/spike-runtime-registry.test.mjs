@@ -4,26 +4,12 @@
 //
 // SB3Creator.runtimeOp() looks an opcode up in RUNTIME_EXTENSIONS and returns
 // null when there is no entry — at which point the block is simply not emitted.
-// UNTIL 2026-09-21 the vendored registry still described the five pre-merge
-// extensions, so a unified entry was derived from the shipping extension and
-// MERGED over it at sb3-creator-register-art.js. sb3-creator has since
-// regenerated its registry against the unified extension, the merge became a
-// no-op and was removed — but the derivation was KEPT, and this file is why.
+// The vendored registry is pinned and still describes the five pre-merge
+// extensions, so the unified entry is derived from the shipping extension and
+// merged over it. These are the two properties that arrangement has to hold:
 //
-// It is now a drift gate rather than the check on an arrangement. Two
-// independent derivations of the same surface have to agree:
-//
-//   A. the VENDORED entry, produced by sb3-creator executing the upstream
-//      extension's getInfo() at its pin, and
-//   B. the DERIVED table, produced here by executing the bundle Lite actually
-//      ships.
-//
-// Nothing makes them agree; they agree because they describe the same
-// extension, and a divergence means Lite's bundle and sb3-creator's pin have
-// drifted apart. Deleting B along with the merge would have removed the only
-// thing that could notice.
-//
-//   1. the derived entry matches the extension that actually ships; and
+//   1. the derived entry matches the extension that actually ships, so the
+//      checked-in JSON cannot go stale against the palette; and
 //   2. every opcode the migration can produce has an entry, so no project
 //      loses blocks in the Code tab by being migrated.
 import {test} from 'node:test';
@@ -92,46 +78,13 @@ test('the four dead ids are dropped rather than left resolvable', () => {
     // site, which is what putting it in this module buys.
     const door = readFileSync(
         resolve(root, 'overlay/scratch-gui/src/lib/sb3-creator-register-art.js'), 'utf8');
+    assert.match(door, /SB3Creator\.RUNTIME_EXTENSIONS\.spikeprime = spikeRuntimeOps;/,
+        'the unified entry must be merged in');
     assert.match(door, /delete SB3Creator\.RUNTIME_EXTENSIONS\[legacyId\];/,
         'the legacy entries must be removed');
-    // And the merge that used to sit beside it must NOT come back. It is a
-    // no-op now, so re-adding it would be invisible in behaviour and would
-    // quietly re-establish "the two agree because one was overwritten by the
-    // other" in place of the drift gate below.
-    assert.doesNotMatch(door, /RUNTIME_EXTENSIONS\.spikeprime\s*=/,
-        'the unified entry is vendored now; overwriting it at runtime would hide drift ' +
-        'between Lite\'s bundle and the sb3-creator pin instead of failing on it');
     for (const legacyId of migration.LEGACY_IDS) {
         assert.ok(!Object.prototype.hasOwnProperty.call(checkedIn.ops, legacyId));
     }
-});
-
-test('DRIFT GATE: the vendored registry and the shipping bundle describe the same extension', async () => {
-    // The property the removed merge used to ARRANGE, now CHECKED. If
-    // sb3-creator's pin moves to a commit whose extension differs from the
-    // bundle Lite vendors, these two stop matching and this fails by name —
-    // where before, the merge would have silently papered over it.
-    const vendored = (await import(
-        resolve(root, 'overlay/scratch-gui/src/lib/sb3-creator-runtime.js'))).RUNTIME_EXTENSIONS;
-    const entry = vendored.spikeprime;
-    assert.ok(entry, 'the vendored registry no longer carries a spikeprime entry at all — ' +
-        'the sb3-creator pin has gone back to a commit that predates the consolidation');
-
-    assert.deepEqual(Object.keys(entry.ops).sort(), Object.keys(checkedIn.ops).sort(),
-        'the vendored opcode set and the shipping bundle\'s disagree');
-    const differing = Object.keys(checkedIn.ops)
-        .filter(op => JSON.stringify(entry.ops[op]) !== JSON.stringify(checkedIn.ops[op]));
-    assert.deepEqual(differing, [],
-        'same opcodes, different signatures — argument order or block kind has drifted');
-
-    // sb3-creator KEEPS the four legacy ids (projects in the wild carry them),
-    // which is exactly why the deletion above is not symmetric with the merge
-    // that was removed. Asserted so that a future sb3-creator dropping them
-    // shows up here as information rather than as a silent change of meaning.
-    const stillThere = migration.LEGACY_IDS.filter(id => vendored[id]);
-    assert.deepEqual(stillThere, [...migration.LEGACY_IDS],
-        'sb3-creator no longer registers the legacy SPIKE ids; the deletion in the door ' +
-        'is now redundant and should be re-examined rather than left running on nothing');
 });
 
 test('the vendored registry is not edited', () => {

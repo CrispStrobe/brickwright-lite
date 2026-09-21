@@ -31,12 +31,14 @@
    "y": 115
   },
   {
-   "id": "MCU",
+   "id": "pico1",
    "kind": "pi_pico",
    "params": {},
    "terminals": [
     "gp25"
    ],
+   "x": 64,
+   "y": 255,
    "seat": {
     "boardId": "bb1",
     "leadMap": {
@@ -81,49 +83,69 @@
      "gp17": "f21",
      "gp16": "f22"
     }
-   },
-   "x": 64,
-   "y": 255
+   }
   },
   {
-   "id": "SERVO_servo",
-   "kind": "servo",
-   "params": {},
+   "id": "R_signal",
+   "kind": "resistor",
+   "params": {
+    "ohms": 1000
+   },
    "terminals": [
-    "signal",
-    "vcc",
-    "gnd"
+    "a",
+    "b"
    ],
+   "x": 400,
+   "y": 255,
    "seat": {
     "boardId": "bb1",
     "leadMap": {
-     "signal": "a27",
-     "vcc": "a28",
-     "gnd": "a29"
+     "a": "a27",
+     "b": "a31"
     }
+   }
+  },
+  {
+   "id": "LED_signal",
+   "kind": "led",
+   "declName": "signal",
+   "params": {
+    "vf": 2,
+    "color": "red"
    },
-   "x": 400,
-   "y": 255
+   "terminals": [
+    "anode",
+    "cathode"
+   ],
+   "x": 484,
+   "y": 255,
+   "seat": {
+    "boardId": "bb1",
+    "leadMap": {
+     "anode": "a33",
+     "cathode": "a34"
+    }
+   }
   }
  ],
  "wires": [
   {
-   "from": "MCU",
+   "from": "pico1",
    "fromTerminal": "gp25",
-   "to": "SERVO_servo",
-   "toTerminal": "signal"
+   "to": "R_signal",
+   "toTerminal": "a"
   },
   {
-   "from": "VCC",
-   "fromTerminal": "vcc",
-   "to": "SERVO_servo",
-   "toTerminal": "vcc"
+   "from": "R_signal",
+   "fromTerminal": "b",
+   "to": "LED_signal",
+   "toTerminal": "anode"
   },
   {
    "from": "GND",
    "fromTerminal": "gnd",
-   "to": "SERVO_servo",
-   "toTerminal": "gnd"
+   "to": "LED_signal",
+   "toTerminal": "cathode"
   },
   {
    "from": "VCC",
@@ -150,15 +172,15 @@
   {
    "ref": "bbw:bb1:gen_0",
    "boardId": "bb1",
-   "a": "b28",
-   "b": "t+28",
-   "color": "red"
+   "a": "b31",
+   "b": "b33",
+   "color": "green"
   },
   {
    "ref": "bbw:bb1:gen_1",
    "boardId": "bb1",
-   "a": "b29",
-   "b": "b-29",
+   "a": "b34",
+   "b": "b-34",
    "color": "black"
   },
   {

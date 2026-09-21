@@ -31,12 +31,14 @@
    "y": 115
   },
   {
-   "id": "MCU",
+   "id": "attiny881",
    "kind": "attiny88",
    "params": {},
    "terminals": [
     "pb0"
    ],
+   "x": 64,
+   "y": 349,
    "seat": {
     "boardId": "bb1",
     "leadMap": {
@@ -54,64 +56,84 @@
      "pd6": "f14",
      "pd7": "f15",
      "pb0": "f16",
-     "pc5": "e3",
-     "pc4": "e4",
-     "pc3": "e5",
-     "pc2": "e6",
-     "pc1": "e7",
-     "pc0": "e8",
-     "gnd2": "e9",
-     "pc7": "e10",
-     "avcc": "e11",
-     "pb5": "e12",
-     "pb4": "e13",
-     "pb3": "e14",
-     "pb2": "e15",
-     "pb1": "e16"
+     "pc7": "e16",
+     "pc5": "e15",
+     "pc4": "e14",
+     "pc3": "e13",
+     "pc2": "e12",
+     "pc1": "e11",
+     "pc0": "e10",
+     "pa0": "e9",
+     "avcc": "e8",
+     "pb5": "e7",
+     "pb4": "e6",
+     "pb3": "e5",
+     "pb2": "e4",
+     "pb1": "e3"
     }
-   },
-   "x": 64,
-   "y": 349
+   }
   },
   {
-   "id": "SERVO_servo",
-   "kind": "servo",
-   "params": {},
+   "id": "R_signal",
+   "kind": "resistor",
+   "params": {
+    "ohms": 1000
+   },
    "terminals": [
-    "signal",
-    "vcc",
-    "gnd"
+    "a",
+    "b"
    ],
+   "x": 316,
+   "y": 255,
    "seat": {
     "boardId": "bb1",
     "leadMap": {
-     "signal": "a21",
-     "vcc": "a22",
-     "gnd": "a23"
+     "a": "a21",
+     "b": "a25"
     }
+   }
+  },
+  {
+   "id": "LED_signal",
+   "kind": "led",
+   "declName": "signal",
+   "params": {
+    "vf": 2,
+    "color": "red"
    },
-   "x": 316,
-   "y": 255
+   "terminals": [
+    "anode",
+    "cathode"
+   ],
+   "x": 400,
+   "y": 255,
+   "seat": {
+    "boardId": "bb1",
+    "leadMap": {
+     "anode": "a27",
+     "cathode": "a28"
+    }
+   }
   }
  ],
  "wires": [
   {
-   "from": "MCU",
+   "from": "attiny881",
    "fromTerminal": "pb0",
-   "to": "SERVO_servo",
-   "toTerminal": "signal"
+   "to": "R_signal",
+   "toTerminal": "a"
   },
   {
-   "from": "VCC",
-   "fromTerminal": "vcc",
-   "to": "SERVO_servo",
-   "toTerminal": "vcc"
+   "from": "R_signal",
+   "fromTerminal": "b",
+   "to": "LED_signal",
+   "toTerminal": "anode"
   },
   {
    "from": "GND",
    "fromTerminal": "gnd",
-   "to": "SERVO_servo",
-   "toTerminal": "gnd"
+   "to": "LED_signal",
+   "toTerminal": "cathode"
   },
   {
    "from": "VCC",
@@ -145,15 +167,15 @@
   {
    "ref": "bbw:bb1:gen_1",
    "boardId": "bb1",
-   "a": "b22",
-   "b": "t+22",
-   "color": "red"
+   "a": "b25",
+   "b": "b27",
+   "color": "blue"
   },
   {
    "ref": "bbw:bb1:gen_2",
    "boardId": "bb1",
-   "a": "b23",
-   "b": "b-23",
+   "a": "b28",
+   "b": "b-28",
    "color": "black"
   },
   {
@@ -173,15 +195,8 @@
   {
    "ref": "bbw:bb1:gen_5",
    "boardId": "bb1",
-   "a": "a9",
-   "b": "b-9",
-   "color": "black"
-  },
-  {
-   "ref": "bbw:bb1:gen_6",
-   "boardId": "bb1",
-   "a": "a11",
-   "b": "t+11",
+   "a": "a8",
+   "b": "t+8",
    "color": "red"
   }
  ],

@@ -11,50 +11,27 @@
    "rotation": 0
   },
   {
-   "id": "VCC",
-   "kind": "vcc",
-   "params": {},
-   "terminals": [
-    "vcc"
-   ],
-   "x": 58,
-   "y": 115
-  },
-  {
-   "id": "GND",
-   "kind": "gnd",
-   "params": {},
-   "terminals": [
-    "gnd"
-   ],
-   "x": 134,
-   "y": 115
-  },
-  {
-   "id": "MCU",
+   "id": "board",
    "kind": "arduino_mega",
    "params": {},
+   "x": 323,
+   "y": -5,
+   "rotation": 0,
    "terminals": [
     "a0",
-    "d13",
-    "5v",
-    "gnd2"
-   ],
-   "x": 475,
-   "y": -5
+    "gnd",
+    "5v"
+   ]
   },
   {
-   "id": "POT_pot",
+   "id": "pot1",
    "kind": "potentiometer",
-   "declName": "pot",
+   "declName": "sensor",
    "params": {
     "ohms": 10000
    },
-   "terminals": [
-    "a",
-    "b",
-    "wiper"
-   ],
+   "x": 64,
+   "y": 255,
    "seat": {
     "boardId": "bb1",
     "leadMap": {
@@ -62,86 +39,70 @@
      "wiper": "a5",
      "b": "a7"
     }
-   },
-   "x": 64,
-   "y": 255
+   }
   },
   {
-   "id": "SERVO_servo",
-   "kind": "servo",
-   "params": {},
-   "terminals": [
-    "signal",
-    "vcc",
-    "gnd"
-   ],
-   "seat": {
-    "boardId": "bb1",
-    "leadMap": {
-     "signal": "a9",
-     "vcc": "a10",
-     "gnd": "a11"
-    }
+   "id": "vcc1",
+   "kind": "vcc",
+   "params": {
+    "volts": 5
    },
-   "x": 148,
-   "y": 255
+   "x": 664,
+   "y": 115
+  },
+  {
+   "id": "gnd1",
+   "kind": "gnd",
+   "params": {},
+   "x": 740,
+   "y": 115
   }
  ],
  "wires": [
   {
-   "from": "POT_pot",
-   "fromTerminal": "wiper",
-   "to": "MCU",
-   "toTerminal": "a0"
-  },
-  {
-   "from": "MCU",
-   "fromTerminal": "d13",
-   "to": "SERVO_servo",
-   "toTerminal": "signal"
-  },
-  {
-   "from": "VCC",
+   "from": "vcc1",
    "fromTerminal": "vcc",
-   "to": "POT_pot",
+   "to": "pot1",
    "toTerminal": "a"
   },
   {
-   "from": "VCC",
-   "fromTerminal": "vcc",
-   "to": "SERVO_servo",
-   "toTerminal": "vcc"
-  },
-  {
-   "from": "GND",
-   "fromTerminal": "gnd",
-   "to": "POT_pot",
-   "toTerminal": "b"
-  },
-  {
-   "from": "GND",
-   "fromTerminal": "gnd",
-   "to": "SERVO_servo",
+   "from": "pot1",
+   "fromTerminal": "b",
+   "to": "gnd1",
    "toTerminal": "gnd"
   },
   {
-   "from": "VCC",
-   "fromTerminal": "vcc",
-   "to": "MCU",
-   "toTerminal": "5v",
-   "color": "red",
-   "genPower": true
+   "from": "board",
+   "fromTerminal": "a0",
+   "to": "pot1",
+   "toTerminal": "wiper"
   },
   {
-   "from": "GND",
+   "from": "board",
    "fromTerminal": "gnd",
-   "to": "MCU",
-   "toTerminal": "gnd2",
-   "color": "black",
-   "genPower": true
+   "to": "gnd1",
+   "toTerminal": "gnd"
   },
   {
-   "from": "VCC",
+   "from": "board",
+   "fromTerminal": "gnd",
+   "to": "pot1",
+   "toTerminal": "b"
+  },
+  {
+   "from": "board",
+   "fromTerminal": "5v",
+   "to": "pot1",
+   "toTerminal": "a"
+  },
+  {
+   "from": "board",
+   "fromTerminal": "5v",
+   "to": "vcc1",
+   "toTerminal": "vcc"
+  },
+  {
+   "from": "vcc1",
    "fromTerminal": "vcc",
    "to": {
     "board": "bb1",
@@ -151,7 +112,7 @@
    "genPower": true
   },
   {
-   "from": "GND",
+   "from": "gnd1",
    "fromTerminal": "gnd",
    "to": {
     "board": "bb1",
@@ -172,24 +133,10 @@
   {
    "ref": "bbw:bb1:gen_1",
    "boardId": "bb1",
-   "a": "b10",
-   "b": "t+10",
-   "color": "red"
-  },
-  {
-   "ref": "bbw:bb1:gen_2",
-   "boardId": "bb1",
    "a": "b7",
    "b": "b-7",
    "color": "black"
-  },
-  {
-   "ref": "bbw:bb1:gen_3",
-   "boardId": "bb1",
-   "a": "b11",
-   "b": "b-11",
-   "color": "black"
   }
  ],
- "generated": "benchFor+seat"
+ "generated": "benchFor+authored+seat"
 }

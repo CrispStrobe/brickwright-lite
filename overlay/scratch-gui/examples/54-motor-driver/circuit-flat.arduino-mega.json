@@ -22,12 +22,11 @@
       "y": 115
     },
     {
-      "id": "MCU",
+      "id": "mega1",
       "kind": "arduino_mega",
       "params": {},
       "terminals": [
         "d13",
-        "d9",
         "5v",
         "gnd2"
       ],
@@ -58,101 +57,16 @@
         "anode",
         "cathode"
       ],
-      "x": 456,
-      "y": 255
-    },
-    {
-      "id": "R_motor",
-      "kind": "resistor",
-      "params": {
-        "ohms": 1000
-      },
-      "terminals": [
-        "a",
-        "b"
-      ],
       "x": 148,
-      "y": 255
-    },
-    {
-      "id": "Q_motor",
-      "kind": "npn",
-      "params": {},
-      "terminals": [
-        "base",
-        "collector",
-        "emitter"
-      ],
-      "x": 316,
-      "y": 255
-    },
-    {
-      "id": "MOTOR_motor",
-      "kind": "dc_motor",
-      "params": {},
-      "terminals": [
-        "a",
-        "b"
-      ],
-      "x": 232,
-      "y": 255
-    },
-    {
-      "id": "D_motor",
-      "kind": "diode",
-      "params": {
-        "vf": 0.7
-      },
-      "terminals": [
-        "anode",
-        "cathode"
-      ],
-      "x": 386,
       "y": 255
     }
   ],
   "wires": [
     {
       "id": "w_flat_0",
-      "netId": "bb1:n-col-t13",
-      "from": {
-        "part": "Q_motor",
-        "terminal": "base"
-      },
-      "to": {
-        "part": "R_motor",
-        "terminal": "b"
-      }
-    },
-    {
-      "id": "w_flat_1",
-      "netId": "bb1:n-col-t17",
-      "from": {
-        "part": "D_motor",
-        "terminal": "anode"
-      },
-      "to": {
-        "part": "MOTOR_motor",
-        "terminal": "b"
-      }
-    },
-    {
-      "id": "w_flat_2",
-      "netId": "bb1:n-col-t17",
-      "from": {
-        "part": "D_motor",
-        "terminal": "anode"
-      },
-      "to": {
-        "part": "Q_motor",
-        "terminal": "collector"
-      }
-    },
-    {
-      "id": "w_flat_3",
       "netId": "bb1:n-col-t3",
       "from": {
-        "part": "MCU",
+        "part": "mega1",
         "terminal": "d13"
       },
       "to": {
@@ -161,8 +75,8 @@
       }
     },
     {
-      "id": "w_flat_4",
-      "netId": "bb1:n-col-t31",
+      "id": "w_flat_1",
+      "netId": "bb1:n-col-t7",
       "from": {
         "part": "LED_led",
         "terminal": "anode"
@@ -173,19 +87,7 @@
       }
     },
     {
-      "id": "w_flat_5",
-      "netId": "bb1:n-col-t9",
-      "from": {
-        "part": "MCU",
-        "terminal": "d9"
-      },
-      "to": {
-        "part": "R_motor",
-        "terminal": "a"
-      }
-    },
-    {
-      "id": "w_flat_6",
+      "id": "w_flat_2",
       "netId": "bb1:rail-b-",
       "from": {
         "part": "GND",
@@ -197,59 +99,23 @@
       }
     },
     {
-      "id": "w_flat_7",
+      "id": "w_flat_3",
       "netId": "bb1:rail-b-",
       "from": {
         "part": "GND",
         "terminal": "gnd"
       },
       "to": {
-        "part": "MCU",
+        "part": "mega1",
         "terminal": "gnd2"
       }
     },
     {
-      "id": "w_flat_8",
-      "netId": "bb1:rail-b-",
+      "id": "w_flat_4",
+      "netId": "net-lgc-4",
       "from": {
-        "part": "GND",
-        "terminal": "gnd"
-      },
-      "to": {
-        "part": "Q_motor",
-        "terminal": "emitter"
-      }
-    },
-    {
-      "id": "w_flat_9",
-      "netId": "bb1:rail-t+",
-      "from": {
-        "part": "D_motor",
-        "terminal": "cathode"
-      },
-      "to": {
-        "part": "MCU",
+        "part": "mega1",
         "terminal": "5v"
-      }
-    },
-    {
-      "id": "w_flat_10",
-      "netId": "bb1:rail-t+",
-      "from": {
-        "part": "D_motor",
-        "terminal": "cathode"
-      },
-      "to": {
-        "part": "MOTOR_motor",
-        "terminal": "a"
-      }
-    },
-    {
-      "id": "w_flat_11",
-      "netId": "bb1:rail-t+",
-      "from": {
-        "part": "D_motor",
-        "terminal": "cathode"
       },
       "to": {
         "part": "VCC",
