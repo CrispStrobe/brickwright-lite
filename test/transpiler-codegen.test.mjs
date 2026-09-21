@@ -127,11 +127,28 @@ function loadTranspiler (source, opcode, text) {
     }});
 }
 
-/** python3 with -W error, so an invalid escape fails as loudly as a SyntaxError. */
+/**
+ * python3 with -W error, so an invalid escape fails as loudly as a SyntaxError.
+ *
+ * `python3` from PATH is an AMBIENT-BINDING, triaged rather than waved past:
+ *
+ *  - It FAILS CLOSED on absence. execFileSync throws ENOENT and the test fails;
+ *    there is no path where a missing interpreter reads as a pass.
+ *  - The subject is Python's own answer to "is this a valid literal", so a stub
+ *    would be asserting this file's opinion instead of the language's — the
+ *    same reason vendor-source-guard keeps `git` from PATH.
+ *  - Version sensitivity is real and bounded, and worth stating rather than
+ *    denying: the quote and newline cases are stable across every Python 3,
+ *    but the invalid-escape case ("C:\path") rests on a SyntaxWarning that
+ *    older 3.x either did not raise or raised differently. On a sufficiently
+ *    old interpreter that one case would pass for the wrong reason. It would
+ *    not fail wrongly, which is the direction that matters here.
+ */
 function assertPythonCompiles (code) {
     const dir = mkdtempSync(path.join(tmpdir(), 'bw-tp-'));
     const file = path.join(dir, 'generated.py');
     writeFileSync(file, code);
+    // gate-shapes-allow
     execFileSync('python3', ['-W', 'error', '-c',
         'import sys; compile(open(sys.argv[1]).read(), "generated.py", "exec")', file],
     {stdio: 'pipe'});
@@ -228,31 +245,26 @@ for (const [name, source] of PROGRAMS) {
 }
 
 /**
- * OPEN DEFECT: an escaped quote retargets a SPIKE block to micro:bit.
+ * No SPIKE program may emit a block from another device's namespace.
  *
- * This asserts the BROKEN behaviour on purpose, so it goes red the moment it
- * is repaired and whoever sees that can finish the job. Written as a sentinel
- * rather than a normal assertion because the defect is not ours to fix here:
- * it is in sb3-creator, vendored at the pin in vendor-pins.json, and the
- * repair is CrispStrobe/sb3-creator#21.
+ * This replaces an OPEN DEFECT sentinel that asserted the opposite. Until the
+ * sb3-creator pin moved, `display text "..."` was parsed with `"([^"]*)"`,
+ * which stops at the first quote -- so a line carrying an escaped quote failed
+ * its own rule, fell through to the generic display handler, and put a
+ * micro:bit block inside a SPIKE program with no warning raised. Four corpus
+ * programs did exactly that. The same root cause silently DOUBLED a backslash
+ * in the stored value, which is corruption rather than a parse failure.
  *
- * What goes wrong: `display text "..."` is parsed with `"([^"]*)"`, and that
- * class stops at the first quote, so a line carrying an escaped quote fails
- * its own rule and falls through to the generic display handler. A SPIKE
- * program silently gets a micro:bit block, with no warning raised. The same
- * root cause doubles a backslash in the stored value, which is quieter still.
+ * Fixed in CrispStrobe/sb3-creator#21 and carried here by the pin bump, so the
+ * sentinel fired -- `actual: []` -- and this is the assertion it asked for.
  *
- * Our own transpiler no longer turns that into an unloadable file -- it emits
- * `pass` for a script it cannot translate -- which is exactly why this
- * sentinel is needed: the generated Python now COMPILES, so the codegen tests
- * above pass and can no longer see the mis-parse.
- *
- * WHEN THIS GOES RED: the sb3-creator pin has moved and the parse is fixed.
- * Delete this test and assert the opposite -- that no SPIKE program emits a
- * block from another device's namespace.
+ * Note why this check exists at all, separately from the codegen tests above:
+ * the transpiler now emits `pass` for a script it cannot translate, so a
+ * mis-parsed program produces Python that COMPILES. Syntax alone can no longer
+ * see a mis-parse; provenance can.
  */
-test('OPEN DEFECT: escaped quotes retarget SPIKE text blocks to micro:bit', async () => {
-    const foreignPer = [];
+test('no SPIKE program emits a block from another device', async () => {
+    const offenders = [];
     for (const [name, source] of PROGRAMS) {
         const {project} = await projectOf(source);
         const foreign = new Set();
@@ -263,11 +275,9 @@ test('OPEN DEFECT: escaped quotes retarget SPIKE text blocks to micro:bit', asyn
                 }
             }
         }
-        if (foreign.size) foreignPer.push(name);
+        if (foreign.size) offenders.push(`${name}: ${[...foreign].join(', ')}`);
     }
-    assert.deepEqual(foreignPer.sort(), [
-        'display-quote', 'text-both-escapes', 'text-quote-mid', 'text-triple-quote'
-    ], 'the set of programs mis-parsed by the pinned sb3-creator changed — if it ' +
-       'shrank to empty the pin carries the fix, so delete this sentinel and assert ' +
-       'that no SPIKE program emits another device\'s block');
+    assert.deepEqual(offenders, [],
+        'a SPIKE program compiled to another device\'s block — the usual cause is a ' +
+        'text literal the parser could not match, falling through to a generic handler');
 });
