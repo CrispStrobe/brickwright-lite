@@ -1833,11 +1833,25 @@ injected `send()`. 48 tests in `test/rcx-protocol.test.mjs` execute every one of
 fixtures in `test/fixtures/rcx-images/`, so it is not untested code; it is code whose consumer
 does not exist yet.
 
-**What it is waiting for, specifically:** a transport. The module takes `send()` as an argument
-and imports nothing, deliberately — `docs/RCX-IR-PROTOCOL.md` build order steps 4 and 5 are the
-Web Serial and WebUSB drivers, and neither is written. The Web Serial one is small (2400 baud,
-odd parity); WebUSB needs endpoint handling for LEGO's USB tower (`0694:0001`). Once either
-exists and a UI reaches it, this entry leaves the list rather than being re-justified.
+**Step 4 has since landed, so the blocker is narrower and worth restating precisely.**
+`rcx-serial.js` is the Web Serial half: 2400 8-O-1 as constants with their citation, reads that
+include the tower's own echo and end on a quiet period rather than a byte count, and a single
+in-flight read so that a chunk arriving after its exchange gave up reaches the next one instead
+of vanishing. 13 tests drive it through a mock port and the late-chunk guarantee is
+mutation-checked. It is in the same list as its sibling and for the same reason.
+
+**What the pair is now waiting for is a CALL SITE, not a transport.** The RCX extension
+deliberately has no live link — it saves the `.rcx` for a desktop tool, and says so in its own
+header — so nothing in the app asks for a download. Closing this needs two small things, in this
+order: `runtime.rcxDownload` installed the way `runtime.nqcCompile` already is
+(`lib/nqc-runtime-hook.js` is the template: request a port, `openRcxSerial`, `downloadImage`,
+close), and an upstream change to the extension so a block reaches for it — the same
+look-it-up-at-call-time shape it already uses for the compiler, so an app without the hook keeps
+today's save-the-file behaviour unchanged. WebUSB (step 5, endpoint handling for LEGO's USB
+tower `0694:0001`) is independent and still unwritten; it is not on this path, because a
+home-built tower is an ordinary serial adapter and Web Serial reaches both.
+
+Both entries leave the list together when that call site exists, rather than being re-justified.
 
 It is landed ahead of its consumer on purpose: it is the half that has no hardware dependency
 and where the protocol mistakes live, and getting it reviewed and pinned by tests now is worth
