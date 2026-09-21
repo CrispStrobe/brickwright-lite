@@ -157,12 +157,21 @@ const ON_PCB_PADS = new Map([
  * p05-servo-mood and p12-knock-lock — went at 8e1f4d11, where each example's
  * base bench stopped being a copy of its mega variant and became the Uno the
  * catalog names as authored; the parts were in the Uno bench all along and the
- * gate had been reading the wrong file. The two that remain still reproduce.
+ * gate had been reading the wrong file.
+ *
+ * EMPTY since 2026-09-21, at sb3-creator b7bfd2b7. The last two were the only
+ * ones whose benches genuinely lacked the hardware, and both were built
+ * upstream rather than exempted here: p04 gained the three pots and the
+ * rgb_led its page had always described (it had held ONE pot), and p15 gained
+ * the optocoupler its lesson is about — bw-board has registered the device all
+ * along — and moved off D13, which was not even the pad its program declares.
+ * This gate reported both dead before they were removed: "0 example(s)
+ * declared-but-unwired, 2 ratcheted".
+ *
+ * An empty ratchet is the goal state, not a reason to delete the check: the
+ * next example that declares a pin reaching nothing now reds on arrival.
  */
-const KNOWN_UNWIRED = new Map([
-    ['arduino-sk-p04-color-mixing', 'sensorG@A1 sensorB@A2 ledR@D3 ledG@D5 ledB@D6'],
-    ['arduino-sk-p15-hacking-buttons', 'opto@D2 — no optocoupler part'],
-]);
+const KNOWN_UNWIRED = new Map([]);
 
 /** Affordance wired to a pad the program never declares. RATCHET — may only shrink. */
 const KNOWN_UNREAD = new Map([
@@ -554,5 +563,20 @@ test('CANARY: the ratchets are live, not decorative', () => {
     for (const k of [...KNOWN_UNREAD.keys(), ...KNOWN_UNCONNECTED.keys()]) {
         assert.ok(ids.has(k.split(':')[0]), `ratchet key ${k} names a missing example`);
     }
-    assert.ok(KNOWN_UNWIRED.size > 0 && KNOWN_UNREAD.size > 0, 'ratchets must not be empty while defects stand');
+    // A POPULATION FLOOR IS THE WRONG INSTRUMENT HERE. This line used to read
+    // `KNOWN_UNWIRED.size > 0 && KNOWN_UNREAD.size > 0`, which made the goal
+    // state — every defect fixed — indistinguishable from the cheat it was
+    // written to stop, and reddened the gate the moment the last entry was
+    // legitimately removed. The property actually wanted is that the DETECTOR
+    // still fires, so drive it: a row declaring a pad that resolves to nothing
+    // must be reported, exactly as the gate reports it at line ~385.
+    const vacuous = {id: 'synthetic', device: 'arduino-uno', wired: new Set(), wiredOn: new Map(),
+        pins: [{name: 'ghost', pad: 'D7', mode: 'OUTPUT'}]};
+    const flagged = vacuous.pins.filter((pin) => {
+        const pad = pin.pad.toLowerCase();
+        return !padResolves(vacuous, pad) && !ON_PCB_PADS.has(`${vacuous.id}:${pad}`);
+    });
+    assert.deepEqual(flagged.map((p) => p.pad), ['D7'],
+        'the declared-but-unwired detector no longer fires on a pin wired to nothing — '
+        + 'an empty KNOWN_UNWIRED would then mean the check is dead, not that the corpus is clean');
 });
