@@ -105,11 +105,18 @@ test('a multi-output challenge names its LEDs, and the tab can build one', () =>
     assert.match(panel, /activeC\.outputs\.map\(o => o\.name\)\.join\(' and '\)/, 'and names them');
     assert.match(panel, /Name them, or stack them in that order/,
         'which LED is which is the thing a learner can get backwards');
-    // The challenge is unmeetable without a way to build it.
+    // The challenge is unmeetable without a way to build it. With more than one
+    // multi-chip circuit, that is a picker listed FROM the registry, so a new
+    // spec appears in the UI without anybody editing the tab.
     const tab = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx');
-    assert.match(tab, /data-testid="bw-fpga-build-half-adder"/, 'the tab has a half-adder button');
-    assert.match(tab, /realizeIcCircuit\('half_adder'\)/, 'wired to the multi-gate builder');
+    assert.match(tab, /data-testid="bw-fpga-ic-circuit"/, 'a circuit picker');
+    assert.match(tab, /Object\.entries\(IC_CIRCUITS\)\.map/, 'listed from the registry, not hardcoded');
+    assert.match(tab, /data-testid="bw-fpga-build-circuit"/, 'and a build button');
+    assert.match(tab, /realizeIcCircuit\(icCircuit\)/, 'wired to the multi-gate builder');
     assert.match(tab, /import \{buildLogicIcCircuit, IC_CIRCUITS\}/, 'from the shared spec registry');
+    // The panel names the circuit from the same registry rather than hardcoding one.
+    assert.match(panel, /IC_CIRCUITS\[activeC\.circuit\]/, 'the panel reads the label from the registry');
+    assert.ok(!/⚙ Half adder/.test(panel), 'no hardcoded circuit name left in the panel');
 });
 
 test('live-circuit.js reaches the board the way the app already does', () => {

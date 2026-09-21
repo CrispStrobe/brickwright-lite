@@ -149,6 +149,14 @@ test('every realise challenge is combinational, and none is graded on gate count
     }
 });
 
+test('every registry spec carries the label and hint the UI shows', () => {
+    for (const [key, spec] of Object.entries(IC_CIRCUITS)) {
+        assert.ok(spec.label, `${key} needs a label for the picker`);
+        assert.ok(spec.hint, `${key} needs a hint for the "try this" line`);
+        assert.equal(spec.id, key, 'the registry key and the spec id agree');
+    }
+});
+
 test('a multi-gate realise challenge names a spec that really builds its outputs', () => {
     for (const c of REALISE.filter(x => x.circuit)) {
         const spec = IC_CIRCUITS[c.circuit];
@@ -233,6 +241,20 @@ test('the briefs\' concrete claims match what the builders actually make', () =>
     assert.match(ha.brief, new RegExp(`${chipFor('sum')} XOR gives the sum`), 'the sum chip is named correctly');
     assert.match(ha.brief, new RegExp(`${chipFor('carry')} AND gives the carry`), 'and the carry chip');
     assert.match(ha.brief, /SAME two switches/, 'and that the inputs are shared');
+    const fa = byId('full_adder_real');
+    const faSpec = IC_CIRCUITS[fa.circuit];
+    // The brief spells the count out, which reads better than a digit — so
+    // accept either form, and still check it against the SPEC rather than
+    // letting the prose claim any number it likes.
+    const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+    const n = faSpec.gates.length;
+    assert.match(fa.brief, new RegExp(`(${n}|${WORDS[n]}) chips`, 'i'),
+        `the full adder brief must say it is ${n} chips, as the spec builds`);
+    for (const type of ['xor', 'and', 'or']) {
+        assert.match(fa.brief, new RegExp(gateToLogicIc(type).label),
+            `the full adder brief names the ${type.toUpperCase()} chip it uses`);
+    }
+    assert.equal(faSpec.inputs.length, 3, 'and it really does take a carry-in');
     assert.deepEqual(spec.gates.map(g => g.in), [['a', 'b'], ['a', 'b']], 'which the spec really does');
 });
 
