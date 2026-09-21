@@ -1,5 +1,5 @@
 {
-  "commit": "3c7eabc094af516c9dba2c4c721667c048779860",
+  "commit": "34fafc8683dc56305092ecbdfd0c0ca29f8e5cca",
   "cases": [
     {"slug": "0832/rxFS2", "opcode": "webin", "args": {"STR": "https://fixture.invalid/rxfs.txt"}, "expected": "rxfs fixture", "fetch": {"responseText": "rxfs fixture", "calls": [{"url": "https://fixture.invalid/rxfs.txt"}]}},
     {"slug": "-SIPC-/consoles", "opcode": "Information", "args": {"string": "cp4-probe"}, "console": [["info", "cp4-probe"]]},
