@@ -117,6 +117,7 @@ const lazyBuiltinExtensions = {
     // implementation and a compiler, and they now resolve here through
     // EV3_LEGACY_IDS. ev3dev below is deliberately separate — different OS.
     ev3comprehensive: () => import(/* webpackChunkName: "ext-ev3comprehensive" */ '../extensions/crispstrobe/ev3comprehensive/index.js'),
+    legorcx: () => import(/* webpackChunkName: "ext-legorcx" */ '../extensions/crispstrobe/legorcx/index.js'),
     legonxt: () => import(/* webpackChunkName: "ext-legonxt" */ '../extensions/crispstrobe/legonxt/index.js'),
     ev3dev: () => import(/* webpackChunkName: "ext-ev3dev" */ '../extensions/crispstrobe/ev3dev/index.js'),
     universalgamepad: () => import(/* webpackChunkName: "ext-universalgamepad" */ '../extensions/crispstrobe/universalgamepad/index.js'),

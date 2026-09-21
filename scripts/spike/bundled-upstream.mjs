@@ -42,7 +42,7 @@ export const ROOT = resolve(here, '../..');
 export const BUNDLES = resolve(ROOT, 'overlay/scratch-vm/src/extensions/crispstrobe');
 
 /** CrispStrobe/extensions commit these sha256s were taken at. */
-export const UPSTREAM_COMMIT = '34fafc8683dc56305092ecbdfd0c0ca29f8e5cca';
+export const UPSTREAM_COMMIT = 'a307f0955a0a50a68781ff34f6a7a2ca66c6913d';
 export const UPSTREAM_REPO = 'CrispStrobe/extensions';
 
 /**
@@ -67,6 +67,11 @@ export const MAP = {
     legoboostunified: 'extensions/CrispStrobe/legoboost_universal.js',
     legonxt: 'extensions/CrispStrobe/legonxt_transpile_universal.js',
     legopoweredup: 'extensions/CrispStrobe/lego_poweredup.js',
+    // The RCX, the oldest brick in the family. Its blocks transpile to NQC and
+    // the NQC is compiled to an .rcx image — locally by `runtime.nqcCompile`
+    // (lib/nqc-runtime-hook.js, which this vendoring is what finally gives a
+    // consumer), and by the hosted service only where that is absent.
+    legorcx: 'extensions/CrispStrobe/lego_rcx.js',
     planetemaths: 'extensions/CrispStrobe/planetemaths.js',
     spikeprime: 'extensions/CrispStrobe/legospike_turbowarp_transpile.js',
     stc12: 'extensions/CrispStrobe/stc12.js',

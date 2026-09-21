@@ -214,6 +214,24 @@ export default [
         featured: true
     },
     {
+        // The oldest brick in the family, and the only one whose toolchain is
+        // a C compiler rather than a protocol: these blocks transpile to NQC
+        // and NQC compiles to an .rcx image. That compile happens locally —
+        // lib/nqc-runtime-hook.js installs runtime.nqcCompile from the
+        // vendored MPL-2.0 build — so the path needs no service and works
+        // offline. The BRICK still needs LEGO's own firmware, which nobody may
+        // ship; see docs/RCX-FIRMWARE.md.
+        name: 'LEGO RCX',
+        extensionId: 'legorcx',
+        iconURL: 'static/extension-posters/lego.png',
+        // No insetIconURL: the gallery serves no images/CrispStrobe/lego_rcx.svg
+        // (checked 2026-09-21, 404). Pointing at one anyway would render a
+        // broken image in the picker rather than no image.
+        description: 'LEGO MINDSTORMS RCX — blocks that transpile to NQC and compile to ' +
+            'an .rcx image in the browser. Bring your own firmware. Bundled built-in.',
+        featured: true
+    },
+    {
         name: 'LEGO NXT',
         extensionId: 'legonxt',
         iconURL: 'static/extension-posters/lego.png',
