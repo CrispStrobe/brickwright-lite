@@ -272,6 +272,19 @@ export function gradeRealisedCircuit (circuit, challenge, opts = {}) {
     const outName = challenge.outputs[0].name;
     const total = 1 << names.length;
 
+    // Grading toggles the learner's own switches, so remember where they had
+    // them and put them back. Otherwise pressing Check silently rearranges
+    // their board — it would be left on whatever the last combination was.
+    const before = typeof board.getControl === 'function'
+        ? io.inputs.map(inp => board.getControl(inp.switch))
+        : null;
+    const restore = () => {
+        if (!before) return;
+        io.inputs.forEach((inp, i) => {
+            if (before[i] !== undefined) board.setControl(inp.switch, before[i]);
+        });
+    };
+
     for (let bits = 0; bits < total; bits++) {
         const inputs = {};
         names.forEach((nm, i) => { inputs[nm] = (bits >> i) & 1; });
@@ -285,15 +298,18 @@ export function gradeRealisedCircuit (circuit, challenge, opts = {}) {
             // Neither lit nor dark: the output is floating or half-driven — a
             // real fault on a real board, and worth saying so rather than
             // rounding it to a wrong answer.
+            restore();
             return {pass: false, realised: true, checked: bits, failing: {
                 inputs, output: outName, expected, got: null, brightness,
                 reason: 'the output LED is neither clearly lit nor clearly dark — the output looks floating. Check it is driven and has a path to ground.'
             }};
         }
         if (got !== expected) {
+            restore();
             return {pass: false, realised: true, checked: bits, failing: {inputs, output: outName, expected, got, brightness}};
         }
     }
+    restore();
     return {pass: true, realised: true, checked: total};
 }
 

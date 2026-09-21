@@ -147,3 +147,33 @@ test('the pass message says it was proven in real parts', () => {
     assert.match(msg, /✓/);
     assert.match(msg, /4/, 'it says how many combinations were driven');
 });
+
+test('grading puts the learner\'s switches back where they left them', () => {
+    // Check should not silently rearrange their board — without this it would
+    // be left on whatever the last input combination happened to be.
+    const c = new Circuit(5.0);
+    const built = buildLogicIcGate(c, 'and');
+    const board = c.board;
+    board.setControl(built.inputs[0].switch, 1);
+    board.setControl(built.inputs[1].switch, 0);
+
+    assert.equal(gradeRealisedCircuit(c, AND).pass, true);
+
+    assert.equal(board.getControl(built.inputs[0].switch), 1, 'the first switch is back on');
+    assert.equal(board.getControl(built.inputs[1].switch), 0, 'the second is back off');
+});
+
+test('switches are restored even when the grade FAILS part-way through', () => {
+    const c = new Circuit(5.0);
+    const built = buildLogicIcGate(c, 'or'); // wrong gate: fails before the last row
+    const board = c.board;
+    board.setControl(built.inputs[0].switch, 1);
+    board.setControl(built.inputs[1].switch, 1);
+
+    const result = gradeRealisedCircuit(c, AND);
+    assert.equal(result.pass, false, 'it really did bail out early');
+    assert.ok(result.checked < 4, 'before driving every combination');
+
+    assert.equal(board.getControl(built.inputs[0].switch), 1, 'restored anyway');
+    assert.equal(board.getControl(built.inputs[1].switch), 1);
+});
