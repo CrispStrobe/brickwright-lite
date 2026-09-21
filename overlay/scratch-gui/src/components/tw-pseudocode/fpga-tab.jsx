@@ -9,6 +9,8 @@ import {yosysToModel} from '../../lib/bw-fpga/yosys-to-model.js';
 import {EXAMPLES} from '../../lib/bw-fpga/examples.js';
 import {buildDemoBoard} from '../../lib/bw-fpga/demo-board.js';
 import {buildCmosGate} from '../../lib/bw-fpga/cmos-board.js';
+import {buildLogicIcGate} from '../../lib/bw-fpga/logic-ic-board.js';
+import {LOGIC_IC_GATES, gateToLogicIc} from '../../lib/bw-fpga/logic-ic.js';
 import {readPorts, checkWidths, detectClockPort} from '../../lib/bw-fpga/yosys.js';
 // Small and dependency-free, so these stay static: the licence screen is useful
 // on its own, and the synthesis client's only job today is to refuse honestly.
@@ -60,6 +62,7 @@ const L10N = {
         loadingCanvas: 'Loading the canvas…',
         wireDemoBoardBtn: '⬢ Wire up a demo board',
         buildTransistorsBtn: '⚛ Build the gate from transistors',
+        buildIcBtn: '⚙ Build the gate from a 74xx chip',
         permissiveLicence: 'Declares a permissive licence — it may be built on the shared server.',
         whereBuiltTitle: 'Where it would be built',
         backendLabel: 'Backend: ',
@@ -174,6 +177,7 @@ const L10N = {
         loadingCanvas: 'Lade die Leinwand…',
         wireDemoBoardBtn: '⬢ Demoboard verkabeln',
         buildTransistorsBtn: '⚛ Gatter aus Transistoren bauen',
+        buildIcBtn: '⚙ Gatter aus einem 74xx-Chip bauen',
         permissiveLicence: 'Erklärt eine freizügige Lizenz — es kann auf dem geteilten Server gebaut werden.',
         whereBuiltTitle: 'Wo es gebaut werden würde',
         backendLabel: 'Backend: ',
@@ -363,6 +367,7 @@ const FpgaTab = (props) => {
     // has something to light. Feedback only — the wiring happens on the live board.
     const [demoMsg, setDemoMsg] = React.useState(null);
     const [cmosGate, setCmosGate] = React.useState('nand'); // which gate to realise as transistors
+    const [icGate, setIcGate] = React.useState('and'); // which gate to realise as a 74HC chip
     // The first-run guide tracks the three steps through the tab's real state and
     // stays until the user hides it (or opts out for good in this browser).
     const [guideDismissed, setGuideDismissed] = React.useState(() => {
@@ -775,6 +780,25 @@ const FpgaTab = (props) => {
     const wireDemoBoard = React.useCallback(() => onLiveCircuit(buildOnCircuit), [onLiveCircuit, buildOnCircuit]);
     const realizeGate = React.useCallback(gateType => onLiveCircuit(c => buildGateOnCircuit(c, gateType)),
         [onLiveCircuit, buildGateOnCircuit]);
+    // The middle rung: realise the gate as a real 74HC logic chip — the part you
+    // solder, between the abstract gate and its transistors.
+    const buildIcGateOnCircuit = React.useCallback((c, gateType) => {
+        try {
+            buildLogicIcGate(c, gateType);
+            if (typeof c.toJSON === 'function' && typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('bw-load-circuit-data', {detail: {data: c.toJSON()}}));
+            }
+            const spec = gateToLogicIc(gateType);
+            setDemoMsg({ok: true, text: `Built a ${gateType.toUpperCase()} from a ${spec.label} `
+                + `(${spec.desc}) with a switch per input and an output LED. `
+                + 'Run the circuit and toggle the input switches — the LED follows the gate. '
+                + '(This is the gate as a real chip; ⚛ shows the transistors inside one of its gates.)'});
+        } catch (e) {
+            setDemoMsg({ok: false, text: `Could not build the gate: ${e.message}`});
+        }
+    }, []);
+    const realizeIcGate = React.useCallback(gateType => onLiveCircuit(c => buildIcGateOnCircuit(c, gateType)),
+        [onLiveCircuit, buildIcGateOnCircuit]);
 
     return (
         // Scrolling here needs the pattern circuit-tab.jsx uses, not a flex one. The tab
@@ -897,6 +921,19 @@ const FpgaTab = (props) => {
                         title="Build this gate from nmos/pmos transistors on the breadboard (the silicon underneath the logic)"
                         style={{padding: '0.2rem 0.6rem', cursor: 'pointer'}}
                     >{L10N[pickLocale(props.locale)].buildTransistorsBtn}</button>
+                </span>
+                {/* …or realise the gate as a real 74HC logic chip — the rung between the gate and its transistors. */}
+                <span style={{marginLeft: '0.75rem'}}>
+                    <select value={icGate} onChange={e => setIcGate(e.target.value)}
+                        data-testid="bw-fpga-ic-gate" style={{marginRight: '0.35rem'}}>
+                        {LOGIC_IC_GATES.map(g =>
+                            <option key={g} value={g}>{g.toUpperCase()}</option>)}
+                    </select>
+                    <button type="button" data-testid="bw-fpga-build-ic"
+                        onClick={() => realizeIcGate(icGate)}
+                        title="Build this gate as a real 74HC logic chip on the breadboard (the part you solder, above the transistors)"
+                        style={{padding: '0.2rem 0.6rem', cursor: 'pointer'}}
+                    >{L10N[pickLocale(props.locale)].buildIcBtn}</button>
                 </span>
                 {demoMsg ? (
                     <span style={{marginLeft: '0.5rem', opacity: 0.9,
