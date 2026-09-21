@@ -43,13 +43,18 @@ const make = (target) =>
   // gate-shapes-allow: see TOOLS above — presence and identity are asserted before any call
   execFileSync('make', ['-C', dir, target], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 
-test('the host toolchain this gate needs is present, and says which one it is', () => {
+test('the host toolchain this gate needs is present, and says which one it is', (t) => {
   // Without this, a machine with no compiler reports a build error from deep
   // inside `make` and reads like a defect in the firmware. It is not one.
   for (const [tool, version] of Object.entries(TOOLS)) {
     assert.ok(version, `${tool} is not on PATH; firmware/ir-tower cannot be built or tested here`);
   }
-  console.log(`  built with: ${TOOLS.cc}`);
+  // `t.diagnostic()`, never `console.log`: the runner's stdout IS the TAP
+  // transport, and raw bytes written onto it are the deserialize flake this
+  // repo's own run-check exists to catch. It caught this line in CI with the
+  // whole suite otherwise green — 3873 pass, 0 fail, and the step still
+  // exited 1 — which is the run-check doing exactly its job.
+  t.diagnostic(`built with: ${TOOLS.cc}`);
 });
 
 test('ir tower: the host simulation passes on both gate paths', () => {
