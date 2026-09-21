@@ -37,4 +37,35 @@ export const PROGRAMS = [
   ['var-name-caps',        'DEVICE SPIKE\n\nGLOBAL Speed = 0\n\nWHEN flag clicked:\n  set Speed to 75\n'],
   ['zero-wait',            'DEVICE SPIKE\n\nWHEN flag clicked:\n  wait 0 ms\n'],
   ['display-newline-word', 'DEVICE SPIKE\n\nWHEN flag clicked:\n  display text "line1 line2"\n'],
+  // --- escapes and unicode in text, now that sb3-creator preserves them ---
+  ['text-quote-mid',       'DEVICE SPIKE\n\nWHEN flag clicked:\n  display text "a \\"b\\" c"\n'],
+  ['text-backslash-end',   'DEVICE SPIKE\n\nWHEN flag clicked:\n  display text "ends\\\\"\n'],
+  ['text-both-escapes',    'DEVICE SPIKE\n\nWHEN flag clicked:\n  display text "q \\" and \\\\ slash"\n'],
+  ['text-emoji',           'DEVICE SPIKE\n\nWHEN flag clicked:\n  display text "go 🚀 now"\n'],
+  ['text-single-quote',    'DEVICE SPIKE\n\nWHEN flag clicked:\n  display text "it\'s fine"\n'],
+  ['text-python-keyword',  'DEVICE SPIKE\n\nWHEN flag clicked:\n  display text "def class import"\n'],
+  ['text-format-spec',     'DEVICE SPIKE\n\nWHEN flag clicked:\n  display text "{0} %s %d"\n'],
+  ['text-triple-quote',    'DEVICE SPIKE\n\nWHEN flag clicked:\n  display text "a \\"\\"\\" b"\n'],
+  // --- control flow depth and shape ---
+  ['repeat-deep',          'DEVICE SPIKE\n\nWHEN flag clicked:\n  repeat 2:\n    repeat 2:\n      repeat 2:\n        wait 5 ms\n'],
+  ['if-inside-repeat',     'DEVICE SPIKE\n\nGLOBAL n = 0\n\nWHEN flag clicked:\n  repeat 3:\n    IF n > 1 THEN:\n      stop motor A\n'],
+  ['repeat-inside-if',     'DEVICE SPIKE\n\nGLOBAL n = 0\n\nWHEN flag clicked:\n  IF n > 1 THEN:\n    repeat 3:\n      wait 5 ms\n'],
+  ['if-else-both-bodies',  'DEVICE SPIKE\n\nGLOBAL n = 0\n\nWHEN flag clicked:\n  IF n > 1 THEN:\n    start motor A forward\n  ELSE:\n    start motor B forward\n'],
+  ['forever-with-motor',   'DEVICE SPIKE\n\nWHEN flag clicked:\n  forever:\n    start motor A forward\n    wait 100 ms\n    stop motor A\n'],
+  // --- variables ---
+  ['var-two',              'DEVICE SPIKE\n\nGLOBAL a = 0\nGLOBAL b = 0\n\nWHEN flag clicked:\n  set a to 1\n  set b to 2\n'],
+  ['var-zero-init',        'DEVICE SPIKE\n\nGLOBAL z = 0\n\nWHEN flag clicked:\n  set z to 0\n'],
+  ['var-big-number',       'DEVICE SPIKE\n\nGLOBAL n = 0\n\nWHEN flag clicked:\n  set n to 999999\n'],
+  ['var-change-negative',  'DEVICE SPIKE\n\nGLOBAL n = 0\n\nWHEN flag clicked:\n  change n by -5\n'],
+  ['var-set-to-var',       'DEVICE SPIKE\n\nGLOBAL a = 0\nGLOBAL b = 0\n\nWHEN flag clicked:\n  set a to 3\n  set b to a\n'],
+  // --- arithmetic ---
+  ['arith-subtract',       'DEVICE SPIKE\n\nGLOBAL n = 0\n\nWHEN flag clicked:\n  set n to 10 - 4\n'],
+  ['arith-divide',         'DEVICE SPIKE\n\nGLOBAL n = 0\n\nWHEN flag clicked:\n  set n to 10 / 4\n'],
+  ['arith-negative-lit',   'DEVICE SPIKE\n\nGLOBAL n = 0\n\nWHEN flag clicked:\n  set n to -7 + 2\n'],
+  // --- motors ---
+  ['motor-repeat-toggle',  'DEVICE SPIKE\n\nWHEN flag clicked:\n  repeat 5:\n    start motor A forward\n    wait 20 ms\n    stop motor A\n'],
+  ['motor-both-dirs',      'DEVICE SPIKE\n\nWHEN flag clicked:\n  start motor A forward\n  wait 50 ms\n  start motor A backward\n  stop motor A\n'],
+  // --- scale ---
+  ['many-statements',      'DEVICE SPIKE\n\nWHEN flag clicked:\n' + Array.from({length: 40}, (_, i) => `  wait ${i + 1} ms\n`).join('')],
+  ['many-displays',        'DEVICE SPIKE\n\nWHEN flag clicked:\n' + Array.from({length: 15}, (_, i) => `  display text "step ${i}"\n`).join('')],
 ];

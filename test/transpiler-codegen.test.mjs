@@ -226,3 +226,48 @@ for (const [name, source] of PROGRAMS) {
         assertPythonCompiles(generated);
     });
 }
+
+/**
+ * OPEN DEFECT: an escaped quote retargets a SPIKE block to micro:bit.
+ *
+ * This asserts the BROKEN behaviour on purpose, so it goes red the moment it
+ * is repaired and whoever sees that can finish the job. Written as a sentinel
+ * rather than a normal assertion because the defect is not ours to fix here:
+ * it is in sb3-creator, vendored at the pin in vendor-pins.json, and the
+ * repair is CrispStrobe/sb3-creator#21.
+ *
+ * What goes wrong: `display text "..."` is parsed with `"([^"]*)"`, and that
+ * class stops at the first quote, so a line carrying an escaped quote fails
+ * its own rule and falls through to the generic display handler. A SPIKE
+ * program silently gets a micro:bit block, with no warning raised. The same
+ * root cause doubles a backslash in the stored value, which is quieter still.
+ *
+ * Our own transpiler no longer turns that into an unloadable file -- it emits
+ * `pass` for a script it cannot translate -- which is exactly why this
+ * sentinel is needed: the generated Python now COMPILES, so the codegen tests
+ * above pass and can no longer see the mis-parse.
+ *
+ * WHEN THIS GOES RED: the sb3-creator pin has moved and the parse is fixed.
+ * Delete this test and assert the opposite -- that no SPIKE program emits a
+ * block from another device's namespace.
+ */
+test('OPEN DEFECT: escaped quotes retarget SPIKE text blocks to micro:bit', async () => {
+    const foreignPer = [];
+    for (const [name, source] of PROGRAMS) {
+        const {project} = await projectOf(source);
+        const foreign = new Set();
+        for (const target of project.targets) {
+            for (const block of Object.values(target.blocks || {})) {
+                if (block && /^(microbit|ev3|nxt|wedo)/.test(block.opcode || '')) {
+                    foreign.add(block.opcode);
+                }
+            }
+        }
+        if (foreign.size) foreignPer.push(name);
+    }
+    assert.deepEqual(foreignPer.sort(), [
+        'display-quote', 'text-both-escapes', 'text-quote-mid', 'text-triple-quote'
+    ], 'the set of programs mis-parsed by the pinned sb3-creator changed — if it ' +
+       'shrank to empty the pin carries the fix, so delete this sentinel and assert ' +
+       'that no SPIKE program emits another device\'s block');
+});
