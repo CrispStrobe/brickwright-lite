@@ -16,6 +16,7 @@ A complete, MPL-2.0, CrispStrobe-authored LEGO extension suite lives in
 | Boost | `legoboostunified` | BLE / Scratch Link / bridge / GATT | transpile |
 | WeDo 2.0 | `wedo2unified` | BLE / Scratch Link / GATT | transpile |
 | Powered Up | `legopoweredup` | BLE / Scratch Link / GATT | transpile |
+| **RCX** | `legorcx` | **Web Serial to an infrared tower** | **NQC → `.rcx` bytecode, compiled in the browser** |
 
 These do two things: **connect** to a real hub, and **transpile** the Scratch blocks
 (including their own extension blocks) to code the hub runs. The per-hardware transpilers
@@ -23,6 +24,48 @@ that produce the on-brick code live in a separate repo, `github.com/CrispStrobe/
 (e.g. `ev3dev_py_transpile.js` → real ev3dev2); `sb3Creator.js` already knows this split —
 its emitter distinguishes a `simulator` mode from an `ondevice` mode, and `ondevice`
 (ev3dev/pybricks) defers to those per-hardware transpilers.
+
+### The RCX is the odd one out, and it is worth saying how
+
+*Added 2026-09-21. The rest of this document predates it by a month and describes a family
+of hubs reached over BLE or serial, each handed source that something else compiles. The
+RCX breaks that shape in three ways, and anyone reasoning about "the LEGO extensions" as a
+set will be wrong about this one.*
+
+**It compiles here, not elsewhere.** Every other row in the table emits source and leaves
+compilation to a service, a desktop tool or the brick itself. NQC is MPL-2.0, so it is
+vendored as WebAssembly (`lib/nqc-wasm/`, upstream `jverne/nqc`) and runs in the browser.
+The build is byte-identical to the native `nqc` on eight fixture programs. The whole RCX
+path therefore takes **no network at any step**, which none of the others can say.
+
+**We drive the wire ourselves.** There is no BLE stack and no Scratch Link to defer to: the
+RCX speaks one infrared protocol and nothing else. `lib/rcx/rcx-protocol.js` frames commands
+and `lib/rcx/rcx-serial.js` opens the port at 2400 8-O-1. Both are **clean-room** — the
+existing browser implementation is GPL-3.0 and infrared cannot be moved to a server the way
+a compiler can — and both were written by an agent that had not read it, from contracts in
+`docs/RCX-IR-PROTOCOL.md`. They are checked against NQC's own `rcxlib` as an oracle: frames
+opcode-for-opcode, line settings against what NQC asks its port for, and refusals against
+what NQC rejects (`test/rcx-nqc-oracle.test.mjs`).
+
+**The user must supply the firmware, and nobody can fix that.** NQC's bytecode runs on LEGO's
+standard RCX firmware, which is proprietary and not redistributable. The free replacements
+(brickOS-bibo MPL-2.0, TinyVM MPL-1.0) are **not substitutes**: none executes
+standard-firmware bytecode, so each replaces the VM and therefore the compiler. See
+`docs/RCX-FIRMWARE.md`. A brick with no firmware answers exactly like a brick that is switched
+off, which is why the download path says so by name rather than reporting a timeout.
+
+There is also no LEGO tower in production any more, so `docs/RCX-IR-TOWER-FIRMWARE.md` and
+`firmware/ir-tower/` are a portable replacement — one 38 kHz carrier gated by the host's TX
+line, which is baud-agnostic by construction and so ports as one timer and two pins.
+
+| What | Where |
+|---|---|
+| Blocks → NQC | the extension's own transpiler, upstream |
+| NQC → `.rcx` | `lib/nqc-wasm/` (MPL-2.0, vendored), via `runtime.nqcCompile` |
+| `.rcx` → framed commands | `lib/rcx/rcx-protocol.js` (clean room) |
+| Commands → a tower | `lib/rcx/rcx-serial.js`, via `runtime.rcxDownload` |
+| Typing NQC directly | the Code tab's NQC tab (ROADMAP 4.8) |
+| A tower to buy or build | `firmware/ir-tower/` |
 
 **On GPL:** `ev3dev` is GPL, but our `ev3dev` extension (MPL-2.0) *generates/streams* Python
 that runs on the user's own ev3dev brick — it does not vendor or link ev3dev's code. Same for
@@ -179,3 +222,24 @@ block-map) so the sim, the blocks, and the real hardware agree.
 Gaps 1 and 3 share the same anchor: a per-hub device model (ports, sensor/motor kinds, display,
 value ranges) authored from each extension's `getInfo`. Writing that model once serves the
 block-map (Gap 1), the sim (Gap 3), and the faces (the current campaign).
+
+### Where the RCX sits in that order — mostly outside it
+
+*Added 2026-09-21.* The RCX tier is complete end to end and does not depend on any of the
+three gaps above: it compiles and downloads without a device model, a block-map or a sim,
+because it produces a `.rcx` for a real brick rather than driving one live. The gaps it does
+bear on are worth stating so nobody looks for work that is not there:
+
+* **Gap 1 does not apply as written.** There is no pseudocode ⇄ RCX-blocks joint and the
+  remaining half of ROADMAP 4.8 (`generateNQC`, a whole Scratch project → NQC) is
+  deliberately unbuilt: the extension already transpiles its own blocks, which is what an
+  RCX user needs, and a brick with 32 variables, three outputs and a five-digit LCD cannot
+  meaningfully run a sprite program. Revisit only if someone asks.
+* **Gap 3 would apply, and nothing is started.** A simulated RCX is a real possibility —
+  `brickEmu` emulates the H8/300 — but it needs LEGO's ROM and firmware, which nobody may
+  redistribute, so it is bring-your-own and cannot be a default.
+* **What the RCX tier still lacks is hardware, not code.** No brick and no tower has been
+  touched: the protocol is verified against NQC's own frames, the tower firmware against a
+  simulation, and the RP2040 port has never been compiled. Those are the first things a
+  person with the hardware should check, and they are recorded as unverified rather than
+  implied in `docs/RCX-IR-TOWER-FIRMWARE.md`.
