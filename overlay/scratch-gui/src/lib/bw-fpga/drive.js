@@ -75,3 +75,34 @@ export function applyPortValues (circuit, bindings, values = {}) {
 
     return {applied, unset};
 }
+
+/**
+ * Read the circuit BACK into the design — the other half of the loop. For each
+ * INPUT binding the design reads (its pin left high-Z by applyPortValues), read
+ * the level the breadboard is driving onto that pin via `board.readPin(terminal)`
+ * and assemble it into the design's input values. So a button/switch wired to an
+ * input pin drives the FPGA logic, and its outputs light the LEDs — a real
+ * hardware sandbox, both directions.
+ *
+ * @param {Array} bindings  from bridge() (carry `direction`)
+ * @param {{readPin: Function}} board  exposes readPin(terminal) → 0|1
+ * @returns {Object} {portOrBase: 0|1|number} — buses assembled LSB-first by bit index
+ */
+export function readBoardInputs (bindings, board) {
+    const out = {};
+    if (!board || typeof board.readPin !== 'function') return out;
+    const buses = {};
+    for (const b of bindings || []) {
+        if (b.direction !== 'input') continue;
+        let bit;
+        try { bit = board.readPin(b.terminal) ? 1 : 0; } catch (e) { continue; } // unknown/unwired pin
+        if (b.index === undefined || b.index === null) out[b.port] = bit;
+        else { (buses[b.base] = buses[b.base] || {})[b.index] = bit; }
+    }
+    for (const [base, bits] of Object.entries(buses)) {
+        let v = 0;
+        for (const [i, val] of Object.entries(bits)) v |= (val << Number(i));
+        out[base] = v;
+    }
+    return out;
+}
