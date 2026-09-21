@@ -142,29 +142,25 @@ const ON_PCB_PADS = new Map([
 /**
  * Declared pins wired to nothing. RATCHET — may only shrink.
  *
- * The 13 arduino-sk-* entries are one class: the circuit is a bare board plus
- * power, with the components the program declares simply absent.
+ * This was 13 arduino-sk-* entries of one class: the circuit is a bare board
+ * plus power, with the components the program declares simply absent.
  *
- * These are NOT waiting on bw-bundle's repair, and recording them that way
- * would have been wrong. Checked with bw-bundle directly: its fix changes a
- * pin's MODE (OUTPUT to PWM/TONE) and the actuation verb, and wires nothing —
- * arduino-sk-p05-servo-mood still has no servo in its circuit afterwards. The
- * defect here survives that change; only the mode string moves, and this gate
- * keys on the pad, not the mode.
+ * They were NOT waiting on bw-bundle's repair, and recording them that way
+ * would have been wrong: its fix changes a pin's MODE (OUTPUT to PWM/TONE) and
+ * the actuation verb, and wires nothing. What actually closed them was
+ * REBUILDING THE BENCH FROM ITS OWN PROGRAM, which is a different repair in a
+ * different repo — sb3-creator, with bw-board's servo/sensor/panel inference
+ * behind it.
+ *
+ * SHRANK 2026-09-21 from 13 to 2, in two steps. Eight went with the rebuilt
+ * benches at sb3-creator 06a78ba2. Three more — p03-love-o-meter,
+ * p05-servo-mood and p12-knock-lock — went at 8e1f4d11, where each example's
+ * base bench stopped being a copy of its mega variant and became the Uno the
+ * catalog names as authored; the parts were in the Uno bench all along and the
+ * gate had been reading the wrong file. The two that remain still reproduce.
  */
 const KNOWN_UNWIRED = new Map([
-    ['arduino-sk-p03-love-o-meter', 'led1@D2 led2@D3 led3@D4 — circuit is uno+pot+power, no LEDs'],
     ['arduino-sk-p04-color-mixing', 'sensorG@A1 sensorB@A2 ledR@D3 ledG@D5 ledB@D6'],
-    ['arduino-sk-p05-servo-mood', 'servo@D9 — no servo part'],
-    ['arduino-sk-p06-light-theremin', 'speaker@D8 — no speaker part'],
-    ['arduino-sk-p07-keyboard', 'btn1@D2 btn2@D3 btn3@D4 btn4@D5 speaker@D8'],
-    ['arduino-sk-p08-hourglass', 'led2@D2..led7@D7 tilt@D8'],
-    ['arduino-sk-p09-motorized-pinwheel', 'btn@D2 motor@D9'],
-    ['arduino-sk-p10-zoetrope', 'pot@A0 btnFwd@D2 btnRev@D3 motorEnable@D9 motorDir1@D4 motorDir2@D5'],
-    ['arduino-sk-p11-crystal-ball', 'tilt@D6 — no tilt switch part'],
-    ['arduino-sk-p12-knock-lock', 'piezo@A0 btn@D2 ledR@D3 ledY@D4 ledG@D5 servo@D9'],
-    ['arduino-sk-p13-touch-lamp', 'touch@D2 led@D3'],
-    ['arduino-sk-p14-serial-pot', 'pot@A0 — circuit is uno+power only, no potentiometer'],
     ['arduino-sk-p15-hacking-buttons', 'opto@D2 — no optocoupler part'],
 ]);
 
@@ -175,6 +171,11 @@ const KNOWN_UNREAD = new Map([
     ['61-console-pong:s1', 'button on p3.0, not declared'],
     ['61-console-pong:s4', 'button on p3.7, not declared'],
     ['61-console-pong:s5', 'button on p3.6, not declared'],
+    // A servo is addressed by CHANNEL, not by its pin: `set 1 angle to 90` lowers
+    // to bw_servo_set(1, …) and the driver owns the pin (OCR1A for channel 1).
+    // So the pad is genuinely never named by a pin-level operation, and this
+    // check cannot see the drive — the same undecidability the 74HC595 note
+    // above records, for the same reason.
 ]);
 
 /** Affordance with no wires at all. RATCHET — may only shrink. */
@@ -467,9 +468,6 @@ const NAME_IMPLIES = [
  * to cover it with their hand.
  */
 const KNOWN_KIND_MISMATCH = new Map([
-    ['arduino-sk-p06-light-theremin:ldr', 'declares an LDR on A0; a potentiometer is wired there instead'],
-    ['03-night-light:ldr', 'declares an LDR on P1.3; circuit carries POT_ldr, a potentiometer'],
-    ['16-ldr-bargraph:ldr', 'declares an LDR on P1.7; circuit carries POT_ldr, a potentiometer'],
 ]);
 
 test('a declared name matches the kind of part on its pad', t => {

@@ -186,10 +186,18 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
     // (p03, p05, p06, p07, p08, p09, p10, p11, p12, p13, p14) gained an
     // explicit circuit.arduino-uno.json, because their base bench is no longer
     // an Uno. 9 + 11 = 20, and no file was removed.
+    // 1203 -> 1192 on 2026-09-21: the nine base circuit.json files the rebuild
+    // had written for examples whose catalog entry names a device-specific
+    // circuit are gone (five of them; the app never referenced them and they
+    // hijacked the physics gate away from the authored bench), the five
+    // arduino-sk circuit.arduino-uno.json files became their example's base,
+    // and 54-motor-driver's attiny88 bench went with the device. One file
+    // arrives: arduino-sk-p08-hourglass regains circuit.stm32f030.json, which
+    // its Uno base makes retargetable again. -12 +1.
     // This is a floor on COVERAGE, not a claim about corpus size — it exists so a
     // glob that silently stops matching cannot report zero failures. It moves
     // only when the corpus does, and the commit that moves it says which example.
-    assert.equal(files.length, 1203, 'the gate must cover the complete vendored corpus');
+    assert.equal(files.length, 1192, 'the gate must cover the complete vendored corpus');
     assert.deepEqual(failures, []);
 });
 
@@ -323,8 +331,13 @@ test('every selectable example × MCU combination resolves to an overlap-free be
         // sb3-creator in the canonical single-device shape (no authored, no
         // benches, circuit.json), so it contributes to neither count. The P7-era
         // bump is reverted by the re-sync, not lost.
+        // 884 -> 883 (total 1000 -> 999) on 2026-09-21: 54-motor-driver stops
+        // advertising attiny88. Its rebuilt bench drives the motor from a PWM
+        // pin, and the attiny88 retarget convention offers none, so the
+        // dry-run refuses the device by name rather than shipping a bench that
+        // cannot exist. One retargeted combination, no authored one.
         authored: 116,
-        retargeted: 884,
-        total: 1000
+        retargeted: 883,
+        total: 999
     });
 });
