@@ -22,6 +22,8 @@ import {gateToLogicIc} from './logic-ic.js';
 /** A half adder: sum = a XOR b, carry = a AND b. Two chips, two LEDs. */
 export const HALF_ADDER = Object.freeze({
     id: 'half_adder',
+    label: 'Half adder',
+    hint: 'a=1 b=1 darkens the sum and lights the carry, which is 1 + 1 = 10 in binary.',
     inputs: ['a', 'b'],
     gates: [
         {type: 'xor', in: ['a', 'b'], out: 'sum'},
@@ -31,11 +33,35 @@ export const HALF_ADDER = Object.freeze({
 });
 
 /**
+ * A full adder: sum = a XOR b XOR cin, cout = (a AND b) OR (cin AND (a XOR b)).
+ *
+ * Five chips, and the first spec where one chip's output feeds another's input:
+ * `n1` (a XOR b) is computed once and read by both the sum XOR and the carry
+ * AND, exactly as the textbook "two half adders and an OR" construction does.
+ * `n1`, `t1` and `t2` are internal nets — no LED, nothing to read — so only sum
+ * and cout get one.
+ */
+export const FULL_ADDER = Object.freeze({
+    id: 'full_adder',
+    label: 'Full adder',
+    hint: 'turning all three on lights BOTH LEDs, which is 1 + 1 + 1 = 11 in binary.',
+    inputs: ['a', 'b', 'cin'],
+    gates: [
+        {type: 'xor', in: ['a', 'b'], out: 'n1'},      // half adder 1: sum bit
+        {type: 'and', in: ['a', 'b'], out: 't1'},      // half adder 1: carry
+        {type: 'xor', in: ['n1', 'cin'], out: 'sum'},  // half adder 2: sum bit
+        {type: 'and', in: ['n1', 'cin'], out: 't2'},   // half adder 2: carry
+        {type: 'or', in: ['t1', 't2'], out: 'cout'}    // either carry carries
+    ],
+    outputs: ['sum', 'cout']
+});
+
+/**
  * The multi-gate circuits a challenge can name (`circuit: 'half_adder'`), so the
  * UI's build button and the curriculum tests resolve the same spec from the same
  * place rather than each carrying their own copy.
  */
-export const IC_CIRCUITS = Object.freeze({half_adder: HALF_ADDER});
+export const IC_CIRCUITS = Object.freeze({half_adder: HALF_ADDER, full_adder: FULL_ADDER});
 
 /** Distinct colours so two output LEDs are told apart at a glance. */
 const OUT_COLORS = ['green', 'red', 'yellow', 'blue', 'white'];

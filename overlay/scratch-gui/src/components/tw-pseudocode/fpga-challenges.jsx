@@ -1,6 +1,7 @@
 import React from 'react';
 import {CHALLENGES, challengeById, isUnlocked, isRealise} from '../../lib/bw-fpga/challenges.js';
 import {gradeMessage, gradeMessageRealised} from '../../lib/bw-fpga/grader.js';
+import {IC_CIRCUITS} from '../../lib/bw-fpga/logic-ic-circuit.js';
 
 /**
  * The learning-path panel — a Turing-Complete-style ladder of build-it-yourself
@@ -74,7 +75,9 @@ export function FpgaChallengePanel ({active, passed, result, onSelect, onCheck, 
                         <div data-testid="bw-fpga-rungs" style={{fontSize: 11, lineHeight: 1.4, marginBottom: 6,
                             padding: '4px 6px', borderRadius: 4, background: 'rgba(29,78,216,0.06)', color: '#334155'}}>
                             {'🔌 Graded on the real board: '}
-                            {activeC.circuit ? '⚙ Half adder' : (activeC.rungs || []).map(r => RUNG_LABEL[r]).filter(Boolean).join(', or ')}
+                            {activeC.circuit
+                                ? `⚙ ${(IC_CIRCUITS[activeC.circuit] || {}).label || 'this circuit'}`
+                                : (activeC.rungs || []).map(r => RUNG_LABEL[r]).filter(Boolean).join(', or ')}
                             {' — or wire it yourself. Any build that computes it passes.'}
                             {/* A multi-output challenge reads more than one LED, and which
                                 LED is which is the thing a learner can get backwards. */}

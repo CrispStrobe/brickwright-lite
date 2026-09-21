@@ -72,7 +72,7 @@ test('the pass message does not call two LEDs "the output LED"', () => {
     // "the output LED followed the truth table", which is untrue of what was
     // just checked.
     const msg = gradeMessageRealised(gradeRealisedCircuit(realiseHalfAdder(), HALF), HALF);
-    assert.match(msg, /all 2 output LEDs followed their truth tables/, 'plural, and says how many');
+    assert.match(msg, /both output LEDs followed their truth tables/, 'two LEDs are "both", not "all 2"');
     assert.ok(!/the output LED followed/.test(msg), 'not the singular wording');
     // The single-output wording is untouched.
     const AND = {id: 'and', inputs: [{name: 'a'}, {name: 'b'}], outputs: [{name: 'y'}], expect: i => ({y: i.a & i.b})};

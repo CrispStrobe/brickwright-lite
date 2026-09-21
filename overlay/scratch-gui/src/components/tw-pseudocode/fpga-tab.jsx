@@ -64,7 +64,7 @@ const L10N = {
         wireDemoBoardBtn: '⬢ Wire up a demo board',
         buildTransistorsBtn: '⚛ Build the gate from transistors',
         buildIcBtn: '⚙ Build the gate from a 74xx chip',
-        buildHalfAdderBtn: '⚙ Half adder',
+        buildCircuitBtn: '⚙ Build this circuit',
         permissiveLicence: 'Declares a permissive licence — it may be built on the shared server.',
         whereBuiltTitle: 'Where it would be built',
         backendLabel: 'Backend: ',
@@ -180,7 +180,7 @@ const L10N = {
         wireDemoBoardBtn: '⬢ Demoboard verkabeln',
         buildTransistorsBtn: '⚛ Gatter aus Transistoren bauen',
         buildIcBtn: '⚙ Gatter aus einem 74xx-Chip bauen',
-        buildHalfAdderBtn: '⚙ Halbaddierer',
+        buildCircuitBtn: '⚙ Diese Schaltung bauen',
         permissiveLicence: 'Erklärt eine freizügige Lizenz — es kann auf dem geteilten Server gebaut werden.',
         whereBuiltTitle: 'Wo es gebaut werden würde',
         backendLabel: 'Backend: ',
@@ -371,6 +371,7 @@ const FpgaTab = (props) => {
     const [demoMsg, setDemoMsg] = React.useState(null);
     const [cmosGate, setCmosGate] = React.useState('nand'); // which gate to realise as transistors
     const [icGate, setIcGate] = React.useState('and'); // which gate to realise as a 74HC chip
+    const [icCircuit, setIcCircuit] = React.useState('half_adder'); // which multi-chip circuit to build
     // The first-run guide tracks the three steps through the tab's real state and
     // stays until the user hides it (or opts out for good in this browser).
     const [guideDismissed, setGuideDismissed] = React.useState(() => {
@@ -811,11 +812,13 @@ const FpgaTab = (props) => {
             if (typeof c.toJSON === 'function' && typeof window !== 'undefined') {
                 window.dispatchEvent(new CustomEvent('bw-load-circuit-data', {detail: {data: c.toJSON()}}));
             }
+            const spec = IC_CIRCUITS[key];
             const chips = built.chips.map(ch => ch.kind.toUpperCase()).join(' + ');
             const outs = built.outputs.map(o => o.name).join(' and ');
-            setDemoMsg({ok: true, text: `Built a half adder from ${chips} — two chips watching the same `
-                + `two switches, with an LED for ${outs}. Run the circuit and toggle them: `
-                + 'a=1 b=1 darkens the sum and lights the carry, which is 1 + 1 = 10 in binary.'});
+            const nSw = built.inputs.length;
+            setDemoMsg({ok: true, text: `Built a ${spec.label.toLowerCase()} from ${chips} — `
+                + `${built.chips.length} chips sharing ${nSw} input switch${nSw === 1 ? '' : 'es'}, `
+                + `with an LED for ${outs}. Run the circuit and toggle them: ${spec.hint}`});
         } catch (e) {
             setDemoMsg({ok: false, text: `Could not build the circuit: ${e.message}`});
         }
@@ -958,13 +961,20 @@ const FpgaTab = (props) => {
                         style={{padding: '0.2rem 0.6rem', cursor: 'pointer'}}
                     >{L10N[pickLocale(props.locale)].buildIcBtn}</button>
                 </span>
-                {/* …or a whole multi-chip circuit: the half adder is two chips and two LEDs. */}
+                {/* …or a whole multi-chip CIRCUIT: several chips sharing the input
+                    switches, an LED per named output. Listed from the shared
+                    registry so a new spec appears here without touching this file. */}
                 <span style={{marginLeft: '0.75rem'}}>
-                    <button type="button" data-testid="bw-fpga-build-half-adder"
-                        onClick={() => realizeIcCircuit('half_adder')}
-                        title="Build a half adder from two 74HC chips — XOR for the sum, AND for the carry, sharing the input switches"
+                    <select value={icCircuit} onChange={e => setIcCircuit(e.target.value)}
+                        data-testid="bw-fpga-ic-circuit" style={{marginRight: '0.35rem'}}>
+                        {Object.entries(IC_CIRCUITS).map(([k, spec]) =>
+                            <option key={k} value={k}>{spec.label}</option>)}
+                    </select>
+                    <button type="button" data-testid="bw-fpga-build-circuit"
+                        onClick={() => realizeIcCircuit(icCircuit)}
+                        title="Build this circuit from 74HC chips — several chips sharing the input switches, with an LED per output"
                         style={{padding: '0.2rem 0.6rem', cursor: 'pointer'}}
-                    >{L10N[pickLocale(props.locale)].buildHalfAdderBtn}</button>
+                    >{L10N[pickLocale(props.locale)].buildCircuitBtn}</button>
                 </span>
                 {demoMsg ? (
                     <span style={{marginLeft: '0.5rem', opacity: 0.9,

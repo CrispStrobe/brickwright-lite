@@ -177,6 +177,13 @@ export const CHALLENGES = Object.freeze([
         brief: 'Two chips, one job: a 74HC86 XOR gives the sum, a 74HC08 AND gives the carry, and both watch the SAME two switches. Press ⚙ Half adder to build it, then Check — this is the first challenge that reads TWO output LEDs, and it is binary addition happening in parts you could buy. Try 1+1: the sum goes dark and the carry lights.',
         inputs: io(['a', 'b']), outputs: io(['sum', 'carry']),
         expect: i => ({sum: i.a ^ i.b, carry: i.a & i.b})
+    },
+    {
+        id: 'full_adder_real', title: 'Full adder — carry in, carry out',
+        requires: ['full_adder', 'half_adder_real'], realise: true, circuit: 'full_adder', rungs: ['ic'],
+        brief: 'Three bits in, two out, and five chips to do it: a 74HC86 XOR and a 74HC08 AND make one half adder, a second pair adds the carry-in, and a 74HC32 OR merges the two carries — either one means a carry out. Pick Full adder and press ⚙. The row that proves it is 1+1+1: BOTH LEDs light, because three is 11 in binary. This is the circuit a computer adds with, one bit wide.',
+        inputs: io(['a', 'b', 'cin']), outputs: io(['sum', 'cout']),
+        expect: i => ({sum: i.a ^ i.b ^ i.cin, cout: (i.a + i.b + i.cin) >= 2 ? 1 : 0})
     }
 ]);
 
