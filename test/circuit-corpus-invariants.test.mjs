@@ -178,10 +178,18 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
     // sb3-creator gallery sync to 73d3174 — one circuit.json, and the only new
     // file in that sync the glob counts (eater6502-bench/rom.bin is the other
     // new file and is not a circuit).
+    // 1183 -> 1203 on 2026-09-21: the 26-example rebuild (sb3-creator 2be3fe2b).
+    // Nine examples that had only device-specific variants gained a portable
+    // base circuit.json — 03-night-light, 04-thermostat, 16-ldr-bargraph,
+    // 53-servo-sweep, 54-motor-driver, 79-a2-sampler, 80-a2-lcd-moving-text,
+    // 81-8051-lcd1602-parallel, 82-a2-led-row — and eleven arduino-sk projects
+    // (p03, p05, p06, p07, p08, p09, p10, p11, p12, p13, p14) gained an
+    // explicit circuit.arduino-uno.json, because their base bench is no longer
+    // an Uno. 9 + 11 = 20, and no file was removed.
     // This is a floor on COVERAGE, not a claim about corpus size — it exists so a
     // glob that silently stops matching cannot report zero failures. It moves
     // only when the corpus does, and the commit that moves it says which example.
-    assert.equal(files.length, 1183, 'the gate must cover the complete vendored corpus');
+    assert.equal(files.length, 1203, 'the gate must cover the complete vendored corpus');
     assert.deepEqual(failures, []);
 });
 
