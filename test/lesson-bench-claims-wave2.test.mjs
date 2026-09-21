@@ -346,9 +346,17 @@ test('RESOLVED (was OPEN DEFECT): the discharge switch makes the RC step repeata
     // signals-rc-response's hint both depend on it). A bench change that stops
     // a live defect reproducing on the only bench that shows it is not a fix.
     const {board, circuit} = await load('43-rc-timing');
-    const controlIds = circuit.getControls().map(c => (typeof c === 'string' ? c : c.id));
-    assert.deepEqual(controlIds, ['sw_discharge'],
-        'the bench carries exactly one control, and it is the discharge switch');
+    // The only SWITCH on the bench is the discharge switch — not a charge switch,
+    // whose open-at-rest state would read 0 V in the first DC operating point and
+    // defeat the benches that show the engine reading the SUPPLY at rest (Wave 6's
+    // D23 sentinel, signals-rc-response's hint). vcc is ALSO a control now — a
+    // supply you can turn (bw-board ebf77e9e) — which is orthogonal to this claim:
+    // it is the source, not a switch, and the charge-from-rest landmarks below
+    // prove the rest state still reads that supply rather than 0 V.
+    const controls = circuit.getControls().map(c => (typeof c === 'string' ? {id: c, kind: 'switch'} : c));
+    const switchIds = controls.filter(c => c.kind === 'switch' || c.kind === 'button').map(c => c.id);
+    assert.deepEqual(switchIds, ['sw_discharge'],
+        'the only switch on the bench is the discharge switch, not a charge switch');
 
     // 1. The charge from t=0 is UNTOUCHED. An open switch stamps 1e-12 S, and
     //    these are the same four landmarks the test above pins — asserted here
