@@ -51,6 +51,13 @@ example whose kind does not predict whether it runs.
 
 ## Finding 1 — 8 examples author opcodes no bundled extension defines
 
+> **STATUS 2026-09-21: CLOSED.** Held by `KNOWN_MISSING_OPCODES` in
+> `test/example-vm-execution.test.mjs`, which is EMPTY. It carried nine entries.
+> The heading keeps the count that was FOUND; this line carries the count that
+> still reproduces, and `test/corpus-findings-are-current.test.mjs` fails if the
+> two ever disagree again.
+
+
 The ROADMAP §5.1 class. An authored block whose extension does not define it
 loads into the project and then does nothing: in node it is not dropped
 (79-a2-sampler loads all 51 of its blocks), it is simply never dispatched.
@@ -115,6 +122,14 @@ defined — these are not defined.
 
 ## Finding 2 — 19 examples turn a hardware verb into a variable
 
+> **STATUS 2026-09-21: CLOSED.** Held by `KNOWN_BROKEN` in
+> `test/example-execution.test.mjs`, which is EMPTY. Thirteen came off on
+> 2026-08-23 with the pin bump `db2966f -> 2fb5fbd`. Re-measured 2026-09-21: all
+> 19 programs named below carry none of `set pwm|tone <pin>` or
+> `set <pin> brightness`, and the pattern occurs in 0 of the corpus's
+> `program.bw` files.
+
+
 The defect PLAN.md opens with, in its second spelling. `set pwm <pin> to N`,
 `set tone <pin> to N` and `set <pin> brightness to N` are not verbs the compiler
 knows, so it does the only other thing it can: it assigns a VARIABLE named
@@ -145,6 +160,13 @@ PWM/tone vocabulary the compiler does not implement.
 
 ## Finding 3 — 9 examples run and reach no hardware at all
 
+> **STATUS 2026-09-21: CLOSED.** Held by `KNOWN_INERT` in
+> `test/example-vm-execution.test.mjs`, which is EMPTY. Its comment accounts for
+> all nine names below: four were the `set pwm` slip, two were never broken and
+> moved to `TIME_GATED`, and three were downstream of the undefined-opcode gap,
+> closed by `802fc105`.
+
+
 Declare an output/PWM/tone pin, execute for 24 frames in the real VM, and invoke
 zero extension methods. Six are Finding 2; three are Finding 1b.
 
@@ -158,6 +180,15 @@ refuses both as `busy-loop:zero-time-spin`, so before this gate nothing in eithe
 repo could see them.
 
 ## Finding 4 — 2 examples declared `kind: "full"` compile to zero blocks
+
+> **STATUS 2026-09-21: CLOSED.** Both are now declared `kind: "circuit"` in
+> `examples/index.json`, which is what the last paragraph asks for — the metadata
+> was wrong and the metadata was fixed. Both also ship a `rom.bin`:
+> `eater6502-bench` got a 32 KB 6502 ROM with an interrupt program in
+> sb3-creator `8ea99e0`, so the bench does now measure what its lesson asks.
+> Its `program.bw` is still the one-line board declaration, which is correct —
+> the program is the ROM.
+
 
 `eater6502-bench` and `eater6502-vdp-hello`. Their `program.bw` is a board
 declaration (`DEVICE EATER6502`, `MAP RAM …`, `CHIP via1 = …`) with no code, so
