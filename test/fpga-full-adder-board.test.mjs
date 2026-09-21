@@ -70,13 +70,15 @@ test('carry-in alone is what makes it different from a half adder', () => {
 
 // ── The build: chips chained, internal nets unread ──────────────────────────
 
-test('it is five chips, three switches and exactly two LEDs', () => {
+test('its five gates are bought as THREE packages', () => {
+    // Two XOR gates share one quad 74HC86, two ANDs share one quad 74HC08, and
+    // the lone OR takes a 74HC32 — which is what you would actually buy.
     const c = realise(FULL_ADDER);
     const kinds = {};
     for (const p of c.parts) kinds[p.kind] = (kinds[p.kind] || 0) + 1;
-    assert.equal(kinds['74hc86'], 2, 'two XOR chips');
-    assert.equal(kinds['74hc08'], 2, 'two AND chips');
-    assert.equal(kinds['74hc32'], 1, 'one OR chip to merge the carries');
+    assert.equal(kinds['74hc86'], 1, 'both XOR gates fit one quad package');
+    assert.equal(kinds['74hc08'], 1, 'both AND gates fit one quad package');
+    assert.equal(kinds['74hc32'], 1, 'and the OR takes a third');
     assert.equal(kinds.switch, 3, 'a switch per input, cin included');
     assert.equal(kinds.led, 2, 'internal nets get NO LED — only sum and cout are read');
 });
@@ -85,9 +87,10 @@ test('the internal nets really are internal', () => {
     const c = realise(FULL_ADDER);
     const ledNames = c.parts.filter(p => p.kind === 'led').map(p => p.declName).sort();
     assert.deepEqual(ledNames, ['cout', 'sum'], 'nothing reads n1, t1 or t2');
-    // The chips ARE named for the net they drive, so a learner can see which is which.
+    // Packages carry REFERENCE DESIGNATORS, the way a schematic names them — a
+    // package holding four gates cannot be named after one of them.
     const chipNames = c.parts.filter(p => String(p.kind).startsWith('74hc')).map(p => p.declName).sort();
-    assert.deepEqual(chipNames, ['cout', 'n1', 'sum', 't1', 't2']);
+    assert.deepEqual(chipNames, ['U1', 'U2', 'U3']);
 });
 
 test('a chip output feeds another chip input — the path nothing exercised before', () => {

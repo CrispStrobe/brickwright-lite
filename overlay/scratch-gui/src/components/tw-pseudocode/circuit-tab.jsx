@@ -2109,9 +2109,27 @@ class CircuitTab extends React.Component {
                             '(onCircuitReady has not fired), so the parts list cannot ' +
                             'be built. Open the Designer once and come back.');
             }
-            if (ui.BomPanel) return <ui.BomPanel parts={circuit.parts} />;
+            // The vendor exports bomToCsv and nothing ever surfaced it, so a
+            // parts list you could read was not a parts list you could take to
+            // a supplier. Offer the CSV next to the table; a <details> keeps it
+            // out of the way until wanted, and a textarea is selectable in every
+            // browser without asking for clipboard permission.
+            const csvBlock = typeof ui.bomToCsv === 'function' ? (
+                <details style={{marginTop: 10}} data-testid="bw-bom-csv">
+                    <summary style={{cursor: 'pointer', fontSize: 13}}>{'Export as CSV'}</summary>
+                    <textarea
+                        readOnly
+                        onFocus={e => e.target.select()}
+                        value={ui.bomToCsv(ui.generateBom(circuit.parts) || [])}
+                        style={{width: '100%', minHeight: 140, marginTop: 6, fontFamily: 'monospace', fontSize: 12}}
+                    />
+                </details>
+            ) : null;
+            if (ui.BomPanel) {
+                return (<div><ui.BomPanel parts={circuit.parts} />{csvBlock}</div>);
+            }
             const bom = ui.generateBom(circuit.parts) || [];
-            return bom.length ? (
+            const table = bom.length ? (
                 <table style={{fontSize: 13, borderCollapse: 'collapse'}}>
                     <tbody>
                         {bom.map((row, i) => (
@@ -2124,6 +2142,7 @@ class CircuitTab extends React.Component {
                     </tbody>
                 </table>
             ) : note('No parts on the board yet.');
+            return bom.length ? (<div>{table}{csvBlock}</div>) : table;
         }
 
         if (panel === 'examples') {

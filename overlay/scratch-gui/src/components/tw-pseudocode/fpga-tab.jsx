@@ -813,12 +813,19 @@ const FpgaTab = (props) => {
                 window.dispatchEvent(new CustomEvent('bw-load-circuit-data', {detail: {data: c.toJSON()}}));
             }
             const spec = IC_CIRCUITS[key];
-            const chips = built.chips.map(ch => ch.kind.toUpperCase()).join(' + ');
+            // Report the PACKAGES, which is what you buy — not one line per
+            // gate. Twenty gates of a 4-bit adder are five parts.
+            const byKind = {};
+            for (const pk of built.packages) byKind[pk.label] = (byKind[pk.label] || 0) + 1;
+            const bill = Object.entries(byKind).map(([label, n]) => `${n}× ${label}`).join(', ');
             const outs = built.outputs.map(o => o.name).join(' and ');
             const nSw = built.inputs.length;
-            setDemoMsg({ok: true, text: `Built a ${spec.label.toLowerCase()} from ${chips} — `
-                + `${built.chips.length} chips sharing ${nSw} input switch${nSw === 1 ? '' : 'es'}, `
-                + `with an LED for ${outs}. Run the circuit and toggle them: ${spec.hint}`});
+            const nGates = built.chips.length;
+            setDemoMsg({ok: true, text: `Built a ${spec.label.toLowerCase()}: ${nGates} gates in `
+                + `${built.packages.length} chip${built.packages.length === 1 ? '' : 's'} — ${bill} — `
+                + `sharing ${nSw} input switch${nSw === 1 ? '' : 'es'}, with an LED for ${outs}. `
+                + `Run the circuit and toggle them: ${spec.hint} `
+                + 'The Circuit tab\'s ☷ Parts list has the whole shopping list, CSV included.'});
         } catch (e) {
             setDemoMsg({ok: false, text: `Could not build the circuit: ${e.message}`});
         }

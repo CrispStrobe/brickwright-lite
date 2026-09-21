@@ -13,6 +13,7 @@ import {boot} from '../scripts/lesson-bench.mjs';
 import {buildLogicIcCircuit, rippleAdder, carryCoverRows, IC_CIRCUITS, RIPPLE_ADDER_4}
     from '../overlay/scratch-gui/src/lib/bw-fpga/logic-ic-circuit.js';
 import {gradeRealisedCircuit, gradeMessageRealised} from '../overlay/scratch-gui/src/lib/bw-fpga/grader.js';
+import {icGatePins} from '../overlay/scratch-gui/src/lib/bw-fpga/logic-ic.js';
 import {challengeById} from '../overlay/scratch-gui/src/lib/bw-fpga/challenges.js';
 
 const {Circuit} = await boot();
@@ -112,17 +113,58 @@ test('a plain sum with no carries at all still works (9 + 4 = 13)', () => {
 
 // ── The build ───────────────────────────────────────────────────────────────
 
-test('it is five chips per bit, laid out in a grid rather than one long column', () => {
+test('twenty gates are bought as FIVE packages — the actual shopping list', () => {
     const c = realise(RIPPLE_ADDER_4);
+    const kinds = {};
+    for (const p of c.parts) kinds[p.kind] = (kinds[p.kind] || 0) + 1;
+    // 8 XOR, 8 AND, 4 OR — at four gates a package, that is 2 + 2 + 1.
+    assert.equal(kinds['74hc86'], 2, 'eight XOR gates fill two quad packages');
+    assert.equal(kinds['74hc08'], 2, 'eight AND gates fill two more');
+    assert.equal(kinds['74hc32'], 1, 'four OR gates fill one');
     const chips = c.parts.filter(p => String(p.kind).startsWith('74hc'));
-    assert.equal(chips.length, 20, 'five chips per bit, four bits');
+    assert.equal(chips.length, 5, 'five packages, not twenty chips');
     assert.equal(c.parts.filter(p => p.kind === 'switch').length, 9, 'a switch per input');
     assert.equal(c.parts.filter(p => p.kind === 'led').length, 5, 'four sums and a carry');
-    // Twenty chips stacked vertically would be a ~3,800px strip nobody can read.
-    const xs = new Set(chips.map(p => p.x));
-    assert.equal(xs.size, 4, 'one column per bit');
     const height = Math.max(...chips.map(p => p.y)) - Math.min(...chips.map(p => p.y));
     assert.ok(height < 1000, `the stack must stay lookable, got ${height}px tall`);
+});
+
+test('every package is FULL where it can be — no half-used chips to buy', () => {
+    const c = new Circuit(5.0);
+    const built = buildLogicIcCircuit(c, RIPPLE_ADDER_4);
+    // 20 gates over 5 packages of 4 means every one is full; a packer that
+    // opened a fresh chip per gate would still "work" but cost four times the
+    // parts, and nothing else would notice.
+    for (const pack of built.packages) {
+        assert.equal(pack.used, pack.capacity, `${pack.ref} (${pack.label}) is only ${pack.used}/${pack.capacity} used`);
+    }
+});
+
+test('a leftover gate has its inputs tied off, not left floating', () => {
+    // The half adder uses 1 of 4 gates in each package. A floating CMOS input
+    // drifts around the switching threshold and makes the package draw current
+    // and oscillate — real boards tie them off, so this one does.
+    const c = new Circuit(5.0);
+    const built = buildLogicIcCircuit(c, IC_CIRCUITS.half_adder);
+    const spare = built.packages.find(p => p.used < p.capacity);
+    assert.ok(spare, 'the half adder leaves spare gates');
+    // Wires are {from:{part,terminal}, to:{part,terminal}} and each net is wired
+    // as a chain, so an unused input is tied off iff it appears on some wire AND
+    // that wire's net is the ground net.
+    const gnd = c.parts.find(p => p.kind === 'gnd');
+    const gndNets = new Set(c.wires
+        .filter(w => w.from.part === gnd.id || w.to.part === gnd.id)
+        .map(w => w.netId));
+    const onGndNet = new Set();
+    for (const w of c.wires) {
+        if (!gndNets.has(w.netId)) continue;
+        for (const end of [w.from, w.to]) if (end.part === spare.id) onGndNet.add(end.terminal);
+    }
+    for (let slot = spare.used + 1; slot <= spare.capacity; slot++) {
+        for (const pin of icGatePins(spare.gates[0].type, slot).inputs) {
+            assert.ok(onGndNet.has(pin), `${spare.ref} gate ${slot} input ${pin} is not tied to ground`);
+        }
+    }
 });
 
 test('the output LEDs are to the RIGHT of every chip, not on top of them', () => {
