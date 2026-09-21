@@ -25,9 +25,34 @@ quietConsole();
 const {loadExtension} = await import('../scripts/spike/load-extension.mjs');
 const {bundleSource} = await import('../scripts/spike/bundled-upstream.mjs');
 
+/**
+ * Build a block's arguments, REFUSING any name the block does not declare.
+ *
+ * This exists because of playTone. Its block says "for [DURATION] ms", the
+ * implementation read `args.MS`, and the test below asserted
+ * `playTone({FREQ, MS})` — written from the implementation rather than from
+ * the block. So the body read undefined, sent a duration of zero, and the
+ * block was SILENT while its test was green. A golden test taken from the
+ * code under test agrees with that code being wrong.
+ *
+ * Passing arguments through here makes the block's own getInfo() the
+ * authority: a test can no longer name an argument the block does not have.
+ */
+const argsFor = function (info, opcode, values) {
+    const block = (info.blocks || []).find(b => b && b.opcode === opcode);
+    assert.ok(block, `${opcode} is not a block of this extension`);
+    const declared = Object.keys(block.arguments || {});
+    for (const name of Object.keys(values)) {
+        assert.ok(declared.includes(name),
+            `${opcode} has no argument ${name} — it declares ${declared.join(', ') || '(none)'}`);
+    }
+    return values;
+};
+
 /** Load the extension with a backend that records packets instead of sending. */
 const wired = function () {
     const instance = loadExtension(bundleSource('ev3comprehensive'));
+    const info = instance.getInfo();
     const sent = [];
     instance.ev3.backend = {
         send: async packet => { sent.push(Array.from(packet)); return true; },
@@ -36,6 +61,9 @@ const wired = function () {
     instance.ev3.isConnected = () => true;
     return {
         instance,
+        info,
+        /** Arguments checked against the block's own declaration. */
+        args: (opcode, values) => argsFor(info, opcode, values),
         async capture (fn) {
             sent.length = 0;
             await fn();
@@ -68,9 +96,9 @@ const body = (packet, {globals = 0} = {}) => {
 test('motor stop names the port bitmask and the brake flag', async () => {
     const w = wired();
     // a3 = opOUTPUT_STOP, 00 = daisy-chain layer, 01 = port A, then brake.
-    assert.deepEqual(body(await w.capture(() => w.instance.motorStop({PORT: 'A', BRAKE: 'brake'}))),
+    assert.deepEqual(body(await w.capture(() => w.instance.motorStop(w.args('motorStop', {PORT: 'A', BRAKE: 'brake'})))),
         [0xa3, 0x00, 0x01, 0x01]);
-    assert.deepEqual(body(await w.capture(() => w.instance.motorStop({PORT: 'A', BRAKE: 'coast'}))),
+    assert.deepEqual(body(await w.capture(() => w.instance.motorStop(w.args('motorStop', {PORT: 'A', BRAKE: 'coast'})))),
         [0xa3, 0x00, 0x01, 0x00],
         'coast and brake are the same command with one byte between them, which is ' +
         'exactly the kind of difference a body-exists check cannot see');
@@ -79,30 +107,30 @@ test('motor stop names the port bitmask and the brake flag', async () => {
 test('motor ports are a bitmask, so combinations address both motors', async () => {
     const w = wired();
     // a5 = opOUTPUT_SPEED, 81 32 = LC1(50), then a6 = opOUTPUT_START.
-    assert.deepEqual(body(await w.capture(() => w.instance.motorRun({PORT: 'A', POWER: 50}))),
+    assert.deepEqual(body(await w.capture(() => w.instance.motorRun(w.args('motorRun', {PORT: 'A', POWER: 50})))),
         [0xa5, 0x00, 0x01, 0x81, 50, 0xa6, 0x00, 0x01]);
     // A|C = 1|4 = 5. Addressing one motor when the block says two is silent.
-    assert.deepEqual(body(await w.capture(() => w.instance.motorRun({PORT: 'A+C', POWER: 50}))),
+    assert.deepEqual(body(await w.capture(() => w.instance.motorRun(w.args('motorRun', {PORT: 'A+C', POWER: 50})))),
         [0xa5, 0x00, 0x05, 0x81, 50, 0xa6, 0x00, 0x05]);
-    assert.deepEqual(body(await w.capture(() => w.instance.motorRun({PORT: 'ALL', POWER: 50}))),
+    assert.deepEqual(body(await w.capture(() => w.instance.motorRun(w.args('motorRun', {PORT: 'ALL', POWER: 50})))),
         [0xa5, 0x00, 0x0f, 0x81, 50, 0xa6, 0x00, 0x0f]);
     // An unrecognised port falls back to A, never to 0: a mask of 0 addresses
     // no motor and is indistinguishable from a dead connection.
-    assert.deepEqual(body(await w.capture(() => w.instance.motorRun({PORT: 'nonsense', POWER: 50}))),
+    assert.deepEqual(body(await w.capture(() => w.instance.motorRun(w.args('motorRun', {PORT: 'nonsense', POWER: 50})))),
         [0xa5, 0x00, 0x01, 0x81, 50, 0xa6, 0x00, 0x01]);
 });
 
 test('sound: tone, note and stop', async () => {
     const w = wired();
     // 94 01 = opSOUND TONE, volume LC1(50), LC2(freq), LC2(ms).
-    assert.deepEqual(body(await w.capture(() => w.instance.playTone({FREQ: 440, MS: 100}))),
+    assert.deepEqual(body(await w.capture(() => w.instance.playTone(w.args('playTone', {FREQ: 440, DURATION: 100})))),
         [0x94, 0x01, 0x81, 50, 0x82, 0xb8, 0x01, 0x82, 0x64, 0x00]);
     // C4 is 262 Hz (0x106) and one beat at the default 120 bpm is 500 ms
     // (0x1f4). This is the assertion that would have caught the first version
     // of playNote, which did MIDI arithmetic on the note NAME: Number("C4") is
     // NaN, and NaN reaches the brick as a frequency of 0 — silence that looks
     // exactly like a disconnected speaker.
-    assert.deepEqual(body(await w.capture(() => w.instance.playNote({NOTE: 'C4', DURATION: 1}))),
+    assert.deepEqual(body(await w.capture(() => w.instance.playNote(w.args('playNote', {NOTE: 'C4', DURATION: 1})))),
         [0x94, 0x01, 0x81, 50, 0x82, 0x06, 0x01, 0x82, 0xf4, 0x01]);
     assert.deepEqual(body(await w.capture(() => w.instance.stopSound())),
         [0x94, 0x00]);
@@ -113,7 +141,7 @@ test('screen: clear, pixel and the UPDATE that makes drawing visible', async () 
     // 84 = opUI_DRAW. 13 = FILLWINDOW, 00 = UPDATE, 02 = PIXEL.
     assert.deepEqual(body(await w.capture(() => w.instance.screenClear())),
         [0x84, 0x13, 0x00, 0x82, 0x00, 0x00, 0x82, 0x00, 0x00, 0x84, 0x00]);
-    assert.deepEqual(body(await w.capture(() => w.instance.drawPixel({X: 10, Y: 20}))),
+    assert.deepEqual(body(await w.capture(() => w.instance.drawPixel(w.args('drawPixel', {X: 10, Y: 20})))),
         [0x84, 0x02, 0x01, 0x82, 0x0a, 0x00, 0x82, 0x14, 0x00, 0x84, 0x00]);
     // Every drawing command ends with UPDATE. Without it the EV3 draws into
     // the back buffer and the screen never changes — a block that does
@@ -132,9 +160,9 @@ test('screen: clear, pixel and the UPDATE that makes drawing visible', async () 
 test('LEDs write the pattern the menu names', async () => {
     const w = wired();
     // 82 = opUI_WRITE, 1b = LED. OFF/GREEN/RED/ORANGE are 0..3.
-    assert.deepEqual(body(await w.capture(() => w.instance.setLED({COLOR: 'GREEN'}))),
+    assert.deepEqual(body(await w.capture(() => w.instance.setLED(w.args('setLED', {COLOR: 'GREEN'})))),
         [0x82, 0x1b, 0x01]);
-    assert.deepEqual(body(await w.capture(() => w.instance.setLED({COLOR: 'ORANGE'}))),
+    assert.deepEqual(body(await w.capture(() => w.instance.setLED(w.args('setLED', {COLOR: 'ORANGE'})))),
         [0x82, 0x1b, 0x03]);
     assert.deepEqual(body(await w.capture(() => w.instance.ledAllOff())),
         [0x82, 0x1b, 0x00]);
@@ -219,13 +247,69 @@ test('motor position and speed read a MOTOR port, not a sensor port', async () =
     // The tacho reserves 8 global bytes: an int8 speed at 0 and an int32
     // position at 4, read from one reply.
     assert.deepEqual(
-        body(await w.capture(() => w.instance.motorPosition({PORT: 'D'})), {globals: 8}),
+        body(await w.capture(() => w.instance.motorPosition(w.args('motorPosition', {PORT: 'D'}))), {globals: 8}),
         [0xa8, 0x00, 0x08, 0x60, 0x64], 'port D is bitmask 8');
     assert.deepEqual(
-        body(await w.capture(() => w.instance.motorSpeed({PORT: 'A'})), {globals: 8}),
+        body(await w.capture(() => w.instance.motorSpeed(w.args('motorSpeed', {PORT: 'A'}))), {globals: 8}),
         [0xa8, 0x00, 0x01, 0x60, 0x64], 'port A is bitmask 1');
     // And a sensor block must still use INPUT, so the two families cannot
     // quietly converge again.
-    const touch = body(await w.capture(() => w.instance.touchSensor({PORT: '1'})), {globals: 4});
+    const touch = body(await w.capture(() => w.instance.touchSensor(w.args('touchSensor', {PORT: '1'}))), {globals: 4});
     assert.equal(touch[0], 0x99, 'sensor reads must stay on opINPUT_DEVICE');
+});
+
+// ── blocks that declared an argument and ignored it ──────────────────────
+
+test('the argument builder refuses a name the block does not declare', () => {
+    // The guard itself, proved. Without this, every assertion below could be
+    // written against arguments the block has never heard of — which is
+    // precisely how playTone stayed silent under a green test.
+    const w = wired();
+    assert.throws(() => w.args('playTone', {FREQ: 440, MS: 100}),
+        /playTone has no argument MS — it declares FREQ, DURATION/);
+    assert.doesNotThrow(() => w.args('playTone', {FREQ: 440, DURATION: 100}));
+});
+
+test('colour components are selected, not assumed', async () => {
+    const w = wired();
+    // 99 1c = opINPUT_DEVICE / READY_RAW, three values. READY_RAW did not
+    // exist in this extension's subcode table and arrived as 0x00, which is
+    // not a valid INPUT_DEVICE subcommand.
+    const bytes = body(
+        await w.capture(() => w.instance.colorSensorRGB(
+            w.args('colorSensorRGB', {PORT: '1', COMPONENT: 'green'}))),
+        {globals: 12});
+    assert.deepEqual(bytes.slice(0, 2), [0x99, 0x1c]);
+    assert.equal(bytes[5], 0x04, 'mode 4 is RGB raw');
+    assert.equal(bytes[6], 0x03, 'three values, or there is nothing to select from');
+});
+
+test('the IR beacon channel picks a heading/distance PAIR', async () => {
+    const w = wired();
+    // The transpiler reads EIGHT values in IR_SEEK and indexes them as
+    // (channel - 1) * 2, so one read serves all four channels. A single-value
+    // read would return channel 1 for every channel and look fine.
+    for (const opcode of ['irBeaconHeading', 'irBeaconDistance']) {
+        const bytes = body(
+            await w.capture(() => w.instance[opcode](
+                w.args(opcode, {PORT: '2', CHANNEL: 3}))),
+            {globals: 32});
+        assert.deepEqual(bytes.slice(0, 2), [0x99, 0x1d], `${opcode}: READY_SI`);
+        assert.equal(bytes[5], 0x01, `${opcode}: mode 1 is IR seek`);
+        assert.equal(bytes[6], 0x08, `${opcode}: eight values, one per channel field`);
+    }
+});
+
+test('the timer index is its own timer, and resetting one leaves the others alone', async () => {
+    const w = wired();
+    // The brick has ONE hardware timer. An implementation that reset it would
+    // send every other index backwards, so a reset must SNAPSHOT instead —
+    // which is why a reset reads the timer rather than writing it.
+    const reset = body(await w.capture(() => w.instance.resetTimer(
+        w.args('resetTimer', {TIMER: 2}))), {globals: 4});
+    assert.deepEqual(reset, [0x87, 0x60],
+        'resetting an index must READ the brick timer (opTIMER_READ), not reset it');
+    const read = body(await w.capture(() => w.instance.timerValue(
+        w.args('timerValue', {TIMER: 2}))), {globals: 4});
+    assert.deepEqual(read, [0x87, 0x60]);
 });
