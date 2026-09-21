@@ -57,11 +57,126 @@ export const FULL_ADDER = Object.freeze({
 });
 
 /**
+ * An n-bit ripple-carry adder: n full adders chained, each stage's carry-out
+ * becoming the next stage's carry-in. That chaining IS the lesson — it is also
+ * why the thing is slow in real silicon, because bit 3's answer cannot settle
+ * until bit 0's carry has rippled all the way up.
+ *
+ * Inputs are a0..a(n-1), b0..b(n-1), cin (little-endian, a0 is the ones bit);
+ * outputs are sum0..sum(n-1) and cout. Five chips per bit.
+ */
+export function rippleAdder (n) {
+    const gates = [];
+    const inputs = [];
+    for (let i = 0; i < n; i++) inputs.push(`a${i}`, `b${i}`);
+    inputs.push('cin');
+    for (let i = 0; i < n; i++) {
+        const carryIn = i === 0 ? 'cin' : `c${i}`;
+        const carryOut = i === n - 1 ? 'cout' : `c${i + 1}`;
+        gates.push(
+            {type: 'xor', in: [`a${i}`, `b${i}`], out: `n${i}`},
+            {type: 'and', in: [`a${i}`, `b${i}`], out: `p${i}`},
+            {type: 'xor', in: [`n${i}`, carryIn], out: `sum${i}`},
+            {type: 'and', in: [`n${i}`, carryIn], out: `q${i}`},
+            {type: 'or', in: [`p${i}`, `q${i}`], out: carryOut}
+        );
+    }
+    const outputs = [];
+    for (let i = 0; i < n; i++) outputs.push(`sum${i}`);
+    outputs.push('cout');
+    return Object.freeze({
+        id: `ripple_adder_${n}`,
+        label: `${n}-bit adder`,
+        hint: `set a to ${'1'.repeat(n)} and add 1 — every sum LED goes dark and the carry lights, `
+            + `which is how counting rolls over.`,
+        inputs, gates, outputs
+    });
+}
+
+/**
+ * Rows that drive EVERY stage of an n-bit ripple adder through its whole truth
+ * table, without enumerating the input space.
+ *
+ * A 4-bit adder has 9 inputs — 512 combinations, and on the real board that is
+ * minutes of simulation, which is not a thing to do inside a click. Brute force
+ * stops being the tool here, which is itself worth a learner knowing: you cover
+ * a big circuit, you do not exhaust it.
+ *
+ * The coverage criterion is exact rather than a vibe: each stage i is a full
+ * adder over (a_i, b_i, c_i), so the set must make all EIGHT of those triples
+ * appear at every stage. c_i is not an input — it arrives from the stage below —
+ * so the rows are chosen by simulating the carry in pure arithmetic and keeping
+ * any row that shows some stage a triple nothing has shown it yet.
+ *
+ * Deterministic: the same rows every run, in ascending order.
+ *
+ * @param {number} n  bit width
+ * @returns {Array<Object>} input maps ({a0, b0, …, cin})
+ */
+export function carryCoverRows (n) {
+    const need = new Set();
+    for (let i = 0; i < n; i++) for (let t = 0; t < 8; t++) need.add(`${i}:${t}`);
+    const rows = [];
+    const total = 1 << ((2 * n) + 1);
+    for (let bits = 0; bits < total && need.size; bits++) {
+        const row = {};
+        for (let i = 0; i < n; i++) {
+            row[`a${i}`] = (bits >> (2 * i)) & 1;
+            row[`b${i}`] = (bits >> ((2 * i) + 1)) & 1;
+        }
+        row.cin = (bits >> (2 * n)) & 1;
+        // Ripple the carry the way the circuit will, and see what each stage sees.
+        const gained = [];
+        let carry = row.cin;
+        for (let i = 0; i < n; i++) {
+            const a = row[`a${i}`];
+            const b = row[`b${i}`];
+            const key = `${i}:${(a << 2) | (b << 1) | carry}`;
+            if (need.has(key)) gained.push(key);
+            carry = ((a + b + carry) >= 2) ? 1 : 0;
+        }
+        if (gained.length) {
+            for (const k of gained) need.delete(k);
+            rows.push(row);
+        }
+    }
+
+    // Greedy picks a row the moment it gains anything, so an early row can be
+    // made redundant by later ones — it gained a triple then, but nothing
+    // depends on it now. Sweep backwards and drop every row the set can do
+    // without: fewer rows is less simulation for the same coverage, and it makes
+    // "these rows are all needed" a true statement rather than a hopeful one.
+    const covers = set => {
+        const seen = new Set();
+        for (const row of set) {
+            let carry = row.cin;
+            for (let i = 0; i < n; i++) {
+                const a = row[`a${i}`];
+                const b = row[`b${i}`];
+                seen.add(`${i}:${(a << 2) | (b << 1) | carry}`);
+                carry = ((a + b + carry) >= 2) ? 1 : 0;
+            }
+        }
+        return seen.size === n * 8;
+    };
+    let kept = rows;
+    for (let i = kept.length - 1; i >= 0; i--) {
+        const without = kept.filter((_, j) => j !== i);
+        if (covers(without)) kept = without;
+    }
+    return kept;
+}
+
+/**
  * The multi-gate circuits a challenge can name (`circuit: 'half_adder'`), so the
  * UI's build button and the curriculum tests resolve the same spec from the same
  * place rather than each carrying their own copy.
  */
-export const IC_CIRCUITS = Object.freeze({half_adder: HALF_ADDER, full_adder: FULL_ADDER});
+export const RIPPLE_ADDER_4 = rippleAdder(4);
+
+export const IC_CIRCUITS = Object.freeze({
+    half_adder: HALF_ADDER, full_adder: FULL_ADDER, ripple_adder_4: RIPPLE_ADDER_4
+});
 
 /** Distinct colours so two output LEDs are told apart at a glance. */
 const OUT_COLORS = ['green', 'red', 'yellow', 'blue', 'white'];
@@ -96,9 +211,20 @@ export function buildLogicIcCircuit (circuit, spec, {clear = true} = {}) {
     const conn = {};
     const join = (net, id, term) => { (conn[net] = conn[net] || []).push([id, term]); };
 
-    const ROW = 190;
+    // Chips go in a GRID, not one tall column: a 4-bit adder is twenty chips,
+    // and stacked vertically that is a 3,800px strip nobody can look at. Five
+    // per column, which for the adders means one column PER BIT — the layout
+    // then shows the structure instead of hiding it.
+    const ROW = 150;
+    const COL = 300;
+    const PER_COL = 5;
+    const nCols = Math.ceil(spec.gates.length / PER_COL);
+    const colRows = Math.min(spec.gates.length, PER_COL);
+    const rightX = 380 + (nCols * COL) + 60;
+
     const vcc = circuit.addPart('vcc', {}, 60, 40); join('vcc', vcc.id, 'vcc');
-    const gnd = circuit.addPart('gnd', {}, 60, 120 + spec.gates.length * ROW); join('gnd', gnd.id, 'gnd');
+    const gnd = circuit.addPart('gnd', {}, 60, 160 + (Math.max(colRows, spec.inputs.length) * ROW));
+    join('gnd', gnd.id, 'gnd');
 
     // Inputs: a switch pulling the net to VCC with a 100 kΩ pull-down, so an open
     // switch reads 0. One per NAMED input, shared by every gate that reads it.
@@ -116,7 +242,8 @@ export function buildLogicIcCircuit (circuit, spec, {clear = true} = {}) {
     // falls out of the same join().
     const chips = spec.gates.map((g, gi) => {
         const ic = gateToLogicIc(g.type);
-        const chip = circuit.addPart(ic.chip, {}, 380, 140 + gi * ROW, g.out);
+        const chip = circuit.addPart(ic.chip, {},
+            380 + (Math.floor(gi / PER_COL) * COL), 140 + ((gi % PER_COL) * ROW), g.out);
         join('vcc', chip.id, 'vcc');
         join('gnd', chip.id, 'gnd');
         g.in.forEach((net, i) => join(net, chip.id, ic.inputs[i]));
@@ -128,8 +255,8 @@ export function buildLogicIcCircuit (circuit, spec, {clear = true} = {}) {
     // named so the grader can find it by name and coloured so a learner can.
     const outputs = spec.outputs.map((name, i) => {
         const y = 140 + i * ROW;
-        const r = circuit.addPart('resistor', {ohms: 330}, 700, y);
-        const led = circuit.addPart('led', {color: OUT_COLORS[i % OUT_COLORS.length]}, 830, y, name);
+        const r = circuit.addPart('resistor', {ohms: 330}, rightX, y);
+        const led = circuit.addPart('led', {color: OUT_COLORS[i % OUT_COLORS.length]}, rightX + 130, y, name);
         join(name, r.id, 'a');
         join(`__led_${name}`, r.id, 'b');
         join(`__led_${name}`, led.id, 'anode');

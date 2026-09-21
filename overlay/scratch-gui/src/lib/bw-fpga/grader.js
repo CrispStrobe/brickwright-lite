@@ -292,7 +292,21 @@ export function gradeRealisedCircuit (circuit, challenge, opts = {}) {
     if (typeof board.setPower === 'function') board.setPower(true);
 
     const names = challenge.inputs.map(i => i.name);
-    const total = 1 << names.length;
+
+    // Which rows to drive. Exhausting the input space is the default and the
+    // honest best, but it stops being possible: a 4-bit adder has 9 inputs, and
+    // 512 rows on the real board is minutes of simulation, which is not a thing
+    // to do inside a click. A challenge may instead name the rows it wants
+    // driven, together with what they cover — the verdict then says so rather
+    // than implying an exhaustiveness it did not do.
+    const declared = typeof challenge.rows === 'function' ? challenge.rows()
+        : (Array.isArray(challenge.rows) ? challenge.rows : null);
+    const rows = declared || Array.from({length: 1 << names.length}, (_, bits) => {
+        const row = {};
+        names.forEach((nm, i) => { row[nm] = (bits >> i) & 1; });
+        return row;
+    });
+    const total = rows.length;
 
     // Grading toggles the learner's own switches, so remember where they had
     // them and put them back. Otherwise pressing Check silently rearranges
@@ -308,8 +322,7 @@ export function gradeRealisedCircuit (circuit, challenge, opts = {}) {
     };
 
     for (let bits = 0; bits < total; bits++) {
-        const inputs = {};
-        names.forEach((nm, i) => { inputs[nm] = (bits >> i) & 1; });
+        const inputs = rows[bits];
         io.inputs.forEach((inp, i) => board.setControl(inp.switch, inputs[names[i]] ? 1 : 0));
         settle(board, settleMs, stepMs);
 
@@ -340,7 +353,7 @@ export function gradeRealisedCircuit (circuit, challenge, opts = {}) {
         }
     }
     restore();
-    return {pass: true, realised: true, checked: total};
+    return {pass: true, realised: true, checked: total, ...(declared ? {covering: challenge.rowsNote || null} : {})};
 }
 
 /** A one-line, learner-facing summary of a real-parts grade. */
@@ -353,6 +366,13 @@ export function gradeMessageRealised (result, challenge) {
         const leds = nOut > 2 ? `all ${nOut} output LEDs followed their truth tables`
             : nOut === 2 ? 'both output LEDs followed their truth tables'
                 : 'the output LED followed the truth table';
+        // A declared row set is NOT every combination, and saying so is the
+        // whole difference between a verdict a learner can trust and one that
+        // quietly overclaims.
+        if (result.covering) {
+            return `✓ It works in real parts — ${leds} across ${result.checked} rows `
+                + `covering ${result.covering}, on the live board.`;
+        }
         return `✓ It works in real parts — ${leds} `
             + `through all ${result.checked} input combination${result.checked === 1 ? '' : 's'} on the live board.`;
     }

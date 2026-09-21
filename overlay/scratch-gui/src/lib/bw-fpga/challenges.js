@@ -17,8 +17,22 @@
  *
  * @module
  */
+import {carryCoverRows} from './logic-ic-circuit.js';
 
 const io = names => names.map(name => ({name}));
+
+// The 4-bit adder is graded on chosen rows, not the whole input space — 9 inputs
+// is 512 combinations and minutes of real simulation. carryCoverRows picks the
+// rows that show every bit position all eight cases its full adder can see.
+const rippleRows = () => carryCoverRows(4);
+const rippleExpect = i => {
+    let a = 0; let b = 0;
+    for (let k = 0; k < 4; k++) { a += i[`a${k}`] << k; b += i[`b${k}`] << k; }
+    const total = a + b + i.cin;
+    const out = {cout: total >= 16 ? 1 : 0};
+    for (let k = 0; k < 4; k++) out[`sum${k}`] = (total >> k) & 1;
+    return out;
+};
 
 export const CHALLENGES = Object.freeze([
     {
@@ -184,6 +198,16 @@ export const CHALLENGES = Object.freeze([
         brief: 'Three bits in, two out, and five chips to do it: a 74HC86 XOR and a 74HC08 AND make one half adder, a second pair adds the carry-in, and a 74HC32 OR merges the two carries — either one means a carry out. Pick Full adder and press ⚙. The row that proves it is 1+1+1: BOTH LEDs light, because three is 11 in binary. This is the circuit a computer adds with, one bit wide.',
         inputs: io(['a', 'b', 'cin']), outputs: io(['sum', 'cout']),
         expect: i => ({sum: i.a ^ i.b ^ i.cin, cout: (i.a + i.b + i.cin) >= 2 ? 1 : 0})
+    },
+    {
+        id: 'ripple_adder_real', title: '4-bit adder — the carry ripples',
+        requires: ['full_adder_real'], realise: true, circuit: 'ripple_adder_4', rungs: ['ic'],
+        brief: 'Four full adders in a row, each one handing its carry up to the next: twenty chips, nine switches, five LEDs, and it adds two 4-bit numbers. Pick 4-bit adder and press ⚙. Set a to 1111 and add 1 — every sum LED goes dark and the carry lights, which is how counting rolls over. That hand-off is also why real adders are slow: bit 3 cannot settle until bit 0\'s carry has rippled all the way up.',
+        inputs: io(['a0', 'b0', 'a1', 'b1', 'a2', 'b2', 'a3', 'b3', 'cin']),
+        outputs: io(['sum0', 'sum1', 'sum2', 'sum3', 'cout']),
+        rows: rippleRows,
+        rowsNote: 'every bit position through all eight cases its full adder can see (all 512 combinations would take minutes)',
+        expect: rippleExpect
     }
 ]);
 

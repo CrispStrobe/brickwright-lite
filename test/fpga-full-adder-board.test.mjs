@@ -138,7 +138,8 @@ test('a HALF adder does not satisfy the full adder challenge', () => {
 
 test('the full adder is in the registry the UI and tests share', () => {
     assert.equal(IC_CIRCUITS.full_adder, FULL_ADDER);
-    assert.deepEqual(Object.keys(IC_CIRCUITS), ['half_adder', 'full_adder'], 'simplest first');
+    assert.deepEqual(Object.keys(IC_CIRCUITS), ['half_adder', 'full_adder', 'ripple_adder_4'],
+        'simplest first — the picker shows them in this order');
 });
 
 test('every gate in the spec is produced before it is consumed', () => {

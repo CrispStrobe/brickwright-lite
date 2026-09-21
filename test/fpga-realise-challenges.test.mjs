@@ -46,7 +46,12 @@ for (const c of REALISE) {
             else RUNGS[rung].build(circuit, c.gate);
             const result = gradeRealisedCircuit(circuit, c);
             assert.equal(result.pass, true, gradeMessageRealised(result, c));
-            assert.equal(result.checked, 1 << c.inputs.length, 'every input combination was driven');
+            // A challenge that declares its rows is graded on THOSE; only an
+            // exhaustive one drives the whole input space.
+            const expected = c.rows ? (typeof c.rows === 'function' ? c.rows() : c.rows).length
+                : 1 << c.inputs.length;
+            assert.equal(result.checked, expected,
+                c.rows ? 'every declared row was driven' : 'every input combination was driven');
         });
     }
 }
@@ -187,11 +192,26 @@ test('each realise challenge is gated behind designing that gate on the canvas',
     }
 });
 
-test('the realise challenge with no canvas counterpart is NOR, and only NOR', () => {
-    // Pins the exception above, so a future gate cannot quietly skip the
+test('only NOR and the ripple adder have no canvas counterpart', () => {
+    // Pins the exceptions, so a future challenge cannot quietly skip the
     // "design it before you build it" rule by having no canvas lesson.
+    //   nor            — the canvas ladder goes straight from OR to NAND
+    //   ripple_adder_4 — twenty gates is past what the canvas ladder teaches;
+    //                    it is gated behind full_adder_real instead, which is
+    //                    the same circuit one bit wide.
     const canvasIds = new Set(CHALLENGES.filter(c => !isRealise(c)).map(c => c.id));
-    assert.deepEqual(REALISE.filter(c => !canvasIds.has(subjectOf(c))).map(subjectOf), ['nor']);
+    assert.deepEqual(REALISE.filter(c => !canvasIds.has(subjectOf(c))).map(subjectOf),
+        ['nor', 'ripple_adder_4']);
+});
+
+test('a realise challenge with no canvas lesson is gated behind a realise one', () => {
+    // It still cannot be the learner's first encounter with the idea.
+    const canvasIds = new Set(CHALLENGES.filter(c => !isRealise(c)).map(c => c.id));
+    const realiseIds = new Set(REALISE.map(c => c.id));
+    for (const c of REALISE.filter(x => !canvasIds.has(subjectOf(x)))) {
+        assert.ok(c.requires.some(r => realiseIds.has(r) || canvasIds.has(r)),
+            `${c.id} must be gated behind something`);
+    }
 });
 
 test('the realise ladder unlocks in order once its prerequisites pass', () => {
