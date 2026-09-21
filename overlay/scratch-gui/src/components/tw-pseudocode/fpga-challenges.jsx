@@ -20,8 +20,24 @@ const COLOR = {done: '#16a34a', active: '#1d4ed8', open: '#475569', locked: '#94
 export function FpgaChallengePanel ({active, passed, result, onSelect, onCheck, onNext}) {
     const activeC = active ? challengeById(active) : null;
     const done = CHALLENGES.filter(c => passed.has(c.id)).length;
+
+    // Keep the verdict on screen. This panel is a fixed-height scroll box and the
+    // brief, Check button and result sit BELOW the challenge list, so with a
+    // ladder this long the result lands under the fold: pressing Check appeared
+    // to do nothing at all (measured in a real browser — the panel's visible area
+    // ended at y=560 and the verdict rendered at y=566). Scroll to the bottom
+    // whenever the verdict changes, INCLUDING to the pending state, so the wait
+    // is visible too. Scrolling this container rather than calling
+    // scrollIntoView keeps the page itself still.
+    const scrollRef = React.useRef(null);
+    React.useEffect(() => {
+        if (!result) return;
+        const el = scrollRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
+    }, [result]);
+
     return (
-        <div data-testid="bw-fpga-challenges" style={{width: 196, flex: '0 0 auto',
+        <div ref={scrollRef} data-testid="bw-fpga-challenges" style={{width: 196, flex: '0 0 auto',
             borderRight: '1px solid rgba(71,85,105,0.25)', paddingRight: 8, marginRight: 8, overflowY: 'auto', maxHeight: '48vh'}}>
             <div style={{fontSize: 12, fontWeight: 'bold', margin: '0 0 4px'}}>
                 {'Learning path'} <span style={{fontWeight: 'normal', opacity: 0.7}}>{`${done}/${CHALLENGES.length}`}</span>

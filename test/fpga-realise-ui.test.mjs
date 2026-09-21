@@ -78,6 +78,22 @@ test('the Check button says what it will check, and cannot be double-fired', () 
     assert.match(panel, /result && !result\.pending \?/, 'a pending state is not rendered as a verdict');
 });
 
+test('the verdict is scrolled into view when it arrives', () => {
+    // The panel is a fixed-height scroll box and the brief/Check/result sit below
+    // the challenge list, so with a ladder this long the verdict lands under the
+    // fold — measured in a real browser: the panel's visible area ended at y=560
+    // and the result rendered at y=566, so pressing Check appeared to do nothing.
+    const panel = read(PANEL);
+    assert.match(panel, /React\.useRef\(null\)/, 'the scroll container is held by a ref');
+    assert.match(panel, /React\.useEffect\([\s\S]*?scrollTop = el\.scrollHeight[\s\S]*?\}, \[result\]\)/,
+        'and scrolled to the bottom whenever the verdict changes');
+    assert.match(panel, /<div ref=\{scrollRef\} data-testid="bw-fpga-challenges"/,
+        'the ref is on the scrolling panel itself');
+    // Scrolling the CONTAINER, not scrollIntoView, so the page does not jump.
+    // (Match a CALL — the comment in the source names the API it avoids.)
+    assert.ok(!/\.scrollIntoView\(/.test(panel), 'the page itself must stay still');
+});
+
 test('live-circuit.js reaches the board the way the app already does', () => {
     const live = read(LIVE);
     assert.match(live, /window\.__circuit/, 'the handle the circuit designer publishes');
