@@ -7,6 +7,7 @@ import VM from 'scratch-vm';
 import AudioEngine from 'scratch-audio';
 import unblockAudio from './audio-context-unblock.js';
 import installSpikeProjectMigration from './spike-project-migration.js';
+import installEv3ProjectMigration from './ev3-project-migration.js';
 
 import {setProjectUnchanged} from '../reducers/project-changed';
 import {
@@ -35,6 +36,7 @@ const vmManagerHOC = function (WrappedComponent) {
             // outside the `initialized` guard because it patches the VM rather
             // than configuring it, and is idempotent by design.
             installSpikeProjectMigration(this.props.vm);
+            installEv3ProjectMigration(this.props.vm);
             if (!this.props.vm.initialized) {
                 this.audioEngine = new AudioEngine();
                 // Firefox never settles decodeAudioData on a suspended context, which

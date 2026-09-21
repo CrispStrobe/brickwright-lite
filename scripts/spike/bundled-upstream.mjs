@@ -42,7 +42,7 @@ export const ROOT = resolve(here, '../..');
 export const BUNDLES = resolve(ROOT, 'overlay/scratch-vm/src/extensions/crispstrobe');
 
 /** CrispStrobe/extensions commit these sha256s were taken at. */
-export const UPSTREAM_COMMIT = '3c7eabc094af516c9dba2c4c721667c048779860';
+export const UPSTREAM_COMMIT = '2344a956f18920b5439f9e52b175d856fdf14386';
 export const UPSTREAM_REPO = 'CrispStrobe/extensions';
 
 /**
@@ -57,11 +57,14 @@ export const MAP = {
     arrays: 'extensions/CrispStrobe/arrays.js',
     csp: 'extensions/CrispStrobe/csp.js',
     circuit: 'extensions/CrispStrobe/circuit.js',
+    // ev3lms and legoev3direct were mapped here until 2026-09-21. They were the
+    // same stock-firmware brick as this one, with the block surface, the
+    // working live implementation and the LMS compiler split between the
+    // three; they are retired into ev3comprehensive and their ids resolve to
+    // it. ev3dev stays — it is a different operating system on the brick.
     ev3comprehensive: 'extensions/CrispStrobe/ev3_universal.js',
     ev3dev: 'extensions/CrispStrobe/ev3dev_py_transpile.js',
-    ev3lms: 'extensions/CrispStrobe/ev3_lms_transpile.js',
     legoboostunified: 'extensions/CrispStrobe/legoboost_universal.js',
-    legoev3direct: 'extensions/CrispStrobe/ev3_direct.js',
     legonxt: 'extensions/CrispStrobe/legonxt_transpile_universal.js',
     legopoweredup: 'extensions/CrispStrobe/lego_poweredup.js',
     planetemaths: 'extensions/CrispStrobe/planetemaths.js',

@@ -199,27 +199,18 @@ export default [
         featured: true
     },
     {
+        // Was one of THREE entries for the stock EV3 firmware — this one,
+        // "LEGO EV3 (Direct)" and "LEGO EV3 LMS" — and the picker gave no way
+        // to tell which you wanted, while this one, the flagship, was the one
+        // whose live mode did not work. They are now one extension; the other
+        // two ids resolve here.
         name: 'LEGO MINDSTORMS EV3',
         extensionId: 'ev3comprehensive',
         iconURL: 'static/extension-posters/lego.png',
         insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/ev3_universal.svg',
-        description: 'LEGO MINDSTORMS EV3 — bundled built-in.',
-        featured: true
-    },
-    {
-        name: 'LEGO EV3 (Direct)',
-        extensionId: 'legoev3direct',
-        iconURL: 'static/extension-posters/lego.png',
-        insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/ev3_direct.svg',
-        description: 'LEGO EV3 (Direct) — bundled built-in.',
-        featured: true
-    },
-    {
-        name: 'LEGO EV3 LMS',
-        extensionId: 'ev3lms',
-        iconURL: 'static/extension-posters/lego.png',
-        insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/ev3_lms_transpile.svg',
-        description: 'LEGO EV3 LMS — bundled built-in.',
+        description: 'LEGO MINDSTORMS EV3 — connects over Web Serial, Scratch Link, ' +
+            'a local bridge or HTTP, detected automatically; live control and LMS ' +
+            'transpiling. Bundled built-in.',
         featured: true
     },
     {
@@ -404,7 +395,11 @@ export default [
         helpLink: 'https://scratch.mit.edu/microbit'
     },
     {
-        name: 'LEGO MINDSTORMS EV3',
+        // NOT the same extension as 'ev3comprehensive' above, and it used to
+        // carry that one's exact name — two identical rows in one picker, with
+        // nothing to choose between them but their position. This is Scratch's
+        // own stock EV3 extension.
+        name: 'LEGO MINDSTORMS EV3 (Scratch)',
         extensionId: 'ev3',
         collaborator: 'LEGO',
         iconURL: ev3IconURL,
