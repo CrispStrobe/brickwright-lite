@@ -126,6 +126,26 @@ test('the realise ladder unlocks in order once its prerequisites pass', () => {
     }
 });
 
+test('the briefs\' concrete claims match what the builders actually make', () => {
+    // The briefs quote part numbers and transistor counts at the learner. Those
+    // are checkable, so check them — a brief that lies is worse than a vague
+    // one, and nothing else would catch it if a builder changed.
+    const byId = id => CHALLENGES.find(c => c.id === id);
+    const chipOf = gate => gateToLogicIc(gate).label;
+    const transistorsOf = gate => {
+        const c = new Circuit(5.0);
+        return buildCmosGate(c, gate).transistors.length;
+    };
+    assert.match(byId('not_real').brief, new RegExp(chipOf('not')), 'the NOT brief names the right chip');
+    assert.equal(transistorsOf('not'), 2, 'and "a PMOS and an NMOS" really is two transistors');
+    assert.match(byId('and_real').brief, new RegExp(chipOf('and')), 'the AND brief names the right chip');
+    assert.match(byId('and_real').brief, /six transistors/, 'and claims six');
+    assert.equal(transistorsOf('and'), 6, 'which is what buildCmosGate makes');
+    assert.match(byId('nand_real').brief, /four transistors/, 'the NAND brief claims four');
+    assert.equal(transistorsOf('nand'), 4, 'which is what buildCmosGate makes');
+    assert.match(byId('xor_real').brief, new RegExp(chipOf('xor')), 'the XOR brief names the right chip');
+});
+
 test('every realise brief tells the learner which button to press', () => {
     for (const c of REALISE) {
         assert.ok(c.brief && c.brief.length > 40, `${c.id} needs a real brief`);
