@@ -3,7 +3,7 @@ import {connect} from 'react-redux';
 import TANG_NANO_20K from 'bw-circuit-ui/parts-data/tang_nano_20k.json';
 import {parseCst, emitCst} from '../../lib/bw-fpga/cst.js';
 import {bridge, constraintsFromBindings} from '../../lib/bw-fpga/port-bridge.js';
-import {applyPortValues} from '../../lib/bw-fpga/drive.js';
+import {applyPortValues, readBoardInputs} from '../../lib/bw-fpga/drive.js';
 import {verilogToModel} from '../../lib/bw-fpga/verilog-to-model.js';
 import {yosysToModel} from '../../lib/bw-fpga/yosys-to-model.js';
 import {EXAMPLES} from '../../lib/bw-fpga/examples.js';
@@ -588,6 +588,19 @@ const FpgaTab = (props) => {
     // builder's own default (15–18) applies.
     const outputPinsRef = React.useRef([]);
     outputPinsRef.current = netlistText.trim() ? outputPins : [];
+    // The header pins the design READS (inputs), excluding the clock (the FPGA
+    // ticks its own clock, not a breadboard switch). The demo board puts a switch
+    // on each so the loop runs both ways.
+    const inputPins = React.useMemo(() => {
+        const pins = (bindings || [])
+            .filter(b => b.direction === 'input' && b.base !== clockPort && b.port !== clockPort && typeof b.pin === 'number')
+            .map(b => b.pin);
+        return [...new Set(pins)].sort((a, b) => a - b);
+    }, [bindings, clockPort]);
+    const inputPinsRef = React.useRef([]);
+    inputPinsRef.current = netlistText.trim() ? inputPins : [];
+    // Once a board with input switches is wired, poll them into the design (below).
+    const [boardDriven, setBoardDriven] = React.useState(false);
     // What the schematic lights: the values we actually know — the design's
     // inputs (set below) and its outputs (from the sim). Internal nets stay
     // neutral until Rung 1's follow-up reads them from the live circuit.
@@ -630,6 +643,35 @@ const FpgaTab = (props) => {
         return undefined;
     }, [sim.values, bindings]);
 
+    // The READ half of the loop: once a demo board with input switches is wired,
+    // poll the board's input pins and feed them into the design's inputs, so a
+    // press on the breadboard drives the FPGA logic (which then drives the LEDs
+    // through the effect above). Gated on boardDriven so it never clobbers the
+    // manual input controls before a bidirectional board exists.
+    React.useEffect(() => {
+        if (!boardDriven || !bindings.length || typeof window === 'undefined') return undefined;
+        const getBoard = () => {
+            const c = window.__circuit || window.__bwCircuit;
+            if (c && c.board && typeof c.board.readPin === 'function') return c.board;
+            if (window.__board && typeof window.__board.readPin === 'function') return window.__board;
+            return null;
+        };
+        const poll = () => {
+            const board = getBoard();
+            if (!board) return;
+            const boardInputs = readBoardInputs(bindings, board);
+            if (!Object.keys(boardInputs).length) return;
+            setInputs(prev => {
+                let changed = false;
+                const next = {...prev};
+                for (const [k, v] of Object.entries(boardInputs)) if (next[k] !== v) { next[k] = v; changed = true; }
+                return changed ? next : prev;
+            });
+        };
+        const id = setInterval(poll, 400);
+        return () => clearInterval(id);
+    }, [boardDriven, bindings]);
+
     // The free-running clock (see autoRun). Ticking clockCycles re-runs the sim
     // effect, which drives the board and broadcasts the outputs above.
     React.useEffect(() => {
@@ -662,7 +704,14 @@ const FpgaTab = (props) => {
             // builder's own default (pins 15–18) applies, which is where the
             // “Counting sequence” and chaser examples put their LEDs.
             const pins = outputPinsRef.current;
-            const result = buildDemoBoard(c, pins.length ? {pins} : {});
+            const inPins = inputPinsRef.current;
+            const result = buildDemoBoard(c, {
+                ...(pins.length ? {pins} : {}),
+                ...(inPins.length ? {inputPins: inPins} : {})
+            });
+            // With input switches on the board, poll them into the design so a
+            // press drives the FPGA logic (the loop, both ways).
+            if (inPins.length) setBoardDriven(true);
             // Make the designer RENDER what we built. Mutating the live circuit
             // model alone does NOT re-render it — the designer reacts only to its
             // own edits or a fresh circuitData prop — so hand it the built
@@ -671,9 +720,13 @@ const FpgaTab = (props) => {
                 window.dispatchEvent(new CustomEvent('bw-load-circuit-data', {detail: {data: c.toJSON()}}));
             }
             const litPins = result.leds.map(l => l.pin);
+            const nSw = (result.switches || []).length;
             setDemoMsg({ok: true, text: `Wired a Tang Nano 20K with ${litPins.length} `
                 + `LED${litPins.length === 1 ? '' : 's'} on pin${litPins.length === 1 ? '' : 's'} `
-                + `${litPins.join(', ')}. `
+                + `${litPins.join(', ')}`
+                + (nSw ? `, and ${nSw} input switch${nSw === 1 ? '' : 'es'} on pin${nSw === 1 ? '' : 's'} `
+                    + `${inPins.join(', ')}. Toggle a switch on the board and the design responds — the loop runs both ways. `
+                    : '. ')
                 + (pins.length
                     ? 'Synthesise and Step the clock — they follow the design on the board.'
                     : 'Load “Counting sequence”, Synthesise, then Step the clock — '
