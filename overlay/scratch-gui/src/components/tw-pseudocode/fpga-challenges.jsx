@@ -74,8 +74,17 @@ export function FpgaChallengePanel ({active, passed, result, onSelect, onCheck, 
                         <div data-testid="bw-fpga-rungs" style={{fontSize: 11, lineHeight: 1.4, marginBottom: 6,
                             padding: '4px 6px', borderRadius: 4, background: 'rgba(29,78,216,0.06)', color: '#334155'}}>
                             {'🔌 Graded on the real board: '}
-                            {(activeC.rungs || []).map(r => RUNG_LABEL[r]).filter(Boolean).join(', or ')}
+                            {activeC.circuit ? '⚙ Half adder' : (activeC.rungs || []).map(r => RUNG_LABEL[r]).filter(Boolean).join(', or ')}
                             {' — or wire it yourself. Any build that computes it passes.'}
+                            {/* A multi-output challenge reads more than one LED, and which
+                                LED is which is the thing a learner can get backwards. */}
+                            {activeC.outputs.length > 1 ? (
+                                <div style={{marginTop: 4}}>
+                                    {`Reads ${activeC.outputs.length} LEDs — `}
+                                    {activeC.outputs.map(o => o.name).join(' and ')}
+                                    {'. Name them, or stack them in that order.'}
+                                </div>
+                            ) : null}
                         </div>
                     ) : null}
                     <button type="button" onClick={onCheck} data-testid="bw-fpga-check"

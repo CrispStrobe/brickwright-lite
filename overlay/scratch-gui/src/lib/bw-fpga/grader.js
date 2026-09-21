@@ -187,14 +187,31 @@ const partsOfKind = (circuit, kind) => ((circuit && circuit.parts) || []).filter
  * @param {object} circuit  a live Circuit (needs a `parts` array)
  * @returns {{inputs: Array<{switch: string}>, output: ?{led: string}, leds: number}}
  */
-export function discoverRealisation (circuit) {
-    const switches = partsOfKind(circuit, 'switch')
-        .slice()
-        .sort((p, q) => (p.y - q.y) || (p.x - q.x) || String(p.id).localeCompare(String(q.id)));
-    const leds = partsOfKind(circuit, 'led');
+export function discoverRealisation (circuit, challenge) {
+    const byPosition = (p, q) => (p.y - q.y) || (p.x - q.x) || String(p.id).localeCompare(String(q.id));
+    const switches = partsOfKind(circuit, 'switch').slice().sort(byPosition);
+    const leds = partsOfKind(circuit, 'led').slice().sort(byPosition);
+
+    // Match an output LED to the output it REPRESENTS by name when the part
+    // carries one (the builders set declName), because position is a guess and a
+    // name is not: a learner who drags the carry LED above the sum LED has not
+    // built the wrong circuit. Fall back to top-to-bottom for a hand-wired board
+    // that names nothing — the same order the builder stacks them and the order
+    // the brief tells the learner to use.
+    const wanted = ((challenge && challenge.outputs) || []).map(o => o.name);
+    const named = new Map(leds.filter(l => l.declName).map(l => [l.declName, l]));
+    const allNamed = wanted.length > 0 && wanted.every(n => named.has(n));
+    const outputs = allNamed
+        ? wanted.map(n => ({name: n, led: named.get(n).id}))
+        : leds.map((l, i) => ({name: wanted[i], led: l.id}));
+
     return {
         inputs: switches.map(s => ({switch: s.id})),
-        output: leds.length ? {led: leds[0].id} : null,
+        outputs,
+        matchedByName: allNamed,
+        // The single-output shape the first realise challenges were written
+        // against, kept so nothing that reads `io.output` has to change.
+        output: outputs.length ? {led: outputs[0].led} : null,
         leds: leds.length
     };
 }
@@ -209,24 +226,26 @@ export function validateRealisation (circuit, challenge, io) {
         || typeof board.advanceTo !== 'function' || typeof board.ledBrightness !== 'function') {
         return 'Open the Circuit tab and build the gate there — this challenge grades the real board.';
     }
-    if (challenge.outputs.length !== 1) {
-        return 'This challenge has more than one output; realise-on-the-board challenges read a single output LED.';
-    }
     const want = challenge.inputs.length;
     const got = io.inputs.length;
-    if (got === 0 && !io.output) {
-        return 'Nothing is built yet. Realise the gate in the Circuit tab (⚙ as a chip, ⚛ as transistors), then check again.';
+    if (got === 0 && !io.leds) {
+        return 'Nothing is built yet. Realise it in the Circuit tab (⚙ as a chip, ⚛ as transistors), then check again.';
     }
     if (got !== want) {
         const names = challenge.inputs.map(i => i.name).join(', ');
         return `This challenge drives ${want} input${want === 1 ? '' : 's'} (${names}), `
             + `but the board has ${got} switch${got === 1 ? '' : 'es'}. Put one switch per input.`;
     }
-    if (!io.output) {
-        return 'Add an LED on the gate\'s output — that is what gets read.';
+    const wantOut = challenge.outputs.length;
+    if (!io.leds) {
+        return wantOut === 1
+            ? 'Add an LED on the output — that is what gets read.'
+            : `Add an LED per output (${challenge.outputs.map(o => o.name).join(', ')}) — those are what get read.`;
     }
-    if (io.leds > 1) {
-        return `The board has ${io.leds} LEDs, so there is no single output to read. Leave one LED on the output.`;
+    if (io.leds !== wantOut) {
+        const names = challenge.outputs.map(o => o.name).join(', ');
+        return `This challenge reads ${wantOut} output${wantOut === 1 ? '' : 's'} (${names}), `
+            + `but the board has ${io.leds} LED${io.leds === 1 ? '' : 's'}. Leave one LED per output.`;
     }
     return null;
 }
@@ -256,10 +275,14 @@ function settle (board, ms, stepMs) {
  * @param {{io?: object, settleMs?: number, stepMs?: number}} [opts]
  *   io — an explicit interface (e.g. the return of buildLogicIcGate) instead of
  *   discovering it from the parts.
+ * Multi-output challenges (a half adder's sum and carry) read one LED per
+ * output from the same settled state; an output's LED is found by NAME when the
+ * parts carry one, else top-to-bottom.
+ *
  * @returns {{pass: boolean, realised: true, problem?: string, failing?: object, checked?: number}}
  */
 export function gradeRealisedCircuit (circuit, challenge, opts = {}) {
-    const io = opts.io || discoverRealisation(circuit);
+    const io = opts.io || discoverRealisation(circuit, challenge);
     const problem = validateRealisation(circuit, challenge, io);
     if (problem) return {pass: false, realised: true, problem};
 
@@ -269,7 +292,6 @@ export function gradeRealisedCircuit (circuit, challenge, opts = {}) {
     if (typeof board.setPower === 'function') board.setPower(true);
 
     const names = challenge.inputs.map(i => i.name);
-    const outName = challenge.outputs[0].name;
     const total = 1 << names.length;
 
     // Grading toggles the learner's own switches, so remember where they had
@@ -291,22 +313,30 @@ export function gradeRealisedCircuit (circuit, challenge, opts = {}) {
         io.inputs.forEach((inp, i) => board.setControl(inp.switch, inputs[names[i]] ? 1 : 0));
         settle(board, settleMs, stepMs);
 
-        const brightness = board.ledBrightness(io.output.led);
-        const expected = challenge.expect(inputs)[outName];
-        const got = brightness >= LIT ? 1 : (brightness <= DARK ? 0 : null);
-        if (got === null) {
-            // Neither lit nor dark: the output is floating or half-driven — a
-            // real fault on a real board, and worth saying so rather than
-            // rounding it to a wrong answer.
-            restore();
-            return {pass: false, realised: true, checked: bits, failing: {
-                inputs, output: outName, expected, got: null, brightness,
-                reason: 'the output LED is neither clearly lit nor clearly dark — the output looks floating. Check it is driven and has a path to ground.'
-            }};
-        }
-        if (got !== expected) {
-            restore();
-            return {pass: false, realised: true, checked: bits, failing: {inputs, output: outName, expected, got, brightness}};
+        // Every output is read from the SAME settled board state, so a
+        // multi-output design (a half adder's sum and carry) is judged on one
+        // consistent moment rather than re-driven once per output.
+        const expected = challenge.expect(inputs);
+        for (let oi = 0; oi < io.outputs.length; oi++) {
+            const out = io.outputs[oi];
+            const outName = out.name || challenge.outputs[oi].name;
+            const brightness = board.ledBrightness(out.led);
+            const got = brightness >= LIT ? 1 : (brightness <= DARK ? 0 : null);
+            if (got === null) {
+                // Neither lit nor dark: the output is floating or half-driven —
+                // a real fault on a real board, and worth saying so rather than
+                // rounding it to a wrong answer.
+                restore();
+                return {pass: false, realised: true, checked: bits, failing: {
+                    inputs, output: outName, expected: expected[outName], got: null, brightness,
+                    reason: 'the output LED is neither clearly lit nor clearly dark — the output looks floating. Check it is driven and has a path to ground.'
+                }};
+            }
+            if (got !== expected[outName]) {
+                restore();
+                return {pass: false, realised: true, checked: bits,
+                    failing: {inputs, output: outName, expected: expected[outName], got, brightness}};
+            }
         }
     }
     restore();
@@ -316,7 +346,13 @@ export function gradeRealisedCircuit (circuit, challenge, opts = {}) {
 /** A one-line, learner-facing summary of a real-parts grade. */
 export function gradeMessageRealised (result, challenge) {
     if (result.pass) {
-        return `✓ It works in real parts — the output LED followed the truth table `
+        // A multi-output challenge watches several LEDs, and saying "the output
+        // LED" of a half adder is simply untrue of what was just checked.
+        const nOut = ((challenge && challenge.outputs) || []).length;
+        const leds = nOut > 1
+            ? `all ${nOut} output LEDs followed their truth tables`
+            : 'the output LED followed the truth table';
+        return `✓ It works in real parts — ${leds} `
             + `through all ${result.checked} input combination${result.checked === 1 ? '' : 's'} on the live board.`;
     }
     if (result.problem) return result.problem;
