@@ -153,3 +153,24 @@ test('a failing compile through the hook keeps the {ok, log} shape', async () =>
     assert.equal(typeof out.log, 'string');
     assert.match(out.log, /bogus/);
 });
+
+test('no webpack asset syntax reaches the bundle from a Node-only branch', async () => {
+    // `new URL('<literal>', import.meta.url)` is resolved by webpack at build
+    // time and emitted as an asset. It is not an import and nothing in this
+    // suite executes it as one, so a Node-only fallback written that way looks
+    // fine here and fails the EDITOR build — which is exactly what happened:
+    // `.../nqc-wasm/dist/index.js doesn't exist`, for a branch the browser
+    // never takes. Two hours of CI to learn it, and one assertion to keep it.
+    const {readFile} = await import('node:fs/promises');
+    const source = await readFile(
+        new URL('../overlay/scratch-gui/src/lib/nqc-wasm/compiler.js', import.meta.url), 'utf8');
+    // Comments here are prose ABOUT the shape as often as instances of it —
+    // the paragraph in compiler.js explaining this trap is itself an example —
+    // so they are blanked before matching, the same way
+    // scripts/audit-gate-shapes.mjs does it and for the same reason: a
+    // detector that flags the documentation of a defect is noise.
+    const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const sites = [...code.matchAll(/new URL\(\s*['"`][^'"`]*['"`]\s*,\s*import\.meta\.url/g)];
+    assert.deepEqual(sites.map(m => m[0]), [],
+        'a literal first argument makes webpack resolve and emit this path at build time');
+});

@@ -104,9 +104,20 @@ async function importGlue (url) {
  */
 export async function loadToolchain (dir) {
     if (loaded) return loaded;
+    // `new URL('<literal>', import.meta.url)` IS WEBPACK SYNTAX, not just an
+    // expression. Webpack resolves that first argument at build time and emits
+    // it as an asset — the same static form that reaches `new Worker(new
+    // URL(...))`, which test/no-dead-overlay-modules.test.mjs already documents
+    // as a reference a reader would not expect to be one. Written the obvious
+    // way, this line asked webpack to resolve a directory called `dist`, and
+    // the editor build failed with `.../nqc-wasm/dist/index.js doesn't exist`
+    // for a branch THE BROWSER NEVER TAKES. Deriving the directory from
+    // import.meta.url as a string keeps the Node default working and leaves
+    // webpack nothing to resolve.
+    const nodeDist = () => import.meta.url.replace(/\/compiler\.js(\?.*)?$/, '/dist/');
     const from = dir || (typeof document === 'object' ?
         new URL('static/nqc-wasm/', document.baseURI).href :
-        new URL('dist/', import.meta.url).href);
+        nodeDist());
     loaded = (async () => {
         const resolve = name => new URL(name, from).href;
         return {factory: await importGlue(resolve('nqc.js')), resolve};
