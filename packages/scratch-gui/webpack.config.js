@@ -161,6 +161,23 @@ const baseConfig = new ScratchWebpackConfigBuilder(
                 from: 'src/lib/smallerc-wasm/dist',
                 to: 'static/smallerc-wasm',
                 noErrorOnMissing: true
+            },
+            {
+                // NQC as WASM — NQC to an RCX bytecode image, offline.
+                //
+                // This one IS copied, unlike SDCC above, because NQC is
+                // MPL-2.0 rather than GPL: verify-no-gpl-in-build.mjs is a
+                // gate on the licence, not on the idea of a vendored compiler,
+                // and MPL is not what it blocks. The consequence is worth
+                // stating plainly — the RCX path needs no service and no
+                // network, which is the only reason it works on a classroom
+                // machine that is offline.
+                //
+                // 358 kB, and nothing loads it until something compiles: the
+                // wrapper import()s the glue on first use.
+                from: 'src/lib/nqc-wasm/dist',
+                to: 'static/nqc-wasm',
+                noErrorOnMissing: true
             }
         ]
     }));

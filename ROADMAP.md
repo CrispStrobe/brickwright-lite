@@ -1812,6 +1812,38 @@ find it in), and `long` is refused by smlrc itself (`-seg16` has no 32-bit integ
 pinned as named expectations in the test. Matrix cell C × 8086: native, local, simulator only
 (`.COM` export for real hardware is plan task N10).
 
+### 4.7 The RCX tier: `nqc.js` is computed-URL blind, `rcx-protocol.js` is genuinely waiting
+
+Two entries, and they are in the dead-module list for two different reasons. Conflating them is
+how a ratchet stops meaning anything, so they are separated here.
+
+`nqc.js` under `lib/nqc-wasm/dist/` is Emscripten output (NQC, MPL-2.0, upstream commit
+`21c24ec1`), loaded by `lib/nqc-wasm/compiler.js` as
+`import(/* webpackIgnore: true */ resolve('nqc.js'))`. Identical to §4.2 and §4.6: the specifier
+is a function call and no import scan can follow it. Its caller IS wired —
+`lib/nqc-runtime-hook.js` installs `runtime.nqcCompile` from `vm-manager-hoc.jsx`, and the RCX
+extension picks it up at call time in preference to the hosted service, so the RCX compile path
+takes no network at all. `test/nqc-wasm.test.mjs` drives the same entry point and proves the
+build is byte-identical to the native compiler on eight programs. Nothing here is pending.
+
+`rcx-protocol.js` under `lib/rcx/` is different, and is **really** unimported. It is the
+clean-room implementation of the RCX infrared protocol — framing, toggle bit, checksums, echo
+suppression, reply matching, `.rcx` container parsing, and the download sequence over an
+injected `send()`. 48 tests in `test/rcx-protocol.test.mjs` execute every one of those, against
+fixtures in `test/fixtures/rcx-images/`, so it is not untested code; it is code whose consumer
+does not exist yet.
+
+**What it is waiting for, specifically:** a transport. The module takes `send()` as an argument
+and imports nothing, deliberately — `docs/RCX-IR-PROTOCOL.md` build order steps 4 and 5 are the
+Web Serial and WebUSB drivers, and neither is written. The Web Serial one is small (2400 baud,
+odd parity); WebUSB needs endpoint handling for LEGO's USB tower (`0694:0001`). Once either
+exists and a UI reaches it, this entry leaves the list rather than being re-justified.
+
+It is landed ahead of its consumer on purpose: it is the half that has no hardware dependency
+and where the protocol mistakes live, and getting it reviewed and pinned by tests now is worth
+more than holding it in a branch until a transport is ready. That is the argument; if it is
+still unimported when the transports land, the argument failed and the module should go.
+
 ### 5.1 The stc12 extension lite ships is missing 8 opcodes the emitter emits — FIXED
 
 A gate that needs two checkouts side by side runs on a developer machine and **skips in CI**, where

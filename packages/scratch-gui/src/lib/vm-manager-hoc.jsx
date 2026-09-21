@@ -8,6 +8,7 @@ import AudioEngine from 'scratch-audio';
 import unblockAudio from './audio-context-unblock.js';
 import installSpikeProjectMigration from './spike-project-migration.js';
 import installEv3ProjectMigration from './ev3-project-migration.js';
+import installNqcCompiler from './nqc-runtime-hook.js';
 
 import {setProjectUnchanged} from '../reducers/project-changed';
 import {
@@ -37,6 +38,12 @@ const vmManagerHOC = function (WrappedComponent) {
             // than configuring it, and is idempotent by design.
             installSpikeProjectMigration(this.props.vm);
             installEv3ProjectMigration(this.props.vm);
+            // And the RCX extension's local compiler, for the same reason it
+            // is here rather than at a call site: it patches the VM, is
+            // idempotent, and must be in place before any extension loads.
+            // It costs one closure; the 358 kB it can reach is import()ed on
+            // first compile and never otherwise.
+            installNqcCompiler(this.props.vm);
             if (!this.props.vm.initialized) {
                 this.audioEngine = new AudioEngine();
                 // Firefox never settles decodeAudioData on a suspended context, which

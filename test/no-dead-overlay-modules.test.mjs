@@ -83,6 +83,11 @@ const ALLOWED = new Map([
     ['lib/smallerc-wasm/dist/smlrpp.js', {roadmap: '4.6',
         reason: 'Emscripten output (the ucpp preprocessor), loaded the same way and executed by ' +
             'the same test. Verified 2026-09-04.'}],
+    ['lib/nqc-wasm/dist/nqc.js', {roadmap: '4.7',
+        reason: 'Emscripten output (NQC, MPL-2.0). Loaded by nqc-wasm/compiler.js as ' +
+            '`import(/* webpackIgnore: true */ resolve(\'nqc.js\'))` — a computed specifier. ' +
+            'Its caller is wired: nqc-runtime-hook.js installs runtime.nqcCompile from ' +
+            'vm-manager-hoc.jsx. Executed by test/nqc-wasm.test.mjs. Verified 2026-09-21.'}],
 ]);
 
 /**
@@ -143,6 +148,14 @@ const KNOWN_DEAD = new Map([
     // i8086-emu8086.js removed 2026-09-08: the completed-program performance
     // corpus now imports it from scripts/lib/i8086-corpus-workload.mjs.
     // This is a real benchmark consumer, not a new editor runtime route.
+    ['lib/rcx/rcx-protocol.js', {roadmap: '4.7',
+        reason: 'The clean-room RCX infrared protocol, landed ahead of its consumer. It takes ' +
+            'send() as an argument and imports no transport by design, and the Web Serial and ' +
+            'WebUSB drivers that would call it are not written — docs/RCX-IR-PROTOCOL.md build ' +
+            'order steps 4 and 5. Not untested: 48 tests in test/rcx-protocol.test.mjs execute ' +
+            'every export against fixtures. This is KNOWN_DEAD rather than ALLOWED because it ' +
+            'genuinely has no caller, which is the distinction that keeps the list honest. ' +
+            'Listed 2026-09-21; leaves the list when a transport lands.'}],
 ]);
 
 const SPEC = /from\s+['"]([^'"]+)['"]|import\(\s*(?:\/\*[^*]*\*\/\s*)?['"]([^'"]+)['"]|require\(\s*['"]([^'"]+)['"]/g;
