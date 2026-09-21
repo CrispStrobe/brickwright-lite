@@ -14,7 +14,7 @@ import {CHALLENGES, challengeById, isUnlocked, isRealise} from '../overlay/scrat
 import {gradeRealisedCircuit, gradeMessageRealised} from '../overlay/scratch-gui/src/lib/bw-fpga/grader.js';
 import {buildLogicIcGate} from '../overlay/scratch-gui/src/lib/bw-fpga/logic-ic-board.js';
 import {buildCmosGate} from '../overlay/scratch-gui/src/lib/bw-fpga/cmos-board.js';
-import {gateToLogicIc} from '../overlay/scratch-gui/src/lib/bw-fpga/logic-ic.js';
+import {gateToLogicIc, LOGIC_IC_GATES} from '../overlay/scratch-gui/src/lib/bw-fpga/logic-ic.js';
 import {gateToCmos} from '../overlay/scratch-gui/src/lib/bw-fpga/cmos.js';
 
 const {Circuit} = await boot();
@@ -85,6 +85,41 @@ test('a rung is only omitted when the builder really cannot build that gate', ()
     }
 });
 
+test('every chip the ⚙ builder offers has a challenge that asks for it', () => {
+    // Otherwise a part exists in the product only as somebody's WRONG answer.
+    // 74HC32 (OR) and 74HC02 (NOR) were exactly that until this test was added:
+    // buildable from the dropdown, reachable by no challenge.
+    const covered = new Set(REALISE.map(c => c.gate));
+    const orphans = LOGIC_IC_GATES.filter(g => !covered.has(g));
+    assert.deepEqual(orphans, [],
+        `these chips are buildable but no challenge asks for them: ${
+            orphans.map(g => `${gateToLogicIc(g).label} (${g})`).join(', ')}`);
+});
+
+test('every gate the ⚛ builder offers has a challenge too, bar the documented one', () => {
+    const covered = new Set(REALISE.map(c => c.gate));
+    // 'buffer' is deliberate: two inverters in series teaches nothing the NOT
+    // challenge has not already taught, so it stays a toy on the dropdown.
+    const ALLOWED_UNCOVERED = ['buffer'];
+    const cmosGates = ['not', 'buffer', 'nand', 'nor', 'and', 'or'].filter(g => gateToCmos(g));
+    const orphans = cmosGates.filter(g => !covered.has(g) && !ALLOWED_UNCOVERED.includes(g));
+    assert.deepEqual(orphans, [], `uncovered CMOS gates: ${orphans.join(', ')}`);
+});
+
+test('the NOR brief\'s duality claim is true of the actual netlists', () => {
+    // The brief tells the learner NAND is PMOS-parallel / NMOS-series and NOR is
+    // the mirror image. That is a structural claim about cmos.js, so read it off
+    // the netlists: a PMOS sourced directly from vcc is a parallel pull-up, and
+    // parallel pull-ups come with series pull-downs.
+    const pullUpsOnVcc = g => gateToCmos(g).transistors.filter(t => t.kind === 'pmos' && t.a === 'vcc').length;
+    const pullDownsOnGnd = g => gateToCmos(g).transistors.filter(t => t.kind === 'nmos' && (t.a === 'gnd' || t.b === 'gnd')).length;
+    assert.equal(pullUpsOnVcc('nand'), 2, 'NAND: both PMOS hang off VCC — parallel');
+    assert.equal(pullDownsOnGnd('nand'), 1, 'NAND: only the last NMOS reaches GND — series');
+    assert.equal(pullUpsOnVcc('nor'), 1, 'NOR: only the first PMOS hangs off VCC — series');
+    assert.equal(pullDownsOnGnd('nor'), 2, 'NOR: both NMOS reach GND — parallel');
+    assert.match(challengeById('nor_real').brief, /mirror/i, 'and the brief says so');
+});
+
 test('XOR is the one with no discrete transistor form', () => {
     // The xor_real brief makes this claim to the learner; hold the code to it.
     const xor = REALISE.find(c => c.gate === 'xor');
@@ -102,13 +137,26 @@ test('realise challenges have a single output — the one LED that gets read', (
 });
 
 test('each realise challenge is gated behind designing that gate on the canvas', () => {
+    const canvasIds = new Set(CHALLENGES.filter(c => !isRealise(c)).map(c => c.id));
     for (const c of REALISE) {
         assert.ok(c.requires.length, `${c.id} must have prerequisites`);
-        // You must have DESIGNED the gate before being asked to build it.
-        assert.ok(c.requires.includes(c.gate) || c.requires.some(r => challengeById(r).gate === c.gate),
-            `${c.id} should require designing ${c.gate} first`);
+        // You must have DESIGNED the gate before being asked to build it — where
+        // there IS a canvas lesson for it. NOR has none (the canvas ladder goes
+        // straight from OR to NAND), so it is gated behind OR instead, and its
+        // brief teaches the gate itself.
+        if (canvasIds.has(c.gate)) {
+            assert.ok(c.requires.includes(c.gate),
+                `${c.id} should require designing ${c.gate} first`);
+        }
         assert.ok(!isUnlocked(c.id, new Set()), `${c.id} must not be open from the start`);
     }
+});
+
+test('the realise challenge with no canvas counterpart is NOR, and only NOR', () => {
+    // Pins the exception above, so a future gate cannot quietly skip the
+    // "design it before you build it" rule by having no canvas lesson.
+    const canvasIds = new Set(CHALLENGES.filter(c => !isRealise(c)).map(c => c.id));
+    assert.deepEqual(REALISE.filter(c => !canvasIds.has(c.gate)).map(c => c.gate), ['nor']);
 });
 
 test('the realise ladder unlocks in order once its prerequisites pass', () => {
@@ -143,6 +191,12 @@ test('the briefs\' concrete claims match what the builders actually make', () =>
     assert.equal(transistorsOf('and'), 6, 'which is what buildCmosGate makes');
     assert.match(byId('nand_real').brief, /four transistors/, 'the NAND brief claims four');
     assert.equal(transistorsOf('nand'), 4, 'which is what buildCmosGate makes');
+    assert.match(byId('or_real').brief, new RegExp(chipOf('or')), 'the OR brief names the right chip');
+    assert.match(byId('or_real').brief, /six transistors/, 'and claims six');
+    assert.equal(transistorsOf('or'), 6, 'which is what buildCmosGate makes');
+    assert.match(byId('nor_real').brief, new RegExp(chipOf('nor')), 'the NOR brief names the right chip');
+    assert.match(byId('nor_real').brief, /Four transistors/i, 'and claims four');
+    assert.equal(transistorsOf('nor'), 4, 'which is what buildCmosGate makes');
     assert.match(byId('xor_real').brief, new RegExp(chipOf('xor')), 'the XOR brief names the right chip');
 });
 

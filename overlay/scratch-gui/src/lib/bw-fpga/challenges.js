@@ -148,13 +148,25 @@ export const CHALLENGES = Object.freeze([
         expect: i => ({y: i.a & i.b})
     },
     {
-        id: 'nand_real', title: 'NAND — the universal gate, in silicon', requires: ['nand', 'and_real'], realise: true, gate: 'nand', rungs: ['ic', 'cmos'],
+        id: 'or_real', title: 'OR — in real parts', requires: ['or', 'and_real'], realise: true, gate: 'or', rungs: ['ic', 'cmos'],
+        brief: 'OR on the bench: ⚙ is a 74HC32, ⚛ is six transistors — a NOR followed by an inverter, the same "invert the inverse" trick AND uses. Toggle either switch and the LED lights.',
+        inputs: io(['a', 'b']), outputs: io(['y']),
+        expect: i => ({y: i.a | i.b})
+    },
+    {
+        id: 'nand_real', title: 'NAND — the universal gate, in silicon', requires: ['nand', 'or_real'], realise: true, gate: 'nand', rungs: ['ic', 'cmos'],
         brief: 'Build NAND from transistors (⚛) and look at what you get: two PMOS in parallel pulling up, two NMOS in series pulling down. That is the whole gate — four transistors, and every other gate can be built from copies of it.',
         inputs: io(['a', 'b']), outputs: io(['y']),
         expect: i => ({y: (i.a & i.b) ? 0 : 1})
     },
     {
-        id: 'xor_real', title: 'XOR — a chip with no simple transistor form', requires: ['xor', 'nand_real'], realise: true, gate: 'xor', rungs: ['ic'],
+        id: 'nor_real', title: 'NOR — the other universal gate', requires: ['or', 'nand_real'], realise: true, gate: 'nor', rungs: ['ic', 'cmos'],
+        brief: 'NOR is NAND held up to a mirror. Build it with ⚛ and compare: NAND put its two PMOS in PARALLEL and its two NMOS in SERIES — NOR does exactly the opposite, PMOS in series above, NMOS in parallel below. Four transistors again, and it is just as universal: every gate can be built from NORs alone. (⚙ is a 74HC02.)',
+        inputs: io(['a', 'b']), outputs: io(['y']),
+        expect: i => ({y: (i.a | i.b) ? 0 : 1})
+    },
+    {
+        id: 'xor_real', title: 'XOR — a chip with no simple transistor form', requires: ['xor', 'nor_real'], realise: true, gate: 'xor', rungs: ['ic'],
         brief: 'XOR is the one the ⚛ button will not build: it has no tidy pull-up/pull-down pair the way AND and NOR do — it is made of several gates. So take the 74HC86 (⚙) and prove the chip computes it on the board.',
         inputs: io(['a', 'b']), outputs: io(['y']),
         expect: i => ({y: i.a ^ i.b})
