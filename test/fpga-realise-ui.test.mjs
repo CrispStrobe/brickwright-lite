@@ -84,9 +84,13 @@ test('the verdict is scrolled into view when it arrives', () => {
     // fold — measured in a real browser: the panel's visible area ended at y=560
     // and the result rendered at y=566, so pressing Check appeared to do nothing.
     const panel = read(PANEL);
-    assert.match(panel, /React\.useRef\(null\)/, 'the scroll container is held by a ref');
-    assert.match(panel, /React\.useEffect\([\s\S]*?scrollTop = el\.scrollHeight[\s\S]*?\}, \[result\]\)/,
-        'and scrolled to the bottom whenever the verdict changes');
+    // Asserted as separate facts rather than one regex spanning the effect: a
+    // lazy capture terminated by a literal `}` is shortened by the first nested
+    // brace, so it could match some OTHER effect and keep passing
+    // (scripts/audit-gate-shapes.mjs flags exactly that, and flagged this).
+    assert.match(panel, /const scrollRef = React\.useRef\(null\);/, 'the scroll container is held by a ref');
+    assert.match(panel, /el\.scrollTop = el\.scrollHeight;/, 'scrolled to its bottom');
+    assert.match(panel, /\}, \[result\]\);/, 'whenever the verdict changes');
     assert.match(panel, /<div ref=\{scrollRef\} data-testid="bw-fpga-challenges"/,
         'the ref is on the scrolling panel itself');
     // Scrolling the CONTAINER, not scrollIntoView, so the page does not jump.
