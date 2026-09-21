@@ -518,8 +518,10 @@ test('the demo board is wired on the loaded design\'s output pins', () => {
     assert.match(tab, /outputPinsRef\.current = netlistText\.trim\(\) \? outputPins : \[\]/,
         'the builder must see the latest output pins (through a ref), and only trust '
         + 'them once a netlist gives directions — else a clock input gets an LED');
-    assert.match(tab, /buildDemoBoard\(c, pins\.length \? \{pins\} : \{\}\)/,
+    assert.match(tab, /\.\.\.\(pins\.length \? \{pins\} : \{\}\)/,
         'the demo board must be wired on the design pins when there are any, else the default');
+    assert.match(tab, /\.\.\.\(inPins\.length \? \{inputPins: inPins\} : \{\}\)/,
+        'and on the design INPUT pins (input switches) when there are any — the bidirectional board');
     // The confirmation names the pins it actually lit, not a hard-coded "15-18".
     assert.match(tab, /result\.leds\.map\(l => l\.pin\)/,
         'the message must report the pins actually wired');
@@ -1099,4 +1101,20 @@ test('the FPGA tab can build a gate from transistors in the Circuit tab', () => 
     assert.match(tab, /realizeGate\(cmosGate\)/, 'it realises the chosen gate on the live circuit');
     // honesty: the UI must say this is the silicon underneath, not the FPGA's fabric
     assert.match(tab, /silicon underneath the logic|an FPGA itself uses LUTs/, 'the LUT-vs-transistor honesty is stated');
+});
+
+// ── bidirectional FPGA↔Circuits: a board switch drives an FPGA input ──
+test('the demo board is bidirectional — input switches drive the design', () => {
+    const drive = read('overlay/scratch-gui/src/lib/bw-fpga/drive.js');
+    assert.match(drive, /export function readBoardInputs/, 'a pure read-back (tested in fpga-bidirectional)');
+    assert.match(drive, /b\.direction !== 'input'/, 'it reads only the input pins');
+    const demo = read('overlay/scratch-gui/src/lib/bw-fpga/demo-board.js');
+    assert.match(demo, /inputPins = \[\]/, 'the board can place input switches');
+    assert.match(demo, /addPart\('switch'/, 'a switch per input pin');
+    const tab = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx');
+    assert.match(tab, /readBoardInputs\(bindings, board\)/, 'the tab reads the board into the sim inputs');
+    assert.match(tab, /setBoardDriven\(true\)/, 'wiring input switches arms the read loop');
+    assert.match(tab, /if \(!boardDriven/, 'the read loop is gated so it never clobbers manual inputs');
+    // the output-drive side already leaves input pins high-Z for the board to drive
+    assert.match(drive, /design READS this pin.*high-Z|circuit\.setPin\(b\.terminal, 'input'\)/s, 'input pins stay high-Z');
 });

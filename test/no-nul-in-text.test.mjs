@@ -41,7 +41,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
-import {readFileSync, statSync, readdirSync} from 'node:fs';
+import {readFileSync, statSync, readdirSync, existsSync} from 'node:fs';
 import path from 'node:path';
 import {packageSourceRoot} from './helpers/package-source.mjs';
 
@@ -61,7 +61,14 @@ export const BINARY_BY_ROLE = {
     // CC BY-SA pixel face (overlay/scratch-gui/src/lib/render-fonts/), which
     // this gate caught on its first CI run — correctly, since nothing had told
     // it fonts existed here.
-    font: ['ttf', 'otf', 'woff', 'woff2', 'eot']
+    font: ['ttf', 'otf', 'woff', 'woff2', 'eot'],
+    // Disk images. Added 2026-09-21, and this gate found it the way its header
+    // says a new binary format is found — except that it could not SAY so. The
+    // real-DOS code-tab path (#238) tracks a 360K MS-DOS 2.0 FAT12 image under
+    // static/dos/, twice, overlay and packages. 338,112 of its 368,640 bytes
+    // are NUL, which is what an empty FAT12 data area IS, and nothing about
+    // that is a defect in anything.
+    disk: ['img', 'ima', 'iso', 'vhd', 'dsk']
 };
 const BINARY_EXT = new Set(Object.values(BINARY_BY_ROLE).flat());
 export const isBinaryByRole = file => BINARY_EXT.has((file.match(/\.([^./]+)$/) || [, ''])[1].toLowerCase());
@@ -72,13 +79,43 @@ export const KNOWN = [
     {file: 'node_modules/bw-circuit-ui/src/model/board-lift.js', nuls: 1, pin: 'bw-circuit-ui a8797322', why: 'composite key at line 106; identical to upstream at the pin — fix in bw-circuit-ui, re-vendor'},
 ];
 
-/** Every NUL in a buffer, as {offset, line, context}. Pure. */
-export const nulsIn = buf => {
+/**
+ * How many NULs get a `context` string. Beyond this the hit is still COUNTED —
+ * `.length` remains the true number of NULs, which KNOWN and the live-tree test
+ * both compare against — but no evidence is built for it. Five is what a human
+ * reads before scrolling; the point of the bound is that the cost of REPORTING
+ * cannot depend on how bad the file is.
+ */
+export const MAX_DETAIL = 5;
+
+/**
+ * Every NUL in a buffer, as {offset, line, context}. Pure, LINEAR, and bounded.
+ *
+ * It was neither. The line number came from `buf.subarray(0, i).toString()
+ * .split('\n').length` — a fresh copy of everything before the hit, for EVERY
+ * hit — and a context string was built for every one. On text that is O(n); on
+ * a file that is mostly NUL it is O(n²) in time and O(hits) in retained
+ * strings. Measured 2026-09-21 on the 360K MS-DOS image #238 tracked twice:
+ * 338,112 hits per copy, ~10^11 byte copies, 555 MB RSS and climbing after two
+ * minutes, and the GitHub runner reclaimed with `exit code 143` before the
+ * gate could print a single `not ok`. A gate that cannot report its finding is
+ * not a gate, and this one had promised in its own header that a new binary
+ * format "fails by name once".
+ *
+ * Now: one pass, newlines counted as they are passed, evidence for the first
+ * MAX_DETAIL hits only.
+ */
+export const nulsIn = (buf, maxDetail = MAX_DETAIL) => {
     const out = [];
     let i = -1;
+    let line = 1;
+    let counted = 0;      // bytes of `buf` whose newlines are already in `line`
     while ((i = buf.indexOf(0, i + 1)) >= 0) {
-        const line = buf.subarray(0, i).toString('latin1').split('\n').length;
-        const context = buf.subarray(Math.max(0, i - 40), i + 20).toString('utf8').split(NUL).join('<NUL>').replace(/\n/g, '⏎');
+        for (let j = counted; j < i; j++) if (buf[j] === 0x0a) line++;
+        counted = i;
+        const context = out.length < maxDetail
+            ? buf.subarray(Math.max(0, i - 40), i + 20).toString('utf8').split(NUL).join('<NUL>').replace(/\n/g, '⏎')
+            : null;
         out.push({offset: i, line, context});
     }
     return out;
@@ -99,7 +136,10 @@ export const judge = (files, known = KNOWN) => {
             else if (hits.length !== k.nuls) findings.push(`${file}: KNOWN says ${k.nuls} NUL(s), the file has ${hits.length} — the count moved; re-measure and say why`);
             continue;
         }
-        for (const h of hits) findings.push(`${file}:${h.line} byte ${h.offset}: literal NUL — …${h.context}… (an escape was probably meant; a NUL makes grep, diff and merge call this file binary)`);
+        // Bounded, for the same reason nulsIn is: a file with 338,112 NULs must
+        // produce a message a person can read, not 338,112 lines of it.
+        for (const h of hits.slice(0, MAX_DETAIL)) findings.push(`${file}:${h.line} byte ${h.offset}: literal NUL — …${h.context}… (an escape was probably meant; a NUL makes grep, diff and merge call this file binary)`);
+        if (hits.length > MAX_DETAIL) findings.push(`${file}: and ${hits.length - MAX_DETAIL} more NUL(s), ${hits.length} in all — if this file is binary by format, add its extension to BINARY_BY_ROLE with its reason`);
     }
     return {findings, stale, scanned};
 };
@@ -170,6 +210,57 @@ test('mutation: a NUL in a .js file is red naming file, line, offset and context
     const r = judge([{file: 'src/x.js', buf}, {file: 'img/x.png', buf}], []);
     assert.equal(r.findings.length, 1, r.findings.join('\n'));
     assert.match(r.findings[0], /^src\/x\.js:1 byte 15: literal NUL — …const k = `\$\{a\}<NUL>\$\{b\}`;⏎next line⏎…/);
+});
+
+test('a disk image is binary by role, and the one this repo tracks is skipped whole', () => {
+    // The real file, not a fixture: #238 tracks a 360K MS-DOS 2.0 FAT12 image
+    // twice, and 338,112 of its bytes are NUL because an empty FAT12 data area
+    // IS NUL. Reading it as text is what reclaimed the CI runner.
+    for (const ext of ['img', 'ima', 'iso', 'vhd', 'dsk']) assert.equal(isBinaryByRole(`d/x.${ext}`), true, ext);
+    const image = path.join(ROOT, 'overlay/scratch-gui/static/dos/msdos200-base.img');
+    if (!existsSync(image)) return;   // the lane that added it may be gone; the roles above still hold
+    const buf = readFileSync(image);
+    assert.ok(nulsIn(buf).length > 100000,
+        'this image is the reason the role exists — if it stopped being mostly NUL, re-derive the claim');
+    const r = judge([{file: 'overlay/scratch-gui/static/dos/msdos200-base.img', buf}], []);
+    assert.deepEqual(r.findings, []);
+    assert.equal(r.scanned, 0, 'the image must not be scanned as text at all');
+});
+
+test('REPORTING IS BOUNDED: a mostly-NUL file under an unlisted extension fails BY NAME, and fast', () => {
+    // The promise in this file's header — a new binary format "fails by name
+    // once and gets its extension added with its reason" — was not true, and
+    // the cost of breaking it was the whole job. Both halves are held here.
+    //
+    // 256 KB of NUL under an extension nothing lists. The count stays exact,
+    // because KNOWN and the live-tree test compare against it.
+    const buf = Buffer.alloc(256 << 10);
+    const started = Date.now();
+    const hits = nulsIn(buf);
+    assert.equal(hits.length, 256 << 10, 'every NUL is still counted');
+    assert.equal(hits.filter(h => h.context !== null).length, MAX_DETAIL,
+        'evidence is built for the first MAX_DETAIL hits and no more');
+
+    const r = judge([{file: 'vendor/x.dat', buf}], []);
+    assert.equal(r.findings.length, MAX_DETAIL + 1, r.findings.length + ' finding lines');
+    assert.match(r.findings.at(-1), /and 262139 more NUL\(s\), 262144 in all/,
+        'the last line must give the true total, or a bounded report becomes a lying one');
+    assert.match(r.findings.at(-1), /add its extension to BINARY_BY_ROLE/,
+        'and it must say what to do, since that is the whole promise');
+
+    // LINEARITY, held by a budget rather than assumed, and the budget SEPARATES
+    // two measured costs rather than guessing at one. MEASURED 2026-09-21 on
+    // this box under load, three runs: 471 / 164 / 110 ms for this buffer.
+    // The pre-fix implementation re-sliced the buffer from byte 0 for every hit
+    // and took 95,296 ms on the SAME buffer — that is the number this budget
+    // has to be under, and 10 s sits an order of magnitude below it while
+    // leaving ~20x headroom over the slowest linear run seen.
+    //
+    // The size is chosen for that separation too: at 1 MB the linear scan is
+    // still half a second, but a quadratic revert would take ~25 minutes and
+    // be reported as a timeout somewhere else rather than as this sentence.
+    const elapsed = Date.now() - started;
+    assert.ok(elapsed < 10000, `scanning 256 KB of NUL took ${elapsed} ms; the scan is no longer linear`);
 });
 
 test('mutation: a KNOWN entry whose NUL is gone is stale, and one whose count moved is a finding', () => {

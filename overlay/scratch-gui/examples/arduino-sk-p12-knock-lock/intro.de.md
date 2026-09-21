@@ -5,7 +5,7 @@ prereqs: [arduino-06-knock]
 teaches: [piezo-sensor, servo, state-machine, lock]
 ---
 ## Was du siehst
-Klopfschloss: 3 Mal auf den Piezo klopfen, um einen Servo zu entsperren. Ein Taster sperrt wieder.
+Klopfschloss: dreimal klopfen entsperrt den Servo und schaltet die gruene LED ein. Ein Taster sperrt wieder und schaltet die rote LED; die gelbe blinkt bei jedem gezaehlten Klopfen. Der Sensor ist eine Piezoscheibe: gedrueckt oder angetippt erzeugt sie selbst eine kleine Spannung -- deshalb liest sie an einem Analogpin, ganz ohne eigene Versorgung.
 
 ## Probier das
 1. Starte das Programm und interagiere mit den Eingängen.

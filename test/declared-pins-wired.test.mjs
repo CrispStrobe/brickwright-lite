@@ -142,31 +142,36 @@ const ON_PCB_PADS = new Map([
 /**
  * Declared pins wired to nothing. RATCHET — may only shrink.
  *
- * The 13 arduino-sk-* entries are one class: the circuit is a bare board plus
- * power, with the components the program declares simply absent.
+ * This was 13 arduino-sk-* entries of one class: the circuit is a bare board
+ * plus power, with the components the program declares simply absent.
  *
- * These are NOT waiting on bw-bundle's repair, and recording them that way
- * would have been wrong. Checked with bw-bundle directly: its fix changes a
- * pin's MODE (OUTPUT to PWM/TONE) and the actuation verb, and wires nothing —
- * arduino-sk-p05-servo-mood still has no servo in its circuit afterwards. The
- * defect here survives that change; only the mode string moves, and this gate
- * keys on the pad, not the mode.
+ * They were NOT waiting on bw-bundle's repair, and recording them that way
+ * would have been wrong: its fix changes a pin's MODE (OUTPUT to PWM/TONE) and
+ * the actuation verb, and wires nothing. What actually closed them was
+ * REBUILDING THE BENCH FROM ITS OWN PROGRAM, which is a different repair in a
+ * different repo — sb3-creator, with bw-board's servo/sensor/panel inference
+ * behind it.
+ *
+ * SHRANK 2026-09-21 from 13 to 2, in two steps. Eight went with the rebuilt
+ * benches at sb3-creator 06a78ba2. Three more — p03-love-o-meter,
+ * p05-servo-mood and p12-knock-lock — went at 8e1f4d11, where each example's
+ * base bench stopped being a copy of its mega variant and became the Uno the
+ * catalog names as authored; the parts were in the Uno bench all along and the
+ * gate had been reading the wrong file.
+ *
+ * EMPTY since 2026-09-21, at sb3-creator b7bfd2b7. The last two were the only
+ * ones whose benches genuinely lacked the hardware, and both were built
+ * upstream rather than exempted here: p04 gained the three pots and the
+ * rgb_led its page had always described (it had held ONE pot), and p15 gained
+ * the optocoupler its lesson is about — bw-board has registered the device all
+ * along — and moved off D13, which was not even the pad its program declares.
+ * This gate reported both dead before they were removed: "0 example(s)
+ * declared-but-unwired, 2 ratcheted".
+ *
+ * An empty ratchet is the goal state, not a reason to delete the check: the
+ * next example that declares a pin reaching nothing now reds on arrival.
  */
-const KNOWN_UNWIRED = new Map([
-    ['arduino-sk-p03-love-o-meter', 'led1@D2 led2@D3 led3@D4 — circuit is uno+pot+power, no LEDs'],
-    ['arduino-sk-p04-color-mixing', 'sensorG@A1 sensorB@A2 ledR@D3 ledG@D5 ledB@D6'],
-    ['arduino-sk-p05-servo-mood', 'servo@D9 — no servo part'],
-    ['arduino-sk-p06-light-theremin', 'speaker@D8 — no speaker part'],
-    ['arduino-sk-p07-keyboard', 'btn1@D2 btn2@D3 btn3@D4 btn4@D5 speaker@D8'],
-    ['arduino-sk-p08-hourglass', 'led2@D2..led7@D7 tilt@D8'],
-    ['arduino-sk-p09-motorized-pinwheel', 'btn@D2 motor@D9'],
-    ['arduino-sk-p10-zoetrope', 'pot@A0 btnFwd@D2 btnRev@D3 motorEnable@D9 motorDir1@D4 motorDir2@D5'],
-    ['arduino-sk-p11-crystal-ball', 'tilt@D6 — no tilt switch part'],
-    ['arduino-sk-p12-knock-lock', 'piezo@A0 btn@D2 ledR@D3 ledY@D4 ledG@D5 servo@D9'],
-    ['arduino-sk-p13-touch-lamp', 'touch@D2 led@D3'],
-    ['arduino-sk-p14-serial-pot', 'pot@A0 — circuit is uno+power only, no potentiometer'],
-    ['arduino-sk-p15-hacking-buttons', 'opto@D2 — no optocoupler part'],
-]);
+const KNOWN_UNWIRED = new Map([]);
 
 /** Affordance wired to a pad the program never declares. RATCHET — may only shrink. */
 const KNOWN_UNREAD = new Map([
@@ -175,6 +180,11 @@ const KNOWN_UNREAD = new Map([
     ['61-console-pong:s1', 'button on p3.0, not declared'],
     ['61-console-pong:s4', 'button on p3.7, not declared'],
     ['61-console-pong:s5', 'button on p3.6, not declared'],
+    // A servo is addressed by CHANNEL, not by its pin: `set 1 angle to 90` lowers
+    // to bw_servo_set(1, …) and the driver owns the pin (OCR1A for channel 1).
+    // So the pad is genuinely never named by a pin-level operation, and this
+    // check cannot see the drive — the same undecidability the 74HC595 note
+    // above records, for the same reason.
 ]);
 
 /** Affordance with no wires at all. RATCHET — may only shrink. */
@@ -467,9 +477,6 @@ const NAME_IMPLIES = [
  * to cover it with their hand.
  */
 const KNOWN_KIND_MISMATCH = new Map([
-    ['arduino-sk-p06-light-theremin:ldr', 'declares an LDR on A0; a potentiometer is wired there instead'],
-    ['03-night-light:ldr', 'declares an LDR on P1.3; circuit carries POT_ldr, a potentiometer'],
-    ['16-ldr-bargraph:ldr', 'declares an LDR on P1.7; circuit carries POT_ldr, a potentiometer'],
 ]);
 
 test('a declared name matches the kind of part on its pad', t => {
@@ -556,5 +563,20 @@ test('CANARY: the ratchets are live, not decorative', () => {
     for (const k of [...KNOWN_UNREAD.keys(), ...KNOWN_UNCONNECTED.keys()]) {
         assert.ok(ids.has(k.split(':')[0]), `ratchet key ${k} names a missing example`);
     }
-    assert.ok(KNOWN_UNWIRED.size > 0 && KNOWN_UNREAD.size > 0, 'ratchets must not be empty while defects stand');
+    // A POPULATION FLOOR IS THE WRONG INSTRUMENT HERE. This line used to read
+    // `KNOWN_UNWIRED.size > 0 && KNOWN_UNREAD.size > 0`, which made the goal
+    // state — every defect fixed — indistinguishable from the cheat it was
+    // written to stop, and reddened the gate the moment the last entry was
+    // legitimately removed. The property actually wanted is that the DETECTOR
+    // still fires, so drive it: a row declaring a pad that resolves to nothing
+    // must be reported, exactly as the gate reports it at line ~385.
+    const vacuous = {id: 'synthetic', device: 'arduino-uno', wired: new Set(), wiredOn: new Map(),
+        pins: [{name: 'ghost', pad: 'D7', mode: 'OUTPUT'}]};
+    const flagged = vacuous.pins.filter((pin) => {
+        const pad = pin.pad.toLowerCase();
+        return !padResolves(vacuous, pad) && !ON_PCB_PADS.has(`${vacuous.id}:${pad}`);
+    });
+    assert.deepEqual(flagged.map((p) => p.pad), ['D7'],
+        'the declared-but-unwired detector no longer fires on a pin wired to nothing — '
+        + 'an empty KNOWN_UNWIRED would then mean the check is dead, not that the corpus is clean');
 });

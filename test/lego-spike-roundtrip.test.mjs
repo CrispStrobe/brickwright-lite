@@ -65,8 +65,50 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // the later range only converges the already-present examples catalogue
     // and adds upstream tests. The compiler emitter therefore does not move,
     // while this assertion still forces the round-trip artifact at the pin.
+    // -> 2be3fe2b on 2026-09-20: this range DOES move the emitter — the SPIKE
+    // consolidation rewrites `runtimeRegistry.generated.js` and
+    // `spikeprimeDialect.js` (179 lines across two files under src/), which is
+    // exactly why this assertion forces the round-trip artifact to be re-run at
+    // the new pin rather than carried over. The rest of the range is the
+    // examples work: 26 benches rebuilt from their programs, and three new
+    // Codex trails for the digital and MCU domain.
+    // -> 06a78ba2 on 2026-09-20: adds `PART <name> = SERVO|MOTOR <channel>` and
+    // resolves a declared name at all seven actuator operand sites, so the
+    // emitter changes again and the artifact is re-run, not carried over.
+    // -> 8e1f4d11 on 2026-09-21: `git diff --name-only 06a78ba2 8e1f4d11 -- src/`
+    // names ONE file, sb3Creator.js, and the change is the missing half of that
+    // same feature: the DECOMPILER had no branch for the new part types, so it
+    // fell through to the 74HC595 writer and threw on p.data for every retarget
+    // of a program with a declared servo. The SPIKE emitter is untouched by it,
+    // and the artifact below was re-run at the new pin rather than carried over.
+    // The rest of the range is example data and gate repairs.
+    // -> 830002ca on 2026-09-21: sb3-creator's CI siblings move to the engine
+    // THIS APP ALREADY SHIPS — bw-board 1,409 commits forward, bw-circuit-ui 337
+    // — and 37 numbers across its gallery are re-derived because an LED is now
+    // solved on its junction instead of clamped at a knee. MEASURED, not
+    // inferred: `git diff --name-only 8e1f4d11 830002ca -- src/` is EMPTY, so
+    // every vendored compiler file is byte-identical across the range and the
+    // SPIKE emitter cannot have moved. The artifact below is re-run at the new
+    // pin regardless, which is the rule this assertion exists to enforce.
+    // -> b7bfd2b71 on 2026-09-21: this range DOES move the emitter, and by
+    // exactly one thing. MEASURED, not inferred: `git diff 830002ca b7bfd2b
+    // -- src/` names ONE file, sb3Creator.js, and its 31 changed lines
+    // content-hash identical to the escape fix alone (sb3-creator#21), so
+    // nothing else in the range touched a vendored byte -- #17, #18, #19 and
+    // #20 are gate and example work. What the fix changes: `display text
+    // "..."` was parsed with `"([^"]*)"`, which stops at the first quote, so
+    // a line carrying an escaped quote failed its own rule and fell through
+    // to the GENERIC display handler -- a SPIKE program silently got a
+    // micro:bit block, with no warning. The quieter half doubled a backslash
+    // in the stored value, so `C:\path` was saved as `C:\\path`: corruption
+    // rather than a parse failure, on every save. The decompiler now escapes
+    // what it emits so the round trip closes. The artifact assertions below
+    // were re-run at this pin, and test/transpiler-codegen.test.mjs now
+    // asserts that no SPIKE program emits another device's block -- the
+    // sentinel that was standing for this defect fired on the bump and was
+    // replaced by that positive assertion.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '9173ca756a72e5be81578a084c4c783ebc5c267d');
+        'b7bfd2b712e9614e5acf440871972c07664f1420');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

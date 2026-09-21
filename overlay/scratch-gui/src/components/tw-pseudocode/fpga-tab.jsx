@@ -3,12 +3,14 @@ import {connect} from 'react-redux';
 import TANG_NANO_20K from 'bw-circuit-ui/parts-data/tang_nano_20k.json';
 import {parseCst, emitCst} from '../../lib/bw-fpga/cst.js';
 import {bridge, constraintsFromBindings} from '../../lib/bw-fpga/port-bridge.js';
-import {applyPortValues} from '../../lib/bw-fpga/drive.js';
+import {applyPortValues, readBoardInputs} from '../../lib/bw-fpga/drive.js';
 import {verilogToModel} from '../../lib/bw-fpga/verilog-to-model.js';
 import {yosysToModel} from '../../lib/bw-fpga/yosys-to-model.js';
 import {EXAMPLES} from '../../lib/bw-fpga/examples.js';
 import {buildDemoBoard} from '../../lib/bw-fpga/demo-board.js';
 import {buildCmosGate} from '../../lib/bw-fpga/cmos-board.js';
+import {buildLogicIcGate} from '../../lib/bw-fpga/logic-ic-board.js';
+import {LOGIC_IC_GATES, gateToLogicIc} from '../../lib/bw-fpga/logic-ic.js';
 import {readPorts, checkWidths, detectClockPort} from '../../lib/bw-fpga/yosys.js';
 // Small and dependency-free, so these stay static: the licence screen is useful
 // on its own, and the synthesis client's only job today is to refuse honestly.
@@ -60,6 +62,7 @@ const L10N = {
         loadingCanvas: 'Loading the canvas…',
         wireDemoBoardBtn: '⬢ Wire up a demo board',
         buildTransistorsBtn: '⚛ Build the gate from transistors',
+        buildIcBtn: '⚙ Build the gate from a 74xx chip',
         permissiveLicence: 'Declares a permissive licence — it may be built on the shared server.',
         whereBuiltTitle: 'Where it would be built',
         backendLabel: 'Backend: ',
@@ -174,6 +177,7 @@ const L10N = {
         loadingCanvas: 'Lade die Leinwand…',
         wireDemoBoardBtn: '⬢ Demoboard verkabeln',
         buildTransistorsBtn: '⚛ Gatter aus Transistoren bauen',
+        buildIcBtn: '⚙ Gatter aus einem 74xx-Chip bauen',
         permissiveLicence: 'Erklärt eine freizügige Lizenz — es kann auf dem geteilten Server gebaut werden.',
         whereBuiltTitle: 'Wo es gebaut werden würde',
         backendLabel: 'Backend: ',
@@ -363,6 +367,7 @@ const FpgaTab = (props) => {
     // has something to light. Feedback only — the wiring happens on the live board.
     const [demoMsg, setDemoMsg] = React.useState(null);
     const [cmosGate, setCmosGate] = React.useState('nand'); // which gate to realise as transistors
+    const [icGate, setIcGate] = React.useState('and'); // which gate to realise as a 74HC chip
     // The first-run guide tracks the three steps through the tab's real state and
     // stays until the user hides it (or opts out for good in this browser).
     const [guideDismissed, setGuideDismissed] = React.useState(() => {
@@ -588,6 +593,19 @@ const FpgaTab = (props) => {
     // builder's own default (15–18) applies.
     const outputPinsRef = React.useRef([]);
     outputPinsRef.current = netlistText.trim() ? outputPins : [];
+    // The header pins the design READS (inputs), excluding the clock (the FPGA
+    // ticks its own clock, not a breadboard switch). The demo board puts a switch
+    // on each so the loop runs both ways.
+    const inputPins = React.useMemo(() => {
+        const pins = (bindings || [])
+            .filter(b => b.direction === 'input' && b.base !== clockPort && b.port !== clockPort && typeof b.pin === 'number')
+            .map(b => b.pin);
+        return [...new Set(pins)].sort((a, b) => a - b);
+    }, [bindings, clockPort]);
+    const inputPinsRef = React.useRef([]);
+    inputPinsRef.current = netlistText.trim() ? inputPins : [];
+    // Once a board with input switches is wired, poll them into the design (below).
+    const [boardDriven, setBoardDriven] = React.useState(false);
     // What the schematic lights: the values we actually know — the design's
     // inputs (set below) and its outputs (from the sim). Internal nets stay
     // neutral until Rung 1's follow-up reads them from the live circuit.
@@ -630,6 +648,35 @@ const FpgaTab = (props) => {
         return undefined;
     }, [sim.values, bindings]);
 
+    // The READ half of the loop: once a demo board with input switches is wired,
+    // poll the board's input pins and feed them into the design's inputs, so a
+    // press on the breadboard drives the FPGA logic (which then drives the LEDs
+    // through the effect above). Gated on boardDriven so it never clobbers the
+    // manual input controls before a bidirectional board exists.
+    React.useEffect(() => {
+        if (!boardDriven || !bindings.length || typeof window === 'undefined') return undefined;
+        const getBoard = () => {
+            const c = window.__circuit || window.__bwCircuit;
+            if (c && c.board && typeof c.board.readPin === 'function') return c.board;
+            if (window.__board && typeof window.__board.readPin === 'function') return window.__board;
+            return null;
+        };
+        const poll = () => {
+            const board = getBoard();
+            if (!board) return;
+            const boardInputs = readBoardInputs(bindings, board);
+            if (!Object.keys(boardInputs).length) return;
+            setInputs(prev => {
+                let changed = false;
+                const next = {...prev};
+                for (const [k, v] of Object.entries(boardInputs)) if (next[k] !== v) { next[k] = v; changed = true; }
+                return changed ? next : prev;
+            });
+        };
+        const id = setInterval(poll, 400);
+        return () => clearInterval(id);
+    }, [boardDriven, bindings]);
+
     // The free-running clock (see autoRun). Ticking clockCycles re-runs the sim
     // effect, which drives the board and broadcasts the outputs above.
     React.useEffect(() => {
@@ -662,7 +709,14 @@ const FpgaTab = (props) => {
             // builder's own default (pins 15–18) applies, which is where the
             // “Counting sequence” and chaser examples put their LEDs.
             const pins = outputPinsRef.current;
-            const result = buildDemoBoard(c, pins.length ? {pins} : {});
+            const inPins = inputPinsRef.current;
+            const result = buildDemoBoard(c, {
+                ...(pins.length ? {pins} : {}),
+                ...(inPins.length ? {inputPins: inPins} : {})
+            });
+            // With input switches on the board, poll them into the design so a
+            // press drives the FPGA logic (the loop, both ways).
+            if (inPins.length) setBoardDriven(true);
             // Make the designer RENDER what we built. Mutating the live circuit
             // model alone does NOT re-render it — the designer reacts only to its
             // own edits or a fresh circuitData prop — so hand it the built
@@ -671,9 +725,13 @@ const FpgaTab = (props) => {
                 window.dispatchEvent(new CustomEvent('bw-load-circuit-data', {detail: {data: c.toJSON()}}));
             }
             const litPins = result.leds.map(l => l.pin);
+            const nSw = (result.switches || []).length;
             setDemoMsg({ok: true, text: `Wired a Tang Nano 20K with ${litPins.length} `
                 + `LED${litPins.length === 1 ? '' : 's'} on pin${litPins.length === 1 ? '' : 's'} `
-                + `${litPins.join(', ')}. `
+                + `${litPins.join(', ')}`
+                + (nSw ? `, and ${nSw} input switch${nSw === 1 ? '' : 'es'} on pin${nSw === 1 ? '' : 's'} `
+                    + `${inPins.join(', ')}. Toggle a switch on the board and the design responds — the loop runs both ways. `
+                    : '. ')
                 + (pins.length
                     ? 'Synthesise and Step the clock — they follow the design on the board.'
                     : 'Load “Counting sequence”, Synthesise, then Step the clock — '
@@ -722,6 +780,25 @@ const FpgaTab = (props) => {
     const wireDemoBoard = React.useCallback(() => onLiveCircuit(buildOnCircuit), [onLiveCircuit, buildOnCircuit]);
     const realizeGate = React.useCallback(gateType => onLiveCircuit(c => buildGateOnCircuit(c, gateType)),
         [onLiveCircuit, buildGateOnCircuit]);
+    // The middle rung: realise the gate as a real 74HC logic chip — the part you
+    // solder, between the abstract gate and its transistors.
+    const buildIcGateOnCircuit = React.useCallback((c, gateType) => {
+        try {
+            buildLogicIcGate(c, gateType);
+            if (typeof c.toJSON === 'function' && typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('bw-load-circuit-data', {detail: {data: c.toJSON()}}));
+            }
+            const spec = gateToLogicIc(gateType);
+            setDemoMsg({ok: true, text: `Built a ${gateType.toUpperCase()} from a ${spec.label} `
+                + `(${spec.desc}) with a switch per input and an output LED. `
+                + 'Run the circuit and toggle the input switches — the LED follows the gate. '
+                + '(This is the gate as a real chip; ⚛ shows the transistors inside one of its gates.)'});
+        } catch (e) {
+            setDemoMsg({ok: false, text: `Could not build the gate: ${e.message}`});
+        }
+    }, []);
+    const realizeIcGate = React.useCallback(gateType => onLiveCircuit(c => buildIcGateOnCircuit(c, gateType)),
+        [onLiveCircuit, buildIcGateOnCircuit]);
 
     return (
         // Scrolling here needs the pattern circuit-tab.jsx uses, not a flex one. The tab
@@ -844,6 +921,19 @@ const FpgaTab = (props) => {
                         title="Build this gate from nmos/pmos transistors on the breadboard (the silicon underneath the logic)"
                         style={{padding: '0.2rem 0.6rem', cursor: 'pointer'}}
                     >{L10N[pickLocale(props.locale)].buildTransistorsBtn}</button>
+                </span>
+                {/* …or realise the gate as a real 74HC logic chip — the rung between the gate and its transistors. */}
+                <span style={{marginLeft: '0.75rem'}}>
+                    <select value={icGate} onChange={e => setIcGate(e.target.value)}
+                        data-testid="bw-fpga-ic-gate" style={{marginRight: '0.35rem'}}>
+                        {LOGIC_IC_GATES.map(g =>
+                            <option key={g} value={g}>{g.toUpperCase()}</option>)}
+                    </select>
+                    <button type="button" data-testid="bw-fpga-build-ic"
+                        onClick={() => realizeIcGate(icGate)}
+                        title="Build this gate as a real 74HC logic chip on the breadboard (the part you solder, above the transistors)"
+                        style={{padding: '0.2rem 0.6rem', cursor: 'pointer'}}
+                    >{L10N[pickLocale(props.locale)].buildIcBtn}</button>
                 </span>
                 {demoMsg ? (
                     <span style={{marginLeft: '0.5rem', opacity: 0.9,

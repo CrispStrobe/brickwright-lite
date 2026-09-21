@@ -25,7 +25,7 @@ export const DEMO_LED_PINS = [15, 16, 17, 18];
  * @param {{pins?: number[], ohms?: number, clear?: boolean}} [opts]
  * @returns {{board:string, tang:string, gnd:string, leds:Array<{pin,resistor,led}>}}
  */
-export function buildDemoBoard (circuit, {pins = DEMO_LED_PINS, ohms = 330, clear = true} = {}) {
+export function buildDemoBoard (circuit, {pins = DEMO_LED_PINS, inputPins = [], ohms = 330, clear = true} = {}) {
     if (!circuit || typeof circuit.addPart !== 'function' || typeof circuit.addWire !== 'function') {
         throw new TypeError('buildDemoBoard needs a live circuit with addPart/addWire '
             + '(window.__circuit, published by the circuit designer)');
@@ -64,5 +64,30 @@ export function buildDemoBoard (circuit, {pins = DEMO_LED_PINS, ohms = 330, clea
         return {pin, resistor: resistor.id, led: led.id};
     });
 
-    return {board: board.id, tang: tang.id, gnd: gnd.id, leds};
+    // Inputs the design READS get a switch on the breadboard: closed pulls the
+    // pin to VCC (1), open lets the pulldown hold it at GND (0). Press one and the
+    // FPGA logic responds — the loop runs both ways. VCC feeds the switches.
+    const switches = inputPins.length
+        ? (() => {
+            const vcc = circuit.addPart('vcc', {}, 150, 400);
+            return inputPins.map((pin, i) => {
+                const col = 6 + (i * 8);
+                const sw = circuit.addPart('switch', {}, 0, 0);
+                const pull = circuit.addPart('resistor', {ohms: 100000}, 0, 0);
+                if (canSeat) {
+                    circuit.seatPart(sw.id, board.id, {a: `f${col}`, b: `f${col + 3}`});
+                    circuit.seatPart(pull.id, board.id, {a: `g${col + 3}`, b: `t-${col + 3}`});
+                }
+                // VCC → switch → pin; pin → pulldown → ground. The Tang input pin
+                // reads high only while the switch is closed.
+                circuit.addWire(vcc.id, 'vcc', sw.id, 'a');
+                circuit.addWire(sw.id, 'b', tang.id, `p${pin}`);
+                circuit.addWire(sw.id, 'b', pull.id, 'a');
+                circuit.addWire(pull.id, 'b', gnd.id, 'gnd');
+                return {pin, switch: sw.id, pulldown: pull.id};
+            });
+        })()
+        : [];
+
+    return {board: board.id, tang: tang.id, gnd: gnd.id, leds, switches};
 }

@@ -52,6 +52,14 @@ const BW_JSON_PY = [
 
 
 // Structured error classes
+// Write a double-quoted literal that this file's own parser can read back.
+// The decompiler used to interpolate raw text between bare quotes, so a value
+// containing a quote produced a line that failed to re-parse and was silently
+// retargeted to another device's block. Round-tripping is the whole contract
+// of a decompiler, so it escapes what it emits.
+const escapeTextLiteral = (value) =>
+    '"' + String(value ?? '').replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+
 class SB3Error extends Error {
     constructor(message, type = 'SB3Error') {
         super(message);
@@ -1669,16 +1677,19 @@ class SB3Creator {
             return B('devices_light', { SENSOR: this.parseValue(m[1], context) });
         }
         if ((m = s.match(/^angle of\s+(.+)$/i))) {
-            return B('devices_servoangle', { SERVO: this.parseValue(m[1], context) });
+            const ch = this.stcActuatorChannel(m[1].trim(), 'servo');
+            return B('devices_servoangle', { SERVO: this.parseValue(ch == null ? m[1] : String(ch), context) });
         }
         if ((m = s.match(/^distance from\s+(.+)$/i))) {
             return B('devices_distance', { SENSOR: this.parseValue(m[1], context) });
         }
         if ((m = s.match(/^speed of\s+(.+)$/i))) {
-            return B('devices_motorspeed', { MOTOR: this.parseValue(m[1], context) });
+            const ch = this.stcActuatorChannel(m[1].trim(), 'motor');
+            return B('devices_motorspeed', { MOTOR: this.parseValue(ch == null ? m[1] : String(ch), context) });
         }
         if ((m = s.match(/^direction of\s+(.+)$/i))) {
-            return B('devices_motordirection', { MOTOR: this.parseValue(m[1], context) });
+            const ch = this.stcActuatorChannel(m[1].trim(), 'motor');
+            return B('devices_motordirection', { MOTOR: this.parseValue(ch == null ? m[1] : String(ch), context) });
         }
         if ((m = s.match(/^state of\s+(.+)$/i))) {
             return B('devices_devicestate', { DEVICE: this.parseValue(m[1], context) });
@@ -1893,6 +1904,25 @@ class SB3Creator {
         if (!cfg || !cfg.parts || !name) return null;
         const lower = String(name).trim().toLowerCase();
         return cfg.parts.find((p) => p.name.toLowerCase() === lower) || null;
+    }
+
+    /**
+     * The CHANNEL a named actuator block should address, or null.
+     *
+     * Servos and motors were the only devices with no way to point a block at
+     * one: every other kind — 74HC595, LCD1602, LEDBANK8, MATRIX8X8, SEVENSEG8,
+     * KEYPAD4X4 — is declared with a name and addressed by it, while these took
+     * a bare channel number. So `set myservo angle to 90` compiled `myservo` as
+     * an ordinary variable, the emitter declared it `static long myservo = 0;`,
+     * and bw_servo_set opens `if (servo < 1 || servo > 2) return;`. Three
+     * shipped examples drove a servo that never moved, and nothing said so.
+     *
+     * @param {string} name @param {'servo'|'motor'} type
+     * @returns {number|null} the 1-based channel
+     */
+    stcActuatorChannel(name, type) {
+        const part = this.stcPart(name);
+        return part && part.type === type ? part.channel : null;
     }
 
     // The one KEYPAD4X4, for the phrases that do not name it (`a key is
@@ -3322,6 +3352,33 @@ class SB3Creator {
             cfg.parts.push({ name, type: 'lcd1602', claims, data, rs, rw, en, writeOnly: lcdWriteOnly });
             return true;
         }
+        // PART <name> = SERVO <1|2>  /  PART <name> = MOTOR <1|2>
+        //
+        // The channel, given a name. Both drivers address a fixed hardware
+        // channel — bw_servo_set writes OCR1A for servo 1 and OCR1B for servo
+        // 2, so the PIN is decided by the channel and not the other way round —
+        // which is why this declares the channel rather than a pin, unlike
+        // every other PART here. What it adds is the thing that was missing:
+        // something for a block to point AT. An undeclared name in `set <x>
+        // angle to` used to compile to a variable worth 0, and 0 is outside the
+        // driver's own 1..2 guard, so the call returned having done nothing.
+        if ((m = trimmed.match(/^PART\s+([A-Za-z_]\w*)\s*=\s*(SERVO|MOTOR)\s+([12])$/i))) {
+            const name = m[1];
+            const type = m[2].toLowerCase();
+            const channel = Number(m[3]);
+            const cfg = this.stcConfig();
+            const clash = cfg.parts.find((q) => q.type === type && q.channel === channel);
+            if (clash) {
+                this.warn(lineIndex, `${type} channel ${channel} is already declared as "${clash.name}"`);
+                return true;
+            }
+            if (cfg.parts.some((q) => q.name.toLowerCase() === name.toLowerCase())) {
+                this.warn(lineIndex, `"${name}" is already a declared part`);
+                return true;
+            }
+            cfg.parts.push({ name, type, channel, claims: [] });
+            return true;
+        }
         // PART <name> = KEYPAD4X4 ROWS P<..> x4 COLS P<..> x4 — sixteen keys for
         // eight pins, read-only (the scanned key 0..15, or -1). The emitted
         // scanner is the one verified on Prechin A2 silicon (2026-08-17);
@@ -4413,16 +4470,27 @@ class SB3Creator {
             block[id].inputs.NUM = val(match[1]);
             return ret(block);
         }
-        if ((match = line.match(/^radio\s+send\s+text\s+"([^"]*)"\s*$/i))) {
+        // A double-quoted literal that may contain escaped quotes or
+        // backslashes. `[^"]*` stops at the FIRST quote, so a line like
+        //   display text "say \"hi\""
+        // did not match its own rule at all and fell through to the generic
+        // display handler -- silently retargeting the block to micro:bit and
+        // swallowing the whole phrase as its value, with no warning raised.
+        // Free-text rules use this instead; identifier rules (array and
+        // function names) keep the simpler pattern deliberately.
+        const TEXT_LITERAL = '"((?:[^"\\\\]|\\\\.)*)"';
+        const unescapeText = (raw) => String(raw).replace(/\\(.)/g, '$1');
+
+        if ((match = line.match(new RegExp('^radio\\s+send\\s+text\\s+' + TEXT_LITERAL + '\\s*$', 'i')))) {
             const { id, block } = cmd('microbitplus_radiosendstr');
-            block[id].inputs.TEXT = [1, [10, match[1]]];
+            block[id].inputs.TEXT = [1, [10, unescapeText(match[1])]];
             return ret(block);
         }
         // ---- Spike Prime display commands (must precede generic display handler) ----
         if (this.project && this.project.stc && this.project.stc.device === 'spike') {
-            if ((match = line.match(/^display\s+text\s+"([^"]*)"\s*$/i))) {
+            if ((match = line.match(new RegExp('^display\\s+text\\s+' + TEXT_LITERAL + '\\s*$', 'i')))) {
                 const { id, block } = cmd('spikeprime_displayText');
-                block[id].inputs.TEXT = [1, [10, match[1]]];
+                block[id].inputs.TEXT = [1, [10, unescapeText(match[1])]];
                 return ret(block);
             }
             if (/^display\s+clear\s*$/i.test(line)) {
@@ -4600,13 +4668,17 @@ class SB3Creator {
         }
         if ((match = line.match(/^set\s+(.+?)\s+angle to\s+(.+)$/i))) {
             const { id, block } = cmd('devices_setservo');
-            block[id].inputs.SERVO = val(match[1]);
+            // A declared SERVO part addresses its channel; anything else is
+            // still an ordinary value, so `set 1 angle to 90` keeps working.
+            const servoCh = this.stcActuatorChannel(match[1].trim(), 'servo');
+            block[id].inputs.SERVO = servoCh == null ? val(match[1]) : val(String(servoCh));
             block[id].inputs.ANGLE = val(match[2]);
             return ret(block);
         }
         if ((match = line.match(/^set\s+(.+?)\s+speed to\s+(.+)$/i))) {
             const { id, block } = cmd('devices_setmotor');
-            block[id].inputs.MOTOR = val(match[1]);
+            const motorCh = this.stcActuatorChannel(match[1].trim(), 'motor');
+            block[id].inputs.MOTOR = motorCh == null ? val(match[1]) : val(String(motorCh));
             block[id].inputs.SPEED = val(match[2]);
             return ret(block);
         }
@@ -4618,7 +4690,8 @@ class SB3Creator {
         }
         if ((match = line.match(/^set\s+(.+?)\s+direction\s+(forward|reverse|brake|coast)$/i))) {
             const { id, block } = cmd('devices_setdirection');
-            block[id].inputs.MOTOR = val(match[1]);
+            const dirCh = this.stcActuatorChannel(match[1].trim(), 'motor');
+            block[id].inputs.MOTOR = dirCh == null ? val(match[1]) : val(String(dirCh));
             block[id].fields.DIR = [match[2].toLowerCase(), null];
             return ret(block);
         }
@@ -6238,6 +6311,15 @@ class SB3Creator {
                     out.push(`PART ${p.name} = SEVENSEG8 SEGMENTS P${p.segPort} SELECT ${p.selPins.map(pinStr).join(' ')}${p.commonAnode ? ' COMMON ANODE' : ''}`);
                     continue;
                 }
+                if (p.type === 'servo' || p.type === 'motor') {
+                    // The one PART that declares a CHANNEL rather than pins —
+                    // see the parser's note. Without this branch the writer
+                    // fell through to the 74HC595 line below and dereferenced
+                    // p.data, so every retarget of a program with a declared
+                    // servo crashed in decompile rather than round-tripping.
+                    out.push(`PART ${p.name} = ${p.type.toUpperCase()} ${p.channel}`);
+                    continue;
+                }
                 if (p.type === 'ledbank8') {
                     out.push(`PART ${p.name} = LEDBANK8 ON P${p.ledPort}${p.activeLow ? ' ACTIVE LOW' : ''}`);
                     continue;
@@ -6723,7 +6805,7 @@ class SB3Creator {
             case 'microbitplus_servo': return line(`set pin ${f('PIN')} servo ${v('DEG')}`);
             case 'microbitplus_radioon': return line(`radio on group ${v('GROUP')} power ${v('POWER')}`);
             case 'microbitplus_radiosendnum': return line(`radio send number ${v('NUM')}`);
-            case 'microbitplus_radiosendstr': return line(`radio send text "${this.dval(b.inputs.TEXT, blocks).replace(/^"|"$/g, '')}"`);
+            case 'microbitplus_radiosendstr': return line(`radio send text ${escapeTextLiteral(this.dval(b.inputs.TEXT, blocks).replace(/^"|"$/g, ''))}`);
             // ---- Spike Prime commands ----
             case 'spikeprime_motorStart': return line(`start motor ${f('PORT')} ${spikeMotorDirectionWord(f('DIRECTION'))}`);
             case 'spikeprime_motorStop': return line(`stop motor ${f('PORT')}`);
@@ -6731,7 +6813,7 @@ class SB3Creator {
             case 'spikeprime_motorSetSpeed': return line(`set motor speed ${f('PORT')} ${v('SPEED')}`);
             case 'spikeprime_moveForward': return line(`move ${f('DIRECTION')} ${v('VALUE')} ${f('UNIT')}`);
             case 'spikeprime_stopMovement': return line('stop movement');
-            case 'spikeprime_displayText': return line(`display text "${this.dval(b.inputs.TEXT, blocks).replace(/^"|"$/g, '')}"`);
+            case 'spikeprime_displayText': return line(`display text ${escapeTextLiteral(this.dval(b.inputs.TEXT, blocks).replace(/^"|"$/g, ''))}`);
             case 'spikeprime_displayClear': return line('display clear');
             case 'spikeprime_setPixel': return line(`set pixel ${v('X')} ${v('Y')} ${v('BRIGHTNESS')}`);
             case 'spikeprime_playBeep': return line(`play beep ${v('FREQUENCY')} ${v('DURATION')}`);
@@ -12293,6 +12375,12 @@ class SB3Creator {
                     }
                     if (pt.type === 'ledbank8') {
                         return `part ${pt.name} ledbank8 P${pt.ledPort}${pt.activeLow ? ' active-low' : ''}`;
+                    }
+                    // A named actuator carries a CHANNEL, not pins: the driver
+                    // owns the pin (OCR1A for servo 1, OCR1B for servo 2), so
+                    // there is nothing else to round-trip.
+                    if (pt.type === 'servo' || pt.type === 'motor') {
+                        return `part ${pt.name} ${pt.type} ${pt.channel}`;
                     }
                     if (pt.type === 'lcd1602') {
                         return `part ${pt.name} lcd1602 data ${pt.data.map(w).join(' ')} rs ${w(pt.rs)}${pt.rw ? ` rw ${w(pt.rw)}` : ''} en ${w(pt.en)}${pt.writeOnly ? ' write-only' : ''}`;

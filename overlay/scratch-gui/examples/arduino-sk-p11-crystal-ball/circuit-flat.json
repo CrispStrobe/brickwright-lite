@@ -2,55 +2,136 @@
   "vcc": 5,
   "parts": [
     {
-      "id": "board",
-      "kind": "arduino_uno",
-      "declName": "board",
+      "id": "VCC",
+      "kind": "vcc",
       "params": {},
+      "terminals": [
+        "vcc"
+      ],
+      "x": 58,
+      "y": 115
+    },
+    {
+      "id": "GND",
+      "kind": "gnd",
+      "params": {},
+      "terminals": [
+        "gnd"
+      ],
+      "x": 134,
+      "y": 115
+    },
+    {
+      "id": "MCU",
+      "kind": "arduino_uno",
+      "params": {},
+      "terminals": [
+        "d6",
+        "5v",
+        "gnd2"
+      ],
+      "x": 392,
+      "y": -12
+    },
+    {
+      "id": "R_PU_tilt",
+      "kind": "resistor",
+      "params": {
+        "ohms": 10000
+      },
+      "terminals": [
+        "a",
+        "b"
+      ],
       "x": 64,
       "y": 255
     },
     {
-      "id": "vcc1",
-      "kind": "vcc",
-      "params": {
-        "volts": 5
-      },
-      "x": 80,
-      "y": 60
-    },
-    {
-      "id": "gnd1",
-      "kind": "gnd",
+      "id": "TILT_tilt",
+      "kind": "tilt_sensor",
       "params": {},
-      "x": 220,
-      "y": 60
+      "terminals": [
+        "a",
+        "b"
+      ],
+      "x": 148,
+      "y": 255
     }
   ],
   "wires": [
     {
       "id": "w_flat_0",
-      "netId": "net-lgc-1",
+      "netId": "bb1:n-col-t7",
       "from": {
-        "part": "board",
-        "terminal": "5v"
+        "part": "MCU",
+        "terminal": "d6"
       },
       "to": {
-        "part": "vcc1",
-        "terminal": "vcc"
+        "part": "R_PU_tilt",
+        "terminal": "b"
       }
     },
     {
       "id": "w_flat_1",
-      "netId": "net-lgc-2",
+      "netId": "bb1:n-col-t7",
       "from": {
-        "part": "board",
+        "part": "MCU",
+        "terminal": "d6"
+      },
+      "to": {
+        "part": "TILT_tilt",
+        "terminal": "a"
+      }
+    },
+    {
+      "id": "w_flat_2",
+      "netId": "bb1:rail-b-",
+      "from": {
+        "part": "GND",
         "terminal": "gnd"
       },
       "to": {
-        "part": "gnd1",
+        "part": "MCU",
+        "terminal": "gnd2"
+      }
+    },
+    {
+      "id": "w_flat_3",
+      "netId": "bb1:rail-b-",
+      "from": {
+        "part": "GND",
         "terminal": "gnd"
+      },
+      "to": {
+        "part": "TILT_tilt",
+        "terminal": "b"
+      }
+    },
+    {
+      "id": "w_flat_4",
+      "netId": "bb1:rail-t+",
+      "from": {
+        "part": "MCU",
+        "terminal": "5v"
+      },
+      "to": {
+        "part": "R_PU_tilt",
+        "terminal": "a"
+      }
+    },
+    {
+      "id": "w_flat_5",
+      "netId": "bb1:rail-t+",
+      "from": {
+        "part": "MCU",
+        "terminal": "5v"
+      },
+      "to": {
+        "part": "VCC",
+        "terminal": "vcc"
       }
     }
   ],
-  "holeWires": []
+  "holeWires": [],
+  "generated": "benchFor+seat"
 }

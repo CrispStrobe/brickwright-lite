@@ -1,5 +1,60 @@
 # bw-bundle — blocked items (campaign: circuit parity)
 
+## ~~OPEN, FLEET-WIDE~~ — FIXED (`17e5b46ec`): main's `build` job had no verdict from 04:21 to 06:5x (2026-09-21)
+
+**Nobody's unit run is being verified on `main`, and the failure does not say
+why.** The `Run unit tests` step ends with:
+
+    ##[error]Process completed with exit code 143.
+    ##[error]The runner has received a shutdown signal.
+
+with **no `not ok` line anywhere in the TAP** — the suite is not failing, the
+runner is going away underneath it, roughly four minutes in and about 2,470
+tests deep. Exit 143 is SIGTERM, which is what a GitHub-hosted runner reports
+when its VM is reclaimed; the job's own `timeout-minutes: 30` is not reached,
+so it is not the documented self-cancel this file already records above.
+
+Measured 2026-09-21 06:0x UTC from `gh run list --workflow build.yml --branch main`:
+
+| | |
+|---|---|
+| last SUCCESSFUL main `build` | `b3df0a7a`, run 35559724371, 04:05 |
+| first red | `b0ebc054`, run 35560675607, 04:21 — the #238 merge |
+| main `build` runs since | 3, all failure, same signature |
+| `corpus`, `browser (light)`, `browser (heavy)` | green throughout |
+
+`b3df0a7a..b0ebc054` is the real-DOS GUI lane: a 360K MS-DOS 2.0 image added
+under `static/dos/` in BOTH mirrors, `i8086-dos-bench.js` gaining a `format:
+'disk'` path that boots a FAT12 kernel, `debug-runner.js`,
+`pseudocode-importer.jsx`, and a bw-board pin move `da2a24ed -> 00af429e`. Any
+of those could be it; **this entry deliberately does not name a cause it has
+not measured.** What is established is the boundary: the job was green on the
+commit before that merge and has been red on every main commit after it.
+
+**CAUSE, and it was memory.** `test/no-nul-in-text.test.mjs` reads every
+tracked file and reports each NUL byte with its line and surrounding text.
+`img` was not in its binary-by-role table, so the 360K MS-DOS image — tracked
+twice — was scanned as TEXT, and it holds **338,112 NUL bytes** per copy.
+`nulsIn` took each line number from `buf.subarray(0, i).toString().split('\n')`,
+a full re-slice **per hit**: ~10^11 byte copies with a context string retained
+for every one. Locally 555 MB RSS and still climbing after 138 s; on the runner,
+reclaimed before the gate could print a thing.
+
+**FIXED in two parts**, because the second is the one that matters next time: a
+`disk` role, and a linear scan with a bounded report, so an unlisted binary
+format now fails BY NAME in 1.85 s — naming both copies, the count, and the
+remedy — which is what this gate's own header had always promised and could not
+deliver. The file went from 138 s+/555 MB+ unterminated to 0.84 s/267 MB.
+
+**What the silence was hiding:** the very first repaired run reported a real
+divergence at test 2523 — `static/dos/msdos200-base.provenance.json` differing
+between overlay and packages, left by a pin bump. A defect behind a defect,
+which is the argument for fixing the silent one first. Run 35568697462 is green
+on all four jobs.
+
+Noted from the pin-bump lane (lite `5990c4e78`), whose own `corpus` and both
+browser jobs were green on run 35565905193 and which inherited only this.
+
 ## ~~OPEN, FLEET-WIDE~~ — FIXED (`34cf38b78`): lite main had NO CI verdict from 12:00 to 13:20 (2026-08-25)
 
 Not my lane's problem alone, which is why it is at the top: **nobody's work is

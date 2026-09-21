@@ -22,7 +22,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync, readdirSync, statSync} from 'node:fs';
 import {join} from 'node:path';
-import {contradiction, declaredPartKind} from '../scripts/lib/declared-part-kind.mjs';
+import {bankOf, contradiction, declaredPartKind} from '../scripts/lib/declared-part-kind.mjs';
 
 const EXAMPLES = 'overlay/scratch-gui/examples';
 const kinds = new Set([...readFileSync(
@@ -37,8 +37,13 @@ const kinds = new Set([...readFileSync(
  * notices is how a corpus quietly rots back.
  */
 const RECORDED = {
-    '03-night-light': {declName: 'ldr', kind: 'potentiometer', want: 'ldr', count: 10},
-    '16-ldr-bargraph': {declName: 'ldr', kind: 'potentiometer', want: 'ldr', count: 10}
+    // EMPTY, AND THAT IS THE POINT. Both recorded entries — 03-night-light and
+    // 16-ldr-bargraph, 10 benches each, an `ldr` pin drawn as a potentiometer —
+    // are gone as of sb3-creator 2be3fe2b: those two examples were rebuilt from
+    // their programs and now seat a real `ldr`. The gate was written to redden
+    // when that happened rather than pass quietly, and it did; this is the edit
+    // it asked for. An empty table is now the ONLY passing state, so the next
+    // contradiction anyone vendors in is a failure with nowhere to hide.
 };
 
 const scan = () => {
@@ -96,6 +101,18 @@ test('agreement is never a contradiction', () => {
     assert.equal(contradiction('piezo', 'piezo', kinds), null);
     assert.equal(contradiction('ldr', 'ldr', kinds), null);
     assert.equal(contradiction('led1', 'led', kinds), null);
+    // A BANK AGREES WITH ITS SINGULAR. 82-a2-led-row declares `leds` and seats
+    // one `ledbank8` — eight LEDs in one footprint, which is what the word
+    // says. Before this rule the gate called that a contradiction and demanded
+    // the row be drawn as a single `led`, which would have been WRONG: the
+    // program drives eight of them.
+    assert.equal(bankOf('ledbank8'), 'led');
+    assert.equal(bankOf('led'), null);
+    assert.equal(bankOf('keypad4x4'), null);
+    assert.equal(contradiction('leds', 'ledbank8', kinds), null);
+    // The bank exemption is not a blanket one: a bank of the WRONG thing is
+    // still a contradiction.
+    assert.equal(contradiction('buzzer', 'ledbank8', kinds), 'buzzer');
     // And the real one still reports.
     assert.equal(contradiction('ldr', 'potentiometer', kinds), 'ldr');
 });
