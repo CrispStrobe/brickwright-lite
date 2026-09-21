@@ -136,6 +136,29 @@ own compiled output confirms the container shape: an image begins with the
 ASCII magic `RCXI`, and a minimal program is 61 bytes with the task name in
 the tail.
 
+RCX Internals does **not** describe this container — it is an NQC artefact,
+not a brick artefact — so the layout below was measured, not cited. It comes
+from the implementer, reading the fixtures in `test/fixtures/rcx-images/`
+(each `.rcx` paired with the `.nqc` it was compiled from), and the auditor
+reproduced it independently with a second parser that accounts for every byte
+of all five images:
+
+```
+offset  size  field
+0       4     "RCXI"
+4       2     version (0x0102)
+6       2     chunk count
+8       2     symbol count
+10      2     target (0x0003 for -TRCX2)
+12      ..    chunks, each padded to a 4-byte boundary:
+              u8 type, u8 number, u16 length, data
+              ... the padding is applied after the LAST chunk too ...
+              then symbols, packed WITHOUT alignment:
+              u8 type, u8 index, u16 nameLen, name (the NUL is counted)
+```
+
+All multi-byte fields are little-endian.
+
 The download order is: select program slot → stop running tasks → delete
 tasks and subroutines → begin task download → send blocks.
 
@@ -163,6 +186,12 @@ doing so should:
     or is one of the documented variable-length exceptions;
   * take the `P` column seriously: only those are commands a host may send.
 
+### The USB tower
+
+The LEGO USB IR tower enumerates as VID `0x0694` / PID `0x0001`. That pair is
+a fact about the hardware and is what a WebUSB filter has to match; the serial
+tower is an ordinary COM port and needs no such filter.
+
 ### Firmware
 
 The standard firmware must already be on the brick for NQC output to run at
@@ -184,3 +213,34 @@ the free alternatives do instead.
 
 Steps 1–3 need no brick and no tower, and are where the protocol mistakes
 live. They should be finished and tested before any hardware is involved.
+
+## Afterwards: what this file got wrong
+
+The implementation is at `overlay/scratch-gui/src/lib/rcx/rcx-protocol.js`,
+with 48 tests in `test/rcx-protocol.test.mjs`. It was written by an agent that
+had not read WebPBrick, from this file and from RCX Internals, and then
+audited. Three claims above did not survive contact, and are corrected in
+place so that the next reader is not misled:
+
+  * **Container alignment.** The first draft of the layout had chunks packed
+    tight and the symbol table 4-byte aligned. Both are backwards: chunks are
+    padded to four bytes — *including the last one* — and the symbols that
+    follow are packed with no alignment at all. Nothing in the two-chunk
+    fixtures distinguishes these; `d.rcx`, with five chunks and two variable
+    symbols, does.
+  * **Endianness was never stated.** It is little-endian throughout. An
+    unstated invariant is the same defect as a wrong one.
+  * **Replies do not obey the arity rule.** The rule in *Arity is encoded in
+    the opcode* above is a fact about **requests** — about the `P` column —
+    and does not extend to replies. `0xd2 & 7 == 2`, but its reply carries a
+    single error byte. So reply payload lengths are tabulated, not computed,
+    and a "simplification" that computes them would break the download path
+    quietly.
+
+The audit also found the clean room was not, strictly, necessary for the
+framing layer: `rcx_comm.c` — Proudfoot's own reference implementation, the
+one `firmdl` is built on — is **MPL-licensed**, not GPL, and could have been
+read and shipped. That was discovered after the fact. The clean-room route was
+kept anyway, because two independent implementations that agree on the wire
+bytes are worth more than one, and `rcx_comm.c` is now available as a third
+oracle alongside WebPBrick and brickEmu.
