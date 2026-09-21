@@ -52,7 +52,12 @@ const NUL = String.fromCharCode(0);
 export const BINARY_BY_ROLE = {
     image: ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'icns', 'cur', 'webp'],
     audio: ['wav', 'mp3', 'ogg'],
-    firmware: ['bin', 'rom', 'com', 'uf2', 'elf'],
+    // `.rcx` joined this role 2026-09-21 with test/fixtures/rcx-images/: a
+    // compiled LEGO RCX program image, produced by nqc and paired with the
+    // .nqc it came from. The bytes ARE the artefact — they are what
+    // test/nqc-wasm.test.mjs compares the WASM build against byte for byte —
+    // so a NUL in one is the format, not a mistake.
+    firmware: ['bin', 'rom', 'com', 'uf2', 'elf', 'rcx'],
     wasm: ['wasm'],
     archive: ['zip', 'sb3', 'sb2', 'sprite3', 'sprite2', 'gz', 'tgz'],
     object: ['lib', 'o', 'a'],

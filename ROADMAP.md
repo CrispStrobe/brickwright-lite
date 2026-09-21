@@ -1844,6 +1844,54 @@ and where the protocol mistakes live, and getting it reviewed and pinned by test
 more than holding it in a branch until a transport is ready. That is the argument; if it is
 still unimported when the transports land, the argument failed and the module should go.
 
+### 4.8 An NQC flavour for the Code tab's C tab — SCOPED 2026-09-21, UNCLAIMED
+
+The RCX tier compiles locally now, but only from blocks: the RCX extension's own transpiler emits
+NQC and `runtime.nqcCompile` turns it into an image. Nobody can *type* NQC. The C tab is the
+obvious home — NQC is a C dialect, the tab already normalises a second dialect (Keil C51, through
+`stc-compiler`) before parsing, and the compile target is already decided by the project's device.
+
+**The seam is already the right shape.** `deriveBuffer(src, from, to)` in
+`components/tw-pseudocode/pseudocode-importer.jsx` is a flat dispatch: one `from` branch per
+front end, one `to` branch per generator. An `nqc` entry is one line in each. The surrounding
+work in Lite is mechanical and small:
+
+  * `LANGS` (`{ext: 'nqc', mime: 'text/x-csrc', base: 'program'}`) and the language row at ~3737;
+  * `TWO_WAY` membership — only if the front end below is written, and **one-way is a legitimate
+    first landing**, exactly as `micropython` is today;
+  * `codemirror-languages.js` — the C mode is close enough that a dialect of its own is not worth
+    it initially;
+  * the compile action: route to `runtime.nqcCompile` rather than to the hosted C service, which
+    is the thing that makes this worth doing — it is the only Code-tab language that compiles with
+    no network at all;
+  * `cNote`-style help text in **both** EN and DE, naming the two units that are silently wrong
+    otherwise: power is **0..7**, not a percentage, and `Wait()`/`PlayTone()` take
+    **centiseconds**.
+
+**The real work is in sb3-creator, and it is two separable halves.**
+
+*Half one, `generateNQC(project)`.* A third C-family target beside `generateC` (8051 bare metal)
+and the host C target. Its constraints are unlike either: no heap, 32 variables total on the
+standard firmware, `task`/`sub` instead of functions (and subroutines cannot nest or recurse), and
+ten task slots. A project that exceeds any of those must be **refused by name** the way
+`generateBASIC` refuses a multi-WHEN program, not silently truncated — `{ok, nqc, reasons}` is the
+existing shape for that and should be reused.
+
+*Half two, `nqcToPseudocode(text)`.* This is what buys `TWO_WAY`, and it is the larger half. The
+existing C front end is the starting point: NQC differs by keywords (`task`, `sub`, `repeat`,
+`until`, `monitor`) and by an API surface (`OnFwd`, `Off`, `SetSensor`, `SENSOR_1`, `OUT_A`)
+rather than by grammar. Landing half one alone is useful and honest; landing half two badly is
+worse than not landing it, because a lossy round trip through the Code tab silently eats blocks.
+
+**What has to be decided before starting**, and is not decided here: whether `generateNQC` is
+selected by the project's declared device (as the chip/host C split already is) or by the tab
+being explicitly set to NQC. The first is consistent with everything else; the second is what
+someone typing NQC into an empty tab expects. They can both be true, and saying which wins when
+they disagree is the actual design question.
+
+**Cost of not doing it:** an RCX user can build programs with blocks and cannot read or hand-edit
+what they compile, on the one brick in the family whose native language is human-readable text.
+
 ### 5.1 The stc12 extension lite ships is missing 8 opcodes the emitter emits — FIXED
 
 A gate that needs two checkouts side by side runs on a developer machine and **skips in CI**, where
