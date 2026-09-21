@@ -21,8 +21,9 @@ import {BUILTINS} from '../../lib/bw-fpga/builtins.js';
 import {sevenSegSvg, seg7Value, ledValue, ledBankValues} from '../../lib/bw-fpga/output-devices.js';
 import {layerPositions} from '../../lib/bw-fpga/auto-layout.js';
 import {defaultMmioMap} from '../../lib/bw-fpga/mmio.js';
-import {CHALLENGES, challengeById, isUnlocked} from '../../lib/bw-fpga/challenges.js';
-import {grade} from '../../lib/bw-fpga/grader.js';
+import {CHALLENGES, challengeById, isUnlocked, isRealise} from '../../lib/bw-fpga/challenges.js';
+import {grade, gradeRealisedCircuit} from '../../lib/bw-fpga/grader.js';
+import {withLiveCircuit} from '../../lib/bw-fpga/live-circuit.js';
 import FpgaChallengePanel from './fpga-challenges.jsx';
 import TruthTableModal from './fpga-truth-table.jsx';
 
@@ -622,6 +623,10 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
         setActive(id);
         setCheckResult(null);
         setRunning(false);
+        // A realise challenge is graded on the BOARD, not on this canvas. Leave
+        // the learner's canvas exactly as they left it: wiping it to scaffold
+        // io nodes would destroy work AND point them at the wrong surface.
+        if (isRealise(c)) return;
         idRef.current += 1;
         const ins = c.inputs.map((p, i) => ({id: nid('i'), type: 'io',
             position: {x: 0, y: 20 + i * 60}, data: {kind: 'in', name: p.name, width: 1}}));
@@ -630,15 +635,31 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
         setNodes([...ins, ...outs]);
         setEdges([]);
     };
+    // Record a verdict and, on a pass, bank the progress that unlocks the next
+    // step. Shared by both graders so a board pass counts exactly like a canvas
+    // pass.
+    const recordResult = (id, result) => {
+        setCheckResult(result);
+        if (result.pass && !passed.has(id)) {
+            const next = new Set(passed); next.add(id);
+            setPassed(next); saveProgress(next);
+        }
+    };
     const runCheck = () => {
         const c = challengeById(active);
         if (!c) return;
-        const result = grade(reactFlowToModel(nodes, edges), c);
-        setCheckResult(result);
-        if (result.pass && !passed.has(active)) {
-            const next = new Set(passed); next.add(active);
-            setPassed(next); saveProgress(next);
+        if (isRealise(c)) {
+            // Grade what the learner BUILT: drive the live circuit's switches
+            // through every input combination and read its output LED. The
+            // circuit may not be mounted yet, so this can take a moment.
+            setCheckResult({realised: true, pending: true});
+            withLiveCircuit(
+                circuit => recordResult(c.id, gradeRealisedCircuit(circuit, c)),
+                {onProblem: problem => setCheckResult({pass: false, realised: true, problem})}
+            );
+            return;
         }
+        recordResult(c.id, grade(reactFlowToModel(nodes, edges), c));
     };
     // Jump to the next still-unsolved, unlocked challenge after the current one.
     const goNext = () => {

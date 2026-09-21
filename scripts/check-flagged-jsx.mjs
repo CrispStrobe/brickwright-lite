@@ -32,6 +32,12 @@ import {fileURLToPath} from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FILES = [
     'overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx',
+    // The tab lazy-loads the gate builder, which presents the challenge panel.
+    // Both are just as flag-hidden as the tab — webpack never reads them either
+    // — so a syntax error in the learning path would sit undetected exactly the
+    // same way. Listing only the tab left them uncovered.
+    'overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx',
+    'overlay/scratch-gui/src/components/tw-pseudocode/fpga-challenges.jsx',
 ];
 
 // Babel lives in the prepared GUI tree, not at the root.

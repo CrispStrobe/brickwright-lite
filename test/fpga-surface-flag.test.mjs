@@ -714,7 +714,9 @@ test('the palette offers starter templates that merge onto the canvas', () => {
 // ── the learning path: a guided, auto-graded challenge ladder ──
 test('the builder has a learning path — challenges, Check, saved progress', () => {
     const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
-    assert.match(ui, /import \{grade\}/, 'the tested grader drives Check');
+    // (The builder now imports gradeRealisedCircuit alongside it for the
+    // board-graded challenges, so match the grader import, not the whole list.)
+    assert.match(ui, /import \{grade[,}]/, 'the tested grader drives Check');
     assert.match(ui, /data-testid="bw-fpga-rf-learn"/, 'a Learn toggle');
     assert.match(ui, /const selectChallenge = /, 'selecting a step scaffolds its I/O');
     assert.match(ui, /const runCheck = /, 'Check grades the built design');
