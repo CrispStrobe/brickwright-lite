@@ -76,17 +76,25 @@ test('MUTATION: the version-1 diode lesson is flagged — a static bench cannot 
         `expected an alternating-source finding, got ${JSON.stringify(blocking.map(f => f.evidence.demand))}`);
     // The evidence must name the measurement, not merely assert a verdict.
     const one = blocking.find(f => f.evidence.demand === 'alternating-source');
-    // The distinction that matters is NOT "is the bench static?". Admitting the
-    // LED operating point (bw-board 157caed0 — an LED is now solved on the diode's
-    // junction terms instead of refused by kind) and making vcc a turnable supply
-    // (ebf77e9e) mean 42-diode-rectifier now reaches THREE distinct DC states
-    // across its control extremes, not the one it reported when LEDs read as
-    // permanently dark. A "does anything differ?" check would pass it now. What
-    // still fails is specifically that no node ever ALTERNATES — swings both ways
-    // over time — so a half-wave-rectifier lesson's demand cannot be met on a DC
-    // bench however many static states it settles into.
-    assert.equal(one.evidence.measured.stateCount, 3,
-        '42-diode-rectifier settles into three DC states across its control extremes');
+    // The distinction that matters is NOT "is the bench static?" — and this
+    // number has now moved in both directions, which is the point. Admitting the
+    // LED operating point (bw-board 157caed0 — an LED is solved on the diode's
+    // junction terms instead of refused by kind) and making vcc a turnable
+    // supply (ebf77e9e) took 42-diode-rectifier from ONE distinct DC state to
+    // THREE across its control extremes. bw-board 0a3b3bd9 then took the supply
+    // back out of getControls — a rail sets the operating point, it is not a
+    // stimulus the learner turns — and with no controllable part left on this
+    // bench the count returns to ONE.
+    //
+    // Nothing about the DEFECT moved while that number went 1 -> 3 -> 1, and a
+    // "does anything differ?" check would have passed the bench in the middle of
+    // that journey. What fails throughout is specifically that no node ever
+    // ALTERNATES — swings both ways over time — so a half-wave-rectifier
+    // lesson's demand cannot be met on a DC bench however many static states it
+    // settles into. The count is asserted exactly so that a change of this kind
+    // has to be read and explained rather than absorbed.
+    assert.equal(one.evidence.measured.stateCount, 1,
+        '42-diode-rectifier settles into one DC state: nothing on it is controllable');
     assert.equal(one.evidence.measured.alternates, false,
         'the defect: no node on this DC bench alternates, so the demand is unmet');
     assert.ok(one.evidence.phrase, 'the finding must quote the prose that triggered it');
