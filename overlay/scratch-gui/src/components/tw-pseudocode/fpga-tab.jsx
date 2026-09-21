@@ -8,6 +8,7 @@ import {verilogToModel} from '../../lib/bw-fpga/verilog-to-model.js';
 import {yosysToModel} from '../../lib/bw-fpga/yosys-to-model.js';
 import {EXAMPLES} from '../../lib/bw-fpga/examples.js';
 import {buildDemoBoard} from '../../lib/bw-fpga/demo-board.js';
+import {buildCmosGate} from '../../lib/bw-fpga/cmos-board.js';
 import {readPorts, checkWidths, detectClockPort} from '../../lib/bw-fpga/yosys.js';
 // Small and dependency-free, so these stay static: the licence screen is useful
 // on its own, and the synthesis client's only job today is to refuse honestly.
@@ -58,6 +59,7 @@ const L10N = {
         orOnFullCanvas: 'Build it visually — drag gates onto the canvas and wire them (no Verilog typed)',
         loadingCanvas: 'Loading the canvas…',
         wireDemoBoardBtn: '⬢ Wire up a demo board',
+        buildTransistorsBtn: '⚛ Build the gate from transistors',
         permissiveLicence: 'Declares a permissive licence — it may be built on the shared server.',
         whereBuiltTitle: 'Where it would be built',
         backendLabel: 'Backend: ',
@@ -171,6 +173,7 @@ const L10N = {
         orOnFullCanvas: 'Visuell bauen — Gatter auf die Leinwand ziehen und verdrahten (kein Verilog)',
         loadingCanvas: 'Lade die Leinwand…',
         wireDemoBoardBtn: '⬢ Demoboard verkabeln',
+        buildTransistorsBtn: '⚛ Gatter aus Transistoren bauen',
         permissiveLicence: 'Erklärt eine freizügige Lizenz — es kann auf dem geteilten Server gebaut werden.',
         whereBuiltTitle: 'Wo es gebaut werden würde',
         backendLabel: 'Backend: ',
@@ -359,6 +362,7 @@ const FpgaTab = (props) => {
     // One-click demo board: wiring a Tang Nano + 4 LEDs so a synthesised counter
     // has something to light. Feedback only — the wiring happens on the live board.
     const [demoMsg, setDemoMsg] = React.useState(null);
+    const [cmosGate, setCmosGate] = React.useState('nand'); // which gate to realise as transistors
     // The first-run guide tracks the three steps through the tab's real state and
     // stays until the user hides it (or opts out for good in this browser).
     const [guideDismissed, setGuideDismissed] = React.useState(() => {
@@ -678,27 +682,46 @@ const FpgaTab = (props) => {
             setDemoMsg({ok: false, text: `Could not wire the demo board: ${e.message}`});
         }
     }, []);
-    const wireDemoBoard = React.useCallback(() => {
+    // Realise a single gate as its CMOS transistor circuit — the same "show it in
+    // Circuits" path, but building nmos/pmos instead of a driven-LED demo board.
+    const buildGateOnCircuit = React.useCallback((c, gateType) => {
+        try {
+            const r = buildCmosGate(c, gateType);
+            if (typeof c.toJSON === 'function' && typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('bw-load-circuit-data', {detail: {data: c.toJSON()}}));
+            }
+            const nT = r.transistors.length;
+            setDemoMsg({ok: true, text: `Built a CMOS ${gateType.toUpperCase()} from ${nT} transistor`
+                + `${nT === 1 ? '' : 's'} (nmos/pmos) with a switch per input and an output LED. `
+                + 'Run the circuit and toggle the input switches — the LED follows the gate. '
+                + '(This is the silicon underneath the logic; an FPGA itself uses LUTs.)'});
+        } catch (e) {
+            setDemoMsg({ok: false, text: `Could not build the gate: ${e.message}`});
+        }
+    }, []);
+    // Shared "reach the live circuit (showing the Circuit tab if needed), then run
+    // fn(circuit)" — used by both the demo board and the transistor realisation.
+    const onLiveCircuit = React.useCallback(fn => {
         const now = liveCircuit();
-        if (now) { buildOnCircuit(now); return; }
+        if (now) { fn(now); return; }
         if (typeof window === 'undefined') return;
-        // Ask gui.jsx to show the Circuit tab so its designer mounts and publishes
-        // window.__circuit, then poll briefly for the handle.
-        setDemoMsg({pending: true, text: 'Setting up the board…'});
+        setDemoMsg({pending: true, text: 'Setting up the circuit…'});
         window.dispatchEvent(new CustomEvent('bw-activate-tab', {detail: {index: CIRCUIT_TAB_INDEX}}));
         const deadline = Date.now() + 8000;
         const tick = () => {
             const c = liveCircuit();
-            if (c) { buildOnCircuit(c); return; }
+            if (c) { fn(c); return; }
             if (Date.now() > deadline) {
-                setDemoMsg({ok: false, text: 'Open the 🔌 Circuit tab once so the board '
-                    + 'exists, then try again.'});
+                setDemoMsg({ok: false, text: 'Open the 🔌 Circuit tab once so the circuit exists, then try again.'});
                 return;
             }
             setTimeout(tick, 150);
         };
         setTimeout(tick, 150);
-    }, [buildOnCircuit]);
+    }, []);
+    const wireDemoBoard = React.useCallback(() => onLiveCircuit(buildOnCircuit), [onLiveCircuit, buildOnCircuit]);
+    const realizeGate = React.useCallback(gateType => onLiveCircuit(c => buildGateOnCircuit(c, gateType)),
+        [onLiveCircuit, buildGateOnCircuit]);
 
     return (
         // Scrolling here needs the pattern circuit-tab.jsx uses, not a flex one. The tab
@@ -809,6 +832,19 @@ const FpgaTab = (props) => {
                     onClick={() => wireDemoBoard()}
                     style={{padding: '0.2rem 0.6rem', cursor: 'pointer'}}
                 >{L10N[pickLocale(props.locale)].wireDemoBoardBtn}</button>
+                {/* …or realise a single gate as its CMOS transistors in Circuits. */}
+                <span style={{marginLeft: '0.75rem'}}>
+                    <select value={cmosGate} onChange={e => setCmosGate(e.target.value)}
+                        data-testid="bw-fpga-cmos-gate" style={{marginRight: '0.35rem'}}>
+                        {['not', 'buffer', 'nand', 'nor', 'and', 'or'].map(g =>
+                            <option key={g} value={g}>{g.toUpperCase()}</option>)}
+                    </select>
+                    <button type="button" data-testid="bw-fpga-build-transistors"
+                        onClick={() => realizeGate(cmosGate)}
+                        title="Build this gate from nmos/pmos transistors on the breadboard (the silicon underneath the logic)"
+                        style={{padding: '0.2rem 0.6rem', cursor: 'pointer'}}
+                    >{L10N[pickLocale(props.locale)].buildTransistorsBtn}</button>
+                </span>
                 {demoMsg ? (
                     <span style={{marginLeft: '0.5rem', opacity: 0.9,
                         color: demoMsg.ok ? '#2e7d32' : (demoMsg.pending ? '#555' : '#b34747')}}>{demoMsg.text}</span>

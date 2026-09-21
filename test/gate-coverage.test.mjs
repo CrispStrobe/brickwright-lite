@@ -40,6 +40,10 @@ const KNOWN_UNWIRED = {
         + 'job is deliberately flag-off, while this proof requires the flag-on candidate and the live hosted '
         + 'synthesis service. Run `PROOF_URL=https://<exact-candidate>/ node scripts/verify-fpga-builder.mjs`; '
         + 'FPGA_SKIP_SYNTH=1 is visual-only development evidence, never the release receipt.',
+    'verify-fpga-surface.mjs': 'manual flag-on surface LOOK: like verify-fpga-builder, the routine browser '
+        + 'job is deliberately flag-off, so this drive needs the flag-on candidate. It SKIPS (exit 0) on a '
+        + 'flag-off build. Run `PROOF_URL=https://<candidate>/ node scripts/verify-fpga-surface.mjs` (or against '
+        + 'a served flag-on github-pages artifact); wiring a dedicated flag-on browser job is the open follow-up.',
     // The FPGA entry is intentionally manual because its subject is the exact
     // deployable flag-on artifact plus a live service, while routine browser CI
     // deliberately builds flag-off. The command and the non-release visual mode
