@@ -579,4 +579,47 @@ test('CANARY: the ratchets are live, not decorative', () => {
     assert.deepEqual(flagged.map((p) => p.pad), ['D7'],
         'the declared-but-unwired detector no longer fires on a pin wired to nothing — '
         + 'an empty KNOWN_UNWIRED would then mean the check is dead, not that the corpus is clean');
+
+    // ...AND THE OTHER TWO, which the first version of this replacement left
+    // with no liveness test at all. Swapping the floor out covered
+    // KNOWN_UNWIRED and silently dropped the (bad) cover KNOWN_UNREAD and
+    // KNOWN_UNCONNECTED had, so for those two it was a loss rather than a fix
+    // — a check that looks present and holds nothing, which is the shape this
+    // canary exists to prevent. Each detector is driven by the same predicate
+    // its own test uses, so a detector that stops firing is caught here even
+    // while its ratchet is empty.
+
+    // ONE PREDICATE PER DETECTOR, BOTH DIRECTIONS THROUGH IT. Writing the
+    // fires/does-not-fire cases as two separate inline filters looked
+    // thorough and was not: mutating the first to ignore `anyWire` left this
+    // whole canary GREEN, because with an empty anyWire that clause is
+    // vacuously true and the second case was reading a different expression.
+    // A mutation has to reach every case, so each detector is expressed once.
+    const affordanceKind = [...AFFORDANCE][0];
+
+    // UNCONNECTED: an affordance part carrying no wires at all.
+    const unconnectedIn = (row) => row.parts.filter((p) => AFFORDANCE.has(p.kind)
+        && !p.decorative && !p.params?.decorative && !row.anyWire.has(p.id)).map((p) => p.id);
+    const orphanPart = [{id: 'p1', kind: affordanceKind}];
+    assert.deepEqual(unconnectedIn({parts: orphanPart, anyWire: new Set()}), ['p1'],
+        'the unconnected-affordance detector no longer fires on a part with no wires — '
+        + 'an empty KNOWN_UNCONNECTED would mean the check is dead, not that the corpus is clean');
+    assert.deepEqual(unconnectedIn({parts: orphanPart, anyWire: new Set(['p1'])}), [],
+        'the unconnected detector fires on a WIRED part — it is not reading anyWire, so it '
+        + 'would report every affordance in the corpus');
+
+    // UNREAD: an affordance sitting on a pad no program declares.
+    const unreadIn = (row) => row.parts.filter((p) => {
+        const pads = row.padsOf.get(p.id);
+        return pads && pads.size && ![...pads].some((t) => row.declaredPads.has(t));
+    }).map((p) => p.id);
+    const onD9 = {parts: orphanPart, padsOf: new Map([['p1', new Set(['d9'])]])};
+    assert.deepEqual(unreadIn({...onD9, declaredPads: new Set(['d2'])}), ['p1'],
+        'the affordance-not-read detector no longer fires on a part whose pad nothing declares — '
+        + 'an empty KNOWN_UNREAD would mean the check is dead, not that the corpus is clean');
+    assert.deepEqual(unreadIn({...onD9, declaredPads: new Set(['d9'])}), [],
+        'the not-read detector fires on a pad the program DOES declare');
+    assert.deepEqual(unreadIn({parts: orphanPart, padsOf: new Map(), declaredPads: new Set()}), [],
+        'a part with no pad at all must not be reported — indirect drive through a 595 or a '
+        + 'transistor is not decidable from declarations, and counting it produced 96 false positives');
 });
