@@ -2,7 +2,7 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "a031fbeaa06316b5198ed5c7e54df6be96592ec1",
+    "sha": "00af429ef0066e17faaac30bf1f1f04e43a5e6f2",
     "read": "2026-09-20"
   },
   "rows": [
@@ -346,7 +346,8 @@
         "test/oracle-masm.test.mjs",
         "scripts/oracle-masm.mjs",
         "test/dos-toolchain-chain.test.mjs",
-        "test/dos-c-compile.test.mjs"
+        "test/dos-c-compile.test.mjs",
+        "test/dos-boot-compiled-com.test.mjs"
       ],
       "what": "MASM 1.10 + LINK + EXE2BIN (Microsoft, MIT-relicensed 1982 binaries), an independent assembler toolchain. The differential oracle for MASM compatibility in src/i8086-asm.js — that our .COM is byte-identical to MASM's and that our ASSUME/segment-override and simplified-directive handling matches a real MASM. VERIFIED GREEN 2026-09-05 (10/10). Present on this box at /tmp/msdosbin."
     },

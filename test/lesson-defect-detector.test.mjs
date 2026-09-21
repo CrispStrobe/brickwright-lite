@@ -76,8 +76,19 @@ test('MUTATION: the version-1 diode lesson is flagged — a static bench cannot 
         `expected an alternating-source finding, got ${JSON.stringify(blocking.map(f => f.evidence.demand))}`);
     // The evidence must name the measurement, not merely assert a verdict.
     const one = blocking.find(f => f.evidence.demand === 'alternating-source');
-    assert.equal(one.evidence.measured.stateCount, 1, '42-diode-rectifier reaches exactly one state');
-    assert.equal(one.evidence.measured.alternates, false);
+    // The distinction that matters is NOT "is the bench static?". Admitting the
+    // LED operating point (bw-board 157caed0 — an LED is now solved on the diode's
+    // junction terms instead of refused by kind) and making vcc a turnable supply
+    // (ebf77e9e) mean 42-diode-rectifier now reaches THREE distinct DC states
+    // across its control extremes, not the one it reported when LEDs read as
+    // permanently dark. A "does anything differ?" check would pass it now. What
+    // still fails is specifically that no node ever ALTERNATES — swings both ways
+    // over time — so a half-wave-rectifier lesson's demand cannot be met on a DC
+    // bench however many static states it settles into.
+    assert.equal(one.evidence.measured.stateCount, 3,
+        '42-diode-rectifier settles into three DC states across its control extremes');
+    assert.equal(one.evidence.measured.alternates, false,
+        'the defect: no node on this DC bench alternates, so the demand is unmet');
     assert.ok(one.evidence.phrase, 'the finding must quote the prose that triggered it');
 });
 

@@ -179,7 +179,23 @@ export async function benchCapabilities(exampleId, opts = {}) {
         const board = circuit.board;
         let t = 0n;
         const seq = [];
-        for (const c of controls) circuit.setControl(c.id, c.kind === 'vsource' ? c.value : 0);
+        // The charge phase must hold the SUPPLY rails up while the switches stay
+        // open — that is the bench's natural resting state, the one in which the
+        // capacitor charges. A vsource sits at its declared value; a vcc rail is
+        // held on. Switches and buttons stay open (0), so the discharge is the
+        // NEXT phase below rather than something that already happened at t=0.
+        //
+        // WHY vcc IS NAMED: it became a turnable control (bw-board ebf77e9e —
+        // "make the vcc symbol a supply you can turn"), so it now appears in
+        // getControls(). Left in the `: 0` else branch it powered DOWN through the
+        // whole charge phase, the capacitor never charged, and 43-rc-timing's
+        // discharge went unseen — the prober read capDischarges:false and the
+        // detector flagged the CORRECT lesson (its `measure` checkpoint) as
+        // unachievable. The bench has no LED; this was never the LED-OP work.
+        for (const c of controls) {
+            const supplyOn = c.kind === 'vsource' ? c.value : (c.kind === 'vcc' ? 1 : 0);
+            circuit.setControl(c.id, supplyOn);
+        }
         // close each non-source control in turn, holding the previous ones open
         const switches = controls.filter(c => c.kind === 'switch' || c.kind === 'button');
         // Settle with everything open FIRST — the charge phase. Without it a
