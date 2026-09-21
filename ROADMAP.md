@@ -1812,51 +1812,30 @@ find it in), and `long` is refused by smlrc itself (`-seg16` has no 32-bit integ
 pinned as named expectations in the test. Matrix cell C × 8086: native, local, simulator only
 (`.COM` export for real hardware is plan task N10).
 
-### 4.7 The RCX tier: `nqc.js` is computed-URL blind, `rcx-protocol.js` is genuinely waiting
+### 4.7 The RCX tier — CLOSED 2026-09-21, the pair has a caller
 
-Two entries, and they are in the dead-module list for two different reasons. Conflating them is
-how a ratchet stops meaning anything, so they are separated here.
+Both `lib/rcx/rcx-protocol.js` and `lib/rcx/rcx-serial.js` were in the dead-module list for one
+reason — no call site — and `lib/rcx-download-hook.js` is it. `runtime.rcxDownload` is installed
+from `vm-manager-hoc.jsx` exactly as `runtime.nqcCompile` is, with the same
+`{ok, log}` shape and the same look-it-up-at-call-time contract, so an app that lacks the hook
+keeps today's save-the-file behaviour rather than breaking.
 
-`nqc.js` under `lib/nqc-wasm/dist/` is Emscripten output (NQC, MPL-2.0, upstream commit
-`21c24ec1`), loaded by `lib/nqc-wasm/compiler.js` as
-`import(/* webpackIgnore: true */ resolve('nqc.js'))`. Identical to §4.2 and §4.6: the specifier
-is a function call and no import scan can follow it. Its caller IS wired —
-`lib/nqc-runtime-hook.js` installs `runtime.nqcCompile` from `vm-manager-hoc.jsx`, and the RCX
-extension picks it up at call time in preference to the hosted service, so the RCX compile path
-takes no network at all. `test/nqc-wasm.test.mjs` drives the same entry point and proves the
-build is byte-identical to the native compiler on eight programs. Nothing here is pending.
+`nqc.js` under `lib/nqc-wasm/dist/` stays in the ALLOWED list, and for a different reason than
+either of those had: it is Emscripten output loaded through a computed, webpack-ignored URL, so
+no static scan can follow it. That is §4.2 and §4.6's situation, not a pending one.
 
-`rcx-protocol.js` under `lib/rcx/` is different, and is **really** unimported. It is the
-clean-room implementation of the RCX infrared protocol — framing, toggle bit, checksums, echo
-suppression, reply matching, `.rcx` container parsing, and the download sequence over an
-injected `send()`. 48 tests in `test/rcx-protocol.test.mjs` execute every one of those, against
-fixtures in `test/fixtures/rcx-images/`, so it is not untested code; it is code whose consumer
-does not exist yet.
+**What the whole path now is, end to end and with no network:** blocks → NQC (the extension's
+transpiler) → `.rcx` (the vendored MPL compiler, byte-identical to native nqc on eight fixtures)
+→ framed commands (the clean-room protocol, matching NQC's own captured frames opcode for opcode)
+→ a tower (Web Serial at 2400 8-O-1, which NQC's own port request confirms) → the brick. The one
+thing nobody may ship is the brick's firmware; see `docs/RCX-FIRMWARE.md`.
 
-**Step 4 has since landed, so the blocker is narrower and worth restating precisely.**
-`rcx-serial.js` is the Web Serial half: 2400 8-O-1 as constants with their citation, reads that
-include the tower's own echo and end on a quiet period rather than a byte count, and a single
-in-flight read so that a chunk arriving after its exchange gave up reaches the next one instead
-of vanishing. 13 tests drive it through a mock port and the late-chunk guarantee is
-mutation-checked. It is in the same list as its sibling and for the same reason.
-
-**What the pair is now waiting for is a CALL SITE, not a transport.** The RCX extension
-deliberately has no live link — it saves the `.rcx` for a desktop tool, and says so in its own
-header — so nothing in the app asks for a download. Closing this needs two small things, in this
-order: `runtime.rcxDownload` installed the way `runtime.nqcCompile` already is
-(`lib/nqc-runtime-hook.js` is the template: request a port, `openRcxSerial`, `downloadImage`,
-close), and an upstream change to the extension so a block reaches for it — the same
-look-it-up-at-call-time shape it already uses for the compiler, so an app without the hook keeps
-today's save-the-file behaviour unchanged. WebUSB (step 5, endpoint handling for LEGO's USB
-tower `0694:0001`) is independent and still unwritten; it is not on this path, because a
-home-built tower is an ordinary serial adapter and Web Serial reaches both.
-
-Both entries leave the list together when that call site exists, rather than being re-justified.
-
-It is landed ahead of its consumer on purpose: it is the half that has no hardware dependency
-and where the protocol mistakes live, and getting it reviewed and pinned by tests now is worth
-more than holding it in a branch until a transport is ready. That is the argument; if it is
-still unimported when the transports land, the argument failed and the module should go.
+**Still open, and named rather than implied:** the extension does not yet CALL
+`runtime.rcxDownload` — it saves the `.rcx`, which is what it was written to do. That is an
+upstream change in `CrispStrobe/extensions`, and until it lands the hook is installed and unused
+by anything but its tests. WebUSB (build order step 5, endpoint handling for LEGO's USB tower
+`0694:0001`) remains unwritten and is not on this path: a home-built tower is an ordinary serial
+adapter and Web Serial reaches both.
 
 ### 4.8 An NQC flavour for the Code tab's C tab — SCOPED 2026-09-21, UNCLAIMED
 

@@ -148,21 +148,12 @@ const KNOWN_DEAD = new Map([
     // i8086-emu8086.js removed 2026-09-08: the completed-program performance
     // corpus now imports it from scripts/lib/i8086-corpus-workload.mjs.
     // This is a real benchmark consumer, not a new editor runtime route.
-    ['lib/rcx/rcx-protocol.js', {roadmap: '4.7',
-        reason: 'The clean-room RCX infrared protocol. It takes send() as an argument and ' +
-            'imports no transport by design. Build order step 4 (Web Serial) has since landed ' +
-            'as lib/rcx/rcx-serial.js, so what is missing is no longer a transport but a CALL ' +
-            'SITE: the extension deliberately has no live link and saves the .rcx instead. ' +
-            'Not untested: 48 tests in test/rcx-protocol.test.mjs execute every export against ' +
-            'fixtures. KNOWN_DEAD rather than ALLOWED because it genuinely has no caller, ' +
-            'which is the distinction that keeps the list honest. Listed 2026-09-21.'}],
-    ['lib/rcx/rcx-serial.js', {roadmap: '4.7',
-        reason: 'The Web Serial half of the same pair — 2400 8-O-1, echo-inclusive reads ended ' +
-            'by a quiet period — written against docs/RCX-IR-PROTOCOL.md build order step 4. ' +
-            '13 tests in test/rcx-serial.test.mjs drive it through a mock port, including a ' +
-            'mutation-checked guarantee that a late chunk is not lost. It is here for the same ' +
-            'one reason as its sibling and leaves the list with it, when something calls them. ' +
-            'Listed 2026-09-21.'}],
+    // lib/rcx/rcx-protocol.js and lib/rcx/rcx-serial.js LEFT THIS LIST on
+    // 2026-09-21, the same day they joined it. They were listed as waiting for
+    // a call site rather than for a transport, and lib/rcx-download-hook.js is
+    // that call site: it installs runtime.rcxDownload from vm-manager-hoc.jsx
+    // and import()s both. This comment is the record that the entries were
+    // removed in the commit that made them live, which is what the list is for.
 ]);
 
 const SPEC = /from\s+['"]([^'"]+)['"]|import\(\s*(?:\/\*[^*]*\*\/\s*)?['"]([^'"]+)['"]|require\(\s*['"]([^'"]+)['"]/g;

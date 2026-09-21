@@ -9,6 +9,7 @@ import unblockAudio from './audio-context-unblock.js';
 import installSpikeProjectMigration from './spike-project-migration.js';
 import installEv3ProjectMigration from './ev3-project-migration.js';
 import installNqcCompiler from './nqc-runtime-hook.js';
+import installRcxDownloader from './rcx-download-hook.js';
 
 import {setProjectUnchanged} from '../reducers/project-changed';
 import {
@@ -44,6 +45,7 @@ const vmManagerHOC = function (WrappedComponent) {
             // It costs one closure; the 358 kB it can reach is import()ed on
             // first compile and never otherwise.
             installNqcCompiler(this.props.vm);
+            installRcxDownloader(this.props.vm);
             if (!this.props.vm.initialized) {
                 this.audioEngine = new AudioEngine();
                 // Firefox never settles decodeAudioData on a suspended context, which
