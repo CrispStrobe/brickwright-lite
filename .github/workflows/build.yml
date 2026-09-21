@@ -47,6 +47,8 @@ on:
     # generator's template literal (two generators name the plan that way;
     # five main runs on 2026-09-07 verified plan-only edits). Census
     # 2026-09-07: 15 mentioned; the rest of docs/*.md skip.
+    # 2026-09-21: 16 — EXAMPLE-CORPUS-FINDINGS.md joined when
+    # test/corpus-findings-are-current.test.mjs began reading it.
     # 2026-09-21: 16. RCX-FIRMWARE.md is named by a code line in
     # lib/rcx-download-hook.js — the string a user reads when the brick does
     # not answer — which is what makes it a trigger. RCX-IR-PROTOCOL.md was
@@ -71,6 +73,7 @@ on:
       - '!ROADMAP.md'
       - '!docs/*.md'
       - 'docs/CYCLE-ACCURATE-CORE-EVALUATION.md'
+      - 'docs/EXAMPLE-CORPUS-FINDINGS.md'
       - 'docs/EXTENSION-SECURITY.md'
       - 'docs/FETCH-PINNING.md'
       - 'docs/LESSON-ACHIEVABILITY-SWEEP.md'
