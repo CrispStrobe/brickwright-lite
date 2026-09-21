@@ -36,6 +36,7 @@ const execFileP = promisify(execFile);
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 import { applySb3CreatorRewrites } from './lib/vendor-rewrites.mjs';
+import { mirrorIntoPackages } from './lib/mirror-pairs.mjs';
 
 const REPO = 'CrispStrobe/sb3-creator';
 const REF = process.env.SB3CREATOR_REF || 'main';
@@ -399,6 +400,50 @@ if (!check) {
         console.error('\nSTALE GALLERY: the examples no longer match the pin this sync just');
         console.error('recorded. Run `npm run sync:examples` and commit it WITH the bump —');
         console.error('shipping them apart is exactly what turned CI red twice on 2026-08-25.');
+        process.exit(1);
+    }
+
+    // AND THE MIRROR THE BUILD ACTUALLY COMPILES. This sync writes overlay/;
+    // webpack reads packages/scratch-gui/, which only `npm run integrate`
+    // updated. Until 2026-09-21 that was a sentence printed at the end of a
+    // successful run, and 0eb9a6a74 did not run it: the overlay got the new
+    // emitter, packages/ kept the pre-bump bytes, and
+    //
+    //     git show 0eb9a6a74:packages/…/sb3-creator.js | grep -c escapeTextLiteral
+    //     0
+    //
+    // so a commit titled "Pin sb3-creator past the literal that corrupted
+    // itself on every save" shipped a build that still corrupted the literal.
+    // `overlay-packages-pairs` caught the divergence, but only in CI and only
+    // after the merge — the sync itself reported success.
+    //
+    // MIRRORS ONLY THE FILES THIS SYNC WROTE, and deliberately does not call
+    // integrate. Integrate copies the WHOLE overlay/scratch-gui tree and
+    // rewrites the mirror's package.json, so calling it from here would sweep
+    // any unrelated in-progress overlay edit into packages/ and hand whoever
+    // ran a sync a diff they did not make — a live hazard with several
+    // sessions in this repo at once. Copying its own 14 destinations is the
+    // same bytes integrate would write for them and touches nothing else.
+    //
+    // Refusing instead of writing was the first design and it was wrong: the
+    // mirror is stale by construction the instant this sync writes, so the
+    // refusal would fire on every legitimate bump, and a refusal that means
+    // "nothing went wrong" trains people to re-run past it.
+    //
+    // packages/scratch-gui/examples is NOT tracked, so the gallery carries no
+    // mirror obligation; all 14 compiler destinations do.
+    const mirrorDir = path.join(here, '..', 'packages', 'scratch-gui', 'src', 'lib');
+    const { copied, unreadable } = await mirrorIntoPackages(
+        FILES.map(([, dest]) => dest), mirrorDir, { readFile, writeFile });
+    if (copied.length) {
+        console.log(`  mirrored ${copied.length} file(s) into packages/scratch-gui/src/lib:`);
+        for (const f of copied) console.log(`    ${f}`);
+        console.log('  (the copy webpack compiles — commit it WITH this sync)');
+    }
+    if (unreadable.length) {
+        console.error(`\nMIRROR INCOMPLETE: could not read ${unreadable.length} file(s) this sync`);
+        console.error('just wrote, so the build copy may still be the old compiler:');
+        for (const f of unreadable) console.error(`  ${f}`);
         process.exit(1);
     }
 }
