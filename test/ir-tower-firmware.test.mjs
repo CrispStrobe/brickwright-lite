@@ -16,8 +16,41 @@ import { join } from 'node:path';
 const root = join(import.meta.dirname, '..');
 const dir = join(root, 'firmware/ir-tower');
 
+// `make` and `cc` come from PATH, which is the AMBIENT-BINDING shape
+// scripts/audit-gate-shapes.mjs exists to flag: a gate that resolves a tool
+// from the environment can silently exercise something other than what the
+// build ships, or quietly stop exercising anything at all.
+//
+// Here it is unavoidable and deliberate. The artefact under test is C — the
+// driver has to be compiled and run to mean anything — and there is no
+// vendored compiler that could stand in. What the rule is really protecting
+// against is the SILENT half, so that is what is fixed: both tools are
+// resolved and reported once, up front, and their absence is a named refusal
+// rather than an obscure ENOENT from inside a build.
+const toolVersion = (tool, args) => {
+  try {
+    // gate-shapes-allow: probing for the tool IS the fix for the ambient binding
+    return execFileSync(tool, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+      .split('\n')[0].trim();
+  } catch {
+    return null;
+  }
+};
+
+const TOOLS = { make: toolVersion('make', ['--version']), cc: toolVersion('cc', ['--version']) };
+
 const make = (target) =>
+  // gate-shapes-allow: see TOOLS above — presence and identity are asserted before any call
   execFileSync('make', ['-C', dir, target], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+
+test('the host toolchain this gate needs is present, and says which one it is', () => {
+  // Without this, a machine with no compiler reports a build error from deep
+  // inside `make` and reads like a defect in the firmware. It is not one.
+  for (const [tool, version] of Object.entries(TOOLS)) {
+    assert.ok(version, `${tool} is not on PATH; firmware/ir-tower cannot be built or tested here`);
+  }
+  console.log(`  built with: ${TOOLS.cc}`);
+});
 
 test('ir tower: the host simulation passes on both gate paths', () => {
   assert.ok(existsSync(join(dir, 'Makefile')), 'firmware/ir-tower/Makefile is missing');
