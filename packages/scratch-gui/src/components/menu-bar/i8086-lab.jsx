@@ -1,8 +1,21 @@
 import React, {useEffect, useRef, useState} from 'react';
+import {makeT} from '../../lib/bw-i18n.js';
 import {createPortal} from 'react-dom';
 import {getI8086MemoryMode, setI8086MemoryMode} from '../../lib/bw-i8086-preferences.js';
 import {i8086Execution} from '../../lib/bw-i8086-execution.js';
 import styles from './i8086-lab.css';
+
+// Our component, so a local table rather than react-intl — see lib/bw-i18n.js.
+const A11Y_L10N = {
+    en: {
+        'a11y.close8086': 'Close 8086 diagnostics'
+    },
+    de: {
+        'a11y.close8086': '8086-Diagnose schließen'
+    }
+};
+const at = makeT(A11Y_L10N);
+
 
 export default function I8086Lab () {
     const dialog = useRef(null);
@@ -51,7 +64,7 @@ export default function I8086Lab () {
         data-testid="i8086-lab" onMouseUp={event => event.stopPropagation()}
         onCancel={event => { event.preventDefault(); close(); }}>
         <h2 id="i8086-lab-title">8086 execution diagnostics</h2>
-        <button className={styles.close} onClick={close} aria-label="Close 8086 diagnostics">Close</button>
+        <button className={styles.close} onClick={close} aria-label={at(props.locale, 'a11y.close8086')}>Close</button>
         <label className={styles.row}>8086 execution preference (this browser)
             <select data-testid="i8086-execution-mode" value={executionMode} onChange={event => {
                 const value = event.target.value;

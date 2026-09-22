@@ -155,3 +155,39 @@ test('the flag-hidden learning-path files are parse-checked', () => {
     assert.match(script, /fpga-gate-builder-rf\.jsx/, 'the builder is parse-checked');
     assert.match(script, /fpga-challenges\.jsx/, 'so is the challenge panel');
 });
+
+test('no component reads `props.x` where props is not in scope', () => {
+    // The failure this exists for: InnerBuilder is declared as
+    //   const InnerBuilder = ({onUseVerilog, seed, locale}) => {
+    // so `props` does not exist inside it. Twelve `props.locale` reads were
+    // added there during the i18n work and every one was a ReferenceError at
+    // RENDER time — which unmounts the React tree, so the whole GUI came up
+    // with no tabs at all.
+    //
+    // Nothing else catches it: the file parses, every import resolves, and the
+    // flag-off build never compiles it. check-flagged-jsx.mjs says so in as
+    // many words ("AND IT DOES NOT CATCH UNDEFINED REFERENCES").
+    const files = [BUILDER, PANEL, 'overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx'];
+    const offenders = [];
+    for (const rel of files) {
+        const lines = read(rel).split('\n');
+        // Track the innermost arrow/function component and whether it named its
+        // parameter `props` (rather than destructuring it).
+        let scopeName = null;
+        let scopeHasProps = false;
+        let depth = 0;
+        lines.forEach((line, i) => {
+            const decl = /^(?:export\s+)?(?:const|function)\s+([A-Z][A-Za-z0-9_]*)\s*(?:=\s*)?\(?\s*(\{|props|[a-z])?/.exec(line);
+            if (decl && /=>|function/.test(line)) {
+                scopeName = decl[1];
+                scopeHasProps = /\(\s*props\s*[),]/.test(line) || /=\s*props\s*=>/.test(line);
+                depth = 0;
+            }
+            if (scopeName && !scopeHasProps && /\bprops\./.test(line) && !/^\s*[*/]/.test(line)) {
+                offenders.push(`${rel}:${i + 1} in ${scopeName}: ${line.trim().slice(0, 60)}`);
+            }
+        });
+    }
+    assert.deepEqual(offenders, [],
+        'these throw at render, which unmounts the tree and blanks the app');
+});

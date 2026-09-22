@@ -59,6 +59,7 @@ for (const g of DEVICE_GROUPS) for (const d of g.devices) DEVICE_BY_ID[d.id] = {
 // functions for interpolation. To add a language, add its column.
 const L10N = {
     en: {
+        fileMenuTitle: 'Open, save, import, examples and reference',
         loadExample: '📚 Load example…', loadExampleTitle: 'Load a built-in example',
         examplesLoading: 'Loading built-in examples…',
         examplesRetry: 'Built-in examples unavailable — retry',
@@ -276,6 +277,7 @@ const L10N = {
         }
     },
     de: {
+        fileMenuTitle: 'Öffnen, speichern, importieren, Beispiele und Referenz',
         loadExample: '📚 Beispiel laden…', loadExampleTitle: 'Ein eingebautes Beispiel laden',
         examplesLoading: 'Eingebaute Beispiele werden geladen…',
         examplesRetry: 'Eingebaute Beispiele nicht verfügbar — erneut versuchen',
@@ -3853,7 +3855,7 @@ class PseudocodeImporter extends React.Component {
                     this.setState({actionsOpen: event.currentTarget.open});
                 }}>
                 <summary style={{...csel, cursor: 'pointer', listStyle: 'none', border: '1px solid #cbd5e1',
-                    background: '#f1f5f9', whiteSpace: 'nowrap'}} title="Open, save, import, examples and reference">
+                    background: '#f1f5f9', whiteSpace: 'nowrap'}} title={L10N[pickLocale(this.props.locale)].fileMenuTitle}>
                     ⋯
                 </summary>
                 <div style={{position: 'absolute', top: '100%', right: 0, zIndex: 70, marginTop: 4,

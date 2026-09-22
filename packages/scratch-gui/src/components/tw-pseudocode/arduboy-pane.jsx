@@ -11,11 +11,25 @@
  * Open button does not have to reach into this component's tree.
  */
 import PropTypes from 'prop-types';
+import {makeT} from '../../lib/bw-i18n.js';
 import React from 'react';
 
 import {
+
     createArduboy, framebufferToPixels, BUTTONS, SCREEN_WIDTH, SCREEN_HEIGHT
 } from '../../lib/bw-arduboy/index.js';
+
+// Our component, so a local table rather than react-intl — see lib/bw-i18n.js.
+const A11Y_L10N = {
+    en: {
+        'a11y.rgbLed': 'RGB LED'
+    },
+    de: {
+        'a11y.rgbLed': 'RGB-LED'
+    }
+};
+const at = makeT(A11Y_L10N);
+
 
 /** Keyboard, chosen to match the Arcade pane's arrows plus Z/X. */
 const KEY_TO_BUTTON = {
@@ -370,7 +384,7 @@ class ArduboyPane extends React.Component {
                 </div>
                 <div style={{display: 'flex', alignItems: 'center', gap: 10}}>
                     <div
-                        aria-label="RGB LED"
+                        aria-label={at(props.locale, 'a11y.rgbLed')}
                         data-testid="bw-arduboy-led"
                         style={{
                             width: 16, height: 16, borderRadius: '50%',

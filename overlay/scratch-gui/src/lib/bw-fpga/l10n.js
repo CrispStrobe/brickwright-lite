@@ -19,6 +19,8 @@
  * @module
  */
 
+import {pickLocale as basePickLocale, makeT, makeTn} from '../bw-i18n.js';
+
 /** Locales this module carries, English first — it is the fallback. */
 export const LOCALES = Object.freeze(['en', 'de']);
 
@@ -342,38 +344,13 @@ const TABLE = {
 export const STRINGS = Object.freeze(TABLE);
 
 /** The locale to use for `loc`, falling back to English. */
-export const pickLocale = loc => {
-    const two = String(loc || '').slice(0, 2).toLowerCase();
-    return TABLE[two] ? two : 'en';
-};
+export const pickLocale = loc => basePickLocale(loc, TABLE);
 
 /**
- * Look up `key` and fill in `{placeholders}` from `vars`.
- *
- * A missing key falls back to English rather than rendering blank — a learner
- * seeing one English sentence in a German page is a translation bug; a learner
- * seeing nothing is a broken page. The key itself is the last resort, so a
- * typo is visible in testing instead of silently empty.
+ * Look up `key` and fill in `{placeholders}` from `vars`. See lib/bw-i18n.js
+ * for the fallback rules; this is that machinery bound to the table above.
  */
-export function t (locale, key, vars) {
-    const lang = pickLocale(locale);
-    const template = (TABLE[lang] && TABLE[lang][key]) || TABLE.en[key] || key;
-    if (!vars) return template;
-    return template.replace(/\{(\w+)\}/g, (whole, name) =>
-        (Object.prototype.hasOwnProperty.call(vars, name) ? String(vars[name]) : whole));
-}
+export const t = makeT(TABLE);
 
-/**
- * Count-aware lookup: picks `<key>.one` or `<key>.other`.
- *
- * There is no plural SUFFIX anywhere in this table, and that is deliberate. The
- * first cut appended an English "s" to a shared template and produced
- * "4 Eingangskombinations" in German — the exact bug that makes a translation
- * look done while reading as nonsense. Plural forms belong to the language, so
- * each locale writes both forms out in full.
- *
- * `n` is passed through as {n} as well as whatever `vars` carries.
- */
-export function tn (locale, key, n, vars) {
-    return t(locale, `${key}.${n === 1 ? 'one' : 'other'}`, {n, ...vars});
-}
+/** Count-aware lookup: picks `<key>.one` or `<key>.other`. */
+export const tn = makeTn(TABLE);

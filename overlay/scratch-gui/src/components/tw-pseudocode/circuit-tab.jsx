@@ -1,4 +1,5 @@
 import React from 'react';
+import {makeT} from '../../lib/bw-i18n.js';
 import ReactDOM from 'react-dom';
 import PropTypes from 'prop-types';
 import {connect} from 'react-redux';
@@ -10,6 +11,47 @@ import {shouldRefreshDesignerDebugState} from '../../lib/bw-debug/debug-ui-refre
 import {setProjectTitle} from '../../reducers/project-title';
 import {noCircuitMessage} from '../../lib/example-device-only.js';
 import {getIsAnyCreatingNewState} from '../../reducers/project-state';
+
+/**
+ * The panel's own learner-facing strings. Not scratch-gui's, so not
+ * react-intl: this is the local-table pattern the tw-pseudocode panes use,
+ * with the shared machinery from lib/bw-i18n.js. Console diagnostics
+ * ('[brickwright] …') are deliberately NOT here — nobody reads a log in
+ * translation, and putting them here would only hide them from the developer
+ * who needs them.
+ */
+const PANEL_L10N = {
+    en: {
+        'drc.noExport': 'This build of the circuit designer does not export runDrc yet.',
+        'drc.noCircuit': 'The designer has not handed over its circuit yet (onCircuitReady has not fired), so the design-rule check cannot run. Open the Designer once and come back.',
+        'drc.clean': 'No design-rule warnings for this circuit.',
+        'bom.noExport': 'This build of the circuit designer does not export generateBom yet.',
+        'bom.noCircuit': 'The designer has not handed over its circuit yet (onCircuitReady has not fired), so the parts list cannot be built. Open the Designer once and come back.',
+        'bom.empty': 'No parts on the board yet.',
+        'bom.exportCsv': 'Export as CSV',
+        'examples.noBrowser': 'This build of the circuit designer does not include the examples browser yet.',
+        'examples.notVendored': 'The example gallery is not part of this build yet (examples/index.json: {message}). The examples exist — they are published by bw-cfront and need vendoring into the app.',
+        'examples.indexFailed': 'The starter project index could not be loaded.',
+        'app.republished': 'A new version was published while this tab was open. Reloading…',
+        'a11y.dismiss': 'Dismiss'
+    },
+    de: {
+        'drc.noExport': 'Dieser Build des Schaltungs-Designers exportiert runDrc noch nicht.',
+        'drc.noCircuit': 'Der Designer hat seine Schaltung noch nicht übergeben (onCircuitReady wurde nicht ausgelöst), daher kann die Entwurfsregelprüfung nicht laufen. Öffne einmal den Designer und komm zurück.',
+        'drc.clean': 'Keine Entwurfsregel-Warnungen für diese Schaltung.',
+        'bom.noExport': 'Dieser Build des Schaltungs-Designers exportiert generateBom noch nicht.',
+        'bom.noCircuit': 'Der Designer hat seine Schaltung noch nicht übergeben (onCircuitReady wurde nicht ausgelöst), daher kann die Stückliste nicht erstellt werden. Öffne einmal den Designer und komm zurück.',
+        'bom.empty': 'Noch keine Bauteile auf der Platine.',
+        'bom.exportCsv': 'Als CSV exportieren',
+        'examples.noBrowser': 'Dieser Build des Schaltungs-Designers enthält den Beispiel-Browser noch nicht.',
+        'examples.notVendored': 'Die Beispielgalerie gehört noch nicht zu diesem Build (examples/index.json: {message}). Die Beispiele existieren — sie werden von bw-cfront veröffentlicht und müssen in die App übernommen werden.',
+        'examples.indexFailed': 'Der Index der Startprojekte konnte nicht geladen werden.',
+        'app.republished': 'Eine neue Version wurde veröffentlicht, während dieser Tab offen war. Wird neu geladen…',
+        'a11y.dismiss': 'Schließen'
+    }
+};
+const pt = makeT(PANEL_L10N);
+
 
 const DebugPanel = React.lazy(() =>
     import(/* webpackChunkName: "bw-debug-panel" */ './debug-panel.jsx')
@@ -1064,9 +1106,7 @@ class CircuitTab extends React.Component {
                 this.setState({examples: list});
                 return list;
             } catch (e) {
-                const message = 'The example gallery is not part of this build yet ' +
-                    `(examples/index.json: ${e.message}). The examples exist — they ` +
-                    'are published by bw-cfront and need vendoring into the app.';
+                const message = pt(this.props.locale, 'examples.notVendored', {message: e.message});
                 this.examplesLoadError = message;
                 this.setState({examplesError: message});
                 // Existing visibility-triggered callers do not await this method.
@@ -1125,7 +1165,7 @@ class CircuitTab extends React.Component {
         try {
             const list = await this.loadExamples();
             if (!Array.isArray(list)) throw new Error(this.examplesLoadError ||
-                'The starter project index could not be loaded.');
+                pt(this.props.locale, 'examples.indexFailed'));
             const example = list.find(item => item.id === journey.exampleId);
             if (!example) throw new Error(
                 `Starter example "${journey.exampleId}" is missing from examples/index.json.`);
@@ -1543,12 +1583,10 @@ class CircuitTab extends React.Component {
     drcWarnings () {
         const {ui, circuit, board} = this.state;
         if (!ui || typeof ui.runDrc !== 'function') {
-            return {error: 'This build of the circuit designer does not export runDrc yet.'};
+            return {error: pt(this.props.locale, 'drc.noExport')};
         }
         if (!circuit) {
-            return {error: 'The designer has not handed over its circuit yet ' +
-                           '(onCircuitReady has not fired), so the design-rule check ' +
-                           'cannot run. Open the Designer once and come back.'};
+            return {error: pt(this.props.locale, 'drc.noCircuit')};
         }
         try {
             return {warnings: ui.runDrc(circuit, board || circuit.board) || []};
@@ -1787,7 +1825,7 @@ class CircuitTab extends React.Component {
         if (reloading) {
             return (
                 <div style={{...box, color: '#64748b'}}>
-                    {'A new version was published while this tab was open. Reloading…'}
+                    {pt(this.props.locale, 'app.republished')}
                 </div>
             );
         }
@@ -2085,7 +2123,7 @@ class CircuitTab extends React.Component {
         if (panel === 'warnings') {
             const drc = this.drcWarnings();
             if (drc.error) return note(drc.error);
-            if (!drc.warnings.length) return note('No design-rule warnings for this circuit.');
+            if (!drc.warnings.length) return note(pt(this.props.locale, 'drc.clean'));
             if (ui && ui.DrcPanel) return <ui.DrcPanel warnings={drc.warnings} />;
             // The data is real even when their panel is not in the build; render it
             // plainly rather than withhold it.
@@ -2102,12 +2140,10 @@ class CircuitTab extends React.Component {
 
         if (panel === 'bom') {
             if (!ui || typeof ui.generateBom !== 'function') {
-                return note('This build of the circuit designer does not export generateBom yet.');
+                return note(pt(this.props.locale, 'bom.noExport'));
             }
             if (!circuit) {
-                return note('The designer has not handed over its circuit yet ' +
-                            '(onCircuitReady has not fired), so the parts list cannot ' +
-                            'be built. Open the Designer once and come back.');
+                return note(pt(this.props.locale, 'bom.noCircuit'));
             }
             // The vendor exports bomToCsv and nothing ever surfaced it, so a
             // parts list you could read was not a parts list you could take to
@@ -2116,7 +2152,7 @@ class CircuitTab extends React.Component {
             // browser without asking for clipboard permission.
             const csvBlock = typeof ui.bomToCsv === 'function' ? (
                 <details style={{marginTop: 10}} data-testid="bw-bom-csv">
-                    <summary style={{cursor: 'pointer', fontSize: 13}}>{'Export as CSV'}</summary>
+                    <summary style={{cursor: 'pointer', fontSize: 13}}>{pt(this.props.locale, 'bom.exportCsv')}</summary>
                     <textarea
                         readOnly
                         onFocus={e => e.target.select()}
@@ -2141,14 +2177,13 @@ class CircuitTab extends React.Component {
                         ))}
                     </tbody>
                 </table>
-            ) : note('No parts on the board yet.');
+            ) : note(pt(this.props.locale, 'bom.empty'));
             return bom.length ? (<div>{table}{csvBlock}</div>) : table;
         }
 
         if (panel === 'examples') {
             if (!ui || !ui.ExamplesBrowser) {
-                return note('This build of the circuit designer does not include the ' +
-                            'examples browser yet.');
+                return note(pt(this.props.locale, 'examples.noBrowser'));
             }
             // An empty array here used to read as "there are no examples", which
             // is a different and much worse statement than "this build does not
@@ -2178,7 +2213,7 @@ class CircuitTab extends React.Component {
                                 type="button"
                                 onClick={() => this.setState({examplesError: null})}
                                 style={{border: 'none', background: 'none', cursor: 'pointer', fontSize: '14px', lineHeight: 1}}
-                                aria-label="Dismiss"
+                                aria-label={pt(this.props.locale, 'a11y.dismiss')}
                             >{'×'}</button>
                         </div>
                     ) : null}

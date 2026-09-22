@@ -1,5 +1,20 @@
 import React from 'react';
+import {makeT} from '../../lib/bw-i18n.js';
 import PropTypes from 'prop-types';
+
+// Our component, so a local table rather than react-intl — see lib/bw-i18n.js.
+const A11Y_L10N = {
+    en: {
+        'a11y.trigger': 'Trigger signal',
+        'a11y.timing': 'Recorded bus and pin timing'
+    },
+    de: {
+        'a11y.trigger': 'Triggersignal',
+        'a11y.timing': 'Aufgezeichnetes Bus- und Pin-Timing'
+    }
+};
+const at = makeT(A11Y_L10N);
+
 
 const BUTTON = {
     padding: '3px 7px', borderRadius: 3, border: '1px solid #2c3e50',
@@ -39,7 +54,7 @@ const DebugTimingWaveform = ({view, selectedSeq, refusal, onSelect, onZoom, onPa
                 <button data-debug-waveform-zoom-out style={BUTTON} onClick={() => onZoom(0.5)}>{'Zoom −'}</button>
                 <button data-debug-waveform-pan-older style={BUTTON} onClick={() => onPan(-1)}>{'← Range'}</button>
                 <button data-debug-waveform-pan-newer style={BUTTON} onClick={() => onPan(1)}>{'Range →'}</button>
-                <select data-debug-waveform-trigger-lane aria-label="Trigger signal"
+                <select data-debug-waveform-trigger-lane aria-label={at(props.locale, 'a11y.trigger')}
                     value={view.trigger?.lane || ''} style={BUTTON}
                     onChange={event => onSetTrigger(event.target.value)}>
                     <option value="">{'Trigger…'}</option>
@@ -54,7 +69,7 @@ const DebugTimingWaveform = ({view, selectedSeq, refusal, onSelect, onZoom, onPa
                 <button data-debug-waveform-export-vcd style={BUTTON}
                     onClick={() => onExport('vcd')}>{'VCD'}</button>
             </div>
-            <div role="table" aria-label="Recorded bus and pin timing"
+            <div role="table" aria-label={at(props.locale, 'a11y.timing')}
                 style={{display: 'grid', gap: 3, marginTop: 6, overflowX: 'auto'}}>
                 {lanes.map(lane => {
                     return <div role="row" data-debug-waveform-lane={lane.group || lane.kind || 'signal'}

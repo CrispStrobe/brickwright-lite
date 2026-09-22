@@ -1,12 +1,26 @@
 import PropTypes from 'prop-types';
+import {makeT} from '../../lib/bw-i18n.js';
 import React from 'react';
 import VM from 'scratch-vm';
 
 import {
+
     gameTouchProfileFor,
     releaseTouchControls,
     setTouchControl
 } from '../../lib/game-touch-controls.js';
+
+// Our component, so a local table rather than react-intl — see lib/bw-i18n.js.
+const A11Y_L10N = {
+    en: {
+        'a11y.touchControls': 'Touch game controls'
+    },
+    de: {
+        'a11y.touchControls': 'Touch-Spielsteuerung'
+    }
+};
+const at = makeT(A11Y_L10N);
+
 
 const LABELS = {
     up: '▲', down: '▼', left: '◀', right: '▶', action: 'ACTION',
@@ -91,7 +105,7 @@ const GameTouchControls = ({gameKey, vm}) => {
     />;
     return (
         <div
-            aria-label="Touch game controls"
+            aria-label={at(props.locale, 'a11y.touchControls')}
             data-game-key={gameKey}
             data-testid="bw-game-touch-controls"
             style={{

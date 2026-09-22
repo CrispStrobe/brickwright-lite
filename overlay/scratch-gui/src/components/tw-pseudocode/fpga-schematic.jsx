@@ -6,6 +6,7 @@ import {readPorts, detectClockPort} from '../../lib/bw-fpga/yosys.js';
 
 const L10N = {
     en: {
+        'schematicLabel': 'Synthesised gate schematic',
         empty_text: 'Synthesise a design and its gates appear here — the Verilog you wrote, as a circuit.',
         drawing_text: 'Drawing the schematic…',
         cells: 'cells',
@@ -17,6 +18,7 @@ const L10N = {
         layout_failed: 'Layout failed'
     },
     de: {
+        'schematicLabel': 'Synthetisierter Gatter-Schaltplan',
         empty_text: 'Synthetisieren Sie ein Design und seine Gatter erscheinen hier — das von Ihnen geschriebene Verilog als Schaltung.',
         drawing_text: 'Zeichne den Schaltplan…',
         cells: 'Zellen',
@@ -194,7 +196,7 @@ const FpgaSchematic = ({netlistText, netValues, inputs, clockCycles = 0, locale}
                 </span>
             </div>
             <div style={{overflow: 'auto', border: '1px solid rgba(71,85,105,0.25)', borderRadius: 6, background: '#f8fafc', maxHeight: '60vh'}}>
-                <svg width={W} height={H} style={{display: 'block'}} role="img" aria-label="Synthesised gate schematic">
+                <svg width={W} height={H} style={{display: 'block'}} role="img" aria-label={L10N[pickLocale(locale)].schematicLabel}>
                     <g transform="translate(8,8)">
                         {/* wires first, so gates draw on top */}
                         {(graph.edges || []).map(e => {
