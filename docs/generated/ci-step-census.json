@@ -1467,6 +1467,18 @@
    "workflow": "vendor-freshness.yml",
    "branch": "vendor/debug-session-retirement",
    "sha": "fe38646a7"
+  },
+  {
+   "run": 35719902651,
+   "workflow": "pascal-ack-image.yml",
+   "branch": "lane/pascal-ack-image",
+   "sha": "51540cd60"
+  },
+  {
+   "run": 35719533618,
+   "workflow": "pascal-ack-image.yml",
+   "branch": "lane/pascal-ack-image",
+   "sha": "f1e0f3ba9"
   }
  ],
  "workflowsInTree": [
@@ -1479,6 +1491,7 @@
   "i8086-execution.yml",
   "mobile.yml",
   "nightly-corpus-differential.yml",
+  "pascal-ack-image.yml",
   "release.yml",
   "rust-notices.yml",
   "tauri.yml",
@@ -4625,6 +4638,173 @@
     }
    },
    "sourceSha": "c2e470dae"
+  },
+  "pascal-ack-image.yml": {
+   "runs": 2,
+   "stepsInFile": [
+    "Check out the service source",
+    "Log in to GHCR",
+    "Set up Buildx",
+    "Compute the immutable sha tag",
+    "Build the ACK image and push to GHCR",
+    "Log in to GHCR",
+    "Pull the published image",
+    "Run the published image",
+    "Wait for /health",
+    "Compile Pascal and assert a .COM comes back",
+    "Stop the container"
+   ],
+   "inFileInNoRun": [],
+   "steps": {
+    "Check out the service source": {
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "build-and-push"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Log in to GHCR": {
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "build-and-push",
+      "smoke-test"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Set up Buildx": {
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "build-and-push"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Compute the immutable sha tag": {
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "build-and-push"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Build the ACK image and push to GHCR": {
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "build-and-push"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Pull the published image": {
+     "existed": 1,
+     "ran": 1,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "smoke-test"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Run the published image": {
+     "existed": 1,
+     "ran": 1,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "smoke-test"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Wait for /health": {
+     "existed": 1,
+     "ran": 1,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "smoke-test"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Compile Pascal and assert a .COM comes back": {
+     "existed": 1,
+     "ran": 1,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "smoke-test"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Stop the container": {
+     "existed": 1,
+     "ran": 1,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "smoke-test"
+     ],
+     "clause": "always()",
+     "class": "always"
+    }
+   },
+   "jobs": {
+    "build-and-push": {
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 0,
+     "ranMain": 0,
+     "class": "always"
+    },
+    "smoke-test": {
+     "existed": 2,
+     "ran": 1,
+     "existedMain": 0,
+     "ranMain": 0,
+     "class": "sometimes"
+    }
+   },
+   "sourceSha": "51540cd60"
   }
  }
 }
