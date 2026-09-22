@@ -48,10 +48,13 @@ for (const c of REALISE) {
             assert.equal(result.pass, true, gradeMessageRealised(result, c));
             // A challenge that declares its rows is graded on THOSE; only an
             // exhaustive one drives the whole input space.
-            const expected = c.rows ? (typeof c.rows === 'function' ? c.rows() : c.rows).length
-                : 1 << c.inputs.length;
+            const expected = c.sequential
+                ? (c.cycles || Object.values(c.stimulus || {})[0].length)
+                : c.rows ? (typeof c.rows === 'function' ? c.rows() : c.rows).length
+                    : 1 << c.inputs.length;
             assert.equal(result.checked, expected,
-                c.rows ? 'every declared row was driven' : 'every input combination was driven');
+                c.sequential ? 'every clock cycle was driven'
+                    : c.rows ? 'every declared row was driven' : 'every input combination was driven');
         });
     }
 }
@@ -146,12 +149,26 @@ test('a single-gate realise challenge reads exactly one LED', () => {
     }
 });
 
-test('every realise challenge is combinational, and none is graded on gate count', () => {
+test('a combinational realise challenge is graded by enumeration, a sequential one by clocking', () => {
     for (const c of REALISE) {
         assert.ok(c.outputs.length >= 1, `${c.id} must read something`);
-        assert.ok(!c.sequential, `${c.id} must be combinational — the board grader enumerates inputs`);
         assert.ok(!c.minimize, `${c.id} cannot be graded on gate count: there is no canvas model to count`);
+        if (c.sequential) {
+            // Clocking needs a clock to drive and a stimulus to drive it with.
+            assert.ok(c.inputs.some(i => i.name === (c.clock || 'clk')),
+                `${c.id} is sequential, so it needs a clock input`);
+            assert.ok(c.stimulus && Object.keys(c.stimulus).length, `${c.id} needs a stimulus`);
+            assert.equal(typeof c.seqExpect, 'function', `${c.id} needs a per-cycle reference`);
+        } else {
+            assert.equal(typeof c.expect, 'function', `${c.id} needs a truth reference`);
+        }
     }
+});
+
+test('the sequential realise challenges are exactly the ones that need a clock', () => {
+    // Pins the split, so a combinational challenge cannot quietly acquire a
+    // stimulus, nor a sequential one lose its clock.
+    assert.deepEqual(REALISE.filter(c => c.sequential).map(c => c.id), ['register_real']);
 });
 
 test('every registry spec carries the label and hint the UI shows', () => {
@@ -192,7 +209,7 @@ test('each realise challenge is gated behind designing that gate on the canvas',
     }
 });
 
-test('only NOR and the two 4-bit adders have no canvas counterpart', () => {
+test('the challenges with no same-named canvas lesson are exactly the four expected', () => {
     // Pins the exceptions, so a future challenge cannot quietly skip the
     // "design it before you build it" rule by having no canvas lesson.
     //   nor            — the canvas ladder goes straight from OR to NAND
@@ -202,8 +219,10 @@ test('only NOR and the two 4-bit adders have no canvas counterpart', () => {
     const canvasIds = new Set(CHALLENGES.filter(c => !isRealise(c)).map(c => c.id));
     //   adder_chip_4   — the same function as ripple_adder_4, bought not built;
     //                    gated behind having built it the long way first.
+    //   dff            — the canvas lesson is called `register`; the PART is a
+    //                    flip-flop, and the challenge requires `register`.
     assert.deepEqual(REALISE.filter(c => !canvasIds.has(subjectOf(c))).map(subjectOf),
-        ['nor', 'ripple_adder_4', 'adder_chip_4']);
+        ['nor', 'ripple_adder_4', 'adder_chip_4', 'dff']);
 });
 
 test('a realise challenge with no canvas lesson is gated behind a realise one', () => {

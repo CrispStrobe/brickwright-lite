@@ -196,9 +196,35 @@ export const ADDER_CHIP_4 = Object.freeze({
     gates: []
 });
 
+/**
+ * A D flip-flop: the first REALISATION that remembers.
+ *
+ * Everything else on the ladder is combinational — the LEDs follow the switches
+ * and forget instantly. A 74HC74 holds its output until the next clock edge,
+ * which is where storage, and therefore computing, starts.
+ *
+ * `pins` maps the challenge's net names onto the part's actual pin names, and
+ * `tieHigh` handles the thing that catches everybody: the async preset and
+ * clear are ACTIVE LOW, so leaving them unconnected (or low) means the part
+ * never holds anything. They are tied to VCC.
+ */
+export const DFF_CHIP = Object.freeze({
+    id: 'dff',
+    label: 'D flip-flop',
+    hint: 'set d, press the clock switch, and q takes the value — then change d and watch q NOT move until the next edge.',
+    chip: '74hc74',
+    chipLabel: '74HC74',
+    inputs: ['d', 'clk'],
+    outputs: ['q'],
+    pins: {d: '1d', clk: '1clk', q: '1q'},
+    tieHigh: ['1pre', '1clr'],
+    sequential: true,
+    gates: []
+});
+
 export const IC_CIRCUITS = Object.freeze({
     half_adder: HALF_ADDER, full_adder: FULL_ADDER,
-    ripple_adder_4: RIPPLE_ADDER_4, adder_chip_4: ADDER_CHIP_4
+    ripple_adder_4: RIPPLE_ADDER_4, adder_chip_4: ADDER_CHIP_4, dff: DFF_CHIP
 });
 
 /** Distinct colours so two output LEDs are told apart at a glance. */
@@ -295,8 +321,13 @@ export function buildLogicIcCircuit (circuit, spec, {clear = true} = {}) {
         const part = circuit.addPart(spec.chip, {}, 420, 200, 'U1');
         join('vcc', part.id, 'vcc');
         join('gnd', part.id, 'gnd');
-        // One part, and its pin names ARE the net names — nothing to allocate.
-        for (const net of [...spec.inputs, ...spec.outputs]) join(net, part.id, net);
+        // One part; `pins` maps net names to pin names where they differ.
+        const pinOf = net => (spec.pins && spec.pins[net]) || net;
+        for (const net of [...spec.inputs, ...spec.outputs]) join(net, part.id, pinOf(net));
+        // Control pins that must be held inactive. On a 74HC74 the async preset
+        // and clear are ACTIVE LOW: leave them floating and the part never holds.
+        for (const pin of (spec.tieHigh || [])) join('vcc', part.id, pin);
+        for (const pin of (spec.tieLow || [])) join('gnd', part.id, pin);
         packages.push({id: part.id, kind: spec.chip, label: spec.chipLabel || spec.chip,
             ref: 'U1', capacity: 1, used: 1, gates: []});
     }

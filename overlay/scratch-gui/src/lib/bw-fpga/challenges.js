@@ -221,6 +221,16 @@ export const CHALLENGES = Object.freeze([
             const out = rippleExpect(i);
             return {s0: out.sum0, s1: out.sum1, s2: out.sum2, s3: out.sum3, cout: out.cout};
         }
+    },
+    {
+        id: 'register_real', title: 'A register — the first part that remembers',
+        requires: ['register', 'adder_chip_real'], realise: true, circuit: 'dff', rungs: ['ic'],
+        sequential: true,
+        brief: 'Everything you have built so far forgets instantly: the LEDs follow the switches and that is all. A 74HC74 flip-flop HOLDS. Pick "D flip-flop" and press ⚙, then set d, flick the clock switch, and q takes the value — then change d and watch q stay put until the next clock edge. Check drives the clock for you, and it checks both halves: that q takes the value, and that q does NOT move when d moves without a clock. A wire passes the first and fails the second.',
+        inputs: io(['d', 'clk']), outputs: io(['q']),
+        stimulus: {d: [1, 0, 1, 1, 0, 0, 1]},
+        // q takes d on each rising edge, so after the edge q IS d.
+        seqExpect: stim => stim.d.map(v => ({q: v}))
     }
 ]);
 

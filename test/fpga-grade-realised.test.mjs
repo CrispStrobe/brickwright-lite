@@ -177,3 +177,58 @@ test('switches are restored even when the grade FAILS part-way through', () => {
     assert.equal(board.getControl(built.inputs[0].switch), 1, 'restored anyway');
     assert.equal(board.getControl(built.inputs[1].switch), 1);
 });
+
+test('a board wired BY HAND, naming nothing, is graded the same as a built one', () => {
+    // The panel tells learners "or wire it yourself", and the grader's
+    // positional fallback exists for exactly that. Every other test here builds
+    // with a builder, which does not exercise that promise: the builders name
+    // their parts, so name-matching always wins. This wires an AND gate the way
+    // a learner would — terminal by terminal, nothing named, switches placed in
+    // reading order — and expects a pass.
+    const c = new Circuit(5.0);
+    const conn = {};
+    const join = (net, id, term) => { (conn[net] = conn[net] || []).push([id, term]); };
+
+    const vcc = c.addPart('vcc', {}, 60, 40);
+    const gnd = c.addPart('gnd', {}, 60, 520);
+    join('vcc', vcc.id, 'vcc');
+    join('gnd', gnd.id, 'gnd');
+    const chip = c.addPart('74hc08', {}, 400, 220);   // no declName — hand-placed
+    join('vcc', chip.id, 'vcc');
+    join('gnd', chip.id, 'gnd');
+
+    // Two switches, stacked top to bottom: the first one read is input `a`.
+    [['1a', 140], ['1b', 300]].forEach(([pin, y], i) => {
+        const sw = c.addPart('switch', {}, 150, y);
+        join('vcc', sw.id, 'a');
+        join(`n${i}`, sw.id, 'b');
+        const pull = c.addPart('resistor', {ohms: 100000}, 150, y + 60);
+        join(`n${i}`, pull.id, 'a');
+        join('gnd', pull.id, 'b');
+        join(`n${i}`, chip.id, pin);
+    });
+
+    const r = c.addPart('resistor', {ohms: 330}, 700, 220);
+    const led = c.addPart('led', {}, 830, 220);        // no declName either
+    join('out', chip.id, '1y');
+    join('out', r.id, 'a');
+    join('lednet', r.id, 'b');
+    join('lednet', led.id, 'anode');
+    join('gnd', led.id, 'cathode');
+
+    for (const net of Object.keys(conn)) {
+        const cs = conn[net];
+        for (let i = 1; i < cs.length; i++) c.addWire(cs[i - 1][0], cs[i - 1][1], cs[i][0], cs[i][1]);
+    }
+
+    const io = discoverRealisation(c, AND);
+    assert.equal(io.matchedByName, false, 'nothing is named, so position is all there is');
+    assert.equal(io.inputs.length, 2);
+
+    const result = gradeRealisedCircuit(c, AND);
+    assert.equal(result.pass, true, gradeMessageRealised(result, AND));
+    assert.equal(result.checked, 4, 'and it really drove every row');
+
+    // And the same hand-wired board must still be REFUSED by a different challenge.
+    assert.equal(gradeRealisedCircuit(c, OR).pass, false, 'a hand-wired AND is not an OR');
+});

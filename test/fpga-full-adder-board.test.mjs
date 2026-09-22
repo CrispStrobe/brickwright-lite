@@ -143,8 +143,8 @@ test('a HALF adder does not satisfy the full adder challenge', () => {
 test('the full adder is in the registry the UI and tests share', () => {
     assert.equal(IC_CIRCUITS.full_adder, FULL_ADDER);
     assert.deepEqual(Object.keys(IC_CIRCUITS),
-        ['half_adder', 'full_adder', 'ripple_adder_4', 'adder_chip_4'],
-        'simplest first — the picker shows them in this order, ending with the one-chip adder');
+        ['half_adder', 'full_adder', 'ripple_adder_4', 'adder_chip_4', 'dff'],
+        'simplest first — the picker shows them in this order');
 });
 
 test('every gate in the spec is produced before it is consumed', () => {
@@ -173,8 +173,16 @@ test('a single-part spec names pins the part actually has', () => {
         const side = JSON.parse(readFileSync(
             new URL(`../node_modules/bw-circuit-ui/src/parts-data/${spec.chip}.json`, import.meta.url), 'utf8'));
         const terminals = new Set(side.terminals.map(t => t.name.toLowerCase()));
-        for (const pin of [...spec.inputs, ...spec.outputs]) {
-            assert.ok(terminals.has(pin), `${spec.id}: ${spec.chip} has no pin "${pin}"`);
+        // A spec may name its nets for the CHALLENGE (d, clk, q) and map them
+        // onto the part's pins (1d, 1clk, 1q) — resolve through that map, and
+        // check the tie-off pins too, since a typo there fails silently.
+        const pinOf = net => (spec.pins && spec.pins[net]) || net;
+        for (const net of [...spec.inputs, ...spec.outputs]) {
+            const pin = pinOf(net);
+            assert.ok(terminals.has(pin), `${spec.id}: ${spec.chip} has no pin "${pin}" (for net "${net}")`);
+        }
+        for (const pin of [...(spec.tieHigh || []), ...(spec.tieLow || [])]) {
+            assert.ok(terminals.has(pin), `${spec.id}: ${spec.chip} has no tie-off pin "${pin}"`);
         }
         assert.ok(terminals.has('vcc') && terminals.has('gnd'), `${spec.id}: ${spec.chip} must be powerable`);
     }
