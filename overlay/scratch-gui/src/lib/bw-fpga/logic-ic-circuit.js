@@ -212,9 +212,59 @@ export const DFF_CHIP = Object.freeze({
     gates: []
 });
 
+/**
+ * A toggle flip-flop: the first circuit whose OUTPUT feeds its own INPUT.
+ *
+ * Tie q̄ back to d and the part flips on every clock edge, so the LED runs at
+ * half the clock — a 1-bit counter, and the thing that makes counters possible
+ * at all. `link` wires one pin of the part directly to another, which is the
+ * feedback: nothing outside the chip carries it.
+ */
+export const TOGGLE_CHIP = Object.freeze({
+    id: 'toggle',
+    chip: '74hc74',
+    chipLabel: '74HC74',
+    inputs: ['clk'],
+    outputs: ['q'],
+    pins: {clk: '1clk', q: '1q'},
+    link: [['1q_bar', '1d']],
+    tieHigh: ['1pre', '1clr'],
+    sequential: true,
+    gates: []
+});
+
+/**
+ * A 2-bit ripple counter — two toggles chained, in ONE package.
+ *
+ * A 74HC74 holds two flip-flops. Fold each one back on itself (q̄ → d) and each
+ * divides its clock by two; clock the second from the FIRST one's q̄ and the
+ * pair counts: the low LED changes every edge, the high one every second edge,
+ * which read together is 0, 1, 2, 3 and round again.
+ *
+ * Nothing outside the chip carries any of it — three `link`s and a clock.
+ *
+ * The pair powers up showing 2 rather than 0 (the second flip-flop's clock
+ * starts high), so the sequence below begins at 3. That is the real behaviour
+ * of this board and the challenge grades it as it is, rather than asserting a
+ * tidier start that the part does not have.
+ */
+export const COUNTER2_CHIP = Object.freeze({
+    id: 'counter2',
+    chip: '74hc74',
+    chipLabel: '74HC74',
+    inputs: ['clk'],
+    outputs: ['q0', 'q1'],
+    pins: {clk: '1clk', q0: '1q', q1: '2q'},
+    link: [['1q_bar', '1d'], ['2q_bar', '2d'], ['1q_bar', '2clk']],
+    tieHigh: ['1pre', '1clr', '2pre', '2clr'],
+    sequential: true,
+    gates: []
+});
+
 export const IC_CIRCUITS = Object.freeze({
     half_adder: HALF_ADDER, full_adder: FULL_ADDER,
-    ripple_adder_4: RIPPLE_ADDER_4, adder_chip_4: ADDER_CHIP_4, dff: DFF_CHIP
+    ripple_adder_4: RIPPLE_ADDER_4, adder_chip_4: ADDER_CHIP_4,
+    dff: DFF_CHIP, toggle: TOGGLE_CHIP, counter2: COUNTER2_CHIP
 });
 
 /** The picker's name for a circuit, in `locale`. */
@@ -324,6 +374,13 @@ export function buildLogicIcCircuit (circuit, spec, {clear = true} = {}) {
         // and clear are ACTIVE LOW: leave them floating and the part never holds.
         for (const pin of (spec.tieHigh || [])) join('vcc', part.id, pin);
         for (const pin of (spec.tieLow || [])) join('gnd', part.id, pin);
+        // Pin-to-pin links INSIDE the part: the toggle's q̄ → d feedback, which
+        // nothing outside the chip carries and which no net name describes.
+        (spec.link || []).forEach(([from, to], i) => {
+            const net = `__link${i}`;
+            join(net, part.id, from);
+            join(net, part.id, to);
+        });
         packages.push({id: part.id, kind: spec.chip, label: spec.chipLabel || spec.chip,
             ref: 'U1', capacity: 1, used: 1, gates: []});
     }

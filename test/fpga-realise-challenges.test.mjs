@@ -159,7 +159,11 @@ test('a combinational realise challenge is graded by enumeration, a sequential o
             // Clocking needs a clock to drive and a stimulus to drive it with.
             assert.ok(c.inputs.some(i => i.name === (c.clock || 'clk')),
                 `${c.id} is sequential, so it needs a clock input`);
-            assert.ok(c.stimulus && Object.keys(c.stimulus).length, `${c.id} needs a stimulus`);
+            // A clock-only challenge (the toggle) has nothing to drive but the
+            // edges, so it declares `cycles` instead of a stimulus. One or the
+            // other must say how long to clock for.
+            const cycles = c.cycles || Object.values(c.stimulus || {})[0]?.length;
+            assert.ok(cycles > 0, `${c.id} must say how many clock cycles to drive`);
             assert.equal(typeof c.seqExpect, 'function', `${c.id} needs a per-cycle reference`);
         } else {
             assert.equal(typeof c.expect, 'function', `${c.id} needs a truth reference`);
@@ -170,7 +174,8 @@ test('a combinational realise challenge is graded by enumeration, a sequential o
 test('the sequential realise challenges are exactly the ones that need a clock', () => {
     // Pins the split, so a combinational challenge cannot quietly acquire a
     // stimulus, nor a sequential one lose its clock.
-    assert.deepEqual(REALISE.filter(c => c.sequential).map(c => c.id), ['register_real']);
+    assert.deepEqual(REALISE.filter(c => c.sequential).map(c => c.id),
+        ['register_real', 'toggle_real', 'counter_real']);
 });
 
 test('every registry spec has a translated label and hint in every locale', () => {
@@ -213,7 +218,7 @@ test('each realise challenge is gated behind designing that gate on the canvas',
     }
 });
 
-test('the challenges with no same-named canvas lesson are exactly the four expected', () => {
+test('the challenges with no same-named canvas lesson are exactly the five expected', () => {
     // Pins the exceptions, so a future challenge cannot quietly skip the
     // "design it before you build it" rule by having no canvas lesson.
     //   nor            — the canvas ladder goes straight from OR to NAND
@@ -225,8 +230,9 @@ test('the challenges with no same-named canvas lesson are exactly the four expec
     //                    gated behind having built it the long way first.
     //   dff            — the canvas lesson is called `register`; the PART is a
     //                    flip-flop, and the challenge requires `register`.
+    //   counter2       — two toggles chained; the canvas ladder stops at one.
     assert.deepEqual(REALISE.filter(c => !canvasIds.has(subjectOf(c))).map(subjectOf),
-        ['nor', 'ripple_adder_4', 'adder_chip_4', 'dff']);
+        ['nor', 'ripple_adder_4', 'adder_chip_4', 'dff', 'counter2']);
 });
 
 test('a realise challenge with no canvas lesson is gated behind a realise one', () => {

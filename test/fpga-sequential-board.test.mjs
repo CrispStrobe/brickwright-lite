@@ -11,7 +11,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {boot} from '../scripts/lesson-bench.mjs';
-import {buildLogicIcCircuit, IC_CIRCUITS, DFF_CHIP} from '../overlay/scratch-gui/src/lib/bw-fpga/logic-ic-circuit.js';
+import {buildLogicIcCircuit, IC_CIRCUITS, DFF_CHIP, TOGGLE_CHIP, COUNTER2_CHIP} from '../overlay/scratch-gui/src/lib/bw-fpga/logic-ic-circuit.js';
 import {gradeRealisedCircuit, gradeRealisedSequential, gradeMessageRealised}
     from '../overlay/scratch-gui/src/lib/bw-fpga/grader.js';
 import {challengeById} from '../overlay/scratch-gui/src/lib/bw-fpga/challenges.js';
@@ -132,4 +132,106 @@ test('the register challenge is sequential and sits at the end of the ladder', (
     assert.equal(REG.circuit, 'dff');
     assert.ok(REG.requires.includes('register'), 'you design it on the canvas first');
     assert.ok(REG.stimulus.d.length >= 5, 'enough cycles to be convincing');
+});
+
+// ── The toggle: the first circuit whose output is its own input ────────────
+
+test('a 74HC74 wired q̄ → d divides the clock by two', () => {
+    const c = new Circuit(5.0);
+    buildLogicIcCircuit(c, TOGGLE_CHIP);
+    const ch = challengeById('toggle_real');
+    const result = gradeRealisedCircuit(c, ch);
+    assert.equal(result.pass, true, gradeMessageRealised(result, ch, 'en'));
+    assert.equal(result.checked, 8, 'eight clock edges');
+});
+
+test('the feedback is INSIDE the part — nothing outside carries it', () => {
+    // q̄ → d is a pin-to-pin link. If it ran through a switch or an LED the
+    // learner could break it by accident, and it would not be feedback.
+    assert.deepEqual(TOGGLE_CHIP.link, [['1q_bar', '1d']]);
+    const c = new Circuit(5.0);
+    buildLogicIcCircuit(c, TOGGLE_CHIP);
+    const ff = c.parts.find(p => p.kind === '74hc74');
+    const linkNets = c.wires.filter(w =>
+        (w.from.part === ff.id && (w.from.terminal === '1q_bar' || w.from.terminal === '1d')) ||
+        (w.to.part === ff.id && (w.to.terminal === '1q_bar' || w.to.terminal === '1d')));
+    assert.ok(linkNets.length, 'the link is wired');
+    for (const w of linkNets) {
+        assert.ok(w.from.part === ff.id && w.to.part === ff.id,
+            'both ends of the feedback are on the chip itself');
+    }
+});
+
+test('the toggle board has a clock and nothing else to set', () => {
+    const c = new Circuit(5.0);
+    const built = buildLogicIcCircuit(c, TOGGLE_CHIP);
+    assert.deepEqual(built.inputs.map(i => i.name), ['clk'], 'only a clock');
+    assert.equal(c.parts.filter(p => p.kind === 'switch').length, 1);
+    assert.equal(c.parts.filter(p => p.kind === 'led').length, 1);
+});
+
+test('a plain D flip-flop does NOT satisfy the toggle challenge', () => {
+    // Without the feedback, q copies d — and d is tied to nothing, so it never
+    // alternates. The right part, wired the wrong way, must fail.
+    const c = new Circuit(5.0);
+    buildLogicIcCircuit(c, {
+        id: 'nofeedback', chip: '74hc74', chipLabel: '74HC74',
+        inputs: ['clk'], outputs: ['q'], pins: {clk: '1clk', q: '1q'},
+        tieHigh: ['1pre', '1clr'], tieLow: ['1d'], gates: []
+    });
+    const ch = challengeById('toggle_real');
+    const result = gradeRealisedCircuit(c, ch);
+    assert.equal(result.pass, false, 'a DFF with d held low never toggles');
+    assert.equal(result.failing.cycle, 0, 'and it is wrong from the first edge');
+});
+
+test('the toggle challenge follows the register, and is sequential', () => {
+    const ch = challengeById('toggle_real');
+    assert.equal(ch.sequential, true);
+    assert.ok(ch.requires.includes('register_real'), 'you build a register before you fold one back');
+    assert.ok(ch.requires.includes('toggle'), 'and you design it on the canvas first');
+    assert.deepEqual(ch.inputs.map(i => i.name), ['clk'], 'nothing to drive but the clock');
+});
+
+// ── The counter: two toggles, one package, and it counts ──────────────────
+
+test('two flip-flops in ONE 74HC74 count 0,1,2,3 and wrap', () => {
+    const c = new Circuit(5.0);
+    buildLogicIcCircuit(c, COUNTER2_CHIP);
+    const ch = challengeById('counter_real');
+    const result = gradeRealisedCircuit(c, ch);
+    assert.equal(result.pass, true, gradeMessageRealised(result, ch, 'en'));
+    assert.equal(result.checked, 8, 'eight edges — two full laps');
+});
+
+test('it really is ONE package and one switch', () => {
+    const c = new Circuit(5.0);
+    const built = buildLogicIcCircuit(c, COUNTER2_CHIP);
+    assert.equal(c.parts.filter(p => String(p.kind).startsWith('74hc')).length, 1,
+        'a 74HC74 holds two flip-flops; a counter does not need two chips');
+    assert.equal(built.inputs.length, 1, 'only a clock');
+    assert.equal(built.outputs.length, 2, 'and two LEDs to read as a number');
+});
+
+test('the counter reads as a binary NUMBER, low bit changing fastest', () => {
+    // The property that makes it a counter rather than two unrelated blinkers:
+    // q0 changes on every edge, q1 on every second one.
+    const seq = challengeById('counter_real').seqExpect({});
+    const values = seq.map(o => o.q0 + (o.q1 << 1));
+    for (let i = 1; i < values.length; i++) {
+        assert.equal(values[i], (values[i - 1] + 1) % 4, `step ${i} must add one`);
+    }
+    assert.equal(new Set(values).size, 4, 'and it visits every value');
+    const q0Changes = seq.filter((o, i) => i && o.q0 !== seq[i - 1].q0).length;
+    const q1Changes = seq.filter((o, i) => i && o.q1 !== seq[i - 1].q1).length;
+    assert.ok(q0Changes > q1Changes, 'the low bit changes faster than the high one');
+});
+
+test('a single toggle does NOT satisfy the counter challenge', () => {
+    // One flip-flop has nothing to carry into, so there is no second bit.
+    const c = new Circuit(5.0);
+    buildLogicIcCircuit(c, TOGGLE_CHIP);
+    const result = gradeRealisedCircuit(c, challengeById('counter_real'));
+    assert.equal(result.pass, false, 'one bit is not two');
+    assert.ok(result.problem, 'and it is reported as an incomplete board');
 });

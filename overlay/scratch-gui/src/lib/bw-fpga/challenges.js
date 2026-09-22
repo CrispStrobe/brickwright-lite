@@ -201,6 +201,27 @@ export const CHALLENGES = Object.freeze([
         stimulus: {d: [1, 0, 1, 1, 0, 0, 1]},
         // q takes d on each rising edge, so after the edge q IS d.
         seqExpect: stim => stim.d.map(v => ({q: v}))
+    },
+    {
+        id: 'toggle_real', requires: ['toggle', 'register_real'], realise: true,
+        circuit: 'toggle', rungs: ['ic'], sequential: true,
+        inputs: io(['clk']), outputs: io(['q']),
+        cycles: 8,
+        // Nothing to drive but the clock — the grader supplies the edges. q
+        // starts low and inverts on every one of them, which is the ÷2.
+        stimulus: {},
+        seqExpect: () => [1, 0, 1, 0, 1, 0, 1, 0].map(q => ({q}))
+    },
+    {
+        id: 'counter_real', requires: ['toggle_real'], realise: true,
+        circuit: 'counter2', rungs: ['ic'], sequential: true,
+        inputs: io(['clk']), outputs: io(['q0', 'q1']),
+        cycles: 8,
+        stimulus: {},
+        // Both flip-flops of one 74HC74, the second clocked by the first. The
+        // pair powers up at 2, so the first edge shows 3 and it counts on from
+        // there, wrapping through every value.
+        seqExpect: () => [3, 0, 1, 2, 3, 0, 1, 2].map(v => ({q0: v & 1, q1: (v >> 1) & 1}))
     }
 ]);
 
