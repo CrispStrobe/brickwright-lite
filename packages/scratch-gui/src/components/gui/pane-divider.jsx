@@ -1,5 +1,5 @@
 import React from 'react';
-import {makeT} from '../../lib/bw-i18n.js';
+import {makeT, browserLocale} from '../../lib/bw-i18n.js';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
 
@@ -273,7 +273,7 @@ class PaneDivider extends React.Component {
         const {percent} = this.state;
         return (
             <div
-                aria-label={at(locale, 'a11y.resize')}
+                aria-label={at(browserLocale(), 'a11y.resize')}
                 aria-orientation="vertical"
                 aria-valuemax={100}
                 aria-valuemin={0}
@@ -282,7 +282,7 @@ class PaneDivider extends React.Component {
                 ref={this.setRef}
                 role="separator"
                 tabIndex={0}
-                title={at(locale, 'tip.resize')}
+                title={at(browserLocale(), 'tip.resize')}
                 onKeyDown={this.handleKeyDown}
                 onPointerCancel={this.handlePointerUp}
                 onPointerDown={this.handlePointerDown}

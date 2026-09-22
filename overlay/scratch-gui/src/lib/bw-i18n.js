@@ -33,6 +33,20 @@ export const pickLocale = (loc, table) => {
     return (table && table[two]) ? two : 'en';
 };
 
+/**
+ * The locale for a component that has NO props to read one from.
+ *
+ * Several panes are rendered without a locale prop (arduboy-pane,
+ * arcade-device-pane, game-touch-controls, debug-timing-waveform, pane-divider,
+ * i8086-lab). The tree's existing answer for those is `navigator.language`, so
+ * this is that, in one place, guarded for a non-browser environment.
+ *
+ * Prefer the store's locale wherever a component actually has it: a user who
+ * has set the app to German in a browser reporting English should see German.
+ * This is the fallback, not the default.
+ */
+export const browserLocale = () => (typeof navigator === 'undefined' ? 'en' : (navigator.language || 'en'));
+
 /** Fill `{placeholders}` from `vars`, leaving unknown ones visible. */
 export const interpolate = (template, vars) => (vars
     ? String(template).replace(/\{(\w+)\}/g, (whole, name) =>

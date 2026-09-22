@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import {makeT} from '../../lib/bw-i18n.js';
+import {makeT, browserLocale} from '../../lib/bw-i18n.js';
 import React from 'react';
 import VM from 'scratch-vm';
 
@@ -105,7 +105,7 @@ const GameTouchControls = ({gameKey, vm}) => {
     />;
     return (
         <div
-            aria-label={at(props.locale, 'a11y.touchControls')}
+            aria-label={at(browserLocale(), 'a11y.touchControls')}
             data-game-key={gameKey}
             data-testid="bw-game-touch-controls"
             style={{

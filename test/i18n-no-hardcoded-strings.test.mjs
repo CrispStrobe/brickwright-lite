@@ -87,3 +87,44 @@ test('nobody reimplements locale-picking or interpolation any more', () => {
     assert.ok(copies.length <= 8,
         `${copies.length} components still define their own pickLocale: ${copies.join(', ')}`);
 });
+
+test('no component reads a locale identifier it does not have', () => {
+    // Twice now, an i18n edit reached for a locale that was not in scope:
+    //   props.locale inside `({onUseVerilog, seed, locale}) => …`  (props undefined)
+    //   at(locale, …) inside `({vm}) => …`                        (locale undefined)
+    // Both are ReferenceErrors at RENDER, which unmount the React tree — the
+    // app comes up blank, and the flag-off build never compiles the file, so
+    // nothing else says a word. The first version of this guard covered three
+    // files by name; the second bug landed in a file it did not list. It now
+    // walks everything.
+    const offenders = [];
+    for (const rel of files) {
+        const text = readFileSync(resolve(root, rel), 'utf8');
+        // Only files that actually translate. Scope-tracking by regex is crude
+        // (a `constructor(props)` or a multi-line parameter list fools it), and
+        // a guard that cries wolf on untouched files gets switched off. Both
+        // real bugs were in files that import these helpers, which is the
+        // population this needs to cover.
+        if (!/bw-i18n\.js|bw-fpga\/l10n\.js/.test(text)) continue;
+        const lines = text.split('\n');
+        const moduleHasLocale = /^(?:const|let|var|function)\s+locale\b/m.test(text);
+        let params = null;          // parameter text of the innermost component
+        lines.forEach((line, i) => {
+            const decl = /^(?:export\s+)?(?:const|function)\s+[A-Z][A-Za-z0-9_]*\s*=?\s*(?:function\s*)?\(([^)]*)\)/.exec(line);
+            if (decl) params = decl[1];
+            if (params === null || /^\s*[*/]/.test(line)) return;
+            const hasPropsParam = /\bprops\b/.test(params);
+            const hasLocaleParam = /\blocale\b/.test(params);
+            // `this.props.x` is a class component reading its own props and is
+            // fine; only a BARE `props.x` needs a parameter called props.
+            if (/(?<!this\.)\bprops\.\w/.test(line) && !hasPropsParam) {
+                offenders.push(`${rel}:${i + 1} reads props.x with no props param`);
+            }
+            // A bare `locale` argument, where nothing defines one.
+            if (/\b(?:at|t|tr|pt)\(\s*locale\s*,/.test(line) && !hasLocaleParam && !moduleHasLocale) {
+                offenders.push(`${rel}:${i + 1} reads a bare locale that is not in scope`);
+            }
+        });
+    }
+    assert.deepEqual(offenders, [], 'these throw at render and blank the app');
+});

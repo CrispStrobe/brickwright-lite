@@ -1,5 +1,5 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {makeT} from '../../lib/bw-i18n.js';
+import {makeT, browserLocale} from '../../lib/bw-i18n.js';
 import {createPortal} from 'react-dom';
 import {getI8086MemoryMode, setI8086MemoryMode} from '../../lib/bw-i8086-preferences.js';
 import {i8086Execution} from '../../lib/bw-i8086-execution.js';
@@ -64,7 +64,7 @@ export default function I8086Lab () {
         data-testid="i8086-lab" onMouseUp={event => event.stopPropagation()}
         onCancel={event => { event.preventDefault(); close(); }}>
         <h2 id="i8086-lab-title">8086 execution diagnostics</h2>
-        <button className={styles.close} onClick={close} aria-label={at(props.locale, 'a11y.close8086')}>Close</button>
+        <button className={styles.close} onClick={close} aria-label={at(browserLocale(), 'a11y.close8086')}>Close</button>
         <label className={styles.row}>8086 execution preference (this browser)
             <select data-testid="i8086-execution-mode" value={executionMode} onChange={event => {
                 const value = event.target.value;

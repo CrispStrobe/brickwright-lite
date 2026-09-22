@@ -11,7 +11,7 @@
  * Open button does not have to reach into this component's tree.
  */
 import PropTypes from 'prop-types';
-import {makeT} from '../../lib/bw-i18n.js';
+import {makeT, browserLocale} from '../../lib/bw-i18n.js';
 import React from 'react';
 
 import {
@@ -384,7 +384,7 @@ class ArduboyPane extends React.Component {
                 </div>
                 <div style={{display: 'flex', alignItems: 'center', gap: 10}}>
                     <div
-                        aria-label={at(props.locale, 'a11y.rgbLed')}
+                        aria-label={at(browserLocale(), 'a11y.rgbLed')}
                         data-testid="bw-arduboy-led"
                         style={{
                             width: 16, height: 16, borderRadius: '50%',
