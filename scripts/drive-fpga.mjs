@@ -198,7 +198,7 @@ if (process.argv[1] && process.argv[1].endsWith('drive-fpga.mjs')) {
         'mux4', 'absorb', 'consensus', 'majority_min', 'register', 'toggle',
         'not_real', 'and_real', 'or_real', 'nand_real', 'nor_real', 'xor_real',
         'half_adder_real', 'full_adder_real', 'ripple_adder_real', 'adder_chip_real',
-        'register_real', 'toggle_real'];
+        'register_real', 'toggle_real', 'counter_real', 'counter4_real'];
     const d = await openFpga(baseUrl, {locale: arg('locale'), shots: arg('shots'), progress: ALL});
     try {
         const circuit = arg('circuit');

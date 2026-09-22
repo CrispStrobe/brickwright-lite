@@ -143,15 +143,16 @@ test('a HALF adder does not satisfy the full adder challenge', () => {
 test('the full adder is in the registry the UI and tests share', () => {
     assert.equal(IC_CIRCUITS.full_adder, FULL_ADDER);
     assert.deepEqual(Object.keys(IC_CIRCUITS),
-        ['half_adder', 'full_adder', 'ripple_adder_4', 'adder_chip_4', 'dff', 'toggle', 'counter2'],
+        ['half_adder', 'full_adder', 'ripple_adder_4', 'adder_chip_4', 'dff', 'toggle', 'counter2', 'counter4'],
         'simplest first — the picker shows them in this order');
 });
 
 test('every gate in the spec is produced before it is consumed', () => {
     // A spec that reads a net nothing has driven yet would build a circuit with
     // a floating input, which grades as a fault rather than a wrong answer.
-    // A single-part spec has no gates; its pins are checked below instead.
-    for (const spec of Object.values(IC_CIRCUITS).filter(s => !s.chip)) {
+    // A single-part spec has no gates; its pins are checked below instead, and
+    // so is a multi-package one — neither says anything in terms of gates.
+    for (const spec of Object.values(IC_CIRCUITS).filter(s => !s.chip && !s.chips)) {
         const available = new Set(spec.inputs);
         for (const g of spec.gates) {
             for (const net of g.in) {
@@ -162,6 +163,38 @@ test('every gate in the spec is produced before it is consumed', () => {
         for (const out of spec.outputs) {
             assert.ok(available.has(out), `${spec.id}: nothing drives the output ${out}`);
         }
+    }
+});
+
+test('a MULTI-package spec names pins its parts actually have, and joins them up', () => {
+    // Same silent failure as the single-part check, one level up: a typo in a
+    // `nets` key wires to nothing and the board reads dark rather than wrong.
+    // A multi-package spec also has a seam the others do not — a net that
+    // leaves one package and arrives at another — so the nets are checked to
+    // MEET as well as to exist.
+    for (const spec of Object.values(IC_CIRCUITS).filter(s => Array.isArray(s.chips))) {
+        const seen = new Map();   // net -> how many packages touch it
+        for (const [n, c] of spec.chips.entries()) {
+            const side = JSON.parse(readFileSync(
+                new URL(`../node_modules/bw-circuit-ui/src/parts-data/${c.chip}.json`, import.meta.url), 'utf8'));
+            const terminals = new Set(side.terminals.map(t => t.name.toLowerCase()));
+            for (const pin of [...Object.keys(c.nets || {}), ...(c.tieHigh || []), ...(c.tieLow || [])]) {
+                assert.ok(terminals.has(pin), `${spec.id} U${n + 1}: ${c.chip} has no pin "${pin}"`);
+            }
+            for (const net of Object.values(c.nets || {})) {
+                seen.set(net, (seen.get(net) || 0) + 1);
+            }
+        }
+        // Every named input and output must actually appear on some package,
+        // or the challenge grades an LED nothing drives.
+        for (const net of [...spec.inputs, ...spec.outputs]) {
+            assert.ok(seen.has(net), `${spec.id}: nothing on any package is wired to "${net}"`);
+        }
+        // And at least one net must be shared BETWEEN packages — otherwise the
+        // spec is two unrelated boards that happen to be built together.
+        const crossing = [...seen.entries()].filter(([net, n]) => n > 1 && !spec.inputs.includes(net));
+        assert.ok(crossing.length > 0 || spec.chips.length === 1,
+            `${spec.id}: no net is shared between its packages — nothing connects them`);
     }
 });
 

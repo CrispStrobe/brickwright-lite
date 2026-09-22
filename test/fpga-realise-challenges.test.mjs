@@ -175,7 +175,7 @@ test('the sequential realise challenges are exactly the ones that need a clock',
     // Pins the split, so a combinational challenge cannot quietly acquire a
     // stimulus, nor a sequential one lose its clock.
     assert.deepEqual(REALISE.filter(c => c.sequential).map(c => c.id),
-        ['register_real', 'toggle_real', 'counter_real']);
+        ['register_real', 'toggle_real', 'counter_real', 'counter4_real']);
 });
 
 test('every registry spec has a translated label and hint in every locale', () => {
@@ -218,7 +218,7 @@ test('each realise challenge is gated behind designing that gate on the canvas',
     }
 });
 
-test('the challenges with no same-named canvas lesson are exactly the five expected', () => {
+test('the challenges with no same-named canvas lesson are exactly the six expected', () => {
     // Pins the exceptions, so a future challenge cannot quietly skip the
     // "design it before you build it" rule by having no canvas lesson.
     //   nor            — the canvas ladder goes straight from OR to NAND
@@ -231,8 +231,10 @@ test('the challenges with no same-named canvas lesson are exactly the five expec
     //   dff            — the canvas lesson is called `register`; the PART is a
     //                    flip-flop, and the challenge requires `register`.
     //   counter2       — two toggles chained; the canvas ladder stops at one.
+    //   counter4       — four of them, across two packages; the canvas ladder
+    //                    stops at one toggle, and it is gated behind counter2.
     assert.deepEqual(REALISE.filter(c => !canvasIds.has(subjectOf(c))).map(subjectOf),
-        ['nor', 'ripple_adder_4', 'adder_chip_4', 'dff', 'counter2']);
+        ['nor', 'ripple_adder_4', 'adder_chip_4', 'dff', 'counter2', 'counter4']);
 });
 
 test('a realise challenge with no canvas lesson is gated behind a realise one', () => {

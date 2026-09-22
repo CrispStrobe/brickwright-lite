@@ -222,6 +222,23 @@ export const CHALLENGES = Object.freeze([
         // pair powers up at 2, so the first edge shows 3 and it counts on from
         // there, wrapping through every value.
         seqExpect: () => [3, 0, 1, 2, 3, 0, 1, 2].map(v => ({q0: v & 1, q1: (v >> 1) & 1}))
+    },
+    {
+        id: 'counter4_real', requires: ['counter_real'], realise: true,
+        circuit: 'counter4', rungs: ['ic'], sequential: true,
+        inputs: io(['clk']), outputs: io(['q0', 'q1', 'q2', 'q3']),
+        // Eighteen edges, not sixteen: the wrap is the whole claim. A board that
+        // counts 0..15 and then stops, or starts over from a different value,
+        // agrees with the first sixteen rows and fails here — and sixteen would
+        // never ask the question.
+        cycles: 18,
+        stimulus: {},
+        // MEASURED from the solver, not derived (test/fpga-counter4-board.test.mjs
+        // re-measures it, so this cannot drift from the board in silence). Four
+        // flip-flops across two 74HC74s wake up all set, so the first edge shows
+        // 15 and it counts up from 0 after that.
+        seqExpect: () => Array.from({length: 18}, (_, t) => (t + 15) % 16)
+            .map(v => ({q0: v & 1, q1: (v >> 1) & 1, q2: (v >> 2) & 1, q3: (v >> 3) & 1}))
     }
 ]);
 
