@@ -76,6 +76,13 @@ import {resolveStageSize} from '../../lib/screen-utils';
 import {themeMap} from '../../lib/themes';
 
 import { ControllerPanel } from 'bw-board/controller.js';
+import { createMachineVideoMirror } from '../../lib/bw-machines/video-mirror.js';
+import { createKeyboardSteer } from '../../lib/bw-machines/keyboard-steer.js';
+import { runMachineConfig } from '../../lib/bw-machines/run-machine.js';
+import { getMachineStore } from '../../lib/bw-machines/machine-store-instance.js';
+// The machine library modal — lazy so it costs nothing until "Manage machines…".
+const MachineManager = React.lazy(() =>
+    import(/* webpackChunkName: "bw-machine-manager" */ '../tw-pseudocode/machine-manager.jsx'));
 import { bindPanelToVariables } from 'bw-board/controller-binding.js';
 import styles from './gui.css';
 import addExtensionIcon from './icon--extensions.svg';
@@ -475,6 +482,94 @@ const GUIComponent = props => {
         };
     }, [controllerPanel, props.onActivateTab]);
 
+    // Mirror a running MACHINE's video() framebuffer into the Widgets pane — the
+    // same idea as the FPGA mirror above, for a machine's SCREEN. A machine's
+    // screen is a `simplevga` widget (design §4.2; bw-board setVgaFrame:
+    // "Mirror a machine video card frame into a VGA widget"), so a booted DOS/
+    // ELKS/6502-with-video machine renders here, not only in the Debug
+    // instrument. A run path opts in by calling `window.bwMirrorMachineVideo(
+    // {videoFn, widget})` once the runner exists; `videoFn` is the runner's
+    // `video()` accessor and `widget` the config's declared screen widget
+    // (activateConfig's `videoWidget`). Only one machine mirror runs at a time.
+    React.useEffect(() => {
+        let mirror = null;
+        let steer = null;
+        const stop = () => { if (mirror) { mirror.stop(); mirror = null; } };
+        const stopKbd = () => { if (steer) { steer.stop(); steer = null; } };
+        // Steer a machine from a Widgets keyboard widget: drain its keys and feed
+        // runner.keyIn (design §4.5). The input counterpart of the video mirror.
+        const startKbd = payload => {
+            const p = payload || {};
+            const keyIn = typeof p.keyInFn === 'function'
+                ? p.keyInFn
+                : (p.runner && typeof p.runner.keyIn === 'function'
+                    ? sc => p.runner.keyIn(sc) : null);
+            const widget = p.widget && typeof p.widget.name === 'string'
+                ? p.widget
+                : (typeof p.name === 'string' ? {name: p.name, type: 'keyboard'} : null);
+            if (!keyIn || !widget) return;
+            // Ensure the input widget exists before draining it.
+            if (typeof controllerPanel.getWidget === 'function' &&
+                !controllerPanel.getWidget(widget.name) &&
+                typeof controllerPanel.addWidget === 'function') {
+                try {
+                    controllerPanel.addWidget(widget.name, widget.type || 'keyboard',
+                        widget.config || {}, widget.layout || {});
+                } catch (err) { /* already there */ }
+            }
+            stopKbd();
+            steer = createKeyboardSteer({panel: controllerPanel, widgetName: widget.name, keyIn});
+            steer.start();
+        };
+        const start = payload => {
+            const p = payload || {};
+            const videoFn = typeof p.videoFn === 'function'
+                ? p.videoFn
+                : (p.runner && typeof p.runner.video === 'function'
+                    ? () => p.runner.video() : null);
+            const widget = p.widget && typeof p.widget.name === 'string'
+                ? p.widget
+                // A run path may pass just a name; default to a simplevga screen.
+                : (typeof p.name === 'string' ? {name: p.name, type: 'simplevga'} : null);
+            if (!videoFn || !widget) return;
+            stop();                                 // replace any prior machine mirror
+            mirror = createMachineVideoMirror({panel: controllerPanel, videoFn, widget});
+            mirror.start();
+            // Make the screen actually visible: dock the Widgets pane, play
+            // mode, and surface the code tab where the dock renders — exactly as
+            // the FPGA mirror does for its LEDs.
+            controllerPanel.setMode('play');
+            window.dispatchEvent(new CustomEvent('bw-settings-change',
+                {detail: {key: 'bw-debug-dock', value: 'controller'}}));
+            if (props.onActivateTab) props.onActivateTab(CODE_TAB_INDEX);
+        };
+        const onStart = e => start(e && e.detail);
+        const onStop = () => stop();
+        window.addEventListener('bw-machine-video', onStart);
+        window.addEventListener('bw-machine-video-stop', onStop);
+        // Imperative API so a run path need not know the event names.
+        window.bwMirrorMachineVideo = payload => start(payload);
+        window.bwStopMachineVideo = () => stop();
+        // "Run this machine config": resolve its media and boot it via the
+        // existing media-load path, carrying its declared screen widget so the
+        // video mirrors here. The manager UI / quick-picker call this; exposing
+        // it also gives run-machine.js a non-test consumer.
+        window.bwRunMachine = (config, opts) => runMachineConfig(config, opts);
+        window.bwSteerMachineKeyboard = payload => startKbd(payload);
+        window.bwStopMachineKeyboard = () => stopKbd();
+        return () => {
+            window.removeEventListener('bw-machine-video', onStart);
+            window.removeEventListener('bw-machine-video-stop', onStop);
+            if (window.bwMirrorMachineVideo) delete window.bwMirrorMachineVideo;
+            if (window.bwStopMachineVideo) delete window.bwStopMachineVideo;
+            if (window.bwRunMachine) delete window.bwRunMachine;
+            if (window.bwSteerMachineKeyboard) delete window.bwSteerMachineKeyboard;
+            if (window.bwStopMachineKeyboard) delete window.bwStopMachineKeyboard;
+            stop();
+            stopKbd();
+        };
+    }, [controllerPanel, props.onActivateTab]);
+
     // Resolve the board instance from the runtime (circuit-tab creates it).
     //
     // THIS IS A PLAIN READ OF A MUTABLE RUNTIME FIELD, so React has no reason to
@@ -605,7 +700,25 @@ const GUIComponent = props => {
         isRendererSupported = Renderer.isSupported();
     }
 
-    return (<MediaQuery minWidth={layout.fullSizeMinWidth}>{isFullSize => {
+    // The machine library modal, opened from the code-tab device dropdown's
+    // "Manage machines…" entry (it dispatches bw-open-machine-manager). Running
+    // a machine from it boots via the shared runMachineConfig bridge — so its
+    // screen/keyboard land in the Widgets pane like any other machine.
+    const [showMachines, setShowMachines] = React.useState(false);
+    React.useEffect(() => {
+        const open = () => setShowMachines(true);
+        window.addEventListener('bw-open-machine-manager', open);
+        return () => window.removeEventListener('bw-open-machine-manager', open);
+    }, []);
+    const machineManagerModal = showMachines ? (
+        <React.Suspense fallback={null}>
+            <MachineManager store={getMachineStore()} locale={props.locale}
+                onRun={cfg => runMachineConfig(cfg)}
+                onClose={() => setShowMachines(false)} />
+        </React.Suspense>
+    ) : null;
+
+    return (<React.Fragment><MediaQuery minWidth={layout.fullSizeMinWidth}>{isFullSize => {
         const stageSize = resolveStageSize(stageSizeMode, isFullSize);
 
         // Three-column pane sizing from the paneLayout reducer.
@@ -1046,7 +1159,7 @@ const GUIComponent = props => {
                 <DragLayer />
             </Box>
         );
-    }}</MediaQuery>);
+    }}</MediaQuery>{machineManagerModal}</React.Fragment>);
 };
 
 GUIComponent.propTypes = {

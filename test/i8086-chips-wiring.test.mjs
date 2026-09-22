@@ -39,8 +39,9 @@ test('every hop between the build and the board names `chips`', () => {
     const panel = read('components/tw-pseudocode/debug-panel.jsx');
     assert.match(panel, /const \{rom, target, slotId, profile, chips\}/,
         'the rom-ready handler destructures it');
-    assert.match(panel, /const \{slotId, bytes, kind, profile, name, romAt, chips\}/,
-        'and so does the media loader — a fixed field list drops anything not named');
+    assert.match(panel, /const \{slotId, bytes, kind, profile, name, romAt, chips, widgets\}/,
+        'and so does the media loader — a fixed field list drops anything not named ' +
+        '(widgets rides the same event, carrying a machine config\'s declared screen)');
     assert.match(panel, /chips: chips \|\| null/, 'and it reaches the boot media');
     // hop 4: the runner puts it on the machine
     assert.match(read('lib/bw-debug/debug-runner.js'), /chips: bootMedia\.chips/,

@@ -16,6 +16,22 @@ import {compileAndRunOnDos, runDosProgram} from './dos-compile.js';
 // NOT belong here (see HOSTED_TOOLCHAINS + the ACK note below).
 /** @type {Record<string, object>} */
 export const DOS_TOOLCHAINS = Object.freeze({
+    // uBASIC (Adam Dunkels; Danyil Bohdan fork), BSD-3-Clause — a real 16-bit
+    // MS-DOS interpreter cross-compiled with ia16-elf-gcc (media-lab project
+    // `ubasic-dos`, ships as static/roms/ubasic.exe). It is an INTERPRETER, not
+    // a compiler: it reads its program from PROG.BAS (INT 21h) and PRINTS the
+    // result during its own run — so there is no output FILE (`outputName:
+    // null`, `run: false`), and the caller reads the screen from the compile
+    // stage. Needs the 80186 variant (ia16 emits LEAVE/PUSH imm/IMUL). VERIFIED:
+    // test/dos-compile.test.mjs runs it on the real bench and reads back `42`.
+    'ubasic': {
+        id: 'ubasic', label: 'BASIC (uBASIC on DOS)', language: 'basic', kind: 'dos-native',
+        source: 'ubasic-dos',                  // media-lab project; BSD-3-Clause interpreter
+        compiler: 'ubasic.exe', compilerFormat: 'exe',
+        variant: '80186',                      // ia16-elf-gcc targets the 186 instruction set
+        sourceName: 'PROG.BAS', outputName: null,           // interpreted; output is on screen, not a file
+        run: false, verified: true
+    },
     'gwbasic': {
         id: 'gwbasic', label: 'GW-BASIC (on DOS)', language: 'basic', kind: 'dos-native',
         source: 'gwbasic',                     // MIT GW-BASIC source (Microsoft, 2020) — needs a built GWBASIC.EXE
@@ -78,7 +94,10 @@ export async function runDosToolchain(routeId, source, opts = {}) {
         sources: {[route.sourceName]: source},
         compileKeys: route.compileKeys, runKeys: route.runKeys,
         outputName: route.outputName, run: !!route.run,
-        variant: opts.variant, maxSteps: opts.maxSteps
+        // A route may pin the CPU variant it was built for (uBASIC needs the
+        // 80186 core: ia16-elf-gcc emits 186 opcodes). An explicit opts.variant
+        // still wins, for a caller that knows better.
+        variant: opts.variant || route.variant, maxSteps: opts.maxSteps
     });
 }
 

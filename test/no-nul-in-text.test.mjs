@@ -57,7 +57,11 @@ export const BINARY_BY_ROLE = {
     // .nqc it came from. The bytes ARE the artefact — they are what
     // test/nqc-wasm.test.mjs compares the WASM build against byte for byte —
     // so a NUL in one is the format, not a mistake.
-    firmware: ['bin', 'rom', 'com', 'uf2', 'elf', 'rcx'],
+    // `.exe` joined 2026-09-22 with static/roms/ubasic.exe: a real 16-bit MS-DOS
+    // MZ executable (the libre uBASIC interpreter, code-tab BASIC-on-DOS). A DOS
+    // .EXE is binary by role exactly like the .com already here — its NUL bytes
+    // are the format.
+    firmware: ['bin', 'rom', 'com', 'exe', 'uf2', 'elf', 'rcx'],
     wasm: ['wasm'],
     archive: ['zip', 'sb3', 'sb2', 'sprite3', 'sprite2', 'gz', 'tgz'],
     object: ['lib', 'o', 'a'],
