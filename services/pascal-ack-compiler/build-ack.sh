@@ -6,7 +6,9 @@
 # $ACK_WORK/ack/.obj/staging and prints the ACKDIR/ACK_BIN to export. The
 # endpoint (lib/compile-pascal.js) reads ACKDIR + ACK_BIN from the environment.
 #
-# Build deps (Debian/Ubuntu): build-essential flex bison lua5.3 lua-posix python3
+# Build deps (Debian/Ubuntu): build-essential flex bison ninja-build lua5.3
+# lua-posix python3. ACK's ab build checks for ninja/cmp/python3 and its Makefile
+# calls `lua` (Debian ships it as `lua5.3` — symlink or set LUA=lua5.3).
 # Cost: ~1 GB of build tree, a few minutes. Set ACK_WORK to a roomy scratch dir.
 set -euo pipefail
 
