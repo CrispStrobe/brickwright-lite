@@ -10,6 +10,7 @@
 // produce.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {boot} from '../scripts/lesson-bench.mjs';
 import {buildLogicIcCircuit, FULL_ADDER, HALF_ADDER, IC_CIRCUITS} from '../overlay/scratch-gui/src/lib/bw-fpga/logic-ic-circuit.js';
 import {gradeRealisedCircuit, gradeMessageRealised, discoverRealisation} from '../overlay/scratch-gui/src/lib/bw-fpga/grader.js';
@@ -70,13 +71,15 @@ test('carry-in alone is what makes it different from a half adder', () => {
 
 // ── The build: chips chained, internal nets unread ──────────────────────────
 
-test('it is five chips, three switches and exactly two LEDs', () => {
+test('its five gates are bought as THREE packages', () => {
+    // Two XOR gates share one quad 74HC86, two ANDs share one quad 74HC08, and
+    // the lone OR takes a 74HC32 — which is what you would actually buy.
     const c = realise(FULL_ADDER);
     const kinds = {};
     for (const p of c.parts) kinds[p.kind] = (kinds[p.kind] || 0) + 1;
-    assert.equal(kinds['74hc86'], 2, 'two XOR chips');
-    assert.equal(kinds['74hc08'], 2, 'two AND chips');
-    assert.equal(kinds['74hc32'], 1, 'one OR chip to merge the carries');
+    assert.equal(kinds['74hc86'], 1, 'both XOR gates fit one quad package');
+    assert.equal(kinds['74hc08'], 1, 'both AND gates fit one quad package');
+    assert.equal(kinds['74hc32'], 1, 'and the OR takes a third');
     assert.equal(kinds.switch, 3, 'a switch per input, cin included');
     assert.equal(kinds.led, 2, 'internal nets get NO LED — only sum and cout are read');
 });
@@ -85,9 +88,10 @@ test('the internal nets really are internal', () => {
     const c = realise(FULL_ADDER);
     const ledNames = c.parts.filter(p => p.kind === 'led').map(p => p.declName).sort();
     assert.deepEqual(ledNames, ['cout', 'sum'], 'nothing reads n1, t1 or t2');
-    // The chips ARE named for the net they drive, so a learner can see which is which.
+    // Packages carry REFERENCE DESIGNATORS, the way a schematic names them — a
+    // package holding four gates cannot be named after one of them.
     const chipNames = c.parts.filter(p => String(p.kind).startsWith('74hc')).map(p => p.declName).sort();
-    assert.deepEqual(chipNames, ['cout', 'n1', 'sum', 't1', 't2']);
+    assert.deepEqual(chipNames, ['U1', 'U2', 'U3']);
 });
 
 test('a chip output feeds another chip input — the path nothing exercised before', () => {
@@ -138,14 +142,16 @@ test('a HALF adder does not satisfy the full adder challenge', () => {
 
 test('the full adder is in the registry the UI and tests share', () => {
     assert.equal(IC_CIRCUITS.full_adder, FULL_ADDER);
-    assert.deepEqual(Object.keys(IC_CIRCUITS), ['half_adder', 'full_adder', 'ripple_adder_4'],
+    assert.deepEqual(Object.keys(IC_CIRCUITS),
+        ['half_adder', 'full_adder', 'ripple_adder_4', 'adder_chip_4', 'dff'],
         'simplest first — the picker shows them in this order');
 });
 
 test('every gate in the spec is produced before it is consumed', () => {
     // A spec that reads a net nothing has driven yet would build a circuit with
     // a floating input, which grades as a fault rather than a wrong answer.
-    for (const spec of Object.values(IC_CIRCUITS)) {
+    // A single-part spec has no gates; its pins are checked below instead.
+    for (const spec of Object.values(IC_CIRCUITS).filter(s => !s.chip)) {
         const available = new Set(spec.inputs);
         for (const g of spec.gates) {
             for (const net of g.in) {
@@ -156,5 +162,28 @@ test('every gate in the spec is produced before it is consumed', () => {
         for (const out of spec.outputs) {
             assert.ok(available.has(out), `${spec.id}: nothing drives the output ${out}`);
         }
+    }
+});
+
+test('a single-part spec names pins the part actually has', () => {
+    // The gate specs are checked for net ordering; a chip spec has no nets to
+    // order, but every name it uses must be a real pin — otherwise the builder
+    // wires to nothing and the board silently reads dark.
+    for (const spec of Object.values(IC_CIRCUITS).filter(s => s.chip)) {
+        const side = JSON.parse(readFileSync(
+            new URL(`../node_modules/bw-circuit-ui/src/parts-data/${spec.chip}.json`, import.meta.url), 'utf8'));
+        const terminals = new Set(side.terminals.map(t => t.name.toLowerCase()));
+        // A spec may name its nets for the CHALLENGE (d, clk, q) and map them
+        // onto the part's pins (1d, 1clk, 1q) — resolve through that map, and
+        // check the tie-off pins too, since a typo there fails silently.
+        const pinOf = net => (spec.pins && spec.pins[net]) || net;
+        for (const net of [...spec.inputs, ...spec.outputs]) {
+            const pin = pinOf(net);
+            assert.ok(terminals.has(pin), `${spec.id}: ${spec.chip} has no pin "${pin}" (for net "${net}")`);
+        }
+        for (const pin of [...(spec.tieHigh || []), ...(spec.tieLow || [])]) {
+            assert.ok(terminals.has(pin), `${spec.id}: ${spec.chip} has no tie-off pin "${pin}"`);
+        }
+        assert.ok(terminals.has('vcc') && terminals.has('gnd'), `${spec.id}: ${spec.chip} must be powerable`);
     }
 });

@@ -17,7 +17,7 @@
 // happens to sit. declName survives toJSON/fromJSON, so the name is still there
 // after the designer reloads the circuit to render it.
 
-import {gateToLogicIc} from './logic-ic.js';
+import {gateToLogicIc, icGatePins, gatesPerPackage} from './logic-ic.js';
 
 /** A half adder: sum = a XOR b, carry = a AND b. Two chips, two LEDs. */
 export const HALF_ADDER = Object.freeze({
@@ -174,8 +174,57 @@ export function carryCoverRows (n) {
  */
 export const RIPPLE_ADDER_4 = rippleAdder(4);
 
+/**
+ * The same 4-bit addition as ONE part.
+ *
+ * The ripple adder above is twenty gates in five packages. The 74HC283 is a
+ * 4-bit binary adder in a single 16-pin chip — the identical function, bought
+ * instead of built. That is the whole idea of integration, and it is the reason
+ * nobody wires adders out of XOR gates any more.
+ *
+ * It is not a `gates` spec: there are no gates to pack, just one part whose pins
+ * ARE the interface. `chip` marks that shape, and the builder wires it directly.
+ */
+export const ADDER_CHIP_4 = Object.freeze({
+    id: 'adder_chip_4',
+    label: '4-bit adder (one chip)',
+    hint: 'the same sums as the twenty-gate version, from a single 16-pin part.',
+    chip: '74hc283',
+    chipLabel: '74HC283',
+    inputs: ['a0', 'b0', 'a1', 'b1', 'a2', 'b2', 'a3', 'b3', 'cin'],
+    outputs: ['s0', 's1', 's2', 's3', 'cout'],
+    gates: []
+});
+
+/**
+ * A D flip-flop: the first REALISATION that remembers.
+ *
+ * Everything else on the ladder is combinational — the LEDs follow the switches
+ * and forget instantly. A 74HC74 holds its output until the next clock edge,
+ * which is where storage, and therefore computing, starts.
+ *
+ * `pins` maps the challenge's net names onto the part's actual pin names, and
+ * `tieHigh` handles the thing that catches everybody: the async preset and
+ * clear are ACTIVE LOW, so leaving them unconnected (or low) means the part
+ * never holds anything. They are tied to VCC.
+ */
+export const DFF_CHIP = Object.freeze({
+    id: 'dff',
+    label: 'D flip-flop',
+    hint: 'set d, press the clock switch, and q takes the value — then change d and watch q NOT move until the next edge.',
+    chip: '74hc74',
+    chipLabel: '74HC74',
+    inputs: ['d', 'clk'],
+    outputs: ['q'],
+    pins: {d: '1d', clk: '1clk', q: '1q'},
+    tieHigh: ['1pre', '1clr'],
+    sequential: true,
+    gates: []
+});
+
 export const IC_CIRCUITS = Object.freeze({
-    half_adder: HALF_ADDER, full_adder: FULL_ADDER, ripple_adder_4: RIPPLE_ADDER_4
+    half_adder: HALF_ADDER, full_adder: FULL_ADDER,
+    ripple_adder_4: RIPPLE_ADDER_4, adder_chip_4: ADDER_CHIP_4, dff: DFF_CHIP
 });
 
 /** Distinct colours so two output LEDs are told apart at a glance. */
@@ -189,13 +238,14 @@ const OUT_COLORS = ['green', 'red', 'yellow', 'blue', 'white'];
  * @returns {{spec, chips:Array, inputs:Array<{name,switch}>, outputs:Array<{name,led,resistor}>}}
  */
 export function buildLogicIcCircuit (circuit, spec, {clear = true} = {}) {
-    if (!spec || !Array.isArray(spec.gates) || !spec.gates.length) {
-        throw new Error('buildLogicIcCircuit needs a spec with gates');
+    const single = Boolean(spec && spec.chip);
+    if (!spec || (!single && (!Array.isArray(spec.gates) || !spec.gates.length))) {
+        throw new Error('buildLogicIcCircuit needs a spec with gates, or a single `chip`');
     }
     if (!circuit || typeof circuit.addPart !== 'function' || typeof circuit.addWire !== 'function') {
         throw new TypeError('buildLogicIcCircuit needs a live circuit with addPart/addWire (window.__circuit)');
     }
-    for (const g of spec.gates) {
+    for (const g of (spec.gates || [])) {
         const ic = gateToLogicIc(g.type);
         if (!ic) throw new Error(`No 74xx realisation for "${g.type}"`);
         if (ic.inputs.length !== g.in.length) {
@@ -218,12 +268,14 @@ export function buildLogicIcCircuit (circuit, spec, {clear = true} = {}) {
     const ROW = 150;
     const COL = 300;
     const PER_COL = 5;
-    const nCols = Math.ceil(spec.gates.length / PER_COL);
-    const colRows = Math.min(spec.gates.length, PER_COL);
+    // Worst case one package per gate (all different types); usually far fewer.
+    const maxPacks = single ? 1 : spec.gates.length;
+    const nCols = Math.ceil(maxPacks / PER_COL);
+    const colRows = Math.min(maxPacks, PER_COL);
     const rightX = 380 + (nCols * COL) + 60;
 
     const vcc = circuit.addPart('vcc', {}, 60, 40); join('vcc', vcc.id, 'vcc');
-    const gnd = circuit.addPart('gnd', {}, 60, 160 + (Math.max(colRows, spec.inputs.length) * ROW));
+    const gnd = circuit.addPart('gnd', {}, 60, 160 + (Math.max(colRows, 5) * ROW));
     join('gnd', gnd.id, 'gnd');
 
     // Inputs: a switch pulling the net to VCC with a 100 kΩ pull-down, so an open
@@ -237,19 +289,70 @@ export function buildLogicIcCircuit (circuit, spec, {clear = true} = {}) {
         return {name, switch: sw.id, pulldown: pull.id};
     });
 
-    // One chip per gate. A gate's `in` names either an input net or another
-    // gate's `out` net — either way it is just a net, so chip-to-chip wiring
-    // falls out of the same join().
-    const chips = spec.gates.map((g, gi) => {
-        const ic = gateToLogicIc(g.type);
-        const chip = circuit.addPart(ic.chip, {},
-            380 + (Math.floor(gi / PER_COL) * COL), 140 + ((gi % PER_COL) * ROW), g.out);
-        join('vcc', chip.id, 'vcc');
-        join('gnd', chip.id, 'gnd');
-        g.in.forEach((net, i) => join(net, chip.id, ic.inputs[i]));
-        join(g.out, chip.id, ic.output);
-        return {id: chip.id, kind: ic.chip, type: g.type, out: g.out};
+    // PACK the gates into the parts you would actually buy. A 74HC86 is a QUAD
+    // XOR — four gates in one 14-pin package — so realising each gate as its own
+    // whole chip made a 4-bit adder twenty packages when it is really five. The
+    // board now matches the shopping list, and the parts list the Circuit tab
+    // already generates becomes something you could order.
+    //
+    // Packages get reference designators (U1, U2, …), the way a schematic names
+    // them, rather than being named after one of the gates they happen to hold.
+    const packages = [];
+    const openPackage = kind => packages.find(p => p.kind === kind && p.used < p.capacity);
+    const placeGate = type => {
+        const ic = gateToLogicIc(type);
+        let pack = openPackage(ic.chip);
+        if (!pack) {
+            const n = packages.length;
+            const part = circuit.addPart(ic.chip, {},
+                380 + (Math.floor(n / PER_COL) * COL), 140 + ((n % PER_COL) * ROW), `U${n + 1}`);
+            pack = {id: part.id, kind: ic.chip, label: ic.label, ref: `U${n + 1}`,
+                capacity: gatesPerPackage(type), used: 0, gates: []};
+            join('vcc', part.id, 'vcc');
+            join('gnd', part.id, 'gnd');
+            packages.push(pack);
+        }
+        const slot = pack.used + 1;
+        pack.used = slot;
+        return {pack, pins: icGatePins(type, slot), slot};
+    };
+
+    if (single) {
+        const part = circuit.addPart(spec.chip, {}, 420, 200, 'U1');
+        join('vcc', part.id, 'vcc');
+        join('gnd', part.id, 'gnd');
+        // One part; `pins` maps net names to pin names where they differ.
+        const pinOf = net => (spec.pins && spec.pins[net]) || net;
+        for (const net of [...spec.inputs, ...spec.outputs]) join(net, part.id, pinOf(net));
+        // Control pins that must be held inactive. On a 74HC74 the async preset
+        // and clear are ACTIVE LOW: leave them floating and the part never holds.
+        for (const pin of (spec.tieHigh || [])) join('vcc', part.id, pin);
+        for (const pin of (spec.tieLow || [])) join('gnd', part.id, pin);
+        packages.push({id: part.id, kind: spec.chip, label: spec.chipLabel || spec.chip,
+            ref: 'U1', capacity: 1, used: 1, gates: []});
+    }
+
+    // A gate's `in` names either an input net or another gate's `out` net —
+    // either way it is just a net, so chip-to-chip wiring falls out of join().
+    const chips = (spec.gates || []).map(g => {
+        const {pack, pins, slot} = placeGate(g.type);
+        g.in.forEach((net, i) => join(net, pack.id, pins.inputs[i]));
+        join(g.out, pack.id, pins.output);
+        pack.gates.push({type: g.type, out: g.out, slot});
+        return {id: pack.id, kind: pack.kind, type: g.type, out: g.out, ref: pack.ref, slot};
     });
+
+    // Tie every LEFTOVER gate's inputs to ground. A floating CMOS input is not
+    // a neutral thing: it drifts around the switching threshold and makes the
+    // package draw current and oscillate. Real boards tie unused inputs off, so
+    // this one does too — and the learner can see why the spare gates are wired
+    // to nothing in particular.
+    for (const pack of packages) {
+        for (let slot = pack.used + 1; slot <= pack.capacity; slot++) {
+            const type = pack.gates[0].type;
+            for (const pin of icGatePins(type, slot).inputs) join('gnd', pack.id, pin);
+        }
+    }
 
     // An LED per named output, stacked in the order `outputs` lists them, each
     // named so the grader can find it by name and coloured so a learner can.
@@ -269,5 +372,5 @@ export function buildLogicIcCircuit (circuit, spec, {clear = true} = {}) {
         for (let i = 1; i < cs.length; i++) circuit.addWire(cs[i - 1][0], cs[i - 1][1], cs[i][0], cs[i][1]);
     }
 
-    return {spec, chips, inputs, outputs};
+    return {spec, chips, packages, inputs, outputs};
 }

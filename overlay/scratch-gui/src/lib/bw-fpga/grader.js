@@ -281,7 +281,7 @@ function settle (board, ms, stepMs) {
  *
  * @returns {{pass: boolean, realised: true, problem?: string, failing?: object, checked?: number}}
  */
-export function gradeRealisedCircuit (circuit, challenge, opts = {}) {
+function* gradeRealisedSteps (circuit, challenge, opts = {}) {
     const io = opts.io || discoverRealisation(circuit, challenge);
     const problem = validateRealisation(circuit, challenge, io);
     if (problem) return {pass: false, realised: true, problem};
@@ -322,6 +322,10 @@ export function gradeRealisedCircuit (circuit, challenge, opts = {}) {
     };
 
     for (let bits = 0; bits < total; bits++) {
+        // Hand control back between rows so a long grade does not freeze the
+        // page. The sync wrapper drains this without pausing, so nothing that
+        // grades headlessly changes.
+        yield {checked: bits, total};
         const inputs = rows[bits];
         io.inputs.forEach((inp, i) => board.setControl(inp.switch, inputs[names[i]] ? 1 : 0));
         settle(board, settleMs, stepMs);
@@ -356,8 +360,190 @@ export function gradeRealisedCircuit (circuit, challenge, opts = {}) {
     return {pass: true, realised: true, checked: total, ...(declared ? {covering: challenge.rowsNote || null} : {})};
 }
 
+/**
+ * Grade a SEQUENTIAL challenge on the real board: clock it, and check both that
+ * it takes the value AND that it keeps it.
+ *
+ * Everything else here is combinational — drive the inputs, read the LEDs. A
+ * register is different in the one way that matters: its output must NOT follow
+ * its input until a clock edge. So each cycle does two things:
+ *
+ *   1. set the data inputs, pulse the clock, and check the outputs took the
+ *      value the reference says they should;
+ *   2. change the data inputs WITHOUT clocking, and check the outputs did not
+ *      move.
+ *
+ * Step 2 is the one that matters. A plain wire from d to the LED passes step 1
+ * perfectly and fails step 2 immediately, and a learner who has wired a wire
+ * deserves to be told that rather than congratulated.
+ *
+ * No reset is needed: every check is relative to an edge this grader caused.
+ *
+ * @param {object} circuit  the live Circuit
+ * @param {object} challenge  a sequential realise challenge
+ * @param {{io?: object, settleMs?: number, stepMs?: number}} [opts]
+ */
+function* gradeRealisedSequentialSteps (circuit, challenge, opts = {}) {
+    const io = opts.io || discoverRealisation(circuit, challenge);
+    const problem = validateRealisation(circuit, challenge, io);
+    if (problem) return {pass: false, realised: true, sequential: true, problem};
+
+    const names = challenge.inputs.map(i => i.name);
+    const clockName = challenge.clock || 'clk';
+    const clockAt = names.indexOf(clockName);
+    if (clockAt < 0) {
+        return {pass: false, realised: true, sequential: true,
+            problem: `This challenge clocks the board, but no input is named "${clockName}".`};
+    }
+
+    const board = circuit.board;
+    const settleMs = opts.settleMs || SETTLE_MS;
+    const stepMs = opts.stepMs || STEP_MS;
+    if (typeof board.setPower === 'function') board.setPower(true);
+
+    const before = typeof board.getControl === 'function'
+        ? io.inputs.map(inp => board.getControl(inp.switch)) : null;
+    const restore = () => {
+        if (!before) return;
+        io.inputs.forEach((inp, i) => {
+            if (before[i] !== undefined) board.setControl(inp.switch, before[i]);
+        });
+    };
+
+    const setData = values => names.forEach((nm, i) => {
+        if (i !== clockAt) board.setControl(io.inputs[i].switch, values[nm] ? 1 : 0);
+    });
+    const clock = level => board.setControl(io.inputs[clockAt].switch, level);
+    const readOut = () => {
+        const out = {};
+        io.outputs.forEach((o, oi) => {
+            const name = o.name || challenge.outputs[oi].name;
+            const b = board.ledBrightness(o.led);
+            out[name] = b >= LIT ? 1 : (b <= DARK ? 0 : null);
+        });
+        return out;
+    };
+
+    const stim = challenge.stimulus || {};
+    const driven = Object.keys(stim);
+    const cycles = challenge.cycles || (driven.length ? stim[driven[0]].length : 0);
+    const expected = challenge.seqExpect(stim);
+
+    clock(0);
+    settle(board, settleMs, stepMs);
+
+    for (let t = 0; t < cycles; t++) {
+        yield {checked: t, total: cycles};
+        const inputs = {};
+        for (const k of driven) inputs[k] = stim[k][t];
+
+        setData(inputs);
+        settle(board, settleMs, stepMs);
+        clock(1);                                  // the rising edge
+        settle(board, settleMs, stepMs);
+
+        const got = readOut();
+        for (const {name} of challenge.outputs) {
+            if (got[name] === null) {
+                restore();
+                return {pass: false, realised: true, sequential: true, checked: t, failing: {
+                    cycle: t, inputs, output: name,
+                    reason: 'the output LED is neither clearly lit nor clearly dark after the clock edge'
+                }};
+            }
+            if (got[name] !== expected[t][name]) {
+                restore();
+                return {pass: false, realised: true, sequential: true, checked: t,
+                    failing: {cycle: t, inputs, output: name, expected: expected[t][name], got: got[name]}};
+            }
+        }
+
+        // HOLD: move the data inputs with the clock still high. A register keeps
+        // its value; a wire does not.
+        const flipped = {};
+        for (const k of driven) flipped[k] = inputs[k] ? 0 : 1;
+        setData(flipped);
+        settle(board, settleMs, stepMs);
+        const held = readOut();
+        for (const {name} of challenge.outputs) {
+            if (held[name] !== got[name]) {
+                restore();
+                return {pass: false, realised: true, sequential: true, checked: t, failing: {
+                    cycle: t, inputs, output: name, expected: got[name], got: held[name],
+                    reason: `${name} changed when the input changed but the clock did NOT — `
+                        + 'that is a wire, not a register. It must only move on a clock edge.'
+                }};
+            }
+        }
+        setData(inputs);
+        clock(0);                                  // back low, ready for the next edge
+        settle(board, settleMs, stepMs);
+    }
+
+    restore();
+    return {pass: true, realised: true, sequential: true, checked: cycles};
+}
+
+/** Run a grading generator to completion without pausing. */
+function drain (it) {
+    let step = it.next();
+    while (!step.done) step = it.next();
+    return step.value;
+}
+
+/** The steps a grade will take, so a caller can drive it however it likes. */
+const stepsFor = (circuit, challenge, opts) => (challenge.sequential
+    ? gradeRealisedSequentialSteps(circuit, challenge, opts)
+    : gradeRealisedSteps(circuit, challenge, opts));
+
+/**
+ * Grade the learner's LIVE CIRCUIT. Synchronous: the whole grade runs before
+ * this returns, which is what every headless test and every small challenge
+ * wants.
+ *
+ * For a long one — the 4-bit adder drives 22 rows and takes seconds — use
+ * gradeRealisedAsync, which does the same work without freezing the page.
+ */
+export function gradeRealisedCircuit (circuit, challenge, opts = {}) {
+    return drain(stepsFor(circuit, challenge, opts));
+}
+
+/** Grade a sequential challenge synchronously. */
+export function gradeRealisedSequential (circuit, challenge, opts = {}) {
+    return drain(gradeRealisedSequentialSteps(circuit, challenge, opts));
+}
+
+/**
+ * The same grade, yielding to the event loop between rows so the page stays
+ * alive and can show progress.
+ *
+ * The board is driven exactly as the sync version drives it — same rows, same
+ * settling, same verdict — the only difference is who holds the thread in
+ * between. `onProgress({checked, total})` fires before each row.
+ *
+ * @returns {Promise<object>} the same result object as gradeRealisedCircuit
+ */
+export async function gradeRealisedAsync (circuit, challenge, opts = {}) {
+    const {onProgress} = opts;
+    const it = stepsFor(circuit, challenge, opts);
+    let step = it.next();
+    while (!step.done) {
+        if (onProgress) onProgress(step.value);
+        // A macrotask, not a microtask: a microtask queue drains before paint,
+        // so awaiting a resolved promise would not let the browser render.
+        await new Promise(resolve => setTimeout(resolve, 0));
+        step = it.next();
+    }
+    return step.value;
+}
+
 /** A one-line, learner-facing summary of a real-parts grade. */
 export function gradeMessageRealised (result, challenge) {
+    if (result.pass && result.sequential) {
+        return `✓ It remembers — through all ${result.checked} clock `
+            + `cycle${result.checked === 1 ? '' : 's'} on the live board, and it held its value `
+            + 'each time the input moved without a clock.';
+    }
     if (result.pass) {
         // A multi-output challenge watches several LEDs, and saying "the output
         // LED" of a half adder is simply untrue of what was just checked.
@@ -379,6 +565,11 @@ export function gradeMessageRealised (result, challenge) {
     if (result.problem) return result.problem;
     const f = result.failing;
     const inStr = Object.entries(f.inputs).map(([k, v]) => `${k}=${v}`).join(', ');
+    if (f.cycle !== undefined) {
+        if (f.reason) return `Not yet: at clock cycle ${f.cycle} (${inStr}), ${f.reason}`;
+        return `Not yet: at clock cycle ${f.cycle} with ${inStr}, `
+            + `${f.output} is ${f.got} but should be ${f.expected}.`;
+    }
     if (f.reason) return `Not yet: with ${inStr}, ${f.reason}`;
     return `Not yet: with ${inStr} the output LED is ${f.got ? 'lit' : 'dark'}, but ${f.output} should be ${f.expected}.`;
 }
