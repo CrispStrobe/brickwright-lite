@@ -267,6 +267,12 @@ const CENSUS = [
         why: 'Server-side Pascal-ACK compile endpoint build (a separate deployable, NOT the browser bundle): clones ACK then checks out the pinned 40-hex ACK_COMMIT; the SHA checkout is the immutable reference.'
     },
     {
+        file: '.github/workflows/ack-z80-cpm.yml', kind: 'git',
+        text: 'git clone --filter=blob:none https://github.com/davidgiven/ack.git "$RUNNER_TEMP/ack"',
+        class: 'shell-pin',
+        why: 'CI-only build of ACK\'s z80/cpm platform to PROVE a real Z80 CP/M .COM (NOT the browser bundle, NOT a deployable): clones ACK then fetches+checks out the pinned ACK_COMMIT=7afa32a0a0f13e865fa2e8104e442689005cd627 (the same 40-hex commit services/pascal-ack-compiler pins) and asserts HEAD equals it before building. The SHA checkout is the immutable reference; nothing fetched is written into the tree — the step only compiles a Pascal .COM and runs it through cpm-z80.js.'
+    },
+    {
         file: 'overlay/scratch-gui/src/lib/smallerc-wasm/build.sh',
         kind: 'git',
         text: 'git clone --quiet "$SMALLERC_REPO" "$SRC"',

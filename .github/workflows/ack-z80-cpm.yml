@@ -1,0 +1,127 @@
+# Build ACK's z80/cpm platform on CI (this repo's box OOMs an ACK build) and
+# PROVE its output end-to-end: compile a small Pascal program with `ack -mcpm`
+# to a real Z80 CP/M `.COM`, then run that `.COM` through lite's CP/M-80 (Z80)
+# service layer (lib/bw-debug/cpm-z80.js) and assert the console output. The
+# produced `.COM` (and its Pascal source) are uploaded as an artifact so the
+# exact bytes can be embedded, base64, into test/cpm-z80.test.mjs — proving the
+# layer against genuine ACK output in the normal suite (the SDCC case already
+# there is the same shape).
+#
+# ACK is the Amsterdam Compiler Kit (BSD-3). Its `cpm` platform (plat/cpm,
+# descr: ARCH=i80, PLATFORM=cpm) is an 8080 CP/M target; an 8080 `.COM` runs on
+# the Z80 (the Z80 is a strict 8080 superset), which is exactly the machine the
+# cpm-z80 layer drives. Pinned to the same ACK commit the msdos86 Pascal
+# endpoint uses (services/pascal-ack-compiler), so both ACK routes share one
+# immutable reference.
+name: ACK z80/cpm — build + prove a real CP/M .COM
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/ack-z80-cpm.yml'
+      - 'services/pascal-ack-compiler/**'
+permissions:
+  contents: read
+jobs:
+  ack-cpm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      # The SAME pinned ACK commit as services/pascal-ack-compiler (msdos86).
+      ACK_COMMIT: 7afa32a0a0f13e865fa2e8104e442689005cd627
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      # bw-board (the Z80 machine the layer runs on) is a normal dependency; the
+      # layer imports `bw-board/z80-machine.js`, so the prove step below needs it.
+      - name: Install source-test dependencies (brings bw-board)
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Install ACK build dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential flex bison lua5.3 lua-posix python3 ca-certificates git
+
+      - name: Build ACK's z80/cpm platform at the pinned commit
+        run: |
+          set -euo pipefail
+          git clone --filter=blob:none https://github.com/davidgiven/ack.git "$RUNNER_TEMP/ack"
+          git -C "$RUNNER_TEMP/ack" fetch --depth 1 origin "$ACK_COMMIT"
+          git -C "$RUNNER_TEMP/ack" checkout -q "$ACK_COMMIT"
+          test "$(git -C "$RUNNER_TEMP/ack" rev-parse HEAD)" = "$ACK_COMMIT" \
+            || { echo "ACK checkout did not land on the pinned commit"; exit 1; }
+          # Build ONLY the cpm platform (ARCH i80). Same two edits the msdos86
+          # endpoint makes, aimed at cpm instead.
+          sed -i 's/^DEFAULT_PLATFORM ?= .*/DEFAULT_PLATFORM ?= cpm/' "$RUNNER_TEMP/ack/Makefile"
+          sed -i 's/^PLATS = all/PLATS = cpm/'                        "$RUNNER_TEMP/ack/Makefile"
+          ( cd "$RUNNER_TEMP/ack" && TMPDIR="$RUNNER_TEMP" make -j"$(nproc)" )
+          echo "ACKDIR=$RUNNER_TEMP/ack/.obj/staging" >> "$GITHUB_ENV"
+
+      - name: Compile a small Pascal program to a Z80 CP/M .COM
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/ack-z80-cpm
+          cat > artifacts/ack-z80-cpm/cpmdemo.pas <<'PAS'
+          program cpmdemo(output);
+          const max = 30;
+          var flags : array [2..max] of boolean; i, j, n : integer;
+          begin
+            writeln('ACK on Z80/CP/M');
+            n := 0;
+            for i := 2 to max do flags[i] := true;
+            for i := 2 to max do
+              if flags[i] then begin
+                n := n + 1;
+                write(i:4); j := i + i;
+                while j <= max do begin flags[j] := false; j := j + i end
+              end;
+            writeln;
+            writeln('primes: ', n:0)
+          end.
+          PAS
+          # ACK picks the front end from the LOWERCASE `.pas` suffix (an
+          # uppercase `.PAS` dies before the parser); output name is `.com`.
+          "$ACKDIR/bin/ack" -mcpm -O \
+            -o artifacts/ack-z80-cpm/cpmdemo.com \
+            artifacts/ack-z80-cpm/cpmdemo.pas
+          # Some ACK descrs write the platform default name; accept either.
+          if [ ! -s artifacts/ack-z80-cpm/cpmdemo.com ] && [ -s cpm.com ]; then
+            mv cpm.com artifacts/ack-z80-cpm/cpmdemo.com
+          fi
+          test -s artifacts/ack-z80-cpm/cpmdemo.com \
+            || { echo "ACK produced no .COM"; exit 1; }
+          echo "=== .COM size ==="; wc -c artifacts/ack-z80-cpm/cpmdemo.com
+          echo "=== base64 (embed this in test/cpm-z80.test.mjs) ==="
+          base64 -w0 artifacts/ack-z80-cpm/cpmdemo.com
+          echo
+          base64 -w0 artifacts/ack-z80-cpm/cpmdemo.com > artifacts/ack-z80-cpm/cpmdemo.com.b64
+
+      - name: Prove the real ACK .COM runs on the cpm-z80 layer
+        env:
+          COM: artifacts/ack-z80-cpm/cpmdemo.com
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/prove-cpm.mjs" <<'JS'
+          import {readFileSync} from 'node:fs';
+          import {runCpmProgram} from './overlay/scratch-gui/src/lib/bw-debug/cpm-compile.js';
+          const com = new Uint8Array(readFileSync(process.env.COM));
+          const {screen, terminated, exhausted, steps} = await runCpmProgram({bytes: com, maxSteps: 8_000_000});
+          console.log(`steps=${steps} terminated=${terminated} exhausted=${exhausted}`);
+          console.log('=== SCREEN ===\n' + screen + '\n=== END ===');
+          if (!terminated || exhausted) { console.error('program did not terminate cleanly'); process.exit(1); }
+          for (const needle of ['ACK on Z80/CP/M', 'primes:', '10']) {
+            if (!screen.includes(needle)) { console.error(`output missing: ${needle}`); process.exit(1); }
+          }
+          console.log('OK: a real ACK-compiled Z80 CP/M .COM ran correctly on the cpm-z80 layer');
+          JS
+          node "$RUNNER_TEMP/prove-cpm.mjs"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: ack-z80-cpm
+          path: artifacts/ack-z80-cpm
