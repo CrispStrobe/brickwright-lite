@@ -52,6 +52,11 @@ export const DISPLAY_WIDGET_TYPES = Object.freeze([
     'simplevga', 'mono_lcd', 'lcd', 'oled', 'terminal', 'matrix', 'sevenseg', 'bargraph'
 ]);
 
+/** Widget types that can STEER a machine (feed its keyboard). A widget whose
+ *  `source` is `'keyIn'` is drained and its keys sent to `runner.keyIn`
+ *  (design §4.5, the input counterpart of a `source:'video'` screen). */
+export const INPUT_WIDGET_TYPES = Object.freeze(['keyboard', 'keypad']);
+
 /** Coerce one panel-widget declaration to canonical shape. A widget names a
  *  `simplevga` (or other display) face the manifest wants placed, and — when
  *  `source: 'video'` — bound to the machine's framebuffer. `config`/`layout`
@@ -67,8 +72,9 @@ function normalizeWidget(w) {
         config: isObj(w.config) ? {...w.config} : {},
         layout: isObj(w.layout) ? {...w.layout} : null,
         // 'video' = mirror runner.video() into this widget (the machine screen);
+        // 'keyIn' = drain this input widget's keys into the machine (steering);
         // null/absent = a static or program-driven face the manifest just places.
-        source: w.source === 'video' ? 'video' : null
+        source: (w.source === 'video' || w.source === 'keyIn') ? w.source : null
     };
 }
 
@@ -258,6 +264,10 @@ export function validateMachineConfig(cfg) {
                 if (w.source === 'video' && !DISPLAY_WIDGET_TYPES.includes(w.type)) {
                     errors.push(`widget ${JSON.stringify(w.name)} has source:'video'` +
                         ` but type ${JSON.stringify(w.type)} is not a display face`);
+                }
+                if (w.source === 'keyIn' && !INPUT_WIDGET_TYPES.includes(w.type)) {
+                    errors.push(`widget ${JSON.stringify(w.name)} has source:'keyIn'` +
+                        ` but type ${JSON.stringify(w.type)} is not an input face`);
                 }
             });
         }

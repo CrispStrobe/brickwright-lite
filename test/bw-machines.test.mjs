@@ -29,6 +29,9 @@ import {
 import {
     runMachineConfig
 } from '../overlay/scratch-gui/src/lib/bw-machines/run-machine.js';
+import {
+    asciiToScancodes, createKeyboardSteer
+} from '../overlay/scratch-gui/src/lib/bw-machines/keyboard-steer.js';
 // The REAL panel model + widget vocabulary from the pinned bw-board — so the
 // video-mirror tests drive the same setVgaFrame the browser paints through, not
 // a mock (design §4.2: a machine's screen is a simplevga widget).
@@ -611,4 +614,60 @@ test('runMachineConfig returns a wired descriptor and dispatches nothing', async
     const res = await runMachineConfig(cfg, {fetcher, dispatch: () => { dispatched++; }});
     assert.equal(res.mode, 'wired');
     assert.equal(dispatched, 0);
+});
+
+// ── 8. keyboard steering: a widget's keys → runner.keyIn (design §4.5) ────────
+
+test('validate: a keyIn-sourced widget must be an input face', () => {
+    const ok = normalizeMachineConfig({
+        machine: 'i8086', slots: {floppy: 'a.img'},
+        widgets: [{name: 'kbd', type: 'keyboard', source: 'keyIn'}]
+    });
+    assert.deepEqual(validateMachineConfig(ok).errors, []);
+    assert.equal(ok.widgets[0].source, 'keyIn');   // normalize keeps keyIn
+
+    const notInput = normalizeMachineConfig({
+        machine: 'i8086', slots: {floppy: 'a.img'},
+        widgets: [{name: 'kbd', type: 'simplevga', source: 'keyIn'}]
+    });
+    const r = validateMachineConfig(notInput);
+    assert.equal(r.ok, false);
+    assert.ok(r.errors.some(e => /not an input face/.test(e)), r.errors.join(';'));
+});
+
+test('asciiToScancodes maps ASCII to XT set-1 make/break sequences', () => {
+    assert.deepEqual(asciiToScancodes('a'.charCodeAt(0)), [0x1e, 0x9e]);          // make, break
+    assert.deepEqual(asciiToScancodes('A'.charCodeAt(0)), [0x2a, 0x1e, 0x9e, 0xaa]); // shift-wrapped
+    assert.deepEqual(asciiToScancodes('1'.charCodeAt(0)), [0x02, 0x82]);
+    assert.deepEqual(asciiToScancodes('!'.charCodeAt(0)), [0x2a, 0x02, 0x82, 0xaa]);
+    assert.deepEqual(asciiToScancodes(13), [0x1c, 0x9c]);   // Enter
+    assert.deepEqual(asciiToScancodes(8), [0x0e, 0x8e]);    // Backspace
+    assert.deepEqual(asciiToScancodes(' '.charCodeAt(0)), [0x39, 0xb9]);
+    assert.deepEqual(asciiToScancodes(300), []);            // unmapped → nothing typed
+});
+
+test('the steerer drains a real keyboard widget FIFO into keyIn', () => {
+    const panel = new ControllerPanel();
+    panel.addWidget('kbd', 'keyboard', {}, {x: 0, y: 0});
+    const typed = 'root\r';
+    for (const ch of typed) panel.pushKeyboardKey('kbd', ch.charCodeAt(0));
+
+    const sent = [];
+    const sched = manualScheduler();
+    const steer = createKeyboardSteer({
+        panel, widgetName: 'kbd', keyIn: sc => sent.push(sc),
+        schedule: sched.schedule, cancel: sched.cancel
+    });
+    steer.start();
+    sched.flush();   // one drain
+
+    const expected = [...typed].flatMap(ch => asciiToScancodes(ch.charCodeAt(0)));
+    assert.deepEqual(sent, expected, 'every queued key became its scancodes');
+    assert.equal(steer.keysSent, expected.length);
+
+    // FIFO now empty → a further drain sends nothing.
+    sched.flush();
+    assert.equal(steer.keysSent, expected.length);
+    steer.stop();
+    assert.equal(steer.running, false);
 });

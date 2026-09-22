@@ -312,6 +312,16 @@ class DebugPanel extends React.Component {
             typeof window.bwMirrorMachineVideo === 'function') {
             window.bwMirrorMachineVideo({videoFn: () => runner.video(), widget: screen});
         }
+        // A declared keyboard widget (source:'keyIn') steers the machine: its
+        // keys are drained and fed runner.keyIn (design §4.5, the input side of
+        // the screen mirror). Only when the machine can actually take keys.
+        const kbd = Array.isArray(widgets)
+            ? widgets.find(w => w && w.source === 'keyIn') : null;
+        if (kbd && typeof runner.keyIn === 'function' &&
+            typeof window !== 'undefined' &&
+            typeof window.bwSteerMachineKeyboard === 'function') {
+            window.bwSteerMachineKeyboard({keyInFn: sc => runner.keyIn(sc), widget: kbd});
+        }
     }
 
     /**
@@ -548,10 +558,13 @@ class DebugPanel extends React.Component {
      *  creation is async (a chunk import), so a plain state check races —
      *  two concurrent runner() calls once produced two live machines. */
     _teardownRunner () {
-        // Stop mirroring the old machine's video into the Widgets pane before it
-        // is destroyed; the next boot starts its own mirror (design §4.2).
+        // Stop mirroring the old machine's video / draining its keyboard into the
+        // Widgets pane before it is destroyed; the next boot starts its own.
         if (typeof window !== 'undefined' && typeof window.bwStopMachineVideo === 'function') {
             window.bwStopMachineVideo();
+        }
+        if (typeof window !== 'undefined' && typeof window.bwStopMachineKeyboard === 'function') {
+            window.bwStopMachineKeyboard();
         }
         const p = this._runnerPromise;
         this._runnerPromise = null;

@@ -77,6 +77,7 @@ import {themeMap} from '../../lib/themes';
 
 import { ControllerPanel } from 'bw-board/controller.js';
 import { createMachineVideoMirror } from '../../lib/bw-machines/video-mirror.js';
+import { createKeyboardSteer } from '../../lib/bw-machines/keyboard-steer.js';
 import { runMachineConfig } from '../../lib/bw-machines/run-machine.js';
 import { bindPanelToVariables } from 'bw-board/controller-binding.js';
 import styles from './gui.css';
@@ -488,7 +489,34 @@ const GUIComponent = props => {
     // (activateConfig's `videoWidget`). Only one machine mirror runs at a time.
     React.useEffect(() => {
         let mirror = null;
+        let steer = null;
         const stop = () => { if (mirror) { mirror.stop(); mirror = null; } };
+        const stopKbd = () => { if (steer) { steer.stop(); steer = null; } };
+        // Steer a machine from a Widgets keyboard widget: drain its keys and feed
+        // runner.keyIn (design §4.5). The input counterpart of the video mirror.
+        const startKbd = payload => {
+            const p = payload || {};
+            const keyIn = typeof p.keyInFn === 'function'
+                ? p.keyInFn
+                : (p.runner && typeof p.runner.keyIn === 'function'
+                    ? sc => p.runner.keyIn(sc) : null);
+            const widget = p.widget && typeof p.widget.name === 'string'
+                ? p.widget
+                : (typeof p.name === 'string' ? {name: p.name, type: 'keyboard'} : null);
+            if (!keyIn || !widget) return;
+            // Ensure the input widget exists before draining it.
+            if (typeof controllerPanel.getWidget === 'function' &&
+                !controllerPanel.getWidget(widget.name) &&
+                typeof controllerPanel.addWidget === 'function') {
+                try {
+                    controllerPanel.addWidget(widget.name, widget.type || 'keyboard',
+                        widget.config || {}, widget.layout || {});
+                } catch (err) { /* already there */ }
+            }
+            stopKbd();
+            steer = createKeyboardSteer({panel: controllerPanel, widgetName: widget.name, keyIn});
+            steer.start();
+        };
         const start = payload => {
             const p = payload || {};
             const videoFn = typeof p.videoFn === 'function'
@@ -523,13 +551,18 @@ const GUIComponent = props => {
         // video mirrors here. The manager UI / quick-picker call this; exposing
         // it also gives run-machine.js a non-test consumer.
         window.bwRunMachine = (config, opts) => runMachineConfig(config, opts);
+        window.bwSteerMachineKeyboard = payload => startKbd(payload);
+        window.bwStopMachineKeyboard = () => stopKbd();
         return () => {
             window.removeEventListener('bw-machine-video', onStart);
             window.removeEventListener('bw-machine-video-stop', onStop);
             if (window.bwMirrorMachineVideo) delete window.bwMirrorMachineVideo;
             if (window.bwStopMachineVideo) delete window.bwStopMachineVideo;
             if (window.bwRunMachine) delete window.bwRunMachine;
+            if (window.bwSteerMachineKeyboard) delete window.bwSteerMachineKeyboard;
+            if (window.bwStopMachineKeyboard) delete window.bwStopMachineKeyboard;
             stop();
+            stopKbd();
         };
     }, [controllerPanel, props.onActivateTab]);
 
