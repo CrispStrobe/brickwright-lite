@@ -1451,6 +1451,27 @@ R.T. Russell. This project uses the name only to describe compatibility
   BASIC (Z80) from rtrussell/BBCZ80, shipped **unmodified**. Loaded at
   run time by BbcZ80Runner over a BDOS console shim on the Z80 core.
 
+## CP/M 2.2 (Z80) — redistributable (DRDOS grant) + MIT
+
+The Z80 machine can boot a **real CP/M 2.2 computer** (an `A>` prompt, not
+the BDOS shim above) via lite's `attachZ80` `cpm-system` profile, which loads
+two ROMs vendored **unmodified** from bw-board's `roms/cpm/` at the pinned sha
+(recorded in `cpm-roms.provenance.json` beside them). The boot itself is
+bw-board's `createCpmSystem`, reached through the z80 adapter's `cpmSystem`
+option.
+
+- **CCP+BDOS** — Digital Research's CP/M 2.2, assembled from Clark A. Calkins'
+  Z80 disassembly (`cpm2-asm.zip`, cpm.z80.de). **Redistributable** under the
+  Bryan Sparks / DRDOS, Inc. 2022 grant (the right to use, distribute, modify
+  CP/M and its derivatives), which supersedes the 2001 Lineo/Caldera grant.
+  Holder: DRDOS, Inc. (successor to Digital Research). Upstream:
+  http://www.cpm.z80.de/
+- **BIOS** — our own, no Digital Research code (MC6850 ACIA console + a host
+  RAM-disk controller). **MIT**, (c) the BrickWright project.
+- **What ships:** `static/roms/cpm22-64k.bin` (the CCP+BDOS) and
+  `static/roms/cpm-bios.bin` (our BIOS), with `cpm-roms.provenance.json`
+  beside them recording both upstreams, licences, holders and SHA-256s.
+
 ## uBASIC (DOS-native BASIC) — BSD-3-Clause
 
 The BASIC tab's "uBASIC on DOS" profile runs a real 16-bit MS-DOS
