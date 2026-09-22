@@ -101,7 +101,7 @@ test('every shipped engine that has a debug target is a kind the factory dispatc
     // `w65c02-bench`, and a fix made the PICKER say it too).
     const kinds = new Set([...factory.matchAll(/kind === '([a-z0-9-]+)'/g)].map(m => m[1]));
     assert.ok(kinds.has('eater6502') && kinds.has('z80') && kinds.has('i8086'), `factory kinds moved: ${[...kinds]}`);
-    const NOT_DEBUG_TARGETS = new Set(['microbit-sim', 'arcade', 'arduboy']); // their own panes, not the debugger
+    const NOT_DEBUG_TARGETS = new Set(['microbit-sim', 'arcade', 'arduboy', 'cpm-z80']); // their own panes, not the debugger
     // The factory's 8051 kind is the generic 'emulator' (createEmulatorTarget,
     // over emu8051-adapter.js); the picker and this table name the adapter.
     const ALIAS = {emu8051: 'emulator'};
