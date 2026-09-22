@@ -1764,8 +1764,96 @@ jobs:
           fi
           exit "$rc"
 
+  # THE FLAG-ON BROWSER JOB, the open follow-up named in test/gate-coverage.test.mjs.
+  #
+  # Why it is a JOB and not a step in `browser`: that job's build is flag-OFF on
+  # purpose (build.yml line ~167 says so — the flagged JSX parse guards that
+  # path), and flag-on additionally needs the 75 MB @yowasp/yosys, because the
+  # flag does not stop webpack RESOLVING the local tier (run 35185515757 died of
+  # exactly that). Making `browser` flag-on would put that cost on both shards
+  # and change the artifact 30 unrelated gates drive. Making it a third SHARD is
+  # barred by the partition contract: test/browser-gate-shards.test.mjs holds
+  # that setup steps carry no shard clause — every leg builds for itself — so
+  # there is nowhere to hang a shard-conditional build. A separate job pays for
+  # one more build and runs wholly in parallel, costing the run no wall clock.
+  #
+  # Its steps are deliberately NOT named "Browser gate — …": that prefix is how
+  # scripts/lib/workflow-gates.mjs finds the ONE job holding the browser gates,
+  # and a second holder makes gateJob() return null, which fails the shard tests
+  # by name. The gate here carries its own timeout-minutes all the same.
+  #
+  # The gate SKIPS (exit 0) on a flag-off build so it stays safe to run by hand.
+  # That escape is removed here with BW_FPGA_REQUIRE_SURFACE=1: this job builds
+  # flag-on on purpose, so a missing tab is the loudest failure available, never
+  # a green check that proves nothing.
+  fpga-surface:
+    name: fpga surface (flag-on)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: { node-version: 22 }
+      - name: Install root package inputs before the flag-on integration
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Vendor the pinned permissive Scratch sources for the flag-on build
+        run: npm run vendor
+      - name: Integrate the Code tab for the flag-on build
+        run: node scripts/integrate.mjs
+      - name: Install the GUI package inputs for the flag-on build
+        run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+      # Flag-on webpack leaves @yowasp/yosys aliased to the REAL package (an off
+      # build gets the yosys-absent stub), and resolution happens whether or not
+      # DefinePlugin later drops the code — so the package must be here or the
+      # build fails to resolve it. Same step the deployable build job carries.
+      - name: Install the local FPGA toolchain (this build is flag-on)
+        run: cd packages/scratch-gui && npm install --no-save --ignore-scripts --legacy-peer-deps --no-audit --no-fund @yowasp/yosys
+      - name: Apply the scratch-vm overlay for the flag-on build
+        run: node scripts/apply-vm-overlay.mjs
+      - name: Apply the scratch-paint overlay for the flag-on build
+        run: node scripts/apply-paint-overlay.mjs
+      - name: Apply the scratch-render overlay for the flag-on build
+        id: fpga_overlays
+        run: node scripts/apply-render-overlay.mjs
+      # No BW_SYNTHESIS_ENDPOINT: this gate is the SURFACE, and it must not
+      # depend on a live hosted service. Qualifying synthesis against the exact
+      # deployable candidate stays verify-fpga-builder.mjs's manual job.
+      - name: Build the editor flag-on
+        id: build_editor_fpga
+        if: ${{ !cancelled() && steps.fpga_overlays.outcome == 'success' }}
+        run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 BW_ENABLE_FPGA=1 npm run build
+      - name: Install Playwright browser for the flag-on drive
+        id: fpga_playwright
+        if: ${{ !cancelled() && steps.build_editor_fpga.outcome == 'success' }}
+        run: |
+          npm install --no-save playwright
+          ok=0
+          for i in 1 2 3; do
+            if timeout 300 npx playwright install --with-deps chromium; then ok=1; break; fi
+            echo "playwright chromium install attempt $i failed/timed out; retrying"
+            sleep 5
+          done
+          [ "$ok" = 1 ] || { echo "::error::playwright chromium install failed after 3 attempts"; exit 1; }
+      # The script serves the build itself (its own http server on 8631), so
+      # there is no separate serve step and no shared port to go stale on.
+      # Measured 2026-09-22 against the flag-on github-pages artifact of
+      # a83ce3c27: 19 checks, ~95 s end to end. Budget 10 min.
+      - name: FPGA gate — the flag-on surface and the learning path
+        timeout-minutes: 10
+        if: ${{ !cancelled() && steps.fpga_playwright.outcome == 'success' }}
+        env:
+          BW_FPGA_REQUIRE_SURFACE: '1'
+        run: node scripts/verify-fpga-surface.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.fpga_playwright.outcome == 'success'
+        with:
+          name: fpga-surface-proof
+          path: artifacts/fpga-surface/*
+          if-no-files-found: warn
+
+
   deploy:
-    needs: [build, corpus, browser]
+    needs: [build, corpus, browser, fpga-surface]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:

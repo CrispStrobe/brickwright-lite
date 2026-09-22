@@ -40,10 +40,6 @@ const KNOWN_UNWIRED = {
         + 'job is deliberately flag-off, while this proof requires the flag-on candidate and the live hosted '
         + 'synthesis service. Run `PROOF_URL=https://<exact-candidate>/ node scripts/verify-fpga-builder.mjs`; '
         + 'FPGA_SKIP_SYNTH=1 is visual-only development evidence, never the release receipt.',
-    'verify-fpga-surface.mjs': 'manual flag-on surface LOOK: like verify-fpga-builder, the routine browser '
-        + 'job is deliberately flag-off, so this drive needs the flag-on candidate. It SKIPS (exit 0) on a '
-        + 'flag-off build. Run `PROOF_URL=https://<candidate>/ node scripts/verify-fpga-surface.mjs` (or against '
-        + 'a served flag-on github-pages artifact); wiring a dedicated flag-on browser job is the open follow-up.',
     'verify-machine-manager-ui.mjs': 'manual/local: the Machine Manager library modal (code-tab device '
         + 'dropdown → "Manage machines…" → import a manifest → row → Run/Close). Runs against a served '
         + 'production build and was verified live locally (zero page errors); left unwired to keep the '
@@ -56,10 +52,23 @@ const KNOWN_UNWIRED = {
         + 'page-error collector asserted as its own check so "A> present" means "A> produced". Needs a served '
         + 'build (self-skips exit 0 without one), left unwired to keep the browser-gate budget census stable. '
         + 'Run `node scripts/verify-cpm-system.mjs` against a build under packages/scratch-gui/build.',
-    // The FPGA entry is intentionally manual because its subject is the exact
-    // deployable flag-on artifact plus a live service, while routine browser CI
-    // deliberately builds flag-off. The command and the non-release visual mode
-    // are named above so this is disclosed state rather than a fabricated wire.
+    // The REMAINING FPGA entry is intentionally manual because its subject is the
+    // exact deployable flag-on artifact plus a live hosted service, while routine
+    // browser CI deliberately builds flag-off. The command and the non-release
+    // visual mode are named above so this is disclosed state rather than a
+    // fabricated wire.
+    //
+    // verify-fpga-surface.mjs LEFT this list on 2026-09-22: the follow-up its own
+    // entry named — "wiring a dedicated flag-on browser job" — is now the
+    // `fpga-surface` job in build.yml, which builds flag-on (with @yowasp/yosys,
+    // which flag-on webpack resolves for real) and runs the drive with
+    // BW_FPGA_REQUIRE_SURFACE=1, so the script's flag-off SKIP cannot make it a
+    // green check that proves nothing. Evidence it is not decoration, all against
+    // the flag-on github-pages artifact of a83ce3c27: 19 checks pass; with the
+    // FPGA tab locator mutated to match nothing the job's mode exits 1 naming the
+    // tab while the manual mode still exits 0 SKIP; and with the circuit never
+    // built, grading cannot pass and the drive goes red. The list shrank, which
+    // is the only direction it is allowed to move.
     //
     // Before that entry this was empty, and both entries that were briefly here
     // on 2026-09-03 were WRONG:

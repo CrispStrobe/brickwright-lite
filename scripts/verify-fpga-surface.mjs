@@ -12,6 +12,19 @@
  * flag-OFF build the FPGA tab is absent, so — like the ngspice oracle — it says
  * so loudly and exits 0 (skips), which keeps it safe to run against any build.
  *
+ * BW_FPGA_REQUIRE_SURFACE=1 REMOVES THAT ESCAPE, and CI sets it. In a job whose
+ * whole purpose is to build flag-on and look at the surface, "no FPGA tab" is
+ * the loudest possible failure, not a reason to exit 0 — a skip there would be
+ * a green check that proves nothing, which is exactly the decay this gate was
+ * written against. Ask of any green check: what would be absent from this
+ * output if the thing it tests were dead? Under the skip, nothing would be.
+ *
+ * The LEARNING-PATH half (§7) drives scripts/drive-fpga.mjs rather than
+ * re-deriving how to open the surface. That helper is the one place the six
+ * traps (the build flag, the starter backdrop, [role=tab], forceRenderTabPanel,
+ * the lazy remount, treacherous text locators) are written down; a second copy
+ * here would be a second thing to keep true.
+ *
  * Run: (build flag-on, then) `node scripts/verify-fpga-surface.mjs`, or point it
  * at a served build with `PROOF_URL=http://host:port/ node scripts/verify-fpga-surface.mjs`.
  */
@@ -21,6 +34,7 @@ import {existsSync} from 'node:fs';
 import {extname, join, normalize, resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
+import {openFpga} from './drive-fpga.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 // The flag-ON build is the DEPLOY build (build_editor), which the browser job
@@ -30,6 +44,8 @@ const build = process.env.BW_FPGA_BUILD_DIR
     ? resolve(process.env.BW_FPGA_BUILD_DIR)
     : join(root, 'packages', 'scratch-gui', 'build');
 const shots = join(root, 'artifacts', 'fpga-surface');
+// CI sets this: on a build made flag-on FOR this gate, a skip is a failure.
+const REQUIRE = process.env.BW_FPGA_REQUIRE_SURFACE === '1';
 const types = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
     '.png': 'image/png', '.json': 'application/json', '.wasm': 'application/wasm', '.map': 'application/json'};
 
@@ -61,7 +77,11 @@ const check = (name, ok, detail = '') => {
 
 const browser = await chromium.launch({args: ['--no-sandbox', '--disable-dev-shm-usage']});
 const page = await browser.newPage({viewport: {width: 1440, height: 900}});
-page.on('pageerror', e => console.log(`  browser pageerror: ${e.message}`));
+const pageErrors = [];
+page.on('pageerror', e => {
+    pageErrors.push(e.message.split('\n')[0].slice(0, 200));
+    console.log(`  browser pageerror: ${e.message}`);
+});
 await page.addInitScript(() => { try { localStorage.setItem('bw-fpga-enabled', '1'); } catch (e) {} });
 
 try {
@@ -80,6 +100,18 @@ try {
 
     const fpgaTab = page.getByRole('tab', {name: /FPGA/i}).first();
     if (!(await fpgaTab.count())) {
+        if (REQUIRE) {
+            // The tab is missing from a build this job made flag-on ON PURPOSE,
+            // so something real is wrong: the flag did not reach webpack, the
+            // surface threw at render (which unmounts the WHOLE tree and leaves
+            // no tabs at all), or the served directory is not the build made.
+            check('the ⬢ FPGA tab is present (BW_FPGA_REQUIRE_SURFACE=1)', false,
+                `${await page.locator('[role=tab]').count()} tab(s) on screen; ` +
+                (pageErrors.length ? `first page error: ${pageErrors[0]}` : 'no page errors — check the build flag and the served dir'));
+            await page.screenshot({path: join(shots, '00-no-fpga-tab.png')}).catch(() => {});
+            console.log(`\nFPGA surface: ${failures.length} check(s) failed`);
+            await browser.close(); if (server) server.close(); process.exit(1);
+        }
         console.log('SKIP: no ⬢ FPGA tab — this is a flag-off build. Build with BW_ENABLE_FPGA=1 to verify the surface.');
         await browser.close(); if (server) server.close(); process.exit(0);
     }
@@ -181,7 +213,58 @@ try {
     check('the FPGA surface drive completed', false, e.message.split('\n')[0]);
 }
 
+// A render crash in the flagged surface does not always blank the tree — it can
+// leave a pane half-built while every selector above still finds something. The
+// console is the only witness to that, so it is a CHECK, not a log line.
+check('the surface drove with no uncaught page errors', pageErrors.length === 0,
+    pageErrors.slice(0, 3).join(' | '));
+
 await browser.close();
+
+// 7. THE LEARNING PATH, end to end: build a real circuit on the breadboard and
+// have the grader drive it. Everything above is the builder's LOOK — palette,
+// canvas, toolbar, run mode — and all of it can be right while the thing the
+// surface exists for does nothing. This is the only check here that fails if
+// grading is dead.
+//
+// Driven through scripts/drive-fpga.mjs so the six traps have one home. It
+// opens its own page (the drive above ends on the Circuit tab, and a fresh one
+// is cheaper to reason about than an unwound state machine) against the SAME
+// server, and banks challenge progress so a realise challenge is reachable
+// without walking the whole curriculum.
+const UNLOCK = ['wire', 'not', 'and', 'or', 'nand', 'xor', 'mux2', 'half_adder', 'full_adder',
+    'not_real', 'and_real', 'or_real', 'nand_real', 'nor_real', 'xor_real'];
+let d = null;
+try {
+    d = await openFpga(base.replace(/\/$/, ''), {progress: UNLOCK, shots});
+    // The half adder is the smallest circuit that needs TWO chips and grades
+    // two outputs (sum and carry), so a grader that only ever reads one output
+    // fails here and passes on every single-gate challenge.
+    const kinds = await d.buildCircuit('half_adder');
+    const chips = Object.entries(kinds).filter(([k]) => k.startsWith('74hc'));
+    check('⚙ builds the half adder from real 74HC chips on the breadboard',
+        chips.length > 0, Object.entries(kinds).map(([k, n]) => `${n}×${k}`).join(' '));
+
+    const verdict = await d.gradeChallenge('half_adder_real');
+    // PASS is read STRUCTURALLY, not from the text: the ▸ next button renders
+    // only when result.pass, so this says nothing about English and cannot be
+    // satisfied by a verdict that merely mentions a hopeful word.
+    const passed = (await d.page.locator('[data-testid="bw-fpga-next"]').count()) > 0;
+    check('Check grades the REAL board against the truth table and passes it',
+        passed, verdict.text.split('\n')[0]);
+    // The verdict rendered below the fold for weeks once: present in the DOM,
+    // invisible to the learner. Presence is not the claim; being on screen is.
+    check('the verdict is on screen inside the panel, not below the fold', verdict.onScreen);
+    await d.shot('05-learning-path');
+    check('the learning path drove with no uncaught page errors', d.errors.length === 0,
+        d.errors.slice(0, 3).join(' | '));
+} catch (e) {
+    check('the learning-path drive completed', false, e.message.split('\n')[0]);
+    if (d) await d.shot('05-learning-path-failed').catch(() => {});
+} finally {
+    if (d) await d.close().catch(() => {});
+}
+
 if (server) server.close();
 console.log(`\n${failures.length ? `FPGA surface: ${failures.length} check(s) failed` : 'FPGA surface: all checks passed'}`);
 process.exit(failures.length ? 1 : 0);
