@@ -66,9 +66,12 @@ test('THE test that matters: a wire from d to the LED is caught', () => {
 
     const result = gradeRealisedCircuit(c, REG);
     assert.equal(result.pass, false, 'a wire is not a register');
-    assert.ok(result.failing.reason, 'and the reason says why');
-    assert.match(result.failing.reason, /wire, not a register/);
-    assert.match(gradeMessageRealised(result, REG), /clock cycle 0/, 'caught on the very first cycle');
+    assert.equal(result.failing.reasonKey, 'grade.real.notARegister', 'and the reason says why');
+    // The learner is told, in their own language.
+    assert.match(gradeMessageRealised(result, REG, 'en'), /wire, not a register/);
+    assert.match(gradeMessageRealised(result, REG, 'de'), /Draht, kein Register/);
+    assert.match(gradeMessageRealised(result, REG, 'en'), /clock cycle 0/, 'caught on the very first cycle');
+    assert.match(gradeMessageRealised(result, REG, 'de'), /Taktzyklus 0/);
 });
 
 test('the hold check runs on every cycle, not just the first', () => {
@@ -80,7 +83,7 @@ test('the hold check runs on every cycle, not just the first', () => {
     const seq = src.slice(src.indexOf('function* gradeRealisedSequentialSteps'));
     assert.ok(seq.length, 'the sequential generator is where the clocking happens');
     const loopAt = seq.indexOf('for (let t = 0; t < cycles; t++)');
-    const holdAt = seq.indexOf('that is a wire, not a register');
+    const holdAt = seq.indexOf("reasonKey: 'grade.real.notARegister'");
     assert.ok(loopAt > 0 && holdAt > loopAt, 'the hold check sits INSIDE the per-cycle loop');
 });
 
@@ -98,10 +101,12 @@ test('a board with no clock input is reported, not graded', () => {
 });
 
 test('the pass message says it REMEMBERED, not that it computed', () => {
-    const msg = gradeMessageRealised(gradeRealisedCircuit(realiseDff(), REG), REG);
+    const result = gradeRealisedCircuit(realiseDff(), REG);
+    const msg = gradeMessageRealised(result, REG, 'en');
     assert.match(msg, /remembers/i);
     assert.match(msg, /held its value/, 'and that it held between edges');
     assert.ok(!/input combinations/.test(msg), 'combinational wording does not belong here');
+    assert.match(gradeMessageRealised(result, REG, 'de'), /erinnert sich/, 'and it remembers in German too');
 });
 
 test('the flip-flop board ties preset and clear high', () => {

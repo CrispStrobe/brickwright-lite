@@ -24,6 +24,7 @@ import {defaultMmioMap} from '../../lib/bw-fpga/mmio.js';
 import {CHALLENGES, challengeById, isUnlocked, isRealise} from '../../lib/bw-fpga/challenges.js';
 import {grade, gradeRealisedAsync} from '../../lib/bw-fpga/grader.js';
 import {withLiveCircuit} from '../../lib/bw-fpga/live-circuit.js';
+import {t} from '../../lib/bw-fpga/l10n.js';
 import FpgaChallengePanel from './fpga-challenges.jsx';
 import TruthTableModal from './fpga-truth-table.jsx';
 
@@ -663,7 +664,7 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                         onProgress: p => setCheckResult({realised: true, pending: true, progress: p})
                     }).then(result => recordResult(c.id, result))
                         .catch(e => setCheckResult({pass: false, realised: true,
-                            problem: `The board could not be graded: ${e.message}`}));
+                            problem: t(props.locale, 'build.gradeFailed', {message: e.message})}));
                 },
                 {onProblem: problem => setCheckResult({pass: false, realised: true, problem})}
             );
@@ -785,6 +786,7 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
             <div style={{display: 'flex', alignItems: 'stretch'}}>
                 {showLearn ? (
                     <FpgaChallengePanel active={active} passed={passed} result={checkResult}
+                        locale={props.locale}
                         onSelect={selectChallenge} onCheck={runCheck} onNext={goNext} />
                 ) : null}
                 <FpgaGatePalette catalog={catalog} />

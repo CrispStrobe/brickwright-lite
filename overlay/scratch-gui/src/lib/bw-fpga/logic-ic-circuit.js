@@ -18,12 +18,11 @@
 // after the designer reloads the circuit to render it.
 
 import {gateToLogicIc, icGatePins, gatesPerPackage} from './logic-ic.js';
+import {t} from './l10n.js';
 
 /** A half adder: sum = a XOR b, carry = a AND b. Two chips, two LEDs. */
 export const HALF_ADDER = Object.freeze({
     id: 'half_adder',
-    label: 'Half adder',
-    hint: 'a=1 b=1 darkens the sum and lights the carry, which is 1 + 1 = 10 in binary.',
     inputs: ['a', 'b'],
     gates: [
         {type: 'xor', in: ['a', 'b'], out: 'sum'},
@@ -43,8 +42,6 @@ export const HALF_ADDER = Object.freeze({
  */
 export const FULL_ADDER = Object.freeze({
     id: 'full_adder',
-    label: 'Full adder',
-    hint: 'turning all three on lights BOTH LEDs, which is 1 + 1 + 1 = 11 in binary.',
     inputs: ['a', 'b', 'cin'],
     gates: [
         {type: 'xor', in: ['a', 'b'], out: 'n1'},      // half adder 1: sum bit
@@ -86,9 +83,6 @@ export function rippleAdder (n) {
     outputs.push('cout');
     return Object.freeze({
         id: `ripple_adder_${n}`,
-        label: `${n}-bit adder`,
-        hint: `set a to ${'1'.repeat(n)} and add 1 — every sum LED goes dark and the carry lights, `
-            + `which is how counting rolls over.`,
         inputs, gates, outputs
     });
 }
@@ -187,8 +181,6 @@ export const RIPPLE_ADDER_4 = rippleAdder(4);
  */
 export const ADDER_CHIP_4 = Object.freeze({
     id: 'adder_chip_4',
-    label: '4-bit adder (one chip)',
-    hint: 'the same sums as the twenty-gate version, from a single 16-pin part.',
     chip: '74hc283',
     chipLabel: '74HC283',
     inputs: ['a0', 'b0', 'a1', 'b1', 'a2', 'b2', 'a3', 'b3', 'cin'],
@@ -210,8 +202,6 @@ export const ADDER_CHIP_4 = Object.freeze({
  */
 export const DFF_CHIP = Object.freeze({
     id: 'dff',
-    label: 'D flip-flop',
-    hint: 'set d, press the clock switch, and q takes the value — then change d and watch q NOT move until the next edge.',
     chip: '74hc74',
     chipLabel: '74HC74',
     inputs: ['d', 'clk'],
@@ -226,6 +216,12 @@ export const IC_CIRCUITS = Object.freeze({
     half_adder: HALF_ADDER, full_adder: FULL_ADDER,
     ripple_adder_4: RIPPLE_ADDER_4, adder_chip_4: ADDER_CHIP_4, dff: DFF_CHIP
 });
+
+/** The picker's name for a circuit, in `locale`. */
+export const circuitLabel = (spec, locale) => t(locale, `circuit.${spec && spec.id}.label`);
+
+/** The "try this" line shown after building it, in `locale`. */
+export const circuitHint = (spec, locale) => t(locale, `circuit.${spec && spec.id}.hint`);
 
 /** Distinct colours so two output LEDs are told apart at a glance. */
 const OUT_COLORS = ['green', 'red', 'yellow', 'blue', 'white'];

@@ -73,7 +73,7 @@ test('twenty 74HC chips add two 4-bit numbers on the real board', () => {
     const result = gradeRealisedCircuit(realise(RIPPLE_ADDER_4), RIPPLE);
     assert.equal(result.pass, true, gradeMessageRealised(result, RIPPLE));
     assert.equal(result.checked, carryCoverRows(4).length, 'it drove the declared rows');
-    assert.ok(result.covering, 'and recorded what they covered');
+    assert.ok(result.coveringKey, 'and recorded what they covered');
 });
 
 test('1111 + 0001 rolls over: every sum dark, carry lit', () => {
@@ -198,6 +198,10 @@ test('the pass message says it covered rows, NOT that it tried everything', () =
     assert.match(msg, /across \d+ rows covering/, 'it says how many rows and what they covered');
     assert.ok(!/all \d+ input combinations/.test(msg), 'and never claims exhaustiveness');
     assert.match(msg, /512 combinations would take minutes/, 'and is honest about why');
+    // …in whatever language the learner is reading.
+    const de = gradeMessageRealised(gradeRealisedCircuit(realise(RIPPLE_ADDER_4), RIPPLE), RIPPLE, 'de');
+    assert.match(de, /Zeilen/, 'the German verdict says rows too');
+    assert.match(de, /512 Kombinationen/, 'and carries the same honesty');
 });
 
 test('an exhaustively graded challenge still says "all N input combinations"', () => {

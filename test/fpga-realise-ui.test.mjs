@@ -14,6 +14,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync, existsSync} from 'node:fs';
 import {resolve, dirname} from 'node:path';
+import {STRINGS} from '../overlay/scratch-gui/src/lib/bw-fpga/l10n.js';
 import {fileURLToPath} from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -57,27 +58,29 @@ test('a board pass banks progress exactly like a canvas pass', () => {
 test('the panel renders a board result with the board message', () => {
     const panel = read(PANEL);
     assert.match(panel, /gradeMessageRealised/, 'a realised result gets the real-parts wording');
-    assert.match(panel, /result\.realised \? gradeMessageRealised\(result, activeC\) : gradeMessage\(result, activeC\)/,
-        'and a canvas result keeps the canvas wording');
+    assert.match(panel, /gradeMessageRealised\(result, activeC, locale\)/, 'in the reader\'s language');
+    assert.match(panel, /gradeMessage\(result, activeC, locale\)/, 'and a canvas result keeps the canvas wording');
 });
 
 test('the panel says a board challenge is graded on the board, and which builds fit', () => {
     const panel = read(PANEL);
     assert.match(panel, /data-testid="bw-fpga-rungs"/, 'the realisations are named');
-    assert.match(panel, /RUNG_LABEL/, 'in the learner\'s words, per rung');
+    assert.match(panel, /rungLabel\(r, locale\)/, 'in the learner\'s words and language, per rung');
     assert.match(panel, /activeC\.rungs/, 'taken from the challenge, so XOR does not advertise ⚛');
-    assert.match(panel, /Any build that computes it passes/, 'and it says topology is not graded');
+    assert.match(panel, /panel\.orWireItYourself/, 'and it says topology is not graded');
+    assert.match(STRINGS.en['panel.orWireItYourself'], /Any build that computes it passes/);
     assert.match(panel, /isRealise\(c\) \?/, 'board challenges are marked in the LIST too, not only when open');
 });
 
 test('the Check button says what it will check, and cannot be double-fired', () => {
     const panel = read(PANEL);
-    assert.match(panel, /'✓ Check my board'/, 'a board challenge checks the board');
-    assert.match(panel, /'✓ Check my design'/, 'a canvas challenge still checks the design');
+    assert.match(panel, /'panel\.checkBoard' : 'panel\.checkDesign'/, 'the button names what it checks');
+    assert.match(STRINGS.en['panel.checkBoard'], /Check my board/);
+    assert.match(STRINGS.en['panel.checkDesign'], /Check my design/);
     // Reaching the circuit can mean mounting the designer — up to 8 s — so the
     // pending state has to be visible and the button inert meanwhile.
     assert.match(panel, /disabled=\{Boolean\(result && result\.pending\)\}/, 'no double-fire while checking');
-    assert.match(panel, /Checking the board…/, 'the wait is visible');
+    assert.match(panel, /'panel\.checking'/, 'the wait is visible');
     assert.match(panel, /result && !result\.pending \?/, 'a pending state is not rendered as a verdict');
 });
 
@@ -104,9 +107,9 @@ test('the verdict is scrolled into view when it arrives', () => {
 test('a multi-output challenge names its LEDs, and the tab can build one', () => {
     const panel = read(PANEL);
     assert.match(panel, /activeC\.outputs\.length > 1 \?/, 'a multi-output challenge is treated differently');
-    assert.match(panel, /Reads \$\{activeC\.outputs\.length\} LEDs/, 'it says how many LEDs get read');
-    assert.match(panel, /activeC\.outputs\.map\(o => o\.name\)\.join\(' and '\)/, 'and names them');
-    assert.match(panel, /Name them, or stack them in that order/,
+    assert.match(panel, /'panel\.readsLeds'/, 'it says how many LEDs get read');
+    assert.match(STRINGS.en['panel.readsLeds'], /Reads \{n\} LEDs/);
+    assert.match(STRINGS.en['panel.readsLeds'], /Name them, or stack them in that order/,
         'which LED is which is the thing a learner can get backwards');
     // The challenge is unmeetable without a way to build it. With more than one
     // multi-chip circuit, that is a picker listed FROM the registry, so a new
@@ -116,7 +119,7 @@ test('a multi-output challenge names its LEDs, and the tab can build one', () =>
     assert.match(tab, /Object\.entries\(IC_CIRCUITS\)\.map/, 'listed from the registry, not hardcoded');
     assert.match(tab, /data-testid="bw-fpga-build-circuit"/, 'and a build button');
     assert.match(tab, /realizeIcCircuit\(icCircuit\)/, 'wired to the multi-gate builder');
-    assert.match(tab, /import \{buildLogicIcCircuit, IC_CIRCUITS\}/, 'from the shared spec registry');
+    assert.match(tab, /import \{buildLogicIcCircuit, IC_CIRCUITS[^}]*\}/, 'from the shared spec registry');
     // The panel names the circuit from the same registry rather than hardcoding one.
     assert.match(panel, /IC_CIRCUITS\[activeC\.circuit\]/, 'the panel reads the label from the registry');
     assert.ok(!/⚙ Half adder/.test(panel), 'no hardcoded circuit name left in the panel');

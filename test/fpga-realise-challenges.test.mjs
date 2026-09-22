@@ -17,6 +17,8 @@ import {buildCmosGate} from '../overlay/scratch-gui/src/lib/bw-fpga/cmos-board.j
 import {gateToLogicIc, LOGIC_IC_GATES} from '../overlay/scratch-gui/src/lib/bw-fpga/logic-ic.js';
 import {gateToCmos} from '../overlay/scratch-gui/src/lib/bw-fpga/cmos.js';
 import {buildLogicIcCircuit, IC_CIRCUITS} from '../overlay/scratch-gui/src/lib/bw-fpga/logic-ic-circuit.js';
+import {challengeBrief} from '../overlay/scratch-gui/src/lib/bw-fpga/challenges.js';
+import {STRINGS, LOCALES} from '../overlay/scratch-gui/src/lib/bw-fpga/l10n.js';
 
 const {Circuit} = await boot();
 
@@ -132,7 +134,7 @@ test('the NOR brief\'s duality claim is true of the actual netlists', () => {
     assert.equal(pullDownsOnGnd('nand'), 1, 'NAND: only the last NMOS reaches GND — series');
     assert.equal(pullUpsOnVcc('nor'), 1, 'NOR: only the first PMOS hangs off VCC — series');
     assert.equal(pullDownsOnGnd('nor'), 2, 'NOR: both NMOS reach GND — parallel');
-    assert.match(challengeById('nor_real').brief, /mirror/i, 'and the brief says so');
+    assert.match(challengeBrief(challengeById('nor_real'), 'en'), /mirror/i, 'and the brief says so');
 });
 
 test('XOR is the one with no discrete transistor form', () => {
@@ -171,11 +173,13 @@ test('the sequential realise challenges are exactly the ones that need a clock',
     assert.deepEqual(REALISE.filter(c => c.sequential).map(c => c.id), ['register_real']);
 });
 
-test('every registry spec carries the label and hint the UI shows', () => {
+test('every registry spec has a translated label and hint in every locale', () => {
     for (const [key, spec] of Object.entries(IC_CIRCUITS)) {
-        assert.ok(spec.label, `${key} needs a label for the picker`);
-        assert.ok(spec.hint, `${key} needs a hint for the "try this" line`);
         assert.equal(spec.id, key, 'the registry key and the spec id agree');
+        for (const loc of LOCALES) {
+            assert.ok(STRINGS[loc][`circuit.${key}.label`], `${key} needs a ${loc} label for the picker`);
+            assert.ok(STRINGS[loc][`circuit.${key}.hint`], `${key} needs a ${loc} hint for the "try this" line`);
+        }
     }
 });
 
@@ -255,33 +259,34 @@ test('the briefs\' concrete claims match what the builders actually make', () =>
     // are checkable, so check them — a brief that lies is worse than a vague
     // one, and nothing else would catch it if a builder changed.
     const byId = id => CHALLENGES.find(c => c.id === id);
+    const briefOf = id => challengeBrief(byId(id), 'en');
     const chipOf = gate => gateToLogicIc(gate).label;
     const transistorsOf = gate => {
         const c = new Circuit(5.0);
         return buildCmosGate(c, gate).transistors.length;
     };
-    assert.match(byId('not_real').brief, new RegExp(chipOf('not')), 'the NOT brief names the right chip');
+    assert.match(briefOf('not_real'), new RegExp(chipOf('not')), 'the NOT brief names the right chip');
     assert.equal(transistorsOf('not'), 2, 'and "a PMOS and an NMOS" really is two transistors');
-    assert.match(byId('and_real').brief, new RegExp(chipOf('and')), 'the AND brief names the right chip');
-    assert.match(byId('and_real').brief, /six transistors/, 'and claims six');
+    assert.match(briefOf('and_real'), new RegExp(chipOf('and')), 'the AND brief names the right chip');
+    assert.match(briefOf('and_real'), /six transistors/, 'and claims six');
     assert.equal(transistorsOf('and'), 6, 'which is what buildCmosGate makes');
-    assert.match(byId('nand_real').brief, /four transistors/, 'the NAND brief claims four');
+    assert.match(briefOf('nand_real'), /four transistors/, 'the NAND brief claims four');
     assert.equal(transistorsOf('nand'), 4, 'which is what buildCmosGate makes');
-    assert.match(byId('or_real').brief, new RegExp(chipOf('or')), 'the OR brief names the right chip');
-    assert.match(byId('or_real').brief, /six transistors/, 'and claims six');
+    assert.match(briefOf('or_real'), new RegExp(chipOf('or')), 'the OR brief names the right chip');
+    assert.match(briefOf('or_real'), /six transistors/, 'and claims six');
     assert.equal(transistorsOf('or'), 6, 'which is what buildCmosGate makes');
-    assert.match(byId('nor_real').brief, new RegExp(chipOf('nor')), 'the NOR brief names the right chip');
-    assert.match(byId('nor_real').brief, /Four transistors/i, 'and claims four');
+    assert.match(briefOf('nor_real'), new RegExp(chipOf('nor')), 'the NOR brief names the right chip');
+    assert.match(briefOf('nor_real'), /Four transistors/i, 'and claims four');
     assert.equal(transistorsOf('nor'), 4, 'which is what buildCmosGate makes');
-    assert.match(byId('xor_real').brief, new RegExp(chipOf('xor')), 'the XOR brief names the right chip');
+    assert.match(briefOf('xor_real'), new RegExp(chipOf('xor')), 'the XOR brief names the right chip');
     // The half adder brief assigns a specific chip to each output. Read that
     // off the spec rather than trusting the prose.
     const ha = byId('half_adder_real');
     const spec = IC_CIRCUITS[ha.circuit];
     const chipFor = out => gateToLogicIc(spec.gates.find(g => g.out === out).type).label;
-    assert.match(ha.brief, new RegExp(`${chipFor('sum')} XOR gives the sum`), 'the sum chip is named correctly');
-    assert.match(ha.brief, new RegExp(`${chipFor('carry')} AND gives the carry`), 'and the carry chip');
-    assert.match(ha.brief, /SAME two switches/, 'and that the inputs are shared');
+    assert.match(briefOf('half_adder_real'), new RegExp(`${chipFor('sum')} XOR gives the sum`), 'the sum chip is named correctly');
+    assert.match(briefOf('half_adder_real'), new RegExp(`${chipFor('carry')} AND gives the carry`), 'and the carry chip');
+    assert.match(briefOf('half_adder_real'), /SAME two switches/, 'and that the inputs are shared');
     const fa = byId('full_adder_real');
     const faSpec = IC_CIRCUITS[fa.circuit];
     // The brief spells the count out, which reads better than a digit — so
@@ -289,10 +294,10 @@ test('the briefs\' concrete claims match what the builders actually make', () =>
     // letting the prose claim any number it likes.
     const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
     const n = faSpec.gates.length;
-    assert.match(fa.brief, new RegExp(`(${n}|${WORDS[n]}) chips`, 'i'),
+    assert.match(briefOf('full_adder_real'), new RegExp(`(${n}|${WORDS[n]}) chips`, 'i'),
         `the full adder brief must say it is ${n} chips, as the spec builds`);
     for (const type of ['xor', 'and', 'or']) {
-        assert.match(fa.brief, new RegExp(gateToLogicIc(type).label),
+        assert.match(briefOf('full_adder_real'), new RegExp(gateToLogicIc(type).label),
             `the full adder brief names the ${type.toUpperCase()} chip it uses`);
     }
     assert.equal(faSpec.inputs.length, 3, 'and it really does take a carry-in');
@@ -301,7 +306,10 @@ test('the briefs\' concrete claims match what the builders actually make', () =>
 
 test('every realise brief tells the learner which button to press', () => {
     for (const c of REALISE) {
-        assert.ok(c.brief && c.brief.length > 40, `${c.id} needs a real brief`);
-        assert.ok(/⚙|⚛/.test(c.brief), `${c.id}'s brief should name the ⚙ / ⚛ realisation buttons`);
+        for (const loc of LOCALES) {
+            const brief = challengeBrief(c, loc);
+            assert.ok(brief && brief.length > 40, `${c.id} needs a real brief in ${loc}`);
+            assert.ok(/⚙|⚛/.test(brief), `${c.id}'s ${loc} brief should name the ⚙ / ⚛ buttons`);
+        }
     }
 });
