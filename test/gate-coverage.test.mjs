@@ -44,6 +44,13 @@ const KNOWN_UNWIRED = {
         + 'job is deliberately flag-off, so this drive needs the flag-on candidate. It SKIPS (exit 0) on a '
         + 'flag-off build. Run `PROOF_URL=https://<candidate>/ node scripts/verify-fpga-surface.mjs` (or against '
         + 'a served flag-on github-pages artifact); wiring a dedicated flag-on browser job is the open follow-up.',
+    'verify-machine-manager-ui.mjs': 'manual/local: the Machine Manager library modal (code-tab device '
+        + 'dropdown → "Manage machines…" → import a manifest → row → Run/Close). Runs against a served '
+        + 'production build and was verified live locally (zero page errors); left unwired to keep the '
+        + 'browser-gate budget census stable. Run `PROOF_URL=<served build>/ node scripts/verify-machine-manager-ui.mjs`.',
+    'verify-machine-video-boot.mjs': 'manual/local: boots a real OS from the manager and watches its screen '
+        + 'render into a Widgets simplevga widget. NEEDS a local bootable image (ELKS_IMG) and self-skips '
+        + '(exit 0) without one, so it cannot run in CI. Run `ELKS_IMG=/path/to/fd1440-fat.img node scripts/verify-machine-video-boot.mjs`.',
     // The FPGA entry is intentionally manual because its subject is the exact
     // deployable flag-on artifact plus a live service, while routine browser CI
     // deliberately builds flag-off. The command and the non-release visual mode

@@ -103,7 +103,9 @@ try {
     const panel = page.getByTestId('bw-matrix-panel');
     await panel.waitFor({state: 'visible', timeout: 15000});
     const pickerDeviceSet = [...new Set(await device.locator('option').evaluateAll(options =>
-        options.map(option => option.value).filter(Boolean)))].sort();
+        // `__manage__` is a COMMAND entry (opens the machine library), not a
+        // device — exclude it so the picker's DEVICE set still matches the panel.
+        options.map(option => option.value).filter(v => v && v !== '__manage__')))].sort();
     const panelDeviceSet = [...new Set(((await panel.getAttribute('data-device-ids')) || '')
         .split(' ').filter(Boolean))].sort();
     check('picker and panel expose the same device set',
