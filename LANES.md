@@ -995,3 +995,5 @@ workflow with no completed run, a step in the file at the readings' sha that app
 or a step/job that appeared and ran in none — unless a line here says where its condition holds:
 `- <workflow>.yml :: <step or job name, or *> :: <where> <date>`. Measured 2026-09-07 over 247
 runs, 169 steps: nothing needed a line; the section exists so the first one has a place.
+
+- build.yml :: Measure — time every browser wait (manual runs only) :: manual dispatch only — its `if:` is `github.event_name == 'workflow_dispatch' && matrix.shard == 'light'`, so no `push`/`pull_request` run ever executes it and it is `never` in any window without a hand-dispatched light-shard run. The 2026-09-07 readings caught 57 branch dispatches that ran it; the window read 2026-09-22 (when the ack-z80-cpm.yml workflow was added and the census regenerated) holds 47 build.yml runs, none a manual light-shard dispatch, so it is pointed here rather than judged. It is a measurement aid, not a gate — nothing depends on it running.
