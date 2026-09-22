@@ -2307,6 +2307,15 @@ class PseudocodeImporter extends React.Component {
     // any hard blockers ("no ADC on this chip"). Code without pins just gets its
     // DEVICE line rewritten — there is nothing to refuse.
     async setDevice (deviceId) {
+        if (deviceId === '__manage__') {
+            // The "Manage machines…" entry is a command, not a device: open the
+            // library modal (gui.jsx owns it) and leave the current device as-is,
+            // so the controlled <select> snaps back to the real selection.
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('bw-open-machine-manager'));
+            }
+            return;
+        }
         if (!deviceId) {
             // "no chips" — pure Scratch stage mode. Drop the DEVICE line and the
             // runtime device hints; "Load example…" goes back to the stage games.
@@ -3989,6 +3998,8 @@ class PseudocodeImporter extends React.Component {
                                     {g.devices.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
                                 </optgroup>
                             ))}
+                            {/* Opens the machine library (gui.jsx renders it); not a device. */}
+                            <option value="__manage__">{'Manage machines…'}</option>
                         </select>
                         {/* What this language can do on this device: native, lowered, or
                             an open task — one line, read from lib/bw-matrix/capabilities.js,

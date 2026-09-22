@@ -79,6 +79,10 @@ import { ControllerPanel } from 'bw-board/controller.js';
 import { createMachineVideoMirror } from '../../lib/bw-machines/video-mirror.js';
 import { createKeyboardSteer } from '../../lib/bw-machines/keyboard-steer.js';
 import { runMachineConfig } from '../../lib/bw-machines/run-machine.js';
+import { getMachineStore } from '../../lib/bw-machines/machine-store-instance.js';
+// The machine library modal — lazy so it costs nothing until "Manage machines…".
+const MachineManager = React.lazy(() =>
+    import(/* webpackChunkName: "bw-machine-manager" */ '../tw-pseudocode/machine-manager.jsx'));
 import { bindPanelToVariables } from 'bw-board/controller-binding.js';
 import styles from './gui.css';
 import addExtensionIcon from './icon--extensions.svg';
@@ -696,7 +700,25 @@ const GUIComponent = props => {
         isRendererSupported = Renderer.isSupported();
     }
 
-    return (<MediaQuery minWidth={layout.fullSizeMinWidth}>{isFullSize => {
+    // The machine library modal, opened from the code-tab device dropdown's
+    // "Manage machines…" entry (it dispatches bw-open-machine-manager). Running
+    // a machine from it boots via the shared runMachineConfig bridge — so its
+    // screen/keyboard land in the Widgets pane like any other machine.
+    const [showMachines, setShowMachines] = React.useState(false);
+    React.useEffect(() => {
+        const open = () => setShowMachines(true);
+        window.addEventListener('bw-open-machine-manager', open);
+        return () => window.removeEventListener('bw-open-machine-manager', open);
+    }, []);
+    const machineManagerModal = showMachines ? (
+        <React.Suspense fallback={null}>
+            <MachineManager store={getMachineStore()} locale={props.locale}
+                onRun={cfg => runMachineConfig(cfg)}
+                onClose={() => setShowMachines(false)} />
+        </React.Suspense>
+    ) : null;
+
+    return (<React.Fragment><MediaQuery minWidth={layout.fullSizeMinWidth}>{isFullSize => {
         const stageSize = resolveStageSize(stageSizeMode, isFullSize);
 
         // Three-column pane sizing from the paneLayout reducer.
@@ -1137,7 +1159,7 @@ const GUIComponent = props => {
                 <DragLayer />
             </Box>
         );
-    }}</MediaQuery>);
+    }}</MediaQuery>{machineManagerModal}</React.Fragment>);
 };
 
 GUIComponent.propTypes = {

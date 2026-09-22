@@ -32,6 +32,9 @@ import {
 import {
     asciiToScancodes, createKeyboardSteer
 } from '../overlay/scratch-gui/src/lib/bw-machines/keyboard-steer.js';
+import {
+    getMachineStore, _resetMachineStore
+} from '../overlay/scratch-gui/src/lib/bw-machines/machine-store-instance.js';
 // The REAL panel model + widget vocabulary from the pinned bw-board — so the
 // video-mirror tests drive the same setVgaFrame the browser paints through, not
 // a mock (design §4.2: a machine's screen is a simplevga widget).
@@ -633,6 +636,16 @@ test('runMachineConfig returns a wired descriptor and dispatches nothing', async
     const res = await runMachineConfig(cfg, {fetcher, dispatch: () => { dispatched++; }});
     assert.equal(res.mode, 'wired');
     assert.equal(dispatched, 0);
+});
+
+test('getMachineStore is a shared singleton with a memory fallback', async () => {
+    _resetMachineStore();
+    const a = getMachineStore({forceMemory: true});
+    const b = getMachineStore();                    // no opts → same instance
+    assert.equal(a, b, 'one shared store for every surface');
+    await a.put(newMachineConfig({machine: 'i8086', slots: {floppy: 'x.img'}}));
+    assert.equal((await b.list()).length, 1, 'reads and writes hit the one store');
+    _resetMachineStore();
 });
 
 // ── 8. keyboard steering: a widget's keys → runner.keyIn (design §4.5) ────────
