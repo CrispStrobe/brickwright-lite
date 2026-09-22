@@ -387,8 +387,10 @@ test('activate: functional 386 → hdd bootMedia + resolved BIOS/VGA media', asy
     // the 386's extra boot media are resolved too (bw-board marks bios required)
     assert.equal(decode(result.media.bios.bytes), 'bytes:https://ex/bochs-bios.bin');
     assert.equal(decode(result.media['vga-rom'].bytes), 'bytes:https://ex/seavgabios.bin');
-    // honest about the not-yet-wired 386 boot branch in lite
-    assert.ok(result.warnings.some(w => /i80386 boot is not yet wired/.test(w)));
+    // The 386 boot path is wired into lite's debug-runner now (attachI80386),
+    // so activate no longer emits a "not yet wired" warning for it.
+    assert.ok(!result.warnings.some(w => /i80386 boot is not yet wired/.test(w)));
+    assert.ok(!result.warnings.some(w => /386 video will/.test(w)));
     // all three images fetched
     assert.equal(seen.length, 3);
 });

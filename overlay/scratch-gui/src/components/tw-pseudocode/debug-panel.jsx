@@ -292,7 +292,12 @@ class DebugPanel extends React.Component {
                 // bus -- same ISA, same registers, same core here -- so
                 // refusing it by name would refuse a machine we can run.
                 : kind === 'i8086' || kind === '8086' || kind === 'i8088' || kind === '8088' ? 'i8086'
-                    : this.state.kind;
+                    // The fully-free 386 is its OWN target kind, not the 8086
+                    // tier: it boots the LGPL Bochs BIOS on the experimental
+                    // 80386 AT machine (debug-runner's attachI80386). Mapping it
+                    // onto i8086 would run a 386 boot floppy on the XT map.
+                    : kind === 'i80386' || kind === '80386' ? 'i80386'
+                        : this.state.kind;
         await new Promise(resolve => this.setState(
             {kind: nextKind, runner: null, ui: {phase: 'idle', message: ''}}, resolve));
         const runner = await this.runner();

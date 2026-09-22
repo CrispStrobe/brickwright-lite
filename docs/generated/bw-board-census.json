@@ -2,8 +2,8 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "4ae99bea247a5a5fcb1a24e2b22eb1a1cba9f99e",
-    "read": "2026-09-21"
+    "sha": "f67739f34f188709502fbb4c5555066a7cb5b08a",
+    "read": "2026-09-22"
   },
   "rows": [
     {
@@ -338,10 +338,10 @@
     {
       "id": "masm",
       "kind": "oracle",
-      "present": true,
+      "present": false,
       "ciAvailable": false,
       "ci": "no — the binaries live at an absolute /tmp path, the same blind spot as the ehBASIC ROM: audit-clean-checkout strips untracked REPO files by archiving HEAD and cannot reach /tmp, so their absence in a fresh checkout is invisible to it. Can only stand in CI if the job fetches them explicitly.",
-      "via": "$MSDOS_BIN_DIR=/mnt/volume1/code/msdos-v2-bin",
+      "via": "tried $MSDOS_BIN_DIR, /tmp/msdosbin",
       "gates": [
         "test/oracle-masm.test.mjs",
         "scripts/oracle-masm.mjs",
@@ -362,6 +362,20 @@
         "test/i80386-doom-short-demo-acceptance.test.mjs"
       ],
       "what": "Source-bound raw report from the bounded original Doom 1.9 shareware short-demo run. Enables mutation checks for the exact external media, 24-gametic guest completion, DOS return and audited rendered frame; it is not an independent CPU oracle."
+    },
+    {
+      "id": "ibm-5170-at-rom",
+      "kind": "oracle",
+      "present": false,
+      "ciAvailable": false,
+      "ci": "no — public CI is intentionally ROM-free and green via the free-BIOS receipt; the IBM-ROM fidelity oracles are an explicit named skip when AT_BIOS_ROM is absent, never a silent pass.",
+      "via": "tried $AT_BIOS_ROM",
+      "gates": [
+        "test/at-dos-persistence-evidence.test.mjs",
+        "test/freedos14-at-persistence-evidence.test.mjs",
+        "test/i80386-at-dos-persistence-evidence.test.mjs"
+      ],
+      "what": "The proprietary, non-redistributable IBM 5170 (AT) system ROM and its VGA option ROM. A FIDELITY oracle only: it lets the source-bound AT/386 DOS and FreeDOS persistence receipts requalify against real IBM firmware. It is NOT required to build or qualify the 386 — the reproducible ROM-free gate is the vendored-LGPL free-BIOS receipt (test/i80386-free-bios-freedos-evidence.test.mjs), which needs no external input at all."
     }
   ],
   "lite": {

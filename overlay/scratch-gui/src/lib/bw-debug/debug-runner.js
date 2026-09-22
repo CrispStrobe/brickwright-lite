@@ -1431,6 +1431,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             return attachI8086();
         }
 
+        if (selectedTargetKind === 'i80386') {
+            return attachI80386();
+        }
+
         if (selectedTargetKind === 'stm32f0') {
             return attachStm32F0Target(built);
         }
@@ -2585,6 +2589,154 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             machine.chips.fdc1.insert(0, floppyBoot.bytes, floppyBoot.geom);
             machine.reset();
         }
+        wireMachineBench(result, createDebugSession);
+        setStatus('ready', readyMsg);
+        return session;
+    }
+
+    /**
+     * THE FULLY-FREE 386. The experimental 80386 AT machine, booted on ONLY
+     * redistributable firmware — the LGPL Bochs legacy BIOS and the LGPL VGABios,
+     * vendored as static/roms/free-386-bochs-bios.rom + free-386-vgabios-lgpl.bin
+     * — with NO proprietary IBM 5170 ROM anywhere in the path. This mirrors
+     * bw-board's own reproducible qualification
+     * (scripts/run-i80386-free-bios-freedos.mjs): the same machine config, the
+     * same two firmware images at the same load addresses, the same FreeDOS boot
+     * media in the µPD765 / ATA16. What differs is only the surface — here
+     * video() is the Widgets-pane screen and keyIn() steers it, exactly as the
+     * i8086 floppy-OS path does, instead of the CLI's B8000 text scrape.
+     *
+     * Like the i8086 floppy branch, this PREPARES the config and stashes the
+     * image, routes the build through the SINGLE createDebugTarget('i80386')
+     * call below, then applies the firmware + floppy to the machine afterwards.
+     * The firmware is a same-origin static fetch (like the XT BIOS), never a
+     * network clone and never the private $AT_BIOS_ROM.
+     */
+    async function attachI80386() {
+        setStatus('attaching', `booting the free-386${bootMedia && bootMedia.name ? ` — ${bootMedia.name}` : ''}…`);
+
+        // The 386 core + AT-device catalogue via the barrel's factory, and the
+        // machine module directly for the FreeDOS-VGA config the qualification uses.
+        const { createDebugTarget, createDebugSession } =
+            await import(/* webpackChunkName: "bw-board-i80386" */ 'bw-board');
+        const { PCAT80386_EXPERIMENTAL_4M_HDD_FREEDOS_VGA } =
+            await import(/* webpackChunkName: "bw-board-i80386" */ 'bw-board/experimental/i80386-at-machine.js');
+
+        // Vendored LGPL firmware. The Bochs legacy BIOS is a 64K image whose
+        // reset vector is its last sixteen bytes; it is mapped at BOTH F0000h
+        // (real-mode reset alias) and FF0000h (the AT 16M reset alias the 386
+        // decoder honours). The LGPL VGABios is the C000h option ROM.
+        const biosUrl = new URL('static/roms/free-386-bochs-bios.rom', document.baseURI).href;
+        const vgaUrl = new URL('static/roms/free-386-vgabios-lgpl.bin', document.baseURI).href;
+        const [biosRes, vgaRes] = await Promise.all([fetch(biosUrl), fetch(vgaUrl)]);
+        if (!biosRes.ok) throw new Error(`Failed to load the free-386 BIOS: HTTP ${biosRes.status}`);
+        if (!vgaRes.ok) throw new Error(`Failed to load the free-386 VGABios: HTTP ${vgaRes.status}`);
+        const bios = new Uint8Array(await biosRes.arrayBuffer());
+        const vga = new Uint8Array(await vgaRes.arrayBuffer());
+
+        // A 386 boots either a floppy (µPD765, drive A:) or a hard disk (the
+        // ATA16 controller, drive C:). The config's boot slot decides — 'floppy'
+        // (or the floppy-os profile) is the disk-in-A: case, everything else
+        // ('hdd'/'disk'/'hd') is the hard-disk case. A hard disk also needs the
+        // image resolved BEFORE construction (the adapter attaches ATA from its
+        // constructor hooks), so resolve it here.
+        const isFloppy = !!bootMedia &&
+            (bootMedia.slot === 'floppy' || bootMedia.profile === 'floppy-os');
+        const isHdd = !!bootMedia && !isFloppy;
+        let bootImg = null;
+        if (bootMedia) bootImg = await resolveMediaImage(bootMedia);
+
+        // The FreeDOS-VGA preset carves a 32K option-ROM window at C0000h; the
+        // LGPL VGABios is 38400 bytes, so widen that one region to C0000-C9FFF
+        // (40K) exactly as the CLI qualification does, leaving every other
+        // region untouched. functionalInstructionCycles matches the receipt.
+        const base = PCAT80386_EXPERIMENTAL_4M_HDD_FREEDOS_VGA;
+        const hdGeom = (bootMedia && bootMedia.geometry) ||
+            { cylinders: 306, heads: 4, sectors: 17 };
+        // Type-47 CMOS drive-C geometry, byte-for-byte as the CLI qualification
+        // sets it, so the Bochs BIOS builds a real FDPT for drive 0 and FreeDOS
+        // mounts the partition as C:. Only applied for a hard-disk boot; a
+        // floppy boot leaves the passive AT CMOS alone.
+        const hdCmos = isHdd ? (g => [
+            [0x19, 47],
+            [0x1b, g.cylinders & 0xff], [0x1c, (g.cylinders >> 8) & 0xff],
+            [0x1d, g.heads & 0xff],
+            [0x1e, 0xff], [0x1f, 0xff],
+            [0x20, g.heads > 8 ? 0xc8 : 0xc0],
+            [0x21, g.cylinders & 0xff], [0x22, (g.cylinders >> 8) & 0xff],
+            [0x23, g.sectors & 0xff],
+            [0x39, 0x00],
+        ])(hdGeom) : [];
+        const hdCmosIdx = new Set(hdCmos.map(([i]) => i));
+        const config = {
+            ...base,
+            functionalInstructionCycles: 6,
+            regions: [
+                ...base.regions.filter(r => !(r.kind === 'rom' && r.start === 0xc0000)),
+                { kind: 'rom', start: 0xc0000, end: 0xc9fff },
+            ],
+            ...(isHdd ? {
+                chips: base.chips.map(chip => chip.kind === 'rtc' ? {
+                    ...chip,
+                    initialCmos: [
+                        ...chip.initialCmos.filter(([i]) => i !== 0x3d && i !== 0x12 && !hdCmosIdx.has(i)),
+                        [0x3d, 0x21], [0x12, 0xf0], ...hdCmos,
+                    ],
+                } : chip),
+            } : {}),
+        };
+
+        const targetOpts = { config };
+        // A hard-disk boot attaches its image as the ATA16 drive at construction
+        // (the adapter reads opts.ataImage/ataGeometry). A floppy is inserted
+        // into the µPD765 after construction, below.
+        if (isHdd) {
+            targetOpts.ataImage = bootImg.bytes;
+            targetOpts.ataGeometry = hdGeom;
+        }
+        const db = designerBoard();
+        if (db.board) {
+            targetOpts.board = db.board;
+            board = db.board;
+        }
+
+        // THE SINGLE i80386 TARGET CALL. No ROM is passed: the firmware and any
+        // floppy are applied to the live machine below, so the reset vector
+        // reads real BIOS bytes on the final reset.
+        const result = await createDebugTarget('i80386', targetOpts);
+        i8086ExecutionResult = result;
+        if (i8086ExecutionLifetime.signal.aborted) throw new Error('80386 attachment was disposed');
+
+        const machine = result.adapter?.machine || result.target?.machine;
+        if (!machine || typeof machine.loadRom !== 'function') {
+            throw new Error('the free-386 needs the experimental 80386 AT machine — none was built');
+        }
+        // Firmware at its three aliases (F0000h, FF0000h, C0000h), before the
+        // media so the BIOS is resident when the machine boots the disk.
+        machine.loadRom(bios, 0xf0000);
+        machine.loadRom(bios, 0xff0000);
+        machine.loadRom(vga, 0xc0000);
+
+        let readyMsg = 'free-386 (LGPL Bochs BIOS + VGABios) — no boot media, load a disk';
+        if (isFloppy) {
+            // A bootable OS floppy (FreeDOS, …) goes into the µPD765, not a ROM
+            // region. The FreeDOS-VGA fdc accepts a 1.2MB image (80/2/15); the
+            // manifest may state its own geometry.
+            const fdc = machine.chips && machine.chips.fdc1;
+            if (!fdc || typeof fdc.insert !== 'function') {
+                throw new Error('the free-386 FreeDOS floppy profile needs a µPD765 (fdc1) — none was built');
+            }
+            const geom = bootMedia.geometry ||
+                { cylinders: 80, heads: 2, sectors: 15, bytesPerSector: 512 };
+            fdc.insert(0, bootImg.bytes, geom);
+            readyMsg = `${bootMedia.name || 'floppy'} on the free-386 (A:) — the video is the VGA screen, `
+                + 'the keyboard steers it (a full FreeDOS boot takes tens of millions of instructions)';
+        } else if (isHdd) {
+            readyMsg = `${bootMedia.name || 'hard disk'} on the free-386 (C:) — the video is the VGA screen, `
+                + 'the keyboard steers it (a full FreeDOS boot takes tens of millions of instructions)';
+        }
+        machine.reset();
+
         wireMachineBench(result, createDebugSession);
         setStatus('ready', readyMsg);
         return session;

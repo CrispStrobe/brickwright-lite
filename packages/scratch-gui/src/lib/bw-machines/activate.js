@@ -162,14 +162,11 @@ export async function activateConfig(config, opts = {}) {
     }
 
     const targetKind = TARGET_KIND[cfg.machine] || cfg.machine;
-    if (cfg.machine === 'i80386') {
-        // Truth in the descriptor: lite's debug-runner has no i80386 branch yet
-        // (§8 step 6 ships the 386 as a config once the pin bump lands the free
-        // 386 core into lite). activateConfig still produces the correct inputs;
-        // a caller wiring the 386 boot consumes them then.
-        warnings.push('i80386 boot is not yet wired into lite\'s debug-runner ' +
-            '(design §8 step 6); bootMedia/media are produced for when it is');
-    }
+    // The i80386 boot path IS wired into lite's debug-runner now (attachI80386:
+    // the fully-free 386 on the vendored LGPL Bochs BIOS + VGABios, booting a
+    // FreeDOS floppy or hard disk and mirroring VGA video into the Widgets
+    // pane). The pin bump landed bw-board's free-386 core, so activateConfig's
+    // {targetKind, bootMedia, media} feed a real boot rather than a stub.
 
     // The panel widgets the manifest declared, and which one is the machine's
     // screen (the `source:'video'` display fed runner.video()). The host creates
@@ -178,10 +175,6 @@ export async function activateConfig(config, opts = {}) {
     // is correct for a serial-only or headless machine.
     const widgets = Array.isArray(cfg.widgets) ? cfg.widgets : [];
     const videoWidgetDecl = widgets.find(w => w && w.source === 'video') || null;
-    if (videoWidgetDecl && targetKind === 'i80386') {
-        warnings.push('the machine declares a video widget, but 386 video will ' +
-            'only reach it once the 386 boot path is wired into lite (see above)');
-    }
 
     return {
         mode: 'functional',
