@@ -8,7 +8,7 @@
 // against its media-lab bundle on a real run, set `verified: true`, then wire
 // the language button.
 
-import {compileAndRunOnDos} from './dos-compile.js';
+import {compileAndRunOnDos, runDosProgram} from './dos-compile.js';
 
 // DOS-NATIVE toolchains only: the compiler/interpreter is ITSELF a 16-bit DOS
 // program, so it runs on the DOS bench (dos-compile.js). GW-BASIC qualifies —
@@ -80,4 +80,123 @@ export async function runDosToolchain(routeId, source, opts = {}) {
         outputName: route.outputName, run: !!route.run,
         variant: opts.variant, maxSteps: opts.maxSteps
     });
+}
+
+/**
+ * The compile endpoint for a hosted route, honouring an override.
+ *
+ * The route's own `endpoint` is null in the tracked source because no ACK
+ * compile server is deployed yet; a deployment supplies the URL two ways — bake
+ * it into this table in a follow-up, or inject it per call as `opts.endpoint`.
+ * The call site (and the availability gate) go through this ONE function so the
+ * "is it configured?" question has a single answer, the same lesson the
+ * assemble tab learned: one function decides a route, the call site does not.
+ *
+ * @param {string} routeId a key of HOSTED_TOOLCHAINS
+ * @param {{endpoint?: string}} [opts]
+ * @returns {string|null}
+ */
+export function hostedEndpointFor (routeId, opts = {}) {
+    const route = HOSTED_TOOLCHAINS[routeId];
+    if (!route) return null;
+    const ep = opts.endpoint || route.endpoint;
+    return (typeof ep === 'string' && ep.trim()) ? ep : null;
+}
+
+/**
+ * Whether a hosted toolchain may be OFFERED as a code-tab button.
+ *
+ * It is not enough that the route exists: a hosted route with no endpoint is a
+ * button that can only fail, so the code tab must not show it. This returns true
+ * only when an endpoint is configured (in the table or injected). `verified`
+ * stays a SEPARATE fact the table carries — a deployed-but-unproven endpoint is
+ * still gated off until a real end-to-end run flips it — so both must hold.
+ *
+ * @param {string} routeId
+ * @param {{endpoint?: string, requireVerified?: boolean}} [opts]
+ * @returns {boolean}
+ */
+export function hostedToolchainReady (routeId, opts = {}) {
+    const route = HOSTED_TOOLCHAINS[routeId];
+    if (!route) return false;
+    if (!hostedEndpointFor(routeId, opts)) return false;
+    return opts.requireVerified === false ? true : !!route.verified;
+}
+
+/**
+ * Run a code-tab program through a HOSTED toolchain: POST the source to the
+ * compile server, receive an 8086 `.COM`, and run that .COM on the DOS bench —
+ * the SmallerC-assembler pattern (assemble-route.js `requestAssembly`'s hosted
+ * arm), reused for a host cross-compiler whose output, not the compiler, is the
+ * 8086 program. The `fetch` is injected so a test drives the whole path with a
+ * known-good .COM and no network; production passes the tab's fetch.
+ *
+ * The request/response contract mirrors stc-compiler /assemble so both hosted
+ * services speak one shape: POST JSON `{source}` → `{success, base64}` on
+ * success, or `{success:false, errors:[{line,message}]}` when the compiler
+ * rejected the program (the learner's problem, not a transport fault).
+ *
+ * @param {string} routeId a key of HOSTED_TOOLCHAINS
+ * @param {string} source the user's program text
+ * @param {object} [opts]
+ * @param {string} [opts.endpoint] override the route's endpoint (deploy plumbing / tests)
+ * @param {typeof fetch} [opts.fetch] injected fetch; defaults to globalThis.fetch
+ * @param {string} [opts.variant] cpu variant for the DOS bench
+ * @param {number} [opts.maxSteps] bench step bound
+ * @param {boolean} [opts.run=true] also run the returned .COM on the bench
+ * @returns {Promise<{route: string, com: Uint8Array, format: 'com',
+ *   screen: string, screenText: string[], exitCode: number, terminated: boolean,
+ *   exhausted: boolean, steps: number}>}
+ */
+export async function runHostedToolchain (routeId, source, opts = {}) {
+    const route = HOSTED_TOOLCHAINS[routeId];
+    if (!route) {
+        if (DOS_TOOLCHAINS[routeId]) {
+            throw new Error(`${routeId} is a DOS-native toolchain: it runs on the DOS ` +
+                'bench — use runDosToolchain, not runHostedToolchain');
+        }
+        throw new Error(`unknown hosted toolchain route: ${routeId}`);
+    }
+    const endpoint = hostedEndpointFor(routeId, opts);
+    if (!endpoint) {
+        throw new Error(`${route.label} has no compile endpoint configured — a host ` +
+            `cross-compiler server running \`ack -mmsdos86 -O\` must be deployed and its ` +
+            `URL set (HOSTED_TOOLCHAINS['${routeId}'].endpoint or opts.endpoint)`);
+    }
+    if (typeof source !== 'string' || !source.trim()) {
+        throw new Error(`${route.label}: there is no source to compile`);
+    }
+    const doFetch = opts.fetch || globalThis.fetch;
+    if (typeof doFetch !== 'function') {
+        throw new Error('runHostedToolchain needs a fetch (inject opts.fetch or run where globalThis.fetch exists)');
+    }
+
+    let res;
+    try {
+        res = await doFetch(endpoint, {
+            method: 'POST',
+            headers: {'content-type': 'application/json'},
+            body: JSON.stringify({source})
+        });
+    } catch (e) {
+        throw new Error(`${route.label}: compile service unreachable (${e.message})`);
+    }
+    if (!res.ok) throw new Error(`${route.label}: compile service HTTP ${res.status}`);
+    const result = await res.json();
+    if (!result.success) {
+        const msgs = (result.errors || []).map(e => (e.line ? `L${e.line}: ` : '') + e.message);
+        throw new Error(msgs.join('; ') || result.error || `${route.label}: compilation failed`);
+    }
+    if (!result.base64) throw new Error(`${route.label}: the compile service returned no program`);
+    const com = Uint8Array.from(atob(result.base64), c => c.charCodeAt(0));
+    if (!com.length) throw new Error(`${route.label}: the compile service returned an empty program`);
+
+    if (opts.run === false) {
+        return {route: routeId, com, format: 'com',
+            screen: '', screenText: [], exitCode: 0, terminated: false, exhausted: false, steps: 0};
+    }
+    const run = await runDosProgram({
+        bytes: com, format: 'com', variant: opts.variant, maxSteps: opts.maxSteps
+    });
+    return {route: routeId, com, format: 'com', ...run};
 }
