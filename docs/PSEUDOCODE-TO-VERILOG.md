@@ -39,7 +39,58 @@ same project, which is what proves the emission loses nothing."* `TWO_WAY` is
 `pseudocode, python, javascript, c, basic`; 8086 assembly reads back too, and
 everything else is one-way generated evidence.
 
-## Why Verilog is not simply the next backend
+## First: which Verilog?
+
+This note originally collapsed "Verilog" into "synthesisable Verilog", which is
+wrong and hid an option. Verilog is a full procedural language, and this is
+perfectly good Verilog:
+
+```verilog
+module demo;
+    integer i;
+    initial begin
+        for (i = 0; i < 5; i = i + 1)
+            $display("%0d squared is %0d", i, i * i);
+        $finish;
+    end
+endmodule
+```
+
+It is also **not synthesisable**. `initial`, `integer`, `$display` and
+`$finish` are simulation constructs: they describe something a simulator does,
+not something a chip is. So there are three targets here, not one, and they
+have very different costs:
+
+| | What it is | Can this app RUN it? |
+|---|---|---|
+| **V1** structural / combinational | what `modelToVerilog` emits today | **yes**, end to end — synthesis → netlist → gate sim → real pins |
+| **V2** behavioural testbench | the example above | **no** — see below |
+| **V3** synthesisable behavioural (FSM) | variables as registers, statements as states | in principle yes; nothing emits it |
+
+**The app has no event-driven Verilog simulator.** The simulation tier is
+GATE-level: `lib/bw-fpga/sim.js` wraps digitaljs' headless core and
+yosys2digitaljs, i.e. it simulates a *synthesised netlist*. There is no
+iverilog, verilator or vvp anywhere in the tree, and `sim.js`'s own header
+shows why adding one is not a small decision — it documents rejecting package
+entry points over licence (`EPL-2.0` excluded, a WTFPL-only dependency
+avoided) and over bundle size.
+
+So V2 is the shape that is **easiest to emit and impossible to execute**. A
+`for` loop with `$display` maps almost one-to-one from the block IR — easier
+than C, because printing needs no runtime call — and then nothing in the app
+can run the result.
+
+That matters because of a pattern the Code tab otherwise holds: every target
+reaches its device. C compiles and runs on an MCU; 8086 assembly assembles and
+boots the DOS bench; BASIC runs on the BBC bench. **V2 would be the first
+target that is text and nothing else.**
+
+There is precedent for that, though, and it should be weighed rather than
+assumed fatal: NQC is compiled in the browser for a LEGO RCX that is not
+present, and the ASM tab has a "listing mode: generated read-only evidence".
+Emit-only targets exist in that strip already.
+
+## Why a FULL Verilog backend is not simply the next backend
 
 Two questions decide it, and they are the same two the 8086 file asks.
 
@@ -103,7 +154,29 @@ refused by name.
   tests; the synthesis half is already tested.
 - **Cost:** only a narrow slice of programs produce anything at all.
 
-### B. Full lowering to an FSM (high-level synthesis)
+### A2. Behavioural testbench Verilog (V2), emit-only
+
+Emit the program as `initial begin … end` with `for`/`if`/`$display`.
+
+- **Cheapest of all to emit.** The block IR already has the control flow; there
+  is no runtime to write, because `$display` is the runtime.
+- **The round trip closes easily**, by the `asm-8086-to-pseudocode.js`
+  argument: the Verilog is machine-written in a shape this repo controls, so
+  reading it back is a small recursive-descent pass over a known subset, not a
+  Verilog parser.
+- **Nothing here can run it**, and it would be the first Code-tab target that
+  is text only. Precedent exists (NQC, ASM listing mode) but it is a real step
+  down from "every target reaches its device".
+- **The honest pedagogical case**, and it is not nothing: the gap between
+  simulation Verilog and synthesisable Verilog is one of the first things an
+  HDL beginner has to learn, and showing the same program in both — one that
+  prints, one that becomes gates — teaches exactly that. Emitting V2 *and*
+  refusing to synthesise it, with the reason, is a lesson rather than a
+  shortfall.
+- **The trap:** shipping V2 alone would let a learner believe they had
+  "programmed an FPGA" when they had written something no chip can be.
+
+### B. Full lowering to an FSM (high-level synthesis, V3)
 
 Variables become registers, statements become states, `wait` becomes a counter.
 
@@ -146,6 +219,11 @@ that justifies A.
 
 ## What is still open
 
+- **Would a small interpreter for the V2 subset be worth it?** We emit it, so
+  we could run it, the same way the 8086 reader parses a subset this repo
+  controls. That would restore "the target reaches its device" without adding
+  iverilog. Unknown: whether running a `$display` loop teaches anything the
+  Code tab's other targets do not already.
 - **How much pseudocode is actually in the subset?** Worth measuring against
   the shipped examples before building: if almost nothing qualifies, C is the
   better shape.
