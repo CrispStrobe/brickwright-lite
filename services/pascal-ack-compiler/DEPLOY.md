@@ -40,11 +40,11 @@ fly launch --now --image ghcr.io/crispstrobe/pascal-ack-compiler:latest \
 
 `--now` builds nothing and deploys the pulled image immediately; Fly assigns a
 public `https://pascal-ack.fly.dev`, so your endpoint is
-`https://pascal-ack.fly.dev/compile`. If the GHCR package is private, pass Fly a
-read token at launch (`--build-secret` is for builds; for a pull, run
-`fly deploy --image … --deploy-registry-username <user> --deploy-registry-password <PAT>`),
-or simply make the package public (see the GHCR note above) and no token is
-needed.
+`https://pascal-ack.fly.dev/compile`. This assumes the GHCR package is public
+(see the GHCR note above) — the simplest setup for a stateless compile endpoint.
+To pull a *private* GHCR image instead, log Fly's builder in first
+(`flyctl auth docker` uses your local Docker creds, so `docker login ghcr.io -u <user> -p <PAT>` beforehand),
+or mirror the image into Fly's own registry (`registry.fly.io`).
 
 ### Google Cloud Run
 
