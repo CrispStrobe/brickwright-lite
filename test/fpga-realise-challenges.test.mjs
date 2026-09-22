@@ -192,7 +192,7 @@ test('each realise challenge is gated behind designing that gate on the canvas',
     }
 });
 
-test('only NOR and the ripple adder have no canvas counterpart', () => {
+test('only NOR and the two 4-bit adders have no canvas counterpart', () => {
     // Pins the exceptions, so a future challenge cannot quietly skip the
     // "design it before you build it" rule by having no canvas lesson.
     //   nor            — the canvas ladder goes straight from OR to NAND
@@ -200,8 +200,10 @@ test('only NOR and the ripple adder have no canvas counterpart', () => {
     //                    it is gated behind full_adder_real instead, which is
     //                    the same circuit one bit wide.
     const canvasIds = new Set(CHALLENGES.filter(c => !isRealise(c)).map(c => c.id));
+    //   adder_chip_4   — the same function as ripple_adder_4, bought not built;
+    //                    gated behind having built it the long way first.
     assert.deepEqual(REALISE.filter(c => !canvasIds.has(subjectOf(c))).map(subjectOf),
-        ['nor', 'ripple_adder_4']);
+        ['nor', 'ripple_adder_4', 'adder_chip_4']);
 });
 
 test('a realise challenge with no canvas lesson is gated behind a realise one', () => {

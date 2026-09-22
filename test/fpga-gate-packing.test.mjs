@@ -13,6 +13,8 @@ import {icGatePins, gatesPerPackage, gateToLogicIc, LOGIC_IC_GATES} from '../ove
 // Direct path, not the bare specifier: the package's export map rewrites
 // bw-circuit-ui/src/* to src/src/*. lesson-bench.mjs reaches it the same way.
 import {generateBom, bomToCsv} from '../node_modules/bw-circuit-ui/src/model/bom.js';
+import {gradeRealisedCircuit, gradeMessageRealised} from '../overlay/scratch-gui/src/lib/bw-fpga/grader.js';
+import {challengeById} from '../overlay/scratch-gui/src/lib/bw-fpga/challenges.js';
 
 const {Circuit} = await boot();
 
@@ -142,4 +144,51 @@ test('the FPGA tab reports PACKAGES bought, not gates placed', () => {
     assert.match(tab, /built\.packages\.length/, 'it counts packages');
     assert.match(tab, /\$\{n\}× \$\{label\}/, 'as a bill like "2× 74HC86 Quad XOR"');
     assert.match(tab, /Parts list/, 'and points at the full list');
+});
+
+// ── Integration: the same function, bought instead of built ────────────────
+
+test('the 74HC283 adds exactly what twenty gates added', () => {
+    // The pedagogical claim of adder_chip_real is that the grader cannot tell
+    // the two builds apart. Check it by grading BOTH against their challenges
+    // and comparing what each board actually did.
+    const gates = new Circuit(5.0);
+    buildLogicIcCircuit(gates, IC_CIRCUITS.ripple_adder_4);
+    const chip = new Circuit(5.0);
+    buildLogicIcCircuit(chip, IC_CIRCUITS.adder_chip_4);
+
+    const built = gradeRealisedCircuit(gates, challengeById('ripple_adder_real'));
+    const bought = gradeRealisedCircuit(chip, challengeById('adder_chip_real'));
+    assert.equal(built.pass, true, gradeMessageRealised(built, challengeById('ripple_adder_real')));
+    assert.equal(bought.pass, true, gradeMessageRealised(bought, challengeById('adder_chip_real')));
+    assert.equal(built.checked, bought.checked, 'both drove the same number of rows');
+});
+
+test('one chip replaces five — and the parts list says so', () => {
+    const chip = new Circuit(5.0);
+    buildLogicIcCircuit(chip, IC_CIRCUITS.adder_chip_4);
+    const kinds = chip.parts.filter(p => String(p.kind).startsWith('74hc'));
+    assert.equal(kinds.length, 1, 'a single part');
+    assert.equal(kinds[0].kind, '74hc283');
+    const bom = generateBom(chip.parts);
+    const logic = bom.filter(l => /^74HC/.test(l.label));
+    assert.equal(logic.length, 1, 'one logic line in the shopping list');
+    assert.equal(logic[0].qty, 1);
+    // Against five for the gate-built version — the contrast IS the lesson.
+    const gates = new Circuit(5.0);
+    buildLogicIcCircuit(gates, IC_CIRCUITS.ripple_adder_4);
+    const gateChips = generateBom(gates.parts).filter(l => /^74HC/.test(l.label))
+        .reduce((n, l) => n + l.qty, 0);
+    assert.equal(gateChips, 5, 'five packages the long way, one the short way');
+});
+
+test('a single-part spec has no gates to pack, and is not asked to', () => {
+    const spec = IC_CIRCUITS.adder_chip_4;
+    assert.deepEqual(spec.gates, [], 'nothing to allocate');
+    assert.ok(spec.chip, 'it names the part directly');
+    const c = new Circuit(5.0);
+    const built = buildLogicIcCircuit(c, spec);
+    assert.equal(built.chips.length, 0, 'no gate placements');
+    assert.equal(built.packages.length, 1, 'but one package, so the BOM path still works');
+    assert.equal(built.outputs.length, 5, 'and its outputs still get LEDs');
 });

@@ -208,6 +208,19 @@ export const CHALLENGES = Object.freeze([
         rows: rippleRows,
         rowsNote: 'every bit position through all eight cases its full adder can see (all 512 combinations would take minutes)',
         expect: rippleExpect
+    },
+    {
+        id: 'adder_chip_real', title: 'The same adder — as one chip',
+        requires: ['ripple_adder_real'], realise: true, circuit: 'adder_chip_4', rungs: ['ic'],
+        brief: 'You just built 4-bit addition from twenty gates in five packages. The 74HC283 is the same function in ONE 16-pin part: the a and b pins go in, the s pins come out. Pick "4-bit adder (one chip)" and press ⚙, then Check — the grader drives exactly the same rows and cannot tell the difference, because there is none. That is integration, and it is why nobody wires adders out of XOR gates any more. Compare the two parts lists.',
+        inputs: io(['a0', 'b0', 'a1', 'b1', 'a2', 'b2', 'a3', 'b3', 'cin']),
+        outputs: io(['s0', 's1', 's2', 's3', 'cout']),
+        rows: rippleRows,
+        rowsNote: 'every bit position through all eight cases a full adder can see (all 512 combinations would take minutes)',
+        expect: i => {
+            const out = rippleExpect(i);
+            return {s0: out.sum0, s1: out.sum1, s2: out.sum2, s3: out.sum3, cout: out.cout};
+        }
     }
 ]);
 
