@@ -64,3 +64,13 @@ test('setDevice retargets only when the device has a pool (i8086 falls through)'
     assert.match(src, /DEVICE \$\{deviceId\.toUpperCase\(\)\}/,
         'the fall-through must rewrite the DEVICE line');
 });
+
+test('loadExample also skips retarget for a pool-less device and switches DEVICE', () => {
+    const src = readFileSync(IMPORTER, 'utf8');
+    // loadExample (bundled examples) guards the same way: no pool → no retarget,
+    // switch the DEVICE line so an example loads onto the i8086 DOS bench.
+    assert.match(src, /RETARGET_POOLS\s*&&\s*SB3Creator\.RETARGET_POOLS\[device\]/,
+        'loadExample must gate retarget on the device pool table');
+    assert.match(src, /DEVICE \$\{device\.toUpperCase\(\)\}/,
+        'loadExample must rewrite the DEVICE line for a pool-less target');
+});

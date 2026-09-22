@@ -3378,6 +3378,16 @@ class PseudocodeImporter extends React.Component {
         // Retarget hardware examples when the selected device differs.
         if (device && exampleDevice && device !== exampleDevice.toLowerCase()) {
             const SB3Creator = (await this.lib()).default;
+            // A pool-less target (the i8086 DOS bench) has no MCU pins to remap;
+            // retargetPseudocode would refuse it ("unknown device"). Load the
+            // example with its DEVICE line switched instead — its PIN/PART lines
+            // are inert on the bench. Mirrors the setDevice guard.
+            if (!(SB3Creator.RETARGET_POOLS && SB3Creator.RETARGET_POOLS[device])) {
+                const switched = src.replace(/^DEVICE\s+[\w-]+.*$/im, `DEVICE ${device.toUpperCase()}`);
+                this.setState({lang: 'pseudocode', output: null, status: '',
+                    buffers: {pseudocode: switched, python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''}});
+                return;
+            }
             const result = SB3Creator.retargetPseudocode(src, device);
             if (result.ok) {
                 this.setState({lang: 'pseudocode', output: null,
