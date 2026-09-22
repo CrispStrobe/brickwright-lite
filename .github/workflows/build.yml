@@ -964,6 +964,23 @@ jobs:
       - name: Serve the built app
         if: ${{ !cancelled() && steps.playwright.outcome == 'success' && steps.build_editor_browser.outcome == 'success' }}
         id: serve
+        # ALREADY THREADED, and this line must stay as it is. `python3 -m
+        # http.server` is not the single-threaded `HTTPServer` class: its CLI
+        # has used `ThreadingHTTPServer` since Python 3.7 (http.server.test()
+        # takes ServerClass=ThreadingHTTPServer by default), so it serves a
+        # connection per thread and a chunked bundle fetched over several
+        # sockets is fine. Measured here on 2026-09-22, Python 3.12: with one
+        # connection deliberately stalled mid-request, a second request is
+        # served in 8 ms; the same experiment against a real single-threaded
+        # HTTPServer blocks for the full 5 s timeout.
+        #
+        # So if a gate ever reports ERR_ABORTED and a page with NO TABS, the
+        # server is not the culprit — look for a render crash in the app (a
+        # throw at render unmounts the whole tree and leaves no tab strip; see
+        # test/i18n-no-hardcoded-strings.test.mjs for the family). Swapping
+        # this line for a hand-rolled server would change nothing and lose the
+        # `--directory` handling. test/ci-serve-threaded.test.mjs holds the
+        # line AND re-measures the behaviour, control included.
         run: |
           python3 -m http.server 8617 --directory packages/scratch-gui/build &
           for i in $(seq 1 30); do curl -sf http://localhost:8617/ >/dev/null && break; sleep 1; done
