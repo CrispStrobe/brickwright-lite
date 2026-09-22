@@ -45,7 +45,7 @@ question from whether the row agrees with the code.
 | pico | Raspberry Pi | rp2040 | rp2040js [hex,bin,uf2,py] · tier 2c | micropython-raw-repl [py]<br>uf2-bootsel-download [uf2] |  |
 | stm32f030 | STM32 (ARM) | stm32 | stm32f0 [bin,hex] · tier 2a · needs labwired-wasm (absent) | stm32-uart-bootloader-webserial [bin,hex]<br>cmsis-dap-swd-webusb [bin] |  |
 | eater6502 | 6502 | w65c02 | eater6502 [hex,bin,bas] · tier 2a · needs 65c02-vectors (standing) | eeprom-programmer-webserial [hex,bin] |  |
-| z80 | Z80 | z80 | z80 [hex,bin,bas] · tier 2a · needs z80-vectors (standing) | eeprom-programmer-webserial [hex,bin] |  |
+| z80 | Z80 | z80 | z80 [hex,bin,bas] · tier 2a · needs z80-vectors (standing)<br>cpm-z80 [cpm] · tier 2c | eeprom-programmer-webserial [hex,bin] |  |
 | i8086 | 8086 | i8086 | i8086 [com,bin] · tier 2a · needs 8086-vectors (standing), elks-image (recorded) | export [com,img] |  |
 | microbit | MicroPython | microbit | microbit-sim [py] · tier 2a | hex-append-download [py]<br>daplink-webusb [hex] |  |
 | calliopemini | MicroPython | microbit | microbit-sim [py] · tier 2a | hex-append-download [py] |  |

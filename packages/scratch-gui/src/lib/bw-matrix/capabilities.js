@@ -93,6 +93,7 @@ export const ARTEFACTS = Object.freeze([
     'py', // MicroPython / CircuitPython source
     'bas', // BASIC text typed into a ROM interpreter
     'com', // DOS .COM program
+    'cpm', // CP/M-80 (Z80) .COM program, run on the CP/M BDOS service layer
     'img', // bootable 1.44M floppy image (a .COM wrapped in a boot sector)
     'ts' // MakeCode (PXT) TypeScript, compiled hosted
 ]);
@@ -306,11 +307,23 @@ export const DEVICES = Object.freeze([
     dev('z80', 'Z80 bench', 'Z80', 'z80', {
         pickerCompile: false,
         pickerEmulator: 'z80',
-        sim: [eng('z80', ['hex', 'bin', 'bas'], {
-            tier: '2a',
-            needs: ['z80-vectors'],
-            note: 'BBC BASIC on the bench'
-        })],
+        sim: [
+            eng('z80', ['hex', 'bin', 'bas'], {
+                tier: '2a',
+                needs: ['z80-vectors'],
+                note: 'BBC BASIC on the bench'
+            }),
+            // The CP/M-80 BDOS service layer (lib/bw-debug/cpm-z80.js): a Z80
+            // CP/M .COM runs at 0x0100 with BDOS emulated behind the 0x0005
+            // trap — the Z80 twin of the 8086 DOS service layer, and the
+            // runtime that lets a host cross-compiler's Z80 output (ACK's
+            // z80/cpm backend, SDCC) run here. Proven on a real SDCC-compiled
+            // .COM in test/cpm-z80.test.mjs (checked, no browser emulator pane
+            // of its own, like microbit-sim).
+            eng('cpm-z80', ['cpm'], {
+                note: 'CP/M-80 BDOS service layer; runs a real Z80 CP/M .COM (test/cpm-z80.test.mjs)'
+            })
+        ],
         silicon: [tx('eeprom-programmer-webserial', ['hex', 'bin'], 'eeprom')]
     }),
     // Moved here from DEVICE_GROUPS in pseudocode-importer.jsx (T7): the picker is
@@ -638,8 +651,17 @@ export const CELLS = Object.freeze({
             lowered: [via('basic'), viaOpen('c', 'N1')]
         },
         c: {
-            native: open('hex', 'SDCC -mz80', 'hosted', 'N1', {
-                note: 'generateC already emits a z80 core; the hosted service assembles Z80 but has no C target'
+            // The RUNTIME half now exists: a Z80 CP/M .COM runs on the CP/M-80
+            // service layer (the `cpm-z80` engine above), proven on a real
+            // SDCC-compiled program (test/cpm-z80.test.mjs). What is still OPEN
+            // is the COMPILE half — a hosted `sdcc -mz80` / `ack -mcpm` endpoint
+            // that returns a .COM; no such server is stood up, so this is not
+            // yet a one-click code-tab button (CPM_TOOLCHAINS carries the routes
+            // with endpoint: null). ACK's z80/cpm backend gives libre Pascal/C/
+            // Modula-2 the same way.
+            native: open('cpm', 'SDCC -mz80 / ACK -mcpm → CP/M .COM', 'hosted', 'N1', {
+                note: 'runtime proven (CP/M-80 service layer runs a real cross-compiled Z80 CP/M .COM, '
+                    + 'test/cpm-z80.test.mjs); open half is a hosted compile endpoint returning the .COM'
             }),
             lowered: [viaOpen('c', 'N1')]
         },
