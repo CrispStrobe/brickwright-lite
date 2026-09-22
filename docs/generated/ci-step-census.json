@@ -1,416 +1,434 @@
 {
- "generatedAt": "2026-09-09T02:19:42.860Z",
+ "generatedAt": "2026-09-22T11:34:02.671Z",
  "repo": "CrispStrobe/brickwright-lite",
- "headSha": "c2e470dae",
- "newestMainRun": 34302160139,
+ "headSha": "ff1e4eaf3",
+ "newestMainRun": 35717421030,
  "runs": [
   {
-   "run": 34301214581,
+   "run": 35720414899,
+   "workflow": "ack-z80-cpm.yml",
+   "branch": "lane/ack-z80-cpm-verified",
+   "sha": "eb8512dac"
+  },
+  {
+   "run": 35719689401,
+   "workflow": "ack-z80-cpm.yml",
+   "branch": "lane/ack-z80-cpm-verified",
+   "sha": "7d0b98228"
+  },
+  {
+   "run": 35715268456,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "07835eea3"
+   "sha": "e1e86600b"
   },
   {
-   "run": 34300203610,
+   "run": 35710277898,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "b6a90a847"
+   "sha": "91636f7a9"
   },
   {
-   "run": 34297828459,
+   "run": 35708855376,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "1bfb68b10"
+   "sha": "6eb494d47"
   },
   {
-   "run": 34295730696,
+   "run": 35707819640,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "1de30ac3c"
+   "sha": "805e502fd"
   },
   {
-   "run": 34290727032,
+   "run": 35687222114,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "89c1af698"
+   "sha": "228f11038"
   },
   {
-   "run": 34287435706,
+   "run": 35645829703,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "e671c811b"
+   "sha": "77116968f"
   },
   {
-   "run": 34286257638,
+   "run": 35644365711,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "1739e7e89"
+   "sha": "cc03c0143"
   },
   {
-   "run": 34282883097,
+   "run": 35641773412,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "3d543965f"
+   "sha": "6caf0cb7e"
   },
   {
-   "run": 34279960458,
+   "run": 35632021239,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "b8da8e197"
+   "sha": "6a3f615b7"
   },
   {
-   "run": 34275137804,
+   "run": 35624402750,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "ef1fa3e66"
+   "sha": "fbbb6894a"
   },
   {
-   "run": 34269802686,
+   "run": 35622846293,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "f917c1f12"
+   "sha": "42d202ccb"
   },
   {
-   "run": 34267943030,
+   "run": 35618514484,
    "workflow": "build.yml",
    "branch": "main",
-   "sha": "4218ebb1e"
+   "sha": "2d00d3de2"
   },
   {
-   "run": 34264362972,
+   "run": 35720465678,
    "workflow": "build.yml",
-   "branch": "main",
-   "sha": "2bb7ad8b0"
+   "branch": "lane/ack-z80-cpm-verified",
+   "sha": "eb8512dac"
   },
   {
-   "run": 34258891216,
+   "run": 35719864202,
    "workflow": "build.yml",
-   "branch": "main",
-   "sha": "e64f24f5e"
+   "branch": "lane/audio-widgets",
+   "sha": "6e1c1c513"
   },
   {
-   "run": 34257046925,
+   "run": 35717664109,
    "workflow": "build.yml",
-   "branch": "main",
-   "sha": "4540cef3c"
+   "branch": "lane/cpm-z80",
+   "sha": "3d0b6b0b8"
   },
   {
-   "run": 34253029898,
+   "run": 35715357813,
    "workflow": "build.yml",
-   "branch": "main",
-   "sha": "a6d5e31c8"
+   "branch": "lane/pascal-ack-hosted",
+   "sha": "238829a2b"
   },
   {
-   "run": 34301389868,
+   "run": 35713622167,
    "workflow": "build.yml",
-   "branch": "lane/c3b2-lossless-code-listing-v2",
-   "sha": "c2e470dae"
+   "branch": "lane/libre-dos-basic",
+   "sha": "53fc5e208"
   },
   {
-   "run": 34300364497,
+   "run": 35711051745,
    "workflow": "build.yml",
-   "branch": "fix/rust-notices-safe-check-n1-replay",
-   "sha": "07835eea3"
+   "branch": "lane/pascal-ack-hosted",
+   "sha": "0dafc098a"
   },
   {
-   "run": 34299981222,
+   "run": 35710785183,
    "workflow": "build.yml",
-   "branch": "fix/rust-notices-safe-check-n1",
-   "sha": "3440a6950"
+   "branch": "lane/fpga-i18n",
+   "sha": "0b45bcc28"
   },
   {
-   "run": 34299487402,
+   "run": 35710389872,
    "workflow": "build.yml",
-   "branch": "lane/c3b1-next-code-address-pin",
-   "sha": "b6a90a847"
+   "branch": "lane/libre-dos-basic",
+   "sha": "9ae333622"
   },
   {
-   "run": 34299094448,
+   "run": 35710246466,
    "workflow": "build.yml",
-   "branch": "fix/rust-notices-safe-check-n1",
-   "sha": "b1d85de35"
+   "branch": "lane/machine-manager-foundation",
+   "sha": "192ca62a1"
   },
   {
-   "run": 34297054656,
+   "run": 35709042079,
    "workflow": "build.yml",
-   "branch": "vendor/labwired-breakpoint-handles-v1",
-   "sha": "1bfb68b10"
+   "branch": "lane/machine-manager-foundation",
+   "sha": "2e029d713"
   },
   {
-   "run": 34294976918,
+   "run": 35707945714,
    "workflow": "build.yml",
-   "branch": "lane/c2-exact-code-toggle",
-   "sha": "1de30ac3c"
+   "branch": "lane/fpga-i18n",
+   "sha": "38014e80b"
   },
   {
-   "run": 34289705924,
+   "run": 35707233458,
    "workflow": "build.yml",
-   "branch": "pin/bw-board-i8086-code-range-v1",
-   "sha": "89c1af698"
+   "branch": "lane/machine-manager-foundation",
+   "sha": "f70467ed2"
   },
   {
-   "run": 34286558047,
+   "run": 35706082047,
    "workflow": "build.yml",
-   "branch": "vendor/debug-session-retirement-v2",
-   "sha": "e671c811b"
+   "branch": "feat/dos-compile-route",
+   "sha": "b2263fe28"
   },
   {
-   "run": 34285454094,
+   "run": 35704747078,
    "workflow": "build.yml",
-   "branch": "vendor/debug-session-retirement",
-   "sha": "fe38646a7"
+   "branch": "lane/machine-manager-foundation",
+   "sha": "05ee80f04"
   },
   {
-   "run": 34285326698,
+   "run": 35688357801,
    "workflow": "build.yml",
-   "branch": "lane/lite-watchpoint-physical-address-v2",
-   "sha": "1739e7e89"
+   "branch": "feat/dos-compile-route",
+   "sha": "7b3d730a8"
   },
   {
-   "run": 34283917230,
+   "run": 35687584714,
    "workflow": "build.yml",
-   "branch": "lane/lite-watchpoint-physical-address-v1",
-   "sha": "18341e268"
+   "branch": "lane/machine-manager-foundation",
+   "sha": "13f6882a0"
   },
   {
-   "run": 34281599725,
+   "run": 35686652956,
    "workflow": "build.yml",
-   "branch": "lane/lite-bwboard-watch-contract-v1",
-   "sha": "3d543965f"
+   "branch": "lane/machine-manager-foundation",
+   "sha": "9f85cb5a4"
   },
   {
-   "run": 34278812911,
+   "run": 35686521523,
    "workflow": "build.yml",
-   "branch": "vendor/cui-singleton-convergence-v3",
-   "sha": "b8da8e197"
+   "branch": "fix/i8086-code-tab-selectable",
+   "sha": "de32370a9"
   },
   {
-   "run": 34273964078,
+   "run": 35686385961,
    "workflow": "build.yml",
-   "branch": "cleanup/package-examples-removal-v3",
-   "sha": "ef1fa3e66"
+   "branch": "lane/fpga-gate-packing",
+   "sha": "aae649223"
   },
   {
-   "run": 34270939354,
+   "run": 35684194739,
    "workflow": "build.yml",
-   "branch": "vendor/cui-singleton-convergence-v2",
-   "sha": "2e19d0835"
+   "branch": "lane/machine-manager-foundation",
+   "sha": "80ab1ceec"
   },
   {
-   "run": 34270577546,
+   "run": 35684151615,
    "workflow": "build.yml",
-   "branch": "cleanup/overlay-source-of-truth-v2",
-   "sha": "ed59c0a4f"
+   "branch": "fix/i8086-code-tab-selectable",
+   "sha": "8c83447f6"
   },
   {
-   "run": 34269474079,
+   "run": 35653639434,
    "workflow": "build.yml",
-   "branch": "cleanup/overlay-source-of-truth-v1",
-   "sha": "3e1bb6fad"
+   "branch": "lane/machine-manager-foundation",
+   "sha": "bb74134e1"
   },
   {
-   "run": 34268635533,
+   "run": 35648925031,
    "workflow": "build.yml",
-   "branch": "feat/x86-backend-lab",
-   "sha": "5e74286bc"
+   "branch": "lane/machine-manager-foundation",
+   "sha": "afe93cccf"
   },
   {
-   "run": 34268309352,
+   "run": 35648176206,
    "workflow": "build.yml",
-   "branch": "lane/lite-avr-retirement-v2",
-   "sha": "f917c1f12"
+   "branch": "lane/fpga-gate-packing",
+   "sha": "248215d2a"
   },
   {
-   "run": 34268126919,
+   "run": 35645889381,
    "workflow": "build.yml",
-   "branch": "cleanup/overlay-source-of-truth-v1",
-   "sha": "e23f803a8"
+   "branch": "lane/fpga-gate-packing",
+   "sha": "8ce5652c5"
   },
   {
-   "run": 34266508832,
+   "run": 35643567098,
    "workflow": "build.yml",
-   "branch": "fix/debug-history-pause-race-v1",
-   "sha": "4218ebb1e"
+   "branch": "lane/fpga-ripple-adder",
+   "sha": "23628f897"
   },
   {
-   "run": 34266037150,
+   "run": 35640467656,
    "workflow": "build.yml",
-   "branch": "feat/x86-backend-lab",
-   "sha": "8030218da"
+   "branch": "lane/fpga-full-adder",
+   "sha": "038c4309e"
   },
   {
-   "run": 34265892483,
+   "run": 35638594388,
    "workflow": "build.yml",
-   "branch": "lane/lite-avr-retirement",
-   "sha": "c8d229bba"
+   "branch": "lane/fpga-full-adder",
+   "sha": "8fda99194"
   },
   {
-   "run": 34261844273,
+   "run": 35630947577,
    "workflow": "build.yml",
-   "branch": "lane/sb3-pin-9173ca75-v3",
-   "sha": "2bb7ad8b0"
+   "branch": "lane/fpga-multi-output",
+   "sha": "850e36f4b"
   },
   {
-   "run": 34259750895,
+   "run": 35630837737,
    "workflow": "build.yml",
-   "branch": "lane/m6502-event-breakpoint-parity",
-   "sha": "bd58c196e"
+   "branch": "lite-floppy-os-console",
+   "sha": "2c34fd8ef"
   },
   {
-   "run": 34258727694,
+   "run": 35629485603,
    "workflow": "build.yml",
-   "branch": "lane/sb3-pin-c593",
-   "sha": "1ade8a697"
+   "branch": "lane/fpga-multi-output",
+   "sha": "fe583cd97"
   },
   {
-   "run": 34257773471,
+   "run": 35621725077,
    "workflow": "build.yml",
-   "branch": "lane/z80-event-breakpoint-parity",
-   "sha": "e64f24f5e"
+   "branch": "lane/corpus-findings-redate-impl",
+   "sha": "8e1d16498"
   },
   {
-   "run": 34255736047,
+   "run": 35620394686,
    "workflow": "build.yml",
-   "branch": "lane/avr-event-breakpoints",
-   "sha": "4540cef3c"
+   "branch": "lane/corpus-findings-redate-impl",
+   "sha": "df2654ed4"
   },
   {
-   "run": 34252014184,
+   "run": 35618908346,
    "workflow": "build.yml",
-   "branch": "lane/code-debugger-discoverability",
-   "sha": "a6d5e31c8"
+   "branch": "lane/corpus-findings-redate",
+   "sha": "7cd973650"
   },
   {
-   "run": 34250748459,
+   "run": 35617137148,
    "workflow": "build.yml",
-   "branch": "lane/code-debugger-discoverability",
-   "sha": "e5e2cea58"
+   "branch": "lane/canary-all-three-impl",
+   "sha": "ecf68ebfb"
   },
   {
-   "run": 34250238219,
-   "workflow": "build.yml",
-   "branch": "perf/i8086-device-advance",
-   "sha": "866bfba2c"
-  },
-  {
-   "run": 34302160139,
+   "run": 35717421030,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "c2e470dae"
+   "sha": "ff1e4eaf3"
   },
   {
-   "run": 34301892869,
+   "run": 35717161201,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "07835eea3"
+   "sha": "ff1e4eaf3"
   },
   {
-   "run": 34300904763,
+   "run": 35716343413,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "b6a90a847"
+   "sha": "ff1e4eaf3"
   },
   {
-   "run": 34300266226,
+   "run": 35715896071,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "b6a90a847"
+   "sha": "ff1e4eaf3"
   },
   {
-   "run": 34298578969,
+   "run": 35712734100,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "1bfb68b10"
+   "sha": "91636f7a9"
   },
   {
-   "run": 34297895244,
+   "run": 35711202423,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "1bfb68b10"
+   "sha": "91636f7a9"
   },
   {
-   "run": 34296442803,
+   "run": 35710956120,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "1de30ac3c"
+   "sha": "91636f7a9"
   },
   {
-   "run": 34295797967,
+   "run": 35708995343,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "1de30ac3c"
+   "sha": "6eb494d47"
   },
   {
-   "run": 34291555789,
+   "run": 35708830038,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "d308edb13"
+   "sha": "805e502fd"
   },
   {
-   "run": 34290822069,
+   "run": 35687869841,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "89c1af698"
+   "sha": "228f11038"
   },
   {
-   "run": 34288291028,
+   "run": 35687321082,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "e671c811b"
+   "sha": "228f11038"
   },
   {
-   "run": 34287235080,
+   "run": 35648975899,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "1739e7e89"
+   "sha": "77116968f"
   },
   {
-   "run": 34286331164,
+   "run": 35647263406,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "1739e7e89"
+   "sha": "77116968f"
   },
   {
-   "run": 34283828166,
+   "run": 35644908856,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "3d543965f"
+   "sha": "cc03c0143"
   },
   {
-   "run": 34282976481,
+   "run": 35643513692,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "3d543965f"
+   "sha": "6caf0cb7e"
   },
   {
-   "run": 34280844105,
+   "run": 35633159141,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "b8da8e197"
+   "sha": "6a3f615b7"
   },
   {
-   "run": 34276145898,
+   "run": 35625557115,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "ef1fa3e66"
+   "sha": "fbbb6894a"
   },
   {
-   "run": 34270854437,
+   "run": 35624699581,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "f917c1f12"
+   "sha": "fbbb6894a"
   },
   {
-   "run": 34269155629,
+   "run": 35620573432,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "0460b1c76"
+   "sha": "518380f01"
   },
   {
-   "run": 34268037786,
+   "run": 35616182771,
    "workflow": "ci-metrics.yml",
    "branch": "main",
-   "sha": "4218ebb1e"
+   "sha": "e5a0311fa"
+  },
+  {
+   "run": 35075858929,
+   "workflow": "cycle-core-qualification.yml",
+   "branch": "main",
+   "sha": "4e2cf9c88"
+  },
+  {
+   "run": 34328674932,
+   "workflow": "cycle-core-qualification.yml",
+   "branch": "main",
+   "sha": "1f566945e"
   },
   {
    "run": 34046275226,
@@ -515,124 +533,220 @@
    "sha": "00819f759"
   },
   {
-   "run": 34302105486,
+   "run": 35720465742,
+   "workflow": "debugger.yml",
+   "branch": "lane/ack-z80-cpm-verified",
+   "sha": "eb8512dac"
+  },
+  {
+   "run": 35720179406,
+   "workflow": "debugger.yml",
+   "branch": "lane/fpga-i18n",
+   "sha": "cdbabb564"
+  },
+  {
+   "run": 35719864200,
+   "workflow": "debugger.yml",
+   "branch": "lane/audio-widgets",
+   "sha": "6e1c1c513"
+  },
+  {
+   "run": 35717664093,
+   "workflow": "debugger.yml",
+   "branch": "lane/cpm-z80",
+   "sha": "3d0b6b0b8"
+  },
+  {
+   "run": 35715717394,
+   "workflow": "debugger.yml",
+   "branch": "lane/cpm-z80",
+   "sha": "11a1cc6b3"
+  },
+  {
+   "run": 35715440679,
    "workflow": "debugger.yml",
    "branch": "main",
-   "sha": "c2e470dae"
+   "sha": "ff1e4eaf3"
   },
   {
-   "run": 34300203607,
+   "run": 35715357809,
+   "workflow": "debugger.yml",
+   "branch": "lane/pascal-ack-hosted",
+   "sha": "238829a2b"
+  },
+  {
+   "run": 35715268291,
    "workflow": "debugger.yml",
    "branch": "main",
-   "sha": "b6a90a847"
+   "sha": "e1e86600b"
   },
   {
-   "run": 34297828435,
+   "run": 35713622172,
+   "workflow": "debugger.yml",
+   "branch": "lane/libre-dos-basic",
+   "sha": "53fc5e208"
+  },
+  {
+   "run": 35711051847,
+   "workflow": "debugger.yml",
+   "branch": "lane/pascal-ack-hosted",
+   "sha": "0dafc098a"
+  },
+  {
+   "run": 35710389905,
+   "workflow": "debugger.yml",
+   "branch": "lane/libre-dos-basic",
+   "sha": "9ae333622"
+  },
+  {
+   "run": 35710277887,
    "workflow": "debugger.yml",
    "branch": "main",
-   "sha": "1bfb68b10"
+   "sha": "91636f7a9"
   },
   {
-   "run": 34295730796,
+   "run": 35710246462,
+   "workflow": "debugger.yml",
+   "branch": "lane/machine-manager-foundation",
+   "sha": "192ca62a1"
+  },
+  {
+   "run": 35709042015,
+   "workflow": "debugger.yml",
+   "branch": "lane/machine-manager-foundation",
+   "sha": "2e029d713"
+  },
+  {
+   "run": 35708855317,
    "workflow": "debugger.yml",
    "branch": "main",
-   "sha": "1de30ac3c"
+   "sha": "6eb494d47"
   },
   {
-   "run": 34290727077,
+   "run": 35707233442,
    "workflow": "debugger.yml",
+   "branch": "lane/machine-manager-foundation",
+   "sha": "f70467ed2"
+  },
+  {
+   "run": 35707002943,
+   "workflow": "debugger.yml",
+   "branch": "lane/machine-manager-foundation",
+   "sha": "cdb9ed203"
+  },
+  {
+   "run": 35686756541,
+   "workflow": "deploy-daily.yml",
    "branch": "main",
-   "sha": "89c1af698"
+   "sha": "77116968f"
   },
   {
-   "run": 34286257710,
-   "workflow": "debugger.yml",
+   "run": 35570630398,
+   "workflow": "deploy-daily.yml",
    "branch": "main",
-   "sha": "1739e7e89"
+   "sha": "e8660cb4f"
   },
   {
-   "run": 34282883099,
-   "workflow": "debugger.yml",
+   "run": 35561103364,
+   "workflow": "deploy-daily.yml",
    "branch": "main",
-   "sha": "3d543965f"
+   "sha": "4d51adca6"
   },
   {
-   "run": 34267942923,
-   "workflow": "debugger.yml",
+   "run": 35535316774,
+   "workflow": "deploy-daily.yml",
    "branch": "main",
-   "sha": "4218ebb1e"
+   "sha": "141dfb257"
   },
   {
-   "run": 34266511938,
-   "workflow": "debugger.yml",
-   "branch": "fix/debug-history-pause-race-v1",
-   "sha": "4218ebb1e"
-  },
-  {
-   "run": 34261266116,
-   "workflow": "debugger.yml",
+   "run": 35534743800,
+   "workflow": "deploy-daily.yml",
    "branch": "main",
-   "sha": "7a54751ed"
+   "sha": "f46b0dce6"
   },
   {
-   "run": 34260871002,
-   "workflow": "debugger.yml",
+   "run": 35520125838,
+   "workflow": "deploy-daily.yml",
    "branch": "main",
-   "sha": "bd58c196e"
+   "sha": "12820dbe4"
   },
   {
-   "run": 34258892123,
-   "workflow": "debugger.yml",
+   "run": 35506389000,
+   "workflow": "deploy-daily.yml",
    "branch": "main",
-   "sha": "e64f24f5e"
+   "sha": "67a23a6d4"
   },
   {
-   "run": 34258891233,
-   "workflow": "debugger.yml",
+   "run": 35489309921,
+   "workflow": "deploy-daily.yml",
    "branch": "main",
-   "sha": "e64f24f5e"
+   "sha": "ffb730f3a"
   },
   {
-   "run": 34257046958,
-   "workflow": "debugger.yml",
+   "run": 35420609313,
+   "workflow": "deploy-daily.yml",
    "branch": "main",
-   "sha": "4540cef3c"
+   "sha": "3b7883ab4"
   },
   {
-   "run": 34254732092,
-   "workflow": "debugger.yml",
-   "branch": "lane/avr-event-breakpoints",
-   "sha": "2200e3404"
-  },
-  {
-   "run": 34253045779,
-   "workflow": "debugger.yml",
+   "run": 35306222501,
+   "workflow": "deploy-daily.yml",
    "branch": "main",
-   "sha": "a6d5e31c8"
+   "sha": "aea52726b"
   },
   {
-   "run": 34247656459,
-   "workflow": "debugger.yml",
+   "run": 35182148148,
+   "workflow": "deploy-daily.yml",
    "branch": "main",
-   "sha": "37f41c6da"
+   "sha": "af81f209c"
   },
   {
-   "run": 34242970089,
-   "workflow": "debugger.yml",
+   "run": 35055449000,
+   "workflow": "deploy-daily.yml",
    "branch": "main",
-   "sha": "5ed83a313"
+   "sha": "4e2cf9c88"
   },
   {
-   "run": 34238687040,
-   "workflow": "debugger.yml",
+   "run": 34928962410,
+   "workflow": "deploy-daily.yml",
    "branch": "main",
-   "sha": "fbd09b0b5"
+   "sha": "4783165b8"
   },
   {
-   "run": 34201474291,
-   "workflow": "debugger.yml",
+   "run": 34806156275,
+   "workflow": "deploy-daily.yml",
    "branch": "main",
-   "sha": "9d55123eb"
+   "sha": "dd959068e"
+  },
+  {
+   "run": 34737701544,
+   "workflow": "deploy-daily.yml",
+   "branch": "main",
+   "sha": "a0102f815"
+  },
+  {
+   "run": 34672264978,
+   "workflow": "deploy-daily.yml",
+   "branch": "main",
+   "sha": "89b8589b5"
+  },
+  {
+   "run": 34561193898,
+   "workflow": "deploy-daily.yml",
+   "branch": "main",
+   "sha": "729a689da"
+  },
+  {
+   "run": 34436166364,
+   "workflow": "deploy-daily.yml",
+   "branch": "main",
+   "sha": "1f566945e"
+  },
+  {
+   "run": 34310143079,
+   "workflow": "deploy-daily.yml",
+   "branch": "main",
+   "sha": "ca069deb9"
   },
   {
    "run": 34185841231,
@@ -641,202 +755,124 @@
    "sha": "7de6b5605"
   },
   {
-   "run": 34081832726,
-   "workflow": "deploy-daily.yml",
-   "branch": "main",
-   "sha": "afec18c5a"
-  },
-  {
-   "run": 34010648531,
-   "workflow": "deploy-daily.yml",
-   "branch": "main",
-   "sha": "6d9a08484"
-  },
-  {
-   "run": 33943321042,
-   "workflow": "deploy-daily.yml",
-   "branch": "main",
-   "sha": "d76b020f3"
-  },
-  {
-   "run": 33835349090,
-   "workflow": "deploy-daily.yml",
-   "branch": "main",
-   "sha": "49d5e8fc3"
-  },
-  {
-   "run": 33713508210,
-   "workflow": "deploy-daily.yml",
-   "branch": "main",
-   "sha": "2846d589f"
-  },
-  {
-   "run": 33589209702,
-   "workflow": "deploy-daily.yml",
-   "branch": "main",
-   "sha": "da03ba12d"
-  },
-  {
-   "run": 33470641649,
-   "workflow": "deploy-daily.yml",
-   "branch": "main",
-   "sha": "403f2edb7"
-  },
-  {
-   "run": 33359019754,
-   "workflow": "deploy-daily.yml",
-   "branch": "main",
-   "sha": "d7b4f036d"
-  },
-  {
-   "run": 33293571894,
-   "workflow": "deploy-daily.yml",
-   "branch": "main",
-   "sha": "577928cb2"
-  },
-  {
-   "run": 33239167138,
-   "workflow": "deploy-daily.yml",
-   "branch": "main",
-   "sha": "31c5a8159"
-  },
-  {
-   "run": 33087192453,
-   "workflow": "deploy-daily.yml",
-   "branch": "main",
-   "sha": "20ac6033c"
-  },
-  {
-   "run": 32932324397,
-   "workflow": "deploy-daily.yml",
-   "branch": "main",
-   "sha": "4c3f27024"
-  },
-  {
-   "run": 32810987899,
-   "workflow": "deploy-daily.yml",
-   "branch": "main",
-   "sha": "7c47f4558"
-  },
-  {
-   "run": 34294381042,
+   "run": 35713539897,
    "workflow": "deploy-watchdog.yml",
    "branch": "main",
-   "sha": "d308edb13"
+   "sha": "91636f7a9"
   },
   {
-   "run": 34283007033,
+   "run": 35689063702,
    "workflow": "deploy-watchdog.yml",
    "branch": "main",
-   "sha": "3d543965f"
+   "sha": "228f11038"
   },
   {
-   "run": 34264703272,
+   "run": 35666975033,
    "workflow": "deploy-watchdog.yml",
    "branch": "main",
-   "sha": "2bb7ad8b0"
+   "sha": "77116968f"
   },
   {
-   "run": 34239187686,
+   "run": 35645405263,
    "workflow": "deploy-watchdog.yml",
    "branch": "main",
-   "sha": "fbd09b0b5"
+   "sha": "cc03c0143"
   },
   {
-   "run": 34211648487,
+   "run": 35610725355,
    "workflow": "deploy-watchdog.yml",
    "branch": "main",
-   "sha": "e1765b83c"
+   "sha": "a45220211"
   },
   {
-   "run": 34187903492,
+   "run": 35568332816,
    "workflow": "deploy-watchdog.yml",
    "branch": "main",
-   "sha": "7de6b5605"
+   "sha": "408ba862a"
   },
   {
-   "run": 34170334783,
+   "run": 35549947585,
    "workflow": "deploy-watchdog.yml",
    "branch": "main",
-   "sha": "205a580c7"
+   "sha": "b2442789a"
   },
   {
-   "run": 34160016818,
+   "run": 35541801726,
    "workflow": "deploy-watchdog.yml",
    "branch": "main",
-   "sha": "22060070c"
+   "sha": "b2442789a"
   },
   {
-   "run": 34143498006,
+   "run": 35532424487,
    "workflow": "deploy-watchdog.yml",
    "branch": "main",
-   "sha": "2a32b48a9"
+   "sha": "f46b0dce6"
   },
   {
-   "run": 34111090175,
+   "run": 35523939622,
    "workflow": "deploy-watchdog.yml",
    "branch": "main",
-   "sha": "256be3925"
+   "sha": "f46b0dce6"
   },
   {
-   "run": 34084361740,
+   "run": 35510553424,
    "workflow": "deploy-watchdog.yml",
    "branch": "main",
-   "sha": "afec18c5a"
+   "sha": "7f8793575"
   },
   {
-   "run": 34068298390,
+   "run": 35493986509,
    "workflow": "deploy-watchdog.yml",
    "branch": "main",
-   "sha": "68a726c35"
+   "sha": "a99bbd077"
   },
   {
-   "run": 34061004658,
+   "run": 35480779478,
    "workflow": "deploy-watchdog.yml",
    "branch": "main",
-   "sha": "abcd014e1"
+   "sha": "ffb730f3a"
   },
   {
-   "run": 34054233806,
+   "run": 35475317133,
    "workflow": "deploy-watchdog.yml",
    "branch": "main",
-   "sha": "e0700ca0b"
+   "sha": "ffb730f3a"
   },
   {
-   "run": 34047503305,
+   "run": 35468283473,
    "workflow": "deploy-watchdog.yml",
    "branch": "main",
-   "sha": "a854eb0d2"
+   "sha": "aa24796f6"
   },
   {
-   "run": 34046185923,
+   "run": 35459968975,
    "workflow": "deploy-watchdog.yml",
    "branch": "main",
-   "sha": "c048dd417"
+   "sha": "4d1eac924"
   },
   {
-   "run": 34036850336,
+   "run": 35448785430,
    "workflow": "deploy-watchdog.yml",
    "branch": "main",
-   "sha": "77f2c283d"
+   "sha": "a09a75fae"
   },
   {
-   "run": 34024707955,
+   "run": 35439078175,
    "workflow": "deploy-watchdog.yml",
    "branch": "main",
-   "sha": "bbc0cea3a"
+   "sha": "82907470a"
   },
   {
-   "run": 34012224089,
+   "run": 35425292108,
    "workflow": "deploy-watchdog.yml",
    "branch": "main",
-   "sha": "942cab42e"
+   "sha": "885d84991"
   },
   {
-   "run": 33999917770,
+   "run": 35411916364,
    "workflow": "deploy-watchdog.yml",
    "branch": "main",
-   "sha": "6d9a08484"
+   "sha": "3b7883ab4"
   },
   {
    "run": 34252892689,
@@ -959,6 +995,12 @@
    "sha": "5f0496963"
   },
   {
+   "run": 34641607870,
+   "workflow": "mobile.yml",
+   "branch": "v0.1.16",
+   "sha": "99501e057"
+  },
+  {
    "run": 34031659129,
    "workflow": "mobile.yml",
    "branch": "v0.1.15",
@@ -1073,10 +1115,94 @@
    "sha": "f8352b6d9"
   },
   {
-   "run": 32050483554,
-   "workflow": "mobile.yml",
-   "branch": "v0.1.2",
-   "sha": "230fdd759"
+   "run": 35705376119,
+   "workflow": "nightly-corpus-differential.yml",
+   "branch": "main",
+   "sha": "228f11038"
+  },
+  {
+   "run": 35580556301,
+   "workflow": "nightly-corpus-differential.yml",
+   "branch": "main",
+   "sha": "9d92768c5"
+  },
+  {
+   "run": 35499972105,
+   "workflow": "nightly-corpus-differential.yml",
+   "branch": "main",
+   "sha": "786bf3428"
+  },
+  {
+   "run": 35430961427,
+   "workflow": "nightly-corpus-differential.yml",
+   "branch": "main",
+   "sha": "885d84991"
+  },
+  {
+   "run": 35323429178,
+   "workflow": "nightly-corpus-differential.yml",
+   "branch": "main",
+   "sha": "3451def5a"
+  },
+  {
+   "run": 35200865726,
+   "workflow": "nightly-corpus-differential.yml",
+   "branch": "main",
+   "sha": "4501854f3"
+  },
+  {
+   "run": 35074633348,
+   "workflow": "nightly-corpus-differential.yml",
+   "branch": "main",
+   "sha": "4e2cf9c88"
+  },
+  {
+   "run": 34948293993,
+   "workflow": "nightly-corpus-differential.yml",
+   "branch": "main",
+   "sha": "4783165b8"
+  },
+  {
+   "run": 34825171397,
+   "workflow": "nightly-corpus-differential.yml",
+   "branch": "main",
+   "sha": "4783165b8"
+  },
+  {
+   "run": 34747373197,
+   "workflow": "nightly-corpus-differential.yml",
+   "branch": "main",
+   "sha": "964f11d33"
+  },
+  {
+   "run": 34681953784,
+   "workflow": "nightly-corpus-differential.yml",
+   "branch": "main",
+   "sha": "411828a30"
+  },
+  {
+   "run": 34577301461,
+   "workflow": "nightly-corpus-differential.yml",
+   "branch": "main",
+   "sha": "ef053b6af"
+  },
+  {
+   "run": 34455180670,
+   "workflow": "nightly-corpus-differential.yml",
+   "branch": "main",
+   "sha": "a2af23c1e"
+  },
+  {
+   "run": 34453576594,
+   "workflow": "nightly-corpus-differential.yml",
+   "branch": "main",
+   "sha": "a2af23c1e"
+  },
+  {
+   "run": 34327520772,
+   "workflow": "nightly-corpus-differential.yml",
+   "branch": "main",
+   "sha": "1f566945e"
   },
   {
    "run": 34202606113,
@@ -1095,6 +1221,12 @@
    "workflow": "nightly-corpus-differential.yml",
    "branch": "main",
    "sha": "b3648ffc7"
+  },
+  {
+   "run": 34641608102,
+   "workflow": "release.yml",
+   "branch": "v0.1.16",
+   "sha": "99501e057"
   },
   {
    "run": 34031338936,
@@ -1211,22 +1343,106 @@
    "sha": "8d29927d1"
   },
   {
-   "run": 30974920755,
-   "workflow": "release.yml",
+   "run": 35721907995,
+   "workflow": "rust-notices.yml",
+   "branch": "lane/free-386-gui",
+   "sha": "373f8140d"
+  },
+  {
+   "run": 35715712740,
+   "workflow": "rust-notices.yml",
+   "branch": "lane/cpm-z80",
+   "sha": "11a1cc6b3"
+  },
+  {
+   "run": 35715349898,
+   "workflow": "rust-notices.yml",
+   "branch": "lane/pascal-ack-hosted",
+   "sha": "238829a2b"
+  },
+  {
+   "run": 35715268303,
+   "workflow": "rust-notices.yml",
    "branch": "main",
-   "sha": "898a6ae1e"
+   "sha": "e1e86600b"
   },
   {
-   "run": 34302421180,
+   "run": 35713622322,
    "workflow": "rust-notices.yml",
-   "branch": "lane/rust-notices-reconcile-n2",
-   "sha": "89ff75f10"
+   "branch": "lane/libre-dos-basic",
+   "sha": "53fc5e208"
   },
   {
-   "run": 34301953538,
+   "run": 35710389866,
    "workflow": "rust-notices.yml",
-   "branch": "lane/rust-notices-reconcile-n2",
-   "sha": "66cf8ccfb"
+   "branch": "lane/libre-dos-basic",
+   "sha": "9ae333622"
+  },
+  {
+   "run": 35613669940,
+   "workflow": "rust-notices.yml",
+   "branch": "main",
+   "sha": "e5a0311fa"
+  },
+  {
+   "run": 35613641335,
+   "workflow": "rust-notices.yml",
+   "branch": "lane/ev3-consolidation",
+   "sha": "9cca5dffb"
+  },
+  {
+   "run": 35611972384,
+   "workflow": "rust-notices.yml",
+   "branch": "lane/ev3-consolidation",
+   "sha": "6063167c1"
+  },
+  {
+   "run": 35609863812,
+   "workflow": "rust-notices.yml",
+   "branch": "lane/ev3-consolidation",
+   "sha": "6fa242750"
+  },
+  {
+   "run": 35608088071,
+   "workflow": "rust-notices.yml",
+   "branch": "lite-floppy-os-console",
+   "sha": "d5a8092be"
+  },
+  {
+   "run": 35606299432,
+   "workflow": "rust-notices.yml",
+   "branch": "lane/ev3-consolidation",
+   "sha": "e920ec53d"
+  },
+  {
+   "run": 35605595869,
+   "workflow": "rust-notices.yml",
+   "branch": "lane/ev3-consolidation",
+   "sha": "5a5e9ef08"
+  },
+  {
+   "run": 35589898046,
+   "workflow": "rust-notices.yml",
+   "branch": "lane/ev3-consolidation",
+   "sha": "2083b4e7f"
+  },
+  {
+   "run": 35589758797,
+   "workflow": "rust-notices.yml",
+   "branch": "lane/ev3-consolidation",
+   "sha": "c054194da"
+  },
+  {
+   "run": 35588611539,
+   "workflow": "rust-notices.yml",
+   "branch": "lane/ev3-consolidation",
+   "sha": "1800114b4"
+  },
+  {
+   "run": 34640620958,
+   "workflow": "tauri.yml",
+   "branch": "main",
+   "sha": "99501e057"
   },
   {
    "run": 34045105806,
@@ -1343,133 +1559,128 @@
    "sha": "8a422602c"
   },
   {
-   "run": 33680376681,
-   "workflow": "tauri.yml",
-   "branch": "main",
-   "sha": "d0dcc4f16"
-  },
-  {
-   "run": 34302435411,
+   "run": 35721907916,
    "workflow": "vendor-freshness.yml",
-   "branch": "lane/rust-notices-reconcile-n2",
-   "sha": "89ff75f10"
+   "branch": "lane/free-386-gui",
+   "sha": "373f8140d"
   },
   {
-   "run": 34302365709,
+   "run": 35721113700,
    "workflow": "vendor-freshness.yml",
-   "branch": "lane/rust-notices-reconcile-n2",
-   "sha": "993595e84"
+   "branch": "lane/pascal-ack-image",
+   "sha": "6b4337730"
   },
   {
-   "run": 34302105453,
+   "run": 35720980947,
    "workflow": "vendor-freshness.yml",
-   "branch": "main",
-   "sha": "c2e470dae"
+   "branch": "lane/pascal-ack-image",
+   "sha": "d8428f1d4"
   },
   {
-   "run": 34301391360,
+   "run": 35720465676,
    "workflow": "vendor-freshness.yml",
-   "branch": "lane/c3b2-lossless-code-listing-v2",
-   "sha": "c2e470dae"
+   "branch": "lane/ack-z80-cpm-verified",
+   "sha": "eb8512dac"
   },
   {
-   "run": 34301214580,
+   "run": 35720179376,
    "workflow": "vendor-freshness.yml",
-   "branch": "main",
-   "sha": "07835eea3"
+   "branch": "lane/fpga-i18n",
+   "sha": "cdbabb564"
   },
   {
-   "run": 34300366201,
+   "run": 35719906009,
    "workflow": "vendor-freshness.yml",
-   "branch": "fix/rust-notices-safe-check-n1-replay",
-   "sha": "07835eea3"
+   "branch": "lane/pascal-ack-image",
+   "sha": "51540cd60"
   },
   {
-   "run": 34300203587,
+   "run": 35719864197,
    "workflow": "vendor-freshness.yml",
-   "branch": "main",
-   "sha": "b6a90a847"
+   "branch": "lane/audio-widgets",
+   "sha": "6e1c1c513"
   },
   {
-   "run": 34299983149,
+   "run": 35719570054,
    "workflow": "vendor-freshness.yml",
-   "branch": "fix/rust-notices-safe-check-n1",
-   "sha": "3440a6950"
+   "branch": "lane/pascal-ack-image",
+   "sha": "f1e0f3ba9"
   },
   {
-   "run": 34299489257,
+   "run": 35717664066,
    "workflow": "vendor-freshness.yml",
-   "branch": "lane/c3b1-next-code-address-pin",
-   "sha": "b6a90a847"
+   "branch": "lane/cpm-z80",
+   "sha": "3d0b6b0b8"
   },
   {
-   "run": 34299096589,
+   "run": 35715717397,
    "workflow": "vendor-freshness.yml",
-   "branch": "fix/rust-notices-safe-check-n1",
-   "sha": "b1d85de35"
+   "branch": "lane/cpm-z80",
+   "sha": "11a1cc6b3"
   },
   {
-   "run": 34297828434,
+   "run": 35715440688,
    "workflow": "vendor-freshness.yml",
    "branch": "main",
-   "sha": "1bfb68b10"
+   "sha": "ff1e4eaf3"
   },
   {
-   "run": 34297056486,
+   "run": 35715357925,
    "workflow": "vendor-freshness.yml",
-   "branch": "vendor/labwired-breakpoint-handles-v1",
-   "sha": "1bfb68b10"
+   "branch": "lane/pascal-ack-hosted",
+   "sha": "238829a2b"
   },
   {
-   "run": 34295730716,
-   "workflow": "vendor-freshness.yml",
-   "branch": "main",
-   "sha": "1de30ac3c"
-  },
-  {
-   "run": 34294978513,
-   "workflow": "vendor-freshness.yml",
-   "branch": "lane/c2-exact-code-toggle",
-   "sha": "1de30ac3c"
-  },
-  {
-   "run": 34290727045,
+   "run": 35715268359,
    "workflow": "vendor-freshness.yml",
    "branch": "main",
-   "sha": "89c1af698"
+   "sha": "e1e86600b"
   },
   {
-   "run": 34289708315,
+   "run": 35713910432,
    "workflow": "vendor-freshness.yml",
-   "branch": "pin/bw-board-i8086-code-range-v1",
-   "sha": "89c1af698"
+   "branch": "lane/pascal-ack-hosted",
+   "sha": "647b14944"
   },
   {
-   "run": 34287435699,
+   "run": 35713622137,
+   "workflow": "vendor-freshness.yml",
+   "branch": "lane/libre-dos-basic",
+   "sha": "53fc5e208"
+  },
+  {
+   "run": 35711051885,
+   "workflow": "vendor-freshness.yml",
+   "branch": "lane/pascal-ack-hosted",
+   "sha": "0dafc098a"
+  },
+  {
+   "run": 35710785147,
+   "workflow": "vendor-freshness.yml",
+   "branch": "lane/fpga-i18n",
+   "sha": "0b45bcc28"
+  },
+  {
+   "run": 35710474422,
+   "workflow": "vendor-freshness.yml",
+   "branch": "lane/pascal-ack-hosted",
+   "sha": "b8f77413a"
+  },
+  {
+   "run": 35710389916,
+   "workflow": "vendor-freshness.yml",
+   "branch": "lane/libre-dos-basic",
+   "sha": "9ae333622"
+  },
+  {
+   "run": 35710277877,
    "workflow": "vendor-freshness.yml",
    "branch": "main",
-   "sha": "e671c811b"
-  },
-  {
-   "run": 34286560209,
-   "workflow": "vendor-freshness.yml",
-   "branch": "vendor/debug-session-retirement-v2",
-   "sha": "e671c811b"
-  },
-  {
-   "run": 34286257627,
-   "workflow": "vendor-freshness.yml",
-   "branch": "main",
-   "sha": "1739e7e89"
-  },
-  {
-   "run": 34285456742,
-   "workflow": "vendor-freshness.yml",
-   "branch": "vendor/debug-session-retirement",
-   "sha": "fe38646a7"
+   "sha": "91636f7a9"
   }
  ],
  "workflowsInTree": [
+  "ack-z80-cpm.yml",
   "build.yml",
   "ci-metrics.yml",
   "cycle-core-qualification.yml",
@@ -1485,8 +1696,96 @@
   "vendor-freshness.yml"
  ],
  "workflows": {
+  "ack-z80-cpm.yml": {
+   "runs": 2,
+   "stepsInFile": [
+    "Install source-test dependencies (brings bw-board)",
+    "Install ACK build dependencies",
+    "Build ACK's z80/cpm platform at the pinned commit",
+    "Compile a small Pascal program to a Z80 CP/M .COM",
+    "Prove the real ACK .COM runs on the cpm-z80 layer"
+   ],
+   "inFileInNoRun": [],
+   "steps": {
+    "Install source-test dependencies (brings bw-board)": {
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "ack-cpm"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Install ACK build dependencies": {
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "ack-cpm"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Build ACK's z80/cpm platform at the pinned commit": {
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "ack-cpm"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Compile a small Pascal program to a Z80 CP/M .COM": {
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "ack-cpm"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Prove the real ACK .COM runs on the cpm-z80 layer": {
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "ack-cpm"
+     ],
+     "clause": null,
+     "class": "always"
+    }
+   },
+   "jobs": {
+    "ack-cpm": {
+     "existed": 2,
+     "ran": 2,
+     "existedMain": 0,
+     "ranMain": 0,
+     "class": "always"
+    }
+   },
+   "sourceSha": "eb8512dac"
+  },
   "build.yml": {
-   "runs": 48,
+   "runs": 47,
    "stepsInFile": [
     "Require green upstream evidence for the pinned 8086 engine",
     "Install source-test dependencies",
@@ -1495,35 +1794,41 @@
     "Integrate the Code tab (sb3-creator)",
     "Fetch the heavy simulation engine (labwired-wasm)",
     "Install",
+    "Install the local FPGA toolchain (the deployable build is flag-on)",
     "Apply the scratch-vm overlay (built-in extensions)",
+    "Parse the flagged JSX",
     "Apply the scratch-paint overlay (extended costume designer)",
     "Apply the scratch-render overlay (lazy render fonts)",
     "Guard — bundled stc12 has all emitted opcodes",
     "Guard — WASM pin is a descendant of the crash-fix floor",
     "Guard — blocks.jsx has the toolbox null-guard",
-    "Guard — the vendored overlay matches the commit it PINS",
     "Guard — the example execution gates exist and their ratchets have not grown",
     "Guard — the fetch-pinning gate exists and can still fail",
     "Content gates — faceplates, hub faces, retro console",
     "Vendored-repo history for the pin-move gate",
     "Fetch the pinned bw-board tree for the pin-reader tests",
-    "Fetch bw-board's default-branch tip for the absent-by-design proof (tolerated absent)",
+    "Verify pinned installed package bytes and upstream notices",
     "Restore the sha-pinned ARM toolchain from cache",
     "Fetch the sha-pinned ARM toolchain for the executed-C differential (tolerated absent)",
     "Restore the sha-pinned Pico MicroPython firmware from cache",
     "Fetch the sha-pinned Pico MicroPython firmware for the unit tests (tolerated absent)",
+    "Install Pyodide for the FPGA bitstream-packer gate (tolerated absent)",
     "Fetch the GPL SDCC toolchain for the Node consumers (tolerated absent)",
+    "Resolve the path-scoped stc flasher pin",
+    "Fetch stc-compiler at the flasher artifact pin",
     "Run unit tests",
     "Mutation proofs — every enforcement layer must be able to fail",
     "Guard — packaged native broker proof authority is fresh",
     "Guard — packaged native broker host and worker assets are fresh",
     "Build the editor",
+    "Guard — emitted native broker proof bytes retain reviewed authority",
     "Guard — no GPL payload reaches the build output",
     "Guard — the labwired engine stays lazily loaded",
     "Guard — the first load stays lean",
     "Fetch stc-compiler (the debugger smoke's disassembly oracle)",
     "Smoke-test the debugger",
     "Require green upstream evidence for the pinned 8086 engine",
+    "Install root package inputs before browser integration",
     "Vendor the pinned permissive Scratch sources",
     "Integrate the Code tab (sb3-creator)",
     "Fetch the heavy simulation engine (labwired-wasm)",
@@ -1531,8 +1836,10 @@
     "Apply the scratch-vm overlay (built-in extensions)",
     "Apply the scratch-paint overlay (extended costume designer)",
     "Apply the scratch-render overlay (lazy render fonts)",
+    "Verify pinned installed package bytes and upstream notices before browser build",
     "Fetch the Pico MicroPython firmware for the sim gate (tolerated absent)",
     "Build the editor",
+    "Guard — emitted native broker proof bytes retain reviewed authority",
     "Install Playwright browser",
     "Browser gate — native broker packaged assets",
     "Serve the built app",
@@ -1589,6 +1896,7 @@
     "Browser gate — Arduboy console runs a compiled game",
     "Measure — time every browser wait (manual runs only)",
     "Audit — every browser gate ran",
+    "Install pinned root packages for the corpus solver",
     "Run the lesson corpus walks",
     "Refuse to publish a tree older than the published one",
     "Deploy to GitHub Pages",
@@ -1598,891 +1906,24 @@
    "inFileInNoRun": [],
    "steps": {
     "Require green upstream evidence for the pinned 8086 engine": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
-      "browser",
-      "build"
-     ],
-     "clause": null,
-     "class": "always"
-    },
-    "Vendor the pinned permissive Scratch sources": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser",
-      "build"
-     ],
-     "clause": null,
-     "class": "always"
-    },
-    "Integrate the Code tab (sb3-creator)": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser",
-      "build"
-     ],
-     "clause": null,
-     "class": "always"
-    },
-    "Fetch the heavy simulation engine (labwired-wasm)": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser",
-      "build"
-     ],
-     "clause": null,
-     "class": "always"
-    },
-    "Install": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser",
-      "build"
-     ],
-     "clause": null,
-     "class": "always"
-    },
-    "Apply the scratch-vm overlay (built-in extensions)": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser",
-      "build"
-     ],
-     "clause": null,
-     "class": "always"
-    },
-    "Apply the scratch-paint overlay (extended costume designer)": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser",
-      "build"
-     ],
-     "clause": null,
-     "class": "always"
-    },
-    "Apply the scratch-render overlay (lazy render fonts)": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser",
-      "build"
-     ],
-     "clause": null,
-     "class": "always"
-    },
-    "Fetch the Pico MicroPython firmware for the sim gate (tolerated absent)": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
+      "build",
       "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}",
-     "class": "always"
-    },
-    "Build the editor": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser",
-      "build"
-     ],
-     "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
-     "class": "always"
-    },
-    "Install Playwright browser": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}",
-     "class": "always"
-    },
-    "Browser gate — native broker packaged assets": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.playwright.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Serve the built app": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.playwright.outcome == 'success' && steps.build_editor_browser.outcome == 'success' }}",
-     "class": "always"
-    },
-    "Browser gate — the debugger-only pane and its round trip": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — debugger recording, reverse and fork history": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}",
-     "class": "always"
-    },
-    "Browser gate — the example journey (Lane U)": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — what is wrong with the stage after a load": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — a program's chip refusal reaches the debug panel": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}",
-     "class": "always"
-    },
-    "Browser gate — Machine Loader preset reaches the debugger": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}",
-     "class": "always"
-    },
-    "Browser gate — debugger run-to and synchronized inspection": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — service worker failure modes": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — circuit UX": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — render fonts arrive with the first text costume, not before": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — circuit rendering and placement": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — physical 74C922 keypad encoder": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — the DRC can sum chip current": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — view buttons": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — editor": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — unpinned extension sandbox": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — game gallery and hardware examples": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — both BASIC profiles execute on real machines": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — 8086 local assembly, CGA, keyboard and 8255": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — 8086 .COM / .img export (N10)": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — micro:bit WebUSB flash button (N9)": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser benchmark — 8086 desktop and mobile": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}",
-     "class": "always"
-    },
-    "Browser gate — declared extension capability broker": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — first-run chooser and guided journeys": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — LEGO SPIKE archive and Code-tab round trip": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — four-surface project save, reopen and vanilla replacement": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — costume artwork survives save/reload and records first-open performance": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — first Sounds-tab interactivity": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — P21 Code importer activation, retry and state": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — the renderer accepts the table the arrays blocks describe": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — a missing extension chunk costs its blocks, not the project": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gates — About, intro, interaction, and schematic rendering": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gates — Code chrome, Controller, faceplates, and Instruments": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — Aurora-65 keyboard, OLED and VGA workstation": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — debugger dock and serial input": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — language x device matrix badge and panel": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — the heavy engine is not downloaded on first load": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — the labwired heavy tier actually executes": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}",
-     "class": "always"
-    },
-    "Browser gate — with no engine artifact, the tier is not offered": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}",
-     "class": "always"
-    },
-    "Browser gate — offline 8051 compile and debugger evidence": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — the DEFAULT route is hosted, and says so (Lane GPL)": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — offline linked 8051 assembly listings": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — an AVR lesson bench starts offline on its shipped image": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}",
-     "class": "always"
-    },
-    "Browser gate — promoted pinned extension worker": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — the native Web Bluetooth shim": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — MakeCode import": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — micro:bit MicroPython tab and simulator": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — Pico MicroPython simulator Run lights the LED (N3c)": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — Pico ▶ Run refuses by name with no firmware (N3c)": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.build_editor_browser.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — micro:bit debugger, block and line stepping": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Browser gate — Arduboy console runs a compiled game": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "always"
-    },
-    "Measure — time every browser wait (manual runs only)": {
-     "existed": 48,
-     "ran": 32,
-     "existedMain": 16,
-     "ranMain": 0,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 16,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "${{ !cancelled() && github.event_name == 'workflow_dispatch' && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
-     "class": "sometimes",
-     "why": "trigger — the clause names the event"
-    },
-    "Audit — every browser gate ran": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": "always()",
-     "class": "always"
-    },
-    "Run the lesson corpus walks": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "corpus"
      ],
      "clause": null,
      "class": "always"
     },
     "Install source-test dependencies": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2492,10 +1933,10 @@
      "class": "always"
     },
     "Run bounded source-only tests": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2504,11 +1945,135 @@
      "clause": null,
      "class": "always"
     },
+    "Vendor the pinned permissive Scratch sources": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "build",
+      "browser"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Integrate the Code tab (sb3-creator)": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "build",
+      "browser"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Fetch the heavy simulation engine (labwired-wasm)": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "build",
+      "browser"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Install": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "build",
+      "browser"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Install the local FPGA toolchain (the deployable build is flag-on)": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "build"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Apply the scratch-vm overlay (built-in extensions)": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "build",
+      "browser"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Parse the flagged JSX": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "build"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Apply the scratch-paint overlay (extended costume designer)": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "build",
+      "browser"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Apply the scratch-render overlay (lazy render fonts)": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "build",
+      "browser"
+     ],
+     "clause": null,
+     "class": "always"
+    },
     "Guard — bundled stc12 has all emitted opcodes": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2518,10 +2083,10 @@
      "class": "always"
     },
     "Guard — WASM pin is a descendant of the crash-fix floor": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2531,23 +2096,10 @@
      "class": "always"
     },
     "Guard — blocks.jsx has the toolbox null-guard": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "build"
-     ],
-     "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
-     "class": "always"
-    },
-    "Guard — the vendored overlay matches the commit it PINS": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2557,10 +2109,10 @@
      "class": "always"
     },
     "Guard — the example execution gates exist and their ratchets have not grown": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2570,10 +2122,10 @@
      "class": "always"
     },
     "Guard — the fetch-pinning gate exists and can still fail": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2583,10 +2135,10 @@
      "class": "always"
     },
     "Content gates — faceplates, hub faces, retro console": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2596,10 +2148,10 @@
      "class": "always"
     },
     "Vendored-repo history for the pin-move gate": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2609,10 +2161,10 @@
      "class": "always"
     },
     "Fetch the pinned bw-board tree for the pin-reader tests": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2621,24 +2173,24 @@
      "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
      "class": "always"
     },
-    "Fetch bw-board's default-branch tip for the absent-by-design proof (tolerated absent)": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+    "Verify pinned installed package bytes and upstream notices": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
       "build"
      ],
-     "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
+     "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' && steps.bwboard_tree.outcome == 'success' }}",
      "class": "always"
     },
     "Restore the sha-pinned ARM toolchain from cache": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2648,10 +2200,10 @@
      "class": "always"
     },
     "Fetch the sha-pinned ARM toolchain for the executed-C differential (tolerated absent)": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2661,10 +2213,10 @@
      "class": "always"
     },
     "Restore the sha-pinned Pico MicroPython firmware from cache": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2674,10 +2226,23 @@
      "class": "always"
     },
     "Fetch the sha-pinned Pico MicroPython firmware for the unit tests (tolerated absent)": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "build"
+     ],
+     "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
+     "class": "always"
+    },
+    "Install Pyodide for the FPGA bitstream-packer gate (tolerated absent)": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2687,37 +2252,63 @@
      "class": "always"
     },
     "Fetch the GPL SDCC toolchain for the Node consumers (tolerated absent)": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
       "build"
      ],
      "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
+     "class": "always"
+    },
+    "Resolve the path-scoped stc flasher pin": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "build"
+     ],
+     "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
+     "class": "always"
+    },
+    "Fetch stc-compiler at the flasher artifact pin": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "build"
+     ],
+     "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' && steps.stc_flasher_pin.outcome == 'success' }}",
      "class": "always"
     },
     "Run unit tests": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
       "build"
      ],
-     "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
+     "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' && steps.stc_flasher_pin.outcome == 'success' && steps.stc_flasher_source.outcome == 'success' }}",
      "class": "always"
     },
     "Mutation proofs — every enforcement layer must be able to fail": {
-     "existed": 48,
-     "ran": 43,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 5,
+     "existed": 47,
+     "ran": 35,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 12,
      "skippedInGreenRuns": 0,
      "jobs": [
       "build"
@@ -2727,10 +2318,10 @@
      "why": "upstream failure — skipped only in runs where an earlier job failed"
     },
     "Guard — packaged native broker proof authority is fresh": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2740,11 +2331,11 @@
      "class": "always"
     },
     "Guard — packaged native broker host and worker assets are fresh": {
-     "existed": 48,
-     "ran": 43,
-     "existedMain": 16,
-     "ranMain": 16,
-     "skippedInFailedRuns": 5,
+     "existed": 47,
+     "ran": 35,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 12,
      "skippedInGreenRuns": 0,
      "jobs": [
       "build"
@@ -2753,11 +2344,39 @@
      "class": "sometimes",
      "why": "upstream failure — skipped only in runs where an earlier job failed"
     },
+    "Build the editor": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "build",
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' && steps.package_provenance.outcome == 'success' }}",
+     "class": "always"
+    },
+    "Guard — emitted native broker proof bytes retain reviewed authority": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "build",
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.build_editor.outcome == 'success' }}",
+     "class": "always"
+    },
     "Guard — no GPL payload reaches the build output": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2767,10 +2386,10 @@
      "class": "always"
     },
     "Guard — the labwired engine stays lazily loaded": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2780,10 +2399,10 @@
      "class": "always"
     },
     "Guard — the first load stays lean": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2793,10 +2412,10 @@
      "class": "always"
     },
     "Fetch stc-compiler (the debugger smoke's disassembly oracle)": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2806,10 +2425,10 @@
      "class": "always"
     },
     "Smoke-test the debugger": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2818,11 +2437,804 @@
      "clause": "${{ !cancelled() && steps.overlays.outcome == 'success' }}",
      "class": "always"
     },
+    "Install pinned root packages for the corpus solver": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "corpus"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Run the lesson corpus walks": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "corpus"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Install root package inputs before browser integration": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Verify pinned installed package bytes and upstream notices before browser build": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}",
+     "class": "always"
+    },
+    "Fetch the Pico MicroPython firmware for the sim gate (tolerated absent)": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}",
+     "class": "always"
+    },
+    "Install Playwright browser": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}",
+     "class": "always"
+    },
+    "Browser gate — native broker packaged assets": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.playwright.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Serve the built app": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.playwright.outcome == 'success' && steps.build_editor_browser.outcome == 'success' }}",
+     "class": "always"
+    },
+    "Browser gate — the debugger-only pane and its round trip": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — debugger recording, reverse and fork history": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}",
+     "class": "always"
+    },
+    "Browser gate — the example journey (Lane U)": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — what is wrong with the stage after a load": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — a program's chip refusal reaches the debug panel": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}",
+     "class": "always"
+    },
+    "Browser gate — Machine Loader preset reaches the debugger": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}",
+     "class": "always"
+    },
+    "Browser gate — debugger run-to and synchronized inspection": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — service worker failure modes": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — circuit UX": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — render fonts arrive with the first text costume, not before": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — circuit rendering and placement": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — physical 74C922 keypad encoder": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — the DRC can sum chip current": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — view buttons": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — editor": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — unpinned extension sandbox": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — game gallery and hardware examples": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — both BASIC profiles execute on real machines": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — 8086 local assembly, CGA, keyboard and 8255": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — 8086 .COM / .img export (N10)": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — micro:bit WebUSB flash button (N9)": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser benchmark — 8086 desktop and mobile": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}",
+     "class": "always"
+    },
+    "Browser gate — declared extension capability broker": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — first-run chooser and guided journeys": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — LEGO SPIKE archive and Code-tab round trip": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — four-surface project save, reopen and vanilla replacement": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — costume artwork survives save/reload and records first-open performance": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — first Sounds-tab interactivity": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — P21 Code importer activation, retry and state": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — the renderer accepts the table the arrays blocks describe": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — a missing extension chunk costs its blocks, not the project": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gates — About, intro, interaction, and schematic rendering": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gates — Code chrome, Controller, faceplates, and Instruments": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — Aurora-65 keyboard, OLED and VGA workstation": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — debugger dock and serial input": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — language x device matrix badge and panel": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — the heavy engine is not downloaded on first load": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — the labwired heavy tier actually executes": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}",
+     "class": "always"
+    },
+    "Browser gate — with no engine artifact, the tier is not offered": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}",
+     "class": "always"
+    },
+    "Browser gate — offline 8051 compile and debugger evidence": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — the DEFAULT route is hosted, and says so (Lane GPL)": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — offline linked 8051 assembly listings": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — an AVR lesson bench starts offline on its shipped image": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}",
+     "class": "always"
+    },
+    "Browser gate — promoted pinned extension worker": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — the native Web Bluetooth shim": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — MakeCode import": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — micro:bit MicroPython tab and simulator": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — Pico MicroPython simulator Run lights the LED (N3c)": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — Pico ▶ Run refuses by name with no firmware (N3c)": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.build_editor_browser.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — micro:bit debugger, block and line stepping": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Browser gate — Arduboy console runs a compiled game": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "always"
+    },
+    "Measure — time every browser wait (manual runs only)": {
+     "existed": 47,
+     "ran": 0,
+     "existedMain": 12,
+     "ranMain": 0,
+     "skippedInFailedRuns": 12,
+     "skippedInGreenRuns": 35,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "${{ !cancelled() && github.event_name == 'workflow_dispatch' && steps.serve.outcome == 'success' && matrix.shard == 'light' }}",
+     "class": "never"
+    },
+    "Audit — every browser gate ran": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "always()",
+     "class": "always"
+    },
     "Refuse to publish a tree older than the published one": {
-     "existed": 16,
-     "ran": 16,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 12,
+     "ran": 12,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2832,10 +3244,10 @@
      "class": "always"
     },
     "Deploy to GitHub Pages": {
-     "existed": 16,
-     "ran": 16,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 12,
+     "ran": 12,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2845,10 +3257,10 @@
      "class": "always"
     },
     "Install Playwright": {
-     "existed": 16,
-     "ran": 16,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 12,
+     "ran": 12,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2858,10 +3270,10 @@
      "class": "always"
     },
     "Verify GUI renders on deployed site": {
-     "existed": 16,
-     "ran": 16,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 12,
+     "ran": 12,
+     "existedMain": 12,
+     "ranMain": 12,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -2870,9 +3282,9 @@
      "clause": null,
      "class": "always"
     },
-    "Browser gate — experimental 286 board lab": {
-     "existed": 2,
-     "ran": 2,
+    "Browser gate — Machine Manager library modal": {
+     "existed": 1,
+     "ran": 1,
      "existedMain": 0,
      "ranMain": 0,
      "skippedInFailedRuns": 0,
@@ -2885,43 +3297,43 @@
     }
    },
    "jobs": {
-    "browser": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+    "build": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "class": "always"
     },
     "corpus": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "class": "always"
     },
-    "build": {
-     "existed": 48,
-     "ran": 48,
-     "existedMain": 16,
-     "ranMain": 16,
+    "browser": {
+     "existed": 47,
+     "ran": 47,
+     "existedMain": 12,
+     "ranMain": 12,
      "class": "always"
     },
     "deploy": {
-     "existed": 48,
-     "ran": 16,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 47,
+     "ran": 12,
+     "existedMain": 12,
+     "ranMain": 12,
      "class": "sometimes"
     },
     "verify-gui": {
-     "existed": 48,
-     "ran": 16,
-     "existedMain": 16,
-     "ranMain": 16,
+     "existed": 47,
+     "ran": 12,
+     "existedMain": 12,
+     "ranMain": 12,
      "class": "sometimes"
     }
    },
-   "sourceSha": "07835eea3"
+   "sourceSha": "e1e86600b"
   },
   "ci-metrics.yml": {
    "runs": 20,
@@ -2981,10 +3393,10 @@
      "class": "always"
     }
    },
-   "sourceSha": "c2e470dae"
+   "sourceSha": "ff1e4eaf3"
   },
   "cycle-core-qualification.yml": {
-   "runs": 17,
+   "runs": 19,
    "stepsInFile": [
     "Static qualification contracts",
     "Generate the bounded Z80 corpus from pinned oracle JSON",
@@ -2998,10 +3410,10 @@
    "inFileInNoRun": [],
    "steps": {
     "Static qualification contracts": {
-     "existed": 17,
-     "ran": 17,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 19,
+     "ran": 19,
+     "existedMain": 19,
+     "ranMain": 19,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3012,10 +3424,10 @@
      "class": "always"
     },
     "Generate the bounded Z80 corpus from pinned oracle JSON": {
-     "existed": 13,
-     "ran": 13,
-     "existedMain": 13,
-     "ranMain": 13,
+     "existed": 15,
+     "ran": 15,
+     "existedMain": 15,
+     "ranMain": 15,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3025,10 +3437,10 @@
      "class": "always"
     },
     "Compile the pinned native Z80 microstep runner": {
-     "existed": 17,
-     "ran": 17,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 19,
+     "ran": 19,
+     "existedMain": 19,
+     "ranMain": 19,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3038,10 +3450,10 @@
      "class": "always"
     },
     "Install the WebAssembly linker": {
-     "existed": 13,
-     "ran": 13,
-     "existedMain": 13,
-     "ranMain": 13,
+     "existed": 15,
+     "ran": 15,
+     "existedMain": 15,
+     "ranMain": 15,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3051,10 +3463,10 @@
      "class": "always"
     },
     "Compile the pinned freestanding Z80 browser module": {
-     "existed": 13,
-     "ran": 13,
-     "existedMain": 13,
-     "ranMain": 13,
+     "existed": 15,
+     "ran": 15,
+     "existedMain": 15,
+     "ranMain": 15,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3064,10 +3476,10 @@
      "class": "always"
     },
     "Qualify pinned cycle candidates": {
-     "existed": 17,
-     "ran": 17,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 19,
+     "ran": 19,
+     "existedMain": 19,
+     "ranMain": 19,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3077,10 +3489,10 @@
      "class": "always"
     },
     "Install the qualification browser": {
-     "existed": 13,
-     "ran": 13,
-     "existedMain": 13,
-     "ranMain": 13,
+     "existed": 15,
+     "ran": 15,
+     "existedMain": 15,
+     "ranMain": 15,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3090,10 +3502,10 @@
      "class": "always"
     },
     "Measure the candidate in Chromium": {
-     "existed": 13,
-     "ran": 13,
-     "existedMain": 13,
-     "ranMain": 13,
+     "existed": 15,
+     "ran": 15,
+     "existedMain": 15,
+     "ranMain": 15,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3105,26 +3517,28 @@
    },
    "jobs": {
     "contracts": {
-     "existed": 3,
-     "ran": 3,
-     "existedMain": 3,
-     "ranMain": 3,
+     "existed": 5,
+     "ran": 5,
+     "existedMain": 5,
+     "ranMain": 5,
      "class": "always"
     },
     "qualify": {
-     "existed": 17,
-     "ran": 17,
-     "existedMain": 17,
-     "ranMain": 17,
+     "existed": 19,
+     "ran": 19,
+     "existedMain": 19,
+     "ranMain": 19,
      "class": "always"
     }
    },
-   "sourceSha": "03eed46cb"
+   "sourceSha": "4e2cf9c88"
   },
   "debugger.yml": {
-   "runs": 20,
+   "runs": 17,
    "stepsInFile": [
-    "Dependency-free debugger architecture verdict",
+    "Install pinned package inputs for debugger contracts",
+    "Debugger architecture verdict",
+    "Install pinned root packages for debugger tests",
     "Vendor pinned sources",
     "Integrate overlays",
     "Install debugger runtime dependencies",
@@ -3132,11 +3546,11 @@
    ],
    "inFileInNoRun": [],
    "steps": {
-    "Dependency-free debugger architecture verdict": {
-     "existed": 20,
-     "ran": 20,
-     "existedMain": 18,
-     "ranMain": 18,
+    "Install pinned package inputs for debugger contracts": {
+     "existed": 17,
+     "ran": 17,
+     "existedMain": 4,
+     "ranMain": 4,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3145,11 +3559,37 @@
      "clause": null,
      "class": "always"
     },
+    "Debugger architecture verdict": {
+     "existed": 17,
+     "ran": 17,
+     "existedMain": 4,
+     "ranMain": 4,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "contracts"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Install pinned root packages for debugger tests": {
+     "existed": 17,
+     "ran": 17,
+     "existedMain": 4,
+     "ranMain": 4,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "focused"
+     ],
+     "clause": null,
+     "class": "always"
+    },
     "Vendor pinned sources": {
-     "existed": 20,
-     "ran": 20,
-     "existedMain": 18,
-     "ranMain": 18,
+     "existed": 17,
+     "ran": 17,
+     "existedMain": 4,
+     "ranMain": 4,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3159,10 +3599,10 @@
      "class": "always"
     },
     "Integrate overlays": {
-     "existed": 20,
-     "ran": 20,
-     "existedMain": 18,
-     "ranMain": 18,
+     "existed": 17,
+     "ran": 17,
+     "existedMain": 4,
+     "ranMain": 4,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3172,10 +3612,10 @@
      "class": "always"
     },
     "Install debugger runtime dependencies": {
-     "existed": 20,
-     "ran": 20,
-     "existedMain": 18,
-     "ranMain": 18,
+     "existed": 17,
+     "ran": 17,
+     "existedMain": 4,
+     "ranMain": 4,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3185,10 +3625,10 @@
      "class": "always"
     },
     "Focused debugger contracts and live cores": {
-     "existed": 20,
-     "ran": 20,
-     "existedMain": 18,
-     "ranMain": 18,
+     "existed": 17,
+     "ran": 17,
+     "existedMain": 4,
+     "ranMain": 4,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3200,39 +3640,37 @@
    },
    "jobs": {
     "contracts": {
-     "existed": 20,
-     "ran": 20,
-     "existedMain": 18,
-     "ranMain": 18,
+     "existed": 17,
+     "ran": 17,
+     "existedMain": 4,
+     "ranMain": 4,
      "class": "always"
     },
     "focused": {
-     "existed": 20,
-     "ran": 20,
-     "existedMain": 18,
-     "ranMain": 18,
+     "existed": 17,
+     "ran": 17,
+     "existedMain": 4,
+     "ranMain": 4,
      "class": "always"
     }
    },
-   "sourceSha": "c2e470dae"
+   "sourceSha": "ff1e4eaf3"
   },
   "deploy-daily.yml": {
-   "runs": 14,
+   "runs": 20,
    "stepsInFile": [
     "Check deployment credentials",
     "Install the pinned Vercel CLI",
     "Pull production settings",
-    "Build the current checkout",
-    "Refuse to publish an older main tree",
-    "Deploy and assign production domains"
+    "Build and publish the current main, retrying while main advances"
    ],
    "inFileInNoRun": [],
    "steps": {
     "Check deployment credentials": {
-     "existed": 11,
-     "ran": 11,
-     "existedMain": 11,
-     "ranMain": 11,
+     "existed": 20,
+     "ran": 20,
+     "existedMain": 20,
+     "ranMain": 20,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3242,10 +3680,10 @@
      "class": "always"
     },
     "Install the pinned Vercel CLI": {
-     "existed": 11,
-     "ran": 11,
-     "existedMain": 11,
-     "ranMain": 11,
+     "existed": 20,
+     "ran": 20,
+     "existedMain": 20,
+     "ranMain": 20,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3255,10 +3693,23 @@
      "class": "always"
     },
     "Pull production settings": {
-     "existed": 11,
-     "ran": 11,
-     "existedMain": 11,
-     "ranMain": 11,
+     "existed": 20,
+     "ran": 20,
+     "existedMain": 20,
+     "ranMain": 20,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "Deploy current BrickWright Lite"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Build and publish the current main, retrying while main advances": {
+     "existed": 4,
+     "ran": 4,
+     "existedMain": 4,
+     "ranMain": 4,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3268,10 +3719,10 @@
      "class": "always"
     },
     "Build the current checkout": {
-     "existed": 11,
-     "ran": 11,
-     "existedMain": 11,
-     "ranMain": 11,
+     "existed": 16,
+     "ran": 16,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3281,10 +3732,10 @@
      "class": "always"
     },
     "Refuse to publish an older main tree": {
-     "existed": 3,
-     "ran": 3,
-     "existedMain": 3,
-     "ranMain": 3,
+     "existed": 16,
+     "ran": 16,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3294,49 +3745,30 @@
      "class": "always"
     },
     "Deploy and assign production domains": {
-     "existed": 11,
-     "ran": 11,
-     "existedMain": 11,
-     "ranMain": 11,
+     "existed": 16,
+     "ran": 14,
+     "existedMain": 16,
+     "ranMain": 14,
      "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
+     "skippedInGreenRuns": 2,
      "jobs": [
       "Deploy current BrickWright Lite"
      ],
-     "clause": "steps.freshness.outputs.stale != 'true'",
-     "class": "always"
-    },
-    "Push a [deploy] refresh commit when the site is behind": {
-     "existed": 3,
-     "ran": 3,
-     "existedMain": 3,
-     "ranMain": 3,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "refresh"
-     ],
      "clause": null,
-     "class": "always"
+     "class": "sometimes",
+     "why": "no clause — skipped by the runner after a failure"
     }
    },
    "jobs": {
     "Deploy current BrickWright Lite": {
-     "existed": 11,
-     "ran": 11,
-     "existedMain": 11,
-     "ranMain": 11,
-     "class": "always"
-    },
-    "refresh": {
-     "existed": 3,
-     "ran": 3,
-     "existedMain": 3,
-     "ranMain": 3,
+     "existed": 20,
+     "ran": 20,
+     "existedMain": 20,
+     "ranMain": 20,
      "class": "always"
     }
    },
-   "sourceSha": "7de6b5605"
+   "sourceSha": "77116968f"
   },
   "deploy-watchdog.yml": {
    "runs": 20,
@@ -3382,7 +3814,7 @@
      "class": "always"
     }
    },
-   "sourceSha": "d308edb13"
+   "sourceSha": "91636f7a9"
   },
   "i8086-execution.yml": {
    "runs": 20,
@@ -3490,15 +3922,15 @@
      "class": "always"
     },
     "Run dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c": {
-     "existed": 14,
-     "ran": 14,
+     "existed": 15,
+     "ran": 15,
      "existedMain": 1,
      "ranMain": 1,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
-      "ios",
       "ios-signed",
+      "ios",
       "android",
       "ios-device"
      ],
@@ -3506,15 +3938,15 @@
      "class": "always"
     },
     "Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6": {
-     "existed": 14,
-     "ran": 14,
+     "existed": 15,
+     "ran": 15,
      "existedMain": 1,
      "ranMain": 1,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
-      "ios",
       "ios-signed",
+      "ios",
       "android",
       "ios-device"
      ],
@@ -3529,40 +3961,13 @@
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
-      "ios",
       "ios-signed",
+      "ios",
       "android",
       "ios-device"
      ],
      "clause": null,
      "class": "always"
-    },
-    "Build iOS app (simulator, unsigned)": {
-     "existed": 20,
-     "ran": 20,
-     "existedMain": 1,
-     "ranMain": 1,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "ios"
-     ],
-     "clause": null,
-     "class": "always"
-    },
-    "Verify frameworks and Info.plist made it into the app": {
-     "existed": 20,
-     "ran": 18,
-     "existedMain": 1,
-     "ranMain": 1,
-     "skippedInFailedRuns": 2,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "ios"
-     ],
-     "clause": null,
-     "class": "sometimes",
-     "why": "upstream failure — skipped only in runs where an earlier job failed"
     },
     "Build signed IPA": {
      "existed": 16,
@@ -3604,8 +4009,8 @@
      "class": "always"
     },
     "Send tester notes to App Store Connect": {
-     "existed": 9,
-     "ran": 7,
+     "existed": 10,
+     "ran": 8,
      "existedMain": 0,
      "ranMain": 0,
      "skippedInFailedRuns": 2,
@@ -3618,8 +4023,8 @@
      "why": "upstream failure — skipped only in runs where an earlier job failed"
     },
     "Distribute to TestFlight (internal + external)": {
-     "existed": 7,
-     "ran": 4,
+     "existed": 8,
+     "ran": 5,
      "existedMain": 0,
      "ranMain": 0,
      "skippedInFailedRuns": 3,
@@ -3631,9 +4036,36 @@
      "class": "sometimes",
      "why": "upstream failure — skipped only in runs where an earlier job failed"
     },
+    "Build iOS app (simulator, unsigned)": {
+     "existed": 20,
+     "ran": 20,
+     "existedMain": 1,
+     "ranMain": 1,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "ios"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Verify frameworks and Info.plist made it into the app": {
+     "existed": 20,
+     "ran": 18,
+     "existedMain": 1,
+     "ranMain": 1,
+     "skippedInFailedRuns": 2,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "ios"
+     ],
+     "clause": null,
+     "class": "sometimes",
+     "why": "upstream failure — skipped only in runs where an earlier job failed"
+    },
     "Run android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407": {
-     "existed": 14,
-     "ran": 14,
+     "existed": 15,
+     "ran": 15,
      "existedMain": 1,
      "ranMain": 1,
      "skippedInFailedRuns": 0,
@@ -3711,8 +4143,8 @@
      "class": "always"
     },
     "Run dtolnay/rust-toolchain@stable": {
-     "existed": 6,
-     "ran": 6,
+     "existed": 5,
+     "ran": 5,
      "existedMain": 0,
      "ranMain": 0,
      "skippedInFailedRuns": 0,
@@ -3726,8 +4158,8 @@
      "class": "always"
     },
     "Run Swatinem/rust-cache@v2": {
-     "existed": 6,
-     "ran": 6,
+     "existed": 5,
+     "ran": 5,
      "existedMain": 0,
      "ranMain": 0,
      "skippedInFailedRuns": 0,
@@ -3741,8 +4173,8 @@
      "class": "always"
     },
     "Run android-actions/setup-android@v3": {
-     "existed": 6,
-     "ran": 6,
+     "existed": 5,
+     "ran": 5,
      "existedMain": 0,
      "ranMain": 0,
      "skippedInFailedRuns": 0,
@@ -3762,19 +4194,19 @@
      "ranMain": 1,
      "class": "always"
     },
-    "ios": {
-     "existed": 20,
-     "ran": 20,
-     "existedMain": 1,
-     "ranMain": 1,
-     "class": "always"
-    },
     "ios-signed": {
      "existed": 20,
      "ran": 16,
      "existedMain": 1,
      "ranMain": 0,
      "class": "sometimes"
+    },
+    "ios": {
+     "existed": 20,
+     "ran": 20,
+     "existedMain": 1,
+     "ranMain": 1,
+     "class": "always"
     },
     "android": {
      "existed": 20,
@@ -3784,7 +4216,7 @@
      "class": "always"
     },
     "ios-device": {
-     "existed": 4,
+     "existed": 5,
      "ran": 2,
      "existedMain": 1,
      "ranMain": 1,
@@ -3794,7 +4226,7 @@
    "sourceSha": "615ad03c0"
   },
   "nightly-corpus-differential.yml": {
-   "runs": 3,
+   "runs": 18,
    "stepsInFile": [
     "Install source-test dependencies",
     "Vendor the pinned permissive Scratch sources",
@@ -3808,10 +4240,10 @@
    "inFileInNoRun": [],
    "steps": {
     "Install source-test dependencies": {
-     "existed": 3,
-     "ran": 3,
-     "existedMain": 2,
-     "ranMain": 2,
+     "existed": 18,
+     "ran": 18,
+     "existedMain": 17,
+     "ranMain": 17,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3821,10 +4253,10 @@
      "class": "always"
     },
     "Vendor the pinned permissive Scratch sources": {
-     "existed": 2,
-     "ran": 2,
-     "existedMain": 1,
-     "ranMain": 1,
+     "existed": 17,
+     "ran": 17,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3834,10 +4266,10 @@
      "class": "always"
     },
     "Integrate the Code tab (sb3-creator)": {
-     "existed": 2,
-     "ran": 2,
-     "existedMain": 1,
-     "ranMain": 1,
+     "existed": 17,
+     "ran": 17,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3847,10 +4279,10 @@
      "class": "always"
     },
     "Install": {
-     "existed": 2,
-     "ran": 2,
-     "existedMain": 1,
-     "ranMain": 1,
+     "existed": 17,
+     "ran": 17,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3860,10 +4292,10 @@
      "class": "always"
     },
     "Apply the scratch-vm overlay (built-in extensions)": {
-     "existed": 2,
-     "ran": 2,
-     "existedMain": 1,
-     "ranMain": 1,
+     "existed": 17,
+     "ran": 17,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3873,10 +4305,10 @@
      "class": "always"
     },
     "Apply the scratch-paint overlay (extended costume designer)": {
-     "existed": 2,
-     "ran": 2,
-     "existedMain": 1,
-     "ranMain": 1,
+     "existed": 17,
+     "ran": 17,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3886,10 +4318,10 @@
      "class": "always"
     },
     "Apply the scratch-render overlay (lazy render fonts)": {
-     "existed": 2,
-     "ran": 2,
-     "existedMain": 1,
-     "ranMain": 1,
+     "existed": 17,
+     "ran": 17,
+     "existedMain": 16,
+     "ranMain": 16,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3899,10 +4331,10 @@
      "class": "always"
     },
     "Run the corpus differential against the hosted service": {
-     "existed": 3,
-     "ran": 3,
-     "existedMain": 2,
-     "ranMain": 2,
+     "existed": 18,
+     "ran": 18,
+     "existedMain": 17,
+     "ranMain": 17,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3914,14 +4346,14 @@
    },
    "jobs": {
     "corpus-differential": {
-     "existed": 3,
-     "ran": 3,
-     "existedMain": 2,
-     "ranMain": 2,
+     "existed": 18,
+     "ran": 18,
+     "existedMain": 17,
+     "ranMain": 17,
      "class": "always"
     }
    },
-   "sourceSha": "9d55123eb"
+   "sourceSha": "228f11038"
   },
   "release.yml": {
    "runs": 20,
@@ -3941,8 +4373,8 @@
     "Build web bundle (vendor + integrate + webpack)": {
      "existed": 20,
      "ran": 20,
-     "existedMain": 4,
-     "ranMain": 4,
+     "existedMain": 3,
+     "ranMain": 3,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3954,8 +4386,8 @@
     "Install Linux system dependencies": {
      "existed": 20,
      "ran": 20,
-     "existedMain": 4,
-     "ranMain": 4,
+     "existedMain": 3,
+     "ranMain": 3,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -3965,8 +4397,8 @@
      "class": "always"
     },
     "Run dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c": {
-     "existed": 12,
-     "ran": 12,
+     "existed": 13,
+     "ran": 13,
      "existedMain": 3,
      "ranMain": 3,
      "skippedInFailedRuns": 0,
@@ -3978,8 +4410,8 @@
      "class": "always"
     },
     "Run Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6": {
-     "existed": 12,
-     "ran": 12,
+     "existed": 13,
+     "ran": 13,
      "existedMain": 3,
      "ranMain": 3,
      "skippedInFailedRuns": 0,
@@ -3993,8 +4425,8 @@
     "Install app dependencies (tauri CLI)": {
      "existed": 20,
      "ran": 20,
-     "existedMain": 4,
-     "ranMain": 4,
+     "existedMain": 3,
+     "ranMain": 3,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4006,8 +4438,8 @@
     "Install macOS provisioning profile": {
      "existed": 20,
      "ran": 20,
-     "existedMain": 4,
-     "ranMain": 4,
+     "existedMain": 3,
+     "ranMain": 3,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4019,8 +4451,8 @@
     "Import Apple certificates (persistent, for productbuild)": {
      "existed": 20,
      "ran": 20,
-     "existedMain": 4,
-     "ranMain": 4,
+     "existedMain": 3,
+     "ranMain": 3,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4032,8 +4464,8 @@
     "Build the Tauri app (+ draft release on tags)": {
      "existed": 20,
      "ran": 20,
-     "existedMain": 4,
-     "ranMain": 4,
+     "existedMain": 3,
+     "ranMain": 3,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4045,8 +4477,8 @@
     "Embed provisioning profile + re-sign": {
      "existed": 20,
      "ran": 19,
-     "existedMain": 4,
-     "ranMain": 4,
+     "existedMain": 3,
+     "ranMain": 3,
      "skippedInFailedRuns": 1,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4059,8 +4491,8 @@
     "Build signed .pkg for Mac App Store submission": {
      "existed": 20,
      "ran": 19,
-     "existedMain": 4,
-     "ranMain": 4,
+     "existedMain": 3,
+     "ranMain": 3,
      "skippedInFailedRuns": 1,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4072,11 +4504,11 @@
     },
     "Validate + upload to App Store Connect": {
      "existed": 20,
-     "ran": 15,
-     "existedMain": 4,
+     "ran": 16,
+     "existedMain": 3,
      "ranMain": 0,
      "skippedInFailedRuns": 3,
-     "skippedInGreenRuns": 2,
+     "skippedInGreenRuns": 1,
      "jobs": [
       "tauri"
      ],
@@ -4085,10 +4517,10 @@
      "why": "tag — runs on tag refs only"
     },
     "Run dtolnay/rust-toolchain@stable": {
-     "existed": 8,
-     "ran": 8,
-     "existedMain": 1,
-     "ranMain": 1,
+     "existed": 7,
+     "ran": 7,
+     "existedMain": 0,
+     "ranMain": 0,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4098,10 +4530,10 @@
      "class": "always"
     },
     "Run Swatinem/rust-cache@v2": {
-     "existed": 8,
-     "ran": 8,
-     "existedMain": 1,
-     "ranMain": 1,
+     "existed": 7,
+     "ran": 7,
+     "existedMain": 0,
+     "ranMain": 0,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4115,22 +4547,22 @@
     "build-web": {
      "existed": 20,
      "ran": 20,
-     "existedMain": 4,
-     "ranMain": 4,
+     "existedMain": 3,
+     "ranMain": 3,
      "class": "always"
     },
     "tauri": {
      "existed": 20,
      "ran": 20,
-     "existedMain": 4,
-     "ranMain": 4,
+     "existedMain": 3,
+     "ranMain": 3,
      "class": "always"
     }
    },
    "sourceSha": "5b1881b04"
   },
   "rust-notices.yml": {
-   "runs": 2,
+   "runs": 16,
    "stepsInFile": [
     "Check out the notices source",
     "Install Node.js",
@@ -4141,10 +4573,10 @@
    "inFileInNoRun": [],
    "steps": {
     "Check out the notices source": {
-     "existed": 2,
-     "ran": 2,
-     "existedMain": 0,
-     "ranMain": 0,
+     "existed": 16,
+     "ran": 16,
+     "existedMain": 2,
+     "ranMain": 2,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4154,10 +4586,10 @@
      "class": "always"
     },
     "Install Node.js": {
-     "existed": 2,
-     "ran": 2,
-     "existedMain": 0,
-     "ranMain": 0,
+     "existed": 16,
+     "ran": 16,
+     "existedMain": 2,
+     "ranMain": 2,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4167,10 +4599,10 @@
      "class": "always"
     },
     "Install Rust": {
-     "existed": 2,
-     "ran": 2,
-     "existedMain": 0,
-     "ranMain": 0,
+     "existed": 16,
+     "ran": 16,
+     "existedMain": 2,
+     "ranMain": 2,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4180,10 +4612,10 @@
      "class": "always"
     },
     "Test the bounded notices writer": {
-     "existed": 2,
-     "ran": 2,
-     "existedMain": 0,
-     "ranMain": 0,
+     "existed": 16,
+     "ran": 16,
+     "existedMain": 2,
+     "ranMain": 2,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4193,10 +4625,10 @@
      "class": "always"
     },
     "Check the notices against locked Cargo metadata": {
-     "existed": 2,
-     "ran": 2,
-     "existedMain": 0,
-     "ranMain": 0,
+     "existed": 16,
+     "ran": 16,
+     "existedMain": 2,
+     "ranMain": 2,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4208,14 +4640,14 @@
    },
    "jobs": {
     "check": {
-     "existed": 2,
-     "ran": 2,
-     "existedMain": 0,
-     "ranMain": 0,
+     "existed": 16,
+     "ran": 16,
+     "existedMain": 2,
+     "ranMain": 2,
      "class": "always"
     }
    },
-   "sourceSha": "89ff75f10"
+   "sourceSha": "e1e86600b"
   },
   "tauri.yml": {
    "runs": 20,
@@ -4408,10 +4840,10 @@
      "class": "always"
     },
     "Keep the boundary evidence": {
-     "existed": 12,
-     "ran": 12,
-     "existedMain": 12,
-     "ranMain": 12,
+     "existed": 13,
+     "ran": 13,
+     "existedMain": 13,
+     "ranMain": 13,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4437,45 +4869,27 @@
      "class": "always"
     }
    },
-   "sourceSha": "d522dd95e"
+   "sourceSha": "99501e057"
   },
   "vendor-freshness.yml": {
    "runs": 20,
    "stepsInFile": [
-    "Pin upstreams to vendor-pins.json (push runs)",
-    "Check out pinned upstream commits",
-    "circuit designer tree matches the pin",
-    "circuit designer tree (listing only, not a verdict)",
-    "board engine tree matches the pin",
-    "board engine tree (listing only, not a verdict)",
+    "Read reviewed vendor pins",
     "sb3-creator deltas are the declared ones",
+    "sb3-creator vendored files are byte-identical at the pin",
     "sb3-creator transpiler",
     "examples gallery",
-    "parts-data sidecars (bw-circuit-ui -> overlay)",
     "runtime extension gallery content pins",
-    "hosted service targets vs snapshot (report only)"
+    "hosted service targets vs snapshot (report only)",
+    "vendor pin freshness — bw-board / bw-circuit-ui behind master (report only)"
    ],
    "inFileInNoRun": [],
    "steps": {
-    "Pin upstreams to vendor-pins.json (push runs)": {
-     "existed": 20,
-     "ran": 8,
-     "existedMain": 8,
-     "ranMain": 8,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 12,
-     "jobs": [
-      "check"
-     ],
-     "clause": "github.event_name == 'push'",
-     "class": "sometimes",
-     "why": "trigger — the clause names the event"
-    },
-    "Check out pinned upstream commits": {
+    "Read reviewed vendor pins": {
      "existed": 20,
      "ran": 20,
-     "existedMain": 8,
-     "ranMain": 8,
+     "existedMain": 3,
+     "ranMain": 3,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4484,63 +4898,24 @@
      "clause": null,
      "class": "always"
     },
-    "circuit designer tree matches the pin": {
-     "existed": 20,
-     "ran": 20,
-     "existedMain": 8,
-     "ranMain": 8,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "check"
-     ],
-     "clause": "always()",
-     "class": "always"
-    },
-    "circuit designer tree (listing only, not a verdict)": {
-     "existed": 20,
-     "ran": 20,
-     "existedMain": 8,
-     "ranMain": 8,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "check"
-     ],
-     "clause": "always()",
-     "class": "always"
-    },
-    "board engine tree matches the pin": {
-     "existed": 20,
-     "ran": 20,
-     "existedMain": 8,
-     "ranMain": 8,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "check"
-     ],
-     "clause": "always()",
-     "class": "always"
-    },
-    "board engine tree (listing only, not a verdict)": {
-     "existed": 20,
-     "ran": 20,
-     "existedMain": 8,
-     "ranMain": 8,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "check"
-     ],
-     "clause": "always()",
-     "class": "always"
-    },
     "sb3-creator deltas are the declared ones": {
      "existed": 20,
      "ran": 20,
-     "existedMain": 8,
-     "ranMain": 8,
+     "existedMain": 3,
+     "ranMain": 3,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "check"
+     ],
+     "clause": "always()",
+     "class": "always"
+    },
+    "sb3-creator vendored files are byte-identical at the pin": {
+     "existed": 20,
+     "ran": 20,
+     "existedMain": 3,
+     "ranMain": 3,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4552,8 +4927,8 @@
     "sb3-creator transpiler": {
      "existed": 20,
      "ran": 20,
-     "existedMain": 8,
-     "ranMain": 8,
+     "existedMain": 3,
+     "ranMain": 3,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4565,21 +4940,8 @@
     "examples gallery": {
      "existed": 20,
      "ran": 20,
-     "existedMain": 8,
-     "ranMain": 8,
-     "skippedInFailedRuns": 0,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "check"
-     ],
-     "clause": "always()",
-     "class": "always"
-    },
-    "parts-data sidecars (bw-circuit-ui -> overlay)": {
-     "existed": 20,
-     "ran": 20,
-     "existedMain": 8,
-     "ranMain": 8,
+     "existedMain": 3,
+     "ranMain": 3,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4591,8 +4953,8 @@
     "runtime extension gallery content pins": {
      "existed": 20,
      "ran": 20,
-     "existedMain": 8,
-     "ranMain": 8,
+     "existedMain": 3,
+     "ranMain": 3,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4604,8 +4966,21 @@
     "hosted service targets vs snapshot (report only)": {
      "existed": 20,
      "ran": 20,
-     "existedMain": 8,
-     "ranMain": 8,
+     "existedMain": 3,
+     "ranMain": 3,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "check"
+     ],
+     "clause": "always()",
+     "class": "always"
+    },
+    "vendor pin freshness — bw-board / bw-circuit-ui behind master (report only)": {
+     "existed": 20,
+     "ran": 20,
+     "existedMain": 3,
+     "ranMain": 3,
      "skippedInFailedRuns": 0,
      "skippedInGreenRuns": 0,
      "jobs": [
@@ -4619,12 +4994,12 @@
     "check": {
      "existed": 20,
      "ran": 20,
-     "existedMain": 8,
-     "ranMain": 8,
+     "existedMain": 3,
+     "ranMain": 3,
      "class": "always"
     }
    },
-   "sourceSha": "c2e470dae"
+   "sourceSha": "ff1e4eaf3"
   }
  }
 }
