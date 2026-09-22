@@ -142,9 +142,9 @@ test('runAckCpmOutput runs a produced .COM (the ACK stage-two shape)', async () 
 // against a CP/M crt0 whose putchar calls BDOS func 2. It is committed as a
 // static artefact (decoded below), so this proves — with no toolchain present
 // at test time — that a genuine cross-compiled Z80/CP/M program runs correctly
-// on the layer. (The intended ACK z80/cpm build is the same shape: a host cross
-// compiler emits a CP/M .COM that this layer runs; see the report for why ACK's
-// own build could not be run here.)
+// on the layer. (ACK z80/cpm is the same shape and is now ALSO proven — see the
+// real ACK Pascal .COM case below; the ACK build runs on CI because this box
+// OOMs it.)
 const SDCC_FACT_COM_B64 =
     'wwgCXw4CzQUAyX63yCNP5XnNAwHhGPPd5d0hAADdOf0h9f/9Of353XX93XT+fN22/SAHPjDNAwEYYd02' +
     '/wDdfv7dtv0oM91e/xYAIQAAORndNP/lEQoA3W793Wb+zWYC4XvGMHcRCgDdbv3dZv7NGQLdc/3dcv4Y' +
