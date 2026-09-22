@@ -143,5 +143,50 @@ test('the panel and tab read their strings from the table', () => {
     assert.match(panel, /challengeBrief\(activeC, locale\)/, 'so are briefs');
     const tab = src('components/tw-pseudocode/fpga-tab.jsx');
     assert.match(tab, /circuitLabel\(spec, props\.locale\)/, 'the picker lists translated names');
-    assert.match(tab, /tr\(loc, 'build\.circuit'/, 'and the build message is a template');
+    assert.match(tab, /tr\(loc, built\.chips\.length \? 'build\.circuit' : 'build\.chip'/, 'and the build message is a template');
+});
+
+test('a single-part circuit does not report "0 gates"', () => {
+    // Seen in a browser drive: "Built a 2-bit counter: 0 gates in 1 chip".
+    // A chip-based spec has no gates to count, so it gets its own sentence.
+    const tab = src('components/tw-pseudocode/fpga-tab.jsx');
+    assert.match(tab, /built\.chips\.length \? 'build\.circuit' : 'build\.chip'/,
+        'the message branches on whether there are gates at all');
+    for (const loc of LOCALES) {
+        assert.ok(STRINGS[loc]['build.chip'], `${loc} needs the chip-only sentence`);
+        assert.ok(!STRINGS[loc]['build.chip'].includes('{gates}'),
+            `${loc}'s chip sentence must not mention a gate count`);
+    }
+});
+
+test('no hardcoded title/aria/placeholder is left in the FPGA components', () => {
+    // Tooltips are user-facing too. These were English-only while every
+    // sentence around them was translated — the easiest kind of string to
+    // forget, because nothing renders it until you hover.
+    for (const rel of [
+        'components/tw-pseudocode/fpga-gate-builder-rf.jsx',
+        'components/tw-pseudocode/fpga-tab.jsx',
+        'components/tw-pseudocode/fpga-challenges.jsx'
+    ]) {
+        const raw = src(rel).match(/(?:title|aria-label|placeholder)="[A-Z][^"]{4,}"/g) || [];
+        assert.deepEqual(raw, [], `${rel} has hardcoded user-facing attributes`);
+    }
+});
+
+test('the stage header uses react-intl, and is not this module\'s business', () => {
+    // Checked rather than assumed while auditing: the Scratch stage header —
+    // including the fullscreen control and the right-pane view chooser — goes
+    // through scratch-gui's own react-intl messages, which is the correct
+    // mechanism for components that live in that tree. It is NOT missing
+    // translation, and it must not be dragged into this table.
+    const header = src('components/stage-header/stage-header.jsx');
+    assert.match(header, /import \{defineMessages, injectIntl/, 'it uses react-intl');
+    for (const id of ['fullscreenControl', 'unFullStageSizeMessage', 'fullStageSizeMessage',
+        'largeStageSizeMessage', 'smallStageSizeMessage', 'scratchStage']) {
+        assert.match(header, new RegExp(`${id}:`), `the ${id} message is defined`);
+        assert.match(header, new RegExp(`messages\\.${id}`), `and actually used`);
+    }
+    // The one raw string is a brand name, which is not translated anywhere.
+    const raw = header.match(/(?:title|alt|aria-label)="[A-Z][^"]{2,}"/g) || [];
+    assert.deepEqual(raw, ['alt="Scratch"'], 'only the product name is a literal');
 });

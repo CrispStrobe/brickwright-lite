@@ -826,7 +826,9 @@ const FpgaTab = (props) => {
             const outs = names.length > 1
                 ? `${names.slice(0, -1).join(', ')} ${tr(loc, 'list.and')} ${names[names.length - 1]}`
                 : names[0];
-            setDemoMsg({ok: true, text: tr(loc, 'build.circuit', {
+            // A single-part circuit has no gates to count — "0 gates in 1 chip"
+            // is not a sentence anybody wants to read.
+            setDemoMsg({ok: true, text: tr(loc, built.chips.length ? 'build.circuit' : 'build.chip', {
                 label: circuitLabel(spec, loc),
                 gates: built.chips.length,
                 chips: tn(loc, 'count.chips', built.packages.length),
@@ -960,7 +962,7 @@ const FpgaTab = (props) => {
                     </select>
                     <button type="button" data-testid="bw-fpga-build-transistors"
                         onClick={() => realizeGate(cmosGate)}
-                        title="Build this gate from nmos/pmos transistors on the breadboard (the silicon underneath the logic)"
+                        title={tr(props.locale, 'tip.buildTransistors')}
                         style={{padding: '0.2rem 0.6rem', cursor: 'pointer'}}
                     >{L10N[pickLocale(props.locale)].buildTransistorsBtn}</button>
                 </span>
@@ -973,7 +975,7 @@ const FpgaTab = (props) => {
                     </select>
                     <button type="button" data-testid="bw-fpga-build-ic"
                         onClick={() => realizeIcGate(icGate)}
-                        title="Build this gate as a real 74HC logic chip on the breadboard (the part you solder, above the transistors)"
+                        title={tr(props.locale, 'tip.buildIc')}
                         style={{padding: '0.2rem 0.6rem', cursor: 'pointer'}}
                     >{L10N[pickLocale(props.locale)].buildIcBtn}</button>
                 </span>
@@ -988,7 +990,7 @@ const FpgaTab = (props) => {
                     </select>
                     <button type="button" data-testid="bw-fpga-build-circuit"
                         onClick={() => realizeIcCircuit(icCircuit)}
-                        title="Build this circuit from 74HC chips — several chips sharing the input switches, with an LED per output"
+                        title={tr(props.locale, 'tip.buildCircuit')}
                         style={{padding: '0.2rem 0.6rem', cursor: 'pointer'}}
                     >{L10N[pickLocale(props.locale)].buildCircuitBtn}</button>
                 </span>

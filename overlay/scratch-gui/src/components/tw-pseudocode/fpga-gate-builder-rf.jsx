@@ -730,37 +730,37 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                 <button type="button" onClick={saveSubcircuit} title={L10N[pickLocale(locale)].saveTitle}
                     style={{cursor: 'pointer'}} data-testid="bw-fpga-rf-save">{L10N[pickLocale(locale)].saveAsSubcircuit}</button>
                 <button type="button" onClick={() => { setCodeErr(''); setCodeOpen(true); }}
-                    title="Add a block written in raw Verilog (icestudio-style)"
+                    title={t(props.locale, 'tip.verilogBlock')}
                     style={{cursor: 'pointer'}} data-testid="bw-fpga-rf-code">{'</> Code'}</button>
                 <button type="button" onClick={() => setTtOpen(true)}
-                    title="Generate a circuit from a truth table (combinational analysis)"
+                    title={t(props.locale, 'tip.truthTable')}
                     style={{cursor: 'pointer'}} data-testid="bw-fpga-rf-tt">{'⊞ Truth table'}</button>
                 <button type="button" data-testid="bw-fpga-rf-undo"
                     onClick={undo} disabled={!pastRef.current.length}
-                    title="Undo (Ctrl-Z)" style={{cursor: pastRef.current.length ? 'pointer' : 'default'}}>{'↶ Undo'}</button>
+                    title={t(props.locale, 'tip.undo')} style={{cursor: pastRef.current.length ? 'pointer' : 'default'}}>{'↶ Undo'}</button>
                 <button type="button" data-testid="bw-fpga-rf-redo"
                     onClick={redo} disabled={!futureRef.current.length}
-                    title="Redo (Ctrl-Shift-Z)" style={{cursor: futureRef.current.length ? 'pointer' : 'default'}}>{'↷ Redo'}</button>
+                    title={t(props.locale, 'tip.redo')} style={{cursor: futureRef.current.length ? 'pointer' : 'default'}}>{'↷ Redo'}</button>
                 <button type="button" data-testid="bw-fpga-rf-clear"
                     onClick={() => { takeSnapshot(); setNodes([]); setEdges([]); setCheckResult(null); }}
-                    title="Clear the canvas" style={{cursor: 'pointer'}}>{'🗑 Clear'}</button>
+                    title={t(props.locale, 'tip.clear')} style={{cursor: 'pointer'}}>{'🗑 Clear'}</button>
                 <button type="button" data-testid="bw-fpga-rf-svg" onClick={exportSvg}
-                    title="Export the canvas as an SVG" style={{cursor: 'pointer'}}>{'⤓ SVG'}</button>
+                    title={t(props.locale, 'tip.svg')} style={{cursor: 'pointer'}}>{'⤓ SVG'}</button>
                 <span style={{opacity: 0.4}}>{'|'}</span>
                 <button type="button" data-testid="bw-fpga-rf-learn"
                     onClick={() => setShowLearn(s => !s)}
-                    title="A guided path of build-it-yourself challenges, auto-graded"
+                    title={t(props.locale, 'tip.learn')}
                     style={{cursor: 'pointer', fontWeight: 'bold', color: showLearn ? '#1d4ed8' : undefined}}
                 >{showLearn ? '📘 Learning ✓' : '📘 Learn'}</button>
                 <span style={{opacity: 0.4}}>{'|'}</span>
                 <button type="button" data-testid="bw-fpga-rf-run"
                     onClick={() => { setRunning(r => !r); setInspect(null); setMenu(null); }}
-                    title="Simulate live — click inputs to toggle, wires colour by value"
+                    title={t(props.locale, 'tip.run')}
                     style={{cursor: 'pointer', fontWeight: 'bold', color: running ? '#16a34a' : undefined}}
                 >{running ? '■ Stop' : '▶ Run'}</button>
                 {running ? (
                     <button type="button" onClick={stepClk} data-testid="bw-fpga-rf-clock"
-                        title="Advance one clock edge (flip-flops)" style={{cursor: 'pointer'}}>{'⟳ Clock'}</button>
+                        title={t(props.locale, 'tip.clock')} style={{cursor: 'pointer'}}>{'⟳ Clock'}</button>
                 ) : null}
                 {running ? (
                     <span style={{fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: 8}}>
@@ -835,7 +835,7 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                 ) : null}
                 {mmioMap.length ? (
                     <div data-testid="bw-fpga-rf-mmio" style={{fontSize: '0.75rem', color: '#6d28d9', marginTop: 2, fontFamily: 'monospace'}}
-                        title="How a program (Code tab) would address this design as a memory-mapped peripheral">
+                        title={t(props.locale, 'tip.mmio')}>
                         {'⌗ Memory map: '}{mmioMap.map(e => `${e.port}@${hex2(e.addr)}(${e.dir})`).join('  ')}
                     </div>
                 ) : null}
