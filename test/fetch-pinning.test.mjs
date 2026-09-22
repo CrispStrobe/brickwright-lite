@@ -255,6 +255,18 @@ const CENSUS = [
         why: 'Browser build loops over the two fixed package names, validates full PACKAGE_PIN, checks out that commit and asserts HEAD before verifying installed bytes.'
     },
     {
+        file: 'services/pascal-ack-compiler/Dockerfile', kind: 'git',
+        text: 'git clone https://github.com/davidgiven/ack.git ack \\',
+        class: 'shell-pin',
+        why: 'Server-side Pascal-ACK compile endpoint build (a separate deployable, NOT the browser bundle): clones ACK then checks out the pinned 40-hex commit ACK_COMMIT=7afa32a0a0f13e865fa2e8104e442689005cd627; the SHA checkout is the immutable reference.'
+    },
+    {
+        file: 'services/pascal-ack-compiler/build-ack.sh', kind: 'git',
+        text: 'git clone --filter=blob:none "$ACK_REPO" "$work/ack"',
+        class: 'shell-pin',
+        why: 'Server-side Pascal-ACK compile endpoint build (a separate deployable, NOT the browser bundle): clones ACK then checks out the pinned 40-hex ACK_COMMIT; the SHA checkout is the immutable reference.'
+    },
+    {
         file: 'overlay/scratch-gui/src/lib/smallerc-wasm/build.sh',
         kind: 'git',
         text: 'git clone --quiet "$SMALLERC_REPO" "$SRC"',
