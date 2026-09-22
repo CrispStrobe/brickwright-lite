@@ -13,6 +13,7 @@ import {icGatePins, gatesPerPackage, gateToLogicIc, LOGIC_IC_GATES} from '../ove
 // Direct path, not the bare specifier: the package's export map rewrites
 // bw-circuit-ui/src/* to src/src/*. lesson-bench.mjs reaches it the same way.
 import {generateBom, bomToCsv} from '../node_modules/bw-circuit-ui/src/model/bom.js';
+import {STRINGS} from '../overlay/scratch-gui/src/lib/bw-fpga/l10n.js';
 import {gradeRealisedCircuit, gradeMessageRealised} from '../overlay/scratch-gui/src/lib/bw-fpga/grader.js';
 import {challengeById} from '../overlay/scratch-gui/src/lib/bw-fpga/challenges.js';
 
@@ -136,14 +137,14 @@ test('a list of five outputs reads as a list, not "a and b and c and d and e"', 
     // Seen in a browser drive of the 4-bit adder, which has five outputs.
     const tab = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx', import.meta.url), 'utf8');
     assert.match(tab, /names\.slice\(0, -1\)\.join\(', '\)/, 'commas between all but the last');
-    assert.match(tab, /\} and \$\{names\[names\.length - 1\]\}/, 'and "and" before the last');
+    assert.match(tab, /tr\(loc, 'list\.and'\)/, 'and a TRANSLATED conjunction before the last');
 });
 
 test('the FPGA tab reports PACKAGES bought, not gates placed', () => {
     const tab = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx', import.meta.url), 'utf8');
     assert.match(tab, /built\.packages\.length/, 'it counts packages');
     assert.match(tab, /\$\{n\}× \$\{label\}/, 'as a bill like "2× 74HC86 Quad XOR"');
-    assert.match(tab, /Parts list/, 'and points at the full list');
+    assert.match(STRINGS.en['build.circuit'], /Parts list/, 'and points at the full list');
 });
 
 // ── Integration: the same function, bought instead of built ────────────────

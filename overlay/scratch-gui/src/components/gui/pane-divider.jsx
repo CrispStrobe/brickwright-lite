@@ -1,9 +1,24 @@
 import React from 'react';
+import {makeT, browserLocale} from '../../lib/bw-i18n.js';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
 
 import styles from './pane-divider.css';
 import {clampFraction, isCollapsed} from '../../lib/pane-sizes.js';
+
+// Our component, so a local table rather than react-intl — see lib/bw-i18n.js.
+const A11Y_L10N = {
+    en: {
+        'a11y.resize': 'Resize the stage column',
+        'tip.resize': 'Drag to resize · double-click to collapse'
+    },
+    de: {
+        'a11y.resize': 'Breite der Bühnenspalte ändern',
+        'tip.resize': 'Ziehen zum Ändern · Doppelklick zum Einklappen'
+    }
+};
+const at = makeT(A11Y_L10N);
+
 
 /**
  * Drag the boundary between the editor column and the stage column.
@@ -258,7 +273,7 @@ class PaneDivider extends React.Component {
         const {percent} = this.state;
         return (
             <div
-                aria-label="Resize the stage column"
+                aria-label={at(browserLocale(), 'a11y.resize')}
                 aria-orientation="vertical"
                 aria-valuemax={100}
                 aria-valuemin={0}
@@ -267,7 +282,7 @@ class PaneDivider extends React.Component {
                 ref={this.setRef}
                 role="separator"
                 tabIndex={0}
-                title="Drag to resize · double-click to collapse"
+                title={at(browserLocale(), 'tip.resize')}
                 onKeyDown={this.handleKeyDown}
                 onPointerCancel={this.handlePointerUp}
                 onPointerDown={this.handlePointerDown}

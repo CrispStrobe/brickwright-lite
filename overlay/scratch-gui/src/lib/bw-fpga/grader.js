@@ -11,6 +11,7 @@
  * @module
  */
 import {evalModel, stepClock} from './gate-eval.js';
+import {t, tn} from './l10n.js';
 import {synthesizeTruthTable, truthTableFrom} from './synthesize.js';
 
 /** Gates in a model. Display instruments (led/seg7/ledbank) never count. */
@@ -36,14 +37,14 @@ const namesOfKind = (model, kind) =>
  * Does the design expose the challenge's inputs and outputs? Returns a
  * human-readable problem string, or null when the interface is complete.
  */
-export function validateInterface (model, challenge) {
+export function validateInterface (model, challenge, locale) {
     const ins = namesOfKind(model, 'in');
     const outs = namesOfKind(model, 'out');
     for (const {name} of challenge.inputs) {
-        if (!ins.has(name)) return `Add an input named "${name}".`;
+        if (!ins.has(name)) return t(locale, 'problem.needInput', {name});
     }
     for (const {name} of challenge.outputs) {
-        if (!outs.has(name)) return `Add an output named "${name}".`;
+        if (!outs.has(name)) return t(locale, 'problem.needOutput', {name});
     }
     return null;
 }
@@ -61,8 +62,8 @@ export function validateInterface (model, challenge) {
  * each cycle's output to the reference. The design's state advances with the
  * tested stepClock, so it needs a flip-flop wired up.
  */
-export function gradeSequential (model, challenge) {
-    const problem = validateInterface(model, challenge);
+export function gradeSequential (model, challenge, locale) {
+    const problem = validateInterface(model, challenge, locale);
     if (problem) return {pass: false, problem};
 
     const stim = challenge.stimulus || {};
@@ -75,7 +76,7 @@ export function gradeSequential (model, challenge) {
         for (const k of driven) inputs[k] = stim[k][t];
         const {outputs, settled} = evalModel(model, inputs, state);
         if (!settled) {
-            return {pass: false, failing: {cycle: t, reason: 'the design never settled at this cycle'}, checked: t};
+            return {pass: false, failing: {cycle: t, reasonKey: 'grade.model.unsettledCycle'}, checked: t};
         }
         for (const {name} of challenge.outputs) {
             if (outputs[name] !== expected[t][name]) {
@@ -87,9 +88,9 @@ export function gradeSequential (model, challenge) {
     return {pass: true, checked: cycles, sequential: true};
 }
 
-export function grade (model, challenge) {
-    if (challenge.sequential) return gradeSequential(model, challenge);
-    const problem = validateInterface(model, challenge);
+export function grade (model, challenge, locale) {
+    if (challenge.sequential) return gradeSequential(model, challenge, locale);
+    const problem = validateInterface(model, challenge, locale);
     if (problem) return {pass: false, problem};
 
     const names = challenge.inputs.map(i => i.name);
@@ -100,7 +101,7 @@ export function grade (model, challenge) {
         names.forEach((nm, i) => { inputs[nm] = (bits >> i) & 1; });
         const {outputs, settled} = evalModel(model, inputs);
         if (!settled) {
-            return {pass: false, failing: {inputs, reason: 'the design never settled — a feedback loop without a flip-flop?'}, checked: bits};
+            return {pass: false, failing: {inputs, reasonKey: 'grade.model.unsettled'}, checked: bits};
         }
         const expected = challenge.expect(inputs);
         for (const {name} of challenge.outputs) {
@@ -120,27 +121,38 @@ export function grade (model, challenge) {
     return {pass: true, checked: total};
 }
 
+/** The failure's reason sentence, resolved in `locale`. */
+const reasonOf = (f, locale) => (f.reasonKey ? t(locale, f.reasonKey, f.reasonVars) : f.reason);
+
+/** Inputs as "a=1, b=0" — names and digits, the same in every language. */
+const inputList = f => Object.entries(f.inputs || {}).map(([k, v]) => `${k}=${v}`).join(', ');
+
 /** A one-line, learner-facing summary of a grade result. */
-export function gradeMessage (result, challenge) {
+export function gradeMessage (result, challenge, locale) {
     if (result.pass) {
-        if (result.minimal) return `✓ Correct AND minimal — ${result.minimal.used} gate${result.minimal.used === 1 ? '' : 's'}, the fewest possible.`;
-        return result.sequential
-            ? `✓ Correct — held through all ${result.checked} clock cycles.`
-            : `✓ Correct — verified all ${result.checked} input combinations.`;
+        if (result.minimal) {
+            return tn(locale, 'grade.pass.minimal', result.minimal.used, {used: result.minimal.used});
+        }
+        return t(locale, result.sequential ? 'grade.pass.sequentialModel' : 'grade.pass.exhaustiveModel',
+            {checked: result.checked});
     }
     if (result.overBudget) {
-        return `Correct, but it uses ${result.overBudget.used} gates — the minimum is ${result.overBudget.budget}. `
-            + `Reduce it: the ⊞ Truth table tool minimises, or spot the input that never matters.`;
+        return t(locale, 'grade.overBudget',
+            {used: result.overBudget.used, budget: result.overBudget.budget});
     }
     if (result.problem) return result.problem;
     const f = result.failing;
+    const reason = reasonOf(f, locale);
     if (f.cycle !== undefined) {
-        if (f.reason) return `Not yet: at clock cycle ${f.cycle}, ${f.reason}`;
-        return `Not yet: at clock cycle ${f.cycle}, output ${f.output} is ${f.got} but should be ${f.expected}.`;
+        return reason
+            ? t(locale, 'grade.fail.cycleReason', {cycle: f.cycle, reason})
+            : t(locale, 'grade.fail.cycle',
+                {cycle: f.cycle, output: f.output, got: f.got, expected: f.expected});
     }
-    const inStr = Object.entries(f.inputs).map(([k, v]) => `${k}=${v}`).join(', ');
-    if (f.reason) return `Not yet: with ${inStr}, ${f.reason}`;
-    return `Not yet: with ${inStr}, output ${f.output} is ${f.got} but should be ${f.expected}.`;
+    const inputs = inputList(f);
+    return reason
+        ? t(locale, 'grade.fail.reason', {inputs, reason})
+        : t(locale, 'grade.fail.row', {inputs, output: f.output, got: f.got, expected: f.expected});
 }
 
 // ─── Grading a REAL circuit ─────────────────────────────────────────────────
@@ -220,32 +232,34 @@ export function discoverRealisation (circuit, challenge) {
  * Can this circuit answer this challenge at all? Returns a learner-facing
  * problem string, or null when it is ready to be graded.
  */
-export function validateRealisation (circuit, challenge, io) {
+export function validateRealisation (circuit, challenge, io, locale) {
     const board = circuit && circuit.board;
     if (!board || typeof board.setControl !== 'function'
         || typeof board.advanceTo !== 'function' || typeof board.ledBrightness !== 'function') {
-        return 'Open the Circuit tab and build the gate there — this challenge grades the real board.';
+        return t(locale, 'problem.openCircuitTab');
     }
     const want = challenge.inputs.length;
     const got = io.inputs.length;
     if (got === 0 && !io.leds) {
-        return 'Nothing is built yet. Realise it in the Circuit tab (⚙ as a chip, ⚛ as transistors), then check again.';
+        return t(locale, 'problem.nothingBuilt');
     }
     if (got !== want) {
         const names = challenge.inputs.map(i => i.name).join(', ');
-        return `This challenge drives ${want} input${want === 1 ? '' : 's'} (${names}), `
-            + `but the board has ${got} switch${got === 1 ? '' : 'es'}. Put one switch per input.`;
+        return t(locale, 'problem.switchCount', {names,
+            inputs: tn(locale, 'count.inputs', want),
+            switches: tn(locale, 'count.switches', got)});
     }
     const wantOut = challenge.outputs.length;
     if (!io.leds) {
         return wantOut === 1
-            ? 'Add an LED on the output — that is what gets read.'
-            : `Add an LED per output (${challenge.outputs.map(o => o.name).join(', ')}) — those are what get read.`;
+            ? t(locale, 'problem.needLed')
+            : t(locale, 'problem.needLeds', {names: challenge.outputs.map(o => o.name).join(', ')});
     }
     if (io.leds !== wantOut) {
         const names = challenge.outputs.map(o => o.name).join(', ');
-        return `This challenge reads ${wantOut} output${wantOut === 1 ? '' : 's'} (${names}), `
-            + `but the board has ${io.leds} LED${io.leds === 1 ? '' : 's'}. Leave one LED per output.`;
+        return t(locale, 'problem.ledCount', {names,
+            outputs: tn(locale, 'count.outputs', wantOut),
+            leds: tn(locale, 'count.leds', io.leds)});
     }
     return null;
 }
@@ -283,7 +297,7 @@ function settle (board, ms, stepMs) {
  */
 function* gradeRealisedSteps (circuit, challenge, opts = {}) {
     const io = opts.io || discoverRealisation(circuit, challenge);
-    const problem = validateRealisation(circuit, challenge, io);
+    const problem = validateRealisation(circuit, challenge, io, opts.locale);
     if (problem) return {pass: false, realised: true, problem};
 
     const board = circuit.board;
@@ -346,7 +360,7 @@ function* gradeRealisedSteps (circuit, challenge, opts = {}) {
                 restore();
                 return {pass: false, realised: true, checked: bits, failing: {
                     inputs, output: outName, expected: expected[outName], got: null, brightness,
-                    reason: 'the output LED is neither clearly lit nor clearly dark — the output looks floating. Check it is driven and has a path to ground.'
+                    reasonKey: 'grade.real.floating'
                 }};
             }
             if (got !== expected[outName]) {
@@ -357,7 +371,7 @@ function* gradeRealisedSteps (circuit, challenge, opts = {}) {
         }
     }
     restore();
-    return {pass: true, realised: true, checked: total, ...(declared ? {covering: challenge.rowsNote || null} : {})};
+    return {pass: true, realised: true, checked: total, ...(declared ? {coveringKey: challenge.rowsNoteKey || null} : {})};
 }
 
 /**
@@ -385,7 +399,7 @@ function* gradeRealisedSteps (circuit, challenge, opts = {}) {
  */
 function* gradeRealisedSequentialSteps (circuit, challenge, opts = {}) {
     const io = opts.io || discoverRealisation(circuit, challenge);
-    const problem = validateRealisation(circuit, challenge, io);
+    const problem = validateRealisation(circuit, challenge, io, opts.locale);
     if (problem) return {pass: false, realised: true, sequential: true, problem};
 
     const names = challenge.inputs.map(i => i.name);
@@ -448,7 +462,7 @@ function* gradeRealisedSequentialSteps (circuit, challenge, opts = {}) {
                 restore();
                 return {pass: false, realised: true, sequential: true, checked: t, failing: {
                     cycle: t, inputs, output: name,
-                    reason: 'the output LED is neither clearly lit nor clearly dark after the clock edge'
+                    reasonKey: 'grade.real.floatingEdge'
                 }};
             }
             if (got[name] !== expected[t][name]) {
@@ -470,8 +484,7 @@ function* gradeRealisedSequentialSteps (circuit, challenge, opts = {}) {
                 restore();
                 return {pass: false, realised: true, sequential: true, checked: t, failing: {
                     cycle: t, inputs, output: name, expected: got[name], got: held[name],
-                    reason: `${name} changed when the input changed but the clock did NOT — `
-                        + 'that is a wire, not a register. It must only move on a clock edge.'
+                    reasonKey: 'grade.real.notARegister', reasonVars: {output: name}
                 }};
             }
         }
@@ -538,38 +551,40 @@ export async function gradeRealisedAsync (circuit, challenge, opts = {}) {
 }
 
 /** A one-line, learner-facing summary of a real-parts grade. */
-export function gradeMessageRealised (result, challenge) {
+export function gradeMessageRealised (result, challenge, locale) {
     if (result.pass && result.sequential) {
-        return `✓ It remembers — through all ${result.checked} clock `
-            + `cycle${result.checked === 1 ? '' : 's'} on the live board, and it held its value `
-            + 'each time the input moved without a clock.';
+        return tn(locale, 'grade.real.pass.sequential', result.checked, {checked: result.checked});
     }
     if (result.pass) {
         // A multi-output challenge watches several LEDs, and saying "the output
-        // LED" of a half adder is simply untrue of what was just checked.
+        // LED" of a half adder is simply untrue of what was just checked. Two
+        // gets its own phrasing because "all 2 output LEDs" is not English —
+        // and languages differ on this, so it is three keys, not a suffix.
         const nOut = ((challenge && challenge.outputs) || []).length;
-        // "all 2 output LEDs" is clunky; English has a word for two.
-        const leds = nOut > 2 ? `all ${nOut} output LEDs followed their truth tables`
-            : nOut === 2 ? 'both output LEDs followed their truth tables'
-                : 'the output LED followed the truth table';
+        const leds = t(locale, nOut > 2 ? 'grade.real.leds.several'
+            : nOut === 2 ? 'grade.real.leds.pair' : 'grade.real.leds.single', {n: nOut});
         // A declared row set is NOT every combination, and saying so is the
         // whole difference between a verdict a learner can trust and one that
         // quietly overclaims.
-        if (result.covering) {
-            return `✓ It works in real parts — ${leds} across ${result.checked} rows `
-                + `covering ${result.covering}, on the live board.`;
+        if (result.coveringKey) {
+            return t(locale, 'grade.real.pass.covering',
+                {leds, checked: result.checked, covering: t(locale, result.coveringKey)});
         }
-        return `✓ It works in real parts — ${leds} `
-            + `through all ${result.checked} input combination${result.checked === 1 ? '' : 's'} on the live board.`;
+        return tn(locale, 'grade.real.pass.exhaustive', result.checked,
+            {leds, checked: result.checked});
     }
     if (result.problem) return result.problem;
     const f = result.failing;
-    const inStr = Object.entries(f.inputs).map(([k, v]) => `${k}=${v}`).join(', ');
+    const inputs = inputList(f);
+    const reason = reasonOf(f, locale);
     if (f.cycle !== undefined) {
-        if (f.reason) return `Not yet: at clock cycle ${f.cycle} (${inStr}), ${f.reason}`;
-        return `Not yet: at clock cycle ${f.cycle} with ${inStr}, `
-            + `${f.output} is ${f.got} but should be ${f.expected}.`;
+        return reason
+            ? t(locale, 'grade.real.fail.cycleReason', {cycle: f.cycle, inputs, reason})
+            : t(locale, 'grade.real.fail.cycle',
+                {cycle: f.cycle, inputs, output: f.output, got: f.got, expected: f.expected});
     }
-    if (f.reason) return `Not yet: with ${inStr}, ${f.reason}`;
-    return `Not yet: with ${inStr} the output LED is ${f.got ? 'lit' : 'dark'}, but ${f.output} should be ${f.expected}.`;
+    if (reason) return t(locale, 'grade.real.fail.reason', {inputs, reason});
+    return t(locale, 'grade.real.fail.row', {inputs,
+        state: t(locale, f.got ? 'grade.real.lit' : 'grade.real.dark'),
+        output: f.output, expected: f.expected});
 }

@@ -11,7 +11,8 @@ import {buildDemoBoard} from '../../lib/bw-fpga/demo-board.js';
 import {buildCmosGate} from '../../lib/bw-fpga/cmos-board.js';
 import {buildLogicIcGate} from '../../lib/bw-fpga/logic-ic-board.js';
 import {LOGIC_IC_GATES, gateToLogicIc} from '../../lib/bw-fpga/logic-ic.js';
-import {buildLogicIcCircuit, IC_CIRCUITS} from '../../lib/bw-fpga/logic-ic-circuit.js';
+import {buildLogicIcCircuit, IC_CIRCUITS, circuitLabel, circuitHint} from '../../lib/bw-fpga/logic-ic-circuit.js';
+import {t as tr, tn} from '../../lib/bw-fpga/l10n.js';
 import {readPorts, checkWidths, detectClockPort} from '../../lib/bw-fpga/yosys.js';
 // Small and dependency-free, so these stay static: the licence screen is useful
 // on its own, and the synthesis client's only job today is to refuse honestly.
@@ -813,25 +814,31 @@ const FpgaTab = (props) => {
                 window.dispatchEvent(new CustomEvent('bw-load-circuit-data', {detail: {data: c.toJSON()}}));
             }
             const spec = IC_CIRCUITS[key];
+            const loc = props.locale;
             // Report the PACKAGES, which is what you buy — not one line per
             // gate. Twenty gates of a 4-bit adder are five parts.
             const byKind = {};
             for (const pk of built.packages) byKind[pk.label] = (byKind[pk.label] || 0) + 1;
             const bill = Object.entries(byKind).map(([label, n]) => `${n}× ${label}`).join(', ');
-            // "a and b and c and d and e" is not a list. Commas, then "and".
+            // A list of names is commas then a conjunction — never "a and b and
+            // c and d". The conjunction is a word, so it comes from the table.
             const names = built.outputs.map(o => o.name);
             const outs = names.length > 1
-                ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+                ? `${names.slice(0, -1).join(', ')} ${tr(loc, 'list.and')} ${names[names.length - 1]}`
                 : names[0];
-            const nSw = built.inputs.length;
-            const nGates = built.chips.length;
-            setDemoMsg({ok: true, text: `Built a ${spec.label.toLowerCase()}: ${nGates} gates in `
-                + `${built.packages.length} chip${built.packages.length === 1 ? '' : 's'} — ${bill} — `
-                + `sharing ${nSw} input switch${nSw === 1 ? '' : 'es'}, with an LED for ${outs}. `
-                + `Run the circuit and toggle them: ${spec.hint} `
-                + 'The Circuit tab\'s ☷ Parts list has the whole shopping list, CSV included.'});
+            // A single-part circuit has no gates to count — "0 gates in 1 chip"
+            // is not a sentence anybody wants to read.
+            setDemoMsg({ok: true, text: tr(loc, built.chips.length ? 'build.circuit' : 'build.chip', {
+                label: circuitLabel(spec, loc),
+                gates: built.chips.length,
+                chips: tn(loc, 'count.chips', built.packages.length),
+                bill,
+                switches: tn(loc, 'count.switches', built.inputs.length),
+                outputs: outs,
+                hint: circuitHint(spec, loc)
+            })});
         } catch (e) {
-            setDemoMsg({ok: false, text: `Could not build the circuit: ${e.message}`});
+            setDemoMsg({ok: false, text: tr(props.locale, 'build.circuitFailed', {message: e.message})});
         }
     }, []);
     const realizeIcCircuit = React.useCallback(key => onLiveCircuit(c => buildIcCircuitOnCircuit(c, key)),
@@ -955,7 +962,7 @@ const FpgaTab = (props) => {
                     </select>
                     <button type="button" data-testid="bw-fpga-build-transistors"
                         onClick={() => realizeGate(cmosGate)}
-                        title="Build this gate from nmos/pmos transistors on the breadboard (the silicon underneath the logic)"
+                        title={tr(props.locale, 'tip.buildTransistors')}
                         style={{padding: '0.2rem 0.6rem', cursor: 'pointer'}}
                     >{L10N[pickLocale(props.locale)].buildTransistorsBtn}</button>
                 </span>
@@ -968,7 +975,7 @@ const FpgaTab = (props) => {
                     </select>
                     <button type="button" data-testid="bw-fpga-build-ic"
                         onClick={() => realizeIcGate(icGate)}
-                        title="Build this gate as a real 74HC logic chip on the breadboard (the part you solder, above the transistors)"
+                        title={tr(props.locale, 'tip.buildIc')}
                         style={{padding: '0.2rem 0.6rem', cursor: 'pointer'}}
                     >{L10N[pickLocale(props.locale)].buildIcBtn}</button>
                 </span>
@@ -979,11 +986,11 @@ const FpgaTab = (props) => {
                     <select value={icCircuit} onChange={e => setIcCircuit(e.target.value)}
                         data-testid="bw-fpga-ic-circuit" style={{marginRight: '0.35rem'}}>
                         {Object.entries(IC_CIRCUITS).map(([k, spec]) =>
-                            <option key={k} value={k}>{spec.label}</option>)}
+                            <option key={k} value={k}>{circuitLabel(spec, props.locale)}</option>)}
                     </select>
                     <button type="button" data-testid="bw-fpga-build-circuit"
                         onClick={() => realizeIcCircuit(icCircuit)}
-                        title="Build this circuit from 74HC chips — several chips sharing the input switches, with an LED per output"
+                        title={tr(props.locale, 'tip.buildCircuit')}
                         style={{padding: '0.2rem 0.6rem', cursor: 'pointer'}}
                     >{L10N[pickLocale(props.locale)].buildCircuitBtn}</button>
                 </span>

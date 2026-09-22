@@ -1,6 +1,25 @@
 import PropTypes from 'prop-types';
+import {makeT, browserLocale} from '../../lib/bw-i18n.js';
 import React from 'react';
 import VM from 'scratch-vm';
+
+// Our component, so a local table rather than react-intl — see lib/bw-i18n.js.
+const A11Y_L10N = {
+    en: {
+        'a11y.neopixels': 'NeoPixels',
+        'a11y.lightSensor': 'Light sensor',
+        'a11y.tiltX': 'Tilt X',
+        'a11y.tiltY': 'Tilt Y'
+    },
+    de: {
+        'a11y.neopixels': 'NeoPixel-LEDs',
+        'a11y.lightSensor': 'Lichtsensor',
+        'a11y.tiltX': 'Neigung X',
+        'a11y.tiltY': 'Neigung Y'
+    }
+};
+const at = makeT(A11Y_L10N);
+
 
 const BUTTONS = {
     up: {label: '▲', key: 'ArrowUp'},
@@ -122,7 +141,7 @@ const ArcadeDevicePane = ({vm}) => {
                     <small>160 × 120 game · 160 × 128 TFT</small>
                 </div>
                 <div style={{position: 'relative', borderRadius: 38, padding: '35px 42px 28px', background: 'linear-gradient(145deg,#5b21b6,#312e81)', border: '4px solid #8b5cf6', boxShadow: '0 14px 32px rgba(0,0,0,.5),inset 0 0 0 2px rgba(255,255,255,.13)'}}>
-                    <div style={{display: 'flex', justifyContent: 'center', gap: 15, height: 14, marginTop: -23, marginBottom: 11}} aria-label="NeoPixels">
+                    <div style={{display: 'flex', justifyContent: 'center', gap: 15, height: 14, marginTop: -23, marginBottom: 11}} aria-label={at(browserLocale(), 'a11y.neopixels')}>
                         {Array.from({length: compact ? 1 : 5}, (_, index) => <span key={index} data-testid={`bw-arcade-pixel-${index}`} style={{width: 12, height: 12, borderRadius: '50%', background: pixels[index] || '#111827', border: '1px solid #fff8', boxShadow: `0 0 10px ${pixels[index] || 'transparent'}`}} />)}
                     </div>
                     <div style={{maxWidth: 512, margin: '0 auto', background: '#020617', padding: 12, borderRadius: 10, border: '3px solid #111827', boxShadow: 'inset 0 0 18px #000'}}>
@@ -142,9 +161,9 @@ const ArcadeDevicePane = ({vm}) => {
                     </div>
                 </div>
                 <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 12, marginTop: 14, padding: 12, borderRadius: 12, background: '#111827'}}>
-                    <label>Light (A7): {light}<input aria-label="Light sensor" type="range" min="0" max="100" value={light} onChange={e => setLight(Number(e.target.value))} style={{width: '100%'}} /></label>
-                    {!compact && <label>Tilt X: {tiltX}<input aria-label="Tilt X" type="range" min="-1024" max="1024" value={tiltX} onChange={e => setTiltX(Number(e.target.value))} style={{width: '100%'}} /></label>}
-                    {!compact && <label>Tilt Y: {tiltY}<input aria-label="Tilt Y" type="range" min="-1024" max="1024" value={tiltY} onChange={e => setTiltY(Number(e.target.value))} style={{width: '100%'}} /></label>}
+                    <label>Light (A7): {light}<input aria-label={at(browserLocale(), 'a11y.lightSensor')} type="range" min="0" max="100" value={light} onChange={e => setLight(Number(e.target.value))} style={{width: '100%'}} /></label>
+                    {!compact && <label>Tilt X: {tiltX}<input aria-label={at(browserLocale(), 'a11y.tiltX')} type="range" min="-1024" max="1024" value={tiltX} onChange={e => setTiltX(Number(e.target.value))} style={{width: '100%'}} /></label>}
+                    {!compact && <label>Tilt Y: {tiltY}<input aria-label={at(browserLocale(), 'a11y.tiltY')} type="range" min="-1024" max="1024" value={tiltY} onChange={e => setTiltY(Number(e.target.value))} style={{width: '100%'}} /></label>}
                 </div>
             </div>
         </div>

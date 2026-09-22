@@ -976,15 +976,18 @@ test('the palette offers an LED bank that lights per bit in Run mode', () => {
 // ── the "minimise" lesson: challenges graded on gate count too ──
 test('the learning path has minimise challenges graded on size, using the minimiser', () => {
     const ch = read('overlay/scratch-gui/src/lib/bw-fpga/challenges.js');
-    assert.match(ch, /id: 'absorb'.*minimize: true/s, 'an absorption challenge');
-    assert.match(ch, /id: 'consensus'.*minimize: true/s, 'a consensus challenge');
-    assert.match(ch, /id: 'majority_min'.*minimize: true/s, 'a minimal-majority challenge');
+    for (const id of ['absorb', 'consensus', 'majority_min']) {
+        assert.match(ch, new RegExp(`id: '${id}'[^}]*minimize: true`, 's'), `a ${id} challenge`);
+    }
     const g = read('overlay/scratch-gui/src/lib/bw-fpga/grader.js');
     assert.match(g, /export function minimalGates/, 'the budget is the true minimum (Quine–McCluskey)');
     assert.match(g, /import \{synthesizeTruthTable, truthTableFrom\}/, 'computed from the reference via the minimiser');
     assert.match(g, /challenge\.minimize/, 'grade() enforces the gate budget');
     assert.match(g, /overBudget/, 'a correct-but-oversized design is rejected on size');
-    assert.match(g, /Correct AND minimal/, 'and a minimal one is celebrated');
+    // The sentence itself moved to l10n.js; the grader still reaches for it.
+    assert.match(g, /grade\.pass\.minimal/, 'and a minimal one is celebrated');
+    const l10n = read('overlay/scratch-gui/src/lib/bw-fpga/l10n.js');
+    assert.match(l10n, /Correct AND minimal/, 'in English, at least');
 });
 
 // ── the datapath comes alive: bus inputs take a real number in Run mode ──

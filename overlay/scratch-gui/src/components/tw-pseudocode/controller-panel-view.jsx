@@ -4,6 +4,9 @@ import { bindPanelToBoard } from 'bw-board/controller-binding.js';
 
 const L10N = {
     en: {
+        'cancel': 'Cancel',
+        'pinPlaceholder': 'P1.0 / D9',
+        'chooseImage': 'Choose an Image',
         title: 'Controller',
         edit: 'Edit', play: 'Play',
         addWidget: '+ Add Widget',
@@ -22,6 +25,9 @@ const L10N = {
         toggleHint: 'latches on press',
     },
     de: {
+        'cancel': 'Abbrechen',
+        'pinPlaceholder': 'P1.0 / D9',
+        'chooseImage': 'Ein Bild wählen',
         title: 'Controller',
         edit: 'Bearbeiten', play: 'Spielen',
         addWidget: '+ Widget hinzufügen',
@@ -751,7 +757,7 @@ function WidgetInspector({ widget, onRename, onLayout, onConfig, onBind, onOpenL
                         style={{ width: 24, height: 24, padding: 0, cursor: 'pointer',
                             background: '#dcfce7', color: '#15803d', fontWeight: 700,
                             border: '1px solid #86efac', borderRadius: 4 }}>✓</button>
-                    <button onClick={onCancel} title="Cancel" data-testid="bw-ctl-insp-cancel"
+                    <button onClick={onCancel} title={t('cancel')} data-testid="bw-ctl-insp-cancel"
                         style={{ width: 24, height: 24, padding: 0, cursor: 'pointer',
                             background: '#fee2e2', color: '#dc2626', fontWeight: 700,
                             border: '1px solid #fca5a5', borderRadius: 4 }}>✕</button>
@@ -935,7 +941,7 @@ function WidgetInspector({ widget, onRename, onLayout, onConfig, onBind, onOpenL
                         <div style={row}>
                             <span style={lbl}>{t('pin')}</span>
                             <input value={widget.binding.pinName || ''} style={inp}
-                                placeholder="P1.0 / D9"
+                                placeholder={t('pinPlaceholder')}
                                 data-testid="bw-ctl-insp-bind-pin"
                                 onChange={e => onBind('pin', e.target.value)} />
                         </div>
@@ -983,7 +989,7 @@ const LazyLibrary = React.lazy(() => Promise.all([
             <LibraryComponent
                 data={data.default}
                 id="bwControllerImageLibrary"
-                title="Choose an Image"
+                title={t('chooseImage')}
                 onItemSelected={onSelect}
                 onRequestClose={onClose}
             />

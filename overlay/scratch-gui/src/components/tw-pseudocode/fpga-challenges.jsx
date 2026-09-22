@@ -1,7 +1,9 @@
 import React from 'react';
-import {CHALLENGES, challengeById, isUnlocked, isRealise} from '../../lib/bw-fpga/challenges.js';
+import {CHALLENGES, challengeById, isUnlocked, isRealise, challengeTitle, challengeBrief}
+    from '../../lib/bw-fpga/challenges.js';
 import {gradeMessage, gradeMessageRealised} from '../../lib/bw-fpga/grader.js';
-import {IC_CIRCUITS} from '../../lib/bw-fpga/logic-ic-circuit.js';
+import {IC_CIRCUITS, circuitLabel} from '../../lib/bw-fpga/logic-ic-circuit.js';
+import {t} from '../../lib/bw-fpga/l10n.js';
 
 /**
  * The learning-path panel — a Turing-Complete-style ladder of build-it-yourself
@@ -14,11 +16,11 @@ const stateOf = (c, passed, active) =>
     (passed.has(c.id) ? 'done' : c.id === active ? 'active' : isUnlocked(c.id, passed) ? 'open' : 'locked');
 
 const ICON = {done: '✓', active: '▸', open: '○', locked: '🔒'};
-/** Which realisations can build this challenge's gate, in learner's words. */
-const RUNG_LABEL = {ic: '⚙ as a 74HC chip', cmos: '⚛ from transistors'};
+/** Which realisations can build this challenge's gate, in the learner's words. */
+const rungLabel = (rung, locale) => t(locale, `panel.rung.${rung}`);
 const COLOR = {done: '#16a34a', active: '#1d4ed8', open: '#475569', locked: '#94a3b8'};
 
-export function FpgaChallengePanel ({active, passed, result, onSelect, onCheck, onNext}) {
+export function FpgaChallengePanel ({active, passed, result, onSelect, onCheck, onNext, locale}) {
     const activeC = active ? challengeById(active) : null;
     const done = CHALLENGES.filter(c => passed.has(c.id)).length;
 
@@ -41,7 +43,7 @@ export function FpgaChallengePanel ({active, passed, result, onSelect, onCheck, 
         <div ref={scrollRef} data-testid="bw-fpga-challenges" style={{width: 196, flex: '0 0 auto',
             borderRight: '1px solid rgba(71,85,105,0.25)', paddingRight: 8, marginRight: 8, overflowY: 'auto', maxHeight: '48vh'}}>
             <div style={{fontSize: 12, fontWeight: 'bold', margin: '0 0 4px'}}>
-                {'Learning path'} <span style={{fontWeight: 'normal', opacity: 0.7}}>{`${done}/${CHALLENGES.length}`}</span>
+                {t(locale, 'panel.title')} <span style={{fontWeight: 'normal', opacity: 0.7}}>{`${done}/${CHALLENGES.length}`}</span>
             </div>
             <progress value={done} max={CHALLENGES.length} style={{width: '100%', height: 6, marginBottom: 6}} />
             {CHALLENGES.map(c => {
@@ -49,17 +51,17 @@ export function FpgaChallengePanel ({active, passed, result, onSelect, onCheck, 
                 return (
                     <button key={c.id} type="button" disabled={st === 'locked'}
                         onClick={() => onSelect(c.id)} data-testid={`bw-fpga-challenge-${c.id}`}
-                        title={c.brief}
+                        title={challengeBrief(c, locale)}
                         style={{display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left',
                             border: 'none', background: st === 'active' ? 'rgba(29,78,216,0.10)' : 'transparent',
                             padding: '3px 5px', borderRadius: 4, cursor: st === 'locked' ? 'default' : 'pointer',
                             color: COLOR[st], fontSize: 12, fontWeight: st === 'active' ? 'bold' : 'normal'}}>
                         <span style={{flex: '0 0 auto'}}>{ICON[st]}</span>
-                        <span>{c.title}</span>
+                        <span>{challengeTitle(c, locale)}</span>
                         {/* A board challenge is graded somewhere else entirely — say so
                             in the list, not only once it is open. */}
                         {isRealise(c) ? (
-                            <span title="Graded on the real breadboard, in the Circuit tab"
+                            <span title={t(locale, 'panel.boardChallengeTitle')}
                                 style={{marginLeft: 'auto', flex: '0 0 auto', opacity: 0.75}}>{'🔌'}</span>
                         ) : null}
                     </button>
@@ -67,25 +69,26 @@ export function FpgaChallengePanel ({active, passed, result, onSelect, onCheck, 
             })}
             {activeC ? (
                 <div style={{marginTop: 8}}>
-                    <div style={{fontSize: 11, lineHeight: 1.4, color: '#334155', marginBottom: 6}}>{activeC.brief}</div>
+                    <div style={{fontSize: 11, lineHeight: 1.4, color: '#334155', marginBottom: 6}}>{challengeBrief(activeC, locale)}</div>
                     {/* A board challenge is met in the Circuit tab, so name the
                         realisations that can build this particular gate — XOR,
                         for one, has no transistor form and no ⚛ button. */}
                     {isRealise(activeC) ? (
                         <div data-testid="bw-fpga-rungs" style={{fontSize: 11, lineHeight: 1.4, marginBottom: 6,
                             padding: '4px 6px', borderRadius: 4, background: 'rgba(29,78,216,0.06)', color: '#334155'}}>
-                            {'🔌 Graded on the real board: '}
+                            {t(locale, 'panel.gradedOnBoard')}
                             {activeC.circuit
-                                ? `⚙ ${(IC_CIRCUITS[activeC.circuit] || {}).label || 'this circuit'}`
-                                : (activeC.rungs || []).map(r => RUNG_LABEL[r]).filter(Boolean).join(', or ')}
-                            {' — or wire it yourself. Any build that computes it passes.'}
+                                ? `⚙ ${circuitLabel(IC_CIRCUITS[activeC.circuit], locale)}`
+                                : (activeC.rungs || []).map(r => rungLabel(r, locale)).filter(Boolean).join(', ')}
+                            {t(locale, 'panel.orWireItYourself')}
                             {/* A multi-output challenge reads more than one LED, and which
                                 LED is which is the thing a learner can get backwards. */}
                             {activeC.outputs.length > 1 ? (
                                 <div style={{marginTop: 4}}>
-                                    {`Reads ${activeC.outputs.length} LEDs — `}
-                                    {activeC.outputs.map(o => o.name).join(' and ')}
-                                    {'. Name them, or stack them in that order.'}
+                                    {t(locale, 'panel.readsLeds', {
+                                        n: activeC.outputs.length,
+                                        names: activeC.outputs.map(o => o.name).join(', ')
+                                    })}
                                 </div>
                             ) : null}
                         </div>
@@ -96,23 +99,26 @@ export function FpgaChallengePanel ({active, passed, result, onSelect, onCheck, 
                             border: '1px solid #16a34a', borderRadius: 6, background: '#f0fdf4', color: '#166534'}}
                     >{result && result.pending
                         ? (result.progress
-                            ? `Checking… ${result.progress.checked + 1}/${result.progress.total}`
-                            : 'Checking the board…')
-                        : isRealise(activeC) ? '✓ Check my board' : '✓ Check my design'}</button>
+                            ? t(locale, 'panel.checkingProgress',
+                                {checked: result.progress.checked + 1, total: result.progress.total})
+                            : t(locale, 'panel.checking'))
+                        : t(locale, isRealise(activeC) ? 'panel.checkBoard' : 'panel.checkDesign')}</button>
                     {result && !result.pending ? (
                         <div data-testid="bw-fpga-result" style={{marginTop: 6, fontSize: 11, lineHeight: 1.4,
                             color: result.pass ? '#166534' : '#b91c1c'}}>
-                            {result.realised ? gradeMessageRealised(result, activeC) : gradeMessage(result, activeC)}</div>
+                            {result.realised
+                                ? gradeMessageRealised(result, activeC, locale)
+                                : gradeMessage(result, activeC, locale)}</div>
                     ) : null}
                     {result && result.pass ? (
                         <button type="button" onClick={onNext} data-testid="bw-fpga-next"
                             style={{marginTop: 6, width: '100%', padding: '5px 8px', cursor: 'pointer', fontWeight: 'bold',
                                 border: '1px solid #1d4ed8', borderRadius: 6, background: '#eff6ff', color: '#1d4ed8'}}
-                        >{'Next challenge →'}</button>
+                        >{t(locale, 'panel.next')}</button>
                     ) : null}
                 </div>
             ) : (
-                <div style={{marginTop: 8, fontSize: 11, color: '#64748b'}}>{'Pick a step to start building.'}</div>
+                <div style={{marginTop: 8, fontSize: 11, color: '#64748b'}}>{t(locale, 'panel.pickAStep')}</div>
             )}
         </div>
     );
