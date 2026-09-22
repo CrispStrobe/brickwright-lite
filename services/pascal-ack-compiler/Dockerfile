@@ -11,8 +11,14 @@
 # ---- build ACK ----
 FROM debian:bookworm-slim AS ack
 ARG ACK_COMMIT=7afa32a0a0f13e865fa2e8104e442689005cd627
+# ACK's "ab" build system (build/ab.mk) requires ninja, cmp and python3, and its
+# top Makefile invokes `$(LUA)` which defaults to the command `lua`. Debian's
+# lua5.3 package installs `lua5.3`, not `lua`, so we symlink it — otherwise the
+# code-generator table steps die with "lua: not found". (These were latent: the
+# image had never been built until CI built it.)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        build-essential flex bison lua5.3 lua-posix python3 git ca-certificates \
+        build-essential flex bison ninja-build lua5.3 lua-posix python3 git ca-certificates \
+    && ln -sf /usr/bin/lua5.3 /usr/local/bin/lua \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /build
 RUN git clone https://github.com/davidgiven/ack.git ack \
