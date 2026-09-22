@@ -1476,6 +1476,34 @@ libi86 runtime, and carries no GCC-runtime copyleft.
   `runDosToolchain('ubasic', …)` over the bw-board 8086 DOS bench, which
   mounts the user's program as `PROG.BAS`.
 
+## Free 80386 AT firmware (Bochs BIOS + LGPL VGABios) — LGPL-2.1
+
+The **fully-free 386** machine boots FreeDOS in the browser on redistributable
+firmware only — **no proprietary IBM 5170 (AT) ROM**. lite's debug-runner
+(`attachI80386`) loads two vendored LGPL binaries: the Bochs legacy system BIOS
+at `0xF0000` (and the 386 high reset alias `0xFF0000`) and the LGPL VGABios as
+the `0xC0000` video option ROM. Both are shipped **unmodified**, vendored from
+bw-board's `roms/free-at-bios/` at the pinned sha (an unmodified copy of the
+upstreams below). The copyrighted IBM AT ROM and its VGA option ROM remain an
+**optional, maintainer-only fidelity oracle** (`AT_BIOS_ROM` / `VGA_BIOS_ROM`),
+never fetched, stored, or committed.
+
+- **Bochs legacy BIOS** — part of the **Bochs** x86 emulator, distributed under
+  the **GNU LGPL**. Upstream: https://bochs.sourceforge.io/ (source
+  `bios/rombios.c`; the prebuilt `BIOS-bochs-legacy` from Bochs 2.7,
+  `(c) 2001-2021 The Bochs Project`).
+- **LGPL VGABios** — the **VGABios** project, distributed under the **GNU
+  LGPL**. Upstream: https://savannah.nongnu.org/projects/vgabios/ (revision
+  `288`, 2021-05-28, `(C) 2002-2021 the LGPL VGABios developers Team`).
+- **Licence:** GNU Lesser General Public License v2.1 (the full text ships with
+  the upstream firmware under bw-board `roms/free-at-bios/LICENSE` at the pinned
+  sha; both binaries are covered by it).
+- **What ships:** `static/roms/free-386-bochs-bios.rom` (64 KiB) and
+  `static/roms/free-386-vgabios-lgpl.bin` (38400 bytes), with
+  `free-386-bios.provenance.json` beside them recording the upstreams, licences,
+  holders, sizes, and SHA-256s. The reproducible ROM-free 386 qualification is
+  bw-board's script run-i80386-free-bios-freedos.mjs (needs no external ROM).
+
 ## 6502 BASIC (basic-m6502-bw) — MIT
 
 The BASIC tab's "6502 BASIC" profile generates code compatible with the
