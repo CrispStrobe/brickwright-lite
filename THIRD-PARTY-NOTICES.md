@@ -1451,6 +1451,31 @@ R.T. Russell. This project uses the name only to describe compatibility
   BASIC (Z80) from rtrussell/BBCZ80, shipped **unmodified**. Loaded at
   run time by BbcZ80Runner over a BDOS console shim on the Z80 core.
 
+## uBASIC (DOS-native BASIC) — BSD-3-Clause
+
+The BASIC tab's "uBASIC on DOS" profile runs a real 16-bit MS-DOS
+interpreter on the 8086 DOS bench. The interpreter is **uBASIC** by
+R. Adam Dunkels (with a fork by Danyil Bohdan), a small line-numbered
+BASIC in portable C, distributed under the **BSD-3-Clause licence** (the
+header is on every source file).
+
+It is compiled — unmodified except for widening its integer type and
+adding a `PROG.BAS`-reading DOS front-end (`dosmain.c`) — to a 16-bit
+MS-DOS `.EXE` with `ia16-elf-gcc` (the tkchia GCC port for 16-bit x86).
+That GCC port is GPL, but it is a **build-time tool only**: the shipped
+binary is BSD-3-Clause uBASIC linked against the permissive newlib +
+libi86 runtime, and carries no GCC-runtime copyleft.
+
+- **Upstream:** https://github.com/adamdunkels/ubasic (commit
+  `cc07193c231e21ecb418335aba5b199a08d4685c`)
+- **Licence:** BSD-3-Clause, (c) 2006 Adam Dunkels; (c) 2013 Danyil Bohdan
+- **What ships:** `static/roms/ubasic.exe` — the built interpreter, with
+  `ubasic.provenance.json` beside it. Packaged as the media-lab project
+  `projects/ubasic-dos` (its `fetch.sh` reproduces this binary
+  byte-for-byte). Loaded at run time and driven by
+  `runDosToolchain('ubasic', …)` over the bw-board 8086 DOS bench, which
+  mounts the user's program as `PROG.BAS`.
+
 ## 6502 BASIC (basic-m6502-bw) — MIT
 
 The BASIC tab's "6502 BASIC" profile generates code compatible with the

@@ -672,13 +672,21 @@ export const CELLS = Object.freeze({
             }),
             lowered: [via('c')]
         },
-        // N6 measured 2026-09-05: 0 of 35 GW-BASIC (MIT) sources assemble —
-        // they need full MASM (COMMENT, EXTRN, PUBLIC, IF1, macros), a linker
-        // and the unreleased OEM layer — and no redistributable binary exists,
-        // unlike the 6502's MS BASIC ROM and the Z80's BBC BASIC image.
+        // GW-BASIC-from-MIT-source stays out (N6, 2026-09-05: 0 of 35 sources
+        // assemble; they need full MASM + linker + the unreleased OEM layer, and
+        // Microsoft ships no binary). What DOES ship is a DIFFERENT libre BASIC:
+        // uBASIC (Adam Dunkels; Danyil Bohdan fork, BSD-3-Clause), cross-compiled
+        // with ia16-elf-gcc to a 16-bit MS-DOS .EXE. It is DOS-native — the
+        // interpreter itself runs on the 8086 DOS service bench, reads the
+        // program from PROG.BAS via INT 21h and prints. Verified end-to-end in
+        // test/dos-compile.test.mjs (`10 print 6*7` -> `42`).
         basic: {
-            native: no('no-port', '0 of 35 GW-BASIC sources assemble on the bench and there is no ' +
-                'redistributable binary to boot (bw-board docs/GW-BASIC-ON-THE-BENCH.md)'),
+            native: shipped('bas', 'uBASIC (BSD-3-Clause) via ia16-elf-gcc, on the DOS bench', 'local', {
+                note: 'DOS-native interpreter: media-lab ubasic-dos, shipped as static/roms/ubasic.exe; '
+                    + 'mounts the program as PROG.BAS and runs UBASIC.EXE on the 8086 DOS service bench '
+                    + '(INT 21h file I/O), verified in test/dos-compile (10 print 6*7 -> 42). '
+                    + 'GW-BASIC-from-MIT-source remains infeasible (N6): no assembling toolchain, no binary'
+            }),
             lowered: [via('asm')]
         },
         asm: {

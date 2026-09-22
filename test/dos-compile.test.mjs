@@ -6,12 +6,19 @@
 
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {fileURLToPath} from 'node:url';
 import {
     runDosProgram, compileAndRunOnDos
 } from '../overlay/scratch-gui/src/lib/bw-debug/dos-compile.js';
 import {
     DOS_TOOLCHAINS, HOSTED_TOOLCHAINS, runDosToolchain
 } from '../overlay/scratch-gui/src/lib/bw-debug/dos-toolchain-routes.js';
+
+// The libre DOS-native BASIC interpreter this repo ships (media-lab project
+// `ubasic-dos`, BSD-3-Clause uBASIC built with ia16-elf-gcc).
+const UBASIC_EXE = new Uint8Array(readFileSync(
+    fileURLToPath(new URL('../overlay/scratch-gui/static/roms/ubasic.exe', import.meta.url))));
 
 // A 40-byte real .COM: INT 21h create OUT.TXT, write "HI", close, exit(0).
 const FILE_WRITER = new Uint8Array([
@@ -55,8 +62,18 @@ test('compileAndRunOnDos mounts sources, runs the compiler, extracts its output'
     assert.ok(r.files.get('SOURCE.PAS'), 'the source was mounted for the compiler');
 });
 
-test('routes split DOS-native (GW-BASIC) from hosted (ACK); all unverified', () => {
-    // GW-BASIC is a DOS .EXE → the DOS bench (dos-compile).
+test('routes split DOS-native (uBASIC verified, GW-BASIC not) from hosted (ACK)', () => {
+    // uBASIC is a shipped, VERIFIED DOS-native BASIC .EXE (proven end-to-end below).
+    const ub = DOS_TOOLCHAINS['ubasic'];
+    assert.ok(ub && ub.kind === 'dos-native');
+    assert.equal(ub.verified, true);
+    assert.equal(ub.language, 'basic');
+    assert.equal(ub.compilerFormat, 'exe');
+    assert.equal(ub.variant, '80186');       // ia16-elf-gcc emits 186 opcodes
+    assert.equal(ub.outputName, null);       // an interpreter: output is on screen
+    assert.equal(ub.run, false);
+    // GW-BASIC is a DOS .EXE too → the DOS bench (dos-compile) — but still
+    // unverified, because there is no built libre GWBASIC.EXE.
     const gw = DOS_TOOLCHAINS['gwbasic'];
     assert.ok(gw && gw.kind === 'dos-native');
     assert.equal(gw.verified, false);
@@ -67,6 +84,48 @@ test('routes split DOS-native (GW-BASIC) from hosted (ACK); all unverified', () 
     assert.equal(ack.verified, false);
     // and it is deliberately NOT a DOS route.
     assert.equal(DOS_TOOLCHAINS['pascal-ack'], undefined);
+});
+
+test('the libre uBASIC .EXE runs `10 print 6*7` on the real DOS bench and prints 42', async () => {
+    // Mount the user's BASIC as PROG.BAS and run the interpreter on the REAL
+    // bench (createDos8086 loadExe + INT 21h open/read). No stub, no network.
+    const files = new Map([['PROG.BAS', new TextEncoder().encode('10 print 6*7\n')]]);
+    const r = await runDosProgram({
+        bytes: UBASIC_EXE, format: 'exe', variant: '80186', files, maxSteps: 12_000_000
+    });
+    assert.ok(r.terminated && !r.exhausted, `interpreter terminated (steps=${r.steps})`);
+    assert.equal(r.exitCode, 0);
+    assert.match(r.screen, /\b42\b/, `screen was ${JSON.stringify(r.screen)}`);
+});
+
+test('runDosToolchain("ubasic", …) runs the shipped interpreter and returns its output', async () => {
+    // The EXACT production path: route lookup → fetch → compileAndRunOnDos on the
+    // real bench. The fetcher returns the shipped static/roms/ubasic.exe bytes.
+    const program = [
+        '10 gosub 100',
+        '20 for i = 1 to 3',
+        '30 print i',
+        '40 next i',
+        '50 print 6*7',
+        '60 if 6*7 = 42 then print "ok"',
+        '70 end',
+        '100 print "hi"',
+        '110 return', ''
+    ].join('\n');
+    const r = await runDosToolchain('ubasic', program, {
+        fetchToolchain: async () => ({compiler: UBASIC_EXE}),
+        maxSteps: 20_000_000
+    });
+    // An interpreter route has no output FILE: its work is the run itself, whose
+    // screen is on the compile stage.
+    assert.equal(r.stage, 'compile');
+    assert.ok(r.compile.terminated, 'the interpreter terminated');
+    assert.equal(r.compile.exitCode, 0);
+    for (const want of ['hi', '1', '2', '3', '42', 'ok']) {
+        assert.ok(r.compile.screen.includes(want), `expected ${want} in ${JSON.stringify(r.compile.screen)}`);
+    }
+    // The user's program was mounted where the interpreter reads it.
+    assert.ok(r.files.get('PROG.BAS'), 'PROG.BAS was mounted for the interpreter');
 });
 
 test('runDosToolchain runs a DOS-native route through the bench (fetch composition)', async () => {
