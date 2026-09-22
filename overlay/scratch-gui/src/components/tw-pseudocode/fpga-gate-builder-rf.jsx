@@ -22,7 +22,7 @@ import {sevenSegSvg, seg7Value, ledValue, ledBankValues} from '../../lib/bw-fpga
 import {layerPositions} from '../../lib/bw-fpga/auto-layout.js';
 import {defaultMmioMap} from '../../lib/bw-fpga/mmio.js';
 import {CHALLENGES, challengeById, isUnlocked, isRealise} from '../../lib/bw-fpga/challenges.js';
-import {grade, gradeRealisedCircuit} from '../../lib/bw-fpga/grader.js';
+import {grade, gradeRealisedAsync} from '../../lib/bw-fpga/grader.js';
 import {withLiveCircuit} from '../../lib/bw-fpga/live-circuit.js';
 import FpgaChallengePanel from './fpga-challenges.jsx';
 import TruthTableModal from './fpga-truth-table.jsx';
@@ -654,7 +654,17 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
             // circuit may not be mounted yet, so this can take a moment.
             setCheckResult({realised: true, pending: true});
             withLiveCircuit(
-                circuit => recordResult(c.id, gradeRealisedCircuit(circuit, c)),
+                circuit => {
+                    // Grade WITHOUT holding the thread: the 4-bit adder drives
+                    // 22 rows and takes seconds, and a synchronous grade froze
+                    // the page for all of it — including before the "Checking…"
+                    // state could paint.
+                    gradeRealisedAsync(circuit, c, {
+                        onProgress: p => setCheckResult({realised: true, pending: true, progress: p})
+                    }).then(result => recordResult(c.id, result))
+                        .catch(e => setCheckResult({pass: false, realised: true,
+                            problem: `The board could not be graded: ${e.message}`}));
+                },
                 {onProblem: problem => setCheckResult({pass: false, realised: true, problem})}
             );
             return;

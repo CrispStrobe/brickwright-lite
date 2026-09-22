@@ -25,11 +25,12 @@ const LIVE = 'overlay/scratch-gui/src/lib/bw-fpga/live-circuit.js';
 
 test('Check routes a realise challenge at the LIVE circuit, not at the canvas model', () => {
     const ui = read(BUILDER);
-    assert.match(ui, /import \{grade, gradeRealisedCircuit\}/, 'both graders are imported');
+    assert.match(ui, /import \{grade, gradeRealisedAsync\}/,
+        'the canvas grader and the non-freezing board grader');
     assert.match(ui, /import \{withLiveCircuit\}/, 'and the way to reach the live board');
     assert.match(ui, /if \(isRealise\(c\)\) \{[\s\S]*?withLiveCircuit\(/,
         'a realise challenge goes to the live circuit');
-    assert.match(ui, /gradeRealisedCircuit\(circuit, c\)/, 'and is graded by driving that circuit');
+    assert.match(ui, /gradeRealisedAsync\(circuit, c, \{/, 'and is graded by driving that circuit');
     // The canvas grader must still be what a normal challenge gets.
     assert.match(ui, /recordResult\(c\.id, grade\(reactFlowToModel\(nodes, edges\), c\)\)/,
         'a canvas challenge is still graded on the model');
@@ -48,7 +49,9 @@ test('a board pass banks progress exactly like a canvas pass', () => {
     const ui = read(BUILDER);
     assert.match(ui, /const recordResult = /, 'one place records a verdict');
     assert.match(ui, /saveProgress\(next\)/, 'and persists the unlock');
-    assert.match(ui, /recordResult\(c\.id, gradeRealisedCircuit/, 'the board result goes through it too');
+    assert.match(ui, /\.then\(result => recordResult\(c\.id, result\)\)/,
+        'the board result goes through it too, once the async grade resolves');
+    assert.match(ui, /\.catch\(/, 'and a grade that throws does not leave it spinning forever');
 });
 
 test('the panel renders a board result with the board message', () => {

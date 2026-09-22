@@ -94,7 +94,10 @@ export function FpgaChallengePanel ({active, passed, result, onSelect, onCheck, 
                         disabled={Boolean(result && result.pending)}
                         style={{width: '100%', padding: '5px 8px', cursor: 'pointer', fontWeight: 'bold',
                             border: '1px solid #16a34a', borderRadius: 6, background: '#f0fdf4', color: '#166534'}}
-                    >{result && result.pending ? 'Checking the board…'
+                    >{result && result.pending
+                        ? (result.progress
+                            ? `Checking… ${result.progress.checked + 1}/${result.progress.total}`
+                            : 'Checking the board…')
                         : isRealise(activeC) ? '✓ Check my board' : '✓ Check my design'}</button>
                     {result && !result.pending ? (
                         <div data-testid="bw-fpga-result" style={{marginTop: 6, fontSize: 11, lineHeight: 1.4,

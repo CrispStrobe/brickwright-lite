@@ -75,7 +75,10 @@ test('the hold check runs on every cycle, not just the first', () => {
     // Guard against a grader that checks holding once and then stops looking.
     const src = readFileSync(
         new URL('../overlay/scratch-gui/src/lib/bw-fpga/grader.js', import.meta.url), 'utf8');
-    const seq = src.slice(src.indexOf('export function gradeRealisedSequential'));
+    // The clocking body lives in the generator; the exported name is a thin
+    // sync wrapper around it.
+    const seq = src.slice(src.indexOf('function* gradeRealisedSequentialSteps'));
+    assert.ok(seq.length, 'the sequential generator is where the clocking happens');
     const loopAt = seq.indexOf('for (let t = 0; t < cycles; t++)');
     const holdAt = seq.indexOf('that is a wire, not a register');
     assert.ok(loopAt > 0 && holdAt > loopAt, 'the hold check sits INSIDE the per-cycle loop');

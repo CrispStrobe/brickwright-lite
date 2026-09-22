@@ -281,8 +281,7 @@ function settle (board, ms, stepMs) {
  *
  * @returns {{pass: boolean, realised: true, problem?: string, failing?: object, checked?: number}}
  */
-export function gradeRealisedCircuit (circuit, challenge, opts = {}) {
-    if (challenge.sequential) return gradeRealisedSequential(circuit, challenge, opts);
+function* gradeRealisedSteps (circuit, challenge, opts = {}) {
     const io = opts.io || discoverRealisation(circuit, challenge);
     const problem = validateRealisation(circuit, challenge, io);
     if (problem) return {pass: false, realised: true, problem};
@@ -323,6 +322,10 @@ export function gradeRealisedCircuit (circuit, challenge, opts = {}) {
     };
 
     for (let bits = 0; bits < total; bits++) {
+        // Hand control back between rows so a long grade does not freeze the
+        // page. The sync wrapper drains this without pausing, so nothing that
+        // grades headlessly changes.
+        yield {checked: bits, total};
         const inputs = rows[bits];
         io.inputs.forEach((inp, i) => board.setControl(inp.switch, inputs[names[i]] ? 1 : 0));
         settle(board, settleMs, stepMs);
@@ -380,7 +383,7 @@ export function gradeRealisedCircuit (circuit, challenge, opts = {}) {
  * @param {object} challenge  a sequential realise challenge
  * @param {{io?: object, settleMs?: number, stepMs?: number}} [opts]
  */
-export function gradeRealisedSequential (circuit, challenge, opts = {}) {
+function* gradeRealisedSequentialSteps (circuit, challenge, opts = {}) {
     const io = opts.io || discoverRealisation(circuit, challenge);
     const problem = validateRealisation(circuit, challenge, io);
     if (problem) return {pass: false, realised: true, sequential: true, problem};
@@ -430,6 +433,7 @@ export function gradeRealisedSequential (circuit, challenge, opts = {}) {
     settle(board, settleMs, stepMs);
 
     for (let t = 0; t < cycles; t++) {
+        yield {checked: t, total: cycles};
         const inputs = {};
         for (const k of driven) inputs[k] = stim[k][t];
 
@@ -478,6 +482,59 @@ export function gradeRealisedSequential (circuit, challenge, opts = {}) {
 
     restore();
     return {pass: true, realised: true, sequential: true, checked: cycles};
+}
+
+/** Run a grading generator to completion without pausing. */
+function drain (it) {
+    let step = it.next();
+    while (!step.done) step = it.next();
+    return step.value;
+}
+
+/** The steps a grade will take, so a caller can drive it however it likes. */
+const stepsFor = (circuit, challenge, opts) => (challenge.sequential
+    ? gradeRealisedSequentialSteps(circuit, challenge, opts)
+    : gradeRealisedSteps(circuit, challenge, opts));
+
+/**
+ * Grade the learner's LIVE CIRCUIT. Synchronous: the whole grade runs before
+ * this returns, which is what every headless test and every small challenge
+ * wants.
+ *
+ * For a long one — the 4-bit adder drives 22 rows and takes seconds — use
+ * gradeRealisedAsync, which does the same work without freezing the page.
+ */
+export function gradeRealisedCircuit (circuit, challenge, opts = {}) {
+    return drain(stepsFor(circuit, challenge, opts));
+}
+
+/** Grade a sequential challenge synchronously. */
+export function gradeRealisedSequential (circuit, challenge, opts = {}) {
+    return drain(gradeRealisedSequentialSteps(circuit, challenge, opts));
+}
+
+/**
+ * The same grade, yielding to the event loop between rows so the page stays
+ * alive and can show progress.
+ *
+ * The board is driven exactly as the sync version drives it — same rows, same
+ * settling, same verdict — the only difference is who holds the thread in
+ * between. `onProgress({checked, total})` fires before each row.
+ *
+ * @returns {Promise<object>} the same result object as gradeRealisedCircuit
+ */
+export async function gradeRealisedAsync (circuit, challenge, opts = {}) {
+    const {onProgress} = opts;
+    const it = stepsFor(circuit, challenge, opts);
+    let step = it.next();
+    while (!step.done) {
+        if (onProgress) onProgress(step.value);
+        // A macrotask, not a microtask: a microtask queue drains before paint,
+        // so awaiting a resolved promise would not let the browser render.
+        await new Promise(resolve => setTimeout(resolve, 0));
+        step = it.next();
+    }
+    return step.value;
 }
 
 /** A one-line, learner-facing summary of a real-parts grade. */
