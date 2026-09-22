@@ -135,6 +135,103 @@ whole point is that children load each other's projects."* It parses a small
 grammar instead, and rejects what it cannot parse *with the reason*. A boolean
 subset of pseudocode is a grammar of about that size.
 
+## Could we have an event-driven simulator?
+
+Asked properly, because the answer above ("no") was too short.
+
+### What exists, and under what licence
+
+| Simulator | Licence | Under the current `PERMISSIVE` set |
+|---|---|---|
+| **Icarus Verilog** | GPL-2.0-or-later | refused — and it is the only true *interpreter* of the three |
+| **Verilator** | LGPL-3.0 **or Artistic-2.0** | LGPL refused; Artistic-2.0 is not in the set |
+| **CVC / Tachyon** | GPL | refused |
+| **Yosys** | **ISC** | already shipped |
+| **CXXRTL** (a Yosys backend) | ISC | already shipped |
+| Verible, Surelog | Apache-2.0 | fine, but they are front-ends, not simulators |
+| VTR | MIT | fine, but it is place-and-route |
+
+No permissive, embeddable, event-driven Verilog interpreter appears to exist.
+
+**Where Artistic-2.0 differs, and why it is not a one-line edit.** MIT / ISC /
+BSD attach essentially only attribution. Artistic-2.0 attaches conditions to
+MODIFIED versions — ship a patched copy and you must publish source, or rename
+so it cannot be confused with the Standard Version, or similar. The obligations
+therefore change the day someone patches the dependency, which is a standing
+liability rather than a one-off review. (The precise clause obligations,
+especially around compiled form, need a real read by whoever owns the call.)
+
+There is also a wrinkle in *where* that list lives. `licence.js` calls it
+"SPDX ids we treat as shippable, matching THIRD-PARTY-NOTICES.md's set", and
+the same regex decides **which user HDL the hosted synthesiser accepts**.
+Amending it to admit a bundled dependency would silently change what the server
+accepts from learners. Two decisions sharing one constant; they should be
+separated before either is changed.
+
+### What the bundled Yosys actually has — measured, 2026-09-22
+
+`@yowasp/yosys` 0.70.62-dev, licence **ISC**, **295 commands**:
+
+| | |
+|---|---|
+| `sim` | **absent** |
+| `write_cxxrtl` | present — but emits C++ |
+| `eval`, `sat`, `equiv_simple`, `write_simplec` | present |
+
+So the shipped toolchain has **no event-driven simulator**, and the hoped-for
+free answer is not there.
+
+`eval` and `sat` are a genuine find for the V1 path though: `eval` computes a
+synthesised design's outputs for given inputs, and `sat` / `equiv_simple` do
+formal equivalence. That is a stronger proof than enumerating a truth table —
+it could show a generated circuit is equivalent to its source rather than
+merely agreeing on every row we happened to drive.
+
+To reproduce (the wasm needs a newer Node than the dev box's 20, and a flag):
+
+```bash
+curl -sLO https://nodejs.org/dist/v22.11.0/node-v22.11.0-linux-x64.tar.xz
+tar xf node-v22.11.0-linux-x64.tar.xz
+cd packages/scratch-gui && ../../node-v22.11.0-linux-x64/bin/node \
+  --experimental-wasm-exnref --input-type=module -e "
+const m = await import('@yowasp/yosys');
+const dec = new TextDecoder(); let out = '';
+const sink = b => { if (b) out += dec.decode(b, {stream: true}); };
+await m.runYosys(['-p','help'], {}, {stdout: sink, stderr: sink});
+console.log(out);"
+```
+
+`stdout` is an `OutputStream` — `(bytes: Uint8Array | null) => void`, where
+`null` ends the stream. Passing a string-concatenating callback silently yields
+comma-separated byte numbers, which reads like a broken build rather than a
+wrong callback.
+
+### The boundary changes the answer
+
+"Icarus is GPL" is not the end of it. GPL obligations attach to what is
+**conveyed**, not what is **used**, and this repo already relies on three
+different boundaries:
+
+1. **A hosted service.** `synth.crispstro.be` already runs the toolchain
+   server-side. Running GPL software as a service and returning results is not
+   conveying the program (GPL-2/3 carry no network clause; AGPL would differ).
+   The hosted assembler for 8051/6502/Z80/AVR is the same shape.
+2. **A local tier.** Already the documented answer for copyleft input:
+   *"refused on the shared server and must be built locally"*, on the reasoning
+   in `licence.js` that *"building it on the user's own machine conveys
+   nothing."*
+3. **A separately published wasm, loaded on call.** `@yowasp/yosys` is already
+   exactly this — `npm install --no-save` in CI, with `yosys-absent.js` as the
+   stub when it is missing. A tool invoked with argv and a filesystem is the
+   classic arm's-length shape rather than linking.
+
+So an event-driven simulator is **not** ruled out; it is a question of which
+boundary, and the project has precedent for all three.
+
+**This note does not decide that.** Whether a given boundary discharges a
+particular obligation is a judgement for a person, not for this file. What is
+recorded here is only that the shapes exist and are already in use.
+
 ## The options
 
 ### A. Combinational subset, as a Code-tab subtab
@@ -197,6 +294,35 @@ gate builder.
   handoffs.
 - Loses the round trip and the "Verilog is a language like the others" framing.
 
+### D. An event-driven simulator, behind a boundary
+
+Any of the three boundaries above, most plausibly Icarus as a hosted service or
+as a separately published wasm loaded on call.
+
+- **It is the only option that runs arbitrary user Verilog**, including the
+  testbench constructs. Everything else here handles a subset.
+- Makes V2 real rather than emit-only, and would let the FPGA tab run a
+  learner's own testbench.
+- **Needs a licence judgement from a person**, per the boundary section. The
+  shapes are precedented; the decision is not this note's to take.
+- Largest operational cost of anything here: a service to run and keep up, or a
+  package to publish and version.
+- Worth separating in the mind from the transpiler question entirely — it is
+  useful whether or not pseudocode ever emits Verilog.
+
+### E. Prove V1 with `eval` / `sat` instead of enumerating
+
+Not a simulator at all: use the Yosys commands already shipped to show a
+generated circuit matches its source.
+
+- **Stronger than the truth table.** Enumeration proves agreement on the rows
+  driven; `equiv_simple` / `sat` addresses equivalence as a property.
+- ISC, already in the bundle, no new dependency, no licence question.
+- Only applies once something emits V1; it is a way to make option A
+  trustworthy, not an alternative to it.
+- Unverified: whether these commands behave usefully through the wasm wrapper
+  on designs this small. Measuring that is a contained experiment.
+
 ## Recommendation
 
 **A, modelled on the ASM subtab rather than on Python.**
@@ -216,6 +342,17 @@ and the board stay in the FPGA tab, the way ASM hands off to the assembler.
 B stays out until something needs it, and it should be a separate decision with
 its own note — not a later "extension" of A, because it abandons the round trip
 that justifies A.
+
+**D is a separate question and should be decided separately.** An event-driven
+simulator is useful whether or not pseudocode ever emits Verilog — it would let
+a learner run their own testbench in the FPGA tab today. Bundling it into this
+decision makes both harder. The measurement above (no `sim` in the shipped
+Yosys) means it cannot be had for free, so it needs someone to choose a
+boundary and accept the operational cost.
+
+**E is cheap and should be tried early if A proceeds**, because it changes what
+A can claim: "this circuit agrees with your expression on every row we drove"
+versus "these are equivalent".
 
 ## What is still open
 
