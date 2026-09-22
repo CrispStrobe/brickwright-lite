@@ -10,22 +10,36 @@
 
 import {compileAndRunOnDos} from './dos-compile.js';
 
+// DOS-NATIVE toolchains only: the compiler/interpreter is ITSELF a 16-bit DOS
+// program, so it runs on the DOS bench (dos-compile.js). GW-BASIC qualifies —
+// GWBASIC.EXE is a real DOS .EXE (so do MASM/LINK). A HOST cross-compiler does
+// NOT belong here (see HOSTED_TOOLCHAINS + the ACK note below).
 /** @type {Record<string, object>} */
 export const DOS_TOOLCHAINS = Object.freeze({
-    'pascal-ack': {
-        id: 'pascal-ack', label: 'Pascal (ACK, on DOS)', language: 'pascal',
-        source: 'ack',                         // media-lab project that provides the toolchain
-        compiler: 'ACK.EXE', compilerFormat: 'exe',
-        sourceName: 'PROG.PAS', outputName: 'PROG.COM',
-        compileKeys: 'ack -mpc86 PROG.PAS -o PROG.COM\r',   // best-effort — verify live
-        run: true, verified: false
-    },
     'gwbasic': {
-        id: 'gwbasic', label: 'GW-BASIC (on DOS)', language: 'basic',
-        source: 'gwbasic',                     // MIT GW-BASIC source (Microsoft, 2020)
+        id: 'gwbasic', label: 'GW-BASIC (on DOS)', language: 'basic', kind: 'dos-native',
+        source: 'gwbasic',                     // MIT GW-BASIC source (Microsoft, 2020) — needs a built GWBASIC.EXE
         compiler: 'GWBASIC.EXE', compilerFormat: 'exe',
-        sourceName: 'PROG.BAS', outputName: null,           // interpreted, not compiled
+        sourceName: 'PROG.BAS', outputName: null,           // interpreted, not compiled to a file
         runKeys: 'LOAD"PROG.BAS\rRUN\r', run: false, verified: false
+    }
+});
+
+// HOSTED toolchains: the compiler is a HOST program, so it does NOT run on the
+// DOS bench — it compiles on a server and returns an 8086 .COM the bench then
+// runs (the pattern SmallerC's hosted assembler already uses, HOSTED_ASSEMBLER
+// in assemble-route.js). ACK is exactly this: its own docs say "ACK's compiler
+// is a host tool (`ack -mmsdos86`)", it "runs on a modern host", NOT on the
+// 8086. So libre Pascal via ACK needs a compile ENDPOINT, not compile-on-DOS —
+// which is why an earlier `pascal-ack` DOS route was wrong and is corrected to
+// this. `endpoint` is null until such a server is stood up.
+/** @type {Record<string, object>} */
+export const HOSTED_TOOLCHAINS = Object.freeze({
+    'pascal-ack': {
+        id: 'pascal-ack', label: 'Pascal (ACK)', language: 'pascal', kind: 'hosted',
+        source: 'ack',                         // media-lab ACK project (BSD-3), built on the host
+        endpoint: null,                        // a server running `ack -mmsdos86 -O`
+        outputFormat: 'com', verified: false
     }
 });
 
@@ -45,7 +59,14 @@ export const DOS_TOOLCHAINS = Object.freeze({
  */
 export async function runDosToolchain(routeId, source, opts = {}) {
     const route = DOS_TOOLCHAINS[routeId];
-    if (!route) throw new Error(`unknown DOS toolchain route: ${routeId}`);
+    if (!route) {
+        if (HOSTED_TOOLCHAINS[routeId]) {
+            throw new Error(`${routeId} is a HOSTED toolchain (a host cross-compiler): ` +
+                'it compiles on a server and returns a .COM, it does not run on the DOS ' +
+                'bench — use its endpoint, not runDosToolchain');
+        }
+        throw new Error(`unknown DOS toolchain route: ${routeId}`);
+    }
     if (typeof opts.fetchToolchain !== 'function') {
         throw new Error('runDosToolchain needs a fetchToolchain(route) => {compiler, support?}');
     }

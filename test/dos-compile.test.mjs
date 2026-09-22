@@ -10,7 +10,7 @@ import {
     runDosProgram, compileAndRunOnDos
 } from '../overlay/scratch-gui/src/lib/bw-debug/dos-compile.js';
 import {
-    DOS_TOOLCHAINS, runDosToolchain
+    DOS_TOOLCHAINS, HOSTED_TOOLCHAINS, runDosToolchain
 } from '../overlay/scratch-gui/src/lib/bw-debug/dos-toolchain-routes.js';
 
 // A 40-byte real .COM: INT 21h create OUT.TXT, write "HI", close, exit(0).
@@ -55,29 +55,38 @@ test('compileAndRunOnDos mounts sources, runs the compiler, extracts its output'
     assert.ok(r.files.get('SOURCE.PAS'), 'the source was mounted for the compiler');
 });
 
-test('DOS_TOOLCHAINS describes Pascal-via-ACK and GW-BASIC, marked unverified', () => {
-    for (const id of ['pascal-ack', 'gwbasic']) {
-        const r = DOS_TOOLCHAINS[id];
-        assert.ok(r, id);
-        assert.equal(r.verified, false, 'unverified until confirmed on real binaries');
-        assert.ok(r.compiler && r.sourceName, 'has a compiler + a source name');
-    }
+test('routes split DOS-native (GW-BASIC) from hosted (ACK); all unverified', () => {
+    // GW-BASIC is a DOS .EXE → the DOS bench (dos-compile).
+    const gw = DOS_TOOLCHAINS['gwbasic'];
+    assert.ok(gw && gw.kind === 'dos-native');
+    assert.equal(gw.verified, false);
+    assert.ok(gw.compiler && gw.sourceName);
+    // ACK is a HOST cross-compiler → a hosted endpoint, NOT the DOS bench.
+    const ack = HOSTED_TOOLCHAINS['pascal-ack'];
+    assert.ok(ack && ack.kind === 'hosted');
+    assert.equal(ack.verified, false);
+    // and it is deliberately NOT a DOS route.
+    assert.equal(DOS_TOOLCHAINS['pascal-ack'], undefined);
 });
 
-test('runDosToolchain looks up the route and fetches its toolchain', async () => {
+test('runDosToolchain runs a DOS-native route through the bench (fetch composition)', async () => {
     let seen = null;
-    // Throw after the fetch so the test does not depend on a valid compiler EXE;
-    // it proves the route lookup + fetch composition.
-    await assert.rejects(() => runDosToolchain('pascal-ack', 'begin end.', {
+    // Throw after the fetch so the test does not depend on a valid GWBASIC.EXE;
+    // it proves the route lookup + fetch composition for a DOS-native route.
+    await assert.rejects(() => runDosToolchain('gwbasic', '10 PRINT 42', {
         fetchToolchain: async route => { seen = route; throw new Error('stop-after-fetch'); }
     }), /stop-after-fetch/);
-    assert.equal(seen.id, 'pascal-ack');
-    assert.equal(seen.sourceName, 'PROG.PAS');
+    assert.equal(seen.id, 'gwbasic');
+    assert.equal(seen.sourceName, 'PROG.BAS');
 });
 
-test('runDosToolchain refuses an unknown route or a missing fetcher', async () => {
+test('runDosToolchain refuses a hosted route, an unknown route, or a missing fetcher', async () => {
+    // A hosted toolchain (ACK) does not run on the bench — say so, don't fetch.
+    await assert.rejects(
+        () => runDosToolchain('pascal-ack', 'begin end.', {fetchToolchain: async () => ({compiler: FILE_WRITER})}),
+        /HOSTED toolchain/);
     await assert.rejects(
         () => runDosToolchain('nope', 'x', {fetchToolchain: async () => ({compiler: FILE_WRITER})}),
         /unknown DOS toolchain/);
-    await assert.rejects(() => runDosToolchain('pascal-ack', 'x', {}), /needs a fetchToolchain/);
+    await assert.rejects(() => runDosToolchain('gwbasic', 'x', {}), /needs a fetchToolchain/);
 });
