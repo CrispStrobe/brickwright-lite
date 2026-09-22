@@ -39,8 +39,13 @@ set `CORS_ORIGIN` to lock it down.
 | `server.js`            | dependency-free `node:http` server (local + Docker). |
 | `api/compile.js`       | Vercel serverless entry (same core). |
 | `build-ack.sh`         | build ACK's `msdos86` platform → a staging tree. |
-| `Dockerfile`           | two-stage: build ACK, then serve. The reliable deploy. |
+| `Dockerfile`           | two-stage: build ACK, then serve. Built + published on CI. |
+| `DEPLOY.md`            | one-command deploys from the GHCR image + the two-line un-gate. |
 | `test/`                | unit tests against a real ACK (skip if none built). |
+
+The image itself is built and pushed to GHCR by
+`.github/workflows/pascal-ack-image.yml`, which also smoke-tests the published
+image (compiles a Pascal program and asserts a `.COM` comes back).
 
 The service finds `ack` via the environment: **`ACKDIR`** (ACK's staging root;
 `ACK_BIN` is derived as `$ACKDIR/bin/ack`) or **`ACK_BIN`** directly.
@@ -65,24 +70,43 @@ curl -s localhost:8080/compile \
 
 ## Deploy
 
-**Docker (recommended).** ACK is a from-source C build; the two-stage
-`Dockerfile` builds it and ships only the staging tree + node server:
+**The image is built and published for you, on CI.**
+`.github/workflows/pascal-ack-image.yml` builds this `Dockerfile` (ACK from
+source at the pinned commit) on GitHub Actions, pushes it to the GitHub
+Container Registry, and a smoke-test job then pulls the pushed image and proves
+it compiles Pascal. So you do **not** build ACK to deploy — pull the published
+image:
+
+```
+ghcr.io/crispstrobe/pascal-ack-compiler:latest
+ghcr.io/crispstrobe/pascal-ack-compiler:sha-<gitsha>   # immutable, per build
+```
+
+```bash
+docker run -d -p 8080:8080 ghcr.io/crispstrobe/pascal-ack-compiler:latest
+curl -fsS localhost:8080/health
+```
+
+**One command from live: see [DEPLOY.md](./DEPLOY.md)** — one-command deploys of
+this GHCR image to Fly.io, Google Cloud Run, or a plain `docker run` VM, plus the
+exact two-line un-gate that makes the lite code-tab Pascal button appear.
+
+**Build it yourself (only if you must).** The same two-stage `Dockerfile` builds
+locally — it needs a roomy build host (ACK is a ~1 GB from-source C build):
 
 ```bash
 docker build -t pascal-ack-compiler .
 docker run -p 8080:8080 pascal-ack-compiler
 ```
 
-Host that container anywhere (Fly.io, Cloud Run, a VM). Put its `/compile` URL
-into the lite client — see **Wiring into lite** below.
-
 **Vercel.** `api/compile.js` + `vercel.json` are provided, but a stock Vercel
 build **cannot compile ACK from source** in a serverless build step. To use
 Vercel you must ship a prebuilt `ack` staging tree with the function (as
 included files, with `ACKDIR` pointed at it) or deploy the container image to a
-Vercel Function that supports OCI images. The Docker route avoids this and is
-the path this README recommends. **No deploy has been made** — the production
-endpoint URL does not exist yet.
+Vercel Function that supports OCI images. The GHCR image + DEPLOY.md route avoids
+this and is the path this README recommends. **No production endpoint has been
+stood up yet** — the URL does not exist until you run one of the DEPLOY.md
+commands.
 
 ## Wiring into lite (once deployed)
 
