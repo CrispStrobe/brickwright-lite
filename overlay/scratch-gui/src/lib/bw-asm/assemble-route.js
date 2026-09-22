@@ -65,6 +65,12 @@ export const HOSTED_ASSEMBLER = 'https://stc-compiler.vercel.app/assemble';
 export {DOS_TOOLCHAINS, HOSTED_TOOLCHAINS, runDosToolchain,
     runHostedToolchain, hostedToolchainReady, hostedEndpointFor} from '../bw-debug/dos-toolchain-routes.js';
 
+// CP/M-80 (Z80) toolchain routes: a host cross-compiler (ACK's z80+cpm backend,
+// or SDCC) emits a Z80 CP/M .COM that runs on the browser CP/M service layer
+// (bw-debug/cpm-z80.js). Re-exported here beside the DOS routes so the code tab
+// reaches every code-run route from one place.
+export {CPM_TOOLCHAINS, runCpmToolchain} from '../bw-debug/dos-toolchain-routes.js';
+
 /**
  * Targets assembled IN THE BROWSER. One entry, and it is a whitelist rather
  * than a "not hosted" fallback on purpose: a device this file has never

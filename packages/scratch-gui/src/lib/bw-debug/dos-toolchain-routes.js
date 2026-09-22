@@ -9,6 +9,7 @@
 // the language button.
 
 import {compileAndRunOnDos, runDosProgram} from './dos-compile.js';
+import {runCpmProgram} from './cpm-compile.js';
 
 // DOS-NATIVE toolchains only: the compiler/interpreter is ITSELF a 16-bit DOS
 // program, so it runs on the DOS bench (dos-compile.js). GW-BASIC qualifies —
@@ -58,6 +59,63 @@ export const HOSTED_TOOLCHAINS = Object.freeze({
         outputFormat: 'com', verified: false
     }
 });
+
+// CP/M-80 (Z80) toolchain routes. Unlike the DOS routes above, the compiler is
+// a HOST cross-compiler that emits a Z80 CP/M `.COM` (ACK's `z80`+`cpm` backend
+// gives libre Pascal/C/Modula-2; SDCC gives libre C). The `.COM` does not run on
+// the DOS bench — it runs on the CP/M bench (cpm-compile.js → cpm-z80.js), the
+// Z80/CP/M twin of the DOS service layer. So, like the ACK-for-8086 route, these
+// need a compile ENDPOINT (a server running `ack -mcpm` / `sdcc -mz80`); what is
+// proven HERE is the second half — running a produced `.COM` correctly on the
+// browser CP/M layer (test/cpm-z80.test.mjs runs a real SDCC-compiled program).
+/** @type {Record<string, object>} */
+export const CPM_TOOLCHAINS = Object.freeze({
+    'ack-z80-cpm': {
+        id: 'ack-z80-cpm', label: 'Pascal / C / Modula-2 (ACK, via CP/M)',
+        language: 'pascal', kind: 'hosted-cpm',
+        source: 'ack',            // Amsterdam Compiler Kit (BSD-3), z80 + cpm backend
+        target: 'z80/cpm',
+        endpoint: null,           // a server running `ack -mcpm -O`
+        outputFormat: 'com',
+        // The RUN path is proven (a cross-compiled Z80 CP/M .COM runs on the
+        // bench); the ACK z80/cpm host build was not reproduced here, so the
+        // route stays unverified and un-buttoned until an endpoint is stood up.
+        runProven: true, verified: false
+    },
+    'sdcc-z80-cpm': {
+        id: 'sdcc-z80-cpm', label: 'C (SDCC, via CP/M)', language: 'c', kind: 'hosted-cpm',
+        source: 'sdcc',           // SDCC (GPL) z80 backend
+        target: 'z80/cpm',
+        endpoint: null,           // a server running `sdcc -mz80` + a CP/M crt0
+        outputFormat: 'com',
+        // A real SDCC-compiled Z80 CP/M .COM runs correctly on the bench
+        // (test/cpm-z80.test.mjs); only the compile endpoint is not stood up.
+        runProven: true, verified: false
+    }
+});
+
+/**
+ * Run a Z80 CP/M `.COM` a host cross-compiler already produced, on the browser
+ * CP/M bench — the stage-two half of a hosted CP/M route. The compile stage
+ * (fetching the toolchain, running `ack -mcpm`) is an endpoint's job; this is
+ * the run.
+ *
+ * @param {string} routeId a key of CPM_TOOLCHAINS
+ * @param {Uint8Array} com the produced `.COM` bytes
+ * @param {object} [opts]
+ * @param {Record<string,Uint8Array|string>} [opts.files] data files to mount
+ * @param {string|number[]} [opts.keys]
+ * @param {number} [opts.maxSteps]
+ * @returns {Promise<object>} the runCpmProgram result
+ */
+export async function runCpmToolchain(routeId, com, opts = {}) {
+    const route = CPM_TOOLCHAINS[routeId];
+    if (!route) throw new Error(`unknown CP/M toolchain route: ${routeId}`);
+    if (!(com instanceof Uint8Array)) {
+        throw new Error('runCpmToolchain needs the produced .COM bytes (a host cross-compiler emits them)');
+    }
+    return runCpmProgram({bytes: com, files: opts.files, keys: opts.keys, maxSteps: opts.maxSteps});
+}
 
 /**
  * Run a code-tab program through a DOS toolchain: fetch its binaries, mount the
