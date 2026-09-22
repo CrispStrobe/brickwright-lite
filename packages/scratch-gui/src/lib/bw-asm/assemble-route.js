@@ -57,6 +57,13 @@
 /** The hosted assembler, verbatim from the call site it replaced. */
 export const HOSTED_ASSEMBLER = 'https://stc-compiler.vercel.app/assemble';
 
+// DOS toolchain routes (Pascal via ACK, GW-BASIC): a compiler .EXE runs on the
+// browser DOS bench and its output is read back (see bw-debug/dos-compile.js).
+// Re-exported here, beside the other code-tab routes, so the code tab reaches
+// them from one place. The routes are experimental (verified:false) until each
+// toolchain's command sequence is confirmed against its real binaries.
+export {DOS_TOOLCHAINS, runDosToolchain} from '../bw-debug/dos-toolchain-routes.js';
+
 /**
  * Targets assembled IN THE BROWSER. One entry, and it is a whitelist rather
  * than a "not hosted" fallback on purpose: a device this file has never

@@ -65,8 +65,15 @@ export async function createI8086DosBench (opts) {
 }
 
 async function createI8086DosBenchSelected (opts) {
-    const {bytes, format, keys, onChar, onExit, variant, chips} = opts;
+    const {bytes, format, keys, onChar, onExit, variant, chips, files} = opts;
     if (!bytes || !bytes.length) throw new Error('the DOS bench was handed an empty image');
+
+    // The DOS disk: a Map<name, Uint8Array> that INT 21h create/open/read/write
+    // use (i8086-dos.js). Mounting input files here — and reading back the files
+    // a program WROTE — is what lets a DOS compiler toolchain run in the browser:
+    // inject SOURCE.PAS, run the compiler .EXE, read the OUTPUT.COM it produced.
+    // A caller that passes no Map gets a fresh one, still exposed on the return.
+    const diskFiles = (files instanceof Map) ? files : new Map();
 
     const [{I8086Machine}, dosMod, dbgMod] = await Promise.all([
         import(/* webpackChunkName: "bw-debug-i8086" */ 'bw-board/i8086-machine.js'),
@@ -141,6 +148,7 @@ async function createI8086DosBenchSelected (opts) {
         if (c._joinHub && machine.chips[c.name]) c._joinHub.cards.push(machine.chips[c.name]);
     }
     const dos = createDos8086(machine, {
+        files: diskFiles,
         onChar: onChar || null,
         // On a disk boot the injected program is PROG.COM by convention, so with
         // no keys supplied we auto-type "PROG\r" at the A> prompt to run it —
@@ -194,6 +202,10 @@ async function createI8086DosBenchSelected (opts) {
     return {
         machine, dos, target,
         format,
+        // The DOS disk (Map<name, Uint8Array>): a caller reads back the files the
+        // program wrote (a compiler's output .COM), and mounts inputs by passing
+        // this same Map shape in `opts.files`.
+        files: diskFiles,
         /**
          * THE SERVICED STEP, and it is exposed because its absence was a trap.
          * `machine` above is the RAW machine: stepping it runs instructions
