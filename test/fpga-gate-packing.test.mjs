@@ -130,6 +130,13 @@ test('the parts list panel offers that CSV', () => {
     assert.match(tab, /onFocus=\{e => e\.target\.select\(\)\}/, 'and it is selectable in one click');
 });
 
+test('a list of five outputs reads as a list, not "a and b and c and d and e"', () => {
+    // Seen in a browser drive of the 4-bit adder, which has five outputs.
+    const tab = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx', import.meta.url), 'utf8');
+    assert.match(tab, /names\.slice\(0, -1\)\.join\(', '\)/, 'commas between all but the last');
+    assert.match(tab, /\} and \$\{names\[names\.length - 1\]\}/, 'and "and" before the last');
+});
+
 test('the FPGA tab reports PACKAGES bought, not gates placed', () => {
     const tab = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/fpga-tab.jsx', import.meta.url), 'utf8');
     assert.match(tab, /built\.packages\.length/, 'it counts packages');

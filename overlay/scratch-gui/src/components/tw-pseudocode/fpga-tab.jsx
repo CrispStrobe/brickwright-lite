@@ -818,7 +818,11 @@ const FpgaTab = (props) => {
             const byKind = {};
             for (const pk of built.packages) byKind[pk.label] = (byKind[pk.label] || 0) + 1;
             const bill = Object.entries(byKind).map(([label, n]) => `${n}× ${label}`).join(', ');
-            const outs = built.outputs.map(o => o.name).join(' and ');
+            // "a and b and c and d and e" is not a list. Commas, then "and".
+            const names = built.outputs.map(o => o.name);
+            const outs = names.length > 1
+                ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+                : names[0];
             const nSw = built.inputs.length;
             const nGates = built.chips.length;
             setDemoMsg({ok: true, text: `Built a ${spec.label.toLowerCase()}: ${nGates} gates in `
