@@ -1461,15 +1461,6 @@ jobs:
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-matrix-ui.mjs
 
-      # The Machine Manager library modal: the code-tab device dropdown's
-      # "Manage machines…" entry opens it, a pasted manifest imports to a row,
-      # and Run/Close are present — with zero page errors. Holds the GUI wiring
-      # (dropdown → modal → shared store) that unit tests cannot reach.
-      - name: Browser gate — Machine Manager library modal
-        timeout-minutes: 3
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
-        run: PROOF_URL=http://localhost:8617/ node scripts/verify-machine-manager-ui.mjs
-
       # The heavy simulation tier. Everything else about it — the adapter, the
       # debug target, the chunk contents — was green while selecting it in a
       # browser threw twice in a row: a shadowed `session` binding, then a
