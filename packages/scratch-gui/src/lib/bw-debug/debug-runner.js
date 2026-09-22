@@ -2086,6 +2086,16 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             delete runner.video;
         }
 
+        // Audio face, on the same terms as the video one: exposed only when the
+        // TARGET has one, so a machine with no sound chip never gets a speaker.
+        // audio() returns an array of {hz, on} voices (beeper / PC speaker / PSG)
+        // that the Widgets-pane speaker plays through Web Audio (design §4.5).
+        if (target && typeof target.audio === 'function') {
+            runner.audio = () => target.audio();
+        } else {
+            delete runner.audio;
+        }
+
         // Keyboard face, on the same terms as the video one and for the same
         // reason: exposed only when the TARGET says the machine can take a
         // key. `capabilities().keys` reports ['scancode'] when there is a PPI

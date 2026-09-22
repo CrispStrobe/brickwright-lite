@@ -78,6 +78,7 @@ import {themeMap} from '../../lib/themes';
 import { ControllerPanel } from 'bw-board/controller.js';
 import { createMachineVideoMirror } from '../../lib/bw-machines/video-mirror.js';
 import { createKeyboardSteer } from '../../lib/bw-machines/keyboard-steer.js';
+import { createMachineAudioSpeaker } from '../../lib/bw-machines/audio-speaker.js';
 import { runMachineConfig } from '../../lib/bw-machines/run-machine.js';
 import { getMachineStore } from '../../lib/bw-machines/machine-store-instance.js';
 // The machine library modal — lazy so it costs nothing until "Manage machines…".
@@ -494,8 +495,25 @@ const GUIComponent = props => {
     React.useEffect(() => {
         let mirror = null;
         let steer = null;
+        let speaker = null;
         const stop = () => { if (mirror) { mirror.stop(); mirror = null; } };
         const stopKbd = () => { if (steer) { steer.stop(); steer = null; } };
+        const stopAudio = () => { if (speaker) { speaker.stop(); speaker = null; } };
+        // Play a machine's audio() (an array of {hz,on} voices) through Web Audio
+        // — the machine's sound through the attached speakers (design §4.5). A run
+        // path calls window.bwPlayMachineAudio({audioFn}) after the runner exists;
+        // start on the boot CLICK so the browser allows audio.
+        const startAudio = payload => {
+            const p = payload || {};
+            const audioFn = typeof p.audioFn === 'function'
+                ? p.audioFn
+                : (p.runner && typeof p.runner.audio === 'function'
+                    ? () => p.runner.audio() : null);
+            if (!audioFn) return;
+            stopAudio();
+            speaker = createMachineAudioSpeaker({audioFn});
+            speaker.start();
+        };
         // Steer a machine from a Widgets keyboard widget: drain its keys and feed
         // runner.keyIn (design §4.5). The input counterpart of the video mirror.
         const startKbd = payload => {
@@ -557,6 +575,8 @@ const GUIComponent = props => {
         window.bwRunMachine = (config, opts) => runMachineConfig(config, opts);
         window.bwSteerMachineKeyboard = payload => startKbd(payload);
         window.bwStopMachineKeyboard = () => stopKbd();
+        window.bwPlayMachineAudio = payload => startAudio(payload);
+        window.bwStopMachineAudio = () => stopAudio();
         return () => {
             window.removeEventListener('bw-machine-video', onStart);
             window.removeEventListener('bw-machine-video-stop', onStop);
@@ -565,8 +585,11 @@ const GUIComponent = props => {
             if (window.bwRunMachine) delete window.bwRunMachine;
             if (window.bwSteerMachineKeyboard) delete window.bwSteerMachineKeyboard;
             if (window.bwStopMachineKeyboard) delete window.bwStopMachineKeyboard;
+            if (window.bwPlayMachineAudio) delete window.bwPlayMachineAudio;
+            if (window.bwStopMachineAudio) delete window.bwStopMachineAudio;
             stop();
             stopKbd();
+            stopAudio();
         };
     }, [controllerPanel, props.onActivateTab]);
 

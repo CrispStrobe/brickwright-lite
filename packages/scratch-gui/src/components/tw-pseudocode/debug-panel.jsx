@@ -322,6 +322,15 @@ class DebugPanel extends React.Component {
             typeof window.bwSteerMachineKeyboard === 'function') {
             window.bwSteerMachineKeyboard({keyInFn: sc => runner.keyIn(sc), widget: kbd});
         }
+        // A machine with a sound chip plays through the browser speakers: its
+        // audio() (an array of {hz,on} voices) drives Web Audio (design §4.5).
+        // Automatic — a silent machine reports on:false and makes no sound; the
+        // Run/boot click is the gesture that lets the browser start audio.
+        if (typeof runner.audio === 'function' &&
+            typeof window !== 'undefined' &&
+            typeof window.bwPlayMachineAudio === 'function') {
+            window.bwPlayMachineAudio({audioFn: () => runner.audio()});
+        }
     }
 
     /**
@@ -565,6 +574,9 @@ class DebugPanel extends React.Component {
         }
         if (typeof window !== 'undefined' && typeof window.bwStopMachineKeyboard === 'function') {
             window.bwStopMachineKeyboard();
+        }
+        if (typeof window !== 'undefined' && typeof window.bwStopMachineAudio === 'function') {
+            window.bwStopMachineAudio();
         }
         const p = this._runnerPromise;
         this._runnerPromise = null;
