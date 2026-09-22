@@ -158,6 +158,13 @@ export function fromMediaManifest(manifest, opts = {}) {
         machineConfig: manifest.machineConfig != null ? manifest.machineConfig : null,
         slots,
         quirks,
+        // Hardware the manifest states: a BIOS source (an i80386 config requires
+        // one — the free-386 boots the LGPL Bochs BIOS, `{kind:'bochs-lgpl'}`),
+        // an optional video card, and RAM sizing. Carried so an imported 386
+        // config validates and activates, not just the 8086 tier.
+        bios: (manifest.bios && typeof manifest.bios === 'object') ? manifest.bios : null,
+        video: (manifest.video && typeof manifest.video === 'object') ? manifest.video : null,
+        ram: (manifest.ram && typeof manifest.ram === 'object') ? manifest.ram : undefined,
         // The manifest declares its own panel widgets (design §4.2: "manifests
         // must define the vga widget if needed"). A `source:'video'` widget is
         // this machine's screen; normalizeMachineConfig drops any malformed one.

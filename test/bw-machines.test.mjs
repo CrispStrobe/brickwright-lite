@@ -311,6 +311,25 @@ test('fromMediaManifest keeps an inline Eater 6502 machineConfig object', () => 
     assert.deepEqual(validateMachineConfig(cfg).errors, []);
 });
 
+test('fromMediaManifest carries a 386 manifest bios/video so it validates', () => {
+    const manifest = {
+        title: 'FreeDOS 386', machine: 'i80386', boot: true,
+        slots: {floppy: 'boot.img'},
+        bios: {kind: 'bochs-lgpl'},
+        video: {kind: 'vga', optionRom: 'seavgabios-lgpl'},
+        widgets: [
+            {name: 'screen', type: 'simplevga', source: 'video'},
+            {name: 'kbd', type: 'keyboard', source: 'keyIn'}
+        ]
+    };
+    const cfg = fromMediaManifest(manifest);
+    assert.deepEqual(cfg.bios, {kind: 'bochs-lgpl'});     // BIOS carried (was dropped before)
+    assert.equal(cfg.video.optionRom, 'seavgabios-lgpl');
+    assert.equal(cfg.widgets.filter(w => w.source === 'keyIn').length, 1);
+    // A 386 config is valid ONLY with a BIOS source — the importer now supplies it.
+    assert.deepEqual(validateMachineConfig(cfg).errors, []);
+});
+
 test('fromManifestRepo bulk-imports many manifests and reports bad entries', () => {
     const entries = [
         {path: 'projects/elks/brickwright-media.json', manifest: {
