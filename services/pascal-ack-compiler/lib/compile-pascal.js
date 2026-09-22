@@ -51,8 +51,12 @@ export async function compilePascalToCom (source, opts = {}) {
     const {optimize = true, timeoutMs = 20000} = opts;
     const {ackBin, ackDir} = ackEnv(opts.env);
     const dir = await mkdtemp(join(tmpdir(), 'ack-pascal-'));
-    const src = join(dir, 'PROG.PAS');
-    const out = join(dir, 'PROG.COM');
+    // The suffix is LOAD-BEARING: ack picks the front end from the input's
+    // extension and knows only LOWERCASE `.pas` (an uppercase `.PAS` is an
+    // unknown suffix and ack dies "fatal internal error" before the Pascal
+    // parser ever runs). So the temp source is `prog.pas`, not `PROG.PAS`.
+    const src = join(dir, 'prog.pas');
+    const out = join(dir, 'prog.com');
     try {
         await writeFile(src, source, 'utf8');
         const args = ['-mmsdos86'];
