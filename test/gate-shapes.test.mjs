@@ -97,7 +97,20 @@ const BASELINE = {
     // could accidentally create an absent-by-design one). Its three sites go
     // with it; vendor-source-guard's three and no-tracked-package-examples'
     // three remain.
-    'AMBIENT-BINDING': 6,
+    //
+    // 6 -> 9 on 2026-09-22: test/ci-serve-threaded.test.mjs adds three `python3`
+    // -from-PATH sites (one spawn of the server under test, two execFileSync
+    // reads of the interpreter's own version and ServerClass default). Pinning
+    // an interpreter here would be the WRONG fix: the subject of that gate is
+    // precisely the ambient `python3` that CI's serve step invokes, so a pinned
+    // one would answer for a program nobody runs.
+    //
+    // ABSENCE FAILS CLOSED, MEASURED NOT ASSUMED: with a `python3` on PATH that
+    // exits 127, four of that file's five tests go red and the run exits 1. The
+    // fifth is a source assertion over build.yml, which needs no interpreter and
+    // is right to keep passing. No arrangement of a missing or broken python
+    // produces a green gate.
+    'AMBIENT-BINDING': 9,
     // 12 -> 0 on 2026-09-02. The rule now ignores an appearance that is immediately followed by
     // a click/fill/count/evaluate — synchronisation before the real assertion, and the correct
     // way to write a browser gate. The five that survived that narrowing were each triaged at
