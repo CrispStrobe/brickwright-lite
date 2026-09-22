@@ -33,7 +33,11 @@ const TARGET_KIND = Object.freeze({
  *  A floppy boots the floppy-OS path; a .com/.exe the DOS bench; a ROM has no
  *  profile (it loads as a ROM image). See debug-runner's attachI8086. */
 const SLOT_PROFILE = Object.freeze({
-    floppy: 'floppy-os', com: 'dos', exe: 'dos', disk: 'dos'
+    floppy: 'floppy-os', com: 'dos', exe: 'dos', disk: 'dos',
+    // A 'cpmsys' slot boots the REAL CP/M 2.2 (CCP+BDOS on our BIOS, an A>
+    // prompt) on the Z80 machine — see debug-runner's attachZ80 cpmSystem
+    // branch. The slot's file (if any) is placed on drive A: beside BBC BASIC.
+    cpmsys: 'cpm-system'
 });
 
 const isObj = v => v != null && typeof v === 'object' && !Array.isArray(v);
