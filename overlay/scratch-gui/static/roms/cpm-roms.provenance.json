@@ -1,0 +1,27 @@
+{
+  "note": "Real CP/M 2.2 for the Z80 machine — the redistributable ROMs that let the debug-runner boot a genuine CP/M computer (an A> prompt: DIR, TYPE, warm boot, running .COMs off a RAM-disk) in the browser, NOT the per-.COM BDOS shim. cpm22-64k.bin is Digital Research's CCP+BDOS; cpm-bios.bin is our own MIT BIOS (MC6850 ACIA console + a host RAM-disk on ports $10-$15). Both are vendored UNMODIFIED from bw-board's roms/cpm/ at the pinned sha (bwBoardPin); the boot itself is bw-board's createCpmSystem, reached through the z80 adapter's cpmSystem option. lite's attachZ80 (profile 'cpm-system') loads CCP+BDOS at 0xE400 and the BIOS at 0xFA00 and stocks drive A: with BBC BASIC.",
+  "bwBoardPin": "84090c90b1c4ba9ccc44d5e28a4afe4f18422887",
+  "upstreamOf": "vendored from bw-board roms/cpm (unmodified)",
+  "roms": [
+    {
+      "rom": "cpm22-64k.bin",
+      "upstream": "CP/M 2.2 CCP+BDOS, assembled (pasmo) from Clark A. Calkins' Z80 disassembly (cpm2-asm.zip, cpm.z80.de); MEM=64K, four 8080 A,M operands as Z80 A,(HL)",
+      "project": "Digital Research CP/M 2.2",
+      "url": "http://www.cpm.z80.de/",
+      "license": "Redistributable — Bryan Sparks / DRDOS, Inc. 2022 grant (right to use, distribute, modify CP/M and derivatives); supersedes the 2001 Lineo/Caldera grant. See bw-board roms/cpm/PROVENANCE.",
+      "holder": "DRDOS, Inc. (successor to Digital Research)",
+      "bytes": 5683,
+      "sha256": "e4d9e61e14325e405456eaee5b84e9baa1243f5eb9f8c45341872eeb62cf486d"
+    },
+    {
+      "rom": "cpm-bios.bin",
+      "upstream": "bw-board roms/cpm/bios.asm — MC6850 ACIA at $80/$81 + host RAM-disk controller on ports $10-$15; no Digital Research code",
+      "project": "bw-board",
+      "url": "https://github.com/CrispStrobe/bw-board",
+      "license": "MIT",
+      "holder": "the BrickWright project",
+      "bytes": 527,
+      "sha256": "44bfc5d4425c6715e4d47f147b88e50ecd1cc1d6156e89fc5d92d1cc8e7841d5"
+    }
+  ]
+}

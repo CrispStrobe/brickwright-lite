@@ -2291,8 +2291,37 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
         const targetOpts = {};
         let readyMsg;
-        const isCom = bootMedia && (bootMedia.slot === 'com' || bootMedia.profile === 'cpm');
-        if (isCom) {
+        // A machine whose profile is 'cpm-system' boots the REAL CP/M 2.2 (DRI's
+        // CCP+BDOS on our MIT BIOS + a RAM-disk, an A> prompt) rather than the
+        // per-.COM BDOS shim below. The boot lives in bw-board (createCpmSystem
+        // via the z80 adapter's cpmSystem option); here we just fetch the two
+        // redistributable ROMs and stock drive A: with BBC BASIC (+ any program
+        // in the com slot).
+        const isCpmSystem = bootMedia && bootMedia.profile === 'cpm-system';
+        const isCom = !isCpmSystem && bootMedia && (bootMedia.slot === 'com' || bootMedia.profile === 'cpm');
+        if (isCpmSystem) {
+            setStatus('attaching', 'booting CP/M 2.2…');
+            const fetchRom = async (p) => {
+                const r = await fetch(new URL(p, document.baseURI).href);
+                if (!r.ok) throw new Error(`Failed to load ${p}: HTTP ${r.status}`);
+                return new Uint8Array(await r.arrayBuffer());
+            };
+            const [ccpBdos, bios] = await Promise.all([
+                fetchRom('static/roms/cpm22-64k.bin'),
+                fetchRom('static/roms/cpm-bios.bin')
+            ]);
+            const files = {};
+            const bbc = await fetchRom('static/roms/bbcbasic.com').catch(() => null);
+            if (bbc) files['BBCBASIC.COM'] = bbc;
+            if (bootMedia.bytes || bootMedia.url) {
+                // 8.3, uppercase, no path — CP/M's own name shape.
+                const raw = (bootMedia.name || 'PROG.COM').toUpperCase().replace(/[^A-Z0-9.]/g, '');
+                const name = /\.[A-Z0-9]{1,3}$/.test(raw) ? raw : `${raw.slice(0, 8) || 'PROG'}.COM`;
+                files[name] = (await resolveMediaImage(bootMedia)).bytes;
+            }
+            targetOpts.cpmSystem = { ccpBdos, bios, files };
+            readyMsg = `CP/M 2.2 — DIR at the A> prompt${files['BBCBASIC.COM'] ? ', or run BBCBASIC' : ''}`;
+        } else if (isCom) {
             setStatus('attaching', `booting ${bootMedia.name || '.com'} over the CP/M shim…`);
             targetOpts.cpm = { com: (await resolveMediaImage(bootMedia)).bytes };
             readyMsg = `${bootMedia.name || 'CP/M program'} — type at the prompt`;
