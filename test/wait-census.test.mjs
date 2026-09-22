@@ -57,10 +57,30 @@ const censusJson = () => JSON.parse(execFileSync('node',
 // table's "61.9 s" made the ratchet red on the tree it was measured against:
 // the true total is 61,930 ms. A ceiling read off a rounded display is a
 // threshold whose evidence is a formatting decision.
+// RAISED 2026-09-22 for the flag-on FPGA surface gate, which is the legitimate
+// reason this ratchet names: a gate was ADDED. scripts/verify-fpga-surface.mjs
+// existed and was listed in test/gate-coverage.test.mjs as knowingly unwired;
+// the new `fpga-surface` job in build.yml runs it, so its sleeps now cost CI
+// time and the census counts them for the first time. NO NEW SLEEP WAS WRITTEN
+// — the delta is entirely the price of running a script that was already there.
+//
+// Measured with scripts/aggregate-timeouts.mjs --census --json, on this branch
+// and on origin/main with only .github/workflows/build.yml swapped between the
+// two runs, so the difference is the wiring and nothing else:
+//
+//   before (origin/main)  104 sleeps  111,880 ms
+//   after  (this branch)  110 sleeps  120,180 ms
+//   delta                  +6 sleeps   +8,300 ms   all in verify-fpga-surface.mjs
+//
+// NOTE for whoever next touches this file: `totalSleeps` below is 261 against a
+// tree that now measures 192, so that one ceiling has ~69 sleeps of headroom it
+// was never meant to have — main drifted down since the 2026-08-28 sweep and
+// nothing pulled the ratchet after it. Tightening it is right, but it is not
+// this change's business and would red-light unrelated work in flight.
 const CEILING = {
-    ciSleepMs: 116_880,     // 106 sleeps across 11 CI browser-gate scripts
-    ciSleeps: 106,
-    totalSleeps: 261,       // 426,640 ms repository-wide
+    ciSleepMs: 120_180,     // 110 sleeps across the CI browser-gate scripts
+    ciSleeps: 110,
+    totalSleeps: 261,       // repository-wide; see the note above — measures 192 today
     scratchFiles: 10        // _tmp- scripts that contain waits
 };
 
