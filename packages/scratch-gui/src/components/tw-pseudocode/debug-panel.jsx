@@ -261,7 +261,7 @@ class DebugPanel extends React.Component {
      *  must boot TOGETHER so the CPU reads its reset vector from the
      *  real bytes, not from a zero-filled ROM it booted with earlier. */
     async _onMediaLoad (e) {
-        const {slotId, bytes, kind, profile, name, romAt, chips} = e.detail || {};
+        const {slotId, bytes, kind, profile, name, romAt, chips, widgets} = e.detail || {};
         if (!bytes) return;
         this._teardownRunner();
         this._bootMedia = {
@@ -297,6 +297,21 @@ class DebugPanel extends React.Component {
             {kind: nextKind, runner: null, ui: {phase: 'idle', message: ''}}, resolve));
         const runner = await this.runner();
         await runner.start();
+        // A machine that declares a screen widget (a source:'video' display in
+        // its config/manifest) mirrors its framebuffer into the Widgets pane —
+        // a machine's screen is a widget (design §4.2). gui.jsx owns the pump
+        // (window.bwMirrorMachineVideo); guard in case this panel mounts without
+        // it. A bare image with no declared screen keeps its video in the Debug
+        // instrument, exactly as before — this only adds a surface, never removes
+        // one. The video-widget declaration rides the media-load event's
+        // `widgets` field (the machine-manager activate action supplies it).
+        const screen = Array.isArray(widgets)
+            ? widgets.find(w => w && w.source === 'video') : null;
+        if (screen && typeof runner.video === 'function' &&
+            typeof window !== 'undefined' &&
+            typeof window.bwMirrorMachineVideo === 'function') {
+            window.bwMirrorMachineVideo({videoFn: () => runner.video(), widget: screen});
+        }
     }
 
     /**
@@ -533,6 +548,11 @@ class DebugPanel extends React.Component {
      *  creation is async (a chunk import), so a plain state check races —
      *  two concurrent runner() calls once produced two live machines. */
     _teardownRunner () {
+        // Stop mirroring the old machine's video into the Widgets pane before it
+        // is destroyed; the next boot starts its own mirror (design §4.2).
+        if (typeof window !== 'undefined' && typeof window.bwStopMachineVideo === 'function') {
+            window.bwStopMachineVideo();
+        }
         const p = this._runnerPromise;
         this._runnerPromise = null;
         if (p) {

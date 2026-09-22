@@ -77,6 +77,7 @@ import {themeMap} from '../../lib/themes';
 
 import { ControllerPanel } from 'bw-board/controller.js';
 import { createMachineVideoMirror } from '../../lib/bw-machines/video-mirror.js';
+import { runMachineConfig } from '../../lib/bw-machines/run-machine.js';
 import { bindPanelToVariables } from 'bw-board/controller-binding.js';
 import styles from './gui.css';
 import addExtensionIcon from './icon--extensions.svg';
@@ -517,11 +518,17 @@ const GUIComponent = props => {
         // Imperative API so a run path need not know the event names.
         window.bwMirrorMachineVideo = payload => start(payload);
         window.bwStopMachineVideo = () => stop();
+        // "Run this machine config": resolve its media and boot it via the
+        // existing media-load path, carrying its declared screen widget so the
+        // video mirrors here. The manager UI / quick-picker call this; exposing
+        // it also gives run-machine.js a non-test consumer.
+        window.bwRunMachine = (config, opts) => runMachineConfig(config, opts);
         return () => {
             window.removeEventListener('bw-machine-video', onStart);
             window.removeEventListener('bw-machine-video-stop', onStop);
             if (window.bwMirrorMachineVideo) delete window.bwMirrorMachineVideo;
             if (window.bwStopMachineVideo) delete window.bwStopMachineVideo;
+            if (window.bwRunMachine) delete window.bwRunMachine;
             stop();
         };
     }, [controllerPanel, props.onActivateTab]);

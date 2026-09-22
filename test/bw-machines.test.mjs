@@ -26,6 +26,9 @@ import {
 import {
     ensureVideoWidget, createMachineVideoMirror
 } from '../overlay/scratch-gui/src/lib/bw-machines/video-mirror.js';
+import {
+    runMachineConfig
+} from '../overlay/scratch-gui/src/lib/bw-machines/run-machine.js';
 // The REAL panel model + widget vocabulary from the pinned bw-board — so the
 // video-mirror tests drive the same setVgaFrame the browser paints through, not
 // a mock (design §4.2: a machine's screen is a simplevga widget).
@@ -569,4 +572,43 @@ test('the mirror survives a video() that returns null or throws', () => {
     assert.doesNotThrow(() => sched.flush());   // a throwing video(): swallowed
     assert.equal(mirror.frameCount, 0);
     mirror.stop();
+});
+
+// ── 7. runMachineConfig: boot a config via the media-load event ───────────────
+
+test('runMachineConfig boots a functional config and carries its screen widget', async () => {
+    const {fetcher} = stubFetcher();
+    const dispatched = [];
+    const res = await runMachineConfig(elksWithScreen(), {
+        fetcher, dispatch: d => dispatched.push(d)
+    });
+    assert.equal(res.mode, 'functional');
+    assert.equal(dispatched.length, 1);
+    const d = dispatched[0];
+    assert.equal(d.slotId, 'floppy');
+    assert.equal(d.kind, 'i8086');
+    assert.equal(d.profile, 'floppy-os');       // selects debug-runner's floppy branch
+    assert.equal(decode(d.bytes), 'bytes:fd1440-fat.img');
+    // the declared screen rides the event so debug-panel mirrors it into Widgets
+    const screen = d.widgets.find(w => w.source === 'video');
+    assert.ok(screen && screen.type === 'simplevga', 'video widget carried on the event');
+});
+
+test('runMachineConfig on a config with no screen carries an empty widgets list', async () => {
+    const {fetcher} = stubFetcher();
+    const dispatched = [];
+    await runMachineConfig(elksConfig(), {fetcher, dispatch: d => dispatched.push(d)});
+    assert.deepEqual(dispatched[0].widgets, []);
+});
+
+test('runMachineConfig returns a wired descriptor and dispatches nothing', async () => {
+    const {fetcher} = stubFetcher();
+    let dispatched = 0;
+    const cfg = newMachineConfig({
+        title: 'Eater 6502 + LCD', executionMode: 'wired', machine: 'eater6502',
+        circuit: {ref: 'circuits/eater-lcd', cpuPart: 'w65c02'}
+    });
+    const res = await runMachineConfig(cfg, {fetcher, dispatch: () => { dispatched++; }});
+    assert.equal(res.mode, 'wired');
+    assert.equal(dispatched, 0);
 });
