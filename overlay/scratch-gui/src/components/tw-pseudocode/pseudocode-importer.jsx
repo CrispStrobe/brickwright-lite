@@ -11,7 +11,8 @@ import {IMPORT_ACCEPT, isImportableArtefact} from '../../lib/bw-makecode/accept.
 // splitting.
 import {asmExamplesFor} from '../../lib/bw-asm/examples.js';
 import {
-    requestAssembly, requestCBuild, asmRouteFor, cRouteFor, requestBasicBuild, asmTargetForDevice, ASM_DIALECTS
+    requestAssembly, requestCBuild, asmRouteFor, cRouteFor, requestBasicBuild, asmTargetForDevice, ASM_DIALECTS,
+    runDosToolchain
 } from '../../lib/bw-asm/assemble-route.js';
 import {
     summarize as matrixSummary, explain as matrixExplain, LANGUAGES as MATRIX_LANGUAGES,
@@ -136,6 +137,8 @@ const L10N = {
         basicRealDosBuilding: 'Compiling BASIC and preparing a real MS-DOS 2.0 boot disk…',
         basicRealDosFailed: (m) => `Could not prepare the MS-DOS boot disk: ${m}`,
         basicRealDosBooted: (n) => `Built ${n} bytes and booting real MS-DOS 2.0 — it runs PROG.COM at the A> prompt.`,
+        basicUbasicRunning: 'Running your BASIC on the libre uBASIC interpreter on the DOS bench…',
+        basicUbasicFailed: (m) => `The uBASIC (on DOS) route could not run: ${m}`,
         basic8086Refused: (m) => `The BASIC compiler refused this program: ${m}`,
         basic8086Failed: (m) => `The 8086 BASIC route could not run: ${m}`,
         apply: '✓ Apply art & convert to blocks', done: 'Done',
@@ -352,6 +355,8 @@ const L10N = {
         basicRealDosBuilding: 'Übersetze BASIC und bereite eine echte MS-DOS-2.0-Bootdiskette vor…',
         basicRealDosFailed: (m) => `Die MS-DOS-Bootdiskette konnte nicht vorbereitet werden: ${m}`,
         basicRealDosBooted: (n) => `${n} Bytes erzeugt — starte echtes MS-DOS 2.0; es führt PROG.COM am A>-Prompt aus.`,
+        basicUbasicRunning: 'Führe dein BASIC mit dem freien uBASIC-Interpreter auf der DOS-Werkbank aus…',
+        basicUbasicFailed: (m) => `Die uBASIC-(auf-DOS)-Route lief nicht: ${m}`,
         basic8086Refused: (m) => `Der BASIC-Compiler hat dieses Programm abgelehnt: ${m}`,
         basic8086Failed: (m) => `Die 8086-BASIC-Route lief nicht: ${m}`,
         apply: '✓ Grafik übernehmen & zu Blöcken', done: 'Fertig',
@@ -2231,6 +2236,50 @@ class PseudocodeImporter extends React.Component {
     }
 
     /**
+     * Run BASIC on a REAL, LIBRE DOS-native interpreter — the third 8086 BASIC
+     * path, and the only one where the LANGUAGE ITSELF runs on the machine
+     * rather than being compiled to a .COM. uBASIC (Adam Dunkels; Danyil Bohdan
+     * fork, BSD-3-Clause) is cross-compiled with ia16-elf-gcc to a 16-bit MS-DOS
+     * .EXE (media-lab project `ubasic-dos`, shipped here as static/roms/ubasic.exe).
+     *
+     * The mechanism is dos-compile.js: `runDosToolchain('ubasic', …)` mounts the
+     * user's program as PROG.BAS on the DOS disk, runs UBASIC.EXE on the bw-board
+     * 8086 DOS service bench (INT 21h file I/O), and the interpreter reads PROG.BAS
+     * and PRINTS as it runs. Being an interpreter it produces no output FILE, so
+     * the screen comes back on the compile stage. The interpreter needs the 80186
+     * core (ia16 emits LEAVE/PUSH imm/IMUL); the route pins `variant: '80186'`.
+     *
+     * Unlike runBasicOn8086 / runBasicOnRealDos (which build a .COM and hand it to
+     * the right-pane debug bench), this route runs entirely here and shows the
+     * captured screen inline in the output area — the same place the BBC/6502
+     * ROM-interpreter path writes to.
+     */
+    async runBasicOnDosInterp (code) {
+        const source = code != null ? code : this.activeCode();
+        if (!source.trim()) return;
+        this.setState({output: '', running: true, busy: true,
+            status: this.L.basicUbasicRunning, basicRawOutput: '', basicIsBbc: false});
+        try {
+            const r = await runDosToolchain('ubasic', source, {
+                // The interpreter binary is shipped as a static ROM (BSD-3-Clause,
+                // provenance beside it) — fetched, never bundled into the JS.
+                fetchToolchain: async () => {
+                    const res = await fetch('static/roms/ubasic.exe');
+                    if (!res.ok) throw new Error(`ubasic.exe HTTP ${res.status}`);
+                    return {compiler: new Uint8Array(await res.arrayBuffer())};
+                },
+                maxSteps: 40_000_000
+            });
+            const stage = r.run || r.compile;
+            const screen = (stage && stage.screen) || '';
+            this.setState({output: screen.trim() || '(no output)', running: false, busy: false, status: ''});
+        } catch (e) {
+            this.setState({output: `Error: ${e.message}`, running: false, busy: false,
+                status: this.L.basicUbasicFailed(e.message)});
+        }
+    }
+
+    /**
      * Which chips an assembly source needs, from a declaration IN the source.
      *
      * `; BW-CHIPS: ne2000@320` on any line asks the bench for that card. It is
@@ -2307,6 +2356,15 @@ class PseudocodeImporter extends React.Component {
     // any hard blockers ("no ADC on this chip"). Code without pins just gets its
     // DEVICE line rewritten — there is nothing to refuse.
     async setDevice (deviceId) {
+        if (deviceId === '__manage__') {
+            // The "Manage machines…" entry is a command, not a device: open the
+            // library modal (gui.jsx owns it) and leave the current device as-is,
+            // so the controlled <select> snaps back to the real selection.
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('bw-open-machine-manager'));
+            }
+            return;
+        }
         if (!deviceId) {
             // "no chips" — pure Scratch stage mode. Drop the DEVICE line and the
             // runtime device hints; "Load example…" goes back to the stage games.
@@ -3150,6 +3208,9 @@ class PseudocodeImporter extends React.Component {
         // C/asm-tab path), rather than running a 6502/Z80 ROM interpreter.
         if (this.state.basicProfile === 'i8086') return this.runBasicOn8086(code);
         if (this.state.basicProfile === 'i8086-dos') return this.runBasicOnRealDos(code);
+        // The libre DOS-native interpreter path: uBASIC.EXE runs the program on
+        // the 8086 DOS bench (the language itself runs on the machine).
+        if (this.state.basicProfile === 'i8086-ubasic') return this.runBasicOnDosInterp(code);
         this.setState({output: '', running: true, status: this.L.basicLoading, basicRawOutput: '', basicIsBbc: false});
         try {
             const isBbc = this.state.basicProfile === 'bbc';
@@ -4013,6 +4074,8 @@ class PseudocodeImporter extends React.Component {
                                     {g.devices.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
                                 </optgroup>
                             ))}
+                            {/* Opens the machine library (gui.jsx renders it); not a device. */}
+                            <option value="__manage__">{'Manage machines…'}</option>
                         </select>
                         {/* What this language can do on this device: native, lowered, or
                             an open task — one line, read from lib/bw-matrix/capabilities.js,
@@ -4124,6 +4187,7 @@ class PseudocodeImporter extends React.Component {
                                 <option value="ms">{'6502 BASIC'}</option>
                                 <option value="i8086">{'8086 BASIC (native)'}</option>
                                 <option value="i8086-dos">{'8086 BASIC (real MS-DOS 2.0)'}</option>
+                                <option value="i8086-ubasic">{'BASIC (uBASIC on DOS)'}</option>
                             </select>
                         </label>
                         <label style={{display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer'}}>

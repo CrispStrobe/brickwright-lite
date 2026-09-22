@@ -1,0 +1,11 @@
+{
+  "note": "uBASIC (Adam Dunkels; Danyil Bohdan fork), a BSD-3-Clause line-numbered BASIC interpreter, cross-compiled to a 16-bit MS-DOS MZ .EXE with ia16-elf-gcc. It is DOS-NATIVE: it runs on the bw-board 8086 DOS service bench, reads PROG.BAS via INT 21h, and prints via the C library. Packaged as media-lab project projects/ubasic-dos (fetch.sh reproduces this byte-for-byte). Build tool ia16-elf-gcc is GPL but build-time only; the binary links permissive newlib + libi86.",
+  "rom": "ubasic.exe",
+  "upstream": "github.com/adamdunkels/ubasic",
+  "commit": "cc07193c231e21ecb418335aba5b199a08d4685c",
+  "license": "BSD-3-Clause",
+  "holder": "Adam Dunkels; Danyil Bohdan",
+  "buildTool": "ia16-elf-gcc -mcmodel=small -march=any_186 -O2",
+  "bytes": 29968,
+  "sha256": "d468484b3e122c0f79ba80822868459932b31c8c5f4a4c83bb54590911c88deb"
+}

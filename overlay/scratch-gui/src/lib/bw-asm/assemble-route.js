@@ -62,7 +62,8 @@ export const HOSTED_ASSEMBLER = 'https://stc-compiler.vercel.app/assemble';
 // Re-exported here, beside the other code-tab routes, so the code tab reaches
 // them from one place. The routes are experimental (verified:false) until each
 // toolchain's command sequence is confirmed against its real binaries.
-export {DOS_TOOLCHAINS, HOSTED_TOOLCHAINS, runDosToolchain} from '../bw-debug/dos-toolchain-routes.js';
+export {DOS_TOOLCHAINS, HOSTED_TOOLCHAINS, runDosToolchain,
+    runHostedToolchain, hostedToolchainReady, hostedEndpointFor} from '../bw-debug/dos-toolchain-routes.js';
 
 // CP/M-80 (Z80) toolchain routes: a host cross-compiler (ACK's z80+cpm backend,
 // or SDCC) emits a Z80 CP/M .COM that runs on the browser CP/M service layer
