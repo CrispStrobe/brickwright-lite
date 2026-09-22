@@ -10,7 +10,7 @@
     "vendoredAs": "i8086-bios.asm",
     "license": "MIT",
     "sha256": "c9cbc1fb86c24d97d7f5c679c85b03df6024d62c33ae6931c2df3ce69fd02a35",
-    "sha": "84090c90b1c4ba9ccc44d5e28a4afe4f18422887",
+    "sha": "45e7711169a855634eeefe397d2a031b2896c4e4",
     "date": "2026-09-22",
     "lastTouchedBy": {
       "sha": "de39245b0f74ade850e05efb93867c700646b57b",
@@ -22,7 +22,7 @@
     "path": "node_modules/bw-board/src/i8086-asm.js",
     "sha256": "3270c33885fbb6524ceaa727a1600570fe974e0bb4bc3488d1ecda894fdb0841"
   },
-  "pinAtBuild": "84090c90b1c4ba9ccc44d5e28a4afe4f18422887",
+  "pinAtBuild": "45e7711169a855634eeefe397d2a031b2896c4e4",
   "ancestorOfPinAtBuild": true,
   "behindPinBy": 0
 }

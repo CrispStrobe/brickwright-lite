@@ -442,6 +442,7 @@ export function selectDebugTargetKind(device, requested = 'emulator') {
     if (['eater6502', '6502', 'w65c02'].includes(normalized)) return 'eater6502';
     if (['z80', 'zx48', 'zx128'].includes(normalized)) return 'z80';
     if (['i8086', '8086', 'i8088', '8088'].includes(normalized)) return 'i8086';
+    if (normalized === 'riscv32') return 'riscv32';
     return requested;
 }
 
@@ -1423,6 +1424,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             return attachZ80();
         }
 
+        if (selectedTargetKind === 'riscv32') {
+            return attachRiscV32();
+        }
+
         if (selectedTargetKind === 'eater6502') {
             return attachEater6502();
         }
@@ -2353,6 +2358,30 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const result = await createDebugTarget('z80', targetOpts);
         wireMachineBench(result, createDebugSession);
         setStatus('ready', readyMsg);
+        return session;
+    }
+
+    // The RISC-V RV32IMA console bench. bw-board's createDebugTarget('riscv32',
+    // {image}) builds a RiscV32Machine (RV32IMA + CLINT + PLIC + UART); its
+    // ecall/UART output reaches the serial console through the adapter, the way
+    // the z80 bench's does. With no RISC-V loader/compile route wired yet, it
+    // boots a pre-linked default demo — a clang-compiled "Hello from clang on
+    // RISC-V!" — embedded here so no linker runs in the browser.
+    async function attachRiscV32() {
+        const { createDebugTarget, createDebugSession } =
+            await import(/* webpackChunkName: "bw-board" */ 'bw-board');
+        setStatus('attaching', 'booting a RISC-V program…');
+        const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+        const image = {
+            entry: 0x1000,
+            segments: [
+                { addr: 0x1000, bytes: b64('N4UAAJMFBQATBsABkwgABBMFEABzAAAAkwjQBRMFAABzAAAAZ4AAAA==') },
+                { addr: 0x8000, bytes: b64('SGVsbG8gZnJvbSBjbGFuZyBvbiBSSVNDLVYhCgA=') }
+            ]
+        };
+        const result = await createDebugTarget('riscv32', { image });
+        wireMachineBench(result, createDebugSession);
+        setStatus('ready', 'RISC-V (RV32IMA) — clang-compiled program running');
         return session;
     }
 
