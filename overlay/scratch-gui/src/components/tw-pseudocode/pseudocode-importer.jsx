@@ -2333,8 +2333,22 @@ class PseudocodeImporter extends React.Component {
         // STC12 — 'we choose Nano, we get stc12' (owner, repeatedly).
         const hasPins = /^\s*(PIN|PART)\s/im.test(src);
 
+        // Retargeting remaps MCU pin idioms, and only a device with a pin pool
+        // has any to remap. A CPU bench like the i8086 DOS bench has none, so
+        // pushing it through retargetPseudocode returns "unknown device" and the
+        // switch is aborted — the dropdown snaps back and the device looks
+        // unselectable. Such a device just gets its DEVICE line rewritten (the
+        // no-pins path below); its PIN/PART lines are inert on the bench, which
+        // runs through the 8086 ASM/BASIC toolchain, not GPIO. Gated on the pool
+        // table, not a hardcoded id, so any future pool-less core behaves too.
+        let SB3Creator = null;
+        let canRetarget = false;
         if (hasPins) {
-            const SB3Creator = (await this.lib()).default;
+            SB3Creator = (await this.lib()).default;
+            canRetarget = !!(SB3Creator.RETARGET_POOLS && SB3Creator.RETARGET_POOLS[deviceId]);
+        }
+
+        if (hasPins && canRetarget) {
             const result = SB3Creator.retargetPseudocode(src, deviceId);
             if (result.ok) {
                 // Retargeting the text is only half of the operation. The
@@ -3364,6 +3378,16 @@ class PseudocodeImporter extends React.Component {
         // Retarget hardware examples when the selected device differs.
         if (device && exampleDevice && device !== exampleDevice.toLowerCase()) {
             const SB3Creator = (await this.lib()).default;
+            // A pool-less target (the i8086 DOS bench) has no MCU pins to remap;
+            // retargetPseudocode would refuse it ("unknown device"). Load the
+            // example with its DEVICE line switched instead — its PIN/PART lines
+            // are inert on the bench. Mirrors the setDevice guard.
+            if (!(SB3Creator.RETARGET_POOLS && SB3Creator.RETARGET_POOLS[device])) {
+                const switched = src.replace(/^DEVICE\s+[\w-]+.*$/im, `DEVICE ${device.toUpperCase()}`);
+                this.setState({lang: 'pseudocode', output: null, status: '',
+                    buffers: {pseudocode: switched, python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''}});
+                return;
+            }
             const result = SB3Creator.retargetPseudocode(src, device);
             if (result.ok) {
                 this.setState({lang: 'pseudocode', output: null,
