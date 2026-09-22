@@ -105,7 +105,10 @@ jobs:
           COM: artifacts/ack-z80-cpm/cpmdemo.com
         run: |
           set -euo pipefail
-          cat > "$RUNNER_TEMP/prove-cpm.mjs" <<'JS'
+          # Write the prover INTO the checkout so its relative import resolves
+          # against the repo (an ESM specifier resolves against the script's own
+          # location, not the cwd).
+          cat > "$GITHUB_WORKSPACE/prove-cpm.mjs" <<'JS'
           import {readFileSync} from 'node:fs';
           import {runCpmProgram} from './overlay/scratch-gui/src/lib/bw-debug/cpm-compile.js';
           const com = new Uint8Array(readFileSync(process.env.COM));
@@ -113,12 +116,13 @@ jobs:
           console.log(`steps=${steps} terminated=${terminated} exhausted=${exhausted}`);
           console.log('=== SCREEN ===\n' + screen + '\n=== END ===');
           if (!terminated || exhausted) { console.error('program did not terminate cleanly'); process.exit(1); }
-          for (const needle of ['ACK on Z80/CP/M', 'primes:', '10']) {
+          for (const needle of ['ACK on Z80/CP/M', 'primes: 10']) {
             if (!screen.includes(needle)) { console.error(`output missing: ${needle}`); process.exit(1); }
           }
           console.log('OK: a real ACK-compiled Z80 CP/M .COM ran correctly on the cpm-z80 layer');
           JS
-          node "$RUNNER_TEMP/prove-cpm.mjs"
+          ( cd "$GITHUB_WORKSPACE" && node prove-cpm.mjs )
+          rm -f "$GITHUB_WORKSPACE/prove-cpm.mjs"
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()

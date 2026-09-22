@@ -77,10 +77,15 @@ export const CPM_TOOLCHAINS = Object.freeze({
         target: 'z80/cpm',
         endpoint: null,           // a server running `ack -mcpm -O`
         outputFormat: 'com',
-        // The RUN path is proven (a cross-compiled Z80 CP/M .COM runs on the
-        // bench); the ACK z80/cpm host build was not reproduced here, so the
-        // route stays unverified and un-buttoned until an endpoint is stood up.
-        runProven: true, verified: false
+        // VERIFIED: ACK's z80/cpm platform builds on CI (this box OOMs an ACK
+        // build) and a real `ack -mcpm` Pascal `.COM` runs correctly on the
+        // bench — built + proven end-to-end in .github/workflows/ack-z80-cpm.yml
+        // and re-proven from the committed .COM in test/cpm-z80.test.mjs. What
+        // is still OPEN is the in-browser one-click COMPILE: `ack` is a host
+        // cross-compiler (like the msdos86 pascal-ack endpoint), so a button
+        // needs a hosted `ack -mcpm` endpoint (endpoint stays null until one is
+        // stood up); `verified` is the RUN fact, separate from that.
+        runProven: true, verified: true
     },
     'sdcc-z80-cpm': {
         id: 'sdcc-z80-cpm', label: 'C (SDCC, via CP/M)', language: 'c', kind: 'hosted-cpm',
