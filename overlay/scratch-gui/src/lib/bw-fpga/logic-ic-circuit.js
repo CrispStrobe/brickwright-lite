@@ -261,10 +261,60 @@ export const COUNTER2_CHIP = Object.freeze({
     gates: []
 });
 
+/**
+ * A 4-BIT ripple counter — four toggles chained, across TWO packages.
+ *
+ * This is the first circuit in the ladder that does not fit in one part. A
+ * 74HC74 holds two flip-flops, four bits needs four, so the board is two chips
+ * and the carry between them is a wire a learner can point at: U1's second q̄
+ * clocks U2's first flip-flop, exactly as U1's first q̄ clocks its own second.
+ * The rule is the same at every stage — each bit clocks the next — and the only
+ * reason there are two chips is that you cannot buy half of one.
+ *
+ * Every stage is a toggle (q̄ back to its own d) and so divides its clock by
+ * two. Read together the four LEDs count 0..15 and wrap, which is a nibble, and
+ * the reason a counter chip with four outputs is the natural size.
+ *
+ * Like the 2-bit pair this powers up at a value the part chooses rather than at
+ * zero, and the challenge grades the sequence the board actually produces. The
+ * expected run is MEASURED from the solver in test/fpga-counter4-board.test.mjs,
+ * not asserted from theory: a ripple counter's start state is a property of the
+ * silicon, and a tidier one written here would simply be wrong.
+ */
+export const COUNTER4_CHIP = Object.freeze({
+    id: 'counter4',
+    chipLabel: '74HC74',
+    inputs: ['clk'],
+    outputs: ['q0', 'q1', 'q2', 'q3'],
+    sequential: true,
+    gates: [],
+    chips: Object.freeze([
+        // U1: bits 0 and 1. `n0` is the first stage's q̄ — its own d AND the
+        // clock of the second stage, one net doing both jobs.
+        Object.freeze({
+            chip: '74hc74',
+            nets: Object.freeze({
+                '1clk': 'clk', '1q': 'q0', '1q_bar': 'n0', '1d': 'n0',
+                '2clk': 'n0', '2q': 'q1', '2q_bar': 'n1', '2d': 'n1'
+            }),
+            tieHigh: Object.freeze(['1pre', '1clr', '2pre', '2clr'])
+        }),
+        // U2: bits 2 and 3, clocked by `n1` — the carry off U1.
+        Object.freeze({
+            chip: '74hc74',
+            nets: Object.freeze({
+                '1clk': 'n1', '1q': 'q2', '1q_bar': 'n2', '1d': 'n2',
+                '2clk': 'n2', '2q': 'q3', '2q_bar': 'n3', '2d': 'n3'
+            }),
+            tieHigh: Object.freeze(['1pre', '1clr', '2pre', '2clr'])
+        })
+    ])
+});
+
 export const IC_CIRCUITS = Object.freeze({
     half_adder: HALF_ADDER, full_adder: FULL_ADDER,
     ripple_adder_4: RIPPLE_ADDER_4, adder_chip_4: ADDER_CHIP_4,
-    dff: DFF_CHIP, toggle: TOGGLE_CHIP, counter2: COUNTER2_CHIP
+    dff: DFF_CHIP, toggle: TOGGLE_CHIP, counter2: COUNTER2_CHIP, counter4: COUNTER4_CHIP
 });
 
 /** The picker's name for a circuit, in `locale`. */
@@ -285,8 +335,9 @@ const OUT_COLORS = ['green', 'red', 'yellow', 'blue', 'white'];
  */
 export function buildLogicIcCircuit (circuit, spec, {clear = true} = {}) {
     const single = Boolean(spec && spec.chip);
-    if (!spec || (!single && (!Array.isArray(spec.gates) || !spec.gates.length))) {
-        throw new Error('buildLogicIcCircuit needs a spec with gates, or a single `chip`');
+    const multi = Boolean(spec && Array.isArray(spec.chips) && spec.chips.length);
+    if (!spec || (!single && !multi && (!Array.isArray(spec.gates) || !spec.gates.length))) {
+        throw new Error('buildLogicIcCircuit needs a spec with gates, a single `chip`, or a `chips` list');
     }
     if (!circuit || typeof circuit.addPart !== 'function' || typeof circuit.addWire !== 'function') {
         throw new TypeError('buildLogicIcCircuit needs a live circuit with addPart/addWire (window.__circuit)');
@@ -315,7 +366,7 @@ export function buildLogicIcCircuit (circuit, spec, {clear = true} = {}) {
     const COL = 300;
     const PER_COL = 5;
     // Worst case one package per gate (all different types); usually far fewer.
-    const maxPacks = single ? 1 : spec.gates.length;
+    const maxPacks = single ? 1 : (multi ? spec.chips.length : spec.gates.length);
     const nCols = Math.ceil(maxPacks / PER_COL);
     const colRows = Math.min(maxPacks, PER_COL);
     const rightX = 380 + (nCols * COL) + 60;
@@ -383,6 +434,33 @@ export function buildLogicIcCircuit (circuit, spec, {clear = true} = {}) {
         });
         packages.push({id: part.id, kind: spec.chip, label: spec.chipLabel || spec.chip,
             ref: 'U1', capacity: 1, used: 1, gates: []});
+    }
+
+    // SEVERAL whole packages, each wired PIN BY PIN. A four-bit counter is four
+    // flip-flops and a 74HC74 holds two, so it cannot be said in the `chip`
+    // form above however the pins are renamed.
+    //
+    // The form is one `nets` map per package, pin name → net name, and that is
+    // all. It needs no `link` and no `pins`, because both were only ever ways of
+    // saying "these terminals share a net" — which is what a net name says
+    // directly. Feedback inside a package (q̄ → d), a carry between packages
+    // (U1's q̄ clocking U2), and a named input or output are then the same
+    // thing written the same way, and chip-to-chip wiring falls out of join()
+    // exactly as it does for gates.
+    if (multi) {
+        spec.chips.forEach((c, n) => {
+            const part = circuit.addPart(c.chip, {},
+                380 + (Math.floor(n / PER_COL) * COL), 140 + ((n % PER_COL) * ROW), `U${n + 1}`);
+            join('vcc', part.id, 'vcc');
+            join('gnd', part.id, 'gnd');
+            for (const [pin, net] of Object.entries(c.nets || {})) join(net, part.id, pin);
+            // Active-low async pins again: floating preset/clear and the part
+            // never holds, which looks like a counter that will not count.
+            for (const pin of (c.tieHigh || [])) join('vcc', part.id, pin);
+            for (const pin of (c.tieLow || [])) join('gnd', part.id, pin);
+            packages.push({id: part.id, kind: c.chip, label: c.chipLabel || spec.chipLabel || c.chip,
+                ref: `U${n + 1}`, capacity: 1, used: 1, gates: []});
+        });
     }
 
     // A gate's `in` names either an input net or another gate's `out` net —
