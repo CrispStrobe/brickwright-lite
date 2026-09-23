@@ -1893,6 +1893,13 @@ jobs:
         env:
           BW_FPGA_REQUIRE_SURFACE: '1'
         run: node scripts/verify-fpga-surface.mjs
+      - name: FPGA gate — the PicoRV32 soft-core example is reachable and loads
+        timeout-minutes: 8
+        if: ${{ !cancelled() && steps.fpga_serve.outcome == 'success' }}
+        env:
+          PROOF_URL: http://localhost:8632/
+          BW_FPGA_REQUIRE_SURFACE: '1'
+        run: node scripts/verify-soft-core-surface.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always() && steps.fpga_playwright.outcome == 'success'
         with:

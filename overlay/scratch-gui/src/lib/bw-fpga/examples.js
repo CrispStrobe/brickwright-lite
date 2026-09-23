@@ -15,6 +15,8 @@
  * @module
  */
 
+import {PICORV32_SOC_VERILOG, PICORV32_SOC_CST} from './soft-core-picorv32.js';
+
 export const EXAMPLES = Object.freeze([
     Object.freeze({
         id: 'blink',
@@ -156,5 +158,21 @@ export const EXAMPLES = Object.freeze([
                 {from: {node: 'q', port: 'out'}, to: {node: 'count', port: 'in'}}
             ]
         }
+    }),
+    Object.freeze({
+        id: 'picorv32-soc',
+        label: 'PicoRV32 — an RV32I soft-core SoC',
+        blurb: 'A REAL processor, not a toy: attosoc, a minimal SoC around the PicoRV32 '
+            + 'RV32I core running a small firmware from on-chip ROM and driving the six '
+            + 'LEDs. Press Synthesise and the hosted Gowin flow (Yosys → nextpnr → '
+            + 'gowin_pack) builds the whole ~2.7k-cell CPU into a real Tang Nano 20K '
+            + 'bitstream — the soft-core proof that this surface reaches silicon, not just '
+            + 'gates. Both sources are ISC-licensed, so it may build on the hosted service. '
+            + 'Far too large to gate-simulate here (model is null), so it is a FLASH-only '
+            + 'design like “Counter”.',
+        verilog: PICORV32_SOC_VERILOG,
+        cst: PICORV32_SOC_CST,
+        model: null,
+        softCore: true
     })
 ]);

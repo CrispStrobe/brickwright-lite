@@ -49,6 +49,22 @@ const PROSE = [
         spdx: 'CERN-OHL-S (strongly reciprocal)'}
 ];
 
+// Permissive PROSE — the ISC/MIT grant sentences, for HDL that carries only a
+// header notice and no SPDX tag (e.g. PicoRV32 and the attosoc demo). Recognising
+// them lets a genuinely permissive source pass the hosted route as `permissive`
+// rather than falling to `unknown` and drawing a spurious "no licence" warning.
+// Checked only AFTER the copyleft prose above, so a file that names the GPL is
+// classified copyleft even if it also quotes a permission sentence.
+// Matched against a comment-flattened copy of the source (the `/` and `*` leaders
+// that wrap a C-style header are turned into spaces first), so the grant sentence
+// is recognised even though it spans several ` * `-prefixed lines.
+const PROSE_PERMISSIVE = [
+    {re: /Permission\s+to\s+use,\s+copy,\s+modify,\s+and(?:\s+or)?\s+distribute\s+this\s+software\s+for\s+any\s+purpose\s+with\s+or\s+without\s+fee\s+is\s+hereby\s+granted/i,
+        spdx: 'ISC (prose notice)'},
+    {re: /Permission\s+is\s+hereby\s+granted,\s+free\s+of\s+charge,\s+to\s+any\s+person\s+obtaining\s+a\s+copy/i,
+        spdx: 'MIT (prose notice)'}
+];
+
 /**
  * @returns {{spdx: string|null, family: 'permissive'|'copyleft'|'unknown', evidence: string|null}}
  */
@@ -72,6 +88,12 @@ export function detectLicence (source) {
     for (const {re, spdx} of PROSE) {
         const m = re.exec(text);
         if (m) return {spdx, family: 'copyleft', evidence: m[0].trim()};
+    }
+
+    const flat = text.replace(/[/*]+/g, ' ');
+    for (const {re, spdx} of PROSE_PERMISSIVE) {
+        const m = re.exec(flat);
+        if (m) return {spdx, family: 'permissive', evidence: m[0].trim().replace(/\s+/g, ' ')};
     }
 
     return {spdx: null, family: 'unknown', evidence: null};
