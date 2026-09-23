@@ -300,6 +300,83 @@ try {
     console.log(`  note: grading counter4_real in a browser took ${(took / 1000).toFixed(1)} s`);
     await d.shot('06-counter4');
 
+    // 9. THE CODE TAB HANDS A CIRCUIT OVER. A pseudocode line that is a boolean
+    // over 1-bit pins can be lowered to gates, and the Code tab offers that as
+    // an action — measured at 0 of 282 shipped programs, which is exactly why
+    // the affordance must appear ONLY where it applies and why no existing gate
+    // exercises this path. It is also the only render of `renderCircuitOffer`
+    // anywhere: a throw there would break the Code tab for every build.
+    //
+    // The program is TYPED rather than seeded through `bw-code-autosave`: that
+    // restore only runs when every buffer is empty, which is not true once a
+    // project is loaded, and a first attempt at this check timed out for
+    // exactly that reason. Typing is also what verify-editor.mjs does.
+    //
+    // NO COLON ANYWHERE IN IT, on purpose — the editor auto-indents the line
+    // after one, and a program that reformats itself as it is typed is a bad
+    // fixture. lowerableLines() scans lines, not block structure, so the
+    // declarations and the one expression are enough.
+    //
+    // The expression names its output `q`, also on purpose. The builder's
+    // STARTER design is `a AND b -> y`, so a `y` in the pin map would prove
+    // nothing — `q` can only have come from the handoff.
+    const PROGRAM = [
+        'DEVICE STC12C5A60S2', 'PIN a = P1.0 INPUT', 'PIN b = P1.1 INPUT',
+        'PIN q = P1.2 OUTPUT', 'set q to a OR NOT b'
+    ].join('\n');
+    const c = await openFpga(base.replace(/\/$/, ''), {shots});
+    try {
+        await c.page.locator('text=/Pseudocode|Code/i').first().click({timeout: 15000});
+        // Say WHICH thing is missing rather than timing out on the offer: an
+        // absent editor and an absent affordance are different failures.
+        // Waited for, not slept on — the editor is lazy-loaded, so its arrival
+        // is a condition and the sleep ratchet is right to refuse a guess.
+        const cm = c.page.locator('.cm-content').first();
+        // The wait SYNCHRONISES the click on the next line rather than standing
+        // alone as the claim — test/gate-shapes.test.mjs reads an appearance
+        // with nothing using it as EVENT-AS-STATE, and a `check()` between the
+        // two hides the use as effectively as not having one.
+        const haveEditor = await cm.waitFor({state: 'visible', timeout: 30000})
+            .then(() => true).catch(() => false);
+        if (haveEditor) await cm.click();
+        check('the pseudocode editor is reachable from the Code tab', haveEditor);
+        if (haveEditor) {
+            await c.page.keyboard.press('Control+A');
+            await c.page.keyboard.type(PROGRAM, {delay: 8});
+            // No sleep after typing: the offer's own waitFor below IS the wait,
+            // and re-render is what it is waiting for.
+            const offer = c.page.locator('[data-testid="bw-pseudocode-circuit-offer"]');
+            await offer.waitFor({state: 'visible', timeout: 30000});
+            const offerText = await offer.innerText();
+            check('the Code tab offers to make a boolean line into a circuit',
+                /a OR NOT b/.test(offerText), offerText.split('\n').slice(0, 2).join(' / '));
+
+            await c.page.locator('[data-testid^="bw-pseudocode-make-circuit-"]').first().click();
+            await c.showFpga();
+            // WAIT FOR THE SEED TO LAND, do not read once and hope. The handoff
+            // is an event, then a React state change, then a re-render; reading
+            // the pin map immediately after showFpga() caught the STARTER design
+            // (`a AND b -> y`) still on screen and reported it as a failed
+            // handoff. A fixed sleep had been masking that race — this is the
+            // condition the sleep was standing in for.
+            const seeded = await c.page.waitForFunction(() => {
+                const el = document.querySelector('[data-testid="bw-fpga-rf-pinmap"]');
+                return Boolean(el && /\bq\b/.test(el.innerText));
+            }, null, {timeout: 20000}).then(() => true).catch(() => false);
+            const pinmap = await c.page.locator('[data-testid="bw-fpga-rf-pinmap"]').first()
+                .innerText().catch(() => '');
+            check('the handed-over circuit is what the builder now shows', seeded, pinmap);
+            await c.shot('07-code-tab-handoff');
+        }
+        check('the handoff drove with no uncaught page errors', c.errors.length === 0,
+            c.errors.slice(0, 3).join(' | '));
+    } catch (e) {
+        check('the Code-tab circuit handoff completed', false, e.message.split('\n')[0]);
+        await c.shot('07-code-tab-handoff-failed').catch(() => {});
+    } finally {
+        await c.close().catch(() => {});
+    }
+
     check('the learning path drove with no uncaught page errors', d.errors.length === 0,
         d.errors.slice(0, 3).join(' | '));
 } catch (e) {

@@ -29,7 +29,7 @@
  */
 import {readFileSync, readdirSync, existsSync} from 'node:fs';
 import path from 'node:path';
-import {expressionToModel} from '../overlay/scratch-gui/src/lib/bw-fpga/pseudocode-expr.js';
+import {expressionToModel, conditionOf} from '../overlay/scratch-gui/src/lib/bw-fpga/pseudocode-expr.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const argOf = name => {
@@ -65,19 +65,6 @@ const TIME_OR_STATE = [
     {re: /\bchange\s+[A-Za-z_]/i, why: 'change (variable state)'},
     {re: /\btimer\b/i, why: 'timer'}
 ];
-
-/**
- * The expression inside a line, if the line has an expression position.
- * `IF <cond> THEN:` and `set x to <expr>` are the two places a boolean appears
- * in this pseudocode. Returns null when the line is not one of them.
- */
-export const conditionOf = line => {
-    const iff = /^IF\s+(.*?)\s+THEN\s*:?\s*$/i.exec(line);
-    if (iff) return iff[1];
-    const set = /^set\s+[A-Za-z_][A-Za-z0-9_]*\s+to\s+(.*)$/i.exec(line);
-    if (set) return set[1];
-    return null;
-};
 
 /** Boolean operators the subset could lower to gates. */
 const BOOL_OPS = [{re: /\bAND\b/, op: 'AND'}, {re: /\bOR\b/, op: 'OR'}, {re: /\bNOT\b/, op: 'NOT'}];

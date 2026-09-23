@@ -21,6 +21,11 @@
  *  6. Text locators are treacherous: `text=Parts list` matched the FPGA tab's
  *     own build message, which mentions the parts list. Prefer data-testid and
  *     accessible names.
+ *  7. `bw-code-autosave` does NOT reliably put a program in the Code tab. The
+ *     importer restores it only when EVERY buffer is empty, which stops being
+ *     true as soon as a project is loaded — so seeding it looks like it worked
+ *     and silently does nothing. Type into `.cm-content` instead, the way
+ *     verify-editor.mjs does. Cost of learning this: one red CI run.
  *
  * Usage:
  *   node scripts/drive-fpga.mjs <baseUrl> [--locale de] [--shots <dir>]
