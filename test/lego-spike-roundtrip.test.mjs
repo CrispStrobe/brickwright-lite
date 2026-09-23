@@ -107,8 +107,17 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // asserts that no SPIKE program emits another device's block -- the
     // sentinel that was standing for this defect fired on the bump and was
     // replaced by that positive assertion.
+    // PIN MOVED b7bfd2b7 -> 44d23f88 (2026-09-23), and the artifact assertions
+    // below were re-run at it. What this bump costs is nothing, and that is
+    // checked rather than hoped: `git diff --name-only b7bfd2b7..44d23f88`
+    // names FIVE files — four under examples/ (sb3-creator#23, the AND and OR
+    // gate lessons written as single boolean expressions instead of nested
+    // IFs) and one under test/ (#22, driving ldr and ntc as continuous
+    // controls). NO src/ FILE CHANGED, so the vendored sb3Creator.js is
+    // byte-identical across the range and nothing the round trip reads can
+    // have moved. The assertions below were still executed at the new pin.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'b7bfd2b712e9614e5acf440871972c07664f1420');
+        '44d23f88fc99a70ab273beb65adca3ceaab39524');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
