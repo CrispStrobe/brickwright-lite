@@ -78,7 +78,7 @@ export {CPM_TOOLCHAINS, runCpmToolchain} from '../bw-debug/dos-toolchain-routes.
  * file does not, rather than to an 8086 assembler that would read its 8051
  * source as garbage.
  */
-export const LOCAL_ASM_TARGETS = new Set(['i8086']);
+export const LOCAL_ASM_TARGETS = new Set(['i8086', 'riscv32']);
 
 /**
  * A refusal with its route attached, so the tab can say WHERE a program was
@@ -111,6 +111,10 @@ export class AsmRouteError extends Error {
 export function asmTargetForDevice (device) {
     const d = String(device || '').toLowerCase();
     if (/^(i8086|8086|i8088|8088)$/.test(d)) return 'i8086';
+    // The RV32IMA console: a LOCAL assembler (bw-board/riscv-asm.js), like the
+    // 8086, so a learner can write RISC-V assembly with no network and no chip
+    // service that knows the syntax (stc-compiler's /assemble does not).
+    if (/^riscv(32)?$/.test(d) || /rv32/.test(d)) return 'riscv32';
     if (/6502|eater/.test(d)) return 'eater6502';
     if (/^(z80|zx48|zx128)$/.test(d)) return 'z80';
     // Arduino boards are not MCU ids; /assemble knows the chip. Mirror the C
@@ -208,6 +212,25 @@ export async function assembleLocal8086 (source, opts = {}) {
             {route: 'local', target: 'i8086', reason: 'source'});
     }
     return assemble(source, {dialect});
+}
+
+/**
+ * The local RV32IM assembler — the twin of assembleLocal8086 for the riscv32
+ * console. Loads bw-board's `riscv-asm.js` (its own webpack chunk, not in the
+ * main bundle) and returns the loadable image the bench boots:
+ * `{entry, segments:[{addr,bytes}]}`. RISC-V has ONE syntax, so there is no
+ * dialect to choose. The program talks to the console through the machine's
+ * ECALL ABI (a7=64 write, a7=93 exit).
+ */
+export async function assembleLocalRiscv (source) {
+    const mod = await import(/* webpackChunkName: "riscv-asm" */ 'bw-board/riscv-asm.js');
+    const assemble = mod.assembleRiscv || mod.default;
+    if (typeof assemble !== 'function') {
+        throw new AsmRouteError(
+            'the local RISC-V assembler loaded but exports no assembleRiscv()',
+            {route: 'local', target: 'riscv32', reason: 'transport'});
+    }
+    return assemble(source);   // {ok, image:{entry,segments}, entry, symbols, bytes}
 }
 
 /**
@@ -750,6 +773,29 @@ export async function requestAssembly ({source, device, dialect = 'auto'}, seams
     if (dialect !== 'auto' && !LOCAL_ASM_TARGETS.has(target)) {
         throw new AsmRouteError(`the ${dialect.toUpperCase()} dialect applies to the 8086 only; ${target} has one syntax`,
             {route: 'hosted', target, reason: 'source'});
+    }
+
+    if (target === 'riscv32') {
+        // A loadable RV32IM image, not a byte blob: the bench boots {entry,
+        // segments} through createDebugTarget('riscv32', {image}). Carried on
+        // `image` (not `bytes`), with slotId/profile 'riscv' so the importer and
+        // debug-runner route it to the RISC-V bench rather than a ROM slot.
+        let out;
+        try {
+            out = await assembleLocalRiscv(source);
+        } catch (e) {
+            throw new AsmRouteError(e.message, {route: 'local', target, reason: 'source'});
+        }
+        if (!out || !out.image || !out.image.segments || !out.image.segments.length) {
+            throw new AsmRouteError('the local RISC-V assembler produced no image',
+                {route: 'local', target, reason: 'source'});
+        }
+        return {
+            target, route: 'local', format: 'riscv',
+            image: out.image, entry: out.entry,
+            slotId: 'riscv', profile: 'riscv',
+            bytes: null, org: null, dialect: null, warnings: [], listing: null
+        };
     }
 
     if (LOCAL_ASM_TARGETS.has(target)) {

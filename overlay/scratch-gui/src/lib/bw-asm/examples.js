@@ -199,6 +199,133 @@ wait:
     }
 ];
 
+/**
+ * RV32IM examples for the RISC-V console, assembled by the LOCAL rv32 assembler
+ * (bw-board/riscv-asm.js). They speak to the console through the machine's
+ * Linux-style ECALL ABI — a7=64 write(fd, buf, len), a7=93 exit(code) — and each
+ * has been run on the emulated core. Original to Brickwright (no upstream).
+ */
+const RISCV = [
+    {
+        id: 'rv-hello',
+        label: 'Hello, RISC-V',
+        labelDe: 'Hallo, RISC-V',
+        source: `# Print a line over the ECALL console, then exit.
+# The ABI is Linux-style: a7 selects the call (64 = write, 93 = exit).
+    .globl _start
+_start:
+    li   a7, 64          # SYS_write
+    li   a0, 1           # fd = stdout
+    la   a1, msg         # buffer
+    li   a2, 28          # length
+    ecall
+    li   a7, 93          # SYS_exit
+    li   a0, 0
+    ecall
+    .data
+msg:
+    .string "Hello from RISC-V assembly!\\n"
+`
+    },
+    {
+        id: 'rv-count',
+        label: 'Count 0–9',
+        labelDe: 'Zähle 0–9',
+        source: `# Print the digits 0..9 then a newline, one write() per character.
+    .globl _start
+_start:
+    li   s0, 0           # i = 0
+    li   s1, 10          # limit
+    la   s2, ch          # a one-byte output buffer
+loop:
+    li   a0, 48          # '0'
+    add  a0, a0, s0      # '0' + i
+    sb   a0, 0(s2)
+    li   a7, 64
+    li   a0, 1
+    mv   a1, s2
+    li   a2, 1
+    ecall
+    addi s0, s0, 1
+    blt  s0, s1, loop
+    li   a0, 10          # newline
+    sb   a0, 0(s2)
+    li   a7, 64
+    li   a0, 1
+    mv   a1, s2
+    li   a2, 1
+    ecall
+    li   a7, 93
+    li   a0, 0
+    ecall
+    .data
+ch:
+    .zero 1
+`
+    },
+    {
+        id: 'rv-fib',
+        label: 'Fibonacci (functions + recursion)',
+        labelDe: 'Fibonacci (Funktionen + Rekursion)',
+        source: `# Print the first 10 Fibonacci numbers, space-separated.
+# Shows function calls (call/ret), a stack frame, and the M extension (divu/remu).
+    .globl _start
+_start:
+    li   s0, 0           # a
+    li   s1, 1           # b
+    li   s2, 0           # i
+    li   s3, 10          # how many
+floop:
+    mv   a0, s0
+    call putint
+    li   a0, 32          # a space
+    call putchar
+    add  t0, s0, s1      # next = a + b
+    mv   s0, s1
+    mv   s1, t0
+    addi s2, s2, 1
+    blt  s2, s3, floop
+    li   a0, 10          # newline
+    call putchar
+    li   a7, 93
+    li   a0, 0
+    ecall
+
+# putchar(a0): write the low byte of a0 to stdout.
+putchar:
+    la   t1, cbuf
+    sb   a0, 0(t1)
+    li   a7, 64
+    li   a0, 1
+    mv   a1, t1
+    li   a2, 1
+    ecall
+    ret
+
+# putint(a0): print a non-negative integer in decimal (recurse on a0 / 10).
+putint:
+    addi sp, sp, -8
+    sw   ra, 4(sp)
+    sw   s4, 0(sp)       # save the caller's s4; we hold this digit in it
+    li   t2, 10
+    remu s4, a0, t2      # this digit  = a0 % 10
+    divu a0, a0, t2      # the rest    = a0 / 10
+    beqz a0, digit       # nothing higher to print
+    call putint          # print the higher digits first (preserves our s4)
+digit:
+    addi a0, s4, 48      # '0' + digit
+    call putchar
+    lw   s4, 0(sp)
+    lw   ra, 4(sp)
+    addi sp, sp, 8
+    ret
+    .data
+cbuf:
+    .zero 1
+`
+    }
+];
+
 /** Device id → examples. Families share a set; unknown devices get none. */
 export function asmExamplesFor (device) {
     const d = String(device || '').toLowerCase();
@@ -209,6 +336,7 @@ export function asmExamplesFor (device) {
     // the same assembler and the same programs. Only the bus width differs,
     // and no source file can tell.
     if (/^(i8086|8086|i8088|8088)$/.test(d)) return I8086_ALL;
+    if (/^riscv(32)?$/.test(d) || /rv32/.test(d)) return RISCV;
     return [];
 }
 
@@ -217,7 +345,8 @@ export const ALL_ASM_EXAMPLES = [
     ...STC.map(e => ({...e, target: 'stc12c5a60s2'})),
     ...EATER6502.map(e => ({...e, target: 'eater6502'})),
     ...Z80.map(e => ({...e, target: 'z80'})),
-    ...I8086_ALL.map(e => ({...e, target: 'i8086'}))
+    ...I8086_ALL.map(e => ({...e, target: 'i8086'})),
+    ...RISCV.map(e => ({...e, target: 'riscv32'}))
 ];
 
 /**
@@ -225,6 +354,9 @@ export const ALL_ASM_EXAMPLES = [
  * apart without re-deriving the routing rule. The hosted ones skip when
  * there is no network; these never have an excuse.
  */
-export const LOCAL_ASM_EXAMPLES = I8086_ALL.map(e => ({...e, target: 'i8086'}));
+export const LOCAL_ASM_EXAMPLES = [
+    ...I8086_ALL.map(e => ({...e, target: 'i8086'})),
+    ...RISCV.map(e => ({...e, target: 'riscv32'}))
+];
 
 export default asmExamplesFor;

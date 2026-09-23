@@ -261,12 +261,18 @@ class DebugPanel extends React.Component {
      *  must boot TOGETHER so the CPU reads its reset vector from the
      *  real bytes, not from a zero-filled ROM it booted with earlier. */
     async _onMediaLoad (e) {
-        const {slotId, bytes, kind, profile, name, romAt, chips, widgets} = e.detail || {};
-        if (!bytes) return;
+        const {slotId, bytes, kind, profile, name, romAt, chips, widgets,
+            riscvImage, riscvEcallTraps} = e.detail || {};
+        // A RISC-V program from the local RV32IM assembler carries a loadable
+        // {entry, segments} image, not a flat ROM — the one media that is not
+        // `bytes`. attachRiscV32 reads `riscvImage` off bootMedia.
+        if (!bytes && !riscvImage) return;
         this._teardownRunner();
         this._bootMedia = {
             slot: slotId,
-            bytes: bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes),
+            bytes: bytes ? (bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)) : null,
+            riscvImage: riscvImage || null,
+            riscvEcallTraps: riscvEcallTraps || false,
             profile: profile || null,
             name: name || null,
             // HARDWARE THE PROGRAM ASKED FOR, and it has to be listed here
@@ -286,7 +292,8 @@ class DebugPanel extends React.Component {
             // identical to one that failed to start.
             romAt: typeof romAt === 'number' ? romAt : null
         };
-        const nextKind = kind === 'z80' ? 'z80'
+        const nextKind = kind === 'riscv32' ? 'riscv32'
+            : kind === 'z80' ? 'z80'
             : kind === 'eater6502' || kind === '6502' ? 'eater6502'
                 // All four spellings. The 8088 is an 8086 with an eight-bit
                 // bus -- same ISA, same registers, same core here -- so
@@ -349,7 +356,15 @@ class DebugPanel extends React.Component {
      * build behaves as it always did.
      */
     _onAsmRomReady (e) {
-        const {rom, target, slotId, profile, chips} = e.detail || {};
+        const {rom, target, slotId, profile, chips, format, image} = e.detail || {};
+        // A local RV32IM build is a loadable {entry, segments} image, not a flat
+        // ROM — boot it on the RISC-V bench through _onMediaLoad's riscvImage path.
+        if (format === 'riscv' && image) {
+            return this._onMediaLoad({detail: {
+                kind: 'riscv32', riscvImage: image, riscvEcallTraps: false,
+                name: 'assembled RISC-V program'
+            }});
+        }
         if (!rom) return;
         return this._onMediaLoad({detail: {
             slotId: slotId || 'rom', bytes: rom,

@@ -74,8 +74,10 @@ test('each example is complete enough to be a program', () => {
         assert.ok(ex.label && ex.labelDe, `${ex.id} is missing a locale label`);
         assert.ok(ex.source.includes('\n'), `${ex.id} is a one-liner`);
         // A comment at the top: these are read before they are run, and an
-        // unexplained wall of mnemonics is the same wall in a new shape.
-        assert.match(ex.source.trimStart()[0], /[;]/, `${ex.id} opens without a comment`);
+        // unexplained wall of mnemonics is the same wall in a new shape. The
+        // comment marker is the assembler's own — ';' for the 8051/6502/Z80/8086
+        // set, '#' for RISC-V.
+        assert.match(ex.source.trimStart()[0], /[;#]/, `${ex.id} opens without a comment`);
     }
 });
 

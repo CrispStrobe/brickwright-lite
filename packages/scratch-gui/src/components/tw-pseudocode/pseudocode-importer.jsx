@@ -1992,7 +1992,7 @@ class PseudocodeImporter extends React.Component {
         const target = asmTargetForDevice(device);
         const route = asmRouteFor(device);
         const routeName = route === 'local' ? this.L.asmRouteLocal : this.L.asmRouteHosted;
-        const BENCHES = {eater6502: '6502', z80: 'Z80', i8086: '8086'};
+        const BENCHES = {eater6502: '6502', z80: 'Z80', i8086: '8086', riscv32: 'RISC-V'};
         this.setState({busy: true, status: this.L.asmAssembling(routeName)});
         let out;
         try {
@@ -2020,9 +2020,15 @@ class PseudocodeImporter extends React.Component {
             // is how a program driving an NE2000's registers gets an NE2000
             // to drive -- without putting one on every learner's board.
             const chips = this.asmChipsForSource(this.state.buffers.asm);
-            const detail = {rom: out.bytes, listing: out.listing, target: out.target,
+            // A RISC-V build carries a loadable {entry, segments} image rather
+            // than a flat `rom`; both travel on the same event, and debug-panel
+            // routes by `format`.
+            const detail = {rom: out.bytes, image: out.image || null,
+                listing: out.listing, target: out.target,
                 slotId: out.slotId, profile: out.profile, format: out.format,
                 ...(chips.length ? {chips} : {})};
+            const builtLen = out.bytes ? out.bytes.length
+                : (out.image ? out.image.segments.reduce((n, s) => n + s.bytes.length, 0) : 0);
             // The default debugger dock is the optional right pane. A program
             // handed to a hidden pane is technically running but unusable, so
             // open the pane as part of the same user gesture (as the Arduboy
@@ -2034,7 +2040,7 @@ class PseudocodeImporter extends React.Component {
             window.__bwPendingMedia = {type: 'asm', detail};
             window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {detail}));
             this.setState({busy: false,
-                status: this.L.asmBuiltBench(out.bytes.length, routeName, bench) + warn});
+                status: this.L.asmBuiltBench(builtLen, routeName, bench) + warn});
         } else {
             this.setState({busy: false,
                 status: this.L.asmBuiltOnly(out.bytes.length, routeName, target) + warn});
