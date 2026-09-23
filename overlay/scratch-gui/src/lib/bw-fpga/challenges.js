@@ -166,7 +166,16 @@ export const CHALLENGES = Object.freeze([
         expect: i => ({y: i.a ^ i.b})
     },
     {
-        id: 'half_adder_real', requires: ['half_adder', 'xor_real'], realise: true, circuit: 'half_adder', rungs: ['ic'],
+        // The first realisation that ROUTES rather than computes. It sits after
+        // xor_real because it needs no new gate type — an inverter, two ANDs
+        // and an OR — and before the adders because choosing is simpler than
+        // carrying, whatever the gate count says.
+        id: 'mux2_real', requires: ['mux2', 'xor_real'], realise: true, circuit: 'mux2', rungs: ['ic'],
+        inputs: io(['a', 'b', 'sel']), outputs: io(['y']),
+        expect: i => ({y: i.sel ? i.b : i.a})
+    },
+    {
+        id: 'half_adder_real', requires: ['half_adder', 'mux2_real'], realise: true, circuit: 'half_adder', rungs: ['ic'],
         inputs: io(['a', 'b']), outputs: io(['sum', 'carry']),
         expect: i => ({sum: i.a ^ i.b, carry: i.a & i.b})
     },

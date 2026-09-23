@@ -48,6 +48,7 @@ const tokenise = text => {
         const upper = t.toUpperCase();
         if (t === '(' || t === ')') out.push({kind: t});
         else if (/^(>=|<=|==|!=|<>|[<>=])$/.test(t)) out.push({kind: 'cmp', text: t});
+        else if (/^[01]$/.test(t)) out.push({kind: 'bit', text: t});
         else if (upper === 'AND' || upper === 'OR' || upper === 'NOT') out.push({kind: upper});
         else if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(t)) out.push({kind: 'name', text: t});
         else out.push({kind: 'junk', text: t});
@@ -111,6 +112,37 @@ export function expressionToModel (text, opts = {}) {
         }
         if (t.kind === 'name') {
             take();
+            // THE CURRICULUM'S OWN IDIOM. This pseudocode reads a pin as
+            // `read btnA`, and tests it as `read btnA = 0` — which on an
+            // active-low button is how "pressed" is written. Both are 1-bit and
+            // both are gates: `= 1` is the level itself, `= 0` is an inverter.
+            // Refusing them would have meant asking the curriculum to change
+            // its language to suit this parser, when the existing AND/OR gate
+            // lessons (examples 18 and 19) are written exactly this way.
+            if (t.text.toLowerCase() === 'read') {
+                const pin = peek();
+                if (!pin || pin.kind !== 'name') refuse('"read" must be followed by a pin name');
+                take();
+                if (allowed && !allowed.has(pin.text)) {
+                    refuse(`"${pin.text}" is not a 1-bit input pin — only declared INPUT pins can be wires`);
+                }
+                const level = inputNode(pin.text);
+                if (peek() && peek().kind === 'cmp') {
+                    const op = take();
+                    if (op.text !== '=' && op.text !== '==') {
+                        refuse(COMPARISON(op.text));
+                    }
+                    const bit = peek();
+                    if (!bit || bit.kind !== 'bit') {
+                        // `read p > 3` is arithmetic on something that has only
+                        // two values; say so rather than "unexpected token".
+                        refuse(`a 1-bit pin can only be compared with 0 or 1, not "${bit ? (bit.text || bit.kind) : 'nothing'}"`);
+                    }
+                    take();
+                    return bit.text === '0' ? gate('not', [level]) : level;
+                }
+                return level;
+            }
             if (allowed && !allowed.has(t.text)) {
                 refuse(`"${t.text}" is not a 1-bit input pin — only declared INPUT pins can be wires`);
             }

@@ -88,6 +88,44 @@ test('one pin read twice is ONE input node, not two', () => {
     assert.deepEqual(truthTable(model, ['a']), [0, 0], 'a AND NOT a is always false');
 });
 
+test('the curriculum idiom: `read pin`, and `= 0` is an inverter', () => {
+    // Examples 18 and 19 (the AND and OR gate lessons) are written this way:
+    // an active-low button reads 0 when it is pressed. `= 0` must therefore
+    // INVERT, and getting that backwards would produce a circuit that is wrong
+    // in exactly the way nobody would notice from the shape of the model.
+    const cases = [
+        ['read a', ['a'], v => v.a],
+        ['read a = 1', ['a'], v => v.a],
+        ['read a = 0', ['a'], v => (v.a ? 0 : 1)],
+        ['read a = 0 AND read b = 0', ['a', 'b'], v => ((v.a ? 0 : 1) & (v.b ? 0 : 1))],
+        ['read a = 0 OR read b = 0', ['a', 'b'], v => ((v.a ? 0 : 1) | (v.b ? 0 : 1))]
+    ];
+    for (const [expr, names, fn] of cases) {
+        const {model, problem} = expressionToModel(expr, {inputs: names});
+        assert.equal(problem, null, `${expr}: ${problem}`);
+        const got = truthTable(model, names);
+        const want = [];
+        for (let i = 0; i < (1 << names.length); i++) {
+            const v = {};
+            names.forEach((nm, b) => { v[nm] = (i >> b) & 1; });
+            want.push(fn(v) ? 1 : 0);
+        }
+        assert.deepEqual(got, want, `${expr} produced the wrong truth table`);
+    }
+});
+
+test('a 1-bit pin still refuses real arithmetic', () => {
+    for (const [expr, re] of [
+        ['read a > 3', /compares values|arithmetic/],
+        ['read a = 2', /only be compared with 0 or 1/],
+        ['read = 0', /must be followed by a pin name/]
+    ]) {
+        const {model, problem} = expressionToModel(expr, {inputs: ['a']});
+        assert.equal(model, null, `"${expr}" should be refused`);
+        assert.match(problem, re, `"${expr}" refused with the wrong reason: ${problem}`);
+    }
+});
+
 test('refusals name the reason, and cover what the corpus actually contains', () => {
     // Names are declared here so the COMPARISON is what gets refused; with
     // undeclared names the parser refuses at the name first, which is also
