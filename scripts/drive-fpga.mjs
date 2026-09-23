@@ -51,7 +51,8 @@ const loadPlaywright = async () => {
  * tab, with the gate builder mounted.
  *
  * @param {string} baseUrl
- * @param {{locale?: string, progress?: string[], headless?: boolean, shots?: string}} [opts]
+ * @param {{locale?: string, progress?: string[], headless?: boolean, shots?: string,
+ *   autosave?: {lang: string, code: string}}} [opts]
  */
 export async function openFpga (baseUrl, opts = {}) {
     const {chromium} = await loadPlaywright();
@@ -64,10 +65,13 @@ export async function openFpga (baseUrl, opts = {}) {
     page.on('pageerror', e => errors.push(String(e).slice(0, 300)));
 
     // (1) the flag, and any pre-banked challenge progress, before navigation
-    await page.addInitScript(({progress}) => {
+    await page.addInitScript(({progress, autosave}) => {
         localStorage.setItem('bw-fpga-enabled', '1');
         if (progress) localStorage.setItem('bw-fpga-progress', JSON.stringify(progress));
-    }, {progress: opts.progress || null});
+        // The Code tab restores its buffer from here, which is the only way to
+        // put a program in front of it without typing one character at a time.
+        if (autosave) localStorage.setItem('bw-code-autosave', JSON.stringify(autosave));
+    }, {progress: opts.progress || null, autosave: opts.autosave || null});
 
     const url = opts.locale ? `${baseUrl}/?locale=${opts.locale}` : baseUrl;
     await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 120000});

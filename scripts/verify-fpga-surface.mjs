@@ -300,6 +300,46 @@ try {
     console.log(`  note: grading counter4_real in a browser took ${(took / 1000).toFixed(1)} s`);
     await d.shot('06-counter4');
 
+    // 9. THE CODE TAB HANDS A CIRCUIT OVER. A pseudocode line that is a boolean
+    // over 1-bit pins can be lowered to gates, and the Code tab offers that as
+    // an action — measured at 0 of 282 shipped programs, which is exactly why
+    // the affordance must appear ONLY where it applies and why no existing gate
+    // exercises this path. It is also the only render of `renderCircuitOffer`
+    // anywhere: a throw there would break the Code tab for every build.
+    //
+    // The seeded expression names its output `q`, on purpose. The builder's
+    // STARTER design is `a AND b -> y`, so a `y` in the pin map would prove
+    // nothing — `q` can only have come from the handoff.
+    const PROGRAM = [
+        'DEVICE STC12C5A60S2', 'PIN a = P1.0 INPUT', 'PIN b = P1.1 INPUT', 'PIN q = P1.2 OUTPUT',
+        '', 'WHEN flag clicked:', '  set q to a OR NOT b', ''
+    ].join('\n');
+    const c = await openFpga(base.replace(/\/$/, ''), {autosave: {lang: 'pseudocode', code: PROGRAM}, shots});
+    try {
+        // The Code tab is the first tab; the offer renders under the editor.
+        await c.tab(/Blocks|Code/).click().catch(() => {});
+        const offer = c.page.locator('[data-testid="bw-pseudocode-circuit-offer"]');
+        await offer.waitFor({state: 'visible', timeout: 30000});
+        const offerText = await offer.innerText();
+        check('the Code tab offers to make a boolean line into a circuit',
+            /a OR NOT b/.test(offerText), offerText.split('\n').slice(0, 2).join(' / '));
+
+        await c.page.locator('[data-testid^="bw-pseudocode-make-circuit-"]').first().click();
+        await c.showFpga();
+        // The handoff landed if the builder is showing THIS design, not the starter.
+        const pinmap = await c.page.locator('[data-testid="bw-fpga-rf-pinmap"]').first()
+            .innerText().catch(() => '');
+        check('the handed-over circuit is what the builder now shows', /\bq\b/.test(pinmap), pinmap);
+        await c.shot('07-code-tab-handoff');
+        check('the handoff drove with no uncaught page errors', c.errors.length === 0,
+            c.errors.slice(0, 3).join(' | '));
+    } catch (e) {
+        check('the Code-tab circuit handoff completed', false, e.message.split('\n')[0]);
+        await c.shot('07-code-tab-handoff-failed').catch(() => {});
+    } finally {
+        await c.close().catch(() => {});
+    }
+
     check('the learning path drove with no uncaught page errors', d.errors.length === 0,
         d.errors.slice(0, 3).join(' | '));
 } catch (e) {

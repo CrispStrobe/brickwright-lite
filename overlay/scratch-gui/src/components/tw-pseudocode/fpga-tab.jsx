@@ -395,6 +395,21 @@ const FpgaTab = (props) => {
     const [local, setLocal] = React.useState(null);
     const [localBusy, setLocalBusy] = React.useState(false);
 
+    // THE CODE TAB HANDS A CIRCUIT OVER HERE. A pseudocode line that is a
+    // boolean over 1-bit inputs can be lowered to a gate model
+    // (lib/bw-fpga/pseudocode-expr.js); the Code tab lowers it, dispatches the
+    // model, and switches to this tab. Seeding through an EVENT rather than a
+    // prop keeps the two tabs from having to share state through gui.jsx for a
+    // one-shot handoff — the same shape `bw-activate-tab` already uses.
+    React.useEffect(() => {
+        const onSeed = e => {
+            const model = e && e.detail && e.detail.model;
+            if (model && Array.isArray(model.nodes)) setSeed(model);
+        };
+        window.addEventListener('bw-fpga-seed-model', onSeed);
+        return () => window.removeEventListener('bw-fpga-seed-model', onSeed);
+    }, []);
+
     // Probe once. Nothing is offered that was not actually found, and an absent
     // backend is shown WITH ITS REASON rather than omitted — "no synthesis
     // service is configured" is more useful to a reader than an empty list.

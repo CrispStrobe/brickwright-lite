@@ -166,3 +166,60 @@ export function expressionToModel (text, opts = {}) {
 export function isLowerable (text, opts = {}) {
     return expressionToModel(text, opts).problem === null;
 }
+
+/**
+ * The expression inside a pseudocode line, if the line has an expression
+ * position. `IF <cond> THEN:` and `set x to <expr>` are the two places a
+ * boolean appears in this pseudocode; everything else is a statement.
+ *
+ * Lives here rather than in the census script so that ONE place decides what
+ * is lowerable: the UI offering the action and the census counting it must
+ * never be able to disagree.
+ */
+export const conditionOf = line => {
+    const iff = /^IF\s+(.*?)\s+THEN\s*:?\s*$/i.exec(String(line || '').trim());
+    if (iff) return iff[1];
+    const set = /^set\s+[A-Za-z_][A-Za-z0-9_]*\s+to\s+(.*)$/i.exec(String(line || '').trim());
+    if (set) return set[1];
+    return null;
+};
+
+/** `PIN name = P1.0 INPUT` → the names that are 1-bit inputs. */
+export const oneBitInputsOf = text => {
+    const out = [];
+    for (const raw of String(text || '').split('\n')) {
+        const m = /^PIN\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*\S+\s+INPUT\b/.exec(raw.split('#')[0].trim());
+        if (m) out.push(m[1]);
+    }
+    return out;
+};
+
+/**
+ * Every line of a pseudocode program that could become a circuit.
+ *
+ * This is what decides whether the "make this a circuit" action is OFFERED,
+ * which is the whole difference between option C and a tab that is empty for
+ * every shipped example — measured at 0 of 282 in
+ * docs/PSEUDOCODE-TO-VERILOG.md, so an affordance that is always visible would
+ * be an affordance that always refuses.
+ *
+ * @returns {Array<{lineNo:number, line:string, expr:string, model:object}>}
+ */
+export function lowerableLines (text) {
+    const inputs = oneBitInputsOf(text);
+    const out = [];
+    String(text || '').split('\n').forEach((raw, i) => {
+        const line = raw.split('#')[0].trim();
+        const expr = conditionOf(line);
+        if (!expr) return;
+        const {model, problem} = expressionToModel(expr, {inputs, output: outputNameFor(line)});
+        if (!problem) out.push({lineNo: i + 1, line, expr, model});
+    });
+    return out;
+}
+
+/** `set y to a AND b` names its output `y`; an IF condition has no name. */
+const outputNameFor = line => {
+    const m = /^set\s+([A-Za-z_][A-Za-z0-9_]*)\s+to\s+/i.exec(String(line || '').trim());
+    return m ? m[1] : 'y';
+};
