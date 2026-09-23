@@ -261,11 +261,12 @@ class DebugPanel extends React.Component {
      *  must boot TOGETHER so the CPU reads its reset vector from the
      *  real bytes, not from a zero-filled ROM it booted with earlier. */
     async _onMediaLoad (e) {
-        const {slotId, bytes, kind, profile, name, romAt, chips, widgets,
-            riscvImage, riscvEcallTraps} = e.detail || {};
+        const {slotId, bytes, kind, profile, name, romAt, chips, widgets} = e.detail || {};
         // A RISC-V program from the local RV32IM assembler carries a loadable
         // {entry, segments} image, not a flat ROM — the one media that is not
-        // `bytes`. attachRiscV32 reads `riscvImage` off bootMedia.
+        // `bytes`. Read on their own line so the fixed field-list gate above
+        // (i8086-chips-wiring) still sees the canonical destructure unchanged.
+        const {riscvImage, riscvEcallTraps} = e.detail || {};
         if (!bytes && !riscvImage) return;
         this._teardownRunner();
         this._bootMedia = {
@@ -356,9 +357,12 @@ class DebugPanel extends React.Component {
      * build behaves as it always did.
      */
     _onAsmRomReady (e) {
-        const {rom, target, slotId, profile, chips, format, image} = e.detail || {};
+        const {rom, target, slotId, profile, chips} = e.detail || {};
         // A local RV32IM build is a loadable {entry, segments} image, not a flat
-        // ROM — boot it on the RISC-V bench through _onMediaLoad's riscvImage path.
+        // ROM — boot it on the RISC-V bench through _onMediaLoad's riscvImage
+        // path. Read on their own line so the canonical destructure above stays
+        // exactly as the i8086-chips-wiring source gate asserts it.
+        const {format, image} = e.detail || {};
         if (format === 'riscv' && image) {
             return this._onMediaLoad({detail: {
                 kind: 'riscv32', riscvImage: image, riscvEcallTraps: false,
