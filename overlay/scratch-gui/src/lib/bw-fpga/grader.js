@@ -472,10 +472,21 @@ function* gradeRealisedSequentialSteps (circuit, challenge, opts = {}) {
             }
         }
 
-        // HOLD: move the data inputs with the clock still high. A register keeps
+        // HOLD: move the DATA inputs with the clock still high. A register keeps
         // its value; a wire does not.
+        //
+        // An ASYNCHRONOUS CONTROL is not data and is held still here. A 74HC74's
+        // clear takes effect the moment it is asserted, by design and by the
+        // datasheet — so flipping it would make a CORRECT board look like a wire
+        // ("q changed when the input changed but the clock did not"), which is
+        // the opposite of what this check is for. Challenges name theirs in
+        // `asyncInputs`. Before any challenge had one, every counter reached
+        // here with nothing driven at all, so this check was already vacuous for
+        // them; excluding the reset keeps it exactly as meaningful as it was,
+        // and keeps it biting on the register, whose `d` IS data.
+        const asyncControls = new Set(challenge.asyncInputs || []);
         const flipped = {};
-        for (const k of driven) flipped[k] = inputs[k] ? 0 : 1;
+        for (const k of driven) flipped[k] = asyncControls.has(k) ? inputs[k] : (inputs[k] ? 0 : 1);
         setData(flipped);
         settle(board, settleMs, stepMs);
         const held = readOut();

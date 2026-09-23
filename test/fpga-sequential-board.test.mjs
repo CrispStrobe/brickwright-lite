@@ -162,12 +162,37 @@ test('the feedback is INSIDE the part — nothing outside carries it', () => {
     }
 });
 
-test('the toggle board has a clock and nothing else to set', () => {
+test('the toggle board has a clock and a reset, and nothing else to set', () => {
     const c = new Circuit(5.0);
     const built = buildLogicIcCircuit(c, TOGGLE_CHIP);
-    assert.deepEqual(built.inputs.map(i => i.name), ['clk'], 'only a clock');
-    assert.equal(c.parts.filter(p => p.kind === 'switch').length, 1);
+    assert.deepEqual(built.inputs.map(i => i.name), ['clk', 'rst'], 'a clock and a reset');
+    assert.equal(c.parts.filter(p => p.kind === 'switch').length, 2);
     assert.equal(c.parts.filter(p => p.kind === 'led').length, 1);
+});
+
+test('holding the reset down forces the toggle dark, whatever the clock does', () => {
+    // The reset exists because a real flip-flop wakes in no particular state.
+    // A board that ignores it would still pass the sequence check on OUR
+    // deterministic solver, and would be wrong about the part.
+    const c = new Circuit(5.0);
+    const built = buildLogicIcCircuit(c, TOGGLE_CHIP);
+    const b = c.board;
+    b.setPower(true);
+    const sw = n => built.inputs.find(i => i.name === n).switch;
+    const led = built.outputs[0].led;
+    const settle = () => {
+        const start = typeof b.timeNs === 'bigint' ? b.timeNs : 0n;
+        for (let t = start + 25_000_000n; t <= start + 200_000_000n; t += 25_000_000n) b.advanceTo(t);
+    };
+    b.setControl(sw('rst'), 0);                      // active low: held clear
+    for (let i = 0; i < 4; i++) {
+        b.setControl(sw('clk'), 1); settle();
+        assert.ok(b.ledBrightness(led) <= 0.05, `clocked ${i + 1}× under reset and it lit anyway`);
+        b.setControl(sw('clk'), 0); settle();
+    }
+    b.setControl(sw('rst'), 1); settle();            // release, then it toggles
+    b.setControl(sw('clk'), 1); settle();
+    assert.ok(b.ledBrightness(led) > 0.1, 'released the reset, clocked once, and it did not toggle');
 });
 
 test('a plain D flip-flop does NOT satisfy the toggle challenge', () => {
@@ -176,13 +201,17 @@ test('a plain D flip-flop does NOT satisfy the toggle challenge', () => {
     const c = new Circuit(5.0);
     buildLogicIcCircuit(c, {
         id: 'nofeedback', chip: '74hc74', chipLabel: '74HC74',
-        inputs: ['clk'], outputs: ['q'], pins: {clk: '1clk', q: '1q'},
-        tieHigh: ['1pre', '1clr'], tieLow: ['1d'], gates: []
+        inputs: ['clk', 'rst'], outputs: ['q'], pins: {clk: '1clk', q: '1q', rst: '1clr'},
+        tieHigh: ['1pre'], tieLow: ['1d'], gates: []
     });
     const ch = challengeById('toggle_real');
     const result = gradeRealisedCircuit(c, ch);
     assert.equal(result.pass, false, 'a DFF with d held low never toggles');
-    assert.equal(result.failing.cycle, 0, 'and it is wrong from the first edge');
+    // Cycle 0 is the CLEAR, where a board stuck at 0 is legitimately right; the
+    // first edge that asks it to toggle is cycle 1, and that is where it parts
+    // company. Before the reset existed this was cycle 0 — the number moved
+    // because the run now starts from a state the learner chose.
+    assert.equal(result.failing.cycle, 1, 'wrong on the first edge that asks it to toggle');
 });
 
 test('the toggle challenge follows the register, and is sequential', () => {
@@ -190,7 +219,8 @@ test('the toggle challenge follows the register, and is sequential', () => {
     assert.equal(ch.sequential, true);
     assert.ok(ch.requires.includes('register_real'), 'you build a register before you fold one back');
     assert.ok(ch.requires.includes('toggle'), 'and you design it on the canvas first');
-    assert.deepEqual(ch.inputs.map(i => i.name), ['clk'], 'nothing to drive but the clock');
+    assert.deepEqual(ch.inputs.map(i => i.name), ['clk', 'rst'], 'a clock and the reset');
+    assert.deepEqual(ch.asyncInputs, ['rst'], 'the reset is declared asynchronous, so the hold check leaves it alone');
 });
 
 // ── The counter: two toggles, one package, and it counts ──────────────────
@@ -204,19 +234,20 @@ test('two flip-flops in ONE 74HC74 count 0,1,2,3 and wrap', () => {
     assert.equal(result.checked, 8, 'eight edges — two full laps');
 });
 
-test('it really is ONE package and one switch', () => {
+test('it really is ONE package, with a clock and a reset', () => {
     const c = new Circuit(5.0);
     const built = buildLogicIcCircuit(c, COUNTER2_CHIP);
     assert.equal(c.parts.filter(p => String(p.kind).startsWith('74hc')).length, 1,
         'a 74HC74 holds two flip-flops; a counter does not need two chips');
-    assert.equal(built.inputs.length, 1, 'only a clock');
+    assert.equal(built.inputs.length, 2, 'a clock and a reset');
     assert.equal(built.outputs.length, 2, 'and two LEDs to read as a number');
 });
 
 test('the counter reads as a binary NUMBER, low bit changing fastest', () => {
     // The property that makes it a counter rather than two unrelated blinkers:
     // q0 changes on every edge, q1 on every second one.
-    const seq = challengeById('counter_real').seqExpect({});
+    const ch2 = challengeById('counter_real');
+    const seq = ch2.seqExpect(ch2.stimulus);
     const values = seq.map(o => o.q0 + (o.q1 << 1));
     for (let i = 1; i < values.length; i++) {
         assert.equal(values[i], (values[i - 1] + 1) % 4, `step ${i} must add one`);

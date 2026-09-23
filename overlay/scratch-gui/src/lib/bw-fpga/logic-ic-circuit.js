@@ -224,11 +224,14 @@ export const TOGGLE_CHIP = Object.freeze({
     id: 'toggle',
     chip: '74hc74',
     chipLabel: '74HC74',
-    inputs: ['clk'],
+    inputs: ['clk', 'rst'],
     outputs: ['q'],
-    pins: {clk: '1clk', q: '1q'},
+    // `rst` is the part's ACTIVE-LOW clear, so the switch reads the way a real
+    // reset line does: open (0) holds the flip-flop cleared, closed (1) lets it
+    // run. You release a reset to start, you do not press one to go.
+    pins: {clk: '1clk', q: '1q', rst: '1clr'},
     link: [['1q_bar', '1d']],
-    tieHigh: ['1pre', '1clr'],
+    tieHigh: ['1pre'],
     sequential: true,
     gates: []
 });
@@ -252,11 +255,13 @@ export const COUNTER2_CHIP = Object.freeze({
     id: 'counter2',
     chip: '74hc74',
     chipLabel: '74HC74',
-    inputs: ['clk'],
+    inputs: ['clk', 'rst'],
     outputs: ['q0', 'q1'],
-    pins: {clk: '1clk', q0: '1q', q1: '2q'},
+    // One reset switch, BOTH clears — a counter you can only half-reset is not
+    // reset at all.
+    pins: {clk: '1clk', q0: '1q', q1: '2q', rst: ['1clr', '2clr']},
     link: [['1q_bar', '1d'], ['2q_bar', '2d'], ['1q_bar', '2clk']],
-    tieHigh: ['1pre', '1clr', '2pre', '2clr'],
+    tieHigh: ['1pre', '2pre'],
     sequential: true,
     gates: []
 });
@@ -284,7 +289,7 @@ export const COUNTER2_CHIP = Object.freeze({
 export const COUNTER4_CHIP = Object.freeze({
     id: 'counter4',
     chipLabel: '74HC74',
-    inputs: ['clk'],
+    inputs: ['clk', 'rst'],
     outputs: ['q0', 'q1', 'q2', 'q3'],
     sequential: true,
     gates: [],
@@ -295,18 +300,20 @@ export const COUNTER4_CHIP = Object.freeze({
             chip: '74hc74',
             nets: Object.freeze({
                 '1clk': 'clk', '1q': 'q0', '1q_bar': 'n0', '1d': 'n0',
-                '2clk': 'n0', '2q': 'q1', '2q_bar': 'n1', '2d': 'n1'
+                '2clk': 'n0', '2q': 'q1', '2q_bar': 'n1', '2d': 'n1',
+                '1clr': 'rst', '2clr': 'rst'
             }),
-            tieHigh: Object.freeze(['1pre', '1clr', '2pre', '2clr'])
+            tieHigh: Object.freeze(['1pre', '2pre'])
         }),
         // U2: bits 2 and 3, clocked by `n1` — the carry off U1.
         Object.freeze({
             chip: '74hc74',
             nets: Object.freeze({
                 '1clk': 'n1', '1q': 'q2', '1q_bar': 'n2', '1d': 'n2',
-                '2clk': 'n2', '2q': 'q3', '2q_bar': 'n3', '2d': 'n3'
+                '2clk': 'n2', '2q': 'q3', '2q_bar': 'n3', '2d': 'n3',
+                '1clr': 'rst', '2clr': 'rst'
             }),
-            tieHigh: Object.freeze(['1pre', '1clr', '2pre', '2clr'])
+            tieHigh: Object.freeze(['1pre', '2pre'])
         })
     ])
 });
@@ -418,9 +425,16 @@ export function buildLogicIcCircuit (circuit, spec, {clear = true} = {}) {
         const part = circuit.addPart(spec.chip, {}, 420, 200, 'U1');
         join('vcc', part.id, 'vcc');
         join('gnd', part.id, 'gnd');
-        // One part; `pins` maps net names to pin names where they differ.
-        const pinOf = net => (spec.pins && spec.pins[net]) || net;
-        for (const net of [...spec.inputs, ...spec.outputs]) join(net, part.id, pinOf(net));
+        // One part; `pins` maps net names to pin names where they differ. A net
+        // may name SEVERAL pins: one reset switch holds both halves of a 74HC74
+        // clear, and there is no other way to say that in this form.
+        const pinsOf = net => {
+            const p = (spec.pins && spec.pins[net]) || net;
+            return Array.isArray(p) ? p : [p];
+        };
+        for (const net of [...spec.inputs, ...spec.outputs]) {
+            for (const pin of pinsOf(net)) join(net, part.id, pin);
+        }
         // Control pins that must be held inactive. On a 74HC74 the async preset
         // and clear are ACTIVE LOW: leave them floating and the part never holds.
         for (const pin of (spec.tieHigh || [])) join('vcc', part.id, pin);

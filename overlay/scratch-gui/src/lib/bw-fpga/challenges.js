@@ -205,39 +205,58 @@ export const CHALLENGES = Object.freeze([
     {
         id: 'toggle_real', requires: ['toggle', 'register_real'], realise: true,
         circuit: 'toggle', rungs: ['ic'], sequential: true,
-        inputs: io(['clk']), outputs: io(['q']),
+        inputs: io(['clk', 'rst']), outputs: io(['q']),
         cycles: 8,
         // Nothing to drive but the clock — the grader supplies the edges. q
         // starts low and inverts on every one of them, which is the ÷2.
-        stimulus: {},
-        seqExpect: () => [1, 0, 1, 0, 1, 0, 1, 0].map(q => ({q}))
+        // Cycle 0 holds the active-low clear down, so the run starts from a
+        // state the learner chose instead of one the silicon happened to wake
+        // in. The array is exactly `cycles` long: a short one reads as
+        // undefined, which the grader drives as 0 — reset back on, silently.
+        // `rst` is an ASYNCHRONOUS clear: the grader must not flip it to test
+        // that the board HOLDS, because a correct board does not hold through a
+        // clear — that is what a clear is.
+        asyncInputs: ['rst'],
+        stimulus: {rst: [0, 1, 1, 1, 1, 1, 1, 1]},
+        // MEASURED, cleared then toggling: 0,1,0,1,…
+        seqExpect: stim => stim.rst.map((_, t) => ({q: t % 2}))
     },
     {
         id: 'counter_real', requires: ['toggle_real'], realise: true,
         circuit: 'counter2', rungs: ['ic'], sequential: true,
-        inputs: io(['clk']), outputs: io(['q0', 'q1']),
+        inputs: io(['clk', 'rst']), outputs: io(['q0', 'q1']),
         cycles: 8,
-        stimulus: {},
-        // Both flip-flops of one 74HC74, the second clocked by the first. The
-        // pair powers up at 2, so the first edge shows 3 and it counts on from
-        // there, wrapping through every value.
-        seqExpect: () => [3, 0, 1, 2, 3, 0, 1, 2].map(v => ({q0: v & 1, q1: (v >> 1) & 1}))
+        // `rst` is an ASYNCHRONOUS clear: the grader must not flip it to test
+        // that the board HOLDS, because a correct board does not hold through a
+        // clear — that is what a clear is.
+        asyncInputs: ['rst'],
+        stimulus: {rst: [0, 1, 1, 1, 1, 1, 1, 1]},
+        // Both flip-flops of one 74HC74, the second clocked by the first, and
+        // one reset switch holding BOTH clears. Cleared first, it counts
+        // 0,1,2,3 and wraps — MEASURED, and no longer a statement about which
+        // state the part happened to power up in.
+        seqExpect: stim => stim.rst.map((_, t) => ({q0: (t % 4) & 1, q1: ((t % 4) >> 1) & 1}))
     },
     {
         id: 'counter4_real', requires: ['counter_real'], realise: true,
         circuit: 'counter4', rungs: ['ic'], sequential: true,
-        inputs: io(['clk']), outputs: io(['q0', 'q1', 'q2', 'q3']),
+        inputs: io(['clk', 'rst']), outputs: io(['q0', 'q1', 'q2', 'q3']),
         // Eighteen edges, not sixteen: the wrap is the whole claim. A board that
         // counts 0..15 and then stops, or starts over from a different value,
         // agrees with the first sixteen rows and fails here — and sixteen would
         // never ask the question.
         cycles: 18,
-        stimulus: {},
+        // `rst` is an ASYNCHRONOUS clear: the grader must not flip it to test
+        // that the board HOLDS, because a correct board does not hold through a
+        // clear — that is what a clear is.
+        asyncInputs: ['rst'],
+        stimulus: {rst: [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]},
         // MEASURED from the solver, not derived (test/fpga-counter4-board.test.mjs
-        // re-measures it, so this cannot drift from the board in silence). Four
-        // flip-flops across two 74HC74s wake up all set, so the first edge shows
-        // 15 and it counts up from 0 after that.
-        seqExpect: () => Array.from({length: 18}, (_, t) => (t + 15) % 16)
+        // re-measures it, so this cannot drift from the board in silence).
+        // Cleared on the first edge, then 0..15 and round again — the reset is
+        // what makes that a fact about the circuit rather than about which state
+        // four flip-flops happened to wake up in.
+        seqExpect: stim => stim.rst.map((_, t) => t % 16)
             .map(v => ({q0: v & 1, q1: (v >> 1) & 1, q2: (v >> 2) & 1, q3: (v >> 3) & 1}))
     }
 ]);

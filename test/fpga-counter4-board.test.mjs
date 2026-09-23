@@ -42,11 +42,17 @@ const runBoard = cycles => {
     const {c, io} = build();
     const board = c.board;
     const clk = io.inputs.find(i => i.name === 'clk').switch;
+    const rst = io.inputs.find(i => i.name === 'rst').switch;
     const leds = ['q0', 'q1', 'q2', 'q3'].map(n => io.outputs.find(o => o.name === n).led);
     board.setControl(clk, 0);
     settle(board);
     const seq = [];
     for (let t = 0; t < cycles; t++) {
+        // The challenge's own stimulus: hold the active-low clear down for the
+        // first edge, then let it go. Driving it here rather than hard-coding a
+        // start value is the whole point of the reset.
+        board.setControl(rst, C4.stimulus.rst[t]);
+        settle(board);
         board.setControl(clk, 1);
         settle(board);
         const bits = leds.map(id => {
@@ -70,6 +76,15 @@ test('the 4-bit counter is TWO packages, and the carry between them is a real wi
     // is broken at exactly the seam this challenge exists to show.
     assert.equal(COUNTER4_CHIP.chips[0].nets['2q_bar'], COUNTER4_CHIP.chips[1].nets['1clk'],
         'the carry from U1 to U2 must be one net');
+    // And the reset must reach all four flip-flops across both packages: a
+    // counter you can only half-reset is not reset at all, and the half that
+    // ignored it would hold whatever it woke up with.
+    for (const [n, chip] of COUNTER4_CHIP.chips.entries()) {
+        for (const slot of ['1', '2']) {
+            assert.equal(chip.nets[`${slot}clr`], 'rst',
+                `U${n + 1} flip-flop ${slot} does not see the reset`);
+        }
+    }
     assert.ok(chips !== undefined);
 });
 
@@ -89,7 +104,7 @@ test('MEASURED: the board counts through every one of the sixteen values and wra
     // was counting on a quick glance at the LEDs.
     assert.equal(new Set(seq).size, 16, `expected all 16 values, saw ${new Set(seq).size}: ${JSON.stringify(seq)}`);
     // And it WRAPS: the run is longer than one lap on purpose.
-    assert.deepEqual(seq, Array.from({length: 18}, (_, t) => (t + 15) % 16),
+    assert.deepEqual(seq, Array.from({length: 18}, (_, t) => t % 16),
         `the measured sequence changed — update challenges.js from THIS number, never the other way round: ${JSON.stringify(seq)}`);
 });
 
@@ -117,6 +132,30 @@ test('THE test that matters: a 2-bit counter does not pass the 4-bit challenge',
     const result = gradeRealisedCircuit(c, C4);
     assert.equal(result.pass, false, 'a 2-bit counter must not pass the 4-bit challenge');
     assert.ok(gradeMessageRealised(result, C4).length > 0, 'and it must say something about why');
+});
+
+test('a board that IGNORES the reset fails — otherwise the reset is decoration', () => {
+    // The pre-reset spec: clears tied permanently high, so the switch is not
+    // wired to anything and the counter starts wherever the silicon left it.
+    // On OUR solver that is a deterministic 15, and 15 is exactly what the old
+    // challenge table expected — which is the point. The reset is only worth
+    // adding if a board without it now goes red.
+    const ignoring = {
+        ...COUNTER4_CHIP,
+        inputs: ['clk', 'rst'],          // the switch is still there…
+        chips: COUNTER4_CHIP.chips.map(c => ({
+            chip: c.chip,
+            nets: Object.fromEntries(Object.entries(c.nets).filter(([pin]) => !pin.endsWith('clr'))),
+            tieHigh: ['1pre', '1clr', '2pre', '2clr']   // …but nothing listens to it
+        }))
+    };
+    const c = new Circuit(5.0);
+    buildLogicIcCircuit(c, ignoring);
+    c.board.setPower(true);
+    const result = gradeRealisedCircuit(c, C4);
+    assert.equal(result.pass, false, 'a counter whose clears ignore the reset switch must not pass');
+    assert.equal(result.failing.cycle, 0,
+        'and it is wrong on the very first edge, the one that asks it to be cleared');
 });
 
 test('counter4 is offered in the ⚙ picker', () => {
