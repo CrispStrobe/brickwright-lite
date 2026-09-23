@@ -2362,26 +2362,30 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     }
 
     // The RISC-V RV32IMA console bench. bw-board's createDebugTarget('riscv32',
-    // {image}) builds a RiscV32Machine (RV32IMA + CLINT + PLIC + UART); its
-    // ecall/UART output reaches the serial console through the adapter, the way
-    // the z80 bench's does. With no RISC-V loader/compile route wired yet, it
-    // boots a pre-linked default demo — a clang-compiled "Hello from clang on
-    // RISC-V!" — embedded here so no linker runs in the browser.
+    // {image, config}) builds a RiscV32Machine (RV32IMA + CLINT + PLIC + UART);
+    // its ecall/UART output reaches the serial console through the adapter, the
+    // way the z80 bench's does. There is no in-browser linker/compile route yet,
+    // so it boots one of a set of pre-linked images (see ./riscv-programs.js):
+    // a clang "Hello", and two real RTOSes — FreeRTOS and RT-Thread Nano — that
+    // boot and multitask preemptively on the emulated SoC. The default is a real
+    // FreeRTOS so the console shows an OS running, not just a hello. A preset can
+    // pick another via `bootMedia.riscvProgram`. `config.ecallTraps` selects the
+    // machine's ECALL semantics per image (FreeRTOS yields via ecall; RT-Thread
+    // does not).
     async function attachRiscV32() {
-        const { createDebugTarget, createDebugSession } =
-            await import(/* webpackChunkName: "bw-board" */ 'bw-board');
-        setStatus('attaching', 'booting a RISC-V program…');
-        const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
-        const image = {
-            entry: 0x1000,
-            segments: [
-                { addr: 0x1000, bytes: b64('N4UAAJMFBQATBsABkwgABBMFEABzAAAAkwjQBRMFAABzAAAAZ4AAAA==') },
-                { addr: 0x8000, bytes: b64('SGVsbG8gZnJvbSBjbGFuZyBvbiBSSVNDLVYhCgA=') }
-            ]
-        };
-        const result = await createDebugTarget('riscv32', { image });
+        const [{ createDebugTarget, createDebugSession }, { riscvProgram, DEFAULT_RISCV_PROGRAM }] =
+            await Promise.all([
+                import(/* webpackChunkName: "bw-board" */ 'bw-board'),
+                import(/* webpackChunkName: "bw-debug-riscv" */ './riscv-programs.js')
+            ]);
+        const prog = riscvProgram((bootMedia && bootMedia.riscvProgram) || DEFAULT_RISCV_PROGRAM);
+        setStatus('attaching', `booting ${prog.label} on RISC-V…`);
+        const result = await createDebugTarget('riscv32', {
+            image: { entry: prog.entry, segments: prog.segments },
+            config: { ecallTraps: prog.ecallTraps }
+        });
         wireMachineBench(result, createDebugSession);
-        setStatus('ready', 'RISC-V (RV32IMA) — clang-compiled program running');
+        setStatus('ready', `RISC-V (RV32IMA) — ${prog.label} running`);
         return session;
     }
 

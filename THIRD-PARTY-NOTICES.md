@@ -115,6 +115,27 @@ upstream file when a checkout is available.
 - Only two normalisations were applied: CRLF to LF, and trailing whitespace.
   Nothing was retitled, trimmed or rewritten.
 
+### RISC-V RTOS demo images (FreeRTOS, RT-Thread Nano)
+
+The RISC-V (RV32IMA) console offers, besides a clang "Hello", two real operating
+systems that boot and multitask in the browser: **FreeRTOS** and **RT-Thread
+Nano**. Each is that kernel's own source, cross-compiled (clang + ld.lld) to a
+small RISC-V image and carried as the loadable bytes of that image, base64, in
+`overlay/scratch-gui/src/lib/bw-debug/riscv-programs.js` — so they ship inside
+the web build and the mobile binary. They are those projects' code, not ours; the
+kernel sources are fetched at build time from the pinned commits below and are not
+vendored here. The build recipe and the original demo/board glue (ours) live in
+bw-board `test/fixtures/riscv-freertos/` and `test/fixtures/riscv-rtthread/`.
+
+- **FreeRTOS-Kernel V11.1.0** — Copyright (C) 2021 Amazon.com, Inc. or its
+  affiliates. **MIT.** Pinned commit `dbf70559`.
+  Full text: `overlay/scratch-gui/static/licenses/freertos.MIT.txt`, shipped with
+  the app and readable offline. https://github.com/FreeRTOS/FreeRTOS-Kernel
+- **RT-Thread Nano V4.1.1** — Copyright (c) 2006-2022, RT-Thread Development Team.
+  **Apache-2.0.** Pinned commit `8afd0416`.
+  Full text: `overlay/scratch-gui/static/licenses/rt-thread.Apache-2.0.txt`,
+  shipped with the app and readable offline. https://github.com/RT-Thread/rtthread-nano
+
 ## Our own code living in this repo
 
 Some files were copied in from the CrispStrobe/brickwright mainline repo
