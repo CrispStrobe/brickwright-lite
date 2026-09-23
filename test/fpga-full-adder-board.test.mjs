@@ -209,10 +209,17 @@ test('a single-part spec names pins the part actually has', () => {
         // A spec may name its nets for the CHALLENGE (d, clk, q) and map them
         // onto the part's pins (1d, 1clk, 1q) — resolve through that map, and
         // check the tie-off pins too, since a typo there fails silently.
-        const pinOf = net => (spec.pins && spec.pins[net]) || net;
+        // A net may name SEVERAL pins — one reset switch holds both halves of a
+        // 74HC74's clear — so resolve to a list and check every one. A typo in
+        // the second entry is exactly as silent as a typo in the first.
+        const pinsOf = net => {
+            const p = (spec.pins && spec.pins[net]) || net;
+            return Array.isArray(p) ? p : [p];
+        };
         for (const net of [...spec.inputs, ...spec.outputs]) {
-            const pin = pinOf(net);
-            assert.ok(terminals.has(pin), `${spec.id}: ${spec.chip} has no pin "${pin}" (for net "${net}")`);
+            for (const pin of pinsOf(net)) {
+                assert.ok(terminals.has(pin), `${spec.id}: ${spec.chip} has no pin "${pin}" (for net "${net}")`);
+            }
         }
         for (const pin of [...(spec.tieHigh || []), ...(spec.tieLow || [])]) {
             assert.ok(terminals.has(pin), `${spec.id}: ${spec.chip} has no tie-off pin "${pin}"`);
