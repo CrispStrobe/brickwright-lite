@@ -21,6 +21,34 @@ import {gateToLogicIc, icGatePins, gatesPerPackage} from './logic-ic.js';
 import {t} from './l10n.js';
 
 /** A half adder: sum = a XOR b, carry = a AND b. Two chips, two LEDs. */
+/**
+ * A 2:1 multiplexer — the first circuit in the ladder that CHOOSES.
+ *
+ * Everything before it computes a function of its inputs. This one routes:
+ * `sel` decides whether `y` follows `a` or `b`, and nothing about `a` reaches
+ * the output while `sel` picks `b`. That is the idea underneath every bus,
+ * every register file read port, and the address decoding the FPGA tab's
+ * memory map already shows.
+ *
+ *   y = (a AND NOT sel) OR (b AND sel)
+ *
+ * Three packages on the breadboard: an inverter for NOT sel, two ANDs (which
+ * share one quad 74HC08), and an OR. The inverter is the interesting part to
+ * a learner — the two AND gates are fed OPPOSITE senses of the same wire, and
+ * that is what makes exactly one of them pass.
+ */
+export const MUX2 = Object.freeze({
+    id: 'mux2',
+    inputs: ['a', 'b', 'sel'],
+    gates: [
+        {type: 'not', in: ['sel'], out: 'nsel'},
+        {type: 'and', in: ['a', 'nsel'], out: 'pick_a'},
+        {type: 'and', in: ['b', 'sel'], out: 'pick_b'},
+        {type: 'or', in: ['pick_a', 'pick_b'], out: 'y'}
+    ],
+    outputs: ['y']
+});
+
 export const HALF_ADDER = Object.freeze({
     id: 'half_adder',
     inputs: ['a', 'b'],
@@ -319,7 +347,7 @@ export const COUNTER4_CHIP = Object.freeze({
 });
 
 export const IC_CIRCUITS = Object.freeze({
-    half_adder: HALF_ADDER, full_adder: FULL_ADDER,
+    mux2: MUX2, half_adder: HALF_ADDER, full_adder: FULL_ADDER,
     ripple_adder_4: RIPPLE_ADDER_4, adder_chip_4: ADDER_CHIP_4,
     dff: DFF_CHIP, toggle: TOGGLE_CHIP, counter2: COUNTER2_CHIP, counter4: COUNTER4_CHIP
 });

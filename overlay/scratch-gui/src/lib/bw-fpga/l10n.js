@@ -71,6 +71,8 @@ const TABLE = {
         'challenge.nor_real.brief': 'NOR is NAND held up to a mirror. Build it with ⚛ and compare: NAND put its two PMOS in PARALLEL and its two NMOS in SERIES — NOR does exactly the opposite, PMOS in series above, NMOS in parallel below. Four transistors again, and it is just as universal: every gate can be built from NORs alone. (⚙ is a 74HC02.)',
         'challenge.xor_real.title': 'XOR — a chip with no simple transistor form',
         'challenge.xor_real.brief': 'XOR is the one the ⚛ button will not build: it has no tidy pull-up/pull-down pair the way AND and NOR do — it is made of several gates. So take the 74HC86 (⚙) and prove the chip computes it on the board.',
+        'challenge.mux2_real.title': 'A multiplexer — the first circuit that chooses',
+        'challenge.mux2_real.brief': 'Everything you have built so far COMPUTES something from its inputs. This one ROUTES: sel decides whether y follows a or b, and while sel picks b nothing about a reaches the output at all. y = (a AND NOT sel) OR (b AND sel) — an inverter, two ANDs and an OR, three packages on the board. Pick "2:1 multiplexer" and press ⚙. Watch what the inverter does: the two AND gates are fed opposite senses of the same wire, and that is the whole trick — exactly one of them can pass. This is the idea under every bus, every register read port, and the address decoding the memory map above already shows you.',
         'challenge.half_adder_real.title': 'Half adder — addition, in parts you can buy',
         'challenge.half_adder_real.brief': 'Two chips, one job: a 74HC86 XOR gives the sum, a 74HC08 AND gives the carry, and both watch the SAME two switches. Press ⚙ Half adder to build it, then Check — this is the first challenge that reads TWO output LEDs, and it is binary addition happening in parts you could buy. Try 1+1: the sum goes dark and the carry lights.',
         'challenge.full_adder_real.title': 'Full adder — carry in, carry out',
@@ -87,6 +89,8 @@ const TABLE = {
         'challenge.register_real.brief': 'Everything you have built so far forgets instantly: the LEDs follow the switches and that is all. A 74HC74 flip-flop HOLDS. Pick "D flip-flop" and press ⚙, then set d, flick the clock switch, and q takes the value — then change d and watch q stay put until the next clock edge. Check drives the clock for you, and it checks both halves: that q takes the value, and that q does NOT move when d moves without a clock. A wire passes the first and fails the second.',
 
         // ── circuits the ⚙ picker offers ──────────────────────────────────
+        'circuit.mux2.label': '2:1 multiplexer',
+        'circuit.mux2.hint': 'flip sel and watch the output stop following a and start following b — nothing about a reaches the LED while sel picks b.',
         'circuit.half_adder.label': 'Half adder',
         'circuit.half_adder.hint': 'a=1 b=1 darkens the sum and lights the carry, which is 1 + 1 = 10 in binary.',
         'circuit.full_adder.label': 'Full adder',
@@ -233,6 +237,8 @@ const TABLE = {
         'challenge.nor_real.brief': 'NOR ist NAND im Spiegel. Bau es mit ⚛ und vergleiche: NAND hatte seine zwei PMOS PARALLEL und seine zwei NMOS in REIHE — NOR macht genau das Gegenteil, PMOS in Reihe oben, NMOS parallel unten. Wieder vier Transistoren, und genauso universell: Jedes Gatter lässt sich allein aus NORs bauen. (⚙ ist ein 74HC02.)',
         'challenge.xor_real.title': 'XOR — ein Chip ohne einfache Transistorform',
         'challenge.xor_real.brief': 'XOR ist das eine, das der ⚛-Knopf nicht baut: Es hat kein sauberes Pull-up/Pull-down-Paar wie UND oder NOR — es besteht aus mehreren Gattern. Nimm also den 74HC86 (⚙) und weise auf der Platine nach, dass der Chip es berechnet.',
+        'challenge.mux2_real.title': 'Ein Multiplexer — die erste Schaltung, die auswählt',
+        'challenge.mux2_real.brief': 'Alles, was du bisher gebaut hast, BERECHNET etwas aus seinen Eingängen. Diese hier LEITET WEITER: sel entscheidet, ob y dem Eingang a oder b folgt, und solange sel b wählt, erreicht überhaupt nichts von a den Ausgang. y = (a UND NICHT sel) ODER (b UND sel) — ein Inverter, zwei UND-Gatter und ein ODER, drei Gehäuse auf der Platine. Wähle „2:1-Multiplexer" und drücke ⚙. Achte darauf, was der Inverter tut: Die beiden UND-Gatter bekommen denselben Draht in entgegengesetztem Sinn, und genau das ist der Trick — immer nur eines von beiden kann durchlassen. Das ist die Idee hinter jedem Bus, jedem Lese-Port einer Registerbank und der Adressdekodierung, die dir die Memory-Map oben schon zeigt.',
         'challenge.half_adder_real.title': 'Halbaddierer — Addition aus Bauteilen, die man kaufen kann',
         'challenge.half_adder_real.brief': 'Zwei Chips, eine Aufgabe: Ein 74HC86-XOR liefert die Summe, ein 74HC08-UND den Übertrag, und beide sehen DIESELBEN zwei Schalter. Drücke ⚙ Halbaddierer und dann Prüfen — das ist die erste Aufgabe, die ZWEI Ausgangs-LEDs ausliest, und es ist binäre Addition in Bauteilen, die du kaufen könntest. Probier 1+1: Die Summe wird dunkel, der Übertrag leuchtet.',
         'challenge.full_adder_real.title': 'Volladdierer — Übertrag rein, Übertrag raus',
@@ -248,6 +254,8 @@ const TABLE = {
         'challenge.register_real.title': 'Ein Register — das erste Bauteil, das sich erinnert',
         'challenge.register_real.brief': 'Alles, was du bisher gebaut hast, vergisst sofort: Die LEDs folgen den Schaltern, mehr nicht. Ein 74HC74-Flipflop HÄLT seinen Wert. Wähle „D-Flipflop“, drücke ⚙, setze dann d, betätige den Taktschalter, und q übernimmt den Wert — ändere danach d und sieh zu, wie q bis zur nächsten Taktflanke stehen bleibt. Prüfen taktet für dich und prüft beide Hälften: dass q den Wert übernimmt, und dass q sich NICHT bewegt, wenn d sich ohne Takt ändert. Ein Draht besteht die erste und scheitert an der zweiten.',
 
+        'circuit.mux2.label': '2:1-Multiplexer',
+        'circuit.mux2.hint': 'kippe sel und sieh zu, wie der Ausgang aufhört, a zu folgen, und anfängt, b zu folgen — solange sel b wählt, erreicht nichts von a die LED.',
         'circuit.half_adder.label': 'Halbaddierer',
         'circuit.half_adder.hint': 'a=1 b=1 macht die Summe dunkel und lässt den Übertrag leuchten — das ist 1 + 1 = 10 im Binärsystem.',
         'circuit.full_adder.label': 'Volladdierer',
