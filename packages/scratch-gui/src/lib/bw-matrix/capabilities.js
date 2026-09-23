@@ -94,6 +94,7 @@ export const ARTEFACTS = Object.freeze([
     'bas', // BASIC text typed into a ROM interpreter
     'com', // DOS .COM program
     'cpm', // CP/M-80 (Z80) .COM program, run on the CP/M BDOS service layer
+    'elf', // RISC-V ELF object/executable, loaded + relocated by the rv32 ELF loader
     'img', // bootable 1.44M floppy image (a .COM wrapped in a boot sector)
     'ts' // MakeCode (PXT) TypeScript, compiled hosted
 ]);
@@ -204,6 +205,7 @@ export const DEVICE_GROUP_CORE = Object.freeze({
     'STM32 (ARM)': 'arm',
     '6502': 'w65c02',
     'Z80': 'z80',
+    'RISC-V': 'riscv32',
     '8086': 'i8086',
     'MicroPython': 'micropython',
     'Arcade & SAMD51': 'samd51'
@@ -325,6 +327,27 @@ export const DEVICES = Object.freeze([
             })
         ],
         silicon: [tx('eeprom-programmer-webserial', ['hex', 'bin'], 'eeprom')]
+    }),
+    // The RISC-V RV32IMA console bench (bw-board src/riscv32*.js): a full
+    // standard SoC — RV32IMA + M-mode CSRs/interrupts + CLINT + PLIC + NS16550
+    // UART — that runs clang-compiled ELF programs (the ELF loader relocates a
+    // freestanding object; output via the ecall/UART ABI). `compile: false`:
+    // clang targets rv32 and the RUNTIME is proven (riscv32-elf.test.mjs), but
+    // no hosted RISC-V compile endpoint is wired, so the C/asm cells are OPEN.
+    dev('riscv32', 'RISC-V (RV32IMA)', 'RISC-V', 'riscv32', {
+        // A console, not programmable-from-a-language in-app (like arduboy): clang
+        // targets rv32 and the RUNTIME is proven (the ELF loader runs clang output,
+        // bw-board riscv32-elf.test.mjs), but no hosted RISC-V compile route is
+        // wired, so this RUNS a program (a pre-linked demo, or a dropped ELF), it
+        // does not build one. Listing it as compilable would be the lie the matrix
+        // forbids; when a compile route lands it becomes a programmable device.
+        programmable: false,
+        pickerCompile: false,
+        pickerEmulator: 'riscv32',
+        sim: [eng('riscv32', ['elf', 'bin'], {
+            note: 'RV32IMA SoC (CLINT+PLIC+UART); runs clang ELF output (bw-board riscv32*.test.mjs)'
+        })],
+        silicon: []
     }),
     // Moved here from DEVICE_GROUPS in pseudocode-importer.jsx (T7): the picker is
     // derived from this table now, so the reason a flag is what it is belongs
