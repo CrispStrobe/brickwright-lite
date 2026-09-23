@@ -232,6 +232,54 @@ boundary, and the project has precedent for all three.
 particular obligation is a judgement for a person, not for this file. What is
 recorded here is only that the shapes exist and are already in use.
 
+## Measured: how much shipped pseudocode is in the subset?
+
+This note listed the question as open — *"worth measuring against the shipped
+examples before building: if almost nothing qualifies, C is the better shape."*
+It has now been measured, by `scripts/measure-verilog-subset.mjs`, over every
+`program.bw` in `overlay/scratch-gui/examples`:
+
+| | count | share |
+|---|---|---|
+| programs measured | **282** | |
+| contains any boolean operator (`AND`/`OR`/`NOT`, comments excluded) | 6 | 2.1 % |
+| …where an operand is a **1-bit `INPUT` pin** | **0** | **0.0 %** |
+| whole program is combinational (no time, no state, no analog) | **0** | **0.0 %** |
+
+**Nothing in the shipped corpus qualifies.** All six boolean-using programs
+compare multi-bit program VARIABLES — `IF hit >= 0 AND key < 0`,
+`IF key_input = "0" OR key_input = "1" …`, `IF op = 4 AND NOT entry = 0` — which
+is the multi-bit question this note already flagged as out of scope, not a gate
+over pins.
+
+Why whole programs fall outside, counted across the corpus (a program can have
+several reasons):
+
+| reason | programs | share |
+|---|---|---|
+| `wait` (time) | 134 | 47.5 % |
+| `set` (variable state) | 107 | 37.9 % |
+| `FOREVER` (loop) | 100 | 35.5 % |
+| analog/PWM pin | 50 | 17.7 % |
+| `change` (variable state) | 32 | 11.3 % |
+| `REPEAT` (loop) | 16 | 5.7 % |
+| `timer` | 3 | 1.1 % |
+
+**The honest caveat:** these examples exist to demonstrate BOARDS, so they are
+device-control programs by construction and biased away from pure logic. The
+number is a fact about the shipped corpus, not a proof about every program a
+learner could write. But it is exactly the corpus a learner opens, and it means
+that today, opening any shipped example and switching to a Verilog subtab would
+produce a refusal — every time, with no worked example anywhere in the product
+to learn the feature from.
+
+A zero is also the one result indistinguishable from a broken scan, so
+`test/verilog-subset-census.test.mjs` holds the detector to fixtures that MUST
+count (a two-input `AND` over `INPUT` pins, which it accepts) and MUST NOT (the
+same expression over variables, or touching an `ANALOG` pin). The corpus number
+itself is reported as a diagnostic rather than asserted, because example
+programs are allowed to change.
+
 ## The options
 
 ### A. Combinational subset, as a Code-tab subtab
@@ -325,6 +373,32 @@ generated circuit matches its source.
 
 ## Recommendation
 
+**REVISED 2026-09-23, by the measurement above: C, not A.**
+
+A was recommended on the strength of the round trip, and that argument still
+holds — but it was recommended *before* anyone counted how much pseudocode it
+would apply to, and this note said so. The count is **0 of 282**. A subtab whose
+every visit is a refusal is not a language target a learner can hold; it is a
+dead tab with a good explanation attached, and the ASM precedent does not rescue
+it, because ASM refuses SOME programs while producing real listings for others.
+
+C — "⚙ Make this a circuit" on an expression, handing off to the FPGA gate
+builder — keeps everything the measurement does not contradict: the same narrow
+lowering, the same refusal-by-name, and no promise that pseudocode is an HDL. It
+costs the round trip and the "Verilog is a language like the others" framing,
+which is a real loss, and it is the right one to take when the alternative is a
+tab that is empty for every shipped example.
+
+**What would change the answer:** examples written as logic rather than as
+device control. If the curriculum gains pure-combinational exercises — the FPGA
+learning path's own realise challenges are exactly that shape — the count stops
+being zero and A becomes live again. That is a curriculum decision, not a
+compiler one, and re-running `scripts/measure-verilog-subset.mjs` is how it
+would be noticed.
+
+The original argument for A, kept because it is still the reason to prefer A
+if the corpus ever changes:
+
 **A, modelled on the ASM subtab rather than on Python.**
 
 The objection to a Verilog subtab used to be "a learner switches to it,
@@ -361,9 +435,8 @@ versus "these are equivalent".
   controls. That would restore "the target reaches its device" without adding
   iverilog. Unknown: whether running a `$display` loop teaches anything the
   Code tab's other targets do not already.
-- **How much pseudocode is actually in the subset?** Worth measuring against
-  the shipped examples before building: if almost nothing qualifies, C is the
-  better shape.
+- ~~**How much pseudocode is actually in the subset?**~~ ANSWERED above:
+  0 of 282 shipped programs. That is what moved the recommendation to C.
 - **Multi-bit values.** The gate model is 1-bit-per-net with a `width` field;
   whether `x > 3` on a 4-bit input is in scope changes the parser's size.
 - **Where the refusal is shown.** ASM refuses "by name, with a count"; the
