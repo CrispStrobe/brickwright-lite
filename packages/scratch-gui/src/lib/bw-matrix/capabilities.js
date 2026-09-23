@@ -336,8 +336,11 @@ export const DEVICES = Object.freeze([
     // from ASSEMBLY in-app: bw-board/riscv-asm.js is a LOCAL RV32IM assembler
     // (assemble-route.js has riscv32 in LOCAL_ASM_TARGETS), so a learner writes
     // assembly and it runs on this core with no network — the same road the 8086
-    // takes. The C cell stays OPEN: clang targets rv32 and the runtime is proven
-    // (riscv32-*.test.mjs), but no hosted RISC-V C-compile endpoint is wired yet.
+    // takes. C is a HOSTED route now: assemble-route.js `requestRiscvCBuild` posts
+    // to a RISC-V cross-compiler (client lib/bw-debug/riscv-compile.js, reference
+    // server services/riscv-cc/) and boots the returned image the same way. Until
+    // BW_RISCV_CC_ENDPOINT names a deployment it REFUSES by name (no-compile-service)
+    // rather than pretend — so the cell is hosted-pending-endpoint, not faked.
     dev('riscv32', 'RISC-V (RV32IMA)', 'RISC-V', 'riscv32', {
         // `pickerCompile: false` is the C road, which is not wired (no hosted
         // RISC-V compiler). But there is a SECOND road, as for the 8086: the
