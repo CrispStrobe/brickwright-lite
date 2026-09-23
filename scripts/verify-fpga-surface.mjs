@@ -151,6 +151,25 @@ try {
     await page.locator('.react-flow').first().screenshot({path: join(shots, '02-run.png')});
     await page.screenshot({path: join(shots, '03-tab.png')});
 
+    // 5b. The PicoRV32 soft-core is a REACHABLE example, and selecting it loads a
+    // real RV32I CPU into the Verilog box (the browser-honest half of "a soft-core
+    // through the FPGA chain"; its bitstream is proven by verify-soft-core-synth,
+    // its shape by test/fpga-soft-core.test.mjs). Done here rather than in a new
+    // gate so it costs the wait census no new sleep — the wait is for the CPU
+    // appearing, not a fixed guess.
+    const socBtn = page.getByRole('button', {name: /PicoRV32/i}).first();
+    check('the PicoRV32 soft-core is offered as an example', (await socBtn.count()) > 0);
+    if (await socBtn.count()) {
+        await socBtn.click();
+        const loaded = await page.waitForFunction(
+            () => [...document.querySelectorAll('textarea')].some(t => /module\s+picorv32/.test(t.value || '')),
+            {timeout: 15000}).then(() => true).catch(() => false);
+        check('selecting it loads the real PicoRV32 core into the Verilog editor', loaded);
+        const cst = await page.evaluate(() => [...document.querySelectorAll('textarea')].map(t => t.value || '').find(v => /IO_LOC/.test(v)) || '');
+        check('its Tang Nano 20K LED constraints load into the .cst box', /"led\[5\]"\s+20/.test(cst));
+        await page.screenshot({path: join(shots, '03b-soft-core.png')}).catch(() => {});
+    }
+
     // 6. The demo board connects the Tang Nano to real breadboard parts. This
     // runs against the BROWSER BUNDLE, whose sidecars come from the generated
     // parts-data/index.js — unlike node tests, which read the parts-data

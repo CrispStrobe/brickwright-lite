@@ -48,6 +48,12 @@ const KNOWN_UNWIRED = {
         + 'page-error collector asserted as its own check so "A> present" means "A> produced". Needs a served '
         + 'build (self-skips exit 0 without one), left unwired to keep the browser-gate budget census stable. '
         + 'Run `node scripts/verify-cpm-system.mjs` against a build under packages/scratch-gui/build.',
+    'verify-soft-core-synth.mjs': 'manual/local + network: sends the PicoRV32 soft-core example through the '
+        + 'LIVE hosted Gowin flow (Yosys -> nextpnr -> gowin_pack) and asserts a real Tang Nano 20K bitstream '
+        + 'comes back — ~170s of place-and-route against synth.crispstro.be, which routine CI must not depend '
+        + 'on (it self-skips exit 2 when the service is unreachable). The example\'s shape and its tab call path '
+        + 'are gated offline by test/fpga-soft-core.test.mjs, and that it is reachable in a real browser by a '
+        + 'check folded into the wired scripts/verify-fpga-surface.mjs. Run `node scripts/verify-soft-core-synth.mjs`.',
     // NO FPGA ENTRY REMAINS. verify-fpga-builder.mjs left on 2026-09-23, the
     // second of the two to go, and it is the more delicate departure: its FULL
     // form qualifies the exact deployable candidate against the LIVE hosted
