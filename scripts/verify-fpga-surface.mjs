@@ -332,11 +332,15 @@ try {
         // Waited for, not slept on — the editor is lazy-loaded, so its arrival
         // is a condition and the sleep ratchet is right to refuse a guess.
         const cm = c.page.locator('.cm-content').first();
+        // The wait SYNCHRONISES the click on the next line rather than standing
+        // alone as the claim — test/gate-shapes.test.mjs reads an appearance
+        // with nothing using it as EVENT-AS-STATE, and a `check()` between the
+        // two hides the use as effectively as not having one.
         const haveEditor = await cm.waitFor({state: 'visible', timeout: 30000})
             .then(() => true).catch(() => false);
+        if (haveEditor) await cm.click();
         check('the pseudocode editor is reachable from the Code tab', haveEditor);
         if (haveEditor) {
-            await cm.click();
             await c.page.keyboard.press('Control+A');
             await c.page.keyboard.type(PROGRAM, {delay: 8});
             // No sleep after typing: the offer's own waitFor below IS the wait,
