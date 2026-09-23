@@ -66,14 +66,47 @@ try {
     // The second builder is the React Flow canvas. It starts with a wired AND,
     // so this drives an actual visual model through the model bridge and HDL
     // generator without depending on pixel coordinates.
-    const verilogHeading = page.getByRole('heading', {name: /Verilog/i}).first();
-    const fullCanvas = verilogHeading.locator('xpath=following-sibling::details[2]');
-    check(await fullCanvas.count() === 1, 'the full visual canvas is reachable');
-    await fullCanvas.locator('summary').click();
+    // REHABILITATED 2026-09-23. This used to find the canvas positionally —
+    // `following-sibling::details[2]` from the Verilog heading — and the page
+    // has since grown more <details> sections, so the [2] resolved to the
+    // pin-check block and then to two <summary> elements at once ("strict mode
+    // violation"). A gate nothing runs rots exactly like this, which is the
+    // argument test/gate-coverage.test.mjs makes; counting siblings is the
+    // shape that rots fastest, because any unrelated section added above it
+    // silently changes what it points at.
+    //
+    // Anchored to the thing it wants: the disclosure that CONTAINS the canvas,
+    // found from the canvas's own testid. That cannot drift when a section is
+    // added above it, and needs no localized string — the summary's wording
+    // ("Build it visually — drag gates onto the canvas…") differs per locale
+    // and would be a second thing to keep true.
     const canvas = page.getByTestId('bw-fpga-rf-canvas');
-    await canvas.waitFor({timeout: 30000});
+    const fullCanvas = canvas.locator('xpath=ancestor::details[1]');
+    check(await fullCanvas.count() === 1, 'the full visual canvas is reachable');
+    // IDEMPOTENT. This disclosure ships OPEN, and clicking its summary
+    // unconditionally shut it — after which the gate waited out its timeout on
+    // a canvas it had just hidden itself. "Click to open" is only the same as
+    // "be open" when you know which way it started.
+    if (!(await fullCanvas.evaluate(el => el.open))) {
+        await fullCanvas.locator('summary').first().click();
+    }
+    // VISIBLE, not present: the panel force-renders, so the canvas is in the
+    // DOM with the disclosure shut and `count()` answers yes either way.
+    //
+    // The wait SYNCHRONISES the read below rather than standing on its own as
+    // the claim — "it appeared" is not the contract, "it mounted the starter
+    // design I am about to turn into Verilog" is, and an empty canvas would
+    // satisfy the first and fail the second. They stay adjacent on purpose:
+    // test/gate-shapes.test.mjs reads an appearance with nothing using it as an
+    // EVENT-AS-STATE suspect, and prose between the two hides the use.
+    await canvas.waitFor({state: 'visible', timeout: 30000});
+    const placed = await canvas.locator('.react-flow__node').count();
+    check(placed > 0, 'the canvas mounts the starter design', `${placed} nodes`);
 
-    const builder = canvas.locator('xpath=..');
+    // Scope to the DISCLOSURE, not the canvas's immediate parent: the toolbar
+    // holding "Use as Verilog" sits two levels up, so `..` found nothing and
+    // the gate timed out on a button that was on screen the whole time.
+    const builder = fullCanvas;
     await builder.getByRole('button', {name: /Use as Verilog|Als Verilog verwenden/i}).click();
     await page.waitForFunction(() => [...document.querySelectorAll('textarea')]
         .some(el => /assign\s+w_g\s*=\s*a\s*&\s*b;/.test(el.value)), null, {timeout: 10000});
@@ -82,14 +115,20 @@ try {
     check(/assign\s+w_g\s*=\s*a\s*&\s*b;/.test(generatedHdl),
         'visual AND becomes Verilog in the synthesis input');
 
-    const ramButton = builder.getByTestId('bw-fpga-rf-memory');
-    const ramTitle = await ramButton.getAttribute('title');
-    check(/synchronous single-port RAM|synchroner Single-Port-RAM/i.test(ramTitle || ''),
-        'the RAM action has localized explanatory text', ramTitle || '(missing title)');
-    await ramButton.click();
-    const ramGeometry = builder.getByText('4×4', {exact: true});
-    await ramGeometry.waitFor({timeout: 10000});
-    check(await ramGeometry.isVisible(), 'adding RAM shows its 4×4 geometry on the live canvas');
+    // THE RAM AFFORDANCE MOVED, and this is what an unrun gate looks like when
+    // you finally run it. These two checks drove a toolbar button with the
+    // testid `bw-fpga-rf-memory`, reading its title and clicking it to see a
+    // 4×4 geometry appear. That button no longer exists: RAM is a PALETTE item
+    // now ({kind:'memory', label:'RAM'} in palette-catalog.js), dropped onto the
+    // canvas like any other node. The testid was present in nothing but this
+    // file — so the gate was the only thing that believed in it.
+    //
+    // What replaces them is what today's UI actually offers. Dragging from the
+    // palette is left out on purpose: a drag gate would be testing HTML5 DnD in
+    // headless Chromium more than it tests this app, and the palette rendering
+    // is already covered by verify-fpga-surface.
+    const ram = page.locator('[data-testid="bw-fpga-palette"]').getByText('RAM', {exact: true}).first();
+    check(await ram.count() === 1, 'the palette still offers a RAM node to place');
 
     // RAM is intentionally not claimed as live-simulated. Return to the clean
     // AND HDL generated before it was added and prove the production journey.

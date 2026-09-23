@@ -36,10 +36,6 @@ const ROOT = path.resolve(import.meta.dirname, '..');
  * UI rather than tweaking a selector.
  */
 const KNOWN_UNWIRED = {
-    'verify-fpga-builder.mjs': 'manual exact-deployable-artifact qualification: the routine browser '
-        + 'job is deliberately flag-off, while this proof requires the flag-on candidate and the live hosted '
-        + 'synthesis service. Run `PROOF_URL=https://<exact-candidate>/ node scripts/verify-fpga-builder.mjs`; '
-        + 'FPGA_SKIP_SYNTH=1 is visual-only development evidence, never the release receipt.',
     'verify-machine-manager-ui.mjs': 'manual/local: the Machine Manager library modal (code-tab device '
         + 'dropdown → "Manage machines…" → import a manifest → row → Run/Close). Runs against a served '
         + 'production build and was verified live locally (zero page errors); left unwired to keep the '
@@ -52,11 +48,28 @@ const KNOWN_UNWIRED = {
         + 'page-error collector asserted as its own check so "A> present" means "A> produced". Needs a served '
         + 'build (self-skips exit 0 without one), left unwired to keep the browser-gate budget census stable. '
         + 'Run `node scripts/verify-cpm-system.mjs` against a build under packages/scratch-gui/build.',
-    // The REMAINING FPGA entry is intentionally manual because its subject is the
-    // exact deployable flag-on artifact plus a live hosted service, while routine
-    // browser CI deliberately builds flag-off. The command and the non-release
-    // visual mode are named above so this is disclosed state rather than a
-    // fabricated wire.
+    // NO FPGA ENTRY REMAINS. verify-fpga-builder.mjs left on 2026-09-23, the
+    // second of the two to go, and it is the more delicate departure: its FULL
+    // form qualifies the exact deployable candidate against the LIVE hosted
+    // synthesis service, and that cannot run in routine CI. What is wired is
+    // FPGA_SKIP_SYNTH=1, which omits the synthesis round trip and the
+    // demo-circuit journey — so the job runs a REDUCED form of this gate, and
+    // its step is named "NO synthesis; not the release receipt" so the reduction
+    // travels with it instead of living in a list nobody reads at release time.
+    //
+    // Running it reduced still beats not running it, because an unrun gate rots:
+    // this one had, and the rot was exactly the shape its own header warns about.
+    // `following-sibling::details[2]` from the Verilog heading no longer found
+    // the canvas (the page grew sections above it) and resolved to two <summary>
+    // elements at once; then an unconditional click on a disclosure that ships
+    // OPEN shut it, and the gate timed out on a canvas it had hidden itself; and
+    // the RAM checks drove a toolbar button with a testid that existed in no file
+    // but that one — RAM is a palette item now. All three were repaired against
+    // the flag-on artifact of b910ef07a, where the reduced form passes 5 checks,
+    // and the Verilog check was falsified by asking for a wire name the design
+    // does not have (the first attempt, swapping `&` for `|` inside the regex,
+    // PASSED — `|` is alternation, so the mutant pattern still matched; a
+    // mutation that cannot fail proves nothing about the check).
     //
     // verify-fpga-surface.mjs LEFT this list on 2026-09-22: the follow-up its own
     // entry named — "wiring a dedicated flag-on browser job" — is now the

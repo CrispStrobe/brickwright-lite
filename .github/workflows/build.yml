@@ -1855,6 +1855,38 @@ jobs:
       # there is no separate serve step and no shared port to go stale on.
       # Measured 2026-09-22 against the flag-on github-pages artifact of
       # a83ce3c27: 19 checks, ~95 s end to end. Budget 10 min.
+      # A served build for the builder gate below, which requires PROOF_URL and
+      # will not invent a server of its own — by design: its subject is an exact
+      # served candidate. `python3 -m http.server` is the threaded CLI (see the
+      # browser job's serve step for the measurement).
+      - name: Serve the flag-on build
+        id: fpga_serve
+        if: ${{ !cancelled() && steps.build_editor_fpga.outcome == 'success' }}
+        run: |
+          python3 -m http.server 8632 --directory packages/scratch-gui/build &
+          for i in $(seq 1 30); do curl -sf http://localhost:8632/ >/dev/null && break; sleep 1; done
+      # NOT THE RELEASE RECEIPT, and the step name says so because the list this
+      # gate just left said so. verify-fpga-builder.mjs's full form qualifies the
+      # exact deployable candidate against the LIVE hosted synthesis service;
+      # FPGA_SKIP_SYNTH=1 omits the synthesis round trip and the demo-circuit
+      # journey entirely. What it still proves is worth running every time and is
+      # covered nowhere else: that a design drawn on the visual canvas becomes
+      # Verilog in the synthesis input. Qualifying a release still means running
+      # this WITHOUT the flag, by hand, against the candidate URL:
+      #   PROOF_URL=https://<exact-candidate>/ node scripts/verify-fpga-builder.mjs
+      - name: FPGA gate — builder canvas to Verilog (NO synthesis; not the release receipt)
+        timeout-minutes: 8
+        if: ${{ !cancelled() && steps.fpga_serve.outcome == 'success' }}
+        env:
+          FPGA_SKIP_SYNTH: '1'
+          PROOF_URL: http://localhost:8632/
+        run: node scripts/verify-fpga-builder.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.fpga_serve.outcome == 'success'
+        with:
+          name: fpga-builder-proof
+          path: artifacts/fpga-builder/*
+          if-no-files-found: warn
       - name: FPGA gate — the flag-on surface and the learning path
         timeout-minutes: 10
         if: ${{ !cancelled() && steps.fpga_playwright.outcome == 'success' }}
