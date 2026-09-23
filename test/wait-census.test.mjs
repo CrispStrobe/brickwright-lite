@@ -72,15 +72,40 @@ const censusJson = () => JSON.parse(execFileSync('node',
 //   after  (this branch)  110 sleeps  120,180 ms
 //   delta                  +6 sleeps   +8,300 ms   all in verify-fpga-surface.mjs
 //
-// NOTE for whoever next touches this file: `totalSleeps` below is 261 against a
-// tree that now measures 192, so that one ceiling has ~69 sleeps of headroom it
-// was never meant to have — main drifted down since the 2026-08-28 sweep and
-// nothing pulled the ratchet after it. Tightening it is right, but it is not
-// this change's business and would red-light unrelated work in flight.
+// TIGHTENED 2026-09-23: `totalSleeps` 261 -> 192, closing the note the previous
+// change left here. A ratchet with slack is not a ratchet — 69 sleeps could have
+// been added repository-wide without a word, which is the exact silence this file
+// exists to break. Main drifted DOWN since the 2026-08-28 sweep (sleeps removed,
+// and vendor-absent-by-design retired with its own) and nothing pulled the
+// ceiling after it; moving a ceiling down to meet the tree is always allowed.
+//
+// RE-MEASURED on this tree, all four, so no ceiling here is inherited from an
+// older shape of the repository:
+//
+//   run by CI    110 sleeps  120,180 ms
+//   TOTAL        192 sleeps  331,030 ms   (590 bounds, 775 files parsed)
+//   scratch       10 _tmp- files with waits
+//
+// Every number below is now the observed value with ZERO headroom, which is the
+// correct state for a ratchet: nothing can be added without this going red.
+//
+// FALSIFIED, not assumed — and the first attempt at falsifying it FAILED, which
+// is worth writing down. A bare `await new Promise(r => setTimeout(r, 1))` added
+// to a test file does NOT move this count: the census counts `waitForTimeout(N)`
+// callees and nothing else (scripts/aggregate-timeouts.mjs:132, and its header
+// says why that is the right subject). One added `waitForTimeout(1)` does trip
+// it — "193 fixed sleeps across scripts/ and test/, up from 192" — so the
+// ratchet bites, but only on the shape it claims to be about. A `setTimeout`
+// that blocks CI is a different (uncounted) problem.
+//
+// IF THIS IS WHAT BROKE YOUR BUILD: you added a `waitForTimeout`. The fix is to
+// wait for the CONDITION it stands in for (waitForSelector / waitForFunction),
+// not to raise the number. If you genuinely added a gate, raise it here in the
+// same commit with the measurement, as the FPGA entry above does.
 const CEILING = {
     ciSleepMs: 120_180,     // 110 sleeps across the CI browser-gate scripts
     ciSleeps: 110,
-    totalSleeps: 261,       // repository-wide; see the note above — measures 192 today
+    totalSleeps: 192,       // 331,030 ms repository-wide
     scratchFiles: 10        // _tmp- scripts that contain waits
 };
 
