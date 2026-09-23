@@ -332,16 +332,18 @@ export const DEVICES = Object.freeze([
     // standard SoC — RV32IMA + M-mode CSRs/interrupts + CLINT + PLIC + NS16550
     // UART — that boots real programs. It ships a clang "Hello" and two real
     // RTOSes, FreeRTOS and RT-Thread Nano, which boot and multitask preemptively
-    // in the console (see lib/bw-debug/riscv-programs.js). `compile: false`:
-    // clang targets rv32 and the RUNTIME is proven (riscv32-*.test.mjs), but no
-    // hosted RISC-V compile endpoint is wired, so the C/asm cells are OPEN.
+    // in the console (see lib/bw-debug/riscv-programs.js). It is now programmable
+    // from ASSEMBLY in-app: bw-board/riscv-asm.js is a LOCAL RV32IM assembler
+    // (assemble-route.js has riscv32 in LOCAL_ASM_TARGETS), so a learner writes
+    // assembly and it runs on this core with no network — the same road the 8086
+    // takes. The C cell stays OPEN: clang targets rv32 and the runtime is proven
+    // (riscv32-*.test.mjs), but no hosted RISC-V C-compile endpoint is wired yet.
     dev('riscv32', 'RISC-V (RV32IMA)', 'RISC-V', 'riscv32', {
-        // A console, not programmable-from-a-language in-app (like arduboy): clang
-        // targets rv32 and the RUNTIME is proven (the ELF loader runs clang output,
-        // bw-board riscv32-elf.test.mjs), but no hosted RISC-V compile route is
-        // wired, so this RUNS a program (a pre-linked demo, or a dropped ELF), it
-        // does not build one. Listing it as compilable would be the lie the matrix
-        // forbids; when a compile route lands it becomes a programmable device.
+        // `pickerCompile: false` is the C road, which is not wired (no hosted
+        // RISC-V compiler). But there is a SECOND road, as for the 8086: the
+        // local RV32IM assembler (asmRouteFor('riscv32') === 'local'), so this
+        // BUILDS an assembly program in the browser and runs it, as well as
+        // running a pre-linked demo or a dropped ELF. Two roads, different flags.
         programmable: false,
         pickerCompile: false,
         pickerEmulator: 'riscv32',

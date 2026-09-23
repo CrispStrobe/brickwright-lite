@@ -88,7 +88,27 @@ test('every other device keeps the hosted route it already had', () => {
     // about devices this file has never heard of, and the 8086 assembler
     // would read their source as garbage rather than refusing it.
     assert.equal(asmRouteFor('some-future-chip'), 'hosted');
-    assert.deepEqual([...LOCAL_ASM_TARGETS], ['i8086']);
+    assert.deepEqual([...LOCAL_ASM_TARGETS], ['i8086', 'riscv32']);
+});
+
+test('the RISC-V console routes to the LOCAL RV32IM assembler', () => {
+    for (const device of ['riscv32', 'riscv', 'RISCV32', 'rv32ima']) {
+        assert.equal(asmTargetForDevice(device), 'riscv32',
+            `${device} did not resolve to the riscv32 target`);
+        assert.equal(asmRouteFor(device), 'local',
+            `${device} would have been posted to an assembler with no RISC-V back end`);
+    }
+});
+
+test('the local RISC-V route assembles source to a loadable {entry, segments} image', async () => {
+    const out = await requestAssembly({
+        source: '_start:\n  li a7, 93\n  li a0, 0\n  ecall\n', device: 'riscv32'});
+    assert.equal(out.route, 'local');
+    assert.equal(out.target, 'riscv32');
+    assert.equal(out.format, 'riscv');
+    assert.ok(out.image && Array.isArray(out.image.segments) && out.image.segments.length > 0,
+        'the local RISC-V route produced no image');
+    assert.equal(typeof out.entry, 'number', 'the image carries an entry PC');
 });
 
 test('an 8086 program is assembled without the network being touched', async () => {

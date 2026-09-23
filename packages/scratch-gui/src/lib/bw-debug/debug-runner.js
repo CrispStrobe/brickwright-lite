@@ -2378,14 +2378,26 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 import(/* webpackChunkName: "bw-board" */ 'bw-board'),
                 import(/* webpackChunkName: "bw-debug-riscv" */ './riscv-programs.js')
             ]);
-        const prog = riscvProgram((bootMedia && bootMedia.riscvProgram) || DEFAULT_RISCV_PROGRAM);
-        setStatus('attaching', `booting ${prog.label} on RISC-V…`);
-        const result = await createDebugTarget('riscv32', {
-            image: { entry: prog.entry, segments: prog.segments },
-            config: { ecallTraps: prog.ecallTraps }
-        });
+        // A program the learner assembled IN THE CODE TAB takes priority over the
+        // shipped set: the local RV32IM assembler (bw-asm) hands debug-panel a
+        // `riscvImage` ({entry, segments}) on bootMedia, and it boots on the same
+        // core, through the same ECALL console. Absent that, boot one of the
+        // pre-linked images (the default FreeRTOS, or bootMedia.riscvProgram).
+        let image, ecallTraps, label;
+        if (bootMedia && bootMedia.riscvImage) {
+            image = bootMedia.riscvImage;
+            ecallTraps = bootMedia.riscvEcallTraps ?? false;
+            label = bootMedia.name || 'your program';
+        } else {
+            const prog = riscvProgram((bootMedia && bootMedia.riscvProgram) || DEFAULT_RISCV_PROGRAM);
+            image = { entry: prog.entry, segments: prog.segments };
+            ecallTraps = prog.ecallTraps;
+            label = prog.label;
+        }
+        setStatus('attaching', `booting ${label} on RISC-V…`);
+        const result = await createDebugTarget('riscv32', { image, config: { ecallTraps } });
         wireMachineBench(result, createDebugSession);
-        setStatus('ready', `RISC-V (RV32IMA) — ${prog.label} running`);
+        setStatus('ready', `RISC-V (RV32IMA) — ${label} running`);
         return session;
     }
 
