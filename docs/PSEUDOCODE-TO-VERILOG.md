@@ -382,6 +382,16 @@ every visit is a refusal is not a language target a learner can hold; it is a
 dead tab with a good explanation attached, and the ASM precedent does not rescue
 it, because ASM refuses SOME programs while producing real listings for others.
 
+**C's compiler half now exists**, as
+`overlay/scratch-gui/src/lib/bw-fpga/pseudocode-expr.js`: the grammar in the
+shape `condition.js` set, lowering `a AND NOT b` to the gate model the FPGA tab
+already synthesises. Its limits ARE the hardware's limits, so the refusal falls
+out of the parse rather than needing a second synthesisability check — and the
+census above now calls that parser instead of approximating it with a regex, so
+the reasons reported are the ones a learner would be shown (26 comparisons, 9
+names that are not pins). What is NOT built is the affordance itself: where the
+button lives, and what it hands to the builder.
+
 C — "⚙ Make this a circuit" on an expression, handing off to the FPGA gate
 builder — keeps everything the measurement does not contradict: the same narrow
 lowering, the same refusal-by-name, and no promise that pseudocode is an HDL. It

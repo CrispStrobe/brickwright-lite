@@ -29,6 +29,7 @@
  */
 import {readFileSync, readdirSync, existsSync} from 'node:fs';
 import path from 'node:path';
+import {expressionToModel} from '../overlay/scratch-gui/src/lib/bw-fpga/pseudocode-expr.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const argOf = name => {
@@ -65,6 +66,19 @@ const TIME_OR_STATE = [
     {re: /\btimer\b/i, why: 'timer'}
 ];
 
+/**
+ * The expression inside a line, if the line has an expression position.
+ * `IF <cond> THEN:` and `set x to <expr>` are the two places a boolean appears
+ * in this pseudocode. Returns null when the line is not one of them.
+ */
+export const conditionOf = line => {
+    const iff = /^IF\s+(.*?)\s+THEN\s*:?\s*$/i.exec(line);
+    if (iff) return iff[1];
+    const set = /^set\s+[A-Za-z_][A-Za-z0-9_]*\s+to\s+(.*)$/i.exec(line);
+    if (set) return set[1];
+    return null;
+};
+
 /** Boolean operators the subset could lower to gates. */
 const BOOL_OPS = [{re: /\bAND\b/, op: 'AND'}, {re: /\bOR\b/, op: 'OR'}, {re: /\bNOT\b/, op: 'NOT'}];
 
@@ -79,11 +93,14 @@ export function analyse (text) {
     for (const line of body) {
         const ops = BOOL_OPS.filter(o => o.re.test(line)).map(o => o.op);
         if (!ops.length) continue;
-        // Which declared names does the line mention?
-        const named = [...pins.keys()].filter(n => new RegExp(`\\b${n}\\b`).test(line));
-        const usesOneBit = named.some(n => oneBitIn.includes(n));
-        const usesAnalog = named.some(n => analog.includes(n));
-        boolLines.push({line, ops, usesOneBit, usesAnalog, named});
+        // THE REAL PARSER DECIDES, not a regex. Asking the thing that would
+        // actually do the lowering is the only way this census measures the
+        // feature rather than an approximation of it — and it means the
+        // refusal REASONS are the ones a learner would see.
+        const cond = conditionOf(line);
+        const verdict = cond === null ? {problem: 'not an expression position'}
+            : expressionToModel(cond, {inputs: oneBitIn});
+        boolLines.push({line, ops, cond, lowerable: verdict.problem === null, why: verdict.problem});
     }
 
     const blockers = [];
@@ -96,7 +113,7 @@ export function analyse (text) {
         pins: pins.size, oneBitIn: oneBitIn.length, analog: analog.length,
         boolLines,
         // (1) would a subtab show anything at all?
-        hasSubsetExpression: boolLines.some(b => b.usesOneBit && !b.usesAnalog),
+        hasSubsetExpression: boolLines.some(b => b.lowerable),
         hasAnyBoolean: boolLines.length > 0,
         // (2) could the WHOLE program be a circuit?
         blockers,
@@ -139,11 +156,27 @@ console.log(`  contains ANY boolean operator      ${String(withAnyBool.length).p
 console.log(`  ...over a 1-bit INPUT pin          ${String(withExpr.length).padStart(4)}  ${pct(withExpr.length)}   <- a subtab would show something`);
 console.log(`  WHOLE program is combinational     ${String(whole.length).padStart(4)}  ${pct(whole.length)}   <- "your program is a circuit"\n`);
 
+const refusals = new Map();
+for (const r of rows) {
+    for (const b of r.boolLines) {
+        if (b.lowerable) continue;
+        const key = (b.why || 'unknown').replace(/"[^"]*"/g, '"…"');
+        refusals.set(key, (refusals.get(key) || 0) + 1);
+    }
+}
+if (refusals.size) {
+    console.log('Why the parser refuses the booleans that ARE there (its own words):');
+    for (const [why, n] of [...refusals].sort((a, b) => b[1] - a[1])) {
+        console.log(`  ${String(n).padStart(4)}  ${why}`);
+    }
+    console.log('');
+}
+
 if (withExpr.length) {
     console.log('The programs a combinational subtab would produce anything for:');
     for (const r of withExpr) {
         console.log(`  ${r.name}`);
-        for (const b of r.boolLines.filter(x => x.usesOneBit && !x.usesAnalog)) {
+        for (const b of r.boolLines.filter(x => x.lowerable)) {
             console.log(`      ${b.ops.join('+')}: ${b.line.slice(0, 88)}`);
         }
     }
