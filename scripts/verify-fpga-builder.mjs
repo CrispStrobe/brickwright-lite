@@ -92,7 +92,16 @@ try {
     }
     // VISIBLE, not present: the panel force-renders, so the canvas is in the
     // DOM with the disclosure shut and `count()` answers yes either way.
+    //
+    // The wait SYNCHRONISES the read below rather than standing on its own as
+    // the claim — "it appeared" is not the contract, "it mounted the starter
+    // design I am about to turn into Verilog" is, and an empty canvas would
+    // satisfy the first and fail the second. They stay adjacent on purpose:
+    // test/gate-shapes.test.mjs reads an appearance with nothing using it as an
+    // EVENT-AS-STATE suspect, and prose between the two hides the use.
     await canvas.waitFor({state: 'visible', timeout: 30000});
+    const placed = await canvas.locator('.react-flow__node').count();
+    check(placed > 0, 'the canvas mounts the starter design', `${placed} nodes`);
 
     // Scope to the DISCLOSURE, not the canvas's immediate parent: the toolbar
     // holding "Use as Verilog" sits two levels up, so `..` found nothing and
