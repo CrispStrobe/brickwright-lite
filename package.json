@@ -34,6 +34,7 @@
         "verify:package-notices": "node scripts/package-upstream-notices.mjs --check",
         "sync:emuwasm": "node scripts/sync-emu8051-wasm.mjs",
         "sync:emuwasm:check": "node scripts/sync-emu8051-wasm.mjs --check",
+        "check:mirrors": "node scripts/check-mirrors.mjs",
         "sync:examples": "node scripts/sync-examples.mjs",
         "sync:examples:check": "node scripts/sync-examples.mjs --check",
         "sync:flasher": "node scripts/sync-flasher.mjs",
