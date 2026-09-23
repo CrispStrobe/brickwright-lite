@@ -349,9 +349,19 @@ try {
 
             await c.page.locator('[data-testid^="bw-pseudocode-make-circuit-"]').first().click();
             await c.showFpga();
+            // WAIT FOR THE SEED TO LAND, do not read once and hope. The handoff
+            // is an event, then a React state change, then a re-render; reading
+            // the pin map immediately after showFpga() caught the STARTER design
+            // (`a AND b -> y`) still on screen and reported it as a failed
+            // handoff. A fixed sleep had been masking that race — this is the
+            // condition the sleep was standing in for.
+            const seeded = await c.page.waitForFunction(() => {
+                const el = document.querySelector('[data-testid="bw-fpga-rf-pinmap"]');
+                return Boolean(el && /\bq\b/.test(el.innerText));
+            }, null, {timeout: 20000}).then(() => true).catch(() => false);
             const pinmap = await c.page.locator('[data-testid="bw-fpga-rf-pinmap"]').first()
                 .innerText().catch(() => '');
-            check('the handed-over circuit is what the builder now shows', /\bq\b/.test(pinmap), pinmap);
+            check('the handed-over circuit is what the builder now shows', seeded, pinmap);
             await c.shot('07-code-tab-handoff');
         }
         check('the handoff drove with no uncaught page errors', c.errors.length === 0,
