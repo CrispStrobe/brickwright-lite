@@ -57,9 +57,19 @@ for (const g of DEVICE_GROUPS) for (const d of g.devices) DEVICE_BY_ID[d.id] = {
 // i18n for the Code tab's own strings. The editor already exposes the current locale in redux
 // (state.locales.locale); we pick en/de from this table (falling back to English). Values may be
 // functions for interpolation. To add a language, add its column.
+import {lowerableLines} from '../../lib/bw-fpga/pseudocode-expr.js';
+import {getFpgaEnabled} from '../../lib/bw-fpga-preferences.js';
+
+// gui.jsx's tab order: the FPGA tab follows Circuit. Stated here because the
+// handoff has to name a tab index and a wrong one silently switches to Sounds.
+const FPGA_TAB_INDEX = 5;
+
 const L10N = {
     en: {
         fileMenuTitle: 'Open, save, import, examples and reference',
+        makeCircuit: '⚙ Make this a circuit',
+        makeCircuitTitle: e => `Build "${e}" as logic gates in the FPGA tab — it is a boolean expression over 1-bit pins, so it needs no program to run`,
+        makeCircuitWhy: 'This line is a boolean expression over 1-bit input pins, which is a circuit: no time, no variables, nothing to run.',
         loadExample: '📚 Load example…', loadExampleTitle: 'Load a built-in example',
         examplesLoading: 'Loading built-in examples…',
         examplesRetry: 'Built-in examples unavailable — retry',
@@ -278,6 +288,9 @@ const L10N = {
     },
     de: {
         fileMenuTitle: 'Öffnen, speichern, importieren, Beispiele und Referenz',
+        makeCircuit: '⚙ Daraus eine Schaltung bauen',
+        makeCircuitTitle: e => `„${e}" im FPGA-Tab als Logikgatter bauen — ein boolescher Ausdruck über 1-Bit-Pins, der kein Programm zum Laufen braucht`,
+        makeCircuitWhy: 'Diese Zeile ist ein boolescher Ausdruck über 1-Bit-Eingangspins, und das ist eine Schaltung: keine Zeit, keine Variablen, nichts auszuführen.',
         loadExample: '📚 Beispiel laden…', loadExampleTitle: 'Ein eingebautes Beispiel laden',
         examplesLoading: 'Eingebaute Beispiele werden geladen…',
         examplesRetry: 'Eingebaute Beispiele nicht verfügbar — erneut versuchen',
@@ -1695,6 +1708,62 @@ class PseudocodeImporter extends React.Component {
 
     // Current-locale string table for this tab's own UI (see L10N above).
     get L () { return L10N[pickLocale(this.props.locale)]; }
+
+    /**
+     * "⚙ Make this a circuit" — option C from docs/PSEUDOCODE-TO-VERILOG.md.
+     *
+     * OFFERED ONLY WHERE IT APPLIES, which is the whole design. The measured
+     * answer is that 0 of 282 shipped example programs contain an expression
+     * this accepts, so an affordance that were always visible would be an
+     * affordance that always refuses — that measurement is why this is an
+     * action and not a Code-tab subtab.
+     *
+     * Gated exactly as the FPGA surface itself is: the build flag AND the
+     * per-user opt-in. The Code tab is not flagged, so without this check a
+     * flag-off build would offer a handoff to a tab that is not there.
+     */
+    renderCircuitOffer () {
+        if (!process.env.BW_ENABLE_FPGA) return null;
+        let enabled = false;
+        try { enabled = getFpgaEnabled(); } catch (e) { enabled = false; }
+        if (!enabled) return null;
+        if (this.state.lang !== 'pseudocode') return null;
+        let found = [];
+        try { found = lowerableLines(this.activeCode()); } catch (e) { return null; }
+        if (!found.length) return null;
+        const L = this.L;
+        return (
+            <div
+                data-testid="bw-pseudocode-circuit-offer"
+                style={{margin: '8px 0 0', padding: 10, borderRadius: 8,
+                    background: '#f0fdf4', border: '1px solid #16a34a'}}
+            >
+                <div style={{fontSize: 11, lineHeight: 1.4, marginBottom: 6, color: '#166534'}}>
+                    {L.makeCircuitWhy}
+                </div>
+                {found.map(f => (
+                    <button
+                        key={f.lineNo}
+                        type="button"
+                        data-testid={`bw-pseudocode-make-circuit-${f.lineNo}`}
+                        title={L.makeCircuitTitle(f.expr)}
+                        onClick={() => this.handoffCircuit(f)}
+                        style={{marginRight: 6, marginBottom: 4, padding: '4px 10px', borderRadius: 6,
+                            border: '1px solid #16a34a', background: '#fff', color: '#166534',
+                            cursor: 'pointer', fontWeight: 600, fontSize: 12}}
+                    >{`${L.makeCircuit} — ${f.expr}`}</button>
+                ))}
+            </div>
+        );
+    }
+
+    /** Hand the model to the FPGA tab and go there. */
+    handoffCircuit (found) {
+        try {
+            window.dispatchEvent(new CustomEvent('bw-fpga-seed-model', {detail: {model: found.model, expr: found.expr}}));
+            window.dispatchEvent(new CustomEvent('bw-activate-tab', {detail: {index: FPGA_TAB_INDEX}}));
+        } catch (e) { /* a browser that refuses CustomEvent cannot be helped here */ }
+    }
 
     activeCode () {
         if (this.state.lang === 'asm' && this.state.asmMode === 'listing') return this.state.asmListing;
@@ -4366,6 +4435,8 @@ class PseudocodeImporter extends React.Component {
                         readOnly={!TWO_WAY.has(this.state.lang) && !EDITABLE_ONE_WAY(this.state.lang, this.state.asmMode)}
                     />
                 )}
+
+                {this.renderCircuitOffer()}
 
                 {this.state.showArt && (
                 <div style={{margin: '12px 0 4px', padding: 12, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8}}>

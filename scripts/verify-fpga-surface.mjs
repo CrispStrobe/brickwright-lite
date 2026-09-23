@@ -327,18 +327,20 @@ try {
     const c = await openFpga(base.replace(/\/$/, ''), {shots});
     try {
         await c.page.locator('text=/Pseudocode|Code/i').first().click({timeout: 15000});
-        await c.page.waitForTimeout(2000);
         // Say WHICH thing is missing rather than timing out on the offer: an
         // absent editor and an absent affordance are different failures.
+        // Waited for, not slept on — the editor is lazy-loaded, so its arrival
+        // is a condition and the sleep ratchet is right to refuse a guess.
         const cm = c.page.locator('.cm-content').first();
-        const haveEditor = (await cm.count()) > 0;
+        const haveEditor = await cm.waitFor({state: 'visible', timeout: 30000})
+            .then(() => true).catch(() => false);
         check('the pseudocode editor is reachable from the Code tab', haveEditor);
         if (haveEditor) {
             await cm.click();
             await c.page.keyboard.press('Control+A');
             await c.page.keyboard.type(PROGRAM, {delay: 8});
-            await c.page.waitForTimeout(1200);
-
+            // No sleep after typing: the offer's own waitFor below IS the wait,
+            // and re-render is what it is waiting for.
             const offer = c.page.locator('[data-testid="bw-pseudocode-circuit-offer"]');
             await offer.waitFor({state: 'visible', timeout: 30000});
             const offerText = await offer.innerText();
