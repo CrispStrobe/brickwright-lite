@@ -307,30 +307,51 @@ try {
     // exercises this path. It is also the only render of `renderCircuitOffer`
     // anywhere: a throw there would break the Code tab for every build.
     //
-    // The seeded expression names its output `q`, on purpose. The builder's
+    // The program is TYPED rather than seeded through `bw-code-autosave`: that
+    // restore only runs when every buffer is empty, which is not true once a
+    // project is loaded, and a first attempt at this check timed out for
+    // exactly that reason. Typing is also what verify-editor.mjs does.
+    //
+    // NO COLON ANYWHERE IN IT, on purpose — the editor auto-indents the line
+    // after one, and a program that reformats itself as it is typed is a bad
+    // fixture. lowerableLines() scans lines, not block structure, so the
+    // declarations and the one expression are enough.
+    //
+    // The expression names its output `q`, also on purpose. The builder's
     // STARTER design is `a AND b -> y`, so a `y` in the pin map would prove
     // nothing — `q` can only have come from the handoff.
     const PROGRAM = [
-        'DEVICE STC12C5A60S2', 'PIN a = P1.0 INPUT', 'PIN b = P1.1 INPUT', 'PIN q = P1.2 OUTPUT',
-        '', 'WHEN flag clicked:', '  set q to a OR NOT b', ''
+        'DEVICE STC12C5A60S2', 'PIN a = P1.0 INPUT', 'PIN b = P1.1 INPUT',
+        'PIN q = P1.2 OUTPUT', 'set q to a OR NOT b'
     ].join('\n');
-    const c = await openFpga(base.replace(/\/$/, ''), {autosave: {lang: 'pseudocode', code: PROGRAM}, shots});
+    const c = await openFpga(base.replace(/\/$/, ''), {shots});
     try {
-        // The Code tab is the first tab; the offer renders under the editor.
-        await c.tab(/Blocks|Code/).click().catch(() => {});
-        const offer = c.page.locator('[data-testid="bw-pseudocode-circuit-offer"]');
-        await offer.waitFor({state: 'visible', timeout: 30000});
-        const offerText = await offer.innerText();
-        check('the Code tab offers to make a boolean line into a circuit',
-            /a OR NOT b/.test(offerText), offerText.split('\n').slice(0, 2).join(' / '));
+        await c.page.locator('text=/Pseudocode|Code/i').first().click({timeout: 15000});
+        await c.page.waitForTimeout(2000);
+        // Say WHICH thing is missing rather than timing out on the offer: an
+        // absent editor and an absent affordance are different failures.
+        const cm = c.page.locator('.cm-content').first();
+        const haveEditor = (await cm.count()) > 0;
+        check('the pseudocode editor is reachable from the Code tab', haveEditor);
+        if (haveEditor) {
+            await cm.click();
+            await c.page.keyboard.press('Control+A');
+            await c.page.keyboard.type(PROGRAM, {delay: 8});
+            await c.page.waitForTimeout(1200);
 
-        await c.page.locator('[data-testid^="bw-pseudocode-make-circuit-"]').first().click();
-        await c.showFpga();
-        // The handoff landed if the builder is showing THIS design, not the starter.
-        const pinmap = await c.page.locator('[data-testid="bw-fpga-rf-pinmap"]').first()
-            .innerText().catch(() => '');
-        check('the handed-over circuit is what the builder now shows', /\bq\b/.test(pinmap), pinmap);
-        await c.shot('07-code-tab-handoff');
+            const offer = c.page.locator('[data-testid="bw-pseudocode-circuit-offer"]');
+            await offer.waitFor({state: 'visible', timeout: 30000});
+            const offerText = await offer.innerText();
+            check('the Code tab offers to make a boolean line into a circuit',
+                /a OR NOT b/.test(offerText), offerText.split('\n').slice(0, 2).join(' / '));
+
+            await c.page.locator('[data-testid^="bw-pseudocode-make-circuit-"]').first().click();
+            await c.showFpga();
+            const pinmap = await c.page.locator('[data-testid="bw-fpga-rf-pinmap"]').first()
+                .innerText().catch(() => '');
+            check('the handed-over circuit is what the builder now shows', /\bq\b/.test(pinmap), pinmap);
+            await c.shot('07-code-tab-handoff');
+        }
         check('the handoff drove with no uncaught page errors', c.errors.length === 0,
             c.errors.slice(0, 3).join(' | '));
     } catch (e) {

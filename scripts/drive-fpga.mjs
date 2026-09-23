@@ -21,6 +21,11 @@
  *  6. Text locators are treacherous: `text=Parts list` matched the FPGA tab's
  *     own build message, which mentions the parts list. Prefer data-testid and
  *     accessible names.
+ *  7. `bw-code-autosave` does NOT reliably put a program in the Code tab. The
+ *     importer restores it only when EVERY buffer is empty, which stops being
+ *     true as soon as a project is loaded — so seeding it looks like it worked
+ *     and silently does nothing. Type into `.cm-content` instead, the way
+ *     verify-editor.mjs does. Cost of learning this: one red CI run.
  *
  * Usage:
  *   node scripts/drive-fpga.mjs <baseUrl> [--locale de] [--shots <dir>]
@@ -51,8 +56,7 @@ const loadPlaywright = async () => {
  * tab, with the gate builder mounted.
  *
  * @param {string} baseUrl
- * @param {{locale?: string, progress?: string[], headless?: boolean, shots?: string,
- *   autosave?: {lang: string, code: string}}} [opts]
+ * @param {{locale?: string, progress?: string[], headless?: boolean, shots?: string}} [opts]
  */
 export async function openFpga (baseUrl, opts = {}) {
     const {chromium} = await loadPlaywright();
@@ -65,13 +69,10 @@ export async function openFpga (baseUrl, opts = {}) {
     page.on('pageerror', e => errors.push(String(e).slice(0, 300)));
 
     // (1) the flag, and any pre-banked challenge progress, before navigation
-    await page.addInitScript(({progress, autosave}) => {
+    await page.addInitScript(({progress}) => {
         localStorage.setItem('bw-fpga-enabled', '1');
         if (progress) localStorage.setItem('bw-fpga-progress', JSON.stringify(progress));
-        // The Code tab restores its buffer from here, which is the only way to
-        // put a program in front of it without typing one character at a time.
-        if (autosave) localStorage.setItem('bw-code-autosave', JSON.stringify(autosave));
-    }, {progress: opts.progress || null, autosave: opts.autosave || null});
+    }, {progress: opts.progress || null});
 
     const url = opts.locale ? `${baseUrl}/?locale=${opts.locale}` : baseUrl;
     await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 120000});
