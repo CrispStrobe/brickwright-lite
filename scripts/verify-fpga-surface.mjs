@@ -233,7 +233,10 @@ await browser.close();
 // server, and banks challenge progress so a realise challenge is reachable
 // without walking the whole curriculum.
 const UNLOCK = ['wire', 'not', 'and', 'or', 'nand', 'xor', 'mux2', 'half_adder', 'full_adder',
-    'not_real', 'and_real', 'or_real', 'nand_real', 'nor_real', 'xor_real'];
+    'register', 'toggle',
+    'not_real', 'and_real', 'or_real', 'nand_real', 'nor_real', 'xor_real',
+    'half_adder_real', 'full_adder_real', 'ripple_adder_real', 'adder_chip_real',
+    'register_real', 'toggle_real', 'counter_real'];
 let d = null;
 try {
     d = await openFpga(base.replace(/\/$/, ''), {progress: UNLOCK, shots});
@@ -256,6 +259,47 @@ try {
     // invisible to the learner. Presence is not the claim; being on screen is.
     check('the verdict is on screen inside the panel, not below the fold', verdict.onScreen);
     await d.shot('05-learning-path');
+
+    // 8. THE SEQUENTIAL PATH, which is a different machine end to end. Everything
+    // above is combinational: set the switches, read the LEDs, done in one pass.
+    // counter4_real is graded by CLOCKING the board eighteen times, which is the
+    // longest grade in the curriculum, and it runs through the ASYNC grader — the
+    // one that yields to the event loop so the page does not freeze, reports
+    // progress on the button, and must put the button back when it finishes. None
+    // of that existed in a browser gate before; it was covered only by node tests,
+    // where there is no button, no yielding and no event loop to block.
+    //
+    // It is also the only place the RESET is driven through the UI: the board has
+    // two switches now, and a build whose grader did not drive `rst` would hold
+    // the counter cleared and fail every row after the first.
+    const kinds4 = await d.buildCircuit('counter4');
+    const chips4 = Object.entries(kinds4).filter(([k]) => k.startsWith('74hc'));
+    check('⚙ builds the 4-bit counter from TWO 74HC74 packages',
+        chips4.reduce((n, [, c]) => n + c, 0) === 2,
+        Object.entries(kinds4).map(([k, n]) => `${n}×${k}`).join(' '));
+    check('the counter board carries a clock AND a reset switch',
+        (kinds4.switch || 0) === 2, `${kinds4.switch || 0} switch(es)`);
+
+    const started = Date.now();
+    const verdict4 = await d.gradeChallenge('counter4_real');
+    const took = Date.now() - started;
+    const passed4 = (await d.page.locator('[data-testid="bw-fpga-next"]').count()) > 0;
+    check('Check clocks the real 4-bit counter through 18 cycles and passes it',
+        passed4, verdict4.text.split('\n')[0]);
+    check('the verdict is on screen inside the panel, not below the fold', verdict4.onScreen);
+    // The async grader must hand the button back. gradeChallenge already waits
+    // for the pending text to clear, so reaching here proves it did — but say so
+    // as its own check, because "the verdict appeared" and "the UI recovered" are
+    // different claims and only one of them is about the async grader.
+    const buttonText = await d.page.locator('[data-testid="bw-fpga-check"]').innerText();
+    check('the Check button comes back out of its counting state',
+        !/Checking|Prüfe/i.test(buttonText), buttonText.replace(/\s+/g, ' ').slice(0, 40));
+    // Not a threshold anything fails on — a MEASUREMENT, printed so the next
+    // person knows what the longest grade costs in a real browser before they
+    // add a longer one. The drive helper's own wait is 120 s.
+    console.log(`  note: grading counter4_real in a browser took ${(took / 1000).toFixed(1)} s`);
+    await d.shot('06-counter4');
+
     check('the learning path drove with no uncaught page errors', d.errors.length === 0,
         d.errors.slice(0, 3).join(' | '));
 } catch (e) {
