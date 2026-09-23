@@ -106,6 +106,9 @@ const baseConfig = new ScratchWebpackConfigBuilder(
         // Where hosted synthesis lives, when it exists. Null means "not configured",
         // which the backend probe reports as a REASON rather than an empty picker.
         'process.env.BW_SYNTHESIS_ENDPOINT': JSON.stringify(process.env.BW_SYNTHESIS_ENDPOINT || null),
+        // The hosted RISC-V C-compile endpoint (services/riscv-cc/). Null unless a
+        // deployment is configured, which keeps the C route an honest refusal.
+        'process.env.BW_RISCV_CC_ENDPOINT': JSON.stringify(process.env.BW_RISCV_CC_ENDPOINT || null),
         'process.env.BW_VERSION': JSON.stringify(buildVersion()),
         'process.env.BW_BUILD_TIME': JSON.stringify(new Date().toISOString()),
         'process.env.DEBUG': Boolean(process.env.DEBUG),

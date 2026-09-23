@@ -222,6 +222,39 @@ export async function assembleLocal8086 (source, opts = {}) {
  * dialect to choose. The program talks to the console through the machine's
  * ECALL ABI (a7=64 write, a7=93 exit).
  */
+/**
+ * The build-time RISC-V C-compile endpoint, the twin of the FPGA
+ * BW_SYNTHESIS_ENDPOINT. Injected by webpack's DefinePlugin; `null` in a build
+ * that has not configured one, which makes the C route refuse by name rather
+ * than pretend. Set it to a deployed `services/riscv-cc/` base URL.
+ */
+export const RISCV_CC_ENDPOINT =
+    (typeof process !== 'undefined' && process.env && process.env.BW_RISCV_CC_ENDPOINT) || null;
+
+/**
+ * The HOSTED C route for the riscv32 console. A real cross-compiler is too heavy
+ * for the browser, so C compiles on a service (see `lib/bw-debug/riscv-compile.js`
+ * and `services/riscv-cc/`), returning the same loadable {entry, segments} image
+ * the local assembler produces — so the run path is shared. With no endpoint it
+ * REFUSES (`no-compile-service`); assembly still runs in the browser meanwhile.
+ * Loaded on demand so a build that never compiles RISC-V C pays nothing.
+ */
+export async function requestRiscvCBuild ({source, endpoint = RISCV_CC_ENDPOINT, fetchImpl = null} = {}) {
+    const {compileRiscvC} = await import(/* webpackChunkName: "riscv-compile" */ '../bw-debug/riscv-compile.js');
+    const r = await compileRiscvC({source, endpoint, fetchImpl});
+    if (!r.ok) {
+        throw new AsmRouteError(r.reason || 'the RISC-V C compiler refused this program',
+            {route: 'hosted', target: 'riscv32',
+                reason: r.code === 'no-compile-service' || r.code === 'service-unreachable'
+                    || r.code === 'service-error' || r.code === 'no-fetch' ? 'transport' : 'source'});
+    }
+    // Same shape as the local assembler's riscv branch, so debug-panel/debug-runner
+    // boot it through the identical riscvImage path.
+    return {target: 'riscv32', route: 'hosted', format: 'riscv',
+        image: r.image, entry: r.image.entry, slotId: 'riscv', profile: 'riscv',
+        bytes: null, org: null, dialect: null, warnings: [], listing: r.log ? [r.log] : []};
+}
+
 export async function assembleLocalRiscv (source) {
     const mod = await import(/* webpackChunkName: "riscv-asm" */ 'bw-board/riscv-asm.js');
     const assemble = mod.assembleRiscv || mod.default;
