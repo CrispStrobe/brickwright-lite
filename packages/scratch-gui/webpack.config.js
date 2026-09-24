@@ -72,7 +72,13 @@ const baseConfig = new ScratchWebpackConfigBuilder(
                 // stripped by the NormalModuleReplacementPlugin below. The
                 // prefix has to go first: an unknown SCHEME fails before
                 // resolution ever runs, so a fallback alone cannot catch it.
+                // bw-board's riscv-cc-wasm.js does the same for the RISC-V C
+                // compiler: a `fetch` guard picks the browser road (new URL +
+                // fetch of the .wasm) and its dead Node road imports
+                // `node:fs/promises` — parsed, never run — so `fs/promises`
+                // needs the same empty mapping as `fs`.
                 fs: false,
+                'fs/promises': false,
                 path: false
             }
         }
