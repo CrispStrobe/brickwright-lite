@@ -249,8 +249,15 @@ export const RISCV_CC_ENDPOINT =
  * nothing.
  */
 export async function requestRiscvCBuild ({source, endpoint = RISCV_CC_ENDPOINT,
-    fetchImpl = null, preferHosted = false} = {}) {
-    if (!preferHosted) {
+    fetchImpl = null, route = 'browser', hostedTarget = 'riscv32-gcc',
+    preferHosted = false} = {}) {
+    // The user CHOOSES the path (a subset that runs with no server, or the full
+    // compiler on the service). 'browser' = in-browser shecc.wasm (a C subset,
+    // no server); 'server' = the hosted service — full C via native gcc+picolibc
+    // (`hostedTarget` 'riscv32-gcc'), or shecc hosted ('riscv32'). `preferHosted`
+    // stays as an alias for 'server'.
+    const wantServer = preferHosted || route === 'server';
+    if (!wantServer) {
         try {
             const {compileRiscvC} = await import(
                 /* webpackChunkName: "riscv-cc-wasm" */ 'bw-board/riscv-cc-wasm.js');
@@ -274,10 +281,10 @@ export async function requestRiscvCBuild ({source, endpoint = RISCV_CC_ENDPOINT,
         }
     }
     const {compileRiscvC} = await import(/* webpackChunkName: "riscv-compile" */ '../bw-debug/riscv-compile.js');
-    const r = await compileRiscvC({source, endpoint, fetchImpl});
+    const r = await compileRiscvC({source, endpoint, target: hostedTarget, fetchImpl});
     if (!r.ok) {
         throw new AsmRouteError(r.reason || 'the RISC-V C compiler refused this program',
-            {route: 'hosted', target: 'riscv32',
+            {route: 'hosted', target: hostedTarget,
                 reason: r.code === 'no-compile-service' || r.code === 'service-unreachable'
                     || r.code === 'service-error' || r.code === 'no-fetch' ? 'transport' : 'source'});
     }

@@ -100,7 +100,8 @@ export function validateResponse (body) {
  * @param {Function} [req.fetchImpl]    injected for tests
  * @returns {Promise<{ok:true, image:object, log:?string}|{ok:false, code:string, reason:string}>}
  */
-export async function compileRiscvC ({source, endpoint = null, options = {}, fetchImpl = null} = {}) {
+export async function compileRiscvC ({source, endpoint = null, target = 'riscv32-gcc',
+    options = [], fetchImpl = null} = {}) {
     if (typeof source !== 'string' || !source.trim()) {
         return refusal('no-source', 'There is no C to compile.');
     }
@@ -120,7 +121,16 @@ export async function compileRiscvC ({source, endpoint = null, options = {}, fet
         res = await doFetch(compileUrl(endpoint), {
             method: 'POST',
             headers: {'content-type': 'application/json'},
-            body: JSON.stringify({contract: CONTRACT_VERSION, source, options: options || {}})
+            // The stc-compiler shape: `code` + `language` + `target` (its
+            // `options` is a LIST). `source`/`contract` ride along for the
+            // reference `services/riscv-cc/` server and are ignored by
+            // stc-compiler (extra fields). `target` picks the compiler:
+            // 'riscv32-gcc' (full C, native gcc+picolibc) or 'riscv32' (shecc).
+            body: JSON.stringify({
+                contract: CONTRACT_VERSION, source,
+                code: source, language: 'c', target,
+                options: Array.isArray(options) ? options : []
+            })
         });
     } catch (e) {
         return refusal('service-unreachable',

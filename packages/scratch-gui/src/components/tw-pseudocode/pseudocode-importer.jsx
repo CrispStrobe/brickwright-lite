@@ -273,11 +273,14 @@ const L10N = {
         runC8086Empty: 'Write some C first.',
         runC8086Route: 'in this browser',
         runCRiscv: '▶ Run C on RISC-V',
-        runCRiscvTitle: 'Compile this C on the hosted RISC-V compiler and run it on the RV32IMA console. Needs a configured compile endpoint; assembly runs in the browser with no service.',
-        runCRiscvBuilding: 'Compiling C for RISC-V on the hosted service…',
+        runCRiscvTitle: 'Compile this C and run it on the RV32IMA console. Pick the route: in the browser (a C subset, no server) or on the hosted service (full C).',
+        runCRiscvRouteTitle: 'Where the C compiles: in the browser (shecc → wasm, a C subset, nothing leaves the page) or on the hosted service (a native gcc + picolibc — full C: floats, malloc, the standard library).',
+        runCRiscvRouteBrowser: 'Browser · shecc (subset)',
+        runCRiscvRouteServer: 'Server · gcc (full C)',
+        runCRiscvBuilding: 'Compiling C for RISC-V…',
         runCRiscvBuilt: (n) => `Built a ${n}-byte RISC-V image — booting the RV32IMA console…`,
         runCRiscvRefused: (m) => `The RISC-V C compiler refused this program: ${m}`,
-        runCRiscvUnavailable: (m) => `The hosted RISC-V C compiler is unavailable: ${m}`,
+        runCRiscvUnavailable: (m) => `The RISC-V C compiler is unavailable: ${m}`,
         runCRiscvEmpty: 'Write some C first.',
         // reference section headers
         h: {
@@ -491,11 +494,14 @@ const L10N = {
         runC8086Empty: 'Schreibe zuerst C.',
         runC8086Route: 'in diesem Browser',
         runCRiscv: '▶ C auf RISC-V ausführen',
-        runCRiscvTitle: 'Dieses C auf dem gehosteten RISC-V-Compiler übersetzen und auf der RV32IMA-Konsole ausführen. Benötigt einen konfigurierten Compile-Endpunkt; Assembler läuft im Browser ohne Dienst.',
-        runCRiscvBuilding: 'Übersetze C für RISC-V auf dem gehosteten Dienst…',
+        runCRiscvTitle: 'Dieses C übersetzen und auf der RV32IMA-Konsole ausführen. Route wählen: im Browser (eine C-Teilmenge, ohne Dienst) oder auf dem gehosteten Dienst (vollständiges C).',
+        runCRiscvRouteTitle: 'Wo das C übersetzt wird: im Browser (shecc → WASM, eine C-Teilmenge, nichts verlässt die Seite) oder auf dem gehosteten Dienst (natives gcc + picolibc — vollständiges C: Gleitkomma, malloc, die Standardbibliothek).',
+        runCRiscvRouteBrowser: 'Browser · shecc (Teilmenge)',
+        runCRiscvRouteServer: 'Server · gcc (voll. C)',
+        runCRiscvBuilding: 'Übersetze C für RISC-V…',
         runCRiscvBuilt: (n) => `${n}-Byte-RISC-V-Abbild erzeugt — starte die RV32IMA-Konsole…`,
         runCRiscvRefused: (m) => `Der RISC-V-C-Compiler hat dieses Programm abgelehnt: ${m}`,
-        runCRiscvUnavailable: (m) => `Der gehostete RISC-V-C-Compiler ist nicht verfügbar: ${m}`,
+        runCRiscvUnavailable: (m) => `Der RISC-V-C-Compiler ist nicht verfügbar: ${m}`,
         runCRiscvEmpty: 'Schreibe zuerst C.',
         // reference section headers
         h: {
@@ -907,6 +913,10 @@ class PseudocodeImporter extends React.Component {
             // Hardware-extension codegen options (see reference/runtime-drivers.md): the emitted
             // driver (shim / remote / on-brick), plus async/await and event-hat switches.
             driverMode: 'shim', asyncMode: false, eventsMode: false,
+            // The RISC-V C route the user picks: 'browser' (shecc.wasm, a C
+            // subset, no server) or 'server' (the hosted service — full C via
+            // native gcc+picolibc). Default keeps the no-server path.
+            riscvCRoute: 'browser',
             // Editor maximize: collapses reference/art panels and hides the right stage pane
             maximized: false,
             // micro:bit debug granularity: 'block' (marker debugger on stock firmware,
@@ -2262,7 +2272,10 @@ class PseudocodeImporter extends React.Component {
         this.setState({busy: true, status: this.L.runCRiscvBuilding, output: null});
         let out;
         try {
-            out = await requestRiscvCBuild({source});
+            // The user's chosen route: 'browser' (shecc.wasm, no server) or
+            // 'server' (hosted full C, target riscv32-gcc).
+            out = await requestRiscvCBuild({source, route: this.state.riscvCRoute,
+                hostedTarget: 'riscv32-gcc'});
         } catch (e) {
             // 'transport' is the missing/unreachable service (not the user's
             // fault); 'source' is a compile error naming the line.
@@ -4693,18 +4706,32 @@ class PseudocodeImporter extends React.Component {
                                 {this.L.runC8086}
                             </button>
                         ) : null}
-                    {/* The RISC-V C ▶. Unlike the 8086 (local) route, C for rv32
-                        compiles on the HOSTED service — the button is offered so
-                        the route is reachable, and it refuses honestly in the
-                        status line until BW_RISCV_CC_ENDPOINT is configured. */}
+                    {/* The RISC-V C ▶ and its route chooser. The user picks where
+                        C compiles: in the BROWSER (shecc.wasm — a C subset, no
+                        server) or on the SERVER (the hosted service — full C via
+                        native gcc + picolibc). Both boot through the same riscv
+                        image path; only the compiler differs. */}
                     {this.state.lang === 'c'
                      && asmTargetForDevice(this.currentDevice()) === 'riscv32' ? (
-                            <button onClick={this.runCOnRiscv} disabled={this.state.busy}
-                                data-testid="bw-run-c-riscv"
-                                title={this.L.runCRiscvTitle}
-                                style={{...btn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
-                                {this.L.runCRiscv}
-                            </button>
+                            <span style={{display: 'inline-flex', alignItems: 'center', gap: 8}}>
+                                <label title={this.L.runCRiscvRouteTitle}
+                                    style={{fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 4}}>
+                                    <select value={this.state.riscvCRoute}
+                                        data-testid="bw-riscv-c-route"
+                                        onChange={e => this.setState({riscvCRoute: e.target.value})}
+                                        disabled={this.state.busy}
+                                        style={{padding: '5px 8px', borderRadius: 6, border: '1px solid #cbd5e1', font: 'inherit'}}>
+                                        <option value="browser">{this.L.runCRiscvRouteBrowser}</option>
+                                        <option value="server">{this.L.runCRiscvRouteServer}</option>
+                                    </select>
+                                </label>
+                                <button onClick={this.runCOnRiscv} disabled={this.state.busy}
+                                    data-testid="bw-run-c-riscv"
+                                    title={this.L.runCRiscvTitle}
+                                    style={{...btn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
+                                    {this.L.runCRiscv}
+                                </button>
+                            </span>
                         ) : null}
                     {this.currentDevice() === 'stm32f030' && this.state.lang === 'pseudocode' ? (
                         <button onClick={this.flashStm32ViaSwd} disabled={this.state.busy}
