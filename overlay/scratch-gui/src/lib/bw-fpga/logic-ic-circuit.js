@@ -383,10 +383,49 @@ export const COUNTER4_CHIP = Object.freeze({
     ])
 });
 
+/**
+ * An 8-bit shift register — ONE WIRE IN, EIGHT LINES OUT.
+ *
+ * Every sequential rung before this one remembers a bit. This one MOVES it:
+ * each clock edge pushes the serial input into qa and shoves everything along,
+ * so a pattern walks across the outputs and falls off the end. That is how a
+ * microcontroller with three spare pins drives eight LEDs — which is exactly
+ * what shipped example 08 (led-chaser-595) does with this very chip.
+ *
+ * THE TWO CLOCKS ARE TIED TOGETHER. A 74HC595 has a shift clock (srclk) and a
+ * separate latch clock (rclk), so a design can shift eight bits invisibly and
+ * reveal them at once — the reason the part exists. One net drives both here,
+ * which makes the board single-clock and its behaviour plain: MEASURED, qa is
+ * the bit you just fed in, qb the one before it, qc the one before that.
+ * Driving them separately is a real technique and a later lesson; it needs a
+ * grader that can clock two lines, which this one cannot.
+ *
+ * `srclr` (clear) is tied high and `oe` (output enable) low, both active low —
+ * leave either floating on a real board and the chip either never holds or
+ * never shows anything, which is the classic 595 wiring mistake.
+ */
+export const SHIFT_REG_8 = Object.freeze({
+    id: 'shift8',
+    chip: '74hc595',
+    chipLabel: '74HC595',
+    inputs: ['ser', 'clk'],
+    outputs: ['qa', 'qb', 'qc', 'qd', 'qe', 'qf', 'qg', 'qh'],
+    pins: {
+        ser: 'ser',
+        clk: ['srclk', 'rclk'],
+        qa: 'qa', qb: 'qb', qc: 'qc', qd: 'qd',
+        qe: 'qe', qf: 'qf', qg: 'qg', qh: 'qh'
+    },
+    tieHigh: ['srclr'],
+    tieLow: ['oe'],
+    sequential: true,
+    gates: []
+});
+
 export const IC_CIRCUITS = Object.freeze({
     mux2: MUX2, half_adder: HALF_ADDER, full_adder: FULL_ADDER,
     ripple_adder_4: RIPPLE_ADDER_4, adder_chip_4: ADDER_CHIP_4,
-    decoder3to8: DECODER_CHIP_3TO8, dff: DFF_CHIP, toggle: TOGGLE_CHIP, counter2: COUNTER2_CHIP, counter4: COUNTER4_CHIP
+    decoder3to8: DECODER_CHIP_3TO8, dff: DFF_CHIP, toggle: TOGGLE_CHIP, counter2: COUNTER2_CHIP, counter4: COUNTER4_CHIP, shift8: SHIFT_REG_8
 });
 
 /** The picker's name for a circuit, in `locale`. */

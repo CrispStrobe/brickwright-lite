@@ -283,6 +283,32 @@ export const CHALLENGES = Object.freeze([
         // four flip-flops happened to wake up in.
         seqExpect: stim => stim.rst.map((_, t) => t % 16)
             .map(v => ({q0: v & 1, q1: (v >> 1) & 1, q2: (v >> 2) & 1, q3: (v >> 3) & 1}))
+    },
+    {
+        // The last rung, and the one that MOVES a bit rather than holding it.
+        id: 'shift_real', requires: ['counter4_real'], realise: true,
+        circuit: 'shift8', rungs: ['ic'], sequential: true,
+        // ORDER MATTERS: the grader pairs challenge.inputs with the built
+        // circuit's switches BY POSITION, so this must match SHIFT_REG_8.inputs
+        // exactly. Written ['clk','ser'] first, it clocked `ser` and fed data to
+        // `clk` — the board then failed at cycle 0 with "qa is 0 but should be
+        // 1", which reads as a broken part rather than a swapped pair.
+        inputs: io(['ser', 'clk']), outputs: io(['qa', 'qb', 'qc', 'qd', 'qe', 'qf', 'qg', 'qh']),
+        cycles: 10,
+        // Ten edges, and the pattern is chosen so a bit is seen ENTERING,
+        // travelling and LEAVING: 1101 walks right across all eight outputs and
+        // falls off the end, which three or four cycles would never show.
+        stimulus: {ser: [1, 1, 0, 1, 0, 0, 0, 0, 0, 0]},
+        // MEASURED on the board (test/fpga-shift-register-board.test.mjs
+        // re-measures it): with srclk and rclk tied, output i carries the bit
+        // fed in i cycles ago, and 0 before the run started.
+        seqExpect: stim => stim.ser.map((_, t) => {
+            const out = {};
+            ['qa', 'qb', 'qc', 'qd', 'qe', 'qf', 'qg', 'qh'].forEach((name, i) => {
+                out[name] = t - i >= 0 ? stim.ser[t - i] : 0;
+            });
+            return out;
+        })
     }
 ]);
 
