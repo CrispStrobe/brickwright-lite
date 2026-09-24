@@ -63,10 +63,23 @@ const ENV_DIR = {'bw-board': 'BW_BOARD_DIR', 'sb3-creator': 'SB3_CREATOR_DIR', '
 const PROVENANCE = 'overlay/scratch-gui/static/roms/i8086-bios.provenance.json';
 const HEX40 = /\b[0-9a-f]{40}\b/g;
 
+import {explainGitFailure} from './helpers/git-absence.mjs';
+
 // `git` from PATH: the same AMBIENT-BINDING shape i8086-bios-provenance keeps
 // and defuses — every use below proves git answered before anything is judged.
 // gate-shapes-allow
 const git = (cwd, ...args) => execFileSync('git', ['-C', cwd, ...args], {encoding: 'utf8', maxBuffer: 64 << 20});
+
+/** `git`, but a missing-blob failure explains itself instead of reading as a pin defect. */
+const gitReadingContent = (cwd, ...args) => {
+    try {
+        return git(cwd, ...args);
+    } catch (e) {
+        const why = explainGitFailure(`${e.message || ''} ${e.stderr || ''}`);
+        if (why) throw new Error(why);
+        throw e;
+    }
+};
 
 export const currentPins = () => JSON.parse(readFileSync(PINS, 'utf8'));
 
@@ -153,7 +166,9 @@ const formatFindings = f => f.map(x => `${x.file}:${x.line}  ${x.sha.slice(0, 9)
 const previousPinsFromHistory = () => {
     const count = Number(git(ROOT, 'rev-list', '--count', 'HEAD', '--', 'vendor-pins.json').trim());
     const shallow = git(ROOT, 'rev-parse', '--is-shallow-repository').trim() === 'true';
-    const log = git(ROOT, 'log', '-p', '--format=COMMIT %H %ad', '--date=short', '--', 'vendor-pins.json');
+    // `-p` reads file CONTENT, which is the operation that needs blobs a
+    // blobless clone has not fetched yet.
+    const log = gitReadingContent(ROOT, 'log', '-p', '--format=COMMIT %H %ad', '--date=short', '--', 'vendor-pins.json');
     return {count, shallow, previous: parsePreviousPins(log, new Set(Object.values(currentPins())))};
 };
 
