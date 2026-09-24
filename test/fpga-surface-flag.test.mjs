@@ -750,7 +750,10 @@ test('Run mode labels each wire with its live bit value', () => {
 // ── new primitives: constant source, buffer, controlled inverter ──
 test('the palette gains a Constant source and buffer/cinv gates', () => {
     const cat = read('overlay/scratch-gui/src/lib/bw-fpga/palette-catalog.js');
-    assert.match(cat, /kind: 'const', label: 'Constant'/, 'a Constant source node');
+    // The palette's fixed names are TRANSLATED now (palette-catalog.js takes a
+    // locale), so these match the key rather than an English literal. The claim
+    // is unchanged: the node exists in the palette and is named.
+    assert.match(cat, /kind: 'const', label: L\('const'\)/, 'a Constant source node');
     assert.match(cat, /'buffer', 'cinv'/, 'buffer and controlled inverter in Logic');
     const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
     assert.match(ui, /const: ConstNode/, 'the constant renders its value');
@@ -790,7 +793,9 @@ test('the builder can export the canvas as an SVG', () => {
 test('the palette offers built-in decoder/demux blocks', () => {
     const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
     assert.match(ui, /import \{BUILTINS\}/, 'built-ins are loaded');
-    assert.match(ui, /buildPaletteCatalog\(EXAMPLES\.filter\([^)]*\), BUILTINS\)/, 'and fed to the palette as Blocks');
+    // …and a locale, since the palette's section names are translated now.
+    assert.match(ui, /buildPaletteCatalog\(EXAMPLES\.filter\([^)]*\), BUILTINS, locale\)/,
+        'and fed to the palette as Blocks, in the reader\'s language');
     const b = read('overlay/scratch-gui/src/lib/bw-fpga/builtins.js');
     assert.match(b, /decoder2to4/);
     assert.match(b, /demux1to2/);
@@ -820,7 +825,7 @@ test('wiring the demo board loads it as circuitData so the designer re-renders',
 // ── tunnels: named nets that declutter wiring ──
 test('the palette offers a tunnel (named net) that the codegen shares', () => {
     const cat = read('overlay/scratch-gui/src/lib/bw-fpga/palette-catalog.js');
-    assert.match(cat, /kind: 'tunnel', label: 'Tunnel'/, 'a Tunnel in the palette');
+    assert.match(cat, /kind: 'tunnel', label: L\('tunnel'\)/, 'a Tunnel in the palette');
     const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
     assert.match(ui, /tunnel: TunnelNode/, 'the tunnel renders as a named tag');
     assert.match(ui, /item\.kind === 'tunnel'/, 'a tunnel can be dropped');
@@ -869,9 +874,9 @@ test('a generated circuit is laid out as a schematic, not the naive zig-zag', ()
 // decoder are pure and proved against the font (fpga-output-devices.test.mjs).
 test('the palette offers LED and seven-segment output devices that light in Run mode', () => {
     const cat = read('overlay/scratch-gui/src/lib/bw-fpga/palette-catalog.js');
-    assert.match(cat, /id: 'display', label: 'Display'/, 'a Display section in the palette');
-    assert.match(cat, /kind: 'led', label: 'LED'/, 'an LED device');
-    assert.match(cat, /kind: 'seg7', label: '7-seg display'/, 'a seven-segment device');
+    assert.match(cat, /id: 'display', label: L\('display'\)/, 'a Display section in the palette');
+    assert.match(cat, /kind: 'led', label: L\('led'\)/, 'an LED device');
+    assert.match(cat, /kind: 'seg7', label: L\('seg7'\)/, 'a seven-segment device');
     const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
     assert.match(ui, /led: LedNode, seg7: Seg7Node/, 'the devices render as nodes');
     assert.match(ui, /item\.kind === 'led'/, 'an LED can be dropped');
@@ -964,7 +969,7 @@ test('the FPGA tab can mirror its outputs as a seven-segment digit', () => {
 // ── LED bank: several bits shown at once, one device ──
 test('the palette offers an LED bank that lights per bit in Run mode', () => {
     const cat = read('overlay/scratch-gui/src/lib/bw-fpga/palette-catalog.js');
-    assert.match(cat, /kind: 'ledbank', label: 'LED bank'/, 'an LED bank device');
+    assert.match(cat, /kind: 'ledbank', label: L\('ledbank'\)/, 'an LED bank device');
     const ui = read('overlay/scratch-gui/src/components/tw-pseudocode/fpga-gate-builder-rf.jsx');
     assert.match(ui, /ledbank: LedBankNode/, 'the bank renders as a node');
     assert.match(ui, /item\.kind === 'ledbank'/, 'a bank can be dropped');

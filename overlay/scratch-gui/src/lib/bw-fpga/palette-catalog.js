@@ -8,16 +8,17 @@
  * @module
  */
 import {GATE_DEFS} from './gate-builder.js';
+import {t} from './l10n.js';
 
 // Which gate types sit in which category. Every GATE_DEFS key appears exactly
 // once (guarded by the unit test) so nothing the codegen understands is hidden.
 const GATE_CATEGORIES = [
-    {id: 'logic', label: 'Logic', types: ['and', 'or', 'not', 'buffer', 'cinv', 'xor', 'nand', 'nor', 'xnor']},
-    {id: 'arith', label: 'Arithmetic', types: ['add', 'sub', 'mul', 'shl', 'shr']},
-    {id: 'compare', label: 'Compare', types: ['eq', 'neq', 'lt', 'gt', 'lte', 'gte']},
-    {id: 'mux', label: 'Select', types: ['mux']},
-    {id: 'seq', label: 'Sequential', types: ['dff', 'tff', 'srff', 'jkff']},
-    {id: 'bus', label: 'Bus', types: ['slice', 'concat']}
+    {id: 'logic', types: ['and', 'or', 'not', 'buffer', 'cinv', 'xor', 'nand', 'nor', 'xnor']},
+    {id: 'arith', types: ['add', 'sub', 'mul', 'shl', 'shr']},
+    {id: 'compare', types: ['eq', 'neq', 'lt', 'gt', 'lte', 'gte']},
+    {id: 'mux', types: ['mux']},
+    {id: 'seq', types: ['dff', 'tff', 'srff', 'jkff']},
+    {id: 'bus', types: ['slice', 'concat']}
 ];
 
 /**
@@ -26,22 +27,34 @@ const GATE_CATEGORIES = [
  *   {kind:'gate', gtype, label}  |  {kind:'in'|'out', label}
  *   {kind:'memory', label}       |  {kind:'template', label, model}
  *
+ * EVERY SECTION AND FIXED ITEM NAME IS TRANSLATED. The labels used to be
+ * English literals here, and the i18n guard could not see them: it is scoped to
+ * files that import the translation helpers, and this file imported none — so
+ * the whole palette stayed English while the surface around it was bilingual.
+ * Section ids now carry the meaning and `t(locale, 'palette.<id>')` supplies the
+ * words. Gate labels still come from GATE_DEFS, which is the one gate
+ * definition source and names them the way a schematic does (AND, XOR) in every
+ * language; a TEMPLATE's label is its own content, not a UI string.
+ *
  * @param {Array} [templates] starter designs ({label, model|nodes/edges}) for a Templates section
+ * @param {Array} [blocks] saved subcircuits
+ * @param {string} [locale] the reader's locale; defaults to English
  * @returns {Array} palette sections
  */
-export function buildPaletteCatalog (templates = [], blocks = []) {
+export function buildPaletteCatalog (templates = [], blocks = [], locale) {
     const sections = [];
+    const L = id => t(locale, `palette.${id}`);
 
-    sections.push({id: 'io', label: 'In / Out', items: [
-        {kind: 'in', label: 'Input'},
-        {kind: 'out', label: 'Output'},
-        {kind: 'const', label: 'Constant'}
+    sections.push({id: 'io', label: L('io'), items: [
+        {kind: 'in', label: L('in')},
+        {kind: 'out', label: L('out')},
+        {kind: 'const', label: L('const')}
     ]});
 
     for (const cat of GATE_CATEGORIES) {
         sections.push({
             id: cat.id,
-            label: cat.label,
+            label: L(cat.id),
             items: cat.types.map(gtype => ({
                 kind: 'gate',
                 gtype,
@@ -50,21 +63,21 @@ export function buildPaletteCatalog (templates = [], blocks = []) {
         });
     }
 
-    sections.push({id: 'display', label: 'Display', items: [
-        {kind: 'led', label: 'LED'},
-        {kind: 'ledbank', label: 'LED bank'},
-        {kind: 'seg7', label: '7-seg display'}
+    sections.push({id: 'display', label: L('display'), items: [
+        {kind: 'led', label: L('led')},
+        {kind: 'ledbank', label: L('ledbank')},
+        {kind: 'seg7', label: L('seg7')}
     ]});
 
-    sections.push({id: 'mem', label: 'Memory', items: [
-        {kind: 'memory', label: 'RAM'},
-        {kind: 'tunnel', label: 'Tunnel'}
+    sections.push({id: 'mem', label: L('mem'), items: [
+        {kind: 'memory', label: L('memory')},
+        {kind: 'tunnel', label: L('tunnel')}
     ]});
 
     if (blocks && blocks.length) {
         sections.push({
             id: 'blocks',
-            label: 'Blocks',
+            label: L('blocks'),
             items: blocks.map(b => ({kind: 'template', label: b.label, model: b.model}))
         });
     }
@@ -72,7 +85,7 @@ export function buildPaletteCatalog (templates = [], blocks = []) {
     if (templates && templates.length) {
         sections.push({
             id: 'templates',
-            label: 'Templates',
+            label: L('templates'),
             items: templates.map(t => ({kind: 'template', label: t.label, model: t.model || t}))
         });
     }

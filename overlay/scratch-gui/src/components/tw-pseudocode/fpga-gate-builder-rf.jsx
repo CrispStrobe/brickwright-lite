@@ -52,8 +52,6 @@ const L10N = {
         addOutput: '+ Output',
         width: 'width',
         widthTitle: 'Bit width of the next node — >1 makes a bus',
-        addMemory: '+ RAM',
-        memoryTitle: 'A synchronous single-port RAM (4×4, fits the board pins)',
         saveAsSubcircuit: '⤓ Save as subcircuit',
         saveTitle: 'Save this whole design as a reusable subcircuit',
         yourBlocks: 'Your blocks:',
@@ -67,8 +65,6 @@ const L10N = {
         addOutput: '+ Ausgang',
         width: 'Breite',
         widthTitle: 'Bitbreite des nächsten Knotens — >1 erzeugt einen Bus',
-        addMemory: '+ RAM',
-        memoryTitle: 'Ein synchroner Single-Port-RAM (4×4, passt auf die Board-Pins)',
         saveAsSubcircuit: '⤓ Als Teilschaltung speichern',
         saveTitle: 'Speichere diesen gesamten Entwurf als wiederverwendbare Teilschaltung',
         yourBlocks: 'Deine Blöcke:',
@@ -399,7 +395,9 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
 
     // Only examples that carry a gate model can seed the model canvas; the
     // Verilog-only starters live in the examples browser, not the palette.
-    const catalog = React.useMemo(() => buildPaletteCatalog(EXAMPLES.filter(e => e.model && e.model.nodes), BUILTINS), []);
+    const catalog = React.useMemo(
+        () => buildPaletteCatalog(EXAMPLES.filter(e => e.model && e.model.nodes), BUILTINS, locale),
+        [locale]);
     // Which real Tang Nano 20K pin each port lands on — the bridge to silicon,
     // shown before any synthesis (the same placement modelToCst emits).
     const pinMap = React.useMemo(() => {
@@ -789,7 +787,7 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                         locale={locale}
                         onSelect={selectChallenge} onCheck={runCheck} onNext={goNext} />
                 ) : null}
-                <FpgaGatePalette catalog={catalog} />
+                <FpgaGatePalette catalog={catalog} locale={locale} />
                 <div ref={canvasRef} style={{flex: '1 1 auto', height: '48vh', minHeight: 300, border: '1px solid rgba(71,85,105,0.25)', borderRadius: 6}}
                     data-testid="bw-fpga-rf-canvas" onDrop={onDrop} onDragOver={onDragOver} onKeyDownCapture={onCanvasKeyDown}>
                     <ReactFlow
