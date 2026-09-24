@@ -9,9 +9,10 @@ import {IMPORT_ACCEPT, isImportableArtefact} from '../../lib/bw-makecode/accept.
 // Static, not lazy: `_asmExamples()` is read during render, so it has to be
 // synchronous — and the module is a few KB of strings, not a chunk worth
 // splitting.
-import {asmExamplesFor} from '../../lib/bw-asm/examples.js';
+import {asmExamplesFor, riscvCExamplesFor} from '../../lib/bw-asm/examples.js';
 import {
     requestAssembly, requestCBuild, asmRouteFor, cRouteFor, requestRiscvCBuild, requestBasicBuild, asmTargetForDevice, ASM_DIALECTS,
+    RISCV_CC_ENDPOINT,
     runDosToolchain
 } from '../../lib/bw-asm/assemble-route.js';
 import {
@@ -278,10 +279,14 @@ const L10N = {
         runCRiscvRouteBrowser: 'Browser · shecc (subset)',
         runCRiscvRouteServer: 'Server · gcc (full C)',
         runCRiscvBuilding: 'Compiling C for RISC-V…',
-        runCRiscvBuilt: (n) => `Built a ${n}-byte RISC-V image — booting the RV32IMA console…`,
+        runCRiscvBuilt: (n, segs, entry, compiler) =>
+            `Built a ${n}-byte RISC-V image (${segs} segment${segs === 1 ? '' : 's'}, `
+            + `entry 0x${entry.toString(16)}) with ${compiler} — booting the RV32IMA console…`,
         runCRiscvRefused: (m) => `The RISC-V C compiler refused this program: ${m}`,
         runCRiscvUnavailable: (m) => `The RISC-V C compiler is unavailable: ${m}`,
         runCRiscvEmpty: 'Write some C first.',
+        runCRiscvTryServer: '▶ Try the full compiler (server)',
+        runCRiscvTryServerTitle: 'The in-browser shecc compiles a subset of C. This program uses something it does not support — compile it on the hosted service (full gcc + picolibc) instead.',
         // reference section headers
         h: {
             Structure: 'Structure', EventsHats: 'Events (hats)', Control: 'Control',
@@ -499,10 +504,14 @@ const L10N = {
         runCRiscvRouteBrowser: 'Browser · shecc (Teilmenge)',
         runCRiscvRouteServer: 'Server · gcc (voll. C)',
         runCRiscvBuilding: 'Übersetze C für RISC-V…',
-        runCRiscvBuilt: (n) => `${n}-Byte-RISC-V-Abbild erzeugt — starte die RV32IMA-Konsole…`,
+        runCRiscvBuilt: (n, segs, entry, compiler) =>
+            `${n}-Byte-RISC-V-Abbild erzeugt (${segs} Segment${segs === 1 ? '' : 'e'}, `
+            + `Einsprung 0x${entry.toString(16)}) mit ${compiler} — starte die RV32IMA-Konsole…`,
         runCRiscvRefused: (m) => `Der RISC-V-C-Compiler hat dieses Programm abgelehnt: ${m}`,
         runCRiscvUnavailable: (m) => `Der RISC-V-C-Compiler ist nicht verfügbar: ${m}`,
         runCRiscvEmpty: 'Schreibe zuerst C.',
+        runCRiscvTryServer: '▶ Vollen Compiler versuchen (Server)',
+        runCRiscvTryServerTitle: 'Das eingebaute shecc übersetzt eine Teilmenge von C. Dieses Programm nutzt etwas, das es nicht unterstützt — übersetze es stattdessen auf dem gehosteten Dienst (volles gcc + picolibc).',
         // reference section headers
         h: {
             Structure: 'Struktur', EventsHats: 'Events (Hats)', Control: 'Steuerung',
@@ -917,6 +926,9 @@ class PseudocodeImporter extends React.Component {
             // subset, no server) or 'server' (the hosted service — full C via
             // native gcc+picolibc). Default keeps the no-server path.
             riscvCRoute: 'browser',
+            // Set when the browser (subset) compiler rejects a program the full
+            // server compiler might still accept — offers a one-click retry.
+            riscvCanRetryServer: false,
             // Editor maximize: collapses reference/art panels and hides the right stage pane
             maximized: false,
             // micro:bit debug granularity: 'block' (marker debugger on stock firmware,
@@ -2266,22 +2278,28 @@ class PseudocodeImporter extends React.Component {
      * `format: 'riscv'` detail). With no BW_RISCV_CC_ENDPOINT configured the
      * route REFUSES by name — the status says so honestly, assembly still runs.
      */
-    async runCOnRiscv () {
+    async runCOnRiscv (forceRoute) {
         const source = this.state.buffers.c || '';
         if (!source.trim()) { this.setState({status: this.L.runCRiscvEmpty}); return; }
-        this.setState({busy: true, status: this.L.runCRiscvBuilding, output: null});
+        // `forceRoute` (from the "try the server" hint) overrides the picker.
+        const route = typeof forceRoute === 'string' ? forceRoute : this.state.riscvCRoute;
+        this.setState({busy: true, status: this.L.runCRiscvBuilding, output: null,
+            riscvCanRetryServer: false});
         let out;
         try {
-            // The user's chosen route: 'browser' (shecc.wasm, no server) or
-            // 'server' (hosted full C, target riscv32-gcc).
-            out = await requestRiscvCBuild({source, route: this.state.riscvCRoute,
-                hostedTarget: 'riscv32-gcc'});
+            // 'browser' = shecc.wasm (subset, no server); 'server' = hosted full C.
+            out = await requestRiscvCBuild({source, route, hostedTarget: 'riscv32-gcc'});
         } catch (e) {
             // 'transport' is the missing/unreachable service (not the user's
-            // fault); 'source' is a compile error naming the line.
-            this.setState({busy: false, status: e.reason === 'source'
-                ? this.L.runCRiscvRefused(e.message)
-                : this.L.runCRiscvUnavailable(e.message)});
+            // fault); 'source' is a compile error naming the line. When the
+            // BROWSER (subset) compiler rejects a program, the full compiler on
+            // the SERVER may still accept it — offer a one-click retry instead
+            // of dead-ending on a subset limitation.
+            const canRetryServer = route === 'browser' && e.reason === 'source' && !!RISCV_CC_ENDPOINT;
+            this.setState({busy: false, riscvCanRetryServer: canRetryServer,
+                status: e.reason === 'source'
+                    ? this.L.runCRiscvRefused(e.message)
+                    : this.L.runCRiscvUnavailable(e.message)});
             return;
         }
         const detail = {rom: null, image: out.image, listing: null, target: 'riscv32',
@@ -2290,8 +2308,30 @@ class PseudocodeImporter extends React.Component {
         window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-right-pane-hidden', value: '0'}}));
         window.__bwPendingMedia = {type: 'asm', detail};
         window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {detail}));
+        // Report WHAT was produced and by WHICH compiler: bytes, segment count,
+        // entry, and whether it came from the browser (shecc) or the server (gcc).
         const bytes = out.image.segments.reduce((n, s) => n + s.bytes.length, 0);
-        this.setState({busy: false, status: this.L.runCRiscvBuilt(bytes)});
+        const compiler = out.route === 'local-wasm' ? 'shecc' : 'gcc';
+        this.setState({busy: false, riscvCanRetryServer: false,
+            status: this.L.runCRiscvBuilt(bytes, out.image.segments.length,
+                out.image.entry >>> 0, compiler)});
+    }
+
+    /** Load a RISC-V C starter into the C buffer, and preselect the route the
+     *  example needs (subset → browser, full C → server). */
+    loadRiscvCExample (id) {
+        if (!id) return;
+        const ex = riscvCExamplesFor('riscv32').find(e => e.id === id);
+        if (!ex) return;
+        const current = (this.state.buffers.c || '').trim();
+        if (current && !window.confirm(this.L.asmExampleReplace)) return;
+        this.setState(state => ({
+            buffers: {...state.buffers, c: ex.source},
+            riscvCRoute: ex.route || state.riscvCRoute,
+            riscvCanRetryServer: false,
+            status: this.L.asmExampleLoaded(
+                pickLocale(this.props.locale) === 'de' ? ex.labelDe : ex.label)
+        }));
     }
 
     /**
@@ -4714,6 +4754,21 @@ class PseudocodeImporter extends React.Component {
                     {this.state.lang === 'c'
                      && asmTargetForDevice(this.currentDevice()) === 'riscv32' ? (
                             <span style={{display: 'inline-flex', alignItems: 'center', gap: 8}}>
+                                <label style={{fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 4}}>
+                                    {this.L.asmExampleLabel}
+                                    <select data-testid="bw-riscv-c-examples"
+                                        onChange={e => this.loadRiscvCExample(e.target.value)}
+                                        value=""
+                                        disabled={this.state.busy}
+                                        style={{padding: '2px 6px', borderRadius: 4, border: '1px solid #cbd5e1'}}>
+                                        <option value="">{this.L.asmExamplePick}</option>
+                                        {riscvCExamplesFor('riscv32').map(ex => (
+                                            <option key={ex.id} value={ex.id}>
+                                                {pickLocale(this.props.locale) === 'de' ? ex.labelDe : ex.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
                                 <label title={this.L.runCRiscvRouteTitle}
                                     style={{fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 4}}>
                                     <select value={this.state.riscvCRoute}
@@ -4725,12 +4780,22 @@ class PseudocodeImporter extends React.Component {
                                         <option value="server">{this.L.runCRiscvRouteServer}</option>
                                     </select>
                                 </label>
-                                <button onClick={this.runCOnRiscv} disabled={this.state.busy}
+                                <button onClick={() => this.runCOnRiscv()} disabled={this.state.busy}
                                     data-testid="bw-run-c-riscv"
                                     title={this.L.runCRiscvTitle}
                                     style={{...btn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
                                     {this.L.runCRiscv}
                                 </button>
+                                {/* Smart hint: the browser subset rejected this program;
+                                    offer the full compiler on the server in one click. */}
+                                {this.state.riscvCanRetryServer ? (
+                                    <button onClick={() => this.runCOnRiscv('server')} disabled={this.state.busy}
+                                        data-testid="bw-run-c-riscv-server"
+                                        title={this.L.runCRiscvTryServerTitle}
+                                        style={{...btn, background: 'linear-gradient(135deg,#f08c00,#e67700)'}}>
+                                        {this.L.runCRiscvTryServer}
+                                    </button>
+                                ) : null}
                             </span>
                         ) : null}
                     {this.currentDevice() === 'stm32f030' && this.state.lang === 'pseudocode' ? (

@@ -14,18 +14,38 @@ test('the Code tab offers a ▶ Run C on RISC-V button + a route chooser, for th
     assert.match(src, /data-testid="bw-run-c-riscv"/, 'the C tab has a ▶ for RISC-V');
     assert.match(src, /asmTargetForDevice\(this\.currentDevice\(\)\) === 'riscv32'/,
         'the button appears only for the riscv32 target');
-    assert.match(src, /onClick=\{this\.runCOnRiscv\}/, 'it is wired to the handler');
+    assert.match(src, /onClick=\{\(\) => this\.runCOnRiscv\(\)\}/, 'it is wired to the handler');
     // the user picks browser (wasm subset) vs server (hosted full C)
     assert.match(src, /data-testid="bw-riscv-c-route"/, 'a route <select> is offered');
     assert.match(src, /riscvCRoute: e\.target\.value/, 'the select updates the chosen route');
     assert.match(src, /value="browser"[^]*value="server"/, 'both routes are options');
+    // a C-example picker seeds the buffer
+    assert.match(src, /data-testid="bw-riscv-c-examples"/, 'a C-example <select> is offered');
+    assert.match(src, /this\.loadRiscvCExample\(e\.target\.value\)/, 'it loads the chosen example');
+});
+
+test('a subset failure offers a one-click retry on the full (server) compiler', () => {
+    assert.match(src, /data-testid="bw-run-c-riscv-server"/, 'the retry button exists');
+    assert.match(src, /this\.runCOnRiscv\('server'\)/, 'it forces the server route');
+    assert.match(src, /riscvCanRetryServer/, 'gated on the subset-rejected flag');
+    // the flag is only set for a browser-route source error with an endpoint
+    assert.match(src, /route === 'browser' && e\.reason === 'source' && !!RISCV_CC_ENDPOINT/,
+        'retry is offered only when the browser subset rejected it and a server exists');
+});
+
+test('the build status reports what was produced and by which compiler', () => {
+    assert.match(src, /out\.route === 'local-wasm' \? 'shecc' : 'gcc'/, 'names the compiler');
+    assert.match(src, /runCRiscvBuilt\(bytes, out\.image\.segments\.length,\s*\n?\s*out\.image\.entry >>> 0, compiler\)/,
+        'the built message carries bytes, segment count, entry and compiler');
 });
 
 test('the handler runs the CHOSEN route and boots the shared riscv image path', () => {
-    assert.match(src, /async runCOnRiscv \(\)/, 'the handler exists');
-    // it passes the user's route + the full-C hosted target, no injected seam
-    assert.match(src, /out = await requestRiscvCBuild\(\{source, route: this\.state\.riscvCRoute,\s*\n?\s*hostedTarget: 'riscv32-gcc'\}\);/,
-        'it calls the C route with the chosen route and the full-C target');
+    assert.match(src, /async runCOnRiscv \(forceRoute\)/, 'the handler exists (takes an optional forced route)');
+    // it passes the user's (or forced) route + the full-C hosted target
+    assert.match(src, /const route = typeof forceRoute === 'string' \? forceRoute : this\.state\.riscvCRoute;/,
+        'the chosen route (or a forced retry route) drives the build');
+    assert.match(src, /out = await requestRiscvCBuild\(\{source, route, hostedTarget: 'riscv32-gcc'\}\);/,
+        'it calls the C route with that route and the full-C target');
     // the image travels the SAME bw-asm-rom-ready event as an assembled program
     assert.match(src, /format: 'riscv'/, 'the detail is a riscv image, not a flat ROM');
     assert.match(src, /image: out\.image/, 'the loadable image is carried');
@@ -44,7 +64,8 @@ test('refusal and compile-error are told apart in the status', () => {
 test('the button\'s strings exist in both locales', () => {
     for (const key of ['runCRiscv', 'runCRiscvTitle', 'runCRiscvBuilding', 'runCRiscvBuilt',
         'runCRiscvRefused', 'runCRiscvUnavailable', 'runCRiscvEmpty',
-        'runCRiscvRouteTitle', 'runCRiscvRouteBrowser', 'runCRiscvRouteServer']) {
+        'runCRiscvRouteTitle', 'runCRiscvRouteBrowser', 'runCRiscvRouteServer',
+        'runCRiscvTryServer', 'runCRiscvTryServerTitle']) {
         assert.equal(src.split(`${key}:`).length - 1 >= 2, true, `${key} is missing from a locale`);
     }
 });

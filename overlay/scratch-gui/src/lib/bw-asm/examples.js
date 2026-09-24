@@ -359,4 +359,66 @@ export const LOCAL_ASM_EXAMPLES = [
     ...RISCV.map(e => ({...e, target: 'riscv32'}))
 ];
 
+/**
+ * RISC-V *C* starter programs for the Code tab. These are NOT assembly and are
+ * deliberately kept out of ALL_ASM_EXAMPLES so the asm-examples gate never tries
+ * to assemble them. Each names the route it needs: a `browser` example stays
+ * inside shecc's C subset and compiles in the page with no server; a `server`
+ * example uses full C (floats, qsort, the standard library) and needs the
+ * hosted gcc route. Output goes through the machine's ECALL console.
+ */
+const RISCV_C = [
+    {
+        id: 'rvc-hello', label: 'Hello + loop (subset)', labelDe: 'Hallo + Schleife (Teilmenge)',
+        route: 'browser',
+        source: `/* Runs in the browser: shecc compiles a C subset, no server. */
+int main(void) {
+    printf("%s\\n", "Hello from C on RISC-V!");
+    int sum = 0;
+    for (int i = 1; i <= 10; i++) sum += i;
+    printf("sum(1..10) = %d\\n", sum);
+    return 0;
+}
+`
+    },
+    {
+        id: 'rvc-fib', label: 'Fibonacci — recursion (subset)', labelDe: 'Fibonacci — Rekursion (Teilmenge)',
+        route: 'browser',
+        source: `/* Recursion + arrays, still inside shecc's subset (browser route). */
+int fib(int n) { return n < 2 ? n : fib(n - 1) + fib(n - 2); }
+int main(void) {
+    for (int i = 0; i < 12; i++) printf("fib(%d) = %d\\n", i, fib(i));
+    return 0;
+}
+`
+    },
+    {
+        id: 'rvc-floats', label: 'Floats & qsort (full C — server)', labelDe: 'Gleitkomma & qsort (volles C — Server)',
+        route: 'server',
+        source: `/* Needs the SERVER route: floats (%f), <math.h>, qsort, malloc —
+   the full standard library, beyond shecc's subset. */
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+static int cmp(const void *a, const void *b) { return *(const int*)a - *(const int*)b; }
+int main(void) {
+    int *v = malloc(5 * sizeof(int));
+    int src[5] = {5, 3, 9, 1, 7};
+    for (int i = 0; i < 5; i++) v[i] = src[i];
+    qsort(v, 5, sizeof(int), cmp);
+    for (int i = 0; i < 5; i++) printf("%d ", v[i]);
+    printf("\\nsqrt(2) = %.5f, pi = %.5f\\n", sqrt(2.0), 4.0 * atan(1.0));
+    free(v);
+    return 0;
+}
+`
+    }
+];
+
+/** RISC-V C starter programs for a device, or [] for non-riscv devices. */
+export function riscvCExamplesFor (device) {
+    const d = String(device || '').toLowerCase();
+    return (/^riscv(32)?$/.test(d) || /rv32/.test(d)) ? RISCV_C : [];
+}
+
 export default asmExamplesFor;
