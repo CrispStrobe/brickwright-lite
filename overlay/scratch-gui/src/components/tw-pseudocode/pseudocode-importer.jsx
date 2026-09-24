@@ -9,7 +9,8 @@ import {IMPORT_ACCEPT, isImportableArtefact} from '../../lib/bw-makecode/accept.
 // Static, not lazy: `_asmExamples()` is read during render, so it has to be
 // synchronous — and the module is a few KB of strings, not a chunk worth
 // splitting.
-import {asmExamplesFor, riscvCExamplesFor} from '../../lib/bw-asm/examples.js';
+import {asmExamplesFor, riscvCExamplesFor, arduinoSketchExamplesFor} from '../../lib/bw-asm/examples.js';
+import {requestSketchBuild, sketchBoardFor, sketchFirmware} from '../../lib/bw-debug/arduino-sketch.js';
 import {
     requestAssembly, requestCBuild, asmRouteFor, cRouteFor, requestRiscvCBuild, requestBasicBuild, asmTargetForDevice, ASM_DIALECTS,
     RISCV_CC_ENDPOINT,
@@ -287,6 +288,19 @@ const L10N = {
         runCRiscvEmpty: 'Write some C first.',
         runCRiscvTryServer: '▶ Try the full compiler (server)',
         runCRiscvTryServerTitle: 'The in-browser shecc compiles a subset of C. This program uses something it does not support — compile it on the hosted service (full gcc + picolibc) instead.',
+        runSketch: '▶ Run sketch',
+        runSketchTitle: 'Compile this C tab as an Arduino sketch — real C++: Serial, String, classes, the core\'s Wire/SPI/EEPROM/SoftwareSerial — on the hosted compiler, then run it on this board\'s simulator. Serial output appears in the debugger\'s serial console.',
+        runSketchBuilding: 'Compiling the sketch with the Arduino core (hosted avr-gcc)…',
+        runSketchBuilt: (n, libs, protos) =>
+            `Built a ${n}-byte sketch with the Arduino core`
+            + (libs.length ? ` and ${libs.join(', ')}` : '')
+            + (protos ? ` (${protos} prototype${protos === 1 ? '' : 's'} generated, listed below)` : '')
+            + ' — running it on the simulator.',
+        runSketchRefused: (m) => `The Arduino compiler refused this sketch: ${m}`,
+        runSketchUnavailable: (m) => `The Arduino compiler is unavailable (it runs on the hosted service): ${m}`,
+        runSketchEmpty: 'Write a sketch first — setup() and loop().',
+        runSketchClockMismatch: (built, board) =>
+            ` Note: the image was built for ${built} Hz but this board runs at ${board} Hz, so its timing will be off.`,
         // reference section headers
         h: {
             Structure: 'Structure', EventsHats: 'Events (hats)', Control: 'Control',
@@ -512,6 +526,19 @@ const L10N = {
         runCRiscvEmpty: 'Schreibe zuerst C.',
         runCRiscvTryServer: '▶ Vollen Compiler versuchen (Server)',
         runCRiscvTryServerTitle: 'Das eingebaute shecc übersetzt eine Teilmenge von C. Dieses Programm nutzt etwas, das es nicht unterstützt — übersetze es stattdessen auf dem gehosteten Dienst (volles gcc + picolibc).',
+        runSketch: '▶ Sketch ausführen',
+        runSketchTitle: 'Diesen C-Tab als Arduino-Sketch übersetzen — echtes C++: Serial, String, Klassen, die Wire/SPI/EEPROM/SoftwareSerial-Bibliotheken des Cores — auf dem gehosteten Compiler, dann auf dem Simulator dieses Boards ausführen. Serielle Ausgaben erscheinen in der seriellen Konsole des Debuggers.',
+        runSketchBuilding: 'Sketch wird mit dem Arduino-Core übersetzt (gehosteter avr-gcc)…',
+        runSketchBuilt: (n, libs, protos) =>
+            `Sketch mit ${n} Byte mit dem Arduino-Core gebaut`
+            + (libs.length ? ` und ${libs.join(', ')}` : '')
+            + (protos ? ` (${protos} Prototyp${protos === 1 ? '' : 'en'} erzeugt, unten aufgeführt)` : '')
+            + ' — er läuft jetzt auf dem Simulator.',
+        runSketchRefused: (m) => `Der Arduino-Compiler hat diesen Sketch abgelehnt: ${m}`,
+        runSketchUnavailable: (m) => `Der Arduino-Compiler ist nicht erreichbar (er läuft auf dem gehosteten Dienst): ${m}`,
+        runSketchEmpty: 'Schreibe zuerst einen Sketch — setup() und loop().',
+        runSketchClockMismatch: (built, board) =>
+            ` Hinweis: Das Abbild wurde für ${built} Hz gebaut, dieses Board läuft aber mit ${board} Hz — das Timing stimmt daher nicht.`,
         // reference section headers
         h: {
             Structure: 'Struktur', EventsHats: 'Events (Hats)', Control: 'Steuerung',
@@ -970,6 +997,7 @@ class PseudocodeImporter extends React.Component {
         this.runPseudocodeOn8086 = this.runPseudocodeOn8086.bind(this);
         this.runCOn8086 = this.runCOn8086.bind(this);
         this.runCOnRiscv = this.runCOnRiscv.bind(this);
+        this.runSketchOnAvr = this.runSketchOnAvr.bind(this);
         this.openCodeFile = this.openCodeFile.bind(this);
         this.saveCodeFile = this.saveCodeFile.bind(this);
         this._autosaveTimer = null;
@@ -2335,6 +2363,72 @@ class PseudocodeImporter extends React.Component {
     }
 
     /**
+     * ▶ Run sketch — a hand-written Arduino sketch, compiled and running.
+     *
+     * The C tab on an AVR board otherwise reads its buffer back into blocks,
+     * and that reader refuses what blocks cannot say: `Serial`, `String`, a
+     * class, `#include <Wire.h>`. This compiles the buffer AS A SKETCH instead:
+     * stc-compiler's `arduino` route builds it the way the Arduino IDE does,
+     * real C++ against the Arduino core, and hands back an Intel HEX image.
+     * That image boots through the debug panel's firmware path on the board's
+     * own engine (avr8js for the ATmegas), where Serial output reaches the
+     * serial console. Hosted, and says so: avr-gcc cannot run in the page.
+     *
+     * The mapping and the failure classes live in lib/bw-debug/arduino-sketch.js;
+     * the compile itself is this component's ONE hosted compile, called here
+     * by name so it counts as the caller it is.
+     */
+    async runSketchOnAvr () {
+        const source = this.state.buffers.c || '';
+        if (!source.trim()) { this.setState({status: this.L.runSketchEmpty}); return; }
+        const device = this.currentDevice();
+        this.setState({busy: true, status: this.L.runSketchBuilding, output: null});
+        let built;
+        try {
+            built = await requestSketchBuild({
+                source, device,
+                compile: async (code, target, format, language) =>
+                    await this.hostedCompileC(code, target, format, language)
+            });
+        } catch (e) {
+            // A refusal is the sketch's, and the compiler's own words name
+            // the line (`main.ino:12: error: ...`); a transport failure is
+            // not something an edit fixes. The full log goes to the output
+            // pane either way.
+            this.setState({busy: false, output: (e && e.log) || null,
+                status: e && e.reason === 'source'
+                    ? this.L.runSketchRefused(e.message)
+                    : this.L.runSketchUnavailable(e && e.message ? e.message : String(e))});
+            return;
+        }
+        const detail = {format: 'avr-sketch', target: built.target, kind: built.kind,
+            firmware: sketchFirmware(built), rom: null, image: null, listing: null};
+        try { localStorage.setItem('bw-right-pane-hidden', '0'); } catch { /* private mode */ }
+        window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-right-pane-hidden', value: '0'}}));
+        window.__bwPendingMedia = {type: 'asm', detail};
+        window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {detail}));
+        const mismatch = built.builtForHz && built.builtForHz !== built.clockHz
+            ? this.L.runSketchClockMismatch(built.builtForHz, built.clockHz) : '';
+        this.setState({busy: false,
+            output: built.prototypes.length ? built.prototypes.join('\n') : null,
+            status: this.L.runSketchBuilt(built.bytes, built.libraries, built.prototypes.length) + mismatch});
+    }
+
+    /** Load an Arduino C++ starter sketch into the C buffer. */
+    loadArduinoSketchExample (id) {
+        if (!id) return;
+        const ex = arduinoSketchExamplesFor(this.currentDevice()).find(e => e.id === id);
+        if (!ex) return;
+        const current = (this.state.buffers.c || '').trim();
+        if (current && !window.confirm(this.L.asmExampleReplace)) return;
+        this.setState(state => ({
+            buffers: {...state.buffers, c: ex.source},
+            status: this.L.asmExampleLoaded(
+                pickLocale(this.props.locale) === 'de' ? ex.labelDe : ex.label)
+        }));
+    }
+
+    /**
      * Compile the BASIC buffer to an 8086 .COM and boot it on the DOS bench —
      * the BASIC counterpart of runCOn8086. Reached only from the 'i8086' BASIC
      * profile; the 6502/Z80 profiles keep the ROM-interpreter path in runBasic.
@@ -2795,15 +2889,21 @@ class PseudocodeImporter extends React.Component {
      * @param {string} code C source
      * @param {string} target the service's target id
      * @param {string} format 'ihx' | 'hex' | 'bin'
+     * @param {string} [language] 'c' (the default), or 'arduino' for a sketch
+     *     compiled as C++ against the Arduino core (runSketchOnAvr)
      * @returns {Promise<object>} the service's successful response
      */
-    async hostedCompileC (code, target, format) {
+    async hostedCompileC (code, target, format, language = 'c') {
         const res = await fetch('https://stc-compiler.vercel.app/compile', {
             method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({code, language: 'c', target, format})
+            body: JSON.stringify({code, language, target, format})
         });
         const out = await res.json();
-        if (!out.success) throw new Error(out.error || 'the compiler refused this program');
+        if (!out.success) {
+            const err = new Error(out.error || 'the compiler refused this program');
+            err.log = out.log || '';
+            throw err;
+        }
         return out;
     }
 
@@ -4796,6 +4896,38 @@ class PseudocodeImporter extends React.Component {
                                         {this.L.runCRiscvTryServer}
                                     </button>
                                 ) : null}
+                            </span>
+                        ) : null}
+                    {/* The AVR boards' C tab ▶: the buffer compiled AS A SKETCH —
+                        real Arduino C++ (Serial, String, classes, the core's
+                        libraries) on the hosted `arduino` route — and booted on
+                        the board's own engine through the debug panel's firmware
+                        path. Gated by the route's own device table, so the button
+                        and the compile cannot disagree about which boards it
+                        serves. */}
+                    {this.state.lang === 'c' && sketchBoardFor(this.currentDevice()) ? (
+                            <span style={{display: 'inline-flex', alignItems: 'center', gap: 8}}>
+                                <label style={{fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 4}}>
+                                    {this.L.asmExampleLabel}
+                                    <select data-testid="bw-arduino-sketch-examples"
+                                        onChange={e => this.loadArduinoSketchExample(e.target.value)}
+                                        value=""
+                                        disabled={this.state.busy}
+                                        style={{padding: '2px 6px', borderRadius: 4, border: '1px solid #cbd5e1'}}>
+                                        <option value="">{this.L.asmExamplePick}</option>
+                                        {arduinoSketchExamplesFor(this.currentDevice()).map(ex => (
+                                            <option key={ex.id} value={ex.id}>
+                                                {pickLocale(this.props.locale) === 'de' ? ex.labelDe : ex.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <button onClick={this.runSketchOnAvr} disabled={this.state.busy}
+                                    data-testid="bw-run-arduino-sketch"
+                                    title={this.L.runSketchTitle}
+                                    style={{...btn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
+                                    {this.L.runSketch}
+                                </button>
                             </span>
                         ) : null}
                     {this.currentDevice() === 'stm32f030' && this.state.lang === 'pseudocode' ? (

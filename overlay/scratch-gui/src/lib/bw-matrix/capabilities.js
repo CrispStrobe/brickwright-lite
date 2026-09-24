@@ -599,7 +599,14 @@ export const CELLS = Object.freeze({
         // DEVICE_GROUPS says `compile: false` for every AVR while the C tab
         // compiles through the hosted avr-gcc. Plan task T5 reconciles; until
         // then the conformance test carries this as a KNOWN contradiction.
-        c: {native: shipped('hex', 'avr-gcc', 'hosted'), lowered: [via('c')]},
+        c: {
+            native: shipped('hex', 'avr-gcc', 'hosted', {
+                note: 'plain C, and Arduino sketches as real C++ (Serial, String, classes, ' +
+                    'the core libraries) via the C tab\'s ▶ Run sketch on Uno/Nano/168P/ATtiny; ' +
+                    'the Mega waits on a bw-board pin bump (#41)'
+            }),
+            lowered: [via('c')]
+        },
         basic: {native: open('bas', 'Tiny BASIC (MIT)', 'none', 'N8'), lowered: [via('c')]},
         asm: {native: shipped('hex', 'avr-gcc (as)', 'hosted'), lowered: [LISTING]},
         micropython: {native: no('ram', AVR_RAM), lowered: [via('c')]}

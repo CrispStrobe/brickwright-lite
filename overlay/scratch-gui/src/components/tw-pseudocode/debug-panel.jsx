@@ -369,6 +369,10 @@ class DebugPanel extends React.Component {
                 name: 'assembled RISC-V program'
             }});
         }
+        // A compiled Arduino sketch (the C tab's ▶ Run sketch) is an Intel HEX
+        // image with no symbol table: exactly what "Load firmware" takes. It
+        // goes through that same path, on the board's own engine.
+        if (format === 'avr-sketch') return this._runSketch(e.detail);
         if (!rom) return;
         return this._onMediaLoad({detail: {
             slotId: slotId || 'rom', bytes: rom,
@@ -554,6 +558,27 @@ class DebugPanel extends React.Component {
         // The next Start must attach fresh with this image.
         this._teardownRunner();
         this.setState({firmwareName: file.name, runner: null, ui: {phase: 'idle', message: ''}});
+    }
+
+    /**
+     * Boot a compiled sketch as the user firmware and start it. The detail
+     * names the engine (`kind`) because the sketch route knows the board: an
+     * image built for an ATtiny88 must not run on the ATmega328P engine just
+     * because the panel was last left there. The firmware stays loaded, shown
+     * by name with its clear button, exactly as a picked .hex file would be —
+     * clearing it returns the panel to debugging the blocks.
+     */
+    _runSketch (detail) {
+        const {firmware, kind} = detail || {};
+        if (!firmware || !firmware.text) return;
+        this._userFirmware = firmware;
+        this._teardownRunner();
+        return new Promise(resolve => this.setState({
+            firmwareName: firmware.name,
+            kind: kind || this.state.kind,
+            runner: null,
+            ui: {phase: 'idle', message: ''}
+        }, () => resolve(this.onStart())));
     }
 
     onFirmwareClear () {
