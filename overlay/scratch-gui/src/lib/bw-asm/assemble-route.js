@@ -232,14 +232,47 @@ export const RISCV_CC_ENDPOINT =
     (typeof process !== 'undefined' && process.env && process.env.BW_RISCV_CC_ENDPOINT) || null;
 
 /**
- * The HOSTED C route for the riscv32 console. A real cross-compiler is too heavy
- * for the browser, so C compiles on a service (see `lib/bw-debug/riscv-compile.js`
- * and `services/riscv-cc/`), returning the same loadable {entry, segments} image
- * the local assembler produces — so the run path is shared. With no endpoint it
- * REFUSES (`no-compile-service`); assembly still runs in the browser meanwhile.
- * Loaded on demand so a build that never compiles RISC-V C pays nothing.
+ * The RISC-V C route for the Code tab. Compiles C to the shared loadable
+ * {entry, segments} image — the SAME shape assembleLocalRiscv returns, so
+ * debug-panel/debug-runner boot it through the identical riscvImage path.
+ *
+ * PRIMARY: in-browser, no server. bw-board's `riscv-cc-wasm.js` runs shecc
+ * (compiled to wasm) and returns the image — the whole C → rv32 path in the tab,
+ * with no endpoint. A compile error is the PROGRAM's: it is surfaced, never
+ * retried on a service that would give the same error.
+ *
+ * FALLBACK: the hosted service (`lib/bw-debug/riscv-compile.js`), used only when
+ * the in-browser compiler cannot LOAD (never when it rejects a program) and an
+ * endpoint is configured, or when `preferHosted` is set. It speaks the v1
+ * /compile contract (`services/riscv-cc/`) and tolerates the stc-compiler shape.
+ * Each path is loaded on demand so a build that never compiles RISC-V C pays
+ * nothing.
  */
-export async function requestRiscvCBuild ({source, endpoint = RISCV_CC_ENDPOINT, fetchImpl = null} = {}) {
+export async function requestRiscvCBuild ({source, endpoint = RISCV_CC_ENDPOINT,
+    fetchImpl = null, preferHosted = false} = {}) {
+    if (!preferHosted) {
+        try {
+            const {compileRiscvC} = await import(
+                /* webpackChunkName: "riscv-cc-wasm" */ 'bw-board/riscv-cc-wasm.js');
+            const r = await compileRiscvC(source);
+            return riscvImageResult('local-wasm', r.image, r.log);
+        } catch (e) {
+            // A compile error is the program's — surface it, do not fall through
+            // to a service that would reject the same source identically.
+            if (e && e.name === 'RiscvCcError' && e.reason === 'compile') {
+                throw new AsmRouteError(e.log || e.message,
+                    {route: 'local-wasm', target: 'riscv32', reason: 'source'});
+            }
+            // The in-browser compiler could not load/run (transport). Fall back
+            // to a configured hosted service; with none, refuse by name.
+            if (!endpoint) {
+                throw new AsmRouteError(
+                    'the in-browser RISC-V C compiler could not load'
+                        + (e && e.message ? `: ${e.message}` : ''),
+                    {route: 'local-wasm', target: 'riscv32', reason: 'transport'});
+            }
+        }
+    }
     const {compileRiscvC} = await import(/* webpackChunkName: "riscv-compile" */ '../bw-debug/riscv-compile.js');
     const r = await compileRiscvC({source, endpoint, fetchImpl});
     if (!r.ok) {
@@ -248,11 +281,15 @@ export async function requestRiscvCBuild ({source, endpoint = RISCV_CC_ENDPOINT,
                 reason: r.code === 'no-compile-service' || r.code === 'service-unreachable'
                     || r.code === 'service-error' || r.code === 'no-fetch' ? 'transport' : 'source'});
     }
-    // Same shape as the local assembler's riscv branch, so debug-panel/debug-runner
-    // boot it through the identical riscvImage path.
-    return {target: 'riscv32', route: 'hosted', format: 'riscv',
-        image: r.image, entry: r.image.entry, slotId: 'riscv', profile: 'riscv',
-        bytes: null, org: null, dialect: null, warnings: [], listing: r.log ? [r.log] : []};
+    return riscvImageResult('hosted', r.image, r.log);
+}
+
+// The shared riscv image shape both routes return (and assembleLocalRiscv's
+// branch mirrors), so the boot path never learns which compiler produced it.
+function riscvImageResult (route, image, log) {
+    return {target: 'riscv32', route, format: 'riscv',
+        image, entry: image.entry, slotId: 'riscv', profile: 'riscv',
+        bytes: null, org: null, dialect: null, warnings: [], listing: log ? [log] : []};
 }
 
 export async function assembleLocalRiscv (source) {

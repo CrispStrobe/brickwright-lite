@@ -336,22 +336,24 @@ export const DEVICES = Object.freeze([
     // from ASSEMBLY in-app: bw-board/riscv-asm.js is a LOCAL RV32IM assembler
     // (assemble-route.js has riscv32 in LOCAL_ASM_TARGETS), so a learner writes
     // assembly and it runs on this core with no network — the same road the 8086
-    // takes. C is a HOSTED route now: assemble-route.js `requestRiscvCBuild` posts
-    // to a RISC-V cross-compiler (client lib/bw-debug/riscv-compile.js, reference
-    // server services/riscv-cc/) and boots the returned image the same way. Until
-    // BW_RISCV_CC_ENDPOINT names a deployment it REFUSES by name (no-compile-service)
-    // rather than pretend — so the cell is hosted-pending-endpoint, not faked.
+    // takes. C now compiles IN THE BROWSER TOO: bw-board/riscv-cc-wasm.js runs
+    // shecc (compiled to wasm) and returns the same loadable image, so
+    // `requestRiscvCBuild` builds C → rv32 with NO server (the ▶ Run C on RISC-V
+    // button). A hosted service (client lib/bw-debug/riscv-compile.js, reference
+    // server services/riscv-cc/, default stc-compiler) is only a fallback for a
+    // build where the in-browser compiler cannot load — so C is LOCAL, not
+    // hosted-pending-endpoint, and never faked.
     dev('riscv32', 'RISC-V (RV32IMA)', 'RISC-V', 'riscv32', {
-        // `pickerCompile: false` is the C road, which is not wired (no hosted
-        // RISC-V compiler). But there is a SECOND road, as for the 8086: the
-        // local RV32IM assembler (asmRouteFor('riscv32') === 'local'), so this
-        // BUILDS an assembly program in the browser and runs it, as well as
-        // running a pre-linked demo or a dropped ELF. Two roads, different flags.
+        // TWO local build roads, no network: the RV32IM assembler
+        // (asmRouteFor('riscv32') === 'local') AND the shecc-wasm C compiler
+        // (requestRiscvCBuild compiles in-browser). Plus running a pre-linked
+        // demo or a dropped ELF. `pickerCompile` stays false because that flag
+        // means the HOSTED sb3/stc C road, which is not this device's path.
         programmable: false,
         pickerCompile: false,
         pickerEmulator: 'riscv32',
         sim: [eng('riscv32', ['elf', 'bin'], {
-            note: 'RV32IMA SoC (CLINT+PLIC+UART); boots clang ELF output incl. real FreeRTOS + RT-Thread (bw-board riscv32*.test.mjs)'
+            note: 'RV32IMA SoC (CLINT+PLIC+UART); boots clang ELF, real FreeRTOS + RT-Thread, in-browser assembly, and in-browser C (shecc→wasm) (bw-board riscv32*.test.mjs, riscv-cc-wasm.test.mjs)'
         })],
         silicon: []
     }),

@@ -57,14 +57,19 @@ export function validateResponse (body) {
     if (!body || typeof body !== 'object') {
         return refusal('bad-response', 'The compile service did not return an object.');
     }
-    if (body.contract !== CONTRACT_VERSION) {
+    // A `contract` field, when present, must match; a service that omits it
+    // (e.g. stc-compiler, which shares one base response shape across targets)
+    // is accepted on the strength of its `image`.
+    if (body.contract !== undefined && body.contract !== CONTRACT_VERSION) {
         return refusal('contract-mismatch',
             `The service speaks contract ${body.contract}, this client speaks `
             + `${CONTRACT_VERSION}. Refusing rather than guessing at the difference.`);
     }
-    if (body.ok === false) {
+    // `ok:false` (v1 contract) and `success:false` (stc-compiler) both mean the
+    // program did not compile; `error` is stc-compiler's word for `reason`.
+    if (body.ok === false || body.success === false) {
         return refusal(body.code || 'compile-failed',
-            body.reason || 'The service reported a failure without a reason.',
+            body.reason || body.error || 'The service reported a failure without a reason.',
             {log: body.log ?? null});
     }
     const img = body.image;

@@ -79,20 +79,33 @@ test('an unreachable service and an HTTP error are named, not swallowed', async 
     assert.equal(http.code, 'service-error');
 });
 
-// ── the route wrapper in assemble-route.js (what the Code tab will call) ──
-import {requestRiscvCBuild, RISCV_CC_ENDPOINT} from '../overlay/scratch-gui/src/lib/bw-asm/assemble-route.js';
+// ── the route wrapper in assemble-route.js (what the Code tab calls) ──
+import {requestRiscvCBuild} from '../overlay/scratch-gui/src/lib/bw-asm/assemble-route.js';
 
-test('requestRiscvCBuild refuses (transport) when no endpoint is configured', async () => {
-    assert.equal(RISCV_CC_ENDPOINT, null, 'no endpoint in an unconfigured build');
-    await assert.rejects(
-        () => requestRiscvCBuild({source: 'int main(){return 0;}'}),
-        e => { assert.equal(e.route, 'hosted'); assert.equal(e.target, 'riscv32'); assert.equal(e.reason, 'transport'); return true; });
+test('requestRiscvCBuild compiles IN THE BROWSER by default — no endpoint, no server', async () => {
+    // The primary road: bw-board's riscv-cc-wasm (shecc→wasm). No fetch, no
+    // endpoint. Returns the shared riscv image shape debug-runner boots.
+    const out = await requestRiscvCBuild({source: 'int main(){ printf("%d\\n", 6*7); return 0; }'});
+    assert.equal(out.route, 'local-wasm', 'compiled in-browser, not on a service');
+    assert.equal(out.format, 'riscv');
+    assert.equal(out.target, 'riscv32');
+    assert.equal(out.slotId, 'riscv');
+    assert.equal(typeof out.entry, 'number');
+    assert.ok(out.image.segments.length >= 1);
+    assert.ok(out.image.segments[0].bytes instanceof Uint8Array);
 });
 
-test('requestRiscvCBuild returns the shared riscv image shape on success', async () => {
+test('an in-browser compile error is the PROGRAM\'s (source reason), not a service error', async () => {
+    await assert.rejects(
+        () => requestRiscvCBuild({source: 'int main(){ this is not C ; }'}),
+        e => { assert.equal(e.route, 'local-wasm'); assert.equal(e.reason, 'source'); return true; });
+});
+
+test('the HOSTED fallback (preferHosted) still returns the shared riscv image shape', async () => {
     const fetchImpl = async () => ({status: 200, json: async () => ({contract: 1, ok: true,
         image: {entry: 0x1000, segments: [{addr: 0x1000, bytes: 'AAAA'}]}, log: ''})});
-    const out = await requestRiscvCBuild({source: 'int main(){return 0;}', endpoint: 'https://cc/api', fetchImpl});
+    const out = await requestRiscvCBuild({source: 'int main(){return 0;}',
+        endpoint: 'https://cc/api', fetchImpl, preferHosted: true});
     assert.equal(out.route, 'hosted');
     assert.equal(out.format, 'riscv');
     assert.equal(out.entry, 0x1000);
@@ -100,9 +113,20 @@ test('requestRiscvCBuild returns the shared riscv image shape on success', async
     assert.equal(out.slotId, 'riscv');
 });
 
-test('a compile error becomes a SOURCE-reason route error', async () => {
+test('the hosted fallback tolerates the stc-compiler {success, image} shape', async () => {
+    // stc-compiler shares one base response shape across targets: success/image,
+    // no top-level {contract, ok}. riscv-compile.js accepts it.
+    const fetchImpl = async () => ({status: 200, json: async () => ({success: true,
+        image: {entry: 0x1000, segments: [{addr: 0x1000, bytes: 'AAAA'}]}, log: ''})});
+    const out = await requestRiscvCBuild({source: 'int main(){return 0;}',
+        endpoint: 'https://stc/api', fetchImpl, preferHosted: true});
+    assert.equal(out.route, 'hosted');
+    assert.equal(out.entry, 0x1000);
+});
+
+test('a hosted compile error becomes a SOURCE-reason route error', async () => {
     const fetchImpl = async () => ({status: 200, json: async () => ({contract: 1, ok: false, code: 'compile-failed', reason: 'x.c:1: bad', log: 'gcc'})});
     await assert.rejects(
-        () => requestRiscvCBuild({source: 'oops', endpoint: 'https://cc/api', fetchImpl}),
+        () => requestRiscvCBuild({source: 'oops', endpoint: 'https://cc/api', fetchImpl, preferHosted: true}),
         e => { assert.equal(e.reason, 'source'); return true; });
 });
