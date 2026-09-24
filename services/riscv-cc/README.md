@@ -48,8 +48,10 @@ docker run --rm -p 8080:8080 \
   --memory=512m riscv-cc
 ```
 
-Deploy the same image to any container host (Fly.io, Railway, Cloud Run, a VPS).
-Put it behind TLS and, if it is public, a rate limit — compilation is CPU-heavy.
+Deploy the same image to any container host — **`DEPLOY.md` has one-command
+recipes** for Fly.io (a `fly.toml` is included), Railway, Cloud Run, and a plain
+VPS, plus how to wire and verify it. Put it behind TLS and, if it is public, a
+rate limit — compilation is CPU-heavy.
 
 ## Wiring the app to it
 

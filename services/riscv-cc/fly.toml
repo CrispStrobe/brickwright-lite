@@ -1,0 +1,33 @@
+# Fly.io config for the riscv-cc compile service. Rename `app` to yours (or pass
+# --name on `fly launch --copy-config`). Scales to zero: you pay for compile
+# seconds, not idle. See DEPLOY.md.
+app = "riscv-cc"
+primary_region = "cdg"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  # A compile is CPU-bound and short; keep concurrency modest so one machine is
+  # not compiling ten programs at once.
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 8
+    soft_limit = 4
+
+[[http_service.checks]]
+  method = "GET"
+  path = "/health"
+  interval = "30s"
+  timeout = "5s"
+  grace_period = "10s"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512
