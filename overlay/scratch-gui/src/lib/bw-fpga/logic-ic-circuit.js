@@ -217,6 +217,43 @@ export const ADDER_CHIP_4 = Object.freeze({
 });
 
 /**
+ * A 3-to-8 decoder, BOUGHT rather than built — and the first board whose
+ * selected output is the DARK one.
+ *
+ * Three address lines choose one of eight outputs. Built from gates that is
+ * eight three-input ANDs and three inverters; bought, it is one 74HC138 and a
+ * handful of wires, which is the same trade the 74HC283 makes against the
+ * ripple adder.
+ *
+ * THE OUTPUTS ARE ACTIVE LOW, and the part's own pin names say so — `y0b` is
+ * "y0 bar". So the LED that goes OUT is the one being selected, and the other
+ * seven stay lit. That is not a quirk to apologise for: it is why the pin is
+ * drawn with a bar, why example 06 teaches active-low wiring, and why a chip
+ * select on any real bus is a line that goes low. The challenge grades it as
+ * the part actually behaves.
+ *
+ * The enables are tied on: `g1` is active HIGH, `g2ab` and `g2bb` are active
+ * LOW, and all three must agree before any output moves. Leave one floating
+ * and the whole chip sits idle — which is the other thing this part teaches,
+ * and the reason a decoder is how memory-mapped I/O picks a device.
+ */
+export const DECODER_CHIP_3TO8 = Object.freeze({
+    id: 'decoder3to8',
+    chip: '74hc138',
+    chipLabel: '74HC138',
+    inputs: ['a', 'b', 'c'],
+    outputs: ['y0', 'y1', 'y2', 'y3', 'y4', 'y5', 'y6', 'y7'],
+    pins: {
+        a: 'a', b: 'b', c: 'c',
+        y0: 'y0b', y1: 'y1b', y2: 'y2b', y3: 'y3b',
+        y4: 'y4b', y5: 'y5b', y6: 'y6b', y7: 'y7b'
+    },
+    tieHigh: ['g1'],
+    tieLow: ['g2ab', 'g2bb'],
+    gates: []
+});
+
+/**
  * A D flip-flop: the first REALISATION that remembers.
  *
  * Everything else on the ladder is combinational — the LEDs follow the switches
@@ -349,7 +386,7 @@ export const COUNTER4_CHIP = Object.freeze({
 export const IC_CIRCUITS = Object.freeze({
     mux2: MUX2, half_adder: HALF_ADDER, full_adder: FULL_ADDER,
     ripple_adder_4: RIPPLE_ADDER_4, adder_chip_4: ADDER_CHIP_4,
-    dff: DFF_CHIP, toggle: TOGGLE_CHIP, counter2: COUNTER2_CHIP, counter4: COUNTER4_CHIP
+    decoder3to8: DECODER_CHIP_3TO8, dff: DFF_CHIP, toggle: TOGGLE_CHIP, counter2: COUNTER2_CHIP, counter4: COUNTER4_CHIP
 });
 
 /** The picker's name for a circuit, in `locale`. */
