@@ -7,7 +7,7 @@
 //
 // stc-compiler's `arduino` language route compiles exactly that: a sketch as
 // the Arduino IDE compiles it, real C++ against the vendored ArduinoCore-avr
-// (Uno, Nano) or ATTinyCore (ATtiny85/88), with the IDE's prototype
+// (Uno, Nano, Mega) or ATTinyCore (ATtiny85/88), with the IDE's prototype
 // generation and the core's bundled libraries. What comes back is an Intel HEX
 // image, and the debug panel already runs an Intel HEX image on avr8js: the
 // "Load firmware" path. This module is the join between the two, kept free of
@@ -33,14 +33,12 @@ export const ARDUINO_SKETCH_BOARDS = Object.freeze({
     'arduino-nano': {target: 'arduino-nano', kind: 'avr8js', clockHz: 16000000},
     atmega328p: {target: 'atmega328p', kind: 'avr8js', clockHz: 16000000},
     atmega168p: {target: 'atmega168p', kind: 'avr8js', clockHz: 16000000},
-    // NOT the Mega (arduino-mega / atmega2560), though the service builds for
-    // it: the pinned bw-board sizes the 2560's data space to end at 0x20FF,
-    // below RAMEND 0x21FF where avr-libc's startup puts the stack, so the
-    // first RET of any compiled Mega program jumps to the reset vector.
-    // Measured with a real sketch image; fixed upstream in bw-board
-    // (fix/atmega2560-sram-extent). test/arduino-sketch-route.test.mjs runs
-    // the Mega image on the pinned engine and goes red when a pin bump brings
-    // the fix -- that is the moment to add both ids here.
+    // The Mega joined once the pinned bw-board put the ATmega2560's stack
+    // inside its data space (bw-board #41: SRAM is 0x200-0x21FF, above the
+    // extended I/O; before that every compiled Mega program reset-looped at
+    // its first RET).
+    'arduino-mega': {target: 'arduino-mega', kind: 'atmega2560', clockHz: 16000000},
+    atmega2560: {target: 'atmega2560', kind: 'atmega2560', clockHz: 16000000},
     attiny85: {target: 'attiny85', kind: 'attiny85', clockHz: 8000000},
     attiny88: {target: 'attiny88', kind: 'attiny88', clockHz: 8000000}
 });

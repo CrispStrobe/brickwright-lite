@@ -24,10 +24,8 @@
  *      symbols and a project with no pins reach the AVR attach without
  *      throwing.
  *
- * And one HELD GAP: the Mega is left out of the route because the pinned
- * bw-board cannot run a compiled Mega program (see the test's message). The
- * test asserts it is STILL broken, so the pin bump that fixes it goes red here
- * and says what to do.
+ * The Mega was held out of the route until bw-board #41 fixed its data space;
+ * it now runs the same C++ sketch the Uno does.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -50,7 +48,7 @@ const b64 = s => Buffer.from(s, 'latin1').toString('base64');
 
 // --------------------------------------------------------------- the route
 
-test('the route serves the Uno/Nano family and the ATtinys, each on its own engine', () => {
+test('the route serves the Uno/Nano family, the Mega and the ATtinys, each on its own engine', () => {
     const table = Object.fromEntries(Object.entries(route.ARDUINO_SKETCH_BOARDS)
         .map(([id, b]) => [id, `${b.target}|${b.kind}|${b.clockHz}`]));
     assert.deepEqual(table, {
@@ -58,6 +56,8 @@ test('the route serves the Uno/Nano family and the ATtinys, each on its own engi
         'arduino-nano': 'arduino-nano|avr8js|16000000',
         atmega328p: 'atmega328p|avr8js|16000000',
         atmega168p: 'atmega168p|avr8js|16000000',
+        'arduino-mega': 'arduino-mega|atmega2560|16000000',
+        atmega2560: 'atmega2560|atmega2560|16000000',
         attiny85: 'attiny85|attiny85|8000000',
         attiny88: 'attiny88|attiny88|8000000'
     });
@@ -142,8 +142,8 @@ test('the starters: Serial sketches only where there is a USART', () => {
     assert.ok(tiny.length >= 1 && tiny.every(e => !e.serial && !/Serial\./.test(e.source)),
         'an ATtiny has no hardware USART; its starters must not print');
     assert.deepEqual(arduinoSketchExamplesFor('stc12c5a60s2'), []);
-    assert.deepEqual(arduinoSketchExamplesFor('arduino-mega'), [],
-        'the starters follow the route table, which does not serve the Mega yet');
+    assert.ok(arduinoSketchExamplesFor('arduino-mega').some(e => e.serial),
+        'the Mega has a USART; it gets the Serial starters');
 });
 
 // ------------------------------------------------------------- the engines
@@ -202,17 +202,16 @@ for (const [id, portB, ledBit] of [['attiny85', 0x38, 1], ['attiny88', 0x25, 5]]
     });
 }
 
-test('HELD GAP: the pinned bw-board cannot run a compiled Mega program, so the Mega is not offered', async () => {
-    assert.equal(route.sketchBoardFor('arduino-mega'), null);
-    assert.equal(route.sketchBoardFor('atmega2560'), null);
-    const {adapter, serial} = await boot('arduino-mega', 'atmega2560', 16000000);
+test('a Mega sketch prints over Serial on the atmega2560 engine', async () => {
+    // Held as a GAP until bw-board #41: the pinned engine ended the 2560's
+    // data space below RAMEND, so this image reset-looped and printed
+    // nothing. The pin that fixed it is the one this test runs on.
+    const b = route.sketchBoardFor('arduino-mega');
+    const {adapter, serial} = await boot('arduino-mega', b.kind, b.clockHz);
     for (let i = 0; i < 25; i++) adapter.advanceNs(10_000_000);
-    assert.ok(!serial().includes('hello from C++'),
-        'THE MEGA RUNS NOW. The pinned bw-board has the ATmega2560 data-space fix ' +
-        '(SRAM 0x200-0x21FF; the stack at RAMEND used to fall off the end). Add ' +
-        "'arduino-mega' and 'atmega2560' (kind 'atmega2560', 16 MHz) to " +
-        'ARDUINO_SKETCH_BOARDS, turn this into an ordinary Serial test like the ' +
-        'Uno\'s, and drop the note in arduino-sketch.js.');
+    assert.deepEqual(serial().split('\r\n').slice(0, 3),
+        ['hello from C++', 'n=20 pi=3.142', 'n=21 pi=3.142'],
+        `the Mega said ${JSON.stringify(serial().slice(0, 80))}`);
 });
 
 // ------------------------------------------------------------- the wiring
