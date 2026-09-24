@@ -314,3 +314,25 @@ test('with its table loaded, the engine reads a sketch global where the table sa
     const value = bytes[0] | (bytes[1] << 8);
     assert.ok(value >= 1010 && value <= 1025, `read ${value} at 0x${ticks.addr.toString(16)}`);
 });
+
+test('serial INPUT: the echo starter hears what is typed and answers', async () => {
+    const fx = fixtures['arduino-uno-echo'];
+    const starter = arduinoSketchExamplesFor('arduino-uno').find(e => e.id === 'ino-echo');
+    assert.equal(fx.source, starter.source,
+        'the echo starter changed: rebuild its fixture (see the fixture file\'s "about")');
+    const {adapter, serial} = await boot('arduino-uno-echo', 'avr8js', 16000000);
+    for (let i = 0; i < 20; i++) adapter.advanceNs(10_000_000);
+    // What the panel's serial input sends: the typed line, CR-terminated.
+    assert.equal(typeof adapter.sendSerial, 'function', 'the pinned engine has no serial input');
+    adapter.sendSerial(Array.from('hello Uno\r', ch => ch.charCodeAt(0)));
+    for (let i = 0; i < 30; i++) adapter.advanceNs(10_000_000);
+    assert.match(serial(), /You said: HELLO UNO \(9 characters\)/, JSON.stringify(serial()));
+});
+
+test('the runner offers serial input only where the chip can receive', () => {
+    const src = read('lib/bw-debug/debug-runner.js');
+    const attach = src.slice(src.indexOf('async function attachAvr8js('),
+        src.indexOf('async function attachRp2040js('));
+    assert.match(attach, /avrAdapter\.chip && avrAdapter\.chip\.usart\) \{\s*runner\.sendSerial = /,
+        'an ATtiny (no USART) must get no input line rather than a dead one');
+});
