@@ -57,35 +57,31 @@ MICROBIT` was telling the reader their board was a micro:bit.
 
 **Consoles you run rather than program** — **Arduboy**. See below.
 
-## The Arduboy is not a compile target — but not for the reason you would guess
+## The Arduboy: sketches compile, blocks do not
 
 An earlier version of this page said the blocker was **licensing**: avr-gcc
-is GPL, so it cannot ship here. That is true and irrelevant. The GPL
+is GPL, so it cannot ship here. That was true and irrelevant. The GPL
 constrains *bundling*, and this repo settled that question long ago — the
-STC12 compiles through **stc-compiler.vercel.app**, and lite already POSTs
-to three of its endpoints (`/compile`, `/assemble`, `/translate`).
+STC12 compiles through **stc-compiler.vercel.app**, and lite POSTs to its
+endpoints (`/compile`, `/assemble`, `/translate`).
 
-**avr-gcc is already running there.** `/compile` accepts `atmega328p`,
-`atmega168p` and `atmega2560` today; the Code tab's C tab uses it.
+The next version named two real blockers. One is gone:
 
-So the real blocker for the Arduboy is smaller and more specific:
+1. ~~`atmega32u4` is not a `/compile` target.~~ **Closed 2026-09-24**
+   (stc-compiler #12): `target: "arduboy"` builds an Arduboy2 sketch — the
+   ATmega32U4 on the Leonardo variant, with Arduboy2 and ArduboyTones
+   vendored — as real C++. In the Code tab, choose the Arduboy, write the
+   sketch in the C tab (or pick the starter) and press ▶ Run sketch: the
+   image goes to the Arduboy console.
+2. **Nothing emits Arduboy C from blocks.** Still true. `generateC()`
+   targets a cooperative-scheduler model; an Arduboy game is C++ against the
+   Arduboy2 library — `drawBitmap`, `display()`, an immediate-mode frame
+   loop — which is a whole emitter, not a target flag. So the device stays
+   `compile: false` in the capability matrix: that flag is about BLOCKS.
 
-1. **`atmega32u4` is not a `/compile` target** — a change in stc-compiler,
-   not here.
-2. **Nothing emits Arduboy C.** `generateC()` targets the 8051's scheduling
-   model. An Arduboy game is C++ against the Arduboy2 library —
-   `drawBitmap`, `display()`, an immediate-mode frame loop — which is a
-   whole emitter, not a target flag.
-
-(2) is the real work, and it is worth being honest that it is large. What
-is cheap and already true is the other direction: **compile server-side,
-run client-side.** avr8js is here, so a C program compiled by
-stc-compiler for an AVR could boot in the browser with no hardware at
-all — the loop already closes for `atmega328p`.
-
-So choosing Arduboy offers to **run a `.hex`**, not to build one. Open a
-compiled game from the Code tab's 📂 Open and it goes straight to the
-console. Full detail: [ARDUBOY.md](ARDUBOY.md).
+So choosing Arduboy offers two things: **run a `.hex`** (open a compiled game
+from the Code tab's 📂 Open and it goes straight to the console), and
+**compile a sketch** from the C tab. Full detail: [ARDUBOY.md](ARDUBOY.md).
 
 ## MicroPython and CircuitPython need no compiler at all
 
