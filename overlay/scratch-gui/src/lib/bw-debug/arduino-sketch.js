@@ -39,6 +39,9 @@ export const ARDUINO_SKETCH_BOARDS = Object.freeze({
     // its first RET).
     'arduino-mega': {target: 'arduino-mega', kind: 'atmega2560', clockHz: 16000000},
     atmega2560: {target: 'atmega2560', kind: 'atmega2560', clockHz: 16000000},
+    // The Arduboy's engine is its CONSOLE (bw-arduboy), not the debugger: the
+    // image goes where a picked Arduboy .hex goes, with its screen and pad.
+    arduboy: {target: 'arduboy', kind: 'arduboy', clockHz: 16000000},
     attiny85: {target: 'attiny85', kind: 'attiny85', clockHz: 8000000},
     attiny88: {target: 'attiny88', kind: 'attiny88', clockHz: 8000000}
 });
@@ -74,7 +77,7 @@ export class SketchBuildError extends Error {
  * @returns {Promise<{hex: string, bytes: number, clockHz: number,
  *   builtForHz: number|null, kind: string,
  *   target: string, prototypes: string[], libraries: string[], log: string,
- *   memory: string}>}
+ *   memory: string, symbols: object|null}>}
  */
 export async function requestSketchBuild ({source, device, compile}) {
     const board = sketchBoardFor(device);
@@ -83,7 +86,15 @@ export async function requestSketchBuild ({source, device, compile}) {
     }
     let out;
     try {
-        out = await compile(source, board.target, 'hex', 'arduino');
+        // symbols: the sketch's globals, functions and main.ino lines, so the
+        // debugger's variables view reads them. The service compiles the
+        // sketch without LTO for such a build, so the image and its table
+        // always come from the same request -- never pair them otherwise.
+        // Not for the Arduboy: its image goes to the console, which has no
+        // variables view, and a symbols build (the sketch without LTO) is
+        // larger -- on a part with 28 KB for the sketch that is a real cost.
+        out = await compile(source, board.target, 'hex', 'arduino',
+            board.kind === 'arduboy' ? {} : {symbols: true});
     } catch (e) {
         const message = e && e.message ? e.message : String(e);
         // hostedCompileC throws the SERVICE's message when it refused the
@@ -112,13 +123,18 @@ export async function requestSketchBuild ({source, device, compile}) {
         prototypes: Array.isArray(out.prototypes) ? out.prototypes : [],
         libraries: Array.isArray(out.libraries) ? out.libraries : [],
         log: out.log || '',
-        memory: out.memory || ''
+        memory: out.memory || '',
+        // null when the service returned none (an older deployment, or a
+        // table it could not build): the image still runs, the variables
+        // view just has nothing to show.
+        symbols: out.symbols || null
     };
 }
 
 /** The firmware object debug-runner's setFirmware takes, for a built sketch. */
 export function sketchFirmware (built, name = 'sketch.hex') {
-    return {name, bytes: null, text: built.hex, fCpu: built.clockHz};
+    return {name, bytes: null, text: built.hex, fCpu: built.clockHz,
+        symbols: built.symbols || null};
 }
 
 /** Bytes of program an Intel HEX text describes (data records only). */

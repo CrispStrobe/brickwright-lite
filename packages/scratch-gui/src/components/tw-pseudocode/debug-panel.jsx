@@ -59,6 +59,10 @@ const L10N = {
         stepHint: 'Run to the next block boundary',
         serialHint: 'type a line, Enter sends it',
         serialSend: 'Send this line to the machine (ends with CR)',
+        firmwareRunning: 'running',
+        firmwareBack: 'Blocks',
+        firmwareBackTitle: 'Stop running this image and go back to debugging the blocks program',
+        firmwareBareChip: 'No circuit is drawn, so this image runs on the bare chip: pins, serial and stepping all work. Draw a circuit in the Circuit tab to wire parts to its pins.',
         consumes: 'Debugging this board uses:',
         lwCaveats: 'Heavy tier, one known limit: analog inputs are not injected — a pot or ' +
             'LDR reads the engine’s own counter, not the voltage this board solves. ' +
@@ -99,6 +103,10 @@ const L10N = {
         stepHint: 'Bis zur nächsten Blockgrenze laufen',
         serialHint: 'Zeile eingeben, Enter sendet',
         serialSend: 'Diese Zeile an die Maschine senden (endet mit CR)',
+        firmwareRunning: 'läuft',
+        firmwareBack: 'Blöcke',
+        firmwareBackTitle: 'Dieses Abbild beenden und wieder das Blockprogramm debuggen',
+        firmwareBareChip: 'Es ist keine Schaltung gezeichnet, daher läuft dieses Abbild auf dem nackten Chip: Pins, Seriell und Einzelschritte funktionieren. Zeichne im Circuit-Tab eine Schaltung, um Bauteile an seine Pins anzuschließen.',
         consumes: 'Das Debuggen dieser Platine belegt:',
         lwCaveats: 'Schwere Stufe, eine bekannte Grenze: Analogeingänge werden nicht ' +
             'eingespeist — ein Poti oder LDR liest den internen Zähler der Engine, nicht die ' +
@@ -1002,7 +1010,13 @@ class DebugPanel extends React.Component {
         const actionCounters = Object.entries(actionStatus?.counters || {}).slice(-4);
         const hasActionStatus = actionFailures.length || actionLog.length || actionCounters.length;
 
-        const inferredBoard = this.state.boardSource === 'inferred';
+        // The red "improvised board" alert exists because a BLOCKS program has
+        // an example circuit the inferred bench can be mistaken for. Firmware
+        // (a compiled sketch, a picked .hex) has no example and no PIN lines:
+        // the inferred bench is simply the bare chip, which is true and worth
+        // saying calmly rather than as an error.
+        const inferredBoard = this.state.boardSource === 'inferred' && !this.state.firmwareName;
+        const bareChipFirmware = this.state.boardSource === 'inferred' && !!this.state.firmwareName;
         return (
             <div data-debug-panel data-debug-phase={phase} data-debug-chip-refusal-state={chipRefusalState} style={{
                 display: 'flex', flexDirection: 'column', gap: 8, padding: 10,
@@ -1023,6 +1037,12 @@ class DebugPanel extends React.Component {
                                 : 'IMPROVISED test board: the debugger guessed a stand-in from the PIN lines — this is NOT the example\u2019s circuit. Open the Circuit tab to load the real board.'}
                         </span>
                     </div>
+                ) : null}
+                {bareChipFirmware ? (
+                    <div data-bare-chip-note role="note" style={{
+                        background: '#1e293b', border: '1px solid #475569',
+                        borderRadius: 6, padding: '6px 8px', color: '#cbd5e1'
+                    }}>{this.tx('firmwareBareChip')}</div>
                 ) : null}
                 <div style={{display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap'}}>
                     <button
@@ -1128,13 +1148,15 @@ class DebugPanel extends React.Component {
                             />
                         </label>
                         {this.state.firmwareName ? (
-                            <span style={{fontSize: 11, opacity: 0.85}}>
-                                {this.state.firmwareName}
+                            <span data-firmware-chip style={{fontSize: 11, opacity: 0.9}}>
+                                {this.state.firmwareName}{' '}{this.tx('firmwareRunning')}
                                 <button
-                                    style={{...BTN, padding: '0 4px', marginLeft: 3}}
-                                    title={'Back to running the blocks'}
+                                    data-firmware-back
+                                    style={{...BTN, padding: '0 6px', marginLeft: 6}}
+                                    title={this.tx('firmwareBackTitle')}
+                                    aria-label={this.tx('firmwareBackTitle')}
                                     onClick={() => this.onFirmwareClear()}
-                                >{'✕'}</button>
+                                >{'⟲ '}{this.tx('firmwareBack')}</button>
                             </span>
                         ) : null}
                     </span>

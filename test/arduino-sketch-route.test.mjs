@@ -58,6 +58,7 @@ test('the route serves the Uno/Nano family, the Mega and the ATtinys, each on it
         atmega168p: 'atmega168p|avr8js|16000000',
         'arduino-mega': 'arduino-mega|atmega2560|16000000',
         atmega2560: 'atmega2560|atmega2560|16000000',
+        arduboy: 'arduboy|arduboy|16000000',
         attiny85: 'attiny85|attiny85|8000000',
         attiny88: 'attiny88|attiny88|8000000'
     });
@@ -73,6 +74,7 @@ test('the engine for each board is the one the debug panel picks for that device
     // the same board would, not on whatever the panel was last left on.
     const panel = read('components/tw-pseudocode/debug-panel.jsx');
     for (const [id, b] of Object.entries(route.ARDUINO_SKETCH_BOARDS)) {
+        if (b.kind === 'arduboy') continue;          // the console, not the debugger
         const specific = new RegExp(`['"]?${id}['"]?: '([a-z0-9]+)'`).exec(
             panel.slice(panel.indexOf('const DEVICE_TO_KIND'), panel.indexOf('const CORE_TO_KIND')));
         assert.equal(b.kind, specific ? specific[1] : 'avr8js', `${id}: route and panel disagree`);
@@ -90,12 +92,13 @@ test('a build asks the one hosted compile for an arduino-language hex', async ()
                 prototypes: ['void setup();', 'void loop();'], libraries: ['Wire'], log: ''};
         }
     });
-    assert.deepEqual(calls, [['void setup(){}\nvoid loop(){}\n', 'arduino-nano', 'hex', 'arduino']]);
+    assert.deepEqual(calls, [['void setup(){}\nvoid loop(){}\n', 'arduino-nano', 'hex', 'arduino',
+        {symbols: true}]]);
     assert.equal(built.kind, 'avr8js');
     assert.equal(built.bytes, 2, 'bytes counts data records, not text');
     assert.deepEqual(built.libraries, ['Wire']);
     assert.deepEqual(route.sketchFirmware(built),
-        {name: 'sketch.hex', bytes: null, text: built.hex, fCpu: 16000000});
+        {name: 'sketch.hex', bytes: null, text: built.hex, fCpu: 16000000, symbols: null});
 });
 
 test('the board\'s crystal wins over the clock the image reports, and a mismatch is kept', async () => {
@@ -224,13 +227,14 @@ test('the C tab ▶ is gated by the route table and uses the one hosted compile'
     assert.match(src, /data-testid="bw-arduino-sketch-examples"/);
     const handler = src.slice(src.indexOf('async runSketchOnAvr ()'));
     const body = handler.slice(0, handler.indexOf('\n    /**'));
-    assert.match(body, /await this\.hostedCompileC\(code, target, format, language\)/,
+    assert.match(body, /await this\.hostedCompileC\(code, target, format, language, extra\)/,
         'the sketch must compile through hostedCompileC, not a fetch of its own');
     assert.doesNotMatch(body, /fetch\(/);
     assert.match(body, /format: 'avr-sketch'/);
     assert.match(body, /firmware: sketchFirmware\(built\)/);
     assert.match(body, /kind: built\.kind/);
-    assert.match(src, /async hostedCompileC \(code, target, format, language = 'c'\)/);
+    assert.match(src, /async hostedCompileC \(code, target, format, language = 'c', extra = \{\}\)/);
+    assert.match(src, /body: JSON\.stringify\(\{code, language, target, format, \.\.\.extra\}\)/);
     for (const key of ['runSketch', 'runSketchTitle', 'runSketchBuilding', 'runSketchBuilt',
         'runSketchRefused', 'runSketchUnavailable', 'runSketchEmpty', 'runSketchClockMismatch']) {
         assert.equal(src.split(`${key}:`).length - 1, 2, `${key} is not in both locales`);
@@ -258,4 +262,110 @@ test('the AVR attach survives firmware with no symbols and a project with no pin
     assert.match(attach, /\(symbols && symbols\.variables \|\| \[\]\)/,
         'symbols.variables threw on every firmware image');
     assert.doesNotMatch(attach, /\(symbols\.variables \|\| \[\]\)/);
+});
+
+test('a sketch on the bare chip gets a calm note, not the red improvised-board alert', () => {
+    const src = read('components/tw-pseudocode/debug-panel.jsx');
+    // The alert is for a BLOCKS program whose example circuit the inferred
+    // bench could be mistaken for; firmware has no example to be mistaken for.
+    assert.match(src, /const inferredBoard = this\.state\.boardSource === 'inferred' && !this\.state\.firmwareName;/);
+    assert.match(src, /const bareChipFirmware = this\.state\.boardSource === 'inferred' && !!this\.state\.firmwareName;/);
+    assert.match(src, /\{bareChipFirmware \? \(\s*<div data-bare-chip-note role="note"/);
+    assert.equal(src.split('firmwareBareChip:').length - 1, 2, 'the note is not in both locales');
+});
+
+test('the way back from a running image is a labelled button, in both locales', () => {
+    const src = read('components/tw-pseudocode/debug-panel.jsx');
+    const chip = src.slice(src.indexOf('<span data-firmware-chip'));
+    const block = chip.slice(0, chip.indexOf('</span>'));
+    assert.match(block, /data-firmware-back/);
+    assert.match(block, /onClick=\{\(\) => this\.onFirmwareClear\(\)\}/);
+    assert.match(block, /\{this\.tx\('firmwareBack'\)\}/, 'the button says where it goes, not just ✕');
+    assert.doesNotMatch(block, /title=\{'/, 'no hard-coded English tooltip');
+    for (const key of ['firmwareRunning', 'firmwareBack', 'firmwareBackTitle']) {
+        assert.equal(src.split(`${key}:`).length - 1, 2, `${key} is not in both locales`);
+    }
+});
+
+test('a sketch\'s symbol table travels with its image into the debugger', async () => {
+    const table = {source: 'main.ino', variables: [{name: 'ticks', space: 'sram', addr: 0x10b, size: 2}],
+        functions: [{name: 'loop', addr: 0x200, size: 20}], lines: [{line: 6, addr: 0x204}]};
+    const built = await route.requestSketchBuild({source: 'x', device: 'arduino-uno',
+        compile: async () => ({base64: b64(':00000001FF\n'), f_cpu: 16000000, symbols: table})});
+    assert.equal(route.sketchFirmware(built).symbols, table, 'the firmware must carry its own table');
+    const runner = read('lib/bw-debug/debug-runner.js');
+    assert.match(runner, /symbols: fw\.symbols \|\| null, c: null,/,
+        'builtFromUserFirmware must pass the firmware\'s table to the engine');
+});
+
+test('with its table loaded, the engine reads a sketch global where the table says', async () => {
+    // What the variables view does: target.readMem at each variable's
+    // address. From 1000, `ticks++; delay(10)` for 200 ms is about 1019.
+    const fx = fixtures['arduino-uno-symbols'];
+    const ticks = fx.symbols.variables.find(v => v.name === 'ticks');
+    assert.ok(ticks, 'the fixture table no longer lists ticks');
+    const board = new bw.BoardImpl();
+    board.setNetlist([{id: 'u1', kind: 'mcu', terminals: ['gnd']}, {id: 'g1', kind: 'gnd', terminals: ['gnd']}],
+        [{id: 'n1', terminals: [{part: 'u1', terminal: 'gnd'}, {part: 'g1', terminal: 'gnd'}]}]);
+    board.setPower(true);
+    const {target, adapter} = await bw.createDebugTarget('avr8js',
+        {board, hex: fx.hex, symbols: fx.symbols, clockHz: 16000000});
+    bw.createDebugSession(target, {onChange: () => {}}).start();
+    for (let i = 0; i < 20; i++) adapter.advanceNs(10_000_000);
+    const bytes = target.readMem(ticks.space, ticks.addr, ticks.size);
+    const value = bytes[0] | (bytes[1] << 8);
+    assert.ok(value >= 1010 && value <= 1025, `read ${value} at 0x${ticks.addr.toString(16)}`);
+});
+
+test('serial INPUT: the echo starter hears what is typed and answers', async () => {
+    const fx = fixtures['arduino-uno-echo'];
+    const starter = arduinoSketchExamplesFor('arduino-uno').find(e => e.id === 'ino-echo');
+    assert.equal(fx.source, starter.source,
+        'the echo starter changed: rebuild its fixture (see the fixture file\'s "about")');
+    const {adapter, serial} = await boot('arduino-uno-echo', 'avr8js', 16000000);
+    for (let i = 0; i < 20; i++) adapter.advanceNs(10_000_000);
+    // What the panel's serial input sends: the typed line, CR-terminated.
+    assert.equal(typeof adapter.sendSerial, 'function', 'the pinned engine has no serial input');
+    adapter.sendSerial(Array.from('hello Uno\r', ch => ch.charCodeAt(0)));
+    for (let i = 0; i < 30; i++) adapter.advanceNs(10_000_000);
+    assert.match(serial(), /You said: HELLO UNO \(9 characters\)/, JSON.stringify(serial()));
+});
+
+test('the runner offers serial input only where the chip can receive', () => {
+    const src = read('lib/bw-debug/debug-runner.js');
+    const attach = src.slice(src.indexOf('async function attachAvr8js('),
+        src.indexOf('async function attachRp2040js('));
+    assert.match(attach, /avrAdapter\.chip && avrAdapter\.chip\.usart\) \{\s*runner\.sendSerial = /,
+        'an ATtiny (no USART) must get no input line rather than a dead one');
+});
+
+test('an Arduboy sketch goes to the console, and the console runs it: picture and D-pad', async () => {
+    const src = read('components/tw-pseudocode/pseudocode-importer.jsx');
+    const handler = src.slice(src.indexOf('async runSketchOnAvr ()'));
+    const body = handler.slice(0, handler.indexOf('\n    /**'));
+    assert.match(body, /if \(built\.kind === 'arduboy'\) \{\s*[^]*?this\.runArduboyProgram\(built\.hex, 'sketch\.hex'\);/,
+        'the Arduboy image must take the console hand-off, not the debugger');
+    const fx = fixtures['arduboy-hello'];
+    assert.equal(fx.source, arduinoSketchExamplesFor('arduboy')[0].source,
+        'the Arduboy starter changed: rebuild its fixture');
+    const arduboy = await import(pathToFileURL(path.join(SRC, 'lib/bw-arduboy/index.js')).href);
+    const game = arduboy.createArduboy(fx.hex);
+    game.advance(500);
+    assert.ok(game.display.displayOn, 'the display never came on');
+    const px = () => arduboy.framebufferToPixels(game.framebuffer);
+    const lit = px().reduce((n, v) => n + (v ? 1 : 0), 0);
+    assert.ok(lit > 100 && lit < 4000, `${lit} pixels lit: expected text and a square`);
+    // The square's left edge, on a row it covers (y 28..35 at start).
+    const left = () => { const p = px(); for (let x = 0; x < 128; x++) if (p[30 * 128 + x]) return x; return -1; };
+    const before = left();
+    game.press('right'); game.advance(500); game.release('right'); game.advance(100);
+    const after = left();
+    assert.ok(after - before >= 10, `RIGHT moved the square from x=${before} to x=${after}`);
+});
+
+test('the Arduboy asks for no symbols (its 28 KB is tight, and the console has no variables view)', async () => {
+    let extra = null;
+    await route.requestSketchBuild({source: 'x', device: 'arduboy',
+        compile: async (c, t, f, l, e) => { extra = e; return {base64: b64(':00000001FF\n')}; }});
+    assert.deepEqual(extra, {});
 });

@@ -248,10 +248,10 @@ export const DEVICES = Object.freeze([
     // Moved here from DEVICE_GROUPS in pseudocode-importer.jsx (T7): the picker is
     // derived from this table now, so the reason a flag is what it is belongs
     // beside the flag.
-    // An ATmega32U4 console. `compile: false` is the important half: there is no path from blocks
-    // to an Arduboy binary — that needs avr-gcc, which is GPL and cannot ship here — so choosing
-    // this offers to RUN a .hex, not to build one. Listing it as compilable would promise
-    // something the licence forbids.
+    // An ATmega32U4 console. `compile: false` because BLOCKS have no path to an Arduboy binary
+    // (no emitter writes Arduboy2 code). What it does take is an existing .hex, or an Arduboy2
+    // SKETCH from the C tab, compiled as C++ by the hosted service (avr-gcc is GPL and runs
+    // there, never here) and run on this console.
     dev('arduboy', 'Arduboy (run .hex)', AVR, 'arduboy', {
         programmable: false,
         pickerCompile: false,

@@ -1670,6 +1670,18 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             });
         }
 
+        // RX into the program: what the serial console types reaches
+        // Serial.read(). Only where the chip HAS a USART -- an ATtiny gets no
+        // input line rather than a dead one (the panel asks for sendSerial as
+        // a capability). A string (a typed line, CR-terminated) or a single
+        // byte, the two shapes the console produces.
+        if (avrAdapter && typeof avrAdapter.sendSerial === 'function' &&
+            avrAdapter.chip && avrAdapter.chip.usart) {
+            runner.sendSerial = (data) => avrAdapter.sendSerial(typeof data === 'number'
+                ? [data & 0xff]
+                : Array.from(String(data), ch => ch.charCodeAt(0) & 0xff));
+        }
+
         // Same value-resolver and variable wiring as the emu8051 path.
         setValueResolver((blockId) => runner.valuesAtBlock(blockId));
         if (vm && vm.runtime) vm.runtime._bwDebugVariables = () => runner.variables();
@@ -3009,7 +3021,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             // f_cpu from the firmware when it says (a compiled sketch knows
             // its board's crystal: 8 MHz on the ATtinys), else the engine's
             // default. A picked .hex file says nothing and keeps the default.
-            return { hex: text, image: null, symbols: null, c: null,
+            // symbols when the firmware brought its own (a compiled sketch's
+            // table, built WITH this image); a picked .hex has none.
+            return { hex: text, image: null, symbols: fw.symbols || null, c: null,
                 bytes: text.length, f_cpu: fw.fCpu || null, format: 'ihx' };
         }
         if (kind === 'rp2040js' || kind === 'stm32f0') {
