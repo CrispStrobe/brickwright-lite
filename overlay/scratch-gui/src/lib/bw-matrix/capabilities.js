@@ -602,8 +602,7 @@ export const CELLS = Object.freeze({
         c: {
             native: shipped('hex', 'avr-gcc', 'hosted', {
                 note: 'plain C, and Arduino sketches as real C++ (Serial, String, classes, ' +
-                    'the core libraries) via the C tab\'s ▶ Run sketch on Uno/Nano/168P/ATtiny; ' +
-                    'the Mega waits on a bw-board pin bump (#41)'
+                    'the core libraries) via the C tab\'s ▶ Run sketch on Uno/Nano/Mega/168P/ATtiny'
             }),
             lowered: [via('c')]
         },
