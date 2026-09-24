@@ -92,7 +92,6 @@ const PROPER_NOUN_FILES = [
  * locale table and lowering the number here in the same commit.
  */
 const KNOWN_UNTRANSLATED = {
-    'lib/game-touch-controls.js': 46,        // per-game play hints
     'lib/bw-debug/dos-toolchain-routes.js': 5,
     'lib/scratchlink-transport.js': 4,
     'lib/native-web-bluetooth.js': 2,
