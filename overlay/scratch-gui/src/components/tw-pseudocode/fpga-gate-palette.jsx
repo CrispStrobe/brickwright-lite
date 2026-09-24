@@ -1,6 +1,7 @@
 import React from 'react';
 import {gateShape} from '../../lib/bw-fpga/glyphs.js';
 import {paletteItems} from '../../lib/bw-fpga/palette-catalog.js';
+import {t} from '../../lib/bw-fpga/l10n.js';
 import {sevenSegSvg} from '../../lib/bw-fpga/output-devices.js';
 
 /**
@@ -65,7 +66,12 @@ const Row = ({item, onDragStart}) => (
     </div>
 );
 
-const FpgaGatePalette = ({catalog, onDragStartItem}) => {
+// `locale` is a PROP, not an ambient. A bare `locale` here would be a
+// ReferenceError at render, React would unmount the tree, and the app would
+// come up with no tabs at all — the failure mode that cost this repo two
+// browser drives before it was understood. test/i18n-no-hardcoded-strings.mjs
+// refuses a translating component whose scope does not define it.
+const FpgaGatePalette = ({catalog, onDragStartItem, locale}) => {
     const [query, setQuery] = React.useState('');
     const onDragStart = (e, item) => {
         e.dataTransfer.setData(DRAG_MIME, JSON.stringify(item));
@@ -75,7 +81,8 @@ const FpgaGatePalette = ({catalog, onDragStartItem}) => {
 
     const q = query.trim().toLowerCase();
     const sections = q
-        ? [{id: 'search', label: 'Results', items: paletteItems(catalog).filter(i => i.label.toLowerCase().includes(q))}]
+        ? [{id: 'search', label: t(locale, 'palette.results'),
+            items: paletteItems(catalog).filter(i => i.label.toLowerCase().includes(q))}]
         : catalog;
 
     return (
